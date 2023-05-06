@@ -113,7 +113,7 @@ STRING_FORMATTING: Final = ErrorCode(
     "str-format", "Check that string formatting/interpolation is type-safe", "General"
 )
 STR_BYTES_PY3: Final = ErrorCode(
-    "str-bytes-safe", "Warn about dangerous coercions related to bytes and string types", "General"
+    "str-bytes-safe", "Warn about implicit coercions related to bytes and string types", "General"
 )
 EXIT_RETURN: Final = ErrorCode(
     "exit-return", "Warn about too general return type for '__exit__'", "General"
@@ -221,10 +221,13 @@ REDUNDANT_SELF_TYPE = ErrorCode(
 USED_BEFORE_DEF: Final[ErrorCode] = ErrorCode(
     "used-before-def", "Warn about variables that are used before they are defined", "General"
 )
+UNUSED_IGNORE: Final = ErrorCode(
+    "unused-ignore", "Ensure that all type ignores are used", "General", default_enabled=False
+)
 
 
 # Syntax errors are often blocking.
-SYNTAX: Final = ErrorCode("syntax", "Report syntax errors", "General")
+SYNTAX: Final[ErrorCode] = ErrorCode("syntax", "Report syntax errors", "General")
 
 # This is an internal marker code for a whole-file ignore. It is not intended to
 # be user-visible.

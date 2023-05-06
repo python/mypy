@@ -83,7 +83,7 @@ b = 'x'.foobar(c) # type: int # type: ignore[name-defined, xyz]  # E: "str" has 
 
 [case testErrorCodeWarnUnusedIgnores1]
 # flags: --warn-unused-ignores
-x # type: ignore[name-defined, attr-defined] # E: Unused "type: ignore[attr-defined]" comment
+x # type: ignore[name-defined, attr-defined] # E: Unused "type: ignore[attr-defined]" comment  [unused-ignore]
 
 [case testErrorCodeWarnUnusedIgnores2]
 # flags: --warn-unused-ignores
@@ -91,19 +91,19 @@ x # type: ignore[name-defined, attr-defined] # E: Unused "type: ignore[attr-defi
 
 [case testErrorCodeWarnUnusedIgnores3]
 # flags: --warn-unused-ignores
-"x".foobar(y) # type: ignore[name-defined, attr-defined, xyz] # E: Unused "type: ignore[xyz]" comment
+"x".foobar(y) # type: ignore[name-defined, attr-defined, xyz] # E: Unused "type: ignore[xyz]" comment  [unused-ignore]
 
 [case testErrorCodeWarnUnusedIgnores4]
 # flags: --warn-unused-ignores
-"x".foobar(y) # type: ignore[name-defined, attr-defined, valid-type] # E: Unused "type: ignore[valid-type]" comment
+"x".foobar(y) # type: ignore[name-defined, attr-defined, valid-type] # E: Unused "type: ignore[valid-type]" comment  [unused-ignore]
 
 [case testErrorCodeWarnUnusedIgnores5]
 # flags: --warn-unused-ignores
-"x".foobar(y) # type: ignore[name-defined, attr-defined, valid-type, xyz] # E: Unused "type: ignore[valid-type, xyz]" comment
+"x".foobar(y) # type: ignore[name-defined, attr-defined, valid-type, xyz] # E: Unused "type: ignore[valid-type, xyz]" comment  [unused-ignore]
 
 [case testErrorCodeWarnUnusedIgnores6_NoDetailWhenSingleErrorCode]
 # flags: --warn-unused-ignores
-"x" # type: ignore[name-defined] # E: Unused "type: ignore" comment
+"x" # type: ignore[name-defined] # E: Unused "type: ignore" comment  [unused-ignore]
 
 [case testErrorCodeMissingWhenRequired]
 # flags: --enable-error-code ignore-without-code
@@ -114,9 +114,11 @@ z # type: ignore[name-defined]
 
 [case testErrorCodeMissingDoesntTrampleUnusedIgnoresWarning]
 # flags: --enable-error-code ignore-without-code --warn-unused-ignores
-"x" # type: ignore # E: Unused "type: ignore" comment
-"y" # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment
-z # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment # E: Name "z" is not defined  [name-defined] # N: Error code "name-defined" not covered by "type: ignore" comment
+"x" # type: ignore # E: Unused "type: ignore" comment  [unused-ignore]
+"y" # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment  [unused-ignore]
+z # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment  [unused-ignore] \
+                                      # E: Name "z" is not defined  [name-defined] \
+                                      # N: Error code "name-defined" not covered by "type: ignore" comment
 
 [case testErrorCodeMissingWholeFileIgnores]
 # flags: --enable-error-code ignore-without-code
@@ -638,8 +640,8 @@ def g() -> int:
 '%d' % 'no'  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsInt]")  [str-format]
 '%d + %d' % (1, 2, 3)  # E: Not all arguments converted during string formatting  [str-format]
 
-'{}'.format(b'abc')  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior  [str-bytes-safe]
-'%s' % b'abc'  # E: On Python 3 formatting "b'abc'" with "%s" produces "b'abc'", not "abc"; use "%r" if this is desired behavior  [str-bytes-safe]
+'{}'.format(b'abc')  # E: If x = b'abc' then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x). Otherwise, decode the bytes  [str-bytes-safe]
+'%s' % b'abc'  # E: If x = b'abc' then "%s" % x produces "b'abc'", not "abc". If this is desired behavior use "%r" % x. Otherwise, decode the bytes  [str-bytes-safe]
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-medium.pyi]
 
@@ -804,6 +806,22 @@ i = [x for x in lst if True]             # E: If condition in comprehension is a
 j = [x for x in lst if False]            # E: If condition in comprehension is always false  [redundant-expr]
 k = [x for x in lst if isinstance(x, int) or foo()]  # E: If condition in comprehension is always true  [redundant-expr]
 [builtins fixtures/isinstancelist.pyi]
+
+[case testRedundantExprTruthiness]
+# flags: --enable-error-code redundant-expr
+from typing import List
+
+def maybe() -> bool: ...
+
+class Foo:
+    def __init__(self, x: List[int]) -> None:
+        self.x = x or []
+
+    def method(self) -> int:
+        if not self.x or maybe():
+            return 1
+        return 2
+[builtins fixtures/list.pyi]
 
 [case testNamedTupleNameMismatch]
 from typing import NamedTuple
@@ -1054,4 +1072,8 @@ A.f = h  # OK
 class A:
     def f(self) -> None: pass
 def h(self: A) -> None: pass
-A.f = h  # type: ignore[assignment]  # E: Unused "type: ignore" comment, use narrower [method-assign] instead of [assignment]
+A.f = h  # type: ignore[assignment]  # E: Unused "type: ignore" comment, use narrower [method-assign] instead of [assignment] code  [unused-ignore]
+
+[case testUnusedIgnoreEnableCode]
+# flags: --enable-error-code=unused-ignore
+x = 1  # type: ignore  # E: Unused "type: ignore" comment  [unused-ignore]

@@ -200,84 +200,63 @@ def __top_level__():
     r0, r1 :: object
     r2 :: bit
     r3 :: str
-    r4 :: object
-    r5 :: dict
-    r6, r7 :: str
-    r8 :: list
-    r9, r10, r11 :: ptr
-    r12 :: str
-    r13 :: object
-    r14, r15, r16 :: str
-    r17 :: object
-    r18 :: str
-    r19 :: int32
-    r20 :: bit
-    r21, r22, r23 :: str
-    r24 :: object
-    r25 :: str
-    r26 :: int32
-    r27 :: bit
-    r28 :: dict
-    r29 :: str
-    r30 :: list
-    r31, r32 :: ptr
-    r33 :: str
-    r34 :: object
-    r35, r36, r37 :: str
-    r38 :: object
+    r4, r5 :: object
+    r6 :: str
+    r7 :: dict
+    r8, r9 :: object
+    r10 :: str
+    r11 :: dict
+    r12 :: object
+    r13 :: str
+    r14 :: dict
+    r15 :: str
+    r16, r17 :: object
+    r18 :: dict
+    r19 :: str
+    r20 :: int32
+    r21 :: bit
+    r22 :: object
+    r23 :: str
+    r24, r25 :: object
+    r26 :: bool
+    r27 :: str
+    r28 :: tuple
+    r29 :: int32
+    r30 :: bit
+    r31 :: dict
+    r32 :: str
+    r33 :: int32
+    r34 :: bit
+    r35 :: object
+    r36 :: str
+    r37, r38 :: object
     r39 :: str
-    r40 :: int32
-    r41 :: bit
-    r42 :: str
+    r40 :: tuple
+    r41 :: int32
+    r42 :: bit
     r43 :: dict
     r44 :: str
-    r45, r46 :: object
-    r47 :: dict
-    r48 :: str
-    r49 :: int32
-    r50 :: bit
+    r45 :: int32
+    r46 :: bit
+    r47, r48 :: object
+    r49 :: dict
+    r50 :: str
     r51 :: object
-    r52 :: str
-    r53, r54 :: object
-    r55 :: bool
-    r56 :: str
-    r57 :: tuple
-    r58 :: int32
-    r59 :: bit
-    r60 :: dict
-    r61 :: str
-    r62 :: int32
-    r63 :: bit
-    r64 :: object
-    r65 :: str
-    r66, r67 :: object
-    r68 :: str
-    r69 :: tuple
-    r70 :: int32
-    r71 :: bit
-    r72 :: dict
-    r73 :: str
-    r74 :: int32
-    r75 :: bit
-    r76, r77 :: object
-    r78 :: dict
-    r79 :: str
-    r80 :: object
-    r81 :: dict
-    r82 :: str
-    r83, r84 :: object
-    r85 :: tuple
-    r86 :: str
-    r87, r88 :: object
-    r89 :: bool
-    r90, r91 :: str
-    r92 :: tuple
-    r93 :: int32
-    r94 :: bit
-    r95 :: dict
-    r96 :: str
-    r97 :: int32
-    r98 :: bit
+    r52 :: dict
+    r53 :: str
+    r54, r55 :: object
+    r56 :: tuple
+    r57 :: str
+    r58, r59 :: object
+    r60 :: bool
+    r61, r62 :: str
+    r63 :: tuple
+    r64 :: int32
+    r65 :: bit
+    r66 :: dict
+    r67 :: str
+    r68 :: int32
+    r69 :: bit
 L0:
     r0 = builtins :: module
     r1 = load_address _Py_NoneStruct
@@ -288,110 +267,76 @@ L1:
     r4 = PyImport_Import(r3)
     builtins = r4 :: module
 L2:
-    r5 = __main__.globals :: static
-    r6 = 'TypeVar'
-    r7 = 'Generic'
-    r8 = PyList_New(2)
-    r9 = get_element_ptr r8 ob_item :: PyListObject
-    r10 = load_mem r9 :: ptr*
-    set_mem r10, r6 :: builtins.object*
-    r11 = r10 + WORD_SIZE*1
-    set_mem r11, r7 :: builtins.object*
-    keep_alive r8
-    r12 = 'typing'
-    r13 = PyImport_ImportModuleLevelObject(r12, r5, 0, r8, 0)
-    typing = r13 :: module
-    r14 = 'typing'
+    r5 = ('TypeVar', 'Generic')
+    r6 = 'typing'
+    r7 = __main__.globals :: static
+    r8 = CPyImport_ImportFromMany(r6, r5, r5, r7)
+    typing = r8 :: module
+    r9 = ('trait',)
+    r10 = 'mypy_extensions'
+    r11 = __main__.globals :: static
+    r12 = CPyImport_ImportFromMany(r10, r9, r9, r11)
+    mypy_extensions = r12 :: module
+    r13 = 'T'
+    r14 = __main__.globals :: static
     r15 = 'TypeVar'
-    r16 = 'TypeVar'
-    r17 = CPyImport_ImportFrom(r13, r14, r15, r16)
-    r18 = 'TypeVar'
-    r19 = CPyDict_SetItem(r5, r18, r17)
-    r20 = r19 >= 0 :: signed
-    r21 = 'typing'
-    r22 = 'Generic'
-    r23 = 'Generic'
-    r24 = CPyImport_ImportFrom(r13, r21, r22, r23)
-    r25 = 'Generic'
-    r26 = CPyDict_SetItem(r5, r25, r24)
-    r27 = r26 >= 0 :: signed
-    r28 = __main__.globals :: static
-    r29 = 'trait'
-    r30 = PyList_New(1)
-    r31 = get_element_ptr r30 ob_item :: PyListObject
-    r32 = load_mem r31 :: ptr*
-    set_mem r32, r29 :: builtins.object*
-    keep_alive r30
-    r33 = 'mypy_extensions'
-    r34 = PyImport_ImportModuleLevelObject(r33, r28, 0, r30, 0)
-    mypy_extensions = r34 :: module
-    r35 = 'mypy_extensions'
-    r36 = 'trait'
-    r37 = 'trait'
-    r38 = CPyImport_ImportFrom(r34, r35, r36, r37)
-    r39 = 'trait'
-    r40 = CPyDict_SetItem(r28, r39, r38)
-    r41 = r40 >= 0 :: signed
-    r42 = 'T'
+    r16 = CPyDict_GetItem(r14, r15)
+    r17 = PyObject_CallFunctionObjArgs(r16, r13, 0)
+    r18 = __main__.globals :: static
+    r19 = 'T'
+    r20 = CPyDict_SetItem(r18, r19, r17)
+    r21 = r20 >= 0 :: signed
+    r22 = <error> :: object
+    r23 = '__main__'
+    r24 = __main__.C_template :: type
+    r25 = CPyType_FromTemplate(r24, r22, r23)
+    r26 = C_trait_vtable_setup()
+    r27 = '__mypyc_attrs__'
+    r28 = PyTuple_Pack(0)
+    r29 = PyObject_SetAttr(r25, r27, r28)
+    r30 = r29 >= 0 :: signed
+    __main__.C = r25 :: type
+    r31 = __main__.globals :: static
+    r32 = 'C'
+    r33 = CPyDict_SetItem(r31, r32, r25)
+    r34 = r33 >= 0 :: signed
+    r35 = <error> :: object
+    r36 = '__main__'
+    r37 = __main__.S_template :: type
+    r38 = CPyType_FromTemplate(r37, r35, r36)
+    r39 = '__mypyc_attrs__'
+    r40 = PyTuple_Pack(0)
+    r41 = PyObject_SetAttr(r38, r39, r40)
+    r42 = r41 >= 0 :: signed
+    __main__.S = r38 :: type
     r43 = __main__.globals :: static
-    r44 = 'TypeVar'
-    r45 = CPyDict_GetItem(r43, r44)
-    r46 = PyObject_CallFunctionObjArgs(r45, r42, 0)
-    r47 = __main__.globals :: static
-    r48 = 'T'
-    r49 = CPyDict_SetItem(r47, r48, r46)
-    r50 = r49 >= 0 :: signed
-    r51 = <error> :: object
-    r52 = '__main__'
-    r53 = __main__.C_template :: type
-    r54 = CPyType_FromTemplate(r53, r51, r52)
-    r55 = C_trait_vtable_setup()
-    r56 = '__mypyc_attrs__'
-    r57 = PyTuple_Pack(0)
-    r58 = PyObject_SetAttr(r54, r56, r57)
-    r59 = r58 >= 0 :: signed
-    __main__.C = r54 :: type
-    r60 = __main__.globals :: static
-    r61 = 'C'
-    r62 = CPyDict_SetItem(r60, r61, r54)
-    r63 = r62 >= 0 :: signed
-    r64 = <error> :: object
-    r65 = '__main__'
-    r66 = __main__.S_template :: type
-    r67 = CPyType_FromTemplate(r66, r64, r65)
-    r68 = '__mypyc_attrs__'
-    r69 = PyTuple_Pack(0)
-    r70 = PyObject_SetAttr(r67, r68, r69)
-    r71 = r70 >= 0 :: signed
-    __main__.S = r67 :: type
-    r72 = __main__.globals :: static
-    r73 = 'S'
-    r74 = CPyDict_SetItem(r72, r73, r67)
-    r75 = r74 >= 0 :: signed
-    r76 = __main__.C :: type
-    r77 = __main__.S :: type
-    r78 = __main__.globals :: static
-    r79 = 'Generic'
-    r80 = CPyDict_GetItem(r78, r79)
-    r81 = __main__.globals :: static
-    r82 = 'T'
-    r83 = CPyDict_GetItem(r81, r82)
-    r84 = PyObject_GetItem(r80, r83)
-    r85 = PyTuple_Pack(3, r76, r77, r84)
-    r86 = '__main__'
-    r87 = __main__.D_template :: type
-    r88 = CPyType_FromTemplate(r87, r85, r86)
-    r89 = D_trait_vtable_setup()
-    r90 = '__mypyc_attrs__'
-    r91 = '__dict__'
-    r92 = PyTuple_Pack(1, r91)
-    r93 = PyObject_SetAttr(r88, r90, r92)
-    r94 = r93 >= 0 :: signed
-    __main__.D = r88 :: type
-    r95 = __main__.globals :: static
-    r96 = 'D'
-    r97 = CPyDict_SetItem(r95, r96, r88)
-    r98 = r97 >= 0 :: signed
+    r44 = 'S'
+    r45 = CPyDict_SetItem(r43, r44, r38)
+    r46 = r45 >= 0 :: signed
+    r47 = __main__.C :: type
+    r48 = __main__.S :: type
+    r49 = __main__.globals :: static
+    r50 = 'Generic'
+    r51 = CPyDict_GetItem(r49, r50)
+    r52 = __main__.globals :: static
+    r53 = 'T'
+    r54 = CPyDict_GetItem(r52, r53)
+    r55 = PyObject_GetItem(r51, r54)
+    r56 = PyTuple_Pack(3, r47, r48, r55)
+    r57 = '__main__'
+    r58 = __main__.D_template :: type
+    r59 = CPyType_FromTemplate(r58, r56, r57)
+    r60 = D_trait_vtable_setup()
+    r61 = '__mypyc_attrs__'
+    r62 = '__dict__'
+    r63 = PyTuple_Pack(1, r62)
+    r64 = PyObject_SetAttr(r59, r61, r63)
+    r65 = r64 >= 0 :: signed
+    __main__.D = r59 :: type
+    r66 = __main__.globals :: static
+    r67 = 'D'
+    r68 = CPyDict_SetItem(r66, r67, r59)
+    r69 = r68 >= 0 :: signed
     return 1
 
 [case testIsInstance]

@@ -105,6 +105,12 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
             src_path = join(os.path.dirname(case.file), item.arg)
             with open(src_path, encoding="utf8") as f:
                 files.append((join(base_path, "typing.pyi"), f.read()))
+        elif item.id == "_typeshed":
+            # Use an alternative stub file for the _typeshed module.
+            assert item.arg is not None
+            src_path = join(os.path.dirname(case.file), item.arg)
+            with open(src_path, encoding="utf8") as f:
+                files.append((join(base_path, "_typeshed.pyi"), f.read()))
         elif re.match(r"stale[0-9]*$", item.id):
             passnum = 1 if item.id == "stale" else int(item.id[len("stale") :])
             assert passnum > 0
@@ -606,7 +612,7 @@ def pytest_addoption(parser: Any) -> None:
 
 
 # This function name is special to pytest.  See
-# http://doc.pytest.org/en/latest/writing_plugins.html#collection-hooks
+# https://doc.pytest.org/en/latest/how-to/writing_plugins.html#collection-hooks
 def pytest_pycollect_makeitem(collector: Any, name: str, obj: object) -> Any | None:
     """Called by pytest on each object in modules configured in conftest.py files.
 

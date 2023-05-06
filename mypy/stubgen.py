@@ -43,12 +43,13 @@ from __future__ import annotations
 
 import argparse
 import glob
+import keyword
 import os
 import os.path
 import sys
 import traceback
 from collections import defaultdict
-from typing import Iterable, List, Mapping
+from typing import Iterable, Mapping
 from typing_extensions import Final
 
 import mypy.build
@@ -80,6 +81,7 @@ from mypy.nodes import (
     ClassDef,
     ComparisonExpr,
     Decorator,
+    DictExpr,
     EllipsisExpr,
     Expression,
     FloatExpr,
@@ -125,6 +127,7 @@ from mypy.stubutil import (
 from mypy.traverser import all_yield_expressions, has_return_statement, has_yield_expression
 from mypy.types import (
     OVERLOAD_NAMES,
+    TPDICT_NAMES,
     TYPED_NAMEDTUPLE_NAMES,
     AnyType,
     CallableType,
@@ -307,7 +310,7 @@ class AnnotationPrinter(TypeStrVisitor):
     # TODO: Generate valid string representation for callable types.
     # TODO: Use short names for Instances.
     def __init__(self, stubgen: StubGenerator) -> None:
-        super().__init__()
+        super().__init__(options=mypy.options.Options())
         self.stubgen = stubgen
 
     def visit_any(self, t: AnyType) -> str:
@@ -406,6 +409,14 @@ class AliasPrinter(NodeVisitor[str]):
 
     def visit_list_expr(self, node: ListExpr) -> str:
         return f"[{', '.join(n.accept(self) for n in node.items)}]"
+
+    def visit_dict_expr(self, o: DictExpr) -> str:
+        dict_items = []
+        for key, value in o.items:
+            # This is currently only used for TypedDict where all keys are strings.
+            assert isinstance(key, StrExpr)
+            dict_items.append(f"{key.accept(self)}: {value.accept(self)}")
+        return f"{{{', '.join(dict_items)}}}"
 
     def visit_ellipsis(self, node: EllipsisExpr) -> str:
         return "..."
@@ -643,6 +654,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             "_typeshed": ["Incomplete"],
             "typing": ["Any", "TypeVar"],
             "collections.abc": ["Generator"],
+            "typing_extensions": ["TypedDict"],
         }
         for pkg, imports in known_imports.items():
             for t in imports:
@@ -851,6 +863,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self.add_decorator("property")
             self.add_decorator("abc.abstractmethod")
             is_abstract = True
+        elif self.refers_to_fullname(name, "functools.cached_property"):
+            self.import_tracker.require_name(name)
+            self.add_decorator(name)
         elif self.refers_to_fullname(name, OVERLOAD_NAMES):
             self.add_decorator(name)
             self.add_typing_import("overload")
@@ -890,12 +905,20 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         ):
             if expr.name == "abstractproperty":
                 self.import_tracker.require_name(expr.expr.name)
-                self.add_decorator("%s" % ("property"))
-                self.add_decorator("{}.{}".format(expr.expr.name, "abstractmethod"))
+                self.add_decorator("property")
+                self.add_decorator(f"{expr.expr.name}.abstractmethod")
             else:
                 self.import_tracker.require_name(expr.expr.name)
                 self.add_decorator(f"{expr.expr.name}.{expr.name}")
             is_abstract = True
+        elif expr.name == "cached_property" and isinstance(expr.expr, NameExpr):
+            explicit_name = expr.expr.name
+            reverse = self.import_tracker.reverse_alias.get(explicit_name)
+            if reverse == "functools" or (reverse is None and explicit_name == "functools"):
+                if reverse is not None:
+                    self.import_tracker.add_import(reverse, alias=explicit_name)
+                self.import_tracker.require_name(explicit_name)
+                self.add_decorator(f"{explicit_name}.{expr.name}")
         elif expr.name == "coroutine":
             if (
                 isinstance(expr.expr, MemberExpr)
@@ -1041,6 +1064,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 continue
             if (
                 isinstance(lvalue, NameExpr)
+                and isinstance(o.rvalue, CallExpr)
+                and self.is_typeddict(o.rvalue)
+            ):
+                self.process_typeddict(lvalue, o.rvalue)
+                continue
+            if (
+                isinstance(lvalue, NameExpr)
                 and not self.is_private_name(lvalue.name)
                 and
                 # it is never an alias with explicit annotation
@@ -1049,7 +1079,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             ):
                 self.process_typealias(lvalue, o.rvalue)
                 continue
-            if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
+            if isinstance(lvalue, (TupleExpr, ListExpr)):
                 items = lvalue.items
                 if isinstance(o.unanalyzed_type, TupleType):  # type: ignore[misc]
                     annotations: Iterable[Type | None] = o.unanalyzed_type.items
@@ -1148,6 +1178,75 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             for f_name, f_type in fields:
                 self.add(f"{self._indent}    {f_name}: {f_type}\n")
             self._state = CLASS
+
+    def is_typeddict(self, expr: CallExpr) -> bool:
+        callee = expr.callee
+        return (
+            isinstance(callee, NameExpr) and self.refers_to_fullname(callee.name, TPDICT_NAMES)
+        ) or (
+            isinstance(callee, MemberExpr)
+            and isinstance(callee.expr, NameExpr)
+            and f"{callee.expr.name}.{callee.name}" in TPDICT_NAMES
+        )
+
+    def process_typeddict(self, lvalue: NameExpr, rvalue: CallExpr) -> None:
+        if self._state != EMPTY:
+            self.add("\n")
+
+        if not isinstance(rvalue.args[0], StrExpr):
+            self.add(f"{self._indent}{lvalue.name}: Incomplete")
+            self.import_tracker.require_name("Incomplete")
+            return
+
+        items: list[tuple[str, Expression]] = []
+        total: Expression | None = None
+        if len(rvalue.args) > 1 and rvalue.arg_kinds[1] == ARG_POS:
+            if not isinstance(rvalue.args[1], DictExpr):
+                self.add(f"{self._indent}{lvalue.name}: Incomplete")
+                self.import_tracker.require_name("Incomplete")
+                return
+            for attr_name, attr_type in rvalue.args[1].items:
+                if not isinstance(attr_name, StrExpr):
+                    self.add(f"{self._indent}{lvalue.name}: Incomplete")
+                    self.import_tracker.require_name("Incomplete")
+                    return
+                items.append((attr_name.value, attr_type))
+            if len(rvalue.args) > 2:
+                if rvalue.arg_kinds[2] != ARG_NAMED or rvalue.arg_names[2] != "total":
+                    self.add(f"{self._indent}{lvalue.name}: Incomplete")
+                    self.import_tracker.require_name("Incomplete")
+                    return
+                total = rvalue.args[2]
+        else:
+            for arg_name, arg in zip(rvalue.arg_names[1:], rvalue.args[1:]):
+                if not isinstance(arg_name, str):
+                    self.add(f"{self._indent}{lvalue.name}: Incomplete")
+                    self.import_tracker.require_name("Incomplete")
+                    return
+                if arg_name == "total":
+                    total = arg
+                else:
+                    items.append((arg_name, arg))
+        self.import_tracker.require_name("TypedDict")
+        p = AliasPrinter(self)
+        if any(not key.isidentifier() or keyword.iskeyword(key) for key, _ in items):
+            # Keep the call syntax if there are non-identifier or keyword keys.
+            self.add(f"{self._indent}{lvalue.name} = {rvalue.accept(p)}\n")
+            self._state = VAR
+        else:
+            bases = "TypedDict"
+            # TODO: Add support for generic TypedDicts. Requires `Generic` as base class.
+            if total is not None:
+                bases += f", total={total.accept(p)}"
+            self.add(f"{self._indent}class {lvalue.name}({bases}):")
+            if len(items) == 0:
+                self.add(" ...\n")
+                self._state = EMPTY_CLASS
+            else:
+                self.add("\n")
+                for key, key_type in items:
+                    self.add(f"{self._indent}    {key}: {key_type.accept(p)}\n")
+                self._state = CLASS
 
     def is_alias_expression(self, expr: Expression, top_level: bool = True) -> bool:
         """Return True for things that look like target for an alias.
@@ -1655,6 +1754,14 @@ def mypy_options(stubgen_options: Options) -> MypyOptions:
     options.python_version = stubgen_options.pyversion
     options.show_traceback = True
     options.transform_source = remove_misplaced_type_comments
+    options.preserve_asts = True
+
+    # Override cache_dir if provided in the environment
+    environ_cache_dir = os.getenv("MYPY_CACHE_DIR", "")
+    if environ_cache_dir.strip():
+        options.cache_dir = environ_cache_dir
+    options.cache_dir = os.path.expanduser(options.cache_dir)
+
     return options
 
 
@@ -1668,7 +1775,7 @@ def parse_source_file(mod: StubSource, mypy_options: MypyOptions) -> None:
     with open(mod.path, "rb") as f:
         data = f.read()
     source = mypy.util.decode_python_encoding(data)
-    errors = Errors()
+    errors = Errors(mypy_options)
     mod.ast = mypy.parse.parse(
         source, fnam=mod.path, module=mod.module, errors=errors, options=mypy_options
     )
@@ -1734,8 +1841,8 @@ def generate_stub_from_ast(
         file.write("".join(gen.output()))
 
 
-def get_sig_generators(options: Options) -> List[SignatureGenerator]:
-    sig_generators: List[SignatureGenerator] = [
+def get_sig_generators(options: Options) -> list[SignatureGenerator]:
+    sig_generators: list[SignatureGenerator] = [
         DocstringSignatureGenerator(),
         FallbackSignatureGenerator(),
     ]
@@ -1787,6 +1894,7 @@ def generate_stubs(options: Options) -> None:
             )
 
     # Separately analyse C modules using different logic.
+    all_modules = sorted(m.module for m in (py_modules + c_modules))
     for mod in c_modules:
         if any(py_mod.module.startswith(mod.module + ".") for py_mod in py_modules + c_modules):
             target = mod.module.replace(".", "/") + "/__init__.pyi"
@@ -1795,7 +1903,9 @@ def generate_stubs(options: Options) -> None:
         target = os.path.join(options.output_dir, target)
         files.append(target)
         with generate_guarded(mod.module, target, options.ignore_errors, options.verbose):
-            generate_stub_for_c_module(mod.module, target, sig_generators=sig_generators)
+            generate_stub_for_c_module(
+                mod.module, target, known_modules=all_modules, sig_generators=sig_generators
+            )
     num_modules = len(py_modules) + len(c_modules)
     if not options.quiet and num_modules > 0:
         print("Processed %d modules" % num_modules)

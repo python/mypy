@@ -1050,3 +1050,23 @@ def fixup_partial_type(typ: Type) -> Type:
         return UnionType.make_union([AnyType(TypeOfAny.unannotated), NoneType()])
     else:
         return Instance(typ.type, [AnyType(TypeOfAny.unannotated)] * len(typ.type.type_vars))
+
+
+def get_protocol_member(left: Instance, member: str, class_obj: bool) -> ProperType | None:
+    if member == "__call__" and class_obj:
+        # Special case: class objects always have __call__ that is just the constructor.
+        from mypy.checkmember import type_object_type
+
+        def named_type(fullname: str) -> Instance:
+            return Instance(left.type.mro[-1], [])
+
+        return type_object_type(left.type, named_type)
+
+    if member == "__call__" and left.type.is_metaclass():
+        # Special case: we want to avoid falling back to metaclass __call__
+        # if constructor signature didn't match, this can cause many false negatives.
+        return None
+
+    from mypy.subtypes import find_member
+
+    return get_proper_type(find_member(member, left, left, class_obj=class_obj))

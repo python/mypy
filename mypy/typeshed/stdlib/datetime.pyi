@@ -2,7 +2,7 @@ import sys
 from abc import abstractmethod
 from time import struct_time
 from typing import ClassVar, NamedTuple, NoReturn, TypeVar, overload
-from typing_extensions import Literal, Self, TypeAlias, final
+from typing_extensions import Literal, Self, SupportsIndex, TypeAlias, final
 
 if sys.version_info >= (3, 11):
     __all__ = ("date", "datetime", "time", "timedelta", "timezone", "tzinfo", "MINYEAR", "MAXYEAR", "UTC")
@@ -49,7 +49,7 @@ class date:
     min: ClassVar[date]
     max: ClassVar[date]
     resolution: ClassVar[timedelta]
-    def __new__(cls, year: int, month: int, day: int) -> Self: ...
+    def __new__(cls, year: SupportsIndex, month: SupportsIndex, day: SupportsIndex) -> Self: ...
     @classmethod
     def fromtimestamp(cls, __timestamp: float) -> Self: ...
     @classmethod
@@ -81,7 +81,7 @@ class date:
     def isoformat(self) -> str: ...
     def timetuple(self) -> struct_time: ...
     def toordinal(self) -> int: ...
-    def replace(self, year: int = ..., month: int = ..., day: int = ...) -> Self: ...
+    def replace(self, year: SupportsIndex = ..., month: SupportsIndex = ..., day: SupportsIndex = ...) -> Self: ...
     def __le__(self, __value: date) -> bool: ...
     def __lt__(self, __value: date) -> bool: ...
     def __ge__(self, __value: date) -> bool: ...
@@ -119,10 +119,10 @@ class time:
     resolution: ClassVar[timedelta]
     def __new__(
         cls,
-        hour: int = ...,
-        minute: int = ...,
-        second: int = ...,
-        microsecond: int = ...,
+        hour: SupportsIndex = ...,
+        minute: SupportsIndex = ...,
+        second: SupportsIndex = ...,
+        microsecond: SupportsIndex = ...,
         tzinfo: _TzInfo | None = ...,
         *,
         fold: int = ...,
@@ -160,10 +160,10 @@ class time:
     def dst(self) -> timedelta | None: ...
     def replace(
         self,
-        hour: int = ...,
-        minute: int = ...,
-        second: int = ...,
-        microsecond: int = ...,
+        hour: SupportsIndex = ...,
+        minute: SupportsIndex = ...,
+        second: SupportsIndex = ...,
+        microsecond: SupportsIndex = ...,
         tzinfo: _TzInfo | None = ...,
         *,
         fold: int = ...,
@@ -223,13 +223,13 @@ class datetime(date):
     max: ClassVar[datetime]
     def __new__(
         cls,
-        year: int,
-        month: int,
-        day: int,
-        hour: int = ...,
-        minute: int = ...,
-        second: int = ...,
-        microsecond: int = ...,
+        year: SupportsIndex,
+        month: SupportsIndex,
+        day: SupportsIndex,
+        hour: SupportsIndex = ...,
+        minute: SupportsIndex = ...,
+        second: SupportsIndex = ...,
+        microsecond: SupportsIndex = ...,
         tzinfo: _TzInfo | None = ...,
         *,
         fold: int = ...,
@@ -280,13 +280,13 @@ class datetime(date):
     def timetz(self) -> _Time: ...
     def replace(
         self,
-        year: int = ...,
-        month: int = ...,
-        day: int = ...,
-        hour: int = ...,
-        minute: int = ...,
-        second: int = ...,
-        microsecond: int = ...,
+        year: SupportsIndex = ...,
+        month: SupportsIndex = ...,
+        day: SupportsIndex = ...,
+        hour: SupportsIndex = ...,
+        minute: SupportsIndex = ...,
+        second: SupportsIndex = ...,
+        microsecond: SupportsIndex = ...,
         tzinfo: _TzInfo | None = ...,
         *,
         fold: int = ...,

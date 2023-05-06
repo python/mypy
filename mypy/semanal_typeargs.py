@@ -141,7 +141,9 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                     is_error = True
                     self.fail(
                         message_registry.INVALID_TYPEVAR_ARG_BOUND.format(
-                            format_type(arg), name, format_type(tvar.upper_bound)
+                            format_type(arg, self.options),
+                            name,
+                            format_type(tvar.upper_bound, self.options),
                         ),
                         ctx,
                         code=codes.TYPE_VAR,
@@ -152,7 +154,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                 ):
                     self.fail(
                         "Can only replace ParamSpec with a parameter types list or"
-                        f" another ParamSpec, got {format_type(arg)}",
+                        f" another ParamSpec, got {format_type(arg, self.options)}",
                         ctx,
                     )
         return is_error
@@ -170,7 +172,9 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
 
         # TODO: Infer something when it can't be unpacked to allow rest of
         # typechecking to work.
-        self.fail(message_registry.INVALID_UNPACK.format(proper_type), typ)
+        self.fail(
+            message_registry.INVALID_UNPACK.format(format_type(proper_type, self.options)), typ
+        )
 
     def check_type_var_values(
         self, name: str, actuals: list[Type], arg_name: str, valids: list[Type], context: Context

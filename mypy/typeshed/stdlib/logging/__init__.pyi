@@ -80,7 +80,7 @@ _levelToName: dict[int, str]
 _nameToLevel: dict[str, int]
 
 class Filterer:
-    filters: list[Filter]
+    filters: list[_FilterType]
     def addFilter(self, filter: _FilterType) -> None: ...
     def removeFilter(self, filter: _FilterType) -> None: ...
     def filter(self, record: LogRecord) -> bool: ...
@@ -389,7 +389,7 @@ class LogRecord:
     msecs: float
     # Only created when logging.Formatter.format is called. See #6132.
     message: str
-    msg: str
+    msg: str | Any  # The runtime accepts any object, but will be a str in 99% of cases
     name: str
     pathname: str
     process: int | None

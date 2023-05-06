@@ -121,7 +121,7 @@ if sys.version_info >= (3, 8):
         fix_imports: bool = True,
         encoding: str = "ASCII",
         errors: str = "strict",
-        buffers: Iterable[Any] | None = ...,
+        buffers: Iterable[Any] | None = (),
     ) -> Any: ...
     def loads(
         __data: ReadableBuffer,
@@ -129,7 +129,7 @@ if sys.version_info >= (3, 8):
         fix_imports: bool = True,
         encoding: str = "ASCII",
         errors: str = "strict",
-        buffers: Iterable[Any] | None = ...,
+        buffers: Iterable[Any] | None = (),
     ) -> Any: ...
 
 else:

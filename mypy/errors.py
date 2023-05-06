@@ -222,6 +222,9 @@ class Errors:
     # (path -> line -> error-codes)
     ignored_lines: dict[str, dict[int, list[str]]]
 
+    # Lines that are statically unreachable (e.g. due to platform/version check).
+    unreachable_lines: dict[str, set[int]]
+
     # Lines on which an error was actually ignored.
     used_ignored_lines: dict[str, dict[int, list[str]]]
 
@@ -258,28 +261,17 @@ class Errors:
 
     def __init__(
         self,
-        show_error_context: bool = False,
-        show_column_numbers: bool = False,
-        hide_error_codes: bool = False,
-        pretty: bool = False,
-        show_error_end: bool = False,
+        options: Options,
+        *,
         read_source: Callable[[str], list[str] | None] | None = None,
-        show_absolute_path: bool = False,
-        many_errors_threshold: int = -1,
-        options: Options | None = None,
+        hide_error_codes: bool | None = None,
     ) -> None:
-        self.show_error_context = show_error_context
-        self.show_column_numbers = show_column_numbers
-        self.hide_error_codes = hide_error_codes
-        self.show_absolute_path = show_absolute_path
-        self.pretty = pretty
-        self.show_error_end = show_error_end
-        if show_error_end:
-            assert show_column_numbers, "Inconsistent formatting, must be prevented by argparse"
+        self.options = options
+        self.hide_error_codes = (
+            hide_error_codes if hide_error_codes is not None else options.hide_error_codes
+        )
         # We use fscache to read source code when showing snippets.
         self.read_source = read_source
-        self.many_errors_threshold = many_errors_threshold
-        self.options = options
         self.initialize()
 
     def initialize(self) -> None:
@@ -288,6 +280,7 @@ class Errors:
         self.import_ctx = []
         self.function_or_member = [None]
         self.ignored_lines = {}
+        self.unreachable_lines = {}
         self.used_ignored_lines = defaultdict(lambda: defaultdict(list))
         self.ignored_files = set()
         self.only_once_messages = set()
@@ -308,7 +301,7 @@ class Errors:
         self.ignore_prefix = prefix
 
     def simplify_path(self, file: str) -> str:
-        if self.show_absolute_path:
+        if self.options.show_absolute_path:
             return os.path.abspath(file)
         else:
             file = os.path.normpath(file)
@@ -336,6 +329,9 @@ class Errors:
         if ignore_all:
             self.ignored_files.add(file)
 
+    def set_unreachable_lines(self, file: str, unreachable_lines: set[int]) -> None:
+        self.unreachable_lines[file] = unreachable_lines
+
     def current_target(self) -> str | None:
         """Retrieves the current target from the associated scope.
 
@@ -349,11 +345,11 @@ class Errors:
 
     def import_context(self) -> list[tuple[str, int]]:
         """Return a copy of the import context."""
-        return self.import_ctx[:]
+        return self.import_ctx.copy()
 
     def set_import_context(self, ctx: list[tuple[str, int]]) -> None:
         """Replace the entire import context with a new value."""
-        self.import_ctx = ctx[:]
+        self.import_ctx = ctx.copy()
 
     def report(
         self,
@@ -534,13 +530,13 @@ class Errors:
             self._add_error_info(file, note)
 
     def has_many_errors(self) -> bool:
-        if self.many_errors_threshold < 0:
+        if self.options.many_errors_threshold < 0:
             return False
-        if len(self.error_info_map) >= self.many_errors_threshold:
+        if len(self.error_info_map) >= self.options.many_errors_threshold:
             return True
         if (
             sum(len(errors) for errors in self.error_info_map.values())
-            >= self.many_errors_threshold
+            >= self.options.many_errors_threshold
         ):
             return True
         return False
@@ -634,6 +630,10 @@ class Errors:
         ignored_lines = self.ignored_lines[file]
         used_ignored_lines = self.used_ignored_lines[file]
         for line, ignored_codes in ignored_lines.items():
+            if line in self.unreachable_lines[file]:
+                continue
+            if codes.UNUSED_IGNORE.code in ignored_codes:
+                continue
             used_ignored_codes = used_ignored_lines[line]
             unused_ignored_codes = set(ignored_codes) - set(used_ignored_codes)
             # `ignore` is used
@@ -650,7 +650,7 @@ class Errors:
             for unused in unused_ignored_codes:
                 narrower = set(used_ignored_codes) & codes.sub_code_map[unused]
                 if narrower:
-                    message += f", use narrower [{', '.join(narrower)}] instead of [{unused}]"
+                    message += f", use narrower [{', '.join(narrower)}] instead of [{unused}] code"
             # Don't use report since add_error_info will ignore the error!
             info = ErrorInfo(
                 self.import_context(),
@@ -664,7 +664,7 @@ class Errors:
                 -1,
                 "error",
                 message,
-                None,
+                codes.UNUSED_IGNORE,
                 False,
                 False,
                 False,
@@ -802,9 +802,9 @@ class Errors:
         ) in errors:
             s = ""
             if file is not None:
-                if self.show_column_numbers and line >= 0 and column >= 0:
+                if self.options.show_column_numbers and line >= 0 and column >= 0:
                     srcloc = f"{file}:{line}:{1 + column}"
-                    if self.show_error_end and end_line >= 0 and end_column >= 0:
+                    if self.options.show_error_end and end_line >= 0 and end_column >= 0:
                         srcloc += f":{end_line}:{end_column}"
                 elif line >= 0:
                     srcloc = f"{file}:{line}"
@@ -822,7 +822,7 @@ class Errors:
                 # displaying duplicate error codes.
                 s = f"{s}  [{code.code}]"
             a.append(s)
-            if self.pretty:
+            if self.options.pretty:
                 # Add source code fragment and a location marker.
                 if severity == "error" and source_lines and line > 0:
                     source_line = source_lines[line - 1]
@@ -853,7 +853,7 @@ class Errors:
             return []
         self.flushed_files.add(path)
         source_lines = None
-        if self.pretty:
+        if self.options.pretty:
             assert self.read_source
             source_lines = self.read_source(path)
         return self.format_messages(self.error_info_map[path], source_lines)
@@ -894,7 +894,7 @@ class Errors:
 
         for e in errors:
             # Report module import context, if different from previous message.
-            if not self.show_error_context:
+            if not self.options.show_error_context:
                 pass
             elif e.import_ctx != prev_import_context:
                 last = len(e.import_ctx) - 1
@@ -919,7 +919,7 @@ class Errors:
             file = self.simplify_path(e.file)
 
             # Report context within a source file.
-            if not self.show_error_context:
+            if not self.options.show_error_context:
                 pass
             elif e.function_or_member != prev_function_or_member or e.type != prev_type:
                 if e.function_or_member is None:

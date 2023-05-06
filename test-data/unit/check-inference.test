@@ -1671,7 +1671,9 @@ a() # E: "Dict[str, int]" not callable
 
 [case testInferDictInitializedToEmptyUsingUpdateError]
 a = {}  # E: Need type annotation for "a" (hint: "a: Dict[<type>, <type>] = ...")
-a.update([1, 2])  # E: Argument 1 to "update" of "dict" has incompatible type "List[int]"; expected "Mapping[Any, Any]"
+a.update([1, 2])  # E: Argument 1 to "update" of "dict" has incompatible type "List[int]"; expected "SupportsKeysAndGetItem[Any, Any]" \
+                  # N: "list" is missing following "SupportsKeysAndGetItem" protocol member: \
+                  # N:     keys
 a()  # E: "Dict[Any, Any]" not callable
 [builtins fixtures/dict.pyi]
 

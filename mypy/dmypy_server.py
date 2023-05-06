@@ -163,7 +163,6 @@ ChangesAndRemovals: _TypeAlias = Tuple[ModulePathPairs, ModulePathPairs]
 
 
 class Server:
-
     # NOTE: the instance is constructed in the parent process but
     # serve() is called in the grandchild (by daemonize()).
 
@@ -600,7 +599,7 @@ class Server:
         messages = fine_grained_manager.update(changed, [], followed=True)
 
         # Follow deps from changed modules (still within graph).
-        worklist = changed[:]
+        worklist = changed.copy()
         while worklist:
             module = worklist.pop()
             if module[0] not in graph:
@@ -707,7 +706,7 @@ class Server:
         """
         changed = []
         new_files = []
-        worklist = roots[:]
+        worklist = roots.copy()
         seen.update(source.module for source in worklist)
         while worklist:
             nxt = worklist.pop()
@@ -828,7 +827,6 @@ class Server:
     def update_changed(
         self, sources: list[BuildSource], remove: list[str], update: list[str]
     ) -> ChangesAndRemovals:
-
         changed_paths = self.fswatcher.update_changed(remove, update)
         return self._find_changed(sources, changed_paths)
 

@@ -31,7 +31,7 @@ MypyFile:1(
     PassStmt:1())
   FuncDef:2(
     f
-    Block:2(
+    Block:3(
       AssignmentStmt:3(
         NameExpr(x [l])
         NameExpr(None [builtins.None])
@@ -69,7 +69,7 @@ MypyFile:1(
       __init__
       Args(
         Var(self))
-      Block:3(
+      Block:4(
         AssignmentStmt:4(
           MemberExpr:4(
             NameExpr(self [l])
@@ -120,7 +120,7 @@ MypyFile:1(
       Var(x)
       Var(y))
     def (x: Any, y: __main__.A)
-    Block:4(
+    Block:5(
       AssignmentStmt:5(
         NameExpr(z* [l])
         TupleExpr:5(
@@ -255,7 +255,7 @@ MypyFile:1(
     IntExpr(1))
   FuncDef:6(
     f
-    Block:6(
+    Block:7(
       AssignmentStmt:7(
         NameExpr(b [l])
         NameExpr(None [builtins.None])
@@ -417,7 +417,7 @@ MypyFile:1(
     Args(
       Var(x))
     def [t] (x: t`-1)
-    Block:3(
+    Block:4(
       AssignmentStmt:4(
         NameExpr(y [l])
         NameExpr(None [builtins.None])
@@ -591,7 +591,7 @@ MypyFile:1(
   FuncDef:3(
     f
     def ()
-    Block:3(
+    Block:4(
       FuncDef:4(
         g
         def [t] () -> t`-1
@@ -841,7 +841,7 @@ MypyFile:1(
   ImportFrom:1(typing, [overload])
   FuncDef:2(
     f
-    Block:2(
+    Block:3(
       OverloadedFuncDef:3(
         FuncDef:8(
           g
@@ -1113,7 +1113,7 @@ MypyFile:1(
   ImportFrom:1(typing, [TypeVar])
   FuncDef:2(
     f
-    Block:2(
+    Block:3(
       AssignmentStmt:3(
         NameExpr(T* [l])
         TypeVarExpr:3())
@@ -1196,7 +1196,7 @@ MypyFile:1(
         Var(self)
         Var(x))
       def (self: __main__.A[_m.T`1], x: _m.T`1) -> Any
-      Block:5(
+      Block:6(
         AssignmentStmt:6(
           NameExpr(b [l])
           NameExpr(None [builtins.None])
@@ -1217,7 +1217,7 @@ MypyFile:1(
     Args(
       Var(x))
     def [_m.T] (x: _m.T`-1)
-    Block:2(
+    Block:3(
       AssignmentStmt:3(
         NameExpr(a [l])
         NameExpr(None [builtins.None])
@@ -1235,7 +1235,7 @@ MypyFile:1(
     Args(
       Var(x))
     def (x: builtins.int) -> Any
-    Block:2(
+    Block:3(
       AssignmentStmt:3(
         NameExpr(x [l])
         IntExpr(1)))))
@@ -1256,7 +1256,7 @@ MypyFile:1(
         Var(self)
         Var(x))
       def (self: __main__.A, x: builtins.int) -> builtins.str
-      Block:3(
+      Block:4(
         AssignmentStmt:4(
           NameExpr(x [l])
           IntExpr(1))))))
@@ -1582,7 +1582,7 @@ MypyFile:1(
     Args(
       Var(x))
     def [Ts] (x: def (*Unpack[Ts`-1]))
-    Block:5(
+    Block:6(
       PassStmt:6())))
 
 [builtins fixtures/tuple.pyi]

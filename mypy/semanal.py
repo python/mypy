@@ -216,6 +216,7 @@ from mypy.semanal_shared import (
     calculate_tuple_fallback,
     find_dataclass_transform_spec,
     has_placeholder,
+    parse_bool,
     require_bool_literal_argument,
     set_callable_name as set_callable_name,
 )
@@ -509,6 +510,7 @@ class SemanticAnalyzer(
 
         They will be replaced with real aliases when corresponding targets are ready.
         """
+
         # This is all pretty unfortunate. typeshed now has a
         # sys.version_info check for OrderedDict, and we shouldn't
         # take it out, because it is correct and a typechecker should
@@ -715,7 +717,7 @@ class SemanticAnalyzer(
                 target = self.named_type_or_none(target_name, [])
                 assert target is not None
                 # Transform List to List[Any], etc.
-                fix_instance_types(target, self.fail, self.note, self.options.python_version)
+                fix_instance_types(target, self.fail, self.note, self.options)
                 alias_node = TypeAlias(
                     target,
                     alias,
@@ -1546,6 +1548,8 @@ class SemanticAnalyzer(
             self.fail("Only instance methods can be decorated with @property", dec)
         if dec.func.abstract_status == IS_ABSTRACT and dec.func.is_final:
             self.fail(f"Method {dec.func.name} is both abstract and final", dec)
+        if dec.func.is_static and dec.func.is_class:
+            self.fail(message_registry.CLASS_PATTERN_CLASS_OR_STATIC_METHOD, dec)
 
     def check_decorated_function_is_method(self, decorator: str, context: Context) -> None:
         if not self.type or self.is_func_scope():
@@ -3533,7 +3537,7 @@ class SemanticAnalyzer(
         # if the expected number of arguments is non-zero, so that aliases like A = List work.
         # However, eagerly expanding aliases like Text = str is a nice performance optimization.
         no_args = isinstance(res, Instance) and not res.args  # type: ignore[misc]
-        fix_instance_types(res, self.fail, self.note, self.options.python_version)
+        fix_instance_types(res, self.fail, self.note, self.options)
         # Aliases defined within functions can't be accessed outside
         # the function, since the symbol table will no longer
         # exist. Work around by expanding them eagerly when used.
@@ -3643,7 +3647,7 @@ class SemanticAnalyzer(
                 has_explicit_value=has_explicit_value,
             )
         elif isinstance(lval, MemberExpr):
-            self.analyze_member_lvalue(lval, explicit_type, is_final)
+            self.analyze_member_lvalue(lval, explicit_type, is_final, has_explicit_value)
             if explicit_type and not self.is_self_member_ref(lval):
                 self.fail("Type cannot be declared in assignment to non-self attribute", lval)
         elif isinstance(lval, IndexExpr):
@@ -3820,7 +3824,9 @@ class SemanticAnalyzer(
                     has_explicit_value=True,
                 )
 
-    def analyze_member_lvalue(self, lval: MemberExpr, explicit_type: bool, is_final: bool) -> None:
+    def analyze_member_lvalue(
+        self, lval: MemberExpr, explicit_type: bool, is_final: bool, has_explicit_value: bool
+    ) -> None:
         """Analyze lvalue that is a member expression.
 
         Arguments:
@@ -3849,12 +3855,18 @@ class SemanticAnalyzer(
                 and explicit_type
             ):
                 self.attribute_already_defined(lval.name, lval, cur_node)
-            # If the attribute of self is not defined in superclasses, create a new Var, ...
+            if self.type.is_protocol and has_explicit_value and cur_node is not None:
+                # Make this variable non-abstract, it would be safer to do this only if we
+                # are inside __init__, but we do this always to preserve historical behaviour.
+                if isinstance(cur_node.node, Var):
+                    cur_node.node.is_abstract_var = False
             if (
+                # If the attribute of self is not defined, create a new Var, ...
                 node is None
-                or (isinstance(node.node, Var) and node.node.is_abstract_var)
+                # ... or if it is defined as abstract in a *superclass*.
+                or (cur_node is None and isinstance(node.node, Var) and node.node.is_abstract_var)
                 # ... also an explicit declaration on self also creates a new Var.
-                # Note that `explicit_type` might has been erased for bare `Final`,
+                # Note that `explicit_type` might have been erased for bare `Final`,
                 # so we also check if `is_final` is passed.
                 or (cur_node is None and (explicit_type or is_final))
             ):
@@ -4421,7 +4433,6 @@ class SemanticAnalyzer(
             and s.lvalues[0].name == "__slots__"
             and s.lvalues[0].kind == MDEF
         ):
-
             # We understand `__slots__` defined as string, tuple, list, set, and dict:
             if not isinstance(s.rvalue, (StrExpr, ListExpr, TupleExpr, SetExpr, DictExpr)):
                 # For example, `__slots__` can be defined as a variable,
@@ -5113,12 +5124,7 @@ class SemanticAnalyzer(
         if has_param_spec and num_args == 1 and types:
             first_arg = get_proper_type(types[0])
             if not (
-                len(types) == 1
-                and (
-                    isinstance(first_arg, Parameters)
-                    or isinstance(first_arg, ParamSpecType)
-                    or isinstance(first_arg, AnyType)
-                )
+                len(types) == 1 and isinstance(first_arg, (Parameters, ParamSpecType, AnyType))
             ):
                 types = [Parameters(types, [ARG_POS] * len(types), [None] * len(types))]
 
@@ -6462,12 +6468,8 @@ class SemanticAnalyzer(
         return name == unmangle(name) + "'"
 
     def parse_bool(self, expr: Expression) -> bool | None:
-        if isinstance(expr, NameExpr):
-            if expr.fullname == "builtins.True":
-                return True
-            if expr.fullname == "builtins.False":
-                return False
-        return None
+        # This wrapper is preserved for plugins.
+        return parse_bool(expr)
 
     def parse_str_literal(self, expr: Expression) -> str | None:
         """Attempt to find the string literal value of the given expression. Returns `None` if no
@@ -6687,7 +6689,7 @@ def is_trivial_body(block: Block) -> bool:
     "..." (ellipsis), or "raise NotImplementedError()". A trivial body may also
     start with a statement containing just a string (e.g. a docstring).
 
-    Note: functions that raise other kinds of exceptions do not count as
+    Note: Functions that raise other kinds of exceptions do not count as
     "trivial". We use this function to help us determine when it's ok to
     relax certain checks on body, but functions that raise arbitrary exceptions
     are more likely to do non-trivial work. For example:
@@ -6697,11 +6699,18 @@ def is_trivial_body(block: Block) -> bool:
 
     A function that raises just NotImplementedError is much less likely to be
     this complex.
+
+    Note: If you update this, you may also need to update
+    mypy.fastparse.is_possible_trivial_body!
     """
     body = block.body
+    if not body:
+        # Functions have empty bodies only if the body is stripped or the function is
+        # generated or deserialized. In these cases the body is unknown.
+        return False
 
     # Skip a docstring
-    if body and isinstance(body[0], ExpressionStmt) and isinstance(body[0].expr, StrExpr):
+    if isinstance(body[0], ExpressionStmt) and isinstance(body[0].expr, StrExpr):
         body = block.body[1:]
 
     if len(body) == 0:

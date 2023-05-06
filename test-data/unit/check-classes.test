@@ -387,7 +387,7 @@ main:7: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incom
 [case testEqMethodsOverridingWithNonObjects]
 class A:
   def __eq__(self, other: A) -> bool: pass  # Fail
-[builtins fixtures/attr.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 [out]
 main:2: error: Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"
 main:2: note: This violates the Liskov substitution principle
@@ -1394,6 +1394,13 @@ main:8: note:          @classmethod
 main:8: note:          def f(cls) -> None
 main:8: note:      Subclass:
 main:8: note:          def f(self) -> None
+
+[case testClassMethodAndStaticMethod]
+class C:
+  @classmethod  # E: Cannot have both classmethod and staticmethod
+  @staticmethod
+  def foo(cls) -> None: pass
+[builtins fixtures/classmethod.pyi]
 
 -- Properties
 -- ----------
@@ -7819,3 +7826,36 @@ class D:
         # and that's what matters.
         a, b = self.f()  # E: "C" has no attribute "__iter__" (not iterable)
 [builtins fixtures/tuple.pyi]
+
+[case testUsingNumbersType]
+from numbers import Number, Complex, Real, Rational, Integral
+
+def f1(x: Number) -> None: pass
+f1(1)  # E: Argument 1 to "f1" has incompatible type "int"; expected "Number" \
+       # N: Types from "numbers" aren't supported for static type checking \
+       # N: See https://peps.python.org/pep-0484/#the-numeric-tower \
+       # N: Consider using a protocol instead, such as typing.SupportsFloat
+
+def f2(x: Complex) -> None: pass
+f2(1)  # E: Argument 1 to "f2" has incompatible type "int"; expected "Complex" \
+       # N: Types from "numbers" aren't supported for static type checking \
+       # N: See https://peps.python.org/pep-0484/#the-numeric-tower \
+       # N: Consider using a protocol instead, such as typing.SupportsFloat
+
+def f3(x: Real) -> None: pass
+f3(1)  # E: Argument 1 to "f3" has incompatible type "int"; expected "Real" \
+       # N: Types from "numbers" aren't supported for static type checking \
+       # N: See https://peps.python.org/pep-0484/#the-numeric-tower \
+       # N: Consider using a protocol instead, such as typing.SupportsFloat
+
+def f4(x: Rational) -> None: pass
+f4(1)  # E: Argument 1 to "f4" has incompatible type "int"; expected "Rational" \
+       # N: Types from "numbers" aren't supported for static type checking \
+       # N: See https://peps.python.org/pep-0484/#the-numeric-tower \
+       # N: Consider using a protocol instead, such as typing.SupportsFloat
+
+def f5(x: Integral) -> None: pass
+f5(1)  # E: Argument 1 to "f5" has incompatible type "int"; expected "Integral" \
+       # N: Types from "numbers" aren't supported for static type checking \
+       # N: See https://peps.python.org/pep-0484/#the-numeric-tower \
+       # N: Consider using a protocol instead, such as typing.SupportsFloat

@@ -762,9 +762,9 @@ class Person(TypedDict):
     name: str
     age: int
 
-def foo(x: Unpack[Person]) -> None:  # E: TypedDict('__main__.Person', {'name': builtins.str, 'age': builtins.int}) cannot be unpacked (must be tuple or TypeVarTuple)
+def foo(x: Unpack[Person]) -> None:  # E: "Person" cannot be unpacked (must be tuple or TypeVarTuple)
     ...
-def bar(x: int, *args: Unpack[Person]) -> None:  # E: TypedDict('__main__.Person', {'name': builtins.str, 'age': builtins.int}) cannot be unpacked (must be tuple or TypeVarTuple)
+def bar(x: int, *args: Unpack[Person]) -> None:  # E: "Person" cannot be unpacked (must be tuple or TypeVarTuple)
     ...
 def baz(**kwargs: Unpack[Person]) -> None:  # OK
     ...

@@ -299,7 +299,7 @@ class AssignMulti(BaseAssign):
         self.src = src
 
     def sources(self) -> list[Value]:
-        return self.src[:]
+        return self.src.copy()
 
     def stolen(self) -> list[Value]:
         return []
@@ -542,7 +542,7 @@ class Call(RegisterOp):
         super().__init__(line)
 
     def sources(self) -> list[Value]:
-        return list(self.args[:])
+        return list(self.args.copy())
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_call(self)
@@ -570,7 +570,7 @@ class MethodCall(RegisterOp):
         super().__init__(line)
 
     def sources(self) -> list[Value]:
-        return self.args[:] + [self.obj]
+        return self.args.copy() + [self.obj]
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_method_call(self)
@@ -790,7 +790,7 @@ class TupleSet(RegisterOp):
         self.type = self.tuple_type
 
     def sources(self) -> list[Value]:
-        return self.items[:]
+        return self.items.copy()
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_tuple_set(self)
@@ -1348,13 +1348,14 @@ class LoadAddress(RegisterOp):
     Attributes:
       type: Type of the loaded address(e.g. ptr/object_ptr)
       src: Source value (str for globals like 'PyList_Type',
-           Register for temporary values or locals)
+           Register for temporary values or locals, LoadStatic
+           for statics.)
     """
 
     error_kind = ERR_NEVER
     is_borrowed = True
 
-    def __init__(self, type: RType, src: str | Register, line: int = -1) -> None:
+    def __init__(self, type: RType, src: str | Register | LoadStatic, line: int = -1) -> None:
         super().__init__(line)
         self.type = type
         self.src = src
@@ -1394,7 +1395,7 @@ class KeepAlive(RegisterOp):
         self.src = src
 
     def sources(self) -> list[Value]:
-        return self.src[:]
+        return self.src.copy()
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_keep_alive(self)
@@ -1548,6 +1549,7 @@ class OpVisitor(Generic[T]):
 
 
 # TODO: Should the following definition live somewhere else?
+
 
 # We do a three-pass deserialization scheme in order to resolve name
 # references.

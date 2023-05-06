@@ -8,6 +8,7 @@ from mypy.nodes import ARG_STAR, Context
 from mypy.types import (
     AnyType,
     CallableType,
+    Instance,
     Parameters,
     ParamSpecType,
     PartialType,
@@ -75,7 +76,6 @@ def apply_generic_arguments(
     report_incompatible_typevar_value: Callable[[CallableType, Type, str, Context], None],
     context: Context,
     skip_unsatisfied: bool = False,
-    allow_erased_callables: bool = False,
 ) -> CallableType:
     """Apply generic type arguments to a callable type.
 
@@ -110,7 +110,7 @@ def apply_generic_arguments(
         nt = id_to_type.get(param_spec.id)
         if nt is not None:
             nt = get_proper_type(nt)
-            if isinstance(nt, CallableType) or isinstance(nt, Parameters):
+            if isinstance(nt, (CallableType, Parameters)):
                 callable = callable.expand_param_spec(nt)
 
     # Apply arguments to argument types.
@@ -119,15 +119,9 @@ def apply_generic_arguments(
         star_index = callable.arg_kinds.index(ARG_STAR)
         callable = callable.copy_modified(
             arg_types=(
-                [
-                    expand_type(at, id_to_type, allow_erased_callables)
-                    for at in callable.arg_types[:star_index]
-                ]
+                [expand_type(at, id_to_type) for at in callable.arg_types[:star_index]]
                 + [callable.arg_types[star_index]]
-                + [
-                    expand_type(at, id_to_type, allow_erased_callables)
-                    for at in callable.arg_types[star_index + 1 :]
-                ]
+                + [expand_type(at, id_to_type) for at in callable.arg_types[star_index + 1 :]]
             )
         )
 
@@ -155,22 +149,30 @@ def apply_generic_arguments(
                 assert False, f"mypy bug: unimplemented case, {expanded_tuple}"
         elif isinstance(unpacked_type, TypeVarTupleType):
             expanded_tvt = expand_unpack_with_variables(var_arg.typ, id_to_type)
-            assert isinstance(expanded_tvt, list)
-            for t in expanded_tvt:
-                assert not isinstance(t, UnpackType)
-            callable = replace_starargs(callable, expanded_tvt)
+            if isinstance(expanded_tvt, list):
+                for t in expanded_tvt:
+                    assert not isinstance(t, UnpackType)
+                callable = replace_starargs(callable, expanded_tvt)
+            else:
+                assert isinstance(expanded_tvt, Instance)
+                assert expanded_tvt.type.fullname == "builtins.tuple"
+                callable = callable.copy_modified(
+                    arg_types=(
+                        callable.arg_types[:star_index]
+                        + [expanded_tvt.args[0]]
+                        + callable.arg_types[star_index + 1 :]
+                    )
+                )
         else:
             assert False, "mypy bug: unhandled case applying unpack"
     else:
         callable = callable.copy_modified(
-            arg_types=[
-                expand_type(at, id_to_type, allow_erased_callables) for at in callable.arg_types
-            ]
+            arg_types=[expand_type(at, id_to_type) for at in callable.arg_types]
         )
 
     # Apply arguments to TypeGuard if any.
     if callable.type_guard is not None:
-        type_guard = expand_type(callable.type_guard, id_to_type, allow_erased_callables)
+        type_guard = expand_type(callable.type_guard, id_to_type)
     else:
         type_guard = None
 
@@ -178,7 +180,7 @@ def apply_generic_arguments(
     remaining_tvars = [tv for tv in tvars if tv.id not in id_to_type]
 
     return callable.copy_modified(
-        ret_type=expand_type(callable.ret_type, id_to_type, allow_erased_callables),
+        ret_type=expand_type(callable.ret_type, id_to_type),
         variables=remaining_tvars,
         type_guard=type_guard,
     )

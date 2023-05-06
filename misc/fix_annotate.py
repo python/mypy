@@ -38,7 +38,6 @@ from lib2to3.pytree import Leaf, Node
 
 
 class FixAnnotate(BaseFix):
-
     # This fixer is compatible with the bottom matcher.
     BM_compatible = True
 
