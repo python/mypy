@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+import re
+from unittest import TestCase
+
+import mypy.expandtype
+
 from mypy.erasetype import erase_type, remove_instance_last_known_values
 from mypy.expandtype import expand_type
 from mypy.indirection import TypeIndirectionVisitor
@@ -1438,3 +1443,15 @@ def make_call(*items: tuple[str, str | None]) -> CallExpr:
         else:
             arg_kinds.append(ARG_POS)
     return CallExpr(NameExpr("f"), args, arg_kinds, arg_names)
+
+
+class TestExpandTypeLimitGetProperType(TestCase):
+    # WARNING: do not increase this number unless absolutely necessary,
+    # and you understand what you are doing.
+    ALLOWED_GET_PROPER_TYPES = 7
+
+    def test_count_get_proper_type(self) -> None:
+        with open(mypy.expandtype.__file__) as f:
+            code = f.read()
+        get_proper_type_count = len(re.findall("get_proper_type", code))
+        assert get_proper_type_count == self.ALLOWED_GET_PROPER_TYPES
