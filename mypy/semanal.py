@@ -1065,13 +1065,11 @@ class SemanticAnalyzer(
         assert self.type is not None
         info = self.type
         if info.self_type is not None:
-            if has_placeholder(info.self_type.upper_bound) or has_placeholder(
-                info.self_type.default
-            ):
+            if has_placeholder(info.self_type.upper_bound):
                 # Similar to regular (user defined) type variables.
                 self.process_placeholder(
                     None,
-                    "Self upper bound or default",
+                    "Self upper bound",
                     info,
                     force_progress=info.self_type.upper_bound != fill_typevars(info),
                 )
@@ -4044,14 +4042,12 @@ class SemanticAnalyzer(
             call.analyzed.upper_bound = upper_bound
             call.analyzed.values = values
             call.analyzed.default = default
-        if (
-            any(has_placeholder(v) for v in values)
-            or has_placeholder(upper_bound)
-            or has_placeholder(default)
-        ):
-            self.process_placeholder(
-                None, "TypeVar values, upper bound, or default", s, force_progress=updated
-            )
+        if any(has_placeholder(v) for v in values):
+            self.process_placeholder(None, "TypeVar values", s, force_progress=updated)
+        elif has_placeholder(upper_bound):
+            self.process_placeholder(None, "TypeVar upper bound", s, force_progress=updated)
+        elif has_placeholder(default):
+            self.process_placeholder(None, "TypeVar default", s, force_progress=updated)
 
         self.add_symbol(name, call.analyzed, s)
         return True
@@ -4227,8 +4223,14 @@ class SemanticAnalyzer(
             )
             paramspec_var.line = call.line
             call.analyzed = paramspec_var
+            updated = True
         else:
             assert isinstance(call.analyzed, ParamSpecExpr)
+            updated = default != call.analyzed.default
+            call.analyzed.default = default
+        if has_placeholder(default):
+            self.process_placeholder(None, "ParamSpec default", s, force_progress=updated)
+
         self.add_symbol(name, call.analyzed, s)
         return True
 
@@ -4268,8 +4270,14 @@ class SemanticAnalyzer(
             )
             typevartuple_var.line = call.line
             call.analyzed = typevartuple_var
+            updated = True
         else:
             assert isinstance(call.analyzed, TypeVarTupleExpr)
+            updated = default != call.analyzed.default
+            call.analyzed.default = default
+        if has_placeholder(default):
+            self.process_placeholder(None, "TypeVarTuple default", s, force_progress=updated)
+
         self.add_symbol(name, call.analyzed, s)
         return True
 
