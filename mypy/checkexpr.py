@@ -102,8 +102,8 @@ from mypy.subtypes import is_equivalent, is_same_type, is_subtype, non_method_pr
 from mypy.traverser import has_await_expression
 from mypy.typeanal import (
     check_for_explicit_any,
-    expand_type_alias,
     has_any_from_unimported_type,
+    instantiate_type_alias,
     make_optional_type,
     set_any_tvars,
 )
@@ -3965,12 +3965,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         There are two different options here, depending on whether expr refers
         to a type alias or directly to a generic class. In the first case we need
-        to use a dedicated function typeanal.expand_type_alias(). This
-        is due to some differences in how type arguments are applied and checked.
+        to use a dedicated function typeanal.instantiate_type_alias(). This
+        is due to slight differences in how type arguments are applied and checked.
         """
         if isinstance(tapp.expr, RefExpr) and isinstance(tapp.expr.node, TypeAlias):
             # Subscription of a (generic) alias in runtime context, expand the alias.
-            item = expand_type_alias(
+            item = instantiate_type_alias(
                 tapp.expr.node,
                 tapp.types,
                 self.chk.fail,
