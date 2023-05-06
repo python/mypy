@@ -4,11 +4,11 @@ repos:
     hooks:
       - id: black
   - repo: https://github.com/pycqa/isort
-    rev: 5.12.0  # must match test-requirements.txt
+    rev: 5.11.5  # must match test-requirements.txt (cannot use version 5.12 until python 3.7 support is dropped)
     hooks:
       - id: isort
   - repo: https://github.com/pycqa/flake8
-    rev: 6.0.0  # must match test-requirements.txt
+    rev: 5.0.4  # must match test-requirements.txt (cannot use version 6 until python 3.7 support is dropped)
     hooks:
       - id: flake8
         additional_dependencies:
