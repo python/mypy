@@ -2849,3 +2849,116 @@ def f(x: str | None) -> None: ...
 a: str | int
 
 def f(x: str | None) -> None: ...
+
+[case testTypeddict]
+import typing, x
+X = typing.TypedDict('X', {'a': int, 'b': str})
+Y = typing.TypedDict('X', {'a': int, 'b': str}, total=False)
+[out]
+from typing_extensions import TypedDict
+
+class X(TypedDict):
+    a: int
+    b: str
+
+class Y(TypedDict, total=False):
+    a: int
+    b: str
+
+[case testTypeddictKeywordSyntax]
+from typing import TypedDict
+
+X = TypedDict('X', a=int, b=str)
+Y = TypedDict('X', a=int, b=str, total=False)
+[out]
+from typing import TypedDict
+
+class X(TypedDict):
+    a: int
+    b: str
+
+class Y(TypedDict, total=False):
+    a: int
+    b: str
+
+[case testTypeddictWithNonIdentifierOrKeywordKeys]
+from typing import TypedDict
+X = TypedDict('X', {'a-b': int, 'c': str})
+Y = TypedDict('X', {'a-b': int, 'c': str}, total=False)
+Z = TypedDict('X', {'a': int, 'in': str})
+[out]
+from typing import TypedDict
+
+X = TypedDict('X', {'a-b': int, 'c': str})
+
+Y = TypedDict('X', {'a-b': int, 'c': str}, total=False)
+
+Z = TypedDict('X', {'a': int, 'in': str})
+
+[case testEmptyTypeddict]
+import typing
+X = typing.TypedDict('X', {})
+Y = typing.TypedDict('Y', {}, total=False)
+Z = typing.TypedDict('Z')
+W = typing.TypedDict('W', total=False)
+[out]
+from typing_extensions import TypedDict
+
+class X(TypedDict): ...
+
+class Y(TypedDict, total=False): ...
+
+class Z(TypedDict): ...
+
+class W(TypedDict, total=False): ...
+
+[case testTypeddictAliased]
+from typing import TypedDict as t_TypedDict
+from typing_extensions import TypedDict as te_TypedDict
+def f(): ...
+X = t_TypedDict('X', {'a': int, 'b': str})
+Y = te_TypedDict('Y', {'a': int, 'b': str})
+def g(): ...
+[out]
+from typing_extensions import TypedDict
+
+def f() -> None: ...
+
+class X(TypedDict):
+    a: int
+    b: str
+
+class Y(TypedDict):
+    a: int
+    b: str
+
+def g() -> None: ...
+
+[case testNotTypeddict]
+from x import TypedDict
+import y
+X = TypedDict('X', {'a': int, 'b': str})
+Y = y.TypedDict('Y', {'a': int, 'b': str})
+[out]
+from _typeshed import Incomplete
+
+X: Incomplete
+Y: Incomplete
+
+[case testTypeddictWithWrongAttributesType]
+from typing import TypedDict
+R = TypedDict("R", {"a": int, **{"b": str, "c": bytes}})
+S = TypedDict("S", [("b", str), ("c", bytes)])
+T = TypedDict("T", {"a": int}, b=str, total=False)
+U = TypedDict("U", {"a": int}, totale=False)
+V = TypedDict("V", {"a": int}, {"b": str})
+W = TypedDict("W", **{"a": int, "b": str})
+[out]
+from _typeshed import Incomplete
+
+R: Incomplete
+S: Incomplete
+T: Incomplete
+U: Incomplete
+V: Incomplete
+W: Incomplete

@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import argparse
 import glob
+import keyword
 import os
 import os.path
 import sys
@@ -80,6 +81,7 @@ from mypy.nodes import (
     ClassDef,
     ComparisonExpr,
     Decorator,
+    DictExpr,
     EllipsisExpr,
     Expression,
     FloatExpr,
@@ -126,6 +128,7 @@ from mypy.stubutil import (
 from mypy.traverser import all_yield_expressions, has_return_statement, has_yield_expression
 from mypy.types import (
     OVERLOAD_NAMES,
+    TPDICT_NAMES,
     AnyType,
     CallableType,
     Instance,
@@ -405,6 +408,14 @@ class AliasPrinter(NodeVisitor[str]):
     def visit_list_expr(self, node: ListExpr) -> str:
         return f"[{', '.join(n.accept(self) for n in node.items)}]"
 
+    def visit_dict_expr(self, o: DictExpr) -> str:
+        dict_items = []
+        for key, value in o.items:
+            # This is currently only used for TypedDict where all keys are strings.
+            assert isinstance(key, StrExpr)
+            dict_items.append(f"{key.accept(self)}: {value.accept(self)}")
+        return f"{{{', '.join(dict_items)}}}"
+
     def visit_ellipsis(self, node: EllipsisExpr) -> str:
         return "..."
 
@@ -641,6 +652,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             "_typeshed": ["Incomplete"],
             "typing": ["Any", "TypeVar"],
             "collections.abc": ["Generator"],
+            "typing_extensions": ["TypedDict"],
         }
         for pkg, imports in known_imports.items():
             for t in imports:
@@ -1016,6 +1028,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 continue
             if (
                 isinstance(lvalue, NameExpr)
+                and isinstance(o.rvalue, CallExpr)
+                and self.is_typeddict(o.rvalue)
+            ):
+                self.process_typeddict(lvalue, o.rvalue)
+                continue
+            if (
+                isinstance(lvalue, NameExpr)
                 and not self.is_private_name(lvalue.name)
                 and
                 # it is never an alias with explicit annotation
@@ -1081,6 +1100,75 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             for item in items:
                 self.add(f"{self._indent}    {item}: Incomplete\n")
         self._state = CLASS
+
+    def is_typeddict(self, expr: CallExpr) -> bool:
+        callee = expr.callee
+        return (
+            isinstance(callee, NameExpr) and self.refers_to_fullname(callee.name, TPDICT_NAMES)
+        ) or (
+            isinstance(callee, MemberExpr)
+            and isinstance(callee.expr, NameExpr)
+            and f"{callee.expr.name}.{callee.name}" in TPDICT_NAMES
+        )
+
+    def process_typeddict(self, lvalue: NameExpr, rvalue: CallExpr) -> None:
+        if self._state != EMPTY:
+            self.add("\n")
+
+        if not isinstance(rvalue.args[0], StrExpr):
+            self.add(f"{self._indent}{lvalue.name}: Incomplete")
+            self.import_tracker.require_name("Incomplete")
+            return
+
+        items: list[tuple[str, Expression]] = []
+        total: Expression | None = None
+        if len(rvalue.args) > 1 and rvalue.arg_kinds[1] == ARG_POS:
+            if not isinstance(rvalue.args[1], DictExpr):
+                self.add(f"{self._indent}{lvalue.name}: Incomplete")
+                self.import_tracker.require_name("Incomplete")
+                return
+            for attr_name, attr_type in rvalue.args[1].items:
+                if not isinstance(attr_name, StrExpr):
+                    self.add(f"{self._indent}{lvalue.name}: Incomplete")
+                    self.import_tracker.require_name("Incomplete")
+                    return
+                items.append((attr_name.value, attr_type))
+            if len(rvalue.args) > 2:
+                if rvalue.arg_kinds[2] != ARG_NAMED or rvalue.arg_names[2] != "total":
+                    self.add(f"{self._indent}{lvalue.name}: Incomplete")
+                    self.import_tracker.require_name("Incomplete")
+                    return
+                total = rvalue.args[2]
+        else:
+            for arg_name, arg in zip(rvalue.arg_names[1:], rvalue.args[1:]):
+                if not isinstance(arg_name, str):
+                    self.add(f"{self._indent}{lvalue.name}: Incomplete")
+                    self.import_tracker.require_name("Incomplete")
+                    return
+                if arg_name == "total":
+                    total = arg
+                else:
+                    items.append((arg_name, arg))
+        self.import_tracker.require_name("TypedDict")
+        p = AliasPrinter(self)
+        if any(not key.isidentifier() or keyword.iskeyword(key) for key, _ in items):
+            # Keep the call syntax if there are non-identifier or keyword keys.
+            self.add(f"{self._indent}{lvalue.name} = {rvalue.accept(p)}\n")
+            self._state = VAR
+        else:
+            bases = "TypedDict"
+            # TODO: Add support for generic TypedDicts. Requires `Generic` as base class.
+            if total is not None:
+                bases += f", total={total.accept(p)}"
+            self.add(f"{self._indent}class {lvalue.name}({bases}):")
+            if len(items) == 0:
+                self.add(" ...\n")
+                self._state = EMPTY_CLASS
+            else:
+                self.add("\n")
+                for key, key_type in items:
+                    self.add(f"{self._indent}    {key}: {key_type.accept(p)}\n")
+                self._state = CLASS
 
     def is_alias_expression(self, expr: Expression, top_level: bool = True) -> bool:
         """Return True for things that look like target for an alias.
