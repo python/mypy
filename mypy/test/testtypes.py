@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from unittest import TestCase
+from unittest import TestCase, skipUnless
 
 import mypy.expandtype
 
@@ -1450,6 +1450,7 @@ class TestExpandTypeLimitGetProperType(TestCase):
     # and you understand what you are doing.
     ALLOWED_GET_PROPER_TYPES = 7
 
+    @skipUnless(mypy.expandtype.__file__.endswith(".py"), "Skip for compiled mypy")
     def test_count_get_proper_type(self) -> None:
         with open(mypy.expandtype.__file__) as f:
             code = f.read()
