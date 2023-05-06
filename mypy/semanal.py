@@ -274,10 +274,9 @@ from mypy.types import (
     UnpackType,
     get_proper_type,
     get_proper_types,
-    invalid_recursive_alias,
     is_named_instance,
-    store_argument_type,
 )
+from mypy.types_utils import invalid_recursive_alias, store_argument_type
 from mypy.typevars import fill_typevars
 from mypy.util import (
     correct_relative_import,

@@ -81,12 +81,12 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
-    bad_type_type_item,
     callable_with_ellipsis,
     flatten_nested_unions,
     get_proper_type,
     has_type_vars,
 )
+from mypy.types_utils import bad_type_type_item
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars
 

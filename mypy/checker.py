@@ -212,11 +212,8 @@ from mypy.types import (
     get_proper_types,
     is_literal_type,
     is_named_instance,
-    is_optional,
-    remove_optional,
-    store_argument_type,
-    strip_type,
 )
+from mypy.types_utils import is_optional, remove_optional, store_argument_type, strip_type
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars, fill_typevars_with_any, has_no_typevars
 from mypy.util import is_dunder, is_sunder, is_typeshed_file
@@ -1542,9 +1539,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 opt_meta = item.type.metaclass_type
                 if opt_meta is not None:
                     forward_inst = opt_meta
+
+        def has_readable_member(typ: Union[UnionType, Instance], name: str) -> bool:
+            # TODO: Deal with attributes of TupleType etc.
+            if isinstance(typ, Instance):
+                return typ.type.has_readable_member(name)
+            return all(
+                (isinstance(x, UnionType) and has_readable_member(x, name))
+                or (isinstance(x, Instance) and x.type.has_readable_member(name))
+                for x in get_proper_types(typ.relevant_items())
+            )
+
         if not (
             isinstance(forward_inst, (Instance, UnionType))
-            and forward_inst.has_readable_member(forward_name)
+            and has_readable_member(forward_inst, forward_name)
         ):
             return
         forward_base = reverse_type.arg_types[1]
