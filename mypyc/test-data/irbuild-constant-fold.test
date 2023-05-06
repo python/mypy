@@ -3,6 +3,7 @@ def bin_ops() -> None:
     add = 15 + 47
     add_mul = (2 + 3) * 5
     sub = 7 - 11
+    div = 3 / 2
     bit_and = 6 & 10
     bit_or = 6 | 10
     bit_xor = 6 ^ 10
@@ -25,11 +26,15 @@ def pow() -> None:
     p3 = 0**0
 [out]
 def bin_ops():
-    add, add_mul, sub, bit_and, bit_or, bit_xor, lshift, rshift, lshift0, rshift0 :: int
+    add, add_mul, sub :: int
+    r0, div :: float
+    bit_and, bit_or, bit_xor, lshift, rshift, lshift0, rshift0 :: int
 L0:
     add = 124
     add_mul = 50
     sub = -8
+    r0 = 1.5
+    div = r0
     bit_and = 4
     bit_or = 28
     bit_xor = 24
@@ -117,35 +122,32 @@ L0:
 
 [case testIntConstantFoldingUnsupportedCases]
 def error_cases() -> None:
-    div_by_zero = 5 // 0
+    div_by_zero = 5 / 0
+    floor_div_by_zero = 5 // 0
     mod_by_zero = 5 % 0
     lshift_neg = 6 << -1
     rshift_neg = 7 >> -1
-def unsupported_div() -> None:
-    x = 4 / 6
-    y = 10 / 5
 def unsupported_pow() -> None:
     p = 3 ** (-1)
 [out]
 def error_cases():
-    r0, div_by_zero, r1, mod_by_zero, r2, lshift_neg, r3, rshift_neg :: int
+    r0, r1, r2 :: object
+    r3, div_by_zero :: float
+    r4, floor_div_by_zero, r5, mod_by_zero, r6, lshift_neg, r7, rshift_neg :: int
 L0:
-    r0 = CPyTagged_FloorDivide(10, 0)
-    div_by_zero = r0
-    r1 = CPyTagged_Remainder(10, 0)
-    mod_by_zero = r1
-    r2 = CPyTagged_Lshift(12, -2)
-    lshift_neg = r2
-    r3 = CPyTagged_Rshift(14, -2)
-    rshift_neg = r3
-    return 1
-def unsupported_div():
-    r0, x, r1, y :: float
-L0:
-    r0 = CPyTagged_TrueDivide(8, 12)
-    x = r0
-    r1 = CPyTagged_TrueDivide(20, 10)
-    y = r1
+    r0 = object 5
+    r1 = object 0
+    r2 = PyNumber_TrueDivide(r0, r1)
+    r3 = cast(float, r2)
+    div_by_zero = r3
+    r4 = CPyTagged_FloorDivide(10, 0)
+    floor_div_by_zero = r4
+    r5 = CPyTagged_Remainder(10, 0)
+    mod_by_zero = r5
+    r6 = CPyTagged_Lshift(12, -2)
+    lshift_neg = r6
+    r7 = CPyTagged_Rshift(14, -2)
+    rshift_neg = r7
     return 1
 def unsupported_pow():
     r0, r1, r2 :: object
@@ -224,20 +226,238 @@ L0:
     a = 12
     return 1
 
+[case testFloatConstantFolding]
+def bin_ops() -> None:
+    add = 0.5 + 0.5
+    add_mul = (1.5 + 3.5) * 5.0
+    sub = 7.0 - 7.5
+    div = 3.0 / 2.0
+    floor_div = 3.0 // 2.0
+def unary_ops() -> None:
+    neg1 = -5.5
+    neg2 = --1.5
+    neg3 = -0.0
+    pos = +5.5
+def pow() -> None:
+    p0 = 16.0**0
+    p1 = 16.0**0.5
+    p2 = (-5.0)**3
+    p3 = 0.0**0.0
+def error_cases() -> None:
+    div = 2.0 / 0.0
+    floor_div = 2.0 // 0.0
+    power_imag = (-2.0)**0.5
+    power_overflow = 2.0**10000.0
+[out]
+def bin_ops():
+    r0, add, r1, add_mul, r2, sub, r3, div, r4, floor_div :: float
+L0:
+    r0 = 1.0
+    add = r0
+    r1 = 25.0
+    add_mul = r1
+    r2 = -0.5
+    sub = r2
+    r3 = 1.5
+    div = r3
+    r4 = 1.0
+    floor_div = r4
+    return 1
+def unary_ops():
+    r0, neg1, r1, neg2, r2, neg3, r3, pos :: float
+L0:
+    r0 = -5.5
+    neg1 = r0
+    r1 = 1.5
+    neg2 = r1
+    r2 = -0.0
+    neg3 = r2
+    r3 = 5.5
+    pos = r3
+    return 1
+def pow():
+    r0, p0, r1, p1, r2, p2, r3, p3 :: float
+L0:
+    r0 = 1.0
+    p0 = r0
+    r1 = 4.0
+    p1 = r1
+    r2 = -125.0
+    p2 = r2
+    r3 = 1.0
+    p3 = r3
+    return 1
+def error_cases():
+    r0, r1 :: float
+    r2 :: object
+    r3, div, r4, r5 :: float
+    r6 :: object
+    r7, floor_div, r8, r9 :: float
+    r10 :: object
+    r11, power_imag, r12, r13 :: float
+    r14 :: object
+    r15, power_overflow :: float
+L0:
+    r0 = 2.0
+    r1 = 0.0
+    r2 = PyNumber_TrueDivide(r0, r1)
+    r3 = cast(float, r2)
+    div = r3
+    r4 = 2.0
+    r5 = 0.0
+    r6 = PyNumber_FloorDivide(r4, r5)
+    r7 = cast(float, r6)
+    floor_div = r7
+    r8 = -2.0
+    r9 = 0.5
+    r10 = CPyNumber_Power(r8, r9)
+    r11 = cast(float, r10)
+    power_imag = r11
+    r12 = 2.0
+    r13 = 10000.0
+    r14 = CPyNumber_Power(r12, r13)
+    r15 = cast(float, r14)
+    power_overflow = r15
+    return 1
+
+[case testMixedFloatIntConstantFolding]
+def bin_ops() -> None:
+    add = 1 + 0.5
+    sub = 1 - 0.5
+    mul = 0.5 * 5
+    div = 5 / 0.5
+    floor_div = 9.5 // 5
+def error_cases() -> None:
+    div = 2.0 / 0
+    floor_div = 2.0 / 0
+    power_overflow = 2.0**10000
+[out]
+def bin_ops():
+    r0, add, r1, sub, r2, mul, r3, div, r4, floor_div :: float
+L0:
+    r0 = 1.5
+    add = r0
+    r1 = 0.5
+    sub = r1
+    r2 = 2.5
+    mul = r2
+    r3 = 10.0
+    div = r3
+    r4 = 1.0
+    floor_div = r4
+    return 1
+def error_cases():
+    r0 :: float
+    r1, r2 :: object
+    r3, div, r4 :: float
+    r5, r6 :: object
+    r7, floor_div, r8 :: float
+    r9, r10 :: object
+    r11, power_overflow :: float
+L0:
+    r0 = 2.0
+    r1 = object 0
+    r2 = PyNumber_TrueDivide(r0, r1)
+    r3 = cast(float, r2)
+    div = r3
+    r4 = 2.0
+    r5 = object 0
+    r6 = PyNumber_TrueDivide(r4, r5)
+    r7 = cast(float, r6)
+    floor_div = r7
+    r8 = 2.0
+    r9 = object 10000
+    r10 = CPyNumber_Power(r8, r9)
+    r11 = cast(float, r10)
+    power_overflow = r11
+    return 1
+
 [case testStrConstantFolding]
 from typing_extensions import Final
 
 S: Final = 'z'
+N: Final = 2
 
 def f() -> None:
     x = 'foo' + 'bar'
     y = 'x' + 'y' + S
+    mul = "foobar" * 2
+    mul2 = N * "foobar"
 [out]
 def f():
-    r0, x, r1, y :: str
+    r0, x, r1, y, r2, mul, r3, mul2 :: str
 L0:
     r0 = 'foobar'
     x = r0
     r1 = 'xyz'
     y = r1
+    r2 = 'foobarfoobar'
+    mul = r2
+    r3 = 'foobarfoobar'
+    mul2 = r3
     return 1
+
+[case testBytesConstantFolding]
+from typing_extensions import Final
+
+N: Final = 2
+
+def f() -> None:
+    # Unfortunately, mypy doesn't store the bytes value of final refs.
+    x = b'foo' + b'bar'
+    mul = b"foobar" * 2
+    mul2 = N * b"foobar"
+[out]
+def f():
+    r0, x, r1, mul, r2, mul2 :: bytes
+L0:
+    r0 = b'foobar'
+    x = r0
+    r1 = b'foobarfoobar'
+    mul = r1
+    r2 = b'foobarfoobar'
+    mul2 = r2
+    return 1
+
+[case testComplexConstantFolding]
+from typing_extensions import Final
+
+N: Final = 1
+FLOAT_N: Final = 1.5
+
+def integral() -> None:
+    pos = 1+2j
+    pos_2 = 2j+N
+    neg = 1-2j
+    neg_2 = 2j-N
+def floating() -> None:
+    pos = 1.5+2j
+    pos_2 = 2j+FLOAT_N
+    neg = 1.5-2j
+    neg_2 = 2j-FLOAT_N
+[out]
+def integral():
+    r0, pos, r1, pos_2, r2, neg, r3, neg_2 :: object
+L0:
+    r0 = (1+2j)
+    pos = r0
+    r1 = (1+2j)
+    pos_2 = r1
+    r2 = (1-2j)
+    neg = r2
+    r3 = (-1+2j)
+    neg_2 = r3
+    return 1
+def floating():
+    r0, pos, r1, pos_2, r2, neg, r3, neg_2 :: object
+L0:
+    r0 = (1.5+2j)
+    pos = r0
+    r1 = (1.5+2j)
+    pos_2 = r1
+    r2 = (1.5-2j)
+    neg = r2
+    r3 = (-1.5+2j)
+    neg_2 = r3
+    return 1
+
