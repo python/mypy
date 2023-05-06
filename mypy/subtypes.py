@@ -435,7 +435,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # dynamic base classes correctly, see #5456.
             return not isinstance(self.right, NoneType)
         right = self.right
-        if isinstance(right, TupleType) and mypy.typeops.tuple_fallback(right).type.is_enum:
+        if isinstance(right, TupleType) and right.partial_fallback.type.is_enum:
             return self._is_subtype(left, mypy.typeops.tuple_fallback(right))
         if isinstance(right, Instance):
             if type_state.is_cached_subtype_check(self._subtype_kind, left, right):
@@ -749,7 +749,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     #       for isinstance(x, tuple), though it's unclear why.
                     return True
                 return all(self._is_subtype(li, iter_type) for li in left.items)
-            elif self._is_subtype(mypy.typeops.tuple_fallback(left), right):
+            elif self._is_subtype(left.partial_fallback, right) and self._is_subtype(
+                mypy.typeops.tuple_fallback(left), right
+            ):
                 return True
             return False
         elif isinstance(right, TupleType):
