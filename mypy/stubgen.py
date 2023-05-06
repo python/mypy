@@ -1030,11 +1030,11 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                         # A valid namedtuple() call, use NamedTuple() instead with
                         # Incomplete as field types
                         fields_str = ", ".join(f"({f!r}, {t})" for f, t in nt_fields)
+                        base_types.append(f"NamedTuple({typename!r}, [{fields_str}])")
+                        self.add_typing_import("NamedTuple")
                     else:
                         # Invalid namedtuple() call, cannot determine fields
-                        fields_str = "Incomplete"
-                    base_types.append(f"NamedTuple({typename!r}, [{fields_str}])")
-                    self.add_typing_import("NamedTuple")
+                        base_types.append("Incomplete")
                 elif self.is_typed_namedtuple(base):
                     p = AliasPrinter(self)
                     base_types.append(base.accept(p))

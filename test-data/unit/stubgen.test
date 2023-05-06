@@ -780,11 +780,13 @@ from collections import namedtuple
 from typing import NamedTuple
 N = namedtuple('N', ['x', 'y'] + ['z'])
 M = NamedTuple('M', [('x', int), ('y', str)] + [('z', float)])
+class X(namedtuple('X', ['a', 'b'] + ['c'])): ...
 [out]
 from _typeshed import Incomplete
 
 N: Incomplete
 M: Incomplete
+class X(Incomplete): ...
 
 [case testNamedTupleInClassBases]
 import collections, typing
