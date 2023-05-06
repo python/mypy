@@ -44,6 +44,10 @@ python3 -m pip install -e .
 hash -r  # This resets shell PATH cache, not necessary on Windows
 ```
 
+> **Note**
+> Some code quality tools are not compatible with old python versions, you'll
+> need python version 3.8 or higher to install and run them.
+
 ### Running tests
 
 Running the full test suite can take a while, and usually isn't necessary when
