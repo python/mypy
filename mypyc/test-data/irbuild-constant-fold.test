@@ -27,14 +27,13 @@ def pow() -> None:
 [out]
 def bin_ops():
     add, add_mul, sub :: int
-    r0, div :: float
+    div :: float
     bit_and, bit_or, bit_xor, lshift, rshift, lshift0, rshift0 :: int
 L0:
     add = 124
     add_mul = 50
     sub = -8
-    r0 = 1.5
-    div = r0
+    div = 1.5
     bit_and = 4
     bit_or = 28
     bit_xor = 24
@@ -131,23 +130,19 @@ def unsupported_pow() -> None:
     p = 3 ** (-1)
 [out]
 def error_cases():
-    r0, r1, r2 :: object
-    r3, div_by_zero :: float
-    r4, floor_div_by_zero, r5, mod_by_zero, r6, lshift_neg, r7, rshift_neg :: int
+    r0, div_by_zero :: float
+    r1, floor_div_by_zero, r2, mod_by_zero, r3, lshift_neg, r4, rshift_neg :: int
 L0:
-    r0 = object 5
-    r1 = object 0
-    r2 = PyNumber_TrueDivide(r0, r1)
-    r3 = cast(float, r2)
-    div_by_zero = r3
-    r4 = CPyTagged_FloorDivide(10, 0)
-    floor_div_by_zero = r4
-    r5 = CPyTagged_Remainder(10, 0)
-    mod_by_zero = r5
-    r6 = CPyTagged_Lshift(12, -2)
-    lshift_neg = r6
-    r7 = CPyTagged_Rshift(14, -2)
-    rshift_neg = r7
+    r0 = CPyTagged_TrueDivide(10, 0)
+    div_by_zero = r0
+    r1 = CPyTagged_FloorDivide(10, 0)
+    floor_div_by_zero = r1
+    r2 = CPyTagged_Remainder(10, 0)
+    mod_by_zero = r2
+    r3 = CPyTagged_Lshift(12, -2)
+    lshift_neg = r3
+    r4 = CPyTagged_Rshift(14, -2)
+    rshift_neg = r4
     return 1
 def unsupported_pow():
     r0, r1, r2 :: object
@@ -250,74 +245,59 @@ def error_cases() -> None:
     power_overflow = 2.0**10000.0
 [out]
 def bin_ops():
-    r0, add, r1, add_mul, r2, sub, r3, div, r4, floor_div :: float
+    add, add_mul, sub, div, floor_div :: float
 L0:
-    r0 = 1.0
-    add = r0
-    r1 = 25.0
-    add_mul = r1
-    r2 = -0.5
-    sub = r2
-    r3 = 1.5
-    div = r3
-    r4 = 1.0
-    floor_div = r4
+    add = 1.0
+    add_mul = 25.0
+    sub = -0.5
+    div = 1.5
+    floor_div = 1.0
     return 1
 def unary_ops():
-    r0, neg1, r1, neg2, r2, neg3, r3, pos :: float
+    neg1, neg2, neg3, pos :: float
 L0:
-    r0 = -5.5
-    neg1 = r0
-    r1 = 1.5
-    neg2 = r1
-    r2 = -0.0
-    neg3 = r2
-    r3 = 5.5
-    pos = r3
+    neg1 = -5.5
+    neg2 = 1.5
+    neg3 = -0.0
+    pos = 5.5
     return 1
 def pow():
-    r0, p0, r1, p1, r2, p2, r3, p3 :: float
+    p0, p1, p2, p3 :: float
 L0:
-    r0 = 1.0
-    p0 = r0
-    r1 = 4.0
-    p1 = r1
-    r2 = -125.0
-    p2 = r2
-    r3 = 1.0
-    p3 = r3
+    p0 = 1.0
+    p1 = 4.0
+    p2 = -125.0
+    p3 = 1.0
     return 1
 def error_cases():
-    r0, r1 :: float
-    r2 :: object
-    r3, div, r4, r5 :: float
-    r6 :: object
-    r7, floor_div, r8, r9 :: float
-    r10 :: object
-    r11, power_imag, r12, r13 :: float
-    r14 :: object
-    r15, power_overflow :: float
+    r0 :: bit
+    r1 :: bool
+    r2, div, r3, floor_div :: float
+    r4, r5, r6 :: object
+    r7, power_imag :: float
+    r8, r9, r10 :: object
+    r11, power_overflow :: float
 L0:
-    r0 = 2.0
-    r1 = 0.0
-    r2 = PyNumber_TrueDivide(r0, r1)
-    r3 = cast(float, r2)
-    div = r3
-    r4 = 2.0
-    r5 = 0.0
-    r6 = PyNumber_FloorDivide(r4, r5)
-    r7 = cast(float, r6)
-    floor_div = r7
-    r8 = -2.0
-    r9 = 0.5
+    r0 = 0.0 == 0.0
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = raise ZeroDivisionError('float division by zero')
+    unreachable
+L2:
+    r2 = 2.0 / 0.0
+    div = r2
+    r3 = CPyFloat_FloorDivide(2.0, 0.0)
+    floor_div = r3
+    r4 = box(float, -2.0)
+    r5 = box(float, 0.5)
+    r6 = CPyNumber_Power(r4, r5)
+    r7 = unbox(float, r6)
+    power_imag = r7
+    r8 = box(float, 2.0)
+    r9 = box(float, 10000.0)
     r10 = CPyNumber_Power(r8, r9)
-    r11 = cast(float, r10)
-    power_imag = r11
-    r12 = 2.0
-    r13 = 10000.0
-    r14 = CPyNumber_Power(r12, r13)
-    r15 = cast(float, r14)
-    power_overflow = r15
+    r11 = unbox(float, r10)
+    power_overflow = r11
     return 1
 
 [case testMixedFloatIntConstantFolding]
@@ -333,43 +313,45 @@ def error_cases() -> None:
     power_overflow = 2.0**10000
 [out]
 def bin_ops():
-    r0, add, r1, sub, r2, mul, r3, div, r4, floor_div :: float
+    add, sub, mul, div, floor_div :: float
 L0:
-    r0 = 1.5
-    add = r0
-    r1 = 0.5
-    sub = r1
-    r2 = 2.5
-    mul = r2
-    r3 = 10.0
-    div = r3
-    r4 = 1.0
-    floor_div = r4
+    add = 1.5
+    sub = 0.5
+    mul = 2.5
+    div = 10.0
+    floor_div = 1.0
     return 1
 def error_cases():
-    r0 :: float
-    r1, r2 :: object
-    r3, div, r4 :: float
-    r5, r6 :: object
-    r7, floor_div, r8 :: float
-    r9, r10 :: object
-    r11, power_overflow :: float
+    r0 :: bit
+    r1 :: bool
+    r2, div :: float
+    r3 :: bit
+    r4 :: bool
+    r5, floor_div :: float
+    r6, r7, r8 :: object
+    r9, power_overflow :: float
 L0:
-    r0 = 2.0
-    r1 = object 0
-    r2 = PyNumber_TrueDivide(r0, r1)
-    r3 = cast(float, r2)
-    div = r3
-    r4 = 2.0
-    r5 = object 0
-    r6 = PyNumber_TrueDivide(r4, r5)
-    r7 = cast(float, r6)
-    floor_div = r7
-    r8 = 2.0
-    r9 = object 10000
-    r10 = CPyNumber_Power(r8, r9)
-    r11 = cast(float, r10)
-    power_overflow = r11
+    r0 = 0.0 == 0.0
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = raise ZeroDivisionError('float division by zero')
+    unreachable
+L2:
+    r2 = 2.0 / 0.0
+    div = r2
+    r3 = 0.0 == 0.0
+    if r3 goto L3 else goto L4 :: bool
+L3:
+    r4 = raise ZeroDivisionError('float division by zero')
+    unreachable
+L4:
+    r5 = 2.0 / 0.0
+    floor_div = r5
+    r6 = box(float, 2.0)
+    r7 = box(float, 10000.0)
+    r8 = CPyNumber_Power(r6, r7)
+    r9 = unbox(float, r8)
+    power_overflow = r9
     return 1
 
 [case testStrConstantFolding]
