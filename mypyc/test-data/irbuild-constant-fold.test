@@ -309,7 +309,7 @@ def bin_ops() -> None:
     floor_div = 9.5 // 5
 def error_cases() -> None:
     div = 2.0 / 0
-    floor_div = 2.0 / 0
+    floor_div = 2.0 // 0
     power_overflow = 2.0**10000
 [out]
 def bin_ops():
@@ -324,12 +324,9 @@ L0:
 def error_cases():
     r0 :: bit
     r1 :: bool
-    r2, div :: float
-    r3 :: bit
-    r4 :: bool
-    r5, floor_div :: float
-    r6, r7, r8 :: object
-    r9, power_overflow :: float
+    r2, div, r3, floor_div :: float
+    r4, r5, r6 :: object
+    r7, power_overflow :: float
 L0:
     r0 = 0.0 == 0.0
     if r0 goto L1 else goto L2 :: bool
@@ -339,19 +336,13 @@ L1:
 L2:
     r2 = 2.0 / 0.0
     div = r2
-    r3 = 0.0 == 0.0
-    if r3 goto L3 else goto L4 :: bool
-L3:
-    r4 = raise ZeroDivisionError('float division by zero')
-    unreachable
-L4:
-    r5 = 2.0 / 0.0
-    floor_div = r5
-    r6 = box(float, 2.0)
-    r7 = box(float, 10000.0)
-    r8 = CPyNumber_Power(r6, r7)
-    r9 = unbox(float, r8)
-    power_overflow = r9
+    r3 = CPyFloat_FloorDivide(2.0, 0.0)
+    floor_div = r3
+    r4 = box(float, 2.0)
+    r5 = box(float, 10000.0)
+    r6 = CPyNumber_Power(r4, r5)
+    r7 = unbox(float, r6)
+    power_overflow = r7
     return 1
 
 [case testStrConstantFolding]

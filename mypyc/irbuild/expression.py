@@ -54,7 +54,6 @@ from mypyc.ir.ops import (
     Assign,
     BasicBlock,
     ComparisonOp,
-    Float,
     Integer,
     LoadAddress,
     LoadLiteral,
