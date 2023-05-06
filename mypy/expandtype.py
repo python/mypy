@@ -21,6 +21,7 @@ from mypy.types import (
     ParamSpecType,
     PartialType,
     ProperType,
+    TrivialSyntheticTypeTranslator,
     TupleType,
     Type,
     TypeAliasType,
@@ -38,7 +39,6 @@ from mypy.types import (
     flatten_nested_unions,
     get_proper_type,
     remove_trivial,
-    TrivialSyntheticTypeTranslator,
 )
 from mypy.typevartuples import (
     find_unpack_in_list,
