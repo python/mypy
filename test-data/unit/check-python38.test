@@ -812,3 +812,18 @@ if sys.version_info < (3, 6):
 else:
     42  # type: ignore  # E: Unused "type: ignore" comment
 [builtins fixtures/ops.pyi]
+
+[case testDictExpressionErrorLocations]
+# flags: --pretty
+from typing import Dict
+
+other: Dict[str, str]
+dct: Dict[str, int] = {"a": "b", **other}
+[builtins fixtures/dict.pyi]
+[out]
+main:5: error: Dict entry 0 has incompatible type "str": "str"; expected "str": "int"
+    dct: Dict[str, int] = {"a": "b", **other}
+                           ^~~~~~~~
+main:5: error: Unpacked dict entry 1 has incompatible type "Dict[str, str]"; expected "SupportsKeysAndGetItem[str, int]"
+    dct: Dict[str, int] = {"a": "b", **other}
+                                       ^~~~~
