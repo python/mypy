@@ -30,7 +30,6 @@ from mypy.types import (
     TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
-    TypeVisitor,
     UnboundType,
     UninhabitedType,
     UnionType,
@@ -39,12 +38,17 @@ from mypy.types import (
     flatten_nested_unions,
     get_proper_type,
     remove_trivial,
+    TrivialSyntheticTypeTranslator,
 )
 from mypy.typevartuples import (
     find_unpack_in_list,
     split_with_instance,
     split_with_prefix_and_suffix,
 )
+
+# WARNING: these function should never (directly or indirectly) depend on
+# is_subtype(), meet_types(), join_types() etc.
+# TODO: add a static dependency test for this.
 
 
 @overload
@@ -182,7 +186,7 @@ class FreshenCallableVisitor(TypeTranslator):
         return t.copy_modified(args=[arg.accept(self) for arg in t.args])
 
 
-class ExpandTypeVisitor(TypeVisitor[Type]):
+class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
     """Visitor that substitutes type variables with values."""
 
     variables: Mapping[TypeVarId, Type]  # TypeVar id -> TypeVar value
