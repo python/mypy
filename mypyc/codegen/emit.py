@@ -911,7 +911,6 @@ class Emitter:
                 item_src = self.temp_name()
                 self.emit_line(f"PyObject *{item_src} = PyTuple_GET_ITEM({src}, {i});")
                 # Unbox or check the item. On error, jump to the error block.
-                # TODO: Decrease refcount on failure?
                 if item_type.is_unboxed:
                     self.emit_unbox(
                         item_src,
@@ -919,16 +918,16 @@ class Emitter:
                         item_type,
                         raise_exception=False,
                         error=item_err,
-                        borrow=borrow,
+                        borrow=True,
                     )
                 else:
-                    if not borrow:
-                        self.emit_inc_ref(item_src, object_rprimitive)
                     self.emit_cast(
                         item_src, f"{dest}.f{i}", item_type, raise_exception=False, error=item_err
                     )
 
             # All items were processed without issue, jump past the error block.
+            if not borrow:
+                self.emit_inc_ref(dest, typ)
             self.emit_line(f"goto {end_label};")
             self.emit_label(error_label)
             # HACK: while most exceptions are suppressed, custom exceptions
