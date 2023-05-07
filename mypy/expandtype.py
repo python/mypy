@@ -271,10 +271,11 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         star_index = t.arg_kinds.index(ARG_STAR)
 
         # We have something like Unpack[Tuple[X1, X2, Unpack[Ts], Y1, Y2]]
-        if isinstance(get_proper_type(var_arg.type), TupleType):
-            expanded_tuple = get_proper_type(var_arg.type.accept(self))
+        var_arg_type = get_proper_type(var_arg.type)
+        if isinstance(var_arg_type, TupleType):
+            expanded_tuple = var_arg_type.accept(self)
             # TODO: handle the case that expanded_tuple is a variable length tuple.
-            assert isinstance(expanded_tuple, TupleType)
+            assert isinstance(expanded_tuple, ProperType) and isinstance(expanded_tuple, TupleType)
             expanded_items = expanded_tuple.items
         else:
             expanded_items_res = self.expand_unpack(var_arg)
@@ -320,11 +321,11 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             # homogenous tuple, then only the prefix can be represented as
             # positional arguments, and we pass Tuple[Unpack[Ts-1], Y1, Y2]
             # as the star arg, for example.
-            expanded_unpack = get_proper_type(expanded_items[expanded_unpack_index])
+            expanded_unpack = expanded_items[expanded_unpack_index]
             assert isinstance(expanded_unpack, UnpackType)
 
             # Extract the typevartuple so we can get a tuple fallback from it.
-            expanded_unpacked_tvt = get_proper_type(expanded_unpack.type)
+            expanded_unpacked_tvt = expanded_unpack.type
             assert isinstance(expanded_unpacked_tvt, TypeVarTupleType)
 
             prefix_len = expanded_unpack_index
@@ -450,18 +451,14 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         items = self.expand_types_with_unpack(t.items)
         if isinstance(items, list):
             fallback = t.partial_fallback.accept(self)
-            fallback = get_proper_type(fallback)
-            if not isinstance(fallback, Instance):
-                fallback = t.partial_fallback
+            assert isinstance(fallback, ProperType) and isinstance(fallback, Instance)
             return t.copy_modified(items=items, fallback=fallback)
         else:
             return items
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
         fallback = t.fallback.accept(self)
-        fallback = get_proper_type(fallback)
-        if not isinstance(fallback, Instance):
-            fallback = t.fallback
+        assert isinstance(fallback, ProperType) and isinstance(fallback, Instance)
         return t.copy_modified(item_types=self.expand_types(t.items.values()), fallback=fallback)
 
     def visit_literal_type(self, t: LiteralType) -> Type:
