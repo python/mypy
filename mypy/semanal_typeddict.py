@@ -6,6 +6,7 @@ from typing_extensions import Final
 
 from mypy import errorcodes as codes, message_registry
 from mypy.errorcodes import ErrorCode
+from mypy.expandtype import expand_type
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
@@ -45,7 +46,6 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeVarLikeType,
-    replace_alias_tvars,
 )
 
 TPDICT_CLASS_ERROR: Final = (
@@ -243,10 +243,8 @@ class TypedDictAnalyzer:
     ) -> dict[str, Type]:
         """Map item types to how they would look in their base with type arguments applied.
 
-        We would normally use expand_type() for such task, but we can't use it during
-        semantic analysis, because it can (indirectly) call is_subtype() etc., and it
-        will crash on placeholder types. So we hijack replace_alias_tvars() that was initially
-        intended to deal with eager expansion of generic type aliases during semantic analysis.
+        Note it is safe to use expand_type() during semantic analysis, because it should never
+        (indirectly) call is_subtype().
         """
         mapped_items = {}
         for key in valid_items:
@@ -254,10 +252,9 @@ class TypedDictAnalyzer:
             if not tvars:
                 mapped_items[key] = type_in_base
                 continue
-            mapped_type = replace_alias_tvars(
-                type_in_base, tvars, base_args, type_in_base.line, type_in_base.column
+            mapped_items[key] = expand_type(
+                type_in_base, {t.id: a for (t, a) in zip(tvars, base_args)}
             )
-            mapped_items[key] = mapped_type
         return mapped_items
 
     def analyze_typeddict_classdef_fields(
