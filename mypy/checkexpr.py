@@ -155,12 +155,9 @@ from mypy.types import (
     get_proper_type,
     get_proper_types,
     has_recursive_types,
-    is_generic_instance,
     is_named_instance,
-    is_optional,
-    is_self_type_like,
-    remove_optional,
 )
+from mypy.types_utils import is_generic_instance, is_optional, is_self_type_like, remove_optional
 from mypy.typestate import type_state
 from mypy.typevars import fill_typevars
 from mypy.typevartuples import find_unpack_in_list

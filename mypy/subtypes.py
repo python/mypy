@@ -58,10 +58,10 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
-    _flattened,
     get_proper_type,
     is_named_instance,
 )
+from mypy.types_utils import flatten_types
 from mypy.typestate import SubtypeKind, type_state
 from mypy.typevars import fill_typevars_with_any
 from mypy.typevartuples import extract_unpack, fully_split_with_mapped_and_template
@@ -913,7 +913,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
             fast_check: set[ProperType] = set()
 
-            for item in _flattened(self.right.relevant_items()):
+            for item in flatten_types(self.right.relevant_items()):
                 p_item = get_proper_type(item)
                 fast_check.add(p_item)
                 if isinstance(p_item, Instance) and p_item.last_known_value is not None:

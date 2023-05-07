@@ -81,12 +81,12 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
-    bad_type_type_item,
     callable_with_ellipsis,
     flatten_nested_unions,
     get_proper_type,
     has_type_vars,
 )
+from mypy.types_utils import is_bad_type_type_item
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars
 
@@ -564,7 +564,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     type_str + " must have exactly one type argument", t, code=codes.VALID_TYPE
                 )
             item = self.anal_type(t.args[0])
-            if bad_type_type_item(item):
+            if is_bad_type_type_item(item):
                 self.fail("Type[...] can't contain another Type[...]", t, code=codes.VALID_TYPE)
                 item = AnyType(TypeOfAny.from_error)
             return TypeType.make_normalized(item, line=t.line, column=t.column)

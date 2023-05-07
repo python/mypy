@@ -46,8 +46,8 @@ from mypy.types import (
     has_recursive_types,
     has_type_vars,
     is_named_instance,
-    is_union_with_any,
 )
+from mypy.types_utils import is_union_with_any
 from mypy.typestate import type_state
 from mypy.typevartuples import (
     extract_unpack,
