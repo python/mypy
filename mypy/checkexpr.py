@@ -2054,7 +2054,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if (
                     isinstance(first_actual_arg_type, TupleType)
                     and len(first_actual_arg_type.items) == 1
-                    and isinstance(get_proper_type(first_actual_arg_type.items[0]), UnpackType)
+                    and isinstance(first_actual_arg_type.items[0], UnpackType)
                 ):
                     # TODO: use walrus operator
                     actual_types = [first_actual_arg_type.items[0]] + [
@@ -2081,7 +2081,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                             callee_arg_types = unpacked_type.items
                             callee_arg_kinds = [ARG_POS] * len(actuals)
                         else:
-                            inner_unpack = get_proper_type(unpacked_type.items[inner_unpack_index])
+                            inner_unpack = unpacked_type.items[inner_unpack_index]
                             assert isinstance(inner_unpack, UnpackType)
                             inner_unpacked_type = get_proper_type(inner_unpack.type)
                             # We assume heterogenous tuples are desugared earlier

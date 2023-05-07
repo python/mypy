@@ -44,6 +44,10 @@ python3 -m pip install -e .
 hash -r  # This resets shell PATH cache, not necessary on Windows
 ```
 
+> **Note**
+> You'll need Python 3.8 or higher to install all requirements listed in
+> test-requirements.txt
+
 ### Running tests
 
 Running the full test suite can take a while, and usually isn't necessary when

@@ -97,7 +97,7 @@ jobs:
           # but it's useful to run them with tox too,
           # to ensure the tox env works as expected
         - name: Formatting with Black + isort and code style with flake8
-          python: '3.7'
+          python: '3.10'
           arch: x64
           os: ubuntu-latest
           toxenv: lint
