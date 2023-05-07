@@ -4,16 +4,16 @@ repos:
     hooks:
       - id: black
   - repo: https://github.com/pycqa/isort
-    rev: 5.11.5  # must match test-requirements.txt (cannot use version 5.12 until python 3.7 support is dropped)
+    rev: 5.12.0  # must match test-requirements.txt
     hooks:
       - id: isort
   - repo: https://github.com/pycqa/flake8
-    rev: 5.0.4  # must match test-requirements.txt (cannot use version 6 until python 3.7 support is dropped)
+    rev: 6.0.0  # must match test-requirements.txt
     hooks:
       - id: flake8
         additional_dependencies:
-          - flake8-bugbear==22.12.6  # must match test-requirements.txt
-          - flake8-noqa==1.3.0       # must match test-requirements.txt
+          - flake8-bugbear==23.3.23  # must match test-requirements.txt
+          - flake8-noqa==1.3.1       # must match test-requirements.txt
 
 ci:
   # We run flake8 as part of our GitHub Actions suite in CI
