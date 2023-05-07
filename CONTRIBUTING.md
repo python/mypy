@@ -45,8 +45,8 @@ hash -r  # This resets shell PATH cache, not necessary on Windows
 ```
 
 > **Note**
-> Some code quality tools are not compatible with old python versions, you'll
-> need python version 3.8 or higher to install and run them.
+> You'll need Python 3.8 or higher to install all requirements listed in
+> test-requirements.txt
 
 ### Running tests
 
