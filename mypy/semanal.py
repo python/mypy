@@ -276,7 +276,7 @@ from mypy.types import (
     get_proper_types,
     is_named_instance,
 )
-from mypy.types_utils import invalid_recursive_alias, store_argument_type
+from mypy.types_utils import is_invalid_recursive_alias, store_argument_type
 from mypy.typevars import fill_typevars
 from mypy.util import (
     correct_relative_import,
@@ -3604,7 +3604,7 @@ class SemanticAnalyzer(
     ) -> None:
         """Prohibit and fix recursive type aliases that are invalid/unsupported."""
         messages = []
-        if invalid_recursive_alias({current_node}, current_node.target):
+        if is_invalid_recursive_alias({current_node}, current_node.target):
             messages.append("Invalid recursive alias: a union item of itself")
         if detect_diverging_alias(
             current_node, current_node.target, self.lookup_qualified, self.tvar_scope

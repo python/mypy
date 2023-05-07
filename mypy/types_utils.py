@@ -32,11 +32,11 @@ from mypy.types import (
 )
 
 
-def flattened(types: Iterable[Type]) -> Iterable[Type]:
+def flatten_types(types: Iterable[Type]) -> Iterable[Type]:
     for t in types:
         tp = get_proper_type(t)
         if isinstance(tp, UnionType):
-            yield from flattened(tp.items)
+            yield from flatten_types(tp.items)
         else:
             yield t
 
@@ -53,7 +53,7 @@ def strip_type(typ: Type) -> Type:
         return orig_typ
 
 
-def invalid_recursive_alias(seen_nodes: set[TypeAlias], target: Type) -> bool:
+def is_invalid_recursive_alias(seen_nodes: set[TypeAlias], target: Type) -> bool:
     """Flag aliases like A = Union[int, A] (and similar mutual aliases).
 
     Such aliases don't make much sense, and cause problems in later phases.
@@ -62,14 +62,14 @@ def invalid_recursive_alias(seen_nodes: set[TypeAlias], target: Type) -> bool:
         if target.alias in seen_nodes:
             return True
         assert target.alias, f"Unfixed type alias {target.type_ref}"
-        return invalid_recursive_alias(seen_nodes | {target.alias}, get_proper_type(target))
+        return is_invalid_recursive_alias(seen_nodes | {target.alias}, get_proper_type(target))
     assert isinstance(target, ProperType)
     if not isinstance(target, UnionType):
         return False
-    return any(invalid_recursive_alias(seen_nodes, item) for item in target.items)
+    return any(is_invalid_recursive_alias(seen_nodes, item) for item in target.items)
 
 
-def bad_type_type_item(item: Type) -> bool:
+def is_bad_type_type_item(item: Type) -> bool:
     """Prohibit types like Type[Type[...]].
 
     Such types are explicitly prohibited by PEP 484. Also, they cause problems
