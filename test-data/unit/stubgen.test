@@ -2932,6 +2932,18 @@ class Y(TypedDict, total=False):
     a: int
     b: str
 
+[case testTypeddictClassWithKeyword]
+from typing import TypedDict
+class MyDict(TypedDict, total=False):
+    foo: str
+    bar: int
+[out]
+from typing import TypedDict
+
+class MyDict(TypedDict, total=False):
+    foo: str
+    bar: int
+
 [case testTypeddictKeywordSyntax]
 from typing import TypedDict
 
