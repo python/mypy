@@ -382,7 +382,7 @@ Example:
         pass
 
 Check that your code have top-level await statements [top-level-await]
----------------------------------------------------------------------
+----------------------------------------------------------------------
 
 mypy generates an error if you have a top-level await statement.
 
@@ -401,7 +401,7 @@ Example:
 
 
 Check that strings have wrong format parameters [str-format]
----------------------------------------------------------------------
+------------------------------------------------------------
 
 mypy generates an error if you have a string with wrong format parameters.
 
@@ -419,7 +419,7 @@ Example:
     print("%d %d" % ("Hello", "World"))
 
 Check that annotations are inside an unannotated function [annotation-unchecked]
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 mypy generates an error to notify that you have annotations which are not checked in an unannotated function.
 
