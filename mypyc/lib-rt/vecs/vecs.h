@@ -199,6 +199,7 @@ static inline int VecI64_Check(PyObject *o) {
 PyObject *Vec_I64_Box(VecI64);
 VecI64 Vec_I64_Append(VecI64, int64_t x);
 VecI64 Vec_I64_Remove(VecI64, int64_t x);
+VecI64 Vec_I64_Pop(VecI64 v, Py_ssize_t index, int64_t *result);
 
 // vec[t] operations (simple)
 
@@ -223,6 +224,7 @@ PyObject *Vec_T_FromIterable(size_t item_type, PyObject *iterable);
 PyObject *Vec_T_Box(VecT);
 VecT Vec_T_Append(VecT vec, PyObject *x);
 VecT Vec_T_Remove(VecT vec, PyObject *x);
+VecT Vec_T_Pop(VecT v, Py_ssize_t index, PyObject **result);
 
 // vec[t] operations (extended)
 
@@ -255,6 +257,7 @@ PyObject *Vec_T_Ext_FromIterable(size_t item_type, int32_t optionals, int32_t de
 PyObject *Vec_T_Ext_Box(VecTExt);
 VecTExt Vec_T_Ext_Append(VecTExt vec, VecbufTExtItem x);
 VecTExt Vec_T_Ext_Remove(VecTExt vec, VecbufTExtItem x);
+VecTExt Vec_T_Ext_Pop(VecTExt v, Py_ssize_t index, VecbufTExtItem *result);
 
 // Return 0 on success, -1 on error. Store unboxed item in *unboxed if successful.
 // Return a new reference.
@@ -297,6 +300,29 @@ static inline int Vec_T_Ext_UnboxItem(VecTExt v, PyObject *item, VecbufTExtItem 
     // TODO: better error message
     PyErr_SetString(PyExc_TypeError, "invalid item type");
     return -1;
+}
+
+static inline PyObject *Vec_T_Ext_BoxItem(VecTExt v, VecbufTExtItem item) {
+    if (item.len < 0)
+        Py_RETURN_NONE;
+    Py_INCREF(item.buf);
+    if (v.buf->depth > 1) {
+        // Item is a nested vec
+        VecTExt v = { .len = item.len, .buf = (VecbufTExtObject *)item.buf };
+        return Vec_T_Ext_Box(v);
+    } else {
+        // Item is a non-nested vec
+        void *item_type = (void *)(v.buf->item_type & ~1);
+        if (item_type == I64TypeObj) {
+            // vec[i64]
+            VecI64 v = { .len = item.len, .buf = (VecbufI64Object *)item.buf };
+            return Vec_I64_Box(v);
+        } else {
+            // Generic vec[t]
+            VecT v = { .len = item.len, .buf = (VecbufTObject *)item.buf };
+            return Vec_T_Box(v);
+        }
+    }
 }
 
 // Misc helpers

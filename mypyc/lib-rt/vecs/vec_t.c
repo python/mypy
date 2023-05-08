@@ -184,7 +184,7 @@ VecT Vec_T_Remove(VecT v, PyObject *arg) {
     return Vec_T_Error();
 }
 
-static VecT Vec_T_Pop(VecT v, Py_ssize_t index, PyObject **result) {
+VecT Vec_T_Pop(VecT v, Py_ssize_t index, PyObject **result) {
     if (index < 0)
         index += v.len;
 
@@ -202,33 +202,6 @@ static VecT Vec_T_Pop(VecT v, Py_ssize_t index, PyObject **result) {
     v.len--;
     VEC_INCREF(v);
     return v;
-}
-
-static PyObject *vec_t_pop(PyObject *self, PyObject *args) {
-    Py_ssize_t index = -1;
-    if (!PyArg_ParseTuple(args, "|n:pop", &index))
-        return NULL;
-
-    VecT v = ((VecTObject *)self)->vec;
-    PyObject *result;
-    v = Vec_T_Pop(v, index, &result);
-    if (VEC_IS_ERROR(v))
-        return NULL;
-
-    PyObject *vboxed = Vec_T_Box(v);
-    if (vboxed == NULL)
-        return NULL;
-
-    PyObject *res = PyTuple_New(2);
-    if (res == NULL) {
-        Py_DECREF(vboxed);
-        Py_DECREF(result);
-        return NULL;
-    }
-
-    PyTuple_SetItem(res, 0, vboxed);
-    PyTuple_SetItem(res, 1, result);
-    return res;
 }
 
 static int
@@ -310,7 +283,6 @@ static PySequenceMethods VecTSequence = {
 };
 
 static PyMethodDef vec_t_methods[] = {
-    {"pop", vec_t_pop, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL},  /* Sentinel */
 };
 

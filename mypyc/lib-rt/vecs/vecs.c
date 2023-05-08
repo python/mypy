@@ -411,9 +411,84 @@ static PyObject *vecs_remove(PyObject *self, PyObject *args)
     }
 }
 
+static PyObject *vecs_pop(PyObject *self, PyObject *args)
+{
+    PyObject *vec;
+    Py_ssize_t index = -1;
+
+    if (!PyArg_ParseTuple(args, "O|n:pop", &vec, &index))
+        return NULL;
+
+    PyObject *result_item0;
+    PyObject *result_item1;
+
+    if (VecI64_Check(vec)) {
+        VecI64 v = ((VecI64Object *)vec)->vec;
+        int64_t item;
+        v = Vec_I64_Pop(v, index, &item);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+
+        result_item0 = Vec_I64_Box(v);
+        if (result_item0 == NULL)
+            return NULL;
+        result_item1 = PyLong_FromLongLong(item);
+    } else if (VecT_Check(vec)) {
+        VecT v = ((VecTObject *)vec)->vec;
+        v = Vec_T_Pop(v, index, &result_item1);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+
+        result_item0 = Vec_T_Box(v);
+        if (result_item0 == NULL) {
+            Py_DECREF(result_item1);
+            return NULL;
+        }
+    } else if (VecTExt_Check(vec)) {
+        VecTExt v = ((VecTExtObject *)vec)->vec;
+        VecbufTExtItem item;
+        v = Vec_T_Ext_Pop(v, index, &item);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+
+        result_item0 = Vec_T_Ext_Box(v);
+        if (result_item0 == NULL) {
+            Py_DECREF(item.buf);
+            return NULL;
+        }
+
+        result_item1 = Vec_T_Ext_BoxItem(v, item);
+        if (result_item1 == NULL) {
+            Py_DECREF(result_item0);
+            Py_DECREF(item.buf);
+            return NULL;
+        }
+    } else {
+        PyErr_SetString(PyExc_TypeError, "vec argument expected");
+        return NULL;
+    }
+
+    if (result_item1 == NULL) {
+        Py_DECREF(result_item0);
+        return NULL;
+    }
+
+    PyObject *res = PyTuple_New(2);
+    if (res == NULL) {
+        Py_DECREF(result_item0);
+        Py_DECREF(result_item1);
+        return NULL;
+    }
+
+    PyTuple_SET_ITEM(res, 0, result_item0);
+    PyTuple_SET_ITEM(res, 1, result_item1);
+    return res;
+}
+
 static PyMethodDef VecsMethods[] = {
-    {"append",  vecs_append, METH_VARARGS, "Append a value to a vec"},
-    {"remove",  vecs_remove, METH_VARARGS, "Remove a value from a vec"},
+    {"append",  vecs_append, METH_VARARGS, "Append a value to the end of a vec"},
+    {"remove",  vecs_remove, METH_VARARGS, "Remove first occurrence of value"},
+    {"pop",  vecs_pop, METH_VARARGS, "Remove and return item at index (default last)"},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

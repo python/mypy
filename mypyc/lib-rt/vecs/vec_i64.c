@@ -236,7 +236,7 @@ VecI64 Vec_I64_Remove(VecI64 v, int64_t x) {
     return Vec_I64_Error();
 }
 
-static VecI64 Vec_I64_Pop(VecI64 v, Py_ssize_t index, int64_t *result) {
+VecI64 Vec_I64_Pop(VecI64 v, Py_ssize_t index, int64_t *result) {
     if (index < 0)
         index += v.len;
 
@@ -246,44 +246,13 @@ static VecI64 Vec_I64_Pop(VecI64 v, Py_ssize_t index, int64_t *result) {
     }
 
     *result = v.buf->items[index];
-    for (Py_ssize_t i = index; i < v.len - 1; i++)
+    for (Py_ssize_t i = index; i < v.len - 1; i++) {
         v.buf->items[i] = v.buf->items[i + 1];
+    }
 
     v.len--;
     VEC_INCREF(v);
     return v;
-}
-
-static PyObject *vec_i64_pop(PyObject *self, PyObject *args) {
-    Py_ssize_t index = -1;
-    if (!PyArg_ParseTuple(args, "|n:pop", &index))
-        return NULL;
-
-    int64_t x;
-    VecI64Object *vec = (VecI64Object *)self;
-    VecI64 vec2 = Vec_I64_Pop(vec->vec, index, &x);
-    if (VEC_IS_ERROR(vec2))
-        return NULL;
-
-    PyObject *item0 = Vec_I64_Box(vec2);
-    if (item0 == NULL)
-        return NULL;
-    PyObject *item1 = PyLong_FromLongLong(x);
-    if (item1 == NULL) {
-        Py_DECREF(item0);
-        return NULL;
-    }
-
-    PyObject *res = PyTuple_New(2);
-    if (res == NULL) {
-        Py_DECREF(item0);
-        Py_DECREF(item1);
-        return NULL;
-    }
-
-    PyTuple_SetItem(res, 0, item0);
-    PyTuple_SetItem(res, 1, item1);
-    return res;
 }
 
 static PyMappingMethods VecI64Mapping = {
@@ -297,7 +266,6 @@ static PySequenceMethods VecI64Sequence = {
 };
 
 static PyMethodDef vec_i64_methods[] = {
-    {"pop", vec_i64_pop, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL},  /* Sentinel */
 };
 

@@ -9,31 +9,8 @@
 #include <Python.h>
 #include "vecs.h"
 
-static inline PyObject *box_vec_item(VecTExt v, VecbufTExtItem item) {
-    if (item.len < 0)
-        Py_RETURN_NONE;
-    Py_INCREF(item.buf);
-    if (v.buf->depth > 1) {
-        // Item is a nested vec
-        VecTExt v = { .len = item.len, .buf = (VecbufTExtObject *)item.buf };
-        return Vec_T_Ext_Box(v);
-    } else {
-        // Item is a non-nested vec
-        void *item_type = (void *)(v.buf->item_type & ~1);
-        if (item_type == I64TypeObj) {
-            // vec[i64]
-            VecI64 v = { .len = item.len, .buf = (VecbufI64Object *)item.buf };
-            return Vec_I64_Box(v);
-        } else {
-            // Generic vec[t]
-            VecT v = { .len = item.len, .buf = (VecbufTObject *)item.buf };
-            return Vec_T_Box(v);
-        }
-    }
-}
-
 static inline PyObject *box_vec_item_by_index(VecTExt v, Py_ssize_t index) {
-    return box_vec_item(v, v.buf->items[index]);
+    return Vec_T_Ext_BoxItem(v, v.buf->items[index]);
 }
 
 
@@ -212,7 +189,7 @@ PyObject *vec_t_ext_richcompare(PyObject *self, PyObject *other, int op) {
 VecTExt Vec_T_Ext_Remove(VecTExt self, VecbufTExtItem arg) {
     VecbufTExtItem *items = self.buf->items;
 
-    PyObject *boxed_arg = box_vec_item(self, arg);
+    PyObject *boxed_arg = Vec_T_Ext_BoxItem(self, arg);
     if (boxed_arg == NULL)
         return Vec_T_Ext_Error();
 
@@ -252,7 +229,7 @@ VecTExt Vec_T_Ext_Remove(VecTExt self, VecbufTExtItem arg) {
     return Vec_T_Ext_Error();
 }
 
-static VecTExt Vec_T_Ext_Pop(VecTExt v, Py_ssize_t index, VecbufTExtItem *result) {
+VecTExt Vec_T_Ext_Pop(VecTExt v, Py_ssize_t index, VecbufTExtItem *result) {
     if (index < 0)
         index += v.len;
 
@@ -270,40 +247,6 @@ static VecTExt Vec_T_Ext_Pop(VecTExt v, Py_ssize_t index, VecbufTExtItem *result
     v.len--;
     VEC_INCREF(v);
     return v;
-}
-
-static PyObject *vec_t_ext_pop(PyObject *self, PyObject *args) {
-    Py_ssize_t index = -1;
-    if (!PyArg_ParseTuple(args, "|n:pop", &index))
-        return NULL;
-
-    VecTExt v = ((VecTExtObject *)self)->vec;
-    VecbufTExtItem result;
-    v = Vec_T_Ext_Pop(v, index, &result);
-    if (VEC_IS_ERROR(v))
-        return NULL;
-
-    PyObject *vboxed = Vec_T_Ext_Box(v);
-    if (vboxed == NULL)
-        return NULL;
-
-    PyObject *result_boxed = box_vec_item(v, result);
-    if (result_boxed == NULL) {
-        Py_DECREF(vboxed);
-        Py_DECREF(result.buf);
-    }
-
-    PyObject *res = PyTuple_New(2);
-    if (res == NULL) {
-        Py_DECREF(vboxed);
-        Py_DECREF(result.buf);
-        Py_DECREF(result_boxed);
-        return NULL;
-    }
-
-    PyTuple_SetItem(res, 0, vboxed);
-    PyTuple_SetItem(res, 1, result_boxed);
-    return res;
 }
 
 static int
@@ -385,7 +328,6 @@ static PySequenceMethods VecTExtSequence = {
 };
 
 static PyMethodDef vec_t_ext_methods[] = {
-    {"pop", vec_t_ext_pop, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL},  /* Sentinel */
 };
 
