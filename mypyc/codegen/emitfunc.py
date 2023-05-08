@@ -324,8 +324,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             self.emit_line("{} {} = {{ {} }};".format(self.ctype(op.type), tmp, ", ".join(values)))
             self.emit_line(f"{reg} = {tmp};")
         elif isinstance(op.type, RVec):
-            self.emit_line(f"{reg}.len = -1;")
-            self.emit_line(f"{reg}.buf = NULL;")
+            self.emitter.set_undefined_value(reg, op.type);
         else:
             self.emit_line(f"{self.reg(op)} = {self.c_error_value(op.type)};")
 

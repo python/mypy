@@ -327,6 +327,13 @@ class Emitter:
         else:
             return ctype + " "
 
+    def set_undefined_value(self, target: str, rtype: RType) -> None:
+        if isinstance(rtype, RVec):
+            self.emit_line(f"{target}.len = -1;")
+            self.emit_line(f"{target}.buf = NULL;")
+        else:
+            self.emit_line(f"{target} = {self.c_undefined_value(rtype)};")
+
     def c_undefined_value(self, rtype: RType) -> str:
         if not rtype.is_unboxed:
             return "NULL"
@@ -436,6 +443,12 @@ class Emitter:
             return self.tuple_undefined_check_cond(
                 rtype, value, self.c_error_value, compare, check_exception=False
             )
+        elif isinstance(rtype, RVec):
+            if compare == "==":
+                return f"{value}.len < 0"
+            elif compare == "!=":
+                return f"{value}.len >= 0"
+            assert False, compare
         else:
             return f"{value} {compare} {self.c_error_value(rtype)}"
 
@@ -521,7 +534,7 @@ class Emitter:
                 self.emit_inc_ref(f"{dest}.f{i}", item_type)
         elif isinstance(rtype, RVec):
             # TODO: Only use the X variant if buf can be NULL
-            self.emit_line(f"CPy_XINCREF({dest}.buf);")
+            self.emit_line(f"Py_XINCREF({dest}.buf);")
         elif not rtype.is_unboxed:
             # Always inline, since this is a simple but very hot op
             if rtype.may_be_immortal or not HAVE_IMMORTAL:
@@ -1152,6 +1165,8 @@ class Emitter:
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_gc_visit(f"{target}.f{i}", item_type)
+        elif isinstance(rtype, RVec):
+            self.emit_line(f"Py_VISIT({target}.buf);")
         elif self.ctype(rtype) == "PyObject *":
             # The simplest case.
             self.emit_line(f"Py_VISIT({target});")
@@ -1176,6 +1191,8 @@ class Emitter:
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_gc_clear(f"{target}.f{i}", item_type)
+        elif isinstance(rtype, RVec):
+            self.emit_line(f"Py_CLEAR({target}.buf);")
         elif self.ctype(rtype) == "PyObject *" and self.c_undefined_value(rtype) == "NULL":
             # The simplest case.
             self.emit_line(f"Py_CLEAR({target});")
