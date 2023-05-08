@@ -335,7 +335,7 @@ def vec_remove(builder: "LowLevelIRBuilder", vec: Value, item: Value, line: int)
     call = CallC(
         name,
         [vec, item],
-        c_int_rprimitive,
+        vec_type,
         steals=[False, False],
         is_borrowed=False,
         error_kind=ERR_FALSE,

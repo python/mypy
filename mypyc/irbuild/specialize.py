@@ -104,7 +104,7 @@ from mypyc.irbuild.format_str_tokenizer import (
     join_formatted_strings,
     tokenizer_format_call,
 )
-from mypyc.irbuild.vec import vec_append
+from mypyc.irbuild.vec import vec_append, vec_remove
 from mypyc.primitives.bytearray_ops import isinstance_bytearray
 from mypyc.primitives.bytes_ops import (
     bytes_adjust_index_op,
@@ -1513,4 +1513,18 @@ def translate_vec_append(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
             vec_value = builder.accept(vec_arg)
             arg_value = builder.accept(item_arg)
             return vec_append(builder.builder, vec_value, arg_value, item_arg.line)
+    return None
+
+
+@specialize_function("vecs.remove")
+def translate_vec_append(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+    if len(expr.args) == 2 and expr.arg_kinds == [ARG_POS, ARG_POS]:
+        vec_arg = expr.args[0]
+        item_arg = expr.args[1]
+        vec_type = builder.node_type(vec_arg)
+        item_type = builder.node_type(item_arg)
+        if isinstance(vec_type, RVec):
+            vec_value = builder.accept(vec_arg)
+            arg_value = builder.accept(item_arg)
+            return vec_remove(builder.builder, vec_value, arg_value, item_arg.line)
     return None

@@ -1134,3 +1134,19 @@ L0:
     r4 = VecI64Api.slice(v, 1, -2)
     e = r4
     return 1
+
+[case testNewVecI64Remove]
+from vecs import vec, remove
+from mypy_extensions import i64
+
+def rem(v: vec[i64], n: i64) -> None:
+    v = remove(v, n)
+[out]
+def rem(v, n):
+    v :: vec[int64]
+    n :: int64
+    r0 :: vec[int64]
+L0:
+    r0 = VecI64Api.remove(v, n)
+    v = r0
+    return 1
