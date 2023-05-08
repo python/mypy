@@ -347,8 +347,10 @@ silence the error:
 
     async def g() -> None:
         _ = asyncio.create_task(f())  # No error
+
 Check that variables are defined only in some execution paths [possibly-undefined]
 ----------------------------------------------------------------------------------
+
 If you use :option:`--enable-error-code possibly-undefined <mypy --enable-error-code>`,
 mypy generates an error if you don't define a variable in all execution paths.
 
@@ -367,6 +369,7 @@ Example:
 
 Check that functions have empty body [empty-body]
 -------------------------------------------------------------------
+
 mypy generates an error if you have a function that has an empty body.
 Example:
 
@@ -378,9 +381,9 @@ Example:
         # Error: Function is missing a body
         pass
 
-
 Check that your code have top-level await statements [top-level-await]
 ---------------------------------------------------------------------
+
 mypy generates an error if you have a top-level await statement.
 
 Example:
@@ -399,6 +402,7 @@ Example:
 
 Check that strings have wrong format parameters [str-format]
 ---------------------------------------------------------------------
+
 mypy generates an error if you have a string with wrong format parameters.
 
 Example:
@@ -416,6 +420,7 @@ Example:
 
 Check that annotations are inside an unannotated function [annotation-unchecked]
 -------------------------------------------------------------------------------
+
 mypy generates an error to notify that you have annotations which are not checked in an unannotated function.
 
 Consider using --check-untyped-defs option if you want to check unannotated functions as well.
@@ -428,4 +433,3 @@ Example:
         x: int = 1
         # Error: Annotation type "int" is not checked
         return x
-
