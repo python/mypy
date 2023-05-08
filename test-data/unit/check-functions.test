@@ -2852,6 +2852,40 @@ class D(A):
 [builtins fixtures/property.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case explicitOverrideSettableProperty]
+# flags: --python-version 3.12
+from typing import override
+
+class A:
+    @property
+    def f(self) -> str: pass
+
+    @f.setter
+    def f(self, value: str) -> None: pass
+
+class B(A):
+    @property  # E: Read-only property cannot override read-write property
+    @override
+    def f(self) -> str: pass
+
+class C(A):
+    @override
+    @property
+    def f(self) -> str: pass
+
+    @f.setter
+    def f(self, value: str) -> None: pass
+
+class D(A):
+    @override  # E: Signature of "f" incompatible with supertype "A"
+    @property
+    def f(self) -> int: pass
+
+    @f.setter
+    def f(self, value: int) -> None: pass
+[builtins fixtures/property.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case invalidExplicitOverride]
 # flags: --python-version 3.12
 from typing import override
@@ -2894,5 +2928,74 @@ class A:
 class B(A):
     @override
     def f2(self, x: int) -> str: pass  # E: Method "f2" is marked as an override, but no base method was found with this name
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]
+
+[case explicitOverrideOverloads]
+# flags: --python-version 3.12
+from typing import overload, override
+
+class A:
+    def f(self, x: int) -> str: pass
+
+class B(A):
+    @overload  # E: Method "f2" is marked as an override, but no base method was found with this name
+    def f2(self, x: int) -> str: pass
+    @overload
+    def f2(self, x: str) -> str: pass
+    @override
+    def f2(self, x: int | str) -> str: pass
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]
+
+[case explicitOverrideNotOnOverloadsImplementation]
+# flags: --python-version 3.12
+from typing import overload, override
+
+class A:
+    def f(self, x: int) -> str: pass
+
+class B(A):
+    @overload  # E: Method "f2" is marked as an override, but no base method was found with this name
+    def f2(self, x: int) -> str: pass
+    @override
+    @overload
+    def f2(self, x: str) -> str: pass
+    def f2(self, x: int | str) -> str: pass
+
+class C(A):
+    @overload
+    def f(self, y: int) -> str: pass
+    @override
+    @overload
+    def f(self, y: str) -> str: pass
+    def f(self, y: int | str) -> str: pass
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]
+
+[case explicitOverrideOnMultipleOverloads]
+# flags: --python-version 3.12
+from typing import overload, override
+
+class A:
+    def f(self, x: int) -> str: pass
+
+class B(A):
+    @override  # E: Method "f2" is marked as an override, but no base method was found with this name
+    @overload
+    def f2(self, x: int) -> str: pass
+    @override
+    @overload
+    def f2(self, x: str) -> str: pass
+    def f2(self, x: int | str) -> str: pass
+
+class C(A):
+    @overload
+    def f(self, y: int) -> str: pass
+    @override
+    @overload
+    def f(self, y: str) -> str: pass
+    @override
+    def f(self, y: int | str) -> str: pass
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/tuple.pyi]

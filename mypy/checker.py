@@ -641,7 +641,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if defn.impl:
             defn.impl.accept(self)
         if defn.info:
-            self.check_method_override(defn)
+            found_base_method = self.check_method_override(defn)
+            if defn.is_explicit_override and found_base_method is False:
+                self.msg.no_overridable_method(defn.name, defn)
             self.check_inplace_operator_method(defn)
         if not defn.is_property:
             self.check_overlapping_overloads(defn)
