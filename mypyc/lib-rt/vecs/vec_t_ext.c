@@ -186,6 +186,33 @@ PyObject *vec_t_ext_richcompare(PyObject *self, PyObject *other, int op) {
     return res;
 }
 
+// Steals references to vec and x
+VecTExt Vec_T_Ext_Append(VecTExt vec, VecbufTExtItem x) {
+    Py_ssize_t cap = VEC_CAP(vec);
+    if (vec.len < cap) {
+        vec.buf->items[vec.len] = x;
+        vec.len++;
+        return vec;
+    } else {
+        Py_ssize_t new_size = 2 * cap + 1;
+        // TODO: Avoid initializing to zero here
+        VecTExt new = vec_t_ext_alloc(new_size, vec.buf->item_type, vec.buf->optionals,
+                                      vec.buf->depth);
+        if (VEC_IS_ERROR(new))
+            return new;
+        // Copy items to new vec.
+        memcpy(new.buf->items, vec.buf->items, sizeof(VecbufTExtItem) * vec.len);
+        // TODO: How to safely represent deleted items?
+        memset(new.buf->items + vec.len, 0, sizeof(VecbufTExtItem) * (new_size - vec.len));
+        // Clear the items in the old vec. We avoid reference count manipulation.
+        memset(vec.buf->items, 0, sizeof(VecbufTExtItem) * vec.len);
+        new.buf->items[vec.len] = x;
+        new.len = vec.len + 1;
+        VEC_DECREF(vec);
+        return new;
+    }
+}
+
 VecTExt Vec_T_Ext_Remove(VecTExt self, VecbufTExtItem arg) {
     VecbufTExtItem *items = self.buf->items;
 
@@ -399,33 +426,6 @@ PyObject *Vec_T_Ext_FromIterable(size_t item_type, int32_t optionals, int32_t de
         return NULL;
     }
     return Vec_T_Ext_Box(v);
-}
-
-// Steals references to vec and x
-VecTExt Vec_T_Ext_Append(VecTExt vec, VecbufTExtItem x) {
-    Py_ssize_t cap = VEC_CAP(vec);
-    if (vec.len < cap) {
-        vec.buf->items[vec.len] = x;
-        vec.len++;
-        return vec;
-    } else {
-        Py_ssize_t new_size = 2 * cap + 1;
-        // TODO: Avoid initializing to zero here
-        VecTExt new = vec_t_ext_alloc(new_size, vec.buf->item_type, vec.buf->optionals,
-                                      vec.buf->depth);
-        if (VEC_IS_ERROR(new))
-            return new;
-        // Copy items to new vec.
-        memcpy(new.buf->items, vec.buf->items, sizeof(VecbufTExtItem) * vec.len);
-        // TODO: How to safely represent deleted items?
-        memset(new.buf->items + vec.len, 0, sizeof(VecbufTExtItem) * (new_size - vec.len));
-        // Clear the items in the old vec. We avoid reference count manipulation.
-        memset(vec.buf->items, 0, sizeof(VecbufTExtItem) * vec.len);
-        new.buf->items[vec.len] = x;
-        new.len = vec.len + 1;
-        VEC_DECREF(vec);
-        return new;
-    }
 }
 
 VecTExtFeatures TExtFeatures = {

@@ -156,6 +156,31 @@ PyObject *vec_t_richcompare(PyObject *self, PyObject *other, int op) {
     return res;
 }
 
+VecT Vec_T_Append(VecT vec, PyObject *x) {
+    Py_ssize_t cap = VEC_CAP(vec);
+    Py_INCREF(x);
+    if (vec.len < cap) {
+        vec.buf->items[vec.len] = x;
+        vec.len++;
+        return vec;
+    } else {
+        Py_ssize_t new_size = 2 * cap + 1;
+        // TODO: Avoid initializing to zero here
+        VecT new = vec_t_alloc(new_size, vec.buf->item_type);
+        if (VEC_IS_ERROR(new))
+            return new;
+        // Copy items to new vec.
+        memcpy(new.buf->items, vec.buf->items, sizeof(PyObject *) * vec.len);
+        memset(new.buf->items + vec.len, 0, sizeof(PyObject *) * (new_size - vec.len));
+        // Clear the items in the old vec. We avoid reference count manipulation.
+        memset(vec.buf->items, 0, sizeof(PyObject *) * vec.len);
+        new.buf->items[vec.len] = x;
+        new.len = vec.len + 1;
+        VEC_DECREF(vec);
+        return new;
+    }
+}
+
 VecT Vec_T_Remove(VecT v, PyObject *arg) {
     PyObject **items = v.buf->items;
     for (Py_ssize_t i = 0; i < v.len; i++) {
@@ -352,31 +377,6 @@ PyObject *Vec_T_FromIterable(size_t item_type, PyObject *iterable) {
         return NULL;
     }
     return Vec_T_Box(v);
-}
-
-VecT Vec_T_Append(VecT vec, PyObject *x) {
-    Py_ssize_t cap = VEC_CAP(vec);
-    Py_INCREF(x);
-    if (vec.len < cap) {
-        vec.buf->items[vec.len] = x;
-        vec.len++;
-        return vec;
-    } else {
-        Py_ssize_t new_size = 2 * cap + 1;
-        // TODO: Avoid initializing to zero here
-        VecT new = vec_t_alloc(new_size, vec.buf->item_type);
-        if (VEC_IS_ERROR(new))
-            return new;
-        // Copy items to new vec.
-        memcpy(new.buf->items, vec.buf->items, sizeof(PyObject *) * vec.len);
-        memset(new.buf->items + vec.len, 0, sizeof(PyObject *) * (new_size - vec.len));
-        // Clear the items in the old vec. We avoid reference count manipulation.
-        memset(vec.buf->items, 0, sizeof(PyObject *) * vec.len);
-        new.buf->items[vec.len] = x;
-        new.len = vec.len + 1;
-        VEC_DECREF(vec);
-        return new;
-    }
 }
 
 VecTFeatures TFeatures = {

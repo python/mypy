@@ -221,6 +221,26 @@ static PyObject *vec_i64_richcompare(PyObject *self, PyObject *other, int op) {
     return res;
 }
 
+VecI64 Vec_I64_Append(VecI64 vec, int64_t x) {
+    if (vec.buf && vec.len < VEC_CAP(vec)) {
+        vec.buf->items[vec.len] = x;
+        vec.len++;
+        return vec;
+    } else {
+        Py_ssize_t cap = vec.buf ? VEC_CAP(vec) : 0;
+        Py_ssize_t new_size = 2 * cap + 1;
+        VecI64 new = vec_i64_alloc(new_size);
+        if (VEC_IS_ERROR(new))
+            return Vec_I64_Error();
+        new.len = vec.len + 1;
+        if (vec.len > 0)
+            memcpy(new.buf->items, vec.buf->items, sizeof(int64_t) * vec.len);
+        new.buf->items[vec.len] = x;
+        Py_XDECREF(vec.buf);
+        return new;
+    }
+}
+
 VecI64 Vec_I64_Remove(VecI64 v, int64_t x) {
     for (Py_ssize_t i = 0; i < v.len; i++) {
         if (v.buf->items[i] == x) {
@@ -296,26 +316,6 @@ PyTypeObject VecI64Type = {
     .tp_richcompare = vec_i64_richcompare,
     .tp_methods = vec_i64_methods,
 };
-
-VecI64 Vec_I64_Append(VecI64 vec, int64_t x) {
-    if (vec.buf && vec.len < VEC_CAP(vec)) {
-        vec.buf->items[vec.len] = x;
-        vec.len++;
-        return vec;
-    } else {
-        Py_ssize_t cap = vec.buf ? VEC_CAP(vec) : 0;
-        Py_ssize_t new_size = 2 * cap + 1;
-        VecI64 new = vec_i64_alloc(new_size);
-        if (VEC_IS_ERROR(new))
-            return Vec_I64_Error();
-        new.len = vec.len + 1;
-        if (vec.len > 0)
-            memcpy(new.buf->items, vec.buf->items, sizeof(int64_t) * vec.len);
-        new.buf->items[vec.len] = x;
-        Py_XDECREF(vec.buf);
-        return new;
-    }
-}
 
 VecI64Features I64Features = {
     &VecI64Type,
