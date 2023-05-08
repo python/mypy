@@ -519,6 +519,9 @@ class Emitter:
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_inc_ref(f"{dest}.f{i}", item_type)
+        elif isinstance(rtype, RVec):
+            # TODO: Only use the X variant if buf can be NULL
+            self.emit_line(f"CPy_XINCREF({dest}.buf);")
         elif not rtype.is_unboxed:
             # Always inline, since this is a simple but very hot op
             if rtype.may_be_immortal or not HAVE_IMMORTAL:
@@ -547,6 +550,12 @@ class Emitter:
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_dec_ref(f"{dest}.f{i}", item_type, is_xdec=is_xdec, rare=rare)
+        elif isinstance(rtype, RVec):
+            # TODO: Only use the X variant if buf can be NULL
+            if rare:
+                self.emit_line(f"CPy_XDecRef({dest}.buf);")
+            else:
+                self.emit_line(f"CPy_XDECREF({dest}.buf);")
         elif not rtype.is_unboxed:
             if rare:
                 self.emit_line(f"CPy_{x}DecRef({dest});")
@@ -556,6 +565,8 @@ class Emitter:
                     self.emit_line(f"CPy_{x}DECREF({dest});")
                 else:
                     self.emit_line(f"CPy_{x}DECREF_NO_IMM({dest});")
+        elif rtype.is_refcounted:
+            assert False, f"dec_ref not implemented for {rtype}"
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
     def pretty_name(self, typ: RType) -> str:
@@ -1034,7 +1045,13 @@ class Emitter:
             self.emit_line("}")
             if optional:
                 self.emit_line("}")
-
+        elif isinstance(typ, RVec):
+            assert is_int64_rprimitive(typ.item_type)  # TODO: Support more item types
+            if declare_dest:
+                self.emit_line(f"{self.ctype(typ)} {dest};")
+            # TODO: Handle 'optional'
+            # TODO: Handle 'failure'
+            self.emit_line(f"{dest} = VecI64Api.unbox({src});")
         else:
             assert False, "Unboxing not implemented: %s" % typ
 
@@ -1092,6 +1109,10 @@ class Emitter:
                         inner_name = self.temp_name()
                         self.emit_box(f"{src}.f{i}", inner_name, typ.types[i], declare_dest=True)
                         self.emit_line(f"PyTuple_SET_ITEM({dest}, {i}, {inner_name});")
+        elif isinstance(typ, RVec):
+            assert is_int64_rprimitive(typ.item_type)  # TODO: Support more item types
+            self.emit_line(f"{declaration}{dest} = VecI64Api.box({src});")
+
         else:
             assert not typ.is_unboxed
             # Type is boxed -- trivially just assign.
@@ -1105,6 +1126,8 @@ class Emitter:
             else:
                 cond = self.tuple_undefined_check_cond(rtype, value, self.c_error_value, "==")
                 self.emit_line(f"if ({cond}) {{")
+        elif isinstance(rtype, RVec):
+            self.emit_line(f"if ({value}.len < 0) {{")
         elif rtype.error_overlap:
             # The error value is also valid as a normal value, so we need to also check
             # for a raised exception.

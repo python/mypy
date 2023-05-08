@@ -27,10 +27,6 @@ from mypyc.ir.rtypes import (
     RType,
     RUnion,
     RVec,
-    VecI64Object,
-    VecObject,
-    VecTExtObject,
-    VecTObject,
     bool_rprimitive,
     c_int_rprimitive,
     c_pyssize_t_rprimitive,
@@ -187,26 +183,19 @@ def vec_item_type_info(
 
 
 def vec_len(builder: "LowLevelIRBuilder", val: Value) -> Value:
-    address = builder.add(GetElementPtr(val, VecObject, "len"))
     # TODO: what about 32-bit archs?
-    len_value = builder.load_mem(address, int64_rprimitive)
-    builder.keep_alive([val])
-    return len_value
+    # TODO: merge vec_len and vec_len_native
+    return vec_len_native(builder, val)
 
 
 def vec_len_native(builder: "LowLevelIRBuilder", val: Value) -> Value:
-    return builder.load_struct_field(val, VecObject, "len")
+    return builder.get_element(val, "len")
 
 
 def vec_items(builder: "LowLevelIRBuilder", vecobj: Value) -> Value:
     vtype = cast(RVec, vecobj.type)
-    if is_int64_rprimitive(vtype.item_type):
-        vec_struct = VecI64Object
-    elif vec_depth(vtype) == 0 and not isinstance(vtype.item_type, RUnion):
-        vec_struct = VecTObject
-    else:
-        vec_struct = VecTExtObject
-    return builder.add(GetElementPtr(vecobj, vec_struct, "items"))
+    buf = builder.get_element(vecobj, "buf")
+    return builder.add(GetElementPtr(buf, vtype.buf_type, "items"))
 
 
 def vec_item_ptr(builder: "LowLevelIRBuilder", vecobj: Value, index: Value) -> Value:
@@ -229,8 +218,7 @@ def vec_check_index(builder: "LowLevelIRBuilder", lenv: Value, index: Value, lin
 def vec_get_item(builder: "LowLevelIRBuilder", base: Value, index: Value, line: int) -> Value:
     """Generate inlined vec __getitem__ call.
 
-    We inline this, since it's fairly simple but very
-    performance-critical.
+    We inline this, since it's simple but performance-critical.
     """
     assert isinstance(base.type, RVec)
     vtype = base.type

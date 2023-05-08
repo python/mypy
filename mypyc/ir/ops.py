@@ -39,6 +39,7 @@ from mypyc.ir.rtypes import (
     RTuple,
     RType,
     RUnion,
+    RVec,
     RVoid,
     bit_rprimitive,
     bool_rprimitive,
@@ -1690,7 +1691,7 @@ class GetElement(RegisterOp):
 
     def __init__(self, src: Value, field: str, line: int = -1) -> None:
         super().__init__(line)
-        assert isinstance(src.type, RStruct)
+        assert isinstance(src.type, (RStruct, RVec))
         self.type = src.type.field_type(field)
         self.src = src
         self.src_type = src.type

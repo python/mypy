@@ -82,6 +82,7 @@ from mypyc.ir.rtypes import (
     RStruct,
     RTuple,
     RType,
+    RVec,
     is_bool_or_bit_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
@@ -221,6 +222,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             return self.emitter.tuple_undefined_check_cond(
                 typ, self.reg(value), self.c_error_value, compare
             )
+        elif isinstance(typ, RVec):
+            # Error values for vecs are represented by a negative length.
+            vec_compare = ">=" if compare == "!=" else "<"
+            return f"{self.reg(value)}.len {vec_compare} 0"
         else:
             return f"{self.reg(value)} {compare} {self.c_error_value(typ)}"
 
@@ -312,11 +317,15 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         )
 
     def visit_load_error_value(self, op: LoadErrorValue) -> None:
+        reg = self.reg(op)
         if isinstance(op.type, RTuple):
             values = [self.c_undefined_value(item) for item in op.type.types]
             tmp = self.temp_name()
             self.emit_line("{} {} = {{ {} }};".format(self.ctype(op.type), tmp, ", ".join(values)))
-            self.emit_line(f"{self.reg(op)} = {tmp};")
+            self.emit_line(f"{reg} = {tmp};")
+        elif isinstance(op.type, RVec):
+            self.emit_line(f"{reg}.len = -1;")
+            self.emit_line(f"{reg}.buf = NULL;")
         else:
             self.emit_line(f"{self.reg(op)} = {self.c_error_value(op.type)};")
 

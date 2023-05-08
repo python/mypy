@@ -38,7 +38,7 @@ NOTE: As a convention, we don't create subclasses of concrete RType
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, ClassVar, Final, Generic, TypeGuard, TypeVar, final
+from typing import TYPE_CHECKING, ClassVar, Final, Generic, TypeGuard, TypeVar, Union, final
 
 from mypyc.common import HAVE_IMMORTAL, IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name
 from mypyc.ir.deps import LIBRT_STRINGS, Dependency
@@ -173,6 +173,10 @@ class RTypeVisitor(Generic[T]):
     @abstractmethod
     def visit_rvoid(self, typ: RVoid, /) -> T:
         raise NotImplementedError
+
+
+# These types are implemented as C structs.
+RStructLike = Union["RStruct", "RVec"]
 
 
 @final
@@ -995,12 +999,31 @@ class RInstance(RType):
 class RVec(RType):
     """vecs.vec[T]"""
 
-    is_unboxed = False
+    is_unboxed = True
 
     def __init__(self, item_type: RType) -> None:
         self.name = "vec[%s]" % item_type
         self.item_type = item_type
-        self._ctype = "PyObject *"
+        if isinstance(item_type, RUnion):
+            non_opt = optional_value_type(item_type)
+        else:
+            non_opt = item_type
+        if is_int64_rprimitive(item_type):
+            self._ctype = "VecI64"
+            self.buf_type = VecbufI64Object
+        elif isinstance(non_opt, RVec):
+            self._ctype = "VecTExt"
+            # TODO: buf_type
+        else:
+            self._ctype = "VecT"
+            # TODO: buf_type
+
+    def field_type(self, name: str) -> RType:
+        if name == "len":
+            return c_pyssize_t_rprimitive
+        elif name == "buf":
+            return object_rprimitive
+        assert False, f"RVec has no field '{name}'"
 
     def accept(self, visitor: "RTypeVisitor[T]") -> T:
         return visitor.visit_rvec(self)
@@ -1023,14 +1046,12 @@ def vec_depth(t: RVec) -> int:
     it = t.item_type
     if isinstance(it, RUnion):
         non_opt = optional_value_type(it)
+        assert non_opt is not None
         it = non_opt
     if isinstance(it, (RPrimitive, RInstance)):
         return 0
     elif isinstance(it, RVec):
-        if is_int64_rprimitive(it.item_type):
-            return 0
-        else:
-            return 1 + vec_depth(it.item_type)
+        return 1 + vec_depth(it)
     assert False, t
 
 
@@ -1231,25 +1252,42 @@ def check_native_int_range(rtype: RPrimitive, n: int) -> bool:
         return -limit <= n < limit
 
 
+"""
+
 # vec (common fields)
 VecObject = RStruct(
     name="VecObject", names=["ob_base", "len"], types=[PyObject, c_pyssize_t_rprimitive]
 )
+"""
+
+
+# Buffer for vec[i64]
+VecbufI64Object = RStruct(
+    name="VecbufI64Object",
+    names=["ob_base", "len", "items"],
+    types=[PyVarObject, int64_rprimitive],
+)
+
+#vecbuf_i64_rprimitive: Final = RPrimitive(
+#    "VecbufI64Object", is_unboxed=False, is_refcounted=True, ctype="VecbufI64Object *"
+#)
 
 # vec[i64]
-VecI64Object = RStruct(
-    name="VecI64Object",
-    names=["ob_base", "len", "items"],
-    types=[PyObject, c_pyssize_t_rprimitive, int64_rprimitive],
+VecI64 = RStruct(
+    name="VecI64",
+    names=["len", "buf"],
+    types=[c_pyssize_t_rprimitive, object_rprimitive],
 )
 
-# vec[t]
-VecTObject = RStruct(
+
+# Buffer for vec[t]
+VecbufTObject = RStruct(
     name="VecTObject",
-    names=["ob_base", "len", "items"],
-    types=[PyObject, c_pyssize_t_rprimitive, object_rprimitive],
+    names=["ob_base", "item_type", "items"],
+    types=[PyVarObject, c_pyssize_t_rprimitive, object_rprimitive],
 )
 
+"""
 # vec[t], for nested vec or optional t
 VecTExtObject = RStruct(
     name="VecTExtObject",
@@ -1262,3 +1300,4 @@ VecTExtObject = RStruct(
         object_rprimitive,
     ],
 )
+"""

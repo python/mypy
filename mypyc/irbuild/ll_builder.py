@@ -49,6 +49,7 @@ from mypyc.ir.ops import (
     FloatNeg,
     FloatOp,
     GetAttr,
+    GetElement,
     GetElementPtr,
     Goto,
     Integer,
@@ -318,6 +319,9 @@ class LowLevelIRBuilder:
 
     def set_mem(self, ptr: Value, value_type: RType, value: Value) -> None:
         self.add(SetMem(value_type, ptr, value, line=-1))
+
+    def get_element(self, reg: Value, field: str) -> Value:
+        return self.add(GetElement(reg, field))
 
     def load_address(self, name: str, rtype: RType) -> Value:
         return self.add(LoadAddress(rtype, name))
