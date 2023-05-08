@@ -156,7 +156,7 @@ PyObject *vec_t_richcompare(PyObject *self, PyObject *other, int op) {
     return res;
 }
 
-static VecT Vec_T_Remove(VecT v, PyObject *arg) {
+VecT Vec_T_Remove(VecT v, PyObject *arg) {
     PyObject **items = v.buf->items;
     for (Py_ssize_t i = 0; i < v.len; i++) {
         int match = 0;
@@ -182,16 +182,6 @@ static VecT Vec_T_Remove(VecT v, PyObject *arg) {
     }
     PyErr_SetString(PyExc_ValueError, "vec.remove(x): x not in vec");
     return Vec_T_Error();
-}
-
-static PyObject *vec_t_remove(PyObject *self, PyObject *arg) {
-    VecT v = ((VecTObject *)self)->vec;
-    if (!VecT_ItemCheck(v, arg))
-        return NULL;
-    v = Vec_T_Remove(v, arg);
-    if (VEC_IS_ERROR(v))
-        return NULL;
-    return Vec_T_Box(v);
 }
 
 static VecT Vec_T_Pop(VecT v, Py_ssize_t index, PyObject **result) {
@@ -320,7 +310,6 @@ static PySequenceMethods VecTSequence = {
 };
 
 static PyMethodDef vec_t_methods[] = {
-    {"remove", vec_t_remove, METH_O, NULL},
     {"pop", vec_t_pop, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL},  /* Sentinel */
 };

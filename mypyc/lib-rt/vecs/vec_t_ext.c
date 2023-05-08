@@ -209,7 +209,7 @@ PyObject *vec_t_ext_richcompare(PyObject *self, PyObject *other, int op) {
     return res;
 }
 
-static VecTExt Vec_T_Ext_Remove(VecTExt self, VecbufTExtItem arg) {
+VecTExt Vec_T_Ext_Remove(VecTExt self, VecbufTExtItem arg) {
     VecbufTExtItem *items = self.buf->items;
 
     PyObject *boxed_arg = box_vec_item(self, arg);
@@ -250,18 +250,6 @@ static VecTExt Vec_T_Ext_Remove(VecTExt self, VecbufTExtItem arg) {
     Py_DECREF(boxed_arg);
     PyErr_SetString(PyExc_ValueError, "vec.remove(x): x not in vec");
     return Vec_T_Ext_Error();
-}
-
-static PyObject *vec_t_ext_remove(PyObject *self, PyObject *arg) {
-    VecTExt v = ((VecTExtObject *)self)->vec;
-    VecbufTExtItem item;
-    if (Vec_T_Ext_UnboxItem(v, arg, &item) < 0)
-        return NULL;
-    v = Vec_T_Ext_Remove(v, item);
-    Py_DECREF(item.buf);
-    if (VEC_IS_ERROR(v))
-        return NULL;
-    return Vec_T_Ext_Box(v);
 }
 
 static VecTExt Vec_T_Ext_Pop(VecTExt v, Py_ssize_t index, VecbufTExtItem *result) {
@@ -397,7 +385,6 @@ static PySequenceMethods VecTExtSequence = {
 };
 
 static PyMethodDef vec_t_ext_methods[] = {
-    {"remove", vec_t_ext_remove, METH_O, NULL},
     {"pop", vec_t_ext_pop, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL},  /* Sentinel */
 };

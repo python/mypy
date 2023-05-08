@@ -221,7 +221,7 @@ static PyObject *vec_i64_richcompare(PyObject *self, PyObject *other, int op) {
     return res;
 }
 
-static VecI64 Vec_I64_Remove(VecI64 v, int64_t x) {
+VecI64 Vec_I64_Remove(VecI64 v, int64_t x) {
     for (Py_ssize_t i = 0; i < v.len; i++) {
         if (v.buf->items[i] == x) {
             for (; i < v.len - 1; i++) {
@@ -234,20 +234,6 @@ static VecI64 Vec_I64_Remove(VecI64 v, int64_t x) {
     }
     PyErr_SetString(PyExc_ValueError, "vec.remove(x): x not in vec");
     return Vec_I64_Error();
-}
-
-static PyObject *vec_i64_remove(PyObject *self, PyObject *arg) {
-    if (check_float_error(arg))
-        return NULL;
-    long long x = PyLong_AsLongLong(arg);
-    if (x == -1 && PyErr_Occurred())
-        return NULL;
-
-    VecI64Object *vec = (VecI64Object *)self;
-    VecI64 res = Vec_I64_Remove(vec->vec, x);
-    if (VEC_IS_ERROR(res))
-        return NULL;
-    return Vec_I64_Box(res);
 }
 
 static VecI64 Vec_I64_Pop(VecI64 v, Py_ssize_t index, int64_t *result) {
@@ -311,7 +297,6 @@ static PySequenceMethods VecI64Sequence = {
 };
 
 static PyMethodDef vec_i64_methods[] = {
-    {"remove", vec_i64_remove, METH_O, NULL},
     {"pop", vec_i64_pop, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL},  /* Sentinel */
 };

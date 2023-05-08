@@ -198,6 +198,7 @@ static inline int VecI64_Check(PyObject *o) {
 
 PyObject *Vec_I64_Box(VecI64);
 VecI64 Vec_I64_Append(VecI64, int64_t x);
+VecI64 Vec_I64_Remove(VecI64, int64_t x);
 
 // vec[t] operations (simple)
 
@@ -221,6 +222,7 @@ VecT Vec_T_New(Py_ssize_t size, size_t item_type);
 PyObject *Vec_T_FromIterable(size_t item_type, PyObject *iterable);
 PyObject *Vec_T_Box(VecT);
 VecT Vec_T_Append(VecT vec, PyObject *x);
+VecT Vec_T_Remove(VecT vec, PyObject *x);
 
 // vec[t] operations (extended)
 
@@ -252,6 +254,7 @@ PyObject *Vec_T_Ext_FromIterable(size_t item_type, int32_t optionals, int32_t de
                                  PyObject *iterable);
 PyObject *Vec_T_Ext_Box(VecTExt);
 VecTExt Vec_T_Ext_Append(VecTExt vec, VecbufTExtItem x);
+VecTExt Vec_T_Ext_Remove(VecTExt vec, VecbufTExtItem x);
 
 // Return 0 on success, -1 on error. Store unboxed item in *unboxed if successful.
 // Return a new reference.

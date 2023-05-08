@@ -364,8 +364,56 @@ static PyObject *vecs_append(PyObject *self, PyObject *args)
     }
 }
 
+static PyObject *vecs_remove(PyObject *self, PyObject *args)
+{
+    PyObject *vec;
+    PyObject *item;
+
+    if (!PyArg_ParseTuple(args, "OO", &vec, &item))
+        return NULL;
+
+    if (VecI64_Check(vec)) {
+        if (check_float_error(item))
+            return NULL;
+        int64_t x = PyLong_AsLong(item);
+        if (x == -1 && PyErr_Occurred()) {
+            return NULL;
+        }
+        VecI64 v = ((VecI64Object *)vec)->vec;
+        VEC_INCREF(v);
+        v = Vec_I64_Remove(v, x);
+        if (VEC_IS_ERROR(v))
+            return NULL; // TODO: decref?
+        return Vec_I64_Box(v);
+    } else if (VecT_Check(vec)) {
+        VecT v = ((VecTObject *)vec)->vec;
+        if (!VecT_ItemCheck(v, item)) {
+            return NULL;
+        }
+        VEC_INCREF(v);
+        v = Vec_T_Remove(v, item);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return Vec_T_Box(v);
+    } else if (VecTExt_Check(vec)) {
+        VecTExt v = ((VecTExtObject *)vec)->vec;
+        VecbufTExtItem vecitem;
+        if (Vec_T_Ext_UnboxItem(v, item, &vecitem) < 0)
+            return NULL;
+        VEC_INCREF(v);
+        v = Vec_T_Ext_Remove(v, vecitem);
+        if (VEC_IS_ERROR(v))
+            return NULL; // TODO: decref?
+        return Vec_T_Ext_Box(v);
+    } else {
+        PyErr_SetString(PyExc_TypeError, "vec argument expected");
+        return NULL;
+    }
+}
+
 static PyMethodDef VecsMethods[] = {
     {"append",  vecs_append, METH_VARARGS, "Append a value to a vec"},
+    {"remove",  vecs_remove, METH_VARARGS, "Remove a value from a vec"},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
