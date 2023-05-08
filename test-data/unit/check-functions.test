@@ -2742,11 +2742,9 @@ class B(A):
 
 class C(A):
     @override
-    def f(self, y: int) -> str: pass  # E: Signature of "f" incompatible with supertype "A" \
-                                      # N:      Superclass:               \
-                                      # N:          def f(self, x: int) -> str \
-                                      # N:      Subclass:                 \
-                                      # N:          def f(self, y: int) -> str
+    def f(self, x: str) -> str: pass  # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int" \
+                                      # N: This violates the Liskov substitution principle \
+                                      # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
     def g(self, x: int) -> str: pass
 
 class D(A): pass

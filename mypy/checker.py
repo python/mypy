@@ -1971,9 +1971,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     original_class_or_static,
                     override_class_or_static,
                     context,
-                    ignore_pos_arg_names=(
-                        not context.is_explicit_override if isinstance(context, FuncDef) else True
-                    ),
                 )
             elif is_equivalent(original_type, typ):
                 # Assume invariance for a non-callable attribute here. Note
@@ -2061,7 +2058,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         original_class_or_static: bool,
         override_class_or_static: bool,
         node: Context,
-        ignore_pos_arg_names: bool,
     ) -> None:
         """Check a method override with given signatures.
 
@@ -2075,7 +2071,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # Use boolean variable to clarify code.
         fail = False
         op_method_wider_note = False
-        if not is_subtype(override, original, ignore_pos_arg_names=ignore_pos_arg_names):
+        if not is_subtype(override, original, ignore_pos_arg_names=True):
             fail = True
         elif isinstance(override, Overloaded) and self.is_forward_op_method(name):
             # Operator method overrides cannot extend the domain, as
