@@ -1329,3 +1329,17 @@ def narrow_with_multi_assign_3(x: Optional[str]) -> None:
     y, x = None, None
 
 [builtins fixtures/isinstance.pyi]
+
+[case testNestedFunctionSpecialCase]
+class C:
+    def __enter__(self, *args): ...
+    def __exit__(self, *args) -> bool: ...
+
+def f(x: object) -> None:
+    if x is not None:
+        pass
+
+    def nested() -> None:
+        with C():
+            pass
+[builtins fixtures/tuple.pyi]

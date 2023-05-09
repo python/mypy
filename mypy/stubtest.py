@@ -1667,7 +1667,7 @@ def get_allowlist_entries(allowlist_file: str) -> Iterator[str]:
             return s.strip()
 
     with open(allowlist_file) as f:
-        for line in f.readlines():
+        for line in f:
             entry = strip_comments(line)
             if entry:
                 yield entry

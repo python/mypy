@@ -1350,7 +1350,7 @@ def f() -> Dict[int, str]:
 def d() -> Dict[int, int]:
     return {}
 [out]
-_testDictWithStarStarSpecialCase.py:4: error: Argument 1 to "update" of "MutableMapping" has incompatible type "Dict[int, int]"; expected "SupportsKeysAndGetItem[int, str]"
+_testDictWithStarStarSpecialCase.py:4: error: Unpacked dict entry 1 has incompatible type "Dict[int, int]"; expected "SupportsKeysAndGetItem[int, str]"
 
 [case testLoadsOfOverloads]
 from typing import overload, Any, TypeVar, Iterable, List, Dict, Callable, Union

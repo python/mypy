@@ -46,8 +46,8 @@ from mypy.types import (
     has_recursive_types,
     has_type_vars,
     is_named_instance,
-    is_union_with_any,
 )
+from mypy.types_utils import is_union_with_any
 from mypy.typestate import type_state
 from mypy.typevartuples import (
     extract_unpack,
@@ -146,7 +146,7 @@ def infer_constraints_for_callable(
                 # not to hold we can always handle the prefixes too.
                 inner_unpack = unpacked_type.items[0]
                 assert isinstance(inner_unpack, UnpackType)
-                inner_unpacked_type = get_proper_type(inner_unpack.type)
+                inner_unpacked_type = inner_unpack.type
                 assert isinstance(inner_unpacked_type, TypeVarTupleType)
                 suffix_len = len(unpacked_type.items) - 1
                 constraints.append(

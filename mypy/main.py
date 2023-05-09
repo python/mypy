@@ -1498,7 +1498,7 @@ def read_types_packages_to_install(cache_dir: str, after_run: bool) -> list[str]
         # No missing stubs.
         return []
     with open(fnam) as f:
-        return [line.strip() for line in f.readlines()]
+        return [line.strip() for line in f]
 
 
 def install_types(
