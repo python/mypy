@@ -1721,7 +1721,8 @@ class MessageBuilder:
             if missing:
                 self.fail(
                     "Missing {} for TypedDict {}".format(
-                        format_typeddict_key_list(missing, short=True), format_type(typ, self.options)
+                        format_typeddict_key_list(missing, short=True),
+                        format_type(typ, self.options),
                     ),
                     context,
                     code=codes.TYPEDDICT_ITEM,
@@ -1730,7 +1731,8 @@ class MessageBuilder:
             if extra:
                 self.fail(
                     "Extra {} for TypedDict {}".format(
-                        format_typeddict_key_list(extra, short=True), format_type(typ, self.options)
+                        format_typeddict_key_list(extra, short=True),
+                        format_type(typ, self.options),
                     ),
                     context,
                     code=codes.TYPEDDICT_UNKNOWN_KEY,
@@ -2509,30 +2511,32 @@ def format_type_inner(
                 return f"Callable[..., {return_type}]"
             param_spec = func.param_spec()
             if param_spec is not None:
-                return f'Callable[{param_spec.name}, {return_type}]'
+                return f"Callable[{param_spec.name}, {return_type}]"
             arg_strings = []
             has_non_positional = False
             for arg_name, arg_type, arg_kind in zip(
-                    func.arg_names, func.arg_types, func.arg_kinds):
-                if (arg_kind == ARG_POS and arg_name is None
-                        or verbosity == 0 and arg_kind.is_positional()):
+                func.arg_names, func.arg_types, func.arg_kinds
+            ):
+                if (
+                    arg_kind == ARG_POS
+                    and arg_name is None
+                    or verbosity == 0
+                    and arg_kind.is_positional()
+                ):
                     arg_strings.append(format(arg_type))
                 else:
                     has_non_positional = True
                     constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
                     if arg_kind.is_star() or arg_name is None:
-                        arg_strings.append("{}({})".format(
-                            constructor,
-                            format(arg_type)))
+                        arg_strings.append("{}({})".format(constructor, format(arg_type)))
                     else:
-                        arg_strings.append("{}({}, {})".format(
-                            constructor,
-                            format(arg_type),
-                            repr(arg_name)))
+                        arg_strings.append(
+                            "{}({}, {})".format(constructor, format(arg_type), repr(arg_name))
+                        )
 
             if use_pretty_callable and has_non_positional:
                 return pretty_callable(func, options)
-            return 'Callable[[{}], {}]'.format(", ".join(arg_strings), return_type)
+            return "Callable[[{}], {}]".format(", ".join(arg_strings), return_type)
             #     return f"Callable[{format(param_spec)}, {return_type}]"
             # args = format_callable_args(
             #     func.arg_types, func.arg_kinds, func.arg_names, format, verbosity
