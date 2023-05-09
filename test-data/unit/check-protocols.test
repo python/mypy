@@ -3571,7 +3571,7 @@ p: P = C  # E: Incompatible types in assignment (expression has type "Type[C]", 
           # N:         def __call__(app: int) -> Callable[[str], None] \
           # N:     Got: \
           # N:         def __init__(app: str) -> C \
-          # N: "P.__call__" has type "Callable[[Arg(int, 'app')], Callable[[str], None]]"
+          # N: "P.__call__" has type "def __call__(self, app: int) -> Callable[[str], None]"
 
 [builtins fixtures/type.pyi]
 
@@ -3730,7 +3730,7 @@ def f_good(t: S) -> S:
     return t
 
 g: C = f_bad  # E: Incompatible types in assignment (expression has type "Callable[[int], int]", variable has type "C") \
-              # N: "C.__call__" has type "Callable[[Arg(T, 't')], T]"
+              # N: "C.__call__" has type "def [T] __call__(self, t: T) -> T"
 g = f_good  # OK
 
 [case testModuleAsProtocolImplementation]

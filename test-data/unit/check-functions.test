@@ -1960,7 +1960,7 @@ def isf_unnamed(__i: int, __s: str) -> str:
 
 int_str_fun = isf
 int_str_fun = isf_unnamed
-int_named_str_fun = isf_unnamed # E: Incompatible types in assignment (expression has type "Callable[[int, str], str]", variable has type "def (int, s: str) -> str")
+int_named_str_fun = isf_unnamed # E: Incompatible types in assignment (expression has type "Callable[[int, str], str]", variable has type "def (int, /, s: str) -> str")
 int_opt_str_fun = iosf
 int_str_fun = iosf
 int_opt_str_fun = isf # E: Incompatible types in assignment (expression has type "def isf(ii: int, ss: str) -> str", variable has type "def (int, str = ...) -> str")

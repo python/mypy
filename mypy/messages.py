@@ -2531,7 +2531,7 @@ def format_type_inner(
                             repr(arg_name)))
 
             if use_pretty_callable and has_non_positional:
-                return pretty_callable(func)
+                return pretty_callable(func, options)
             return 'Callable[[{}], {}]'.format(", ".join(arg_strings), return_type)
             #     return f"Callable[{format(param_spec)}, {return_type}]"
             # args = format_callable_args(
