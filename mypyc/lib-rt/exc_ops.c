@@ -230,7 +230,11 @@ void CPy_AddTraceback(const char *filename, const char *funcname, int line, PyOb
     return;
 
 error:
+#if CPY_3_12_FEATURES
+    _PyErr_ChainExceptions1(exc);
+#else
     _PyErr_ChainExceptions(exc, val, tb);
+#endif
 }
 
 CPy_NOINLINE
