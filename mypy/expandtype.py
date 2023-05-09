@@ -19,6 +19,7 @@ from mypy.types import (
     NoneType,
     Overloaded,
     Parameters,
+    ParamSpecFlavor,
     ParamSpecType,
     PartialType,
     ProperType,
@@ -36,7 +37,6 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
-    expand_param_spec,
     flatten_nested_unions,
     get_proper_type,
 )
@@ -247,7 +247,33 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             # TODO: why does this case even happen? Instances aren't plural.
             return repl
         elif isinstance(repl, (ParamSpecType, Parameters, CallableType)):
-            return expand_param_spec(t, repl)
+            if isinstance(repl, ParamSpecType):
+                return repl.copy_modified(
+                    flavor=t.flavor,
+                    prefix=t.prefix.copy_modified(
+                        arg_types=t.prefix.arg_types + repl.prefix.arg_types,
+                        arg_kinds=t.prefix.arg_kinds + repl.prefix.arg_kinds,
+                        arg_names=t.prefix.arg_names + repl.prefix.arg_names,
+                    ),
+                )
+            else:
+                # if the paramspec is *P.args or **P.kwargs:
+                if t.flavor != ParamSpecFlavor.BARE:
+                    assert isinstance(repl, CallableType), "Should not be able to get here."
+                    # Is this always the right thing to do?
+                    param_spec = repl.param_spec()
+                    if param_spec:
+                        return param_spec.with_flavor(t.flavor)
+                    else:
+                        return repl
+                else:
+                    return Parameters(
+                        t.prefix.arg_types + repl.arg_types,
+                        t.prefix.arg_kinds + repl.arg_kinds,
+                        t.prefix.arg_names + repl.arg_names,
+                        variables=[*t.prefix.variables, *repl.variables],
+                    )
+
         else:
             # TODO: should this branch be removed? better not to fail silently
             return repl
