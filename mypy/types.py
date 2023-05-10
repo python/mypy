@@ -1754,9 +1754,7 @@ class CallableType(FunctionLike):
         unpack_kwargs: bool = False,
     ) -> None:
         super().__init__(line, column)
-        assert (
-            len(arg_types) == len(arg_kinds) == len(arg_names)
-        ), f"{arg_types}, {arg_kinds}, {arg_names}"
+        assert len(arg_types) == len(arg_kinds) == len(arg_names)
         if variables is None:
             variables = []
         self.arg_types = list(arg_types)
@@ -1885,7 +1883,7 @@ class CallableType(FunctionLike):
             ret = ret.partial_fallback
         if isinstance(ret, TypedDictType):
             ret = ret.fallback
-        assert isinstance(ret, Instance), ret
+        assert isinstance(ret, Instance)
         return ret.type
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
@@ -3354,6 +3352,13 @@ def flatten_nested_unions(
 
 
 def flatten_nested_tuples(types: Sequence[Type]) -> list[Type]:
+    """Recursively flatten TupleTypes nested with Unpack.
+
+    For example this will transform
+        Tuple[A, Unpack[Tuple[B, Unpack[Tuple[C, D]]]]]
+    into
+        Tuple[A, B, C, D]
+    """
     res = []
     for typ in types:
         if not isinstance(typ, UnpackType):

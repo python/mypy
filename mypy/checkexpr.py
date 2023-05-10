@@ -4075,6 +4075,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def split_for_callable(
         self, t: CallableType, args: Sequence[Type], ctx: Context
     ) -> list[Type]:
+        """Handle directly applying type arguments to a variadic Callable.
+
+        This is needed in situations where e.g. variadic class object appears in
+        runtime context. For example:
+            class C(Generic[T, Unpack[Ts]]): ...
+            x = C[int, str]()
+
+        We simply group the arguments that need to go into Ts variable into a TupleType,
+        similar to how it is done in other places using split_with_prefix_and_suffix().
+        """
         vars = t.variables
         if not vars or not any(isinstance(v, TypeVarTupleType) for v in vars):
             return list(args)

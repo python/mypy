@@ -944,7 +944,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 ]
             else:
                 arg_types = self.anal_array(t.arg_types, nested=nested)
-            # If there were multiple unpacks, the arg types list will become shorter.
+            # If there were multiple (invalid) unpacks, the arg types list will become shorter,
             # we need to trim the kinds/names as well to avoid crashes.
             arg_kinds = t.arg_kinds[: len(arg_types)]
             arg_names = t.arg_names[: len(arg_types)]
