@@ -695,16 +695,26 @@ z: C
 reveal_type(z)  # N: Revealed type is "__main__.G[Any, Unpack[builtins.tuple[Any, ...]], Any]"
 [builtins fixtures/tuple.pyi]
 
--- Tests:
---   Counts that are actually wrong
-
 [case testVariadicAliasFewArgs]
-from typing import Tuple, List, TypeVar, Generic, Tuple
+from typing import Tuple, List, TypeVar, Generic, Callable
 from typing_extensions import Unpack, TypeVarTuple
 
 T = TypeVar("T")
 S = TypeVar("S")
 Ts = TypeVarTuple("Ts")
+class G(Generic[Unpack[Ts]]): ...
+
+A = List[Tuple[T, Unpack[Ts], S]]
+x: A[int]  # E: Bad number of arguments for type alias, expected: at least 2, given: 1
+reveal_type(x)  # N: Revealed type is "builtins.list[Tuple[Any, Unpack[builtins.tuple[Any, ...]], Any]]"
+
+B = Callable[[T, S, Unpack[Ts]], int]
+y: B[int]  # E: Bad number of arguments for type alias, expected: at least 2, given: 1
+reveal_type(y)  # N: Revealed type is "def (Any, Any, *Unpack[builtins.tuple[Any, ...]]) -> builtins.int"
+
+C = G[T, Unpack[Ts], S]
+z: C[int]  # E: Bad number of arguments for type alias, expected: at least 2, given: 1
+reveal_type(z)  # N: Revealed type is "__main__.G[Any, Unpack[builtins.tuple[Any, ...]], Any]"
 [builtins fixtures/tuple.pyi]
 
 [case testVariadicAliasRecursiveUnpack]
@@ -720,22 +730,24 @@ reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.str, Union[.
 *_, last = x
 if last is not None:
     reveal_type(last)  # N: Revealed type is "Tuple[builtins.int, builtins.str, Union[Tuple[builtins.int, builtins.str, Union[..., None]], None]]"
-
-# A = Tuple[int, Unpack[A]]  # Should be banned similar to bad unions
 [builtins fixtures/tuple.pyi]
 
--- Notes:
---   actual can be less than expected - 1 (if there is an unpack)
---   missing bound/values validation (complex)
---   there can be multiple unpacks (but only one variadic)
+[case testVariadicAliasUpperBoundCheck]
+from typing import Tuple, TypeVar
+from typing_extensions import Unpack, TypeVarTuple
 
-[case testCuriousVariadic]
-# A1 = List[Tuple[T, S, Unpack[Ts], S]]
-# def foo(*x: Unpack[Ts]) -> None:
-#     y: A1[Unpack[Ts], int, str]
-#     reveal_type(y)
-# --
-# Ts = () => LT[int, str, str]
-# Ts = (bool) => LT[bool, int, str, int]
-# Ts = (bool, float) => LT[bool, float, int, str, float]
+class A: ...
+class B: ...
+class C: ...
+class D: ...
+
+T = TypeVar("T", bound=int)
+S = TypeVar("S", bound=str)
+Ts = TypeVarTuple("Ts")
+
+Alias = Tuple[T, Unpack[Ts], S]
+First = Tuple[A, B]
+Second = Tuple[C, D]
+x: Alias[Unpack[First], Unpack[Second]]  # E: Type argument "A" of "Alias" must be a subtype of "int" \
+                                         # E: Type argument "D" of "Alias" must be a subtype of "str"
 [builtins fixtures/tuple.pyi]

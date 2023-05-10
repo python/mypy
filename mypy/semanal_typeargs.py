@@ -18,6 +18,7 @@ from mypy.nodes import Block, ClassDef, Context, FakeInfo, FuncItem, MypyFile
 from mypy.options import Options
 from mypy.scope import Scope
 from mypy.subtypes import is_same_type, is_subtype
+from mypy.typeanal import set_any_tvars
 from mypy.types import (
     AnyType,
     Instance,
@@ -32,8 +33,10 @@ from mypy.types import (
     TypeVarType,
     UnboundType,
     UnpackType,
+    flatten_nested_tuples,
     get_proper_type,
     get_proper_types,
+    split_with_prefix_and_suffix,
 )
 
 
@@ -79,11 +82,29 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         self.seen_aliases.add(t)
         # Some recursive aliases may produce spurious args. In principle this is not very
         # important, as we would simply ignore them when expanding, but it is better to keep
-        # correct aliases.
-        if t.alias and len(t.args) != len(t.alias.alias_tvars):
-            if t.alias.tvar_tuple_index is None:
-                t.args = [AnyType(TypeOfAny.from_error) for _ in t.alias.alias_tvars]
+        # correct aliases. Also, variadic aliases are better to check when fully analyzed,
+        # so we do this here.
         assert t.alias is not None, f"Unfixed type alias {t.type_ref}"
+        args = flatten_nested_tuples(t.args)
+        if t.alias.tvar_tuple_index is not None:
+            correct = len(args) >= len(t.alias.alias_tvars) - 1
+        else:
+            correct = len(args) == len(t.alias.alias_tvars)
+        if not correct:
+            if t.alias.tvar_tuple_index is not None:
+                exp_len = f"at least {len(t.alias.alias_tvars) - 1}"
+            else:
+                exp_len = f"{len(t.alias.alias_tvars)}"
+            self.fail(
+                f"Bad number of arguments for type alias, expected: {exp_len}, given: {len(args)}",
+                t,
+                code=codes.TYPE_ARG,
+            )
+            t.args = set_any_tvars(
+                t.alias, t.line, t.column, self.options, from_error=True, fail=self.fail
+            ).args
+        else:
+            t.args = args
         is_error = self.validate_args(t.alias.name, t.args, t.alias.alias_tvars, t)
         if not is_error:
             # If there was already an error for the alias itself, there is no point in checking
@@ -102,10 +123,16 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
     def validate_args(
         self, name: str, args: Sequence[Type], type_vars: list[TypeVarLikeType], ctx: Context
     ) -> bool:
-
-        if any(isinstance(tv, TypeVarTupleType) for tv in type_vars):
-            # TODO: add actual handling of variadic types here, and re-enable this check.
-            return False
+        # TODO: we need to do flatten_nested_tuples and validate arg count for instances
+        # similar to how do we do this for type aliases above, but this may have perf penalty.
+        if any(isinstance(v, TypeVarTupleType) for v in type_vars):
+            prefix = next(i for (i, v) in enumerate(type_vars) if isinstance(v, TypeVarTupleType))
+            tvt = type_vars[prefix]
+            assert isinstance(tvt, TypeVarTupleType)
+            start, middle, end = split_with_prefix_and_suffix(
+                tuple(args), prefix, len(type_vars) - prefix - 1
+            )
+            args = list(start) + [TupleType(list(middle), tvt.tuple_fallback)] + list(end)
 
         is_error = False
         for (i, arg), tvar in zip(enumerate(args), type_vars):

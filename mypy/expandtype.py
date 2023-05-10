@@ -357,11 +357,11 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             if isinstance(expanded_unpacked_tvt, TypeVarTupleType):
                 fallback = expanded_unpacked_tvt.tuple_fallback
             else:
-                # For the tuple[Any, ...] case
-                # TODO: can we use an assert here?
-                proper_expanded = get_proper_type(expanded_unpacked_tvt)
-                assert isinstance(proper_expanded, Instance)
-                fallback = proper_expanded
+                # This can happen when tuple[Any, ...] is used to "patch" a variadic
+                # generic type without type arguments provided.
+                assert isinstance(expanded_unpacked_tvt, ProperType)
+                assert isinstance(expanded_unpacked_tvt, Instance)
+                fallback = expanded_unpacked_tvt
 
             prefix_len = expanded_unpack_index
             arg_names = t.arg_names[:star_index] + [None] * prefix_len + t.arg_names[star_index:]
@@ -457,6 +457,8 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         indicates use of Any or some error occurred earlier. In this case callers should
         simply propagate the resulting type.
         """
+        # TODO: this will cause a crash on aliases like A = Tuple[int, Unpack[A]].
+        # Although it is unlikely anyone will write this, we should fail gracefully.
         typs = flatten_nested_tuples(typs)
         items: list[Type] = []
         for item in typs:

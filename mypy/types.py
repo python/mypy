@@ -314,13 +314,12 @@ class TypeAliasType(Type):
             assert isinstance(self.alias.target, Instance)  # type: ignore[misc]
             return self.alias.target.copy_modified(args=self.args)
 
-        args = flatten_nested_tuples(self.args)
         if self.alias.tvar_tuple_index is None:
-            mapping = {v.id: s for (v, s) in zip(self.alias.alias_tvars, args)}
+            mapping = {v.id: s for (v, s) in zip(self.alias.alias_tvars, self.args)}
         else:
             prefix = self.alias.tvar_tuple_index
             suffix = len(self.alias.alias_tvars) - self.alias.tvar_tuple_index - 1
-            start, middle, end = split_with_prefix_and_suffix(tuple(args), prefix, suffix)
+            start, middle, end = split_with_prefix_and_suffix(tuple(self.args), prefix, suffix)
             tvar = self.alias.alias_tvars[prefix]
             assert isinstance(tvar, TypeVarTupleType)
             mapping = {tvar.id: TupleType(list(middle), tvar.tuple_fallback)}

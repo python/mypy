@@ -1810,7 +1810,7 @@ def set_any_tvars(
     disallow_any: bool = False,
     fail: MsgCallback | None = None,
     unexpanded_type: Type | None = None,
-) -> Type:
+) -> TypeAliasType:
     if from_error or disallow_any:
         type_of_any = TypeOfAny.from_error
     else:
