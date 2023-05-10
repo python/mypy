@@ -778,7 +778,7 @@ class Errors:
         )
 
     def format_messages(
-        self, error_info: list[ErrorInfo], source_lines: list[str] | None
+        self, error_tuples: list[ErrorTuple], source_lines: list[str] | None
     ) -> list[str]:
         """Return a string list that represents the error messages.
 
@@ -787,9 +787,6 @@ class Errors:
         severity 'error').
         """
         a: list[str] = []
-        error_info = [info for info in error_info if not info.hidden]
-        errors = self.render_messages(self.sort_messages(error_info))
-        errors = self.remove_duplicates(errors)
         for (
             file,
             line,
@@ -800,7 +797,7 @@ class Errors:
             message,
             allow_dups,
             code,
-        ) in errors:
+        ) in error_tuples:
             s = ""
             if file is not None:
                 if self.options.show_column_numbers and line >= 0 and column >= 0:
@@ -854,11 +851,11 @@ class Errors:
             return []
 
         error_info = self.error_info_map[path]
-        if formatter is not None:
-            error_info = [info for info in error_info if not info.hidden]
-            error_tuples = self.render_messages(self.sort_messages(error_info))
-            error_tuples = self.remove_duplicates(error_tuples)
+        error_info = [info for info in error_info if not info.hidden]
+        error_tuples = self.render_messages(self.sort_messages(error_info))
+        error_tuples = self.remove_duplicates(error_tuples)
 
+        if formatter is not None:
             errors = create_errors(error_tuples)
             return [formatter.report_error(err) for err in errors]
 
@@ -867,7 +864,7 @@ class Errors:
         if self.options.pretty:
             assert self.read_source
             source_lines = self.read_source(path)
-        return self.format_messages(error_info, source_lines)
+        return self.format_messages(error_tuples, source_lines)
 
     def new_messages(self) -> list[str]:
         """Return a string list of new error messages.
