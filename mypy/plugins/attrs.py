@@ -1096,7 +1096,7 @@ def fields_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
                     )
 
         ctx.api.fail(
-            f'Argument 1 to "fields" has incompatible type "{format_type_bare(proper_type)}"; expected an attrs class',
+            f'Argument 1 to "fields" has incompatible type "{format_type_bare(proper_type, ctx.api.options)}"; expected an attrs class',
             ctx.context,
         )
     return ctx.default_signature
