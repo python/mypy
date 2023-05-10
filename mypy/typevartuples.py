@@ -11,8 +11,7 @@ from mypy.types import CallableType, Instance, ProperType, Type, UnpackType, get
 def find_unpack_in_list(items: Sequence[Type]) -> int | None:
     unpack_index: int | None = None
     for i, item in enumerate(items):
-        proper_item = get_proper_type(item)
-        if isinstance(proper_item, UnpackType):
+        if isinstance(item, UnpackType):
             # We cannot fail here, so we must check this in an earlier
             # semanal phase.
             # Funky code here avoids mypyc narrowing the type of unpack_index.
@@ -181,9 +180,8 @@ def fully_split_with_mapped_and_template(
 def extract_unpack(types: Sequence[Type]) -> ProperType | None:
     """Given a list of types, extracts either a single type from an unpack, or returns None."""
     if len(types) == 1:
-        proper_type = get_proper_type(types[0])
-        if isinstance(proper_type, UnpackType):
-            return get_proper_type(proper_type.type)
+        if isinstance(types[0], UnpackType):
+            return get_proper_type(types[0].type)
     return None
 
 

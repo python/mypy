@@ -81,12 +81,12 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
-    bad_type_type_item,
     callable_with_ellipsis,
     flatten_nested_unions,
     get_proper_type,
     has_type_vars,
 )
+from mypy.types_utils import is_bad_type_type_item
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars
 
@@ -398,7 +398,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     an_args = self.pack_paramspec_args(an_args)
 
                 disallow_any = self.options.disallow_any_generics and not self.is_typeshed_stub
-                res = expand_type_alias(
+                res = instantiate_type_alias(
                     node,
                     an_args,
                     self.fail,
@@ -408,7 +408,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     unexpanded_type=t,
                     disallow_any=disallow_any,
                 )
-                # The only case where expand_type_alias() can return an incorrect instance is
+                # The only case where instantiate_type_alias() can return an incorrect instance is
                 # when it is top-level instance, so no need to recurse.
                 if (
                     isinstance(res, Instance)  # type: ignore[misc]
@@ -564,7 +564,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     type_str + " must have exactly one type argument", t, code=codes.VALID_TYPE
                 )
             item = self.anal_type(t.args[0])
-            if bad_type_type_item(item):
+            if is_bad_type_type_item(item):
                 self.fail("Type[...] can't contain another Type[...]", t, code=codes.VALID_TYPE)
                 item = AnyType(TypeOfAny.from_error)
             return TypeType.make_normalized(item, line=t.line, column=t.column)
@@ -714,7 +714,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # The class has a Tuple[...] base class so it will be
             # represented as a tuple type.
             if info.special_alias:
-                return expand_type_alias(
+                return instantiate_type_alias(
                     info.special_alias,
                     # TODO: should we allow NamedTuples generic in ParamSpec?
                     self.anal_array(args),
@@ -730,7 +730,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # The class has a TypedDict[...] base class so it will be
             # represented as a typeddict type.
             if info.special_alias:
-                return expand_type_alias(
+                return instantiate_type_alias(
                     info.special_alias,
                     # TODO: should we allow TypedDicts generic in ParamSpec?
                     self.anal_array(args),
@@ -1713,7 +1713,7 @@ def fix_instance(
     t.invalid = True
 
 
-def expand_type_alias(
+def instantiate_type_alias(
     node: TypeAlias,
     args: list[Type],
     fail: MsgCallback,
@@ -1725,11 +1725,13 @@ def expand_type_alias(
     disallow_any: bool = False,
     use_standard_error: bool = False,
 ) -> Type:
-    """Expand a (generic) type alias target following the rules outlined in TypeAlias docstring.
+    """Create an instance of a (generic) type alias from alias node and type arguments.
 
+    We are following the rules outlined in TypeAlias docstring.
     Here:
-        target: original target type
-        args: types to be substituted in place of type variables
+        node: type alias node (definition)
+        args: type arguments (types to be substituted in place of type variables
+              when expanding the alias)
         fail: error reporter callback
         no_args: whether original definition used a bare generic `A = List`
         ctx: context where expansion happens
