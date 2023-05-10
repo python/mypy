@@ -3498,7 +3498,7 @@ class TypeAlias(SymbolNode):
         self._is_recursive: bool | None = None
         self.eager = eager
         self.tvar_tuple_index = None
-        for (i, t) in enumerate(alias_tvars):
+        for i, t in enumerate(alias_tvars):
             if isinstance(t, mypy.types.TypeVarTupleType):
                 self.tvar_tuple_index = i
         super().__init__(line, column)
