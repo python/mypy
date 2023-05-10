@@ -81,7 +81,8 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         # important, as we would simply ignore them when expanding, but it is better to keep
         # correct aliases.
         if t.alias and len(t.args) != len(t.alias.alias_tvars):
-            t.args = [AnyType(TypeOfAny.from_error) for _ in t.alias.alias_tvars]
+            if t.alias.tvar_tuple_index is None:
+                t.args = [AnyType(TypeOfAny.from_error) for _ in t.alias.alias_tvars]
         assert t.alias is not None, f"Unfixed type alias {t.type_ref}"
         is_error = self.validate_args(t.alias.name, t.args, t.alias.alias_tvars, t)
         if not is_error:
@@ -101,6 +102,11 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
     def validate_args(
         self, name: str, args: Sequence[Type], type_vars: list[TypeVarLikeType], ctx: Context
     ) -> bool:
+
+        if any(isinstance(tv, TypeVarTupleType) for tv in type_vars):
+            # TODO: add actual handling of variadic types here, and re-enable this check.
+            return False
+
         is_error = False
         for (i, arg), tvar in zip(enumerate(args), type_vars):
             if isinstance(tvar, TypeVarType):
@@ -167,7 +173,11 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
             return
         if isinstance(proper_type, Instance) and proper_type.type.fullname == "builtins.tuple":
             return
-        if isinstance(proper_type, AnyType) and proper_type.type_of_any == TypeOfAny.from_error:
+        if (
+            isinstance(proper_type, UnboundType)
+            or isinstance(proper_type, AnyType)
+            and proper_type.type_of_any == TypeOfAny.from_error
+        ):
             return
 
         # TODO: Infer something when it can't be unpacked to allow rest of

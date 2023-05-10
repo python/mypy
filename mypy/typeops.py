@@ -103,8 +103,13 @@ def tuple_fallback(typ: TupleType) -> Instance:
                 # TODO: might make sense to do recursion here to support nested unpacks
                 # of tuple constants
                 items.extend(unpacked_type.items)
+            elif (
+                isinstance(unpacked_type, Instance)
+                and unpacked_type.type.fullname == "builtins.tuple"
+            ):
+                items.append(unpacked_type.args[0])
             else:
-                raise NotImplementedError
+                raise NotImplementedError(item)
         else:
             items.append(item)
     return Instance(info, [join_type_list(items)], extra_attrs=typ.partial_fallback.extra_attrs)
@@ -528,7 +533,7 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
                         continue
 
                     if is_proper_subtype(
-                        proper_ti, tj, keep_erased_types=keep_erased, ignore_promotions=True
+                        ti, tj, keep_erased_types=keep_erased, ignore_promotions=True
                     ):
                         duplicate_index = j
                         break

@@ -46,15 +46,11 @@ from mypy.types import (
     has_recursive_types,
     has_type_vars,
     is_named_instance,
+    split_with_prefix_and_suffix,
 )
 from mypy.types_utils import is_union_with_any
 from mypy.typestate import type_state
-from mypy.typevartuples import (
-    extract_unpack,
-    find_unpack_in_list,
-    split_with_mapped_and_template,
-    split_with_prefix_and_suffix,
-)
+from mypy.typevartuples import extract_unpack, find_unpack_in_list, split_with_mapped_and_template
 
 if TYPE_CHECKING:
     from mypy.infer import ArgumentInferContext

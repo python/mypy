@@ -366,6 +366,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return AnyType(TypeOfAny.from_error)
             if isinstance(sym.node, TypeVarTupleExpr):
                 if tvar_def is None:
+                    if self.allow_unbound_tvars:
+                        return t
                     self.fail(f'TypeVarTuple "{t.name}" is unbound', t, code=codes.VALID_TYPE)
                     return AnyType(TypeOfAny.from_error)
                 assert isinstance(tvar_def, TypeVarTupleType)
@@ -414,6 +416,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     isinstance(res, Instance)  # type: ignore[misc]
                     and len(res.args) != len(res.type.type_vars)
                     and not self.defining_alias
+                    and not res.type.has_type_var_tuple_type
                 ):
                     fix_instance(
                         res,
@@ -941,8 +944,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 ]
             else:
                 arg_types = self.anal_array(t.arg_types, nested=nested)
+            # If there were multiple unpacks, the arg types list will become shorter.
+            # we need to trim the kinds/names as well to avoid crashes.
+            arg_kinds = t.arg_kinds[: len(arg_types)]
+            arg_names = t.arg_names[: len(arg_types)]
+
             ret = t.copy_modified(
                 arg_types=arg_types,
+                arg_kinds=arg_kinds,
+                arg_names=arg_names,
                 ret_type=self.anal_type(t.ret_type, nested=nested),
                 # If the fallback isn't filled in yet,
                 # its type will be the falsey FakeInfo
@@ -1272,7 +1282,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         args: list[Type] = []
         kinds: list[ArgKind] = []
         names: list[str | None] = []
-        found_unpack = False
         for arg in arglist.items:
             if isinstance(arg, CallableArgument):
                 args.append(arg.typ)
@@ -1299,9 +1308,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 sym = self.lookup_qualified(arg.name, arg)
                 if sym is not None:
                     if sym.fullname == "typing_extensions.Unpack":
-                        if found_unpack:
-                            self.fail("Callables can only have a single unpack", arg)
-                        found_unpack = True
                         kind = ARG_STAR
                 args.append(arg)
                 kinds.append(kind)
@@ -1581,7 +1587,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         num_unpacks = 0
         final_unpack = None
         for item in items:
-            if isinstance(item, UnpackType):
+            if isinstance(item, UnpackType) and not isinstance(
+                get_proper_type(item.type), TupleType
+            ):
                 if not num_unpacks:
                     new_items.append(item)
                 num_unpacks += 1
@@ -1767,7 +1775,7 @@ def instantiate_type_alias(
         tp.line = ctx.line
         tp.column = ctx.column
         return tp
-    if act_len != exp_len:
+    if act_len != exp_len and node.tvar_tuple_index is None:
         if use_standard_error:
             # This is used if type alias is an internal representation of another type,
             # for example a generic TypedDict or NamedTuple.
@@ -1824,7 +1832,14 @@ def set_any_tvars(
             code=codes.TYPE_ARG,
         )
     any_type = AnyType(type_of_any, line=newline, column=newcolumn)
-    return TypeAliasType(node, [any_type] * len(node.alias_tvars), newline, newcolumn)
+
+    args: list[Type] = []
+    for tv in node.alias_tvars:
+        if isinstance(tv, TypeVarTupleType):
+            args.append(UnpackType(Instance(tv.tuple_fallback.type, [any_type])))
+        else:
+            args.append(any_type)
+    return TypeAliasType(node, args, newline, newcolumn)
 
 
 def remove_dups(tvars: list[T]) -> list[T]:
@@ -1929,7 +1944,11 @@ class DivergingAliasDetector(TrivialSyntheticTypeTranslator):
         assert t.alias is not None, f"Unfixed type alias {t.type_ref}"
         if t.alias in self.seen_nodes:
             for arg in t.args:
-                if not isinstance(arg, TypeVarLikeType) and has_type_vars(arg):
+                if not (
+                    isinstance(arg, TypeVarLikeType)
+                    or isinstance(arg, UnpackType)
+                    and isinstance(arg.type, TypeVarLikeType)
+                ) and has_type_vars(arg):
                     self.diverging = True
                     return t
             # All clear for this expansion chain.
@@ -2073,7 +2092,7 @@ class InstanceFixer(TypeTraverserVisitor):
 
     def visit_instance(self, typ: Instance) -> None:
         super().visit_instance(typ)
-        if len(typ.args) != len(typ.type.type_vars):
+        if len(typ.args) != len(typ.type.type_vars) and not typ.type.has_type_var_tuple_type:
             fix_instance(
                 typ,
                 self.fail,

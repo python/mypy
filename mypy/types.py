@@ -313,10 +313,23 @@ class TypeAliasType(Type):
             # as their target.
             assert isinstance(self.alias.target, Instance)  # type: ignore[misc]
             return self.alias.target.copy_modified(args=self.args)
-        replacer = InstantiateAliasVisitor(
-            {v.id: s for (v, s) in zip(self.alias.alias_tvars, self.args)}
-        )
-        new_tp = self.alias.target.accept(replacer)
+
+        args = flatten_nested_tuples(self.args)
+        if self.alias.tvar_tuple_index is None:
+            mapping = {v.id: s for (v, s) in zip(self.alias.alias_tvars, args)}
+        else:
+            prefix = self.alias.tvar_tuple_index
+            suffix = len(self.alias.alias_tvars) - self.alias.tvar_tuple_index - 1
+            start, middle, end = split_with_prefix_and_suffix(tuple(args), prefix, suffix)
+            tvar = self.alias.alias_tvars[prefix]
+            assert isinstance(tvar, TypeVarTupleType)
+            mapping = {tvar.id: TupleType(list(middle), tvar.tuple_fallback)}
+            for tvar, sub in zip(
+                self.alias.alias_tvars[:prefix] + self.alias.alias_tvars[prefix + 1 :], start + end
+            ):
+                mapping[tvar.id] = sub
+
+        new_tp = self.alias.target.accept(InstantiateAliasVisitor(mapping))
         new_tp.accept(LocationSetter(self.line, self.column))
         new_tp.line = self.line
         new_tp.column = self.column
@@ -1020,6 +1033,12 @@ class UnpackType(ProperType):
         assert data[".class"] == "UnpackType"
         typ = data["type"]
         return UnpackType(deserialize_type(typ))
+
+    def __hash__(self) -> int:
+        return hash(self.type)
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, UnpackType) and self.type == other.type
 
 
 class AnyType(ProperType):
@@ -1736,7 +1755,9 @@ class CallableType(FunctionLike):
         unpack_kwargs: bool = False,
     ) -> None:
         super().__init__(line, column)
-        assert len(arg_types) == len(arg_kinds) == len(arg_names)
+        assert (
+            len(arg_types) == len(arg_kinds) == len(arg_names)
+        ), f"{arg_types}, {arg_kinds}, {arg_names}"
         if variables is None:
             variables = []
         self.arg_types = list(arg_types)
@@ -1865,7 +1886,7 @@ class CallableType(FunctionLike):
             ret = ret.partial_fallback
         if isinstance(ret, TypedDictType):
             ret = ret.fallback
-        assert isinstance(ret, Instance)
+        assert isinstance(ret, Instance), ret
         return ret.type
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
@@ -3298,6 +3319,15 @@ def has_recursive_types(typ: Type) -> bool:
     return typ.accept(_has_recursive_type)
 
 
+def split_with_prefix_and_suffix(
+    types: tuple[T, ...], prefix: int, suffix: int
+) -> tuple[tuple[T, ...], tuple[T, ...], tuple[T, ...]]:
+    if suffix:
+        return types[:prefix], types[prefix:-suffix], types[-suffix:]
+    else:
+        return types[:prefix], types[prefix:], ()
+
+
 def flatten_nested_unions(
     types: Sequence[Type], handle_type_alias_type: bool = True
 ) -> list[Type]:
@@ -3322,6 +3352,20 @@ def flatten_nested_unions(
             # Must preserve original aliases when possible.
             flat_items.append(t)
     return flat_items
+
+
+def flatten_nested_tuples(types: Sequence[Type]) -> list[Type]:
+    res = []
+    for typ in types:
+        if not isinstance(typ, UnpackType):
+            res.append(typ)
+            continue
+        p_type = get_proper_type(typ.type)
+        if not isinstance(p_type, TupleType):
+            res.append(typ)
+            continue
+        res.extend(flatten_nested_tuples(p_type.items))
+    return res
 
 
 def is_literal_type(typ: ProperType, fallback_fullname: str, value: LiteralValue) -> bool:
