@@ -5615,7 +5615,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                     else:
                                         is_literal = False
                                         break
-                            elif isinstance(operand, (ListExpr, SetExpr, TupleExpr)):
+                            elif isinstance(operand, (ListExpr, SetExpr)):
                                 # We are a literal expression!
                                 for item in operand.items:
                                     ty = get_proper_type(self.lookup_type(item))

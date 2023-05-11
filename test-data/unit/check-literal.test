@@ -2973,6 +2973,18 @@ def no_narrow(a: int, b: int, c: Any, d: A):
         reveal_type(d)                       # N: Revealed type is "__main__.A"
 [builtins fixtures/ops.pyi]
 
+[case testLiteralNarrowingInStar]
+from typing_extensions import Literal
+
+def narrow(x: int):
+    y = (1, 2)
+    if x in (*y, 3):
+        # TODO: maybe see through the star-args?
+        reveal_type(x)                       # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(x)                       # N: Revealed type is "builtins.int"
+[builtins fixtures/ops.pyi]
+
 [case testLiteralNarrowingFloat]
 from typing_extensions import Literal
 
