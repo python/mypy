@@ -69,6 +69,7 @@ from mypy.types import (
     TupleType,
     Type,
     TypeOfAny,
+    TypeType,
     TypeVarType,
     UninhabitedType,
     UnionType,
@@ -1071,7 +1072,12 @@ def fields_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
         # </hack>
         proper_type = get_proper_type(inst_type)
 
-        if isinstance(proper_type, AnyType):  # fields(Any) -> Any
+        # fields(Any) -> Any, fields(type[Any]) -> Any
+        if (
+            isinstance(proper_type, AnyType)
+            or isinstance(proper_type, TypeType)
+            and isinstance(proper_type.item, AnyType)
+        ):
             return ctx.default_signature
 
         cls = None

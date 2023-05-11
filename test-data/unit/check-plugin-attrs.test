@@ -1587,7 +1587,7 @@ def f(t: TA) -> None:
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testNonattrsFields]
-from typing import Any, cast
+from typing import Any, cast, Type
 from attrs import fields
 
 class A:
@@ -1597,6 +1597,7 @@ class A:
 fields(A)  # E: Argument 1 to "fields" has incompatible type "Type[A]"; expected an attrs class
 fields(None)  # E: Argument 1 to "fields" has incompatible type "None"; expected an attrs class
 fields(cast(Any, 42))
+fields(cast(Type[Any], 43))
 
 [builtins fixtures/plugin_attrs.pyi]
 
