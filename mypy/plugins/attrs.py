@@ -1092,8 +1092,7 @@ def fields_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
         elif isinstance(proper_type, CallableType):
             cls = proper_type.type_object()
 
-        if cls is not None:
-            if MAGIC_ATTR_NAME in cls.names:
+        if cls is not None and MAGIC_ATTR_NAME in cls.names:
                 # This is a proper attrs class.
                 ret_type = cls.names[MAGIC_ATTR_NAME].type
                 if ret_type is not None:
