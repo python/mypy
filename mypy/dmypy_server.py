@@ -59,9 +59,9 @@ if sys.platform == "win32":
         pickled_options = pickle.dumps(options.snapshot())
         command.append(f'--options-data="{base64.b64encode(pickled_options).decode()}"')
         if timeout:
-            command.append(f'--timeout={timeout}')
+            command.append(f"--timeout={timeout}")
         if log_file:
-            command.append(f'--log-file={log_file}')
+            command.append(f"--log-file={log_file}")
         info = STARTUPINFO()
         info.dwFlags = 0x1  # STARTF_USESHOWWINDOW aka use wShowWindow's value
         info.wShowWindow = 0  # SW_HIDE aka make the window invisible
