@@ -2130,6 +2130,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 expanded_actual = mapper.expand_actual_type(
                     actual_type, actual_kind, callee.arg_names[i], callee_arg_kind
                 )
+                # TODO: We encounter a case where `expanded_actual` is Unpack and `calle_arg_type`
+                # is like a Tuple[Unpack[...]]. Is this the correct place to handle it, or are the
+                # inputs themselves wrong here?
+                if isinstance(expanded_actual, UnpackType) and isinstance(
+                    callee_arg_type, TupleType
+                ):
+                    expanded_actual = TupleType(
+                        [expanded_actual], fallback=callee_arg_type.partial_fallback
+                    )
                 check_arg(
                     expanded_actual,
                     actual_type,

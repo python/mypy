@@ -14,6 +14,7 @@ from mypy.types import (
     Type,
     TypedDictType,
     TypeOfAny,
+    UnpackType,
     get_proper_type,
 )
 

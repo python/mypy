@@ -568,5 +568,53 @@ call(A().func, 0, 1)  # E: Argument 1 to "call" has incompatible type "Callable[
 call(A().func2, 0, 0)
 call(A().func3, 0, 1, 2)
 call(A().func3)
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleNotConcreteCallable]
+from typing_extensions import Unpack, TypeVarTuple
+from typing import Callable, TypeVar, Tuple
+
+T = TypeVar("T")
+Args = TypeVarTuple("Args")
+Args2 = TypeVarTuple("Args2")
+
+def submit(fn: Callable[[Unpack[Args]], T], *args: Unpack[Args]) -> T:
+    ...
+
+#def submit2(fn: Callable[[int, Unpack[Args]], T], *args: Unpack[Tuple[int, Unpack[Args]]]) -> T:
+#    ...
+
+def foo(func: Callable[[Unpack[Args]], T], *args: Unpack[Args]) -> T:
+   return submit(func, *args)
+
+def foo2(func: Callable[[Unpack[Args2]], T], *args: Unpack[Args2]) -> T:
+   return submit(func, *args)
+
+# TODO: implement this case.
+#def foo3(func: Callable[[Unpack[Args2]], T], *args: Unpack[Args2]) -> T:
+#   return submit2(func, 1, *args)
+
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleParamSpecInteraction]
+from typing_extensions import Unpack, TypeVarTuple, ParamSpec
+from typing import Callable, TypeVar
+
+T = TypeVar("T")
+Args = TypeVarTuple("Args")
+Args2 = TypeVarTuple("Args2")
+P = ParamSpec("P")
+
+def submit(fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
+    ...
+
+def foo(func: Callable[[Unpack[Args]], T], *args: Unpack[Args]) -> T:
+   return submit(func, *args)
+
+def foo2(func: Callable[[Unpack[Args]], T], *args: Unpack[Args2]) -> T:
+   return submit(func, *args)  # E: Argument 2 to "submit" has incompatible type "*Tuple[Unpack[Args2]]"; expected "Tuple[Unpack[Args]]"
+
+def foo3(func: Callable[[Unpack[Args2]], T], *args: Unpack[Args2]) -> T:
+   return submit(func, *args)
 
 [builtins fixtures/tuple.pyi]

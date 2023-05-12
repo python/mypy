@@ -150,9 +150,18 @@ def apply_generic_arguments(
         elif isinstance(unpacked_type, TypeVarTupleType):
             expanded_tvt = expand_unpack_with_variables(var_arg.typ, id_to_type)
             if isinstance(expanded_tvt, list):
-                for t in expanded_tvt:
-                    assert not isinstance(t, UnpackType)
-                callable = replace_starargs(callable, expanded_tvt)
+                expanded_tuple = TupleType(expanded_tvt, fallback=unpacked_type.tuple_fallback)
+                expanded_unpack = find_unpack_in_list(expanded_tuple.items)
+                if expanded_unpack is not None:
+                    callable = callable.copy_modified(
+                        arg_types=(
+                            callable.arg_types[:star_index]
+                            + [expanded_tuple]
+                            + callable.arg_types[star_index + 1 :]
+                        )
+                    )
+                else:
+                    callable = replace_starargs(callable, expanded_tuple.items)
             else:
                 assert isinstance(expanded_tvt, Instance)
                 assert expanded_tvt.type.fullname == "builtins.tuple"

@@ -1998,21 +1998,27 @@ class CallableType(FunctionLike):
     ) -> CallableType:
         variables = c.variables
 
-        if no_prefix:
-            return self.copy_modified(
-                arg_types=c.arg_types,
-                arg_kinds=c.arg_kinds,
-                arg_names=c.arg_names,
-                is_ellipsis_args=c.is_ellipsis_args,
-                variables=[*variables, *self.variables],
-            )
+        var_arg = c.var_arg()
+        if var_arg is not None and isinstance(var_arg.typ, UnpackType):
+            variables = [*variables, *self.variables]
         else:
-            return self.copy_modified(
-                arg_types=self.arg_types[:-2] + c.arg_types,
-                arg_kinds=self.arg_kinds[:-2] + c.arg_kinds,
-                arg_names=self.arg_names[:-2] + c.arg_names,
-                is_ellipsis_args=c.is_ellipsis_args,
-                variables=[*variables, *self.variables],
+            variables = [*variables, *self.variables]
+
+        result = self.copy_modified(
+            arg_types=c.arg_types,
+            arg_kinds=c.arg_kinds,
+            arg_names=c.arg_names,
+            is_ellipsis_args=c.is_ellipsis_args,
+            variables=variables,
+        )
+
+        if no_prefix:
+            return result
+        else:
+            return result.copy_modified(
+                arg_types=self.arg_types[:-2] + result.arg_types,
+                arg_kinds=self.arg_kinds[:-2] + result.arg_kinds,
+                arg_names=self.arg_names[:-2] + result.arg_names,
             )
 
     def with_unpacked_kwargs(self) -> NormalizedCallableType:
