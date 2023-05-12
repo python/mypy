@@ -934,8 +934,8 @@ Parent.NormalExplicit = 4  # E: Incompatible types in assignment (expression has
 Parent.SpecialImplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "<typing special form>")
 Parent.SpecialExplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "<typing special form>")
 
-Child.NormalImplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
-Child.NormalExplicit = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "Type[Foo]")
+Child.NormalImplicit = 4  # E: Incompatible types in assignment (expression has type "int", base class "Parent" defined the type as "Type[Foo]")
+Child.NormalExplicit = 4  # E: Incompatible types in assignment (expression has type "int", base class "Parent" defined the type as "Type[Foo]")
 Child.SpecialImplicit = 4
 Child.SpecialExplicit = 4
 

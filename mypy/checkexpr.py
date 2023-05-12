@@ -852,8 +852,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     msg=ErrorMessage(
                         message_registry.INCOMPATIBLE_TYPES.value, code=codes.TYPEDDICT_ITEM
                     ),
-                    lvalue_name=f'TypedDict item "{item_name}"',
-                    rvalue_name="expression",
+                    lvalue_name=f'TypedDict item "{item_name}" has type',
+                    rvalue_name="expression has type",
                 )
 
         return orig_ret_type
