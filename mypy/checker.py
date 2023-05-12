@@ -4005,12 +4005,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # Descriptors don't participate in class-attribute access
         if isinstance(instance_type, CallableType) and instance_type.is_type_obj():
             rvalue_type = self.check_parent_member_assignment(
-                instance_type.ret_type, attribute_type, lvalue, rvalue
+                instance_type.ret_type, attribute_type, lvalue, rvalue, context=context
             )
             return rvalue_type, attribute_type, True
         elif isinstance(instance_type, TypeType):
             rvalue_type = self.check_parent_member_assignment(
-                instance_type.item, attribute_type, lvalue, rvalue
+                instance_type.item, attribute_type, lvalue, rvalue, context=context
             )
             return rvalue_type, attribute_type, True
 
@@ -4036,7 +4036,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # (which allow you to override the descriptor with any value), but preserves
             # the type of accessing the attribute (even after the override).
             rvalue_type = self.check_parent_member_assignment(
-                instance_type, get_type, lvalue, rvalue
+                instance_type, get_type, lvalue, rvalue, context=context
             )
             return rvalue_type, get_type, True
 
@@ -4114,51 +4114,66 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return rvalue_type if infer else set_type, get_type, infer
 
     def check_parent_member_assignment(
-        self, lvalue_base_type: Type, lvalue_type: Type, lvalue: MemberExpr, rvalue: Expression
+        self,
+        lvalue_base_type: Type,
+        lvalue_type: Type,
+        lvalue: MemberExpr,
+        rvalue: Expression,
+        context: Context,
     ) -> Type:
+        """Exactly the same as check_simple_assignment().
+
+        It adds better error message to indicate the class where the attribute originally defined if possible."""
+        lvalue_base_type = get_proper_type(lvalue_base_type)
         if (
-            isinstance(lvalue_base_type, Instance)
-            and lvalue.name not in lvalue_base_type.type.names
+            not isinstance(lvalue_base_type, Instance)
+            or lvalue.name in lvalue_base_type.type.names
         ):
-            lvalue_warn = message_registry.INCOMPATIBLE_TYPES_BASECLASS_MISMATCH
-            metaclass = lvalue_base_type.type.metaclass_type
-            if metaclass and metaclass.type.has_readable_member(lvalue.name):
-                if lvalue.name in metaclass.type.names:
-                    meta_attribute = metaclass.type.names[lvalue.name].node
-                    if not (isinstance(meta_attribute, Var) and meta_attribute.info.is_generic()):
-                        return self.check_simple_assignment(
-                            lvalue_type,
-                            rvalue,
-                            context=rvalue,
-                            msg=message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
-                            lvalue_name=message_registry.INCOMPATIBLE_TYPES_METACLASS_MISMATCH.format(
-                                metaclass.type.defn.name
-                            ),
-                        )
-                else:
-                    # attribute is defined further up in the metaclass MRO
-                    lvalue_warn = 'base class "{{}}" of {}'.format(
-                        message_registry.INCOMPATIBLE_TYPES_METACLASS_MISMATCH.format(
+            return self.check_simple_assignment(lvalue_type, rvalue, context=context)
+
+        lvalue_warn = message_registry.INCOMPATIBLE_TYPES_BASECLASS_MISMATCH
+
+        metaclass = lvalue_base_type.type.metaclass_type
+        if metaclass and metaclass.type.has_readable_member(lvalue.name):
+            if lvalue.name in metaclass.type.names:
+                meta_attribute = metaclass.type.names[lvalue.name].node
+                if not (isinstance(meta_attribute, Var) and meta_attribute.info.is_generic()):
+                    return self.check_simple_assignment(
+                        lvalue_type,
+                        rvalue,
+                        context=context,
+                        msg=message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
+                        lvalue_name=message_registry.INCOMPATIBLE_TYPES_METACLASS_MISMATCH.format(
                             metaclass.type.defn.name
-                        )
+                        ),
                     )
-                    lvalue_base_type = metaclass
-            if lvalue_base_type.type.has_readable_member(lvalue.name):
-                for base in lvalue_base_type.type.bases:
-                    if lvalue.name in base.type.names:
-                        parent_context = base.type.names[lvalue.name].node
-                        if isinstance(parent_context, Var) and parent_context.info.is_generic():
-                            # Attribute may have been defined in this class but its type is
-                            # probably defined elsewhere, possibly in the instance itself.
-                            continue
-                        return self.check_simple_assignment(
-                            lvalue_type,
-                            rvalue,
-                            context=rvalue,
-                            msg=message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
-                            lvalue_name=lvalue_warn.format(base.type.defn.name),
-                        )
-        return self.check_simple_assignment(lvalue_type, rvalue, context=rvalue)
+            else:
+                # attribute is defined further up in the metaclass MRO
+                # better error message for later check
+                lvalue_warn = 'base class "{{}}" of {}'.format(
+                    message_registry.INCOMPATIBLE_TYPES_METACLASS_MISMATCH.format(
+                        metaclass.type.defn.name
+                    )
+                )
+                lvalue_base_type = metaclass
+
+        if lvalue_base_type.type.has_readable_member(lvalue.name):
+            for base in lvalue_base_type.type.bases:
+                if lvalue.name in base.type.names:
+                    parent_context = base.type.names[lvalue.name].node
+                    if isinstance(parent_context, Var) and parent_context.info.is_generic():
+                        # Attribute may have been defined in this class but its type is
+                        # probably defined elsewhere, possibly in the instance itself.
+                        continue
+                    return self.check_simple_assignment(
+                        lvalue_type,
+                        rvalue,
+                        context=context,
+                        msg=message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
+                        lvalue_name=lvalue_warn.format(base.type.defn.name),
+                    )
+
+        return self.check_simple_assignment(lvalue_type, rvalue, context=context)
 
     def check_indexed_assignment(
         self, lvalue: IndexExpr, rvalue: Expression, context: Context
