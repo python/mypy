@@ -4137,7 +4137,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     ) -> Type:
         """Exactly the same as check_simple_assignment().
 
-        It adds better error message to indicate the class where the attribute originally defined if possible."""
+        It adds better error message to indicate the class where the attribute originally defined if possible.
+        """
         lvalue_base_type = get_proper_type(lvalue_base_type)
         if (
             not isinstance(lvalue_base_type, Instance)
