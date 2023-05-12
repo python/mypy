@@ -1065,41 +1065,44 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
 
 def fields_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> CallableType:
     """Provide the proper signature for `attrs.fields`."""
-    if ctx.args and len(ctx.args) == 1 and ctx.args[0] and ctx.args[0][0]:
-        # <hack>
-        assert isinstance(ctx.api, TypeChecker)
-        inst_type = ctx.api.expr_checker.accept(ctx.args[0][0])
-        # </hack>
-        proper_type = get_proper_type(inst_type)
+    if not ctx.args or len(ctx.args) != 1 or not ctx.args[0] or not ctx.args[0][0]:
+        return ctx.default_signature
 
-        # fields(Any) -> Any, fields(type[Any]) -> Any
-        if (
-            isinstance(proper_type, AnyType)
-            or isinstance(proper_type, TypeType)
-            and isinstance(proper_type.item, AnyType)
-        ):
-            return ctx.default_signature
+    # <hack>
+    assert isinstance(ctx.api, TypeChecker)
+    inst_type = ctx.api.expr_checker.accept(ctx.args[0][0])
+    # </hack>
+    proper_type = get_proper_type(inst_type)
 
-        cls = None
-        arg_types = ctx.default_signature.arg_types
+    # fields(Any) -> Any, fields(type[Any]) -> Any
+    if (
+        isinstance(proper_type, AnyType)
+        or isinstance(proper_type, TypeType)
+        and isinstance(proper_type.item, AnyType)
+    ):
+        return ctx.default_signature
 
-        if isinstance(proper_type, TypeVarType):
-            inner = get_proper_type(proper_type.upper_bound)
-            if isinstance(inner, Instance):
-                # We need to work arg_types to compensate for the attrs stubs.
-                arg_types = [inst_type]
-                cls = inner.type
-        elif isinstance(proper_type, CallableType):
-            cls = proper_type.type_object()
+    cls = None
+    arg_types = ctx.default_signature.arg_types
 
-        if cls is not None and MAGIC_ATTR_NAME in cls.names:
-            # This is a proper attrs class.
-            ret_type = cls.names[MAGIC_ATTR_NAME].type
-            if ret_type is not None:
-                return ctx.default_signature.copy_modified(arg_types=arg_types, ret_type=ret_type)
+    if isinstance(proper_type, TypeVarType):
+        inner = get_proper_type(proper_type.upper_bound)
+        if isinstance(inner, Instance):
+            # We need to work arg_types to compensate for the attrs stubs.
+            arg_types = [inst_type]
+            cls = inner.type
+    elif isinstance(proper_type, CallableType):
+        cls = proper_type.type_object()
 
-        ctx.api.fail(
-            f'Argument 1 to "fields" has incompatible type "{format_type_bare(proper_type, ctx.api.options)}"; expected an attrs class',
-            ctx.context,
-        )
+    if cls is not None and MAGIC_ATTR_NAME in cls.names:
+        # This is a proper attrs class.
+        ret_type = cls.names[MAGIC_ATTR_NAME].type
+        assert ret_type is not None
+        return ctx.default_signature.copy_modified(arg_types=arg_types, ret_type=ret_type)
+
+    ctx.api.fail(
+        f'Argument 1 to "fields" has incompatible type "{format_type_bare(proper_type, ctx.api.options)}"; expected an attrs class',
+        ctx.context,
+    )
+
     return ctx.default_signature
