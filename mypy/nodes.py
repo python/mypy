@@ -512,6 +512,7 @@ class FuncBase(Node):
         "is_class",  # Uses "@classmethod" (explicit or implicit)
         "is_static",  # Uses "@staticmethod"
         "is_final",  # Uses "@final"
+        "is_explicit_override",  # Uses "@override"
         "_fullname",
     )
 
@@ -529,6 +530,7 @@ class FuncBase(Node):
         self.is_class = False
         self.is_static = False
         self.is_final = False
+        self.is_explicit_override = False
         # Name with module prefix
         self._fullname = ""
 
