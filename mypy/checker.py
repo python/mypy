@@ -4114,11 +4114,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return rvalue_type if infer else set_type, get_type, infer
 
     def check_parent_member_assignment(
-        self,
-        lvalue_base_type: Type,
-        lvalue_type: Type,
-        lvalue: MemberExpr,
-        rvalue: Expression,
+        self, lvalue_base_type: Type, lvalue_type: Type, lvalue: MemberExpr, rvalue: Expression
     ) -> Type:
         if (
             isinstance(lvalue_base_type, Instance)
@@ -4151,10 +4147,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 for base in lvalue_base_type.type.bases:
                     if lvalue.name in base.type.names:
                         parent_context = base.type.names[lvalue.name].node
-                        if (
-                            isinstance(parent_context, Var)
-                            and parent_context.info.is_generic()
-                        ):
+                        if isinstance(parent_context, Var) and parent_context.info.is_generic():
                             # Attribute may have been defined in this class but its type is
                             # probably defined elsewhere, possibly in the instance itself.
                             continue
