@@ -1,6 +1,6 @@
 [case testFastParseSyntaxError]
 
-1 +  # E: Invalid syntax
+1 +  # E: invalid syntax
 
 [case testFastParseTypeCommentSyntaxError]
 
