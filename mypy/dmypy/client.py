@@ -616,7 +616,6 @@ def do_daemon(args: argparse.Namespace) -> None:
         os.dup2(fd, 1)
 
     if args.options_data:
-        # Override processed options from flags
         from mypy.options import Options
 
         options_dict = pickle.loads(base64.b64decode(args.options_data))
