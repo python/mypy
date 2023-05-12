@@ -7859,3 +7859,36 @@ f5(1)  # E: Argument 1 to "f5" has incompatible type "int"; expected "Integral" 
        # N: Types from "numbers" aren't supported for static type checking \
        # N: See https://peps.python.org/pep-0484/#the-numeric-tower \
        # N: Consider using a protocol instead, such as typing.SupportsFloat
+
+[case testMetaclassParentAttribute]
+import submod
+class A(metaclass=submod.M):
+    pass
+A.x = ""
+A.x = 1
+[file submod.py]
+class N(type):
+    x: str
+class M(N):
+    pass
+[out]
+main:5: error: Incompatible types in assignment (expression has type "int", base class "N" of metaclass "M" defined the type as "str")
+
+[case testParentMetaclassAttribute]
+import submod
+class A(metaclass=submod.M):
+    pass
+class B(A):
+    pass
+class C(B):
+    pass
+B.x = ""
+B.x = 1
+C.x = ""
+C.x = 1
+[file submod.py]
+class M(type):
+    x: str
+[out]
+main:7: error: Incompatible types in assignment (expression has type "int", metaclass "M" defined the type as "str")
+main:11: error: Incompatible types in assignment (expression has type "int", metaclass "M" defined the type as "str")
