@@ -4,7 +4,7 @@
 f()
 1 +
 [out]
-main:2:5: error: invalid syntax
+main:2:5: error: Invalid syntax
 
 [case testColumnsNestedFunctions]
 import typing
