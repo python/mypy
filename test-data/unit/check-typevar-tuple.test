@@ -751,3 +751,13 @@ Second = Tuple[C, D]
 x: Alias[Unpack[First], Unpack[Second]]  # E: Type argument "A" of "Alias" must be a subtype of "int" \
                                          # E: Type argument "D" of "Alias" must be a subtype of "str"
 [builtins fixtures/tuple.pyi]
+
+[case testVariadicAliasEmptyArg]
+from typing import Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+A = Tuple[int, Unpack[Ts], str]
+x: A[()]
+reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
+[builtins fixtures/tuple.pyi]

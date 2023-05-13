@@ -409,6 +409,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     self.options,
                     unexpanded_type=t,
                     disallow_any=disallow_any,
+                    empty_tuple_index=t.empty_tuple_index,
                 )
                 # The only case where instantiate_type_alias() can return an incorrect instance is
                 # when it is top-level instance, so no need to recurse.
@@ -1732,6 +1733,7 @@ def instantiate_type_alias(
     unexpanded_type: Type | None = None,
     disallow_any: bool = False,
     use_standard_error: bool = False,
+    empty_tuple_index: bool = False,
 ) -> Type:
     """Create an instance of a (generic) type alias from alias node and type arguments.
 
@@ -1747,7 +1749,11 @@ def instantiate_type_alias(
     """
     exp_len = len(node.alias_tvars)
     act_len = len(args)
-    if exp_len > 0 and act_len == 0:
+    if (
+        exp_len > 0
+        and act_len == 0
+        and not (empty_tuple_index and node.tvar_tuple_index is not None)
+    ):
         # Interpret bare Alias same as normal generic, i.e., Alias[Any, Any, ...]
         return set_any_tvars(
             node,
