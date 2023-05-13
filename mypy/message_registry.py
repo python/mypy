@@ -289,7 +289,7 @@ TYPE_IGNORE_WITH_ERRCODE_ON_MODULE: Final = ErrorMessage(
 )
 INVALID_TYPE_IGNORE: Final = ErrorMessage('Invalid "type: ignore" comment', codes.SYNTAX)
 TYPE_COMMENT_SYNTAX_ERROR_VALUE: Final = ErrorMessage(
-    'syntax error in type comment "{}"', codes.SYNTAX
+    'Syntax error in type comment "{}"', codes.SYNTAX
 )
 ELLIPSIS_WITH_OTHER_TYPEARGS: Final = ErrorMessage(
     "Ellipses cannot accompany other argument types in function type signature", codes.SYNTAX
