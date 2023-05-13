@@ -528,7 +528,7 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
                         continue
 
                     if is_proper_subtype(
-                        proper_ti, tj, keep_erased_types=keep_erased, ignore_promotions=True
+                        ti, tj, keep_erased_types=keep_erased, ignore_promotions=True
                     ):
                         duplicate_index = j
                         break
