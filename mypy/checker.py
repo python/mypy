@@ -5272,8 +5272,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 return f"Expression has type {typ}"
 
         def get_expr_name() -> str:
-            if hasattr(expr, "name"):
-                return f'"{str(expr.name)}"'
+            if isinstance(expr, (NameExpr, MemberExpr)):
+                return f'"{expr.name}"'
             else:
                 # return type if expr has no name
                 return format_type(t, self.options)
