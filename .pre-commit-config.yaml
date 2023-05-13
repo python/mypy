@@ -1,4 +1,9 @@
 repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0  # must match test-requirements.txt
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
   - repo: https://github.com/psf/black
     rev: 23.3.0  # must match test-requirements.txt
     hooks:
