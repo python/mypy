@@ -105,6 +105,7 @@ from mypy.nodes import (
     TupleExpr,
     TypeInfo,
     UnaryExpr,
+    Var,
 )
 from mypy.options import Options as MypyOptions
 from mypy.stubdoc import Sig, find_unique_signatures, parse_all_signatures
@@ -856,7 +857,12 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
     def get_fullname(self, expr: Expression) -> str:
         """Return the full name resolving imports and import aliases."""
-        if self.analyzed and isinstance(expr, (NameExpr, MemberExpr)) and expr.fullname:
+        if (
+            self.analyzed
+            and isinstance(expr, (NameExpr, MemberExpr))
+            and expr.fullname
+            and not (isinstance(expr.node, Var) and expr.node.is_suppressed_import)
+        ):
             return expr.fullname
         name = get_qualified_name(expr)
         if "." not in name:
