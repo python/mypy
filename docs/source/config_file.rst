@@ -12,7 +12,7 @@ Mypy supports reading configuration settings from a file with the following prec
     5. ``setup.cfg`` in the current working directory
     6. ``$XDG_CONFIG_HOME/mypy/config``
     7. ``~/.config/mypy/config``
-    8. ``.mypy.ini`` in the user home directory
+    8. ``~/.mypy.ini``
 
 It is important to understand that there is no merging of configuration
 files, as it would lead to ambiguity. Mypy will use the first available
