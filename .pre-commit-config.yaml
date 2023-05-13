@@ -1,3 +1,4 @@
+exclude: '^(mypyc/external/)|(mypy/typeshed/)'  # Exclude all vendored code from lints
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.4.0  # must match test-requirements.txt
