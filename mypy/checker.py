@@ -212,11 +212,8 @@ from mypy.types import (
     get_proper_types,
     is_literal_type,
     is_named_instance,
-    is_optional,
-    remove_optional,
-    store_argument_type,
-    strip_type,
 )
+from mypy.types_utils import is_optional, remove_optional, store_argument_type, strip_type
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars, fill_typevars_with_any, has_no_typevars
 from mypy.util import is_dunder, is_sunder, is_typeshed_file
@@ -644,7 +641,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if defn.impl:
             defn.impl.accept(self)
         if defn.info:
-            self.check_method_override(defn)
+            found_base_method = self.check_method_override(defn)
+            if defn.is_explicit_override and found_base_method is False:
+                self.msg.no_overridable_method(defn.name, defn)
             self.check_inplace_operator_method(defn)
         if not defn.is_property:
             self.check_overlapping_overloads(defn)
@@ -1542,9 +1541,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 opt_meta = item.type.metaclass_type
                 if opt_meta is not None:
                     forward_inst = opt_meta
+
+        def has_readable_member(typ: Union[UnionType, Instance], name: str) -> bool:
+            # TODO: Deal with attributes of TupleType etc.
+            if isinstance(typ, Instance):
+                return typ.type.has_readable_member(name)
+            return all(
+                (isinstance(x, UnionType) and has_readable_member(x, name))
+                or (isinstance(x, Instance) and x.type.has_readable_member(name))
+                for x in get_proper_types(typ.relevant_items())
+            )
+
         if not (
             isinstance(forward_inst, (Instance, UnionType))
-            and forward_inst.has_readable_member(forward_name)
+            and has_readable_member(forward_inst, forward_name)
         ):
             return
         forward_base = reverse_type.arg_types[1]
@@ -1799,25 +1809,35 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             return [(defn, typ)]
 
-    def check_method_override(self, defn: FuncDef | OverloadedFuncDef | Decorator) -> None:
+    def check_method_override(self, defn: FuncDef | OverloadedFuncDef | Decorator) -> bool | None:
         """Check if function definition is compatible with base classes.
 
         This may defer the method if a signature is not available in at least one base class.
+        Return ``None`` if that happens.
+
+        Return ``True`` if an attribute with the method name was found in the base class.
         """
         # Check against definitions in base classes.
+        found_base_method = False
         for base in defn.info.mro[1:]:
-            if self.check_method_or_accessor_override_for_base(defn, base):
+            result = self.check_method_or_accessor_override_for_base(defn, base)
+            if result is None:
                 # Node was deferred, we will have another attempt later.
-                return
+                return None
+            found_base_method |= result
+        return found_base_method
 
     def check_method_or_accessor_override_for_base(
         self, defn: FuncDef | OverloadedFuncDef | Decorator, base: TypeInfo
-    ) -> bool:
+    ) -> bool | None:
         """Check if method definition is compatible with a base class.
 
-        Return True if the node was deferred because one of the corresponding
+        Return ``None`` if the node was deferred because one of the corresponding
         superclass nodes is not ready.
+
+        Return ``True`` if an attribute with the method name was found in the base class.
         """
+        found_base_method = False
         if base:
             name = defn.name
             base_attr = base.names.get(name)
@@ -1828,13 +1848,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # Second, final can't override anything writeable independently of types.
                 if defn.is_final:
                     self.check_if_final_var_override_writable(name, base_attr.node, defn)
+                found_base_method = True
 
             # Check the type of override.
             if name not in ("__init__", "__new__", "__init_subclass__"):
                 # Check method override
                 # (__init__, __new__, __init_subclass__ are special).
                 if self.check_method_override_for_base_with_name(defn, name, base):
-                    return True
+                    return None
                 if name in operators.inplace_operator_methods:
                     # Figure out the name of the corresponding operator method.
                     method = "__" + name[3:]
@@ -1842,8 +1863,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # always introduced safely if a base class defined __add__.
                     # TODO can't come up with an example where this is
                     #      necessary; now it's "just in case"
-                    return self.check_method_override_for_base_with_name(defn, method, base)
-        return False
+                    if self.check_method_override_for_base_with_name(defn, method, base):
+                        return None
+        return found_base_method
 
     def check_method_override_for_base_with_name(
         self, defn: FuncDef | OverloadedFuncDef | Decorator, name: str, base: TypeInfo
@@ -4707,7 +4729,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_incompatible_property_override(e)
         # For overloaded functions we already checked override for overload as a whole.
         if e.func.info and not e.func.is_dynamic() and not e.is_overload:
-            self.check_method_override(e)
+            found_base_method = self.check_method_override(e)
+            if e.func.is_explicit_override and found_base_method is False:
+                self.msg.no_overridable_method(e.func.name, e.func)
 
         if e.func.info and e.func.name in ("__init__", "__new__"):
             if e.type and not isinstance(get_proper_type(e.type), (FunctionLike, AnyType)):

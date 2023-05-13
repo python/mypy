@@ -7,7 +7,6 @@ from abc import abstractmethod
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     ClassVar,
     Dict,
     Iterable,
@@ -30,7 +29,6 @@ from mypy.nodes import (
     ArgKind,
     FakeInfo,
     FuncDef,
-    FuncItem,
     SymbolNode,
 )
 from mypy.options import Options
@@ -158,6 +156,8 @@ DATACLASS_TRANSFORM_NAMES: Final = (
     "typing.dataclass_transform",
     "typing_extensions.dataclass_transform",
 )
+# Supported @override decorator names.
+OVERRIDE_DECORATOR_NAMES: Final = ("typing.override", "typing_extensions.override")
 
 # A placeholder used for Bogus[...] parameters
 _dummy: Final[Any] = object()
@@ -315,9 +315,14 @@ class TypeAliasType(Type):
             # as their target.
             assert isinstance(self.alias.target, Instance)  # type: ignore[misc]
             return self.alias.target.copy_modified(args=self.args)
-        return replace_alias_tvars(
-            self.alias.target, self.alias.alias_tvars, self.args, self.line, self.column
+        replacer = InstantiateAliasVisitor(
+            {v.id: s for (v, s) in zip(self.alias.alias_tvars, self.args)}
         )
+        new_tp = self.alias.target.accept(replacer)
+        new_tp.accept(LocationSetter(self.line, self.column))
+        new_tp.line = self.line
+        new_tp.column = self.column
+        return new_tp
 
     def _partial_expansion(self, nothing_args: bool = False) -> tuple[ProperType, bool]:
         # Private method mostly for debugging and testing.
@@ -1433,9 +1438,6 @@ class Instance(ProperType):
         new = self.copy_modified()
         new.extra_attrs = existing_attrs
         return new
-
-    def has_readable_member(self, name: str) -> bool:
-        return self.type.has_readable_member(name)
 
     def is_singleton_type(self) -> bool:
         # TODO:
@@ -2658,18 +2660,6 @@ class UnionType(ProperType):
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_union_type(self)
 
-    def has_readable_member(self, name: str) -> bool:
-        """For a tree of unions of instances, check whether all instances have a given member.
-
-        TODO: Deal with attributes of TupleType etc.
-        TODO: This should probably be refactored to go elsewhere.
-        """
-        return all(
-            (isinstance(x, UnionType) and x.has_readable_member(name))
-            or (isinstance(x, Instance) and x.type.has_readable_member(name))
-            for x in get_proper_types(self.relevant_items())
-        )
-
     def relevant_items(self) -> list[Type]:
         """Removes NoneTypes from Unions when strict Optional checking is off."""
         if state.strict_optional:
@@ -3252,67 +3242,12 @@ class UnrollAliasVisitor(TrivialSyntheticTypeTranslator):
         return result
 
 
-def strip_type(typ: Type) -> Type:
-    """Make a copy of type without 'debugging info' (function name)."""
-    orig_typ = typ
-    typ = get_proper_type(typ)
-    if isinstance(typ, CallableType):
-        return typ.copy_modified(name=None)
-    elif isinstance(typ, Overloaded):
-        return Overloaded([cast(CallableType, strip_type(item)) for item in typ.items])
-    else:
-        return orig_typ
-
-
 def is_named_instance(t: Type, fullnames: str | tuple[str, ...]) -> TypeGuard[Instance]:
     if not isinstance(fullnames, tuple):
         fullnames = (fullnames,)
 
     t = get_proper_type(t)
     return isinstance(t, Instance) and t.type.fullname in fullnames
-
-
-class InstantiateAliasVisitor(TrivialSyntheticTypeTranslator):
-    def __init__(self, vars: list[TypeVarLikeType], subs: list[Type]) -> None:
-        self.replacements = {v.id: s for (v, s) in zip(vars, subs)}
-
-    def visit_type_alias_type(self, typ: TypeAliasType) -> Type:
-        return typ.copy_modified(args=[t.accept(self) for t in typ.args])
-
-    def visit_type_var(self, typ: TypeVarType) -> Type:
-        if typ.id in self.replacements:
-            return self.replacements[typ.id]
-        return typ
-
-    def visit_callable_type(self, t: CallableType) -> Type:
-        param_spec = t.param_spec()
-        if param_spec is not None:
-            # TODO: this branch duplicates the one in expand_type(), find a way to reuse it
-            # without import cycle types <-> typeanal <-> expandtype.
-            repl = get_proper_type(self.replacements.get(param_spec.id))
-            if isinstance(repl, (CallableType, Parameters)):
-                prefix = param_spec.prefix
-                t = t.expand_param_spec(repl, no_prefix=True)
-                return t.copy_modified(
-                    arg_types=[t.accept(self) for t in prefix.arg_types] + t.arg_types,
-                    arg_kinds=prefix.arg_kinds + t.arg_kinds,
-                    arg_names=prefix.arg_names + t.arg_names,
-                    ret_type=t.ret_type.accept(self),
-                    type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None),
-                )
-        return super().visit_callable_type(t)
-
-    def visit_param_spec(self, typ: ParamSpecType) -> Type:
-        if typ.id in self.replacements:
-            repl = get_proper_type(self.replacements[typ.id])
-            # TODO: all the TODOs from same logic in expand_type() apply here.
-            if isinstance(repl, Instance):
-                return repl
-            elif isinstance(repl, (ParamSpecType, Parameters, CallableType)):
-                return expand_param_spec(typ, repl)
-            else:
-                return repl
-        return typ
 
 
 class LocationSetter(TypeTraverserVisitor):
@@ -3325,20 +3260,6 @@ class LocationSetter(TypeTraverserVisitor):
         typ.line = self.line
         typ.column = self.column
         super().visit_instance(typ)
-
-
-def replace_alias_tvars(
-    tp: Type, vars: list[TypeVarLikeType], subs: list[Type], newline: int, newcolumn: int
-) -> Type:
-    """Replace type variables in a generic type alias tp with substitutions subs
-    resetting context. Length of subs should be already checked.
-    """
-    replacer = InstantiateAliasVisitor(vars, subs)
-    new_tp = tp.accept(replacer)
-    new_tp.accept(LocationSetter(newline, newcolumn))
-    new_tp.line = newline
-    new_tp.column = newcolumn
-    return new_tp
 
 
 class HasTypeVars(BoolTypeQuery):
@@ -3379,15 +3300,6 @@ def has_recursive_types(typ: Type) -> bool:
     return typ.accept(_has_recursive_type)
 
 
-def _flattened(types: Iterable[Type]) -> Iterable[Type]:
-    for t in types:
-        tp = get_proper_type(t)
-        if isinstance(tp, UnionType):
-            yield from _flattened(tp.items)
-        else:
-            yield t
-
-
 def flatten_nested_unions(
     types: Sequence[Type], handle_type_alias_type: bool = True
 ) -> list[Type]:
@@ -3414,71 +3326,6 @@ def flatten_nested_unions(
     return flat_items
 
 
-def invalid_recursive_alias(seen_nodes: set[mypy.nodes.TypeAlias], target: Type) -> bool:
-    """Flag aliases like A = Union[int, A] (and similar mutual aliases).
-
-    Such aliases don't make much sense, and cause problems in later phases.
-    """
-    if isinstance(target, TypeAliasType):
-        if target.alias in seen_nodes:
-            return True
-        assert target.alias, f"Unfixed type alias {target.type_ref}"
-        return invalid_recursive_alias(seen_nodes | {target.alias}, get_proper_type(target))
-    assert isinstance(target, ProperType)
-    if not isinstance(target, UnionType):
-        return False
-    return any(invalid_recursive_alias(seen_nodes, item) for item in target.items)
-
-
-def bad_type_type_item(item: Type) -> bool:
-    """Prohibit types like Type[Type[...]].
-
-    Such types are explicitly prohibited by PEP 484. Also they cause problems
-    with recursive types like T = Type[T], because internal representation of
-    TypeType item is normalized (i.e. always a proper type).
-    """
-    item = get_proper_type(item)
-    if isinstance(item, TypeType):
-        return True
-    if isinstance(item, UnionType):
-        return any(
-            isinstance(get_proper_type(i), TypeType) for i in flatten_nested_unions(item.items)
-        )
-    return False
-
-
-def is_union_with_any(tp: Type) -> bool:
-    """Is this a union with Any or a plain Any type?"""
-    tp = get_proper_type(tp)
-    if isinstance(tp, AnyType):
-        return True
-    if not isinstance(tp, UnionType):
-        return False
-    return any(is_union_with_any(t) for t in get_proper_types(tp.items))
-
-
-def is_generic_instance(tp: Type) -> bool:
-    tp = get_proper_type(tp)
-    return isinstance(tp, Instance) and bool(tp.args)
-
-
-def is_optional(t: Type) -> bool:
-    t = get_proper_type(t)
-    return isinstance(t, UnionType) and any(
-        isinstance(get_proper_type(e), NoneType) for e in t.items
-    )
-
-
-def remove_optional(typ: Type) -> Type:
-    typ = get_proper_type(typ)
-    if isinstance(typ, UnionType):
-        return UnionType.make_union(
-            [t for t in typ.items if not isinstance(get_proper_type(t), NoneType)]
-        )
-    else:
-        return typ
-
-
 def is_literal_type(typ: ProperType, fallback_fullname: str, value: LiteralValue) -> bool:
     """Check if this type is a LiteralType with the given fallback type and value."""
     if isinstance(typ, Instance) and typ.last_known_value:
@@ -3488,16 +3335,6 @@ def is_literal_type(typ: ProperType, fallback_fullname: str, value: LiteralValue
         and typ.fallback.type.fullname == fallback_fullname
         and typ.value == value
     )
-
-
-def is_self_type_like(typ: Type, *, is_classmethod: bool) -> bool:
-    """Does this look like a self-type annotation?"""
-    typ = get_proper_type(typ)
-    if not is_classmethod:
-        return isinstance(typ, TypeVarType)
-    if not isinstance(typ, TypeType):
-        return False
-    return isinstance(typ.item, TypeVarType)
 
 
 names: Final = globals().copy()
@@ -3521,98 +3358,20 @@ def callable_with_ellipsis(any_type: AnyType, ret_type: Type, fallback: Instance
     )
 
 
-def expand_param_spec(
-    t: ParamSpecType, repl: ParamSpecType | Parameters | CallableType
-) -> ProperType:
-    """This is shared part of the logic w.r.t. ParamSpec instantiation.
-
-    It is shared between type aliases and proper types, that currently use somewhat different
-    logic for instantiation."""
-    if isinstance(repl, ParamSpecType):
-        return repl.copy_modified(
-            flavor=t.flavor,
-            prefix=t.prefix.copy_modified(
-                arg_types=t.prefix.arg_types + repl.prefix.arg_types,
-                arg_kinds=t.prefix.arg_kinds + repl.prefix.arg_kinds,
-                arg_names=t.prefix.arg_names + repl.prefix.arg_names,
-            ),
-        )
-    else:
-        # if the paramspec is *P.args or **P.kwargs:
-        if t.flavor != ParamSpecFlavor.BARE:
-            assert isinstance(repl, CallableType), "Should not be able to get here."
-            # Is this always the right thing to do?
-            param_spec = repl.param_spec()
-            if param_spec:
-                return param_spec.with_flavor(t.flavor)
-            else:
-                return repl
-        else:
-            return Parameters(
-                t.prefix.arg_types + repl.arg_types,
-                t.prefix.arg_kinds + repl.arg_kinds,
-                t.prefix.arg_names + repl.arg_names,
-                variables=[*t.prefix.variables, *repl.variables],
-            )
+# This cyclic import is unfortunate, but to avoid it we would need to move away all uses
+# of get_proper_type() from types.py. Majority of them have been removed, but few remaining
+# are quite tricky to get rid of, but ultimately we want to do it at some point.
+from mypy.expandtype import ExpandTypeVisitor
 
 
-def store_argument_type(
-    defn: FuncItem, i: int, typ: CallableType, named_type: Callable[[str, list[Type]], Instance]
-) -> None:
-    arg_type = typ.arg_types[i]
-    if typ.arg_kinds[i] == ARG_STAR:
-        if isinstance(arg_type, ParamSpecType):
-            pass
-        elif isinstance(arg_type, UnpackType):
-            unpacked_type = get_proper_type(arg_type.type)
-            if isinstance(unpacked_type, TupleType):
-                # Instead of using Tuple[Unpack[Tuple[...]]], just use
-                # Tuple[...]
-                arg_type = unpacked_type
-            elif (
-                isinstance(unpacked_type, Instance)
-                and unpacked_type.type.fullname == "builtins.tuple"
-            ):
-                arg_type = unpacked_type
-            else:
-                arg_type = TupleType(
-                    [arg_type],
-                    fallback=named_type("builtins.tuple", [named_type("builtins.object", [])]),
-                )
-        else:
-            # builtins.tuple[T] is typing.Tuple[T, ...]
-            arg_type = named_type("builtins.tuple", [arg_type])
-    elif typ.arg_kinds[i] == ARG_STAR2:
-        if not isinstance(arg_type, ParamSpecType) and not typ.unpack_kwargs:
-            arg_type = named_type("builtins.dict", [named_type("builtins.str", []), arg_type])
-    defn.arguments[i].variable.type = arg_type
-
-
-def remove_trivial(types: Iterable[Type]) -> list[Type]:
-    """Make trivial simplifications on a list of types without calling is_subtype().
-
-    This makes following simplifications:
-        * Remove bottom types (taking into account strict optional setting)
-        * Remove everything else if there is an `object`
-        * Remove strict duplicate types
-    """
-    removed_none = False
-    new_types = []
-    all_types = set()
-    for t in types:
-        p_t = get_proper_type(t)
-        if isinstance(p_t, UninhabitedType):
-            continue
-        if isinstance(p_t, NoneType) and not state.strict_optional:
-            removed_none = True
-            continue
-        if isinstance(p_t, Instance) and p_t.type.fullname == "builtins.object":
-            return [p_t]
-        if p_t not in all_types:
-            new_types.append(t)
-            all_types.add(p_t)
-    if new_types:
-        return new_types
-    if removed_none:
-        return [NoneType()]
-    return [UninhabitedType()]
+class InstantiateAliasVisitor(ExpandTypeVisitor):
+    def visit_union_type(self, t: UnionType) -> Type:
+        # Unlike regular expand_type(), we don't do any simplification for unions,
+        # not even removing strict duplicates. There are three reasons for this:
+        #   * get_proper_type() is a very hot function, even slightest slow down will
+        #     cause a perf regression
+        #   * We want to preserve this historical behaviour, to avoid possible
+        #     regressions
+        #   * Simplifying unions may (indirectly) call get_proper_type(), causing
+        #     infinite recursion.
+        return TypeTranslator.visit_union_type(self, t)

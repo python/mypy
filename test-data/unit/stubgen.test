@@ -641,8 +641,9 @@ class A:
     def _bar(cls) -> None: ...
 
 [case testNamedtuple]
-import collections, x
+import collections, typing, x
 X = collections.namedtuple('X', ['a', 'b'])
+Y = typing.NamedTuple('Y', [('a', int), ('b', str)])
 [out]
 from _typeshed import Incomplete
 from typing import NamedTuple
@@ -651,13 +652,20 @@ class X(NamedTuple):
     a: Incomplete
     b: Incomplete
 
+class Y(NamedTuple):
+    a: int
+    b: str
+
 [case testEmptyNamedtuple]
-import collections
+import collections, typing
 X = collections.namedtuple('X', [])
+Y = typing.NamedTuple('Y', [])
 [out]
 from typing import NamedTuple
 
 class X(NamedTuple): ...
+
+class Y(NamedTuple): ...
 
 [case testNamedtupleAltSyntax]
 from collections import namedtuple, xx
@@ -697,8 +705,10 @@ class X(NamedTuple):
 
 [case testNamedtupleWithUnderscore]
 from collections import namedtuple as _namedtuple
+from typing import NamedTuple as _NamedTuple
 def f(): ...
 X = _namedtuple('X', 'a b')
+Y = _NamedTuple('Y', [('a', int), ('b', str)])
 def g(): ...
 [out]
 from _typeshed import Incomplete
@@ -709,6 +719,10 @@ def f() -> None: ...
 class X(NamedTuple):
     a: Incomplete
     b: Incomplete
+
+class Y(NamedTuple):
+    a: int
+    b: str
 
 def g() -> None: ...
 
@@ -728,10 +742,14 @@ class Y(_X): ...
 
 [case testNamedtupleAltSyntaxFieldsTuples]
 from collections import namedtuple, xx
+from typing import NamedTuple
 X = namedtuple('X', ())
 Y = namedtuple('Y', ('a',))
 Z = namedtuple('Z', ('a', 'b', 'c', 'd', 'e'))
 xx
+R = NamedTuple('R', ())
+S = NamedTuple('S', (('a', int),))
+T = NamedTuple('T', (('a', int), ('b', str)))
 [out]
 from _typeshed import Incomplete
 from typing import NamedTuple
@@ -748,13 +766,62 @@ class Z(NamedTuple):
     d: Incomplete
     e: Incomplete
 
+class R(NamedTuple): ...
+
+class S(NamedTuple):
+    a: int
+
+class T(NamedTuple):
+    a: int
+    b: str
+
 [case testDynamicNamedTuple]
 from collections import namedtuple
+from typing import NamedTuple
 N = namedtuple('N', ['x', 'y'] + ['z'])
+M = NamedTuple('M', [('x', int), ('y', str)] + [('z', float)])
+class X(namedtuple('X', ['a', 'b'] + ['c'])): ...
 [out]
 from _typeshed import Incomplete
 
 N: Incomplete
+M: Incomplete
+class X(Incomplete): ...
+
+[case testNamedTupleInClassBases]
+import collections, typing
+from collections import namedtuple
+from typing import NamedTuple
+class X(namedtuple('X', ['a', 'b'])): ...
+class Y(NamedTuple('Y', [('a', int), ('b', str)])): ...
+class R(collections.namedtuple('R', ['a', 'b'])): ...
+class S(typing.NamedTuple('S', [('a', int), ('b', str)])): ...
+[out]
+import typing
+from _typeshed import Incomplete
+from typing import NamedTuple
+
+class X(NamedTuple('X', [('a', Incomplete), ('b', Incomplete)])): ...
+class Y(NamedTuple('Y', [('a', int), ('b', str)])): ...
+class R(NamedTuple('R', [('a', Incomplete), ('b', Incomplete)])): ...
+class S(typing.NamedTuple('S', [('a', int), ('b', str)])): ...
+
+[case testNotNamedTuple]
+from not_collections import namedtuple
+from not_typing import NamedTuple
+from collections import notnamedtuple
+from typing import NotNamedTuple
+X = namedtuple('X', ['a', 'b'])
+Y = notnamedtuple('Y', ['a', 'b'])
+Z = NamedTuple('Z', [('a', int), ('b', str)])
+W = NotNamedTuple('W', [('a', int), ('b', str)])
+[out]
+from _typeshed import Incomplete
+
+X: Incomplete
+Y: Incomplete
+Z: Incomplete
+W: Incomplete
 
 [case testArbitraryBaseClass]
 import x
@@ -2849,3 +2916,128 @@ def f(x: str | None) -> None: ...
 a: str | int
 
 def f(x: str | None) -> None: ...
+
+[case testTypeddict]
+import typing, x
+X = typing.TypedDict('X', {'a': int, 'b': str})
+Y = typing.TypedDict('X', {'a': int, 'b': str}, total=False)
+[out]
+from typing_extensions import TypedDict
+
+class X(TypedDict):
+    a: int
+    b: str
+
+class Y(TypedDict, total=False):
+    a: int
+    b: str
+
+[case testTypeddictClassWithKeyword]
+from typing import TypedDict
+class MyDict(TypedDict, total=False):
+    foo: str
+    bar: int
+[out]
+from typing import TypedDict
+
+class MyDict(TypedDict, total=False):
+    foo: str
+    bar: int
+
+[case testTypeddictKeywordSyntax]
+from typing import TypedDict
+
+X = TypedDict('X', a=int, b=str)
+Y = TypedDict('X', a=int, b=str, total=False)
+[out]
+from typing import TypedDict
+
+class X(TypedDict):
+    a: int
+    b: str
+
+class Y(TypedDict, total=False):
+    a: int
+    b: str
+
+[case testTypeddictWithNonIdentifierOrKeywordKeys]
+from typing import TypedDict
+X = TypedDict('X', {'a-b': int, 'c': str})
+Y = TypedDict('X', {'a-b': int, 'c': str}, total=False)
+Z = TypedDict('X', {'a': int, 'in': str})
+[out]
+from typing import TypedDict
+
+X = TypedDict('X', {'a-b': int, 'c': str})
+
+Y = TypedDict('X', {'a-b': int, 'c': str}, total=False)
+
+Z = TypedDict('X', {'a': int, 'in': str})
+
+[case testEmptyTypeddict]
+import typing
+X = typing.TypedDict('X', {})
+Y = typing.TypedDict('Y', {}, total=False)
+Z = typing.TypedDict('Z')
+W = typing.TypedDict('W', total=False)
+[out]
+from typing_extensions import TypedDict
+
+class X(TypedDict): ...
+
+class Y(TypedDict, total=False): ...
+
+class Z(TypedDict): ...
+
+class W(TypedDict, total=False): ...
+
+[case testTypeddictAliased]
+from typing import TypedDict as t_TypedDict
+from typing_extensions import TypedDict as te_TypedDict
+def f(): ...
+X = t_TypedDict('X', {'a': int, 'b': str})
+Y = te_TypedDict('Y', {'a': int, 'b': str})
+def g(): ...
+[out]
+from typing_extensions import TypedDict
+
+def f() -> None: ...
+
+class X(TypedDict):
+    a: int
+    b: str
+
+class Y(TypedDict):
+    a: int
+    b: str
+
+def g() -> None: ...
+
+[case testNotTypeddict]
+from x import TypedDict
+import y
+X = TypedDict('X', {'a': int, 'b': str})
+Y = y.TypedDict('Y', {'a': int, 'b': str})
+[out]
+from _typeshed import Incomplete
+
+X: Incomplete
+Y: Incomplete
+
+[case testTypeddictWithWrongAttributesType]
+from typing import TypedDict
+R = TypedDict("R", {"a": int, **{"b": str, "c": bytes}})
+S = TypedDict("S", [("b", str), ("c", bytes)])
+T = TypedDict("T", {"a": int}, b=str, total=False)
+U = TypedDict("U", {"a": int}, totale=False)
+V = TypedDict("V", {"a": int}, {"b": str})
+W = TypedDict("W", **{"a": int, "b": str})
+[out]
+from _typeshed import Incomplete
+
+R: Incomplete
+S: Incomplete
+T: Incomplete
+U: Incomplete
+V: Incomplete
+W: Incomplete

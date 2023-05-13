@@ -201,7 +201,7 @@ class Array(Generic[Unpack[Shape]]):
 
     def get_shape(self) -> Tuple[Unpack[Shape]]:
         return self._shape
-    
+
     def __abs__(self) -> Array[Unpack[Shape]]: ...
 
     def __add__(self, other: Array[Unpack[Shape]]) -> Array[Unpack[Shape]]: ...
@@ -237,7 +237,7 @@ class Array(Generic[DType, Unpack[Shape]]):
 
     def get_shape(self) -> Tuple[Unpack[Shape]]:
         return self._shape
-    
+
     def __abs__(self) -> Array[DType, Unpack[Shape]]: ...
 
     def __add__(self, other: Array[DType, Unpack[Shape]]) -> Array[DType, Unpack[Shape]]: ...
@@ -443,7 +443,7 @@ def foo(*args: Unpack[Tuple[int, ...]]) -> None:
 
 foo(0, 1, 2)
 # TODO: this should say 'expected "int"' rather than the unpack
-foo(0, 1, "bar")  # E: Argument 3 to "foo" has incompatible type "str"; expected "Unpack[Tuple[int, ...]]" 
+foo(0, 1, "bar")  # E: Argument 3 to "foo" has incompatible type "str"; expected "Unpack[Tuple[int, ...]]"
 
 
 def foo2(*args: Unpack[Tuple[str, Unpack[Tuple[int, ...]], bool, bool]]) -> None:

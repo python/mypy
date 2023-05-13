@@ -28,6 +28,7 @@ force-exclude = '''
 '''
 
 [tool.isort]
+py_version = 37
 profile = "black"
 line_length = 99
 combine_as_imports = true
