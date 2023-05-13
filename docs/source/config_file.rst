@@ -3,17 +3,22 @@
 The mypy configuration file
 ===========================
 
-Mypy supports reading configuration settings from a file.  By default
-it uses the file ``mypy.ini`` with a fallback to ``.mypy.ini``, then ``pyproject.toml``,
-then ``setup.cfg`` in the current directory, then ``$XDG_CONFIG_HOME/mypy/config``, then
-``~/.config/mypy/config``, and finally ``.mypy.ini`` in the user home directory
-if none of them are found; the :option:`--config-file <mypy --config-file>` command-line flag can be used
-to read a different file instead (see :ref:`config-file-flag`).
+Mypy supports reading configuration settings from a file with the following precedence order:
+
+    1. The file passed into the :option:`--config-file <mypy --config-file>` command-line flag (see :ref:`config-file-flag`)
+    2. ``mypy.ini``
+    3. ``.mypy.ini``
+    4. ``pyproject.toml``
+    5. ``setup.cfg`` in the current working directory
+    6. ``$XDG_CONFIG_HOME/mypy/config``
+    7. ``~/.config/mypy/config``
+    8. ``.mypy.ini`` in the user home directory
 
 It is important to understand that there is no merging of configuration
-files, as it would lead to ambiguity.  The :option:`--config-file <mypy --config-file>` flag
-has the highest precedence and must be correct; otherwise mypy will report
-an error and exit.  Without command line option, mypy will look for configuration files in the above mentioned order.
+files, as it would lead to ambiguity. Mypy will use the first available
+configuration file from the precedence order above. If there is an error 
+in the used file then mypy will report an error and exit, resulting in files 
+with lower precedences not being read.
 
 Most flags correspond closely to :ref:`command-line flags
 <command-line>` but there are some differences in flag names and some
@@ -103,8 +108,8 @@ their name or by (when applicable) swapping their prefix from
 ``disallow`` to ``allow`` (and vice versa).
 
 
-Examples
-********
+Example ``mypy.ini``
+********************
 
 Here is an example of a ``mypy.ini`` file. To use this config file, place it at the root
 of your repo and run mypy.
