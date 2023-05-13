@@ -88,6 +88,11 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         args = flatten_nested_tuples(t.args)
         if t.alias.tvar_tuple_index is not None:
             correct = len(args) >= len(t.alias.alias_tvars) - 1
+            if any(
+                isinstance(a, UnpackType) and isinstance(get_proper_type(a.type), Instance)
+                for a in args
+            ):
+                correct = True
         else:
             correct = len(args) == len(t.alias.alias_tvars)
         if not correct:

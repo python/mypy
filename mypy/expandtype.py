@@ -113,6 +113,7 @@ def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
             instance_args = instance.args
 
         for binder, arg in zip(tvars, instance_args):
+            assert isinstance(binder, TypeVarLikeType)
             variables[binder.id] = arg
 
         return expand_type(typ, variables)
@@ -280,12 +281,14 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         raise NotImplementedError
 
     def visit_unpack_type(self, t: UnpackType) -> Type:
-        # It is impossible to reasonally implement visit_unpack_type, because
+        # It is impossible to reasonably implement visit_unpack_type, because
         # unpacking inherently expands to something more like a list of types.
         #
         # Relevant sections that can call unpack should call expand_unpack()
         # instead.
-        assert False, "Mypy bug: unpacking must happen at a higher level"
+        # However, if the item is a variadic tuple, we can simply carry it over.
+        # it is hard to assert this without get_proper_type().
+        return UnpackType(t.type.accept(self))
 
     def expand_unpack(self, t: UnpackType) -> list[Type] | Instance | AnyType | None:
         return expand_unpack_with_variables(t, self.variables)
@@ -462,7 +465,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         typs = flatten_nested_tuples(typs)
         items: list[Type] = []
         for item in typs:
-            if isinstance(item, UnpackType):
+            if isinstance(item, UnpackType) and isinstance(item.type, TypeVarTupleType):
                 unpacked_items = self.expand_unpack(item)
                 if unpacked_items is None:
                     # TODO: better error, something like tuple of unknown?

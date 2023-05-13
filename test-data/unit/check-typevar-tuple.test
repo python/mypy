@@ -761,3 +761,46 @@ A = Tuple[int, Unpack[Ts], str]
 x: A[()]
 reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
+
+[case testVariadicAliasVariadicTupleArg]
+from typing import Tuple, TypeVar
+from typing_extensions import Unpack, TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+
+A = Tuple[int, Unpack[Ts]]
+B = A[str, Unpack[Ts]]
+C = B[Unpack[Tuple[bool, ...]]]
+x: C
+reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.str, Unpack[builtins.tuple[builtins.bool, ...]]]"
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicAliasVariadicTupleArgGeneric]
+from typing import Tuple, TypeVar
+from typing_extensions import Unpack, TypeVarTuple
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+
+A = Tuple[int, Unpack[Ts]]
+B = A[Unpack[Tuple[T, ...]]]
+x: B[str]
+reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.str, ...]]]"
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicAliasVariadicTupleArgSplit]
+from typing import Tuple, TypeVar
+from typing_extensions import Unpack, TypeVarTuple
+
+T = TypeVar("T")
+S = TypeVar("S")
+Ts = TypeVarTuple("Ts")
+
+A = Tuple[T, Unpack[Ts], S, T]
+
+x: A[int, Unpack[Tuple[bool, ...]], str]
+reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.bool, ...]], builtins.str, builtins.int]"
+
+y: A[Unpack[Tuple[bool, ...]]]
+reveal_type(y)  # N: Revealed type is "Tuple[builtins.bool, Unpack[builtins.tuple[builtins.bool, ...]], builtins.bool, builtins.bool]"
+[builtins fixtures/tuple.pyi]
