@@ -28,6 +28,9 @@ from mypyc.ir.rtypes import (
     RType,
     RUnion,
     is_bool_rprimitive,
+    is_float_rprimitive,
+    is_int32_rprimitive,
+    is_int64_rprimitive,
     is_tagged,
     object_rprimitive,
 )
@@ -841,19 +844,46 @@ def attr_context_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
     return names.private_name(cl.module_name, "{}_attrcontext_{}".format(cl.name, attribute))
 
 
+def generic_getter_name(rtype: RType) -> str | None:
+    if not rtype.is_unboxed:
+        return "CPyAttr_GetterPyObject"
+    elif is_tagged(rtype):
+        return "CPyAttr_GetterTagged"
+    elif is_float_rprimitive(rtype):
+        return "CPyAttr_GetterFloat"
+    elif is_bool_rprimitive(rtype):
+        return "CPyAttr_GetterBool"
+    elif is_int32_rprimitive(rtype):
+        return "CPyAttr_GetterInt32"
+    elif is_int64_rprimitive(rtype):
+        return "CPyAttr_GetterInt64"
+
+    return None
+
+
 def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
     if not cl.is_trait:
         for attr, rtype in cl.attributes.items():
-            class_struct = cl.struct_name(emitter.names)
+            cl_struct = cl.struct_name(emitter.names)
+
             context_name = attr_context_name(cl, attr, emitter.names)
-            emitter.emit_line(f"static CPy_AttrContext {context_name} = {{")
-            emitter.emit_line(f'"{attr}", offsetof({class_struct}, {emitter.attr(attr)})')
+            always_defined = cl.is_always_defined(attr) and not rtype.is_refcounted
+            emitter.emit_line(f"static CPyAttr_Context {context_name} = {{")
+            emitter.emit_line(
+                f'"{attr}", offsetof({cl_struct}, {emitter.attr(attr)}), {"true" if always_defined else "false"},'
+            )
+            if rtype.error_overlap and not cl.is_always_defined(attr):
+                index = cl.bitmap_attrs.index(attr)
+                bitmap = emitter.bitmap_field(index)
+                mask = 1 << (index & (BITMAP_BITS - 1))
+                emitter.emit_line(f"{{offsetof({cl_struct}, {bitmap}), {mask}}}")
             emitter.emit_line("};")
-            if rtype._ctype not in ("PyObject *", "CPyTagged", "char"):
+
+            if not generic_getter_name(rtype):
                 emitter.emit_line("static PyObject *")
                 emitter.emit_line(
                     "{}({} *self, void *closure);".format(
-                        getter_name(cl, attr, emitter.names), class_struct
+                        getter_name(cl, attr, emitter.names), cl_struct
                     )
                 )
 
@@ -883,14 +913,7 @@ def generate_getseters_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
     emitter.emit_line(f"static PyGetSetDef {name}[] = {{")
     if not cl.is_trait:
         for attr, rtype in cl.attributes.items():
-            if not rtype.is_unboxed:
-                getter = "CPy_AttrGetterPyObject"
-            elif is_tagged(rtype):
-                getter = "CPy_AttrGetterTagged"
-            elif is_bool_rprimitive(rtype):
-                getter = "CPy_AttrGetterBool"
-            else:
-                getter = getter_name(cl, attr, emitter.names)
+            getter = generic_getter_name(rtype) or getter_name(cl, attr, emitter.names)
             setter = reusable_setter_name(cl, attr, rtype)
             context = "&{}".format(attr_context_name(cl, attr, emitter.names))
             emitter.emit_line(f'{{"{attr}",')
@@ -916,7 +939,7 @@ def generate_getseters_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
 def generate_getseters(cl: ClassIR, emitter: Emitter) -> None:
     if not cl.is_trait:
         for i, (attr, rtype) in enumerate(cl.attributes.items()):
-            if rtype._ctype not in ("PyObject *", "char", "CPyTagged") or True:
+            if not generic_getter_name(rtype):
                 generate_getter(cl, attr, rtype, emitter)
                 emitter.emit_line("")
             generate_setter(cl, attr, rtype, emitter)
@@ -965,11 +988,14 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
 
 def rtype_unique_name(rtype: RType) -> str:
     if isinstance(rtype, RPrimitive):
-        return exported_name(rtype.name)
+        if "." in rtype.name:
+            return rtype.name.split(".")[1].title()
+        else:
+            return rtype.name.title()
     elif isinstance(rtype, RTuple):
         return rtype.struct_name
     elif isinstance(rtype, RInstance):
-        return exported_name(rtype.name)
+        return "instance_" + exported_name(rtype.name)
     elif isinstance(rtype, RUnion):
         return "union_" + "_".join(rtype_unique_name(t) for t in rtype.items)
     else:
@@ -977,7 +1003,7 @@ def rtype_unique_name(rtype: RType) -> str:
 
 
 def reusable_setter_name(cl: ClassIR, attr: str, rtype: RType) -> str:
-    prefix = "CPy_AttrSetter_"
+    prefix = "CPyAttr_Setter_"  # + f"{cl.name}_{attr}_"
     if cl.is_always_defined(attr) and not rtype.is_refcounted:
         prefix += "ALWAYS_"
     if cl.is_deletable(attr):
@@ -992,7 +1018,7 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         return
 
     # print(f"{cl.name}.{attr}: {rtype.name} (new setter)")
-    header = impl_name + "(PyObject *self, PyObject *value, CPy_AttrContext *context)"
+    header = impl_name + "(PyObject *self, PyObject *value, CPyAttr_Context *context)"
     emitter.context.declarations[impl_name] = HeaderDeclaration(f"int {header};")
     emitter.emit_lines("int", header, "{")
 
@@ -1001,7 +1027,7 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_line("if (value == NULL) {")
         emitter.emit_line("PyErr_Format(PyExc_AttributeError,")
         emitter.emit_line(
-            "    \"'%s' object attribute '%s' cannot be deleted\", Py_TYPE(self)->tp_name, context->attrname);"
+            "    \"'%s' object attribute '%s' cannot be deleted\", Py_TYPE(self)->tp_name, context->attr_name);"
         )
         emitter.emit_line("return -1;")
         emitter.emit_line("}")
@@ -1017,6 +1043,10 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     if rtype.is_refcounted:
         if not always_defined:
             emitter.emit_undefined_attr_check(rtype, "(*attr)", "!=", "self", attr, cl)
+            # check = emitter.error_value_check(rtype, '(*attr)', '!=')
+            # if rtype.error_overlap:
+            #    check = f"{check} && _CPyAttr_IsUndefinedViaBitmap(self, context)"
+            # emitter.emit_line(f"if ({check}) {{")
         emitter.emit_dec_ref("(*attr)", rtype)
         if not always_defined:
             emitter.emit_line("}")
@@ -1028,7 +1058,11 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_unbox("value", "tmp", rtype, error=ReturnHandler("-1"), declare_dest=True)
         emitter.emit_line("*attr = tmp;")
         if rtype.error_overlap and not always_defined:
-            emitter.emit_attr_bitmap_set("tmp", "self", rtype, cl, attr)
+            # emitter.emit_attr_bitmap_set("tmp", "self", rtype, cl, attr)
+            check = emitter.error_value_check(rtype, "tmp", "==")
+            emitter.emit_line(f"if (unlikely({check})) {{")
+            emitter.emit_line("CPyAttr_SetBitmap(self, context, true);")
+            emitter.emit_line("}")
     elif is_same_type(rtype, object_rprimitive):
         emitter.emit_line("*attr = Py_NewRef(value);")
     else:
@@ -1037,10 +1071,12 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         # emitter.emit_lines("if (!tmp)", "    return -1;")
 
     if deletable:
-        emitter.emit_line("} else")
-        emitter.emit_line(f"    *attr = {emitter.c_undefined_value(rtype)};")
+        emitter.emit_line("} else {")
+        emitter.emit_line(f"*attr = {emitter.c_undefined_value(rtype)};")
         if rtype.error_overlap:
-            emitter.emit_attr_bitmap_clear("self", rtype, cl, attr)
+            emitter.emit_line("CPyAttr_SetBitmap(self, context, false);")
+            # emitter.emit_attr_bitmap_clear("self", rtype, cl, attr)
+        emitter.emit_line("}")
     emitter.emit_line("return 0;")
     emitter.emit_line("}")
 

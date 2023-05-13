@@ -637,56 +637,90 @@ PyObject *CPy_GetANext(PyObject *aiter);
 
 // Native object attribute getter/setter implementations
 
-typedef struct CPy_AttrContext {
-    const char *attrname;
+typedef struct CPyAttr_Context {
+    const char *attr_name;
     size_t offset;
     bool always_defined;
-} CPy_AttrContext;
+    struct {
+        size_t offset;
+        size_t mask;
+    } bitmap;
+} CPyAttr_Context;
 
-static PyObject *CPy_AttrGetterPyObject(PyObject *self, CPy_AttrContext *context) {
+static void *_CPyAttr_UndefinedError(PyObject *self, CPyAttr_Context *context) {
+    assert(!context->always_defined && "attribute should be initialized!");
+    PyErr_Format(PyExc_AttributeError,
+        "attribute '%s' of '%s' undefined", context->attr_name, Py_TYPE(self)->tp_name);
+    return NULL;
+}
+
+static void CPyAttr_SetBitmap(PyObject *self, CPyAttr_Context *context, bool defined) {
+    uint32_t *bitmap = (uint32_t *)((char *)self + context->bitmap.offset);
+    if (defined) {
+        *bitmap |= context->bitmap.mask;
+    } else {
+        *bitmap &= context->bitmap.mask;
+    }
+}
+
+static inline bool _CPyAttr_IsUndefinedViaBitmap(PyObject *self, CPyAttr_Context *context) {
+    return !(*(uint32_t *)((char *)self + context->bitmap.offset) & context->bitmap.mask);
+}
+
+static PyObject *CPyAttr_GetterPyObject(PyObject *self, CPyAttr_Context *context) {
     PyObject *value = *(PyObject **)((char *)self + context->offset);
-    if (value == NULL) {
-        assert(!context->always_defined);
-        PyErr_Format(PyExc_AttributeError,
-            "attribute '%s' of '%s' undefined", context->attrname, Py_TYPE(self)->tp_name);
-        return NULL;
+    if (unlikely(value == NULL)) {
+        return _CPyAttr_UndefinedError(self, context);
     }
     return Py_NewRef(value);
 }
 
-static PyObject *CPy_AttrGetterTagged(PyObject *self, CPy_AttrContext *context) {
+static PyObject *CPyAttr_GetterTagged(PyObject *self, CPyAttr_Context *context) {
     CPyTagged value = *(CPyTagged *)((char *)self + context->offset);
-    if (value == CPY_INT_TAG) {
-        assert(!context->always_defined);
-        PyErr_Format(PyExc_AttributeError,
-            "attribute '%s' of '%s' undefined", context->attrname, Py_TYPE(self)->tp_name);
-        return NULL;
+    if (unlikely(value == CPY_INT_TAG)) {
+        return _CPyAttr_UndefinedError(self, context);
     }
-    CPyTagged_INCREF(value);
-    return CPyTagged_StealAsObject(value);
+    return CPyTagged_AsObject(value);
 }
 
-static PyObject *CPy_AttrGetterBool(PyObject *self, CPy_AttrContext *context) {
+static PyObject *CPyAttr_GetterBool(PyObject *self, CPyAttr_Context *context) {
     char value = *((char *)self + context->offset);
-    if (value == 2) {
-        assert(!context->always_defined);
-        PyErr_Format(PyExc_AttributeError,
-            "attribute '%s' of '%s' undefined", context->attrname, Py_TYPE(self)->tp_name);
-        return NULL;
+    if (unlikely(value == 2)) {
+        return _CPyAttr_UndefinedError(self, context);
     }
     return Py_NewRef(value ? Py_True : Py_False);
 }
 
-static PyObject *CPy_AttrGetterFloat(PyObject *self, CPy_AttrContext *context) {
-    double value = *(double *)((char *)self + context->offset);
-    // FIXME: this undefined check is busted
-    if (value == -113.0) {
-        assert(!context->always_defined);
-        PyErr_Format(PyExc_AttributeError,
-            "attribute '%s' of '%s' undefined", context->attrname, Py_TYPE(self)->tp_name);
-        return NULL;
+static PyObject *CPyAttr_GetterInt32(PyObject *self, CPyAttr_Context *context) {
+    int32_t value = *(int32_t *)((char *)self + context->offset);
+    if (value == CPY_LL_INT_ERROR
+            && !context->always_defined
+            && _CPyAttr_IsUndefinedViaBitmap(self, context)) {
+        return _CPyAttr_UndefinedError(self, context);
     }
-    return Py_NewRef(value ? Py_True : Py_False);
+    return PyLong_FromLong(value);
+}
+
+static PyObject *CPyAttr_GetterInt64(PyObject *self, CPyAttr_Context *context) {
+    int64_t value = *(int64_t *)((char *)self + context->offset);
+    if (value == CPY_LL_INT_ERROR
+            && !context->always_defined
+            && _CPyAttr_IsUndefinedViaBitmap(self, context)) {
+        return _CPyAttr_UndefinedError(self, context);
+    }
+    return PyLong_FromLongLong(value);
+}
+
+static PyObject *CPyAttr_GetterFloat(PyObject *self, CPyAttr_Context *context) {
+    double value = *(double *)((char *)self + context->offset);
+    // uint32_t bitmap = *(uint32_t *)((char *)self + context->bitmap.offset);
+    // printf("bitmap: %u\n", bitmap);
+    if (value == CPY_FLOAT_ERROR
+            && !context->always_defined
+            && _CPyAttr_IsUndefinedViaBitmap(self, context)) {
+        return _CPyAttr_UndefinedError(self, context);
+    }
+    return PyFloat_FromDouble(value);
 }
 
 #ifdef __cplusplus
