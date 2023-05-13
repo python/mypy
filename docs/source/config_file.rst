@@ -5,10 +5,10 @@ The mypy configuration file
 
 Mypy supports reading configuration settings from a file with the following precedence order:
 
-    1. ``mypy.ini``
-    2. ``.mypy.ini``
-    3. ``pyproject.toml``
-    4. ``setup.cfg`` in the current working directory
+    1. ``./mypy.ini``
+    2. ``./.mypy.ini``
+    3. ``./pyproject.toml``
+    4. ``./setup.cfg``
     5. ``$XDG_CONFIG_HOME/mypy/config``
     6. ``~/.config/mypy/config``
     7. ``~/.mypy.ini``
