@@ -15,10 +15,10 @@ Mypy supports reading configuration settings from a file with the following prec
 
 It is important to understand that there is no merging of configuration
 files, as it would lead to ambiguity. The :option:`--config-file <mypy --config-file>`
-command-line flag has the highest precedence and 
+command-line flag has the highest precedence and
 must be correct; otherwise mypy will report an error and exit. Without the
 command line option, mypy will look for configuration files in the
-precedence order above. 
+precedence order above.
 
 Most flags correspond closely to :ref:`command-line flags
 <command-line>` but there are some differences in flag names and some
