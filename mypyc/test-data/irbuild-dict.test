@@ -583,4 +583,3 @@ L2:
 L3:
     r7 = box(None, 1)
     return r7
-
