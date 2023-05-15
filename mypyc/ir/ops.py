@@ -81,6 +81,7 @@ class BasicBlock:
         self.label = label
         self.ops: list[Op] = []
         self.error_handler: BasicBlock | None = None
+        self.referenced = False
 
     @property
     def terminated(self) -> bool:
