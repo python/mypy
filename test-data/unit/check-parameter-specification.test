@@ -1520,3 +1520,28 @@ def identity(func: Callable[P, None]) -> Callable[P, None]: ...
 @identity
 def f(f: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
 [builtins fixtures/paramspec.pyi]
+
+[case testParamSpecificationSurvivesCall]
+# https://github.com/python/mypy/issues/12595
+from typing import TypeVar, Callable
+from typing_extensions import Concatenate, ParamSpec
+
+T = TypeVar('T')
+U = TypeVar('U')
+P = ParamSpec('P')
+
+def t(f: Callable[P, T]) -> Callable[P, T]: ...
+
+def pop_off(
+    transform: Callable[Concatenate[T, P], U]
+) -> Callable[P, Callable[[T], U]]: ...
+
+u = pop_off(t)
+reveal_type(u)  # N: Revealed type is "def [P, T] () -> def (def (*P.args, **P.kwargs) -> T`-2) -> def (*P.args, **P.kwargs) -> T`-2"
+
+@u()
+def f(x: int) -> None: ...
+
+reveal_type(f)  # N: Revealed type is "def (x: builtins.int)"
+f(0)
+[builtins fixtures/paramspec.pyi]

@@ -3105,7 +3105,8 @@ T = TypeVar('T')
 
 def f(x: Optional[T] = None) -> Callable[..., T]: ...
 
-x = f()  # E: Need type annotation for "x"
+# Question: Is this alright?
+x: Callable[..., T] = f()
 y = x
 
 [case testDontNeedAnnotationForCallable]

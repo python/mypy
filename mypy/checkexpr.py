@@ -1426,6 +1426,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             need_refresh = any(
                 isinstance(v, (ParamSpecType, TypeVarTupleType)) for v in callee.variables
             )
+            old_callee = callee
             callee = freshen_function_type_vars(callee)
             callee = self.infer_function_type_arguments_using_context(callee, context)
             if need_refresh:
@@ -1440,7 +1441,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     lambda i: self.accept(args[i]),
                 )
             callee = self.infer_function_type_arguments(
-                callee, args, arg_kinds, formal_to_actual, context
+                callee, args, arg_kinds, formal_to_actual, context, old_callee
             )
             if need_refresh:
                 formal_to_actual = map_actuals_to_formals(
@@ -1730,6 +1731,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         arg_kinds: list[ArgKind],
         formal_to_actual: list[list[int]],
         context: Context,
+        unfreshened_callee_type: CallableType,
     ) -> CallableType:
         """Infer the type arguments for a generic callee type.
 
@@ -1771,6 +1773,28 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # Second pass of type inference.
                 (callee_type, inferred_args) = self.infer_function_type_arguments_pass2(
                     callee_type, args, arg_kinds, formal_to_actual, inferred_args, context
+                )
+
+            return_type = get_proper_type(callee_type.ret_type)
+            if isinstance(return_type, CallableType):
+                # fixup:
+                # def [T] () -> def (T) -> T
+                # into
+                # def () -> def [T] (T) -> T
+                for i, argument in enumerate(inferred_args):
+                    if isinstance(get_proper_type(argument), UninhabitedType):
+                        # un-"freshen" the type variable :^)
+                        variable = unfreshened_callee_type.variables[i]
+                        inferred_args[i] = variable
+
+                        # handle multiple type variables
+                        return_type = return_type.copy_modified(
+                            variables=[*return_type.variables, variable]
+                        )
+
+                callee_type = callee_type.copy_modified(
+                    # Question: am I allowed to assign the get_proper_type'd thing?
+                    ret_type=return_type
                 )
 
             if (
