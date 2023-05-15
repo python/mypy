@@ -183,6 +183,7 @@ jobs:
           sudo dpkg --add-architecture i386 && \
           sudo apt-get update && sudo apt-get install -y \
             zlib1g-dev:i386 \
+            libgcc-s1:i386 \
             g++-i686-linux-gnu \
             gcc-i686-linux-gnu \
             libffi-dev:i386 \
