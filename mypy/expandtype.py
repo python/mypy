@@ -287,7 +287,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         # Relevant sections that can call unpack should call expand_unpack()
         # instead.
         # However, if the item is a variadic tuple, we can simply carry it over.
-        # it is hard to assert this without get_proper_type().
+        # it is hard to assert this without getting proper type.
         return UnpackType(t.type.accept(self))
 
     def expand_unpack(self, t: UnpackType) -> list[Type] | Instance | AnyType | None:
