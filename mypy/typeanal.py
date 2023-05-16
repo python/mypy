@@ -166,6 +166,29 @@ def no_subscript_builtin_alias(name: str, propose_alt: bool = True) -> str:
     return msg
 
 
+def pack_paramspec_args(an_args: Sequence[Type]) -> list[Type]:
+    # "Aesthetic" ParamSpec literals for single ParamSpec: C[int, str] -> C[[int, str]].
+    # These do not support mypy_extensions VarArgs, etc. as they were already analyzed
+    # TODO: should these be re-analyzed to get rid of this inconsistency?
+    count = len(an_args)
+    if count > 0:
+        first_arg = get_proper_type(an_args[0])
+        if not (count == 1 and isinstance(first_arg, (Parameters, ParamSpecType))):
+            if isinstance(first_arg, AnyType) and first_arg.type_of_any == TypeOfAny.from_error:
+                # Question: should I make new AnyTypes instead of reusing them?
+                return [
+                    Parameters(
+                        [first_arg, first_arg],
+                        [ARG_STAR, ARG_STAR2],
+                        [None, None],
+                        is_ellipsis_args=True,
+                    )
+                ]
+            else:
+                return [Parameters(an_args, [ARG_POS] * count, [None] * count)]
+    return list(an_args)
+
+
 class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     """Semantic analyzer for types.
 
@@ -395,7 +418,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     allow_param_spec_literals=node.has_param_spec_type,
                 )
                 if node.has_param_spec_type and len(node.alias_tvars) == 1:
-                    an_args = self.pack_paramspec_args(an_args)
+                    an_args = pack_paramspec_args(an_args)
 
                 disallow_any = self.options.disallow_any_generics and not self.is_typeshed_stub
                 res = instantiate_type_alias(
@@ -439,17 +462,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return self.analyze_unbound_type_without_type_info(t, sym, defining_literal)
         else:  # sym is None
             return AnyType(TypeOfAny.special_form)
-
-    def pack_paramspec_args(self, an_args: Sequence[Type]) -> list[Type]:
-        # "Aesthetic" ParamSpec literals for single ParamSpec: C[int, str] -> C[[int, str]].
-        # These do not support mypy_extensions VarArgs, etc. as they were already analyzed
-        # TODO: should these be re-analyzed to get rid of this inconsistency?
-        count = len(an_args)
-        if count > 0:
-            first_arg = get_proper_type(an_args[0])
-            if not (count == 1 and isinstance(first_arg, (Parameters, ParamSpecType, AnyType))):
-                return [Parameters(an_args, [ARG_POS] * count, [None] * count)]
-        return list(an_args)
 
     def cannot_resolve_type(self, t: UnboundType) -> None:
         # TODO: Move error message generation to messages.py. We'd first
@@ -686,7 +698,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             ctx.column,
         )
         if len(info.type_vars) == 1 and info.has_param_spec_type:
-            instance.args = tuple(self.pack_paramspec_args(instance.args))
+            instance.args = tuple(pack_paramspec_args(instance.args))
 
         if info.has_type_var_tuple_type:
             if instance.args:

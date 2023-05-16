@@ -325,9 +325,12 @@ class C(Generic[P]):
     def m(self, *args: P.args, **kwargs: P.kwargs) -> int:
         return 1
 
-c: C[Any]
-reveal_type(c)  # N: Revealed type is "__main__.C[Any]"
-reveal_type(c.m)  # N: Revealed type is "def (*args: Any, **kwargs: Any) -> builtins.int"
+c_old: C[Any]
+reveal_type(c_old)  # N: Revealed type is "__main__.C[[Any]]"
+reveal_type(c_old.m)  # N: Revealed type is "def (Any) -> builtins.int"
+c: C[...]
+reveal_type(c)  # N: Revealed type is "__main__.C[...]"
+reveal_type(c.m)  # N: Revealed type is "def (*Any, **Any) -> builtins.int"
 c.m(4, 6, y='x')
 c = c
 
@@ -1519,4 +1522,17 @@ def identity(func: Callable[P, None]) -> Callable[P, None]: ...
 
 @identity
 def f(f: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
+[builtins fixtures/paramspec.pyi]
+
+[case testRuntimeSpecialParamspecLiteralSyntax]
+import sub
+
+reveal_type(sub.Ex[None]())  # N: Revealed type is "sub.Ex[[None]]"
+[file sub/__init__.py]
+from typing_extensions import ParamSpec
+from typing import Generic
+
+P = ParamSpec("P")
+
+class Ex(Generic[P]): ...
 [builtins fixtures/paramspec.pyi]
