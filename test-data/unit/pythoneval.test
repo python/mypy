@@ -1992,9 +1992,9 @@ _testStrictEqualitywithParamSpec.py:11: error: Non-overlapping equality check (l
 from typing import Any, Callable, Unpack, TypeVarTuple
 
 Ts = TypeVarTuple("Ts")
-                                                                                  
+
 def foo(callback: Callable[[], Any]) -> None:
-    call(callback)                                                          
+    call(callback)
 
 def call(callback: Callable[[Unpack[Ts]], Any], *args: Unpack[Ts]) -> Any:
     ...
@@ -2003,11 +2003,11 @@ def call(callback: Callable[[Unpack[Ts]], Any], *args: Unpack[Ts]) -> Any:
 # flags: --enable-incomplete-feature=TypeVarTuple --enable-incomplete-feature=Unpack
 from typing_extensions import Unpack, TypeVarTuple
 from typing import Any, Callable
-                                                                               
+
 Ts = TypeVarTuple("Ts")
-                                                                                  
+
 def foo(callback: Callable[[], Any]) -> None:
-    call(callback)                                                          
+    call(callback)
 
 def call(callback: Callable[[Unpack[Ts]], Any], *args: Unpack[Ts]) -> Any:
     ...
