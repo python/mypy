@@ -1478,6 +1478,15 @@ class MessageBuilder:
             )
         self.note(note, context, code=codes.ABSTRACT)
 
+    def cannot_call_abstract_static_or_class_method(
+        self, function_name: str, context: Context
+    ) -> None:
+        self.fail(
+            f'Cannot call static/class abstract method: "{function_name}"',
+            context,
+            code=codes.ABSTRACT,
+        )
+
     def base_class_definitions_incompatible(
         self, name: str, base1: TypeInfo, base2: TypeInfo, context: Context
     ) -> None:

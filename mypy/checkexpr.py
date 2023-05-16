@@ -1284,7 +1284,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 on which the method is being called
         """
         callee = get_proper_type(callee)
-
         if isinstance(callee, CallableType):
             return self.check_callable_call(
                 callee,
@@ -1413,6 +1412,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.msg.cannot_instantiate_abstract_class(
                 callee.type_object().name, abstract_attributes, context
             )
+        if isinstance(callee.definition, FuncDef):
+            if (
+                callee.definition.abstract_status == 1
+                and (callee.definition.is_class or callee.definition.is_static)
+                # Exception for Type[...]
+                and not callee.from_type_type
+            ):
+                self.msg.cannot_call_abstract_static_or_class_method(
+                    callee.definition.name, context
+                )
 
         formal_to_actual = map_actuals_to_formals(
             arg_kinds,
