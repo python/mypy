@@ -66,7 +66,10 @@ class _SSLProtocolTransport(transports._FlowControlMixin, transports.Transport):
     _sendfile_compatible: ClassVar[constants._SendfileMode]
 
     _loop: events.AbstractEventLoop
-    _ssl_protocol: SSLProtocol
+    if sys.version_info >= (3, 11):
+        _ssl_protocol: SSLProtocol | None
+    else:
+        _ssl_protocol: SSLProtocol
     _closed: bool
     def __init__(self, loop: events.AbstractEventLoop, ssl_protocol: SSLProtocol) -> None: ...
     def get_extra_info(self, name: str, default: Any | None = None) -> dict[str, Any]: ...
