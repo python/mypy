@@ -700,6 +700,29 @@ class C(A, D):
 
 C()  # A might implement 'f'
 
+[case testAbstractStaticMethod]
+from abc import ABC, abstractmethod
+
+class Foo(ABC):
+    @abstractmethod
+    @staticmethod
+    def foo() -> Foo:
+        ...
+
+Foo.foo() # E: Cannot call static/class abstract method: "foo"
+[builtins fixtures/classmethod.pyi]
+
+[case testAbstractClassMethod]
+from abc import ABC, abstractmethod
+
+class Foo(ABC):
+    @abstractmethod
+    @classmethod
+    def foo(cls) -> Foo:
+        ...
+
+Foo.foo() # E: Cannot call static/class abstract method: "foo"
+[builtins fixtures/classmethod.pyi]
 
 -- Abstract properties
 -- -------------------
