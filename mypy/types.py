@@ -704,13 +704,14 @@ class ParamSpecType(TypeVarLikeType):
         id: Bogus[TypeVarId | int] = _dummy,
         flavor: int = _dummy_int,
         prefix: Bogus[Parameters] = _dummy,
+        upper_bound: Bogus[Type] = _dummy,
     ) -> ParamSpecType:
         return ParamSpecType(
             self.name,
             self.fullname,
             id if id is not _dummy else self.id,
             flavor if flavor != _dummy_int else self.flavor,
-            self.upper_bound,
+            upper_bound if upper_bound is not _dummy else self.upper_bound,
             line=self.line,
             column=self.column,
             prefix=prefix if prefix is not _dummy else self.prefix,
@@ -1991,7 +1992,18 @@ class CallableType(FunctionLike):
             # TODO: confirm that all arg kinds are positional
             prefix = Parameters(self.arg_types[:-2], self.arg_kinds[:-2], self.arg_names[:-2])
 
-        return arg_type.copy_modified(flavor=ParamSpecFlavor.BARE, prefix=prefix)
+        # TODO: should this take in `object`s? Or use prefix + *Any **Any as upper bound?
+        any_type = AnyType(TypeOfAny.special_form)
+        return arg_type.copy_modified(
+            flavor=ParamSpecFlavor.BARE,
+            prefix=prefix,
+            upper_bound=Parameters(
+                arg_types=[any_type, any_type],
+                arg_kinds=[ARG_STAR, ARG_STAR2],
+                arg_names=[None, None],
+                is_ellipsis_args=True,
+            ),
+        )
 
     def expand_param_spec(
         self, c: CallableType | Parameters, no_prefix: bool = False
