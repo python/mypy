@@ -364,6 +364,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                 # generic type without type arguments provided.
                 assert isinstance(expanded_unpacked_tvt, ProperType)
                 assert isinstance(expanded_unpacked_tvt, Instance)
+                assert expanded_unpacked_tvt.type.fullname == "builtins.tuple"
                 fallback = expanded_unpacked_tvt
 
             prefix_len = expanded_unpack_index
