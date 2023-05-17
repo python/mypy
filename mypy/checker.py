@@ -5598,7 +5598,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         else:
                             operand = operands[right_index]
                             options: list[LiteralType] = []
-                            is_literal: bool = True
+                            is_literal = True
 
                             iterable_type = get_proper_type(iterable_type)
 
@@ -5637,7 +5637,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 yes, no = self.conditional_types_with_intersection(
                                     item_type, [TypeRange(ty, is_upper_bound=False)], node
                                 )
-                                # Intersection caluclates UninhabitedType too
+                                # Intersection calculates UninhabitedType too
                                 # aggressively -- ignore them for now
                                 if yes is not None and not isinstance(
                                     get_proper_type(yes), UninhabitedType
