@@ -8,11 +8,13 @@ from mypy.constraints import (
     SUBTYPE_OF,
     SUPERTYPE_OF,
     infer_constraints,
-    infer_constraints_for_callable,
+    infer_constraints_for_callable, Constraint, sanitize_constraints,
 )
 from mypy.nodes import ArgKind
 from mypy.solve import solve_constraints
-from mypy.types import CallableType, Instance, Type, TypeVarId
+from mypy.type_visitor import TypeQuery
+from mypy.typeops import get_type_vars
+from mypy.types import CallableType, Instance, Type, TypeVarId, TypeVarLikeType, ParamSpecType, get_proper_type
 
 
 class ArgumentInferContext(NamedTuple):
@@ -36,6 +38,7 @@ def infer_function_type_arguments(
     formal_to_actual: list[list[int]],
     context: ArgumentInferContext,
     strict: bool = True,
+    allow_polymorphic: bool = False,
 ) -> list[Type | None]:
     """Infer the type arguments of a generic function.
 
@@ -57,7 +60,7 @@ def infer_function_type_arguments(
 
     # Solve constraints.
     type_vars = callee_type.type_var_ids()
-    return solve_constraints(type_vars, constraints, strict)
+    return solve_constraints(type_vars, constraints, strict, allow_polymorphic)
 
 
 def infer_type_arguments(
@@ -66,4 +69,7 @@ def infer_type_arguments(
     # Like infer_function_type_arguments, but only match a single type
     # against a generic type.
     constraints = infer_constraints(template, actual, SUPERTYPE_OF if is_supertype else SUBTYPE_OF)
+    p_template = get_proper_type(template)
+    if not isinstance(p_template, CallableType) or p_template.param_spec() is None:
+        constraints = sanitize_constraints(constraints, [template, actual])
     return solve_constraints(type_var_ids, constraints)

@@ -2733,3 +2733,45 @@ dict1: Any
 dict2 = {"a": C1(), **{x: C2() for x in dict1}}
 reveal_type(dict2)  # N: Revealed type is "builtins.dict[Any, __main__.B]"
 [builtins fixtures/dict.pyi]
+
+[case testGenericStuff]
+from typing import TypeVar, Callable, List
+
+X = TypeVar('X')
+T = TypeVar('T')
+
+def foo(x: Callable[[int], X]) -> List[X]:
+    ...
+def id(x: T) -> T:
+    ...
+y = foo(id)
+reveal_type(y)  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/list.pyi]
+
+[case testHardGenericStuff]
+from typing import TypeVar, Callable, List, Sequence
+
+S = TypeVar('S')
+T = TypeVar('T')
+U = TypeVar('U')
+
+def dec(f: Callable[[S], T]) -> Callable[[S], List[T]]:
+    ...
+def id(x: U) -> U:
+    ...
+g = dec(id)
+reveal_type(g)  # N:
+reveal_type(g(42))
+
+def comb(f: Callable[[T], S], g: Callable[[S], U]) -> Callable[[T], U]: ...
+reveal_type(comb(id, id))
+
+def mix(fs: List[Callable[[S], T]]) -> Callable[[S], List[T]]:
+    def inner(x: S) -> List[T]:
+        return [f(x) for f in fs]
+    return inner
+
+fs = [id, id, id]
+reveal_type(mix(fs))
+reveal_type(mix([id, id, id]))
+[builtins fixtures/list.pyi]

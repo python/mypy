@@ -1520,3 +1520,17 @@ def identity(func: Callable[P, None]) -> Callable[P, None]: ...
 @identity
 def f(f: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
 [builtins fixtures/paramspec.pyi]
+
+[case testParamSpecFoo]
+from typing import Callable, List, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+T = TypeVar("T")
+U = TypeVar("U")
+
+def dec(f: Callable[P, T]) -> Callable[P, List[T]]: ...
+def test(x: U) -> U: ...
+reveal_type(dec)
+reveal_type(dec(test))
+[builtins fixtures/paramspec.pyi]

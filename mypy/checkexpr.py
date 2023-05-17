@@ -100,6 +100,7 @@ from mypy.semanal_enum import ENUM_BASES
 from mypy.state import state
 from mypy.subtypes import is_equivalent, is_same_type, is_subtype, non_method_protocol_members
 from mypy.traverser import has_await_expression
+from mypy.type_visitor import TypeTranslator
 from mypy.typeanal import (
     check_for_explicit_any,
     has_any_from_unimported_type,
@@ -120,7 +121,7 @@ from mypy.typeops import (
     true_only,
     try_expanding_sum_type_to_union,
     try_getting_str_literals,
-    tuple_fallback,
+    tuple_fallback, get_type_vars,
 )
 from mypy.types import (
     LITERAL_TYPE_NAMES,
@@ -155,7 +156,7 @@ from mypy.types import (
     get_proper_type,
     get_proper_types,
     has_recursive_types,
-    is_named_instance,
+    is_named_instance, TypeVarLikeType,
 )
 from mypy.types_utils import is_generic_instance, is_optional, is_self_type_like, remove_optional
 from mypy.typestate import type_state
@@ -1789,6 +1790,28 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     inferred_args[0] = self.named_type("builtins.str")
                 elif not first_arg or not is_subtype(self.named_type("builtins.str"), first_arg):
                     self.chk.fail(message_registry.KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE, context)
+
+            # TODO: Filter away ParamSpec
+            if any(a is None or isinstance(a, UninhabitedType) for a in inferred_args):
+                poly_inferred_args = infer_function_type_arguments(
+                    callee_type,
+                    arg_types,
+                    arg_kinds,
+                    formal_to_actual,
+                    context=self.argument_infer_context(),
+                    strict=self.chk.in_checked_function(),
+                    allow_polymorphic=True,
+                )
+                for i, arg in enumerate(get_proper_types(poly_inferred_args)):
+                    if isinstance(arg, (NoneType, UninhabitedType)) or has_erased_component(arg):
+                        poly_inferred_args[i] = None
+                poly_callee_type = self.apply_generic_arguments(callee_type, poly_inferred_args, context)
+                yes_vars = poly_callee_type.variables
+                no_vars = {v for v in callee_type.variables if v not in poly_callee_type.variables}
+                if not set(get_type_vars(poly_callee_type)) & no_vars:
+                    applied = apply_poly(poly_callee_type, yes_vars)
+                    if applied is not None:
+                        return applied
         else:
             # In dynamically typed functions use implicit 'Any' types for
             # type variables.
@@ -5288,6 +5311,48 @@ def is_duplicate_mapping(
 def replace_callable_return_type(c: CallableType, new_ret_type: Type) -> CallableType:
     """Return a copy of a callable type with a different return type."""
     return c.copy_modified(ret_type=new_ret_type)
+
+
+def apply_poly(tp: CallableType, poly_tvars: list[TypeVarLikeType]) -> Optional[CallableType]:
+    try:
+        return tp.copy_modified(
+            arg_types=[t.accept(PolyTranslator(poly_tvars)) for t in tp.arg_types],
+            ret_type=tp.ret_type.accept(PolyTranslator(poly_tvars)),
+            variables=[],
+        )
+    except PolyTranslationError:
+        return None
+
+
+class PolyTranslationError(TypeError):
+    pass
+
+
+class PolyTranslator(TypeTranslator):
+    def __init__(self, poly_tvars: list[TypeVarLikeType]) -> None:
+        self.poly_tvars = set(poly_tvars)
+        self.bound_tvars = set()
+
+    def visit_callable_type(self, t: CallableType) -> Type:
+        found_vars = set()
+        for arg in t.arg_types:
+            found_vars |= set(get_type_vars(arg))
+        found_vars &= self.poly_tvars
+        found_vars -= self.bound_tvars
+        self.bound_tvars |= found_vars
+        result = super().visit_callable_type(t)
+        self.bound_tvars -= found_vars
+        assert isinstance(result, CallableType)
+        result.variables += list(found_vars)
+        return result
+
+    def visit_type_var(self, t: TypeVarType) -> Type:
+        if t in self.poly_tvars and t not in self.bound_tvars:
+            raise PolyTranslationError()
+        return super().visit_type_var(t)
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        return t.copy_modified(args=[a.accept(self) for a in t.args])
 
 
 class ArgInferSecondPassQuery(types.BoolTypeQuery):
