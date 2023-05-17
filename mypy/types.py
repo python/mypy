@@ -156,6 +156,8 @@ DATACLASS_TRANSFORM_NAMES: Final = (
     "typing.dataclass_transform",
     "typing_extensions.dataclass_transform",
 )
+# Supported @override decorator names.
+OVERRIDE_DECORATOR_NAMES: Final = ("typing.override", "typing_extensions.override")
 
 # A placeholder used for Bogus[...] parameters
 _dummy: Final[Any] = object()

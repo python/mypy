@@ -1,10 +1,11 @@
 import concurrent.futures
 import sys
-from collections.abc import Awaitable, Coroutine, Generator, Iterable, Iterator
+from collections.abc import Awaitable, Generator, Iterable, Iterator
 from types import FrameType
 from typing import Any, Generic, TextIO, TypeVar, overload
 from typing_extensions import Literal, TypeAlias
 
+from . import _CoroutineLike
 from .events import AbstractEventLoop
 from .futures import Future
 
@@ -312,15 +313,13 @@ class Task(Future[_T_co], Generic[_T_co]):  # type: ignore[type-var]  # pyright:
 def all_tasks(loop: AbstractEventLoop | None = None) -> set[Task[Any]]: ...
 
 if sys.version_info >= (3, 11):
-    def create_task(
-        coro: Generator[Any, None, _T] | Coroutine[Any, Any, _T], *, name: str | None = None, context: Context | None = None
-    ) -> Task[_T]: ...
+    def create_task(coro: _CoroutineLike[_T], *, name: str | None = None, context: Context | None = None) -> Task[_T]: ...
 
 elif sys.version_info >= (3, 8):
-    def create_task(coro: Generator[Any, None, _T] | Coroutine[Any, Any, _T], *, name: str | None = None) -> Task[_T]: ...
+    def create_task(coro: _CoroutineLike[_T], *, name: str | None = None) -> Task[_T]: ...
 
 else:
-    def create_task(coro: Generator[Any, None, _T] | Coroutine[Any, Any, _T]) -> Task[_T]: ...
+    def create_task(coro: _CoroutineLike[_T]) -> Task[_T]: ...
 
 def current_task(loop: AbstractEventLoop | None = None) -> Task[Any] | None: ...
 def _enter_task(loop: AbstractEventLoop, task: Task[Any]) -> None: ...
