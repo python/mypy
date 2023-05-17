@@ -2006,3 +2006,28 @@ _testDataclassReplace.py:10: note: Revealed type is "_testDataclassReplace.A"
 _testDataclassReplace.py:11: error: Too few arguments for "replace"
 _testDataclassReplace.py:12: error: Argument "x" to "replace" of "A" has incompatible type "str"; expected "int"
 _testDataclassReplace.py:13: error: Unexpected keyword argument "q" for "replace" of "A"
+
+[case testTypeVarTuple]
+# flags: --enable-incomplete-feature=TypeVarTuple --enable-incomplete-feature=Unpack --python-version=3.11
+from typing import Any, Callable, Unpack, TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+
+def foo(callback: Callable[[], Any]) -> None:
+    call(callback)
+
+def call(callback: Callable[[Unpack[Ts]], Any], *args: Unpack[Ts]) -> Any:
+    ...
+
+[case testTypeVarTupleTypingExtensions]
+# flags: --enable-incomplete-feature=TypeVarTuple --enable-incomplete-feature=Unpack
+from typing_extensions import Unpack, TypeVarTuple
+from typing import Any, Callable
+
+Ts = TypeVarTuple("Ts")
+
+def foo(callback: Callable[[], Any]) -> None:
+    call(callback)
+
+def call(callback: Callable[[Unpack[Ts]], Any], *args: Unpack[Ts]) -> Any:
+    ...
