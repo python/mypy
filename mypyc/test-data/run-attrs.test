@@ -1,10 +1,10 @@
 -- Test cases for dataclasses based on the attrs library, where auto_attribs=True
 
 [case testRunAttrsclass]
-import attrs
+import attr
 from typing import Set, List, Callable, Any
 
-@attrs.define
+@attr.s(auto_attribs=True)
 class Person1:
     age : int
     name : str
@@ -18,19 +18,19 @@ def testBool(p: Person1) -> bool:
     else:
         return False
 
-@attrs.define
+@attr.s(auto_attribs=True)
 class Person1b(Person1):
     id: str = '000'
 
-@attrs.define
+@attr.s(auto_attribs=True)
 class Person2:
     age : int
-    name : str = 'robot'
+    name : str = attr.ib(default='robot')
 
-@attrs.define(order=True)
+@attr.s(auto_attribs=True, order=True)
 class Person3:
-    age : int = attrs.field(default=6)
-    friendIDs : List[int] = attrs.field(factory=list)
+    age : int = attr.ib(default = 6)
+    friendIDs : List[int] = attr.ib(factory = list)
 
     def get_age(self) -> int:
         return (self.age)
@@ -49,7 +49,7 @@ def get_next_age(g: Callable[[Any], int]) -> Callable[[Any], int]:
         return g(a) + 1
     return f
 
-@attrs.define
+@attr.s(auto_attribs=True)
 class Person4:
     age : int
     _name : str = 'Bot'
@@ -62,10 +62,10 @@ class Person4:
     def name(self) -> str:
         return self._name
 
-@attrs.define
+@attr.s(auto_attribs=True)
 class Point:
-     x : int = attrs.field(converter=int)
-     y : int = attrs.field(init=False)
+     x : int = attr.ib(converter=int)
+     y : int = attr.ib(init=False)
 
      def __attrs_post_init__(self):
          self.y = self.x + 1
@@ -165,10 +165,10 @@ assert isinstance(Person3().get_age, BuiltinMethodType)
 
 
 [case testRunAttrsclassNonAuto]
-import attrs
+import attr
 from typing import Set, List, Callable, Any
 
-@attrs.define
+@attr.s
 class Person1:
     age = attr.ib(type=int)
     name = attr.ib(type=str)
@@ -182,16 +182,16 @@ def testBool(p: Person1) -> bool:
     else:
         return False
 
-@attrs.define
+@attr.s
 class Person1b(Person1):
     id = attr.ib(type=str, default='000')
 
-@attrs.define
+@attr.s
 class Person2:
     age = attr.ib(type=int)
     name = attr.ib(type=str, default='robot')
 
-@attrs.define(order=True)
+@attr.s(order=True)
 class Person3:
     age = attr.ib(type=int, default=6)
     friendIDs = attr.ib(factory=list, type=List[int])
@@ -213,7 +213,7 @@ def get_next_age(g: Callable[[Any], int]) -> Callable[[Any], int]:
         return g(a) + 1
     return f
 
-@attrs.define
+@attr.s
 class Person4:
     age = attr.ib(type=int)
     _name = attr.ib(type=str, default='Bot')
@@ -226,7 +226,7 @@ class Person4:
     def name(self) -> str:
         return self._name
 
-@attrs.define
+@attr.s
 class Point:
      x = attr.ib(type=int, converter=int)
      y = attr.ib(type=int, init=False)
