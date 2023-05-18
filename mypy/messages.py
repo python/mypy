@@ -1143,7 +1143,9 @@ class MessageBuilder:
         target = self.override_target(name, name_in_super, supertype)
         self.fail(f'Signature of "{name}" incompatible with {target}', context, code=code)
 
-        original_str, override_str = format_type_distinctly(original, override, options=self.options, bare=True)
+        original_str, override_str = format_type_distinctly(
+            original, override, options=self.options, bare=True
+        )
 
         INCLUDE_DECORATOR = True  # Include @classmethod and @staticmethod decorators, if any
         ALLOW_DUPS = True  # Allow duplicate notes, needed when signatures are duplicates
@@ -1165,12 +1167,7 @@ class MessageBuilder:
                 code=code,
             )
         else:
-            self.note(
-                original_str,
-                context,
-                offset=ALIGN_OFFSET + 2 * OFFSET,
-                code=code,
-            )
+            self.note(original_str, context, offset=ALIGN_OFFSET + 2 * OFFSET, code=code)
 
         self.note("Subclass:", context, offset=ALIGN_OFFSET + OFFSET, code=code)
         if isinstance(override, (CallableType, Overloaded)):
@@ -1183,12 +1180,7 @@ class MessageBuilder:
                 code=code,
             )
         else:
-            self.note(
-                override_str,
-                context,
-                offset=ALIGN_OFFSET + 2 * OFFSET,
-                code=code,
-            )
+            self.note(override_str, context, offset=ALIGN_OFFSET + 2 * OFFSET, code=code)
 
     def pretty_callable_or_overload(
         self,
