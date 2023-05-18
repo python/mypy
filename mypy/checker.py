@@ -1989,7 +1989,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 pass
             else:
                 self.msg.signature_incompatible_with_supertype(
-                    defn.name, name, base.name, context, original_type, typ
+                    defn.name, name, base.name, context, original=original_type, override=typ
                 )
         return False
 

@@ -1136,6 +1136,7 @@ class MessageBuilder:
         name_in_super: str,
         supertype: str,
         context: Context,
+        *,
         original: ProperType,
         override: ProperType,
     ) -> None:
