@@ -26,10 +26,6 @@ you'll find errors sooner.
 
 .. note::
 
-    The mypy daemon automatically enables ``--local-partial-types`` by default.
-
-.. note::
-
     Each mypy daemon process supports one user and one set of source files,
     and it can only process one type checking request at a time. You can
     run multiple mypy daemon processes to type check multiple repositories.
@@ -62,6 +58,11 @@ you have a large codebase.)
    ``--follow-imports=skip`` or ``--follow-imports=error`` to fall
    back to the stable functionality.  See :ref:`follow-imports` for
    details on how these work.
+
+.. note::
+
+    The mypy daemon automatically enables ``--local-partial-types`` by default.
+
 
 Daemon client commands
 **********************
