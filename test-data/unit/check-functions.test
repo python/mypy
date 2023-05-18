@@ -2848,7 +2848,11 @@ class C(A):  # inverted order of decorators
 class D(A):
     @property
     @override
-    def f(self) -> int: pass  # E: Signature of "f" incompatible with supertype "A"
+    def f(self) -> int: pass  # E: Signature of "f" incompatible with supertype "A" \
+                              # N:      Superclass: \
+                              # N:          str \
+                              # N:      Subclass: \
+                              # N:          int
 [builtins fixtures/property.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -2877,7 +2881,11 @@ class C(A):
     def f(self, value: str) -> None: pass
 
 class D(A):
-    @override  # E: Signature of "f" incompatible with supertype "A"
+    @override  # E: Signature of "f" incompatible with supertype "A" \
+               # N:      Superclass: \
+               # N:          str \
+               # N:      Subclass: \
+               # N:          int
     @property
     def f(self) -> int: pass
 
