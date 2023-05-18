@@ -400,20 +400,25 @@ reveal_type(D)  # N: Revealed type is "def (b: Any) -> __main__.D"
 
 [builtins fixtures/bool.pyi]
 
-[case testAttrsNewPackage]
-import attrs
-@attrs.define
+[case testAttrsOldPackage]
+import attr
+@attr.s(auto_attribs=True)
 class A:
-    a: int = attrs.field()
+    a: int = attr.ib()
     b: bool
 
-@attrs.frozen
+@attr.s(auto_attribs=True, frozen=True)
 class B:
     a: bool
     b: int
 
+@attr.s
+class C:
+    a = attr.ib(type=int)
+
 reveal_type(A)  # N: Revealed type is "def (a: builtins.int, b: builtins.bool) -> __main__.A"
 reveal_type(B)  # N: Revealed type is "def (a: builtins.bool, b: builtins.int) -> __main__.B"
+reveal_type(C)  # N: Revealed type is "def (a: builtins.int) -> __main__.C"
 
 [builtins fixtures/bool.pyi]
 
