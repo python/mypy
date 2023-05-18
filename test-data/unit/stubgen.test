@@ -2428,11 +2428,11 @@ __version__ = ''
 [out]
 
 [case testAttrsClass_semanal]
-import attr
+import attrs
 
-@attr.s
+@attrs.define
 class C:
-    x = attr.ib()
+    x = attrs.field()
 
 [out]
 from _typeshed import Incomplete
