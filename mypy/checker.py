@@ -1988,7 +1988,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # If the attribute is read-only, allow covariance
                 pass
             else:
-                self.msg.signature_incompatible_with_supertype(defn.name, name, base.name, context)
+                self.msg.signature_incompatible_with_supertype(defn.name, name, base.name, context, original_type, typ)
         return False
 
     def bind_and_map_method(
