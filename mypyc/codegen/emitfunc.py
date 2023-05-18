@@ -124,14 +124,17 @@ def generate_native_function(
     for i, block in enumerate(blocks):
         block.label = i
 
+    # Find blocks that are never jumped to or are only jumped to from the
+    # block directly above it. This allows for more labels and gotos to be
+    # eliminated during code generation.
     for block in fn.blocks:
         terminator = block.terminator
         assert isinstance(terminator, ControlOp)
 
-        for bb in terminator.targets():
-            is_next_block = bb.label == block.label + 1
+        for target in terminator.targets():
+            is_next_block = target.label == block.label + 1
 
-            # Always emit labels for GetAttr op codes since the emit code that
+            # Always emit labels for GetAttr error checks since the emit code that
             # generates them will add instructions between the branch and the
             # next label, causing the label to be wrongly removed. A better
             # solution would be to change the IR so that it adds a basic block
@@ -141,7 +144,7 @@ def generate_native_function(
             )
 
             if not is_next_block or is_problematic_op:
-                fn.blocks[bb.label].referenced = True
+                fn.blocks[target.label].referenced = True
 
     common = frequently_executed_blocks(fn.blocks[0])
 
