@@ -667,8 +667,6 @@ def update_module_isolated(
     state.type_check_first_pass()
     state.type_check_second_pass()
     state.detect_possibly_undefined_vars()
-    state.generate_unused_ignore_notes()
-    state.generate_ignore_without_code_notes()
     t2 = time.time()
     state.finish_passes()
     t3 = time.time()
@@ -988,6 +986,7 @@ def reprocess_nodes(
     manager.errors.set_file_ignored_lines(
         file_node.path, file_node.ignored_lines, options.ignore_errors or state.ignore_all
     )
+    manager.errors.set_unreachable_lines(file_node.path, file_node.unreachable_lines)
 
     targets = set()
     for node in nodes:
@@ -1028,10 +1027,6 @@ def reprocess_nodes(
         more = False
         if graph[module_id].type_checker().check_second_pass():
             more = True
-
-    graph[module_id].detect_possibly_undefined_vars()
-    graph[module_id].generate_unused_ignore_notes()
-    graph[module_id].generate_ignore_without_code_notes()
 
     if manager.options.export_types:
         manager.all_types.update(graph[module_id].type_map())

@@ -679,11 +679,13 @@ class MessageBuilder:
                 name.title(), n, actual_type_str, expected_type_str
             )
             code = codes.LIST_ITEM
-        elif callee_name == "<dict>":
+        elif callee_name == "<dict>" and isinstance(
+            get_proper_type(callee.arg_types[n - 1]), TupleType
+        ):
             name = callee_name[1:-1]
             n -= 1
             key_type, value_type = cast(TupleType, arg_type).items
-            expected_key_type, expected_value_type = cast(TupleType, callee.arg_types[0]).items
+            expected_key_type, expected_value_type = cast(TupleType, callee.arg_types[n]).items
 
             # don't increase verbosity unless there is need to do so
             if is_subtype(key_type, expected_key_type):
@@ -708,6 +710,14 @@ class MessageBuilder:
                 value_type_str,
                 expected_key_type_str,
                 expected_value_type_str,
+            )
+            code = codes.DICT_ITEM
+        elif callee_name == "<dict>":
+            value_type_str, expected_value_type_str = format_type_distinctly(
+                arg_type, callee.arg_types[n - 1], options=self.options
+            )
+            msg = "Unpacked dict entry {} has incompatible type {}; expected {}".format(
+                n - 1, value_type_str, expected_value_type_str
             )
             code = codes.DICT_ITEM
         elif callee_name == "<list-comprehension>":
@@ -1301,6 +1311,12 @@ class MessageBuilder:
         callee_name = callable_name(callee_type)
         if callee_name is not None and n > 0:
             self.fail(f"Cannot infer type argument {n} of {callee_name}", context)
+            if callee_name == "<dict>":
+                # Invariance in key type causes more of these errors than we would want.
+                self.note(
+                    "Try assigning the literal to a variable annotated as dict[<key>, <val>]",
+                    context,
+                )
         else:
             self.fail("Cannot infer function type argument", context)
 
@@ -1476,6 +1492,13 @@ class MessageBuilder:
 
     def cant_assign_to_classvar(self, name: str, context: Context) -> None:
         self.fail(f'Cannot assign to class variable "{name}" via instance', context)
+
+    def no_overridable_method(self, name: str, context: Context) -> None:
+        self.fail(
+            f'Method "{name}" is marked as an override, '
+            "but no base method was found with this name",
+            context,
+        )
 
     def final_cant_override_writable(self, name: str, ctx: Context) -> None:
         self.fail(f'Cannot override writable attribute "{name}" with a final one', ctx)
@@ -1656,12 +1679,8 @@ class MessageBuilder:
         )
 
     def assert_type_fail(self, source_type: Type, target_type: Type, context: Context) -> None:
-        self.fail(
-            f"Expression is of type {format_type(source_type, self.options)}, "
-            f"not {format_type(target_type, self.options)}",
-            context,
-            code=codes.ASSERT_TYPE,
-        )
+        (source, target) = format_type_distinctly(source_type, target_type, options=self.options)
+        self.fail(f"Expression is of type {source}, not {target}", context, code=codes.ASSERT_TYPE)
 
     def unimported_type_becomes_any(self, prefix: str, typ: Type, ctx: Context) -> None:
         self.fail(

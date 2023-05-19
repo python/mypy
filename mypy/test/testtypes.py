@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import re
+from unittest import TestCase, skipUnless
+
+import mypy.expandtype
 from mypy.erasetype import erase_type, remove_instance_last_known_values
 from mypy.expandtype import expand_type
 from mypy.indirection import TypeIndirectionVisitor
@@ -611,10 +615,7 @@ class TypeOpsSuite(Suite):
             [fx.lit_str1, fx.lit_str2, fx.lit_str3_inst],
             UnionType([fx.lit_str1, fx.lit_str2, fx.lit_str3_inst]),
         )
-        self.assert_simplified_union(
-            [fx.lit_str1, fx.lit_str1, fx.lit_str1_inst],
-            UnionType([fx.lit_str1, fx.lit_str1_inst]),
-        )
+        self.assert_simplified_union([fx.lit_str1, fx.lit_str1, fx.lit_str1_inst], fx.lit_str1)
 
     def assert_simplified_union(self, original: list[Type], union: Type) -> None:
         assert_equal(make_simplified_union(original), union)
@@ -1438,3 +1439,16 @@ def make_call(*items: tuple[str, str | None]) -> CallExpr:
         else:
             arg_kinds.append(ARG_POS)
     return CallExpr(NameExpr("f"), args, arg_kinds, arg_names)
+
+
+class TestExpandTypeLimitGetProperType(TestCase):
+    # WARNING: do not increase this number unless absolutely necessary,
+    # and you understand what you are doing.
+    ALLOWED_GET_PROPER_TYPES = 8
+
+    @skipUnless(mypy.expandtype.__file__.endswith(".py"), "Skip for compiled mypy")
+    def test_count_get_proper_type(self) -> None:
+        with open(mypy.expandtype.__file__) as f:
+            code = f.read()
+        get_proper_type_count = len(re.findall("get_proper_type", code))
+        assert get_proper_type_count == self.ALLOWED_GET_PROPER_TYPES

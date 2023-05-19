@@ -8,6 +8,7 @@ from mypy.nodes import ARG_STAR, Context
 from mypy.types import (
     AnyType,
     CallableType,
+    Instance,
     Parameters,
     ParamSpecType,
     PartialType,
@@ -148,10 +149,20 @@ def apply_generic_arguments(
                 assert False, f"mypy bug: unimplemented case, {expanded_tuple}"
         elif isinstance(unpacked_type, TypeVarTupleType):
             expanded_tvt = expand_unpack_with_variables(var_arg.typ, id_to_type)
-            assert isinstance(expanded_tvt, list)
-            for t in expanded_tvt:
-                assert not isinstance(t, UnpackType)
-            callable = replace_starargs(callable, expanded_tvt)
+            if isinstance(expanded_tvt, list):
+                for t in expanded_tvt:
+                    assert not isinstance(t, UnpackType)
+                callable = replace_starargs(callable, expanded_tvt)
+            else:
+                assert isinstance(expanded_tvt, Instance)
+                assert expanded_tvt.type.fullname == "builtins.tuple"
+                callable = callable.copy_modified(
+                    arg_types=(
+                        callable.arg_types[:star_index]
+                        + [expanded_tvt.args[0]]
+                        + callable.arg_types[star_index + 1 :]
+                    )
+                )
         else:
             assert False, "mypy bug: unhandled case applying unpack"
     else:
