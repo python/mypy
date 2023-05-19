@@ -126,7 +126,13 @@ from mypy.stubutil import (
     report_missing,
     walk_packages,
 )
-from mypy.traverser import all_yield_expressions, has_return_statement, has_yield_expression
+from mypy.traverser import (
+    all_yield_expressions,
+    all_yield_from_expressions,
+    has_return_statement,
+    has_yield_expression,
+    has_yield_from_expression,
+)
 from mypy.types import (
     OVERLOAD_NAMES,
     TPDICT_NAMES,
@@ -774,7 +780,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             retname = None  # implicit Any
         elif o.name in KNOWN_MAGIC_METHODS_RETURN_TYPES:
             retname = KNOWN_MAGIC_METHODS_RETURN_TYPES[o.name]
-        elif has_yield_expression(o):
+        elif has_yield_expression(o) or has_yield_from_expression(o):
             self.add_typing_import("Generator")
             yield_name = "None"
             send_name = "None"
@@ -783,6 +789,12 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 if expr.expr is not None and not self.is_none_expr(expr.expr):
                     self.add_typing_import("Incomplete")
                     yield_name = self.typing_name("Incomplete")
+                if in_assignment:
+                    self.add_typing_import("Incomplete")
+                    send_name = self.typing_name("Incomplete")
+            for _, in_assignment in all_yield_from_expressions(o):
+                self.add_typing_import("Incomplete")
+                yield_name = self.typing_name("Incomplete")
                 if in_assignment:
                     self.add_typing_import("Incomplete")
                     send_name = self.typing_name("Incomplete")
