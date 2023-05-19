@@ -2746,6 +2746,9 @@ def id(x: T) -> T:
     ...
 y = foo(id)
 reveal_type(y)  # N: Revealed type is "builtins.list[builtins.int]"
+
+def chain(f: Callable[[X], T], g: Callable[[T], int]) -> Callable[[X], int]: ...
+reveal_type(chain(id, id))
 [builtins fixtures/list.pyi]
 
 [case testHardGenericStuff]
@@ -2774,4 +2777,8 @@ def mix(fs: List[Callable[[S], T]]) -> Callable[[S], List[T]]:
 fs = [id, id, id]
 reveal_type(mix(fs))
 reveal_type(mix([id, id, id]))
+
+x: Callable[[T], T]
+y: Callable[[U], U]
+x = y
 [builtins fixtures/list.pyi]

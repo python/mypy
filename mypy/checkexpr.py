@@ -12,7 +12,7 @@ import mypy.checker
 import mypy.errorcodes as codes
 from mypy import applytype, erasetype, join, message_registry, nodes, operators, types
 from mypy.argmap import ArgTypeExpander, map_actuals_to_formals, map_formals_to_actuals
-from mypy.checkmember import analyze_member_access, type_object_type
+from mypy.checkmember import analyze_member_access, freeze_all_type_vars, type_object_type
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.erasetype import erase_type, remove_instance_last_known_values, replace_meta_vars
 from mypy.errors import ErrorWatcher, report_internal_error
@@ -115,13 +115,14 @@ from mypy.typeops import (
     false_only,
     fixup_partial_type,
     function_type,
+    get_type_vars,
     is_literal_type_like,
     make_simplified_union,
     simple_literal_type,
     true_only,
     try_expanding_sum_type_to_union,
     try_getting_str_literals,
-    tuple_fallback, get_type_vars,
+    tuple_fallback,
 )
 from mypy.types import (
     LITERAL_TYPE_NAMES,
@@ -147,6 +148,7 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeType,
+    TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
     UninhabitedType,
@@ -156,7 +158,7 @@ from mypy.types import (
     get_proper_type,
     get_proper_types,
     has_recursive_types,
-    is_named_instance, TypeVarLikeType,
+    is_named_instance,
 )
 from mypy.types_utils import is_generic_instance, is_optional, is_self_type_like, remove_optional
 from mypy.typestate import type_state
@@ -1791,8 +1793,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 elif not first_arg or not is_subtype(self.named_type("builtins.str"), first_arg):
                     self.chk.fail(message_registry.KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE, context)
 
-            # TODO: Filter away ParamSpec
-            if any(a is None or isinstance(a, UninhabitedType) for a in inferred_args):
+            # TODO: Filter away (or handle) ParamSpec?
+            if any(
+                a is None or isinstance(get_proper_type(a), UninhabitedType) for a in inferred_args
+            ):
                 poly_inferred_args = infer_function_type_arguments(
                     callee_type,
                     arg_types,
@@ -1802,15 +1806,21 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     strict=self.chk.in_checked_function(),
                     allow_polymorphic=True,
                 )
-                for i, arg in enumerate(get_proper_types(poly_inferred_args)):
-                    if isinstance(arg, (NoneType, UninhabitedType)) or has_erased_component(arg):
+                for i, pa in enumerate(get_proper_types(poly_inferred_args)):
+                    # TODO: can we be more principled here?
+                    if isinstance(pa, (NoneType, UninhabitedType)) or has_erased_component(pa):
                         poly_inferred_args[i] = None
-                poly_callee_type = self.apply_generic_arguments(callee_type, poly_inferred_args, context)
+                poly_callee_type = self.apply_generic_arguments(
+                    callee_type, poly_inferred_args, context
+                )
                 yes_vars = poly_callee_type.variables
                 no_vars = {v for v in callee_type.variables if v not in poly_callee_type.variables}
                 if not set(get_type_vars(poly_callee_type)) & no_vars:
                     applied = apply_poly(poly_callee_type, yes_vars)
-                    if applied is not None:
+                    if applied is not None and poly_inferred_args != [None] * len(
+                        poly_inferred_args
+                    ):
+                        freeze_all_type_vars(applied)
                         return applied
         else:
             # In dynamically typed functions use implicit 'Any' types for
@@ -5313,7 +5323,7 @@ def replace_callable_return_type(c: CallableType, new_ret_type: Type) -> Callabl
     return c.copy_modified(ret_type=new_ret_type)
 
 
-def apply_poly(tp: CallableType, poly_tvars: list[TypeVarLikeType]) -> Optional[CallableType]:
+def apply_poly(tp: CallableType, poly_tvars: Sequence[TypeVarLikeType]) -> Optional[CallableType]:
     try:
         return tp.copy_modified(
             arg_types=[t.accept(PolyTranslator(poly_tvars)) for t in tp.arg_types],
@@ -5329,9 +5339,9 @@ class PolyTranslationError(TypeError):
 
 
 class PolyTranslator(TypeTranslator):
-    def __init__(self, poly_tvars: list[TypeVarLikeType]) -> None:
+    def __init__(self, poly_tvars: Sequence[TypeVarLikeType]) -> None:
         self.poly_tvars = set(poly_tvars)
-        self.bound_tvars = set()
+        self.bound_tvars: set[TypeVarLikeType] = set()
 
     def visit_callable_type(self, t: CallableType) -> Type:
         found_vars = set()
@@ -5342,14 +5352,19 @@ class PolyTranslator(TypeTranslator):
         self.bound_tvars |= found_vars
         result = super().visit_callable_type(t)
         self.bound_tvars -= found_vars
+        assert isinstance(result, ProperType)
         assert isinstance(result, CallableType)
-        result.variables += list(found_vars)
+        result.variables = list(result.variables) + list(found_vars)
         return result
 
     def visit_type_var(self, t: TypeVarType) -> Type:
         if t in self.poly_tvars and t not in self.bound_tvars:
             raise PolyTranslationError()
         return super().visit_type_var(t)
+
+    def visit_param_spec(self, t: ParamSpecType) -> Type:
+        # TODO: more careful here (also handle TypeVarTupleType)
+        raise PolyTranslationError()
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         return t.copy_modified(args=[a.accept(self) for a in t.args])

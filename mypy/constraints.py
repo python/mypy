@@ -11,7 +11,6 @@ from mypy.argmap import ArgTypeExpander
 from mypy.erasetype import erase_typevars
 from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import ARG_OPT, ARG_POS, CONTRAVARIANT, COVARIANT, ArgKind
-from mypy.type_visitor import BoolTypeQuery, ANY_STRATEGY
 from mypy.types import (
     TUPLE_LIKE_INSTANCE_NAMES,
     AnyType,
@@ -62,48 +61,6 @@ if TYPE_CHECKING:
 
 SUBTYPE_OF: Final = 0
 SUPERTYPE_OF: Final = 1
-
-
-def flatten_types(tls: list[list[Type]]) -> list[Type]:
-    res = []
-    for tl in tls:
-        res.extend(tl)
-    return res
-
-
-class PolyExtractor(TypeQuery[list[TypeVarLikeType]]):
-    def __init__(self) -> None:
-        super().__init__(flatten_types)
-
-    def visit_callable_type(self, t: CallableType) -> list[TypeVarLikeType]:
-        return t.variables + super().visit_callable_type(t)
-
-
-class PolyLeakDetector(BoolTypeQuery):
-    def __init__(self, found: set[TypeVarLikeType]) -> None:
-        super().__init__(ANY_STRATEGY)
-        self.bound = set()
-        self.found = found
-
-    def visit_callable_type(self, t: CallableType) -> bool:
-        self.bound |= set(t.variables)
-        result = super().visit_callable_type(t)
-        self.bound -= set(t.variables)
-        return result
-
-    def visit_type_var(self, t: TypeVarType) -> bool:
-        return t in self.found and t not in self.bound
-
-
-def sanitize_constraints(constraints: list[Constraint], types: list[Type]) -> list[Constraint]:
-    res = []
-    found = set()
-    for tp in types:
-        found |= set(tp.accept(PolyExtractor()))
-    for c in constraints:
-        if not c.target.accept(PolyLeakDetector(found)):
-            res.append(c)
-    return res
 
 
 class Constraint:
@@ -211,9 +168,6 @@ def infer_constraints_for_callable(
                     actual_arg_type, arg_kinds[actual], callee.arg_names[i], callee.arg_kinds[i]
                 )
                 c = infer_constraints(callee.arg_types[i], actual_type, SUPERTYPE_OF)
-                p_arg = get_proper_type(callee.arg_types[i])
-                if not isinstance(p_arg, CallableType) or p_arg.param_spec() is None:
-                    c = sanitize_constraints(c, [callee.arg_types[i], actual_type])
                 constraints.extend(c)
 
     return constraints
@@ -933,17 +887,21 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         if isinstance(self.actual, CallableType):
             res: list[Constraint] = []
             cactual = self.actual.with_unpacked_kwargs()
-            if cactual.variables and self.direction == SUPERTYPE_OF and template.param_spec() is None:
-                from mypy.subtypes import unify_generic_callable
-
-                unified = unify_generic_callable(cactual, template, ignore_return=True)
-                if unified is not None:
-                    cactual = unified
-                    res.extend(infer_constraints(cactual, template, neg_op(self.direction)))
             param_spec = template.param_spec()
             if param_spec is None:
                 # FIX verify argument counts
-                # FIX what if one of the functions is generic
+                # TODO: Erase template vars if generic?
+                if (
+                    cactual.variables
+                    and self.direction == SUPERTYPE_OF
+                    and cactual.param_spec() is None
+                ):
+                    from mypy.subtypes import unify_generic_callable
+
+                    unified = unify_generic_callable(cactual, template, ignore_return=True)
+                    if unified is not None:
+                        cactual = unified
+                        res.extend(infer_constraints(cactual, template, neg_op(self.direction)))
 
                 # We can't infer constraints from arguments if the template is Callable[..., T]
                 # (with literal '...').
