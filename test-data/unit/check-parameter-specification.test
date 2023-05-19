@@ -310,11 +310,7 @@ class C(Generic[P, P2]):
 
     def m3(self, c: C[P, P3]) -> None:
         reveal_type(join(c, c))  # N: Revealed type is "__main__.C[P`1, P3`-1]"
-        # TODO: undo this join change
-        reveal_type(join(self, c))  # E: Value of type variable "T" of "join" cannot be "[VarArg(object), KwArg(object)]" \
-                                    # N: Revealed type is "..." \
-                                    # E: Argument 1 to "join" has incompatible type "C[P, P2]"; expected "[VarArg(object), KwArg(object)]" \
-                                    # E: Argument 2 to "join" has incompatible type "C[P, P3]"; expected "[VarArg(object), KwArg(object)]"
+        reveal_type(join(self, c))  # N: Revealed type is "builtins.object"
 [builtins fixtures/dict.pyi]
 
 [case testParamSpecClassWithAny]
