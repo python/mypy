@@ -97,7 +97,7 @@ class InstanceJoiner:
                 else:
                     # ParamSpec type variables behave the same, independent of variance
                     if not is_equivalent(ta, sa):
-                        return get_proper_type(type_var.upper_bound)
+                        return object_from_instance(t)
                     new_type = join_types(ta, sa, self)
                 assert new_type is not None
                 args.append(new_type)
