@@ -689,25 +689,33 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             )
                     elif isinstance(tvar, ParamSpecType) and isinstance(mapped_arg, ParamSpecType):
                         suffix = get_proper_type(instance_arg)
+                        prefix = mapped_arg.prefix
+                        length = len(prefix.arg_types)
 
                         if isinstance(suffix, CallableType):
-                            prefix = mapped_arg.prefix
                             from_concat = bool(prefix.arg_types) or suffix.from_concatenate
                             suffix = suffix.copy_modified(from_concatenate=from_concat)
 
                         if isinstance(suffix, (Parameters, CallableType)):
                             # no such thing as variance for ParamSpecs
                             # TODO: is there a case I am missing?
-                            # TODO: constraints between prefixes
-                            prefix = mapped_arg.prefix
-                            suffix = suffix.copy_modified(
-                                suffix.arg_types[len(prefix.arg_types) :],
-                                suffix.arg_kinds[len(prefix.arg_kinds) :],
-                                suffix.arg_names[len(prefix.arg_names) :],
+
+                            constrained_to = suffix.copy_modified(
+                                suffix.arg_types[length:],
+                                suffix.arg_kinds[length:],
+                                suffix.arg_names[length:],
                             )
-                            res.append(Constraint(mapped_arg, SUPERTYPE_OF, suffix))
+                            res.append(Constraint(mapped_arg, SUPERTYPE_OF, constrained_to))
                         elif isinstance(suffix, ParamSpecType):
-                            res.append(Constraint(mapped_arg, SUPERTYPE_OF, suffix))
+                            suffix_prefix = suffix.prefix
+                            constrained = suffix.copy_modified(
+                                prefix=suffix_prefix.copy_modified(
+                                    suffix_prefix.arg_types[length:],
+                                    suffix_prefix.arg_kinds[length:],
+                                    suffix_prefix.arg_names[length:],
+                                )
+                            )
+                            res.append(Constraint(mapped_arg, SUPERTYPE_OF, constrained))
                     else:
                         # This case should have been handled above.
                         assert not isinstance(tvar, TypeVarTupleType)
@@ -759,6 +767,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         template_arg, ParamSpecType
                     ):
                         suffix = get_proper_type(mapped_arg)
+                        prefix = template_arg.prefix
+                        length = len(prefix.arg_types)
 
                         if isinstance(suffix, CallableType):
                             prefix = template_arg.prefix
@@ -768,16 +778,22 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         if isinstance(suffix, (Parameters, CallableType)):
                             # no such thing as variance for ParamSpecs
                             # TODO: is there a case I am missing?
-                            # TODO: constraints between prefixes
-                            prefix = template_arg.prefix
 
                             suffix = suffix.copy_modified(
-                                suffix.arg_types[len(prefix.arg_types) :],
-                                suffix.arg_kinds[len(prefix.arg_kinds) :],
-                                suffix.arg_names[len(prefix.arg_names) :],
+                                suffix.arg_types[length:],
+                                suffix.arg_kinds[length:],
+                                suffix.arg_names[length:],
                             )
                             res.append(Constraint(template_arg, SUPERTYPE_OF, suffix))
                         elif isinstance(suffix, ParamSpecType):
+                            suffix_prefix = suffix.prefix
+                            constrained = suffix.copy_modified(
+                                prefix=suffix_prefix.copy_modified(
+                                    suffix_prefix.arg_types[length:],
+                                    suffix_prefix.arg_kinds[length:],
+                                    suffix_prefix.arg_names[length:],
+                                )
+                            )
                             res.append(Constraint(template_arg, SUPERTYPE_OF, suffix))
                     else:
                         # This case should have been handled above.
@@ -923,9 +939,19 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 prefix_len = len(prefix.arg_types)
                 cactual_ps = cactual.param_spec()
 
+                cactual_prefix: Parameters | CallableType
+                if cactual_ps:
+                    cactual_prefix = cactual_ps.prefix
+                else:
+                    cactual_prefix = cactual
+
+                max_prefix_len = len(
+                    [k for k in cactual_prefix.arg_kinds if k in (ARG_POS, ARG_OPT)]
+                )
+                prefix_len = min(prefix_len, max_prefix_len)
+
+                # we could check the prefixes match here, but that should be caught elsewhere.
                 if not cactual_ps:
-                    max_prefix_len = len([k for k in cactual.arg_kinds if k in (ARG_POS, ARG_OPT)])
-                    prefix_len = min(prefix_len, max_prefix_len)
                     res.append(
                         Constraint(
                             param_spec,
@@ -939,7 +965,17 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         )
                     )
                 else:
-                    res.append(Constraint(param_spec, SUBTYPE_OF, cactual_ps))
+                    # earlier, cactual_prefix = cactual_ps.prefix. thus, this is guaranteed
+                    assert isinstance(cactual_prefix, Parameters)
+
+                    constrained_by = cactual_ps.copy_modified(
+                        prefix=cactual_prefix.copy_modified(
+                            cactual_prefix.arg_types[prefix_len:],
+                            cactual_prefix.arg_kinds[prefix_len:],
+                            cactual_prefix.arg_names[prefix_len:],
+                        )
+                    )
+                    res.append(Constraint(param_spec, SUBTYPE_OF, constrained_by))
 
                 # compare prefixes
                 cactual_prefix = cactual.copy_modified(
