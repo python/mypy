@@ -1582,7 +1582,7 @@ def f(t: TA) -> None:
     reveal_type(fields(t)[0])  # N: Revealed type is "attr.Attribute[builtins.int]"
     reveal_type(fields(t).b)  # N: Revealed type is "attr.Attribute[builtins.int]"
     fields(t).x  # E: "____main___A_AttrsAttributes__" has no attribute "x"
-    
+
 
 [builtins fixtures/plugin_attrs.pyi]
 
