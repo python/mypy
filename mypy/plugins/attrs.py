@@ -936,7 +936,7 @@ class MethodAdder:
 
 def _get_attrs_init_type(typ: Instance) -> CallableType | None:
     """
-    If `typ` refers to an attrs class, gets the type of its initializer method.
+    If `typ` refers to an attrs class, get the type of its initializer method.
     """
     magic_attr = typ.type.get(MAGIC_ATTR_NAME)
     if magic_attr is None or not magic_attr.plugin_generated:
@@ -1010,7 +1010,7 @@ def _get_expanded_attr_types(
 
 def _meet_fields(types: list[Mapping[str, Type]]) -> Mapping[str, Type]:
     """
-    "Meets" the fields of a list of attrs classes, i.e. for each field, its new type will be the lower bound.
+    "Meet" the fields of a list of attrs classes, i.e. for each field, its new type will be the lower bound.
     """
     field_to_types = defaultdict(list)
     for fields in types:
@@ -1027,7 +1027,7 @@ def _meet_fields(types: list[Mapping[str, Type]]) -> Mapping[str, Type]:
 
 def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> CallableType:
     """
-    Generates a signature for the 'attr.evolve' function that's specific to the call site
+    Generate a signature for the 'attr.evolve' function that's specific to the call site
     and dependent on the type of the first argument.
     """
     if len(ctx.args) != 2:
@@ -1064,7 +1064,7 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
 
 
 def fields_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> CallableType:
-    """Provide the proper signature for `attrs.fields`."""
+    """Provide the signature for `attrs.fields`."""
     if not ctx.args or len(ctx.args) != 1 or not ctx.args[0] or not ctx.args[0][0]:
         return ctx.default_signature
 
