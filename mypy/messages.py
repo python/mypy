@@ -1157,7 +1157,9 @@ class MessageBuilder:
         # note:          def f(self) -> str
         # note:      Subclass:
         # note:          def f(self, x: str) -> None
-        self.note("Superclass:", context, offset=ALIGN_OFFSET + OFFSET, code=code)
+        self.note(
+            "Superclass:", context, offset=ALIGN_OFFSET + OFFSET, allow_dups=ALLOW_DUPS, code=code
+        )
         if isinstance(original, (CallableType, Overloaded)):
             self.pretty_callable_or_overload(
                 original,
@@ -1168,9 +1170,17 @@ class MessageBuilder:
                 code=code,
             )
         else:
-            self.note(original_str, context, offset=ALIGN_OFFSET + 2 * OFFSET, code=code)
+            self.note(
+                original_str,
+                context,
+                offset=ALIGN_OFFSET + 2 * OFFSET,
+                allow_dups=ALLOW_DUPS,
+                code=code,
+            )
 
-        self.note("Subclass:", context, offset=ALIGN_OFFSET + OFFSET, code=code)
+        self.note(
+            "Subclass:", context, offset=ALIGN_OFFSET + OFFSET, allow_dups=ALLOW_DUPS, code=code
+        )
         if isinstance(override, (CallableType, Overloaded)):
             self.pretty_callable_or_overload(
                 override,
@@ -1181,7 +1191,13 @@ class MessageBuilder:
                 code=code,
             )
         else:
-            self.note(override_str, context, offset=ALIGN_OFFSET + 2 * OFFSET, code=code)
+            self.note(
+                override_str,
+                context,
+                offset=ALIGN_OFFSET + 2 * OFFSET,
+                allow_dups=ALLOW_DUPS,
+                code=code,
+            )
 
     def pretty_callable_or_overload(
         self,

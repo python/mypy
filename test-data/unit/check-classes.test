@@ -588,6 +588,32 @@ class B(A):
     @dec
     def h(self) -> str: pass
 
+[case testOverrideIncompatibleWithMultipleSupertypes]
+class A:
+    def f(self, *, a: int) -> None:
+        return
+
+class B(A):
+    def f(self, *, b: int) -> None:  # E: Signature of "f" incompatible with supertype "A" \
+                                     # N:      Superclass: \
+                                     # N:          def f(self, *, a: int) -> None \
+                                     # N:      Subclass: \
+                                     # N:          def f(self, *, b: int) -> None
+        return
+
+class C(B):
+    def f(self, *, c: int) -> None:  # E: Signature of "f" incompatible with supertype "B" \
+                                     # N:      Superclass: \
+                                     # N:          def f(self, *, b: int) -> None \
+                                     # N:      Subclass: \
+                                     # N:          def f(self, *, c: int) -> None \
+                                     # E: Signature of "f" incompatible with supertype "A" \
+                                     # N:      Superclass: \
+                                     # N:          def f(self, *, a: int) -> None \
+                                     # N:      Subclass: \
+                                     # N:          def f(self, *, c: int) -> None
+        return
+
 [case testOverrideStaticMethodWithStaticMethod]
 class A:
     @staticmethod
