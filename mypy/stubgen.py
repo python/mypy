@@ -128,7 +128,6 @@ from mypy.stubutil import (
 )
 from mypy.traverser import (
     all_yield_expressions,
-    all_yield_from_expressions,
     has_return_statement,
     has_yield_expression,
     has_yield_from_expression,
@@ -785,19 +784,17 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             yield_name = "None"
             send_name = "None"
             return_name = "None"
-            for expr, in_assignment in all_yield_expressions(o):
-                if expr.expr is not None and not self.is_none_expr(expr.expr):
-                    self.add_typing_import("Incomplete")
-                    yield_name = self.typing_name("Incomplete")
-                if in_assignment:
-                    self.add_typing_import("Incomplete")
-                    send_name = self.typing_name("Incomplete")
-            for _, in_assignment in all_yield_from_expressions(o):
+            if has_yield_from_expression(o):
                 self.add_typing_import("Incomplete")
-                yield_name = self.typing_name("Incomplete")
-                if in_assignment:
-                    self.add_typing_import("Incomplete")
-                    send_name = self.typing_name("Incomplete")
+                yield_name = send_name = self.typing_name("Incomplete")
+            else:
+                for expr, in_assignment in all_yield_expressions(o):
+                    if expr.expr is not None and not self.is_none_expr(expr.expr):
+                        self.add_typing_import("Incomplete")
+                        yield_name = self.typing_name("Incomplete")
+                    if in_assignment:
+                        self.add_typing_import("Incomplete")
+                        send_name = self.typing_name("Incomplete")
             if has_return_statement(o):
                 self.add_typing_import("Incomplete")
                 return_name = self.typing_name("Incomplete")
