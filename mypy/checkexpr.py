@@ -105,6 +105,7 @@ from mypy.typeanal import (
     has_any_from_unimported_type,
     instantiate_type_alias,
     make_optional_type,
+    pack_paramspec_args,
     set_any_tvars,
 )
 from mypy.typeops import (
@@ -4083,6 +4084,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         tp = get_proper_type(tp)
 
         if isinstance(tp, CallableType):
+            if len(tp.variables) == 1 and isinstance(tp.variables[0], ParamSpecType):
+                args = pack_paramspec_args(args)
+
             if len(tp.variables) != len(args):
                 if tp.is_type_obj() and tp.type_object().fullname == "builtins.tuple":
                     # TODO: Specialize the callable for the type arguments
