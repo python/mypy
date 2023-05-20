@@ -641,10 +641,15 @@ typedef struct CPyAttr_Context {
     const char *attr_name;
     size_t offset;
     bool always_defined;
-    struct {
+    bool deletable;
+    struct {                    // Used for attributes with overlapping error values.
         size_t offset;
         size_t mask;
     } bitmap;
+    struct {                    // Used for generic boxed setter.
+        const char *type_name;
+        PyTypeObject *type;     // If NULL, treat attribute as Any (no type check).
+    } boxed_setter;
 } CPyAttr_Context;
 
 static PyObject *_CPyAttr_UndefinedError(PyObject *self, CPyAttr_Context *context) {
@@ -654,7 +659,13 @@ static PyObject *_CPyAttr_UndefinedError(PyObject *self, CPyAttr_Context *contex
     return NULL;
 }
 
-static void CPyAttr_SetBitmap(PyObject *self, CPyAttr_Context *context, bool defined) {
+static int _CPyAttr_UndeletableError(PyObject *self, CPyAttr_Context *context) {
+    PyErr_Format(PyExc_AttributeError,
+        "'%s' object attribute '%s' cannot be deleted", Py_TYPE(self)->tp_name, context->attr_name);
+    return -1;
+}
+
+static void _CPyAttr_SetBitmap(PyObject *self, CPyAttr_Context *context, bool defined) {
     uint32_t *bitmap = (uint32_t *)((char *)self + context->bitmap.offset);
     if (defined) {
         *bitmap |= context->bitmap.mask;
@@ -721,6 +732,92 @@ static PyObject *CPyAttr_GetterFloat(PyObject *self, CPyAttr_Context *context) {
         return _CPyAttr_UndefinedError(self, context);
     }
     return PyFloat_FromDouble(value);
+}
+
+static int CPyAttr_SetterPyObject(PyObject *self, PyObject *value, CPyAttr_Context *context) {
+    if (value == NULL && !context->deletable) {
+        return _CPyAttr_UndeletableError(self, context);
+    }
+
+    PyObject **attr = (PyObject **)((char *)self + context->offset);
+    if (value != NULL) {
+        PyTypeObject *type = context->boxed_setter.type;
+        if (type != NULL && !PyObject_TypeCheck(value, type)) {
+            CPy_TypeError(context->boxed_setter.type_name, value);
+            return -1;
+        }
+        Py_XSETREF(*attr, Py_NewRef(value));
+    } else {
+        Py_CLEAR(*attr);
+    }
+    return 0;
+}
+
+static int CPyAttr_SetterTagged(PyObject *self, PyObject *value, CPyAttr_Context *context) {
+    if (value == NULL && !context->deletable) {
+        return _CPyAttr_UndeletableError(self, context);
+    }
+
+    CPyTagged *attr = (CPyTagged *)((char *)self + context->offset);
+    if (value != NULL) {
+        if (!PyLong_Check(value)) {
+            CPy_TypeError("int", value);
+            return -1;
+        }
+        *attr = CPyTagged_FromObject(value);
+    } else {
+        if (*attr != CPY_INT_TAG) {
+            CPyTagged_DECREF(*attr);
+        }
+        *attr = CPY_INT_TAG;
+    }
+    return 0;
+}
+
+static int CPyAttr_SetterBool(PyObject *self, PyObject *value, CPyAttr_Context *context)
+{
+    if (value == NULL && !context->deletable) {
+        return _CPyAttr_UndeletableError(self, context);
+    }
+
+    char *attr = (char *)self + context->offset;
+    if (value == NULL) {
+        *attr = 2;
+    } else {
+        if (!PyBool_Check(value)) {
+            CPy_TypeError("bool", value);
+            return -1;
+        }
+        *attr = value == Py_True;
+    }
+    return 0;
+}
+
+static int CPyAttr_SetterFloat(PyObject *self, PyObject *value, CPyAttr_Context *context)
+{
+    if (value == NULL && !context->deletable) {
+        return _CPyAttr_UndeletableError(self, context);
+    }
+
+    double *attr = (double *)((char *)self + context->offset);
+    if (value != NULL) {
+        if (!PyFloat_Check(value)) {
+            CPy_TypeError("float", value);
+            return -1;
+        }
+        double tmp = PyFloat_AsDouble(value);
+        if (tmp == -1.0 && PyErr_Occurred()) {
+            return -1;
+        }
+        *attr = tmp;
+        if (tmp == CPY_FLOAT_ERROR) {
+            _CPyAttr_SetBitmap(self, context, true);
+        }
+    } else {
+        *attr = CPY_FLOAT_ERROR;
+        _CPyAttr_SetBitmap(self, context, false);
+    }
+    return 0;
 }
 
 #ifdef __cplusplus
