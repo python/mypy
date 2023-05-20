@@ -137,7 +137,7 @@ def get_mypy_config(
     # Needed to get types for all AST nodes
     options.export_types = True
     # We use mypy incremental mode when doing separate/incremental mypyc compilation
-    options.incremental = compiler_options.separate
+    options.incremental = compiler_options.separate or True
     options.preserve_asts = True
 
     for source in mypyc_sources:

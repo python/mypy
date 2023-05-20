@@ -647,7 +647,7 @@ typedef struct CPyAttr_Context {
     } bitmap;
 } CPyAttr_Context;
 
-static void *_CPyAttr_UndefinedError(PyObject *self, CPyAttr_Context *context) {
+static PyObject *_CPyAttr_UndefinedError(PyObject *self, CPyAttr_Context *context) {
     assert(!context->always_defined && "attribute should be initialized!");
     PyErr_Format(PyExc_AttributeError,
         "attribute '%s' of '%s' undefined", context->attr_name, Py_TYPE(self)->tp_name);
