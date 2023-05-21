@@ -29,6 +29,10 @@ class ErrorMessage(NamedTuple):
 INVALID_TYPE_RAW_ENUM_VALUE: Final = ErrorMessage(
     "Invalid type: try using Literal[{}.{}] instead?", codes.VALID_TYPE
 )
+INVALID_TYPE_FROZENSET_LITERAL: Final = ErrorMessage("Invalid type for item of frozenset literal: {})")
+INVALID_TYPE_TUPLE_LITERAL: Final = ErrorMessage("Invalid type for item of tuple literal: {}}")
+FLOAT_NOT_EXPECTED: Final = ErrorMessage("Float not expected")
+FLOAT_EXPECTED: Final = ErrorMessage("Float expected (actual type is {})")
 
 # Type checker error message constants
 NO_RETURN_VALUE_EXPECTED: Final = ErrorMessage("No return value expected", codes.RETURN_VALUE)
@@ -162,6 +166,13 @@ ITERABLE_ALWAYS_TRUE: Final = ErrorMessage(
 )
 NOT_CALLABLE: Final = "{} not callable"
 TYPE_MUST_BE_USED: Final = "Value of type {} must be used"
+TYPES_NOT_COMPATIBLE: Final = ErrorMessage("{} and {} are not compatible")
+CANNOT_COERSE_SRC_DEST: Final = ErrorMessage("Cannot coerce source type {} to dest type {}")
+INVALID_CONTROL_OPERATION_TARGET: Final = ErrorMessage("Invalid control operation target: {}")
+INCORRECT_NUMBER_ARGS: Final = ErrorMessage("Incorrect number of args for method call.")
+INVALID_LITERAL_VALUE_TYPE: Final = ErrorMessage(
+    "Invalid literal value for type: value has type {}, but op has type {}"
+)
 
 # Generic
 GENERIC_INSTANCE_VAR_CLASS_ACCESS: Final = (

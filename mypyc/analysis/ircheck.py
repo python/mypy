@@ -67,6 +67,7 @@ from mypyc.ir.rtypes import (
     tuple_rprimitive,
 )
 
+from mypy import message_registry
 
 class FnError:
     def __init__(self, source: Op | BasicBlock, desc: str) -> None:
@@ -214,25 +215,23 @@ class OpChecker(OpVisitor[None]):
     def check_control_op_targets(self, op: ControlOp) -> None:
         for target in op.targets():
             if target not in self.parent_fn.blocks:
-                self.fail(source=op, desc=f"Invalid control operation target: {target.label}")
+                self.fail(op, message_registry.INVALID_CONTROL_OPERATION_TARGET.format(target.label))
 
     def check_type_coercion(self, op: Op, src: RType, dest: RType) -> None:
         if not can_coerce_to(src, dest):
-            self.fail(
-                source=op, desc=f"Cannot coerce source type {src.name} to dest type {dest.name}"
-            )
+            self.fail(op, message_registry.CANNOT_COERSE_SRC_DEST.format(src.name, dest.name))
 
     def check_compatibility(self, op: Op, t: RType, s: RType) -> None:
         if not can_coerce_to(t, s) or not can_coerce_to(s, t):
-            self.fail(source=op, desc=f"{t.name} and {s.name} are not compatible")
+            self.fail(op, message_registry.TYPES_NOT_COMPATIBLE.format(t.name, s.name))
 
     def expect_float(self, op: Op, v: Value) -> None:
         if not is_float_rprimitive(v.type):
-            self.fail(op, f"Float expected (actual type is {v.type})")
+            self.fail(op, message_registry.FLOAT_EXPECTED.format(v.type))
 
     def expect_non_float(self, op: Op, v: Value) -> None:
         if is_float_rprimitive(v.type):
-            self.fail(op, "Float not expected")
+            self.fail(op, message_registry.FLOAT_NOT_EXPECTED)
 
     def visit_goto(self, op: Goto) -> None:
         self.check_control_op_targets(op)
@@ -265,7 +264,7 @@ class OpChecker(OpVisitor[None]):
     def check_tuple_items_valid_literals(self, op: LoadLiteral, t: tuple[object, ...]) -> None:
         for x in t:
             if x is not None and not isinstance(x, (str, bytes, bool, int, float, complex, tuple)):
-                self.fail(op, f"Invalid type for item of tuple literal: {type(x)})")
+                self.fail(op, message_registry.INVALID_TYPE_TUPLE_LITERAL.format(type(x)))
             if isinstance(x, tuple):
                 self.check_tuple_items_valid_literals(op, x)
 
@@ -276,7 +275,7 @@ class OpChecker(OpVisitor[None]):
             elif isinstance(x, tuple):
                 self.check_tuple_items_valid_literals(op, x)
             else:
-                self.fail(op, f"Invalid type for item of frozenset literal: {type(x)})")
+                self.fail(op, message_registry.INVALID_TYPE_FROZENSET_LITERAL.format(type(x)))
 
     def visit_load_literal(self, op: LoadLiteral) -> None:
         expected_type = None
@@ -306,11 +305,7 @@ class OpChecker(OpVisitor[None]):
         assert expected_type is not None, "Missed a case for LoadLiteral check"
 
         if op.type.name not in [expected_type, "builtins.object"]:
-            self.fail(
-                op,
-                f"Invalid literal value for type: value has "
-                f"type {expected_type}, but op has type {op.type.name}",
-            )
+            self.fail(op, message_registry.INVALID_LITERAL_VALUE_TYPE.format(expected_type, op.type.name))
 
     def visit_get_attr(self, op: GetAttr) -> None:
         # Nothing to do.
@@ -358,7 +353,7 @@ class OpChecker(OpVisitor[None]):
             decl_index = 1
 
         if len(op.args) + decl_index != len(method_decl.sig.args):
-            self.fail(op, "Incorrect number of args for method call.")
+            self.fail(op, message_registry.INCORRECT_NUMBER_ARGS)
 
         # Skip the receiver argument (self)
         for arg_value, arg_runtime in zip(op.args, method_decl.sig.args[decl_index:]):
