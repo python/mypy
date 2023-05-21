@@ -1136,12 +1136,17 @@ class MessageBuilder:
         name_in_super: str,
         supertype: str,
         context: Context,
-        original: FunctionLike | None = None,
-        override: FunctionLike | None = None,
+        *,
+        original: ProperType,
+        override: ProperType,
     ) -> None:
         code = codes.OVERRIDE
         target = self.override_target(name, name_in_super, supertype)
         self.fail(f'Signature of "{name}" incompatible with {target}', context, code=code)
+
+        original_str, override_str = format_type_distinctly(
+            original, override, options=self.options, bare=True
+        )
 
         INCLUDE_DECORATOR = True  # Include @classmethod and @staticmethod decorators, if any
         ALLOW_DUPS = True  # Allow duplicate notes, needed when signatures are duplicates
@@ -1152,13 +1157,10 @@ class MessageBuilder:
         # note:          def f(self) -> str
         # note:      Subclass:
         # note:          def f(self, x: str) -> None
-        if (
-            original is not None
-            and isinstance(original, (CallableType, Overloaded))
-            and override is not None
-            and isinstance(override, (CallableType, Overloaded))
-        ):
-            self.note("Superclass:", context, offset=ALIGN_OFFSET + OFFSET, code=code)
+        self.note(
+            "Superclass:", context, offset=ALIGN_OFFSET + OFFSET, allow_dups=ALLOW_DUPS, code=code
+        )
+        if isinstance(original, (CallableType, Overloaded)):
             self.pretty_callable_or_overload(
                 original,
                 context,
@@ -1167,13 +1169,32 @@ class MessageBuilder:
                 allow_dups=ALLOW_DUPS,
                 code=code,
             )
+        else:
+            self.note(
+                original_str,
+                context,
+                offset=ALIGN_OFFSET + 2 * OFFSET,
+                allow_dups=ALLOW_DUPS,
+                code=code,
+            )
 
-            self.note("Subclass:", context, offset=ALIGN_OFFSET + OFFSET, code=code)
+        self.note(
+            "Subclass:", context, offset=ALIGN_OFFSET + OFFSET, allow_dups=ALLOW_DUPS, code=code
+        )
+        if isinstance(override, (CallableType, Overloaded)):
             self.pretty_callable_or_overload(
                 override,
                 context,
                 offset=ALIGN_OFFSET + 2 * OFFSET,
                 add_class_or_static_decorator=INCLUDE_DECORATOR,
+                allow_dups=ALLOW_DUPS,
+                code=code,
+            )
+        else:
+            self.note(
+                override_str,
+                context,
+                offset=ALIGN_OFFSET + 2 * OFFSET,
                 allow_dups=ALLOW_DUPS,
                 code=code,
             )
