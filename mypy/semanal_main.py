@@ -69,6 +69,7 @@ MAX_ITERATIONS: Final = 20
 # Number of passes over core modules before going on to the rest of the builtin SCC.
 CORE_WARMUP: Final = 2
 core_modules: Final = [
+    "_typeshed",
     "typing",
     "_collections_abc",
     "builtins",
