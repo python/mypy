@@ -315,10 +315,22 @@ class TypeAliasType(Type):
             # as their target.
             assert isinstance(self.alias.target, Instance)  # type: ignore[misc]
             return self.alias.target.copy_modified(args=self.args)
-        replacer = InstantiateAliasVisitor(
-            {v.id: s for (v, s) in zip(self.alias.alias_tvars, self.args)}
-        )
-        new_tp = self.alias.target.accept(replacer)
+
+        if self.alias.tvar_tuple_index is None:
+            mapping = {v.id: s for (v, s) in zip(self.alias.alias_tvars, self.args)}
+        else:
+            prefix = self.alias.tvar_tuple_index
+            suffix = len(self.alias.alias_tvars) - self.alias.tvar_tuple_index - 1
+            start, middle, end = split_with_prefix_and_suffix(tuple(self.args), prefix, suffix)
+            tvar = self.alias.alias_tvars[prefix]
+            assert isinstance(tvar, TypeVarTupleType)
+            mapping = {tvar.id: TupleType(list(middle), tvar.tuple_fallback)}
+            for tvar, sub in zip(
+                self.alias.alias_tvars[:prefix] + self.alias.alias_tvars[prefix + 1 :], start + end
+            ):
+                mapping[tvar.id] = sub
+
+        new_tp = self.alias.target.accept(InstantiateAliasVisitor(mapping))
         new_tp.accept(LocationSetter(self.line, self.column))
         new_tp.line = self.line
         new_tp.column = self.column
@@ -1022,6 +1034,12 @@ class UnpackType(ProperType):
         assert data[".class"] == "UnpackType"
         typ = data["type"]
         return UnpackType(deserialize_type(typ))
+
+    def __hash__(self) -> int:
+        return hash(self.type)
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, UnpackType) and self.type == other.type
 
 
 class AnyType(ProperType):
@@ -3300,6 +3318,45 @@ def has_recursive_types(typ: Type) -> bool:
     return typ.accept(_has_recursive_type)
 
 
+def split_with_prefix_and_suffix(
+    types: tuple[Type, ...], prefix: int, suffix: int
+) -> tuple[tuple[Type, ...], tuple[Type, ...], tuple[Type, ...]]:
+    if len(types) <= prefix + suffix:
+        types = extend_args_for_prefix_and_suffix(types, prefix, suffix)
+    if suffix:
+        return types[:prefix], types[prefix:-suffix], types[-suffix:]
+    else:
+        return types[:prefix], types[prefix:], ()
+
+
+def extend_args_for_prefix_and_suffix(
+    types: tuple[Type, ...], prefix: int, suffix: int
+) -> tuple[Type, ...]:
+    """Extend list of types by eating out from variadic tuple to satisfy prefix and suffix."""
+    idx = None
+    item = None
+    for i, t in enumerate(types):
+        if isinstance(t, UnpackType):
+            p_type = get_proper_type(t.type)
+            if isinstance(p_type, Instance) and p_type.type.fullname == "builtins.tuple":
+                item = p_type.args[0]
+                idx = i
+                break
+
+    if idx is None:
+        return types
+    assert item is not None
+    if idx < prefix:
+        start = (item,) * (prefix - idx)
+    else:
+        start = ()
+    if len(types) - idx - 1 < suffix:
+        end = (item,) * (suffix - len(types) + idx + 1)
+    else:
+        end = ()
+    return types[:idx] + start + (types[idx],) + end + types[idx + 1 :]
+
+
 def flatten_nested_unions(
     types: Sequence[Type], handle_type_alias_type: bool = True
 ) -> list[Type]:
@@ -3324,6 +3381,27 @@ def flatten_nested_unions(
             # Must preserve original aliases when possible.
             flat_items.append(t)
     return flat_items
+
+
+def flatten_nested_tuples(types: Sequence[Type]) -> list[Type]:
+    """Recursively flatten TupleTypes nested with Unpack.
+
+    For example this will transform
+        Tuple[A, Unpack[Tuple[B, Unpack[Tuple[C, D]]]]]
+    into
+        Tuple[A, B, C, D]
+    """
+    res = []
+    for typ in types:
+        if not isinstance(typ, UnpackType):
+            res.append(typ)
+            continue
+        p_type = get_proper_type(typ.type)
+        if not isinstance(p_type, TupleType):
+            res.append(typ)
+            continue
+        res.extend(flatten_nested_tuples(p_type.items))
+    return res
 
 
 def is_literal_type(typ: ProperType, fallback_fullname: str, value: LiteralValue) -> bool:

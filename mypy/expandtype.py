@@ -37,14 +37,12 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    flatten_nested_tuples,
     flatten_nested_unions,
     get_proper_type,
-)
-from mypy.typevartuples import (
-    find_unpack_in_list,
-    split_with_instance,
     split_with_prefix_and_suffix,
 )
+from mypy.typevartuples import find_unpack_in_list, split_with_instance
 
 # WARNING: these functions should never (directly or indirectly) depend on
 # is_subtype(), meet_types(), join_types() etc.
@@ -115,6 +113,7 @@ def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
             instance_args = instance.args
 
         for binder, arg in zip(tvars, instance_args):
+            assert isinstance(binder, TypeVarLikeType)
             variables[binder.id] = arg
 
         return expand_type(typ, variables)
@@ -282,12 +281,14 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         raise NotImplementedError
 
     def visit_unpack_type(self, t: UnpackType) -> Type:
-        # It is impossible to reasonally implement visit_unpack_type, because
+        # It is impossible to reasonably implement visit_unpack_type, because
         # unpacking inherently expands to something more like a list of types.
         #
         # Relevant sections that can call unpack should call expand_unpack()
         # instead.
-        assert False, "Mypy bug: unpacking must happen at a higher level"
+        # However, if the item is a variadic tuple, we can simply carry it over.
+        # it is hard to assert this without getting proper type.
+        return UnpackType(t.type.accept(self))
 
     def expand_unpack(self, t: UnpackType) -> list[Type] | Instance | AnyType | None:
         return expand_unpack_with_variables(t, self.variables)
@@ -356,7 +357,15 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
 
             # Extract the typevartuple so we can get a tuple fallback from it.
             expanded_unpacked_tvt = expanded_unpack.type
-            assert isinstance(expanded_unpacked_tvt, TypeVarTupleType)
+            if isinstance(expanded_unpacked_tvt, TypeVarTupleType):
+                fallback = expanded_unpacked_tvt.tuple_fallback
+            else:
+                # This can happen when tuple[Any, ...] is used to "patch" a variadic
+                # generic type without type arguments provided.
+                assert isinstance(expanded_unpacked_tvt, ProperType)
+                assert isinstance(expanded_unpacked_tvt, Instance)
+                assert expanded_unpacked_tvt.type.fullname == "builtins.tuple"
+                fallback = expanded_unpacked_tvt
 
             prefix_len = expanded_unpack_index
             arg_names = t.arg_names[:star_index] + [None] * prefix_len + t.arg_names[star_index:]
@@ -368,11 +377,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                 + expanded_items[:prefix_len]
                 # Constructing the Unpack containing the tuple without the prefix.
                 + [
-                    UnpackType(
-                        TupleType(
-                            expanded_items[prefix_len:], expanded_unpacked_tvt.tuple_fallback
-                        )
-                    )
+                    UnpackType(TupleType(expanded_items[prefix_len:], fallback))
                     if len(expanded_items) - prefix_len > 1
                     else expanded_items[0]
                 ]
@@ -456,9 +461,12 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         indicates use of Any or some error occurred earlier. In this case callers should
         simply propagate the resulting type.
         """
+        # TODO: this will cause a crash on aliases like A = Tuple[int, Unpack[A]].
+        # Although it is unlikely anyone will write this, we should fail gracefully.
+        typs = flatten_nested_tuples(typs)
         items: list[Type] = []
         for item in typs:
-            if isinstance(item, UnpackType):
+            if isinstance(item, UnpackType) and isinstance(item.type, TypeVarTupleType):
                 unpacked_items = self.expand_unpack(item)
                 if unpacked_items is None:
                     # TODO: better error, something like tuple of unknown?
@@ -523,7 +531,11 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         # Target of the type alias cannot contain type variables (not bound by the type
         # alias itself), so we just expand the arguments.
-        return t.copy_modified(args=self.expand_types(t.args))
+        args = self.expand_types_with_unpack(t.args)
+        if isinstance(args, list):
+            return t.copy_modified(args=args)
+        else:
+            return args
 
     def expand_types(self, types: Iterable[Type]) -> list[Type]:
         a: list[Type] = []

@@ -270,6 +270,7 @@ from mypy.types import (
     TypeOfAny,
     TypeType,
     TypeVarLikeType,
+    TypeVarTupleType,
     TypeVarType,
     UnboundType,
     UnpackType,
@@ -3424,8 +3425,18 @@ class SemanticAnalyzer(
                 allowed_alias_tvars=tvar_defs,
             )
 
+        # There can be only one variadic variable at most, the error is reported elsewhere.
+        new_tvar_defs = []
+        variadic = False
+        for td in tvar_defs:
+            if isinstance(td, TypeVarTupleType):
+                if variadic:
+                    continue
+                variadic = True
+            new_tvar_defs.append(td)
+
         qualified_tvars = [node.fullname for _name, node in found_type_vars]
-        return analyzed, tvar_defs, depends_on, qualified_tvars
+        return analyzed, new_tvar_defs, depends_on, qualified_tvars
 
     def is_pep_613(self, s: AssignmentStmt) -> bool:
         if s.unanalyzed_type is not None and isinstance(s.unanalyzed_type, UnboundType):
