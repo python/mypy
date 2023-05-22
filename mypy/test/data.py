@@ -419,15 +419,6 @@ class TestItem:
       .. data ..
     """
 
-    id = ""
-    arg: str | None = ""
-
-    # Text data, array of 8-bit strings
-    data: list[str]
-
-    file = ""
-    line = 0  # Line number in file
-
     def __init__(self, id: str, arg: str | None, data: list[str], line: int) -> None:
         self.id = id
         self.arg = arg
