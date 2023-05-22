@@ -1793,7 +1793,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 elif not first_arg or not is_subtype(self.named_type("builtins.str"), first_arg):
                     self.chk.fail(message_registry.KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE, context)
 
-            # TODO: Filter away (or handle) ParamSpec?
             if any(
                 a is None or isinstance(get_proper_type(a), UninhabitedType) for a in inferred_args
             ):
@@ -1807,7 +1806,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     allow_polymorphic=True,
                 )
                 for i, pa in enumerate(get_proper_types(poly_inferred_args)):
-                    # TODO: can we be more principled here?
                     if isinstance(pa, (NoneType, UninhabitedType)) or has_erased_component(pa):
                         poly_inferred_args[i] = None
                 poly_callee_type = self.apply_generic_arguments(
@@ -5363,7 +5361,11 @@ class PolyTranslator(TypeTranslator):
         return super().visit_type_var(t)
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:
-        # TODO: more careful here (also handle TypeVarTupleType)
+        # TODO: Support polymorphic apply for ParamSpec.
+        raise PolyTranslationError()
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
+        # TODO: Support polymorphic apply for TypeVarTuple.
         raise PolyTranslationError()
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:

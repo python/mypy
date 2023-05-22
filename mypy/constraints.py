@@ -890,7 +890,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             param_spec = template.param_spec()
             if param_spec is None:
                 # FIX verify argument counts
-                # TODO: Erase template vars if generic?
+                # TODO: Erase template variables if it is generic?
                 if cactual.variables and cactual.param_spec() is None:
                     unified = mypy.subtypes.unify_generic_callable(
                         cactual, template, ignore_return=True
