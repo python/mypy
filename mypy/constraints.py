@@ -892,9 +892,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 # FIX verify argument counts
                 # TODO: Erase template vars if generic?
                 if cactual.variables and cactual.param_spec() is None:
-                    from mypy.subtypes import unify_generic_callable
-
-                    unified = unify_generic_callable(cactual, template, ignore_return=True)
+                    unified = mypy.subtypes.unify_generic_callable(
+                        cactual, template, ignore_return=True
+                    )
                     if unified is not None:
                         cactual = unified
                         res.extend(infer_constraints(cactual, template, neg_op(self.direction)))

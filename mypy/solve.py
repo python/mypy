@@ -39,6 +39,8 @@ def solve_constraints(
     pick NoneType as the value of the type variable.  If strict=False,
     pick AnyType.
     """
+    if not vars:
+        return []
     if allow_polymorphic:
         constraints = normalize_constraints(constraints, vars)
 
@@ -49,40 +51,9 @@ def solve_constraints(
             cmap[con.type_var].append(con)
 
     if allow_polymorphic:
-        extra_constraints = []
-        for tvar in vars:
-            extra_constraints.extend(propagate_constraints_for(tvar, SUBTYPE_OF, cmap))
-            extra_constraints.extend(propagate_constraints_for(tvar, SUPERTYPE_OF, cmap))
-        constraints += remove_dups(extra_constraints)
-
-    # Recompute constraint map after propagating.
-    cmap = {tv: [] for tv in vars}
-    for con in constraints:
-        if con.type_var in vars:
-            cmap[con.type_var].append(con)
-
-    solutions, remaining = solve_iteratively(vars, cmap, [] if allow_polymorphic else vars)
-
-    # TODO: only do this if we have actual non-trivial constraints, not just unconstrained vars.
-    if remaining and allow_polymorphic:
-        # TODO: factor this out into separate function.
-        rest_cmap = {
-            tv: [c for c in cs if get_vars(c.target, remaining)]
-            for (tv, cs) in cmap.items()
-            if tv in remaining
-        }
-        dmap = compute_dependencies(rest_cmap)
-        sccs = list(strongly_connected_components(set(remaining), dmap))
-        if all(check_linear(scc, rest_cmap) for scc in sccs):
-            leafs = next(batch for batch in topsort(prepare_sccs(sccs, dmap)))
-            free_vars = []
-            for scc in leafs:
-                free_vars.append(next(tv for tv in scc))
-
-            solutions, _ = solve_iteratively(vars, cmap, free_vars)
-            for tv in free_vars:
-                if tv in solutions:
-                    del solutions[tv]
+        solutions = solve_non_linear(vars, constraints, cmap)
+    else:
+        solutions = solve_iteratively([vars], cmap, vars)
 
     res: list[Type | None] = []
     for v in vars:
@@ -100,25 +71,66 @@ def solve_constraints(
     return res
 
 
+def solve_non_linear(
+    vars: list[TypeVarId], constraints: list[Constraint], cmap: dict[TypeVarId, list[Constraint]]
+) -> dict[TypeVarId, Type | None]:
+    extra_constraints = []
+    for tvar in vars:
+        extra_constraints.extend(propagate_constraints_for(tvar, SUBTYPE_OF, cmap))
+        extra_constraints.extend(propagate_constraints_for(tvar, SUPERTYPE_OF, cmap))
+    constraints += remove_dups(extra_constraints)
+
+    # Recompute constraint map after propagating.
+    cmap = {tv: [] for tv in vars}
+    for con in constraints:
+        if con.type_var in vars:
+            cmap[con.type_var].append(con)
+
+    dmap = compute_dependencies(cmap)
+    sccs = list(strongly_connected_components(set(vars), dmap))
+    if all(check_linear(scc, cmap) for scc in sccs):
+        raw_batches = list(topsort(prepare_sccs(sccs, dmap)))
+        leafs = raw_batches[0]
+        free_vars = []
+        for scc in leafs:
+            if all(
+                isinstance(c.target, TypeVarType) and c.target.id in vars
+                for tv in scc
+                for c in cmap[tv]
+            ):
+                free_vars.append(next(tv for tv in scc))
+
+        batches = []
+        for batch in raw_batches:
+            next_bc = []
+            for scc in batch:
+                next_bc.extend(list(scc))
+            batches.append(next_bc)
+        solutions = solve_iteratively(batches, cmap, free_vars)
+        for tv in free_vars:
+            if tv in solutions:
+                del solutions[tv]
+        return solutions
+    return {}
+
+
 def solve_iteratively(
-    vars: list[TypeVarId], cmap: dict[TypeVarId, list[Constraint]], free_vars: list[TypeVarId]
-) -> tuple[dict[TypeVarId, Type | None], list[TypeVarId]]:
+    batches: list[list[TypeVarId]],
+    cmap: dict[TypeVarId, list[Constraint]],
+    free_vars: list[TypeVarId],
+) -> dict[TypeVarId, Type | None]:
     solutions: dict[TypeVarId, Type | None] = {}
-    remaining = vars
-    while True:
-        tmap = solve_once(remaining, cmap, free_vars)
+    for batch in batches:
+        tmap = solve_once(batch, cmap, free_vars)
         if not tmap:
-            break
-        remaining = [v for v in remaining if v not in tmap]
-        for v in remaining:
+            continue
+        for v in cmap:
             for c in cmap[v]:
-                # TODO: handle bound violations etc.
-                # TODO: limit number of expands by only including *new* things in tmap.
                 c.target = expand_type(
                     c.target, {k: v for (k, v) in tmap.items() if v is not None}
                 )
         solutions.update(tmap)
-    return solutions, remaining
+    return solutions
 
 
 def solve_once(
