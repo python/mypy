@@ -2,10 +2,18 @@
 
 from __future__ import annotations
 
-from typing import Sequence, TypeVar
+from typing import Sequence
 
 from mypy.nodes import ARG_POS, ARG_STAR
-from mypy.types import CallableType, Instance, ProperType, Type, UnpackType, get_proper_type
+from mypy.types import (
+    CallableType,
+    Instance,
+    ProperType,
+    Type,
+    UnpackType,
+    get_proper_type,
+    split_with_prefix_and_suffix,
+)
 
 
 def find_unpack_in_list(items: Sequence[Type]) -> int | None:
@@ -20,18 +28,6 @@ def find_unpack_in_list(items: Sequence[Type]) -> int | None:
             # Don't return so that we can also sanity check there is only one.
             unpack_index = i
     return unpack_index
-
-
-T = TypeVar("T")
-
-
-def split_with_prefix_and_suffix(
-    types: tuple[T, ...], prefix: int, suffix: int
-) -> tuple[tuple[T, ...], tuple[T, ...], tuple[T, ...]]:
-    if suffix:
-        return (types[:prefix], types[prefix:-suffix], types[-suffix:])
-    else:
-        return (types[:prefix], types[prefix:], ())
 
 
 def split_with_instance(

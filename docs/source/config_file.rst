@@ -498,14 +498,19 @@ section of the command line docs.
     :default: False
 
     Disallows defining functions without type annotations or with incomplete type
-    annotations.
+    annotations (a superset of :confval:`disallow_incomplete_defs`).
+
+    For example, it would report an error for :code:`def f(a, b)` and :code:`def f(a: int, b)`.
 
 .. confval:: disallow_incomplete_defs
 
     :type: boolean
     :default: False
 
-    Disallows defining functions with incomplete type annotations.
+    Disallows defining functions with incomplete type annotations, while still
+    allowing entirely unannotated definitions.
+
+    For example, it would report an error for :code:`def f(a: int, b)` but not :code:`def f(a, b)`.
 
 .. confval:: check_untyped_defs
 

@@ -3471,6 +3471,7 @@ class TypeAlias(SymbolNode):
         "normalized",
         "_is_recursive",
         "eager",
+        "tvar_tuple_index",
     )
 
     __match_args__ = ("name", "target", "alias_tvars", "no_args")
@@ -3498,6 +3499,10 @@ class TypeAlias(SymbolNode):
         # it is the cached value.
         self._is_recursive: bool | None = None
         self.eager = eager
+        self.tvar_tuple_index = None
+        for i, t in enumerate(alias_tvars):
+            if isinstance(t, mypy.types.TypeVarTupleType):
+                self.tvar_tuple_index = i
         super().__init__(line, column)
 
     @classmethod

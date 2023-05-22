@@ -26,3 +26,8 @@ class array:
 def f(si: arr.array[int]):
     typing.assert_type(si, int) # E: Expression is of type "array[int]", not "int"
 [builtins fixtures/tuple.pyi]
+
+[case testAssertTypeFailCallableArgKind]
+from typing import assert_type, Callable
+def myfunc(arg: int) -> None: pass
+assert_type(myfunc, Callable[[int], None])  # E: Expression is of type "Callable[[Arg(int, 'arg')], None]", not "Callable[[int], None]"
