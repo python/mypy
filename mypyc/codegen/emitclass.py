@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Callable, Mapping, Tuple
 
-from mypyc.codegen.emit import Emitter, HeaderDeclaration, ReturnHandler
+from mypyc.codegen.emit import Emitter, HeaderDeclaration, ReturnHandler, c_bool
 from mypyc.codegen.emitfunc import native_function_header
 from mypyc.codegen.emitwrapper import (
     generate_bin_op_wrapper,
@@ -31,12 +31,14 @@ from mypyc.ir.rtypes import (
     is_int64_rprimitive,
     is_list_rprimitive,
     is_object_rprimitive,
+    is_optional_type,
     is_range_rprimitive,
     is_set_rprimitive,
     is_str_rprimitive,
     is_tagged,
     is_tuple_rprimitive,
     object_rprimitive,
+    optional_value_type,
 )
 from mypyc.namegen import NameGenerator
 from mypyc.sametype import is_same_type
@@ -895,6 +897,10 @@ def setter_boxed_type_struct(rtype: RType) -> str | None:
         return "&PySet_Type"
     elif is_range_rprimitive(rtype):
         return "&PyRange_Type"
+    elif is_optional_type(rtype):
+        rtype = optional_value_type(rtype)
+        if not rtype.is_unboxed:
+            return setter_boxed_type_struct(rtype)
     elif is_object_rprimitive(rtype):
         return "NULL"
 
@@ -908,12 +914,10 @@ def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
         for attr, rtype in cl.attributes.items():
             context_name = attr_context_name(cl, attr, emitter.names)
             always_defined = cl.is_always_defined(attr) and not rtype.is_refcounted
-            always_defined_expr = "true" if always_defined else "false"
-            deletable_expr = "true" if cl.is_deletable(attr) else "false"
 
             emitter.emit_line(f"static CPyAttr_Context {context_name} = {{")
             emitter.emit_line(
-                f'"{attr}", offsetof({cl_struct}, {emitter.attr(attr)}), {always_defined_expr}, {deletable_expr},'
+                f'"{attr}", offsetof({cl_struct}, {emitter.attr(attr)}), {c_bool(always_defined)}, {c_bool(cl.is_deletable(attr))},'
             )
             if attr in cl.bitmap_attrs:
                 index = cl.bitmap_attrs.index(attr)
@@ -926,7 +930,9 @@ def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
                 setter_ctype = setter_boxed_type_struct(rtype)
                 setter_type_name = emitter.pretty_name(rtype)
                 if setter_ctype:
-                    emitter.emit_line(f'{{"{setter_type_name}", {setter_ctype}}}')
+                    emitter.emit_line(
+                        f'{{"{setter_type_name}", {c_bool(is_optional_type(rtype))}, {setter_ctype}}}'
+                    )
                 else:
                     emitter.emit_line("{0}")
             else:

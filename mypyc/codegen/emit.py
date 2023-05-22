@@ -1183,3 +1183,8 @@ def c_array_initializer(components: list[str], *, indented: bool = False) -> str
     # Multi-line result
     res.append(indent + ", ".join(current))
     return "{\n    " + ",\n    ".join(res) + "\n" + indent + "}"
+
+
+def c_bool(value: bool) -> str:
+    """Return 'true' if value is True, otherwise 'false'."""
+    return "true" if value else "false"

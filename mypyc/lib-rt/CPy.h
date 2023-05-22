@@ -646,10 +646,11 @@ typedef struct CPyAttr_Context {
         size_t offset;
         size_t mask;
     } bitmap;
-    struct {                    // Used for generic boxed setter.
+    struct {                    // Used for generic PyObject * setter.
         const char *type_name;
+        bool optional;
         PyTypeObject *type;     // If NULL, treat attribute as Any (no type check).
-    } boxed_setter;
+    } setter;
 } CPyAttr_Context;
 
 static PyObject *_CPyAttr_UndefinedError(PyObject *self, CPyAttr_Context *context) {
@@ -741,10 +742,13 @@ static int CPyAttr_SetterPyObject(PyObject *self, PyObject *value, CPyAttr_Conte
 
     PyObject **attr = (PyObject **)((char *)self + context->offset);
     if (value != NULL) {
-        PyTypeObject *type = context->boxed_setter.type;
+        PyTypeObject *type = context->setter.type;
+        bool optional = context->setter.optional;
         if (type != NULL && !PyObject_TypeCheck(value, type)) {
-            CPy_TypeError(context->boxed_setter.type_name, value);
-            return -1;
+            if (!optional || (optional && value != Py_None)) {
+                CPy_TypeError(context->setter.type_name, value);
+                return -1;
+            }
         }
         Py_XSETREF(*attr, Py_NewRef(value));
     } else {
@@ -781,14 +785,14 @@ static int CPyAttr_SetterBool(PyObject *self, PyObject *value, CPyAttr_Context *
     }
 
     char *attr = (char *)self + context->offset;
-    if (value == NULL) {
-        *attr = 2;
-    } else {
+    if (value != NULL) {
         if (!PyBool_Check(value)) {
             CPy_TypeError("bool", value);
             return -1;
         }
         *attr = value == Py_True;
+    } else {
+        *attr = 2;
     }
     return 0;
 }
