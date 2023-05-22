@@ -1305,32 +1305,32 @@ main:3: error: Function is missing a type annotation for one or more arguments
 
 [case testDisallowIncompleteDefsAttrsNoAnnotations]
 # flags: --disallow-incomplete-defs
-import attr
+import attrs
 
-@attr.s()
+@attrs.define
 class Unannotated:
-    foo = attr.ib()
+    foo = attrs.field()
 
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testDisallowIncompleteDefsAttrsWithAnnotations]
 # flags: --disallow-incomplete-defs
-import attr
+import attrs
 
-@attr.s()
+@attrs.define
 class Annotated:
-    bar: int = attr.ib()
+    bar: int = attrs.field()
 
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testDisallowIncompleteDefsAttrsPartialAnnotations]
 # flags: --disallow-incomplete-defs
-import attr
+import attrs
 
-@attr.s()
+@attrs.define
 class PartiallyAnnotated:  # E: Function is missing a type annotation for one or more arguments
-    bar: int = attr.ib()
-    baz = attr.ib()
+    bar: int = attrs.field()
+    baz = attrs.field()
 
 [builtins fixtures/plugin_attrs.pyi]
 

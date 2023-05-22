@@ -1,2 +1,4 @@
 # Adopt black and isort
 97c5ee99bc98dc475512e549b252b23a6e7e0997
+# Use builtin generics and PEP 604 for type annotations wherever possible (#13427)
+23ee1e7aff357e656e3102435ad0fe3b5074571e

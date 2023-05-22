@@ -121,55 +121,54 @@ Type annotations can be added as follows:
 
     import attr
 
-    @attr.s
-    class A:
-        one: int = attr.ib()          # Variable annotation (Python 3.6+)
-        two = attr.ib()  # type: int  # Type comment
-        three = attr.ib(type=int)     # type= argument
-
-If you're using ``auto_attribs=True`` you must use variable annotations.
-
-.. code-block:: python
-
-    import attr
-
-    @attr.s(auto_attribs=True)
+    @attrs.define
     class A:
         one: int
         two: int = 7
-        three: int = attr.ib(8)
+        three: int = attrs.field(8)
+
+If you're using ``auto_attribs=False`` you must use ``attrs.field``:
+
+.. code-block:: python
+
+    import attrs
+
+    @attrs.define
+    class A:
+        one: int = attrs.field()          # Variable annotation (Python 3.6+)
+        two = attrs.field()  # type: int  # Type comment
+        three = attrs.field(type=int)     # type= argument
 
 Typeshed has a couple of "white lie" annotations to make type checking
-easier. :py:func:`attr.ib` and :py:class:`attr.Factory` actually return objects, but the
+easier. :py:func:`attrs.field` and :py:class:`attrs.Factory` actually return objects, but the
 annotation says these return the types that they expect to be assigned to.
 That enables this to work:
 
 .. code-block:: python
 
-    import attr
-    from typing import Dict
+    import attrs
 
-    @attr.s(auto_attribs=True)
+    @attrs.define
     class A:
-        one: int = attr.ib(8)
-        two: Dict[str, str] = attr.Factory(dict)
-        bad: str = attr.ib(16)   # Error: can't assign int to str
+        one: int = attrs.field(8)
+        two: dict[str, str] = attrs.Factory(dict)
+        bad: str = attrs.field(16)   # Error: can't assign int to str
 
 Caveats/Known Issues
 ====================
 
 * The detection of attr classes and attributes works by function name only.
   This means that if you have your own helper functions that, for example,
-  ``return attr.ib()`` mypy will not see them.
+  ``return attrs.field()`` mypy will not see them.
 
 * All boolean arguments that mypy cares about must be literal ``True`` or ``False``.
   e.g the following will not work:
 
   .. code-block:: python
 
-      import attr
+      import attrs
       YES = True
-      @attr.s(init=YES)
+      @attrs.define(init=YES)
       class A:
           ...
 
