@@ -2077,7 +2077,7 @@ class A(Generic[T]):
 @dataclass
 class B:
     x: int
-    y: bool
+    y: int
     z: bytes
     init_var: int
 
