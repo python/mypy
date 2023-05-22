@@ -98,7 +98,13 @@ from mypy.plugin import (
 )
 from mypy.semanal_enum import ENUM_BASES
 from mypy.state import state
-from mypy.subtypes import is_equivalent, is_same_type, is_subtype, non_method_protocol_members
+from mypy.subtypes import (
+    find_member,
+    is_equivalent,
+    is_same_type,
+    is_subtype,
+    non_method_protocol_members,
+)
 from mypy.traverser import has_await_expression
 from mypy.type_visitor import TypeTranslator
 from mypy.typeanal import (
@@ -5349,6 +5355,7 @@ class PolyTranslator(TypeTranslator):
     def __init__(self, poly_tvars: Sequence[TypeVarLikeType]) -> None:
         self.poly_tvars = set(poly_tvars)
         self.bound_tvars: set[TypeVarLikeType] = set()
+        self.seen_aliases: set[TypeInfo] = set()
 
     def visit_callable_type(self, t: CallableType) -> Type:
         found_vars = set()
@@ -5385,6 +5392,18 @@ class PolyTranslator(TypeTranslator):
         # We can't handle polymorphic application for recursive generic aliases
         # without risking an infinite recursion, just give up for now.
         raise PolyTranslationError()
+
+    def visit_instance(self, t: Instance) -> Type:
+        # There is the same problem with callback protocols as with aliases
+        # (callback protocols are essentially more flexible aliases to callables)
+        if t.args and t.type.is_protocol and t.type.protocol_members == ["__call__"]:
+            if t.type in self.seen_aliases:
+                raise PolyTranslationError()
+            self.seen_aliases.add(t.type)
+            call = find_member("__call__", t, t, is_operator=True)
+            assert call is not None
+            return call.accept(self)
+        return super().visit_instance(t)
 
 
 class ArgInferSecondPassQuery(types.BoolTypeQuery):

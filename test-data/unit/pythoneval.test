@@ -1997,3 +1997,29 @@ def f(x: Callable[..., T]) -> T:
 
 x: Tuple[str, ...] = f(tuple)
 [out]
+
+[case testGenericInferenceWithDataclass]
+from typing import Any, Collection, List
+from dataclasses import dataclass, field
+
+class Foo:
+    pass
+
+@dataclass
+class A:
+    items: Collection[Foo] = field(default_factory=list)
+[out]
+
+[case testGenericInferenceWithItertools]
+from typing import TypeVar, Tuple
+from itertools import groupby
+K = TypeVar("K")
+V = TypeVar("V")
+
+def fst(kv: Tuple[K, V]) -> K:
+    k, v = kv
+    return k
+
+pairs = [(len(s), s) for s in ["one", "two", "three"]]
+grouped = groupby(pairs, key=fst)
+[out]

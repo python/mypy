@@ -2888,3 +2888,19 @@ def id(x: U) -> U:
     ...
 reveal_type(dec(id))  # N: Revealed type is "def [T] (T`2) -> builtins.list[T`2]"
 [builtins fixtures/list.pyi]
+
+[case testInferenceAgainstGenericCallableGenericProtocol]
+# flags: --strict-optional
+from typing import TypeVar, Protocol, Generic, Optional
+
+_T = TypeVar('_T')
+
+class _F(Protocol[_T]):
+    def __call__(self, __x: _T) -> _T: ...
+
+def lift(f: _F[_T]) -> _F[Optional[_T]]: ...
+def g(x: _T) -> _T:
+    return x
+
+reveal_type(lift(g))  # N: Revealed type is "def [_T] (Union[_T`1, None]) -> Union[_T`1, None]"
+[builtins fixtures/list.pyi]
