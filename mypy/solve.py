@@ -42,6 +42,8 @@ def solve_constraints(
     if not vars:
         return []
     if allow_polymorphic:
+        # Constraints like T :> S and S <: T are semantically the same, but they are
+        # represented differently. Normalize the constraint list w.r.t this equivalence.
         constraints = normalize_constraints(constraints, vars)
 
     # Collect a list of constraints for each type variable.
@@ -74,8 +76,19 @@ def solve_constraints(
 def solve_non_linear(
     vars: list[TypeVarId], constraints: list[Constraint], cmap: dict[TypeVarId, list[Constraint]]
 ) -> dict[TypeVarId, Type | None]:
+    """Solve set of constraints that may include non-linear ones, like T <: List[S].
+
+    The whole algorithm consists of five steps:
+      * Propagate via linear constraints to get all possible constraints for each variable
+      * Find dependencies between type variables, group them in SCCs, and sor topologically
+      * Check all SCC are intrinsically linear, it is impossible to solve T <: List[T]
+      * Variables in leaf SCCs that don't have constant bounds are free (choose one per SCC)
+      * Solve constraints iteratively starting from leafs, updating targets after each step.
+    """
     extra_constraints = []
     for tvar in vars:
+        # TODO: support iteratively inferring secondary constraints like
+        # Sequence[T] <: S <: Sequence[U] => T <: U
         extra_constraints.extend(propagate_constraints_for(tvar, SUBTYPE_OF, cmap))
         extra_constraints.extend(propagate_constraints_for(tvar, SUPERTYPE_OF, cmap))
     constraints += remove_dups(extra_constraints)
@@ -100,13 +113,18 @@ def solve_non_linear(
             ):
                 free_vars.append(next(tv for tv in scc))
 
+        # Flatten the SCCs that are independent, we can solve them together,
+        # since we don't need to update any targets in between.
         batches = []
         for batch in raw_batches:
             next_bc = []
             for scc in batch:
                 next_bc.extend(list(scc))
             batches.append(next_bc)
+
         solutions = solve_iteratively(batches, cmap, free_vars)
+        # We remove the solutions like T = T for free variables. This will indicate
+        # to the apply function, that they should not be touched.
         for tv in free_vars:
             if tv in solutions:
                 del solutions[tv]
@@ -119,6 +137,7 @@ def solve_iteratively(
     cmap: dict[TypeVarId, list[Constraint]],
     free_vars: list[TypeVarId],
 ) -> dict[TypeVarId, Type | None]:
+    """Solve constraints for type variables sequentially, updating targets after each step."""
     solutions: dict[TypeVarId, Type | None] = {}
     for batch in batches:
         tmap = solve_once(batch, cmap, free_vars)
@@ -136,6 +155,7 @@ def solve_iteratively(
 def solve_once(
     vars: list[TypeVarId], cmap: dict[TypeVarId, list[Constraint]], free_vars: list[TypeVarId]
 ) -> dict[TypeVarId, Type | None]:
+    """Solve constraints by finding by using meets of upper bounds, and joins of lower bounds."""
     res: dict[TypeVarId, Type | None] = {}
     # Solve each type variable separately.
     for tvar in vars:
@@ -191,6 +211,12 @@ def solve_once(
 def normalize_constraints(
     constraints: list[Constraint], vars: list[TypeVarId]
 ) -> list[Constraint]:
+    """Normalize list of constraints (to simplify life for the non-linear solver).
+
+     This includes two things currently:
+       * Complement T :> S by S <: T
+       * Remove strict duplicates
+     """
     res = constraints.copy()
     for c in constraints:
         if isinstance(c.target, TypeVarType):
@@ -201,6 +227,13 @@ def normalize_constraints(
 def propagate_constraints_for(
     var: TypeVarId, direction: int, cmap: dict[TypeVarId, list[Constraint]]
 ) -> list[Constraint]:
+    """Propagate via linear constraints to get additional constraints for `var`.
+
+    For example if we have constraints:
+        [T <: int, S <: T, S :> str]
+    we can add two more
+        [S <: int, T :> str]
+    """
     extra_constraints = []
     seen = set()
     front = [var]
@@ -229,6 +262,11 @@ def propagate_constraints_for(
 def compute_dependencies(
     cmap: dict[TypeVarId, list[Constraint]]
 ) -> dict[TypeVarId, list[TypeVarId]]:
+    """Compute dependencies between type variables induced by constraints.
+
+    If we have a constraint like T <: List[S], we say that T depends on S, since
+    we will need to solve for S first before we can solve for T.
+    """
     res = {}
     vars = list(cmap.keys())
     for tv in cmap:
@@ -240,6 +278,10 @@ def compute_dependencies(
 
 
 def check_linear(scc: set[TypeVarId], cmap: dict[TypeVarId, list[Constraint]]) -> bool:
+    """Check there are only linear constraints between type variables in SCC.
+
+    Linear are constraints like T <: S (while T <: F[S] are non-linear).
+    """
     for tv in scc:
         if any(
             get_vars(c.target, list(scc)) and not isinstance(c.target, TypeVarType)
@@ -250,4 +292,5 @@ def check_linear(scc: set[TypeVarId], cmap: dict[TypeVarId, list[Constraint]]) -
 
 
 def get_vars(target: Type, vars: list[TypeVarId]) -> set[TypeVarId]:
+    """Find type variables for which we are solving in a target type."""
     return {tv.id for tv in get_type_vars(target)} & set(vars)

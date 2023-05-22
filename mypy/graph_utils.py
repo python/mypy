@@ -1,3 +1,5 @@
+"""Helpers for manipulations with graphs."""
+
 from __future__ import annotations
 
 from typing import AbstractSet, Iterable, Iterator, TypeVar
@@ -54,6 +56,7 @@ def strongly_connected_components(
 def prepare_sccs(
     sccs: list[set[T]], edges: dict[T, list[T]]
 ) -> dict[AbstractSet[T], set[AbstractSet[T]]]:
+    """Use original edges to organize SCCs in a graph by dependencies between them."""
     sccsmap = {v: frozenset(scc) for scc in sccs for v in scc}
     data: dict[AbstractSet[T], set[AbstractSet[T]]] = {}
     for scc in sccs:

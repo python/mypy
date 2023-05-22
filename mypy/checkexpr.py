@@ -1805,6 +1805,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 or set(get_type_vars(a)) & set(callee_type.variables)
                 for a in inferred_args
             ):
+                # If the regular two-phase inference didn't work, try inferring type
+                # variables while allowing for polymorphic solutions, i.e. for solutions
+                # potentially involving free variables.
+                # TODO: support the similar inference for return type context.
                 poly_inferred_args = infer_function_type_arguments(
                     callee_type,
                     arg_types,
@@ -1816,6 +1820,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 )
                 for i, pa in enumerate(get_proper_types(poly_inferred_args)):
                     if isinstance(pa, (NoneType, UninhabitedType)) or has_erased_component(pa):
+                        # Indicate that free variables should not be applied in the call below.
                         poly_inferred_args[i] = None
                 poly_callee_type = self.apply_generic_arguments(
                     callee_type, poly_inferred_args, context
@@ -1823,12 +1828,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 yes_vars = poly_callee_type.variables
                 no_vars = {v for v in callee_type.variables if v not in poly_callee_type.variables}
                 if not set(get_type_vars(poly_callee_type)) & no_vars:
+                    # Try applying inferred polymorphic type if possible, e.g. Callable[[T], T] can
+                    # be interpreted as def [T] (T) -> T, but dict[T, T] cannot be expressed.
                     applied = apply_poly(poly_callee_type, yes_vars)
                     if applied is not None and poly_inferred_args != [UninhabitedType()] * len(
                         poly_inferred_args
                     ):
                         freeze_all_type_vars(applied)
                         return applied
+                # If it didn't work, erase free variables as <nothing>, to avoid confusing errors.
                 inferred_args = [
                     expand_type(a, {v.id: UninhabitedType() for v in callee_type.variables})
                     if a is not None
@@ -5337,6 +5345,15 @@ def replace_callable_return_type(c: CallableType, new_ret_type: Type) -> Callabl
 
 
 def apply_poly(tp: CallableType, poly_tvars: Sequence[TypeVarLikeType]) -> Optional[CallableType]:
+    """Make free type variables generic in the type if possible.
+
+    This will analyze the type `tp` while trying to create valid bindings for
+    type variables `poly_tvars` while traversing the type. This follows the same rules
+    as we do during semantic analysis phase, examples:
+      * Callable[Callable[[T], T], T] -> def [T] (def (T) -> T) -> T
+      * Callable[[], Callable[[T], T]] -> def () -> def [T] (T -> T)
+      * List[T] -> None (not possible)
+    """
     try:
         return tp.copy_modified(
             arg_types=[t.accept(PolyTranslator(poly_tvars)) for t in tp.arg_types],
@@ -5352,8 +5369,13 @@ class PolyTranslationError(TypeError):
 
 
 class PolyTranslator(TypeTranslator):
+    """Make free type variables generic in the type if possible.
+
+    See docstring for apply_poly() for details.
+    """
     def __init__(self, poly_tvars: Sequence[TypeVarLikeType]) -> None:
         self.poly_tvars = set(poly_tvars)
+        # This is a simplified version of TypeVarScope used during semantic analysis.
         self.bound_tvars: set[TypeVarLikeType] = set()
         self.seen_aliases: set[TypeInfo] = set()
 
@@ -5395,7 +5417,8 @@ class PolyTranslator(TypeTranslator):
 
     def visit_instance(self, t: Instance) -> Type:
         # There is the same problem with callback protocols as with aliases
-        # (callback protocols are essentially more flexible aliases to callables)
+        # (callback protocols are essentially more flexible aliases to callables).
+        # Note: consider supporting bindings in instances, e.g. LRUCache[[x: T], T].
         if t.args and t.type.is_protocol and t.type.protocol_members == ["__call__"]:
             if t.type in self.seen_aliases:
                 raise PolyTranslationError()

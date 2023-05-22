@@ -892,6 +892,12 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 # FIX verify argument counts
                 # TODO: Erase template variables if it is generic?
                 if cactual.variables and cactual.param_spec() is None:
+                    # If template is generic, unify it with template. Note: this is
+                    # not an ideal solution (which would be adding the generic variables
+                    # to the constraint inference set), but is a good first approximation,
+                    # and this will prevent leaking these variables in the solutions.
+                    # Note: this may infer constraints like T <: S or T <: List[S]
+                    # that contain variables in the target.
                     unified = mypy.subtypes.unify_generic_callable(
                         cactual, template, ignore_return=True
                     )
