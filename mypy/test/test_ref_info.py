@@ -9,9 +9,9 @@ import tempfile
 
 from mypy import build
 from mypy.modulefinder import BuildSource
-from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.options import Options
 from mypy.test.config import test_temp_dir
+from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
 
 
