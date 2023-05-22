@@ -1794,7 +1794,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     self.chk.fail(message_registry.KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE, context)
 
             if any(
-                a is None or isinstance(get_proper_type(a), UninhabitedType) for a in inferred_args
+                a is None
+                or isinstance(get_proper_type(a), UninhabitedType)
+                or set(get_type_vars(a)) & set(callee_type.variables)
+                for a in inferred_args
             ):
                 poly_inferred_args = infer_function_type_arguments(
                     callee_type,
@@ -1815,11 +1818,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 no_vars = {v for v in callee_type.variables if v not in poly_callee_type.variables}
                 if not set(get_type_vars(poly_callee_type)) & no_vars:
                     applied = apply_poly(poly_callee_type, yes_vars)
-                    if applied is not None and poly_inferred_args != [None] * len(
+                    if applied is not None and poly_inferred_args != [UninhabitedType()] * len(
                         poly_inferred_args
                     ):
                         freeze_all_type_vars(applied)
                         return applied
+                inferred_args = [
+                    expand_type(a, {v.id: UninhabitedType() for v in callee_type.variables})
+                    if a is not None
+                    else None
+                    for a in inferred_args
+                ]
         else:
             # In dynamically typed functions use implicit 'Any' types for
             # type variables.
@@ -5369,7 +5378,13 @@ class PolyTranslator(TypeTranslator):
         raise PolyTranslationError()
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
-        return t.copy_modified(args=[a.accept(self) for a in t.args])
+        if not t.args:
+            return t.copy_modified()
+        if not t.is_recursive:
+            return get_proper_type(t).accept(self)
+        # We can't handle polymorphic application for recursive generic aliases
+        # without risking an infinite recursion, just give up for now.
+        raise PolyTranslationError()
 
 
 class ArgInferSecondPassQuery(types.BoolTypeQuery):

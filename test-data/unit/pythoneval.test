@@ -862,7 +862,7 @@ _program.py:6: error: Argument 1 to "defaultdict" has incompatible type "Type[Li
 _program.py:9: error: Invalid index type "str" for "defaultdict[int, str]"; expected type "int"
 _program.py:9: error: Incompatible types in assignment (expression has type "int", target has type "str")
 _program.py:19: error: Argument 1 to "tst" has incompatible type "defaultdict[str, List[<nothing>]]"; expected "defaultdict[int, List[<nothing>]]"
-_program.py:23: error: Invalid index type "str" for "MyDDict[Dict[_KT, _VT]]"; expected type "int"
+_program.py:23: error: Invalid index type "str" for "MyDDict[Dict[<nothing>, <nothing>]]"; expected type "int"
 
 [case testNoSubcriptionOfStdlibCollections]
 # flags: --python-version 3.6
@@ -1986,3 +1986,14 @@ def good9(foo1: Foo[Concatenate[int, P]], foo2: Foo[[int, str, bytes]], *args: P
 
 [out]
 _testStrictEqualitywithParamSpec.py:11: error: Non-overlapping equality check (left operand type: "Foo[[int]]", right operand type: "Bar[[int]]")
+
+[case testGenericInferenceWithTuple]
+from typing import TypeVar, Callable, Tuple
+
+T = TypeVar("T")
+
+def f(x: Callable[..., T]) -> T:
+    return x()
+
+x: Tuple[str, ...] = f(tuple)
+[out]
