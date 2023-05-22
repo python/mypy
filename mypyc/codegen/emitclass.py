@@ -882,9 +882,6 @@ def generic_setter_name(rtype: RType) -> str | None:
 
 def setter_boxed_type_struct(rtype: RType) -> str | None:
     assert not rtype.is_unboxed, f"must be boxed type: {rtype}"
-    if rtype.is_unboxed:
-        return None
-
     if is_str_rprimitive(rtype):
         return "&PyUnicode_Type"
     elif is_tuple_rprimitive(rtype):
@@ -904,7 +901,6 @@ def setter_boxed_type_struct(rtype: RType) -> str | None:
     elif is_object_rprimitive(rtype):
         return "NULL"
 
-    # print(f"[type_struct] unsupported rtype: {rtype}")
     return None
 
 
