@@ -1,4 +1,4 @@
-[case replace]
+[case testReplace]
 [file model.py]
 from dataclasses import dataclass
 
