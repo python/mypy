@@ -148,6 +148,8 @@ def solve_iteratively(
                 c.target = expand_type(
                     c.target, {k: v for (k, v) in tmap.items() if v is not None}
                 )
+        # TODO: support backtracking lower/upper bound choices
+        # (will require switching this function from iterative to recursive).
         solutions.update(tmap)
     return solutions
 
@@ -213,10 +215,10 @@ def normalize_constraints(
 ) -> list[Constraint]:
     """Normalize list of constraints (to simplify life for the non-linear solver).
 
-     This includes two things currently:
-       * Complement T :> S by S <: T
-       * Remove strict duplicates
-     """
+    This includes two things currently:
+      * Complement T :> S by S <: T
+      * Remove strict duplicates
+    """
     res = constraints.copy()
     for c in constraints:
         if isinstance(c.target, TypeVarType):

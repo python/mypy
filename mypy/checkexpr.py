@@ -5387,7 +5387,7 @@ def replace_callable_return_type(c: CallableType, new_ret_type: Type) -> Callabl
 def apply_poly(tp: CallableType, poly_tvars: Sequence[TypeVarLikeType]) -> Optional[CallableType]:
     """Make free type variables generic in the type if possible.
 
-    This will analyze the type `tp` while trying to create valid bindings for
+    This will translate the type `tp` while trying to create valid bindings for
     type variables `poly_tvars` while traversing the type. This follows the same rules
     as we do during semantic analysis phase, examples:
       * Callable[Callable[[T], T], T] -> def [T] (def (T) -> T) -> T
@@ -5413,6 +5413,7 @@ class PolyTranslator(TypeTranslator):
 
     See docstring for apply_poly() for details.
     """
+
     def __init__(self, poly_tvars: Sequence[TypeVarLikeType]) -> None:
         self.poly_tvars = set(poly_tvars)
         # This is a simplified version of TypeVarScope used during semantic analysis.
@@ -5422,14 +5423,14 @@ class PolyTranslator(TypeTranslator):
     def visit_callable_type(self, t: CallableType) -> Type:
         found_vars = set()
         for arg in t.arg_types:
-            found_vars |= set(get_type_vars(arg))
-        found_vars &= self.poly_tvars
+            found_vars |= set(get_type_vars(arg)) & self.poly_tvars
+
         found_vars -= self.bound_tvars
         self.bound_tvars |= found_vars
         result = super().visit_callable_type(t)
         self.bound_tvars -= found_vars
-        assert isinstance(result, ProperType)
-        assert isinstance(result, CallableType)
+
+        assert isinstance(result, ProperType) and isinstance(result, CallableType)
         result.variables = list(result.variables) + list(found_vars)
         return result
 
