@@ -94,6 +94,8 @@ int CPyAttr_SetterPyObject(PyObject *self, PyObject *value, CPyAttr_Context *con
 int CPyAttr_SetterTagged(PyObject *self, PyObject *value, CPyAttr_Context *context);
 int CPyAttr_SetterBool(PyObject *self, PyObject *value, CPyAttr_Context *context);
 int CPyAttr_SetterFloat(PyObject *self, PyObject *value, CPyAttr_Context *context);
+PyObject *CPyAttr_UndefinedError(PyObject *self, CPyAttr_Context *context);
+int CPyAttr_UndeletableError(PyObject *self, CPyAttr_Context *context);
 
 // Search backwards through the trait part of a vtable (which sits *before*
 // the start of the vtable proper) looking for the subvtable describing a trait

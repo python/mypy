@@ -851,6 +851,10 @@ def attr_context_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
 
 
 def generic_getter_name(rtype: RType) -> str | None:
+    """Return the generic attribute getter for a rtype.
+
+    Return None if no generic getter is available.
+    """
     if not rtype.is_unboxed:
         return "CPyAttr_GetterPyObject"
     elif is_tagged(rtype):
@@ -868,7 +872,11 @@ def generic_getter_name(rtype: RType) -> str | None:
 
 
 def generic_setter_name(rtype: RType) -> str | None:
-    if not rtype.is_unboxed and setter_boxed_type_struct(rtype):
+    """Return the generic attribute setter for a rtype.
+
+    Return None if no generic setter is available.
+    """
+    if not rtype.is_unboxed and generic_setter_boxed_type_struct(rtype):
         return "CPyAttr_SetterPyObject"
     elif is_tagged(rtype):
         return "CPyAttr_SetterTagged"
@@ -880,7 +888,10 @@ def generic_setter_name(rtype: RType) -> str | None:
     return None
 
 
-def setter_boxed_type_struct(rtype: RType) -> str | None:
+def generic_setter_boxed_type_struct(rtype: RType) -> str | None:
+    """Return the PyTypeObject pointer (for setter type checks).
+
+    Return None if rtype is unsupported."""
     assert not rtype.is_unboxed, f"must be boxed type: {rtype}"
     if is_str_rprimitive(rtype):
         return "&PyUnicode_Type"
@@ -895,9 +906,9 @@ def setter_boxed_type_struct(rtype: RType) -> str | None:
     elif is_range_rprimitive(rtype):
         return "&PyRange_Type"
     elif is_optional_type(rtype):
-        rtype = optional_value_type(rtype)
-        if not rtype.is_unboxed:
-            return setter_boxed_type_struct(rtype)
+        inner_rtype = optional_value_type(rtype)
+        if inner_rtype is not None and not inner_rtype.is_unboxed:
+            return generic_setter_boxed_type_struct(inner_rtype)
     elif is_object_rprimitive(rtype):
         return "NULL"
 
@@ -913,26 +924,24 @@ def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
 
             emitter.emit_line(f"static CPyAttr_Context {context_name} = {{")
             emitter.emit_line(
-                f'"{attr}", offsetof({cl_struct}, {emitter.attr(attr)}), {c_bool(always_defined)}, {c_bool(cl.is_deletable(attr))},'
+                f'"{attr}", offsetof({cl_struct}, {emitter.attr(attr)}),'
+                f" {c_bool(always_defined)}, {c_bool(cl.is_deletable(attr))},"
             )
+            # If the attribute definedness bitmap is needed, store the bitmap offset and
+            # mask for this attribute.
             if attr in cl.bitmap_attrs:
                 index = cl.bitmap_attrs.index(attr)
                 bitmap = emitter.bitmap_field(index)
-                mask = 1 << (index & (BITMAP_BITS - 1))
-                emitter.emit_line(f"{{offsetof({cl_struct}, {bitmap}), {mask}}},")
-            else:
-                emitter.emit_line("{0},")
+                mask = emitter.attr_bitmap_mask(index)
+                emitter.emit_line(f".bitmap = {{offsetof({cl_struct}, {bitmap}), {mask}}},")
+            # If using the generic boxed (PyObject *) setter, store the PyTypeObject et al.
+            # to drive runtime type checks.
             if generic_setter_name(rtype) and not rtype.is_unboxed:
-                setter_ctype = setter_boxed_type_struct(rtype)
-                setter_type_name = emitter.pretty_name(rtype)
-                if setter_ctype:
-                    emitter.emit_line(
-                        f'{{"{setter_type_name}", {c_bool(is_optional_type(rtype))}, {setter_ctype}}}'
-                    )
-                else:
-                    emitter.emit_line("{0}")
-            else:
-                emitter.emit_line("{0}")
+                setter_ctype = generic_setter_boxed_type_struct(rtype)
+                emitter.emit_line(
+                    f'.setter = {{"{emitter.pretty_name(rtype)}",'
+                    f" .optional = {c_bool(is_optional_type(rtype))}, {setter_ctype}}}"
+                )
             emitter.emit_line("};")
 
             if not generic_getter_name(rtype):
@@ -1036,9 +1045,7 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
 
     if not always_defined:
         emitter.emit_undefined_attr_check(rtype, attr_expr, "==", "self", attr, cl, unlikely=True)
-        emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
-        emitter.emit_line(f'    "attribute {repr(attr)} of {repr(cl.name)} undefined");')
-        emitter.emit_line("return NULL;")
+        emitter.emit_line("return CPyAttr_UndefinedError((PyObject *)self, closure);")
         emitter.emit_line("}")
     emitter.emit_inc_ref(f"self->{attr_field}", rtype)
     emitter.emit_box(f"self->{attr_field}", "retval", rtype, declare_dest=True)
@@ -1059,11 +1066,7 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     deletable = cl.is_deletable(attr)
     if not deletable:
         emitter.emit_line("if (value == NULL) {")
-        emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
-        emitter.emit_line(
-            f'    "{repr(cl.name)} object attribute {repr(attr)} cannot be deleted");'
-        )
-        emitter.emit_line("return -1;")
+        emitter.emit_line("return CPyAttr_UndeletableError((PyObject *)self, closure);")
         emitter.emit_line("}")
 
     # HACK: Don't consider refcounted values as always defined, since it's possible to
