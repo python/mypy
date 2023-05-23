@@ -209,8 +209,8 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
                 ).format(passnum, case.file, first_item.line)
             )
 
-    input = first_item.data
     output_inline_start = len(output)
+    input = first_item.data
     expand_errors(input, output, "main")
     for file_path, contents in files:
         expand_errors(contents.split("\n"), output, file_path)
