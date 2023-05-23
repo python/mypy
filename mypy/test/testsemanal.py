@@ -85,7 +85,7 @@ def test_semanal(testcase: DataDrivenTestCase) -> None:
     if testcase.normalize_output:
         a = normalize_error_messages(a)
     assert_string_arrays_equal(
-        testcase.output,
+        testcase.output + testcase.output_inline,
         a,
         f"Invalid semantic analyzer output ({testcase.file}, line {testcase.line})",
     )
@@ -121,7 +121,9 @@ def test_semanal_error(testcase: DataDrivenTestCase) -> None:
     if testcase.normalize_output:
         a = normalize_error_messages(a)
     assert_string_arrays_equal(
-        testcase.output, a, f"Invalid compiler output ({testcase.file}, line {testcase.line})"
+        testcase.output + testcase.output_inline,
+        a,
+        f"Invalid compiler output ({testcase.file}, line {testcase.line})",
     )
 
 

@@ -57,7 +57,9 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
     except CompileError as e:
         a = e.messages
     assert_string_arrays_equal(
-        testcase.output, a, f"Invalid parser output ({testcase.file}, line {testcase.line})"
+        testcase.output + testcase.output_inline,
+        a,
+        f"Invalid parser output ({testcase.file}, line {testcase.line})",
     )
 
 
