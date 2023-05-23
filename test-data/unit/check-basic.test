@@ -501,3 +501,5 @@ s1: str = 42  # E: Incompatible types in assignment (expression has type "int", 
 s2: str = 42  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 [file b.py]
 s3: str = 42  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+[file c.py]
+s3: str = 'foo'
