@@ -23,6 +23,7 @@ from mypyc.ir.ops import (
     CallC,
     Cast,
     ComparisonOp,
+    ControlOp,
     DecRef,
     Extend,
     Float,
@@ -123,6 +124,28 @@ def generate_native_function(
     for i, block in enumerate(blocks):
         block.label = i
 
+    # Find blocks that are never jumped to or are only jumped to from the
+    # block directly above it. This allows for more labels and gotos to be
+    # eliminated during code generation.
+    for block in fn.blocks:
+        terminator = block.terminator
+        assert isinstance(terminator, ControlOp)
+
+        for target in terminator.targets():
+            is_next_block = target.label == block.label + 1
+
+            # Always emit labels for GetAttr error checks since the emit code that
+            # generates them will add instructions between the branch and the
+            # next label, causing the label to be wrongly removed. A better
+            # solution would be to change the IR so that it adds a basic block
+            # inbetween the calls.
+            is_problematic_op = isinstance(terminator, Branch) and any(
+                isinstance(s, GetAttr) for s in terminator.sources()
+            )
+
+            if not is_next_block or is_problematic_op:
+                fn.blocks[target.label].referenced = True
+
     common = frequently_executed_blocks(fn.blocks[0])
 
     for i in range(len(blocks)):
@@ -216,7 +239,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
         if false is self.next_block:
             if op.traceback_entry is None:
-                self.emit_line(f"if ({cond}) goto {self.label(true)};")
+                if true is not self.next_block:
+                    self.emit_line(f"if ({cond}) goto {self.label(true)};")
             else:
                 self.emit_line(f"if ({cond}) {{")
                 self.emit_traceback(op)
@@ -224,9 +248,11 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         else:
             self.emit_line(f"if ({cond}) {{")
             self.emit_traceback(op)
-            self.emit_lines(
-                "goto %s;" % self.label(true), "} else", "    goto %s;" % self.label(false)
-            )
+
+            if true is not self.next_block:
+                self.emit_line("goto %s;" % self.label(true))
+
+            self.emit_lines("} else", "    goto %s;" % self.label(false))
 
     def visit_return(self, op: Return) -> None:
         value_str = self.reg(op.value)
