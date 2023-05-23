@@ -163,21 +163,29 @@ class TypeCheckSuite(DataSuite):
             a = normalize_error_messages(a)
 
         # Make sure error messages match
-        if incremental_step == 0:
+        if incremental_step < 2:
             # Not incremental
-            msg = "Unexpected type checker output ({}, line {})"
-            output = testcase.output
-        elif incremental_step == 1:
-            msg = "Unexpected type checker output in incremental, run 1 ({}, line {})"
-            output = testcase.output
-        elif incremental_step > 1:
+            if incremental_step == 1:
+                msg = "Unexpected type checker output in incremental, run 1 ({}, line {})"
+            else:
+                msg = "Unexpected type checker output ({}, line {})"
+            if testcase.output_inline:
+                filename_sort_weights = {
+                    filename: idx
+                    for idx, filename in enumerate(msg.partition(":")[0] for msg in a)
+                }
+                testcase.output_inline.sort(
+                    key=lambda msg: filename_sort_weights.get(msg.partition(":")[0], -1)
+                )
+                output = testcase.output + testcase.output_inline
+            else:
+                output = testcase.output
+        else:
             msg = (
                 f"Unexpected type checker output in incremental, run {incremental_step}"
                 + " ({}, line {})"
             )
             output = testcase.output2.get(incremental_step, [])
-        else:
-            raise AssertionError()
 
         if output != a and testcase.config.getoption("--update-data", False):
             update_testcase_output(testcase, a)

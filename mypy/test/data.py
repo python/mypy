@@ -67,6 +67,7 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
     files: list[tuple[str, str]] = []  # path and contents
     output_files: list[tuple[str, str | Pattern[str]]] = []  # output path and contents
     output: list[str] = []  # Regular output errors
+    output_inline: list[str] = []  # Output captured from inline assertions
     output2: dict[int, list[str]] = {}  # Output errors for incremental, runs 2+
     deleted_paths: dict[int, set[str]] = {}  # from run number of paths
     stale_modules: dict[int, set[str]] = {}  # from run number to module names
@@ -209,9 +210,9 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
             )
 
     input = first_item.data
-    expand_errors(input, output, "main")
+    expand_errors(input, output_inline, "main")
     for file_path, contents in files:
-        expand_errors(contents.split("\n"), output, file_path)
+        expand_errors(contents.split("\n"), output_inline, file_path)
 
     seen_files = set()
     for file, _ in files:
@@ -225,6 +226,7 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
 
     case.input = input
     case.output = output
+    case.output_inline = output_inline
     case.output2 = output2
     case.last_line = case.line + item.line + len(item.data) - 2
     case.files = files
@@ -246,6 +248,7 @@ class DataDrivenTestCase(pytest.Item):
 
     input: list[str]
     output: list[str]  # Output for the first pass
+    output_inline: list[str]  # Output for the first pass, captured from inline assertions
     output2: dict[int, list[str]]  # Output for runs 2+, indexed by run number
 
     # full path of test suite
