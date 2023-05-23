@@ -84,6 +84,19 @@ class TypeCheckSuite(DataSuite):
         else:
             self.run_case_once(testcase)
 
+    def _sort_output_if_needed(self, testcase: DataDrivenTestCase, a: list[str]) -> None:
+        idx = testcase.output_inline_start
+        if not testcase.files or idx == len(testcase.output):
+            return
+
+        def _filename(_msg: str) -> str:
+            return _msg.partition(":")[0]
+
+        file_weights = {file: idx for idx, file in enumerate(_filename(msg) for msg in a)}
+        testcase.output[idx:] = sorted(
+            testcase.output[idx:], key=lambda msg: file_weights.get(_filename(msg), -1)
+        )
+
     def run_case_once(
         self,
         testcase: DataDrivenTestCase,
@@ -169,17 +182,8 @@ class TypeCheckSuite(DataSuite):
                 msg = "Unexpected type checker output in incremental, run 1 ({}, line {})"
             else:
                 msg = "Unexpected type checker output ({}, line {})"
-            if testcase.output_inline:
-                filename_sort_weights = {
-                    filename: idx
-                    for idx, filename in enumerate(msg.partition(":")[0] for msg in a)
-                }
-                testcase.output_inline.sort(
-                    key=lambda msg: filename_sort_weights.get(msg.partition(":")[0], -1)
-                )
-                output = testcase.output + testcase.output_inline
-            else:
-                output = testcase.output
+            self._sort_output_if_needed(testcase, a)
+            output = testcase.output
         else:
             msg = (
                 f"Unexpected type checker output in incremental, run {incremental_step}"
