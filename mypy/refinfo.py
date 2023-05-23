@@ -5,6 +5,7 @@ from __future__ import annotations
 from mypy.nodes import (
     LDEF,
     Expression,
+    FuncDef,
     MemberExpr,
     MypyFile,
     NameExpr,
@@ -38,6 +39,14 @@ class RefInfoVisitor(TraverserVisitor):
     def visit_member_expr(self, expr: MemberExpr) -> None:
         super().visit_member_expr(expr)
         self.record_ref_expr(expr)
+
+    def visit_func_def(self, func: FuncDef) -> None:
+        if func.expanded:
+            for item in func.expanded:
+                if isinstance(item, FuncDef):
+                    super().visit_func_def(item)
+        else:
+            super().visit_func_def(func)
 
     def record_ref_expr(self, expr: RefExpr) -> None:
         fullname = None
