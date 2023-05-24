@@ -10,6 +10,7 @@ import shutil
 import sys
 import tempfile
 from abc import abstractmethod
+from dataclasses import dataclass
 from typing import Any, Iterator, NamedTuple, Pattern, Union
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
@@ -414,6 +415,7 @@ def module_from_path(path: str) -> str:
     return module
 
 
+@dataclass
 class TestItem:
     """Parsed test caseitem.
 
@@ -422,20 +424,10 @@ class TestItem:
       .. data ..
     """
 
-    id = ""
-    arg: str | None = ""
-
-    # Text data, array of 8-bit strings
+    id: str
+    arg: str | None
     data: list[str]
-
-    file = ""
-    line = 0  # Line number in file
-
-    def __init__(self, id: str, arg: str | None, data: list[str], line: int) -> None:
-        self.id = id
-        self.arg = arg
-        self.data = data
-        self.line = line
+    line: int
 
 
 def parse_test_data(raw_data: str, name: str) -> list[TestItem]:
