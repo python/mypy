@@ -1008,7 +1008,21 @@ class SemanticAnalyzer(
                 return self.is_expected_self_type(typ.item, is_classmethod=False)
             if isinstance(typ, UnboundType):
                 sym = self.lookup_qualified(typ.name, typ, suppress_errors=True)
-                if sym is not None and sym.fullname == "typing.Type" and typ.args:
+                if (
+                    sym is not None
+                    and typ.args
+                    and (
+                        sym.fullname == "typing.Type"
+                        or (
+                            sym.fullname == "builtins.type"
+                            and (
+                                self.is_stub_file
+                                or self.is_future_flag_set("annotations")
+                                or self.options.python_version >= (3, 9)
+                            )
+                        )
+                    )
+                ):
                     return self.is_expected_self_type(typ.args[0], is_classmethod=False)
             return False
         if isinstance(typ, TypeVarType):
