@@ -208,6 +208,7 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
                 ).format(passnum, case.file, first_item.line)
             )
 
+    output_inline_start = len(output)
     input = first_item.data
     expand_errors(input, output, "main")
     for file_path, contents in files:
@@ -225,6 +226,7 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
 
     case.input = input
     case.output = output
+    case.output_inline_start = output_inline_start
     case.output2 = output2
     case.last_line = case.line + item.line + len(item.data) - 2
     case.files = files
@@ -246,6 +248,7 @@ class DataDrivenTestCase(pytest.Item):
 
     input: list[str]
     output: list[str]  # Output for the first pass
+    output_inline_start: int
     output2: dict[int, list[str]]  # Output for runs 2+, indexed by run number
 
     # full path of test suite

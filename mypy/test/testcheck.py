@@ -84,6 +84,19 @@ class TypeCheckSuite(DataSuite):
         else:
             self.run_case_once(testcase)
 
+    def _sort_output_if_needed(self, testcase: DataDrivenTestCase, a: list[str]) -> None:
+        idx = testcase.output_inline_start
+        if not testcase.files or idx == len(testcase.output):
+            return
+
+        def _filename(_msg: str) -> str:
+            return _msg.partition(":")[0]
+
+        file_weights = {file: idx for idx, file in enumerate(_filename(msg) for msg in a)}
+        testcase.output[idx:] = sorted(
+            testcase.output[idx:], key=lambda msg: file_weights.get(_filename(msg), -1)
+        )
+
     def run_case_once(
         self,
         testcase: DataDrivenTestCase,
@@ -163,21 +176,20 @@ class TypeCheckSuite(DataSuite):
             a = normalize_error_messages(a)
 
         # Make sure error messages match
-        if incremental_step == 0:
-            # Not incremental
-            msg = "Unexpected type checker output ({}, line {})"
+        if incremental_step < 2:
+            if incremental_step == 1:
+                msg = "Unexpected type checker output in incremental, run 1 ({}, line {})"
+            else:
+                assert incremental_step == 0
+                msg = "Unexpected type checker output ({}, line {})"
+            self._sort_output_if_needed(testcase, a)
             output = testcase.output
-        elif incremental_step == 1:
-            msg = "Unexpected type checker output in incremental, run 1 ({}, line {})"
-            output = testcase.output
-        elif incremental_step > 1:
+        else:
             msg = (
                 f"Unexpected type checker output in incremental, run {incremental_step}"
                 + " ({}, line {})"
             )
             output = testcase.output2.get(incremental_step, [])
-        else:
-            raise AssertionError()
 
         if output != a and testcase.config.getoption("--update-data", False):
             update_testcase_output(testcase, a)
