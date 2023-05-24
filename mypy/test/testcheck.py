@@ -177,10 +177,10 @@ class TypeCheckSuite(DataSuite):
 
         # Make sure error messages match
         if incremental_step < 2:
-            # Not incremental
             if incremental_step == 1:
                 msg = "Unexpected type checker output in incremental, run 1 ({}, line {})"
             else:
+                assert incremental_step == 0
                 msg = "Unexpected type checker output ({}, line {})"
             self._sort_output_if_needed(testcase, a)
             output = testcase.output

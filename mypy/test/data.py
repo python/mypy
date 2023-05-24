@@ -67,7 +67,6 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
     files: list[tuple[str, str]] = []  # path and contents
     output_files: list[tuple[str, str | Pattern[str]]] = []  # output path and contents
     output: list[str] = []  # Regular output errors
-    output_inline_start: int  # Start index of output inline assertions
     output2: dict[int, list[str]] = {}  # Output errors for incremental, runs 2+
     deleted_paths: dict[int, set[str]] = {}  # from run number of paths
     stale_modules: dict[int, set[str]] = {}  # from run number to module names
