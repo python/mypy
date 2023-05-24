@@ -90,9 +90,9 @@ class TypeVarLikeScope:
             namespace = ""
         if isinstance(tvar_expr, TypeVarExpr):
             tvar_def: TypeVarLikeType = TypeVarType(
-                name,
-                tvar_expr.fullname,
-                TypeVarId(i, namespace=namespace),
+                name=name,
+                fullname=tvar_expr.fullname,
+                id=TypeVarId(i, namespace=namespace),
                 values=tvar_expr.values,
                 upper_bound=tvar_expr.upper_bound,
                 variance=tvar_expr.variance,

@@ -596,14 +596,14 @@ class TypeVarType(TypeVarLikeType):
         column: int = _dummy_int,
     ) -> TypeVarType:
         return TypeVarType(
-            self.name,
-            self.fullname,
-            self.id if id is _dummy else id,
-            self.values if values is _dummy else values,
-            self.upper_bound if upper_bound is _dummy else upper_bound,
-            self.variance,
-            self.line if line == _dummy_int else line,
-            self.column if column == _dummy_int else column,
+            name=self.name,
+            fullname=self.fullname,
+            id=self.id if id is _dummy else id,
+            values=self.values if values is _dummy else values,
+            upper_bound=self.upper_bound if upper_bound is _dummy else upper_bound,
+            variance=self.variance,
+            line=self.line if line == _dummy_int else line,
+            column=self.column if column == _dummy_int else column,
         )
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
@@ -638,12 +638,12 @@ class TypeVarType(TypeVarLikeType):
     def deserialize(cls, data: JsonDict) -> TypeVarType:
         assert data[".class"] == "TypeVarType"
         return TypeVarType(
-            data["name"],
-            data["fullname"],
-            TypeVarId(data["id"], namespace=data["namespace"]),
-            [deserialize_type(v) for v in data["values"]],
-            deserialize_type(data["upper_bound"]),
-            data["variance"],
+            name=data["name"],
+            fullname=data["fullname"],
+            id=TypeVarId(data["id"], namespace=data["namespace"]),
+            values=[deserialize_type(v) for v in data["values"]],
+            upper_bound=deserialize_type(data["upper_bound"]),
+            variance=data["variance"],
         )
 
 

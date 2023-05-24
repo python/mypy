@@ -344,12 +344,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     )
                 # Change the line number
                 return TypeVarType(
-                    tvar_def.name,
-                    tvar_def.fullname,
-                    tvar_def.id,
-                    tvar_def.values,
-                    tvar_def.upper_bound,
-                    tvar_def.variance,
+                    name=tvar_def.name,
+                    fullname=tvar_def.fullname,
+                    id=tvar_def.id,
+                    values=tvar_def.values,
+                    upper_bound=tvar_def.upper_bound,
+                    variance=tvar_def.variance,
                     line=t.line,
                     column=t.column,
                 )
@@ -1553,13 +1553,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def anal_var_def(self, var_def: TypeVarLikeType) -> TypeVarLikeType:
         if isinstance(var_def, TypeVarType):
             return TypeVarType(
-                var_def.name,
-                var_def.fullname,
-                var_def.id.raw_id,
-                self.anal_array(var_def.values),
-                var_def.upper_bound.accept(self),
-                var_def.variance,
-                var_def.line,
+                name=var_def.name,
+                fullname=var_def.fullname,
+                id=var_def.id.raw_id,
+                values=self.anal_array(var_def.values),
+                upper_bound=var_def.upper_bound.accept(self),
+                variance=var_def.variance,
+                line=var_def.line,
+                column=var_def.column,
             )
         else:
             return var_def
