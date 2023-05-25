@@ -5,8 +5,6 @@ from __future__ import annotations
 import os
 import re
 import sys
-from collections import defaultdict
-from typing import Iterator
 
 from mypy import build
 from mypy.build import Graph
@@ -14,15 +12,7 @@ from mypy.errors import CompileError
 from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths
 from mypy.options import TYPE_VAR_TUPLE, UNPACK
 from mypy.test.config import test_data_prefix, test_temp_dir
-from mypy.test.data import (
-    DataDrivenTestCase,
-    DataFileCollector,
-    DataFileFix,
-    DataSuite,
-    FileOperation,
-    module_from_path,
-    parse_test_data,
-)
+from mypy.test.data import DataDrivenTestCase, DataSuite, FileOperation, module_from_path
 from mypy.test.helpers import (
     assert_module_equivalence,
     assert_string_arrays_equal,
@@ -33,6 +23,7 @@ from mypy.test.helpers import (
     parse_options,
     perform_file_operations,
 )
+from mypy.test.update_data import update_testcase_output
 
 try:
     import lxml  # type: ignore[import]
@@ -201,12 +192,7 @@ class TypeCheckSuite(DataSuite):
             output = testcase.output2.get(incremental_step, [])
 
         if output != a and testcase.config.getoption("--update-data", False):
-            collector = testcase.parent
-            assert isinstance(collector, DataFileCollector)
-            for fix in self.iter_data_file_fixes(
-                testcase, actual=a, incremental_step=incremental_step
-            ):
-                collector.enqueue_fix(fix)
+            update_testcase_output(testcase, a, incremental_step=incremental_step)
 
         assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))
 
@@ -240,74 +226,6 @@ class TypeCheckSuite(DataSuite):
 
         if testcase.output_files:
             check_test_output_files(testcase, incremental_step, strip_prefix="tmp/")
-
-    def iter_data_file_fixes(
-        self, testcase: DataDrivenTestCase, *, actual: list[str], incremental_step: int
-    ) -> Iterator[DataFileFix]:
-        reports_by_line: dict[tuple[str, int], list[tuple[str, str]]] = defaultdict(list)
-        for error_line in actual:
-            comment_match = re.match(
-                r"^(?P<filename>[^:]+):(?P<lineno>\d+): (?P<severity>error|note|warning): (?P<msg>.+)$",
-                error_line,
-            )
-            if comment_match:
-                filename = comment_match.group("filename")
-                lineno = int(comment_match.group("lineno"))
-                severity = comment_match.group("severity")
-                msg = comment_match.group("msg")
-                reports_by_line[filename, lineno].append((severity, msg))
-
-        test_items = parse_test_data(testcase.data, testcase.name)
-
-        # If we have [out] and/or [outN], we update just those sections.
-        if any(re.match(r"^out\d*$", test_item.id) for test_item in test_items):
-            for test_item in test_items:
-                if (incremental_step < 2 and test_item.id == "out") or (
-                    incremental_step >= 2 and test_item.id == f"out{incremental_step}"
-                ):
-                    yield DataFileFix(
-                        lineno=testcase.line + test_item.line - 1,
-                        end_lineno=testcase.line + test_item.end_line - 1,
-                        lines=actual + [""] * test_item.trimmed_newlines,
-                    )
-
-            return
-
-        # Update assertion comments within the sections
-        for test_item in test_items:
-            if test_item.id == "case":
-                source_lines = test_item.data
-                file_path = "main"
-            elif test_item.id == "file":
-                source_lines = test_item.data
-                file_path = f"tmp/{test_item.arg}"
-            else:
-                continue  # other sections we don't touch
-
-            fix_lines = []
-            for lineno, source_line in enumerate(source_lines, start=1):
-                reports = reports_by_line.get((file_path, lineno))
-                comment_match = re.search(r"(?P<indent>\s+)(?P<comment># [EWN]: .+)$", source_line)
-                if comment_match:
-                    source_line = source_line[: comment_match.start("indent")]  # strip old comment
-                if reports:
-                    indent = comment_match.group("indent") if comment_match else "  "
-                    # multiline comments are on the first line and then on subsequent lines emtpy lines
-                    # with a continuation backslash
-                    for j, (severity, msg) in enumerate(reports):
-                        out_l = source_line if j == 0 else " " * len(source_line)
-                        is_last = j == len(reports) - 1
-                        severity_char = severity[0].upper()
-                        continuation = "" if is_last else " \\"
-                        fix_lines.append(f"{out_l}{indent}# {severity_char}: {msg}{continuation}")
-                else:
-                    fix_lines.append(source_line)
-
-            yield DataFileFix(
-                lineno=testcase.line + test_item.line - 1,
-                end_lineno=testcase.line + test_item.end_line - 1,
-                lines=fix_lines + [""] * test_item.trimmed_newlines,
-            )
 
     def verify_cache(
         self,
