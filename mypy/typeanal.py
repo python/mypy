@@ -343,16 +343,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         f'Type variable "{t.name}" used with arguments', t, code=codes.VALID_TYPE
                     )
                 # Change the line number
-                return TypeVarType(
-                    name=tvar_def.name,
-                    fullname=tvar_def.fullname,
-                    id=tvar_def.id,
-                    values=tvar_def.values,
-                    upper_bound=tvar_def.upper_bound,
-                    variance=tvar_def.variance,
-                    line=t.line,
-                    column=t.column,
-                )
+                return tvar_def.copy_modified(line=t.line, column=t.column)
             if isinstance(sym.node, TypeVarTupleExpr) and (
                 tvar_def is not None
                 and self.defining_alias
