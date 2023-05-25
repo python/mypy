@@ -11,6 +11,7 @@ import sys
 import tempfile
 from abc import abstractmethod
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Iterator, NamedTuple, Pattern, Union
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
@@ -426,8 +427,16 @@ class TestItem:
 
     id: str
     arg: str | None
+    # Processed, collapsed text data
     data: list[str]
+    # Start line: 1-based, inclusive, relative to testcase
     line: int
+    # End line: 1-based, exclusive, relative to testcase; not same as `line + len(test_item.data)` due to collapsing
+    end_line: int
+
+    @property
+    def trimmed_newlines(self) -> int:  # compensates for strip_list
+        return self.end_line - self.line - len(self.data)
 
 
 def parse_test_data(raw_data: str, name: str) -> list[TestItem]:
@@ -449,7 +458,7 @@ def parse_test_data(raw_data: str, name: str) -> list[TestItem]:
             if id:
                 data = collapse_line_continuation(data)
                 data = strip_list(data)
-                ret.append(TestItem(id, arg, strip_list(data), i0 + 1))
+                ret.append(TestItem(id, arg, data, i0 + 1, i))
 
             i0 = i
             id = s[1:-1]
@@ -470,7 +479,7 @@ def parse_test_data(raw_data: str, name: str) -> list[TestItem]:
     if id:
         data = collapse_line_continuation(data)
         data = strip_list(data)
-        ret.append(TestItem(id, arg, data, i0 + 1))
+        ret.append(TestItem(id, arg, data, i0 + 1, i - 1))
 
     return ret
 
@@ -693,6 +702,12 @@ class DataSuiteCollector(pytest.Class):
             yield DataFileCollector.from_parent(parent=self, name=data_file)
 
 
+class DataFileFix(NamedTuple):
+    lineno: int  # 1-offset, inclusive
+    end_lineno: int  # 1-offset, exclusive
+    lines: list[str]
+
+
 class DataFileCollector(pytest.Collector):
     """Represents a single `.test` data driven test file.
 
@@ -700,6 +715,8 @@ class DataFileCollector(pytest.Collector):
     """
 
     parent: DataSuiteCollector
+
+    _fixes: list[DataFileFix]
 
     @classmethod  # We have to fight with pytest here:
     def from_parent(
@@ -715,6 +732,27 @@ class DataFileCollector(pytest.Collector):
             suite=self.parent.obj,
             file=os.path.join(self.parent.obj.data_prefix, self.name),
         )
+
+    def setup(self) -> None:
+        super().setup()
+        self._fixes = []
+
+    def teardown(self) -> None:
+        super().teardown()
+        self._apply_fixes()
+
+    def enqueue_fix(self, fix: DataFileFix) -> None:
+        self._fixes.append(fix)
+
+    def _apply_fixes(self) -> None:
+        if not self._fixes:
+            return
+        data_path = Path(self.parent.obj.data_prefix) / self.name
+        lines = data_path.read_text().split("\n")
+        # start from end to prevent line offsets from shifting as we update
+        for fix in sorted(self._fixes, reverse=True):
+            lines[fix.lineno - 1 : fix.end_lineno - 1] = fix.lines
+        data_path.write_text("\n".join(lines))
 
 
 def add_test_name_suffix(name: str, suffix: str) -> str:
