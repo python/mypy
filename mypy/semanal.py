@@ -1075,7 +1075,9 @@ class SemanticAnalyzer(
                 )
             else:
                 return
-        info.self_type = TypeVarType("Self", f"{info.fullname}.Self", 0, [], fill_typevars(info))
+        info.self_type = TypeVarType(
+            "Self", f"{info.fullname}.Self", id=0, values=[], upper_bound=fill_typevars(info)
+        )
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         self.statement = defn
