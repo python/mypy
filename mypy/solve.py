@@ -8,7 +8,6 @@ from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsor
 from mypy.join import join_types
 from mypy.meet import meet_types
 from mypy.subtypes import is_subtype
-from mypy.typeanal import remove_dups
 from mypy.typeops import get_type_vars
 from mypy.types import (
     AnyType,
@@ -20,6 +19,7 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     get_proper_type,
+    remove_dups,
 )
 from mypy.typestate import type_state
 
@@ -169,6 +169,8 @@ def solve_once(
         # bounds based on constraints. Note that we assume that the constraint
         # targets do not have constraint references.
         for c in cmap.get(tvar, []):
+            # There may be multiple steps needed to solve all vars within a
+            # (linear) SCC. We ignore targets pointing to not yet solved vars.
             if get_vars(c.target, [v for v in vars if v not in free_vars]):
                 continue
             if c.op == SUPERTYPE_OF:

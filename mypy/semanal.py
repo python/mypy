@@ -234,7 +234,6 @@ from mypy.typeanal import (
     fix_instance_types,
     has_any_from_unimported_type,
     no_subscript_builtin_alias,
-    remove_dups,
     type_constructors,
 )
 from mypy.typeops import function_type, get_type_vars, try_getting_str_literals_from_type
@@ -277,6 +276,7 @@ from mypy.types import (
     get_proper_type,
     get_proper_types,
     is_named_instance,
+    remove_dups,
 )
 from mypy.types_utils import is_invalid_recursive_alias, store_argument_type
 from mypy.typevars import fill_typevars

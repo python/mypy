@@ -5404,7 +5404,7 @@ def apply_poly(tp: CallableType, poly_tvars: Sequence[TypeVarLikeType]) -> Optio
         return None
 
 
-class PolyTranslationError(TypeError):
+class PolyTranslationError(Exception):
     pass
 
 
