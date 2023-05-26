@@ -256,8 +256,8 @@ def add_typing_import(output: list[str]) -> list[str]:
         if any(re.search(r"\b%s\b" % name, line) for line in output):
             names.append(name)
     if names:
-        if 'Annotated' in names:
-            names.append('TYPE_CHECKING')
+        if "Annotated" in names:
+            names.append("TYPE_CHECKING")
             output = [
                 "if TYPE_CHECKING:",
                 "    if FixedSize not in vars():",
