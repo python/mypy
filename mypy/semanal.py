@@ -4196,9 +4196,13 @@ class SemanticAnalyzer(
         # on the lines of process_typevar_parameters
 
         if not call.analyzed:
-            paramspec_var = ParamSpecExpr(
-                name, self.qualified_name(name), self.object_type(), INVARIANT
+            parameters = Parameters(
+                arg_types=[self.object_type(), self.object_type()],
+                arg_kinds=[ARG_STAR, ARG_STAR2],
+                arg_names=[None, None],
+                is_ellipsis_args=True,
             )
+            paramspec_var = ParamSpecExpr(name, self.qualified_name(name), parameters, INVARIANT)
             paramspec_var.line = call.line
             call.analyzed = paramspec_var
         else:
