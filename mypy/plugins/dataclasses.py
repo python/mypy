@@ -268,7 +268,11 @@ class DataclassTransformer:
                 # the self type.
                 obj_type = self._api.named_type("builtins.object")
                 order_tvar_def = TypeVarType(
-                    SELF_TVAR_NAME, info.fullname + "." + SELF_TVAR_NAME, -1, [], obj_type
+                    SELF_TVAR_NAME,
+                    info.fullname + "." + SELF_TVAR_NAME,
+                    id=-1,
+                    values=[],
+                    upper_bound=obj_type,
                 )
                 order_return_type = self._api.named_type("builtins.bool")
                 order_args = [

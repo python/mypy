@@ -4189,7 +4189,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Used for list and set expressions, as well as for tuples
         # containing star expressions that don't refer to a
         # Tuple. (Note: "lst" stands for list-set-tuple. :-)
-        tv = TypeVarType("T", "T", -1, [], self.object_type())
+        tv = TypeVarType("T", "T", id=-1, values=[], upper_bound=self.object_type())
         constructor = CallableType(
             [tv],
             [nodes.ARG_STAR],
@@ -4357,8 +4357,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return dt
 
         # Define type variables (used in constructors below).
-        kt = TypeVarType("KT", "KT", -1, [], self.object_type())
-        vt = TypeVarType("VT", "VT", -2, [], self.object_type())
+        kt = TypeVarType("KT", "KT", id=-1, values=[], upper_bound=self.object_type())
+        vt = TypeVarType("VT", "VT", id=-2, values=[], upper_bound=self.object_type())
 
         # Collect function arguments, watching out for **expr.
         args: list[Expression] = []
@@ -4722,7 +4722,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             # Infer the type of the list comprehension by using a synthetic generic
             # callable type.
-            tv = TypeVarType("T", "T", -1, [], self.object_type())
+            tv = TypeVarType("T", "T", id=-1, values=[], upper_bound=self.object_type())
             tv_list: list[Type] = [tv]
             constructor = CallableType(
                 tv_list,
@@ -4742,8 +4742,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             # Infer the type of the list comprehension by using a synthetic generic
             # callable type.
-            ktdef = TypeVarType("KT", "KT", -1, [], self.object_type())
-            vtdef = TypeVarType("VT", "VT", -2, [], self.object_type())
+            ktdef = TypeVarType("KT", "KT", id=-1, values=[], upper_bound=self.object_type())
+            vtdef = TypeVarType("VT", "VT", id=-2, values=[], upper_bound=self.object_type())
             constructor = CallableType(
                 [ktdef, vtdef],
                 [nodes.ARG_POS, nodes.ARG_POS],
