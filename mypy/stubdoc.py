@@ -206,6 +206,9 @@ class DocStringParser:
                     self.reset()
                     return
                 self.ret_type = self.accumulator
+                m = re.match(r"^[A-Za-z_][A-Za-z0-9_]*\.((ItemsView|KeysView|ValuesView).+)$", self.ret_type)
+                if m is not None:
+                    self.ret_type = m.group(1)
                 self.accumulator = ""
                 self.state.pop()
 

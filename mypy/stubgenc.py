@@ -39,6 +39,9 @@ _DEFAULT_TYPING_IMPORTS: Final = (
     "Tuple",
     "Union",
     "Annotated",
+    "KeysView",
+    "ItemsView",
+    "ValuesView",
 )
 
 
@@ -278,8 +281,10 @@ def get_members(obj: object) -> list[tuple[str, Any]]:
             value = getattr(obj, name)
         except AttributeError:
             continue
-        else:
-            results.append((name, value))
+        if inspect.isclass(value) and not value.__name__.isidentifier():
+            # like `KeysView[str]`
+            continue
+        results.append((name, value))
     return results
 
 
