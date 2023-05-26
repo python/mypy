@@ -133,7 +133,7 @@ Functions
    # Mypy understands positional-only and keyword-only arguments
    # Positional-only arguments can also be marked by using a name starting with
    # two underscores
-   def quux(x: int, / *, y: int) -> None:
+   def quux(x: int, /, *, y: int) -> None:
        pass
 
    quux(3, y=5)  # Ok

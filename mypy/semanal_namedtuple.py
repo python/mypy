@@ -544,11 +544,11 @@ class NamedTupleAnalyzer:
 
         assert info.tuple_type is not None  # Set by update_tuple_type() above.
         tvd = TypeVarType(
-            SELF_TVAR_NAME,
-            info.fullname + "." + SELF_TVAR_NAME,
-            self.api.tvar_scope.new_unique_func_id(),
-            [],
-            info.tuple_type,
+            name=SELF_TVAR_NAME,
+            fullname=info.fullname + "." + SELF_TVAR_NAME,
+            id=self.api.tvar_scope.new_unique_func_id(),
+            values=[],
+            upper_bound=info.tuple_type,
         )
         selftype = tvd
 

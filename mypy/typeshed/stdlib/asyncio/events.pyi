@@ -8,6 +8,7 @@ from socket import AddressFamily, SocketKind, _Address, _RetAddress, socket
 from typing import IO, Any, Protocol, TypeVar, overload
 from typing_extensions import Literal, Self, TypeAlias
 
+from . import _CoroutineLike
 from .base_events import Server
 from .futures import Future
 from .protocols import BaseProtocol
@@ -158,20 +159,14 @@ class AbstractEventLoop:
     if sys.version_info >= (3, 11):
         @abstractmethod
         def create_task(
-            self,
-            coro: Coroutine[Any, Any, _T] | Generator[Any, None, _T],
-            *,
-            name: str | None = None,
-            context: Context | None = None,
+            self, coro: _CoroutineLike[_T], *, name: str | None = None, context: Context | None = None
         ) -> Task[_T]: ...
     elif sys.version_info >= (3, 8):
         @abstractmethod
-        def create_task(
-            self, coro: Coroutine[Any, Any, _T] | Generator[Any, None, _T], *, name: str | None = None
-        ) -> Task[_T]: ...
+        def create_task(self, coro: _CoroutineLike[_T], *, name: str | None = None) -> Task[_T]: ...
     else:
         @abstractmethod
-        def create_task(self, coro: Coroutine[Any, Any, _T] | Generator[Any, None, _T]) -> Task[_T]: ...
+        def create_task(self, coro: _CoroutineLike[_T]) -> Task[_T]: ...
 
     @abstractmethod
     def set_task_factory(self, factory: _TaskFactory | None) -> None: ...

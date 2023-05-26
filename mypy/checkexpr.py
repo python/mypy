@@ -102,8 +102,8 @@ from mypy.subtypes import is_equivalent, is_same_type, is_subtype, non_method_pr
 from mypy.traverser import has_await_expression
 from mypy.typeanal import (
     check_for_explicit_any,
-    expand_type_alias,
     has_any_from_unimported_type,
+    instantiate_type_alias,
     make_optional_type,
     set_any_tvars,
 )
@@ -151,16 +151,15 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    flatten_nested_tuples,
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
     has_recursive_types,
-    is_generic_instance,
     is_named_instance,
-    is_optional,
-    is_self_type_like,
-    remove_optional,
+    split_with_prefix_and_suffix,
 )
+from mypy.types_utils import is_generic_instance, is_optional, is_self_type_like, remove_optional
 from mypy.typestate import type_state
 from mypy.typevars import fill_typevars
 from mypy.typevartuples import find_unpack_in_list
@@ -2057,7 +2056,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if (
                     isinstance(first_actual_arg_type, TupleType)
                     and len(first_actual_arg_type.items) == 1
-                    and isinstance(get_proper_type(first_actual_arg_type.items[0]), UnpackType)
+                    and isinstance(first_actual_arg_type.items[0], UnpackType)
                 ):
                     # TODO: use walrus operator
                     actual_types = [first_actual_arg_type.items[0]] + [
@@ -2084,7 +2083,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                             callee_arg_types = unpacked_type.items
                             callee_arg_kinds = [ARG_POS] * len(actuals)
                         else:
-                            inner_unpack = get_proper_type(unpacked_type.items[inner_unpack_index])
+                            inner_unpack = unpacked_type.items[inner_unpack_index]
                             assert isinstance(inner_unpack, UnpackType)
                             inner_unpacked_type = get_proper_type(inner_unpack.type)
                             # We assume heterogenous tuples are desugared earlier
@@ -3965,12 +3964,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         There are two different options here, depending on whether expr refers
         to a type alias or directly to a generic class. In the first case we need
-        to use a dedicated function typeanal.expand_type_alias(). This
-        is due to some differences in how type arguments are applied and checked.
+        to use a dedicated function typeanal.instantiate_type_alias(). This
+        is due to slight differences in how type arguments are applied and checked.
         """
         if isinstance(tapp.expr, RefExpr) and isinstance(tapp.expr.node, TypeAlias):
             # Subscription of a (generic) alias in runtime context, expand the alias.
-            item = expand_type_alias(
+            item = instantiate_type_alias(
                 tapp.expr.node,
                 tapp.types,
                 self.chk.fail,
@@ -4073,6 +4072,35 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # The _SpecialForm type can be used in some runtime contexts (e.g. it may have __or__).
             return self.named_type("typing._SpecialForm")
 
+    def split_for_callable(
+        self, t: CallableType, args: Sequence[Type], ctx: Context
+    ) -> list[Type]:
+        """Handle directly applying type arguments to a variadic Callable.
+
+        This is needed in situations where e.g. variadic class object appears in
+        runtime context. For example:
+            class C(Generic[T, Unpack[Ts]]): ...
+            x = C[int, str]()
+
+        We simply group the arguments that need to go into Ts variable into a TupleType,
+        similar to how it is done in other places using split_with_prefix_and_suffix().
+        """
+        vars = t.variables
+        if not vars or not any(isinstance(v, TypeVarTupleType) for v in vars):
+            return list(args)
+
+        prefix = next(i for (i, v) in enumerate(vars) if isinstance(v, TypeVarTupleType))
+        suffix = len(vars) - prefix - 1
+        args = flatten_nested_tuples(args)
+        if len(args) < len(vars) - 1:
+            self.msg.incompatible_type_application(len(vars), len(args), ctx)
+            return [AnyType(TypeOfAny.from_error)] * len(vars)
+
+        tvt = vars[prefix]
+        assert isinstance(tvt, TypeVarTupleType)
+        start, middle, end = split_with_prefix_and_suffix(tuple(args), prefix, suffix)
+        return list(start) + [TupleType(list(middle), tvt.tuple_fallback)] + list(end)
+
     def apply_type_arguments_to_callable(
         self, tp: Type, args: Sequence[Type], ctx: Context
     ) -> Type:
@@ -4086,19 +4114,28 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         tp = get_proper_type(tp)
 
         if isinstance(tp, CallableType):
-            if len(tp.variables) != len(args):
+            if len(tp.variables) != len(args) and not any(
+                isinstance(v, TypeVarTupleType) for v in tp.variables
+            ):
                 if tp.is_type_obj() and tp.type_object().fullname == "builtins.tuple":
                     # TODO: Specialize the callable for the type arguments
                     return tp
                 self.msg.incompatible_type_application(len(tp.variables), len(args), ctx)
                 return AnyType(TypeOfAny.from_error)
-            return self.apply_generic_arguments(tp, args, ctx)
+            return self.apply_generic_arguments(tp, self.split_for_callable(tp, args, ctx), ctx)
         if isinstance(tp, Overloaded):
             for it in tp.items:
-                if len(it.variables) != len(args):
+                if len(it.variables) != len(args) and not any(
+                    isinstance(v, TypeVarTupleType) for v in it.variables
+                ):
                     self.msg.incompatible_type_application(len(it.variables), len(args), ctx)
                     return AnyType(TypeOfAny.from_error)
-            return Overloaded([self.apply_generic_arguments(it, args, ctx) for it in tp.items])
+            return Overloaded(
+                [
+                    self.apply_generic_arguments(it, self.split_for_callable(it, args, ctx), ctx)
+                    for it in tp.items
+                ]
+            )
         return AnyType(TypeOfAny.special_form)
 
     def visit_list_expr(self, e: ListExpr) -> Type:
@@ -4152,7 +4189,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Used for list and set expressions, as well as for tuples
         # containing star expressions that don't refer to a
         # Tuple. (Note: "lst" stands for list-set-tuple. :-)
-        tv = TypeVarType("T", "T", -1, [], self.object_type())
+        tv = TypeVarType("T", "T", id=-1, values=[], upper_bound=self.object_type())
         constructor = CallableType(
             [tv],
             [nodes.ARG_STAR],
@@ -4319,12 +4356,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if dt:
             return dt
 
+        # Define type variables (used in constructors below).
+        kt = TypeVarType("KT", "KT", id=-1, values=[], upper_bound=self.object_type())
+        vt = TypeVarType("VT", "VT", id=-2, values=[], upper_bound=self.object_type())
+
         # Collect function arguments, watching out for **expr.
-        args: list[Expression] = []  # Regular "key: value"
-        stargs: list[Expression] = []  # For "**expr"
+        args: list[Expression] = []
+        expected_types: list[Type] = []
         for key, value in e.items:
             if key is None:
-                stargs.append(value)
+                args.append(value)
+                expected_types.append(
+                    self.chk.named_generic_type("_typeshed.SupportsKeysAndGetItem", [kt, vt])
+                )
             else:
                 tup = TupleExpr([key, value])
                 if key.line >= 0:
@@ -4333,52 +4377,23 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 else:
                     tup.line = value.line
                     tup.column = value.column
+                tup.end_line = value.end_line
+                tup.end_column = value.end_column
                 args.append(tup)
-        # Define type variables (used in constructors below).
-        kt = TypeVarType("KT", "KT", -1, [], self.object_type())
-        vt = TypeVarType("VT", "VT", -2, [], self.object_type())
-        rv = None
-        # Call dict(*args), unless it's empty and stargs is not.
-        if args or not stargs:
-            # The callable type represents a function like this:
-            #
-            #   def <unnamed>(*v: Tuple[kt, vt]) -> Dict[kt, vt]: ...
-            constructor = CallableType(
-                [TupleType([kt, vt], self.named_type("builtins.tuple"))],
-                [nodes.ARG_STAR],
-                [None],
-                self.chk.named_generic_type("builtins.dict", [kt, vt]),
-                self.named_type("builtins.function"),
-                name="<dict>",
-                variables=[kt, vt],
-            )
-            rv = self.check_call(constructor, args, [nodes.ARG_POS] * len(args), e)[0]
-        else:
-            # dict(...) will be called below.
-            pass
-        # Call rv.update(arg) for each arg in **stargs,
-        # except if rv isn't set yet, then set rv = dict(arg).
-        if stargs:
-            for arg in stargs:
-                if rv is None:
-                    constructor = CallableType(
-                        [
-                            self.chk.named_generic_type(
-                                "_typeshed.SupportsKeysAndGetItem", [kt, vt]
-                            )
-                        ],
-                        [nodes.ARG_POS],
-                        [None],
-                        self.chk.named_generic_type("builtins.dict", [kt, vt]),
-                        self.named_type("builtins.function"),
-                        name="<list>",
-                        variables=[kt, vt],
-                    )
-                    rv = self.check_call(constructor, [arg], [nodes.ARG_POS], arg)[0]
-                else:
-                    self.check_method_call_by_name("update", rv, [arg], [nodes.ARG_POS], arg)
-        assert rv is not None
-        return rv
+                expected_types.append(TupleType([kt, vt], self.named_type("builtins.tuple")))
+
+        # The callable type represents a function like this (except we adjust for **expr):
+        #   def <dict>(*v: Tuple[kt, vt]) -> Dict[kt, vt]: ...
+        constructor = CallableType(
+            expected_types,
+            [nodes.ARG_POS] * len(expected_types),
+            [None] * len(expected_types),
+            self.chk.named_generic_type("builtins.dict", [kt, vt]),
+            self.named_type("builtins.function"),
+            name="<dict>",
+            variables=[kt, vt],
+        )
+        return self.check_call(constructor, args, [nodes.ARG_POS] * len(args), e)[0]
 
     def find_typeddict_context(
         self, context: Type | None, dict_expr: DictExpr
@@ -4707,7 +4722,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             # Infer the type of the list comprehension by using a synthetic generic
             # callable type.
-            tv = TypeVarType("T", "T", -1, [], self.object_type())
+            tv = TypeVarType("T", "T", id=-1, values=[], upper_bound=self.object_type())
             tv_list: list[Type] = [tv]
             constructor = CallableType(
                 tv_list,
@@ -4727,8 +4742,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             # Infer the type of the list comprehension by using a synthetic generic
             # callable type.
-            ktdef = TypeVarType("KT", "KT", -1, [], self.object_type())
-            vtdef = TypeVarType("VT", "VT", -2, [], self.object_type())
+            ktdef = TypeVarType("KT", "KT", id=-1, values=[], upper_bound=self.object_type())
+            vtdef = TypeVarType("VT", "VT", id=-2, values=[], upper_bound=self.object_type())
             constructor = CallableType(
                 [ktdef, vtdef],
                 [nodes.ARG_POS, nodes.ARG_POS],

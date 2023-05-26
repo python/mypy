@@ -3,7 +3,7 @@ import types
 from _typeshed import IdentityFunction, SupportsAllComparisons, SupportsItems
 from collections.abc import Callable, Hashable, Iterable, Sequence, Sized
 from typing import Any, Generic, NamedTuple, TypeVar, overload
-from typing_extensions import Literal, Self, TypeAlias, final
+from typing_extensions import Literal, Self, TypeAlias, TypedDict, final
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -44,12 +44,20 @@ class _CacheInfo(NamedTuple):
     maxsize: int | None
     currsize: int
 
+if sys.version_info >= (3, 9):
+    class _CacheParameters(TypedDict):
+        maxsize: int
+        typed: bool
+
 @final
 class _lru_cache_wrapper(Generic[_T]):
     __wrapped__: Callable[..., _T]
     def __call__(self, *args: Hashable, **kwargs: Hashable) -> _T: ...
     def cache_info(self) -> _CacheInfo: ...
     def cache_clear(self) -> None: ...
+    if sys.version_info >= (3, 9):
+        def cache_parameters(self) -> _CacheParameters: ...
+
     def __copy__(self) -> _lru_cache_wrapper[_T]: ...
     def __deepcopy__(self, __memo: Any) -> _lru_cache_wrapper[_T]: ...
 

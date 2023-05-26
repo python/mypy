@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterable, List, Sequence
+from typing import TYPE_CHECKING, Iterable, List, Sequence, cast
 from typing_extensions import Final
 
 import mypy.subtypes
@@ -46,15 +46,11 @@ from mypy.types import (
     has_recursive_types,
     has_type_vars,
     is_named_instance,
-    is_union_with_any,
-)
-from mypy.typestate import type_state
-from mypy.typevartuples import (
-    extract_unpack,
-    find_unpack_in_list,
-    split_with_mapped_and_template,
     split_with_prefix_and_suffix,
 )
+from mypy.types_utils import is_union_with_any
+from mypy.typestate import type_state
+from mypy.typevartuples import extract_unpack, find_unpack_in_list, split_with_mapped_and_template
 
 if TYPE_CHECKING:
     from mypy.infer import ArgumentInferContext
@@ -146,7 +142,7 @@ def infer_constraints_for_callable(
                 # not to hold we can always handle the prefixes too.
                 inner_unpack = unpacked_type.items[0]
                 assert isinstance(inner_unpack, UnpackType)
-                inner_unpacked_type = get_proper_type(inner_unpack.type)
+                inner_unpacked_type = inner_unpack.type
                 assert isinstance(inner_unpacked_type, TypeVarTupleType)
                 suffix_len = len(unpacked_type.items) - 1
                 constraints.append(
@@ -669,7 +665,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         instance.type.type_var_tuple_prefix,
                         instance.type.type_var_tuple_suffix,
                     )
-                    tvars = list(tvars_prefix + tvars_suffix)
+                    tvars = cast("list[TypeVarLikeType]", list(tvars_prefix + tvars_suffix))
                 else:
                     mapped_args = mapped.args
                     instance_args = instance.args
@@ -738,7 +734,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         template.type.type_var_tuple_prefix,
                         template.type.type_var_tuple_suffix,
                     )
-                    tvars = list(tvars_prefix + tvars_suffix)
+                    tvars = cast("list[TypeVarLikeType]", list(tvars_prefix + tvars_suffix))
                 else:
                     mapped_args = mapped.args
                     template_args = template.args

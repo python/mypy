@@ -696,7 +696,8 @@ def process_options(
         "--disallow-incomplete-defs",
         default=False,
         strict_flag=True,
-        help="Disallow defining functions with incomplete type annotations",
+        help="Disallow defining functions with incomplete type annotations "
+        "(while still allowing entirely unannotated definitions)",
         group=untyped_group,
     )
     add_invertible_flag(
@@ -1498,7 +1499,7 @@ def read_types_packages_to_install(cache_dir: str, after_run: bool) -> list[str]
         # No missing stubs.
         return []
     with open(fnam) as f:
-        return [line.strip() for line in f.readlines()]
+        return [line.strip() for line in f]
 
 
 def install_types(

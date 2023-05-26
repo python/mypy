@@ -58,10 +58,10 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
-    _flattened,
     get_proper_type,
     is_named_instance,
 )
+from mypy.types_utils import flatten_types
 from mypy.typestate import SubtypeKind, type_state
 from mypy.typevars import fill_typevars_with_any
 from mypy.typevartuples import extract_unpack, fully_split_with_mapped_and_template
@@ -435,7 +435,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # dynamic base classes correctly, see #5456.
             return not isinstance(self.right, NoneType)
         right = self.right
-        if isinstance(right, TupleType) and mypy.typeops.tuple_fallback(right).type.is_enum:
+        if isinstance(right, TupleType) and right.partial_fallback.type.is_enum:
             return self._is_subtype(left, mypy.typeops.tuple_fallback(right))
         if isinstance(right, Instance):
             if type_state.is_cached_subtype_check(self._subtype_kind, left, right):
@@ -661,6 +661,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_unpack_type(self, left: UnpackType) -> bool:
         if isinstance(self.right, UnpackType):
             return self._is_subtype(left.type, self.right.type)
+        if isinstance(self.right, Instance) and self.right.type.fullname == "builtins.object":
+            return True
         return False
 
     def visit_parameters(self, left: Parameters) -> bool:
@@ -749,7 +751,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     #       for isinstance(x, tuple), though it's unclear why.
                     return True
                 return all(self._is_subtype(li, iter_type) for li in left.items)
-            elif self._is_subtype(mypy.typeops.tuple_fallback(left), right):
+            elif self._is_subtype(left.partial_fallback, right) and self._is_subtype(
+                mypy.typeops.tuple_fallback(left), right
+            ):
                 return True
             return False
         elif isinstance(right, TupleType):
@@ -911,7 +915,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
             fast_check: set[ProperType] = set()
 
-            for item in _flattened(self.right.relevant_items()):
+            for item in flatten_types(self.right.relevant_items()):
                 p_item = get_proper_type(item)
                 fast_check.add(p_item)
                 if isinstance(p_item, Instance) and p_item.last_known_value is not None:
@@ -1714,7 +1718,7 @@ def unify_generic_callable(
     # (probably also because solver needs subtyping). See also comment in
     # ExpandTypeVisitor.visit_erased_type().
     applied = mypy.applytype.apply_generic_arguments(
-        type, non_none_inferred_vars, report, context=target, allow_erased_callables=True
+        type, non_none_inferred_vars, report, context=target
     )
     if had_errors:
         return None

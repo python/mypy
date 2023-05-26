@@ -1043,3 +1043,19 @@ class C(Generic[T]):
     def test(cls) -> None:
         cls.attr
 [builtins fixtures/classmethod.pyi]
+
+[case testRecursiveAliasTuple]
+from typing_extensions import Literal, TypeAlias
+from typing import Tuple, Union
+
+Expr: TypeAlias = Union[
+    Tuple[Literal[123], int],
+    Tuple[Literal[456], "Expr"],
+]
+
+def eval(e: Expr) -> int:
+    if e[0] == 123:
+        return e[1]
+    elif e[0] == 456:
+        return -eval(e[1])
+[builtins fixtures/dict.pyi]

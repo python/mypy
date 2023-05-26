@@ -245,6 +245,7 @@ from mypy.types import (
     FINAL_TYPE_NAMES,
     NEVER_NAMES,
     OVERLOAD_NAMES,
+    OVERRIDE_DECORATOR_NAMES,
     PROTOCOL_NAMES,
     REVEAL_TYPE_NAMES,
     TPDICT_NAMES,
@@ -269,15 +270,15 @@ from mypy.types import (
     TypeOfAny,
     TypeType,
     TypeVarLikeType,
+    TypeVarTupleType,
     TypeVarType,
     UnboundType,
     UnpackType,
     get_proper_type,
     get_proper_types,
-    invalid_recursive_alias,
     is_named_instance,
-    store_argument_type,
 )
+from mypy.types_utils import is_invalid_recursive_alias, store_argument_type
 from mypy.typevars import fill_typevars
 from mypy.util import (
     correct_relative_import,
@@ -936,7 +937,7 @@ class SemanticAnalyzer(
     def remove_unpack_kwargs(self, defn: FuncDef, typ: CallableType) -> CallableType:
         if not typ.arg_kinds or typ.arg_kinds[-1] is not ArgKind.ARG_STAR2:
             return typ
-        last_type = get_proper_type(typ.arg_types[-1])
+        last_type = typ.arg_types[-1]
         if not isinstance(last_type, UnpackType):
             return typ
         last_type = get_proper_type(last_type.type)
@@ -1074,7 +1075,9 @@ class SemanticAnalyzer(
                 )
             else:
                 return
-        info.self_type = TypeVarType("Self", f"{info.fullname}.Self", 0, [], fill_typevars(info))
+        info.self_type = TypeVarType(
+            "Self", f"{info.fullname}.Self", id=0, values=[], upper_bound=fill_typevars(info)
+        )
 
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         self.statement = defn
@@ -1197,6 +1200,9 @@ class SemanticAnalyzer(
                     types.append(callable)
                     if item.var.is_property:
                         self.fail("An overload can not be a property", item)
+                # If any item was decorated with `@override`, the whole overload
+                # becomes an explicit override.
+                defn.is_explicit_override |= item.func.is_explicit_override
             elif isinstance(item, FuncDef):
                 if i == len(defn.items) - 1 and not self.is_stub_file:
                     impl = item
@@ -1496,6 +1502,10 @@ class SemanticAnalyzer(
                 dec.func.is_class = True
                 dec.var.is_classmethod = True
                 self.check_decorated_function_is_method("classmethod", dec)
+            elif refers_to_fullname(d, OVERRIDE_DECORATOR_NAMES):
+                removed.append(i)
+                dec.func.is_explicit_override = True
+                self.check_decorated_function_is_method("override", dec)
             elif refers_to_fullname(
                 d,
                 (
@@ -3417,8 +3427,18 @@ class SemanticAnalyzer(
                 allowed_alias_tvars=tvar_defs,
             )
 
+        # There can be only one variadic variable at most, the error is reported elsewhere.
+        new_tvar_defs = []
+        variadic = False
+        for td in tvar_defs:
+            if isinstance(td, TypeVarTupleType):
+                if variadic:
+                    continue
+                variadic = True
+            new_tvar_defs.append(td)
+
         qualified_tvars = [node.fullname for _name, node in found_type_vars]
-        return analyzed, tvar_defs, depends_on, qualified_tvars
+        return analyzed, new_tvar_defs, depends_on, qualified_tvars
 
     def is_pep_613(self, s: AssignmentStmt) -> bool:
         if s.unanalyzed_type is not None and isinstance(s.unanalyzed_type, UnboundType):
@@ -3605,7 +3625,7 @@ class SemanticAnalyzer(
     ) -> None:
         """Prohibit and fix recursive type aliases that are invalid/unsupported."""
         messages = []
-        if invalid_recursive_alias({current_node}, current_node.target):
+        if is_invalid_recursive_alias({current_node}, current_node.target):
             messages.append("Invalid recursive alias: a union item of itself")
         if detect_diverging_alias(
             current_node, current_node.target, self.lookup_qualified, self.tvar_scope
@@ -3647,7 +3667,7 @@ class SemanticAnalyzer(
                 has_explicit_value=has_explicit_value,
             )
         elif isinstance(lval, MemberExpr):
-            self.analyze_member_lvalue(lval, explicit_type, is_final)
+            self.analyze_member_lvalue(lval, explicit_type, is_final, has_explicit_value)
             if explicit_type and not self.is_self_member_ref(lval):
                 self.fail("Type cannot be declared in assignment to non-self attribute", lval)
         elif isinstance(lval, IndexExpr):
@@ -3824,7 +3844,9 @@ class SemanticAnalyzer(
                     has_explicit_value=True,
                 )
 
-    def analyze_member_lvalue(self, lval: MemberExpr, explicit_type: bool, is_final: bool) -> None:
+    def analyze_member_lvalue(
+        self, lval: MemberExpr, explicit_type: bool, is_final: bool, has_explicit_value: bool
+    ) -> None:
         """Analyze lvalue that is a member expression.
 
         Arguments:
@@ -3853,12 +3875,18 @@ class SemanticAnalyzer(
                 and explicit_type
             ):
                 self.attribute_already_defined(lval.name, lval, cur_node)
-            # If the attribute of self is not defined in superclasses, create a new Var, ...
+            if self.type.is_protocol and has_explicit_value and cur_node is not None:
+                # Make this variable non-abstract, it would be safer to do this only if we
+                # are inside __init__, but we do this always to preserve historical behaviour.
+                if isinstance(cur_node.node, Var):
+                    cur_node.node.is_abstract_var = False
             if (
+                # If the attribute of self is not defined, create a new Var, ...
                 node is None
-                or (isinstance(node.node, Var) and node.node.is_abstract_var)
+                # ... or if it is defined as abstract in a *superclass*.
+                or (cur_node is None and isinstance(node.node, Var) and node.node.is_abstract_var)
                 # ... also an explicit declaration on self also creates a new Var.
-                # Note that `explicit_type` might has been erased for bare `Final`,
+                # Note that `explicit_type` might have been erased for bare `Final`,
                 # so we also check if `is_final` is passed.
                 or (cur_node is None and (explicit_type or is_final))
             ):
@@ -4883,7 +4911,7 @@ class SemanticAnalyzer(
                 and isinstance(expr.callee.expr, NameExpr)
                 and expr.callee.expr.name == "__all__"
                 and expr.callee.expr.kind == GDEF
-                and expr.callee.name in ("append", "extend")
+                and expr.callee.name in ("append", "extend", "remove")
             ):
                 if expr.callee.name == "append" and expr.args:
                     self.add_exports(expr.args[0])
@@ -4893,6 +4921,12 @@ class SemanticAnalyzer(
                     and isinstance(expr.args[0], (ListExpr, TupleExpr))
                 ):
                     self.add_exports(expr.args[0].items)
+                elif (
+                    expr.callee.name == "remove"
+                    and expr.args
+                    and isinstance(expr.args[0], StrExpr)
+                ):
+                    self.all_exports = [n for n in self.all_exports if n != expr.args[0].value]
 
     def translate_dict_call(self, call: CallExpr) -> DictExpr | None:
         """Translate 'dict(x=y, ...)' to {'x': y, ...} and 'dict()' to {}.

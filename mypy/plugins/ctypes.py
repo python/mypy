@@ -30,10 +30,10 @@ def _find_simplecdata_base_arg(
 
     None is returned if _SimpleCData appears nowhere in tp's (direct or indirect) bases.
     """
-    if tp.type.has_base("ctypes._SimpleCData"):
+    if tp.type.has_base("_ctypes._SimpleCData"):
         simplecdata_base = map_instance_to_supertype(
             tp,
-            api.named_generic_type("ctypes._SimpleCData", [AnyType(TypeOfAny.special_form)]).type,
+            api.named_generic_type("_ctypes._SimpleCData", [AnyType(TypeOfAny.special_form)]).type,
         )
         assert len(simplecdata_base.args) == 1, "_SimpleCData takes exactly one type argument"
         return get_proper_type(simplecdata_base.args[0])
@@ -88,7 +88,7 @@ def _autounboxed_cdata(tp: Type) -> ProperType:
         return make_simplified_union([_autounboxed_cdata(t) for t in tp.items])
     elif isinstance(tp, Instance):
         for base in tp.type.bases:
-            if base.type.fullname == "ctypes._SimpleCData":
+            if base.type.fullname == "_ctypes._SimpleCData":
                 # If tp has _SimpleCData as a direct base class,
                 # the auto-unboxed type is the single type argument of the _SimpleCData type.
                 assert len(base.args) == 1
@@ -102,7 +102,7 @@ def _get_array_element_type(tp: Type) -> ProperType | None:
     """Get the element type of the Array type tp, or None if not specified."""
     tp = get_proper_type(tp)
     if isinstance(tp, Instance):
-        assert tp.type.fullname == "ctypes.Array"
+        assert tp.type.fullname == "_ctypes.Array"
         if len(tp.args) == 1:
             return get_proper_type(tp.args[0])
     return None

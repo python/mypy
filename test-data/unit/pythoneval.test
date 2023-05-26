@@ -1350,7 +1350,7 @@ def f() -> Dict[int, str]:
 def d() -> Dict[int, int]:
     return {}
 [out]
-_testDictWithStarStarSpecialCase.py:4: error: Argument 1 to "update" of "MutableMapping" has incompatible type "Dict[int, int]"; expected "SupportsKeysAndGetItem[int, str]"
+_testDictWithStarStarSpecialCase.py:4: error: Unpacked dict entry 1 has incompatible type "Dict[int, int]"; expected "SupportsKeysAndGetItem[int, str]"
 
 [case testLoadsOfOverloads]
 from typing import overload, Any, TypeVar, Iterable, List, Dict, Callable, Union
@@ -1986,3 +1986,28 @@ def good9(foo1: Foo[Concatenate[int, P]], foo2: Foo[[int, str, bytes]], *args: P
 
 [out]
 _testStrictEqualitywithParamSpec.py:11: error: Non-overlapping equality check (left operand type: "Foo[[int]]", right operand type: "Bar[[int]]")
+
+[case testTypeVarTuple]
+# flags: --enable-incomplete-feature=TypeVarTuple --enable-incomplete-feature=Unpack --python-version=3.11
+from typing import Any, Callable, Unpack, TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+
+def foo(callback: Callable[[], Any]) -> None:
+    call(callback)
+
+def call(callback: Callable[[Unpack[Ts]], Any], *args: Unpack[Ts]) -> Any:
+    ...
+
+[case testTypeVarTupleTypingExtensions]
+# flags: --enable-incomplete-feature=TypeVarTuple --enable-incomplete-feature=Unpack
+from typing_extensions import Unpack, TypeVarTuple
+from typing import Any, Callable
+
+Ts = TypeVarTuple("Ts")
+
+def foo(callback: Callable[[], Any]) -> None:
+    call(callback)
+
+def call(callback: Callable[[Unpack[Ts]], Any], *args: Unpack[Ts]) -> Any:
+    ...

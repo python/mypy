@@ -139,6 +139,16 @@ def literal_hash(e: Expression) -> Key | None:
     return e.accept(_hasher)
 
 
+def extract_var_from_literal_hash(key: Key) -> Var | None:
+    """If key refers to a Var node, return it.
+
+    Return None otherwise.
+    """
+    if len(key) == 2 and key[0] == "Var" and isinstance(key[1], Var):
+        return key[1]
+    return None
+
+
 class _Hasher(ExpressionVisitor[Optional[Key]]):
     def visit_int_expr(self, e: IntExpr) -> Key:
         return ("Literal", e.value)

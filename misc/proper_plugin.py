@@ -88,6 +88,7 @@ def is_special_target(right: ProperType) -> bool:
             "mypy.types.UnpackType",
             "mypy.types.TypeVarTupleType",
             "mypy.types.ParamSpecType",
+            "mypy.types.Parameters",
             "mypy.types.RawExpressionType",
             "mypy.types.EllipsisType",
             "mypy.types.StarType",

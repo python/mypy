@@ -71,7 +71,7 @@ def g(arg: int) -> None:
 from functools import singledispatch
 
 @singledispatch
-def f(arg) -> None: 
+def f(arg) -> None:
     pass
 
 @f.register(str)

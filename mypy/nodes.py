@@ -287,6 +287,7 @@ class MypyFile(SymbolNode):
         "names",
         "imports",
         "ignored_lines",
+        "unreachable_lines",
         "is_stub",
         "is_cache_skeleton",
         "is_partial_stub_package",
@@ -313,6 +314,8 @@ class MypyFile(SymbolNode):
     # If the value is empty, ignore all errors; otherwise, the list contains all
     # error codes to ignore.
     ignored_lines: dict[int, list[str]]
+    # Lines that are statically unreachable (e.g. due to platform/version check).
+    unreachable_lines: set[int]
     # Is this file represented by a stub file (.pyi)?
     is_stub: bool
     # Is this loaded from the cache and thus missing the actual body of the file?
@@ -345,6 +348,7 @@ class MypyFile(SymbolNode):
             self.ignored_lines = ignored_lines
         else:
             self.ignored_lines = {}
+        self.unreachable_lines = set()
 
         self.path = ""
         self.is_stub = False
@@ -508,6 +512,7 @@ class FuncBase(Node):
         "is_class",  # Uses "@classmethod" (explicit or implicit)
         "is_static",  # Uses "@staticmethod"
         "is_final",  # Uses "@final"
+        "is_explicit_override",  # Uses "@override"
         "_fullname",
     )
 
@@ -525,6 +530,7 @@ class FuncBase(Node):
         self.is_class = False
         self.is_static = False
         self.is_final = False
+        self.is_explicit_override = False
         # Name with module prefix
         self._fullname = ""
 
@@ -3465,6 +3471,7 @@ class TypeAlias(SymbolNode):
         "normalized",
         "_is_recursive",
         "eager",
+        "tvar_tuple_index",
     )
 
     __match_args__ = ("name", "target", "alias_tvars", "no_args")
@@ -3492,6 +3499,10 @@ class TypeAlias(SymbolNode):
         # it is the cached value.
         self._is_recursive: bool | None = None
         self.eager = eager
+        self.tvar_tuple_index = None
+        for i, t in enumerate(alias_tvars):
+            if isinstance(t, mypy.types.TypeVarTupleType):
+                self.tvar_tuple_index = i
         super().__init__(line, column)
 
     @classmethod

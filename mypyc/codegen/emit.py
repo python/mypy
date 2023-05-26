@@ -229,6 +229,9 @@ class Emitter:
         if isinstance(label, str):
             text = label
         else:
+            if label.label == 0 or not label.referenced:
+                return
+
             text = self.label(label)
         # Extra semicolon prevents an error when the next line declares a tempvar
         self.fragments.append(f"{text}: ;\n")
