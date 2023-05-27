@@ -100,6 +100,7 @@ def f(b: bool) -> Any:
 
     m = 1 if b else None
     n = None if b else 1
+    return ((x, y), (m, n))
 
 def gen(b: bool) -> Generator[Any, None, None]:
     if b:
@@ -108,8 +109,10 @@ def gen(b: bool) -> Generator[Any, None, None]:
         y = None
     yield y
 
-f(False)
-next(gen(False))
+assert f(False) == ((1, None), (None, 1))
+assert f(True) == ((None, 1), (1, None))
+assert next(gen(False)) is None
+assert next(gen(True)) == 1
 
 [case testWith]
 from typing import Any
