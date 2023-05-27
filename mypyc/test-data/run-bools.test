@@ -227,3 +227,62 @@ y = False
 print((y or 0) and True)
 [out]
 0
+
+[case testBoolAttributes]
+from typing import Any
+from testutil import assertRaises
+
+class Settings:
+    __deletable__ = ["debug", "hidden"]
+
+    debug: bool = False
+    color: bool = True
+    hidden: bool
+
+def test_get_set() -> None:
+    s = Settings()
+    assert not s.debug
+    assert s.color
+    with assertRaises(AttributeError, "attribute 'hidden' of 'Settings' undefined"):
+        s.hidden
+    s.debug = True
+    s.color = False
+    s.hidden = True
+    assert s.debug
+    assert not s.color
+    assert s.hidden
+
+def test_get_set_any() -> None:
+    s: Any = Settings()
+    assert not s.debug
+    assert s.color
+    with assertRaises(AttributeError, "attribute 'hidden' of 'Settings' undefined"):
+        s.hidden
+    s.debug = True
+    s.color = False
+    s.hidden = True
+    assert s.debug
+    assert not s.color
+    assert s.hidden
+
+def test_del() -> None:
+    s = Settings()
+    s.hidden = True
+    del s.debug
+    del s.hidden
+    with assertRaises(AttributeError, "attribute 'debug' of 'Settings' undefined"):
+        s.debug
+    with assertRaises(AttributeError, "attribute 'hidden' of 'Settings' undefined"):
+        s.hidden
+
+def test_del_any() -> None:
+    s: Any = Settings()
+    s.hidden = True
+    del s.debug
+    del s.hidden
+    with assertRaises(AttributeError, "'Settings' object attribute 'color' cannot be deleted"):
+        del s.color
+    with assertRaises(AttributeError, "attribute 'debug' of 'Settings' undefined"):
+        s.debug
+    with assertRaises(AttributeError, "attribute 'hidden' of 'Settings' undefined"):
+        s.hidden

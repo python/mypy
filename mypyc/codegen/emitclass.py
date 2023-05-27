@@ -1012,8 +1012,8 @@ def generate_getseters(cl: ClassIR, emitter: Emitter) -> None:
                 emitter.emit_line("")
             if not generic_setter_name(rtype):
                 generate_setter(cl, attr, rtype, emitter)
-            if i < len(cl.attributes) - 1:
-                emitter.emit_line("")
+                if i < len(cl.attributes) - 1:
+                    emitter.emit_line("")
     for prop, (getter, setter) in cl.properties.items():
         if getter.decl.implicit:
             continue
@@ -1088,20 +1088,21 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     if rtype.is_unboxed:
         emitter.emit_unbox("value", "tmp", rtype, error=ReturnHandler("-1"), declare_dest=True)
     elif is_same_type(rtype, object_rprimitive):
-        emitter.emit_line("PyObject *tmp = value;")
+        emitter.emit_line("PyObject *tmp = Py_NewRef(value);")
     else:
         emitter.emit_cast("value", "tmp", rtype, declare_dest=True)
         emitter.emit_lines("if (!tmp)", "    return -1;")
-    emitter.emit_inc_ref("tmp", rtype)
+        emitter.emit_inc_ref("tmp", rtype)
     emitter.emit_line(f"self->{attr_field} = tmp;")
     if rtype.error_overlap and not always_defined:
         emitter.emit_attr_bitmap_set("tmp", "self", rtype, cl, attr)
 
     if deletable:
-        emitter.emit_line("} else")
+        emitter.emit_line("} else {")
         emitter.emit_line(f"    self->{attr_field} = {emitter.c_undefined_value(rtype)};")
         if rtype.error_overlap:
             emitter.emit_attr_bitmap_clear("self", rtype, cl, attr)
+        emitter.emit_line("}")
     emitter.emit_line("return 0;")
     emitter.emit_line("}")
 

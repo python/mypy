@@ -21,7 +21,7 @@ static void set_bitmap(PyObject *self, CPyAttr_Context *context, bool defined) {
     if (defined) {
         *bitmap |= context->bitmap.mask;
     } else {
-        *bitmap &= context->bitmap.mask;
+        *bitmap &= ~context->bitmap.mask;
     }
 }
 
