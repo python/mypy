@@ -76,7 +76,7 @@ def dataclass_decorator_type(d: Expression) -> str | None:
                 assert isinstance(value, NameExpr)
                 attrs_slots = value.name == "True"
             if attrs_slots:  # TODO: add support
-                raise ValueError("slotted attrs classes are not supported")
+                raise ValueError("Slotted attrs classes are not supported")
 
             return "attrs-auto" if attrs_auto_attribs else "attrs"
         return name
