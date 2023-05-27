@@ -900,13 +900,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if isinstance(o.metaclass, (NameExpr, MemberExpr)):
             meta = o.metaclass.accept(AliasPrinter(self))
             base_types.append("metaclass=" + meta)
-        elif self.analyzed and o.info.is_protocol:
-            type_str = "Protocol"
-            if o.info.type_vars:
-                type_str += f'[{", ".join(o.info.type_vars)}]'
-            base_types.append(type_str)
-            self.add_typing_import("Protocol")
-        elif self.analyzed and o.info.is_abstract:
+        elif self.analyzed and o.info.is_abstract and not o.info.is_protocol:
             base_types.append("metaclass=abc.ABCMeta")
             self.import_tracker.add_import("abc")
             self.import_tracker.require_name("abc")
@@ -933,7 +927,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         """Get list of base classes for a class."""
         base_types: list[str] = []
         p = AliasPrinter(self)
-        for base in cdef.base_type_exprs:
+        for base in cdef.base_type_exprs + cdef.removed_base_type_exprs:
             if isinstance(base, (NameExpr, MemberExpr)):
                 if self.get_fullname(base) != "builtins.object":
                     base_types.append(get_qualified_name(base))
