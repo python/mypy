@@ -81,16 +81,22 @@ from vecs import vec, append
 from typing import Optional
 
 def f(v: vec[Optional[str]]) -> vec[Optional[str]]:
-    return append(v, 'x')
+    v = append(v, 'x')
+    return append(v, None)
 [out]
 def f(v):
     v :: vec[union[str, None]]
     r0 :: str
     r1 :: vec[union[str, None]]
+    r2 :: object
+    r3 :: vec[union[str, None]]
 L0:
     r0 = 'x'
     r1 = VecTApi.append(v, r0)
-    return r1
+    v = r1
+    r2 = box(None, 1)
+    r3 = VecTApi.append(v, r2)
+    return r3
 
 [case testVecNestedCreateEmpty]
 from vecs import vec, append
@@ -118,28 +124,6 @@ L0:
     r1 = load_mem r0 :: builtins.object*
     r2 = VecTApi.alloc(0, r1)
     return r2
-
-[case testVecOptionalAppend]
-from vecs import vec, append
-from typing import Optional
-
-def f(v: vec[Optional[str]]) -> vec[Optional[str]]:
-    v = append(v, 'x')
-    return append(v, None)
-[out]
-def f(v):
-    v :: vec[union[str, None]]
-    r0 :: str
-    r1 :: vec[union[str, None]]
-    r2 :: object
-    r3 :: vec[union[str, None]]
-L0:
-    r0 = 'x'
-    r1 = VecTExtApi.append(v, r0)
-    v = r1
-    r2 = box(None, 1)
-    r3 = VecTExtApi.append(v, r2)
-    return r3
 
 [case testVecGenericLen]
 from vecs import vec
