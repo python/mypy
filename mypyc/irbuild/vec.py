@@ -26,6 +26,7 @@ from mypyc.ir.rtypes import (
     RPrimitive,
     RType,
     RUnion,
+    RTuple,
     RVec,
     bool_rprimitive,
     c_int_rprimitive,
@@ -293,15 +294,6 @@ def vec_pop(builder: "LowLevelIRBuilder", base: Value, index: Value, line: int) 
     item_type = vec_type.item_type
     index = as_platform_int(builder, index, line)
 
-    if isinstance(index, Integer) and index.value == -1:
-        # Inline simple case
-        len_val = vec_len_native(builder, base)
-        index = builder.int_sub(len_val, 1)
-        item_addr = vec_item_ptr(builder, base, index)
-        item = builder.load_mem(item_addr, item_type)
-        builder.set_struct_field(base, VecObject, "len", index, line)
-        return item
-
     if is_int64_rprimitive(item_type):
         name = "VecI64Api.pop"
     elif vec_depth(vec_type) == 0 and not isinstance(item_type, RUnion):
@@ -311,7 +303,7 @@ def vec_pop(builder: "LowLevelIRBuilder", base: Value, index: Value, line: int) 
     call = CallC(
         name,
         [base, index],
-        item_type,
+        RTuple([vec_type, item_type]),
         steals=[False, False],
         is_borrowed=False,
         error_kind=ERR_MAGIC,

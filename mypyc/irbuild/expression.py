@@ -442,13 +442,6 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
         if val is not None:
             return val
 
-        if isinstance(receiver_typ, RVec) and all(k == ARG_POS for k in expr.arg_kinds):
-            # Vec methods are specialized with a custom mechanism,
-            # since normal specializations don't support vec receivers.
-            val = translate_vec_method_call(builder, callee.expr, callee.name, expr.args)
-            if val is not None:
-                return val
-
         obj = builder.accept(callee.expr)
         args = [builder.accept(arg) for arg in expr.args]
         return builder.gen_method_call(
@@ -592,23 +585,6 @@ def translate_vec_create_from_iterable(
 
     # TODO: Construct vec from arbitrary iterable
     assert False, (vec_type, arg)
-
-
-def translate_vec_method_call(
-    builder: IRBuilder, vec_expr: Expression, method: str, args: list[Expression]
-) -> Value | None:
-    if method == "pop" and 0 <= len(args) <= 1:
-        vec_val = builder.accept(vec_expr)
-        if args:
-            index = builder.accept(args[0])
-        else:
-            index = Integer(-1, c_pyssize_t_rprimitive)
-        return vec_pop(builder.builder, vec_val, index, vec_expr.line)
-    if method == "remove" and len(args) == 1:
-        vec_val = builder.accept(vec_expr)
-        item = builder.accept(args[0])
-        return vec_remove(builder.builder, vec_val, item, vec_expr.line)
-    return None
 
 
 def translate_cast_expr(builder: IRBuilder, expr: CastExpr) -> Value:

@@ -480,6 +480,8 @@ class Emitter:
             return self.tuple_undefined_check_cond(
                 item_type, tuple_expr_in_c + f".f{i}", c_type_compare_val, compare
             )
+        elif isinstance(item_type, RVec):
+            return f"{tuple_expr_in_c}.f{i}.len {compare} -1"
         else:
             check = f"{tuple_expr_in_c}.f{i} {compare} {c_type_compare_val(item_type)}"
             if rtuple.error_overlap and check_exception:
@@ -499,6 +501,8 @@ class Emitter:
                 return f"{{ {int_rprimitive.c_undefined} }}"
             items = ", ".join([self.c_initializer_undefined_value(t) for t in rtype.types])
             return f"{{ {items} }}"
+        elif isinstance(rtype, RVec):
+            res.append("{ -1, NULL }")
         else:
             return self.c_undefined_value(rtype)
 

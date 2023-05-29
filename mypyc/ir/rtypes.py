@@ -693,7 +693,10 @@ class TupleNameVisitor(RTypeVisitor[str]):
         return "O"
 
     def visit_rvec(self, t: RVec) -> str:
-        return "O"
+        if isinstance(t.item_type, RVec):
+            # All nested vecs share a representation
+            return "Vv"
+        return "V" + t.item_type.accept(self)
 
     def visit_runion(self, t: RUnion) -> str:
         return "O"
