@@ -89,6 +89,11 @@ typedef struct _VecTExtObject {
 } VecTExtObject;
 
 
+typedef struct {
+    VecI64 vec;
+    int64_t item;
+} VecI64PopResult;
+
 // vec[i64] operations + type objects (stored in a capsule)
 typedef struct _VecI64Features {
     PyTypeObject *boxed_type;
@@ -97,7 +102,7 @@ typedef struct _VecI64Features {
     PyObject *(*box)(VecI64);
     VecI64 (*unbox)(PyObject *);
     VecI64 (*append)(VecI64, int64_t);
-    VecI64 (*pop)(VecI64, Py_ssize_t, int64_t *result);
+    VecI64PopResult (*pop)(VecI64, Py_ssize_t);
     VecI64 (*remove)(VecI64, int64_t);
     // TODO: Py_ssize_t
     VecI64 (*slice)(VecI64, int64_t, int64_t);
@@ -106,6 +111,11 @@ typedef struct _VecI64Features {
     // bool (*contains)(PyObject *, int64_t);
     // iter?
 } VecI64Features;
+
+typedef struct {
+    VecT vec;
+    PyObject *item;
+} VecTPopResult;
 
 // vec[T] operations + type object (stored in a capsule)
 //
@@ -117,7 +127,7 @@ typedef struct _VecTFeatures {
     PyObject *(*box)(VecT);
     VecT (*unbox)(size_t);
     VecT (*append)(VecT, PyObject *);
-    VecT (*pop)(VecT, Py_ssize_t, PyObject **result);
+    VecTPopResult (*pop)(VecT, Py_ssize_t);
     VecT (*remove)(VecT, PyObject *);
     // TODO: Py_ssize_t
     VecT (*slice)(VecT, int64_t, int64_t);
@@ -126,6 +136,11 @@ typedef struct _VecTFeatures {
     // bool (*contains)(PyObject *, PyObject *);
     // iter?
 } VecTFeatures;
+
+typedef struct {
+    VecTExt vec;
+    VecbufTExtItem item;
+} VecTExtPopResult;
 
 // vec[T] operations for complex item types + type object (stored in a capsule)
 //
@@ -137,7 +152,7 @@ typedef struct _VecTExtFeatures {
     PyObject *(*box)(VecTExt);
     VecTExt (*unbox)(size_t, int optionals, int depth);
     VecTExt (*append)(VecTExt, VecbufTExtItem);
-    VecTExt (*pop)(VecTExt, Py_ssize_t, VecbufTExtItem *result);
+    VecTExtPopResult (*pop)(VecTExt, Py_ssize_t);
     VecTExt (*remove)(VecTExt, VecbufTExtItem);
     // TODO: Py_ssize_t
     VecTExt (*slice)(VecTExt, int64_t, int64_t);
@@ -199,7 +214,7 @@ static inline int VecI64_Check(PyObject *o) {
 PyObject *Vec_I64_Box(VecI64);
 VecI64 Vec_I64_Append(VecI64, int64_t x);
 VecI64 Vec_I64_Remove(VecI64, int64_t x);
-VecI64 Vec_I64_Pop(VecI64 v, Py_ssize_t index, int64_t *result);
+VecI64PopResult Vec_I64_Pop(VecI64 v, Py_ssize_t index);
 
 // vec[t] operations (simple)
 
@@ -224,7 +239,7 @@ PyObject *Vec_T_FromIterable(size_t item_type, PyObject *iterable);
 PyObject *Vec_T_Box(VecT);
 VecT Vec_T_Append(VecT vec, PyObject *x);
 VecT Vec_T_Remove(VecT vec, PyObject *x);
-VecT Vec_T_Pop(VecT v, Py_ssize_t index, PyObject **result);
+VecTPopResult Vec_T_Pop(VecT v, Py_ssize_t index);
 
 // vec[t] operations (extended)
 
@@ -257,7 +272,7 @@ PyObject *Vec_T_Ext_FromIterable(size_t item_type, int32_t optionals, int32_t de
 PyObject *Vec_T_Ext_Box(VecTExt);
 VecTExt Vec_T_Ext_Append(VecTExt vec, VecbufTExtItem x);
 VecTExt Vec_T_Ext_Remove(VecTExt vec, VecbufTExtItem x);
-VecTExt Vec_T_Ext_Pop(VecTExt v, Py_ssize_t index, VecbufTExtItem *result);
+VecTExtPopResult Vec_T_Ext_Pop(VecTExt v, Py_ssize_t index);
 
 // Return 0 on success, -1 on error. Store unboxed item in *unboxed if successful.
 // Return a new reference.

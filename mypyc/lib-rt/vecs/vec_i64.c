@@ -256,23 +256,28 @@ VecI64 Vec_I64_Remove(VecI64 v, int64_t x) {
     return Vec_I64_Error();
 }
 
-VecI64 Vec_I64_Pop(VecI64 v, Py_ssize_t index, int64_t *result) {
+VecI64PopResult Vec_I64_Pop(VecI64 v, Py_ssize_t index) {
+    VecI64PopResult result;
+
     if (index < 0)
         index += v.len;
 
     if (index < 0 || index >= v.len) {
         PyErr_SetString(PyExc_IndexError, "index out of range");
-        return Vec_I64_Error();
+        result.vec = Vec_I64_Error();
+        result.item = 0;
+        return result;
     }
 
-    *result = v.buf->items[index];
+    result.item = v.buf->items[index];
     for (Py_ssize_t i = index; i < v.len - 1; i++) {
         v.buf->items[i] = v.buf->items[i + 1];
     }
 
     v.len--;
     VEC_INCREF(v);
-    return v;
+    result.vec = v;
+    return result;
 }
 
 static PyMappingMethods VecI64Mapping = {

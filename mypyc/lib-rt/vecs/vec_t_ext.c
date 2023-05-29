@@ -256,24 +256,30 @@ VecTExt Vec_T_Ext_Remove(VecTExt self, VecbufTExtItem arg) {
     return Vec_T_Ext_Error();
 }
 
-VecTExt Vec_T_Ext_Pop(VecTExt v, Py_ssize_t index, VecbufTExtItem *result) {
+VecTExtPopResult Vec_T_Ext_Pop(VecTExt v, Py_ssize_t index) {
+    VecTExtPopResult result;
+
     if (index < 0)
         index += v.len;
 
     if (index < 0 || index >= v.len) {
         PyErr_SetString(PyExc_IndexError, "index out of range");
-        return Vec_T_Ext_Error();
+        result.vec = Vec_T_Ext_Error();
+        result.item.len = 0;
+        result.item.buf = NULL;
+        return result;
     }
 
     VecbufTExtItem *items = v.buf->items;
-    *result = items[index];
+    result.item = items[index];
     for (Py_ssize_t i = index; i < v.len - 1; i++)
         items[i] = items[i + 1];
     if (v.len > 0)
         Py_XINCREF(items[v.len - 1].buf);
     v.len--;
     VEC_INCREF(v);
-    return v;
+    result.vec = v;
+    return result;
 }
 
 static int

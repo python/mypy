@@ -424,43 +424,46 @@ static PyObject *vecs_pop(PyObject *self, PyObject *args)
 
     if (VecI64_Check(vec)) {
         VecI64 v = ((VecI64Object *)vec)->vec;
-        int64_t item;
-        v = Vec_I64_Pop(v, index, &item);
-        if (VEC_IS_ERROR(v))
+        VecI64PopResult r;
+        r = Vec_I64_Pop(v, index);
+        if (VEC_IS_ERROR(r.vec))
             return NULL;
 
-        result_item0 = Vec_I64_Box(v);
+        result_item0 = Vec_I64_Box(r.vec);
         if (result_item0 == NULL)
             return NULL;
-        result_item1 = PyLong_FromLongLong(item);
+        result_item1 = PyLong_FromLongLong(r.item);
     } else if (VecT_Check(vec)) {
         VecT v = ((VecTObject *)vec)->vec;
-        v = Vec_T_Pop(v, index, &result_item1);
-        if (VEC_IS_ERROR(v))
+        VecTPopResult r;
+        r = Vec_T_Pop(v, index);
+        if (VEC_IS_ERROR(r.vec))
             return NULL;
 
-        result_item0 = Vec_T_Box(v);
+        result_item0 = Vec_T_Box(r.vec);
         if (result_item0 == NULL) {
-            Py_DECREF(result_item1);
+            Py_DECREF(r.item);
             return NULL;
         }
+        result_item1 = r.item;
     } else if (VecTExt_Check(vec)) {
         VecTExt v = ((VecTExtObject *)vec)->vec;
-        VecbufTExtItem item;
-        v = Vec_T_Ext_Pop(v, index, &item);
-        if (VEC_IS_ERROR(v))
+        VecTExtPopResult r;
+        r = Vec_T_Ext_Pop(v, index);
+        if (VEC_IS_ERROR(r.vec))
             return NULL;
 
-        result_item0 = Vec_T_Ext_Box(v);
+        result_item0 = Vec_T_Ext_Box(r.vec);
         if (result_item0 == NULL) {
-            Py_DECREF(item.buf);
+            Py_DECREF(r.vec.buf);
+            Py_DECREF(r.item.buf);
             return NULL;
         }
 
-        result_item1 = Vec_T_Ext_BoxItem(v, item);
+        result_item1 = Vec_T_Ext_BoxItem(r.vec, r.item);
         if (result_item1 == NULL) {
             Py_DECREF(result_item0);
-            Py_DECREF(item.buf);
+            Py_DECREF(r.item.buf);
             return NULL;
         }
     } else {
