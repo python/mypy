@@ -2446,6 +2446,8 @@ class TypeVarLikeExpr(SymbolNode, Expression):
     # Upper bound: only subtypes of upper_bound are valid as values. By default
     # this is 'object', meaning no restriction.
     upper_bound: mypy.types.Type
+    # Default: used to resolve the TypeVar if the default is not explicitly given.
+    # By default this is 'AnyType(TypeOfAny.from_omitted_generics)'. See PEP 696.
     default: mypy.types.Type
     # Variance of the type variable. Invariant is the default.
     # TypeVar(..., covariant=True) defines a covariant type variable.
