@@ -1019,7 +1019,7 @@ class RVec(RType):
             # TODO: buf_type
         else:
             self._ctype = "VecT"
-            # TODO: buf_type
+            self.buf_type = VecbufTObject
 
     def field_type(self, name: str) -> RType:
         if name == "len":
@@ -1285,7 +1285,7 @@ VecI64 = RStruct(
 
 # Buffer for vec[t]
 VecbufTObject = RStruct(
-    name="VecTObject",
+    name="VecbufTObject",
     names=["ob_base", "item_type", "items"],
     types=[PyVarObject, c_pyssize_t_rprimitive, object_rprimitive],
 )
