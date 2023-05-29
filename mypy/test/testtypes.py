@@ -141,8 +141,23 @@ class TypesSuite(Suite):
         )
 
     def test_type_variable_binding(self) -> None:
-        assert_equal(str(TypeVarType("X", "X", 1, [], self.fx.o)), "X`1")
-        assert_equal(str(TypeVarType("X", "X", 1, [self.x, self.y], self.fx.o)), "X`1")
+        assert_equal(
+            str(TypeVarType("X", "X", 1, [], self.fx.o, AnyType(TypeOfAny.from_omitted_generics))),
+            "X`1",
+        )
+        assert_equal(
+            str(
+                TypeVarType(
+                    "X",
+                    "X",
+                    1,
+                    [self.x, self.y],
+                    self.fx.o,
+                    AnyType(TypeOfAny.from_omitted_generics),
+                )
+            ),
+            "X`1",
+        )
 
     def test_generic_function_type(self) -> None:
         c = CallableType(
@@ -152,11 +167,16 @@ class TypesSuite(Suite):
             self.y,
             self.function,
             name=None,
-            variables=[TypeVarType("X", "X", -1, [], self.fx.o)],
+            variables=[
+                TypeVarType("X", "X", -1, [], self.fx.o, AnyType(TypeOfAny.from_omitted_generics))
+            ],
         )
         assert_equal(str(c), "def [X] (X?, Y?) -> Y?")
 
-        v = [TypeVarType("Y", "Y", -1, [], self.fx.o), TypeVarType("X", "X", -2, [], self.fx.o)]
+        v = [
+            TypeVarType("Y", "Y", -1, [], self.fx.o, AnyType(TypeOfAny.from_omitted_generics)),
+            TypeVarType("X", "X", -2, [], self.fx.o, AnyType(TypeOfAny.from_omitted_generics)),
+        ]
         c2 = CallableType([], [], [], NoneType(), self.function, name=None, variables=v)
         assert_equal(str(c2), "def [Y, X] ()")
 
@@ -183,7 +203,7 @@ class TypesSuite(Suite):
 
     def test_recursive_nested_in_non_recursive(self) -> None:
         A, _ = self.fx.def_alias_1(self.fx.a)
-        T = TypeVarType("T", "T", -1, [], self.fx.o)
+        T = TypeVarType("T", "T", -1, [], self.fx.o, AnyType(TypeOfAny.from_omitted_generics))
         NA = self.fx.non_rec_alias(Instance(self.fx.gi, [T]), [T], [A])
         assert not NA.is_recursive
         assert has_recursive_types(NA)
@@ -634,7 +654,9 @@ class TypeOpsSuite(Suite):
         tv: list[TypeVarType] = []
         n = -1
         for v in vars:
-            tv.append(TypeVarType(v, v, n, [], self.fx.o))
+            tv.append(
+                TypeVarType(v, v, n, [], self.fx.o, AnyType(TypeOfAny.from_omitted_generics))
+            )
             n -= 1
         return CallableType(
             list(a[:-1]),
