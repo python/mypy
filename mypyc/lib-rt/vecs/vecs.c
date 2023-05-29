@@ -426,26 +426,26 @@ static PyObject *vecs_pop(PyObject *self, PyObject *args)
         VecI64 v = ((VecI64Object *)vec)->vec;
         VecI64PopResult r;
         r = Vec_I64_Pop(v, index);
-        if (VEC_IS_ERROR(r.vec))
+        if (VEC_IS_ERROR(r.f0))
             return NULL;
 
-        result_item0 = Vec_I64_Box(r.vec);
+        result_item0 = Vec_I64_Box(r.f0);
         if (result_item0 == NULL)
             return NULL;
-        result_item1 = PyLong_FromLongLong(r.item);
+        result_item1 = PyLong_FromLongLong(r.f1);
     } else if (VecT_Check(vec)) {
         VecT v = ((VecTObject *)vec)->vec;
         VecTPopResult r;
         r = Vec_T_Pop(v, index);
-        if (VEC_IS_ERROR(r.vec))
+        if (VEC_IS_ERROR(r.f0))
             return NULL;
 
-        result_item0 = Vec_T_Box(r.vec);
+        result_item0 = Vec_T_Box(r.f0);
         if (result_item0 == NULL) {
-            Py_DECREF(r.item);
+            Py_DECREF(r.f1);
             return NULL;
         }
-        result_item1 = r.item;
+        result_item1 = r.f1;
     } else if (VecTExt_Check(vec)) {
         VecTExt v = ((VecTExtObject *)vec)->vec;
         VecTExtPopResult r;

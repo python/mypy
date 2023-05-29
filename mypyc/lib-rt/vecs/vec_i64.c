@@ -264,19 +264,19 @@ VecI64PopResult Vec_I64_Pop(VecI64 v, Py_ssize_t index) {
 
     if (index < 0 || index >= v.len) {
         PyErr_SetString(PyExc_IndexError, "index out of range");
-        result.vec = Vec_I64_Error();
-        result.item = 0;
+        result.f0 = Vec_I64_Error();
+        result.f1 = 0;
         return result;
     }
 
-    result.item = v.buf->items[index];
+    result.f1 = v.buf->items[index];
     for (Py_ssize_t i = index; i < v.len - 1; i++) {
         v.buf->items[i] = v.buf->items[i + 1];
     }
 
     v.len--;
     VEC_INCREF(v);
-    result.vec = v;
+    result.f0 = v;
     return result;
 }
 

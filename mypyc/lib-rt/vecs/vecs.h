@@ -89,10 +89,16 @@ typedef struct _VecTExtObject {
 } VecTExtObject;
 
 
-typedef struct {
-    VecI64 vec;
-    int64_t item;
-} VecI64PopResult;
+#ifndef MYPYC_DECLARED_tuple_T2V88
+#define MYPYC_DECLARED_tuple_T2V88
+typedef struct tuple_T2V88 {
+    VecI64 f0;
+    int64_t f1;
+} tuple_T2V88;
+static tuple_T2V88 tuple_undefined_T2V88 = { { -1, NULL } , 0 };
+#endif
+
+typedef tuple_T2V88 VecI64PopResult;
 
 // vec[i64] operations + type objects (stored in a capsule)
 typedef struct _VecI64Features {
@@ -112,10 +118,16 @@ typedef struct _VecI64Features {
     // iter?
 } VecI64Features;
 
-typedef struct {
-    VecT vec;
-    PyObject *item;
-} VecTPopResult;
+#ifndef MYPYC_DECLARED_tuple_T2VOO
+#define MYPYC_DECLARED_tuple_T2VOO
+typedef struct tuple_T2VOO {
+    VecT f0;
+    PyObject *f1;
+} tuple_T2VOO;
+static tuple_T2VOO tuple_undefined_T2VOO = { { -1, NULL } , NULL };
+#endif
+
+typedef tuple_T2VOO VecTPopResult;
 
 // vec[T] operations + type object (stored in a capsule)
 //

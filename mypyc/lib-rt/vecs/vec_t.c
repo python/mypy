@@ -217,20 +217,20 @@ VecTPopResult Vec_T_Pop(VecT v, Py_ssize_t index) {
 
     if (index < 0 || index >= v.len) {
         PyErr_SetString(PyExc_IndexError, "index out of range");
-        result.vec = Vec_T_Error();
-        result.item = NULL;
+        result.f0 = Vec_T_Error();
+        result.f1 = NULL;
         return result;
     }
 
     PyObject **items = v.buf->items;
-    result.item = items[index];
+    result.f1 = items[index];
     for (Py_ssize_t i = index; i < v.len - 1; i++)
         items[i] = items[i + 1];
     if (v.len > 0)
         Py_XINCREF(items[v.len - 1]);
     v.len--;
     VEC_INCREF(v);
-    result.vec = v;
+    result.f0 = v;
     return result;
 }
 
