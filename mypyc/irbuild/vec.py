@@ -7,6 +7,7 @@ from mypyc.common import PLATFORM_SIZE
 from mypyc.ir.ops import (
     ERR_FALSE,
     ERR_MAGIC,
+    Assign,
     BasicBlock,
     Branch,
     CallC,
@@ -83,9 +84,11 @@ def vec_create(
     typeobj, optionals, depth = vec_item_type_info(builder, item_type, line)
     if typeobj is not None:
         if optionals == 0 and depth == 0:
+            typeval = Register(pointer_rprimitive)
+            builder.add(Assign(typeval, typeobj))
             call = CallC(
                 "VecTApi.alloc",
-                [length, typeobj],
+                [length, typeval],
                 vtype,
                 False,
                 False,

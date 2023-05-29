@@ -1127,9 +1127,14 @@ class Emitter:
                         self.emit_box(f"{src}.f{i}", inner_name, typ.types[i], declare_dest=True)
                         self.emit_line(f"PyTuple_SET_ITEM({dest}, {i}, {inner_name});")
         elif isinstance(typ, RVec):
-            assert is_int64_rprimitive(typ.item_type)  # TODO: Support more item types
-            self.emit_line(f"{declaration}{dest} = VecI64Api.box({src});")
-
+            if is_int64_rprimitive(typ.item_type):
+                api = "VecI64Api"
+            elif not isinstance(typ.item_type, RVec):
+                api = "VecTApi"
+            else:
+                # TODO: Support more item types
+                assert False, typ
+            self.emit_line(f"{declaration}{dest} = {api}.box({src});")
         else:
             assert not typ.is_unboxed
             # Type is boxed -- trivially just assign.

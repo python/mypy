@@ -294,10 +294,16 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # clang whines about self assignment (which we might generate
         # for some casts), so don't emit it.
         if dest != src:
-            # We sometimes assign from an integer prepresentation of a pointer
-            # to a real pointer, and C compilers insist on a cast.
-            if op.src.type.is_unboxed and not op.dest.type.is_unboxed:
+            src_type = op.src.type
+            dest_type = op.dest.type
+            if src_type.is_unboxed and not dest_type.is_unboxed:
+                # We sometimes assign from an integer prepresentation of a pointer
+                # to a real pointer, and C compilers insist on a cast.
                 src = f"(void *){src}"
+            elif not src_type.is_unboxed and dest_type.is_unboxed:
+                # We sometimes assign a pointer to an integer type (e.g. to create
+                # tagged pointers), and here we need an explicit cast.
+                src = f"({self.emitter.ctype(dest_type)}){src}"
             self.emit_line(f"{dest} = {src};")
 
     def visit_assign_multi(self, op: AssignMulti) -> None:
