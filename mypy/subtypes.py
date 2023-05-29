@@ -14,6 +14,7 @@ from mypy.maptype import map_instance_to_supertype
 # Circular import; done in the function instead.
 # import mypy.solve
 from mypy.nodes import (
+    ARG_POS,
     ARG_STAR,
     ARG_STAR2,
     CONTRAVARIANT,
@@ -1696,7 +1697,7 @@ def unify_generic_callable(
     argument_names_map = {}
 
     for i in range(len(type.arg_types)):
-        if type.arg_names[i]:
+        if type.arg_names[i] and type.arg_kinds[i] != ARG_POS:
             argument_names_map[type.arg_names[i]] = type.arg_types[i]
 
     for i in range(len(target.arg_types)):
