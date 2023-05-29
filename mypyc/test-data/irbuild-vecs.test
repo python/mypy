@@ -57,17 +57,39 @@ def native_class() -> vec[Optional[C]]:
 [out]
 def primitive():
     r0 :: object
-    r1 :: vec[union[str, None]]
+    r1, r2 :: ptr
+    r3 :: vec[union[str, None]]
 L0:
     r0 = load_address PyUnicode_Type
-    r1 = VecTExtApi.alloc(0, r0, 1, 0)
-    return r1
+    r1 = r0
+    r2 = r1 | 1
+    r3 = VecTApi.alloc(0, r2)
+    return r3
 def native_class():
     r0 :: object
-    r1 :: vec[union[__main__.C, None]]
+    r1, r2 :: ptr
+    r3 :: vec[union[__main__.C, None]]
 L0:
     r0 = __main__.C :: type
-    r1 = VecTExtApi.alloc(0, r0, 1, 0)
+    r1 = r0
+    r2 = r1 | 1
+    r3 = VecTApi.alloc(0, r2)
+    return r3
+
+[case testVecTOptionalAppend]
+from vecs import vec, append
+from typing import Optional
+
+def f(v: vec[Optional[str]]) -> vec[Optional[str]]:
+    return append(v, 'x')
+[out]
+def f(v):
+    v :: vec[union[str, None]]
+    r0 :: str
+    r1 :: vec[union[str, None]]
+L0:
+    r0 = 'x'
+    r1 = VecTApi.append(v, r0)
     return r1
 
 [case testVecNestedCreateEmpty]

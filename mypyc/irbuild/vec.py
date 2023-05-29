@@ -83,9 +83,12 @@ def vec_create(
 
     typeobj, optionals, depth = vec_item_type_info(builder, item_type, line)
     if typeobj is not None:
-        if optionals == 0 and depth == 0:
+        if depth == 0:
             typeval = Register(pointer_rprimitive)
             builder.add(Assign(typeval, typeobj))
+            if optionals:
+                typeval = builder.add(
+                    IntOp(pointer_rprimitive, typeval, Integer(1, pointer_rprimitive), IntOp.OR))
             call = CallC(
                 "VecTApi.alloc",
                 [length, typeval],
@@ -275,7 +278,7 @@ def vec_append(builder: "LowLevelIRBuilder", vec: Value, item: Value, line: int)
     item = builder.coerce(item, item_type, line)
     if is_int64_rprimitive(item_type):
         name = "VecI64Api.append"
-    elif vec_depth(vec_type) == 0 and not isinstance(item_type, RUnion):
+    elif vec_depth(vec_type) == 0:
         name = "VecTApi.append"
     else:
         name = "VecTExtApi.append"
