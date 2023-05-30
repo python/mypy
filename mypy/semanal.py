@@ -4196,7 +4196,7 @@ class SemanticAnalyzer(
                     param_value,
                 )
                 # Note: we do not return 'None' here -- we want to continue
-                # using the AnyType as the upper bound.
+                # using the AnyType.
             return typ
         except TypeTranslationError:
             if report_invalid_typevar_arg:
@@ -4240,7 +4240,7 @@ class SemanticAnalyzer(
 
         n_values = call.arg_kinds[1:].count(ARG_POS)
         if n_values != 0:
-            self.fail("Only the first positional argument to ParamSpec has defined semantics", s)
+            self.fail('Too many positional arguments for "ParamSpec"', s)
 
         default: Type = AnyType(TypeOfAny.from_omitted_generics)
         for param_value, param_name in zip(
@@ -4317,9 +4317,7 @@ class SemanticAnalyzer(
 
         n_values = call.arg_kinds[1:].count(ARG_POS)
         if n_values != 0:
-            self.fail(
-                "Only the first positional argument to TypeVarTuple has defined semantics", s
-            )
+            self.fail('Too many positional arguments for "TypeVarTuple"', s)
 
         default: Type = AnyType(TypeOfAny.from_omitted_generics)
         for param_value, param_name in zip(
@@ -4342,10 +4340,7 @@ class SemanticAnalyzer(
                     )
                     default = AnyType(TypeOfAny.from_error)
             else:
-                self.fail(
-                    "The variance and bound arguments to TypeVarTuple do not have defined semantics yet",
-                    s,
-                )
+                self.fail(f'Unexpected keyword argument "{param_name}" for "TypeVarTuple"', s)
 
         if not self.incomplete_feature_enabled(TYPE_VAR_TUPLE, s):
             return False

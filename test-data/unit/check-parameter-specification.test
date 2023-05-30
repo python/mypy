@@ -9,7 +9,7 @@ from typing import ParamSpec
 P1 = ParamSpec("P1", covariant=True)  # E: The variance and bound arguments to ParamSpec do not have defined semantics yet
 P2 = ParamSpec("P2", contravariant=True)  # E: The variance and bound arguments to ParamSpec do not have defined semantics yet
 P3 = ParamSpec("P3", bound=int)  # E: The variance and bound arguments to ParamSpec do not have defined semantics yet
-P4 = ParamSpec("P4", int, str)  # E: Only the first positional argument to ParamSpec has defined semantics
+P4 = ParamSpec("P4", int, str)  # E: Too many positional arguments for "ParamSpec"
 P5 = ParamSpec("P5", covariant=True, bound=int)  # E: The variance and bound arguments to ParamSpec do not have defined semantics yet
 [builtins fixtures/paramspec.pyi]
 
