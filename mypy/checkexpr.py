@@ -4189,7 +4189,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Used for list and set expressions, as well as for tuples
         # containing star expressions that don't refer to a
         # Tuple. (Note: "lst" stands for list-set-tuple. :-)
-        tv = TypeVarType("T", "T", id=-1, values=[], upper_bound=self.object_type())
+        tv = TypeVarType(
+            "T",
+            "T",
+            id=-1,
+            values=[],
+            upper_bound=self.object_type(),
+            default=AnyType(TypeOfAny.from_omitted_generics),
+        )
         constructor = CallableType(
             [tv],
             [nodes.ARG_STAR],
@@ -4357,8 +4364,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return dt
 
         # Define type variables (used in constructors below).
-        kt = TypeVarType("KT", "KT", id=-1, values=[], upper_bound=self.object_type())
-        vt = TypeVarType("VT", "VT", id=-2, values=[], upper_bound=self.object_type())
+        kt = TypeVarType(
+            "KT",
+            "KT",
+            id=-1,
+            values=[],
+            upper_bound=self.object_type(),
+            default=AnyType(TypeOfAny.from_omitted_generics),
+        )
+        vt = TypeVarType(
+            "VT",
+            "VT",
+            id=-2,
+            values=[],
+            upper_bound=self.object_type(),
+            default=AnyType(TypeOfAny.from_omitted_generics),
+        )
 
         # Collect function arguments, watching out for **expr.
         args: list[Expression] = []
@@ -4722,7 +4743,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             # Infer the type of the list comprehension by using a synthetic generic
             # callable type.
-            tv = TypeVarType("T", "T", id=-1, values=[], upper_bound=self.object_type())
+            tv = TypeVarType(
+                "T",
+                "T",
+                id=-1,
+                values=[],
+                upper_bound=self.object_type(),
+                default=AnyType(TypeOfAny.from_omitted_generics),
+            )
             tv_list: list[Type] = [tv]
             constructor = CallableType(
                 tv_list,
@@ -4742,8 +4770,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             # Infer the type of the list comprehension by using a synthetic generic
             # callable type.
-            ktdef = TypeVarType("KT", "KT", id=-1, values=[], upper_bound=self.object_type())
-            vtdef = TypeVarType("VT", "VT", id=-2, values=[], upper_bound=self.object_type())
+            ktdef = TypeVarType(
+                "KT",
+                "KT",
+                id=-1,
+                values=[],
+                upper_bound=self.object_type(),
+                default=AnyType(TypeOfAny.from_omitted_generics),
+            )
+            vtdef = TypeVarType(
+                "VT",
+                "VT",
+                id=-2,
+                values=[],
+                upper_bound=self.object_type(),
+                default=AnyType(TypeOfAny.from_omitted_generics),
+            )
             constructor = CallableType(
                 [ktdef, vtdef],
                 [nodes.ARG_POS, nodes.ARG_POS],
@@ -5263,6 +5305,18 @@ class HasAnyType(types.BoolTypeQuery):
         if self.ignore_in_type_obj and t.is_type_obj():
             return False
         return super().visit_callable_type(t)
+
+    def visit_type_var(self, t: TypeVarType) -> bool:
+        default = [t.default] if t.has_default() else []
+        return self.query_types([t.upper_bound, *default] + t.values)
+
+    def visit_param_spec(self, t: ParamSpecType) -> bool:
+        default = [t.default] if t.has_default() else []
+        return self.query_types([t.upper_bound, *default])
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> bool:
+        default = [t.default] if t.has_default() else []
+        return self.query_types([t.upper_bound, *default])
 
 
 def has_coroutine_decorator(t: Type) -> bool:

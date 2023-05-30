@@ -171,17 +171,21 @@ class NodeFixer(NodeVisitor[None]):
                 for value in v.values:
                     value.accept(self.type_fixer)
             v.upper_bound.accept(self.type_fixer)
+            v.default.accept(self.type_fixer)
 
     def visit_type_var_expr(self, tv: TypeVarExpr) -> None:
         for value in tv.values:
             value.accept(self.type_fixer)
         tv.upper_bound.accept(self.type_fixer)
+        tv.default.accept(self.type_fixer)
 
     def visit_paramspec_expr(self, p: ParamSpecExpr) -> None:
         p.upper_bound.accept(self.type_fixer)
+        p.default.accept(self.type_fixer)
 
     def visit_type_var_tuple_expr(self, tv: TypeVarTupleExpr) -> None:
         tv.upper_bound.accept(self.type_fixer)
+        tv.default.accept(self.type_fixer)
 
     def visit_var(self, v: Var) -> None:
         if self.current_info is not None:
@@ -303,14 +307,16 @@ class TypeFixer(TypeVisitor[None]):
         if tvt.values:
             for vt in tvt.values:
                 vt.accept(self)
-        if tvt.upper_bound is not None:
-            tvt.upper_bound.accept(self)
+        tvt.upper_bound.accept(self)
+        tvt.default.accept(self)
 
     def visit_param_spec(self, p: ParamSpecType) -> None:
         p.upper_bound.accept(self)
+        p.default.accept(self)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> None:
         t.upper_bound.accept(self)
+        t.default.accept(self)
 
     def visit_unpack_type(self, u: UnpackType) -> None:
         u.type.accept(self)

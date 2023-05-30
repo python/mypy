@@ -7191,6 +7191,7 @@ def detach_callable(typ: CallableType) -> CallableType:
                 id=var.id,
                 values=var.values,
                 upper_bound=var.upper_bound,
+                default=var.default,
                 variance=var.variance,
             )
         )
