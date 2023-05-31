@@ -22,8 +22,8 @@ from mypy.test.helpers import (
     normalize_error_messages,
     parse_options,
     perform_file_operations,
-    update_testcase_output,
 )
+from mypy.test.update_data import update_testcase_output
 
 try:
     import lxml  # type: ignore[import]
@@ -192,7 +192,8 @@ class TypeCheckSuite(DataSuite):
             output = testcase.output2.get(incremental_step, [])
 
         if output != a and testcase.config.getoption("--update-data", False):
-            update_testcase_output(testcase, a)
+            update_testcase_output(testcase, a, incremental_step=incremental_step)
+
         assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))
 
         if res:
