@@ -151,11 +151,13 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    flatten_nested_tuples,
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
     has_recursive_types,
     is_named_instance,
+    split_with_prefix_and_suffix,
 )
 from mypy.types_utils import is_generic_instance, is_optional, is_self_type_like, remove_optional
 from mypy.typestate import type_state
@@ -4070,6 +4072,35 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # The _SpecialForm type can be used in some runtime contexts (e.g. it may have __or__).
             return self.named_type("typing._SpecialForm")
 
+    def split_for_callable(
+        self, t: CallableType, args: Sequence[Type], ctx: Context
+    ) -> list[Type]:
+        """Handle directly applying type arguments to a variadic Callable.
+
+        This is needed in situations where e.g. variadic class object appears in
+        runtime context. For example:
+            class C(Generic[T, Unpack[Ts]]): ...
+            x = C[int, str]()
+
+        We simply group the arguments that need to go into Ts variable into a TupleType,
+        similar to how it is done in other places using split_with_prefix_and_suffix().
+        """
+        vars = t.variables
+        if not vars or not any(isinstance(v, TypeVarTupleType) for v in vars):
+            return list(args)
+
+        prefix = next(i for (i, v) in enumerate(vars) if isinstance(v, TypeVarTupleType))
+        suffix = len(vars) - prefix - 1
+        args = flatten_nested_tuples(args)
+        if len(args) < len(vars) - 1:
+            self.msg.incompatible_type_application(len(vars), len(args), ctx)
+            return [AnyType(TypeOfAny.from_error)] * len(vars)
+
+        tvt = vars[prefix]
+        assert isinstance(tvt, TypeVarTupleType)
+        start, middle, end = split_with_prefix_and_suffix(tuple(args), prefix, suffix)
+        return list(start) + [TupleType(list(middle), tvt.tuple_fallback)] + list(end)
+
     def apply_type_arguments_to_callable(
         self, tp: Type, args: Sequence[Type], ctx: Context
     ) -> Type:
@@ -4083,19 +4114,28 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         tp = get_proper_type(tp)
 
         if isinstance(tp, CallableType):
-            if len(tp.variables) != len(args):
+            if len(tp.variables) != len(args) and not any(
+                isinstance(v, TypeVarTupleType) for v in tp.variables
+            ):
                 if tp.is_type_obj() and tp.type_object().fullname == "builtins.tuple":
                     # TODO: Specialize the callable for the type arguments
                     return tp
                 self.msg.incompatible_type_application(len(tp.variables), len(args), ctx)
                 return AnyType(TypeOfAny.from_error)
-            return self.apply_generic_arguments(tp, args, ctx)
+            return self.apply_generic_arguments(tp, self.split_for_callable(tp, args, ctx), ctx)
         if isinstance(tp, Overloaded):
             for it in tp.items:
-                if len(it.variables) != len(args):
+                if len(it.variables) != len(args) and not any(
+                    isinstance(v, TypeVarTupleType) for v in it.variables
+                ):
                     self.msg.incompatible_type_application(len(it.variables), len(args), ctx)
                     return AnyType(TypeOfAny.from_error)
-            return Overloaded([self.apply_generic_arguments(it, args, ctx) for it in tp.items])
+            return Overloaded(
+                [
+                    self.apply_generic_arguments(it, self.split_for_callable(it, args, ctx), ctx)
+                    for it in tp.items
+                ]
+            )
         return AnyType(TypeOfAny.special_form)
 
     def visit_list_expr(self, e: ListExpr) -> Type:
@@ -4149,7 +4189,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Used for list and set expressions, as well as for tuples
         # containing star expressions that don't refer to a
         # Tuple. (Note: "lst" stands for list-set-tuple. :-)
-        tv = TypeVarType("T", "T", -1, [], self.object_type())
+        tv = TypeVarType(
+            "T",
+            "T",
+            id=-1,
+            values=[],
+            upper_bound=self.object_type(),
+            default=AnyType(TypeOfAny.from_omitted_generics),
+        )
         constructor = CallableType(
             [tv],
             [nodes.ARG_STAR],
@@ -4317,8 +4364,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return dt
 
         # Define type variables (used in constructors below).
-        kt = TypeVarType("KT", "KT", -1, [], self.object_type())
-        vt = TypeVarType("VT", "VT", -2, [], self.object_type())
+        kt = TypeVarType(
+            "KT",
+            "KT",
+            id=-1,
+            values=[],
+            upper_bound=self.object_type(),
+            default=AnyType(TypeOfAny.from_omitted_generics),
+        )
+        vt = TypeVarType(
+            "VT",
+            "VT",
+            id=-2,
+            values=[],
+            upper_bound=self.object_type(),
+            default=AnyType(TypeOfAny.from_omitted_generics),
+        )
 
         # Collect function arguments, watching out for **expr.
         args: list[Expression] = []
@@ -4682,7 +4743,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             # Infer the type of the list comprehension by using a synthetic generic
             # callable type.
-            tv = TypeVarType("T", "T", -1, [], self.object_type())
+            tv = TypeVarType(
+                "T",
+                "T",
+                id=-1,
+                values=[],
+                upper_bound=self.object_type(),
+                default=AnyType(TypeOfAny.from_omitted_generics),
+            )
             tv_list: list[Type] = [tv]
             constructor = CallableType(
                 tv_list,
@@ -4702,8 +4770,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             # Infer the type of the list comprehension by using a synthetic generic
             # callable type.
-            ktdef = TypeVarType("KT", "KT", -1, [], self.object_type())
-            vtdef = TypeVarType("VT", "VT", -2, [], self.object_type())
+            ktdef = TypeVarType(
+                "KT",
+                "KT",
+                id=-1,
+                values=[],
+                upper_bound=self.object_type(),
+                default=AnyType(TypeOfAny.from_omitted_generics),
+            )
+            vtdef = TypeVarType(
+                "VT",
+                "VT",
+                id=-2,
+                values=[],
+                upper_bound=self.object_type(),
+                default=AnyType(TypeOfAny.from_omitted_generics),
+            )
             constructor = CallableType(
                 [ktdef, vtdef],
                 [nodes.ARG_POS, nodes.ARG_POS],
@@ -5227,6 +5309,18 @@ class HasAnyType(types.BoolTypeQuery):
         if self.ignore_in_type_obj and t.is_type_obj():
             return False
         return super().visit_callable_type(t)
+
+    def visit_type_var(self, t: TypeVarType) -> bool:
+        default = [t.default] if t.has_default() else []
+        return self.query_types([t.upper_bound, *default] + t.values)
+
+    def visit_param_spec(self, t: ParamSpecType) -> bool:
+        default = [t.default] if t.has_default() else []
+        return self.query_types([t.upper_bound, *default])
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> bool:
+        default = [t.default] if t.has_default() else []
+        return self.query_types([t.upper_bound, *default])
 
 
 def has_coroutine_decorator(t: Type) -> bool:

@@ -126,7 +126,12 @@ from mypy.stubutil import (
     report_missing,
     walk_packages,
 )
-from mypy.traverser import all_yield_expressions, has_return_statement, has_yield_expression
+from mypy.traverser import (
+    all_yield_expressions,
+    has_return_statement,
+    has_yield_expression,
+    has_yield_from_expression,
+)
 from mypy.types import (
     OVERLOAD_NAMES,
     TPDICT_NAMES,
@@ -774,18 +779,22 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             retname = None  # implicit Any
         elif o.name in KNOWN_MAGIC_METHODS_RETURN_TYPES:
             retname = KNOWN_MAGIC_METHODS_RETURN_TYPES[o.name]
-        elif has_yield_expression(o):
+        elif has_yield_expression(o) or has_yield_from_expression(o):
             self.add_typing_import("Generator")
             yield_name = "None"
             send_name = "None"
             return_name = "None"
-            for expr, in_assignment in all_yield_expressions(o):
-                if expr.expr is not None and not self.is_none_expr(expr.expr):
-                    self.add_typing_import("Incomplete")
-                    yield_name = self.typing_name("Incomplete")
-                if in_assignment:
-                    self.add_typing_import("Incomplete")
-                    send_name = self.typing_name("Incomplete")
+            if has_yield_from_expression(o):
+                self.add_typing_import("Incomplete")
+                yield_name = send_name = self.typing_name("Incomplete")
+            else:
+                for expr, in_assignment in all_yield_expressions(o):
+                    if expr.expr is not None and not self.is_none_expr(expr.expr):
+                        self.add_typing_import("Incomplete")
+                        yield_name = self.typing_name("Incomplete")
+                    if in_assignment:
+                        self.add_typing_import("Incomplete")
+                        send_name = self.typing_name("Incomplete")
             if has_return_statement(o):
                 self.add_typing_import("Incomplete")
                 return_name = self.typing_name("Incomplete")
@@ -891,13 +900,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if isinstance(o.metaclass, (NameExpr, MemberExpr)):
             meta = o.metaclass.accept(AliasPrinter(self))
             base_types.append("metaclass=" + meta)
-        elif self.analyzed and o.info.is_protocol:
-            type_str = "Protocol"
-            if o.info.type_vars:
-                type_str += f'[{", ".join(o.info.type_vars)}]'
-            base_types.append(type_str)
-            self.add_typing_import("Protocol")
-        elif self.analyzed and o.info.is_abstract:
+        elif self.analyzed and o.info.is_abstract and not o.info.is_protocol:
             base_types.append("metaclass=abc.ABCMeta")
             self.import_tracker.add_import("abc")
             self.import_tracker.require_name("abc")
@@ -924,7 +927,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         """Get list of base classes for a class."""
         base_types: list[str] = []
         p = AliasPrinter(self)
-        for base in cdef.base_type_exprs:
+        for base in cdef.base_type_exprs + cdef.removed_base_type_exprs:
             if isinstance(base, (NameExpr, MemberExpr)):
                 if self.get_fullname(base) != "builtins.object":
                     base_types.append(get_qualified_name(base))

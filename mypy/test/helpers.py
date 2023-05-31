@@ -141,39 +141,6 @@ def assert_target_equivalence(name: str, expected: list[str], actual: list[str])
     )
 
 
-def update_testcase_output(testcase: DataDrivenTestCase, output: list[str]) -> None:
-    assert testcase.old_cwd is not None, "test was not properly set up"
-    testcase_path = os.path.join(testcase.old_cwd, testcase.file)
-    with open(testcase_path, encoding="utf8") as f:
-        data_lines = f.read().splitlines()
-    test = "\n".join(data_lines[testcase.line : testcase.last_line])
-
-    mapping: dict[str, list[str]] = {}
-    for old, new in zip(testcase.output, output):
-        PREFIX = "error:"
-        ind = old.find(PREFIX)
-        if ind != -1 and old[:ind] == new[:ind]:
-            old, new = old[ind + len(PREFIX) :], new[ind + len(PREFIX) :]
-        mapping.setdefault(old, []).append(new)
-
-    for old in mapping:
-        if test.count(old) == len(mapping[old]):
-            betweens = test.split(old)
-
-            # Interleave betweens and mapping[old]
-            from itertools import chain
-
-            interleaved = [betweens[0]] + list(
-                chain.from_iterable(zip(mapping[old], betweens[1:]))
-            )
-            test = "".join(interleaved)
-
-    data_lines[testcase.line : testcase.last_line] = [test]
-    data = "\n".join(data_lines)
-    with open(testcase_path, "w", encoding="utf8") as f:
-        print(data, file=f)
-
-
 def show_align_message(s1: str, s2: str) -> None:
     """Align s1 and s2 so that the their first difference is highlighted.
 

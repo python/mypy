@@ -45,6 +45,7 @@ class DefaultPlugin(Plugin):
             return ctypes.array_constructor_callback
         elif fullname == "functools.singledispatch":
             return singledispatch.create_singledispatch_function_callback
+
         return None
 
     def get_function_signature_hook(
@@ -54,6 +55,8 @@ class DefaultPlugin(Plugin):
 
         if fullname in ("attr.evolve", "attrs.evolve", "attr.assoc", "attrs.assoc"):
             return attrs.evolve_function_sig_callback
+        elif fullname in ("attr.fields", "attrs.fields"):
+            return attrs.fields_function_sig_callback
         return None
 
     def get_method_signature_hook(

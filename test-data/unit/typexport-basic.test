@@ -1055,6 +1055,21 @@ CallExpr(7) : builtins.str
 NameExpr(7) : def (x: builtins.str) -> builtins.str
 NameExpr(7) : S
 
+[case testTypeVariableWithValueRestrictionInFunction]
+## NameExpr
+from typing import TypeVar
+
+T = TypeVar("T", int, str)
+
+def f(x: T) -> T:
+    y = 1
+    return x
+[out]
+NameExpr(7) : builtins.int
+NameExpr(7) : builtins.int
+NameExpr(8) : builtins.int
+NameExpr(8) : builtins.str
+
 
 -- Binary operations
 -- -----------------
