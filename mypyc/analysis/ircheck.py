@@ -127,7 +127,7 @@ def assert_func_ir_valid(fn: FuncIR) -> None:
     if errors:
         raise IrCheckException(
             "Internal error: Generated invalid IR: \n"
-            + "\n".join(format_func(fn, [(e.source, e.desc) for e in errors]))
+            + "\n".join(format_func(fn, [(e.source, e.desc.value) for e in errors]))
         )
 
 

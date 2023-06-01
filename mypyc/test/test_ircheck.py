@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 
+from mypy import message_registry
 from mypyc.analysis.ircheck import FnError, can_coerce_to, check_func_ir
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature
@@ -75,7 +76,7 @@ class TestIrcheck(unittest.TestCase):
     def test_block_not_terminated_empty_block(self) -> None:
         block = self.basic_block([])
         fn = FuncIR(decl=self.func_decl(name="func_1"), arg_regs=[], blocks=[block])
-        assert_has_error(fn, FnError(source=block, desc="Block not terminated"))
+        assert_has_error(fn, FnError(source=block, desc=message_registry.BLOCK_NOT_TERMINATED))
 
     def test_valid_goto(self) -> None:
         block_1 = self.basic_block([Return(value=NONE_VALUE)])
@@ -93,20 +94,29 @@ class TestIrcheck(unittest.TestCase):
             # block_1 omitted
             blocks=[block_2],
         )
-        assert_has_error(fn, FnError(source=goto, desc="Invalid control operation target: 1"))
+        assert_has_error(
+            fn,
+            FnError(source=goto, desc=message_registry.INVALID_CONTROL_OPERATION_TARGET.format(1)),
+        )
 
     def test_invalid_register_source(self) -> None:
         ret = Return(value=Register(type=none_rprimitive, name="r1"))
         block = self.basic_block([ret])
         fn = FuncIR(decl=self.func_decl(name="func_1"), arg_regs=[], blocks=[block])
-        assert_has_error(fn, FnError(source=ret, desc="Invalid op reference to register 'r1'"))
+        assert_has_error(
+            fn,
+            FnError(source=ret, desc=message_registry.INVALID_OP_REFERENCE_REGISTER.format("r1")),
+        )
 
     def test_invalid_op_source(self) -> None:
         ret = Return(value=LoadLiteral(value="foo", rtype=str_rprimitive))
         block = self.basic_block([ret])
         fn = FuncIR(decl=self.func_decl(name="func_1"), arg_regs=[], blocks=[block])
         assert_has_error(
-            fn, FnError(source=ret, desc="Invalid op reference to op of type LoadLiteral")
+            fn,
+            FnError(
+                source=ret, desc=message_registry.INVALID_OP_REFERENCE_TYPE.format("LoadLiteral")
+            ),
         )
 
     def test_invalid_return_type(self) -> None:
@@ -117,7 +127,10 @@ class TestIrcheck(unittest.TestCase):
             blocks=[self.basic_block([ret])],
         )
         assert_has_error(
-            fn, FnError(source=ret, desc="Cannot coerce source type int32 to dest type int64")
+            fn,
+            FnError(
+                source=ret, desc=message_registry.CANNOT_COERSE_SRC_DEST.format("int32", "int64")
+            ),
         )
 
     def test_invalid_assign(self) -> None:
@@ -130,7 +143,11 @@ class TestIrcheck(unittest.TestCase):
             blocks=[self.basic_block([assign, ret])],
         )
         assert_has_error(
-            fn, FnError(source=assign, desc="Cannot coerce source type int32 to dest type int64")
+            fn,
+            FnError(
+                source=assign,
+                desc=message_registry.CANNOT_COERSE_SRC_DEST.format("int32", "int64"),
+            ),
         )
 
     def test_can_coerce_to(self) -> None:
@@ -161,7 +178,7 @@ class TestIrcheck(unittest.TestCase):
         assign = Assign(dest=arg_reg, src=Integer(value=5, rtype=int32_rprimitive))
         block = self.basic_block([assign, assign, Return(value=NONE_VALUE)])
         fn = FuncIR(decl=self.func_decl(name="func_1"), arg_regs=[], blocks=[block])
-        assert_has_error(fn, FnError(source=assign, desc="Func has a duplicate op"))
+        assert_has_error(fn, FnError(source=assign, desc=message_registry.FUNC_DUPLICATE_OP))
 
     def test_pprint(self) -> None:
         block_1 = self.basic_block([Return(value=NONE_VALUE)])
