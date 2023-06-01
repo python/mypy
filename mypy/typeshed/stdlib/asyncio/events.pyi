@@ -2,13 +2,13 @@ import ssl
 import sys
 from _typeshed import FileDescriptorLike, ReadableBuffer, StrPath, Unused, WriteableBuffer
 from abc import ABCMeta, abstractmethod
-from collections.abc import Awaitable, Callable, Coroutine, Generator, Sequence
+from collections.abc import Callable, Coroutine, Generator, Sequence
 from contextvars import Context
 from socket import AddressFamily, SocketKind, _Address, _RetAddress, socket
 from typing import IO, Any, Protocol, TypeVar, overload
 from typing_extensions import Literal, Self, TypeAlias
 
-from . import _CoroutineLike
+from . import _AwaitableLike, _CoroutineLike
 from .base_events import Server
 from .futures import Future
 from .protocols import BaseProtocol
@@ -113,13 +113,8 @@ class AbstractEventLoop:
     slow_callback_duration: float
     @abstractmethod
     def run_forever(self) -> None: ...
-    # Can't use a union, see mypy issue  # 1873.
-    @overload
     @abstractmethod
-    def run_until_complete(self, future: Generator[Any, None, _T]) -> _T: ...
-    @overload
-    @abstractmethod
-    def run_until_complete(self, future: Awaitable[_T]) -> _T: ...
+    def run_until_complete(self, future: _AwaitableLike[_T]) -> _T: ...
     @abstractmethod
     def stop(self) -> None: ...
     @abstractmethod
