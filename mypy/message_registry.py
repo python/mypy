@@ -29,7 +29,9 @@ class ErrorMessage(NamedTuple):
 INVALID_TYPE_RAW_ENUM_VALUE: Final = ErrorMessage(
     "Invalid type: try using Literal[{}.{}] instead?", codes.VALID_TYPE
 )
-INVALID_TYPE_FROZENSET_LITERAL: Final = ErrorMessage("Invalid type for item of frozenset literal: {})")
+INVALID_TYPE_FROZENSET_LITERAL: Final = ErrorMessage(
+    "Invalid type for item of frozenset literal: {})"
+)
 INVALID_TYPE_TUPLE_LITERAL: Final = ErrorMessage("Invalid type for item of tuple literal: {}}")
 FLOAT_NOT_EXPECTED: Final = ErrorMessage("Float not expected")
 FLOAT_EXPECTED: Final = ErrorMessage("Float expected (actual type is {})")

@@ -1,6 +1,8 @@
 """Utilities for checking that internal ir is valid and consistent."""
 from __future__ import annotations
 
+from mypy import message_registry
+from mypy.message_registry import ErrorMessage
 from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncIR
 from mypyc.ir.ops import (
     Assign,
@@ -67,7 +69,6 @@ from mypyc.ir.rtypes import (
     tuple_rprimitive,
 )
 
-from mypy import message_registry
 
 class FnError:
     def __init__(self, source: Op | BasicBlock, desc: str) -> None:
@@ -209,13 +210,15 @@ class OpChecker(OpVisitor[None]):
         self.parent_fn = parent_fn
         self.errors: list[FnError] = []
 
-    def fail(self, source: Op, desc: str) -> None:
+    def fail(self, source: Op, desc: ErrorMessage) -> None:
         self.errors.append(FnError(source=source, desc=desc))
 
     def check_control_op_targets(self, op: ControlOp) -> None:
         for target in op.targets():
             if target not in self.parent_fn.blocks:
-                self.fail(op, message_registry.INVALID_CONTROL_OPERATION_TARGET.format(target.label))
+                self.fail(
+                    op, message_registry.INVALID_CONTROL_OPERATION_TARGET.format(target.label)
+                )
 
     def check_type_coercion(self, op: Op, src: RType, dest: RType) -> None:
         if not can_coerce_to(src, dest):
@@ -305,7 +308,9 @@ class OpChecker(OpVisitor[None]):
         assert expected_type is not None, "Missed a case for LoadLiteral check"
 
         if op.type.name not in [expected_type, "builtins.object"]:
-            self.fail(op, message_registry.INVALID_LITERAL_VALUE_TYPE.format(expected_type, op.type.name))
+            self.fail(
+                op, message_registry.INVALID_LITERAL_VALUE_TYPE.format(expected_type, op.type.name)
+            )
 
     def visit_get_attr(self, op: GetAttr) -> None:
         # Nothing to do.
