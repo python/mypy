@@ -158,7 +158,7 @@ class HTTPConnection:
         method: str,
         url: str,
         body: _DataType | str | None = None,
-        headers: Mapping[str, str] = ...,
+        headers: Mapping[str, str] = {},
         *,
         encode_chunked: bool = False,
     ) -> None: ...

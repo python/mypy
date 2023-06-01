@@ -235,17 +235,7 @@ def _build(
 
     source_set = BuildSourceSet(sources)
     cached_read = fscache.read
-    errors = Errors(
-        options.show_error_context,
-        options.show_column_numbers,
-        options.hide_error_codes,
-        options.pretty,
-        options.show_error_end,
-        lambda path: read_py_file(path, cached_read),
-        options.show_absolute_path,
-        options.many_errors_threshold,
-        options,
-    )
+    errors = Errors(options, read_source=lambda path: read_py_file(path, cached_read))
     plugin, snapshot = load_plugins(options, errors, stdout, extra_plugins)
 
     # Add catch-all .gitignore to cache dir if we created it
@@ -845,6 +835,8 @@ class BuildManager:
         Raise CompileError if there is a parse error.
         """
         t0 = time.time()
+        if ignore_errors:
+            self.errors.ignored_files.add(path)
         tree = parse(source, path, id, self.errors, options=options)
         tree._fullname = id
         self.add_stats(
@@ -1739,8 +1731,8 @@ on at least one module for which the cache metadata is stale.)
 
 Now we can execute steps A-C from the first section.  Finding SCCs for
 step A shouldn't be hard; there's a recipe here:
-http://code.activestate.com/recipes/578507/.  There's also a plethora
-of topsort recipes, e.g. http://code.activestate.com/recipes/577413/.
+https://code.activestate.com/recipes/578507/.  There's also a plethora
+of topsort recipes, e.g. https://code.activestate.com/recipes/577413/.
 
 For single nodes, processing is simple.  If the node was cached, we
 deserialize the cache data and fix up cross-references.  Otherwise, we
@@ -1921,7 +1913,7 @@ class State:
         self.caller_state = caller_state
         self.caller_line = caller_line
         if caller_state:
-            self.import_context = caller_state.import_context[:]
+            self.import_context = caller_state.import_context.copy()
             self.import_context.append((caller_state.xpath, caller_line))
         else:
             self.import_context = []
@@ -2246,6 +2238,7 @@ class State:
         analyzer = SemanticAnalyzerPreAnalysis()
         with self.wrap_context():
             analyzer.visit_file(self.tree, self.xpath, self.id, options)
+        self.manager.errors.set_unreachable_lines(self.xpath, self.tree.unreachable_lines)
         # TODO: Do this while constructing the AST?
         self.tree.names = SymbolTable()
         if not self.tree.is_stub:
@@ -2580,7 +2573,10 @@ class State:
         return [self.dep_line_map.get(dep, 1) for dep in self.dependencies + self.suppressed]
 
     def generate_unused_ignore_notes(self) -> None:
-        if self.options.warn_unused_ignores:
+        if (
+            self.options.warn_unused_ignores
+            or codes.UNUSED_IGNORE in self.options.enabled_error_codes
+        ) and codes.UNUSED_IGNORE not in self.options.disabled_error_codes:
             # If this file was initially loaded from the cache, it may have suppressed
             # dependencies due to imports with ignores on them. We need to generate
             # those errors to avoid spuriously flagging them as unused ignores.
@@ -3517,7 +3513,7 @@ def strongly_connected_components(
       exactly once; vertices not part of a SCC are returned as
       singleton sets.
 
-    From http://code.activestate.com/recipes/578507/.
+    From https://code.activestate.com/recipes/578507/.
     """
     identified: set[str] = set()
     stack: list[str] = []
@@ -3580,7 +3576,7 @@ def topsort(data: dict[T, set[T]]) -> Iterable[set[T]]:
         {B, C}
         {A}
 
-    From http://code.activestate.com/recipes/577413/.
+    From https://code.activestate.com/recipes/577413/.
     """
     # TODO: Use a faster algorithm?
     for k, v in data.items():

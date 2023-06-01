@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
-from typing import Iterable, List, cast
+from collections import defaultdict
+from functools import reduce
+from typing import Iterable, List, Mapping, cast
 from typing_extensions import Final, Literal
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.applytype import apply_generic_arguments
 from mypy.checker import TypeChecker
 from mypy.errorcodes import LITERAL_REQ
-from mypy.expandtype import expand_type
+from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
+from mypy.meet import meet_types
 from mypy.messages import format_type_bare
 from mypy.nodes import (
     ARG_NAMED,
@@ -62,10 +65,13 @@ from mypy.types import (
     LiteralType,
     NoneType,
     Overloaded,
+    ProperType,
     TupleType,
     Type,
     TypeOfAny,
+    TypeType,
     TypeVarType,
+    UninhabitedType,
     UnionType,
     get_proper_type,
 )
@@ -299,7 +305,7 @@ def attr_class_maker_callback(
     it will add an __init__ or all the compare methods.
     For frozen=True it will turn the attrs into properties.
 
-    See http://www.attrs.org/en/stable/how-does-it-work.html for information on how attrs works.
+    See https://www.attrs.org/en/stable/how-does-it-work.html for information on how attrs works.
 
     If this returns False, some required metadata was not ready yet and we need another
     pass.
@@ -528,7 +534,6 @@ def _cleanup_decorator(stmt: Decorator, attr_map: dict[str, Attribute]) -> None:
             and isinstance(func_decorator.expr, NameExpr)
             and func_decorator.expr.name in attr_map
         ):
-
             if func_decorator.name == "default":
                 attr_map[func_decorator.expr.name].has_default = True
 
@@ -762,10 +767,19 @@ def _add_order(ctx: mypy.plugin.ClassDefContext, adder: MethodAdder) -> None:
     #    def __lt__(self: AT, other: AT) -> bool
     # This way comparisons with subclasses will work correctly.
     tvd = TypeVarType(
-        SELF_TVAR_NAME, ctx.cls.info.fullname + "." + SELF_TVAR_NAME, -1, [], object_type
+        SELF_TVAR_NAME,
+        ctx.cls.info.fullname + "." + SELF_TVAR_NAME,
+        id=-1,
+        values=[],
+        upper_bound=object_type,
+        default=AnyType(TypeOfAny.from_omitted_generics),
     )
     self_tvar_expr = TypeVarExpr(
-        SELF_TVAR_NAME, ctx.cls.info.fullname + "." + SELF_TVAR_NAME, [], object_type
+        SELF_TVAR_NAME,
+        ctx.cls.info.fullname + "." + SELF_TVAR_NAME,
+        [],
+        object_type,
+        AnyType(TypeOfAny.from_omitted_generics),
     )
     ctx.cls.info.names[SELF_TVAR_NAME] = SymbolTableNode(MDEF, self_tvar_expr)
 
@@ -929,13 +943,10 @@ class MethodAdder:
         add_method(self.ctx, method_name, args, ret_type, self_type, tvd)
 
 
-def _get_attrs_init_type(typ: Type) -> CallableType | None:
+def _get_attrs_init_type(typ: Instance) -> CallableType | None:
     """
-    If `typ` refers to an attrs class, gets the type of its initializer method.
+    If `typ` refers to an attrs class, get the type of its initializer method.
     """
-    typ = get_proper_type(typ)
-    if not isinstance(typ, Instance):
-        return None
     magic_attr = typ.type.get(MAGIC_ATTR_NAME)
     if magic_attr is None or not magic_attr.plugin_generated:
         return None
@@ -945,9 +956,87 @@ def _get_attrs_init_type(typ: Type) -> CallableType | None:
     return init_method.type
 
 
+def _fail_not_attrs_class(ctx: mypy.plugin.FunctionSigContext, t: Type, parent_t: Type) -> None:
+    t_name = format_type_bare(t, ctx.api.options)
+    if parent_t is t:
+        msg = (
+            f'Argument 1 to "evolve" has a variable type "{t_name}" not bound to an attrs class'
+            if isinstance(t, TypeVarType)
+            else f'Argument 1 to "evolve" has incompatible type "{t_name}"; expected an attrs class'
+        )
+    else:
+        pt_name = format_type_bare(parent_t, ctx.api.options)
+        msg = (
+            f'Argument 1 to "evolve" has type "{pt_name}" whose item "{t_name}" is not bound to an attrs class'
+            if isinstance(t, TypeVarType)
+            else f'Argument 1 to "evolve" has incompatible type "{pt_name}" whose item "{t_name}" is not an attrs class'
+        )
+
+    ctx.api.fail(msg, ctx.context)
+
+
+def _get_expanded_attr_types(
+    ctx: mypy.plugin.FunctionSigContext,
+    typ: ProperType,
+    display_typ: ProperType,
+    parent_typ: ProperType,
+) -> list[Mapping[str, Type]] | None:
+    """
+    For a given type, determine what attrs classes it can be: for each class, return the field types.
+    For generic classes, the field types are expanded.
+    If the type contains Any or a non-attrs type, returns None; in the latter case, also reports an error.
+    """
+    if isinstance(typ, AnyType):
+        return None
+    elif isinstance(typ, UnionType):
+        ret: list[Mapping[str, Type]] | None = []
+        for item in typ.relevant_items():
+            item = get_proper_type(item)
+            item_types = _get_expanded_attr_types(ctx, item, item, parent_typ)
+            if ret is not None and item_types is not None:
+                ret += item_types
+            else:
+                ret = None  # but keep iterating to emit all errors
+        return ret
+    elif isinstance(typ, TypeVarType):
+        return _get_expanded_attr_types(
+            ctx, get_proper_type(typ.upper_bound), display_typ, parent_typ
+        )
+    elif isinstance(typ, Instance):
+        init_func = _get_attrs_init_type(typ)
+        if init_func is None:
+            _fail_not_attrs_class(ctx, display_typ, parent_typ)
+            return None
+        init_func = expand_type_by_instance(init_func, typ)
+        # [1:] to skip the self argument of AttrClass.__init__
+        field_names = cast(List[str], init_func.arg_names[1:])
+        field_types = init_func.arg_types[1:]
+        return [dict(zip(field_names, field_types))]
+    else:
+        _fail_not_attrs_class(ctx, display_typ, parent_typ)
+        return None
+
+
+def _meet_fields(types: list[Mapping[str, Type]]) -> Mapping[str, Type]:
+    """
+    "Meet" the fields of a list of attrs classes, i.e. for each field, its new type will be the lower bound.
+    """
+    field_to_types = defaultdict(list)
+    for fields in types:
+        for name, typ in fields.items():
+            field_to_types[name].append(typ)
+
+    return {
+        name: get_proper_type(reduce(meet_types, f_types))
+        if len(f_types) == len(types)
+        else UninhabitedType()
+        for name, f_types in field_to_types.items()
+    }
+
+
 def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> CallableType:
     """
-    Generates a signature for the 'attr.evolve' function that's specific to the call site
+    Generate a signature for the 'attr.evolve' function that's specific to the call site
     and dependent on the type of the first argument.
     """
     if len(ctx.args) != 2:
@@ -966,25 +1055,63 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
     # </hack>
 
     inst_type = get_proper_type(inst_type)
-    if isinstance(inst_type, AnyType):
-        return ctx.default_signature
-    inst_type_str = format_type_bare(inst_type)
+    inst_type_str = format_type_bare(inst_type, ctx.api.options)
 
-    attrs_init_type = _get_attrs_init_type(inst_type)
-    if not attrs_init_type:
-        ctx.api.fail(
-            f'Argument 1 to "evolve" has incompatible type "{inst_type_str}"; expected an attrs class',
-            ctx.context,
-        )
+    attr_types = _get_expanded_attr_types(ctx, inst_type, inst_type, inst_type)
+    if attr_types is None:
         return ctx.default_signature
+    fields = _meet_fields(attr_types)
 
-    # AttrClass.__init__ has the following signature (or similar, if having kw-only & defaults):
-    #   def __init__(self, attr1: Type1, attr2: Type2) -> None:
-    # We want to generate a signature for evolve that looks like this:
-    #   def evolve(inst: AttrClass, *, attr1: Type1 = ..., attr2: Type2 = ...) -> AttrClass:
-    return attrs_init_type.copy_modified(
-        arg_names=["inst"] + attrs_init_type.arg_names[1:],
-        arg_kinds=[ARG_POS] + [ARG_NAMED_OPT for _ in attrs_init_type.arg_kinds[1:]],
+    return CallableType(
+        arg_names=["inst", *fields.keys()],
+        arg_kinds=[ARG_POS] + [ARG_NAMED_OPT] * len(fields),
+        arg_types=[inst_type, *fields.values()],
         ret_type=inst_type,
+        fallback=ctx.default_signature.fallback,
         name=f"{ctx.default_signature.name} of {inst_type_str}",
     )
+
+
+def fields_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> CallableType:
+    """Provide the signature for `attrs.fields`."""
+    if not ctx.args or len(ctx.args) != 1 or not ctx.args[0] or not ctx.args[0][0]:
+        return ctx.default_signature
+
+    # <hack>
+    assert isinstance(ctx.api, TypeChecker)
+    inst_type = ctx.api.expr_checker.accept(ctx.args[0][0])
+    # </hack>
+    proper_type = get_proper_type(inst_type)
+
+    # fields(Any) -> Any, fields(type[Any]) -> Any
+    if (
+        isinstance(proper_type, AnyType)
+        or isinstance(proper_type, TypeType)
+        and isinstance(proper_type.item, AnyType)
+    ):
+        return ctx.default_signature
+
+    cls = None
+    arg_types = ctx.default_signature.arg_types
+
+    if isinstance(proper_type, TypeVarType):
+        inner = get_proper_type(proper_type.upper_bound)
+        if isinstance(inner, Instance):
+            # We need to work arg_types to compensate for the attrs stubs.
+            arg_types = [inst_type]
+            cls = inner.type
+    elif isinstance(proper_type, CallableType):
+        cls = proper_type.type_object()
+
+    if cls is not None and MAGIC_ATTR_NAME in cls.names:
+        # This is a proper attrs class.
+        ret_type = cls.names[MAGIC_ATTR_NAME].type
+        assert ret_type is not None
+        return ctx.default_signature.copy_modified(arg_types=arg_types, ret_type=ret_type)
+
+    ctx.api.fail(
+        f'Argument 1 to "fields" has incompatible type "{format_type_bare(proper_type, ctx.api.options)}"; expected an attrs class',
+        ctx.context,
+    )
+
+    return ctx.default_signature

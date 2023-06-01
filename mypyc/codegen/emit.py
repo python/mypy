@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import pprint
 import sys
+import textwrap
 from typing import Callable
 from typing_extensions import Final
 
@@ -191,10 +193,31 @@ class Emitter:
     def attr(self, name: str) -> str:
         return ATTR_PREFIX + name
 
-    def emit_line(self, line: str = "") -> None:
+    def object_annotation(self, obj: object, line: str) -> str:
+        """Build a C comment with an object's string represention.
+
+        If the comment exceeds the line length limit, it's wrapped into a
+        multiline string (with the extra lines indented to be aligned with
+        the first line's comment).
+
+        If it contains illegal characters, an empty string is returned."""
+        line_width = self._indent + len(line)
+        formatted = pprint.pformat(obj, compact=True, width=max(90 - line_width, 20))
+        if any(x in formatted for x in ("/*", "*/", "\0")):
+            return ""
+
+        if "\n" in formatted:
+            first_line, rest = formatted.split("\n", maxsplit=1)
+            comment_continued = textwrap.indent(rest, (line_width + 3) * " ")
+            return f" /* {first_line}\n{comment_continued} */"
+        else:
+            return f" /* {formatted} */"
+
+    def emit_line(self, line: str = "", *, ann: object = None) -> None:
         if line.startswith("}"):
             self.dedent()
-        self.fragments.append(self._indent * " " + line + "\n")
+        comment = self.object_annotation(ann, line) if ann is not None else ""
+        self.fragments.append(self._indent * " " + line + comment + "\n")
         if line.endswith("{"):
             self.indent()
 
@@ -206,6 +229,9 @@ class Emitter:
         if isinstance(label, str):
             text = label
         else:
+            if label.label == 0 or not label.referenced:
+                return
+
             text = self.label(label)
         # Extra semicolon prevents an error when the next line declares a tempvar
         self.fragments.append(f"{text}: ;\n")
@@ -1119,3 +1145,35 @@ class Emitter:
         self.emit_line(line)
         if DEBUG_ERRORS:
             self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
+
+
+def c_array_initializer(components: list[str], *, indented: bool = False) -> str:
+    """Construct an initializer for a C array variable.
+
+    Components are C expressions valid in an initializer.
+
+    For example, if components are ["1", "2"], the result
+    would be "{1, 2}", which can be used like this:
+
+        int a[] = {1, 2};
+
+    If the result is long, split it into multiple lines.
+    """
+    indent = " " * 4 if indented else ""
+    res = []
+    current: list[str] = []
+    cur_len = 0
+    for c in components:
+        if not current or cur_len + 2 + len(indent) + len(c) < 70:
+            current.append(c)
+            cur_len += len(c) + 2
+        else:
+            res.append(indent + ", ".join(current))
+            current = [c]
+            cur_len = len(c)
+    if not res:
+        # Result fits on a single line
+        return "{%s}" % ", ".join(current)
+    # Multi-line result
+    res.append(indent + ", ".join(current))
+    return "{\n    " + ",\n    ".join(res) + "\n" + indent + "}"

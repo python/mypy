@@ -12,6 +12,9 @@ from mypy.nodes import TypeInfo
 from mypy.server.trigger import make_trigger
 from mypy.types import Instance, Type, TypeVarId, get_proper_type
 
+MAX_NEGATIVE_CACHE_TYPES: Final = 1000
+MAX_NEGATIVE_CACHE_ENTRIES: Final = 10000
+
 # Represents that the 'left' instance is a subtype of the 'right' instance
 SubtypeRelationship: _TypeAlias = Tuple[Instance, Instance]
 
@@ -41,6 +44,9 @@ class TypeState:
     # which we represent as an arbitrary hashable tuple.
     # We need the caches, since subtype checks for structural types are very slow.
     _subtype_caches: Final[SubtypeCache]
+
+    # Same as above but for negative subtyping results.
+    _negative_subtype_caches: Final[SubtypeCache]
 
     # This contains protocol dependencies generated after running a full build,
     # or after an update. These dependencies are special because:
@@ -95,6 +101,7 @@ class TypeState:
 
     def __init__(self) -> None:
         self._subtype_caches = {}
+        self._negative_subtype_caches = {}
         self.proto_deps = {}
         self._attempted_protocols = {}
         self._checked_against_members = {}
@@ -105,7 +112,7 @@ class TypeState:
         self.infer_unions = False
 
     def is_assumed_subtype(self, left: Type, right: Type) -> bool:
-        for (l, r) in reversed(self._assuming):
+        for l, r in reversed(self._assuming):
             if get_proper_type(l) == get_proper_type(left) and get_proper_type(
                 r
             ) == get_proper_type(right):
@@ -113,7 +120,7 @@ class TypeState:
         return False
 
     def is_assumed_proper_subtype(self, left: Type, right: Type) -> bool:
-        for (l, r) in reversed(self._assuming_proper):
+        for l, r in reversed(self._assuming_proper):
             if get_proper_type(l) == get_proper_type(left) and get_proper_type(
                 r
             ) == get_proper_type(right):
@@ -128,11 +135,14 @@ class TypeState:
     def reset_all_subtype_caches(self) -> None:
         """Completely reset all known subtype caches."""
         self._subtype_caches.clear()
+        self._negative_subtype_caches.clear()
 
     def reset_subtype_caches_for(self, info: TypeInfo) -> None:
         """Reset subtype caches (if any) for a given supertype TypeInfo."""
         if info in self._subtype_caches:
             self._subtype_caches[info].clear()
+        if info in self._negative_subtype_caches:
+            self._negative_subtype_caches[info].clear()
 
     def reset_all_subtype_caches_for(self, info: TypeInfo) -> None:
         """Reset subtype caches (if any) for a given supertype TypeInfo and its MRO."""
@@ -154,6 +164,23 @@ class TypeState:
             return False
         return (left, right) in subcache
 
+    def is_cached_negative_subtype_check(
+        self, kind: SubtypeKind, left: Instance, right: Instance
+    ) -> bool:
+        if left.last_known_value is not None or right.last_known_value is not None:
+            # If there is a literal last known value, give up. There
+            # will be an unbounded number of potential types to cache,
+            # making caching less effective.
+            return False
+        info = right.type
+        cache = self._negative_subtype_caches.get(info)
+        if cache is None:
+            return False
+        subcache = cache.get(kind)
+        if subcache is None:
+            return False
+        return (left, right) in subcache
+
     def record_subtype_cache_entry(
         self, kind: SubtypeKind, left: Instance, right: Instance
     ) -> None:
@@ -162,6 +189,21 @@ class TypeState:
             # possible values.  Avoid uselessly increasing cache sizes.
             return
         cache = self._subtype_caches.setdefault(right.type, dict())
+        cache.setdefault(kind, set()).add((left, right))
+
+    def record_negative_subtype_cache_entry(
+        self, kind: SubtypeKind, left: Instance, right: Instance
+    ) -> None:
+        if left.last_known_value is not None or right.last_known_value is not None:
+            # These are unlikely to match, due to the large space of
+            # possible values.  Avoid uselessly increasing cache sizes.
+            return
+        if len(self._negative_subtype_caches) > MAX_NEGATIVE_CACHE_TYPES:
+            self._negative_subtype_caches.clear()
+        cache = self._negative_subtype_caches.setdefault(right.type, dict())
+        subcache = cache.setdefault(kind, set())
+        if len(subcache) > MAX_NEGATIVE_CACHE_ENTRIES:
+            subcache.clear()
         cache.setdefault(kind, set()).add((left, right))
 
     def reset_protocol_deps(self) -> None:

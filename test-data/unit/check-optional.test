@@ -1040,3 +1040,306 @@ x: Optional[List[int]]
 if 3 in x:
     pass
 
+[case testNarrowedVariableInNestedFunctionBasic]
+from typing import Optional
+
+def can_narrow(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return reveal_type(x)  # N: Revealed type is "builtins.str"
+    nested()
+
+def foo(a): pass
+
+class C:
+    def can_narrow_in_method(self, x: Optional[str]) -> None:
+        if x is None:
+            x = "a"
+        def nested() -> str:
+            return reveal_type(x)  # N: Revealed type is "builtins.str"
+        # Reading the variable is fine
+        y = x
+        with foo(x):
+            foo(x)
+        for a in foo(x):
+            foo(x)
+        nested()
+
+def can_narrow_lambda(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    nested = lambda: x
+    reveal_type(nested())  # N: Revealed type is "builtins.str"
+
+def cannot_narrow_if_reassigned(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    if int():
+        x = None
+    nested()
+
+x: Optional[str] = "x"
+
+def narrow_global_in_func() -> None:
+    global x
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        # This should perhaps not be narrowed, since the nested function could outlive
+        # the outer function, and since other functions could also assign to x, but
+        # this seems like a minor issue.
+        return x
+    nested()
+
+x = "y"
+
+def narrowing_global_at_top_level_not_propagated() -> str:
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+
+[case testNarrowedVariableInNestedFunctionMore1]
+from typing import Optional, overload
+
+class C:
+    a: Optional[str]
+
+def attribute_narrowing(c: C) -> None:
+    # This case is not supported, since we can't keep track of assignments to attributes.
+    c.a = "x"
+    def nested() -> str:
+        return c.a  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    nested()
+
+def assignment_in_for(x: Optional[str]) -> None:
+    if x is None:
+        x = "e"
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    for x in ["x"]:
+        pass
+
+def foo(): pass
+
+def assignment_in_with(x: Optional[str]) -> None:
+    if x is None:
+        x = "e"
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    with foo() as x:
+        pass
+
+g: Optional[str]
+
+def assign_to_global() -> None:
+    global g
+    g = "x"
+    # This is unsafe, but we don't generate an error, for convenience. Besides,
+    # this is probably a very rare case.
+    def nested() -> str:
+        return g
+
+def assign_to_nonlocal(x: Optional[str]) -> None:
+    def nested() -> str:
+        nonlocal x
+
+        if x is None:
+            x = "a"
+
+        def nested2() -> str:
+            return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+
+        return nested2()
+    nested()
+    x = None
+
+def dec(f):
+    return f
+
+@dec
+def decorated_outer(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return x
+    nested()
+
+@dec
+def decorated_outer_bad(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    x = None
+    nested()
+
+def decorated_inner(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    @dec
+    def nested() -> str:
+        return x
+    nested()
+
+def decorated_inner_bad(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    @dec
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    x = None
+    nested()
+
+@overload
+def overloaded_outer(x: None) -> None: ...
+@overload
+def overloaded_outer(x: str) -> None: ...
+def overloaded_outer(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return x
+    nested()
+
+@overload
+def overloaded_outer_bad(x: None) -> None: ...
+@overload
+def overloaded_outer_bad(x: str) -> None: ...
+def overloaded_outer_bad(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    x = None
+    nested()
+
+[case testNarrowedVariableInNestedFunctionMore2]
+from typing import Optional
+
+def narrow_multiple(x: Optional[str], y: Optional[int]) -> None:
+    z: Optional[str] = x
+    if x is None:
+        x = ""
+    if y is None:
+        y = 1
+    if int():
+        if z is None:
+            z = ""
+        def nested() -> None:
+            a: str = x
+            b: int = y
+            c: str = z
+        nested()
+
+def narrow_multiple_partial(x: Optional[str], y: Optional[int]) -> None:
+    z: Optional[str] = x
+    if x is None:
+        x = ""
+    if isinstance(y, int):
+        if z is None:
+            z = ""
+        def nested() -> None:
+            a: str = x
+            b: int = y
+            c: str = z  # E: Incompatible types in assignment (expression has type "Optional[str]", variable has type "str")
+        z = None
+        nested()
+
+def multiple_nested_functions(x: Optional[str], y: Optional[str]) -> None:
+    if x is None:
+        x = ""
+    def nested1() -> str:
+        return x
+    if y is None:
+        y = ""
+    def nested2() -> str:
+        a: str = y
+        return x
+
+class C:
+    a: str
+    def __setitem__(self, key, value): pass
+
+def narrowed_variable_used_in_lvalue_but_not_assigned(c: Optional[C]) -> None:
+    if c is None:
+        c = C()
+    def nested() -> C:
+        return c
+    c.a = "x"
+    c[1] = 2
+    cc = C()
+    cc[c] = 3
+    nested()
+
+def narrow_with_multi_lvalues_1(x: Optional[str]) -> None:
+    if x is None:
+        x = ""
+
+    def nested() -> str:
+        return x
+
+    y = z = None
+
+def narrow_with_multi_lvalue_2(x: Optional[str]) -> None:
+    if x is None:
+        x = ""
+
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+
+    x = y = None
+
+def narrow_with_multi_lvalue_3(x: Optional[str]) -> None:
+    if x is None:
+        x = ""
+
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+
+    y = x = None
+
+def narrow_with_multi_assign_1(x: Optional[str]) -> None:
+    if x is None:
+        x = ""
+
+    def nested() -> str:
+        return x
+
+    y, z = None, None
+
+def narrow_with_multi_assign_2(x: Optional[str]) -> None:
+    if x is None:
+        x = ""
+
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+
+    x, y = None, None
+
+def narrow_with_multi_assign_3(x: Optional[str]) -> None:
+    if x is None:
+        x = ""
+
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+
+    y, x = None, None
+
+[builtins fixtures/isinstance.pyi]
+
+[case testNestedFunctionSpecialCase]
+class C:
+    def __enter__(self, *args): ...
+    def __exit__(self, *args) -> bool: ...
+
+def f(x: object) -> None:
+    if x is not None:
+        pass
+
+    def nested() -> None:
+        with C():
+            pass
+[builtins fixtures/tuple.pyi]

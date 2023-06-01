@@ -51,7 +51,6 @@ from typing import Callable, TextIO
 
 
 def _run(main_wrapper: Callable[[TextIO, TextIO], None]) -> tuple[str, str, int]:
-
     stdout = StringIO()
     stderr = StringIO()
 

@@ -16,6 +16,7 @@ from mypy.maptype import map_instance_to_supertype
 from mypy.meet import narrow_declared_type
 from mypy.messages import MessageBuilder
 from mypy.nodes import ARG_POS, Context, Expression, NameExpr, TypeAlias, TypeInfo, Var
+from mypy.options import Options
 from mypy.patterns import (
     AsPattern,
     ClassPattern,
@@ -104,7 +105,11 @@ class PatternChecker(PatternVisitor[PatternType]):
     # non_sequence_match_type_names
     non_sequence_match_types: list[Type]
 
-    def __init__(self, chk: mypy.checker.TypeChecker, msg: MessageBuilder, plugin: Plugin) -> None:
+    options: Options
+
+    def __init__(
+        self, chk: mypy.checker.TypeChecker, msg: MessageBuilder, plugin: Plugin, options: Options
+    ) -> None:
         self.chk = chk
         self.msg = msg
         self.plugin = plugin
@@ -114,6 +119,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         self.non_sequence_match_types = self.generate_types_from_names(
             non_sequence_match_type_names
         )
+        self.options = options
 
     def accept(self, o: Pattern, type_context: Type) -> PatternType:
         self.type_context.append(type_context)
@@ -458,8 +464,8 @@ class PatternChecker(PatternVisitor[PatternType]):
         elif isinstance(type_info, TypeAlias):
             typ = type_info.target
         else:
-            if isinstance(type_info, Var):
-                name = str(type_info.type)
+            if isinstance(type_info, Var) and type_info.type is not None:
+                name = type_info.type.str_with_options(self.options)
             else:
                 name = type_info.name
             self.msg.fail(message_registry.CLASS_PATTERN_TYPE_REQUIRED.format(name), o.class_ref)
@@ -508,7 +514,12 @@ class PatternChecker(PatternVisitor[PatternType]):
                     )
                     has_local_errors = local_errors.has_new_errors()
                 if has_local_errors:
-                    self.msg.fail(message_registry.MISSING_MATCH_ARGS.format(typ), o)
+                    self.msg.fail(
+                        message_registry.MISSING_MATCH_ARGS.format(
+                            typ.str_with_options(self.options)
+                        ),
+                        o,
+                    )
                     return self.early_non_match()
 
                 proper_match_args_type = get_proper_type(match_args_type)
@@ -573,7 +584,10 @@ class PatternChecker(PatternVisitor[PatternType]):
             if has_local_errors or key_type is None:
                 key_type = AnyType(TypeOfAny.from_error)
                 self.msg.fail(
-                    message_registry.CLASS_PATTERN_UNKNOWN_KEYWORD.format(typ, keyword), pattern
+                    message_registry.CLASS_PATTERN_UNKNOWN_KEYWORD.format(
+                        typ.str_with_options(self.options), keyword
+                    ),
+                    pattern,
                 )
 
             inner_type, inner_rest_type, inner_captures = self.accept(pattern, key_type)

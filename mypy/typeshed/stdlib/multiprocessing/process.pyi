@@ -17,8 +17,8 @@ class BaseProcess:
         group: None = None,
         target: Callable[..., object] | None = None,
         name: str | None = None,
-        args: Iterable[Any] = ...,
-        kwargs: Mapping[str, Any] = ...,
+        args: Iterable[Any] = (),
+        kwargs: Mapping[str, Any] = {},
         *,
         daemon: bool | None = None,
     ) -> None: ...

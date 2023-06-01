@@ -328,6 +328,38 @@ Foo(a=1, b='bye')
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassTransformFieldSpecifierImplicitInit]
+# flags: --python-version 3.11
+from typing import dataclass_transform, Literal, overload
+
+def init(*, init: Literal[True] = True): ...
+def no_init(*, init: Literal[False] = False): ...
+
+@overload
+def field_overload(*, custom: None, init: Literal[True] = True): ...
+@overload
+def field_overload(*, custom: str, init: Literal[False] = False): ...
+def field_overload(*, custom, init): ...
+
+@dataclass_transform(field_specifiers=(init, no_init, field_overload))
+def my_dataclass(cls): return cls
+
+@my_dataclass
+class Foo:
+    a: int = init()
+    b: int = field_overload(custom=None)
+
+    bad1: int = no_init()
+    bad2: int = field_overload(custom="bad2")
+
+reveal_type(Foo)  # N: Revealed type is "def (a: builtins.int, b: builtins.int) -> __main__.Foo"
+Foo(a=1, b=2)
+Foo(a=1, b=2, bad1=0)  # E: Unexpected keyword argument "bad1" for "Foo"
+Foo(a=1, b=2, bad2=0)  # E: Unexpected keyword argument "bad2" for "Foo"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassTransformOverloadsDecoratorOnOverload]
 # flags: --python-version 3.11
 from typing import dataclass_transform, overload, Any, Callable, Type, Literal
@@ -805,5 +837,219 @@ bar.bar = 5
 bar.base = 6
 reveal_type(bar.base)  # N: Revealed type is "builtins.int"
 
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformSimpleDescriptor]
+# flags: --python-version 3.11
+
+from typing import dataclass_transform, overload, Any
+
+@dataclass_transform()
+def my_dataclass(cls): ...
+
+class Desc:
+    @overload
+    def __get__(self, instance: None, owner: Any) -> Desc: ...
+    @overload
+    def __get__(self, instance: object, owner: Any) -> str: ...
+    def __get__(self, instance: object | None, owner: Any) -> Desc | str: ...
+
+    def __set__(self, instance: Any, value: str) -> None: ...
+
+@my_dataclass
+class C:
+    x: Desc
+    y: int
+
+C(x='x', y=1)
+C(x=1, y=1)  # E: Argument "x" to "C" has incompatible type "int"; expected "str"
+reveal_type(C(x='x', y=1).x)  # N: Revealed type is "builtins.str"
+reveal_type(C(x='x', y=1).y)  # N: Revealed type is "builtins.int"
+reveal_type(C.x)  # N: Revealed type is "__main__.Desc"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformUnannotatedDescriptor]
+# flags: --python-version 3.11
+
+from typing import dataclass_transform, overload, Any
+
+@dataclass_transform()
+def my_dataclass(cls): ...
+
+class Desc:
+    @overload
+    def __get__(self, instance: None, owner: Any) -> Desc: ...
+    @overload
+    def __get__(self, instance: object, owner: Any) -> str: ...
+    def __get__(self, instance: object | None, owner: Any) -> Desc | str: ...
+
+    def __set__(*args, **kwargs): ...
+
+@my_dataclass
+class C:
+    x: Desc
+    y: int
+
+C(x='x', y=1)
+C(x=1, y=1)
+reveal_type(C(x='x', y=1).x)  # N: Revealed type is "builtins.str"
+reveal_type(C(x='x', y=1).y)  # N: Revealed type is "builtins.int"
+reveal_type(C.x)  # N: Revealed type is "__main__.Desc"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformGenericDescriptor]
+# flags: --python-version 3.11
+
+from typing import dataclass_transform, overload, Any, TypeVar, Generic
+
+@dataclass_transform()
+def my_dataclass(frozen: bool = False): ...
+
+T = TypeVar("T")
+
+class Desc(Generic[T]):
+    @overload
+    def __get__(self, instance: None, owner: Any) -> Desc[T]: ...
+    @overload
+    def __get__(self, instance: object, owner: Any) -> T: ...
+    def __get__(self, instance: object | None, owner: Any) -> Desc | T: ...
+
+    def __set__(self, instance: Any, value: T) -> None: ...
+
+@my_dataclass()
+class C:
+    x: Desc[str]
+
+C(x='x')
+C(x=1)  # E: Argument "x" to "C" has incompatible type "int"; expected "str"
+reveal_type(C(x='x').x)  # N: Revealed type is "builtins.str"
+reveal_type(C.x)  # N: Revealed type is "__main__.Desc[builtins.str]"
+
+@my_dataclass()
+class D(C):
+    y: Desc[int]
+
+d = D(x='x', y=1)
+reveal_type(d.x)  # N: Revealed type is "builtins.str"
+reveal_type(d.y)  # N: Revealed type is "builtins.int"
+reveal_type(D.x)  # N: Revealed type is "__main__.Desc[builtins.str]"
+reveal_type(D.y)  # N: Revealed type is "__main__.Desc[builtins.int]"
+
+@my_dataclass(frozen=True)
+class F:
+    x: Desc[str] = Desc()
+
+F(x='x')
+F(x=1)  # E: Argument "x" to "F" has incompatible type "int"; expected "str"
+reveal_type(F(x='x').x)  # N: Revealed type is "builtins.str"
+reveal_type(F.x)  # N: Revealed type is "__main__.Desc[builtins.str]"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformGenericDescriptorWithInheritance]
+# flags: --python-version 3.11
+
+from typing import dataclass_transform, overload, Any, TypeVar, Generic
+
+@dataclass_transform()
+def my_dataclass(cls): ...
+
+T = TypeVar("T")
+
+class Desc(Generic[T]):
+    @overload
+    def __get__(self, instance: None, owner: Any) -> Desc[T]: ...
+    @overload
+    def __get__(self, instance: object, owner: Any) -> T: ...
+    def __get__(self, instance: object | None, owner: Any) -> Desc | T: ...
+
+    def __set__(self, instance: Any, value: T) -> None: ...
+
+class Desc2(Desc[str]):
+    pass
+
+@my_dataclass
+class C:
+    x: Desc2
+
+C(x='x')
+C(x=1)  # E: Argument "x" to "C" has incompatible type "int"; expected "str"
+reveal_type(C(x='x').x)  # N: Revealed type is "builtins.str"
+reveal_type(C.x)  # N: Revealed type is "__main__.Desc[builtins.str]"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformDescriptorWithDifferentGetSetTypes]
+# flags: --python-version 3.11
+
+from typing import dataclass_transform, overload, Any
+
+@dataclass_transform()
+def my_dataclass(cls): ...
+
+class Desc:
+    @overload
+    def __get__(self, instance: None, owner: Any) -> int: ...
+    @overload
+    def __get__(self, instance: object, owner: Any) -> str: ...
+    def __get__(self, instance, owner): ...
+
+    def __set__(self, instance: Any, value: bytes) -> None: ...
+
+@my_dataclass
+class C:
+    x: Desc
+
+c = C(x=b'x')
+C(x=1)  # E: Argument "x" to "C" has incompatible type "int"; expected "bytes"
+reveal_type(c.x)  # N: Revealed type is "builtins.str"
+reveal_type(C.x)  # N: Revealed type is "builtins.int"
+c.x = b'x'
+c.x = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "bytes")
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassTransformUnsupportedDescriptors]
+# flags: --python-version 3.11
+
+from typing import dataclass_transform, overload, Any
+
+@dataclass_transform()
+def my_dataclass(cls): ...
+
+class Desc:
+    @overload
+    def __get__(self, instance: None, owner: Any) -> int: ...
+    @overload
+    def __get__(self, instance: object, owner: Any) -> str: ...
+    def __get__(self, instance, owner): ...
+
+    def __set__(*args, **kwargs) -> None: ...
+
+class Desc2:
+    @overload
+    def __get__(self, instance: None, owner: Any) -> int: ...
+    @overload
+    def __get__(self, instance: object, owner: Any) -> str: ...
+    def __get__(self, instance, owner): ...
+
+    @overload
+    def __set__(self, instance: Any, value: bytes) -> None: ...
+    @overload
+    def __set__(self) -> None: ...
+    def __set__(self, *args, **kawrga) -> None: ...
+
+@my_dataclass
+class C:
+    x: Desc  # E: Unsupported signature for "__set__" in "Desc"
+    y: Desc2  # E: Unsupported "__set__" in "Desc2"
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]

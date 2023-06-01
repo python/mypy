@@ -17,7 +17,6 @@ __all__ = [
     "ParsingError",
     "MissingSectionHeaderError",
     "ConfigParser",
-    "SafeConfigParser",
     "RawConfigParser",
     "Interpolation",
     "BasicInterpolation",
@@ -28,6 +27,9 @@ __all__ = [
     "DEFAULTSECT",
     "MAX_INTERPOLATION_DEPTH",
 ]
+
+if sys.version_info < (3, 12):
+    __all__ += ["SafeConfigParser"]
 
 _Section: TypeAlias = Mapping[str, str]
 _Parser: TypeAlias = MutableMapping[str, _Section]
@@ -69,8 +71,8 @@ class RawConfigParser(_Parser):
         dict_type: type[Mapping[str, str]] = ...,
         *,
         allow_no_value: Literal[True],
-        delimiters: Sequence[str] = ...,
-        comment_prefixes: Sequence[str] = ...,
+        delimiters: Sequence[str] = ("=", ":"),
+        comment_prefixes: Sequence[str] = ("#", ";"),
         inline_comment_prefixes: Sequence[str] | None = None,
         strict: bool = True,
         empty_lines_in_values: bool = True,
@@ -85,8 +87,8 @@ class RawConfigParser(_Parser):
         dict_type: type[Mapping[str, str]],
         allow_no_value: Literal[True],
         *,
-        delimiters: Sequence[str] = ...,
-        comment_prefixes: Sequence[str] = ...,
+        delimiters: Sequence[str] = ("=", ":"),
+        comment_prefixes: Sequence[str] = ("#", ";"),
         inline_comment_prefixes: Sequence[str] | None = None,
         strict: bool = True,
         empty_lines_in_values: bool = True,
@@ -101,8 +103,8 @@ class RawConfigParser(_Parser):
         dict_type: type[Mapping[str, str]] = ...,
         allow_no_value: bool = False,
         *,
-        delimiters: Sequence[str] = ...,
-        comment_prefixes: Sequence[str] = ...,
+        delimiters: Sequence[str] = ("=", ":"),
+        comment_prefixes: Sequence[str] = ("#", ";"),
         inline_comment_prefixes: Sequence[str] | None = None,
         strict: bool = True,
         empty_lines_in_values: bool = True,

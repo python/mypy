@@ -3,17 +3,22 @@
 The mypy configuration file
 ===========================
 
-Mypy supports reading configuration settings from a file.  By default
-it uses the file ``mypy.ini`` with a fallback to ``.mypy.ini``, then ``pyproject.toml``,
-then ``setup.cfg`` in the current directory, then ``$XDG_CONFIG_HOME/mypy/config``, then
-``~/.config/mypy/config``, and finally ``.mypy.ini`` in the user home directory
-if none of them are found; the :option:`--config-file <mypy --config-file>` command-line flag can be used
-to read a different file instead (see :ref:`config-file-flag`).
+Mypy supports reading configuration settings from a file with the following precedence order:
+
+    1. ``./mypy.ini``
+    2. ``./.mypy.ini``
+    3. ``./pyproject.toml``
+    4. ``./setup.cfg``
+    5. ``$XDG_CONFIG_HOME/mypy/config``
+    6. ``~/.config/mypy/config``
+    7. ``~/.mypy.ini``
 
 It is important to understand that there is no merging of configuration
-files, as it would lead to ambiguity.  The :option:`--config-file <mypy --config-file>` flag
-has the highest precedence and must be correct; otherwise mypy will report
-an error and exit.  Without command line option, mypy will look for configuration files in the above mentioned order.
+files, as it would lead to ambiguity. The :option:`--config-file <mypy --config-file>`
+command-line flag has the highest precedence and
+must be correct; otherwise mypy will report an error and exit. Without the
+command line option, mypy will look for configuration files in the
+precedence order above.
 
 Most flags correspond closely to :ref:`command-line flags
 <command-line>` but there are some differences in flag names and some
@@ -103,8 +108,8 @@ their name or by (when applicable) swapping their prefix from
 ``disallow`` to ``allow`` (and vice versa).
 
 
-Examples
-********
+Example ``mypy.ini``
+********************
 
 Here is an example of a ``mypy.ini`` file. To use this config file, place it at the root
 of your repo and run mypy.
@@ -493,14 +498,19 @@ section of the command line docs.
     :default: False
 
     Disallows defining functions without type annotations or with incomplete type
-    annotations.
+    annotations (a superset of :confval:`disallow_incomplete_defs`).
+
+    For example, it would report an error for :code:`def f(a, b)` and :code:`def f(a: int, b)`.
 
 .. confval:: disallow_incomplete_defs
 
     :type: boolean
     :default: False
 
-    Disallows defining functions with incomplete type annotations.
+    Disallows defining functions with incomplete type annotations, while still
+    allowing entirely unannotated definitions.
+
+    For example, it would report an error for :code:`def f(a: int, b)` but not :code:`def f(a, b)`.
 
 .. confval:: check_untyped_defs
 

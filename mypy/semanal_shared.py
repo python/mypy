@@ -18,6 +18,7 @@ from mypy.nodes import (
     Decorator,
     Expression,
     FuncDef,
+    NameExpr,
     Node,
     OverloadedFuncDef,
     RefExpr,
@@ -31,6 +32,7 @@ from mypy.tvar_scope import TypeVarLikeScope
 from mypy.type_visitor import ANY_STRATEGY, BoolTypeQuery
 from mypy.types import (
     TPDICT_FB_NAMES,
+    AnyType,
     FunctionLike,
     Instance,
     Parameters,
@@ -40,6 +42,7 @@ from mypy.types import (
     ProperType,
     TupleType,
     Type,
+    TypeOfAny,
     TypeVarId,
     TypeVarLikeType,
     get_proper_type,
@@ -307,6 +310,7 @@ def paramspec_args(
         id,
         flavor=ParamSpecFlavor.ARGS,
         upper_bound=named_type_func("builtins.tuple", [named_type_func("builtins.object")]),
+        default=AnyType(TypeOfAny.from_omitted_generics),
         line=line,
         column=column,
         prefix=prefix,
@@ -331,6 +335,7 @@ def paramspec_kwargs(
         upper_bound=named_type_func(
             "builtins.dict", [named_type_func("builtins.str"), named_type_func("builtins.object")]
         ),
+        default=AnyType(TypeOfAny.from_omitted_generics),
         line=line,
         column=column,
         prefix=prefix,
@@ -451,7 +456,7 @@ def require_bool_literal_argument(
     default: bool | None = None,
 ) -> bool | None:
     """Attempt to interpret an expression as a boolean literal, and fail analysis if we can't."""
-    value = api.parse_bool(expression)
+    value = parse_bool(expression)
     if value is None:
         api.fail(
             f'"{name}" argument must be a True or False literal', expression, code=LITERAL_REQ
@@ -459,3 +464,12 @@ def require_bool_literal_argument(
         return default
 
     return value
+
+
+def parse_bool(expr: Expression) -> bool | None:
+    if isinstance(expr, NameExpr):
+        if expr.fullname == "builtins.True":
+            return True
+        if expr.fullname == "builtins.False":
+            return False
+    return None

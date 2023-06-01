@@ -10,6 +10,8 @@ import shutil
 import sys
 import tempfile
 from abc import abstractmethod
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Iterator, NamedTuple, Pattern, Union
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
@@ -105,6 +107,12 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
             src_path = join(os.path.dirname(case.file), item.arg)
             with open(src_path, encoding="utf8") as f:
                 files.append((join(base_path, "typing.pyi"), f.read()))
+        elif item.id == "_typeshed":
+            # Use an alternative stub file for the _typeshed module.
+            assert item.arg is not None
+            src_path = join(os.path.dirname(case.file), item.arg)
+            with open(src_path, encoding="utf8") as f:
+                files.append((join(base_path, "_typeshed.pyi"), f.read()))
         elif re.match(r"stale[0-9]*$", item.id):
             passnum = 1 if item.id == "stale" else int(item.id[len("stale") :])
             assert passnum > 0
@@ -202,6 +210,7 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
                 ).format(passnum, case.file, first_item.line)
             )
 
+    output_inline_start = len(output)
     input = first_item.data
     expand_errors(input, output, "main")
     for file_path, contents in files:
@@ -219,6 +228,7 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
 
     case.input = input
     case.output = output
+    case.output_inline_start = output_inline_start
     case.output2 = output2
     case.last_line = case.line + item.line + len(item.data) - 2
     case.files = files
@@ -240,6 +250,7 @@ class DataDrivenTestCase(pytest.Item):
 
     input: list[str]
     output: list[str]  # Output for the first pass
+    output_inline_start: int
     output2: dict[int, list[str]]  # Output for runs 2+, indexed by run number
 
     # full path of test suite
@@ -405,6 +416,7 @@ def module_from_path(path: str) -> str:
     return module
 
 
+@dataclass
 class TestItem:
     """Parsed test caseitem.
 
@@ -413,20 +425,18 @@ class TestItem:
       .. data ..
     """
 
-    id = ""
-    arg: str | None = ""
-
-    # Text data, array of 8-bit strings
+    id: str
+    arg: str | None
+    # Processed, collapsed text data
     data: list[str]
+    # Start line: 1-based, inclusive, relative to testcase
+    line: int
+    # End line: 1-based, exclusive, relative to testcase; not same as `line + len(test_item.data)` due to collapsing
+    end_line: int
 
-    file = ""
-    line = 0  # Line number in file
-
-    def __init__(self, id: str, arg: str | None, data: list[str], line: int) -> None:
-        self.id = id
-        self.arg = arg
-        self.data = data
-        self.line = line
+    @property
+    def trimmed_newlines(self) -> int:  # compensates for strip_list
+        return self.end_line - self.line - len(self.data)
 
 
 def parse_test_data(raw_data: str, name: str) -> list[TestItem]:
@@ -448,7 +458,7 @@ def parse_test_data(raw_data: str, name: str) -> list[TestItem]:
             if id:
                 data = collapse_line_continuation(data)
                 data = strip_list(data)
-                ret.append(TestItem(id, arg, strip_list(data), i0 + 1))
+                ret.append(TestItem(id, arg, data, i0 + 1, i))
 
             i0 = i
             id = s[1:-1]
@@ -469,7 +479,7 @@ def parse_test_data(raw_data: str, name: str) -> list[TestItem]:
     if id:
         data = collapse_line_continuation(data)
         data = strip_list(data)
-        ret.append(TestItem(id, arg, data, i0 + 1))
+        ret.append(TestItem(id, arg, data, i0 + 1, i - 1))
 
     return ret
 
@@ -606,7 +616,7 @@ def pytest_addoption(parser: Any) -> None:
 
 
 # This function name is special to pytest.  See
-# http://doc.pytest.org/en/latest/writing_plugins.html#collection-hooks
+# https://doc.pytest.org/en/latest/how-to/writing_plugins.html#collection-hooks
 def pytest_pycollect_makeitem(collector: Any, name: str, obj: object) -> Any | None:
     """Called by pytest on each object in modules configured in conftest.py files.
 
@@ -692,6 +702,12 @@ class DataSuiteCollector(pytest.Class):
             yield DataFileCollector.from_parent(parent=self, name=data_file)
 
 
+class DataFileFix(NamedTuple):
+    lineno: int  # 1-offset, inclusive
+    end_lineno: int  # 1-offset, exclusive
+    lines: list[str]
+
+
 class DataFileCollector(pytest.Collector):
     """Represents a single `.test` data driven test file.
 
@@ -699,6 +715,8 @@ class DataFileCollector(pytest.Collector):
     """
 
     parent: DataSuiteCollector
+
+    _fixes: list[DataFileFix]
 
     @classmethod  # We have to fight with pytest here:
     def from_parent(
@@ -714,6 +732,27 @@ class DataFileCollector(pytest.Collector):
             suite=self.parent.obj,
             file=os.path.join(self.parent.obj.data_prefix, self.name),
         )
+
+    def setup(self) -> None:
+        super().setup()
+        self._fixes = []
+
+    def teardown(self) -> None:
+        super().teardown()
+        self._apply_fixes()
+
+    def enqueue_fix(self, fix: DataFileFix) -> None:
+        self._fixes.append(fix)
+
+    def _apply_fixes(self) -> None:
+        if not self._fixes:
+            return
+        data_path = Path(self.parent.obj.data_prefix) / self.name
+        lines = data_path.read_text().split("\n")
+        # start from end to prevent line offsets from shifting as we update
+        for fix in sorted(self._fixes, reverse=True):
+            lines[fix.lineno - 1 : fix.end_lineno - 1] = fix.lines
+        data_path.write_text("\n".join(lines))
 
 
 def add_test_name_suffix(name: str, suffix: str) -> str:

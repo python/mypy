@@ -385,7 +385,7 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
 def call_classmethod(builder: IRBuilder, ir: ClassIR, expr: CallExpr, callee: MemberExpr) -> Value:
     decl = ir.method_decl(callee.name)
     args = []
-    arg_kinds, arg_names = expr.arg_kinds[:], expr.arg_names[:]
+    arg_kinds, arg_names = expr.arg_kinds.copy(), expr.arg_names.copy()
     # Add the class argument for class methods in extension classes
     if decl.kind == FUNC_CLASSMETHOD and ir.is_ext_class:
         args.append(builder.load_native_type_object(ir.fullname))
@@ -452,7 +452,7 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
 
     decl = base.method_decl(callee.name)
     arg_values = [builder.accept(arg) for arg in expr.args]
-    arg_kinds, arg_names = expr.arg_kinds[:], expr.arg_names[:]
+    arg_kinds, arg_names = expr.arg_kinds.copy(), expr.arg_names.copy()
 
     if decl.kind != FUNC_STATICMETHOD:
         # Grab first argument
@@ -496,7 +496,7 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
         return builder.shortcircuit_expr(expr)
 
     # Special case for string formatting
-    if expr.op == "%" and (isinstance(expr.left, StrExpr) or isinstance(expr.left, BytesExpr)):
+    if expr.op == "%" and isinstance(expr.left, (StrExpr, BytesExpr)):
         ret = translate_printf_style_formatting(builder, expr.left, expr.right)
         if ret is not None:
             return ret
@@ -812,10 +812,10 @@ def transform_basic_comparison(
     if (
         is_int_rprimitive(left.type)
         and is_int_rprimitive(right.type)
-        and op in int_comparison_op_mapping.keys()
+        and op in int_comparison_op_mapping
     ):
         return builder.compare_tagged(left, right, op, line)
-    if is_fixed_width_rtype(left.type) and op in int_comparison_op_mapping.keys():
+    if is_fixed_width_rtype(left.type) and op in int_comparison_op_mapping:
         if right.type == left.type:
             op_id = ComparisonOp.signed_ops[op]
             return builder.builder.comparison_op(left, right, op_id, line)
@@ -826,7 +826,7 @@ def transform_basic_comparison(
             )
     elif (
         is_fixed_width_rtype(right.type)
-        and op in int_comparison_op_mapping.keys()
+        and op in int_comparison_op_mapping
         and isinstance(left, Integer)
     ):
         op_id = ComparisonOp.signed_ops[op]

@@ -247,12 +247,32 @@ class InitVar(Generic[_T], metaclass=_InitVarMeta):
         @overload
         def __class_getitem__(cls, type: Any) -> InitVar[Any]: ...
 
-if sys.version_info >= (3, 11):
+if sys.version_info >= (3, 12):
     def make_dataclass(
         cls_name: str,
         fields: Iterable[str | tuple[str, type] | tuple[str, type, Any]],
         *,
-        bases: tuple[type, ...] = ...,
+        bases: tuple[type, ...] = (),
+        namespace: dict[str, Any] | None = None,
+        init: bool = True,
+        repr: bool = True,
+        eq: bool = True,
+        order: bool = False,
+        unsafe_hash: bool = False,
+        frozen: bool = False,
+        match_args: bool = True,
+        kw_only: bool = False,
+        slots: bool = False,
+        weakref_slot: bool = False,
+        module: str | None = None,
+    ) -> type: ...
+
+elif sys.version_info >= (3, 11):
+    def make_dataclass(
+        cls_name: str,
+        fields: Iterable[str | tuple[str, type] | tuple[str, type, Any]],
+        *,
+        bases: tuple[type, ...] = (),
         namespace: dict[str, Any] | None = None,
         init: bool = True,
         repr: bool = True,
@@ -271,7 +291,7 @@ elif sys.version_info >= (3, 10):
         cls_name: str,
         fields: Iterable[str | tuple[str, type] | tuple[str, type, Any]],
         *,
-        bases: tuple[type, ...] = ...,
+        bases: tuple[type, ...] = (),
         namespace: dict[str, Any] | None = None,
         init: bool = True,
         repr: bool = True,
@@ -289,7 +309,7 @@ else:
         cls_name: str,
         fields: Iterable[str | tuple[str, type] | tuple[str, type, Any]],
         *,
-        bases: tuple[type, ...] = ...,
+        bases: tuple[type, ...] = (),
         namespace: dict[str, Any] | None = None,
         init: bool = True,
         repr: bool = True,

@@ -312,7 +312,7 @@ def bar() -> None:
     foo(arg='xyz')
 
 [case testDaemonGetType_python38]
-$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
+$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary --python-version 3.8
 Daemon started
 $ dmypy inspect foo:1:2:3:4
 Command "inspect" is only valid after a "check" command (that produces no parse errors)

@@ -696,7 +696,8 @@ def process_options(
         "--disallow-incomplete-defs",
         default=False,
         strict_flag=True,
-        help="Disallow defining functions with incomplete type annotations",
+        help="Disallow defining functions with incomplete type annotations "
+        "(while still allowing entirely unannotated definitions)",
         group=untyped_group,
     )
     add_invertible_flag(
@@ -732,6 +733,14 @@ def process_options(
         action="store_false",
         dest="strict_optional",
         help="Disable strict Optional checks (inverse: --strict-optional)",
+    )
+
+    add_invertible_flag(
+        "--force-uppercase-builtins", default=False, help=argparse.SUPPRESS, group=none_group
+    )
+
+    add_invertible_flag(
+        "--force-union-syntax", default=False, help=argparse.SUPPRESS, group=none_group
     )
 
     lint_group = parser.add_argument_group(
@@ -1490,7 +1499,7 @@ def read_types_packages_to_install(cache_dir: str, after_run: bool) -> list[str]
         # No missing stubs.
         return []
     with open(fnam) as f:
-        return [line.strip() for line in f.readlines()]
+        return [line.strip() for line in f]
 
 
 def install_types(

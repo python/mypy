@@ -17,7 +17,7 @@ class DecompressReader(RawIOBase):
         self,
         fp: _Reader,
         decomp_factory: Callable[..., object],
-        trailing_error: type[Exception] | tuple[type[Exception], ...] = ...,
+        trailing_error: type[Exception] | tuple[type[Exception], ...] = (),
         **decomp_args: Any,
     ) -> None: ...
     def readinto(self, b: WriteableBuffer) -> int: ...

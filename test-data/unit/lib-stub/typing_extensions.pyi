@@ -56,6 +56,10 @@ class _TypedDict(Mapping[str, object]):
     if sys.version_info < (3, 0):
         def has_key(self, k: str) -> bool: ...
     def __delitem__(self, k: NoReturn) -> None: ...
+    # Stubtest's tests need the following items:
+    __required_keys__: frozenset[str]
+    __optional_keys__: frozenset[str]
+    __total__: bool
 
 def TypedDict(typename: str, fields: Dict[str, Type[_T]], *, total: Any = ...) -> Type[dict]: ...
 
@@ -69,5 +73,7 @@ def dataclass_transform(
     field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
     **kwargs: Any,
 ) -> Callable[[T], T]: ...
+
+def override(__arg: _T) -> _T: ...
 
 _FutureFeatureFixture = 0

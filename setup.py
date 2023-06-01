@@ -202,7 +202,7 @@ setup(
     long_description=long_description,
     author="Jukka Lehtosalo",
     author_email="jukka.lehtosalo@iki.fi",
-    url="http://www.mypy-lang.org/",
+    url="https://www.mypy-lang.org/",
     license="MIT License",
     py_modules=[],
     ext_modules=ext_modules,
@@ -236,7 +236,7 @@ setup(
     python_requires=">=3.7",
     include_package_data=True,
     project_urls={
-        "News": "http://mypy-lang.org/news.html",
+        "News": "https://mypy-lang.org/news.html",
         "Documentation": "https://mypy.readthedocs.io/en/stable/index.html",
         "Repository": "https://github.com/python/mypy",
     },

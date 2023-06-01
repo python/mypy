@@ -43,7 +43,9 @@ INCOMPATIBLE_RETURN_VALUE_TYPE: Final = ErrorMessage(
 RETURN_VALUE_EXPECTED: Final = ErrorMessage("Return value expected", codes.RETURN_VALUE)
 NO_RETURN_EXPECTED: Final = ErrorMessage("Return statement in function which does not return")
 INVALID_EXCEPTION: Final = ErrorMessage("Exception must be derived from BaseException")
-INVALID_EXCEPTION_TYPE: Final = ErrorMessage("Exception type must be derived from BaseException")
+INVALID_EXCEPTION_TYPE: Final = ErrorMessage(
+    "Exception type must be derived from BaseException (or be a tuple of exception classes)"
+)
 INVALID_EXCEPTION_GROUP: Final = ErrorMessage(
     "Exception type in except* cannot derive from BaseExceptionGroup"
 )
@@ -131,7 +133,7 @@ TYPEDDICT_KEY_MUST_BE_STRING_LITERAL: Final = ErrorMessage(
     "Expected TypedDict key to be string literal"
 )
 MALFORMED_ASSERT: Final = ErrorMessage("Assertion is always true, perhaps remove parentheses?")
-DUPLICATE_TYPE_SIGNATURES: Final = "Function has duplicate type signatures"
+DUPLICATE_TYPE_SIGNATURES: Final = ErrorMessage("Function has duplicate type signatures")
 DESCRIPTOR_SET_NOT_CALLABLE: Final = ErrorMessage("{}.__set__ is not callable")
 DESCRIPTOR_GET_NOT_CALLABLE: Final = "{}.__get__ is not callable"
 MODULE_LEVEL_GETATTRIBUTE: Final = ErrorMessage(
@@ -268,9 +270,49 @@ CLASS_PATTERN_KEYWORD_MATCHES_POSITIONAL: Final = (
 )
 CLASS_PATTERN_DUPLICATE_KEYWORD_PATTERN: Final = 'Duplicate keyword pattern "{}"'
 CLASS_PATTERN_UNKNOWN_KEYWORD: Final = 'Class "{}" has no attribute "{}"'
+CLASS_PATTERN_CLASS_OR_STATIC_METHOD: Final = "Cannot have both classmethod and staticmethod"
 MULTIPLE_ASSIGNMENTS_IN_PATTERN: Final = 'Multiple assignments to name "{}" in pattern'
 CANNOT_MODIFY_MATCH_ARGS: Final = 'Cannot assign to "__match_args__"'
 
 DATACLASS_FIELD_ALIAS_MUST_BE_LITERAL: Final = (
     '"alias" argument to dataclass field must be a string literal'
+)
+
+# fastparse
+FAILED_TO_MERGE_OVERLOADS: Final = ErrorMessage(
+    "Condition can't be inferred, unable to merge overloads"
+)
+TYPE_IGNORE_WITH_ERRCODE_ON_MODULE: Final = ErrorMessage(
+    "type ignore with error code is not supported for modules; "
+    'use `# mypy: disable-error-code="{}"`',
+    codes.SYNTAX,
+)
+INVALID_TYPE_IGNORE: Final = ErrorMessage('Invalid "type: ignore" comment', codes.SYNTAX)
+TYPE_COMMENT_SYNTAX_ERROR_VALUE: Final = ErrorMessage(
+    'Syntax error in type comment "{}"', codes.SYNTAX
+)
+ELLIPSIS_WITH_OTHER_TYPEARGS: Final = ErrorMessage(
+    "Ellipses cannot accompany other argument types in function type signature", codes.SYNTAX
+)
+TYPE_SIGNATURE_TOO_MANY_ARGS: Final = ErrorMessage(
+    "Type signature has too many arguments", codes.SYNTAX
+)
+TYPE_SIGNATURE_TOO_FEW_ARGS: Final = ErrorMessage(
+    "Type signature has too few arguments", codes.SYNTAX
+)
+ARG_CONSTRUCTOR_NAME_EXPECTED: Final = ErrorMessage("Expected arg constructor name", codes.SYNTAX)
+ARG_CONSTRUCTOR_TOO_MANY_ARGS: Final = ErrorMessage(
+    "Too many arguments for argument constructor", codes.SYNTAX
+)
+MULTIPLE_VALUES_FOR_NAME_KWARG: Final = ErrorMessage(
+    '"{}" gets multiple values for keyword argument "name"', codes.SYNTAX
+)
+MULTIPLE_VALUES_FOR_TYPE_KWARG: Final = ErrorMessage(
+    '"{}" gets multiple values for keyword argument "type"', codes.SYNTAX
+)
+ARG_CONSTRUCTOR_UNEXPECTED_ARG: Final = ErrorMessage(
+    'Unexpected argument "{}" for argument constructor', codes.SYNTAX
+)
+ARG_NAME_EXPECTED_STRING_LITERAL: Final = ErrorMessage(
+    "Expected string literal for argument name, got {}", codes.SYNTAX
 )

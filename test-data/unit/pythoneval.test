@@ -1019,7 +1019,7 @@ re.subn(bpat, lambda m: b'', b'')[0] + b''
 _testReModuleBytes.py:7: error: No overload variant of "search" matches argument types "bytes", "str"
 _testReModuleBytes.py:7: note: Possible overload variants:
 _testReModuleBytes.py:7: note:     def search(pattern: Union[str, Pattern[str]], string: str, flags: Union[int, RegexFlag] = ...) -> Optional[Match[str]]
-_testReModuleBytes.py:7: note:     def search(pattern: Union[bytes, Pattern[bytes]], string: Union[bytes, Union[bytearray, memoryview, array[Any], mmap, _CData]], flags: Union[int, RegexFlag] = ...) -> Optional[Match[bytes]]
+_testReModuleBytes.py:7: note:     def search(pattern: Union[bytes, Pattern[bytes]], string: Buffer, flags: Union[int, RegexFlag] = ...) -> Optional[Match[bytes]]
 _testReModuleBytes.py:9: error: Argument 1 to "search" has incompatible type "Pattern[bytes]"; expected "Union[str, Pattern[str]]"
 
 [case testReModuleString]
@@ -1046,7 +1046,7 @@ re.subn(spat, lambda m: '', '')[0] + ''
 _testReModuleString.py:7: error: No overload variant of "search" matches argument types "str", "bytes"
 _testReModuleString.py:7: note: Possible overload variants:
 _testReModuleString.py:7: note:     def search(pattern: Union[str, Pattern[str]], string: str, flags: Union[int, RegexFlag] = ...) -> Optional[Match[str]]
-_testReModuleString.py:7: note:     def search(pattern: Union[bytes, Pattern[bytes]], string: Union[bytes, Union[bytearray, memoryview, array[Any], mmap, _CData]], flags: Union[int, RegexFlag] = ...) -> Optional[Match[bytes]]
+_testReModuleString.py:7: note:     def search(pattern: Union[bytes, Pattern[bytes]], string: Buffer, flags: Union[int, RegexFlag] = ...) -> Optional[Match[bytes]]
 _testReModuleString.py:9: error: Argument 1 to "search" has incompatible type "Pattern[str]"; expected "Union[bytes, Pattern[bytes]]"
 
 [case testListSetitemTuple]
@@ -1350,7 +1350,7 @@ def f() -> Dict[int, str]:
 def d() -> Dict[int, int]:
     return {}
 [out]
-_testDictWithStarStarSpecialCase.py:4: error: Argument 1 to "update" of "MutableMapping" has incompatible type "Dict[int, int]"; expected "SupportsKeysAndGetItem[int, str]"
+_testDictWithStarStarSpecialCase.py:4: error: Unpacked dict entry 1 has incompatible type "Dict[int, int]"; expected "SupportsKeysAndGetItem[int, str]"
 
 [case testLoadsOfOverloads]
 from typing import overload, Any, TypeVar, Iterable, List, Dict, Callable, Union
@@ -1999,3 +1999,28 @@ _testInferenceOfDunderDictOnClassObjects.py:2: note: Revealed type is "types.Map
 _testInferenceOfDunderDictOnClassObjects.py:3: note: Revealed type is "builtins.dict[builtins.str, Any]"
 _testInferenceOfDunderDictOnClassObjects.py:4: error: Property "__dict__" defined in "type" is read-only
 _testInferenceOfDunderDictOnClassObjects.py:4: error: Incompatible types in assignment (expression has type "Dict[<nothing>, <nothing>]", variable has type "MappingProxyType[str, Any]")
+
+[case testTypeVarTuple]
+# flags: --enable-incomplete-feature=TypeVarTuple --enable-incomplete-feature=Unpack --python-version=3.11
+from typing import Any, Callable, Unpack, TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+
+def foo(callback: Callable[[], Any]) -> None:
+    call(callback)
+
+def call(callback: Callable[[Unpack[Ts]], Any], *args: Unpack[Ts]) -> Any:
+    ...
+
+[case testTypeVarTupleTypingExtensions]
+# flags: --enable-incomplete-feature=TypeVarTuple --enable-incomplete-feature=Unpack
+from typing_extensions import Unpack, TypeVarTuple
+from typing import Any, Callable
+
+Ts = TypeVarTuple("Ts")
+
+def foo(callback: Callable[[], Any]) -> None:
+    call(callback)
+
+def call(callback: Callable[[Unpack[Ts]], Any], *args: Unpack[Ts]) -> Any:
+    ...

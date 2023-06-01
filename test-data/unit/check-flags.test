@@ -1305,34 +1305,34 @@ main:3: error: Function is missing a type annotation for one or more arguments
 
 [case testDisallowIncompleteDefsAttrsNoAnnotations]
 # flags: --disallow-incomplete-defs
-import attr
+import attrs
 
-@attr.s()
+@attrs.define
 class Unannotated:
-    foo = attr.ib()
+    foo = attrs.field()
 
-[builtins fixtures/attr.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 
 [case testDisallowIncompleteDefsAttrsWithAnnotations]
 # flags: --disallow-incomplete-defs
-import attr
+import attrs
 
-@attr.s()
+@attrs.define
 class Annotated:
-    bar: int = attr.ib()
+    bar: int = attrs.field()
 
-[builtins fixtures/attr.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 
 [case testDisallowIncompleteDefsAttrsPartialAnnotations]
 # flags: --disallow-incomplete-defs
-import attr
+import attrs
 
-@attr.s()
+@attrs.define
 class PartiallyAnnotated:  # E: Function is missing a type annotation for one or more arguments
-    bar: int = attr.ib()
-    baz = attr.ib()
+    bar: int = attrs.field()
+    baz = attrs.field()
 
-[builtins fixtures/attr.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 
 [case testAlwaysTrueAlwaysFalseFlags]
 # flags: --always-true=YOLO --always-true=YOLO1 --always-false=BLAH1 --always-false BLAH --ignore-missing-imports
@@ -2101,12 +2101,12 @@ import tests.foo
 import bar
 [file bar.py]
 def foo() -> int: ...
-if foo: ...  # E: Function "Callable[[], int]" could always be true in boolean context
+if foo: ...  # E: Function "foo" could always be true in boolean context
 42 + "no"  # type: ignore  # E: "type: ignore" comment without error code (consider "type: ignore[operator]" instead)
 [file tests/__init__.py]
 [file tests/foo.py]
 def foo() -> int: ...
-if foo: ...  # E: Function "Callable[[], int]" could always be true in boolean context
+if foo: ...  # E: Function "foo" could always be true in boolean context
 42 + "no"  # type: ignore
 [file mypy.ini]
 \[mypy]

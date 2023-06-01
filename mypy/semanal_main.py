@@ -75,6 +75,7 @@ core_modules: Final = [
     "abc",
     "collections",
     "collections.abc",
+    "typing_extensions",
 ]
 
 
@@ -190,7 +191,7 @@ def process_top_levels(graph: Graph, scc: list[str], patches: Patches) -> None:
     # Initially all namespaces in the SCC are incomplete (well they are empty).
     state.manager.incomplete_namespaces.update(scc)
 
-    worklist = scc[:]
+    worklist = scc.copy()
     # HACK: process core stuff first. This is mostly needed to support defining
     # named tuples in builtin SCC.
     if all(m in worklist for m in core_modules):

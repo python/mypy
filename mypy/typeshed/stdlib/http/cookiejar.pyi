@@ -99,7 +99,7 @@ class DefaultCookiePolicy(CookiePolicy):
             strict_ns_domain: int = 0,
             strict_ns_set_initial_dollar: bool = False,
             strict_ns_set_path: bool = False,
-            secure_protocols: Sequence[str] = ...,
+            secure_protocols: Sequence[str] = ("https", "wss"),
         ) -> None: ...
     else:
         def __init__(

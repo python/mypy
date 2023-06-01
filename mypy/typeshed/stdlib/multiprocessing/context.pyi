@@ -72,7 +72,7 @@ class BaseContext:
         self,
         processes: int | None = None,
         initializer: Callable[..., object] | None = None,
-        initargs: Iterable[Any] = ...,
+        initargs: Iterable[Any] = (),
         maxtasksperchild: int | None = None,
     ) -> _Pool: ...
     @overload

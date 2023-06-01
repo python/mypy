@@ -5,6 +5,7 @@ from distutils.dist import Distribution
 from typing import Any
 
 class Command:
+    distribution: Distribution
     sub_commands: list[tuple[str, Callable[[Command], bool] | None]]
     def __init__(self, dist: Distribution) -> None: ...
     @abstractmethod

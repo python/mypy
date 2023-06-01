@@ -20,6 +20,7 @@ from mypy.nodes import (
     TypeVarExpr,
     Var,
 )
+from mypy.options import Options
 from mypy.server.subexpr import get_subexpressions
 from mypy.server.update import FineGrainedBuildManager
 from mypy.strconv import StrConv
@@ -41,10 +42,10 @@ class ASTMergeSuite(DataSuite):
 
     def setup(self) -> None:
         super().setup()
-        self.str_conv = StrConv(show_ids=True)
+        self.str_conv = StrConv(show_ids=True, options=Options())
         assert self.str_conv.id_mapper is not None
         self.id_mapper: IdMapper = self.str_conv.id_mapper
-        self.type_str_conv = TypeStrVisitor(self.id_mapper)
+        self.type_str_conv = TypeStrVisitor(self.id_mapper, options=Options())
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         name = testcase.name
@@ -102,7 +103,11 @@ class ASTMergeSuite(DataSuite):
         options.export_types = True
         options.show_traceback = True
         options.allow_empty_bodies = True
+        options.force_uppercase_builtins = True
         main_path = os.path.join(test_temp_dir, "main")
+
+        self.str_conv.options = options
+        self.type_str_conv.options = options
         with open(main_path, "w", encoding="utf8") as f:
             f.write(source)
         try:
@@ -218,7 +223,12 @@ class ASTMergeSuite(DataSuite):
             if type_map:
                 a.append(f"## {module_id}")
                 for expr in sorted(
-                    type_map, key=lambda n: (n.line, short_type(n), str(n) + str(type_map[n]))
+                    type_map,
+                    key=lambda n: (
+                        n.line,
+                        short_type(n),
+                        n.str_with_options(self.str_conv.options) + str(type_map[n]),
+                    ),
                 ):
                     typ = type_map[expr]
                     a.append(f"{short_type(expr)}:{expr.line}: {self.format_type(typ)}")
