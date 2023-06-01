@@ -9,7 +9,7 @@ def approved_stub_package_exists(prefix: str) -> bool:
     return is_legacy_bundled_package(prefix) or prefix in non_bundled_packages
 
 
-def stub_package_name(prefix: str) -> str:
+def stub_distribution_name(prefix: str) -> str:
     return legacy_bundled_packages.get(prefix) or non_bundled_packages[prefix]
 
 
@@ -116,7 +116,7 @@ non_bundled_packages = {
     "flask_sqlalchemy": "types-Flask-SQLAlchemy",
     "fpdf": "types-fpdf2",
     "gdb": "types-gdb",
-    "google.cloud": "types-google-cloud-ndb",
+    "google.cloud.ndb": "types-google-cloud-ndb",
     "hdbcli": "types-hdbcli",
     "html5lib": "types-html5lib",
     "httplib2": "types-httplib2",
