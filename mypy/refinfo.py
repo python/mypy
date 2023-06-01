@@ -2,7 +2,17 @@
 
 from __future__ import annotations
 
-from mypy.nodes import LDEF, Expression, MemberExpr, MypyFile, NameExpr, RefExpr
+from mypy.nodes import (
+    LDEF,
+    Expression,
+    FuncDef,
+    MemberExpr,
+    MypyFile,
+    NameExpr,
+    RefExpr,
+    SymbolNode,
+    TypeInfo,
+)
 from mypy.traverser import TraverserVisitor
 from mypy.typeops import tuple_fallback
 from mypy.types import (
@@ -30,14 +40,25 @@ class RefInfoVisitor(TraverserVisitor):
         super().visit_member_expr(expr)
         self.record_ref_expr(expr)
 
+    def visit_func_def(self, func: FuncDef) -> None:
+        if func.expanded:
+            for item in func.expanded:
+                if isinstance(item, FuncDef):
+                    super().visit_func_def(item)
+        else:
+            super().visit_func_def(func)
+
     def record_ref_expr(self, expr: RefExpr) -> None:
         fullname = None
         if expr.kind != LDEF and "." in expr.fullname:
             fullname = expr.fullname
         elif isinstance(expr, MemberExpr):
             typ = self.type_map.get(expr.expr)
+            sym = None
+            if isinstance(expr.expr, RefExpr):
+                sym = expr.expr.node
             if typ:
-                tfn = type_fullname(typ)
+                tfn = type_fullname(typ, sym)
                 if tfn:
                     fullname = f"{tfn}.{expr.name}"
             if not fullname:
@@ -46,13 +67,15 @@ class RefInfoVisitor(TraverserVisitor):
             self.data.append({"line": expr.line, "column": expr.column, "target": fullname})
 
 
-def type_fullname(typ: Type) -> str | None:
+def type_fullname(typ: Type, node: SymbolNode | None = None) -> str | None:
     typ = get_proper_type(typ)
     if isinstance(typ, Instance):
         return typ.type.fullname
     elif isinstance(typ, TypeType):
         return type_fullname(typ.item)
     elif isinstance(typ, FunctionLike) and typ.is_type_obj():
+        if isinstance(node, TypeInfo):
+            return node.fullname
         return type_fullname(typ.fallback)
     elif isinstance(typ, TupleType):
         return type_fullname(tuple_fallback(typ))

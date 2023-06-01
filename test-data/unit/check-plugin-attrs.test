@@ -1935,7 +1935,11 @@ class Sub(Base):
     last_name: str
 
     @property
-    def name(self) -> int: ...  # E: Signature of "name" incompatible with supertype "Base"
+    def name(self) -> int: ...  # E: Signature of "name" incompatible with supertype "Base" \
+                                # N:      Superclass: \
+                                # N:          str \
+                                # N:      Subclass: \
+                                # N:          int
 
 # This matches runtime semantics
 reveal_type(Sub)  # N: Revealed type is "def (*, name: builtins.str, first_name: builtins.str, last_name: builtins.str) -> __main__.Sub"

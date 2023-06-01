@@ -2,17 +2,13 @@
 #
 # See the README.md file in this directory for more information.
 
-import array
-import ctypes
-import mmap
-import pickle
 import sys
-from collections.abc import Awaitable, Callable, Iterable, Set as AbstractSet
+from collections.abc import Awaitable, Callable, Iterable, Sequence, Set as AbstractSet, Sized
 from dataclasses import Field
 from os import PathLike
 from types import FrameType, TracebackType
-from typing import Any, AnyStr, ClassVar, Generic, Protocol, TypeVar
-from typing_extensions import Final, Literal, LiteralString, TypeAlias, final
+from typing import Any, AnyStr, ClassVar, Generic, Protocol, TypeVar, overload
+from typing_extensions import Buffer, Final, Literal, LiteralString, TypeAlias, final
 
 _KT = TypeVar("_KT")
 _KT_co = TypeVar("_KT_co", covariant=True)
@@ -227,42 +223,33 @@ class SupportsNoArgReadline(Protocol[_T_co]):
 class SupportsWrite(Protocol[_T_contra]):
     def write(self, __s: _T_contra) -> object: ...
 
-ReadOnlyBuffer: TypeAlias = bytes  # stable
+# Unfortunately PEP 688 does not allow us to distinguish read-only
+# from writable buffers. We use these aliases for readability for now.
+# Perhaps a future extension of the buffer protocol will allow us to
+# distinguish these cases in the type system.
+ReadOnlyBuffer: TypeAlias = Buffer  # stable
 # Anything that implements the read-write buffer interface.
-# The buffer interface is defined purely on the C level, so we cannot define a normal Protocol
-# for it (until PEP 688 is implemented). Instead we have to list the most common stdlib buffer classes in a Union.
-if sys.version_info >= (3, 8):
-    WriteableBuffer: TypeAlias = (
-        bytearray | memoryview | array.array[Any] | mmap.mmap | ctypes._CData | pickle.PickleBuffer
-    )  # stable
-else:
-    WriteableBuffer: TypeAlias = bytearray | memoryview | array.array[Any] | mmap.mmap | ctypes._CData  # stable
-# Same as _WriteableBuffer, but also includes read-only buffer types (like bytes).
-ReadableBuffer: TypeAlias = ReadOnlyBuffer | WriteableBuffer  # stable
-_BufferWithLen: TypeAlias = ReadableBuffer  # not stable  # noqa: Y047
+WriteableBuffer: TypeAlias = Buffer
+# Same as WriteableBuffer, but also includes read-only buffer types (like bytes).
+ReadableBuffer: TypeAlias = Buffer  # stable
 
-# Anything that implements the read-write buffer interface, and can be sliced/indexed.
-SliceableBuffer: TypeAlias = bytes | bytearray | memoryview | array.array[Any] | mmap.mmap
-IndexableBuffer: TypeAlias = bytes | bytearray | memoryview | array.array[Any] | mmap.mmap
-# https://github.com/python/typeshed/pull/9115#issuecomment-1304905864
-# Post PEP 688, they should be rewritten as such:
-# from collections.abc import Sequence
-# from typing import Sized, overload
-# class SliceableBuffer(Protocol):
-#     def __buffer__(self, __flags: int) -> memoryview: ...
-#     def __getitem__(self, __slice: slice) -> Sequence[int]: ...
-# class IndexableBuffer(Protocol):
-#     def __buffer__(self, __flags: int) -> memoryview: ...
-#     def __getitem__(self, __i: int) -> int: ...
-# class SupportsGetItemBuffer(SliceableBuffer, IndexableBuffer, Protocol):
-#     def __buffer__(self, __flags: int) -> memoryview: ...
-#     def __contains__(self, __x: Any) -> bool: ...
-#     @overload
-#     def __getitem__(self, __slice: slice) -> Sequence[int]: ...
-#     @overload
-#     def __getitem__(self, __i: int) -> int: ...
-# class SizedBuffer(Sized, Protocol):  # instead of _BufferWithLen
-#     def __buffer__(self, __flags: int) -> memoryview: ...
+class SliceableBuffer(Buffer, Protocol):
+    def __getitem__(self, __slice: slice) -> Sequence[int]: ...
+
+class IndexableBuffer(Buffer, Protocol):
+    def __getitem__(self, __i: int) -> int: ...
+
+class SupportsGetItemBuffer(SliceableBuffer, IndexableBuffer, Protocol):
+    def __contains__(self, __x: Any) -> bool: ...
+    @overload
+    def __getitem__(self, __slice: slice) -> Sequence[int]: ...
+    @overload
+    def __getitem__(self, __i: int) -> int: ...
+
+class SizedBuffer(Sized, Buffer, Protocol): ...
+
+# for compatibility with third-party stubs that may use this
+_BufferWithLen: TypeAlias = SizedBuffer  # not stable  # noqa: Y047
 
 ExcInfo: TypeAlias = tuple[type[BaseException], BaseException, TracebackType]
 OptExcInfo: TypeAlias = ExcInfo | tuple[None, None, None]

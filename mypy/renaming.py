@@ -182,6 +182,7 @@ class VariableRenameVisitor(TraverserVisitor):
             self.analyze_lvalue(lvalue)
 
     def visit_match_stmt(self, s: MatchStmt) -> None:
+        s.subject.accept(self)
         for i in range(len(s.patterns)):
             with self.enter_block():
                 s.patterns[i].accept(self)

@@ -250,6 +250,15 @@ class NodeReplaceVisitor(TraverserVisitor):
         for value in tv.values:
             self.fixup_type(value)
         self.fixup_type(tv.upper_bound)
+        self.fixup_type(tv.default)
+
+    def process_param_spec_def(self, tv: ParamSpecType) -> None:
+        self.fixup_type(tv.upper_bound)
+        self.fixup_type(tv.default)
+
+    def process_type_var_tuple_def(self, tv: TypeVarTupleType) -> None:
+        self.fixup_type(tv.upper_bound)
+        self.fixup_type(tv.default)
 
     def visit_assignment_stmt(self, node: AssignmentStmt) -> None:
         self.fixup_type(node.type)
@@ -478,14 +487,17 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
 
     def visit_type_var(self, typ: TypeVarType) -> None:
         typ.upper_bound.accept(self)
+        typ.default.accept(self)
         for value in typ.values:
             value.accept(self)
 
     def visit_param_spec(self, typ: ParamSpecType) -> None:
-        pass
+        typ.upper_bound.accept(self)
+        typ.default.accept(self)
 
     def visit_type_var_tuple(self, typ: TypeVarTupleType) -> None:
         typ.upper_bound.accept(self)
+        typ.default.accept(self)
 
     def visit_unpack_type(self, typ: UnpackType) -> None:
         typ.type.accept(self)
