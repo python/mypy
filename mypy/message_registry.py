@@ -329,3 +329,10 @@ ARG_CONSTRUCTOR_UNEXPECTED_ARG: Final = ErrorMessage(
 ARG_NAME_EXPECTED_STRING_LITERAL: Final = ErrorMessage(
     "Expected string literal for argument name, got {}", codes.SYNTAX
 )
+# Blocks
+BLOCK_NOT_TERMINATED: Final = ErrorMessage("Block not terminated")
+OPERATIONS_AFTER_CONTROL: Final = ErrorMessage("Block has operations after control op")
+# Op
+FUNC_DUPLICATE_OP: Final = ErrorMessage("Func has a duplicate op")
+INVALID_OP_REFERENCE_TYPE: Final = ErrorMessage("Invalid op reference to op of type {}")
+INVALID_OP_REFERENCE_REGISTER: Final = ErrorMessage("Invalid op reference to register {}")

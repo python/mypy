@@ -71,7 +71,7 @@ from mypyc.ir.rtypes import (
 
 
 class FnError:
-    def __init__(self, source: Op | BasicBlock, desc: str) -> None:
+    def __init__(self, source: Op | BasicBlock, desc: ErrorMessage) -> None:
         self.source = source
         self.desc = desc
 
@@ -93,14 +93,17 @@ def check_func_ir(fn: FuncIR) -> list[FnError]:
     for block in fn.blocks:
         if not block.terminated:
             errors.append(
-                FnError(source=block.ops[-1] if block.ops else block, desc="Block not terminated")
+                FnError(
+                    source=block.ops[-1] if block.ops else block,
+                    desc=message_registry.BLOCK_NOT_TERMINATED,
+                )
             )
         for op in block.ops[:-1]:
             if isinstance(op, ControlOp):
-                errors.append(FnError(source=op, desc="Block has operations after control op"))
+                errors.append(FnError(source=op, desc=message_registry.OPERATIONS_AFTER_CONTROL))
 
             if op in op_set:
-                errors.append(FnError(source=op, desc="Func has a duplicate op"))
+                errors.append(FnError(source=op, desc=message_registry.FUNC_DUPLICATE_OP))
             op_set.add(op)
 
     errors.extend(check_op_sources_valid(fn))
@@ -154,14 +157,19 @@ def check_op_sources_valid(fn: FuncIR) -> list[FnError]:
                         errors.append(
                             FnError(
                                 source=op,
-                                desc=f"Invalid op reference to op of type {type(source).__name__}",
+                                desc=message_registry.INVALID_OP_REFERENCE_TYPE.format(
+                                    type(source).__name__
+                                ),
                             )
                         )
                 elif isinstance(source, Register):
                     if source not in valid_registers:
                         errors.append(
                             FnError(
-                                source=op, desc=f"Invalid op reference to register {source.name!r}"
+                                source=op,
+                                desc=message_registry.INVALID_OP_REFERENCE_REGISTER.format(
+                                    source.name
+                                ),
                             )
                         )
 
