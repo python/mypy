@@ -46,6 +46,9 @@ class UpdateDataSuite(Suite):
             [case testWrong]
             s: str = 42  # E: wrong error
 
+            [case testXfail-xfail]
+            s: str = 42  # E: wrong error
+
             [case testWrongMultiline]
             s: str = 42  # E: foo \
                          # N: bar
@@ -100,6 +103,9 @@ class UpdateDataSuite(Suite):
 
         [case testWrong]
         s: str = 42  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+        [case testXfail-xfail]
+        s: str = 42  # E: wrong error
 
         [case testWrongMultiline]
         s: str = 42  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
