@@ -1202,3 +1202,23 @@ def dest_with_positional_args(animal: Dog, string: str, number: int = ...): ...
 dest_with_positional_args = src  # E: Incompatible types in assignment (expression has type "Callable[[KwArg(Example)], Any]", variable has type "Callable[[Dog, str, int], Any]")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testUnpackKwargsAssignmentWhenOnlyDestinationContainsKwargs]
+from typing_extensions import Unpack, TypedDict
+
+class Animal(TypedDict):
+    name: str
+
+class Dog(Animal):
+    breed: str
+
+def dest(**kwargs: Unpack[Animal]): ...
+def src(name: str): ...
+
+dog: Dog = {"name": "Daisy", "breed": "Labrador"}
+animal: Animal = dog
+
+dest = src  # E: Incompatible function signatures - variable contains **kwargs and the expression does not. See PEP 692 for more details.
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
