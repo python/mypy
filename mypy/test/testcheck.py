@@ -10,7 +10,7 @@ from mypy import build
 from mypy.build import Graph
 from mypy.errors import CompileError
 from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths
-from mypy.semanal_main import core_modules
+from mypy.options import TYPE_VAR_TUPLE, UNPACK
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite, FileOperation, module_from_path
 from mypy.test.helpers import (
@@ -22,8 +22,8 @@ from mypy.test.helpers import (
     normalize_error_messages,
     parse_options,
     perform_file_operations,
-    update_testcase_output,
 )
+from mypy.test.update_data import update_testcase_output
 
 try:
     import lxml  # type: ignore[import]
@@ -43,6 +43,8 @@ if sys.version_info < (3, 9):
     typecheck_files.remove("check-python39.test")
 if sys.version_info < (3, 10):
     typecheck_files.remove("check-python310.test")
+if sys.version_info < (3, 11):
+    typecheck_files.remove("check-python311.test")
 
 # Special tests for platforms with case-insensitive filesystems.
 if sys.platform not in ("darwin", "win32"):
@@ -82,6 +84,19 @@ class TypeCheckSuite(DataSuite):
         else:
             self.run_case_once(testcase)
 
+    def _sort_output_if_needed(self, testcase: DataDrivenTestCase, a: list[str]) -> None:
+        idx = testcase.output_inline_start
+        if not testcase.files or idx == len(testcase.output):
+            return
+
+        def _filename(_msg: str) -> str:
+            return _msg.partition(":")[0]
+
+        file_weights = {file: idx for idx, file in enumerate(_filename(msg) for msg in a)}
+        testcase.output[idx:] = sorted(
+            testcase.output[idx:], key=lambda msg: file_weights.get(_filename(msg), -1)
+        )
+
     def run_case_once(
         self,
         testcase: DataDrivenTestCase,
@@ -110,7 +125,8 @@ class TypeCheckSuite(DataSuite):
         # Parse options after moving files (in case mypy.ini is being moved).
         options = parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
-        options.enable_incomplete_features = True
+        if not testcase.name.endswith("_no_incomplete"):
+            options.enable_incomplete_feature = [TYPE_VAR_TUPLE, UNPACK]
         options.show_traceback = True
 
         # Enable some options automatically based on test file name.
@@ -120,6 +136,12 @@ class TypeCheckSuite(DataSuite):
             options.show_column_numbers = True
         if "errorcodes" in testcase.file:
             options.hide_error_codes = False
+        if "abstract" not in testcase.file:
+            options.allow_empty_bodies = not testcase.name.endswith("_no_empty")
+        if "lowercase" not in testcase.file:
+            options.force_uppercase_builtins = True
+        if "union-error" not in testcase.file:
+            options.force_union_syntax = True
 
         if incremental_step and options.incremental:
             # Don't overwrite # flags: --no-incremental in incremental test cases
@@ -154,24 +176,24 @@ class TypeCheckSuite(DataSuite):
             a = normalize_error_messages(a)
 
         # Make sure error messages match
-        if incremental_step == 0:
-            # Not incremental
-            msg = "Unexpected type checker output ({}, line {})"
+        if incremental_step < 2:
+            if incremental_step == 1:
+                msg = "Unexpected type checker output in incremental, run 1 ({}, line {})"
+            else:
+                assert incremental_step == 0
+                msg = "Unexpected type checker output ({}, line {})"
+            self._sort_output_if_needed(testcase, a)
             output = testcase.output
-        elif incremental_step == 1:
-            msg = "Unexpected type checker output in incremental, run 1 ({}, line {})"
-            output = testcase.output
-        elif incremental_step > 1:
+        else:
             msg = (
                 f"Unexpected type checker output in incremental, run {incremental_step}"
                 + " ({}, line {})"
             )
             output = testcase.output2.get(incremental_step, [])
-        else:
-            raise AssertionError()
 
         if output != a and testcase.config.getoption("--update-data", False):
-            update_testcase_output(testcase, a)
+            update_testcase_output(testcase, a, incremental_step=incremental_step)
+
         assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))
 
         if res:
@@ -182,12 +204,10 @@ class TypeCheckSuite(DataSuite):
             if incremental_step:
                 name += str(incremental_step + 1)
             expected = testcase.expected_fine_grained_targets.get(incremental_step + 1)
-            actual = res.manager.processed_targets
-            # Skip the initial builtin cycle.
             actual = [
-                t
-                for t in actual
-                if not any(t.startswith(mod) for mod in core_modules + ["mypy_extensions"])
+                target
+                for module, target in res.manager.processed_targets
+                if module in testcase.test_modules
             ]
             if expected is not None:
                 assert_target_equivalence(name, expected, actual)

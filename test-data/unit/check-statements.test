@@ -140,20 +140,15 @@ main:5: error: Incompatible types in assignment (expression has type "bool", var
 main:7: error: Incompatible types in assignment (expression has type "bool", variable has type "A")
 
 [case testForStatement]
+class A: pass
 
 a = None # type: A
 b = None # type: object
 for a in [A()]:
-    a = b    # Fail
+    a = b  # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 else:
-    a = b    # Fail
-
-class A: pass
+    a = b  # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 [builtins fixtures/list.pyi]
-[out]
-main:5: error: Incompatible types in assignment (expression has type "object", variable has type "A")
-main:7: error: Incompatible types in assignment (expression has type "object", variable has type "A")
-
 [case testBreakStatement]
 import typing
 while None:
@@ -520,15 +515,15 @@ class B: pass
 main:7: error: Incompatible types in assignment (expression has type "object", variable has type "BaseException")
 
 [case testTypeErrorInBlock]
+class A: pass
+class B: pass
 while object:
     x = None # type: A
     if int():
         x = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
         x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-class A: pass
-class B: pass
-
 [case testTypeErrorInvolvingBaseException]
+class A: pass
 
 x, a = None, None # type: (BaseException, A)
 if int():
@@ -541,7 +536,6 @@ if int():
     x = A()              # E: Incompatible types in assignment (expression has type "A", variable has type "BaseException")
 if int():
     x = BaseException()
-class A: pass
 [builtins fixtures/exception.pyi]
 
 [case testSimpleTryExcept2]
@@ -557,49 +551,38 @@ main:5: error: Incompatible types in assignment (expression has type "object", v
 
 [case testBaseClassAsExceptionTypeInExcept]
 import typing
+class Err(BaseException): pass
 try:
   pass
 except Err as e:
-  e = BaseException() # Fail
+  e = BaseException()  # E: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
   e = Err()
-class Err(BaseException): pass
 [builtins fixtures/exception.pyi]
-[out]
-main:5: error: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
-
 [case testMultipleExceptHandlers]
 import typing
+class Err(BaseException): pass
 try:
     pass
 except BaseException as e:
     pass
 except Err as f:
-    f = BaseException() # Fail
+    f = BaseException()  # E: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
     f = Err()
-class Err(BaseException): pass
 [builtins fixtures/exception.pyi]
-[out]
-main:7: error: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
-
 [case testTryExceptStatement]
 import typing
-try:
-    a = B() # type: A       # Fail
-except BaseException as e:
-    e = A()             # Fail
-    e = Err()
-except Err as f:
-    f = BaseException() # Fail
-    f = Err()
 class A: pass
 class B: pass
 class Err(BaseException): pass
+try:
+    a = B() # type: A  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+except BaseException as e:
+    e = A()  # E: Incompatible types in assignment (expression has type "A", variable has type "BaseException")
+    e = Err()
+except Err as f:
+    f = BaseException()  # E: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
+    f = Err()
 [builtins fixtures/exception.pyi]
-[out]
-main:3: error: Incompatible types in assignment (expression has type "B", variable has type "A")
-main:5: error: Incompatible types in assignment (expression has type "A", variable has type "BaseException")
-main:8: error: Incompatible types in assignment (expression has type "BaseException", variable has type "Err")
-
 [case testTryExceptWithinFunction]
 import typing
 def f() -> None:
@@ -676,9 +659,9 @@ class E2(E1): pass
 try:
     pass
 except (E1, E2): pass
-except (E1, object): pass # E: Exception type must be derived from BaseException
-except (object, E2): pass # E: Exception type must be derived from BaseException
-except (E1, (E2,)): pass  # E: Exception type must be derived from BaseException
+except (E1, object): pass # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
+except (object, E2): pass # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
+except (E1, (E2,)): pass  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
 
 except (E1, E2): pass
 except ((E1, E2)): pass
@@ -707,7 +690,7 @@ except (E1, E2) as e1:
 except (E2, E1) as e2:
     a = e2 # type: E1
     b = e2 # type: E2 # E: Incompatible types in assignment (expression has type "E1", variable has type "E2")
-except (E1, E2, int) as e3: # E: Exception type must be derived from BaseException
+except (E1, E2, int) as e3: # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
     pass
 [builtins fixtures/exception.pyi]
 
@@ -767,13 +750,13 @@ def nested_union(exc: Union[Type[E1], Union[Type[E2], Type[E3]]]) -> None:
 def error_in_union(exc: Union[Type[E1], int]) -> None:
     try:
         pass
-    except exc as e:  # E: Exception type must be derived from BaseException
+    except exc as e:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
         pass
 
 def error_in_variadic(exc: Tuple[int, ...]) -> None:
     try:
         pass
-    except exc as e:  # E: Exception type must be derived from BaseException
+    except exc as e:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
         pass
 
 [builtins fixtures/tuple.pyi]
@@ -801,15 +784,15 @@ except E1 as e1:
     reveal_type(e1)  # N: Revealed type is "Any"
 except E2 as e2:
     reveal_type(e2)  # N: Revealed type is "__main__.E2"
-except NotBaseDerived as e3:  # E: Exception type must be derived from BaseException
+except NotBaseDerived as e3:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
     pass
-except (NotBaseDerived, E1) as e4:  # E: Exception type must be derived from BaseException
+except (NotBaseDerived, E1) as e4:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
     pass
-except (NotBaseDerived, E2) as e5:  # E: Exception type must be derived from BaseException
+except (NotBaseDerived, E2) as e5:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
     pass
-except (NotBaseDerived, E1, E2) as e6:  # E: Exception type must be derived from BaseException
+except (NotBaseDerived, E1, E2) as e6:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
     pass
-except (E1, E2, NotBaseDerived) as e6:  # E: Exception type must be derived from BaseException
+except (E1, E2, NotBaseDerived) as e6:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
     pass
 [builtins fixtures/exception.pyi]
 
@@ -823,7 +806,7 @@ try: pass
 except E1 as e: pass
 try: pass
 except E2 as e: pass
-e + 1 # E: Trying to read deleted variable "e"
+e + 1 # E: Trying to read deleted variable "e"  # E: Name "e" is used before definition
 e = E1() # E: Assignment to variable "e" outside except: block
 [builtins fixtures/exception.pyi]
 
@@ -970,8 +953,8 @@ except a as b:
 import typing
 def exc() -> BaseException: pass
 try: pass
-except exc as e: pass             # E: Exception type must be derived from BaseException
-except BaseException() as b: pass # E: Exception type must be derived from BaseException
+except exc as e: pass             # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
+except BaseException() as b: pass # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
 [builtins fixtures/exception.pyi]
 
 [case testTupleValueAsExceptionType]
@@ -997,7 +980,7 @@ except exs2 as e2:
 
 exs3 = (E1, (E1_1, (E1_2,)))
 try: pass
-except exs3 as e3: pass  # E: Exception type must be derived from BaseException
+except exs3 as e3: pass  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
 [builtins fixtures/exception.pyi]
 
 [case testInvalidTupleValueAsExceptionType]
@@ -1008,7 +991,7 @@ class E2(E1): pass
 
 exs1 = (E1, E2, int)
 try: pass
-except exs1 as e: pass # E: Exception type must be derived from BaseException
+except exs1 as e: pass # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
 [builtins fixtures/exception.pyi]
 
 [case testOverloadedExceptionType]
@@ -1051,7 +1034,7 @@ def h(e: Type[int]):
 [builtins fixtures/exception.pyi]
 [out]
 main:9: note: Revealed type is "builtins.BaseException"
-main:12: error: Exception type must be derived from BaseException
+main:12: error: Exception type must be derived from BaseException (or be a tuple of exception classes)
 
 
 -- Del statement
@@ -2052,16 +2035,12 @@ foo = int
 
 [case testTypeOfGlobalUsed]
 import typing
+class A(): pass
+class B(): pass
 g = A()
 def f() -> None:
     global g
-    g = B()
-
-class A(): pass
-class B(): pass
-[out]
-main:5: error: Incompatible types in assignment (expression has type "B", variable has type "A")
-
+    g = B()  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 [case testTypeOfNonlocalUsed]
 import typing
 def f() -> None:
@@ -2186,7 +2165,7 @@ N = TypedDict('N', {'x': int})
 [out]
 
 [case testGlobalWithoutInitialization]
-
+# flags: --disable-error-code=annotation-unchecked
 from typing import List
 
 def foo() -> None:
@@ -2200,3 +2179,36 @@ def foo2():
     bar2 = []  # type: List[str]
     bar2
 [builtins fixtures/list.pyi]
+
+[case testNoteUncheckedAnnotation]
+def foo():
+    x: int = "no"  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+    y = "no"  # type: int  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+    z: int  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+
+[case testGeneratorUnion]
+from typing import Generator, Union
+
+class A: pass
+class B: pass
+
+def foo(x: int) -> Union[Generator[A, None, None], Generator[B, None, None]]:
+    yield x  # E: Incompatible types in "yield" (actual type "int", expected type "Union[A, B]")
+
+[case testNoCrashOnStarRightHandSide]
+x = *(1, 2, 3)  # E: Can use starred expression only as assignment target
+[builtins fixtures/tuple.pyi]
+
+
+[case testTypingExtensionsSuggestion]
+from typing import _FutureFeatureFixture
+
+# This import is only needed in tests. In real life, mypy will always have typing_extensions in its
+# build due to its pervasive use in typeshed. This assumption may one day prove False, but when
+# that day comes this suggestion will also be less helpful than it is today.
+import typing_extensions
+[out]
+main:1: error: Module "typing" has no attribute "_FutureFeatureFixture"
+main:1: note: Use `from typing_extensions import _FutureFeatureFixture` instead
+main:1: note: See https://mypy.readthedocs.io/en/stable/runtime_troubles.html#using-new-additions-to-the-typing-module
+[builtins fixtures/tuple.pyi]

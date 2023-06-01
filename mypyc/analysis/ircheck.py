@@ -16,6 +16,9 @@ from mypyc.ir.ops import (
     ControlOp,
     DecRef,
     Extend,
+    FloatComparisonOp,
+    FloatNeg,
+    FloatOp,
     GetAttr,
     GetElementPtr,
     Goto,
@@ -43,6 +46,7 @@ from mypyc.ir.ops import (
     TupleSet,
     Unbox,
     Unreachable,
+    Value,
 )
 from mypyc.ir.pprint import format_func
 from mypyc.ir.rtypes import (
@@ -54,6 +58,7 @@ from mypyc.ir.rtypes import (
     bytes_rprimitive,
     dict_rprimitive,
     int_rprimitive,
+    is_float_rprimitive,
     is_object_rprimitive,
     list_rprimitive,
     range_rprimitive,
@@ -129,7 +134,11 @@ def check_op_sources_valid(fn: FuncIR) -> list[FnError]:
     for block in fn.blocks:
         valid_ops.update(block.ops)
 
-        valid_registers.update([op.dest for op in block.ops if isinstance(op, BaseAssign)])
+        for op in block.ops:
+            if isinstance(op, BaseAssign):
+                valid_registers.add(op.dest)
+            elif isinstance(op, LoadAddress) and isinstance(op.src, Register):
+                valid_registers.add(op.src)
 
     valid_registers.update(fn.arg_regs)
 
@@ -150,7 +159,7 @@ def check_op_sources_valid(fn: FuncIR) -> list[FnError]:
                     if source not in valid_registers:
                         errors.append(
                             FnError(
-                                source=op, desc=f"Invalid op reference to register {source.name}"
+                                source=op, desc=f"Invalid op reference to register {source.name!r}"
                             )
                         )
 
@@ -213,6 +222,18 @@ class OpChecker(OpVisitor[None]):
                 source=op, desc=f"Cannot coerce source type {src.name} to dest type {dest.name}"
             )
 
+    def check_compatibility(self, op: Op, t: RType, s: RType) -> None:
+        if not can_coerce_to(t, s) or not can_coerce_to(s, t):
+            self.fail(source=op, desc=f"{t.name} and {s.name} are not compatible")
+
+    def expect_float(self, op: Op, v: Value) -> None:
+        if not is_float_rprimitive(v.type):
+            self.fail(op, f"Float expected (actual type is {v.type})")
+
+    def expect_non_float(self, op: Op, v: Value) -> None:
+        if is_float_rprimitive(v.type):
+            self.fail(op, "Float not expected")
+
     def visit_goto(self, op: Goto) -> None:
         self.check_control_op_targets(op)
 
@@ -248,6 +269,15 @@ class OpChecker(OpVisitor[None]):
             if isinstance(x, tuple):
                 self.check_tuple_items_valid_literals(op, x)
 
+    def check_frozenset_items_valid_literals(self, op: LoadLiteral, s: frozenset[object]) -> None:
+        for x in s:
+            if x is None or isinstance(x, (str, bytes, bool, int, float, complex)):
+                pass
+            elif isinstance(x, tuple):
+                self.check_tuple_items_valid_literals(op, x)
+            else:
+                self.fail(op, f"Invalid type for item of frozenset literal: {type(x)})")
+
     def visit_load_literal(self, op: LoadLiteral) -> None:
         expected_type = None
         if op.value is None:
@@ -267,6 +297,11 @@ class OpChecker(OpVisitor[None]):
         elif isinstance(op.value, tuple):
             expected_type = "builtins.tuple"
             self.check_tuple_items_valid_literals(op, op.value)
+        elif isinstance(op.value, frozenset):
+            # There's no frozenset_rprimitive type since it'd be pretty useless so we just pretend
+            # it's a set (when it's really a frozenset).
+            expected_type = "builtins.set"
+            self.check_frozenset_items_valid_literals(op, op.value)
 
         assert expected_type is not None, "Missed a case for LoadLiteral check"
 
@@ -354,10 +389,24 @@ class OpChecker(OpVisitor[None]):
         pass
 
     def visit_int_op(self, op: IntOp) -> None:
-        pass
+        self.expect_non_float(op, op.lhs)
+        self.expect_non_float(op, op.rhs)
 
     def visit_comparison_op(self, op: ComparisonOp) -> None:
-        pass
+        self.check_compatibility(op, op.lhs.type, op.rhs.type)
+        self.expect_non_float(op, op.lhs)
+        self.expect_non_float(op, op.rhs)
+
+    def visit_float_op(self, op: FloatOp) -> None:
+        self.expect_float(op, op.lhs)
+        self.expect_float(op, op.rhs)
+
+    def visit_float_neg(self, op: FloatNeg) -> None:
+        self.expect_float(op, op.src)
+
+    def visit_float_comparison_op(self, op: FloatComparisonOp) -> None:
+        self.expect_float(op, op.lhs)
+        self.expect_float(op, op.rhs)
 
     def visit_load_mem(self, op: LoadMem) -> None:
         pass

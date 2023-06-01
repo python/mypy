@@ -18,7 +18,7 @@ from mypy.errors import CompileError
 from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.fscache import FileSystemCache
 from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths, get_search_dirs, mypy_path
-from mypy.options import BuildType, Options
+from mypy.options import INCOMPLETE_FEATURES, BuildType, Options
 from mypy.split_namespace import SplitNamespace
 from mypy.version import __version__
 
@@ -110,10 +110,10 @@ def main(
         print_memory_profile()
 
     code = 0
-    if messages:
+    n_errors, n_notes, n_files = util.count_stats(messages)
+    if messages and n_notes < len(messages):
         code = 2 if blockers else 1
     if options.error_summary:
-        n_errors, n_notes, n_files = util.count_stats(messages)
         if n_errors:
             summary = formatter.format_error(
                 n_errors, n_files, len(sources), blockers=blockers, use_color=options.color_output
@@ -696,7 +696,8 @@ def process_options(
         "--disallow-incomplete-defs",
         default=False,
         strict_flag=True,
-        help="Disallow defining functions with incomplete type annotations",
+        help="Disallow defining functions with incomplete type annotations "
+        "(while still allowing entirely unannotated definitions)",
         group=untyped_group,
     )
     add_invertible_flag(
@@ -732,6 +733,14 @@ def process_options(
         action="store_false",
         dest="strict_optional",
         help="Disable strict Optional checks (inverse: --strict-optional)",
+    )
+
+    add_invertible_flag(
+        "--force-uppercase-builtins", default=False, help=argparse.SUPPRESS, group=none_group
+    )
+
+    add_invertible_flag(
+        "--force-union-syntax", default=False, help=argparse.SUPPRESS, group=none_group
     )
 
     lint_group = parser.add_argument_group(
@@ -975,9 +984,19 @@ def process_options(
         help="Use a custom typing module",
     )
     internals_group.add_argument(
-        "--enable-recursive-aliases",
+        "--disable-recursive-aliases",
         action="store_true",
-        help="Experimental support for recursive type aliases",
+        help="Disable experimental support for recursive type aliases",
+    )
+    # Deprecated reverse variant of the above.
+    internals_group.add_argument(
+        "--enable-recursive-aliases", action="store_true", help=argparse.SUPPRESS
+    )
+    parser.add_argument(
+        "--enable-incomplete-feature",
+        action="append",
+        metavar="FEATURE",
+        help="Enable support of incomplete/experimental features for early preview",
     )
     internals_group.add_argument(
         "--custom-typeshed-dir", metavar="DIR", help="Use the custom typeshed in DIR"
@@ -998,7 +1017,17 @@ def process_options(
         help="When encountering SOURCE_FILE, read and type check "
         "the contents of SHADOW_FILE instead.",
     )
-    add_invertible_flag("--fast-exit", default=True, help=argparse.SUPPRESS, group=internals_group)
+    internals_group.add_argument("--fast-exit", action="store_true", help=argparse.SUPPRESS)
+    internals_group.add_argument(
+        "--no-fast-exit", action="store_false", dest="fast_exit", help=argparse.SUPPRESS
+    )
+    # This flag is useful for mypy tests, where function bodies may be omitted. Plugin developers
+    # may want to use this as well in their tests.
+    add_invertible_flag(
+        "--allow-empty-bodies", default=False, help=argparse.SUPPRESS, group=internals_group
+    )
+    # This undocumented feature exports limited line-level dependency information.
+    internals_group.add_argument("--export-ref-info", action="store_true", help=argparse.SUPPRESS)
 
     report_group = parser.add_argument_group(
         title="Report generation", description="Generate a report in the specified format."
@@ -1067,8 +1096,14 @@ def process_options(
         "--inferstats", action="store_true", dest="dump_inference_stats", help=argparse.SUPPRESS
     )
     parser.add_argument("--dump-build-stats", action="store_true", help=argparse.SUPPRESS)
-    # dump timing  stats for each processed file into the given output file
+    # Dump timing stats for each processed file into the given output file
     parser.add_argument("--timing-stats", dest="timing_stats", help=argparse.SUPPRESS)
+    # Dump per line type checking timing stats for each processed file into the given
+    # output file. Only total time spent in each top level expression will be shown.
+    # Times are show in microseconds.
+    parser.add_argument(
+        "--line-checking-stats", dest="line_checking_stats", help=argparse.SUPPRESS
+    )
     # --debug-cache will disable any cache-related compressions/optimizations,
     # which will make the cache writing process output pretty-printed JSON (which
     # is easier to debug).
@@ -1102,8 +1137,18 @@ def process_options(
     parser.add_argument(
         "--cache-map", nargs="+", dest="special-opts:cache_map", help=argparse.SUPPRESS
     )
+    # --debug-serialize will run tree.serialize() even if cache generation is disabled.
+    # Useful for mypy_primer to detect serialize errors earlier.
+    parser.add_argument("--debug-serialize", action="store_true", help=argparse.SUPPRESS)
+    # This one is deprecated, but we will keep it for few releases.
     parser.add_argument(
         "--enable-incomplete-features", action="store_true", help=argparse.SUPPRESS
+    )
+    parser.add_argument(
+        "--disable-bytearray-promotion", action="store_true", help=argparse.SUPPRESS
+    )
+    parser.add_argument(
+        "--disable-memoryview-promotion", action="store_true", help=argparse.SUPPRESS
     )
 
     # options specifying code to check
@@ -1217,8 +1262,13 @@ def process_options(
 
     # Paths listed in the config file will be ignored if any paths, modules or packages
     # are passed on the command line.
-    if options.files and not (special_opts.files or special_opts.packages or special_opts.modules):
-        special_opts.files = options.files
+    if not (special_opts.files or special_opts.packages or special_opts.modules):
+        if options.files:
+            special_opts.files = options.files
+        if options.packages:
+            special_opts.packages = options.packages
+        if options.modules:
+            special_opts.modules = options.modules
 
     # Check for invalid argument combinations.
     if require_targets:
@@ -1264,6 +1314,17 @@ def process_options(
     # Enabling an error code always overrides disabling
     options.disabled_error_codes -= options.enabled_error_codes
 
+    # Validate incomplete features.
+    for feature in options.enable_incomplete_feature:
+        if feature not in INCOMPLETE_FEATURES:
+            parser.error(f"Unknown incomplete feature: {feature}")
+    if options.enable_incomplete_features:
+        print(
+            "Warning: --enable-incomplete-features is deprecated, use"
+            " --enable-incomplete-feature=FEATURE instead"
+        )
+        options.enable_incomplete_feature = list(INCOMPLETE_FEATURES)
+
     # Compute absolute path for custom typeshed (if present).
     if options.custom_typeshed_dir is not None:
         options.abs_custom_typeshed_dir = os.path.abspath(options.custom_typeshed_dir)
@@ -1307,6 +1368,12 @@ def process_options(
     # Let logical_deps imply cache_fine_grained (otherwise the former is useless).
     if options.logical_deps:
         options.cache_fine_grained = True
+
+    if options.enable_recursive_aliases:
+        print(
+            "Warning: --enable-recursive-aliases is deprecated;"
+            " recursive types are enabled by default"
+        )
 
     # Set target.
     if special_opts.modules + special_opts.packages:
@@ -1432,7 +1499,7 @@ def read_types_packages_to_install(cache_dir: str, after_run: bool) -> list[str]
         # No missing stubs.
         return []
     with open(fnam) as f:
-        return [line.strip() for line in f.readlines()]
+        return [line.strip() for line in f]
 
 
 def install_types(

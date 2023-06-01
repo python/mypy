@@ -25,6 +25,9 @@ main:6: error: Name "f" already defined on line 2
 
 [case testTypeCheckOverloadWithImplementation]
 from typing import overload, Any
+class A: pass
+class B: pass
+
 @overload
 def f(x: 'A') -> 'B': ...
 @overload
@@ -35,14 +38,14 @@ def f(x: Any) -> Any:
 
 reveal_type(f(A())) # N: Revealed type is "__main__.B"
 reveal_type(f(B())) # N: Revealed type is "__main__.A"
-
-class A: pass
-class B: pass
 [builtins fixtures/isinstance.pyi]
 
 [case testTypingExtensionsOverload]
 from typing import Any
 from typing_extensions import overload
+class A: pass
+class B: pass
+
 @overload
 def f(x: 'A') -> 'B': ...
 @overload
@@ -53,13 +56,14 @@ def f(x: Any) -> Any:
 
 reveal_type(f(A())) # N: Revealed type is "__main__.B"
 reveal_type(f(B())) # N: Revealed type is "__main__.A"
-
-class A: pass
-class B: pass
 [builtins fixtures/isinstance.pyi]
 
 [case testOverloadNeedsImplementation]
 from typing import overload, Any
+
+class A: pass
+class B: pass
+
 @overload  # E: An overloaded function outside a stub file must have an implementation
 def f(x: 'A') -> 'B': ...
 @overload
@@ -67,9 +71,6 @@ def f(x: 'B') -> 'A': ...
 
 reveal_type(f(A())) # N: Revealed type is "__main__.B"
 reveal_type(f(B())) # N: Revealed type is "__main__.A"
-
-class A: pass
-class B: pass
 [builtins fixtures/isinstance.pyi]
 
 [case testSingleOverloadNoImplementation]
@@ -84,6 +85,9 @@ class B: pass
 [case testOverloadByAnyOtherName]
 from typing import overload as rose
 from typing import Any
+class A: pass
+class B: pass
+
 @rose
 def f(x: 'A') -> 'B': ...
 @rose
@@ -94,13 +98,13 @@ def f(x: Any) -> Any:
 
 reveal_type(f(A())) # N: Revealed type is "__main__.B"
 reveal_type(f(B())) # N: Revealed type is "__main__.A"
-
-class A: pass
-class B: pass
 [builtins fixtures/isinstance.pyi]
 
 [case testTypeCheckOverloadWithDecoratedImplementation]
 from typing import overload, Any
+
+class A: pass
+class B: pass
 
 def deco(fun): ...
 
@@ -115,9 +119,6 @@ def f(x: Any) -> Any:
 
 reveal_type(f(A())) # N: Revealed type is "__main__.B"
 reveal_type(f(B())) # N: Revealed type is "__main__.A"
-
-class A: pass
-class B: pass
 [builtins fixtures/isinstance.pyi]
 
 [case testOverloadDecoratedImplementationNotLast]
@@ -174,6 +175,9 @@ class B: pass
 [case testTypeCheckOverloadWithImplementationError]
 from typing import overload, Any
 
+class A: pass
+class B: pass
+
 @overload
 def f(x: 'A') -> 'B': ...
 @overload
@@ -196,9 +200,6 @@ def g(x):
 
 reveal_type(f(A()))  # N: Revealed type is "__main__.B"
 reveal_type(f(B()))  # N: Revealed type is "__main__.A"
-
-class A: pass
-class B: pass
 [builtins fixtures/isinstance.pyi]
 
 [case testTypeCheckOverloadWithUntypedImplAndMultipleVariants]

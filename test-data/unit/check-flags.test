@@ -1152,12 +1152,12 @@ from typing import Any
 def f(s):
     yield s
 
+def g(x) -> Any:
+    yield x  # E: Expression has type "Any"
+
 x = f(0)  # E: Expression has type "Any"
 for x in f(0):  # E: Expression has type "Any"
     g(x)  # E: Expression has type "Any"
-
-def g(x) -> Any:
-    yield x  # E: Expression has type "Any"
 
 l = [1, 2, 3]
 l[f(0)]  # E: Expression has type "Any"
@@ -1305,34 +1305,34 @@ main:3: error: Function is missing a type annotation for one or more arguments
 
 [case testDisallowIncompleteDefsAttrsNoAnnotations]
 # flags: --disallow-incomplete-defs
-import attr
+import attrs
 
-@attr.s()
+@attrs.define
 class Unannotated:
-    foo = attr.ib()
+    foo = attrs.field()
 
-[builtins fixtures/attr.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 
 [case testDisallowIncompleteDefsAttrsWithAnnotations]
 # flags: --disallow-incomplete-defs
-import attr
+import attrs
 
-@attr.s()
+@attrs.define
 class Annotated:
-    bar: int = attr.ib()
+    bar: int = attrs.field()
 
-[builtins fixtures/attr.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 
 [case testDisallowIncompleteDefsAttrsPartialAnnotations]
 # flags: --disallow-incomplete-defs
-import attr
+import attrs
 
-@attr.s()
+@attrs.define
 class PartiallyAnnotated:  # E: Function is missing a type annotation for one or more arguments
-    bar: int = attr.ib()
-    baz = attr.ib()
+    bar: int = attrs.field()
+    baz = attrs.field()
 
-[builtins fixtures/attr.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 
 [case testAlwaysTrueAlwaysFalseFlags]
 # flags: --always-true=YOLO --always-true=YOLO1 --always-false=BLAH1 --always-false BLAH --ignore-missing-imports
@@ -1606,14 +1606,19 @@ strict_equality = false
 
 
 [case testNoImplicitReexport]
-# flags: --no-implicit-reexport
-from other_module_2 import a
+# flags: --no-implicit-reexport --show-error-codes
+from other_module_2 import a  # E: Module "other_module_2" does not explicitly export attribute "a"  [attr-defined]
+reveal_type(a)  # N: Revealed type is "builtins.int"
+
+import other_module_2
+# TODO: this should also reveal builtins.int, see #13965
+reveal_type(other_module_2.a)  # E: "object" does not explicitly export attribute "a"  [attr-defined] \
+                               # N: Revealed type is "Any"
+
 [file other_module_1.py]
 a = 5
 [file other_module_2.py]
 from other_module_1 import a
-[out]
-main:2: error: Module "other_module_2" does not explicitly export attribute "a"; implicit reexport disabled
 
 [case testNoImplicitReexportRespectsAll]
 # flags: --no-implicit-reexport
@@ -1627,7 +1632,7 @@ from other_module_1 import a, b
 __all__ = ('b',)
 [builtins fixtures/tuple.pyi]
 [out]
-main:2: error: Module "other_module_2" does not explicitly export attribute "a"; implicit reexport disabled
+main:2: error: Module "other_module_2" does not explicitly export attribute "a"
 
 [case testNoImplicitReexportStarConsideredExplicit]
 # flags: --no-implicit-reexport
@@ -1643,7 +1648,7 @@ __all__ = ('b',)
 
 [case testNoImplicitReexportGetAttr]
 # flags: --no-implicit-reexport --python-version 3.7
-from other_module_2 import a  # E: Module "other_module_2" does not explicitly export attribute "a"; implicit reexport disabled
+from other_module_2 import a  # E: Module "other_module_2" does not explicitly export attribute "a"
 [file other_module_1.py]
 from typing import Any
 def __getattr__(name: str) -> Any: ...
@@ -1661,7 +1666,7 @@ attr_2 = 6
 [file other_module_2.py]
 from other_module_1 import attr_1, attr_2
 [out]
-main:2: error: Module "other_module_2" does not explicitly export attribute "attr_1"; implicit reexport disabled
+main:2: error: Module "other_module_2" does not explicitly export attribute "attr_1"
 
 [case testNoImplicitReexportMypyIni]
 # flags: --config-file tmp/mypy.ini
@@ -1679,7 +1684,7 @@ implicit_reexport = True
 \[mypy-other_module_2]
 implicit_reexport = False
 [out]
-main:2: error: Module "other_module_2" has no attribute "a"
+main:2: error: Module "other_module_2" does not explicitly export attribute "a"
 
 
 [case testNoImplicitReexportPyProjectTOML]
@@ -1700,7 +1705,7 @@ module = 'other_module_2'
 implicit_reexport = false
 
 [out]
-main:2: error: Module "other_module_2" has no attribute "a"
+main:2: error: Module "other_module_2" does not explicitly export attribute "a"
 
 
 [case testImplicitAnyOKForNoArgs]
@@ -2096,16 +2101,16 @@ import tests.foo
 import bar
 [file bar.py]
 def foo() -> int: ...
-if foo: ...  # E: Function "Callable[[], int]" could always be true in boolean context
+if foo: ...  # E: Function "foo" could always be true in boolean context
 42 + "no"  # type: ignore  # E: "type: ignore" comment without error code (consider "type: ignore[operator]" instead)
 [file tests/__init__.py]
 [file tests/foo.py]
 def foo() -> int: ...
-if foo: ...  # E: Function "Callable[[], int]" could always be true in boolean context
+if foo: ...  # E: Function "foo" could always be true in boolean context
 42 + "no"  # type: ignore
 [file mypy.ini]
 \[mypy]
-enable_error_code = ignore-without-code, truthy-bool
+enable_error_code = ignore-without-code, truthy-bool, used-before-def
 
 \[mypy-tests.*]
 disable_error_code = ignore-without-code
@@ -2117,3 +2122,55 @@ x: int = ""  # E: Incompatible types in assignment (expression has type "str", v
 [case testHideErrorCodes]
 # flags: --hide-error-codes
 x: int = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testTypeVarTupleDisabled_no_incomplete]
+from typing_extensions import TypeVarTuple
+Ts = TypeVarTuple("Ts")  # E: "TypeVarTuple" support is experimental, use --enable-incomplete-feature=TypeVarTuple to enable
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleEnabled_no_incomplete]
+# flags: --enable-incomplete-feature=TypeVarTuple
+from typing_extensions import TypeVarTuple
+Ts = TypeVarTuple("Ts")  # OK
+[builtins fixtures/tuple.pyi]
+
+
+[case testDisableBytearrayPromotion]
+# flags: --disable-bytearray-promotion
+def f(x: bytes) -> None: ...
+f(bytearray(b"asdf"))  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+f(memoryview(b"asdf"))
+[builtins fixtures/primitives.pyi]
+
+[case testDisableMemoryviewPromotion]
+# flags: --disable-memoryview-promotion
+def f(x: bytes) -> None: ...
+f(bytearray(b"asdf"))
+f(memoryview(b"asdf"))  # E: Argument 1 to "f" has incompatible type "memoryview"; expected "bytes"
+[builtins fixtures/primitives.pyi]
+
+[case testDisableBytearrayMemoryviewPromotionStrictEquality]
+# flags: --disable-bytearray-promotion --disable-memoryview-promotion --strict-equality
+def f(x: bytes, y: bytearray, z: memoryview) -> None:
+    x == y
+    y == z
+    x == z
+    97 in x
+    97 in y
+    97 in z
+    x in y
+    x in z
+[builtins fixtures/primitives.pyi]
+
+[case testEnableBytearrayMemoryviewPromotionStrictEquality]
+# flags: --strict-equality
+def f(x: bytes, y: bytearray, z: memoryview) -> None:
+    x == y
+    y == z
+    x == z
+    97 in x
+    97 in y
+    97 in z
+    x in y
+    x in z
+[builtins fixtures/primitives.pyi]

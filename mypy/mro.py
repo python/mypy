@@ -4,7 +4,7 @@ from typing import Callable
 
 from mypy.nodes import TypeInfo
 from mypy.types import Instance
-from mypy.typestate import TypeState
+from mypy.typestate import type_state
 
 
 def calculate_mro(info: TypeInfo, obj_type: Callable[[], Instance] | None = None) -> None:
@@ -17,7 +17,7 @@ def calculate_mro(info: TypeInfo, obj_type: Callable[[], Instance] | None = None
     info.mro = mro
     # The property of falling back to Any is inherited.
     info.fallback_to_any = any(baseinfo.fallback_to_any for baseinfo in info.mro)
-    TypeState.reset_all_subtype_caches_for(info)
+    type_state.reset_all_subtype_caches_for(info)
 
 
 class MroError(Exception):
@@ -44,7 +44,7 @@ def linearize_hierarchy(
 
 
 def merge(seqs: list[list[TypeInfo]]) -> list[TypeInfo]:
-    seqs = [s[:] for s in seqs]
+    seqs = [s.copy() for s in seqs]
     result: list[TypeInfo] = []
     while True:
         seqs = [s for s in seqs if s]

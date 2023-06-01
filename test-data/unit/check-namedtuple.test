@@ -561,6 +561,7 @@ A  # E: Name "A" is not defined
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleForwardAsUpperBound]
+# flags: --disable-error-code=used-before-def
 from typing import NamedTuple, TypeVar, Generic
 T = TypeVar('T', bound='M')
 class G(Generic[T]):
@@ -617,7 +618,7 @@ tmp/b.py:4: note: Revealed type is "Tuple[Any, fallback=a.N]"
 tmp/b.py:7: note: Revealed type is "Tuple[Any, fallback=a.N]"
 
 [case testSimpleSelfReferentialNamedTuple]
-
+# flags: --disable-recursive-aliases
 from typing import NamedTuple
 class MyNamedTuple(NamedTuple):
     parent: 'MyNamedTuple' # E: Cannot resolve name "MyNamedTuple" (possible cyclic definition)
@@ -655,7 +656,7 @@ class B:
 [out]
 
 [case testSelfRefNT1]
-
+# flags: --disable-recursive-aliases
 from typing import Tuple, NamedTuple
 
 Node = NamedTuple('Node', [
@@ -667,7 +668,7 @@ reveal_type(n) # N: Revealed type is "Tuple[builtins.str, builtins.tuple[Any, ..
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNT2]
-
+# flags: --disable-recursive-aliases
 from typing import Tuple, NamedTuple
 
 A = NamedTuple('A', [
@@ -683,7 +684,7 @@ reveal_type(n) # N: Revealed type is "Tuple[builtins.str, builtins.tuple[Any, ..
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNT3]
-
+# flags: --disable-recursive-aliases
 from typing import NamedTuple, Tuple
 
 class B(NamedTuple):
@@ -703,7 +704,7 @@ reveal_type(lst[0]) # N: Revealed type is "Tuple[builtins.object, builtins.objec
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNT4]
-
+# flags: --disable-recursive-aliases
 from typing import NamedTuple
 
 class B(NamedTuple):
@@ -719,11 +720,11 @@ reveal_type(n.y[0]) # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNT5]
-
+# flags: --disable-recursive-aliases
 from typing import NamedTuple
 
 B = NamedTuple('B', [
-        ('x', A), # E: Cannot resolve name "A" (possible cyclic definition)
+        ('x', A), # E: Cannot resolve name "A" (possible cyclic definition)  # E: Name "A" is used before definition
         ('y', int),
     ])
 A = NamedTuple('A', [
@@ -737,7 +738,7 @@ reveal_type(f) # N: Revealed type is "def (m: Tuple[Any, builtins.int, fallback=
 [builtins fixtures/tuple.pyi]
 
 [case testRecursiveNamedTupleInBases]
-
+# flags: --disable-recursive-aliases
 from typing import List, NamedTuple, Union
 
 Exp = Union['A', 'B']  # E: Cannot resolve name "Exp" (possible cyclic definition) \
@@ -781,7 +782,7 @@ tp = NamedTuple('tp', [('x', int)])
 [out]
 
 [case testSubclassOfRecursiveNamedTuple]
-
+# flags: --disable-recursive-aliases
 from typing import List, NamedTuple
 
 class Command(NamedTuple):
@@ -904,6 +905,7 @@ if not b:
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleDoubleForward]
+# flags: --disable-error-code=used-before-def
 from typing import Union, Mapping, NamedTuple
 
 class MyBaseTuple(NamedTuple):
@@ -1304,5 +1306,34 @@ class C(
                                               # N: Use either Python 3 class syntax, or the assignment syntax
 ): ...
 
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testNamedTupleSelfItemNotAllowed]
+from typing import Self, NamedTuple, Optional
+
+class NT(NamedTuple):
+    val: int
+    next: Optional[Self]  # E: Self type cannot be used in NamedTuple item type
+NTC = NamedTuple("NTC", [("val", int), ("next", Optional[Self])])  # E: Self type cannot be used in NamedTuple item type
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testNamedTupleTypingSelfMethod]
+from typing import Self, NamedTuple, TypeVar, Generic
+
+T = TypeVar("T")
+class NT(NamedTuple, Generic[T]):
+    key: str
+    val: T
+    def meth(self) -> Self:
+        nt: NT[int]
+        if bool():
+            return nt._replace()  # E: Incompatible return value type (got "NT[int]", expected "Self")
+        else:
+            return self._replace()
+
+class SNT(NT[int]): ...
+reveal_type(SNT("test", 42).meth())  # N: Revealed type is "Tuple[builtins.str, builtins.int, fallback=__main__.SNT]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]

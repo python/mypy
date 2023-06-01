@@ -36,7 +36,7 @@ Here are some potential benefits of mypy-style static typing:
   grows, you can adapt tricky application logic to static typing to
   help maintenance.
 
-See also the `front page <http://www.mypy-lang.org>`_ of the mypy web
+See also the `front page <https://www.mypy-lang.org>`_ of the mypy web
 site.
 
 Would my project benefit from static typing?
@@ -202,7 +202,7 @@ Mypy is a cool project. Can I help?
 ***********************************
 
 Any help is much appreciated! `Contact
-<http://www.mypy-lang.org/contact.html>`_ the developers if you would
+<https://www.mypy-lang.org/contact.html>`_ the developers if you would
 like to contribute. Any help related to development, design,
 publicity, documentation, testing, web site maintenance, financing,
 etc. can be helpful. You can learn a lot by contributing, and anybody

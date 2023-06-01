@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from collections import Counter
 from contextlib import contextmanager
-from typing import Iterator, cast
+from typing import Iterator
 from typing_extensions import Final
 
 from mypy import nodes
@@ -149,15 +149,17 @@ class StatisticsVisitor(TraverserVisitor):
                 if o in o.expanded:
                     print(
                         "{}:{}: ERROR: cycle in function expansion; skipping".format(
-                            self.filename, o.get_line()
+                            self.filename, o.line
                         )
                     )
                     return
                 for defn in o.expanded:
-                    self.visit_func_def(cast(FuncDef, defn))
+                    assert isinstance(defn, FuncDef)
+                    self.visit_func_def(defn)
             else:
                 if o.type:
-                    sig = cast(CallableType, o.type)
+                    assert isinstance(o.type, CallableType)
+                    sig = o.type
                     arg_types = sig.arg_types
                     if sig.arg_names and sig.arg_names[0] == "self" and not self.inferred:
                         arg_types = arg_types[1:]

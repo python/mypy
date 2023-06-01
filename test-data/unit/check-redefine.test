@@ -285,7 +285,7 @@ def f() -> None:
     import typing as m
     m = 1 # E: Incompatible types in assignment (expression has type "int", variable has type Module)
     n = 1
-    import typing as n # E: Name "n" already defined on line 5
+    import typing as n  # E: Incompatible import of "n" (imported name has type Module, local name has type "int")
 [builtins fixtures/module.pyi]
 
 [case testRedefineLocalWithTypeAnnotation]

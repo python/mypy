@@ -13,6 +13,7 @@ from mypyc.codegen.emitwrapper import (
     generate_dunder_wrapper,
     generate_get_wrapper,
     generate_hash_wrapper,
+    generate_ipow_wrapper,
     generate_len_wrapper,
     generate_richcompare_wrapper,
     generate_set_del_item_wrapper,
@@ -20,7 +21,7 @@ from mypyc.codegen.emitwrapper import (
 from mypyc.common import BITMAP_BITS, BITMAP_TYPE, NATIVE_PREFIX, PREFIX, REG_PREFIX, use_fastcall
 from mypyc.ir.class_ir import ClassIR, VTableEntries
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR
-from mypyc.ir.rtypes import RTuple, RType, is_fixed_width_rtype, object_rprimitive
+from mypyc.ir.rtypes import RTuple, RType, object_rprimitive
 from mypyc.namegen import NameGenerator
 from mypyc.sametype import is_same_type
 
@@ -82,6 +83,8 @@ AS_NUMBER_SLOT_DEFS: SlotTable = {
     "__rtruediv__": ("nb_true_divide", generate_bin_op_wrapper),
     "__floordiv__": ("nb_floor_divide", generate_bin_op_wrapper),
     "__rfloordiv__": ("nb_floor_divide", generate_bin_op_wrapper),
+    "__divmod__": ("nb_divmod", generate_bin_op_wrapper),
+    "__rdivmod__": ("nb_divmod", generate_bin_op_wrapper),
     "__lshift__": ("nb_lshift", generate_bin_op_wrapper),
     "__rlshift__": ("nb_lshift", generate_bin_op_wrapper),
     "__rshift__": ("nb_rshift", generate_bin_op_wrapper),
@@ -107,6 +110,11 @@ AS_NUMBER_SLOT_DEFS: SlotTable = {
     "__ior__": ("nb_inplace_or", generate_dunder_wrapper),
     "__ixor__": ("nb_inplace_xor", generate_dunder_wrapper),
     "__imatmul__": ("nb_inplace_matrix_multiply", generate_dunder_wrapper),
+    # Ternary operations. (yes, really)
+    # These are special cased in generate_bin_op_wrapper().
+    "__pow__": ("nb_power", generate_bin_op_wrapper),
+    "__rpow__": ("nb_power", generate_bin_op_wrapper),
+    "__ipow__": ("nb_inplace_power", generate_ipow_wrapper),
 }
 
 AS_ASYNC_SLOT_DEFS: SlotTable = {
@@ -331,7 +339,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         flags.append("_Py_TPFLAGS_HAVE_VECTORCALL")
         if not fields.get("tp_vectorcall"):
             # This is just a placeholder to please CPython. It will be
-            # overriden during setup.
+            # overridden during setup.
             fields["tp_call"] = "PyVectorcall_Call"
     fields["tp_flags"] = " | ".join(flags)
 
@@ -824,7 +832,10 @@ def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
                 )
             )
 
-    for prop in cl.properties:
+    for prop, (getter, setter) in cl.properties.items():
+        if getter.decl.implicit:
+            continue
+
         # Generate getter declaration
         emitter.emit_line("static PyObject *")
         emitter.emit_line(
@@ -834,7 +845,7 @@ def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
         )
 
         # Generate property setter declaration if a setter exists
-        if cl.properties[prop][1]:
+        if setter:
             emitter.emit_line("static int")
             emitter.emit_line(
                 "{}({} *self, PyObject *value, void *closure);".format(
@@ -854,11 +865,13 @@ def generate_getseters_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
                 )
             )
             emitter.emit_line(" NULL, NULL},")
-    for prop in cl.properties:
+    for prop, (getter, setter) in cl.properties.items():
+        if getter.decl.implicit:
+            continue
+
         emitter.emit_line(f'{{"{prop}",')
         emitter.emit_line(f" (getter){getter_name(cl, prop, emitter.names)},")
 
-        setter = cl.properties[prop][1]
         if setter:
             emitter.emit_line(f" (setter){setter_name(cl, prop, emitter.names)},")
             emitter.emit_line("NULL, NULL},")
@@ -878,6 +891,9 @@ def generate_getseters(cl: ClassIR, emitter: Emitter) -> None:
             if i < len(cl.attributes) - 1:
                 emitter.emit_line("")
     for prop, (getter, setter) in cl.properties.items():
+        if getter.decl.implicit:
+            continue
+
         rtype = getter.sig.ret_type
         emitter.emit_line("")
         generate_readonly_getter(cl, prop, rtype, getter, emitter)
@@ -960,13 +976,13 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_lines("if (!tmp)", "    return -1;")
     emitter.emit_inc_ref("tmp", rtype)
     emitter.emit_line(f"self->{attr_field} = tmp;")
-    if is_fixed_width_rtype(rtype) and not always_defined:
+    if rtype.error_overlap and not always_defined:
         emitter.emit_attr_bitmap_set("tmp", "self", rtype, cl, attr)
 
     if deletable:
         emitter.emit_line("} else")
         emitter.emit_line(f"    self->{attr_field} = {emitter.c_undefined_value(rtype)};")
-        if is_fixed_width_rtype(rtype):
+        if rtype.error_overlap:
             emitter.emit_attr_bitmap_clear("self", rtype, cl, attr)
     emitter.emit_line("return 0;")
     emitter.emit_line("}")
@@ -988,6 +1004,7 @@ def generate_readonly_getter(
                 emitter.ctype_spaced(rtype), NATIVE_PREFIX, func_ir.cname(emitter.names)
             )
         )
+        emitter.emit_error_check("retval", rtype, "return NULL;")
         emitter.emit_box("retval", "retbox", rtype, declare_dest=True)
         emitter.emit_line("return retbox;")
     else:
@@ -1000,7 +1017,6 @@ def generate_readonly_getter(
 def generate_property_setter(
     cl: ClassIR, attr: str, arg_type: RType, func_ir: FuncIR, emitter: Emitter
 ) -> None:
-
     emitter.emit_line("static int")
     emitter.emit_line(
         "{}({} *self, PyObject *value, void *closure)".format(

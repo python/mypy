@@ -5,6 +5,10 @@
 #include <Python.h>
 #include "CPy.h"
 
+#ifndef Py_TPFLAGS_MAPPING
+#define Py_TPFLAGS_MAPPING (1 << 6)
+#endif
+
 // Dict subclasses like defaultdict override things in interesting
 // ways, so we don't want to just directly use the dict methods. Not
 // sure if it is actually worth doing all this stuff, but it saves
@@ -85,7 +89,7 @@ PyObject *CPyDict_SetDefaultWithEmptyDatatype(PyObject *dict, PyObject *key,
                                               int data_type) {
     PyObject *res = CPyDict_GetItem(dict, key);
     if (!res) {
-        // CPyDict_GetItem() would generates an PyExc_KeyError
+        // CPyDict_GetItem() would generates a PyExc_KeyError
         // when key is not found.
         PyErr_Clear();
 
@@ -435,4 +439,8 @@ tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset) {
     Py_INCREF(ret.f2);
     Py_INCREF(ret.f3);
     return ret;
+}
+
+int CPyMapping_Check(PyObject *obj) {
+    return Py_TYPE(obj)->tp_flags & Py_TPFLAGS_MAPPING;
 }

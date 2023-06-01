@@ -2,12 +2,31 @@
 
 from __future__ import annotations
 
+import re
+from unittest import TestCase, skipUnless
+
+import mypy.expandtype
 from mypy.erasetype import erase_type, remove_instance_last_known_values
 from mypy.expandtype import expand_type
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.join import join_simple, join_types
 from mypy.meet import meet_types, narrow_declared_type
-from mypy.nodes import ARG_OPT, ARG_POS, ARG_STAR, ARG_STAR2, CONTRAVARIANT, COVARIANT, INVARIANT
+from mypy.nodes import (
+    ARG_NAMED,
+    ARG_OPT,
+    ARG_POS,
+    ARG_STAR,
+    ARG_STAR2,
+    CONTRAVARIANT,
+    COVARIANT,
+    INVARIANT,
+    ArgKind,
+    CallExpr,
+    Expression,
+    NameExpr,
+)
+from mypy.options import Options
+from mypy.plugins.common import find_shallow_matching_overload_item
 from mypy.state import state
 from mypy.subtypes import is_more_precise, is_proper_subtype, is_same_type, is_subtype
 from mypy.test.helpers import Suite, assert_equal, assert_type, skip
@@ -31,6 +50,7 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     get_proper_type,
+    has_recursive_types,
 )
 
 
@@ -109,16 +129,35 @@ class TypesSuite(Suite):
         assert_equal(str(c3), "def (X? =, *Y?) -> Any")
 
     def test_tuple_type(self) -> None:
-        assert_equal(str(TupleType([], self.fx.std_tuple)), "Tuple[]")
-        assert_equal(str(TupleType([self.x], self.fx.std_tuple)), "Tuple[X?]")
+        options = Options()
+        options.force_uppercase_builtins = True
+        assert_equal(TupleType([], self.fx.std_tuple).str_with_options(options), "Tuple[]")
+        assert_equal(TupleType([self.x], self.fx.std_tuple).str_with_options(options), "Tuple[X?]")
         assert_equal(
-            str(TupleType([self.x, AnyType(TypeOfAny.special_form)], self.fx.std_tuple)),
+            TupleType(
+                [self.x, AnyType(TypeOfAny.special_form)], self.fx.std_tuple
+            ).str_with_options(options),
             "Tuple[X?, Any]",
         )
 
     def test_type_variable_binding(self) -> None:
-        assert_equal(str(TypeVarType("X", "X", 1, [], self.fx.o)), "X`1")
-        assert_equal(str(TypeVarType("X", "X", 1, [self.x, self.y], self.fx.o)), "X`1")
+        assert_equal(
+            str(TypeVarType("X", "X", 1, [], self.fx.o, AnyType(TypeOfAny.from_omitted_generics))),
+            "X`1",
+        )
+        assert_equal(
+            str(
+                TypeVarType(
+                    "X",
+                    "X",
+                    1,
+                    [self.x, self.y],
+                    self.fx.o,
+                    AnyType(TypeOfAny.from_omitted_generics),
+                )
+            ),
+            "X`1",
+        )
 
     def test_generic_function_type(self) -> None:
         c = CallableType(
@@ -128,11 +167,16 @@ class TypesSuite(Suite):
             self.y,
             self.function,
             name=None,
-            variables=[TypeVarType("X", "X", -1, [], self.fx.o)],
+            variables=[
+                TypeVarType("X", "X", -1, [], self.fx.o, AnyType(TypeOfAny.from_omitted_generics))
+            ],
         )
         assert_equal(str(c), "def [X] (X?, Y?) -> Y?")
 
-        v = [TypeVarType("Y", "Y", -1, [], self.fx.o), TypeVarType("X", "X", -2, [], self.fx.o)]
+        v = [
+            TypeVarType("Y", "Y", -1, [], self.fx.o, AnyType(TypeOfAny.from_omitted_generics)),
+            TypeVarType("X", "X", -2, [], self.fx.o, AnyType(TypeOfAny.from_omitted_generics)),
+        ]
         c2 = CallableType([], [], [], NoneType(), self.function, name=None, variables=v)
         assert_equal(str(c2), "def [Y, X] ()")
 
@@ -156,6 +200,13 @@ class TypesSuite(Suite):
         assert C.expand_all_if_possible() == TupleType(
             [self.fx.a, self.fx.a], Instance(self.fx.std_tuplei, [self.fx.a])
         )
+
+    def test_recursive_nested_in_non_recursive(self) -> None:
+        A, _ = self.fx.def_alias_1(self.fx.a)
+        T = TypeVarType("T", "T", -1, [], self.fx.o, AnyType(TypeOfAny.from_omitted_generics))
+        NA = self.fx.non_rec_alias(Instance(self.fx.gi, [T]), [T], [A])
+        assert not NA.is_recursive
+        assert has_recursive_types(NA)
 
     def test_indirection_no_infinite_recursion(self) -> None:
         A, _ = self.fx.def_alias_1(self.fx.a)
@@ -584,10 +635,7 @@ class TypeOpsSuite(Suite):
             [fx.lit_str1, fx.lit_str2, fx.lit_str3_inst],
             UnionType([fx.lit_str1, fx.lit_str2, fx.lit_str3_inst]),
         )
-        self.assert_simplified_union(
-            [fx.lit_str1, fx.lit_str1, fx.lit_str1_inst],
-            UnionType([fx.lit_str1, fx.lit_str1_inst]),
-        )
+        self.assert_simplified_union([fx.lit_str1, fx.lit_str1, fx.lit_str1_inst], fx.lit_str1)
 
     def assert_simplified_union(self, original: list[Type], union: Type) -> None:
         assert_equal(make_simplified_union(original), union)
@@ -606,7 +654,9 @@ class TypeOpsSuite(Suite):
         tv: list[TypeVarType] = []
         n = -1
         for v in vars:
-            tv.append(TypeVarType(v, v, n, [], self.fx.o))
+            tv.append(
+                TypeVarType(v, v, n, [], self.fx.o, AnyType(TypeOfAny.from_omitted_generics))
+            )
             n -= 1
         return CallableType(
             list(a[:-1]),
@@ -1279,3 +1329,148 @@ class RemoveLastKnownValueSuite(Suite):
         t2 = remove_instance_last_known_values(t)
         assert type(t2) is UnionType
         assert t2.items == expected
+
+
+class ShallowOverloadMatchingSuite(Suite):
+    def setUp(self) -> None:
+        self.fx = TypeFixture()
+
+    def test_simple(self) -> None:
+        fx = self.fx
+        ov = self.make_overload([[("x", fx.anyt, ARG_NAMED)], [("y", fx.anyt, ARG_NAMED)]])
+        # Match first only
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("foo", "x")), 0)
+        # Match second only
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("foo", "y")), 1)
+        # No match -- invalid keyword arg name
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("foo", "z")), 1)
+        # No match -- missing arg
+        self.assert_find_shallow_matching_overload_item(ov, make_call(), 1)
+        # No match -- extra arg
+        self.assert_find_shallow_matching_overload_item(
+            ov, make_call(("foo", "x"), ("foo", "z")), 1
+        )
+
+    def test_match_using_types(self) -> None:
+        fx = self.fx
+        ov = self.make_overload(
+            [
+                [("x", fx.nonet, ARG_POS)],
+                [("x", fx.lit_false, ARG_POS)],
+                [("x", fx.lit_true, ARG_POS)],
+                [("x", fx.anyt, ARG_POS)],
+            ]
+        )
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("None", None)), 0)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("builtins.False", None)), 1)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("builtins.True", None)), 2)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("foo", None)), 3)
+
+    def test_none_special_cases(self) -> None:
+        fx = self.fx
+        ov = self.make_overload(
+            [[("x", fx.callable(fx.nonet), ARG_POS)], [("x", fx.nonet, ARG_POS)]]
+        )
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("None", None)), 1)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("func", None)), 0)
+        ov = self.make_overload([[("x", fx.str_type, ARG_POS)], [("x", fx.nonet, ARG_POS)]])
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("None", None)), 1)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("func", None)), 0)
+        ov = self.make_overload(
+            [[("x", UnionType([fx.str_type, fx.a]), ARG_POS)], [("x", fx.nonet, ARG_POS)]]
+        )
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("None", None)), 1)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("func", None)), 0)
+        ov = self.make_overload([[("x", fx.o, ARG_POS)], [("x", fx.nonet, ARG_POS)]])
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("None", None)), 0)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("func", None)), 0)
+        ov = self.make_overload(
+            [[("x", UnionType([fx.str_type, fx.nonet]), ARG_POS)], [("x", fx.nonet, ARG_POS)]]
+        )
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("None", None)), 0)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("func", None)), 0)
+        ov = self.make_overload([[("x", fx.anyt, ARG_POS)], [("x", fx.nonet, ARG_POS)]])
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("None", None)), 0)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("func", None)), 0)
+
+    def test_optional_arg(self) -> None:
+        fx = self.fx
+        ov = self.make_overload(
+            [[("x", fx.anyt, ARG_NAMED)], [("y", fx.anyt, ARG_OPT)], [("z", fx.anyt, ARG_NAMED)]]
+        )
+        self.assert_find_shallow_matching_overload_item(ov, make_call(), 1)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("foo", "x")), 0)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("foo", "y")), 1)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("foo", "z")), 2)
+
+    def test_two_args(self) -> None:
+        fx = self.fx
+        ov = self.make_overload(
+            [
+                [("x", fx.nonet, ARG_OPT), ("y", fx.anyt, ARG_OPT)],
+                [("x", fx.anyt, ARG_OPT), ("y", fx.anyt, ARG_OPT)],
+            ]
+        )
+        self.assert_find_shallow_matching_overload_item(ov, make_call(), 0)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("None", "x")), 0)
+        self.assert_find_shallow_matching_overload_item(ov, make_call(("foo", "x")), 1)
+        self.assert_find_shallow_matching_overload_item(
+            ov, make_call(("foo", "y"), ("None", "x")), 0
+        )
+        self.assert_find_shallow_matching_overload_item(
+            ov, make_call(("foo", "y"), ("bar", "x")), 1
+        )
+
+    def assert_find_shallow_matching_overload_item(
+        self, ov: Overloaded, call: CallExpr, expected_index: int
+    ) -> None:
+        c = find_shallow_matching_overload_item(ov, call)
+        assert c in ov.items
+        assert ov.items.index(c) == expected_index
+
+    def make_overload(self, items: list[list[tuple[str, Type, ArgKind]]]) -> Overloaded:
+        result = []
+        for item in items:
+            arg_types = []
+            arg_names = []
+            arg_kinds = []
+            for name, typ, kind in item:
+                arg_names.append(name)
+                arg_types.append(typ)
+                arg_kinds.append(kind)
+            result.append(
+                CallableType(
+                    arg_types, arg_kinds, arg_names, ret_type=NoneType(), fallback=self.fx.o
+                )
+            )
+        return Overloaded(result)
+
+
+def make_call(*items: tuple[str, str | None]) -> CallExpr:
+    args: list[Expression] = []
+    arg_names = []
+    arg_kinds = []
+    for arg, name in items:
+        shortname = arg.split(".")[-1]
+        n = NameExpr(shortname)
+        n.fullname = arg
+        args.append(n)
+        arg_names.append(name)
+        if name:
+            arg_kinds.append(ARG_NAMED)
+        else:
+            arg_kinds.append(ARG_POS)
+    return CallExpr(NameExpr("f"), args, arg_kinds, arg_names)
+
+
+class TestExpandTypeLimitGetProperType(TestCase):
+    # WARNING: do not increase this number unless absolutely necessary,
+    # and you understand what you are doing.
+    ALLOWED_GET_PROPER_TYPES = 8
+
+    @skipUnless(mypy.expandtype.__file__.endswith(".py"), "Skip for compiled mypy")
+    def test_count_get_proper_type(self) -> None:
+        with open(mypy.expandtype.__file__) as f:
+            code = f.read()
+        get_proper_type_count = len(re.findall("get_proper_type", code))
+        assert get_proper_type_count == self.ALLOWED_GET_PROPER_TYPES

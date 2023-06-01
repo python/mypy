@@ -39,7 +39,7 @@ MypyFile:1<1>(
   FuncDef:1<2>(
     f
     def () -> builtins.int<3>
-    Block:1<4>(
+    Block:2<4>(
       PassStmt:2<5>())))
 ==>
 MypyFile:1<0>(
@@ -50,7 +50,7 @@ MypyFile:1<1>(
   FuncDef:1<2>(
     f
     def () -> builtins.int<3>
-    Block:1<6>(
+    Block:2<6>(
       PassStmt:2<7>())))
 
 [case testClass]
@@ -77,7 +77,7 @@ MypyFile:1<1>(
         Var(self)
         Var(x))
       def (self: target.A<4>, x: builtins.str<5>) -> builtins.int<6>
-      Block:2<7>(
+      Block:3<7>(
         PassStmt:3<8>()))))
 ==>
 MypyFile:1<0>(
@@ -93,7 +93,7 @@ MypyFile:1<1>(
         Var(self)
         Var(x))
       def (self: target.A<4>, x: builtins.int<6>) -> builtins.str<5>
-      Block:2<10>(
+      Block:3<10>(
         PassStmt:3<11>()))))
 
 [case testClass_typeinfo]
@@ -149,7 +149,7 @@ MypyFile:1<1>(
       Args(
         Var(self))
       def (self: target.A<4>) -> target.B<5>
-      Block:2<6>(
+      Block:3<6>(
         ReturnStmt:3<7>(
           CallExpr:3<8>(
             NameExpr(B [target.B<5>])
@@ -173,7 +173,7 @@ MypyFile:1<1>(
       Args(
         Var(self))
       def (self: target.A<4>) -> target.B<5>
-      Block:3<14>(
+      Block:4<14>(
         ExpressionStmt:4<15>(
           IntExpr(1))
         ReturnStmt:5<16>(
@@ -204,7 +204,7 @@ MypyFile:1<1>(
       Args(
         Var(self))
       def (self: target.A<4>)
-      Block:2<5>(
+      Block:3<5>(
         ExpressionStmt:3<6>(
           CallExpr:3<7>(
             MemberExpr:3<8>(
@@ -224,7 +224,7 @@ MypyFile:1<1>(
       Args(
         Var(self))
       def (self: target.A<4>)
-      Block:2<11>(
+      Block:3<11>(
         ExpressionStmt:3<12>(
           CallExpr:3<13>(
             MemberExpr:3<14>(
@@ -257,7 +257,7 @@ MypyFile:1<1>(
       Args(
         Var(self))
       def (self: target.A<4>)
-      Block:2<5>(
+      Block:3<5>(
         AssignmentStmt:3<6>(
           MemberExpr:3<8>(
             NameExpr(self [l<9>])
@@ -280,7 +280,7 @@ MypyFile:1<1>(
       Args(
         Var(self))
       def (self: target.A<4>)
-      Block:2<13>(
+      Block:3<13>(
         AssignmentStmt:3<14>(
           MemberExpr:3<15>(
             NameExpr(self [l<16>])
@@ -669,18 +669,18 @@ TypeInfo<2>(
   Mro(target.N<2>, builtins.tuple<3>, typing.Sequence<4>, typing.Iterable<5>, builtins.object<1>)
   Names(
     _NT<6>
-    __annotations__<7> (builtins.object<1>)
-    __doc__<8> (builtins.str<9>)
-    __match_args__<10> (Tuple[Literal['x']])
-    __new__<11>
-    _asdict<12>
-    _field_defaults<13> (builtins.object<1>)
-    _field_types<14> (builtins.object<1>)
-    _fields<15> (Tuple[builtins.str<9>])
-    _make<16>
-    _replace<17>
-    _source<18> (builtins.str<9>)
-    x<19> (target.A<0>)))
+    __annotations__<7> (builtins.dict[builtins.str<8>, Any]<9>)
+    __doc__<10> (builtins.str<8>)
+    __match_args__<11> (Tuple[Literal['x']])
+    __new__<12>
+    _asdict<13>
+    _field_defaults<14> (builtins.dict[builtins.str<8>, Any]<9>)
+    _field_types<15> (builtins.dict[builtins.str<8>, Any]<9>)
+    _fields<16> (Tuple[builtins.str<8>])
+    _make<17>
+    _replace<18>
+    _source<19> (builtins.str<8>)
+    x<20> (target.A<0>)))
 ==>
 TypeInfo<0>(
   Name(target.A)
@@ -693,19 +693,19 @@ TypeInfo<2>(
   Mro(target.N<2>, builtins.tuple<3>, typing.Sequence<4>, typing.Iterable<5>, builtins.object<1>)
   Names(
     _NT<6>
-    __annotations__<7> (builtins.object<1>)
-    __doc__<8> (builtins.str<9>)
-    __match_args__<10> (Tuple[Literal['x'], Literal['y']])
-    __new__<11>
-    _asdict<12>
-    _field_defaults<13> (builtins.object<1>)
-    _field_types<14> (builtins.object<1>)
-    _fields<15> (Tuple[builtins.str<9>, builtins.str<9>])
-    _make<16>
-    _replace<17>
-    _source<18> (builtins.str<9>)
-    x<19> (target.A<0>)
-    y<20> (target.A<0>)))
+    __annotations__<7> (builtins.dict[builtins.str<8>, Any]<9>)
+    __doc__<10> (builtins.str<8>)
+    __match_args__<11> (Tuple[Literal['x'], Literal['y']])
+    __new__<12>
+    _asdict<13>
+    _field_defaults<14> (builtins.dict[builtins.str<8>, Any]<9>)
+    _field_types<15> (builtins.dict[builtins.str<8>, Any]<9>)
+    _fields<16> (Tuple[builtins.str<8>, builtins.str<8>])
+    _make<17>
+    _replace<18>
+    _source<19> (builtins.str<8>)
+    x<20> (target.A<0>)
+    y<21> (target.A<0>)))
 
 [case testNamedTupleOldVersion_typeinfo]
 import target
@@ -730,17 +730,17 @@ TypeInfo<2>(
   Mro(target.N<2>, builtins.tuple<3>, typing.Sequence<4>, typing.Iterable<5>, builtins.object<1>)
   Names(
     _NT<6>
-    __annotations__<7> (builtins.object<1>)
-    __doc__<8> (builtins.str<9>)
-    __new__<10>
-    _asdict<11>
-    _field_defaults<12> (builtins.object<1>)
-    _field_types<13> (builtins.object<1>)
-    _fields<14> (Tuple[builtins.str<9>])
-    _make<15>
-    _replace<16>
-    _source<17> (builtins.str<9>)
-    x<18> (target.A<0>)))
+    __annotations__<7> (builtins.dict[builtins.str<8>, Any]<9>)
+    __doc__<10> (builtins.str<8>)
+    __new__<11>
+    _asdict<12>
+    _field_defaults<13> (builtins.dict[builtins.str<8>, Any]<9>)
+    _field_types<14> (builtins.dict[builtins.str<8>, Any]<9>)
+    _fields<15> (Tuple[builtins.str<8>])
+    _make<16>
+    _replace<17>
+    _source<18> (builtins.str<8>)
+    x<19> (target.A<0>)))
 ==>
 TypeInfo<0>(
   Name(target.A)
@@ -753,18 +753,18 @@ TypeInfo<2>(
   Mro(target.N<2>, builtins.tuple<3>, typing.Sequence<4>, typing.Iterable<5>, builtins.object<1>)
   Names(
     _NT<6>
-    __annotations__<7> (builtins.object<1>)
-    __doc__<8> (builtins.str<9>)
-    __new__<10>
-    _asdict<11>
-    _field_defaults<12> (builtins.object<1>)
-    _field_types<13> (builtins.object<1>)
-    _fields<14> (Tuple[builtins.str<9>, builtins.str<9>])
-    _make<15>
-    _replace<16>
-    _source<17> (builtins.str<9>)
-    x<18> (target.A<0>)
-    y<19> (target.A<0>)))
+    __annotations__<7> (builtins.dict[builtins.str<8>, Any]<9>)
+    __doc__<10> (builtins.str<8>)
+    __new__<11>
+    _asdict<12>
+    _field_defaults<13> (builtins.dict[builtins.str<8>, Any]<9>)
+    _field_types<14> (builtins.dict[builtins.str<8>, Any]<9>)
+    _fields<15> (Tuple[builtins.str<8>, builtins.str<8>])
+    _make<16>
+    _replace<17>
+    _source<18> (builtins.str<8>)
+    x<19> (target.A<0>)
+    y<20> (target.A<0>)))
 
 [case testUnionType_types]
 import target
@@ -1086,7 +1086,7 @@ a: A
 [file target.py.next]
 from _x import A
 a: A
-[file _x.pyi]
+[fixture _x.pyi]
 from typing import Generic, TypeVar, overload
 
 T = TypeVar('T')

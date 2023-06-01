@@ -1,7 +1,7 @@
 import abc
 import pathlib
 import sys
-from _typeshed import Self, StrPath
+from _typeshed import StrPath
 from collections.abc import Iterable, Mapping
 from email.message import Message
 from importlib.abc import MetaPathFinder
@@ -9,6 +9,7 @@ from os import PathLike
 from pathlib import Path
 from re import Pattern
 from typing import Any, ClassVar, NamedTuple, overload
+from typing_extensions import Self
 
 __all__ = [
     "Distribution",
@@ -41,6 +42,9 @@ class _EntryPointBase(NamedTuple):
 
 class EntryPoint(_EntryPointBase):
     pattern: ClassVar[Pattern[str]]
+    if sys.version_info >= (3, 11):
+        def __init__(self, name: str, value: str, group: str) -> None: ...
+
     def load(self) -> Any: ...  # Callable[[], Any] or an importable module
     @property
     def extras(self) -> list[str]: ...
@@ -83,13 +87,13 @@ if sys.version_info >= (3, 10):
 
     class SelectableGroups(dict[str, EntryPoints]):  # use as dict is deprecated since 3.10
         @classmethod
-        def load(cls: type[Self], eps: Iterable[EntryPoint]) -> Self: ...
+        def load(cls, eps: Iterable[EntryPoint]) -> Self: ...
         @property
         def groups(self) -> set[str]: ...
         @property
         def names(self) -> set[str]: ...
         @overload
-        def select(self: Self) -> Self: ...  # type: ignore[misc]
+        def select(self) -> Self: ...  # type: ignore[misc]
         @overload
         def select(
             self,
@@ -103,7 +107,7 @@ if sys.version_info >= (3, 10):
         ) -> EntryPoints: ...
 
 class PackagePath(pathlib.PurePosixPath):
-    def read_text(self, encoding: str = ...) -> str: ...
+    def read_text(self, encoding: str = "utf-8") -> str: ...
     def read_binary(self) -> bytes: ...
     def locate(self) -> PathLike[str]: ...
     # The following attributes are not defined on PackagePath, but are dynamically added by Distribution.files:
@@ -129,7 +133,7 @@ class Distribution:
     @overload
     @classmethod
     def discover(
-        cls, *, context: None = ..., name: str | None = ..., path: list[str] = ..., **kwargs: Any
+        cls, *, context: None = None, name: str | None = ..., path: list[str] = ..., **kwargs: Any
     ) -> Iterable[Distribution]: ...
     @staticmethod
     def at(path: StrPath) -> PathDistribution: ...
@@ -182,7 +186,7 @@ def distribution(distribution_name: str) -> Distribution: ...
 def distributions(*, context: DistributionFinder.Context) -> Iterable[Distribution]: ...
 @overload
 def distributions(
-    *, context: None = ..., name: str | None = ..., path: list[str] = ..., **kwargs: Any
+    *, context: None = None, name: str | None = ..., path: list[str] = ..., **kwargs: Any
 ) -> Iterable[Distribution]: ...
 
 if sys.version_info >= (3, 10):

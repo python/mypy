@@ -221,6 +221,8 @@ class RPrimitive(RType):
             self.c_undefined = "2"
         elif ctype in ("PyObject **", "void *"):
             self.c_undefined = "NULL"
+        elif ctype == "double":
+            self.c_undefined = "-113.0"
         else:
             assert False, "Unrecognized ctype: %r" % ctype
 
@@ -366,7 +368,14 @@ bitmap_rprimitive: Final = uint32_rprimitive
 
 # Floats are represent as 'float' PyObject * values. (In the future
 # we'll likely switch to a more efficient, unboxed representation.)
-float_rprimitive: Final = RPrimitive("builtins.float", is_unboxed=False, is_refcounted=True)
+float_rprimitive: Final = RPrimitive(
+    "builtins.float",
+    is_unboxed=True,
+    is_refcounted=False,
+    ctype="double",
+    size=8,
+    error_overlap=True,
+)
 
 # An unboxed Python bool value. This actually has three possible values
 # (0 -> False, 1 -> True, 2 -> error). If you only need True/False, use
@@ -527,6 +536,8 @@ class TupleNameVisitor(RTypeVisitor[str]):
             return "8"  # "8 byte integer"
         elif t._ctype == "int32_t":
             return "4"  # "4 byte integer"
+        elif t._ctype == "double":
+            return "F"
         assert not t.is_unboxed, f"{t} unexpected unboxed type"
         return "O"
 
@@ -572,6 +583,7 @@ class RTuple(RType):
         # Nominally the max c length is 31 chars, but I'm not honestly worried about this.
         self.struct_name = f"tuple_{self.unique_id}"
         self._ctype = f"{self.struct_name}"
+        self.error_overlap = all(t.error_overlap for t in self.types) and bool(self.types)
 
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rtuple(self)
@@ -796,6 +808,24 @@ class RUnion(RType):
         self.items_set = frozenset(items)
         self._ctype = "PyObject *"
 
+    @staticmethod
+    def make_simplified_union(items: list[RType]) -> RType:
+        """Return a normalized union that covers the given items.
+
+        Flatten nested unions and remove duplicate items.
+
+        Overlapping items are *not* simplified. For example,
+        [object, str] will not be simplified.
+        """
+        items = flatten_nested_unions(items)
+        assert items
+
+        unique_items = dict.fromkeys(items)
+        if len(unique_items) > 1:
+            return RUnion(list(unique_items))
+        else:
+            return next(iter(unique_items))
+
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_runion(self)
 
@@ -820,6 +850,19 @@ class RUnion(RType):
     def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> RUnion:
         types = [deserialize_type(t, ctx) for t in data["types"]]
         return RUnion(types)
+
+
+def flatten_nested_unions(types: list[RType]) -> list[RType]:
+    if not any(isinstance(t, RUnion) for t in types):
+        return types  # Fast path
+
+    flat_items: list[RType] = []
+    for t in types:
+        if isinstance(t, RUnion):
+            flat_items.extend(flatten_nested_unions(t.items))
+        else:
+            flat_items.append(t)
+    return flat_items
 
 
 def optional_value_type(rtype: RType) -> RType | None:

@@ -5,19 +5,33 @@ These can be used for filtering specific errors.
 
 from __future__ import annotations
 
+from collections import defaultdict
 from typing_extensions import Final
 
+from mypy_extensions import mypyc_attr
+
 error_codes: dict[str, ErrorCode] = {}
+sub_code_map: dict[str, set[str]] = defaultdict(set)
 
 
+@mypyc_attr(allow_interpreted_subclasses=True)
 class ErrorCode:
     def __init__(
-        self, code: str, description: str, category: str, default_enabled: bool = True
+        self,
+        code: str,
+        description: str,
+        category: str,
+        default_enabled: bool = True,
+        sub_code_of: ErrorCode | None = None,
     ) -> None:
         self.code = code
         self.description = description
         self.category = category
         self.default_enabled = default_enabled
+        self.sub_code_of = sub_code_of
+        if sub_code_of is not None:
+            assert sub_code_of.sub_code_of is None, "Nested subcategories are not supported"
+            sub_code_map[sub_code_of.code].add(code)
         error_codes[code] = self
 
     def __str__(self) -> str:
@@ -51,6 +65,12 @@ RETURN_VALUE: Final[ErrorCode] = ErrorCode(
 ASSIGNMENT: Final[ErrorCode] = ErrorCode(
     "assignment", "Check that assigned value is compatible with target", "General"
 )
+METHOD_ASSIGN: Final[ErrorCode] = ErrorCode(
+    "method-assign",
+    "Check that assignment target is not a method",
+    "General",
+    sub_code_of=ASSIGNMENT,
+)
 TYPE_ARG: Final = ErrorCode("type-arg", "Check that generic type arguments are present", "General")
 TYPE_VAR: Final = ErrorCode("type-var", "Check that type variable values are valid", "General")
 UNION_ATTR: Final = ErrorCode(
@@ -67,6 +87,12 @@ DICT_ITEM: Final = ErrorCode(
 TYPEDDICT_ITEM: Final = ErrorCode(
     "typeddict-item", "Check items when constructing TypedDict", "General"
 )
+TYPEDDICT_UNKNOWN_KEY: Final = ErrorCode(
+    "typeddict-unknown-key",
+    "Check unknown keys when constructing TypedDict",
+    "General",
+    sub_code_of=TYPEDDICT_ITEM,
+)
 HAS_TYPE: Final = ErrorCode(
     "has-type", "Check that type of reference can be determined", "General"
 )
@@ -80,6 +106,9 @@ FUNC_RETURNS_VALUE: Final = ErrorCode(
 ABSTRACT: Final = ErrorCode(
     "abstract", "Prevent instantiation of classes with abstract attributes", "General"
 )
+TYPE_ABSTRACT: Final = ErrorCode(
+    "type-abstract", "Require only concrete classes where Type[...] is expected", "General"
+)
 VALID_NEWTYPE: Final = ErrorCode(
     "valid-newtype", "Check that argument 2 to NewType is valid", "General"
 )
@@ -87,7 +116,7 @@ STRING_FORMATTING: Final = ErrorCode(
     "str-format", "Check that string formatting/interpolation is type-safe", "General"
 )
 STR_BYTES_PY3: Final = ErrorCode(
-    "str-bytes-safe", "Warn about dangerous coercions related to bytes and string types", "General"
+    "str-bytes-safe", "Warn about implicit coercions related to bytes and string types", "General"
 )
 EXIT_RETURN: Final = ErrorCode(
     "exit-return", "Warn about too general return type for '__exit__'", "General"
@@ -95,6 +124,19 @@ EXIT_RETURN: Final = ErrorCode(
 LITERAL_REQ: Final = ErrorCode("literal-required", "Check that value is a literal", "General")
 UNUSED_COROUTINE: Final = ErrorCode(
     "unused-coroutine", "Ensure that all coroutines are used", "General"
+)
+# TODO: why do we need the explicit type here? Without it mypyc CI builds fail with
+# mypy/message_registry.py:37: error: Cannot determine type of "EMPTY_BODY"  [has-type]
+EMPTY_BODY: Final[ErrorCode] = ErrorCode(
+    "empty-body",
+    "A dedicated error code to opt out return errors for empty/trivial bodies",
+    "General",
+)
+SAFE_SUPER: Final = ErrorCode(
+    "safe-super", "Warn about calls to abstract methods with empty/trivial bodies", "General"
+)
+TOP_LEVEL_AWAIT: Final = ErrorCode(
+    "top-level-await", "Warn about top level await experessions", "General"
 )
 
 # These error codes aren't enabled by default.
@@ -124,8 +166,11 @@ NO_ANY_RETURN: Final = ErrorCode(
 UNREACHABLE: Final = ErrorCode(
     "unreachable", "Warn about unreachable statements or expressions", "General"
 )
-PARTIALLY_DEFINED: Final[ErrorCode] = ErrorCode(
-    "partially-defined",
+ANNOTATION_UNCHECKED = ErrorCode(
+    "annotation-unchecked", "Notify about type annotations in unchecked functions", "General"
+)
+POSSIBLY_UNDEFINED: Final[ErrorCode] = ErrorCode(
+    "possibly-undefined",
     "Warn about variables that are defined only in some execution paths",
     "General",
     default_enabled=False,
@@ -136,6 +181,17 @@ REDUNDANT_EXPR: Final = ErrorCode(
 TRUTHY_BOOL: Final[ErrorCode] = ErrorCode(
     "truthy-bool",
     "Warn about expressions that could always evaluate to true in boolean contexts",
+    "General",
+    default_enabled=False,
+)
+TRUTHY_FUNCTION: Final[ErrorCode] = ErrorCode(
+    "truthy-function",
+    "Warn about function that always evaluate to true in boolean contexts",
+    "General",
+)
+TRUTHY_ITERABLE: Final[ErrorCode] = ErrorCode(
+    "truthy-iterable",
+    "Warn about Iterable expressions that could always evaluate to true in boolean contexts",
     "General",
     default_enabled=False,
 )
@@ -159,10 +215,22 @@ UNUSED_AWAITABLE: Final = ErrorCode(
     "General",
     default_enabled=False,
 )
+REDUNDANT_SELF_TYPE = ErrorCode(
+    "redundant-self",
+    "Warn about redundant Self type annotations on method first argument",
+    "General",
+    default_enabled=False,
+)
+USED_BEFORE_DEF: Final[ErrorCode] = ErrorCode(
+    "used-before-def", "Warn about variables that are used before they are defined", "General"
+)
+UNUSED_IGNORE: Final = ErrorCode(
+    "unused-ignore", "Ensure that all type ignores are used", "General", default_enabled=False
+)
 
 
 # Syntax errors are often blocking.
-SYNTAX: Final = ErrorCode("syntax", "Report syntax errors", "General")
+SYNTAX: Final[ErrorCode] = ErrorCode("syntax", "Report syntax errors", "General")
 
 # This is an internal marker code for a whole-file ignore. It is not intended to
 # be user-visible.

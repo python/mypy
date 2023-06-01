@@ -34,7 +34,7 @@ from mypy import defaults
 from mypy.options import PER_MODULE_OPTIONS, Options
 
 _CONFIG_VALUE_TYPES: _TypeAlias = Union[
-    str, bool, int, float, Dict[str, str], List[str], Tuple[int, int],
+    str, bool, int, float, Dict[str, str], List[str], Tuple[int, int]
 ]
 _INI_PARSER_CALLABLE: _TypeAlias = Callable[[Any], _CONFIG_VALUE_TYPES]
 
@@ -137,6 +137,15 @@ def check_follow_imports(choice: str) -> str:
     return choice
 
 
+def split_commas(value: str) -> list[str]:
+    # Uses a bit smarter technique to allow last trailing comma
+    # and to remove last `""` item from the split.
+    items = value.split(",")
+    if items and items[-1] == "":
+        items.pop(-1)
+    return items
+
+
 # For most options, the type of the default value set in options.py is
 # sufficient, and we don't have to do anything here.  This table
 # exists to specify types for values initialized to None or container
@@ -151,16 +160,19 @@ ini_config_types: Final[dict[str, _INI_PARSER_CALLABLE]] = {
     "junit_xml": expand_path,
     "follow_imports": check_follow_imports,
     "no_site_packages": bool,
-    "plugins": lambda s: [p.strip() for p in s.split(",")],
-    "always_true": lambda s: [p.strip() for p in s.split(",")],
-    "always_false": lambda s: [p.strip() for p in s.split(",")],
-    "disable_error_code": lambda s: validate_codes([p.strip() for p in s.split(",")]),
-    "enable_error_code": lambda s: validate_codes([p.strip() for p in s.split(",")]),
-    "package_root": lambda s: [p.strip() for p in s.split(",")],
+    "plugins": lambda s: [p.strip() for p in split_commas(s)],
+    "always_true": lambda s: [p.strip() for p in split_commas(s)],
+    "always_false": lambda s: [p.strip() for p in split_commas(s)],
+    "enable_incomplete_feature": lambda s: [p.strip() for p in split_commas(s)],
+    "disable_error_code": lambda s: validate_codes([p.strip() for p in split_commas(s)]),
+    "enable_error_code": lambda s: validate_codes([p.strip() for p in split_commas(s)]),
+    "package_root": lambda s: [p.strip() for p in split_commas(s)],
     "cache_dir": expand_path,
     "python_executable": expand_path,
     "strict": bool,
     "exclude": lambda s: [s.strip()],
+    "packages": try_split,
+    "modules": try_split,
 }
 
 # Reuse the ini_config_types and overwrite the diff
@@ -174,10 +186,13 @@ toml_config_types.update(
         "plugins": try_split,
         "always_true": try_split,
         "always_false": try_split,
+        "enable_incomplete_feature": try_split,
         "disable_error_code": lambda s: validate_codes(try_split(s)),
         "enable_error_code": lambda s: validate_codes(try_split(s)),
         "package_root": try_split,
         "exclude": str_or_array_as_list,
+        "packages": try_split,
+        "modules": try_split,
     }
 )
 
@@ -523,10 +538,7 @@ def split_directive(s: str) -> tuple[list[str], list[str]]:
 
 
 def mypy_comments_to_config_map(line: str, template: Options) -> tuple[dict[str, str], list[str]]:
-    """Rewrite the mypy comment syntax into ini file syntax.
-
-    Returns
-    """
+    """Rewrite the mypy comment syntax into ini file syntax."""
     options = {}
     entries, errors = split_directive(line)
     for entry in entries:

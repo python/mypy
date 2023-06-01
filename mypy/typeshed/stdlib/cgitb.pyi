@@ -2,8 +2,9 @@ from _typeshed import OptExcInfo, StrOrBytesPath
 from collections.abc import Callable
 from types import FrameType, TracebackType
 from typing import IO, Any
+from typing_extensions import Final
 
-__UNDEF__: object  # undocumented sentinel
+__UNDEF__: Final[object]  # undocumented sentinel
 
 def reset() -> str: ...  # undocumented
 def small(text: str) -> str: ...  # undocumented
@@ -13,20 +14,20 @@ def lookup(name: str, frame: FrameType, locals: dict[str, Any]) -> tuple[str | N
 def scanvars(
     reader: Callable[[], bytes], frame: FrameType, locals: dict[str, Any]
 ) -> list[tuple[str, str | None, Any]]: ...  # undocumented
-def html(einfo: OptExcInfo, context: int = ...) -> str: ...
-def text(einfo: OptExcInfo, context: int = ...) -> str: ...
+def html(einfo: OptExcInfo, context: int = 5) -> str: ...
+def text(einfo: OptExcInfo, context: int = 5) -> str: ...
 
 class Hook:  # undocumented
     def __init__(
         self,
-        display: int = ...,
-        logdir: StrOrBytesPath | None = ...,
-        context: int = ...,
-        file: IO[str] | None = ...,
-        format: str = ...,
+        display: int = 1,
+        logdir: StrOrBytesPath | None = None,
+        context: int = 5,
+        file: IO[str] | None = None,
+        format: str = "html",
     ) -> None: ...
     def __call__(self, etype: type[BaseException] | None, evalue: BaseException | None, etb: TracebackType | None) -> None: ...
-    def handle(self, info: OptExcInfo | None = ...) -> None: ...
+    def handle(self, info: OptExcInfo | None = None) -> None: ...
 
-def handler(info: OptExcInfo | None = ...) -> None: ...
-def enable(display: int = ..., logdir: StrOrBytesPath | None = ..., context: int = ..., format: str = ...) -> None: ...
+def handler(info: OptExcInfo | None = None) -> None: ...
+def enable(display: int = 1, logdir: StrOrBytesPath | None = None, context: int = 5, format: str = "html") -> None: ...

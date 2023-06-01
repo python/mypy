@@ -353,12 +353,17 @@ definitions or calls.
 .. option:: --disallow-untyped-defs
 
     This flag reports an error whenever it encounters a function definition
-    without type annotations.
+    without type annotations or with incomplete type annotations.
+    (a superset of :option:`--disallow-incomplete-defs`).
+
+    For example, it would report an error for :code:`def f(a, b)` and :code:`def f(a: int, b)`.
 
 .. option:: --disallow-incomplete-defs
 
     This flag reports an error whenever it encounters a partly annotated
-    function definition.
+    function definition, while still allowing entirely unannotated definitions.
+
+    For example, it would report an error for :code:`def f(a: int, b)` but not :code:`def f(a, b)`.
 
 .. option:: --check-untyped-defs
 
@@ -448,9 +453,10 @@ potentially problematic or redundant in some way.
     are when:
 
     -   The function has a ``None`` or ``Any`` return type
-    -   The function has an empty body or a body that is just
-        ellipsis (``...``). Empty functions are often used for
-        abstract methods.
+    -   The function has an empty body and is marked as an abstract method,
+        is in a protocol class, or is in a stub file
+    -  The execution path can never return; for example, if an exception
+        is always raised
 
     Passing in :option:`--no-warn-no-return` will disable these error
     messages in all cases.

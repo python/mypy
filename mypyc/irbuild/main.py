@@ -130,7 +130,7 @@ def transform_mypy_file(builder: IRBuilder, mypyfile: MypyFile) -> None:
         ir = builder.mapper.type_to_ir[cls.info]
         builder.classes.append(ir)
 
-    builder.enter("<top level>")
+    builder.enter("<module>")
 
     # Make sure we have a builtins import
     builder.gen_import("builtins", -1)

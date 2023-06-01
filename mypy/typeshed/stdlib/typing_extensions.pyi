@@ -1,13 +1,13 @@
-import _typeshed
 import abc
 import collections
 import sys
+import typing
 from _collections_abc import dict_items, dict_keys, dict_values
-from _typeshed import IdentityFunction
+from _typeshed import IdentityFunction, Incomplete
 from collections.abc import Iterable
-from typing import (  # noqa: Y022,Y027,Y039
+from typing import (  # noqa: Y022,Y039
     TYPE_CHECKING as TYPE_CHECKING,
-    Any,
+    Any as Any,
     AsyncContextManager as AsyncContextManager,
     AsyncGenerator as AsyncGenerator,
     AsyncIterable as AsyncIterable,
@@ -22,18 +22,29 @@ from typing import (  # noqa: Y022,Y027,Y039
     DefaultDict as DefaultDict,
     Deque as Deque,
     Mapping,
-    NewType as NewType,
     NoReturn as NoReturn,
     Sequence,
+    SupportsAbs as SupportsAbs,
+    SupportsBytes as SupportsBytes,
+    SupportsComplex as SupportsComplex,
+    SupportsFloat as SupportsFloat,
+    SupportsInt as SupportsInt,
+    SupportsRound as SupportsRound,
     Text as Text,
     Type as Type,
-    TypeVar,
     _Alias,
     overload as overload,
     type_check_only,
 )
 
+if sys.version_info >= (3, 10):
+    from types import UnionType
+if sys.version_info >= (3, 9):
+    from types import GenericAlias
+
 __all__ = [
+    "Any",
+    "Buffer",
     "ClassVar",
     "Concatenate",
     "Final",
@@ -43,6 +54,7 @@ __all__ = [
     "ParamSpecKwargs",
     "Self",
     "Type",
+    "TypeVar",
     "TypeVarTuple",
     "Unpack",
     "Awaitable",
@@ -60,22 +72,31 @@ __all__ = [
     "OrderedDict",
     "TypedDict",
     "SupportsIndex",
+    "SupportsAbs",
+    "SupportsRound",
+    "SupportsBytes",
+    "SupportsComplex",
+    "SupportsFloat",
+    "SupportsInt",
     "Annotated",
     "assert_never",
     "assert_type",
     "dataclass_transform",
+    "deprecated",
     "final",
     "IntVar",
     "is_typeddict",
     "Literal",
     "NewType",
     "overload",
+    "override",
     "Protocol",
     "reveal_type",
     "runtime",
     "runtime_checkable",
     "Text",
     "TypeAlias",
+    "TypeAliasType",
     "TypeGuard",
     "TYPE_CHECKING",
     "Never",
@@ -85,13 +106,14 @@ __all__ = [
     "clear_overloads",
     "get_args",
     "get_origin",
+    "get_original_bases",
     "get_overloads",
     "get_type_hints",
 ]
 
-_T = TypeVar("_T")
-_F = TypeVar("_F", bound=Callable[..., Any])
-_TC = TypeVar("_TC", bound=Type[object])
+_T = typing.TypeVar("_T")
+_F = typing.TypeVar("_F", bound=Callable[..., Any])
+_TC = typing.TypeVar("_TC", bound=Type[object])
 
 # unfortunately we have to duplicate this class definition from typing.pyi or we break pytype
 class _SpecialForm:
@@ -105,7 +127,7 @@ class _SpecialForm:
 # typing.Protocol and typing_extensions.Protocol so they can properly
 # warn users about potential runtime exceptions when using typing.Protocol
 # on older versions of Python.
-Protocol: _SpecialForm = ...
+Protocol: _SpecialForm
 
 def runtime_checkable(cls: _TC) -> _TC: ...
 
@@ -126,7 +148,8 @@ class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
     __required_keys__: ClassVar[frozenset[str]]
     __optional_keys__: ClassVar[frozenset[str]]
     __total__: ClassVar[bool]
-    def copy(self: _typeshed.Self) -> _typeshed.Self: ...
+    __orig_bases__: ClassVar[tuple[Any, ...]]
+    def copy(self) -> Self: ...
     # Using Never so that only calls using mypy plugin hook that specialize the signature
     # can go through.
     def setdefault(self, k: Never, default: object) -> object: ...
@@ -138,8 +161,8 @@ class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
     def values(self) -> dict_values[str, object]: ...
     def __delitem__(self, k: Never) -> None: ...
     if sys.version_info >= (3, 9):
-        def __or__(self: _typeshed.Self, __value: _typeshed.Self) -> _typeshed.Self: ...
-        def __ior__(self: _typeshed.Self, __value: _typeshed.Self) -> _typeshed.Self: ...
+        def __or__(self, __value: Self) -> Self: ...
+        def __ior__(self, __value: Self) -> Self: ...
 
 # TypedDict is a (non-subscriptable) special form.
 TypedDict: object
@@ -148,11 +171,23 @@ OrderedDict = _Alias()
 
 def get_type_hints(
     obj: Callable[..., Any],
-    globalns: dict[str, Any] | None = ...,
-    localns: dict[str, Any] | None = ...,
-    include_extras: bool = ...,
+    globalns: dict[str, Any] | None = None,
+    localns: dict[str, Any] | None = None,
+    include_extras: bool = False,
 ) -> dict[str, Any]: ...
 def get_args(tp: Any) -> tuple[Any, ...]: ...
+
+if sys.version_info >= (3, 10):
+    @overload
+    def get_origin(tp: UnionType) -> type[UnionType]: ...
+
+if sys.version_info >= (3, 9):
+    @overload
+    def get_origin(tp: GenericAlias) -> type: ...
+
+@overload
+def get_origin(tp: ParamSpecArgs | ParamSpecKwargs) -> ParamSpec: ...
+@overload
 def get_origin(tp: Any) -> Any | None: ...
 
 Annotated: _SpecialForm
@@ -163,11 +198,11 @@ class SupportsIndex(Protocol, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def __index__(self) -> int: ...
 
-# New things in 3.10
+# New and changed things in 3.10
 if sys.version_info >= (3, 10):
     from typing import (
         Concatenate as Concatenate,
-        ParamSpec as ParamSpec,
+        NewType as NewType,
         ParamSpecArgs as ParamSpecArgs,
         ParamSpecKwargs as ParamSpecKwargs,
         TypeAlias as TypeAlias,
@@ -175,30 +210,27 @@ if sys.version_info >= (3, 10):
         is_typeddict as is_typeddict,
     )
 else:
+    @final
     class ParamSpecArgs:
-        __origin__: ParamSpec
+        @property
+        def __origin__(self) -> ParamSpec: ...
         def __init__(self, origin: ParamSpec) -> None: ...
 
+    @final
     class ParamSpecKwargs:
-        __origin__: ParamSpec
+        @property
+        def __origin__(self) -> ParamSpec: ...
         def __init__(self, origin: ParamSpec) -> None: ...
 
-    class ParamSpec:
-        __name__: str
-        __bound__: type[Any] | None
-        __covariant__: bool
-        __contravariant__: bool
-        def __init__(
-            self, name: str, *, bound: None | type[Any] | str = ..., contravariant: bool = ..., covariant: bool = ...
-        ) -> None: ...
-        @property
-        def args(self) -> ParamSpecArgs: ...
-        @property
-        def kwargs(self) -> ParamSpecKwargs: ...
     Concatenate: _SpecialForm
     TypeAlias: _SpecialForm
     TypeGuard: _SpecialForm
     def is_typeddict(tp: object) -> bool: ...
+
+    class NewType:
+        def __init__(self, name: str, tp: Any) -> None: ...
+        def __call__(self, __x: _T) -> _T: ...
+        __supertype__: type
 
 # New things in 3.11
 # NamedTuples are not new, but the ability to create generic NamedTuples is new in 3.11
@@ -210,7 +242,6 @@ if sys.version_info >= (3, 11):
         NotRequired as NotRequired,
         Required as Required,
         Self as Self,
-        TypeVarTuple as TypeVarTuple,
         Unpack as Unpack,
         assert_never as assert_never,
         assert_type as assert_type,
@@ -221,7 +252,7 @@ if sys.version_info >= (3, 11):
     )
 else:
     Self: _SpecialForm
-    Never: _SpecialForm = ...
+    Never: _SpecialForm
     def reveal_type(__obj: _T) -> _T: ...
     def assert_never(__arg: Never) -> Never: ...
     def assert_type(__val: _T, __typ: Any) -> _T: ...
@@ -233,38 +264,142 @@ else:
     LiteralString: _SpecialForm
     Unpack: _SpecialForm
 
-    @final
-    class TypeVarTuple:
-        __name__: str
-        def __init__(self, name: str) -> None: ...
-        def __iter__(self) -> Any: ...  # Unpack[Self]
-
     def dataclass_transform(
         *,
-        eq_default: bool = ...,
-        order_default: bool = ...,
-        kw_only_default: bool = ...,
-        field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
+        eq_default: bool = True,
+        order_default: bool = False,
+        kw_only_default: bool = False,
+        frozen_default: bool = False,
+        field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = (),
         **kwargs: object,
     ) -> IdentityFunction: ...
 
     class NamedTuple(tuple[Any, ...]):
         if sys.version_info < (3, 8):
-            _field_types: collections.OrderedDict[str, type]
+            _field_types: ClassVar[collections.OrderedDict[str, type]]
         elif sys.version_info < (3, 9):
-            _field_types: dict[str, type]
-        _field_defaults: dict[str, Any]
-        _fields: tuple[str, ...]
-        _source: str
+            _field_types: ClassVar[dict[str, type]]
+        _field_defaults: ClassVar[dict[str, Any]]
+        _fields: ClassVar[tuple[str, ...]]
+        __orig_bases__: ClassVar[tuple[Any, ...]]
         @overload
         def __init__(self, typename: str, fields: Iterable[tuple[str, Any]] = ...) -> None: ...
         @overload
-        def __init__(self, typename: str, fields: None = ..., **kwargs: Any) -> None: ...
+        def __init__(self, typename: str, fields: None = None, **kwargs: Any) -> None: ...
         @classmethod
-        def _make(cls: type[_typeshed.Self], iterable: Iterable[Any]) -> _typeshed.Self: ...
+        def _make(cls, iterable: Iterable[Any]) -> Self: ...
         if sys.version_info >= (3, 8):
             def _asdict(self) -> dict[str, Any]: ...
         else:
             def _asdict(self) -> collections.OrderedDict[str, Any]: ...
 
-        def _replace(self: _typeshed.Self, **kwargs: Any) -> _typeshed.Self: ...
+        def _replace(self, **kwargs: Any) -> Self: ...
+
+# New things in 3.xx
+# The `default` parameter was added to TypeVar, ParamSpec, and TypeVarTuple (PEP 696)
+# The `infer_variance` parameter was added to TypeVar in 3.12 (PEP 695)
+# typing_extensions.override (PEP 698)
+@final
+class TypeVar:
+    @property
+    def __name__(self) -> str: ...
+    @property
+    def __bound__(self) -> Any | None: ...
+    @property
+    def __constraints__(self) -> tuple[Any, ...]: ...
+    @property
+    def __covariant__(self) -> bool: ...
+    @property
+    def __contravariant__(self) -> bool: ...
+    @property
+    def __infer_variance__(self) -> bool: ...
+    @property
+    def __default__(self) -> Any | None: ...
+    def __init__(
+        self,
+        name: str,
+        *constraints: Any,
+        bound: Any | None = None,
+        covariant: bool = False,
+        contravariant: bool = False,
+        default: Any | None = None,
+        infer_variance: bool = False,
+    ) -> None: ...
+    if sys.version_info >= (3, 10):
+        def __or__(self, right: Any) -> _SpecialForm: ...
+        def __ror__(self, left: Any) -> _SpecialForm: ...
+    if sys.version_info >= (3, 11):
+        def __typing_subst__(self, arg: Incomplete) -> Incomplete: ...
+
+@final
+class ParamSpec:
+    @property
+    def __name__(self) -> str: ...
+    @property
+    def __bound__(self) -> Any | None: ...
+    @property
+    def __covariant__(self) -> bool: ...
+    @property
+    def __contravariant__(self) -> bool: ...
+    @property
+    def __infer_variance__(self) -> bool: ...
+    @property
+    def __default__(self) -> Any | None: ...
+    def __init__(
+        self,
+        name: str,
+        *,
+        bound: None | type[Any] | str = None,
+        contravariant: bool = False,
+        covariant: bool = False,
+        default: type[Any] | str | None = None,
+    ) -> None: ...
+    @property
+    def args(self) -> ParamSpecArgs: ...
+    @property
+    def kwargs(self) -> ParamSpecKwargs: ...
+
+@final
+class TypeVarTuple:
+    @property
+    def __name__(self) -> str: ...
+    @property
+    def __default__(self) -> Any | None: ...
+    def __init__(self, name: str, *, default: Any | None = None) -> None: ...
+    def __iter__(self) -> Any: ...  # Unpack[Self]
+
+def deprecated(__msg: str, *, category: type[Warning] | None = ..., stacklevel: int = 1) -> Callable[[_T], _T]: ...
+
+if sys.version_info >= (3, 12):
+    from collections.abc import Buffer as Buffer
+    from types import get_original_bases as get_original_bases
+    from typing import TypeAliasType as TypeAliasType, override as override
+else:
+    def override(__arg: _F) -> _F: ...
+    def get_original_bases(__cls: type) -> tuple[Any, ...]: ...
+    @final
+    class TypeAliasType:
+        def __init__(
+            self, name: str, value: Any, *, type_params: tuple[TypeVar | ParamSpec | TypeVarTuple, ...] = ()
+        ) -> None: ...
+        @property
+        def __value__(self) -> Any: ...
+        @property
+        def __type_params__(self) -> tuple[TypeVar | ParamSpec | TypeVarTuple, ...]: ...
+        @property
+        def __parameters__(self) -> tuple[Any, ...]: ...
+        @property
+        def __name__(self) -> str: ...
+        # It's writable on types, but not on instances of TypeAliasType.
+        @property
+        def __module__(self) -> str | None: ...  # type: ignore[override]
+        def __getitem__(self, parameters: Any) -> Any: ...
+        if sys.version_info >= (3, 10):
+            def __or__(self, right: Any) -> _SpecialForm: ...
+            def __ror__(self, left: Any) -> _SpecialForm: ...
+
+    @runtime_checkable
+    class Buffer(Protocol):
+        # Not actually a Protocol at runtime; see
+        # https://github.com/python/typeshed/issues/10224 for why we're defining it this way
+        def __buffer__(self, __flags: int) -> memoryview: ...

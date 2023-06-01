@@ -208,6 +208,31 @@ override has a compatible signature:
    subtype such as ``list[int]``. Similarly, you can vary argument types
    **contravariantly** -- subclasses can have more general argument types.
 
+In order to ensure that your code remains correct when renaming methods,
+it can be helpful to explicitly mark a method as overriding a base
+method. This can be done with the ``@override`` decorator. If the base
+method is then renamed while the overriding method is not, mypy will
+show an error:
+
+.. code-block:: python
+
+   from typing import override
+
+   class Base:
+       def f(self, x: int) -> None:
+           ...
+       def g_renamed(self, y: str) -> None:
+           ...
+
+   class Derived1(Base):
+       @override
+       def f(self, x: int) -> None:   # OK
+           ...
+
+       @override
+       def g(self, y: str) -> None:   # Error: no corresponding base method found
+           ...
+
 You can also override a statically typed method with a dynamically
 typed one. This allows dynamically typed code to override methods
 defined in library classes without worrying about their type
@@ -307,6 +332,26 @@ however:
    As shown above, the class definition will not generate an error
    in this case, but any attempt to construct an instance will be
    flagged as an error.
+
+Mypy allows you to omit the body for an abstract method, but if you do so,
+it is unsafe to call such method via ``super()``. For example:
+
+.. code-block:: python
+
+   from abc import abstractmethod
+   class Base:
+       @abstractmethod
+       def foo(self) -> int: pass
+       @abstractmethod
+       def bar(self) -> int:
+           return 0
+   class Sub(Base):
+       def foo(self) -> int:
+           return super().foo() + 1  # error: Call to abstract method "foo" of "Base"
+                                     # with trivial body via super() is unsafe
+       @abstractmethod
+       def bar(self) -> int:
+           return super().bar() + 1  # This is OK however.
 
 A class can inherit any number of classes, both abstract and
 concrete. As with normal overrides, a dynamically typed method can

@@ -54,6 +54,7 @@ from mypy.nodes import (
     TypeInfo,
     reverse_builtin_aliases,
 )
+from mypy.options import Options
 from mypy.plugin import FunctionContext, MethodContext, Plugin
 from mypy.server.update import FineGrainedBuildManager
 from mypy.state import state
@@ -77,9 +78,8 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     get_proper_type,
-    is_optional,
-    remove_optional,
 )
+from mypy.types_utils import is_optional, remove_optional
 from mypy.util import split_target
 
 
@@ -735,7 +735,7 @@ class SuggestionEngine:
     def format_type(self, cur_module: str | None, typ: Type) -> str:
         if self.use_fixme and isinstance(get_proper_type(typ), AnyType):
             return self.use_fixme
-        return typ.accept(TypeFormatter(cur_module, self.graph))
+        return typ.accept(TypeFormatter(cur_module, self.graph, self.manager.options))
 
     def score_type(self, t: Type, arg_pos: bool) -> int:
         """Generate a score for a type that we use to pick which type to use.
@@ -809,8 +809,8 @@ class TypeFormatter(TypeStrVisitor):
     """Visitor used to format types"""
 
     # TODO: Probably a lot
-    def __init__(self, module: str | None, graph: Graph) -> None:
-        super().__init__()
+    def __init__(self, module: str | None, graph: Graph, options: Options) -> None:
+        super().__init__(options=options)
         self.module = module
         self.graph = graph
 

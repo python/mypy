@@ -3,6 +3,7 @@ from __future__ import annotations
 import pprint
 import re
 import sys
+import sysconfig
 from typing import Any, Callable, Dict, Mapping, Pattern
 from typing_extensions import Final
 
@@ -56,9 +57,21 @@ PER_MODULE_OPTIONS: Final = {
     "warn_unused_ignores",
 }
 
-OPTIONS_AFFECTING_CACHE: Final = (PER_MODULE_OPTIONS | {"platform", "bazel", "plugins"}) - {
-    "debug_cache"
-}
+OPTIONS_AFFECTING_CACHE: Final = (
+    PER_MODULE_OPTIONS
+    | {
+        "platform",
+        "bazel",
+        "plugins",
+        "disable_bytearray_promotion",
+        "disable_memoryview_promotion",
+    }
+) - {"debug_cache"}
+
+# Features that are currently incomplete/experimental
+TYPE_VAR_TUPLE: Final = "TypeVarTuple"
+UNPACK: Final = "Unpack"
+INCOMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK))
 
 
 class Options:
@@ -74,7 +87,15 @@ class Options:
         # The executable used to search for PEP 561 packages. If this is None,
         # then mypy does not search for PEP 561 packages.
         self.python_executable: str | None = sys.executable
-        self.platform = sys.platform
+
+        # When cross compiling to emscripten, we need to rely on MACHDEP because
+        # sys.platform is the host build platform, not emscripten.
+        MACHDEP = sysconfig.get_config_var("MACHDEP")
+        if MACHDEP == "emscripten":
+            self.platform = MACHDEP
+        else:
+            self.platform = sys.platform
+
         self.custom_typing_module: str | None = None
         self.custom_typeshed_dir: str | None = None
         # The abspath() version of the above, we compute it once as an optimization.
@@ -215,6 +236,12 @@ class Options:
         # supports globbing
         self.files: list[str] | None = None
 
+        # A list of packages for mypy to type check
+        self.packages: list[str] | None = None
+
+        # A list of modules for mypy to type check
+        self.modules: list[str] | None = None
+
         # Write junit.xml to given file
         self.junit_xml: str | None = None
 
@@ -230,6 +257,9 @@ class Options:
         self.cache_fine_grained = False
         # Read cache files in fine-grained incremental mode (cache must include dependencies)
         self.use_fine_grained_cache = False
+
+        # Run tree.serialize() even if cache generation is disabled
+        self.debug_serialize = False
 
         # Tune certain behaviors when being used as a front-end to mypyc. Set per-module
         # in modules being compiled. Not in the config file or command line.
@@ -262,8 +292,10 @@ class Options:
         self.dump_type_stats = False
         self.dump_inference_stats = False
         self.dump_build_stats = False
-        self.enable_incomplete_features = False
+        self.enable_incomplete_features = False  # deprecated
+        self.enable_incomplete_feature: list[str] = []
         self.timing_stats: str | None = None
+        self.line_checking_stats: str | None = None
 
         # -- test options --
         # Stop after the semantic analysis phase
@@ -296,6 +328,8 @@ class Options:
         self.fast_exit = True
         # fast path for finding modules from source set
         self.fast_module_lookup = False
+        # Allow empty function bodies even if it is not safe, used for testing only.
+        self.allow_empty_bodies = False
         # Used to transform source code before parsing if not None
         # TODO: Make the type precise (AnyStr -> AnyStr)
         self.transform_source: Callable[[Any], Any] | None = None
@@ -310,8 +344,29 @@ class Options:
         # skip most errors after this many messages have been reported.
         # -1 means unlimited.
         self.many_errors_threshold = defaults.MANY_ERRORS_THRESHOLD
-        # Enable recursive type aliases (currently experimental)
+        # Disable recursive type aliases (currently experimental)
+        self.disable_recursive_aliases = False
+        # Deprecated reverse version of the above, do not use.
         self.enable_recursive_aliases = False
+        # Export line-level, limited, fine-grained dependency information in cache data
+        # (undocumented feature).
+        self.export_ref_info = False
+
+        self.disable_bytearray_promotion = False
+        self.disable_memoryview_promotion = False
+
+        self.force_uppercase_builtins = False
+        self.force_union_syntax = False
+
+    def use_lowercase_names(self) -> bool:
+        if self.python_version >= (3, 9):
+            return not self.force_uppercase_builtins
+        return False
+
+    def use_or_syntax(self) -> bool:
+        if self.python_version >= (3, 10):
+            return not self.force_union_syntax
+        return False
 
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property

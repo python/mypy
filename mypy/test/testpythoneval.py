@@ -53,13 +53,25 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
         "--no-silence-site-packages",
         "--no-error-summary",
         "--hide-error-codes",
+        "--allow-empty-bodies",
+        "--force-uppercase-builtins",
     ]
     interpreter = python3_path
     mypy_cmdline.append(f"--python-version={'.'.join(map(str, PYTHON3_VERSION))}")
 
     m = re.search("# flags: (.*)$", "\n".join(testcase.input), re.MULTILINE)
     if m:
-        mypy_cmdline.extend(m.group(1).split())
+        additional_flags = m.group(1).split()
+        for flag in additional_flags:
+            if flag.startswith("--python-version="):
+                targetted_python_version = flag.split("=")[1]
+                targetted_major, targetted_minor = targetted_python_version.split(".")
+                if (int(targetted_major), int(targetted_minor)) > (
+                    sys.version_info.major,
+                    sys.version_info.minor,
+                ):
+                    return
+        mypy_cmdline.extend(additional_flags)
 
     # Write the program to a file.
     program = "_" + testcase.name + ".py"
@@ -80,7 +92,11 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
             # Normalize paths so that the output is the same on Windows and Linux/macOS.
             line = line.replace(test_temp_dir + os.sep, test_temp_dir + "/")
             output.append(line.rstrip("\r\n"))
-    if returncode == 0:
+    if returncode > 1 and not testcase.output:
+        # Either api.run() doesn't work well in case of a crash, or pytest interferes with it.
+        # Tweak output to prevent tests with empty expected output to pass in case of a crash.
+        output.append("!!! Mypy crashed !!!")
+    if returncode == 0 and not output:
         # Execute the program.
         proc = subprocess.run(
             [interpreter, "-Wignore", program], cwd=test_temp_dir, capture_output=True
