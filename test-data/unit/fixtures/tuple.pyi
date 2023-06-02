@@ -28,6 +28,7 @@ class function:
     __name__: str
 class ellipsis: pass
 class classmethod: pass
+class staticmethod: pass
 
 # We need int and slice for indexing tuples.
 class int:
