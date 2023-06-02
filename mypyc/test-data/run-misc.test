@@ -84,6 +84,36 @@ assert f(a) is a
 assert g(None) == 1
 assert g(a) == 2
 
+[case testInferredOptionalAssignment]
+from typing import Any, Generator
+
+def f(b: bool) -> Any:
+    if b:
+        x = None
+    else:
+        x = 1
+
+    if b:
+        y = 1
+    else:
+        y = None
+
+    m = 1 if b else None
+    n = None if b else 1
+    return ((x, y), (m, n))
+
+def gen(b: bool) -> Generator[Any, None, None]:
+    if b:
+        y = 1
+    else:
+        y = None
+    yield y
+
+assert f(False) == ((1, None), (None, 1))
+assert f(True) == ((None, 1), (1, None))
+assert next(gen(False)) is None
+assert next(gen(True)) == 1
+
 [case testWith]
 from typing import Any
 class Thing:
