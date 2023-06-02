@@ -749,14 +749,15 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 args.append("*")
 
             if arg_.initializer:
+                default = self.get_str_default_of_node(arg_.initializer)
                 if not annotation:
                     typename = self.get_str_type_of_node(arg_.initializer, True, False)
                     if typename == "":
-                        annotation = "=..."
+                        annotation = f"={default}"
                     else:
-                        annotation = f": {typename} = ..."
+                        annotation = f": {typename} = {default}"
                 else:
-                    annotation += " = ..."
+                    annotation += f" = {default}"
                 arg = name + annotation
             elif kind == ARG_STAR:
                 arg = f"*{name}{annotation}"
@@ -1401,8 +1402,11 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return "bytes"
         if isinstance(rvalue, FloatExpr):
             return "float"
-        if isinstance(rvalue, UnaryExpr) and isinstance(rvalue.expr, IntExpr):
-            return "int"
+        if isinstance(rvalue, UnaryExpr):
+            if isinstance(rvalue.expr, IntExpr):
+                return "int"
+            if isinstance(rvalue.expr, FloatExpr):
+                return "float"
         if isinstance(rvalue, NameExpr) and rvalue.name in ("True", "False"):
             return "bool"
         if can_infer_optional and isinstance(rvalue, NameExpr) and rvalue.name == "None":
@@ -1413,6 +1417,25 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return self.typing_name("Incomplete")
         else:
             return ""
+
+    def get_str_default_of_node(self, rvalue: Expression) -> str:
+        default = "..."
+        if isinstance(rvalue, NameExpr):
+            if rvalue.name in ("None", "True", "False"):
+                default = rvalue.name
+        elif isinstance(rvalue, (IntExpr, FloatExpr)):
+            default = f"{rvalue.value}"
+        elif isinstance(rvalue, UnaryExpr):
+            if isinstance(rvalue.expr, (IntExpr, FloatExpr)):
+                default = f"{rvalue.op}{rvalue.expr.value}"
+        elif isinstance(rvalue, StrExpr):
+            default = repr(rvalue.value)
+        elif isinstance(rvalue, BytesExpr):
+            default = f"b{rvalue.value!r}"
+
+        if len(default) > 200:  # TODO: what's a good limit?
+            default = "..."  # long literals are not useful in stubs
+        return default
 
     def print_annotation(self, t: Type) -> str:
         printer = AnnotationPrinter(self)
