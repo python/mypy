@@ -898,7 +898,7 @@ class Emitter:
         elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
 
-            condition = f"(!PyTuple_Check({src}) || PyTuple_Size({src}) != {len(typ.types)}) {{"
+            condition = f"(unlikely(!PyTuple_Check({src}) || PyTuple_GET_SIZE({src}) != {len(typ.types)})) {{"
             self.emit_arg_check(src, dest, typ, condition, optional)
             self.emit_line(failure)
             self.emit_line("} else {")
