@@ -263,7 +263,6 @@ def generator() -> Iterable[int]:
             print('caught exception with value ' + s)
         else:
             print('caught exception without value')
-        return 0
 
 def no_except() -> Iterable[int]:
     yield 1
