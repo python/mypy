@@ -1,13 +1,13 @@
 import ssl
 import sys
 from _typeshed import FileDescriptorLike, ReadableBuffer, WriteableBuffer
-from asyncio import _CoroutineLike
+from asyncio import _AwaitableLike, _CoroutineLike
 from asyncio.events import AbstractEventLoop, AbstractServer, Handle, TimerHandle, _TaskFactory
 from asyncio.futures import Future
 from asyncio.protocols import BaseProtocol
 from asyncio.tasks import Task
 from asyncio.transports import BaseTransport, DatagramTransport, ReadTransport, SubprocessTransport, Transport, WriteTransport
-from collections.abc import Awaitable, Callable, Generator, Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from contextvars import Context
 from socket import AddressFamily, SocketKind, _Address, _RetAddress, socket
 from typing import IO, Any, TypeVar, overload
@@ -64,11 +64,7 @@ class Server(AbstractServer):
 
 class BaseEventLoop(AbstractEventLoop):
     def run_forever(self) -> None: ...
-    # Can't use a union, see mypy issue  # 1873.
-    @overload
-    def run_until_complete(self, future: Generator[Any, None, _T]) -> _T: ...
-    @overload
-    def run_until_complete(self, future: Awaitable[_T]) -> _T: ...
+    def run_until_complete(self, future: _AwaitableLike[_T]) -> _T: ...
     def stop(self) -> None: ...
     def is_running(self) -> bool: ...
     def is_closed(self) -> bool: ...

@@ -301,6 +301,9 @@ class IRBuilder:
     def load_int(self, value: int) -> Value:
         return self.builder.load_int(value)
 
+    def load_float(self, value: float) -> Value:
+        return self.builder.load_float(value)
+
     def unary_op(self, lreg: Value, expr_op: str, line: int) -> Value:
         return self.builder.unary_op(lreg, expr_op, line)
 

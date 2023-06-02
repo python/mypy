@@ -103,6 +103,11 @@ def tuple_fallback(typ: TupleType) -> Instance:
                 # TODO: might make sense to do recursion here to support nested unpacks
                 # of tuple constants
                 items.extend(unpacked_type.items)
+            elif (
+                isinstance(unpacked_type, Instance)
+                and unpacked_type.type.fullname == "builtins.tuple"
+            ):
+                items.append(unpacked_type.args[0])
             else:
                 raise NotImplementedError
         else:

@@ -198,7 +198,11 @@ class Base:
 @dataclass
 class BadDerived1(Base):
     def foo(self) -> int:  # E: Dataclass attribute may only be overridden by another attribute \
-                           # E: Signature of "foo" incompatible with supertype "Base"
+                           # E: Signature of "foo" incompatible with supertype "Base" \
+                           # N:      Superclass: \
+                           # N:          int \
+                           # N:      Subclass: \
+                           # N:          def foo(self) -> int
         return 1
 
 @dataclass

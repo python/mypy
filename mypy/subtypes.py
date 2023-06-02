@@ -661,6 +661,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_unpack_type(self, left: UnpackType) -> bool:
         if isinstance(self.right, UnpackType):
             return self._is_subtype(left.type, self.right.type)
+        if isinstance(self.right, Instance) and self.right.type.fullname == "builtins.object":
+            return True
         return False
 
     def visit_parameters(self, left: Parameters) -> bool:
