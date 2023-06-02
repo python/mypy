@@ -85,7 +85,7 @@ def f() -> Generator[int, None, None]:
 from typing import Iterator
 def f() -> Iterator[int]:
     yield 1
-    return "foo"
+    return "foo" # E: No return value expected
 [out]
 
 
