@@ -89,7 +89,7 @@ pytest -n0 -k 'test_name'
 pytest mypy/test/testcheck.py::TypeCheckSuite::check-dataclasses.test
 
 # Run the linter
-flake8
+ruff .
 
 # Run formatters
 black . && isort .
