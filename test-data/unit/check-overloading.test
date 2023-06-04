@@ -6442,8 +6442,6 @@ if True:
         def f3(g: D) -> D: ...
 def f3(g): ...  # E: Name "f3" already defined on line 32
 
-
-
 [case testOverloadingWithParamSpec]
 from typing import TypeVar, Callable, Any, overload
 from typing_extensions import ParamSpec, Concatenate
