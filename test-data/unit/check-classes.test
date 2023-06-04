@@ -4131,6 +4131,18 @@ class C(str, str):
 [out]
 main:1: error: Duplicate base class "str"
 
+[case testDupBaseClassesIsNotBlocking]
+class A:
+    def method(self) -> str: ...
+
+class B(A, A):  # E: Duplicate base class "A"
+    ...
+
+b: B
+# We use dummy type info, so no real attrs will be there:
+b.method()  # E: "B" has no attribute "method"
+[out]
+
 [case testCannotDetermineMro]
 class A: pass
 class B(A): pass

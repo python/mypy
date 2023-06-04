@@ -2300,7 +2300,7 @@ class SemanticAnalyzer(
                 cycle = True
         dup = find_duplicate(info.direct_base_classes())
         if dup:
-            self.fail(f'Duplicate base class "{dup.name}"', defn, blocker=True)
+            self.fail(f'Duplicate base class "{dup.name}"', defn)
             return False
         return not cycle
 
