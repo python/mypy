@@ -43,17 +43,17 @@ skip_glob = [
 [tool.ruff]
 line-length = 99
 
-# Things to ignore:
-#   B006: use of mutable defaults in function signatures
-#   B007: Loop control variable not used within the loop body.
-#   B011: Don't use assert False
-#   B023: Function definition does not bind loop variable
-#   E203: conflicts with black
-#   E402: module level import not at top of file
-#   E501: conflicts with black
-#   E731: Do not assign a `lambda` expression, use a `def`
-#   E741: Ambiguous variable name
-extend-ignore = ["B006", "B007", "B011", "B023", "E203", "E402", "E501", "E731", "E741"]
+extend-ignore = [
+  "B006",  # use of mutable defaults in function signatures
+  "B007",  # Loop control variable not used within the loop body.
+  "B011",  # Don't use assert False
+  "B023",  # Function definition does not bind loop variable
+  "E203",  # conflicts with black
+  "E402",  # module level import not at top of file
+  "E501",  # conflicts with black
+  "E731",  # Do not assign a `lambda` expression, use a `def`
+  "E741",  # Ambiguous variable name
+]
 
 extend-exclude = [
   "@*",
@@ -70,10 +70,8 @@ extend-exclude = [
 
 [tool.ruff.per-file-ignores]
 
-# Some PEP8 deviations are considered irrelevant to stub files:
-# (error counts as of 2016-12-19)
-#  1487 F401 imported but unused
-#  1248 E701 multiple statements on one line (colon)
-#   427 F811 redefinition
-
-"test-data/*" = ["F401", "F811", "E701"]
+"test-data/*" = [
+  "F401",  # imported but unused
+  "F811",  # redefinition
+  "E701",  # multiple statements on one line (colon)
+]
