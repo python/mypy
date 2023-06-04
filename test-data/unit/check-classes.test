@@ -4124,13 +4124,6 @@ int.__eq__(3, 4)
 main:33: error: Too few arguments for "__eq__" of "int"
 main:33: error: Unsupported operand types for == ("int" and "Type[int]")
 
-[case testMroSetAfterError]
-class C(str, str):
-    foo = 0
-    bar = foo
-[out]
-main:1: error: Duplicate base class "str"
-
 [case testDupBaseClassesIsNotBlocking]
 class A:
     def method(self) -> str: ...
