@@ -5279,9 +5279,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return narrow_declared_type(known_type, restriction)
         return known_type
 
-    def has_abstract_type_part(
-        self, caller_type: ProperType, callee_type: ProperType
-    ) -> ProperType | None:
+    def has_abstract_type_part(self, caller_type: ProperType, callee_type: ProperType) -> bool:
         if isinstance(caller_type, TupleType) and isinstance(callee_type, TupleType):
             return any(
                 self.has_abstract_type_part(caller, callee)
