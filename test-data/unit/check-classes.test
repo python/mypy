@@ -4136,11 +4136,13 @@ class A:
     def method(self) -> str: ...
 
 class B(A, A):  # E: Duplicate base class "A"
-    ...
+    attr: int
 
 b: B
-# We use dummy type info, so no real attrs will be there:
-b.method()  # E: "B" has no attribute "method"
+
+reveal_type(b.method())  # N: Revealed type is "Any"
+reveal_type(b.missing())  # N: Revealed type is "Any"
+reveal_type(b.attr)  # N: Revealed type is "builtins.int"
 [out]
 
 [case testCannotDetermineMro]
