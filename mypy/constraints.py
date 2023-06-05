@@ -887,7 +887,19 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             if param_spec is None:
                 # FIX verify argument counts
                 # TODO: Erase template variables if it is generic?
-                if cactual.variables and cactual.param_spec() is None:
+                if (
+                    cactual.variables
+                    and cactual.param_spec() is None
+                    # Technically, the correct inferred type for application of
+                    # Callable[..., T] -> Callable[..., T] (with literal ellipsis), to a generic
+                    # like U -> U, should be Callable[..., Any], but if U is a self type, we can
+                    # allow it to leak, to be later bound to self. A bunch of existing code depends
+                    # on this old behaviour.
+                    and not (
+                        any(tv.id.raw_id == 0 for tv in cactual.variables)
+                        and template.is_ellipsis_args
+                    )
+                ):
                     # If actual is generic, unify it with template. Note: this is
                     # not an ideal solution (which would be adding the generic variables
                     # to the constraint inference set), but it's a good first approximation,

@@ -2935,3 +2935,17 @@ def id(x: V) -> V:
 
 reveal_type(dec(id, id))  # N: Revealed type is "def [T] (T`1) -> Tuple[T`1, T`1]"
 [builtins fixtures/tuple.pyi]
+
+[case testInferenceAgainstGenericEllipsisSelfSpecialCase]
+from typing import Self, Callable, TypeVar
+
+T = TypeVar("T")
+S = TypeVar("S")
+def dec(f: Callable[..., T]) -> Callable[..., T]: ...
+
+class C:
+    @dec
+    def test(self) -> Self: ...
+
+c: C
+reveal_type(c.test())  # N: Revealed type is "__main__.C"
