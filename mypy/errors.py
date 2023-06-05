@@ -62,7 +62,7 @@ class ErrorInfo:
     severity = ""
 
     # The error message.
-    message = str | ErrorMessage
+    message = ""
 
     # The error code.
     code: ErrorCode | None = None
@@ -99,7 +99,7 @@ class ErrorInfo:
         end_line: int,
         end_column: int,
         severity: str,
-        message: str | ErrorMessage,
+        message: str,
         code: ErrorCode | None,
         blocker: bool,
         only_once: bool,
@@ -355,7 +355,7 @@ class Errors:
         self,
         line: int,
         column: int | None,
-        message: str | ErrorMessage,
+        message: str,
         code: ErrorCode | None = None,
         *,
         blocker: bool = False,

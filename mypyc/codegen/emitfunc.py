@@ -775,8 +775,6 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 return "INFINITY"
             elif r == "-inf":
                 return "-INFINITY"
-            elif r == "nan":
-                return "NAN"
             return r
         else:
             return self.emitter.reg(reg)
