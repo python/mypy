@@ -351,3 +351,4 @@ OPERATIONS_AFTER_CONTROL: Final = ErrorMessage("Block has operations after contr
 FUNC_DUPLICATE_OP: Final = ErrorMessage("Func has a duplicate op")
 INVALID_OP_REFERENCE_TYPE: Final = ErrorMessage("Invalid op reference to op of type {}")
 INVALID_OP_REFERENCE_REGISTER: Final = ErrorMessage("Invalid op reference to register {}")
+
