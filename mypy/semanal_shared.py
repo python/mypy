@@ -10,6 +10,7 @@ from mypy_extensions import trait
 
 from mypy import join
 from mypy.errorcodes import LITERAL_REQ, ErrorCode
+from mypy.message_registry import ErrorMessage
 from mypy.nodes import (
     CallExpr,
     ClassDef,
@@ -84,7 +85,7 @@ class SemanticAnalyzerCoreInterface:
     @abstractmethod
     def fail(
         self,
-        msg: str,
+        msg: str | ErrorMessage,
         ctx: Context,
         serious: bool = False,
         *,

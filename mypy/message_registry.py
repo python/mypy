@@ -29,6 +29,12 @@ class ErrorMessage(NamedTuple):
 INVALID_TYPE_RAW_ENUM_VALUE: Final = ErrorMessage(
     "Invalid type: try using Literal[{}.{}] instead?", codes.VALID_TYPE
 )
+INVALID_TYPE_FROZENSET_LITERAL: Final = ErrorMessage(
+    "Invalid type for item of frozenset literal: {})"
+)
+INVALID_TYPE_TUPLE_LITERAL: Final = ErrorMessage("Invalid type for item of tuple literal: {}}")
+FLOAT_NOT_EXPECTED: Final = ErrorMessage("Float not expected")
+FLOAT_EXPECTED: Final = ErrorMessage("Float expected (actual type is {})")
 
 # Type checker error message constants
 NO_RETURN_VALUE_EXPECTED: Final = ErrorMessage("No return value expected", codes.RETURN_VALUE)
@@ -162,6 +168,13 @@ ITERABLE_ALWAYS_TRUE: Final = ErrorMessage(
 )
 NOT_CALLABLE: Final = "{} not callable"
 TYPE_MUST_BE_USED: Final = "Value of type {} must be used"
+TYPES_NOT_COMPATIBLE: Final = ErrorMessage("{} and {} are not compatible")
+CANNOT_COERSE_SRC_DEST: Final = ErrorMessage("Cannot coerce source type {} to dest type {}")
+INVALID_CONTROL_OPERATION_TARGET: Final = ErrorMessage("Invalid control operation target: {}")
+INCORRECT_NUMBER_ARGS: Final = ErrorMessage("Incorrect number of args for method call.")
+INVALID_LITERAL_VALUE_TYPE: Final = ErrorMessage(
+    "Invalid literal value for type: value has type {}, but op has type {}"
+)
 
 # Generic
 GENERIC_INSTANCE_VAR_CLASS_ACCESS: Final = (
@@ -316,3 +329,26 @@ ARG_CONSTRUCTOR_UNEXPECTED_ARG: Final = ErrorMessage(
 ARG_NAME_EXPECTED_STRING_LITERAL: Final = ErrorMessage(
     "Expected string literal for argument name, got {}", codes.SYNTAX
 )
+# Semanal newtype
+NEWTYPE_PROTOCOL_CLASSES: Final = ErrorMessage("NewType cannot be used with protocol classes")
+ARG_1_NEWTYPE_LITERAL: Final = ErrorMessage("Argument 1 to NewType(...) must be a string literal")
+ARG_2_NEWTYPE_SUBCLASSABLE: Final = ErrorMessage(
+    "Argument 2 to NewType(...) must be subclassable (got {})"
+)
+ARG_2_NEWTYPE_INVALID_TYPE: Final = ErrorMessage("Argument 2 to NewType(...) must be a valid type")
+CANNOT_DECLARE_TYPE: Final = ErrorMessage("Cannot declare the type of a NewType declaration")
+CANNOT_REDEFINE_NEWTYPE: Final = ErrorMessage("Cannot redefine {} as a NewType")
+EXCEPT_TWO_POSITIONAL_ARGS: Final = ErrorMessage(
+    "NewType(...) expects exactly two positional arguments"
+)
+MATCH_ERROR_STR_ARG1_VAR_NAME: Final = ErrorMessage(
+    "String argument 1 {} to NewType(...) does not match variable name {}"
+)
+# Blocks
+BLOCK_NOT_TERMINATED: Final = ErrorMessage("Block not terminated")
+OPERATIONS_AFTER_CONTROL: Final = ErrorMessage("Block has operations after control op")
+# Op
+FUNC_DUPLICATE_OP: Final = ErrorMessage("Func has a duplicate op")
+INVALID_OP_REFERENCE_TYPE: Final = ErrorMessage("Invalid op reference to op of type {}")
+INVALID_OP_REFERENCE_REGISTER: Final = ErrorMessage("Invalid op reference to register {}")
+
