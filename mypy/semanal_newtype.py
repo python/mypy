@@ -5,11 +5,10 @@ This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 
 from __future__ import annotations
 
-from mypy import message_registry
-from mypy.message_registry import ErrorMessage
-from mypy import errorcodes as codes
+from mypy import errorcodes as codes, message_registry
 from mypy.errorcodes import ErrorCode
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
+from mypy.message_registry import ErrorMessage
 from mypy.messages import MessageBuilder, format_type
 from mypy.nodes import (
     ARG_POS,
