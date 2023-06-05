@@ -273,4 +273,3 @@ class NewTypeAnalyzer:
 
     def fail(self, msg: ErrorMessage, ctx: Context, *, code: ErrorCode | None = None) -> None:
         self.api.fail(msg, ctx, code=code)
-
