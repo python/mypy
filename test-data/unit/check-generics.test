@@ -2893,14 +2893,45 @@ reveal_type(dec(id))  # N: Revealed type is "def [T] (T`2) -> builtins.list[T`2]
 # flags: --strict-optional
 from typing import TypeVar, Protocol, Generic, Optional
 
-_T = TypeVar('_T')
+T = TypeVar('T')
 
-class _F(Protocol[_T]):
-    def __call__(self, __x: _T) -> _T: ...
+class F(Protocol[T]):
+    def __call__(self, __x: T) -> T: ...
 
-def lift(f: _F[_T]) -> _F[Optional[_T]]: ...
-def g(x: _T) -> _T:
+def lift(f: F[T]) -> F[Optional[T]]: ...
+def g(x: T) -> T:
     return x
 
-reveal_type(lift(g))  # N: Revealed type is "def [_T] (Union[_T`1, None]) -> Union[_T`1, None]"
+reveal_type(lift(g))  # N: Revealed type is "def [T] (Union[T`1, None]) -> Union[T`1, None]"
 [builtins fixtures/list.pyi]
+
+[case testInferenceAgainstGenericSplitOrder]
+# flags: --strict-optional
+from typing import TypeVar, Callable, List
+
+S = TypeVar('S')
+T = TypeVar('T')
+U = TypeVar('U')
+
+def dec(f: Callable[[T], S], g: Callable[[T], int]) -> Callable[[T], List[S]]: ...
+def id(x: U) -> U:
+    ...
+
+reveal_type(dec(id, id))  # N: Revealed type is "def (builtins.int) -> builtins.list[builtins.int]"
+[builtins fixtures/list.pyi]
+
+[case testInferenceAgainstGenericSplitOrderGeneric]
+# flags: --strict-optional
+from typing import TypeVar, Callable, Tuple
+
+S = TypeVar('S')
+T = TypeVar('T')
+U = TypeVar('U')
+V = TypeVar('V')
+
+def dec(f: Callable[[T], S], g: Callable[[T], U]) -> Callable[[T], Tuple[S, U]]: ...
+def id(x: V) -> V:
+    ...
+
+reveal_type(dec(id, id))  # N: Revealed type is "def [S] (S`2) -> Tuple[S`2, S`2]"
+[builtins fixtures/tuple.pyi]
