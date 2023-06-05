@@ -2789,7 +2789,7 @@ def dec(f: Callable[[S], T]) -> Callable[[S], List[T]]:
     ...
 def id(x: U) -> U:
     ...
-reveal_type(dec(id))  # N: Revealed type is "def [T] (T`2) -> builtins.list[T`2]"
+reveal_type(dec(id))  # N: Revealed type is "def [S] (S`1) -> builtins.list[S`1]"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCallableGenericReverse]
@@ -2830,7 +2830,7 @@ U = TypeVar('U')
 def comb(f: Callable[[T], S], g: Callable[[S], U]) -> Callable[[T], U]: ...
 def id(x: U) -> U:
     ...
-reveal_type(comb(id, id))  # N: Revealed type is "def [S] (S`2) -> S`2"
+reveal_type(comb(id, id))  # N: Revealed type is "def [T] (T`1) -> T`1"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCallableGenericNonLinear]
@@ -2849,7 +2849,7 @@ def mix(fs: List[Callable[[S], T]]) -> Callable[[S], List[T]]:
 def id(__x: U) -> U:
     ...
 fs = [id, id, id]
-reveal_type(mix(fs))  # N: Revealed type is "def [T] (T`4) -> builtins.list[T`4]"
+reveal_type(mix(fs))  # N: Revealed type is "def [S] (S`3) -> builtins.list[S`3]"
 reveal_type(mix([id, id, id]))  # N: Revealed type is "def [S] (S`5) -> builtins.list[S`5]"
 [builtins fixtures/list.pyi]
 
@@ -2867,7 +2867,7 @@ def dec2(f: Callable[[T, U], S]) -> Callable[[U], Callable[[T], S]]: ...
 def test1(x: V) -> V: ...
 def test2(x: V, y: V) -> V: ...
 
-reveal_type(dec1(test1))  # N: Revealed type is "def () -> def [S] (S`2) -> S`2"
+reveal_type(dec1(test1))  # N: Revealed type is "def () -> def [T] (T`1) -> T`1"
 # TODO: support this situation
 reveal_type(dec2(test2))  # N: Revealed type is "def (builtins.object) -> def (builtins.object) -> builtins.object"
 [builtins fixtures/paramspec.pyi]
@@ -2886,7 +2886,7 @@ def dec(f: A[S, T]) -> B[S, T]:
     ...
 def id(x: U) -> U:
     ...
-reveal_type(dec(id))  # N: Revealed type is "def [T] (T`2) -> builtins.list[T`2]"
+reveal_type(dec(id))  # N: Revealed type is "def [S] (S`1) -> builtins.list[S`1]"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCallableGenericProtocol]
@@ -2933,5 +2933,5 @@ def dec(f: Callable[[T], S], g: Callable[[T], U]) -> Callable[[T], Tuple[S, U]]:
 def id(x: V) -> V:
     ...
 
-reveal_type(dec(id, id))  # N: Revealed type is "def [S] (S`2) -> Tuple[S`2, S`2]"
+reveal_type(dec(id, id))  # N: Revealed type is "def [T] (T`1) -> Tuple[T`1, T`1]"
 [builtins fixtures/tuple.pyi]

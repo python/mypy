@@ -118,7 +118,7 @@ def solve_non_linear(
                 for c in cmap[tv]
             ):
                 # TODO: be careful about upper bounds (or values) when introducing free vars.
-                free_vars.append(next(tv for tv in scc))
+                free_vars.append(sorted(scc, key=lambda x: x.raw_id)[0])
 
         # Flatten the SCCs that are independent, we can solve them together,
         # since we don't need to update any targets in between.
