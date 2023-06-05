@@ -138,7 +138,9 @@ SAFE_SUPER: Final = ErrorCode(
 TOP_LEVEL_AWAIT: Final = ErrorCode(
     "top-level-await", "Warn about top level await experessions", "General"
 )
-
+AWAIT_NOT_ASYNC: Final = ErrorCode(
+    "await-not-async", 'Warn about "await" outside coroutine ("async def")', "General"
+)
 # These error codes aren't enabled by default.
 NO_UNTYPED_DEF: Final[ErrorCode] = ErrorCode(
     "no-untyped-def", "Check that every function has an annotation", "General"
