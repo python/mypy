@@ -332,18 +332,12 @@ ARG_NAME_EXPECTED_STRING_LITERAL: Final = ErrorMessage(
 # Semanal newtype
 NEWTYPE_PROTOCOL_CLASSES: Final = ErrorMessage("NewType cannot be used with protocol classes")
 ARG_1_NEWTYPE_LITERAL: Final = ErrorMessage("Argument 1 to NewType(...) must be a string literal")
-ARG_2_NEWTYPE_SUBCLASSABLE: Final = ErrorMessage(
-    "Argument 2 to NewType(...) must be subclassable (got {})"
-)
+ARG_2_NEWTYPE_SUBCLASSABLE: Final = ErrorMessage("Argument 2 to NewType(...) must be subclassable (got {})")
 ARG_2_NEWTYPE_INVALID_TYPE: Final = ErrorMessage("Argument 2 to NewType(...) must be a valid type")
 CANNOT_DECLARE_TYPE: Final = ErrorMessage("Cannot declare the type of a NewType declaration")
 CANNOT_REDEFINE_NEWTYPE: Final = ErrorMessage("Cannot redefine {} as a NewType")
-EXCEPT_TWO_POSITIONAL_ARGS: Final = ErrorMessage(
-    "NewType(...) expects exactly two positional arguments"
-)
-MATCH_ERROR_STR_ARG1_VAR_NAME: Final = ErrorMessage(
-    "String argument 1 {} to NewType(...) does not match variable name {}"
-)
+EXCEPT_TWO_POSITIONAL_ARGS: Final = ErrorMessage("NewType(...) expects exactly two positional arguments")
+MATCH_ERROR_STR_ARG1_VAR_NAME: Final = ErrorMessage("String argument 1 {} to NewType(...) does not match variable name {}")
 # Blocks
 BLOCK_NOT_TERMINATED: Final = ErrorMessage("Block not terminated")
 OPERATIONS_AFTER_CONTROL: Final = ErrorMessage("Block has operations after control op")
