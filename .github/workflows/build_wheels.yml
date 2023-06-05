@@ -2,7 +2,7 @@ name: Trigger wheel build
 
 on:
   push:
-    branches: [master, 'release*']
+    branches: [main, master, 'release*']
     tags: ['*']
 
 jobs:

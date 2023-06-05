@@ -25,4 +25,3 @@ a = b = c = [1, 2, 3]
 for x in *a, *b, *c:
     reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
-

@@ -254,7 +254,11 @@ class DataclassTransformer:
             # Type variable for self types in generated methods.
             obj_type = self._api.named_type("builtins.object")
             self_tvar_expr = TypeVarExpr(
-                SELF_TVAR_NAME, info.fullname + "." + SELF_TVAR_NAME, [], obj_type
+                SELF_TVAR_NAME,
+                info.fullname + "." + SELF_TVAR_NAME,
+                [],
+                obj_type,
+                AnyType(TypeOfAny.from_omitted_generics),
             )
             info.names[SELF_TVAR_NAME] = SymbolTableNode(MDEF, self_tvar_expr)
 
@@ -268,7 +272,12 @@ class DataclassTransformer:
                 # the self type.
                 obj_type = self._api.named_type("builtins.object")
                 order_tvar_def = TypeVarType(
-                    SELF_TVAR_NAME, info.fullname + "." + SELF_TVAR_NAME, -1, [], obj_type
+                    SELF_TVAR_NAME,
+                    info.fullname + "." + SELF_TVAR_NAME,
+                    id=-1,
+                    values=[],
+                    upper_bound=obj_type,
+                    default=AnyType(TypeOfAny.from_omitted_generics),
                 )
                 order_return_type = self._api.named_type("builtins.bool")
                 order_args = [

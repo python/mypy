@@ -1,4 +1,6 @@
-from typing import TypeVar, overload, Callable, Any, Optional, Union, Sequence, Mapping
+from typing import TypeVar, overload, Callable, Any, Optional, Union, Sequence, Mapping, Generic
+
+from attr import Attribute as Attribute
 
 _T = TypeVar('_T')
 _C = TypeVar('_C', bound=type)
@@ -129,3 +131,5 @@ def field(
 
 def evolve(inst: _T, **changes: Any) -> _T: ...
 def assoc(inst: _T, **changes: Any) -> _T: ...
+
+def fields(cls: type) -> Any: ...

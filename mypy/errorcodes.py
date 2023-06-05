@@ -14,7 +14,7 @@ error_codes: dict[str, ErrorCode] = {}
 sub_code_map: dict[str, set[str]] = defaultdict(set)
 
 
-@mypyc_attr(serializable=True)
+@mypyc_attr(allow_interpreted_subclasses=True)
 class ErrorCode:
     def __init__(
         self,
