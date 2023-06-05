@@ -59,6 +59,7 @@ from mypy.constant_fold import constant_fold_expr
 from mypy.errorcodes import ErrorCode
 from mypy.errors import Errors, report_internal_error
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
+from mypy.message_registry import ErrorMessage
 from mypy.messages import (
     SUGGESTED_TEST_FIXTURES,
     TYPES_FOR_UNIMPORTED_HINTS,
@@ -6319,7 +6320,7 @@ class SemanticAnalyzer(
 
     def fail(
         self,
-        msg: str,
+        msg: str | ErrorMessage,
         ctx: Context,
         serious: bool = False,
         *,
