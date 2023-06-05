@@ -5,6 +5,8 @@ This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 
 from __future__ import annotations
 
+from mypy import message_registry
+from mypy.message_registry import ErrorMessage
 from mypy import errorcodes as codes
 from mypy.errorcodes import ErrorCode
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
@@ -98,13 +100,13 @@ class NewTypeAnalyzer:
             newtype_class_info.update_tuple_type(old_type)
         elif isinstance(old_type, Instance):
             if old_type.type.is_protocol:
-                self.fail("NewType cannot be used with protocol classes", s)
+                self.fail(message_registry.NEWTYPE_PROTOCOL_CLASSES, s)
             newtype_class_info = self.build_newtype_typeinfo(
                 name, old_type, old_type, s.line, call.analyzed.info
             )
         else:
             if old_type is not None:
-                message = "Argument 2 to NewType(...) must be subclassable (got {})"
+                message = message_registry.ARG_2_NEWTYPE_SUBCLASSABLE
                 self.fail(
                     message.format(format_type(old_type, self.options)),
                     s,
@@ -152,7 +154,7 @@ class NewTypeAnalyzer:
             name = s.lvalues[0].name
 
             if s.type:
-                self.fail("Cannot declare the type of a NewType declaration", s)
+                self.fail(message_registry.CANNOT_DECLARE_TYPE, s)
 
             names = self.api.current_symbol_table()
             existing = names.get(name)
@@ -162,7 +164,7 @@ class NewTypeAnalyzer:
                 and not isinstance(existing.node, PlaceholderNode)
                 and not s.rvalue.analyzed
             ):
-                self.fail(f'Cannot redefine "{name}" as a NewType', s)
+                self.fail(message_registry.CANNOT_REDEFINE_NEWTYPE.format(name), s)
 
             # This dummy NewTypeExpr marks the call as sufficiently analyzed; it will be
             # overwritten later with a fully complete NewTypeExpr if there are no other
@@ -181,20 +183,20 @@ class NewTypeAnalyzer:
         has_failed = False
         args, arg_kinds = call.args, call.arg_kinds
         if len(args) != 2 or arg_kinds[0] != ARG_POS or arg_kinds[1] != ARG_POS:
-            self.fail("NewType(...) expects exactly two positional arguments", context)
+            self.fail(message_registry.EXCEPT_TWO_POSITIONAL_ARGS, context)
             return None, False
 
         # Check first argument
         if not isinstance(args[0], StrExpr):
-            self.fail("Argument 1 to NewType(...) must be a string literal", context)
+            self.fail(message_registry.ARG_1_NEWTYPE_LITERAL, context)
             has_failed = True
         elif args[0].value != name:
-            msg = 'String argument 1 "{}" to NewType(...) does not match variable name "{}"'
+            msg = message_registry.MATCH_ERROR_STR_ARG1_VAR_NAME
             self.fail(msg.format(args[0].value, name), context)
             has_failed = True
 
         # Check second argument
-        msg = "Argument 2 to NewType(...) must be a valid type"
+        msg = message_registry.ARG_2_NEWTYPE_INVALID_TYPE
         try:
             unanalyzed_type = expr_to_unanalyzed_type(args[1], self.options, self.api.is_stub_file)
         except TypeTranslationError:
@@ -270,5 +272,5 @@ class NewTypeAnalyzer:
     def make_argument(self, name: str, type: Type) -> Argument:
         return Argument(Var(name), type, None, ARG_POS)
 
-    def fail(self, msg: str, ctx: Context, *, code: ErrorCode | None = None) -> None:
+    def fail(self, msg: ErrorMessage, ctx: Context, *, code: ErrorCode | None = None) -> None:
         self.api.fail(msg, ctx, code=code)
