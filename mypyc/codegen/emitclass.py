@@ -578,7 +578,12 @@ def generate_setup_for_class(
 
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
-            emitter.emit_line(rf"self->{emitter.attr(attr)} = {emitter.c_undefined_value(rtype)};")
+            value = emitter.c_undefined_value(rtype)
+
+            # We don't need to set this field to NULL since tp_alloc() already
+            # zero-initializes `self`.
+            if value != "NULL":
+                emitter.emit_line(rf"self->{emitter.attr(attr)} = {value};")
 
     # Initialize attributes to default values, if necessary
     if defaults_fn is not None:
