@@ -1,6 +1,8 @@
 """Utilities for checking that internal ir is valid and consistent."""
 from __future__ import annotations
 
+from mypy import message_registry
+from mypy.message_registry import ErrorMessage
 from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncIR
 from mypyc.ir.ops import (
     Assign,
@@ -69,7 +71,7 @@ from mypyc.ir.rtypes import (
 
 
 class FnError:
-    def __init__(self, source: Op | BasicBlock, desc: str) -> None:
+    def __init__(self, source: Op | BasicBlock, desc: ErrorMessage) -> None:
         self.source = source
         self.desc = desc
 
@@ -91,14 +93,17 @@ def check_func_ir(fn: FuncIR) -> list[FnError]:
     for block in fn.blocks:
         if not block.terminated:
             errors.append(
-                FnError(source=block.ops[-1] if block.ops else block, desc="Block not terminated")
+                FnError(
+                    source=block.ops[-1] if block.ops else block,
+                    desc=message_registry.BLOCK_NOT_TERMINATED,
+                )
             )
         for op in block.ops[:-1]:
             if isinstance(op, ControlOp):
-                errors.append(FnError(source=op, desc="Block has operations after control op"))
+                errors.append(FnError(source=op, desc=message_registry.OPERATIONS_AFTER_CONTROL))
 
             if op in op_set:
-                errors.append(FnError(source=op, desc="Func has a duplicate op"))
+                errors.append(FnError(source=op, desc=message_registry.FUNC_DUPLICATE_OP))
             op_set.add(op)
 
     errors.extend(check_op_sources_valid(fn))
@@ -122,7 +127,7 @@ def assert_func_ir_valid(fn: FuncIR) -> None:
     if errors:
         raise IrCheckException(
             "Internal error: Generated invalid IR: \n"
-            + "\n".join(format_func(fn, [(e.source, e.desc) for e in errors]))
+            + "\n".join(format_func(fn, [(e.source, e.desc.value) for e in errors]))
         )
 
 
@@ -152,14 +157,19 @@ def check_op_sources_valid(fn: FuncIR) -> list[FnError]:
                         errors.append(
                             FnError(
                                 source=op,
-                                desc=f"Invalid op reference to op of type {type(source).__name__}",
+                                desc=message_registry.INVALID_OP_REFERENCE_TYPE.format(
+                                    type(source).__name__
+                                ),
                             )
                         )
                 elif isinstance(source, Register):
                     if source not in valid_registers:
                         errors.append(
                             FnError(
-                                source=op, desc=f"Invalid op reference to register {source.name!r}"
+                                source=op,
+                                desc=message_registry.INVALID_OP_REFERENCE_REGISTER.format(
+                                    source.name
+                                ),
                             )
                         )
 
@@ -208,31 +218,31 @@ class OpChecker(OpVisitor[None]):
         self.parent_fn = parent_fn
         self.errors: list[FnError] = []
 
-    def fail(self, source: Op, desc: str) -> None:
+    def fail(self, source: Op, desc: ErrorMessage) -> None:
         self.errors.append(FnError(source=source, desc=desc))
 
     def check_control_op_targets(self, op: ControlOp) -> None:
         for target in op.targets():
             if target not in self.parent_fn.blocks:
-                self.fail(source=op, desc=f"Invalid control operation target: {target.label}")
+                self.fail(
+                    op, message_registry.INVALID_CONTROL_OPERATION_TARGET.format(target.label)
+                )
 
     def check_type_coercion(self, op: Op, src: RType, dest: RType) -> None:
         if not can_coerce_to(src, dest):
-            self.fail(
-                source=op, desc=f"Cannot coerce source type {src.name} to dest type {dest.name}"
-            )
+            self.fail(op, message_registry.CANNOT_COERSE_SRC_DEST.format(src.name, dest.name))
 
     def check_compatibility(self, op: Op, t: RType, s: RType) -> None:
         if not can_coerce_to(t, s) or not can_coerce_to(s, t):
-            self.fail(source=op, desc=f"{t.name} and {s.name} are not compatible")
+            self.fail(op, message_registry.TYPES_NOT_COMPATIBLE.format(t.name, s.name))
 
     def expect_float(self, op: Op, v: Value) -> None:
         if not is_float_rprimitive(v.type):
-            self.fail(op, f"Float expected (actual type is {v.type})")
+            self.fail(op, message_registry.FLOAT_EXPECTED.format(v.type))
 
     def expect_non_float(self, op: Op, v: Value) -> None:
         if is_float_rprimitive(v.type):
-            self.fail(op, "Float not expected")
+            self.fail(op, message_registry.FLOAT_NOT_EXPECTED)
 
     def visit_goto(self, op: Goto) -> None:
         self.check_control_op_targets(op)
@@ -265,7 +275,7 @@ class OpChecker(OpVisitor[None]):
     def check_tuple_items_valid_literals(self, op: LoadLiteral, t: tuple[object, ...]) -> None:
         for x in t:
             if x is not None and not isinstance(x, (str, bytes, bool, int, float, complex, tuple)):
-                self.fail(op, f"Invalid type for item of tuple literal: {type(x)})")
+                self.fail(op, message_registry.INVALID_TYPE_TUPLE_LITERAL.format(type(x)))
             if isinstance(x, tuple):
                 self.check_tuple_items_valid_literals(op, x)
 
@@ -276,7 +286,7 @@ class OpChecker(OpVisitor[None]):
             elif isinstance(x, tuple):
                 self.check_tuple_items_valid_literals(op, x)
             else:
-                self.fail(op, f"Invalid type for item of frozenset literal: {type(x)})")
+                self.fail(op, message_registry.INVALID_TYPE_FROZENSET_LITERAL.format(type(x)))
 
     def visit_load_literal(self, op: LoadLiteral) -> None:
         expected_type = None
@@ -307,9 +317,7 @@ class OpChecker(OpVisitor[None]):
 
         if op.type.name not in [expected_type, "builtins.object"]:
             self.fail(
-                op,
-                f"Invalid literal value for type: value has "
-                f"type {expected_type}, but op has type {op.type.name}",
+                op, message_registry.INVALID_LITERAL_VALUE_TYPE.format(expected_type, op.type.name)
             )
 
     def visit_get_attr(self, op: GetAttr) -> None:
@@ -358,7 +366,7 @@ class OpChecker(OpVisitor[None]):
             decl_index = 1
 
         if len(op.args) + decl_index != len(method_decl.sig.args):
-            self.fail(op, "Incorrect number of args for method call.")
+            self.fail(op, message_registry.INCORRECT_NUMBER_ARGS)
 
         # Skip the receiver argument (self)
         for arg_value, arg_runtime in zip(op.args, method_decl.sig.args[decl_index:]):
