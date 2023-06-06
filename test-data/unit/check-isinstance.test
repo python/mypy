@@ -1829,7 +1829,7 @@ T = TypeVar('T', bound=A)
 
 def f(x: T) -> None:
     if isinstance(x, B):
-        reveal_type(x) # N: Revealed type is "T`-1"
+        reveal_type(x) # N: Revealed type is "T`-1(upper_bound=__main__.B)"
         x1: T = x
         a: A = x
         b: B = x

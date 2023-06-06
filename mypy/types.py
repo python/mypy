@@ -576,7 +576,7 @@ class TypeVarLikeType(ProperType):
 class TypeVarType(TypeVarLikeType):
     """Type that refers to a type variable."""
 
-    __slots__ = ("values", "variance")
+    __slots__ = ("values", "variance", "narrowed")
 
     values: list[Type]  # Value restriction, empty list if no restriction
     variance: int
@@ -592,11 +592,14 @@ class TypeVarType(TypeVarLikeType):
         variance: int = INVARIANT,
         line: int = -1,
         column: int = -1,
+        *,
+        narrowed: bool = False,
     ) -> None:
         super().__init__(name, fullname, id, upper_bound, default, line, column)
         assert values is not None, "No restrictions must be represented by empty list"
         self.values = values
         self.variance = variance
+        self.narrowed = narrowed
 
     def copy_modified(
         self,
@@ -607,6 +610,7 @@ class TypeVarType(TypeVarLikeType):
         id: Bogus[TypeVarId | int] = _dummy,
         line: int = _dummy_int,
         column: int = _dummy_int,
+        narrowed: Bogus[bool] = _dummy,
         **kwargs: Any,
     ) -> TypeVarType:
         return TypeVarType(
@@ -619,6 +623,7 @@ class TypeVarType(TypeVarLikeType):
             variance=self.variance,
             line=self.line if line == _dummy_int else line,
             column=self.column if column == _dummy_int else column,
+            narrowed=self.narrowed if narrowed is _dummy else narrowed,
         )
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
@@ -3047,7 +3052,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         else:
             # Named type variable type.
             s = f"{t.name}`{t.id}"
-        if self.id_mapper and t.upper_bound:
+        if (self.id_mapper or t.narrowed) and t.upper_bound:
             s += f"(upper_bound={t.upper_bound.accept(self)})"
         return s
 

@@ -6864,7 +6864,10 @@ def conditional_types(
                 ]
             )
             if isinstance(current_type, TypeVarType):
-                proposed_type = current_type.copy_modified(upper_bound=proposed_type)
+                assert not current_type.values  # constrained TypeVars should not reach here
+                proposed_type = current_type.copy_modified(
+                    values=[], upper_bound=proposed_type, narrowed=True
+                )
             remaining_type = restrict_subtype_away(current_type, proposed_precise_type)
             return proposed_type, remaining_type
     else:
