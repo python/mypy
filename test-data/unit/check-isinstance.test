@@ -1818,6 +1818,7 @@ if issubclass(fm, Baz):
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceAndNarrowTypeVariable]
+# flags: --warn-unreachable
 from typing import TypeVar
 
 class A: pass
@@ -1830,6 +1831,8 @@ def f(x: T) -> None:
         reveal_type(x) # N: Revealed type is "T`-1"
         x1: T = x
         b: B = x
+    elif isinstance(x, int):
+        return  # E: Statement is unreachable
     else:
         reveal_type(x) # N: Revealed type is "T`-1"
         x2: T = x
