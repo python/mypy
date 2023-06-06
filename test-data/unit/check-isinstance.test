@@ -1842,6 +1842,21 @@ def f(x: T) -> None:
     reveal_type(x) # N: Revealed type is "T`-1"
 [builtins fixtures/isinstance.pyi]
 
+[case testIsinstanceAndNarrowTypeVariableIntersection-xfail]
+# flags: --warn-unreachable
+from typing import TypeVar
+
+class A: pass
+class B: pass
+
+T = TypeVar('T', bound=A)
+
+def f(x: T) -> None:
+    if isinstance(x, B):
+        reveal_type(x) # N: Revealed type is "T`-1(upper_bound=Union[__main__.A, __main__.B])"
+
+[builtins fixtures/isinstance.pyi]
+
 [case testIsinstanceAndTypeType]
 from typing import Type
 def f(x: Type[int]) -> None:
