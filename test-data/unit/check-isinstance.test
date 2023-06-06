@@ -1823,6 +1823,7 @@ from typing import TypeVar
 
 class A: pass
 class B(A): pass
+class C: pass
 
 T = TypeVar('T', bound=A)
 
@@ -1830,7 +1831,9 @@ def f(x: T) -> None:
     if isinstance(x, B):
         reveal_type(x) # N: Revealed type is "T`-1"
         x1: T = x
+        a: A = x
         b: B = x
+        c: C = x  # E: Incompatible types in assignment (expression has type "T", variable has type "C")
     elif isinstance(x, int):
         return  # E: Statement is unreachable
     else:
