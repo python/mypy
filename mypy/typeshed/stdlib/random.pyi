@@ -34,6 +34,8 @@ __all__ = [
 
 if sys.version_info >= (3, 9):
     __all__ += ["randbytes"]
+if sys.version_info >= (3, 12):
+    __all__ += ["binomialvariate"]
 
 _T = TypeVar("_T")
 
@@ -79,8 +81,15 @@ class Random(_random.Random):
 
     def uniform(self, a: float, b: float) -> float: ...
     def triangular(self, low: float = 0.0, high: float = 1.0, mode: float | None = None) -> float: ...
+    if sys.version_info >= (3, 12):
+        def binomialvariate(self, n: int = 1, p: float = 0.5) -> int: ...
+
     def betavariate(self, alpha: float, beta: float) -> float: ...
-    def expovariate(self, lambd: float) -> float: ...
+    if sys.version_info >= (3, 12):
+        def expovariate(self, lambd: float = 1.0) -> float: ...
+    else:
+        def expovariate(self, lambd: float) -> float: ...
+
     def gammavariate(self, alpha: float, beta: float) -> float: ...
     if sys.version_info >= (3, 11):
         def gauss(self, mu: float = 0.0, sigma: float = 1.0) -> float: ...
@@ -117,6 +126,8 @@ expovariate = _inst.expovariate
 vonmisesvariate = _inst.vonmisesvariate
 gammavariate = _inst.gammavariate
 gauss = _inst.gauss
+if sys.version_info >= (3, 12):
+    binomialvariate = _inst.binomialvariate
 betavariate = _inst.betavariate
 paretovariate = _inst.paretovariate
 weibullvariate = _inst.weibullvariate

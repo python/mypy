@@ -3,7 +3,7 @@ name: Check documentation build
 on:
   workflow_dispatch:
   push:
-    branches: [master, 'release*']
+    branches: [main, master, 'release*']
     tags: ['*']
   pull_request:
     paths:

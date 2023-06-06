@@ -49,6 +49,7 @@ files = [
     "irbuild-singledispatch.test",
     "irbuild-constant-fold.test",
     "irbuild-glue-methods.test",
+    "irbuild-math.test",
 ]
 
 if sys.version_info >= (3, 10):

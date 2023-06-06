@@ -2189,6 +2189,10 @@ class SemanticAnalyzer(
         if not self.verify_base_classes(defn):
             self.set_dummy_mro(defn.info)
             return
+        if not self.verify_duplicate_base_classes(defn):
+            # We don't want to block the typechecking process,
+            # so, we just insert `Any` as the base class and show an error.
+            self.set_any_mro(defn.info)
         self.calculate_class_mro(defn, self.object_type)
 
     def configure_tuple_base_class(self, defn: ClassDef, base: TupleType) -> Instance:
@@ -2217,6 +2221,11 @@ class SemanticAnalyzer(
         # Give it an MRO consisting of just the class itself and object.
         info.mro = [info, self.object_type().type]
         info.bad_mro = True
+
+    def set_any_mro(self, info: TypeInfo) -> None:
+        # Give it an MRO consisting direct `Any` subclass.
+        info.fallback_to_any = True
+        info.mro = [info, self.object_type().type]
 
     def calculate_class_mro(
         self, defn: ClassDef, obj_type: Callable[[], Instance] | None = None
@@ -2298,11 +2307,13 @@ class SemanticAnalyzer(
             if self.is_base_class(info, baseinfo):
                 self.fail("Cycle in inheritance hierarchy", defn)
                 cycle = True
-        dup = find_duplicate(info.direct_base_classes())
-        if dup:
-            self.fail(f'Duplicate base class "{dup.name}"', defn, blocker=True)
-            return False
         return not cycle
+
+    def verify_duplicate_base_classes(self, defn: ClassDef) -> bool:
+        dup = find_duplicate(defn.info.direct_base_classes())
+        if dup:
+            self.fail(f'Duplicate base class "{dup.name}"', defn)
+        return not dup
 
     def is_base_class(self, t: TypeInfo, s: TypeInfo) -> bool:
         """Determine if t is a base class of s (but do not use mro)."""
