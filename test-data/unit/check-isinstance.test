@@ -1827,9 +1827,12 @@ T = TypeVar('T', bound=A)
 
 def f(x: T) -> None:
     if isinstance(x, B):
-        reveal_type(x) # N: Revealed type is "__main__.B"
+        reveal_type(x) # N: Revealed type is "T`-1"
+        x1: T = x
+        b: B = x
     else:
         reveal_type(x) # N: Revealed type is "T`-1"
+        x2: T = x
     reveal_type(x) # N: Revealed type is "T`-1"
 [builtins fixtures/isinstance.pyi]
 

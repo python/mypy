@@ -6863,6 +6863,8 @@ def conditional_types(
                     if not type_range.is_upper_bound
                 ]
             )
+            if isinstance(current_type, TypeVarType):
+                proposed_type = current_type.copy_modified(upper_bound=proposed_type)
             remaining_type = restrict_subtype_away(current_type, proposed_precise_type)
             return proposed_type, remaining_type
     else:
