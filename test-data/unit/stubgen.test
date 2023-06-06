@@ -888,6 +888,17 @@ class D(Generic[T]): ...
 [out]
 class D(Generic[T]): ...
 
+[case testGenericClass_semanal]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+class D(Generic[T]): ...
+[out]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class D(Generic[T]): ...
+
 [case testObjectBaseClass]
 class A(object): ...
 [out]

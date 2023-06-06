@@ -123,11 +123,10 @@ def run_stubtest(
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             test_stubs(parse_options([TEST_MODULE_NAME] + options), use_builtins_fixtures=True)
-        # remove cwd as it's not available from outside
-        return (
+        return remove_color_code(
             output.getvalue()
-            .replace(os.path.realpath(tmp_dir) + os.sep, "")
-            .replace(tmp_dir + os.sep, "")
+            # remove cwd as it's not available from outside
+            .replace(os.path.realpath(tmp_dir) + os.sep, "").replace(tmp_dir + os.sep, "")
         )
 
 
@@ -1866,7 +1865,7 @@ class StubtestMiscUnit(unittest.TestCase):
             f"Runtime: in file {TEST_MODULE_NAME}.py:1\ndef (num, text)\n\n"
             "Found 1 error (checked 1 module)\n"
         )
-        assert remove_color_code(output) == expected
+        assert output == expected
 
         output = run_stubtest(
             stub="def bad(number: int, text: str) -> None: ...",
@@ -1877,7 +1876,7 @@ class StubtestMiscUnit(unittest.TestCase):
             "{}.bad is inconsistent, "
             'stub argument "number" differs from runtime argument "num"\n'.format(TEST_MODULE_NAME)
         )
-        assert remove_color_code(output) == expected
+        assert output == expected
 
     def test_ignore_flags(self) -> None:
         output = run_stubtest(
@@ -1956,13 +1955,13 @@ class StubtestMiscUnit(unittest.TestCase):
 
     def test_mypy_build(self) -> None:
         output = run_stubtest(stub="+", runtime="", options=[])
-        assert remove_color_code(output) == (
+        assert output == (
             "error: not checking stubs due to failed mypy compile:\n{}.pyi:1: "
             "error: invalid syntax  [syntax]\n".format(TEST_MODULE_NAME)
         )
 
         output = run_stubtest(stub="def f(): ...\ndef f(): ...", runtime="", options=[])
-        assert remove_color_code(output) == (
+        assert output == (
             "error: not checking stubs due to mypy build errors:\n{}.pyi:2: "
             'error: Name "f" already defined on line 1  [no-redef]\n'.format(TEST_MODULE_NAME)
         )
@@ -2019,7 +2018,7 @@ class StubtestMiscUnit(unittest.TestCase):
         stub = "from decimal import Decimal\ntemp: Decimal\n"
         config_file = f"[mypy]\nplugins={root_dir}/test-data/unit/plugins/decimal_to_int.py\n"
         output = run_stubtest(stub=stub, runtime=runtime, options=[])
-        assert remove_color_code(output) == (
+        assert output == (
             f"error: {TEST_MODULE_NAME}.temp variable differs from runtime type Literal[5]\n"
             f"Stub: in file {TEST_MODULE_NAME}.pyi:2\n_decimal.Decimal\nRuntime:\n5\n\n"
             "Found 1 error (checked 1 module)\n"

@@ -767,10 +767,19 @@ def _add_order(ctx: mypy.plugin.ClassDefContext, adder: MethodAdder) -> None:
     #    def __lt__(self: AT, other: AT) -> bool
     # This way comparisons with subclasses will work correctly.
     tvd = TypeVarType(
-        SELF_TVAR_NAME, ctx.cls.info.fullname + "." + SELF_TVAR_NAME, -1, [], object_type
+        SELF_TVAR_NAME,
+        ctx.cls.info.fullname + "." + SELF_TVAR_NAME,
+        id=-1,
+        values=[],
+        upper_bound=object_type,
+        default=AnyType(TypeOfAny.from_omitted_generics),
     )
     self_tvar_expr = TypeVarExpr(
-        SELF_TVAR_NAME, ctx.cls.info.fullname + "." + SELF_TVAR_NAME, [], object_type
+        SELF_TVAR_NAME,
+        ctx.cls.info.fullname + "." + SELF_TVAR_NAME,
+        [],
+        object_type,
+        AnyType(TypeOfAny.from_omitted_generics),
     )
     ctx.cls.info.names[SELF_TVAR_NAME] = SymbolTableNode(MDEF, self_tvar_expr)
 

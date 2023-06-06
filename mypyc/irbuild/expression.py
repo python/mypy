@@ -6,6 +6,7 @@ and mypyc.irbuild.builder.
 
 from __future__ import annotations
 
+import math
 from typing import Callable, Sequence
 
 from mypy.nodes import (
@@ -128,6 +129,10 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
     if fullname == "builtins.False":
         return builder.false()
 
+    math_literal = transform_math_literal(builder, fullname)
+    if math_literal is not None:
+        return math_literal
+
     if isinstance(expr.node, Var) and expr.node.is_final:
         value = builder.emit_load_final(
             expr.node,
@@ -191,6 +196,10 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
         )
         if value is not None:
             return value
+
+    math_literal = transform_math_literal(builder, expr.fullname)
+    if math_literal is not None:
+        return math_literal
 
     if isinstance(expr.node, MypyFile) and expr.node.fullname in builder.imports:
         return builder.load_module(expr.node.fullname)
@@ -1043,3 +1052,18 @@ def transform_assignment_expr(builder: IRBuilder, o: AssignmentExpr) -> Value:
     target = builder.get_assignment_target(o.target)
     builder.assign(target, value, o.line)
     return value
+
+
+def transform_math_literal(builder: IRBuilder, fullname: str) -> Value | None:
+    if fullname == "math.e":
+        return builder.load_float(math.e)
+    if fullname == "math.pi":
+        return builder.load_float(math.pi)
+    if fullname == "math.inf":
+        return builder.load_float(math.inf)
+    if fullname == "math.nan":
+        return builder.load_float(math.nan)
+    if fullname == "math.tau":
+        return builder.load_float(math.tau)
+
+    return None

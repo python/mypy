@@ -1933,3 +1933,28 @@ def match_stmt_error5(x: Optional[str]) -> None:
             pass
     nested()
 [builtins fixtures/tuple.pyi]
+
+[case testMatchSubjectRedefinition]
+# flags: --allow-redefinition
+def transform1(a: str) -> int:
+    ...
+
+def transform2(a: int) -> str:
+    ...
+
+def redefinition_good(a: str):
+    a = transform1(a)
+
+    match (a + 1):
+        case _:
+            ...
+
+
+def redefinition_bad(a: int):
+    a = transform2(a)
+
+    match (a + 1):  # E: Unsupported operand types for + ("str" and "int")
+        case _:
+            ...
+
+[builtins fixtures/primitives.pyi]

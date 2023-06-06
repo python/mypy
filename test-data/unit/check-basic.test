@@ -493,3 +493,13 @@ class A:
 
 [file test.py]
 def foo(s: str) -> None: ...
+
+[case testInlineAssertions]
+import a, b
+s1: str = 42  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+[file a.py]
+s2: str = 42  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+[file b.py]
+s3: str = 42  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+[file c.py]
+s3: str = 'foo'
