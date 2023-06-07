@@ -1,3 +1,8 @@
+"""
+A "meta test" which tests the `--update-data` feature for updating .test files.
+Updating the expected output, especially when it's in the form of inline (comment) assertions,
+can be brittle, which is why we're "meta-testing" here.
+"""
 import shlex
 import subprocess
 import sys
@@ -14,7 +19,7 @@ class UpdateDataSuite(Suite):
         Runs a suite of data test cases through 'pytest --update-data' until either tests pass
         or until a maximum number of attempts (needed for incremental tests).
         """
-        p = Path(test_data_prefix) / "check-update-data.test"
+        p = Path(test_data_prefix) / "check-__fixture__.test"
         assert not p.exists()
         try:
             p.write_text(textwrap.dedent(data_suite).lstrip())
