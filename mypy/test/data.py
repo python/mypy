@@ -189,10 +189,15 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
         elif item.id == "triggered" and item.arg is None:
             triggered = item.data
         else:
-            raise ValueError(f"Invalid section header {item.id} in {case.file}:{item.line}")
+            section = item.id + (f" {item.arg}" if item.arg else "")
+            raise ValueError(
+                f"{case.file}:{case.line + item.line - 2}: Invalid section header [{section}] in case {case.name!r}"
+            )
 
     if out_section_missing:
-        raise ValueError(f"{case.file}, line {first_item.line}: Required output section not found")
+        raise ValueError(
+            f"{case.file}:{case.line}: Required output section not found in case {case.name!r}"
+        )
 
     for passnum in stale_modules.keys():
         if passnum not in rechecked_modules:
@@ -220,7 +225,7 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
     for file, _ in files:
         if file in seen_files:
             raise ValueError(
-                f"{case.file}, line {first_item.line}: Duplicated filename {file}. Did you include"
+                f"{case.file}:{case.line}: Duplicated filename {file}. Did you include"
                 " it multiple times?"
             )
 
@@ -634,6 +639,16 @@ def pytest_pycollect_makeitem(collector: Any, name: str, obj: object) -> Any | N
     return None
 
 
+_case_name_pattern = re.compile(
+    r"(?P<name>[a-zA-Z_0-9]+)"
+    r"(?P<writescache>-writescache)?"
+    r"(?P<only_when>-only_when_cache|-only_when_nocache)?"
+    r"(-(?P<platform>posix|windows))?"
+    r"(?P<skip>-skip)?"
+    r"(?P<xfail>-xfail)?"
+)
+
+
 def split_test_cases(
     parent: DataFileCollector, suite: DataSuite, file: str
 ) -> Iterator[DataDrivenTestCase]:
@@ -644,40 +659,33 @@ def split_test_cases(
     """
     with open(file, encoding="utf-8") as f:
         data = f.read()
-    # number of groups in the below regex
-    NUM_GROUPS = 7
-    cases = re.split(
-        r"^\[case ([a-zA-Z_0-9]+)"
-        r"(-writescache)?"
-        r"(-only_when_cache|-only_when_nocache)?"
-        r"(-posix|-windows)?"
-        r"(-skip)?"
-        r"(-xfail)?"
-        r"\][ \t]*$\n",
-        data,
-        flags=re.DOTALL | re.MULTILINE,
-    )
-    line_no = cases[0].count("\n") + 1
+    cases = re.split(r"^\[case ([^]+)]+)\][ \t]*$\n", data, flags=re.DOTALL | re.MULTILINE)
+    cases_iter = iter(cases)
+    line_no = next(cases_iter).count("\n") + 1
     test_names = set()
-    for i in range(1, len(cases), NUM_GROUPS):
-        name, writescache, only_when, platform_flag, skip, xfail, data = cases[i : i + NUM_GROUPS]
+    for case_id in cases_iter:
+        data = next(cases_iter)
+
+        m = _case_name_pattern.match(case_id)
+        if not m:
+            raise RuntimeError(f"Invalid testcase id {case_id!r}")
+        name = m.group("name")
         if name in test_names:
             raise RuntimeError(
                 'Found a duplicate test name "{}" in {} on line {}'.format(
                     name, parent.name, line_no
                 )
             )
-        platform = platform_flag[1:] if platform_flag else None
         yield DataDrivenTestCase.from_parent(
             parent=parent,
             suite=suite,
             file=file,
             name=add_test_name_suffix(name, suite.test_name_suffix),
-            writescache=bool(writescache),
-            only_when=only_when,
-            platform=platform,
-            skip=bool(skip),
-            xfail=bool(xfail),
+            writescache=bool(m.group("writescache")),
+            only_when=m.group("only_when"),
+            platform=m.group("platform"),
+            skip=bool(m.group("skip")),
+            xfail=bool(m.group("xfail")),
             data=data,
             line=line_no,
         )
