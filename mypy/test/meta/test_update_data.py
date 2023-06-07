@@ -19,7 +19,9 @@ class UpdateDataSuite(Suite):
         Runs a suite of data test cases through 'pytest --update-data' until either tests pass
         or until a maximum number of attempts (needed for incremental tests).
         """
-        p = Path(test_data_prefix) / "check-__fixture__.test"
+        p_test_data = Path(test_data_prefix)
+        p_root = p_test_data.parent.parent
+        p = p_test_data / "check-__fixture__.test"
         assert not p.exists()
         try:
             p.write_text(textwrap.dedent(data_suite).lstrip())
@@ -31,7 +33,7 @@ class UpdateDataSuite(Suite):
             else:
                 cmd = " ".join(args)
             for i in range(max_attempts - 1, -1, -1):
-                res = subprocess.run(args)
+                res = subprocess.run(args, cwd=p_root)
                 if res.returncode == 0:
                     break
                 print(f"`{cmd}` returned {res.returncode}: {i} attempts remaining")
