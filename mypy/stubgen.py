@@ -1465,7 +1465,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         elif isinstance(rvalue, DictExpr):
             items_defaults = []
             for k, v in rvalue.items:
-                k_default = self.get_str_default_of_node(k)
+                k_default = self.get_str_default_of_node(k) if k is not None else "..."
                 v_default = self.get_str_default_of_node(v)
                 if k_default == "..." or v_default == "...":
                     break
