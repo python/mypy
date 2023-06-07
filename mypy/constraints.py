@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterable, List, Sequence
+from typing import TYPE_CHECKING, Iterable, List, Sequence, cast
 from typing_extensions import Final
 
 import mypy.subtypes
@@ -46,15 +46,11 @@ from mypy.types import (
     has_recursive_types,
     has_type_vars,
     is_named_instance,
-    is_union_with_any,
-)
-from mypy.typestate import type_state
-from mypy.typevartuples import (
-    extract_unpack,
-    find_unpack_in_list,
-    split_with_mapped_and_template,
     split_with_prefix_and_suffix,
 )
+from mypy.types_utils import is_union_with_any
+from mypy.typestate import type_state
+from mypy.typevartuples import extract_unpack, find_unpack_in_list, split_with_mapped_and_template
 
 if TYPE_CHECKING:
     from mypy.infer import ArgumentInferContext
@@ -146,7 +142,7 @@ def infer_constraints_for_callable(
                 # not to hold we can always handle the prefixes too.
                 inner_unpack = unpacked_type.items[0]
                 assert isinstance(inner_unpack, UnpackType)
-                inner_unpacked_type = get_proper_type(inner_unpack.type)
+                inner_unpacked_type = inner_unpack.type
                 assert isinstance(inner_unpacked_type, TypeVarTupleType)
                 suffix_len = len(unpacked_type.items) - 1
                 constraints.append(
@@ -669,7 +665,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         instance.type.type_var_tuple_prefix,
                         instance.type.type_var_tuple_suffix,
                     )
-                    tvars = list(tvars_prefix + tvars_suffix)
+                    tvars = cast("list[TypeVarLikeType]", list(tvars_prefix + tvars_suffix))
                 else:
                     mapped_args = mapped.args
                     instance_args = instance.args
@@ -695,7 +691,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             from_concat = bool(prefix.arg_types) or suffix.from_concatenate
                             suffix = suffix.copy_modified(from_concatenate=from_concat)
 
-                        if isinstance(suffix, Parameters) or isinstance(suffix, CallableType):
+                        if isinstance(suffix, (Parameters, CallableType)):
                             # no such thing as variance for ParamSpecs
                             # TODO: is there a case I am missing?
                             # TODO: constraints between prefixes
@@ -738,7 +734,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         template.type.type_var_tuple_prefix,
                         template.type.type_var_tuple_suffix,
                     )
-                    tvars = list(tvars_prefix + tvars_suffix)
+                    tvars = cast("list[TypeVarLikeType]", list(tvars_prefix + tvars_suffix))
                 else:
                     mapped_args = mapped.args
                     template_args = template.args
@@ -765,7 +761,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             from_concat = bool(prefix.arg_types) or suffix.from_concatenate
                             suffix = suffix.copy_modified(from_concatenate=from_concat)
 
-                        if isinstance(suffix, Parameters) or isinstance(suffix, CallableType):
+                        if isinstance(suffix, (Parameters, CallableType)):
                             # no such thing as variance for ParamSpecs
                             # TODO: is there a case I am missing?
                             # TODO: constraints between prefixes
@@ -1006,7 +1002,6 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         return infer_constraints(template, item, self.direction)
 
     def visit_tuple_type(self, template: TupleType) -> list[Constraint]:
-
         actual = self.actual
         unpack_index = find_unpack_in_list(template.items)
         is_varlength_tuple = (
@@ -1065,7 +1060,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             res: list[Constraint] = []
             # NOTE: Non-matching keys are ignored. Compatibility is checked
             #       elsewhere so this shouldn't be unsafe.
-            for (item_name, template_item_type, actual_item_type) in template.zip(actual):
+            for item_name, template_item_type, actual_item_type in template.zip(actual):
                 res.extend(infer_constraints(template_item_type, actual_item_type, self.direction))
             return res
         elif isinstance(actual, AnyType):
@@ -1159,7 +1154,7 @@ def find_matching_overload_items(
     if not res:
         # Falling back to all items if we can't find a match is pretty arbitrary, but
         # it maintains backward compatibility.
-        res = items[:]
+        res = items.copy()
     return res
 
 

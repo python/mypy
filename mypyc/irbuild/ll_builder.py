@@ -68,6 +68,7 @@ from mypyc.ir.ops import (
     SetMem,
     Truncate,
     TupleGet,
+    TupleSet,
     Unbox,
     Unreachable,
     Value,
@@ -265,7 +266,7 @@ class LowLevelIRBuilder:
 
     def flush_keep_alives(self) -> None:
         if self.keep_alives:
-            self.add(KeepAlive(self.keep_alives[:]))
+            self.add(KeepAlive(self.keep_alives.copy()))
             self.keep_alives = []
 
     # Type conversions
@@ -354,11 +355,33 @@ class LowLevelIRBuilder:
                 return Float(float(src.value))
             elif is_tagged(src_type) and is_float_rprimitive(target_type):
                 return self.int_to_float(src, line)
-            else:
-                # To go from one unboxed type to another, we go through a boxed
-                # in-between value, for simplicity.
-                tmp = self.box(src)
-                return self.unbox_or_cast(tmp, target_type, line)
+            elif (
+                isinstance(src_type, RTuple)
+                and isinstance(target_type, RTuple)
+                and len(src_type.types) == len(target_type.types)
+            ):
+                # Coerce between two tuple types by coercing each item separately
+                values = []
+                for i in range(len(src_type.types)):
+                    v = None
+                    if isinstance(src, TupleSet):
+                        item = src.items[i]
+                        # We can't reuse register values, since they can be modified.
+                        if not isinstance(item, Register):
+                            v = item
+                    if v is None:
+                        v = TupleGet(src, i)
+                        self.add(v)
+                    values.append(v)
+                return self.add(
+                    TupleSet(
+                        [self.coerce(v, t, line) for v, t in zip(values, target_type.types)], line
+                    )
+                )
+            # To go between any other unboxed types, we go through a boxed
+            # in-between value, for simplicity.
+            tmp = self.box(src)
+            return self.unbox_or_cast(tmp, target_type, line)
         if (not src_type.is_unboxed and target_type.is_unboxed) or not is_subtype(
             src_type, target_type
         ):
@@ -853,10 +876,8 @@ class LowLevelIRBuilder:
         ):
             if arg_values:
                 # Create a C array containing all arguments as boxed values.
-                array = Register(RArray(object_rprimitive, len(arg_values)))
                 coerced_args = [self.coerce(arg, object_rprimitive, line) for arg in arg_values]
-                self.add(AssignMulti(array, coerced_args))
-                arg_ptr = self.add(LoadAddress(object_pointer_rprimitive, array))
+                arg_ptr = self.setup_rarray(object_rprimitive, coerced_args, object_ptr=True)
             else:
                 arg_ptr = Integer(0, object_pointer_rprimitive)
             num_pos = num_positional_args(arg_values, arg_kinds)
@@ -930,13 +951,10 @@ class LowLevelIRBuilder:
             not kind.is_star() and not kind.is_optional() for kind in arg_kinds
         ):
             method_name_reg = self.load_str(method_name)
-            array = Register(RArray(object_rprimitive, len(arg_values) + 1))
-            self_arg = self.coerce(obj, object_rprimitive, line)
-            coerced_args = [self_arg] + [
-                self.coerce(arg, object_rprimitive, line) for arg in arg_values
+            coerced_args = [
+                self.coerce(arg, object_rprimitive, line) for arg in [obj] + arg_values
             ]
-            self.add(AssignMulti(array, coerced_args))
-            arg_ptr = self.add(LoadAddress(object_pointer_rprimitive, array))
+            arg_ptr = self.setup_rarray(object_rprimitive, coerced_args, object_ptr=True)
             num_pos = num_positional_args(arg_values, arg_kinds)
             keywords = self._vectorcall_keywords(arg_names)
             value = self.call_c(
@@ -1673,7 +1691,7 @@ class LowLevelIRBuilder:
         # for-loop and inline the SetMem operation, which is faster
         # than list_build_op, however generates more code.
         result_list = self.call_c(new_list_op, length, line)
-        if len(values) == 0:
+        if not values:
             return result_list
         args = [self.coerce(item, object_rprimitive, line) for item in values]
         ob_item_ptr = self.add(GetElementPtr(result_list, PyListObject, "ob_item", line))
@@ -1692,6 +1710,16 @@ class LowLevelIRBuilder:
 
     def new_set_op(self, values: list[Value], line: int) -> Value:
         return self.call_c(new_set_op, values, line)
+
+    def setup_rarray(
+        self, item_type: RType, values: Sequence[Value], *, object_ptr: bool = False
+    ) -> Value:
+        """Declare and initialize a new RArray, returning its address."""
+        array = Register(RArray(item_type, len(values)))
+        self.add(AssignMulti(array, list(values)))
+        return self.add(
+            LoadAddress(object_pointer_rprimitive if object_ptr else c_pointer_rprimitive, array)
+        )
 
     def shortcircuit_helper(
         self,

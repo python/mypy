@@ -117,6 +117,8 @@ Since code inside ``if TYPE_CHECKING:`` is not executed at runtime, it provides
 a convenient way to tell mypy something without the code being evaluated at
 runtime. This is most useful for resolving :ref:`import cycles <import-cycles>`.
 
+.. _forward-references:
+
 Class name forward references
 -----------------------------
 
@@ -275,9 +277,17 @@ sections, these can be dealt with by using :ref:`typing.TYPE_CHECKING
 
 .. code-block:: python
 
+   from __future__ import annotations
    from typing import TYPE_CHECKING
    if TYPE_CHECKING:
        from _typeshed import SupportsRichComparison
+
+    def f(x: SupportsRichComparison) -> None
+
+The ``from __future__ import annotations`` is required to avoid
+a ``NameError`` when using the imported symbol.
+For more information and caveats, see the section on
+:ref:`future annotations <future-annotations>`.
 
 .. _generic-builtins:
 

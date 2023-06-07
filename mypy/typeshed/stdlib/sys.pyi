@@ -6,7 +6,7 @@ from importlib.abc import PathEntryFinder
 from importlib.machinery import ModuleSpec
 from io import TextIOWrapper
 from types import FrameType, ModuleType, TracebackType
-from typing import Any, NoReturn, Protocol, TextIO, TypeVar, overload
+from typing import Any, NoReturn, Protocol, TextIO, TypeVar
 from typing_extensions import Final, Literal, TypeAlias, final
 
 _T = TypeVar("_T")
@@ -57,9 +57,20 @@ if sys.version_info >= (3, 8):
     pycache_prefix: str | None
 ps1: object
 ps2: object
+
+# TextIO is used instead of more specific types for the standard streams,
+# since they are often monkeypatched at runtime. At startup, the objects
+# are initialized to instances of TextIOWrapper.
+#
+# To use methods from TextIOWrapper, use an isinstance check to ensure that
+# the streams have not been overridden:
+#
+# if isinstance(sys.stdout, io.TextIOWrapper):
+#    sys.stdout.reconfigure(...)
 stdin: TextIO
 stdout: TextIO
 stderr: TextIO
+
 if sys.version_info >= (3, 10):
     stdlib_module_names: frozenset[str]
 
@@ -201,6 +212,20 @@ class _int_info(structseq[int], tuple[int, int, int, int]):
     @property
     def str_digits_check_threshold(self) -> int: ...
 
+_ThreadInfoName: TypeAlias = Literal["nt", "pthread", "pthread-stubs", "solaris"]
+_ThreadInfoLock: TypeAlias = Literal["semaphore", "mutex+cond"] | None
+
+@final
+class _thread_info(_UninstantiableStructseq, tuple[_ThreadInfoName, _ThreadInfoLock, str | None]):
+    @property
+    def name(self) -> _ThreadInfoName: ...
+    @property
+    def lock(self) -> _ThreadInfoLock: ...
+    @property
+    def version(self) -> str | None: ...
+
+thread_info: _thread_info
+
 @final
 class _version_info(_UninstantiableStructseq, tuple[int, int, int, str, int]):
     @property
@@ -239,10 +264,7 @@ def getfilesystemencoding() -> str: ...
 def getfilesystemencodeerrors() -> str: ...
 def getrefcount(__object: Any) -> int: ...
 def getrecursionlimit() -> int: ...
-@overload
-def getsizeof(obj: object) -> int: ...
-@overload
-def getsizeof(obj: object, default: int) -> int: ...
+def getsizeof(obj: object, default: int = ...) -> int: ...
 def getswitchinterval() -> float: ...
 def getprofile() -> ProfileFunction | None: ...
 def setprofile(profilefunc: ProfileFunction | None) -> None: ...

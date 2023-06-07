@@ -499,7 +499,7 @@ g(**{})
 
 [case testKeywordUnpackWithDifferentTypes]
 # https://github.com/python/mypy/issues/11144
-from typing import Dict, Generic, TypeVar, Mapping
+from typing import Dict, Generic, TypeVar, Mapping, Iterable
 
 T = TypeVar("T")
 T2 = TypeVar("T2")
@@ -516,6 +516,12 @@ class C(Generic[T, T2]):
 class D:
     ...
 
+class E:
+    def keys(self) -> Iterable[str]:
+        ...
+    def __getitem__(self, key: str) -> float:
+        ...
+
 def foo(**i: float) -> float:
     ...
 
@@ -523,7 +529,8 @@ a: A[str, str]
 b: B[str, str]
 c: C[str, float]
 d: D
-e = {"a": "b"}
+e: E
+f = {"a": "b"}
 
 foo(k=1.5)
 foo(**a)
@@ -531,6 +538,7 @@ foo(**b)
 foo(**c)
 foo(**d)
 foo(**e)
+foo(**f)
 
 # Correct:
 
@@ -544,9 +552,9 @@ foo(**good1)
 foo(**good2)
 foo(**good3)
 [out]
-main:29: error: Argument 1 to "foo" has incompatible type "**A[str, str]"; expected "float"
-main:30: error: Argument 1 to "foo" has incompatible type "**B[str, str]"; expected "float"
-main:31: error: Argument after ** must be a mapping, not "C[str, float]"
-main:32: error: Argument after ** must be a mapping, not "D"
-main:33: error: Argument 1 to "foo" has incompatible type "**Dict[str, str]"; expected "float"
+main:36: error: Argument 1 to "foo" has incompatible type "**A[str, str]"; expected "float"
+main:37: error: Argument 1 to "foo" has incompatible type "**B[str, str]"; expected "float"
+main:38: error: Argument after ** must be a mapping, not "C[str, float]"
+main:39: error: Argument after ** must be a mapping, not "D"
+main:41: error: Argument 1 to "foo" has incompatible type "**Dict[str, str]"; expected "float"
 [builtins fixtures/dict.pyi]

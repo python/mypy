@@ -824,11 +824,11 @@ classes are generic, self-type allows giving them precise signatures:
 Typing async/await
 ******************
 
-Mypy supports the ability to type coroutines that use the ``async/await``
-syntax introduced in Python 3.5. For more information regarding coroutines and
-this new syntax, see :pep:`492`.
+Mypy lets you type coroutines that use the ``async/await`` syntax.
+For more information regarding coroutines, see :pep:`492` and the
+`asyncio documentation <https://docs.python.org/3/library/asyncio.html>`_.
 
-Functions defined using ``async def`` are typed just like normal functions.
+Functions defined using ``async def`` are typed similar to normal functions.
 The return type annotation should be the same as the type of the value you
 expect to get back when ``await``-ing the coroutine.
 
@@ -839,65 +839,40 @@ expect to get back when ``await``-ing the coroutine.
    async def format_string(tag: str, count: int) -> str:
        return f'T-minus {count} ({tag})'
 
-   async def countdown_1(tag: str, count: int) -> str:
+   async def countdown(tag: str, count: int) -> str:
        while count > 0:
-           my_str = await format_string(tag, count)  # has type 'str'
+           my_str = await format_string(tag, count)  # type is inferred to be str
            print(my_str)
            await asyncio.sleep(0.1)
            count -= 1
        return "Blastoff!"
 
-   loop = asyncio.get_event_loop()
-   loop.run_until_complete(countdown_1("Millennium Falcon", 5))
-   loop.close()
+   asyncio.run(countdown("Millennium Falcon", 5))
 
-The result of calling an ``async def`` function *without awaiting* will be a
-value of type :py:class:`Coroutine[Any, Any, T] <typing.Coroutine>`, which is a subtype of
+The result of calling an ``async def`` function *without awaiting* will
+automatically be inferred to be a value of type
+:py:class:`Coroutine[Any, Any, T] <typing.Coroutine>`, which is a subtype of
 :py:class:`Awaitable[T] <typing.Awaitable>`:
 
 .. code-block:: python
 
-   my_coroutine = countdown_1("Millennium Falcon", 5)
-   reveal_type(my_coroutine)  # has type 'Coroutine[Any, Any, str]'
+   my_coroutine = countdown("Millennium Falcon", 5)
+   reveal_type(my_coroutine)  # Revealed type is "typing.Coroutine[Any, Any, builtins.str]"
 
-.. note::
+.. _async-iterators:
 
-    :ref:`reveal_type() <reveal-type>` displays the inferred static type of
-    an expression.
+Asynchronous iterators
+----------------------
 
-You may also choose to create a subclass of :py:class:`~typing.Awaitable` instead:
-
-.. code-block:: python
-
-   from typing import Any, Awaitable, Generator
-   import asyncio
-
-   class MyAwaitable(Awaitable[str]):
-       def __init__(self, tag: str, count: int) -> None:
-           self.tag = tag
-           self.count = count
-
-       def __await__(self) -> Generator[Any, None, str]:
-           for i in range(n, 0, -1):
-               print(f'T-minus {i} ({tag})')
-               yield from asyncio.sleep(0.1)
-           return "Blastoff!"
-
-   def countdown_3(tag: str, count: int) -> Awaitable[str]:
-       return MyAwaitable(tag, count)
-
-   loop = asyncio.get_event_loop()
-   loop.run_until_complete(countdown_3("Heart of Gold", 5))
-   loop.close()
-
-To create an iterable coroutine, subclass :py:class:`~typing.AsyncIterator`:
+If you have an asynchronous iterator, you can use the
+:py:class:`~typing.AsyncIterator` type in your annotations:
 
 .. code-block:: python
 
    from typing import Optional, AsyncIterator
    import asyncio
 
-   class arange(AsyncIterator[int]):
+   class arange:
        def __init__(self, start: int, stop: int, step: int) -> None:
            self.start = start
            self.stop = stop
@@ -914,35 +889,92 @@ To create an iterable coroutine, subclass :py:class:`~typing.AsyncIterator`:
            else:
                return self.count
 
-   async def countdown_4(tag: str, n: int) -> str:
-       async for i in arange(n, 0, -1):
+   async def run_countdown(tag: str, countdown: AsyncIterator[int]) -> str:
+       async for i in countdown:
            print(f'T-minus {i} ({tag})')
            await asyncio.sleep(0.1)
        return "Blastoff!"
 
-   loop = asyncio.get_event_loop()
-   loop.run_until_complete(countdown_4("Serenity", 5))
-   loop.close()
+   asyncio.run(run_countdown("Serenity", arange(5, 0, -1)))
 
-If you use coroutines in legacy code that was originally written for
-Python 3.4, which did not support the ``async def`` syntax, you would
-instead use the :py:func:`@asyncio.coroutine <asyncio.coroutine>`
-decorator to convert a generator into a coroutine, and use a
-generator type as the return type:
+Async generators (introduced in :pep:`525`) are an easy way to create
+async iterators:
 
 .. code-block:: python
 
-   from typing import Any, Generator
+   from typing import AsyncGenerator, Optional
    import asyncio
 
-   @asyncio.coroutine
-   def countdown_2(tag: str, count: int) -> Generator[Any, None, str]:
-       while count > 0:
-           print(f'T-minus {count} ({tag})')
-           yield from asyncio.sleep(0.1)
-           count -= 1
-       return "Blastoff!"
+   # Could also type this as returning AsyncIterator[int]
+   async def arange(start: int, stop: int, step: int) -> AsyncGenerator[int, None]:
+       current = start
+       while (step > 0 and current < stop) or (step < 0 and current > stop):
+           yield current
+           current += step
 
-   loop = asyncio.get_event_loop()
-   loop.run_until_complete(countdown_2("USS Enterprise", 5))
-   loop.close()
+   asyncio.run(run_countdown("Battlestar Galactica", arange(5, 0, -1)))
+
+One common confusion is that the presence of a ``yield`` statement in an
+``async def`` function has an effect on the type of the function:
+
+.. code-block:: python
+
+   from typing import AsyncIterator
+
+   async def arange(stop: int) -> AsyncIterator[int]:
+       # When called, arange gives you an async iterator
+       # Equivalent to Callable[[int], AsyncIterator[int]]
+       i = 0
+       while i < stop:
+           yield i
+           i += 1
+
+   async def coroutine(stop: int) -> AsyncIterator[int]:
+       # When called, coroutine gives you something you can await to get an async iterator
+       # Equivalent to Callable[[int], Coroutine[Any, Any, AsyncIterator[int]]]
+       return arange(stop)
+
+   async def main() -> None:
+       reveal_type(arange(5))  # Revealed type is "typing.AsyncIterator[builtins.int]"
+       reveal_type(coroutine(5))  # Revealed type is "typing.Coroutine[Any, Any, typing.AsyncIterator[builtins.int]]"
+
+       await arange(5)  # Error: Incompatible types in "await" (actual type "AsyncIterator[int]", expected type "Awaitable[Any]")
+       reveal_type(await coroutine(5))  # Revealed type is "typing.AsyncIterator[builtins.int]"
+
+This can sometimes come up when trying to define base classes, Protocols or overloads:
+
+.. code-block:: python
+
+    from typing import AsyncIterator, Protocol, overload
+
+    class LauncherIncorrect(Protocol):
+        # Because launch does not have yield, this has type
+        # Callable[[], Coroutine[Any, Any, AsyncIterator[int]]]
+        # instead of
+        # Callable[[], AsyncIterator[int]]
+        async def launch(self) -> AsyncIterator[int]:
+            raise NotImplementedError
+
+    class LauncherCorrect(Protocol):
+        def launch(self) -> AsyncIterator[int]:
+            raise NotImplementedError
+
+    class LauncherAlsoCorrect(Protocol):
+        async def launch(self) -> AsyncIterator[int]:
+            raise NotImplementedError
+            if False:
+                yield 0
+
+    # The type of the overloads is independent of the implementation.
+    # In particular, their type is not affected by whether or not the
+    # implementation contains a `yield`.
+    # Use of `def`` makes it clear the type is Callable[..., AsyncIterator[int]],
+    # whereas with `async def` it would be Callable[..., Coroutine[Any, Any, AsyncIterator[int]]]
+    @overload
+    def launch(*, count: int = ...) -> AsyncIterator[int]: ...
+    @overload
+    def launch(*, time: float = ...) -> AsyncIterator[int]: ...
+
+    async def launch(*, count: int = 0, time: float = 0) -> AsyncIterator[int]:
+        # The implementation of launch is an async generator and contains a yield
+        yield 0

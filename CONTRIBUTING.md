@@ -12,31 +12,41 @@ issue tracker, pull requests, and chat, is expected to treat
 other people with respect and more generally to follow the guidelines
 articulated in the [Python Community Code of Conduct](https://www.python.org/psf/codeofconduct/).
 
-
 ## Getting started with development
 
 ### Setup
 
-#### (1) Clone the mypy repository and enter into it
-```
-git clone https://github.com/python/mypy.git
+#### (1) Fork the mypy repository
+
+Within Github, navigate to <https://github.com/python/mypy> and fork the repository.
+
+#### (2) Clone the mypy repository and enter into it
+
+```bash
+git clone git@github.com:<your_username>/mypy.git
 cd mypy
 ```
 
-#### (2) Create then activate a virtual environment
-```
+#### (3) Create then activate a virtual environment
+
+```bash
 # On Windows, the commands may be slightly different. For more details, see
 # https://docs.python.org/3/library/venv.html#creating-virtual-environments
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-#### (3) Install the test requirements and the project
-```
+#### (4) Install the test requirements and the project
+
+```bash
 python3 -m pip install -r test-requirements.txt
 python3 -m pip install -e .
 hash -r  # This resets shell PATH cache, not necessary on Windows
 ```
+
+> **Note**
+> You'll need Python 3.8 or higher to install all requirements listed in
+> test-requirements.txt
 
 ### Running tests
 
@@ -47,12 +57,14 @@ your PR.
 
 However, if you wish to do so, you can run the full test suite
 like this:
-```
+
+```bash
 python3 runtests.py
 ```
 
 You can also use `tox` to run tests (`tox` handles setting up the test environment for you):
-```
+
+```bash
 tox run -e py
 
 # Or some specific python version:
@@ -63,6 +75,7 @@ tox run -e lint
 ```
 
 Some useful commands for running specific tests include:
+
 ```bash
 # Use mypy to check mypy's own code
 python3 runtests.py self
@@ -90,6 +103,7 @@ see [the README in the test-data directory](test-data/unit/README.md).
 If you're looking for things to help with, browse our [issue tracker](https://github.com/python/mypy/issues)!
 
 In particular, look for:
+
 - [good first issues](https://github.com/python/mypy/labels/good-first-issue)
 - [good second issues](https://github.com/python/mypy/labels/good-second-issue)
 - [documentation issues](https://github.com/python/mypy/labels/documentation)
@@ -151,28 +165,27 @@ You may also find other pages in the
 [Mypy developer guide](https://github.com/python/mypy/wiki/Developer-Guides)
 helpful in developing your change.
 
-
 ## Core developer guidelines
 
 Core developers should follow these rules when processing pull requests:
 
-* Always wait for tests to pass before merging PRs.
-* Use "[Squash and merge](https://github.com/blog/2141-squash-your-commits)"
+- Always wait for tests to pass before merging PRs.
+- Use "[Squash and merge](https://github.com/blog/2141-squash-your-commits)"
   to merge PRs.
-* Delete branches for merged PRs (by core devs pushing to the main repo).
-* Edit the final commit message before merging to conform to the following
+- Delete branches for merged PRs (by core devs pushing to the main repo).
+- Edit the final commit message before merging to conform to the following
   style (we wish to have a clean `git log` output):
-  * When merging a multi-commit PR make sure that the commit message doesn't
+  - When merging a multi-commit PR make sure that the commit message doesn't
     contain the local history from the committer and the review history from
     the PR. Edit the message to only describe the end state of the PR.
-  * Make sure there is a *single* newline at the end of the commit message.
+  - Make sure there is a *single* newline at the end of the commit message.
     This way there is a single empty line between commits in `git log`
     output.
-  * Split lines as needed so that the maximum line length of the commit
+  - Split lines as needed so that the maximum line length of the commit
     message is under 80 characters, including the subject line.
-  * Capitalize the subject and each paragraph.
-  * Make sure that the subject of the commit message has no trailing dot.
-  * Use the imperative mood in the subject line (e.g. "Fix typo in README").
-  * If the PR fixes an issue, make sure something like "Fixes #xxx." occurs
+  - Capitalize the subject and each paragraph.
+  - Make sure that the subject of the commit message has no trailing dot.
+  - Use the imperative mood in the subject line (e.g. "Fix typo in README").
+  - If the PR fixes an issue, make sure something like "Fixes #xxx." occurs
     in the body of the message (not in the subject).
-  * Use Markdown for formatting.
+  - Use Markdown for formatting.

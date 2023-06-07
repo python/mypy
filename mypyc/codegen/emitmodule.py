@@ -26,7 +26,7 @@ from mypy.options import Options
 from mypy.plugin import Plugin, ReportConfigContext
 from mypy.util import hash_digest
 from mypyc.codegen.cstring import c_string_initializer
-from mypyc.codegen.emit import Emitter, EmitterContext, HeaderDeclaration
+from mypyc.codegen.emit import Emitter, EmitterContext, HeaderDeclaration, c_array_initializer
 from mypyc.codegen.emitclass import generate_class, generate_class_type_decl
 from mypyc.codegen.emitfunc import generate_native_function, native_function_header
 from mypyc.codegen.emitwrapper import (
@@ -296,11 +296,11 @@ def compile_ir_to_c(
     # compiled into a separate extension module.
     ctext: dict[str | None, list[tuple[str, str]]] = {}
     for group_sources, group_name in groups:
-        group_modules = [
-            (source.module, modules[source.module])
+        group_modules = {
+            source.module: modules[source.module]
             for source in group_sources
             if source.module in modules
-        ]
+        }
         if not group_modules:
             ctext[group_name] = []
             continue
@@ -465,7 +465,7 @@ def group_dir(group_name: str) -> str:
 class GroupGenerator:
     def __init__(
         self,
-        modules: list[tuple[str, ModuleIR]],
+        modules: dict[str, ModuleIR],
         source_paths: dict[str, str],
         group_name: str | None,
         group_map: dict[str, str | None],
@@ -512,7 +512,7 @@ class GroupGenerator:
         multi_file = self.use_shared_lib and self.multi_file
 
         # Collect all literal refs in IR.
-        for _, module in self.modules:
+        for module in self.modules.values():
             for fn in module.functions:
                 collect_literals(fn, self.context.literals)
 
@@ -528,7 +528,7 @@ class GroupGenerator:
 
         self.generate_literal_tables()
 
-        for module_name, module in self.modules:
+        for module_name, module in self.modules.items():
             if multi_file:
                 emitter = Emitter(self.context)
                 emitter.emit_line(f'#include "__native{self.short_group_suffix}.h"')
@@ -582,7 +582,7 @@ class GroupGenerator:
         declarations.emit_line("int CPyGlobalsInit(void);")
         declarations.emit_line()
 
-        for module_name, module in self.modules:
+        for module_name, module in self.modules.items():
             self.declare_finals(module_name, module.final_names, declarations)
             for cl in module.classes:
                 generate_class_type_decl(cl, emitter, ext_declarations, declarations)
@@ -790,7 +790,7 @@ class GroupGenerator:
             "",
         )
 
-        for mod, _ in self.modules:
+        for mod in self.modules:
             name = exported_name(mod)
             emitter.emit_lines(
                 f"extern PyObject *CPyInit_{name}(void);",
@@ -1023,12 +1023,13 @@ class GroupGenerator:
         return emitter.static_name(module_name + "_internal", None, prefix=MODULE_PREFIX)
 
     def declare_module(self, module_name: str, emitter: Emitter) -> None:
-        # We declare two globals for each module:
+        # We declare two globals for each compiled module:
         # one used internally in the implementation of module init to cache results
         # and prevent infinite recursion in import cycles, and one used
         # by other modules to refer to it.
-        internal_static_name = self.module_internal_static_name(module_name, emitter)
-        self.declare_global("CPyModule *", internal_static_name, initializer="NULL")
+        if module_name in self.modules:
+            internal_static_name = self.module_internal_static_name(module_name, emitter)
+            self.declare_global("CPyModule *", internal_static_name, initializer="NULL")
         static_name = emitter.static_name(module_name, None, prefix=MODULE_PREFIX)
         self.declare_global("CPyModule *", static_name)
         self.simple_inits.append((static_name, "Py_None"))
@@ -1124,37 +1125,6 @@ def collect_literals(fn: FuncIR, literals: Literals) -> None:
         for op in block.ops:
             if isinstance(op, LoadLiteral):
                 literals.record_literal(op.value)
-
-
-def c_array_initializer(components: list[str]) -> str:
-    """Construct an initializer for a C array variable.
-
-    Components are C expressions valid in an initializer.
-
-    For example, if components are ["1", "2"], the result
-    would be "{1, 2}", which can be used like this:
-
-        int a[] = {1, 2};
-
-    If the result is long, split it into multiple lines.
-    """
-    res = []
-    current: list[str] = []
-    cur_len = 0
-    for c in components:
-        if not current or cur_len + 2 + len(c) < 70:
-            current.append(c)
-            cur_len += len(c) + 2
-        else:
-            res.append(", ".join(current))
-            current = [c]
-            cur_len = len(c)
-    if not res:
-        # Result fits on a single line
-        return "{%s}" % ", ".join(current)
-    # Multi-line result
-    res.append(", ".join(current))
-    return "{\n    " + ",\n    ".join(res) + "\n}"
 
 
 def c_string_array_initializer(components: list[bytes]) -> str:

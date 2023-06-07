@@ -39,7 +39,7 @@ MypyFile:1<1>(
   FuncDef:1<2>(
     f
     def () -> builtins.int<3>
-    Block:1<4>(
+    Block:2<4>(
       PassStmt:2<5>())))
 ==>
 MypyFile:1<0>(
@@ -50,7 +50,7 @@ MypyFile:1<1>(
   FuncDef:1<2>(
     f
     def () -> builtins.int<3>
-    Block:1<6>(
+    Block:2<6>(
       PassStmt:2<7>())))
 
 [case testClass]
@@ -77,7 +77,7 @@ MypyFile:1<1>(
         Var(self)
         Var(x))
       def (self: target.A<4>, x: builtins.str<5>) -> builtins.int<6>
-      Block:2<7>(
+      Block:3<7>(
         PassStmt:3<8>()))))
 ==>
 MypyFile:1<0>(
@@ -93,7 +93,7 @@ MypyFile:1<1>(
         Var(self)
         Var(x))
       def (self: target.A<4>, x: builtins.int<6>) -> builtins.str<5>
-      Block:2<10>(
+      Block:3<10>(
         PassStmt:3<11>()))))
 
 [case testClass_typeinfo]
@@ -149,7 +149,7 @@ MypyFile:1<1>(
       Args(
         Var(self))
       def (self: target.A<4>) -> target.B<5>
-      Block:2<6>(
+      Block:3<6>(
         ReturnStmt:3<7>(
           CallExpr:3<8>(
             NameExpr(B [target.B<5>])
@@ -173,7 +173,7 @@ MypyFile:1<1>(
       Args(
         Var(self))
       def (self: target.A<4>) -> target.B<5>
-      Block:3<14>(
+      Block:4<14>(
         ExpressionStmt:4<15>(
           IntExpr(1))
         ReturnStmt:5<16>(
@@ -204,7 +204,7 @@ MypyFile:1<1>(
       Args(
         Var(self))
       def (self: target.A<4>)
-      Block:2<5>(
+      Block:3<5>(
         ExpressionStmt:3<6>(
           CallExpr:3<7>(
             MemberExpr:3<8>(
@@ -224,7 +224,7 @@ MypyFile:1<1>(
       Args(
         Var(self))
       def (self: target.A<4>)
-      Block:2<11>(
+      Block:3<11>(
         ExpressionStmt:3<12>(
           CallExpr:3<13>(
             MemberExpr:3<14>(
@@ -257,7 +257,7 @@ MypyFile:1<1>(
       Args(
         Var(self))
       def (self: target.A<4>)
-      Block:2<5>(
+      Block:3<5>(
         AssignmentStmt:3<6>(
           MemberExpr:3<8>(
             NameExpr(self [l<9>])
@@ -280,7 +280,7 @@ MypyFile:1<1>(
       Args(
         Var(self))
       def (self: target.A<4>)
-      Block:2<13>(
+      Block:3<13>(
         AssignmentStmt:3<14>(
           MemberExpr:3<15>(
             NameExpr(self [l<16>])

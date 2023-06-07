@@ -310,7 +310,8 @@ def f(x: int = (c := 4)) -> int:
         z2: NT  # E: Variable "NT" is not valid as a type \
                 # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
-    if Alias := int:  # E: Function "Type[int]" could always be true in boolean context
+    if Alias := int:  # E: Function "Alias" could always be true in boolean context \
+                      # E: Function "int" could always be true in boolean context
         z3: Alias  # E: Variable "Alias" is not valid as a type \
                    # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
@@ -775,3 +776,55 @@ main:9: note: Revealed type is "builtins.int"
 class C:
     [(j := i) for i in [1, 2, 3]]  # E: Assignment expression within a comprehension cannot be used in a class body
 [builtins fixtures/list.pyi]
+
+[case testNarrowedVariableInNestedModifiedInWalrus]
+# flags: --strict-optional
+from typing import Optional
+
+def walrus_with_nested_error(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    if x := None:
+        pass
+    nested()
+
+def walrus_with_nested_ok(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return x
+    if y := x:
+        pass
+    nested()
+
+[case testIgnoreWholeModule]
+# flags: --warn-unused-ignores
+# type: ignore
+IGNORE # type: ignore
+
+[case testUnusedIgnoreVersionCheck]
+# flags: --warn-unused-ignores
+import sys
+
+if sys.version_info < (3, 6):
+    42  # type: ignore
+else:
+    42  # type: ignore  # E: Unused "type: ignore" comment
+[builtins fixtures/ops.pyi]
+
+[case testDictExpressionErrorLocations]
+# flags: --pretty
+from typing import Dict
+
+other: Dict[str, str]
+dct: Dict[str, int] = {"a": "b", **other}
+[builtins fixtures/dict.pyi]
+[out]
+main:5: error: Dict entry 0 has incompatible type "str": "str"; expected "str": "int"
+    dct: Dict[str, int] = {"a": "b", **other}
+                           ^~~~~~~~
+main:5: error: Unpacked dict entry 1 has incompatible type "Dict[str, str]"; expected "SupportsKeysAndGetItem[str, int]"
+    dct: Dict[str, int] = {"a": "b", **other}
+                                       ^~~~~

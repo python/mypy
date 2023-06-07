@@ -40,6 +40,7 @@ def test_transform(testcase: DataDrivenTestCase) -> None:
         options.semantic_analysis_only = True
         options.enable_incomplete_feature = [TYPE_VAR_TUPLE, UNPACK]
         options.show_traceback = True
+        options.force_uppercase_builtins = True
         result = build.build(
             sources=[BuildSource("main", None, src)], options=options, alt_lib_path=test_temp_dir
         )
@@ -53,7 +54,7 @@ def test_transform(testcase: DataDrivenTestCase) -> None:
                 t = TypeAssertTransformVisitor()
                 t.test_only = True
                 file = t.mypyfile(result.files[module])
-                a += str(file).split("\n")
+                a += file.str_with_options(options).split("\n")
     except CompileError as e:
         a = e.messages
     if testcase.normalize_output:

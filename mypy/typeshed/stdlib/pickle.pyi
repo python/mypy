@@ -103,6 +103,8 @@ if sys.version_info >= (3, 8):
         def __init__(self, buffer: ReadableBuffer) -> None: ...
         def raw(self) -> memoryview: ...
         def release(self) -> None: ...
+        def __buffer__(self, __flags: int) -> memoryview: ...
+        def __release_buffer__(self, __buffer: memoryview) -> None: ...
     _BufferCallback: TypeAlias = Callable[[PickleBuffer], Any] | None
     def dump(
         obj: Any,
@@ -121,7 +123,7 @@ if sys.version_info >= (3, 8):
         fix_imports: bool = True,
         encoding: str = "ASCII",
         errors: str = "strict",
-        buffers: Iterable[Any] | None = ...,
+        buffers: Iterable[Any] | None = (),
     ) -> Any: ...
     def loads(
         __data: ReadableBuffer,
@@ -129,7 +131,7 @@ if sys.version_info >= (3, 8):
         fix_imports: bool = True,
         encoding: str = "ASCII",
         errors: str = "strict",
-        buffers: Iterable[Any] | None = ...,
+        buffers: Iterable[Any] | None = (),
     ) -> Any: ...
 
 else:

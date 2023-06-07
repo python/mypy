@@ -1,6 +1,6 @@
 import io
 import sys
-from _typeshed import StrOrBytesPath, StrPath, _BufferWithLen
+from _typeshed import SizedBuffer, StrOrBytesPath, StrPath
 from collections.abc import Callable, Iterable, Iterator
 from os import PathLike
 from types import TracebackType
@@ -179,7 +179,7 @@ class ZipFile:
     def writestr(
         self,
         zinfo_or_arcname: str | ZipInfo,
-        data: _BufferWithLen | str,
+        data: SizedBuffer | str,
         compress_type: int | None = None,
         compresslevel: int | None = None,
     ) -> None: ...
@@ -211,7 +211,7 @@ class ZipInfo:
     compress_size: int
     file_size: int
     orig_filename: str  # undocumented
-    def __init__(self, filename: str = "NoName", date_time: _DateTuple = ...) -> None: ...
+    def __init__(self, filename: str = "NoName", date_time: _DateTuple = (1980, 1, 1, 0, 0, 0)) -> None: ...
     if sys.version_info >= (3, 8):
         @classmethod
         def from_file(cls, filename: StrPath, arcname: StrPath | None = None, *, strict_timestamps: bool = True) -> Self: ...
@@ -222,10 +222,11 @@ class ZipInfo:
     def is_dir(self) -> bool: ...
     def FileHeader(self, zip64: bool | None = None) -> bytes: ...
 
-class _PathOpenProtocol(Protocol):
-    def __call__(self, mode: _ReadWriteMode = ..., pwd: bytes | None = ..., *, force_zip64: bool = ...) -> IO[bytes]: ...
-
 if sys.version_info >= (3, 8):
+    if sys.version_info < (3, 9):
+        class _PathOpenProtocol(Protocol):
+            def __call__(self, mode: _ReadWriteMode = "r", pwd: bytes | None = ..., *, force_zip64: bool = ...) -> IO[bytes]: ...
+
     class Path:
         @property
         def name(self) -> str: ...
@@ -245,7 +246,12 @@ if sys.version_info >= (3, 8):
         def __init__(self, root: ZipFile | StrPath | IO[bytes], at: str = "") -> None: ...
         if sys.version_info >= (3, 9):
             def open(
-                self, mode: _ReadWriteBinaryMode = "r", *args: Any, pwd: bytes | None = None, **kwargs: Any
+                self,
+                mode: _ReadWriteBinaryMode = "r",
+                encoding: str | None = None,
+                *args: Any,
+                pwd: bytes | None = None,
+                **kwargs: Any,
             ) -> IO[bytes]: ...
         else:
             @property

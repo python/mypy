@@ -46,6 +46,7 @@ def get_semanal_options(program_text: str, testcase: DataDrivenTestCase) -> Opti
     options.show_traceback = True
     options.python_version = PYTHON3_VERSION
     options.enable_incomplete_feature = [TYPE_VAR_TUPLE, UNPACK]
+    options.force_uppercase_builtins = True
     return options
 
 
@@ -78,7 +79,7 @@ def test_semanal(testcase: DataDrivenTestCase) -> None:
         # output.
         for module in sorted(result.files.keys()):
             if module in testcase.test_modules:
-                a += str(result.files[module]).split("\n")
+                a += result.files[module].str_with_options(options).split("\n")
     except CompileError as e:
         a = e.messages
     if testcase.normalize_output:

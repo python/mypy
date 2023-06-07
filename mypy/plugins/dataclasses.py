@@ -6,7 +6,7 @@ from typing import Iterator
 from typing_extensions import Final
 
 from mypy import errorcodes, message_registry
-from mypy.expandtype import expand_type
+from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.nodes import (
     ARG_NAMED,
     ARG_NAMED_OPT,
@@ -23,6 +23,7 @@ from mypy.nodes import (
     Context,
     DataclassTransformSpec,
     Expression,
+    FuncDef,
     IfStmt,
     JsonDict,
     NameExpr,
@@ -39,6 +40,7 @@ from mypy.nodes import (
 )
 from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
+    _get_callee_type,
     _get_decorator_bool_argument,
     add_attribute_to_class,
     add_method_to_class,
@@ -47,7 +49,7 @@ from mypy.plugins.common import (
 from mypy.semanal_shared import find_dataclass_transform_spec, require_bool_literal_argument
 from mypy.server.trigger import make_wildcard_trigger
 from mypy.state import state
-from mypy.typeops import map_type_from_supertype
+from mypy.typeops import map_type_from_supertype, try_getting_literals_from_type
 from mypy.types import (
     AnyType,
     CallableType,
@@ -89,6 +91,7 @@ class DataclassAttribute:
         type: Type | None,
         info: TypeInfo,
         kw_only: bool,
+        is_neither_frozen_nor_nonfrozen: bool,
     ) -> None:
         self.name = name
         self.alias = alias
@@ -97,9 +100,10 @@ class DataclassAttribute:
         self.has_default = has_default
         self.line = line
         self.column = column
-        self.type = type
+        self.type = type  # Type as __init__ argument
         self.info = info
         self.kw_only = kw_only
+        self.is_neither_frozen_nor_nonfrozen = is_neither_frozen_nor_nonfrozen
 
     def to_argument(self, current_info: TypeInfo) -> Argument:
         arg_kind = ARG_POS
@@ -140,6 +144,7 @@ class DataclassAttribute:
             "column": self.column,
             "type": self.type.serialize(),
             "kw_only": self.kw_only,
+            "is_neither_frozen_nor_nonfrozen": self.is_neither_frozen_nor_nonfrozen,
         }
 
     @classmethod
@@ -215,7 +220,6 @@ class DataclassTransformer:
             and ("__init__" not in info.names or info.names["__init__"].plugin_generated)
             and attributes
         ):
-
             with state.strict_optional_set(self._api.options.strict_optional):
                 args = [
                     attr.to_argument(info)
@@ -250,7 +254,11 @@ class DataclassTransformer:
             # Type variable for self types in generated methods.
             obj_type = self._api.named_type("builtins.object")
             self_tvar_expr = TypeVarExpr(
-                SELF_TVAR_NAME, info.fullname + "." + SELF_TVAR_NAME, [], obj_type
+                SELF_TVAR_NAME,
+                info.fullname + "." + SELF_TVAR_NAME,
+                [],
+                obj_type,
+                AnyType(TypeOfAny.from_omitted_generics),
             )
             info.names[SELF_TVAR_NAME] = SymbolTableNode(MDEF, self_tvar_expr)
 
@@ -264,7 +272,12 @@ class DataclassTransformer:
                 # the self type.
                 obj_type = self._api.named_type("builtins.object")
                 order_tvar_def = TypeVarType(
-                    SELF_TVAR_NAME, info.fullname + "." + SELF_TVAR_NAME, -1, [], obj_type
+                    SELF_TVAR_NAME,
+                    info.fullname + "." + SELF_TVAR_NAME,
+                    id=-1,
+                    values=[],
+                    upper_bound=obj_type,
+                    default=AnyType(TypeOfAny.from_omitted_generics),
                 )
                 order_return_type = self._api.named_type("builtins.bool")
                 order_args = [
@@ -292,7 +305,11 @@ class DataclassTransformer:
         parent_decorator_arguments = []
         for parent in info.mro[1:-1]:
             parent_args = parent.metadata.get("dataclass")
-            if parent_args:
+
+            # Ignore parent classes that directly specify a dataclass transform-decorated metaclass
+            # when searching for usage of the frozen parameter. PEP 681 states that a class that
+            # directly specifies such a metaclass must be treated as neither frozen nor non-frozen.
+            if parent_args and not _has_direct_dataclass_transform_metaclass(parent):
                 parent_decorator_arguments.append(parent_args)
 
         if decorator_arguments["frozen"]:
@@ -509,7 +526,7 @@ class DataclassTransformer:
 
             is_in_init_param = field_args.get("init")
             if is_in_init_param is None:
-                is_in_init = True
+                is_in_init = self._get_default_init_value_for_field_specifier(stmt.rvalue)
             else:
                 is_in_init = bool(self._api.parse_bool(is_in_init_param))
 
@@ -528,9 +545,12 @@ class DataclassTransformer:
             elif not isinstance(stmt.rvalue, TempNode):
                 has_default = True
 
-            if not has_default:
-                # Make all non-default attributes implicit because they are de-facto set
-                # on self in the generated __init__(), not in the class body.
+            if not has_default and self._spec is _TRANSFORM_SPEC_FOR_DATACLASSES:
+                # Make all non-default dataclass attributes implicit because they are de-facto
+                # set on self in the generated __init__(), not in the class body. On the other
+                # hand, we don't know how custom dataclass transforms initialize attributes,
+                # so we don't treat them as implicit. This is required to support descriptors
+                # (https://github.com/python/mypy/issues/14868).
                 sym.implicit = True
 
             is_kw_only = kw_only
@@ -571,6 +591,7 @@ class DataclassTransformer:
                     )
 
             current_attr_names.add(lhs.name)
+            init_type = self._infer_dataclass_attr_init_type(sym, lhs.name, stmt)
             found_attrs[lhs.name] = DataclassAttribute(
                 name=lhs.name,
                 alias=alias,
@@ -579,9 +600,12 @@ class DataclassTransformer:
                 has_default=has_default,
                 line=stmt.line,
                 column=stmt.column,
-                type=sym.type,
+                type=init_type,
                 info=cls.info,
                 kw_only=is_kw_only,
+                is_neither_frozen_nor_nonfrozen=_has_direct_dataclass_transform_metaclass(
+                    cls.info
+                ),
             )
 
         all_attrs = list(found_attrs.values())
@@ -624,6 +648,13 @@ class DataclassTransformer:
         """
         info = self._cls.info
         for attr in attributes:
+            # Classes that directly specify a dataclass_transform metaclass must be neither frozen
+            # non non-frozen per PEP681. Though it is surprising, this means that attributes from
+            # such a class must be writable even if the rest of the class heirarchy is frozen. This
+            # matches the behavior of Pyright (the reference implementation).
+            if attr.is_neither_frozen_nor_nonfrozen:
+                continue
+
             sym_node = info.names.get(attr.name)
             if sym_node is not None:
                 var = sym_node.node
@@ -738,6 +769,74 @@ class DataclassTransformer:
             return require_bool_literal_argument(self._api, expression, name, default)
         return default
 
+    def _get_default_init_value_for_field_specifier(self, call: Expression) -> bool:
+        """
+        Find a default value for the `init` parameter of the specifier being called. If the
+        specifier's type signature includes an `init` parameter with a type of `Literal[True]` or
+        `Literal[False]`, return the appropriate boolean value from the literal. Otherwise,
+        fall back to the standard default of `True`.
+        """
+        if not isinstance(call, CallExpr):
+            return True
+
+        specifier_type = _get_callee_type(call)
+        if specifier_type is None:
+            return True
+
+        parameter = specifier_type.argument_by_name("init")
+        if parameter is None:
+            return True
+
+        literals = try_getting_literals_from_type(parameter.typ, bool, "builtins.bool")
+        if literals is None or len(literals) != 1:
+            return True
+
+        return literals[0]
+
+    def _infer_dataclass_attr_init_type(
+        self, sym: SymbolTableNode, name: str, context: Context
+    ) -> Type | None:
+        """Infer __init__ argument type for an attribute.
+
+        In particular, possibly use the signature of __set__.
+        """
+        default = sym.type
+        if sym.implicit:
+            return default
+        t = get_proper_type(sym.type)
+
+        # Perform a simple-minded inference from the signature of __set__, if present.
+        # We can't use mypy.checkmember here, since this plugin runs before type checking.
+        # We only support some basic scanerios here, which is hopefully sufficient for
+        # the vast majority of use cases.
+        if not isinstance(t, Instance):
+            return default
+        setter = t.type.get("__set__")
+        if setter:
+            if isinstance(setter.node, FuncDef):
+                super_info = t.type.get_containing_type_info("__set__")
+                assert super_info
+                if setter.type:
+                    setter_type = get_proper_type(
+                        map_type_from_supertype(setter.type, t.type, super_info)
+                    )
+                else:
+                    return AnyType(TypeOfAny.unannotated)
+                if isinstance(setter_type, CallableType) and setter_type.arg_kinds == [
+                    ARG_POS,
+                    ARG_POS,
+                    ARG_POS,
+                ]:
+                    return expand_type_by_instance(setter_type.arg_types[2], t)
+                else:
+                    self._api.fail(
+                        f'Unsupported signature for "__set__" in "{t.type.name}"', context
+                    )
+            else:
+                self._api.fail(f'Unsupported "__set__" in "{t.type.name}"', context)
+
+        return default
+
 
 def add_dataclass_tag(info: TypeInfo) -> None:
     # The value is ignored, only the existence matters.
@@ -787,3 +886,10 @@ def _is_dataclasses_decorator(node: Node) -> bool:
     if isinstance(node, RefExpr):
         return node.fullname in dataclass_makers
     return False
+
+
+def _has_direct_dataclass_transform_metaclass(info: TypeInfo) -> bool:
+    return (
+        info.declared_metaclass is not None
+        and info.declared_metaclass.type.dataclass_transform_spec is not None
+    )

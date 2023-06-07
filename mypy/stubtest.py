@@ -26,7 +26,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
 from typing import Any, Generic, Iterator, TypeVar, Union
-from typing_extensions import get_origin
+from typing_extensions import get_origin, is_typeddict
 
 import mypy.build
 import mypy.modulefinder
@@ -419,14 +419,29 @@ def _verify_final(
         # Examples: ctypes.Array, ctypes._SimpleCData
         pass
 
+    # Runtime class might be annotated with `@final`:
+    try:
+        runtime_final = getattr(runtime, "__final__", False)
+    except Exception:
+        runtime_final = False
+
+    if runtime_final and not stub.is_final:
+        yield Error(
+            object_path,
+            "has `__final__` attribute, but isn't marked with @final in the stub",
+            stub,
+            runtime,
+            stub_desc=repr(stub),
+        )
+
 
 def _verify_metaclass(
-    stub: nodes.TypeInfo, runtime: type[Any], object_path: list[str]
+    stub: nodes.TypeInfo, runtime: type[Any], object_path: list[str], *, is_runtime_typeddict: bool
 ) -> Iterator[Error]:
     # We exclude protocols, because of how complex their implementation is in different versions of
-    # python. Enums are also hard, ignoring.
+    # python. Enums are also hard, as are runtime TypedDicts; ignoring.
     # TODO: check that metaclasses are identical?
-    if not stub.is_protocol and not stub.is_enum:
+    if not stub.is_protocol and not stub.is_enum and not is_runtime_typeddict:
         runtime_metaclass = type(runtime)
         if runtime_metaclass is not type and stub.metaclass_type is None:
             # This means that runtime has a custom metaclass, but a stub does not.
@@ -470,7 +485,10 @@ def verify_typeinfo(
         return
 
     yield from _verify_final(stub, runtime, object_path)
-    yield from _verify_metaclass(stub, runtime, object_path)
+    is_runtime_typeddict = stub.typeddict_type is not None and is_typeddict(runtime)
+    yield from _verify_metaclass(
+        stub, runtime, object_path, is_runtime_typeddict=is_runtime_typeddict
+    )
 
     # Check everything already defined on the stub class itself (i.e. not inherited)
     to_check = set(stub.names)
@@ -478,7 +496,7 @@ def verify_typeinfo(
     to_check.update(
         m for m in vars(runtime) if not is_probably_private(m) and m not in IGNORABLE_CLASS_DUNDERS
     )
-    # Special-case the __init__ method for Protocols
+    # Special-case the __init__ method for Protocols and the __new__ method for TypedDicts
     #
     # TODO: On Python <3.11, __init__ methods on Protocol classes
     # are silently discarded and replaced.
@@ -486,6 +504,8 @@ def verify_typeinfo(
     # Ideally, we'd figure out a good way of validating Protocol __init__ methods on 3.11+.
     if stub.is_protocol:
         to_check.discard("__init__")
+    if is_runtime_typeddict:
+        to_check.discard("__new__")
 
     for entry in sorted(to_check):
         mangled_entry = entry
@@ -514,8 +534,21 @@ def verify_typeinfo(
             yield from verify(stub_to_verify, runtime_attr, object_path + [entry])
 
 
+def _static_lookup_runtime(object_path: list[str]) -> MaybeMissing[Any]:
+    static_runtime = importlib.import_module(object_path[0])
+    for entry in object_path[1:]:
+        try:
+            static_runtime = inspect.getattr_static(static_runtime, entry)
+        except AttributeError:
+            # This can happen with mangled names, ignore for now.
+            # TODO: pass more information about ancestors of nodes/objects to verify, so we don't
+            # have to do this hacky lookup. Would be useful in several places.
+            return MISSING
+    return static_runtime
+
+
 def _verify_static_class_methods(
-    stub: nodes.FuncBase, runtime: Any, object_path: list[str]
+    stub: nodes.FuncBase, runtime: Any, static_runtime: MaybeMissing[Any], object_path: list[str]
 ) -> Iterator[str]:
     if stub.name in ("__new__", "__init_subclass__", "__class_getitem__"):
         # Special cased by Python, so don't bother checking
@@ -530,16 +563,8 @@ def _verify_static_class_methods(
             yield "stub is a classmethod but runtime is not"
         return
 
-    # Look the object up statically, to avoid binding by the descriptor protocol
-    static_runtime = importlib.import_module(object_path[0])
-    for entry in object_path[1:]:
-        try:
-            static_runtime = inspect.getattr_static(static_runtime, entry)
-        except AttributeError:
-            # This can happen with mangled names, ignore for now.
-            # TODO: pass more information about ancestors of nodes/objects to verify, so we don't
-            # have to do this hacky lookup. Would be useful in a couple other places too.
-            return
+    if static_runtime is MISSING:
+        return
 
     if isinstance(static_runtime, classmethod) and not stub.is_class:
         yield "runtime is a classmethod but stub is not"
@@ -930,11 +955,16 @@ def verify_funcitem(
         if not callable(runtime):
             return
 
+    # Look the object up statically, to avoid binding by the descriptor protocol
+    static_runtime = _static_lookup_runtime(object_path)
+
     if isinstance(stub, nodes.FuncDef):
         for error_text in _verify_abstract_status(stub, runtime):
             yield Error(object_path, error_text, stub, runtime)
+        for error_text in _verify_final_method(stub, runtime, static_runtime):
+            yield Error(object_path, error_text, stub, runtime)
 
-    for message in _verify_static_class_methods(stub, runtime, object_path):
+    for message in _verify_static_class_methods(stub, runtime, static_runtime, object_path):
         yield Error(object_path, "is inconsistent, " + message, stub, runtime)
 
     signature = safe_inspect_signature(runtime)
@@ -1037,8 +1067,25 @@ def verify_overloadedfuncdef(
         if not callable(runtime):
             return
 
-    for message in _verify_static_class_methods(stub, runtime, object_path):
+    # mypy doesn't allow overloads where one overload is abstract but another isn't,
+    # so it should be okay to just check whether the first overload is abstract or not.
+    #
+    # TODO: Mypy *does* allow properties where e.g. the getter is abstract but the setter is not;
+    # and any property with a setter is represented as an OverloadedFuncDef internally;
+    # not sure exactly what (if anything) we should do about that.
+    first_part = stub.items[0]
+    if isinstance(first_part, nodes.Decorator) and first_part.is_overload:
+        for msg in _verify_abstract_status(first_part.func, runtime):
+            yield Error(object_path, msg, stub, runtime)
+
+    # Look the object up statically, to avoid binding by the descriptor protocol
+    static_runtime = _static_lookup_runtime(object_path)
+
+    for message in _verify_static_class_methods(stub, runtime, static_runtime, object_path):
         yield Error(object_path, "is inconsistent, " + message, stub, runtime)
+
+    # TODO: Should call _verify_final_method here,
+    # but overloaded final methods in stubs cause a stubtest crash: see #14950
 
     signature = safe_inspect_signature(runtime)
     if not signature:
@@ -1059,7 +1106,7 @@ def verify_overloadedfuncdef(
             "is inconsistent, " + message,
             stub,
             runtime,
-            stub_desc=str(stub.type) + f"\nInferred signature: {stub_sig}",
+            stub_desc=(str(stub.type)) + f"\nInferred signature: {stub_sig}",
             runtime_desc="def " + str(signature),
         )
 
@@ -1100,6 +1147,7 @@ def verify_paramspecexpr(
 def _verify_readonly_property(stub: nodes.Decorator, runtime: Any) -> Iterator[str]:
     assert stub.func.is_property
     if isinstance(runtime, property):
+        yield from _verify_final_method(stub.func, runtime.fget, MISSING)
         return
     if inspect.isdatadescriptor(runtime):
         # It's enough like a property...
@@ -1126,6 +1174,17 @@ def _verify_abstract_status(stub: nodes.FuncDef, runtime: Any) -> Iterator[str]:
     if runtime_abstract and not stub_abstract:
         item_type = "property" if stub.is_property else "method"
         yield f"is inconsistent, runtime {item_type} is abstract but stub is not"
+
+
+def _verify_final_method(
+    stub: nodes.FuncDef, runtime: Any, static_runtime: MaybeMissing[Any]
+) -> Iterator[str]:
+    if stub.is_final:
+        return
+    if getattr(runtime, "__final__", False) or (
+        static_runtime is not MISSING and getattr(static_runtime, "__final__", False)
+    ):
+        yield "is decorated with @final at runtime, but not in the stub"
 
 
 def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> nodes.FuncItem | None:
@@ -1334,12 +1393,15 @@ IGNORABLE_CLASS_DUNDERS: typing_extensions.Final = frozenset(
         "__dataclass_fields__",  # Generated by dataclasses
         "__dataclass_params__",  # Generated by dataclasses
         "__doc__",  # mypy's semanal for namedtuples assumes this is str, not Optional[str]
+        # Added to all protocol classes on 3.12+ (or if using typing_extensions.Protocol)
+        "__protocol_attrs__",
+        "__callable_proto_members_only__",
         # typing implementation details, consider removing some of these:
         "__parameters__",
         "__origin__",
         "__args__",
         "__orig_bases__",
-        "__final__",
+        "__final__",  # Has a specialized check
         # Consider removing __slots__?
         "__slots__",
     }
@@ -1608,7 +1670,7 @@ def get_allowlist_entries(allowlist_file: str) -> Iterator[str]:
             return s.strip()
 
     with open(allowlist_file) as f:
-        for line in f.readlines():
+        for line in f:
             entry = strip_comments(line)
             if entry:
                 yield entry

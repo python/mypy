@@ -267,8 +267,8 @@ rst_prolog = ".. |...| unicode:: U+2026   .. ellipsis\n"
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "six": ("https://six.readthedocs.io", None),
-    "attrs": ("http://www.attrs.org/en/stable", None),
-    "cython": ("http://docs.cython.org/en/latest", None),
+    "attrs": ("https://www.attrs.org/en/stable/", None),
+    "cython": ("https://docs.cython.org/en/latest", None),
     "monkeytype": ("https://monkeytype.readthedocs.io/en/latest", None),
     "setuptools": ("https://setuptools.readthedocs.io/en/latest", None),
 }

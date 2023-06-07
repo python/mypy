@@ -54,7 +54,15 @@ class TypeFixture:
         def make_type_var(
             name: str, id: int, values: list[Type], upper_bound: Type, variance: int
         ) -> TypeVarType:
-            return TypeVarType(name, name, id, values, upper_bound, variance)
+            return TypeVarType(
+                name,
+                name,
+                id,
+                values,
+                upper_bound,
+                AnyType(TypeOfAny.from_omitted_generics),
+                variance,
+            )
 
         self.t = make_type_var("T", 1, [], self.o, variance)  # T`1 (type variable)
         self.tf = make_type_var("T", -1, [], self.o, variance)  # T`-1 (type variable)
@@ -136,6 +144,7 @@ class TypeFixture:
         self.type_type = Instance(self.type_typei, [])  # type
         self.function = Instance(self.functioni, [])  # function TODO
         self.str_type = Instance(self.str_type_info, [])
+        self.bool_type = Instance(self.bool_type_info, [])
         self.a = Instance(self.ai, [])  # A
         self.b = Instance(self.bi, [])  # B
         self.c = Instance(self.ci, [])  # C
@@ -197,6 +206,9 @@ class TypeFixture:
         self.lit_str2_inst = Instance(self.str_type_info, [], last_known_value=self.lit_str2)
         self.lit_str3_inst = Instance(self.str_type_info, [], last_known_value=self.lit_str3)
 
+        self.lit_false = LiteralType(False, self.bool_type)
+        self.lit_true = LiteralType(True, self.bool_type)
+
         self.type_a = TypeType.make_normalized(self.a)
         self.type_b = TypeType.make_normalized(self.b)
         self.type_c = TypeType.make_normalized(self.c)
@@ -208,7 +220,14 @@ class TypeFixture:
         self._add_bool_dunder(self.ai)
 
         def make_type_var_tuple(name: str, id: int, upper_bound: Type) -> TypeVarTupleType:
-            return TypeVarTupleType(name, name, id, upper_bound, self.std_tuple)
+            return TypeVarTupleType(
+                name,
+                name,
+                id,
+                upper_bound,
+                self.std_tuple,
+                AnyType(TypeOfAny.from_omitted_generics),
+            )
 
         self.ts = make_type_var_tuple("Ts", 1, self.o)  # Ts`1 (type var tuple)
         self.ss = make_type_var_tuple("Ss", 2, self.o)  # Ss`2 (type var tuple)
@@ -297,13 +316,32 @@ class TypeFixture:
             v: list[TypeVarLikeType] = []
             for id, n in enumerate(typevars, 1):
                 if typevar_tuple_index is not None and id - 1 == typevar_tuple_index:
-                    v.append(TypeVarTupleType(n, n, id, self.o, self.std_tuple))
+                    v.append(
+                        TypeVarTupleType(
+                            n,
+                            n,
+                            id,
+                            self.o,
+                            self.std_tuple,
+                            AnyType(TypeOfAny.from_omitted_generics),
+                        )
+                    )
                 else:
                     if variances:
                         variance = variances[id - 1]
                     else:
                         variance = COVARIANT
-                    v.append(TypeVarType(n, n, id, [], self.o, variance=variance))
+                    v.append(
+                        TypeVarType(
+                            n,
+                            n,
+                            id,
+                            [],
+                            self.o,
+                            AnyType(TypeOfAny.from_omitted_generics),
+                            variance=variance,
+                        )
+                    )
             class_def.type_vars = v
 
         info = TypeInfo(SymbolTable(), class_def, module_name)

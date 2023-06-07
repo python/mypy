@@ -265,6 +265,8 @@ def float_to_c(x: float) -> str:
         return "INFINITY"
     elif s == "-inf":
         return "-INFINITY"
+    elif s == "nan":
+        return "NAN"
     return s
 
 

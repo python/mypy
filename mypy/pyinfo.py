@@ -7,20 +7,22 @@ Python being executed, this module should not use *any* dependencies outside of 
 library found in Python 3.7. This file is run each mypy run, so it should be kept as fast as
 possible.
 """
-import os
-import site
 import sys
-import sysconfig
 
 if __name__ == "__main__":
     # HACK: We don't want to pick up mypy.types as the top-level types
     #       module. This could happen if this file is run as a script.
-    #       This workaround fixes it.
-    old_sys_path = sys.path
-    sys.path = sys.path[1:]
-    import types  # noqa: F401
+    #       This workaround fixes this for Python versions before 3.11.
+    if sys.version_info < (3, 11):
+        old_sys_path = sys.path
+        sys.path = sys.path[1:]
+        import types  # noqa: F401
 
-    sys.path = old_sys_path
+        sys.path = old_sys_path
+
+import os
+import site
+import sysconfig
 
 
 def getsitepackages() -> list[str]:
@@ -31,9 +33,7 @@ def getsitepackages() -> list[str]:
         if hasattr(site, "getusersitepackages") and site.ENABLE_USER_SITE:
             res.insert(0, site.getusersitepackages())
     else:
-        from distutils.sysconfig import get_python_lib
-
-        res = [get_python_lib()]
+        res = [sysconfig.get_paths()["purelib"]]
     return res
 
 

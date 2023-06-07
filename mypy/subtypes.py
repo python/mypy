@@ -58,10 +58,10 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
-    _flattened,
     get_proper_type,
     is_named_instance,
 )
+from mypy.types_utils import flatten_types
 from mypy.typestate import SubtypeKind, type_state
 from mypy.typevars import fill_typevars_with_any
 from mypy.typevartuples import extract_unpack, fully_split_with_mapped_and_template
@@ -278,11 +278,7 @@ def _is_subtype(
     left = get_proper_type(left)
     right = get_proper_type(right)
 
-    if not proper_subtype and (
-        isinstance(right, AnyType)
-        or isinstance(right, UnboundType)
-        or isinstance(right, ErasedType)
-    ):
+    if not proper_subtype and isinstance(right, (AnyType, UnboundType, ErasedType)):
         # TODO: should we consider all types proper subtypes of UnboundType and/or
         # ErasedType as we do for non-proper subtyping.
         return True
@@ -439,11 +435,13 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # dynamic base classes correctly, see #5456.
             return not isinstance(self.right, NoneType)
         right = self.right
-        if isinstance(right, TupleType) and mypy.typeops.tuple_fallback(right).type.is_enum:
+        if isinstance(right, TupleType) and right.partial_fallback.type.is_enum:
             return self._is_subtype(left, mypy.typeops.tuple_fallback(right))
         if isinstance(right, Instance):
             if type_state.is_cached_subtype_check(self._subtype_kind, left, right):
                 return True
+            if type_state.is_cached_negative_subtype_check(self._subtype_kind, left, right):
+                return False
             if not self.subtype_context.ignore_promotions:
                 for base in left.type.mro:
                     if base._promote and any(
@@ -598,11 +596,17 @@ class SubtypeVisitor(TypeVisitor[bool]):
                                 nominal = False
                 if nominal:
                     type_state.record_subtype_cache_entry(self._subtype_kind, left, right)
+                else:
+                    type_state.record_negative_subtype_cache_entry(self._subtype_kind, left, right)
                 return nominal
             if right.type.is_protocol and is_protocol_implementation(
                 left, right, proper_subtype=self.proper_subtype
             ):
                 return True
+            # We record negative cache entry here, and not in the protocol check like we do for
+            # positive cache, to avoid accidentally adding a type that is not a structural
+            # subtype, but is a nominal subtype (involving type: ignore override).
+            type_state.record_negative_subtype_cache_entry(self._subtype_kind, left, right)
             return False
         if isinstance(right, TypeType):
             item = right.item
@@ -657,10 +661,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_unpack_type(self, left: UnpackType) -> bool:
         if isinstance(self.right, UnpackType):
             return self._is_subtype(left.type, self.right.type)
+        if isinstance(self.right, Instance) and self.right.type.fullname == "builtins.object":
+            return True
         return False
 
     def visit_parameters(self, left: Parameters) -> bool:
-        if isinstance(self.right, Parameters) or isinstance(self.right, CallableType):
+        if isinstance(self.right, (Parameters, CallableType)):
             right = self.right
             if isinstance(right, CallableType):
                 right = right.with_unpacked_kwargs()
@@ -745,7 +751,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     #       for isinstance(x, tuple), though it's unclear why.
                     return True
                 return all(self._is_subtype(li, iter_type) for li in left.items)
-            elif self._is_subtype(mypy.typeops.tuple_fallback(left), right):
+            elif self._is_subtype(left.partial_fallback, right) and self._is_subtype(
+                mypy.typeops.tuple_fallback(left), right
+            ):
                 return True
             return False
         elif isinstance(right, TupleType):
@@ -907,15 +915,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
             fast_check: set[ProperType] = set()
 
-            for item in _flattened(self.right.relevant_items()):
+            for item in flatten_types(self.right.relevant_items()):
                 p_item = get_proper_type(item)
-                if isinstance(p_item, LiteralType):
-                    fast_check.add(p_item)
-                elif isinstance(p_item, Instance):
-                    if p_item.last_known_value is None:
-                        fast_check.add(p_item)
-                    else:
-                        fast_check.add(p_item.last_known_value)
+                fast_check.add(p_item)
+                if isinstance(p_item, Instance) and p_item.last_known_value is not None:
+                    fast_check.add(p_item.last_known_value)
 
             for item in left.relevant_items():
                 p_item = get_proper_type(item)
@@ -1026,7 +1030,7 @@ def is_protocol_implementation(
         if not members_right.issubset(members_left):
             return False
     assuming = right.type.assuming_proper if proper_subtype else right.type.assuming
-    for (l, r) in reversed(assuming):
+    for l, r in reversed(assuming):
         if l == left and r == right:
             return True
     with pop_on_exit(assuming, left, right):
@@ -1038,23 +1042,8 @@ def is_protocol_implementation(
             # We always bind self to the subtype. (Similarly to nominal types).
             supertype = get_proper_type(find_member(member, right, left))
             assert supertype is not None
-            if member == "__call__" and class_obj:
-                # Special case: class objects always have __call__ that is just the constructor.
-                # TODO: move this helper function to typeops.py?
-                import mypy.checkmember
 
-                def named_type(fullname: str) -> Instance:
-                    return Instance(left.type.mro[-1], [])
-
-                subtype: ProperType | None = mypy.checkmember.type_object_type(
-                    left.type, named_type
-                )
-            elif member == "__call__" and left.type.is_metaclass():
-                # Special case: we want to avoid falling back to metaclass __call__
-                # if constructor signature didn't match, this can cause many false negatives.
-                subtype = None
-            else:
-                subtype = get_proper_type(find_member(member, left, left, class_obj=class_obj))
+            subtype = mypy.typeops.get_protocol_member(left, member, class_obj)
             # Useful for debugging:
             # print(member, 'of', left, 'has type', subtype)
             # print(member, 'of', right, 'has type', supertype)
@@ -1729,7 +1718,7 @@ def unify_generic_callable(
     # (probably also because solver needs subtyping). See also comment in
     # ExpandTypeVisitor.visit_erased_type().
     applied = mypy.applytype.apply_generic_arguments(
-        type, non_none_inferred_vars, report, context=target, allow_erased_callables=True
+        type, non_none_inferred_vars, report, context=target
     )
     if had_errors:
         return None
@@ -1801,6 +1790,9 @@ def covers_at_runtime(item: Type, supertype: Type) -> bool:
         if isinstance(item, TypedDictType):
             # Special case useful for selecting TypedDicts from unions using isinstance(x, dict).
             if supertype.type.fullname == "builtins.dict":
+                return True
+        elif isinstance(item, TypeVarType):
+            if is_proper_subtype(item.upper_bound, supertype, ignore_promotions=True):
                 return True
         elif isinstance(item, Instance) and supertype.type.fullname == "builtins.int":
             # "int" covers all native int types

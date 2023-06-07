@@ -1,6 +1,7 @@
 # These builtins stubs are used implicitly in AST to IR generation
 # test cases.
 
+import _typeshed
 from typing import (
     TypeVar, Generic, List, Iterator, Iterable, Dict, Optional, Tuple, Any, Set,
     overload, Mapping, Union, Callable, Sequence, FrozenSet, Protocol
