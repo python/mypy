@@ -462,14 +462,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             with self.tscope.module_scope(self.tree.fullname):
                 with self.enter_partial_types(), self.binder.top_frame_context():
                     for d in self.tree.defs:
-                        if (
-                            self.binder.is_unreachable()
-                            and self.should_report_unreachable_issues()
-                            and not self.is_raising_or_empty(d)
-                        ):
-                            self.msg.unreachable_statement(d)
-                            break
-                        self.accept(d)
+                        if self.binder.is_unreachable():
+                            if not self.should_report_unreachable_issues():
+                                break
+                            if not self.is_noop_for_reachability(d):
+                                self.msg.unreachable_statement(d)
+                                break
+                        else:
+                            self.accept(d)
 
                 assert not self.current_node_deferred
 
@@ -2678,10 +2678,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
         for s in b.body:
             if self.binder.is_unreachable():
-                if self.should_report_unreachable_issues() and not self.is_raising_or_empty(s):
+                if not self.should_report_unreachable_issues():
+                    break
+                if not self.is_noop_for_reachability(s):
                     self.msg.unreachable_statement(s)
-                break
-            self.accept(s)
+                    break
+            else:
+                self.accept(s)
 
     def should_report_unreachable_issues(self) -> bool:
         return (
@@ -2691,11 +2694,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             and not self.binder.is_unreachable_warning_suppressed()
         )
 
-    def is_raising_or_empty(self, s: Statement) -> bool:
+    def is_noop_for_reachability(self, s: Statement) -> bool:
         """Returns 'true' if the given statement either throws an error of some kind
         or is a no-op.
 
-        We use this function mostly while handling the '--warn-unreachable' flag. When
+        We use this function while handling the '--warn-unreachable' flag. When
         that flag is present, we normally report an error on any unreachable statement.
         But if that statement is just something like a 'pass' or a just-in-case 'assert False',
         reporting an error would be annoying.
