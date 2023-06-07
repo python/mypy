@@ -100,6 +100,7 @@ from mypy.nodes import (
     NameExpr,
     OpExpr,
     OverloadedFuncDef,
+    SetExpr,
     Statement,
     StrExpr,
     TupleExpr,
@@ -1432,6 +1433,45 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             default = repr(rvalue.value)
         elif isinstance(rvalue, BytesExpr):
             default = f"b{rvalue.value!r}"
+        elif isinstance(rvalue, TupleExpr):
+            items_defaults = []
+            for e in rvalue.items:
+                e_default = self.get_str_default_of_node(e)
+                if e_default == "...":
+                    break
+                items_defaults.append(e_default)
+            else:
+                closing = ",)" if len(items_defaults) == 1 else ")"
+                default = "(" + ", ".join(items_defaults) + closing
+        elif isinstance(rvalue, ListExpr):
+            items_defaults = []
+            for e in rvalue.items:
+                e_default = self.get_str_default_of_node(e)
+                if e_default == "...":
+                    break
+                items_defaults.append(e_default)
+            else:
+                default = "[" + ", ".join(items_defaults) + "]"
+        elif isinstance(rvalue, SetExpr):
+            items_defaults = []
+            for e in rvalue.items:
+                e_default = self.get_str_default_of_node(e)
+                if e_default == "...":
+                    break
+                items_defaults.append(e_default)
+            else:
+                if items_defaults:
+                    default = "{" + ", ".join(items_defaults) + "}"
+        elif isinstance(rvalue, DictExpr):
+            items_defaults = []
+            for k, v in rvalue.items:
+                k_default = self.get_str_default_of_node(k)
+                v_default = self.get_str_default_of_node(v)
+                if k_default == "..." or v_default == "...":
+                    break
+                items_defaults.append(f"{k_default}: {v_default}")
+            else:
+                default = "{" + ", ".join(items_defaults) + "}"
 
         if len(default) > 200:  # TODO: what's a good limit?
             default = "..."  # long literals are not useful in stubs
