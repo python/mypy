@@ -209,7 +209,12 @@ def test_module(module_name: str) -> Iterator[Error]:
     except KeyboardInterrupt:
         raise
     except BaseException as e:
-        yield Error([module_name], f"failed to import, {type(e).__name__}: {e}", stub, MISSING)
+        note = ""
+        if isinstance(e, ModuleNotFoundError):
+            note = " Maybe install the runtime package or alter PYTHONPATH?"
+        yield Error(
+            [module_name], f"failed to import.{note} {type(e).__name__}: {e}", stub, MISSING
+        )
         return
 
     with warnings.catch_warnings():
