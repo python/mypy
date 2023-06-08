@@ -875,6 +875,10 @@ def _add_attrs_magic_attribute(
         if isinstance(proper_type, Instance):
             var.info = proper_type.type
         ti.names[name] = SymbolTableNode(MDEF, var, plugin_generated=True)
+
+    # We fix up the `__iter__` name so these tuples are iterable as attr.Attributes
+    ti.names["__iter__"] = fallback_type.type.names["__iter__"]
+
     attributes_type = Instance(ti, [])
 
     # We need to stash the type of the magic attribute so it can be

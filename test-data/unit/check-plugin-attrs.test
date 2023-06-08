@@ -1569,6 +1569,20 @@ f(A).x  # E: "____main___A_AttrsAttributes__" has no attribute "x"
 
 [builtins fixtures/plugin_attrs.pyi]
 
+[case testAttrsFieldsIteration]
+import attr
+from attrs import fields as f  # Common usage.
+
+@attr.define
+class A:
+    b: int
+    c: str
+
+for a in f(A):
+    reveal_type(a)  # N: Revealed type is "attr.Attribute[Any]" 
+
+[builtins fixtures/tuple.pyi]
+
 [case testAttrsGenericFields]
 from typing import TypeVar
 
