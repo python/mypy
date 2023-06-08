@@ -1579,7 +1579,7 @@ class A:
     c: str
 
 for a in f(A):
-    reveal_type(a)  # N: Revealed type is "attr.Attribute[Any]" 
+    reveal_type(a)  # N: Revealed type is "attr.Attribute[Any]"
 
 [builtins fixtures/tuple.pyi]
 
