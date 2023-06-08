@@ -1337,6 +1337,8 @@ class SemanticAnalyzer(
                             first_item.var.is_settable_property = True
                             # Get abstractness from the original definition.
                             item.func.abstract_status = first_item.func.abstract_status
+                        if node.name == "deleter":
+                            item.func.abstract_status = first_item.func.abstract_status
                     else:
                         self.fail(
                             f"Only supported top decorator is @{first_item.func.name}.setter", item
