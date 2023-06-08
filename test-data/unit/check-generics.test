@@ -2735,6 +2735,7 @@ reveal_type(dict2)  # N: Revealed type is "builtins.dict[Any, __main__.B]"
 [builtins fixtures/dict.pyi]
 
 [case testInferenceAgainstGenericCallable]
+# flags: --new-type-inference
 from typing import TypeVar, Callable, List
 
 X = TypeVar('X')
@@ -2752,6 +2753,7 @@ reveal_type(bar(id))  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCallableNoLeak]
+# flags: --new-type-inference
 from typing import TypeVar, Callable
 
 T = TypeVar('T')
@@ -2767,6 +2769,7 @@ reveal_type(f(tpl))  # N: Revealed type is "Any"
 [out]
 
 [case testInferenceAgainstGenericCallableChain]
+# flags: --new-type-inference
 from typing import TypeVar, Callable, List
 
 X = TypeVar('X')
@@ -2779,6 +2782,7 @@ reveal_type(chain(id, id))  # N: Revealed type is "def (builtins.int) -> builtin
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCallableGeneric]
+# flags: --new-type-inference
 from typing import TypeVar, Callable, List
 
 S = TypeVar('S')
@@ -2793,6 +2797,7 @@ reveal_type(dec(id))  # N: Revealed type is "def [S] (S`1) -> builtins.list[S`1]
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCallableGenericReverse]
+# flags: --new-type-inference
 from typing import TypeVar, Callable, List
 
 S = TypeVar('S')
@@ -2807,6 +2812,7 @@ reveal_type(dec(id))  # N: Revealed type is "def [T] (builtins.list[T`2]) -> T`2
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCallableGenericArg]
+# flags: --new-type-inference
 from typing import TypeVar, Callable, List
 
 S = TypeVar('S')
@@ -2821,6 +2827,7 @@ reveal_type(dec(test))  # N: Revealed type is "def [S] (S`1) -> builtins.list[S`
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCallableGenericChain]
+# flags: --new-type-inference
 from typing import TypeVar, Callable, List
 
 S = TypeVar('S')
@@ -2834,6 +2841,7 @@ reveal_type(comb(id, id))  # N: Revealed type is "def [T] (T`1) -> T`1"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCallableGenericNonLinear]
+# flags: --new-type-inference
 from typing import TypeVar, Callable, List
 
 S = TypeVar('S')
@@ -2854,6 +2862,7 @@ reveal_type(mix([id, id, id]))  # N: Revealed type is "def [S] (S`5) -> builtins
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCurry]
+# flags: --new-type-inference
 from typing import Callable, List, TypeVar
 
 S = TypeVar("S")
@@ -2873,6 +2882,7 @@ reveal_type(dec2(test2))  # N: Revealed type is "def (builtins.object) -> def (b
 [builtins fixtures/paramspec.pyi]
 
 [case testInferenceAgainstGenericCallableGenericAlias]
+# flags: --new-type-inference
 from typing import TypeVar, Callable, List
 
 S = TypeVar('S')
@@ -2890,7 +2900,7 @@ reveal_type(dec(id))  # N: Revealed type is "def [S] (S`1) -> builtins.list[S`1]
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCallableGenericProtocol]
-# flags: --strict-optional
+# flags: --strict-optional --new-type-inference
 from typing import TypeVar, Protocol, Generic, Optional
 
 T = TypeVar('T')
@@ -2906,7 +2916,7 @@ reveal_type(lift(g))  # N: Revealed type is "def [T] (Union[T`1, None]) -> Union
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericSplitOrder]
-# flags: --strict-optional
+# flags: --strict-optional --new-type-inference
 from typing import TypeVar, Callable, List
 
 S = TypeVar('S')
@@ -2921,7 +2931,7 @@ reveal_type(dec(id, id))  # N: Revealed type is "def (builtins.int) -> builtins.
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericSplitOrderGeneric]
-# flags: --strict-optional
+# flags: --strict-optional --new-type-inference
 from typing import TypeVar, Callable, Tuple
 
 S = TypeVar('S')
@@ -2937,10 +2947,10 @@ reveal_type(dec(id, id))  # N: Revealed type is "def [T] (T`1) -> Tuple[T`1, T`1
 [builtins fixtures/tuple.pyi]
 
 [case testInferenceAgainstGenericEllipsisSelfSpecialCase]
+# flags: --new-type-inference
 from typing import Self, Callable, TypeVar
 
 T = TypeVar("T")
-S = TypeVar("S")
 def dec(f: Callable[..., T]) -> Callable[..., T]: ...
 
 class C:

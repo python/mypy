@@ -309,6 +309,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # on whether current expression is a callee, to give better error messages
         # related to type context.
         self.is_callee = False
+        type_state.infer_polymorphic = self.chk.options.new_type_inference
 
     def reset(self) -> None:
         self.resolved_type = {}
@@ -1801,7 +1802,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 elif not first_arg or not is_subtype(self.named_type("builtins.str"), first_arg):
                     self.chk.fail(message_registry.KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE, context)
 
-            if any(
+            if self.chk.options.new_type_inference and any(
                 a is None
                 or isinstance(get_proper_type(a), UninhabitedType)
                 or set(get_type_vars(a)) & set(callee_type.variables)

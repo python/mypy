@@ -984,6 +984,11 @@ def process_options(
         help="Use a custom typing module",
     )
     internals_group.add_argument(
+        "--new-type-inference",
+        action="store_true",
+        help="Enable new experimental type inference algorithm",
+    )
+    internals_group.add_argument(
         "--disable-recursive-aliases",
         action="store_true",
         help="Disable experimental support for recursive type aliases",

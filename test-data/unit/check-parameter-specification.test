@@ -1041,6 +1041,7 @@ reveal_type(jf(1))  # N: Revealed type is "None"
 [builtins fixtures/paramspec.pyi]
 
 [case testGenericsInInferredParamspecReturn]
+# flags: --new-type-inference
 from typing import Callable, TypeVar, Generic
 from typing_extensions import ParamSpec
 
@@ -1543,6 +1544,7 @@ def f(f: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecDecoratorAppliedToGeneric]
+# flags: --new-type-inference
 from typing import Callable, List, TypeVar
 from typing_extensions import ParamSpec
 
