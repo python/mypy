@@ -986,15 +986,17 @@ if int():
 
 [case testTypedDictGetMethod]
 # flags: --strict-optional
-from mypy_extensions import TypedDict
+from typing import TypedDict, NotRequired
 class A: pass
-D = TypedDict('D', {'x': int, 'y': str})
+D = TypedDict('D', {'x': int, 'y': NotRequired[str]})
 d: D
-reveal_type(d.get('x')) # N: Revealed type is "Union[builtins.int, None]"
+reveal_type(d.get('x')) # N: Revealed type is "builtins.int"
 reveal_type(d.get('y')) # N: Revealed type is "Union[builtins.str, None]"
-reveal_type(d.get('x', A())) # N: Revealed type is "Union[builtins.int, __main__.A]"
+reveal_type(d.get('x', A())) # N: Revealed type is "builtins.int"
 reveal_type(d.get('x', 1)) # N: Revealed type is "builtins.int"
 reveal_type(d.get('y', None)) # N: Revealed type is "Union[builtins.str, None]"
+reveal_type(d.get('y', 24)) # N: Revealed type is "Union[builtins.str, Literal[24]?]"
+reveal_type(d.get('y', A())) # N: Revealed type is "Union[builtins.str, __main__.A]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -1008,7 +1010,7 @@ d: D
 reveal_type(d.get('x', [])) # N: Revealed type is "builtins.list[builtins.int]"
 d.get('x', ['x']) # E: List item 0 has incompatible type "str"; expected "int"
 a = ['']
-reveal_type(d.get('x', a)) # N: Revealed type is "Union[builtins.list[builtins.int], builtins.list[builtins.str]]"
+reveal_type(d.get('x', a)) # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -1025,7 +1027,7 @@ d.get('x', 1, 2) # E: No overload variant of "get" of "Mapping" matches argument
                  # N:     def get(self, k: str) -> object \
                  # N:     def [V] get(self, k: str, default: Union[int, V]) -> object
 x = d.get('z')
-reveal_type(x) # N: Revealed type is "builtins.object"
+reveal_type(x) # N: Revealed type is "None"
 s = ''
 y = d.get(s)
 reveal_type(y) # N: Revealed type is "builtins.object"
@@ -1038,6 +1040,53 @@ D = TypedDict('D', {'x': int, 'y': str})
 d: D
 d.bad(1) # E: "D" has no attribute "bad"
 [builtins fixtures/dict.pyi]
+
+[case testTypedDictGetRequiredKey]
+from typing import TypedDict, NotRequired
+D = TypedDict('D', {'x': int, 'y': NotRequired[int]})
+d: D
+x = d.get('x')
+reveal_type(x) # N: Revealed type is "builtins.int"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictGetNotRequiredKey]
+# flags: --strict-optional
+from typing import TypedDict, NotRequired
+D = TypedDict('D', {'x': int, 'y': NotRequired[str]})
+d: D
+y = d.get('y')
+reveal_type(y) # N: Revealed type is "Union[builtins.str, None]"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictUnionGet]
+# flags: --strict-optional
+from typing import TypedDict, NotRequired, Union
+A = TypedDict('A', {'m': int, 'n': NotRequired[str], 'p': int})
+B = TypedDict('B', {'m': int, 'o': str, 'p': str})
+v: Union[A, B]
+m = v.get('m')
+reveal_type(m) # N: Revealed type is "builtins.int"
+n = v.get('n')
+reveal_type(n) # N: Revealed type is "Union[builtins.str, None]"
+o = v.get('o')
+reveal_type(o) # N: Revealed type is "Union[None, builtins.str]"
+p = v.get('p')
+reveal_type(p) # N: Revealed type is "Union[builtins.int, builtins.str]"
+z = v.get('z')
+reveal_type(z) # N: Revealed type is "None"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictGetMissingKey]
+from typing import TypedDict, NotRequired
+D = TypedDict('D', {'x': int, 'y': NotRequired[int]})
+d: D
+z = d.get('z')
+reveal_type(z) # N: Revealed type is "None"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictChainedGetMethodWithDictFallback]
 from mypy_extensions import TypedDict
@@ -1060,14 +1109,15 @@ p.get('x', 1 + 'y')     # E: Unsupported operand types for + ("int" and "str")
 # flags: --strict-optional
 from mypy_extensions import TypedDict
 C = TypedDict('C', {'a': int})
-D = TypedDict('D', {'x': C, 'y': str})
+D = TypedDict('D', {'x': C, 'y': str}, total=False)
 d: D
 reveal_type(d.get('x', {})) \
     # N: Revealed type is "TypedDict('__main__.C', {'a'?: builtins.int})"
 reveal_type(d.get('x', None)) \
     # N: Revealed type is "Union[TypedDict('__main__.C', {'a': builtins.int}), None]"
 reveal_type(d.get('x', {}).get('a')) # N: Revealed type is "Union[builtins.int, None]"
-reveal_type(d.get('x', {})['a']) # N: Revealed type is "builtins.int"
+reveal_type(d.get('x', {})['a']) # N: Revealed type is "builtins.int" \
+                                 # E: TypedDict "C" key "a" is not required and might not be present.
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -1119,8 +1169,10 @@ f(D(x='')) # E: Incompatible types (expression has type "str", TypedDict item "x
 from mypy_extensions import TypedDict
 D = TypedDict('D', {'x': int, 'y': str}, total=False)
 d: D
-reveal_type(d['x']) # N: Revealed type is "builtins.int"
-reveal_type(d['y']) # N: Revealed type is "builtins.str"
+reveal_type(d['x']) # N: Revealed type is "builtins.int" \
+                    # E: TypedDict "D" key "x" is not required and might not be present.
+reveal_type(d['y']) # N: Revealed type is "builtins.str" \
+                    # E: TypedDict "D" key "y" is not required and might not be present.
 reveal_type(d.get('x')) # N: Revealed type is "builtins.int"
 reveal_type(d.get('y')) # N: Revealed type is "builtins.str"
 [builtins fixtures/dict.pyi]
@@ -1726,6 +1778,7 @@ alias(s)
 [builtins fixtures/dict.pyi]
 
 [case testPluginUnionsOfTypedDicts]
+# flags: --strict-optional
 from typing import Union
 from mypy_extensions import TypedDict
 
@@ -1742,7 +1795,7 @@ td: Union[TDA, TDB]
 
 reveal_type(td.get('a'))  # N: Revealed type is "builtins.int"
 reveal_type(td.get('b'))  # N: Revealed type is "Union[builtins.str, builtins.int]"
-reveal_type(td.get('c'))  # N: Revealed type is "builtins.object"
+reveal_type(td.get('c'))  # N: Revealed type is "Union[None, builtins.int]"
 
 reveal_type(td['a'])  # N: Revealed type is "builtins.int"
 reveal_type(td['b'])  # N: Revealed type is "Union[builtins.str, builtins.int]"
@@ -2521,6 +2574,36 @@ class Movie(TypedDict):
 from typing import TypedDict
 from typing import NotRequired
 Foo = TypedDict("Foo", {"a.x": NotRequired[int]})
+[typing fixtures/typing-typeddict.pyi]
+
+[case testCannotGetItemNotRequired]
+from typing import TypedDict
+from typing import NotRequired
+TaggedPoint = TypedDict('TaggedPoint', {'x': int, 'y': NotRequired[int]})
+p: TaggedPoint
+p['y']  # E: TypedDict "TaggedPoint" key "y" is not required and might not be present.
+[typing fixtures/typing-typeddict.pyi]
+
+[case testCannotGetItemNotTotal]
+from typing import TypedDict
+TaggedPoint = TypedDict('TaggedPoint', {'x': int, 'y': int}, total=False)
+p: TaggedPoint
+p['y']  # E: TypedDict "TaggedPoint" key "y" is not required and might not be present.
+[typing fixtures/typing-typeddict.pyi]
+
+[case testCanSetItemNotRequired]
+from typing import TypedDict
+from typing import NotRequired
+TaggedPoint = TypedDict('TaggedPoint', {'x': int, 'y': NotRequired[int]})
+p: TaggedPoint
+p['y'] = 1
+[typing fixtures/typing-typeddict.pyi]
+
+[case testCanSetItemNotTotal]
+from typing import TypedDict
+TaggedPoint = TypedDict('TaggedPoint', {'x': int, 'y': int}, total=False)
+p: TaggedPoint
+p['y'] = 1
 [typing fixtures/typing-typeddict.pyi]
 
 -- Union dunders

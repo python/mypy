@@ -87,6 +87,9 @@ DICT_ITEM: Final = ErrorCode(
 TYPEDDICT_ITEM: Final = ErrorCode(
     "typeddict-item", "Check items when constructing TypedDict", "General"
 )
+TYPEDDICT_ITEM_ACCESS: Final = ErrorCode(
+    "typeddict-item-access", "Check NotRequired item access when using TypedDict", "General"
+)
 TYPEDDICT_UNKNOWN_KEY: Final = ErrorCode(
     "typeddict-unknown-key",
     "Check unknown keys when constructing TypedDict",

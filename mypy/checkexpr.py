@@ -3682,6 +3682,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def visit_index_expr(self, e: IndexExpr) -> Type:
         """Type check an index expression (base[index]).
 
+        This function is only used for expressions (rvalues) not for setitem statement (lvalues).
+
         It may also represent type application.
         """
         result = self.visit_index_expr_helper(e)
@@ -3746,7 +3748,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             else:
                 return self.nonliteral_tuple_index_helper(left_type, index)
         elif isinstance(left_type, TypedDictType):
-            return self.visit_typeddict_index_expr(left_type, e.index)
+            return self.visit_typeddict_index_expr(left_type, e.index, is_rvalue=True)
         elif (
             isinstance(left_type, CallableType)
             and left_type.is_type_obj()
@@ -3835,7 +3837,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return union
 
     def visit_typeddict_index_expr(
-        self, td_type: TypedDictType, index: Expression, setitem: bool = False
+        self, td_type: TypedDictType, index: Expression, setitem: bool = False, *, is_rvalue: bool
     ) -> Type:
         if isinstance(index, StrExpr):
             key_names = [index.value]
@@ -3868,6 +3870,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.msg.typeddict_key_not_found(td_type, key_name, index, setitem)
                 return AnyType(TypeOfAny.from_error)
             else:
+                if is_rvalue and not td_type.is_required(key_name):
+                    self.msg.typeddict_key_not_required(td_type, key_name, index)
                 value_types.append(value_type)
         return make_simplified_union(value_types)
 
