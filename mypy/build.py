@@ -116,7 +116,6 @@ CORE_BUILTIN_MODULES: Final = {
     "types",
     "typing_extensions",
     "mypy_extensions",
-    "_importlib_modulespec",
     "_typeshed",
     "_collections_abc",
     "collections",
@@ -662,8 +661,6 @@ class BuildManager:
         )
         for module in CORE_BUILTIN_MODULES:
             if options.use_builtins_fixtures:
-                continue
-            if module == "_importlib_modulespec":
                 continue
             path = self.find_module_cache.find_module(module)
             if not isinstance(path, str):

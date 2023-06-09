@@ -2437,7 +2437,7 @@ def format_type_inner(
     if isinstance(typ, Instance):
         itype = typ
         # Get the short name of the type.
-        if itype.type.fullname in ("types.ModuleType", "_importlib_modulespec.ModuleType"):
+        if itype.type.fullname == "types.ModuleType":
             # Make some common error messages simpler and tidier.
             base_str = "Module"
             if itype.extra_attrs and itype.extra_attrs.mod_name and module_names:
