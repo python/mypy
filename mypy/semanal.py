@@ -375,7 +375,7 @@ class SemanticAnalyzer(
     missing_names: list[set[str]]
     # Callbacks that will be called after semantic analysis to tweak things.
     patches: list[tuple[int, Callable[[], None]]]
-    loop_depth = 0  # Depth of breakable loops
+    loop_depth: list[int]  # Depth of breakable loops
     cur_mod_id = ""  # Current module id (or None) (phase 2)
     _is_stub_file = False  # Are we analyzing a stub file?
     _is_typeshed_stub_file = False  # Are we analyzing a typeshed stub file?
@@ -428,7 +428,7 @@ class SemanticAnalyzer(
         self.tvar_scope = TypeVarLikeScope()
         self.function_stack = []
         self.block_depth = [0]
-        self.loop_depth = 0
+        self.loop_depth = [0]
         self.errors = errors
         self.modules = modules
         self.msg = MessageBuilder(errors, modules)
@@ -1810,12 +1810,14 @@ class SemanticAnalyzer(
         self.locals.append(None)  # Add class scope
         self.is_comprehension_stack.append(False)
         self.block_depth.append(-1)  # The class body increments this to 0
+        self.loop_depth.append(0)
         self._type = info
         self.missing_names.append(set())
 
     def leave_class(self) -> None:
         """Restore analyzer state."""
         self.block_depth.pop()
+        self.loop_depth.pop()
         self.locals.pop()
         self.is_comprehension_stack.pop()
         self._type = self.type_stack.pop()
@@ -3221,7 +3223,7 @@ class SemanticAnalyzer(
         if lval.is_new_def:
             lval.is_inferred_def = s.type is None
 
-        if self.loop_depth > 0:
+        if self.loop_depth[-1] > 0:
             self.fail("Cannot use Final inside a loop", s)
         if self.type and self.type.is_protocol:
             self.msg.protocol_members_cant_be_final(s)
@@ -4700,9 +4702,9 @@ class SemanticAnalyzer(
     def visit_while_stmt(self, s: WhileStmt) -> None:
         self.statement = s
         s.expr.accept(self)
-        self.loop_depth += 1
+        self.loop_depth[-1] += 1
         s.body.accept(self)
-        self.loop_depth -= 1
+        self.loop_depth[-1] -= 1
         self.visit_block_maybe(s.else_body)
 
     def visit_for_stmt(self, s: ForStmt) -> None:
@@ -4724,20 +4726,20 @@ class SemanticAnalyzer(
                 self.store_declared_types(s.index, analyzed)
                 s.index_type = analyzed
 
-        self.loop_depth += 1
+        self.loop_depth[-1] += 1
         self.visit_block(s.body)
-        self.loop_depth -= 1
+        self.loop_depth[-1] -= 1
 
         self.visit_block_maybe(s.else_body)
 
     def visit_break_stmt(self, s: BreakStmt) -> None:
         self.statement = s
-        if self.loop_depth == 0:
+        if self.loop_depth[-1] == 0:
             self.fail('"break" outside loop', s, serious=True, blocker=True)
 
     def visit_continue_stmt(self, s: ContinueStmt) -> None:
         self.statement = s
-        if self.loop_depth == 0:
+        if self.loop_depth[-1] == 0:
             self.fail('"continue" outside loop', s, serious=True, blocker=True)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
@@ -6232,6 +6234,7 @@ class SemanticAnalyzer(
         self.nonlocal_decls.append(set())
         # -1 since entering block will increment this to 0.
         self.block_depth.append(-1)
+        self.loop_depth.append(0)
         self.missing_names.append(set())
         try:
             yield
@@ -6241,6 +6244,7 @@ class SemanticAnalyzer(
             self.global_decls.pop()
             self.nonlocal_decls.pop()
             self.block_depth.pop()
+            self.loop_depth.pop()
             self.missing_names.pop()
 
     def is_func_scope(self) -> bool:
