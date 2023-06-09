@@ -3069,6 +3069,12 @@ class SemanticAnalyzer(
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], (NameExpr, MemberExpr)):
             return False
         lvalue = s.lvalues[0]
+        if isinstance(lvalue, MemberExpr):
+            if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.callee, RefExpr):
+                fullname = s.rvalue.callee.fullname
+                if fullname == "collections.namedtuple" or fullname in TYPED_NAMEDTUPLE_NAMES:
+                    self.fail("NamedTuple type as an attribute is not supported", lvalue)
+            return False
         name = lvalue.name
         namespace = self.qualified_name(name)
         with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
@@ -3076,9 +3082,6 @@ class SemanticAnalyzer(
                 s.rvalue, name, self.is_func_scope()
             )
             if internal_name is None:
-                return False
-            if isinstance(lvalue, MemberExpr):
-                self.fail("NamedTuple type as an attribute is not supported", lvalue)
                 return False
             if internal_name != name:
                 self.fail(
