@@ -2174,3 +2174,13 @@ def f(x: bytes, y: bytearray, z: memoryview) -> None:
     x in y
     x in z
 [builtins fixtures/primitives.pyi]
+
+[case testNoCrashFollowImportsForStubs]
+# flags: --config-file tmp/mypy.ini
+{**{"x": "y"}}
+
+[file mypy.ini]
+\[mypy]
+follow_imports = skip
+follow_imports_for_stubs = true
+[builtins fixtures/dict.pyi]
