@@ -50,14 +50,15 @@ static PyObject *vec_proxy_call(PyObject *self, PyObject *args, PyObject *kw)
 static int
 VecProxy_traverse(VecProxy *self, visitproc visit, void *arg)
 {
-    Py_VISIT((PyObject *)(self->item_type & ~1));
+    if (!vec_is_magic_item_type(self->item_type))
+        Py_VISIT((PyObject *)(self->item_type & ~1));
     return 0;
 }
 
 static void
 VecProxy_dealloc(VecProxy *self)
 {
-    if (self->item_type) {
+    if (self->item_type && !vec_is_magic_item_type(self->item_type)) {
         Py_DECREF((PyObject *)(self->item_type & ~1));
         self->item_type = 0;
     }
@@ -67,7 +68,11 @@ VecProxy_dealloc(VecProxy *self)
 PyObject *vec_type_to_str(size_t item_type, int32_t depth, int32_t optionals) {
     PyObject *item;
     if (depth == 0)
-        item = PyObject_GetAttrString((PyObject *)(item_type & ~1), "__name__");
+        if ((item_type & ~1) == VEC_ITEM_TYPE_I64) {
+            item = PyUnicode_FromFormat("i64");
+        } else {
+            item = PyObject_GetAttrString((PyObject *)(item_type & ~1), "__name__");
+        }
     else
         item = vec_type_to_str(item_type, depth - 1, optionals >> 1);
 
@@ -144,6 +149,7 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
     } else {
         int32_t optionals = 0;
         int32_t depth = 0;
+        size_t item_type;
         if (!PyObject_TypeCheck(item, &PyType_Type)) {
             PyObject *it = extract_optional_item(item);
             if (it != NULL) {
@@ -152,12 +158,22 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
             }
             if (item->ob_type == &VecProxyType) {
                 VecProxy *p = (VecProxy *)item;
-                item = (PyObject *)p->item_type;
+                item_type = p->item_type & ~1;
                 depth = p->depth + 1;
                 optionals |= p->optionals << 1;
             } else if (!PyObject_TypeCheck(item, &PyType_Type)) {
                 PyErr_SetString(PyExc_TypeError, "type object expected in vec[...]");
                 return NULL;
+            } else {
+                item_type = (size_t)item;
+            }
+        } else {
+            if (item == (PyObject *)&VecI64Type) {
+                item_type = VEC_ITEM_TYPE_I64;
+                depth = 1;
+                // TODO: Check optionals?
+            } else {
+                item_type = (size_t)item;
             }
         }
         if (item == (PyObject *)&PyLong_Type
@@ -171,7 +187,7 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
         if (p == NULL)
             return NULL;
         Py_INCREF(item);
-        p->item_type = (size_t)item | ((optionals >> depth) & 1);
+        p->item_type = (size_t)item_type | ((optionals >> depth) & 1);
         p->depth = depth;
         p->optionals = optionals;
         PyObject_GC_Track(p);

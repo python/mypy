@@ -8,6 +8,13 @@
 // use PyErr_Occurred() since this overlaps with valid integer values.
 #define MYPYC_INT_ERROR -113
 
+// Item type constants; must be even but not multiples of 4
+#define VEC_ITEM_TYPE_I64 2
+
+inline size_t vec_is_magic_item_type(size_t item_type) {
+    return item_type & 2;
+}
+
 
 // Buffer objects
 
@@ -305,7 +312,7 @@ static inline int Vec_T_Ext_UnboxItem(VecTExt v, PyObject *item, VecbufTExtItem 
                 unboxed->buf = (PyObject *)o->vec.buf;
                 return 0;
             }
-        } else if (item->ob_type == &VecI64Type && v.buf->item_type == (size_t)I64TypeObj) {
+        } else if (item->ob_type == &VecI64Type && v.buf->item_type == VEC_ITEM_TYPE_I64) {
             VecI64Object *o = (VecI64Object *)item;
             unboxed->len = o->vec.len;
             unboxed->buf = (PyObject *)o->vec.buf;
@@ -336,8 +343,8 @@ static inline PyObject *Vec_T_Ext_BoxItem(VecTExt v, VecbufTExtItem item) {
         return Vec_T_Ext_Box(v);
     } else {
         // Item is a non-nested vec
-        void *item_type = (void *)(v.buf->item_type & ~1);
-        if (item_type == I64TypeObj) {
+        size_t item_type = v.buf->item_type & ~1;
+        if (item_type == VEC_ITEM_TYPE_I64) {
             // vec[i64]
             VecI64 v = { .len = item.len, .buf = (VecbufI64Object *)item.buf };
             return Vec_I64_Box(v);
