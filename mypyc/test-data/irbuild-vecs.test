@@ -11,22 +11,18 @@ def native_class() -> vec[C]:
 [out]
 def primitive():
     r0 :: object
-    r1 :: ptr
-    r2 :: vec[str]
+    r1 :: vec[str]
 L0:
     r0 = load_address PyUnicode_Type
-    r1 = r0
-    r2 = VecTApi.alloc(0, r1)
-    return r2
+    r1 = VecTApi.alloc(0, r0)
+    return r1
 def native_class():
     r0 :: object
-    r1 :: ptr
-    r2 :: vec[__main__.C]
+    r1 :: vec[__main__.C]
 L0:
     r0 = __main__.C :: type
-    r1 = r0
-    r2 = VecTApi.alloc(0, r1)
-    return r2
+    r1 = VecTApi.alloc(0, r0)
+    return r1
 
 [case testVecTAppend]
 from vecs import vec, append
@@ -116,14 +112,10 @@ L0:
     r1 = VecTExtApi.alloc(0, r0, 0, 1)
     return r1
 def g():
-    r0 :: ptr
-    r1 :: object
-    r2 :: vec[vec[int64]]
+    r0 :: vec[vec[int64]]
 L0:
-    r0 = load_address VecI64Api.type
-    r1 = load_mem r0 :: builtins.object*
-    r2 = VecTApi.alloc(0, r1)
-    return r2
+    r0 = VecTExtApi.alloc(0, 2, 0, 1)
+    return r0
 
 [case testVecTLen]
 from vecs import vec
@@ -219,6 +211,28 @@ L2:
     keep_alive v
     return r7
 
+[case testVecNestedAppend]
+from vecs import vec, append
+
+def f(v: vec[vec[str]], vv: vec[str]) -> vec[vec[str]]:
+    return append(v, vv)
+[out]
+def f(v, vv):
+    v :: vec[vec[str]]
+    vv :: vec[str]
+    r0 :: native_int
+    r1 :: object
+    r2, r3 :: VecbufTExtItem{len:native_int, buf:object}
+    r4 :: vec[vec[str]]
+L0:
+    r0 = vv.len
+    r1 = vv.buf
+    r2 = set_element undef, len, r0
+    r3 = set_element r2, buf, r1
+    r4 = VecTExtApi.append(v, r3)
+    keep_alive vv
+    return r4
+
 [case testVecNestedVecI64Append]
 from vecs import vec, append
 from mypy_extensions import i64
@@ -229,10 +243,18 @@ def f(v: vec[vec[i64]], vv: vec[i64]) -> vec[vec[i64]]:
 def f(v, vv):
     v :: vec[vec[int64]]
     vv :: vec[int64]
-    r0 :: vec[vec[int64]]
+    r0 :: native_int
+    r1 :: object
+    r2, r3 :: VecbufTExtItem{len:native_int, buf:object}
+    r4 :: vec[vec[int64]]
 L0:
-    r0 = VecTApi.append(v, vv)
-    return r0
+    r0 = vv.len
+    r1 = vv.buf
+    r2 = set_element undef, len, r0
+    r3 = set_element r2, buf, r1
+    r4 = VecTExtApi.append(v, r3)
+    keep_alive vv
+    return r4
 
 [case testVecNestedVecI64GetItem]
 from vecs import vec

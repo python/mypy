@@ -1711,3 +1711,25 @@ L0:
     r1 = get_element_ptr r0 len :: VecObject
     r2 = load_mem r1 :: int64*
     return r2
+
+[case testVecNestedAppend]
+from vecs import vec, append
+
+def f(vv: vec[vec[str]], v: vec[str]) -> vec[vec[str]]:
+    return append(vv, v)
+[out]
+def f(vv, v):
+    vv :: vec[vec[str]]
+    v :: vec[str]
+    r0 :: native_int
+    r1 :: object
+    r2, r3 :: VecbufTExtItem{len:native_int, buf:object}
+    r4 :: vec[vec[str]]
+L0:
+    r0 = v.len
+    r1 = v.buf
+    r2 = set_element undef, len, r0
+    r3 = set_element r2, buf, r1
+    inc_ref vv
+    r4 = VecTExtApi.append(vv, r3)
+    return r4

@@ -238,6 +238,7 @@ class RPrimitive(RType):
         is_refcounted: bool,
         is_native_int: bool = False,
         is_signed: bool = False,
+        is_pointer: bool = False,
         ctype: str = "PyObject *",
         size: int = PLATFORM_SIZE,
         error_overlap: bool = False,
@@ -313,11 +314,19 @@ class RPrimitive(RType):
 # little as possible, as generic ops are typically slow. Other types,
 # including other primitive types and RInstance, are usually much
 # faster.
-object_rprimitive: Final = RPrimitive("builtins.object", is_unboxed=False, is_refcounted=True)
+object_rprimitive: Final = RPrimitive(
+    "builtins.object", is_unboxed=False, is_refcounted=True, is_pointer=True
+)
 
 # represents a low level pointer of an object
 object_pointer_rprimitive: Final = RPrimitive(
-    "object_ptr", is_unboxed=False, is_refcounted=False, ctype="PyObject **"
+    "object_ptr", is_unboxed=False, is_refcounted=False, ctype="PyObject **", is_pointer=True
+)
+
+# Similar to object_primitive, but doesn not use automatic reference
+# counting. Useful for temporaries.
+object_non_refcounted_rprimitive: Final = RPrimitive(
+    "builtins.object", is_unboxed=False, is_refcounted=False, is_pointer=True
 )
 
 # Arbitrary-precision integer (corresponds to Python 'int'). Small
@@ -451,7 +460,7 @@ pointer_rprimitive: Final = RPrimitive("ptr", is_unboxed=True, is_refcounted=Fal
 
 # Untyped pointer, represented as void * in the C backend
 c_pointer_rprimitive: Final = RPrimitive(
-    "c_ptr", is_unboxed=False, is_refcounted=False, ctype="void *"
+    "c_ptr", is_unboxed=False, is_refcounted=False, ctype="void *", is_pointer=True
 )
 
 cstring_rprimitive: Final = RPrimitive(
@@ -495,14 +504,18 @@ none_rprimitive: Final = RPrimitive(
 # immortal, but since this is expected to be very rare, and the immortality checks
 # can be pretty expensive for lists, we treat lists as non-immortal.
 list_rprimitive: Final = RPrimitive(
-    "builtins.list", is_unboxed=False, is_refcounted=True, may_be_immortal=False
+    "builtins.list", is_unboxed=False, is_refcounted=True, is_pointer=True, may_be_immortal=False
 )
 
 # Python dict object (or an instance of a subclass of dict).
-dict_rprimitive: Final = RPrimitive("builtins.dict", is_unboxed=False, is_refcounted=True)
+dict_rprimitive: Final = RPrimitive(
+    "builtins.dict", is_unboxed=False, is_refcounted=True, is_pointer=True
+)
 
 # Python set object (or an instance of a subclass of set).
-set_rprimitive: Final = RPrimitive("builtins.set", is_unboxed=False, is_refcounted=True)
+set_rprimitive: Final = RPrimitive(
+    "builtins.set", is_unboxed=False, is_refcounted=True, is_pointer=True
+)
 
 # Python frozenset object (or an instance of a subclass of frozenset).
 frozenset_rprimitive: Final = RPrimitive(
@@ -511,10 +524,14 @@ frozenset_rprimitive: Final = RPrimitive(
 
 # Python str object. At the C layer, str is referred to as unicode
 # (PyUnicode).
-str_rprimitive: Final = RPrimitive("builtins.str", is_unboxed=False, is_refcounted=True)
+str_rprimitive: Final = RPrimitive(
+    "builtins.str", is_unboxed=False, is_refcounted=True, is_pointer=True
+)
 
 # Python bytes object.
-bytes_rprimitive: Final = RPrimitive("builtins.bytes", is_unboxed=False, is_refcounted=True)
+bytes_rprimitive: Final = RPrimitive(
+    "builtins.bytes", is_unboxed=False, is_refcounted=True, is_pointer=True
+)
 
 # Python bytearray object.
 bytearray_rprimitive: Final = RPrimitive(
@@ -523,10 +540,14 @@ bytearray_rprimitive: Final = RPrimitive(
 
 # Tuple of an arbitrary length (corresponds to Tuple[t, ...], with
 # explicit '...').
-tuple_rprimitive: Final = RPrimitive("builtins.tuple", is_unboxed=False, is_refcounted=True)
+tuple_rprimitive: Final = RPrimitive(
+    "builtins.tuple", is_unboxed=False, is_refcounted=True, is_pointer=True
+)
 
 # Python range object.
-range_rprimitive: Final = RPrimitive("builtins.range", is_unboxed=False, is_refcounted=True)
+range_rprimitive: Final = RPrimitive(
+    "builtins.range", is_unboxed=False, is_refcounted=True, is_pointer=True
+)
 
 KNOWN_NATIVE_TYPES: Final = {
     name: RPrimitive(name, is_unboxed=False, is_refcounted=True, dependencies=(LIBRT_STRINGS,))
@@ -1007,18 +1028,22 @@ class RVec(RType):
     def __init__(self, item_type: RType) -> None:
         self.name = "vec[%s]" % item_type
         self.item_type = item_type
+        self.names = ["len", "buf"]
         if isinstance(item_type, RUnion):
             non_opt = optional_value_type(item_type)
         else:
             non_opt = item_type
         if is_int64_rprimitive(item_type):
             self._ctype = "VecI64"
+            self.types = [c_pyssize_t_rprimitive, VecbufI64Object]
             self.buf_type = VecbufI64Object
         elif isinstance(non_opt, RVec):
             self._ctype = "VecTExt"
-            # TODO: buf_type
+            self.types = [c_pyssize_t_rprimitive, VecbufTObject]
+            self.buf_type = VecbufTExtObject
         else:
             self._ctype = "VecT"
+            self.types = [c_pyssize_t_rprimitive, VecbufTObject]
             self.buf_type = VecbufTObject
 
     def field_type(self, name: str) -> RType:
@@ -1288,17 +1313,29 @@ VecbufTObject = RStruct(
     types=[PyVarObject, c_pyssize_t_rprimitive, object_rprimitive],
 )
 
-"""
-# vec[t], for nested vec or optional t
-VecTExtObject = RStruct(
-    name="VecTExtObject",
-    names=["ob_base", "len", "depth", "optionals", "items"],
+VecbufTExtItem = RStruct(
+    name="VecbufTExtItem",
+    names=["len", "buf"],
+    types=[c_pyssize_t_rprimitive, object_non_refcounted_rprimitive],
+)
+
+# Buffer for vec[vec[t]]
+VecbufTExtObject = RStruct(
+    name="VecbufTExtObject",
+    names=["ob_base", "item_type", "depth", "optionals", "items"],
     types=[
-        PyObject,
+        PyVarObject,
         c_pyssize_t_rprimitive,
         int32_rprimitive,
         int32_rprimitive,
-        object_rprimitive,
+        VecbufTExtItem,
     ],
 )
-"""
+
+VecbufTExtObject_rprimitive = RPrimitive(
+    "VecbufTExtObject_ptr",
+    is_unboxed=False,
+    is_pointer=True,
+    is_refcounted=True,
+    ctype="VecbufTExtObject *",
+)

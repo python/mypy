@@ -13,6 +13,7 @@ from mypyc.ir.ops import (
     Branch,
     CallC,
     ComparisonOp,
+    GetElement,
     GetElementPtr,
     Integer,
     IntOp,
@@ -20,6 +21,8 @@ from mypyc.ir.ops import (
     LoadAddress,
     RaiseStandardError,
     Register,
+    SetElement,
+    Undef,
     Unreachable,
     Value,
 )
@@ -30,6 +33,8 @@ from mypyc.ir.rtypes import (
     RType,
     RUnion,
     RVec,
+    c_size_t_rprimitive,
+    VecbufTExtItem,
     bool_rprimitive,
     c_int_rprimitive,
     c_pyssize_t_rprimitive,
@@ -85,13 +90,16 @@ def vec_create(
 
     typeobj, optionals, depth = vec_item_type_info(builder, item_type, line)
     if typeobj is not None:
-        if depth == 0:
+        typeval: Value
+        if not (optionals & 1):
+            typeval = typeobj
+        else:
             typeval = Register(pointer_rprimitive)
             builder.add(Assign(typeval, typeobj))
-            if optionals:
-                typeval = builder.add(
-                    IntOp(pointer_rprimitive, typeval, Integer(1, pointer_rprimitive), IntOp.OR)
-                )
+            typeval = builder.add(
+                IntOp(pointer_rprimitive, typeval, Integer(1, pointer_rprimitive), IntOp.OR)
+            )
+        if depth == 0:
             call = CallC(
                 "VecTApi.alloc",
                 [length, typeval],
@@ -107,7 +115,7 @@ def vec_create(
                 "VecTExtApi.alloc",
                 [
                     length,
-                    typeobj,
+                    typeval,
                     Integer(optionals, int32_rprimitive),
                     Integer(depth, int32_rprimitive),
                 ],
@@ -138,7 +146,9 @@ def vec_create_initialized(
     step = step_size(item_type)
     items_end = builder.int_add(items_start, builder.int_mul(length, step))
 
-    for_loop = builder.begin_for(items_start, items_end, step, signed=False)
+    for_loop = builder.begin_for(
+        items_start, items_end, Integer(step, c_pyssize_t_rprimitive), signed=False
+    )
     builder.set_mem(for_loop.index, item_type, init)
     for_loop.finish()
 
@@ -167,6 +177,9 @@ def step_size(item_type: RType) -> int:
         return PLATFORM_SIZE
 
 
+VEC_TYPE_INFO_I64: Final = 2
+
+
 def vec_item_type_info(
     builder: "LowLevelIRBuilder", typ: RType, line: int
 ) -> Tuple[Optional[Value], int, int]:
@@ -175,20 +188,18 @@ def vec_item_type_info(
         return builder.load_address(src, typ), 0, 0
     elif isinstance(typ, RInstance):
         return builder.load_native_type_object(typ.name), 0, 0
+    elif is_int64_rprimitive(typ):
+        return Integer(VEC_TYPE_INFO_I64, c_size_t_rprimitive), 0, 0
     elif isinstance(typ, RUnion):
         non_opt = optional_value_type(typ)
         if non_opt is not None:
             typeval, optionals, depth = vec_item_type_info(builder, non_opt, line)
             if typeval is not None:
-                return typeval, (optionals << 1) | 1, depth
+                return typeval, optionals | 1, depth
     elif isinstance(typ, RVec):
-        if is_int64_rprimitive(typ.item_type):
-            addr = builder.load_address("VecI64Api.type", pointer_rprimitive)
-            load = builder.load_mem(addr, object_rprimitive)
-            return load, 0, 0
         typeval, optionals, depth = vec_item_type_info(builder, typ.item_type, line)
         if typeval is not None:
-            return typeval, optionals, depth + 1
+            return typeval, optionals << 1, depth + 1
     return None, 0, 0
 
 
@@ -274,27 +285,39 @@ def vec_set_item(
     builder.keep_alive([base])
 
 
+def convert_to_t_ext_item(builder: LowLevelIRBuilder, item: Value) -> Value:
+    vec_len = builder.add(GetElement(item, "len"))
+    vec_buf = builder.add(GetElement(item, "buf"))
+    temp = builder.add(SetElement(Undef(VecbufTExtItem), "len", vec_len))
+    return builder.add(SetElement(temp, "buf", vec_buf))
+
+
 def vec_append(builder: "LowLevelIRBuilder", vec: Value, item: Value, line: int) -> Value:
     vec_type = vec.type
     assert isinstance(vec_type, RVec)
     item_type = vec_type.item_type
-    item = builder.coerce(item, item_type, line)
+    coerced_item = builder.coerce(item, item_type, line)
     if is_int64_rprimitive(item_type):
         name = "VecI64Api.append"
     elif vec_depth(vec_type) == 0:
         name = "VecTApi.append"
     else:
+        coerced_item = convert_to_t_ext_item(builder, coerced_item)
         name = "VecTExtApi.append"
-    call = CallC(
-        name,
-        [vec, item],
-        vec_type,
-        steals=[True, False],
-        is_borrowed=False,
-        error_kind=ERR_MAGIC,
-        line=line,
+    call = builder.add(
+        CallC(
+            name,
+            [vec, coerced_item],
+            vec_type,
+            steals=[True, False],
+            is_borrowed=False,
+            error_kind=ERR_MAGIC,
+            line=line,
+        )
     )
-    return builder.add(call)
+    if vec_depth(vec_type) > 0:
+        builder.keep_alive([item])
+    return call
 
 
 def vec_pop(builder: "LowLevelIRBuilder", base: Value, index: Value, line: int) -> Value:
@@ -358,7 +381,9 @@ def vec_contains(builder: "LowLevelIRBuilder", vec: Value, target: Value, line: 
 
     true, end = BasicBlock(), BasicBlock()
 
-    for_loop = builder.begin_for(items_start, items_end, step, signed=False)
+    for_loop = builder.begin_for(
+        items_start, items_end, Integer(step, c_pyssize_t_rprimitive), signed=False
+    )
     item = builder.load_mem(for_loop.index, item_type)
     comp = builder.binary_op(item, target, "==", line)
     false = BasicBlock()

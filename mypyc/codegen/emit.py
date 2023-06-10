@@ -1132,8 +1132,7 @@ class Emitter:
             elif not isinstance(typ.item_type, RVec):
                 api = "VecTApi"
             else:
-                # TODO: Support more item types
-                assert False, typ
+                api = "VecTExtApi"
             self.emit_line(f"{declaration}{dest} = {api}.box({src});")
         else:
             assert not typ.is_unboxed
