@@ -78,8 +78,8 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RInstance,
     RTuple,
-    bool_rprimitive,
     RVec,
+    bool_rprimitive,
     c_pyssize_t_rprimitive,
     int_rprimitive,
     is_any_int,
@@ -680,8 +680,9 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
             return value
 
     index_reg = builder.accept(expr.index, can_borrow=can_borrow)
-    return builder.builder.get_item(base, index_reg, builder.node_type(expr), expr.line,
-                                    can_borrow=builder.can_borrow)
+    return builder.builder.get_item(
+        base, index_reg, builder.node_type(expr), expr.line, can_borrow=builder.can_borrow
+    )
 
 
 def try_constant_fold(builder: IRBuilder, expr: Expression) -> Value | None:

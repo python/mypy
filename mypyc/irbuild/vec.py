@@ -1,6 +1,7 @@
 """Generate IR for vecs.vec operations"""
 
 from __future__ import annotations
+
 from typing import TYPE_CHECKING, List, Optional, Tuple, Union, cast
 
 from mypyc.common import PLATFORM_SIZE
@@ -25,9 +26,9 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RInstance,
     RPrimitive,
+    RTuple,
     RType,
     RUnion,
-    RTuple,
     RVec,
     bool_rprimitive,
     c_int_rprimitive,
@@ -37,13 +38,14 @@ from mypyc.ir.rtypes import (
     is_c_py_ssize_t_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
+    is_int_rprimitive,
     is_none_rprimitive,
+    is_short_int_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
     optional_value_type,
     pointer_rprimitive,
     vec_depth,
-    is_short_int_rprimitive, is_int_rprimitive,
 )
 from mypyc.primitives.registry import builtin_names
 
@@ -88,7 +90,8 @@ def vec_create(
             builder.add(Assign(typeval, typeobj))
             if optionals:
                 typeval = builder.add(
-                    IntOp(pointer_rprimitive, typeval, Integer(1, pointer_rprimitive), IntOp.OR))
+                    IntOp(pointer_rprimitive, typeval, Integer(1, pointer_rprimitive), IntOp.OR)
+                )
             call = CallC(
                 "VecTApi.alloc",
                 [length, typeval],

@@ -1271,15 +1271,13 @@ VecbufI64Object = RStruct(
     types=[PyVarObject, int64_rprimitive],
 )
 
-#vecbuf_i64_rprimitive: Final = RPrimitive(
+# vecbuf_i64_rprimitive: Final = RPrimitive(
 #    "VecbufI64Object", is_unboxed=False, is_refcounted=True, ctype="VecbufI64Object *"
-#)
+# )
 
 # vec[i64]
 VecI64 = RStruct(
-    name="VecI64",
-    names=["len", "buf"],
-    types=[c_pyssize_t_rprimitive, object_rprimitive],
+    name="VecI64", names=["len", "buf"], types=[c_pyssize_t_rprimitive, object_rprimitive]
 )
 
 

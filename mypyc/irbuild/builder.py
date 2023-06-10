@@ -92,10 +92,10 @@ from mypyc.ir.rtypes import (
     RTuple,
     RType,
     RUnion,
+    RVec,
     bitmap_rprimitive,
     bool_rprimitive,
     bytes_rprimitive,
-    RVec,
     c_int_rprimitive,
     c_pyssize_t_rprimitive,
     dict_rprimitive,
@@ -130,7 +130,6 @@ from mypyc.irbuild.targets import (
     AssignmentTargetTuple,
 )
 from mypyc.irbuild.util import bytes_from_str, is_constant
-from mypyc.irbuild.util import is_constant
 from mypyc.irbuild.vec import vec_set_item
 from mypyc.options import CompilerOptions
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op

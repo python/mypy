@@ -37,8 +37,10 @@ from mypy.nodes import (
 )
 from mypy.types import AnyType, TypeOfAny
 from mypyc.ir.ops import (
+    ERR_MAGIC,
     BasicBlock,
     Call,
+    CallC,
     Extend,
     Integer,
     PrimitiveDescription,
@@ -48,8 +50,6 @@ from mypyc.ir.ops import (
     Truncate,
     Unreachable,
     Value,
-    ERR_MAGIC,
-    CallC,
 )
 from mypyc.ir.rtypes import (
     RInstance,
