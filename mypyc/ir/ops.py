@@ -34,6 +34,7 @@ from mypy_extensions import trait
 from mypyc.ir.rtypes import (
     RArray,
     RInstance,
+    RStruct,
     RTuple,
     RType,
     RVoid,
@@ -242,6 +243,24 @@ class CString(Value):
         self.value = value
         self.type = cstring_rprimitive
         self.line = line
+
+
+class Undef(Value):
+    """An undefined value.
+
+    Use Undef() as the initial value followed by one or more SetElement
+    ops to initialize a struct. Pseudocode example:
+
+      r0 = set_element undef MyStruct, "field1", f1
+      r1 = set_element r0, "field2", f2
+      # r1 now has new struct value with two fields set
+
+    Warning: The generated code can use an arbitrary runtime values for
+    this (likely not explicitly initialized).
+    """
+
+    def __init__(self, rtype: RType) -> None:
+        self.type = rtype
 
 
 class Op(Value):
@@ -1637,6 +1656,39 @@ class GetElementPtr(RegisterOp):
 
 
 @final
+class SetElement(RegisterOp):
+    """Set the value of a struct element.
+
+    This evaluates to a new struct with the changed value.
+
+    Use together with Undef to initialize a fresh struct value
+    (see Undef for more details).
+    """
+
+    error_kind = ERR_NEVER
+
+    def __init__(self, src: Value, field: str, item: Value, line: int = -1) -> None:
+        super().__init__(line)
+        assert isinstance(src.type, RStruct), src.type
+        self.type = src.type
+        self.src = src
+        self.item = item
+        self.field = field
+
+    def sources(self) -> list[Value]:
+        return [self.src]
+
+    def set_sources(self, new: list[Value]) -> None:
+        (self.src,) = new
+
+    def stolen(self) -> list[Value]:
+        return [self.src]
+
+    def accept(self, visitor: OpVisitor[T]) -> T:
+        return visitor.visit_set_element(self)
+
+
+@final
 class LoadAddress(RegisterOp):
     """Get the address of a value: result = (type)&src
 
@@ -1906,6 +1958,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_get_element_ptr(self, op: GetElementPtr) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_set_element(self, op: SetElement) -> T:
         raise NotImplementedError
 
     @abstractmethod

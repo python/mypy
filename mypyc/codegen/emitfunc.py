@@ -70,12 +70,14 @@ from mypyc.ir.ops import (
     Register,
     Return,
     SetAttr,
+    SetElement,
     SetMem,
     Truncate,
     TupleGet,
     TupleSet,
     Unborrow,
     Unbox,
+    Undef,
     Unreachable,
     Value,
 )
@@ -812,6 +814,26 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 dest, op.type._ctype, op.src_type.name, src, op.field
             )
         )
+
+    def visit_set_element(self, op: SetElement) -> None:
+        # TODO: do properly
+        dest = self.reg(op)
+        item = self.reg(op.item)
+        field = op.field
+        if isinstance(op.src, Undef):
+            self.emit_line(f"{dest}.{field} = {item};")
+        else:
+            src = self.reg(op.src)
+            # TODO: Support tuples (or use RStruct for tuples)
+            src_type = op.src.type
+            assert isinstance(src_type, RStruct), src_type
+            init_items = []
+            for n in src_type.names:
+                if n != field:
+                    init_items.append(f"{src}.{n}")
+                else:
+                    init_items.append(item)
+            self.emit_line(f"{dest} = ({self.ctype(src_type)}) {{ {', '.join(init_items)} }};")
 
     def visit_load_address(self, op: LoadAddress) -> None:
         typ = op.type
