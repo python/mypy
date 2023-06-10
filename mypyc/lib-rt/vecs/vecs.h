@@ -287,7 +287,7 @@ VecTExt Vec_T_Ext_Remove(VecTExt vec, VecbufTExtItem x);
 VecTExtPopResult Vec_T_Ext_Pop(VecTExt v, Py_ssize_t index);
 
 // Return 0 on success, -1 on error. Store unboxed item in *unboxed if successful.
-// Return a new reference.
+// Return a *borrowed* reference.
 static inline int Vec_T_Ext_UnboxItem(VecTExt v, PyObject *item, VecbufTExtItem *unboxed) {
     int optionals = v.buf->optionals;
     if (item == Py_None && (optionals & 1)) {
@@ -303,14 +303,12 @@ static inline int Vec_T_Ext_UnboxItem(VecTExt v, PyObject *item, VecbufTExtItem 
             if (o->vec.buf->item_type == v.buf->item_type) {
                 unboxed->len = o->vec.len;
                 unboxed->buf = (PyObject *)o->vec.buf;
-                Py_INCREF(unboxed->buf);
                 return 0;
             }
         } else if (item->ob_type == &VecI64Type && v.buf->item_type == (size_t)I64TypeObj) {
             VecI64Object *o = (VecI64Object *)item;
             unboxed->len = o->vec.len;
             unboxed->buf = (PyObject *)o->vec.buf;
-            Py_INCREF(unboxed->buf);
             return 0;
         }
     } else if (item->ob_type == &VecTExtType) {
@@ -320,7 +318,6 @@ static inline int Vec_T_Ext_UnboxItem(VecTExt v, PyObject *item, VecbufTExtItem 
             && o->vec.buf->optionals == (optionals >> 1)) {
             unboxed->len = o->vec.len;
             unboxed->buf = (PyObject *)o->vec.buf;
-            Py_INCREF(unboxed->buf);
             return 0;
         }
     }

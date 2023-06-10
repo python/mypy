@@ -133,6 +133,8 @@ int vec_t_ext_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
         VecbufTExtItem item;
         if (Vec_T_Ext_UnboxItem(v, o, &item) < 0)
             return -1;
+        VEC_INCREF(item);
+        VEC_DECREF(v.buf->items[i]);
         v.buf->items[i] = item;
         return 0;
     } else {
@@ -186,9 +188,10 @@ PyObject *vec_t_ext_richcompare(PyObject *self, PyObject *other, int op) {
     return res;
 }
 
-// Steals references to vec and x
+// Steals reference to vec (but not x)
 VecTExt Vec_T_Ext_Append(VecTExt vec, VecbufTExtItem x) {
     Py_ssize_t cap = VEC_CAP(vec);
+    VEC_INCREF(x);
     if (vec.len < cap) {
         vec.buf->items[vec.len] = x;
         vec.len++;
@@ -198,8 +201,10 @@ VecTExt Vec_T_Ext_Append(VecTExt vec, VecbufTExtItem x) {
         // TODO: Avoid initializing to zero here
         VecTExt new = vec_t_ext_alloc(new_size, vec.buf->item_type, vec.buf->optionals,
                                       vec.buf->depth);
-        if (VEC_IS_ERROR(new))
+        if (VEC_IS_ERROR(new)) {
+            VEC_DECREF(x);
             return new;
+        }
         // Copy items to new vec.
         memcpy(new.buf->items, vec.buf->items, sizeof(VecbufTExtItem) * vec.len);
         // TODO: How to safely represent deleted items?
