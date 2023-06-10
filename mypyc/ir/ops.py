@@ -269,6 +269,7 @@ class Undef(Value):
         self.type = rtype
 
 
+
 class Op(Value):
     """Abstract base class for all IR operations.
 
@@ -1751,7 +1752,7 @@ class SetElement(RegisterOp):
 
     def __init__(self, src: Value, field: str, item: Value, line: int = -1) -> None:
         super().__init__(line)
-        assert isinstance(src.type, RStruct), src.type
+        assert isinstance(src.type, (RStruct, RVec)), src.type
         self.type = src.type
         self.src = src
         self.item = item
@@ -2041,6 +2042,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_get_element(self, op: GetElement) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_set_element(self, op: SetElement) -> T:
         raise NotImplementedError
 
     @abstractmethod

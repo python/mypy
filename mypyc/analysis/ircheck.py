@@ -453,6 +453,9 @@ class OpChecker(OpVisitor[None]):
     def visit_get_element(self, op: GetElement) -> None:
         pass
 
+    def visit_set_element(self, op: SetElement) -> None:
+        pass
+
     def visit_get_element_ptr(self, op: GetElementPtr) -> None:
         pass
 

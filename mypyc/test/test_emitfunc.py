@@ -692,6 +692,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             """cpy_r_r0 = (Foo) { cpy_r_st.b, cpy_r_i32, cpy_r_st.y };""",
         )
 
+
     def test_load_address(self) -> None:
         self.assert_emit(
             LoadAddress(object_rprimitive, "PyDict_Type"),

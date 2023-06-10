@@ -275,6 +275,9 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
     def visit_get_element(self, op: GetElement) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
+    def visit_set_element(self, op: SetElement) -> GenAndKill[T]:
+        return self.visit_register_op(op)
+
     def visit_get_element_ptr(self, op: GetElementPtr) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
