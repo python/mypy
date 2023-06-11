@@ -144,7 +144,7 @@ typedef struct _VecTFeatures {
     PyTypeObject *buf_type;
     VecT (*alloc)(Py_ssize_t, size_t);
     PyObject *(*box)(VecT);
-    VecT (*unbox)(size_t);
+    VecT (*unbox)(PyObject *, size_t);
     VecT (*append)(VecT, PyObject *);
     VecTPopResult (*pop)(VecT, Py_ssize_t);
     VecT (*remove)(VecT, PyObject *);
@@ -169,7 +169,7 @@ typedef struct _VecTExtFeatures {
     PyTypeObject *buf_type;
     VecTExt (*alloc)(Py_ssize_t, size_t, int optionals, int depth);
     PyObject *(*box)(VecTExt);
-    VecTExt (*unbox)(size_t, int optionals, int depth);
+    VecTExt (*unbox)(PyObject *, size_t, int optionals, int depth);
     VecTExt (*append)(VecTExt, VecbufTExtItem);
     VecTExtPopResult (*pop)(VecTExt, Py_ssize_t);
     VecTExt (*remove)(VecTExt, VecbufTExtItem);

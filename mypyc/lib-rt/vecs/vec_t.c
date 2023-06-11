@@ -31,6 +31,19 @@ PyObject *Vec_T_Box(VecT vec) {
     return (PyObject *)obj;
 }
 
+VecT Vec_T_Unbox(PyObject *obj, size_t item_type) {
+    if (obj->ob_type == &VecTType) {
+        VecT result = ((VecTObject *)obj)->vec;
+        if (result.buf->item_type == item_type) {
+            VEC_INCREF(result);  // TODO: Should we borrow instead?
+            return result;
+        }
+    }
+    // TODO: Better error message, with name of type
+    PyErr_SetString(PyExc_TypeError, "vec[t] expected");
+    return Vec_T_Error();
+}
+
 VecT Vec_T_New(Py_ssize_t size, size_t item_type) {
     VecT vec = vec_t_alloc(size, item_type);
     if (VEC_IS_ERROR(vec))
@@ -389,7 +402,7 @@ VecTFeatures TFeatures = {
     &VecbufTType,
     Vec_T_New,
     Vec_T_Box,
-    NULL,  // TODO: unbox
+    Vec_T_Unbox,
     Vec_T_Append,
     Vec_T_Pop,
     Vec_T_Remove,

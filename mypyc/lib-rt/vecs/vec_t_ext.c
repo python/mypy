@@ -39,6 +39,21 @@ PyObject *Vec_T_Ext_Box(VecTExt vec) {
     return (PyObject *)obj;
 }
 
+VecTExt Vec_T_Ext_Unbox(PyObject *obj, size_t item_type, int optionals, int depth) {
+    if (obj->ob_type == &VecTExtType) {
+        VecTExt result = ((VecTExtObject *)obj)->vec;
+        if (result.buf->item_type == item_type
+            && result.buf->optionals == optionals
+            && result.buf->depth == depth) {
+            VEC_INCREF(result);  // TODO: Should we borrow instead?
+            return result;
+        }
+    }
+    // TODO: Better error message, with name of type
+    PyErr_SetString(PyExc_TypeError, "vec[t] expected");
+    return Vec_T_Ext_Error();
+}
+
 VecTExt Vec_T_Ext_New(Py_ssize_t size, size_t item_type, int32_t optionals, int32_t depth) {
     VecTExt vec = vec_t_ext_alloc(size, item_type, optionals, depth);
     if (VEC_IS_ERROR(vec))
@@ -446,7 +461,7 @@ VecTExtFeatures TExtFeatures = {
     &VecbufTExtType,
     Vec_T_Ext_New,
     Vec_T_Ext_Box,
-    NULL,  // TODO: unbox
+    Vec_T_Ext_Unbox,
     Vec_T_Ext_Append,
     Vec_T_Ext_Pop,
     Vec_T_Ext_Remove,
