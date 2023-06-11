@@ -227,7 +227,7 @@ def f(v, vv):
     vv :: vec[str]
     r0 :: native_int
     r1 :: object
-    r2, r3 :: VecbufTExtItem{len:native_int, buf:object}
+    r2, r3 :: VecbufTExtItem{len:native_int, buf:object_nrc}
     r4 :: vec[vec[str]]
 L0:
     r0 = vv.len
@@ -250,7 +250,7 @@ def f(v, vv):
     vv :: vec[int64]
     r0 :: native_int
     r1 :: object
-    r2, r3 :: VecbufTExtItem{len:native_int, buf:object}
+    r2, r3 :: VecbufTExtItem{len:native_int, buf:object_nrc}
     r4 :: vec[vec[int64]]
 L0:
     r0 = vv.len

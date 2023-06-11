@@ -1704,13 +1704,11 @@ def C.f(self, x):
     self :: __main__.C
     x :: int64
     r0 :: vec[int64]
-    r1 :: ptr
-    r2 :: int64
+    r1 :: native_int
 L0:
     r0 = borrow self.v
-    r1 = get_element_ptr r0 len :: VecObject
-    r2 = load_mem r1 :: int64*
-    return r2
+    r1 = r0.len
+    return r1
 
 [case testVecNestedAppend]
 from vecs import vec, append
@@ -1723,7 +1721,7 @@ def f(vv, v):
     v :: vec[str]
     r0 :: native_int
     r1 :: object
-    r2, r3 :: VecbufTExtItem{len:native_int, buf:object}
+    r2, r3 :: VecbufTExtItem{len:native_int, buf:object_nrc}
     r4 :: vec[vec[str]]
 L0:
     r0 = v.len
