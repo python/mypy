@@ -1589,10 +1589,9 @@ def g(s: str) -> None: pass
 def f(v):
     v :: vec[str]
     t :: int64
-    r0 :: native_int
-    r1 :: ptr
-    r2 :: int64
-    r3 :: bit
+    r0, r1 :: native_int
+    r2 :: bit
+    r3 :: object
     r4 :: ptr
     r5 :: native_int
     r6 :: ptr
@@ -1603,16 +1602,15 @@ L0:
     t = 0
     r0 = 0
 L1:
-    r1 = get_element_ptr v len :: VecObject
-    r2 = load_mem r1 :: int64*
-    r3 = r0 < r2 :: signed
-    if r3 goto L2 else goto L4 :: bool
+    r1 = v.len
+    r2 = r0 < r1 :: signed
+    if r2 goto L2 else goto L4 :: bool
 L2:
-    r4 = get_element_ptr v items :: VecTObject
+    r3 = v.buf
+    r4 = get_element_ptr r3 items :: VecbufTObject
     r5 = r0 * 8
     r6 = r4 + r5
     r7 = load_mem r6 :: builtins.str*
-    inc_ref r7
     s = r7
     r8 = g(s)
     dec_ref s
