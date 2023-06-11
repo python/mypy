@@ -265,7 +265,9 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return self.format("%r = %r %s %r", op, op.lhs, op.op_str[op.op], op.rhs)
 
     def visit_load_mem(self, op: LoadMem) -> str:
-        return self.format("%r = load_mem %r :: %t*", op, op.src, op.type)
+        return self.format(
+            "%r = %sload_mem %r :: %t*", op, self.borrow_prefix(op), op.src, op.type
+        )
 
     def visit_set_mem(self, op: SetMem) -> str:
         return self.format("set_mem %r, %r :: %t*", op.dest, op.src, op.dest_type)

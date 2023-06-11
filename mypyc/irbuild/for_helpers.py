@@ -733,7 +733,7 @@ class ForAsyncIterable(ForGenerator):
 
         def except_match() -> Value:
             addr = builder.add(LoadAddress(pointer_rprimitive, stop_async_iteration_op.src, line))
-            return builder.add(LoadMem(stop_async_iteration_op.type, addr))
+            return builder.add(LoadMem(stop_async_iteration_op.type, addr, borrow=True))
 
         def try_body() -> None:
             awaitable = builder.call_c(anext_op, [builder.read(self.iter_target)], line)

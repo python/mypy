@@ -57,7 +57,7 @@ def f_obj.__call__(__mypyc_self__, arg):
     r27 :: bool
 L0:
     r0 = get_element_ptr arg ob_type :: PyObject
-    r1 = load_mem r0 :: builtins.object*
+    r1 = borrow load_mem r0 :: builtins.object*
     keep_alive arg
     r2 = __mypyc_self__.dispatch_cache
     r3 = CPyDict_GetWithNone(r2, r1)
@@ -82,7 +82,7 @@ L2:
 L3:
     r16 = load_address PyLong_Type
     r17 = get_element_ptr r6 ob_type :: PyObject
-    r18 = load_mem r17 :: builtins.object*
+    r18 = borrow load_mem r17 :: builtins.object*
     keep_alive r6
     r19 = r18 == r16
     if r19 goto L4 else goto L7 :: bool
@@ -195,7 +195,7 @@ def f_obj.__call__(__mypyc_self__, x):
     r24 :: None
 L0:
     r0 = get_element_ptr x ob_type :: PyObject
-    r1 = load_mem r0 :: builtins.object*
+    r1 = borrow load_mem r0 :: builtins.object*
     keep_alive x
     r2 = __mypyc_self__.dispatch_cache
     r3 = CPyDict_GetWithNone(r2, r1)
@@ -220,7 +220,7 @@ L2:
 L3:
     r16 = load_address PyLong_Type
     r17 = get_element_ptr r6 ob_type :: PyObject
-    r18 = load_mem r17 :: builtins.object*
+    r18 = borrow load_mem r17 :: builtins.object*
     keep_alive r6
     r19 = r18 == r16
     if r19 goto L4 else goto L5 :: bool

@@ -1117,7 +1117,7 @@ L0:
     r0 = borrow x.a
     r1 = __main__.D :: type
     r2 = get_element_ptr r0 ob_type :: PyObject
-    r3 = load_mem r2 :: builtins.object*
+    r3 = borrow load_mem r2 :: builtins.object*
     r4 = r3 == r1
     if r4 goto L1 else goto L2 :: bool
 L1:
