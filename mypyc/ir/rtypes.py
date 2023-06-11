@@ -326,7 +326,7 @@ object_pointer_rprimitive: Final = RPrimitive(
 # Similar to object_primitive, but doesn not use automatic reference
 # counting. Useful for temporaries.
 object_non_refcounted_rprimitive: Final = RPrimitive(
-    "builtins.object", is_unboxed=False, is_refcounted=False, is_pointer=True
+    "builtins.object_nrc", is_unboxed=False, is_refcounted=False, is_pointer=True
 )
 
 # Arbitrary-precision integer (corresponds to Python 'int'). Small
