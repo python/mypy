@@ -12,6 +12,7 @@ from mypyc.ir.ops import (
     Assign,
     BasicBlock,
     Branch,
+    DecRef,
     CallC,
     ComparisonOp,
     GetElement,
@@ -284,7 +285,8 @@ def vec_set_item(
     if item_type.is_refcounted:
         # Read an unborrowed reference to cause a decref to be
         # generated for the old item.
-        old_item = builder.load_mem(item_addr, item_type, borrow=False)
+        old_item = builder.load_mem(item_addr, item_type, borrow=True)
+        builder.add(DecRef(old_item))
     builder.set_mem(item_addr, item_type, item)
     builder.keep_alive([base])
 

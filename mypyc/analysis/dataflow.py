@@ -31,6 +31,8 @@ from mypyc.ir.ops import (
     InitStatic,
     Integer,
     IntOp,
+    IncRef,
+    DecRef,
     KeepAlive,
     LoadAddress,
     LoadErrorValue,
@@ -196,6 +198,12 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
     @abstractmethod
     def visit_set_mem(self, op: SetMem) -> GenAndKill[T]:
         raise NotImplementedError
+
+    def visit_inc_ref(self, op: IncRef) -> GenAndKill[T]:
+        return self.visit_register_op(op)
+
+    def visit_dec_ref(self, op: DecRef) -> GenAndKill[T]:
+        return self.visit_register_op(op)
 
     def visit_call(self, op: Call) -> GenAndKill[T]:
         return self.visit_register_op(op)
