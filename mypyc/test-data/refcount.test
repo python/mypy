@@ -1548,31 +1548,37 @@ def f(n: i64) -> vec[Optional[str]]:
 def f(n):
     n :: int64
     r0, r1 :: object
-    r2 :: vec[union[str, None]]
-    r3 :: ptr
-    r4 :: int64
-    r5, r6 :: ptr
-    r7 :: bit
-    r8 :: ptr
+    r2, r3 :: ptr
+    r4 :: vec[union[str, None]]
+    r5 :: object
+    r6 :: ptr
+    r7 :: int64
+    r8, r9 :: ptr
+    r10 :: bit
+    r11 :: ptr
 L0:
     r0 = box(None, 1)
     r1 = load_address PyUnicode_Type
-    r2 = VecTExtApi.alloc(n, r1, 1, 0)
-    r3 = get_element_ptr r2 items :: VecTExtObject
-    r4 = n * 8
-    r5 = r3 + r4
-    r6 = r3
+    inc_ref r1
+    r2 = r1
+    r3 = r2 | 1
+    r4 = VecTApi.alloc(n, r3)
+    r5 = r4.buf
+    r6 = get_element_ptr r5 items :: VecbufTObject
+    r7 = n * 8
+    r8 = r6 + r7
+    r9 = r6
 L1:
-    r7 = r6 < r5 :: unsigned
-    if r7 goto L2 else goto L3 :: bool
+    r10 = r9 < r8 :: unsigned
+    if r10 goto L2 else goto L3 :: bool
 L2:
     inc_ref r0
-    set_mem r6, r0 :: union*
-    r8 = r6 + 8
-    r6 = r8
+    set_mem r9, r0 :: union*
+    r11 = r9 + 8
+    r9 = r11
     goto L1
 L3:
-    return r2
+    return r4
 
 [case testVecTForLoop]
 from vecs import vec
