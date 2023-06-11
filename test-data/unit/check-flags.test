@@ -2184,3 +2184,14 @@ def f(x: bytes, y: bytearray, z: memoryview) -> None:
 follow_imports = skip
 follow_imports_for_stubs = true
 [builtins fixtures/dict.pyi]
+
+[case testReturnAnyLambda]
+# flags: --warn-return-any
+from typing import Any, Callable
+
+def cb(f: Callable[[int], int]) -> None: ...
+a: Any
+cb(lambda x: a)  # OK
+
+fn = lambda x: a
+cb(fn)
