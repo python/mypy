@@ -216,6 +216,20 @@ L2:
     keep_alive v
     return r7
 
+[case testNewTPopLast]
+from typing import Tuple
+from vecs import vec, pop
+
+def pop_last(v: vec[str]) -> Tuple[vec[str], str]:
+    return pop(v)
+[out]
+def pop_last(v):
+    v :: vec[str]
+    r0 :: tuple[vec[str], str]
+L0:
+    r0 = VecTApi.pop(v, -1)
+    return r0
+
 [case testVecNestedAppend]
 from vecs import vec, append
 
