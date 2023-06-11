@@ -1559,7 +1559,6 @@ def f(n):
 L0:
     r0 = box(None, 1)
     r1 = load_address PyUnicode_Type
-    inc_ref r1
     r2 = r1
     r3 = r2 | 1
     r4 = VecTApi.alloc(n, r3)
@@ -1640,21 +1639,25 @@ def f() -> vec[str]:
 def f():
     r0, r1 :: str
     r2 :: object
-    r3 :: vec[str]
-    r4, r5, r6 :: ptr
+    r3 :: ptr
+    r4 :: vec[str]
+    r5 :: object
+    r6, r7, r8 :: ptr
 L0:
     r0 = 'x'
     r1 = 'y'
     r2 = load_address PyUnicode_Type
-    r3 = VecTApi.alloc(2, r2)
-    r4 = get_element_ptr r3 items :: VecTObject
+    r3 = r2
+    r4 = VecTApi.alloc(2, r3)
+    r5 = r4.buf
+    r6 = get_element_ptr r5 items :: VecbufTObject
     inc_ref r0
-    set_mem r4, r0 :: builtins.str*
-    r5 = r4 + 8
+    set_mem r6, r0 :: builtins.str*
+    r7 = r6 + 8
     inc_ref r1
-    set_mem r5, r1 :: builtins.str*
-    r6 = r5 + 8
-    return r3
+    set_mem r7, r1 :: builtins.str*
+    r8 = r7 + 8
+    return r4
 
 [case testVecI64GetItemBorrowVec]
 from vecs import vec
@@ -1792,7 +1795,6 @@ def f(v, n):
     r10, vv :: vec[str]
 L0:
     r0 = load_address PyUnicode_Type
-    inc_ref r0
     r1 = r0
     r2 = VecTExtApi.alloc(0, r1, 0, 1)
     r3 = r2.len
