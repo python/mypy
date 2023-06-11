@@ -144,7 +144,6 @@ L0:
 [case testVecTGetItem]
 from vecs import vec
 from mypy_extensions import i64
-from typing import Optional
 
 def f(v: vec[str], n: i64) -> str:
     return v[n]
@@ -255,6 +254,30 @@ L0:
     r4 = VecTExtApi.append(v, r3)
     keep_alive vv
     return r4
+
+[case testVecNestedLen]
+from vecs import vec
+from mypy_extensions import i64
+from typing import Optional
+
+def f(v: vec[vec[str]]) -> i64:
+    return len(v)
+
+def g(v: vec[vec[i64]]) -> i64:
+    return len(v)
+[out]
+def f(v):
+    v :: vec[vec[str]]
+    r0 :: native_int
+L0:
+    r0 = v.len
+    return r0
+def g(v):
+    v :: vec[vec[int64]]
+    r0 :: native_int
+L0:
+    r0 = v.len
+    return r0
 
 [case testVecNestedVecI64GetItem]
 from vecs import vec

@@ -1733,3 +1733,37 @@ L0:
     inc_ref vv
     r4 = VecTExtApi.append(vv, r3)
     return r4
+
+[case testVecTGetItem]
+from vecs import vec
+from mypy_extensions import i64
+
+def f(v: vec[str], n: i64) -> str:
+    return v[n]
+[out]
+def f(v, n):
+    v :: vec[str]
+    n :: int64
+    r0 :: native_int
+    r1 :: bit
+    r2 :: bool
+    r3 :: object
+    r4 :: ptr
+    r5 :: int64
+    r6 :: ptr
+    r7 :: str
+L0:
+    r0 = v.len
+    r1 = n < r0 :: unsigned
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = raise IndexError
+    unreachable
+L2:
+    r3 = v.buf
+    r4 = get_element_ptr r3 items :: VecbufTObject
+    r5 = n * 8
+    r6 = r4 + r5
+    r7 = load_mem r6 :: builtins.str*
+    inc_ref r7
+    return r7
