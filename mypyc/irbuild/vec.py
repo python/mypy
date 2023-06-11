@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, List, Optional, Tuple, Union, cast
+from typing_extensions import Final
 
 from mypyc.common import PLATFORM_SIZE
 from mypyc.ir.ops import (
@@ -239,7 +240,8 @@ def vec_check_index(builder: "LowLevelIRBuilder", lenv: Value, index: Value, lin
     builder.activate_block(ok)
 
 
-def vec_get_item(builder: "LowLevelIRBuilder", base: Value, index: Value, line: int) -> Value:
+def vec_get_item(builder: "LowLevelIRBuilder", base: Value, index: Value, line: int, *,
+                 can_borrow: bool = False) -> Value:
     """Generate inlined vec __getitem__ call.
 
     We inline this, since it's simple but performance-critical.
@@ -251,8 +253,8 @@ def vec_get_item(builder: "LowLevelIRBuilder", base: Value, index: Value, line: 
     len_val = vec_len_native(builder, base)
     vec_check_index(builder, len_val, index, line)
     item_addr = vec_item_ptr(builder, base, index)
-    result = builder.load_mem(item_addr, vtype.item_type)
-    builder.keep_alive([base])
+    result = builder.load_mem(item_addr, vtype.item_type, borrow=can_borrow)
+    builder.keep_alives.append(base)
     return result
 
 
@@ -282,8 +284,7 @@ def vec_set_item(
     if item_type.is_refcounted:
         # Read an unborrowed reference to cause a decref to be
         # generated for the old item.
-        old_item = builder.load_mem(item_addr, item_type)
-        old_item.is_borrowed = False
+        old_item = builder.load_mem(item_addr, item_type, borrow=False)
     builder.set_mem(item_addr, item_type, item)
     builder.keep_alive([base])
 
@@ -387,7 +388,7 @@ def vec_contains(builder: "LowLevelIRBuilder", vec: Value, target: Value, line: 
     for_loop = builder.begin_for(
         items_start, items_end, Integer(step, c_pyssize_t_rprimitive), signed=False
     )
-    item = builder.load_mem(for_loop.index, item_type)
+    item = builder.load_mem(for_loop.index, item_type, borrow=True)
     comp = builder.binary_op(item, target, "==", line)
     false = BasicBlock()
     builder.add(Branch(comp, true, false, Branch.BOOL))

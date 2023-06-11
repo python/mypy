@@ -1666,25 +1666,25 @@ def C.f(self, x):
     self :: __main__.C
     x :: int64
     r0 :: vec[int64]
-    r1 :: ptr
-    r2 :: native_int
-    r3 :: bit
-    r4 :: bool
+    r1 :: native_int
+    r2 :: bit
+    r3 :: bool
+    r4 :: object
     r5 :: ptr
     r6 :: int64
     r7 :: ptr
     r8 :: int64
 L0:
     r0 = borrow self.v
-    r1 = get_element_ptr r0 len :: VecObject
-    r2 = load_mem r1 :: native_int*
-    r3 = x < r2 :: unsigned
-    if r3 goto L2 else goto L1 :: bool
+    r1 = r0.len
+    r2 = x < r1 :: unsigned
+    if r2 goto L2 else goto L1 :: bool
 L1:
-    r4 = raise IndexError
+    r3 = raise IndexError
     unreachable
 L2:
-    r5 = get_element_ptr r0 items :: VecI64Object
+    r4 = r0.buf
+    r5 = get_element_ptr r4 items :: VecbufI64Object
     r6 = x * 8
     r7 = r5 + r6
     r8 = load_mem r7 :: int64*
@@ -1765,5 +1765,50 @@ L2:
     r5 = n * 8
     r6 = r4 + r5
     r7 = load_mem r6 :: builtins.str*
-    inc_ref r7
     return r7
+
+[case testVecNestedGetItem]
+from vecs import vec
+from mypy_extensions import i64
+
+def f(v: vec[vec[str]], n: i64) -> None:
+    vv = vec[vec[str]]()[n]
+[out]
+def f(v, n):
+    v :: vec[vec[str]]
+    n :: int64
+    r0 :: object
+    r1 :: ptr
+    r2 :: vec[vec[str]]
+    r3 :: native_int
+    r4 :: bit
+    r5 :: bool
+    r6 :: object
+    r7 :: ptr
+    r8 :: int64
+    r9 :: ptr
+    r10, vv :: vec[str]
+L0:
+    r0 = load_address PyUnicode_Type
+    inc_ref r0
+    r1 = r0
+    r2 = VecTExtApi.alloc(0, r1, 0, 1)
+    r3 = r2.len
+    r4 = n < r3 :: unsigned
+    if r4 goto L2 else goto L3 :: bool
+L1:
+    r5 = raise IndexError
+    unreachable
+L2:
+    r6 = r2.buf
+    r7 = get_element_ptr r6 items :: VecbufTExtObject
+    r8 = n * 8
+    r9 = r7 + r8
+    r10 = load_mem r9 :: vec[str]*
+    dec_ref r2
+    vv = r10
+    dec_ref vv
+    return 1
+L3:
+    dec_ref r2
+    goto L1

@@ -2001,7 +2001,7 @@ class LowLevelIRBuilder:
             if is_int_rprimitive(item.type) or is_short_int_rprimitive(item.type):
                 item = self.coerce(item, int64_rprimitive, line)
             if is_int64_rprimitive(item.type):
-                return vec_get_item(self, base, item, line)
+                return vec_get_item(self, base, item, line, can_borrow=can_borrow)
         # TODO: Move special casing for RTuple here from transform_index_expr
         return self.gen_method_call(
             base, "__getitem__", [item], result_type, line, can_borrow=can_borrow

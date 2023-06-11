@@ -285,7 +285,41 @@ L0:
     r0 = v.len
     return r0
 
-[case testVecNestedVecI64GetItem]
+[case testVecNestedGetItem]
+from vecs import vec
+from mypy_extensions import i64
+
+def f(v: vec[vec[str]], n: i64) -> vec[str]:
+    return v[n]
+[out]
+def f(v, n):
+    v :: vec[vec[str]]
+    n :: int64
+    r0 :: native_int
+    r1 :: bit
+    r2 :: bool
+    r3 :: object
+    r4 :: ptr
+    r5 :: int64
+    r6 :: ptr
+    r7 :: vec[str]
+L0:
+    r0 = v.len
+    r1 = n < r0 :: unsigned
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = raise IndexError
+    unreachable
+L2:
+    r3 = v.buf
+    r4 = get_element_ptr r3 items :: VecbufTExtObject
+    r5 = n * 8
+    r6 = r4 + r5
+    r7 = load_mem r6 :: vec[str]*
+    keep_alive v
+    return r7
+
+[case testVecNestedI64GetItem]
 from vecs import vec
 from mypy_extensions import i64
 
@@ -295,27 +329,115 @@ def f(v: vec[vec[i64]], n: i64) -> vec[i64]:
 def f(v, n):
     v :: vec[vec[int64]]
     n :: int64
-    r0 :: ptr
-    r1 :: native_int
-    r2 :: bit
-    r3 :: bool
+    r0 :: native_int
+    r1 :: bit
+    r2 :: bool
+    r3 :: object
     r4 :: ptr
     r5 :: int64
     r6 :: ptr
     r7 :: vec[int64]
 L0:
-    r0 = get_element_ptr v len :: VecObject
-    r1 = load_mem r0 :: native_int*
-    r2 = n < r1 :: unsigned
-    if r2 goto L2 else goto L1 :: bool
+    r0 = v.len
+    r1 = n < r0 :: unsigned
+    if r1 goto L2 else goto L1 :: bool
 L1:
-    r3 = raise IndexError
+    r2 = raise IndexError
     unreachable
 L2:
-    r4 = get_element_ptr v items :: VecTObject
+    r3 = v.buf
+    r4 = get_element_ptr r3 items :: VecbufTExtObject
     r5 = n * 8
     r6 = r4 + r5
     r7 = load_mem r6 :: vec[int64]*
+    keep_alive v
+    return r7
+
+[case testVecNestedI64GetItemWithBorrow]
+from vecs import vec
+from mypy_extensions import i64
+
+def f(v: vec[vec[i64]], n: i64) -> i64:
+    return v[n][n]
+[out]
+def f(v, n):
+    v :: vec[vec[int64]]
+    n :: int64
+    r0 :: native_int
+    r1 :: bit
+    r2 :: bool
+    r3 :: object
+    r4 :: ptr
+    r5 :: int64
+    r6 :: ptr
+    r7 :: vec[int64]
+    r8 :: native_int
+    r9 :: bit
+    r10 :: bool
+    r11 :: object
+    r12 :: ptr
+    r13 :: int64
+    r14 :: ptr
+    r15 :: int64
+L0:
+    r0 = v.len
+    r1 = n < r0 :: unsigned
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = raise IndexError
+    unreachable
+L2:
+    r3 = v.buf
+    r4 = get_element_ptr r3 items :: VecbufTExtObject
+    r5 = n * 8
+    r6 = r4 + r5
+    r7 = borrow load_mem r6 :: vec[int64]*
+    r8 = r7.len
+    r9 = n < r8 :: unsigned
+    if r9 goto L4 else goto L3 :: bool
+L3:
+    r10 = raise IndexError
+    unreachable
+L4:
+    r11 = r7.buf
+    r12 = get_element_ptr r11 items :: VecbufI64Object
+    r13 = n * 8
+    r14 = r12 + r13
+    r15 = load_mem r14 :: int64*
+    keep_alive v, r7
+    return r15
+
+[case testVecDoublyNestedGetItem]
+from vecs import vec
+from mypy_extensions import i64
+
+def f(v: vec[vec[vec[str]]], n: i64) -> vec[vec[str]]:
+    return v[n]
+[out]
+def f(v, n):
+    v :: vec[vec[vec[str]]]
+    n :: int64
+    r0 :: native_int
+    r1 :: bit
+    r2 :: bool
+    r3 :: object
+    r4 :: ptr
+    r5 :: int64
+    r6 :: ptr
+    r7 :: vec[vec[str]]
+L0:
+    r0 = v.len
+    r1 = n < r0 :: unsigned
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = raise IndexError
+    unreachable
+L2:
+    r3 = v.buf
+    r4 = get_element_ptr r3 items :: VecbufTExtObject
+    r5 = n * 8
+    r6 = r4 + r5
+    r7 = load_mem r6 :: vec[vec[str]]*
     keep_alive v
     return r7
 
