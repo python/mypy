@@ -646,6 +646,45 @@ L0:
     r0 = VecTApi.pop(v, -1)
     return r0
 
+[case testVecTConstructFromListComprehension]
+from vecs import vec
+from mypy_extensions import i64
+
+def f(n: i64) -> vec[str]:
+    return vec[str](['x' for x in range(i64(5))])
+[out]
+def f(n):
+    n :: int64
+    r0 :: object
+    r1 :: ptr
+    r2, r3 :: vec[str]
+    r4, x :: int64
+    r5 :: bit
+    r6 :: str
+    r7 :: vec[str]
+    r8 :: int64
+L0:
+    r0 = load_address PyUnicode_Type
+    r1 = r0
+    r2 = VecTApi.alloc(0, r1)
+    r3 = r2
+    r4 = 0
+    x = r4
+L1:
+    r5 = r4 < 5 :: signed
+    if r5 goto L2 else goto L4 :: bool
+L2:
+    r6 = 'x'
+    r7 = VecTApi.append(r3, r6)
+    r3 = r7
+L3:
+    r8 = r4 + 1
+    r4 = r8
+    x = r8
+    goto L1
+L4:
+    return r3
+
 [case testVecNestedCreateEmpty]
 from vecs import vec, append
 from mypy_extensions import i64
