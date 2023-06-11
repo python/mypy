@@ -2192,3 +2192,6 @@ from typing import Any, Callable
 def cb(f: Callable[[int], int]) -> None: ...
 a: Any
 cb(lambda x: a)  # OK
+
+fn = lambda x: a
+cb(fn)
