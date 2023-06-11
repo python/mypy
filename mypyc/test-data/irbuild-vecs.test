@@ -11,18 +11,22 @@ def native_class() -> vec[C]:
 [out]
 def primitive():
     r0 :: object
-    r1 :: vec[str]
+    r1 :: ptr
+    r2 :: vec[str]
 L0:
     r0 = load_address PyUnicode_Type
-    r1 = VecTApi.alloc(0, r0)
-    return r1
+    r1 = r0
+    r2 = VecTApi.alloc(0, r1)
+    return r2
 def native_class():
     r0 :: object
-    r1 :: vec[__main__.C]
+    r1 :: ptr
+    r2 :: vec[__main__.C]
 L0:
     r0 = __main__.C :: type
-    r1 = VecTApi.alloc(0, r0)
-    return r1
+    r1 = r0
+    r2 = VecTApi.alloc(0, r1)
+    return r2
 
 [case testVecTAppend]
 from vecs import vec, append
@@ -106,11 +110,13 @@ def g() -> vec[vec[i64]]:
 [out]
 def f():
     r0 :: object
-    r1 :: vec[vec[str]]
+    r1 :: ptr
+    r2 :: vec[vec[str]]
 L0:
     r0 = load_address PyUnicode_Type
-    r1 = VecTExtApi.alloc(0, r0, 0, 1)
-    return r1
+    r1 = r0
+    r2 = VecTExtApi.alloc(0, r1, 0, 1)
+    return r2
 def g():
     r0 :: vec[vec[int64]]
 L0:

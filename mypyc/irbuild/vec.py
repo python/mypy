@@ -91,14 +91,17 @@ def vec_create(
     typeobj, optionals, depth = vec_item_type_info(builder, item_type, line)
     if typeobj is not None:
         typeval: Value
-        if not (optionals & 1):
+        if isinstance(typeobj, Integer):
             typeval = typeobj
         else:
+            # Create an integer which will hold the type object * as an integral value.
+            # Assign implicitly coerces between pointer/integer types.
             typeval = Register(pointer_rprimitive)
             builder.add(Assign(typeval, typeobj))
-            typeval = builder.add(
-                IntOp(pointer_rprimitive, typeval, Integer(1, pointer_rprimitive), IntOp.OR)
-            )
+            if optionals & 1:
+                typeval = builder.add(
+                    IntOp(pointer_rprimitive, typeval, Integer(1, pointer_rprimitive), IntOp.OR)
+                )
         if depth == 0:
             call = CallC(
                 "VecTApi.alloc",
