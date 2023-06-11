@@ -1,22 +1,25 @@
 from __future__ import annotations
 
 from mypy.nodes import (
+    Block,
     Decorator,
     Expression,
     FuncDef,
     FuncItem,
+    Import,
     LambdaExpr,
     MemberExpr,
     MypyFile,
     NameExpr,
+    Node,
     SymbolNode,
     Var,
 )
-from mypy.traverser import TraverserVisitor
+from mypy.traverser import ExtendedTraverserVisitor
 from mypyc.errors import Errors
 
 
-class PreBuildVisitor(TraverserVisitor):
+class PreBuildVisitor(ExtendedTraverserVisitor):
     """Mypy file AST visitor run before building the IR.
 
     This collects various things, including:
@@ -26,6 +29,7 @@ class PreBuildVisitor(TraverserVisitor):
     * Find non-local variables (free variables)
     * Find property setters
     * Find decorators of functions
+    * Find module import groups
 
     The main IR build pass uses this information.
     """
@@ -68,9 +72,25 @@ class PreBuildVisitor(TraverserVisitor):
         # Map function to indices of decorators to remove
         self.decorators_to_remove: dict[FuncDef, list[int]] = decorators_to_remove
 
+        # A mapping of import groups (a series of Import nodes with
+        # nothing inbetween) where each group is keyed by its first
+        # import node.
+        self.module_import_groups: dict[Import, list[Import]] = {}
+        self._current_import_group: Import | None = None
+
         self.errors: Errors = errors
 
         self.current_file: MypyFile = current_file
+
+    def visit(self, o: Node) -> bool:
+        if not isinstance(o, Import):
+            self._current_import_group = None
+        return True
+
+    def visit_block(self, block: Block) -> None:
+        self._current_import_group = None
+        super().visit_block(block)
+        self._current_import_group = None
 
     def visit_decorator(self, dec: Decorator) -> None:
         if dec.decorators:
@@ -123,6 +143,14 @@ class PreBuildVisitor(TraverserVisitor):
         super().visit_func(func)
         self.funcs.pop()
 
+    def visit_import(self, imp: Import) -> None:
+        if self._current_import_group is not None:
+            self.module_import_groups[self._current_import_group].append(imp)
+        else:
+            self.module_import_groups[imp] = [imp]
+            self._current_import_group = imp
+        super().visit_import(imp)
+
     def visit_name_expr(self, expr: NameExpr) -> None:
         if isinstance(expr.node, (Var, FuncDef)):
             self.visit_symbol_node(expr.node)
@@ -162,12 +190,10 @@ class PreBuildVisitor(TraverserVisitor):
     def is_parent(self, fitem: FuncItem, child: FuncItem) -> bool:
         # Check if child is nested within fdef (possibly indirectly
         # within multiple nested functions).
-        if child in self.nested_funcs:
-            parent = self.nested_funcs[child]
-            if parent == fitem:
-                return True
-            return self.is_parent(fitem, parent)
-        return False
+        if child not in self.nested_funcs:
+            return False
+        parent = self.nested_funcs[child]
+        return parent == fitem or self.is_parent(fitem, parent)
 
     def add_free_variable(self, symbol: SymbolNode) -> None:
         # Find the function where the symbol was (likely) first declared,

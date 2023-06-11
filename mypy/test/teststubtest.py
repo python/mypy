@@ -19,7 +19,7 @@ from mypy.test.data import root_dir
 @contextlib.contextmanager
 def use_tmp_dir(mod_name: str) -> Iterator[str]:
     current = os.getcwd()
-    current_syspath = sys.path[:]
+    current_syspath = sys.path.copy()
     with tempfile.TemporaryDirectory() as tmp:
         try:
             os.chdir(tmp)
@@ -27,7 +27,7 @@ def use_tmp_dir(mod_name: str) -> Iterator[str]:
                 sys.path.insert(0, tmp)
             yield tmp
         finally:
-            sys.path = current_syspath[:]
+            sys.path = current_syspath.copy()
             if mod_name in sys.modules:
                 del sys.modules[mod_name]
 
@@ -123,11 +123,10 @@ def run_stubtest(
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             test_stubs(parse_options([TEST_MODULE_NAME] + options), use_builtins_fixtures=True)
-        # remove cwd as it's not available from outside
-        return (
+        return remove_color_code(
             output.getvalue()
-            .replace(os.path.realpath(tmp_dir) + os.sep, "")
-            .replace(tmp_dir + os.sep, "")
+            # remove cwd as it's not available from outside
+            .replace(os.path.realpath(tmp_dir) + os.sep, "").replace(tmp_dir + os.sep, "")
         )
 
 
@@ -302,7 +301,7 @@ class StubtestUnit(unittest.TestCase):
             )
 
     @collect_cases
-    def test_default_value(self) -> Iterator[Case]:
+    def test_default_presence(self) -> Iterator[Case]:
         yield Case(
             stub="def f1(text: str = ...) -> None: ...",
             runtime="def f1(text = 'asdf'): pass",
@@ -334,6 +333,59 @@ class StubtestUnit(unittest.TestCase):
             """,
             runtime="def f6(text = None): pass",
             error="f6",
+        )
+
+    @collect_cases
+    def test_default_value(self) -> Iterator[Case]:
+        yield Case(
+            stub="def f1(text: str = 'x') -> None: ...",
+            runtime="def f1(text = 'y'): pass",
+            error="f1",
+        )
+        yield Case(
+            stub='def f2(text: bytes = b"x\'") -> None: ...',
+            runtime='def f2(text = b"x\'"): pass',
+            error=None,
+        )
+        yield Case(
+            stub='def f3(text: bytes = b"y\'") -> None: ...',
+            runtime='def f3(text = b"x\'"): pass',
+            error="f3",
+        )
+        yield Case(
+            stub="def f4(text: object = 1) -> None: ...",
+            runtime="def f4(text = 1.0): pass",
+            error="f4",
+        )
+        yield Case(
+            stub="def f5(text: object = True) -> None: ...",
+            runtime="def f5(text = 1): pass",
+            error="f5",
+        )
+        yield Case(
+            stub="def f6(text: object = True) -> None: ...",
+            runtime="def f6(text = True): pass",
+            error=None,
+        )
+        yield Case(
+            stub="def f7(text: object = not True) -> None: ...",
+            runtime="def f7(text = False): pass",
+            error=None,
+        )
+        yield Case(
+            stub="def f8(text: object = not True) -> None: ...",
+            runtime="def f8(text = True): pass",
+            error="f8",
+        )
+        yield Case(
+            stub="def f9(text: object = {1: 2}) -> None: ...",
+            runtime="def f9(text = {1: 3}): pass",
+            error="f9",
+        )
+        yield Case(
+            stub="def f10(text: object = [1, 2]) -> None: ...",
+            runtime="def f10(text = [1, 2]): pass",
+            error=None,
         )
 
     @collect_cases
@@ -714,6 +766,20 @@ class StubtestUnit(unittest.TestCase):
     def test_type_alias(self) -> Iterator[Case]:
         yield Case(
             stub="""
+            import collections.abc
+            import re
+            import typing
+            from typing import Callable, Dict, Generic, Iterable, List, Match, Tuple, TypeVar, Union
+            """,
+            runtime="""
+            import collections.abc
+            import re
+            from typing import Callable, Dict, Generic, Iterable, List, Match, Tuple, TypeVar, Union
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
             class X:
                 def f(self) -> None: ...
             Y = X
@@ -725,27 +791,18 @@ class StubtestUnit(unittest.TestCase):
             """,
             error="Y.f",
         )
-        yield Case(
-            stub="""
-            from typing import Tuple
-            A = Tuple[int, str]
-            """,
-            runtime="A = (int, str)",
-            error="A",
-        )
+        yield Case(stub="A = Tuple[int, str]", runtime="A = (int, str)", error="A")
         # Error if an alias isn't present at runtime...
         yield Case(stub="B = str", runtime="", error="B")
         # ... but only if the alias isn't private
         yield Case(stub="_C = int", runtime="", error=None)
         yield Case(
             stub="""
-            from typing import Tuple
             D = tuple[str, str]
             E = Tuple[int, int, int]
             F = Tuple[str, int]
             """,
             runtime="""
-            from typing import List, Tuple
             D = Tuple[str, str]
             E = Tuple[int, int, int]
             F = List[str]
@@ -754,13 +811,11 @@ class StubtestUnit(unittest.TestCase):
         )
         yield Case(
             stub="""
-            from typing import Union
             G = str | int
             H = Union[str, bool]
             I = str | int
             """,
             runtime="""
-            from typing import Union
             G = Union[str, int]
             H = Union[str, bool]
             I = str
@@ -769,16 +824,12 @@ class StubtestUnit(unittest.TestCase):
         )
         yield Case(
             stub="""
-            import typing
-            from collections.abc import Iterable
-            from typing import Dict
             K = dict[str, str]
             L = Dict[int, int]
-            KK = Iterable[str]
+            KK = collections.abc.Iterable[str]
             LL = typing.Iterable[str]
             """,
             runtime="""
-            from typing import Iterable, Dict
             K = Dict[str, str]
             L = Dict[int, int]
             KK = Iterable[str]
@@ -788,14 +839,12 @@ class StubtestUnit(unittest.TestCase):
         )
         yield Case(
             stub="""
-            from typing import Generic, TypeVar
             _T = TypeVar("_T")
             class _Spam(Generic[_T]):
                 def foo(self) -> None: ...
             IntFood = _Spam[int]
             """,
             runtime="""
-            from typing import Generic, TypeVar
             _T = TypeVar("_T")
             class _Bacon(Generic[_T]):
                 def foo(self, arg): pass
@@ -806,14 +855,11 @@ class StubtestUnit(unittest.TestCase):
         yield Case(stub="StrList = list[str]", runtime="StrList = ['foo', 'bar']", error="StrList")
         yield Case(
             stub="""
-            import collections.abc
-            from typing import Callable
-            N = Callable[[str], bool]
+            N = typing.Callable[[str], bool]
             O = collections.abc.Callable[[int], str]
-            P = Callable[[str], bool]
+            P = typing.Callable[[str], bool]
             """,
             runtime="""
-            from typing import Callable
             N = Callable[[str], bool]
             O = Callable[[int], str]
             P = int
@@ -844,17 +890,7 @@ class StubtestUnit(unittest.TestCase):
             """,
             error=None,
         )
-        yield Case(
-            stub="""
-            from typing import Match
-            M = Match[str]
-            """,
-            runtime="""
-            from typing import Match
-            M = Match[str]
-            """,
-            error=None,
-        )
+        yield Case(stub="M = Match[str]", runtime="M = Match[str]", error=None)
         yield Case(
             stub="""
             class Baz:
@@ -887,37 +923,32 @@ class StubtestUnit(unittest.TestCase):
         if sys.version_info >= (3, 10):
             yield Case(
                 stub="""
-                import collections.abc
-                import re
-                from typing import Callable, Dict, Match, Iterable, Tuple, Union
                 Q = Dict[str, str]
                 R = dict[int, int]
                 S = Tuple[int, int]
                 T = tuple[str, str]
                 U = int | str
                 V = Union[int, str]
-                W = Callable[[str], bool]
+                W = typing.Callable[[str], bool]
                 Z = collections.abc.Callable[[str], bool]
-                QQ = Iterable[str]
+                QQ = typing.Iterable[str]
                 RR = collections.abc.Iterable[str]
-                MM = Match[str]
+                MM = typing.Match[str]
                 MMM = re.Match[str]
                 """,
                 runtime="""
-                from collections.abc import Callable, Iterable
-                from re import Match
                 Q = dict[str, str]
                 R = dict[int, int]
                 S = tuple[int, int]
                 T = tuple[str, str]
                 U = int | str
                 V = int | str
-                W = Callable[[str], bool]
-                Z = Callable[[str], bool]
-                QQ = Iterable[str]
-                RR = Iterable[str]
-                MM = Match[str]
-                MMM = Match[str]
+                W = collections.abc.Callable[[str], bool]
+                Z = collections.abc.Callable[[str], bool]
+                QQ = collections.abc.Iterable[str]
+                RR = collections.abc.Iterable[str]
+                MM = re.Match[str]
+                MMM = re.Match[str]
                 """,
                 error=None,
             )
@@ -975,7 +1006,7 @@ class StubtestUnit(unittest.TestCase):
 
     @collect_cases
     def test_all_in_stub_different_to_all_at_runtime(self) -> Iterator[Case]:
-        # We *should* emit an error with the module name itself,
+        # We *should* emit an error with the module name itself + __all__,
         # if the stub *does* define __all__,
         # but the stub's __all__ is inconsistent with the runtime's __all__
         yield Case(
@@ -987,7 +1018,7 @@ class StubtestUnit(unittest.TestCase):
             __all__ = []
             foo = 'foo'
             """,
-            error="",
+            error="__all__",
         )
 
     @collect_cases
@@ -1029,6 +1060,9 @@ class StubtestUnit(unittest.TestCase):
         yield Case(stub="", runtime="import sys", error=None)
         yield Case(stub="", runtime="def g(): ...", error="g")
         yield Case(stub="", runtime="CONSTANT = 0", error="CONSTANT")
+        yield Case(stub="", runtime="import re; constant = re.compile('foo')", error="constant")
+        yield Case(stub="", runtime="from json.scanner import NUMBER_RE", error=None)
+        yield Case(stub="", runtime="from string import ascii_letters", error=None)
 
     @collect_cases
     def test_non_public_1(self) -> Iterator[Case]:
@@ -1084,6 +1118,263 @@ class StubtestUnit(unittest.TestCase):
         )
 
     @collect_cases
+    def test_has_runtime_final_decorator(self) -> Iterator[Case]:
+        yield Case(
+            stub="from typing_extensions import final",
+            runtime="""
+            import functools
+            from typing_extensions import final
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            @final
+            class A: ...
+            """,
+            runtime="""
+            @final
+            class A: ...
+            """,
+            error=None,
+        )
+        yield Case(  # Runtime can miss `@final` decorator
+            stub="""
+            @final
+            class B: ...
+            """,
+            runtime="""
+            class B: ...
+            """,
+            error=None,
+        )
+        yield Case(  # Stub cannot miss `@final` decorator
+            stub="""
+            class C: ...
+            """,
+            runtime="""
+            @final
+            class C: ...
+            """,
+            error="C",
+        )
+        yield Case(
+            stub="""
+            class D:
+                @final
+                def foo(self) -> None: ...
+                @final
+                @staticmethod
+                def bar() -> None: ...
+                @staticmethod
+                @final
+                def bar2() -> None: ...
+                @final
+                @classmethod
+                def baz(cls) -> None: ...
+                @classmethod
+                @final
+                def baz2(cls) -> None: ...
+                @property
+                @final
+                def eggs(self) -> int: ...
+                @final
+                @property
+                def eggs2(self) -> int: ...
+                @final
+                def ham(self, obj: int) -> int: ...
+            """,
+            runtime="""
+            class D:
+                @final
+                def foo(self): pass
+                @final
+                @staticmethod
+                def bar(): pass
+                @staticmethod
+                @final
+                def bar2(): pass
+                @final
+                @classmethod
+                def baz(cls): pass
+                @classmethod
+                @final
+                def baz2(cls): pass
+                @property
+                @final
+                def eggs(self): return 42
+                @final
+                @property
+                def eggs2(self): pass
+                @final
+                @functools.lru_cache()
+                def ham(self, obj): return obj * 2
+            """,
+            error=None,
+        )
+        # Stub methods are allowed to have @final even if the runtime doesn't...
+        yield Case(
+            stub="""
+            class E:
+                @final
+                def foo(self) -> None: ...
+                @final
+                @staticmethod
+                def bar() -> None: ...
+                @staticmethod
+                @final
+                def bar2() -> None: ...
+                @final
+                @classmethod
+                def baz(cls) -> None: ...
+                @classmethod
+                @final
+                def baz2(cls) -> None: ...
+                @property
+                @final
+                def eggs(self) -> int: ...
+                @final
+                @property
+                def eggs2(self) -> int: ...
+                @final
+                def ham(self, obj: int) -> int: ...
+            """,
+            runtime="""
+            class E:
+                def foo(self): pass
+                @staticmethod
+                def bar(): pass
+                @staticmethod
+                def bar2(): pass
+                @classmethod
+                def baz(cls): pass
+                @classmethod
+                def baz2(cls): pass
+                @property
+                def eggs(self): return 42
+                @property
+                def eggs2(self): return 42
+                @functools.lru_cache()
+                def ham(self, obj): return obj * 2
+            """,
+            error=None,
+        )
+        # ...But if the runtime has @final, the stub must have it as well
+        yield Case(
+            stub="""
+            class F:
+                def foo(self) -> None: ...
+            """,
+            runtime="""
+            class F:
+                @final
+                def foo(self): pass
+            """,
+            error="F.foo",
+        )
+        yield Case(
+            stub="""
+            class G:
+                @staticmethod
+                def foo() -> None: ...
+            """,
+            runtime="""
+            class G:
+                @final
+                @staticmethod
+                def foo(): pass
+            """,
+            error="G.foo",
+        )
+        yield Case(
+            stub="""
+            class H:
+                @staticmethod
+                def foo() -> None: ...
+            """,
+            runtime="""
+            class H:
+                @staticmethod
+                @final
+                def foo(): pass
+            """,
+            error="H.foo",
+        )
+        yield Case(
+            stub="""
+            class I:
+                @classmethod
+                def foo(cls) -> None: ...
+            """,
+            runtime="""
+            class I:
+                @final
+                @classmethod
+                def foo(cls): pass
+            """,
+            error="I.foo",
+        )
+        yield Case(
+            stub="""
+            class J:
+                @classmethod
+                def foo(cls) -> None: ...
+            """,
+            runtime="""
+            class J:
+                @classmethod
+                @final
+                def foo(cls): pass
+            """,
+            error="J.foo",
+        )
+        yield Case(
+            stub="""
+            class K:
+                @property
+                def foo(self) -> int: ...
+            """,
+            runtime="""
+            class K:
+                @property
+                @final
+                def foo(self): return 42
+            """,
+            error="K.foo",
+        )
+        # This test wouldn't pass,
+        # because the runtime can't set __final__ on instances of builtins.property,
+        # so stubtest has non way of knowing that the runtime was decorated with @final:
+        #
+        # yield Case(
+        #     stub="""
+        #     class K2:
+        #         @property
+        #         def foo(self) -> int: ...
+        #     """,
+        #     runtime="""
+        #     class K2:
+        #         @final
+        #         @property
+        #         def foo(self): return 42
+        #     """,
+        #     error="K2.foo",
+        # )
+        yield Case(
+            stub="""
+            class L:
+                def foo(self, obj: int) -> int: ...
+            """,
+            runtime="""
+            class L:
+                @final
+                @functools.lru_cache()
+                def foo(self, obj): return obj * 2
+            """,
+            error="L.foo",
+        )
+
+    @collect_cases
     def test_name_mangling(self) -> Iterator[Case]:
         yield Case(
             stub="""
@@ -1097,6 +1388,49 @@ class StubtestUnit(unittest.TestCase):
                 def __mangle_bad(self, text): pass
             """,
             error="X.__mangle_bad",
+        )
+        yield Case(
+            stub="""
+            class Klass:
+                class __Mangled1:
+                    class __Mangled2:
+                        def __mangle_good(self, text: str) -> None: ...
+                        def __mangle_bad(self, number: int) -> None: ...
+            """,
+            runtime="""
+            class Klass:
+                class __Mangled1:
+                    class __Mangled2:
+                        def __mangle_good(self, text): pass
+                        def __mangle_bad(self, text): pass
+            """,
+            error="Klass.__Mangled1.__Mangled2.__mangle_bad",
+        )
+        yield Case(
+            stub="""
+            class __Dunder__:
+                def __mangle_good(self, text: str) -> None: ...
+                def __mangle_bad(self, number: int) -> None: ...
+            """,
+            runtime="""
+            class __Dunder__:
+                def __mangle_good(self, text): pass
+                def __mangle_bad(self, text): pass
+            """,
+            error="__Dunder__.__mangle_bad",
+        )
+        yield Case(
+            stub="""
+            class _Private:
+                def __mangle_good(self, text: str) -> None: ...
+                def __mangle_bad(self, number: int) -> None: ...
+            """,
+            runtime="""
+            class _Private:
+                def __mangle_good(self, text): pass
+                def __mangle_bad(self, text): pass
+            """,
+            error="_Private.__mangle_bad",
         )
 
     @collect_cases
@@ -1237,21 +1571,33 @@ class StubtestUnit(unittest.TestCase):
         )
 
     @collect_cases
-    def test_protocol(self) -> Iterator[Case]:
+    def test_runtime_typing_objects(self) -> Iterator[Case]:
+        yield Case(
+            stub="from typing_extensions import Protocol, TypedDict",
+            runtime="from typing_extensions import Protocol, TypedDict",
+            error=None,
+        )
         yield Case(
             stub="""
-            from typing_extensions import Protocol
-
             class X(Protocol):
                 bar: int
                 def foo(self, x: int, y: bytes = ...) -> str: ...
             """,
             runtime="""
-            from typing_extensions import Protocol
-
             class X(Protocol):
                 bar: int
                 def foo(self, x: int, y: bytes = ...) -> str: ...
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class Y(TypedDict):
+                a: int
+            """,
+            runtime="""
+            class Y(TypedDict):
+                a: int
             """,
             error=None,
         )
@@ -1337,7 +1683,10 @@ class StubtestUnit(unittest.TestCase):
     @collect_cases
     def test_abstract_methods(self) -> Iterator[Case]:
         yield Case(
-            stub="from abc import abstractmethod",
+            stub="""
+            from abc import abstractmethod
+            from typing import overload
+            """,
             runtime="from abc import abstractmethod",
             error=None,
         )
@@ -1366,15 +1715,64 @@ class StubtestUnit(unittest.TestCase):
             """,
             error=None,
         )
-        # Runtime can miss `@abstractmethod`:
         yield Case(
             stub="""
             class A3:
+                @overload
+                def some(self, other: int) -> str: ...
+                @overload
+                def some(self, other: str) -> int: ...
+            """,
+            runtime="""
+            class A3:
+                @abstractmethod
+                def some(self, other) -> None: ...
+            """,
+            error="A3.some",
+        )
+        yield Case(
+            stub="""
+            class A4:
+                @overload
+                @abstractmethod
+                def some(self, other: int) -> str: ...
+                @overload
+                @abstractmethod
+                def some(self, other: str) -> int: ...
+            """,
+            runtime="""
+            class A4:
+                @abstractmethod
+                def some(self, other) -> None: ...
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class A5:
+                @abstractmethod
+                @overload
+                def some(self, other: int) -> str: ...
+                @abstractmethod
+                @overload
+                def some(self, other: str) -> int: ...
+            """,
+            runtime="""
+            class A5:
+                @abstractmethod
+                def some(self, other) -> None: ...
+            """,
+            error=None,
+        )
+        # Runtime can miss `@abstractmethod`:
+        yield Case(
+            stub="""
+            class A6:
                 @abstractmethod
                 def some(self) -> None: ...
             """,
             runtime="""
-            class A3:
+            class A6:
                 def some(self) -> None: ...
             """,
             error=None,
@@ -1462,12 +1860,12 @@ class StubtestMiscUnit(unittest.TestCase):
         expected = (
             f'error: {TEST_MODULE_NAME}.bad is inconsistent, stub argument "number" differs '
             'from runtime argument "num"\n'
-            f"Stub: at line 1 in file {TEST_MODULE_NAME}.pyi\n"
+            f"Stub: in file {TEST_MODULE_NAME}.pyi:1\n"
             "def (number: builtins.int, text: builtins.str)\n"
-            f"Runtime: at line 1 in file {TEST_MODULE_NAME}.py\ndef (num, text)\n\n"
+            f"Runtime: in file {TEST_MODULE_NAME}.py:1\ndef (num, text)\n\n"
             "Found 1 error (checked 1 module)\n"
         )
-        assert remove_color_code(output) == expected
+        assert output == expected
 
         output = run_stubtest(
             stub="def bad(number: int, text: str) -> None: ...",
@@ -1478,7 +1876,7 @@ class StubtestMiscUnit(unittest.TestCase):
             "{}.bad is inconsistent, "
             'stub argument "number" differs from runtime argument "num"\n'.format(TEST_MODULE_NAME)
         )
-        assert remove_color_code(output) == expected
+        assert output == expected
 
     def test_ignore_flags(self) -> None:
         output = run_stubtest(
@@ -1557,13 +1955,13 @@ class StubtestMiscUnit(unittest.TestCase):
 
     def test_mypy_build(self) -> None:
         output = run_stubtest(stub="+", runtime="", options=[])
-        assert remove_color_code(output) == (
+        assert output == (
             "error: not checking stubs due to failed mypy compile:\n{}.pyi:1: "
             "error: invalid syntax  [syntax]\n".format(TEST_MODULE_NAME)
         )
 
         output = run_stubtest(stub="def f(): ...\ndef f(): ...", runtime="", options=[])
-        assert remove_color_code(output) == (
+        assert output == (
             "error: not checking stubs due to mypy build errors:\n{}.pyi:2: "
             'error: Name "f" already defined on line 1  [no-redef]\n'.format(TEST_MODULE_NAME)
         )
@@ -1620,9 +2018,9 @@ class StubtestMiscUnit(unittest.TestCase):
         stub = "from decimal import Decimal\ntemp: Decimal\n"
         config_file = f"[mypy]\nplugins={root_dir}/test-data/unit/plugins/decimal_to_int.py\n"
         output = run_stubtest(stub=stub, runtime=runtime, options=[])
-        assert remove_color_code(output) == (
+        assert output == (
             f"error: {TEST_MODULE_NAME}.temp variable differs from runtime type Literal[5]\n"
-            f"Stub: at line 2 in file {TEST_MODULE_NAME}.pyi\n_decimal.Decimal\nRuntime:\n5\n\n"
+            f"Stub: in file {TEST_MODULE_NAME}.pyi:2\n_decimal.Decimal\nRuntime:\n5\n\n"
             "Found 1 error (checked 1 module)\n"
         )
         output = run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)

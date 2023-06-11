@@ -692,6 +692,7 @@ tmp/m.py:8: error: Invalid index type "int" for "A"; expected type "str"
 
 
 [case testDivmod]
+# flags: --disable-error-code=used-before-def
 from typing import Tuple, Union, SupportsInt
 _Decimal = Union[Decimal, int]
 class Decimal(SupportsInt):
@@ -936,6 +937,8 @@ reveal_type(returned)  # N: Revealed type is "builtins.int"
 assert_type(a, str)  # E: Expression is of type "int", not "str"
 assert_type(a, Any)  # E: Expression is of type "int", not "Any"
 assert_type(a, Literal[1])  # E: Expression is of type "int", not "Literal[1]"
+assert_type(42, Literal[42])
+assert_type(42, int)  # E: Expression is of type "Literal[42]", not "int"
 [builtins fixtures/tuple.pyi]
 
 [case testAssertTypeGeneric]
@@ -991,6 +994,15 @@ assert_type(reduce_it(True), Scalar)
 
 
 [case testNoneReturnTypeBasics]
+def f() -> None:
+    pass
+
+class A:
+    def g(self, x: object) -> None:
+        pass
+    def __call__(self) -> None:
+        pass
+
 a, o = None, None # type: (A, object)
 if int():
     a = f()         # E: "f" does not return a value
@@ -1004,40 +1016,30 @@ A().g(f())      # E: "f" does not return a value
 x: A = f()      # E: "f" does not return a value
 f()
 A().g(a)
-
-def f() -> None:
-    pass
-
-class A:
-    def g(self, x: object) -> None:
-        pass
-    def __call__(self) -> None:
-        pass
 [builtins fixtures/tuple.pyi]
 
 [case testNoneReturnTypeWithStatements]
 import typing
-if f():   # Fail
+def f() -> None: pass
+
+if f():   # E: "f" does not return a value
     pass
-elif f(): # Fail
+elif f(): # E: "f" does not return a value
     pass
-while f(): # Fail
+while f(): # E: "f" does not return a value
     pass
 def g() -> object:
-    return f() # Fail
-raise f() # Fail
-
-def f() -> None: pass
+    return f() # E: "f" does not return a value
+raise f() # E: "f" does not return a value
 [builtins fixtures/exception.pyi]
-[out]
-main:2: error: "f" does not return a value
-main:4: error: "f" does not return a value
-main:6: error: "f" does not return a value
-main:9: error: "f" does not return a value
-main:10: error: "f" does not return a value
 
 [case testNoneReturnTypeWithExpressions]
 from typing import cast
+
+def f() -> None: pass
+class A:
+    def __add__(self, x: 'A') -> 'A': pass
+
 a = None # type: A
 [f()]       # E: "f" does not return a value
 f() + a     # E: "f" does not return a value
@@ -1046,14 +1048,15 @@ f() == a    # E: "f" does not return a value
 a != f()    # E: "f" does not return a value
 cast(A, f())
 f().foo     # E: "f" does not return a value
-
-def f() -> None: pass
-class A:
-    def __add__(self, x: 'A') -> 'A': pass
 [builtins fixtures/list.pyi]
 
 [case testNoneReturnTypeWithExpressions2]
 import typing
+
+def f() -> None: pass
+class A:
+    def __add__(self, x: 'A') -> 'A':
+        pass
 
 a, b = None, None # type: (A, bool)
 f() in a   # E: "f" does not return a value  # E: Unsupported right operand type for in ("A")
@@ -1064,11 +1067,6 @@ a in f()   # E: "f" does not return a value
 not f()    # E: "f" does not return a value
 f() and b  # E: "f" does not return a value
 b or f()   # E: "f" does not return a value
-
-def f() -> None: pass
-class A:
-    def __add__(self, x: 'A') -> 'A':
-        pass
 [builtins fixtures/bool.pyi]
 
 
@@ -1119,11 +1117,28 @@ o[:]   # E: Value of type "object" is not indexable
 
 [case testNonIntSliceBounds]
 from typing import Any
-a, o = None, None # type: (Any, object)
-a[o:1] # E: Slice index must be an integer or None
-a[1:o] # E: Slice index must be an integer or None
-a[o:]  # E: Slice index must be an integer or None
-a[:o]  # E: Slice index must be an integer or None
+a: Any
+o: object
+a[o:1] # E: Slice index must be an integer, SupportsIndex or None
+a[1:o] # E: Slice index must be an integer, SupportsIndex or None
+a[o:]  # E: Slice index must be an integer, SupportsIndex or None
+a[:o]  # E: Slice index must be an integer, SupportsIndex or None
+[builtins fixtures/slice.pyi]
+
+[case testSliceSupportsIndex]
+import typing_extensions
+class Index:
+    def __init__(self, value: int) -> None:
+        self.value = value
+    def __index__(self) -> int:
+        return self.value
+
+c = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+reveal_type(c[Index(0):Index(5)])  # N: Revealed type is "builtins.list[builtins.int]"
+[file typing_extensions.pyi]
+from typing import Protocol
+class SupportsIndex(Protocol):
+    def __index__(self) -> int: ...
 [builtins fixtures/slice.pyi]
 
 [case testNoneSliceBounds]
@@ -1424,19 +1439,13 @@ z = x.append(y) if bool() else x.append(y) # E: "append" of "list" does not retu
 from typing import cast
 class A:
     def __add__(self, a: 'A') -> 'A': pass
-a = None # type: A
-None + a   # Fail
-f + a      # Fail
-a + f      # Fail
-cast(A, f)
-
 def f() -> None:
     pass
-[out]
-main:5: error: Unsupported left operand type for + ("None")
-main:6: error: Unsupported left operand type for + ("Callable[[], None]")
-main:7: error: Unsupported operand types for + ("A" and "Callable[[], None]")
-
+a = None # type: A
+None + a   # E: Unsupported left operand type for + ("None")
+f + a      # E: Unsupported left operand type for + ("Callable[[], None]")
+a + f      # E: Unsupported operand types for + ("A" and "Callable[[], None]")
+cast(A, f)
 [case testOperatorMethodWithInvalidArgCount]
 
 a = None # type: A
@@ -1724,7 +1733,7 @@ reveal_type = 1
 [case testRevealForward]
 def f() -> None:
     reveal_type(x)
-x = 1 + 1
+x = 1 + int()
 [out]
 main:2: note: Revealed type is "builtins.int"
 
@@ -1779,13 +1788,35 @@ b = {'z': 26, *a}  # E: invalid syntax
 
 [case testDictWithStarStarExpr]
 
-from typing import Dict
+from typing import Dict, Iterable
+
+class Thing:
+    def keys(self) -> Iterable[str]:
+        ...
+    def __getitem__(self, key: str) -> int:
+        ...
+
 a = {'a': 1}
 b = {'z': 26, **a}
 c = {**b}
 d = {**a, **b, 'c': 3}
-e = {1: 'a', **a}  # E: Argument 1 to "update" of "dict" has incompatible type "Dict[str, int]"; expected "Mapping[int, str]"
-f = {**b}  # type: Dict[int, int]  # E: List item 0 has incompatible type "Dict[str, int]"; expected "Mapping[int, int]"
+e = {1: 'a', **a}  # E: Cannot infer type argument 1 of <dict> \
+                   # N: Try assigning the literal to a variable annotated as dict[<key>, <val>]
+f = {**b}  # type: Dict[int, int]  # E: Unpacked dict entry 0 has incompatible type "Dict[str, int]"; expected "SupportsKeysAndGetItem[int, int]"
+g = {**Thing()}
+h = {**a, **Thing()}
+i = {**Thing()}  # type: Dict[int, int]  # E: Unpacked dict entry 0 has incompatible type "Thing"; expected "SupportsKeysAndGetItem[int, int]" \
+                 # N: Following member(s) of "Thing" have conflicts: \
+                 # N:     Expected: \
+                 # N:         def __getitem__(self, int, /) -> int \
+                 # N:     Got: \
+                 # N:         def __getitem__(self, str, /) -> int \
+                 # N:     Expected: \
+                 # N:         def keys(self) -> Iterable[int] \
+                 # N:     Got: \
+                 # N:         def keys(self) -> Iterable[str]
+j = {1: 'a', **Thing()}  # E: Cannot infer type argument 1 of <dict> \
+                         # N: Try assigning the literal to a variable annotated as dict[<key>, <val>]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-medium.pyi]
 
@@ -1993,6 +2024,24 @@ class B:
 
 # Don't report non-overlapping check if there is already and error.
 A() == B()  # E: Unsupported operand types for == ("A" and "B")
+[builtins fixtures/bool.pyi]
+
+[case testStrictEqualitySequenceAndCustomEq]
+# flags: --strict-equality
+from typing import Tuple
+
+class C: pass
+class D:
+    def __eq__(self, other): return True
+
+a = [C()]
+b = [D()]
+a == b
+b == a
+t1: Tuple[C, ...]
+t2: Tuple[D, ...]
+t1 == t2
+t2 == t1
 [builtins fixtures/bool.pyi]
 
 [case testCustomEqCheckStrictEqualityOKInstance]
@@ -2212,6 +2261,32 @@ y == x
 int == y
 y == int
 [builtins fixtures/bool.pyi]
+
+[case testStrictEqualityAndEnumWithCustomEq]
+# flags: --strict-equality
+from enum import Enum
+
+class E1(Enum):
+    X = 0
+    Y = 1
+
+class E2(Enum):
+    X = 0
+    Y = 1
+
+    def __eq__(self, other: object) -> bool:
+        return bool()
+
+E1.X == E1.Y  # E: Non-overlapping equality check (left operand type: "Literal[E1.X]", right operand type: "Literal[E1.Y]")
+E2.X == E2.Y
+[builtins fixtures/bool.pyi]
+
+[case testStrictEqualityWithBytesContains]
+# flags: --strict-equality
+data = b"xy"
+b"x" in data
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testUnimportedHintAny]
 def f(x: Any) -> None:  # E: Name "Any" is not defined \

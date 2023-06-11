@@ -151,13 +151,17 @@ from mypy.semanal_main import (
     semantic_analysis_for_scc,
     semantic_analysis_for_targets,
 )
-from mypy.server.astdiff import SnapshotItem, compare_symbol_table_snapshots, snapshot_symbol_table
+from mypy.server.astdiff import (
+    SymbolSnapshot,
+    compare_symbol_table_snapshots,
+    snapshot_symbol_table,
+)
 from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import SavedAttributes, strip_target
 from mypy.server.deps import get_dependencies_of_target, merge_dependencies
 from mypy.server.target import trigger_to_target
 from mypy.server.trigger import WILDCARD_TAG, make_trigger
-from mypy.typestate import TypeState
+from mypy.typestate import type_state
 from mypy.util import module_prefix, split_target
 
 MAX_ITER: Final = 1000
@@ -183,7 +187,7 @@ class FineGrainedBuildManager:
         # Merge in any root dependencies that may not have been loaded
         merge_dependencies(manager.load_fine_grained_deps(FAKE_ROOT_MODULE), self.deps)
         self.previous_targets_with_errors = manager.errors.targets()
-        self.previous_messages: list[str] = result.errors[:]
+        self.previous_messages: list[str] = result.errors.copy()
         # Module, if any, that had blocking errors in the last run as (id, path) tuple.
         self.blocking_error: tuple[str, str] | None = None
         # Module that we haven't processed yet but that are known to be stale.
@@ -203,7 +207,10 @@ class FineGrainedBuildManager:
         self.processed_targets: list[str] = []
 
     def update(
-        self, changed_modules: list[tuple[str, str]], removed_modules: list[tuple[str, str]]
+        self,
+        changed_modules: list[tuple[str, str]],
+        removed_modules: list[tuple[str, str]],
+        followed: bool = False,
     ) -> list[str]:
         """Update previous build result by processing changed modules.
 
@@ -219,6 +226,7 @@ class FineGrainedBuildManager:
                 Assume this is correct; it's not validated here.
             removed_modules: Modules that have been deleted since the previous update
                 or removed from the build.
+            followed: If True, the modules were found through following imports
 
         Returns:
             A list of errors.
@@ -256,7 +264,9 @@ class FineGrainedBuildManager:
             self.blocking_error = None
 
         while True:
-            result = self.update_one(changed_modules, initial_set, removed_set, blocking_error)
+            result = self.update_one(
+                changed_modules, initial_set, removed_set, blocking_error, followed
+            )
             changed_modules, (next_id, next_path), blocker_messages = result
 
             if blocker_messages is not None:
@@ -292,7 +302,7 @@ class FineGrainedBuildManager:
                     break
 
         messages = sort_messages_preserving_file_order(messages, self.previous_messages)
-        self.previous_messages = messages[:]
+        self.previous_messages = messages.copy()
         return messages
 
     def trigger(self, target: str) -> list[str]:
@@ -312,7 +322,7 @@ class FineGrainedBuildManager:
         )
         # Preserve state needed for the next update.
         self.previous_targets_with_errors = self.manager.errors.targets()
-        self.previous_messages = self.manager.errors.new_messages()[:]
+        self.previous_messages = self.manager.errors.new_messages().copy()
         return self.update(changed_modules, [])
 
     def flush_cache(self) -> None:
@@ -329,6 +339,7 @@ class FineGrainedBuildManager:
         initial_set: set[str],
         removed_set: set[str],
         blocking_error: str | None,
+        followed: bool,
     ) -> tuple[list[tuple[str, str]], tuple[str, str], list[str] | None]:
         """Process a module from the list of changed modules.
 
@@ -355,7 +366,7 @@ class FineGrainedBuildManager:
             )
             return changed_modules, (next_id, next_path), None
 
-        result = self.update_module(next_id, next_path, next_id in removed_set)
+        result = self.update_module(next_id, next_path, next_id in removed_set, followed)
         remaining, (next_id, next_path), blocker_messages = result
         changed_modules = [(id, path) for id, path in changed_modules if id != next_id]
         changed_modules = dedupe_modules(remaining + changed_modules)
@@ -368,7 +379,7 @@ class FineGrainedBuildManager:
         return changed_modules, (next_id, next_path), blocker_messages
 
     def update_module(
-        self, module: str, path: str, force_removed: bool
+        self, module: str, path: str, force_removed: bool, followed: bool
     ) -> tuple[list[tuple[str, str]], tuple[str, str], list[str] | None]:
         """Update a single modified module.
 
@@ -380,6 +391,7 @@ class FineGrainedBuildManager:
             path: File system path of the module
             force_removed: If True, consider module removed from the build even if path
                 exists (used for removing an existing file from the build)
+            followed: Was this found via import following?
 
         Returns:
             Tuple with these items:
@@ -409,7 +421,7 @@ class FineGrainedBuildManager:
 
         t0 = time.time()
         # Record symbol table snapshot of old version the changed module.
-        old_snapshots: dict[str, dict[str, SnapshotItem]] = {}
+        old_snapshots: dict[str, dict[str, SymbolSnapshot]] = {}
         if module in manager.modules:
             snapshot = snapshot_symbol_table(module, manager.modules[module].names)
             old_snapshots[module] = snapshot
@@ -417,7 +429,7 @@ class FineGrainedBuildManager:
         manager.errors.reset()
         self.processed_targets.append(module)
         result = update_module_isolated(
-            module, path, manager, previous_modules, graph, force_removed
+            module, path, manager, previous_modules, graph, force_removed, followed
         )
         if isinstance(result, BlockedUpdate):
             # Blocking error -- just give up
@@ -552,6 +564,7 @@ def update_module_isolated(
     previous_modules: dict[str, str],
     graph: Graph,
     force_removed: bool,
+    followed: bool,
 ) -> UpdateResult:
     """Build a new version of one changed module only.
 
@@ -575,7 +588,7 @@ def update_module_isolated(
         delete_module(module, path, graph, manager)
         return NormalUpdate(module, path, [], None)
 
-    sources = get_sources(manager.fscache, previous_modules, [(module, path)])
+    sources = get_sources(manager.fscache, previous_modules, [(module, path)], followed)
 
     if module in manager.missing_modules:
         manager.missing_modules.remove(module)
@@ -653,7 +666,7 @@ def update_module_isolated(
     state.type_checker().reset()
     state.type_check_first_pass()
     state.type_check_second_pass()
-    state.detect_partially_defined_vars(state.type_map())
+    state.detect_possibly_undefined_vars()
     t2 = time.time()
     state.finish_passes()
     t3 = time.time()
@@ -728,18 +741,21 @@ def get_module_to_path_map(graph: Graph) -> dict[str, str]:
 
 
 def get_sources(
-    fscache: FileSystemCache, modules: dict[str, str], changed_modules: list[tuple[str, str]]
+    fscache: FileSystemCache,
+    modules: dict[str, str],
+    changed_modules: list[tuple[str, str]],
+    followed: bool,
 ) -> list[BuildSource]:
     sources = []
     for id, path in changed_modules:
         if fscache.isfile(path):
-            sources.append(BuildSource(path, id, None))
+            sources.append(BuildSource(path, id, None, followed=followed))
     return sources
 
 
 def calculate_active_triggers(
     manager: BuildManager,
-    old_snapshots: dict[str, dict[str, SnapshotItem]],
+    old_snapshots: dict[str, dict[str, SymbolSnapshot]],
     new_modules: dict[str, MypyFile | None],
 ) -> set[str]:
     """Determine activated triggers by comparing old and new symbol tables.
@@ -857,7 +873,7 @@ def propagate_changes_using_dependencies(
         # We need to do this to avoid false negatives if the protocol itself is
         # unchanged, but was marked stale because its sub- (or super-) type changed.
         for info in stale_protos:
-            TypeState.reset_subtype_caches_for(info)
+            type_state.reset_subtype_caches_for(info)
         # Then fully reprocess all targets.
         # TODO: Preserve order (set is not optimal)
         for id, nodes in sorted(todo.items(), key=lambda x: x[0]):
@@ -970,6 +986,7 @@ def reprocess_nodes(
     manager.errors.set_file_ignored_lines(
         file_node.path, file_node.ignored_lines, options.ignore_errors or state.ignore_all
     )
+    manager.errors.set_unreachable_lines(file_node.path, file_node.unreachable_lines)
 
     targets = set()
     for node in nodes:
@@ -1069,7 +1086,7 @@ def update_deps(
         for trigger, targets in new_deps.items():
             deps.setdefault(trigger, set()).update(targets)
     # Merge also the newly added protocol deps (if any).
-    TypeState.update_protocol_deps(deps)
+    type_state.update_protocol_deps(deps)
 
 
 def lookup_target(

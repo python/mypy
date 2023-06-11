@@ -28,7 +28,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.types import CallableType, get_proper_type
-from mypyc.common import LAMBDA_NAME, SELF_NAME
+from mypyc.common import LAMBDA_NAME, PROPSET_PREFIX, SELF_NAME
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.ir.func_ir import (
     FUNC_CLASSMETHOD,
@@ -89,7 +89,7 @@ from mypyc.primitives.dict_ops import dict_get_method_with_none, dict_new_op, di
 from mypyc.primitives.generic_ops import py_setattr_op
 from mypyc.primitives.misc_ops import register_function
 from mypyc.primitives.registry import builtin_names
-from mypyc.sametype import is_same_method_signature
+from mypyc.sametype import is_same_method_signature, is_same_type
 
 # Top-level transform functions
 
@@ -123,7 +123,7 @@ def transform_decorator(builder: IRBuilder, dec: Decorator) -> None:
     # if this is a registered singledispatch implementation with no other decorators), we should
     # treat this function as a regular function, not a decorated function
     elif dec.func in builder.fdefs_to_decorators:
-        # Obtain the the function name in order to construct the name of the helper function.
+        # Obtain the function name in order to construct the name of the helper function.
         name = dec.func.fullname.split(".")[-1]
 
         # Load the callable object representing the non-decorated function, and decorate it.
@@ -397,7 +397,7 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
     builder.functions.append(func_ir)
 
     if is_decorated(builder, fdef):
-        # Obtain the the function name in order to construct the name of the helper function.
+        # Obtain the function name in order to construct the name of the helper function.
         _, _, name = fdef.fullname.rpartition(".")
         # Read the PyTypeObject representing the class, get the callable object
         # representing the non-decorated method
@@ -435,7 +435,6 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
                 class_ir.method_decls[name].sig, base.method_decls[name].sig
             )
         ):
-
             # TODO: Support contravariant subtyping in the input argument for
             # property setters. Need to make a special glue method for handling this,
             # similar to gen_glue_property.
@@ -516,7 +515,7 @@ def gen_func_ns(builder: IRBuilder) -> str:
     return "_".join(
         info.name + ("" if not info.class_name else "_" + info.class_name)
         for info in builder.fn_infos
-        if info.name and info.name != "<top level>"
+        if info.name and info.name != "<module>"
     )
 
 
@@ -548,7 +547,7 @@ def is_decorated(builder: IRBuilder, fdef: FuncDef) -> bool:
 
 def gen_glue(
     builder: IRBuilder,
-    sig: FuncSignature,
+    base_sig: FuncSignature,
     target: FuncIR,
     cls: ClassIR,
     base: ClassIR,
@@ -566,9 +565,9 @@ def gen_glue(
     "shadow" glue methods that work with interpreted subclasses.
     """
     if fdef.is_property:
-        return gen_glue_property(builder, sig, target, cls, base, fdef.line, do_py_ops)
+        return gen_glue_property(builder, base_sig, target, cls, base, fdef.line, do_py_ops)
     else:
-        return gen_glue_method(builder, sig, target, cls, base, fdef.line, do_py_ops)
+        return gen_glue_method(builder, base_sig, target, cls, base, fdef.line, do_py_ops)
 
 
 class ArgInfo(NamedTuple):
@@ -594,7 +593,7 @@ def get_args(builder: IRBuilder, rt_args: Sequence[RuntimeArg], line: int) -> Ar
 
 def gen_glue_method(
     builder: IRBuilder,
-    sig: FuncSignature,
+    base_sig: FuncSignature,
     target: FuncIR,
     cls: ClassIR,
     base: ClassIR,
@@ -626,15 +625,24 @@ def gen_glue_method(
     If do_pycall is True, then make the call using the C API
     instead of a native call.
     """
-    builder.enter()
-    builder.ret_types[-1] = sig.ret_type
+    check_native_override(builder, base_sig, target.decl.sig, line)
 
-    rt_args = list(sig.args)
+    builder.enter()
+    builder.ret_types[-1] = base_sig.ret_type
+
+    rt_args = list(base_sig.args)
     if target.decl.kind == FUNC_NORMAL:
-        rt_args[0] = RuntimeArg(sig.args[0].name, RInstance(cls))
+        rt_args[0] = RuntimeArg(base_sig.args[0].name, RInstance(cls))
 
     arg_info = get_args(builder, rt_args, line)
     args, arg_kinds, arg_names = arg_info.args, arg_info.arg_kinds, arg_info.arg_names
+
+    bitmap_args = None
+    if base_sig.num_bitmap_args:
+        args = args[: -base_sig.num_bitmap_args]
+        arg_kinds = arg_kinds[: -base_sig.num_bitmap_args]
+        arg_names = arg_names[: -base_sig.num_bitmap_args]
+        bitmap_args = list(builder.builder.args[-base_sig.num_bitmap_args :])
 
     # We can do a passthrough *args/**kwargs with a native call, but if the
     # args need to get distributed out to arguments, we just let python handle it
@@ -655,11 +663,15 @@ def gen_glue_method(
             first, target.name, args[st:], line, arg_kinds[st:], arg_names[st:]
         )
     else:
-        retval = builder.builder.call(target.decl, args, arg_kinds, arg_names, line)
-    retval = builder.coerce(retval, sig.ret_type, line)
+        retval = builder.builder.call(
+            target.decl, args, arg_kinds, arg_names, line, bitmap_args=bitmap_args
+        )
+    retval = builder.coerce(retval, base_sig.ret_type, line)
     builder.add(Return(retval))
 
     arg_regs, _, blocks, ret_type, _ = builder.leave()
+    if base_sig.num_bitmap_args:
+        rt_args = rt_args[: -base_sig.num_bitmap_args]
     return FuncIR(
         FuncDecl(
             target.name + "__" + base.name + "_glue",
@@ -671,6 +683,35 @@ def gen_glue_method(
         arg_regs,
         blocks,
     )
+
+
+def check_native_override(
+    builder: IRBuilder, base_sig: FuncSignature, sub_sig: FuncSignature, line: int
+) -> None:
+    """Report an error if an override changes signature in unsupported ways.
+
+    Glue methods can work around many signature changes but not all of them.
+    """
+    for base_arg, sub_arg in zip(base_sig.real_args(), sub_sig.real_args()):
+        if base_arg.type.error_overlap:
+            if not base_arg.optional and sub_arg.optional and base_sig.num_bitmap_args:
+                # This would change the meanings of bits in the argument defaults
+                # bitmap, which we don't support. We'd need to do tricky bit
+                # manipulations to support this generally.
+                builder.error(
+                    "An argument with type "
+                    + f'"{base_arg.type}" cannot be given a default value in a method override',
+                    line,
+                )
+        if base_arg.type.error_overlap or sub_arg.type.error_overlap:
+            if not is_same_type(base_arg.type, sub_arg.type):
+                # This would change from signaling a default via an error value to
+                # signaling a default via bitmap, which we don't support.
+                builder.error(
+                    "Incompatible argument type "
+                    + f'"{sub_arg.type}" (base class has type "{base_arg.type}")',
+                    line,
+                )
 
 
 def gen_glue_property(
@@ -747,7 +788,7 @@ def load_type(builder: IRBuilder, typ: TypeInfo, line: int) -> Value:
 
 
 def load_func(builder: IRBuilder, func_name: str, fullname: str | None, line: int) -> Value:
-    if fullname is not None and not fullname.startswith(builder.current_module):
+    if fullname and not fullname.startswith(builder.current_module):
         # we're calling a function in a different module
 
         # We can't use load_module_attr_by_fullname here because we need to load the function using
@@ -984,3 +1025,42 @@ def get_native_impl_ids(builder: IRBuilder, singledispatch_func: FuncDef) -> dic
     """
     impls = builder.singledispatch_impls[singledispatch_func]
     return {impl: i for i, (typ, impl) in enumerate(impls) if not is_decorated(builder, impl)}
+
+
+def gen_property_getter_ir(
+    builder: IRBuilder, func_decl: FuncDecl, cdef: ClassDef, is_trait: bool
+) -> FuncIR:
+    """Generate an implicit trivial property getter for an attribute.
+
+    These are used if an attribute can also be accessed as a property.
+    """
+    name = func_decl.name
+    builder.enter(name)
+    self_reg = builder.add_argument("self", func_decl.sig.args[0].type)
+    if not is_trait:
+        value = builder.builder.get_attr(self_reg, name, func_decl.sig.ret_type, -1)
+        builder.add(Return(value))
+    else:
+        builder.add(Unreachable())
+    args, _, blocks, ret_type, fn_info = builder.leave()
+    return FuncIR(func_decl, args, blocks)
+
+
+def gen_property_setter_ir(
+    builder: IRBuilder, func_decl: FuncDecl, cdef: ClassDef, is_trait: bool
+) -> FuncIR:
+    """Generate an implicit trivial property setter for an attribute.
+
+    These are used if an attribute can also be accessed as a property.
+    """
+    name = func_decl.name
+    builder.enter(name)
+    self_reg = builder.add_argument("self", func_decl.sig.args[0].type)
+    value_reg = builder.add_argument("value", func_decl.sig.args[1].type)
+    assert name.startswith(PROPSET_PREFIX)
+    attr_name = name[len(PROPSET_PREFIX) :]
+    if not is_trait:
+        builder.add(SetAttr(self_reg, attr_name, value_reg, -1))
+    builder.add(Return(builder.none()))
+    args, _, blocks, ret_type, fn_info = builder.leave()
+    return FuncIR(func_decl, args, blocks)

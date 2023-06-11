@@ -19,3 +19,5 @@ class ellipsis: pass
 
 _N = TypeVar('_N', int, float)
 def divmod(_x: _N, _y: _N) -> Tuple[_N, _N]: ...
+
+class dict: pass

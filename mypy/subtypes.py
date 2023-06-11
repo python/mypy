@@ -8,7 +8,7 @@ import mypy.applytype
 import mypy.constraints
 import mypy.typeops
 from mypy.erasetype import erase_type
-from mypy.expandtype import expand_type_by_instance
+from mypy.expandtype import expand_self_type, expand_type_by_instance
 from mypy.maptype import map_instance_to_supertype
 
 # Circular import; done in the function instead.
@@ -27,6 +27,7 @@ from mypy.nodes import (
 from mypy.options import Options
 from mypy.state import state
 from mypy.types import (
+    MYPYC_NATIVE_INT_NAMES,
     TUPLE_LIKE_INSTANCE_NAMES,
     TYPED_NAMEDTUPLE_NAMES,
     AnyType,
@@ -60,9 +61,10 @@ from mypy.types import (
     get_proper_type,
     is_named_instance,
 )
-from mypy.typestate import SubtypeKind, TypeState
+from mypy.types_utils import flatten_types
+from mypy.typestate import SubtypeKind, type_state
 from mypy.typevars import fill_typevars_with_any
-from mypy.typevartuples import extract_unpack, split_with_instance
+from mypy.typevartuples import extract_unpack, fully_split_with_mapped_and_template
 
 # Flags for detected protocol members
 IS_SETTABLE: Final = 1
@@ -102,11 +104,7 @@ class SubtypeContext:
         # Historically proper and non-proper subtypes were defined using different helpers
         # and different visitors. Check if flag values are such that we definitely support.
         if proper_subtype:
-            assert (
-                not self.ignore_type_params
-                and not self.ignore_pos_arg_names
-                and not self.ignore_declared_variance
-            )
+            assert not self.ignore_pos_arg_names and not self.ignore_declared_variance
         else:
             assert not self.erase_instances and not self.keep_erased_types
 
@@ -154,7 +152,7 @@ def is_subtype(
                 options,
             }
         ), "Don't pass both context and individual flags"
-    if TypeState.is_assumed_subtype(left, right):
+    if type_state.is_assumed_subtype(left, right):
         return True
     if mypy.typeops.is_recursive_pair(left, right):
         # This case requires special care because it may cause infinite recursion.
@@ -174,7 +172,7 @@ def is_subtype(
         #     B = Union[int, Tuple[B, ...]]
         # When checking if A <: B we push pair (A, B) onto 'assuming' stack, then when after few
         # steps we come back to initial call is_subtype(A, B) and immediately return True.
-        with pop_on_exit(TypeState.get_assumptions(is_proper=False), left, right):
+        with pop_on_exit(type_state.get_assumptions(is_proper=False), left, right):
             return _is_subtype(left, right, subtype_context, proper_subtype=False)
     return _is_subtype(left, right, subtype_context, proper_subtype=False)
 
@@ -215,11 +213,11 @@ def is_proper_subtype(
                 ignore_uninhabited,
             }
         ), "Don't pass both context and individual flags"
-    if TypeState.is_assumed_proper_subtype(left, right):
+    if type_state.is_assumed_proper_subtype(left, right):
         return True
     if mypy.typeops.is_recursive_pair(left, right):
         # Same as for non-proper subtype, see detailed comment there for explanation.
-        with pop_on_exit(TypeState.get_assumptions(is_proper=True), left, right):
+        with pop_on_exit(type_state.get_assumptions(is_proper=True), left, right):
             return _is_subtype(left, right, subtype_context, proper_subtype=True)
     return _is_subtype(left, right, subtype_context, proper_subtype=True)
 
@@ -280,27 +278,25 @@ def _is_subtype(
     left = get_proper_type(left)
     right = get_proper_type(right)
 
-    if not proper_subtype and (
-        isinstance(right, AnyType)
-        or isinstance(right, UnboundType)
-        or isinstance(right, ErasedType)
-    ):
+    if not proper_subtype and isinstance(right, (AnyType, UnboundType, ErasedType)):
         # TODO: should we consider all types proper subtypes of UnboundType and/or
         # ErasedType as we do for non-proper subtyping.
         return True
-
-    def check_item(left: Type, right: Type, subtype_context: SubtypeContext) -> bool:
-        if proper_subtype:
-            return is_proper_subtype(left, right, subtype_context=subtype_context)
-        return is_subtype(left, right, subtype_context=subtype_context)
 
     if isinstance(right, UnionType) and not isinstance(left, UnionType):
         # Normally, when 'left' is not itself a union, the only way
         # 'left' can be a subtype of the union 'right' is if it is a
         # subtype of one of the items making up the union.
-        is_subtype_of_item = any(
-            check_item(orig_left, item, subtype_context) for item in right.items
-        )
+        if proper_subtype:
+            is_subtype_of_item = any(
+                is_proper_subtype(orig_left, item, subtype_context=subtype_context)
+                for item in right.items
+            )
+        else:
+            is_subtype_of_item = any(
+                is_subtype(orig_left, item, subtype_context=subtype_context)
+                for item in right.items
+            )
         # Recombine rhs literal types, to make an enum type a subtype
         # of a union of all enum items as literal types. Only do it if
         # the previous check didn't succeed, since recombining can be
@@ -312,9 +308,16 @@ def _is_subtype(
             and (left.type.is_enum or left.type.fullname == "builtins.bool")
         ):
             right = UnionType(mypy.typeops.try_contracting_literals_in_union(right.items))
-            is_subtype_of_item = any(
-                check_item(orig_left, item, subtype_context) for item in right.items
-            )
+            if proper_subtype:
+                is_subtype_of_item = any(
+                    is_proper_subtype(orig_left, item, subtype_context=subtype_context)
+                    for item in right.items
+                )
+            else:
+                is_subtype_of_item = any(
+                    is_subtype(orig_left, item, subtype_context=subtype_context)
+                    for item in right.items
+                )
         # However, if 'left' is a type variable T, T might also have
         # an upper bound which is itself a union. This case will be
         # handled below by the SubtypeVisitor. We have to check both
@@ -330,34 +333,28 @@ def _is_subtype(
 
 
 def check_type_parameter(
-    lefta: Type, righta: Type, variance: int, proper_subtype: bool, subtype_context: SubtypeContext
+    left: Type, right: Type, variance: int, proper_subtype: bool, subtype_context: SubtypeContext
 ) -> bool:
-    def check(left: Type, right: Type) -> bool:
-        return (
-            is_proper_subtype(left, right, subtype_context=subtype_context)
-            if proper_subtype
-            else is_subtype(left, right, subtype_context=subtype_context)
-        )
-
     if variance == COVARIANT:
-        return check(lefta, righta)
+        if proper_subtype:
+            return is_proper_subtype(left, right, subtype_context=subtype_context)
+        else:
+            return is_subtype(left, right, subtype_context=subtype_context)
     elif variance == CONTRAVARIANT:
-        return check(righta, lefta)
+        if proper_subtype:
+            return is_proper_subtype(right, left, subtype_context=subtype_context)
+        else:
+            return is_subtype(right, left, subtype_context=subtype_context)
     else:
         if proper_subtype:
             # We pass ignore_promotions=False because it is a default for subtype checks.
             # The actual value will be taken from the subtype_context, and it is whatever
             # the original caller passed.
             return is_same_type(
-                lefta, righta, ignore_promotions=False, subtype_context=subtype_context
+                left, right, ignore_promotions=False, subtype_context=subtype_context
             )
-        return is_equivalent(lefta, righta, subtype_context=subtype_context)
-
-
-def ignore_type_parameter(
-    lefta: Type, righta: Type, variance: int, proper_subtype: bool, subtype_context: SubtypeContext
-) -> bool:
-    return True
+        else:
+            return is_equivalent(left, right, subtype_context=subtype_context)
 
 
 class SubtypeVisitor(TypeVisitor[bool]):
@@ -366,9 +363,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
         self.orig_right = right
         self.proper_subtype = proper_subtype
         self.subtype_context = subtype_context
-        self.check_type_parameter = (
-            ignore_type_parameter if subtype_context.ignore_type_params else check_type_parameter
-        )
         self.options = subtype_context.options
         self._subtype_kind = SubtypeVisitor.build_subtype_kind(subtype_context, proper_subtype)
 
@@ -390,8 +384,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return is_proper_subtype(left, right, subtype_context=self.subtype_context)
         return is_subtype(left, right, subtype_context=self.subtype_context)
 
-    # visit_x(left) means: is left (which is an instance of X) a subtype of
-    # right?
+    # visit_x(left) means: is left (which is an instance of X) a subtype of right?
 
     def visit_unbound_type(self, left: UnboundType) -> bool:
         # This can be called if there is a bad type annotation. The result probably
@@ -429,39 +422,37 @@ class SubtypeVisitor(TypeVisitor[bool]):
         # This may be encountered during type inference. The result probably doesn't
         # matter much.
         # TODO: it actually does matter, figure out more principled logic about this.
-        if self.subtype_context.keep_erased_types:
-            return False
-        return True
+        return not self.subtype_context.keep_erased_types
 
     def visit_deleted_type(self, left: DeletedType) -> bool:
         return True
 
     def visit_instance(self, left: Instance) -> bool:
         if left.type.fallback_to_any and not self.proper_subtype:
-            if isinstance(self.right, NoneType):
-                # NOTE: `None` is a *non-subclassable* singleton, therefore no class
-                # can by a subtype of it, even with an `Any` fallback.
-                # This special case is needed to treat descriptors in classes with
-                # dynamic base classes correctly, see #5456.
-                return False
-            return True
+            # NOTE: `None` is a *non-subclassable* singleton, therefore no class
+            # can by a subtype of it, even with an `Any` fallback.
+            # This special case is needed to treat descriptors in classes with
+            # dynamic base classes correctly, see #5456.
+            return not isinstance(self.right, NoneType)
         right = self.right
-        if isinstance(right, TupleType) and mypy.typeops.tuple_fallback(right).type.is_enum:
+        if isinstance(right, TupleType) and right.partial_fallback.type.is_enum:
             return self._is_subtype(left, mypy.typeops.tuple_fallback(right))
         if isinstance(right, Instance):
-            if TypeState.is_cached_subtype_check(self._subtype_kind, left, right):
+            if type_state.is_cached_subtype_check(self._subtype_kind, left, right):
                 return True
+            if type_state.is_cached_negative_subtype_check(self._subtype_kind, left, right):
+                return False
             if not self.subtype_context.ignore_promotions:
                 for base in left.type.mro:
                     if base._promote and any(
                         self._is_subtype(p, self.right) for p in base._promote
                     ):
-                        TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
+                        type_state.record_subtype_cache_entry(self._subtype_kind, left, right)
                         return True
                 # Special case: Low-level integer types are compatible with 'int'. We can't
                 # use promotions, since 'int' is already promoted to low-level integer types,
                 # and we can't have circular promotions.
-                if left.type.alt_promote is right.type:
+                if left.type.alt_promote and left.type.alt_promote.type is right.type:
                     return True
             rname = right.type.fullname
             # Always try a nominal check if possible,
@@ -485,8 +476,33 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     t = erased
                 nominal = True
                 if right.type.has_type_var_tuple_type:
-                    left_prefix, left_middle, left_suffix = split_with_instance(left)
-                    right_prefix, right_middle, right_suffix = split_with_instance(right)
+                    assert left.type.type_var_tuple_prefix is not None
+                    assert left.type.type_var_tuple_suffix is not None
+                    assert right.type.type_var_tuple_prefix is not None
+                    assert right.type.type_var_tuple_suffix is not None
+                    split_result = fully_split_with_mapped_and_template(
+                        left.args,
+                        left.type.type_var_tuple_prefix,
+                        left.type.type_var_tuple_suffix,
+                        right.args,
+                        right.type.type_var_tuple_prefix,
+                        right.type.type_var_tuple_suffix,
+                    )
+                    if split_result is None:
+                        return False
+
+                    (
+                        left_prefix,
+                        left_mprefix,
+                        left_middle,
+                        left_msuffix,
+                        left_suffix,
+                        right_prefix,
+                        right_mprefix,
+                        right_middle,
+                        right_msuffix,
+                        right_suffix,
+                    ) = split_result
 
                     left_unpacked = extract_unpack(left_middle)
                     right_unpacked = extract_unpack(right_middle)
@@ -495,6 +511,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     def check_mixed(
                         unpacked_type: ProperType, compare_to: tuple[Type, ...]
                     ) -> bool:
+                        if (
+                            isinstance(unpacked_type, Instance)
+                            and unpacked_type.type.fullname == "builtins.tuple"
+                        ):
+                            return all(is_equivalent(l, unpacked_type.args[0]) for l in compare_to)
                         if isinstance(unpacked_type, TypeVarTupleType):
                             return False
                         if isinstance(unpacked_type, AnyType):
@@ -521,13 +542,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
                         if not check_mixed(left_unpacked, right_middle):
                             return False
                     elif left_unpacked is None and right_unpacked is not None:
-                        if (
-                            isinstance(right_unpacked, Instance)
-                            and right_unpacked.type.fullname == "builtins.tuple"
-                        ):
-                            return all(
-                                is_equivalent(l, right_unpacked.args[0]) for l in left_middle
-                            )
                         if not check_mixed(right_unpacked, left_middle):
                             return False
 
@@ -540,40 +554,59 @@ class SubtypeVisitor(TypeVisitor[bool]):
                             if not is_equivalent(left_t, right_t):
                                 return False
 
+                    assert len(left_mprefix) == len(right_mprefix)
+                    assert len(left_msuffix) == len(right_msuffix)
+
+                    for left_item, right_item in zip(
+                        left_mprefix + left_msuffix, right_mprefix + right_msuffix
+                    ):
+                        if not is_equivalent(left_item, right_item):
+                            return False
+
                     left_items = t.args[: right.type.type_var_tuple_prefix]
                     right_items = right.args[: right.type.type_var_tuple_prefix]
                     if right.type.type_var_tuple_suffix:
                         left_items += t.args[-right.type.type_var_tuple_suffix :]
                         right_items += right.args[-right.type.type_var_tuple_suffix :]
-
                     unpack_index = right.type.type_var_tuple_prefix
                     assert unpack_index is not None
                     type_params = zip(
-                        left_prefix + right_suffix,
+                        left_prefix + left_suffix,
                         right_prefix + right_suffix,
                         right.type.defn.type_vars[:unpack_index]
                         + right.type.defn.type_vars[unpack_index + 1 :],
                     )
                 else:
                     type_params = zip(t.args, right.args, right.type.defn.type_vars)
-                for lefta, righta, tvar in type_params:
-                    if isinstance(tvar, TypeVarType):
-                        if not self.check_type_parameter(
-                            lefta, righta, tvar.variance, self.proper_subtype, self.subtype_context
-                        ):
-                            nominal = False
-                    else:
-                        if not self.check_type_parameter(
-                            lefta, righta, COVARIANT, self.proper_subtype, self.subtype_context
-                        ):
-                            nominal = False
+                if not self.subtype_context.ignore_type_params:
+                    for lefta, righta, tvar in type_params:
+                        if isinstance(tvar, TypeVarType):
+                            if not check_type_parameter(
+                                lefta,
+                                righta,
+                                tvar.variance,
+                                self.proper_subtype,
+                                self.subtype_context,
+                            ):
+                                nominal = False
+                        else:
+                            if not check_type_parameter(
+                                lefta, righta, COVARIANT, self.proper_subtype, self.subtype_context
+                            ):
+                                nominal = False
                 if nominal:
-                    TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
+                    type_state.record_subtype_cache_entry(self._subtype_kind, left, right)
+                else:
+                    type_state.record_negative_subtype_cache_entry(self._subtype_kind, left, right)
                 return nominal
             if right.type.is_protocol and is_protocol_implementation(
                 left, right, proper_subtype=self.proper_subtype
             ):
                 return True
+            # We record negative cache entry here, and not in the protocol check like we do for
+            # positive cache, to avoid accidentally adding a type that is not a structural
+            # subtype, but is a nominal subtype (involving type: ignore override).
+            type_state.record_negative_subtype_cache_entry(self._subtype_kind, left, right)
             return False
         if isinstance(right, TypeType):
             item = right.item
@@ -615,6 +648,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
             and right.flavor == left.flavor
         ):
             return True
+        if isinstance(right, Parameters) and are_trivial_parameters(right):
+            return True
         return self._is_subtype(left.upper_bound, self.right)
 
     def visit_type_var_tuple(self, left: TypeVarTupleType) -> bool:
@@ -626,10 +661,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_unpack_type(self, left: UnpackType) -> bool:
         if isinstance(self.right, UnpackType):
             return self._is_subtype(left.type, self.right.type)
+        if isinstance(self.right, Instance) and self.right.type.fullname == "builtins.object":
+            return True
         return False
 
     def visit_parameters(self, left: Parameters) -> bool:
-        if isinstance(self.right, Parameters) or isinstance(self.right, CallableType):
+        if isinstance(self.right, (Parameters, CallableType)):
             right = self.right
             if isinstance(right, CallableType):
                 right = right.with_unpacked_kwargs()
@@ -662,13 +699,16 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, Overloaded):
             return all(self._is_subtype(left, item) for item in right.items)
         elif isinstance(right, Instance):
-            if right.type.is_protocol and right.type.protocol_members == ["__call__"]:
-                # OK, a callable can implement a protocol with a single `__call__` member.
+            if right.type.is_protocol and "__call__" in right.type.protocol_members:
+                # OK, a callable can implement a protocol with a `__call__` member.
                 # TODO: we should probably explicitly exclude self-types in this case.
                 call = find_member("__call__", right, left, is_operator=True)
                 assert call is not None
                 if self._is_subtype(left, call):
-                    return True
+                    if len(right.type.protocol_members) == 1:
+                        return True
+                    if is_protocol_implementation(left.fallback, right, skip=["__call__"]):
+                        return True
             if right.type.is_protocol and left.is_type_obj():
                 ret_type = get_proper_type(left.ret_type)
                 if isinstance(ret_type, TupleType):
@@ -711,15 +751,16 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     #       for isinstance(x, tuple), though it's unclear why.
                     return True
                 return all(self._is_subtype(li, iter_type) for li in left.items)
-            elif self._is_subtype(mypy.typeops.tuple_fallback(left), right):
+            elif self._is_subtype(left.partial_fallback, right) and self._is_subtype(
+                mypy.typeops.tuple_fallback(left), right
+            ):
                 return True
             return False
         elif isinstance(right, TupleType):
             if len(left.items) != len(right.items):
                 return False
-            for l, r in zip(left.items, right.items):
-                if not self._is_subtype(l, r):
-                    return False
+            if any(not self._is_subtype(l, r) for l, r in zip(left.items, right.items)):
+                return False
             rfallback = mypy.typeops.tuple_fallback(right)
             if is_named_instance(rfallback, "builtins.tuple"):
                 # No need to verify fallback. This is useful since the calculated fallback
@@ -728,9 +769,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 # join(Union[int, C], Union[str, C]) == Union[int, str, C].
                 return True
             lfallback = mypy.typeops.tuple_fallback(left)
-            if not self._is_subtype(lfallback, rfallback):
-                return False
-            return True
+            return self._is_subtype(lfallback, rfallback)
         else:
             return False
 
@@ -779,12 +818,15 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_overloaded(self, left: Overloaded) -> bool:
         right = self.right
         if isinstance(right, Instance):
-            if right.type.is_protocol and right.type.protocol_members == ["__call__"]:
+            if right.type.is_protocol and "__call__" in right.type.protocol_members:
                 # same as for CallableType
                 call = find_member("__call__", right, left, is_operator=True)
                 assert call is not None
                 if self._is_subtype(left, call):
-                    return True
+                    if len(right.type.protocol_members) == 1:
+                        return True
+                    if is_protocol_implementation(left.fallback, right, skip=["__call__"]):
+                        return True
             return self._is_subtype(left.fallback, right)
         elif isinstance(right, CallableType):
             for item in left.items:
@@ -799,9 +841,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # Ensure each overload in the right side (the supertype) is accounted for.
             previous_match_left_index = -1
             matched_overloads = set()
-            possible_invalid_overloads = set()
 
-            for right_index, right_item in enumerate(right.items):
+            for right_item in right.items:
                 found_match = False
 
                 for left_index, left_item in enumerate(left.items):
@@ -810,43 +851,36 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     # Order matters: we need to make sure that the index of
                     # this item is at least the index of the previous one.
                     if subtype_match and previous_match_left_index <= left_index:
-                        if not found_match:
-                            # Update the index of the previous match.
-                            previous_match_left_index = left_index
-                            found_match = True
-                            matched_overloads.add(left_item)
-                            possible_invalid_overloads.discard(left_item)
+                        previous_match_left_index = left_index
+                        found_match = True
+                        matched_overloads.add(left_index)
+                        break
                     else:
                         # If this one overlaps with the supertype in any way, but it wasn't
                         # an exact match, then it's a potential error.
                         strict_concat = self.options.strict_concatenate if self.options else True
-                        if is_callable_compatible(
-                            left_item,
-                            right_item,
-                            is_compat=self._is_subtype,
-                            ignore_return=True,
-                            ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
-                            strict_concatenate=strict_concat,
-                        ) or is_callable_compatible(
-                            right_item,
-                            left_item,
-                            is_compat=self._is_subtype,
-                            ignore_return=True,
-                            ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
-                            strict_concatenate=strict_concat,
+                        if left_index not in matched_overloads and (
+                            is_callable_compatible(
+                                left_item,
+                                right_item,
+                                is_compat=self._is_subtype,
+                                ignore_return=True,
+                                ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
+                                strict_concatenate=strict_concat,
+                            )
+                            or is_callable_compatible(
+                                right_item,
+                                left_item,
+                                is_compat=self._is_subtype,
+                                ignore_return=True,
+                                ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
+                                strict_concatenate=strict_concat,
+                            )
                         ):
-                            # If this is an overload that's already been matched, there's no
-                            # problem.
-                            if left_item not in matched_overloads:
-                                possible_invalid_overloads.add(left_item)
+                            return False
 
                 if not found_match:
                     return False
-
-            if possible_invalid_overloads:
-                # There were potentially invalid overloads that were never matched to the
-                # supertype.
-                return False
             return True
         elif isinstance(right, UnboundType):
             return True
@@ -873,6 +907,31 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 if not self._is_subtype(item, self.orig_right):
                     return False
             return True
+
+        elif isinstance(self.right, UnionType):
+            # prune literals early to avoid nasty quadratic behavior which would otherwise arise when checking
+            # subtype relationships between slightly different narrowings of an Enum
+            # we achieve O(N+M) instead of O(N*M)
+
+            fast_check: set[ProperType] = set()
+
+            for item in flatten_types(self.right.relevant_items()):
+                p_item = get_proper_type(item)
+                fast_check.add(p_item)
+                if isinstance(p_item, Instance) and p_item.last_known_value is not None:
+                    fast_check.add(p_item.last_known_value)
+
+            for item in left.relevant_items():
+                p_item = get_proper_type(item)
+                if p_item in fast_check:
+                    continue
+                lit_type = mypy.typeops.simple_literal_type(p_item)
+                if lit_type in fast_check:
+                    continue
+                if not self._is_subtype(item, self.orig_right):
+                    return False
+            return True
+
         return all(self._is_subtype(item, self.orig_right) for item in left.items)
 
     def visit_partial_type(self, left: PartialType) -> bool:
@@ -933,7 +992,11 @@ def pop_on_exit(stack: list[tuple[T, T]], left: T, right: T) -> Iterator[None]:
 
 
 def is_protocol_implementation(
-    left: Instance, right: Instance, proper_subtype: bool = False, class_obj: bool = False
+    left: Instance,
+    right: Instance,
+    proper_subtype: bool = False,
+    class_obj: bool = False,
+    skip: list[str] | None = None,
 ) -> bool:
     """Check whether 'left' implements the protocol 'right'.
 
@@ -953,10 +1016,13 @@ def is_protocol_implementation(
     as well.
     """
     assert right.type.is_protocol
+    if skip is None:
+        skip = []
     # We need to record this check to generate protocol fine-grained dependencies.
-    TypeState.record_protocol_subtype_check(left.type, right.type)
+    type_state.record_protocol_subtype_check(left.type, right.type)
     # nominal subtyping currently ignores '__init__' and '__new__' signatures
     members_not_to_check = {"__init__", "__new__"}
+    members_not_to_check.update(skip)
     # Trivial check that circumvents the bug described in issue 9771:
     if left.type.is_protocol:
         members_right = set(right.type.protocol_members) - members_not_to_check
@@ -964,7 +1030,7 @@ def is_protocol_implementation(
         if not members_right.issubset(members_left):
             return False
     assuming = right.type.assuming_proper if proper_subtype else right.type.assuming
-    for (l, r) in reversed(assuming):
+    for l, r in reversed(assuming):
         if l == left and r == right:
             return True
     with pop_on_exit(assuming, left, right):
@@ -976,19 +1042,8 @@ def is_protocol_implementation(
             # We always bind self to the subtype. (Similarly to nominal types).
             supertype = get_proper_type(find_member(member, right, left))
             assert supertype is not None
-            if member == "__call__" and class_obj:
-                # Special case: class objects always have __call__ that is just the constructor.
-                # TODO: move this helper function to typeops.py?
-                import mypy.checkmember
 
-                def named_type(fullname: str) -> Instance:
-                    return Instance(left.type.mro[-1], [])
-
-                subtype: ProperType | None = mypy.checkmember.type_object_type(
-                    left.type, named_type
-                )
-            else:
-                subtype = get_proper_type(find_member(member, left, left, class_obj=class_obj))
+            subtype = mypy.typeops.get_protocol_member(left, member, class_obj)
             # Useful for debugging:
             # print(member, 'of', left, 'has type', subtype)
             # print(member, 'of', right, 'has type', supertype)
@@ -1022,7 +1077,10 @@ def is_protocol_implementation(
                 if not is_subtype(supertype, subtype):
                     return False
             if not class_obj:
-                if (IS_CLASSVAR in subflags) != (IS_CLASSVAR in superflags):
+                if IS_SETTABLE not in superflags:
+                    if IS_CLASSVAR in superflags and IS_CLASSVAR not in subflags:
+                        return False
+                elif (IS_CLASSVAR in subflags) != (IS_CLASSVAR in superflags):
                     return False
             else:
                 if IS_VAR in superflags and IS_CLASSVAR not in subflags:
@@ -1046,7 +1104,7 @@ def is_protocol_implementation(
         subtype_context=SubtypeContext(ignore_pos_arg_names=ignore_names),
         proper_subtype=proper_subtype,
     )
-    TypeState.record_subtype_cache_entry(subtype_kind, left, right)
+    type_state.record_subtype_cache_entry(subtype_kind, left, right)
     return True
 
 
@@ -1098,7 +1156,7 @@ def find_member(
                     if isinstance(getattr_type, CallableType):
                         return getattr_type.ret_type
                     return getattr_type
-        if itype.type.fallback_to_any:
+        if itype.type.fallback_to_any or class_obj and itype.type.meta_fallback_to_any:
             return AnyType(TypeOfAny.special_form)
         if isinstance(v, TypeInfo):
             # PEP 544 doesn't specify anything about such use cases. So we just try
@@ -1178,6 +1236,8 @@ def find_node_type(
         )
     else:
         typ = node.type
+        if typ is not None:
+            typ = expand_self_type(node, typ, subtype)
     p_typ = get_proper_type(typ)
     if typ is None:
         return AnyType(TypeOfAny.from_error)
@@ -1334,7 +1394,7 @@ def is_callable_compatible(
         ignore_pos_arg_names = True
 
     # Non-type cannot be a subtype of type.
-    if right.is_type_obj() and not left.is_type_obj():
+    if right.is_type_obj() and not left.is_type_obj() and not allow_partial_overlap:
         return False
 
     # A callable L is a subtype of a generic callable R if L is a
@@ -1352,8 +1412,7 @@ def is_callable_compatible(
         unified = unify_generic_callable(left, right, ignore_return=ignore_return)
         if unified is None:
             return False
-        else:
-            left = unified
+        left = unified
 
     # If we allow partial overlaps, we don't need to leave R generic:
     # if we can find even just a single typevar assignment which
@@ -1389,6 +1448,18 @@ def is_callable_compatible(
     )
 
 
+def are_trivial_parameters(param: Parameters | NormalizedCallableType) -> bool:
+    param_star = param.var_arg()
+    param_star2 = param.kw_arg()
+    return (
+        param.arg_kinds == [ARG_STAR, ARG_STAR2]
+        and param_star is not None
+        and isinstance(get_proper_type(param_star.typ), AnyType)
+        and param_star2 is not None
+        and isinstance(get_proper_type(param_star2.typ), AnyType)
+    )
+
+
 def are_parameters_compatible(
     left: Parameters | NormalizedCallableType,
     right: Parameters | NormalizedCallableType,
@@ -1409,13 +1480,7 @@ def are_parameters_compatible(
     right_star2 = right.kw_arg()
 
     # Treat "def _(*a: Any, **kw: Any) -> X" similarly to "Callable[..., X]"
-    if (
-        right.arg_kinds == [ARG_STAR, ARG_STAR2]
-        and right_star
-        and isinstance(get_proper_type(right_star.typ), AnyType)
-        and right_star2
-        and isinstance(get_proper_type(right_star2.typ), AnyType)
-    ):
+    if are_trivial_parameters(right):
         return True
 
     # Match up corresponding arguments and check them for compatibility. In
@@ -1648,6 +1713,10 @@ def unify_generic_callable(
         nonlocal had_errors
         had_errors = True
 
+    # This function may be called by the solver, so we need to allow erased types here.
+    # We anyway allow checking subtyping between other types containing <Erased>
+    # (probably also because solver needs subtyping). See also comment in
+    # ExpandTypeVisitor.visit_erased_type().
     applied = mypy.applytype.apply_generic_arguments(
         type, non_none_inferred_vars, report, context=target
     )
@@ -1713,14 +1782,22 @@ def covers_at_runtime(item: Type, supertype: Type) -> bool:
         erase_type(item), supertype, ignore_promotions=True, erase_instances=True
     ):
         return True
-    if isinstance(supertype, Instance) and supertype.type.is_protocol:
-        # TODO: Implement more robust support for runtime isinstance() checks, see issue #3827.
-        if is_proper_subtype(item, supertype, ignore_promotions=True):
-            return True
-    if isinstance(item, TypedDictType) and isinstance(supertype, Instance):
-        # Special case useful for selecting TypedDicts from unions using isinstance(x, dict).
-        if supertype.type.fullname == "builtins.dict":
-            return True
+    if isinstance(supertype, Instance):
+        if supertype.type.is_protocol:
+            # TODO: Implement more robust support for runtime isinstance() checks, see issue #3827.
+            if is_proper_subtype(item, supertype, ignore_promotions=True):
+                return True
+        if isinstance(item, TypedDictType):
+            # Special case useful for selecting TypedDicts from unions using isinstance(x, dict).
+            if supertype.type.fullname == "builtins.dict":
+                return True
+        elif isinstance(item, TypeVarType):
+            if is_proper_subtype(item.upper_bound, supertype, ignore_promotions=True):
+                return True
+        elif isinstance(item, Instance) and supertype.type.fullname == "builtins.int":
+            # "int" covers all native int types
+            if item.type.fullname in MYPYC_NATIVE_INT_NAMES:
+                return True
     # TODO: Add more special cases.
     return False
 

@@ -56,8 +56,12 @@ if sys.platform == "win32":
         It also pickles the options to be unpickled by mypy.
         """
         command = [sys.executable, "-m", "mypy.dmypy", "--status-file", status_file, "daemon"]
-        pickled_options = pickle.dumps((options.snapshot(), timeout, log_file))
+        pickled_options = pickle.dumps(options.snapshot())
         command.append(f'--options-data="{base64.b64encode(pickled_options).decode()}"')
+        if timeout:
+            command.append(f"--timeout={timeout}")
+        if log_file:
+            command.append(f"--log-file={log_file}")
         info = STARTUPINFO()
         info.dwFlags = 0x1  # STARTF_USESHOWWINDOW aka use wShowWindow's value
         info.wShowWindow = 0  # SW_HIDE aka make the window invisible
@@ -163,7 +167,6 @@ ChangesAndRemovals: _TypeAlias = Tuple[ModulePathPairs, ModulePathPairs]
 
 
 class Server:
-
     # NOTE: the instance is constructed in the parent process but
     # serve() is called in the grandchild (by daemonize()).
 
@@ -215,7 +218,9 @@ class Server:
                 with server:
                     data = receive(server)
                     debug_stdout = io.StringIO()
+                    debug_stderr = io.StringIO()
                     sys.stdout = debug_stdout
+                    sys.stderr = debug_stderr
                     resp: dict[str, Any] = {}
                     if "command" not in data:
                         resp = {"error": "No command found in request"}
@@ -233,9 +238,11 @@ class Server:
                                 resp = {"error": "Daemon crashed!\n" + "".join(tb)}
                                 resp.update(self._response_metadata())
                                 resp["stdout"] = debug_stdout.getvalue()
+                                resp["stderr"] = debug_stderr.getvalue()
                                 server.write(json.dumps(resp).encode("utf8"))
                                 raise
                     resp["stdout"] = debug_stdout.getvalue()
+                    resp["stderr"] = debug_stderr.getvalue()
                     try:
                         resp.update(self._response_metadata())
                         server.write(json.dumps(resp).encode("utf8"))
@@ -512,7 +519,8 @@ class Server:
 
             print_memory_profile(run_gc=False)
 
-        status = 1 if messages else 0
+        __, n_notes, __ = count_stats(messages)
+        status = 1 if messages and n_notes < len(messages) else 0
         messages = self.pretty_messages(messages, len(sources), is_tty, terminal_width)
         return {"out": "".join(s + "\n" for s in messages), "err": "", "status": status}
 
@@ -592,10 +600,10 @@ class Server:
         sources.extend(new_files)
 
         # Process changes directly reachable from roots.
-        messages = fine_grained_manager.update(changed, [])
+        messages = fine_grained_manager.update(changed, [], followed=True)
 
         # Follow deps from changed modules (still within graph).
-        worklist = changed[:]
+        worklist = changed.copy()
         while worklist:
             module = worklist.pop()
             if module[0] not in graph:
@@ -609,13 +617,13 @@ class Server:
                 sources2, graph, seen, changed_paths
             )
             self.update_sources(new_files)
-            messages = fine_grained_manager.update(changed, [])
+            messages = fine_grained_manager.update(changed, [], followed=True)
             worklist.extend(changed)
 
         t2 = time.time()
 
         def refresh_file(module: str, path: str) -> list[str]:
-            return fine_grained_manager.update([(module, path)], [])
+            return fine_grained_manager.update([(module, path)], [], followed=True)
 
         for module_id, state in list(graph.items()):
             new_messages = refresh_suppressed_submodules(
@@ -632,10 +640,10 @@ class Server:
             new_unsuppressed = self.find_added_suppressed(graph, seen, manager.search_paths)
             if not new_unsuppressed:
                 break
-            new_files = [BuildSource(mod[1], mod[0]) for mod in new_unsuppressed]
+            new_files = [BuildSource(mod[1], mod[0], followed=True) for mod in new_unsuppressed]
             sources.extend(new_files)
             self.update_sources(new_files)
-            messages = fine_grained_manager.update(new_unsuppressed, [])
+            messages = fine_grained_manager.update(new_unsuppressed, [], followed=True)
 
             for module_id, path in new_unsuppressed:
                 new_messages = refresh_suppressed_submodules(
@@ -702,7 +710,7 @@ class Server:
         """
         changed = []
         new_files = []
-        worklist = roots[:]
+        worklist = roots.copy()
         seen.update(source.module for source in worklist)
         while worklist:
             nxt = worklist.pop()
@@ -717,7 +725,7 @@ class Server:
                 for dep in state.dependencies:
                     if dep not in seen:
                         seen.add(dep)
-                        worklist.append(BuildSource(graph[dep].path, graph[dep].id))
+                        worklist.append(BuildSource(graph[dep].path, graph[dep].id, followed=True))
         return changed, new_files
 
     def direct_imports(
@@ -725,7 +733,7 @@ class Server:
     ) -> list[BuildSource]:
         """Return the direct imports of module not included in seen."""
         state = graph[module[0]]
-        return [BuildSource(graph[dep].path, dep) for dep in state.dependencies]
+        return [BuildSource(graph[dep].path, dep, followed=True) for dep in state.dependencies]
 
     def find_added_suppressed(
         self, graph: mypy.build.Graph, seen: set[str], search_paths: SearchPaths
@@ -823,7 +831,6 @@ class Server:
     def update_changed(
         self, sources: list[BuildSource], remove: list[str], update: list[str]
     ) -> ChangesAndRemovals:
-
         changed_paths = self.fswatcher.update_changed(remove, update)
         return self._find_changed(sources, changed_paths)
 

@@ -19,7 +19,7 @@ from typing import Any, Callable, Mapping, NoReturn
 from mypy.dmypy_os import alive, kill
 from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive
 from mypy.ipc import IPCClient, IPCException
-from mypy.util import check_python_version, get_terminal_width
+from mypy.util import check_python_version, get_terminal_width, should_force_color
 from mypy.version import __version__
 
 # Argument parser.  Subparsers are tied to action functions by the
@@ -244,6 +244,7 @@ daemon_parser = p = subparsers.add_parser("daemon", help="Run daemon in foregrou
 p.add_argument(
     "--timeout", metavar="TIMEOUT", type=int, help="Server shutdown timeout (in seconds)"
 )
+p.add_argument("--log-file", metavar="FILE", type=str, help="Direct daemon stdout/stderr to FILE")
 p.add_argument(
     "flags", metavar="FLAG", nargs="*", type=str, help="Regular mypy flags (precede with --)"
 )
@@ -608,21 +609,22 @@ def do_daemon(args: argparse.Namespace) -> None:
     # Lazy import so this import doesn't slow down other commands.
     from mypy.dmypy_server import Server, process_start_options
 
+    if args.log_file:
+        sys.stdout = sys.stderr = open(args.log_file, "a", buffering=1)
+        fd = sys.stdout.fileno()
+        os.dup2(fd, 2)
+        os.dup2(fd, 1)
+
     if args.options_data:
         from mypy.options import Options
 
-        options_dict, timeout, log_file = pickle.loads(base64.b64decode(args.options_data))
+        options_dict = pickle.loads(base64.b64decode(args.options_data))
         options_obj = Options()
         options = options_obj.apply_changes(options_dict)
-        if log_file:
-            sys.stdout = sys.stderr = open(log_file, "a", buffering=1)
-            fd = sys.stdout.fileno()
-            os.dup2(fd, 2)
-            os.dup2(fd, 1)
     else:
         options = process_start_options(args.flags, allow_sources=False)
-        timeout = args.timeout
-    Server(options, args.status_file, timeout=timeout).serve()
+
+    Server(options, args.status_file, timeout=args.timeout).serve()
 
 
 @action(help_parser)
@@ -653,7 +655,7 @@ def request(
     args["command"] = command
     # Tell the server whether this request was initiated from a human-facing terminal,
     # so that it can format the type checking output accordingly.
-    args["is_tty"] = sys.stdout.isatty() or int(os.getenv("MYPY_FORCE_COLOR", "0")) > 0
+    args["is_tty"] = sys.stdout.isatty() or should_force_color()
     args["terminal_width"] = get_terminal_width()
     bdata = json.dumps(args).encode("utf8")
     _, name = get_status(status_file)
@@ -665,10 +667,15 @@ def request(
         return {"error": str(err)}
     # TODO: Other errors, e.g. ValueError, UnicodeError
     else:
-        # Display debugging output written to stdout in the server process for convenience.
+        # Display debugging output written to stdout/stderr in the server process for convenience.
         stdout = response.get("stdout")
         if stdout:
             sys.stdout.write(stdout)
+        stderr = response.get("stderr")
+        if stderr:
+            print("-" * 79)
+            print("stderr:")
+            sys.stdout.write(stderr)
         return response
 
 

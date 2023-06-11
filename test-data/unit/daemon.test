@@ -214,6 +214,20 @@ mypy-daemon: error: Missing target module, package, files, or command.
 $ dmypy stop
 Daemon stopped
 
+[case testDaemonWarningSuccessExitCode-posix]
+$ dmypy run -- foo.py --follow-imports=error
+Daemon started
+foo.py:2: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+Success: no issues found in 1 source file
+$ echo $?
+0
+$ dmypy stop
+Daemon stopped
+[file foo.py]
+def foo():
+    a: int = 1
+    print(a + "2")
+
 -- this is carefully constructed to be able to break if the quickstart system lets
 -- something through incorrectly. in particular, the files need to have the same size
 [case testDaemonQuickstart]
@@ -298,7 +312,7 @@ def bar() -> None:
     foo(arg='xyz')
 
 [case testDaemonGetType_python38]
-$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
+$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary --python-version 3.8
 Daemon started
 $ dmypy inspect foo:1:2:3:4
 Command "inspect" is only valid after a "check" command (that produces no parse errors)
@@ -476,7 +490,7 @@ bar/baz.py:4:5:attr
 $ dmypy inspect foo.py:10:10 --show definition --include-span
 10:1:10:12 -> bar/baz.py:6:1:test
 $ dmypy inspect foo.py:14:6 --show definition --include-span --include-kind
-NameExpr:14:5:14:7 -> foo.py:13:1:arg
+NameExpr:14:5:14:7 -> foo.py:13:9:arg
 MemberExpr:14:5:14:9 -> bar/baz.py:9:5:x, bar/baz.py:11:5:x
 
 [file foo.py]

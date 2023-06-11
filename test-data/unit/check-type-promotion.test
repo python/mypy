@@ -54,3 +54,136 @@ def f(x: Union[SupportsFloat, T]) -> Union[SupportsFloat, T]: pass
 f(0)  # should not crash
 [builtins fixtures/primitives.pyi]
 [out]
+
+[case testIntersectionUsingPromotion1]
+# flags: --warn-unreachable
+from typing import Union
+
+x: complex = 1
+reveal_type(x)  # N: Revealed type is "builtins.complex"
+if isinstance(x, int):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+else:
+    reveal_type(x)  # N: Revealed type is "builtins.complex"
+reveal_type(x)  # N: Revealed type is "builtins.complex"
+
+y: Union[int, float]
+if isinstance(y, float):
+    reveal_type(y)  # N: Revealed type is "builtins.float"
+else:
+    reveal_type(y)  # N: Revealed type is "builtins.int"
+
+reveal_type(y)  # N: Revealed type is "Union[builtins.int, builtins.float]"
+
+if isinstance(y, int):
+    reveal_type(y)  # N: Revealed type is "builtins.int"
+else:
+    reveal_type(y)  # N: Revealed type is "builtins.float"
+[builtins fixtures/primitives.pyi]
+
+[case testIntersectionUsingPromotion2]
+# flags: --warn-unreachable
+x: complex = 1
+reveal_type(x)  # N: Revealed type is "builtins.complex"
+if isinstance(x, (int, float)):
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.float]"
+else:
+    reveal_type(x)  # N: Revealed type is "builtins.complex"
+
+# Note we make type precise, since type promotions are involved
+reveal_type(x)  # N: Revealed type is "Union[builtins.complex, builtins.int, builtins.float]"
+[builtins fixtures/primitives.pyi]
+
+[case testIntersectionUsingPromotion3]
+# flags: --warn-unreachable
+x: object
+if isinstance(x, int) and isinstance(x, complex):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+if isinstance(x, complex) and isinstance(x, int):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/primitives.pyi]
+
+[case testIntersectionUsingPromotion4]
+# flags: --warn-unreachable
+x: object
+if isinstance(x, int):
+    if isinstance(x, complex):
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+if isinstance(x, complex):
+    if isinstance(x, int):
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.complex"
+[builtins fixtures/primitives.pyi]
+
+[case testIntersectionUsingPromotion5]
+# flags: --warn-unreachable
+from typing import Union
+
+x: Union[float, complex]
+if isinstance(x, int):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+else:
+    reveal_type(x)  # N: Revealed type is "Union[builtins.float, builtins.complex]"
+reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.float, builtins.complex]"
+[builtins fixtures/primitives.pyi]
+
+[case testIntersectionUsingPromotion6]
+# flags: --warn-unreachable
+from typing import Union
+
+x: Union[str, complex]
+if isinstance(x, int):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+else:
+    reveal_type(x)  # N: Revealed type is "Union[builtins.str, builtins.complex]"
+reveal_type(x)  # N: Revealed type is "Union[builtins.str, builtins.int, builtins.complex]"
+[builtins fixtures/primitives.pyi]
+
+[case testIntersectionUsingPromotion7]
+# flags: --warn-unreachable
+from typing import Union
+
+x: Union[int, float, complex]
+if isinstance(x, int):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+else:
+    reveal_type(x)  # N: Revealed type is "Union[builtins.float, builtins.complex]"
+
+reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.float, builtins.complex]"
+
+if isinstance(x, float):
+    reveal_type(x)  # N: Revealed type is "builtins.float"
+else:
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.complex]"
+
+reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.float, builtins.complex]"
+
+if isinstance(x, complex):
+    reveal_type(x)  # N: Revealed type is "builtins.complex"
+else:
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.float]"
+
+reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.float, builtins.complex]"
+[builtins fixtures/primitives.pyi]
+
+[case testIntersectionUsingPromotion8]
+# flags: --warn-unreachable
+from typing import Union
+
+x: Union[int, float, complex]
+if isinstance(x, (int, float)):
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.float]"
+else:
+    reveal_type(x)  # N: Revealed type is "builtins.complex"
+if isinstance(x, (int, complex)):
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.complex]"
+else:
+    reveal_type(x)  # N: Revealed type is "builtins.float"
+if isinstance(x, (float, complex)):
+    reveal_type(x)  # N: Revealed type is "Union[builtins.float, builtins.complex]"
+else:
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/primitives.pyi]

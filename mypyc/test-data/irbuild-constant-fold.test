@@ -140,21 +140,12 @@ L0:
     rshift_neg = r3
     return 1
 def unsupported_div():
-    r0, r1, r2 :: object
-    r3, x :: float
-    r4, r5, r6 :: object
-    r7, y :: float
+    r0, x, r1, y :: float
 L0:
-    r0 = object 4
-    r1 = object 6
-    r2 = PyNumber_TrueDivide(r0, r1)
-    r3 = cast(float, r2)
-    x = r3
-    r4 = object 10
-    r5 = object 5
-    r6 = PyNumber_TrueDivide(r4, r5)
-    r7 = cast(float, r6)
-    y = r7
+    r0 = CPyTagged_TrueDivide(8, 12)
+    x = r0
+    r1 = CPyTagged_TrueDivide(20, 10)
+    y = r1
     return 1
 def unsupported_pow():
     r0, r1, r2 :: object
@@ -163,7 +154,7 @@ L0:
     r0 = object 3
     r1 = object -1
     r2 = CPyNumber_Power(r0, r1)
-    r3 = cast(float, r2)
+    r3 = unbox(float, r2)
     p = r3
     return 1
 
@@ -205,23 +196,13 @@ Y: Final = 2 + 4
 
 def f() -> None:
     a = X + 1
-    # TODO: Constant fold this as well
     a = Y + 1
 [out]
 def f():
-    a, r0 :: int
-    r1 :: bool
-    r2 :: int
+    a :: int
 L0:
     a = 12
-    r0 = __main__.Y :: static
-    if is_error(r0) goto L1 else goto L2
-L1:
-    r1 = raise NameError('value for final name "Y" was not set')
-    unreachable
-L2:
-    r2 = CPyTagged_Add(r0, 2)
-    a = r2
+    a = 14
     return 1
 
 [case testIntConstantFoldingClassFinal]

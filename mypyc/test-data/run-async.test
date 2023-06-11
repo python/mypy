@@ -13,6 +13,9 @@ async def g() -> int:
 async def f() -> int:
     return await g()
 
+[file asyncio/__init__.pyi]
+async def sleep(t: float) -> None: ...
+
 [typing fixtures/typing-full.pyi]
 
 [file driver.py]

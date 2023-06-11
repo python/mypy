@@ -6,6 +6,7 @@ from typing_extensions import Final
 
 from mypy import errorcodes as codes, message_registry
 from mypy.errorcodes import ErrorCode
+from mypy.expandtype import expand_type
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
@@ -23,6 +24,7 @@ from mypy.nodes import (
     NameExpr,
     PassStmt,
     RefExpr,
+    Statement,
     StrExpr,
     TempNode,
     TupleExpr,
@@ -30,7 +32,11 @@ from mypy.nodes import (
     TypeInfo,
 )
 from mypy.options import Options
-from mypy.semanal_shared import SemanticAnalyzerInterface, has_placeholder
+from mypy.semanal_shared import (
+    SemanticAnalyzerInterface,
+    has_placeholder,
+    require_bool_literal_argument,
+)
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
 from mypy.types import (
     TPDICT_NAMES,
@@ -40,7 +46,6 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeVarLikeType,
-    replace_alias_tvars,
 )
 
 TPDICT_CLASS_ERROR: Final = (
@@ -93,7 +98,7 @@ class TypedDictAnalyzer:
             and defn.base_type_exprs[0].fullname in TPDICT_NAMES
         ):
             # Building a new TypedDict
-            fields, types, required_keys = self.analyze_typeddict_classdef_fields(defn)
+            fields, types, statements, required_keys = self.analyze_typeddict_classdef_fields(defn)
             if fields is None:
                 return True, None  # Defer
             info = self.build_typeddict_typeinfo(
@@ -102,6 +107,7 @@ class TypedDictAnalyzer:
             defn.analyzed = TypedDictExpr(info)
             defn.analyzed.line = defn.line
             defn.analyzed.column = defn.column
+            defn.defs.body = statements
             return True, info
 
         # Extending/merging existing TypedDicts
@@ -139,7 +145,12 @@ class TypedDictAnalyzer:
         # Iterate over bases in reverse order so that leftmost base class' keys take precedence
         for base in reversed(typeddict_bases):
             self.add_keys_and_types_from_base(base, keys, types, required_keys, defn)
-        new_keys, new_types, new_required_keys = self.analyze_typeddict_classdef_fields(defn, keys)
+        (
+            new_keys,
+            new_types,
+            new_statements,
+            new_required_keys,
+        ) = self.analyze_typeddict_classdef_fields(defn, keys)
         if new_keys is None:
             return True, None  # Defer
         keys.extend(new_keys)
@@ -151,6 +162,7 @@ class TypedDictAnalyzer:
         defn.analyzed = TypedDictExpr(info)
         defn.analyzed.line = defn.line
         defn.analyzed.column = defn.column
+        defn.defs.body = new_statements
         return True, info
 
     def add_keys_and_types_from_base(
@@ -181,7 +193,7 @@ class TypedDictAnalyzer:
         valid_items = base_items.copy()
 
         # Always fix invalid bases to avoid crashes.
-        tvars = info.type_vars
+        tvars = info.defn.type_vars
         if len(base_args) != len(tvars):
             any_kind = TypeOfAny.from_omitted_generics
             if base_args:
@@ -227,14 +239,12 @@ class TypedDictAnalyzer:
         return base_args
 
     def map_items_to_base(
-        self, valid_items: dict[str, Type], tvars: list[str], base_args: list[Type]
+        self, valid_items: dict[str, Type], tvars: list[TypeVarLikeType], base_args: list[Type]
     ) -> dict[str, Type]:
         """Map item types to how they would look in their base with type arguments applied.
 
-        We would normally use expand_type() for such task, but we can't use it during
-        semantic analysis, because it can (indirectly) call is_subtype() etc., and it
-        will crash on placeholder types. So we hijack replace_alias_tvars() that was initially
-        intended to deal with eager expansion of generic type aliases during semantic analysis.
+        Note it is safe to use expand_type() during semantic analysis, because it should never
+        (indirectly) call is_subtype().
         """
         mapped_items = {}
         for key in valid_items:
@@ -242,15 +252,14 @@ class TypedDictAnalyzer:
             if not tvars:
                 mapped_items[key] = type_in_base
                 continue
-            mapped_type = replace_alias_tvars(
-                type_in_base, tvars, base_args, type_in_base.line, type_in_base.column
+            mapped_items[key] = expand_type(
+                type_in_base, {t.id: a for (t, a) in zip(tvars, base_args)}
             )
-            mapped_items[key] = mapped_type
         return mapped_items
 
     def analyze_typeddict_classdef_fields(
         self, defn: ClassDef, oldfields: list[str] | None = None
-    ) -> tuple[list[str] | None, list[Type], set[str]]:
+    ) -> tuple[list[str] | None, list[Type], list[Statement], set[str]]:
         """Analyze fields defined in a TypedDict class definition.
 
         This doesn't consider inherited fields (if any). Also consider totality,
@@ -259,20 +268,27 @@ class TypedDictAnalyzer:
         Return tuple with these items:
          * List of keys (or None if found an incomplete reference --> deferral)
          * List of types for each key
+         * List of statements from defn.defs.body that are legally allowed to be a
+           part of a TypedDict definition
          * Set of required keys
         """
         fields: list[str] = []
         types: list[Type] = []
+        statements: list[Statement] = []
         for stmt in defn.defs.body:
             if not isinstance(stmt, AssignmentStmt):
-                # Still allow pass or ... (for empty TypedDict's).
-                if not isinstance(stmt, PassStmt) and not (
+                # Still allow pass or ... (for empty TypedDict's) and docstrings
+                if isinstance(stmt, PassStmt) or (
                     isinstance(stmt, ExpressionStmt)
                     and isinstance(stmt.expr, (EllipsisExpr, StrExpr))
                 ):
+                    statements.append(stmt)
+                else:
+                    defn.removed_statements.append(stmt)
                     self.fail(TPDICT_CLASS_ERROR, stmt)
             elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
                 # An assignment, but an invalid one.
+                defn.removed_statements.append(stmt)
                 self.fail(TPDICT_CLASS_ERROR, stmt)
             else:
                 name = stmt.lvalues[0].name
@@ -281,8 +297,9 @@ class TypedDictAnalyzer:
                 if name in fields:
                     self.fail(f'Duplicate TypedDict key "{name}"', stmt)
                     continue
-                # Append name and type in this case...
+                # Append stmt, name, and type in this case...
                 fields.append(name)
+                statements.append(stmt)
                 if stmt.type is None:
                     types.append(AnyType(TypeOfAny.unannotated))
                 else:
@@ -291,11 +308,12 @@ class TypedDictAnalyzer:
                         allow_required=True,
                         allow_placeholder=not self.options.disable_recursive_aliases
                         and not self.api.is_func_scope(),
+                        prohibit_self_type="TypedDict item type",
                     )
                     if analyzed is None:
-                        return None, [], set()  # Need to defer
+                        return None, [], [], set()  # Need to defer
                     types.append(analyzed)
-                # ...despite possible minor failures that allow further analyzis.
+                # ...despite possible minor failures that allow further analysis.
                 if stmt.type is None or hasattr(stmt, "new_syntax") and not stmt.new_syntax:
                     self.fail(TPDICT_CLASS_ERROR, stmt)
                 elif not isinstance(stmt.rvalue, TempNode):
@@ -303,10 +321,7 @@ class TypedDictAnalyzer:
                     self.fail("Right hand side values are not supported in TypedDict", stmt)
         total: bool | None = True
         if "total" in defn.keywords:
-            total = self.api.parse_bool(defn.keywords["total"])
-            if total is None:
-                self.fail('Value of "total" must be True or False', defn)
-                total = True
+            total = require_bool_literal_argument(self.api, defn.keywords["total"], "total", True)
         required_keys = {
             field
             for (field, t) in zip(fields, types)
@@ -317,7 +332,7 @@ class TypedDictAnalyzer:
             t.item if isinstance(t, RequiredType) else t for t in types
         ]
 
-        return fields, types, required_keys
+        return fields, types, statements, required_keys
 
     def check_typeddict(
         self, node: Expression, var_name: str | None, is_func_scope: bool
@@ -419,11 +434,9 @@ class TypedDictAnalyzer:
             )
         total: bool | None = True
         if len(args) == 3:
-            total = self.api.parse_bool(call.args[2])
+            total = require_bool_literal_argument(self.api, call.args[2], "total")
             if total is None:
-                return self.fail_typeddict_arg(
-                    'TypedDict() "total" argument must be True or False', call
-                )
+                return "", [], [], True, [], False
         dictexpr = args[1]
         tvar_defs = self.api.get_and_bind_all_tvars([t for k, t in dictexpr.items])
         res = self.parse_typeddict_fields_with_types(dictexpr.items, call)
@@ -453,7 +466,7 @@ class TypedDictAnalyzer:
         seen_keys = set()
         items: list[str] = []
         types: list[Type] = []
-        for (field_name_expr, field_type_expr) in dict_items:
+        for field_name_expr, field_type_expr in dict_items:
             if isinstance(field_name_expr, StrExpr):
                 key = field_name_expr.value
                 items.append(key)
@@ -486,6 +499,7 @@ class TypedDictAnalyzer:
                 allow_required=True,
                 allow_placeholder=not self.options.disable_recursive_aliases
                 and not self.api.is_func_scope(),
+                prohibit_self_type="TypedDict item type",
             )
             if analyzed is None:
                 return None
@@ -517,7 +531,9 @@ class TypedDictAnalyzer:
         info = existing_info or self.api.basic_new_typeinfo(name, fallback, line)
         typeddict_type = TypedDictType(dict(zip(items, types)), required_keys, fallback)
         if info.special_alias and has_placeholder(info.special_alias.target):
-            self.api.defer(force_progress=True)
+            self.api.process_placeholder(
+                None, "TypedDict item", info, force_progress=typeddict_type != info.typeddict_type
+            )
         info.update_typeddict_type(typeddict_type)
         return info
 

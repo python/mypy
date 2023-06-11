@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import mypy.typeops
 from mypy.expandtype import expand_type
 from mypy.nodes import TypeInfo
 from mypy.types import AnyType, Instance, TupleType, Type, TypeOfAny, TypeVarId, has_type_vars
@@ -29,6 +28,9 @@ def map_instance_to_supertype(instance: Instance, superclass: TypeInfo) -> Insta
                 env = instance_to_type_environment(instance)
                 tuple_type = expand_type(instance.type.tuple_type, env)
                 if isinstance(tuple_type, TupleType):
+                    # Make the import here to avoid cyclic imports.
+                    import mypy.typeops
+
                     return mypy.typeops.tuple_fallback(tuple_type)
 
     if not superclass.type_vars:

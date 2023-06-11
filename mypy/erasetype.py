@@ -176,8 +176,8 @@ class TypeVarEraser(TypeTranslator):
         return t
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
-        # Type alias target can't contain bound type variables, so
-        # it is safe to just erase the arguments.
+        # Type alias target can't contain bound type variables (not bound by the type
+        # alias itself), so it is safe to just erase the arguments.
         return t.copy_modified(args=[a.accept(self) for a in t.args])
 
 

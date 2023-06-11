@@ -95,7 +95,6 @@ from mypy.types import (
     PartialType,
     PlaceholderType,
     RawExpressionType,
-    StarType,
     SyntheticTypeVisitor,
     TupleType,
     Type,
@@ -110,7 +109,7 @@ from mypy.types import (
     UnionType,
     UnpackType,
 )
-from mypy.typestate import TypeState
+from mypy.typestate import type_state
 from mypy.util import get_prefix, replace_object_state
 
 
@@ -213,8 +212,8 @@ class NodeReplaceVisitor(TraverserVisitor):
         super().visit_mypy_file(node)
 
     def visit_block(self, node: Block) -> None:
-        super().visit_block(node)
         node.body = self.replace_statements(node.body)
+        super().visit_block(node)
 
     def visit_func_def(self, node: FuncDef) -> None:
         node = self.fixup(node)
@@ -251,6 +250,15 @@ class NodeReplaceVisitor(TraverserVisitor):
         for value in tv.values:
             self.fixup_type(value)
         self.fixup_type(tv.upper_bound)
+        self.fixup_type(tv.default)
+
+    def process_param_spec_def(self, tv: ParamSpecType) -> None:
+        self.fixup_type(tv.upper_bound)
+        self.fixup_type(tv.default)
+
+    def process_type_var_tuple_def(self, tv: TypeVarTupleType) -> None:
+        self.fixup_type(tv.upper_bound)
+        self.fixup_type(tv.default)
 
     def visit_assignment_stmt(self, node: AssignmentStmt) -> None:
         self.fixup_type(node.type)
@@ -331,6 +339,8 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def visit_type_alias(self, node: TypeAlias) -> None:
         self.fixup_type(node.target)
+        for v in node.alias_tvars:
+            self.fixup_type(v)
         super().visit_type_alias(node)
 
     # Helpers
@@ -357,8 +367,9 @@ class NodeReplaceVisitor(TraverserVisitor):
         if node in self.replacements:
             # The subclass relationships may change, so reset all caches relevant to the
             # old MRO.
-            new = cast(TypeInfo, self.replacements[node])
-            TypeState.reset_all_subtype_caches_for(new)
+            new = self.replacements[node]
+            assert isinstance(new, TypeInfo)
+            type_state.reset_all_subtype_caches_for(new)
         return self.fixup(node)
 
     def fixup_type(self, typ: Type | None) -> None:
@@ -476,14 +487,17 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
 
     def visit_type_var(self, typ: TypeVarType) -> None:
         typ.upper_bound.accept(self)
+        typ.default.accept(self)
         for value in typ.values:
             value.accept(self)
 
     def visit_param_spec(self, typ: ParamSpecType) -> None:
-        pass
+        typ.upper_bound.accept(self)
+        typ.default.accept(self)
 
     def visit_type_var_tuple(self, typ: TypeVarTupleType) -> None:
         typ.upper_bound.accept(self)
+        typ.default.accept(self)
 
     def visit_unpack_type(self, typ: UnpackType) -> None:
         typ.type.accept(self)
@@ -516,9 +530,6 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
 
     def visit_ellipsis_type(self, typ: EllipsisType) -> None:
         pass
-
-    def visit_star_type(self, typ: StarType) -> None:
-        typ.type.accept(self)
 
     def visit_uninhabited_type(self, typ: UninhabitedType) -> None:
         pass

@@ -9,7 +9,7 @@ x = 1
 [out]
 __main__:
   SymbolTable(
-    x : Gdef/Var (__main__.x))
+    x : Gdef/Var (__main__.x) : builtins.int)
 
 [case testFuncDef]
 def f(): pass
@@ -35,7 +35,7 @@ __main__:
     m : Gdef/MypyFile (m))
 m:
   SymbolTable(
-    x : Gdef/Var (m.x))
+    x : Gdef/Var (m.x) : builtins.int)
 
 [case testImportFromModule]
 from m import x
@@ -49,7 +49,7 @@ __main__:
 m:
   SymbolTable(
     x : Gdef/TypeInfo (m.x)
-    y : Gdef/Var (m.y))
+    y : Gdef/Var (m.y) : builtins.int)
 
 [case testImportAs]
 from m import x as xx
@@ -63,7 +63,7 @@ __main__:
 m:
   SymbolTable(
     x : Gdef/TypeInfo (m.x)
-    y : Gdef/Var (m.y))
+    y : Gdef/Var (m.y) : builtins.int)
 
 [case testFailingImports]
 from sys import non_existing1  # type: ignore
@@ -78,10 +78,6 @@ __main__:
     non_existing2 : Gdef/Var (__main__.non_existing2) : Any
     non_existing3 : Gdef/Var (__main__.non_existing3) : Any
     non_existing4 : Gdef/Var (__main__.non_existing4) : Any)
-sys:
-  SymbolTable(
-    platform : Gdef/Var (sys.platform)
-    version_info : Gdef/Var (sys.version_info))
 
 [case testDecorator]
 from typing import Callable
@@ -95,6 +91,6 @@ def g() -> None:
 [out]
 __main__:
   SymbolTable(
-    Callable : Gdef/Var (typing.Callable)
+    Callable : Gdef/Var (typing.Callable) : builtins.int
     dec : Gdef/FuncDef (__main__.dec) : def (f: def ()) -> def ()
     g : Gdef/Decorator (__main__.g) : def ())

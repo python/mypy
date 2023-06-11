@@ -15,6 +15,10 @@ on:
     - 'mypy/test/**'
     - 'test-data/**'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   mypy_primer:
     name: Run mypy_primer
@@ -44,7 +48,7 @@ jobs:
           echo "new commit"
           git rev-list --format=%s --max-count=1 $GITHUB_SHA
 
-          MERGE_BASE=$(git merge-base $GITHUB_SHA origin/master)
+          MERGE_BASE=$(git merge-base $GITHUB_SHA origin/$GITHUB_BASE_REF)
           git checkout -b base_commit $MERGE_BASE
           echo "base commit"
           git rev-list --format=%s --max-count=1 base_commit
@@ -58,6 +62,7 @@ jobs:
             --new $GITHUB_SHA --old base_commit \
             --num-shards 5 --shard-index ${{ matrix.shard-index }} \
             --debug \
+            --additional-flags="--debug-serialize" \
             --output concise \
             | tee diff_${{ matrix.shard-index }}.txt
           ) || [ $? -eq 1 ]

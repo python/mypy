@@ -22,7 +22,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.options import Options
-from mypy.types import Instance, Type
+from mypy.types import MYPYC_NATIVE_INT_NAMES, Instance, ProperType
 
 # Hard coded type promotions (shared between all Python versions).
 # These add extra ad-hoc edges to the subtyping relation. For example,
@@ -155,7 +155,7 @@ def add_type_promotion(
     This includes things like 'int' being compatible with 'float'.
     """
     defn = info.defn
-    promote_targets: list[Type] = []
+    promote_targets: list[ProperType] = []
     for decorator in defn.decorators:
         if isinstance(decorator, CallExpr):
             analyzed = decorator.analyzed
@@ -165,6 +165,10 @@ def add_type_promotion(
     if not promote_targets:
         if defn.fullname in TYPE_PROMOTIONS:
             target_sym = module_names.get(TYPE_PROMOTIONS[defn.fullname])
+            if defn.fullname == "builtins.bytearray" and options.disable_bytearray_promotion:
+                target_sym = None
+            elif defn.fullname == "builtins.memoryview" and options.disable_memoryview_promotion:
+                target_sym = None
             # With test stubs, the target may not exist.
             if target_sym:
                 target_info = target_sym.node
@@ -173,10 +177,10 @@ def add_type_promotion(
     # Special case the promotions between 'int' and native integer types.
     # These have promotions going both ways, such as from 'int' to 'i64'
     # and 'i64' to 'int', for convenience.
-    if defn.fullname == "mypy_extensions.i64" or defn.fullname == "mypy_extensions.i32":
+    if defn.fullname in MYPYC_NATIVE_INT_NAMES:
         int_sym = builtin_names["int"]
         assert isinstance(int_sym.node, TypeInfo)
         int_sym.node._promote.append(Instance(defn.info, []))
-        defn.info.alt_promote = int_sym.node
+        defn.info.alt_promote = Instance(int_sym.node, [])
     if promote_targets:
         defn.info._promote.extend(promote_targets)

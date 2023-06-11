@@ -39,7 +39,7 @@ try:
     pass
 except m.Err:
     pass
-except m.Bad: # E: Exception type must be derived from BaseException
+except m.Bad: # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
     pass
 [file m.py]
 class Err(BaseException): pass
@@ -53,7 +53,7 @@ try:
     pass
 except Err:
     pass
-except Bad: # E: Exception type must be derived from BaseException
+except Bad: # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
     pass
 [file m.py]
 class Err(BaseException): pass
@@ -404,14 +404,15 @@ _ = a
 _ = b
 _ = c
 _ = d
-_ = e
-_ = f # E: Name "f" is not defined
+_ = e  # E: Name "e" is not defined
+_ = f
 _ = _g # E: Name "_g" is not defined
 [file m.py]
 __all__ = ['a']
 __all__ += ('b',)
 __all__.append('c')
-__all__.extend(('d', 'e'))
+__all__.extend(('d', 'e', 'f'))
+__all__.remove('e')
 
 a = b = c = d = e = f = _g = 1
 [builtins fixtures/module_all.pyi]
@@ -651,9 +652,28 @@ try:
     from m import f, g # E: Incompatible import of "g" (imported name has type "Callable[[Any, Any], Any]", local name has type "Callable[[Any], Any]")
 except:
     pass
+
+import m as f  # E: Incompatible import of "f" (imported name has type "object", local name has type "Callable[[Any], Any]")
+
 [file m.py]
 def f(x): pass
 def g(x, y): pass
+
+[case testRedefineTypeViaImport]
+from typing import Type
+import mod
+
+X: Type[mod.A]
+Y: Type[mod.B]
+from mod import B as X
+from mod import A as Y  # E: Incompatible import of "Y" (imported name has type "Type[A]", local name has type "Type[B]")
+
+import mod as X  # E: Incompatible import of "X" (imported name has type "object", local name has type "Type[A]")
+
+[file mod.py]
+class A: ...
+class B(A): ...
+
 
 [case testImportVariableAndAssignNone]
 try:
@@ -1329,13 +1349,13 @@ import a
 import b
 def f() -> int:
     return b.x
-y = 0 + 0
+y = 0 + int()
 [file b.py]
 import a
 def g() -> int:
     reveal_type(a.y)
     return a.y
-x = 1 + 1
+x = 1 + int()
 [out]
 tmp/b.py:3: note: Revealed type is "builtins.int"
 
@@ -1346,12 +1366,12 @@ import b
 def f() -> int:
     reveal_type(b.x)
     return b.x
-y = 0 + 0
+y = 0 + int()
 [file b.py]
 import a
 def g() -> int:
     return a.y
-x = 1 + 1
+x = 1 + int()
 [out]
 tmp/a.py:3: note: Revealed type is "builtins.int"
 
@@ -1366,7 +1386,7 @@ class C:
         self.x2 = b.b
 [file b.py]
 import a
-b = 1 + 1
+b = 1 + int()
 [out]
 tmp/a.py:4: error: Cannot determine type of "x2"
 
@@ -1379,7 +1399,7 @@ def f() -> None:
     a + ''
 [file b.py]
 import a
-x = 1 + 1
+x = 1 + int()
 [out]
 tmp/a.py:4: error: Unsupported operand types for + ("int" and "str")
 
@@ -1392,7 +1412,7 @@ def f() -> None:
     a + ''
 [file b.py]
 import a
-x = 1 + 1
+x = 1 + int()
 [out]
 tmp/a.py:4: error: Unsupported operand types for + ("int" and "str")
 
@@ -1405,7 +1425,7 @@ def g() -> None:
 @b.deco
 def f(a: str) -> int: pass
 reveal_type(f)
-x = 1 + 1
+x = 1 + int()
 [file b.py]
 from typing import Callable, TypeVar
 import a
@@ -1787,14 +1807,14 @@ m = n  # E: Cannot assign multiple modules to name "m" without explicit "types.M
 [builtins fixtures/module.pyi]
 
 [case testNoReExportFromStubs]
-from stub import Iterable  # E: Module "stub" has no attribute "Iterable"
-from stub import D  # E: Module "stub" has no attribute "D"
+from stub import Iterable  # E: Module "stub" does not explicitly export attribute "Iterable"
+from stub import D  # E: Module "stub" does not explicitly export attribute "D"
 from stub import C
 
 c = C()
 reveal_type(c.x)  # N: Revealed type is "builtins.int"
 it: Iterable[int]
-reveal_type(it)  # N: Revealed type is "Any"
+reveal_type(it)  # N: Revealed type is "typing.Iterable[builtins.int]"
 
 [file stub.pyi]
 from typing import Iterable
@@ -1833,7 +1853,7 @@ class C:
 import stub
 
 reveal_type(stub.y)  # N: Revealed type is "builtins.int"
-reveal_type(stub.z)  # E: Module has no attribute "z" \
+reveal_type(stub.z)  # E: Module "stub" does not explicitly export attribute "z" \
                      # N: Revealed type is "Any"
 
 [file stub.pyi]
@@ -1884,7 +1904,7 @@ class C:
 from util import mod
 reveal_type(mod)  # N: Revealed type is "def () -> package.mod.mod"
 
-from util import internal_detail  # E: Module "util" has no attribute "internal_detail"
+from util import internal_detail  # E: Module "util" does not explicitly export attribute "internal_detail"
 
 [file package/__init__.pyi]
 from .mod import mod as mod
@@ -1899,7 +1919,7 @@ from package import mod as internal_detail
 [builtins fixtures/module.pyi]
 
 [case testNoReExportUnrelatedModule]
-from mod2 import unrelated  # E: Module "mod2" has no attribute "unrelated"
+from mod2 import unrelated  # E: Module "mod2" does not explicitly export attribute "unrelated"
 
 [file mod1/__init__.pyi]
 [file mod1/unrelated.pyi]
@@ -1910,7 +1930,7 @@ from mod1 import unrelated
 [builtins fixtures/module.pyi]
 
 [case testNoReExportUnrelatedSiblingPrefix]
-from pkg.unrel import unrelated  # E: Module "pkg.unrel" has no attribute "unrelated"
+from pkg.unrel import unrelated  # E: Module "pkg.unrel" does not explicitly export attribute "unrelated"
 
 [file pkg/__init__.pyi]
 [file pkg/unrelated.pyi]
@@ -1922,10 +1942,10 @@ from pkg import unrelated
 
 [case testNoReExportChildStubs]
 import mod
-from mod import C, D  # E: Module "mod" has no attribute "C"
+from mod import C, D  # E: Module "mod" does not explicitly export attribute "C"
 
 reveal_type(mod.x)  # N: Revealed type is "mod.submod.C"
-mod.C  # E: Module has no attribute "C"
+mod.C  # E: Module "mod" does not explicitly export attribute "C"
 y = mod.D()
 reveal_type(y.a)  # N: Revealed type is "builtins.str"
 
@@ -1940,7 +1960,7 @@ class D:
 [builtins fixtures/module.pyi]
 
 [case testNoReExportNestedStub]
-from stub import substub  # E: Module "stub" has no attribute "substub"
+from stub import substub  # E: Module "stub" does not explicitly export attribute "substub"
 
 [file stub.pyi]
 import substub
@@ -2852,7 +2872,7 @@ aaaaa: int
 
 [case testModuleAttributeThreeSuggestions]
 import m
-m.aaaaa # E: Module has no attribute "aaaaa"; maybe "aabaa", "aaaba", or "aaaab"?
+m.aaaaa # E: Module has no attribute "aaaaa"; maybe "aaaab", "aaaba", or "aabaa"?
 
 [file m.py]
 aaaab: int
@@ -2887,10 +2907,10 @@ CustomDict = TypedDict(
 [builtins fixtures/tuple.pyi]
 
 [case testNoReExportFromMissingStubs]
-from stub import a  # E: Module "stub" has no attribute "a"
+from stub import a  # E: Module "stub" does not explicitly export attribute "a"
 from stub import b
 from stub import c  # E: Module "stub" has no attribute "c"
-from stub import d  # E: Module "stub" has no attribute "d"
+from stub import d  # E: Module "stub" does not explicitly export attribute "d"
 
 [file stub.pyi]
 from mystery import a, b as b, c as d
@@ -3197,7 +3217,6 @@ class Bar(Foo):
 from a import Foo
 class Bar(Foo):
     def frobnicate(self, *args) -> None: pass # type: ignore[override] # I know
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/dict.pyi]
 [out1]
 tmp/b.py:3: error: Signature of "frobnicate" incompatible with supertype "Foo"

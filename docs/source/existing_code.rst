@@ -51,7 +51,7 @@ A simple CI script could look something like this:
     python3 -m pip install mypy==0.971
     # Run your standardised mypy invocation, e.g.
     mypy my_project
-    # This could also look like `scripts/run_mypy.sh`, `tox -e mypy`, `make mypy`, etc
+    # This could also look like `scripts/run_mypy.sh`, `tox run -e mypy`, `make mypy`, etc
 
 Ignoring errors from certain modules
 ------------------------------------
@@ -168,6 +168,8 @@ fraction of production network requests.  This clearly requires more
 care, as type collection could impact the reliability or the
 performance of your service.
 
+.. _getting-to-strict:
+
 Introduce stricter options
 --------------------------
 
@@ -181,7 +183,7 @@ An excellent goal to aim for is to have your codebase pass when run against ``my
 This basically ensures that you will never have a type related error without an explicit
 circumvention somewhere (such as a ``# type: ignore`` comment).
 
-The following config is equivalent to ``--strict``:
+The following config is equivalent to ``--strict`` (as of mypy 1.0):
 
 .. code-block:: text
 
@@ -189,7 +191,6 @@ The following config is equivalent to ``--strict``:
    warn_unused_configs = True
    warn_redundant_casts = True
    warn_unused_ignores = True
-   no_implicit_optional = True
 
    # Getting these passing should be easy
    strict_equality = True

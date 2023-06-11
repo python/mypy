@@ -3,12 +3,14 @@ from __future__ import annotations
 from functools import partial
 from typing import Callable
 
+import mypy.errorcodes as codes
 from mypy import message_registry
 from mypy.nodes import DictExpr, IntExpr, StrExpr, UnaryExpr
 from mypy.plugin import (
     AttributeContext,
     ClassDefContext,
     FunctionContext,
+    FunctionSigContext,
     MethodContext,
     MethodSigContext,
     Plugin,
@@ -39,12 +41,22 @@ class DefaultPlugin(Plugin):
     def get_function_hook(self, fullname: str) -> Callable[[FunctionContext], Type] | None:
         from mypy.plugins import ctypes, singledispatch
 
-        if fullname in ("contextlib.contextmanager", "contextlib.asynccontextmanager"):
-            return contextmanager_callback
-        elif fullname == "ctypes.Array":
+        if fullname == "_ctypes.Array":
             return ctypes.array_constructor_callback
         elif fullname == "functools.singledispatch":
             return singledispatch.create_singledispatch_function_callback
+
+        return None
+
+    def get_function_signature_hook(
+        self, fullname: str
+    ) -> Callable[[FunctionSigContext], FunctionLike] | None:
+        from mypy.plugins import attrs
+
+        if fullname in ("attr.evolve", "attrs.evolve", "attr.assoc", "attrs.assoc"):
+            return attrs.evolve_function_sig_callback
+        elif fullname in ("attr.fields", "attrs.fields"):
+            return attrs.fields_function_sig_callback
         return None
 
     def get_method_signature_hook(
@@ -60,7 +72,7 @@ class DefaultPlugin(Plugin):
             return typed_dict_pop_signature_callback
         elif fullname in {n + ".update" for n in TPDICT_FB_NAMES}:
             return typed_dict_update_signature_callback
-        elif fullname == "ctypes.Array.__setitem__":
+        elif fullname == "_ctypes.Array.__setitem__":
             return ctypes.array_setitem_callback
         elif fullname == singledispatch.SINGLEDISPATCH_CALLABLE_CALL_METHOD:
             return singledispatch.call_singledispatch_function_callback
@@ -83,9 +95,9 @@ class DefaultPlugin(Plugin):
             return typed_dict_pop_callback
         elif fullname in {n + ".__delitem__" for n in TPDICT_FB_NAMES}:
             return typed_dict_delitem_callback
-        elif fullname == "ctypes.Array.__getitem__":
+        elif fullname == "_ctypes.Array.__getitem__":
             return ctypes.array_getitem_callback
-        elif fullname == "ctypes.Array.__iter__":
+        elif fullname == "_ctypes.Array.__iter__":
             return ctypes.array_iter_callback
         elif fullname == singledispatch.SINGLEDISPATCH_REGISTER_METHOD:
             return singledispatch.singledispatch_register_callback
@@ -96,9 +108,9 @@ class DefaultPlugin(Plugin):
     def get_attribute_hook(self, fullname: str) -> Callable[[AttributeContext], Type] | None:
         from mypy.plugins import ctypes, enums
 
-        if fullname == "ctypes.Array.value":
+        if fullname == "_ctypes.Array.value":
             return ctypes.array_value_callback
-        elif fullname == "ctypes.Array.raw":
+        elif fullname == "_ctypes.Array.raw":
             return ctypes.array_raw_callback
         elif fullname in enums.ENUM_NAME_ACCESS:
             return enums.enum_name_callback
@@ -146,25 +158,6 @@ class DefaultPlugin(Plugin):
             return partial(attrs.attr_class_maker_callback, auto_attribs_default=None)
 
         return None
-
-
-def contextmanager_callback(ctx: FunctionContext) -> Type:
-    """Infer a better return type for 'contextlib.contextmanager'."""
-    # Be defensive, just in case.
-    if ctx.arg_types and len(ctx.arg_types[0]) == 1:
-        arg_type = get_proper_type(ctx.arg_types[0][0])
-        default_return = get_proper_type(ctx.default_return_type)
-        if isinstance(arg_type, CallableType) and isinstance(default_return, CallableType):
-            # The stub signature doesn't preserve information about arguments so
-            # add them back here.
-            return default_return.copy_modified(
-                arg_types=arg_type.arg_types,
-                arg_kinds=arg_type.arg_kinds,
-                arg_names=arg_type.arg_names,
-                variables=arg_type.variables,
-                is_ellipsis_args=arg_type.is_ellipsis_args,
-            )
-    return ctx.default_return_type
 
 
 def typed_dict_get_signature_callback(ctx: MethodSigContext) -> CallableType:
@@ -285,7 +278,11 @@ def typed_dict_pop_callback(ctx: MethodContext) -> Type:
     ):
         keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
         if keys is None:
-            ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
+            ctx.api.fail(
+                message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
+                ctx.context,
+                code=codes.LITERAL_REQ,
+            )
             return AnyType(TypeOfAny.from_error)
 
         value_types = []
@@ -340,7 +337,11 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
     ):
         keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
         if keys is None:
-            ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
+            ctx.api.fail(
+                message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
+                ctx.context,
+                code=codes.LITERAL_REQ,
+            )
             return AnyType(TypeOfAny.from_error)
 
         default_type = ctx.arg_types[1][0]
@@ -378,7 +379,11 @@ def typed_dict_delitem_callback(ctx: MethodContext) -> Type:
     ):
         keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
         if keys is None:
-            ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
+            ctx.api.fail(
+                message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
+                ctx.context,
+                code=codes.LITERAL_REQ,
+            )
             return AnyType(TypeOfAny.from_error)
 
         for key in keys:

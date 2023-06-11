@@ -228,6 +228,11 @@ attribute of the module will automatically succeed:
     # But this type checks, and x will have type 'Any'
     x = does_not_exist.foobar()
 
+This can result in mypy failing to warn you about errors in your code. Since
+operations on ``Any`` result in ``Any``, these dynamic types can propagate
+through your code, making type checking less effective. See
+:ref:`dynamic-typing` for more information.
+
 The next sections describe what each of these errors means and recommended next steps; scroll to
 the section that matches your error.
 
@@ -245,12 +250,12 @@ unless they either have declared themselves to be
 themselves on `typeshed <https://github.com/python/typeshed>`_, the repository
 of types for the standard library and some 3rd party libraries.
 
-If you are getting this error, try:
+If you are getting this error, try to obtain type hints for the library you're using:
 
 1.  Upgrading the version of the library you're using, in case a newer version
     has started to include type hints.
 
-2.  Searching to see if there is a :ref:`PEP 561 compliant stub package <installed-packages>`.
+2.  Searching to see if there is a :ref:`PEP 561 compliant stub package <installed-packages>`
     corresponding to your third party library. Stub packages let you install
     type hints independently from the library itself.
 
@@ -264,7 +269,7 @@ If you are getting this error, try:
     adding the location to the ``MYPYPATH`` environment variable.
 
     These stub files do not need to be complete! A good strategy is to use
-    stubgen, a program that comes bundled with mypy, to generate a first
+    :ref:`stubgen <stubgen>`, a program that comes bundled with mypy, to generate a first
     rough draft of the stubs. You can then iterate on just the parts of the
     library you need.
 
@@ -273,16 +278,19 @@ If you are getting this error, try:
     :ref:`PEP 561 compliant packages <installed-packages>`.
 
 If you are unable to find any existing type hints nor have time to write your
-own, you can instead *suppress* the errors. All this will do is make mypy stop
-reporting an error on the line containing the import: the imported module
-will continue to be of type ``Any``.
+own, you can instead *suppress* the errors.
+
+All this will do is make mypy stop reporting an error on the line containing the
+import: the imported module will continue to be of type ``Any``, and mypy may
+not catch errors in its use.
 
 1.  To suppress a *single* missing import error, add a ``# type: ignore`` at the end of the
     line containing the import.
 
 2.  To suppress *all* missing import errors from a single library, add
-    a section to your :ref:`mypy config file <config-file>` for that library setting
-    :confval:`ignore_missing_imports` to True. For example, suppose your codebase
+    a per-module section to your :ref:`mypy config file <config-file>` setting
+    :confval:`ignore_missing_imports` to True for that library. For example,
+    suppose your codebase
     makes heavy use of an (untyped) library named ``foobar``. You can silence
     all import errors associated with that library and that library alone by
     adding the following section to your config file::
@@ -322,39 +330,35 @@ the library, you will get a message like this:
     main.py:1: note: Hint: "python3 -m pip install types-PyYAML"
     main.py:1: note: (or run "mypy --install-types" to install all missing stub packages)
 
-You can resolve the issue by running the suggested pip command or
-commands. Alternatively, you can use :option:`--install-types <mypy
---install-types>` to install all known missing stubs:
+You can resolve the issue by running the suggested pip commands.
+If you're running mypy in CI, you can ensure the presence of any stub packages
+you need the same as you would any other test dependency, e.g. by adding them to
+the appropriate ``requirements.txt`` file.
+
+Alternatively, add the :option:`--install-types <mypy --install-types>`
+to your mypy command to install all known missing stubs:
 
 .. code-block:: text
 
     mypy --install-types
 
-This installs any stub packages that were suggested in the previous
-mypy run. You can also use your normal mypy command line with the
-extra :option:`--install-types <mypy --install-types>` option to
-install missing stubs at the end of the run (if any were found).
-
-Use :option:`--install-types <mypy --install-types>` with
-:option:`--non-interactive <mypy --non-interactive>`  to install all suggested
-stub packages without asking for confirmation, *and* type check your
-code, in a single command:
-
-.. code-block:: text
-
-   mypy --install-types --non-interactive src/
-
-This can be useful in Continuous Integration jobs if you'd prefer not
-to manage stub packages manually. This is somewhat slower than
-explicitly installing stubs before running mypy, since it may type
-check your code twice -- the first time to find the missing stubs, and
+This is slower than explicitly installing stubs, since it effectively
+runs mypy twice -- the first time to find the missing stubs, and
 the second time to type check your code properly after mypy has
-installed the stubs.
+installed the stubs. It also can make controlling stub versions harder,
+resulting in less reproducible type checking.
+
+By default, :option:`--install-types <mypy --install-types>` shows a confirmation prompt.
+Use :option:`--non-interactive <mypy --non-interactive>` to install all suggested
+stub packages without asking for confirmation *and* type check your code:
 
 If you've already installed the relevant third-party libraries in an environment
 other than the one mypy is running in, you can use :option:`--python-executable
 <mypy --python-executable>` flag to point to the Python executable for that
 environment, and mypy will find packages installed for that Python executable.
+
+If you've installed the relevant stub packages and are still getting this error,
+see the :ref:`section below <missing-type-hints-for-third-party-library>`.
 
 .. _missing-type-hints-for-third-party-library:
 
@@ -378,6 +382,11 @@ this error, try:
     line flag to point the Python interpreter containing your installed
     third party packages.
 
+    You can confirm that you are running mypy from the environment you expect
+    by running it like ``python -m mypy ...``. You can confirm that you are
+    installing into the environment you expect by running pip like
+    ``python -m pip ...``.
+
 2.  Reading the :ref:`finding-imports` section below to make sure you
     understand how exactly mypy searches for and finds modules and modify
     how you're invoking mypy accordingly.
@@ -393,15 +402,6 @@ this error, try:
     which is located at ``~/foo-project/src/foo/bar/baz.py``. In this case,
     you must run ``mypy ~/foo-project/src`` (or set the ``MYPYPATH`` to
     ``~/foo-project/src``.
-
-In some rare cases, you may get the "Cannot find implementation or library
-stub for module" error even when the module is installed in your system.
-This can happen when the module is both missing type hints and is installed
-on your system in an unconventional way.
-
-In this case, follow the steps above on how to handle
-:ref:`missing type hints in third party libraries <missing-type-hints-for-third-party-library>`.
-
 
 .. _finding-imports:
 

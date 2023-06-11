@@ -2,16 +2,13 @@
 #
 # See the README.md file in this directory for more information.
 
-import array
-import ctypes
-import mmap
-import pickle
 import sys
-from collections.abc import Awaitable, Callable, Iterable, Set as AbstractSet
+from collections.abc import Awaitable, Callable, Iterable, Sequence, Set as AbstractSet, Sized
+from dataclasses import Field
 from os import PathLike
 from types import FrameType, TracebackType
-from typing import Any, AnyStr, Generic, Protocol, TypeVar, Union
-from typing_extensions import Final, Literal, LiteralString, TypeAlias, final
+from typing import Any, AnyStr, ClassVar, Generic, Protocol, TypeVar, overload
+from typing_extensions import Buffer, Final, Literal, LiteralString, TypeAlias, final
 
 _KT = TypeVar("_KT")
 _KT_co = TypeVar("_KT_co", covariant=True)
@@ -35,6 +32,9 @@ AnyStr_co = TypeVar("AnyStr_co", str, bytes, covariant=True)  # noqa: Y001
 # use Incomplete instead of Any as a marker. For example, use
 # "Incomplete | None" instead of "Any | None".
 Incomplete: TypeAlias = Any
+
+# To describe a function parameter that is unused and will work with anything.
+Unused: TypeAlias = object
 
 # stable
 class IdentityFunction(Protocol):
@@ -119,7 +119,7 @@ class SupportsKeysAndGetItem(Protocol[_KT, _VT_co]):
 
 # stable
 class SupportsGetItem(Protocol[_KT_contra, _VT_co]):
-    def __contains__(self, __x: object) -> bool: ...
+    def __contains__(self, __x: Any) -> bool: ...
     def __getitem__(self, __key: _KT_contra) -> _VT_co: ...
 
 # stable
@@ -205,6 +205,7 @@ class HasFileno(Protocol):
 
 FileDescriptor: TypeAlias = int  # stable
 FileDescriptorLike: TypeAlias = int | HasFileno  # stable
+FileDescriptorOrPath: TypeAlias = int | StrOrBytesPath
 
 # stable
 class SupportsRead(Protocol[_T_co]):
@@ -222,21 +223,36 @@ class SupportsNoArgReadline(Protocol[_T_co]):
 class SupportsWrite(Protocol[_T_contra]):
     def write(self, __s: _T_contra) -> object: ...
 
-ReadOnlyBuffer: TypeAlias = bytes  # stable
+# Unfortunately PEP 688 does not allow us to distinguish read-only
+# from writable buffers. We use these aliases for readability for now.
+# Perhaps a future extension of the buffer protocol will allow us to
+# distinguish these cases in the type system.
+ReadOnlyBuffer: TypeAlias = Buffer  # stable
 # Anything that implements the read-write buffer interface.
-# The buffer interface is defined purely on the C level, so we cannot define a normal Protocol
-# for it (until PEP 688 is implemented). Instead we have to list the most common stdlib buffer classes in a Union.
-if sys.version_info >= (3, 8):
-    WriteableBuffer: TypeAlias = (
-        bytearray | memoryview | array.array[Any] | mmap.mmap | ctypes._CData | pickle.PickleBuffer
-    )  # stable
-else:
-    WriteableBuffer: TypeAlias = bytearray | memoryview | array.array[Any] | mmap.mmap | ctypes._CData  # stable
-# Same as _WriteableBuffer, but also includes read-only buffer types (like bytes).
-ReadableBuffer: TypeAlias = ReadOnlyBuffer | WriteableBuffer  # stable
+WriteableBuffer: TypeAlias = Buffer
+# Same as WriteableBuffer, but also includes read-only buffer types (like bytes).
+ReadableBuffer: TypeAlias = Buffer  # stable
+
+class SliceableBuffer(Buffer, Protocol):
+    def __getitem__(self, __slice: slice) -> Sequence[int]: ...
+
+class IndexableBuffer(Buffer, Protocol):
+    def __getitem__(self, __i: int) -> int: ...
+
+class SupportsGetItemBuffer(SliceableBuffer, IndexableBuffer, Protocol):
+    def __contains__(self, __x: Any) -> bool: ...
+    @overload
+    def __getitem__(self, __slice: slice) -> Sequence[int]: ...
+    @overload
+    def __getitem__(self, __i: int) -> int: ...
+
+class SizedBuffer(Sized, Buffer, Protocol): ...
+
+# for compatibility with third-party stubs that may use this
+_BufferWithLen: TypeAlias = SizedBuffer  # not stable  # noqa: Y047
 
 ExcInfo: TypeAlias = tuple[type[BaseException], BaseException, TracebackType]
-OptExcInfo: TypeAlias = Union[ExcInfo, tuple[None, None, None]]
+OptExcInfo: TypeAlias = ExcInfo | tuple[None, None, None]
 
 # stable
 if sys.version_info >= (3, 10):
@@ -264,7 +280,7 @@ class structseq(Generic[_T_co]):
     # https://github.com/python/typeshed/pull/6560#discussion_r767149830
     def __new__(cls: type[Self], sequence: Iterable[_T_co], dict: dict[str, Any] = ...) -> Self: ...
 
-# Superset of typing.AnyStr that also inclues LiteralString
+# Superset of typing.AnyStr that also includes LiteralString
 AnyOrLiteralStr = TypeVar("AnyOrLiteralStr", str, bytes, LiteralString)  # noqa: Y001
 
 # Represents when str or LiteralStr is acceptable. Useful for string processing
@@ -275,5 +291,11 @@ StrOrLiteralStr = TypeVar("StrOrLiteralStr", LiteralString, str)  # noqa: Y001
 ProfileFunction: TypeAlias = Callable[[FrameType, str, Any], object]
 
 # Objects suitable to be passed to sys.settrace, threading.settrace, and similar
-# TODO: Ideally this would be a recursive type alias
-TraceFunction: TypeAlias = Callable[[FrameType, str, Any], Callable[[FrameType, str, Any], Any] | None]
+TraceFunction: TypeAlias = Callable[[FrameType, str, Any], TraceFunction | None]
+
+# experimental
+# Might not work as expected for pyright, see
+#   https://github.com/python/typeshed/pull/9362
+#   https://github.com/microsoft/pyright/issues/4339
+class DataclassInstance(Protocol):
+    __dataclass_fields__: ClassVar[dict[str, Field[Any]]]

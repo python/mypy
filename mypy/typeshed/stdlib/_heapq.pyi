@@ -1,8 +1,9 @@
 from typing import Any, TypeVar
+from typing_extensions import Final
 
 _T = TypeVar("_T")
 
-__about__: str
+__about__: Final[str]
 
 def heapify(__heap: list[Any]) -> None: ...
 def heappop(__heap: list[_T]) -> _T: ...

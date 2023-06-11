@@ -247,7 +247,9 @@ class InspectionEngine:
         if expr_type is None:
             return self.missing_type(expression), False
 
-        type_str = format_type(expr_type, verbosity=self.verbosity)
+        type_str = format_type(
+            expr_type, self.fg_manager.manager.options, verbosity=self.verbosity
+        )
         return self.add_prefixes(type_str, expression), True
 
     def object_type(self) -> Instance:

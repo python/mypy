@@ -519,6 +519,14 @@ def parse_gray_color(cup: bytes) -> str:
     return gray
 
 
+def should_force_color() -> bool:
+    env_var = os.getenv("MYPY_FORCE_COLOR", os.getenv("FORCE_COLOR", "0"))
+    try:
+        return bool(int(env_var))
+    except ValueError:
+        return bool(env_var)
+
+
 class FancyFormatter:
     """Apply color and bold font to terminal output.
 
@@ -531,8 +539,7 @@ class FancyFormatter:
         if sys.platform not in ("linux", "darwin", "win32", "emscripten"):
             self.dummy_term = True
             return
-        force_color = int(os.getenv("MYPY_FORCE_COLOR", "0"))
-        if not force_color and (not f_out.isatty() or not f_err.isatty()):
+        if not should_force_color() and (not f_out.isatty() or not f_err.isatty()):
             self.dummy_term = True
             return
         if sys.platform == "win32":
@@ -800,18 +807,16 @@ def unnamed_function(name: str | None) -> bool:
     return name is not None and name == "_"
 
 
-# TODO: replace with uses of perf_counter_ns when support for py3.6 is dropped
-# (or when mypy properly handles alternate definitions based on python version check
-time_ref = time.perf_counter
+time_ref = time.perf_counter_ns
 
 
-def time_spent_us(t0: float) -> int:
-    return int((time.perf_counter() - t0) * 1e6)
+def time_spent_us(t0: int) -> int:
+    return int((time.perf_counter_ns() - t0) / 1000)
 
 
 def plural_s(s: int | Sized) -> str:
     count = s if isinstance(s, int) else len(s)
-    if count > 1:
+    if count != 1:
         return "s"
     else:
         return ""
