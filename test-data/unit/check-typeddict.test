@@ -2885,3 +2885,76 @@ d: A
 d['']  # E: TypedDict "A" has no key ""
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictFlexibleUpdate]
+from mypy_extensions import TypedDict
+
+A = TypedDict("A", {"foo": int, "bar": int})
+B = TypedDict("B", {"foo": int})
+
+a = A({"foo": 1, "bar": 2})
+b = B({"foo": 2})
+a.update({"foo": 2})
+a.update(b)
+a.update(a)
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictStrictUpdate]
+# flags: --strict-typeddict-update
+from mypy_extensions import TypedDict
+
+A = TypedDict("A", {"foo": int, "bar": int})
+B = TypedDict("B", {"foo": int})
+
+a = A({"foo": 1, "bar": 2})
+b = B({"foo": 2})
+a.update({"foo": 2})  # OK
+a.update(b)  # E: Argument 1 to "update" of "TypedDict" has incompatible type "B"; expected "TypedDict({'foo': int, 'bar'?: int})"
+a.update(a)  # OK
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictUnpackSame]
+from typing import TypedDict
+
+class Foo(TypedDict):
+    a: int
+    b: int
+
+foo1: Foo = {'a': 1, 'b': 1}
+foo2: Foo = {**foo1, 'b': 2}
+foo3 = Foo(**foo1, b=2)
+foo4 = Foo({**foo1, 'b': 2})
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictUnpackCompatible]
+from typing import TypedDict
+
+class Foo(TypedDict):
+    a: int
+
+class Bar(TypedDict):
+    a: int
+    b: int
+
+foo: Foo = {'a': 1}
+bar: Bar = {**foo, 'b': 2}
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictUnpackIncompatible]
+from typing import TypedDict
+
+class Foo(TypedDict):
+    a: int
+    b: str
+
+class Bar(TypedDict):
+    a: int
+    b: int
+
+foo: Foo = {'a': 1, 'b': 'a'}
+bar1: Bar = {**foo, 'b': 2}  # Incompatible item is overriden
+bar2: Bar = {**foo, 'a': 2}  # E: Incompatible types (expression has type "str", TypedDict item "b" has type "int")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]

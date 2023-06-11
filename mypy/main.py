@@ -833,6 +833,14 @@ def process_options(
         group=strictness_group,
     )
 
+    add_invertible_flag(
+        "--strict-typeddict-update",
+        default=False,
+        strict_flag=True,
+        help="Disallow partial overlap in TypedDict update (including ** in constructor)",
+        group=strictness_group,
+    )
+
     strict_help = "Strict mode; enables the following flags: {}".format(
         ", ".join(strict_flag_names)
     )

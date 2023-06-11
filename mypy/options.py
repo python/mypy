@@ -51,6 +51,7 @@ PER_MODULE_OPTIONS: Final = {
     "strict_concatenate",
     "strict_equality",
     "strict_optional",
+    "strict_typeddict_update",
     "warn_no_return",
     "warn_return_any",
     "warn_unreachable",
@@ -202,6 +203,9 @@ class Options:
 
         # Make arguments prepended via Concatenate be truly positional-only.
         self.strict_concatenate = False
+
+        # Disallow partial overlap in TypedDict update (including ** in constructor).
+        self.strict_typeddict_update = False
 
         # Report an error for any branches inferred to be unreachable as a result of
         # type analysis.

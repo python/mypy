@@ -402,6 +402,21 @@ def typed_dict_update_signature_callback(ctx: MethodSigContext) -> CallableType:
         assert isinstance(arg_type, TypedDictType)
         arg_type = arg_type.as_anonymous()
         arg_type = arg_type.copy_modified(required_keys=set())
+        if ctx.args and ctx.args[0]:
+            with ctx.api.msg.filter_errors():
+                inferred = get_proper_type(
+                    ctx.api.get_expression_type(ctx.args[0][0], type_context=arg_type)
+                )
+            # TODO: unions
+            if isinstance(inferred, TypedDictType):
+                arg_type = arg_type.copy_modified(
+                    # TODO: extra keys
+                    required_keys=arg_type.required_keys
+                    | inferred.required_keys
+                )
+                if not ctx.api.options.strict_typeddict_update:
+                    # TODO: extra names
+                    arg_type = arg_type.copy_modified(item_names=list(inferred.items))
         return signature.copy_modified(arg_types=[arg_type])
     return signature
 
