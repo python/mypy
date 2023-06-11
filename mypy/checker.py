@@ -6793,6 +6793,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             )
         return not watcher.has_new_errors()
 
+    def get_expression_type(self, node: Expression, type_context: Type | None = None) -> Type:
+        return self.expr_checker.accept(node, type_context=type_context)
+
 
 class CollectArgTypeVarTypes(TypeTraverserVisitor):
     """Collects the non-nested argument types in a set."""
