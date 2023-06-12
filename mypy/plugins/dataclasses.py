@@ -1034,15 +1034,7 @@ def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
         return ctx.default_signature  # leave it to the type checker to complain
 
     obj_arg = ctx.args[0][0]
-
-    # <hack>
-    from mypy.checker import TypeChecker
-
-    assert isinstance(ctx.api, TypeChecker)
-    obj_type = ctx.api.expr_checker.accept(obj_arg)
-    # </hack>
-
-    obj_type = get_proper_type(obj_type)
+    obj_type = get_proper_type(ctx.api.get_expression_type(obj_arg))
     inst_type_str = format_type_bare(obj_type, ctx.api.options)
 
     replace_sigs = _get_expanded_dataclasses_fields(ctx, obj_type, obj_type, obj_type)
