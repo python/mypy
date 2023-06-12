@@ -3164,3 +3164,21 @@ foo_or_bar: Union[Foo, Bar] = {'b': 1}
 foo: Bar = {**foo_or_bar}  # E: Extra key "a" for TypedDict "Bar"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictUnpackInference]
+from typing import TypedDict, Generic, TypeVar
+
+class Foo(TypedDict):
+    a: int
+    b: str
+
+T = TypeVar("T")
+class TD(TypedDict, Generic[T]):
+    a: T
+    b: str
+
+foo: Foo
+bar = TD(**foo)
+reveal_type(bar)  # N: Revealed type is "TypedDict('__main__.TD', {'a': builtins.int, 'b': builtins.str})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
