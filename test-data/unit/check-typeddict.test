@@ -3125,6 +3125,18 @@ bar2: Bar = {**bar, "c": {**bar["c"], "b": "wrong"}, "d": 2}  # E: Incompatible 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictUnpackOverrideRequired]
+from mypy_extensions import TypedDict
+
+Details = TypedDict('Details', {'first_name': str, 'last_name': str})
+DetailsSubset = TypedDict('DetailsSubset', {'first_name': str, 'last_name': str}, total=False)
+defaults: Details = {'first_name': 'John', 'last_name': 'Luther'}
+
+def generate(data: DetailsSubset) -> Details:
+    return {**defaults, **data}  # OK
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testTypedDictUnpackUntypedDict]
 from typing import TypedDict
 
