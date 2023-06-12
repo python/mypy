@@ -44,8 +44,8 @@ from mypy.types import (
     TypeVarType,
     deserialize_type,
     get_proper_type,
-    is_optional,
 )
+from mypy.types_utils import is_optional
 from mypy.typevars import fill_typevars
 from mypy.util import get_unique_redefinition_name
 

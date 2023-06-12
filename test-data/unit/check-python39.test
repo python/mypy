@@ -17,3 +17,11 @@ decorator_list: List[Callable[..., Callable[[int], str]]]
 def f(x: float) -> float: ...
 reveal_type(f)  # N: Revealed type is "def (builtins.int) -> builtins.str"
 [builtins fixtures/list.pyi]
+
+[case testStarredExpressionsInForLoop]
+# flags: --python-version 3.9
+
+a = b = c = [1, 2, 3]
+for x in *a, *b, *c:
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]

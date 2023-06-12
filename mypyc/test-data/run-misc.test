@@ -84,6 +84,36 @@ assert f(a) is a
 assert g(None) == 1
 assert g(a) == 2
 
+[case testInferredOptionalAssignment]
+from typing import Any, Generator
+
+def f(b: bool) -> Any:
+    if b:
+        x = None
+    else:
+        x = 1
+
+    if b:
+        y = 1
+    else:
+        y = None
+
+    m = 1 if b else None
+    n = None if b else 1
+    return ((x, y), (m, n))
+
+def gen(b: bool) -> Generator[Any, None, None]:
+    if b:
+        y = 1
+    else:
+        y = None
+    yield y
+
+assert f(False) == ((1, None), (None, 1))
+assert f(True) == ((None, 1), (1, None))
+assert next(gen(False)) is None
+assert next(gen(True)) == 1
+
 [case testWith]
 from typing import Any
 class Thing:
@@ -158,7 +188,7 @@ exit! a ohno
 caught
 
 [case testDisplays]
-from typing import List, Set, Tuple, Sequence, Dict, Any
+from typing import List, Set, Tuple, Sequence, Dict, Any, Mapping
 
 def listDisplay(x: List[int], y: List[int]) -> List[int]:
     return [1, 2, *x, *y, 3]
@@ -172,12 +202,17 @@ def tupleDisplay(x: Sequence[str], y: Sequence[str]) -> Tuple[str, ...]:
 def dictDisplay(x: str, y1: Dict[str, int], y2: Dict[str, int]) -> Dict[str, int]:
     return {x: 2, **y1, 'z': 3, **y2}
 
+def dictDisplayUnpackMapping(obj: Mapping[str, str]) -> Dict[str, str]:
+    return {**obj, "env": "value"}
+
 [file driver.py]
-from native import listDisplay, setDisplay, tupleDisplay, dictDisplay
+import os
+from native import listDisplay, setDisplay, tupleDisplay, dictDisplay, dictDisplayUnpackMapping
 assert listDisplay([4], [5, 6]) == [1, 2, 4, 5, 6, 3]
 assert setDisplay({4}, {5}) == {1, 2, 3, 4, 5}
 assert tupleDisplay(['4', '5'], ['6']) == ('1', '2', '4', '5', '6', '3')
 assert dictDisplay('x', {'y1': 1}, {'y2': 2, 'z': 5}) == {'x': 2, 'y1': 1, 'y2': 2, 'z': 5}
+assert dictDisplayUnpackMapping(os.environ) == {**os.environ, "env": "value"}
 
 [case testArbitraryLvalues]
 from typing import List, Dict, Any

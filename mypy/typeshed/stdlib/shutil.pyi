@@ -87,22 +87,46 @@ else:
         ignore_dangling_symlinks: bool = False,
     ) -> _PathReturn: ...
 
-_OnErrorCallback: TypeAlias = Callable[[Callable[..., Any], Any, Any], object]
+_OnErrorCallback: TypeAlias = Callable[[Callable[..., Any], str, Any], object]
+_OnExcCallback: TypeAlias = Callable[[Callable[..., Any], str, Exception], object]
 
 class _RmtreeType(Protocol):
     avoids_symlink_attacks: bool
-    if sys.version_info >= (3, 11):
+    if sys.version_info >= (3, 12):
+        @overload
         def __call__(
             self,
             path: StrOrBytesPath,
-            ignore_errors: bool = ...,
-            onerror: _OnErrorCallback | None = ...,
+            ignore_errors: bool = False,
+            onerror: _OnErrorCallback | None = None,
             *,
-            dir_fd: int | None = ...,
+            onexc: None = None,
+            dir_fd: int | None = None,
+        ) -> None: ...
+        @overload
+        def __call__(
+            self,
+            path: StrOrBytesPath,
+            ignore_errors: bool = False,
+            onerror: None = None,
+            *,
+            onexc: _OnExcCallback,
+            dir_fd: int | None = None,
+        ) -> None: ...
+    elif sys.version_info >= (3, 11):
+        def __call__(
+            self,
+            path: StrOrBytesPath,
+            ignore_errors: bool = False,
+            onerror: _OnErrorCallback | None = None,
+            *,
+            dir_fd: int | None = None,
         ) -> None: ...
 
     else:
-        def __call__(self, path: StrOrBytesPath, ignore_errors: bool = ..., onerror: _OnErrorCallback | None = ...) -> None: ...
+        def __call__(
+            self, path: StrOrBytesPath, ignore_errors: bool = False, onerror: _OnErrorCallback | None = None
+        ) -> None: ...
 
 rmtree: _RmtreeType
 
@@ -167,7 +191,15 @@ def register_archive_format(
     name: str, function: Callable[[str, str], object], extra_args: None = None, description: str = ""
 ) -> None: ...
 def unregister_archive_format(name: str) -> None: ...
-def unpack_archive(filename: StrPath, extract_dir: StrPath | None = None, format: str | None = None) -> None: ...
+
+if sys.version_info >= (3, 12):
+    def unpack_archive(
+        filename: StrPath, extract_dir: StrPath | None = None, format: str | None = None, *, filter: str | None = None
+    ) -> None: ...
+
+else:
+    def unpack_archive(filename: StrPath, extract_dir: StrPath | None = None, format: str | None = None) -> None: ...
+
 @overload
 def register_unpack_format(
     name: str,

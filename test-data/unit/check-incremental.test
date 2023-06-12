@@ -2916,8 +2916,8 @@ main:3: note: Right operand is of type "Optional[int]"
 
 [case testAttrsIncrementalSubclassingCached]
 from a import A
-import attr
-@attr.s(auto_attribs=True)
+import attrs
+@attrs.define
 class B(A):
     e: str = 'e'
 a = B(5, [5], 'foo')
@@ -2928,15 +2928,14 @@ a._d = 22
 a.e = 'hi'
 
 [file a.py]
-import attr
-import attr
+import attrs
 from typing import List, ClassVar
-@attr.s(auto_attribs=True)
+@attrs.define
 class A:
     a: int
     _b: List[int]
     c: str = '18'
-    _d: int = attr.ib(validator=None, default=18)
+    _d: int = attrs.field(validator=None, default=18)
     E = 7
     F: ClassVar[int] = 22
 
@@ -2946,8 +2945,8 @@ class A:
 
 [case testAttrsIncrementalSubclassingCachedConverter]
 from a import A
-import attr
-@attr.s
+import attrs
+@attrs.define
 class B(A):
     pass
 reveal_type(B)
@@ -2956,10 +2955,10 @@ reveal_type(B)
 def converter(s:int) -> str:
     return 'hello'
 
-import attr
-@attr.s
+import attrs
+@attrs.define
 class A:
-    x: str = attr.ib(converter=converter)
+    x: str = attrs.field(converter=converter)
 
 [builtins fixtures/list.pyi]
 [out1]
@@ -2970,17 +2969,17 @@ main:6: note: Revealed type is "def (x: builtins.int) -> __main__.B"
 
 [case testAttrsIncrementalSubclassingCachedType]
 from a import A
-import attr
-@attr.s
+import attrs
+@attrs.define
 class B(A):
     pass
 reveal_type(B)
 
 [file a.py]
-import attr
-@attr.s
+import attrs
+@attrs.define
 class A:
-    x = attr.ib(type=int)
+    x: int
 
 [builtins fixtures/list.pyi]
 [out1]
@@ -3006,16 +3005,16 @@ NoCmp(1) > NoCmp(2)
 NoCmp(1) >= NoCmp(2)
 
 [file a.py]
-import attr
-@attr.s(frozen=True)
+import attrs
+@attrs.frozen
 class Frozen:
-    x: int = attr.ib()
-@attr.s(init=False)
+    x: int
+@attrs.define(init=False)
 class NoInit:
-    x: int = attr.ib()
-@attr.s(eq=False)
+    x: int
+@attrs.define(eq=False)
 class NoCmp:
-    x: int = attr.ib()
+    x: int
 
 [builtins fixtures/list.pyi]
 [rechecked]
@@ -3069,7 +3068,7 @@ from attr import attrib, attrs
 class A:
     a: int
 
-[builtins fixtures/attr.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 [rechecked]
 [stale]
 [out2]
@@ -3092,22 +3091,22 @@ from b import B
 B(5, 'foo')
 
 [file a.py]
-import attr
-@attr.s(auto_attribs=True)
+import attrs
+@attrs.define
 class A:
     x: int
 
 [file b.py]
-import attr
+import attrs
 from a import A
-@attr.s(auto_attribs=True)
+@attrs.define
 class B(A):
     y: str
 
 [file b.py.2]
-import attr
+import attrs
 from a import A
-@attr.s(auto_attribs=True)
+@attrs.define
 class B(A):
     y: int
 
@@ -3121,22 +3120,22 @@ main:2: error: Argument 2 to "B" has incompatible type "str"; expected "int"
 from b import B
 B(5, 'foo')
 [file a.py]
-import attr
-@attr.s(auto_attribs=True)
+import attrs
+@attrs.define
 class A:
     x: int
 
 [file b.py]
-import attr
+import attrs
 from a import A
-@attr.s(auto_attribs=True)
+@attrs.define
 class B(A):
     y: int
 
 [file b.py.2]
-import attr
+import attrs
 from a import A
-@attr.s(auto_attribs=True)
+@attrs.define
 class B(A):
     y: str
 
@@ -3152,24 +3151,24 @@ from c import C
 C(5, 'foo', True)
 
 [file a.py]
-import attr
-@attr.s
+import attrs
+@attrs.define
 class A:
-    a: int = attr.ib()
+    a: int
 
 [file b.py]
-import attr
-@attr.s
+import attrs
+@attrs.define
 class B:
-    b: str = attr.ib()
+    b: str
 
 [file c.py]
 from a import A
 from b import B
-import attr
-@attr.s
+import attrs
+@attrs.define
 class C(A, B):
-    c: bool = attr.ib()
+    c: bool
 
 [builtins fixtures/list.pyi]
 [out1]
@@ -3184,10 +3183,10 @@ from typing import Optional
 def converter(s:Optional[int]) -> int:
     ...
 
-import attr
-@attr.s
+import attrs
+@attrs.define
 class A:
-    x: int = attr.ib(converter=converter)
+    x: int = attrs.field(converter=converter)
 
 [builtins fixtures/list.pyi]
 [out1]
@@ -3254,80 +3253,80 @@ def maybe_bool(x: Optional[bool]) -> bool:
    ...
 [file base.py]
 from typing import Optional
-import attr
+import attrs
 import bar
 from foo import maybe_int
 def maybe_str(x: Optional[str]) -> str:
    ...
-@attr.s
+@attrs.define
 class Base:
-    x: int = attr.ib(converter=maybe_int)
-    y: str = attr.ib(converter=maybe_str)
-    z: bool = attr.ib(converter=bar.maybe_bool)
+    x: int = attrs.field(converter=maybe_int)
+    y: str = attrs.field(converter=maybe_str)
+    z: bool = attrs.field(converter=bar.maybe_bool)
 [file subclass.py]
 from typing import Optional
-import attr
+import attrs
 from base import Base
-@attr.s
+@attrs.define
 class A(Base): pass
 
 import bar
 from foo import maybe_int
 def maybe_str(x: Optional[str]) -> str:
    ...
-@attr.s
+@attrs.define
 class B(Base):
-    xx: int = attr.ib(converter=maybe_int)
-    yy: str = attr.ib(converter=maybe_str)
-    zz: bool = attr.ib(converter=bar.maybe_bool)
+    xx: int = attrs.field(converter=maybe_int)
+    yy: str = attrs.field(converter=maybe_str)
+    zz: bool = attrs.field(converter=bar.maybe_bool)
 
 [file submodule/__init__.py]
 [file submodule/base.py]
 from typing import Optional
-import attr
+import attrs
 import bar
 from foo import maybe_int
 def maybe_str(x: Optional[str]) -> str:
    ...
-@attr.s
+@attrs.define
 class SubBase:
-    x: int = attr.ib(converter=maybe_int)
-    y: str = attr.ib(converter=maybe_str)
-    z: bool = attr.ib(converter=bar.maybe_bool)
+    x: int = attrs.field(converter=maybe_int)
+    y: str = attrs.field(converter=maybe_str)
+    z: bool = attrs.field(converter=bar.maybe_bool)
 
 [file submodule/subclass.py]
 from typing import Optional
-import attr
+import attrs
 from base import Base
-@attr.s
+@attrs.define
 class AA(Base): pass
 
 import bar
 from foo import maybe_int
 def maybe_str(x: Optional[str]) -> str:
    ...
-@attr.s
+@attrs.define
 class BB(Base):
-    xx: int = attr.ib(converter=maybe_int)
-    yy: str = attr.ib(converter=maybe_str)
-    zz: bool = attr.ib(converter=bar.maybe_bool)
+    xx: int = attrs.field(converter=maybe_int)
+    yy: str = attrs.field(converter=maybe_str)
+    zz: bool = attrs.field(converter=bar.maybe_bool)
 
 [file submodule/subsubclass.py]
 from typing import Optional
-import attr
+import attrs
 from .base import SubBase
-@attr.s
+@attrs.define
 class SubAA(SubBase): pass
 
 import bar
 from foo import maybe_int
 def maybe_str(x: Optional[str]) -> str:
    ...
-@attr.s
+@attrs.define
 class SubBB(SubBase):
-    xx: int = attr.ib(converter=maybe_int)
-    yy: str = attr.ib(converter=maybe_str)
-    zz: bool = attr.ib(converter=bar.maybe_bool)
+    xx: int = attrs.field(converter=maybe_int)
+    yy: str = attrs.field(converter=maybe_str)
+    zz: bool = attrs.field(converter=bar.maybe_bool)
 [builtins fixtures/list.pyi]
 [out1]
 [out2]
@@ -3341,13 +3340,13 @@ tmp/a.py:17: error: Argument 2 to "SubAA" has incompatible type "int"; expected 
 tmp/a.py:18: error: Argument 5 to "SubBB" has incompatible type "int"; expected "Optional[str]"
 
 [case testAttrsIncrementalConverterInFunction]
-import attr
+import attrs
 def foo() -> None:
     def foo(x: str) -> int:
         ...
-    @attr.s
+    @attrs.define
     class A:
-        x: int = attr.ib(converter=foo)
+        x: int = attrs.field(converter=foo)
     reveal_type(A)
 [builtins fixtures/list.pyi]
 [out1]
@@ -3366,10 +3365,10 @@ from typing import List
 def converter(s:F) -> int:
     ...
 
-import attr
-@attr.s
+import attrs
+@attrs.define
 class A:
-    x: int = attr.ib(converter=converter)
+    x: int = attrs.field(converter=converter)
 
 F = List[int]
 
@@ -3383,18 +3382,18 @@ main:3: note: Revealed type is "def (x: builtins.list[builtins.int]) -> a.a.A"
 [case testAttrsIncrementalConverterType-skip]
 
 from a import C
-import attr
+import attrs
 o = C("1", "2", "3", "4")
 o = C(1, 2, "3", 4)
 reveal_type(C)
-@attr.s
+@attrs.define
 class D(C):
-    x: str = attr.ib()
+    x: str
 reveal_type(D)
 [file a.py]
 from typing import overload
-import attr
-@attr.dataclass
+import attrs
+@attrs.define
 class A:
     x: str
 @overload
@@ -3404,13 +3403,13 @@ def parse(x: int) -> int:
 def parse(x: str, y: str = '') -> int:
    ...
 def parse(x, y): ...
-@attr.s
+@attrs.define
 class C:
-    a: complex = attr.ib(converter=complex)
-    b: int = attr.ib(converter=int)
-    c: A = attr.ib(converter=A)
-    d: int = attr.ib(converter=parse)
-[builtins fixtures/attr.pyi]
+    a: complex = attrs.field(converter=complex)
+    b: int = attrs.field(converter=int)
+    c: A = attrs.field(converter=A)
+    d: int = attrs.field(converter=parse)
+[builtins fixtures/plugin_attrs.pyi]
 [out1]
 main:6: note: Revealed type is "def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str]) -> a.C"
 main:10: note: Revealed type is "def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str], x: builtins.str) -> __main__.D"
@@ -3423,20 +3422,20 @@ from a import A
 A(5)
 
 [file a.py]
-import attr
-@attr.s(auto_attribs=True)
+import attrs
+@attrs.define
 class A:
     a: int
 
 [file a.py.2]
-import attr
-@attr.s(auto_attribs=True)
+import attrs
+@attrs.define
 class A:
     a: str
 
 [file a.py.3]
-import attr
-@attr.s(auto_attribs=True)
+import attrs
+@attrs.define
 class A:
     a: int = 6
 

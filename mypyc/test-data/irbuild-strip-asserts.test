@@ -10,4 +10,3 @@ L0:
     r0 = object 3
     x = r0
     return x
-

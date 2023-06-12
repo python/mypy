@@ -1863,3 +1863,98 @@ def f() -> None:
     match y:
         case A():
             reveal_type(y.a)  # N: Revealed type is "builtins.int"
+
+[case testNarrowedVariableInNestedModifiedInMatch]
+# flags: --strict-optional
+from typing import Optional
+
+def match_stmt_error1(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    match object():
+        case str(x):
+            pass
+    nested()
+
+def foo(x): pass
+
+def match_stmt_ok1(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return x
+    match foo(x):
+        case str(y):
+            z = x
+    nested()
+
+def match_stmt_error2(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    match [None]:
+        case [x]:
+            pass
+    nested()
+
+def match_stmt_error3(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    match {'a': None}:
+        case {'a': x}:
+            pass
+    nested()
+
+def match_stmt_error4(x: Optional[list[str]]) -> None:
+    if x is None:
+        x = ["a"]
+    def nested() -> list[str]:
+        return x  # E: Incompatible return value type (got "Optional[List[str]]", expected "List[str]")
+    match ["a"]:
+        case [*x]:
+            pass
+    nested()
+
+class C:
+    a: str
+
+def match_stmt_error5(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    match C():
+        case C(a=x):
+            pass
+    nested()
+[builtins fixtures/tuple.pyi]
+
+[case testMatchSubjectRedefinition]
+# flags: --allow-redefinition
+def transform1(a: str) -> int:
+    ...
+
+def transform2(a: int) -> str:
+    ...
+
+def redefinition_good(a: str):
+    a = transform1(a)
+
+    match (a + 1):
+        case _:
+            ...
+
+
+def redefinition_bad(a: int):
+    a = transform2(a)
+
+    match (a + 1):  # E: Unsupported operand types for + ("str" and "int")
+        case _:
+            ...
+
+[builtins fixtures/primitives.pyi]

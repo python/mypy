@@ -61,7 +61,17 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
 
     m = re.search("# flags: (.*)$", "\n".join(testcase.input), re.MULTILINE)
     if m:
-        mypy_cmdline.extend(m.group(1).split())
+        additional_flags = m.group(1).split()
+        for flag in additional_flags:
+            if flag.startswith("--python-version="):
+                targetted_python_version = flag.split("=")[1]
+                targetted_major, targetted_minor = targetted_python_version.split(".")
+                if (int(targetted_major), int(targetted_minor)) > (
+                    sys.version_info.major,
+                    sys.version_info.minor,
+                ):
+                    return
+        mypy_cmdline.extend(additional_flags)
 
     # Write the program to a file.
     program = "_" + testcase.name + ".py"

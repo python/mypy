@@ -287,6 +287,7 @@ class MypyFile(SymbolNode):
         "names",
         "imports",
         "ignored_lines",
+        "unreachable_lines",
         "is_stub",
         "is_cache_skeleton",
         "is_partial_stub_package",
@@ -313,6 +314,8 @@ class MypyFile(SymbolNode):
     # If the value is empty, ignore all errors; otherwise, the list contains all
     # error codes to ignore.
     ignored_lines: dict[int, list[str]]
+    # Lines that are statically unreachable (e.g. due to platform/version check).
+    unreachable_lines: set[int]
     # Is this file represented by a stub file (.pyi)?
     is_stub: bool
     # Is this loaded from the cache and thus missing the actual body of the file?
@@ -345,6 +348,7 @@ class MypyFile(SymbolNode):
             self.ignored_lines = ignored_lines
         else:
             self.ignored_lines = {}
+        self.unreachable_lines = set()
 
         self.path = ""
         self.is_stub = False
@@ -508,6 +512,7 @@ class FuncBase(Node):
         "is_class",  # Uses "@classmethod" (explicit or implicit)
         "is_static",  # Uses "@staticmethod"
         "is_final",  # Uses "@final"
+        "is_explicit_override",  # Uses "@override"
         "_fullname",
     )
 
@@ -525,6 +530,7 @@ class FuncBase(Node):
         self.is_class = False
         self.is_static = False
         self.is_final = False
+        self.is_explicit_override = False
         # Name with module prefix
         self._fullname = ""
 
@@ -2433,13 +2439,16 @@ class TypeVarLikeExpr(SymbolNode, Expression):
     Note that they are constructed by the semantic analyzer.
     """
 
-    __slots__ = ("_name", "_fullname", "upper_bound", "variance")
+    __slots__ = ("_name", "_fullname", "upper_bound", "default", "variance")
 
     _name: str
     _fullname: str
     # Upper bound: only subtypes of upper_bound are valid as values. By default
     # this is 'object', meaning no restriction.
     upper_bound: mypy.types.Type
+    # Default: used to resolve the TypeVar if the default is not explicitly given.
+    # By default this is 'AnyType(TypeOfAny.from_omitted_generics)'. See PEP 696.
+    default: mypy.types.Type
     # Variance of the type variable. Invariant is the default.
     # TypeVar(..., covariant=True) defines a covariant type variable.
     # TypeVar(..., contravariant=True) defines a contravariant type
@@ -2447,12 +2456,18 @@ class TypeVarLikeExpr(SymbolNode, Expression):
     variance: int
 
     def __init__(
-        self, name: str, fullname: str, upper_bound: mypy.types.Type, variance: int = INVARIANT
+        self,
+        name: str,
+        fullname: str,
+        upper_bound: mypy.types.Type,
+        default: mypy.types.Type,
+        variance: int = INVARIANT,
     ) -> None:
         super().__init__()
         self._name = name
         self._fullname = fullname
         self.upper_bound = upper_bound
+        self.default = default
         self.variance = variance
 
     @property
@@ -2490,9 +2505,10 @@ class TypeVarExpr(TypeVarLikeExpr):
         fullname: str,
         values: list[mypy.types.Type],
         upper_bound: mypy.types.Type,
+        default: mypy.types.Type,
         variance: int = INVARIANT,
     ) -> None:
-        super().__init__(name, fullname, upper_bound, variance)
+        super().__init__(name, fullname, upper_bound, default, variance)
         self.values = values
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
@@ -2505,6 +2521,7 @@ class TypeVarExpr(TypeVarLikeExpr):
             "fullname": self._fullname,
             "values": [t.serialize() for t in self.values],
             "upper_bound": self.upper_bound.serialize(),
+            "default": self.default.serialize(),
             "variance": self.variance,
         }
 
@@ -2516,6 +2533,7 @@ class TypeVarExpr(TypeVarLikeExpr):
             data["fullname"],
             [mypy.types.deserialize_type(v) for v in data["values"]],
             mypy.types.deserialize_type(data["upper_bound"]),
+            mypy.types.deserialize_type(data["default"]),
             data["variance"],
         )
 
@@ -2534,6 +2552,7 @@ class ParamSpecExpr(TypeVarLikeExpr):
             "name": self._name,
             "fullname": self._fullname,
             "upper_bound": self.upper_bound.serialize(),
+            "default": self.default.serialize(),
             "variance": self.variance,
         }
 
@@ -2544,6 +2563,7 @@ class ParamSpecExpr(TypeVarLikeExpr):
             data["name"],
             data["fullname"],
             mypy.types.deserialize_type(data["upper_bound"]),
+            mypy.types.deserialize_type(data["default"]),
             data["variance"],
         )
 
@@ -2563,9 +2583,10 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
         fullname: str,
         upper_bound: mypy.types.Type,
         tuple_fallback: mypy.types.Instance,
+        default: mypy.types.Type,
         variance: int = INVARIANT,
     ) -> None:
-        super().__init__(name, fullname, upper_bound, variance)
+        super().__init__(name, fullname, upper_bound, default, variance)
         self.tuple_fallback = tuple_fallback
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
@@ -2578,6 +2599,7 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
             "fullname": self._fullname,
             "upper_bound": self.upper_bound.serialize(),
             "tuple_fallback": self.tuple_fallback.serialize(),
+            "default": self.default.serialize(),
             "variance": self.variance,
         }
 
@@ -2589,6 +2611,7 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
             data["fullname"],
             mypy.types.deserialize_type(data["upper_bound"]),
             mypy.types.Instance.deserialize(data["tuple_fallback"]),
+            mypy.types.deserialize_type(data["default"]),
             data["variance"],
         )
 
@@ -3465,6 +3488,7 @@ class TypeAlias(SymbolNode):
         "normalized",
         "_is_recursive",
         "eager",
+        "tvar_tuple_index",
     )
 
     __match_args__ = ("name", "target", "alias_tvars", "no_args")
@@ -3492,6 +3516,10 @@ class TypeAlias(SymbolNode):
         # it is the cached value.
         self._is_recursive: bool | None = None
         self.eager = eager
+        self.tvar_tuple_index = None
+        for i, t in enumerate(alias_tvars):
+            if isinstance(t, mypy.types.TypeVarTupleType):
+                self.tvar_tuple_index = i
         super().__init__(line, column)
 
     @classmethod

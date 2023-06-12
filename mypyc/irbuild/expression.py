@@ -6,6 +6,7 @@ and mypyc.irbuild.builder.
 
 from __future__ import annotations
 
+import math
 from typing import Callable, Sequence
 
 from mypy.nodes import (
@@ -128,6 +129,10 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
     if fullname == "builtins.False":
         return builder.false()
 
+    math_literal = transform_math_literal(builder, fullname)
+    if math_literal is not None:
+        return math_literal
+
     if isinstance(expr.node, Var) and expr.node.is_final:
         value = builder.emit_load_final(
             expr.node,
@@ -191,6 +196,10 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
         )
         if value is not None:
             return value
+
+    math_literal = transform_math_literal(builder, expr.fullname)
+    if math_literal is not None:
+        return math_literal
 
     if isinstance(expr.node, MypyFile) and expr.node.fullname in builder.imports:
         return builder.load_module(expr.node.fullname)
@@ -496,7 +505,7 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
         return builder.shortcircuit_expr(expr)
 
     # Special case for string formatting
-    if expr.op == "%" and (isinstance(expr.left, StrExpr) or isinstance(expr.left, BytesExpr)):
+    if expr.op == "%" and isinstance(expr.left, (StrExpr, BytesExpr)):
         ret = translate_printf_style_formatting(builder, expr.left, expr.right)
         if ret is not None:
             return ret
@@ -812,10 +821,10 @@ def transform_basic_comparison(
     if (
         is_int_rprimitive(left.type)
         and is_int_rprimitive(right.type)
-        and op in int_comparison_op_mapping.keys()
+        and op in int_comparison_op_mapping
     ):
         return builder.compare_tagged(left, right, op, line)
-    if is_fixed_width_rtype(left.type) and op in int_comparison_op_mapping.keys():
+    if is_fixed_width_rtype(left.type) and op in int_comparison_op_mapping:
         if right.type == left.type:
             op_id = ComparisonOp.signed_ops[op]
             return builder.builder.comparison_op(left, right, op_id, line)
@@ -826,7 +835,7 @@ def transform_basic_comparison(
             )
     elif (
         is_fixed_width_rtype(right.type)
-        and op in int_comparison_op_mapping.keys()
+        and op in int_comparison_op_mapping
         and isinstance(left, Integer)
     ):
         op_id = ComparisonOp.signed_ops[op]
@@ -1043,3 +1052,18 @@ def transform_assignment_expr(builder: IRBuilder, o: AssignmentExpr) -> Value:
     target = builder.get_assignment_target(o.target)
     builder.assign(target, value, o.line)
     return value
+
+
+def transform_math_literal(builder: IRBuilder, fullname: str) -> Value | None:
+    if fullname == "math.e":
+        return builder.load_float(math.e)
+    if fullname == "math.pi":
+        return builder.load_float(math.pi)
+    if fullname == "math.inf":
+        return builder.load_float(math.inf)
+    if fullname == "math.nan":
+        return builder.load_float(math.nan)
+    if fullname == "math.tau":
+        return builder.load_float(math.tau)
+
+    return None

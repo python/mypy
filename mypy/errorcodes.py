@@ -8,10 +8,13 @@ from __future__ import annotations
 from collections import defaultdict
 from typing_extensions import Final
 
+from mypy_extensions import mypyc_attr
+
 error_codes: dict[str, ErrorCode] = {}
 sub_code_map: dict[str, set[str]] = defaultdict(set)
 
 
+@mypyc_attr(allow_interpreted_subclasses=True)
 class ErrorCode:
     def __init__(
         self,
@@ -220,6 +223,9 @@ REDUNDANT_SELF_TYPE = ErrorCode(
 )
 USED_BEFORE_DEF: Final[ErrorCode] = ErrorCode(
     "used-before-def", "Warn about variables that are used before they are defined", "General"
+)
+UNUSED_IGNORE: Final = ErrorCode(
+    "unused-ignore", "Ensure that all type ignores are used", "General", default_enabled=False
 )
 
 

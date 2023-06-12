@@ -42,3 +42,10 @@ x = 3  # E: Incompatible types in assignment (expression has type "int", variabl
 x = {3}
 x = 3  # E: Incompatible types in assignment (expression has type "int", variable has type "set[int]")
 [builtins fixtures/set.pyi]
+
+[case testTypeLowercaseSettingOff]
+# flags: --python-version 3.9 --no-force-uppercase-builtins
+x: type[type]
+y: int
+
+y = x  # E: Incompatible types in assignment (expression has type "type[type]", variable has type "int")

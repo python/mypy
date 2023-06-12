@@ -751,12 +751,19 @@ def get_search_dirs(python_executable: str | None) -> tuple[list[str], list[str]
     else:
         # Use subprocess to get the package directory of given Python
         # executable
+        env = {**dict(os.environ), "PYTHONSAFEPATH": "1"}
         try:
             sys_path, site_packages = ast.literal_eval(
                 subprocess.check_output(
-                    [python_executable, pyinfo.__file__, "getsearchdirs"], stderr=subprocess.PIPE
+                    [python_executable, pyinfo.__file__, "getsearchdirs"],
+                    env=env,
+                    stderr=subprocess.PIPE,
                 ).decode()
             )
+        except subprocess.CalledProcessError as err:
+            print(err.stderr)
+            print(err.stdout)
+            raise
         except OSError as err:
             reason = os.strerror(err.errno)
             raise CompileError(

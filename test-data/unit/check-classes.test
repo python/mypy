@@ -115,7 +115,11 @@ class Base:
     __hash__ = None
 
 class Derived(Base):
-    def __hash__(self) -> int:  # E: Signature of "__hash__" incompatible with supertype "Base"
+    def __hash__(self) -> int:  # E: Signature of "__hash__" incompatible with supertype "Base" \
+                                # N:      Superclass: \
+                                # N:          None \
+                                # N:      Subclass: \
+                                # N:          def __hash__(self) -> int
         pass
 
 # Correct:
@@ -157,7 +161,11 @@ class Base:
 
 
 class Derived(Base):
-    def partial_type(self) -> int:  # E: Signature of "partial_type" incompatible with supertype "Base"
+    def partial_type(self) -> int:  # E: Signature of "partial_type" incompatible with supertype "Base" \
+                                    # N:      Superclass: \
+                                    # N:          List[Any] \
+                                    # N:      Subclass: \
+                                    # N:          def partial_type(self) -> int
         ...
 
 
@@ -387,7 +395,7 @@ main:7: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incom
 [case testEqMethodsOverridingWithNonObjects]
 class A:
   def __eq__(self, other: A) -> bool: pass  # Fail
-[builtins fixtures/attr.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 [out]
 main:2: error: Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"
 main:2: note: This violates the Liskov substitution principle
@@ -567,10 +575,44 @@ class A:
 
 class B(A):
     @dec
-    def f(self) -> int: pass # E: Signature of "f" incompatible with supertype "A"
-    def g(self) -> int: pass # E: Signature of "g" incompatible with supertype "A"
+    def f(self) -> int: pass # E: Signature of "f" incompatible with supertype "A" \
+                             # N:      Superclass: \
+                             # N:          def f(self) -> str \
+                             # N:      Subclass: \
+                             # N:          str
+    def g(self) -> int: pass # E: Signature of "g" incompatible with supertype "A" \
+                             # N:      Superclass: \
+                             # N:          str \
+                             # N:      Subclass: \
+                             # N:          def g(self) -> int
     @dec
     def h(self) -> str: pass
+
+[case testOverrideIncompatibleWithMultipleSupertypes]
+class A:
+    def f(self, *, a: int) -> None:
+        return
+
+class B(A):
+    def f(self, *, b: int) -> None:  # E: Signature of "f" incompatible with supertype "A" \
+                                     # N:      Superclass: \
+                                     # N:          def f(self, *, a: int) -> None \
+                                     # N:      Subclass: \
+                                     # N:          def f(self, *, b: int) -> None
+        return
+
+class C(B):
+    def f(self, *, c: int) -> None:  # E: Signature of "f" incompatible with supertype "B" \
+                                     # N:      Superclass: \
+                                     # N:          def f(self, *, b: int) -> None \
+                                     # N:      Subclass: \
+                                     # N:          def f(self, *, c: int) -> None \
+                                     # E: Signature of "f" incompatible with supertype "A" \
+                                     # N:      Superclass: \
+                                     # N:          def f(self, *, a: int) -> None \
+                                     # N:      Subclass: \
+                                     # N:          def f(self, *, c: int) -> None
+        return
 
 [case testOverrideStaticMethodWithStaticMethod]
 class A:
@@ -1394,6 +1436,13 @@ main:8: note:          @classmethod
 main:8: note:          def f(cls) -> None
 main:8: note:      Subclass:
 main:8: note:          def f(self) -> None
+
+[case testClassMethodAndStaticMethod]
+class C:
+  @classmethod  # E: Cannot have both classmethod and staticmethod
+  @staticmethod
+  def foo(cls) -> None: pass
+[builtins fixtures/classmethod.pyi]
 
 -- Properties
 -- ----------
@@ -4075,12 +4124,31 @@ int.__eq__(3, 4)
 main:33: error: Too few arguments for "__eq__" of "int"
 main:33: error: Unsupported operand types for == ("int" and "Type[int]")
 
-[case testMroSetAfterError]
-class C(str, str):
-    foo = 0
-    bar = foo
-[out]
-main:1: error: Duplicate base class "str"
+[case testDupBaseClasses]
+class A:
+    def method(self) -> str: ...
+
+class B(A, A):  # E: Duplicate base class "A"
+    attr: int
+
+b: B
+
+reveal_type(b.method())  # N: Revealed type is "Any"
+reveal_type(b.missing())  # N: Revealed type is "Any"
+reveal_type(b.attr)  # N: Revealed type is "builtins.int"
+
+[case testDupBaseClassesGeneric]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+class A(Generic[T]):
+    def method(self) -> T: ...
+
+class B(A[int], A[str]):  # E: Duplicate base class "A"
+    attr: int
+
+reveal_type(B().method())  # N: Revealed type is "Any"
+reveal_type(B().attr)   # N: Revealed type is "builtins.int"
 
 [case testCannotDetermineMro]
 class A: pass
@@ -4216,11 +4284,12 @@ class A:
     def a(self) -> None: pass
     b = 1
 class B(A):
-    a = 1
-    def b(self) -> None: pass
-[out]
-main:5: error: Incompatible types in assignment (expression has type "int", base class "A" defined the type as "Callable[[A], None]")
-main:6: error: Signature of "b" incompatible with supertype "A"
+    a = 1  # E: Incompatible types in assignment (expression has type "int", base class "A" defined the type as "Callable[[A], None]")
+    def b(self) -> None: pass  # E: Signature of "b" incompatible with supertype "A" \
+                               # N:      Superclass: \
+                               # N:          int \
+                               # N:      Subclass: \
+                               # N:          def b(self) -> None
 
 [case testVariableProperty]
 class A:
@@ -6159,7 +6228,11 @@ import a
 [file b.py]
 import a
 class Sub(a.Base):
-    def x(self) -> int: pass  # E: Signature of "x" incompatible with supertype "Base"
+    def x(self) -> int: pass  # E: Signature of "x" incompatible with supertype "Base" \
+                              # N:      Superclass: \
+                              # N:          int \
+                              # N:      Subclass: \
+                              # N:          def x(self) -> int
 
 [file a.py]
 import b
@@ -6175,7 +6248,11 @@ import a
 import c
 class Sub(a.Base):
     @c.deco
-    def x(self) -> int: pass  # E: Signature of "x" incompatible with supertype "Base"
+    def x(self) -> int: pass  # E: Signature of "x" incompatible with supertype "Base" \
+                              # N:      Superclass: \
+                              # N:          int \
+                              # N:      Subclass: \
+                              # N:          def x(*Any, **Any) -> Tuple[int, int]
 
 [file a.py]
 import b
@@ -6197,7 +6274,11 @@ import a
 import c
 class Sub(a.Base):
     @c.deco
-    def x(self) -> int: pass  # E: Signature of "x" incompatible with supertype "Base"
+    def x(self) -> int: pass  # E: Signature of "x" incompatible with supertype "Base" \
+                              # N:      Superclass: \
+                              # N:          int \
+                              # N:      Subclass: \
+                              # N:          def x(*Any, **Any) -> Tuple[int, int]
 
 [file a.py]
 import b
@@ -7680,13 +7761,29 @@ class Parent:
     foobar = TypeVar("foobar")
 
 class Child(Parent):
-    def foo(self, val: int) -> int:  # E: Signature of "foo" incompatible with supertype "Parent"
+    def foo(self, val: int) -> int:  # E: Signature of "foo" incompatible with supertype "Parent" \
+                                     # N:      Superclass: \
+                                     # N:          None \
+                                     # N:      Subclass: \
+                                     # N:          def foo(self, val: int) -> int
         return val
-    def bar(self, val: str) -> str:  # E: Signature of "bar" incompatible with supertype "Parent"
+    def bar(self, val: str) -> str:  # E: Signature of "bar" incompatible with supertype "Parent" \
+                                     # N:      Superclass: \
+                                     # N:          None \
+                                     # N:      Subclass: \
+                                     # N:          def bar(self, val: str) -> str
         return val
-    def baz(self, val: float) -> float:  # E: Signature of "baz" incompatible with supertype "Parent"
+    def baz(self, val: float) -> float:  # E: Signature of "baz" incompatible with supertype "Parent" \
+                                         # N:      Superclass: \
+                                         # N:          None \
+                                         # N:      Subclass: \
+                                         # N:          def baz(self, val: float) -> float
         return val
-    def foobar(self) -> bool:  # E: Signature of "foobar" incompatible with supertype "Parent"
+    def foobar(self) -> bool:  # E: Signature of "foobar" incompatible with supertype "Parent" \
+                               # N:      Superclass: \
+                               # N:          None \
+                               # N:      Subclass: \
+                               # N:          def foobar(self) -> bool
         return False
 
 x: Parent.foo = lambda: 5
@@ -7754,7 +7851,11 @@ class B:
         ...
 class C(B):
     @property
-    def foo(self) -> int:  # E: Signature of "foo" incompatible with supertype "B"
+    def foo(self) -> int:  # E: Signature of "foo" incompatible with supertype "B" \
+                           # N:      Superclass: \
+                           # N:          def foo(self) -> int \
+                           # N:      Subclass: \
+                           # N:          int
         ...
 [builtins fixtures/property.pyi]
 
@@ -7764,7 +7865,11 @@ class B:
     def foo(self) -> int:
         ...
 class C(B):
-    def foo(self) -> int:  # E: Signature of "foo" incompatible with supertype "B"
+    def foo(self) -> int:  # E: Signature of "foo" incompatible with supertype "B" \
+                           # N:      Superclass: \
+                           # N:          int \
+                           # N:      Subclass: \
+                           # N:          def foo(self) -> int
         ...
 [builtins fixtures/property.pyi]
 
@@ -7819,3 +7924,36 @@ class D:
         # and that's what matters.
         a, b = self.f()  # E: "C" has no attribute "__iter__" (not iterable)
 [builtins fixtures/tuple.pyi]
+
+[case testUsingNumbersType]
+from numbers import Number, Complex, Real, Rational, Integral
+
+def f1(x: Number) -> None: pass
+f1(1)  # E: Argument 1 to "f1" has incompatible type "int"; expected "Number" \
+       # N: Types from "numbers" aren't supported for static type checking \
+       # N: See https://peps.python.org/pep-0484/#the-numeric-tower \
+       # N: Consider using a protocol instead, such as typing.SupportsFloat
+
+def f2(x: Complex) -> None: pass
+f2(1)  # E: Argument 1 to "f2" has incompatible type "int"; expected "Complex" \
+       # N: Types from "numbers" aren't supported for static type checking \
+       # N: See https://peps.python.org/pep-0484/#the-numeric-tower \
+       # N: Consider using a protocol instead, such as typing.SupportsFloat
+
+def f3(x: Real) -> None: pass
+f3(1)  # E: Argument 1 to "f3" has incompatible type "int"; expected "Real" \
+       # N: Types from "numbers" aren't supported for static type checking \
+       # N: See https://peps.python.org/pep-0484/#the-numeric-tower \
+       # N: Consider using a protocol instead, such as typing.SupportsFloat
+
+def f4(x: Rational) -> None: pass
+f4(1)  # E: Argument 1 to "f4" has incompatible type "int"; expected "Rational" \
+       # N: Types from "numbers" aren't supported for static type checking \
+       # N: See https://peps.python.org/pep-0484/#the-numeric-tower \
+       # N: Consider using a protocol instead, such as typing.SupportsFloat
+
+def f5(x: Integral) -> None: pass
+f5(1)  # E: Argument 1 to "f5" has incompatible type "int"; expected "Integral" \
+       # N: Types from "numbers" aren't supported for static type checking \
+       # N: See https://peps.python.org/pep-0484/#the-numeric-tower \
+       # N: Consider using a protocol instead, such as typing.SupportsFloat

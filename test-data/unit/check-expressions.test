@@ -937,6 +937,8 @@ reveal_type(returned)  # N: Revealed type is "builtins.int"
 assert_type(a, str)  # E: Expression is of type "int", not "str"
 assert_type(a, Any)  # E: Expression is of type "int", not "Any"
 assert_type(a, Literal[1])  # E: Expression is of type "int", not "Literal[1]"
+assert_type(42, Literal[42])
+assert_type(42, int)  # E: Expression is of type "Literal[42]", not "int"
 [builtins fixtures/tuple.pyi]
 
 [case testAssertTypeGeneric]
@@ -1798,11 +1800,12 @@ a = {'a': 1}
 b = {'z': 26, **a}
 c = {**b}
 d = {**a, **b, 'c': 3}
-e = {1: 'a', **a}  # E: Argument 1 to "update" of "dict" has incompatible type "Dict[str, int]"; expected "SupportsKeysAndGetItem[int, str]"
-f = {**b}  # type: Dict[int, int]  # E: List item 0 has incompatible type "Dict[str, int]"; expected "SupportsKeysAndGetItem[int, int]"
+e = {1: 'a', **a}  # E: Cannot infer type argument 1 of <dict> \
+                   # N: Try assigning the literal to a variable annotated as dict[<key>, <val>]
+f = {**b}  # type: Dict[int, int]  # E: Unpacked dict entry 0 has incompatible type "Dict[str, int]"; expected "SupportsKeysAndGetItem[int, int]"
 g = {**Thing()}
 h = {**a, **Thing()}
-i = {**Thing()}  # type: Dict[int, int]  # E: List item 0 has incompatible type "Thing"; expected "SupportsKeysAndGetItem[int, int]" \
+i = {**Thing()}  # type: Dict[int, int]  # E: Unpacked dict entry 0 has incompatible type "Thing"; expected "SupportsKeysAndGetItem[int, int]" \
                  # N: Following member(s) of "Thing" have conflicts: \
                  # N:     Expected: \
                  # N:         def __getitem__(self, int, /) -> int \
@@ -1812,16 +1815,8 @@ i = {**Thing()}  # type: Dict[int, int]  # E: List item 0 has incompatible type 
                  # N:         def keys(self) -> Iterable[int] \
                  # N:     Got: \
                  # N:         def keys(self) -> Iterable[str]
-j = {1: 'a', **Thing()}  # E: Argument 1 to "update" of "dict" has incompatible type "Thing"; expected "SupportsKeysAndGetItem[int, str]" \
-                         # N: Following member(s) of "Thing" have conflicts: \
-                         # N:     Expected: \
-                         # N:         def __getitem__(self, int, /) -> str \
-                         # N:     Got: \
-                         # N:         def __getitem__(self, str, /) -> int \
-                         # N:     Expected: \
-                         # N:         def keys(self) -> Iterable[int] \
-                         # N:     Got: \
-                         # N:         def keys(self) -> Iterable[str]
+j = {1: 'a', **Thing()}  # E: Cannot infer type argument 1 of <dict> \
+                         # N: Try assigning the literal to a variable annotated as dict[<key>, <val>]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-medium.pyi]
 

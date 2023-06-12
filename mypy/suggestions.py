@@ -78,9 +78,8 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     get_proper_type,
-    is_optional,
-    remove_optional,
 )
+from mypy.types_utils import is_optional, remove_optional
 from mypy.util import split_target
 
 

@@ -47,7 +47,8 @@ else:
         "seal",
     )
 
-__version__: Final[str]
+if sys.version_info < (3, 9):
+    __version__: Final[str]
 
 FILTER_DIR: Any
 

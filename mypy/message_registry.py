@@ -43,7 +43,9 @@ INCOMPATIBLE_RETURN_VALUE_TYPE: Final = ErrorMessage(
 RETURN_VALUE_EXPECTED: Final = ErrorMessage("Return value expected", codes.RETURN_VALUE)
 NO_RETURN_EXPECTED: Final = ErrorMessage("Return statement in function which does not return")
 INVALID_EXCEPTION: Final = ErrorMessage("Exception must be derived from BaseException")
-INVALID_EXCEPTION_TYPE: Final = ErrorMessage("Exception type must be derived from BaseException")
+INVALID_EXCEPTION_TYPE: Final = ErrorMessage(
+    "Exception type must be derived from BaseException (or be a tuple of exception classes)"
+)
 INVALID_EXCEPTION_GROUP: Final = ErrorMessage(
     "Exception type in except* cannot derive from BaseExceptionGroup"
 )
@@ -179,7 +181,7 @@ INVALID_TYPEVAR_AS_TYPEARG: Final = 'Type variable "{}" not valid as type argume
 INVALID_TYPEVAR_ARG_BOUND: Final = 'Type argument {} of "{}" must be a subtype of {}'
 INVALID_TYPEVAR_ARG_VALUE: Final = 'Invalid type argument value for "{}"'
 TYPEVAR_VARIANCE_DEF: Final = 'TypeVar "{}" may only be a literal bool'
-TYPEVAR_BOUND_MUST_BE_TYPE: Final = 'TypeVar "bound" must be a type'
+TYPEVAR_ARG_MUST_BE_TYPE: Final = '{} "{}" must be a type'
 TYPEVAR_UNEXPECTED_ARGUMENT: Final = 'Unexpected argument to "TypeVar()"'
 UNBOUND_TYPEVAR: Final = (
     "A function returning TypeVar should receive at least "
@@ -268,6 +270,7 @@ CLASS_PATTERN_KEYWORD_MATCHES_POSITIONAL: Final = (
 )
 CLASS_PATTERN_DUPLICATE_KEYWORD_PATTERN: Final = 'Duplicate keyword pattern "{}"'
 CLASS_PATTERN_UNKNOWN_KEYWORD: Final = 'Class "{}" has no attribute "{}"'
+CLASS_PATTERN_CLASS_OR_STATIC_METHOD: Final = "Cannot have both classmethod and staticmethod"
 MULTIPLE_ASSIGNMENTS_IN_PATTERN: Final = 'Multiple assignments to name "{}" in pattern'
 CANNOT_MODIFY_MATCH_ARGS: Final = 'Cannot assign to "__match_args__"'
 
@@ -286,7 +289,7 @@ TYPE_IGNORE_WITH_ERRCODE_ON_MODULE: Final = ErrorMessage(
 )
 INVALID_TYPE_IGNORE: Final = ErrorMessage('Invalid "type: ignore" comment', codes.SYNTAX)
 TYPE_COMMENT_SYNTAX_ERROR_VALUE: Final = ErrorMessage(
-    'syntax error in type comment "{}"', codes.SYNTAX
+    'Syntax error in type comment "{}"', codes.SYNTAX
 )
 ELLIPSIS_WITH_OTHER_TYPEARGS: Final = ErrorMessage(
     "Ellipses cannot accompany other argument types in function type signature", codes.SYNTAX

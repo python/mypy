@@ -312,7 +312,7 @@ def bar() -> None:
     foo(arg='xyz')
 
 [case testDaemonGetType_python38]
-$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
+$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary --python-version 3.8
 Daemon started
 $ dmypy inspect foo:1:2:3:4
 Command "inspect" is only valid after a "check" command (that produces no parse errors)
@@ -522,92 +522,3 @@ class A:
     x: int
 class B:
     x: int
-
-[case testUnusedTypeIgnorePreservedOnRerun]
--- Regression test for https://github.com/python/mypy/issues/9655
-$ dmypy start -- --warn-unused-ignores --no-error-summary
-Daemon started
-$ dmypy check -- bar.py
-bar.py:2: error: Unused "type: ignore" comment
-== Return code: 1
-$ dmypy check -- bar.py
-bar.py:2: error: Unused "type: ignore" comment
-== Return code: 1
-
-[file foo/__init__.py]
-[file foo/empty.py]
-[file bar.py]
-from foo.empty import *
-a = 1  # type: ignore
-
-[case testTypeIgnoreWithoutCodePreservedOnRerun]
--- Regression test for https://github.com/python/mypy/issues/9655
-$ dmypy start -- --enable-error-code ignore-without-code --no-error-summary
-Daemon started
-$ dmypy check -- bar.py
-bar.py:2: error: "type: ignore" comment without error code  [ignore-without-code]
-== Return code: 1
-$ dmypy check -- bar.py
-bar.py:2: error: "type: ignore" comment without error code  [ignore-without-code]
-== Return code: 1
-
-[file foo/__init__.py]
-[file foo/empty.py]
-[file bar.py]
-from foo.empty import *
-a = 1  # type: ignore
-
-[case testUnusedTypeIgnorePreservedAfterChange]
--- Regression test for https://github.com/python/mypy/issues/9655
-$ dmypy start -- --warn-unused-ignores --no-error-summary
-Daemon started
-$ dmypy check -- bar.py
-bar.py:2: error: Unused "type: ignore" comment
-== Return code: 1
-$ {python} -c "print('\n')" >> bar.py
-$ dmypy check -- bar.py
-bar.py:2: error: Unused "type: ignore" comment
-== Return code: 1
-
-[file foo/__init__.py]
-[file foo/empty.py]
-[file bar.py]
-from foo.empty import *
-a = 1  # type: ignore
-
-[case testTypeIgnoreWithoutCodePreservedAfterChange]
--- Regression test for https://github.com/python/mypy/issues/9655
-$ dmypy start -- --enable-error-code ignore-without-code --no-error-summary
-Daemon started
-$ dmypy check -- bar.py
-bar.py:2: error: "type: ignore" comment without error code  [ignore-without-code]
-== Return code: 1
-$ {python} -c "print('\n')" >> bar.py
-$ dmypy check -- bar.py
-bar.py:2: error: "type: ignore" comment without error code  [ignore-without-code]
-== Return code: 1
-
-[file foo/__init__.py]
-[file foo/empty.py]
-[file bar.py]
-from foo.empty import *
-a = 1  # type: ignore
-
-[case testPossiblyUndefinedVarsPreservedAfterUpdate]
--- Regression test for https://github.com/python/mypy/issues/9655
-$ dmypy start -- --enable-error-code possibly-undefined --no-error-summary
-Daemon started
-$ dmypy check -- bar.py
-bar.py:4: error: Name "a" may be undefined  [possibly-undefined]
-== Return code: 1
-$ dmypy check -- bar.py
-bar.py:4: error: Name "a" may be undefined  [possibly-undefined]
-== Return code: 1
-
-[file foo/__init__.py]
-[file foo/empty.py]
-[file bar.py]
-from foo.empty import *
-if False:
-    a = 1
-a

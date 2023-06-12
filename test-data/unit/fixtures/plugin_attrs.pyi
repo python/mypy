@@ -1,4 +1,4 @@
-# Builtins stub used to support @attr.s tests.
+# Builtins stub used to support attrs plugin tests.
 from typing import Union, overload
 
 class object:

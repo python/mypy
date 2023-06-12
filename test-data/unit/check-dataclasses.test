@@ -198,7 +198,11 @@ class Base:
 @dataclass
 class BadDerived1(Base):
     def foo(self) -> int:  # E: Dataclass attribute may only be overridden by another attribute \
-                           # E: Signature of "foo" incompatible with supertype "Base"
+                           # E: Signature of "foo" incompatible with supertype "Base" \
+                           # N:      Superclass: \
+                           # N:          int \
+                           # N:      Subclass: \
+                           # N:          def foo(self) -> int
         return 1
 
 @dataclass
@@ -2036,4 +2040,17 @@ Foo(
     present_4=4,
     present_5=5,
 )
+[builtins fixtures/dataclasses.pyi]
+
+[case testProtocolNoCrash]
+from typing import Protocol, Union, ClassVar
+from dataclasses import dataclass, field
+
+DEFAULT = 0
+
+@dataclass
+class Test(Protocol):
+    x: int
+    def reset(self) -> None:
+        self.x = DEFAULT
 [builtins fixtures/dataclasses.pyi]
