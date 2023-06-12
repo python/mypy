@@ -986,7 +986,6 @@ def reprocess_nodes(
     manager.errors.set_file_ignored_lines(
         file_node.path, file_node.ignored_lines, options.ignore_errors or state.ignore_all
     )
-    manager.errors.set_unreachable_lines(file_node.path, file_node.unreachable_lines)
 
     targets = set()
     for node in nodes:

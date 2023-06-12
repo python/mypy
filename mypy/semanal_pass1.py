@@ -47,7 +47,7 @@ class SemanticAnalyzerPreAnalysis(TraverserVisitor):
 
       def do_stuff():
           # type: () -> None:
-          if sys.python_version < (3,):
+          if sys.version_info < (3,):
               import xyz  # Only available in Python 2
               xyz.whatever()
           ...
@@ -62,7 +62,6 @@ class SemanticAnalyzerPreAnalysis(TraverserVisitor):
         self.cur_mod_node = file
         self.options = options
         self.is_global_scope = True
-        self.unreachable_lines: set[int] = set()
 
         for i, defn in enumerate(file.defs):
             defn.accept(self)
@@ -74,10 +73,9 @@ class SemanticAnalyzerPreAnalysis(TraverserVisitor):
                     next_def, last = file.defs[i + 1], file.defs[-1]
                     if last.end_line is not None:
                         # We are on a Python version recent enough to support end lines.
-                        self.unreachable_lines |= set(range(next_def.line, last.end_line + 1))
+                        file.remove_ignored_lines(range(next_def.line, last.end_line + 1))
                 del file.defs[i + 1 :]
                 break
-        file.unreachable_lines = self.unreachable_lines
 
     def visit_func_def(self, node: FuncDef) -> None:
         old_global_scope = self.is_global_scope
@@ -127,7 +125,7 @@ class SemanticAnalyzerPreAnalysis(TraverserVisitor):
         if b.is_unreachable:
             if b.end_line is not None:
                 # We are on a Python version recent enough to support end lines.
-                self.unreachable_lines |= set(range(b.line, b.end_line + 1))
+                self.cur_mod_node.remove_ignored_lines(range(b.line, b.end_line + 1))
             return
         super().visit_block(b)
 

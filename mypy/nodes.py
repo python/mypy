@@ -11,6 +11,7 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Iterable,
     Iterator,
     List,
     Optional,
@@ -314,8 +315,6 @@ class MypyFile(SymbolNode):
     # If the value is empty, ignore all errors; otherwise, the list contains all
     # error codes to ignore.
     ignored_lines: dict[int, list[str]]
-    # Lines that are statically unreachable (e.g. due to platform/version check).
-    unreachable_lines: set[int]
     # Is this file represented by a stub file (.pyi)?
     is_stub: bool
     # Is this loaded from the cache and thus missing the actual body of the file?
@@ -348,7 +347,6 @@ class MypyFile(SymbolNode):
             self.ignored_lines = ignored_lines
         else:
             self.ignored_lines = {}
-        self.unreachable_lines = set()
 
         self.path = ""
         self.is_stub = False
@@ -379,6 +377,11 @@ class MypyFile(SymbolNode):
 
     def is_future_flag_set(self, flag: str) -> bool:
         return flag in self.future_import_flags
+
+    def remove_ignored_lines(self, lines: Iterable[int]) -> None:
+        """Called to prevent spurious 'unused-ignore' errors in lines that we skip checking."""
+        for line in lines:
+            self.ignored_lines.pop(line, None)
 
     def serialize(self) -> JsonDict:
         return {
