@@ -2212,3 +2212,17 @@ main:1: error: Module "typing" has no attribute "_FutureFeatureFixture"
 main:1: note: Use `from typing_extensions import _FutureFeatureFixture` instead
 main:1: note: See https://mypy.readthedocs.io/en/stable/runtime_troubles.html#using-new-additions-to-the-typing-module
 [builtins fixtures/tuple.pyi]
+
+[case testNoCrashOnBreakOutsideLoopFunction]
+def foo():
+    for x in [1, 2]:
+        def inner():
+            break  # E: "break" outside loop
+[builtins fixtures/list.pyi]
+
+[case testNoCrashOnBreakOutsideLoopClass]
+class Outer:
+    for x in [1, 2]:
+        class Inner:
+            break  # E: "break" outside loop
+[builtins fixtures/list.pyi]

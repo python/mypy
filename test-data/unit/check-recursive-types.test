@@ -937,3 +937,12 @@ x: A[int, str]
 if last is not None:
     reveal_type(last)  # N: Revealed type is "Tuple[builtins.int, builtins.str, Union[Tuple[builtins.int, builtins.str, Union[..., None]], None]]"
 [builtins fixtures/tuple.pyi]
+
+[case testRecursiveAliasLiteral]
+from typing import Tuple
+from typing_extensions import Literal
+
+NotFilter = Tuple[Literal["not"], "NotFilter"]
+n: NotFilter
+reveal_type(n[1][1][0])  # N: Revealed type is "Literal['not']"
+[builtins fixtures/tuple.pyi]
