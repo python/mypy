@@ -687,7 +687,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         orig_callee: Type | None,
     ) -> Type:
         if args and all([ak in (ARG_NAMED, ARG_STAR2) for ak in arg_kinds]):
-            # ex: Point(x=42, y=1337)
+            # ex: Point(x=42, y=1337, **extras)
+            # This is a bit ugly, but this is a price for supporting all possible syntax
+            # variants for TypedDict constructors.
             kwargs = zip([StrExpr(n) if n is not None else None for n in arg_names], args)
             result = self.validate_typeddict_kwargs(kwargs=kwargs, callee=callee)
             if result is not None:
@@ -700,12 +702,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if len(args) == 1 and arg_kinds[0] == ARG_POS:
             unique_arg = args[0]
             if isinstance(unique_arg, DictExpr):
-                # ex: Point({'x': 42, 'y': 1337})
+                # ex: Point({'x': 42, 'y': 1337, **extras})
                 return self.check_typeddict_call_with_dict(
                     callee, unique_arg.items, context, orig_callee
                 )
             if isinstance(unique_arg, CallExpr) and isinstance(unique_arg.analyzed, DictExpr):
-                # ex: Point(dict(x=42, y=1337))
+                # ex: Point(dict(x=42, y=1337, **extras))
                 return self.check_typeddict_call_with_dict(
                     callee, unique_arg.analyzed.items, context, orig_callee
                 )
@@ -720,8 +722,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def validate_typeddict_kwargs(
         self, kwargs: Iterable[tuple[Expression | None, Expression]], callee: TypedDictType
     ) -> tuple[dict[str, list[Expression]], set[str]] | None:
+        # All (actual or mapped from ** unpacks) expressions that can match given key.
         result = defaultdict(list)
+        # Keys that are guaranteed to be present no matter what (e.g. for all items of a union)
         always_present_keys = set()
+
         for item_name_expr, item_arg in kwargs:
             if item_name_expr:
                 key_type = self.accept(item_name_expr)
@@ -738,48 +743,75 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     )
                     return None
                 else:
+                    # A directly present key unconditionally shadows all previously found
+                    # values from ** items.
+                    # TODO: for duplicate keys, type-check all values.
                     result[literal_value] = [item_arg]
                     always_present_keys.add(literal_value)
             else:
-                with self.chk.local_type_map(), self.msg.filter_errors():
-                    inferred = get_proper_type(self.accept(item_arg, type_context=callee))
-                    if isinstance(inferred, TypedDictType):
-                        possible_tds = [inferred]
-                    elif isinstance(inferred, UnionType):
-                        possible_tds = []
-                        for item in get_proper_types(inferred.relevant_items()):
-                            if isinstance(item, TypedDictType):
-                                possible_tds.append(item)
-                            else:
-                                self.chk.fail("Bad star", item_arg)
-                                return None
-                    else:
-                        self.chk.fail("Bad star", item_arg)
-                        return None
-                all_keys: set[str] = set()
-                for td in possible_tds:
-                    all_keys |= td.items.keys()
-                for key in all_keys:
-                    arg = TempNode(
-                        UnionType.make_union(
-                            [td.items[key] for td in possible_tds if key in td.items]
-                        )
-                    )
-                    arg.set_line(item_arg)
-                    if all(key in td.required_keys for td in possible_tds):
-                        always_present_keys.add(key)
-                        if result[key]:
-                            # TODO: stricter checks with strict flag
-                            first = result[key][0]
-                            if isinstance(first, TempNode):
-                                result[key] = [arg]
-                            else:
-                                result[key] = [first, arg]
-                        else:
-                            result[key] = [arg]
-                    else:
-                        result[key].append(arg)
+                if not self.validate_star_typeddict_item(
+                    item_arg, callee, result, always_present_keys
+                ):
+                    return None
         return result, always_present_keys
+
+    def validate_star_typeddict_item(
+        self,
+        item_arg: Expression,
+        callee: TypedDictType,
+        result: dict[str, list[Expression]],
+        always_present_keys: set[str],
+    ) -> bool:
+        """Update keys/expressions from a ** expression in TypedDict constructor.
+
+        Note `result` and `always_present_keys` are updated in place. Return true if the
+        expression `item_arg` may valid in `callee` TypedDict context.
+        """
+        with self.chk.local_type_map(), self.msg.filter_errors():
+            inferred = get_proper_type(self.accept(item_arg, type_context=callee))
+        if isinstance(inferred, TypedDictType):
+            possible_tds = [inferred]
+        elif isinstance(inferred, UnionType):
+            possible_tds = []
+            for item in get_proper_types(inferred.relevant_items()):
+                if isinstance(item, TypedDictType):
+                    possible_tds.append(item)
+                else:
+                    self.msg.unsupported_target_for_star_typeddict(item, item_arg)
+                    return False
+        else:
+            self.msg.unsupported_target_for_star_typeddict(inferred, item_arg)
+            return False
+        all_keys: set[str] = set()
+        for td in possible_tds:
+            all_keys |= td.items.keys()
+        for key in all_keys:
+            arg = TempNode(
+                UnionType.make_union([td.items[key] for td in possible_tds if key in td.items])
+            )
+            arg.set_line(item_arg)
+            if all(key in td.required_keys for td in possible_tds):
+                always_present_keys.add(key)
+                # Always present keys override previously found values. This is done
+                # to support use cases like `Config({**defaults, **overrides})`, where
+                # some `overrides` types are narrower that types in `defaults`, and
+                # former are too wide for `Config`.
+                if result[key]:
+                    first = result[key][0]
+                    if not isinstance(first, TempNode):
+                        # We must always preserve any non-synthetic values, so that
+                        # we will accept them even if they are shadowed.
+                        result[key] = [first, arg]
+                    else:
+                        result[key] = [arg]
+                else:
+                    result[key] = [arg]
+            else:
+                # If this key is not required at least in some item of a union
+                # it may not shadow previous item, so we need to type check both.
+                result[key].append(arg)
+        # TODO: detect possibly unsafe ** overrides in --strict-typeddict-update mode.
+        return True
 
     def match_typeddict_call_with_dict(
         self,
@@ -859,14 +891,28 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if not (
             callee.required_keys <= always_present_keys and actual_keys <= callee.items.keys()
         ):
-            expected_keys = [
-                key
-                for key in callee.items.keys()
-                if key in callee.required_keys or key in actual_keys
-            ]
-            self.msg.unexpected_typeddict_keys(
-                callee, expected_keys=expected_keys, actual_keys=list(actual_keys), context=context
-            )
+            if not (actual_keys <= callee.items.keys()):
+                self.msg.unexpected_typeddict_keys(
+                    callee,
+                    expected_keys=[
+                        key
+                        for key in callee.items.keys()
+                        if key in callee.required_keys or key in actual_keys
+                    ],
+                    actual_keys=list(actual_keys),
+                    context=context,
+                )
+            if not (callee.required_keys <= always_present_keys):
+                self.msg.unexpected_typeddict_keys(
+                    callee,
+                    expected_keys=[
+                        key for key in callee.items.keys() if key in callee.required_keys
+                    ],
+                    actual_keys=[
+                        key for key in always_present_keys if key in callee.required_keys
+                    ],
+                    context=context,
+                )
             if callee.required_keys > actual_keys:
                 # found_set is a sub-set of the required_keys
                 # This means we're missing some keys and as such, we can't
@@ -889,6 +935,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         with self.msg.filter_errors(), self.chk.local_type_map():
             orig_ret_type, _ = self.check_callable_call(
                 infer_callee,
+                # We use first expression for each key to infer type variables of a generic
+                # TypedDict. This is a bit arbitrary, but in most cases will work better than
+                # trying to infer a union or a join.
                 [args[0] for args in kwargs.values()],
                 [ArgKind.ARG_NAMED] * len(kwargs),
                 context,

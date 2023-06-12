@@ -2915,6 +2915,53 @@ a.update(a)  # OK
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictFlexibleUpdateUnion]
+from typing import Union
+from mypy_extensions import TypedDict
+
+A = TypedDict("A", {"foo": int, "bar": int})
+B = TypedDict("B", {"foo": int})
+C = TypedDict("C", {"bar": int})
+
+a = A({"foo": 1, "bar": 2})
+u: Union[B, C]
+a.update(u)
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictFlexibleUpdateUnionExtra]
+from typing import Union
+from mypy_extensions import TypedDict
+
+A = TypedDict("A", {"foo": int, "bar": int})
+B = TypedDict("B", {"foo": int, "extra": int})
+C = TypedDict("C", {"bar": int, "extra": int})
+
+a = A({"foo": 1, "bar": 2})
+u: Union[B, C]
+a.update(u)
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictFlexibleUpdateUnionStrict]
+# flags: --strict-typeddict-update
+from typing import Union, NotRequired
+from mypy_extensions import TypedDict
+
+A = TypedDict("A", {"foo": int, "bar": int})
+A1 = TypedDict("A1", {"foo": int, "bar": NotRequired[int]})
+A2 = TypedDict("A2", {"foo": NotRequired[int], "bar": int})
+B = TypedDict("B", {"foo": int})
+C = TypedDict("C", {"bar": int})
+
+a = A({"foo": 1, "bar": 2})
+u: Union[B, C]
+a.update(u)  # E: Argument 1 to "update" of "TypedDict" has incompatible type "Union[B, C]"; expected "Union[TypedDict({'foo': int, 'bar'?: int}), TypedDict({'foo'?: int, 'bar': int})]"
+u2: Union[A1, A2]
+a.update(u2)  # OK
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testTypedDictUnpackSame]
 from typing import TypedDict
 
@@ -2922,10 +2969,11 @@ class Foo(TypedDict):
     a: int
     b: int
 
-foo1: Foo = {'a': 1, 'b': 1}
-foo2: Foo = {**foo1, 'b': 2}
+foo1: Foo = {"a": 1, "b": 1}
+foo2: Foo = {**foo1, "b": 2}
 foo3 = Foo(**foo1, b=2)
-foo4 = Foo({**foo1, 'b': 2})
+foo4 = Foo({**foo1, "b": 2})
+[builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictUnpackCompatible]
@@ -2938,8 +2986,9 @@ class Bar(TypedDict):
     a: int
     b: int
 
-foo: Foo = {'a': 1}
-bar: Bar = {**foo, 'b': 2}
+foo: Foo = {"a": 1}
+bar: Bar = {**foo, "b": 2}
+[builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictUnpackIncompatible]
@@ -2953,8 +3002,165 @@ class Bar(TypedDict):
     a: int
     b: int
 
-foo: Foo = {'a': 1, 'b': 'a'}
-bar1: Bar = {**foo, 'b': 2}  # Incompatible item is overriden
-bar2: Bar = {**foo, 'a': 2}  # E: Incompatible types (expression has type "str", TypedDict item "b" has type "int")
+foo: Foo = {"a": 1, "b": "a"}
+bar1: Bar = {**foo, "b": 2}  # Incompatible item is overriden
+bar2: Bar = {**foo, "a": 2}  # E: Incompatible types (expression has type "str", TypedDict item "b" has type "int")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictUnpackNotRequiredKeyIncompatible]
+from typing import TypedDict, NotRequired
+
+class Foo(TypedDict):
+    a: NotRequired[str]
+
+class Bar(TypedDict):
+    a: NotRequired[int]
+
+foo: Foo = {}
+bar: Bar = {**foo}  # E: Incompatible types (expression has type "str", TypedDict item "a" has type "int")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictUnpackMissingOrExtraKey]
+from typing import TypedDict
+
+class Foo(TypedDict):
+    a: int
+
+class Bar(TypedDict):
+    a: int
+    b: int
+
+foo1: Foo = {"a": 1}
+bar1: Bar = {"a": 1, "b": 1}
+foo2: Foo = {**bar1}  # E: Extra key "b" for TypedDict "Foo"
+bar2: Bar = {**foo1}  # E: Missing key "b" for TypedDict "Bar"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictUnpackNotRequiredKeyExtra]
+from typing import TypedDict, NotRequired
+
+class Foo(TypedDict):
+    a: int
+
+class Bar(TypedDict):
+    a: int
+    b: NotRequired[int]
+
+foo1: Foo = {"a": 1}
+bar1: Bar = {"a": 1}
+foo2: Foo = {**bar1}  # E: Extra key "b" for TypedDict "Foo"
+bar2: Bar = {**foo1}
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictUnpackRequiredKeyMissing]
+from typing import TypedDict, NotRequired
+
+class Foo(TypedDict):
+    a: NotRequired[int]
+
+class Bar(TypedDict):
+    a: int
+
+foo: Foo = {"a": 1}
+bar: Bar = {**foo}  # E: Missing key "a" for TypedDict "Bar"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictUnpackMultiple]
+from typing import TypedDict
+
+class Foo(TypedDict):
+    a: int
+
+class Bar(TypedDict):
+    b: int
+
+class Baz(TypedDict):
+    a: int
+    b: int
+    c: int
+
+foo: Foo = {"a": 1}
+bar: Bar = {"b": 1}
+baz: Baz = {**foo, **bar, "c": 1}
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictUnpackNested]
+from typing import TypedDict
+
+class Foo(TypedDict):
+    a: int
+    b: int
+
+class Bar(TypedDict):
+    c: Foo
+    d: int
+
+foo: Foo = {"a": 1, "b": 1}
+bar: Bar = {"c": foo, "d": 1}
+bar2: Bar = {**bar, "c": {**bar["c"], "b": 2}, "d": 2}
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictUnpackNestedError]
+from typing import TypedDict
+
+class Foo(TypedDict):
+    a: int
+    b: int
+
+class Bar(TypedDict):
+    c: Foo
+    d: int
+
+foo: Foo = {"a": 1, "b": 1}
+bar: Bar = {"c": foo, "d": 1}
+bar2: Bar = {**bar, "c": {**bar["c"], "b": "wrong"}, "d": 2}  # E: Incompatible types (expression has type "str", TypedDict item "b" has type "int")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictUnpackUntypedDict]
+from typing import TypedDict
+
+class Bar(TypedDict):
+    pass
+
+foo: dict = {}
+bar: Bar = {**foo}  # E: Unsupported type "Dict[Any, Any]" for ** expansion in TypedDict
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictUnpackIntoUnion]
+from typing import TypedDict, Union
+
+class Foo(TypedDict):
+    a: int
+
+class Bar(TypedDict):
+    b: int
+
+foo: Foo = {'a': 1}
+foo_or_bar: Union[Foo, Bar] = {**foo}
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictUnpackFromUnion]
+from typing import TypedDict, Union
+
+class Foo(TypedDict):
+    a: int
+    b: int
+
+class Bar(TypedDict):
+    b: int
+
+foo_or_bar: Union[Foo, Bar] = {'b': 1}
+foo: Bar = {**foo_or_bar}  # E: Extra key "a" for TypedDict "Bar"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
