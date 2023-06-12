@@ -726,6 +726,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         result = defaultdict(list)
         # Keys that are guaranteed to be present no matter what (e.g. for all items of a union)
         always_present_keys = set()
+        # Indicates latest encountered ** unpack among items.
+        last_star_found = None
 
         for item_name_expr, item_arg in kwargs:
             if item_name_expr:
@@ -749,10 +751,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     result[literal_value] = [item_arg]
                     always_present_keys.add(literal_value)
             else:
+                last_star_found = item_arg
                 if not self.validate_star_typeddict_item(
                     item_arg, callee, result, always_present_keys
                 ):
                     return None
+        if self.chk.options.strict_typeddict_update and last_star_found is not None:
+            absent_keys = []
+            for key in callee.items:
+                if key not in callee.required_keys and key not in result:
+                    absent_keys.append(key)
+            if absent_keys:
+                # Having an optional key not explicitly declared by a ** unpacked
+                # TypedDict is unsafe, it may be an (incompatible) subtype at runtime.
+                # TODO: catch the cases where a declared key is overridden by a subsequent
+                # ** item without it (and not again overriden with complete ** item).
+                self.msg.non_required_keys_absent_with_star(absent_keys, last_star_found)
         return result, always_present_keys
 
     def validate_star_typeddict_item(
@@ -810,7 +824,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # If this key is not required at least in some item of a union
                 # it may not shadow previous item, so we need to type check both.
                 result[key].append(arg)
-        # TODO: detect possibly unsafe ** overrides in --strict-typeddict-update mode.
         return True
 
     def match_typeddict_call_with_dict(

@@ -3194,3 +3194,19 @@ bar = TD(**foo)
 reveal_type(bar)  # N: Revealed type is "TypedDict('__main__.TD', {'a': builtins.int, 'b': builtins.str})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictUnpackStrictMode]
+# flags: --strict-typeddict-update
+from typing import TypedDict, NotRequired
+
+class Foo(TypedDict):
+    a: int
+
+class Bar(TypedDict):
+    a: int
+    b: NotRequired[int]
+
+foo: Foo
+bar: Bar = {**foo}  # E: Non-required key "b" not explicitly found in any ** item
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
