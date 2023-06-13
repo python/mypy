@@ -57,6 +57,7 @@ from mypyc.ir.rtypes import (
     is_uint8_rprimitive,
     object_rprimitive,
     optional_value_type,
+    vec_depth,
 )
 from mypyc.namegen import NameGenerator, exported_name
 from mypyc.sametype import is_same_type
@@ -1063,12 +1064,20 @@ class Emitter:
             if optional:
                 self.emit_line("}")
         elif isinstance(typ, RVec):
-            assert is_int64_rprimitive(typ.item_type)  # TODO: Support more item types
             if declare_dest:
                 self.emit_line(f"{self.ctype(typ)} {dest};")
             # TODO: Handle 'optional'
             # TODO: Handle 'failure'
-            self.emit_line(f"{dest} = VecI64Api.unbox({src});")
+
+            # TODO: Use helper function to pick the api variant
+            if is_int64_rprimitive(typ.item_type):
+                self.emit_line(f"{dest} = VecI64Api.unbox({src});")
+            elif vec_depth(typ) == 0:
+                # TODO: Provide item type as second arg
+                self.emit_line(f"{dest} = VecTApi.unbox({src}, 0);")
+            else:
+                # TODO: Provide additional arguments
+                self.emit_line(f"{dest} = VecTExtApi.unbox({src}, 0, 0, 0);")
         else:
             assert False, "Unboxing not implemented: %s" % typ
 
