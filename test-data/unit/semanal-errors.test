@@ -408,14 +408,14 @@ main:3: error: cannot assign to literal
 [case testInvalidLvalues10]
 x + x = 1
 [out]
-main:1: error: can't assign to operator
+main:1: error: cannot assign to operator
 [out version>=3.10]
 main:1: error: cannot assign to expression here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues11]
 -x = 1
 [out]
-main:1: error: can't assign to operator
+main:1: error: cannot assign to operator
 [out version>=3.10]
 main:1: error: cannot assign to expression here. Maybe you meant '==' instead of '='?
 
