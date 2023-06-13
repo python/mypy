@@ -3138,13 +3138,13 @@ def generate(data: DetailsSubset) -> Details:
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictUnpackUntypedDict]
-from typing import TypedDict
+from typing import Any, Dict, TypedDict
 
 class Bar(TypedDict):
     pass
 
-foo: dict = {}
-bar: Bar = {**foo}  # E: Unsupported type "Dict[Any, Any]" for ** expansion in TypedDict
+foo: Dict[str, Any] = {}
+bar: Bar = {**foo}  # E: Unsupported type "Dict[str, Any]" for ** expansion in TypedDict
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
