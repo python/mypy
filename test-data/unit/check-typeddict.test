@@ -2973,6 +2973,7 @@ foo1: Foo = {"a": 1, "b": 1}
 foo2: Foo = {**foo1, "b": 2}
 foo3 = Foo(**foo1, b=2)
 foo4 = Foo({**foo1, "b": 2})
+foo5 = Foo(dict(**foo1, b=2))
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
