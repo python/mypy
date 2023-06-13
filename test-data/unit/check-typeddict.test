@@ -3177,6 +3177,22 @@ foo: Bar = {**foo_or_bar}  # E: Extra key "a" for TypedDict "Bar"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictUnpackUnionRequiredMissing]
+from typing import TypedDict, NotRequired, Union
+
+class Foo(TypedDict):
+    a: int
+    b: int
+
+class Bar(TypedDict):
+    a: int
+    b: NotRequired[int]
+
+foo_or_bar: Union[Foo, Bar] = {"a": 1}
+foo: Foo = {**foo_or_bar}  # E: Missing key "b" for TypedDict "Foo"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testTypedDictUnpackInference]
 from typing import TypedDict, Generic, TypeVar
 
@@ -3208,5 +3224,21 @@ class Bar(TypedDict):
 
 foo: Foo
 bar: Bar = {**foo}  # E: Non-required key "b" not explicitly found in any ** item
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictUnpackAny]
+from typing import Any, TypedDict, NotRequired, Dict, Union
+
+class Foo(TypedDict):
+    a: int
+    b: NotRequired[int]
+
+x: Any
+y: Dict[Any, Any]
+z: Union[Any, Dict[Any, Any]]
+t1: Foo = {**x}  # E: Missing key "a" for TypedDict "Foo"
+t2: Foo = {**y}  # E: Missing key "a" for TypedDict "Foo"
+t3: Foo = {**z}  # E: Missing key "a" for TypedDict "Foo"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]

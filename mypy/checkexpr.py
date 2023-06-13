@@ -783,17 +783,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         with self.chk.local_type_map(), self.msg.filter_errors():
             inferred = get_proper_type(self.accept(item_arg, type_context=callee))
+        possible_tds = []
         if isinstance(inferred, TypedDictType):
             possible_tds = [inferred]
         elif isinstance(inferred, UnionType):
-            possible_tds = []
             for item in get_proper_types(inferred.relevant_items()):
                 if isinstance(item, TypedDictType):
                     possible_tds.append(item)
-                else:
+                elif not self.valid_unpack_fallback_item(item):
                     self.msg.unsupported_target_for_star_typeddict(item, item_arg)
                     return False
-        else:
+        elif not self.valid_unpack_fallback_item(inferred):
             self.msg.unsupported_target_for_star_typeddict(inferred, item_arg)
             return False
         all_keys: set[str] = set()
@@ -825,6 +825,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # it may not shadow previous item, so we need to type check both.
                 result[key].append(arg)
         return True
+
+    def valid_unpack_fallback_item(self, typ: ProperType) -> bool:
+        if isinstance(typ, AnyType):
+            return True
+        if not isinstance(typ, Instance) or not typ.type.has_base("typing.Mapping"):
+            return False
+        mapped = map_instance_to_supertype(typ, self.chk.lookup_typeinfo("typing.Mapping"))
+        return all(isinstance(a, AnyType) for a in get_proper_types(mapped.args))
 
     def match_typeddict_call_with_dict(
         self,
