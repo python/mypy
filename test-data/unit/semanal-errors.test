@@ -526,13 +526,14 @@ main:2: error: cannot delete function call
 x = 1
 del x + 1
 [out]
-main:2: error: can't delete expression
+main:2: error: can't delete operator
 [out version>=3.8]
+main:2: error: cannot delete operator
+[out version>=3.10]
 main:2: error: cannot delete expression
 
 [case testInvalidDel3]
 del z     # E: Name "z" is not defined
-[out]
 
 [case testFunctionTvarScope]
 
