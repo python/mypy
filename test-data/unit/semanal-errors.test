@@ -516,15 +516,18 @@ main:2: error: Can use starred expression only as assignment target
 
 [case testInvalidDel1]
 x = 1
-del x(1)  # E: cannot delete function call
+del x(1)
 [out]
+main:2: error: can't delete function call
+[out version>=3.8]
+main:2: error: cannot delete function call
 
 [case testInvalidDel2]
 x = 1
 del x + 1
 [out]
-main:2: error: cannot delete operator
-[out version>=3.10]
+main:2: error: can't delete expression
+[out version>=3.8]
 main:2: error: cannot delete expression
 
 [case testInvalidDel3]
@@ -1305,8 +1308,11 @@ main:2: note: Did you forget to import it from "typing"? (Suggestion: "from typi
 
 [case testInvalidWithTarget]
 def f(): pass
-with f() as 1: pass  # E: cannot assign to literal
+with f() as 1: pass
 [out]
+main:2: error: can't assign to literal
+[out version>=3.8]
+main:2: error: cannot assign to literal
 
 [case testInvalidTypeAnnotation]
 import typing
