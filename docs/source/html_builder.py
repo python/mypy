@@ -9,6 +9,8 @@ from sphinx.addnodes import document
 from sphinx.application import Sphinx
 from sphinx.builders.html import StandaloneHTMLBuilder
 
+from mypy.errorcodes import error_codes
+
 
 class MypyHTMLBuilder(StandaloneHTMLBuilder):
     def __init__(self, app: Sphinx) -> None:
@@ -20,6 +22,23 @@ class MypyHTMLBuilder(StandaloneHTMLBuilder):
         self._ref_to_doc.update({_id: docname for _id in doctree.ids})
 
     def _write_ref_redirector(self) -> None:
+        known_missing = {
+            # TODO: fix these before next release
+            "annotation-unchecked",
+            "empty-body",
+            "possibly-undefined",
+            "str-format",
+            "top-level-await",
+        }
+        missing_error_codes = {
+            c
+            for c in error_codes
+            if f"code-{c}" not in self._ref_to_doc and c not in known_missing
+        }
+        if missing_error_codes:
+            raise ValueError(
+                f"Some error codes are not documented: {', '.join(sorted(missing_error_codes))}"
+            )
         p = Path(self.outdir) / "_refs.html"
         data = f"""
         <html>
