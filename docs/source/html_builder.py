@@ -28,6 +28,7 @@ class MypyHTMLBuilder(StandaloneHTMLBuilder):
             "annotation-unchecked",
             "empty-body",
             "possibly-undefined",
+            "str-format",
             "top-level-await",
         }
         missing_error_codes = {
