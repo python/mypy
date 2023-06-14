@@ -866,7 +866,8 @@ class Server:
             [
                 (source.module, source.path)
                 for source in sources
-                if source.module not in previous_modules
+                if source.path
+                and source.module not in previous_modules
                 and (source.module, source.path) not in changed_set
             ]
         )
