@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import json
 import textwrap
+import os
 from pathlib import Path
 from typing import Any
 
 from sphinx.addnodes import document
 from sphinx.application import Sphinx
 from sphinx.builders.html import StandaloneHTMLBuilder
-
-from mypy.errorcodes import error_codes
 
 
 class MypyHTMLBuilder(StandaloneHTMLBuilder):
@@ -21,13 +20,14 @@ class MypyHTMLBuilder(StandaloneHTMLBuilder):
         super().write_doc(docname, doctree)
         self._ref_to_doc.update({_id: docname for _id in doctree.ids})
 
-    def _write_ref_redirector(self) -> None:
+    def _verify_error_codes(self) -> None:
+        from mypy.errorcodes import error_codes
+
         known_missing = {
             # TODO: fix these before next release
             "annotation-unchecked",
             "empty-body",
             "possibly-undefined",
-            "str-format",
             "top-level-await",
         }
         missing_error_codes = {
@@ -39,6 +39,10 @@ class MypyHTMLBuilder(StandaloneHTMLBuilder):
             raise ValueError(
                 f"Some error codes are not documented: {', '.join(sorted(missing_error_codes))}"
             )
+
+    def _write_ref_redirector(self) -> None:
+        if os.getenv("VERIFY_MYPY_ERROR_CODES"):
+            self._verify_error_codes()
         p = Path(self.outdir) / "_refs.html"
         data = f"""
         <html>
