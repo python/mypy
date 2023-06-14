@@ -170,17 +170,11 @@ class Server:
     # NOTE: the instance is constructed in the parent process but
     # serve() is called in the grandchild (by daemonize()).
 
-    def __init__(
-        self,
-        options: Options,
-        status_file: str,
-        timeout: int | None = None,
-        options_snapshot: dict[str, object] | None = None,
-    ) -> None:
+    def __init__(self, options: Options, status_file: str, timeout: int | None = None) -> None:
         """Initialize the server with the desired mypy flags."""
         self.options = options
         # Snapshot the options info before we muck with it, to detect changes
-        self.options_snapshot = options_snapshot or options.snapshot()
+        self.options_snapshot = options.snapshot()
         self.timeout = timeout
         self.fine_grained_manager: FineGrainedBuildManager | None = None
 
@@ -336,7 +330,7 @@ class Server:
                         header=argparse.SUPPRESS,
                     )
             # Signal that we need to restart if the options have changed
-            if self.options_snapshot != options.snapshot():
+            if not options.compare_stable(self.options_snapshot):
                 return {"restart": "configuration changed"}
             if __version__ != version:
                 return {"restart": "mypy version changed"}

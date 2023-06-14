@@ -623,9 +623,8 @@ def do_daemon(args: argparse.Namespace) -> None:
         options = options_obj.apply_changes(options_dict)
     else:
         options = process_start_options(args.flags, allow_sources=False)
-        options_dict = options.snapshot()
 
-    Server(options, args.status_file, timeout=args.timeout, options_snapshot=options_dict).serve()
+    Server(options, args.status_file, timeout=args.timeout).serve()
 
 
 @action(help_parser)
