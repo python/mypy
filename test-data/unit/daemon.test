@@ -28,6 +28,33 @@ Daemon stopped
 [file foo.py]
 def f(): pass
 
+[case testDaemonRunIgnoreMissingImports]
+$ dmypy run -- foo.py --follow-imports=error --ignore-missing-imports
+Daemon started
+Success: no issues found in 1 source file
+$ dmypy stop
+Daemon stopped
+[file foo.py]
+def f(): pass
+
+[case testDaemonRunErrorCodes]
+$ dmypy run -- foo.py --follow-imports=error --disable-error-code=type-abstract
+Daemon started
+Success: no issues found in 1 source file
+$ dmypy stop
+Daemon stopped
+[file foo.py]
+def f(): pass
+
+[case testDaemonRunCombinedOptions]
+$ dmypy run -- foo.py --follow-imports=error --ignore-missing-imports --disable-error-code=type-abstract
+Daemon started
+Success: no issues found in 1 source file
+$ dmypy stop
+Daemon stopped
+[file foo.py]
+def f(): pass
+
 [case testDaemonIgnoreConfigFiles]
 $ dmypy start -- --follow-imports=error
 Daemon started

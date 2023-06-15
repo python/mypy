@@ -373,7 +373,7 @@ class Options:
     def new_semantic_analyzer(self) -> bool:
         return True
 
-    def snapshot(self) -> object:
+    def snapshot(self) -> dict[str, object]:
         """Produce a comparable snapshot of this Option"""
         # Under mypyc, we don't have a __dict__, so we need to do worse things.
         d = dict(getattr(self, "__dict__", ()))
@@ -388,6 +388,7 @@ class Options:
         return f"Options({pprint.pformat(self.snapshot())})"
 
     def apply_changes(self, changes: dict[str, object]) -> Options:
+        # Note: effects of this method *must* be idempotent.
         new_options = Options()
         # Under mypyc, we don't have a __dict__, so we need to do worse things.
         replace_object_state(new_options, self, copy_dict=True)
@@ -412,6 +413,17 @@ class Options:
             new_options.disabled_error_codes.discard(code)
 
         return new_options
+
+    def compare_stable(self, other_snapshot: dict[str, object]) -> bool:
+        """Compare options in a way that is stable for snapshot() -> apply_changes() roundtrip.
+
+        This is needed because apply_changes() has non-trivial effects for some flags, so
+        Options().apply_changes(options.snapshot()) may result in a (slightly) different object.
+        """
+        return (
+            Options().apply_changes(self.snapshot()).snapshot()
+            == Options().apply_changes(other_snapshot).snapshot()
+        )
 
     def build_per_module_cache(self) -> None:
         self._per_module_cache = {}

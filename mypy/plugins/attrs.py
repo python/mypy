@@ -9,7 +9,6 @@ from typing_extensions import Final, Literal
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.applytype import apply_generic_arguments
-from mypy.checker import TypeChecker
 from mypy.errorcodes import LITERAL_REQ
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
@@ -1048,13 +1047,7 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
         return ctx.default_signature  # leave it to the type checker to complain
 
     inst_arg = ctx.args[0][0]
-
-    # <hack>
-    assert isinstance(ctx.api, TypeChecker)
-    inst_type = ctx.api.expr_checker.accept(inst_arg)
-    # </hack>
-
-    inst_type = get_proper_type(inst_type)
+    inst_type = get_proper_type(ctx.api.get_expression_type(inst_arg))
     inst_type_str = format_type_bare(inst_type, ctx.api.options)
 
     attr_types = _get_expanded_attr_types(ctx, inst_type, inst_type, inst_type)
@@ -1074,14 +1067,10 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
 
 def fields_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> CallableType:
     """Provide the signature for `attrs.fields`."""
-    if not ctx.args or len(ctx.args) != 1 or not ctx.args[0] or not ctx.args[0][0]:
+    if len(ctx.args) != 1 or len(ctx.args[0]) != 1:
         return ctx.default_signature
 
-    # <hack>
-    assert isinstance(ctx.api, TypeChecker)
-    inst_type = ctx.api.expr_checker.accept(ctx.args[0][0])
-    # </hack>
-    proper_type = get_proper_type(inst_type)
+    proper_type = get_proper_type(ctx.api.get_expression_type(ctx.args[0][0]))
 
     # fields(Any) -> Any, fields(type[Any]) -> Any
     if (
@@ -1098,7 +1087,7 @@ def fields_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
         inner = get_proper_type(proper_type.upper_bound)
         if isinstance(inner, Instance):
             # We need to work arg_types to compensate for the attrs stubs.
-            arg_types = [inst_type]
+            arg_types = [proper_type]
             cls = inner.type
     elif isinstance(proper_type, CallableType):
         cls = proper_type.type_object()

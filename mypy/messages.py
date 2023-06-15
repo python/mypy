@@ -2437,7 +2437,7 @@ def format_type_inner(
     if isinstance(typ, Instance):
         itype = typ
         # Get the short name of the type.
-        if itype.type.fullname in ("types.ModuleType", "_importlib_modulespec.ModuleType"):
+        if itype.type.fullname == "types.ModuleType":
             # Make some common error messages simpler and tidier.
             base_str = "Module"
             if itype.extra_attrs and itype.extra_attrs.mod_name and module_names:
@@ -2989,8 +2989,9 @@ def _real_quick_ratio(a: str, b: str) -> float:
 
 
 def best_matches(current: str, options: Collection[str], n: int) -> list[str]:
+    if not current:
+        return []
     # narrow down options cheaply
-    assert current
     options = [o for o in options if _real_quick_ratio(current, o) > 0.75]
     if len(options) >= 50:
         options = [o for o in options if abs(len(o) - len(current)) <= 1]

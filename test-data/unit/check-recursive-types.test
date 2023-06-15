@@ -409,8 +409,8 @@ def local() -> None:
     x: L
     reveal_type(x)  # N: Revealed type is "builtins.list[Union[builtins.int, Any]]"
 
-S = Type[S]  # E: Type[...] cannot contain another Type[...]
-U = Type[Union[int, U]]  # E: Type[...] cannot contain another Type[...]
+S = Type[S]  # E: Type[...] can't contain another Type[...]
+U = Type[Union[int, U]]  # E: Type[...] can't contain another Type[...]
 x: U
 reveal_type(x)  # N: Revealed type is "Type[Any]"
 
@@ -936,4 +936,13 @@ x: A[int, str]
 *_, last = x
 if last is not None:
     reveal_type(last)  # N: Revealed type is "Tuple[builtins.int, builtins.str, Union[Tuple[builtins.int, builtins.str, Union[..., None]], None]]"
+[builtins fixtures/tuple.pyi]
+
+[case testRecursiveAliasLiteral]
+from typing import Tuple
+from typing_extensions import Literal
+
+NotFilter = Tuple[Literal["not"], "NotFilter"]
+n: NotFilter
+reveal_type(n[1][1][0])  # N: Revealed type is "Literal['not']"
 [builtins fixtures/tuple.pyi]

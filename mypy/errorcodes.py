@@ -37,6 +37,14 @@ class ErrorCode:
     def __str__(self) -> str:
         return f"<ErrorCode {self.code}>"
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ErrorCode):
+            return False
+        return self.code == other.code
+
+    def __hash__(self) -> int:
+        return hash((self.code,))
+
 
 ATTR_DEFINED: Final = ErrorCode("attr-defined", "Check that attribute exists", "General")
 NAME_DEFINED: Final = ErrorCode("name-defined", "Check that name is defined", "General")
