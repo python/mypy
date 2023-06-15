@@ -22,6 +22,8 @@ T = TypeVar("T")
 SHOW_NOTE_CODES: Final = {codes.ANNOTATION_UNCHECKED}
 allowed_duplicates: Final = ["@overload", "Got:", "Expected:"]
 
+BASE_RTD_URL: Final = "https://mypy.rtfd.io/en/stable/_refs.html#code"
+
 # Keep track of the original error code when the error code of a message is changed.
 # This is used to give notes about out-of-date "type: ignore" comments.
 original_error_codes: Final = {codes.LITERAL_REQ: codes.MISC, codes.TYPE_ABSTRACT: codes.MISC}
@@ -434,6 +436,34 @@ class Errors:
             target=self.current_target(),
         )
         self.add_error_info(info)
+        if (
+            self.options.show_error_code_links
+            and not self.options.hide_error_codes
+            and code is not None
+        ):
+            message = f"See {BASE_RTD_URL}-{code.code} for information about this error"
+            if offset:
+                message = " " * offset + message
+            info = ErrorInfo(
+                self.import_context(),
+                file,
+                self.current_module(),
+                type,
+                function,
+                line,
+                column,
+                end_line,
+                end_column,
+                "note",
+                message,
+                code,
+                blocker=False,
+                only_once=True,
+                allow_dups=False,
+                origin=(self.file, origin_span),
+                target=self.current_target(),
+            )
+            self.add_error_info(info)
 
     def _add_error_info(self, file: str, info: ErrorInfo) -> None:
         assert file not in self.flushed_files

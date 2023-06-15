@@ -2195,3 +2195,10 @@ cb(lambda x: a)  # OK
 
 fn = lambda x: a
 cb(fn)
+
+[case testShowErrorCodeLinks]
+# flags: --show-error-codes --show-error-code-links
+
+x: int = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment] \
+             # N: See https://mypy.rtfd.io/en/stable/_refs.html#code-assignment for information about this error
+y: int = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
