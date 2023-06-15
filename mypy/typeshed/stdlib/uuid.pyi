@@ -96,3 +96,6 @@ RESERVED_NCS: str
 RFC_4122: str
 RESERVED_MICROSOFT: str
 RESERVED_FUTURE: str
+
+if sys.version_info >= (3, 12):
+    def main() -> None: ...

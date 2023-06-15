@@ -20,6 +20,9 @@ if sys.platform != "win32":
     F_SETOWN: int
     F_UNLCK: int
     F_WRLCK: int
+
+    F_GETLEASE: int
+    F_SETLEASE: int
     if sys.platform == "darwin":
         F_FULLFSYNC: int
         F_NOCACHE: int
@@ -30,11 +33,9 @@ if sys.platform != "win32":
         F_SETSIG: int
         F_SHLCK: int
         F_SETLK64: int
-        F_SETLEASE: int
         F_GETSIG: int
         F_NOTIFY: int
         F_EXLCK: int
-        F_GETLEASE: int
         F_GETLK64: int
         if sys.version_info >= (3, 8):
             F_ADD_SEALS: int

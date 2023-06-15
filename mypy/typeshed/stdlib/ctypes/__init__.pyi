@@ -181,6 +181,9 @@ class c_bool(_SimpleCData[bool]):
 if sys.platform == "win32":
     class HRESULT(_SimpleCData[int]): ...  # TODO undocumented
 
+if sys.version_info >= (3, 12):
+    c_time_t: type[c_int32 | c_int64]
+
 class py_object(_CanCastTo, _SimpleCData[_T]): ...
 class BigEndianStructure(Structure): ...
 class LittleEndianStructure(Structure): ...
