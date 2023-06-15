@@ -76,12 +76,18 @@ def is_recursive_pair(s: Type, t: Type) -> bool:
             isinstance(get_proper_type(t), (Instance, UnionType))
             or isinstance(t, TypeAliasType)
             and t.is_recursive
+            # Tuple types are special, they can cause an infinite recursion even if
+            # the other type is not recursive, because of the tuple fallback that is
+            # calculated "on the fly".
+            or isinstance(get_proper_type(s), TupleType)
         )
     if isinstance(t, TypeAliasType) and t.is_recursive:
         return (
             isinstance(get_proper_type(s), (Instance, UnionType))
             or isinstance(s, TypeAliasType)
             and s.is_recursive
+            # Same as above.
+            or isinstance(get_proper_type(t), TupleType)
         )
     return False
 

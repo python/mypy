@@ -330,7 +330,7 @@ class Server:
                         header=argparse.SUPPRESS,
                     )
             # Signal that we need to restart if the options have changed
-            if self.options_snapshot != options.snapshot():
+            if not options.compare_stable(self.options_snapshot):
                 return {"restart": "configuration changed"}
             if __version__ != version:
                 return {"restart": "mypy version changed"}

@@ -4269,6 +4269,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             isinstance(return_type, Instance)
                             and return_type.type.fullname == "builtins.object"
                         )
+                        and not is_lambda
                     ):
                         self.msg.incorrectly_returning_any(return_type, s)
                     return
@@ -6791,6 +6792,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 module_symbol_table=module_symbol_table,
             )
         return not watcher.has_new_errors()
+
+    def get_expression_type(self, node: Expression, type_context: Type | None = None) -> Type:
+        return self.expr_checker.accept(node, type_context=type_context)
 
 
 class CollectArgTypeVarTypes(TypeTraverserVisitor):
