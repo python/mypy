@@ -48,6 +48,7 @@ from mypy.nodes import (
 )
 from mypy.types import (
     AnyType,
+    DeletedType,
     Instance,
     ProperType,
     TupleType,
@@ -300,6 +301,9 @@ class IRBuilder:
 
     def load_int(self, value: int) -> Value:
         return self.builder.load_int(value)
+
+    def load_float(self, value: float) -> Value:
+        return self.builder.load_float(value)
 
     def unary_op(self, lreg: Value, expr_op: str, line: int) -> Value:
         return self.builder.unary_op(lreg, expr_op, line)
@@ -570,6 +574,10 @@ class IRBuilder:
                 self.error("Cannot assign to the first argument of classmethod", line)
             if lvalue.kind == LDEF:
                 if symbol not in self.symtables[-1]:
+                    if isinstance(symbol, Var) and not isinstance(symbol.type, DeletedType):
+                        reg_type = self.type_to_rtype(symbol.type)
+                    else:
+                        reg_type = self.node_type(lvalue)
                     # If the function is a generator function, then first define a new variable
                     # in the current function's environment class. Next, define a target that
                     # refers to the newly defined variable in that environment class. Add the
@@ -577,14 +585,11 @@ class IRBuilder:
                     # current environment.
                     if self.fn_info.is_generator:
                         return self.add_var_to_env_class(
-                            symbol,
-                            self.node_type(lvalue),
-                            self.fn_info.generator_class,
-                            reassign=False,
+                            symbol, reg_type, self.fn_info.generator_class, reassign=False
                         )
 
                     # Otherwise define a new local variable.
-                    return self.add_local_reg(symbol, self.node_type(lvalue))
+                    return self.add_local_reg(symbol, reg_type)
                 else:
                     # Assign to a previously defined variable.
                     return self.lookup(symbol)

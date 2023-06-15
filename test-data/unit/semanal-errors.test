@@ -1465,8 +1465,9 @@ TVariadic2 = TypeVarTuple('TVariadic2')
 TP = TypeVarTuple('?')  # E: String argument 1 "?" to TypeVarTuple(...) does not match variable name "TP"
 TP2: int = TypeVarTuple('TP2')  # E: Cannot declare the type of a TypeVar or similar construct
 TP3 = TypeVarTuple()  # E: Too few arguments for TypeVarTuple()
-TP4 = TypeVarTuple('TP4', 'TP4')  # E: Only the first argument to TypeVarTuple has defined semantics
+TP4 = TypeVarTuple('TP4', 'TP4')  # E: Too many positional arguments for "TypeVarTuple"
 TP5 = TypeVarTuple(t='TP5')  # E: TypeVarTuple() expects a string literal as first argument
+TP6 = TypeVarTuple('TP6', bound=int)  # E: Unexpected keyword argument "bound" for "TypeVarTuple"
 
 x: TVariadic  # E: TypeVarTuple "TVariadic" is unbound
 y: Unpack[TVariadic]  # E: TypeVarTuple "TVariadic" is unbound

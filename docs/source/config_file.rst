@@ -366,7 +366,7 @@ section of the command line docs.
 
 .. confval:: no_site_packages
 
-    :type: bool
+    :type: boolean
     :default: False
 
     Disables using type information in installed packages (see :pep:`561`).

@@ -2191,6 +2191,10 @@ class SemanticAnalyzer(
         if not self.verify_base_classes(defn):
             self.set_dummy_mro(defn.info)
             return
+        if not self.verify_duplicate_base_classes(defn):
+            # We don't want to block the typechecking process,
+            # so, we just insert `Any` as the base class and show an error.
+            self.set_any_mro(defn.info)
         self.calculate_class_mro(defn, self.object_type)
 
     def configure_tuple_base_class(self, defn: ClassDef, base: TupleType) -> Instance:
@@ -2219,6 +2223,11 @@ class SemanticAnalyzer(
         # Give it an MRO consisting of just the class itself and object.
         info.mro = [info, self.object_type().type]
         info.bad_mro = True
+
+    def set_any_mro(self, info: TypeInfo) -> None:
+        # Give it an MRO consisting direct `Any` subclass.
+        info.fallback_to_any = True
+        info.mro = [info, self.object_type().type]
 
     def calculate_class_mro(
         self, defn: ClassDef, obj_type: Callable[[], Instance] | None = None
@@ -2300,11 +2309,13 @@ class SemanticAnalyzer(
             if self.is_base_class(info, baseinfo):
                 self.fail("Cycle in inheritance hierarchy", defn)
                 cycle = True
-        dup = find_duplicate(info.direct_base_classes())
-        if dup:
-            self.fail(f'Duplicate base class "{dup.name}"', defn, blocker=True)
-            return False
         return not cycle
+
+    def verify_duplicate_base_classes(self, defn: ClassDef) -> bool:
+        dup = find_duplicate(defn.info.direct_base_classes())
+        if dup:
+            self.fail(f'Duplicate base class "{dup.name}"', defn)
+        return not dup
 
     def is_base_class(self, t: TypeInfo, s: TypeInfo) -> bool:
         """Determine if t is a base class of s (but do not use mro)."""
@@ -4126,28 +4137,15 @@ class SemanticAnalyzer(
                 if has_values:
                     self.fail("TypeVar cannot have both values and an upper bound", context)
                     return None
-                try:
-                    # We want to use our custom error message below, so we suppress
-                    # the default error message for invalid types here.
-                    analyzed = self.expr_to_analyzed_type(
-                        param_value, allow_placeholder=True, report_invalid_types=False
-                    )
-                    if analyzed is None:
-                        # Type variables are special: we need to place them in the symbol table
-                        # soon, even if upper bound is not ready yet. Otherwise avoiding
-                        # a "deadlock" in this common pattern would be tricky:
-                        #     T = TypeVar('T', bound=Custom[Any])
-                        #     class Custom(Generic[T]):
-                        #         ...
-                        analyzed = PlaceholderType(None, [], context.line)
-                    upper_bound = get_proper_type(analyzed)
-                    if isinstance(upper_bound, AnyType) and upper_bound.is_from_error:
-                        self.fail(message_registry.TYPEVAR_BOUND_MUST_BE_TYPE, param_value)
-                        # Note: we do not return 'None' here -- we want to continue
-                        # using the AnyType as the upper bound.
-                except TypeTranslationError:
-                    self.fail(message_registry.TYPEVAR_BOUND_MUST_BE_TYPE, param_value)
+                tv_arg = self.get_typevarlike_argument("TypeVar", param_name, param_value, context)
+                if tv_arg is None:
                     return None
+                upper_bound = tv_arg
+            elif param_name == "default":
+                tv_arg = self.get_typevarlike_argument(
+                    "TypeVar", param_name, param_value, context, allow_unbound_tvars=True
+                )
+                default = tv_arg or AnyType(TypeOfAny.from_error)
             elif param_name == "values":
                 # Probably using obsolete syntax with values=(...). Explain the current syntax.
                 self.fail('TypeVar "values" argument not supported', context)
@@ -4174,6 +4172,52 @@ class SemanticAnalyzer(
         else:
             variance = INVARIANT
         return variance, upper_bound, default
+
+    def get_typevarlike_argument(
+        self,
+        typevarlike_name: str,
+        param_name: str,
+        param_value: Expression,
+        context: Context,
+        *,
+        allow_unbound_tvars: bool = False,
+        allow_param_spec_literals: bool = False,
+        report_invalid_typevar_arg: bool = True,
+    ) -> ProperType | None:
+        try:
+            # We want to use our custom error message below, so we suppress
+            # the default error message for invalid types here.
+            analyzed = self.expr_to_analyzed_type(
+                param_value,
+                allow_placeholder=True,
+                report_invalid_types=False,
+                allow_unbound_tvars=allow_unbound_tvars,
+                allow_param_spec_literals=allow_param_spec_literals,
+            )
+            if analyzed is None:
+                # Type variables are special: we need to place them in the symbol table
+                # soon, even if upper bound is not ready yet. Otherwise avoiding
+                # a "deadlock" in this common pattern would be tricky:
+                #     T = TypeVar('T', bound=Custom[Any])
+                #     class Custom(Generic[T]):
+                #         ...
+                analyzed = PlaceholderType(None, [], context.line)
+            typ = get_proper_type(analyzed)
+            if report_invalid_typevar_arg and isinstance(typ, AnyType) and typ.is_from_error:
+                self.fail(
+                    message_registry.TYPEVAR_ARG_MUST_BE_TYPE.format(typevarlike_name, param_name),
+                    param_value,
+                )
+                # Note: we do not return 'None' here -- we want to continue
+                # using the AnyType.
+            return typ
+        except TypeTranslationError:
+            if report_invalid_typevar_arg:
+                self.fail(
+                    message_registry.TYPEVAR_ARG_MUST_BE_TYPE.format(typevarlike_name, param_name),
+                    param_value,
+                )
+            return None
 
     def extract_typevarlike_name(self, s: AssignmentStmt, call: CallExpr) -> str | None:
         if not call:
@@ -4207,13 +4251,50 @@ class SemanticAnalyzer(
         if name is None:
             return False
 
-        # ParamSpec is different from a regular TypeVar:
-        # arguments are not semantically valid. But, allowed in runtime.
-        # So, we need to warn users about possible invalid usage.
-        if len(call.args) > 1:
-            self.fail("Only the first argument to ParamSpec has defined semantics", s)
+        n_values = call.arg_kinds[1:].count(ARG_POS)
+        if n_values != 0:
+            self.fail('Too many positional arguments for "ParamSpec"', s)
 
         default: Type = AnyType(TypeOfAny.from_omitted_generics)
+        for param_value, param_name in zip(
+            call.args[1 + n_values :], call.arg_names[1 + n_values :]
+        ):
+            if param_name == "default":
+                tv_arg = self.get_typevarlike_argument(
+                    "ParamSpec",
+                    param_name,
+                    param_value,
+                    s,
+                    allow_unbound_tvars=True,
+                    allow_param_spec_literals=True,
+                    report_invalid_typevar_arg=False,
+                )
+                default = tv_arg or AnyType(TypeOfAny.from_error)
+                if isinstance(tv_arg, Parameters):
+                    for i, arg_type in enumerate(tv_arg.arg_types):
+                        typ = get_proper_type(arg_type)
+                        if isinstance(typ, AnyType) and typ.is_from_error:
+                            self.fail(
+                                f"Argument {i} of ParamSpec default must be a type", param_value
+                            )
+                elif (
+                    isinstance(default, AnyType)
+                    and default.is_from_error
+                    or not isinstance(default, (AnyType, UnboundType))
+                ):
+                    self.fail(
+                        "The default argument to ParamSpec must be a list expression, ellipsis, or a ParamSpec",
+                        param_value,
+                    )
+                    default = AnyType(TypeOfAny.from_error)
+            else:
+                # ParamSpec is different from a regular TypeVar:
+                # arguments are not semantically valid. But, allowed in runtime.
+                # So, we need to warn users about possible invalid usage.
+                self.fail(
+                    "The variance and bound arguments to ParamSpec do not have defined semantics yet",
+                    s,
+                )
 
         # PEP 612 reserves the right to define bound, covariant and contravariant arguments to
         # ParamSpec in a later PEP. If and when that happens, we should do something
@@ -4247,10 +4328,32 @@ class SemanticAnalyzer(
         if not call:
             return False
 
-        if len(call.args) > 1:
-            self.fail("Only the first argument to TypeVarTuple has defined semantics", s)
+        n_values = call.arg_kinds[1:].count(ARG_POS)
+        if n_values != 0:
+            self.fail('Too many positional arguments for "TypeVarTuple"', s)
 
         default: Type = AnyType(TypeOfAny.from_omitted_generics)
+        for param_value, param_name in zip(
+            call.args[1 + n_values :], call.arg_names[1 + n_values :]
+        ):
+            if param_name == "default":
+                tv_arg = self.get_typevarlike_argument(
+                    "TypeVarTuple",
+                    param_name,
+                    param_value,
+                    s,
+                    allow_unbound_tvars=True,
+                    report_invalid_typevar_arg=False,
+                )
+                default = tv_arg or AnyType(TypeOfAny.from_error)
+                if not isinstance(default, UnpackType):
+                    self.fail(
+                        "The default argument to TypeVarTuple must be an Unpacked tuple",
+                        param_value,
+                    )
+                    default = AnyType(TypeOfAny.from_error)
+            else:
+                self.fail(f'Unexpected keyword argument "{param_name}" for "TypeVarTuple"', s)
 
         if not self.incomplete_feature_enabled(TYPE_VAR_TUPLE, s):
             return False
@@ -6350,6 +6453,8 @@ class SemanticAnalyzer(
         report_invalid_types: bool = True,
         allow_placeholder: bool = False,
         allow_type_any: bool = False,
+        allow_unbound_tvars: bool = False,
+        allow_param_spec_literals: bool = False,
     ) -> Type | None:
         if isinstance(expr, CallExpr):
             # This is a legacy syntax intended mostly for Python 2, we keep it for
@@ -6378,6 +6483,8 @@ class SemanticAnalyzer(
             report_invalid_types=report_invalid_types,
             allow_placeholder=allow_placeholder,
             allow_type_any=allow_type_any,
+            allow_unbound_tvars=allow_unbound_tvars,
+            allow_param_spec_literals=allow_param_spec_literals,
         )
 
     def analyze_type_expr(self, expr: Expression) -> None:

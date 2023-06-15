@@ -4124,12 +4124,31 @@ int.__eq__(3, 4)
 main:33: error: Too few arguments for "__eq__" of "int"
 main:33: error: Unsupported operand types for == ("int" and "Type[int]")
 
-[case testMroSetAfterError]
-class C(str, str):
-    foo = 0
-    bar = foo
-[out]
-main:1: error: Duplicate base class "str"
+[case testDupBaseClasses]
+class A:
+    def method(self) -> str: ...
+
+class B(A, A):  # E: Duplicate base class "A"
+    attr: int
+
+b: B
+
+reveal_type(b.method())  # N: Revealed type is "Any"
+reveal_type(b.missing())  # N: Revealed type is "Any"
+reveal_type(b.attr)  # N: Revealed type is "builtins.int"
+
+[case testDupBaseClassesGeneric]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+class A(Generic[T]):
+    def method(self) -> T: ...
+
+class B(A[int], A[str]):  # E: Duplicate base class "A"
+    attr: int
+
+reveal_type(B().method())  # N: Revealed type is "Any"
+reveal_type(B().attr)   # N: Revealed type is "builtins.int"
 
 [case testCannotDetermineMro]
 class A: pass
