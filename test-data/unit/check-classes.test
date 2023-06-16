@@ -4540,6 +4540,39 @@ def f(TA: Type[A]):
     reveal_type(TA)  # N: Revealed type is "Type[__main__.A]"
     reveal_type(TA.x)  # N: Revealed type is "builtins.int"
 
+[case testMetaclassConflictingInstanceVars]
+from typing import ClassVar
+
+class Meta(type):
+    foo: int
+    bar: int
+    eggs: ClassVar[int] = 42
+    spam: ClassVar[int] = 42
+
+class Foo(metaclass=Meta):
+    foo: str
+    bar: ClassVar[str] = 'bar'
+    eggs: str
+    spam: ClassVar[str] = 'spam'
+
+reveal_type(Foo.foo)  # N: Revealed type is "builtins.int"
+reveal_type(Foo.bar)  # N: Revealed type is "builtins.str"
+reveal_type(Foo.eggs)  # N: Revealed type is "builtins.int"
+reveal_type(Foo.spam)  # N: Revealed type is "builtins.str"
+
+class MetaSub(Meta): ...
+
+class Bar(metaclass=MetaSub):
+    foo: str
+    bar: ClassVar[str] = 'bar'
+    eggs: str
+    spam: ClassVar[str] = 'spam'
+
+reveal_type(Bar.foo)  # N: Revealed type is "builtins.int"
+reveal_type(Bar.bar)  # N: Revealed type is "builtins.str"
+reveal_type(Bar.eggs)  # N: Revealed type is "builtins.int"
+reveal_type(Bar.spam)  # N: Revealed type is "builtins.str"
+
 [case testSubclassMetaclass]
 class M1(type):
     x = 0
