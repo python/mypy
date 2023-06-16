@@ -108,6 +108,7 @@ class ErrorInfo:
         allow_dups: bool,
         origin: tuple[str, Iterable[int]] | None = None,
         target: str | None = None,
+        priority: int = 0,
     ) -> None:
         self.import_ctx = import_ctx
         self.file = file
@@ -126,6 +127,7 @@ class ErrorInfo:
         self.allow_dups = allow_dups
         self.origin = origin or (file, [line])
         self.target = target
+        self.priority = priority
 
 
 # Type used internally to represent errors:
@@ -436,34 +438,6 @@ class Errors:
             target=self.current_target(),
         )
         self.add_error_info(info)
-        if (
-            self.options.show_error_code_links
-            and not self.options.hide_error_codes
-            and code is not None
-        ):
-            message = f"See {BASE_RTD_URL}-{code.code} for information about this error"
-            if offset:
-                message = " " * offset + message
-            info = ErrorInfo(
-                self.import_context(),
-                file,
-                self.current_module(),
-                type,
-                function,
-                line,
-                column,
-                end_line,
-                end_column,
-                "note",
-                message,
-                code,
-                blocker=False,
-                only_once=True,
-                allow_dups=False,
-                origin=(self.file, origin_span),
-                target=self.current_target(),
-            )
-            self.add_error_info(info)
 
     def _add_error_info(self, file: str, info: ErrorInfo) -> None:
         assert file not in self.flushed_files
@@ -558,6 +532,34 @@ class Errors:
                 allow_dups=False,
             )
             self._add_error_info(file, note)
+        if (
+            self.options.show_error_code_links
+            and not self.options.hide_error_codes
+            and info.code is not None
+        ):
+            message = f"See {BASE_RTD_URL}-{info.code.code} for more info"
+            if message in self.only_once_messages:
+                return
+            self.only_once_messages.add(message)
+            info = ErrorInfo(
+                info.import_ctx,
+                info.file,
+                info.module,
+                info.type,
+                info.function_or_member,
+                info.line,
+                info.column,
+                info.end_line,
+                info.end_column,
+                "note",
+                message,
+                info.code,
+                blocker=False,
+                only_once=True,
+                allow_dups=False,
+                priority=20,
+            )
+            self._add_error_info(file, info)
 
     def has_many_errors(self) -> bool:
         if self.options.many_errors_threshold < 0:
@@ -1069,6 +1071,34 @@ class Errors:
 
             # Sort the errors specific to a file according to line number and column.
             a = sorted(errors[i0:i], key=lambda x: (x.line, x.column))
+            a = self.sort_within_context(a)
+            result.extend(a)
+        return result
+
+    def sort_within_context(self, errors: list[ErrorInfo]) -> list[ErrorInfo]:
+        """For the same location decide which messages to show first/last.
+
+        Currently, we only compare within the same error code, to decide the
+        order of various additional notes.
+        """
+        result = []
+        i = 0
+        while i < len(errors):
+            i0 = i
+            # Find neighbouring errors with the same position and error code.
+            while (
+                i + 1 < len(errors)
+                and errors[i + 1].line == errors[i].line
+                and errors[i + 1].column == errors[i].column
+                and errors[i + 1].end_line == errors[i].end_line
+                and errors[i + 1].end_column == errors[i].end_column
+                and errors[i + 1].code == errors[i].code
+            ):
+                i += 1
+            i += 1
+
+            # Sort the messages specific to a given error by priority.
+            a = sorted(errors[i0:i], key=lambda x: x.priority)
             result.extend(a)
         return result
 
