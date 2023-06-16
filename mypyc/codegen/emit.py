@@ -345,12 +345,6 @@ class Emitter:
                 result.append(f"{self.ctype_spaced(typ)}f{i};")
                 i += 1
         result.append(f"}} {rtuple.struct_name};")
-        values = self.tuple_undefined_value_helper(rtuple)
-        result.append(
-            "static {} {} = {{ {} }};".format(
-                self.ctype(rtuple), self.tuple_undefined_value(rtuple), "".join(values)
-            )
-        )
         result.append("#endif")
         result.append("")
 
@@ -470,23 +464,20 @@ class Emitter:
             return check
 
     def tuple_undefined_value(self, rtuple: RTuple) -> str:
-        return "tuple_undefined_" + rtuple.unique_id
+        """Undefined tuple value suitable in an expression."""
+        return f"({rtuple.struct_name}) {self.c_initializer_undefined_value(rtuple)}"
 
-    def tuple_undefined_value_helper(self, rtuple: RTuple) -> list[str]:
-        res = []
-        # see tuple_c_declaration()
-        if len(rtuple.types) == 0:
-            return [self.c_undefined_value(int_rprimitive)]
-        for item in rtuple.types:
-            if not isinstance(item, RTuple):
-                res.append(self.c_undefined_value(item))
-            else:
-                sub_list = self.tuple_undefined_value_helper(item)
-                res.append("{ ")
-                res.extend(sub_list)
-                res.append(" }")
-            res.append(", ")
-        return res[:-1]
+    def c_initializer_undefined_value(self, rtype: RType) -> str:
+        """Undefined value represented in a form suitable for variable initialization."""
+        if isinstance(rtype, RTuple):
+            if not rtype.types:
+                # Empty tuples contain a flag so that they can still indicate
+                # error values.
+                return f"{{ {int_rprimitive.c_undefined} }}"
+            items = ", ".join([self.c_initializer_undefined_value(t) for t in rtype.types])
+            return f"{{ {items} }}"
+        else:
+            return self.c_undefined_value(rtype)
 
     # Higher-level operations
 
