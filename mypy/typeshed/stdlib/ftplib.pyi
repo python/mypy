@@ -118,7 +118,20 @@ class FTP:
     def close(self) -> None: ...
 
 class FTP_TLS(FTP):
-    if sys.version_info >= (3, 9):
+    if sys.version_info >= (3, 12):
+        def __init__(
+            self,
+            host: str = "",
+            user: str = "",
+            passwd: str = "",
+            acct: str = "",
+            *,
+            context: SSLContext | None = None,
+            timeout: float = ...,
+            source_address: tuple[str, int] | None = None,
+            encoding: str = "utf-8",
+        ) -> None: ...
+    elif sys.version_info >= (3, 9):
         def __init__(
             self,
             host: str = "",

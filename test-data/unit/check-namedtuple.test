@@ -938,8 +938,9 @@ class A:
     def __init__(self) -> None:
         self.b = NamedTuple('x', [('s', str), ('n', int)])  # E: NamedTuple type as an attribute is not supported
 
-reveal_type(A().b)  # N: Revealed type is "Any"
+reveal_type(A().b)  # N: Revealed type is "typing.NamedTuple"
 [builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testNamedTupleWrongfile]
 from typing import NamedTuple
@@ -983,7 +984,7 @@ class Both2(Other, Bar): ...
 class Both3(Biz, Other): ...
 
 def print_namedtuple(obj: NamedTuple) -> None:
-    reveal_type(obj.name)  # N: Revealed type is "builtins.str"
+    reveal_type(obj._fields)  # N: Revealed type is "builtins.tuple[builtins.str, ...]"
 
 b1: Bar
 b2: Baz
@@ -1335,5 +1336,14 @@ class NT(NamedTuple, Generic[T]):
 
 class SNT(NT[int]): ...
 reveal_type(SNT("test", 42).meth())  # N: Revealed type is "Tuple[builtins.str, builtins.int, fallback=__main__.SNT]"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testNoCrashUnsupportedNamedTuple]
+from typing import NamedTuple
+class Test:
+    def __init__(self, field) -> None:
+        self.Item = NamedTuple("x", [(field, str)])  # E: NamedTuple type as an attribute is not supported
+        self.item: self.Item  # E: Name "self.Item" is not defined
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]

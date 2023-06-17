@@ -28,12 +28,61 @@ Daemon stopped
 [file foo.py]
 def f(): pass
 
+[case testDaemonRunIgnoreMissingImports]
+$ dmypy run -- foo.py --follow-imports=error --ignore-missing-imports
+Daemon started
+Success: no issues found in 1 source file
+$ dmypy stop
+Daemon stopped
+[file foo.py]
+def f(): pass
+
+[case testDaemonRunErrorCodes]
+$ dmypy run -- foo.py --follow-imports=error --disable-error-code=type-abstract
+Daemon started
+Success: no issues found in 1 source file
+$ dmypy stop
+Daemon stopped
+[file foo.py]
+def f(): pass
+
+[case testDaemonRunCombinedOptions]
+$ dmypy run -- foo.py --follow-imports=error --ignore-missing-imports --disable-error-code=type-abstract
+Daemon started
+Success: no issues found in 1 source file
+$ dmypy stop
+Daemon stopped
+[file foo.py]
+def f(): pass
+
 [case testDaemonIgnoreConfigFiles]
 $ dmypy start -- --follow-imports=error
 Daemon started
 [file mypy.ini]
 \[mypy]
 files = ./foo.py
+
+[case testDaemonRunMultipleStrict]
+$ dmypy run -- foo.py --strict --follow-imports=error
+Daemon started
+foo.py:1: error: Function is missing a return type annotation
+foo.py:1: note: Use "-> None" if function does not return a value
+Found 1 error in 1 file (checked 1 source file)
+== Return code: 1
+$ dmypy run -- bar.py --strict --follow-imports=error
+bar.py:1: error: Function is missing a return type annotation
+bar.py:1: note: Use "-> None" if function does not return a value
+Found 1 error in 1 file (checked 1 source file)
+== Return code: 1
+$ dmypy run -- foo.py --strict --follow-imports=error
+foo.py:1: error: Function is missing a return type annotation
+foo.py:1: note: Use "-> None" if function does not return a value
+Found 1 error in 1 file (checked 1 source file)
+== Return code: 1
+[file foo.py]
+def f(): pass
+[file bar.py]
+def f(): pass
 
 [case testDaemonRunRestart]
 $ dmypy run -- foo.py --follow-imports=error
