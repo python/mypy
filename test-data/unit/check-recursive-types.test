@@ -409,8 +409,8 @@ def local() -> None:
     x: L
     reveal_type(x)  # N: Revealed type is "builtins.list[Union[builtins.int, Any]]"
 
-S = Type[S]  # E: Type[...] cannot contain another Type[...]
-U = Type[Union[int, U]]  # E: Type[...] cannot contain another Type[...]
+S = Type[S]  # E: Type[...] can't contain another Type[...]
+U = Type[Union[int, U]]  # E: Type[...] can't contain another Type[...]
 x: U
 reveal_type(x)  # N: Revealed type is "Type[Any]"
 

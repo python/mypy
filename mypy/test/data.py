@@ -17,6 +17,7 @@ from typing_extensions import Final, TypeAlias as _TypeAlias
 
 import pytest
 
+from mypy import defaults
 from mypy.test.config import PREFIX, test_data_prefix, test_temp_dir
 
 root_dir = os.path.normpath(PREFIX)
@@ -166,6 +167,10 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
                         version = tuple(int(x) for x in version_str.split("."))
                     except ValueError:
                         _item_fail(f"{version_str!r} is not a valid python version")
+                    if version < defaults.PYTHON3_VERSION:
+                        _item_fail(
+                            f"Version check against {version}; must be >= {defaults.PYTHON3_VERSION}"
+                        )
                     if compare_op == ">=":
                         version_check = sys.version_info >= version
                     elif compare_op == "==":
