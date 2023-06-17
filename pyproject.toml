@@ -42,6 +42,7 @@ skip_glob = [
 
 [tool.ruff]
 line-length = 99
+target-version = "py37"
 
 extend-ignore = [
   "B006",  # use of mutable defaults in function signatures
