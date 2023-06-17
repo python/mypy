@@ -31,8 +31,6 @@ from mypyc.ir.ops import (
     InitStatic,
     Integer,
     IntOp,
-    IncRef,
-    DecRef,
     KeepAlive,
     LoadAddress,
     LoadErrorValue,

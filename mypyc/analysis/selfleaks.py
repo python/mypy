@@ -11,6 +11,7 @@ from mypyc.ir.ops import (
     CallC,
     Cast,
     ComparisonOp,
+    DecRef,
     Extend,
     FloatComparisonOp,
     FloatNeg,
@@ -19,6 +20,7 @@ from mypyc.ir.ops import (
     GetElement,
     GetElementPtr,
     Goto,
+    IncRef,
     InitStatic,
     IntOp,
     KeepAlive,
@@ -44,8 +46,6 @@ from mypyc.ir.ops import (
     Unborrow,
     Unbox,
     Unreachable,
-    IncRef,
-    DecRef,
 )
 from mypyc.ir.rtypes import RInstance
 

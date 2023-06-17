@@ -12,9 +12,9 @@ from mypyc.ir.ops import (
     Assign,
     BasicBlock,
     Branch,
-    DecRef,
     CallC,
     ComparisonOp,
+    DecRef,
     GetElement,
     GetElementPtr,
     Integer,
@@ -35,11 +35,11 @@ from mypyc.ir.rtypes import (
     RType,
     RUnion,
     RVec,
-    c_size_t_rprimitive,
     VecbufTExtItem,
     bool_rprimitive,
     c_int_rprimitive,
     c_pyssize_t_rprimitive,
+    c_size_t_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
     is_c_py_ssize_t_rprimitive,
@@ -241,8 +241,9 @@ def vec_check_index(builder: "LowLevelIRBuilder", lenv: Value, index: Value, lin
     builder.activate_block(ok)
 
 
-def vec_get_item(builder: "LowLevelIRBuilder", base: Value, index: Value, line: int, *,
-                 can_borrow: bool = False) -> Value:
+def vec_get_item(
+    builder: "LowLevelIRBuilder", base: Value, index: Value, line: int, *, can_borrow: bool = False
+) -> Value:
     """Generate inlined vec __getitem__ call.
 
     We inline this, since it's simple but performance-critical.
