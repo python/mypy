@@ -5197,6 +5197,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return e.type
 
     def visit_type_var_expr(self, e: TypeVarExpr) -> Type:
+        p_default = get_proper_type(e.default)
+        if not (
+            isinstance(p_default, AnyType)
+            and p_default.type_of_any == TypeOfAny.from_omitted_generics
+        ):
+            if not is_subtype(p_default, e.upper_bound):
+                self.chk.fail("TypeVar default must be a subtype of the bound type", e)
+            if e.values and not any(p_default == value for value in e.values):
+                self.chk.fail("TypeVar default must be one of the constraint types", e)
         return AnyType(TypeOfAny.special_form)
 
     def visit_paramspec_expr(self, e: ParamSpecExpr) -> Type:

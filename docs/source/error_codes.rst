@@ -32,7 +32,7 @@ or config ``hide_error_codes = True`` to hide error codes. Error codes are shown
    prog.py:1: error: "str" has no attribute "trim"  [attr-defined]
 
 It's also possible to require error codes for ``type: ignore`` comments.
-See :ref:`ignore-without-code<ignore-without-code>` for more information.
+See :ref:`ignore-without-code<code-ignore-without-code>` for more information.
 
 
 .. _silence-error-codes:

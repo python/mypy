@@ -1,4 +1,5 @@
 import datetime
+import enum
 import sys
 from _typeshed import Unused
 from collections.abc import Iterable, Sequence
@@ -35,6 +36,23 @@ __all__ = [
 
 if sys.version_info >= (3, 10):
     __all__ += ["FRIDAY", "MONDAY", "SATURDAY", "SUNDAY", "THURSDAY", "TUESDAY", "WEDNESDAY"]
+if sys.version_info >= (3, 12):
+    __all__ += [
+        "Day",
+        "Month",
+        "JANUARY",
+        "FEBRUARY",
+        "MARCH",
+        "APRIL",
+        "MAY",
+        "JUNE",
+        "JULY",
+        "AUGUST",
+        "SEPTEMBER",
+        "OCTOBER",
+        "NOVEMBER",
+        "DECEMBER",
+    ]
 
 _LocaleType: TypeAlias = tuple[str | None, str | None]
 
@@ -134,12 +152,55 @@ day_abbr: Sequence[str]
 month_name: Sequence[str]
 month_abbr: Sequence[str]
 
-MONDAY: Literal[0]
-TUESDAY: Literal[1]
-WEDNESDAY: Literal[2]
-THURSDAY: Literal[3]
-FRIDAY: Literal[4]
-SATURDAY: Literal[5]
-SUNDAY: Literal[6]
+if sys.version_info >= (3, 12):
+    class Month(enum.IntEnum):
+        JANUARY: Literal[1]
+        FEBRUARY: Literal[2]
+        MARCH: Literal[3]
+        APRIL: Literal[4]
+        MAY: Literal[5]
+        JUNE: Literal[6]
+        JULY: Literal[7]
+        AUGUST: Literal[8]
+        SEPTEMBER: Literal[9]
+        OCTOBER: Literal[10]
+        NOVEMBER: Literal[11]
+        DECEMBER: Literal[12]
+    JANUARY = Month.JANUARY
+    FEBRUARY = Month.FEBRUARY
+    MARCH = Month.MARCH
+    APRIL = Month.APRIL
+    MAY = Month.MAY
+    JUNE = Month.JUNE
+    JULY = Month.JULY
+    AUGUST = Month.AUGUST
+    SEPTEMBER = Month.SEPTEMBER
+    OCTOBER = Month.OCTOBER
+    NOVEMBER = Month.NOVEMBER
+    DECEMBER = Month.DECEMBER
+
+    class Day(enum.IntEnum):
+        MONDAY: Literal[0]
+        TUESDAY: Literal[1]
+        WEDNESDAY: Literal[2]
+        THURSDAY: Literal[3]
+        FRIDAY: Literal[4]
+        SATURDAY: Literal[5]
+        SUNDAY: Literal[6]
+    MONDAY = Day.MONDAY
+    TUESDAY = Day.TUESDAY
+    WEDNESDAY = Day.WEDNESDAY
+    THURSDAY = Day.THURSDAY
+    FRIDAY = Day.FRIDAY
+    SATURDAY = Day.SATURDAY
+    SUNDAY = Day.SUNDAY
+else:
+    MONDAY: Literal[0]
+    TUESDAY: Literal[1]
+    WEDNESDAY: Literal[2]
+    THURSDAY: Literal[3]
+    FRIDAY: Literal[4]
+    SATURDAY: Literal[5]
+    SUNDAY: Literal[6]
 
 EPOCH: Literal[1970]
