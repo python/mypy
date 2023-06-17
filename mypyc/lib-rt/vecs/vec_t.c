@@ -207,12 +207,13 @@ VecT Vec_T_Remove(VecT v, PyObject *arg) {
             match = itemcmp;
         }
         if (match) {
-            Py_CLEAR(items[i]);
-            for (; i < v.len - 1; i++) {
-                items[i] = items[i + 1];
-            }
-            if (v.len > 0)
+            if (i < v.len - 1) {
+                Py_CLEAR(items[i]);
+                for (; i < v.len - 1; i++) {
+                    items[i] = items[i + 1];
+                }
                 Py_XINCREF(items[v.len - 1]);
+            }
             v.len--;
             VEC_INCREF(v);
             return v;
