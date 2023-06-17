@@ -4,6 +4,7 @@
 from typing import Any, Callable
 from typing_extensions import Final
 import math
+from math import pi, e, tau, inf, nan
 from testutil import assertRaises, float_vals, assertDomainError, assertMathRangeError
 
 pymath: Any = math
@@ -86,3 +87,20 @@ def test_isinf() -> None:
 def test_isnan() -> None:
     for x in float_vals:
         assert repr(math.isnan(x)) == repr(pymath.isnan(x))
+
+
+def test_pi_is_inlined_correctly() -> None:
+    assert math.pi == pi == 3.141592653589793
+
+def test_e_is_inlined_correctly() -> None:
+    assert math.e == e == 2.718281828459045
+
+def test_tau_is_inlined_correctly() -> None:
+    assert math.tau == tau == 6.283185307179586
+
+def test_inf_is_inlined_correctly() -> None:
+    assert math.inf == inf == float("inf")
+
+def test_nan_is_inlined_correctly() -> None:
+    assert math.isnan(math.nan)
+    assert math.isnan(nan)

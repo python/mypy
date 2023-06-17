@@ -1019,7 +1019,7 @@ re.subn(bpat, lambda m: b'', b'')[0] + b''
 _testReModuleBytes.py:7: error: No overload variant of "search" matches argument types "bytes", "str"
 _testReModuleBytes.py:7: note: Possible overload variants:
 _testReModuleBytes.py:7: note:     def search(pattern: Union[str, Pattern[str]], string: str, flags: Union[int, RegexFlag] = ...) -> Optional[Match[str]]
-_testReModuleBytes.py:7: note:     def search(pattern: Union[bytes, Pattern[bytes]], string: Union[bytes, Union[bytearray, memoryview, array[Any], mmap, _CData]], flags: Union[int, RegexFlag] = ...) -> Optional[Match[bytes]]
+_testReModuleBytes.py:7: note:     def search(pattern: Union[bytes, Pattern[bytes]], string: Buffer, flags: Union[int, RegexFlag] = ...) -> Optional[Match[bytes]]
 _testReModuleBytes.py:9: error: Argument 1 to "search" has incompatible type "Pattern[bytes]"; expected "Union[str, Pattern[str]]"
 
 [case testReModuleString]
@@ -1046,7 +1046,7 @@ re.subn(spat, lambda m: '', '')[0] + ''
 _testReModuleString.py:7: error: No overload variant of "search" matches argument types "str", "bytes"
 _testReModuleString.py:7: note: Possible overload variants:
 _testReModuleString.py:7: note:     def search(pattern: Union[str, Pattern[str]], string: str, flags: Union[int, RegexFlag] = ...) -> Optional[Match[str]]
-_testReModuleString.py:7: note:     def search(pattern: Union[bytes, Pattern[bytes]], string: Union[bytes, Union[bytearray, memoryview, array[Any], mmap, _CData]], flags: Union[int, RegexFlag] = ...) -> Optional[Match[bytes]]
+_testReModuleString.py:7: note:     def search(pattern: Union[bytes, Pattern[bytes]], string: Buffer, flags: Union[int, RegexFlag] = ...) -> Optional[Match[bytes]]
 _testReModuleString.py:9: error: Argument 1 to "search" has incompatible type "Pattern[str]"; expected "Union[bytes, Pattern[bytes]]"
 
 [case testListSetitemTuple]
@@ -1986,6 +1986,19 @@ def good9(foo1: Foo[Concatenate[int, P]], foo2: Foo[[int, str, bytes]], *args: P
 
 [out]
 _testStrictEqualitywithParamSpec.py:11: error: Non-overlapping equality check (left operand type: "Foo[[int]]", right operand type: "Bar[[int]]")
+
+[case testInferenceOfDunderDictOnClassObjects]
+class Foo: ...
+reveal_type(Foo.__dict__)
+reveal_type(Foo().__dict__)
+Foo.__dict__ = {}
+Foo().__dict__ = {}
+
+[out]
+_testInferenceOfDunderDictOnClassObjects.py:2: note: Revealed type is "types.MappingProxyType[builtins.str, Any]"
+_testInferenceOfDunderDictOnClassObjects.py:3: note: Revealed type is "builtins.dict[builtins.str, Any]"
+_testInferenceOfDunderDictOnClassObjects.py:4: error: Property "__dict__" defined in "type" is read-only
+_testInferenceOfDunderDictOnClassObjects.py:4: error: Incompatible types in assignment (expression has type "Dict[<nothing>, <nothing>]", variable has type "MappingProxyType[str, Any]")
 
 [case testTypeVarTuple]
 # flags: --enable-incomplete-feature=TypeVarTuple --enable-incomplete-feature=Unpack --python-version=3.11

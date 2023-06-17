@@ -22,6 +22,9 @@ RTLD_LOCAL: int
 if sys.version_info >= (3, 11):
     CTYPES_MAX_ARGCOUNT: int
 
+if sys.version_info >= (3, 12):
+    SIZEOF_TIME_T: int
+
 if sys.platform == "win32":
     # Description, Source, HelpFile, HelpContext, scode
     _COMError_Details: TypeAlias = tuple[str | None, str | None, str | None, int | None, int | None]
@@ -63,6 +66,8 @@ class _CData(metaclass=_CDataMeta):
     def from_param(cls, obj: Any) -> Self | _CArgObject: ...
     @classmethod
     def in_dll(cls, library: CDLL, name: str) -> Self: ...
+    def __buffer__(self, __flags: int) -> memoryview: ...
+    def __release_buffer__(self, __buffer: memoryview) -> None: ...
 
 class _SimpleCData(Generic[_T], _CData):
     value: _T

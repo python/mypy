@@ -1,6 +1,6 @@
 import sys
 from _socket import _Address as _SourceAddress
-from _typeshed import ReadableBuffer, _BufferWithLen
+from _typeshed import ReadableBuffer, SizedBuffer
 from collections.abc import Sequence
 from email.message import Message as _Message
 from re import Pattern
@@ -133,7 +133,7 @@ class SMTP:
         self,
         from_addr: str,
         to_addrs: str | Sequence[str],
-        msg: _BufferWithLen | str,
+        msg: SizedBuffer | str,
         mail_options: Sequence[str] = (),
         rcpt_options: Sequence[str] = (),
     ) -> _SendErrs: ...

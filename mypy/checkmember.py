@@ -388,7 +388,7 @@ def analyze_type_callable_member_access(name: str, typ: FunctionLike, mx: Member
             # See https://github.com/python/mypy/pull/1787 for more info.
             # TODO: do not rely on same type variables being present in all constructor overloads.
             result = analyze_class_attribute_access(
-                ret_type, name, mx, original_vars=typ.items[0].variables
+                ret_type, name, mx, original_vars=typ.items[0].variables, mcs_fallback=typ.fallback
             )
             if result:
                 return result
@@ -434,17 +434,21 @@ def analyze_type_type_member_access(
         if isinstance(typ.item.item, Instance):
             item = typ.item.item.type.metaclass_type
     ignore_messages = False
+
+    if item is not None:
+        fallback = item.type.metaclass_type or fallback
+
     if item and not mx.is_operator:
         # See comment above for why operators are skipped
-        result = analyze_class_attribute_access(item, name, mx, override_info)
+        result = analyze_class_attribute_access(
+            item, name, mx, mcs_fallback=fallback, override_info=override_info
+        )
         if result:
             if not (isinstance(get_proper_type(result), AnyType) and item.type.fallback_to_any):
                 return result
             else:
                 # We don't want errors on metaclass lookup for classes with Any fallback
                 ignore_messages = True
-    if item is not None:
-        fallback = item.type.metaclass_type or fallback
 
     with mx.msg.filter_errors(filter_errors=ignore_messages):
         return _analyze_member_access(name, fallback, mx, override_info)
@@ -893,6 +897,8 @@ def analyze_class_attribute_access(
     itype: Instance,
     name: str,
     mx: MemberContext,
+    *,
+    mcs_fallback: Instance,
     override_info: TypeInfo | None = None,
     original_vars: Sequence[TypeVarLikeType] | None = None,
 ) -> Type | None:
@@ -917,6 +923,22 @@ def analyze_class_attribute_access(
                 return itype.extra_attrs.attrs[name]
         if info.fallback_to_any or info.meta_fallback_to_any:
             return apply_class_attr_hook(mx, hook, AnyType(TypeOfAny.special_form))
+        return None
+
+    if (
+        isinstance(node.node, Var)
+        and not node.node.is_classvar
+        and not hook
+        and mcs_fallback.type.get(name)
+    ):
+        # If the same attribute is declared on the metaclass and the class but with different types,
+        # and the attribute on the class is not a ClassVar,
+        # the type of the attribute on the metaclass should take priority
+        # over the type of the attribute on the class,
+        # when the attribute is being accessed from the class object itself.
+        #
+        # Return `None` here to signify that the name should be looked up
+        # on the class object itself rather than the instance.
         return None
 
     is_decorated = isinstance(node.node, Decorator)

@@ -179,7 +179,7 @@ class SysLogHandler(Handler):
     facility_names: ClassVar[dict[str, int]]  # undocumented
     priority_map: ClassVar[dict[str, str]]  # undocumented
     def __init__(
-        self, address: tuple[str, int] | str = ("localhost", 514), facility: int = 1, socktype: SocketKind | None = None
+        self, address: tuple[str, int] | str = ("localhost", 514), facility: str | int = 1, socktype: SocketKind | None = None
     ) -> None: ...
     if sys.version_info >= (3, 11):
         def createSocket(self) -> None: ...

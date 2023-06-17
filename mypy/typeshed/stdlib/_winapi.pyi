@@ -137,6 +137,34 @@ if sys.platform == "win32":
         LCMAP_TRADITIONAL_CHINESE: int
         LCMAP_UPPERCASE: int
 
+    if sys.version_info >= (3, 12):
+        COPYFILE2_CALLBACK_CHUNK_STARTED: Literal[1]
+        COPYFILE2_CALLBACK_CHUNK_FINISHED: Literal[2]
+        COPYFILE2_CALLBACK_STREAM_STARTED: Literal[3]
+        COPYFILE2_CALLBACK_STREAM_FINISHED: Literal[4]
+        COPYFILE2_CALLBACK_POLL_CONTINUE: Literal[5]
+        COPYFILE2_CALLBACK_ERROR: Literal[6]
+
+        COPYFILE2_PROGRESS_CONTINUE: Literal[0]
+        COPYFILE2_PROGRESS_CANCEL: Literal[1]
+        COPYFILE2_PROGRESS_STOP: Literal[2]
+        COPYFILE2_PROGRESS_QUIET: Literal[3]
+        COPYFILE2_PROGRESS_PAUSE: Literal[4]
+
+        COPY_FILE_FAIL_IF_EXISTS: Literal[0x1]
+        COPY_FILE_RESTARTABLE: Literal[0x2]
+        COPY_FILE_OPEN_SOURCE_FOR_WRITE: Literal[0x4]
+        COPY_FILE_ALLOW_DECRYPTED_DESTINATION: Literal[0x8]
+        COPY_FILE_COPY_SYMLINK: Literal[0x800]
+        COPY_FILE_NO_BUFFERING: Literal[0x1000]
+        COPY_FILE_REQUEST_SECURITY_PRIVILEGES: Literal[0x2000]
+        COPY_FILE_RESUME_FROM_PAUSE: Literal[0x4000]
+        COPY_FILE_NO_OFFLOAD: Literal[0x40000]
+        COPY_FILE_REQUEST_COMPRESSED_TRAFFIC: Literal[0x10000000]
+
+        ERROR_ACCESS_DENIED: Literal[5]
+        ERROR_PRIVILEGE_NOT_HELD: Literal[1314]
+
     def CloseHandle(__handle: int) -> None: ...
     @overload
     def ConnectNamedPipe(handle: int, overlapped: Literal[True]) -> Overlapped: ...
@@ -224,3 +252,6 @@ if sys.platform == "win32":
         def GetOverlappedResult(self, __wait: bool) -> tuple[int, int]: ...
         def cancel(self) -> None: ...
         def getbuffer(self) -> bytes | None: ...
+
+    if sys.version_info >= (3, 12):
+        def CopyFile2(existing_file_name: str, new_file_name: str, flags: int, progress_routine: int | None = None) -> int: ...

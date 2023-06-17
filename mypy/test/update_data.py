@@ -10,6 +10,8 @@ from mypy.test.data import DataDrivenTestCase, DataFileCollector, DataFileFix, p
 def update_testcase_output(
     testcase: DataDrivenTestCase, actual: list[str], *, incremental_step: int
 ) -> None:
+    if testcase.xfail:
+        return
     collector = testcase.parent
     assert isinstance(collector, DataFileCollector)
     for fix in _iter_fixes(testcase, actual, incremental_step=incremental_step):
