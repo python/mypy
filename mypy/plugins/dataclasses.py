@@ -983,7 +983,8 @@ def _get_expanded_dataclasses_fields(
         if replace_sym is None:
             _fail_not_dataclass(ctx, display_typ, parent_typ)
             return None
-        replace_sig = get_proper_type(replace_sym.type)
+        replace_sig = replace_sym.type
+        assert isinstance(replace_sig, ProperType)
         assert isinstance(replace_sig, CallableType)
         return [expand_type_by_instance(replace_sig, typ)]
     else:
