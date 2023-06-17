@@ -342,6 +342,8 @@ class Emitter:
             return rtype.c_undefined
         elif isinstance(rtype, RTuple):
             return self.tuple_undefined_value(rtype)
+        elif isinstance(rtype, RVec):
+            return f"({self.ctype(rtype)}) {{ -1, NULL }}"
         assert False, rtype
 
     def c_error_value(self, rtype: RType) -> str:
@@ -503,7 +505,7 @@ class Emitter:
             items = ", ".join([self.c_initializer_undefined_value(t) for t in rtype.types])
             return f"{{ {items} }}"
         elif isinstance(rtype, RVec):
-            res.append("{ -1, NULL }")
+            return "{ -1, NULL }"
         else:
             return self.c_undefined_value(rtype)
 
