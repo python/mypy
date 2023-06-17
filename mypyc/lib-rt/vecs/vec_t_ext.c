@@ -260,12 +260,13 @@ VecTExt Vec_T_Ext_Remove(VecTExt self, VecbufTExtItem arg) {
             match = itemcmp;
         }
         if (match) {
-            Py_CLEAR(items[i].buf);
-            for (; i < self.len - 1; i++) {
-                items[i] = items[i + 1];
-            }
-            if (self.len > 0)
+            if (i < self.len - 1) {
+                Py_CLEAR(items[i].buf);
+                for (; i < self.len - 1; i++) {
+                    items[i] = items[i + 1];
+                }
                 Py_XINCREF(items[self.len - 1].buf);
+            }
             self.len--;
             Py_INCREF(self.buf);
             Py_DECREF(boxed_arg);
