@@ -369,7 +369,7 @@ def vec_remove(builder: "LowLevelIRBuilder", vec: Value, item: Value, line: int)
         vec_type,
         steals=[False, False],
         is_borrowed=False,
-        error_kind=ERR_FALSE,
+        error_kind=ERR_MAGIC,
         line=line,
     )
     return builder.add(call)
