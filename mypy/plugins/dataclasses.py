@@ -992,6 +992,9 @@ def _get_expanded_dataclasses_fields(
         return None
 
 
+# TODO: we can potentially get the function signature hook to allow returning a union
+#  and leave this to the regular machinery of resolving a union of callables
+#  (https://github.com/python/mypy/issues/15457)
 def _meet_replace_sigs(sigs: list[CallableType]) -> CallableType:
     """
     Produces the lowest bound of the 'replace' signatures of multiple dataclasses.
