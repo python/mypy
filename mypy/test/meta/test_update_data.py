@@ -1,3 +1,8 @@
+"""
+A "meta test" which tests the `--update-data` feature for updating .test files.
+Updating the expected output, especially when it's in the form of inline (comment) assertions,
+can be brittle, which is why we're "meta-testing" here.
+"""
 import shlex
 import subprocess
 import sys
@@ -16,7 +21,7 @@ class UpdateDataSuite(Suite):
         """
         p_test_data = Path(test_data_prefix)
         p_root = p_test_data.parent.parent
-        p = p_test_data / "check-update-data.test"
+        p = p_test_data / "check-__fixture__.test"
         assert not p.exists()
         try:
             p.write_text(textwrap.dedent(data_suite).lstrip())

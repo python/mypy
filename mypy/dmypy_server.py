@@ -330,7 +330,7 @@ class Server:
                         header=argparse.SUPPRESS,
                     )
             # Signal that we need to restart if the options have changed
-            if self.options_snapshot != options.snapshot():
+            if not options.compare_stable(self.options_snapshot):
                 return {"restart": "configuration changed"}
             if __version__ != version:
                 return {"restart": "mypy version changed"}
@@ -856,6 +856,21 @@ class Server:
             path = source.path
             assert path
             removed.append((source.module, path))
+
+        # Always add modules that were (re-)added, since they may be detected as not changed by
+        # fswatcher (if they were actually not changed), but they may still need to be checked
+        # in case they had errors before they were deleted from sources on previous runs.
+        previous_modules = {source.module for source in self.previous_sources}
+        changed_set = set(changed)
+        changed.extend(
+            [
+                (source.module, source.path)
+                for source in sources
+                if source.path
+                and source.module not in previous_modules
+                and (source.module, source.path) not in changed_set
+            ]
+        )
 
         # Find anything that has had its module path change because of added or removed __init__s
         last = {s.path: s.module for s in self.previous_sources}

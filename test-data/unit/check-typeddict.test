@@ -2873,3 +2873,15 @@ foo({"foo": {"e": "foo"}})  # E: Type of TypedDict is ambiguous, none of ("A", "
                             # E: Argument 1 to "foo" has incompatible type "Dict[str, Dict[str, str]]"; expected "Union[A, B]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictMissingEmptyKey]
+from typing_extensions import TypedDict
+
+class A(TypedDict):
+    my_attr_1: str
+    my_attr_2: int
+
+d: A
+d['']  # E: TypedDict "A" has no key ""
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]

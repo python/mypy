@@ -8,6 +8,8 @@ with default options. See :ref:`error-codes` for general documentation
 about error codes. :ref:`error-codes-optional` documents additional
 error codes that you can enable.
 
+.. _code-attr-defined:
+
 Check that attribute exists [attr-defined]
 ------------------------------------------
 
@@ -43,6 +45,8 @@ A reference to a missing attribute is given the ``Any`` type. In the
 above example, the type of ``non_existent`` will be ``Any``, which can
 be important if you silence the error.
 
+.. _code-union-attr:
+
 Check that attribute exists in each union item [union-attr]
 -----------------------------------------------------------
 
@@ -75,6 +79,8 @@ You can often work around these errors by using ``assert isinstance(obj, ClassNa
 or ``assert obj is not None`` to tell mypy that you know that the type is more specific
 than what mypy thinks.
 
+.. _code-name-defined:
+
 Check that name is defined [name-defined]
 -----------------------------------------
 
@@ -89,6 +95,7 @@ This example accidentally calls ``sort()`` instead of :py:func:`sorted`:
 
     x = sort([3, 2, 4])  # Error: Name "sort" is not defined  [name-defined]
 
+.. _code-used-before-def:
 
 Check that a variable is not used before it's defined [used-before-def]
 -----------------------------------------------------------------------
@@ -105,6 +112,7 @@ Example:
     print(x)  # Error: Name "x" is used before definition [used-before-def]
     x = 123
 
+.. _code-call-arg:
 
 Check arguments in calls [call-arg]
 -----------------------------------
@@ -123,6 +131,8 @@ Example:
 
     greet('jack')  # OK
     greet('jill', 'jack')  # Error: Too many arguments for "greet"  [call-arg]
+
+.. _code-arg-type:
 
 Check argument types [arg-type]
 -------------------------------
@@ -143,6 +153,8 @@ Example:
     # Error: Argument 1 to "first" has incompatible type "tuple[int, int]";
     #        expected "list[int]"  [arg-type]
     print(first(t))
+
+.. _code-call-overload:
 
 Check calls to overloaded functions [call-overload]
 ---------------------------------------------------
@@ -174,6 +186,8 @@ Example:
 
    # Error: No overload variant of "inc_maybe" matches argument type "float"  [call-overload]
    inc_maybe(1.2)
+
+.. _code-valid-type:
 
 Check validity of types [valid-type]
 ------------------------------------
@@ -207,6 +221,8 @@ You can use :py:data:`~typing.Callable` as the type for callable objects:
         for x in objs:
             f(x)
 
+.. _code-var-annotated:
+
 Require annotation if variable type is unclear [var-annotated]
 --------------------------------------------------------------
 
@@ -238,6 +254,8 @@ To address this, we add an explicit annotation:
             self.items: list[str] = []  # OK
 
    reveal_type(Bundle().items)  # list[str]
+
+.. _code-override:
 
 Check validity of overrides [override]
 --------------------------------------
@@ -275,6 +293,8 @@ Example:
                   arg: bool) -> int:
            ...
 
+.. _code-return:
+
 Check that function returns a value [return]
 --------------------------------------------
 
@@ -303,6 +323,8 @@ Example:
         else:
             raise ValueError('not defined for zero')
 
+.. _code-return-value:
+
 Check that return value is compatible [return-value]
 ----------------------------------------------------
 
@@ -316,6 +338,8 @@ Example:
    def func(x: int) -> str:
        # Error: Incompatible return value type (got "int", expected "str")  [return-value]
        return x + 1
+
+.. _code-assignment:
 
 Check types in assignment statement [assignment]
 ------------------------------------------------
@@ -338,6 +362,8 @@ Example:
     # Error: Incompatible types in assignment (expression has type "int",
     #        variable has type "str")  [assignment]
     r.name = 5
+
+.. _code-method-assign:
 
 Check that assignment target is not a method [method-assign]
 ------------------------------------------------------------
@@ -368,6 +394,8 @@ so only the second assignment will still generate an error.
 
     This error code is a subcode of the more general ``[assignment]`` code.
 
+.. _code-type-var:
+
 Check type variable values [type-var]
 -------------------------------------
 
@@ -390,6 +418,8 @@ Example:
     # Error: Value of type variable "T1" of "add" cannot be "str"  [type-var]
     add('x', 'y')
 
+.. _code-operator:
+
 Check uses of various operators [operator]
 ------------------------------------------
 
@@ -403,6 +433,8 @@ Example:
 
    # Error: Unsupported operand types for + ("int" and "str")  [operator]
    1 + 'x'
+
+.. _code-index:
 
 Check indexing operations [index]
 ---------------------------------
@@ -425,6 +457,8 @@ Example:
    # Error: Invalid index type "bytes" for "dict[str, int]"; expected type "str"  [index]
    a[b'x'] = 4
 
+.. _code-list-item:
+
 Check list items [list-item]
 ----------------------------
 
@@ -439,6 +473,8 @@ Example:
     # Error: List item 0 has incompatible type "int"; expected "str"  [list-item]
     a: list[str] = [0]
 
+.. _code-dict-item:
+
 Check dict items [dict-item]
 ----------------------------
 
@@ -452,6 +488,8 @@ Example:
 
     # Error: Dict entry 0 has incompatible type "str": "str"; expected "str": "int"  [dict-item]
     d: dict[str, int] = {'key': 'value'}
+
+.. _code-typeddict-item:
 
 Check TypedDict items [typeddict-item]
 --------------------------------------
@@ -476,6 +514,8 @@ Example:
     # Error: Incompatible types (expression has type "float",
     #        TypedDict item "x" has type "int")  [typeddict-item]
     p: Point = {'x': 1.2, 'y': 4}
+
+.. _code-typeddict-unknown-key:
 
 Check TypedDict Keys [typeddict-unknown-key]
 --------------------------------------------
@@ -533,6 +573,8 @@ runtime:
 
     This error code is a subcode of the wider ``[typeddict-item]`` code.
 
+.. _code-has-type:
+
 Check that type of target is known [has-type]
 ---------------------------------------------
 
@@ -572,6 +614,8 @@ the issue:
        def set_y(self) -> None:
            self.y: int = self.x  # Added annotation here
 
+.. _code-import:
+
 Check that import target can be found [import]
 ----------------------------------------------
 
@@ -586,6 +630,8 @@ Example:
     import acme
 
 See :ref:`ignore-missing-imports` for how to work around these errors.
+
+.. _code-no-redef:
 
 Check that each name is defined once [no-redef]
 -----------------------------------------------
@@ -613,6 +659,8 @@ Example:
    #        (the first definition wins!)
    A('x')
 
+.. _code-func-returns-value:
+
 Check that called function returns a value [func-returns-value]
 ---------------------------------------------------------------
 
@@ -634,6 +682,8 @@ returns ``None``:
    # Error: "f" does not return a value  [func-returns-value]
    if f():
         print("not false")
+
+.. _code-abstract:
 
 Check instantiation of abstract classes [abstract]
 --------------------------------------------------
@@ -666,6 +716,8 @@ Example:
     # Error: Cannot instantiate abstract class "Thing" with abstract attribute "save"  [abstract]
     t = Thing()
 
+.. _code-type-abstract:
+
 Safe handling of abstract type object types [type-abstract]
 -----------------------------------------------------------
 
@@ -692,6 +744,8 @@ Example:
    # Error: Only concrete class can be given where "Type[Config]" is expected [type-abstract]
    make_many(Config, 5)
 
+.. _code-safe-super:
+
 Check that call to an abstract method via super is valid [safe-super]
 ---------------------------------------------------------------------
 
@@ -713,6 +767,8 @@ will cause runtime errors, so mypy prevents you from doing so:
 
 Mypy considers the following as trivial bodies: a ``pass`` statement, a literal
 ellipsis ``...``, a docstring, and a ``raise NotImplementedError`` statement.
+
+.. _code-valid-newtype:
 
 Check the target of NewType [valid-newtype]
 -------------------------------------------
@@ -737,6 +793,8 @@ treated by mypy as values with ``Any`` types. Example:
 To work around the issue, you can either give mypy access to the sources
 for ``acme`` or create a stub file for the module.  See :ref:`ignore-missing-imports`
 for more information.
+
+.. _code-exit-return:
 
 Check the return type of __exit__ [exit-return]
 -----------------------------------------------
@@ -794,6 +852,8 @@ You can also use ``None``:
        def __exit__(self, exc, value, tb) -> None:  # Also OK
            print('exit')
 
+.. _code-name-match:
+
 Check that naming is consistent [name-match]
 --------------------------------------------
 
@@ -806,6 +866,8 @@ consistently when using the call-based syntax. Example:
 
     # Error: First argument to namedtuple() should be "Point2D", not "Point"
     Point2D = NamedTuple("Point", [("x", int), ("y", int)])
+
+.. _code-literal-required:
 
 Check that literal is used where expected [literal-required]
 ------------------------------------------------------------
@@ -836,6 +898,8 @@ or ``Literal`` variables. Example:
        #   expected one of ("x", "y")  [literal-required]
        p[key]
 
+.. _code-no-overload-impl:
+
 Check that overloaded functions have an implementation [no-overload-impl]
 -------------------------------------------------------------------------
 
@@ -857,6 +921,8 @@ implementation.
    # presence of required function below is checked
    def func(value):
        pass  # actual implementation
+
+.. _code-unused-coroutine:
 
 Check that coroutine return value is used [unused-coroutine]
 ------------------------------------------------------------
@@ -881,6 +947,8 @@ otherwise unused variable:
 
        _ = f()  # No error
 
+.. _code-assert-type:
+
 Check types in assert_type [assert-type]
 ----------------------------------------
 
@@ -895,6 +963,8 @@ the provided type.
 
    assert_type([1], list[str])  # Error
 
+.. _code-truthy-function:
+
 Check that function isn't used in boolean context [truthy-function]
 -------------------------------------------------------------------
 
@@ -907,6 +977,8 @@ Functions will always evaluate to true in boolean contexts.
 
     if f:  # Error: Function "Callable[[], Any]" could always be true in boolean context  [truthy-function]
         pass
+
+.. _code-str-bytes-safe:
 
 Check for implicit bytes coercions [str-bytes-safe]
 -------------------------------------------------------------------
@@ -926,12 +998,16 @@ Warn about cases where a bytes object may be converted to a string in an unexpec
     print(f"The alphabet starts with {b!r}")  # The alphabet starts with b'abc'
     print(f"The alphabet starts with {b.decode('utf-8')}")  # The alphabet starts with abc
 
+.. _code-syntax:
+
 Report syntax errors [syntax]
 -----------------------------
 
 If the code being checked is not syntactically valid, mypy issues a
 syntax error. Most, but not all, syntax errors are *blocking errors*:
 they can't be ignored with a ``# type: ignore`` comment.
+
+.. _code-misc:
 
 Miscellaneous checks [misc]
 ---------------------------

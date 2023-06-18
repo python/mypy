@@ -115,7 +115,10 @@ CORE_BUILTIN_MODULES: Final = {
     "types",
     "typing_extensions",
     "mypy_extensions",
-    "_importlib_modulespec",
+    "_typeshed",
+    "_collections_abc",
+    "collections",
+    "collections.abc",
     "sys",
     "abc",
 }
@@ -657,8 +660,6 @@ class BuildManager:
         )
         for module in CORE_BUILTIN_MODULES:
             if options.use_builtins_fixtures:
-                continue
-            if module == "_importlib_modulespec":
                 continue
             path = self.find_module_cache.find_module(module)
             if not isinstance(path, str):
@@ -2636,7 +2637,7 @@ def find_module_and_diagnose(
                 result.endswith(".pyi")  # Stubs are always normal
                 and not options.follow_imports_for_stubs  # except when they aren't
             )
-            or id in mypy.semanal_main.core_modules  # core is always normal
+            or id in CORE_BUILTIN_MODULES  # core is always normal
         ):
             follow_imports = "normal"
         if skip_diagnose:
