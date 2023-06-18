@@ -929,11 +929,7 @@ class Emitter:
                 self.emit_line("double {};".format(dest))
             # TODO: Don't use __float__ and __index__
             self.emit_line(f"{dest} = PyFloat_AsDouble({src});")
-            self.emit_lines(
-                f"if ({dest} == -1.0 && PyErr_Occurred()) {{",
-                failure,
-                "}"
-            )
+            self.emit_lines(f"if ({dest} == -1.0 && PyErr_Occurred()) {{", failure, "}")
         elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
             if declare_dest:
@@ -1150,7 +1146,8 @@ class Emitter:
             self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
 
     def emit_unbox_failure_with_overlapping_error_value(
-            self, dest: str, typ: RType, failure: str) -> None:
+        self, dest: str, typ: RType, failure: str
+    ) -> None:
         self.emit_line(f"if ({dest} == {self.c_error_value(typ)} && PyErr_Occurred()) {{")
         self.emit_line(failure)
         self.emit_line("}")
