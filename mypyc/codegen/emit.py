@@ -901,26 +901,27 @@ class Emitter:
             self.emit_line(f"    {dest} = 1;")
         elif is_int64_rprimitive(typ):
             # Whether we are borrowing or not makes no difference.
+            assert not optional  # Not supported for overlapping error values
             if declare_dest:
                 self.emit_line(f"int64_t {dest};")
             self.emit_line(f"{dest} = CPyLong_AsInt64({src});")
-            # TODO: Handle 'optional'
             # TODO: Handle 'failure'
         elif is_int32_rprimitive(typ):
             # Whether we are borrowing or not makes no difference.
+            assert not optional  # Not supported for overlapping error values
             if declare_dest:
                 self.emit_line(f"int32_t {dest};")
             self.emit_line(f"{dest} = CPyLong_AsInt32({src});")
-            # TODO: Handle 'optional'
             # TODO: Handle 'failure'
         elif is_int16_rprimitive(typ):
             # Whether we are borrowing or not makes no difference.
+            assert not optional  # Not supported for overlapping error values
             if declare_dest:
                 self.emit_line(f"int16_t {dest};")
             self.emit_line(f"{dest} = CPyLong_AsInt16({src});")
-            # TODO: Handle 'optional'
             # TODO: Handle 'failure'
         elif is_float_rprimitive(typ):
+            assert not optional  # Not supported for overlapping error values
             if declare_dest:
                 self.emit_line("double {};".format(dest))
             # TODO: Don't use __float__ and __index__
@@ -928,7 +929,6 @@ class Emitter:
             self.emit_lines(
                 f"if ({dest} == -1.0 && PyErr_Occurred()) {{", f"{dest} = -113.0;", "}"
             )
-            # TODO: Handle 'optional'
             # TODO: Handle 'failure'
         elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
