@@ -1696,15 +1696,15 @@ def unify_generic_callable(
     # check by names
     argument_names_map = {}
 
-    for i in range(len(type.arg_types)):
-        if type.arg_names[i] and type.arg_kinds[i] != ARG_POS:
-            argument_names_map[type.arg_names[i]] = type.arg_types[i]
-
     for i in range(len(target.arg_types)):
-        if target.arg_names[i] and target.arg_names[i] in argument_names_map:
+        if target.arg_names[i] and target.arg_kinds[i] != ARG_POS:
+            argument_names_map[target.arg_names[i]] = target.arg_types[i]
+
+    for i in range(len(type.arg_types)):
+        if type.arg_names[i] and type.arg_names[i] in argument_names_map:
             c = mypy.constraints.infer_constraints(
-                argument_names_map[target.arg_names[i]],
-                target.arg_types[i],
+                argument_names_map[type.arg_names[i]],
+                type.arg_types[i],
                 mypy.constraints.SUPERTYPE_OF,
             )
             constraints.extend(c)

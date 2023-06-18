@@ -6563,3 +6563,30 @@ def f(a: T = ..., *, copy: bool = False) -> T:
     ...
 
 reveal_type(f)  # N: Revealed type is "Overload(def [T <: __main__.A] (a: T`-1) -> T`-1, def (*, copy: builtins.bool =))"
+
+[case testOverloadingWithTypeVarWhereTargetIsPosOnly]
+from typing import overload, TypeVar, Union
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+
+@overload
+def f(
+    *,
+    x: T1,
+) -> None:
+    ...
+
+@overload
+def f(  # type: ignore
+    *,
+    x: T2,
+) -> None:
+    ...
+
+def f(
+    x: Union[T1, T2]
+) -> None:
+    ...
+
+reveal_type(f)  # N: Revealed type is "Overload(def [T1] (*, x: T1`-1), def [T2] (*, x: T2`-1))"
