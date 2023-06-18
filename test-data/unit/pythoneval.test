@@ -833,6 +833,7 @@ _program.py:3: error: Dict entry 1 has incompatible type "str": "str"; expected 
 _program.py:5: error: "Dict[str, int]" has no attribute "xyz"
 
 [case testDefaultDict]
+# flags: --new-type-inference
 import typing as t
 from collections import defaultdict
 
@@ -858,11 +859,11 @@ class MyDDict(t.DefaultDict[int,T], t.Generic[T]):
 MyDDict(dict)['0']
 MyDDict(dict)[0]
 [out]
-_program.py:6: error: Argument 1 to "defaultdict" has incompatible type "Type[List[Any]]"; expected "Callable[[], str]"
-_program.py:9: error: Invalid index type "str" for "defaultdict[int, str]"; expected type "int"
-_program.py:9: error: Incompatible types in assignment (expression has type "int", target has type "str")
-_program.py:19: error: Argument 1 to "tst" has incompatible type "defaultdict[str, List[<nothing>]]"; expected "defaultdict[int, List[<nothing>]]"
-_program.py:23: error: Invalid index type "str" for "MyDDict[Dict[_KT, _VT]]"; expected type "int"
+_program.py:7: error: Argument 1 to "defaultdict" has incompatible type "Type[List[Any]]"; expected "Callable[[], str]"
+_program.py:10: error: Invalid index type "str" for "defaultdict[int, str]"; expected type "int"
+_program.py:10: error: Incompatible types in assignment (expression has type "int", target has type "str")
+_program.py:20: error: Argument 1 to "tst" has incompatible type "defaultdict[str, List[<nothing>]]"; expected "defaultdict[int, List[<nothing>]]"
+_program.py:24: error: Invalid index type "str" for "MyDDict[Dict[<nothing>, <nothing>]]"; expected type "int"
 
 [case testNoSubcriptionOfStdlibCollections]
 # flags: --python-version 3.6
@@ -2032,7 +2033,6 @@ from dataclasses import dataclass, replace
 class A:
     x: int
 
-
 a = A(x=42)
 a2 = replace(a, x=42)
 reveal_type(a2)
@@ -2040,7 +2040,47 @@ a2 = replace()
 a2 = replace(a, x='spam')
 a2 = replace(a, x=42, q=42)
 [out]
-_testDataclassReplace.py:10: note: Revealed type is "_testDataclassReplace.A"
-_testDataclassReplace.py:11: error: Too few arguments for "replace"
-_testDataclassReplace.py:12: error: Argument "x" to "replace" of "A" has incompatible type "str"; expected "int"
-_testDataclassReplace.py:13: error: Unexpected keyword argument "q" for "replace" of "A"
+_testDataclassReplace.py:9: note: Revealed type is "_testDataclassReplace.A"
+_testDataclassReplace.py:10: error: Too few arguments for "replace"
+_testDataclassReplace.py:11: error: Argument "x" to "replace" of "A" has incompatible type "str"; expected "int"
+_testDataclassReplace.py:12: error: Unexpected keyword argument "q" for "replace" of "A"
+
+[case testGenericInferenceWithTuple]
+# flags: --new-type-inference
+from typing import TypeVar, Callable, Tuple
+
+T = TypeVar("T")
+
+def f(x: Callable[..., T]) -> T:
+    return x()
+
+x: Tuple[str, ...] = f(tuple)
+[out]
+
+[case testGenericInferenceWithDataclass]
+# flags: --new-type-inference
+from typing import Any, Collection, List
+from dataclasses import dataclass, field
+
+class Foo:
+    pass
+
+@dataclass
+class A:
+    items: Collection[Foo] = field(default_factory=list)
+[out]
+
+[case testGenericInferenceWithItertools]
+# flags: --new-type-inference
+from typing import TypeVar, Tuple
+from itertools import groupby
+K = TypeVar("K")
+V = TypeVar("V")
+
+def fst(kv: Tuple[K, V]) -> K:
+    k, v = kv
+    return k
+
+pairs = [(len(s), s) for s in ["one", "two", "three"]]
+grouped = groupby(pairs, key=fst)
+[out]

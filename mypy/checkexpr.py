@@ -12,7 +12,7 @@ import mypy.checker
 import mypy.errorcodes as codes
 from mypy import applytype, erasetype, join, message_registry, nodes, operators, types
 from mypy.argmap import ArgTypeExpander, map_actuals_to_formals, map_formals_to_actuals
-from mypy.checkmember import analyze_member_access, type_object_type
+from mypy.checkmember import analyze_member_access, freeze_all_type_vars, type_object_type
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.erasetype import erase_type, remove_instance_last_known_values, replace_meta_vars
 from mypy.errors import ErrorWatcher, report_internal_error
@@ -98,8 +98,15 @@ from mypy.plugin import (
 )
 from mypy.semanal_enum import ENUM_BASES
 from mypy.state import state
-from mypy.subtypes import is_equivalent, is_same_type, is_subtype, non_method_protocol_members
+from mypy.subtypes import (
+    find_member,
+    is_equivalent,
+    is_same_type,
+    is_subtype,
+    non_method_protocol_members,
+)
 from mypy.traverser import has_await_expression
+from mypy.type_visitor import TypeTranslator
 from mypy.typeanal import (
     check_for_explicit_any,
     has_any_from_unimported_type,
@@ -114,6 +121,7 @@ from mypy.typeops import (
     false_only,
     fixup_partial_type,
     function_type,
+    get_type_vars,
     is_literal_type_like,
     make_simplified_union,
     simple_literal_type,
@@ -146,6 +154,7 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeType,
+    TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
     UninhabitedType,
@@ -300,6 +309,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # on whether current expression is a callee, to give better error messages
         # related to type context.
         self.is_callee = False
+        type_state.infer_polymorphic = self.chk.options.new_type_inference
 
     def reset(self) -> None:
         self.resolved_type = {}
@@ -1791,6 +1801,51 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     inferred_args[0] = self.named_type("builtins.str")
                 elif not first_arg or not is_subtype(self.named_type("builtins.str"), first_arg):
                     self.chk.fail(message_registry.KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE, context)
+
+            if self.chk.options.new_type_inference and any(
+                a is None
+                or isinstance(get_proper_type(a), UninhabitedType)
+                or set(get_type_vars(a)) & set(callee_type.variables)
+                for a in inferred_args
+            ):
+                # If the regular two-phase inference didn't work, try inferring type
+                # variables while allowing for polymorphic solutions, i.e. for solutions
+                # potentially involving free variables.
+                # TODO: support the similar inference for return type context.
+                poly_inferred_args = infer_function_type_arguments(
+                    callee_type,
+                    arg_types,
+                    arg_kinds,
+                    formal_to_actual,
+                    context=self.argument_infer_context(),
+                    strict=self.chk.in_checked_function(),
+                    allow_polymorphic=True,
+                )
+                for i, pa in enumerate(get_proper_types(poly_inferred_args)):
+                    if isinstance(pa, (NoneType, UninhabitedType)) or has_erased_component(pa):
+                        # Indicate that free variables should not be applied in the call below.
+                        poly_inferred_args[i] = None
+                poly_callee_type = self.apply_generic_arguments(
+                    callee_type, poly_inferred_args, context
+                )
+                yes_vars = poly_callee_type.variables
+                no_vars = {v for v in callee_type.variables if v not in poly_callee_type.variables}
+                if not set(get_type_vars(poly_callee_type)) & no_vars:
+                    # Try applying inferred polymorphic type if possible, e.g. Callable[[T], T] can
+                    # be interpreted as def [T] (T) -> T, but dict[T, T] cannot be expressed.
+                    applied = apply_poly(poly_callee_type, yes_vars)
+                    if applied is not None and poly_inferred_args != [UninhabitedType()] * len(
+                        poly_inferred_args
+                    ):
+                        freeze_all_type_vars(applied)
+                        return applied
+                # If it didn't work, erase free variables as <nothing>, to avoid confusing errors.
+                inferred_args = [
+                    expand_type(a, {v.id: UninhabitedType() for v in callee_type.variables})
+                    if a is not None
+                    else None
+                    for a in inferred_args
+                ]
         else:
             # In dynamically typed functions use implicit 'Any' types for
             # type variables.
@@ -5391,6 +5446,92 @@ def is_duplicate_mapping(
 def replace_callable_return_type(c: CallableType, new_ret_type: Type) -> CallableType:
     """Return a copy of a callable type with a different return type."""
     return c.copy_modified(ret_type=new_ret_type)
+
+
+def apply_poly(tp: CallableType, poly_tvars: Sequence[TypeVarLikeType]) -> Optional[CallableType]:
+    """Make free type variables generic in the type if possible.
+
+    This will translate the type `tp` while trying to create valid bindings for
+    type variables `poly_tvars` while traversing the type. This follows the same rules
+    as we do during semantic analysis phase, examples:
+      * Callable[Callable[[T], T], T] -> def [T] (def (T) -> T) -> T
+      * Callable[[], Callable[[T], T]] -> def () -> def [T] (T -> T)
+      * List[T] -> None (not possible)
+    """
+    try:
+        return tp.copy_modified(
+            arg_types=[t.accept(PolyTranslator(poly_tvars)) for t in tp.arg_types],
+            ret_type=tp.ret_type.accept(PolyTranslator(poly_tvars)),
+            variables=[],
+        )
+    except PolyTranslationError:
+        return None
+
+
+class PolyTranslationError(Exception):
+    pass
+
+
+class PolyTranslator(TypeTranslator):
+    """Make free type variables generic in the type if possible.
+
+    See docstring for apply_poly() for details.
+    """
+
+    def __init__(self, poly_tvars: Sequence[TypeVarLikeType]) -> None:
+        self.poly_tvars = set(poly_tvars)
+        # This is a simplified version of TypeVarScope used during semantic analysis.
+        self.bound_tvars: set[TypeVarLikeType] = set()
+        self.seen_aliases: set[TypeInfo] = set()
+
+    def visit_callable_type(self, t: CallableType) -> Type:
+        found_vars = set()
+        for arg in t.arg_types:
+            found_vars |= set(get_type_vars(arg)) & self.poly_tvars
+
+        found_vars -= self.bound_tvars
+        self.bound_tvars |= found_vars
+        result = super().visit_callable_type(t)
+        self.bound_tvars -= found_vars
+
+        assert isinstance(result, ProperType) and isinstance(result, CallableType)
+        result.variables = list(result.variables) + list(found_vars)
+        return result
+
+    def visit_type_var(self, t: TypeVarType) -> Type:
+        if t in self.poly_tvars and t not in self.bound_tvars:
+            raise PolyTranslationError()
+        return super().visit_type_var(t)
+
+    def visit_param_spec(self, t: ParamSpecType) -> Type:
+        # TODO: Support polymorphic apply for ParamSpec.
+        raise PolyTranslationError()
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
+        # TODO: Support polymorphic apply for TypeVarTuple.
+        raise PolyTranslationError()
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        if not t.args:
+            return t.copy_modified()
+        if not t.is_recursive:
+            return get_proper_type(t).accept(self)
+        # We can't handle polymorphic application for recursive generic aliases
+        # without risking an infinite recursion, just give up for now.
+        raise PolyTranslationError()
+
+    def visit_instance(self, t: Instance) -> Type:
+        # There is the same problem with callback protocols as with aliases
+        # (callback protocols are essentially more flexible aliases to callables).
+        # Note: consider supporting bindings in instances, e.g. LRUCache[[x: T], T].
+        if t.args and t.type.is_protocol and t.type.protocol_members == ["__call__"]:
+            if t.type in self.seen_aliases:
+                raise PolyTranslationError()
+            self.seen_aliases.add(t.type)
+            call = find_member("__call__", t, t, is_operator=True)
+            assert call is not None
+            return call.accept(self)
+        return super().visit_instance(t)
 
 
 class ArgInferSecondPassQuery(types.BoolTypeQuery):

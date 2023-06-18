@@ -3475,6 +3475,19 @@ def callable_with_ellipsis(any_type: AnyType, ret_type: Type, fallback: Instance
     )
 
 
+def remove_dups(types: list[T]) -> list[T]:
+    if len(types) <= 1:
+        return types
+    # Get unique elements in order of appearance
+    all_types: set[T] = set()
+    new_types: list[T] = []
+    for t in types:
+        if t not in all_types:
+            new_types.append(t)
+            all_types.add(t)
+    return new_types
+
+
 # This cyclic import is unfortunate, but to avoid it we would need to move away all uses
 # of get_proper_type() from types.py. Majority of them have been removed, but few remaining
 # are quite tricky to get rid of, but ultimately we want to do it at some point.
