@@ -905,21 +905,24 @@ class Emitter:
             if declare_dest:
                 self.emit_line(f"int64_t {dest};")
             self.emit_line(f"{dest} = CPyLong_AsInt64({src});")
-            # TODO: Handle 'failure'
+            if not isinstance(error, AssignHandler):
+                self.emit_unbox_failure_with_overlapping_error_value(dest, typ, failure)
         elif is_int32_rprimitive(typ):
             # Whether we are borrowing or not makes no difference.
             assert not optional  # Not supported for overlapping error values
             if declare_dest:
                 self.emit_line(f"int32_t {dest};")
             self.emit_line(f"{dest} = CPyLong_AsInt32({src});")
-            # TODO: Handle 'failure'
+            if not isinstance(error, AssignHandler):
+                self.emit_unbox_failure_with_overlapping_error_value(dest, typ, failure)
         elif is_int16_rprimitive(typ):
             # Whether we are borrowing or not makes no difference.
             assert not optional  # Not supported for overlapping error values
             if declare_dest:
                 self.emit_line(f"int16_t {dest};")
             self.emit_line(f"{dest} = CPyLong_AsInt16({src});")
-            # TODO: Handle 'failure'
+            if not isinstance(error, AssignHandler):
+                self.emit_unbox_failure_with_overlapping_error_value(dest, typ, failure)
         elif is_float_rprimitive(typ):
             assert not optional  # Not supported for overlapping error values
             if declare_dest:
@@ -927,9 +930,10 @@ class Emitter:
             # TODO: Don't use __float__ and __index__
             self.emit_line(f"{dest} = PyFloat_AsDouble({src});")
             self.emit_lines(
-                f"if ({dest} == -1.0 && PyErr_Occurred()) {{", f"{dest} = -113.0;", "}"
+                f"if ({dest} == -1.0 && PyErr_Occurred()) {{",
+                failure,
+                "}"
             )
-            # TODO: Handle 'failure'
         elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
             if declare_dest:
@@ -1144,6 +1148,12 @@ class Emitter:
         self.emit_line(line)
         if DEBUG_ERRORS:
             self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
+
+    def emit_unbox_failure_with_overlapping_error_value(
+            self, dest: str, typ: RType, failure: str) -> None:
+        self.emit_line(f"if ({dest} == {self.c_error_value(typ)} && PyErr_Occurred()) {{")
+        self.emit_line(failure)
+        self.emit_line("}")
 
 
 def c_array_initializer(components: list[str], *, indented: bool = False) -> str:

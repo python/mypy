@@ -1504,3 +1504,16 @@ def test_implement_trait_attribute() -> None:
     a.y = 8
     assert a.x == 7
     assert a.y == 8
+
+class DunderErr:
+    def __contains__(self, i: i64) -> bool:
+        raise IndexError()
+
+def test_dunder_arg_check() -> None:
+    o: Any = DunderErr()
+    with assertRaises(TypeError):
+        'x' in o
+    with assertRaises(TypeError):
+        2**63 in o
+    with assertRaises(IndexError):
+        1 in o
