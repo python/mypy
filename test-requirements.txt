@@ -14,7 +14,7 @@ pytest-xdist>=1.34.0
 pytest-forked>=1.3.0,<2.0.0
 pytest-cov>=2.10.0
 py>=1.5.2
-ruff==0.0.270  # must match version in .pre-commit-config.yaml
+ruff==0.0.272  # must match version in .pre-commit-config.yaml
 setuptools>=65.5.1
 six
 tomli>=1.1.0

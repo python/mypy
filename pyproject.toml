@@ -44,7 +44,14 @@ skip_glob = [
 line-length = 99
 target-version = "py37"
 
-extend-ignore = [
+select = [
+  "E",       # pycoderstyle (error)
+  "F",       # pyflakes
+  "B",       # flake8-bugbear
+  "RUF100",  # flake8-noqa
+]
+
+ignore = [
   "B006",  # use of mutable defaults in function signatures
   "B007",  # Loop control variable not used within the loop body.
   "B011",  # Don't use assert False

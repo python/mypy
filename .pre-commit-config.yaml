@@ -14,6 +14,6 @@ repos:
     hooks:
       - id: isort
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.0.270  # must match test-requirements.txt
+    rev: v0.0.272  # must match test-requirements.txt
     hooks:
       - id: ruff

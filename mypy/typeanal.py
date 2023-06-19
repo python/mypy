@@ -1256,7 +1256,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         code=codes.VALID_TYPE,
                     )
                     self.note(
-                        "See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas",  # noqa: E501
+                        "See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas",
                         t,
                     )
                     return AnyType(TypeOfAny.from_error)
