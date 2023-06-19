@@ -970,7 +970,7 @@ print(getattr(B(), 'x'))
 from typing import Iterable, Callable, TypeVar, List, Dict, Optional
 T = TypeVar('T')
 def sorted(x: Iterable[T], *, key: Optional[Callable[[T], object]] = None) -> None: ...
-a = [] # type: List[Dict[str, str]]
+a = []  # type: List[Dict[str, str]]
 sorted(a, key=lambda y: y[''])
 
 [case testAbstractProperty]
