@@ -1843,19 +1843,6 @@ def set_any_tvars(
     return TypeAliasType(node, args, newline, newcolumn)
 
 
-def remove_dups(tvars: list[T]) -> list[T]:
-    if len(tvars) <= 1:
-        return tvars
-    # Get unique elements in order of appearance
-    all_tvars: set[T] = set()
-    new_tvars: list[T] = []
-    for t in tvars:
-        if t not in all_tvars:
-            new_tvars.append(t)
-            all_tvars.add(t)
-    return new_tvars
-
-
 def flatten_tvars(lists: list[list[T]]) -> list[T]:
     result: list[T] = []
     for lst in lists:

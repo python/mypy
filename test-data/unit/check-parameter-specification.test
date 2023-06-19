@@ -1040,6 +1040,28 @@ reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T`-1)"
 reveal_type(jf(1))  # N: Revealed type is "None"
 [builtins fixtures/paramspec.pyi]
 
+[case testGenericsInInferredParamspecReturn]
+# flags: --new-type-inference
+from typing import Callable, TypeVar, Generic
+from typing_extensions import ParamSpec
+
+_P = ParamSpec("_P")
+_T = TypeVar("_T")
+
+class Job(Generic[_P, _T]):
+    def __init__(self, target: Callable[_P, _T]) -> None: ...
+    def into_callable(self) -> Callable[_P, _T]: ...
+
+def generic_f(x: _T) -> _T: ...
+
+j = Job(generic_f)
+reveal_type(j)  # N: Revealed type is "__main__.Job[[x: _T`-1], _T`-1]"
+
+jf = j.into_callable()
+reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T`-1) -> _T`-1"
+reveal_type(jf(1))  # N: Revealed type is "builtins.int"
+[builtins fixtures/paramspec.pyi]
+
 [case testStackedConcatenateIsIllegal]
 from typing_extensions import Concatenate, ParamSpec
 from typing import Callable
@@ -1519,4 +1541,19 @@ def identity(func: Callable[P, None]) -> Callable[P, None]: ...
 
 @identity
 def f(f: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecDecoratorAppliedToGeneric]
+# flags: --new-type-inference
+from typing import Callable, List, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+T = TypeVar("T")
+U = TypeVar("U")
+
+def dec(f: Callable[P, T]) -> Callable[P, List[T]]: ...
+def test(x: U) -> U: ...
+reveal_type(dec)  # N: Revealed type is "def [P, T] (f: def (*P.args, **P.kwargs) -> T`-2) -> def (*P.args, **P.kwargs) -> builtins.list[T`-2]"
+reveal_type(dec(test))  # N: Revealed type is "def [U] (x: U`-1) -> builtins.list[U`-1]"
 [builtins fixtures/paramspec.pyi]
