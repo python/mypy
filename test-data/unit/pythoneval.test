@@ -63,8 +63,8 @@ print(abs(A()))
 5.5
 
 [case testAbs2]
-n = None  # type: int | None
-f = None  # type: float | None
+n: int
+f: float
 n = abs(1)
 abs(1) + 'x'  # Error
 f = abs(1.1)
@@ -333,11 +333,10 @@ _program.py:6: note: Revealed type is "typing.IO[Any]"
 [case testGenericPatterns]
 from typing import Pattern
 import re
-p = None  # type: Pattern[str] | None
+p: Pattern[str]
 p = re.compile('foo*')
-b = None  # type: Pattern[bytes] | None
+b: Pattern[bytes]
 b = re.compile(b'foo*')
-assert p
 m = p.match('fooo')
 assert m
 print(m.group(0))
@@ -355,7 +354,7 @@ f(re.match(b'x*', b'xxy'))
 b'xx'
 
 [case testIntFloatDucktyping]
-x = None  # type: float | None
+x: float
 x = 2.2
 x = 2
 def f(x: float) -> None: pass
@@ -378,8 +377,8 @@ math.sin(2)
 math.sin(2.2)
 
 [case testAbsReturnType]
-f = None  # type: float | None
-n = None  # type: int | None
+f: float
+n: int
 n = abs(2)
 f = abs(2.2)
 abs(2.2) + 'x'
@@ -387,8 +386,8 @@ abs(2.2) + 'x'
 _program.py:5: error: Unsupported operand types for + ("float" and "str")
 
 [case testROperatorMethods]
-b = None  # type: bytes | None
-s = None  # type: str | None
+b: bytes
+s: str
 if int():
     s = b'foo' * 5 # Error
 if int():
@@ -400,7 +399,7 @@ if int():
 if int():
     s = 'foo' * 5
 [out]
-_program.py:4: error: Incompatible types in assignment (expression has type "bytes", variable has type "Optional[str]")
+_program.py:4: error: Incompatible types in assignment (expression has type "bytes", variable has type "str")
 
 [case testROperatorMethods2]
 import typing
@@ -446,7 +445,7 @@ class A:
 class B:
     def __radd__(self, x: A) -> str: return 'x'
 class C(X, B): pass
-b = None  # type: B | None
+b: B
 b = C()
 print(A() + b)
 [out]
@@ -1383,13 +1382,12 @@ JsonBlob = Dict[str, Any]
 Column = Union[List[str], List[int], List[bool], List[float], List[DateTime], List[JsonBlob]]
 
 def print_custom_table() -> None:
-    a = None  # type: Column | None
-    assert a
+    a: Column
 
     for row in simple_map(format_row, a, a, a, a, a, a, a, a):  # 8 columns
         reveal_type(row)
 [out]
-_testLoadsOfOverloads.py:25: note: Revealed type is "builtins.str"
+_testLoadsOfOverloads.py:24: note: Revealed type is "builtins.str"
 
 [case testReduceWithAnyInstance]
 from typing import Iterable
