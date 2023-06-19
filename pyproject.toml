@@ -75,11 +75,3 @@ extend-exclude = [
   # typeshed has its own .pyi-specific configuration
   "mypy/typeshed/*",
 ]
-
-[tool.ruff.per-file-ignores]
-
-"test-data/*" = [
-  "F401",  # imported but unused
-  "F811",  # redefinition
-  "E701",  # multiple statements on one line (colon)
-]
