@@ -3076,7 +3076,7 @@ def load_graph(
             manager.errors.report(
                 -1,
                 -1,
-                "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "  # noqa: E501
+                "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "
                 "for more info",
                 severity="note",
             )
@@ -3164,7 +3164,7 @@ def load_graph(
                             manager.errors.report(
                                 -1,
                                 0,
-                                "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "  # noqa: E501
+                                "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "
                                 "for more info",
                                 severity="note",
                             )
