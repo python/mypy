@@ -49,7 +49,6 @@ b = TwoTuple(("a", 3))  # E: Argument 1 to "TwoTuple" has incompatible type "Tup
 reveal_type(a[0])  # N: Revealed type is "builtins.int"
 reveal_type(a[1])  # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testNewTypeWithLists]
 from typing import NewType, List
@@ -71,7 +70,6 @@ reveal_type(bar)  # N: Revealed type is "__main__.IdList"
 reveal_type(baz)  # N: Revealed type is "builtins.list[__main__.UserId]"
 
 [builtins fixtures/list.pyi]
-[out]
 
 [case testNewTypeWithGenerics]
 from typing import TypeVar, Generic, NewType, Any
@@ -98,7 +96,6 @@ Derived3(Base('a'))
 
 reveal_type(Derived1(Base('a')).getter())  # N: Revealed type is "builtins.str"
 reveal_type(Derived3(Base('a')).getter())  # N: Revealed type is "Any"
-[out]
 
 [case testNewTypeWithNamedTuple]
 from collections import namedtuple
@@ -127,7 +124,6 @@ reveal_type(p3.y)  # N: Revealed type is "builtins.int"
 
 [builtins fixtures/list.pyi]
 
-[out]
 
 [case testNewTypeWithCasts]
 from typing import NewType, cast
@@ -136,7 +132,6 @@ foo = UserId(3)
 foo = cast(UserId, 3)
 foo = cast(UserId, "foo")
 foo = cast(UserId, UserId(4))
-[out]
 
 [case testNewTypeWithTypeAliases]
 from typing import NewType
@@ -157,7 +152,6 @@ x = Bar(42)
 y = Bar2(42)
 
 y = func3(x)
-[out]
 
 [case testNewTypeWithNewType]
 from typing import NewType
@@ -181,7 +175,6 @@ funcb(a)  # E: Argument 1 to "funcb" has incompatible type "A"; expected "B"
 funcb(b)
 funcb(e)  # E: Argument 1 to "funcb" has incompatible type "E"; expected "B"
 
-[out]
 
 -- Make sure NewType works as expected in a variety of different scopes/across files
 
@@ -206,7 +199,6 @@ class MyClass:
 
 b = A(3)
 c = MyClass.C(3.5)
-[out]
 
 [case testNewTypeInMultipleFiles]
 import a
@@ -223,7 +215,6 @@ from typing import NewType
 UserId = NewType('UserId', int)
 
 [builtins fixtures/list.pyi]
-[out]
 
 [case testNewTypeWithIncremental]
 import m
@@ -277,24 +268,20 @@ foo = "d"
 e = NewType(foo, int)  # E: Argument 1 to NewType(...) must be a string literal
 f = NewType(name='e', tp=int)   # E: NewType(...) expects exactly two positional arguments
 g = NewType('f', tp=int)        # E: NewType(...) expects exactly two positional arguments
-[out]
 
 [case testNewTypeWithAnyFails]
 from typing import NewType, Any
 A = NewType('A', Any)  # E: Argument 2 to NewType(...) must be subclassable (got "Any")
-[out]
 
 [case testNewTypeWithUnionsFails]
 from typing import NewType, Union
 Foo = NewType('Foo', Union[int, float])  # E: Argument 2 to NewType(...) must be subclassable (got "Union[int, float]")
-[out]
 
 [case testNewTypeWithTypeTypeFails]
 from typing import NewType, Type
 Foo = NewType('Foo', Type[int])  # E: Argument 2 to NewType(...) must be subclassable (got "Type[int]")
 a = Foo(type(3))
 [builtins fixtures/args.pyi]
-[out]
 
 [case testNewTypeWithTypeVarsFails]
 
@@ -333,14 +320,12 @@ from typing import NewType
 UserId = NewType('UserId', int)
 
 a = 3  # type: UserId  # E: Incompatible types in assignment (expression has type "int", variable has type "UserId")
-[out]
 
 [case testNewTypeTestSubclassingFails]
 from typing import NewType
 class A: pass
 B = NewType('B', A)
 class C(B): pass  # E: Cannot subclass "NewType"
-[out]
 
 [case testCannotUseNewTypeWithProtocols]
 from typing import Protocol, NewType
@@ -356,7 +341,6 @@ x: C = C(D())  # We still accept this, treating 'C' as non-protocol subclass.
 reveal_type(x.attr)  # N: Revealed type is "builtins.int"
 x.bad_attr  # E: "C" has no attribute "bad_attr"
 C(1)  # E: Argument 1 to "C" has incompatible type "int"; expected "P"
-[out]
 
 [case testNewTypeAny]
 from typing import NewType

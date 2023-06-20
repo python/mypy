@@ -1,5 +1,4 @@
 [case testEmptyFile]
-[out]
 
 [case testAssignmentAndVarDef]
 a = None # type: A
@@ -330,7 +329,6 @@ if isinstance(x, B):
     pass
 [file mock.py]
 [builtins fixtures/isinstance.pyi]
-[out]
 
 [case testModuleAsTypeNoCrash2]
 
@@ -349,7 +347,6 @@ x: Any
 f(x)
 [file mock.py]
 [builtins fixtures/isinstance.pyi]
-[out]
 
 [case testPartialTypeComments]
 def foo(

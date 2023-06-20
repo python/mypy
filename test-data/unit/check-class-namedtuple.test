@@ -169,7 +169,6 @@ class B(A):
             i, i = self  # E: Incompatible types in assignment (expression has type "str", \
                               variable has type "int")
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testNewNamedTupleTypeReferenceToClassDerivedFrom]
 # flags: --python-version 3.6

@@ -304,7 +304,6 @@ assert get_x(c2) == 1
 assert get_y(c2) == 0
 g(c1, c2)
 assert get_y(c2) == 2
-[out]
 
 [case testTraitAttrsTriangle]
 from mypy_extensions import trait
@@ -338,7 +337,6 @@ c.a = 1
 c.x = 10
 
 assert take_t(c) == take_c(c) == 11
-[out]
 
 [case testTraitAttrsTree]
 from mypy_extensions import trait
@@ -382,7 +380,6 @@ assert c2.x == 1
 g(c1, c2)
 assert c1.x == 1
 assert c2.x == 2
-[out]
 
 [case testTraitErrorMessages]
 from mypy_extensions import trait

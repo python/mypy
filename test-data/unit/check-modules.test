@@ -96,7 +96,6 @@ class B: pass
 a = A()
 b = B()
 def f() -> None: pass
-[out]
 
 [case testImportWithinMethod]
 import typing
@@ -116,7 +115,6 @@ class B: pass
 a = A()
 b = B()
 def f() -> None: pass
-[out]
 
 [case testImportWithinClassBody]
 import typing
@@ -126,7 +124,6 @@ class C:
     m.f(C) # E: Too many arguments for "f"
 [file m.py]
 def f() -> None: pass
-[out]
 
 [case testImportWithinClassBody2]
 import typing
@@ -137,14 +134,12 @@ class C:
     f(C)
 [file m.py]
 def f() -> None: pass
-[out]
 
 [case testImportWithStub]
 import _m
 _m.f("hola")
 [file _m.pyi]
 def f(c:str) -> None: pass
-[out]
 
 [case testImportWithStubIncompatibleType]
 import _m
@@ -494,7 +489,6 @@ def bad_2(x: int = ...) -> None:     # E: Incompatible default for argument "x" 
 def bad_3(x: int = ...) -> None:     # E: Incompatible default for argument "x" (default has type "ellipsis", argument has type "int")
     raise Exception("Some other exception")
 [builtins fixtures/exception.pyi]
-[out]
 
 [case testEllipsisDefaultArgValueInNonStubsOverload]
 from typing import overload, Union
@@ -515,7 +509,6 @@ def bar(x: str, y: str = ...) -> str: ...
 def bar(x: Both, y: Both = ...) -> Both:
     raise NotImplementedError
 [builtins fixtures/exception.pyi]
-[out]
 
 [case testEllipsisDefaultArgValueInNonStubsMethods]
 from typing import Generic, TypeVar
@@ -536,7 +529,6 @@ class MyAbstractClass:
     @abstractmethod
     def default_impl(self, x: Wrap[int] = ...) -> int: return 3  # E: Incompatible default for argument "x" (default has type "ellipsis", argument has type "Wrap[int]")
 [builtins fixtures/exception.pyi]
-[out]
 
 [case testStarImportOverlapping]
 from m1 import *
@@ -577,8 +569,6 @@ x = ''  # E: Incompatible types in assignment (expression has type "str", variab
 [file m.py]
 def f(): pass
 x = 1+0
-[out]
-
 
 -- Conditional definitions and function redefinitions via module object
 -- --------------------------------------------------------------------
@@ -718,7 +708,6 @@ def g() -> None:
         f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
 [file m.py]
 def f(): pass
-[out]
 
 [case testAssignToFuncDefViaNestedModules]
 import m.n
@@ -727,7 +716,6 @@ m.n.f = 1 # E: Incompatible types in assignment (expression has type "int", vari
 [file m/__init__.py]
 [file m/n.py]
 def f(): pass
-[out]
 
 [case testAssignToFuncDefViaModule]
 import m
@@ -735,7 +723,6 @@ m.f = None
 m.f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
 [file m.py]
 def f(): pass
-[out]
 
 [case testConditionalImportAndAssignNoneToModule]
 if object():
@@ -746,7 +733,6 @@ m.f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "str"
 [file m.py]
 def f(x: str) -> None: pass
 [builtins fixtures/module.pyi]
-[out]
 
 [case testConditionalImportAndAssignInvalidToModule]
 if object():
@@ -755,7 +741,6 @@ else:
     m = 1 # E: Incompatible types in assignment (expression has type "int", variable has type Module)
 [file m.py]
 [builtins fixtures/module.pyi]
-[out]
 
 [case testImportAndAssignToModule]
 import m
@@ -764,8 +749,6 @@ m.f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "str"
 [file m.py]
 def f(x: str) -> None: pass
 [builtins fixtures/module.pyi]
-[out]
-
 
 -- Test cases that simulate 'mypy -m modname'
 --
@@ -800,7 +783,6 @@ tmp/m/__init__.py:1: error: Unsupported left operand type for + ("None")
 [file m/__init__.py]
 [file m/a.py]
 None + 1  # Not analyzed.
-[out]
 
 [case testTypeCheckNamedModule5]
 # cmd: mypy -m m
@@ -816,7 +798,6 @@ None + 1  # Does not generate error, as this file won't be analyzed.
 [file m/__init__.py]
 import m.a
 [file m/a.py]
-[out]
 
 [case testCheckDecoratedFuncAsAnnotWithImportCycle]
 
@@ -859,7 +840,6 @@ value = 3
 value = "a"
 [file a/b/c.py]
 value = 3.2
-[out]
 
 [case testSubmoduleImportAsDoesNotAddParents]
 import a.b.c as foo
@@ -874,7 +854,6 @@ value = 3
 value = "a"
 [file a/b/c.py]
 value = 3.2
-[out]
 
 [case testSubmoduleImportFromDoesNotAddParents]
 from a import b
@@ -889,7 +868,6 @@ value = "a"
 [file a/b/c.py]
 value = 3.2
 [builtins fixtures/module.pyi]
-[out]
 
 [case testSubmoduleImportFromDoesNotAddParents2]
 from a.b import c
@@ -903,7 +881,6 @@ value = 3
 value = "a"
 [file a/b/c.py]
 value = 3.2
-[out]
 
 [case testSubmoduleRegularImportNotDirectlyAddedToParent]
 import a.b.c
@@ -936,7 +913,6 @@ val2 = None  # type: MyClass
 [file a/__init__.py]
 [file a/b.py]
 class MyClass: pass
-[out]
 
 [case testSubmoduleMixingImportFrom]
 import parent.child
@@ -1013,7 +989,6 @@ from common import x, y, z
 x = 3
 def y() -> int: return 3
 class z: pass
-[out]
 
 [case testIdenticalImportStarTwice]
 from a import *
@@ -1026,7 +1001,6 @@ from common import x, y, z
 x = 3
 def y() -> int: return 3
 class z: pass
-[out]
 
 [case testDifferentImportSameNameTwice]
 from a import x, y, z
@@ -1187,7 +1161,6 @@ import a
 /  # intentional syntax error -- this file shouldn't be parsed
 [file a/__init__.py]
 pass
-[out]
 
 [case testPreferPackageOverFile2]
 from a import x
@@ -1195,7 +1168,6 @@ from a import x
 /  # intentional syntax error -- this file shouldn't be parsed
 [file a/__init__.py]
 x = 0
-[out]
 
 [case testImportInClass]
 class C:
@@ -1204,7 +1176,6 @@ reveal_type(C.foo.bar)  # N: Revealed type is "builtins.int"
 [file foo.py]
 bar = 0
 [builtins fixtures/module.pyi]
-[out]
 
 [case testIfFalseImport]
 if False:
@@ -1239,7 +1210,6 @@ def foo():
 import x
 class Sub(x.Base):
     attr = x.Base.attr
-[out]
 
 [case testImportCycleStability2]
 import y
@@ -1253,7 +1223,6 @@ def foo():
 import x
 class Sub(x.Base):
     attr = x.Base.attr
-[out]
 
 -- This case isn't fixed by order_ascc(), but is fixed by the
 -- lightweight type inference added to semanal.py
@@ -1314,7 +1283,6 @@ class Sub(x.Base):
     fattr = 0.0
     sattr = ''
     battr = b''
-[out]
 
 -- This case tests module-level variables.
 
@@ -1467,7 +1435,6 @@ pass
 pass
 [file b]
 pass
-[out]
 
 [case testTypeCheckPrio]
 # cmd: mypy -m part1 part2 part3 part4
@@ -1528,7 +1495,6 @@ reveal_type(do_another()) # N: Revealed type is "builtins.dict[builtins.str, bui
 from typing import Dict
 Row = Dict[str, int]
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testImportStarAliasGeneric]
 from y import *
@@ -1552,7 +1518,6 @@ class G(Generic[T]):
 
 X = G[int]
 XT = G[T]
-[out]
 
 [case testImportStarAliasCallable]
 from foo import *
@@ -1567,7 +1532,6 @@ reveal_type(cb) # N: Revealed type is "def (*Any, **Any) -> Any"
 [file foo.py]
 from typing import Callable, Any
 AnyCallable = Callable[..., Any]
-[out]
 
 [case testRevealType]
 import types
@@ -2322,7 +2286,6 @@ x = b.f()
 from typing import Any
 def __getattr__(attr: str) -> Any: ...
 [builtins fixtures/module.pyi]
-[out]
 
 [case testModuleGetattrInit2]
 import a.b
@@ -2332,7 +2295,6 @@ x = a.b.f()
 from typing import Any
 def __getattr__(attr: str) -> Any: ...
 [builtins fixtures/module.pyi]
-[out]
 
 [case testModuleGetattrInit3]
 import a.b
@@ -2354,7 +2316,6 @@ x = a.b.c.f()
 from typing import Any
 def __getattr__(attr: str) -> Any: ...
 [builtins fixtures/module.pyi]
-[out]
 
 [case testModuleGetattrInit5]
 from a.b import f
@@ -2364,7 +2325,6 @@ x = f()
 from typing import Any
 def __getattr__(attr: str) -> Any: ...
 [builtins fixtures/module.pyi]
-[out]
 
 [case testModuleGetattrInit5a]
 from a.b import f
@@ -2374,8 +2334,6 @@ x = f()
 from types import ModuleType
 def __getattr__(attr: str) -> ModuleType: ...
 [builtins fixtures/module.pyi]
-[out]
-
 
 [case testModuleGetattrInit8]
 import a.b.c.d
@@ -2609,7 +2567,6 @@ x = whatever.works.f()
 y = a.b.f()
 [file a/__init__.py]
 # empty
-[out]
 
 [case testMissingSubmoduleImportedWithIgnoreMissingImportsStub]
 # flags: --ignore-missing-imports --follow-imports=skip
@@ -2623,7 +2580,6 @@ xx2: whatever.works.C.D
 yy2: a.b.C.D
 [file a/__init__.pyi]
 # empty
-[out]
 
 [case testMissingSubmoduleImportedWithIgnoreMissingImportsNested]
 # flags: --ignore-missing-imports
@@ -2633,7 +2589,6 @@ y = a.b.c.d.f()
 # empty
 [file a/b/__init__.py]
 # empty
-[out]
 
 [case testModuleGetattrBusted]
 from a import A
@@ -2643,7 +2598,6 @@ reveal_type(x)  # N: Revealed type is "Any"
 from typing import Any
 def __getattr__(attr: str) -> Any: ...
 [builtins fixtures/module.pyi]
-[out]
 
 [case testModuleGetattrBusted2]
 from a import A
@@ -2653,7 +2607,6 @@ reveal_type(f)  # N: Revealed type is "def (x: Any)"
 from typing import Any
 def __getattr__(attr: str) -> Any: ...
 [builtins fixtures/module.pyi]
-[out]
 
 [case testNoGetattrInterference]
 import testmod as t
@@ -2664,7 +2617,6 @@ from typing import Any
 def __getattr__(attr: str) -> Any: ...
 class Cls: ...
 [builtins fixtures/module.pyi]
-[out]
 
 [case testFunctionWithDunderName]
 def __add__(self) -> int: ...

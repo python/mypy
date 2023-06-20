@@ -97,7 +97,6 @@ class A(Generic[T]): pass
 class B: pass
 class C(B): pass
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testTypeVariableAsTypeArgument]
 from typing import TypeVar, Generic
@@ -227,7 +226,6 @@ class A(Generic[S, T]):
             t = t
 
 class B: pass
-[out]
 
 [case testCompatibilityOfNoneWithTypeVar]
 from typing import TypeVar, Generic
@@ -236,7 +234,6 @@ class A(Generic[T]):
     def f(self) -> None:
         a = None # type: T
         a = None
-[out]
 
 [case testCompatibilityOfTypeVarWithObject]
 from typing import TypeVar, Generic
@@ -250,8 +247,6 @@ class A(Generic[T]):
         if int():
             b = self.f()
         return None
-[out]
-
 
 -- Operations with generic types
 -- -----------------------------
@@ -384,7 +379,6 @@ def f(s: S, t: T) -> p[T, A]:
     c = s # type: S
     p_t_a = None  # type: p[T, A]
     return p_t_a
-[out]
 
 [case testTypeCheckingGenericMethodBody]
 from typing import TypeVar, Generic
@@ -407,7 +401,6 @@ class A(Generic[T]):
             s = s
             p_s_t = None  # type: p[S, T]
             return p_s_t
-[out]
 
 [case testProhibitTypeApplicationToGenericFunctions]
 from typing import TypeVar
@@ -415,8 +408,6 @@ T = TypeVar('T')
 def f(x: T) -> T: pass
 
 y = f[int]  # E: Type application is only supported for generic classes
-[out]
-
 
 -- Generic types in expressions
 -- ----------------------------
@@ -430,7 +421,6 @@ class Node(Generic[T]):
         ...
 Node[int]()  # E: Missing positional argument "x" in call to "Node"
 Node[int](1, 1, 1)  # E: Too many arguments for "Node"
-[out]
 
 [case testTypeApplicationTvars]
 from typing import TypeVar, Generic
@@ -439,14 +429,12 @@ S = TypeVar('S')
 class A(Generic[T, S]): pass
 A[int]()  # E: Type application has too few types (2 expected)
 A[int, str, int]() # E: Type application has too many types (2 expected)
-[out]
 
 [case testInvalidTypeApplicationType]
 a = None # type: A
 class A: pass
 a[A]()  # E: Value of type "A" is not indexable
 A[A]()  # E: The type "Type[A]" is not generic and not indexable
-[out]
 
 [case testTypeApplicationArgTypes]
 from typing import TypeVar, Generic
@@ -468,7 +456,6 @@ Dummy[int]().meth(1)
 Dummy[int]().meth('a')  # E: Argument 1 to "meth" of "Dummy" has incompatible type "str"; expected "int"
 reveal_type(Dummy[int]())  # N: Revealed type is "__main__.Dummy[builtins.int]"
 reveal_type(Dummy[int]().methout())  # N: Revealed type is "builtins.int"
-[out]
 
 [case testTypeApplicationArgTypesSubclasses]
 from typing import TypeVar, Generic
@@ -486,7 +473,6 @@ D[str](1, 1)  # E: Argument 2 to "D" has incompatible type "int"; expected "str"
 class E(D[str]): ...
 E(1, 'a')
 E(1, 1)  # E: Argument 2 to "E" has incompatible type "int"; expected "str"
-[out]
 
 [case testTypeApplicationAlias]
 from typing import TypeVar, Generic
@@ -498,12 +484,9 @@ class Node(Generic[T]):
 Alias = Node
 Alias[int](1)
 Alias[int]("a")  # E: Argument 1 to "Node" has incompatible type "str"; expected "int"
-[out]
 
 [case testTypeApplicationCrash]
 type[int] # this was crashing, see #2302 (comment)  # E: The type "Type[type]" is not generic and not indexable
-[out]
-
 
 -- Generic type aliases
 -- --------------------
@@ -531,7 +514,6 @@ s = Node(1, 1) # type: SameNode[int]
 reveal_type(s) # N: Revealed type is "__main__.Node[builtins.int, builtins.int]"
 s1 = Node(1, 'x') # type: SameNode[int] # E: Argument 2 to "Node" has incompatible type "str"; expected "int"
 
-[out]
 
 [case testGenericTypeAliasesBasic2]
 from typing import TypeVar, Generic
@@ -695,7 +677,6 @@ y.y = 'x'
 z = Node(1, 'x') # type: AnyNode
 reveal_type(z) # N: Revealed type is "__main__.Node[Any, Any]"
 
-[out]
 
 [case testGenericTypeAliasesAcessingMethods]
 from typing import TypeVar, Generic, List
@@ -853,7 +834,6 @@ use_cb('x', my_cb) # E: Argument 2 to "use_cb" has incompatible type "Callable[[
 reveal_type(use_cb(1, my_cb)) # N: Revealed type is "__main__.Node[builtins.int]"
 [builtins fixtures/tuple.pyi]
 
-[out]
 
 [case testGenericTypeAliasesPEPBasedExample]
 from typing import TypeVar, List, Tuple
@@ -928,7 +908,6 @@ R = TypeVar('R')
 
 Transform = Callable[[T, int], Tuple[T, R]]
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testGenericTypeAliasesImportingWithoutTypeVarError]
 from a import Alias
@@ -941,7 +920,6 @@ T = TypeVar('T')
 
 Alias = List[List[T]]
 [builtins fixtures/list.pyi]
-[out]
 
 [case testGenericAliasWithTypeVarsFromDifferentModules]
 from mod import Alias, TypeVar
@@ -973,7 +951,6 @@ T = TypeVar('T')
 class B:
     T = TypeVar('T')
 [builtins fixtures/list.pyi]
-[out]
 
 [case testTypeAliasesResultingInPlainInstance]
 from typing import Optional, Union
@@ -989,7 +966,6 @@ reveal_type(y)  # N: Revealed type is "builtins.int"
 
 U[int]  # E: Type application targets a non-generic function or class
 O[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1  # E: Type application is only supported for generic classes
-[out]
 
 [case testAliasesInClassBodyNormalVsSubscripted]
 
@@ -1014,7 +990,6 @@ class C:
                                      # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
     x: b
     reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
-[out]
 
 [case testGenericTypeAliasesRuntimeExpressionsInstance]
 from typing import TypeVar, Generic
@@ -1038,7 +1013,6 @@ b = SameNode[int](1, 1)
 reveal_type(b) # N: Revealed type is "__main__.Node[builtins.int, builtins.int]"
 SameNode[int](1, 'x') # E: Argument 2 to "Node" has incompatible type "str"; expected "int"
 
-[out]
 
 [case testGenericTypeAliasesRuntimeExpressionsOther]
 from typing import TypeVar, Union, Tuple, Callable, Any
@@ -1062,7 +1036,6 @@ yy = TA[str]()  # E: Type application is only supported for generic classes
 zz = UA[str].x  # E: Type application is only supported for generic classes
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-medium.pyi]
-[out]
 
 [case testGenericTypeAliasesTypeVarBinding]
 from typing import TypeVar, Generic, List
@@ -1112,7 +1085,6 @@ class A: ...
 Bad = A[int] # type: ignore
 
 reveal_type(Bad) # N: Revealed type is "Any"
-[out]
 
 [case testNoSubscriptionOfBuiltinAliases]
 from typing import List, TypeVar
@@ -1136,7 +1108,6 @@ reveal_type(BadGenList[int]()) # N: Revealed type is "builtins.list[builtins.int
 reveal_type(BadGenList()) # N: Revealed type is "builtins.list[Any]"
 
 [builtins fixtures/list.pyi]
-[out]
 
 [case testImportedTypeAliasInRuntimeContext]
 from m import Alias
@@ -1157,7 +1128,6 @@ class Node(Generic[T]):
 
 Alias = Node[List[T]]
 [builtins fixtures/list.pyi]
-[out]
 
 -- Simplified declaration of generics
 -- ----------------------------------
@@ -1177,7 +1147,6 @@ class D(B[T], C[S]): ...
 reveal_type(D[str, int]().b()) # N: Revealed type is "builtins.str"
 reveal_type(D[str, int]().c()) # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testSimplifiedGenericCallable]
 from typing import TypeVar, Generic, Callable
@@ -1190,7 +1159,6 @@ class D(B[Callable[[T], S]]): ...
 
 reveal_type(D[str, int]().b()) # N: Revealed type is "def (builtins.str) -> builtins.int"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testSimplifiedGenericComplex]
 from typing import TypeVar, Generic, Tuple
@@ -1211,8 +1179,6 @@ class C(A[S, B[T, int]], B[U, A[int, T]]):
 c = C[object, int, str]()
 reveal_type(c.m()) # N: Revealed type is "Tuple[builtins.str, __main__.A[builtins.int, builtins.int]]"
 [builtins fixtures/tuple.pyi]
-[out]
-
 
 [case testSimplifiedGenericOrder]
 from typing import TypeVar, Generic
@@ -1230,7 +1196,6 @@ class D(B[T], C[S], Generic[S, T]): ...
 reveal_type(D[str, int]().b()) # N: Revealed type is "builtins.int"
 reveal_type(D[str, int]().c()) # N: Revealed type is "builtins.str"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testSimplifiedGenericDuplicate]
 from typing import TypeVar, Generic
@@ -1241,7 +1206,6 @@ class A(Generic[T, T]): # E: Duplicate type variables in Generic[...] or Protoco
 
 a = A[int]()
 [builtins fixtures/list.pyi]
-[out]
 
 [case testSimplifiedGenericNotAll]
 from typing import TypeVar, Generic
@@ -1258,7 +1222,6 @@ class C(A[T], B[S], Generic[T]): # E: If Generic[...] or Protocol[...] is presen
 
 c = C[int, str]()
 [builtins fixtures/list.pyi]
-[out]
 
 [case testSimplifiedGenericInvalid]
 from typing import TypeVar, Generic
@@ -1270,8 +1233,6 @@ class A(Generic[T]):
 class B(A[S]): # E: Name "S" is not defined
     pass
 [builtins fixtures/list.pyi]
-[out]
-
 
 -- Multiple assignment with lists
 -- ------------------------------
@@ -1481,7 +1442,6 @@ def f() -> None:
     if int():
         a = 1
         a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-[out]
 
 [case testClassLevelTypeVariable]
 from typing import TypeVar
@@ -1646,7 +1606,6 @@ def outer(t: T) -> None:
         y5 = f2
         y5 = f3
         y5 = f4
-[out]
 
 [case testSubtypingWithGenericFunctionUsingTypevarWithValues]
 from typing import TypeVar, Callable
@@ -2769,7 +2728,6 @@ def tpl(x: T) -> T:
 
 # This is valid because of "..."
 reveal_type(f(tpl))  # N: Revealed type is "Any"
-[out]
 
 [case testInferenceAgainstGenericCallableChain]
 # flags: --new-type-inference

@@ -64,7 +64,6 @@ main:6: error: "A" expects no type arguments, but 1 given
 
 class A: pass
 x = None  # type: A[int] # E: "A" expects no type arguments, but 1 given
-[out]
 
 [case testInvalidNumberOfGenericArgsInNestedBlock]
 
@@ -74,13 +73,11 @@ class B:
         while 1:
             x = None  # type: A[int] \
                 # E: "A" expects no type arguments, but 1 given
-[out]
 
 [case testInvalidNumberOfGenericArgsInSignature]
 import typing
 class A: pass
 def f() -> A[int]: pass # E: "A" expects no type arguments, but 1 given
-[out]
 
 [case testInvalidNumberOfGenericArgsInOverloadedSignature]
 from typing import overload
@@ -90,19 +87,16 @@ def f(): pass
 @overload
 def f(x: A[int]) -> None: pass # E: "A" expects no type arguments, but 1 given
 def f(*args): pass
-[out]
 
 [case testInvalidNumberOfGenericArgsInBaseType]
 import typing
 class A: pass
 class B(A[int]): pass # E: "A" expects no type arguments, but 1 given
-[out]
 
 [case testInvalidNumberOfGenericArgsInCast]
 from typing import cast
 class A: pass
 x = cast(A[int], 1) # E: "A" expects no type arguments, but 1 given
-[out]
 
 [case testInvalidNumberOfGenericArgsInNestedGenericType]
 from typing import TypeVar, Generic
@@ -110,21 +104,18 @@ T = TypeVar('T')
 class A(Generic[T]): pass
 class B: pass
 def f() -> A[B[int]]: pass # E: "B" expects no type arguments, but 1 given
-[out]
 
 [case testInvalidNumberOfGenericArgsInTupleType]
 from typing import Tuple
 class A: pass
 x = None # type: Tuple[A[int]] # E: "A" expects no type arguments, but 1 given
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testInvalidNumberOfGenericArgsInFunctionType]
 from typing import Callable
 class A: pass
 x = None # type: Callable[[A[int]], int]  # E: "A" expects no type arguments, but 1 given
 y = None # type: Callable[[], A[int]]  # E: "A" expects no type arguments, but 1 given
-[out]
 
 [case testVarOrFuncAsType]
 
@@ -726,7 +717,6 @@ def f() -> None:
 x.y # E: Name "x" is not defined
 [file x.py]
 y = 1
-[out]
 
 [case testImportScope2]
 import typing
@@ -736,7 +726,6 @@ def f() -> None:
 y # E: Name "y" is not defined
 [file x.py]
 y = 1
-[out]
 
 [case testImportScope3]
 import typing
@@ -746,7 +735,6 @@ def f() -> None:
 y # E: Name "y" is not defined
 [file x.py]
 y = 1
-[out]
 
 [case testImportScope4]
 import typing
@@ -756,7 +744,6 @@ class A:
 y # E: Name "y" is not defined
 [file x.py]
 y = 1
-[out]
 
 [case testScopeOfNestedClass]
 import typing
@@ -764,14 +751,12 @@ def f():
     class A: pass
     A
 A # E: Name "A" is not defined
-[out]
 
 [case testScopeOfNestedClass2]
 import typing
 class A:
     class B: pass
 B # E: Name "B" is not defined
-[out]
 
 [case testScopeOfNestedClass3]
 import typing
@@ -780,13 +765,11 @@ class A:
         class B: pass
     B # E: Name "B" is not defined
 B # E: Name "B" is not defined
-[out]
 
 [case testInvalidNestedClassReferenceInDecl]
 import typing
 class A: pass
 foo = 0 # type: A.x      # E: Name "A.x" is not defined
-[out]
 
 [case testTvarScopingWithNestedClass]
 
@@ -803,7 +786,6 @@ class A(Generic[t]):
                                   # N: (Hint: Use "Generic[s]" or "Protocol[s]" base class to bind "s" inside a class) \
                                   # N: (Hint: Use "s" in function signature to bind "s" inside a function)
     a = 0 # type: A[t]
-[out]
 
 [case testTestExtendPrimitives]
 # Extending bool is not checked here as it should be typed
@@ -813,24 +795,20 @@ class A(int): pass # ok
 class B(float): pass # ok
 class D(str): pass # ok
 [builtins fixtures/primitives.pyi]
-[out]
 
 [case testCyclicInheritance1]
 
 class A(A): pass # E: Cannot resolve name "A" (possible cyclic definition)
-[out]
 
 [case testCyclicInheritance2]
 
 class A(B): pass # E: Cannot resolve name "B" (possible cyclic definition)
 class B(A): pass
-[out]
 
 [case testAssignToTypeDef]
 import typing
 class A: pass
 A = None # E: Cannot assign to a type
-[out]
 
 [case testInvalidCastTargetSyntax]
 
@@ -842,7 +820,6 @@ cast(C[str][str], None)  # E: Cast target is not a type
 cast(C[str + str], None) # E: Cast target is not a type
 cast([int, str], None)   # E: Bracketed expression "[...]" is not valid as a type \
                          # N: Did you mean "List[...]"?
-[out]
 
 [case testInvalidCastTargetType]
 
@@ -852,25 +829,21 @@ cast(x, None)        # E: Variable "__main__.x" is not valid as a type \
                      # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 cast(t, None)        # E: Name "t" is not defined
 cast(__builtins__.x, None) # E: Name "__builtins__.x" is not defined
-[out]
 
 [case testInvalidCastTargetType2]
 from typing import cast
 x = 0
 cast(str[str], None) # E: "str" expects no type arguments, but 1 given
-[out]
 
 [case testInvalidNumberOfArgsToCast]
 from typing import cast
 cast(str) # E: "cast" expects 2 arguments
 cast(str, None, None) # E: "cast" expects 2 arguments
-[out]
 
 [case testInvalidKindsOfArgsToCast]
 from typing import cast
 cast(str, *None) # E: "cast" must be called with 2 positional arguments
 cast(str, target=None) # E: "cast" must be called with 2 positional arguments
-[out]
 
 [case testInvalidAssertType]
 from typing import assert_type
@@ -885,14 +858,12 @@ assert_type(1, int[int])  # E: "int" expects no type arguments, but 1 given
 from typing import Any
 Any(str, None)  # E: Any(...) is no longer supported. Use cast(Any, ...) instead
 Any(arg=str)  # E: Any(...) is no longer supported. Use cast(Any, ...) instead
-[out]
 
 [case testTypeListAsType]
 
 def f(x:[int, str]) -> None: # E: Bracketed expression "[...]" is not valid as a type \
                              # N: Did you mean "List[...]"?
     pass
-[out]
 
 [case testInvalidFunctionType]
 from typing import Callable
@@ -960,48 +931,39 @@ t = TypeVar('t')
 class A(Generic[t]): pass
 A[TypeVar] # E: Variable "typing.TypeVar" is not valid as a type \
            # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
-[out]
 
 [case testInvalidTypeInTypeApplication2]
 from typing import TypeVar, Generic
 t = TypeVar('t')
 class A(Generic[t]): pass
 A[1] # E: Invalid type: try using Literal[1] instead?
-[out]
 
 [case testVariableDeclWithInvalidNumberOfTypes]
 x, y = 1, 2 # type: int, str, int # E: Incompatible number of tuple items
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testVariableDeclWithInvalidNumberOfTypesNested]
 x, (y, z) = 1, (2, 3) # type: int, (str, int, int) # E: Incompatible number of tuple items
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testVariableDeclWithInvalidNumberOfTypesNested2]
 x, (y, z) = 1, (2, 3) # type: int, (str, ) # E: Incompatible number of tuple items
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testVariableDeclWithInvalidNumberOfTypesNested3]
 x, (y, z) = 1, (2, 3) # type: int, str # E: Tuple type expected for multiple variables
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testVariableDeclWithInvalidNumberOfTypesNested4]
 x, (y, z) = 1, (2, 3) # type: int, str, int # E: Incompatible number of tuple items
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testVariableDeclWithInvalidNumberOfTypesNested5]
 x, (y, ) = 1, (2, ) # type: int, str # E: Tuple type expected for multiple variables
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testVariableDeclWithInvalidType]
 x, y = 1, 2 # type: int # E: Tuple type expected for multiple variables
-[out]
 
 [case testInvalidLvalueWithExplicitType]
 a = 1
@@ -1018,7 +980,6 @@ a = 1
 a[1] = None # type: int # E: Unexpected type declaration
 a.x = None # type: int \
     # E: Type cannot be declared in assignment to non-self attribute
-[out]
 
 [case testInvalidLvalueWithExplicitType3]
 a = 1
@@ -1027,7 +988,6 @@ a.y, a.x = None, None # type: int, int \
 a[1], a[2] = None, None # type: int, int \
     # E: Unexpected type declaration
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testMissingGenericImport]
 from typing import TypeVar
@@ -1039,7 +999,6 @@ main:3: error: Name "Generic" is not defined
 [case testInvalidTypeWithinGeneric]
 from typing import Generic
 class A(Generic[int]): pass # E: Free type variable expected in Generic[...]
-[out]
 
 [case testInvalidTypeWithinNestedGenericClass]
 from typing import Generic, TypeVar
@@ -1047,7 +1006,6 @@ T = TypeVar('T')
 class A(Generic[T]):
     class B(Generic[T]): pass \
           # E: Free type variable expected in Generic[...]
-[out]
 
 [case testIncludingGenericTwiceInBaseClassList]
 from typing import Generic, TypeVar
@@ -1055,21 +1013,17 @@ T = TypeVar('T')
 S = TypeVar('S')
 class A(Generic[T], Generic[S]): pass \
       # E: Only single Generic[...] or Protocol[...] can be in bases
-[out]
 
 [case testInvalidMetaclass]
 class A(metaclass=x): pass # E: Name "x" is not defined
-[out]
 
 [case testInvalidQualifiedMetaclass]
 import abc
 class A(metaclass=abc.Foo): pass # E: Name "abc.Foo" is not defined
-[out]
 
 [case testNonClassMetaclass]
 def f(): pass
 class A(metaclass=f): pass # E: Invalid metaclass "f"
-[out]
 
 [case testInvalidTypevarArguments]
 from typing import TypeVar
@@ -1085,7 +1039,6 @@ h = TypeVar('h', x=(int, str))    # E: Unexpected argument to "TypeVar()": "x"
 i = TypeVar('i', bound=1)         # E: TypeVar "bound" must be a type
 j = TypeVar('j', covariant=None)  # E: TypeVar "covariant" may only be a literal bool
 k = TypeVar('k', contravariant=1) # E: TypeVar "contravariant" may only be a literal bool
-[out]
 
 [case testMoreInvalidTypevarArguments]
 from typing import TypeVar
@@ -1098,7 +1051,6 @@ S = TypeVar('S', covariant=True, contravariant=True) \
 from typing import TypeVar
 b = TypeVar('b', *[int]) # E: Unexpected argument to "TypeVar()"
 c = TypeVar('c', int, 2) # E: Invalid type: try using Literal[2] instead?
-[out]
 
 [case testObsoleteTypevarValuesSyntax]
 from typing import TypeVar
@@ -1112,65 +1064,53 @@ from typing import TypeVar
 def f() -> None:
     T = TypeVar('T')
 def g(x: T) -> None: pass # E: Name "T" is not defined
-[out]
 
 [case testClassTypevarScope]
 from typing import TypeVar
 class A:
     T = TypeVar('T')
 def g(x: T) -> None: pass # E: Name "T" is not defined
-[out]
 
 [case testRedefineVariableAsTypevar]
 from typing import TypeVar
 x = 0
 x = TypeVar('x') # E: Cannot redefine "x" as a type variable
-[out]
 
 [case testTypevarWithType]
 from typing import TypeVar
 x = TypeVar('x') # type: int # E: Cannot declare the type of a TypeVar or similar construct
-[out]
 
 [case testRedefineTypevar]
 from typing import TypeVar
 t = TypeVar('t')
 t = 1 # E: Invalid assignment target
-[out]
 
 [case testRedefineTypevar2]
 from typing import TypeVar
 t = TypeVar('t')
 def t(): pass # E: Name "t" already defined on line 2
-[out]
 
 [case testRedefineTypevar3]
 from typing import TypeVar
 t = TypeVar('t')
 class t: pass # E: Name "t" already defined on line 2
-[out]
 
 [case testRedefineTypevar4]
 from typing import TypeVar
 t = TypeVar('t')
 from typing import Generic as t # E: Name "t" already defined on line 2
-[out]
 
 [case testInvalidStrLiteralType]
 def f(x: 'foo'): pass # E: Name "foo" is not defined
-[out]
 
 [case testInvalidStrLiteralStrayBrace]
 def f(x: 'int['): pass # E: Invalid type comment or annotation
-[out]
 
 [case testInvalidStrLiteralSpaces]
 def f(x: 'A B'): pass # E: Invalid type comment or annotation
-[out]
 
 [case testInvalidMultilineLiteralType]
 def f() -> "A\nB": pass  # E: Invalid type comment or annotation
-[out]
 
 [case testInconsistentOverload]
 from typing import overload
@@ -1179,7 +1119,6 @@ def dec(x): pass
 def f(): pass
 @overload
 def f(): pass
-[out]
 
 [case testInconsistentOverload2]
 from typing import overload
@@ -1188,7 +1127,6 @@ def dec(x): pass
 def f(): pass
 @overload
 def f(): pass
-[out]
 
 [case testMissingOverloadDecorator]
 from typing import overload
@@ -1197,7 +1135,6 @@ def dec(x): pass
 def f(): pass
 @dec  # E: Name "f" already defined on line 3
 def f(): pass
-[out]
 
 [case testIncompatibleSignatureInComment]
 import typing
@@ -1240,7 +1177,6 @@ import typing
 @property  # E: "property" used with a non-method
 def f() -> int: pass
 [builtins fixtures/property.pyi]
-[out]
 
 [case testOverloadedProperty]
 from typing import overload
@@ -1252,7 +1188,6 @@ class A:
     @overload
     def f(self) -> int: pass
 [builtins fixtures/property.pyi]
-[out]
 
 [case testOverloadedProperty2]
 from typing import overload
@@ -1263,7 +1198,6 @@ class A:
     @overload
     def f(self) -> int: pass
 [builtins fixtures/property.pyi]
-[out]
 
 [case testDecoratedProperty]
 import typing
@@ -1276,7 +1210,6 @@ class A:
     @dec
     def g(self) -> int: pass
 [builtins fixtures/property.pyi]
-[out]
 
 [case testImportTwoModulesWithSameNameInFunction]
 import typing
@@ -1287,7 +1220,6 @@ def f() -> None:
 [file x.py]
 y = 1
 [file y.py]
-[out]
 
 [case testImportTwoModulesWithSameNameInGlobalContext]
 import typing
@@ -1297,7 +1229,6 @@ x.y
 [file x.py]
 y = 1
 [file y.py]
-[out]
 
 [case testListTypeAliasWithoutImport]
 import typing
@@ -1338,14 +1269,12 @@ class A:
     class X: pass
     class B:
         y = X  # E: Name "X" is not defined
-[out]
 
 [case testStubPackage]
 from m import x
 from m import y # E: Module "m" has no attribute "y"
 [file m/__init__.pyi]
 x = 1
-[out]
 
 [case testStubPackageSubModule]
 from m import x
@@ -1356,7 +1285,6 @@ from m.m2 import z # E: Module "m.m2" has no attribute "z"
 x = 1
 [file m/m2.pyi]
 y = 1
-[out]
 
 [case testListComprehensionSpecialScoping]
 class A:
@@ -1386,7 +1314,6 @@ class A:  # E: Name "A" already defined (possibly by an import)
 [file m.py]
 class A:
     pass
-[out]
 
 [case testDuplicateDefDec]
 from typing import Any
@@ -1398,7 +1325,6 @@ def f() -> None:
 @dec  # E: Name "f" already defined on line 4
 def f() -> None:
     pass
-[out]
 
 [case testDuplicateDefOverload]
 from typing import overload, Any
@@ -1414,7 +1340,6 @@ if 1:
 else:
     def f(x: str) -> None:  # E: Name "f" already defined on line 3
         pass
-[out]
 
 [case testDuplicateDefNT]
 from typing import NamedTuple
@@ -1424,7 +1349,6 @@ N = NamedTuple('N', [('a', int),
 class N:  # E: Name "N" already defined on line 2
     pass
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testDuplicateDefTypedDict]
 from mypy_extensions import TypedDict
@@ -1434,14 +1358,12 @@ class Point:  # E: Name "Point" already defined on line 2
     pass
 [builtins fixtures/dict.pyi]
 
-[out]
 
 [case testTypeVarClassDup]
 from typing import TypeVar
 T = TypeVar('T')
 class T: ...  # E: Name "T" already defined on line 2
 
-[out]
 
 [case testAliasDup]
 from typing import List
@@ -1449,7 +1371,6 @@ A = List[int]
 class A: ... # E: Name "A" already defined on line 2
 
 [builtins fixtures/list.pyi]
-[out]
 
 [case testNoInvalidTypeInDynamicFunctions]
 
@@ -1468,7 +1389,6 @@ def g() -> None:
                           # N: (Hint: Use "Generic[T]" or "Protocol[T]" base class to bind "T" inside a class) \
                           # N: (Hint: Use "T" in function signature to bind "T" inside a function)
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testParamSpec]
 from typing_extensions import ParamSpec
@@ -1476,9 +1396,6 @@ from typing_extensions import ParamSpec
 TParams = ParamSpec('TParams')
 TP = ParamSpec('?')  # E: String argument 1 "?" to ParamSpec(...) does not match variable name "TP"
 TP2: int = ParamSpec('TP2')  # E: Cannot declare the type of a TypeVar or similar construct
-
-[out]
-
 
 [case testBaseClassAnnotatedWithoutArgs]
 # https://github.com/python/mypy/issues/11808

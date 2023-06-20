@@ -28,7 +28,6 @@ def f() -> None:
         x = x
 class A: pass
 class B: pass
-[out]
 
 [case testLvarInitializedToVoid]
 import typing
@@ -37,7 +36,6 @@ def f() -> None:
     #b, c = g() # "g" does not return a value TODO
 
 def g() -> None: pass
-[out]
 
 [case testInferringLvarTypeFromArgument]
 import typing
@@ -50,7 +48,6 @@ def f(a: 'A') -> None:
 
 class A: pass
 class B: pass
-[out]
 
 [case testInferringLvarTypeFromGvar]
 
@@ -64,7 +61,6 @@ def f() -> None:
 
 class A: pass
 class B: pass
-[out]
 
 [case testInferringImplicitDynamicTypeForLvar]
 import typing
@@ -74,7 +70,6 @@ def f() -> None:
     a.x()
 
 def g(): pass
-[out]
 
 [case testInferringExplicitDynamicTypeForLvar]
 from typing import Any
@@ -84,8 +79,6 @@ def f(a: Any) -> None:
     b = g
     None(b) # E: "None" not callable
     a.x()
-[out]
-
 
 -- Inferring types of local variables with complex types
 -- -----------------------------------------------------
@@ -106,7 +99,6 @@ def f() -> None:
 class A: pass
 class B: pass
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testInferringTupleTypeForLvarWithNones]
 import typing
@@ -116,7 +108,6 @@ def f() -> None:
 
 class A: pass
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testInferringGenericTypeForLvar]
 from typing import TypeVar, Generic
@@ -132,7 +123,6 @@ def f() -> None:
         a = a_s # E: Incompatible types in assignment (expression has type "A[str]", variable has type "A[int]")
         a = a_i
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testInferringFunctionTypeForLvar]
 import typing
@@ -145,7 +135,6 @@ def g(a: 'A') -> None: pass
 
 class A: pass
 class B: pass
-[out]
 
 [case testInferringFunctionTypeForLvarFromTypeObject]
 import typing
@@ -156,8 +145,6 @@ def f() -> None:
     t = a # type: type
 
 class A: pass
-[out]
-
 
 -- Inferring variable types in multiple definition
 -- -----------------------------------------------
@@ -177,7 +164,6 @@ def f() -> None:
 
 class A: pass
 class B: pass
-[out]
 
 [case testInferringLvarTypesInTupleAssignment]
 from typing import Tuple
@@ -195,7 +181,6 @@ def f() -> None:
 class A: pass
 class B: pass
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testInferringLvarTypesInNestedTupleAssignment1]
 from typing import Tuple
@@ -213,7 +198,6 @@ def f() -> None:
 class A: pass
 class B: pass
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testInferringLvarTypesInNestedTupleAssignment2]
 import typing
@@ -232,7 +216,6 @@ def f() -> None:
 class A: pass
 class B: pass
 class C: pass
-[out]
 
 [case testInferringLvarTypesInNestedListAssignment]
 import typing
@@ -251,7 +234,6 @@ def f() -> None:
 class A: pass
 class B: pass
 class C: pass
-[out]
 
 [case testInferringLvarTypesInMultiDefWithNoneTypes]
 import typing
@@ -260,7 +242,6 @@ def f() -> None:
     c, d = None, A()
 
 class A: pass
-[out]
 
 [case testInferringLvarTypesInNestedTupleAssignmentWithNoneTypes]
 import typing
@@ -268,7 +249,6 @@ def f() -> None:
     a1, (a2, b) = A(), (A(), None)
 
 class A: pass
-[out]
 
 [case testClassObjectsNotUnpackableWithoutIterableMetaclass]
 from typing import Type
@@ -292,7 +272,6 @@ reveal_type(e)  # E: Cannot determine type of "e"  # N: Revealed type is "Any"
 reveal_type(f)  # E: Cannot determine type of "f"  # N: Revealed type is "Any"
 reveal_type(g)  # E: Cannot determine type of "g"  # N: Revealed type is "Any"
 reveal_type(h)  # E: Cannot determine type of "h"  # N: Revealed type is "Any"
-[out]
 
 [case testInferringLvarTypesUnpackedFromIterableClassObject]
 from typing import Iterator, Type, TypeVar, Union, overload
@@ -368,7 +347,6 @@ def check3(x: T3) -> T3:
     for var in [a, b, c]:
         reveal_type(var)  # N: Revealed type is "Union[builtins.int, builtins.str]"
     return x
-[out]
 
 [case testInferringLvarTypesUnpackedFromIterableClassObjectWithGenericIter]
 from typing import Iterator, Type, TypeVar
@@ -382,7 +360,6 @@ A, B, C = Foo
 reveal_type(A)  # N: Revealed type is "__main__.Foo"
 reveal_type(B)  # N: Revealed type is "__main__.Foo"
 reveal_type(C)  # N: Revealed type is "__main__.Foo"
-[out]
 
 [case testInferringLvarTypesInMultiDefWithInvalidTuple]
 from typing import Tuple
@@ -404,7 +381,6 @@ def f() -> None:
     c, d = A() # E: "A" object is not iterable
 class A: pass
 [builtins fixtures/for.pyi]
-[out]
 
 [case testInvalidRvalueTypeInInferredNestedTupleAssignment]
 import typing
@@ -413,7 +389,6 @@ def f() -> None:
     a3, (c, d) = A(), A() # E: "A" object is not iterable
 class A: pass
 [builtins fixtures/for.pyi]
-[out]
 
 [case testInferringMultipleLvarDefinitionWithListRvalue]
 from typing import List
@@ -442,7 +417,6 @@ def f() -> None:
         c = d
         d = e
 [builtins fixtures/for.pyi]
-[out]
 
 [case testInferringNestedTupleAssignmentWithListRvalue]
 from typing import List
@@ -471,7 +445,6 @@ def f() -> None:
         c = d
         d = e
 [builtins fixtures/for.pyi]
-[out]
 
 [case testInferringMultipleLvarDefinitionWithImplicitDynamicRvalue]
 import typing
@@ -577,7 +550,6 @@ def f() -> None:
         c = a(c)
 def id(x: T) -> T:
     return x
-[out]
 
 [case testUnderspecifiedInferenceResult]
 # flags: --no-strict-optional
@@ -596,7 +568,6 @@ def g(a: T) -> None: pass
 g(None) # Ok
 f()     # Ok because not used to infer local variable type
 g(a)
-[out]
 
 [case testInferenceWithMultipleConstraints]
 from typing import TypeVar
@@ -905,7 +876,6 @@ def callback2(i: int) -> str:
 def call(c: Callable[[int], Any], i: int) -> None:
     c(i)
 [builtins fixtures/list.pyi]
-[out]
 
 [case testCallableMeetAndJoin]
 # flags: --python-version 3.6
@@ -932,7 +902,6 @@ ca: Callable[[CA], int]
 cb: Callable[[CB], int]
 reveal_type(meet_test(ca, cb)) # N: Revealed type is "def (__main__.A) -> __main__.B"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testUnionInferenceWithTypeVarValues]
 from typing import TypeVar, Union
@@ -1207,7 +1176,6 @@ def f() -> None:
 class A: pass
 class B: pass
 [builtins fixtures/for.pyi]
-[out]
 
 [case testReusingInferredForIndex3]
 # flags: --disallow-redefinition
@@ -1226,8 +1194,6 @@ def f() -> None:
 class A: pass
 class B: pass
 [builtins fixtures/for.pyi]
-[out]
-
 
 -- Regression tests
 -- ----------------
@@ -1314,7 +1280,6 @@ class A:
         self.a = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
         self.a = B()
 class B: pass
-[out]
 
 [case testInferAttributeInInit]
 import typing
@@ -1954,7 +1919,6 @@ def f() -> None:
     else:
         x = 1
     x() # E: "int" not callable
-[out]
 
 [case testLocalVariablePartiallyTwiceInitializedToNone]
 def f() -> None:
@@ -1965,14 +1929,12 @@ def f() -> None:
     else:
         x = 1
     x() # E: "int" not callable
-[out]
 
 [case testLvarInitializedToNoneWithoutType]
 import typing
 def f() -> None:
     a = None
     a.x() # E: "None" has no attribute "x"
-[out]
 
 [case testGvarPartiallyInitializedToNone]
 x = None
@@ -2004,7 +1966,6 @@ def f() -> None:
         # Promote from partial None to partial list.
         x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 [builtins fixtures/list.pyi]
-[out]
 
 [case testPartiallyInitializedToNoneAndThenToIncompleteType-skip]
 # TODO(ddfisher): fix partial type bug and re-enable
@@ -2021,7 +1982,6 @@ def f() -> None:
     x = None
     reveal_type(x)  # N: Revealed type is "None"
 x = 1
-[out]
 
 [case testPartiallyInitializedVariableDoesNotEscapeScope2]
 x = None
@@ -2036,7 +1996,6 @@ class A:
         self.x = None
         self.x = 1
         self.x() # E: "int" not callable
-[out]
 
 [case testAttributePartiallyInitializedToNoneWithMissingAnnotation]
 class A:
@@ -2055,7 +2014,6 @@ a = None
 def f():
     global a
     a = 42
-[out]
 
 [case testGlobalInitializedToNoneSetFromMethod]
 a = None
@@ -2063,7 +2021,6 @@ class C:
     def m(self):
         global a
         a = 42
-[out]
 
 -- More partial type errors
 -- ------------------------
@@ -2117,7 +2074,6 @@ def f() -> None:
     y = x
     y() # E: "int" not callable
 x = 1
-[out]
 
 [case testMultipassAndAccessInstanceVariableBeforeDefinition]
 class A:
@@ -2127,13 +2083,11 @@ class A:
 
     def g(self) -> None:
         self.x = 1
-[out]
 
 [case testMultipassAndTopLevelVariable]
 y = x # E: Cannot determine type of "x"  # E: Name "x" is used before definition
 y()
 x = 1+int()
-[out]
 
 [case testMultipassAndDecoratedMethod]
 from typing import Callable, TypeVar
@@ -2148,7 +2102,6 @@ class A:
     def g(self, x: str) -> None: pass
 
 def dec(f: Callable[[A, str], T]) -> Callable[[A, int], T]: pass
-[out]
 
 [case testMultipassAndDefineAttributeBasedOnNotReadyAttribute]
 class A:
@@ -2160,7 +2113,6 @@ class A:
 
     def h(self) -> None:
         self.y() # E: "int" not callable
-[out]
 
 [case testMultipassAndDefineAttributeBasedOnNotReadyAttribute2]
 class A:
@@ -2189,7 +2141,6 @@ def f() -> None:
     x.append(y) # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
 y = ''
 [builtins fixtures/list.pyi]
-[out]
 
 [case testMultipassAndPartialTypes2]
 s = ''
@@ -2203,7 +2154,6 @@ def f() -> None:
     x.append(1) # E: Argument 1 to "append" of "list" has incompatible type "int"; expected "str"
 y = ''
 [builtins fixtures/list.pyi]
-[out]
 
 [case testMultipassAndPartialTypes3]
 from typing import Dict
@@ -2216,7 +2166,6 @@ def f() -> None:
     x[1] = ''
 y = ''
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testMultipassAndPartialTypes4]
 from typing import Dict
@@ -2228,7 +2177,6 @@ def f() -> None:
     g(x) # E: Argument 1 to "g" has incompatible type "Dict[int, int]"; expected "Dict[str, int]"
 y = ''
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testMultipassAndCircularDependency]
 class A:
@@ -2237,7 +2185,6 @@ class A:
 
     def g(self) -> None:
         self.y = self.x
-[out]
 
 [case testMultipassAndPartialTypesSpecialCase1]
 def f() -> None:
@@ -2247,7 +2194,6 @@ def f() -> None:
     x() # E: "List[int]" not callable
 o = 1
 [builtins fixtures/list.pyi]
-[out]
 
 [case testMultipassAndPartialTypesSpecialCase2]
 def f() -> None:
@@ -2257,7 +2203,6 @@ def f() -> None:
     x() # E: "Dict[str, int]" not callable
 o = 1
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testMultipassAndPartialTypesSpecialCase3]
 def f() -> None:
@@ -2266,7 +2211,6 @@ def f() -> None:
     z = {} # E: Need type annotation for "z" (hint: "z: Dict[<type>, <type>] = ...")
 o = 1
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testMultipassAndPartialTypesSpecialCase4]
 def f() -> None:
@@ -2275,7 +2219,6 @@ def f() -> None:
     x = y
     x() # E: "int" not callable
 o = 1
-[out]
 
 [case testMultipassAndPartialTypesSpecialCase5]
 def f() -> None:
@@ -2284,7 +2227,6 @@ def f() -> None:
     x = y
     x() # E: "int" not callable
 o = 1
-[out]
 
 [case testMultipassAndClassAttribute]
 class S:
@@ -2452,7 +2394,6 @@ class C:
     def __init__(self) -> None:
         self.x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 [builtins fixtures/list.pyi]
-[out]
 
 [case testNoCrashOnPartialVariable]
 from typing import Tuple, TypeVar
@@ -2464,7 +2405,6 @@ x = None
 (x,) = f('')
 reveal_type(x) # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testNoCrashOnPartialVariable2]
 from typing import Tuple, TypeVar
@@ -2476,7 +2416,6 @@ x = None
 if int():
     (x,) = f()
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testNoCrashOnPartialVariable3]
 from typing import Tuple, TypeVar
@@ -2488,7 +2427,6 @@ x = None
 (x, x) = f('')
 reveal_type(x) # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testInferenceNestedTuplesFromGenericIterable]
 from typing import Tuple, TypeVar
@@ -2503,7 +2441,6 @@ def main() -> None:
     reveal_type(a) # N: Revealed type is "builtins.int"
     reveal_type(b) # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testDontMarkUnreachableAfterInferenceUninhabited]
 from typing import TypeVar
@@ -2519,7 +2456,6 @@ if bool():
     f()
     1() # E: "int" not callable
 [builtins fixtures/list.pyi]
-[out]
 
 [case testDontMarkUnreachableAfterInferenceUninhabited2]
 # flags: --strict-optional
@@ -2536,7 +2472,6 @@ if bool():
     f()
     1() # E: "int" not callable
 [builtins fixtures/list.pyi]
-[out]
 
 [case testDontMarkUnreachableAfterInferenceUninhabited3]
 from typing import TypeVar, List
@@ -2552,8 +2487,6 @@ if bool():
     f([])
     1() # E: "int" not callable
 [builtins fixtures/list.pyi]
-[out]
-
 
 -- --local-partial-types
 -- ---------------------

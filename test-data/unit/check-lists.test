@@ -17,7 +17,6 @@ class A: pass
 class B: pass
 class C: pass
 [builtins fixtures/list.pyi]
-[out]
 
 [case testNestedListAssignmentToTuple]
 from typing import List
@@ -31,7 +30,6 @@ class A: pass
 class B: pass
 class C: pass
 [builtins fixtures/list.pyi]
-[out]
 
 [case testListAssignmentFromTuple]
 from typing import List
@@ -51,7 +49,6 @@ class A: pass
 class B: pass
 class C: pass
 [builtins fixtures/list.pyi]
-[out]
 
 [case testListAssignmentUnequalAmountToUnpack]
 from typing import List
@@ -66,7 +63,6 @@ class A: pass
 class B: pass
 class C: pass
 [builtins fixtures/list.pyi]
-[out]
 
 [case testListWithStarExpr]
 (x, *a) = [1, 2, 3]

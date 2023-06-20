@@ -406,7 +406,6 @@ def f(x: 'B'):
         x = B()
 class A: pass
 class B: pass
-[out]
 
 [case testTypeCheckOverloadedMethodBody]
 from foo import *
@@ -424,7 +423,6 @@ class A:
             x = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
             x = B()
 class B: pass
-[out]
 
 [case testCallToOverloadedFunction]
 from foo import *
@@ -1047,7 +1045,6 @@ class B(A):
     def f(self, x: int) -> int: return 0
     @overload
     def f(self, x: str) -> str: return ''
-[out]
 
 [case testOverrideOverloadedMethodWithMoreSpecificArgumentTypes]
 from foo import *
@@ -1138,7 +1135,6 @@ f(()) # E: No overload variant of "f" matches argument type "Tuple[]" \
       # N:     def f(x: float) -> None \
       # N:     def f(x: str) -> None
 [builtins fixtures/primitives.pyi]
-[out]
 
 [case testOverloadingVariableInputs]
 from foo import *
@@ -1153,7 +1149,6 @@ f(1, 2)
 z = (1, 2)
 f(*z)
 [builtins fixtures/primitives.pyi]
-[out]
 
 [case testTypeInferenceSpecialCaseWithOverloading]
 from foo import *
@@ -1290,7 +1285,6 @@ def g(x: U, y: V) -> None:
     f([y]) # E: Value of type variable "T" of "f" cannot be "V"
     f([x, y]) # E: Value of type variable "T" of "f" cannot be "object"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testOverloadOverlapWithTypeVars]
 from foo import *
@@ -1875,7 +1869,6 @@ class MyInt:
     @overload
     def __init__(self, x: str, y: int) -> None: pass
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testOverloadTupleInstance]
 from typing import overload, Tuple, Any
@@ -4479,7 +4472,6 @@ def f(x):
 
 x: Union[int, str]
 reveal_type(f(x))  # N: Revealed type is "builtins.int"
-[out]
 
 [case testOverloadAndSelfTypes]
 from typing import overload, Union, TypeVar, Type
@@ -4556,7 +4548,6 @@ def rp(x):
 
 x: Optional[C]
 reveal_type(rp(x))  # N: Revealed type is "__main__.C"
-[out]
 
 [case testUnionMathTrickyOverload1]
 from typing import Union, overload
@@ -4591,7 +4582,6 @@ class D(C):
 x: D
 y: Union[D, Any]
 reveal_type(x.f(y))  # N: Revealed type is "Union[__main__.D, Any]"
-[out]
 
 [case testManyUnionsInOverload]
 from typing import overload, TypeVar, Union
@@ -4614,7 +4604,6 @@ y = f(x, x, x, x, x, x, x, x) # 8 args
 
 reveal_type(y)  # N: Revealed type is "Union[builtins.int, builtins.str, __main__.A, __main__.B]"
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testOverloadsWithNoneComingSecondAreAlwaysFlaggedInNoStrictOptional]
 # flags: --no-strict-optional
@@ -4699,7 +4688,6 @@ class B(A):
     def __add__(self, x : 'A') -> 'A' : ...
     def __add__(self, x):
         pass
-[out]
 
 [case testUnsafeDunderOverlapInSubclass]
 from typing import overload
@@ -4811,7 +4799,6 @@ def g(x: str) -> int: ...
 
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-medium.pyi]
-[out]
 
 [case testNestedOverloadsNoCrash]
 from typing import overload
@@ -4824,7 +4811,6 @@ def f() -> None:
     def g(x):
         pass
     g(str())
-[out]
 
 [case testNestedOverloadsTypeVar]
 from typing import overload, TypeVar
@@ -4844,7 +4830,6 @@ def f() -> None:
                      # N:     def g(x: str) -> str \
                      # N:     def [T] g(x: T, y: int) -> T
     reveal_type(g(str(), int()))  # N: Revealed type is "builtins.str"
-[out]
 
 [case testNestedOverloadsTypeVarOverlap]
 from typing import overload, TypeVar
@@ -4858,7 +4843,6 @@ def f() -> None:
     def g(x: T) -> T: ...
     def g(x):
         pass
-[out]
 
 [case testNestedOverloadsMutuallyRecursive]
 from typing import overload, TypeVar, Dict, Any
@@ -4882,7 +4866,6 @@ def f() -> None:
         reveal_type(g(C()))  # N: Revealed type is "builtins.dict[builtins.int, __main__.C]"
 
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testOverloadConstrainedTypevarNotShadowingAny]
 from lib import attr
@@ -4905,7 +4888,6 @@ T = TypeVar('T', int, float)
 def attr(default: T = ..., blah: int = ...) -> T: ...
 @overload
 def attr(default: Any = ...) -> int: ...
-[out]
 
 [case testOverloadBoundedTypevarNotShadowingAny]
 from lib import attr
@@ -4928,7 +4910,6 @@ T = TypeVar('T', bound=int)
 def attr(default: T = ..., blah: int = ...) -> T: ...
 @overload
 def attr(default: Any = ...) -> int: ...
-[out]
 
 [case testAnyIsOKAsFallbackInOverloads]
 import stub
@@ -4946,7 +4927,6 @@ def foo(x: Any) -> Any: ...
 def bar(x: T) -> T: ...
 @overload
 def bar(x: Any) -> int: ...
-[out]
 
 [case testOverloadsIgnorePromotions]
 from typing import overload, List, Union, _promote

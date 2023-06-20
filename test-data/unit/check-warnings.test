@@ -138,8 +138,6 @@ def f() -> int:
     """Return the number of peppers."""
     # This might be an @abstractmethod, for example
     pass
-[out]
-
 
 -- Returning Any
 -- -------------
@@ -157,7 +155,6 @@ main:4: error: Returning Any from function declared to return "int"
 class A:
     def __eq__(self, other: object) -> bool: return NotImplemented
 [builtins fixtures/notimplemented.pyi]
-[out]
 
 [case testReturnAnyForNotImplementedInNormalMethods]
 # flags: --warn-return-any
@@ -190,21 +187,18 @@ def g() -> Any: pass
 def f() -> int:
     result = g() # type: int
     return result
-[out]
 
 [case testReturnAnyFromUntypedFunction]
 # flags: --warn-return-any
 from typing import Any
 def g() -> Any: pass
 def f(): return g()
-[out]
 
 [case testReturnAnyFromAnyTypedFunction]
 # flags: --warn-return-any
 from typing import Any
 def g() -> Any: pass
 def f() -> Any: return g()
-[out]
 
 [case testOKReturnAnyIfProperSubtype]
 # flags: --warn-return-any --strict-optional
@@ -221,7 +215,6 @@ class Test(object):
         else:
             return None
 [builtins fixtures/list.pyi]
-[out]
 
 [case testReturnAnyDeferred]
 # flags: --warn-return-any

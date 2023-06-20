@@ -375,7 +375,6 @@ class AttrInt(Attr[int]):
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/class_callable.py
 [builtins fixtures/bool.pyi]
-[out]
 
 [case testFunctionPluginHookForReturnedCallable]
 # flags: --config-file tmp/mypy.ini

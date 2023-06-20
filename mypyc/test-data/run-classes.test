@@ -2031,7 +2031,6 @@ assert g.x == 20
 import other
 import other_interpreted
 
-[out]
 
 [case testAttributeOverridesProperty]
 from typing import Any

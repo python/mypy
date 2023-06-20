@@ -556,7 +556,6 @@ main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mis
 \[mypy]
 \[mypy-foo]
 x_bad = 0
-[out]
 
 [case testDotInFilenameOKScript]
 # cmd: mypy a.b.py c.d.pyi
@@ -638,14 +637,12 @@ mypy: error: Mypy no longer supports checking Python 2 code. Consider pinning to
 [file mypy.ini]
 \[mypy]
 python_version = 3.4
-[out]
 
 [case testPythonVersionAccepted36]
 # cmd: mypy -c pass
 [file mypy.ini]
 \[mypy]
 python_version = 3.6
-[out]
 
 -- This should be a dumping ground for tests of plugins that are sensitive to
 -- typeshed changes.
@@ -1013,7 +1010,6 @@ import d
 -- (Errors are too verbose to check.)
 # cmd: mypy a.py --no-sqlite-cache --cache-map a.py a.meta.json a.data.json
 [file a.py]
-[out]
 
 [case testIniFiles]
 # cmd: mypy
@@ -1361,7 +1357,6 @@ pkg.py:1: error: "int" not callable
 # cmd: mypy --install-types --non-interactive -m pkg
 [file pkg.py]
 1 + 2
-[out]
 
 [case testCmdlineNonInteractiveInstallTypesNoSitePackages]
 # cmd: mypy --install-types --non-interactive --no-site-packages -m pkg
@@ -1588,7 +1583,6 @@ foo/m.py:1: error: "int" not callable
 enable_error_code =
   truthy-bool,
   redundant-expr,
-[out]
 
 [case testCmdlineCfgDisableErrorCodeTrailingComma]
 # cmd: mypy .
@@ -1597,7 +1591,6 @@ enable_error_code =
 disable_error_code =
   misc,
   override,
-[out]
 
 [case testCmdlineCfgAlwaysTrueTrailingComma]
 # cmd: mypy .

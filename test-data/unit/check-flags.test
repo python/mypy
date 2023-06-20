@@ -13,7 +13,6 @@ main:2: error: Function is missing a type annotation for one or more arguments
 [case testNoArgumentFunction]
 # flags: --disallow-untyped-defs
 def f() -> int: pass
-[out]
 
 [case testUnannotatedReturn]
 # flags: --disallow-untyped-defs
@@ -30,7 +29,6 @@ main:2: error: Function is missing a return type annotation
 [case testLambda]
 # flags: --disallow-untyped-defs
 lambda x: x
-[out]
 
 [case testUntypedDef]
 # flags: --disallow-untyped-defs
@@ -252,7 +250,6 @@ def f() -> None: pass
 from typing import Any
 FakeClass = None  # type: Any
 class Foo(FakeClass): pass  # E: Class cannot subclass "FakeClass" (has type "Any")
-[out]
 
 [case testSubclassingAnyMultipleBaseClasses]
 # flags: --disallow-subclassing-any
@@ -260,7 +257,6 @@ from typing import Any
 FakeClass = None  # type: Any
 class ActualClass: pass
 class Foo(ActualClass, FakeClass): pass  # E: Class cannot subclass "FakeClass" (has type "Any")
-[out]
 
 [case testSubclassingAnySilentImports]
 # flags: --disallow-subclassing-any --follow-imports=skip
@@ -568,7 +564,6 @@ from mod import x
 x + ""
 [file mod.py]
 this deliberate syntax error will not be reported
-[out]
 
 [case testFollowImportsError]
 # flags: --follow-imports=error
@@ -589,7 +584,6 @@ main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missin
 [case testIgnoreMissingImportsTrue]
 # flags: --ignore-missing-imports
 from mod import x
-[out]
 
 [case testPerFileIncompleteDefsBasic]
 # flags: --config-file tmp/mypy.ini
@@ -1403,7 +1397,6 @@ from typing import NamedTuple
 N = NamedTuple('N', [('x', N)])  # type: ignore
 n: N
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testCheckDisallowAnyGenericsTypedDict]
 # flags: --disallow-any-generics
@@ -1456,7 +1449,6 @@ C = Callable[[], T]
 
 def f(c: C):
     pass
-[out]
 
 [case testCheckAllowAnyGenericAnyGeneric]
 # flags: --strict --allow-any-generics
@@ -1467,7 +1459,6 @@ C = Callable[[], T]
 
 def f(c: C) -> None:
     pass
-[out]
 
 [case testCheckDisallowAnyGenericsAnyGeneric]
 # flags: --disallow-any-generics
@@ -1478,7 +1469,6 @@ C = Callable[[], T]
 
 def f(c: C):  # E: Missing type parameters for generic type "C"
     pass
-[out]
 
 [case testStrictAnyGeneric]
 # flags: --strict
@@ -1491,7 +1481,6 @@ class A(Generic[T]):
 
 def f(c: A) -> None:  # E: Missing type parameters for generic type "A"
     pass
-[out]
 
 [case testStrictInConfigAnyGeneric]
 # flags: --config-file tmp/mypy.ini
@@ -1507,8 +1496,6 @@ def f(c: A) -> None:  # E: Missing type parameters for generic type "A"
 [file mypy.ini]
 \[mypy]
 strict = True
-[out]
-
 
 [case testStrictInConfigAnyGenericPyProjectTOML]
 # flags: --config-file tmp/pyproject.toml
@@ -1526,8 +1513,6 @@ def f(c: A) -> None:  # E: Missing type parameters for generic type "A"
 \[tool.mypy]
 strict = true
 
-[out]
-
 
 [case testStrictFalseInConfigAnyGeneric]
 # flags: --config-file tmp/mypy.ini
@@ -1543,8 +1528,6 @@ def f(c: A) -> None:
 [file mypy.ini]
 \[mypy]
 strict = False
-[out]
-
 
 [case testStrictFalseInConfigAnyGenericPyProjectTOML]
 # flags: --config-file tmp/pyproject.toml
@@ -1561,8 +1544,6 @@ def f(c: A) -> None:
 [file pyproject.toml]
 \[tool.mypy]
 strict = false
-
-[out]
 
 
 [case testStrictAndStrictEquality]

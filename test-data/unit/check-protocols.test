@@ -2386,7 +2386,6 @@ main:10: note:         def other(self) -> int
 from typing import Protocol
 class P(Protocol, object):
     pass
-[out]
 
 [case testNoneSubtypeOfEmptyProtocol]
 from typing import Protocol
@@ -2394,7 +2393,6 @@ class P(Protocol):
     pass
 
 x: P = None
-[out]
 
 [case testNoneSubtypeOfAllProtocolsWithoutStrictOptional]
 from typing import Protocol
@@ -2404,7 +2402,6 @@ class P(Protocol):
         pass
 
 x: P = None
-[out]
 
 [case testNoneSubtypeOfEmptyProtocolStrict]
 # flags: --strict-optional
@@ -2416,7 +2413,6 @@ x: P = None
 class PBad(Protocol):
     x: int
 y: PBad = None  # E: Incompatible types in assignment (expression has type "None", variable has type "PBad")
-[out]
 
 [case testOnlyMethodProtocolUsableWithIsSubclass]
 from typing import Protocol, runtime_checkable, Union, Type, Sequence, overload
@@ -2454,7 +2450,6 @@ class POverload(Protocol):
 reveal_type(issubclass(int, POverload))  # N: Revealed type is "builtins.bool"
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
-[out]
 
 [case testCallableImplementsProtocol]
 from typing import Protocol
@@ -2473,7 +2468,6 @@ def func(caller: Caller) -> None:
 func(call)
 func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[int, VarArg(str)], None]"; expected "Caller"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testCallableImplementsProtocolGeneric]
 from typing import Protocol, TypeVar, Tuple
@@ -2491,7 +2485,6 @@ def func(caller: Caller[T, S]) -> Tuple[T, S]:
 
 reveal_type(func(call))  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testCallableImplementsProtocolGenericTight]
 from typing import Protocol, TypeVar
@@ -2510,7 +2503,6 @@ def func(caller: Caller) -> None:
 func(call)
 func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[int], int]"; expected "Caller"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testCallableImplementsProtocolGenericNotGeneric]
 from typing import Protocol, TypeVar, Tuple
@@ -2530,7 +2522,6 @@ def func(caller: Caller) -> None:
 func(call)
 func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[T], Tuple[T, T]]"; expected "Caller"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testCallableImplementsProtocolOverload]
 from typing import Protocol, overload, Union
@@ -2556,7 +2547,6 @@ def func(caller: Caller) -> None:
 
 func(call)
 func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[Union[int, str]], Union[int, str]]"; expected "Caller"
-[out]
 
 [case testCallableImplementsProtocolExtraNote]
 from typing import Protocol
@@ -2570,7 +2560,6 @@ def bad(x: int, *args: str) -> None:
 cb: Caller = bad  # E: Incompatible types in assignment (expression has type "Callable[[int, VarArg(str)], None]", variable has type "Caller") \
                   # N: "Caller.__call__" has type "Callable[[Arg(str, 'x'), VarArg(int)], None]"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testCallableImplementsProtocolArgName]
 from typing import Protocol
@@ -2596,7 +2585,6 @@ def anon(caller: CallerAnon) -> None:
 func(call)
 func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[str], None]"; expected "Caller"
 anon(bad)
-[out]
 
 [case testCallableProtocolVsProtocol]
 from typing import Protocol
@@ -2618,7 +2606,6 @@ b: Bad
 
 func(a)
 func(b)  # E: Argument 1 to "func" has incompatible type "Bad"; expected "One"
-[out]
 
 [case testJoinProtocolCallback]
 from typing import Protocol, Callable
@@ -2638,7 +2625,6 @@ b: Normal
 reveal_type([a, b])  # N: Revealed type is "builtins.list[def (__main__.B) -> __main__.B]"
 reveal_type([b, a])  # N: Revealed type is "builtins.list[def (__main__.B) -> __main__.B]"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testMeetProtocolCallback]
 from typing import Protocol, Callable
@@ -2658,7 +2644,6 @@ def b(x: Normal) -> None: ...
 reveal_type([a, b])  # N: Revealed type is "builtins.list[def (x: def (__main__.B) -> __main__.B)]"
 reveal_type([b, a])  # N: Revealed type is "builtins.list[def (x: def (__main__.B) -> __main__.B)]"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testCallbackProtocolFunctionAttributesSubtyping]
 from typing import Protocol
@@ -2716,7 +2701,6 @@ class C(P): ...
 reveal_type(C.register(int))  # N: Revealed type is "def () -> builtins.int"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
-[out]
 
 [case testProtocolVarianceAfterDecorators]
 # The test case is simplified, in reality this caused problems with @abstractmethod
@@ -2730,7 +2714,6 @@ alias = dec
 class P(Protocol[T]):
     @alias
     def meth(self, arg: T) -> T: ...
-[out]
 
 [case testNamedTupleWithNoArgsCallableField]
 from typing import Callable, NamedTuple, Protocol

@@ -19,8 +19,6 @@ def f( *b: 'B') -> None:
 class B: pass
 class C: pass
 [builtins fixtures/tuple.pyi]
-[out]
-
 
 [case testVarArgsAreTuple]
 from typing import Tuple, Sequence
@@ -30,8 +28,6 @@ def test(*t: type) -> None:
     want_tuple(t)
     want_sequence(t)
 [builtins fixtures/tuple.pyi]
-[out]
-
 
 -- Calling varargs function
 -- ------------------------
@@ -655,8 +651,6 @@ def g(*x: str) -> None: pass
 x = f
 x = g # E: Incompatible types in assignment (expression has type "Callable[[VarArg(str)], None]", variable has type "Callable[[int], None]")
 [builtins fixtures/list.pyi]
-[out]
-
 
 -- Decorated method where self is implied by *args
 -- -----------------------------------------------

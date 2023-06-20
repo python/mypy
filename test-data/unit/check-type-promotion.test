@@ -53,7 +53,6 @@ T = TypeVar('T')
 def f(x: Union[SupportsFloat, T]) -> Union[SupportsFloat, T]: pass
 f(0)  # should not crash
 [builtins fixtures/primitives.pyi]
-[out]
 
 [case testIntersectionUsingPromotion1]
 # flags: --warn-unreachable

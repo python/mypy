@@ -234,7 +234,6 @@ if int():
     a = -d
 class A: pass
 [builtins fixtures/bool.pyi]
-[out]
 
 [case testDynamicWithMemberAccess]
 from typing import Any
@@ -252,7 +251,6 @@ d.x = a
 d.x.y.z  # E: "A" has no attribute "y"
 
 class A: pass
-[out]
 
 [case testIndexingWithDynamic]
 from typing import Any
@@ -712,7 +710,6 @@ class A(B):
                                  # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
         pass
 class D: pass
-[out]
 
 [case testInvalidOverrideArgumentCountWithImplicitSignature1]
 import typing
@@ -721,7 +718,6 @@ class B:
 class A(B):
     def f(self, x, y): # dynamic function not type checked
         x()
-[out]
 
 [case testInvalidOverrideArgumentCountWithImplicitSignature2]
 import typing
@@ -795,13 +791,11 @@ class A(B):
 def f() -> None: pass
 def g():
     f(1) # Silent
-[out]
 
 [case testTooFewArgsInDynamic]
 def f(a: int) -> None: pass
 def g():
     f() # Silent
-[out]
 
 [case testJustRightInDynamic]
 def f(a: int) -> None: pass

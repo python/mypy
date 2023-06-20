@@ -1041,7 +1041,6 @@ L0:
 class A(B): pass
 class B(C): pass
 class C: pass
-[out]
 
 [case testDeletableSemanticAnalysis]
 class Err1:

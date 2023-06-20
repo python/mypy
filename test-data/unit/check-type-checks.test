@@ -24,7 +24,6 @@ def f(x: object, n: int, s: str) -> None:
             s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
         n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
 [builtins fixtures/isinstance.pyi]
-[out]
 
 [case testSimpleIsinstance3]
 class A:
@@ -39,7 +38,6 @@ class A:
     else:
         n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
 [builtins fixtures/isinstance.pyi]
-[out]
 
 [case testMultipleIsinstanceTests]
 import typing
@@ -53,7 +51,6 @@ def f(x: object, a: A, b: B, c: int) -> None:
         a = x
         c = x # E: Incompatible types in assignment (expression has type "A", variable has type "int")
 [builtins fixtures/isinstance.pyi]
-[out]
 
 [case testMultipleIsinstanceTests2]
 import typing
@@ -70,7 +67,6 @@ def f(x: object, y: object, n: int, s: str) -> None:
         n = y # E: Incompatible types in assignment (expression has type "object", variable has type "int")
         n = x
 [builtins fixtures/isinstance.pyi]
-[out]
 
 [case testIsinstanceAndElif]
 import typing
@@ -88,7 +84,6 @@ def f(x: object, n: int, s: str) -> None:
             s = x # E: Incompatible types in assignment (expression has type "object", variable has type "str")
         n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
 [builtins fixtures/isinstance.pyi]
-[out]
 
 [case testIsinstanceAndAnyType]
 from typing import Any
@@ -100,7 +95,6 @@ def f(x: Any, n: int, s: str) -> None:
             s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
         s = x
 [builtins fixtures/isinstance.pyi]
-[out]
 
 [case testIsinstanceAndGenericType]
 from typing import TypeVar, Generic

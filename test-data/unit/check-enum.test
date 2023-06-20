@@ -230,7 +230,6 @@ an_int = returns_some_int_enum()
 
 an_enum = SomeIntEnum.x
 an_enum = returns_some_int_enum()
-[out]
 
 [case testStrEnumCreation]
 # flags: --python-version 3.11
@@ -244,7 +243,6 @@ reveal_type(MyStrEnum.x)  # N: Revealed type is "Literal[__main__.MyStrEnum.x]?"
 reveal_type(MyStrEnum.x.value)  # N: Revealed type is "Literal['x']?"
 reveal_type(MyStrEnum.y)  # N: Revealed type is "Literal[__main__.MyStrEnum.y]?"
 reveal_type(MyStrEnum.y.value)  # N: Revealed type is "Literal['y']?"
-[out]
 
 [case testEnumMethods]
 from enum import Enum
@@ -553,7 +551,6 @@ a: E = E.x  # type: ignore[used-before-def]
 class E(Enum):
     x = 1
     y = 2
-[out]
 
 [case testEnumWorkWithForward2]
 from enum import Enum
@@ -563,7 +560,6 @@ F = Enum('F', {'x': 1, 'y': 2})
 def fn(x: F) -> None:
     pass
 fn(b)
-[out]
 
 [case testFunctionalEnum]
 # TODO: Needs to have enum34 stubs somehow
@@ -580,7 +576,6 @@ Gu.a
 Gb.a
 Hu.a
 Hb.a
-[out]
 
 [case testEnumIncremental]
 import m

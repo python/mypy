@@ -132,7 +132,6 @@ def f(x: int = None) -> None:
   x + 1  # E: Unsupported left operand type for + ("None") \
          # N: Left operand is of type "Optional[int]"
 f(None)
-[out]
 
 [case testNoInferOptionalFromDefaultNone]
 # flags: --no-implicit-optional
@@ -140,7 +139,6 @@ def f(x: int = None) -> None:  # E: Incompatible default for argument "x" (defau
                                # N: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True \
                                # N: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
   pass
-[out]
 
 [case testInferOptionalFromDefaultNoneComment]
 # flags: --implicit-optional
@@ -149,7 +147,6 @@ def f(x=None):
   x + 1  # E: Unsupported left operand type for + ("None") \
          # N: Left operand is of type "Optional[int]"
 f(None)
-[out]
 
 [case testNoInferOptionalFromDefaultNoneComment]
 # flags: --no-implicit-optional
@@ -158,7 +155,6 @@ def f(x=None):  # E: Incompatible default for argument "x" (default has type "No
                 # N: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
   # type: (int) -> None
   pass
-[out]
 
 [case testInferOptionalType]
 x = None
@@ -231,7 +227,6 @@ class C:
     x = None  # type: int
     def __init__(self) -> None:
         self.x = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
-[out]
 
 [case testMultipleAssignmentNoneClassVariableInInit]
 from typing import Optional
@@ -241,7 +236,6 @@ class C:
         self.x = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
         self.y = None  # E: Incompatible types in assignment (expression has type "None", variable has type "str")
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testOverloadWithNone]
 from foo import *
@@ -258,14 +252,12 @@ reveal_type(f(0))  # N: Revealed type is "builtins.int"
 from typing import Optional
 def f(a: Optional[int]) -> int:
     return a or 0
-[out]
 
 [case testOptionalTypeOrTypeTypeVar]
 from typing import Optional, TypeVar
 T = TypeVar('T')
 def f(a: Optional[T], b: T) -> T:
     return a or b
-[out]
 
 [case testOptionalTypeOrTypeBothOptional]
 from typing import Optional
@@ -304,7 +296,6 @@ def f() -> str:
     a = None
     b = ''
     return a or b
-[out]
 
 [case testNoneOrTypeVarIsTypeVar]
 from typing import TypeVar
@@ -312,13 +303,11 @@ T = TypeVar('T')
 def f(b: T) -> T:
     a = None
     return a or b
-[out]
 
 [case testYieldNothingInFunctionReturningGenerator]
 from typing import Generator
 def f() -> Generator[None, None, None]:
     yield
-[out]
 
 [case testNoneAndStringIsNone]
 a = None
@@ -671,7 +660,6 @@ x: object
 y: Optional[int]
 x = y
 reveal_type(x) # N: Revealed type is "Union[builtins.int, None]"
-[out]
 
 [case testNarrowOptionalOutsideLambda]
 from typing import Optional

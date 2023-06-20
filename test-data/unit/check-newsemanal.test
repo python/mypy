@@ -1960,7 +1960,6 @@ t: Union[Tuple[int, int], Tuple[str, str]]
 for x in t:
     reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
 [builtins fixtures/for.pyi]
-[out]
 
 [case testNewAnalyzerFallbackUpperBoundCheckAndFallbacks]
 from typing import TypeVar, Generic, Tuple
@@ -2532,7 +2531,6 @@ force1(reveal_type(var1))            # N: Revealed type is "Literal[1]"
 
 [case testNewAnalyzerReportLoopInMRO]
 class A(A): ... # E: Cannot resolve name "A" (possible cyclic definition)
-[out]
 
 [case testNewSemanticAnalyzerUnimportedSpecialCase]
 # flags: --ignore-missing-imports
@@ -2548,7 +2546,6 @@ x: c.C
 [file other.py]
 from p.c import B
 
-[out]
 
 [case testNewSemanticAnalyzerQualifiedFunctionAsType]
 import m
@@ -2893,7 +2890,6 @@ import a.b.c
 [file other.py]
 from a.b.a import foo
 [builtins fixtures/module.pyi]
-[out]
 
 [case testNewAnalyzerNamedTupleMethod]
 from typing import NamedTuple

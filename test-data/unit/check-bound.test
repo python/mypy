@@ -154,7 +154,6 @@ def f(x: T) -> T:
 
 b = f(B())
 [builtins fixtures/property.pyi]
-[out]
 
 [case testBoundClassMethod]
 from typing import TypeVar

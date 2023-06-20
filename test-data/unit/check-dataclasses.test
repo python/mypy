@@ -1112,7 +1112,6 @@ from typing import Optional
 class Foo:
     bar: Optional[int] = field(default=None)
 [builtins fixtures/dataclasses.pyi]
-[out]
 
 [case testNoComplainFieldNoneStrict]
 # flags: --python-version 3.7
@@ -1124,7 +1123,6 @@ from typing import Optional
 class Foo:
     bar: Optional[int] = field(default=None)
 [builtins fixtures/dataclasses.pyi]
-[out]
 
 [case testDisallowUntypedWorksForward]
 # flags: --disallow-untyped-defs --python-version 3.7

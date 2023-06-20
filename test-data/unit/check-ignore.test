@@ -52,7 +52,6 @@ b.bar() # E: Module has no attribute "bar"
 foo = 3
 
 [builtins fixtures/module_all.pyi]
-[out]
 
 [case testIgnoreImportStarFromBadModule]
 from m import * # type: ignore
@@ -122,7 +121,6 @@ class C(B):
     def f(self) -> None:
         self.f(1) # E: Too many arguments for "f" of "C"
         self.g(1)
-[out]
 
 [case testIgnoredModuleDefinesBaseClass2]
 import m # type: ignore
@@ -134,7 +132,6 @@ c = C()
 c.f(1) # E: Too many arguments for "f" of "C"
 c.g(1)
 c.x = 1
-[out]
 
 [case testIgnoredModuleDefinesBaseClassAndClassAttribute]
 import m # type: ignore
@@ -147,7 +144,6 @@ C.f(1) # E: Too many arguments for "f" of "C"
 C.g(1)
 C.x = 1
 [builtins fixtures/staticmethod.pyi]
-[out]
 
 [case testIgnoredModuleDefinesBaseClassWithInheritance1]
 from m import B # type: ignore
@@ -157,7 +153,6 @@ class D(C, B):
     def f(self) -> None:
         self.f(1) # E: Too many arguments for "f" of "D"
         self.g(1)
-[out]
 
 [case testIgnoredModuleDefinesBaseClassWithInheritance2]
 from m import B # type: ignore
@@ -167,13 +162,11 @@ class D(C):
     def f(self) -> None:
         self.f(1) # E: Too many arguments for "f" of "D"
         self.g(1)
-[out]
 
 [case testIgnoreWithFollowingIndentedComment]
 if 1:  # type: ignore
     # blah
     pass
-[out]
 
 [case testIgnoreTooManyTypeArguments]
 from typing import TypeVar, Generic
@@ -214,7 +207,6 @@ import m
 m.f(kw=1)  # type: ignore
 [file m.py]
 def f() -> None: pass
-[out]
 
 [case testCannotIgnoreBlockingError]
 yield  # type: ignore  # E: "yield" outside function

@@ -464,7 +464,6 @@ with assertRaises(ValueError, "not enough values to unpack"):
 with assertRaises(ValueError, "not enough values to unpack"):
     unpack3([1])
 
-[out]
 
 [case testModuleTopLevel]
 x = 1

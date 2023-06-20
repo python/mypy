@@ -43,7 +43,6 @@ async def f() -> int:
     return x
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
-[out]
 
 [case testAwaitDefaultContext]
 
@@ -663,7 +662,6 @@ async def decorated_host_coroutine() -> None:
 
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
-[out]
 
 [case testAsyncGenDisallowUntyped]
 # flags: --disallow-untyped-defs
@@ -677,7 +675,6 @@ async def g() -> AsyncGenerator[Any, None]:
     yield 0
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
-[out]
 
 [case testAsyncGenDisallowUntypedTriggers]
 # flags: --disallow-untyped-defs
@@ -693,7 +690,6 @@ async def g():  # E: Function is missing a return type annotation
     yield 0
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
-[out]
 
 [case testAsyncOverloadedFunction]
 from typing import overload

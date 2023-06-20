@@ -145,7 +145,6 @@ class B:
     def f(self): pass
 class C(B, A): pass
 class D(A, B): pass
-[out]
 
 [case testInstanceVarNameOverlapInMultipleInheritanceWithInvalidTypes]
 import typing
@@ -342,7 +341,6 @@ class Base1:
 class Base2:
     NestedVar = B
 class Combo(Base2, Base1): ...
-[out]
 
 [case testMultipleInheritance_ReferenceToSubclassesFromSameMROCustomMetaclass]
 class Metaclass(type):
@@ -356,7 +354,6 @@ class Base1:
 class Base2:
     NestedVar = B
 class Combo(Base2, Base1): ...
-[out]
 
 [case testMultipleInheritance_ReferenceToSubclassesFromSameMROOverloadedNew]
 from mixins import A, B
@@ -430,7 +427,6 @@ class Base2:
     Nested = ChildGeneric
 class A(Base2, Base1):
     pass
-[out]
 
 [case testMultipleInheritance_RefersToNamedTuples]
 from typing import NamedTuple
@@ -472,7 +468,6 @@ class Base2:
     Nested: GenericBase['Base2']
 class A(Base1, Base2):
     Nested: GenericBase['A']
-[out]
 
 [case testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType1]
 from typing import TypeVar, Generic
@@ -513,7 +508,6 @@ class Base2:
     Nested: GenericBase['Base1']
 class A(Base1, Base2):
     Nested: GenericBase['Base1']
-[out]
 
 [case testMultipleInheritance_MethodDefinitionsCompatibleWithOverride]
 from typing import TypeVar, Union
@@ -526,7 +520,6 @@ class Flag:
 #     def __or__(self, n: int) -> int: ...
 class IntFlag(int, Flag):
     def __or__(self: _T, other: Union[int, _T]) -> _T: ...
-[out]
 
 [case testMultipleInheritance_MethodDefinitionsIncompatibleOverride]
 from typing import TypeVar, Union
@@ -551,7 +544,6 @@ class Flag:
 
 class IntFlag(int, Flag):
     pass
-[out]
 
 [case testMultipleInheritance_MethodsReturningSelfCompatible]
 class A(object):
@@ -587,7 +579,6 @@ class Outer(Mixin1.Meta):
 class Mixin2:
     NestedVar = Outer
 class Combo(Mixin2, Mixin1): ...
-[out]
 
 [case testNestedVariableRefersToCompletelyDifferentClasses]
 class A:
@@ -612,7 +603,6 @@ class Mixin2:
         pass
 class A(Mixin1, Mixin2):
     pass
-[out]
 
 [case testDoNotFailIfOneOfNestedClassesIsOuterInheritedFromAny]
 from typing import Any
@@ -625,7 +615,6 @@ class Mixin2:
         pass
 class A(Mixin1, Mixin2):
     pass
-[out]
 
 [case testGenericMultipleOverrideRemap]
 from typing import TypeVar, Generic, Tuple

@@ -128,7 +128,6 @@ def f(a,        # type: A
     reveal_type(e)      # N: Revealed type is "__main__.E"
     reveal_type(kwargs) # N: Revealed type is "builtins.dict[builtins.str, __main__.F]"
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testFastParsePerArgumentAnnotationsWithReturn]
 # flags: --implicit-optional
@@ -155,7 +154,6 @@ def f(a,        # type: A
     reveal_type(kwargs) # N: Revealed type is "builtins.dict[builtins.str, __main__.F]"
     return "not an int"  # E: Incompatible return value type (got "str", expected "int")
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testFastParsePerArgumentAnnotationsWithAnnotatedBareStar]
 
@@ -165,7 +163,6 @@ def f(*, # type: int  # E: bare * has associated type comment
       # type: (...) -> int
     pass
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testFastParsePerArgumentAnnotationsWithReturnAndBareStar]
 
@@ -176,7 +173,6 @@ def f(*,
     reveal_type(x) # N: Revealed type is "builtins.str"
     return "not an int"  # E: Incompatible return value type (got "str", expected "int")
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testFasterParseTooManyArgumentsAnnotation]
 def f():  # E: Type signature has too many arguments

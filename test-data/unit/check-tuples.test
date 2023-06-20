@@ -581,7 +581,6 @@ if int():
 if int():
     l = la
 [builtins fixtures/list.pyi]
-[out]
 
 [case testAssignmentToStarFromListInference]
 from typing import List
@@ -596,7 +595,6 @@ if int():
 if int():
     l = la
 [builtins fixtures/list.pyi]
-[out]
 
 [case testAssignmentToStarFromTupleTypeInference]
 from typing import List, Tuple
@@ -611,7 +609,6 @@ if int():
 
 class A: pass
 [builtins fixtures/list.pyi]
-[out]
 
 [case testAssignmentToStarFromListTypeInference]
 from typing import List
@@ -625,7 +622,6 @@ if int():
 
 class A: pass
 [builtins fixtures/list.pyi]
-[out]
 
 [case testAssignmentToStarFromIterable]
 from typing import List, Tuple, Iterable
@@ -857,13 +853,11 @@ z1 = B()[0] # type: int
 z2 = B()[1] # type: str # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 B()[100]
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testValidTupleBaseClass]
 from typing import Tuple
 class A(tuple): pass
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testTupleBaseClass2]
 import m
@@ -875,7 +869,6 @@ x, y = a
 x() # E: "int" not callable
 y() # E: "str" not callable
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testGenericClassWithTupleBaseClass]
 from typing import TypeVar, Generic, Tuple
@@ -884,8 +877,6 @@ class Test(Generic[T], Tuple[T]): pass
 x = Test() # type: Test[int]
 reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.Test[builtins.int]]"
 [builtins fixtures/tuple.pyi]
-[out]
-
 
 -- Variable-length tuples (Tuple[t, ...] with literal '...')
 -- ---------------------------------------------------------
@@ -1000,7 +991,6 @@ def g(x: Union[str, Tuple[str, str]]) -> None:
         reveal_type(x) # N: Revealed type is "builtins.str"
 
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testTupleMeetTupleAnyComplex]
 from typing import Tuple, Union
@@ -1024,7 +1014,6 @@ def tuplify2(v: Variant2) -> None:
     else:
         reveal_type(v) # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testTupleMeetTupleAnyAfter]
 from typing import Tuple, Union
@@ -1035,7 +1024,6 @@ def good(blah: Union[Tuple[int, int], int]) -> None:
         reveal_type(blah) # N: Revealed type is "Tuple[builtins.int, builtins.int]"
     reveal_type(blah) # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], builtins.int]"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testTupleMeetTupleVariable]
 from typing import Tuple, TypeVar, Generic, Union
@@ -1055,7 +1043,6 @@ def g(x: T) -> Tuple[T, T]:
 z = 1
 x, y = g(z) # E: Argument 1 to "g" has incompatible type "int"; expected "Tuple[B1, B2]"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testFixedTupleJoinVarTuple]
 from typing import Tuple
@@ -1075,7 +1062,6 @@ reveal_type(vartup_a if int() else fixtup)  # N: Revealed type is "builtins.tupl
 
 
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testFixedTupleJoinList]
 from typing import Tuple, List
@@ -1094,7 +1080,6 @@ reveal_type(fixtup if int() else lst_a)  # N: Revealed type is "typing.Sequence[
 reveal_type(lst_a if int() else fixtup)  # N: Revealed type is "typing.Sequence[__main__.A]"
 
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testEmptyTupleJoin]
 from typing import Tuple, List
@@ -1116,7 +1101,6 @@ reveal_type(empty if int() else lst)  # N: Revealed type is "typing.Sequence[__m
 reveal_type(lst if int() else empty)  # N: Revealed type is "typing.Sequence[__main__.A]"
 
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testTupleSubclassJoin]
 from typing import Tuple, NamedTuple
@@ -1136,7 +1120,6 @@ reveal_type(ntup if int() else vartup)  # N: Revealed type is "builtins.tuple[bu
 reveal_type(subtup if int() else vartup)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testTupleJoinIrregular]
 from typing import Tuple
@@ -1154,7 +1137,6 @@ reveal_type(tup2 if int() else ())  # N: Revealed type is "builtins.tuple[builti
 reveal_type(() if int() else tup2)  # N: Revealed type is "builtins.tuple[builtins.bool, ...]"
 
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testTupleSubclassJoinIrregular]
 from typing import Tuple, NamedTuple
@@ -1182,7 +1164,6 @@ reveal_type(tup2 if int() else subtup)  # N: Revealed type is "builtins.tuple[bu
 reveal_type(subtup if int() else tup2)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testTupleWithUndersizedContext]
 a = ([1], 'x')
@@ -1264,7 +1245,6 @@ class DT(Tuple[str, str], Base[int]):
 reveal_type(f(DT())) # N: Revealed type is "builtins.int"
 
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testTypeTupleClassmethod]
 from typing import Tuple, Type

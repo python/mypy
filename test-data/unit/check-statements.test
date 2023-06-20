@@ -45,49 +45,41 @@ def f() -> None:
     return None
 def g() -> None:
     return f()
-[out]
 
 [case testReturnInGenerator]
 from typing import Generator
 def f() -> Generator[int, None, str]:
     yield 1
     return "foo"
-[out]
 
 [case testEmptyReturnInGenerator]
 from typing import Generator
 def f() -> Generator[int, None, str]:
     yield 1
     return  # E: Return value expected
-[out]
 
 [case testNoReturnInGenerator]
 from typing import Generator
 def f() -> Generator[int, None, str]:  # E: Missing return statement
     yield 1
-[out]
 
 [case testEmptyReturnInNoneTypedGenerator]
 from typing import Generator
 def f() -> Generator[int, None, None]:
     yield 1
     return
-[out]
 
 [case testNonEmptyReturnInNoneTypedGenerator]
 from typing import Generator
 def f() -> Generator[int, None, None]:
     yield 1
     return 42  # E: No return value expected
-[out]
 
 [case testReturnInIterator]
 from typing import Iterator
 def f() -> Iterator[int]:
     yield 1
     return "foo"
-[out]
-
 
 -- If statement
 -- ------------
@@ -154,14 +146,12 @@ import typing
 while None:
     break
 [builtins fixtures/bool.pyi]
-[out]
 
 [case testContinueStatement]
 import typing
 while None:
     continue
 [builtins fixtures/bool.pyi]
-[out]
 
 [case testForStatementTypeComments]
 
@@ -318,7 +308,6 @@ class A:
 
 class B(A): pass
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testAdditionalOperatorsInOpAssign]
 
@@ -368,8 +357,6 @@ a = A()
 b = [a]
 b[0] += 1
 [builtins fixtures/list.pyi]
-[out]
-
 
 -- Assert statement
 -- ----------------
@@ -608,7 +595,6 @@ def f() -> None:
     raise
   x + 'a' # E: Unsupported left operand type for + ("int")
 [builtins fixtures/exception.pyi]
-[out]
 
 [case testTryWithElse]
 import typing
@@ -1128,39 +1114,33 @@ def f() -> Iterator[int]:
     yield 1
     yield '' # E: Incompatible types in "yield" (actual type "str", expected type "int")
 [builtins fixtures/for.pyi]
-[out]
 
 [case testYieldInFunctionReturningGenerator]
 from typing import Generator
 def f() -> Generator[int, None, None]:
     yield 1
 [builtins fixtures/for.pyi]
-[out]
 
 [case testYieldInFunctionReturningIterable]
 from typing import Iterable
 def f() -> Iterable[int]:
     yield 1
 [builtins fixtures/for.pyi]
-[out]
 
 [case testYieldInFunctionReturningObject]
 def f() -> object:
     yield 1
 [builtins fixtures/for.pyi]
-[out]
 
 [case testYieldInFunctionReturningAny]
 from typing import Any
 def f() -> Any:
     yield object()
-[out]
 
 [case testYieldInFunctionReturningFunction]
 from typing import Callable
 def f() -> Callable[[], None]: # E: The return type of a generator function should be "Generator" or one of its supertypes
     yield object()
-[out]
 
 [case testYieldInDynamicallyTypedFunction]
 import typing
@@ -1172,7 +1152,6 @@ import typing
 def f() -> int: # E: The return type of a generator function should be "Generator" or one of its supertypes
     yield 1
 [builtins fixtures/for.pyi]
-[out]
 
 [case testTypeInferenceContextAndYield]
 from typing import List, Iterator
@@ -1180,7 +1159,6 @@ def f() -> 'Iterator[List[int]]':
     yield []
     yield [object()] # E: List item 0 has incompatible type "object"; expected "int"
 [builtins fixtures/for.pyi]
-[out]
 
 [case testYieldAndReturnWithoutValue]
 from typing import Iterator
@@ -1200,15 +1178,12 @@ from typing import Iterator
 def f() -> Iterator[int]:
     yield  # E: Yield value expected
 [builtins fixtures/for.pyi]
-[out]
 
 [case testYieldWithExplicitNone]
 from typing import Iterator
 def f() -> Iterator[None]:
     yield None
 [builtins fixtures/for.pyi]
-[out]
-
 
 -- Yield from statement
 -- --------------------
@@ -1224,7 +1199,6 @@ def h() -> Iterator[int]:
 def f() -> Iterator[str]:
     yield from g()
     yield from h()  # E: Incompatible types in "yield from" (actual type "int", expected type "str")
-[out]
 
 [case testYieldFromAppliedToAny]
 from typing import Any
@@ -1232,7 +1206,6 @@ def g() -> Any:
     yield object()
 def f() -> Any:
     yield from g()
-[out]
 
 [case testYieldFromInFunctionReturningFunction]
 from typing import Iterator, Callable
@@ -1240,7 +1213,6 @@ def g() -> Iterator[int]:
     yield 42
 def f() -> Callable[[], None]:  # E: The return type of a generator function should be "Generator" or one of its supertypes
     yield from g()
-[out]
 
 [case testYieldFromNotIterableReturnType]
 from typing import Iterator
@@ -1248,7 +1220,6 @@ def g() -> Iterator[int]:
     yield 42
 def f() -> int:  # E: The return type of a generator function should be "Generator" or one of its supertypes
     yield from g()
-[out]
 
 [case testYieldFromNotAppliedIterator]
 from typing import Iterator
@@ -1256,7 +1227,6 @@ def g() -> int:
     return 42
 def f() -> Iterator[int]:
     yield from g()  # E: "yield from" can't be applied to "int"
-[out]
 
 [case testYieldFromCheckIncompatibleTypesTwoIterables]
 from typing import List, Iterator
@@ -1266,12 +1236,10 @@ def f() -> Iterator[List[int]]:
     yield from g()
     yield from [1, 2, 3]  # E: Incompatible types in "yield from" (actual type "int", expected type "List[int]")
 [builtins fixtures/for.pyi]
-[out]
 
 [case testYieldFromNotAppliedToNothing]
 def h():
     yield from  # E: invalid syntax
-[out]
 
 [case testYieldFromAndYieldTogether]
 from typing import Iterator
@@ -1282,14 +1250,12 @@ def f() -> Iterator[str]:
 def g() -> Iterator[str]:
     yield "g2 spam"
     yield "g2 more spam"
-[out]
 
 [case testYieldFromAny]
 from typing import Iterator
 def f(a):
     b = yield from a
     return b
-[out]
 
 [case testYieldFromGenericCall]
 from typing import Generator, TypeVar
@@ -1962,7 +1928,6 @@ def f() -> None:
         x = y = 'x' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
         x = y = 1   # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 [builtins fixtures/primitives.pyi]
-[out]
 
 [case testChainedAssignmentWithType]
 x = y = None # type: int
@@ -2123,7 +2088,6 @@ for i in lst:
 
 N = NamedTuple('N', [('x', int)])
 [builtins fixtures/list.pyi]
-[out]
 
 [case testForwardRefsInForStatement]
 from typing import List, NamedTuple
@@ -2136,7 +2100,6 @@ for i in lst: # type: N
 N = NamedTuple('N', [('x', int)])
 class M(N): pass
 [builtins fixtures/list.pyi]
-[out]
 
 [case testForwardRefsInWithStatementImplicit]
 from typing import ContextManager, Any
@@ -2149,7 +2112,6 @@ with cm as g:
 N = TypedDict('N', {'x': int})
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-medium.pyi]
-[out]
 
 [case testForwardRefsInWithStatement]
 from typing import ContextManager, Any
@@ -2162,7 +2124,6 @@ with cm as g:  # type: N
 N = TypedDict('N', {'x': int})
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-medium.pyi]
-[out]
 
 [case testGlobalWithoutInitialization]
 # flags: --disable-error-code=annotation-unchecked

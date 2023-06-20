@@ -1694,7 +1694,6 @@ pass
 
 [rechecked a, a.c]
 [stale a, a.c]
-[out]
 
 [case testIncrementalNestedClassRef]
 import top
@@ -2459,7 +2458,6 @@ class Pair(NamedTuple):
 
 Person(name=Pair(first="John", last="Doe"))
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testNoCrashForwardRefToBrokenDoubleNewTypeIncremental]
 from typing import Any, List, NewType
@@ -2470,7 +2468,6 @@ Foos = NewType('Foos', List[Foo]) # type: ignore
 def frob(foos: List[Foos]) -> None:
     pass
 [builtins fixtures/list.pyi]
-[out]
 
 [case testNoCrashForwardRefOverloadIncremental]
 from typing import overload, List
@@ -2484,7 +2481,6 @@ def f(x):
 
 F = List[int]
 [builtins fixtures/list.pyi]
-[out]
 
 [case testNoCrashForwardRefOverloadIncrementalClass]
 from typing import overload, Tuple, NamedTuple
@@ -2502,7 +2498,6 @@ class N(NamedTuple):
     x: A
 A = Tuple[int]
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testNewTypeFromForwardNamedTupleIncremental]
 from typing import NewType, NamedTuple, Tuple
@@ -2514,7 +2509,6 @@ class N(NamedTuple):
 x: NT = N(1) # type: ignore
 x = NT(N(1))
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testNewTypeFromForwardTypedDictIncremental]
 from typing import NewType, Tuple, Dict
@@ -2525,7 +2519,6 @@ class N(TypedDict):
     x: A
 A = Dict[str, int]
 [builtins fixtures/dict.pyi]
-[out]
 
 -- Some crazy self-referential named tuples, types dicts, and aliases
 -- to be sure that everything can be _serialized_ (i.e. ForwardRefs are removed).
@@ -2539,7 +2532,6 @@ class C(List['A']):
 A = List[int]
 x: int = C()[0][0]
 [builtins fixtures/list.pyi]
-[out]
 
 [case testForwardTypeAliasInBase2]
 
@@ -2556,7 +2548,6 @@ class B(NamedTuple):
 C(1).x
 C(1)[0]
 [builtins fixtures/list.pyi]
-[out]
 
 [case testSerializeRecursiveAliases1]
 
@@ -2565,7 +2556,6 @@ from typing import Type, Callable, Union
 A = Union[A, int]  # type: ignore
 B = Callable[[B], int] # type: ignore
 C = Type[C] # type: ignore
-[out]
 
 [case testSerializeRecursiveAliases2]
 
@@ -2574,7 +2564,6 @@ from typing import Type, Callable, Union
 A = Union[B, int]  # type: ignore
 B = Callable[[C], int] # type: ignore
 C = Type[A] # type: ignore
-[out]
 
 [case testSerializeRecursiveAliases3]
 
@@ -2585,7 +2574,6 @@ B = Callable[[C], int] # type: ignore
 class C(NamedTuple): # type: ignore
     x: A
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testGenericTypeAliasesForwardAnyIncremental1]
 from typing import TypeVar, Generic
@@ -2609,7 +2597,6 @@ y.y = 1
 y.y = 'x'
 
 z = Node(1, 'x') # type: AnyNode
-[out]
 
 [case testGenericTypeAliasesForwardAnyIncremental2]
 from typing import TypeVar, Generic
@@ -2633,7 +2620,6 @@ y.y = 'x'
 z = Node(1, 'x') # type: AnyNode
 IntNode = Node[int, S]
 AnyNode = Node[S, T]
-[out]
 
 [case testNamedTupleForwardAsUpperBoundSerialization]
 from typing import NamedTuple, TypeVar, Generic
@@ -2646,7 +2632,6 @@ z: int = G[M]().x.x  # type: ignore[used-before-def]
 z = G[M]().x[0]  # type: ignore[used-before-def]
 M = NamedTuple('M', [('x', int)])
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testSelfRefNTIncremental1]
 

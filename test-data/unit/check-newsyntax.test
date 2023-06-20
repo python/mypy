@@ -1,12 +1,10 @@
 [case testNewSyntaxRequire36]
 # flags: --python-version 3.5
 x: int = 5  # E: Variable annotation syntax is only supported in Python 3.6 and greater
-[out]
 
 [case testNewSyntaxSyntaxError]
 # flags: --python-version 3.6
 x: int: int  # E: invalid syntax
-[out]
 
 [case testNewSyntaxBasics]
 # flags: --python-version 3.6
@@ -20,7 +18,6 @@ b: str = 5  # E: Incompatible types in assignment (expression has type "int", va
 
 zzz: int
 zzz: str  # E: Name "zzz" already defined on line 10
-[out]
 
 [case testNewSyntaxWithDict]
 # flags: --python-version 3.6
@@ -31,7 +28,6 @@ d[42] = 'ab'
 d[42] = 42  # E: Incompatible types in assignment (expression has type "int", target has type "str")
 d['ab'] = 'ab'  # E: Invalid index type "str" for "Dict[int, str]"; expected type "int"
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testNewSyntaxWithRevealType]
 # flags: --python-version 3.6
@@ -43,7 +39,6 @@ def tst_local(dct: Dict[int, T]) -> Dict[T, int]:
 
 reveal_type(tst_local({1: 'a'}))  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testNewSyntaxWithInstanceVars]
 # flags: --python-version 3.6
@@ -56,20 +51,17 @@ TstInstance().x = 5
 TstInstance().x = 'ab'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 TstInstance().a = 5  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 TstInstance().a = 'ab'
-[out]
 
 [case testNewSyntaxWithClassVars]
 # flags: --strict-optional --python-version 3.6
 class CCC:
     a: str = None  # E: Incompatible types in assignment (expression has type "None", variable has type "str")
-[out]
 
 [case testNewSyntaxWithStrictOptional]
 # flags: --strict-optional --python-version 3.6
 strict: int
 strict = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
 strict2: int = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
-[out]
 
 [case testNewSyntaxWithStrictOptionalFunctions]
 # flags: --strict-optional --python-version 3.6
@@ -77,7 +69,6 @@ def f() -> None:
     x: int
     if int():
         x = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
-[out]
 
 [case testNewSyntaxWithStrictOptionalClasses]
 # flags: --strict-optional --python-version 3.6
@@ -85,7 +76,6 @@ class C:
     def meth(self) -> None:
         x: int = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
         self.x: int = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
-[out]
 
 [case testNewSyntaxSpecialAssign]
 # flags: --python-version 3.6

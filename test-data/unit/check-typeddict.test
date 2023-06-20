@@ -1477,7 +1477,6 @@ class Movie(MovieBase):
 m: Movie
 reveal_type(m['director']['name']) # N: Revealed type is "Any"
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testSubclassOfRecursiveTypedDict]
 # flags: --disable-recursive-aliases
@@ -1493,7 +1492,6 @@ class HelpCommand(Command):
 hc = HelpCommand(subcommands=[])
 reveal_type(hc)  # N: Revealed type is "TypedDict('__main__.HelpCommand', {'subcommands': builtins.list[Any]})"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testTypedDictForwardAsUpperBound]
 from typing import TypeVar, Generic
@@ -1509,7 +1507,6 @@ z: int = G[M]().x['x']  # type: ignore[used-before-def]
 class M(TypedDict):
     x: int
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testTypedDictWithImportCycleForward]
 import a
@@ -1549,7 +1546,6 @@ from mypy_extensions import TypedDict
 
 tp = TypedDict('tp', {'x': int})
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testTypedDictAsStarStarArg]
 from mypy_extensions import TypedDict

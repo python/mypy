@@ -95,7 +95,6 @@ def f(a: T) -> 'A[T]': pass
 
 class A(Generic[T]): pass
 class B: pass
-[out]
 
 [case testInferLocalVariableTypeWithUnderspecifiedGenericType]
 from typing import TypeVar, Generic
@@ -105,7 +104,6 @@ def g() -> None:
 
 def f() -> 'A[T]': pass
 class A(Generic[T]): pass
-[out]
 
 [case testInferMultipleLocalVariableTypesWithTupleRvalue]
 from typing import TypeVar, Generic
@@ -124,7 +122,6 @@ def g() -> None:
 def f(a: T) -> 'A[T]': pass
 class A(Generic[T]): pass
 class B: pass
-[out]
 
 [case testInferMultipleLocalVariableTypesWithArrayRvalueAndNesting]
 from typing import TypeVar, List, Generic
@@ -146,8 +143,6 @@ def g(a: T) -> List[T]: pass
 class A(Generic[T]): pass
 class B: pass
 [builtins fixtures/for.pyi]
-[out]
-
 
 -- Return types with multiple tvar instances
 -- -----------------------------------------
@@ -430,7 +425,6 @@ def f() -> None:
         c = [B()]
 class B: pass
 [builtins fixtures/list.pyi]
-[out]
 
 [case testNestedListExpressions]
 from typing import List
@@ -522,7 +516,6 @@ class A(Generic[T]): pass
 class B: pass
 class C(B): pass
 class D: pass
-[out]
 
 [case testIntersectionWithInferredGenericArgument]
 from foo import *
@@ -796,7 +789,6 @@ class A: pass
 map(
   [lambda x: x], [])
 [builtins fixtures/list.pyi]
-[out]
 
 [case testChainedAssignmentInferenceContexts]
 from typing import List
@@ -852,7 +844,6 @@ def f1(iterable: Iterable[Tuple[str, Any]] = None) -> None:
 def f2(iterable: Iterable[Tuple[str, Any]], **kw: Any) -> None:
     pass
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testInferenceInGenericFunction]
 from typing import TypeVar, List
@@ -862,7 +853,6 @@ def f(a: T) -> None:
     l.append(a)
     l.append(1) # E: Argument 1 to "append" of "list" has incompatible type "int"; expected "T"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testInferenceInGenericClass]
 from typing import TypeVar, Generic, List
@@ -874,7 +864,6 @@ class A(Generic[S]):
         l.append(a)
         l.append(b) # E: Argument 1 to "append" of "list" has incompatible type "S"; expected "T"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testLambdaInGenericFunction]
 from typing import TypeVar, Callable
@@ -1358,7 +1347,6 @@ def f(x: Callable[..., T]) -> T:
 
 x: Tuple[str, ...] = f(tuple)
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testUseCovariantGenericOuterContextUserDefined]
 from typing import TypeVar, Callable, Generic
@@ -1372,7 +1360,6 @@ def f(x: Callable[..., T]) -> T:
     return x()
 
 x: G[str] = f(G)
-[out]
 
 [case testConditionalExpressionWithEmptyListAndUnionWithAny]
 from typing import Union, List, Any

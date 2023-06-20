@@ -186,7 +186,6 @@ False
 import typing
 x = 1 / 2
 x = 1.5
-[out]
 
 [case testIntMethods]
 import typing
@@ -219,7 +218,6 @@ d = dict.fromkeys('foo')
 d['x'] = 2
 d2 = dict.fromkeys([1, 2], b'')
 d2[2] = b'foo'
-[out]
 
 [case testIsinstanceWithTuple]
 from typing import cast, Any
@@ -254,7 +252,6 @@ from typing import BinaryIO
 def f(f: BinaryIO) -> None:
     f.write(b'foo')
     f.write(bytearray(b'foo'))
-[out]
 
 [case testIOTypes]
 from typing import IO
@@ -357,7 +354,6 @@ x = 2
 def f(x: float) -> None: pass
 f(1.1)
 f(1)
-[out]
 
 [case testsFloatOperations]
 import typing
@@ -742,7 +738,6 @@ class D(B, A): pass
 class E(A, B[T], Generic[T]): pass
 class F(B[T], A, Generic[T]): pass
 def f(e: E[int], f: F[int]) -> None: pass
-[out]
 
 [case testTypeVariableTypeComparability]
 from typing import TypeVar
@@ -1148,7 +1143,6 @@ from typing import NamedTuple
 MyNamedTuple = NamedTuple('MyNamedTuple', [('parent', 'MyNamedTuple')]) # type: ignore
 def foo(mymap) -> MyNamedTuple:
     return next((mymap[key] for key in mymap), None)
-[out]
 
 [case testCanConvertTypedDictToAnySuperclassOfMapping]
 from mypy_extensions import TypedDict
@@ -1197,7 +1191,6 @@ class Point(NamedTuple('Point', [('x', int), ('y', int)]), SupportsAbs[int]):
 
 def test(a: Point) -> bool:
     return abs(a) == 2
-[out]
 
 [case testNoCrashOnGenericUnionUnpacking]
 from typing import Union, Dict
@@ -1390,7 +1383,6 @@ def f(m1: M, m2):
 def g(ms: 'T[M]') -> None:
     reduce(f, ms)
 T = Iterable
-[out]
 
 [case testNamedTupleNew]
 # This is an eval test because there was a snag found only with full stubs
@@ -1638,7 +1630,6 @@ def foo(r: Recursive) -> None:
 foo("")
 foo(list(""))
 foo(list((list(""), "")))
-[out]
 
 [case testNarrowTypeForDictKeys]
 # flags: --strict-optional
@@ -2055,7 +2046,6 @@ def f(x: Callable[..., T]) -> T:
     return x()
 
 x: Tuple[str, ...] = f(tuple)
-[out]
 
 [case testGenericInferenceWithDataclass]
 # flags: --new-type-inference
@@ -2068,7 +2058,6 @@ class Foo:
 @dataclass
 class A:
     items: Collection[Foo] = field(default_factory=list)
-[out]
 
 [case testGenericInferenceWithItertools]
 # flags: --new-type-inference

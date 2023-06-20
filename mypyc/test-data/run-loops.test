@@ -273,7 +273,6 @@ nested_list()
 gen = nested_yield()
 for k in range(12):
     assert next(gen) == k % 4
-[out]
 
 [case testForIterable]
 from typing import Iterable, Dict, Any, Tuple

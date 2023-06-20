@@ -125,7 +125,6 @@ import m
 def m() -> None: ...  # E: Name "m" already defined (by an import)
 
 [file m.py]
-[out]
 
 [case testIgnoredImportDup]
 
@@ -134,7 +133,6 @@ from m import f # type: ignore
 def m() -> None: ...  # E: Name "m" already defined (possibly by an import)
 def f() -> None: ...  # E: Name "f" already defined (possibly by an import)
 
-[out]
 
 [case testRuntimeProtoTwoBases]
 from typing_extensions import Protocol, runtime_checkable

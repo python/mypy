@@ -74,7 +74,6 @@ class A:
             a = a
             a = b # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 class B: pass
-[out]
 
 [case testReturnFromMethod]
 import typing
@@ -281,7 +280,6 @@ class D(object):
     attr = 0
     def f(self):
         self.attr = 1
-[out]
 
 [case testClassNamesDefinedOnSelUsedInClassBodyReveal]
 
@@ -294,8 +292,6 @@ class B(object):
     attr = 0
     def f(self) -> None:
         reveal_type(self.attr)  # N: Revealed type is "builtins.int"
-[out]
-
 
 -- Method overriding
 -- -----------------
@@ -311,7 +307,6 @@ class B(A):
     def f(self, x: A) -> None: pass
     def g(self, x: 'B' , y: object) -> A: pass
     def h(self) -> None: pass
-[out]
 
 [case testMethodOverridingWithCovariantType]
 import typing
@@ -321,7 +316,6 @@ class A:
 class B(A):
   def f(self, x: A, y: 'B') -> 'B': pass
   def g(self, x: A, y: A) -> 'A': pass
-[out]
 
 [case testMethodOverridingWithIncompatibleTypes]
 import typing
@@ -770,7 +764,6 @@ main:3: error: The return type of "__init__" must be None
 import typing
 class A:
     def __init__(self, x: int): pass
-[out]
 
 [case testDecoratedConstructorWithImplicitReturnValueType]
 import typing
@@ -782,7 +775,6 @@ def deco(fn: Callable) -> Callable:
 class A:
     @deco
     def __init__(self, x: int): pass
-[out]
 
 [case testOverloadedConstructorWithImplicitReturnValueType]
 from foo import *
@@ -838,7 +830,6 @@ main:3: error: The return type of "__init_subclass__" must be None
 import typing
 class A:
     def __init_subclass__(cls, x: int=1): pass
-[out]
 
 [case testDecoratedInitSubclassWithImplicitReturnValueType]
 import typing
@@ -850,7 +841,6 @@ def deco(fn: Callable) -> Callable:
 class A:
     @deco
     def __init_subclass__(cls, x: int=1): pass
-[out]
 
 [case testOverloadedInitSubclassWithImplicitReturnValueType]
 from foo import *
@@ -881,7 +871,6 @@ def deco(fn: Callable) -> Callable:
 class A:
     @deco
     def __init_subclass__(cls) -> Any: pass # E: The return type of "__init_subclass__" must be None
-[out]
 
 [case testOverloadedInitSubclassWithAnyReturnValueType]
 from foo import *
@@ -966,7 +955,6 @@ class A:
     c = x # type: A # E: Incompatible types in assignment (expression has type "B", variable has type "A")
     if int():
         c = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-[out]
 
 [case testMethodRefInClassBody]
 from typing import Callable
@@ -981,8 +969,6 @@ class A:
     ff = f # type: Callable[[B], None]  # E: Incompatible types in assignment (expression has type "Callable[[A], None]", variable has type "Callable[[B], None]")
     if int():
         g = ff  # E: Incompatible types in assignment (expression has type "Callable[[B], None]", variable has type "Callable[[A], None]")
-[out]
-
 
 -- Arbitrary statements in class body
 -- ----------------------------------
@@ -1003,8 +989,6 @@ class A:
     if int():
         x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 [builtins fixtures/for.pyi]
-[out]
-
 
 -- Class attributes
 -- ----------------
@@ -1182,7 +1166,6 @@ class A:
         b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     if int():
         b = B(b) # E: Too many arguments for "B"
-[out]
 
 [case testConstructNestedClassWithCustomInit]
 import typing
@@ -1194,7 +1177,6 @@ class A:
         if int():
             b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
             b = B() # E: Missing positional argument "a" in call to "B"
-[out]
 
 [case testDeclareVariableWithNestedClassType]
 
@@ -1204,7 +1186,6 @@ def f() -> None:
     if int():
         a = A()
         a = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
-[out]
 
 [case testExternalReferenceToClassWithinClass]
 class A:
@@ -1378,7 +1359,6 @@ class C:
     cls.bar(1)  # E: Too many arguments for "bar" of "C"
     cls.bozo()  # E: "Type[C]" has no attribute "bozo"
 [builtins fixtures/classmethod.pyi]
-[out]
 
 [case testClassMethodCalledOnClass]
 import typing
@@ -1488,7 +1468,6 @@ class A:
         self.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
         return ''
 [builtins fixtures/property.pyi]
-[out]
 
 [case testDynamicallyTypedProperty]
 import typing
@@ -2027,7 +2006,6 @@ class A:
     def __add__(self, x: int) -> int: pass
 class B(A):
     def __add__(self, x: object) -> int: pass
-[out]
 
 [case testOperatorMethodOverrideNarrowingReturnType]
 import typing
@@ -2173,7 +2151,6 @@ class C:
     def __radd__(self, x: A) -> Any: pass
 class D:
     def __radd__(self, x: A) -> object: pass
-[out]
 
 [case testReverseOperatorMethodArgumentType2]
 from typing import Any, Tuple, Callable
@@ -2184,7 +2161,6 @@ class B:
 class C:
     def __radd__(self, x: Any) -> int: pass
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testReverseOperatorMethodInvalid]
 from foo import *
@@ -2345,7 +2321,6 @@ class C:
     @deco
     def __add__(self, other: C) -> C: return C()
     def __radd__(self, other: C) -> C: return C()
-[out]
 
 [case testReverseOperatorMethodForwardIsAny2]
 from typing import Any
@@ -2353,7 +2328,6 @@ def deco(f: Any) -> Any: return f
 class C:
     __add__ = None  # type: Any
     def __radd__(self, other: C) -> C: return C()
-[out]
 
 [case testReverseOperatorMethodForwardIsAny3]
 from typing import Any
@@ -2373,7 +2347,6 @@ class A:
     def __radd__(self, x: 'A') -> str: pass
     @overload
     def __radd__(self, x: 'A') -> Any: pass  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
-[out]
 
 [case testReverseOperatorMethodArgumentTypeAndOverloadedMethod]
 from foo import *
@@ -2635,7 +2608,6 @@ class B:
     def __lt__(self, x: 'B') -> int: pass
     @abstractmethod
     def __gt__(self, x: 'B') -> int: pass
-[out]
 
 [case testOperatorMethodsAndOverloadingSpecialCase]
 from foo import *
@@ -2648,7 +2620,6 @@ class A:
     def __add__(self, x: str) -> int: pass
 class B:
     def __radd__(self, x: 'A') -> str: pass
-[out]
 
 [case testUnsafeOverlappingWithOperatorMethodsAndOverloading2]
 from foo import A, B
@@ -3150,7 +3121,6 @@ def f(o: 'B.C') -> None:
 class B:
     class C:
         def f(self, x: int) -> None: pass
-[out]
 
 [case testForwardReferenceToNestedClassDeep]
 def f(o: 'B.C.D') -> None:
@@ -3160,7 +3130,6 @@ class B:
     class C:
         class D:
             def f(self, x: int) -> None: pass
-[out]
 
 [case testForwardReferenceToNestedClassWithinClass]
 class B:
@@ -3170,13 +3139,11 @@ class B:
     class C:
         class D:
             def f(self, x: int) -> None: pass
-[out]
 
 [case testClassVsInstanceDisambiguation]
 class A: pass
 def f(x: A) -> None: pass
 f(A) # E: Argument 1 to "f" has incompatible type "Type[A]"; expected "A"
-[out]
 
 -- TODO
 --   attribute inherited from superclass; assign in __init__
@@ -3189,7 +3156,6 @@ B = None  # type: Any
 class C(B): pass
 C(0)
 C(arg=0)
-[out]
 
 [case testErrorMapToSupertype]
 import typing
@@ -3217,7 +3183,6 @@ class C:
         self.aa = self.a()
 
 reveal_type(C().aa) # N: Revealed type is "__main__.A"
-[out]
 
 [case testClassValuedAttributesGeneric]
 from typing import Generic, TypeVar, Type
@@ -3238,7 +3203,6 @@ class C(Generic[T]):
         self.aa = self.a(42)
 
 reveal_type(C().aa) # N: Revealed type is "__main__.A[builtins.int]"
-[out]
 
 [case testClassValuedAttributesAlias]
 from typing import Generic, TypeVar
@@ -3262,8 +3226,6 @@ class C:
         self.aa = self.a_int()
 
 reveal_type(C().aa) # N: Revealed type is "__main__.A[builtins.int, builtins.int]"
-[out]
-
 
 -- Type[C]
 -- -------
@@ -3277,7 +3239,6 @@ def new_user(user_class: Type[User]) -> User:
     return user_class()
 reveal_type(new_user(User))  # N: Revealed type is "__main__.User"
 reveal_type(new_user(ProUser))  # N: Revealed type is "__main__.User"
-[out]
 
 [case testTypeUsingTypeCDefaultInit]
 from typing import Type
@@ -3286,7 +3247,6 @@ class B:
 def f(A: Type[B]) -> None:
     A(0)  # E: Too many arguments for "B"
     A()
-[out]
 
 [case testTypeUsingTypeCInitWithArg]
 from typing import Type
@@ -3295,7 +3255,6 @@ class B:
 def f(A: Type[B]) -> None:
     A(0)
     A()  # E: Missing positional argument "a" in call to "B"
-[out]
 
 [case testTypeUsingTypeCTypeVar]
 from typing import Type, TypeVar
@@ -3320,7 +3279,6 @@ T = TypeVar('T', bound=B)
 def f(A: Type[T]) -> None:
     A()
     A(0)  # E: Too many arguments for "B"
-[out]
 
 [case testTypeUsingTypeCTypeVarWithInit]
 from typing import Type, TypeVar
@@ -3330,7 +3288,6 @@ T = TypeVar('T', bound=B)
 def f(A: Type[T]) -> None:
     A()  # E: Missing positional argument "a" in call to "B"
     A(0)
-[out]
 
 [case testTypeUsingTypeCTwoTypeVars]
 from typing import Type, TypeVar
@@ -3361,7 +3318,6 @@ def new_user(user_class: Type[User]) -> User:
     return user_class()
 def new_pro_user(user_class: Type[ProUser]):
     new_user(user_class)
-[out]
 
 [case testAllowCovariantArgsInConstructor]
 from typing import Generic, TypeVar
@@ -3376,7 +3332,6 @@ class C(Generic[T_co]):
 
 reveal_type(C(1).x) # N: Revealed type is "builtins.int"
 [builtins fixtures/property.pyi]
-[out]
 
 [case testTypeUsingTypeCErrorCovariance]
 from typing import Type, TypeVar
@@ -3385,7 +3340,6 @@ def new_user(user_class: Type[User]):
     return user_class()
 def foo(arg: Type[int]):
     new_user(arg)  # E: Argument 1 to "new_user" has incompatible type "Type[int]"; expected "Type[User]"
-[out]
 
 [case testTypeUsingTypeCUnionOverload]
 from foo import *
@@ -3401,7 +3355,6 @@ class Y:
 def bar(o: Type[Union[X, Y]]): pass
 bar(X)
 bar(Y)
-[out]
 
 [case testTypeUsingTypeCTypeAny]
 from typing import Type, Any
@@ -3414,7 +3367,6 @@ def foo(arg: Type[Any]):
 class X: pass
 foo(X)
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testTypeUsingTypeCTypeAnyMember]
 from typing import Type, Any
@@ -3425,7 +3377,6 @@ def foo(arg: Type[Any]):
     reveal_type(x)  # N: Revealed type is "Any"
     # But Type[Any] is distinct from Any
     y: int = arg  # E: Incompatible types in assignment (expression has type "Type[Any]", variable has type "int")
-[out]
 
 [case testTypeUsingTypeCTypeAnyMemberFallback]
 from typing import Type, Any
@@ -3433,7 +3384,6 @@ def foo(arg: Type[Any]):
     reveal_type(arg.__str__)  # N: Revealed type is "def () -> builtins.str"
     reveal_type(arg.mro())  # N: Revealed type is "builtins.list[builtins.type[Any]]"
 [builtins fixtures/type.pyi]
-[out]
 
 [case testTypeUsingTypeCTypeNoArg]
 from typing import Type
@@ -3442,7 +3392,6 @@ def foo(arg: Type):
     reveal_type(x)  # N: Revealed type is "Any"
 class X: pass
 foo(X)
-[out]
 
 [case testTypeUsingTypeCBuiltinType]
 from typing import Type
@@ -3452,7 +3401,6 @@ def bar(arg: Type[X]):
     foo(arg)
 foo(X)
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testTypeUsingTypeCClassMethod]
 from typing import Type
@@ -3467,7 +3415,6 @@ def process(cls: Type[User]):
     cls.mro()  # Defined in class type
     cls.error  # E: "Type[User]" has no attribute "error"
 [builtins fixtures/classmethod.pyi]
-[out]
 
 [case testTypeUsingTypeCClassMethodUnion]
 from typing import Type, Union
@@ -3484,7 +3431,6 @@ def process(cls: Type[Union[BasicUser, ProUser]]):
     cls.mro()  # Defined in class type
     cls.error  # E: Item "type" of "Union[Type[BasicUser], Type[ProUser]]" has no attribute "error"
 [builtins fixtures/classmethod.pyi]
-[out]
 
 [case testTypeUsingTypeCClassMethodFromTypeVar]
 from typing import Type, TypeVar
@@ -3500,7 +3446,6 @@ def process(cls: Type[U]):
     cls.mro()  # Defined in class type
     cls.error  # E: "Type[U]" has no attribute "error"
 [builtins fixtures/classmethod.pyi]
-[out]
 
 [case testTypeUsingTypeCClassMethodFromTypeVarUnionBound]
 # Ideally this would work, but not worth the effort; just don't crash
@@ -3519,7 +3464,6 @@ def process(cls: Type[U]):
     cls.mro()  # Defined in class type
     cls.error  # E: "Type[U]" has no attribute "error"
 [builtins fixtures/classmethod.pyi]
-[out]
 
 [case testTypeUsingTypeCErrorUnsupportedType]
 from typing import Type, Tuple
@@ -3563,7 +3507,6 @@ from typing import TypeVar, Type
 class B: pass
 T = TypeVar('T', bound=Type[B])
 def f(a: T): pass
-[out]
 
 [case testTypeUsingTypeCTuple]
 from typing import Type, Tuple
@@ -3608,7 +3551,6 @@ p = None # type: type
 q = p # type: Type[C]
 
 [builtins fixtures/list.pyi]
-[out]
 
 [case testTypeEquivalentTypeAny2]
 from typing import Type, Any, TypeVar, Generic
@@ -3628,7 +3570,6 @@ class C2(Generic[T2]): ...
 
 C1[Type[Any]], C2[type] # both these should not fail
 [builtins fixtures/list.pyi]
-[out]
 
 [case testTypeEquivalentTypeAnyEdgeCase]
 class C:
@@ -3642,7 +3583,6 @@ class Mbad(type):
     def __init__(cls, x) -> None:
         type.__init__(C(), x) # E: Argument 1 to "__init__" of "type" has incompatible type "C"; expected "type"
 [builtins fixtures/primitives.pyi]
-[out]
 
 [case testTypeMatchesOverloadedFunctions]
 from foo import *
@@ -3660,7 +3600,6 @@ def f(a: object) -> int: pass
 reveal_type(f(User))  # N: Revealed type is "builtins.int"
 reveal_type(f(UserType))  # N: Revealed type is "builtins.int"
 [builtins fixtures/classmethod.pyi]
-[out]
 
 [case testTypeMatchesGeneralTypeInOverloadedFunctions]
 from foo import *
@@ -3681,7 +3620,6 @@ reveal_type(f(User))  # N: Revealed type is "builtins.int"
 reveal_type(f(UserType))  # N: Revealed type is "builtins.int"
 reveal_type(f(1))  # N: Revealed type is "builtins.str"
 [builtins fixtures/classmethod.pyi]
-[out]
 
 [case testTypeMatchesSpecificTypeInOverloadedFunctions]
 from foo import *
@@ -3706,7 +3644,6 @@ reveal_type(f(UserType))  # N: Revealed type is "builtins.int"
 reveal_type(f(User()))  # N: Revealed type is "foo.User"
 reveal_type(f(1))  # N: Revealed type is "builtins.str"
 [builtins fixtures/classmethod.pyi]
-[out]
 
 [case testMixingTypeTypeInOverloadedFunctions]
 from foo import *
@@ -3733,7 +3670,6 @@ reveal_type(f(User))  # N: Revealed type is "foo.User"
 reveal_type(f(3))  # N: Revealed type is "Type[foo.User]"
 reveal_type(f("hi"))  # N: Revealed type is "foo.User"
 [builtins fixtures/classmethod.pyi]
-[out]
 
 [case testGeneralTypeMatchesSpecificTypeInOverloadedFunctions]
 from foo import *
@@ -3754,7 +3690,6 @@ f(User)
 f(mock_1())
 f(mock_2())
 [builtins fixtures/classmethod.pyi]
-[out]
 
 [case testNonTypeDoesNotMatchOverloadedFunctions]
 from foo import *
@@ -3773,7 +3708,6 @@ f(3)  # E: No overload variant of "f" matches argument type "int" \
       # N:     def f(a: Type[User]) -> None \
       # N:     def f(a: type) -> None
 [builtins fixtures/classmethod.pyi]
-[out]
 
 [case testInstancesDoNotMatchTypeInOverloadedFunctions]
 from foo import *
@@ -3793,7 +3727,6 @@ f(User())  # E: No overload variant of "f" matches argument type "User" \
            # N:     def f(a: Type[User]) -> None \
            # N:     def f(a: int) -> None
 [builtins fixtures/classmethod.pyi]
-[out]
 
 [case testTypeCovarianceWithOverloadedFunctions]
 from foo import *
@@ -3819,8 +3752,6 @@ f(AType)  # E: Argument 1 to "f" has incompatible type "Type[A]"; expected "Type
 f(BType)
 f(CType)
 [builtins fixtures/classmethod.pyi]
-[out]
-
 
 [case testOverloadedCovariantTypesFail]
 from foo import *
@@ -3835,7 +3766,6 @@ def f(a: Type[B]) -> int: pass  # E: Overloaded function signatures 1 and 2 over
 @overload
 def f(a: Type[A]) -> str: pass
 [builtins fixtures/classmethod.pyi]
-[out]
 
 [case testDistinctOverloadedCovariantTypesSucceed]
 from foo import *
@@ -3866,7 +3796,6 @@ reveal_type(f(AChild()))  # N: Revealed type is "foo.A"
 reveal_type(f(B()))  # N: Revealed type is "foo.B"
 reveal_type(f(BChild()))  # N: Revealed type is "foo.B"
 [builtins fixtures/classmethod.pyi]
-[out]
 
 [case testSubtypeWithMoreOverloadsThanSupertypeSucceeds]
 from foo import *
@@ -3893,7 +3822,6 @@ class B(A):
     @overload
     def f(self, z: Z) -> Z: pass
 [builtins fixtures/classmethod.pyi]
-[out]
 
 [case testSubtypeOverloadCoveringMultipleSupertypeOverloadsSucceeds]
 from foo import *
@@ -3921,7 +3849,6 @@ class Sub(Super):
     @overload
     def foo(self, a: D) -> D: pass
 [builtins fixtures/classmethod.pyi]
-[out]
 
 [case testSubtypeOverloadWithOverlappingArgumentsButWrongReturnType]
 from foo import *
@@ -4012,7 +3939,6 @@ def g(a: Type[User]) -> int: pass  # E: Overloaded function signatures 1 and 2 o
 @overload
 def g(a: type) -> str: pass
 [builtins fixtures/classmethod.pyi]
-[out]
 
 [case testTypeOverlapsWithObject]
 from foo import *
@@ -4026,7 +3952,6 @@ def f(a: type) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap
 @overload
 def f(a: object) -> str: pass
 [builtins fixtures/classmethod.pyi]
-[out]
 
 [case testTypeConstructorReturnsTypeType]
 class User:
@@ -4043,7 +3968,6 @@ reveal_type(type(u).test_class_method())  # N: Revealed type is "builtins.int"
 reveal_type(type(u).test_static_method())  # N: Revealed type is "builtins.str"
 type(u).test_instance_method()  # E: Missing positional argument "self" in call to "test_instance_method" of "User"
 [builtins fixtures/classmethod.pyi]
-[out]
 
 [case testObfuscatedTypeConstructorReturnsTypeType]
 from typing import TypeVar
@@ -4060,7 +3984,6 @@ u = User()
 reveal_type(f1(u))  # N: Revealed type is "Type[__main__.User]"
 reveal_type(f2(type)(u))  # N: Revealed type is "Type[__main__.User]"
 [builtins fixtures/classmethod.pyi]
-[out]
 
 [case testTypeConstructorLookalikeFails]
 class User: pass
@@ -4074,7 +3997,6 @@ reveal_type(type(User()))  # N: Revealed type is "Type[__main__.User]"
 reveal_type(fake1(User()))  # N: Revealed type is "builtins.type"
 reveal_type(fake2(3))  # N: Revealed type is "builtins.type"
 [builtins fixtures/classmethod.pyi]
-[out]
 
 [case testOtherTypeConstructorsSucceed]
 def foo(self) -> int: return self.attr
@@ -4082,7 +4004,6 @@ def foo(self) -> int: return self.attr
 User = type('User', (object,), {'foo': foo, 'attr': 3})
 reveal_type(User)  # N: Revealed type is "builtins.type"
 [builtins fixtures/args.pyi]
-[out]
 
 [case testTypeTypeComparisonWorks]
 class User: pass
@@ -4176,7 +4097,6 @@ class A:
     a = 1  # type: int
 class B(A):
     a = 1
-[out]
 
 [case testVariableSubclassAssignMismatch]
 class A:
@@ -4221,7 +4141,6 @@ class B(A):
 class C(B):
     a = B.a + [3]
 [builtins fixtures/list.pyi]
-[out]
 
 [case testClassAllBases]
 from typing import Union
@@ -4311,7 +4230,6 @@ class A:
     a = 1
 class B(A):
     a = 'x'  # type: Any
-[out]
 
 [case testInstanceMethodOverwrite]
 class B():
@@ -4319,7 +4237,6 @@ class B():
 class C(B):
     def m(self, a: int) -> None: pass
     n = m
-[out]
 
 [case testInstanceMethodOverwriteError]
 class B():
@@ -4360,7 +4277,6 @@ class C(B):
     def m(self, a: int) -> None: pass
     n = m
 [builtins fixtures/classmethod.pyi]
-[out]
 
 [case testClassMethodOverwriteError]
 class B():
@@ -4504,7 +4420,6 @@ class B(A):
     x = ''  # type: ignore
 class C(B):
     x = ''  # E: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
-[out]
 
 [case testClassIgnoreType_RedefinedAttributeTypeIgnoredInChildren]
 class A:
@@ -4513,7 +4428,6 @@ class B(A):
     x = ''  # type: ignore
 class C(B):
     x = ''  # type: ignore
-[out]
 
 [case testInvalidMetaclassStructure]
 class X(type): pass
@@ -5104,7 +5018,6 @@ def frob(foos: Dict[Any, Foos]) -> None:
     foo = foos.get(1)
     dict(foo)
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testNoCrashForwardRefToBrokenDoubleNewTypeClass]
 from typing import Any, Dict, List, NewType
@@ -5120,7 +5033,6 @@ class C:
 
 reveal_type(x.frob) # N: Revealed type is "def (foos: builtins.dict[Any, __main__.Foos])"
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testNewTypeFromForwardNamedTuple]
 from typing import NewType, NamedTuple, Tuple
@@ -5132,7 +5044,6 @@ class N(NamedTuple):
 x: NT = N(1) # E: Incompatible types in assignment (expression has type "N", variable has type "NT")
 x = NT(N(1))
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testNewTypeFromForwardTypedDict]
 
@@ -5143,7 +5054,6 @@ NT = NewType('NT', 'N') # E: Argument 2 to NewType(...) must be subclassable (go
 class N(TypedDict):
     x: int
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testCorrectAttributeInForwardRefToNamedTuple]
 from typing import NamedTuple
@@ -5155,7 +5065,6 @@ def get_state(proc: 'Process') -> int:
 class Process(NamedTuple):
      state: int
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testCorrectItemTypeInForwardRefToTypedDict]
 from mypy_extensions import TypedDict
@@ -5167,7 +5076,6 @@ def get_state(proc: 'Process') -> int:
 class Process(TypedDict):
      state: int
 [builtins fixtures/isinstancelist.pyi]
-[out]
 
 [case testCorrectDoubleForwardNamedTuple]
 from typing import NamedTuple
@@ -5182,7 +5090,6 @@ y: A
 y = x
 reveal_type(x.one.attr)  # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testCrashOnDoubleForwardTypedDict]
 from mypy_extensions import TypedDict
@@ -5196,7 +5103,6 @@ class B(TypedDict):
 
 reveal_type(x['one']['attr'])  # N: Revealed type is "builtins.str"
 [builtins fixtures/isinstancelist.pyi]
-[out]
 
 [case testCrashOnForwardUnionOfNamedTuples]
 from typing import Union, NamedTuple
@@ -5212,7 +5118,6 @@ def foo(node: Node) -> int:
     reveal_type(node) # N: Revealed type is "Union[Tuple[builtins.int, fallback=__main__.Foo], Tuple[builtins.int, fallback=__main__.Bar]]"
     return x.x
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testCrashOnForwardUnionOfTypedDicts]
 from mypy_extensions import TypedDict
@@ -5228,7 +5133,6 @@ def foo(node: NodeType) -> int:
     x = node
     return x['x']
 [builtins fixtures/isinstancelist.pyi]
-[out]
 
 [case testSupportForwardUnionOfNewTypes]
 from typing import Union, NewType
@@ -5247,7 +5151,6 @@ Bar = NewType('Bar', B)
 def foo(node: Node) -> Node:
     x = node
     return Foo(A())
-[out]
 
 [case testForwardReferencesInNewTypeMRORecomputed]
 from typing import NewType
@@ -5259,7 +5162,6 @@ class B(A):
     pass
 
 reveal_type(x.x) # N: Revealed type is "builtins.int"
-[out]
 
 [case testCrashOnComplexNamedTupleUnionProperty]
 from typing import NamedTuple, Union
@@ -5278,7 +5180,6 @@ class B(object):
 
 reveal_type(x.x) # N: Revealed type is "builtins.int"
 [builtins fixtures/property.pyi]
-[out]
 
 [case testCorrectIsinstanceWithForwardUnion]
 from typing import Union, NamedTuple
@@ -5291,7 +5192,6 @@ def f(x: ForwardUnion) -> None:
   if isinstance(x, TP):
     reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.TP]"
 [builtins fixtures/isinstance.pyi]
-[out]
 
 [case testCrashInvalidArgsSyntheticClassSyntax]
 from typing import List, NamedTuple
@@ -5305,7 +5205,6 @@ class NM(NamedTuple):
 TD({'x': []})
 NM(x=[])
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testCrashInvalidArgsSyntheticClassSyntaxReveals]
 from typing import List, NamedTuple
@@ -5324,7 +5223,6 @@ reveal_type(x1) # N: Revealed type is "TypedDict('__main__.TD', {'x': builtins.l
 reveal_type(y) # N: Revealed type is "Tuple[builtins.list[Any], fallback=__main__.NM]"
 reveal_type(y1) # N: Revealed type is "Tuple[builtins.list[Any], fallback=__main__.NM]"
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testCrashInvalidArgsSyntheticFunctionSyntax]
 from typing import List, NewType, NamedTuple
@@ -5338,7 +5236,6 @@ TD({'x': []})
 NM(x=[])
 NT([])
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testCrashForwardSyntheticClassSyntax]
 from typing import NamedTuple
@@ -5356,7 +5253,6 @@ y: A2
 reveal_type(x.b) # N: Revealed type is "__main__.B"
 reveal_type(y['b']) # N: Revealed type is "__main__.B"
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testCrashForwardSyntheticFunctionSyntax]
 from typing import NamedTuple
@@ -5370,7 +5266,6 @@ y: A2
 reveal_type(x.b) # N: Revealed type is "__main__.B"
 reveal_type(y['b']) # N: Revealed type is "__main__.B"
 [builtins fixtures/dict.pyi]
-[out]
 
 -- Special support for six
 -- -----------------------
@@ -5646,7 +5541,6 @@ class C:
 class F:
     def __init__(self, f: int) -> None:
         self.f = f
-[out]
 
 [case testCorrectEnclosingClassPushedInDeferred2]
 from typing import TypeVar
@@ -5661,7 +5555,6 @@ class C:
 class F:
     def __init__(self, f: int) -> None:
         self.f = f
-[out]
 
 [case testCorrectEnclosingClassPushedInDeferred3]
 class A:
@@ -5670,7 +5563,6 @@ class A:
             return y
 
 y = int()
-[out]
 
 [case testMetaclassMemberAccessViaType]
 from typing import Type
@@ -5686,7 +5578,6 @@ y: Type[C] = C
 reveal_type(type(C).m) # N: Revealed type is "def (cls: __main__.M, x: builtins.int) -> builtins.int"
 reveal_type(type(x).m) # N: Revealed type is "def (cls: __main__.M, x: builtins.int) -> builtins.int"
 reveal_type(type(y).m) # N: Revealed type is "def (cls: __main__.M, x: builtins.int) -> builtins.int"
-[out]
 
 [case testMetaclassMemberAccessViaType2]
 from typing import Any, Type
@@ -5700,7 +5591,6 @@ class C(B, metaclass=M):
 x: Type[C]
 reveal_type(x.m) # N: Revealed type is "def (x: builtins.int) -> builtins.int"
 reveal_type(x.whatever) # N: Revealed type is "Any"
-[out]
 
 [case testMetaclassMemberAccessViaType3]
 from typing import Any, Type, TypeVar
@@ -5711,7 +5601,6 @@ class C(Any):
         reveal_type(self.bar()) # N: Revealed type is "Type[__main__.C]"
         reveal_type(self.bar().__name__) # N: Revealed type is "builtins.str"
 [builtins fixtures/type.pyi]
-[out]
 
 [case testClassDecoratorIsTypeChecked]
 from typing import Callable, Type
@@ -5857,7 +5746,6 @@ class C(B):
     @deco
     def meth(cls, x: int) -> int: ...
 [builtins fixtures/classmethod.pyi]
-[out]
 
 [case testGetAttrImportAnnotation]
 import a
@@ -5869,7 +5757,6 @@ reveal_type(y)  # N: Revealed type is "Any"
 from typing import Any
 def __getattr__(attr: str) -> Any: ...
 [builtins fixtures/module.pyi]
-[out]
 
 [case testGetAttrImportBaseClass]
 import a
@@ -5878,7 +5765,6 @@ class B(a.A): ...
 from typing import Any
 def __getattr__(attr: str) -> Any: ...
 [builtins fixtures/module.pyi]
-[out]
 
 [case testGetAttrDescriptor]
 from typing import TypeVar, Generic, Any
@@ -5899,7 +5785,6 @@ reveal_type(d.normal)  # N: Revealed type is "builtins.int"
 reveal_type(d.dynamic)  # N: Revealed type is "__main__.Descr"
 reveal_type(D.other)  # N: Revealed type is "builtins.int"
 D.dynamic  # E: "Type[D]" has no attribute "dynamic"
-[out]
 
 [case testSelfDescriptorAssign]
 from typing import Any
@@ -5913,7 +5798,6 @@ class C:
 
 c = C(Descr())
 reveal_type(c.x)  # N: Revealed type is "__main__.Descr"
-[out]
 
 [case testForwardInstanceWithWrongArgCount]
 from typing import TypeVar, Generic
@@ -5924,7 +5808,6 @@ class G(Generic[T]): ...
 A = G
 x: A[B[int, int]]  # E: "G" expects 1 type argument, but 2 given
 B = G
-[out]
 
 [case testForwardInstanceWithNoArgs]
 from typing import TypeVar, Generic
@@ -5936,7 +5819,6 @@ A = G
 x: A[B]
 reveal_type(x)  # N: Revealed type is "__main__.G[__main__.G[Any]]"
 B = G
-[out]
 
 [case testForwardInstanceWithBound]
 # flags: --show-column-numbers
@@ -5965,14 +5847,12 @@ reveal_type(x)  # N: Revealed type is "builtins.list[__main__.B[Any]]"
 
 A = B
 [builtins fixtures/list.pyi]
-[out]
 
 [case testNoneAnyFallback]
 from typing import Any
 dynamic: Any
 class C(dynamic): pass
 x: None = C()  # E: Incompatible types in assignment (expression has type "C", variable has type "None")
-[out]
 
 [case testNoneAnyFallbackDescriptor]
 from typing import Any
@@ -5997,7 +5877,6 @@ class Descr(Generic[T]):
     def __get__(self, inst: None, owner: Any) -> Descr[T]: ...
     @overload
     def __get__(self, inst: object, owner: Any) -> T: ...
-[out]
 
 [case testClassCustomPropertyWorks]
 from typing import TypeVar, Generic, Callable, Any
@@ -6017,7 +5896,6 @@ class C:
 
 reveal_type(C.foo)  # N: Revealed type is "builtins.int"
 reveal_type(C().foo)  # N: Revealed type is "builtins.int"
-[out]
 
 [case testMultipleInheritanceCycle]
 import b
@@ -6030,7 +5908,6 @@ class Other: ...
 [file b.py]
 from a import Other
 class B: ...
-[out]
 
 [case testMultipleInheritanceCycle2]
 import b
@@ -6055,7 +5932,6 @@ c = D()
 [file b.py]
 from a import Other
 class B: ...
-[out]
 
 [case testAllowPropertyAndInit1]
 class C:
@@ -6066,7 +5942,6 @@ class C:
     @x.setter
     def x(self, x: int) -> None: pass
 [builtins fixtures/property.pyi]
-[out]
 
 [case testAllowPropertyAndInit2]
 class C:
@@ -6085,7 +5960,6 @@ class C:
     @property  # Should be no error here
     def x(self) -> int: pass
 [builtins fixtures/property.pyi]
-[out]
 
 [case testClassMethodBeforeInit1]
 class Foo:
@@ -6185,7 +6059,6 @@ from typing import TypeVar, Tuple, Callable
 T = TypeVar('T')
 def deco(f: Callable[..., T]) -> Callable[..., Tuple[T, int]]: ...
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testCyclicOverload]
 import b
@@ -6207,7 +6080,6 @@ class B:
     def meth(self, x: int) -> int: ...
     @overload
     def meth(self, x: str) -> str: ...
-[out]
 
 [case testCyclicOverloadDeferred]
 import b
@@ -6240,7 +6112,6 @@ class B:
     def meth(self, x: str) -> str: ...
     def meth(self, x):
         pass
-[out]
 
 [case testCyclicOverrideAny]
 import a
@@ -6254,7 +6125,6 @@ import b
 class Base:
     def __init__(self):
         self.x = 1
-[out]
 
 [case testCyclicOverrideChecked]
 import a
@@ -6272,7 +6142,6 @@ import b
 class Base:
     def __init__(self) -> None:
         self.x = 1
-[out]
 
 [case testCyclicOverrideCheckedDecorator]
 import a
@@ -6298,7 +6167,6 @@ from typing import TypeVar, Tuple, Callable
 T = TypeVar('T')
 def deco(f: Callable[..., T]) -> Callable[..., Tuple[T, int]]: ...
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testCyclicOverrideCheckedDecoratorDeferred]
 import a
@@ -6326,7 +6194,6 @@ from typing import TypeVar, Tuple, Callable
 T = TypeVar('T')
 def deco(f: Callable[..., T]) -> Callable[..., Tuple[T, int]]: ...
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testCyclicOverrideAnyDecoratorDeferred]
 import a
@@ -6348,7 +6215,6 @@ def f() -> int: ...
 [file c.py]
 from typing import Any, Callable
 def deco(f: Callable[..., Any]) -> Any: ...
-[out]
 
 [case testCyclicDecoratorDoubleDeferred]
 import b
@@ -6380,7 +6246,6 @@ from typing import TypeVar, Tuple, Callable
 T = TypeVar('T')
 def deco(f: Callable[..., T]) -> Callable[..., Tuple[T, int]]: ...
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testCyclicDecoratorSuper]
 import b
@@ -6407,7 +6272,6 @@ from typing import TypeVar, Tuple, Callable
 T = TypeVar('T')
 def deco(f: Callable[..., T]) -> Callable[..., Tuple[T, int]]: ...
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testCyclicDecoratorBothDeferred]
 import b
@@ -6439,7 +6303,6 @@ from typing import TypeVar, Tuple, Callable
 T = TypeVar('T')
 def deco(f: Callable[..., T]) -> Callable[..., Tuple[T, int]]: ...
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testCyclicDecoratorSuperDeferred]
 import b
@@ -6473,7 +6336,6 @@ from typing import TypeVar, Tuple, Callable
 T = TypeVar('T')
 def deco(f: Callable[..., T]) -> Callable[..., Tuple[T, int]]: ...
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testOptionalDescriptorsBinder]
 # flags: --strict-optional
@@ -6616,7 +6478,6 @@ class Test:
     import a
     def __init__(self) -> None:
         some_module = self.a
-[out]
 
 [case testIsInstanceTypeVsMetaclass]
 from typing import Type
@@ -6777,14 +6638,12 @@ class B:
     __foo_: int
 class C(B):
     __foo_: str
-[out]
 
 [case testIgnorePrivateMethodsTypeCheck]
 class B:
     def __foo_(self) -> int: ...
 class C(B):
     def __foo_(self) -> str: ...
-[out]
 
 [case testCheckForPrivateMethodsWhenPublicCheck]
 class B:
@@ -6801,7 +6660,6 @@ class B:
     def __foo_(self) -> str: ...
 
 class C(A, B): pass
-[out]
 
 [case testAttributeDefOrder1]
 import a

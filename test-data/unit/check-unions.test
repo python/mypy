@@ -34,7 +34,6 @@ def f(x: Union[int, str]) -> None:
         if int():
             z = x # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [builtins fixtures/isinstance.pyi]
-[out]
 
 [case testUnionAnyIsInstance]
 from typing import Any, Union
@@ -45,7 +44,6 @@ def func(v: Union[int, Any]) -> None:
     else:
         reveal_type(v) # N: Revealed type is "Any"
 [builtins fixtures/isinstance.pyi]
-[out]
 
 [case testUnionAttributeAccess]
 from typing import Union
@@ -517,7 +515,6 @@ def foo(bar: Union[Union[A, B], C]) -> None:
     else:
         reveal_type(bar)  # N: Revealed type is "Union[__main__.B, __main__.C]"
 [builtins fixtures/isinstance.pyi]
-[out]
 
 [case testAssignAnyToUnion]
 from typing import Union, Any
@@ -725,7 +722,6 @@ x, y = bad # E: "int" object is not iterable \
            # E: Unpacking a string is disallowed
 reveal_type(x) # N: Revealed type is "Any"
 reveal_type(y) # N: Revealed type is "Any"
-[out]
 
 [case testStringDisallowedUnpacking]
 from typing import Dict
@@ -739,7 +735,6 @@ s = "foo"
 a, b = s # E: Unpacking a string is disallowed
 
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testUnionAlwaysTooMany]
 from typing import Union, Tuple
@@ -749,7 +744,6 @@ x, y = bad # E: Too many values to unpack (2 expected, 3 provided)
 reveal_type(x) # N: Revealed type is "Any"
 reveal_type(y) # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testUnionAlwaysTooFew]
 from typing import Union, Tuple
@@ -761,7 +755,6 @@ reveal_type(y) # N: Revealed type is "Any"
 reveal_type(z) # N: Revealed type is "Any"
 reveal_type(w) # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testUnionUnpackingChainedTuple]
 from typing import Union, Tuple
@@ -772,7 +765,6 @@ reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
 reveal_type(y) # N: Revealed type is "Union[builtins.int, builtins.str]"
 reveal_type(t) # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.str, builtins.str]]"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testUnionUnpackingChainedTuple2]
 from typing import Union, Tuple
@@ -783,7 +775,6 @@ reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
 reveal_type(y) # N: Revealed type is "Union[builtins.int, builtins.str]"
 reveal_type(t) # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.str, builtins.str]]"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testUnionUnpackingChainedTuple3]
 from typing import Union, Tuple
@@ -795,7 +786,6 @@ reveal_type(y) # N: Revealed type is "Union[builtins.int, builtins.str]"
 reveal_type(a) # N: Revealed type is "Union[builtins.int, builtins.str]"
 reveal_type(b) # N: Revealed type is "Union[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testUnionUnpackingChainedList]
 from typing import Union, List
@@ -806,7 +796,6 @@ reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
 reveal_type(y) # N: Revealed type is "Union[builtins.int, builtins.str]"
 reveal_type(lst) # N: Revealed type is "Union[builtins.list[builtins.int], builtins.list[builtins.str]]"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testUnionUnpackingChainedList2]
 from typing import Union, List
@@ -818,7 +807,6 @@ reveal_type(y) # N: Revealed type is "Union[builtins.list[builtins.int], builtin
 reveal_type(z) # N: Revealed type is "Union[builtins.int, builtins.str]"
 reveal_type(lst) # N: Revealed type is "Union[builtins.list[builtins.int], builtins.list[builtins.str]]"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testUnionUnpackingInForTuple]
 from typing import Union, Tuple, NamedTuple
@@ -840,7 +828,6 @@ t: Union[Tuple[int, int], Tuple[str, str]]
 for x in t:
     reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
 [builtins fixtures/for.pyi]
-[out]
 
 [case testUnionUnpackingInForList]
 from typing import Union, List, Tuple
@@ -855,7 +842,6 @@ for x2, y2 in t2:
     reveal_type(x2) # N: Revealed type is "Union[builtins.int, builtins.str]"
     reveal_type(y2) # N: Revealed type is "Union[builtins.int, builtins.str]"
 [builtins fixtures/for.pyi]
-[out]
 
 [case testUnionUnpackingDoubleBinder]
 from typing import Union, Tuple
@@ -880,7 +866,6 @@ x, y = object(), object()
 reveal_type(x) # N: Revealed type is "builtins.object"
 reveal_type(y) # N: Revealed type is "builtins.object"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testUnionUnpackingFromNestedTuples]
 from typing import Union, Tuple
@@ -891,7 +876,6 @@ reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
 reveal_type(y) # N: Revealed type is "Union[builtins.int, builtins.str]"
 reveal_type(z) # N: Revealed type is "Union[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testNestedUnionUnpackingFromNestedTuples]
 from typing import Union, Tuple
@@ -905,7 +889,6 @@ reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
 reveal_type(y) # N: Revealed type is "Union[builtins.int, __main__.A, builtins.str, __main__.B]"
 reveal_type(z) # N: Revealed type is "Union[builtins.int, __main__.A, builtins.str, __main__.B]"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testNestedUnionUnpackingFromNestedTuplesBinder]
 from typing import Union, Tuple
@@ -923,7 +906,6 @@ reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
 reveal_type(y) # N: Revealed type is "Union[builtins.int, __main__.A, builtins.str, __main__.B]"
 reveal_type(z) # N: Revealed type is "Union[builtins.int, __main__.A, builtins.str, __main__.B]"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testUnpackUnionNoCrashOnPartialNone]
 # flags: --strict-optional
@@ -938,7 +920,6 @@ if x:
     for s, t in x:
         reveal_type(s) # N: Revealed type is "builtins.str"
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testUnpackUnionNoCrashOnPartialNone2]
 # flags: --strict-optional
@@ -954,7 +935,6 @@ if x:
     for s, t in x:
         reveal_type(s) # N: Revealed type is "builtins.str"
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testUnpackUnionNoCrashOnPartialNoneBinder]
 # flags: --strict-optional
@@ -969,7 +949,6 @@ reveal_type(x) # N: Revealed type is "Union[builtins.list[Tuple[builtins.str, bu
 if x:
     for y in x: pass
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testUnpackUnionNoCrashOnPartialList]
 # flags: --strict-optional
@@ -982,7 +961,6 @@ reveal_type(x) # N: Revealed type is "builtins.list[Tuple[builtins.str, builtins
 
 for y in x: pass
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testLongUnionFormatting]
 from typing import Any, Generic, TypeVar, Union

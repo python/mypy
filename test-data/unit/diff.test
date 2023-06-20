@@ -881,7 +881,6 @@ class B: pass
 def outer() -> None:
     def inner(y: B) -> A:
         pass
-[out]
 
 [case testProtocolVsNominal]
 from typing import Protocol

@@ -15,7 +15,6 @@
 import typing
 a = None # type: A
 class A: pass
-[out]
 
 [case testNoneAsArgument]
 import typing
@@ -23,8 +22,6 @@ def f(x: 'A', y: 'B') -> None: pass
 f(None, None)
 class A: pass
 class B(A): pass
-[out]
-
 
 -- Simple expressions
 -- ------------------
@@ -881,8 +878,6 @@ class A:
 class B: pass
 class C: pass
 [builtins fixtures/tuple.pyi]
-[out]
-
 
 -- Cast expression
 -- ---------------
@@ -912,7 +907,6 @@ if int():
     a = cast(Any, b)
     b = cast(Any, a)
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testAnyCast]
 from typing import cast, Any
@@ -1194,7 +1188,6 @@ def fun(cb: Callable[[], Iterator[str]]) -> None:
     pass
 fun(lambda: (yield from [1]))  # E: Incompatible types in "yield from" (actual type "int", expected type "str")
 [builtins fixtures/list.pyi]
-[out]
 
 [case testLambdaAndReachability]
 def f() -> None:
@@ -1272,8 +1265,6 @@ class A:
     b = [x for x in a] # type: List[B] # E: List comprehension has incompatible type List[A]; expected List[B]
 class B: pass
 [builtins fixtures/for.pyi]
-[out]
-
 
 -- Set comprehension
 -- -----------------
@@ -1464,7 +1455,6 @@ class A:
         self.__add__ = _add
 a = None # type: A
 a + a
-[out]
 
 [case testOperatorMethodAsVar2]
 
@@ -1492,8 +1482,6 @@ class B:
 class C(B):
     pass
 [builtins fixtures/tuple.pyi]
-[out]
-
 
 -- Ellipsis
 -- --------
@@ -1513,8 +1501,6 @@ if str():
 
 class A: pass
 [builtins fixtures/dict.pyi]
-[out]
-
 
 -- Yield expression
 -- ----------------
@@ -1535,8 +1521,6 @@ from typing import Iterator
 def f(x: int) -> Iterator[None]:
     (yield)
 [builtins fixtures/for.pyi]
-[out]
-
 
 -- Yield from expression
 -- ----------------
@@ -1557,7 +1541,6 @@ def f() -> Generator[int, None, str]:
 def g() -> Iterator[int]:
     a = "string"
     a = yield from f()
-[out]
 
 [case testYieldFromTupleExpression]
 from typing import Generator
