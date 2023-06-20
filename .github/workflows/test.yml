@@ -29,7 +29,7 @@ jobs:
         - name: Test suite with py37-windows-64
           python: '3.7'
           arch: x64
-          os: windows-latest
+          os: windows-2019
           toxenv: py37
         - name: Test suite with py38-ubuntu
           python: '3.8'
