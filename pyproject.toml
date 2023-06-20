@@ -48,7 +48,8 @@ select = [
   "E",       # pycoderstyle (error)
   "F",       # pyflakes
   "B",       # flake8-bugbear
-  "RUF100",  # flake8-noqa
+  "RUF100",  # Unused noqa comments
+  "PGH004"  # blanket noqa comments
 ]
 
 ignore = [
