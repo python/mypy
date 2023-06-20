@@ -78,6 +78,9 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
     targets: dict[int, list[str]] = {}  # Fine-grained targets (per fine-grained update)
     test_modules: list[str] = []  # Modules which are deemed "test" (vs "fixture")
 
+    had_out_section = False
+    had_meaningful_out_section = False
+
     def _case_fail(msg: str) -> NoReturn:
         pytest.fail(f"{case.file}:{case.line}: {msg}", pytrace=False)
 
@@ -149,6 +152,9 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
             full = join(base_path, m.group(1))
             deleted_paths.setdefault(num, set()).add(full)
         elif re.match(r"out[0-9]*$", item.id):
+            had_out_section = True
+            if item.data:
+                had_meaningful_out_section = True
             if item.arg is None:
                 args = []
             else:
@@ -198,6 +204,9 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
 
     if out_section_missing:
         _case_fail(f"Required output section not found in case {case.name!r}")
+
+    if had_out_section and not had_meaningful_out_section:
+        _case_fail(f"Redundant [out] section(s) in {case.name!r}")
 
     for passnum in stale_modules.keys():
         if passnum not in rechecked_modules:

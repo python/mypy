@@ -66,3 +66,21 @@ class ParseTestDataSuite(Suite):
             f".test:{expected_lineno}: Invalid section header [unknownsection] in case 'abc'"
         )
         assert expected in actual
+
+    def test_redundant_out(self) -> None:
+        # Arrange
+        data = self._dedent(
+            """
+            [case abc]
+            s: str = 42
+            [out]
+            [out2]
+            [out version==3.7]
+            """
+        )
+
+        # Act
+        actual = self._run_pytest(data)
+
+        # Assert
+        assert "Redundant [out] section(s) in 'abc'" in actual
