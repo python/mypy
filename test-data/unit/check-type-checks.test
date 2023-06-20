@@ -108,4 +108,3 @@ def f(x: object) -> None:
         x.g() # E: "C[Any]" has no attribute "g"
     x.g() # E: "object" has no attribute "g"
 [builtins fixtures/isinstance.pyi]
-[out]

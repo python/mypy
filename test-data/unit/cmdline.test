@@ -1598,4 +1598,3 @@ disable_error_code =
 \[mypy]
 always_true =
   MY_VAR,
-[out]

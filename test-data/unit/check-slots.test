@@ -360,7 +360,6 @@ a.b = custom_obj
 a.c = custom_obj
 a.d = custom_obj
 a.e = custom_obj
-[out]
 [builtins fixtures/dict.pyi]
 
 

@@ -74,7 +74,6 @@ class ParseTestDataSuite(Suite):
             [case abc]
             s: str = 42
             [out]
-            [out2]
             [out version==3.7]
             """
         )

@@ -2072,4 +2072,3 @@ def fst(kv: Tuple[K, V]) -> K:
 
 pairs = [(len(s), s) for s in ["one", "two", "three"]]
 grouped = groupby(pairs, key=fst)
-[out]

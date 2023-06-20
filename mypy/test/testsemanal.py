@@ -53,6 +53,7 @@ def get_semanal_options(program_text: str, testcase: DataDrivenTestCase) -> Opti
 class SemAnalSuite(DataSuite):
     files = semanal_files
     native_sep = True
+    allow_redundant_out_section = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_semanal(testcase)

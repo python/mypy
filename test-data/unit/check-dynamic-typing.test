@@ -801,4 +801,3 @@ def g():
 def f(a: int) -> None: pass
 def g():
     f('') # Silent
-[out]

@@ -64,8 +64,9 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
     else:
         join = posixpath.join
 
-    out_section_missing = case.suite.required_out_section
-    normalize_output = True
+    had_out_section = False
+    had_useful_out_sections = False
+    had_effective_out_section = False
 
     files: list[tuple[str, str]] = []  # path and contents
     output_files: list[tuple[str, str | Pattern[str]]] = []  # output path and contents
@@ -77,9 +78,6 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
     triggered: list[str] = []  # Active triggers (one line per incremental step)
     targets: dict[int, list[str]] = {}  # Fine-grained targets (per fine-grained update)
     test_modules: list[str] = []  # Modules which are deemed "test" (vs "fixture")
-
-    had_out_section = False
-    had_meaningful_out_section = False
 
     def _case_fail(msg: str) -> NoReturn:
         pytest.fail(f"{case.file}:{case.line}: {msg}", pytrace=False)
@@ -153,8 +151,8 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
             deleted_paths.setdefault(num, set()).add(full)
         elif re.match(r"out[0-9]*$", item.id):
             had_out_section = True
-            if item.data:
-                had_meaningful_out_section = True
+            if item.data or item.id != "out":
+                had_useful_out_sections = True
             if item.arg is None:
                 args = []
             else:
@@ -162,8 +160,6 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
 
             version_check = True
             for arg in args:
-                if arg == "skip-path-normalization":
-                    normalize_output = False
                 if arg.startswith("version"):
                     compare_op = arg[7:9]
                     if compare_op not in {">=", "=="}:
@@ -187,7 +183,7 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
                         version_check = sys.version_info[: len(version)] == version
             if version_check:
                 tmp_output = [expand_variables(line) for line in item.data]
-                if os.path.sep == "\\" and normalize_output:
+                if os.path.sep == "\\" and case.normalize_output:
                     tmp_output = [fix_win_path(line) for line in tmp_output]
                 if item.id == "out" or item.id == "out1":
                     output = tmp_output
@@ -195,17 +191,19 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
                     passnum = int(item.id[len("out") :])
                     assert passnum > 1
                     output2[passnum] = tmp_output
-                out_section_missing = False
+                had_effective_out_section = True
         elif item.id == "triggered" and item.arg is None:
             triggered = item.data
         else:
             section_str = item.id + (f" {item.arg}" if item.arg else "")
             _item_fail(f"Invalid section header [{section_str}] in case {case.name!r}")
 
-    if out_section_missing:
-        _case_fail(f"Required output section not found in case {case.name!r}")
-
-    if had_out_section and not had_meaningful_out_section:
+    if case.suite.required_out_section:
+        if not had_effective_out_section:
+            _case_fail(f"Required output section not found in case {case.name!r}")
+    elif not case.suite.allow_redundant_out_section and (
+        had_out_section and not had_useful_out_sections
+    ):
         _case_fail(f"Redundant [out] section(s) in {case.name!r}")
 
     for passnum in stale_modules.keys():
@@ -244,7 +242,6 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
     case.expected_rechecked_modules = rechecked_modules
     case.deleted_paths = deleted_paths
     case.triggered = triggered or []
-    case.normalize_output = normalize_output
     case.expected_fine_grained_targets = targets
     case.test_modules = test_modules
 
@@ -274,7 +271,7 @@ class DataDrivenTestCase(pytest.Item):
 
     # Whether or not we should normalize the output to standardize things like
     # forward vs backward slashes in file paths for Windows vs Linux.
-    normalize_output = True
+    normalize_output: bool
 
     # Extra attributes used by some tests.
     last_line: int
@@ -286,10 +283,12 @@ class DataDrivenTestCase(pytest.Item):
         self,
         parent: DataSuiteCollector,
         suite: DataSuite,
+        *,
         file: str,
         name: str,
         writescache: bool,
         only_when: str,
+        normalize_output: bool,
         platform: str | None,
         skip: bool,
         xfail: bool,
@@ -301,6 +300,7 @@ class DataDrivenTestCase(pytest.Item):
         self.file = file
         self.writescache = writescache
         self.only_when = only_when
+        self.normalize_output = normalize_output
         if (platform == "windows" and sys.platform != "win32") or (
             platform == "posix" and sys.platform == "win32"
         ):
@@ -646,6 +646,7 @@ _case_name_pattern = re.compile(
     r"(?P<name>[a-zA-Z_0-9]+)"
     r"(?P<writescache>-writescache)?"
     r"(?P<only_when>-only_when_cache|-only_when_nocache)?"
+    r"(?P<skip_path_normalization>-skip_path_normalization)?"
     r"(-(?P<platform>posix|windows))?"
     r"(?P<skip>-skip)?"
     r"(?P<xfail>-xfail)?"
@@ -689,6 +690,7 @@ def split_test_cases(
             platform=m.group("platform"),
             skip=bool(m.group("skip")),
             xfail=bool(m.group("xfail")),
+            normalize_output=not m.group("skip_path_normalization"),
             data=data,
             line=line_no,
         )
@@ -802,6 +804,7 @@ class DataSuite:
     data_prefix = test_data_prefix
 
     required_out_section = False
+    allow_redundant_out_section = False
 
     native_sep = False
 
