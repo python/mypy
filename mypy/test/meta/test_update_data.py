@@ -7,6 +7,7 @@ import shlex
 import subprocess
 import sys
 import textwrap
+import uuid
 from pathlib import Path
 
 from mypy.test.config import test_data_prefix
@@ -21,7 +22,7 @@ class UpdateDataSuite(Suite):
         """
         p_test_data = Path(test_data_prefix)
         p_root = p_test_data.parent.parent
-        p = p_test_data / "check-__fixture__.test"
+        p = p_test_data / f"check-meta-{uuid.uuid4()}.test"
         assert not p.exists()
         try:
             p.write_text(textwrap.dedent(data_suite).lstrip())
