@@ -223,7 +223,8 @@ class Errors:
     # (path -> line -> error-codes)
     ignored_lines: dict[str, dict[int, list[str]]]
 
-    # Lines that were skipped during semantic analysis (would not be type-checked).
+    # Lines that were skipped during semantic analysis e.g. due to ALWAYS_FALSE, MYPY_FALSE,
+    # or platform/version checks. Those lines would not be type-checked.
     skipped_lines: dict[str, set[int]]
 
     # Lines on which an error was actually ignored.

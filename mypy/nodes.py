@@ -314,7 +314,8 @@ class MypyFile(SymbolNode):
     # If the value is empty, ignore all errors; otherwise, the list contains all
     # error codes to ignore.
     ignored_lines: dict[int, list[str]]
-    # Lines that were skipped during semantic analysis (would not be type-checked).
+    # Lines that were skipped during semantic analysis e.g. due to ALWAYS_FALSE, MYPY_FALSE,
+    # or platform/version checks. Those lines would not be type-checked.
     skipped_lines: set[int]
     # Is this file represented by a stub file (.pyi)?
     is_stub: bool
