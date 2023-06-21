@@ -522,7 +522,13 @@ class ASTConverter:
 
         stack = self.class_and_function_stack
         # Fast case for stripping function bodies
-        if can_strip and self.strip_function_bodies and len(stack) == 1 and stack[0] == "F" and not is_coroutine:
+        if (
+            can_strip
+            and self.strip_function_bodies
+            and len(stack) == 1
+            and stack[0] == "F"
+            and not is_coroutine
+        ):
             return []
 
         res: list[Statement] = []
