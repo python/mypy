@@ -55,6 +55,7 @@ PER_MODULE_OPTIONS: Final = {
     "warn_return_any",
     "warn_unreachable",
     "warn_unused_ignores",
+    "warn_name_override",
 }
 
 OPTIONS_AFFECTING_CACHE: Final = (
@@ -202,6 +203,10 @@ class Options:
 
         # Make arguments prepended via Concatenate be truly positional-only.
         self.strict_concatenate = False
+
+        # Warn about methods that override the name of an argument that could be used
+        # either positionally or as a keyword argument.
+        self.warn_name_override = False
 
         # Report an error for any branches inferred to be unreachable as a result of
         # type analysis.
