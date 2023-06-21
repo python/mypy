@@ -2801,34 +2801,6 @@ class TempNode(Expression):
         return visitor.visit_temp_node(self)
 
 
-# Special attributes not collected as protocol members by Python 3.12
-# See typing.EXCLUDED_ATTRIBUTES and typing._get_protocol_attrs
-EXCLUDED_ATTRIBUTES = frozenset(
-    {
-        "__parameters__",
-        "__orig_bases__",
-        "__orig_class__",
-        "_is_protocol",
-        "_is_runtime_protocol",
-        "__protocol_attrs__",
-        "__callable_proto_members_only__",
-        "__type_params__",
-        "__abstractmethods__",
-        "__annotations__",
-        "__dict__",
-        "__doc__",
-        "__init__",
-        "__module__",
-        "__new__",
-        "__slots__",
-        "__subclasshook__",
-        "__weakref__",
-        "__class_getitem__",
-        "_MutableMapping__marker",
-    }
-)
-
-
 class TypeInfo(SymbolNode):
     """The type structure of a single class.
 
@@ -3045,6 +3017,24 @@ class TypeInfo(SymbolNode):
         "is_intersection",
     ]
 
+    # Special attributes not collected as protocol members by Python 3.12
+    # See typing._SPECIAL_NAMES
+    EXCLUDED_ATTRIBUTES: Final = frozenset(
+        {
+            "__abstractmethods__",
+            "__annotations__",
+            "__dict__",
+            "__doc__",
+            "__init__",
+            "__module__",
+            "__new__",
+            "__slots__",
+            "__subclasshook__",
+            "__weakref__",
+            "__class_getitem__",  # Since Python 3.9
+        }
+    )
+
     def __init__(self, names: SymbolTable, defn: ClassDef, module_name: str) -> None:
         """Initialize a TypeInfo."""
         super().__init__()
@@ -3143,7 +3133,7 @@ class TypeInfo(SymbolNode):
                     if isinstance(node.node, (TypeAlias, TypeVarExpr, MypyFile)):
                         # These are auxiliary definitions (and type aliases are prohibited).
                         continue
-                    if name in EXCLUDED_ATTRIBUTES:
+                    if name in self.EXCLUDED_ATTRIBUTES:
                         continue
                     members.add(name)
         return sorted(list(members))
