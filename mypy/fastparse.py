@@ -538,17 +538,20 @@ class ASTConverter:
 
         # Slow case for stripping function bodies
         if can_strip and self.strip_function_bodies:
-            if stack[-2:] == ["C", "F"] and not is_possible_trivial_body(res):
-                # We only strip method bodies if they don't assign to an attribute, as
-                # this may define an attribute which has an externally visible effect.
-                visitor = FindAttributeAssign()
-                for s in res:
-                    s.accept(visitor)
-                    if visitor.found:
-                        can_strip = False
-                        break
+            if stack[-2:] == ["C", "F"]:
+                if is_possible_trivial_body(res):
+                    can_strip = False
+                else:
+                    # We only strip method bodies if they don't assign to an attribute, as
+                    # this may define an attribute which has an externally visible effect.
+                    visitor = FindAttributeAssign()
+                    for s in res:
+                        s.accept(visitor)
+                        if visitor.found:
+                            can_strip = False
+                            break
 
-            if can_strip and is_coroutine:
+            if can_strip and stack[-1] == "F" and is_coroutine:
                 # Yields inside an async function affect the return type and should not
                 # be stripped.
                 yield_visitor = FindYield()
