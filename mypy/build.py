@@ -2238,7 +2238,7 @@ class State:
         analyzer = SemanticAnalyzerPreAnalysis()
         with self.wrap_context():
             analyzer.visit_file(self.tree, self.xpath, self.id, options)
-        self.manager.errors.set_unreachable_lines(self.xpath, self.tree.unreachable_lines)
+        self.manager.errors.set_skipped_lines(self.xpath, self.tree.skipped_lines)
         # TODO: Do this while constructing the AST?
         self.tree.names = SymbolTable()
         if not self.tree.is_stub:

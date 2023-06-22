@@ -223,8 +223,9 @@ class Errors:
     # (path -> line -> error-codes)
     ignored_lines: dict[str, dict[int, list[str]]]
 
-    # Lines that are statically unreachable (e.g. due to platform/version check).
-    unreachable_lines: dict[str, set[int]]
+    # Lines that were skipped during semantic analysis e.g. due to ALWAYS_FALSE, MYPY_FALSE,
+    # or platform/version checks. Those lines would not be type-checked.
+    skipped_lines: dict[str, set[int]]
 
     # Lines on which an error was actually ignored.
     used_ignored_lines: dict[str, dict[int, list[str]]]
@@ -281,7 +282,7 @@ class Errors:
         self.import_ctx = []
         self.function_or_member = [None]
         self.ignored_lines = {}
-        self.unreachable_lines = {}
+        self.skipped_lines = {}
         self.used_ignored_lines = defaultdict(lambda: defaultdict(list))
         self.ignored_files = set()
         self.only_once_messages = set()
@@ -330,8 +331,8 @@ class Errors:
         if ignore_all:
             self.ignored_files.add(file)
 
-    def set_unreachable_lines(self, file: str, unreachable_lines: set[int]) -> None:
-        self.unreachable_lines[file] = unreachable_lines
+    def set_skipped_lines(self, file: str, skipped_lines: set[int]) -> None:
+        self.skipped_lines[file] = skipped_lines
 
     def current_target(self) -> str | None:
         """Retrieves the current target from the associated scope.
@@ -631,7 +632,7 @@ class Errors:
         ignored_lines = self.ignored_lines[file]
         used_ignored_lines = self.used_ignored_lines[file]
         for line, ignored_codes in ignored_lines.items():
-            if line in self.unreachable_lines[file]:
+            if line in self.skipped_lines[file]:
                 continue
             if codes.UNUSED_IGNORE.code in ignored_codes:
                 continue
