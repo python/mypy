@@ -5365,10 +5365,12 @@ class HasAnyType(types.BoolTypeQuery):
     def visit_any(self, t: AnyType) -> bool:
         # Special forms are not real Any types (note that we don't need to recurse
         # since AnyType constructor finds actual source).
-        return t.type_of_any != TypeOfAny.special_form and not (
-            t.type_of_any == TypeOfAny.from_another_any
-            and t.source_any.type_of_any == TypeOfAny.special_form
-        )
+        if t.type_of_any == TypeOfAny.special_form:
+            return False
+        if t.type_of_any == TypeOfAny.from_another_any:
+            assert t.source_any is not None
+            return t.source_any.type_of_any != TypeOfAny.special_form
+        return True
 
     def visit_callable_type(self, t: CallableType) -> bool:
         if self.ignore_in_type_obj and t.is_type_obj():
