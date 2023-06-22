@@ -2803,6 +2803,10 @@ class TupleSlots:
     __slots__ = ('x', 'y')
 class StringSlots:
     __slots__ = 'x y'
+class InitSlots:
+    __slots__ = ('x',)
+    def __init__(self) -> None:
+        self.x = None
 def foo(f: Foo):
     pass
 
@@ -2811,6 +2815,7 @@ foo(NoSlots())
 foo(EmptySlots())
 foo(TupleSlots())
 foo(StringSlots())
+foo(InitSlots())
 [builtins fixtures/tuple.pyi]
 
 [case testProtocolSlotsAndRuntimeCheckable]
