@@ -13,6 +13,10 @@
 #include <assert.h>
 #include "mypyc_util.h"
 
+#if CPY_3_12_FEATURES
+#include "internal/pycore_frame.h"
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -389,6 +393,31 @@ _CPyObject_HasAttrId(PyObject *v, _Py_Identifier *name) {
     _PyObject_CallMethodIdObjArgs((self), (name), (arg), NULL)
 #endif
 
+#if CPY_3_12_FEATURES
+
+// These are copied from genobject.c in Python 3.12
+
+/* Returns a borrowed reference */
+static inline PyCodeObject *
+_PyGen_GetCode(PyGenObject *gen) {
+    _PyInterpreterFrame *frame = (_PyInterpreterFrame *)(gen->gi_iframe);
+    return frame->f_code;
+}
+
+static int
+gen_is_coroutine(PyObject *o)
+{
+    if (PyGen_CheckExact(o)) {
+        PyCodeObject *code = _PyGen_GetCode((PyGenObject*)o);
+        if (code->co_flags & CO_ITERABLE_COROUTINE) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+#else
+
 // Copied from genobject.c in Python 3.10
 static int
 gen_is_coroutine(PyObject *o)
@@ -401,6 +430,8 @@ gen_is_coroutine(PyObject *o)
     }
     return 0;
 }
+
+#endif
 
 /*
  *   This helper function returns an awaitable for `o`:

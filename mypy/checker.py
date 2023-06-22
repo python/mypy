@@ -4270,6 +4270,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             isinstance(return_type, Instance)
                             and return_type.type.fullname == "builtins.object"
                         )
+                        and not is_lambda
                     ):
                         self.msg.incorrectly_returning_any(return_type, s)
                     return

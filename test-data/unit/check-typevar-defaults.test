@@ -72,3 +72,12 @@ Ts1 = TypeVarTuple("Ts1", default=2) # E: The default argument to TypeVarTuple m
 Ts2 = TypeVarTuple("Ts2", default=int)  # E: The default argument to TypeVarTuple must be an Unpacked tuple
 Ts3 = TypeVarTuple("Ts3", default=Tuple[int])  # E: The default argument to TypeVarTuple must be an Unpacked tuple
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarDefaultsInvalid2]
+from typing import TypeVar, List, Union
+
+T1 = TypeVar("T1", bound=str, default=int)  # E: TypeVar default must be a subtype of the bound type
+T2 = TypeVar("T2", bound=List[str], default=List[int])  # E: TypeVar default must be a subtype of the bound type
+T3 = TypeVar("T3", int, str, default=bytes)  # E: TypeVar default must be one of the constraint types
+T4 = TypeVar("T4", int, str, default=Union[int, str])  # E: TypeVar default must be one of the constraint types
+T5 = TypeVar("T5", float, str, default=int)  # E: TypeVar default must be one of the constraint types

@@ -90,6 +90,7 @@ class ErrorInfo:
     def __init__(
         self,
         import_ctx: list[tuple[str, int]],
+        *,
         file: str,
         module: str | None,
         typ: str | None,
@@ -222,8 +223,9 @@ class Errors:
     # (path -> line -> error-codes)
     ignored_lines: dict[str, dict[int, list[str]]]
 
-    # Lines that are statically unreachable (e.g. due to platform/version check).
-    unreachable_lines: dict[str, set[int]]
+    # Lines that were skipped during semantic analysis e.g. due to ALWAYS_FALSE, MYPY_FALSE,
+    # or platform/version checks. Those lines would not be type-checked.
+    skipped_lines: dict[str, set[int]]
 
     # Lines on which an error was actually ignored.
     used_ignored_lines: dict[str, dict[int, list[str]]]
@@ -280,7 +282,7 @@ class Errors:
         self.import_ctx = []
         self.function_or_member = [None]
         self.ignored_lines = {}
-        self.unreachable_lines = {}
+        self.skipped_lines = {}
         self.used_ignored_lines = defaultdict(lambda: defaultdict(list))
         self.ignored_files = set()
         self.only_once_messages = set()
@@ -329,8 +331,8 @@ class Errors:
         if ignore_all:
             self.ignored_files.add(file)
 
-    def set_unreachable_lines(self, file: str, unreachable_lines: set[int]) -> None:
-        self.unreachable_lines[file] = unreachable_lines
+    def set_skipped_lines(self, file: str, skipped_lines: set[int]) -> None:
+        self.skipped_lines[file] = skipped_lines
 
     def current_target(self) -> str | None:
         """Retrieves the current target from the associated scope.
@@ -415,21 +417,21 @@ class Errors:
         code = code or (codes.MISC if not blocker else None)
 
         info = ErrorInfo(
-            self.import_context(),
-            file,
-            self.current_module(),
-            type,
-            function,
-            line,
-            column,
-            end_line,
-            end_column,
-            severity,
-            message,
-            code,
-            blocker,
-            only_once,
-            allow_dups,
+            import_ctx=self.import_context(),
+            file=file,
+            module=self.current_module(),
+            typ=type,
+            function_or_member=function,
+            line=line,
+            column=column,
+            end_line=end_line,
+            end_column=end_column,
+            severity=severity,
+            message=message,
+            code=code,
+            blocker=blocker,
+            only_once=only_once,
+            allow_dups=allow_dups,
             origin=(self.file, origin_span),
             target=self.current_target(),
         )
@@ -511,17 +513,17 @@ class Errors:
                         + "may be out of date"
                     )
             note = ErrorInfo(
-                info.import_ctx,
-                info.file,
-                info.module,
-                info.type,
-                info.function_or_member,
-                info.line,
-                info.column,
-                info.end_line,
-                info.end_column,
-                "note",
-                msg,
+                import_ctx=info.import_ctx,
+                file=info.file,
+                module=info.module,
+                typ=info.type,
+                function_or_member=info.function_or_member,
+                line=info.line,
+                column=info.column,
+                end_line=info.end_line,
+                end_column=info.end_column,
+                severity="note",
+                message=msg,
                 code=None,
                 blocker=False,
                 only_once=False,
@@ -630,7 +632,7 @@ class Errors:
         ignored_lines = self.ignored_lines[file]
         used_ignored_lines = self.used_ignored_lines[file]
         for line, ignored_codes in ignored_lines.items():
-            if line in self.unreachable_lines[file]:
+            if line in self.skipped_lines[file]:
                 continue
             if codes.UNUSED_IGNORE.code in ignored_codes:
                 continue
@@ -653,21 +655,21 @@ class Errors:
                     message += f", use narrower [{', '.join(narrower)}] instead of [{unused}] code"
             # Don't use report since add_error_info will ignore the error!
             info = ErrorInfo(
-                self.import_context(),
-                file,
-                self.current_module(),
-                None,
-                None,
-                line,
-                -1,
-                line,
-                -1,
-                "error",
-                message,
-                codes.UNUSED_IGNORE,
-                False,
-                False,
-                False,
+                import_ctx=self.import_context(),
+                file=file,
+                module=self.current_module(),
+                typ=None,
+                function_or_member=None,
+                line=line,
+                column=-1,
+                end_line=line,
+                end_column=-1,
+                severity="error",
+                message=message,
+                code=codes.UNUSED_IGNORE,
+                blocker=False,
+                only_once=False,
+                allow_dups=False,
             )
             self._add_error_info(file, info)
 
@@ -705,21 +707,21 @@ class Errors:
             message = f'"type: ignore" comment without error code{codes_hint}'
             # Don't use report since add_error_info will ignore the error!
             info = ErrorInfo(
-                self.import_context(),
-                file,
-                self.current_module(),
-                None,
-                None,
-                line,
-                -1,
-                line,
-                -1,
-                "error",
-                message,
-                codes.IGNORE_WITHOUT_CODE,
-                False,
-                False,
-                False,
+                import_ctx=self.import_context(),
+                file=file,
+                module=self.current_module(),
+                typ=None,
+                function_or_member=None,
+                line=line,
+                column=-1,
+                end_line=line,
+                end_column=-1,
+                severity="error",
+                message=message,
+                code=codes.IGNORE_WITHOUT_CODE,
+                blocker=False,
+                only_once=False,
+                allow_dups=False,
             )
             self._add_error_info(file, info)
 

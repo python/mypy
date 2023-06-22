@@ -5,6 +5,7 @@ but to ensure we maintain a basic level of ergonomics for mypy contributors.
 import subprocess
 import sys
 import textwrap
+import uuid
 from pathlib import Path
 
 from mypy.test.config import test_data_prefix
@@ -16,13 +17,15 @@ class ParseTestDataSuite(Suite):
         return textwrap.dedent(s).lstrip()
 
     def _run_pytest(self, data_suite: str) -> str:
-        p = Path(test_data_prefix) / "check-__fixture__.test"
+        p_test_data = Path(test_data_prefix)
+        p_root = p_test_data.parent.parent
+        p = p_test_data / f"check-meta-{uuid.uuid4()}.test"
         assert not p.exists()
         try:
             p.write_text(data_suite)
             test_nodeid = f"mypy/test/testcheck.py::TypeCheckSuite::{p.name}"
             args = [sys.executable, "-m", "pytest", "-n", "0", "-s", test_nodeid]
-            proc = subprocess.run(args, capture_output=True, check=False)
+            proc = subprocess.run(args, cwd=p_root, capture_output=True, check=False)
             return proc.stdout.decode()
         finally:
             p.unlink()

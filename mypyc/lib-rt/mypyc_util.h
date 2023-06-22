@@ -69,4 +69,7 @@ static inline CPyTagged CPyTagged_ShortFromSsize_t(Py_ssize_t x) {
     return x << 1;
 }
 
+// Are we targeting Python 3.12 or newer?
+#define CPY_3_12_FEATURES (PY_VERSION_HEX >= 0x030c0000)
+
 #endif

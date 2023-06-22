@@ -36,6 +36,7 @@ def infer_function_type_arguments(
     formal_to_actual: list[list[int]],
     context: ArgumentInferContext,
     strict: bool = True,
+    allow_polymorphic: bool = False,
 ) -> list[Type | None]:
     """Infer the type arguments of a generic function.
 
@@ -57,7 +58,7 @@ def infer_function_type_arguments(
 
     # Solve constraints.
     type_vars = callee_type.type_var_ids()
-    return solve_constraints(type_vars, constraints, strict)
+    return solve_constraints(type_vars, constraints, strict, allow_polymorphic)
 
 
 def infer_type_arguments(

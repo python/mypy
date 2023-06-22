@@ -287,7 +287,7 @@ class MypyFile(SymbolNode):
         "names",
         "imports",
         "ignored_lines",
-        "unreachable_lines",
+        "skipped_lines",
         "is_stub",
         "is_cache_skeleton",
         "is_partial_stub_package",
@@ -314,8 +314,9 @@ class MypyFile(SymbolNode):
     # If the value is empty, ignore all errors; otherwise, the list contains all
     # error codes to ignore.
     ignored_lines: dict[int, list[str]]
-    # Lines that are statically unreachable (e.g. due to platform/version check).
-    unreachable_lines: set[int]
+    # Lines that were skipped during semantic analysis e.g. due to ALWAYS_FALSE, MYPY_FALSE,
+    # or platform/version checks. Those lines would not be type-checked.
+    skipped_lines: set[int]
     # Is this file represented by a stub file (.pyi)?
     is_stub: bool
     # Is this loaded from the cache and thus missing the actual body of the file?
@@ -348,7 +349,7 @@ class MypyFile(SymbolNode):
             self.ignored_lines = ignored_lines
         else:
             self.ignored_lines = {}
-        self.unreachable_lines = set()
+        self.skipped_lines = set()
 
         self.path = ""
         self.is_stub = False
@@ -2493,7 +2494,7 @@ class TypeVarExpr(TypeVarLikeExpr):
 
     __slots__ = ("values",)
 
-    __match_args__ = ("name", "values", "upper_bound")
+    __match_args__ = ("name", "values", "upper_bound", "default")
 
     # Value restriction: only types in the list are valid as values. If the
     # list is empty, there is no restriction.
@@ -2541,7 +2542,7 @@ class TypeVarExpr(TypeVarLikeExpr):
 class ParamSpecExpr(TypeVarLikeExpr):
     __slots__ = ()
 
-    __match_args__ = ("name", "upper_bound")
+    __match_args__ = ("name", "upper_bound", "default")
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_paramspec_expr(self)
@@ -2575,7 +2576,7 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
 
     tuple_fallback: mypy.types.Instance
 
-    __match_args__ = ("name", "upper_bound")
+    __match_args__ = ("name", "upper_bound", "default")
 
     def __init__(
         self,
