@@ -2195,3 +2195,15 @@ cb(lambda x: a)  # OK
 
 fn = lambda x: a
 cb(fn)
+
+[case testDisallowAnyFromAnotherAny]
+# flags: --disallow-any-expr
+from typing import Tuple, TypeVar
+
+T = TypeVar("T")
+
+def f(x: T) -> Tuple[T, float]: ...
+
+def a() -> None:
+    _ = f(42)
+[builtins fixtures/tuple.pyi]

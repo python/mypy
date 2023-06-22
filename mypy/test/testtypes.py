@@ -6,6 +6,7 @@ import re
 from unittest import TestCase, skipUnless
 
 import mypy.expandtype
+from mypy.checkexpr import has_any_type
 from mypy.erasetype import erase_type, remove_instance_last_known_values
 from mypy.expandtype import expand_type
 from mypy.indirection import TypeIndirectionVisitor
@@ -63,6 +64,11 @@ class TypesSuite(Suite):
 
     def test_any(self) -> None:
         assert_equal(str(AnyType(TypeOfAny.special_form)), "Any")
+
+    def test_has_any_special(self) -> None:
+        a = AnyType(TypeOfAny.special_form)
+        assert not has_any_type(a)
+        assert not has_any_type(AnyType(TypeOfAny.from_another_any, source_any=a))
 
     def test_simple_unbound_type(self) -> None:
         u = UnboundType("Foo")
