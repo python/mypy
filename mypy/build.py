@@ -38,9 +38,7 @@ from typing import (
     Sequence,
     TextIO,
 )
-from typing_extensions import Final, TypeAlias as _TypeAlias
-
-from mypy_extensions import TypedDict
+from typing_extensions import Final, TypeAlias as _TypeAlias, TypedDict
 
 import mypy.semanal_main
 from mypy.checker import TypeChecker
@@ -343,7 +341,9 @@ class CacheMeta(NamedTuple):
 
 
 # Metadata for the fine-grained dependencies file associated with a module.
-FgDepMeta = TypedDict("FgDepMeta", {"path": str, "mtime": int})
+class FgDepMeta(TypedDict):
+    path: str
+    mtime: int
 
 
 def cache_meta_from_dict(meta: dict[str, Any], data_json: str) -> CacheMeta:
