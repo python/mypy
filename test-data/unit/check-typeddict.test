@@ -2963,6 +2963,7 @@ a.update(u2)  # OK
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictUnpackSame]
+# flags: --strict-typeddict-update
 from typing import TypedDict
 
 class Foo(TypedDict):
@@ -2978,6 +2979,7 @@ foo5 = Foo(dict(**foo1, b=2))
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictUnpackCompatible]
+# flags: --strict-typeddict-update
 from typing import TypedDict
 
 class Foo(TypedDict):
@@ -3073,6 +3075,7 @@ bar: Bar = {**foo}  # E: Missing key "a" for TypedDict "Bar"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictUnpackMultiple]
+# flags: --strict-typeddict-update
 from typing import TypedDict
 
 class Foo(TypedDict):
