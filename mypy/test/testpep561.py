@@ -46,6 +46,18 @@ def virtualenv(python_executable: str = sys.executable) -> Iterator[tuple[str, s
             yield venv_dir, os.path.abspath(os.path.join(venv_dir, "bin", "python"))
 
 
+def upgrade_pip(python_executable: str, version_str: str) -> None:
+    """Install a newer pip version."""
+    install_cmd = [python_executable, "-m", "pip", "install", f"pip{version_str}"]
+    try:
+        with filelock.FileLock(pip_lock, timeout=pip_timeout):
+            proc = subprocess.run(install_cmd, capture_output=True, env=os.environ)
+    except filelock.Timeout as err:
+        raise Exception(f"Failed to acquire {pip_lock}") from err
+    if proc.returncode != 0:
+        raise Exception(proc.stdout.decode("utf-8") + proc.stderr.decode("utf-8"))
+
+
 def install_package(
     pkg: str, python_executable: str = sys.executable, editable: bool = False
 ) -> None:
@@ -93,6 +105,9 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
     assert pkgs, "No packages to install for PEP 561 test?"
     with virtualenv(python) as venv:
         venv_dir, python_executable = venv
+        if editable:
+            # Editable installs with PEP 660 require pip>=21.3
+            upgrade_pip(python_executable, ">=21.3.1")
         for pkg in pkgs:
             install_package(pkg, python_executable, editable)
 
