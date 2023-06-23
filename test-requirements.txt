@@ -15,4 +15,4 @@ pytest-cov>=2.10.0
 ruff==0.0.272  # must match version in .pre-commit-config.yaml
 setuptools>=65.5.1
 six
-tomli>=1.1.0
+tomli>=1.1.0; python_version<'3.11'
