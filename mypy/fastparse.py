@@ -521,7 +521,14 @@ class ASTConverter:
             return [block]
 
         stack = self.class_and_function_stack
-        if self.strip_function_bodies and len(stack) == 1 and stack[0] == "F":
+        # Fast case for stripping function bodies
+        if (
+            can_strip
+            and self.strip_function_bodies
+            and len(stack) == 1
+            and stack[0] == "F"
+            and not is_coroutine
+        ):
             return []
 
         res: list[Statement] = []
@@ -529,32 +536,33 @@ class ASTConverter:
             node = self.visit(stmt)
             res.append(node)
 
-        if (
-            self.strip_function_bodies
-            and can_strip
-            and stack[-2:] == ["C", "F"]
-            and not is_possible_trivial_body(res)
-        ):
-            # We only strip method bodies if they don't assign to an attribute, as
-            # this may define an attribute which has an externally visible effect.
-            visitor = FindAttributeAssign()
-            for s in res:
-                s.accept(visitor)
-                if visitor.found:
-                    break
-            else:
-                if is_coroutine:
-                    # Yields inside an async function affect the return type and should not
-                    # be stripped.
-                    yield_visitor = FindYield()
-                    for s in res:
-                        s.accept(yield_visitor)
-                        if yield_visitor.found:
-                            break
-                    else:
-                        return []
+        # Slow case for stripping function bodies
+        if can_strip and self.strip_function_bodies:
+            if stack[-2:] == ["C", "F"]:
+                if is_possible_trivial_body(res):
+                    can_strip = False
                 else:
-                    return []
+                    # We only strip method bodies if they don't assign to an attribute, as
+                    # this may define an attribute which has an externally visible effect.
+                    visitor = FindAttributeAssign()
+                    for s in res:
+                        s.accept(visitor)
+                        if visitor.found:
+                            can_strip = False
+                            break
+
+            if can_strip and stack[-1] == "F" and is_coroutine:
+                # Yields inside an async function affect the return type and should not
+                # be stripped.
+                yield_visitor = FindYield()
+                for s in res:
+                    s.accept(yield_visitor)
+                    if yield_visitor.found:
+                        can_strip = False
+                        break
+
+            if can_strip:
+                return []
         return res
 
     def translate_type_comment(
