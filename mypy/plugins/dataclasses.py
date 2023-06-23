@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Iterator, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterator, Optional
 from typing_extensions import Final
 
 from mypy import errorcodes, message_registry
