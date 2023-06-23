@@ -395,7 +395,7 @@ class DataclassTransformer:
             fallback=self._api.named_type("builtins.function"),
         )
 
-        self._cls.info.names[_INTERNAL_REPLACE_SYM_NAME] = SymbolTableNode(
+        info.names[_INTERNAL_REPLACE_SYM_NAME] = SymbolTableNode(
             kind=MDEF, node=FuncDef(typ=signature), plugin_generated=True
         )
 
@@ -435,7 +435,7 @@ class DataclassTransformer:
             name="__post_init__",
         )
 
-        self._cls.info.names[_INTERNAL_POST_INIT_SYM_NAME] = SymbolTableNode(
+        info.names[_INTERNAL_POST_INIT_SYM_NAME] = SymbolTableNode(
             kind=MDEF, node=FuncDef(typ=signature), plugin_generated=True
         )
 
