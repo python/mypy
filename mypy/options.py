@@ -344,6 +344,8 @@ class Options:
         # skip most errors after this many messages have been reported.
         # -1 means unlimited.
         self.many_errors_threshold = defaults.MANY_ERRORS_THRESHOLD
+        # Enable new experimental type inference algorithm.
+        self.new_type_inference = False
         # Disable recursive type aliases (currently experimental)
         self.disable_recursive_aliases = False
         # Deprecated reverse version of the above, do not use.

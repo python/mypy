@@ -1958,3 +1958,23 @@ def redefinition_bad(a: int):
             ...
 
 [builtins fixtures/primitives.pyi]
+
+[case testPatternMatchingClassPatternLocation]
+# See https://github.com/python/mypy/issues/15496
+from some_missing_lib import DataFrame, Series  # type: ignore[import]
+from typing import TypeVar
+
+T = TypeVar("T", Series, DataFrame)
+
+def f(x: T) -> None:
+    match x:
+        case Series() | DataFrame():  # type: ignore[misc]
+            pass
+
+def f2(x: T) -> None:
+    match x:
+        case Series():  # type: ignore[misc]
+            pass
+        case DataFrame():  # type: ignore[misc]
+            pass
+[builtins fixtures/primitives.pyi]

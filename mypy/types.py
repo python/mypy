@@ -150,7 +150,11 @@ NEVER_NAMES: Final = (
 )
 
 # Mypyc fixed-width native int types (compatible with builtins.int)
-MYPYC_NATIVE_INT_NAMES: Final = ("mypy_extensions.i64", "mypy_extensions.i32")
+MYPYC_NATIVE_INT_NAMES: Final = (
+    "mypy_extensions.i64",
+    "mypy_extensions.i32",
+    "mypy_extensions.i16",
+)
 
 DATACLASS_TRANSFORM_NAMES: Final = (
     "typing.dataclass_transform",
@@ -2957,7 +2961,7 @@ def get_proper_types(
 # to make it easier to gradually get modules working with mypyc.
 # Import them here, after the types are defined.
 # This is intended as a re-export also.
-from mypy.type_visitor import (  # noqa: F811,F401
+from mypy.type_visitor import (  # noqa: F811
     ALL_STRATEGY as ALL_STRATEGY,
     ANY_STRATEGY as ANY_STRATEGY,
     BoolTypeQuery as BoolTypeQuery,
@@ -3473,6 +3477,19 @@ def callable_with_ellipsis(any_type: AnyType, ret_type: Type, fallback: Instance
         fallback=fallback,
         is_ellipsis_args=True,
     )
+
+
+def remove_dups(types: list[T]) -> list[T]:
+    if len(types) <= 1:
+        return types
+    # Get unique elements in order of appearance
+    all_types: set[T] = set()
+    new_types: list[T] = []
+    for t in types:
+        if t not in all_types:
+            new_types.append(t)
+            all_types.add(t)
+    return new_types
 
 
 # This cyclic import is unfortunate, but to avoid it we would need to move away all uses
