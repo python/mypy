@@ -898,18 +898,11 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     # depends on this old behaviour.
                     and not any(tv.id.raw_id == 0 for tv in cactual.variables)
                 ):
-                    # If actual is generic, unify it with template. Note: this is
-                    # not an ideal solution (which would be adding the generic variables
-                    # to the constraint inference set), but it's a good first approximation,
-                    # and this will prevent leaking these variables in the solutions.
-                    # Note: this may infer constraints like T <: S or T <: List[S]
-                    # that contain variables in the target.
-                    unified = mypy.subtypes.unify_generic_callable(
-                        cactual, template, ignore_return=True
-                    )
-                    if unified is not None:
-                        cactual = unified
-                        res.extend(infer_constraints(cactual, template, neg_op(self.direction)))
+                    # TODO: prevent infinite neg_op()
+                    # TODO: notify solver of extra type vars
+                    # TODO: implement secondary constraints
+                    # TODO: fix polymorphic application to support new vars
+                    res.extend(infer_constraints(cactual, template, neg_op(self.direction)))
 
                 # We can't infer constraints from arguments if the template is Callable[..., T]
                 # (with literal '...').
