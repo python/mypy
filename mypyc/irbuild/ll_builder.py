@@ -104,6 +104,7 @@ from mypyc.ir.rtypes import (
     is_dict_rprimitive,
     is_fixed_width_rtype,
     is_float_rprimitive,
+    is_int16_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
@@ -146,6 +147,9 @@ from mypyc.primitives.generic_ops import (
     py_vectorcall_op,
 )
 from mypyc.primitives.int_ops import (
+    int16_divide_op,
+    int16_mod_op,
+    int16_overflow,
     int32_divide_op,
     int32_mod_op,
     int32_overflow,
@@ -456,6 +460,10 @@ class LowLevelIRBuilder:
             # Slow path just always generates an OverflowError
             self.call_c(int32_overflow, [], line)
             self.add(Unreachable())
+        elif is_int16_rprimitive(target_type):
+            # Slow path just always generates an OverflowError
+            self.call_c(int16_overflow, [], line)
+            self.add(Unreachable())
         else:
             assert False, target_type
 
@@ -469,7 +477,7 @@ class LowLevelIRBuilder:
         assert False, (src.type, target_type)
 
     def coerce_fixed_width_to_int(self, src: Value, line: int) -> Value:
-        if is_int32_rprimitive(src.type) and PLATFORM_SIZE == 8:
+        if (is_int32_rprimitive(src.type) and PLATFORM_SIZE == 8) or is_int16_rprimitive(src.type):
             # Simple case -- just sign extend and shift.
             extended = self.add(Extend(src, c_pyssize_t_rprimitive, signed=True))
             return self.int_op(
@@ -2038,6 +2046,8 @@ class LowLevelIRBuilder:
                 prim = int64_divide_op
             elif is_int32_rprimitive(type):
                 prim = int32_divide_op
+            elif is_int16_rprimitive(type):
+                prim = int16_divide_op
             else:
                 assert False, type
             return self.call_c(prim, [lhs, rhs], line)
@@ -2050,6 +2060,8 @@ class LowLevelIRBuilder:
                 prim = int64_mod_op
             elif is_int32_rprimitive(type):
                 prim = int32_mod_op
+            elif is_int16_rprimitive(type):
+                prim = int16_mod_op
             else:
                 assert False, type
             return self.call_c(prim, [lhs, rhs], line)

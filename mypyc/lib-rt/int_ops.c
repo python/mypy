@@ -641,6 +641,75 @@ void CPyInt32_Overflow() {
     PyErr_SetString(PyExc_OverflowError, "int too large to convert to i32");
 }
 
+int16_t CPyLong_AsInt16(PyObject *o) {
+    if (likely(PyLong_Check(o))) {
+        PyLongObject *lobj = (PyLongObject *)o;
+        Py_ssize_t size = lobj->ob_base.ob_size;
+        if (likely(size == 1)) {
+            // Fast path
+            digit x = lobj->ob_digit[0];
+            if (x < 0x8000)
+                return x;
+        } else if (likely(size == 0)) {
+            return 0;
+        }
+    }
+    // Slow path
+    int overflow;
+    long result = PyLong_AsLongAndOverflow(o, &overflow);
+    if (result > 0x7fff || result < -0x8000) {
+        overflow = 1;
+        result = -1;
+    }
+    if (result == -1) {
+        if (PyErr_Occurred()) {
+            return CPY_LL_INT_ERROR;
+        } else if (overflow) {
+            PyErr_SetString(PyExc_OverflowError, "int too large to convert to i16");
+            return CPY_LL_INT_ERROR;
+        }
+    }
+    return result;
+}
+
+int16_t CPyInt16_Divide(int16_t x, int16_t y) {
+    if (y == 0) {
+        PyErr_SetString(PyExc_ZeroDivisionError, "integer division or modulo by zero");
+        return CPY_LL_INT_ERROR;
+    }
+    if (y == -1 && x == INT16_MIN) {
+        PyErr_SetString(PyExc_OverflowError, "integer division overflow");
+        return CPY_LL_INT_ERROR;
+    }
+    int16_t d = x / y;
+    // Adjust for Python semantics
+    if (((x < 0) != (y < 0)) && d * y != x) {
+        d--;
+    }
+    return d;
+}
+
+int16_t CPyInt16_Remainder(int16_t x, int16_t y) {
+    if (y == 0) {
+        PyErr_SetString(PyExc_ZeroDivisionError, "integer division or modulo by zero");
+        return CPY_LL_INT_ERROR;
+    }
+    // Edge case: avoid core dump
+    if (y == -1 && x == INT16_MIN) {
+        return 0;
+    }
+    int16_t d = x % y;
+    // Adjust for Python semantics
+    if (((x < 0) != (y < 0)) && d != 0) {
+        d += y;
+    }
+    return d;
+}
+
+void CPyInt16_Overflow() {
+    PyErr_SetString(PyExc_OverflowError, "int too large to convert to i16");
+}
+
 double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y) {
     if (unlikely(y == 0)) {
         PyErr_SetString(PyExc_ZeroDivisionError, "division by zero");

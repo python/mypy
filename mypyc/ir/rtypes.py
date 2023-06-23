@@ -206,7 +206,7 @@ class RPrimitive(RType):
         self.error_overlap = error_overlap
         if ctype == "CPyTagged":
             self.c_undefined = "CPY_INT_TAG"
-        elif ctype in ("int32_t", "int64_t"):
+        elif ctype in ("int16_t", "int32_t", "int64_t"):
             # This is basically an arbitrary value that is pretty
             # unlikely to overlap with a real value.
             self.c_undefined = "-113"
@@ -290,6 +290,16 @@ short_int_rprimitive: Final = RPrimitive(
 
 # Low level integer types (correspond to C integer types)
 
+int16_rprimitive: Final = RPrimitive(
+    "int16",
+    is_unboxed=True,
+    is_refcounted=False,
+    is_native_int=True,
+    is_signed=True,
+    ctype="int16_t",
+    size=2,
+    error_overlap=True,
+)
 int32_rprimitive: Final = RPrimitive(
     "int32",
     is_unboxed=True,
@@ -432,6 +442,10 @@ def is_short_int_rprimitive(rtype: RType) -> bool:
     return rtype is short_int_rprimitive
 
 
+def is_int16_rprimitive(rtype: RType) -> bool:
+    return rtype is int16_rprimitive
+
+
 def is_int32_rprimitive(rtype: RType) -> bool:
     return rtype is int32_rprimitive or (
         rtype is c_pyssize_t_rprimitive and rtype._ctype == "int32_t"
@@ -445,7 +459,7 @@ def is_int64_rprimitive(rtype: RType) -> bool:
 
 
 def is_fixed_width_rtype(rtype: RType) -> bool:
-    return is_int32_rprimitive(rtype) or is_int64_rprimitive(rtype)
+    return is_int64_rprimitive(rtype) or is_int32_rprimitive(rtype) or is_int16_rprimitive(rtype)
 
 
 def is_uint32_rprimitive(rtype: RType) -> bool:
@@ -536,6 +550,8 @@ class TupleNameVisitor(RTypeVisitor[str]):
             return "8"  # "8 byte integer"
         elif t._ctype == "int32_t":
             return "4"  # "4 byte integer"
+        elif t._ctype == "int16_t":
+            return "2"  # "2 byte integer"
         elif t._ctype == "double":
             return "F"
         assert not t.is_unboxed, f"{t} unexpected unboxed type"
