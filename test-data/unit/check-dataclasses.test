@@ -2198,6 +2198,7 @@ a2 = replace(a, x='42')  # E: Argument "x" to "replace" of "A[int]" has incompat
 reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
 
 [case testPostInitCorrectSignature]
+from typing import Any, Generic, TypeVar, Callable
 from dataclasses import dataclass, InitVar
 
 @dataclass
@@ -2231,7 +2232,6 @@ class Test5:
     z: InitVar[bool] = True
     def __post_init__(self, y: str = 'a', z: bool = True) -> None: ...
 
-from typing import Any, Callable, TypeVar
 F = TypeVar('F', bound=Callable[..., Any])
 def identity(f: F) -> F: return f
 
@@ -2240,6 +2240,13 @@ class Test6:
     y: InitVar[str]
     @identity  # decorated method works
     def __post_init__(self, y: str) -> None: ...
+
+T = TypeVar('T')
+
+@dataclass
+class Test7(Generic[T]):
+    t: InitVar[T]
+    def __post_init__(self, t: T) -> None: ...
 [builtins fixtures/dataclasses.pyi]
 
 [case testPostInitSubclassing]
