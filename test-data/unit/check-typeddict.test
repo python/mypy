@@ -2901,7 +2901,7 @@ a.update(a)
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictStrictUpdate]
-# flags: --strict-typeddict-update
+# flags: --extra-checks
 from mypy_extensions import TypedDict
 
 A = TypedDict("A", {"foo": int, "bar": int})
@@ -2944,7 +2944,7 @@ a.update(u)
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictFlexibleUpdateUnionStrict]
-# flags: --strict-typeddict-update
+# flags: --extra-checks
 from typing import Union, NotRequired
 from mypy_extensions import TypedDict
 
@@ -2963,7 +2963,7 @@ a.update(u2)  # OK
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictUnpackSame]
-# flags: --strict-typeddict-update
+# flags: --extra-checks
 from typing import TypedDict
 
 class Foo(TypedDict):
@@ -2979,7 +2979,7 @@ foo5 = Foo(dict(**foo1, b=2))
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictUnpackCompatible]
-# flags: --strict-typeddict-update
+# flags: --extra-checks
 from typing import TypedDict
 
 class Foo(TypedDict):
@@ -3075,7 +3075,7 @@ bar: Bar = {**foo}  # E: Missing key "a" for TypedDict "Bar"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictUnpackMultiple]
-# flags: --strict-typeddict-update
+# flags: --extra-checks
 from typing import TypedDict
 
 class Foo(TypedDict):
@@ -3216,7 +3216,7 @@ reveal_type(bar)  # N: Revealed type is "TypedDict('__main__.TD', {'a': builtins
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictUnpackStrictMode]
-# flags: --strict-typeddict-update
+# flags: --extra-checks
 from typing import TypedDict, NotRequired
 
 class Foo(TypedDict):

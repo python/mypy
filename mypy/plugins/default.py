@@ -426,7 +426,7 @@ def typed_dict_update_signature_callback(ctx: MethodSigContext) -> CallableType:
                     required_keys=(arg_type.required_keys | td.required_keys)
                     & arg_type.items.keys()
                 )
-                if not ctx.api.options.strict_typeddict_update:
+                if not ctx.api.options.extra_checks:
                     item = item.copy_modified(item_names=list(td.items))
                 items.append(item)
             if items:

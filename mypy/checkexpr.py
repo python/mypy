@@ -766,7 +766,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     item_arg, callee, result, always_present_keys
                 ):
                     return None
-        if self.chk.options.strict_typeddict_update and last_star_found is not None:
+        if self.chk.options.extra_checks and last_star_found is not None:
             absent_keys = []
             for key in callee.items:
                 if key not in callee.required_keys and key not in result:

@@ -40,6 +40,7 @@ PER_MODULE_OPTIONS: Final = {
     "disallow_untyped_defs",
     "enable_error_code",
     "enabled_error_codes",
+    "extra_checks",
     "follow_imports_for_stubs",
     "follow_imports",
     "ignore_errors",
@@ -51,7 +52,6 @@ PER_MODULE_OPTIONS: Final = {
     "strict_concatenate",
     "strict_equality",
     "strict_optional",
-    "strict_typeddict_update",
     "warn_no_return",
     "warn_return_any",
     "warn_unreachable",
@@ -201,11 +201,11 @@ class Options:
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
         self.strict_equality = False
 
-        # Make arguments prepended via Concatenate be truly positional-only.
+        # Deprecated, use extra_checks instead.
         self.strict_concatenate = False
 
-        # Disallow partial overlap in TypedDict update (including ** in constructor).
-        self.strict_typeddict_update = False
+        # Enable additional checks that are technically correct but impractical.
+        self.extra_checks = False
 
         # Report an error for any branches inferred to be unreachable as a result of
         # type analysis.
