@@ -158,8 +158,6 @@ class DataclassAttribute:
         cls, info: TypeInfo, data: JsonDict, api: SemanticAnalyzerPluginInterface
     ) -> DataclassAttribute:
         data = data.copy()
-        if data.get("kw_only") is None:
-            data["kw_only"] = False
         typ = deserialize_and_fixup_type(data.pop("type"), api)
         return cls(type=typ, info=info, **data)
 
