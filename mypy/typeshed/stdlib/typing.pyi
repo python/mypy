@@ -136,14 +136,32 @@ Any = object()
 
 @_final
 class TypeVar:
-    __name__: str
-    __bound__: Any | None
-    __constraints__: tuple[Any, ...]
-    __covariant__: bool
-    __contravariant__: bool
-    def __init__(
-        self, name: str, *constraints: Any, bound: Any | None = None, covariant: bool = False, contravariant: bool = False
-    ) -> None: ...
+    @property
+    def __name__(self) -> str: ...
+    @property
+    def __bound__(self) -> Any | None: ...
+    @property
+    def __constraints__(self) -> tuple[Any, ...]: ...
+    @property
+    def __covariant__(self) -> bool: ...
+    @property
+    def __contravariant__(self) -> bool: ...
+    if sys.version_info >= (3, 12):
+        @property
+        def __infer_variance__(self) -> bool: ...
+        def __init__(
+            self,
+            name: str,
+            *constraints: Any,
+            bound: Any | None = None,
+            covariant: bool = False,
+            contravariant: bool = False,
+            infer_variance: bool = False,
+        ) -> None: ...
+    else:
+        def __init__(
+            self, name: str, *constraints: Any, bound: Any | None = None, covariant: bool = False, contravariant: bool = False
+        ) -> None: ...
     if sys.version_info >= (3, 10):
         def __or__(self, right: Any) -> _SpecialForm: ...
         def __ror__(self, left: Any) -> _SpecialForm: ...
@@ -193,30 +211,55 @@ if sys.version_info >= (3, 11):
     NotRequired: _SpecialForm
     LiteralString: _SpecialForm
 
+    @_final
     class TypeVarTuple:
-        __name__: str
+        @property
+        def __name__(self) -> str: ...
         def __init__(self, name: str) -> None: ...
         def __iter__(self) -> Any: ...
         def __typing_subst__(self, arg: Never) -> Never: ...
         def __typing_prepare_subst__(self, alias: Incomplete, args: Incomplete) -> Incomplete: ...
 
 if sys.version_info >= (3, 10):
+    @_final
     class ParamSpecArgs:
-        __origin__: ParamSpec
+        @property
+        def __origin__(self) -> ParamSpec: ...
         def __init__(self, origin: ParamSpec) -> None: ...
 
+    @_final
     class ParamSpecKwargs:
-        __origin__: ParamSpec
+        @property
+        def __origin__(self) -> ParamSpec: ...
         def __init__(self, origin: ParamSpec) -> None: ...
 
+    @_final
     class ParamSpec:
-        __name__: str
-        __bound__: Any | None
-        __covariant__: bool
-        __contravariant__: bool
-        def __init__(
-            self, name: str, *, bound: Any | None = None, contravariant: bool = False, covariant: bool = False
-        ) -> None: ...
+        @property
+        def __name__(self) -> str: ...
+        @property
+        def __bound__(self) -> Any | None: ...
+        @property
+        def __covariant__(self) -> bool: ...
+        @property
+        def __contravariant__(self) -> bool: ...
+        if sys.version_info >= (3, 12):
+            @property
+            def __infer_variance__(self) -> bool: ...
+            def __init__(
+                self,
+                name: str,
+                *,
+                bound: Any | None = None,
+                contravariant: bool = False,
+                covariant: bool = False,
+                infer_variance: bool = False,
+            ) -> None: ...
+        else:
+            def __init__(
+                self, name: str, *, bound: Any | None = None, contravariant: bool = False, covariant: bool = False
+            ) -> None: ...
+
         @property
         def args(self) -> ParamSpecArgs: ...
         @property
@@ -233,7 +276,7 @@ if sys.version_info >= (3, 10):
 
     class NewType:
         def __init__(self, name: str, tp: Any) -> None: ...
-        def __call__(self, x: _T) -> _T: ...
+        def __call__(self, __x: _T) -> _T: ...
         def __or__(self, other: Any) -> _SpecialForm: ...
         def __ror__(self, other: Any) -> _SpecialForm: ...
         __supertype__: type
@@ -588,6 +631,7 @@ class Mapping(Collection[_KT], Generic[_KT, _VT_co]):
     def keys(self) -> KeysView[_KT]: ...
     def values(self) -> ValuesView[_VT_co]: ...
     def __contains__(self, __key: object) -> bool: ...
+    def __eq__(self, __other: object) -> bool: ...
 
 class MutableMapping(Mapping[_KT, _VT], Generic[_KT, _VT]):
     @abstractmethod
@@ -728,7 +772,7 @@ class TextIO(IO[str]):
     @abstractmethod
     def __enter__(self) -> TextIO: ...
 
-class ByteString(Sequence[int], metaclass=ABCMeta): ...
+ByteString: typing_extensions.TypeAlias = bytes | bytearray | memoryview
 
 # Functions
 
@@ -800,18 +844,21 @@ if sys.version_info >= (3, 11):
 
 class NamedTuple(tuple[Any, ...]):
     if sys.version_info < (3, 8):
-        _field_types: collections.OrderedDict[str, type]
+        _field_types: ClassVar[collections.OrderedDict[str, type]]
     elif sys.version_info < (3, 9):
-        _field_types: dict[str, type]
-    _field_defaults: dict[str, Any]
-    _fields: tuple[str, ...]
-    _source: str
+        _field_types: ClassVar[dict[str, type]]
+    _field_defaults: ClassVar[dict[str, Any]]
+    _fields: ClassVar[tuple[str, ...]]
+    # __orig_bases__ sometimes exists on <3.12, but not consistently
+    # So we only add it to the stub on 3.12+.
+    if sys.version_info >= (3, 12):
+        __orig_bases__: ClassVar[tuple[Any, ...]]
     @overload
-    def __init__(self, typename: str, fields: Iterable[tuple[str, Any]] = ...) -> None: ...
+    def __init__(self, __typename: str, __fields: Iterable[tuple[str, Any]]) -> None: ...
     @overload
-    def __init__(self, typename: str, fields: None = None, **kwargs: Any) -> None: ...
+    def __init__(self, __typename: str, __fields: None = None, **kwargs: Any) -> None: ...
     @classmethod
-    def _make(cls: Type[_T], iterable: Iterable[Any]) -> _T: ...
+    def _make(cls, iterable: Iterable[Any]) -> typing_extensions.Self: ...
     if sys.version_info >= (3, 8):
         def _asdict(self) -> dict[str, Any]: ...
     else:
@@ -827,6 +874,10 @@ class _TypedDict(Mapping[str, object], metaclass=ABCMeta):
     if sys.version_info >= (3, 9):
         __required_keys__: ClassVar[frozenset[str]]
         __optional_keys__: ClassVar[frozenset[str]]
+    # __orig_bases__ sometimes exists on <3.12, but not consistently,
+    # so we only add it to the stub on 3.12+
+    if sys.version_info >= (3, 12):
+        __orig_bases__: ClassVar[tuple[Any, ...]]
     def copy(self) -> typing_extensions.Self: ...
     # Using Never so that only calls using mypy plugin hook that specialize the signature
     # can go through.
@@ -873,3 +924,26 @@ if sys.version_info >= (3, 10):
     def is_typeddict(tp: object) -> bool: ...
 
 def _type_repr(obj: object) -> str: ...
+
+if sys.version_info >= (3, 12):
+    def override(__arg: _F) -> _F: ...
+    @_final
+    class TypeAliasType:
+        def __init__(
+            self, name: str, value: Any, *, type_params: tuple[TypeVar | ParamSpec | TypeVarTuple, ...] = ()
+        ) -> None: ...
+        @property
+        def __value__(self) -> Any: ...
+        @property
+        def __type_params__(self) -> tuple[TypeVar | ParamSpec | TypeVarTuple, ...]: ...
+        @property
+        def __parameters__(self) -> tuple[Any, ...]: ...
+        @property
+        def __name__(self) -> str: ...
+        # It's writable on types, but not on instances of TypeAliasType.
+        @property
+        def __module__(self) -> str | None: ...  # type: ignore[override]
+        def __getitem__(self, parameters: Any) -> Any: ...
+        if sys.version_info >= (3, 10):
+            def __or__(self, right: Any) -> _SpecialForm: ...
+            def __ror__(self, left: Any) -> _SpecialForm: ...

@@ -32,6 +32,7 @@ from mypyc.ir.rtypes import (
     bytes_rprimitive,
     dict_rprimitive,
     float_rprimitive,
+    int16_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
     int_rprimitive,
@@ -102,6 +103,8 @@ class Mapper:
                 return int64_rprimitive
             elif typ.type.fullname == "mypy_extensions.i32":
                 return int32_rprimitive
+            elif typ.type.fullname == "mypy_extensions.i16":
+                return int16_rprimitive
             else:
                 return object_rprimitive
         elif isinstance(typ, TupleType):

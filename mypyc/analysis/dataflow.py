@@ -89,7 +89,6 @@ def get_cfg(blocks: list[BasicBlock]) -> CFG:
     pred_map: dict[BasicBlock, list[BasicBlock]] = {}
     exits = set()
     for block in blocks:
-
         assert not any(
             isinstance(op, ControlOp) for op in block.ops[:-1]
         ), "Control-flow ops must be at the end of blocks"
@@ -146,7 +145,7 @@ def cleanup_cfg(blocks: list[BasicBlock]) -> None:
         # Then delete any blocks that have no predecessors
         changed = False
         cfg = get_cfg(blocks)
-        orig_blocks = blocks[:]
+        orig_blocks = blocks.copy()
         blocks.clear()
         for i, block in enumerate(orig_blocks):
             if i == 0 or cfg.pred[block]:

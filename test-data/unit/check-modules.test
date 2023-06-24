@@ -39,7 +39,7 @@ try:
     pass
 except m.Err:
     pass
-except m.Bad: # E: Exception type must be derived from BaseException
+except m.Bad: # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
     pass
 [file m.py]
 class Err(BaseException): pass
@@ -53,7 +53,7 @@ try:
     pass
 except Err:
     pass
-except Bad: # E: Exception type must be derived from BaseException
+except Bad: # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
     pass
 [file m.py]
 class Err(BaseException): pass
@@ -404,14 +404,15 @@ _ = a
 _ = b
 _ = c
 _ = d
-_ = e
-_ = f # E: Name "f" is not defined
+_ = e  # E: Name "e" is not defined
+_ = f
 _ = _g # E: Name "_g" is not defined
 [file m.py]
 __all__ = ['a']
 __all__ += ('b',)
 __all__.append('c')
-__all__.extend(('d', 'e'))
+__all__.extend(('d', 'e', 'f'))
+__all__.remove('e')
 
 a = b = c = d = e = f = _g = 1
 [builtins fixtures/module_all.pyi]

@@ -5,17 +5,10 @@ from __future__ import annotations
 import sys
 from typing import AbstractSet
 
-from mypy.build import (
-    BuildManager,
-    BuildSourceSet,
-    State,
-    order_ascc,
-    sorted_components,
-    strongly_connected_components,
-    topsort,
-)
+from mypy.build import BuildManager, BuildSourceSet, State, order_ascc, sorted_components
 from mypy.errors import Errors
 from mypy.fscache import FileSystemCache
+from mypy.graph_utils import strongly_connected_components, topsort
 from mypy.modulefinder import SearchPaths
 from mypy.options import Options
 from mypy.plugin import Plugin
@@ -41,9 +34,9 @@ class GraphSuite(Suite):
         assert_equal(sccs, {frozenset({"A"}), frozenset({"B", "C"}), frozenset({"D"})})
 
     def _make_manager(self) -> BuildManager:
-        errors = Errors()
         options = Options()
         options.use_builtins_fixtures = True
+        errors = Errors(options)
         fscache = FileSystemCache()
         search_paths = SearchPaths((), (), (), ())
         manager = BuildManager(

@@ -104,6 +104,7 @@ from mypyc.ir.rtypes import (
     is_dict_rprimitive,
     is_fixed_width_rtype,
     is_float_rprimitive,
+    is_int16_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
@@ -146,6 +147,9 @@ from mypyc.primitives.generic_ops import (
     py_vectorcall_op,
 )
 from mypyc.primitives.int_ops import (
+    int16_divide_op,
+    int16_mod_op,
+    int16_overflow,
     int32_divide_op,
     int32_mod_op,
     int32_overflow,
@@ -266,7 +270,7 @@ class LowLevelIRBuilder:
 
     def flush_keep_alives(self) -> None:
         if self.keep_alives:
-            self.add(KeepAlive(self.keep_alives[:]))
+            self.add(KeepAlive(self.keep_alives.copy()))
             self.keep_alives = []
 
     # Type conversions
@@ -456,6 +460,10 @@ class LowLevelIRBuilder:
             # Slow path just always generates an OverflowError
             self.call_c(int32_overflow, [], line)
             self.add(Unreachable())
+        elif is_int16_rprimitive(target_type):
+            # Slow path just always generates an OverflowError
+            self.call_c(int16_overflow, [], line)
+            self.add(Unreachable())
         else:
             assert False, target_type
 
@@ -469,7 +477,7 @@ class LowLevelIRBuilder:
         assert False, (src.type, target_type)
 
     def coerce_fixed_width_to_int(self, src: Value, line: int) -> Value:
-        if is_int32_rprimitive(src.type) and PLATFORM_SIZE == 8:
+        if (is_int32_rprimitive(src.type) and PLATFORM_SIZE == 8) or is_int16_rprimitive(src.type):
             # Simple case -- just sign extend and shift.
             extended = self.add(Extend(src, c_pyssize_t_rprimitive, signed=True))
             return self.int_op(
@@ -876,10 +884,8 @@ class LowLevelIRBuilder:
         ):
             if arg_values:
                 # Create a C array containing all arguments as boxed values.
-                array = Register(RArray(object_rprimitive, len(arg_values)))
                 coerced_args = [self.coerce(arg, object_rprimitive, line) for arg in arg_values]
-                self.add(AssignMulti(array, coerced_args))
-                arg_ptr = self.add(LoadAddress(object_pointer_rprimitive, array))
+                arg_ptr = self.setup_rarray(object_rprimitive, coerced_args, object_ptr=True)
             else:
                 arg_ptr = Integer(0, object_pointer_rprimitive)
             num_pos = num_positional_args(arg_values, arg_kinds)
@@ -953,13 +959,10 @@ class LowLevelIRBuilder:
             not kind.is_star() and not kind.is_optional() for kind in arg_kinds
         ):
             method_name_reg = self.load_str(method_name)
-            array = Register(RArray(object_rprimitive, len(arg_values) + 1))
-            self_arg = self.coerce(obj, object_rprimitive, line)
-            coerced_args = [self_arg] + [
-                self.coerce(arg, object_rprimitive, line) for arg in arg_values
+            coerced_args = [
+                self.coerce(arg, object_rprimitive, line) for arg in [obj] + arg_values
             ]
-            self.add(AssignMulti(array, coerced_args))
-            arg_ptr = self.add(LoadAddress(object_pointer_rprimitive, array))
+            arg_ptr = self.setup_rarray(object_rprimitive, coerced_args, object_ptr=True)
             num_pos = num_positional_args(arg_values, arg_kinds)
             keywords = self._vectorcall_keywords(arg_names)
             value = self.call_c(
@@ -1716,6 +1719,16 @@ class LowLevelIRBuilder:
     def new_set_op(self, values: list[Value], line: int) -> Value:
         return self.call_c(new_set_op, values, line)
 
+    def setup_rarray(
+        self, item_type: RType, values: Sequence[Value], *, object_ptr: bool = False
+    ) -> Value:
+        """Declare and initialize a new RArray, returning its address."""
+        array = Register(RArray(item_type, len(values)))
+        self.add(AssignMulti(array, list(values)))
+        return self.add(
+            LoadAddress(object_pointer_rprimitive if object_ptr else c_pointer_rprimitive, array)
+        )
+
     def shortcircuit_helper(
         self,
         op: str,
@@ -2033,6 +2046,8 @@ class LowLevelIRBuilder:
                 prim = int64_divide_op
             elif is_int32_rprimitive(type):
                 prim = int32_divide_op
+            elif is_int16_rprimitive(type):
+                prim = int16_divide_op
             else:
                 assert False, type
             return self.call_c(prim, [lhs, rhs], line)
@@ -2045,6 +2060,8 @@ class LowLevelIRBuilder:
                 prim = int64_mod_op
             elif is_int32_rprimitive(type):
                 prim = int32_mod_op
+            elif is_int16_rprimitive(type):
+                prim = int16_mod_op
             else:
                 assert False, type
             return self.call_c(prim, [lhs, rhs], line)

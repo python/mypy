@@ -598,3 +598,25 @@ def classify_class_attrs(cls: type) -> list[Attribute]: ...
 
 if sys.version_info >= (3, 9):
     class ClassFoundException(Exception): ...
+
+if sys.version_info >= (3, 12):
+    class BufferFlags(enum.IntFlag):
+        SIMPLE: int
+        WRITABLE: int
+        FORMAT: int
+        ND: int
+        STRIDES: int
+        C_CONTIGUOUS: int
+        F_CONTIGUOUS: int
+        ANY_CONTIGUOUS: int
+        INDIRECT: int
+        CONTIG: int
+        CONTIG_RO: int
+        STRIDED: int
+        STRIDED_RO: int
+        RECORDS: int
+        RECORDS_RO: int
+        FULL: int
+        FULL_RO: int
+        READ: int
+        WRITE: int

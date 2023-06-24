@@ -325,7 +325,10 @@ class X(NamedTuple):
 reveal_type(X._fields)  # N: Revealed type is "Tuple[builtins.str, builtins.str]"
 reveal_type(X._field_types)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
 reveal_type(X._field_defaults)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
-reveal_type(X.__annotations__)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
+
+# In typeshed's stub for builtins.pyi, __annotations__ is `dict[str, Any]`,
+# but it's inferred as `Mapping[str, object]` here due to the fixture we're using
+reveal_type(X.__annotations__)  # N: Revealed type is "typing.Mapping[builtins.str, builtins.object]"
 
 [builtins fixtures/dict.pyi]
 

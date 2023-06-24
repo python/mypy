@@ -42,7 +42,7 @@ def f(): # E: Type signature has too many arguments  [syntax]
     # type: (int) -> None
     1
 
-x = 0  # type: x y  # E: syntax error in type comment "x y"  [syntax]
+x = 0  # type: x y  # E: Syntax error in type comment "x y"  [syntax]
 
 [case testErrorCodeSyntaxError3]
 # This is a bit inconsistent -- syntax error would be more logical?
@@ -83,7 +83,7 @@ b = 'x'.foobar(c) # type: int # type: ignore[name-defined, xyz]  # E: "str" has 
 
 [case testErrorCodeWarnUnusedIgnores1]
 # flags: --warn-unused-ignores
-x # type: ignore[name-defined, attr-defined] # E: Unused "type: ignore[attr-defined]" comment
+x # type: ignore[name-defined, attr-defined] # E: Unused "type: ignore[attr-defined]" comment  [unused-ignore]
 
 [case testErrorCodeWarnUnusedIgnores2]
 # flags: --warn-unused-ignores
@@ -91,19 +91,19 @@ x # type: ignore[name-defined, attr-defined] # E: Unused "type: ignore[attr-defi
 
 [case testErrorCodeWarnUnusedIgnores3]
 # flags: --warn-unused-ignores
-"x".foobar(y) # type: ignore[name-defined, attr-defined, xyz] # E: Unused "type: ignore[xyz]" comment
+"x".foobar(y) # type: ignore[name-defined, attr-defined, xyz] # E: Unused "type: ignore[xyz]" comment  [unused-ignore]
 
 [case testErrorCodeWarnUnusedIgnores4]
 # flags: --warn-unused-ignores
-"x".foobar(y) # type: ignore[name-defined, attr-defined, valid-type] # E: Unused "type: ignore[valid-type]" comment
+"x".foobar(y) # type: ignore[name-defined, attr-defined, valid-type] # E: Unused "type: ignore[valid-type]" comment  [unused-ignore]
 
 [case testErrorCodeWarnUnusedIgnores5]
 # flags: --warn-unused-ignores
-"x".foobar(y) # type: ignore[name-defined, attr-defined, valid-type, xyz] # E: Unused "type: ignore[valid-type, xyz]" comment
+"x".foobar(y) # type: ignore[name-defined, attr-defined, valid-type, xyz] # E: Unused "type: ignore[valid-type, xyz]" comment  [unused-ignore]
 
 [case testErrorCodeWarnUnusedIgnores6_NoDetailWhenSingleErrorCode]
 # flags: --warn-unused-ignores
-"x" # type: ignore[name-defined] # E: Unused "type: ignore" comment
+"x" # type: ignore[name-defined] # E: Unused "type: ignore" comment  [unused-ignore]
 
 [case testErrorCodeMissingWhenRequired]
 # flags: --enable-error-code ignore-without-code
@@ -114,9 +114,11 @@ z # type: ignore[name-defined]
 
 [case testErrorCodeMissingDoesntTrampleUnusedIgnoresWarning]
 # flags: --enable-error-code ignore-without-code --warn-unused-ignores
-"x" # type: ignore # E: Unused "type: ignore" comment
-"y" # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment
-z # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment # E: Name "z" is not defined  [name-defined] # N: Error code "name-defined" not covered by "type: ignore" comment
+"x" # type: ignore # E: Unused "type: ignore" comment  [unused-ignore]
+"y" # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment  [unused-ignore]
+z # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment  [unused-ignore] \
+                                      # E: Name "z" is not defined  [name-defined] \
+                                      # N: Error code "name-defined" not covered by "type: ignore" comment
 
 [case testErrorCodeMissingWholeFileIgnores]
 # flags: --enable-error-code ignore-without-code
@@ -718,8 +720,8 @@ main:2: error: Name "y" is not defined  [name-defined]
 x = y  # type: int  # type: ignored[foo]
 x = y  # type: int  # type: ignored [foo]
 [out]
-main:1: error: syntax error in type comment "int"  [syntax]
-main:2: error: syntax error in type comment "int"  [syntax]
+main:1: error: Syntax error in type comment "int"  [syntax]
+main:2: error: Syntax error in type comment "int"  [syntax]
 
 [case testErrorCode__exit__Return]
 class InvalidReturn:
@@ -805,6 +807,22 @@ j = [x for x in lst if False]            # E: If condition in comprehension is a
 k = [x for x in lst if isinstance(x, int) or foo()]  # E: If condition in comprehension is always true  [redundant-expr]
 [builtins fixtures/isinstancelist.pyi]
 
+[case testRedundantExprTruthiness]
+# flags: --enable-error-code redundant-expr
+from typing import List
+
+def maybe() -> bool: ...
+
+class Foo:
+    def __init__(self, x: List[int]) -> None:
+        self.x = x or []
+
+    def method(self) -> int:
+        if not self.x or maybe():
+            return 1
+        return 2
+[builtins fixtures/list.pyi]
+
 [case testNamedTupleNameMismatch]
 from typing import NamedTuple
 
@@ -882,11 +900,11 @@ if any_or_object:
 # flags: --strict-optional
 def f():
     pass
-if f:  # E: Function "Callable[[], Any]" could always be true in boolean context  [truthy-function]
+if f:  # E: Function "f" could always be true in boolean context  [truthy-function]
     pass
-if not f:  # E: Function "Callable[[], Any]" could always be true in boolean context  [truthy-function]
+if not f:  # E: Function "f" could always be true in boolean context  [truthy-function]
     pass
-conditional_result = 'foo' if f else 'bar'  # E: Function "Callable[[], Any]" could always be true in boolean context  [truthy-function]
+conditional_result = 'foo' if f else 'bar'  # E: Function "f" could always be true in boolean context  [truthy-function]
 
 [case testTruthyIterable]
 # flags: --strict-optional --enable-error-code truthy-iterable
@@ -1054,4 +1072,8 @@ A.f = h  # OK
 class A:
     def f(self) -> None: pass
 def h(self: A) -> None: pass
-A.f = h  # type: ignore[assignment]  # E: Unused "type: ignore" comment, use narrower [method-assign] instead of [assignment]
+A.f = h  # type: ignore[assignment]  # E: Unused "type: ignore" comment, use narrower [method-assign] instead of [assignment] code  [unused-ignore]
+
+[case testUnusedIgnoreEnableCode]
+# flags: --enable-error-code=unused-ignore
+x = 1  # type: ignore  # E: Unused "type: ignore" comment  [unused-ignore]

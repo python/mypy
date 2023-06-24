@@ -944,6 +944,56 @@ async def bar(x: Union[A, B]) -> None:
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
 
+[case testAsyncIteratorWithIgnoredErrors]
+import m
+
+async def func(l: m.L) -> None:
+    reveal_type(l.get_iterator)  # N: Revealed type is "def () -> typing.AsyncIterator[builtins.str]"
+    reveal_type(l.get_iterator2)  # N: Revealed type is "def () -> typing.AsyncIterator[builtins.str]"
+    async for i in l.get_iterator():
+        reveal_type(i)  # N: Revealed type is "builtins.str"
+
+    reveal_type(m.get_generator)  # N: Revealed type is "def () -> typing.AsyncGenerator[builtins.int, None]"
+    async for i2 in m.get_generator():
+        reveal_type(i2)  # N: Revealed type is "builtins.int"
+
+[file m.py]
+# mypy: ignore-errors=True
+from typing import AsyncIterator, AsyncGenerator
+
+class L:
+    async def some_func(self, i: int) -> str:
+        return 'x'
+
+    async def get_iterator(self) -> AsyncIterator[str]:
+        yield await self.some_func(0)
+
+    async def get_iterator2(self) -> AsyncIterator[str]:
+        if self:
+            a = (yield 'x')
+
+async def get_generator() -> AsyncGenerator[int, None]:
+    yield 1
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+
+[case testAsyncIteratorWithIgnoredErrorsAndYieldFrom]
+from m import L
+
+async def func(l: L) -> None:
+    reveal_type(l.get_iterator)
+
+[file m.py]
+# mypy: ignore-errors=True
+from typing import AsyncIterator
+
+class L:
+    async def get_iterator(self) -> AsyncIterator[str]:
+        yield from ['x']  # E: "yield from" in async function
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+
 [case testInvalidComprehensionNoCrash]
 # flags: --show-error-codes
 async def foo(x: int) -> int: ...
@@ -957,5 +1007,47 @@ def bad() -> None:
     y = [await foo(x) for x in [1, 2, 3]]  # E: "await" outside coroutine ("async def")
 async def good() -> None:
     y = [await foo(x) for x in [1, 2, 3]]  # OK
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+
+[case testNestedAsyncFunctionAndTypeVarAvalues]
+from typing import TypeVar
+
+T = TypeVar('T', int, str)
+
+def f(x: T) -> None:
+    async def g() -> T:
+        return x
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+
+[case testNestedAsyncGeneratorAndTypeVarAvalues]
+from typing import AsyncGenerator, TypeVar
+
+T = TypeVar('T', int, str)
+
+def f(x: T) -> None:
+    async def g() -> AsyncGenerator[T, None]:
+        yield x
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+
+[case testNestedDecoratedCoroutineAndTypeVarValues]
+from typing import Generator, TypeVar
+from types import coroutine
+
+T = TypeVar('T', int, str)
+
+def f(x: T) -> None:
+    @coroutine
+    def inner() -> Generator[T, None, None]:
+        yield x
+    reveal_type(inner)  # N: Revealed type is "def () -> typing.AwaitableGenerator[builtins.int, None, None, typing.Generator[builtins.int, None, None]]" \
+        # N: Revealed type is "def () -> typing.AwaitableGenerator[builtins.str, None, None, typing.Generator[builtins.str, None, None]]"
+
+@coroutine
+def coro() -> Generator[int, None, None]:
+    yield 1
+reveal_type(coro)  # N: Revealed type is "def () -> typing.AwaitableGenerator[builtins.int, None, None, typing.Generator[builtins.int, None, None]]"
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]

@@ -48,6 +48,7 @@ from mypy.nodes import (
 )
 from mypy.types import (
     AnyType,
+    DeletedType,
     Instance,
     ProperType,
     TupleType,
@@ -90,7 +91,6 @@ from mypyc.ir.rtypes import (
     RType,
     RUnion,
     bitmap_rprimitive,
-    c_int_rprimitive,
     c_pyssize_t_rprimitive,
     dict_rprimitive,
     int_rprimitive,
@@ -127,12 +127,7 @@ from mypyc.options import CompilerOptions
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op, next_op, py_setattr_op
 from mypyc.primitives.list_ops import list_get_item_unsafe_op, list_pop_last, to_list
-from mypyc.primitives.misc_ops import (
-    check_unpack_count_op,
-    get_module_dict_op,
-    import_extra_args_op,
-    import_op,
-)
+from mypyc.primitives.misc_ops import check_unpack_count_op, get_module_dict_op, import_op
 from mypyc.primitives.registry import CFunctionDescription, function_ops
 
 # These int binary operations can borrow their operands safely, since the
@@ -194,6 +189,8 @@ class IRBuilder:
         self.encapsulating_funcs = pbv.encapsulating_funcs
         self.nested_fitems = pbv.nested_funcs.keys()
         self.fdefs_to_decorators = pbv.funcs_to_decorators
+        self.module_import_groups = pbv.module_import_groups
+
         self.singledispatch_impls = singledispatch_impls
 
         self.visitor = visitor
@@ -305,6 +302,9 @@ class IRBuilder:
     def load_int(self, value: int) -> Value:
         return self.builder.load_int(value)
 
+    def load_float(self, value: float) -> Value:
+        return self.builder.load_float(value)
+
     def unary_op(self, lreg: Value, expr_op: str, line: int) -> Value:
         return self.builder.unary_op(lreg, expr_op, line)
 
@@ -394,22 +394,6 @@ class IRBuilder:
         # Add an attribute entry into the class dict of a non-extension class.
         key_unicode = self.load_str(key)
         self.call_c(dict_set_item_op, [non_ext.dict, key_unicode, val], line)
-
-    def gen_import_from(
-        self, id: str, globals_dict: Value, imported: list[str], line: int
-    ) -> Value:
-        self.imports[id] = None
-
-        null_dict = Integer(0, dict_rprimitive, line)
-        names_to_import = self.new_list_op([self.load_str(name) for name in imported], line)
-        zero_int = Integer(0, c_int_rprimitive, line)
-        value = self.call_c(
-            import_extra_args_op,
-            [self.load_str(id), globals_dict, null_dict, names_to_import, zero_int],
-            line,
-        )
-        self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
-        return value
 
     def gen_import(self, id: str, line: int) -> None:
         self.imports[id] = None
@@ -590,6 +574,10 @@ class IRBuilder:
                 self.error("Cannot assign to the first argument of classmethod", line)
             if lvalue.kind == LDEF:
                 if symbol not in self.symtables[-1]:
+                    if isinstance(symbol, Var) and not isinstance(symbol.type, DeletedType):
+                        reg_type = self.type_to_rtype(symbol.type)
+                    else:
+                        reg_type = self.node_type(lvalue)
                     # If the function is a generator function, then first define a new variable
                     # in the current function's environment class. Next, define a target that
                     # refers to the newly defined variable in that environment class. Add the
@@ -597,14 +585,11 @@ class IRBuilder:
                     # current environment.
                     if self.fn_info.is_generator:
                         return self.add_var_to_env_class(
-                            symbol,
-                            self.node_type(lvalue),
-                            self.fn_info.generator_class,
-                            reassign=False,
+                            symbol, reg_type, self.fn_info.generator_class, reassign=False
                         )
 
                     # Otherwise define a new local variable.
-                    return self.add_local_reg(symbol, self.node_type(lvalue))
+                    return self.add_local_reg(symbol, reg_type)
                 else:
                     # Assign to a previously defined variable.
                     return self.lookup(symbol)
@@ -756,7 +741,6 @@ class IRBuilder:
     def process_iterator_tuple_assignment(
         self, target: AssignmentTargetTuple, rvalue_reg: Value, line: int
     ) -> None:
-
         iterator = self.call_c(iter_op, [rvalue_reg], line)
 
         # This may be the whole lvalue list if there is no starred value
@@ -1041,7 +1025,6 @@ class IRBuilder:
     def call_refexpr_with_args(
         self, expr: CallExpr, callee: RefExpr, arg_values: list[Value]
     ) -> Value:
-
         # Handle data-driven special-cased primitive call ops.
         if callee.fullname and expr.arg_kinds == [ARG_POS] * len(arg_values):
             fullname = get_call_target_fullname(callee)

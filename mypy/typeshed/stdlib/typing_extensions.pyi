@@ -22,9 +22,14 @@ from typing import (  # noqa: Y022,Y039
     DefaultDict as DefaultDict,
     Deque as Deque,
     Mapping,
-    NewType as NewType,
     NoReturn as NoReturn,
     Sequence,
+    SupportsAbs as SupportsAbs,
+    SupportsBytes as SupportsBytes,
+    SupportsComplex as SupportsComplex,
+    SupportsFloat as SupportsFloat,
+    SupportsInt as SupportsInt,
+    SupportsRound as SupportsRound,
     Text as Text,
     Type as Type,
     _Alias,
@@ -39,6 +44,7 @@ if sys.version_info >= (3, 9):
 
 __all__ = [
     "Any",
+    "Buffer",
     "ClassVar",
     "Concatenate",
     "Final",
@@ -66,6 +72,12 @@ __all__ = [
     "OrderedDict",
     "TypedDict",
     "SupportsIndex",
+    "SupportsAbs",
+    "SupportsRound",
+    "SupportsBytes",
+    "SupportsComplex",
+    "SupportsFloat",
+    "SupportsInt",
     "Annotated",
     "assert_never",
     "assert_type",
@@ -84,6 +96,7 @@ __all__ = [
     "runtime_checkable",
     "Text",
     "TypeAlias",
+    "TypeAliasType",
     "TypeGuard",
     "TYPE_CHECKING",
     "Never",
@@ -93,6 +106,7 @@ __all__ = [
     "clear_overloads",
     "get_args",
     "get_origin",
+    "get_original_bases",
     "get_overloads",
     "get_type_hints",
 ]
@@ -134,6 +148,7 @@ class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
     __required_keys__: ClassVar[frozenset[str]]
     __optional_keys__: ClassVar[frozenset[str]]
     __total__: ClassVar[bool]
+    __orig_bases__: ClassVar[tuple[Any, ...]]
     def copy(self) -> Self: ...
     # Using Never so that only calls using mypy plugin hook that specialize the signature
     # can go through.
@@ -183,10 +198,11 @@ class SupportsIndex(Protocol, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def __index__(self) -> int: ...
 
-# New things in 3.10
+# New and changed things in 3.10
 if sys.version_info >= (3, 10):
     from typing import (
         Concatenate as Concatenate,
+        NewType as NewType,
         ParamSpecArgs as ParamSpecArgs,
         ParamSpecKwargs as ParamSpecKwargs,
         TypeAlias as TypeAlias,
@@ -194,18 +210,27 @@ if sys.version_info >= (3, 10):
         is_typeddict as is_typeddict,
     )
 else:
+    @final
     class ParamSpecArgs:
-        __origin__: ParamSpec
+        @property
+        def __origin__(self) -> ParamSpec: ...
         def __init__(self, origin: ParamSpec) -> None: ...
 
+    @final
     class ParamSpecKwargs:
-        __origin__: ParamSpec
+        @property
+        def __origin__(self) -> ParamSpec: ...
         def __init__(self, origin: ParamSpec) -> None: ...
 
     Concatenate: _SpecialForm
     TypeAlias: _SpecialForm
     TypeGuard: _SpecialForm
     def is_typeddict(tp: object) -> bool: ...
+
+    class NewType:
+        def __init__(self, name: str, tp: Any) -> None: ...
+        def __call__(self, __x: _T) -> _T: ...
+        __supertype__: type
 
 # New things in 3.11
 # NamedTuples are not new, but the ability to create generic NamedTuples is new in 3.11
@@ -251,12 +276,12 @@ else:
 
     class NamedTuple(tuple[Any, ...]):
         if sys.version_info < (3, 8):
-            _field_types: collections.OrderedDict[str, type]
+            _field_types: ClassVar[collections.OrderedDict[str, type]]
         elif sys.version_info < (3, 9):
-            _field_types: dict[str, type]
-        _field_defaults: dict[str, Any]
-        _fields: tuple[str, ...]
-        _source: str
+            _field_types: ClassVar[dict[str, type]]
+        _field_defaults: ClassVar[dict[str, Any]]
+        _fields: ClassVar[tuple[str, ...]]
+        __orig_bases__: ClassVar[tuple[Any, ...]]
         @overload
         def __init__(self, typename: str, fields: Iterable[tuple[str, Any]] = ...) -> None: ...
         @overload
@@ -272,16 +297,24 @@ else:
 
 # New things in 3.xx
 # The `default` parameter was added to TypeVar, ParamSpec, and TypeVarTuple (PEP 696)
-# The `infer_variance` parameter was added to TypeVar (PEP 695)
+# The `infer_variance` parameter was added to TypeVar in 3.12 (PEP 695)
 # typing_extensions.override (PEP 698)
 @final
 class TypeVar:
-    __name__: str
-    __bound__: Any | None
-    __constraints__: tuple[Any, ...]
-    __covariant__: bool
-    __contravariant__: bool
-    __default__: Any | None
+    @property
+    def __name__(self) -> str: ...
+    @property
+    def __bound__(self) -> Any | None: ...
+    @property
+    def __constraints__(self) -> tuple[Any, ...]: ...
+    @property
+    def __covariant__(self) -> bool: ...
+    @property
+    def __contravariant__(self) -> bool: ...
+    @property
+    def __infer_variance__(self) -> bool: ...
+    @property
+    def __default__(self) -> Any | None: ...
     def __init__(
         self,
         name: str,
@@ -300,11 +333,18 @@ class TypeVar:
 
 @final
 class ParamSpec:
-    __name__: str
-    __bound__: type[Any] | None
-    __covariant__: bool
-    __contravariant__: bool
-    __default__: type[Any] | None
+    @property
+    def __name__(self) -> str: ...
+    @property
+    def __bound__(self) -> Any | None: ...
+    @property
+    def __covariant__(self) -> bool: ...
+    @property
+    def __contravariant__(self) -> bool: ...
+    @property
+    def __infer_variance__(self) -> bool: ...
+    @property
+    def __default__(self) -> Any | None: ...
     def __init__(
         self,
         name: str,
@@ -321,10 +361,45 @@ class ParamSpec:
 
 @final
 class TypeVarTuple:
-    __name__: str
-    __default__: Any | None
+    @property
+    def __name__(self) -> str: ...
+    @property
+    def __default__(self) -> Any | None: ...
     def __init__(self, name: str, *, default: Any | None = None) -> None: ...
     def __iter__(self) -> Any: ...  # Unpack[Self]
 
-def override(__arg: _F) -> _F: ...
 def deprecated(__msg: str, *, category: type[Warning] | None = ..., stacklevel: int = 1) -> Callable[[_T], _T]: ...
+
+if sys.version_info >= (3, 12):
+    from collections.abc import Buffer as Buffer
+    from types import get_original_bases as get_original_bases
+    from typing import TypeAliasType as TypeAliasType, override as override
+else:
+    def override(__arg: _F) -> _F: ...
+    def get_original_bases(__cls: type) -> tuple[Any, ...]: ...
+    @final
+    class TypeAliasType:
+        def __init__(
+            self, name: str, value: Any, *, type_params: tuple[TypeVar | ParamSpec | TypeVarTuple, ...] = ()
+        ) -> None: ...
+        @property
+        def __value__(self) -> Any: ...
+        @property
+        def __type_params__(self) -> tuple[TypeVar | ParamSpec | TypeVarTuple, ...]: ...
+        @property
+        def __parameters__(self) -> tuple[Any, ...]: ...
+        @property
+        def __name__(self) -> str: ...
+        # It's writable on types, but not on instances of TypeAliasType.
+        @property
+        def __module__(self) -> str | None: ...  # type: ignore[override]
+        def __getitem__(self, parameters: Any) -> Any: ...
+        if sys.version_info >= (3, 10):
+            def __or__(self, right: Any) -> _SpecialForm: ...
+            def __ror__(self, left: Any) -> _SpecialForm: ...
+
+    @runtime_checkable
+    class Buffer(Protocol):
+        # Not actually a Protocol at runtime; see
+        # https://github.com/python/typeshed/issues/10224 for why we're defining it this way
+        def __buffer__(self, __flags: int) -> memoryview: ...

@@ -17,7 +17,7 @@ from importlib.machinery import ModuleSpec
 
 # pytype crashes if types.MappingProxyType inherits from collections.abc.Mapping instead of typing.Mapping
 from typing import Any, ClassVar, Generic, Mapping, Protocol, TypeVar, overload  # noqa: Y022
-from typing_extensions import Literal, ParamSpec, final
+from typing_extensions import Literal, ParamSpec, TypeVarTuple, final
 
 __all__ = [
     "FunctionType",
@@ -56,6 +56,9 @@ if sys.version_info >= (3, 9):
 if sys.version_info >= (3, 10):
     __all__ += ["EllipsisType", "NoneType", "NotImplementedType", "UnionType"]
 
+if sys.version_info >= (3, 12):
+    __all__ += ["get_original_bases"]
+
 # Note, all classes "defined" here require special handling.
 
 _T1 = TypeVar("_T1")
@@ -91,6 +94,8 @@ class FunctionType:
     if sys.version_info >= (3, 10):
         @property
         def __builtins__(self) -> dict[str, Any]: ...
+    if sys.version_info >= (3, 12):
+        __type_params__: tuple[TypeVar | ParamSpec | TypeVarTuple, ...]
 
     __module__: str
     def __init__(
@@ -371,6 +376,10 @@ class AsyncGeneratorType(AsyncGenerator[_T_co, _T_contra]):
     def ag_await(self) -> Awaitable[Any] | None: ...
     __name__: str
     __qualname__: str
+    if sys.version_info >= (3, 12):
+        @property
+        def ag_suspended(self) -> bool: ...
+
     def __aiter__(self) -> AsyncGeneratorType[_T_co, _T_contra]: ...
     def __anext__(self) -> Coroutine[Any, Any, _T_co]: ...
     def asend(self, __val: _T_contra) -> Coroutine[Any, Any, _T_co]: ...
@@ -562,6 +571,9 @@ def resolve_bases(bases: Iterable[object]) -> tuple[Any, ...]: ...
 def prepare_class(
     name: str, bases: tuple[type, ...] = (), kwds: dict[str, Any] | None = None
 ) -> tuple[type, dict[str, Any], dict[str, Any]]: ...
+
+if sys.version_info >= (3, 12):
+    def get_original_bases(__cls: type) -> tuple[Any, ...]: ...
 
 # Actually a different type, but `property` is special and we want that too.
 DynamicClassAttribute = property

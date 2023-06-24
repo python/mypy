@@ -12,12 +12,12 @@ __all__ = [
     "walk_packages",
     "iter_modules",
     "get_data",
-    "ImpImporter",
-    "ImpLoader",
     "read_code",
     "extend_path",
     "ModuleInfo",
 ]
+if sys.version_info < (3, 12):
+    __all__ += ["ImpImporter", "ImpLoader"]
 
 _PathT = TypeVar("_PathT", bound=Iterable[str])
 
@@ -28,11 +28,12 @@ class ModuleInfo(NamedTuple):
 
 def extend_path(path: _PathT, name: str) -> _PathT: ...
 
-class ImpImporter:
-    def __init__(self, path: str | None = None) -> None: ...
+if sys.version_info < (3, 12):
+    class ImpImporter:
+        def __init__(self, path: str | None = None) -> None: ...
 
-class ImpLoader:
-    def __init__(self, fullname: str, file: IO[str], filename: str, etc: tuple[str, str, int]) -> None: ...
+    class ImpLoader:
+        def __init__(self, fullname: str, file: IO[str], filename: str, etc: tuple[str, str, int]) -> None: ...
 
 def find_loader(fullname: str) -> Loader | None: ...
 def get_importer(path_item: str) -> PathEntryFinder | None: ...
