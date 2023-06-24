@@ -2330,3 +2330,16 @@ T = TypeVar("T")
 x: int
 x + T  # E: Unsupported operand types for + ("int" and "object")
 T()  # E: "object" not callable
+
+[case testStringDisallowedUnpacking]
+# flags: --enable-error-code str-unpacking
+from typing import Dict
+
+d: Dict[str, str]
+
+for a, b in d: # E: Unpacking a string is disallowed
+    pass
+
+s = "foo"
+a, b = s # E: Unpacking a string is disallowed
+[builtins fixtures/dict.pyi]

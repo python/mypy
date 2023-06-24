@@ -416,3 +416,24 @@ Example:
         # The following will not generate an error on either
         # Python 3.8, or Python 3.9
         42 + "testing..."  # type: ignore
+
+
+.. _code-str-unpacking:
+
+Check that ``str`` is explicitly unpacked [str-unpacking]
+---------------------------------------------------------
+
+It can sometimes be surprising that ``str`` is iterable, especially when unpacking.
+
+Example:
+
+.. code-block:: python
+
+    # Use "mypy --enable-error-code str-unpacking ..."
+
+    def print_dict(d: dict[str, str]) -> int:
+        # We meant to do d.items(), but instead we're unpacking the str keys of d
+
+        # Error: Unpacking a string is disallowed
+        for k, v in d:
+            print(k, v)

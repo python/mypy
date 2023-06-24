@@ -203,6 +203,9 @@ TRUTHY_ITERABLE: Final[ErrorCode] = ErrorCode(
     "General",
     default_enabled=False,
 )
+STR_UNPACKING: Final[ErrorCode] = ErrorCode(
+    "str-unpacking", "Warn about expressions that unpack str", "General", default_enabled=False
+)
 NAME_MATCH: Final = ErrorCode(
     "name-match", "Check that type definition has consistent naming", "General"
 )

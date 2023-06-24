@@ -3491,7 +3491,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_multi_assignment_from_union(
                 lvalues, rvalue, rvalue_type, context, infer_lvalue_type
             )
-        elif isinstance(rvalue_type, Instance) and rvalue_type.type.fullname == "builtins.str":
+        elif (
+            self.msg.errors.is_error_code_enabled(codes.STR_UNPACKING)
+            and isinstance(rvalue_type, Instance)
+            and rvalue_type.type.fullname == "builtins.str"
+        ):
             self.msg.unpacking_strings_disallowed(context)
         else:
             self.check_multi_assignment_from_iterable(
