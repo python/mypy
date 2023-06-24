@@ -1,17 +1,43 @@
 import sys
-from _ctypes import RTLD_GLOBAL as RTLD_GLOBAL, RTLD_LOCAL as RTLD_LOCAL
-from _typeshed import ReadableBuffer, WriteableBuffer
-from abc import abstractmethod
-from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
-from typing import Any, ClassVar, Generic, TypeVar, overload
-from typing_extensions import Self, TypeAlias
+from _ctypes import (
+    POINTER as POINTER,
+    RTLD_GLOBAL as RTLD_GLOBAL,
+    RTLD_LOCAL as RTLD_LOCAL,
+    ArgumentError as ArgumentError,
+    Array as Array,
+    CFuncPtr as _CFuncPtr,
+    Structure as Structure,
+    Union as Union,
+    _CanCastTo as _CanCastTo,
+    _CArgObject as _CArgObject,
+    _CData as _CData,
+    _CDataMeta as _CDataMeta,
+    _CField as _CField,
+    _Pointer as _Pointer,
+    _PointerLike as _PointerLike,
+    _SimpleCData as _SimpleCData,
+    _StructUnionBase as _StructUnionBase,
+    _StructUnionMeta as _StructUnionMeta,
+    addressof as addressof,
+    alignment as alignment,
+    byref as byref,
+    get_errno as get_errno,
+    pointer as pointer,
+    resize as resize,
+    set_errno as set_errno,
+    sizeof as sizeof,
+)
+from typing import Any, ClassVar, Generic, TypeVar
+from typing_extensions import TypeAlias
+
+if sys.platform == "win32":
+    from _ctypes import FormatError as FormatError, get_last_error as get_last_error, set_last_error as set_last_error
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
 
 _T = TypeVar("_T")
 _DLLT = TypeVar("_DLLT", bound=CDLL)
-_CT = TypeVar("_CT", bound=_CData)
 
 DEFAULT_MODE: int
 
@@ -65,52 +91,10 @@ if sys.platform == "win32":
 pydll: LibraryLoader[PyDLL]
 pythonapi: PyDLL
 
-class _CDataMeta(type):
-    # By default mypy complains about the following two methods, because strictly speaking cls
-    # might not be a Type[_CT]. However this can never actually happen, because the only class that
-    # uses _CDataMeta as its metaclass is _CData. So it's safe to ignore the errors here.
-    def __mul__(cls: type[_CT], other: int) -> type[Array[_CT]]: ...  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
-    def __rmul__(cls: type[_CT], other: int) -> type[Array[_CT]]: ...  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
-
-class _CData(metaclass=_CDataMeta):
-    _b_base_: int
-    _b_needsfree_: bool
-    _objects: Mapping[Any, int] | None
-    @classmethod
-    def from_buffer(cls, source: WriteableBuffer, offset: int = ...) -> Self: ...
-    @classmethod
-    def from_buffer_copy(cls, source: ReadableBuffer, offset: int = ...) -> Self: ...
-    @classmethod
-    def from_address(cls, address: int) -> Self: ...
-    @classmethod
-    def from_param(cls, obj: Any) -> Self | _CArgObject: ...
-    @classmethod
-    def in_dll(cls, library: CDLL, name: str) -> Self: ...
-
-class _CanCastTo(_CData): ...
-class _PointerLike(_CanCastTo): ...
-
-_ECT: TypeAlias = Callable[[type[_CData] | None, _FuncPointer, tuple[_CData, ...]], _CData]
-_PF: TypeAlias = tuple[int] | tuple[int, str] | tuple[int, str, Any]
-
-class _FuncPointer(_PointerLike, _CData):
-    restype: type[_CData] | Callable[[int], Any] | None
-    argtypes: Sequence[type[_CData]]
-    errcheck: _ECT
-    @overload
-    def __init__(self, address: int) -> None: ...
-    @overload
-    def __init__(self, callable: Callable[..., Any]) -> None: ...
-    @overload
-    def __init__(self, func_spec: tuple[str | int, CDLL], paramflags: tuple[_PF, ...] = ...) -> None: ...
-    @overload
-    def __init__(self, vtlb_index: int, name: str, paramflags: tuple[_PF, ...] = ..., iid: _Pointer[c_int] = ...) -> None: ...
-    def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
+class _FuncPointer(_CFuncPtr): ...
 
 class _NamedFuncPointer(_FuncPointer):
     __name__: str
-
-class ArgumentError(Exception): ...
 
 def CFUNCTYPE(
     restype: type[_CData] | None, *argtypes: type[_CData], use_errno: bool = ..., use_last_error: bool = ...
@@ -123,8 +107,6 @@ if sys.platform == "win32":
 
 def PYFUNCTYPE(restype: type[_CData] | None, *argtypes: type[_CData]) -> type[_FuncPointer]: ...
 
-class _CArgObject: ...
-
 # Any type that can be implicitly converted to c_void_p when passed as a C function argument.
 # (bytes is not included here, see below.)
 _CVoidPLike: TypeAlias = _PointerLike | Array[Any] | _CArgObject | int
@@ -133,10 +115,6 @@ _CVoidPLike: TypeAlias = _PointerLike | Array[Any] | _CArgObject | int
 # and non-const pointers), but it catches errors like memmove(b'foo', buf, 4)
 # when memmove(buf, b'foo', 4) was intended.
 _CVoidConstPLike: TypeAlias = _CVoidPLike | bytes
-
-def addressof(obj: _CData) -> int: ...
-def alignment(obj_or_type: _CData | type[_CData]) -> int: ...
-def byref(obj: _CData, offset: int = ...) -> _CArgObject: ...
 
 _CastT = TypeVar("_CastT", bound=_CanCastTo)
 
@@ -150,51 +128,16 @@ def create_unicode_buffer(init: int | str, size: int | None = None) -> Array[c_w
 if sys.platform == "win32":
     def DllCanUnloadNow() -> int: ...
     def DllGetClassObject(rclsid: Any, riid: Any, ppv: Any) -> int: ...  # TODO not documented
-    def FormatError(code: int = ...) -> str: ...
     def GetLastError() -> int: ...
-
-def get_errno() -> int: ...
-
-if sys.platform == "win32":
-    def get_last_error() -> int: ...
 
 def memmove(dst: _CVoidPLike, src: _CVoidConstPLike, count: int) -> int: ...
 def memset(dst: _CVoidPLike, c: int, count: int) -> int: ...
-def POINTER(type: type[_CT]) -> type[_Pointer[_CT]]: ...
-
-class _Pointer(Generic[_CT], _PointerLike, _CData):
-    _type_: type[_CT]
-    contents: _CT
-    @overload
-    def __init__(self) -> None: ...
-    @overload
-    def __init__(self, arg: _CT) -> None: ...
-    @overload
-    def __getitem__(self, __key: int) -> Any: ...
-    @overload
-    def __getitem__(self, __key: slice) -> list[Any]: ...
-    def __setitem__(self, __key: int, __value: Any) -> None: ...
-
-def pointer(__arg: _CT) -> _Pointer[_CT]: ...
-def resize(obj: _CData, size: int) -> None: ...
-def set_errno(value: int) -> int: ...
-
-if sys.platform == "win32":
-    def set_last_error(value: int) -> int: ...
-
-def sizeof(obj_or_type: _CData | type[_CData]) -> int: ...
 def string_at(address: _CVoidConstPLike, size: int = -1) -> bytes: ...
 
 if sys.platform == "win32":
     def WinError(code: int | None = None, descr: str | None = None) -> OSError: ...
 
 def wstring_at(address: _CVoidConstPLike, size: int = -1) -> str: ...
-
-class _SimpleCData(Generic[_T], _CData):
-    value: _T
-    # The TypeVar can be unsolved here,
-    # but we can't use overloads without creating many, many mypy false-positive errors
-    def __init__(self, value: _T = ...) -> None: ...  # pyright: ignore[reportInvalidTypeVarUse]
 
 class c_byte(_SimpleCData[int]): ...
 
@@ -238,65 +181,9 @@ class c_bool(_SimpleCData[bool]):
 if sys.platform == "win32":
     class HRESULT(_SimpleCData[int]): ...  # TODO undocumented
 
+if sys.version_info >= (3, 12):
+    c_time_t: type[c_int32 | c_int64]
+
 class py_object(_CanCastTo, _SimpleCData[_T]): ...
-
-class _CField:
-    offset: int
-    size: int
-
-class _StructUnionMeta(_CDataMeta):
-    _fields_: Sequence[tuple[str, type[_CData]] | tuple[str, type[_CData], int]]
-    _pack_: int
-    _anonymous_: Sequence[str]
-    def __getattr__(self, name: str) -> _CField: ...
-
-class _StructUnionBase(_CData, metaclass=_StructUnionMeta):
-    def __init__(self, *args: Any, **kw: Any) -> None: ...
-    def __getattr__(self, name: str) -> Any: ...
-    def __setattr__(self, name: str, value: Any) -> None: ...
-
-class Union(_StructUnionBase): ...
-class Structure(_StructUnionBase): ...
 class BigEndianStructure(Structure): ...
 class LittleEndianStructure(Structure): ...
-
-class Array(Generic[_CT], _CData):
-    @property
-    @abstractmethod
-    def _length_(self) -> int: ...
-    @_length_.setter
-    def _length_(self, value: int) -> None: ...
-    @property
-    @abstractmethod
-    def _type_(self) -> type[_CT]: ...
-    @_type_.setter
-    def _type_(self, value: type[_CT]) -> None: ...
-    raw: bytes  # Note: only available if _CT == c_char
-    value: Any  # Note: bytes if _CT == c_char, str if _CT == c_wchar, unavailable otherwise
-    # TODO These methods cannot be annotated correctly at the moment.
-    # All of these "Any"s stand for the array's element type, but it's not possible to use _CT
-    # here, because of a special feature of ctypes.
-    # By default, when accessing an element of an Array[_CT], the returned object has type _CT.
-    # However, when _CT is a "simple type" like c_int, ctypes automatically "unboxes" the object
-    # and converts it to the corresponding Python primitive. For example, when accessing an element
-    # of an Array[c_int], a Python int object is returned, not a c_int.
-    # This behavior does *not* apply to subclasses of "simple types".
-    # If MyInt is a subclass of c_int, then accessing an element of an Array[MyInt] returns
-    # a MyInt, not an int.
-    # This special behavior is not easy to model in a stub, so for now all places where
-    # the array element type would belong are annotated with Any instead.
-    def __init__(self, *args: Any) -> None: ...
-    @overload
-    def __getitem__(self, __key: int) -> Any: ...
-    @overload
-    def __getitem__(self, __key: slice) -> list[Any]: ...
-    @overload
-    def __setitem__(self, __key: int, __value: Any) -> None: ...
-    @overload
-    def __setitem__(self, __key: slice, __value: Iterable[Any]) -> None: ...
-    def __iter__(self) -> Iterator[Any]: ...
-    # Can't inherit from Sized because the metaclass conflict between
-    # Sized and _CData prevents using _CDataMeta.
-    def __len__(self) -> int: ...
-    if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any) -> GenericAlias: ...

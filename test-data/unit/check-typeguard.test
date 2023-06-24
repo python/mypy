@@ -604,11 +604,11 @@ from typing_extensions import TypeGuard
 class Z:
     def typeguard1(self, *, x: object) -> TypeGuard[int]:  # line 4
         ...
-    
+
     @staticmethod
     def typeguard2(x: object) -> TypeGuard[int]:
         ...
-    
+
     @staticmethod  # line 11
     def typeguard3(*, x: object) -> TypeGuard[int]:
         ...
@@ -688,3 +688,14 @@ if typeguard(x=x, y="42"):
 if typeguard(y="42", x=x):
     reveal_type(x)  # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
+
+[case testGenericAliasWithTypeGuard]
+from typing import Callable, List, TypeVar
+from typing_extensions import TypeGuard, TypeAlias
+
+A = Callable[[object], TypeGuard[List[T]]]
+def foo(x: object) -> TypeGuard[List[str]]: ...
+
+def test(f: A[T]) -> T: ...
+reveal_type(test(foo))  # N: Revealed type is "builtins.str"
+[builtins fixtures/list.pyi]

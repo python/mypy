@@ -28,9 +28,7 @@ from mypy.semanal_shared import (
     require_bool_literal_argument,
     set_callable_name,
 )
-from mypy.typeops import (  # noqa: F401  # Part of public API
-    try_getting_str_literals as try_getting_str_literals,
-)
+from mypy.typeops import try_getting_str_literals as try_getting_str_literals
 from mypy.types import (
     AnyType,
     CallableType,
@@ -44,8 +42,8 @@ from mypy.types import (
     TypeVarType,
     deserialize_type,
     get_proper_type,
-    is_optional,
 )
+from mypy.types_utils import is_optional
 from mypy.typevars import fill_typevars
 from mypy.util import get_unique_redefinition_name
 

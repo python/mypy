@@ -1047,7 +1047,7 @@ import attr
 @attr.s(kw_only=True)
 class A:
     a = attr.ib(15)   # type: int
-[builtins fixtures/attr.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 [out]
 ==
 main:2: error: Too many positional arguments for "B"
@@ -7546,7 +7546,7 @@ def d() -> Dict[int, int]: pass
 [builtins fixtures/dict.pyi]
 [out]
 ==
-main:5: error: Argument 1 to "update" of "dict" has incompatible type "Dict[int, int]"; expected "Mapping[int, str]"
+main:5: error: Unpacked dict entry 1 has incompatible type "Dict[int, int]"; expected "SupportsKeysAndGetItem[int, str]"
 
 [case testAwaitAndAsyncDef-only_when_nocache]
 from a import g
@@ -10340,3 +10340,24 @@ reveal_type(x)
 [out]
 ==
 a.py:3: note: Revealed type is "Union[def (x: builtins.int) -> builtins.int, def (*x: builtins.int) -> builtins.int]"
+
+[case testErrorInReAddedModule]
+# flags: --disallow-untyped-defs --follow-imports=error
+# cmd: mypy a.py
+# cmd2: mypy b.py
+# cmd3: mypy a.py
+
+[file a.py]
+def f(): pass
+[file b.py]
+def f(): pass
+[file unrelated.txt.3]
+[out]
+a.py:1: error: Function is missing a return type annotation
+a.py:1: note: Use "-> None" if function does not return a value
+==
+b.py:1: error: Function is missing a return type annotation
+b.py:1: note: Use "-> None" if function does not return a value
+==
+a.py:1: error: Function is missing a return type annotation
+a.py:1: note: Use "-> None" if function does not return a value

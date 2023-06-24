@@ -353,12 +353,17 @@ definitions or calls.
 .. option:: --disallow-untyped-defs
 
     This flag reports an error whenever it encounters a function definition
-    without type annotations.
+    without type annotations or with incomplete type annotations.
+    (a superset of :option:`--disallow-incomplete-defs`).
+
+    For example, it would report an error for :code:`def f(a, b)` and :code:`def f(a: int, b)`.
 
 .. option:: --disallow-incomplete-defs
 
     This flag reports an error whenever it encounters a partly annotated
-    function definition.
+    function definition, while still allowing entirely unannotated definitions.
+
+    For example, it would report an error for :code:`def f(a: int, b)` but not :code:`def f(a, b)`.
 
 .. option:: --check-untyped-defs
 

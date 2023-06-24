@@ -2,17 +2,24 @@
 
 from __future__ import annotations
 
-from typing import Sequence, TypeVar
+from typing import Sequence
 
 from mypy.nodes import ARG_POS, ARG_STAR
-from mypy.types import CallableType, Instance, ProperType, Type, UnpackType, get_proper_type
+from mypy.types import (
+    CallableType,
+    Instance,
+    ProperType,
+    Type,
+    UnpackType,
+    get_proper_type,
+    split_with_prefix_and_suffix,
+)
 
 
 def find_unpack_in_list(items: Sequence[Type]) -> int | None:
     unpack_index: int | None = None
     for i, item in enumerate(items):
-        proper_item = get_proper_type(item)
-        if isinstance(proper_item, UnpackType):
+        if isinstance(item, UnpackType):
             # We cannot fail here, so we must check this in an earlier
             # semanal phase.
             # Funky code here avoids mypyc narrowing the type of unpack_index.
@@ -21,18 +28,6 @@ def find_unpack_in_list(items: Sequence[Type]) -> int | None:
             # Don't return so that we can also sanity check there is only one.
             unpack_index = i
     return unpack_index
-
-
-T = TypeVar("T")
-
-
-def split_with_prefix_and_suffix(
-    types: tuple[T, ...], prefix: int, suffix: int
-) -> tuple[tuple[T, ...], tuple[T, ...], tuple[T, ...]]:
-    if suffix:
-        return (types[:prefix], types[prefix:-suffix], types[-suffix:])
-    else:
-        return (types[:prefix], types[prefix:], ())
 
 
 def split_with_instance(
@@ -52,14 +47,17 @@ def split_with_mapped_and_template(
     template: tuple[Type, ...],
     template_prefix_len: int,
     template_suffix_len: int,
-) -> tuple[
-    tuple[Type, ...],
-    tuple[Type, ...],
-    tuple[Type, ...],
-    tuple[Type, ...],
-    tuple[Type, ...],
-    tuple[Type, ...],
-] | None:
+) -> (
+    tuple[
+        tuple[Type, ...],
+        tuple[Type, ...],
+        tuple[Type, ...],
+        tuple[Type, ...],
+        tuple[Type, ...],
+        tuple[Type, ...],
+    ]
+    | None
+):
     split_result = fully_split_with_mapped_and_template(
         mapped,
         mapped_prefix_len,
@@ -101,18 +99,21 @@ def fully_split_with_mapped_and_template(
     template: tuple[Type, ...],
     template_prefix_len: int,
     template_suffix_len: int,
-) -> tuple[
-    tuple[Type, ...],
-    tuple[Type, ...],
-    tuple[Type, ...],
-    tuple[Type, ...],
-    tuple[Type, ...],
-    tuple[Type, ...],
-    tuple[Type, ...],
-    tuple[Type, ...],
-    tuple[Type, ...],
-    tuple[Type, ...],
-] | None:
+) -> (
+    tuple[
+        tuple[Type, ...],
+        tuple[Type, ...],
+        tuple[Type, ...],
+        tuple[Type, ...],
+        tuple[Type, ...],
+        tuple[Type, ...],
+        tuple[Type, ...],
+        tuple[Type, ...],
+        tuple[Type, ...],
+        tuple[Type, ...],
+    ]
+    | None
+):
     if mapped_prefix_len is not None:
         assert mapped_suffix_len is not None
         mapped_prefix, mapped_middle, mapped_suffix = split_with_prefix_and_suffix(
@@ -175,9 +176,8 @@ def fully_split_with_mapped_and_template(
 def extract_unpack(types: Sequence[Type]) -> ProperType | None:
     """Given a list of types, extracts either a single type from an unpack, or returns None."""
     if len(types) == 1:
-        proper_type = get_proper_type(types[0])
-        if isinstance(proper_type, UnpackType):
-            return get_proper_type(proper_type.type)
+        if isinstance(types[0], UnpackType):
+            return get_proper_type(types[0].type)
     return None
 
 

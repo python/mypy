@@ -105,11 +105,6 @@ main:5: error: "str" has no attribute "x"
 async def f():
     results = [i async for i in aiter() if i % 2]  # E: Async comprehensions are only supported in Python 3.6 and greater
 
-
-[case testNewSyntaxFstringError]
-# flags: --python-version 3.5
-f''  # E: Format strings are only supported in Python 3.6 and greater
-
 [case testNewSyntaxFStringBasics]
 # flags: --python-version 3.6
 f'foobar'

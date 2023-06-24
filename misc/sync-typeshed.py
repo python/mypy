@@ -179,10 +179,10 @@ def main() -> None:
     print("Created typeshed sync commit.")
 
     commits_to_cherry_pick = [
-        "ac6563199",  # LiteralString reverts
-        "d8674f387",  # sum reverts
-        "e437cdf9c",  # ctypes reverts
-        "e85f54e52",  # ParamSpec for functools.wraps
+        "6f913a148",  # LiteralString reverts
+        "475a46a78",  # sum reverts
+        "f5e5c117d",  # ctypes reverts
+        "9f3bbbeb1",  # ParamSpec for functools.wraps
     ]
     for commit in commits_to_cherry_pick:
         subprocess.run(["git", "cherry-pick", commit], check=True)

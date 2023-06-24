@@ -2,12 +2,13 @@ import ssl
 import sys
 from _typeshed import FileDescriptorLike, ReadableBuffer, StrPath, Unused, WriteableBuffer
 from abc import ABCMeta, abstractmethod
-from collections.abc import Awaitable, Callable, Coroutine, Generator, Sequence
+from collections.abc import Callable, Coroutine, Generator, Sequence
 from contextvars import Context
 from socket import AddressFamily, SocketKind, _Address, _RetAddress, socket
 from typing import IO, Any, Protocol, TypeVar, overload
 from typing_extensions import Literal, Self, TypeAlias
 
+from . import _AwaitableLike, _CoroutineLike
 from .base_events import Server
 from .futures import Future
 from .protocols import BaseProtocol
@@ -112,13 +113,8 @@ class AbstractEventLoop:
     slow_callback_duration: float
     @abstractmethod
     def run_forever(self) -> None: ...
-    # Can't use a union, see mypy issue  # 1873.
-    @overload
     @abstractmethod
-    def run_until_complete(self, future: Generator[Any, None, _T]) -> _T: ...
-    @overload
-    @abstractmethod
-    def run_until_complete(self, future: Awaitable[_T]) -> _T: ...
+    def run_until_complete(self, future: _AwaitableLike[_T]) -> _T: ...
     @abstractmethod
     def stop(self) -> None: ...
     @abstractmethod
@@ -158,20 +154,14 @@ class AbstractEventLoop:
     if sys.version_info >= (3, 11):
         @abstractmethod
         def create_task(
-            self,
-            coro: Coroutine[Any, Any, _T] | Generator[Any, None, _T],
-            *,
-            name: str | None = None,
-            context: Context | None = None,
+            self, coro: _CoroutineLike[_T], *, name: str | None = None, context: Context | None = None
         ) -> Task[_T]: ...
     elif sys.version_info >= (3, 8):
         @abstractmethod
-        def create_task(
-            self, coro: Coroutine[Any, Any, _T] | Generator[Any, None, _T], *, name: str | None = None
-        ) -> Task[_T]: ...
+        def create_task(self, coro: _CoroutineLike[_T], *, name: str | None = None) -> Task[_T]: ...
     else:
         @abstractmethod
-        def create_task(self, coro: Coroutine[Any, Any, _T] | Generator[Any, None, _T]) -> Task[_T]: ...
+        def create_task(self, coro: _CoroutineLike[_T]) -> Task[_T]: ...
 
     @abstractmethod
     def set_task_factory(self, factory: _TaskFactory | None) -> None: ...
@@ -569,11 +559,11 @@ class AbstractEventLoop:
     async def sock_accept(self, sock: socket) -> tuple[socket, _RetAddress]: ...
     if sys.version_info >= (3, 11):
         @abstractmethod
-        async def sock_recvfrom(self, sock: socket, bufsize: int) -> bytes: ...
+        async def sock_recvfrom(self, sock: socket, bufsize: int) -> tuple[bytes, _RetAddress]: ...
         @abstractmethod
-        async def sock_recvfrom_into(self, sock: socket, buf: WriteableBuffer, nbytes: int = 0) -> int: ...
+        async def sock_recvfrom_into(self, sock: socket, buf: WriteableBuffer, nbytes: int = 0) -> tuple[int, _RetAddress]: ...
         @abstractmethod
-        async def sock_sendto(self, sock: socket, data: ReadableBuffer, address: _Address) -> None: ...
+        async def sock_sendto(self, sock: socket, data: ReadableBuffer, address: _Address) -> int: ...
     # Signal handling.
     @abstractmethod
     def add_signal_handler(self, sig: int, callback: Callable[..., object], *args: Any) -> None: ...

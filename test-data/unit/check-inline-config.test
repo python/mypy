@@ -192,7 +192,7 @@ if foo: ...
 # mypy: enable-error-code="ignore-without-code"
 
 def foo() -> int: ...
-if foo: ...  # E: Function "Callable[[], int]" could always be true in boolean context
+if foo: ...  # E: Function "foo" could always be true in boolean context
 42 + "no"  # type: ignore  # E: "type: ignore" comment without error code (consider "type: ignore[operator]" instead)
 
 [file tests/baz.py]
@@ -210,6 +210,111 @@ enable_error_code = ignore-without-code, truthy-bool
 
 \[mypy-tests.*]
 disable_error_code = ignore-without-code
+
+[case testIgnoreErrorsSimple]
+# mypy: ignore-errors=True
+
+def f() -> None:
+    while 1():
+        pass
+
+[case testIgnoreErrorsInImportedModule]
+from m import C
+c = C()
+reveal_type(c.x)  # N: Revealed type is "builtins.int"
+
+[file m.py]
+# mypy: ignore-errors=True
+
+class C:
+    def f(self) -> None:
+        self.x = 1
+
+[case testIgnoreErrorsWithLambda]
+# mypy: ignore-errors=True
+
+def f(self, x=lambda: 1) -> None:
+    pass
+
+class C:
+    def f(self) -> None:
+        l = lambda: 1
+        self.x = 1
+
+[case testIgnoreErrorsWithUnsafeSuperCall_no_empty]
+# flags: --strict-optional
+
+from m import C
+
+class D(C):
+    def m(self) -> None:
+        super().m1()
+        super().m2() \
+            # E: Call to abstract method "m2" of "C" with trivial body via super() is unsafe
+        super().m3() \
+            # E: Call to abstract method "m3" of "C" with trivial body via super() is unsafe
+        super().m4() \
+            # E: Call to abstract method "m4" of "C" with trivial body via super() is unsafe
+        super().m5() \
+            # E: Call to abstract method "m5" of "C" with trivial body via super() is unsafe
+        super().m6() \
+            # E: Call to abstract method "m6" of "C" with trivial body via super() is unsafe
+        super().m7()
+
+    def m1(self) -> int:
+        return 0
+
+    def m2(self) -> int:
+        return 0
+
+    def m3(self) -> int:
+        return 0
+
+    def m4(self) -> int:
+        return 0
+
+    def m5(self) -> int:
+        return 0
+
+    def m6(self) -> int:
+        return 0
+
+[file m.py]
+# mypy: ignore-errors=True
+import abc
+
+class C:
+    @abc.abstractmethod
+    def m1(self) -> int:
+        """x"""
+        return 0
+
+    @abc.abstractmethod
+    def m2(self) -> int:
+        """doc"""
+
+    @abc.abstractmethod
+    def m3(self) -> int:
+        pass
+
+    @abc.abstractmethod
+    def m4(self) -> int: ...
+
+    @abc.abstractmethod
+    def m5(self) -> int:
+        """doc"""
+        ...
+
+    @abc.abstractmethod
+    def m6(self) -> int:
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def m7(self) -> int:
+        raise NotImplementedError()
+        pass
+
+[builtins fixtures/exception.pyi]
 
 [case testInlineErrorCodesMultipleCodes]
 # mypy: disable-error-code="truthy-bool, ignore-without-code"

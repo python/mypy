@@ -3,7 +3,7 @@ name: Check documentation build
 on:
   workflow_dispatch:
   push:
-    branches: [master, 'release*']
+    branches: [main, master, 'release*']
     tags: ['*']
   pull_request:
     paths:
@@ -20,6 +20,7 @@ jobs:
     env:
       TOXENV: docs
       TOX_SKIP_MISSING_INTERPRETERS: False
+      VERIFY_MYPY_ERROR_CODES: 1
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4

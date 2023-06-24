@@ -1,4 +1,5 @@
 import sys
+from abc import abstractmethod
 from types import MappingProxyType
 from typing import (  # noqa: Y022,Y038
     AbstractSet as Set,
@@ -23,11 +24,13 @@ from typing import (  # noqa: Y022,Y038
     MutableMapping as MutableMapping,
     MutableSequence as MutableSequence,
     MutableSet as MutableSet,
+    Protocol,
     Reversible as Reversible,
     Sequence as Sequence,
     Sized as Sized,
     TypeVar,
     ValuesView as ValuesView,
+    runtime_checkable,
 )
 from typing_extensions import final
 
@@ -58,6 +61,8 @@ __all__ = [
     "MutableSequence",
     "ByteString",
 ]
+if sys.version_info >= (3, 12):
+    __all__ += ["Buffer"]
 
 _KT_co = TypeVar("_KT_co", covariant=True)  # Key type covariant containers.
 _VT_co = TypeVar("_VT_co", covariant=True)  # Value type covariant containers.
@@ -79,3 +84,9 @@ class dict_items(ItemsView[_KT_co, _VT_co], Generic[_KT_co, _VT_co]):  # undocum
     if sys.version_info >= (3, 10):
         @property
         def mapping(self) -> MappingProxyType[_KT_co, _VT_co]: ...
+
+if sys.version_info >= (3, 12):
+    @runtime_checkable
+    class Buffer(Protocol):
+        @abstractmethod
+        def __buffer__(self, __flags: int) -> memoryview: ...

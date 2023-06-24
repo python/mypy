@@ -682,14 +682,106 @@ L0:
     r5 = unbox(int, r4)
     return r5
 
-[case testFromImport]
-from testmodule import g
+[case testImport_toplevel]
+import sys
+import enum as enum2
+import collections.abc
+import collections.abc as abc2
+_ = "filler"
+import single
+single.hello()
+
+[file single.py]
+def hello() -> None:
+    print("hello, world")
+
+[out]
+def __top_level__():
+    r0, r1 :: object
+    r2 :: bit
+    r3 :: str
+    r4 :: object
+    r5, r6, r7, r8 :: object_ptr
+    r9 :: object_ptr[4]
+    r10 :: c_ptr
+    r11 :: native_int[4]
+    r12 :: c_ptr
+    r13 :: object
+    r14 :: dict
+    r15, r16 :: str
+    r17 :: bit
+    r18 :: str
+    r19 :: dict
+    r20 :: str
+    r21 :: int32
+    r22 :: bit
+    r23 :: object_ptr
+    r24 :: object_ptr[1]
+    r25 :: c_ptr
+    r26 :: native_int[1]
+    r27 :: c_ptr
+    r28 :: object
+    r29 :: dict
+    r30, r31 :: str
+    r32 :: bit
+    r33 :: object
+    r34 :: str
+    r35, r36 :: object
+L0:
+    r0 = builtins :: module
+    r1 = load_address _Py_NoneStruct
+    r2 = r0 != r1
+    if r2 goto L2 else goto L1 :: bool
+L1:
+    r3 = 'builtins'
+    r4 = PyImport_Import(r3)
+    builtins = r4 :: module
+L2:
+    r5 = load_address sys :: module
+    r6 = load_address enum :: module
+    r7 = load_address collections.abc :: module
+    r8 = load_address collections.abc :: module
+    r9 = [r5, r6, r7, r8]
+    r10 = load_address r9
+    r11 = [1, 2, 3, 4]
+    r12 = load_address r11
+    r13 = (('sys', 'sys', 'sys'), ('enum', 'enum', 'enum2'), ('collections.abc', 'collections', 'collections'), ('collections.abc', 'collections.abc', 'abc2'))
+    r14 = __main__.globals :: static
+    r15 = 'main'
+    r16 = '<module>'
+    r17 = CPyImport_ImportMany(r13, r10, r14, r15, r16, r12)
+    r18 = 'filler'
+    r19 = __main__.globals :: static
+    r20 = '_'
+    r21 = CPyDict_SetItem(r19, r20, r18)
+    r22 = r21 >= 0 :: signed
+    r23 = load_address single :: module
+    r24 = [r23]
+    r25 = load_address r24
+    r26 = [6]
+    r27 = load_address r26
+    r28 = (('single', 'single', 'single'),)
+    r29 = __main__.globals :: static
+    r30 = 'main'
+    r31 = '<module>'
+    r32 = CPyImport_ImportMany(r28, r25, r29, r30, r31, r27)
+    r33 = single :: module
+    r34 = 'hello'
+    r35 = CPyObject_GetAttr(r33, r34)
+    r36 = PyObject_CallFunctionObjArgs(r35, 0)
+    return 1
+
+[case testFromImport_toplevel]
+from testmodule import g, h
+from testmodule import h as two
 
 def f(x: int) -> int:
-    return g(x)
+    return g(x) + h() + two()
 [file testmodule.py]
 def g(x: int) -> int:
     return x + 1
+def h() -> int:
+    return 2
 [out]
 def f(x):
     x :: int
@@ -697,6 +789,14 @@ def f(x):
     r1 :: str
     r2, r3, r4 :: object
     r5 :: int
+    r6 :: dict
+    r7 :: str
+    r8, r9 :: object
+    r10, r11 :: int
+    r12 :: dict
+    r13 :: str
+    r14, r15 :: object
+    r16, r17 :: int
 L0:
     r0 = __main__.globals :: static
     r1 = 'g'
@@ -704,7 +804,52 @@ L0:
     r3 = box(int, x)
     r4 = PyObject_CallFunctionObjArgs(r2, r3, 0)
     r5 = unbox(int, r4)
-    return r5
+    r6 = __main__.globals :: static
+    r7 = 'h'
+    r8 = CPyDict_GetItem(r6, r7)
+    r9 = PyObject_CallFunctionObjArgs(r8, 0)
+    r10 = unbox(int, r9)
+    r11 = CPyTagged_Add(r5, r10)
+    r12 = __main__.globals :: static
+    r13 = 'two'
+    r14 = CPyDict_GetItem(r12, r13)
+    r15 = PyObject_CallFunctionObjArgs(r14, 0)
+    r16 = unbox(int, r15)
+    r17 = CPyTagged_Add(r11, r16)
+    return r17
+def __top_level__():
+    r0, r1 :: object
+    r2 :: bit
+    r3 :: str
+    r4, r5 :: object
+    r6 :: str
+    r7 :: dict
+    r8, r9, r10 :: object
+    r11 :: str
+    r12 :: dict
+    r13 :: object
+L0:
+    r0 = builtins :: module
+    r1 = load_address _Py_NoneStruct
+    r2 = r0 != r1
+    if r2 goto L2 else goto L1 :: bool
+L1:
+    r3 = 'builtins'
+    r4 = PyImport_Import(r3)
+    builtins = r4 :: module
+L2:
+    r5 = ('g', 'h')
+    r6 = 'testmodule'
+    r7 = __main__.globals :: static
+    r8 = CPyImport_ImportFromMany(r6, r5, r5, r7)
+    testmodule = r8 :: module
+    r9 = ('h',)
+    r10 = ('two',)
+    r11 = 'testmodule'
+    r12 = __main__.globals :: static
+    r13 = CPyImport_ImportFromMany(r11, r9, r10, r12)
+    testmodule = r13 :: module
+    return 1
 
 [case testPrintFullname]
 import builtins
@@ -2263,79 +2408,61 @@ def __top_level__():
     r0, r1 :: object
     r2 :: bit
     r3 :: str
-    r4 :: object
-    r5 :: dict
-    r6, r7, r8 :: str
-    r9 :: list
-    r10, r11, r12, r13 :: ptr
+    r4, r5 :: object
+    r6 :: str
+    r7 :: dict
+    r8 :: object
+    r9, r10 :: str
+    r11 :: object
+    r12 :: tuple[str, object]
+    r13 :: object
     r14 :: str
     r15 :: object
-    r16, r17, r18 :: str
+    r16 :: tuple[str, object]
+    r17 :: object
+    r18 :: tuple[object, object]
     r19 :: object
-    r20 :: str
-    r21 :: int32
-    r22 :: bit
-    r23, r24, r25 :: str
-    r26 :: object
-    r27 :: str
-    r28 :: int32
-    r29 :: bit
-    r30, r31, r32 :: str
-    r33 :: object
-    r34 :: str
-    r35 :: int32
-    r36 :: bit
-    r37, r38 :: str
-    r39 :: object
-    r40 :: tuple[str, object]
-    r41 :: object
-    r42 :: str
-    r43 :: object
-    r44 :: tuple[str, object]
-    r45 :: object
-    r46 :: tuple[object, object]
-    r47 :: object
-    r48 :: dict
-    r49 :: str
-    r50, r51 :: object
+    r20 :: dict
+    r21 :: str
+    r22, r23 :: object
+    r24 :: dict
+    r25 :: str
+    r26 :: int32
+    r27 :: bit
+    r28 :: str
+    r29 :: dict
+    r30 :: str
+    r31, r32, r33 :: object
+    r34 :: tuple
+    r35 :: dict
+    r36 :: str
+    r37 :: int32
+    r38 :: bit
+    r39 :: dict
+    r40 :: str
+    r41, r42, r43 :: object
+    r44 :: dict
+    r45 :: str
+    r46 :: int32
+    r47 :: bit
+    r48 :: str
+    r49 :: dict
+    r50 :: str
+    r51 :: object
     r52 :: dict
     r53 :: str
-    r54 :: int32
-    r55 :: bit
-    r56 :: str
-    r57 :: dict
-    r58 :: str
-    r59, r60, r61 :: object
-    r62 :: tuple
-    r63 :: dict
-    r64 :: str
-    r65 :: int32
-    r66 :: bit
-    r67 :: dict
-    r68 :: str
-    r69, r70, r71 :: object
-    r72 :: dict
-    r73 :: str
-    r74 :: int32
-    r75 :: bit
-    r76 :: str
-    r77 :: dict
-    r78 :: str
-    r79 :: object
-    r80 :: dict
-    r81 :: str
-    r82, r83 :: object
-    r84 :: dict
-    r85 :: str
-    r86 :: int32
-    r87 :: bit
-    r88 :: list
-    r89, r90, r91 :: object
-    r92, r93, r94, r95 :: ptr
-    r96 :: dict
-    r97 :: str
-    r98 :: int32
-    r99 :: bit
+    r54, r55 :: object
+    r56 :: dict
+    r57 :: str
+    r58 :: int32
+    r59 :: bit
+    r60 :: list
+    r61, r62, r63 :: object
+    r64, r65, r66, r67 :: ptr
+    r68 :: dict
+    r69 :: str
+    r70 :: int32
+    r71 :: bit
 L0:
     r0 = builtins :: module
     r1 = load_address _Py_NoneStruct
@@ -2346,110 +2473,78 @@ L1:
     r4 = PyImport_Import(r3)
     builtins = r4 :: module
 L2:
-    r5 = __main__.globals :: static
-    r6 = 'List'
-    r7 = 'NewType'
-    r8 = 'NamedTuple'
-    r9 = PyList_New(3)
-    r10 = get_element_ptr r9 ob_item :: PyListObject
-    r11 = load_mem r10 :: ptr*
-    set_mem r11, r6 :: builtins.object*
-    r12 = r11 + WORD_SIZE*1
-    set_mem r12, r7 :: builtins.object*
-    r13 = r11 + WORD_SIZE*2
-    set_mem r13, r8 :: builtins.object*
-    keep_alive r9
-    r14 = 'typing'
-    r15 = PyImport_ImportModuleLevelObject(r14, r5, 0, r9, 0)
-    typing = r15 :: module
-    r16 = 'typing'
-    r17 = 'List'
-    r18 = 'List'
-    r19 = CPyImport_ImportFrom(r15, r16, r17, r18)
-    r20 = 'List'
-    r21 = CPyDict_SetItem(r5, r20, r19)
-    r22 = r21 >= 0 :: signed
-    r23 = 'typing'
-    r24 = 'NewType'
-    r25 = 'NewType'
-    r26 = CPyImport_ImportFrom(r15, r23, r24, r25)
-    r27 = 'NewType'
-    r28 = CPyDict_SetItem(r5, r27, r26)
-    r29 = r28 >= 0 :: signed
-    r30 = 'typing'
-    r31 = 'NamedTuple'
-    r32 = 'NamedTuple'
-    r33 = CPyImport_ImportFrom(r15, r30, r31, r32)
-    r34 = 'NamedTuple'
-    r35 = CPyDict_SetItem(r5, r34, r33)
-    r36 = r35 >= 0 :: signed
-    r37 = 'Lol'
-    r38 = 'a'
-    r39 = load_address PyLong_Type
-    r40 = (r38, r39)
-    r41 = box(tuple[str, object], r40)
-    r42 = 'b'
-    r43 = load_address PyUnicode_Type
-    r44 = (r42, r43)
-    r45 = box(tuple[str, object], r44)
-    r46 = (r41, r45)
-    r47 = box(tuple[object, object], r46)
-    r48 = __main__.globals :: static
-    r49 = 'NamedTuple'
-    r50 = CPyDict_GetItem(r48, r49)
-    r51 = PyObject_CallFunctionObjArgs(r50, r37, r47, 0)
+    r5 = ('List', 'NewType', 'NamedTuple')
+    r6 = 'typing'
+    r7 = __main__.globals :: static
+    r8 = CPyImport_ImportFromMany(r6, r5, r5, r7)
+    typing = r8 :: module
+    r9 = 'Lol'
+    r10 = 'a'
+    r11 = load_address PyLong_Type
+    r12 = (r10, r11)
+    r13 = box(tuple[str, object], r12)
+    r14 = 'b'
+    r15 = load_address PyUnicode_Type
+    r16 = (r14, r15)
+    r17 = box(tuple[str, object], r16)
+    r18 = (r13, r17)
+    r19 = box(tuple[object, object], r18)
+    r20 = __main__.globals :: static
+    r21 = 'NamedTuple'
+    r22 = CPyDict_GetItem(r20, r21)
+    r23 = PyObject_CallFunctionObjArgs(r22, r9, r19, 0)
+    r24 = __main__.globals :: static
+    r25 = 'Lol'
+    r26 = CPyDict_SetItem(r24, r25, r23)
+    r27 = r26 >= 0 :: signed
+    r28 = ''
+    r29 = __main__.globals :: static
+    r30 = 'Lol'
+    r31 = CPyDict_GetItem(r29, r30)
+    r32 = object 1
+    r33 = PyObject_CallFunctionObjArgs(r31, r32, r28, 0)
+    r34 = cast(tuple, r33)
+    r35 = __main__.globals :: static
+    r36 = 'x'
+    r37 = CPyDict_SetItem(r35, r36, r34)
+    r38 = r37 >= 0 :: signed
+    r39 = __main__.globals :: static
+    r40 = 'List'
+    r41 = CPyDict_GetItem(r39, r40)
+    r42 = load_address PyLong_Type
+    r43 = PyObject_GetItem(r41, r42)
+    r44 = __main__.globals :: static
+    r45 = 'Foo'
+    r46 = CPyDict_SetItem(r44, r45, r43)
+    r47 = r46 >= 0 :: signed
+    r48 = 'Bar'
+    r49 = __main__.globals :: static
+    r50 = 'Foo'
+    r51 = CPyDict_GetItem(r49, r50)
     r52 = __main__.globals :: static
-    r53 = 'Lol'
-    r54 = CPyDict_SetItem(r52, r53, r51)
-    r55 = r54 >= 0 :: signed
-    r56 = ''
-    r57 = __main__.globals :: static
-    r58 = 'Lol'
-    r59 = CPyDict_GetItem(r57, r58)
-    r60 = object 1
-    r61 = PyObject_CallFunctionObjArgs(r59, r60, r56, 0)
-    r62 = cast(tuple, r61)
-    r63 = __main__.globals :: static
-    r64 = 'x'
-    r65 = CPyDict_SetItem(r63, r64, r62)
-    r66 = r65 >= 0 :: signed
-    r67 = __main__.globals :: static
-    r68 = 'List'
-    r69 = CPyDict_GetItem(r67, r68)
-    r70 = load_address PyLong_Type
-    r71 = PyObject_GetItem(r69, r70)
-    r72 = __main__.globals :: static
-    r73 = 'Foo'
-    r74 = CPyDict_SetItem(r72, r73, r71)
-    r75 = r74 >= 0 :: signed
-    r76 = 'Bar'
-    r77 = __main__.globals :: static
-    r78 = 'Foo'
-    r79 = CPyDict_GetItem(r77, r78)
-    r80 = __main__.globals :: static
-    r81 = 'NewType'
-    r82 = CPyDict_GetItem(r80, r81)
-    r83 = PyObject_CallFunctionObjArgs(r82, r76, r79, 0)
-    r84 = __main__.globals :: static
-    r85 = 'Bar'
-    r86 = CPyDict_SetItem(r84, r85, r83)
-    r87 = r86 >= 0 :: signed
-    r88 = PyList_New(3)
-    r89 = object 1
-    r90 = object 2
-    r91 = object 3
-    r92 = get_element_ptr r88 ob_item :: PyListObject
-    r93 = load_mem r92 :: ptr*
-    set_mem r93, r89 :: builtins.object*
-    r94 = r93 + WORD_SIZE*1
-    set_mem r94, r90 :: builtins.object*
-    r95 = r93 + WORD_SIZE*2
-    set_mem r95, r91 :: builtins.object*
-    keep_alive r88
-    r96 = __main__.globals :: static
-    r97 = 'y'
-    r98 = CPyDict_SetItem(r96, r97, r88)
-    r99 = r98 >= 0 :: signed
+    r53 = 'NewType'
+    r54 = CPyDict_GetItem(r52, r53)
+    r55 = PyObject_CallFunctionObjArgs(r54, r48, r51, 0)
+    r56 = __main__.globals :: static
+    r57 = 'Bar'
+    r58 = CPyDict_SetItem(r56, r57, r55)
+    r59 = r58 >= 0 :: signed
+    r60 = PyList_New(3)
+    r61 = object 1
+    r62 = object 2
+    r63 = object 3
+    r64 = get_element_ptr r60 ob_item :: PyListObject
+    r65 = load_mem r64 :: ptr*
+    set_mem r65, r61 :: builtins.object*
+    r66 = r65 + WORD_SIZE*1
+    set_mem r66, r62 :: builtins.object*
+    r67 = r65 + WORD_SIZE*2
+    set_mem r67, r63 :: builtins.object*
+    keep_alive r60
+    r68 = __main__.globals :: static
+    r69 = 'y'
+    r70 = CPyDict_SetItem(r68, r69, r60)
+    r71 = r70 >= 0 :: signed
     return 1
 
 [case testChainedConditional]
@@ -2773,31 +2868,23 @@ def __top_level__():
     r0, r1 :: object
     r2 :: bit
     r3 :: str
-    r4 :: object
-    r5 :: dict
+    r4, r5 :: object
     r6 :: str
-    r7 :: list
-    r8, r9 :: ptr
+    r7 :: dict
+    r8 :: object
+    r9 :: dict
     r10 :: str
     r11 :: object
-    r12, r13, r14 :: str
-    r15 :: object
-    r16 :: str
-    r17 :: int32
-    r18 :: bit
-    r19 :: dict
-    r20 :: str
-    r21 :: object
-    r22 :: dict
-    r23 :: str
-    r24, r25 :: object
-    r26 :: dict
-    r27 :: str
-    r28, r29 :: object
-    r30 :: dict
-    r31 :: str
-    r32 :: int32
-    r33 :: bit
+    r12 :: dict
+    r13 :: str
+    r14, r15 :: object
+    r16 :: dict
+    r17 :: str
+    r18, r19 :: object
+    r20 :: dict
+    r21 :: str
+    r22 :: int32
+    r23 :: bit
 L0:
     r0 = builtins :: module
     r1 = load_address _Py_NoneStruct
@@ -2808,38 +2895,26 @@ L1:
     r4 = PyImport_Import(r3)
     builtins = r4 :: module
 L2:
-    r5 = __main__.globals :: static
-    r6 = 'Callable'
-    r7 = PyList_New(1)
-    r8 = get_element_ptr r7 ob_item :: PyListObject
-    r9 = load_mem r8 :: ptr*
-    set_mem r9, r6 :: builtins.object*
-    keep_alive r7
-    r10 = 'typing'
-    r11 = PyImport_ImportModuleLevelObject(r10, r5, 0, r7, 0)
-    typing = r11 :: module
-    r12 = 'typing'
-    r13 = 'Callable'
-    r14 = 'Callable'
-    r15 = CPyImport_ImportFrom(r11, r12, r13, r14)
-    r16 = 'Callable'
-    r17 = CPyDict_SetItem(r5, r16, r15)
-    r18 = r17 >= 0 :: signed
-    r19 = __main__.globals :: static
-    r20 = 'c'
-    r21 = CPyDict_GetItem(r19, r20)
-    r22 = __main__.globals :: static
-    r23 = 'b'
-    r24 = CPyDict_GetItem(r22, r23)
-    r25 = PyObject_CallFunctionObjArgs(r24, r21, 0)
-    r26 = __main__.globals :: static
-    r27 = 'a'
-    r28 = CPyDict_GetItem(r26, r27)
-    r29 = PyObject_CallFunctionObjArgs(r28, r25, 0)
-    r30 = __main__.globals :: static
-    r31 = 'c'
-    r32 = CPyDict_SetItem(r30, r31, r29)
-    r33 = r32 >= 0 :: signed
+    r5 = ('Callable',)
+    r6 = 'typing'
+    r7 = __main__.globals :: static
+    r8 = CPyImport_ImportFromMany(r6, r5, r5, r7)
+    typing = r8 :: module
+    r9 = __main__.globals :: static
+    r10 = 'c'
+    r11 = CPyDict_GetItem(r9, r10)
+    r12 = __main__.globals :: static
+    r13 = 'b'
+    r14 = CPyDict_GetItem(r12, r13)
+    r15 = PyObject_CallFunctionObjArgs(r14, r11, 0)
+    r16 = __main__.globals :: static
+    r17 = 'a'
+    r18 = CPyDict_GetItem(r16, r17)
+    r19 = PyObject_CallFunctionObjArgs(r18, r15, 0)
+    r20 = __main__.globals :: static
+    r21 = 'c'
+    r22 = CPyDict_SetItem(r20, r21, r19)
+    r23 = r22 >= 0 :: signed
     return 1
 
 [case testDecoratorsSimple_toplevel]
@@ -2914,18 +2989,10 @@ def __top_level__():
     r0, r1 :: object
     r2 :: bit
     r3 :: str
-    r4 :: object
-    r5 :: dict
+    r4, r5 :: object
     r6 :: str
-    r7 :: list
-    r8, r9 :: ptr
-    r10 :: str
-    r11 :: object
-    r12, r13, r14 :: str
-    r15 :: object
-    r16 :: str
-    r17 :: int32
-    r18 :: bit
+    r7 :: dict
+    r8 :: object
 L0:
     r0 = builtins :: module
     r1 = load_address _Py_NoneStruct
@@ -2936,23 +3003,11 @@ L1:
     r4 = PyImport_Import(r3)
     builtins = r4 :: module
 L2:
-    r5 = __main__.globals :: static
-    r6 = 'Callable'
-    r7 = PyList_New(1)
-    r8 = get_element_ptr r7 ob_item :: PyListObject
-    r9 = load_mem r8 :: ptr*
-    set_mem r9, r6 :: builtins.object*
-    keep_alive r7
-    r10 = 'typing'
-    r11 = PyImport_ImportModuleLevelObject(r10, r5, 0, r7, 0)
-    typing = r11 :: module
-    r12 = 'typing'
-    r13 = 'Callable'
-    r14 = 'Callable'
-    r15 = CPyImport_ImportFrom(r11, r12, r13, r14)
-    r16 = 'Callable'
-    r17 = CPyDict_SetItem(r5, r16, r15)
-    r18 = r17 >= 0 :: signed
+    r5 = ('Callable',)
+    r6 = 'typing'
+    r7 = __main__.globals :: static
+    r8 = CPyImport_ImportFromMany(r6, r5, r5, r7)
+    typing = r8 :: module
     return 1
 
 [case testAnyAllG]
@@ -3413,24 +3468,85 @@ L0:
     r2 = truncate r0: int32 to builtins.bool
     return r2
 
-[case testLocalImportSubmodule]
-def f() -> int:
+[case testLocalImports]
+def root() -> None:
+    import dataclasses
+    import enum
+
+def submodule() -> int:
     import p.m
     return p.x
 [file p/__init__.py]
 x = 1
 [file p/m.py]
 [out]
-def f():
+def root():
     r0 :: dict
     r1, r2 :: object
     r3 :: bit
     r4 :: str
     r5 :: object
-    r6 :: dict
-    r7 :: str
-    r8 :: object
-    r9 :: str
+    r6 :: str
+    r7 :: dict
+    r8 :: str
+    r9 :: object
+    r10 :: int32
+    r11 :: bit
+    r12 :: dict
+    r13, r14 :: object
+    r15 :: bit
+    r16 :: str
+    r17 :: object
+    r18 :: str
+    r19 :: dict
+    r20 :: str
+    r21 :: object
+    r22 :: int32
+    r23 :: bit
+L0:
+    r0 = __main__.globals :: static
+    r1 = dataclasses :: module
+    r2 = load_address _Py_NoneStruct
+    r3 = r1 != r2
+    if r3 goto L2 else goto L1 :: bool
+L1:
+    r4 = 'dataclasses'
+    r5 = PyImport_Import(r4)
+    dataclasses = r5 :: module
+L2:
+    r6 = 'dataclasses'
+    r7 = PyImport_GetModuleDict()
+    r8 = 'dataclasses'
+    r9 = CPyDict_GetItem(r7, r8)
+    r10 = CPyDict_SetItem(r0, r6, r9)
+    r11 = r10 >= 0 :: signed
+    r12 = __main__.globals :: static
+    r13 = enum :: module
+    r14 = load_address _Py_NoneStruct
+    r15 = r13 != r14
+    if r15 goto L4 else goto L3 :: bool
+L3:
+    r16 = 'enum'
+    r17 = PyImport_Import(r16)
+    enum = r17 :: module
+L4:
+    r18 = 'enum'
+    r19 = PyImport_GetModuleDict()
+    r20 = 'enum'
+    r21 = CPyDict_GetItem(r19, r20)
+    r22 = CPyDict_SetItem(r12, r18, r21)
+    r23 = r22 >= 0 :: signed
+    return 1
+def submodule():
+    r0 :: dict
+    r1, r2 :: object
+    r3 :: bit
+    r4 :: str
+    r5 :: object
+    r6 :: str
+    r7 :: dict
+    r8 :: str
+    r9 :: object
     r10 :: int32
     r11 :: bit
     r12 :: dict
@@ -3450,11 +3566,11 @@ L1:
     r5 = PyImport_Import(r4)
     p.m = r5 :: module
 L2:
-    r6 = PyImport_GetModuleDict()
-    r7 = 'p'
-    r8 = CPyDict_GetItem(r6, r7)
-    r9 = 'p'
-    r10 = CPyDict_SetItem(r0, r9, r8)
+    r6 = 'p'
+    r7 = PyImport_GetModuleDict()
+    r8 = 'p'
+    r9 = CPyDict_GetItem(r7, r8)
+    r10 = CPyDict_SetItem(r0, r6, r9)
     r11 = r10 >= 0 :: signed
     r12 = PyImport_GetModuleDict()
     r13 = 'p'

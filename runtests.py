@@ -50,9 +50,7 @@ cmds = {
     # Self type check
     "self": [executable, "-m", "mypy", "--config-file", "mypy_self_check.ini", "-p", "mypy"],
     # Lint
-    "lint": ["flake8", "-j3"],
-    "format-black": ["black", "."],
-    "format-isort": ["isort", "."],
+    "lint": ["pre-commit", "run", "--all-files"],
     # Fast test cases only (this is the bulk of the test suite)
     "pytest-fast": ["pytest", "-q", "-k", f"not ({' or '.join(ALL_NON_FAST)})"],
     # Test cases that invoke mypy (with small inputs)
@@ -129,7 +127,7 @@ def main() -> None:
         exit(1)
 
     if not args:
-        args = DEFAULT_COMMANDS[:]
+        args = DEFAULT_COMMANDS.copy()
 
     status = 0
 

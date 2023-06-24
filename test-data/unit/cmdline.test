@@ -1484,6 +1484,10 @@ note: A user-defined top-level module with name "typing" is not supported
 [file dir/stdlib/types.pyi]
 [file dir/stdlib/typing.pyi]
 [file dir/stdlib/typing_extensions.pyi]
+[file dir/stdlib/_typeshed.pyi]
+[file dir/stdlib/_collections_abc.pyi]
+[file dir/stdlib/collections/abc.pyi]
+[file dir/stdlib/collections/__init__.pyi]
 [file dir/stdlib/VERSIONS]
 [out]
 Failed to find builtin module mypy_extensions, perhaps typeshed is broken?
@@ -1523,6 +1527,10 @@ class dict: pass
 [file dir/stdlib/typing.pyi]
 [file dir/stdlib/mypy_extensions.pyi]
 [file dir/stdlib/typing_extensions.pyi]
+[file dir/stdlib/_typeshed.pyi]
+[file dir/stdlib/_collections_abc.pyi]
+[file dir/stdlib/collections/abc.pyi]
+[file dir/stdlib/collections/__init__.pyi]
 [file dir/stdlib/foo.pyi]
 1()  # Errors are reported if the file was explicitly passed on the command line
 [file dir/stdlib/VERSIONS]

@@ -43,3 +43,6 @@ if sys.version_info >= (3, 8):
         @property
         def thread(self) -> Thread | None: ...
     _excepthook: Callable[[_ExceptHookArgs], Any]
+
+if sys.version_info >= (3, 12):
+    def daemon_threads_allowed() -> bool: ...

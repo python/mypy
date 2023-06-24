@@ -200,6 +200,28 @@ using bidirectional type inference:
 If you want to give the argument or return value types explicitly, use
 an ordinary, perhaps nested function definition.
 
+Callables can also be used against type objects, matching their
+``__init__`` or ``__new__`` signature:
+
+.. code-block:: python
+
+    from typing import Callable
+
+    class C:
+        def __init__(self, app: str) -> None:
+            pass
+
+    CallableType = Callable[[str], C]
+
+    def class_or_callable(arg: CallableType) -> None:
+        inst = arg("my_app")
+        reveal_type(inst)  # Revealed type is "C"
+
+This is useful if you want ``arg`` to be either a ``Callable`` returning an
+instance of ``C`` or the type of ``C`` itself. This also works with
+:ref:`callback protocols <callback_protocols>`.
+
+
 .. _union-types:
 
 Union types

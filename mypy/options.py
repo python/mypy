@@ -3,6 +3,7 @@ from __future__ import annotations
 import pprint
 import re
 import sys
+import sysconfig
 from typing import Any, Callable, Dict, Mapping, Pattern
 from typing_extensions import Final
 
@@ -86,7 +87,15 @@ class Options:
         # The executable used to search for PEP 561 packages. If this is None,
         # then mypy does not search for PEP 561 packages.
         self.python_executable: str | None = sys.executable
-        self.platform = sys.platform
+
+        # When cross compiling to emscripten, we need to rely on MACHDEP because
+        # sys.platform is the host build platform, not emscripten.
+        MACHDEP = sysconfig.get_config_var("MACHDEP")
+        if MACHDEP == "emscripten":
+            self.platform = MACHDEP
+        else:
+            self.platform = sys.platform
+
         self.custom_typing_module: str | None = None
         self.custom_typeshed_dir: str | None = None
         # The abspath() version of the above, we compute it once as an optimization.
@@ -335,6 +344,8 @@ class Options:
         # skip most errors after this many messages have been reported.
         # -1 means unlimited.
         self.many_errors_threshold = defaults.MANY_ERRORS_THRESHOLD
+        # Enable new experimental type inference algorithm.
+        self.new_type_inference = False
         # Disable recursive type aliases (currently experimental)
         self.disable_recursive_aliases = False
         # Deprecated reverse version of the above, do not use.
@@ -346,12 +357,25 @@ class Options:
         self.disable_bytearray_promotion = False
         self.disable_memoryview_promotion = False
 
+        self.force_uppercase_builtins = False
+        self.force_union_syntax = False
+
+    def use_lowercase_names(self) -> bool:
+        if self.python_version >= (3, 9):
+            return not self.force_uppercase_builtins
+        return False
+
+    def use_or_syntax(self) -> bool:
+        if self.python_version >= (3, 10):
+            return not self.force_union_syntax
+        return False
+
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property
     def new_semantic_analyzer(self) -> bool:
         return True
 
-    def snapshot(self) -> object:
+    def snapshot(self) -> dict[str, object]:
         """Produce a comparable snapshot of this Option"""
         # Under mypyc, we don't have a __dict__, so we need to do worse things.
         d = dict(getattr(self, "__dict__", ()))
@@ -366,6 +390,7 @@ class Options:
         return f"Options({pprint.pformat(self.snapshot())})"
 
     def apply_changes(self, changes: dict[str, object]) -> Options:
+        # Note: effects of this method *must* be idempotent.
         new_options = Options()
         # Under mypyc, we don't have a __dict__, so we need to do worse things.
         replace_object_state(new_options, self, copy_dict=True)
@@ -390,6 +415,17 @@ class Options:
             new_options.disabled_error_codes.discard(code)
 
         return new_options
+
+    def compare_stable(self, other_snapshot: dict[str, object]) -> bool:
+        """Compare options in a way that is stable for snapshot() -> apply_changes() roundtrip.
+
+        This is needed because apply_changes() has non-trivial effects for some flags, so
+        Options().apply_changes(options.snapshot()) may result in a (slightly) different object.
+        """
+        return (
+            Options().apply_changes(self.snapshot()).snapshot()
+            == Options().apply_changes(other_snapshot).snapshot()
+        )
 
     def build_per_module_cache(self) -> None:
         self._per_module_cache = {}

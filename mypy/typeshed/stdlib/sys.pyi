@@ -57,9 +57,20 @@ if sys.version_info >= (3, 8):
     pycache_prefix: str | None
 ps1: object
 ps2: object
+
+# TextIO is used instead of more specific types for the standard streams,
+# since they are often monkeypatched at runtime. At startup, the objects
+# are initialized to instances of TextIOWrapper.
+#
+# To use methods from TextIOWrapper, use an isinstance check to ensure that
+# the streams have not been overridden:
+#
+# if isinstance(sys.stdout, io.TextIOWrapper):
+#    sys.stdout.reconfigure(...)
 stdin: TextIO
 stdout: TextIO
 stderr: TextIO
+
 if sys.version_info >= (3, 10):
     stdlib_module_names: frozenset[str]
 
@@ -201,6 +212,20 @@ class _int_info(structseq[int], tuple[int, int, int, int]):
     @property
     def str_digits_check_threshold(self) -> int: ...
 
+_ThreadInfoName: TypeAlias = Literal["nt", "pthread", "pthread-stubs", "solaris"]
+_ThreadInfoLock: TypeAlias = Literal["semaphore", "mutex+cond"] | None
+
+@final
+class _thread_info(_UninstantiableStructseq, tuple[_ThreadInfoName, _ThreadInfoLock, str | None]):
+    @property
+    def name(self) -> _ThreadInfoName: ...
+    @property
+    def lock(self) -> _ThreadInfoLock: ...
+    @property
+    def version(self) -> str | None: ...
+
+thread_info: _thread_info
+
 @final
 class _version_info(_UninstantiableStructseq, tuple[int, int, int, str, int]):
     @property
@@ -296,7 +321,7 @@ if sys.version_info < (3, 9):
 
 if sys.version_info >= (3, 8):
     # Doesn't exist at runtime, but exported in the stubs so pytest etc. can annotate their code more easily.
-    class UnraisableHookArgs:
+    class UnraisableHookArgs(Protocol):
         exc_type: type[BaseException]
         exc_value: BaseException | None
         exc_traceback: TracebackType | None
@@ -334,3 +359,13 @@ if sys.version_info < (3, 8):
 # as part of the response to CVE-2020-10735
 def set_int_max_str_digits(maxdigits: int) -> None: ...
 def get_int_max_str_digits() -> int: ...
+
+if sys.version_info >= (3, 12):
+    def getunicodeinternedsize() -> int: ...
+    def deactivate_stack_trampoline() -> None: ...
+    def is_stack_trampoline_active() -> bool: ...
+    # It always exists, but raises on non-linux platforms:
+    if sys.platform == "linux":
+        def activate_stack_trampoline(__backend: str) -> None: ...
+    else:
+        def activate_stack_trampoline(__backend: str) -> NoReturn: ...

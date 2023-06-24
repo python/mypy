@@ -936,7 +936,7 @@ class Case1:
         return False and self.missing()  # E: Right operand of "and" is never evaluated
 
     def test2(self) -> bool:
-        return not self.property_decorator_missing and self.missing()  # E: Function "Callable[[], bool]" could always be true in boolean context \
+        return not self.property_decorator_missing and self.missing()  # E: Function "property_decorator_missing" could always be true in boolean context \
             # E: Right operand of "and" is never evaluated
 
     def property_decorator_missing(self) -> bool:
