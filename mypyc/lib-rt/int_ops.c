@@ -308,10 +308,10 @@ PyObject *CPyBool_Str(bool b) {
 }
 
 static void CPyLong_NormalizeUnsigned(PyLongObject *v) {
-    Py_ssize_t i = v->ob_base.ob_size;
-    while (i > 0 && v->ob_digit[i - 1] == 0)
+    Py_ssize_t i = CPY_LONG_SIZE_UNSIGNED(v);
+    while (i > 0 && CPY_LONG_DIGIT(v, i - 1) == 0)
         i--;
-    v->ob_base.ob_size = i;
+    CPyLong_SetUnsignedSize(v, i);
 }
 
 // Bitwise op '&', '|' or '^' using the generic (slow) API
@@ -361,8 +361,8 @@ static digit *GetIntDigits(CPyTagged n, Py_ssize_t *size, digit *buf) {
         return buf;
     } else {
         PyLongObject *obj = (PyLongObject *)CPyTagged_LongAsObject(n);
-        *size = obj->ob_base.ob_size;
-        return obj->ob_digit;
+        *size = CPY_LONG_SIZE_SIGNED(obj);
+        return &CPY_LONG_DIGIT(obj, 0);
     }
 }
 
@@ -399,20 +399,20 @@ static CPyTagged BitwiseLongOp(CPyTagged a, CPyTagged b, char op) {
     Py_ssize_t i;
     if (op == '&') {
         for (i = 0; i < asize; i++) {
-            r->ob_digit[i] = adigits[i] & bdigits[i];
+            CPY_LONG_DIGIT(r, i) = adigits[i] & bdigits[i];
         }
     } else {
         if (op == '|') {
             for (i = 0; i < asize; i++) {
-                r->ob_digit[i] = adigits[i] | bdigits[i];
+                CPY_LONG_DIGIT(r, i) = adigits[i] | bdigits[i];
             }
         } else {
             for (i = 0; i < asize; i++) {
-                r->ob_digit[i] = adigits[i] ^ bdigits[i];
+                CPY_LONG_DIGIT(r, i) = adigits[i] ^ bdigits[i];
             }
         }
         for (; i < bsize; i++) {
-            r->ob_digit[i] = bdigits[i];
+            CPY_LONG_DIGIT(r, i) = bdigits[i];
         }
     }
     CPyLong_NormalizeUnsigned(r);
@@ -521,7 +521,7 @@ int64_t CPyLong_AsInt64(PyObject *o) {
         Py_ssize_t size = Py_SIZE(lobj);
         if (likely(size == 1)) {
             // Fast path
-            return lobj->ob_digit[0];
+            return CPY_LONG_DIGIT(lobj, 0);
         } else if (likely(size == 0)) {
             return 0;
         }
@@ -576,14 +576,25 @@ int64_t CPyInt64_Remainder(int64_t x, int64_t y) {
 
 int32_t CPyLong_AsInt32(PyObject *o) {
     if (likely(PyLong_Check(o))) {
+    #if CPY_3_12_FEATURES
+        PyLongObject *lobj = (PyLongObject *)o;
+        size_t tag = CPY_LONG_TAG(lobj);
+        if (likely(tag == (1 << CPY_NON_SIZE_BITS))) {
+            // Fast path
+            return CPY_LONG_DIGIT(lobj, 0);
+        } else if (likely(tag == CPY_SIGN_ZERO)) {
+            return 0;
+        }
+    #else
         PyLongObject *lobj = (PyLongObject *)o;
         Py_ssize_t size = lobj->ob_base.ob_size;
         if (likely(size == 1)) {
             // Fast path
-            return lobj->ob_digit[0];
+            return CPY_LONG_DIGIT(lobj, 0);
         } else if (likely(size == 0)) {
             return 0;
         }
+    #endif
     }
     // Slow path
     int overflow;
