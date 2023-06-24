@@ -222,12 +222,24 @@ L0:
     return 1
 
 [case testFloatConstantFolding]
+from typing_extensions import Final
+
+N: Final = 1.5
+N2: Final = 1.5 * 2
+
 def bin_ops() -> None:
     add = 0.5 + 0.5
     add_mul = (1.5 + 3.5) * 5.0
     sub = 7.0 - 7.5
     div = 3.0 / 2.0
     floor_div = 3.0 // 2.0
+def bin_ops_neg() -> None:
+    add = 0.5 + -0.5
+    add_mul = (-1.5 + 3.5) * -5.0
+    add_mul2 = (1.5 + -3.5) * -5.0
+    sub = 7.0 - -7.5
+    div = 3.0 / -2.0
+    floor_div = 3.0 // -2.0
 def unary_ops() -> None:
     neg1 = -5.5
     neg2 = --1.5
@@ -237,12 +249,19 @@ def pow() -> None:
     p0 = 16.0**0
     p1 = 16.0**0.5
     p2 = (-5.0)**3
-    p3 = 0.0**0.0
+    p3 = 16.0**(-0)
+    p4 = 16.0**(-0.5)
+    p5 = (-2.0)**(-1)
 def error_cases() -> None:
     div = 2.0 / 0.0
     floor_div = 2.0 // 0.0
     power_imag = (-2.0)**0.5
+    power_imag2 = (-2.0)**(-0.5)
     power_overflow = 2.0**10000.0
+def final_floats() -> None:
+    add1 = N + 1.2
+    add2 = N + N2
+    add3 = -1.2 + N2
 [out]
 def bin_ops():
     add, add_mul, sub, div, floor_div :: float
@@ -253,6 +272,16 @@ L0:
     div = 1.5
     floor_div = 1.0
     return 1
+def bin_ops_neg():
+    add, add_mul, add_mul2, sub, div, floor_div :: float
+L0:
+    add = 0.0
+    add_mul = -10.0
+    add_mul2 = 10.0
+    sub = 14.5
+    div = -1.5
+    floor_div = -2.0
+    return 1
 def unary_ops():
     neg1, neg2, neg3, pos :: float
 L0:
@@ -262,12 +291,14 @@ L0:
     pos = 5.5
     return 1
 def pow():
-    p0, p1, p2, p3 :: float
+    p0, p1, p2, p3, p4, p5 :: float
 L0:
     p0 = 1.0
     p1 = 4.0
     p2 = -125.0
     p3 = 1.0
+    p4 = 0.25
+    p5 = -0.5
     return 1
 def error_cases():
     r0 :: bit
@@ -276,7 +307,9 @@ def error_cases():
     r4, r5, r6 :: object
     r7, power_imag :: float
     r8, r9, r10 :: object
-    r11, power_overflow :: float
+    r11, power_imag2 :: float
+    r12, r13, r14 :: object
+    r15, power_overflow :: float
 L0:
     r0 = 0.0 == 0.0
     if r0 goto L1 else goto L2 :: bool
@@ -293,11 +326,23 @@ L2:
     r6 = CPyNumber_Power(r4, r5)
     r7 = unbox(float, r6)
     power_imag = r7
-    r8 = box(float, 2.0)
-    r9 = box(float, 10000.0)
+    r8 = box(float, -2.0)
+    r9 = box(float, -0.5)
     r10 = CPyNumber_Power(r8, r9)
     r11 = unbox(float, r10)
-    power_overflow = r11
+    power_imag2 = r11
+    r12 = box(float, 2.0)
+    r13 = box(float, 10000.0)
+    r14 = CPyNumber_Power(r12, r13)
+    r15 = unbox(float, r14)
+    power_overflow = r15
+    return 1
+def final_floats():
+    add1, add2, add3 :: float
+L0:
+    add1 = 2.7
+    add2 = 4.5
+    add3 = 1.8
     return 1
 
 [case testMixedFloatIntConstantFolding]

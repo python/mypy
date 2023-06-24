@@ -166,13 +166,13 @@ def constant_fold_binary_float_op(op: str, left: int | float, right: int | float
         if right != 0:
             return left % right
     elif op == "**":
-        if (left < 0 and right >= 1 or right == 0) or (left >= 0 and right >= 0):
+        if (left < 0 and isinstance(right, int)) or left > 0:
             try:
                 ret = left**right
             except OverflowError:
                 return None
             else:
-                assert isinstance(ret, float)
+                assert isinstance(ret, float), ret
                 return ret
 
     return None
