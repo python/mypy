@@ -654,6 +654,18 @@ void CPyInt32_Overflow() {
 
 int16_t CPyLong_AsInt16(PyObject *o) {
     if (likely(PyLong_Check(o))) {
+    #if CPY_3_12_FEATURES
+        PyLongObject *lobj = (PyLongObject *)o;
+        size_t tag = CPY_LONG_TAG(lobj);
+        if (likely(tag == (1 << CPY_NON_SIZE_BITS))) {
+            // Fast path
+            digit x = CPY_LONG_DIGIT(lobj, 0);
+            if (x < 0x8000)
+                return x;
+        } else if (likely(tag == CPY_SIGN_ZERO)) {
+            return 0;
+        }
+    #else
         PyLongObject *lobj = (PyLongObject *)o;
         Py_ssize_t size = lobj->ob_base.ob_size;
         if (likely(size == 1)) {
@@ -664,6 +676,7 @@ int16_t CPyLong_AsInt16(PyObject *o) {
         } else if (likely(size == 0)) {
             return 0;
         }
+    #endif
     }
     // Slow path
     int overflow;
