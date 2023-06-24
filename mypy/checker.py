@@ -646,6 +646,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             found_base_method = self.check_method_override(defn)
             if defn.is_explicit_override and found_base_method is False:
                 self.msg.no_overridable_method(defn.name, defn)
+            elif (
+                found_base_method
+                and self.options.strict_override_decorator
+                and not defn.is_explicit_override
+            ):
+                self.msg.override_decorator_missing(defn.name, defn.impl or defn)
             self.check_inplace_operator_method(defn)
         if not defn.is_property:
             self.check_overlapping_overloads(defn)
@@ -972,7 +978,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # overload, the legality of the override has already
                 # been typechecked, and decorated methods will be
                 # checked when the decorator is.
-                self.check_method_override(defn)
+                found_base_method = self.check_method_override(defn)
+                if (
+                    found_base_method
+                    and self.options.strict_override_decorator
+                    and defn.name not in ("__init__", "__new__")
+                ):
+                    self.msg.override_decorator_missing(defn.name, defn)
             self.check_inplace_operator_method(defn)
         if defn.original_def:
             # Override previous definition.
@@ -4743,6 +4755,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             found_base_method = self.check_method_override(e)
             if e.func.is_explicit_override and found_base_method is False:
                 self.msg.no_overridable_method(e.func.name, e.func)
+            elif (
+                found_base_method
+                and self.options.strict_override_decorator
+                and not e.func.is_explicit_override
+            ):
+                self.msg.override_decorator_missing(e.func.name, e.func)
 
         if e.func.info and e.func.name in ("__init__", "__new__"):
             if e.type and not isinstance(get_proper_type(e.type), (FunctionLike, AnyType)):

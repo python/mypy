@@ -1525,6 +1525,13 @@ class MessageBuilder:
             context,
         )
 
+    def override_decorator_missing(self, name: str, context: Context) -> None:
+        self.fail(
+            f'Method "{name}" is not marked as override '
+            "but is overriding a method in a base class",
+            context,
+        )
+
     def final_cant_override_writable(self, name: str, ctx: Context) -> None:
         self.fail(f'Cannot override writable attribute "{name}" with a final one', ctx)
 

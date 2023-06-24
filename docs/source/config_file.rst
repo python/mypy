@@ -714,6 +714,13 @@ section of the command line docs.
    Prohibit equality checks, identity checks, and container checks between
    non-overlapping types.
 
+.. confval:: strict_override_decorator
+
+    :type: boolean
+    :default: False
+
+    Require ``override`` decorator if method is overriding a base class method.
+
 .. confval:: strict
 
     :type: boolean

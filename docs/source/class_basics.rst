@@ -233,6 +233,12 @@ show an error:
        def g(self, y: str) -> None:   # Error: no corresponding base method found
            ...
 
+.. note::
+
+   Use ``--strict-override-decorator`` or
+   :confval:`strict_override_decorator = True <strict_override_decorator>` to require
+   methods overrides use the ``@override`` decorator. Emit an error if it is missing.
+
 You can also override a statically typed method with a dynamically
 typed one. This allows dynamically typed code to override methods
 defined in library classes without worrying about their type
