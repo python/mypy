@@ -75,7 +75,6 @@ core_modules: Final = [
     "abc",
     "collections",
     "collections.abc",
-    "typing_extensions",
 ]
 
 
