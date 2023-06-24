@@ -32,7 +32,6 @@ from mypyc.ir.rtypes import (
     is_list_rprimitive,
     is_object_rprimitive,
     is_optional_type,
-    is_range_rprimitive,
     is_set_rprimitive,
     is_str_rprimitive,
     is_tagged,
@@ -876,7 +875,7 @@ def generic_setter_name(rtype: RType) -> str | None:
 
     Return None if no generic setter is available.
     """
-    if not rtype.is_unboxed and generic_setter_boxed_type_struct(rtype):
+    if not rtype.is_unboxed and generic_setter_boxed_type(rtype):
         return "CPyAttr_SetterPyObject"
     elif is_tagged(rtype):
         return "CPyAttr_SetterTagged"
@@ -888,29 +887,27 @@ def generic_setter_name(rtype: RType) -> str | None:
     return None
 
 
-def generic_setter_boxed_type_struct(rtype: RType) -> str | None:
-    """Return the PyTypeObject pointer (for setter type checks).
+def generic_setter_boxed_type(rtype: RType) -> str | None:
+    """Return the CPyAttr_BoxedType enum value for runtime type checks.
 
     Return None if rtype is unsupported."""
     assert not rtype.is_unboxed, f"must be boxed type: {rtype}"
     if is_str_rprimitive(rtype):
-        return "&PyUnicode_Type"
+        return "CPyAttr_UNICODE"
     elif is_tuple_rprimitive(rtype):
-        return "&PyTuple_Type"
+        return "CPyAttr_TUPLE"
     elif is_list_rprimitive(rtype):
-        return "&PyList_Type"
+        return "CPyAttr_LIST"
     elif is_dict_rprimitive(rtype):
-        return "&PyDict_Type"
+        return "CPyAttr_DICT"
     elif is_set_rprimitive(rtype):
-        return "&PySet_Type"
-    elif is_range_rprimitive(rtype):
-        return "&PyRange_Type"
+        return "CPyAttr_SET"
     elif is_optional_type(rtype):
         inner_rtype = optional_value_type(rtype)
         if inner_rtype is not None and not inner_rtype.is_unboxed:
-            return generic_setter_boxed_type_struct(inner_rtype)
+            return generic_setter_boxed_type(inner_rtype)
     elif is_object_rprimitive(rtype):
-        return "NULL"
+        return "CPyAttr_ANY"
 
     return None
 
@@ -937,10 +934,10 @@ def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
             # If using the generic boxed (PyObject *) setter, store the PyTypeObject et al.
             # to drive runtime type checks.
             if generic_setter_name(rtype) and not rtype.is_unboxed:
-                setter_ctype = generic_setter_boxed_type_struct(rtype)
+                setter_ctype = generic_setter_boxed_type(rtype)
                 emitter.emit_line(
-                    f'.setter = {{"{emitter.pretty_name(rtype)}",'
-                    f" .optional = {c_bool(is_optional_type(rtype))}, {setter_ctype}}}"
+                    f'.boxed_setter = {{"{emitter.pretty_name(rtype)}", {setter_ctype},'
+                    f" .optional = {c_bool(is_optional_type(rtype))}}}"
                 )
             emitter.emit_line("};")
 

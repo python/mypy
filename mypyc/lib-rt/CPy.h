@@ -67,6 +67,10 @@ typedef struct tuple_T4CIOO {
 
 // Native object operations
 
+typedef enum CPyAttr_BoxedType {
+    CPyAttr_UNICODE, CPyAttr_TUPLE, CPyAttr_LIST, CPyAttr_DICT, CPyAttr_SET, CPyAttr_ANY
+} CPyAttr_BoxedType;
+
 // Closure type to drive generic attribute getters and setters.
 typedef struct CPyAttr_Context {
     const char *attr_name;
@@ -79,9 +83,9 @@ typedef struct CPyAttr_Context {
     } bitmap;
     struct {                    // Used for generic PyObject * setter.
         const char *type_name;
+        CPyAttr_BoxedType type;
         bool optional;          // Is None allowed?
-        PyTypeObject *type;     // If NULL, treat attribute as Any (no type check).
-    } setter;
+    } boxed_setter;
 } CPyAttr_Context;
 
 PyObject *CPyAttr_GetterPyObject(PyObject *self, CPyAttr_Context *context);

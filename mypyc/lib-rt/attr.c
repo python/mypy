@@ -90,11 +90,30 @@ int CPyAttr_SetterPyObject(PyObject *self, PyObject *value, CPyAttr_Context *con
 
     PyObject **attr = (PyObject **)((char *)self + context->offset);
     if (value != NULL) {
-        PyTypeObject *type = context->setter.type;
-        bool optional = context->setter.optional;
+        PyTypeObject *type = NULL;
+        switch (context->boxed_setter.type) {
+            case CPyAttr_UNICODE:
+                type = &PyUnicode_Type;
+                break;
+            case CPyAttr_TUPLE:
+                type = &PyTuple_Type;
+                break;
+            case CPyAttr_LIST:
+                type = &PyList_Type;
+                break;
+            case CPyAttr_DICT:
+                type = &PyDict_Type;
+                break;
+            case CPyAttr_SET:
+                type = &PySet_Type;
+                break;
+            case CPyAttr_ANY:
+                // Do nothing, type is already NULL.
+                break;
+        }
         if (type != NULL && !PyObject_TypeCheck(value, type)) {
-            if (!optional || (optional && value != Py_None)) {
-                CPy_TypeError(context->setter.type_name, value);
+            if (!context->boxed_setter.optional || value != Py_None) {
+                CPy_TypeError(context->boxed_setter.type_name, value);
                 return -1;
             }
         }
