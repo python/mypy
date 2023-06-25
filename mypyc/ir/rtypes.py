@@ -1046,6 +1046,42 @@ class RVec(RType):
             self.types = [c_pyssize_t_rprimitive, VecbufTObject]
             self.buf_type = VecbufTObject
 
+    def unwrap_item_type(self) -> RPrimitive | RInstance:
+        """Return the non-optional value (non-vec) item type in a potentially nested vec."""
+        item_type = self.item_type
+        while True:
+            if isinstance(item_type, RUnion):
+                item_type = optional_value_type(item_type)
+                assert item_type is not None
+            elif isinstance(item_type, RVec):
+                item_type = item_type.item_type
+            elif isinstance(item_type, (RPrimitive, RInstance)):
+                return item_type
+            else:
+                assert False, f"unexpected item type: {self.item_type}"
+
+    def optional_flags(self) -> int:
+        item_type = self.item_type
+        if isinstance(item_type, RUnion):
+            item_type = optional_value_type(item_type)
+            assert item_type is not None
+            if isinstance(item_type, RVec):
+                return (item_type.optional_flags() << 1) | 1
+            else:
+                return 1
+        elif isinstance(item_type, RVec):
+            return item_type.optional_flags() << 1
+        return 0
+
+    def depth(self) -> int:
+        item_type = self.item_type
+        if isinstance(item_type, RUnion):
+            item_type = optional_value_type(item_type)
+            assert item_type is not None
+        if isinstance(item_type, RVec):
+            return 1 + item_type.depth()
+        return 0
+
     def field_type(self, name: str) -> RType:
         if name == "len":
             return c_pyssize_t_rprimitive

@@ -21,10 +21,18 @@ from mypyc.common import (
     REG_PREFIX,
     STATIC_PREFIX,
     TYPE_PREFIX,
+    TYPE_VAR_PREFIX,
 )
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncDecl, FuncIR, get_text_signature
-from mypyc.ir.ops import BasicBlock, Value
+from mypyc.ir.ops import (
+    NAMESPACE_MODULE,
+    NAMESPACE_STATIC,
+    NAMESPACE_TYPE,
+    NAMESPACE_TYPE_VAR,
+    BasicBlock,
+    Value,
+)
 from mypyc.ir.rtypes import (
     RInstance,
     RPrimitive,
@@ -60,11 +68,19 @@ from mypyc.ir.rtypes import (
     vec_depth,
 )
 from mypyc.namegen import NameGenerator, exported_name
+from mypyc.primitives.registry import builtin_names
 from mypyc.sametype import is_same_type
 
 # Whether to insert debug asserts for all error handling, to quickly
 # catch errors propagating without exceptions set.
 DEBUG_ERRORS: Final = False
+
+PREFIX_MAP: Final = {
+    NAMESPACE_STATIC: STATIC_PREFIX,
+    NAMESPACE_TYPE: TYPE_PREFIX,
+    NAMESPACE_MODULE: MODULE_PREFIX,
+    NAMESPACE_TYPE_VAR: TYPE_VAR_PREFIX,
+}
 
 
 class HeaderDeclaration:
@@ -1074,14 +1090,33 @@ class Emitter:
             # TODO: Use helper function to pick the api variant
             if is_int64_rprimitive(typ.item_type):
                 self.emit_line(f"{dest} = VecI64Api.unbox({src});")
-            elif vec_depth(typ) == 0:
-                # TODO: Provide item type as second arg
-                self.emit_line(f"{dest} = VecTApi.unbox({src}, 0);")
             else:
-                # TODO: Provide additional arguments
-                self.emit_line(f"{dest} = VecTExtApi.unbox({src}, 0, 0, 0);")
+                depth = typ.depth()
+                optionals = typ.optional_flags()
+                if is_int64_rprimitive(typ.unwrap_item_type()):
+                    type_value = "VEC_ITEM_TYPE_I64"
+                else:
+                    type_value = f"(size_t)&{self.vec_item_type_c(typ)}"
+                    if optionals & (1 << depth):
+                        type_value = f"{type_value} | 1"
+                if depth == 0:
+                    self.emit_line(f"{dest} = VecTApi.unbox({src}, {type_value});")
+                else:
+                    self.emit_line(
+                        f"{dest} = VecTExtApi.unbox({src}, {type_value}, {optionals}, {depth});")
         else:
             assert False, "Unboxing not implemented: %s" % typ
+
+    def vec_item_type_c(self, typ: RVec) -> str:
+        item_type = typ.unwrap_item_type()
+        return self.type_c_name(item_type)
+
+    def type_c_name(self, typ: RPrimitive | RInstance) -> str | None:
+        if isinstance(typ, RPrimitive) and typ.is_refcounted:
+            return builtin_names[typ.name][1]
+        elif isinstance(typ, RInstance):
+            return self.type_struct_name(typ.class_ir)
+        return None
 
     def emit_box(
         self, src: str, dest: str, typ: RType, declare_dest: bool = False, can_borrow: bool = False
@@ -1140,7 +1175,7 @@ class Emitter:
         elif isinstance(typ, RVec):
             if is_int64_rprimitive(typ.item_type):
                 api = "VecI64Api"
-            elif not isinstance(typ.item_type, RVec):
+            elif typ.depth() == 0:
                 api = "VecTApi"
             else:
                 api = "VecTExtApi"

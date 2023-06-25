@@ -50,6 +50,8 @@ from mypyc.ir.rtypes import (
     RStruct,
     RTuple,
     RType,
+    RUnion,
+    RVec,
     bool_rprimitive,
     c_int_rprimitive,
     cstring_rprimitive,
@@ -62,6 +64,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
     pointer_rprimitive,
     short_int_rprimitive,
+    str_rprimitive,
 )
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.namegen import NameGenerator
@@ -109,6 +112,9 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.tt = add_local(
             "tt", RTuple([RTuple([int_rprimitive, bool_rprimitive]), bool_rprimitive])
         )
+        self.vi64 = add_local("vi64", RVec(int64_rprimitive))
+        self.vs = add_local("vs", RVec(str_rprimitive))
+        self.vvs = add_local("vvs", RVec(RVec(str_rprimitive)))
         ir = ClassIR("A", "mod")
         ir.attributes = {
             "x": bool_rprimitive,
@@ -348,11 +354,11 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(
             Unbox(self.m, int_rprimitive, 55),
             """if (likely(PyLong_Check(cpy_r_m)))
-                                cpy_r_r0 = CPyTagged_FromObject(cpy_r_m);
-                            else {
-                                CPy_TypeError("int", cpy_r_m); cpy_r_r0 = CPY_INT_TAG;
-                            }
-                         """,
+                   cpy_r_r0 = CPyTagged_FromObject(cpy_r_m);
+               else {
+                   CPy_TypeError("int", cpy_r_m); cpy_r_r0 = CPY_INT_TAG;
+               }
+               """,
         )
 
     def test_box_i64(self) -> None:
@@ -362,6 +368,38 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(
             Unbox(self.o, int64_rprimitive, 55), """cpy_r_r0 = CPyLong_AsInt64(cpy_r_o);"""
         )
+
+    def test_box_vec(self) -> None:
+        self.assert_emit(Box(self.vi64), """cpy_r_r0 = VecI64Api.box(cpy_r_vi64);""")
+        self.assert_emit(Box(self.vs), """cpy_r_r0 = VecTApi.box(cpy_r_vs);""")
+        self.assert_emit(Box(self.vvs), """cpy_r_r0 = VecTExtApi.box(cpy_r_vvs);""")
+
+    def test_unbox_vec(self) -> None:
+        self.assert_emit(
+            Unbox(self.o, RVec(int64_rprimitive), 55), """cpy_r_r0 = VecI64Api.unbox(cpy_r_o);"""
+        )
+        self.assert_emit(
+            Unbox(self.o, RVec(str_rprimitive), 55),
+            """cpy_r_r0 = VecTApi.unbox(cpy_r_o, (size_t)&PyUnicode_Type);""",
+        )
+        self.assert_emit(
+            Unbox(self.o, RVec(RUnion([str_rprimitive, none_rprimitive])), 55),
+            """cpy_r_r0 = VecTApi.unbox(cpy_r_o, (size_t)&PyUnicode_Type | 1);""",
+        )
+        self.assert_emit(
+            Unbox(self.o, RVec(self.r.type), 55),
+            """cpy_r_r0 = VecTApi.unbox(cpy_r_o, (size_t)&CPyType_A);""",
+        )
+
+    def test_unbox_vec_nested(self) -> None:
+        self.assert_emit(Unbox(self.o, RVec(RVec(str_rprimitive)), 55),
+                        """cpy_r_r0 = VecTExtApi.unbox(cpy_r_o, (size_t)&PyUnicode_Type, 0, 1);""")
+        self.assert_emit(Unbox(self.o, RVec(RVec(RUnion([str_rprimitive, none_rprimitive]))), 55),
+                        """cpy_r_r0 = VecTExtApi.unbox(cpy_r_o, (size_t)&PyUnicode_Type | 1, 2, 1);""")
+        self.assert_emit(Unbox(self.o, RVec(RUnion([RVec(str_rprimitive), none_rprimitive])), 55),
+                        """cpy_r_r0 = VecTExtApi.unbox(cpy_r_o, (size_t)&PyUnicode_Type, 1, 1);""")
+        self.assert_emit(Unbox(self.o, RVec(RVec(int64_rprimitive)), 55),
+                        """cpy_r_r0 = VecTExtApi.unbox(cpy_r_o, VEC_ITEM_TYPE_I64, 0, 1);""")
 
     def test_list_append(self) -> None:
         self.assert_emit(

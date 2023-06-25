@@ -5,7 +5,13 @@ from __future__ import annotations
 from typing import Final
 
 from mypyc.analysis.blockfreq import frequently_executed_blocks
-from mypyc.codegen.emit import DEBUG_ERRORS, Emitter, TracebackAndGotoHandler, c_array_initializer
+from mypyc.codegen.emit import (
+    DEBUG_ERRORS,
+    PREFIX_MAP,
+    Emitter,
+    TracebackAndGotoHandler,
+    c_array_initializer,
+)
 from mypyc.common import (
     GENERATOR_ATTRIBUTE_PREFIX,
     HAVE_IMMORTAL,
@@ -20,8 +26,6 @@ from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR, all_values
 from mypyc.ir.ops import (
     ERR_FALSE,
-    NAMESPACE_MODULE,
-    NAMESPACE_STATIC,
     NAMESPACE_TYPE,
     NAMESPACE_TYPE_VAR,
     Assign,
@@ -537,16 +541,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             if op.error_kind == ERR_FALSE:
                 self.emitter.emit_line(f"{dest} = 1;")
 
-    PREFIX_MAP: Final = {
-        NAMESPACE_STATIC: STATIC_PREFIX,
-        NAMESPACE_TYPE: TYPE_PREFIX,
-        NAMESPACE_MODULE: MODULE_PREFIX,
-        NAMESPACE_TYPE_VAR: TYPE_VAR_PREFIX,
-    }
-
     def visit_load_static(self, op: LoadStatic) -> None:
         dest = self.reg(op)
-        prefix = self.PREFIX_MAP[op.namespace]
+        prefix = PREFIX_MAP[op.namespace]
         name = self.emitter.static_name(op.identifier, op.module_name, prefix)
         if op.namespace == NAMESPACE_TYPE:
             name = "(PyObject *)%s" % name
@@ -554,7 +551,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
     def visit_init_static(self, op: InitStatic) -> None:
         value = self.reg(op.value)
-        prefix = self.PREFIX_MAP[op.namespace]
+        prefix = PREFIX_MAP[op.namespace]
         name = self.emitter.static_name(op.identifier, op.module_name, prefix)
         if op.namespace == NAMESPACE_TYPE:
             value = "(PyTypeObject *)%s" % value
@@ -879,7 +876,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         if isinstance(op.src, Register):
             src = self.reg(op.src)
         elif isinstance(op.src, LoadStatic):
-            prefix = self.PREFIX_MAP[op.src.namespace]
+            prefix = PREFIX_MAP[op.src.namespace]
             src = self.emitter.static_name(op.src.identifier, op.src.module_name, prefix)
         else:
             src = op.src
