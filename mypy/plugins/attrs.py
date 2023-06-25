@@ -55,6 +55,7 @@ from mypy.plugins.common import (
     deserialize_and_fixup_type,
 )
 from mypy.server.trigger import make_wildcard_trigger
+from mypy.state import state
 from mypy.typeops import get_type_vars, make_simplified_union, map_type_from_supertype
 from mypy.types import (
     AnyType,
@@ -122,10 +123,19 @@ class Attribute:
         self.context = context
         self.init_type = init_type
 
+    def expand_type(self, typ: Type | None, ctx: mypy.plugin.ClassDefContext) -> Type | None:
+        if typ is not None and self.info.self_type is not None:
+            # In general, it is not safe to call `expand_type()` during semantic analyzis,
+            # however this plugin is called very late, so all types should be fully ready.
+            # Also, it is tricky to avoid eager expansion of Self types here (e.g. because
+            # we serialize attributes).
+            return expand_type(typ, {self.info.self_type.id: fill_typevars(ctx.cls.info)})
+        return typ
+
     def argument(self, ctx: mypy.plugin.ClassDefContext) -> Argument:
         """Return this attribute as an argument to __init__."""
         assert self.init
-        init_type: Type | None = None
+        init_type: Type | None
         if self.converter:
             if self.converter.init_type:
                 init_type = self.converter.init_type
@@ -169,6 +179,9 @@ class Attribute:
             arg_kind = ARG_NAMED_OPT if self.has_default else ARG_NAMED
         else:
             arg_kind = ARG_OPT if self.has_default else ARG_POS
+
+        with state.strict_optional_set(ctx.api.options.strict_optional):
+            init_type = self.expand_type(init_type, ctx)
 
         # Attrs removes leading underscores when creating the __init__ arguments.
         return Argument(Var(self.name.lstrip("_"), init_type), init_type, None, arg_kind)

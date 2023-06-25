@@ -1979,6 +1979,31 @@ D(1, "").b = "2" # E: Cannot assign to final attribute "b"
 
 [builtins fixtures/property.pyi]
 
+[case testSelfInClassInit]
+# flags: --strict-optional
+from attrs import define
+from typing import Union, Self
+
+@define
+class C:
+    a: Union[Self, None] = None
+
+reveal_type(C) # N: Revealed type is "def (a: Union[__main__.C, None] =) -> __main__.C"
+C(C())
+C(None)
+reveal_type(C(C()).a)  # N: Revealed type is "Union[__main__.C, None]"
+
+@define
+class S(C):
+    ...
+
+reveal_type(S) # N: Revealed type is "def (a: Union[__main__.S, None] =) -> __main__.S"
+S(S())
+S(None)
+reveal_type(S(S()).a)  # N: Revealed type is "Union[__main__.S, None]"
+
+[builtins fixtures/property.pyi]
+
 [case testEvolve]
 import attr
 
