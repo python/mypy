@@ -1253,18 +1253,21 @@ class MessageBuilder:
             code=codes.OVERRIDE,
             secondary_context=secondary_context,
         )
-        self.note(
-            "This violates the Liskov substitution principle",
-            context,
-            code=codes.OVERRIDE,
-            secondary_context=secondary_context,
-        )
-        self.note(
-            "See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides",
-            context,
-            code=codes.OVERRIDE,
-            secondary_context=secondary_context,
-        )
+        if name != "__post_init__":
+            # `__post_init__` is special, it can be incompatible by design.
+            # So, this note is misleading.
+            self.note(
+                "This violates the Liskov substitution principle",
+                context,
+                code=codes.OVERRIDE,
+                secondary_context=secondary_context,
+            )
+            self.note(
+                "See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides",
+                context,
+                code=codes.OVERRIDE,
+                secondary_context=secondary_context,
+            )
 
         if name == "__eq__" and type_name:
             multiline_msg = self.comparison_method_example_msg(class_name=type_name)
