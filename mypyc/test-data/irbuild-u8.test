@@ -273,10 +273,10 @@ L0:
     r1 = r0 == 0
     if r1 goto L1 else goto L4 :: bool
 L1:
-    r2 = x < 65536 :: signed
+    r2 = x < 512 :: signed
     if r2 goto L2 else goto L4 :: bool
 L2:
-    r3 = x >= -65536 :: signed
+    r3 = x >= 0 :: signed
     if r3 goto L3 else goto L4 :: bool
 L3:
     r4 = x >> 1
@@ -288,7 +288,7 @@ L4:
     unreachable
 L5:
     r7 = r6 + a
-    r8 = extend signed r7: uint8 to native_int
+    r8 = extend r7: uint8 to native_int
     r9 = r8 << 1
     x = r9
     return 1
@@ -310,9 +310,12 @@ L0:
     return 1
 
 [case testU8ExplicitConversionFromNativeInt]
-from mypy_extensions import i64, i32, u8
+from mypy_extensions import i64, i32, i16, u8
 
 def from_u8(x: u8) -> u8:
+    return u8(x)
+
+def from_i16(x: i16) -> u8:
     return u8(x)
 
 def from_i32(x: i32) -> u8:
@@ -325,6 +328,12 @@ def from_u8(x):
     x :: uint8
 L0:
     return x
+def from_i16(x):
+    x :: int16
+    r0 :: uint8
+L0:
+    r0 = truncate x: int16 to uint8
+    return r0
 def from_i32(x):
     x :: int32
     r0 :: uint8
@@ -355,10 +364,10 @@ L0:
     r1 = r0 == 0
     if r1 goto L1 else goto L4 :: bool
 L1:
-    r2 = x < 65536 :: signed
+    r2 = x < 512 :: signed
     if r2 goto L2 else goto L4 :: bool
 L2:
-    r3 = x >= -65536 :: signed
+    r3 = x >= 0 :: signed
     if r3 goto L3 else goto L4 :: bool
 L3:
     r4 = x >> 1
@@ -443,10 +452,10 @@ L0:
     r2 = r1 == 0
     if r2 goto L1 else goto L4 :: bool
 L1:
-    r3 = r0 < 65536 :: signed
+    r3 = r0 < 512 :: signed
     if r3 goto L2 else goto L4 :: bool
 L2:
-    r4 = r0 >= -65536 :: signed
+    r4 = r0 >= 0 :: signed
     if r4 goto L3 else goto L4 :: bool
 L3:
     r5 = r0 >> 1

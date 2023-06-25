@@ -43,6 +43,7 @@ for int_name in (
     "mypy_extensions.i64",
     "mypy_extensions.i32",
     "mypy_extensions.i16",
+    "mypy_extensions.u8",
 ):
     # These int constructors produce object_rprimitives that then need to be unboxed
     # I guess unboxing ourselves would save a check and branch though?
