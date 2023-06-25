@@ -421,7 +421,7 @@ class DataclassTransformer:
             #
             # We would be *required* to specify `y: str = ...` if default is added here.
             # But, most people won't care about adding default values to `__post_init__`,
-            # because it is not designed to called directly and duplicating default values
+            # because it is not designed to be called directly, and duplicating default values
             # for the sake of type-checking is unpleasant.
             arg_kinds.append(ARG_POS)
             arg_names.append(attr.name)
