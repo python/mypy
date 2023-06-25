@@ -104,6 +104,7 @@ from mypyc.ir.rtypes import (
     is_dict_rprimitive,
     is_fixed_width_rtype,
     is_float_rprimitive,
+    is_uint8_rprimitive,
     is_int16_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
@@ -150,6 +151,7 @@ from mypyc.primitives.int_ops import (
     int16_divide_op,
     int16_mod_op,
     int16_overflow,
+    uint8_overflow,
     int32_divide_op,
     int32_mod_op,
     int32_overflow,
@@ -414,10 +416,16 @@ class LowLevelIRBuilder:
             # Add a range check when the target type is smaller than the source tyoe
             fast2, fast3 = BasicBlock(), BasicBlock()
             upper_bound = 1 << (size * 8 - 1)
+            if not target_type.is_signed:
+                upper_bound *= 2
             check2 = self.add(ComparisonOp(src, Integer(upper_bound, src.type), ComparisonOp.SLT))
             self.add(Branch(check2, fast2, slow, Branch.BOOL))
             self.activate_block(fast2)
-            check3 = self.add(ComparisonOp(src, Integer(-upper_bound, src.type), ComparisonOp.SGE))
+            if target_type.is_signed:
+                lower_bound = -upper_bound
+            else:
+                lower_bound = 0
+            check3 = self.add(ComparisonOp(src, Integer(lower_bound, src.type), ComparisonOp.SGE))
             self.add(Branch(check3, fast3, slow, Branch.BOOL))
             self.activate_block(fast3)
             tmp = self.int_op(
@@ -464,6 +472,10 @@ class LowLevelIRBuilder:
             # Slow path just always generates an OverflowError
             self.call_c(int16_overflow, [], line)
             self.add(Unreachable())
+        elif is_uint8_rprimitive(target_type):
+            # Slow path just always generates an OverflowError
+            self.call_c(uint8_overflow, [], line)
+            self.add(Unreachable())
         else:
             assert False, target_type
 
@@ -477,9 +489,10 @@ class LowLevelIRBuilder:
         assert False, (src.type, target_type)
 
     def coerce_fixed_width_to_int(self, src: Value, line: int) -> Value:
-        if (is_int32_rprimitive(src.type) and PLATFORM_SIZE == 8) or is_int16_rprimitive(src.type):
+        if ((is_int32_rprimitive(src.type) and PLATFORM_SIZE == 8) or
+            is_int16_rprimitive(src.type) or is_uint8_rprimitive(src.type)):
             # Simple case -- just sign extend and shift.
-            extended = self.add(Extend(src, c_pyssize_t_rprimitive, signed=True))
+            extended = self.add(Extend(src, c_pyssize_t_rprimitive, signed=src.type.is_signed))
             return self.int_op(
                 int_rprimitive,
                 extended,
@@ -2038,34 +2051,56 @@ class LowLevelIRBuilder:
         lhs = self.coerce(lhs, type, line)
         rhs = self.coerce(rhs, type, line)
         if op == IntOp.DIV:
-            # Inline simple division by a constant, so that C
-            # compilers can optimize more
             if isinstance(rhs, Integer) and rhs.value not in (-1, 0):
-                return self.inline_fixed_width_divide(type, lhs, rhs, line)
+                if not type.is_signed:
+                    return self.int_op(type, lhs, rhs, IntOp.DIV, line)
+                else:
+                    # Inline simple division by a constant, so that C
+                    # compilers can optimize more
+                    return self.inline_fixed_width_divide(type, lhs, rhs, line)
             if is_int64_rprimitive(type):
                 prim = int64_divide_op
             elif is_int32_rprimitive(type):
                 prim = int32_divide_op
             elif is_int16_rprimitive(type):
                 prim = int16_divide_op
+            elif is_uint8_rprimitive(type):
+                self.check_for_zero_division(rhs, type, int)
+                return self.int_op(type, lhs, rhs, op, line)
             else:
                 assert False, type
             return self.call_c(prim, [lhs, rhs], line)
         if op == IntOp.MOD:
-            # Inline simple % by a constant, so that C
-            # compilers can optimize more
             if isinstance(rhs, Integer) and rhs.value not in (-1, 0):
-                return self.inline_fixed_width_mod(type, lhs, rhs, line)
+                if not type.is_signed:
+                    return self.int_op(type, lhs, rhs, IntOp.MOD, line)
+                else:
+                    # Inline simple % by a constant, so that C
+                    # compilers can optimize more
+                    return self.inline_fixed_width_mod(type, lhs, rhs, line)
             if is_int64_rprimitive(type):
                 prim = int64_mod_op
             elif is_int32_rprimitive(type):
                 prim = int32_mod_op
             elif is_int16_rprimitive(type):
                 prim = int16_mod_op
+            elif is_uint8_rprimitive(type):
+                self.check_for_zero_division(rhs, type, int)
+                return self.int_op(type, lhs, rhs, op, line)
             else:
                 assert False, type
             return self.call_c(prim, [lhs, rhs], line)
         return self.int_op(type, lhs, rhs, op, line)
+
+    def check_for_zero_division(self, rhs: Value, type: RType, line: int) -> None:
+        err, ok = BasicBlock(), BasicBlock()
+        is_zero = self.binary_op(rhs, Integer(0, type), '==', line)
+        b = self.add(Branch(is_zero, err, ok, Branch.BOOL))
+        self.activate_block(err)
+        self.add(RaiseStandardError(RaiseStandardError.ZERO_DIVISION_ERROR,
+                                    "division by zero", line))
+        self.add(Unreachable())
+        self.activate_block(ok)
 
     def inline_fixed_width_divide(self, type: RType, lhs: Value, rhs: Value, line: int) -> Value:
         # Perform floor division (native division truncates)

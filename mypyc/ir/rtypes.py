@@ -223,6 +223,8 @@ class RPrimitive(RType):
             self.c_undefined = "NULL"
         elif ctype == "double":
             self.c_undefined = "-113.0"
+        elif ctype == "uint8_t":
+            self.c_undefined = "239"  # An arbitrary number
         else:
             assert False, "Unrecognized ctype: %r" % ctype
 
@@ -319,6 +321,15 @@ int64_rprimitive: Final = RPrimitive(
     ctype="int64_t",
     size=8,
     error_overlap=True,
+)
+uint8_rprimitive: Final = RPrimitive(
+    "uint8",
+    is_unboxed=True,
+    is_refcounted=False,
+    is_native_int=True,
+    is_signed=False,
+    ctype="uint8_t",
+    size=1,
 )
 uint32_rprimitive: Final = RPrimitive(
     "uint32",
@@ -459,8 +470,13 @@ def is_int64_rprimitive(rtype: RType) -> bool:
 
 
 def is_fixed_width_rtype(rtype: RType) -> bool:
-    return is_int64_rprimitive(rtype) or is_int32_rprimitive(rtype) or is_int16_rprimitive(rtype)
+    return (
+        is_int64_rprimitive(rtype) or is_int32_rprimitive(rtype) or is_int16_rprimitive(rtype)
+        or is_uint8_rprimitive(rtype)
+    )
 
+def is_uint8_rprimitive(rtype: RType) -> bool:
+    return rtype is uint8_rprimitive
 
 def is_uint32_rprimitive(rtype: RType) -> bool:
     return rtype is uint32_rprimitive
@@ -552,6 +568,8 @@ class TupleNameVisitor(RTypeVisitor[str]):
             return "4"  # "4 byte integer"
         elif t._ctype == "int16_t":
             return "2"  # "2 byte integer"
+        elif t._ctype == "uint8_t":
+            return "U1"  # "1 byte unsigned integer"
         elif t._ctype == "double":
             return "F"
         assert not t.is_unboxed, f"{t} unexpected unboxed type"
