@@ -2725,6 +2725,47 @@ f: Callable[[Sequence[TI]], None]
 g: Callable[[Union[Sequence[TI], Sequence[TS]]], None]
 f = g
 
+[case testFactoryWithInheritance]
+from typing import Type
+class A:
+    x = "foo"
+class B(A):
+    pass
+def f() -> Type[B]:
+    return B
+def g() -> B:
+    return B()
+
+f().x = "bar"
+f().x = 0 # E: Incompatible types in assignment (expression has type "int", base class "A" defined the type as "str")
+f()().x = "baz"
+f()().x = 1 # E: Incompatible types in assignment (expression has type "int", base class "A" defined the type as "str")
+g().x = ""
+g().x = 2 # E: Incompatible types in assignment (expression has type "int", base class "A" defined the type as "str")
+
+[case testMultiLayerCallable]
+class A:
+    y = 0 # Type: int
+class B(A):
+    def __init__(self, z: int) -> None:
+        self.z = z
+def foo(x: int) -> B:
+    return B(x)
+def bar(x: int) -> B:
+    return foo(x)
+
+a = bar(1)
+a.z = 2
+a.z = "" # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+a.y = 2
+a.y = "" # E: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
+
+b = foo(3)
+a.z = 4
+a.z = "" # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+a.y = 4
+a.y = "" # E: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
+
 [case explicitOverride]
 # flags: --python-version 3.12
 from typing import override
@@ -3007,3 +3048,4 @@ class C(A):
     def f(self, y: int | str) -> str: pass
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/tuple.pyi]
+

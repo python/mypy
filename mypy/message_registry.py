@@ -73,6 +73,9 @@ INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT: Final = (
     'Incompatible types in "async with" for "__aexit__"'
 )
 INCOMPATIBLE_TYPES_IN_ASYNC_FOR: Final = 'Incompatible types in "async for"'
+INCOMPATIBLE_TYPES_BASECLASS_MISMATCH: Final = 'base class "{}" defined the type as'
+INCOMPATIBLE_TYPES_METACLASS_MISMATCH: Final = 'metaclass "{}" defined the type as'
+
 INVALID_TYPE_FOR_SLOTS: Final = 'Invalid type for "__slots__"'
 
 ASYNC_FOR_OUTSIDE_COROUTINE: Final = '"async for" outside async function'
