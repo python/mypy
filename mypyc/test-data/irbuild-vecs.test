@@ -807,7 +807,7 @@ L1:
 L2:
     r3 = v.buf
     r4 = get_element_ptr r3 items :: VecbufTExtObject
-    r5 = n * 8
+    r5 = n * 16
     r6 = r4 + r5
     r7 = load_mem r6 :: vec[str]*
     keep_alive v
@@ -841,7 +841,7 @@ L1:
 L2:
     r3 = v.buf
     r4 = get_element_ptr r3 items :: VecbufTExtObject
-    r5 = n * 8
+    r5 = n * 16
     r6 = r4 + r5
     r7 = load_mem r6 :: vec[int64]*
     keep_alive v
@@ -883,7 +883,7 @@ L1:
 L2:
     r3 = v.buf
     r4 = get_element_ptr r3 items :: VecbufTExtObject
-    r5 = n * 8
+    r5 = n * 16
     r6 = r4 + r5
     r7 = borrow load_mem r6 :: vec[int64]*
     r8 = r7.len
@@ -929,7 +929,7 @@ L1:
 L2:
     r3 = v.buf
     r4 = get_element_ptr r3 items :: VecbufTExtObject
-    r5 = n * 8
+    r5 = n * 16
     r6 = r4 + r5
     r7 = load_mem r6 :: vec[vec[str]]*
     keep_alive v

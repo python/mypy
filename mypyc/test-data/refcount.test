@@ -1806,7 +1806,7 @@ L1:
 L2:
     r6 = r2.buf
     r7 = get_element_ptr r6 items :: VecbufTExtObject
-    r8 = n * 8
+    r8 = n * 16
     r9 = r7 + r8
     r10 = load_mem r9 :: vec[str]*
     dec_ref r2
