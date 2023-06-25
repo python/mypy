@@ -1002,7 +1002,7 @@ class Var(SymbolNode):
         # If constant value is a simple literal,
         # store the literal value (unboxed) for the benefit of
         # tools like mypyc.
-        self.final_value: int | float | bool | str | None = None
+        self.final_value: int | float | complex | bool | str | None = None
         # Where the value was set (only for class attributes)
         self.final_unset_in_class = False
         self.final_set_in_init = False

@@ -3394,7 +3394,7 @@ class SemanticAnalyzer(
             return None
 
         value = constant_fold_expr(rvalue, self.cur_mod_id)
-        if value is None:
+        if value is None or isinstance(value, complex):
             return None
 
         if isinstance(value, bool):
