@@ -13,3 +13,4 @@ repos:
     rev: v0.0.272  # must match test-requirements.txt
     hooks:
       - id: ruff
+        args: [--exit-non-zero-on-fix]
