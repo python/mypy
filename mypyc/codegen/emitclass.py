@@ -891,9 +891,14 @@ def generic_setter_boxed_type(rtype: RType) -> str | None:
     """Return the CPyAttr_BoxedType enum value for runtime type checks.
 
     Return None if rtype is unsupported."""
-    assert not rtype.is_unboxed, f"must be boxed type: {rtype}"
     if is_str_rprimitive(rtype):
         return "CPyAttr_UNICODE"
+    elif is_tagged(rtype):
+        return "CPyAttr_LONG"
+    elif is_bool_rprimitive(rtype):
+        return "CPyAttr_BOOL"
+    elif is_float_rprimitive(rtype):
+        return "CPyAttr_FLOAT"
     elif is_tuple_rprimitive(rtype):
         return "CPyAttr_TUPLE"
     elif is_list_rprimitive(rtype):
@@ -904,7 +909,7 @@ def generic_setter_boxed_type(rtype: RType) -> str | None:
         return "CPyAttr_SET"
     elif is_optional_type(rtype):
         inner_rtype = optional_value_type(rtype)
-        if inner_rtype is not None and not inner_rtype.is_unboxed:
+        if inner_rtype is not None:
             return generic_setter_boxed_type(inner_rtype)
     elif is_object_rprimitive(rtype):
         return "CPyAttr_ANY"

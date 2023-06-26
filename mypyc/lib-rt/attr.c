@@ -16,7 +16,7 @@ int CPyAttr_UndeletableError(PyObject *self, CPyAttr_Context *context) {
     return -1;
 }
 
-static void set_bitmap(PyObject *self, CPyAttr_Context *context, bool defined) {
+static void set_definedness_in_bitmap(PyObject *self, CPyAttr_Context *context, bool defined) {
     uint32_t *bitmap = (uint32_t *)((char *)self + context->bitmap.offset);
     if (defined) {
         *bitmap |= context->bitmap.mask;
@@ -55,9 +55,9 @@ PyObject *CPyAttr_GetterBool(PyObject *self, CPyAttr_Context *context) {
 
 PyObject *CPyAttr_GetterFloat(PyObject *self, CPyAttr_Context *context) {
     double value = *(double *)((char *)self + context->offset);
-    if (value == CPY_FLOAT_ERROR
+    if (unlikely(value == CPY_FLOAT_ERROR
             && !context->always_defined
-            && is_undefined_via_bitmap(self, context)) {
+            && is_undefined_via_bitmap(self, context))) {
         return CPyAttr_UndefinedError(self, context);
     }
     return PyFloat_FromDouble(value);
@@ -65,9 +65,9 @@ PyObject *CPyAttr_GetterFloat(PyObject *self, CPyAttr_Context *context) {
 
 PyObject *CPyAttr_GetterInt32(PyObject *self, CPyAttr_Context *context) {
     int32_t value = *(int32_t *)((char *)self + context->offset);
-    if (value == CPY_LL_INT_ERROR
+    if (unlikely(value == CPY_LL_INT_ERROR
             && !context->always_defined
-            && is_undefined_via_bitmap(self, context)) {
+            && is_undefined_via_bitmap(self, context))) {
         return CPyAttr_UndefinedError(self, context);
     }
     return PyLong_FromLong(value);
@@ -75,9 +75,9 @@ PyObject *CPyAttr_GetterInt32(PyObject *self, CPyAttr_Context *context) {
 
 PyObject *CPyAttr_GetterInt64(PyObject *self, CPyAttr_Context *context) {
     int64_t value = *(int64_t *)((char *)self + context->offset);
-    if (value == CPY_LL_INT_ERROR
+    if (unlikely(value == CPY_LL_INT_ERROR
             && !context->always_defined
-            && is_undefined_via_bitmap(self, context)) {
+            && is_undefined_via_bitmap(self, context))) {
         return CPyAttr_UndefinedError(self, context);
     }
     return PyLong_FromLongLong(value);
@@ -95,6 +95,15 @@ int CPyAttr_SetterPyObject(PyObject *self, PyObject *value, CPyAttr_Context *con
             case CPyAttr_UNICODE:
                 type = &PyUnicode_Type;
                 break;
+            case CPyAttr_LONG:
+                type = &PyLong_Type;
+                break;
+            case CPyAttr_BOOL:
+                type = &PyBool_Type;
+                break;
+            case CPyAttr_FLOAT:
+                type = &PyFloat_Type;
+                break;
             case CPyAttr_TUPLE:
                 type = &PyTuple_Type;
                 break;
@@ -111,7 +120,7 @@ int CPyAttr_SetterPyObject(PyObject *self, PyObject *value, CPyAttr_Context *con
                 // Do nothing, type is already NULL.
                 break;
         }
-        if (type != NULL && !PyObject_TypeCheck(value, type)) {
+        if (unlikely(type != NULL && !PyObject_TypeCheck(value, type))) {
             if (!context->boxed_setter.optional || value != Py_None) {
                 CPy_TypeError(context->boxed_setter.type_name, value);
                 return -1;
@@ -131,9 +140,12 @@ int CPyAttr_SetterTagged(PyObject *self, PyObject *value, CPyAttr_Context *conte
 
     CPyTagged *attr = (CPyTagged *)((char *)self + context->offset);
     if (value != NULL) {
-        if (!PyLong_Check(value)) {
+        if (unlikely(!PyLong_Check(value))) {
             CPy_TypeError("int", value);
             return -1;
+        }
+        if (*attr != CPY_INT_TAG) {
+            CPyTagged_DECREF(*attr);
         }
         *attr = CPyTagged_FromObject(value);
     } else {
@@ -145,15 +157,14 @@ int CPyAttr_SetterTagged(PyObject *self, PyObject *value, CPyAttr_Context *conte
     return 0;
 }
 
-int CPyAttr_SetterBool(PyObject *self, PyObject *value, CPyAttr_Context *context)
-{
+int CPyAttr_SetterBool(PyObject *self, PyObject *value, CPyAttr_Context *context) {
     if (value == NULL && !context->deletable) {
         return CPyAttr_UndeletableError(self, context);
     }
 
     char *attr = (char *)self + context->offset;
     if (value != NULL) {
-        if (!PyBool_Check(value)) {
+        if (unlikely(!PyBool_Check(value))) {
             CPy_TypeError("bool", value);
             return -1;
         }
@@ -164,29 +175,28 @@ int CPyAttr_SetterBool(PyObject *self, PyObject *value, CPyAttr_Context *context
     return 0;
 }
 
-int CPyAttr_SetterFloat(PyObject *self, PyObject *value, CPyAttr_Context *context)
-{
+int CPyAttr_SetterFloat(PyObject *self, PyObject *value, CPyAttr_Context *context) {
     if (value == NULL && !context->deletable) {
         return CPyAttr_UndeletableError(self, context);
     }
 
     double *attr = (double *)((char *)self + context->offset);
     if (value != NULL) {
-        if (!PyFloat_Check(value)) {
+        if (unlikely(!PyFloat_Check(value))) {
             CPy_TypeError("float", value);
             return -1;
         }
         double tmp = PyFloat_AsDouble(value);
-        if (tmp == -1.0 && PyErr_Occurred()) {
+        if (unlikely(tmp == -1.0 && PyErr_Occurred())) {
             return -1;
         }
         *attr = tmp;
         if (tmp == CPY_FLOAT_ERROR) {
-            set_bitmap(self, context, true);
+            set_definedness_in_bitmap(self, context, true);
         }
     } else {
         *attr = CPY_FLOAT_ERROR;
-        set_bitmap(self, context, false);
+        set_definedness_in_bitmap(self, context, false);
     }
     return 0;
 }
