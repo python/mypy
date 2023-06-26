@@ -69,8 +69,7 @@ typedef struct tuple_T4CIOO {
 
 typedef enum CPyAttr_BoxedType {
     CPyAttr_UNICODE, CPyAttr_LONG, CPyAttr_BOOL, CPyAttr_FLOAT,
-    CPyAttr_TUPLE, CPyAttr_LIST, CPyAttr_DICT, CPyAttr_SET,
-    CPyAttr_ANY
+    CPyAttr_TUPLE, CPyAttr_LIST, CPyAttr_DICT, CPyAttr_SET, CPyAttr_ANY
 } CPyAttr_BoxedType;
 
 // Closure type to drive generic attribute getters and setters.
