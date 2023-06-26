@@ -31,7 +31,9 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeVarType,
+    UnionType,
     get_proper_type,
+    get_proper_types,
 )
 
 
@@ -404,6 +406,31 @@ def typed_dict_update_signature_callback(ctx: MethodSigContext) -> CallableType:
         assert isinstance(arg_type, TypedDictType)
         arg_type = arg_type.as_anonymous()
         arg_type = arg_type.copy_modified(required_keys=set())
+        if ctx.args and ctx.args[0]:
+            with ctx.api.msg.filter_errors():
+                inferred = get_proper_type(
+                    ctx.api.get_expression_type(ctx.args[0][0], type_context=arg_type)
+                )
+            possible_tds = []
+            if isinstance(inferred, TypedDictType):
+                possible_tds = [inferred]
+            elif isinstance(inferred, UnionType):
+                possible_tds = [
+                    t
+                    for t in get_proper_types(inferred.relevant_items())
+                    if isinstance(t, TypedDictType)
+                ]
+            items = []
+            for td in possible_tds:
+                item = arg_type.copy_modified(
+                    required_keys=(arg_type.required_keys | td.required_keys)
+                    & arg_type.items.keys()
+                )
+                if not ctx.api.options.extra_checks:
+                    item = item.copy_modified(item_names=list(td.items))
+                items.append(item)
+            if items:
+                arg_type = make_simplified_union(items)
         return signature.copy_modified(arg_types=[arg_type])
     return signature
 

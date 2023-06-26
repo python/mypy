@@ -1757,6 +1757,24 @@ class MessageBuilder:
     def explicit_any(self, ctx: Context) -> None:
         self.fail('Explicit "Any" is not allowed', ctx)
 
+    def unsupported_target_for_star_typeddict(self, typ: Type, ctx: Context) -> None:
+        self.fail(
+            "Unsupported type {} for ** expansion in TypedDict".format(
+                format_type(typ, self.options)
+            ),
+            ctx,
+            code=codes.TYPEDDICT_ITEM,
+        )
+
+    def non_required_keys_absent_with_star(self, keys: list[str], ctx: Context) -> None:
+        self.fail(
+            "Non-required {} not explicitly found in any ** item".format(
+                format_key_list(keys, short=True)
+            ),
+            ctx,
+            code=codes.TYPEDDICT_ITEM,
+        )
+
     def unexpected_typeddict_keys(
         self,
         typ: TypedDictType,

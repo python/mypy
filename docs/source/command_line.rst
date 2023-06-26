@@ -612,6 +612,34 @@ of the above sections.
 
        assert text is not None  # OK, check against None is allowed as a special case.
 
+.. option:: --extra-checks
+
+    This flag enables additional checks that are technically correct but may be
+    impractical in real code. In particular, it prohibits partial overlap in
+    ``TypedDict`` updates, and makes arguments prepended via ``Concatenate``
+    positional-only. For example:
+
+    .. code-block:: python
+
+       from typing import TypedDict
+
+       class Foo(TypedDict):
+           a: int
+
+       class Bar(TypedDict):
+           a: int
+           b: int
+
+       def test(foo: Foo, bar: Bar) -> None:
+           # This is technically unsafe since foo can have a subtype of Foo at
+           # runtime, where type of key "b" is incompatible with int, see below
+           bar.update(foo)
+
+       class Bad(Foo):
+           b: str
+       bad: Bad = {"a": 0, "b": "no"}
+       test(bad, bar)
+
 .. option:: --strict
 
     This flag mode enables all optional error checking flags.  You can see the
