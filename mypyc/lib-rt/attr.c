@@ -63,6 +63,16 @@ PyObject *CPyAttr_GetterFloat(PyObject *self, CPyAttr_Context *context) {
     return PyFloat_FromDouble(value);
 }
 
+PyObject *CPyAttr_GetterInt16(PyObject *self, CPyAttr_Context *context) {
+    int16_t value = *(int16_t *)((char *)self + context->offset);
+    if (unlikely(value == CPY_LL_INT_ERROR
+            && !context->always_defined
+            && is_undefined_via_bitmap(self, context))) {
+        return CPyAttr_UndefinedError(self, context);
+    }
+    return PyLong_FromLong(value);
+}
+
 PyObject *CPyAttr_GetterInt32(PyObject *self, CPyAttr_Context *context) {
     int32_t value = *(int32_t *)((char *)self + context->offset);
     if (unlikely(value == CPY_LL_INT_ERROR
@@ -196,6 +206,84 @@ int CPyAttr_SetterFloat(PyObject *self, PyObject *value, CPyAttr_Context *contex
         }
     } else {
         *attr = CPY_FLOAT_ERROR;
+        set_definedness_in_bitmap(self, context, false);
+    }
+    return 0;
+}
+
+int CPyAttr_SetterInt16(PyObject *self, PyObject *value, CPyAttr_Context *context) {
+    if (value == NULL && !context->deletable) {
+        return CPyAttr_UndeletableError(self, context);
+    }
+
+    int16_t *attr = (int16_t *)((char *)self + context->offset);
+    if (value != NULL) {
+        if (unlikely(!PyLong_Check(value))) {
+            CPy_TypeError("int16", value);
+            return -1;
+        }
+        int16_t tmp = CPyLong_AsInt16(value);
+        if (unlikely(tmp == CPY_LL_INT_ERROR && PyErr_Occurred())) {
+            return -1;
+        }
+        *attr = tmp;
+        if (tmp == CPY_LL_INT_ERROR) {
+            set_definedness_in_bitmap(self, context, true);
+        }
+    } else {
+        *attr = CPY_LL_INT_ERROR;
+        set_definedness_in_bitmap(self, context, false);
+    }
+    return 0;
+}
+
+int CPyAttr_SetterInt32(PyObject *self, PyObject *value, CPyAttr_Context *context) {
+    if (value == NULL && !context->deletable) {
+        return CPyAttr_UndeletableError(self, context);
+    }
+
+    int32_t *attr = (int32_t *)((char *)self + context->offset);
+    if (value != NULL) {
+        if (unlikely(!PyLong_Check(value))) {
+            CPy_TypeError("int32", value);
+            return -1;
+        }
+        int32_t tmp = CPyLong_AsInt32(value);
+        if (unlikely(tmp == CPY_LL_INT_ERROR && PyErr_Occurred())) {
+            return -1;
+        }
+        *attr = tmp;
+        if (tmp == CPY_LL_INT_ERROR) {
+            set_definedness_in_bitmap(self, context, true);
+        }
+    } else {
+        *attr = CPY_LL_INT_ERROR;
+        set_definedness_in_bitmap(self, context, false);
+    }
+    return 0;
+}
+
+int CPyAttr_SetterInt64(PyObject *self, PyObject *value, CPyAttr_Context *context) {
+    if (value == NULL && !context->deletable) {
+        return CPyAttr_UndeletableError(self, context);
+    }
+
+    int64_t *attr = (int64_t *)((char *)self + context->offset);
+    if (value != NULL) {
+        if (unlikely(!PyLong_Check(value))) {
+            CPy_TypeError("int64", value);
+            return -1;
+        }
+        int64_t tmp = CPyLong_AsInt64(value);
+        if (unlikely(tmp == CPY_LL_INT_ERROR && PyErr_Occurred())) {
+            return -1;
+        }
+        *attr = tmp;
+        if (tmp == CPY_LL_INT_ERROR) {
+            set_definedness_in_bitmap(self, context, true);
+        }
+    } else {
+        *attr = CPY_LL_INT_ERROR;
         set_definedness_in_bitmap(self, context, false);
     }
     return 0;
