@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Iterator, Optional
+from typing import TYPE_CHECKING, Iterator, Optional
 from typing_extensions import Final
 
 from mypy import errorcodes, message_registry
@@ -26,6 +26,7 @@ from mypy.nodes import (
     DataclassTransformSpec,
     Expression,
     FuncDef,
+    FuncItem,
     IfStmt,
     JsonDict,
     NameExpr,
@@ -55,6 +56,7 @@ from mypy.typeops import map_type_from_supertype, try_getting_literals_from_type
 from mypy.types import (
     AnyType,
     CallableType,
+    FunctionLike,
     Instance,
     LiteralType,
     NoneType,
@@ -69,19 +71,23 @@ from mypy.types import (
 )
 from mypy.typevars import fill_typevars
 
+if TYPE_CHECKING:
+    from mypy.checker import TypeChecker
+
 # The set of decorators that generate dataclasses.
 dataclass_makers: Final = {"dataclass", "dataclasses.dataclass"}
 
 
 SELF_TVAR_NAME: Final = "_DT"
-_TRANSFORM_SPEC_FOR_DATACLASSES = DataclassTransformSpec(
+_TRANSFORM_SPEC_FOR_DATACLASSES: Final = DataclassTransformSpec(
     eq_default=True,
     order_default=False,
     kw_only_default=False,
     frozen_default=False,
     field_specifiers=("dataclasses.Field", "dataclasses.field"),
 )
-_INTERNAL_REPLACE_SYM_NAME = "__mypy-replace"
+_INTERNAL_REPLACE_SYM_NAME: Final = "__mypy-replace"
+_INTERNAL_POST_INIT_SYM_NAME: Final = "__mypy-__post_init__"
 
 
 class DataclassAttribute:
@@ -350,6 +356,8 @@ class DataclassTransformer:
 
         if self._spec is _TRANSFORM_SPEC_FOR_DATACLASSES:
             self._add_internal_replace_method(attributes)
+        if "__post_init__" in info.names:
+            self._add_internal_post_init_method(attributes)
 
         info.metadata["dataclass"] = {
             "attributes": [attr.serialize() for attr in attributes],
@@ -385,7 +393,47 @@ class DataclassTransformer:
             fallback=self._api.named_type("builtins.function"),
         )
 
-        self._cls.info.names[_INTERNAL_REPLACE_SYM_NAME] = SymbolTableNode(
+        info.names[_INTERNAL_REPLACE_SYM_NAME] = SymbolTableNode(
+            kind=MDEF, node=FuncDef(typ=signature), plugin_generated=True
+        )
+
+    def _add_internal_post_init_method(self, attributes: list[DataclassAttribute]) -> None:
+        arg_types: list[Type] = [fill_typevars(self._cls.info)]
+        arg_kinds = [ARG_POS]
+        arg_names: list[str | None] = ["self"]
+
+        info = self._cls.info
+        for attr in attributes:
+            if not attr.is_init_var:
+                continue
+            attr_type = attr.expand_type(info)
+            assert attr_type is not None
+            arg_types.append(attr_type)
+            # We always use `ARG_POS` without a default value, because it is practical.
+            # Consider this case:
+            #
+            # @dataclass
+            # class My:
+            #     y: dataclasses.InitVar[str] = 'a'
+            #     def __post_init__(self, y: str) -> None: ...
+            #
+            # We would be *required* to specify `y: str = ...` if default is added here.
+            # But, most people won't care about adding default values to `__post_init__`,
+            # because it is not designed to be called directly, and duplicating default values
+            # for the sake of type-checking is unpleasant.
+            arg_kinds.append(ARG_POS)
+            arg_names.append(attr.name)
+
+        signature = CallableType(
+            arg_types=arg_types,
+            arg_kinds=arg_kinds,
+            arg_names=arg_names,
+            ret_type=NoneType(),
+            fallback=self._api.named_type("builtins.function"),
+            name="__post_init__",
+        )
+
+        info.names[_INTERNAL_POST_INIT_SYM_NAME] = SymbolTableNode(
             kind=MDEF, node=FuncDef(typ=signature), plugin_generated=True
         )
 
@@ -1051,4 +1099,34 @@ def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
         ret_type=obj_type,
         fallback=ctx.default_signature.fallback,
         name=f"{ctx.default_signature.name} of {inst_type_str}",
+    )
+
+
+def is_processed_dataclass(info: TypeInfo | None) -> bool:
+    return info is not None and "dataclass" in info.metadata
+
+
+def check_post_init(api: TypeChecker, defn: FuncItem, info: TypeInfo) -> None:
+    if defn.type is None:
+        return
+
+    ideal_sig = info.get_method(_INTERNAL_POST_INIT_SYM_NAME)
+    if ideal_sig is None or ideal_sig.type is None:
+        return
+
+    # We set it ourself, so it is always fine:
+    assert isinstance(ideal_sig.type, ProperType)
+    assert isinstance(ideal_sig.type, FunctionLike)
+    # Type of `FuncItem` is always `FunctionLike`:
+    assert isinstance(defn.type, FunctionLike)
+
+    api.check_override(
+        override=defn.type,
+        original=ideal_sig.type,
+        name="__post_init__",
+        name_in_super="__post_init__",
+        supertype="dataclass",
+        original_class_or_static=False,
+        override_class_or_static=False,
+        node=defn,
     )
