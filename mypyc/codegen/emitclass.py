@@ -27,9 +27,6 @@ from mypyc.ir.rtypes import (
     is_bool_rprimitive,
     is_dict_rprimitive,
     is_float_rprimitive,
-    is_int16_rprimitive,
-    is_int32_rprimitive,
-    is_int64_rprimitive,
     is_list_rprimitive,
     is_object_rprimitive,
     is_optional_type,
@@ -863,12 +860,6 @@ def generic_getter_name(rtype: RType) -> str | None:
         return "CPyAttr_GetterFloat"
     elif is_bool_rprimitive(rtype):
         return "CPyAttr_GetterBool"
-    elif is_int16_rprimitive(rtype):
-        return "CPyAttr_GetterInt16"
-    elif is_int32_rprimitive(rtype):
-        return "CPyAttr_GetterInt32"
-    elif is_int64_rprimitive(rtype):
-        return "CPyAttr_GetterInt64"
 
     return None
 
@@ -886,12 +877,6 @@ def generic_setter_name(rtype: RType) -> str | None:
         return "CPyAttr_SetterFloat"
     elif is_bool_rprimitive(rtype):
         return "CPyAttr_SetterBool"
-    elif is_int16_rprimitive(rtype):
-        return "CPyAttr_SetterInt16"
-    elif is_int32_rprimitive(rtype):
-        return "CPyAttr_SetterInt32"
-    elif is_int64_rprimitive(rtype):
-        return "CPyAttr_SetterInt64"
 
     return None
 

@@ -94,16 +94,10 @@ PyObject *CPyAttr_GetterPyObject(PyObject *self, CPyAttr_Context *context);
 PyObject *CPyAttr_GetterTagged(PyObject *self, CPyAttr_Context *context);
 PyObject *CPyAttr_GetterBool(PyObject *self, CPyAttr_Context *context);
 PyObject *CPyAttr_GetterFloat(PyObject *self, CPyAttr_Context *context);
-PyObject *CPyAttr_GetterInt16(PyObject *self, CPyAttr_Context *context);
-PyObject *CPyAttr_GetterInt32(PyObject *self, CPyAttr_Context *context);
-PyObject *CPyAttr_GetterInt64(PyObject *self, CPyAttr_Context *context);
 int CPyAttr_SetterPyObject(PyObject *self, PyObject *value, CPyAttr_Context *context);
 int CPyAttr_SetterTagged(PyObject *self, PyObject *value, CPyAttr_Context *context);
 int CPyAttr_SetterBool(PyObject *self, PyObject *value, CPyAttr_Context *context);
 int CPyAttr_SetterFloat(PyObject *self, PyObject *value, CPyAttr_Context *context);
-int CPyAttr_SetterInt16(PyObject *self, PyObject *value, CPyAttr_Context *context);
-int CPyAttr_SetterInt32(PyObject *self, PyObject *value, CPyAttr_Context *context);
-int CPyAttr_SetterInt64(PyObject *self, PyObject *value, CPyAttr_Context *context);
 PyObject *CPyAttr_UndefinedError(PyObject *self, CPyAttr_Context *context);
 int CPyAttr_UndeletableError(PyObject *self, CPyAttr_Context *context);
 
