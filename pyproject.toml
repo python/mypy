@@ -76,3 +76,6 @@ extend-exclude = [
   # typeshed has its own .pyi-specific configuration
   "mypy/typeshed/*",
 ]
+
+[tool.check-manifest]
+ignore = ["**/.readthedocs.yaml"]
