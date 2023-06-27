@@ -1336,12 +1336,13 @@ def process_options(
 
     # Set build flags.
     if special_opts.find_occurrences:
-        state.find_occurrences = tuple(special_opts.find_occurrences.split("."))
-        assert state.find_occurrences is not None
-        if len(state.find_occurrences) < 2:
+        _find_occurrences = tuple(special_opts.find_occurrences.split("."))
+        assert _find_occurrences is not None
+        if len(_find_occurrences) < 2:
             parser.error("Can only find occurrences of class members.")
-        if len(state.find_occurrences) != 2:
+        if len(_find_occurrences) != 2:
             parser.error("Can only find occurrences of non-nested class members.")
+        state.find_occurrences = _find_occurrences  # type: ignore[assignment]
 
     # Set reports.
     for flag, val in vars(special_opts).items():
