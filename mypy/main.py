@@ -1336,7 +1336,7 @@ def process_options(
 
     # Set build flags.
     if special_opts.find_occurrences:
-        state.find_occurrences = special_opts.find_occurrences.split(".")
+        state.find_occurrences = tuple(special_opts.find_occurrences.split("."))
         assert state.find_occurrences is not None
         if len(state.find_occurrences) < 2:
             parser.error("Can only find occurrences of class members.")
