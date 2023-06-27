@@ -16,7 +16,7 @@ import itertools
 import re
 from contextlib import contextmanager
 from textwrap import dedent
-from typing import Any, Callable, Collection, Iterable, Iterator, List, Sequence, cast
+from typing import Any, Callable, Collection, Iterable, Iterator, List, Sequence, cast, overload
 from typing_extensions import Final
 
 import mypy.typeops
@@ -269,6 +269,7 @@ class MessageBuilder:
             allow_dups=allow_dups,
         )
 
+    @overload
     def fail(
         self,
         msg: str,
@@ -279,9 +280,39 @@ class MessageBuilder:
         allow_dups: bool = False,
         secondary_context: Context | None = None,
     ) -> None:
+        ...
+
+    @overload
+    def fail(
+        self,
+        msg: message_registry.ErrorMessage,
+        context: Context | None,
+        *,
+        file: str | None = None,
+        allow_dups: bool = False,
+        secondary_context: Context | None = None,
+    ) -> None:
+        ...
+
+    def fail(
+        self,
+        msg: str | message_registry.ErrorMessage,
+        context: Context | None,
+        *,
+        code: ErrorCode | None = None,
+        file: str | None = None,
+        allow_dups: bool = False,
+        secondary_context: Context | None = None,
+    ) -> None:
         """Report an error message (unless disabled)."""
+        if isinstance(msg, message_registry.ErrorMessage):
+            msg_str = msg.value
+            code = msg.code
+        else:
+            msg_str = msg
+
         self.report(
-            msg,
+            msg_str,
             context,
             "error",
             code=code,
