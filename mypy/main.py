@@ -828,7 +828,7 @@ def process_options(
     add_invertible_flag(
         "--extra-checks",
         default=False,
-        strict_flag=True,
+        strict_flag=False,
         help="Enable additional checks that are technically correct but may be impractical "
         "in real code. For example, this prohibits partial overlap in TypedDict updates, "
         "and makes arguments prepended via Concatenate positional-only",
