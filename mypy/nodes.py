@@ -2802,6 +2802,25 @@ class TempNode(Expression):
         return visitor.visit_temp_node(self)
 
 
+# Special attributes not collected as protocol members by Python 3.12
+# See typing._SPECIAL_NAMES
+EXCLUDED_PROTOCOL_ATTRIBUTES: Final = frozenset(
+    {
+        "__abstractmethods__",
+        "__annotations__",
+        "__dict__",
+        "__doc__",
+        "__init__",
+        "__module__",
+        "__new__",
+        "__slots__",
+        "__subclasshook__",
+        "__weakref__",
+        "__class_getitem__",  # Since Python 3.9
+    }
+)
+
+
 class TypeInfo(SymbolNode):
     """The type structure of a single class.
 
@@ -3115,6 +3134,8 @@ class TypeInfo(SymbolNode):
                 for name, node in base.names.items():
                     if isinstance(node.node, (TypeAlias, TypeVarExpr, MypyFile)):
                         # These are auxiliary definitions (and type aliases are prohibited).
+                        continue
+                    if name in EXCLUDED_PROTOCOL_ATTRIBUTES:
                         continue
                     members.add(name)
         return sorted(list(members))

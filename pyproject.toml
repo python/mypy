@@ -76,3 +76,6 @@ extend-exclude = [
 [tool.ruff.isort]
 combine-as-imports = true
 extra-standard-library = ["typing_extensions"]
+
+[tool.check-manifest]
+ignore = ["**/.readthedocs.yaml"]
