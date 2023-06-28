@@ -1692,6 +1692,8 @@ class SemanticAnalyzer(
     def analyze_class_body_common(self, defn: ClassDef) -> None:
         """Parts of class body analysis that are common to all kinds of class defs."""
         self.enter_class(defn.info)
+        if any(b.self_type is not None for b in defn.info.mro):
+            self.setup_self_type()
         defn.defs.accept(self)
         self.apply_class_plugin_hooks(defn)
         self.leave_class()
