@@ -27,29 +27,18 @@ force-exclude = '''
 ^/test-data
 '''
 
-[tool.isort]
-py_version = 37
-profile = "black"
-line_length = 99
-combine_as_imports = true
-skip_gitignore = true
-extra_standard_library = ["typing_extensions"]
-skip_glob = [
-    "mypy/typeshed/*",
-    "mypyc/test-data/*",
-    "test-data/*",
-]
-
 [tool.ruff]
 line-length = 99
 target-version = "py37"
+fix = true
 
 select = [
-  "E",       # pycoderstyle (error)
+  "E",       # pycodestyle (error)
   "F",       # pyflakes
   "B",       # flake8-bugbear
+  "I",       # isort
   "RUF100",  # Unused noqa comments
-  "PGH004"  # blanket noqa comments
+  "PGH004"   # blanket noqa comments
 ]
 
 ignore = [
@@ -64,6 +53,13 @@ ignore = [
   "E741",  # Ambiguous variable name
 ]
 
+unfixable = [
+    "F841",  # unused variable. ruff keeps the call, but mostly we want to get rid of it all
+    "F601",  # automatic fix might obscure issue
+    "F602",  # automatic fix might obscure issue
+    "B018",  # automatic fix might obscure issue
+]
+
 extend-exclude = [
   "@*",
   # Sphinx configuration is irrelevant
@@ -76,6 +72,10 @@ extend-exclude = [
   # typeshed has its own .pyi-specific configuration
   "mypy/typeshed/*",
 ]
+
+[tool.ruff.isort]
+combine-as-imports = true
+extra-standard-library = ["typing_extensions"]
 
 [tool.check-manifest]
 ignore = ["**/.readthedocs.yaml"]
