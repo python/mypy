@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Iterator, Optional
+from typing import TYPE_CHECKING, Iterator, Optional
 from typing_extensions import Final
 
 from mypy import errorcodes, message_registry
 from mypy.expandtype import expand_type, expand_type_by_instance
+from mypy.meet import meet_types
+from mypy.messages import format_type_bare
 from mypy.nodes import (
     ARG_NAMED,
     ARG_NAMED_OPT,
@@ -24,6 +26,7 @@ from mypy.nodes import (
     DataclassTransformSpec,
     Expression,
     FuncDef,
+    FuncItem,
     IfStmt,
     JsonDict,
     NameExpr,
@@ -38,7 +41,7 @@ from mypy.nodes import (
     TypeVarExpr,
     Var,
 )
-from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface
+from mypy.plugin import ClassDefContext, FunctionSigContext, SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
     _get_callee_type,
     _get_decorator_bool_argument,
@@ -53,29 +56,38 @@ from mypy.typeops import map_type_from_supertype, try_getting_literals_from_type
 from mypy.types import (
     AnyType,
     CallableType,
+    FunctionLike,
     Instance,
     LiteralType,
     NoneType,
+    ProperType,
     TupleType,
     Type,
     TypeOfAny,
     TypeVarType,
+    UninhabitedType,
+    UnionType,
     get_proper_type,
 )
 from mypy.typevars import fill_typevars
+
+if TYPE_CHECKING:
+    from mypy.checker import TypeChecker
 
 # The set of decorators that generate dataclasses.
 dataclass_makers: Final = {"dataclass", "dataclasses.dataclass"}
 
 
 SELF_TVAR_NAME: Final = "_DT"
-_TRANSFORM_SPEC_FOR_DATACLASSES = DataclassTransformSpec(
+_TRANSFORM_SPEC_FOR_DATACLASSES: Final = DataclassTransformSpec(
     eq_default=True,
     order_default=False,
     kw_only_default=False,
     frozen_default=False,
     field_specifiers=("dataclasses.Field", "dataclasses.field"),
 )
+_INTERNAL_REPLACE_SYM_NAME: Final = "__mypy-replace"
+_INTERNAL_POST_INIT_SYM_NAME: Final = "__mypy-__post_init__"
 
 
 class DataclassAttribute:
@@ -152,8 +164,6 @@ class DataclassAttribute:
         cls, info: TypeInfo, data: JsonDict, api: SemanticAnalyzerPluginInterface
     ) -> DataclassAttribute:
         data = data.copy()
-        if data.get("kw_only") is None:
-            data["kw_only"] = False
         typ = deserialize_and_fixup_type(data.pop("type"), api)
         return cls(type=typ, info=info, **data)
 
@@ -344,12 +354,88 @@ class DataclassTransformer:
 
         self._add_dataclass_fields_magic_attribute()
 
+        if self._spec is _TRANSFORM_SPEC_FOR_DATACLASSES:
+            self._add_internal_replace_method(attributes)
+        if "__post_init__" in info.names:
+            self._add_internal_post_init_method(attributes)
+
         info.metadata["dataclass"] = {
             "attributes": [attr.serialize() for attr in attributes],
             "frozen": decorator_arguments["frozen"],
         }
 
         return True
+
+    def _add_internal_replace_method(self, attributes: list[DataclassAttribute]) -> None:
+        """
+        Stashes the signature of 'dataclasses.replace(...)' for this specific dataclass
+        to be used later whenever 'dataclasses.replace' is called for this dataclass.
+        """
+        arg_types: list[Type] = []
+        arg_kinds = []
+        arg_names: list[str | None] = []
+
+        info = self._cls.info
+        for attr in attributes:
+            attr_type = attr.expand_type(info)
+            assert attr_type is not None
+            arg_types.append(attr_type)
+            arg_kinds.append(
+                ARG_NAMED if attr.is_init_var and not attr.has_default else ARG_NAMED_OPT
+            )
+            arg_names.append(attr.name)
+
+        signature = CallableType(
+            arg_types=arg_types,
+            arg_kinds=arg_kinds,
+            arg_names=arg_names,
+            ret_type=NoneType(),
+            fallback=self._api.named_type("builtins.function"),
+        )
+
+        info.names[_INTERNAL_REPLACE_SYM_NAME] = SymbolTableNode(
+            kind=MDEF, node=FuncDef(typ=signature), plugin_generated=True
+        )
+
+    def _add_internal_post_init_method(self, attributes: list[DataclassAttribute]) -> None:
+        arg_types: list[Type] = [fill_typevars(self._cls.info)]
+        arg_kinds = [ARG_POS]
+        arg_names: list[str | None] = ["self"]
+
+        info = self._cls.info
+        for attr in attributes:
+            if not attr.is_init_var:
+                continue
+            attr_type = attr.expand_type(info)
+            assert attr_type is not None
+            arg_types.append(attr_type)
+            # We always use `ARG_POS` without a default value, because it is practical.
+            # Consider this case:
+            #
+            # @dataclass
+            # class My:
+            #     y: dataclasses.InitVar[str] = 'a'
+            #     def __post_init__(self, y: str) -> None: ...
+            #
+            # We would be *required* to specify `y: str = ...` if default is added here.
+            # But, most people won't care about adding default values to `__post_init__`,
+            # because it is not designed to be called directly, and duplicating default values
+            # for the sake of type-checking is unpleasant.
+            arg_kinds.append(ARG_POS)
+            arg_names.append(attr.name)
+
+        signature = CallableType(
+            arg_types=arg_types,
+            arg_kinds=arg_kinds,
+            arg_names=arg_names,
+            ret_type=NoneType(),
+            fallback=self._api.named_type("builtins.function"),
+            name="__post_init__",
+        )
+
+        info.names[_INTERNAL_POST_INIT_SYM_NAME] = SymbolTableNode(
+            kind=MDEF, node=FuncDef(typ=signature), plugin_generated=True
+        )
 
     def add_slots(
         self, info: TypeInfo, attributes: list[DataclassAttribute], *, correct_version: bool
@@ -892,4 +978,155 @@ def _has_direct_dataclass_transform_metaclass(info: TypeInfo) -> bool:
     return (
         info.declared_metaclass is not None
         and info.declared_metaclass.type.dataclass_transform_spec is not None
+    )
+
+
+def _fail_not_dataclass(ctx: FunctionSigContext, t: Type, parent_t: Type) -> None:
+    t_name = format_type_bare(t, ctx.api.options)
+    if parent_t is t:
+        msg = (
+            f'Argument 1 to "replace" has a variable type "{t_name}" not bound to a dataclass'
+            if isinstance(t, TypeVarType)
+            else f'Argument 1 to "replace" has incompatible type "{t_name}"; expected a dataclass'
+        )
+    else:
+        pt_name = format_type_bare(parent_t, ctx.api.options)
+        msg = (
+            f'Argument 1 to "replace" has type "{pt_name}" whose item "{t_name}" is not bound to a dataclass'
+            if isinstance(t, TypeVarType)
+            else f'Argument 1 to "replace" has incompatible type "{pt_name}" whose item "{t_name}" is not a dataclass'
+        )
+
+    ctx.api.fail(msg, ctx.context)
+
+
+def _get_expanded_dataclasses_fields(
+    ctx: FunctionSigContext, typ: ProperType, display_typ: ProperType, parent_typ: ProperType
+) -> list[CallableType] | None:
+    """
+    For a given type, determine what dataclasses it can be: for each class, return the field types.
+    For generic classes, the field types are expanded.
+    If the type contains Any or a non-dataclass, returns None; in the latter case, also reports an error.
+    """
+    if isinstance(typ, AnyType):
+        return None
+    elif isinstance(typ, UnionType):
+        ret: list[CallableType] | None = []
+        for item in typ.relevant_items():
+            item = get_proper_type(item)
+            item_types = _get_expanded_dataclasses_fields(ctx, item, item, parent_typ)
+            if ret is not None and item_types is not None:
+                ret += item_types
+            else:
+                ret = None  # but keep iterating to emit all errors
+        return ret
+    elif isinstance(typ, TypeVarType):
+        return _get_expanded_dataclasses_fields(
+            ctx, get_proper_type(typ.upper_bound), display_typ, parent_typ
+        )
+    elif isinstance(typ, Instance):
+        replace_sym = typ.type.get_method(_INTERNAL_REPLACE_SYM_NAME)
+        if replace_sym is None:
+            _fail_not_dataclass(ctx, display_typ, parent_typ)
+            return None
+        replace_sig = replace_sym.type
+        assert isinstance(replace_sig, ProperType)
+        assert isinstance(replace_sig, CallableType)
+        return [expand_type_by_instance(replace_sig, typ)]
+    else:
+        _fail_not_dataclass(ctx, display_typ, parent_typ)
+        return None
+
+
+# TODO: we can potentially get the function signature hook to allow returning a union
+#  and leave this to the regular machinery of resolving a union of callables
+#  (https://github.com/python/mypy/issues/15457)
+def _meet_replace_sigs(sigs: list[CallableType]) -> CallableType:
+    """
+    Produces the lowest bound of the 'replace' signatures of multiple dataclasses.
+    """
+    args = {
+        name: (typ, kind)
+        for name, typ, kind in zip(sigs[0].arg_names, sigs[0].arg_types, sigs[0].arg_kinds)
+    }
+
+    for sig in sigs[1:]:
+        sig_args = {
+            name: (typ, kind)
+            for name, typ, kind in zip(sig.arg_names, sig.arg_types, sig.arg_kinds)
+        }
+        for name in (*args.keys(), *sig_args.keys()):
+            sig_typ, sig_kind = args.get(name, (UninhabitedType(), ARG_NAMED_OPT))
+            sig2_typ, sig2_kind = sig_args.get(name, (UninhabitedType(), ARG_NAMED_OPT))
+            args[name] = (
+                meet_types(sig_typ, sig2_typ),
+                ARG_NAMED_OPT if sig_kind == sig2_kind == ARG_NAMED_OPT else ARG_NAMED,
+            )
+
+    return sigs[0].copy_modified(
+        arg_names=list(args.keys()),
+        arg_types=[typ for typ, _ in args.values()],
+        arg_kinds=[kind for _, kind in args.values()],
+    )
+
+
+def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
+    """
+    Returns a signature for the 'dataclasses.replace' function that's dependent on the type
+    of the first positional argument.
+    """
+    if len(ctx.args) != 2:
+        # Ideally the name and context should be callee's, but we don't have it in FunctionSigContext.
+        ctx.api.fail(f'"{ctx.default_signature.name}" has unexpected type annotation', ctx.context)
+        return ctx.default_signature
+
+    if len(ctx.args[0]) != 1:
+        return ctx.default_signature  # leave it to the type checker to complain
+
+    obj_arg = ctx.args[0][0]
+    obj_type = get_proper_type(ctx.api.get_expression_type(obj_arg))
+    inst_type_str = format_type_bare(obj_type, ctx.api.options)
+
+    replace_sigs = _get_expanded_dataclasses_fields(ctx, obj_type, obj_type, obj_type)
+    if replace_sigs is None:
+        return ctx.default_signature
+    replace_sig = _meet_replace_sigs(replace_sigs)
+
+    return replace_sig.copy_modified(
+        arg_names=[None, *replace_sig.arg_names],
+        arg_kinds=[ARG_POS, *replace_sig.arg_kinds],
+        arg_types=[obj_type, *replace_sig.arg_types],
+        ret_type=obj_type,
+        fallback=ctx.default_signature.fallback,
+        name=f"{ctx.default_signature.name} of {inst_type_str}",
+    )
+
+
+def is_processed_dataclass(info: TypeInfo | None) -> bool:
+    return info is not None and "dataclass" in info.metadata
+
+
+def check_post_init(api: TypeChecker, defn: FuncItem, info: TypeInfo) -> None:
+    if defn.type is None:
+        return
+
+    ideal_sig = info.get_method(_INTERNAL_POST_INIT_SYM_NAME)
+    if ideal_sig is None or ideal_sig.type is None:
+        return
+
+    # We set it ourself, so it is always fine:
+    assert isinstance(ideal_sig.type, ProperType)
+    assert isinstance(ideal_sig.type, FunctionLike)
+    # Type of `FuncItem` is always `FunctionLike`:
+    assert isinstance(defn.type, FunctionLike)
+
+    api.check_override(
+        override=defn.type,
+        original=ideal_sig.type,
+        name="__post_init__",
+        name_in_super="__post_init__",
+        supertype="dataclass",
+        original_class_or_static=False,
+        override_class_or_static=False,
+        node=defn,
     )

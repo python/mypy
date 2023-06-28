@@ -287,7 +287,7 @@ class MypyFile(SymbolNode):
         "names",
         "imports",
         "ignored_lines",
-        "unreachable_lines",
+        "skipped_lines",
         "is_stub",
         "is_cache_skeleton",
         "is_partial_stub_package",
@@ -314,8 +314,9 @@ class MypyFile(SymbolNode):
     # If the value is empty, ignore all errors; otherwise, the list contains all
     # error codes to ignore.
     ignored_lines: dict[int, list[str]]
-    # Lines that are statically unreachable (e.g. due to platform/version check).
-    unreachable_lines: set[int]
+    # Lines that were skipped during semantic analysis e.g. due to ALWAYS_FALSE, MYPY_FALSE,
+    # or platform/version checks. Those lines would not be type-checked.
+    skipped_lines: set[int]
     # Is this file represented by a stub file (.pyi)?
     is_stub: bool
     # Is this loaded from the cache and thus missing the actual body of the file?
@@ -348,7 +349,7 @@ class MypyFile(SymbolNode):
             self.ignored_lines = ignored_lines
         else:
             self.ignored_lines = {}
-        self.unreachable_lines = set()
+        self.skipped_lines = set()
 
         self.path = ""
         self.is_stub = False
@@ -1001,7 +1002,7 @@ class Var(SymbolNode):
         # If constant value is a simple literal,
         # store the literal value (unboxed) for the benefit of
         # tools like mypyc.
-        self.final_value: int | float | bool | str | None = None
+        self.final_value: int | float | complex | bool | str | None = None
         # Where the value was set (only for class attributes)
         self.final_unset_in_class = False
         self.final_set_in_init = False
@@ -2801,6 +2802,25 @@ class TempNode(Expression):
         return visitor.visit_temp_node(self)
 
 
+# Special attributes not collected as protocol members by Python 3.12
+# See typing._SPECIAL_NAMES
+EXCLUDED_PROTOCOL_ATTRIBUTES: Final = frozenset(
+    {
+        "__abstractmethods__",
+        "__annotations__",
+        "__dict__",
+        "__doc__",
+        "__init__",
+        "__module__",
+        "__new__",
+        "__slots__",
+        "__subclasshook__",
+        "__weakref__",
+        "__class_getitem__",  # Since Python 3.9
+    }
+)
+
+
 class TypeInfo(SymbolNode):
     """The type structure of a single class.
 
@@ -3114,6 +3134,8 @@ class TypeInfo(SymbolNode):
                 for name, node in base.names.items():
                     if isinstance(node.node, (TypeAlias, TypeVarExpr, MypyFile)):
                         # These are auxiliary definitions (and type aliases are prohibited).
+                        continue
+                    if name in EXCLUDED_PROTOCOL_ATTRIBUTES:
                         continue
                     members.add(name)
         return sorted(list(members))

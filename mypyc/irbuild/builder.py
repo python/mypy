@@ -535,16 +535,14 @@ class IRBuilder:
             error_msg=f'value for final name "{error_name}" was not set',
         )
 
-    def load_final_literal_value(self, val: int | str | bytes | float | bool, line: int) -> Value:
-        """Load value of a final name or class-level attribute."""
+    def load_literal_value(self, val: int | str | bytes | float | complex | bool) -> Value:
+        """Load value of a final name, class-level attribute, or constant folded expression."""
         if isinstance(val, bool):
             if val:
                 return self.true()
             else:
                 return self.false()
         elif isinstance(val, int):
-            # TODO: take care of negative integer initializers
-            # (probably easier to fix this in mypy itself).
             return self.builder.load_int(val)
         elif isinstance(val, float):
             return self.builder.load_float(val)
@@ -552,8 +550,10 @@ class IRBuilder:
             return self.builder.load_str(val)
         elif isinstance(val, bytes):
             return self.builder.load_bytes(val)
+        elif isinstance(val, complex):
+            return self.builder.load_complex(val)
         else:
-            assert False, "Unsupported final literal value"
+            assert False, "Unsupported literal value"
 
     def get_assignment_target(
         self, lvalue: Lvalue, line: int = -1, *, for_read: bool = False
@@ -1013,7 +1013,7 @@ class IRBuilder:
             line: line number where loading occurs
         """
         if final_var.final_value is not None:  # this is safe even for non-native names
-            return self.load_final_literal_value(final_var.final_value, line)
+            return self.load_literal_value(final_var.final_value)
         elif native:
             return self.load_final_static(fullname, self.mapper.type_to_rtype(typ), line, name)
         else:

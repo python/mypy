@@ -40,6 +40,7 @@ PER_MODULE_OPTIONS: Final = {
     "disallow_untyped_defs",
     "enable_error_code",
     "enabled_error_codes",
+    "extra_checks",
     "follow_imports_for_stubs",
     "follow_imports",
     "ignore_errors",
@@ -200,8 +201,11 @@ class Options:
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
         self.strict_equality = False
 
-        # Make arguments prepended via Concatenate be truly positional-only.
+        # Deprecated, use extra_checks instead.
         self.strict_concatenate = False
+
+        # Enable additional checks that are technically correct but impractical.
+        self.extra_checks = False
 
         # Report an error for any branches inferred to be unreachable as a result of
         # type analysis.
@@ -345,6 +349,8 @@ class Options:
         # skip most errors after this many messages have been reported.
         # -1 means unlimited.
         self.many_errors_threshold = defaults.MANY_ERRORS_THRESHOLD
+        # Enable new experimental type inference algorithm.
+        self.new_type_inference = False
         # Disable recursive type aliases (currently experimental)
         self.disable_recursive_aliases = False
         # Deprecated reverse version of the above, do not use.
