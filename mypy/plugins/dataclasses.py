@@ -355,7 +355,8 @@ class DataclassTransformer:
         self._add_dataclass_fields_magic_attribute()
 
         if self._spec is _TRANSFORM_SPEC_FOR_DATACLASSES:
-            self._add_internal_replace_method(attributes)
+            with state.strict_optional_set(self._api.options.strict_optional):
+                self._add_internal_replace_method(attributes)
         if "__post_init__" in info.names:
             self._add_internal_post_init_method(attributes)
 
