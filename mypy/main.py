@@ -888,6 +888,12 @@ def process_options(
         group=error_group,
     )
     add_invertible_flag(
+        "--show-error-code-links",
+        default=False,
+        help="Show links to error code documentation",
+        group=error_group,
+    )
+    add_invertible_flag(
         "--pretty",
         default=False,
         help="Use visually nicer output in error messages:"
