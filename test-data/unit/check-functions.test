@@ -2752,8 +2752,7 @@ class E(D): pass
 class F(E):
     @override
     def f(self, x: int) -> str: pass
-[typing fixtures/typing-full.pyi]
-[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-override.pyi]
 
 [case explicitOverrideStaticmethod]
 # flags: --python-version 3.12
@@ -2785,8 +2784,8 @@ class D(A):
     def f(x: str) -> str: pass  # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int" \
                                 # N: This violates the Liskov substitution principle \
                                 # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
-[typing fixtures/typing-full.pyi]
-[builtins fixtures/callable.pyi]
+[typing fixtures/typing-override.pyi]
+[builtins fixtures/staticmethod.pyi]
 
 [case explicitOverrideClassmethod]
 # flags: --python-version 3.12
@@ -2818,8 +2817,8 @@ class D(A):
     def f(cls, x: str) -> str: pass  # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int" \
                                      # N: This violates the Liskov substitution principle \
                                      # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
-[typing fixtures/typing-full.pyi]
-[builtins fixtures/callable.pyi]
+[typing fixtures/typing-override.pyi]
+[builtins fixtures/classmethod.pyi]
 
 [case explicitOverrideProperty]
 # flags: --python-version 3.12
@@ -2853,8 +2852,8 @@ class D(A):
                               # N:          str \
                               # N:      Subclass: \
                               # N:          int
+[typing fixtures/typing-override.pyi]
 [builtins fixtures/property.pyi]
-[typing fixtures/typing-full.pyi]
 
 [case explicitOverrideSettableProperty]
 # flags: --python-version 3.12
@@ -2891,8 +2890,8 @@ class D(A):
 
     @f.setter
     def f(self, value: int) -> None: pass
+[typing fixtures/typing-override.pyi]
 [builtins fixtures/property.pyi]
-[typing fixtures/typing-full.pyi]
 
 [case invalidExplicitOverride]
 # flags: --python-version 3.12
@@ -2907,8 +2906,7 @@ class A: pass
 def g() -> None:
     @override  # E: "override" used with a non-method
     def h(b: bool) -> int: pass
-[typing fixtures/typing-full.pyi]
-[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-override.pyi]
 
 [case explicitOverrideSpecialMethods]
 # flags: --python-version 3.12
@@ -2924,8 +2922,7 @@ class B(A):
 class C:
     @override
     def __init__(self, a: int) -> None: pass
-[typing fixtures/typing-full.pyi]
-[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-override.pyi]
 
 [case explicitOverrideFromExtensions]
 from typing_extensions import override
@@ -2936,7 +2933,6 @@ class A:
 class B(A):
     @override
     def f2(self, x: int) -> str: pass  # E: Method "f2" is marked as an override, but no base method was found with this name
-[typing fixtures/typing-full.pyi]
 [builtins fixtures/tuple.pyi]
 
 [case explicitOverrideOverloads]
@@ -2953,8 +2949,7 @@ class B(A):
     def f2(self, x: str) -> str: pass
     @override
     def f2(self, x: int | str) -> str: pass
-[typing fixtures/typing-full.pyi]
-[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-override.pyi]
 
 [case explicitOverrideNotOnOverloadsImplementation]
 # flags: --python-version 3.12
@@ -2978,8 +2973,7 @@ class C(A):
     @overload
     def f(self, y: str) -> str: pass
     def f(self, y: int | str) -> str: pass
-[typing fixtures/typing-full.pyi]
-[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-override.pyi]
 
 [case explicitOverrideOnMultipleOverloads]
 # flags: --python-version 3.12
@@ -3005,8 +2999,7 @@ class C(A):
     def f(self, y: str) -> str: pass
     @override
     def f(self, y: int | str) -> str: pass
-[typing fixtures/typing-full.pyi]
-[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-override.pyi]
 
 [case requireExplicitOverrideMethod]
 # flags: --strict-override-decorator --python-version 3.12
