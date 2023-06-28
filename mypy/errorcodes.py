@@ -144,7 +144,7 @@ SAFE_SUPER: Final = ErrorCode(
     "safe-super", "Warn about calls to abstract methods with empty/trivial bodies", "General"
 )
 TOP_LEVEL_AWAIT: Final = ErrorCode(
-    "top-level-await", "Warn about top level await experessions", "General"
+    "top-level-await", "Warn about top level await expressions", "General"
 )
 
 # These error codes aren't enabled by default.

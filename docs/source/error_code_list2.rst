@@ -255,6 +255,32 @@ mypy generates an error if it thinks that an expression is redundant.
         [i for i in range(x) if isinstance(i, int)]
 
 
+.. _code-possibly-undefined:
+
+Warn about variables that are defined only in some execution paths [possibly-undefined]
+---------------------------------------------------------------------------------------
+
+If you use :option:`--enable-error-code possibly-undefined <mypy --enable-error-code>`,
+mypy generates an error if it cannot verify that a variable will be defined in
+all execution paths. This includes situations when a variable definition
+appears in a loop, in a conditional branch, in an except handler, etc. For
+example:
+
+.. code-block:: python
+
+    # Use "mypy --enable-error-code possibly-undefined ..."
+
+    from typing import Iterable
+
+    def test(values: Iterable[int], flag: bool) -> None:
+        if flag:
+            a = 1
+        z = a + 1  # Error: Name "a" may be undefined [possibly-undefined]
+
+        for v in values:
+            b = v
+        z = b + 1  # Error: Name "b" may be undefined [possibly-undefined]
+
 .. _code-truthy-bool:
 
 Check that expression is not implicitly true in boolean context [truthy-bool]
