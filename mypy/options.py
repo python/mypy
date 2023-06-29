@@ -313,6 +313,7 @@ class Options:
         self.show_column_numbers: bool = False
         self.show_error_end: bool = False
         self.hide_error_codes = False
+        self.show_error_code_links = False
         # Use soft word wrap and show trimmed source snippets with error location markers.
         self.pretty = False
         self.dump_graph = False
