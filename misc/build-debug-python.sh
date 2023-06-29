@@ -23,12 +23,12 @@ if [[ $(uname) == Darwin ]]; then
     LDFLAGS="-L$(brew --prefix openssl)/lib"
 fi
 
-curl -O https://www.python.org/ftp/python/$VERSION/Python-$VERSION.tgz
-tar zxf Python-$VERSION.tgz
-cd Python-$VERSION
-CPPFLAGS="$CPPFLAGS" LDFLAGS="$LDFLAGS" ./configure CFLAGS="-DPy_DEBUG -DPy_TRACE_REFS -DPYMALLOC_DEBUG" --with-pydebug --prefix=$PREFIX
+curl -O https://www.python.org/ftp/python/"$VERSION"/Python-"$VERSION".tgz
+tar zxf Python-"$VERSION".tgz
+cd Python-"$VERSION"
+CPPFLAGS="$CPPFLAGS" LDFLAGS="$LDFLAGS" ./configure CFLAGS="-DPy_DEBUG -DPy_TRACE_REFS -DPYMALLOC_DEBUG" --with-pydebug --prefix="$PREFIX"
 make -j4
 make install
-$PREFIX/bin/python3 -m pip install virtualenv
-$PREFIX/bin/python3 -m virtualenv $VENV
-ln -s python3-config $PREFIX/bin/python-config
+"$PREFIX"/bin/python3 -m pip install virtualenv
+"$PREFIX"/bin/python3 -m virtualenv "$VENV"
+ln -s python3-config "$PREFIX"/bin/python-config
