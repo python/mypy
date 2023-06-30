@@ -962,8 +962,11 @@ class ASTConverter:
                 func_type_ast = ast3_parse(n.type_comment, "<func_type>", "func_type")
                 assert isinstance(func_type_ast, FunctionType)
                 # for ellipsis arg
-                if len(func_type_ast.argtypes) == 1 and isinstance(
-                    func_type_ast.argtypes[0], ast3_Ellipsis
+                if (
+                    len(func_type_ast.argtypes) == 1
+                    and isinstance(func_type_ast.argtypes[0], ast3_Ellipsis)
+                    # TODO: remove when Python3.7 support is dropped
+                    and getattr(func_type_ast.argtypes[0], "value", ...) is ...
                 ):
                     if n.returns:
                         # PEP 484 disallows both type annotations and type comments
