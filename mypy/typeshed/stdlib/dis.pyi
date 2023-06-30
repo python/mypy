@@ -29,9 +29,12 @@ __all__ = [
     "opmap",
     "HAVE_ARGUMENT",
     "EXTENDED_ARG",
-    "hasnargs",
     "stack_effect",
 ]
+if sys.version_info >= (3, 12):
+    __all__ += ["hasarg", "hasexc"]
+else:
+    __all__ += ["hasnargs"]
 
 # Strictly this should not have to include Callable, but mypy doesn't use FunctionType
 # for functions (python/mypy#3171)

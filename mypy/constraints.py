@@ -886,7 +886,30 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             param_spec = template.param_spec()
             if param_spec is None:
                 # FIX verify argument counts
-                # FIX what if one of the functions is generic
+                # TODO: Erase template variables if it is generic?
+                if (
+                    type_state.infer_polymorphic
+                    and cactual.variables
+                    and cactual.param_spec() is None
+                    # Technically, the correct inferred type for application of e.g.
+                    # Callable[..., T] -> Callable[..., T] (with literal ellipsis), to a generic
+                    # like U -> U, should be Callable[..., Any], but if U is a self-type, we can
+                    # allow it to leak, to be later bound to self. A bunch of existing code
+                    # depends on this old behaviour.
+                    and not any(tv.id.raw_id == 0 for tv in cactual.variables)
+                ):
+                    # If actual is generic, unify it with template. Note: this is
+                    # not an ideal solution (which would be adding the generic variables
+                    # to the constraint inference set), but it's a good first approximation,
+                    # and this will prevent leaking these variables in the solutions.
+                    # Note: this may infer constraints like T <: S or T <: List[S]
+                    # that contain variables in the target.
+                    unified = mypy.subtypes.unify_generic_callable(
+                        cactual, template, ignore_return=True
+                    )
+                    if unified is not None:
+                        cactual = unified
+                        res.extend(infer_constraints(cactual, template, neg_op(self.direction)))
 
                 # We can't infer constraints from arguments if the template is Callable[..., T]
                 # (with literal '...').

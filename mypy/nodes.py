@@ -2493,7 +2493,7 @@ class TypeVarExpr(TypeVarLikeExpr):
 
     __slots__ = ("values",)
 
-    __match_args__ = ("name", "values", "upper_bound")
+    __match_args__ = ("name", "values", "upper_bound", "default")
 
     # Value restriction: only types in the list are valid as values. If the
     # list is empty, there is no restriction.
@@ -2541,7 +2541,7 @@ class TypeVarExpr(TypeVarLikeExpr):
 class ParamSpecExpr(TypeVarLikeExpr):
     __slots__ = ()
 
-    __match_args__ = ("name", "upper_bound")
+    __match_args__ = ("name", "upper_bound", "default")
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_paramspec_expr(self)
@@ -2575,7 +2575,7 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
 
     tuple_fallback: mypy.types.Instance
 
-    __match_args__ = ("name", "upper_bound")
+    __match_args__ = ("name", "upper_bound", "default")
 
     def __init__(
         self,
