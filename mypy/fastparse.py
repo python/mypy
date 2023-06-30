@@ -130,22 +130,16 @@ try:
         assert (
             "kind" in ast3.Constant._fields
         ), f"This 3.8.0 alpha ({sys.version.split()[0]}) is too old; 3.8.0a3 required"
-        # TODO: Num, Str, Bytes, NameConstant, Ellipsis are deprecated in 3.8.
         # TODO: Index, ExtSlice are deprecated in 3.9.
         from ast import (
             AST,
             Attribute,
-            Bytes,
             Call,
-            Ellipsis as ast3_Ellipsis,
             Expression as ast3_Expression,
             FunctionType,
             Index,
             Name,
-            NameConstant,
-            Num,
             Starred,
-            Str,
             UnaryOp,
             USub,
         )
@@ -163,6 +157,13 @@ try:
 
         NamedExpr = ast3.NamedExpr
         Constant = ast3.Constant
+        # TODO: We can delete these aliases after Python3.7 support is dropped.
+        # Right now, they are only needed to have the same global names as 3.7
+        Num = Any
+        Str = Any
+        Bytes = Any
+        NameConstant = Any
+        ast3_Ellipsis = Any
     else:
         from typed_ast import ast3
         from typed_ast.ast3 import (
@@ -1580,7 +1581,7 @@ class ASTConverter:
         if val is None:
             e = NameExpr("None")
         elif isinstance(val, str):
-            e = StrExpr(n.s)
+            e = StrExpr(val)
         elif isinstance(val, bytes):
             e = BytesExpr(bytes_to_human_readable_repr(n.s))
         elif isinstance(val, bool):  # Must check before int!
@@ -1598,7 +1599,7 @@ class ASTConverter:
         return self.set_line(e, n)
 
     # Num(object n) -- a number as a PyObject.
-    def visit_Num(self, n: ast3.Num) -> IntExpr | FloatExpr | ComplexExpr:
+    def visit_Num(self, n: Num) -> IntExpr | FloatExpr | ComplexExpr:
         # The n field has the type complex, but complex isn't *really*
         # a parent of int and float, and this causes isinstance below
         # to think that the complex branch is always picked. Avoid
@@ -1655,7 +1656,7 @@ class ASTConverter:
         return self.set_line(result_expression, n)
 
     # Bytes(bytes s)
-    def visit_Bytes(self, n: ast3.Bytes) -> BytesExpr | StrExpr:
+    def visit_Bytes(self, n: Bytes) -> BytesExpr | StrExpr:
         e = BytesExpr(bytes_to_human_readable_repr(n.s))
         return self.set_line(e, n)
 
