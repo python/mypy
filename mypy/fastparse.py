@@ -1583,7 +1583,7 @@ class ASTConverter:
         elif isinstance(val, str):
             e = StrExpr(val)
         elif isinstance(val, bytes):
-            e = BytesExpr(bytes_to_human_readable_repr(n.s))
+            e = BytesExpr(bytes_to_human_readable_repr(val))
         elif isinstance(val, bool):  # Must check before int!
             e = NameExpr(str(val))
         elif isinstance(val, int):
@@ -1957,7 +1957,11 @@ class TypeConverter:
 
     def _extract_argument_name(self, n: ast3.expr) -> str | None:
         if isinstance(n, Str):
-            return n.s.strip()
+            # TODO: remove this when Python3.7 support is dropped
+            if sys.version_info >= (3, 8):
+                return n.value.strip()
+            else:
+                return n.s.strip()
         elif isinstance(n, NameConstant) and str(n.value) == "None":
             return None
         self.fail(
@@ -1998,7 +2002,7 @@ class TypeConverter:
             return UnboundType("None", line=self.line)
         if isinstance(val, str):
             # Parse forward reference.
-            return parse_type_string(n.s, "builtins.str", self.line, n.col_offset)
+            return parse_type_string(val, "builtins.str", self.line, n.col_offset)
         if val is Ellipsis:
             # '...' is valid in some types.
             return EllipsisType(line=self.line)
