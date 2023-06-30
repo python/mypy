@@ -1958,7 +1958,7 @@ class TypeConverter:
     def _extract_argument_name(self, n: ast3.expr) -> str | None:
         if isinstance(n, Str):
             # TODO: remove this when Python3.7 support is dropped
-            if sys.version_info >= (3, 8):
+            if sys.version_info >= (3, 8) and isinstance(n.value, str):
                 return n.value.strip()
             else:
                 return n.s.strip()
