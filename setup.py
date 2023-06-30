@@ -222,7 +222,8 @@ setup(
     # When changing this, also update mypy-requirements.txt.
     install_requires=[
         "typed_ast >= 1.4.0, < 2; python_version<'3.8'",
-        "typing_extensions>=4.1.0",
+        "typing_extensions>=4.1.0; python_version >= '3.8'",
+        "typing_extensions>=4.7.0; python_version < '3.8'",
         "mypy_extensions >= 1.0.0",
         "tomli>=1.1.0; python_version<'3.11'",
     ],
