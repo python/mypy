@@ -159,11 +159,11 @@ try:
         Constant = ast3.Constant
         # TODO: We can delete these aliases after Python3.7 support is dropped.
         # Right now, they are only needed to have the same global names as 3.7
-        Num = Any
-        Str = Any
-        Bytes = Any
-        NameConstant = Any
-        ast3_Ellipsis = Any
+        Num = ast3.Constant
+        Str = ast3.Constant
+        Bytes = ast3.Constant
+        NameConstant = ast3.Constant
+        ast3_Ellipsis = ast3.Constant
     else:
         from typed_ast import ast3
         from typed_ast.ast3 import (
