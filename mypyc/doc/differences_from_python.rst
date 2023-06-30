@@ -276,7 +276,7 @@ Nested classes are not supported.
 Conditional functions or classes
 ********************************
 
-Function and classes definitions guarded by an if-statement are not supported.
+Function and class definitions guarded by an if-statement are not supported.
 
 Dunder methods
 **************
