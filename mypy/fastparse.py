@@ -1963,7 +1963,7 @@ class TypeConverter:
                     return n.value.strip()
             else:
                 return n.s.strip()
-        elif isinstance(n, NameConstant) and str(n.value) == "None":
+        if isinstance(n, NameConstant) and str(n.value) == "None":
             return None
         self.fail(
             message_registry.ARG_NAME_EXPECTED_STRING_LITERAL.format(type(n).__name__),
