@@ -118,10 +118,9 @@ def test_bitwise_ops() -> None:
     assert z >> two == 28
     assert z >> 0 == z
 
-    assert ~x == 71
-    assert ~z == 142
-    assert ~zero == 255
-    assert ~neg_one == 0
+    for i in range(256):
+        t: u8 = i
+        assert ~t == (~(i + int()) & 0xff)
 
 def eq(x: u8, y: u8) -> bool:
     return x == y

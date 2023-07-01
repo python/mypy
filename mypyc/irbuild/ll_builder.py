@@ -1633,8 +1633,13 @@ class LowLevelIRBuilder:
                 # Translate to '0 - x'
                 return self.int_op(typ, Integer(0, typ), value, IntOp.SUB, line)
             elif expr_op == "~":
-                # Translate to 'x ^ -1'
-                return self.int_op(typ, value, Integer(-1, typ), IntOp.XOR, line)
+                if typ.is_signed:
+                    # Translate to 'x ^ -1'
+                    return self.int_op(typ, value, Integer(-1, typ), IntOp.XOR, line)
+                else:
+                    # Translate to 'x ^ 0xff...'
+                    mask = (1 << (typ.size * 8)) - 1
+                    return self.int_op(typ, value, Integer(mask, typ), IntOp.XOR, line)
             elif expr_op == "+":
                 return value
         if is_float_rprimitive(typ):

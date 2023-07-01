@@ -76,7 +76,7 @@ def unary(x):
 L0:
     r0 = 0 - x
     y = r0
-    r1 = y ^ -1
+    r1 = y ^ 255
     x = r1
     y = x
     return y
