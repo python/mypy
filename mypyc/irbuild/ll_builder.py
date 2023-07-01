@@ -2098,7 +2098,7 @@ class LowLevelIRBuilder:
         b = self.add(Branch(is_zero, err, ok, Branch.BOOL))
         self.activate_block(err)
         self.add(RaiseStandardError(RaiseStandardError.ZERO_DIVISION_ERROR,
-                                    "division by zero", line))
+                                    "integer division or modulo by zero", line))
         self.add(Unreachable())
         self.activate_block(ok)
 

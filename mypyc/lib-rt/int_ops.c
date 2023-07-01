@@ -780,7 +780,7 @@ uint8_t CPyLong_AsUInt8(PyObject *o) {
 }
 
 void CPyUInt8_Overflow() {
-    PyErr_SetString(PyExc_OverflowError, "int too large to convert to u8");
+    PyErr_SetString(PyExc_OverflowError, "int too large or small to convert to u8");
 }
 
 double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y) {
