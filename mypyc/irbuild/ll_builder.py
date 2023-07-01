@@ -28,6 +28,7 @@ from mypyc.common import (
     use_method_vectorcall,
     use_vectorcall,
 )
+from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.ops import (
@@ -77,6 +78,7 @@ from mypyc.ir.ops import (
     int_op_to_id,
 )
 from mypyc.ir.rtypes import (
+    check_native_int_range,
     PyListObject,
     PyObject,
     PySetObject,
@@ -219,8 +221,9 @@ BOOL_BINARY_OPS: Final = {"&", "&=", "|", "|=", "^", "^=", "==", "!=", "<", "<="
 
 
 class LowLevelIRBuilder:
-    def __init__(self, current_module: str, mapper: Mapper, options: CompilerOptions) -> None:
+    def __init__(self, current_module: str, errors: Errors, mapper: Mapper, options: CompilerOptions) -> None:
         self.current_module = current_module
+        self.errors = errors
         self.mapper = mapper
         self.options = options
         self.args: list[Register] = []
@@ -230,6 +233,11 @@ class LowLevelIRBuilder:
         # Values that we need to keep alive as long as we have borrowed
         # temporaries. Use flush_keep_alives() to mark the end of the live range.
         self.keep_alives: list[Value] = []
+
+    def set_module(self, module_name: str, module_path: str) -> None:
+        """Set the name and path of the current module."""
+        self.module_name = module_name
+        self.module_path = module_path
 
     # Basic operations
 
@@ -326,7 +334,9 @@ class LowLevelIRBuilder:
                 and is_short_int_rprimitive(src_type)
                 and is_fixed_width_rtype(target_type)
             ):
-                # TODO: range check
+                value = src.numeric_value()
+                if not check_native_int_range(target_type, value):
+                    self.error(f'Value {value} is out of range for "{target_type}"', line)
                 return Integer(src.value >> 1, target_type)
             elif is_int_rprimitive(src_type) and is_fixed_width_rtype(target_type):
                 return self.coerce_int_to_fixed_width(src, target_type, line)
@@ -1324,9 +1334,8 @@ class LowLevelIRBuilder:
                 if is_fixed_width_rtype(rtype) or is_tagged(rtype):
                     return self.fixed_width_int_op(ltype, lreg, rreg, op_id, line)
                 if isinstance(rreg, Integer):
-                    # TODO: Check what kind of Integer
                     return self.fixed_width_int_op(
-                        ltype, lreg, Integer(rreg.value >> 1, ltype), op_id, line
+                        ltype, lreg, self.coerce(rreg, ltype, line), op_id, line
                     )
             elif op in ComparisonOp.signed_ops:
                 if is_int_rprimitive(rtype):
@@ -1337,7 +1346,7 @@ class LowLevelIRBuilder:
                 if is_fixed_width_rtype(rreg.type):
                     return self.comparison_op(lreg, rreg, op_id, line)
                 if isinstance(rreg, Integer):
-                    return self.comparison_op(lreg, Integer(rreg.value >> 1, ltype), op_id, line)
+                    return self.comparison_op(lreg, self.coerce(rreg, ltype, line), op_id, line)
         elif is_fixed_width_rtype(rtype):
             if op in FIXED_WIDTH_INT_BINARY_OPS:
                 if op.endswith("="):
@@ -1347,9 +1356,8 @@ class LowLevelIRBuilder:
                 else:
                     op_id = IntOp.DIV
                 if isinstance(lreg, Integer):
-                    # TODO: Check what kind of Integer
                     return self.fixed_width_int_op(
-                        rtype, Integer(lreg.value >> 1, rtype), rreg, op_id, line
+                        rtype, self.coerce(lreg, rtype, line), rreg, op_id, line
                     )
                 if is_tagged(ltype):
                     return self.fixed_width_int_op(rtype, lreg, rreg, op_id, line)
@@ -1363,7 +1371,7 @@ class LowLevelIRBuilder:
                     lreg = self.coerce(lreg, rtype, line)
                 op_id = ComparisonOp.signed_ops[op]
                 if isinstance(lreg, Integer):
-                    return self.comparison_op(Integer(lreg.value >> 1, rtype), rreg, op_id, line)
+                    return self.comparison_op(self.coerce(lreg, rtype, line), rreg, op_id, line)
                 if is_fixed_width_rtype(lreg.type):
                     return self.comparison_op(lreg, rreg, op_id, line)
 
@@ -2367,6 +2375,9 @@ class LowLevelIRBuilder:
             return self.call_c(dict_build_op, [size_value] + items, line)
         else:
             return self.call_c(dict_new_op, [], line)
+
+    def error(self, msg: str, line: int) -> None:
+        self.errors.error(msg, self.module_path, line)
 
 
 def num_positional_args(arg_values: list[Value], arg_kinds: list[ArgKind] | None) -> int:

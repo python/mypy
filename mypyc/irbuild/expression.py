@@ -534,37 +534,7 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
 
     left = builder.accept(expr.left, can_borrow=borrow_left)
     right = builder.accept(expr.right, can_borrow=borrow_right)
-    check_binary_op_operand_ranges(builder, left, right, expr.op, expr.line)
     return builder.binary_op(left, right, expr.op, expr.line)
-
-
-def check_native_int_range(rtype: RPrimitive, n: int) -> bool:
-    """Is n within the range of a native, fixed-width int type?
-
-    Assume the type is a fixed-width int type.
-    """
-    if not rtype.is_signed:
-        return 0 <= n < (1 << (8 * rtype.size))
-    else:
-        limit = 1 << (rtype.size * 8 - 1)
-        return -limit <= n < limit
-
-
-def check_binary_op_operand_ranges(
-        builder: IRBuilder, left: Value, right: Value, op: str, line: int) -> None:
-    if is_fixed_width_rtype(left.type) and isinstance(right, Integer):
-        value = right.numeric_value()
-        if not check_native_int_range(left.type, value):
-            report_range_error(builder, op, left.type, value, line)
-    if is_fixed_width_rtype(right.type) and isinstance(left, Integer):
-        value = left.numeric_value()
-        if not check_native_int_range(right.type, value):
-            report_range_error(builder, op, right.type, value, line)
-
-
-def report_range_error(builder: IRBuilder, op: str, rtype: RType, value: int, line: int) -> None:
-    kind = "large" if value > 0 else "small"
-    builder.error(f'Value of "{op}" operand too {kind} for "{rtype}" ({value})', line)
 
 
 def try_optimize_int_floor_divide(expr: OpExpr) -> OpExpr:

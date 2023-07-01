@@ -202,9 +202,9 @@ def out_of_range(x: i16) -> None:
     x + 32767  # OK
     (-32768) + x   # OK
 [out]
-main:4: error: Value of "+" operand too small for "i16" (-32769)
-main:5: error: Value of "+" operand too small for "i16" (-32770)
-main:6: error: Value of "*" operand too large for "i16" (32768)
+main:4: error: Value -32769 is out of range for "i16"
+main:5: error: Value -32770 is out of range for "i16"
+main:6: error: Value 32768 is out of range for "i16"
 
 [case testI16BoxAndUnbox]
 from typing import Any
@@ -436,13 +436,21 @@ def f() -> None:
     x = i16(0)
     y = i16(11)
     z = i16(-3)
+    a = i16(32767)
+    b = i16(32768)  # Truncate
+    c = i16(-32768)
+    d = i16(-32769)  # Truncate
 [out]
 def f():
-    x, y, z :: i16
+    x, y, z, a, b, c, d :: i16
 L0:
     x = 0
     y = 11
     z = -3
+    a = 32767
+    b = -32768
+    c = -32768
+    d = 32767
     return 1
 
 [case testI16ExplicitConversionFromVariousTypes]

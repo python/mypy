@@ -481,13 +481,15 @@ def f() -> None:
     x = i32(0)
     y = i32(11)
     z = i32(-3)
+    a = i32(2**31)
 [out]
 def f():
-    x, y, z :: i32
+    x, y, z, a :: i32
 L0:
     x = 0
     y = 11
     z = -3
+    a = -2147483648
     return 1
 
 [case testI32ExplicitConversionFromVariousTypes_64bit]

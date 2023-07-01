@@ -172,7 +172,10 @@ def translate_globals(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
 def translate_builtins_with_unary_dunder(
     builder: IRBuilder, expr: CallExpr, callee: RefExpr
 ) -> Value | None:
-    """Specialize calls on native classes that implement the associated dunder."""
+    """Specialize calls on native classes that implement the associated dunder.
+
+    E.g. i64(x) gets specialized to x.__int__() if x is a native instance.
+    """
     if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS] and isinstance(callee, NameExpr):
         arg = expr.args[0]
         arg_typ = builder.node_type(arg)
@@ -711,6 +714,7 @@ def translate_i32(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
         return builder.add(Extend(val, int32_rprimitive, signed=True, line=expr.line))
     elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
         val = builder.accept(arg)
+        val = truncate_literal(val, int32_rprimitive)
         return builder.coerce(val, int32_rprimitive, expr.line)
     return None
 
@@ -728,6 +732,7 @@ def translate_i16(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
         return builder.add(Truncate(val, int16_rprimitive, line=expr.line))
     elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
         val = builder.accept(arg)
+        val = truncate_literal(val, int16_rprimitive)
         return builder.coerce(val, int16_rprimitive, expr.line)
     return None
 
@@ -745,8 +750,25 @@ def translate_u8(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value |
         return builder.add(Truncate(val, uint8_rprimitive, line=expr.line))
     elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
         val = builder.accept(arg)
+        val = truncate_literal(val, uint8_rprimitive)
         return builder.coerce(val, uint8_rprimitive, expr.line)
     return None
+
+
+def truncate_literal(value: Value, rtype: RPrimitive) -> Value:
+    """If value is an integer literal value, truncate it to given native int rtype.
+
+    For example, truncate 256 into 0 if rtype is u8.
+    """
+    if not isinstance(value, Integer):
+        return value  # Not a literal, nothing to do
+    x = value.numeric_value()
+    max_unsigned = 1 << (rtype.size * 8)
+    x = x & (max_unsigned - 1)
+    if rtype.is_signed and x >= max_unsigned // 2 :
+        # Adjust to make it a negative value
+        x -= max_unsigned
+    return Integer(x, rtype)
 
 
 @specialize_function("builtins.int")
