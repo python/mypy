@@ -20,7 +20,7 @@ def compare(x: u8, y: u8) -> None:
     f = 5 < x
 [out]
 def add_op(x, y):
-    x, y, r0, r1, r2, r3, r4 :: uint8
+    x, y, r0, r1, r2, r3, r4 :: u8
 L0:
     r0 = y + x
     x = r0
@@ -34,7 +34,7 @@ L0:
     x = r4
     return x
 def compare(x, y):
-    x, y :: uint8
+    x, y :: u8
     r0 :: bit
     a :: bool
     r1 :: bit
@@ -72,7 +72,7 @@ def unary(x: u8) -> u8:
     return y
 [out]
 def unary(x):
-    x, r0, y, r1 :: uint8
+    x, r0, y, r1 :: u8
 L0:
     r0 = 0 - x
     y = r0
@@ -90,27 +90,13 @@ def div_by_constant(x: u8) -> u8:
     return x
 [out]
 def div_by_constant(x):
-    x, r0, r1 :: uint8
+    x, r0, r1 :: u8
 L0:
     r0 = x / 5
     x = r0
     r1 = x / 17
     x = r1
     return x
-
-[case testU8BinaryOperationWithOutOfRangeOperand]
-from mypy_extensions import u8
-
-def out_of_range(x: u8) -> None:
-    x + (-1)
-    (-2) + x
-    x * 256
-    x + 255  # OK
-    255 + x   # OK
-[out]
-main:4: error: Value of "+" operand too small for "u8" (-1)
-main:5: error: Value of "+" operand too small for "u8" (-2)
-main:6: error: Value of "*" operand too large for "u8" (256)
 
 [case testU8ModByConstant]
 from mypy_extensions import u8
@@ -121,7 +107,7 @@ def mod_by_constant(x: u8) -> u8:
     return x
 [out]
 def mod_by_constant(x):
-    x, r0, r1 :: uint8
+    x, r0, r1 :: u8
 L0:
     r0 = x % 5
     x = r0
@@ -137,18 +123,18 @@ def divmod(x: u8, y: u8) -> u8:
     return a % y
 [out]
 def divmod(x, y):
-    x, y :: uint8
+    x, y :: u8
     r0 :: bit
     r1 :: bool
-    r2, a :: uint8
+    r2, a :: u8
     r3 :: bit
     r4 :: bool
-    r5 :: uint8
+    r5 :: u8
 L0:
     r0 = y == 0
     if r0 goto L1 else goto L2 :: bool
 L1:
-    r1 = raise ZeroDivisionError('division by zero')
+    r1 = raise ZeroDivisionError('integer division or modulo by zero')
     unreachable
 L2:
     r2 = x / y
@@ -156,11 +142,25 @@ L2:
     r3 = y == 0
     if r3 goto L3 else goto L4 :: bool
 L3:
-    r4 = raise ZeroDivisionError('division by zero')
+    r4 = raise ZeroDivisionError('integer division or modulo by zero')
     unreachable
 L4:
     r5 = a % y
     return r5
+
+[case testU8BinaryOperationWithOutOfRangeOperand]
+from mypy_extensions import u8
+
+def out_of_range(x: u8) -> None:
+    x + (-1)
+    (-2) + x
+    x * 256
+    x + 255  # OK
+    255 + x   # OK
+[out]
+main:4: error: Value of "+" operand too small for "u8" (-1)
+main:5: error: Value of "+" operand too small for "u8" (-2)
+main:6: error: Value of "*" operand too large for "u8" (256)
 
 [case testU8BoxAndUnbox]
 from typing import Any
@@ -172,12 +172,12 @@ def f(x: Any) -> Any:
 [out]
 def f(x):
     x :: object
-    r0, y :: uint8
+    r0, y :: u8
     r1 :: object
 L0:
-    r0 = unbox(uint8, x)
+    r0 = unbox(u8, x)
     y = r0
-    r1 = box(uint8, y)
+    r1 = box(u8, y)
     return r1
 
 [case testU8MixedCompare1]
@@ -187,11 +187,11 @@ def f(x: int, y: u8) -> bool:
 [out]
 def f(x, y):
     x :: int
-    y :: uint8
+    y :: u8
     r0 :: native_int
     r1, r2, r3 :: bit
     r4 :: native_int
-    r5, r6 :: uint8
+    r5, r6 :: u8
     r7 :: bit
 L0:
     r0 = x & 1
@@ -205,7 +205,7 @@ L2:
     if r3 goto L3 else goto L4 :: bool
 L3:
     r4 = x >> 1
-    r5 = truncate r4: native_int to uint8
+    r5 = truncate r4: native_int to u8
     r6 = r5
     goto L5
 L4:
@@ -221,12 +221,12 @@ def f(x: u8, y: int) -> bool:
     return x == y
 [out]
 def f(x, y):
-    x :: uint8
+    x :: u8
     y :: int
     r0 :: native_int
     r1, r2, r3 :: bit
     r4 :: native_int
-    r5, r6 :: uint8
+    r5, r6 :: u8
     r7 :: bit
 L0:
     r0 = y & 1
@@ -240,7 +240,7 @@ L2:
     if r3 goto L3 else goto L4 :: bool
 L3:
     r4 = y >> 1
-    r5 = truncate r4: native_int to uint8
+    r5 = truncate r4: native_int to u8
     r6 = r5
     goto L5
 L4:
@@ -257,11 +257,11 @@ def u8_to_int(a: u8) -> int:
     return a
 [out]
 def u8_to_int(a):
-    a :: uint8
+    a :: u8
     r0 :: native_int
     r1 :: int
 L0:
-    r0 = extend a: uint8 to native_int
+    r0 = extend a: u8 to native_int
     r1 = r0 << 1
     return r1
 
@@ -273,12 +273,12 @@ def f(a: u8) -> None:
     x += a
 [out]
 def f(a):
-    a :: uint8
+    a :: u8
     x :: int
     r0 :: native_int
     r1, r2, r3 :: bit
     r4 :: native_int
-    r5, r6, r7 :: uint8
+    r5, r6, r7 :: u8
     r8 :: native_int
     r9 :: int
 L0:
@@ -294,7 +294,7 @@ L2:
     if r3 goto L3 else goto L4 :: bool
 L3:
     r4 = x >> 1
-    r5 = truncate r4: native_int to uint8
+    r5 = truncate r4: native_int to u8
     r6 = r5
     goto L5
 L4:
@@ -302,7 +302,7 @@ L4:
     unreachable
 L5:
     r7 = r6 + a
-    r8 = extend r7: uint8 to native_int
+    r8 = extend r7: u8 to native_int
     r9 = r8 << 1
     x = r9
     return 1
@@ -316,7 +316,7 @@ def f() -> None:
     z: u8 = 5 + 7
 [out]
 def f():
-    x, y, z :: uint8
+    x, y, z :: u8
 L0:
     x = 0
     y = -127
@@ -339,26 +339,26 @@ def from_i64(x: i64) -> u8:
     return u8(x)
 [out]
 def from_u8(x):
-    x :: uint8
+    x :: u8
 L0:
     return x
 def from_i16(x):
-    x :: int16
-    r0 :: uint8
+    x :: i16
+    r0 :: u8
 L0:
-    r0 = truncate x: int16 to uint8
+    r0 = truncate x: i16 to u8
     return r0
 def from_i32(x):
-    x :: int32
-    r0 :: uint8
+    x :: i32
+    r0 :: u8
 L0:
-    r0 = truncate x: int32 to uint8
+    r0 = truncate x: i32 to u8
     return r0
 def from_i64(x):
-    x :: int64
-    r0 :: uint8
+    x :: i64
+    r0 :: u8
 L0:
-    r0 = truncate x: int64 to uint8
+    r0 = truncate x: i64 to u8
     return r0
 
 [case testU8ExplicitConversionFromInt]
@@ -372,7 +372,7 @@ def f(x):
     r0 :: native_int
     r1, r2, r3 :: bit
     r4 :: native_int
-    r5, r6 :: uint8
+    r5, r6 :: u8
 L0:
     r0 = x & 1
     r1 = r0 == 0
@@ -385,7 +385,7 @@ L2:
     if r3 goto L3 else goto L4 :: bool
 L3:
     r4 = x >> 1
-    r5 = truncate r4: native_int to uint8
+    r5 = truncate r4: native_int to u8
     r6 = r5
     goto L5
 L4:
@@ -403,7 +403,7 @@ def f() -> None:
     z = u8(-3)
 [out]
 def f():
-    x, y, z :: uint8
+    x, y, z :: u8
 L0:
     x = 0
     y = 11
@@ -431,17 +431,17 @@ def float_to_u8(x: float) -> u8:
 [out]
 def bool_to_u8(b):
     b :: bool
-    r0 :: uint8
+    r0 :: u8
 L0:
-    r0 = extend b: builtins.bool to uint8
+    r0 = extend b: builtins.bool to u8
     return r0
 def str_to_u8(s):
     s :: str
     r0 :: object
-    r1 :: uint8
+    r1 :: u8
 L0:
     r0 = CPyLong_FromStr(s)
-    r1 = unbox(uint8, r0)
+    r1 = unbox(u8, r0)
     return r1
 def C.__int__(self):
     self :: __main__.C
@@ -449,7 +449,7 @@ L0:
     return 5
 def instance_to_u8(c):
     c :: __main__.C
-    r0 :: uint8
+    r0 :: u8
 L0:
     r0 = c.__int__()
     return r0
@@ -459,7 +459,7 @@ def float_to_u8(x):
     r1 :: native_int
     r2, r3, r4 :: bit
     r5 :: native_int
-    r6, r7 :: uint8
+    r6, r7 :: u8
 L0:
     r0 = CPyTagged_FromFloat(x)
     r1 = r0 & 1
@@ -473,7 +473,7 @@ L2:
     if r4 goto L3 else goto L4 :: bool
 L3:
     r5 = r0 >> 1
-    r6 = truncate r5: native_int to uint8
+    r6 = truncate r5: native_int to u8
     r7 = r6
     goto L5
 L4:

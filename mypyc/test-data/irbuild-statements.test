@@ -651,11 +651,11 @@ def f(l: List[int], t: Tuple[int, ...]) -> None:
 def f(l, t):
     l :: list
     t :: tuple
-    r0 :: int32
+    r0 :: i32
     r1 :: bit
     r2, r3, x :: object
     r4, y :: int
-    r5 :: int32
+    r5 :: i32
     r6 :: bit
     r7, r8 :: object
     r9 :: int
@@ -701,13 +701,13 @@ L2:
     return 2
 def literal_msg(x):
     x :: object
-    r0 :: int32
+    r0 :: i32
     r1 :: bit
     r2, r3 :: bool
 L0:
     r0 = PyObject_IsTrue(x)
     r1 = r0 >= 0 :: signed
-    r2 = truncate r0: int32 to builtins.bool
+    r2 = truncate r0: i32 to builtins.bool
     if r2 goto L2 else goto L1 :: bool
 L1:
     r3 = raise AssertionError('message')
@@ -756,7 +756,7 @@ def delList():
     r3, r4, r5 :: ptr
     l :: list
     r6 :: object
-    r7 :: int32
+    r7 :: i32
     r8 :: bit
 L0:
     r0 = PyList_New(2)
@@ -779,13 +779,13 @@ def delListMultiple():
     r8, r9, r10, r11, r12, r13, r14, r15 :: ptr
     l :: list
     r16 :: object
-    r17 :: int32
+    r17 :: i32
     r18 :: bit
     r19 :: object
-    r20 :: int32
+    r20 :: i32
     r21 :: bit
     r22 :: object
-    r23 :: int32
+    r23 :: i32
     r24 :: bit
 L0:
     r0 = PyList_New(7)
@@ -837,7 +837,7 @@ def delDict():
     r2, r3 :: object
     r4, d :: dict
     r5 :: str
-    r6 :: int32
+    r6 :: i32
     r7 :: bit
 L0:
     r0 = 'one'
@@ -855,9 +855,9 @@ def delDictMultiple():
     r4, r5, r6, r7 :: object
     r8, d :: dict
     r9, r10 :: str
-    r11 :: int32
+    r11 :: i32
     r12 :: bit
-    r13 :: int32
+    r13 :: i32
     r14 :: bit
 L0:
     r0 = 'one'
@@ -901,7 +901,7 @@ L0:
 def delAttribute():
     r0, dummy :: __main__.Dummy
     r1 :: str
-    r2 :: int32
+    r2 :: i32
     r3 :: bit
 L0:
     r0 = Dummy(2, 4)
@@ -913,10 +913,10 @@ L0:
 def delAttributeMultiple():
     r0, dummy :: __main__.Dummy
     r1 :: str
-    r2 :: int32
+    r2 :: i32
     r3 :: bit
     r4 :: str
-    r5 :: int32
+    r5 :: i32
     r6 :: bit
 L0:
     r0 = Dummy(2, 4)
@@ -1029,7 +1029,7 @@ def f(a, b):
     r6, r7 :: object
     r8, x :: int
     r9, y :: bool
-    r10 :: int32
+    r10 :: i32
     r11 :: bit
     r12 :: bool
     r13 :: short_int
@@ -1055,7 +1055,7 @@ L3:
     y = r9
     r10 = PyObject_IsTrue(b)
     r11 = r10 >= 0 :: signed
-    r12 = truncate r10: int32 to builtins.bool
+    r12 = truncate r10: i32 to builtins.bool
     if r12 goto L4 else goto L5 :: bool
 L4:
     x = 2

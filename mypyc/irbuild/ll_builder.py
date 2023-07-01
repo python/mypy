@@ -2039,7 +2039,7 @@ class LowLevelIRBuilder:
     def compare_floats(self, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.add(FloatComparisonOp(lhs, rhs, op, line))
 
-    def fixed_width_int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
+    def fixed_width_int_op(self, type: RPrimitive, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         """Generate a binary op using Python fixed-width integer semantics.
 
         These may differ in overflow/rounding behavior from native/C ops.
