@@ -333,8 +333,7 @@ uint8_rprimitive: Final = RPrimitive(
 )
 
 # The following unsigned native int types (u16, u32, u64) are not
-# exposed to the programmer. They are for internal use within mypyc
-# only.
+# exposed to the user. They are for internal use within mypyc only.
 
 u16_rprimitive: Final = RPrimitive(
     "u16",

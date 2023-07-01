@@ -777,11 +777,11 @@ def truncate_literal(value: Value, rtype: RPrimitive) -> Value:
     if not isinstance(value, Integer):
         return value  # Not a literal, nothing to do
     x = value.numeric_value()
-    max_unsigned = 1 << (rtype.size * 8)
-    x = x & (max_unsigned - 1)
-    if rtype.is_signed and x >= max_unsigned // 2:
+    max_unsigned = (1 << (rtype.size * 8)) - 1
+    x = x & max_unsigned
+    if rtype.is_signed and x >= (max_unsigned + 1) // 2:
         # Adjust to make it a negative value
-        x -= max_unsigned
+        x -= max_unsigned + 1
     return Integer(x, rtype)
 
 
