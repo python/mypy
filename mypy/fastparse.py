@@ -122,7 +122,6 @@ from mypy.util import bytes_to_human_readable_repr, unnamed_function
 # the default argument warning
 PY_MINOR_VERSION: Final = sys.version_info[1]
 
-# Check if we can use the stdlib ast module instead of typed_ast.
 import ast as ast3
 
 # TODO: Index, ExtSlice are deprecated in 3.9.
