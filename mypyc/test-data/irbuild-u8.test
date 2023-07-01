@@ -155,12 +155,18 @@ def out_of_range(x: u8) -> None:
     x + (-1)
     (-2) + x
     x * 256
+    -1 < x
+    x > -5
+    x == 1000
     x + 255  # OK
     255 + x   # OK
 [out]
 main:4: error: Value -1 is out of range for "u8"
 main:5: error: Value -2 is out of range for "u8"
 main:6: error: Value 256 is out of range for "u8"
+main:7: error: Value -1 is out of range for "u8"
+main:8: error: Value -5 is out of range for "u8"
+main:9: error: Value 1000 is out of range for "u8"
 
 [case testU8DetectMoreOutOfRangeLiterals]
 from mypy_extensions import u8

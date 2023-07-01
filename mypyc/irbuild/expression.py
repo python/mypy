@@ -829,7 +829,7 @@ def transform_basic_comparison(
             else:
                 op_id = ComparisonOp.unsigned_ops[op]
             return builder.builder.comparison_op(
-                left, Integer(right.value >> 1, left.type), op_id, line
+                left, builder.coerce(right, left.type, line), op_id, line
             )
     elif (
         is_fixed_width_rtype(right.type)
@@ -841,7 +841,7 @@ def transform_basic_comparison(
         else:
             op_id = ComparisonOp.unsigned_ops[op]
         return builder.builder.comparison_op(
-            Integer(left.value >> 1, right.type), right, op_id, line
+            builder.coerce(left, right.type, line), right, op_id, line
         )
 
     negate = False
