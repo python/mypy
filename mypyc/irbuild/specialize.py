@@ -44,6 +44,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RInstance,
+    RPrimitive,
     RTuple,
     RType,
     bool_rprimitive,
@@ -53,20 +54,20 @@ from mypyc.ir.rtypes import (
     int32_rprimitive,
     int64_rprimitive,
     int_rprimitive,
-    uint8_rprimitive,
     is_bool_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
     is_float_rprimitive,
-    is_uint8_rprimitive,
     is_int16_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
     is_list_rprimitive,
+    is_uint8_rprimitive,
     list_rprimitive,
     set_rprimitive,
     str_rprimitive,
+    uint8_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import (
@@ -754,7 +755,11 @@ def translate_u8(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value |
     arg_type = builder.node_type(arg)
     if is_uint8_rprimitive(arg_type):
         return builder.accept(arg)
-    elif is_int16_rprimitive(arg_type) or is_int32_rprimitive(arg_type) or is_int64_rprimitive(arg_type):
+    elif (
+        is_int16_rprimitive(arg_type)
+        or is_int32_rprimitive(arg_type)
+        or is_int64_rprimitive(arg_type)
+    ):
         val = builder.accept(arg)
         return builder.add(Truncate(val, uint8_rprimitive, line=expr.line))
     elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
@@ -774,7 +779,7 @@ def truncate_literal(value: Value, rtype: RPrimitive) -> Value:
     x = value.numeric_value()
     max_unsigned = 1 << (rtype.size * 8)
     x = x & (max_unsigned - 1)
-    if rtype.is_signed and x >= max_unsigned // 2 :
+    if rtype.is_signed and x >= max_unsigned // 2:
         # Adjust to make it a negative value
         x -= max_unsigned
     return Integer(x, rtype)

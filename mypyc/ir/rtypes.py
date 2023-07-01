@@ -488,12 +488,16 @@ def is_int64_rprimitive(rtype: RType) -> bool:
 
 def is_fixed_width_rtype(rtype: RType) -> TypeGuard[RPrimitive]:
     return (
-        is_int64_rprimitive(rtype) or is_int32_rprimitive(rtype) or is_int16_rprimitive(rtype)
+        is_int64_rprimitive(rtype)
+        or is_int32_rprimitive(rtype)
+        or is_int16_rprimitive(rtype)
         or is_uint8_rprimitive(rtype)
     )
 
+
 def is_uint8_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return rtype is uint8_rprimitive
+
 
 def is_uint32_rprimitive(rtype: RType) -> bool:
     return rtype is uint32_rprimitive

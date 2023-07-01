@@ -78,7 +78,6 @@ from mypyc.ir.ops import (
     int_op_to_id,
 )
 from mypyc.ir.rtypes import (
-    check_native_int_range,
     PyListObject,
     PyObject,
     PySetObject,
@@ -97,6 +96,7 @@ from mypyc.ir.rtypes import (
     c_pointer_rprimitive,
     c_pyssize_t_rprimitive,
     c_size_t_rprimitive,
+    check_native_int_range,
     dict_rprimitive,
     float_rprimitive,
     int_rprimitive,
@@ -106,7 +106,6 @@ from mypyc.ir.rtypes import (
     is_dict_rprimitive,
     is_fixed_width_rtype,
     is_float_rprimitive,
-    is_uint8_rprimitive,
     is_int16_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
@@ -118,6 +117,7 @@ from mypyc.ir.rtypes import (
     is_str_rprimitive,
     is_tagged,
     is_tuple_rprimitive,
+    is_uint8_rprimitive,
     list_rprimitive,
     none_rprimitive,
     object_pointer_rprimitive,
@@ -153,7 +153,6 @@ from mypyc.primitives.int_ops import (
     int16_divide_op,
     int16_mod_op,
     int16_overflow,
-    uint8_overflow,
     int32_divide_op,
     int32_mod_op,
     int32_overflow,
@@ -164,6 +163,7 @@ from mypyc.primitives.int_ops import (
     int_to_int32_op,
     int_to_int64_op,
     ssize_t_to_int_op,
+    uint8_overflow,
 )
 from mypyc.primitives.list_ops import list_build_op, list_extend_op, new_list_op
 from mypyc.primitives.misc_ops import bool_op, fast_isinstance_op, none_object_op
@@ -221,7 +221,9 @@ BOOL_BINARY_OPS: Final = {"&", "&=", "|", "|=", "^", "^=", "==", "!=", "<", "<="
 
 
 class LowLevelIRBuilder:
-    def __init__(self, current_module: str, errors: Errors, mapper: Mapper, options: CompilerOptions) -> None:
+    def __init__(
+        self, current_module: str, errors: Errors, mapper: Mapper, options: CompilerOptions
+    ) -> None:
         self.current_module = current_module
         self.errors = errors
         self.mapper = mapper
@@ -499,8 +501,11 @@ class LowLevelIRBuilder:
         assert False, (src.type, target_type)
 
     def coerce_fixed_width_to_int(self, src: Value, line: int) -> Value:
-        if ((is_int32_rprimitive(src.type) and PLATFORM_SIZE == 8) or
-            is_int16_rprimitive(src.type) or is_uint8_rprimitive(src.type)):
+        if (
+            (is_int32_rprimitive(src.type) and PLATFORM_SIZE == 8)
+            or is_int16_rprimitive(src.type)
+            or is_uint8_rprimitive(src.type)
+        ):
             # Simple case -- just sign extend and shift.
             extended = self.add(Extend(src, c_pyssize_t_rprimitive, signed=src.type.is_signed))
             return self.int_op(
@@ -2052,7 +2057,9 @@ class LowLevelIRBuilder:
     def compare_floats(self, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.add(FloatComparisonOp(lhs, rhs, op, line))
 
-    def fixed_width_int_op(self, type: RPrimitive, lhs: Value, rhs: Value, op: int, line: int) -> Value:
+    def fixed_width_int_op(
+        self, type: RPrimitive, lhs: Value, rhs: Value, op: int, line: int
+    ) -> Value:
         """Generate a binary op using Python fixed-width integer semantics.
 
         These may differ in overflow/rounding behavior from native/C ops.
@@ -2107,11 +2114,14 @@ class LowLevelIRBuilder:
 
     def check_for_zero_division(self, rhs: Value, type: RType, line: int) -> None:
         err, ok = BasicBlock(), BasicBlock()
-        is_zero = self.binary_op(rhs, Integer(0, type), '==', line)
-        b = self.add(Branch(is_zero, err, ok, Branch.BOOL))
+        is_zero = self.binary_op(rhs, Integer(0, type), "==", line)
+        self.add(Branch(is_zero, err, ok, Branch.BOOL))
         self.activate_block(err)
-        self.add(RaiseStandardError(RaiseStandardError.ZERO_DIVISION_ERROR,
-                                    "integer division or modulo by zero", line))
+        self.add(
+            RaiseStandardError(
+                RaiseStandardError.ZERO_DIVISION_ERROR, "integer division or modulo by zero", line
+            )
+        )
         self.add(Unreachable())
         self.activate_block(ok)
 

@@ -36,7 +36,6 @@ from mypyc.ir.rtypes import (
     is_fixed_width_rtype,
     is_float_rprimitive,
     is_int16_rprimitive,
-    is_uint8_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
@@ -49,6 +48,7 @@ from mypyc.ir.rtypes import (
     is_short_int_rprimitive,
     is_str_rprimitive,
     is_tuple_rprimitive,
+    is_uint8_rprimitive,
     object_rprimitive,
     optional_value_type,
 )

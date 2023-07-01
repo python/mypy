@@ -66,8 +66,6 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RTuple,
-    RType,
-    RPrimitive,
     bool_rprimitive,
     int_rprimitive,
     is_fixed_width_rtype,
@@ -76,7 +74,6 @@ from mypyc.ir.rtypes import (
     is_none_rprimitive,
     object_rprimitive,
     set_rprimitive,
-    is_uint8_rprimitive,
 )
 from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
 from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
