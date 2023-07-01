@@ -38,6 +38,7 @@ if failures:
     for e in failures[:-1]:
         print_exception(*e)
         print()
+        sys.stdout.flush()
 
     # Raise exception for the last failure. Test runner will show the traceback.
     raise failures[-1][1]
