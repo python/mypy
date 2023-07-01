@@ -98,6 +98,20 @@ L0:
     x = r1
     return x
 
+[case testU8BinaryOperationWithOutOfRangeOperand]
+from mypy_extensions import u8
+
+def out_of_range(x: u8) -> None:
+    x + (-1)
+    (-2) + x
+    x * 256
+    x + 255  # OK
+    255 + x   # OK
+[out]
+main:4: error: Value of "+" operand too small for "u8" (-1)
+main:5: error: Value of "+" operand too small for "u8" (-2)
+main:6: error: Value of "*" operand too large for "u8" (256)
+
 [case testU8ModByConstant]
 from mypy_extensions import u8
 

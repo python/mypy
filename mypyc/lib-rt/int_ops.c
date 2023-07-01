@@ -772,7 +772,7 @@ uint8_t CPyLong_AsUInt8(PyObject *o) {
         if (PyErr_Occurred()) {
             return CPY_LL_UINT_ERROR;
         } else if (overflow) {
-            PyErr_SetString(PyExc_OverflowError, "int too large to convert to i16");
+            PyErr_SetString(PyExc_OverflowError, "int too large or small to convert to u8");
             return CPY_LL_UINT_ERROR;
         }
     }
