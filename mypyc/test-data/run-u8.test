@@ -295,3 +295,10 @@ def test_tuple_u8() -> None:
     x: Any = t
     tt: Tuple[u8, u8] = x
     assert tt == (1, 2)
+
+def test_convert_u8_to_native_int() -> None:
+    for i in range(256):
+        x: u8 = i
+        assert i16(x) == i
+        assert i32(x) == i
+        assert i64(x) == i

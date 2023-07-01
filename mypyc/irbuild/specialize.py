@@ -692,6 +692,9 @@ def translate_i64(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     elif is_int32_rprimitive(arg_type) or is_int16_rprimitive(arg_type):
         val = builder.accept(arg)
         return builder.add(Extend(val, int64_rprimitive, signed=True, line=expr.line))
+    elif is_uint8_rprimitive(arg_type):
+        val = builder.accept(arg)
+        return builder.add(Extend(val, int64_rprimitive, signed=False, line=expr.line))
     elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
         val = builder.accept(arg)
         return builder.coerce(val, int64_rprimitive, expr.line)
@@ -712,6 +715,9 @@ def translate_i32(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     elif is_int16_rprimitive(arg_type):
         val = builder.accept(arg)
         return builder.add(Extend(val, int32_rprimitive, signed=True, line=expr.line))
+    elif is_uint8_rprimitive(arg_type):
+        val = builder.accept(arg)
+        return builder.add(Extend(val, int32_rprimitive, signed=False, line=expr.line))
     elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
         val = builder.accept(arg)
         val = truncate_literal(val, int32_rprimitive)
@@ -730,6 +736,9 @@ def translate_i16(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     elif is_int32_rprimitive(arg_type) or is_int64_rprimitive(arg_type):
         val = builder.accept(arg)
         return builder.add(Truncate(val, int16_rprimitive, line=expr.line))
+    elif is_uint8_rprimitive(arg_type):
+        val = builder.accept(arg)
+        return builder.add(Extend(val, int16_rprimitive, signed=False, line=expr.line))
     elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
         val = builder.accept(arg)
         val = truncate_literal(val, int16_rprimitive)
