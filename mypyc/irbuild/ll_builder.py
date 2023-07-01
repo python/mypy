@@ -2065,7 +2065,7 @@ class LowLevelIRBuilder:
             elif is_int16_rprimitive(type):
                 prim = int16_divide_op
             elif is_uint8_rprimitive(type):
-                self.check_for_zero_division(rhs, type, int)
+                self.check_for_zero_division(rhs, type, line)
                 return self.int_op(type, lhs, rhs, op, line)
             else:
                 assert False, type
@@ -2085,7 +2085,7 @@ class LowLevelIRBuilder:
             elif is_int16_rprimitive(type):
                 prim = int16_mod_op
             elif is_uint8_rprimitive(type):
-                self.check_for_zero_division(rhs, type, int)
+                self.check_for_zero_division(rhs, type, line)
                 return self.int_op(type, lhs, rhs, op, line)
             else:
                 assert False, type
