@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import os
 import re
-import sys
 import unittest
 from typing import Any
 
@@ -70,9 +69,6 @@ class FineGrainedSuite(DataSuite):
         else:
             if testcase.only_when == "-only_when_cache":
                 return True
-
-        if "Inspect" in testcase.name and sys.version_info < (3, 8):
-            return True
         return False
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
