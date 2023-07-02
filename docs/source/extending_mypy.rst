@@ -159,7 +159,7 @@ This hook will be also called for instantiation of classes.
 This is a good choice if the return type is too complex
 to be expressed by regular python typing.
 
-**get_function_signature_hook** is used to adjust the signature of a function.
+**get_function_signature_hook()** is used to adjust the signature of a function.
 
 **get_method_hook()** is the same as ``get_function_hook()`` but for methods
 instead of module level functions.

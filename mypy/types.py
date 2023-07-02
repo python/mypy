@@ -17,7 +17,7 @@ from typing import (
     Union,
     cast,
 )
-from typing_extensions import Final, TypeAlias as _TypeAlias, TypeGuard, overload
+from typing_extensions import Final, Self, TypeAlias as _TypeAlias, TypeGuard, overload
 
 import mypy.nodes
 from mypy.bogus_type import Bogus
@@ -150,7 +150,11 @@ NEVER_NAMES: Final = (
 )
 
 # Mypyc fixed-width native int types (compatible with builtins.int)
-MYPYC_NATIVE_INT_NAMES: Final = ("mypy_extensions.i64", "mypy_extensions.i32")
+MYPYC_NATIVE_INT_NAMES: Final = (
+    "mypy_extensions.i64",
+    "mypy_extensions.i32",
+    "mypy_extensions.i16",
+)
 
 DATACLASS_TRANSFORM_NAMES: Final = (
     "typing.dataclass_transform",
@@ -315,10 +319,22 @@ class TypeAliasType(Type):
             # as their target.
             assert isinstance(self.alias.target, Instance)  # type: ignore[misc]
             return self.alias.target.copy_modified(args=self.args)
-        replacer = InstantiateAliasVisitor(
-            {v.id: s for (v, s) in zip(self.alias.alias_tvars, self.args)}
-        )
-        new_tp = self.alias.target.accept(replacer)
+
+        if self.alias.tvar_tuple_index is None:
+            mapping = {v.id: s for (v, s) in zip(self.alias.alias_tvars, self.args)}
+        else:
+            prefix = self.alias.tvar_tuple_index
+            suffix = len(self.alias.alias_tvars) - self.alias.tvar_tuple_index - 1
+            start, middle, end = split_with_prefix_and_suffix(tuple(self.args), prefix, suffix)
+            tvar = self.alias.alias_tvars[prefix]
+            assert isinstance(tvar, TypeVarTupleType)
+            mapping = {tvar.id: TupleType(list(middle), tvar.tuple_fallback)}
+            for tvar, sub in zip(
+                self.alias.alias_tvars[:prefix] + self.alias.alias_tvars[prefix + 1 :], start + end
+            ):
+                mapping[tvar.id] = sub
+
+        new_tp = self.alias.target.accept(InstantiateAliasVisitor(mapping))
         new_tp.accept(LocationSetter(self.line, self.column))
         new_tp.line = self.line
         new_tp.column = self.column
@@ -514,12 +530,13 @@ class TypeVarId:
 
 
 class TypeVarLikeType(ProperType):
-    __slots__ = ("name", "fullname", "id", "upper_bound")
+    __slots__ = ("name", "fullname", "id", "upper_bound", "default")
 
     name: str  # Name (may be qualified)
     fullname: str  # Fully qualified name
     id: TypeVarId
     upper_bound: Type
+    default: Type
 
     def __init__(
         self,
@@ -527,6 +544,7 @@ class TypeVarLikeType(ProperType):
         fullname: str,
         id: TypeVarId | int,
         upper_bound: Type,
+        default: Type,
         line: int = -1,
         column: int = -1,
     ) -> None:
@@ -537,6 +555,7 @@ class TypeVarLikeType(ProperType):
             id = TypeVarId(id)
         self.id = id
         self.upper_bound = upper_bound
+        self.default = default
 
     def serialize(self) -> JsonDict:
         raise NotImplementedError
@@ -544,6 +563,18 @@ class TypeVarLikeType(ProperType):
     @classmethod
     def deserialize(cls, data: JsonDict) -> TypeVarLikeType:
         raise NotImplementedError
+
+    def copy_modified(self, *, id: TypeVarId, **kwargs: Any) -> Self:
+        raise NotImplementedError
+
+    @classmethod
+    def new_unification_variable(cls, old: Self) -> Self:
+        new_id = TypeVarId.new(meta_level=1)
+        return old.copy_modified(id=new_id)
+
+    def has_default(self) -> bool:
+        t = get_proper_type(self.default)
+        return not (isinstance(t, AnyType) and t.type_of_any == TypeOfAny.from_omitted_generics)
 
 
 class TypeVarType(TypeVarLikeType):
@@ -561,37 +592,37 @@ class TypeVarType(TypeVarLikeType):
         id: TypeVarId | int,
         values: list[Type],
         upper_bound: Type,
+        default: Type,
         variance: int = INVARIANT,
         line: int = -1,
         column: int = -1,
     ) -> None:
-        super().__init__(name, fullname, id, upper_bound, line, column)
+        super().__init__(name, fullname, id, upper_bound, default, line, column)
         assert values is not None, "No restrictions must be represented by empty list"
         self.values = values
         self.variance = variance
 
-    @staticmethod
-    def new_unification_variable(old: TypeVarType) -> TypeVarType:
-        new_id = TypeVarId.new(meta_level=1)
-        return old.copy_modified(id=new_id)
-
     def copy_modified(
         self,
+        *,
         values: Bogus[list[Type]] = _dummy,
         upper_bound: Bogus[Type] = _dummy,
+        default: Bogus[Type] = _dummy,
         id: Bogus[TypeVarId | int] = _dummy,
         line: int = _dummy_int,
         column: int = _dummy_int,
+        **kwargs: Any,
     ) -> TypeVarType:
         return TypeVarType(
-            self.name,
-            self.fullname,
-            self.id if id is _dummy else id,
-            self.values if values is _dummy else values,
-            self.upper_bound if upper_bound is _dummy else upper_bound,
-            self.variance,
-            self.line if line == _dummy_int else line,
-            self.column if column == _dummy_int else column,
+            name=self.name,
+            fullname=self.fullname,
+            id=self.id if id is _dummy else id,
+            values=self.values if values is _dummy else values,
+            upper_bound=self.upper_bound if upper_bound is _dummy else upper_bound,
+            default=self.default if default is _dummy else default,
+            variance=self.variance,
+            line=self.line if line == _dummy_int else line,
+            column=self.column if column == _dummy_int else column,
         )
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
@@ -619,6 +650,7 @@ class TypeVarType(TypeVarLikeType):
             "namespace": self.id.namespace,
             "values": [v.serialize() for v in self.values],
             "upper_bound": self.upper_bound.serialize(),
+            "default": self.default.serialize(),
             "variance": self.variance,
         }
 
@@ -626,12 +658,13 @@ class TypeVarType(TypeVarLikeType):
     def deserialize(cls, data: JsonDict) -> TypeVarType:
         assert data[".class"] == "TypeVarType"
         return TypeVarType(
-            data["name"],
-            data["fullname"],
-            TypeVarId(data["id"], namespace=data["namespace"]),
-            [deserialize_type(v) for v in data["values"]],
-            deserialize_type(data["upper_bound"]),
-            data["variance"],
+            name=data["name"],
+            fullname=data["fullname"],
+            id=TypeVarId(data["id"], namespace=data["namespace"]),
+            values=[deserialize_type(v) for v in data["values"]],
+            upper_bound=deserialize_type(data["upper_bound"]),
+            default=deserialize_type(data["default"]),
+            variance=data["variance"],
         )
 
 
@@ -674,19 +707,15 @@ class ParamSpecType(TypeVarLikeType):
         id: TypeVarId | int,
         flavor: int,
         upper_bound: Type,
+        default: Type,
         *,
         line: int = -1,
         column: int = -1,
         prefix: Parameters | None = None,
     ) -> None:
-        super().__init__(name, fullname, id, upper_bound, line=line, column=column)
+        super().__init__(name, fullname, id, upper_bound, default, line=line, column=column)
         self.flavor = flavor
         self.prefix = prefix or Parameters([], [], [])
-
-    @staticmethod
-    def new_unification_variable(old: ParamSpecType) -> ParamSpecType:
-        new_id = TypeVarId.new(meta_level=1)
-        return old.copy_modified(id=new_id)
 
     def with_flavor(self, flavor: int) -> ParamSpecType:
         return ParamSpecType(
@@ -695,6 +724,7 @@ class ParamSpecType(TypeVarLikeType):
             self.id,
             flavor,
             upper_bound=self.upper_bound,
+            default=self.default,
             prefix=self.prefix,
         )
 
@@ -704,6 +734,8 @@ class ParamSpecType(TypeVarLikeType):
         id: Bogus[TypeVarId | int] = _dummy,
         flavor: int = _dummy_int,
         prefix: Bogus[Parameters] = _dummy,
+        default: Bogus[Type] = _dummy,
+        **kwargs: Any,
     ) -> ParamSpecType:
         return ParamSpecType(
             self.name,
@@ -711,6 +743,7 @@ class ParamSpecType(TypeVarLikeType):
             id if id is not _dummy else self.id,
             flavor if flavor != _dummy_int else self.flavor,
             self.upper_bound,
+            default=default if default is not _dummy else self.default,
             line=self.line,
             column=self.column,
             prefix=prefix if prefix is not _dummy else self.prefix,
@@ -745,6 +778,7 @@ class ParamSpecType(TypeVarLikeType):
             "id": self.id.raw_id,
             "flavor": self.flavor,
             "upper_bound": self.upper_bound.serialize(),
+            "default": self.default.serialize(),
             "prefix": self.prefix.serialize(),
         }
 
@@ -757,6 +791,7 @@ class ParamSpecType(TypeVarLikeType):
             data["id"],
             data["flavor"],
             deserialize_type(data["upper_bound"]),
+            deserialize_type(data["default"]),
             prefix=Parameters.deserialize(data["prefix"]),
         )
 
@@ -774,11 +809,12 @@ class TypeVarTupleType(TypeVarLikeType):
         id: TypeVarId | int,
         upper_bound: Type,
         tuple_fallback: Instance,
+        default: Type,
         *,
         line: int = -1,
         column: int = -1,
     ) -> None:
-        super().__init__(name, fullname, id, upper_bound, line=line, column=column)
+        super().__init__(name, fullname, id, upper_bound, default, line=line, column=column)
         self.tuple_fallback = tuple_fallback
 
     def serialize(self) -> JsonDict:
@@ -790,6 +826,7 @@ class TypeVarTupleType(TypeVarLikeType):
             "id": self.id.raw_id,
             "upper_bound": self.upper_bound.serialize(),
             "tuple_fallback": self.tuple_fallback.serialize(),
+            "default": self.default.serialize(),
         }
 
     @classmethod
@@ -801,6 +838,7 @@ class TypeVarTupleType(TypeVarLikeType):
             data["id"],
             deserialize_type(data["upper_bound"]),
             Instance.deserialize(data["tuple_fallback"]),
+            deserialize_type(data["default"]),
         )
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
@@ -814,18 +852,21 @@ class TypeVarTupleType(TypeVarLikeType):
             return NotImplemented
         return self.id == other.id
 
-    @staticmethod
-    def new_unification_variable(old: TypeVarTupleType) -> TypeVarTupleType:
-        new_id = TypeVarId.new(meta_level=1)
-        return old.copy_modified(id=new_id)
-
-    def copy_modified(self, id: Bogus[TypeVarId | int] = _dummy) -> TypeVarTupleType:
+    def copy_modified(
+        self,
+        *,
+        id: Bogus[TypeVarId | int] = _dummy,
+        upper_bound: Bogus[Type] = _dummy,
+        default: Bogus[Type] = _dummy,
+        **kwargs: Any,
+    ) -> TypeVarTupleType:
         return TypeVarTupleType(
             self.name,
             self.fullname,
             self.id if id is _dummy else id,
-            self.upper_bound,
+            self.upper_bound if upper_bound is _dummy else upper_bound,
             self.tuple_fallback,
+            self.default if default is _dummy else default,
             line=self.line,
             column=self.column,
         )
@@ -1022,6 +1063,12 @@ class UnpackType(ProperType):
         assert data[".class"] == "UnpackType"
         typ = data["type"]
         return UnpackType(deserialize_type(typ))
+
+    def __hash__(self) -> int:
+        return hash(self.type)
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, UnpackType) and self.type == other.type
 
 
 class AnyType(ProperType):
@@ -2390,6 +2437,7 @@ class TypedDictType(ProperType):
         *,
         fallback: Instance | None = None,
         item_types: list[Type] | None = None,
+        item_names: list[str] | None = None,
         required_keys: set[str] | None = None,
     ) -> TypedDictType:
         if fallback is None:
@@ -2400,6 +2448,9 @@ class TypedDictType(ProperType):
             items = dict(zip(self.items, item_types))
         if required_keys is None:
             required_keys = self.required_keys
+        if item_names is not None:
+            items = {k: v for (k, v) in items.items() if k in item_names}
+            required_keys &= set(item_names)
         return TypedDictType(items, required_keys, fallback, self.line, self.column)
 
     def create_anonymous_fallback(self) -> Instance:
@@ -2914,7 +2965,7 @@ def get_proper_types(
 # to make it easier to gradually get modules working with mypyc.
 # Import them here, after the types are defined.
 # This is intended as a re-export also.
-from mypy.type_visitor import (  # noqa: F811,F401
+from mypy.type_visitor import (  # noqa: F811
     ALL_STRATEGY as ALL_STRATEGY,
     ANY_STRATEGY as ANY_STRATEGY,
     BoolTypeQuery as BoolTypeQuery,
@@ -3006,6 +3057,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             s = f"{t.name}`{t.id}"
         if self.id_mapper and t.upper_bound:
             s += f"(upper_bound={t.upper_bound.accept(self)})"
+        if t.has_default():
+            s += f" = {t.default.accept(self)}"
         return s
 
     def visit_param_spec(self, t: ParamSpecType) -> str:
@@ -3021,6 +3074,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             s += f"{t.name_with_suffix()}`{t.id}"
         if t.prefix.arg_types:
             s += "]"
+        if t.has_default():
+            s += f" = {t.default.accept(self)}"
         return s
 
     def visit_parameters(self, t: Parameters) -> str:
@@ -3059,6 +3114,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         else:
             # Named type variable type.
             s = f"{t.name}`{t.id}"
+        if t.has_default():
+            s += f" = {t.default.accept(self)}"
         return s
 
     def visit_callable_type(self, t: CallableType) -> str:
@@ -3095,6 +3152,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             if s:
                 s += ", "
             s += f"*{n}.args, **{n}.kwargs"
+            if param_spec.has_default():
+                s += f" = {param_spec.default.accept(self)}"
 
         s = f"({s})"
 
@@ -3113,12 +3172,18 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                         vals = f"({', '.join(val.accept(self) for val in var.values)})"
                         vs.append(f"{var.name} in {vals}")
                     elif not is_named_instance(var.upper_bound, "builtins.object"):
-                        vs.append(f"{var.name} <: {var.upper_bound.accept(self)}")
+                        vs.append(
+                            f"{var.name} <: {var.upper_bound.accept(self)}{f' = {var.default.accept(self)}' if var.has_default() else ''}"
+                        )
                     else:
-                        vs.append(var.name)
+                        vs.append(
+                            f"{var.name}{f' = {var.default.accept(self)}' if var.has_default()  else ''}"
+                        )
                 else:
-                    # For other TypeVarLikeTypes, just use the name
-                    vs.append(var.name)
+                    # For other TypeVarLikeTypes, use the name and default
+                    vs.append(
+                        f"{var.name}{f' = {var.default.accept(self)}' if var.has_default() else ''}"
+                    )
             s = f"[{', '.join(vs)}] {s}"
 
         return f"def {s}"
@@ -3300,6 +3365,45 @@ def has_recursive_types(typ: Type) -> bool:
     return typ.accept(_has_recursive_type)
 
 
+def split_with_prefix_and_suffix(
+    types: tuple[Type, ...], prefix: int, suffix: int
+) -> tuple[tuple[Type, ...], tuple[Type, ...], tuple[Type, ...]]:
+    if len(types) <= prefix + suffix:
+        types = extend_args_for_prefix_and_suffix(types, prefix, suffix)
+    if suffix:
+        return types[:prefix], types[prefix:-suffix], types[-suffix:]
+    else:
+        return types[:prefix], types[prefix:], ()
+
+
+def extend_args_for_prefix_and_suffix(
+    types: tuple[Type, ...], prefix: int, suffix: int
+) -> tuple[Type, ...]:
+    """Extend list of types by eating out from variadic tuple to satisfy prefix and suffix."""
+    idx = None
+    item = None
+    for i, t in enumerate(types):
+        if isinstance(t, UnpackType):
+            p_type = get_proper_type(t.type)
+            if isinstance(p_type, Instance) and p_type.type.fullname == "builtins.tuple":
+                item = p_type.args[0]
+                idx = i
+                break
+
+    if idx is None:
+        return types
+    assert item is not None
+    if idx < prefix:
+        start = (item,) * (prefix - idx)
+    else:
+        start = ()
+    if len(types) - idx - 1 < suffix:
+        end = (item,) * (suffix - len(types) + idx + 1)
+    else:
+        end = ()
+    return types[:idx] + start + (types[idx],) + end + types[idx + 1 :]
+
+
 def flatten_nested_unions(
     types: Sequence[Type], handle_type_alias_type: bool = True
 ) -> list[Type]:
@@ -3324,6 +3428,27 @@ def flatten_nested_unions(
             # Must preserve original aliases when possible.
             flat_items.append(t)
     return flat_items
+
+
+def flatten_nested_tuples(types: Sequence[Type]) -> list[Type]:
+    """Recursively flatten TupleTypes nested with Unpack.
+
+    For example this will transform
+        Tuple[A, Unpack[Tuple[B, Unpack[Tuple[C, D]]]]]
+    into
+        Tuple[A, B, C, D]
+    """
+    res = []
+    for typ in types:
+        if not isinstance(typ, UnpackType):
+            res.append(typ)
+            continue
+        p_type = get_proper_type(typ.type)
+        if not isinstance(p_type, TupleType):
+            res.append(typ)
+            continue
+        res.extend(flatten_nested_tuples(p_type.items))
+    return res
 
 
 def is_literal_type(typ: ProperType, fallback_fullname: str, value: LiteralValue) -> bool:
@@ -3356,6 +3481,19 @@ def callable_with_ellipsis(any_type: AnyType, ret_type: Type, fallback: Instance
         fallback=fallback,
         is_ellipsis_args=True,
     )
+
+
+def remove_dups(types: list[T]) -> list[T]:
+    if len(types) <= 1:
+        return types
+    # Get unique elements in order of appearance
+    all_types: set[T] = set()
+    new_types: list[T] = []
+    for t in types:
+        if t not in all_types:
+            new_types.append(t)
+            all_types.add(t)
+    return new_types
 
 
 # This cyclic import is unfortunate, but to avoid it we would need to move away all uses

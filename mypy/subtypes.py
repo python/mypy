@@ -661,6 +661,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_unpack_type(self, left: UnpackType) -> bool:
         if isinstance(self.right, UnpackType):
             return self._is_subtype(left.type, self.right.type)
+        if isinstance(self.right, Instance) and self.right.type.fullname == "builtins.object":
+            return True
         return False
 
     def visit_parameters(self, left: Parameters) -> bool:
@@ -692,7 +694,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 right,
                 is_compat=self._is_subtype,
                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
-                strict_concatenate=self.options.strict_concatenate if self.options else True,
+                strict_concatenate=(self.options.extra_checks or self.options.strict_concatenate)
+                if self.options
+                else True,
             )
         elif isinstance(right, Overloaded):
             return all(self._is_subtype(left, item) for item in right.items)
@@ -856,7 +860,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     else:
                         # If this one overlaps with the supertype in any way, but it wasn't
                         # an exact match, then it's a potential error.
-                        strict_concat = self.options.strict_concatenate if self.options else True
+                        strict_concat = (
+                            (self.options.extra_checks or self.options.strict_concatenate)
+                            if self.options
+                            else True
+                        )
                         if left_index not in matched_overloads and (
                             is_callable_compatible(
                                 left_item,

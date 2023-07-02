@@ -945,17 +945,21 @@ async def bar(x: Union[A, B]) -> None:
 [typing fixtures/typing-async.pyi]
 
 [case testAsyncIteratorWithIgnoredErrors]
-from m import L
+import m
 
-async def func(l: L) -> None:
+async def func(l: m.L) -> None:
     reveal_type(l.get_iterator)  # N: Revealed type is "def () -> typing.AsyncIterator[builtins.str]"
     reveal_type(l.get_iterator2)  # N: Revealed type is "def () -> typing.AsyncIterator[builtins.str]"
     async for i in l.get_iterator():
         reveal_type(i)  # N: Revealed type is "builtins.str"
 
+    reveal_type(m.get_generator)  # N: Revealed type is "def () -> typing.AsyncGenerator[builtins.int, None]"
+    async for i2 in m.get_generator():
+        reveal_type(i2)  # N: Revealed type is "builtins.int"
+
 [file m.py]
 # mypy: ignore-errors=True
-from typing import AsyncIterator
+from typing import AsyncIterator, AsyncGenerator
 
 class L:
     async def some_func(self, i: int) -> str:
@@ -967,6 +971,9 @@ class L:
     async def get_iterator2(self) -> AsyncIterator[str]:
         if self:
             a = (yield 'x')
+
+async def get_generator() -> AsyncGenerator[int, None]:
+    yield 1
 
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]

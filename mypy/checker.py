@@ -136,6 +136,7 @@ from mypy.nodes import (
 from mypy.options import Options
 from mypy.patterns import AsPattern, StarredPattern
 from mypy.plugin import CheckerPluginInterface, Plugin
+from mypy.plugins import dataclasses as dataclasses_plugin
 from mypy.scope import Scope
 from mypy.semanal import is_trivial_body, refers_to_fullname, set_callable_name
 from mypy.semanal_enum import ENUM_BASES, ENUM_SPECIAL_PROPS
@@ -1044,6 +1045,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if name == "__exit__":
             self.check__exit__return_type(defn)
+        if name == "__post_init__":
+            if dataclasses_plugin.is_processed_dataclass(defn.info):
+                dataclasses_plugin.check_post_init(self, defn, defn.info)
 
     @contextmanager
     def enter_attribute_inference_context(self) -> Iterator[None]:
@@ -1851,7 +1855,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 found_base_method = True
 
             # Check the type of override.
-            if name not in ("__init__", "__new__", "__init_subclass__"):
+            if name not in ("__init__", "__new__", "__init_subclass__", "__post_init__"):
                 # Check method override
                 # (__init__, __new__, __init_subclass__ are special).
                 if self.check_method_override_for_base_with_name(defn, name, base):
@@ -1988,7 +1992,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # If the attribute is read-only, allow covariance
                 pass
             else:
-                self.msg.signature_incompatible_with_supertype(defn.name, name, base.name, context)
+                self.msg.signature_incompatible_with_supertype(
+                    defn.name, name, base.name, context, original=original_type, override=typ
+                )
         return False
 
     def bind_and_map_method(
@@ -2810,6 +2816,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if name == "__match_args__" and inferred is not None:
                     typ = self.expr_checker.accept(rvalue)
                     self.check_match_args(inferred, typ, lvalue)
+                if name == "__post_init__":
+                    if dataclasses_plugin.is_processed_dataclass(self.scope.active_class()):
+                        self.fail(message_registry.DATACLASS_POST_INIT_MUST_BE_A_FUNCTION, rvalue)
 
             # Defer PartialType's super type checking.
             if (
@@ -4268,6 +4277,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             isinstance(return_type, Instance)
                             and return_type.type.fullname == "builtins.object"
                         )
+                        and not is_lambda
                     ):
                         self.msg.incorrectly_returning_any(return_type, s)
                     return
@@ -6791,6 +6801,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             )
         return not watcher.has_new_errors()
 
+    def get_expression_type(self, node: Expression, type_context: Type | None = None) -> Type:
+        return self.expr_checker.accept(node, type_context=type_context)
+
 
 class CollectArgTypeVarTypes(TypeTraverserVisitor):
     """Collects the non-nested argument types in a set."""
@@ -7189,6 +7202,7 @@ def detach_callable(typ: CallableType) -> CallableType:
                 id=var.id,
                 values=var.values,
                 upper_bound=var.upper_bound,
+                default=var.default,
                 variance=var.variance,
             )
         )

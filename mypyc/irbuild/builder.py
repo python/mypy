@@ -48,6 +48,7 @@ from mypy.nodes import (
 )
 from mypy.types import (
     AnyType,
+    DeletedType,
     Instance,
     ProperType,
     TupleType,
@@ -301,6 +302,9 @@ class IRBuilder:
     def load_int(self, value: int) -> Value:
         return self.builder.load_int(value)
 
+    def load_float(self, value: float) -> Value:
+        return self.builder.load_float(value)
+
     def unary_op(self, lreg: Value, expr_op: str, line: int) -> Value:
         return self.builder.unary_op(lreg, expr_op, line)
 
@@ -531,16 +535,14 @@ class IRBuilder:
             error_msg=f'value for final name "{error_name}" was not set',
         )
 
-    def load_final_literal_value(self, val: int | str | bytes | float | bool, line: int) -> Value:
-        """Load value of a final name or class-level attribute."""
+    def load_literal_value(self, val: int | str | bytes | float | complex | bool) -> Value:
+        """Load value of a final name, class-level attribute, or constant folded expression."""
         if isinstance(val, bool):
             if val:
                 return self.true()
             else:
                 return self.false()
         elif isinstance(val, int):
-            # TODO: take care of negative integer initializers
-            # (probably easier to fix this in mypy itself).
             return self.builder.load_int(val)
         elif isinstance(val, float):
             return self.builder.load_float(val)
@@ -548,8 +550,10 @@ class IRBuilder:
             return self.builder.load_str(val)
         elif isinstance(val, bytes):
             return self.builder.load_bytes(val)
+        elif isinstance(val, complex):
+            return self.builder.load_complex(val)
         else:
-            assert False, "Unsupported final literal value"
+            assert False, "Unsupported literal value"
 
     def get_assignment_target(
         self, lvalue: Lvalue, line: int = -1, *, for_read: bool = False
@@ -570,6 +574,10 @@ class IRBuilder:
                 self.error("Cannot assign to the first argument of classmethod", line)
             if lvalue.kind == LDEF:
                 if symbol not in self.symtables[-1]:
+                    if isinstance(symbol, Var) and not isinstance(symbol.type, DeletedType):
+                        reg_type = self.type_to_rtype(symbol.type)
+                    else:
+                        reg_type = self.node_type(lvalue)
                     # If the function is a generator function, then first define a new variable
                     # in the current function's environment class. Next, define a target that
                     # refers to the newly defined variable in that environment class. Add the
@@ -577,14 +585,11 @@ class IRBuilder:
                     # current environment.
                     if self.fn_info.is_generator:
                         return self.add_var_to_env_class(
-                            symbol,
-                            self.node_type(lvalue),
-                            self.fn_info.generator_class,
-                            reassign=False,
+                            symbol, reg_type, self.fn_info.generator_class, reassign=False
                         )
 
                     # Otherwise define a new local variable.
-                    return self.add_local_reg(symbol, self.node_type(lvalue))
+                    return self.add_local_reg(symbol, reg_type)
                 else:
                     # Assign to a previously defined variable.
                     return self.lookup(symbol)
@@ -1008,7 +1013,7 @@ class IRBuilder:
             line: line number where loading occurs
         """
         if final_var.final_value is not None:  # this is safe even for non-native names
-            return self.load_final_literal_value(final_var.final_value, line)
+            return self.load_literal_value(final_var.final_value)
         elif native:
             return self.load_final_static(fullname, self.mapper.type_to_rtype(typ), line, name)
         else:

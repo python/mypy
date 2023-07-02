@@ -14,7 +14,7 @@ error_codes: dict[str, ErrorCode] = {}
 sub_code_map: dict[str, set[str]] = defaultdict(set)
 
 
-@mypyc_attr(serializable=True)
+@mypyc_attr(allow_interpreted_subclasses=True)
 class ErrorCode:
     def __init__(
         self,
@@ -36,6 +36,14 @@ class ErrorCode:
 
     def __str__(self) -> str:
         return f"<ErrorCode {self.code}>"
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ErrorCode):
+            return False
+        return self.code == other.code
+
+    def __hash__(self) -> int:
+        return hash((self.code,))
 
 
 ATTR_DEFINED: Final = ErrorCode("attr-defined", "Check that attribute exists", "General")
@@ -136,7 +144,7 @@ SAFE_SUPER: Final = ErrorCode(
     "safe-super", "Warn about calls to abstract methods with empty/trivial bodies", "General"
 )
 TOP_LEVEL_AWAIT: Final = ErrorCode(
-    "top-level-await", "Warn about top level await experessions", "General"
+    "top-level-await", "Warn about top level await expressions", "General"
 )
 
 # These error codes aren't enabled by default.
