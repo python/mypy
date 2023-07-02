@@ -317,6 +317,7 @@ class FineGrainedSuite(DataSuite):
                 # JSON contains already escaped \ on Windows, so requires a bit of care.
                 val = val.replace("\\\\", "\\")
                 val = val.replace(os.path.realpath(tmp_dir) + os.path.sep, "")
+                val = val.replace(os.path.abspath(tmp_dir) + os.path.sep, "")
             output.extend(val.strip().split("\n"))
         return normalize_messages(output)
 
