@@ -2092,3 +2092,20 @@ def fst(kv: Tuple[K, V]) -> K:
 pairs = [(len(s), s) for s in ["one", "two", "three"]]
 grouped = groupby(pairs, key=fst)
 [out]
+
+[case testDataclassReplaceOptional]
+# flags: --strict-optional
+from dataclasses import dataclass, replace
+from typing import Optional
+
+@dataclass
+class A:
+    x: Optional[int]
+
+a = A(x=42)
+reveal_type(a)
+a2 = replace(a, x=None)  # OK
+reveal_type(a2)
+[out]
+_testDataclassReplaceOptional.py:10: note: Revealed type is "_testDataclassReplaceOptional.A"
+_testDataclassReplaceOptional.py:12: note: Revealed type is "_testDataclassReplaceOptional.A"

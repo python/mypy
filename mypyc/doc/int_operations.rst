@@ -8,14 +8,16 @@ Mypyc supports these integer types:
 * ``int`` (arbitrary-precision integer)
 * ``i64`` (64-bit signed integer)
 * ``i32`` (32-bit signed integer)
+* ``i16`` (16-bit signed integer)
 
-``i64`` and ``i32`` are *native integer types* and must be imported
+``i64``, ``i32`` and ``i16`` are *native integer types* and must be imported
 from the ``mypy_extensions`` module. ``int`` corresponds to the Python
 ``int`` type, but uses a more efficient runtime representation (tagged
-pointer). Native integer types are value types. All integer types have
-optimized primitive operations, but the native integer types are more
-efficient than ``int``, since they don't require range or bounds
-checks.
+pointer). Native integer types are value types.
+
+All integer types have optimized primitive operations, but the native
+integer types are more efficient than ``int``, since they don't
+require range or bounds checks.
 
 Operations on integers that are listed here have fast, optimized
 implementations. Other integer operations use generic implementations
@@ -31,6 +33,7 @@ Construction
 * ``int(x: float)``
 * ``int(x: i64)``
 * ``int(x: i32)``
+* ``int(x: i16)``
 * ``int(x: str)``
 * ``int(x: str, base: int)``
 * ``int(x: int)`` (no-op)
@@ -40,6 +43,7 @@ Construction
 * ``i64(x: int)``
 * ``i64(x: float)``
 * ``i64(x: i32)``
+* ``i64(x: i16)``
 * ``i64(x: str)``
 * ``i64(x: str, base: int)``
 * ``i64(x: i64)`` (no-op)
@@ -49,9 +53,20 @@ Construction
 * ``i32(x: int)``
 * ``i32(x: float)``
 * ``i32(x: i64)`` (truncate)
+* ``i32(x: i16)``
 * ``i32(x: str)``
 * ``i32(x: str, base: int)``
 * ``i32(x: i32)`` (no-op)
+
+``i16`` type:
+
+* ``i16(x: int)``
+* ``i16(x: float)``
+* ``i16(x: i64)`` (truncate)
+* ``i16(x: i32)`` (truncate)
+* ``i16(x: str)``
+* ``i16(x: str, base: int)``
+* ``i16(x: i16)`` (no-op)
 
 Conversions from ``int`` to a native integer type raise
 ``OverflowError`` if the value is too large or small. Conversions from

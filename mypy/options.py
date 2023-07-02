@@ -40,6 +40,7 @@ PER_MODULE_OPTIONS: Final = {
     "disallow_untyped_defs",
     "enable_error_code",
     "enabled_error_codes",
+    "extra_checks",
     "follow_imports_for_stubs",
     "follow_imports",
     "ignore_errors",
@@ -200,8 +201,11 @@ class Options:
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
         self.strict_equality = False
 
-        # Make arguments prepended via Concatenate be truly positional-only.
+        # Deprecated, use extra_checks instead.
         self.strict_concatenate = False
+
+        # Enable additional checks that are technically correct but impractical.
+        self.extra_checks = False
 
         # Report an error for any branches inferred to be unreachable as a result of
         # type analysis.
@@ -309,6 +313,7 @@ class Options:
         self.show_column_numbers: bool = False
         self.show_error_end: bool = False
         self.hide_error_codes = False
+        self.show_error_code_links = False
         # Use soft word wrap and show trimmed source snippets with error location markers.
         self.pretty = False
         self.dump_graph = False

@@ -1692,6 +1692,8 @@ class SemanticAnalyzer(
     def analyze_class_body_common(self, defn: ClassDef) -> None:
         """Parts of class body analysis that are common to all kinds of class defs."""
         self.enter_class(defn.info)
+        if any(b.self_type is not None for b in defn.info.mro):
+            self.setup_self_type()
         defn.defs.accept(self)
         self.apply_class_plugin_hooks(defn)
         self.leave_class()
@@ -1744,6 +1746,10 @@ class SemanticAnalyzer(
                 self.setup_type_vars(defn, tvar_defs)
                 self.setup_alias_type_vars(defn)
                 with self.scope.class_scope(defn.info):
+                    for deco in defn.decorators:
+                        deco.accept(self)
+                        if isinstance(deco, RefExpr) and deco.fullname in FINAL_DECORATOR_NAMES:
+                            info.is_final = True
                     with self.named_tuple_analyzer.save_namedtuple_body(info):
                         self.analyze_class_body_common(defn)
             return True
@@ -3394,7 +3400,7 @@ class SemanticAnalyzer(
             return None
 
         value = constant_fold_expr(rvalue, self.cur_mod_id)
-        if value is None:
+        if value is None or isinstance(value, complex):
             return None
 
         if isinstance(value, bool):
@@ -5084,14 +5090,14 @@ class SemanticAnalyzer(
 
         For other variants of dict(...), return None.
         """
-        if not all(kind == ARG_NAMED for kind in call.arg_kinds):
+        if not all(kind in (ARG_NAMED, ARG_STAR2) for kind in call.arg_kinds):
             # Must still accept those args.
             for a in call.args:
                 a.accept(self)
             return None
         expr = DictExpr(
             [
-                (StrExpr(cast(str, key)), value)  # since they are all ARG_NAMED
+                (StrExpr(key) if key is not None else None, value)
                 for key, value in zip(call.arg_names, call.args)
             ]
         )

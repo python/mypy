@@ -323,6 +323,38 @@ Example:
         else:
             raise ValueError('not defined for zero')
 
+.. _code-empty-body:
+
+Check that functions don't have empty bodies outside stubs [empty-body]
+-----------------------------------------------------------------------
+
+This error code is similar to the ``[return]`` code but is emitted specifically
+for functions and methods with empty bodies (if they are annotated with
+non-trivial return type). Such a distinction exists because in some contexts
+an empty body can be valid, for example for an abstract method or in a stub
+file. Also old versions of mypy used to unconditionally allow functions with
+empty bodies, so having a dedicated error code simplifies cross-version
+compatibility.
+
+Note that empty bodies are allowed for methods in *protocols*, and such methods
+are considered implicitly abstract:
+
+.. code-block:: python
+
+   from abc import abstractmethod
+   from typing import Protocol
+
+   class RegularABC:
+       @abstractmethod
+       def foo(self) -> int:
+           pass  # OK
+       def bar(self) -> int:
+           pass  # Error: Missing return statement  [empty-body]
+
+   class Proto(Protocol):
+       def bar(self) -> int:
+           pass  # OK
+
 .. _code-return-value:
 
 Check that return value is compatible [return-value]
@@ -947,6 +979,28 @@ otherwise unused variable:
 
        _ = f()  # No error
 
+.. _code-top-level-await:
+
+Warn about top level await expressions [top-level-await]
+--------------------------------------------------------
+
+This error code is separate from the general ``[syntax]`` errors, because in
+some environments (e.g. IPython) a top level ``await`` is allowed. In such
+environments a user may want to use ``--disable-error-code=top-level-await``,
+that allows to still have errors for other improper uses of ``await``, for
+example:
+
+.. code-block:: python
+
+   async def f() -> None:
+       ...
+
+   top = await f()  # Error: "await" outside function  [top-level-await]
+
+   def g() -> None:
+       # This is a blocker error and cannot be silenced.
+       await f()  # Error: "await" outside coroutine ("async def")
+
 .. _code-assert-type:
 
 Check types in assert_type [assert-type]
@@ -978,6 +1032,27 @@ Functions will always evaluate to true in boolean contexts.
     if f:  # Error: Function "Callable[[], Any]" could always be true in boolean context  [truthy-function]
         pass
 
+.. _code-str-format:
+
+Check that string formatting/interpolation is type-safe [str-format]
+--------------------------------------------------------------------
+
+Mypy will check that f-strings, ``str.format()`` calls, and ``%`` interpolations
+are valid (when corresponding template is a literal string). This includes
+checking number and types of replacements, for example:
+
+.. code-block:: python
+
+    # Error: Cannot find replacement for positional format specifier 1 [str-format]
+    "{} and {}".format("spam")
+    "{} and {}".format("spam", "eggs")  # OK
+    # Error: Not all arguments converted during string formatting [str-format]
+    "{} and {}".format("spam", "eggs", "cheese")
+
+    # Error: Incompatible types in string interpolation
+    # (expression has type "float", placeholder has type "int") [str-format]
+    "{:d}".format(3.14)
+
 .. _code-str-bytes-safe:
 
 Check for implicit bytes coercions [str-bytes-safe]
@@ -997,6 +1072,28 @@ Warn about cases where a bytes object may be converted to a string in an unexpec
     # Okay
     print(f"The alphabet starts with {b!r}")  # The alphabet starts with b'abc'
     print(f"The alphabet starts with {b.decode('utf-8')}")  # The alphabet starts with abc
+
+.. _code-annotation-unchecked:
+
+Notify about an annotation in an unchecked function [annotation-unchecked]
+--------------------------------------------------------------------------
+
+Sometimes a user may accidentally omit an annotation for a function, and mypy
+will not check the body of this function (unless one uses
+:option:`--check-untyped-defs <mypy --check-untyped-defs>` or
+:option:`--disallow-untyped-defs <mypy --disallow-untyped-defs>`). To avoid
+such situations go unnoticed, mypy will show a note, if there are any type
+annotations in an unchecked function:
+
+.. code-block:: python
+
+    def test_assignment():  # "-> None" return annotation is missing
+        # Note: By default the bodies of untyped functions are not checked,
+        # consider using --check-untyped-defs [annotation-unchecked]
+        x: int = "no way"
+
+Note that mypy will still exit with return code ``0``, since such behaviour is
+specified by :pep:`484`.
 
 .. _code-syntax:
 
