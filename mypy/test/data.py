@@ -369,7 +369,11 @@ class DataDrivenTestCase(pytest.Item):
             os.chdir(self.old_cwd)
         if self.tmpdir is not None:
             try:
-                self.tmpdir.cleanup()
+                # We run into a RecursionError on Windows
+                # https://github.com/python/cpython/issues/79325
+                # So just avoid cleaning up the temporary directory on CI
+                if sys.platform != "win32" or "GITHUB_ACTION" not in os.environ:
+                    self.tmpdir.cleanup()
             except OSError:
                 pass
         self.old_cwd = None
