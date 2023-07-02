@@ -702,7 +702,7 @@ class StubgenPythonSuite(DataSuite):
         try:
             try:
                 if not testcase.name.endswith("_import"):
-                    if sys.platform == "win32" and "GITHUB_ACTION" in os.environ:
+                    if sys.platform == "win32" and "CI" in os.environ:
                         # These seem to trigger a RecursionError in shutil.rmtree in CI
                         # Possibly related to https://github.com/python/cpython/issues/79325
                         import pytest
