@@ -227,7 +227,7 @@ setup(
     # Same here.
     extras_require={
         "dmypy": "psutil >= 4.0",
-        "python2": "typed_ast >= 1.4.0, < 2",
+        "python2": "",
         "reports": "lxml",
         "install-types": "pip",
     },
