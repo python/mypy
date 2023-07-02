@@ -702,13 +702,15 @@ class StubgenPythonSuite(DataSuite):
         try:
             try:
                 if not testcase.name.endswith("_import"):
-                    if sys.platform == "win32" and "CI" in os.environ:
+                    options.no_import = True
+                else:
+                    if sys.platform == "win32" and "GITHUB_ACTION" in os.environ:
                         # These seem to trigger a RecursionError in shutil.rmtree in CI
                         # Possibly related to https://github.com/python/cpython/issues/79325
                         import pytest
 
                         pytest.skip("Skipping stubgen import tests on Windows in GitHub Actions")
-                    options.no_import = True
+
                 if not testcase.name.endswith("_semanal"):
                     options.parse_only = True
                 generate_stubs(options)
