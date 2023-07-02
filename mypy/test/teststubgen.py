@@ -719,12 +719,7 @@ class StubgenPythonSuite(DataSuite):
             for mod in mods:
                 if mod in sys.modules:
                     del sys.modules[mod]
-
-            # We run into a RecursionError on Windows
-            # https://github.com/python/cpython/issues/79325
-            # So just avoid cleaning up the temporary directory on CI
-            if sys.platform != "win32" or "GITHUB_ACTION" not in os.environ:
-                shutil.rmtree(out_dir)
+            shutil.rmtree(out_dir)
 
     def parse_flags(self, program_text: str, extra: list[str]) -> Options:
         flags = re.search("# flags: (.*)$", program_text, flags=re.MULTILINE)
