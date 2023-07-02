@@ -48,14 +48,20 @@ def solve_constraints(
         # represented differently. Normalize the constraint list w.r.t this equivalence.
         constraints = normalize_constraints(constraints, vars)
 
+    extra_vars: list[TypeVarId] = []
+    if allow_polymorphic:
+        # Get additional variables from generic actuals.
+        for c in constraints:
+            extra_vars.extend([v.id for v in c.extra_tvars if v.id not in vars + extra_vars])
+
     # Collect a list of constraints for each type variable.
-    cmap: dict[TypeVarId, list[Constraint]] = {tv: [] for tv in vars}
+    cmap: dict[TypeVarId, list[Constraint]] = {tv: [] for tv in vars + extra_vars}
     for con in constraints:
-        if con.type_var in vars:
+        if con.type_var in vars + extra_vars:
             cmap[con.type_var].append(con)
 
     if allow_polymorphic:
-        solutions = solve_non_linear(vars, constraints, cmap)
+        solutions = solve_non_linear(vars + extra_vars, constraints, cmap)
     else:
         solutions = {}
         for tv, cs in cmap.items():
