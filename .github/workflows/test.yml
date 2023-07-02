@@ -35,6 +35,12 @@ jobs:
           toxenv: py
           tox_extra_args: "-n 2"
           test_mypyc: true
+        - name: Test suite with py38-windows-64
+          python: '3.8'
+          arch: x64
+          os: windows-latest
+          toxenv: py38
+          tox_extra_args: "-n 2"
         - name: Test suite with py39-ubuntu
           python: '3.9'
           arch: x64
@@ -54,12 +60,6 @@ jobs:
           toxenv: py
           tox_extra_args: "-n 2"
           test_mypyc: true
-        - name: Test suite with py311-windows-64
-          python: '3.11'
-          arch: x64
-          os: windows-latest
-          toxenv: py311
-          tox_extra_args: "-n 2"
 
         - name: mypyc runtime tests with py38-macos
           python: '3.8.17'
