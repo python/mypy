@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from collections import defaultdict
 from functools import reduce
-from typing import Iterable, List, Mapping, cast
+from typing import Final, Iterable, List, Mapping, cast
 from typing_extensions import Literal
-from typing import Final
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.applytype import apply_generic_arguments

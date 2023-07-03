@@ -6,9 +6,8 @@ import itertools
 import time
 from collections import defaultdict
 from contextlib import contextmanager
-from typing import Callable, ClassVar, Iterable, Iterator, List, Optional, Sequence, cast
+from typing import Callable, ClassVar, Final, Iterable, Iterator, List, Optional, Sequence, cast
 from typing_extensions import TypeAlias as _TypeAlias, overload
-from typing import Final
 
 import mypy.checker
 import mypy.errorcodes as codes

@@ -11,6 +11,7 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Final,
     Iterator,
     List,
     Optional,
@@ -21,7 +22,6 @@ from typing import (
     cast,
 )
 from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
-from typing import Final
 
 from mypy_extensions import trait
 

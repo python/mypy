@@ -37,8 +37,7 @@ optimized implementations of all ops.
 
 from __future__ import annotations
 
-from typing import List, NamedTuple, Optional, Tuple
-from typing import Final
+from typing import Final, NamedTuple
 
 from mypyc.ir.ops import StealsDescription
 from mypyc.ir.rtypes import RType

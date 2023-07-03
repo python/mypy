@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import sys
 import sysconfig
-from typing import Any, Dict
-from typing import Final
+from typing import Any, Dict, Final
 
 from mypy.util import unnamed_function
 

@@ -11,9 +11,8 @@ import shutil
 import sys
 import time
 from importlib import resources as importlib_resources
-from typing import IO, Callable, Container, Iterable, Sequence, Sized, TypeVar
+from typing import IO, Callable, Container, Final, Iterable, Sequence, Sized, TypeVar
 from typing_extensions import Literal
-from typing import Final
 
 try:
     import curses

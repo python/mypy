@@ -21,9 +21,8 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
-from typing import Dict, List, NamedTuple, Optional, Tuple, Union
+from typing import Dict, Final, List, NamedTuple, Optional, Tuple, Union
 from typing_extensions import TypeAlias as _TypeAlias
-from typing import Final
 
 from mypy import pyinfo
 from mypy.fscache import FileSystemCache

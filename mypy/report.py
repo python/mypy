@@ -12,9 +12,8 @@ import time
 import tokenize
 from abc import ABCMeta, abstractmethod
 from operator import attrgetter
-from typing import Any, Callable, Dict, Iterator, Tuple
+from typing import Any, Callable, Dict, Final, Iterator, Tuple
 from typing_extensions import TypeAlias as _TypeAlias
-from typing import Final
 from urllib.request import pathname2url
 
 from mypy import stats

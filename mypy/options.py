@@ -4,8 +4,7 @@ import pprint
 import re
 import sys
 import sysconfig
-from typing import Any, Callable, Dict, Mapping, Pattern
-from typing import Final
+from typing import Any, Callable, Final, Mapping, Pattern
 
 from mypy import defaults
 from mypy.errorcodes import ErrorCode, error_codes

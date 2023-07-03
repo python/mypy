@@ -12,8 +12,7 @@ import os.path
 import re
 from abc import abstractmethod
 from types import ModuleType
-from typing import Any, Iterable, Mapping
-from typing import Final
+from typing import Any, Final, Iterable, Mapping
 
 from mypy.moduleinspect import is_c_module
 from mypy.stubdoc import (

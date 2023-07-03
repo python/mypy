@@ -19,6 +19,7 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Final,
     Iterable,
     List,
     Mapping,
@@ -29,7 +30,6 @@ from typing import (
     Union,
 )
 from typing_extensions import TypeAlias as _TypeAlias
-from typing import Final
 
 from mypy import defaults
 from mypy.options import PER_MODULE_OPTIONS, Options

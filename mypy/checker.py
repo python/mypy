@@ -9,6 +9,7 @@ from typing import (
     AbstractSet,
     Callable,
     Dict,
+    Final,
     Generic,
     Iterable,
     Iterator,
@@ -23,7 +24,6 @@ from typing import (
     overload,
 )
 from typing_extensions import TypeAlias as _TypeAlias
-from typing import Final
 
 import mypy.checkexpr
 from mypy import errorcodes as codes, message_registry, nodes, operators
