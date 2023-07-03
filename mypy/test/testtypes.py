@@ -5,9 +5,7 @@ from __future__ import annotations
 import re
 from unittest import TestCase, skipUnless
 
-import mypy.expandtype
 from mypy.erasetype import erase_type, remove_instance_last_known_values
-from mypy.expandtype import expand_type
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.join import join_simple, join_types
 from mypy.meet import meet_types, narrow_declared_type
@@ -52,6 +50,9 @@ from mypy.types import (
     get_proper_type,
     has_recursive_types,
 )
+
+# Solving the import cycle:
+import mypy.expandtype  # ruff: isort: skip
 
 
 class TypesSuite(Suite):
@@ -268,7 +269,7 @@ class TypeOpsSuite(Suite):
         for id, t in map_items:
             lower_bounds[id] = t
 
-        exp = expand_type(orig, lower_bounds)
+        exp = mypy.expandtype.expand_type(orig, lower_bounds)
         # Remove erased tags (asterisks).
         assert_equal(str(exp).replace("*", ""), str(result))
 
