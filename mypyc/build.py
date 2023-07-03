@@ -58,8 +58,11 @@ if sys.version_info < (3, 12):
 else:
     import setuptools
     from setuptools import Extension
-    from setuptools._distutils import ccompiler as _ccompiler  # type: ignore[attr-defined]
-    from setuptools._distutils import sysconfig as _sysconfig  # type: ignore[attr-defined]
+    from setuptools._distutils import (
+        ccompiler as _ccompiler,  # type: ignore[attr-defined]
+        sysconfig as _sysconfig,  # type: ignore[attr-defined]
+    )
+
     ccompiler = _ccompiler
     sysconfig = _sysconfig
 
