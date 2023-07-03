@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.7'
+          python-version: '3.8'
       - name: Install tox
         run: pip install --upgrade 'setuptools!=50' tox==4.4.4
       - name: Setup tox environment
