@@ -1873,7 +1873,6 @@ class TypeConverter:
             uses_pep604_syntax=True,
         )
 
-    # Only for 3.8 and newer
     def visit_Constant(self, n: Constant) -> Type:
         val = n.value
         if val is None:
@@ -1881,7 +1880,7 @@ class TypeConverter:
             return UnboundType("None", line=self.line)
         if isinstance(val, str):
             # Parse forward reference.
-            return parse_type_string(n.s, "builtins.str", self.line, n.col_offset)
+            return parse_type_string(val, "builtins.str", self.line, n.col_offset)
         if val is Ellipsis:
             # '...' is valid in some types.
             return EllipsisType(line=self.line)
