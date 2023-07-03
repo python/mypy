@@ -41,7 +41,7 @@ from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 
 if TYPE_CHECKING:
-    from distutils.core import Extension as _distutils_Extension
+    from distutils.core import Extension as _distutils_Extension  # type: ignore
     from typing_extensions import TypeAlias
 
     from setuptools import Extension as _setuptools_Extension
@@ -56,14 +56,14 @@ except ImportError:
     if sys.version_info >= (3, 12):
         # Raise on Python 3.12, since distutils will go away forever
         raise
-from distutils import ccompiler, sysconfig
+from distutils import ccompiler, sysconfig  # type: ignore
 
 
-def get_extension() -> type[Extension]:
+def get_extension() -> type[Extension]:  # type: ignore[no-any-unimported]
     # We can work with either setuptools or distutils, and pick setuptools
     # if it has been imported.
     use_setuptools = "setuptools" in sys.modules
-    extension_class: type[Extension]
+    extension_class: type[Extension]  # type: ignore[no-any-unimported]
 
     if not use_setuptools:
         import distutils.core
@@ -241,7 +241,7 @@ def generate_c(
     return ctext, "\n".join(format_modules(modules))
 
 
-def build_using_shared_lib(
+def build_using_shared_lib(  # type: ignore[no-any-unimported]
     sources: list[BuildSource],
     group_name: str,
     cfiles: list[str],
@@ -289,7 +289,7 @@ def build_using_shared_lib(
     return extensions
 
 
-def build_single_module(
+def build_single_module(  # type: ignore[no-any-unimported]
     sources: list[BuildSource], cfiles: list[str], extra_compile_args: list[str]
 ) -> list[Extension]:
     """Produce the list of extension modules for a standalone extension.
@@ -443,7 +443,7 @@ def mypyc_build(
     return groups, group_cfilenames
 
 
-def mypycify(
+def mypycify(  # type: ignore[no-any-unimported]
     paths: list[str],
     *,
     only_compile_paths: Iterable[str] | None = None,
