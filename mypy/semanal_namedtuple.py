@@ -605,16 +605,11 @@ class NamedTupleAnalyzer:
 
         add_method("__new__", ret=selftype, args=[make_init_arg(var) for var in vars], is_new=True)
         add_method("_asdict", args=[], ret=ordereddictype)
-        special_form_any = AnyType(TypeOfAny.special_form)
         add_method(
             "_make",
             ret=selftype,
             is_classmethod=True,
-            args=[
-                Argument(Var("iterable", iterable_type), iterable_type, None, ARG_POS),
-                Argument(Var("new"), special_form_any, EllipsisExpr(), ARG_NAMED_OPT),
-                Argument(Var("len"), special_form_any, EllipsisExpr(), ARG_NAMED_OPT),
-            ],
+            args=[Argument(Var("iterable", iterable_type), iterable_type, None, ARG_POS)],
         )
 
         self_tvar_expr = TypeVarExpr(
