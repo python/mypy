@@ -40,36 +40,43 @@ from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 
-if TYPE_CHECKING:
-    from distutils.core import Extension as _distutils_Extension  # type: ignore
-    from typing_extensions import TypeAlias
+if sys.version_info < (3, 12):
+    if TYPE_CHECKING:
+        from distutils.core import Extension as _distutils_Extension
+        from typing_extensions import TypeAlias
 
-    from setuptools import Extension as _setuptools_Extension
+        from setuptools import Extension as _setuptools_Extension
 
-    Extension: TypeAlias = Union[_setuptools_Extension, _distutils_Extension]
+        Extension: TypeAlias = Union[_setuptools_Extension, _distutils_Extension]
 
-
-try:
-    # Import setuptools so that it monkey-patch overrides distutils
+    try:
+        # Import setuptools so that it monkey-patch overrides distutils
+        import setuptools
+    except ImportError:
+        pass
+    from distutils import ccompiler, sysconfig
+else:
     import setuptools
-except ImportError:
-    if sys.version_info >= (3, 12):
-        # Raise on Python 3.12, since distutils will go away forever
-        raise
-from distutils import ccompiler, sysconfig  # type: ignore
+    from setuptools import Extension
+    from setuptools._distutils import ccompiler as _ccompiler  # type: ignore[attr-defined]
+    from setuptools._distutils import sysconfig as _sysconfig  # type: ignore[attr-defined]
+    ccompiler = _ccompiler
+    sysconfig = _sysconfig
 
 
-def get_extension() -> type[Extension]:  # type: ignore[no-any-unimported]
+def get_extension() -> type[Extension]:
     # We can work with either setuptools or distutils, and pick setuptools
     # if it has been imported.
     use_setuptools = "setuptools" in sys.modules
-    extension_class: type[Extension]  # type: ignore[no-any-unimported]
+    extension_class: type[Extension]
 
-    if not use_setuptools:
+    if sys.version_info < (3, 12) and not use_setuptools:
         import distutils.core
 
         extension_class = distutils.core.Extension
     else:
+        if not use_setuptools:
+            sys.exit("error: setuptools not installed")
         extension_class = setuptools.Extension
 
     return extension_class
@@ -241,7 +248,7 @@ def generate_c(
     return ctext, "\n".join(format_modules(modules))
 
 
-def build_using_shared_lib(  # type: ignore[no-any-unimported]
+def build_using_shared_lib(
     sources: list[BuildSource],
     group_name: str,
     cfiles: list[str],
@@ -289,7 +296,7 @@ def build_using_shared_lib(  # type: ignore[no-any-unimported]
     return extensions
 
 
-def build_single_module(  # type: ignore[no-any-unimported]
+def build_single_module(
     sources: list[BuildSource], cfiles: list[str], extra_compile_args: list[str]
 ) -> list[Extension]:
     """Produce the list of extension modules for a standalone extension.
@@ -443,7 +450,7 @@ def mypyc_build(
     return groups, group_cfilenames
 
 
-def mypycify(  # type: ignore[no-any-unimported]
+def mypycify(
     paths: list[str],
     *,
     only_compile_paths: Iterable[str] | None = None,
