@@ -127,6 +127,7 @@ import ast as ast3
 # TODO: Index, ExtSlice are deprecated in 3.9.
 from ast import AST, Attribute, Call, FunctionType, Index, Name, Starred, UnaryOp, USub
 
+
 def ast3_parse(
     source: str | bytes, filename: str, mode: str, feature_version: int = PY_MINOR_VERSION
 ) -> AST:
