@@ -899,13 +899,11 @@ class JoinSuite(Suite):
         self.assert_join(ov(c(fx.a, fx.a), c(fx.b, fx.b)), c(any, fx.b), c(any, fx.b))
         self.assert_join(ov(c(fx.a, fx.a), c(any, fx.b)), c(fx.b, fx.b), c(any, fx.b))
 
-    @skip
     def test_join_interface_types(self) -> None:
         self.assert_join(self.fx.f, self.fx.f, self.fx.f)
         self.assert_join(self.fx.f, self.fx.f2, self.fx.o)
         self.assert_join(self.fx.f, self.fx.f3, self.fx.f)
 
-    @skip
     def test_join_interface_and_class_types(self) -> None:
         self.assert_join(self.fx.o, self.fx.f, self.fx.o)
         self.assert_join(self.fx.a, self.fx.f, self.fx.o)
@@ -1180,7 +1178,6 @@ class MeetSuite(Suite):
         self.assert_meet(self.fx.e, self.fx.e2, self.fx.nonet)
         self.assert_meet(self.fx.e2, self.fx.e3, self.fx.nonet)
 
-    @skip
     def test_meet_with_generic_interfaces(self) -> None:
         fx = InterfaceTypeFixture()
         self.assert_meet(fx.gfa, fx.m1, fx.m1)
