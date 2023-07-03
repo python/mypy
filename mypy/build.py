@@ -31,6 +31,7 @@ from typing import (
     Callable,
     ClassVar,
     Dict,
+    Final,
     Iterator,
     Mapping,
     NamedTuple,
@@ -38,7 +39,7 @@ from typing import (
     Sequence,
     TextIO,
 )
-from typing_extensions import Final, TypeAlias as _TypeAlias, TypedDict
+from typing_extensions import TypeAlias as _TypeAlias, TypedDict
 
 import mypy.semanal_main
 from mypy.checker import TypeChecker

@@ -6,8 +6,7 @@ This is conceptually part of mypy.semanal.
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Iterator, List, Mapping, cast
-from typing_extensions import Final
+from typing import Final, Iterator, List, Mapping, cast
 
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.nodes import (

@@ -17,8 +17,8 @@ import sys
 import time
 import traceback
 from contextlib import redirect_stderr, redirect_stdout
-from typing import AbstractSet, Any, Callable, List, Sequence, Tuple
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import AbstractSet, Any, Callable, Final, List, Sequence, Tuple
+from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.build
 import mypy.errors

@@ -755,7 +755,7 @@ def translate_bool(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value
 
 
 @specialize_function("builtins.float")
-def translate_float(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+def translate_float(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
         return None
     arg = expr.args[0]

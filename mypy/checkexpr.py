@@ -6,8 +6,8 @@ import itertools
 import time
 from collections import defaultdict
 from contextlib import contextmanager
-from typing import Callable, ClassVar, Iterable, Iterator, List, Optional, Sequence, cast
-from typing_extensions import Final, TypeAlias as _TypeAlias, overload
+from typing import Callable, ClassVar, Final, Iterable, Iterator, List, Optional, Sequence, cast
+from typing_extensions import TypeAlias as _TypeAlias, overload
 
 import mypy.checker
 import mypy.errorcodes as codes
@@ -5581,7 +5581,7 @@ def replace_callable_return_type(c: CallableType, new_ret_type: Type) -> Callabl
     return c.copy_modified(ret_type=new_ret_type)
 
 
-def apply_poly(tp: CallableType, poly_tvars: Sequence[TypeVarLikeType]) -> Optional[CallableType]:
+def apply_poly(tp: CallableType, poly_tvars: Sequence[TypeVarLikeType]) -> CallableType | None:
     """Make free type variables generic in the type if possible.
 
     This will translate the type `tp` while trying to create valid bindings for
