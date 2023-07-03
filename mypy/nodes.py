@@ -20,7 +20,8 @@ from typing import (
     Union,
     cast,
 )
-from typing_extensions import Final, TypeAlias as _TypeAlias, TypeGuard
+from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
+from typing import Final
 
 from mypy_extensions import trait
 

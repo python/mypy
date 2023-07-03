@@ -17,7 +17,8 @@ from typing import (
     Union,
     cast,
 )
-from typing_extensions import Final, Self, TypeAlias as _TypeAlias, TypeGuard, overload
+from typing_extensions import Self, TypeAlias as _TypeAlias, TypeGuard, overload
+from typing import Final
 
 import mypy.nodes
 from mypy.bogus_type import Bogus

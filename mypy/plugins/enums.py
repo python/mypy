@@ -13,7 +13,7 @@ semanal_enum.py).
 from __future__ import annotations
 
 from typing import Iterable, Sequence, TypeVar, cast
-from typing_extensions import Final
+from typing import Final
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.nodes import TypeInfo

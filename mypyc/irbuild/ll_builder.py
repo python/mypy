@@ -11,7 +11,7 @@ level---it has *no knowledge* of mypy types or expressions.
 from __future__ import annotations
 
 from typing import Callable, Optional, Sequence, Tuple
-from typing_extensions import Final
+from typing import Final
 
 from mypy.argmap import map_actuals_to_formals
 from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, ArgKind

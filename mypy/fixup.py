@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
-from typing_extensions import Final
+from typing import Final
 
 from mypy.lookup import lookup_fully_qualified
 from mypy.nodes import (

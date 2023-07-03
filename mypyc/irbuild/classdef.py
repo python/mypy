@@ -5,7 +5,7 @@ from __future__ import annotations
 import typing_extensions
 from abc import abstractmethod
 from typing import Callable
-from typing_extensions import Final
+from typing import Final
 
 from mypy.nodes import (
     AssignmentStmt,

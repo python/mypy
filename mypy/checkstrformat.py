@@ -14,7 +14,8 @@ from __future__ import annotations
 
 import re
 from typing import TYPE_CHECKING, Callable, Dict, Match, Pattern, Tuple, Union, cast
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing_extensions import TypeAlias as _TypeAlias
+from typing import Final
 
 import mypy.errorcodes as codes
 from mypy.errors import Errors

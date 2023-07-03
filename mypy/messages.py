@@ -17,7 +17,7 @@ import re
 from contextlib import contextmanager
 from textwrap import dedent
 from typing import Any, Callable, Collection, Iterable, Iterator, List, Sequence, cast
-from typing_extensions import Final
+from typing import Final
 
 import mypy.typeops
 from mypy import errorcodes as codes, message_registry

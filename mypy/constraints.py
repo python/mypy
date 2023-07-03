@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Iterable, List, Sequence, cast
-from typing_extensions import Final
+from typing import Final
 
 import mypy.subtypes
 import mypy.typeops

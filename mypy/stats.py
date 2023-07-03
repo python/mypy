@@ -6,7 +6,7 @@ import os
 from collections import Counter
 from contextlib import contextmanager
 from typing import Iterator
-from typing_extensions import Final
+from typing import Final
 
 from mypy import nodes
 from mypy.argmap import map_formals_to_actuals

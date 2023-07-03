@@ -22,7 +22,8 @@ from typing import (
     cast,
     overload,
 )
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing_extensions import TypeAlias as _TypeAlias
+from typing import Final
 
 import mypy.checkexpr
 from mypy import errorcodes as codes, message_registry, nodes, operators
@@ -1546,7 +1547,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if opt_meta is not None:
                     forward_inst = opt_meta
 
-        def has_readable_member(typ: Union[UnionType, Instance], name: str) -> bool:
+        def has_readable_member(typ: UnionType | Instance, name: str) -> bool:
             # TODO: Deal with attributes of TupleType etc.
             if isinstance(typ, Instance):
                 return typ.type.has_readable_member(name)

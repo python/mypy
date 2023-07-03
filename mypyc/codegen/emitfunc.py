@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing_extensions import Final
+from typing import Final
 
 from mypyc.analysis.blockfreq import frequently_executed_blocks
 from mypyc.codegen.emit import DEBUG_ERRORS, Emitter, TracebackAndGotoHandler, c_array_initializer
@@ -686,10 +686,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         lhs = self.reg(op.lhs)
         rhs = self.reg(op.rhs)
         if op.op != FloatOp.MOD:
-            self.emit_line("%s = %s %s %s;" % (dest, lhs, op.op_str[op.op], rhs))
+            self.emit_line(f"{dest} = {lhs} {op.op_str[op.op]} {rhs};")
         else:
             # TODO: This may set errno as a side effect, that is a little sketchy.
-            self.emit_line("%s = fmod(%s, %s);" % (dest, lhs, rhs))
+            self.emit_line(f"{dest} = fmod({lhs}, {rhs});")
 
     def visit_float_neg(self, op: FloatNeg) -> None:
         dest = self.reg(op)
@@ -700,7 +700,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         dest = self.reg(op)
         lhs = self.reg(op.lhs)
         rhs = self.reg(op.rhs)
-        self.emit_line("%s = %s %s %s;" % (dest, lhs, op.op_str[op.op], rhs))
+        self.emit_line(f"{dest} = {lhs} {op.op_str[op.op]} {rhs};")
 
     def visit_load_mem(self, op: LoadMem) -> None:
         dest = self.reg(op)

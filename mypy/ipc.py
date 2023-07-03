@@ -13,7 +13,7 @@ import sys
 import tempfile
 from types import TracebackType
 from typing import Callable
-from typing_extensions import Final
+from typing import Final
 
 if sys.platform == "win32":
     # This may be private, but it is needed for IPC on Windows, and is basically stable

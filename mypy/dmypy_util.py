@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 from typing import Any
-from typing_extensions import Final
+from typing import Final
 
 from mypy.ipc import IPCBase
 

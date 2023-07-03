@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing_extensions import Final
+from typing import Final
 
 PYTHON2_VERSION: Final = (2, 7)
 

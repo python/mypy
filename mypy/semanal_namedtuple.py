@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from typing import Iterator, List, Mapping, cast
-from typing_extensions import Final
+from typing import Final
 
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.nodes import (

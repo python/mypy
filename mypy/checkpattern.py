@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from typing import NamedTuple
-from typing_extensions import Final
+from typing import Final
 
 import mypy.checker
 from mypy import message_registry

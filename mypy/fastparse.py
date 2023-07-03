@@ -5,7 +5,8 @@ import re
 import sys
 import warnings
 from typing import Any, Callable, List, Optional, Sequence, TypeVar, Union, cast
-from typing_extensions import Final, Literal, overload
+from typing_extensions import Literal, overload
+from typing import Final
 
 from mypy import defaults, errorcodes as codes, message_registry
 from mypy.errors import Errors

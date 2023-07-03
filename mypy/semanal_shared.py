@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from typing import Callable, overload
-from typing_extensions import Final, Literal, Protocol
+from typing_extensions import Literal, Protocol
+from typing import Final
 
 from mypy_extensions import trait
 

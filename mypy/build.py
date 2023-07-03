@@ -38,7 +38,8 @@ from typing import (
     Sequence,
     TextIO,
 )
-from typing_extensions import Final, TypeAlias as _TypeAlias, TypedDict
+from typing_extensions import TypeAlias as _TypeAlias, TypedDict
+from typing import Final
 
 import mypy.semanal_main
 from mypy.checker import TypeChecker

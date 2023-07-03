@@ -70,10 +70,10 @@ from mypyc.namegen import NameGenerator, exported_name
 
 
 class VTableMethod(NamedTuple):
-    cls: "ClassIR"
+    cls: ClassIR
     name: str
     method: FuncIR
-    shadow_method: Optional[FuncIR]
+    shadow_method: FuncIR | None
 
 
 VTableEntries = List[VTableMethod]
@@ -192,7 +192,7 @@ class ClassIR:
         # bitmap for types such as native ints that can't have a dedicated error
         # value that doesn't overlap a valid value. The bitmap is used if the
         # value of an attribute is the same as the error value.
-        self.bitmap_attrs: List[str] = []
+        self.bitmap_attrs: list[str] = []
 
     def __repr__(self) -> str:
         return (

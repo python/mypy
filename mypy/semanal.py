@@ -52,7 +52,8 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from typing import Any, Callable, Collection, Iterable, Iterator, List, TypeVar, cast
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing_extensions import TypeAlias as _TypeAlias
+from typing import Final
 
 from mypy import errorcodes as codes, message_registry
 from mypy.constant_fold import constant_fold_expr

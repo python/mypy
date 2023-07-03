@@ -5,7 +5,8 @@ from __future__ import annotations
 import itertools
 from contextlib import contextmanager
 from typing import Callable, Iterable, Iterator, List, Sequence, Tuple, TypeVar
-from typing_extensions import Final, Protocol
+from typing_extensions import Protocol
+from typing import Final
 
 from mypy import errorcodes as codes, message_registry, nodes
 from mypy.errorcodes import ErrorCode

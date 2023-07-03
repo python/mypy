@@ -6,7 +6,7 @@ import pprint
 import sys
 import textwrap
 from typing import Callable
-from typing_extensions import Final
+from typing import Final
 
 from mypyc.codegen.literals import Literals
 from mypyc.common import (
@@ -926,7 +926,7 @@ class Emitter:
         elif is_float_rprimitive(typ):
             assert not optional  # Not supported for overlapping error values
             if declare_dest:
-                self.emit_line("double {};".format(dest))
+                self.emit_line(f"double {dest};")
             # TODO: Don't use __float__ and __index__
             self.emit_line(f"{dest} = PyFloat_AsDouble({src});")
             self.emit_lines(f"if ({dest} == -1.0 && PyErr_Occurred()) {{", failure, "}")

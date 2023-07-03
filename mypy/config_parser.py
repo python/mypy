@@ -28,7 +28,8 @@ from typing import (
     Tuple,
     Union,
 )
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing_extensions import TypeAlias as _TypeAlias
+from typing import Final
 
 from mypy import defaults
 from mypy.options import PER_MODULE_OPTIONS, Options
