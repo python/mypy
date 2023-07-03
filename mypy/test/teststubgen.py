@@ -682,6 +682,17 @@ class StubgenPythonSuite(DataSuite):
             self.run_case_inner(testcase)
 
     def run_case_inner(self, testcase: DataDrivenTestCase) -> None:
+        if (
+            testcase.name.endswith("_import")
+            and sys.platform == "win32"
+            and "GITHUB_ACTION" in os.environ
+        ):
+            # These seem to trigger a RecursionError in shutil.rmtree in CI
+            # Possibly related to https://github.com/python/cpython/issues/79325
+            import pytest
+
+            pytest.skip("Skipping stubgen import tests on Windows in GitHub Actions")
+
         extra = []  # Extra command-line args
         mods = []  # Module names to process
         source = "\n".join(testcase.input)
@@ -703,14 +714,6 @@ class StubgenPythonSuite(DataSuite):
             try:
                 if not testcase.name.endswith("_import"):
                     options.no_import = True
-                else:
-                    if sys.platform == "win32" and "GITHUB_ACTION" in os.environ:
-                        # These seem to trigger a RecursionError in shutil.rmtree in CI
-                        # Possibly related to https://github.com/python/cpython/issues/79325
-                        import pytest
-
-                        pytest.skip("Skipping stubgen import tests on Windows in GitHub Actions")
-
                 if not testcase.name.endswith("_semanal"):
                     options.parse_only = True
                 generate_stubs(options)
