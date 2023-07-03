@@ -677,22 +677,12 @@ class StubgenPythonSuite(DataSuite):
     base_path = "."
     files = ["stubgen.test"]
 
+    @unittest.skipIf(sys.platform == "win32", "clean up fails on Windows")
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         with local_sys_path_set():
             self.run_case_inner(testcase)
 
     def run_case_inner(self, testcase: DataDrivenTestCase) -> None:
-        if (
-            testcase.name.endswith("_import")
-            and sys.platform == "win32"
-            and "GITHUB_ACTION" in os.environ
-        ):
-            # These seem to trigger a RecursionError in shutil.rmtree in CI
-            # Possibly related to https://github.com/python/cpython/issues/79325
-            import pytest
-
-            pytest.skip("Skipping stubgen import tests on Windows in GitHub Actions")
-
         extra = []  # Extra command-line args
         mods = []  # Module names to process
         source = "\n".join(testcase.input)
