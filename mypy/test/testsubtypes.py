@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT
 from mypy.subtypes import is_subtype
-from mypy.test.helpers import Suite, skip
+from mypy.test.helpers import Suite
 from mypy.test.typefixture import InterfaceTypeFixture, TypeFixture
 from mypy.types import Instance, TupleType, Type, UnpackType
 
