@@ -1881,7 +1881,7 @@ class TypeConverter:
             return UnboundType("None", line=self.line)
         if isinstance(val, str):
             # Parse forward reference.
-            return parse_type_string(n.s, "builtins.str", self.line, n.col_offset)
+            return parse_type_string(n.value, "builtins.str", self.line, n.col_offset)
         if val is Ellipsis:
             # '...' is valid in some types.
             return EllipsisType(line=self.line)
