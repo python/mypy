@@ -474,7 +474,7 @@ L4:
 L5:
     return r6
 
-[case testI32ExplicitConversionFromLiteral]
+[case testI32ExplicitConversionFromLiteral_64bit]
 from mypy_extensions import i32
 
 def f() -> None:
