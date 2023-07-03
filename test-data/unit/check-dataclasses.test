@@ -2420,3 +2420,16 @@ class Test(Protocol):
     def reset(self) -> None:
         self.x = DEFAULT
 [builtins fixtures/dataclasses.pyi]
+
+[case testStrictOptionalAlwaysSet]
+# flags: --strict-optional
+from dataclasses import dataclass
+from typing import Callable, Optional
+
+@dataclass
+class Description:
+    name_fn: Callable[[Optional[int]], Optional[str]]
+
+def f(d: Description) -> None:
+    reveal_type(d.name_fn)  # N: Revealed type is "def (Union[builtins.int, None]) -> Union[builtins.str, None]"
+[builtins fixtures/dataclasses.pyi]
