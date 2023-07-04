@@ -1665,6 +1665,23 @@ class C:
         return cls()
 [builtins fixtures/classmethod.pyi]
 
+[case testTypingSelfRedundantAllowed_pep585]
+# flags: --python-version 3.9
+from typing import Self
+
+class C:
+    def f(self: Self) -> Self:
+        d: Defer
+        class Defer: ...
+        return self
+
+    @classmethod
+    def g(cls: type[Self]) -> Self:
+        d: DeferAgain
+        class DeferAgain: ...
+        return cls()
+[builtins fixtures/classmethod.pyi]
+
 [case testTypingSelfRedundantWarning]
 # mypy: enable-error-code="redundant-self"
 
@@ -1678,6 +1695,25 @@ class C:
 
     @classmethod
     def g(cls: Type[Self]) -> Self:  # E: Redundant "Self" annotation for the first method argument
+        d: DeferAgain
+        class DeferAgain: ...
+        return cls()
+[builtins fixtures/classmethod.pyi]
+
+[case testTypingSelfRedundantWarning_pep585]
+# flags: --python-version 3.9
+# mypy: enable-error-code="redundant-self"
+
+from typing import Self
+
+class C:
+    def copy(self: Self) -> Self:  # E: Redundant "Self" annotation for the first method argument
+        d: Defer
+        class Defer: ...
+        return self
+
+    @classmethod
+    def g(cls: type[Self]) -> Self:  # E: Redundant "Self" annotation for the first method argument
         d: DeferAgain
         class DeferAgain: ...
         return cls()
