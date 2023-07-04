@@ -188,14 +188,17 @@ def main() -> None:
         try:
             subprocess.run(["git", "cherry-pick", commit], check=True)
         except subprocess.CalledProcessError:
-            if sys.__stdin__.isatty():
-                # Allow the option to merge manually
-                print(
-                    f"Commit {commit} failed to cherry pick."
-                    " In a separate shell, please manually merge and continue cherry pick."
-                )
-                input("Did you finish the cherry pick?")
-            else:
+            if not sys.__stdin__.isatty():
+                # We're in an automated context
+                raise
+            
+            # Allow the option to merge manually
+            print(
+                f"Commit {commit} failed to cherry pick."
+                " In a separate shell, please manually merge and continue cherry pick."
+            )
+            rsp = input("Did you finish the cherry pick? [y/N]: ")
+            if not rsp.lower().startswith("y"):
                 raise
         print(f"Cherry-picked {commit}.")
 
