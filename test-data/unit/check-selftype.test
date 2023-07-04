@@ -509,6 +509,58 @@ class E:
     def __init_subclass__(cls) -> None:
         reveal_type(cls)  # N: Revealed type is "Type[__main__.E]"
 
+[case testSelfTypeNew_explicit]
+from typing import TypeVar, Type
+
+T = TypeVar('T', bound='A')
+class A:
+    @staticmethod
+    def __new__(cls: Type[T]) -> T:
+        return cls()
+
+    @classmethod
+    def __init_subclass__(cls: Type[T]) -> None:
+        pass
+
+class B:
+    @staticmethod
+    def __new__(cls: Type[T]) -> T:  # E: The erased type of self "Type[__main__.A]" is not a supertype of its class "Type[__main__.B]"
+        return cls()
+
+    @classmethod
+    def __init_subclass__(cls: Type[T]) -> None:  # E: The erased type of self "Type[__main__.A]" is not a supertype of its class "Type[__main__.B]"
+        pass
+
+class C:
+    @staticmethod
+    def __new__(cls: Type[C]) -> C:
+        return cls()
+
+    @classmethod
+    def __init_subclass__(cls: Type[C]) -> None:
+        pass
+
+class D:
+    @staticmethod
+    def __new__(cls: D) -> D:  # E: The erased type of self "__main__.D" is not a supertype of its class "Type[__main__.D]"
+        return cls
+
+    @classmethod
+    def __init_subclass__(cls: D) -> None:  # E: The erased type of self "__main__.D" is not a supertype of its class "Type[__main__.D]"
+        pass
+
+class E:
+    @staticmethod
+    def __new__(cls) -> E:
+        reveal_type(cls)  # N: Revealed type is "Type[__main__.E]"
+        return cls()
+
+    @classmethod
+    def __init_subclass__(cls) -> None:
+        reveal_type(cls)  # N: Revealed type is "Type[__main__.E]"
+
+[builtins fixtures/classmethod.pyi]
+
 [case testSelfTypePropertyUnion]
 from typing import Union
 class A:
