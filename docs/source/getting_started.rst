@@ -264,7 +264,7 @@ Python standard library. For example, here is a function which uses the
     from pathlib import Path
 
     def load_template(template_path: Path, name: str) -> str:
-        # Mypy knows that `file_path` has a `read_text` method that returns a str
+        # Mypy knows that `template_path` has a `read_text` method that returns a str
         template = template_path.read_text()
         # ...so it understands this line type checks
         return template.replace('USERNAME', name)
