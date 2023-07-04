@@ -17,7 +17,7 @@ from mypyc.primitives.misc_ops import method_new_op
 
 
 def setup_callable_class(builder: IRBuilder) -> None:
-    """Generate an (incomplete) callable class representing function.
+    """Generate an (incomplete) callable class representing a function.
 
     This can be a nested function or a function within a non-extension
     class.  Also set up the 'self' variable for that class.

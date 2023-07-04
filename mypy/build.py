@@ -31,6 +31,7 @@ from typing import (
     Callable,
     ClassVar,
     Dict,
+    Final,
     Iterator,
     Mapping,
     NamedTuple,
@@ -38,9 +39,7 @@ from typing import (
     Sequence,
     TextIO,
 )
-from typing_extensions import Final, TypeAlias as _TypeAlias
-
-from mypy_extensions import TypedDict
+from typing_extensions import TypeAlias as _TypeAlias, TypedDict
 
 import mypy.semanal_main
 from mypy.checker import TypeChecker
@@ -343,7 +342,9 @@ class CacheMeta(NamedTuple):
 
 
 # Metadata for the fine-grained dependencies file associated with a module.
-FgDepMeta = TypedDict("FgDepMeta", {"path": str, "mtime": int})
+class FgDepMeta(TypedDict):
+    path: str
+    mtime: int
 
 
 def cache_meta_from_dict(meta: dict[str, Any], data_json: str) -> CacheMeta:
@@ -2238,7 +2239,7 @@ class State:
         analyzer = SemanticAnalyzerPreAnalysis()
         with self.wrap_context():
             analyzer.visit_file(self.tree, self.xpath, self.id, options)
-        self.manager.errors.set_unreachable_lines(self.xpath, self.tree.unreachable_lines)
+        self.manager.errors.set_skipped_lines(self.xpath, self.tree.skipped_lines)
         # TODO: Do this while constructing the AST?
         self.tree.names = SymbolTable()
         if not self.tree.is_stub:
@@ -3076,7 +3077,7 @@ def load_graph(
             manager.errors.report(
                 -1,
                 -1,
-                "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "  # noqa: E501
+                "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "
                 "for more info",
                 severity="note",
             )
@@ -3164,7 +3165,7 @@ def load_graph(
                             manager.errors.report(
                                 -1,
                                 0,
-                                "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "  # noqa: E501
+                                "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "
                                 "for more info",
                                 severity="note",
                             )

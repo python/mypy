@@ -118,8 +118,8 @@ import os
 import re
 import sys
 import time
-from typing import Callable, NamedTuple, Sequence, Union
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import Callable, Final, NamedTuple, Sequence, Union
+from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.build import (
     DEBUG_FINE_GRAINED,
@@ -986,7 +986,7 @@ def reprocess_nodes(
     manager.errors.set_file_ignored_lines(
         file_node.path, file_node.ignored_lines, options.ignore_errors or state.ignore_all
     )
-    manager.errors.set_unreachable_lines(file_node.path, file_node.unreachable_lines)
+    manager.errors.set_skipped_lines(file_node.path, file_node.skipped_lines)
 
     targets = set()
     for node in nodes:

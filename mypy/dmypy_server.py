@@ -17,8 +17,8 @@ import sys
 import time
 import traceback
 from contextlib import redirect_stderr, redirect_stdout
-from typing import AbstractSet, Any, Callable, List, Sequence, Tuple
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import AbstractSet, Any, Callable, Final, List, Sequence, Tuple
+from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.build
 import mypy.errors
@@ -896,8 +896,6 @@ class Server:
         force_reload: bool = False,
     ) -> dict[str, object]:
         """Locate and inspect expression(s)."""
-        if sys.version_info < (3, 8):
-            return {"error": 'Python 3.8 required for "inspect" command'}
         if not self.fine_grained_manager:
             return {
                 "error": 'Command "inspect" is only valid after a "check" command'

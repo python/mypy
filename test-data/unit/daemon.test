@@ -360,7 +360,7 @@ def bar() -> None:
     x = foo('abc')  # type: str
     foo(arg='xyz')
 
-[case testDaemonGetType_python38]
+[case testDaemonGetType]
 $ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary --python-version 3.8
 Daemon started
 $ dmypy inspect foo:1:2:3:4
@@ -423,7 +423,7 @@ def unreachable(x: int) -> None:
     return
     x  # line 17
 
-[case testDaemonGetTypeInexact_python38]
+[case testDaemonGetTypeInexact]
 $ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
 Daemon started
 $ dmypy check foo.py --export-types
@@ -478,7 +478,7 @@ def unreachable(x: int, y: int) -> None:
     return
     x and y  # line 11
 
-[case testDaemonGetAttrs_python38]
+[case testDaemonGetAttrs]
 $ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
 Daemon started
 $ dmypy check foo.py bar.py --export-types
@@ -520,7 +520,7 @@ class B:
 var: Union[A, B]
 var  # line 10
 
-[case testDaemonGetDefinition_python38]
+[case testDaemonGetDefinition]
 $ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
 Daemon started
 $ dmypy check foo.py bar/baz.py bar/__init__.py --export-types

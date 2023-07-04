@@ -49,8 +49,7 @@ import os.path
 import sys
 import traceback
 from collections import defaultdict
-from typing import Iterable, Mapping
-from typing_extensions import Final
+from typing import Final, Iterable, Mapping
 
 import mypy.build
 import mypy.mixedtraverser
