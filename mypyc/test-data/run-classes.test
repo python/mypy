@@ -1370,9 +1370,8 @@ except TypeError as e:
 
 [case testMetaclass]
 from meta import Meta
-import six
 
-class Nothing1(metaclass=Meta):
+class Nothing(metaclass=Meta):
     pass
 
 def ident(x): return x
@@ -1381,15 +1380,7 @@ def ident(x): return x
 class Test:
     pass
 
-class Nothing2(six.with_metaclass(Meta, Test)):
-    pass
-
-@six.add_metaclass(Meta)
-class Nothing3:
-    pass
-
 [file meta.py]
-from typing import Any
 class Meta(type):
     def __new__(mcs, name, bases, dct):
         dct['X'] = 10
@@ -1397,10 +1388,8 @@ class Meta(type):
 
 
 [file driver.py]
-from native import Nothing1, Nothing2, Nothing3
-assert Nothing1.X == 10
-assert Nothing2.X == 10
-assert Nothing3.X == 10
+from native import Nothing
+assert Nothing.X == 10
 
 [case testPickling]
 from mypy_extensions import trait, mypyc_attr
