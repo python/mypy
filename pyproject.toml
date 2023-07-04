@@ -27,7 +27,7 @@ force-exclude = '''
 
 [tool.ruff]
 line-length = 99
-target-version = "py37"
+target-version = "py38"
 fix = true
 
 select = [
