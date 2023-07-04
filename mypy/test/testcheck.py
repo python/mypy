@@ -49,6 +49,48 @@ if sys.platform not in ("darwin", "win32"):
     typecheck_files.remove("check-modules-case.test")
 
 
+# TODO: Enable strict optional in test cases by default. Remove files here, once test cases are updated
+no_strict_optional_files = {
+    "check-abstract.test",
+    "check-async-await.test",
+    "check-basic.test",
+    "check-bound.test",
+    "check-classes.test",
+    "check-dynamic-typing.test",
+    "check-enum.test",
+    "check-expressions.test",
+    "check-formatting.test",
+    "check-functions.test",
+    "check-generic-subtyping.test",
+    "check-generics.test",
+    "check-incremental.test",
+    "check-inference-context.test",
+    "check-inference.test",
+    "check-inline-config.test",
+    "check-isinstance.test",
+    "check-kwargs.test",
+    "check-lists.test",
+    "check-literal.test",
+    "check-modules.test",
+    "check-namedtuple.test",
+    "check-newsemanal.test",
+    "check-overloading.test",
+    "check-plugin-attrs.test",
+    "check-protocols.test",
+    "check-selftype.test",
+    "check-serialize.test",
+    "check-statements.test",
+    "check-super.test",
+    "check-tuples.test",
+    "check-type-aliases.test",
+    "check-type-checks.test",
+    "check-typeddict.test",
+    "check-typevar-values.test",
+    "check-unions.test",
+    "check-varargs.test",
+}
+
+
 class TypeCheckSuite(DataSuite):
     files = typecheck_files
 
@@ -121,7 +163,9 @@ class TypeCheckSuite(DataSuite):
             perform_file_operations(operations)
 
         # Parse options after moving files (in case mypy.ini is being moved).
-        options = parse_options(original_program_text, testcase, incremental_step)
+        options = parse_options(
+            original_program_text, testcase, incremental_step, no_strict_optional_files
+        )
         options.use_builtins_fixtures = True
         if not testcase.name.endswith("_no_incomplete"):
             options.enable_incomplete_feature = [TYPE_VAR_TUPLE, UNPACK]
