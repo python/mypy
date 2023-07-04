@@ -198,7 +198,7 @@ def main() -> None:
                 " In a separate shell, please manually merge and continue cherry pick."
             )
             rsp = input("Did you finish the cherry pick? [y/N]: ")
-            if not rsp.lower().startswith("y"):
+            if rsp.lower() not in {"y", "yes"}:
                 raise
         print(f"Cherry-picked {commit}.")
 
