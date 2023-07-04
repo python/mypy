@@ -195,6 +195,8 @@ def main() -> None:
                     " In a separate shell, please manually merge and continue cherry pick."
                 )
                 input("Did you finish the cherry pick?")
+            else:
+                raise
         print(f"Cherry-picked {commit}.")
 
     if args.make_pr:
