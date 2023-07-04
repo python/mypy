@@ -1010,7 +1010,6 @@ class SemanticAnalyzer(
                 sym = self.lookup_qualified(typ.name, typ, suppress_errors=True)
                 if (
                     sym is not None
-                    and typ.args
                     and (
                         sym.fullname == "typing.Type"
                         or (
@@ -1022,6 +1021,7 @@ class SemanticAnalyzer(
                             )
                         )
                     )
+                    and typ.args
                 ):
                     return self.is_expected_self_type(typ.args[0], is_classmethod=False)
             return False
