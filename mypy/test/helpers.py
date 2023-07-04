@@ -343,7 +343,7 @@ def parse_options(
         flag_list = []
         options = Options()
         # TODO: Enable strict optional in test cases by default (requires *many* test case changes)
-        if os.path.split(testcase.file)[1] in no_strict_optional_files:
+        if os.path.basename(testcase.file) in no_strict_optional_files:
             options.strict_optional = False
 
         options.error_summary = False
