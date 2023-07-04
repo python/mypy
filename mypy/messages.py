@@ -16,8 +16,7 @@ import itertools
 import re
 from contextlib import contextmanager
 from textwrap import dedent
-from typing import Any, Callable, Collection, Iterable, Iterator, List, Sequence, cast
-from typing_extensions import Final
+from typing import Any, Callable, Collection, Final, Iterable, Iterator, List, Sequence, cast
 
 import mypy.typeops
 from mypy import errorcodes as codes, message_registry
@@ -235,6 +234,8 @@ class MessageBuilder:
             Current logic is a bit tricky, to keep as much backwards compatibility as
             possible. We may reconsider this to always be a single line (or otherwise
             simplify it) when we drop Python 3.7.
+
+            TODO: address this in follow up PR
             """
             if isinstance(ctx, (ClassDef, FuncDef)):
                 return range(ctx.deco_line or ctx.line, ctx.line + 1)

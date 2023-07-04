@@ -9,6 +9,7 @@ from typing import (
     Any,
     ClassVar,
     Dict,
+    Final,
     Iterable,
     NamedTuple,
     NewType,
@@ -17,7 +18,7 @@ from typing import (
     Union,
     cast,
 )
-from typing_extensions import Final, Self, TypeAlias as _TypeAlias, TypeGuard, overload
+from typing_extensions import Self, TypeAlias as _TypeAlias, TypeGuard, overload
 
 import mypy.nodes
 from mypy.bogus_type import Bogus

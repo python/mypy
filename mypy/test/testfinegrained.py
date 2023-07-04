@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import os
 import re
-import sys
 import unittest
 from typing import Any
 
@@ -70,9 +69,6 @@ class FineGrainedSuite(DataSuite):
         else:
             if testcase.only_when == "-only_when_cache":
                 return True
-
-        if "Inspect" in testcase.name and sys.version_info < (3, 8):
-            return True
         return False
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
@@ -321,6 +317,7 @@ class FineGrainedSuite(DataSuite):
                 # JSON contains already escaped \ on Windows, so requires a bit of care.
                 val = val.replace("\\\\", "\\")
                 val = val.replace(os.path.realpath(tmp_dir) + os.path.sep, "")
+                val = val.replace(os.path.abspath(tmp_dir) + os.path.sep, "")
             output.extend(val.strip().split("\n"))
         return normalize_messages(output)
 

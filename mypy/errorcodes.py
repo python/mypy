@@ -6,7 +6,7 @@ These can be used for filtering specific errors.
 from __future__ import annotations
 
 from collections import defaultdict
-from typing_extensions import Final
+from typing import Final
 
 from mypy_extensions import mypyc_attr
 

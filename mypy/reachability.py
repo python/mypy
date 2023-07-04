@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Tuple, TypeVar
-from typing_extensions import Final
+from typing import Final, Tuple, TypeVar
 
 from mypy.literals import literal
 from mypy.nodes import (

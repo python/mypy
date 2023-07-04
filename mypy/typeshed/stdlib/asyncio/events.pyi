@@ -358,7 +358,7 @@ class AbstractEventLoop:
             server_hostname: str | None = None,
             ssl_handshake_timeout: float | None = None,
             ssl_shutdown_timeout: float | None = None,
-        ) -> Transport: ...
+        ) -> Transport | None: ...
         async def create_unix_server(
             self,
             protocol_factory: _ProtocolFactory,
@@ -418,7 +418,7 @@ class AbstractEventLoop:
             server_side: bool = False,
             server_hostname: str | None = None,
             ssl_handshake_timeout: float | None = None,
-        ) -> Transport: ...
+        ) -> Transport | None: ...
         async def create_unix_server(
             self,
             protocol_factory: _ProtocolFactory,

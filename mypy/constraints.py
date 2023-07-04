@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterable, List, Sequence, cast
-from typing_extensions import Final
+from typing import TYPE_CHECKING, Final, Iterable, List, Sequence, cast
 
 import mypy.subtypes
 import mypy.typeops

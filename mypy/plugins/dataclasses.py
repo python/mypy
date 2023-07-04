@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterator, Optional
-from typing_extensions import Final
+from typing import TYPE_CHECKING, Final, Iterator
 
 from mypy import errorcodes, message_registry
 from mypy.expandtype import expand_type, expand_type_by_instance
@@ -104,6 +103,7 @@ class DataclassAttribute:
         info: TypeInfo,
         kw_only: bool,
         is_neither_frozen_nor_nonfrozen: bool,
+        api: SemanticAnalyzerPluginInterface,
     ) -> None:
         self.name = name
         self.alias = alias
@@ -116,6 +116,7 @@ class DataclassAttribute:
         self.info = info
         self.kw_only = kw_only
         self.is_neither_frozen_nor_nonfrozen = is_neither_frozen_nor_nonfrozen
+        self._api = api
 
     def to_argument(self, current_info: TypeInfo) -> Argument:
         arg_kind = ARG_POS
@@ -132,13 +133,16 @@ class DataclassAttribute:
             kind=arg_kind,
         )
 
-    def expand_type(self, current_info: TypeInfo) -> Optional[Type]:
+    def expand_type(self, current_info: TypeInfo) -> Type | None:
         if self.type is not None and self.info.self_type is not None:
             # In general, it is not safe to call `expand_type()` during semantic analyzis,
             # however this plugin is called very late, so all types should be fully ready.
             # Also, it is tricky to avoid eager expansion of Self types here (e.g. because
             # we serialize attributes).
-            return expand_type(self.type, {self.info.self_type.id: fill_typevars(current_info)})
+            with state.strict_optional_set(self._api.options.strict_optional):
+                return expand_type(
+                    self.type, {self.info.self_type.id: fill_typevars(current_info)}
+                )
         return self.type
 
     def to_var(self, current_info: TypeInfo) -> Var:
@@ -165,13 +169,14 @@ class DataclassAttribute:
     ) -> DataclassAttribute:
         data = data.copy()
         typ = deserialize_and_fixup_type(data.pop("type"), api)
-        return cls(type=typ, info=info, **data)
+        return cls(type=typ, info=info, **data, api=api)
 
     def expand_typevar_from_subtype(self, sub_type: TypeInfo) -> None:
         """Expands type vars in the context of a subtype when an attribute is inherited
         from a generic super type."""
         if self.type is not None:
-            self.type = map_type_from_supertype(self.type, sub_type, self.info)
+            with state.strict_optional_set(self._api.options.strict_optional):
+                self.type = map_type_from_supertype(self.type, sub_type, self.info)
 
 
 class DataclassTransformer:
@@ -230,12 +235,11 @@ class DataclassTransformer:
             and ("__init__" not in info.names or info.names["__init__"].plugin_generated)
             and attributes
         ):
-            with state.strict_optional_set(self._api.options.strict_optional):
-                args = [
-                    attr.to_argument(info)
-                    for attr in attributes
-                    if attr.is_in_init and not self._is_kw_only_type(attr.type)
-                ]
+            args = [
+                attr.to_argument(info)
+                for attr in attributes
+                if attr.is_in_init and not self._is_kw_only_type(attr.type)
+            ]
 
             if info.fallback_to_any:
                 # Make positional args optional since we don't know their order.
@@ -355,8 +359,7 @@ class DataclassTransformer:
         self._add_dataclass_fields_magic_attribute()
 
         if self._spec is _TRANSFORM_SPEC_FOR_DATACLASSES:
-            with state.strict_optional_set(self._api.options.strict_optional):
-                self._add_internal_replace_method(attributes)
+            self._add_internal_replace_method(attributes)
         if "__post_init__" in info.names:
             self._add_internal_post_init_method(attributes)
 
@@ -546,8 +549,7 @@ class DataclassTransformer:
                 # TODO: We shouldn't be performing type operations during the main
                 #       semantic analysis pass, since some TypeInfo attributes might
                 #       still be in flux. This should be performed in a later phase.
-                with state.strict_optional_set(self._api.options.strict_optional):
-                    attr.expand_typevar_from_subtype(cls.info)
+                attr.expand_typevar_from_subtype(cls.info)
                 found_attrs[name] = attr
 
                 sym_node = cls.info.names.get(name)
@@ -693,6 +695,7 @@ class DataclassTransformer:
                 is_neither_frozen_nor_nonfrozen=_has_direct_dataclass_transform_metaclass(
                     cls.info
                 ),
+                api=self._api,
             )
 
         all_attrs = list(found_attrs.values())

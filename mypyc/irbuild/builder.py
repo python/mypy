@@ -13,8 +13,8 @@ functions are transformed in mypyc.irbuild.function.
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Any, Callable, Iterator, Sequence, Union
-from typing_extensions import Final, overload
+from typing import Any, Callable, Final, Iterator, Sequence, Union
+from typing_extensions import overload
 
 from mypy.build import Graph
 from mypy.maptype import map_instance_to_supertype

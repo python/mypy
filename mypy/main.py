@@ -8,8 +8,7 @@ import subprocess
 import sys
 import time
 from gettext import gettext
-from typing import IO, Any, NoReturn, Sequence, TextIO
-from typing_extensions import Final
+from typing import IO, Any, Final, NoReturn, Sequence, TextIO
 
 from mypy import build, defaults, state, util
 from mypy.config_parser import get_config_module_names, parse_config_file, parse_version
