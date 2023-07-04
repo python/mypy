@@ -232,17 +232,16 @@ class StubtestUnit(unittest.TestCase):
             runtime="def bad(num, text) -> None: pass",
             error="bad",
         )
-        if sys.version_info >= (3, 8):
-            yield Case(
-                stub="def good_posonly(__number: int, text: str) -> None: ...",
-                runtime="def good_posonly(num, /, text): pass",
-                error=None,
-            )
-            yield Case(
-                stub="def bad_posonly(__number: int, text: str) -> None: ...",
-                runtime="def bad_posonly(flag, /, text): pass",
-                error="bad_posonly",
-            )
+        yield Case(
+            stub="def good_posonly(__number: int, text: str) -> None: ...",
+            runtime="def good_posonly(num, /, text): pass",
+            error=None,
+        )
+        yield Case(
+            stub="def bad_posonly(__number: int, text: str) -> None: ...",
+            runtime="def bad_posonly(flag, /, text): pass",
+            error="bad_posonly",
+        )
         yield Case(
             stub="""
             class BadMethod:
@@ -283,22 +282,21 @@ class StubtestUnit(unittest.TestCase):
             runtime="def stub_posonly(number, text): pass",
             error="stub_posonly",
         )
-        if sys.version_info >= (3, 8):
-            yield Case(
-                stub="def good_posonly(__number: int, text: str) -> None: ...",
-                runtime="def good_posonly(number, /, text): pass",
-                error=None,
-            )
-            yield Case(
-                stub="def runtime_posonly(number: int, text: str) -> None: ...",
-                runtime="def runtime_posonly(number, /, text): pass",
-                error="runtime_posonly",
-            )
-            yield Case(
-                stub="def stub_posonly_570(number: int, /, text: str) -> None: ...",
-                runtime="def stub_posonly_570(number, text): pass",
-                error="stub_posonly_570",
-            )
+        yield Case(
+            stub="def good_posonly(__number: int, text: str) -> None: ...",
+            runtime="def good_posonly(number, /, text): pass",
+            error=None,
+        )
+        yield Case(
+            stub="def runtime_posonly(number: int, text: str) -> None: ...",
+            runtime="def runtime_posonly(number, /, text): pass",
+            error="runtime_posonly",
+        )
+        yield Case(
+            stub="def stub_posonly_570(number: int, /, text: str) -> None: ...",
+            runtime="def stub_posonly_570(number, text): pass",
+            error="stub_posonly_570",
+        )
 
     @collect_cases
     def test_default_presence(self) -> Iterator[Case]:
@@ -582,17 +580,16 @@ class StubtestUnit(unittest.TestCase):
             runtime="def f4(a, *args, b, **kwargs): pass",
             error=None,
         )
-        if sys.version_info >= (3, 8):
-            yield Case(
-                stub="""
-                @overload
-                def f5(__a: int) -> int: ...
-                @overload
-                def f5(__b: str) -> str: ...
-                """,
-                runtime="def f5(x, /): pass",
-                error=None,
-            )
+        yield Case(
+            stub="""
+            @overload
+            def f5(__a: int) -> int: ...
+            @overload
+            def f5(__b: str) -> str: ...
+            """,
+            runtime="def f5(x, /): pass",
+            error=None,
+        )
 
     @collect_cases
     def test_property(self) -> Iterator[Case]:

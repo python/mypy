@@ -677,6 +677,7 @@ class StubgenPythonSuite(DataSuite):
     base_path = "."
     files = ["stubgen.test"]
 
+    @unittest.skipIf(sys.platform == "win32", "clean up fails on Windows")
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         with local_sys_path_set():
             self.run_case_inner(testcase)

@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import NamedTuple
-from typing_extensions import Final
+from typing import Final, NamedTuple
 
 import mypy.checker
 from mypy import message_registry
@@ -468,7 +467,7 @@ class PatternChecker(PatternVisitor[PatternType]):
                 name = type_info.type.str_with_options(self.options)
             else:
                 name = type_info.name
-            self.msg.fail(message_registry.CLASS_PATTERN_TYPE_REQUIRED.format(name), o.class_ref)
+            self.msg.fail(message_registry.CLASS_PATTERN_TYPE_REQUIRED.format(name), o)
             return self.early_non_match()
 
         new_type, rest_type = self.chk.conditional_types_with_intersection(

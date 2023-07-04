@@ -1867,3 +1867,20 @@ class B:
             return B()  # E: Incompatible return value type (got "B", expected "A")
 
 [builtins fixtures/isinstancelist.pyi]
+
+[case testAttributeOnSelfAttributeInSubclass]
+from typing import List, Self
+
+class A:
+    x: Self
+    xs: List[Self]
+
+class B(A):
+    extra: int
+
+    def meth(self) -> None:
+        reveal_type(self.x)  # N: Revealed type is "Self`0"
+        reveal_type(self.xs[0])  # N: Revealed type is "Self`0"
+        reveal_type(self.x.extra)  # N: Revealed type is "builtins.int"
+        reveal_type(self.xs[0].extra)  # N: Revealed type is "builtins.int"
+[builtins fixtures/list.pyi]

@@ -32,6 +32,7 @@ implementations:
 * ``int`` (:ref:`native operations <int-ops>`)
 * ``i64`` (:ref:`documentation <native-ints>`, :ref:`native operations <int-ops>`)
 * ``i32`` (:ref:`documentation <native-ints>`, :ref:`native operations <int-ops>`)
+* ``i16`` (:ref:`documentation <native-ints>`, :ref:`native operations <int-ops>`)
 * ``float`` (:ref:`native operations <float-ops>`)
 * ``bool`` (:ref:`native operations <bool-ops>`)
 * ``str`` (:ref:`native operations <str-ops>`)
@@ -193,8 +194,8 @@ Traits have some special properties:
 * You shouldn't create instances of traits (though mypyc does not
   prevent it yet).
 
-* Traits can subclass other traits, but they can't subclass non-trait
-  classes (other than ``object``).
+* Traits can subclass other traits or native classes, but the MRO must be
+  linear (just like with native classes).
 
 * Accessing methods or attributes through a trait type is somewhat
   less efficient than through a native class type, but this is much
@@ -342,13 +343,14 @@ Examples::
 Native integer types
 --------------------
 
-You can use the native integer types ``i64`` (64-bit signed integer)
-and ``i32`` (32-bit signed integer) if you know that integer values
-will always fit within fixed bounds. These types are faster than the
-arbitrary-precision ``int`` type, since they don't require overflow
-checks on operations. ``i32`` may also use less memory than ``int``
-values. The types are imported from the ``mypy_extensions`` module
-(installed via ``pip install mypy_extensions``).
+You can use the native integer types ``i64`` (64-bit signed integer),
+``i32`` (32-bit signed integer), and ``i16`` (16-bit signed integer)
+if you know that integer values will always fit within fixed
+bounds. These types are faster than the arbitrary-precision ``int``
+type, since they don't require overflow checks on operations. ``i32``
+and ``i16`` may also use less memory than ``int`` values. The types
+are imported from the ``mypy_extensions`` module (installed via ``pip
+install mypy_extensions``).
 
 Example::
 

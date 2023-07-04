@@ -159,7 +159,7 @@ To run mypy on itself:
 
 To run the linter:
 
-    flake8
+    ruff .
 
 You can also run all of the above tests using `runtests.py` (this includes
 type checking mypy and linting):

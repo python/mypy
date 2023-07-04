@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing_extensions import Final
+from typing import Final
 
 # Map from binary operator id to related method name (in Python 3).
 op_methods: Final = {

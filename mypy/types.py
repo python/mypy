@@ -9,6 +9,7 @@ from typing import (
     Any,
     ClassVar,
     Dict,
+    Final,
     Iterable,
     NamedTuple,
     NewType,
@@ -17,7 +18,7 @@ from typing import (
     Union,
     cast,
 )
-from typing_extensions import Final, Self, TypeAlias as _TypeAlias, TypeGuard, overload
+from typing_extensions import Self, TypeAlias as _TypeAlias, TypeGuard, overload
 
 import mypy.nodes
 from mypy.bogus_type import Bogus
@@ -150,7 +151,11 @@ NEVER_NAMES: Final = (
 )
 
 # Mypyc fixed-width native int types (compatible with builtins.int)
-MYPYC_NATIVE_INT_NAMES: Final = ("mypy_extensions.i64", "mypy_extensions.i32")
+MYPYC_NATIVE_INT_NAMES: Final = (
+    "mypy_extensions.i64",
+    "mypy_extensions.i32",
+    "mypy_extensions.i16",
+)
 
 DATACLASS_TRANSFORM_NAMES: Final = (
     "typing.dataclass_transform",
@@ -2433,6 +2438,7 @@ class TypedDictType(ProperType):
         *,
         fallback: Instance | None = None,
         item_types: list[Type] | None = None,
+        item_names: list[str] | None = None,
         required_keys: set[str] | None = None,
     ) -> TypedDictType:
         if fallback is None:
@@ -2443,6 +2449,9 @@ class TypedDictType(ProperType):
             items = dict(zip(self.items, item_types))
         if required_keys is None:
             required_keys = self.required_keys
+        if item_names is not None:
+            items = {k: v for (k, v) in items.items() if k in item_names}
+            required_keys &= set(item_names)
         return TypedDictType(items, required_keys, fallback, self.line, self.column)
 
     def create_anonymous_fallback(self) -> Instance:
@@ -2957,7 +2966,7 @@ def get_proper_types(
 # to make it easier to gradually get modules working with mypyc.
 # Import them here, after the types are defined.
 # This is intended as a re-export also.
-from mypy.type_visitor import (  # noqa: F811,F401
+from mypy.type_visitor import (  # noqa: F811
     ALL_STRATEGY as ALL_STRATEGY,
     ANY_STRATEGY as ANY_STRATEGY,
     BoolTypeQuery as BoolTypeQuery,

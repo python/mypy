@@ -12,8 +12,8 @@ import tempfile
 from abc import abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterator, NamedTuple, NoReturn, Pattern, Union
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import Any, Final, Iterator, NamedTuple, NoReturn, Pattern, Union
+from typing_extensions import TypeAlias as _TypeAlias
 
 import pytest
 

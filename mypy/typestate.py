@@ -5,8 +5,8 @@ and potentially other mutable TypeInfo state. This module contains mutable globa
 
 from __future__ import annotations
 
-from typing import Dict, Set, Tuple
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import Dict, Final, Set, Tuple
+from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.nodes import TypeInfo
 from mypy.server.trigger import make_trigger

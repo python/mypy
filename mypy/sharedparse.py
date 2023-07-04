@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing_extensions import Final
+from typing import Final
 
 """Shared logic between our three mypy parser files."""
 

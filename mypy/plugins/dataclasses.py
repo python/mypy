@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Iterator, Optional
-from typing_extensions import Final
+from typing import TYPE_CHECKING, Final, Iterator
 
 from mypy import errorcodes, message_registry
 from mypy.expandtype import expand_type, expand_type_by_instance
@@ -26,6 +25,7 @@ from mypy.nodes import (
     DataclassTransformSpec,
     Expression,
     FuncDef,
+    FuncItem,
     IfStmt,
     JsonDict,
     NameExpr,
@@ -55,6 +55,7 @@ from mypy.typeops import map_type_from_supertype, try_getting_literals_from_type
 from mypy.types import (
     AnyType,
     CallableType,
+    FunctionLike,
     Instance,
     LiteralType,
     NoneType,
@@ -69,19 +70,23 @@ from mypy.types import (
 )
 from mypy.typevars import fill_typevars
 
+if TYPE_CHECKING:
+    from mypy.checker import TypeChecker
+
 # The set of decorators that generate dataclasses.
 dataclass_makers: Final = {"dataclass", "dataclasses.dataclass"}
 
 
 SELF_TVAR_NAME: Final = "_DT"
-_TRANSFORM_SPEC_FOR_DATACLASSES = DataclassTransformSpec(
+_TRANSFORM_SPEC_FOR_DATACLASSES: Final = DataclassTransformSpec(
     eq_default=True,
     order_default=False,
     kw_only_default=False,
     frozen_default=False,
     field_specifiers=("dataclasses.Field", "dataclasses.field"),
 )
-_INTERNAL_REPLACE_SYM_NAME = "__mypy-replace"
+_INTERNAL_REPLACE_SYM_NAME: Final = "__mypy-replace"
+_INTERNAL_POST_INIT_SYM_NAME: Final = "__mypy-__post_init__"
 
 
 class DataclassAttribute:
@@ -98,6 +103,7 @@ class DataclassAttribute:
         info: TypeInfo,
         kw_only: bool,
         is_neither_frozen_nor_nonfrozen: bool,
+        api: SemanticAnalyzerPluginInterface,
     ) -> None:
         self.name = name
         self.alias = alias
@@ -110,6 +116,7 @@ class DataclassAttribute:
         self.info = info
         self.kw_only = kw_only
         self.is_neither_frozen_nor_nonfrozen = is_neither_frozen_nor_nonfrozen
+        self._api = api
 
     def to_argument(self, current_info: TypeInfo) -> Argument:
         arg_kind = ARG_POS
@@ -126,13 +133,16 @@ class DataclassAttribute:
             kind=arg_kind,
         )
 
-    def expand_type(self, current_info: TypeInfo) -> Optional[Type]:
+    def expand_type(self, current_info: TypeInfo) -> Type | None:
         if self.type is not None and self.info.self_type is not None:
             # In general, it is not safe to call `expand_type()` during semantic analyzis,
             # however this plugin is called very late, so all types should be fully ready.
             # Also, it is tricky to avoid eager expansion of Self types here (e.g. because
             # we serialize attributes).
-            return expand_type(self.type, {self.info.self_type.id: fill_typevars(current_info)})
+            with state.strict_optional_set(self._api.options.strict_optional):
+                return expand_type(
+                    self.type, {self.info.self_type.id: fill_typevars(current_info)}
+                )
         return self.type
 
     def to_var(self, current_info: TypeInfo) -> Var:
@@ -158,16 +168,15 @@ class DataclassAttribute:
         cls, info: TypeInfo, data: JsonDict, api: SemanticAnalyzerPluginInterface
     ) -> DataclassAttribute:
         data = data.copy()
-        if data.get("kw_only") is None:
-            data["kw_only"] = False
         typ = deserialize_and_fixup_type(data.pop("type"), api)
-        return cls(type=typ, info=info, **data)
+        return cls(type=typ, info=info, **data, api=api)
 
     def expand_typevar_from_subtype(self, sub_type: TypeInfo) -> None:
         """Expands type vars in the context of a subtype when an attribute is inherited
         from a generic super type."""
         if self.type is not None:
-            self.type = map_type_from_supertype(self.type, sub_type, self.info)
+            with state.strict_optional_set(self._api.options.strict_optional):
+                self.type = map_type_from_supertype(self.type, sub_type, self.info)
 
 
 class DataclassTransformer:
@@ -226,12 +235,11 @@ class DataclassTransformer:
             and ("__init__" not in info.names or info.names["__init__"].plugin_generated)
             and attributes
         ):
-            with state.strict_optional_set(self._api.options.strict_optional):
-                args = [
-                    attr.to_argument(info)
-                    for attr in attributes
-                    if attr.is_in_init and not self._is_kw_only_type(attr.type)
-                ]
+            args = [
+                attr.to_argument(info)
+                for attr in attributes
+                if attr.is_in_init and not self._is_kw_only_type(attr.type)
+            ]
 
             if info.fallback_to_any:
                 # Make positional args optional since we don't know their order.
@@ -352,6 +360,8 @@ class DataclassTransformer:
 
         if self._spec is _TRANSFORM_SPEC_FOR_DATACLASSES:
             self._add_internal_replace_method(attributes)
+        if "__post_init__" in info.names:
+            self._add_internal_post_init_method(attributes)
 
         info.metadata["dataclass"] = {
             "attributes": [attr.serialize() for attr in attributes],
@@ -387,7 +397,47 @@ class DataclassTransformer:
             fallback=self._api.named_type("builtins.function"),
         )
 
-        self._cls.info.names[_INTERNAL_REPLACE_SYM_NAME] = SymbolTableNode(
+        info.names[_INTERNAL_REPLACE_SYM_NAME] = SymbolTableNode(
+            kind=MDEF, node=FuncDef(typ=signature), plugin_generated=True
+        )
+
+    def _add_internal_post_init_method(self, attributes: list[DataclassAttribute]) -> None:
+        arg_types: list[Type] = [fill_typevars(self._cls.info)]
+        arg_kinds = [ARG_POS]
+        arg_names: list[str | None] = ["self"]
+
+        info = self._cls.info
+        for attr in attributes:
+            if not attr.is_init_var:
+                continue
+            attr_type = attr.expand_type(info)
+            assert attr_type is not None
+            arg_types.append(attr_type)
+            # We always use `ARG_POS` without a default value, because it is practical.
+            # Consider this case:
+            #
+            # @dataclass
+            # class My:
+            #     y: dataclasses.InitVar[str] = 'a'
+            #     def __post_init__(self, y: str) -> None: ...
+            #
+            # We would be *required* to specify `y: str = ...` if default is added here.
+            # But, most people won't care about adding default values to `__post_init__`,
+            # because it is not designed to be called directly, and duplicating default values
+            # for the sake of type-checking is unpleasant.
+            arg_kinds.append(ARG_POS)
+            arg_names.append(attr.name)
+
+        signature = CallableType(
+            arg_types=arg_types,
+            arg_kinds=arg_kinds,
+            arg_names=arg_names,
+            ret_type=NoneType(),
+            fallback=self._api.named_type("builtins.function"),
+            name="__post_init__",
+        )
+
+        info.names[_INTERNAL_POST_INIT_SYM_NAME] = SymbolTableNode(
             kind=MDEF, node=FuncDef(typ=signature), plugin_generated=True
         )
 
@@ -499,8 +549,7 @@ class DataclassTransformer:
                 # TODO: We shouldn't be performing type operations during the main
                 #       semantic analysis pass, since some TypeInfo attributes might
                 #       still be in flux. This should be performed in a later phase.
-                with state.strict_optional_set(self._api.options.strict_optional):
-                    attr.expand_typevar_from_subtype(cls.info)
+                attr.expand_typevar_from_subtype(cls.info)
                 found_attrs[name] = attr
 
                 sym_node = cls.info.names.get(name)
@@ -646,6 +695,7 @@ class DataclassTransformer:
                 is_neither_frozen_nor_nonfrozen=_has_direct_dataclass_transform_metaclass(
                     cls.info
                 ),
+                api=self._api,
             )
 
         all_attrs = list(found_attrs.values())
@@ -1053,4 +1103,34 @@ def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
         ret_type=obj_type,
         fallback=ctx.default_signature.fallback,
         name=f"{ctx.default_signature.name} of {inst_type_str}",
+    )
+
+
+def is_processed_dataclass(info: TypeInfo | None) -> bool:
+    return info is not None and "dataclass" in info.metadata
+
+
+def check_post_init(api: TypeChecker, defn: FuncItem, info: TypeInfo) -> None:
+    if defn.type is None:
+        return
+
+    ideal_sig = info.get_method(_INTERNAL_POST_INIT_SYM_NAME)
+    if ideal_sig is None or ideal_sig.type is None:
+        return
+
+    # We set it ourself, so it is always fine:
+    assert isinstance(ideal_sig.type, ProperType)
+    assert isinstance(ideal_sig.type, FunctionLike)
+    # Type of `FuncItem` is always `FunctionLike`:
+    assert isinstance(defn.type, FunctionLike)
+
+    api.check_override(
+        override=defn.type,
+        original=ideal_sig.type,
+        name="__post_init__",
+        name_in_super="__post_init__",
+        supertype="dataclass",
+        original_class_or_static=False,
+        override_class_or_static=False,
+        node=defn,
     )
