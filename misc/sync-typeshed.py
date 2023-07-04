@@ -191,7 +191,7 @@ def main() -> None:
             if not sys.__stdin__.isatty():
                 # We're in an automated context
                 raise
-            
+
             # Allow the option to merge manually
             print(
                 f"Commit {commit} failed to cherry pick."
