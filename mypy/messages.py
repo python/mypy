@@ -1493,6 +1493,13 @@ class MessageBuilder:
     def cant_assign_to_classvar(self, name: str, context: Context) -> None:
         self.fail(f'Cannot assign to class variable "{name}" via instance', context)
 
+    def no_overridable_method(self, name: str, context: Context) -> None:
+        self.fail(
+            f'Method "{name}" is marked as an override, '
+            "but no base method was found with this name",
+            context,
+        )
+
     def final_cant_override_writable(self, name: str, ctx: Context) -> None:
         self.fail(f'Cannot override writable attribute "{name}" with a final one', ctx)
 

@@ -208,6 +208,31 @@ override has a compatible signature:
    subtype such as ``list[int]``. Similarly, you can vary argument types
    **contravariantly** -- subclasses can have more general argument types.
 
+In order to ensure that your code remains correct when renaming methods,
+it can be helpful to explicitly mark a method as overriding a base
+method. This can be done with the ``@override`` decorator. If the base
+method is then renamed while the overriding method is not, mypy will
+show an error:
+
+.. code-block:: python
+
+   from typing import override
+
+   class Base:
+       def f(self, x: int) -> None:
+           ...
+       def g_renamed(self, y: str) -> None:
+           ...
+
+   class Derived1(Base):
+       @override
+       def f(self, x: int) -> None:   # OK
+           ...
+
+       @override
+       def g(self, y: str) -> None:   # Error: no corresponding base method found
+           ...
+
 You can also override a statically typed method with a dynamically
 typed one. This allows dynamically typed code to override methods
 defined in library classes without worrying about their type

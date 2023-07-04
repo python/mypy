@@ -923,3 +923,17 @@ def dummy() -> None:
         pass
     reveal_type(bar)  # N: Revealed type is "def [T <: builtins.dict[builtins.str, builtins.dict[builtins.str, builtins.str]]] (x: T`-1) -> T`-1"
 [builtins fixtures/dict.pyi]
+
+[case testAliasRecursiveUnpackMultiple]
+from typing import Tuple, TypeVar, Optional
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+A = Tuple[T, S, Optional[A[T, S]]]
+x: A[int, str]
+
+*_, last = x
+if last is not None:
+    reveal_type(last)  # N: Revealed type is "Tuple[builtins.int, builtins.str, Union[Tuple[builtins.int, builtins.str, Union[..., None]], None]]"
+[builtins fixtures/tuple.pyi]
