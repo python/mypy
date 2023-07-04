@@ -133,7 +133,7 @@ Functions
    # Mypy understands positional-only and keyword-only arguments
    # Positional-only arguments can also be marked by using a name starting with
    # two underscores
-   def quux(x: int, / *, y: int) -> None:
+   def quux(x: int, /, *, y: int) -> None:
        pass
 
    quux(3, y=5)  # Ok
@@ -178,8 +178,6 @@ Classes
    class AuditedBankAccount(BankAccount):
        # You can optionally declare instance variables in the class body
        audit_log: list[str]
-       # This is an instance variable with a default value
-       auditor_name: str = "The Spanish Inquisition"
 
        def __init__(self, account_name: str, initial_balance: int = 0) -> None:
            super().__init__(account_name, initial_balance)

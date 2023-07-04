@@ -1506,7 +1506,10 @@ L0:
     return 1
 
 [case testI64ExplicitConversionFromNativeInt]
-from mypy_extensions import i64, i32
+from mypy_extensions import i64, i32, i16
+
+def from_i16(x: i16) -> i64:
+    return i64(x)
 
 def from_i32(x: i32) -> i64:
     return i64(x)
@@ -1514,6 +1517,12 @@ def from_i32(x: i32) -> i64:
 def from_i64(x: i64) -> i64:
     return i64(x)
 [out]
+def from_i16(x):
+    x :: int16
+    r0 :: int64
+L0:
+    r0 = extend signed x: int16 to int64
+    return r0
 def from_i32(x):
     x :: int32
     r0 :: int64

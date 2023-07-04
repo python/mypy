@@ -353,12 +353,17 @@ definitions or calls.
 .. option:: --disallow-untyped-defs
 
     This flag reports an error whenever it encounters a function definition
-    without type annotations.
+    without type annotations or with incomplete type annotations.
+    (a superset of :option:`--disallow-incomplete-defs`).
+
+    For example, it would report an error for :code:`def f(a, b)` and :code:`def f(a: int, b)`.
 
 .. option:: --disallow-incomplete-defs
 
     This flag reports an error whenever it encounters a partly annotated
-    function definition.
+    function definition, while still allowing entirely unannotated definitions.
+
+    For example, it would report an error for :code:`def f(a: int, b)` but not :code:`def f(a, b)`.
 
 .. option:: --check-untyped-defs
 
@@ -606,6 +611,34 @@ of the above sections.
            ...
 
        assert text is not None  # OK, check against None is allowed as a special case.
+
+.. option:: --extra-checks
+
+    This flag enables additional checks that are technically correct but may be
+    impractical in real code. In particular, it prohibits partial overlap in
+    ``TypedDict`` updates, and makes arguments prepended via ``Concatenate``
+    positional-only. For example:
+
+    .. code-block:: python
+
+       from typing import TypedDict
+
+       class Foo(TypedDict):
+           a: int
+
+       class Bar(TypedDict):
+           a: int
+           b: int
+
+       def test(foo: Foo, bar: Bar) -> None:
+           # This is technically unsafe since foo can have a subtype of Foo at
+           # runtime, where type of key "b" is incompatible with int, see below
+           bar.update(foo)
+
+       class Bad(Foo):
+           b: str
+       bad: Bad = {"a": 0, "b": "no"}
+       test(bad, bar)
 
 .. option:: --strict
 

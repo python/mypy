@@ -63,6 +63,8 @@ classes:
 * ``IndexError``
 * ``LookupError``
 * ``UserWarning``
+* ``typing.NamedTuple``
+* ``enum.Enum``
 
 By default, a non-native class can't inherit a native class, and you
 can't inherit from a native class outside the compilation unit that
@@ -103,6 +105,11 @@ through an instance. Example::
     o = Cls()
     print(o.cv)  # OK (2)
     o.cv = 3  # Error!
+
+.. tip::
+
+    Constant class variables can be declared using ``typing.Final`` or
+    ``typing.Final[<type>]``.
 
 Generic native classes
 ----------------------
@@ -150,9 +157,10 @@ decorators can be used with native classes, however:
 * ``mypy_extensions.trait`` (for defining :ref:`trait types <trait-types>`)
 * ``mypy_extensions.mypyc_attr`` (see :ref:`above <inheritance>`)
 * ``dataclasses.dataclass``
+* ``@attr.s(auto_attribs=True)``
 
-Dataclasses have partial native support, and they aren't as efficient
-as pure native classes.
+Dataclasses and attrs classes have partial native support, and they aren't as
+efficient as pure native classes.
 
 .. note::
 

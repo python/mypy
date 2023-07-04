@@ -1,0 +1,83 @@
+[case testTypeVarDefaultsBasic]
+import builtins
+from typing import Generic, TypeVar, ParamSpec, Callable, Tuple, List
+from typing_extensions import TypeVarTuple, Unpack
+
+T1 = TypeVar("T1", default=int)
+P1 = ParamSpec("P1", default=[int, str])
+Ts1 = TypeVarTuple("Ts1", default=Unpack[Tuple[int, str]])
+
+def f1(a: T1) -> List[T1]: ...
+reveal_type(f1)  # N: Revealed type is "def [T1 = builtins.int] (a: T1`-1 = builtins.int) -> builtins.list[T1`-1 = builtins.int]"
+
+def f2(a: Callable[P1, None] ) -> Callable[P1, None]: ...
+reveal_type(f2)  # N: Revealed type is "def [P1 = [builtins.int, builtins.str]] (a: def (*P1.args, **P1.kwargs)) -> def (*P1.args, **P1.kwargs)"
+
+def f3(a: Tuple[Unpack[Ts1]]) -> Tuple[Unpack[Ts1]]: ...
+reveal_type(f3)  # N: Revealed type is "def [Ts1 = Unpack[Tuple[builtins.int, builtins.str]]] (a: Tuple[Unpack[Ts1`-1 = Unpack[Tuple[builtins.int, builtins.str]]]]) -> Tuple[Unpack[Ts1`-1 = Unpack[Tuple[builtins.int, builtins.str]]]]"
+
+
+class ClassA1(Generic[T1]): ...
+class ClassA2(Generic[P1]): ...
+class ClassA3(Generic[Unpack[Ts1]]): ...
+
+reveal_type(ClassA1)  # N: Revealed type is "def [T1 = builtins.int] () -> __main__.ClassA1[T1`1 = builtins.int]"
+reveal_type(ClassA2)  # N: Revealed type is "def [P1 = [builtins.int, builtins.str]] () -> __main__.ClassA2[P1`1 = [builtins.int, builtins.str]]"
+reveal_type(ClassA3)  # N: Revealed type is "def [Ts1 = Unpack[Tuple[builtins.int, builtins.str]]] () -> __main__.ClassA3[Unpack[Ts1`1 = Unpack[Tuple[builtins.int, builtins.str]]]]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarDefaultsValid]
+from typing import TypeVar, ParamSpec, Any, List, Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+S0 = TypeVar("S0")
+S1 = TypeVar("S1", bound=int)
+
+P0 = ParamSpec("P0")
+Ts0 = TypeVarTuple("Ts0")
+
+T1 = TypeVar("T1", default=int)
+T2 = TypeVar("T2", bound=float, default=int)
+T3 = TypeVar("T3", bound=List[Any], default=List[int])
+T4 = TypeVar("T4", int, str, default=int)
+T5 = TypeVar("T5", default=S0)
+T6 = TypeVar("T6", bound=float, default=S1)
+# T7 = TypeVar("T7", bound=List[Any], default=List[S0])  # TODO
+
+P1 = ParamSpec("P1", default=[])
+P2 = ParamSpec("P2", default=...)
+P3 = ParamSpec("P3", default=[int, str])
+P4 = ParamSpec("P4", default=P0)
+
+Ts1 = TypeVarTuple("Ts1", default=Unpack[Tuple[int]])
+Ts2 = TypeVarTuple("Ts2", default=Unpack[Tuple[int, ...]])
+# Ts3 = TypeVarTuple("Ts3", default=Unpack[Ts0])  # TODO
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarDefaultsInvalid]
+from typing import TypeVar, ParamSpec, Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+T1 = TypeVar("T1", default=2)  # E: TypeVar "default" must be a type
+T2 = TypeVar("T2", default=[int, str])  # E: Bracketed expression "[...]" is not valid as a type \
+                                        # N: Did you mean "List[...]"? \
+                                        # E: TypeVar "default" must be a type
+
+P1 = ParamSpec("P1", default=int)  # E: The default argument to ParamSpec must be a list expression, ellipsis, or a ParamSpec
+P2 = ParamSpec("P2", default=2)  # E: The default argument to ParamSpec must be a list expression, ellipsis, or a ParamSpec
+P3 = ParamSpec("P3", default=(2, int))  # E: The default argument to ParamSpec must be a list expression, ellipsis, or a ParamSpec
+P4 = ParamSpec("P4", default=[2, int])  # E: Argument 0 of ParamSpec default must be a type
+
+Ts1 = TypeVarTuple("Ts1", default=2) # E: The default argument to TypeVarTuple must be an Unpacked tuple
+Ts2 = TypeVarTuple("Ts2", default=int)  # E: The default argument to TypeVarTuple must be an Unpacked tuple
+Ts3 = TypeVarTuple("Ts3", default=Tuple[int])  # E: The default argument to TypeVarTuple must be an Unpacked tuple
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarDefaultsInvalid2]
+from typing import TypeVar, List, Union
+
+T1 = TypeVar("T1", bound=str, default=int)  # E: TypeVar default must be a subtype of the bound type
+T2 = TypeVar("T2", bound=List[str], default=List[int])  # E: TypeVar default must be a subtype of the bound type
+T3 = TypeVar("T3", int, str, default=bytes)  # E: TypeVar default must be one of the constraint types
+T4 = TypeVar("T4", int, str, default=Union[int, str])  # E: TypeVar default must be one of the constraint types
+T5 = TypeVar("T5", float, str, default=int)  # E: TypeVar default must be one of the constraint types

@@ -114,8 +114,15 @@ if sys.version_info >= (3, 8):
         def __rsub__(self, x2: float | NormalDist) -> NormalDist: ...
         __rmul__ = __mul__
 
-if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 12):
+    def correlation(
+        __x: Sequence[_Number], __y: Sequence[_Number], *, method: Literal["linear", "ranked"] = "linear"
+    ) -> float: ...
+
+elif sys.version_info >= (3, 10):
     def correlation(__x: Sequence[_Number], __y: Sequence[_Number]) -> float: ...
+
+if sys.version_info >= (3, 10):
     def covariance(__x: Sequence[_Number], __y: Sequence[_Number]) -> float: ...
 
     class LinearRegression(NamedTuple):

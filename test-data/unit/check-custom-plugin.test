@@ -887,7 +887,10 @@ plugins=<ROOT>/test-data/unit/plugins/descriptor.py
 # flags: --config-file tmp/mypy.ini
 
 def dynamic_signature(arg1: str) -> str: ...
-reveal_type(dynamic_signature(1))  # N: Revealed type is "builtins.int"
+a: int = 1
+reveal_type(dynamic_signature(a))  # N: Revealed type is "builtins.int"
+b: bytes = b'foo'
+reveal_type(dynamic_signature(b))  # N: Revealed type is "builtins.bytes"
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/function_sig_hook.py
@@ -1014,3 +1017,15 @@ reveal_type(MyClass.foo_staticmethod)  # N: Revealed type is "def (builtins.int)
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/add_classmethod.py
+
+[case testCustomErrorCodePlugin]
+# flags: --config-file tmp/mypy.ini  --show-error-codes
+def main() -> int:
+    return 2
+
+main()  # E: Custom error  [custom]
+reveal_type(1)  # N: Revealed type is "Literal[1]?"
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/custom_errorcode.py

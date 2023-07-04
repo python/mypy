@@ -113,7 +113,7 @@ dict_update_op = method_op(
 # Operation used for **value in dict displays.
 # This is mostly like dict.update(obj), but has customized error handling.
 dict_update_in_display_op = custom_op(
-    arg_types=[dict_rprimitive, dict_rprimitive],
+    arg_types=[dict_rprimitive, object_rprimitive],
     return_type=c_int_rprimitive,
     c_function_name="CPyDict_UpdateInDisplay",
     error_kind=ERR_NEG_INT,

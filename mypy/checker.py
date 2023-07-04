@@ -9,6 +9,7 @@ from typing import (
     AbstractSet,
     Callable,
     Dict,
+    Final,
     Generic,
     Iterable,
     Iterator,
@@ -22,7 +23,7 @@ from typing import (
     cast,
     overload,
 )
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.checkexpr
 from mypy import errorcodes as codes, message_registry, nodes, operators
@@ -136,6 +137,7 @@ from mypy.nodes import (
 from mypy.options import Options
 from mypy.patterns import AsPattern, StarredPattern
 from mypy.plugin import CheckerPluginInterface, Plugin
+from mypy.plugins import dataclasses as dataclasses_plugin
 from mypy.scope import Scope
 from mypy.semanal import is_trivial_body, refers_to_fullname, set_callable_name
 from mypy.semanal_enum import ENUM_BASES, ENUM_SPECIAL_PROPS
@@ -641,7 +643,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if defn.impl:
             defn.impl.accept(self)
         if defn.info:
-            self.check_method_override(defn)
+            found_base_method = self.check_method_override(defn)
+            if defn.is_explicit_override and found_base_method is False:
+                self.msg.no_overridable_method(defn.name, defn)
             self.check_inplace_operator_method(defn)
         if not defn.is_property:
             self.check_overlapping_overloads(defn)
@@ -1042,6 +1046,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if name == "__exit__":
             self.check__exit__return_type(defn)
+        if name == "__post_init__":
+            if dataclasses_plugin.is_processed_dataclass(defn.info):
+                dataclasses_plugin.check_post_init(self, defn, defn.info)
 
     @contextmanager
     def enter_attribute_inference_context(self) -> Iterator[None]:
@@ -1540,7 +1547,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if opt_meta is not None:
                     forward_inst = opt_meta
 
-        def has_readable_member(typ: Union[UnionType, Instance], name: str) -> bool:
+        def has_readable_member(typ: UnionType | Instance, name: str) -> bool:
             # TODO: Deal with attributes of TupleType etc.
             if isinstance(typ, Instance):
                 return typ.type.has_readable_member(name)
@@ -1807,25 +1814,35 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             return [(defn, typ)]
 
-    def check_method_override(self, defn: FuncDef | OverloadedFuncDef | Decorator) -> None:
+    def check_method_override(self, defn: FuncDef | OverloadedFuncDef | Decorator) -> bool | None:
         """Check if function definition is compatible with base classes.
 
         This may defer the method if a signature is not available in at least one base class.
+        Return ``None`` if that happens.
+
+        Return ``True`` if an attribute with the method name was found in the base class.
         """
         # Check against definitions in base classes.
+        found_base_method = False
         for base in defn.info.mro[1:]:
-            if self.check_method_or_accessor_override_for_base(defn, base):
+            result = self.check_method_or_accessor_override_for_base(defn, base)
+            if result is None:
                 # Node was deferred, we will have another attempt later.
-                return
+                return None
+            found_base_method |= result
+        return found_base_method
 
     def check_method_or_accessor_override_for_base(
         self, defn: FuncDef | OverloadedFuncDef | Decorator, base: TypeInfo
-    ) -> bool:
+    ) -> bool | None:
         """Check if method definition is compatible with a base class.
 
-        Return True if the node was deferred because one of the corresponding
+        Return ``None`` if the node was deferred because one of the corresponding
         superclass nodes is not ready.
+
+        Return ``True`` if an attribute with the method name was found in the base class.
         """
+        found_base_method = False
         if base:
             name = defn.name
             base_attr = base.names.get(name)
@@ -1836,13 +1853,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # Second, final can't override anything writeable independently of types.
                 if defn.is_final:
                     self.check_if_final_var_override_writable(name, base_attr.node, defn)
+                found_base_method = True
 
             # Check the type of override.
-            if name not in ("__init__", "__new__", "__init_subclass__"):
+            if name not in ("__init__", "__new__", "__init_subclass__", "__post_init__"):
                 # Check method override
                 # (__init__, __new__, __init_subclass__ are special).
                 if self.check_method_override_for_base_with_name(defn, name, base):
-                    return True
+                    return None
                 if name in operators.inplace_operator_methods:
                     # Figure out the name of the corresponding operator method.
                     method = "__" + name[3:]
@@ -1850,8 +1868,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # always introduced safely if a base class defined __add__.
                     # TODO can't come up with an example where this is
                     #      necessary; now it's "just in case"
-                    return self.check_method_override_for_base_with_name(defn, method, base)
-        return False
+                    if self.check_method_override_for_base_with_name(defn, method, base):
+                        return None
+        return found_base_method
 
     def check_method_override_for_base_with_name(
         self, defn: FuncDef | OverloadedFuncDef | Decorator, name: str, base: TypeInfo
@@ -1974,7 +1993,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # If the attribute is read-only, allow covariance
                 pass
             else:
-                self.msg.signature_incompatible_with_supertype(defn.name, name, base.name, context)
+                self.msg.signature_incompatible_with_supertype(
+                    defn.name, name, base.name, context, original=original_type, override=typ
+                )
         return False
 
     def bind_and_map_method(
@@ -2796,6 +2817,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if name == "__match_args__" and inferred is not None:
                     typ = self.expr_checker.accept(rvalue)
                     self.check_match_args(inferred, typ, lvalue)
+                if name == "__post_init__":
+                    if dataclasses_plugin.is_processed_dataclass(self.scope.active_class()):
+                        self.fail(message_registry.DATACLASS_POST_INIT_MUST_BE_A_FUNCTION, rvalue)
 
             # Defer PartialType's super type checking.
             if (
@@ -4254,6 +4278,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             isinstance(return_type, Instance)
                             and return_type.type.fullname == "builtins.object"
                         )
+                        and not is_lambda
                     ):
                         self.msg.incorrectly_returning_any(return_type, s)
                     return
@@ -4715,7 +4740,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_incompatible_property_override(e)
         # For overloaded functions we already checked override for overload as a whole.
         if e.func.info and not e.func.is_dynamic() and not e.is_overload:
-            self.check_method_override(e)
+            found_base_method = self.check_method_override(e)
+            if e.func.is_explicit_override and found_base_method is False:
+                self.msg.no_overridable_method(e.func.name, e.func)
 
         if e.func.info and e.func.name in ("__init__", "__new__"):
             if e.type and not isinstance(get_proper_type(e.type), (FunctionLike, AnyType)):
@@ -5279,10 +5306,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             else:
                 return f"Expression has type {typ}"
 
+        def get_expr_name() -> str:
+            if isinstance(expr, (NameExpr, MemberExpr)):
+                return f'"{expr.name}"'
+            else:
+                # return type if expr has no name
+                return format_type(t, self.options)
+
         if isinstance(t, FunctionLike):
-            self.fail(
-                message_registry.FUNCTION_ALWAYS_TRUE.format(format_type(t, self.options)), expr
-            )
+            self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(get_expr_name()), expr)
         elif isinstance(t, UnionType):
             self.fail(message_registry.TYPE_ALWAYS_TRUE_UNIONTYPE.format(format_expr_type()), expr)
         elif isinstance(t, Instance) and t.type.fullname == "typing.Iterable":
@@ -6770,6 +6802,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             )
         return not watcher.has_new_errors()
 
+    def get_expression_type(self, node: Expression, type_context: Type | None = None) -> Type:
+        return self.expr_checker.accept(node, type_context=type_context)
+
 
 class CollectArgTypeVarTypes(TypeTraverserVisitor):
     """Collects the non-nested argument types in a set."""
@@ -7168,6 +7203,7 @@ def detach_callable(typ: CallableType) -> CallableType:
                 id=var.id,
                 values=var.values,
                 upper_bound=var.upper_bound,
+                default=var.default,
                 variance=var.variance,
             )
         )

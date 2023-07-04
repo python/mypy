@@ -15,6 +15,8 @@ error codes that are enabled by default.
    options by using a :ref:`configuration file <config-file>` or
    :ref:`command-line options <command-line>`.
 
+.. _code-type-arg:
+
 Check that type arguments exist [type-arg]
 ------------------------------------------
 
@@ -33,6 +35,8 @@ Example:
     # Error: Missing type parameters for generic type "list"  [type-arg]
     def remove_dups(items: list) -> list:
         ...
+
+.. _code-no-untyped-def:
 
 Check that every function has an annotation [no-untyped-def]
 ------------------------------------------------------------
@@ -62,6 +66,8 @@ Example:
          def __init__(self) -> None:
              self.value = 0
 
+.. _code-redundant-cast:
+
 Check that cast is not redundant [redundant-cast]
 -------------------------------------------------
 
@@ -81,6 +87,8 @@ Example:
     def example(x: Count) -> int:
         # Error: Redundant cast to "int"  [redundant-cast]
         return cast(int, x)
+
+.. _code-redundant-self:
 
 Check that methods do not have redundant Self annotations [redundant-self]
 --------------------------------------------------------------------------
@@ -103,6 +111,8 @@ Example:
        # Error: Redundant "Self" annotation for the first method argument
        def copy(self: Self) -> Self:
            return type(self)()
+
+.. _code-comparison-overlap:
 
 Check that comparisons are overlapping [comparison-overlap]
 -----------------------------------------------------------
@@ -135,6 +145,8 @@ literal:
     def is_magic(x: bytes) -> bool:
         return x == b'magic'  # OK
 
+.. _code-no-untyped-call:
+
 Check that no untyped functions are called [no-untyped-call]
 ------------------------------------------------------------
 
@@ -154,6 +166,7 @@ Example:
     def bad():
         ...
 
+.. _code-no-any-return:
 
 Check that function does not return Any value [no-any-return]
 -------------------------------------------------------------
@@ -175,6 +188,8 @@ Example:
         # Error: Returning Any from function declared to return "str"  [no-any-return]
         return fields(x)[0]
 
+.. _code-no-any-unimported:
+
 Check that types have no Any components due to missing imports [no-any-unimported]
 ----------------------------------------------------------------------------------
 
@@ -195,6 +210,8 @@ that ``Cat`` falls back to ``Any`` in a type annotation:
     def feed(cat: Cat) -> None:
         ...
 
+.. _code-unreachable:
+
 Check that statement or expression is unreachable [unreachable]
 ---------------------------------------------------------------
 
@@ -213,6 +230,8 @@ incorrect control flow or conditional checks that are accidentally always true o
         return
         # Error: Statement is unreachable  [unreachable]
         print('unreachable')
+
+.. _code-redundant-expr:
 
 Check that expression is redundant [redundant-expr]
 ---------------------------------------------------
@@ -235,6 +254,34 @@ mypy generates an error if it thinks that an expression is redundant.
         # Error: If condition in comprehension is always true  [redundant-expr]
         [i for i in range(x) if isinstance(i, int)]
 
+
+.. _code-possibly-undefined:
+
+Warn about variables that are defined only in some execution paths [possibly-undefined]
+---------------------------------------------------------------------------------------
+
+If you use :option:`--enable-error-code possibly-undefined <mypy --enable-error-code>`,
+mypy generates an error if it cannot verify that a variable will be defined in
+all execution paths. This includes situations when a variable definition
+appears in a loop, in a conditional branch, in an except handler, etc. For
+example:
+
+.. code-block:: python
+
+    # Use "mypy --enable-error-code possibly-undefined ..."
+
+    from typing import Iterable
+
+    def test(values: Iterable[int], flag: bool) -> None:
+        if flag:
+            a = 1
+        z = a + 1  # Error: Name "a" may be undefined [possibly-undefined]
+
+        for v in values:
+            b = v
+        z = b + 1  # Error: Name "b" may be undefined [possibly-undefined]
+
+.. _code-truthy-bool:
 
 Check that expression is not implicitly true in boolean context [truthy-bool]
 -----------------------------------------------------------------------------
@@ -259,6 +306,7 @@ Using an iterable value in a boolean context has a separate error code
     if foo:
          ...
 
+.. _code-truthy-iterable:
 
 Check that iterable is not implicitly true in boolean context [truthy-iterable]
 -------------------------------------------------------------------------------
@@ -286,8 +334,7 @@ items`` check is actually valid. If that is the case, it is
 recommended to annotate ``items`` as ``Collection[int]`` instead of
 ``Iterable[int]``.
 
-
-.. _ignore-without-code:
+.. _code-ignore-without-code:
 
 Check that ``# type: ignore`` include an error code [ignore-without-code]
 -------------------------------------------------------------------------
@@ -319,6 +366,8 @@ Example:
     # Error: "Foo" has no attribute "nme"; maybe "name"?
     f.nme = 42  # type: ignore[assignment]
 
+.. _code-unused-awaitable:
+
 Check that awaitable return value is used [unused-awaitable]
 ------------------------------------------------------------
 
@@ -348,24 +397,53 @@ silence the error:
     async def g() -> None:
         _ = asyncio.create_task(f())  # No error
 
-Check that variables are defined only in some execution paths [possibly-undefined]
-----------------------------------------------------------------------------------
+.. _code-unused-ignore:
 
-If you use :option:`--enable-error-code possibly-undefined <mypy --enable-error-code>`,
-mypy generates an error if you don't define a variable in all execution paths.
+Check that ``# type: ignore`` comment is used [unused-ignore]
+-------------------------------------------------------------
+
+If you use :option:`--enable-error-code unused-ignore <mypy --enable-error-code>`,
+or :option:`--warn-unused-ignores <mypy --warn-unused-ignores>`
+mypy generates an error if you don't use a ``# type: ignore`` comment, i.e. if
+there is a comment, but there would be no error generated by mypy on this line
+anyway.
 
 Example:
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code possibly-undefined ..."
+    # Use "mypy --warn-unused-ignores ..."
 
-    def f(x: int) -> None:
-        if x > 0:
-            y = 1
-        # Error: Possibly undefined variable "y"
-        print(y)
+    def add(a: int, b: int) -> int:
+        # Error: unused "type: ignore" comment
+        return a + b  # type: ignore
 
+Note that due to a specific nature of this comment, the only way to selectively
+silence it, is to include the error code explicitly. Also note that this error is
+not shown if the ``# type: ignore`` is not used due to code being statically
+unreachable (e.g. due to platform or version checks).
+
+Example:
+
+.. code-block:: python
+
+    # Use "mypy --warn-unused-ignores ..."
+
+    import sys
+
+    try:
+        # The "[unused-ignore]" is needed to get a clean mypy run
+        # on both Python 3.8, and 3.9 where this module was added
+        import graphlib  # type: ignore[import,unused-ignore]
+    except ImportError:
+        pass
+
+    if sys.version_info >= (3, 9):
+        # The following will not generate an error on either
+        # Python 3.8, or Python 3.9
+        42 + "testing..."  # type: ignore
+
+.. _code-empty-body:
 
 Check that functions have empty body [empty-body]
 -------------------------------------------------------------------
@@ -380,6 +458,8 @@ Example:
     def f(x: int) -> str:
         # Error: Function is missing a body
         pass
+
+.. _code-top-level-await:
 
 Check that your code have top-level await statements [top-level-await]
 ----------------------------------------------------------------------
@@ -399,6 +479,7 @@ Example:
     # Error: "await" used at the top level
     await f()
 
+.. _code-str-format:
 
 Check that strings have wrong format parameters [str-format]
 ------------------------------------------------------------
@@ -417,6 +498,8 @@ Example:
 
     # Error: format argument is not type-safe
     print("%d %d" % ("Hello", "World"))
+
+.. _code-annotation-unchecked:
 
 Check that annotations are inside an unannotated function [annotation-unchecked]
 --------------------------------------------------------------------------------

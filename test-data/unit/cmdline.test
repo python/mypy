@@ -1124,19 +1124,6 @@ class AnotherCustomClassDefinedBelow:
 [out]
 some_file.py:3: error: Unsupported operand types for + ("int" and "str")
     42 + 'no way'
-         ^
-some_file.py:11: error: Incompatible types in assignment (expression has type
-"AnotherCustomClassDefinedBelow", variable has type "OneCustomClassName")
-    ...t_attribute_with_long_name: OneCustomClassName = OneCustomClassName()....
-                                                        ^
-some_file.py:11: error: Argument 1 to "some_interesting_method" of
-"OneCustomClassName" has incompatible type "Union[int, str, float]"; expected
-"AnotherCustomClassDefinedBelow"
-    ...OneCustomClassName = OneCustomClassName().some_interesting_method(arg)
-                                                                         ^
-[out version>=3.8]
-some_file.py:3: error: Unsupported operand types for + ("int" and "str")
-    42 + 'no way'
          ^~~~~~~~
 some_file.py:11: error: Incompatible types in assignment (expression has type
 "AnotherCustomClassDefinedBelow", variable has type "OneCustomClassName")
@@ -1165,14 +1152,6 @@ def test_tabs() -> str:
 def test_between(x: str) -> None: ...
 test_between(1	+	1)
 [out]
-tabs.py:2: error: Incompatible return value type (got "None", expected "str")
-            return None
-                   ^
-tabs.py:4: error: Argument 1 to "test_between" has incompatible type "int";
-expected "str"
-    test_between(1  +       1)
-                 ^
-[out version>=3.8]
 tabs.py:2: error: Incompatible return value type (got "None", expected "str")
             return None
                    ^~~~
@@ -1484,6 +1463,10 @@ note: A user-defined top-level module with name "typing" is not supported
 [file dir/stdlib/types.pyi]
 [file dir/stdlib/typing.pyi]
 [file dir/stdlib/typing_extensions.pyi]
+[file dir/stdlib/_typeshed.pyi]
+[file dir/stdlib/_collections_abc.pyi]
+[file dir/stdlib/collections/abc.pyi]
+[file dir/stdlib/collections/__init__.pyi]
 [file dir/stdlib/VERSIONS]
 [out]
 Failed to find builtin module mypy_extensions, perhaps typeshed is broken?
@@ -1523,6 +1506,10 @@ class dict: pass
 [file dir/stdlib/typing.pyi]
 [file dir/stdlib/mypy_extensions.pyi]
 [file dir/stdlib/typing_extensions.pyi]
+[file dir/stdlib/_typeshed.pyi]
+[file dir/stdlib/_collections_abc.pyi]
+[file dir/stdlib/collections/abc.pyi]
+[file dir/stdlib/collections/__init__.pyi]
 [file dir/stdlib/foo.pyi]
 1()  # Errors are reported if the file was explicitly passed on the command line
 [file dir/stdlib/VERSIONS]

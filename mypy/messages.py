@@ -16,8 +16,7 @@ import itertools
 import re
 from contextlib import contextmanager
 from textwrap import dedent
-from typing import Any, Callable, Collection, Iterable, Iterator, List, Sequence, cast
-from typing_extensions import Final
+from typing import Any, Callable, Collection, Final, Iterable, Iterator, List, Sequence, cast
 
 import mypy.typeops
 from mypy import errorcodes as codes, message_registry
@@ -235,6 +234,8 @@ class MessageBuilder:
             Current logic is a bit tricky, to keep as much backwards compatibility as
             possible. We may reconsider this to always be a single line (or otherwise
             simplify it) when we drop Python 3.7.
+
+            TODO: address this in follow up PR
             """
             if isinstance(ctx, (ClassDef, FuncDef)):
                 return range(ctx.deco_line or ctx.line, ctx.line + 1)
@@ -1136,12 +1137,17 @@ class MessageBuilder:
         name_in_super: str,
         supertype: str,
         context: Context,
-        original: FunctionLike | None = None,
-        override: FunctionLike | None = None,
+        *,
+        original: ProperType,
+        override: ProperType,
     ) -> None:
         code = codes.OVERRIDE
         target = self.override_target(name, name_in_super, supertype)
         self.fail(f'Signature of "{name}" incompatible with {target}', context, code=code)
+
+        original_str, override_str = format_type_distinctly(
+            original, override, options=self.options, bare=True
+        )
 
         INCLUDE_DECORATOR = True  # Include @classmethod and @staticmethod decorators, if any
         ALLOW_DUPS = True  # Allow duplicate notes, needed when signatures are duplicates
@@ -1152,13 +1158,10 @@ class MessageBuilder:
         # note:          def f(self) -> str
         # note:      Subclass:
         # note:          def f(self, x: str) -> None
-        if (
-            original is not None
-            and isinstance(original, (CallableType, Overloaded))
-            and override is not None
-            and isinstance(override, (CallableType, Overloaded))
-        ):
-            self.note("Superclass:", context, offset=ALIGN_OFFSET + OFFSET, code=code)
+        self.note(
+            "Superclass:", context, offset=ALIGN_OFFSET + OFFSET, allow_dups=ALLOW_DUPS, code=code
+        )
+        if isinstance(original, (CallableType, Overloaded)):
             self.pretty_callable_or_overload(
                 original,
                 context,
@@ -1167,13 +1170,32 @@ class MessageBuilder:
                 allow_dups=ALLOW_DUPS,
                 code=code,
             )
+        else:
+            self.note(
+                original_str,
+                context,
+                offset=ALIGN_OFFSET + 2 * OFFSET,
+                allow_dups=ALLOW_DUPS,
+                code=code,
+            )
 
-            self.note("Subclass:", context, offset=ALIGN_OFFSET + OFFSET, code=code)
+        self.note(
+            "Subclass:", context, offset=ALIGN_OFFSET + OFFSET, allow_dups=ALLOW_DUPS, code=code
+        )
+        if isinstance(override, (CallableType, Overloaded)):
             self.pretty_callable_or_overload(
                 override,
                 context,
                 offset=ALIGN_OFFSET + 2 * OFFSET,
                 add_class_or_static_decorator=INCLUDE_DECORATOR,
+                allow_dups=ALLOW_DUPS,
+                code=code,
+            )
+        else:
+            self.note(
+                override_str,
+                context,
+                offset=ALIGN_OFFSET + 2 * OFFSET,
                 allow_dups=ALLOW_DUPS,
                 code=code,
             )
@@ -1232,18 +1254,21 @@ class MessageBuilder:
             code=codes.OVERRIDE,
             secondary_context=secondary_context,
         )
-        self.note(
-            "This violates the Liskov substitution principle",
-            context,
-            code=codes.OVERRIDE,
-            secondary_context=secondary_context,
-        )
-        self.note(
-            "See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides",
-            context,
-            code=codes.OVERRIDE,
-            secondary_context=secondary_context,
-        )
+        if name != "__post_init__":
+            # `__post_init__` is special, it can be incompatible by design.
+            # So, this note is misleading.
+            self.note(
+                "This violates the Liskov substitution principle",
+                context,
+                code=codes.OVERRIDE,
+                secondary_context=secondary_context,
+            )
+            self.note(
+                "See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides",
+                context,
+                code=codes.OVERRIDE,
+                secondary_context=secondary_context,
+            )
 
         if name == "__eq__" and type_name:
             multiline_msg = self.comparison_method_example_msg(class_name=type_name)
@@ -1493,6 +1518,13 @@ class MessageBuilder:
     def cant_assign_to_classvar(self, name: str, context: Context) -> None:
         self.fail(f'Cannot assign to class variable "{name}" via instance', context)
 
+    def no_overridable_method(self, name: str, context: Context) -> None:
+        self.fail(
+            f'Method "{name}" is marked as an override, '
+            "but no base method was found with this name",
+            context,
+        )
+
     def final_cant_override_writable(self, name: str, ctx: Context) -> None:
         self.fail(f'Cannot override writable attribute "{name}" with a final one', ctx)
 
@@ -1725,6 +1757,24 @@ class MessageBuilder:
 
     def explicit_any(self, ctx: Context) -> None:
         self.fail('Explicit "Any" is not allowed', ctx)
+
+    def unsupported_target_for_star_typeddict(self, typ: Type, ctx: Context) -> None:
+        self.fail(
+            "Unsupported type {} for ** expansion in TypedDict".format(
+                format_type(typ, self.options)
+            ),
+            ctx,
+            code=codes.TYPEDDICT_ITEM,
+        )
+
+    def non_required_keys_absent_with_star(self, keys: list[str], ctx: Context) -> None:
+        self.fail(
+            "Non-required {} not explicitly found in any ** item".format(
+                format_key_list(keys, short=True)
+            ),
+            ctx,
+            code=codes.TYPEDDICT_ITEM,
+        )
 
     def unexpected_typeddict_keys(
         self,
@@ -2409,7 +2459,7 @@ def format_type_inner(
     if isinstance(typ, Instance):
         itype = typ
         # Get the short name of the type.
-        if itype.type.fullname in ("types.ModuleType", "_importlib_modulespec.ModuleType"):
+        if itype.type.fullname == "types.ModuleType":
             # Make some common error messages simpler and tidier.
             base_str = "Module"
             if itype.extra_attrs and itype.extra_attrs.mod_name and module_names:
@@ -2961,8 +3011,9 @@ def _real_quick_ratio(a: str, b: str) -> float:
 
 
 def best_matches(current: str, options: Collection[str], n: int) -> list[str]:
+    if not current:
+        return []
     # narrow down options cheaply
-    assert current
     options = [o for o in options if _real_quick_ratio(current, o) > 0.75]
     if len(options) >= 50:
         options = [o for o in options if abs(len(o) - len(current)) <= 1]
