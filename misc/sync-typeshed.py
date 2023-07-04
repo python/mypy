@@ -185,7 +185,16 @@ def main() -> None:
         "9f3bbbeb1",  # ParamSpec for functools.wraps
     ]
     for commit in commits_to_cherry_pick:
-        subprocess.run(["git", "cherry-pick", commit], check=True)
+        try:
+            subprocess.run(["git", "cherry-pick", commit], check=True)
+        except subprocess.CalledProcessError:
+            if sys.__stdin__.isatty():
+                # Allow the option to merge manually
+                print(
+                    f"Commit {commit} failed to cherry pick."
+                    " In a separate shell, please manually merge and continue cherry pick."
+                )
+                input("Did you finish the cherry pick?")
         print(f"Cherry-picked {commit}.")
 
     if args.make_pr:
