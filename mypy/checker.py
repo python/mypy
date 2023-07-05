@@ -644,7 +644,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             defn.impl.accept(self)
         if defn.info:
             found_method_base_classes = self.check_method_override(defn)
-            if defn.is_explicit_override and not found_method_base_classes:
+            if (
+                defn.is_explicit_override
+                and not found_method_base_classes
+                and found_method_base_classes is not None
+            ):
                 self.msg.no_overridable_method(defn.name, defn)
             elif (
                 found_method_base_classes
@@ -4760,7 +4764,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # For overloaded functions we already checked override for overload as a whole.
         if e.func.info and not e.func.is_dynamic() and not e.is_overload:
             found_method_base_classes = self.check_method_override(e)
-            if e.func.is_explicit_override and not found_method_base_classes:
+            if (
+                e.func.is_explicit_override
+                and not found_method_base_classes
+                and found_method_base_classes is not None
+            ):
                 self.msg.no_overridable_method(e.func.name, e.func)
             elif (
                 found_method_base_classes

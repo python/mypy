@@ -3001,6 +3001,32 @@ class C(A):
     def f(self, y: int | str) -> str: pass
 [typing fixtures/typing-override.pyi]
 
+[case explicitOverrideCyclicDependency]
+# flags: --python-version 3.12
+import b
+[file a.py]
+from typing import override
+import b
+import c
+
+class A(b.B):
+    @override  # This is fine
+    @c.deco
+    def meth(self) -> int: ...
+[file b.py]
+import a
+import c
+
+class B:
+    @c.deco
+    def meth(self) -> int: ...
+[file c.py]
+from typing import TypeVar, Tuple, Callable
+T = TypeVar('T')
+def deco(f: Callable[..., T]) -> Callable[..., Tuple[T, int]]: ...
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-override.pyi]
+
 [case requireExplicitOverrideMethod]
 # flags: --strict-override-decorator --python-version 3.12
 from typing import override
