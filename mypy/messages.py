@@ -1525,10 +1525,10 @@ class MessageBuilder:
             context,
         )
 
-    def override_decorator_missing(self, name: str, context: Context) -> None:
+    def override_decorator_missing(self, name: str, base_name: str, context: Context) -> None:
         self.fail(
             f'Method "{name}" is not marked as override '
-            "but is overriding a method in a base class",
+            f'but is overriding a method in class "{base_name}"',
             context,
         )
 
