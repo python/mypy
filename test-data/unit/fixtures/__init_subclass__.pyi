@@ -12,4 +12,3 @@ class bool: pass
 class str: pass
 class function: pass
 class dict: pass
-class classmethod: pass

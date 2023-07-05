@@ -58,8 +58,6 @@ class frozenset(Iterable[T]):
     def __iter__(self) -> Iterator[T]: pass
 class function: pass
 class ellipsis: pass
-class classmethod: pass
-class staticmethod: pass
 
 class range(Sequence[int]):
     def __init__(self, __x: int, __y: int = ..., __z: int = ...) -> None: pass

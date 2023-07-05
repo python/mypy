@@ -60,8 +60,6 @@ class bool(int): pass
 
 class ellipsis:
     __class__: object
-class classmethod: pass
-class staticmethod: pass
 def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
 class BaseException: pass
 

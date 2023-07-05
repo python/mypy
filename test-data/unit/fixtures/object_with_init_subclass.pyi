@@ -33,7 +33,6 @@ class bytearray: pass
 class tuple(Generic[T]): pass
 class function: pass
 class ellipsis: pass
-class classmethod: pass
 
 # copy-pasted from list.pyi
 class list(Sequence[T]):
