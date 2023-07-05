@@ -51,13 +51,9 @@ if sys.platform not in ("darwin", "win32"):
 
 # TODO: Enable strict optional in test cases by default. Remove files here, once test cases are updated
 no_strict_optional_files = {
-    "check-abstract.test",
-    "check-async-await.test",
     "check-basic.test",
     "check-bound.test",
-    "check-classes.test",
     "check-dynamic-typing.test",
-    "check-enum.test",
     "check-expressions.test",
     "check-formatting.test",
     "check-functions.test",
