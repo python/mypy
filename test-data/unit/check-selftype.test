@@ -897,7 +897,8 @@ class Base(Protocol):
 
 class TweakFunc:
     def func(self: Base) -> int:
-        return reveal_type(super().func())  # N: Revealed type is "builtins.int"
+        return reveal_type(super().func())  # E: Call to abstract method "func" of "Base" with trivial body via super() is unsafe \
+                                            # N: Revealed type is "builtins.int"
 
 class Good:
     def func(self) -> int: ...
@@ -1269,14 +1270,14 @@ class AClass:
         ...
 
 def foo(x: Type[AClass]) -> None:
-    reveal_type(x.delete)  # N: Revealed type is "Overload(def (id: builtins.int, id2: builtins.int) -> builtins.int, def (id: __main__.AClass, id2: None =) -> builtins.int)"
+    reveal_type(x.delete)  # N: Revealed type is "Overload(def (id: builtins.int, id2: builtins.int) -> Union[builtins.int, None], def (id: __main__.AClass, id2: None =) -> Union[builtins.int, None])"
     y = x()
-    reveal_type(y.delete)  # N: Revealed type is "Overload(def (id: builtins.int, id2: builtins.int) -> builtins.int, def (id: __main__.AClass, id2: None =) -> builtins.int)"
+    reveal_type(y.delete)  # N: Revealed type is "Overload(def (id: builtins.int, id2: builtins.int) -> Union[builtins.int, None], def (id: __main__.AClass, id2: None =) -> Union[builtins.int, None])"
     y.delete(10, 20)
     y.delete(y)
 
 def bar(x: AClass) -> None:
-    reveal_type(x.delete)  # N: Revealed type is "Overload(def (id: builtins.int, id2: builtins.int) -> builtins.int, def (id: __main__.AClass, id2: None =) -> builtins.int)"
+    reveal_type(x.delete)  # N: Revealed type is "Overload(def (id: builtins.int, id2: builtins.int) -> Union[builtins.int, None], def (id: __main__.AClass, id2: None =) -> Union[builtins.int, None])"
     x.delete(10, 20)
 [builtins fixtures/classmethod.pyi]
 

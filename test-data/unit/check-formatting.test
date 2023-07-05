@@ -4,7 +4,10 @@
 
 [case testStringInterpolationType]
 from typing import Tuple
-i, f, s, t = None, None, None, None # type: (int, float, str, Tuple[int])
+i: int
+f: float
+s: str
+t: Tuple[int]
 '%d' % i
 '%f' % f
 '%s' % s
@@ -21,7 +24,9 @@ i, f, s, t = None, None, None, None # type: (int, float, str, Tuple[int])
 
 [case testStringInterpolationSAcceptsAnyType]
 from typing import Any
-i, o, s = None, None, None # type: (int, object, str)
+i: int
+o: object
+s: str
 '%s %s %s' % (i, o, s)
 [builtins fixtures/primitives.pyi]
 
@@ -139,8 +144,10 @@ class BytesThing:
     def __getitem__(self, __key: bytes) -> str:
         ...
 
-a = None # type: Any
-ds, do, di = None, None, None # type: Dict[str, int], Dict[object, int], Dict[int, int]
+a: Any
+ds: Dict[str, int]
+do: Dict[object, int]
+di: Dict[int, int]
 '%(a)' % 1  # E: Format requires a mapping (expression has type "int", expected type for mapping is "SupportsKeysAndGetItem[str, Any]")
 '%()d' % a
 '%()d' % ds
