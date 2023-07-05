@@ -2149,6 +2149,7 @@ x: C
 class C:
     def frob(self, foos: Dict[Any, Foos]) -> None:
         foo = foos.get(1)
+        assert foo
         dict(foo)
 [builtins fixtures/dict.pyi]
 
