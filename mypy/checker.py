@@ -1164,11 +1164,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         isinstance(defn, FuncDef)
                         and ref_type is not None
                         and i == 0
-                        and not defn.is_static
+                        and (not defn.is_static or defn.name == "__new__")
                         and typ.arg_kinds[0] not in [nodes.ARG_STAR, nodes.ARG_STAR2]
                     ):
-                        isclass = defn.is_class or defn.name in ("__new__", "__init_subclass__")
-                        if isclass:
+                        if defn.is_class or defn.name == "__new__":
                             ref_type = mypy.types.TypeType.make_normalized(ref_type)
                         erased = get_proper_type(erase_to_bound(arg_type))
                         if not is_subtype(ref_type, erased, ignore_type_params=True):

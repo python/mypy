@@ -512,7 +512,7 @@ class FuncBase(Node):
         "info",
         "is_property",
         "is_class",  # Uses "@classmethod" (explicit or implicit)
-        "is_static",  # Uses "@staticmethod"
+        "is_static",  # Uses "@staticmethod" (explicit or implicit)
         "is_final",  # Uses "@final"
         "is_explicit_override",  # Uses "@override"
         "_fullname",
