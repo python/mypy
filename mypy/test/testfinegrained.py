@@ -45,9 +45,6 @@ from mypy.test.helpers import (
 # Set to True to perform (somewhat expensive) checks for duplicate AST nodes after merge
 CHECK_CONSISTENCY = False
 
-# TODO: Enable strict optional in test cases by default. Remove files here, once test cases are updated
-no_strict_optional_files = {"fine-grained.test", "fine-grained-suggest.test"}
-
 
 class FineGrainedSuite(DataSuite):
     files = find_test_files(
@@ -143,9 +140,7 @@ class FineGrainedSuite(DataSuite):
 
     def get_options(self, source: str, testcase: DataDrivenTestCase, build_cache: bool) -> Options:
         # This handles things like '# flags: --foo'.
-        options = parse_options(
-            source, testcase, incremental_step=1, no_strict_optional_files=no_strict_optional_files
-        )
+        options = parse_options(source, testcase, incremental_step=1)
         options.incremental = True
         options.use_builtins_fixtures = True
         options.show_traceback = True

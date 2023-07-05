@@ -1090,7 +1090,7 @@ optional2(10)
 optional2('test')
 
 def optional3(x: Optional[List[Any]]):
-    assert not x
+    assert x
     return x[0]
 
 optional3(test)
