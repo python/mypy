@@ -54,7 +54,6 @@ no_strict_optional_files = {
     "check-basic.test",
     "check-bound.test",
     "check-dynamic-typing.test",
-    "check-expressions.test",
     "check-functions.test",
     "check-generic-subtyping.test",
     "check-generics.test",
