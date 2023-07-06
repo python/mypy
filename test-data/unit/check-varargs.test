@@ -1244,3 +1244,39 @@ also_accept_animal = also_accept_dog  # E: Incompatible types in assignment (exp
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testPassingKwargsFromFunctionToFunction]
+from typing_extensions import Unpack, TypedDict
+
+class Animal(TypedDict):
+    name: str
+
+class Dog(Animal):
+    breed: str
+
+def takes_name(name: str):
+    ...
+
+dog: Dog = {"name": "Daisy", "breed": "Labrador"}
+animal: Animal = dog
+
+def foo(**kwargs: Unpack[Animal]):
+    return kwargs["name"]
+
+def bar(**kwargs: Unpack[Animal]):
+    takes_name(**kwargs)
+
+def baz(animal: Animal):
+    takes_name(**animal)
+
+def spam(**kwargs: Unpack[Animal]):
+    baz(kwargs)
+
+foo(**animal)  # OK! foo only expects and uses keywords of 'Animal'.
+
+bar(**animal)  # E: This will fail at runtime because 'breed' keyword will be passed to 'takes_name' as well.
+
+spam(**animal)  # E: Again, 'breed' keyword will be eventually passed to 'takes_name'.
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
