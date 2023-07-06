@@ -109,8 +109,11 @@ Functions
        x.anything() + 1 + "string"  # no errors
 
    # This is how you annotate a callable (function) value
+   Callable[[A1, A2, A3], Rt] represents a function with three arguments with types A1, A2, and A3, respectively. The return type of the function is Rt.
    x: Callable[[int, float], float] = f
    def register(callback: Callable[[str], int]) -> None: ...
+   Callable[..., ReturnType] (literal ellipsis) can be used to type hint a callable taking any number of arguments and returning ReturnType
+   ReturnType can only be of a single type.
 
    # A generator function that yields ints is secretly just a function that
    # returns an iterator of ints, so that's how we annotate it
