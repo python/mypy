@@ -1222,3 +1222,25 @@ dest = src  # E: Incompatible function signatures - variable contains **kwargs a
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testUnpackKwargsAssignmentWhenBothSidesContainKwargsTypedWithUnpack]
+from typing_extensions import Unpack, TypedDict
+
+class Animal(TypedDict):
+    name: str
+
+class Dog(Animal):
+    breed: str
+
+def accept_animal(**kwargs: Unpack[Animal]): ...
+def accept_dog(**kwargs: Unpack[Dog]): ...
+
+accept_dog = accept_animal  # OK
+
+def also_accept_animal(**kwargs: Unpack[Animal]): ...
+def also_accept_dog(**kwargs: Unpack[Dog]): ...
+
+also_accept_animal = also_accept_dog  # E: Incompatible types in assignment (expression has type "Callable[[KwArg(Dog)], Any]", variable has type "Callable[[KwArg(Animal)], Any]")
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
