@@ -155,6 +155,7 @@ MYPYC_NATIVE_INT_NAMES: Final = (
     "mypy_extensions.i64",
     "mypy_extensions.i32",
     "mypy_extensions.i16",
+    "mypy_extensions.u8",
 )
 
 DATACLASS_TRANSFORM_NAMES: Final = (

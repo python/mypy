@@ -20,7 +20,7 @@ def compare(x: i16, y: i16) -> None:
     f = -5 < x
 [out]
 def add_op(x, y):
-    x, y, r0, r1, r2, r3, r4 :: int16
+    x, y, r0, r1, r2, r3, r4 :: i16
 L0:
     r0 = y + x
     x = r0
@@ -34,7 +34,7 @@ L0:
     x = r4
     return x
 def compare(x, y):
-    x, y :: int16
+    x, y :: i16
     r0 :: bit
     a :: bool
     r1 :: bit
@@ -72,7 +72,7 @@ def unary(x: i16) -> i16:
     return y
 [out]
 def unary(x):
-    x, r0, y, r1 :: int16
+    x, r0, y, r1 :: i16
 L0:
     r0 = 0 - x
     y = r0
@@ -90,15 +90,15 @@ def div_by_constant(x: i16) -> i16:
     return x
 [out]
 def div_by_constant(x):
-    x, r0, r1 :: int16
+    x, r0, r1 :: i16
     r2, r3, r4 :: bit
-    r5 :: int16
+    r5 :: i16
     r6 :: bit
-    r7, r8, r9 :: int16
+    r7, r8, r9 :: i16
     r10, r11, r12 :: bit
-    r13 :: int16
+    r13 :: i16
     r14 :: bit
-    r15 :: int16
+    r15 :: i16
 L0:
     r0 = x / 5
     r1 = r0
@@ -141,11 +141,11 @@ def mod_by_constant(x: i16) -> i16:
     return x
 [out]
 def mod_by_constant(x):
-    x, r0, r1 :: int16
+    x, r0, r1 :: i16
     r2, r3, r4, r5 :: bit
-    r6, r7, r8 :: int16
+    r6, r7, r8 :: i16
     r9, r10, r11, r12 :: bit
-    r13 :: int16
+    r13 :: i16
 L0:
     r0 = x % 5
     r1 = r0
@@ -185,12 +185,26 @@ def divmod(x: i16, y: i16) -> i16:
     return a % y
 [out]
 def divmod(x, y):
-    x, y, r0, a, r1 :: int16
+    x, y, r0, a, r1 :: i16
 L0:
     r0 = CPyInt16_Divide(x, y)
     a = r0
     r1 = CPyInt16_Remainder(a, y)
     return r1
+
+[case testI16BinaryOperationWithOutOfRangeOperand]
+from mypy_extensions import i16
+
+def out_of_range(x: i16) -> None:
+    x + (-32769)
+    (-32770) + x
+    x * 32768
+    x + 32767  # OK
+    (-32768) + x   # OK
+[out]
+main:4: error: Value -32769 is out of range for "i16"
+main:5: error: Value -32770 is out of range for "i16"
+main:6: error: Value 32768 is out of range for "i16"
 
 [case testI16BoxAndUnbox]
 from typing import Any
@@ -202,12 +216,12 @@ def f(x: Any) -> Any:
 [out]
 def f(x):
     x :: object
-    r0, y :: int16
+    r0, y :: i16
     r1 :: object
 L0:
-    r0 = unbox(int16, x)
+    r0 = unbox(i16, x)
     y = r0
-    r1 = box(int16, y)
+    r1 = box(i16, y)
     return r1
 
 [case testI16MixedCompare1]
@@ -217,11 +231,11 @@ def f(x: int, y: i16) -> bool:
 [out]
 def f(x, y):
     x :: int
-    y :: int16
+    y :: i16
     r0 :: native_int
     r1, r2, r3 :: bit
     r4 :: native_int
-    r5, r6 :: int16
+    r5, r6 :: i16
     r7 :: bit
 L0:
     r0 = x & 1
@@ -235,7 +249,7 @@ L2:
     if r3 goto L3 else goto L4 :: bool
 L3:
     r4 = x >> 1
-    r5 = truncate r4: native_int to int16
+    r5 = truncate r4: native_int to i16
     r6 = r5
     goto L5
 L4:
@@ -251,12 +265,12 @@ def f(x: i16, y: int) -> bool:
     return x == y
 [out]
 def f(x, y):
-    x :: int16
+    x :: i16
     y :: int
     r0 :: native_int
     r1, r2, r3 :: bit
     r4 :: native_int
-    r5, r6 :: int16
+    r5, r6 :: i16
     r7 :: bit
 L0:
     r0 = y & 1
@@ -270,7 +284,7 @@ L2:
     if r3 goto L3 else goto L4 :: bool
 L3:
     r4 = y >> 1
-    r5 = truncate r4: native_int to int16
+    r5 = truncate r4: native_int to i16
     r6 = r5
     goto L5
 L4:
@@ -287,11 +301,11 @@ def i16_to_int(a: i16) -> int:
     return a
 [out]
 def i16_to_int(a):
-    a :: int16
+    a :: i16
     r0 :: native_int
     r1 :: int
 L0:
-    r0 = extend signed a: int16 to native_int
+    r0 = extend signed a: i16 to native_int
     r1 = r0 << 1
     return r1
 
@@ -303,12 +317,12 @@ def f(a: i16) -> None:
     x += a
 [out]
 def f(a):
-    a :: int16
+    a :: i16
     x :: int
     r0 :: native_int
     r1, r2, r3 :: bit
     r4 :: native_int
-    r5, r6, r7 :: int16
+    r5, r6, r7 :: i16
     r8 :: native_int
     r9 :: int
 L0:
@@ -324,7 +338,7 @@ L2:
     if r3 goto L3 else goto L4 :: bool
 L3:
     r4 = x >> 1
-    r5 = truncate r4: native_int to int16
+    r5 = truncate r4: native_int to i16
     r6 = r5
     goto L5
 L4:
@@ -332,7 +346,7 @@ L4:
     unreachable
 L5:
     r7 = r6 + a
-    r8 = extend signed r7: int16 to native_int
+    r8 = extend signed r7: i16 to native_int
     r9 = r8 << 1
     x = r9
     return 1
@@ -346,7 +360,7 @@ def f() -> None:
     z: i16 = 5 + 7
 [out]
 def f():
-    x, y, z :: int16
+    x, y, z :: i16
 L0:
     x = 0
     y = -127
@@ -366,20 +380,20 @@ def from_i64(x: i64) -> i16:
     return i16(x)
 [out]
 def from_i16(x):
-    x :: int16
+    x :: i16
 L0:
     return x
 def from_i32(x):
-    x :: int32
-    r0 :: int16
+    x :: i32
+    r0 :: i16
 L0:
-    r0 = truncate x: int32 to int16
+    r0 = truncate x: i32 to i16
     return r0
 def from_i64(x):
-    x :: int64
-    r0 :: int16
+    x :: i64
+    r0 :: i16
 L0:
-    r0 = truncate x: int64 to int16
+    r0 = truncate x: i64 to i16
     return r0
 
 [case testI16ExplicitConversionFromInt]
@@ -393,7 +407,7 @@ def f(x):
     r0 :: native_int
     r1, r2, r3 :: bit
     r4 :: native_int
-    r5, r6 :: int16
+    r5, r6 :: i16
 L0:
     r0 = x & 1
     r1 = r0 == 0
@@ -406,7 +420,7 @@ L2:
     if r3 goto L3 else goto L4 :: bool
 L3:
     r4 = x >> 1
-    r5 = truncate r4: native_int to int16
+    r5 = truncate r4: native_int to i16
     r6 = r5
     goto L5
 L4:
@@ -422,13 +436,21 @@ def f() -> None:
     x = i16(0)
     y = i16(11)
     z = i16(-3)
+    a = i16(32767)
+    b = i16(32768)  # Truncate
+    c = i16(-32768)
+    d = i16(-32769)  # Truncate
 [out]
 def f():
-    x, y, z :: int16
+    x, y, z, a, b, c, d :: i16
 L0:
     x = 0
     y = 11
     z = -3
+    a = 32767
+    b = -32768
+    c = -32768
+    d = 32767
     return 1
 
 [case testI16ExplicitConversionFromVariousTypes]
@@ -452,17 +474,17 @@ def float_to_i16(x: float) -> i16:
 [out]
 def bool_to_i16(b):
     b :: bool
-    r0 :: int16
+    r0 :: i16
 L0:
-    r0 = extend b: builtins.bool to int16
+    r0 = extend b: builtins.bool to i16
     return r0
 def str_to_i16(s):
     s :: str
     r0 :: object
-    r1 :: int16
+    r1 :: i16
 L0:
     r0 = CPyLong_FromStr(s)
-    r1 = unbox(int16, r0)
+    r1 = unbox(i16, r0)
     return r1
 def C.__int__(self):
     self :: __main__.C
@@ -470,7 +492,7 @@ L0:
     return 5
 def instance_to_i16(c):
     c :: __main__.C
-    r0 :: int16
+    r0 :: i16
 L0:
     r0 = c.__int__()
     return r0
@@ -480,7 +502,7 @@ def float_to_i16(x):
     r1 :: native_int
     r2, r3, r4 :: bit
     r5 :: native_int
-    r6, r7 :: int16
+    r6, r7 :: i16
 L0:
     r0 = CPyTagged_FromFloat(x)
     r1 = r0 & 1
@@ -494,7 +516,7 @@ L2:
     if r4 goto L3 else goto L4 :: bool
 L3:
     r5 = r0 >> 1
-    r6 = truncate r5: native_int to int16
+    r6 = truncate r5: native_int to i16
     r7 = r6
     goto L5
 L4:

@@ -1162,6 +1162,7 @@ class ComparisonOp(RegisterOp):
     }
 
     signed_ops: Final = {"==": EQ, "!=": NEQ, "<": SLT, ">": SGT, "<=": SLE, ">=": SGE}
+    unsigned_ops: Final = {"==": EQ, "!=": NEQ, "<": ULT, ">": UGT, "<=": ULE, ">=": UGE}
 
     def __init__(self, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
         super().__init__(line)
