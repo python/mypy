@@ -51,7 +51,6 @@ if sys.platform not in ("darwin", "win32"):
 
 # TODO: Enable strict optional in test cases by default. Remove files here, once test cases are updated
 no_strict_optional_files = {
-    "check-expressions.test",
     "check-functions.test",
     "check-generic-subtyping.test",
     "check-generics.test",
