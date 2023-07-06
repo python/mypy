@@ -57,11 +57,6 @@ no_strict_optional_files = {
     "check-kwargs.test",
     "check-literal.test",
     "check-modules.test",
-    "check-namedtuple.test",
-    "check-overloading.test",
-    "check-plugin-attrs.test",
-    "check-statements.test",
-    "check-tuples.test",
     "check-unions.test",
     "check-varargs.test",
 }
