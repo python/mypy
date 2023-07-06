@@ -8,8 +8,8 @@
 [case testVarArgsWithinFunction]
 from typing import Tuple
 def f( *b: 'B') -> None:
-    ab = None # type: Tuple[B, ...]
-    ac = None # type: Tuple[C, ...]
+    ab: Tuple[B, ...]
+    ac: Tuple[C, ...]
     if int():
         b = ac # E: Incompatible types in assignment (expression has type "Tuple[C, ...]", variable has type "Tuple[B, ...]")
         ac = b # E: Incompatible types in assignment (expression has type "Tuple[B, ...]", variable has type "Tuple[C, ...]")
@@ -46,9 +46,9 @@ class A: pass
 class B(A): pass
 class C: pass
 
-a = None # type: A
-b = None # type: B
-c = None # type: C
+a: A
+b: B
+c: C
 
 f(c)       # E: Argument 1 to "f" has incompatible type "C"; expected "A"
 f(a, b, c) # E: Argument 3 to "f" has incompatible type "C"; expected "A"
@@ -67,9 +67,9 @@ class A: pass
 class B(A): pass
 class C: pass
 
-a = None # type: A
-b = None # type: B
-c = None # type: C
+a: A
+b: B
+c: C
 
 f(a)       # E: Argument 1 to "f" has incompatible type "A"; expected "C"
 f(c, c)    # E: Argument 2 to "f" has incompatible type "C"; expected "A"
@@ -88,9 +88,9 @@ class A: pass
 class B(A): pass
 class C: pass
 
-a = None # type: A
-b = None # type: B
-c = None # type: C
+a: A
+b: B
+c: C
 
 f(a)           # E: Argument 1 to "f" has incompatible type "A"; expected "Optional[C]"
 f(c, c)        # E: Argument 2 to "f" has incompatible type "C"; expected "A"
@@ -103,8 +103,8 @@ f(c, b, b, a, b)
 
 [case testCallVarargsFunctionWithIterable]
 from typing import Iterable
-it1 = None  # type: Iterable[int]
-it2 = None  # type: Iterable[str]
+it1: Iterable[int]
+it2: Iterable[str]
 def f(*x: int) -> None: pass
 f(*it1)
 f(*it2) # E: Argument 1 to "f" has incompatible type "*Iterable[str]"; expected "int"
@@ -127,7 +127,7 @@ reveal_type(f(*x, *y)) # N: Revealed type is "Tuple[builtins.int, builtins.str, 
 [case testCallVarargsFunctionWithIterableAndPositional]
 
 from typing import Iterable
-it1 = None  # type: Iterable[int]
+it1: Iterable[int]
 def f(*x: int) -> None: pass
 f(*it1, 1, 2)
 f(*it1, 1, *it1, 2)
@@ -161,10 +161,10 @@ class A: pass
 class B(A): pass
 class C: pass
 
-a = None # type: A
-b = None # type: B
-c = None # type: C
-o = None # type: object
+a: A
+b: B
+c: C
+o: object
 
 if int():
     a = f(o) # E: Incompatible types in assignment (expression has type "object", variable has type "A")
@@ -188,6 +188,7 @@ if int():
 [builtins fixtures/list.pyi]
 
 [case testTypeInferenceWithCalleeVarArgsAndDefaultArgs]
+# flags: --no-strict-optional
 from typing import TypeVar
 T = TypeVar('T')
 a = None # type: A
@@ -229,10 +230,10 @@ def f(a: 'A', b: 'B') -> None:
 class A: pass
 class B: pass
 
-aa = None # type: List[A]
-ab = None # type: List[B]
-a = None # type: A
-b = None # type: B
+aa: List[A]
+ab: List[B]
+a: A
+b: B
 
 f(*aa)  # E: Argument 1 to "f" has incompatible type "*List[A]"; expected "B"
 f(a, *ab) # Ok
@@ -248,10 +249,10 @@ class B: pass
 class C: pass
 class CC(C): pass
 
-a = None # type: A
-b = None # type: B
-c = None # type: C
-cc = None # type: CC
+a: A
+b: B
+c: C
+cc: CC
 
 f(*(a, b, b)) # E: Argument 1 to "f" has incompatible type "*Tuple[A, B, B]"; expected "C"
 f(*(b, b, c)) # E: Argument 1 to "f" has incompatible type "*Tuple[B, B, C]"; expected "A"
@@ -267,7 +268,7 @@ f(a, *(b, cc))
 [builtins fixtures/tuple.pyi]
 
 [case testInvalidVarArg]
-
+# flags: --no-strict-optional
 def f(a: 'A') -> None:
     pass
 
@@ -293,7 +294,10 @@ def g(a: 'A', *b: 'A') -> None: pass
 class A: pass
 class B: pass
 
-aa, ab, a, b = None, None, None, None # type: (List[A], List[B], A, B)
+aa: List[A]
+ab: List[B]
+a: A
+b: B
 f(*aa)           # E: Argument 1 to "f" has incompatible type "*List[A]"; expected "B"
 f(a, *aa)        # E: Argument 2 to "f" has incompatible type "*List[A]"; expected "B"
 f(b, *ab)        # E: Argument 1 to "f" has incompatible type "B"; expected "A"
@@ -315,7 +319,10 @@ class B: pass
 class C: pass
 class CC(C): pass
 
-a, b, c, cc = None, None, None, None # type: (A, B, C, CC)
+a: A
+b: B
+c: C
+cc: CC
 
 f(*(b, b, b))   # E: Argument 1 to "f" has incompatible type "*Tuple[B, B, B]"; expected "A"
 f(*(a, a, b))   # E: Argument 1 to "f" has incompatible type "*Tuple[A, A, B]"; expected "B"
@@ -342,7 +349,8 @@ def f(a: 'A') -> None: pass
 def g(a: 'A', *b: 'A') -> None: pass
 class A: pass
 
-d, a = None, None # type: (Any, A)
+d: Any
+a: A
 f(a, a, *d) # E: Too many arguments for "f"
 f(a, *d)    # Ok
 f(*d)       # Ok
@@ -351,6 +359,7 @@ g(*d)
 g(a, *d)
 g(a, a, *d)
 [builtins fixtures/list.pyi]
+
 [case testListVarArgsAndSubtyping]
 from typing import List
 def f( *a: 'A') -> None:
@@ -362,8 +371,8 @@ def g( *a: 'B') -> None:
 class A: pass
 class B(A): pass
 
-aa = None # type: List[A]
-ab = None # type: List[B]
+aa: List[A]
+ab: List[B]
 
 g(*aa) # E: Argument 1 to "g" has incompatible type "*List[A]"; expected "B"
 f(*aa)
@@ -449,6 +458,7 @@ foo(*())
 
 
 [case testIntersectionTypesAndVarArgs]
+# flags: --no-strict-optional
 from foo import *
 [file foo.pyi]
 from typing import overload
@@ -518,7 +528,9 @@ def f(a: S, *b: T) -> Tuple[S, T]:
 class A: pass
 class B: pass
 
-a, b, aa = None, None, None # type: (A, B, List[A])
+a: A
+b: B
+aa: List[A]
 
 if int():
     a, b = f(*aa)    # E: Argument 1 to "f" has incompatible type "*List[A]"; expected "B"
@@ -553,7 +565,8 @@ def f(a: S, b: T) -> Tuple[S, T]: pass
 class A: pass
 class B: pass
 
-a, b = None, None # type: (A, B)
+a: A
+b: B
 
 if int():
     a, a = f(*(a, b))   # E: Argument 1 to "f" has incompatible type "*Tuple[A, B]"; expected "A"
@@ -575,10 +588,11 @@ if int():
 from typing import List, TypeVar, Generic, Tuple
 T = TypeVar('T')
 S = TypeVar('S')
-a, b = None, None # type: (A, B)
-ao = None # type: List[object]
-aa = None # type: List[A]
-ab = None # type: List[B]
+a: A
+b: B
+ao: List[object]
+aa: List[A]
+ab: List[B]
 
 class G(Generic[T]):
     def f(self, *a: S) -> Tuple[List[S], List[T]]:
@@ -649,7 +663,7 @@ f(1, '') # E: Argument 2 to "f" has incompatible type "str"; expected "int"
 
 [case testVarArgsFunctionSubtyping]
 from typing import Callable
-x = None # type: Callable[[int], None]
+x: Callable[[int], None]
 def f(*x: int) -> None: pass
 def g(*x: str) -> None: pass
 x = f

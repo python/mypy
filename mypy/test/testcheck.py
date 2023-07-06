@@ -49,14 +49,6 @@ if sys.platform not in ("darwin", "win32"):
     typecheck_files.remove("check-modules-case.test")
 
 
-# TODO: Enable strict optional in test cases by default. Remove files here, once test cases are updated
-no_strict_optional_files = {
-    "check-modules.test",
-    "check-unions.test",
-    "check-varargs.test",
-}
-
-
 class TypeCheckSuite(DataSuite):
     files = typecheck_files
 
@@ -129,9 +121,7 @@ class TypeCheckSuite(DataSuite):
             perform_file_operations(operations)
 
         # Parse options after moving files (in case mypy.ini is being moved).
-        options = parse_options(
-            original_program_text, testcase, incremental_step, no_strict_optional_files
-        )
+        options = parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
         if not testcase.name.endswith("_no_incomplete"):
             options.enable_incomplete_feature = [TYPE_VAR_TUPLE, UNPACK]
