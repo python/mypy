@@ -55,12 +55,12 @@ class B: y = 2
 class C: pass
 class D: pass
 
-u = None # type: Union[A, C, D]
-v = None # type: Union[C, D]
-w = None # type: Union[A, B]
-x = None # type: Union[A, C]
-y = None # type: int
-z = None # type: str
+u: Union[A, C, D]
+v: Union[C, D]
+w: Union[A, B]
+x: Union[A, C]
+y: int
+z: str
 
 if int():
     y = w.y
@@ -89,9 +89,9 @@ class B:
 class C:
     def foo(self) -> str: pass
 
-x = None # type: Union[A, B]
-y = None # type: Union[A, C]
-i = None # type: int
+x: Union[A, B]
+y: Union[A, C]
+i: int
 
 x.foo()
 y.foo()
@@ -103,7 +103,7 @@ if int():
 
 [case testUnionIndexing]
 from typing import Union, List
-x = None # type: Union[List[int], str]
+x: Union[List[int], str]
 x[2]
 x[2] + 1 # E: Unsupported operand types for + ("str" and "int") \
          # N: Left operand is of type "Union[int, str]"
@@ -132,6 +132,7 @@ def f(x: Union[int, str]) -> int: pass
 def f(x: type) -> str: pass
 
 [case testUnionWithNoneItem]
+# flags: --no-strict-optional
 from typing import Union
 def f() -> Union[int, None]: pass
 x = 1
@@ -221,6 +222,7 @@ else:
                                              # N:     def g(x: Union[int, str]) -> None
 
 [case testUnionSimplificationSpecialCases]
+# flags: --no-strict-optional
 from typing import Any, TypeVar, Union
 
 class C(Any): pass
@@ -266,9 +268,10 @@ class M(Generic[V]):
 
 def f(x: M[C]) -> None:
     y = x.get(None)
-    reveal_type(y) # N: Revealed type is "__main__.C"
+    reveal_type(y) # N: Revealed type is "Union[__main__.C, None]"
 
 [case testUnionSimplificationSpecialCases2]
+# flags: --no-strict-optional
 from typing import Any, TypeVar, Union
 
 class C(Any): pass
@@ -317,10 +320,10 @@ S = TypeVar('S')
 R = TypeVar('R')
 def u(x: T, y: S, z: R) -> Union[R, S, T]: pass
 
-a = None # type: Any
+a: Any
 
 reveal_type(u(1, 1, 1))  # N: Revealed type is "builtins.int"
-reveal_type(u(C(), C(), None))  # N: Revealed type is "__main__.C"
+reveal_type(u(C(), C(), None))  # N: Revealed type is "Union[None, __main__.C]"
 reveal_type(u(a, a, 1))  # N: Revealed type is "Union[builtins.int, Any]"
 reveal_type(u(a, C(), a))  # N: Revealed type is "Union[Any, __main__.C]"
 reveal_type(u('', 1, 1))  # N: Revealed type is "Union[builtins.int, builtins.str]"
@@ -370,9 +373,9 @@ T = TypeVar('T')
 S = TypeVar('S')
 def u(x: T, y: S) -> Union[S, T]: pass
 
-t_o = None  # type: Type[object]
-t_s = None  # type: Type[str]
-t_a = None  # type: Type[Any]
+t_o: Type[object]
+t_s: Type[str]
+t_a: Type[Any]
 
 # Two identical items
 reveal_type(u(t_o, t_o)) # N: Revealed type is "Type[builtins.object]"
@@ -397,10 +400,10 @@ T = TypeVar('T')
 S = TypeVar('S')
 def u(x: T, y: S) -> Union[S, T]: pass
 
-t_o = None  # type: Type[object]
-t_s = None  # type: Type[str]
-t_a = None  # type: Type[Any]
-t = None    # type: type
+t_o: Type[object]
+t_s: Type[str]
+t_a: Type[Any]
+t: type
 
 # Union with object
 reveal_type(u(t_o, object())) # N: Revealed type is "builtins.object"
@@ -1010,6 +1013,7 @@ MYTYPE = List[Union[str, "MYTYPE"]] # E: Cannot resolve name "MYTYPE" (possible 
 [builtins fixtures/list.pyi]
 
 [case testNonStrictOptional]
+# flags: --no-strict-optional
 from typing import Optional, List
 
 def union_test1(x):
