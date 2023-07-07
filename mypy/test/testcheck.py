@@ -51,11 +51,6 @@ if sys.platform not in ("darwin", "win32"):
 
 # TODO: Enable strict optional in test cases by default. Remove files here, once test cases are updated
 no_strict_optional_files = {
-    "check-inference-context.test",
-    "check-inference.test",
-    "check-isinstance.test",
-    "check-kwargs.test",
-    "check-literal.test",
     "check-modules.test",
     "check-namedtuple.test",
     "check-overloading.test",
