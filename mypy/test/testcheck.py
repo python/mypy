@@ -50,11 +50,7 @@ if sys.platform not in ("darwin", "win32"):
 
 
 # TODO: Enable strict optional in test cases by default. Remove files here, once test cases are updated
-no_strict_optional_files = {
-    "check-modules.test",
-    "check-unions.test",
-    "check-varargs.test",
-}
+no_strict_optional_files = {"check-modules.test", "check-unions.test", "check-varargs.test"}
 
 
 class TypeCheckSuite(DataSuite):
