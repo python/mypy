@@ -783,7 +783,7 @@ _P = ParamSpec("_P")
 
 class Job(Generic[_P]):
     def __init__(self, target: Callable[_P, None]) -> None:
-        self.target = target
+        ...
 
 def func(
     action: Union[Job[int], Callable[[int], None]],

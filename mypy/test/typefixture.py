@@ -5,6 +5,8 @@ It contains class TypeInfos and Type objects.
 
 from __future__ import annotations
 
+from typing import Sequence
+
 from mypy.nodes import (
     ARG_OPT,
     ARG_POS,
@@ -26,6 +28,9 @@ from mypy.types import (
     Instance,
     LiteralType,
     NoneType,
+    Parameters,
+    ParamSpecFlavor,
+    ParamSpecType,
     Type,
     TypeAliasType,
     TypeOfAny,
@@ -238,6 +243,31 @@ class TypeFixture:
             "GV2", mro=[self.oi], typevars=["T", "Ts", "S"], typevar_tuple_index=1
         )
 
+        def make_parameter_specification(
+            name: str, id: int, concatenate: Sequence[Type]
+        ) -> ParamSpecType:
+            return ParamSpecType(
+                name,
+                name,
+                id,
+                ParamSpecFlavor.BARE,
+                self.o,
+                AnyType(TypeOfAny.from_omitted_generics),
+                prefix=Parameters(
+                    concatenate, [ARG_POS for _ in concatenate], [None for _ in concatenate]
+                ),
+            )
+
+        self.p = make_parameter_specification("P", 1, [])
+        self.p_concatenate = make_parameter_specification("P", 1, [self.a])
+        self.q = make_parameter_specification("Q", 2, [])
+        self.q_concatenate = make_parameter_specification("Q", 2, [self.b])
+        self.q_concatenate_a = make_parameter_specification("Q", 2, [self.a])
+
+        self.gpsi = self.make_type_info(
+            "GPS", mro=[self.oi], typevars=["P"], paramspec_indexes={0}
+        )
+
     def _add_bool_dunder(self, type_info: TypeInfo) -> None:
         signature = CallableType([], [], [], Instance(self.bool_type_info, []), self.function)
         bool_func = FuncDef("__bool__", [], Block([]))
@@ -299,6 +329,7 @@ class TypeFixture:
         bases: list[Instance] | None = None,
         typevars: list[str] | None = None,
         typevar_tuple_index: int | None = None,
+        paramspec_indexes: set[int] | None = None,
         variances: list[int] | None = None,
     ) -> TypeInfo:
         """Make a TypeInfo suitable for use in unit tests."""
@@ -323,6 +354,17 @@ class TypeFixture:
                             id,
                             self.o,
                             self.std_tuple,
+                            AnyType(TypeOfAny.from_omitted_generics),
+                        )
+                    )
+                elif paramspec_indexes is not None and id - 1 in paramspec_indexes:
+                    v.append(
+                        ParamSpecType(
+                            n,
+                            n,
+                            id,
+                            ParamSpecFlavor.BARE,
+                            self.o,
                             AnyType(TypeOfAny.from_omitted_generics),
                         )
                     )

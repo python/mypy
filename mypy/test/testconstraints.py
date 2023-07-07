@@ -159,3 +159,52 @@ class ConstraintsSuite(Suite):
             Instance(fx.std_tuplei, [fx.a]),
             SUPERTYPE_OF,
         )
+
+    def test_paramspec_constrained_with_concatenate(self) -> None:
+        # for legibility (and my own understanding), `Tester.normal()` is `Tester[P]`
+        #  and `Tester.concatenate()` is `Tester[Concatenate[A, P]]`
+        #  ... and 2nd arg to infer_constraints ends up on LHS of equality
+        fx = self.fx
+
+        # equiv to: x: Tester[Q] = Tester.normal()
+        assert set(
+            infer_constraints(Instance(fx.gpsi, [fx.p]), Instance(fx.gpsi, [fx.q]), SUBTYPE_OF)
+        ) == {Constraint(type_var=fx.p, op=SUPERTYPE_OF, target=fx.q)}
+
+        # equiv to: x: Tester[Q] = Tester.concatenate()
+        assert set(
+            infer_constraints(
+                Instance(fx.gpsi, [fx.p_concatenate]), Instance(fx.gpsi, [fx.q]), SUBTYPE_OF
+            )
+        ) == {
+            # TODO: this is obviously wrong, I think?
+            Constraint(type_var=fx.p, op=SUPERTYPE_OF, target=fx.q)
+        }
+
+        # equiv to: x: Tester[Concatenate[B, Q]] = Tester.normal()
+        assert set(
+            infer_constraints(
+                Instance(fx.gpsi, [fx.p]), Instance(fx.gpsi, [fx.q_concatenate]), SUBTYPE_OF
+            )
+        ) == {Constraint(type_var=fx.p, op=SUPERTYPE_OF, target=fx.q_concatenate)}
+
+        # equiv to: x: Tester[Concatenate[B, Q]] = Tester.concatenate()
+        assert set(
+            infer_constraints(
+                Instance(fx.gpsi, [fx.p_concatenate]),
+                Instance(fx.gpsi, [fx.q_concatenate]),
+                SUBTYPE_OF,
+            )
+        ) == {
+            # this is correct as we assume other parts of mypy will warn that [B] != [A]
+            Constraint(type_var=fx.p, op=SUPERTYPE_OF, target=fx.q)
+        }
+
+        # equiv to: x: Tester[Concatenate[A, Q]] = Tester.concatenate()
+        assert set(
+            infer_constraints(
+                Instance(fx.gpsi, [fx.p_concatenate]),
+                Instance(fx.gpsi, [fx.q_concatenate]),
+                SUBTYPE_OF,
+            )
+        ) == {Constraint(type_var=fx.p, op=SUPERTYPE_OF, target=fx.q)}
