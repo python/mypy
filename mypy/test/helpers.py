@@ -7,7 +7,7 @@ import re
 import shutil
 import sys
 import time
-from typing import Any, Callable, Collection, Iterable, Iterator, Pattern
+from typing import Any, Callable, Iterable, Iterator, Pattern
 
 # Exporting Suite as alias to TestCase for backwards compatibility
 # TODO: avoid aliasing - import and subclass TestCase directly
@@ -317,10 +317,7 @@ def assert_type(typ: type, value: object) -> None:
 
 
 def parse_options(
-    program_text: str,
-    testcase: DataDrivenTestCase,
-    incremental_step: int,
-    no_strict_optional_files: Collection[str] = (),
+    program_text: str, testcase: DataDrivenTestCase, incremental_step: int
 ) -> Options:
     """Parse comments like '# flags: --foo' in a test case."""
     options = Options()
@@ -342,10 +339,6 @@ def parse_options(
     else:
         flag_list = []
         options = Options()
-        # TODO: Enable strict optional in test cases by default (requires *many* test case changes)
-        if os.path.basename(testcase.file) in no_strict_optional_files:
-            options.strict_optional = False
-
         options.error_summary = False
         options.hide_error_codes = True
         options.force_uppercase_builtins = True

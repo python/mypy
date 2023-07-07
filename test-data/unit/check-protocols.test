@@ -319,7 +319,9 @@ class MyHashable(Protocol):
 class C:
     __my_hash__ = None
 
-var: MyHashable = C()  # E: Incompatible types in assignment (expression has type "C", variable has type "MyHashable")
+var: MyHashable = C()  # E: Incompatible types in assignment (expression has type "C", variable has type "MyHashable") \
+                       # N: Following member(s) of "C" have conflicts: \
+                       # N:     __my_hash__: expected "Callable[[], int]", got "None"
 
 [case testNoneDisablesProtocolSubclassingWithStrictOptional]
 # flags: --strict-optional
@@ -1263,13 +1265,13 @@ if int():
 [builtins fixtures/classmethod.pyi]
 
 [case testOverloadedMethodsInProtocols]
-from typing import overload, Protocol, Union
+from typing import overload, Protocol, Union, Optional
 
 class P(Protocol):
     @overload
-    def f(self, x: int) -> int: pass
+    def f(self, x: int) -> Optional[int]: pass
     @overload
-    def f(self, x: str) -> str: pass
+    def f(self, x: str) -> Optional[str]: pass
 
 class C:
     def f(self, x: Union[int, str]) -> None:
@@ -1286,9 +1288,9 @@ main:18: error: Incompatible types in assignment (expression has type "D", varia
 main:18: note: Following member(s) of "D" have conflicts:
 main:18: note:     Expected:
 main:18: note:         @overload
-main:18: note:         def f(self, x: int) -> int
+main:18: note:         def f(self, x: int) -> Optional[int]
 main:18: note:         @overload
-main:18: note:         def f(self, x: str) -> str
+main:18: note:         def f(self, x: str) -> Optional[str]
 main:18: note:     Got:
 main:18: note:         def f(self, x: int) -> None
 
@@ -1441,6 +1443,7 @@ def g(x: P, y: P2) -> None: pass
 reveal_type(f(g)) # N: Revealed type is "__main__.P2"
 
 [case testMeetOfIncompatibleProtocols]
+# flags: --no-strict-optional
 from typing import Protocol, Callable, TypeVar
 
 class P(Protocol):
@@ -1634,6 +1637,7 @@ f(Alias)  # E: Only concrete class can be given where "Type[P]" is expected
 f(GoodAlias)
 
 [case testInstantiationProtocolInTypeForVariables]
+# flags: --no-strict-optional
 from typing import Type, Protocol
 
 class P(Protocol):
@@ -2397,6 +2401,7 @@ x: P = None
 [out]
 
 [case testNoneSubtypeOfAllProtocolsWithoutStrictOptional]
+# flags: --no-strict-optional
 from typing import Protocol
 class P(Protocol):
     attr: int

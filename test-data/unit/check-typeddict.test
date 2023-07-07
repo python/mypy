@@ -1121,8 +1121,8 @@ D = TypedDict('D', {'x': int, 'y': str}, total=False)
 d: D
 reveal_type(d['x']) # N: Revealed type is "builtins.int"
 reveal_type(d['y']) # N: Revealed type is "builtins.str"
-reveal_type(d.get('x')) # N: Revealed type is "builtins.int"
-reveal_type(d.get('y')) # N: Revealed type is "builtins.str"
+reveal_type(d.get('x')) # N: Revealed type is "Union[builtins.int, None]"
+reveal_type(d.get('y')) # N: Revealed type is "Union[builtins.str, None]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -1642,7 +1642,7 @@ def f1(x: int, y: str, z: bytes) -> None: ...
 def f2(x: int, y: str) -> None: ...
 
 td: TD
-d = None # type: Dict[Any, Any]
+d: Dict[Any, Any]
 
 f1(**td, **d)
 f1(**d, **td)
@@ -1740,8 +1740,8 @@ class TDB(TypedDict):
 
 td: Union[TDA, TDB]
 
-reveal_type(td.get('a'))  # N: Revealed type is "builtins.int"
-reveal_type(td.get('b'))  # N: Revealed type is "Union[builtins.str, builtins.int]"
+reveal_type(td.get('a'))  # N: Revealed type is "Union[builtins.int, None]"
+reveal_type(td.get('b'))  # N: Revealed type is "Union[builtins.str, None, builtins.int]"
 reveal_type(td.get('c'))  # N: Revealed type is "builtins.object"
 
 reveal_type(td['a'])  # N: Revealed type is "builtins.int"
@@ -1805,7 +1805,7 @@ from mypy_extensions import TypedDict
 class A(TypedDict):
     x: int
 
-d: Union[A, None]
+d: A
 d.update({'x': 1})
 [builtins fixtures/dict.pyi]
 
