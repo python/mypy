@@ -790,7 +790,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                                     suffix_prefix.arg_names[length:],
                                 )
                             )
-                            res.append(Constraint(template_arg, SUPERTYPE_OF, suffix))
+                            res.append(Constraint(template_arg, SUPERTYPE_OF, constrained))
                     else:
                         # This case should have been handled above.
                         assert not isinstance(tvar, TypeVarTupleType)
