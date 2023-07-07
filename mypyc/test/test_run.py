@@ -42,6 +42,7 @@ files = [
     "run-i64.test",
     "run-i32.test",
     "run-i16.test",
+    "run-u8.test",
     "run-floats.test",
     "run-math.test",
     "run-bools.test",

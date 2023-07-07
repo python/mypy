@@ -450,7 +450,8 @@ class C: pass
 from foo import *
 [file foo.pyi]
 from typing import overload
-a, b = None, None # type: (A, B)
+a: A
+b: B
 if int():
     b = f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 if int():
@@ -492,7 +493,8 @@ class C: pass
 from foo import *
 [file foo.pyi]
 from typing import overload
-a, b = None, None # type: (A, B)
+a: A
+b: B
 if int():
     b = a.f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 if int():
@@ -514,7 +516,8 @@ class B: pass
 from foo import *
 [file foo.pyi]
 from typing import overload
-a, b = None, None # type: (A, B)
+a: A
+b: B
 if int():
     a = f(a)
 if int():
@@ -549,7 +552,10 @@ from foo import *
 [file foo.pyi]
 from typing import overload, TypeVar, Generic
 t = TypeVar('t')
-ab, ac, b, c = None, None, None, None # type: (A[B], A[C], B, C)
+ab: A[B]
+ac: A[C]
+b: B
+c: C
 if int():
     b = f(ab)
     c = f(ac)
@@ -569,7 +575,8 @@ class C: pass
 from foo import *
 [file foo.pyi]
 from typing import overload
-a, b = None, None # type: (A, B)
+a: A
+b: B
 a = A(a)
 a = A(b)
 a = A(object()) # E: No overload variant of "A" matches argument type "object" \
@@ -589,8 +596,8 @@ class B: pass
 from foo import *
 [file foo.pyi]
 from typing import overload, Callable
-o = None # type: object
-a = None # type: A
+o: object
+a: A
 
 if int():
     a = f # E: Incompatible types in assignment (expression has type overloaded function, variable has type "A")
@@ -607,7 +614,8 @@ class A: pass
 from foo import *
 [file foo.pyi]
 from typing import overload
-t, a = None, None # type: (type, A)
+t: type
+a: A
 
 if int():
     a = A # E: Incompatible types in assignment (expression has type "Type[A]", variable has type "A")
@@ -625,7 +633,8 @@ class B: pass
 from foo import *
 [file foo.pyi]
 from typing import overload
-a, b = None, None # type: int, str
+a: int
+b: str
 if int():
     a = A()[a]
 if int():
@@ -647,7 +656,9 @@ from foo import *
 [file foo.pyi]
 from typing import TypeVar, Generic, overload
 t = TypeVar('t')
-a, b, c = None, None, None # type: (A, B, C[A])
+a: A
+b: B
+c: C[A]
 if int():
     a = c[a]
     b = c[a] # E: Incompatible types in assignment (expression has type "A", variable has type "B")
@@ -761,7 +772,8 @@ from typing import overload
 def f(t: type) -> 'A': pass
 @overload
 def f(t: 'A') -> 'B': pass
-a, b = None, None # type: (A, B)
+a: A
+b: B
 if int():
     a = f(A)
 if int():
@@ -1215,6 +1227,7 @@ f(*(1, '', 1))() # E: No overload variant of "f" matches argument type "Tuple[in
 [builtins fixtures/tuple.pyi]
 
 [case testPreferExactSignatureMatchInOverload]
+# flags: --no-strict-optional
 from foo import *
 [file foo.pyi]
 from typing import overload, List

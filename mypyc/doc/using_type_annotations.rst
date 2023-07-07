@@ -33,6 +33,7 @@ implementations:
 * ``i64`` (:ref:`documentation <native-ints>`, :ref:`native operations <int-ops>`)
 * ``i32`` (:ref:`documentation <native-ints>`, :ref:`native operations <int-ops>`)
 * ``i16`` (:ref:`documentation <native-ints>`, :ref:`native operations <int-ops>`)
+* ``u8`` (:ref:`documentation <native-ints>`, :ref:`native operations <int-ops>`)
 * ``float`` (:ref:`native operations <float-ops>`)
 * ``bool`` (:ref:`native operations <bool-ops>`)
 * ``str`` (:ref:`native operations <str-ops>`)
@@ -344,13 +345,13 @@ Native integer types
 --------------------
 
 You can use the native integer types ``i64`` (64-bit signed integer),
-``i32`` (32-bit signed integer), and ``i16`` (16-bit signed integer)
-if you know that integer values will always fit within fixed
-bounds. These types are faster than the arbitrary-precision ``int``
-type, since they don't require overflow checks on operations. ``i32``
-and ``i16`` may also use less memory than ``int`` values. The types
-are imported from the ``mypy_extensions`` module (installed via ``pip
-install mypy_extensions``).
+``i32`` (32-bit signed integer), ``i16`` (16-bit signed integer), and
+``u8`` (8-bit unsigned integer) if you know that integer values will
+always fit within fixed bounds. These types are faster than the
+arbitrary-precision ``int`` type, since they don't require overflow
+checks on operations. They may also use less memory than ``int``
+values. The types are imported from the ``mypy_extensions`` module
+(installed via ``pip install mypy_extensions``).
 
 Example::
 

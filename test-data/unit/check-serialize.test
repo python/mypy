@@ -1275,6 +1275,7 @@ main:2: error: Too many arguments for "f"
 main:2: error: Too many arguments for "f"
 
 [case testSerializeDummyType]
+# flags: --no-strict-optional
 import a
 [file a.py]
 import b

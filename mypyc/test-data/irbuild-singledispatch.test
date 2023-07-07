@@ -16,7 +16,7 @@ def f_obj.__init__(__mypyc_self__):
     __mypyc_self__ :: __main__.f_obj
     r0, r1 :: dict
     r2 :: str
-    r3 :: int32
+    r3 :: i32
     r4 :: bit
 L0:
     r0 = PyDict_New()
@@ -39,7 +39,7 @@ def f_obj.__call__(__mypyc_self__, arg):
     r9 :: object
     r10 :: dict
     r11 :: object
-    r12 :: int32
+    r12 :: i32
     r13 :: bit
     r14 :: object
     r15 :: ptr
@@ -148,7 +148,7 @@ def f_obj.__init__(__mypyc_self__):
     __mypyc_self__ :: __main__.f_obj
     r0, r1 :: dict
     r2 :: str
-    r3 :: int32
+    r3 :: i32
     r4 :: bit
 L0:
     r0 = PyDict_New()
@@ -171,7 +171,7 @@ def f_obj.__call__(__mypyc_self__, x):
     r9 :: object
     r10 :: dict
     r11 :: object
-    r12 :: int32
+    r12 :: i32
     r13 :: bit
     r14 :: object
     r15 :: ptr

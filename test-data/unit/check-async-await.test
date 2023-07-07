@@ -291,7 +291,7 @@ async def f() -> None:
 [typing fixtures/typing-async.pyi]
 
 [case testAsyncWithErrorBadAenter2]
-
+# flags: --no-strict-optional
 class C:
     def __aenter__(self) -> None: pass
     async def __aexit__(self, x, y, z) -> None: pass
@@ -313,7 +313,7 @@ async def f() -> None:
 [typing fixtures/typing-async.pyi]
 
 [case testAsyncWithErrorBadAexit2]
-
+# flags: --no-strict-optional
 class C:
     async def __aenter__(self) -> int: pass
     def __aexit__(self, x, y, z) -> None: pass

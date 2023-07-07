@@ -54,6 +54,7 @@ f(b=[], a=A())
 [builtins fixtures/list.pyi]
 
 [case testGivingArgumentAsPositionalAndKeywordArg]
+# flags: --no-strict-optional
 import typing
 class A: pass
 class B: pass
@@ -61,11 +62,13 @@ def f(a: 'A', b: 'B' = None) -> None: pass
 f(A(), a=A()) # E: "f" gets multiple values for keyword argument "a"
 
 [case testGivingArgumentAsPositionalAndKeywordArg2]
+# flags: --no-strict-optional
 import typing
 class A: pass
 class B: pass
 def f(a: 'A' = None, b: 'B' = None) -> None: pass
 f(A(), a=A()) # E: "f" gets multiple values for keyword argument "a"
+
 [case testPositionalAndKeywordForSameArg]
 # This used to crash in check_argument_count(). See #1095.
 def f(a: int): pass
@@ -134,7 +137,7 @@ f(otter=A()) # E: Missing positional argument "other" in call to "f"
 
 [case testKeywordArgumentsWithDynamicallyTypedCallable]
 from typing import Any
-f = None # type: Any
+f: Any
 f(x=f(), z=None()) # E: "None" not callable
 f(f, zz=None()) # E: "None" not callable
 f(x=None)
@@ -143,10 +146,12 @@ f(x=None)
 from typing import Callable
 class A: pass
 class B: pass
-f = None # type: Callable[[A, B], None]
+f: Callable[[A, B], None]
 f(a=A(), b=B())  # E: Unexpected keyword argument "a"  # E: Unexpected keyword argument "b"
 f(A(), b=B())  # E: Unexpected keyword argument "b"
+
 [case testKeywordOnlyArguments]
+# flags: --no-strict-optional
 import typing
 class A: pass
 class B: pass
@@ -172,7 +177,9 @@ i(A(), b=B())
 i(A(), aa=A()) # E: Missing named argument "b" for "i"
 i(A(), b=B(), aa=A())
 i(A(), aa=A(), b=B())
+
 [case testKeywordOnlyArgumentsFastparse]
+# flags: --no-strict-optional
 import typing
 
 class A: pass
@@ -290,10 +297,10 @@ from typing import Dict
 class A: pass
 class B: pass
 def f( **kwargs: 'A') -> None: pass
-d = None # type: Dict[str, A]
+d: Dict[str, A]
 f(**d)
 f(x=A(), **d)
-d2 = None # type: Dict[str, B]
+d2: Dict[str, B]
 f(**d2)         # E: Argument 1 to "f" has incompatible type "**Dict[str, B]"; expected "A"
 f(x=A(), **d2)  # E: Argument 2 to "f" has incompatible type "**Dict[str, B]"; expected "A"
 f(**{'x': B()}) # E: Argument 1 to "f" has incompatible type "**Dict[str, B]"; expected "A"
@@ -324,9 +331,9 @@ reveal_type(formatter.__call__)  # N: Revealed type is "def (message: builtins.s
 [case testPassingMappingForKeywordVarArg]
 from typing import Mapping
 def f(**kwargs: 'A') -> None: pass
-b = None # type: Mapping
-d = None # type: Mapping[A, A]
-m = None # type: Mapping[str, A]
+b: Mapping
+d: Mapping[A, A]
+m: Mapping[str, A]
 f(**d)         # E: Keywords must be strings
 f(**m)
 f(**b)
@@ -337,7 +344,7 @@ class A: pass
 from typing import Mapping
 class MappingSubclass(Mapping[str, str]): pass
 def f(**kwargs: 'A') -> None: pass
-d = None # type: MappingSubclass
+d: MappingSubclass
 f(**d)
 class A: pass
 [builtins fixtures/dict.pyi]
@@ -357,9 +364,9 @@ f(**kwargs)    # E: Argument after ** must be a mapping, not "Optional[Any]"
 [case testPassingKeywordVarArgsToNonVarArgsFunction]
 from typing import Any, Dict
 def f(a: 'A', b: 'B') -> None: pass
-d = None # type: Dict[str, Any]
+d: Dict[str, Any]
 f(**d)
-d2 = None # type: Dict[str, A]
+d2: Dict[str, A]
 f(**d2) # E: Argument 1 to "f" has incompatible type "**Dict[str, A]"; expected "B"
 class A: pass
 class B: pass
@@ -368,8 +375,8 @@ class B: pass
 [case testBothKindsOfVarArgs]
 from typing import Any, List, Dict
 def f(a: 'A', b: 'A') -> None: pass
-l = None # type: List[Any]
-d = None # type: Dict[Any, Any]
+l: List[Any]
+d: Dict[Any, Any]
 f(*l, **d)
 class A: pass
 [builtins fixtures/dict.pyi]
@@ -380,8 +387,8 @@ def f1(a: 'A', b: 'A') -> None: pass
 def f2(a: 'A') -> None: pass
 def f3(a: 'A', **kwargs: 'A') -> None: pass
 def f4(**kwargs: 'A') -> None: pass
-d = None # type: Dict[Any, Any]
-d2 = None # type: Dict[Any, Any]
+d: Dict[Any, Any]
+d2: Dict[Any, Any]
 f1(**d, **d2)
 f2(**d, **d2)
 f3(**d, **d2)
@@ -392,7 +399,7 @@ class A: pass
 [case testPassingKeywordVarArgsToVarArgsOnlyFunction]
 from typing import Any, Dict
 def f(*args: 'A') -> None: pass
-d = None # type: Dict[Any, Any]
+d: Dict[Any, Any]
 f(**d)
 class A: pass
 [builtins fixtures/dict.pyi]

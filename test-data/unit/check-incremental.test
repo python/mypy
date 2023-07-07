@@ -1734,12 +1734,12 @@ class R: pass
 [file r/s.py]
 from . import m
 R = m.R
-a = None  # type: R
+a: R
 
 [file r/s.py.2]
 from . import m
 R = m.R
-a = None  # type: R
+a: R
 
 [case testIncrementalBaseClassAttributeConflict]
 class A: pass
@@ -2603,7 +2603,7 @@ def output() -> IntNode[str]:
     return Node(1, 'x')
 x = output() # type: IntNode
 
-y = None # type: IntNode
+y: IntNode
 y.x = 1
 y.y = 1
 y.y = 'x'
@@ -2625,7 +2625,7 @@ def output() -> IntNode[str]:
     return Node(1, 'x')
 x = output() # type: IntNode
 
-y = None # type: IntNode
+y: IntNode
 y.x = 1
 y.y = 1
 y.y = 'x'

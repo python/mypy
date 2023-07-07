@@ -132,7 +132,7 @@ def f(x: T, y: T) -> T:
 [out]
 def f(x, y):
     x, y, r0 :: object
-    r1 :: int32
+    r1 :: i32
     r2 :: bit
     r3 :: bool
     r4 :: object
@@ -140,7 +140,7 @@ L0:
     r0 = PyObject_RichCompare(y, x, 4)
     r1 = PyObject_IsTrue(r0)
     r2 = r1 >= 0 :: signed
-    r3 = truncate r1: int32 to builtins.bool
+    r3 = truncate r1: i32 to builtins.bool
     if r3 goto L1 else goto L2 :: bool
 L1:
     r4 = y

@@ -753,16 +753,16 @@ Foo = Literal[5]
 [case testLiteralBiasTowardsAssumingForwardReferencesForTypeComments]
 from typing_extensions import Literal
 
-a = None  # type: Foo
+a: Foo
 reveal_type(a)      # N: Revealed type is "__main__.Foo"
 
-b = None  # type: "Foo"
+b: "Foo"
 reveal_type(b)      # N: Revealed type is "__main__.Foo"
 
-c = None  # type: Literal["Foo"]
+c: Literal["Foo"]
 reveal_type(c)      # N: Revealed type is "Literal['Foo']"
 
-d = None  # type: Literal[Foo]   # E: Parameter 1 of Literal[...] is invalid
+d: Literal[Foo]     # E: Parameter 1 of Literal[...] is invalid
 
 class Foo: pass
 [builtins fixtures/tuple.pyi]
@@ -1760,7 +1760,7 @@ reveal_type(func1(identity(b)))  # N: Revealed type is "builtins.int"
 --
 
 [case testLiteralMeets]
-from typing import TypeVar, List, Callable, Union
+from typing import TypeVar, List, Callable, Union, Optional
 from typing_extensions import Literal
 
 a: Callable[[Literal[1]], int]
@@ -1794,12 +1794,14 @@ def f2(x: Literal[1], y: Literal[2]) -> None: pass
 def f3(x: Literal[1], y: int) -> None: pass
 def f4(x: Literal[1], y: object) -> None: pass
 def f5(x: Literal[1], y: Union[Literal[1], Literal[2]]) -> None: pass
+def f6(x: Optional[Literal[1]], y: Optional[Literal[2]]) -> None: pass
 
 reveal_type(unify(f1))  # N: Revealed type is "Literal[1]"
-reveal_type(unify(f2))  # N: Revealed type is "None"
+reveal_type(unify(f2))  # N: Revealed type is "<nothing>"
 reveal_type(unify(f3))  # N: Revealed type is "Literal[1]"
 reveal_type(unify(f4))  # N: Revealed type is "Literal[1]"
 reveal_type(unify(f5))  # N: Revealed type is "Literal[1]"
+reveal_type(unify(f6))  # N: Revealed type is "None"
 [builtins fixtures/list.pyi]
 [out]
 
@@ -2013,7 +2015,7 @@ optional_keys: Literal["d", "e"]
 bad_keys: Literal["a", "bad"]
 
 reveal_type(test[good_keys])                      # N: Revealed type is "Union[__main__.A, __main__.B]"
-reveal_type(test.get(good_keys))                  # N: Revealed type is "Union[__main__.A, __main__.B]"
+reveal_type(test.get(good_keys))                  # N: Revealed type is "Union[__main__.A, __main__.B, None]"
 reveal_type(test.get(good_keys, 3))               # N: Revealed type is "Union[__main__.A, Literal[3]?, __main__.B]"
 reveal_type(test.pop(optional_keys))              # N: Revealed type is "Union[__main__.D, __main__.E]"
 reveal_type(test.pop(optional_keys, 3))           # N: Revealed type is "Union[__main__.D, __main__.E, Literal[3]?]"
@@ -2066,7 +2068,7 @@ x[bad_keys]         # E: TypedDict "D1" has no key "d" \
                     # E: TypedDict "D2" has no key "a"
 
 reveal_type(x[good_keys])           # N: Revealed type is "Union[__main__.B, __main__.C]"
-reveal_type(x.get(good_keys))       # N: Revealed type is "Union[__main__.B, __main__.C]"
+reveal_type(x.get(good_keys))       # N: Revealed type is "Union[__main__.B, __main__.C, None]"
 reveal_type(x.get(good_keys, 3))    # N: Revealed type is "Union[__main__.B, Literal[3]?, __main__.C]"
 reveal_type(x.get(bad_keys))        # N: Revealed type is "builtins.object"
 reveal_type(x.get(bad_keys, 3))     # N: Revealed type is "builtins.object"

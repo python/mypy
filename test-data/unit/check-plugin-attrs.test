@@ -672,6 +672,7 @@ class A(Generic[T]):
 [builtins fixtures/classmethod.pyi]
 
 [case testAttrsForwardReference]
+# flags: --no-strict-optional
 import attr
 @attr.s(auto_attribs=True)
 class A:
@@ -687,6 +688,7 @@ A(B(None))
 [builtins fixtures/list.pyi]
 
 [case testAttrsForwardReferenceInClass]
+# flags: --no-strict-optional
 import attr
 @attr.s(auto_attribs=True)
 class A:
@@ -1593,6 +1595,7 @@ def f(t: TA) -> None:
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testNonattrsFields]
+# flags: --no-strict-optional
 from typing import Any, cast, Type
 from attrs import fields
 
