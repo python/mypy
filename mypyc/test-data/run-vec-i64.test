@@ -1,5 +1,5 @@
 [case testVecI64BasicOps]
-from typing import Final
+from typing import Final, Any, Iterable
 
 from mypy_extensions import i64
 from vecs import vec, append
@@ -84,3 +84,41 @@ def test_set_item() -> None:
         v[1 + x] = 6
     with assertRaises(IndexError):
         v[2 + int()] = 6
+
+def test_box_and_unbox() -> None:
+    v = vec[i64]([3, 5])
+    o: Any = v
+    assert len(o) == 2
+    assert o[0] == 3
+    assert o[1] == 5
+    o[1] = 6
+    v2: vec[i64] = o
+    assert len(v2) == 2
+    assert v2[0] == 3
+    assert v2[1] == 6
+    o2: Any = "x"
+    with assertRaises(TypeError, "vec[i64] expected"):
+        v2 = o2
+    o3: Any = vec[str]([])
+    with assertRaises(TypeError, "vec[i64] expected"):
+        v2 = o3
+
+def test_construct_from_list_multiply() -> None:
+    for i in range(50):
+        v = vec[i64]([i + 1] * i)
+        assert len(v) == i
+        for j in range(i):
+            assert v[j] == i + 1
+    for i in range(50):
+        v = vec[i64](i * [i - 1])
+        assert len(v) == i
+        for j in range(i):
+            assert v[j] == i - 1
+
+def test_construct_from_list_comprehension() -> None:
+    for i in range(50):
+        l = [i * i for i in range(i)]
+        v = vec[i64]([n + 5 for n in l])
+        assert len(v) == i
+        for j in range(i):
+            assert v[j] == j * j + 5
