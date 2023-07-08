@@ -123,6 +123,7 @@ from mypyc.irbuild.vec import (
     vec_pop,
     vec_remove,
     vec_slice,
+    vec_append,
 )
 from mypyc.primitives.bytes_ops import bytes_slice_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, exact_dict_set_item_op
@@ -582,9 +583,31 @@ def translate_vec_create_from_iterable(
         return vec_create_from_values(builder.builder, vec_type, items, line)
     if isinstance(arg, ListComprehension):
         return translate_vec_comprehension(builder, vec_type, arg.generator)
+    return vec_from_iterable(builder, vec_type, arg, line)
 
-    # TODO: Construct vec from arbitrary iterable
-    assert False, (vec_type, arg)
+
+def vec_from_iterable(builder: IRBuilder, vec_type: RVec, iterable: Expression,
+                      line: int) -> Value:
+    """Construct a vec from an arbitrary iterable."""
+    # Translate it as a vec comprehension vec[t]([<name> for <name> in
+    # iterable]). This way we can use various special casing supported
+    # by for loops and comprehensions.
+    vec = Register(vec_type)
+    builder.assign(vec, vec_create(builder.builder, vec_type, 0, line), line)
+    name = f"___tmp_{line}"
+    var = Var(name)
+    reg = builder.add_local(var, vec_type.item_type)
+    index = NameExpr(name)
+    index.kind = LDEF
+    index.node = var
+    loop_params: list[tuple[Expression, Expression, list[Expression], bool]] = [
+        (index, iterable, [], False)]
+
+    def gen_inner_stmts() -> None:
+        builder.assign(vec, vec_append(builder.builder, vec, reg, line), line)
+
+    comprehension_helper(builder, loop_params, gen_inner_stmts, line)
+    return vec
 
 
 def translate_cast_expr(builder: IRBuilder, expr: CastExpr) -> Value:

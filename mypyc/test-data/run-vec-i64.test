@@ -123,6 +123,28 @@ def test_construct_from_list_comprehension() -> None:
         for j in range(i):
             assert v[j] == j * j + 5
 
+def test_construct_from_range() -> None:
+    v = vec[i64](range(0))
+    assert v == vec[i64]()
+    v = vec[i64](range(5))
+    assert v == vec[i64]([0, 1, 2, 3, 4])
+    v = vec[i64](range(2, 5))
+    assert v == vec[i64]([2, 3, 4])
+
+def test_construct_from_iterable() -> None:
+    for i in range(50):
+        it: Iterable[i64] = iter([i * i for i in range(i)])
+        v = vec[i64](it)
+        assert len(v) == i
+        for j in range(i):
+            assert v[j] == j * j
+    for i in range(50):
+        it2: Iterable[int] = iter([i * i for i in range(i)])
+        v = vec[i64](it2)
+        assert len(v) == i
+        for j in range(i):
+            assert v[j] == j * j
+
 def test_equality() -> None:
     v0 = vec[i64]()
     v0b = vec[i64]()
