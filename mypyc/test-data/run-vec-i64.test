@@ -122,3 +122,28 @@ def test_construct_from_list_comprehension() -> None:
         assert len(v) == i
         for j in range(i):
             assert v[j] == j * j + 5
+
+def test_str_conversion() -> None:
+    v = vec[i64]()
+    assert str(v) == "vec[i64]([])"
+    assert repr(v) == "vec[i64]([])"
+    v = vec[i64]([126])
+    assert str(v) == "vec[i64]([126])"
+    v = append(v, -5)
+    assert str(v) == "vec[i64]([126, -5])"
+    v = append(v, ERROR)
+    assert str(v) == "vec[i64]([126, -5, -113])"
+
+def test_for_loop() -> None:
+    for n in vec[i64]():
+        assert False
+    a = []
+    for n in vec[i64]([5]):
+        a.append(n)
+    assert a == [5]
+    v = vec[i64]([ERROR, 9, 8])
+    a = []
+    for n in v:
+        a.append(n)
+    assert a == [ERROR, 9, 8]
+    assert len(v) == 3
