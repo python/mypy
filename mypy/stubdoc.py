@@ -254,7 +254,7 @@ def infer_sig_from_docstring(docstr: str | None, name: str) -> list[FunctionSig]
         * docstr: docstring
         * name: name of function for which signatures are to be found
     """
-    if not docstr:
+    if not (isinstance(docstr, str) and docstr):
         return None
 
     state = DocStringParser(name)
