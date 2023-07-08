@@ -1,0 +1,86 @@
+[case testVecI64BasicOps]
+from typing import Final
+
+from mypy_extensions import i64
+from vecs import vec, append
+
+from testutil import assertRaises
+
+ERROR: Final = -113
+
+def test_create_empty() -> None:
+    v = vec[i64]()
+    assert len(v) == 0
+
+def test_create_from_list_and_get_item() -> None:
+    v = vec[i64]([])
+    assert len(v) == 0
+
+    v = vec[i64]([ERROR, 0, 255, int() + (2**63 - 1)])
+    assert len(v) == 4
+    assert v[0] == -113
+    assert v[1] == 0
+    assert v[2] == 255
+    assert v[3] == 2**63 - 1
+
+    v = vec[i64]([1, 2, 3, 4, 5, 6, 7, 8, 9])
+    assert len(v) == 9
+    for i in range(i64(9)):
+        assert v[i] == i + 1
+
+def test_append() -> None:
+    v = vec[i64]()
+    v = append(v, int() + 3)
+    assert len(v) == 1
+    x: i64 = ERROR + int()
+    v = append(v, x)
+    assert len(v) == 2
+    assert v[0] == 3
+    assert v[1] == ERROR
+    v = vec[i64]()
+    for i in range(1024):
+        v = append(v, i * 3)
+    assert len(v) == 1024
+    for i in range(1024):
+        assert v[i] == i * 3
+
+def test_get_item() -> None:
+    v = vec[i64]([3, 4])
+    x: i64 = int()
+    assert v[x] == 3
+    assert v[int()] == 3
+    x += 1
+    assert v[x] == 4
+    assert v[int() + 1] == 4
+    with assertRaises(IndexError):
+        v[x + 1]
+    with assertRaises(IndexError):
+        v[2]
+    with assertRaises(IndexError):
+        v[2**63 - 1]
+
+def test_set_item() -> None:
+    v = vec[i64]([3, 4])
+    v[0] = 0
+    assert v[0] == 0
+
+    x: i64 = int()
+
+    v[x] = 4
+    assert v[x] == 4
+
+    v[int()] = 5
+    assert v[int()] == 5
+
+    x += 1
+
+    v[x] = -5
+    assert v[x] == -5
+
+    v[1 + int()] = ERROR
+    assert v[1] == ERROR
+
+    with assertRaises(IndexError):
+        v[1 + x] = 6
+    with assertRaises(IndexError):
+        v[2 + int()] = 6

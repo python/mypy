@@ -82,6 +82,7 @@ files = [
     "run-vecs-misc-interp.test",
     "run-vecs-t-interp.test",
     "run-vecs-nested-interp.test",
+    "run-vec-i64.test",
 ]
 
 if sys.version_info >= (3, 12):

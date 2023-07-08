@@ -283,6 +283,7 @@ def vec_set_item(
     builder: "LowLevelIRBuilder", base: Value, index: Value, item: Value, line: int
 ) -> None:
     assert isinstance(base.type, RVec)
+    index = as_platform_int(builder, index, line)
     vtype = base.type
     len_val = vec_len_native(builder, base)
     vec_check_index(builder, len_val, index, line)
