@@ -86,12 +86,12 @@ VecTExt Vec_T_Ext_Slice(VecTExt vec, int64_t start, int64_t end) {
         start += vec.len;
     if (end < 0)
         end += vec.len;
-    if (end < start)
-        end = start;
     if (start < 0)
         start = 0;
     if (start >= vec.len)
         start = vec.len;
+    if (end < start)
+        end = start;
     if (end > vec.len)
         end = vec.len;
     int64_t slicelength = end - start;
