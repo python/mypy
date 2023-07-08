@@ -2,7 +2,7 @@
 from typing import Final, Any, Iterable
 
 from mypy_extensions import i64
-from vecs import vec, append
+from vecs import vec, append, remove, pop
 
 from testutil import assertRaises
 
@@ -229,3 +229,35 @@ def test_slicing_with_step() -> None:
     assert v[::-1] == vec[i64]([4, 3, 2, 1, 0])
     with assertRaises(ValueError):
         v[1:3:0]
+
+def test_remove() -> None:
+    a = [4, 7, ERROR]
+    for i in a:
+        v = vec[i64](a)
+        v = remove(v, i)
+        assert v == vec[i64]([j for j in a if j != i])
+    v = vec[i64](a)
+    v = remove(v, 4)
+    v = remove(v, 7)
+    v = remove(v, ERROR)
+    assert v == vec[i64]()
+    with assertRaises(ValueError):
+        remove(v, 4)
+    v = append(v, 5)
+    with assertRaises(ValueError):
+        remove(v, 7)
+    v = remove(v, 5)
+    assert len(v) == 0
+    v = vec[i64]([1, 1, 1])
+    v = remove(v, 1)
+    assert v == vec[i64]([1, 1])
+    v = remove(v, 1)
+    assert v == vec[i64]([1])
+    v = remove(v, 1)
+    assert v == vec[i64]()
+    f: Any = 1.1
+    with assertRaises(TypeError):
+        remove(v, f)
+    s: Any = 'x'
+    with assertRaises(TypeError):
+        remove(v, s)
