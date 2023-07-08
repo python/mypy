@@ -1,3 +1,6 @@
+-- Test cases for vec[i64]. These also partially cover other unboxed item types,
+-- which use a similar runtime representation.
+
 [case testVecI64CreateEmpty]
 from vecs import vec, append
 from mypy_extensions import i64

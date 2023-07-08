@@ -1,3 +1,6 @@
+-- Test cases for vec[t] where t is a boxed, non-vec type (PyObject *).
+-- Also tests for vec[t | None], which uses the same representation.
+
 [case testVecTCreateEmpty]
 from vecs import vec, append
 
