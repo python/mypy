@@ -3317,3 +3317,73 @@ def gen2() -> _Generator[_Incomplete, _Incomplete, _Incomplete]: ...
 
 class X(_Incomplete): ...
 class Y(_Incomplete): ...
+
+
+[case testDataclass]
+import dataclasses
+import dataclasses as dcs
+from dataclasses import dataclass
+from dataclasses import dataclass as dc
+
+@dataclasses.dataclass
+class X:
+    a: int
+    b: str = "hello"
+    non_field = None
+
+@dcs.dataclass
+class Y: ...
+
+@dataclass
+class Z: ...
+
+@dc
+class W: ...
+
+[out]
+import dataclasses
+import dataclasses as dcs
+from dataclasses import dataclass, dataclass as dc
+
+@dataclasses.dataclass
+class X:
+    a: int
+    b: str = ...
+    non_field = ...
+
+@dcs.dataclass
+class Y: ...
+@dataclass
+class Z: ...
+@dc
+class W: ...
+
+[case testDataclassWithKeywords]
+from dataclasses import dataclass
+
+@dataclass(init=False)
+class X: ...
+
+[out]
+from dataclasses import dataclass
+
+@dataclass(init=False)
+class X: ...
+
+[case testDataclassWithExplicitGeneratedMethodsOverrides_semanal]
+from dataclasses import dataclass
+
+@dataclass
+class X:
+    a: int
+    def __init__(self, a: int, b: str = ...) -> None: ...
+    def __post_init__(self) -> None: ...
+
+[out]
+from dataclasses import dataclass
+
+@dataclass
+class X:
+    a: int
+    def __init__(self, a: int, b: str = ...) -> None: ...
+    def __post_init__(self) -> None: ...
