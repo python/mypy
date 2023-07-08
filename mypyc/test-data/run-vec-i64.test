@@ -147,3 +147,17 @@ def test_for_loop() -> None:
         a.append(n)
     assert a == [ERROR, 9, 8]
     assert len(v) == 3
+
+def test_contains() -> None:
+    v = vec[i64]()
+    x: i64 = int()
+    assert x not in v
+    v = vec[i64]([0])
+    assert x in v
+    assert x + 1 not in v
+    v2 = vec[i64]([ERROR, 7, 9])
+    assert x + ERROR in v2
+    assert x + 7 in v2
+    assert int() + 9 in v2
+    assert x not in v2
+    assert int() not in v2
