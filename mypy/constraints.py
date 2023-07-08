@@ -79,15 +79,19 @@ class Constraint:
         op_str = "<:"
         if self.op == SUPERTYPE_OF:
             op_str = ":>"
-        return f"{self.type_var} {op_str} {self.target}"
+        return f"{self.origin_type_var} {op_str} {self.target}"
 
     def __hash__(self) -> int:
-        return hash((self.type_var, self.op, self.target))
+        return hash((self.origin_type_var, self.op, self.target))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Constraint):
             return False
-        return (self.type_var, self.op, self.target) == (other.type_var, other.op, other.target)
+        return (self.origin_type_var, self.op, self.target) == (
+            other.origin_type_var,
+            other.op,
+            other.target,
+        )
 
 
 def infer_constraints_for_callable(
@@ -695,15 +699,27 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         if isinstance(suffix, (Parameters, CallableType)):
                             # no such thing as variance for ParamSpecs
                             # TODO: is there a case I am missing?
+                            length = min(length, len(suffix.arg_types))
 
                             constrained_to = suffix.copy_modified(
                                 suffix.arg_types[length:],
                                 suffix.arg_kinds[length:],
                                 suffix.arg_names[length:],
                             )
-                            res.append(Constraint(mapped_arg, SUPERTYPE_OF, constrained_to))
+                            constrained_from = mapped_arg.copy_modified(
+                                prefix=prefix.copy_modified(
+                                    prefix.arg_types[length:],
+                                    prefix.arg_kinds[length:],
+                                    prefix.arg_names[length:],
+                                )
+                            )
+
+                            res.append(Constraint(constrained_from, SUPERTYPE_OF, constrained_to))
+                            res.append(Constraint(constrained_from, SUBTYPE_OF, constrained_to))
                         elif isinstance(suffix, ParamSpecType):
                             suffix_prefix = suffix.prefix
+                            length = min(length, len(suffix_prefix.arg_types))
+
                             constrained = suffix.copy_modified(
                                 prefix=suffix_prefix.copy_modified(
                                     suffix_prefix.arg_types[length:],
@@ -711,7 +727,16 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                                     suffix_prefix.arg_names[length:],
                                 )
                             )
-                            res.append(Constraint(mapped_arg, SUPERTYPE_OF, constrained))
+                            constrained_from = mapped_arg.copy_modified(
+                                prefix=prefix.copy_modified(
+                                    prefix.arg_types[length:],
+                                    prefix.arg_kinds[length:],
+                                    prefix.arg_names[length:],
+                                )
+                            )
+
+                            res.append(Constraint(constrained_from, SUPERTYPE_OF, constrained))
+                            res.append(Constraint(constrained_from, SUBTYPE_OF, constrained))
                     else:
                         # This case should have been handled above.
                         assert not isinstance(tvar, TypeVarTupleType)
@@ -771,18 +796,31 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             from_concat = bool(prefix.arg_types) or suffix.from_concatenate
                             suffix = suffix.copy_modified(from_concatenate=from_concat)
 
+                        # TODO: this is almost a copy-paste of code above: make this into a function
                         if isinstance(suffix, (Parameters, CallableType)):
                             # no such thing as variance for ParamSpecs
                             # TODO: is there a case I am missing?
+                            length = min(length, len(suffix.arg_types))
 
-                            suffix = suffix.copy_modified(
+                            constrained_to = suffix.copy_modified(
                                 suffix.arg_types[length:],
                                 suffix.arg_kinds[length:],
                                 suffix.arg_names[length:],
                             )
-                            res.append(Constraint(template_arg, SUPERTYPE_OF, suffix))
+                            constrained_from = template_arg.copy_modified(
+                                prefix=prefix.copy_modified(
+                                    prefix.arg_types[length:],
+                                    prefix.arg_kinds[length:],
+                                    prefix.arg_names[length:],
+                                )
+                            )
+
+                            res.append(Constraint(constrained_from, SUPERTYPE_OF, constrained_to))
+                            res.append(Constraint(constrained_from, SUBTYPE_OF, constrained_to))
                         elif isinstance(suffix, ParamSpecType):
                             suffix_prefix = suffix.prefix
+                            length = min(length, len(suffix_prefix.arg_types))
+
                             constrained = suffix.copy_modified(
                                 prefix=suffix_prefix.copy_modified(
                                     suffix_prefix.arg_types[length:],
@@ -790,7 +828,16 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                                     suffix_prefix.arg_names[length:],
                                 )
                             )
-                            res.append(Constraint(template_arg, SUPERTYPE_OF, constrained))
+                            constrained_from = template_arg.copy_modified(
+                                prefix=prefix.copy_modified(
+                                    prefix.arg_types[length:],
+                                    prefix.arg_kinds[length:],
+                                    prefix.arg_names[length:],
+                                )
+                            )
+
+                            res.append(Constraint(constrained_from, SUPERTYPE_OF, constrained))
+                            res.append(Constraint(constrained_from, SUBTYPE_OF, constrained))
                     else:
                         # This case should have been handled above.
                         assert not isinstance(tvar, TypeVarTupleType)
