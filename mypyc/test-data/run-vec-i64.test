@@ -261,3 +261,42 @@ def test_remove() -> None:
     s: Any = 'x'
     with assertRaises(TypeError):
         remove(v, s)
+
+def test_pop_last() -> None:
+    v = vec[i64]([4, 7, ERROR])
+    v, n = pop(v)
+    assert n == ERROR
+    assert v == vec[i64]([4, 7])
+    v, n = pop(v)
+    assert n == 7
+    assert v == vec[i64]([4])
+    v, n = pop(v)
+    assert n == 4
+    assert v == vec[i64]()
+    with assertRaises(IndexError):
+       pop(v)
+
+def test_pop_index() -> None:
+    v = vec[i64]([4, 7, 9, 15, 22])
+    v, n = pop(v, 0)
+    assert n == 4
+    assert v == vec[i64]([7, 9, 15, 22])
+    v, n = pop(v, -1)
+    assert n == 22
+    assert v == vec[i64]([7, 9, 15])
+    v, n = pop(v, 1)
+    assert n == 9
+    assert v == vec[i64]([7, 15])
+
+    with assertRaises(IndexError):
+       pop(v, 2)
+
+    with assertRaises(IndexError):
+       pop(v, -3)
+
+    v, n = pop(v, -2)
+    assert n == 7
+    assert v == vec[i64]([15])
+    v, n = pop(v, 0)
+    assert n == 15
+    assert v == vec[i64]()
