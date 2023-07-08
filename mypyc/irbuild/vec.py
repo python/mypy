@@ -77,7 +77,7 @@ def as_platform_int(builder: LowLevelIRBuilder, v: Value, line: int) -> Value:
 
 
 def vec_create(
-    builder: "LowLevelIRBuilder", vtype: RVec, length: Union[int, Value], line: int
+    builder: LowLevelIRBuilder, vtype: RVec, length: Union[int, Value], line: int
 ) -> Value:
     if isinstance(length, int):
         length = Integer(length, c_pyssize_t_rprimitive)
@@ -136,7 +136,7 @@ def vec_create(
 
 
 def vec_create_initialized(
-    builder: "LowLevelIRBuilder", vtype: RVec, length: Union[int, Value], init: Value, line: int
+    builder: LowLevelIRBuilder, vtype: RVec, length: Union[int, Value], init: Value, line: int
 ) -> Value:
     """Create vec with items initialized to the given value."""
     if isinstance(length, int):
@@ -162,7 +162,7 @@ def vec_create_initialized(
 
 
 def vec_create_from_values(
-    builder: "LowLevelIRBuilder", vtype: RVec, values: List[Value], line: int
+    builder: LowLevelIRBuilder, vtype: RVec, values: List[Value], line: int
 ) -> Value:
     vec = vec_create(builder, vtype, len(values), line)
     ptr = vec_items(builder, vec)
@@ -186,7 +186,7 @@ VEC_TYPE_INFO_I64: Final = 2
 
 
 def vec_item_type_info(
-    builder: "LowLevelIRBuilder", typ: RType, line: int
+    builder: LowLevelIRBuilder, typ: RType, line: int
 ) -> Tuple[Optional[Value], int, int]:
     if isinstance(typ, RPrimitive) and typ.is_refcounted:
         typ, src = builtin_names[typ.name]
@@ -208,23 +208,23 @@ def vec_item_type_info(
     return None, 0, 0
 
 
-def vec_len(builder: "LowLevelIRBuilder", val: Value) -> Value:
+def vec_len(builder: LowLevelIRBuilder, val: Value) -> Value:
     # TODO: what about 32-bit archs?
     # TODO: merge vec_len and vec_len_native
     return vec_len_native(builder, val)
 
 
-def vec_len_native(builder: "LowLevelIRBuilder", val: Value) -> Value:
+def vec_len_native(builder: LowLevelIRBuilder, val: Value) -> Value:
     return builder.get_element(val, "len")
 
 
-def vec_items(builder: "LowLevelIRBuilder", vecobj: Value) -> Value:
+def vec_items(builder: LowLevelIRBuilder, vecobj: Value) -> Value:
     vtype = cast(RVec, vecobj.type)
     buf = builder.get_element(vecobj, "buf")
     return builder.add(GetElementPtr(buf, vtype.buf_type, "items"))
 
 
-def vec_item_ptr(builder: "LowLevelIRBuilder", vecobj: Value, index: Value) -> Value:
+def vec_item_ptr(builder: LowLevelIRBuilder, vecobj: Value, index: Value) -> Value:
     items_addr = vec_items(builder, vecobj)
     assert isinstance(vecobj.type, RVec)
     # TODO: Calculate item size properly and support 32-bit platforms
@@ -236,7 +236,7 @@ def vec_item_ptr(builder: "LowLevelIRBuilder", vecobj: Value, index: Value) -> V
     return builder.int_add(items_addr, delta)
 
 
-def vec_check_index(builder: "LowLevelIRBuilder", lenv: Value, index: Value, line: int) -> None:
+def vec_check_index(builder: LowLevelIRBuilder, lenv: Value, index: Value, line: int) -> None:
     ok, fail = BasicBlock(), BasicBlock()
     is_less = builder.comparison_op(index, lenv, ComparisonOp.ULT, line)
     builder.add_bool_branch(is_less, ok, fail)
@@ -248,7 +248,7 @@ def vec_check_index(builder: "LowLevelIRBuilder", lenv: Value, index: Value, lin
 
 
 def vec_get_item(
-    builder: "LowLevelIRBuilder", base: Value, index: Value, line: int, *, can_borrow: bool = False
+    builder: LowLevelIRBuilder, base: Value, index: Value, line: int, *, can_borrow: bool = False
 ) -> Value:
     """Generate inlined vec __getitem__ call.
 
@@ -267,7 +267,7 @@ def vec_get_item(
 
 
 def vec_get_item_unsafe(
-    builder: "LowLevelIRBuilder", base: Value, index: Value, line: int
+    builder: LowLevelIRBuilder, base: Value, index: Value, line: int
 ) -> Value:
     """Get vec item, assuming index is non-negative and within bounds."""
     assert isinstance(base.type, RVec)
@@ -280,7 +280,7 @@ def vec_get_item_unsafe(
 
 
 def vec_set_item(
-    builder: "LowLevelIRBuilder", base: Value, index: Value, item: Value, line: int
+    builder: LowLevelIRBuilder, base: Value, index: Value, item: Value, line: int
 ) -> None:
     assert isinstance(base.type, RVec)
     index = as_platform_int(builder, index, line)
@@ -306,7 +306,7 @@ def convert_to_t_ext_item(builder: LowLevelIRBuilder, item: Value) -> Value:
     return builder.add(SetElement(temp, "buf", vec_buf))
 
 
-def vec_append(builder: "LowLevelIRBuilder", vec: Value, item: Value, line: int) -> Value:
+def vec_append(builder: LowLevelIRBuilder, vec: Value, item: Value, line: int) -> Value:
     vec_type = vec.type
     assert isinstance(vec_type, RVec)
     item_type = vec_type.item_type
@@ -334,7 +334,7 @@ def vec_append(builder: "LowLevelIRBuilder", vec: Value, item: Value, line: int)
     return call
 
 
-def vec_pop(builder: "LowLevelIRBuilder", base: Value, index: Value, line: int) -> Value:
+def vec_pop(builder: LowLevelIRBuilder, base: Value, index: Value, line: int) -> Value:
     assert isinstance(base.type, RVec)
     vec_type = base.type
     item_type = vec_type.item_type
@@ -358,7 +358,7 @@ def vec_pop(builder: "LowLevelIRBuilder", base: Value, index: Value, line: int) 
     return builder.add(call)
 
 
-def vec_remove(builder: "LowLevelIRBuilder", vec: Value, item: Value, line: int) -> Value:
+def vec_remove(builder: LowLevelIRBuilder, vec: Value, item: Value, line: int) -> Value:
     assert isinstance(vec.type, RVec)
     vec_type = vec.type
     item_type = vec_type.item_type
@@ -382,7 +382,7 @@ def vec_remove(builder: "LowLevelIRBuilder", vec: Value, item: Value, line: int)
     return builder.add(call)
 
 
-def vec_contains(builder: "LowLevelIRBuilder", vec: Value, target: Value, line: int) -> Value:
+def vec_contains(builder: LowLevelIRBuilder, vec: Value, target: Value, line: int) -> Value:
     assert isinstance(vec.type, RVec)
     vec_type = vec.type
     item_type = vec_type.item_type
@@ -417,7 +417,7 @@ def vec_contains(builder: "LowLevelIRBuilder", vec: Value, target: Value, line: 
 
 
 def vec_slice(
-    builder: "LowLevelIRBuilder", vec: Value, begin: Value, end: Value, line: int
+    builder: LowLevelIRBuilder, vec: Value, begin: Value, end: Value, line: int
 ) -> Value:
     assert isinstance(vec.type, RVec)
     vec_type = vec.type
