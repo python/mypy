@@ -128,8 +128,6 @@ class TypeCheckSuite(DataSuite):
         options.show_traceback = True
 
         # Enable some options automatically based on test file name.
-        if "optional" in testcase.file:
-            options.strict_optional = True
         if "columns" in testcase.file:
             options.show_column_numbers = True
         if "errorcodes" in testcase.file:
