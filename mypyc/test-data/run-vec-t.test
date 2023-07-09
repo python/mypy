@@ -1,5 +1,5 @@
 [case testVecTBasicOps]
-from typing import Final, Any, Iterable
+from typing import Final, Any, Iterable, Optional
 
 from mypy_extensions import i64
 from vecs import vec, append, remove, pop
@@ -9,6 +9,8 @@ from testutil import assertRaises
 def test_create_empty() -> None:
     v = vec[str]()
     assert len(v) == 0
+    v2 = vec[Optional[str]]()
+    assert len(v2) == 0
 
 def test_create_from_list_and_get_item() -> None:
     v = vec[str]([])
@@ -25,6 +27,12 @@ def test_create_from_list_and_get_item() -> None:
     assert len(v) == 9
     for i in range(i64(9)):
         assert v[i] == str(i + 1)
+
+def test_create_optional_and_get_item() -> None:
+    v = vec[Optional[str]](["xyz", None])
+    assert len(v) == 2
+    assert v[0] == "xyz"
+    assert v[1] is None
 
 def test_append() -> None:
     v = vec[str]()
@@ -83,6 +91,13 @@ def test_set_item() -> None:
     with assertRaises(IndexError):
         v[2 + int()] = "6"
 
+def test_set_item_optional() -> None:
+    v = vec[Optional[str]](["3", None])
+    v[1] = str() + "a"
+    assert v[1] == "a"
+    v[0] = None
+    assert v[0] is None
+
 def test_box_and_unbox() -> None:
     v = vec[str](["3", "5"])
     o: Any = v
@@ -100,6 +115,27 @@ def test_box_and_unbox() -> None:
     o3: Any = vec[bytes]([])
     with assertRaises(TypeError, "vec[t] expected"):
         v2 = o3
+
+def test_box_and_unbox_optional() -> None:
+    v = vec[Optional[str]](["3", "4"])
+    o: Any = v
+    o[0] = None
+    v = o
+    assert v == vec[Optional[str]]([None, "4"])
+
+    v2 = vec[str](["4"])
+    o2: Any = v2
+    o2[0] = "5"
+    v2 = o2
+    assert v2 == vec[str](["5"])
+
+    o3: Any = vec[str]()
+    with assertRaises(TypeError, "vec[t] expected"):
+        v = o3
+
+    o4: Any = vec[Optional[str]](["3"])
+    with assertRaises(TypeError, "vec[t] expected"):
+        v2 = o4
 
 def test_construct_from_list_multiply() -> None:
     for i in range(50):
@@ -141,6 +177,17 @@ def test_equality() -> None:
     assert v1 != v1b
     assert v1 != v0
 
+def test_equality_optional() -> None:
+    v = vec[str]()
+    vo = vec[Optional[str]]()
+    assert v != vo
+    assert vo == vo
+    vo2 = vec[Optional[str]](["x", None])
+    assert vo2 == vec[Optional[str]](["x", None])
+    assert vo2 != vec[Optional[str]](["x", "y"])
+    assert vo2 != vec[Optional[str]]([None, None])
+    assert vo2 != vec[Optional[str]](["x", None, None])
+
 def test_str_conversion() -> None:
     v = vec[str]()
     assert str(v) == "vec[str]([])"
@@ -151,6 +198,10 @@ def test_str_conversion() -> None:
     assert str(v) == "vec[str](['126', '5'])"
     v = append(v, "xyz")
     assert str(v) == "vec[str](['126', '5', 'xyz'])"
+    v2 = vec[Optional[str]]()
+    assert str(v2) == "vec[str | None]([])"
+    v2 = vec[Optional[str]](["x", None])
+    assert str(v2) == "vec[str | None](['x', None])"
 
 def test_for_loop() -> None:
     for n in vec[str]():
@@ -284,3 +335,14 @@ def test_pop_index() -> None:
     v, n = pop(v, 0)
     assert n == "15"
     assert v == vec[str]()
+
+[case testVecTBasicOps_python_3_10]
+from vecs import vec, append, remove, pop
+
+def test_optional_item_new_syntax() -> None:
+    v = vec[str | None]()
+    assert len(v) == 0
+    assert str(v) == "vec[str | None]([])"
+    v = append(v, 'x')
+    v = append(v, None)
+    assert str(v) == "vec[str | None](['x', None])"
