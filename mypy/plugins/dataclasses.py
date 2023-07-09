@@ -680,7 +680,8 @@ class DataclassTransformer:
                     )
 
             current_attr_names.add(lhs.name)
-            init_type = self._infer_dataclass_attr_init_type(sym, lhs.name, stmt)
+            with state.strict_optional_set(self._api.options.strict_optional):
+                init_type = self._infer_dataclass_attr_init_type(sym, lhs.name, stmt)
             found_attrs[lhs.name] = DataclassAttribute(
                 name=lhs.name,
                 alias=alias,
