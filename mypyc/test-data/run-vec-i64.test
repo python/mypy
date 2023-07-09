@@ -1,3 +1,6 @@
+-- Test cases for vec[i64]. These also partially cover other unboxed item types,
+-- which use a similar runtime representation.
+
 [case testVecI64BasicOps]
 from typing import Final, Any, Iterable
 
