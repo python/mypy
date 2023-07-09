@@ -1036,11 +1036,16 @@ y: C
 
 [case testTypeVarPreserved]
 tv = TypeVar('tv')
+ps = ParamSpec('ps')
+tvt = TypeVarTuple('tvt')
 
 [out]
 from typing import TypeVar
+from typing_extensions import ParamSpec, TypeVarTuple
 
 tv = TypeVar('tv')
+ps = ParamSpec('ps')
+tvt = TypeVarTuple('tvt')
 
 [case testTypeVarArgsPreserved]
 tv = TypeVar('tv', int, str)
@@ -1052,29 +1057,37 @@ tv = TypeVar('tv', int, str)
 
 [case testTypeVarNamedArgsPreserved]
 tv = TypeVar('tv', bound=bool, covariant=True)
+ps = ParamSpec('ps', bound=bool, covariant=True)
 
 [out]
 from typing import TypeVar
+from typing_extensions import ParamSpec
 
 tv = TypeVar('tv', bound=bool, covariant=True)
+ps = ParamSpec('ps', bound=bool, covariant=True)
 
 [case TypeVarImportAlias]
-from typing import TypeVar as t_TV
-from typing_extensions import TypeVar as te_TV
+from typing import TypeVar as t_TV, ParamSpec as t_PS
+from typing_extensions import TypeVar as te_TV, TypeVarTuple as te_TVT
 from x import TypeVar as x_TV
 
 T = t_TV('T')
 U = te_TV('U')
 V = x_TV('V')
 
+PS = t_PS('PS')
+TVT = te_TVT('TVT')
+
 [out]
 from _typeshed import Incomplete
-from typing import TypeVar as t_TV
-from typing_extensions import TypeVar as te_TV
+from typing import ParamSpec as t_PS, TypeVar as t_TV
+from typing_extensions import TypeVar as te_TV, TypeVarTuple as te_TVT
 
 T = t_TV('T')
 U = te_TV('U')
 V: Incomplete
+PS = t_PS('PS')
+TVT = te_TVT('TVT')
 
 [case testTypeVarFromImportAlias]
 import typing as t
@@ -1085,6 +1098,9 @@ T = t.TypeVar('T')
 U = te.TypeVar('U')
 V = x.TypeVar('V')
 
+PS = t.ParamSpec('PS')
+TVT = te.TypeVarTuple('TVT')
+
 [out]
 import typing as t
 import typing_extensions as te
@@ -1093,6 +1109,8 @@ from _typeshed import Incomplete
 T = t.TypeVar('T')
 U = te.TypeVar('U')
 V: Incomplete
+PS = t.ParamSpec('PS')
+TVT = te.TypeVarTuple('TVT')
 
 [case testTypeAliasPreserved]
 alias = str
