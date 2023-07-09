@@ -2420,3 +2420,15 @@ class Test(Protocol):
     def reset(self) -> None:
         self.x = DEFAULT
 [builtins fixtures/dataclasses.pyi]
+
+[case testProtocolNoCrashOnJoining]
+from dataclasses import dataclass
+from typing import Protocol
+
+@dataclass
+class MyDataclass(Protocol): ...
+
+a: MyDataclass
+b = [a, a]  # trigger joining the types
+
+[builtins fixtures/dataclasses.pyi]
