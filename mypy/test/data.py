@@ -167,13 +167,17 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
                         version = tuple(int(x) for x in version_str.split("."))
                     except ValueError:
                         _item_fail(f"{version_str!r} is not a valid python version")
-                    if version < defaults.PYTHON3_VERSION:
-                        _item_fail(
-                            f"Version check against {version}; must be >= {defaults.PYTHON3_VERSION}"
-                        )
                     if compare_op == ">=":
+                        if version <= defaults.PYTHON3_VERSION:
+                            _item_fail(
+                                f"{arg} always true since minimum runtime version is {defaults.PYTHON3_VERSION}"
+                            )
                         version_check = sys.version_info >= version
                     elif compare_op == "==":
+                        if version < defaults.PYTHON3_VERSION:
+                            _item_fail(
+                                f"{arg} always false since minimum runtime version is {defaults.PYTHON3_VERSION}"
+                            )
                         if not 1 < len(version) < 4:
                             _item_fail(
                                 f'Only minor or patch version checks are currently supported with "==": {version_str!r}'
