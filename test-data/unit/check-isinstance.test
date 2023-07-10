@@ -10,7 +10,7 @@ y = x
 [case testJoinAny]
 from typing import List, Any
 
-x = None # type: List[Any]
+x: List[Any]
 
 def foo() -> List[int]: pass
 def bar() -> List[str]: pass
@@ -51,9 +51,9 @@ def f(x: Union[int, str, List]) -> None:
 
 [case testClassAttributeInitialization]
 class A:
-    x = None # type: int
+    x: int
     def __init__(self) -> None:
-        self.y = None # type: int
+        self.y: int
         z = self.x
         w = self.y
 
@@ -71,7 +71,7 @@ def foo(x: Union[str, int]):
     y + [1]  # E: List item 0 has incompatible type "int"; expected "str"
     z = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
-x = None # type: int
+x: int
 y = [x]
 [builtins fixtures/isinstancelist.pyi]
 
@@ -124,7 +124,7 @@ x = 'a'
 
 [case testUnionMultiAssignment]
 from typing import Union
-x = None # type: Union[int, str]
+x: Union[int, str]
 if int():
     x = 1
     x = 'a'
@@ -488,7 +488,7 @@ x.y        # OK: x is known to be a B
 
 [case testIsInstanceBasic]
 from typing import Union
-x = None # type: Union[int, str]
+x: Union[int, str]
 if isinstance(x, str):
     x = x + 1   # E: Unsupported operand types for + ("str" and "int")
     x = x + 'a'
@@ -499,7 +499,7 @@ else:
 
 [case testIsInstanceIndexing]
 from typing import Union
-x = None # type: Union[int, str]
+x: Union[int, str]
 j = [x]
 if isinstance(j[0], str):
     j[0] = j[0] + 'a'
@@ -671,7 +671,7 @@ foo()
 from typing import Union
 
 def foo() -> None:
-    x = None # type: Union[int, str]
+    x: Union[int, str]
     if isinstance(x, int):
         for z in [1,2]:
             break
@@ -686,7 +686,7 @@ foo()
 [case testIsInstanceThreeUnion]
 from typing import Union, List
 
-x = None # type: Union[int, str, List[int]]
+x: Union[int, str, List[int]]
 
 while bool():
     if isinstance(x, int):
@@ -706,7 +706,7 @@ x + [1]               # E: Unsupported operand types for + ("int" and "List[int]
 
 [case testIsInstanceThreeUnion2]
 from typing import Union, List
-x = None # type: Union[int, str, List[int]]
+x: Union[int, str, List[int]]
 while bool():
     if isinstance(x, int):
         x + 1
@@ -725,7 +725,7 @@ x + [1]               # E: Unsupported operand types for + ("int" and "List[int]
 from typing import Union, List
 
 while bool():
-    x = None # type: Union[int, str, List[int]]
+    x: Union[int, str, List[int]]
     def f(): x  # Prevent redefinition
     x = 1
     if isinstance(x, int):
@@ -1787,6 +1787,7 @@ issubclass(x, (int, Iterable[int]))  # E: Parameterized generics cannot be used 
 [typing fixtures/typing-full.pyi]
 
 [case testIssubclassWithMetaclasses]
+# flags: --no-strict-optional
 class FooMetaclass(type): ...
 class Foo(metaclass=FooMetaclass): ...
 class Bar: ...

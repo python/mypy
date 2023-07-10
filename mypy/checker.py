@@ -9,6 +9,7 @@ from typing import (
     AbstractSet,
     Callable,
     Dict,
+    Final,
     Generic,
     Iterable,
     Iterator,
@@ -22,7 +23,7 @@ from typing import (
     cast,
     overload,
 )
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.checkexpr
 from mypy import errorcodes as codes, message_registry, nodes, operators
@@ -136,6 +137,7 @@ from mypy.nodes import (
 from mypy.options import Options
 from mypy.patterns import AsPattern, StarredPattern
 from mypy.plugin import CheckerPluginInterface, Plugin
+from mypy.plugins import dataclasses as dataclasses_plugin
 from mypy.scope import Scope
 from mypy.semanal import is_trivial_body, refers_to_fullname, set_callable_name
 from mypy.semanal_enum import ENUM_BASES, ENUM_SPECIAL_PROPS
@@ -1044,6 +1046,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if name == "__exit__":
             self.check__exit__return_type(defn)
+        if name == "__post_init__":
+            if dataclasses_plugin.is_processed_dataclass(defn.info):
+                dataclasses_plugin.check_post_init(self, defn, defn.info)
 
     @contextmanager
     def enter_attribute_inference_context(self) -> Iterator[None]:
@@ -1159,11 +1164,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         isinstance(defn, FuncDef)
                         and ref_type is not None
                         and i == 0
-                        and not defn.is_static
+                        and (not defn.is_static or defn.name == "__new__")
                         and typ.arg_kinds[0] not in [nodes.ARG_STAR, nodes.ARG_STAR2]
                     ):
-                        isclass = defn.is_class or defn.name in ("__new__", "__init_subclass__")
-                        if isclass:
+                        if defn.is_class or defn.name == "__new__":
                             ref_type = mypy.types.TypeType.make_normalized(ref_type)
                         erased = get_proper_type(erase_to_bound(arg_type))
                         if not is_subtype(ref_type, erased, ignore_type_params=True):
@@ -1542,7 +1546,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if opt_meta is not None:
                     forward_inst = opt_meta
 
-        def has_readable_member(typ: Union[UnionType, Instance], name: str) -> bool:
+        def has_readable_member(typ: UnionType | Instance, name: str) -> bool:
             # TODO: Deal with attributes of TupleType etc.
             if isinstance(typ, Instance):
                 return typ.type.has_readable_member(name)
@@ -1851,7 +1855,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 found_base_method = True
 
             # Check the type of override.
-            if name not in ("__init__", "__new__", "__init_subclass__"):
+            if name not in ("__init__", "__new__", "__init_subclass__", "__post_init__"):
                 # Check method override
                 # (__init__, __new__, __init_subclass__ are special).
                 if self.check_method_override_for_base_with_name(defn, name, base):
@@ -2812,6 +2816,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if name == "__match_args__" and inferred is not None:
                     typ = self.expr_checker.accept(rvalue)
                     self.check_match_args(inferred, typ, lvalue)
+                if name == "__post_init__":
+                    if dataclasses_plugin.is_processed_dataclass(self.scope.active_class()):
+                        self.fail(message_registry.DATACLASS_POST_INIT_MUST_BE_A_FUNCTION, rvalue)
 
             # Defer PartialType's super type checking.
             if (

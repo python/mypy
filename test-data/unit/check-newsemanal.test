@@ -992,7 +992,7 @@ class SubO(Out): pass
 
 o: SubO
 
-reveal_type(SubO._make)  # N: Revealed type is "def (iterable: typing.Iterable[Any], *, new: Any =, len: Any =) -> Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.SubO]"
+reveal_type(SubO._make)  # N: Revealed type is "def (iterable: typing.Iterable[Any]) -> Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.SubO]"
 reveal_type(o._replace(y=Other()))  # N: Revealed type is "Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.SubO]"
 [builtins fixtures/tuple.pyi]
 
@@ -1009,7 +1009,7 @@ o: Out
 reveal_type(o)  # N: Revealed type is "Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.Out]"
 reveal_type(o.x)  # N: Revealed type is "Tuple[builtins.str, __main__.Other, fallback=__main__.In]"
 reveal_type(o.x.t)  # N: Revealed type is "__main__.Other"
-reveal_type(Out._make)  # N: Revealed type is "def (iterable: typing.Iterable[Any], *, new: Any =, len: Any =) -> Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.Out]"
+reveal_type(Out._make)  # N: Revealed type is "def (iterable: typing.Iterable[Any]) -> Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.Out]"
 [builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerIncompleteRefShadowsBuiltin1]
@@ -2149,6 +2149,7 @@ x: C
 class C:
     def frob(self, foos: Dict[Any, Foos]) -> None:
         foo = foos.get(1)
+        assert foo
         dict(foo)
 [builtins fixtures/dict.pyi]
 

@@ -12,8 +12,7 @@ import os.path
 import re
 from abc import abstractmethod
 from types import ModuleType
-from typing import Any, Iterable, Mapping
-from typing_extensions import Final
+from typing import Any, Final, Iterable, Mapping
 
 from mypy.moduleinspect import is_c_module
 from mypy.stubdoc import (
@@ -502,7 +501,7 @@ def generate_c_type_stub(
     """
     raw_lookup = getattr(obj, "__dict__")  # noqa: B009
     items = sorted(get_members(obj), key=lambda x: method_name_sort_key(x[0]))
-    names = set(x[0] for x in items)
+    names = {x[0] for x in items}
     methods: list[str] = []
     types: list[str] = []
     static_properties: list[str] = []

@@ -49,8 +49,7 @@ import os.path
 import sys
 import traceback
 from collections import defaultdict
-from typing import Iterable, Mapping
-from typing_extensions import Final
+from typing import Final, Iterable, Mapping
 
 import mypy.build
 import mypy.mixedtraverser
@@ -661,7 +660,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             "_typeshed": ["Incomplete"],
             "typing": ["Any", "TypeVar", "NamedTuple"],
             "collections.abc": ["Generator"],
-            "typing_extensions": ["TypedDict"],
+            "typing_extensions": ["TypedDict", "ParamSpec", "TypeVarTuple"],
         }
         for pkg, imports in known_imports.items():
             for t in imports:
@@ -1159,10 +1158,14 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         Used to know if assignments look like type aliases, function alias,
         or module alias.
         """
-        # Assignment of TypeVar(...) are passed through
+        # Assignment of TypeVar(...)  and other typevar-likes are passed through
         if isinstance(expr, CallExpr) and self.get_fullname(expr.callee) in (
             "typing.TypeVar",
             "typing_extensions.TypeVar",
+            "typing.ParamSpec",
+            "typing_extensions.ParamSpec",
+            "typing.TypeVarTuple",
+            "typing_extensions.TypeVarTuple",
         ):
             return True
         elif isinstance(expr, EllipsisExpr):

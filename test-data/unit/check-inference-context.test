@@ -13,9 +13,9 @@ def f() -> 'A[T]': pass
 class A(Generic[T]): pass
 class B: pass
 
-ab = None # type: A[B]
-ao = None # type: A[object]
-b = None # type: B
+ab: A[B]
+ao: A[object]
+b: B
 
 if int():
     ao = f()
@@ -28,9 +28,9 @@ from typing import TypeVar, Generic
 T = TypeVar('T')
 class A(Generic[T]): pass
 class B: pass
-ab = None # type: A[B]
-ao = None # type: A[object]
-b = None # type: B
+ab: A[B]
+ao: A[object]
+b: B
 
 if int():
     ao = A()
@@ -48,11 +48,11 @@ class A(Generic[T]): pass
 
 class B: pass
 class C: pass
-b = None # type: B
-c = None # type: C
-ab = None # type: A[B]
-ao = None # type: A[object]
-ac = None # type: A[C]
+b: B
+c: C
+ab: A[B]
+ao: A[object]
+ac: A[C]
 
 if int():
     ac = f(b) # E: Argument 1 to "f" has incompatible type "B"; expected "C"
@@ -77,10 +77,10 @@ if int():
 from typing import TypeVar, Generic
 T = TypeVar('T')
 def g() -> None:
-    ao = None # type: A[object]
-    ab = None # type: A[B]
-    o = None # type: object
-    b = None # type: B
+    ao: A[object]
+    ab: A[B]
+    o: object
+    b: B
 
     x = f(o)
     if int():
@@ -111,9 +111,9 @@ class A(Generic[T]): pass
 from typing import TypeVar, Generic
 T = TypeVar('T')
 def g() -> None:
-    ao = None # type: A[object]
-    ab = None # type: A[B]
-    b = None # type: B
+    ao: A[object]
+    ab: A[B]
+    b: B
     x, y = f(b), f(b)
     if int():
         ao = x # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
@@ -130,9 +130,9 @@ class B: pass
 from typing import TypeVar, List, Generic
 T = TypeVar('T')
 def h() -> None:
-    ao = None # type: A[object]
-    ab = None # type: A[B]
-    b = None # type: B
+    ao: A[object]
+    ab: A[B]
+    b: B
     x, y = g(f(b))
     if int():
         ao = x # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
@@ -162,10 +162,10 @@ def f(a: T) -> 'Tuple[A[T], A[T]]': pass
 class A(Generic[T]): pass
 class B: pass
 
-b = None # type: B
-o = None # type: object
-ab = None # type: A[B]
-ao = None # type: A[object]
+b: B
+o: object
+ab: A[B]
+ao: A[object]
 
 if int():
     ab, ao = f(b) # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
@@ -192,10 +192,10 @@ def h(a: S, b: T) -> 'Tuple[A[S], A[S], A[T], A[T]]': pass
 class A(Generic[T]): pass
 class B: pass
 
-b = None # type: B
-o = None # type: object
-ab = None # type: A[B]
-ao = None # type: A[object]
+b: B
+o: object
+ab: A[B]
+ao: A[object]
 
 if int():
     ao, ao, ab = f(b, b)     # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
@@ -229,12 +229,12 @@ class A(Generic[T]): pass
 class B: pass
 class C(B): pass
 
-ac = None # type: A[C]
-ab = None # type: A[B]
-ao = None # type: A[object]
-b = None # type: B
-c = None # type: C
-o = None # type: object
+ac: A[C]
+ab: A[B]
+ao: A[object]
+b: B
+c: C
+o: object
 
 if int():
     ab = f(b, o) # E: Argument 2 to "f" has incompatible type "object"; expected "B"
@@ -266,11 +266,11 @@ def f(a: T) -> 'A[T]': pass
 class A(Generic[T]): pass
 class B: pass
 
-aab = None # type: A[A[B]]
-aao = None # type: A[A[object]]
-ao = None # type: A[object]
-b = None # type: B
-o = None # type: object
+aab: A[A[B]]
+aao: A[A[object]]
+ao: A[object]
+b: B
+o: object
 
 if int():
     aab = f(f(o)) # E: Argument 1 to "f" has incompatible type "object"; expected "B"
@@ -279,6 +279,7 @@ if int():
     aab = f(f(b))
     aao = f(f(b))
     ao = f(f(b))
+
 [case testNestedGenericFunctionCall2]
 from typing import TypeVar, Generic
 T = TypeVar('T')
@@ -289,10 +290,10 @@ def g(a: T) -> 'A[T]': pass
 class A(Generic[T]): pass
 class B: pass
 
-ab = None # type: A[B]
-ao = None # type: A[object]
-b = None # type: B
-o = None # type: object
+ab: A[B]
+ao: A[object]
+b: B
+o: object
 
 if int():
     ab = f(g(o)) # E: Argument 1 to "g" has incompatible type "object"; expected "B"
@@ -300,6 +301,7 @@ if int():
 if int():
     ab = f(g(b))
     ao = f(g(b))
+
 [case testNestedGenericFunctionCall3]
 from typing import TypeVar, Generic
 T = TypeVar('T')
@@ -310,10 +312,10 @@ def g(a: T) -> 'A[T]': pass
 
 class A(Generic[T]): pass
 class B: pass
-ab = None # type: A[B]
-ao = None # type: A[object]
-b = None # type: B
-o = None # type: object
+ab: A[B]
+ao: A[object]
+b: B
+o: object
 
 if int():
     ab = f(g(o), g(b)) # E: Argument 1 to "g" has incompatible type "object"; expected "B"
@@ -334,9 +336,9 @@ if int():
 [case testMethodCallWithContextInference]
 from typing import TypeVar, Generic
 T = TypeVar('T')
-o = None # type: object
-b = None # type: B
-c = None # type: C
+o: object
+b: B
+c: C
 def f(a: T) -> 'A[T]': pass
 
 class A(Generic[T]):
@@ -344,9 +346,9 @@ class A(Generic[T]):
 
 class B: pass
 class C(B): pass
-ao = None # type: A[object]
-ab = None # type: A[B]
-ac = None # type: A[C]
+ao: A[object]
+ab: A[B]
+ac: A[C]
 
 ab.g(f(o))        # E: Argument 1 to "f" has incompatible type "object"; expected "B"
 if int():
@@ -365,9 +367,9 @@ ab.g(f(c))
 
 [case testEmptyListExpression]
 from typing import List
-aa = None # type: List[A]
-ao = None # type: List[object]
-a = None # type: A
+aa: List[A]
+ao: List[object]
+a: A
 def f(): a, aa, ao # Prevent redefinition
 
 a = [] # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "A")
@@ -379,15 +381,15 @@ class A: pass
 [builtins fixtures/list.pyi]
 
 [case testSingleItemListExpressions]
-from typing import List
-aa = None # type: List[A]
-ab = None # type: List[B]
-ao = None # type: List[object]
-a = None # type: A
-b = None # type: B
+from typing import List, Optional
+aa: List[Optional[A]]
+ab: List[B]
+ao: List[object]
+a: A
+b: B
 def f(): aa, ab, ao # Prevent redefinition
 
-aa = [b] # E: List item 0 has incompatible type "B"; expected "A"
+aa = [b] # E: List item 0 has incompatible type "B"; expected "Optional[A]"
 ab = [a] # E: List item 0 has incompatible type "A"; expected "B"
 
 aa = [a]
@@ -402,11 +404,11 @@ class B: pass
 
 [case testMultiItemListExpressions]
 from typing import List
-aa = None # type: List[A]
-ab = None # type: List[B]
-ao = None # type: List[object]
-a = None # type: A
-b = None # type: B
+aa: List[A]
+ab: List[B]
+ao: List[object]
+a: A
+b: B
 def f(): ab, aa, ao # Prevent redefinition
 
 ab = [b, a] # E: List item 1 has incompatible type "A"; expected "B"
@@ -433,6 +435,7 @@ class B: pass
 [out]
 
 [case testNestedListExpressions]
+# flags: --no-strict-optional
 from typing import List
 aao = None # type: List[List[object]]
 aab = None # type: List[List[B]]
@@ -596,17 +599,17 @@ y = C() # type: Any
 
 [case testInferLambdaArgumentTypeUsingContext]
 from typing import Callable
-f = None # type: Callable[[B], A]
+f: Callable[[B], A]
 if int():
     f = lambda x: x.o
     f = lambda x: x.x # E: "B" has no attribute "x"
 class A: pass
 class B:
-  o = None # type: A
+  o: A
 
 [case testInferLambdaReturnTypeUsingContext]
 from typing import List, Callable
-f = None # type: Callable[[], List[A]]
+f: Callable[[], List[A]]
 if int():
     f = lambda: []
     f = lambda: [B()]  # E: List item 0 has incompatible type "B"; expected "A"
@@ -680,6 +683,7 @@ def foo(arg: Callable[..., T]) -> None: pass
 foo(lambda: 1)
 
 [case testLambdaNoneInContext]
+# flags: --no-strict-optional
 from typing import Callable
 def f(x: Callable[[], None]) -> None: pass
 def g(x: Callable[[], int]) -> None: pass
@@ -687,13 +691,13 @@ f(lambda: None)
 g(lambda: None)
 
 [case testIsinstanceInInferredLambda]
-from typing import TypeVar, Callable
+from typing import TypeVar, Callable, Optional
 T = TypeVar('T')
 S = TypeVar('S')
 class A: pass
 class B(A): pass
 class C(A): pass
-def f(func: Callable[[T], S], *z: T, r: S = None) -> S: pass
+def f(func: Callable[[T], S], *z: T, r: Optional[S] = None) -> S: pass
 f(lambda x: 0 if isinstance(x, B) else 1) # E: Cannot infer type argument 1 of "f"
 f(lambda x: 0 if isinstance(x, B) else 1, A())() # E: "int" not callable
 f(lambda x: x if isinstance(x, B) else B(), A(), r=B())() # E: "B" not callable
@@ -739,7 +743,9 @@ from typing import List
 class A: pass
 class B: pass
 class C(B): pass
-a, b, c = None, None, None # type: (List[A], List[B], List[C])
+a: List[A]
+b: List[B]
+c: List[C]
 if int():
     a = a or []
 if int():
@@ -762,7 +768,7 @@ from typing import List, TypeVar
 t = TypeVar('t')
 s = TypeVar('s')
 # Some type variables can be inferred using context, but not all of them.
-a = None # type: List[A]
+a: List[A]
 def f(a: s, b: t) -> List[s]: pass
 class A: pass
 class B: pass
@@ -780,7 +786,7 @@ def f(a: s, b: t) -> List[s]: pass
 class A: pass
 class B: pass
 # Like testSomeTypeVarsInferredFromContext, but tvars in different order.
-a = None # type: List[A]
+a: List[A]
 if int():
     a = f(A(), B())
 if int():
@@ -800,8 +806,8 @@ map(
 
 [case testChainedAssignmentInferenceContexts]
 from typing import List
-i = None # type: List[int]
-s = None # type: List[str]
+i: List[int]
+s: List[str]
 if int():
     i = i = []
 if int():
@@ -821,10 +827,10 @@ a.x = [''] # E: List item 0 has incompatible type "str"; expected "int"
 
 [case testListMultiplyInContext]
 from typing import List
-a = None  # type: List[int]
+a: List[int]
 if int():
-    a = [None] * 3
-    a = [''] * 3 # E: List item 0 has incompatible type "str"; expected "int"
+    a = [None] * 3  # E: List item 0 has incompatible type "None"; expected "int"
+    a = [''] * 3  # E: List item 0 has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
 
 [case testUnionTypeContext]
@@ -847,7 +853,7 @@ g(f(a))
 
 [case testStar2Context]
 from typing import Any, Dict, Tuple, Iterable
-def f1(iterable: Iterable[Tuple[str, Any]] = None) -> None:
+def f1(iterable: Iterable[Tuple[str, Any]] = ()) -> None:
     f2(**dict(iterable))
 def f2(iterable: Iterable[Tuple[str, Any]], **kw: Any) -> None:
     pass
@@ -913,7 +919,7 @@ T = TypeVar('T')
 def f(x: Union[T, List[int]]) -> Union[T, List[int]]: pass
 reveal_type(f(1)) # N: Revealed type is "Union[builtins.int, builtins.list[builtins.int]]"
 reveal_type(f([])) # N: Revealed type is "builtins.list[builtins.int]"
-reveal_type(f(None)) # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(f(None)) # N: Revealed type is "Union[None, builtins.list[builtins.int]]"
 [builtins fixtures/list.pyi]
 
 [case testUnionWithGenericTypeItemContextAndStrictOptional]
@@ -941,7 +947,7 @@ c = C[List[int]]()
 reveal_type(c.f('')) # N: Revealed type is "Union[builtins.list[builtins.int], builtins.str]"
 reveal_type(c.f([1])) # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(c.f([])) # N: Revealed type is "builtins.list[builtins.int]"
-reveal_type(c.f(None)) # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(c.f(None)) # N: Revealed type is "Union[builtins.list[builtins.int], None]"
 [builtins fixtures/list.pyi]
 
 [case testGenericMethodCalledInGenericContext]

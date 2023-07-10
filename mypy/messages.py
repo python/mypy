@@ -16,8 +16,7 @@ import itertools
 import re
 from contextlib import contextmanager
 from textwrap import dedent
-from typing import Any, Callable, Collection, Iterable, Iterator, List, Sequence, cast
-from typing_extensions import Final
+from typing import Any, Callable, Collection, Final, Iterable, Iterator, List, Sequence, cast
 
 import mypy.typeops
 from mypy import errorcodes as codes, message_registry
@@ -235,6 +234,8 @@ class MessageBuilder:
             Current logic is a bit tricky, to keep as much backwards compatibility as
             possible. We may reconsider this to always be a single line (or otherwise
             simplify it) when we drop Python 3.7.
+
+            TODO: address this in follow up PR
             """
             if isinstance(ctx, (ClassDef, FuncDef)):
                 return range(ctx.deco_line or ctx.line, ctx.line + 1)
@@ -1253,18 +1254,21 @@ class MessageBuilder:
             code=codes.OVERRIDE,
             secondary_context=secondary_context,
         )
-        self.note(
-            "This violates the Liskov substitution principle",
-            context,
-            code=codes.OVERRIDE,
-            secondary_context=secondary_context,
-        )
-        self.note(
-            "See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides",
-            context,
-            code=codes.OVERRIDE,
-            secondary_context=secondary_context,
-        )
+        if name != "__post_init__":
+            # `__post_init__` is special, it can be incompatible by design.
+            # So, this note is misleading.
+            self.note(
+                "This violates the Liskov substitution principle",
+                context,
+                code=codes.OVERRIDE,
+                secondary_context=secondary_context,
+            )
+            self.note(
+                "See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides",
+                context,
+                code=codes.OVERRIDE,
+                secondary_context=secondary_context,
+            )
 
         if name == "__eq__" and type_name:
             multiline_msg = self.comparison_method_example_msg(class_name=type_name)
@@ -1753,6 +1757,24 @@ class MessageBuilder:
 
     def explicit_any(self, ctx: Context) -> None:
         self.fail('Explicit "Any" is not allowed', ctx)
+
+    def unsupported_target_for_star_typeddict(self, typ: Type, ctx: Context) -> None:
+        self.fail(
+            "Unsupported type {} for ** expansion in TypedDict".format(
+                format_type(typ, self.options)
+            ),
+            ctx,
+            code=codes.TYPEDDICT_ITEM,
+        )
+
+    def non_required_keys_absent_with_star(self, keys: list[str], ctx: Context) -> None:
+        self.fail(
+            "Non-required {} not explicitly found in any ** item".format(
+                format_key_list(keys, short=True)
+            ),
+            ctx,
+            code=codes.TYPEDDICT_ITEM,
+        )
 
     def unexpected_typeddict_keys(
         self,

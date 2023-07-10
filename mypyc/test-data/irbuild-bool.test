@@ -29,18 +29,18 @@ L0:
     return r0
 def bool_to_i64(b):
     b :: bool
-    r0 :: int64
+    r0 :: i64
 L0:
-    r0 = extend b: builtins.bool to int64
+    r0 = extend b: builtins.bool to i64
     return r0
 def i64_to_bool(n):
-    n :: int64
+    n :: i64
     r0 :: bit
 L0:
     r0 = n != 0
     return r0
 def bit_to_int(n1, n2):
-    n1, n2 :: int64
+    n1, n2 :: i64
     r0 :: bit
     r1 :: bool
     r2 :: int
@@ -50,12 +50,12 @@ L0:
     r2 = extend r1: builtins.bool to builtins.int
     return r2
 def bit_to_i64(n1, n2):
-    n1, n2 :: int64
+    n1, n2 :: i64
     r0 :: bit
-    r1 :: int64
+    r1 :: i64
 L0:
     r0 = n1 == n2
-    r1 = extend r0: bit to int64
+    r1 = extend r0: bit to i64
     return r1
 
 [case testConversionToBool]
@@ -100,13 +100,13 @@ L0:
     return r3
 def always_truthy_instance_to_bool(o):
     o :: __main__.C
-    r0 :: int32
+    r0 :: i32
     r1 :: bit
     r2 :: bool
 L0:
     r0 = PyObject_IsTrue(o)
     r1 = r0 >= 0 :: signed
-    r2 = truncate r0: int32 to builtins.bool
+    r2 = truncate r0: i32 to builtins.bool
     return r2
 def instance_to_bool(o):
     o :: __main__.D
@@ -236,20 +236,20 @@ L0:
     r2 = r1 == y
     return r2
 def neq1(x, y):
-    x :: int64
+    x :: i64
     y :: bool
-    r0 :: int64
+    r0 :: i64
     r1 :: bit
 L0:
-    r0 = extend y: builtins.bool to int64
+    r0 = extend y: builtins.bool to i64
     r1 = x != r0
     return r1
 def neq2(x, y):
     x :: bool
-    y, r0 :: int64
+    y, r0 :: i64
     r1 :: bit
 L0:
-    r0 = extend x: builtins.bool to int64
+    r0 = extend x: builtins.bool to i64
     r1 = r0 != y
     return r1
 
@@ -327,19 +327,19 @@ L3:
     return r8
 def gt1(x, y):
     x :: bool
-    y, r0 :: int64
+    y, r0 :: i64
     r1 :: bit
 L0:
-    r0 = extend x: builtins.bool to int64
+    r0 = extend x: builtins.bool to i64
     r1 = r0 < y :: signed
     return r1
 def gt2(x, y):
-    x :: int64
+    x :: i64
     y :: bool
-    r0 :: int64
+    r0 :: i64
     r1 :: bit
 L0:
-    r0 = extend y: builtins.bool to int64
+    r0 = extend y: builtins.bool to i64
     r1 = x < r0 :: signed
     return r1
 
@@ -386,11 +386,11 @@ L0:
     r2 = CPyTagged_Invert(r1)
     return r2
 def mixed_bitand(x, y):
-    x :: int64
+    x :: i64
     y :: bool
-    r0, r1 :: int64
+    r0, r1 :: i64
 L0:
-    r0 = extend y: builtins.bool to int64
+    r0 = extend y: builtins.bool to i64
     r1 = x & r0
     return r1
 

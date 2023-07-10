@@ -608,22 +608,22 @@ L0:
     return 1
 def f(x):
     x, r0 :: object
-    r1 :: int32
+    r1 :: i32
     r2 :: bit
     r3 :: bool
     r4 :: str
     r5, r6, r7 :: object
-    r8 :: int32
+    r8 :: i32
     r9 :: bit
     r10 :: bool
     r11 :: str
     r12, r13, r14 :: object
-    r15 :: int32
+    r15 :: i32
     r16 :: bit
     r17 :: bool
     r18 :: str
     r19, r20, r21 :: object
-    r22 :: int32
+    r22 :: i32
     r23 :: bit
     r24 :: bool
     r25 :: str
@@ -637,7 +637,7 @@ L0:
     r0 = __main__.Position :: type
     r1 = PyObject_IsInstance(x, r0)
     r2 = r1 >= 0 :: signed
-    r3 = truncate r1: int32 to builtins.bool
+    r3 = truncate r1: i32 to builtins.bool
     if r3 goto L1 else goto L5 :: bool
 L1:
     r4 = 'x'
@@ -646,7 +646,7 @@ L1:
     r7 = PyObject_RichCompare(r5, r6, 2)
     r8 = PyObject_IsTrue(r7)
     r9 = r8 >= 0 :: signed
-    r10 = truncate r8: int32 to builtins.bool
+    r10 = truncate r8: i32 to builtins.bool
     if r10 goto L2 else goto L5 :: bool
 L2:
     r11 = 'y'
@@ -655,7 +655,7 @@ L2:
     r14 = PyObject_RichCompare(r12, r13, 2)
     r15 = PyObject_IsTrue(r14)
     r16 = r15 >= 0 :: signed
-    r17 = truncate r15: int32 to builtins.bool
+    r17 = truncate r15: i32 to builtins.bool
     if r17 goto L3 else goto L5 :: bool
 L3:
     r18 = 'z'
@@ -664,7 +664,7 @@ L3:
     r21 = PyObject_RichCompare(r19, r20, 2)
     r22 = PyObject_IsTrue(r21)
     r23 = r22 >= 0 :: signed
-    r24 = truncate r22: int32 to builtins.bool
+    r24 = truncate r22: i32 to builtins.bool
     if r24 goto L4 else goto L5 :: bool
 L4:
     r25 = 'matched'
@@ -693,22 +693,22 @@ def f(x):
 [out]
 def f(x):
     x, r0 :: object
-    r1 :: int32
+    r1 :: i32
     r2 :: bit
     r3 :: bool
     r4 :: str
     r5, r6, r7 :: object
-    r8 :: int32
+    r8 :: i32
     r9 :: bit
     r10 :: bool
     r11 :: str
     r12, r13, r14 :: object
-    r15 :: int32
+    r15 :: i32
     r16 :: bit
     r17 :: bool
     r18 :: str
     r19, r20, r21 :: object
-    r22 :: int32
+    r22 :: i32
     r23 :: bit
     r24 :: bool
     r25 :: str
@@ -722,7 +722,7 @@ L0:
     r0 = __main__.Position :: type
     r1 = PyObject_IsInstance(x, r0)
     r2 = r1 >= 0 :: signed
-    r3 = truncate r1: int32 to builtins.bool
+    r3 = truncate r1: i32 to builtins.bool
     if r3 goto L1 else goto L5 :: bool
 L1:
     r4 = 'z'
@@ -731,7 +731,7 @@ L1:
     r7 = PyObject_RichCompare(r5, r6, 2)
     r8 = PyObject_IsTrue(r7)
     r9 = r8 >= 0 :: signed
-    r10 = truncate r8: int32 to builtins.bool
+    r10 = truncate r8: i32 to builtins.bool
     if r10 goto L2 else goto L5 :: bool
 L2:
     r11 = 'y'
@@ -740,7 +740,7 @@ L2:
     r14 = PyObject_RichCompare(r12, r13, 2)
     r15 = PyObject_IsTrue(r14)
     r16 = r15 >= 0 :: signed
-    r17 = truncate r15: int32 to builtins.bool
+    r17 = truncate r15: i32 to builtins.bool
     if r17 goto L3 else goto L5 :: bool
 L3:
     r18 = 'x'
@@ -749,7 +749,7 @@ L3:
     r21 = PyObject_RichCompare(r19, r20, 2)
     r22 = PyObject_IsTrue(r21)
     r23 = r22 >= 0 :: signed
-    r24 = truncate r22: int32 to builtins.bool
+    r24 = truncate r22: i32 to builtins.bool
     if r24 goto L4 else goto L5 :: bool
 L4:
     r25 = 'matched'
@@ -776,16 +776,16 @@ def f(x):
 [out]
 def f(x):
     x, r0 :: object
-    r1 :: int32
+    r1 :: i32
     r2 :: bit
     r3 :: bool
     r4 :: str
     r5, r6, r7 :: object
-    r8 :: int32
+    r8 :: i32
     r9 :: bit
     r10 :: bool
     r11, r12 :: object
-    r13 :: int32
+    r13 :: i32
     r14 :: bit
     r15 :: bool
     r16 :: str
@@ -799,7 +799,7 @@ L0:
     r0 = __main__.C :: type
     r1 = PyObject_IsInstance(x, r0)
     r2 = r1 >= 0 :: signed
-    r3 = truncate r1: int32 to builtins.bool
+    r3 = truncate r1: i32 to builtins.bool
     if r3 goto L1 else goto L5 :: bool
 L1:
     r4 = 'num'
@@ -808,14 +808,14 @@ L1:
     r7 = PyObject_RichCompare(r5, r6, 2)
     r8 = PyObject_IsTrue(r7)
     r9 = r8 >= 0 :: signed
-    r10 = truncate r8: int32 to builtins.bool
+    r10 = truncate r8: i32 to builtins.bool
     if r10 goto L4 else goto L2 :: bool
 L2:
     r11 = object 2
     r12 = PyObject_RichCompare(r5, r11, 2)
     r13 = PyObject_IsTrue(r12)
     r14 = r13 >= 0 :: signed
-    r15 = truncate r13: int32 to builtins.bool
+    r15 = truncate r13: i32 to builtins.bool
     if r15 goto L4 else goto L3 :: bool
 L3:
     goto L5
@@ -856,18 +856,18 @@ L0:
     return 1
 def f(x):
     x, r0 :: object
-    r1 :: int32
+    r1 :: i32
     r2 :: bit
     r3 :: bool
     r4, y :: __main__.C
     r5 :: str
     r6, r7, r8 :: object
-    r9 :: int32
+    r9 :: i32
     r10 :: bit
     r11 :: bool
     r12 :: str
     r13, r14, r15 :: object
-    r16 :: int32
+    r16 :: i32
     r17 :: bit
     r18 :: bool
     r19 :: str
@@ -881,7 +881,7 @@ L0:
     r0 = __main__.C :: type
     r1 = PyObject_IsInstance(x, r0)
     r2 = r1 >= 0 :: signed
-    r3 = truncate r1: int32 to builtins.bool
+    r3 = truncate r1: i32 to builtins.bool
     if r3 goto L1 else goto L5 :: bool
 L1:
     r4 = cast(__main__.C, x)
@@ -893,7 +893,7 @@ L2:
     r8 = PyObject_RichCompare(r6, r7, 2)
     r9 = PyObject_IsTrue(r8)
     r10 = r9 >= 0 :: signed
-    r11 = truncate r9: int32 to builtins.bool
+    r11 = truncate r9: i32 to builtins.bool
     if r11 goto L3 else goto L5 :: bool
 L3:
     r12 = 'b'
@@ -902,7 +902,7 @@ L3:
     r15 = PyObject_RichCompare(r13, r14, 2)
     r16 = PyObject_IsTrue(r15)
     r17 = r16 >= 0 :: signed
-    r18 = truncate r16: int32 to builtins.bool
+    r18 = truncate r16: i32 to builtins.bool
     if r18 goto L4 else goto L5 :: bool
 L4:
     r19 = 'matched'
@@ -940,7 +940,7 @@ L0:
     return 1
 def f(x):
     x, r0 :: object
-    r1 :: int32
+    r1 :: i32
     r2 :: bit
     r3 :: bool
     r4 :: str
@@ -957,7 +957,7 @@ L0:
     r0 = __main__.C :: type
     r1 = PyObject_IsInstance(x, r0)
     r2 = r1 >= 0 :: signed
-    r3 = truncate r1: int32 to builtins.bool
+    r3 = truncate r1: i32 to builtins.bool
     if r3 goto L1 else goto L3 :: bool
 L1:
     r4 = 'x'
@@ -986,7 +986,7 @@ def f(x):
 [out]
 def f(x):
     x :: object
-    r0 :: int32
+    r0 :: i32
     r1 :: bit
     r2 :: str
     r3 :: object
@@ -1021,15 +1021,15 @@ def f(x):
 [out]
 def f(x):
     x :: object
-    r0 :: int32
+    r0 :: i32
     r1 :: bit
     r2 :: str
-    r3 :: int32
+    r3 :: i32
     r4 :: bit
     r5 :: object
     r6 :: str
     r7 :: object
-    r8 :: int32
+    r8 :: i32
     r9 :: bit
     r10 :: bool
     r11 :: str
@@ -1054,7 +1054,7 @@ L2:
     r7 = PyObject_RichCompare(r5, r6, 2)
     r8 = PyObject_IsTrue(r7)
     r9 = r8 >= 0 :: signed
-    r10 = truncate r8: int32 to builtins.bool
+    r10 = truncate r8: i32 to builtins.bool
     if r10 goto L3 else goto L4 :: bool
 L3:
     r11 = 'matched'
@@ -1078,7 +1078,7 @@ def f(x):
 [out]
 def f(x):
     x :: object
-    r0 :: int32
+    r0 :: i32
     r1 :: bit
     r2, rest :: dict
     r3 :: str
@@ -1117,19 +1117,19 @@ def f(x):
 [out]
 def f(x):
     x :: object
-    r0 :: int32
+    r0 :: i32
     r1 :: bit
     r2 :: str
-    r3 :: int32
+    r3 :: i32
     r4 :: bit
     r5 :: object
     r6 :: str
     r7 :: object
-    r8 :: int32
+    r8 :: i32
     r9 :: bit
     r10 :: bool
     r11, rest :: dict
-    r12 :: int32
+    r12 :: i32
     r13 :: bit
     r14 :: str
     r15 :: object
@@ -1153,7 +1153,7 @@ L2:
     r7 = PyObject_RichCompare(r5, r6, 2)
     r8 = PyObject_IsTrue(r7)
     r9 = r8 >= 0 :: signed
-    r10 = truncate r8: int32 to builtins.bool
+    r10 = truncate r8: i32 to builtins.bool
     if r10 goto L3 else goto L5 :: bool
 L3:
     r11 = CPyDict_FromAny(x)
@@ -1182,7 +1182,7 @@ def f(x):
 [out]
 def f(x):
     x :: object
-    r0 :: int32
+    r0 :: i32
     r1 :: bit
     r2 :: native_int
     r3, r4 :: bit
@@ -1224,16 +1224,16 @@ def f(x):
 [out]
 def f(x):
     x :: object
-    r0 :: int32
+    r0 :: i32
     r1 :: bit
     r2 :: native_int
     r3, r4 :: bit
     r5, r6, r7 :: object
-    r8 :: int32
+    r8 :: i32
     r9 :: bit
     r10 :: bool
     r11, r12, r13 :: object
-    r14 :: int32
+    r14 :: i32
     r15 :: bit
     r16 :: bool
     r17 :: str
@@ -1258,7 +1258,7 @@ L2:
     r7 = PyObject_RichCompare(r5, r6, 2)
     r8 = PyObject_IsTrue(r7)
     r9 = r8 >= 0 :: signed
-    r10 = truncate r8: int32 to builtins.bool
+    r10 = truncate r8: i32 to builtins.bool
     if r10 goto L3 else goto L5 :: bool
 L3:
     r11 = PySequence_GetItem(x, 1)
@@ -1266,7 +1266,7 @@ L3:
     r13 = PyObject_RichCompare(r11, r12, 2)
     r14 = PyObject_IsTrue(r13)
     r15 = r14 >= 0 :: signed
-    r16 = truncate r14: int32 to builtins.bool
+    r16 = truncate r14: i32 to builtins.bool
     if r16 goto L4 else goto L5 :: bool
 L4:
     r17 = 'matched'
@@ -1290,16 +1290,16 @@ def f(x):
 [out]
 def f(x):
     x :: object
-    r0 :: int32
+    r0 :: i32
     r1 :: bit
     r2 :: native_int
     r3, r4 :: bit
     r5, r6, r7 :: object
-    r8 :: int32
+    r8 :: i32
     r9 :: bit
     r10 :: bool
     r11, r12, r13 :: object
-    r14 :: int32
+    r14 :: i32
     r15 :: bit
     r16 :: bool
     r17 :: str
@@ -1324,7 +1324,7 @@ L2:
     r7 = PyObject_RichCompare(r5, r6, 2)
     r8 = PyObject_IsTrue(r7)
     r9 = r8 >= 0 :: signed
-    r10 = truncate r8: int32 to builtins.bool
+    r10 = truncate r8: i32 to builtins.bool
     if r10 goto L3 else goto L5 :: bool
 L3:
     r11 = PySequence_GetItem(x, 1)
@@ -1332,7 +1332,7 @@ L3:
     r13 = PyObject_RichCompare(r11, r12, 2)
     r14 = PyObject_IsTrue(r13)
     r15 = r14 >= 0 :: signed
-    r16 = truncate r14: int32 to builtins.bool
+    r16 = truncate r14: i32 to builtins.bool
     if r16 goto L4 else goto L5 :: bool
 L4:
     r17 = 'matched'
@@ -1356,16 +1356,16 @@ def f(x):
 [out]
 def f(x):
     x :: object
-    r0 :: int32
+    r0 :: i32
     r1 :: bit
     r2 :: native_int
     r3, r4 :: bit
     r5, r6, r7 :: object
-    r8 :: int32
+    r8 :: i32
     r9 :: bit
     r10 :: bool
     r11, r12, r13 :: object
-    r14 :: int32
+    r14 :: i32
     r15 :: bit
     r16 :: bool
     r17 :: native_int
@@ -1392,7 +1392,7 @@ L2:
     r7 = PyObject_RichCompare(r5, r6, 2)
     r8 = PyObject_IsTrue(r7)
     r9 = r8 >= 0 :: signed
-    r10 = truncate r8: int32 to builtins.bool
+    r10 = truncate r8: i32 to builtins.bool
     if r10 goto L3 else goto L6 :: bool
 L3:
     r11 = PySequence_GetItem(x, 1)
@@ -1400,7 +1400,7 @@ L3:
     r13 = PyObject_RichCompare(r11, r12, 2)
     r14 = PyObject_IsTrue(r13)
     r15 = r14 >= 0 :: signed
-    r16 = truncate r14: int32 to builtins.bool
+    r16 = truncate r14: i32 to builtins.bool
     if r16 goto L4 else goto L6 :: bool
 L4:
     r17 = r2 - 0
@@ -1428,21 +1428,21 @@ def f(x):
 [out]
 def f(x):
     x :: object
-    r0 :: int32
+    r0 :: i32
     r1 :: bit
     r2 :: native_int
     r3, r4 :: bit
     r5 :: object
     r6 :: str
     r7 :: object
-    r8 :: int32
+    r8 :: i32
     r9 :: bit
     r10 :: bool
     r11 :: native_int
     r12 :: object
     r13 :: str
     r14 :: object
-    r15 :: int32
+    r15 :: i32
     r16 :: bit
     r17 :: bool
     r18 :: native_int
@@ -1469,7 +1469,7 @@ L2:
     r7 = PyObject_RichCompare(r5, r6, 2)
     r8 = PyObject_IsTrue(r7)
     r9 = r8 >= 0 :: signed
-    r10 = truncate r8: int32 to builtins.bool
+    r10 = truncate r8: i32 to builtins.bool
     if r10 goto L3 else goto L6 :: bool
 L3:
     r11 = r2 - 1
@@ -1478,7 +1478,7 @@ L3:
     r14 = PyObject_RichCompare(r12, r13, 2)
     r15 = PyObject_IsTrue(r14)
     r16 = r15 >= 0 :: signed
-    r17 = truncate r15: int32 to builtins.bool
+    r17 = truncate r15: i32 to builtins.bool
     if r17 goto L4 else goto L6 :: bool
 L4:
     r18 = r2 - 1
@@ -1506,18 +1506,18 @@ def f(x):
 [out]
 def f(x):
     x :: object
-    r0 :: int32
+    r0 :: i32
     r1 :: bit
     r2 :: native_int
     r3, r4 :: bit
     r5 :: native_int
     r6, r7, r8 :: object
-    r9 :: int32
+    r9 :: i32
     r10 :: bit
     r11 :: bool
     r12 :: native_int
     r13, r14, r15 :: object
-    r16 :: int32
+    r16 :: i32
     r17 :: bit
     r18 :: bool
     r19 :: native_int
@@ -1545,7 +1545,7 @@ L2:
     r8 = PyObject_RichCompare(r6, r7, 2)
     r9 = PyObject_IsTrue(r8)
     r10 = r9 >= 0 :: signed
-    r11 = truncate r9: int32 to builtins.bool
+    r11 = truncate r9: i32 to builtins.bool
     if r11 goto L3 else goto L6 :: bool
 L3:
     r12 = r2 - 1
@@ -1554,7 +1554,7 @@ L3:
     r15 = PyObject_RichCompare(r13, r14, 2)
     r16 = PyObject_IsTrue(r15)
     r17 = r16 >= 0 :: signed
-    r18 = truncate r16: int32 to builtins.bool
+    r18 = truncate r16: i32 to builtins.bool
     if r18 goto L4 else goto L6 :: bool
 L4:
     r19 = r2 - 2
@@ -1620,7 +1620,7 @@ def f(x):
 [out]
 def f(x):
     x :: object
-    r0 :: int32
+    r0 :: i32
     r1 :: bit
     r2 :: native_int
     r3, r4 :: bit
@@ -1674,7 +1674,7 @@ def f(x: A | int) -> int:
 def f(x):
     x :: union[__main__.A, int]
     r0 :: object
-    r1 :: int32
+    r1 :: i32
     r2 :: bit
     r3 :: bool
     r4 :: str
@@ -1687,7 +1687,7 @@ L0:
     r0 = __main__.A :: type
     r1 = PyObject_IsInstance(x, r0)
     r2 = r1 >= 0 :: signed
-    r3 = truncate r1: int32 to builtins.bool
+    r3 = truncate r1: i32 to builtins.bool
     if r3 goto L1 else goto L3 :: bool
 L1:
     r4 = 'a'

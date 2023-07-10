@@ -339,8 +339,6 @@ def parse_options(
     else:
         flag_list = []
         options = Options()
-        # TODO: Enable strict optional in test cases by default (requires *many* test case changes)
-        options.strict_optional = False
         options.error_summary = False
         options.hide_error_codes = True
         options.force_uppercase_builtins = True

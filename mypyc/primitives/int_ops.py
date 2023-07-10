@@ -19,6 +19,7 @@ from mypyc.ir.rtypes import (
     bool_rprimitive,
     c_pyssize_t_rprimitive,
     float_rprimitive,
+    int16_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
     int_rprimitive,
@@ -37,7 +38,13 @@ from mypyc.primitives.registry import (
 
 # Constructors for builtins.int and native int types have the same behavior. In
 # interpreted mode, native int types are just aliases to 'int'.
-for int_name in ("builtins.int", "mypy_extensions.i64", "mypy_extensions.i32"):
+for int_name in (
+    "builtins.int",
+    "mypy_extensions.i64",
+    "mypy_extensions.i32",
+    "mypy_extensions.i16",
+    "mypy_extensions.u8",
+):
     # These int constructors produce object_rprimitives that then need to be unboxed
     # I guess unboxing ourselves would save a check and branch though?
 
@@ -231,6 +238,20 @@ int32_mod_op = custom_op(
     error_kind=ERR_MAGIC_OVERLAPPING,
 )
 
+int16_divide_op = custom_op(
+    arg_types=[int16_rprimitive, int16_rprimitive],
+    return_type=int16_rprimitive,
+    c_function_name="CPyInt16_Divide",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
+int16_mod_op = custom_op(
+    arg_types=[int16_rprimitive, int16_rprimitive],
+    return_type=int16_rprimitive,
+    c_function_name="CPyInt16_Remainder",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
 # Convert tagged int (as PyObject *) to i64
 int_to_int64_op = custom_op(
     arg_types=[object_rprimitive],
@@ -265,5 +286,19 @@ int32_overflow = custom_op(
     arg_types=[],
     return_type=void_rtype,
     c_function_name="CPyInt32_Overflow",
+    error_kind=ERR_ALWAYS,
+)
+
+int16_overflow = custom_op(
+    arg_types=[],
+    return_type=void_rtype,
+    c_function_name="CPyInt16_Overflow",
+    error_kind=ERR_ALWAYS,
+)
+
+uint8_overflow = custom_op(
+    arg_types=[],
+    return_type=void_rtype,
+    c_function_name="CPyUInt8_Overflow",
     error_kind=ERR_ALWAYS,
 )

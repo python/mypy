@@ -263,7 +263,7 @@ class BaseEventLoop(AbstractEventLoop):
             server_hostname: str | None = None,
             ssl_handshake_timeout: float | None = None,
             ssl_shutdown_timeout: float | None = None,
-        ) -> Transport: ...
+        ) -> Transport | None: ...
         async def connect_accepted_socket(
             self,
             protocol_factory: Callable[[], _ProtocolT],
@@ -317,7 +317,7 @@ class BaseEventLoop(AbstractEventLoop):
             server_side: bool = False,
             server_hostname: str | None = None,
             ssl_handshake_timeout: float | None = None,
-        ) -> Transport: ...
+        ) -> Transport | None: ...
         async def connect_accepted_socket(
             self,
             protocol_factory: Callable[[], _ProtocolT],

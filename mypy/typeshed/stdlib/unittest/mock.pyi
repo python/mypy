@@ -3,13 +3,14 @@ from collections.abc import Awaitable, Callable, Coroutine, Iterable, Mapping, S
 from contextlib import _GeneratorContextManager
 from types import TracebackType
 from typing import Any, Generic, TypeVar, overload
-from typing_extensions import Final, Literal, Self, TypeAlias
+from typing_extensions import Final, Literal, ParamSpec, Self, TypeAlias
 
 _T = TypeVar("_T")
 _TT = TypeVar("_TT", bound=type[Any])
 _R = TypeVar("_R")
 _F = TypeVar("_F", bound=Callable[..., Any])
 _AF = TypeVar("_AF", bound=Callable[..., Coroutine[Any, Any, Any]])
+_P = ParamSpec("_P")
 
 if sys.version_info >= (3, 8):
     __all__ = (
@@ -234,7 +235,7 @@ class _patch(Generic[_T]):
     @overload
     def __call__(self, func: _TT) -> _TT: ...
     @overload
-    def __call__(self, func: Callable[..., _R]) -> Callable[..., _R]: ...
+    def __call__(self, func: Callable[_P, _R]) -> Callable[_P, _R]: ...
     if sys.version_info >= (3, 8):
         def decoration_helper(
             self, patched: _patch[Any], args: Sequence[Any], keywargs: Any

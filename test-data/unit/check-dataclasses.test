@@ -2197,6 +2197,217 @@ reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
 a2 = replace(a, x='42')  # E: Argument "x" to "replace" of "A[int]" has incompatible type "str"; expected "int"
 reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
 
+[case testPostInitCorrectSignature]
+from typing import Any, Generic, TypeVar, Callable, Self
+from dataclasses import dataclass, InitVar
+
+@dataclass
+class Test1:
+    x: int
+    def __post_init__(self) -> None: ...
+
+@dataclass
+class Test2:
+    x: int
+    y: InitVar[int]
+    z: str
+    def __post_init__(self, y: int) -> None: ...
+
+@dataclass
+class Test3:
+    x: InitVar[int]
+    y: InitVar[str]
+    def __post_init__(self, x: int, y: str) -> None: ...
+
+@dataclass
+class Test4:
+    x: int
+    y: InitVar[str]
+    z: InitVar[bool] = True
+    def __post_init__(self, y: str, z: bool) -> None: ...
+
+@dataclass
+class Test5:
+    y: InitVar[str] = 'a'
+    z: InitVar[bool] = True
+    def __post_init__(self, y: str = 'a', z: bool = True) -> None: ...
+
+F = TypeVar('F', bound=Callable[..., Any])
+def identity(f: F) -> F: return f
+
+@dataclass
+class Test6:
+    y: InitVar[str]
+    @identity  # decorated method works
+    def __post_init__(self, y: str) -> None: ...
+
+T = TypeVar('T')
+
+@dataclass
+class Test7(Generic[T]):
+    t: InitVar[T]
+    def __post_init__(self, t: T) -> None: ...
+
+@dataclass
+class Test8:
+    s: InitVar[Self]
+    def __post_init__(self, s: Self) -> None: ...
+[builtins fixtures/dataclasses.pyi]
+
+[case testPostInitSubclassing]
+from dataclasses import dataclass, InitVar
+
+@dataclass
+class Base:
+    a: str
+    x: InitVar[int]
+    def __post_init__(self, x: int) -> None: ...
+
+@dataclass
+class Child(Base):
+    b: str
+    y: InitVar[str]
+    def __post_init__(self, x: int, y: str) -> None: ...
+
+@dataclass
+class GrandChild(Child):
+    c: int
+    z: InitVar[str] = "a"
+    def __post_init__(self, x: int, y: str, z: str) -> None: ...
+[builtins fixtures/dataclasses.pyi]
+
+[case testPostInitNotADataclassCheck]
+from dataclasses import dataclass, InitVar
+
+class Regular:
+    __post_init__ = 1  # can be whatever
+
+class Base:
+    x: InitVar[int]
+    def __post_init__(self) -> None: ...  # can be whatever
+
+@dataclass
+class Child(Base):
+    y: InitVar[str]
+    def __post_init__(self, y: str) -> None: ...
+[builtins fixtures/dataclasses.pyi]
+
+[case testPostInitMissingParam]
+from dataclasses import dataclass, InitVar
+
+@dataclass
+class Child:
+    y: InitVar[str]
+    def __post_init__(self) -> None: ...
+[builtins fixtures/dataclasses.pyi]
+[out]
+main:6: error: Signature of "__post_init__" incompatible with supertype "dataclass"
+main:6: note:      Superclass:
+main:6: note:          def __post_init__(self: Child, y: str) -> None
+main:6: note:      Subclass:
+main:6: note:          def __post_init__(self: Child) -> None
+
+[case testPostInitWrongTypeAndName]
+from dataclasses import dataclass, InitVar
+
+@dataclass
+class Test1:
+    y: InitVar[str]
+    def __post_init__(self, x: int) -> None: ...  # E: Argument 2 of "__post_init__" is incompatible with supertype "dataclass"; supertype defines the argument type as "str"
+
+@dataclass
+class Test2:
+    y: InitVar[str] = 'a'
+    def __post_init__(self, x: int) -> None: ...  # E: Argument 2 of "__post_init__" is incompatible with supertype "dataclass"; supertype defines the argument type as "str"
+[builtins fixtures/dataclasses.pyi]
+
+[case testPostInitExtraParam]
+from dataclasses import dataclass, InitVar
+
+@dataclass
+class Child:
+    y: InitVar[str]
+    def __post_init__(self, y: str, z: int) -> None: ...
+[builtins fixtures/dataclasses.pyi]
+[out]
+main:6: error: Signature of "__post_init__" incompatible with supertype "dataclass"
+main:6: note:      Superclass:
+main:6: note:          def __post_init__(self: Child, y: str) -> None
+main:6: note:      Subclass:
+main:6: note:          def __post_init__(self: Child, y: str, z: int) -> None
+
+[case testPostInitReturnType]
+from dataclasses import dataclass, InitVar
+
+@dataclass
+class Child:
+    y: InitVar[str]
+    def __post_init__(self, y: str) -> int: ...  # E: Return type "int" of "__post_init__" incompatible with return type "None" in supertype "dataclass"
+[builtins fixtures/dataclasses.pyi]
+
+[case testPostInitDecoratedMethodError]
+from dataclasses import dataclass, InitVar
+from typing import Any, Callable, TypeVar
+
+F = TypeVar('F', bound=Callable[..., Any])
+def identity(f: F) -> F: return f
+
+@dataclass
+class Klass:
+    y: InitVar[str]
+    @identity
+    def __post_init__(self) -> None: ...
+[builtins fixtures/dataclasses.pyi]
+[out]
+main:11: error: Signature of "__post_init__" incompatible with supertype "dataclass"
+main:11: note:      Superclass:
+main:11: note:          def __post_init__(self: Klass, y: str) -> None
+main:11: note:      Subclass:
+main:11: note:          def __post_init__(self: Klass) -> None
+
+[case testPostInitIsNotAFunction]
+from dataclasses import dataclass, InitVar
+
+@dataclass
+class Test:
+    y: InitVar[str]
+    __post_init__ = 1  # E: "__post_init__" method must be an instance method
+[builtins fixtures/dataclasses.pyi]
+
+[case testPostInitClassMethod]
+from dataclasses import dataclass, InitVar
+
+@dataclass
+class Test:
+    y: InitVar[str]
+    @classmethod
+    def __post_init__(cls) -> None: ...
+[builtins fixtures/dataclasses.pyi]
+[out]
+main:7: error: Signature of "__post_init__" incompatible with supertype "dataclass"
+main:7: note:      Superclass:
+main:7: note:          def __post_init__(self: Test, y: str) -> None
+main:7: note:      Subclass:
+main:7: note:          @classmethod
+main:7: note:          def __post_init__(cls: Type[Test]) -> None
+
+[case testPostInitStaticMethod]
+from dataclasses import dataclass, InitVar
+
+@dataclass
+class Test:
+    y: InitVar[str]
+    @staticmethod
+    def __post_init__() -> None: ...
+[builtins fixtures/dataclasses.pyi]
+[out]
+main:7: error: Signature of "__post_init__" incompatible with supertype "dataclass"
+main:7: note:      Superclass:
+main:7: note:          def __post_init__(self: Test, y: str) -> None
+main:7: note:      Subclass:
+main:7: note:          @staticmethod
+main:7: note:          def __post_init__() -> None
+
 [case testProtocolNoCrash]
 from typing import Protocol, Union, ClassVar
 from dataclasses import dataclass, field
