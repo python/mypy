@@ -209,8 +209,11 @@ def enum_value_callback(ctx: mypy.plugin.AttributeContext) -> Type:
                 return make_simplified_union(cast(Sequence[Type], proper_types))
         return ctx.default_attr_type
 
-    assert isinstance(ctx.type, Instance)
-    info = ctx.type.type
+    assert isinstance(ctx.type, (Instance, LiteralType))
+    if isinstance(ctx.type, Instance):
+        info = ctx.type.type
+    else:
+        info = ctx.type.fallback.type
 
     # As long as mypy doesn't understand attribute creation in __new__,
     # there is no way to predict the value type if the enum class has a
@@ -241,15 +244,20 @@ def _extract_underlying_field_name(typ: Type) -> str | None:
     We can examine this Literal fallback to retrieve the string.
     """
     typ = get_proper_type(typ)
-    if not isinstance(typ, Instance):
+    if not isinstance(typ, (Instance, LiteralType)):
         return None
 
-    if not typ.type.is_enum:
-        return None
+    if isinstance(typ, Instance):
+        if not typ.type.is_enum:
+            return None
 
-    underlying_literal = typ.last_known_value
-    if underlying_literal is None:
-        return None
+        underlying_literal = typ.last_known_value
+        if underlying_literal is None:
+            return None
+    else:
+        underlying_literal = typ
+        if not typ.is_enum_literal():
+            return None
 
     # The checks above have verified this LiteralType is representing an enum value,
     # which means the 'value' field is guaranteed to be the name of the enum field
