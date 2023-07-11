@@ -2125,3 +2125,15 @@ class AllPartialList(Enum):
 
     def check(self) -> None:
         reveal_type(self.value)  # N: Revealed type is "builtins.list[Any]"
+
+[case testEnumValueWithTupleType]
+import enum
+from typing import Tuple
+
+class Color(enum.Enum):
+    WHITE = (255, 255, 255)
+    BLACK = (0, 0, 0)
+
+x: Color
+reveal_type(x.value)  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
