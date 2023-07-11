@@ -825,14 +825,6 @@ def process_options(
     )
 
     add_invertible_flag(
-        "--strict-override-decorator",
-        default=False,
-        strict_flag=False,
-        help="Require override decorator if method is overriding a base class method.",
-        group=strictness_group,
-    )
-
-    add_invertible_flag(
         "--extra-checks",
         default=False,
         strict_flag=True,

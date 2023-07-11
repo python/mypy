@@ -650,14 +650,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 and found_method_base_classes is not None
             ):
                 self.msg.no_overridable_method(defn.name, defn)
-            elif (
-                found_method_base_classes
-                and self.options.strict_override_decorator
-                and not defn.is_explicit_override
-            ):
-                self.msg.override_decorator_missing(
-                    defn.name, found_method_base_classes[0].fullname, defn.impl or defn
-                )
+            self.check_explicit_override_decorator(defn, found_method_base_classes, defn.impl)
             self.check_inplace_operator_method(defn)
         if not defn.is_property:
             self.check_overlapping_overloads(defn)
@@ -985,14 +978,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # been typechecked, and decorated methods will be
                 # checked when the decorator is.
                 found_method_base_classes = self.check_method_override(defn)
-                if (
-                    found_method_base_classes
-                    and self.options.strict_override_decorator
-                    and defn.name not in ("__init__", "__new__")
-                ):
-                    self.msg.override_decorator_missing(
-                        defn.name, found_method_base_classes[0].fullname, defn
-                    )
+                self.check_explicit_override_decorator(defn, found_method_base_classes)
             self.check_inplace_operator_method(defn)
         if defn.original_def:
             # Override previous definition.
@@ -1832,6 +1818,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return result
         else:
             return [(defn, typ)]
+
+    def check_explicit_override_decorator(
+        self,
+        defn: FuncDef | OverloadedFuncDef,
+        found_method_base_classes: list[TypeInfo] | None,
+        context: Context | None = None,
+    ) -> None:
+        if (
+            found_method_base_classes
+            and not defn.is_explicit_override
+            and defn.name not in ("__init__", "__new__")
+        ):
+            self.msg.explicit_override_decorator_missing(
+                defn.name, found_method_base_classes[0].fullname, context or defn
+            )
 
     def check_method_override(
         self, defn: FuncDef | OverloadedFuncDef | Decorator
@@ -4769,14 +4770,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 and found_method_base_classes is not None
             ):
                 self.msg.no_overridable_method(e.func.name, e.func)
-            elif (
-                found_method_base_classes
-                and self.options.strict_override_decorator
-                and not e.func.is_explicit_override
-            ):
-                self.msg.override_decorator_missing(
-                    e.func.name, found_method_base_classes[0].fullname, e.func
-                )
+            self.check_explicit_override_decorator(e.func, found_method_base_classes)
 
         if e.func.info and e.func.name in ("__init__", "__new__"):
             if e.type and not isinstance(get_proper_type(e.type), (FunctionLike, AnyType)):

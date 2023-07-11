@@ -3035,7 +3035,7 @@ def deco(f: Callable[..., T]) -> Callable[..., Tuple[T, int]]: ...
 [typing fixtures/typing-override.pyi]
 
 [case requireExplicitOverrideMethod]
-# flags: --strict-override-decorator --python-version 3.12
+# flags: --enable-error-code explicit-override --python-version 3.12
 from typing import override
 
 class A:
@@ -3046,25 +3046,52 @@ class B(A):
     def f(self, y: int) -> str: pass
 
 class C(A):
-    def f(self, y: int) -> str: pass  # E: Method "f" is not marked as override but is overriding a method in class "__main__.A"
+    def f(self, y: int) -> str: pass  # E: Method "f" is not using @override but is overriding a method in class "__main__.A"
 
 class D(B):
-    def f(self, y: int) -> str: pass  # E: Method "f" is not marked as override but is overriding a method in class "__main__.B"
+    def f(self, y: int) -> str: pass  # E: Method "f" is not using @override but is overriding a method in class "__main__.B"
 [typing fixtures/typing-override.pyi]
 
 [case requireExplicitOverrideSpecialMethod]
-# flags: --strict-override-decorator --python-version 3.12
-from typing import Self, override
+# flags: --enable-error-code explicit-override --python-version 3.12
+from typing import Callable, Self, TypeVar, override, overload
+
+T = TypeVar('T')
+def some_decorator(f: Callable[..., T]) -> Callable[..., T]: ...
 
 # Don't require override decorator for __init__ and __new__
 # See: https://github.com/python/typing/issues/1376
 class A:
     def __init__(self) -> None: pass
     def __new__(cls) -> Self: pass
+
+class B(A):
+    def __init__(self) -> None: pass
+    def __new__(cls) -> Self: pass
+
+class C(A):
+    @some_decorator
+    def __init__(self) -> None: pass
+
+    @some_decorator
+    def __new__(cls) -> Self: pass
+
+class D(A):
+    @overload
+    def __init__(self, x: int) -> None: ...
+    @overload
+    def __init__(self, x: str) -> None: ...
+    def __init__(self, x): pass
+
+    @overload
+    def __new__(cls, x: int) -> Self: pass
+    @overload
+    def __new__(cls, x: str) -> Self: pass
+    def __new__(cls, x): pass
 [typing fixtures/typing-override.pyi]
 
 [case requireExplicitOverrideProperty]
-# flags: --strict-override-decorator --python-version 3.12
+# flags: --enable-error-code explicit-override --python-version 3.12
 from typing import override
 
 class A:
@@ -3078,12 +3105,12 @@ class B(A):
 
 class C(A):
     @property
-    def prop(self) -> int: pass  # E: Method "prop" is not marked as override but is overriding a method in class "__main__.A"
+    def prop(self) -> int: pass  # E: Method "prop" is not using @override but is overriding a method in class "__main__.A"
 [typing fixtures/typing-override.pyi]
 [builtins fixtures/property.pyi]
 
 [case requireExplicitOverrideOverload]
-# flags: --strict-override-decorator --python-version 3.12
+# flags: --enable-error-code explicit-override --python-version 3.12
 from typing import overload, override
 
 class A:
@@ -3103,14 +3130,22 @@ class B(A):
 
 class C(A):
     @overload
+    @override
     def f(self, y: int) -> str: ...
     @overload
     def f(self, y: str) -> str: ...
-    def f(self, y): pass  # E: Method "f" is not marked as override but is overriding a method in class "__main__.A"
+    def f(self, y): pass
+
+class D(A):
+    @overload
+    def f(self, y: int) -> str: ...
+    @overload
+    def f(self, y: str) -> str: ...
+    def f(self, y): pass  # E: Method "f" is not using @override but is overriding a method in class "__main__.A"
 [typing fixtures/typing-override.pyi]
 
 [case requireExplicitOverrideMultipleInheritance]
-# flags: --strict-override-decorator --python-version 3.12
+# flags: --enable-error-code explicit-override --python-version 3.12
 from typing import override
 
 class A:
@@ -3123,5 +3158,5 @@ class C(A, B):
     def f(self, z: int) -> str: pass
 
 class D(A, B):
-    def f(self, z: int) -> str: pass  # E: Method "f" is not marked as override but is overriding a method in class "__main__.A"
+    def f(self, z: int) -> str: pass  # E: Method "f" is not using @override but is overriding a method in class "__main__.A"
 [typing fixtures/typing-override.pyi]
