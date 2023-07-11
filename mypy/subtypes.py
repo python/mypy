@@ -454,6 +454,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 # and we can't have circular promotions.
                 if left.type.alt_promote and left.type.alt_promote.type is right.type:
                     return True
+            if left.last_known_value and right.last_known_value:
+                return self._is_subtype(left.last_known_value, right.last_known_value)
             rname = right.type.fullname
             # Always try a nominal check if possible,
             # there might be errors that a user wants to silence *once*.
