@@ -378,7 +378,10 @@ class DataDrivenTestCase(pytest.Item):
     def reportinfo(self) -> tuple[str, int, str]:
         return self.file, self.line, self.name
 
-    def repr_failure(self, excinfo: Any, style: Any | None = None) -> str:
+    def repr_failure(
+        self, excinfo: pytest.ExceptionInfo[BaseException], style: Any | None = None
+    ) -> str:
+        excrepr: object
         if isinstance(excinfo.value, SystemExit):
             # We assume that before doing exit() (which raises SystemExit) we've printed
             # enough context about what happened so that a stack trace is not useful.
@@ -388,7 +391,7 @@ class DataDrivenTestCase(pytest.Item):
         elif isinstance(excinfo.value, pytest.fail.Exception) and not excinfo.value.pytrace:
             excrepr = excinfo.exconly()
         else:
-            self.parent._prunetraceback(excinfo)
+            excinfo.traceback = self.parent._traceback_filter(excinfo)
             excrepr = excinfo.getrepr(style="short")
 
         return f"data: {self.file}:{self.line}:\n{excrepr}"
