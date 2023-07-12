@@ -2085,6 +2085,9 @@ class CallableType(FunctionLike):
             )
         )
 
+    def is_singleton_type(self) -> bool:
+        return self.is_type_obj() and self.type_object().is_final
+
     def __hash__(self) -> int:
         # self.is_type_obj() will fail if self.fallback.type is a FakeInfo
         if isinstance(self.fallback.type, FakeInfo):
@@ -2855,6 +2858,12 @@ class TypeType(ProperType):
         if not isinstance(other, TypeType):
             return NotImplemented
         return self.item == other.item
+
+    def is_singleton_type(self) -> bool:
+        return (
+            (isinstance(self.item, Instance) and self.item.type.is_final)
+            or isinstance(self.item, NoneType)
+        )
 
     def serialize(self) -> JsonDict:
         return {".class": "TypeType", "item": self.item.serialize()}

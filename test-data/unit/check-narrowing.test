@@ -1269,3 +1269,79 @@ def g() -> None:
         def foo(): ...
     foo()
 [builtins fixtures/dict.pyi]
+
+
+[case testNarrowingIsFinalType]
+from typing import Type, Union
+from typing_extensions import final
+
+@final
+class Mark: ...
+
+@final
+class Other: ...
+
+x: Union[Type[Mark], Type[Other], Type[None], int]
+
+if x is Mark:
+    reveal_type(x)  # N: Revealed type is "Type[__main__.Mark]"
+else:
+    reveal_type(x)  # N: Revealed type is "Union[Type[__main__.Other], Type[None], builtins.int]"
+
+if x is not Mark:
+    reveal_type(x)  # N: Revealed type is "Union[Type[__main__.Other], Type[None], builtins.int]"
+else:
+    reveal_type(x)  # N: Revealed type is "Type[__main__.Mark]"
+
+y: Type[Mark] = Mark
+if x is y:
+    reveal_type(x)  # N: Revealed type is "Type[__main__.Mark]"
+else:
+    reveal_type(x)  # N: Revealed type is "Union[Type[__main__.Other], Type[None], builtins.int]"
+
+if x is not y:
+    reveal_type(x)  # N: Revealed type is "Union[Type[__main__.Other], Type[None], builtins.int]"
+else:
+    reveal_type(x)  # N: Revealed type is "Type[__main__.Mark]"
+
+if x is type(None):
+    reveal_type(x)  # N: Revealed type is "Type[None]"
+else:
+    reveal_type(x)  # N: Revealed type is "Union[Type[__main__.Mark], Type[__main__.Other], builtins.int]"
+
+if x is not type(None):
+    reveal_type(x)  # N: Revealed type is "Union[Type[__main__.Mark], Type[__main__.Other], builtins.int]"
+else:
+    reveal_type(x)  # N: Revealed type is "Type[None]"
+
+z: Type[None]
+if x is z:
+    reveal_type(x)  # N: Revealed type is "Type[None]"
+else:
+    reveal_type(x)  # N: Revealed type is "Union[Type[__main__.Mark], Type[__main__.Other], builtins.int]"
+
+if x is not z:
+    reveal_type(x)  # N: Revealed type is "Union[Type[__main__.Mark], Type[__main__.Other], builtins.int]"
+else:
+    reveal_type(x)  # N: Revealed type is "Type[None]"
+[builtins fixtures/isinstancelist.pyi]
+
+
+[case testNarrowingIsRegualType]
+from typing import Type, Union
+
+class Mark: ...
+
+x: Union[Type[Mark], Type[None], int]
+
+if x is Mark:
+    reveal_type(x)  # N: Revealed type is "Union[Type[__main__.Mark], Type[None], builtins.int]"
+else:
+    reveal_type(x)  # N: Revealed type is "Union[Type[__main__.Mark], Type[None], builtins.int]"
+
+y: Type[Mark] = Mark
+if x is y:
+    reveal_type(x)  # N: Revealed type is "Union[Type[__main__.Mark], Type[None], builtins.int]"
+else:
+    reveal_type(x)  # N: Revealed type is "Union[Type[__main__.Mark], Type[None], builtins.int]"
+[builtins fixtures/isinstancelist.pyi]
