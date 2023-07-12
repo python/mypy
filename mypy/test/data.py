@@ -614,6 +614,13 @@ def pytest_addoption(parser: Any) -> None:
     )
 
 
+def pytest_configure(config: pytest.Config) -> None:
+    if config.getoption("--update-data") and config.getoption("--numprocesses", default=1) > 1:
+        raise pytest.UsageError(
+            "--update-data incompatible with parallelized tests; re-run with -n 1"
+        )
+
+
 # This function name is special to pytest.  See
 # https://doc.pytest.org/en/latest/how-to/writing_plugins.html#collection-hooks
 def pytest_pycollect_makeitem(collector: Any, name: str, obj: object) -> Any | None:
