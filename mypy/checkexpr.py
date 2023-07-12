@@ -5280,6 +5280,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return known_type
 
     def has_abstract_type_part(self, caller_type: ProperType, callee_type: ProperType) -> bool:
+        # TODO: support other possible types here
         if isinstance(caller_type, TupleType) and isinstance(callee_type, TupleType):
             return any(
                 self.has_abstract_type(get_proper_type(caller), get_proper_type(callee))
