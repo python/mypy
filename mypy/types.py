@@ -2860,9 +2860,8 @@ class TypeType(ProperType):
         return self.item == other.item
 
     def is_singleton_type(self) -> bool:
-        return (
-            (isinstance(self.item, Instance) and self.item.type.is_final)
-            or isinstance(self.item, NoneType)
+        return (isinstance(self.item, Instance) and self.item.type.is_final) or isinstance(
+            self.item, NoneType
         )
 
     def serialize(self) -> JsonDict:
