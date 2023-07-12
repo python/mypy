@@ -1676,6 +1676,33 @@ class C:
         self.c = 2  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.C"
 [builtins fixtures/plugin_attrs.pyi]
 
+[case testRuntimeSlotsAttr]
+from attr import dataclass
+
+@dataclass(slots=True)
+class Some:
+    x: int
+    y: str
+    z: bool
+
+reveal_type(Some.__slots__)  # N: Revealed type is "Tuple[builtins.str, builtins.str, builtins.str]"
+
+@dataclass(slots=True)
+class Other:
+    x: int
+    y: str
+
+reveal_type(Other.__slots__)  # N: Revealed type is "Tuple[builtins.str, builtins.str]"
+
+
+@dataclass
+class NoSlots:
+    x: int
+    y: str
+
+NoSlots.__slots__  # E: "Type[NoSlots]" has no attribute "__slots__"
+[builtins fixtures/plugin_attrs.pyi]
+
 [case testAttrsWithMatchArgs]
 # flags: --python-version 3.10
 import attr
