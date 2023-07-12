@@ -1535,6 +1535,12 @@ class ASTConverter:
         # Don't make unnecessary join call if there is only one str to join
         if len(strs_to_join.items) == 1:
             return self.set_line(strs_to_join.items[0], n)
+        elif len(strs_to_join.items) > 1:
+            last = strs_to_join.items[-1]
+            if isinstance(last, StrExpr) and last.value == "":
+                # 3.12 can add an empty literal at the end. Delete it for consistency
+                # between Python versions.
+                del strs_to_join.items[-1:]
         join_method = MemberExpr(empty_string, "join")
         join_method.set_line(empty_string)
         result_expression = CallExpr(join_method, [strs_to_join], [ARG_POS], [None])
