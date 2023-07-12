@@ -12,7 +12,7 @@ semanal_enum.py).
 """
 from __future__ import annotations
 
-from typing import Final, Iterable, Sequence, TypeVar, cast
+from typing import Final, Iterable, Optional, Sequence, TypeVar, cast
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.nodes import TypeInfo
@@ -167,11 +167,11 @@ def enum_value_callback(ctx: mypy.plugin.AttributeContext) -> Type:
                 if n is None or not n.implicit
             )
             proper_types = list(
-                _infer_value_type_with_auto_fallback(ctx, t)
+                get_proper_type(_infer_value_type_with_auto_fallback(ctx, t))
                 for t in node_types
                 if t is None or not isinstance(t, CallableType)
             )
-            underlying_type = _first(proper_types)
+            underlying_type: Optional[Type] = _first(proper_types)
             if underlying_type is None:
                 return ctx.default_attr_type
 
@@ -202,7 +202,14 @@ def enum_value_callback(ctx: mypy.plugin.AttributeContext) -> Type:
             # So, we unify them to make sure `.value` prediction still works.
             # Result will be `Literal[1] | Literal[2] | Literal[3]` for this case.
             all_equivalent_types = all(
-                proper_type is not None and is_equivalent(proper_type, underlying_type)
+                proper_type is not None
+                and is_equivalent(
+                    proper_type.copy_modified(last_known_value=None)
+                    if isinstance(proper_type, Instance)
+                    # I'm not sure when this is the case:
+                    else proper_type,
+                    underlying_type,
+                )
                 for proper_type in proper_types
             )
             if all_equivalent_types:
