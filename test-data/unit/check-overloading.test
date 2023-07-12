@@ -1479,7 +1479,7 @@ class A(Generic[T]):
 
 b = A()  # type: A[Tuple[int, int]]
 b.f((0, 0))
-b.f((0, '')) # E: Argument 1 to "f" of "A" has incompatible type "Tuple[int, str]"; expected "Tuple[int, int]"
+b.f((0, '')) # E: Argument 1 to "f" of "A" has incompatible type "Tuple[Literal[0], str]"; expected "Tuple[builtins.int, builtins.int]"
 [builtins fixtures/tuple.pyi]
 
 [case testSingleOverloadStub]
@@ -1551,10 +1551,10 @@ def f(x: int, y: Tuple[str, ...]) -> None: pass
 @overload
 def f(x: int, y: str) -> None: pass
 f(1, ('2', '3'))
-f(1, (2, '3')) # E: Argument 2 to "f" has incompatible type "Tuple[int, str]"; expected "Tuple[str, ...]"
+f(1, (2, '3')) # E: Argument 2 to "f" has incompatible type "Tuple[int, Literal['3']]"; expected "Tuple[builtins.str, ...]"
 f(1, ('2',))
 f(1, '2')
-f(1, (2, 3)) # E: Argument 2 to "f" has incompatible type "Tuple[int, int]"; expected "Tuple[str, ...]"
+f(1, (2, 3)) # E: Argument 2 to "f" has incompatible type "Tuple[Literal[2], Literal[3]]"; expected "Tuple[str, ...]"
 x = ('2', '3')  # type: Tuple[str, ...]
 f(1, x)
 y = (2, 3)  # type: Tuple[int, ...]

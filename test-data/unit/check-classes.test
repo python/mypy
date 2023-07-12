@@ -145,7 +145,7 @@ class Base:
         pass
 
 class Derived(Base):
-    __hash__ = 1  # E: Incompatible types in assignment (expression has type "int", base class "Base" defined the type as "Callable[[Base], int]")
+    __hash__ = 1  # E: Incompatible types in assignment (expression has type "Literal[1]", base class "Base" defined the type as "Callable[[Base], builtins.int]")
 
 
 [case testOverridePartialAttributeWithMethod]

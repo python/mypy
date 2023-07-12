@@ -21,7 +21,7 @@ from typing import Tuple
 T = Tuple[int, str]
 def f(x: T) -> None: pass
 f((1, 'x'))
-f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Tuple[int, str]"
+f(1) # E: Argument 1 to "f" has incompatible type "Literal[1]"; expected "Tuple[builtins.int, str]"
 [targets __main__, __main__.f]
 [builtins fixtures/tuple.pyi]
 
