@@ -294,6 +294,7 @@ def attr_class_maker_callback(
     ctx: mypy.plugin.ClassDefContext,
     auto_attribs_default: bool | None = False,
     frozen_default: bool = False,
+    slots_default: bool = False,
 ) -> bool:
     """Add necessary dunder methods to classes decorated with attr.s.
 
@@ -314,7 +315,7 @@ def attr_class_maker_callback(
     init = _get_decorator_bool_argument(ctx, "init", True)
     frozen = _get_frozen(ctx, frozen_default)
     order = _determine_eq_order(ctx)
-    slots = _get_decorator_bool_argument(ctx, "slots", False)
+    slots = _get_decorator_bool_argument(ctx, "slots", slots_default)
 
     auto_attribs = _get_decorator_optional_bool_argument(ctx, "auto_attribs", auto_attribs_default)
     kw_only = _get_decorator_bool_argument(ctx, "kw_only", False)

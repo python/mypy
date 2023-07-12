@@ -1631,6 +1631,24 @@ reveal_type(A.__attrs_init__)  # N: Revealed type is "def (self: __main__.A, b: 
 [case testAttrsClassWithSlots]
 import attr
 
+@attr.define
+class Define:
+    b: int = attr.ib()
+
+    def __attrs_post_init__(self) -> None:
+        self.b = 1
+        self.c = 2  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.Define"
+
+
+@attr.define(slots=False)
+class DefineSlotsFalse:
+    b: int = attr.ib()
+
+    def __attrs_post_init__(self) -> None:
+        self.b = 1
+        self.c = 2
+
+
 @attr.s(slots=True)
 class A:
     b: int = attr.ib()
