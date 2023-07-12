@@ -1327,6 +1327,28 @@ else:
 [builtins fixtures/isinstancelist.pyi]
 
 
+[case testNarrowingAnyAgainstFinalType]
+from typing import Type, Any
+from typing_extensions import final
+
+@final
+class Mark: ...
+
+x: Any
+if x is Mark:
+    reveal_type(x)  # N: Revealed type is "def () -> __main__.Mark"
+else:
+    reveal_type(x)  # N: Revealed type is "Any"
+
+y: Type[Any]
+if y is Mark:
+    reveal_type(y)  # N: Revealed type is "Type[__main__.Mark]"
+else:
+    reveal_type(y)  # N: Revealed type is "Type[Any]"
+
+[builtins fixtures/isinstancelist.pyi]
+
+
 [case testNarrowingIsRegualType]
 from typing import Type, Union
 
