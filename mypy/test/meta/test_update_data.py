@@ -4,21 +4,22 @@ Updating the expected output, especially when it's in the form of inline (commen
 can be brittle, which is why we're "meta-testing" here.
 """
 from mypy.test.helpers import Suite
-from mypy.test.meta._pytest import PytestResult, run_type_check_suite, strip_source
+from mypy.test.meta._pytest import PytestResult, dedent_docstring, run_pytest_data_suite
+
+
+def _run_pytest_update_data(data_suite: str) -> PytestResult:
+    """
+    Runs a suite of data test cases through 'pytest --update-data' until either tests pass
+    or until a maximum number of attempts (needed for incremental tests).
+    """
+    return run_pytest_data_suite(data_suite, extra_args=["--update-data"], max_attempts=3)
 
 
 class UpdateDataSuite(Suite):
-    def _run_pytest_update_data(self, data_suite: str) -> PytestResult:
-        """
-        Runs a suite of data test cases through 'pytest --update-data' until either tests pass
-        or until a maximum number of attempts (needed for incremental tests).
-        """
-        return run_type_check_suite(data_suite, extra_args=["--update-data"], max_attempts=3)
-
     def test_update_data(self) -> None:
         # Note: We test multiple testcases rather than 'test case per test case'
         #       so we could also exercise rewriting multiple testcases at once.
-        result = self._run_pytest_update_data(
+        result = _run_pytest_update_data(
             """
             [case testCorrect]
             s: str = 42  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
@@ -76,7 +77,7 @@ class UpdateDataSuite(Suite):
         )
 
         # Assert
-        expected = strip_source(
+        expected = dedent_docstring(
             """
         [case testCorrect]
         s: str = 42  # E: Incompatible types in assignment (expression has type "int", variable has type "str")

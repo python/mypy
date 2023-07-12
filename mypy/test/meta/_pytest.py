@@ -13,36 +13,38 @@ from mypy.test.config import test_data_prefix
 @dataclass
 class PytestResult:
     source: str
-    source_updated: str
+    source_updated: str  # any updates made by --update-data
     stdout: str
     stderr: str
 
 
-def strip_source(s: str) -> str:
+def dedent_docstring(s: str) -> str:
     return textwrap.dedent(s).lstrip()
 
 
-def run_pytest(
+def run_pytest_data_suite(
     data_suite: str,
     *,
-    data_file_prefix: str,
-    node_prefix: str,
+    data_file_prefix: str = "check",
+    pytest_node_prefix: str = "mypy/test/testcheck.py::TypeCheckSuite",
     extra_args: Iterable[str],
     max_attempts: int,
 ) -> PytestResult:
     """
     Runs a suite of data test cases through pytest until either tests pass
     or until a maximum number of attempts (needed for incremental tests).
+
+    :param data_suite: the actual "suite" i.e. the contents of a .test file
     """
     p_test_data = Path(test_data_prefix)
     p_root = p_test_data.parent.parent
     p = p_test_data / f"{data_file_prefix}-meta-{uuid.uuid4()}.test"
     assert not p.exists()
-    data_suite = strip_source(data_suite)
+    data_suite = dedent_docstring(data_suite)
     try:
         p.write_text(data_suite)
 
-        test_nodeid = f"{node_prefix}::{p.name}"
+        test_nodeid = f"{pytest_node_prefix}::{p.name}"
         extra_args = [sys.executable, "-m", "pytest", "-n", "0", "-s", *extra_args, test_nodeid]
         if sys.version_info >= (3, 8):
             cmd = shlex.join(extra_args)
@@ -71,15 +73,3 @@ def run_pytest(
         )
     finally:
         p.unlink()
-
-
-def run_type_check_suite(
-    data_suite: str, *, extra_args: Iterable[str], max_attempts: int
-) -> PytestResult:
-    return run_pytest(
-        data_suite,
-        data_file_prefix="check",
-        node_prefix="mypy/test/testcheck.py::TypeCheckSuite",
-        extra_args=extra_args,
-        max_attempts=max_attempts,
-    )

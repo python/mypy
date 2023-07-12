@@ -3,16 +3,17 @@ A "meta test" which tests the parsing of .test files. This is not meant to becom
 but to ensure we maintain a basic level of ergonomics for mypy contributors.
 """
 from mypy.test.helpers import Suite
-from mypy.test.meta._pytest import PytestResult, run_type_check_suite
+from mypy.test.meta._pytest import PytestResult, run_pytest_data_suite
+
+
+def _run_pytest(data_suite: str) -> PytestResult:
+    return run_pytest_data_suite(data_suite, extra_args=[], max_attempts=1)
 
 
 class ParseTestDataSuite(Suite):
-    def _run_pytest(self, data_suite: str) -> PytestResult:
-        return run_type_check_suite(data_suite, extra_args=[], max_attempts=1)
-
     def test_parse_invalid_case(self) -> None:
         # Act
-        result = self._run_pytest(
+        result = _run_pytest(
             """
             [case abc]
             s: str
@@ -26,7 +27,7 @@ class ParseTestDataSuite(Suite):
 
     def test_parse_invalid_section(self) -> None:
         # Act
-        result = self._run_pytest(
+        result = _run_pytest(
             """
             [case abc]
             s: str
