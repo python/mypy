@@ -1547,6 +1547,35 @@ class Other:
 [builtins fixtures/dataclasses.pyi]
 
 
+[case testDataclassWithSlotsRuntimeAttr]
+# flags: --python-version 3.10
+from dataclasses import dataclass
+
+@dataclass(slots=True)
+class Some:
+    x: int
+    y: str
+    z: bool
+
+reveal_type(Some.__slots__)  # N: Revealed type is "Tuple[builtins.str, builtins.str, builtins.str]"
+
+@dataclass(slots=True)
+class Other:
+    x: int
+    y: str
+
+reveal_type(Other.__slots__)  # N: Revealed type is "Tuple[builtins.str, builtins.str]"
+
+
+@dataclass
+class NoSlots:
+    x: int
+    y: str
+
+NoSlots.__slots__  # E: "Type[NoSlots]" has no attribute "__slots__"
+[builtins fixtures/dataclasses.pyi]
+
+
 [case testSlotsDefinitionWithTwoPasses1]
 # flags: --python-version 3.10
 # https://github.com/python/mypy/issues/11821
