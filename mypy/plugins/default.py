@@ -159,7 +159,9 @@ class DefaultPlugin(Plugin):
                 attrs.attr_class_maker_callback, auto_attribs_default=None, frozen_default=True
             )
         elif fullname in attrs.attr_define_makers:
-            return partial(attrs.attr_class_maker_callback, auto_attribs_default=None)
+            return partial(
+                attrs.attr_class_maker_callback, auto_attribs_default=None, slots_default=True
+            )
 
         return None
 
