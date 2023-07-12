@@ -2468,6 +2468,10 @@ def format_type_inner(
         if itype.type.fullname == "typing._SpecialForm":
             # This is not a real type but used for some typing-related constructs.
             return "<typing special form>"
+        if itype.last_known_value and (
+            fullnames and f"typing.Literal[{itype.last_known_value.value}]" in fullnames
+        ):
+            return format(itype.last_known_value)
         if itype.type.fullname in reverse_builtin_aliases and not options.use_lowercase_names():
             alias = reverse_builtin_aliases[itype.type.fullname]
             base_str = alias.split(".")[-1]
@@ -2652,7 +2656,12 @@ def find_type_overlaps(*types: Type) -> set[str]:
     d: dict[str, set[str]] = {}
     for type in types:
         for inst in collect_all_instances(type):
-            d.setdefault(inst.type.name, set()).add(inst.type.fullname)
+            if inst.last_known_value:
+                d.setdefault(inst.type.name, set()).add(
+                    f"typing.Literal[{inst.last_known_value.value}]"
+                )
+            else:
+                d.setdefault(inst.type.name, set()).add(inst.type.fullname)
     for shortname in d.keys():
         if f"typing.{shortname}" in TYPES_FOR_UNIMPORTED_HINTS:
             d[shortname].add(f"typing.{shortname}")

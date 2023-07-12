@@ -806,7 +806,7 @@ def f(x: T) -> UNode[T]:
 reveal_type(f(1)) # N: Revealed type is "Union[builtins.int, __main__.Node[builtins.int]]"
 
 TNode = Union[T, Node[int]]
-s = 1 # type: TNode[str] # E: Incompatible types in assignment (expression has type "int", variable has type "Union[str, Node[int]]")
+s = 1 # type: TNode[str] # E: Incompatible types in assignment (expression has type "Literal[1]", variable has type "Union[str, Node[builtins.int]]")
 
 if not isinstance(s, str):
     s.x = 1
@@ -814,6 +814,7 @@ if not isinstance(s, str):
 z = None # type: TNode # Same as TNode[Any]
 z.x
 z.foo() # E: Item "Node[int]" of "Union[Any, Node[int]]" has no attribute "foo"
+
 
 [builtins fixtures/isinstance.pyi]
 
@@ -834,7 +835,7 @@ reveal_type(x) # N: Revealed type is "builtins.int"
 def f2(x: IntTP[T]) -> IntTP[T]:
     return x
 
-f2((1, 2, 3)) # E: Argument 1 to "f2" has incompatible type "Tuple[int, int, int]"; expected "Tuple[int, <nothing>]"
+f2((1, 2, 3)) # E: Argument 1 to "f2" has incompatible type "Tuple[Literal[1], Literal[2], Literal[3]]"; expected "Tuple[builtins.int, <nothing>]"
 reveal_type(f2((1, 'x'))) # N: Revealed type is "Tuple[builtins.int, builtins.str]"
 
 [builtins fixtures/for.pyi]
