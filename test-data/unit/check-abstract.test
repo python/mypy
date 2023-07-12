@@ -198,6 +198,24 @@ x: Type[B]
 f(x)  # OK
 [out]
 
+[case testAbstractTypeInADict]
+from typing import Dict, Type
+from abc import abstractmethod
+
+class Class:
+    @abstractmethod
+    def method(self) -> None:
+        pass
+
+my_dict_init: Dict[int, Type[Class]] = {0: Class}  # E: Only concrete class can be given where "Tuple[int, Type[Class]]" is expected
+
+class Child(Class):
+    def method(self) -> None: ...
+
+other_dict_init: Dict[int, Type[Class]] = {0: Child}  # ok
+[builtins fixtures/dict.pyi]
+[out]
+
 [case testInstantiationAbstractsInTypeForAliases]
 from typing import Type
 from abc import abstractmethod
