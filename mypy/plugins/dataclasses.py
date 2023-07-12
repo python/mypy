@@ -469,8 +469,14 @@ class DataclassTransformer:
                 self._cls,
             )
             return
-
         info.slots = generated_slots
+
+        # Now, insert `.__slots__` attribute to class namespace:
+        slots_type = TupleType(
+            [self._api.named_type("builtins.str") for _ in generated_slots],
+            self._api.named_type("builtins.tuple"),
+        )
+        add_attribute_to_class(self._api, self._cls, "__slots__", slots_type)
 
     def reset_init_only_vars(self, info: TypeInfo, attributes: list[DataclassAttribute]) -> None:
         """Remove init-only vars from the class and reset init var declarations."""
