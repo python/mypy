@@ -235,6 +235,12 @@ USED_BEFORE_DEF: Final[ErrorCode] = ErrorCode(
 UNUSED_IGNORE: Final = ErrorCode(
     "unused-ignore", "Ensure that all type ignores are used", "General", default_enabled=False
 )
+EXPLICIT_OVERRIDE_REQUIRED: Final = ErrorCode(
+    "explicit-override",
+    "Require @override decorator if method is overriding a base class method",
+    "General",
+    default_enabled=False,
+)
 
 
 # Syntax errors are often blocking.

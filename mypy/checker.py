@@ -643,9 +643,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if defn.impl:
             defn.impl.accept(self)
         if defn.info:
-            found_base_method = self.check_method_override(defn)
-            if defn.is_explicit_override and found_base_method is False:
+            found_method_base_classes = self.check_method_override(defn)
+            if (
+                defn.is_explicit_override
+                and not found_method_base_classes
+                and found_method_base_classes is not None
+            ):
                 self.msg.no_overridable_method(defn.name, defn)
+            self.check_explicit_override_decorator(defn, found_method_base_classes, defn.impl)
             self.check_inplace_operator_method(defn)
         if not defn.is_property:
             self.check_overlapping_overloads(defn)
@@ -972,7 +977,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # overload, the legality of the override has already
                 # been typechecked, and decorated methods will be
                 # checked when the decorator is.
-                self.check_method_override(defn)
+                found_method_base_classes = self.check_method_override(defn)
+                self.check_explicit_override_decorator(defn, found_method_base_classes)
             self.check_inplace_operator_method(defn)
         if defn.original_def:
             # Override previous definition.
@@ -1813,23 +1819,41 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             return [(defn, typ)]
 
-    def check_method_override(self, defn: FuncDef | OverloadedFuncDef | Decorator) -> bool | None:
+    def check_explicit_override_decorator(
+        self,
+        defn: FuncDef | OverloadedFuncDef,
+        found_method_base_classes: list[TypeInfo] | None,
+        context: Context | None = None,
+    ) -> None:
+        if (
+            found_method_base_classes
+            and not defn.is_explicit_override
+            and defn.name not in ("__init__", "__new__")
+        ):
+            self.msg.explicit_override_decorator_missing(
+                defn.name, found_method_base_classes[0].fullname, context or defn
+            )
+
+    def check_method_override(
+        self, defn: FuncDef | OverloadedFuncDef | Decorator
+    ) -> list[TypeInfo] | None:
         """Check if function definition is compatible with base classes.
 
         This may defer the method if a signature is not available in at least one base class.
         Return ``None`` if that happens.
 
-        Return ``True`` if an attribute with the method name was found in the base class.
+        Return a list of base classes which contain an attribute with the method name.
         """
         # Check against definitions in base classes.
-        found_base_method = False
+        found_method_base_classes: list[TypeInfo] = []
         for base in defn.info.mro[1:]:
             result = self.check_method_or_accessor_override_for_base(defn, base)
             if result is None:
                 # Node was deferred, we will have another attempt later.
                 return None
-            found_base_method |= result
-        return found_base_method
+            if result:
+                found_method_base_classes.append(base)
+        return found_method_base_classes
 
     def check_method_or_accessor_override_for_base(
         self, defn: FuncDef | OverloadedFuncDef | Decorator, base: TypeInfo
@@ -4739,9 +4763,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_incompatible_property_override(e)
         # For overloaded functions we already checked override for overload as a whole.
         if e.func.info and not e.func.is_dynamic() and not e.is_overload:
-            found_base_method = self.check_method_override(e)
-            if e.func.is_explicit_override and found_base_method is False:
+            found_method_base_classes = self.check_method_override(e)
+            if (
+                e.func.is_explicit_override
+                and not found_method_base_classes
+                and found_method_base_classes is not None
+            ):
                 self.msg.no_overridable_method(e.func.name, e.func)
+            self.check_explicit_override_decorator(e.func, found_method_base_classes)
 
         if e.func.info and e.func.name in ("__init__", "__new__"):
             if e.type and not isinstance(get_proper_type(e.type), (FunctionLike, AnyType)):

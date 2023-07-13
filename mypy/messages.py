@@ -1525,6 +1525,16 @@ class MessageBuilder:
             context,
         )
 
+    def explicit_override_decorator_missing(
+        self, name: str, base_name: str, context: Context
+    ) -> None:
+        self.fail(
+            f'Method "{name}" is not using @override '
+            f'but is overriding a method in class "{base_name}"',
+            context,
+            code=codes.EXPLICIT_OVERRIDE_REQUIRED,
+        )
+
     def final_cant_override_writable(self, name: str, ctx: Context) -> None:
         self.fail(f'Cannot override writable attribute "{name}" with a final one', ctx)
 
