@@ -1425,6 +1425,28 @@ f(a) # E: Argument 1 to "f" has incompatible type "A[object, Callable[[], None]]
 class A(Generic[S, T]): pass
 class B: pass
 
+[case testErrorWrongArgCount]
+from typing import List, Dict
+
+a1: List
+a2: List[int]
+a3: List[int, str]  # E: "list" expects 1 type argument, but 2 given
+
+reveal_type(a1)  # N: Revealed type is "builtins.list[Any]"
+reveal_type(a2)  # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(a3)  # N: Revealed type is "builtins.list[builtins.int]"
+
+b1: Dict
+b2: Dict[int]  # E: "dict" expects 2 type arguments, but 1 given
+b3: Dict[int, str]
+b4: Dict[int, str, bool]  # E: "dict" expects 2 type arguments, but 3 given
+
+reveal_type(b1)  # N: Revealed type is "builtins.dict[Any, Any]"
+reveal_type(b2)  # N: Revealed type is "builtins.dict[builtins.int, Any]"
+reveal_type(b3)  # N: Revealed type is "builtins.dict[builtins.int, builtins.str]"
+reveal_type(b4)  # N: Revealed type is "builtins.dict[builtins.int, builtins.str]"
+[builtins fixtures/dict.pyi]
+
 
 -- Overloads + generics
 -- --------------------

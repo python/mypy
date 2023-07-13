@@ -1704,16 +1704,45 @@ def fix_instance(
 
         return
     # Invalid number of type parameters.
-    fail(
-        wrong_type_arg_count(len(t.type.type_vars), str(len(t.args)), t.type.name),
-        t,
-        code=codes.TYPE_ARG,
-    )
+    n = len(t.type.type_vars)
+    fail(wrong_type_arg_count(n, str(len(t.args)), t.type.name), t, code=codes.TYPE_ARG)
     # Construct the correct number of type arguments, as
     # otherwise the type checker may crash as it expects
-    # things to be right.
-    t.args = tuple(AnyType(TypeOfAny.from_error) for _ in t.type.type_vars)
-    fix_type_var_tuple_argument(AnyType(TypeOfAny.from_error), t)
+    # things to be right. Reuse existing args if possible.
+    # Fill missing ones with Any.
+    any_type = AnyType(TypeOfAny.from_error)
+    if t.type.has_type_var_tuple_type:
+        # If type has a TypeVarTuple, assume that args are missing.
+        assert t.type.type_var_tuple_prefix is not None
+        assert t.type.type_var_tuple_suffix is not None
+        # Add args until the TypeVarTuple. Fill with Any if necessary.
+        args = [
+            *t.args[: t.type.type_var_tuple_prefix],
+            *[any_type] * (t.type.type_var_tuple_prefix - len(t.args)),
+        ]
+        if t.type.type_var_tuple_suffix == 0:
+            # If TypeVarTuple is last TypeVar, add *tuple[Any, ...].
+            # There are already args missing before that.
+            tvt = t.type.defn.type_vars[t.type.type_var_tuple_prefix]
+            assert isinstance(tvt, TypeVarTupleType)
+            args.append(UnpackType(Instance(tvt.tuple_fallback.type, [any_type])))
+        else:
+            # There are TypeVars after the TypeVarTuple, fill these first.
+            # As there are already too few args, the type for TypeVarTuple
+            # must be *tuple[()].
+            args.extend(
+                [
+                    *t.args[t.type.type_var_tuple_prefix :],
+                    *[any_type]
+                    * (
+                        t.type.type_var_tuple_suffix
+                        - max(0, len(t.args) - t.type.type_var_tuple_prefix)
+                    ),
+                ]
+            )
+        t.args = tuple(args)
+    else:
+        t.args = tuple([*t.args[:n], *[any_type] * (n - len(t.args))])
     t.invalid = True
 
 

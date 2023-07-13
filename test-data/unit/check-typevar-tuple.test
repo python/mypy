@@ -538,6 +538,54 @@ y: Array2[int]
 takes_empty_array2(y)
 [builtins fixtures/tuple.pyi]
 
+[case testTypeVarTuplePep646WrongArgCount]
+from typing import Generic, TypeVar
+from typing_extensions import TypeVarTuple, Unpack
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+Ts = TypeVarTuple("Ts")
+
+class A(Generic[T1, T2, Unpack[Ts]]): ...
+
+def f1(
+    a1: A,
+    a2: A[int],  # E: "A" expects 3 type arguments, but 1 given
+    a3: A[int, int],
+    a4: A[int, int, int],
+) -> None:
+    reveal_type(a1)  # N: Revealed type is "__main__.A[Any, Any, Unpack[builtins.tuple[Any, ...]]]"
+    reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int, Any, Unpack[builtins.tuple[Any, ...]]]"
+    reveal_type(a3)  # N: Revealed type is "__main__.A[builtins.int, builtins.int]"
+    reveal_type(a4)  # N: Revealed type is "__main__.A[builtins.int, builtins.int, builtins.int]"
+
+class B(Generic[T1, Unpack[Ts], T2]): ...
+
+def f2(
+    b1: B,
+    b2: B[int],  # E: "B" expects 3 type arguments, but 1 given
+    b3: B[int, int],
+    b4: B[int, int, int],
+) -> None:
+    reveal_type(b1)  # N: Revealed type is "__main__.B[Any, Unpack[builtins.tuple[Any, ...]], Any]"
+    reveal_type(b2)  # N: Revealed type is "__main__.B[builtins.int, Any]"
+    reveal_type(b3)  # N: Revealed type is "__main__.B[builtins.int, builtins.int]"
+    reveal_type(b4)  # N: Revealed type is "__main__.B[builtins.int, builtins.int, builtins.int]"
+
+class C(Generic[Unpack[Ts], T1, T2]): ...
+
+def f3(
+    c1: C,
+    c2: C[int],  # E: "C" expects 3 type arguments, but 1 given
+    c3: C[int, int],
+    c4: C[int, int, int],
+) -> None:
+    reveal_type(c1)  # N: Revealed type is "__main__.C[Unpack[builtins.tuple[Any, ...]], Any, Any]"
+    reveal_type(c2)  # N: Revealed type is "__main__.C[builtins.int, Any]"
+    reveal_type(c3)  # N: Revealed type is "__main__.C[builtins.int, builtins.int]"
+    reveal_type(c4)  # N: Revealed type is "__main__.C[builtins.int, builtins.int, builtins.int]"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeVarTuplePep646CallableStarArgs]
 from typing import Tuple, Callable
 from typing_extensions import Unpack, TypeVarTuple
