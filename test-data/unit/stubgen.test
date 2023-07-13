@@ -127,10 +127,52 @@ class A:
 
 def g() -> None: ...
 
-[case testVariable]
-x = 1
+[case testVariables]
+i = 1
+s = 'a'
+f = 1.5
+c1 = 1j
+c2 = 0j + 1
+bl1 = True
+bl2 = False
+bts = b''
 [out]
-x: int
+i: int
+s: str
+f: float
+c1: complex
+c2: complex
+bl1: bool
+bl2: bool
+bts: bytes
+
+[case testVariablesWithUnary]
+i = +-1
+f = -1.5
+c1 = -1j
+c2 = -1j + 1
+bl1 = not True
+bl2 = not not False
+[out]
+i: int
+f: float
+c1: complex
+c2: complex
+bl1: bool
+bl2: bool
+
+[case testVariablesWithUnaryWrong]
+i = not +1
+bl1 = -True
+bl2 = not -False
+bl3 = -(not False)
+[out]
+from _typeshed import Incomplete
+
+i: Incomplete
+bl1: Incomplete
+bl2: Incomplete
+bl3: Incomplete
 
 [case testAnnotatedVariable]
 x: int = 1
