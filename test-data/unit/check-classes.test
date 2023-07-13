@@ -7725,10 +7725,14 @@ class D:
     def __new__(cls) -> NoReturn: ...
     def __init__(self) -> NoReturn: ...
 
-reveal_type(A())  # N: Revealed type is "<nothing>"
-reveal_type(B())  # N: Revealed type is "<nothing>"
-reveal_type(C())  # N: Revealed type is "<nothing>"
-reveal_type(D())  # N: Revealed type is "<nothing>"
+if object():
+    reveal_type(A())  # N: Revealed type is "<nothing>"
+if object():
+    reveal_type(B())  # N: Revealed type is "<nothing>"
+if object():
+    reveal_type(C())  # N: Revealed type is "<nothing>"
+if object():
+    reveal_type(D())  # N: Revealed type is "<nothing>"
 
 [case testOverloadedNewAndInitNoReturn]
 from typing import NoReturn, overload
@@ -7767,13 +7771,20 @@ class D:
     def __init__(self, a: int) -> None: ...
     def __init__(self, a: int = ...) -> None: ...
 
-reveal_type(A())  # N: Revealed type is "<nothing>"
+if object():
+    reveal_type(A())  # N: Revealed type is "<nothing>"
 reveal_type(A(1))  # N: Revealed type is "__main__.A"
-reveal_type(B())  # N: Revealed type is "<nothing>"
+
+if object():
+    reveal_type(B())  # N: Revealed type is "<nothing>"
 reveal_type(B(1))  # N: Revealed type is "__main__.B"
-reveal_type(C())  # N: Revealed type is "<nothing>"
+
+if object():
+    reveal_type(C())  # N: Revealed type is "<nothing>"
 reveal_type(C(1))  # N: Revealed type is "__main__.C"
-reveal_type(D())  # N: Revealed type is "<nothing>"
+
+if object():
+    reveal_type(D())  # N: Revealed type is "<nothing>"
 reveal_type(D(1))  # N: Revealed type is "__main__.D"
 
 [case testClassScopeImportWithWrapperAndError]

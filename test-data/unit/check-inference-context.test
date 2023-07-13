@@ -625,8 +625,10 @@ reveal_type((lambda x, y: x + y)(1, 2))  # N: Revealed type is "builtins.int"
 reveal_type((lambda s, i: s)(i=0, s='x')) # N: Revealed type is "Literal['x']?"
 reveal_type((lambda s, i: i)(i=0, s='x')) # N: Revealed type is "Literal[0]?"
 reveal_type((lambda x, s, i: x)(1.0, i=0, s='x')) # N: Revealed type is "builtins.float"
-(lambda x, s, i: x)() # E: Too few arguments
-(lambda: 0)(1) # E: Too many arguments
+if object():
+    (lambda x, s, i: x)() # E: Too few arguments
+if object():
+    (lambda: 0)(1) # E: Too many arguments
 -- varargs are not handled, but it should not crash
 reveal_type((lambda *k, s, i: i)(type, i=0, s='x')) # N: Revealed type is "Any"
 reveal_type((lambda s, *k, i: i)(i=0, s='x')) # N: Revealed type is "Any"

@@ -5413,7 +5413,8 @@ reveal_type(z)
 [out]
 tmp/c.py:2: note: Revealed type is "a.<subclass of "A" and "B">"
 [out2]
-tmp/c.py:2: note: Revealed type is "a.A"
+tmp/b.py:2: error: Cannot determine type of "y"
+tmp/c.py:2: note: Revealed type is "Any"
 
 [case testIsInstanceAdHocIntersectionIncrementalUnreachaableToIntersection]
 import c
@@ -5444,7 +5445,8 @@ from b import z
 reveal_type(z)
 [builtins fixtures/isinstance.pyi]
 [out]
-tmp/c.py:2: note: Revealed type is "a.A"
+tmp/b.py:2: error: Cannot determine type of "y"
+tmp/c.py:2: note: Revealed type is "Any"
 [out2]
 tmp/c.py:2: note: Revealed type is "a.<subclass of "A" and "B">"
 
