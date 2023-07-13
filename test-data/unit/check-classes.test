@@ -5327,10 +5327,10 @@ x: TD
 x1 = TD({'x': []})
 y: NM
 y1 = NM(x=[])
-reveal_type(x) # N: Revealed type is "TypedDict('__main__.TD', {'x': builtins.list[Any]})"
-reveal_type(x1) # N: Revealed type is "TypedDict('__main__.TD', {'x': builtins.list[Any]})"
-reveal_type(y) # N: Revealed type is "Tuple[builtins.list[Any], fallback=__main__.NM]"
-reveal_type(y1) # N: Revealed type is "Tuple[builtins.list[Any], fallback=__main__.NM]"
+reveal_type(x) # N: Revealed type is "TypedDict('__main__.TD', {'x': builtins.list[builtins.int]})"
+reveal_type(x1) # N: Revealed type is "TypedDict('__main__.TD', {'x': builtins.list[builtins.int]})"
+reveal_type(y) # N: Revealed type is "Tuple[builtins.list[builtins.int], fallback=__main__.NM]"
+reveal_type(y1) # N: Revealed type is "Tuple[builtins.list[builtins.int], fallback=__main__.NM]"
 [builtins fixtures/dict.pyi]
 [out]
 

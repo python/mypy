@@ -536,6 +536,7 @@ b = A.B('') # E: Argument 1 to "B" has incompatible type "str"; expected "int"
 reveal_type(b) # N: Revealed type is "__main__.A.B"
 reveal_type(b.x) # N: Revealed type is "builtins.int"
 reveal_type(b.f()) # N: Revealed type is "builtins.str"
+
 [case testNewAnalyzerGenerics]
 from typing import TypeVar, Generic
 
@@ -553,7 +554,7 @@ c2: C[int, str] # E: "C" expects 1 type argument, but 2 given
 c3: C
 c = C('') # E: Argument 1 to "C" has incompatible type "str"; expected "int"
 reveal_type(c.get()) # N: Revealed type is "builtins.int"
-reveal_type(c2) # N: Revealed type is "__main__.C[Any]"
+reveal_type(c2) # N: Revealed type is "__main__.C[builtins.int]"
 reveal_type(c3) # N: Revealed type is "__main__.C[Any]"
 [case testNewAnalyzerGenericsTypeVarForwardRef]
 from typing import TypeVar, Generic
@@ -1817,8 +1818,8 @@ def func(x: List[C[T]]) -> T:
 x: A
 A = List[C[int, str]]  # E: "C" expects 1 type argument, but 2 given
 
-reveal_type(x)  # N: Revealed type is "builtins.list[__main__.C[Any]]"
-reveal_type(func(x))  # N: Revealed type is "Any"
+reveal_type(x)  # N: Revealed type is "builtins.list[__main__.C[builtins.int]]"
+reveal_type(func(x))  # N: Revealed type is "builtins.int"
 
 
 [builtins fixtures/list.pyi]
