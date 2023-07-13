@@ -1797,7 +1797,8 @@ def f5(x: Literal[1], y: Union[Literal[1], Literal[2]]) -> None: pass
 def f6(x: Optional[Literal[1]], y: Optional[Literal[2]]) -> None: pass
 
 reveal_type(unify(f1))  # N: Revealed type is "Literal[1]"
-reveal_type(unify(f2))  # N: Revealed type is "<nothing>"
+if object():
+    reveal_type(unify(f2))  # N: Revealed type is "<nothing>"
 reveal_type(unify(f3))  # N: Revealed type is "Literal[1]"
 reveal_type(unify(f4))  # N: Revealed type is "Literal[1]"
 reveal_type(unify(f5))  # N: Revealed type is "Literal[1]"
