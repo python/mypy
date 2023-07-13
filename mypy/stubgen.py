@@ -80,6 +80,7 @@ from mypy.nodes import (
     CallExpr,
     ClassDef,
     ComparisonExpr,
+    ComplexExpr,
     Decorator,
     DictExpr,
     EllipsisExpr,
@@ -1396,6 +1397,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def get_str_type_of_node(
         self, rvalue: Expression, can_infer_optional: bool = False, can_be_any: bool = True
     ) -> str:
+        rvalue = self.unwrap_unary_expr(rvalue)
+
         if isinstance(rvalue, IntExpr):
             return "int"
         if isinstance(rvalue, StrExpr):
@@ -1404,8 +1407,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return "bytes"
         if isinstance(rvalue, FloatExpr):
             return "float"
-        if isinstance(rvalue, UnaryExpr) and isinstance(rvalue.expr, IntExpr):
-            return "int"
+        if isinstance(rvalue, ComplexExpr):  # 1j
+            return "complex"
+        if isinstance(rvalue, OpExpr) and rvalue.op in ("-", "+"):  # -1j + 1
+            if isinstance(self.unwrap_unary_expr(rvalue.left), ComplexExpr) or isinstance(
+                self.unwrap_unary_expr(rvalue.right), ComplexExpr
+            ):
+                return "complex"
         if isinstance(rvalue, NameExpr) and rvalue.name in ("True", "False"):
             return "bool"
         if can_infer_optional and isinstance(rvalue, NameExpr) and rvalue.name == "None":
@@ -1416,6 +1424,12 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return self.typing_name("Incomplete")
         else:
             return ""
+
+    def unwrap_unary_expr(self, expr: Expression) -> Expression:
+        # Unwrap (possibly nested) unary expressions:
+        while isinstance(expr, UnaryExpr):
+            expr = expr.expr
+        return expr
 
     def print_annotation(self, t: Type) -> str:
         printer = AnnotationPrinter(self)
