@@ -12,7 +12,7 @@ a = 5  # E: Incompatible types in assignment (expression has type "int", variabl
 b: str = 5  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 zzz: int
-zzz: str  # E: Name "zzz" already defined on line 10
+zzz: str  # E: Name "zzz" already defined on line 9
 [out]
 
 [case testNewSyntaxWithDict]
@@ -84,10 +84,10 @@ class X:
     x.x: int
 
 [out]
-main:4: error: Unexpected type declaration
-main:4: error: Unsupported target for indexed assignment ("str")
-main:5: error: Type cannot be declared in assignment to non-self attribute
-main:5: error: "str" has no attribute "x"
+main:3: error: Unexpected type declaration
+main:3: error: Unsupported target for indexed assignment ("str")
+main:4: error: Type cannot be declared in assignment to non-self attribute
+main:4: error: "str" has no attribute "x"
 
 [case testNewSyntaxFStringBasics]
 f'foobar'
@@ -110,8 +110,8 @@ f'{1 + ""}'
 f'.{1 + ""}'
 [builtins fixtures/f_string.pyi]
 [out]
+main:1: error: Unsupported operand types for + ("int" and "str")
 main:2: error: Unsupported operand types for + ("int" and "str")
-main:3: error: Unsupported operand types for + ("int" and "str")
 
 [case testNewSyntaxFStringParseFormatOptions]
 value = 10.5142

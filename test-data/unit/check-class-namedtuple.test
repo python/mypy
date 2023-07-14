@@ -354,16 +354,10 @@ import typing
 
 class X(typing.NamedTuple):
     x: int
-    y = 1
-    x.x: int
+    y = 1  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+    x.x: int  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
     z: str = 'z'
-    aa: int
-
-[out]
-main:6: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
-main:7: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
-main:9: error: Non-default NamedTuple fields cannot follow default fields
-
+    aa: int  # E: Non-default NamedTuple fields cannot follow default fields
 [builtins fixtures/list.pyi]
 
 [case testNewNamedTupleWithoutTypesSpecified]
@@ -382,10 +376,8 @@ class N(NamedTuple):
     y: str
 
 def f(a: Type[N]):
-    a()
+    a()  # E: Missing positional arguments "x", "y" in call to "N"
 [builtins fixtures/list.pyi]
-[out]
-main:9: error: Missing positional arguments "x", "y" in call to "N"
 
 [case testNewNamedTupleWithDefaults]
 from typing import List, NamedTuple, Optional
