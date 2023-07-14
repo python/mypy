@@ -57,8 +57,6 @@ class DefaultPlugin(Plugin):
 
         if fullname in ("attr.evolve", "attrs.evolve", "attr.assoc", "attrs.assoc"):
             return attrs.evolve_function_sig_callback
-        elif fullname in ("attr.fields", "attrs.fields"):
-            return attrs.fields_function_sig_callback
         elif fullname == "dataclasses.replace":
             return dataclasses.replace_function_sig_callback
         return None
