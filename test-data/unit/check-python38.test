@@ -223,7 +223,7 @@ h(arg=0)  # E: Unexpected keyword argument "arg" for "h"
 i(arg=0)  # E: Unexpected keyword argument "arg"
 
 [case testWalrus]
-# flags: --strict-optional --python-version 3.8
+# flags: --python-version 3.8
 from typing import NamedTuple, Optional, List
 from typing_extensions import Final
 
@@ -427,7 +427,7 @@ else:
 [builtins fixtures/list.pyi]
 
 [case testWalrusConditionalTypeCheck]
-# flags: --strict-optional --python-version 3.8
+# flags: --python-version 3.8
 from typing import Optional
 
 maybe_str: Optional[str]
@@ -729,7 +729,6 @@ def f1() -> None:
 [builtins fixtures/dict.pyi]
 
 [case testNarrowOnSelfInGeneric]
-# flags: --strict-optional
 from typing import Generic, TypeVar, Optional
 
 T = TypeVar("T", int, str)
@@ -778,7 +777,6 @@ class C:
 [builtins fixtures/list.pyi]
 
 [case testNarrowedVariableInNestedModifiedInWalrus]
-# flags: --strict-optional
 from typing import Optional
 
 def walrus_with_nested_error(x: Optional[str]) -> None:

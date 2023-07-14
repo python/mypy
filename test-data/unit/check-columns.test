@@ -27,7 +27,6 @@ A().f(1, 1) # E:10: Argument 2 to "f" of "A" has incompatible type "int"; expect
 (A().f(1, 'hello', 'hi')) # E:2: Too many arguments for "f" of "A"
 
 [case testColumnsInvalidArgumentType]
-# flags: --strict-optional
 def f(x: int, y: str) -> None: ...
 def g(*x: int) -> None: pass
 def h(**x: int) -> None: pass

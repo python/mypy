@@ -1649,7 +1649,6 @@ foo(list((list(""), "")))
 [out]
 
 [case testNarrowTypeForDictKeys]
-# flags: --strict-optional
 from typing import Dict, KeysView, Optional
 
 d: Dict[str, int]

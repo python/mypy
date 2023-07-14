@@ -427,7 +427,7 @@ async def h() -> NoReturn:  # E: Implicit return in function which does not retu
 [typing fixtures/typing-async.pyi]
 
 [case testNoWarnNoReturn]
-# flags: --no-warn-no-return --strict-optional
+# flags: --no-warn-no-return
 import typing
 
 def implicit_optional_return(arg) -> typing.Optional[str]:

@@ -305,7 +305,6 @@ reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
 [builtins fixtures/bool.pyi]
 
 [case testNoneAliasStrict]
-# flags: --strict-optional
 from typing import Optional, Union
 void = type(None)
 x: int

@@ -567,7 +567,6 @@ x = 1
 x = 1
 
 [case testAssignToFuncDefViaImport]
-# flags: --strict-optional
 
 # Errors differ with the new analyzer. (Old analyzer gave error on the
 # input, which is maybe better, but no error about f, which seems

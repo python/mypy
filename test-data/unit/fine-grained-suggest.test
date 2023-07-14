@@ -62,7 +62,6 @@ foo('3', '4')
 ==
 
 [case testSuggestInferFunc1]
-# flags: --strict-optional
 # suggest: foo.foo
 [file foo.py]
 def foo(arg, lol=None):
@@ -85,7 +84,6 @@ def untyped(x) -> None:
 ==
 
 [case testSuggestInferFunc2]
-# flags: --strict-optional
 # suggest: foo.foo
 [file foo.py]
 def foo(arg):
@@ -222,7 +220,6 @@ Foo('lol')
 ==
 
 [case testSuggestInferMethod1]
-# flags: --strict-optional
 # suggest: --no-any foo.Foo.foo
 [file foo.py]
 class Foo:
@@ -248,7 +245,6 @@ def bar() -> None:
 ==
 
 [case testSuggestInferMethod2]
-# flags: --strict-optional
 # suggest: foo.Foo.foo
 [file foo.py]
 class Foo:
@@ -275,7 +271,6 @@ def bar() -> None:
 ==
 
 [case testSuggestInferMethod3]
-# flags: --strict-optional
 # suggest2: foo.Foo.foo
 [file foo.py]
 class Foo:
@@ -372,7 +367,6 @@ def has_nested(x):
 ==
 
 [case testSuggestInferFunctionUnreachable]
-# flags: --strict-optional
 # suggest: foo.foo
 [file foo.py]
 import sys
@@ -390,7 +384,6 @@ foo('test')
 ==
 
 [case testSuggestInferMethodStep2]
-# flags: --strict-optional
 # suggest2: foo.Foo.foo
 [file foo.py]
 class Foo:
@@ -417,7 +410,6 @@ def bar() -> None:
 (Union[str, int, None], Optional[int]) -> Union[int, str]
 
 [case testSuggestInferNestedMethod]
-# flags: --strict-optional
 # suggest: foo.Foo.Bar.baz
 [file foo.py]
 class Foo:
@@ -435,7 +427,6 @@ def bar() -> None:
 ==
 
 [case testSuggestCallable]
-# flags: --strict-optional
 # suggest: foo.foo
 # suggest: foo.bar
 # suggest: --flex-any=0.9 foo.bar
@@ -483,7 +474,6 @@ No guesses that match criteria!
 ==
 
 [case testSuggestNewSemanal]
-# flags: --strict-optional
 # suggest: foo.Foo.foo
 # suggest: foo.foo
 [file foo.py]
@@ -521,7 +511,6 @@ def baz() -> None:
 ==
 
 [case testSuggestInferFuncDecorator1]
-# flags: --strict-optional
 # suggest: foo.foo
 [file foo.py]
 from typing import TypeVar
@@ -543,7 +532,6 @@ def bar() -> None:
 ==
 
 [case testSuggestInferFuncDecorator2]
-# flags: --strict-optional
 # suggest: foo.foo
 [file foo.py]
 from typing import TypeVar, Callable, Any
@@ -565,7 +553,6 @@ def bar() -> None:
 ==
 
 [case testSuggestInferFuncDecorator3]
-# flags: --strict-optional
 # suggest: foo.foo
 [file foo.py]
 from typing import TypeVar, Callable, Any
@@ -589,7 +576,6 @@ def bar() -> None:
 ==
 
 [case testSuggestInferFuncDecorator4]
-# flags: --strict-optional
 # suggest: foo.foo
 [file dec.py]
 from typing import TypeVar, Callable, Any
@@ -616,7 +602,6 @@ def bar() -> None:
 ==
 
 [case testSuggestFlexAny1]
-# flags: --strict-optional
 # suggest: --flex-any=0.4 m.foo
 # suggest: --flex-any=0.7 m.foo
 # suggest: --flex-any=0.4 m.bar
@@ -661,7 +646,6 @@ No guesses that match criteria!
 
 
 [case testSuggestFlexAny2]
-# flags: --strict-optional
 # suggest: --flex-any=0.5 m.baz
 # suggest: --flex-any=0.0 m.baz
 # suggest: --flex-any=0.5 m.F.foo
@@ -693,7 +677,6 @@ No guesses that match criteria!
 ==
 
 [case testSuggestClassMethod]
-# flags: --strict-optional
 # suggest: foo.F.bar
 # suggest: foo.F.baz
 # suggest: foo.F.eggs
