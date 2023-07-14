@@ -274,9 +274,7 @@ file:3: error: Inconsistent use of "*" in function signature
 file:3: error: Inconsistent use of "**" in function signature
 
 [case testPrintStatementInPython37Plus]
-print 1
-[out]
-file:2: error: Missing parentheses in call to 'print'. Did you mean print(1)?
+print 1  # E: Missing parentheses in call to 'print'. Did you mean print(1)?
 
 [case testInvalidConditionInConditionalExpression]
 1 if 2, 3 else 4
