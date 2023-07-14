@@ -2521,12 +2521,7 @@ class SemanticAnalyzer(
                 elif fullname in self.missing_modules:
                     missing_submodule = True
             # If it is still not resolved, check for a module level __getattr__
-            if (
-                module
-                and not node
-                and module.is_stub
-                and "__getattr__" in module.names
-            ):
+            if module and not node and module.is_stub and "__getattr__" in module.names:
                 # We store the fullname of the original definition so that we can
                 # detect whether two imported names refer to the same thing.
                 fullname = module_id + "." + id
@@ -5446,8 +5441,8 @@ class SemanticAnalyzer(
                 blocker=True,
             )
         elif self.function_stack[-1].is_coroutine:
-                self.function_stack[-1].is_generator = True
-                self.function_stack[-1].is_async_generator = True
+            self.function_stack[-1].is_generator = True
+            self.function_stack[-1].is_async_generator = True
         else:
             self.function_stack[-1].is_generator = True
         if e.expr:
