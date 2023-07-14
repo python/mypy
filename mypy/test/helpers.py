@@ -345,7 +345,7 @@ def parse_options(
         options.force_union_syntax = True
 
     # Allow custom python version to override testfile_pyversion.
-    if all(flag.split("=")[0] not in ["--python-version", "-2", "--py2"] for flag in flag_list):
+    if all(flag.split("=")[0] != "--python-version" for flag in flag_list):
         options.python_version = testfile_pyversion(testcase.file)
 
     if testcase.config.getoption("--mypy-verbose"):
