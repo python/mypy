@@ -1200,9 +1200,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     elif isinstance(arg_type, TypeVarType):
                         # Refuse covariant parameter type variables
                         # TODO: check recursively for inner type variables
-                        if arg_type.variance == COVARIANT and defn.name not in (
-                            "__init__",
-                            "__new__",
+                        if (
+                            arg_type.variance == COVARIANT
+                            and defn.name not in ("__init__", "__new__", "__post_init__")
+                            and not is_private(defn.name)  # private methods are not inherited
                         ):
                             ctx: Context = arg_type
                             if ctx.line < 0:
