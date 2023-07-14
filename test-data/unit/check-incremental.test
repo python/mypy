@@ -5508,7 +5508,6 @@ class Foo:
 class C: pass
 
 [case testIncrementalNestedNamedTuple]
-# flags: --python-version 3.6
 import a
 
 [file a.py]

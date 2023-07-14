@@ -1,10 +1,4 @@
-[case testUnderscoresRequire36]
-# flags: --python-version 3.5
-x = 1000_000  # E: Underscores in numeric literals are only supported in Python 3.6 and greater
-[out]
-
 [case testUnderscoresBasics]
-# flags: --python-version 3.6
 x: int
 x = 1000_000
 x = 0x_FF_FF_FF_FF

@@ -2571,8 +2571,7 @@ import n
 [file n.pyi]
 class C: pass
 
-[case testNewAnalyzerModuleGetAttrInPython36]
-# flags: --python-version 3.6
+[case testNewAnalyzerModuleGetAttrInPython36Plus]
 import m
 import n
 

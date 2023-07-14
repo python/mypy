@@ -596,7 +596,7 @@ main:13: error: Argument 2 to "Node" has incompatible type "int"; expected "str"
 
 -- Error formatting is a bit different (and probably better) with new analyzer
 [case testGenericTypeAliasesWrongAliases]
-# flags: --show-column-numbers --python-version 3.6 --no-strict-optional
+# flags: --show-column-numbers --no-strict-optional
 from typing import TypeVar, Generic, List, Callable, Tuple, Union
 T = TypeVar('T')
 S = TypeVar('S')

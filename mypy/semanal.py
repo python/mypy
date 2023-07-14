@@ -2524,7 +2524,7 @@ class SemanticAnalyzer(
             if (
                 module
                 and not node
-                and (module.is_stub or self.options.python_version >= (3, 7))
+                and module.is_stub
                 and "__getattr__" in module.names
             ):
                 # We store the fullname of the original definition so that we can
@@ -5446,9 +5446,6 @@ class SemanticAnalyzer(
                 blocker=True,
             )
         elif self.function_stack[-1].is_coroutine:
-            if self.options.python_version < (3, 6):
-                self.fail('"yield" in async function', e, serious=True, blocker=True)
-            else:
                 self.function_stack[-1].is_generator = True
                 self.function_stack[-1].is_async_generator = True
         else:
@@ -5721,9 +5718,7 @@ class SemanticAnalyzer(
                 sym = SymbolTableNode(GDEF, self.modules[fullname])
             elif self.is_incomplete_namespace(module):
                 self.record_incomplete_ref()
-            elif "__getattr__" in names and (
-                node.is_stub or self.options.python_version >= (3, 7)
-            ):
+            elif "__getattr__" in names and node.is_stub:
                 gvar = self.create_getattr_var(names["__getattr__"], name, fullname)
                 if gvar:
                     sym = SymbolTableNode(GDEF, gvar)

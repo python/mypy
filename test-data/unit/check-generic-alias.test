@@ -200,7 +200,6 @@ t23: collections.abc.ValuesView[str]
 
 
 [case testGenericBuiltinTupleTyping]
-# flags: --python-version 3.6
 from typing import Tuple
 
 t01: Tuple = ()
@@ -248,7 +247,6 @@ reveal_type(tuple[int, ...]())  # N: Revealed type is "builtins.tuple[builtins.i
 [builtins fixtures/tuple.pyi]
 
 [case testTypeAliasWithBuiltinTupleInStub]
-# flags: --python-version 3.6
 import m
 reveal_type(m.a)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 reveal_type(m.b)  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
@@ -261,7 +259,6 @@ b: B
 [builtins fixtures/tuple.pyi]
 
 [case testTypeAliasWithBuiltinListInStub]
-# flags: --python-version 3.6
 import m
 reveal_type(m.a)  # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(m.b)  # N: Revealed type is "builtins.list[builtins.list[builtins.int]]"
@@ -280,7 +277,6 @@ d: type[str]
 
 
 [case testTypeAliasWithBuiltinListAliasInStub]
-# flags: --python-version 3.6
 import m
 reveal_type(m.a()[0])  # N: Revealed type is "builtins.int"
 
