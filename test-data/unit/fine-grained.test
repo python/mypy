@@ -4707,7 +4707,7 @@ x: Optional[int]
 y: int
 [out]
 ==
-main:3: error: Incompatible types in assignment (expression has type "Optional[int]", variable has type "int")
+main:2: error: Incompatible types in assignment (expression has type "Optional[int]", variable has type "int")
 
 [case testStrictOptionalFunction]
 import a
@@ -4725,7 +4725,7 @@ def g(x: int) -> None:
     pass
 [out]
 ==
-main:6: error: Argument 1 to "g" has incompatible type "Optional[int]"; expected "int"
+main:5: error: Argument 1 to "g" has incompatible type "Optional[int]"; expected "int"
 
 [case testStrictOptionalMethod]
 import a
@@ -4746,7 +4746,7 @@ class B:
         pass
 [out]
 ==
-main:7: error: Argument 1 to "g" of "B" has incompatible type "Optional[int]"; expected "int"
+main:6: error: Argument 1 to "g" of "B" has incompatible type "Optional[int]"; expected "int"
 
 [case testPerFileStrictOptionalModule]
 import a
@@ -10057,7 +10057,7 @@ class Base:
     def meth(self) -> int: ...
 [out]
 ==
-main:6: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
+main:5: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
 
 [case testAbstractBodyTurnsEmptyProtocol]
 from b import Base
@@ -10076,7 +10076,7 @@ class Base(Protocol):
     def meth(self) -> int: ...
 [out]
 ==
-main:6: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
+main:5: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
 
 [case testPrettyMessageSorting]
 # flags: --pretty
