@@ -102,6 +102,7 @@ from mypy.nodes import (
     OverloadedFuncDef,
     Statement,
     StrExpr,
+    TempNode,
     TupleExpr,
     TypeInfo,
     UnaryExpr,
@@ -637,6 +638,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._state = EMPTY
         self._toplevel_names: list[str] = []
         self._include_private = include_private
+        self._current_class: ClassDef | None = None
         self.import_tracker = ImportTracker()
         # Was the tree semantically analysed before?
         self.analyzed = analyzed
@@ -886,6 +888,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         return resolved_name
 
     def visit_class_def(self, o: ClassDef) -> None:
+        self._current_class = o
         self.method_names = find_method_names(o.defs.body)
         sep: int | None = None
         if not self._indent and self._state != EMPTY:
@@ -922,6 +925,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         else:
             self._state = CLASS
         self.method_names = set()
+        self._current_class = None
 
     def get_base_types(self, cdef: ClassDef) -> list[str]:
         """Get list of base classes for a class."""
@@ -1330,7 +1334,20 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 typename += f"[{final_arg}]"
         else:
             typename = self.get_str_type_of_node(rvalue)
-        return f"{self._indent}{lvalue}: {typename}\n"
+        initializer = self.get_assign_initializer(rvalue)
+        return f"{self._indent}{lvalue}: {typename}{initializer}\n"
+
+    def get_assign_initializer(self, rvalue: Expression) -> str:
+        """Does this rvalue need some special initializer value?"""
+        if self._current_class and self._current_class.info:
+            # Current rules
+            # 1. Return `...` if we are dealing with `NamedTuple` and it has an existing default value
+            if self._current_class.info.is_named_tuple and not isinstance(rvalue, TempNode):
+                return " = ..."
+            # TODO: support other possible cases, where initializer is important
+
+        # By default, no initializer is required:
+        return ""
 
     def add(self, string: str) -> None:
         """Add text to generated stub."""

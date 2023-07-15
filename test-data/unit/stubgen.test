@@ -698,6 +698,27 @@ class Y(NamedTuple):
     a: int
     b: str
 
+[case testNamedTupleClassSyntax]
+from typing import NamedTuple
+
+class A(NamedTuple):
+    x: int
+    y: str = 'a'
+
+class B(A):
+    z1: str
+    z2 = 1
+[out]
+from typing import NamedTuple
+
+class A(NamedTuple):
+    x: int
+    y: str
+
+class B(A):
+    z1: str
+    z2: int
+
 [case testEmptyNamedtuple]
 import collections, typing
 X = collections.namedtuple('X', [])
