@@ -1728,7 +1728,6 @@ class MessageBuilder:
         self, node: SymbolNode, context: Context, python_version: tuple[int, int] | None = None
     ) -> None:
         hint = ""
-        has_variable_annotations = not python_version or python_version >= (3, 6)
         pep604_supported = not python_version or python_version >= (3, 10)
         # type to recommend the user adds
         recommended_type = None
@@ -1749,18 +1748,10 @@ class MessageBuilder:
                     type_dec = f"{type_dec}, {type_dec}"
                 recommended_type = f"{alias}[{type_dec}]"
         if recommended_type is not None:
-            if has_variable_annotations:
-                hint = f' (hint: "{node.name}: {recommended_type} = ...")'
-            else:
-                hint = f' (hint: "{node.name} = ...  # type: {recommended_type}")'
-
-        if has_variable_annotations:
-            needed = "annotation"
-        else:
-            needed = "comment"
+            hint = f' (hint: "{node.name}: {recommended_type} = ...")'
 
         self.fail(
-            f'Need type {needed} for "{unmangle(node.name)}"{hint}',
+            f'Need type annotation for "{unmangle(node.name)}"{hint}',
             context,
             code=codes.VAR_ANNOTATED,
         )

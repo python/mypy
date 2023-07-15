@@ -38,18 +38,7 @@ x.y
 x.z # E: "X" has no attribute "z"
 [builtins fixtures/tuple.pyi]
 
-[case testNamedTupleClassPython35]
-# flags: --python-version 3.5
-from typing import NamedTuple
-
-class A(NamedTuple):
-    x = 3  # type: int
-[builtins fixtures/tuple.pyi]
-[out]
-main:4: error: NamedTuple class syntax is only supported in Python 3.6
-
-[case testNamedTupleClassInStubPython35]
-# flags: --python-version 3.5
+[case testNamedTupleClassInStub]
 import foo
 
 [file foo.pyi]

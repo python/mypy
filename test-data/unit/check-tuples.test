@@ -1455,8 +1455,7 @@ x7, x8, y7, y8 = *points2, *points3 # E: Contiguous iterable with same type expe
 x9, y9, x10, y10, z5 = *points2, 1, *points2 # E: Contiguous iterable with same type expected
 [builtins fixtures/tuple.pyi]
 
-[case testAssignEmptyPy36]
-# flags: --python-version 3.6
+[case testAssignEmpty]
 () = []
 
 [case testAssignEmptyBogus]

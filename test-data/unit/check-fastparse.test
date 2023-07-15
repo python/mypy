@@ -31,7 +31,6 @@ def f(x):  # E: Invalid type comment or annotation
   pass
 
 [case testFastParseInvalidTypes3]
-# flags: --python-version 3.6
 # All of these should not crash
 from typing import Callable, Tuple, Iterable
 
