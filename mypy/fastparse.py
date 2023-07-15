@@ -238,8 +238,18 @@ def parse(
                     and TYPE_COMMENT_PATTERN.match(e.text)
                 ):
                     stripped_source = strip_comment_from_line(source, e.lineno)
-                    # TODO: log a note of what was stripped
-                    print(f"{e.lineno}: Stripped comment from {e.text}")
+                    errors.report(
+                        e.lineno or -1,
+                        e.offset or -1,
+                        # TODO: It would be nicer if the message included the line text via
+                        # `e.text.strip()`. However, I can't figure out how to make the unit
+                        # test pass, because the # N: <expected_result> in the unit test must
+                        # contain itself. If there was some partial matching mechanism for the
+                        # unit test comment, then we could make this work.
+                        "Ignored bad type comment",
+                        severity="note",
+                        code=codes.SYNTAX,
+                    )
                     return None, stripped_source
                 raise
             return ast, source
