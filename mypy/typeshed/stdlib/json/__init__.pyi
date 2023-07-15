@@ -1,4 +1,3 @@
-import sys
 from _typeshed import SupportsRead, SupportsWrite
 from collections.abc import Callable
 from typing import Any
@@ -7,8 +6,6 @@ from .decoder import JSONDecodeError as JSONDecodeError, JSONDecoder as JSONDeco
 from .encoder import JSONEncoder as JSONEncoder
 
 __all__ = ["dump", "dumps", "load", "loads", "JSONDecoder", "JSONDecodeError", "JSONEncoder"]
-if sys.version_info >= (3, 12):
-    __all__ += ["AttrDict"]
 
 def dumps(
     obj: Any,
@@ -62,9 +59,3 @@ def load(
     **kwds: Any,
 ) -> Any: ...
 def detect_encoding(b: bytes | bytearray) -> str: ...  # undocumented
-
-if sys.version_info >= (3, 12):
-    class AttrDict(dict[str, Any]):
-        def __getattr__(self, name: str) -> Any: ...
-        def __setattr__(self, name: str, value: Any) -> None: ...
-        def __delattr__(self, name: str) -> None: ...
