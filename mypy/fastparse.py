@@ -178,6 +178,7 @@ MISSING_FALLBACK: Final = FakeInfo("fallback can't be filled out until semanal")
 _dummy_fallback: Final = Instance(MISSING_FALLBACK, [], -1)
 
 TYPE_IGNORE_PATTERN: Final = re.compile(r"[^#]*#\s*type:\s*ignore\s*(.*)")
+TYPE_COMMENT_PATTERN: Final = re.compile(r"([^#]*)#\s*type:(.*)")
 
 
 def parse(
@@ -213,10 +214,46 @@ def parse(
         assert options.python_version[0] >= 3
         feature_version = options.python_version[1]
     try:
+        ignore_comment_errors = options and options.ignore_comment_errors
+
+        def try_parse_ast(source: str) -> tuple[AST | None, str]:
+            try:
+                ast = ast3_parse(source, fnam, "exec", feature_version=feature_version)
+            except SyntaxError as e:
+
+                def strip_comment(line: str) -> str:
+                    return re.sub(r"([^#]*).*(\r\n|\r|\n)?", r"\1\2", line)
+
+                def strip_comment_from_line(text: str, target_lineno: int) -> str:
+                    lines = text.splitlines(keepends=True)
+                    return "".join(
+                        line if lineno != target_lineno else strip_comment(line)
+                        for lineno, line in enumerate(lines, start=1)
+                    )
+
+                if (
+                    ignore_comment_errors
+                    and e.text
+                    and e.lineno
+                    and TYPE_COMMENT_PATTERN.match(e.text)
+                ):
+                    stripped_source = strip_comment_from_line(source, e.lineno)
+                    # TODO: log a note of what was stripped
+                    print(f"{e.lineno}: Stripped comment from {e.text}")
+                    return None, stripped_source
+                raise
+            return ast, source
+
         # Disable deprecation warnings about \u
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=DeprecationWarning)
-            ast = ast3_parse(source, fnam, "exec", feature_version=feature_version)
+            ast: AST | None = None
+            str_source = source if isinstance(source, str) else source.decode()
+            # The source will be parsed n + 1 times, where n is the number of malformed type
+            # comments in the source. While potentially expensive, source files with a large
+            # number of malformed comments should be rare.
+            while not ast:
+                ast, str_source = try_parse_ast(str_source)
 
         tree = ASTConverter(
             options=options,
