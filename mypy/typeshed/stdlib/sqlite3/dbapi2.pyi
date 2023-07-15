@@ -196,6 +196,25 @@ if sys.version_info >= (3, 11):
     SQLITE_WARNING: int
     SQLITE_WARNING_AUTOINDEX: int
 
+if sys.version_info >= (3, 12):
+    LEGACY_TRANSACTION_CONTROL: int
+    SQLITE_DBCONFIG_DEFENSIVE: int
+    SQLITE_DBCONFIG_DQS_DDL: int
+    SQLITE_DBCONFIG_DQS_DML: int
+    SQLITE_DBCONFIG_ENABLE_FKEY: int
+    SQLITE_DBCONFIG_ENABLE_FTS3_TOKENIZER: int
+    SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION: int
+    SQLITE_DBCONFIG_ENABLE_QPSG: int
+    SQLITE_DBCONFIG_ENABLE_TRIGGER: int
+    SQLITE_DBCONFIG_ENABLE_VIEW: int
+    SQLITE_DBCONFIG_LEGACY_ALTER_TABLE: int
+    SQLITE_DBCONFIG_LEGACY_FILE_FORMAT: int
+    SQLITE_DBCONFIG_NO_CKPT_ON_CLOSE: int
+    SQLITE_DBCONFIG_RESET_DATABASE: int
+    SQLITE_DBCONFIG_TRIGGER_EQP: int
+    SQLITE_DBCONFIG_TRUSTED_SCHEMA: int
+    SQLITE_DBCONFIG_WRITABLE_SCHEMA: int
+
 # Can take or return anything depending on what's in the registry.
 @overload
 def adapt(__obj: Any, __proto: Any) -> Any: ...
@@ -419,6 +438,7 @@ class Row:
     def __getitem__(self, __key: int | str) -> Any: ...
     @overload
     def __getitem__(self, __key: slice) -> tuple[Any, ...]: ...
+    def __hash__(self) -> int: ...
     def __iter__(self) -> Iterator[Any]: ...
     def __len__(self) -> int: ...
     # These return NotImplemented for anything that is not a Row.
