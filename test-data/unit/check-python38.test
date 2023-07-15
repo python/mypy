@@ -740,8 +740,8 @@ class C(Generic[T]):
             reveal_type(y)
         return None
 [out]
-main:10: note: Revealed type is "builtins.int"
-main:10: note: Revealed type is "builtins.str"
+main:9: note: Revealed type is "builtins.int"
+main:9: note: Revealed type is "builtins.str"
 
 [case testTypeGuardWithPositionalOnlyArg]
 # flags: --python-version 3.8

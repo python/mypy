@@ -1661,13 +1661,13 @@ class D:
     def __get__(self, inst: Base, own: Type[Base]) -> str: pass
 [builtins fixtures/bool.pyi]
 [out]
-main:5: error: Argument 2 to "__get__" of "D" has incompatible type "Type[A]"; expected "Type[Base]"
-main:5: note: Revealed type is "d.D"
-main:6: error: No overload variant of "__get__" of "D" matches argument types "A", "Type[A]"
-main:6: note: Possible overload variants:
-main:6: note:     def __get__(self, inst: None, own: Type[Base]) -> D
-main:6: note:     def __get__(self, inst: Base, own: Type[Base]) -> str
-main:6: note: Revealed type is "Any"
+main:4: error: Argument 2 to "__get__" of "D" has incompatible type "Type[A]"; expected "Type[Base]"
+main:4: note: Revealed type is "d.D"
+main:5: error: No overload variant of "__get__" of "D" matches argument types "A", "Type[A]"
+main:5: note: Possible overload variants:
+main:5: note:     def __get__(self, inst: None, own: Type[Base]) -> D
+main:5: note:     def __get__(self, inst: Base, own: Type[Base]) -> str
+main:5: note: Revealed type is "Any"
 
 [case testAccessingGenericNonDataDescriptor]
 from typing import TypeVar, Type, Generic, Any
@@ -1740,8 +1740,8 @@ class D(Generic[T, V]):
     def __get__(self, inst: T, own: Type[T]) -> V: pass
 [builtins fixtures/bool.pyi]
 [out]
-main:8: note: Revealed type is "d.D[__main__.A, builtins.int]"
-main:9: note: Revealed type is "d.D[__main__.A, builtins.str]"
+main:7: note: Revealed type is "d.D[__main__.A, builtins.int]"
+main:8: note: Revealed type is "d.D[__main__.A, builtins.str]"
 
 [case testAccessingGenericDescriptorFromClassBadOverload]
 from d import D
@@ -1760,11 +1760,11 @@ class D(Generic[T, V]):
     def __get__(self, inst: T, own: Type[T]) -> V: pass
 [builtins fixtures/bool.pyi]
 [out]
-main:5: error: No overload variant of "__get__" of "D" matches argument types "None", "Type[A]"
-main:5: note: Possible overload variants:
-main:5: note:     def __get__(self, inst: None, own: None) -> D[A, int]
-main:5: note:     def __get__(self, inst: A, own: Type[A]) -> int
-main:5: note: Revealed type is "Any"
+main:4: error: No overload variant of "__get__" of "D" matches argument types "None", "Type[A]"
+main:4: note: Possible overload variants:
+main:4: note:     def __get__(self, inst: None, own: None) -> D[A, int]
+main:4: note:     def __get__(self, inst: A, own: Type[A]) -> int
+main:4: note: Revealed type is "Any"
 
 [case testAccessingNonDataDescriptorSubclass]
 from typing import Any

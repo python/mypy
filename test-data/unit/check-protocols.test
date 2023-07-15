@@ -346,12 +346,12 @@ x: P = C() # Error!
 def f(x: P) -> None: pass
 f(C()) # Error!
 [out]
-main:9: error: Incompatible types in assignment (expression has type "C", variable has type "P")
-main:9: note: Following member(s) of "C" have conflicts:
-main:9: note:     x: expected "int", got "None"
-main:11: error: Argument 1 to "f" has incompatible type "C"; expected "P"
-main:11: note: Following member(s) of "C" have conflicts:
-main:11: note:     x: expected "int", got "None"
+main:8: error: Incompatible types in assignment (expression has type "C", variable has type "P")
+main:8: note: Following member(s) of "C" have conflicts:
+main:8: note:     x: expected "int", got "None"
+main:10: error: Argument 1 to "f" has incompatible type "C"; expected "P"
+main:10: note: Following member(s) of "C" have conflicts:
+main:10: note:     x: expected "int", got "None"
 
 -- Semanal errors in protocol types
 -- --------------------------------
