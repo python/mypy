@@ -1268,3 +1268,21 @@ def g() -> None:
         def foo(): ...
     foo()
 [builtins fixtures/dict.pyi]
+
+
+[case testNarrowingWithTupleOfTypes]
+from typing import Tuple, Type
+
+class Base: ...
+
+class Impl1(Base): ...
+class Impl2(Base): ...
+
+impls: Tuple[Type[Base], ...] = (Impl1, Impl2)
+some: object
+
+if isinstance(some, impls):
+    reveal_type(some)  # N: Revealed type is "__main__.Base"
+else:
+    reveal_type(some)  # N: Revealed type is "builtins.object"
+[builtins fixtures/dict.pyi]
