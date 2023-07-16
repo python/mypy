@@ -4592,7 +4592,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if int_type:
             return iterator, int_type
 
-
         if isinstance(iterable, TupleType):
             joined: Type = UninhabitedType()
             if iterable.partial_fallback.type.fullname != "builtins.tuple":
