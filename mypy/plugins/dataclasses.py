@@ -401,6 +401,7 @@ class DataclassTransformer:
             args=[attr.to_argument(self._cls.info, of="replace") for attr in attributes],
             return_type=NoneType(),
             is_staticmethod=True,
+            fictional_plugin_generated=True,
         )
 
     def _add_internal_post_init_method(self, attributes: list[DataclassAttribute]) -> None:
@@ -414,6 +415,7 @@ class DataclassTransformer:
                 if attr.is_init_var
             ],
             return_type=NoneType(),
+            fictional_plugin_generated=True,
         )
 
     def add_slots(
