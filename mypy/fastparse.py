@@ -178,7 +178,7 @@ MISSING_FALLBACK: Final = FakeInfo("fallback can't be filled out until semanal")
 _dummy_fallback: Final = Instance(MISSING_FALLBACK, [], -1)
 
 TYPE_IGNORE_PATTERN: Final = re.compile(r"[^#]*#\s*type:\s*ignore\s*(.*)")
-TYPE_COMMENT_PATTERN: Final = re.compile(r"([^#]*)#\s*type:(.*)")
+TYPE_COMMENT_PATTERN: Final = re.compile(r"([^#]*)(#\s*type:.*)")
 
 
 def parse(
@@ -214,7 +214,7 @@ def parse(
         assert options.python_version[0] >= 3
         feature_version = options.python_version[1]
     try:
-        ignore_comment_errors = options and options.ignore_comment_errors
+        ignore_comment_errors = options.ignore_comment_errors
 
         def try_parse_ast(source: str | bytes) -> tuple[AST | None, str | bytes]:
             try:
@@ -245,19 +245,13 @@ def parse(
                     and TYPE_COMMENT_PATTERN.match(e.text)
                 ):
                     stripped_source = strip_comment_from_line(source, e.lineno)
-                    if errors:
-                        errors.report(
-                            e.lineno or -1,
-                            e.offset or -1,
-                            # TODO: It would be nicer if the message included the line text via
-                            # `e.text.strip()`. However, I can't figure out how to make the
-                            # unit test pass, because the # N: <expected_result> in the unit
-                            # test must contain itself. If there was some partial matching
-                            # mechanism for the unit test comment, then we could make this work.
-                            "Ignored bad type comment",
-                            severity="note",
-                            code=codes.SYNTAX,
-                        )
+                    errors.report(
+                        e.lineno or -1,
+                        e.offset or -1,
+                        f"Ignored bad type comment: {e.text.strip()}",
+                        severity="note",
+                        code=codes.SYNTAX,
+                    )
                     return None, stripped_source
                 raise
             return ast, source
