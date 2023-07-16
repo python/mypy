@@ -219,7 +219,7 @@ def add_method_to_class(
     tvar_def: TypeVarType | None = None,
     is_classmethod: bool = False,
     is_staticmethod: bool = False,
-    fictional_plugin_generated: bool = False,
+    internal_fictional: bool = False,
 ) -> None:
     """Adds a new method to a class definition."""
 
@@ -290,7 +290,7 @@ def add_method_to_class(
     else:
         sym = SymbolTableNode(MDEF, func)
     sym.plugin_generated = True
-    sym.fictional_plugin_generated = fictional_plugin_generated
+    sym.internal_fictional = internal_fictional
     info.names[name] = sym
 
     info.defn.defs.body.append(func)
