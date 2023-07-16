@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, neg_op
+from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, neg_op, infer_constraints
 from mypy.expandtype import expand_type
 from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
 from mypy.join import join_types
@@ -191,10 +191,12 @@ def solve_iteratively(
         result = solve_one(lowers[solvable_tv], uppers[solvable_tv], not_allowed_vars)
         solutions[solvable_tv] = result
         if result is None:
-            # TODO: support backtracking lower/upper bound choices
+            # TODO: support backtracking lower/upper bound choices and order within SCCs.
             # (will require switching this function from iterative to recursive).
             continue
         # Update the (transitive) constraints if there is a solution.
+        # TODO: do update from graph even within batch
+        # TODO: no need to update lowers/uppers/cmap within batch
         subs = {solvable_tv: result}
         lowers = {tv: {expand_type(l, subs) for l in lowers[tv]} for tv in lowers}
         uppers = {tv: {expand_type(u, subs) for u in uppers[tv]} for tv in uppers}
@@ -325,32 +327,20 @@ def transitive_closure(
       * {T} <: S <: {U, int}
       * {T, S} <: U <: {int}
     """
-    # TODO: merge propagate_constraints_for() into this function.
-    # TODO: add secondary constraints here to make the algorithm complete.
     uppers: dict[TypeVarId, set[Type]] = {tv: set() for tv in tvars}
     lowers: dict[TypeVarId, set[Type]] = {tv: set() for tv in tvars}
-    graph: set[tuple[TypeVarId, TypeVarId]] = set()
+    graph: set[tuple[TypeVarId, TypeVarId]] = {(tv, tv) for tv in tvars}
 
-    # Prime the closure with the initial trivial values.
-    for c in constraints:
-        if isinstance(c.target, TypeVarType) and c.target.id in tvars:
-            if c.op == SUBTYPE_OF:
-                graph.add((c.type_var, c.target.id))
-            else:
-                graph.add((c.target.id, c.type_var))
-        if c.op == SUBTYPE_OF:
-            uppers[c.type_var].add(c.target)
-        else:
-            lowers[c.type_var].add(c.target)
-
-    # At this stage we know that constant bounds have been propagated already, so we
-    # only need to propagate linear constraints.
-    for c in constraints:
+    remaining = set(constraints)
+    while remaining:
+        c = remaining.pop()
         if isinstance(c.target, TypeVarType) and c.target.id in tvars:
             if c.op == SUBTYPE_OF:
                 lower, upper = c.type_var, c.target.id
             else:
                 lower, upper = c.target.id, c.type_var
+            if (lower, upper) in graph:
+                continue
             extras = {
                 (l, u) for l in tvars for u in tvars if (l, lower) in graph and (upper, u) in graph
             }
@@ -361,6 +351,27 @@ def transitive_closure(
             for l in tvars:
                 if (l, lower) in graph:
                     uppers[l] |= uppers[upper]
+            for lt in lowers[lower]:
+                for ut in uppers[upper]:
+                    # TODO: what if secondary constraints result in inference
+                    # against polymorphic actual (also in below branches)?
+                    remaining |= set(infer_constraints(lt, ut, SUBTYPE_OF))
+                    remaining |= set(infer_constraints(ut, lt, SUPERTYPE_OF))
+        elif c.op == SUBTYPE_OF:
+            for l in tvars:
+                if (l, c.type_var) in graph:
+                    uppers[l].add(c.target)
+            for lt in lowers[c.type_var]:
+                remaining |= set(infer_constraints(lt, c.target, SUBTYPE_OF))
+                remaining |= set(infer_constraints(c.target, lt, SUPERTYPE_OF))
+        else:
+            assert c.op == SUPERTYPE_OF
+            for u in tvars:
+                if (c.type_var, u) in graph:
+                    lowers[u].add(c.target)
+            for ut in uppers[c.type_var]:
+                remaining |= set(infer_constraints(ut, c.target, SUPERTYPE_OF))
+                remaining |= set(infer_constraints(c.target, ut, SUBTYPE_OF))
     return lowers, uppers
 
 
