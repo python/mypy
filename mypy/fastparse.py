@@ -216,7 +216,7 @@ def parse(
     try:
         ignore_comment_errors = options and options.ignore_comment_errors
 
-        def try_parse_ast(source: str) -> tuple[AST | None, str]:
+        def try_parse_ast(source: str | bytes) -> tuple[AST | None, str | bytes]:
             try:
                 ast = ast3_parse(source, fnam, "exec", feature_version=feature_version)
             except SyntaxError as e:
@@ -224,11 +224,18 @@ def parse(
                 def strip_comment(line: str) -> str:
                     return re.sub(r"([^#]*).*(\r\n|\r|\n)?", r"\1\2", line)
 
-                def strip_comment_from_line(text: str, target_lineno: int) -> str:
-                    lines = text.splitlines(keepends=True)
-                    return "".join(
-                        line if lineno != target_lineno else strip_comment(line)
-                        for lineno, line in enumerate(lines, start=1)
+                def strip_commentb(line: bytes) -> bytes:
+                    return re.sub(rb"([^#]*).*(\r\n|\r|\n)?", rb"\1\2", line)
+
+                def strip_comment_from_line(text: str | bytes, target_lineno: int) -> str | bytes:
+                    if isinstance(text, str):
+                        return "".join(
+                            line if lineno != target_lineno else strip_comment(line)
+                            for lineno, line in enumerate(text.splitlines(keepends=True), start=1)
+                        )
+                    return b"".join(
+                        line if lineno != target_lineno else strip_commentb(line)
+                        for lineno, line in enumerate(text.splitlines(keepends=True), start=1)
                     )
 
                 if (
@@ -238,18 +245,19 @@ def parse(
                     and TYPE_COMMENT_PATTERN.match(e.text)
                 ):
                     stripped_source = strip_comment_from_line(source, e.lineno)
-                    errors.report(
-                        e.lineno or -1,
-                        e.offset or -1,
-                        # TODO: It would be nicer if the message included the line text via
-                        # `e.text.strip()`. However, I can't figure out how to make the unit
-                        # test pass, because the # N: <expected_result> in the unit test must
-                        # contain itself. If there was some partial matching mechanism for the
-                        # unit test comment, then we could make this work.
-                        "Ignored bad type comment",
-                        severity="note",
-                        code=codes.SYNTAX,
-                    )
+                    if errors:
+                        errors.report(
+                            e.lineno or -1,
+                            e.offset or -1,
+                            # TODO: It would be nicer if the message included the line text via
+                            # `e.text.strip()`. However, I can't figure out how to make the
+                            # unit test pass, because the # N: <expected_result> in the unit
+                            # test must contain itself. If there was some partial matching
+                            # mechanism for the unit test comment, then we could make this work.
+                            "Ignored bad type comment",
+                            severity="note",
+                            code=codes.SYNTAX,
+                        )
                     return None, stripped_source
                 raise
             return ast, source
@@ -258,12 +266,12 @@ def parse(
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=DeprecationWarning)
             ast: AST | None = None
-            str_source = source if isinstance(source, str) else source.decode()
+            next_source = source
             # The source will be parsed n + 1 times, where n is the number of malformed type
             # comments in the source. While potentially expensive, source files with a large
             # number of malformed comments should be rare.
             while not ast:
-                ast, str_source = try_parse_ast(str_source)
+                ast, next_source = try_parse_ast(next_source)
 
         tree = ASTConverter(
             options=options,
