@@ -3788,7 +3788,7 @@ class SymbolTableNode:
         module_hidden: bool = False,
         *,
         plugin_generated: bool = False,
-        fictional_plugin_generated: bool = False,
+        internal_fictional: bool = False,
         no_serialize: bool = False,
     ) -> None:
         self.kind = kind
