@@ -4,7 +4,7 @@ import copy
 import re
 import sys
 import warnings
-from typing import Any, Callable, Final, List, Optional, Sequence, TypeVar, Union, cast
+from typing import Any, AnyStr, Callable, Final, List, Optional, Sequence, TypeVar, Union, cast
 from typing_extensions import Literal, overload
 
 from mypy import defaults, errorcodes as codes, message_registry
@@ -181,6 +181,47 @@ TYPE_IGNORE_PATTERN: Final = re.compile(r"[^#]*#\s*type:\s*ignore\s*(.*)")
 TYPE_COMMENT_PATTERN: Final = re.compile(r"([^#]*)(#\s*type:.*)")
 
 
+def _ast_reparse(
+    source: str | bytes | AnyStr,
+    fnam: str,
+    feature_version: int,
+    options: Options,
+    errors: Errors,
+    original_exc: Exception | None = None,
+) -> AST:
+    try:
+        return ast3_parse(source, fnam, "exec", feature_version=feature_version)
+    except SyntaxError as e:
+
+        def strip_comment(line: AnyStr) -> AnyStr:
+            if isinstance(line, str):
+                return re.sub(r"([^#]*).*(\r\n|\r|\n)?", r"\1\2", line)
+            return re.sub(rb"([^#]*).*(\r\n|\r|\n)?", rb"\1\2", line)
+
+        def strip_comment_from_line(text: AnyStr, target_lineno: int) -> AnyStr:
+            return type(text)().join(
+                line if lineno != target_lineno else strip_comment(line)
+                for lineno, line in enumerate(text.splitlines(keepends=True), start=1)
+            )
+
+        ignore_comment_errors = options.ignore_comment_errors
+        if ignore_comment_errors and e.text and e.lineno and TYPE_COMMENT_PATTERN.match(e.text):
+            errors.report(
+                e.lineno or -1,
+                e.offset or -1,
+                f"Ignored bad type comment: {e.text.strip()}",
+                severity="note",
+                code=codes.SYNTAX,
+            )
+            stripped_source = strip_comment_from_line(cast(AnyStr, source), e.lineno)
+            if stripped_source == source:  # check to prevent infinite recursion
+                raise original_exc or e from None
+            return _ast_reparse(
+                stripped_source, fnam, feature_version, options, errors, original_exc or e
+            )
+        raise original_exc or e from None
+
+
 def parse(
     source: str | bytes,
     fnam: str,
@@ -214,58 +255,10 @@ def parse(
         assert options.python_version[0] >= 3
         feature_version = options.python_version[1]
     try:
-        ignore_comment_errors = options.ignore_comment_errors
-
-        def try_parse_ast(source: str | bytes) -> tuple[AST | None, str | bytes]:
-            try:
-                ast = ast3_parse(source, fnam, "exec", feature_version=feature_version)
-            except SyntaxError as e:
-
-                def strip_comment(line: str) -> str:
-                    return re.sub(r"([^#]*).*(\r\n|\r|\n)?", r"\1\2", line)
-
-                def strip_commentb(line: bytes) -> bytes:
-                    return re.sub(rb"([^#]*).*(\r\n|\r|\n)?", rb"\1\2", line)
-
-                def strip_comment_from_line(text: str | bytes, target_lineno: int) -> str | bytes:
-                    if isinstance(text, str):
-                        return "".join(
-                            line if lineno != target_lineno else strip_comment(line)
-                            for lineno, line in enumerate(text.splitlines(keepends=True), start=1)
-                        )
-                    return b"".join(
-                        line if lineno != target_lineno else strip_commentb(line)
-                        for lineno, line in enumerate(text.splitlines(keepends=True), start=1)
-                    )
-
-                if (
-                    ignore_comment_errors
-                    and e.text
-                    and e.lineno
-                    and TYPE_COMMENT_PATTERN.match(e.text)
-                ):
-                    stripped_source = strip_comment_from_line(source, e.lineno)
-                    errors.report(
-                        e.lineno or -1,
-                        e.offset or -1,
-                        f"Ignored bad type comment: {e.text.strip()}",
-                        severity="note",
-                        code=codes.SYNTAX,
-                    )
-                    return None, stripped_source
-                raise
-            return ast, source
-
         # Disable deprecation warnings about \u
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=DeprecationWarning)
-            ast: AST | None = None
-            next_source = source
-            # The source will be parsed n + 1 times, where n is the number of malformed type
-            # comments in the source. While potentially expensive, source files with a large
-            # number of malformed comments should be rare.
-            while not ast:
-                ast, next_source = try_parse_ast(next_source)
+            ast = _ast_reparse(source, fnam, feature_version, options, errors)
 
         tree = ASTConverter(
             options=options,
