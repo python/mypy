@@ -278,7 +278,7 @@ reveal_type(c_bytes_wrapper_alias)    # N: Revealed type is "__main__.Wrap[Liter
 [builtins fixtures/tuple.pyi]
 [out]
 
-[case testLiteralUnicodeWeirdCharacters]
+[case testLiteralUnicodeWeirdCharacters-skip_path_normalization]
 from typing import Any
 from typing_extensions import Literal
 
@@ -334,7 +334,7 @@ a1 = b3
 a1 = c3  # E: Incompatible types in assignment (expression has type "Literal['¬b ∧ λ(p)']", variable has type "Literal['\x00¬b ∧ λ(p)']")
 [builtins fixtures/tuple.pyi]
 
-[out skip-path-normalization]
+[out]
 
 [case testLiteralRenamingImportWorks]
 from typing_extensions import Literal as Foo
@@ -478,7 +478,7 @@ reveal_type(f5)  # N: Revealed type is "def (x: Literal['foo']) -> Literal['foo'
 [builtins fixtures/tuple.pyi]
 [out]
 
-[case testLiteralBasicStrUsageSlashes]
+[case testLiteralBasicStrUsageSlashes-skip_path_normalization]
 from typing_extensions import Literal
 
 a: Literal[r"foo\nbar"]
@@ -487,7 +487,7 @@ b: Literal["foo\nbar"]
 reveal_type(a)
 reveal_type(b)
 [builtins fixtures/tuple.pyi]
-[out skip-path-normalization]
+[out]
 main:6: note: Revealed type is "Literal['foo\\nbar']"
 main:7: note: Revealed type is "Literal['foo\nbar']"
 
