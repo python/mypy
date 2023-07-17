@@ -5,6 +5,10 @@ black==23.3.0  # must match version in .pre-commit-config.yaml
 filelock>=3.3.0
 # lxml 4.9.3 switched to manylinux_2_28, the wheel builder still uses manylinux2014
 lxml>=4.9.1,<4.9.3; (python_version<'3.11' or sys_platform!='win32') and python_version<'3.12'
+# PyYAML 6.0 (required by pre-commit) can't be build with cython 3.0.0
+# There aren't any wheels for Python 3.12 yet.
+# https://github.com/yaml/pyyaml/issues/724
+PyYAML>=5.3.1,!=5.4.0,!=5.4.1,!=6.0.0; python_version >= '3.12'
 pre-commit
 pre-commit-hooks==4.4.0
 psutil>=4.0
