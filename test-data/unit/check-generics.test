@@ -2323,7 +2323,6 @@ class B(A):
 [builtins fixtures/classmethod.pyi]
 
 [case testSubclassingGenericSelfClassMethodOptional]
-# flags: --strict-optional
 from typing import TypeVar, Type, Optional
 
 AT = TypeVar('AT', bound='A')
@@ -2935,7 +2934,7 @@ reveal_type(dec(id))  # N: Revealed type is "def [S] (S`1) -> builtins.list[S`1]
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCallableGenericProtocol]
-# flags: --strict-optional --new-type-inference
+# flags: --new-type-inference
 from typing import TypeVar, Protocol, Generic, Optional
 
 T = TypeVar('T')
@@ -2951,7 +2950,7 @@ reveal_type(lift(g))  # N: Revealed type is "def [T] (Union[T`1, None]) -> Union
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericSplitOrder]
-# flags: --strict-optional --new-type-inference
+# flags: --new-type-inference
 from typing import TypeVar, Callable, List
 
 S = TypeVar('S')
@@ -2966,7 +2965,7 @@ reveal_type(dec(id, id))  # N: Revealed type is "def (builtins.int) -> builtins.
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericSplitOrderGeneric]
-# flags: --strict-optional --new-type-inference
+# flags: --new-type-inference
 from typing import TypeVar, Callable, Tuple
 
 S = TypeVar('S')

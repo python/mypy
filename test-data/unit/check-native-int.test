@@ -69,7 +69,6 @@ reveal_type(join(a, n64))  # N: Revealed type is "Any"
 [builtins fixtures/dict.pyi]
 
 [case testNativeIntMeets]
-# flags: --strict-optional
 from typing import TypeVar, Callable, Any
 from mypy_extensions import i32, i64
 
@@ -130,7 +129,6 @@ reveal_type(y)  # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
 
 [case testNativeIntFloatConversion]
-# flags: --strict-optional
 from typing import TypeVar, Callable
 from mypy_extensions import i32
 

@@ -747,7 +747,6 @@ def test3(switch: FlipFlopEnum) -> None:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingEqualityRequiresExplicitStrLiteral]
-# flags: --strict-optional
 from typing_extensions import Literal, Final
 
 A_final: Final = "A"
@@ -794,7 +793,6 @@ reveal_type(x_union)      # N: Revealed type is "Union[Literal['A'], Literal['B'
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingEqualityRequiresExplicitEnumLiteral]
-# flags: --strict-optional
 from typing import Union
 from typing_extensions import Literal, Final
 from enum import Enum
@@ -879,7 +877,7 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingEqualityDisabledForCustomEqualityChain]
-# flags: --strict-optional --strict-equality --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Union
 from typing_extensions import Literal
 
@@ -916,7 +914,7 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingUnreachableCases]
-# flags: --strict-optional --strict-equality --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Union
 from typing_extensions import Literal
 
@@ -964,7 +962,7 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingUnreachableCases2]
-# flags: --strict-optional --strict-equality --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Union
 from typing_extensions import Literal
 
@@ -1064,7 +1062,6 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingBooleanIdentityCheck]
-# flags: --strict-optional
 from typing import Optional
 from typing_extensions import Literal
 
@@ -1087,7 +1084,6 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingBooleanTruthiness]
-# flags: --strict-optional
 from typing import Optional
 from typing_extensions import Literal
 
@@ -1109,7 +1105,6 @@ reveal_type(opt_bool_val)   # N: Revealed type is "Union[builtins.bool, None]"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingBooleanBoolOp]
-# flags: --strict-optional
 from typing import Optional
 from typing_extensions import Literal
 
@@ -1161,7 +1156,6 @@ def f(d: Union[Foo, Bar]) -> None:
 [builtins fixtures/dict.pyi]
 
 [case testNarrowingUsingMetaclass]
-# flags: --strict-optional
 from typing import Type
 
 class M(type):
@@ -1181,7 +1175,6 @@ def f(t: Type[C]) -> None:
     reveal_type(t)  # N: Revealed type is "Type[__main__.C]"
 
 [case testNarrowingUsingTypeVar]
-# flags: --strict-optional
 from typing import Type, TypeVar
 
 class A: pass

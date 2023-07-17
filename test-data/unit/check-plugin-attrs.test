@@ -1199,7 +1199,6 @@ class C:
 [builtins fixtures/bool.pyi]
 
 [case testAttrsOptionalConverter]
-# flags: --strict-optional
 import attr
 from attr.converters import optional
 from typing import Optional
@@ -1219,7 +1218,6 @@ A(None, None)
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testAttrsOptionalConverterNewPackage]
-# flags: --strict-optional
 import attrs
 from attrs.converters import optional
 from typing import Optional

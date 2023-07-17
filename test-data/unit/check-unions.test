@@ -929,7 +929,6 @@ reveal_type(z) # N: Revealed type is "Union[builtins.int, __main__.A, builtins.s
 [out]
 
 [case testUnpackUnionNoCrashOnPartialNone]
-# flags: --strict-optional
 from typing import Dict, Tuple, List, Any
 
 a: Any
@@ -944,7 +943,6 @@ if x:
 [out]
 
 [case testUnpackUnionNoCrashOnPartialNone2]
-# flags: --strict-optional
 from typing import Dict, Tuple, List, Any
 
 a: Any
@@ -960,7 +958,6 @@ if x:
 [out]
 
 [case testUnpackUnionNoCrashOnPartialNoneBinder]
-# flags: --strict-optional
 from typing import Dict, Tuple, List, Any
 
 x: object
@@ -975,7 +972,6 @@ if x:
 [out]
 
 [case testUnpackUnionNoCrashOnPartialList]
-# flags: --strict-optional
 from typing import Dict, Tuple, List, Any
 
 a: Any
@@ -1081,7 +1077,6 @@ def bar(a: T4, b: T4) -> T4:  # test multi-level alias
 [builtins fixtures/ops.pyi]
 
 [case testJoinUnionWithUnionAndAny]
-# flags: --strict-optional
 from typing import TypeVar, Union, Any
 T = TypeVar("T")
 def f(x: T, y: T) -> T:

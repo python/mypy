@@ -1307,7 +1307,6 @@ reveal_type(bar(C(fn=foo, x=1)))  # N: Revealed type is "__main__.C[[x: builtins
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecClassConstructor]
-# flags: --strict-optional
 from typing import ParamSpec, Callable
 
 P = ParamSpec("P")

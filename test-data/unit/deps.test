@@ -612,7 +612,6 @@ class A:
 <m.C> -> <m.A.x>, m.A.f, m.C
 
 [case testPartialNoneTypeAttributeCrash2]
-# flags: --strict-optional
 class C: pass
 
 class A:

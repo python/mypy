@@ -659,7 +659,6 @@ def foo(b: Literal[T]) -> Tuple[T]: pass   # E: Parameter 1 of Literal[...] is i
 --
 
 [case testLiteralMultipleValues]
-# flags: --strict-optional
 from typing_extensions import Literal
 a: Literal[1, 2, 3]
 b: Literal["a", "b", "c"]
@@ -689,7 +688,6 @@ reveal_type(b)  # N: Revealed type is "Union[Literal[1], Literal[2], Literal[3]]
 [out]
 
 [case testLiteralNestedUsage]
-# flags: --strict-optional
 
 from typing_extensions import Literal
 a: Literal[Literal[3], 4, Literal["foo"]]
@@ -818,7 +816,6 @@ foo(c)  # E: Argument 1 to "foo" has incompatible type "Literal[4, 'foo']"; expe
 [out]
 
 [case testLiteralCheckSubtypingStrictOptional]
-# flags: --strict-optional
 from typing import Any, NoReturn
 from typing_extensions import Literal
 
@@ -1807,7 +1804,6 @@ reveal_type(unify(f6))  # N: Revealed type is "None"
 [out]
 
 [case testLiteralMeetsWithStrictOptional]
-# flags: --strict-optional
 from typing import TypeVar, Callable, Union
 from typing_extensions import Literal
 
@@ -1834,7 +1830,6 @@ reveal_type(unify(func))  # N: Revealed type is "<nothing>"
 --
 
 [case testLiteralIntelligentIndexingTuples]
-# flags: --strict-optional
 from typing import Tuple, NamedTuple, Optional, Final
 from typing_extensions import Literal
 
@@ -2247,7 +2242,6 @@ force4(reveal_type(f.instancevar4))  # N: Revealed type is "None"
 [out]
 
 [case testLiteralFinalErasureInMutableDatastructures1]
-# flags: --strict-optional
 from typing_extensions import Final
 
 var1: Final = [0, None]

@@ -419,7 +419,6 @@ UserDefined(1)  # E: Argument 1 to "UserDefined" has incompatible type "int"; ex
 [builtins fixtures/list.pyi]
 
 [case testNewNamedTupleWithDefaultsStrictOptional]
-# flags: --strict-optional
 from typing import List, NamedTuple, Optional
 
 class HasNone(NamedTuple):

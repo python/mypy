@@ -49,20 +49,17 @@ TstInstance().a = 'ab'
 [out]
 
 [case testNewSyntaxWithClassVars]
-# flags: --strict-optional
 class CCC:
     a: str = None  # E: Incompatible types in assignment (expression has type "None", variable has type "str")
 [out]
 
 [case testNewSyntaxWithStrictOptional]
-# flags: --strict-optional
 strict: int
 strict = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
 strict2: int = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
 [out]
 
 [case testNewSyntaxWithStrictOptionalFunctions]
-# flags: --strict-optional
 def f() -> None:
     x: int
     if int():
@@ -70,7 +67,6 @@ def f() -> None:
 [out]
 
 [case testNewSyntaxWithStrictOptionalClasses]
-# flags: --strict-optional
 class C:
     def meth(self) -> None:
         x: int = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")

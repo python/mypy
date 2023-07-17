@@ -2901,7 +2901,6 @@ tmp/main.py:2: error: Expression has type "Any"
 tmp/main.py:2: error: Expression has type "Any"
 
 [case testIncrementalStrictOptional]
-# flags: --strict-optional
 import a
 1 + a.foo()
 [file a.py]
@@ -2911,8 +2910,8 @@ from typing import Optional
 def foo() -> Optional[int]: return 0
 [out1]
 [out2]
-main:3: error: Unsupported operand types for + ("int" and "None")
-main:3: note: Right operand is of type "Optional[int]"
+main:2: error: Unsupported operand types for + ("int" and "None")
+main:2: note: Right operand is of type "Optional[int]"
 
 [case testAttrsIncrementalSubclassingCached]
 from a import A
@@ -3457,7 +3456,6 @@ main:2: error: Cannot find implementation or library stub for module named "a"
 main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testIncrementalInheritanceAddAnnotation]
-# flags: --strict-optional
 import a
 [file a.py]
 import b
@@ -5757,7 +5755,6 @@ class C:
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleUpdateNonRecursiveToRecursiveCoarse]
-# flags: --strict-optional
 import c
 [file a.py]
 from b import M
@@ -5800,7 +5797,6 @@ tmp/c.py:5: error: Incompatible types in assignment (expression has type "Option
 tmp/c.py:7: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
 
 [case testTupleTypeUpdateNonRecursiveToRecursiveCoarse]
-# flags: --strict-optional
 import c
 [file a.py]
 from b import M
@@ -5833,7 +5829,6 @@ tmp/c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins
 tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
 
 [case testTypeAliasUpdateNonRecursiveToRecursiveCoarse]
-# flags: --strict-optional
 import c
 [file a.py]
 from b import M
@@ -5866,7 +5861,6 @@ tmp/c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins
 tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
 
 [case testTypedDictUpdateNonRecursiveToRecursiveCoarse]
-# flags: --strict-optional
 import c
 [file a.py]
 from b import M
@@ -6061,7 +6055,6 @@ tmp/m.py:9: note:     Got:
 tmp/m.py:9: note:         def update() -> str
 
 [case testAbstractBodyTurnsEmptyCoarse]
-# flags: --strict-optional
 from b import Base
 
 class Sub(Base):
@@ -6081,7 +6074,7 @@ class Base:
     def meth(self) -> int: ...
 [out]
 [out2]
-main:6: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
+main:5: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
 
 [case testNoCrashDoubleReexportFunctionEmpty]
 import m

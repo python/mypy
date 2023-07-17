@@ -615,7 +615,6 @@ reveal_type(x)  # N: Revealed type is "__main__.B"
 [typing fixtures/typing-medium.pyi]
 
 [case testUnreachableWhenSuperclassIsAny]
-# flags: --strict-optional
 from typing import Any
 
 # This can happen if we're importing a class from a missing module

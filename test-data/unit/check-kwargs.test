@@ -350,7 +350,6 @@ class A: pass
 [builtins fixtures/dict.pyi]
 
 [case testInvalidTypeForKeywordVarArg]
-# flags: --strict-optional
 from typing import Dict, Any, Optional
 class A: pass
 def f(**kwargs: 'A') -> None: pass

@@ -2545,7 +2545,6 @@ reveal_type(bar(None))  # N: Revealed type is "None"
 [out]
 
 [case testNoComplainOverloadNoneStrict]
-# flags: --strict-optional
 from typing import overload, Optional
 @overload
 def bar(x: None) -> None:
@@ -2574,7 +2573,6 @@ xx: Optional[int] = X(x_in)
 [out]
 
 [case testNoComplainInferredNoneStrict]
-# flags: --strict-optional
 from typing import TypeVar, Optional
 T = TypeVar('T')
 def X(val: T) -> T: ...
