@@ -174,7 +174,7 @@ class Options:
         # Files in which to ignore all non-fatal errors
         self.ignore_errors = False
 
-        # Files in which to ignore all syntax errors in type comments
+        # Ignore syntax errors in type comments
         self.ignore_comment_errors = False
 
         # Apply strict None checking

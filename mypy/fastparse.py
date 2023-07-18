@@ -182,7 +182,7 @@ TYPE_COMMENT_PATTERN: Final = re.compile(r"([^#]*)(#\s*type:.*)")
 
 
 def _ast_reparse(
-    source: str | bytes | AnyStr,
+    source: str | bytes,
     fnam: str,
     feature_version: int,
     options: Options,
@@ -193,15 +193,20 @@ def _ast_reparse(
         return ast3_parse(source, fnam, "exec", feature_version=feature_version)
     except SyntaxError as e:
 
-        def strip_comment(line: AnyStr) -> AnyStr:
-            if isinstance(line, str):
-                return re.sub(r"([^#]*).*(\r\n|\r|\n)?", r"\1\2", line)
-            return re.sub(rb"([^#]*).*(\r\n|\r|\n)?", rb"\1\2", line)
+        def strip_comment_from_line(text: str | bytes, target_lineno: int) -> str | bytes:
+            def join(sep: AnyStr, pat: AnyStr, repl: AnyStr) -> AnyStr:
+                return sep.join(
+                    cast(AnyStr, line)
+                    if lineno != target_lineno
+                    else re.sub(pat, repl, cast(AnyStr, line))
+                    for lineno, line in enumerate(text.splitlines(keepends=True), start=1)
+                )
 
-        def strip_comment_from_line(text: AnyStr, target_lineno: int) -> AnyStr:
-            return type(text)().join(
-                line if lineno != target_lineno else strip_comment(line)
-                for lineno, line in enumerate(text.splitlines(keepends=True), start=1)
+            pat, repl = rb"([^#]*).*(\r\n|\r|\n)?", rb"\1\2"
+            return (
+                join("", pat.decode(), repl.decode())
+                if isinstance(text, str)
+                else join(b"", pat, repl)
             )
 
         ignore_comment_errors = options.ignore_comment_errors
@@ -213,7 +218,7 @@ def _ast_reparse(
                 severity="note",
                 code=codes.SYNTAX,
             )
-            stripped_source = strip_comment_from_line(cast(AnyStr, source), e.lineno)
+            stripped_source = strip_comment_from_line(source, e.lineno)
             if stripped_source == source:  # check to prevent infinite recursion
                 raise original_exc or e from None
             return _ast_reparse(
