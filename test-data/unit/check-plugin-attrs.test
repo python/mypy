@@ -2250,3 +2250,22 @@ c = attrs.assoc(c, name=42)  # E: Argument "name" to "assoc" of "C" has incompat
 
 [builtins fixtures/plugin_attrs.pyi]
 [typing fixtures/typing-medium.pyi]
+
+[case testFrozenInheritFromGeneric]
+from typing import Generic, TypeVar
+from attrs import frozen
+
+T = TypeVar('T')
+
+@frozen
+class A(Generic[T]):
+    x: T
+
+@frozen
+class B(A[int]):
+    pass
+
+b = B(42)
+reveal_type(b.x)  # N: Revealed type is "builtins.int"
+
+[builtins fixtures/plugin_attrs.pyi]
