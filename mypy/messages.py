@@ -14,6 +14,7 @@ from __future__ import annotations
 import difflib
 import itertools
 import re
+from collections import defaultdict
 from contextlib import contextmanager
 from textwrap import dedent
 from typing import Any, Callable, Collection, Final, Iterable, Iterator, List, Sequence, cast
