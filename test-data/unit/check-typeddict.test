@@ -2017,9 +2017,7 @@ v = {bad2: 2}  # E: Missing key "num" for TypedDict "Value" \
 [case testOperatorContainsNarrowsTypedDicts_unionWithList]
 from __future__ import annotations
 from typing import assert_type, TypedDict, Union
-from typing_extensions import final
 
-@final
 class D(TypedDict):
     foo: int
 
@@ -2041,12 +2039,10 @@ from __future__ import annotations
 from typing import assert_type, Literal, TypedDict, TypeVar, Union
 from typing_extensions import final
 
-@final
 class D1(TypedDict):
     foo: int
 
 
-@final
 class D2(TypedDict):
     bar: int
 
@@ -2083,50 +2079,6 @@ def f(arg: TD) -> None:
     else:
         assert_type(arg['bar'], int)
 
-
-[builtins fixtures/dict.pyi]
-[typing fixtures/typing-typeddict.pyi]
-
-[case testOperatorContainsNarrowsTypedDicts_final]
-# flags: --warn-unreachable
-from __future__ import annotations
-from typing import assert_type, TypedDict, Union
-from typing_extensions import final
-
-@final
-class DFinal(TypedDict):
-    foo: int
-
-
-class DNotFinal(TypedDict):
-    bar: int
-
-
-d_not_final: DNotFinal
-
-if 'bar' in d_not_final:
-    assert_type(d_not_final, DNotFinal)
-else:
-    spam = 'ham'  # E: Statement is unreachable
-
-if 'spam' in d_not_final:
-    assert_type(d_not_final, DNotFinal)
-else:
-    assert_type(d_not_final, DNotFinal)
-
-d_final: DFinal
-
-if 'spam' in d_final:
-    spam = 'ham'  # E: Statement is unreachable
-else:
-    assert_type(d_final, DFinal)
-
-d_union: DFinal | DNotFinal
-
-if 'foo' in d_union:
-    assert_type(d_union, Union[DFinal, DNotFinal])
-else:
-    assert_type(d_union, DNotFinal)
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
