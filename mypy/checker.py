@@ -132,6 +132,7 @@ from mypy.nodes import (
     Var,
     WhileStmt,
     WithStmt,
+    YieldExpr,
     is_final_node,
 )
 from mypy.options import Options
@@ -2738,6 +2739,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return True
         elif isinstance(s, ExpressionStmt):
             if isinstance(s.expr, EllipsisExpr):
+                return True
+            elif isinstance(s.expr, YieldExpr) and s.expr.expr is None:
                 return True
             elif isinstance(s.expr, CallExpr):
                 with self.expr_checker.msg.filter_errors():
