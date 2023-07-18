@@ -2657,9 +2657,7 @@ def find_type_overlaps(*types: Type) -> set[str]:
     for type in types:
         for inst in collect_all_instances(type):
             if inst.last_known_value:
-                d[inst.type.name].add(
-                    f"typing.Literal[{inst.last_known_value.value}]"
-                )
+                d[inst.type.name].add(f"typing.Literal[{inst.last_known_value.value}]")
             else:
                 d[inst.type.name].add(inst.type.fullname)
     for shortname in d.keys():
