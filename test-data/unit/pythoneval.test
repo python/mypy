@@ -1066,7 +1066,7 @@ a[0] = 'x', 1
 a[1] = 2, 'y'
 a[:] = [('z', 3)]
 [out]
-_program.py:4: error: error: Incompatible types in assignment (expression has type "Tuple[Literal[2], Literal['y']]", target has type "Tuple[builtins.str, builtins.int]")
+_program.py:4: error: Incompatible types in assignment (expression has type "Tuple[Literal[2], Literal['y']]", target has type "Tuple[builtins.str, builtins.int]")
 
 [case testContextManager]
 import contextlib
@@ -1445,7 +1445,7 @@ _testNamedTupleTypeInheritanceSpecialCase.py:8: note: Revealed type is "builtins
 _testNamedTupleTypeInheritanceSpecialCase.py:9: note: Revealed type is "builtins.tuple[builtins.str, ...]"
 _testNamedTupleTypeInheritanceSpecialCase.py:10: note: Revealed type is "builtins.dict[builtins.str, Any]"
 _testNamedTupleTypeInheritanceSpecialCase.py:17: error: Argument 1 to "accepts_named_tuple" has incompatible type "int"; expected "NamedTuple"
-_testNamedTupleTypeInheritanceSpecialCase.py:18: error: Argument 1 to "accepts_named_tuple" has incompatible type "Tuple[int, int]"; expected "NamedTuple"
+_testNamedTupleTypeInheritanceSpecialCase.py:18: error: Argument 1 to "accepts_named_tuple" has incompatible type "Tuple[Literal[1], Literal[2]]"; expected "NamedTuple"
 
 [case testNewAnalyzerBasicTypeshed_newsemanal]
 from typing import Dict, List, Tuple
