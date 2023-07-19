@@ -12,10 +12,12 @@ from typing import Callable, ClassVar
 from mypy.nodes import (
     ARG_POS,
     CallExpr,
+    DictionaryComprehension,
     Expression,
     GeneratorExpr,
     Lvalue,
     MemberExpr,
+    NameExpr,
     RefExpr,
     SetExpr,
     TupleExpr,
@@ -28,6 +30,7 @@ from mypyc.ir.ops import (
     IntOp,
     LoadAddress,
     LoadMem,
+    RaiseStandardError,
     Register,
     TupleGet,
     TupleSet,
@@ -229,6 +232,9 @@ def sequence_from_generator_preallocate_helper(
 
 
 def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value:
+    if raise_error_if_contains_unreachable_names(builder, gen):
+        return builder.none()
+
     # Try simplest list comprehension, otherwise fall back to general one
     val = sequence_from_generator_preallocate_helper(
         builder,
@@ -251,7 +257,30 @@ def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Valu
     return builder.read(list_ops)
 
 
+def raise_error_if_contains_unreachable_names(
+    builder: IRBuilder, gen: GeneratorExpr | DictionaryComprehension
+) -> bool:
+    """Raise a runtime error and return True if generator contains unreachable names.
+
+    False is returned if the generator can be safely transformed without crashing.
+    (It may still be unreachable!)
+    """
+    if any(isinstance(s, NameExpr) and s.node is None for s in gen.indices):
+        error = RaiseStandardError(
+            RaiseStandardError.RUNTIME_ERROR,
+            "mypyc internal error: should be unreachable",
+            gen.line,
+        )
+        builder.add(error)
+        return True
+
+    return False
+
+
 def translate_set_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value:
+    if raise_error_if_contains_unreachable_names(builder, gen):
+        return builder.none()
+
     set_ops = builder.maybe_spill(builder.new_set_op([], gen.line))
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists, gen.is_async))
 

@@ -1097,8 +1097,10 @@ B = sys.platform == 'x' and sys.foobar
 C = sys.platform == 'x' and f(a, -b, 'y') > [c + e, g(y=2)]
 C = sys.platform == 'x' and cast(a, b[c])
 C = sys.platform == 'x' and (lambda x: y + x)
-# TODO: This still doesn't work
-# C = sys.platform == 'x' and (x for y in z)
+C = sys.platform == 'x' and (x for y in z)
+C = sys.platform == 'x' and [x for y in z]
+C = sys.platform == 'x' and {x: x for y in z}
+C = sys.platform == 'x' and {x for y in z}
 
 assert not A
 assert not B
