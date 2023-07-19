@@ -685,6 +685,8 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         # this may be alright on things other than just instances
         elif isinstance(self.s, Instance):
             return t.copy_modified(upper_bound=meet_types(t.upper_bound, self.s))
+        elif isinstance(self.s, UnionType):
+            return meet_types(t, self.s)
         else:
             return self.default(self.s)
 
