@@ -683,7 +683,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         if isinstance(self.s, TypeVarType) and self.s.id == t.id:
             return self.s
         # this may be alright on things other than just instances
-        elif isinstance(self.s, Instance):
+        elif isinstance(self.s, (Instance, NoneType, TupleType)):
             return t.copy_modified(upper_bound=meet_types(t.upper_bound, self.s))
         elif isinstance(self.s, UnionType):
             return meet_types(t, self.s)
