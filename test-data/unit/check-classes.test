@@ -475,15 +475,28 @@ class B(A):
 
 [case testOverride__new__WithLiteralReturnPassing]
 [file builtins.py]
-from typing import Literal
+from typing import Literal, Protocol, overload
 
-class int: pass
 class str: pass
 class dict: pass
 class float: pass
 
-class bool:
-    def __new__(cls) -> Literal[True]: pass
+class _Truthy(Protocol):
+    def __bool__(self) -> Literal[True]: pass
+
+class _Falsy(Protocol):
+    def __bool__(self) -> Literal[False]: pass
+
+class bool(int):
+    @overload
+    def __new__(cls, __o: _Truthy) -> Literal[True]: pass
+    @overload
+    def __new__(cls, __o: _Falsy) -> Literal[False]: pass
+    def __new__(cls, __o: object):
+        pass
+
+class int:
+    def __new__(cls) -> Literal[0]: pass
 [typing fixtures/typing-medium.pyi]
 
 [case testOverride__new__WithLiteralReturnFailing]
@@ -492,7 +505,7 @@ from typing import Literal
 class Foo:
     def __new__(cls) -> Literal[1]: pass # E: Incompatible return type for "__new__" (returns "Literal[1]", but must return a subtype of "Foo")
 
-[builtins fixtures/__new__-literals.pyi]
+[builtins fixtures/__new__.pyi]
 [typing fixtures/typing-medium.pyi]
 
 [case testOverride__new__AndCallObject]
