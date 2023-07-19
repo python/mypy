@@ -682,8 +682,11 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
     def visit_type_var(self, t: TypeVarType) -> ProperType:
         if isinstance(self.s, TypeVarType) and self.s.id == t.id:
             return self.s
-        else:
+        # this may be alright on things other than just instances
+        elif isinstance(self.s, Instance):
             return t.copy_modified(upper_bound=meet_types(t.upper_bound, self.s))
+        else:
+            return self.default(self.s)
 
     def visit_param_spec(self, t: ParamSpecType) -> ProperType:
         if self.s == t:
@@ -753,13 +756,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             if is_subtype(self.s.fallback, t):
                 return self.s
             return self.default(self.s)
-        elif isinstance(self.s, TypeType):
-            return meet_types(t, self.s)
-        elif isinstance(self.s, TupleType):
-            return meet_types(t, self.s)
-        elif isinstance(self.s, LiteralType):
-            return meet_types(t, self.s)
-        elif isinstance(self.s, TypedDictType):
+        elif isinstance(self.s, (TypeType, TupleType, LiteralType, TypedDictType, TypeVarType)):
             return meet_types(t, self.s)
         return self.default(self.s)
 

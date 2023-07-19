@@ -1135,7 +1135,9 @@ class MeetSuite(Suite):
         self.assert_meet(self.fx.ga, self.fx.nonet, self.fx.nonet)
         self.assert_meet(self.fx.ga, self.fx.anyt, self.fx.ga)
 
-        for t in [self.fx.a, self.fx.t, self.tuple(), self.callable(self.fx.a, self.fx.b)]:
+        self.assert_meet(self.fx.t, self.fx.ga, self.fx.t)
+
+        for t in [self.fx.a, self.tuple(), self.callable(self.fx.a, self.fx.b)]:
             self.assert_meet(t, self.fx.ga, self.fx.nonet)
 
     def test_generics_with_multiple_args(self) -> None:
