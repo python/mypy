@@ -197,7 +197,13 @@ def test_module(module_name: str) -> Iterator[Error]:
     """
     stub = get_stub(module_name)
     if stub is None:
-        if not is_probably_private(module_name.split(".")[-1]):
+        module_name_parts = module_name.split(".")
+        # Don't error for missing modules
+        # if the final part of the module name starts with a leading underscore,
+        # or the module is in a folder such as `test/`, `tests/` or `testing/`
+        if not is_probably_private(module_name_parts[-1]) and not (
+            set(module_name_parts) & {"test", "tests", "testing"}
+        ):
             runtime_desc = repr(sys.modules[module_name]) if module_name in sys.modules else "N/A"
             yield Error(
                 [module_name], "failed to find stubs", MISSING, None, runtime_desc=runtime_desc
