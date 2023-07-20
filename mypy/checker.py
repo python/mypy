@@ -1064,20 +1064,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         yield None
         self.inferred_attribute_types = old_types
 
-    def _is_empty_generator(self, func: FuncItem) -> bool:
-        """
-        Checks whether a function's body is 'return; yield' (the yield being added only
-        to promote the function into a generator).
-        """
-        return (
-            len(body := func.body.body) == 2
-            and isinstance(ret_stmt := body[0], ReturnStmt)
-            and (ret_stmt.expr is None or is_literal_none(ret_stmt.expr))
-            and isinstance(expr_stmt := body[1], ExpressionStmt)
-            and isinstance(yield_expr := expr_stmt.expr, YieldExpr)
-            and (yield_expr.expr is None or is_literal_none(yield_expr.expr))
-        )
-
     def check_func_def(
         self, defn: FuncItem, typ: CallableType, name: str | None, allow_empty: bool = False
     ) -> None:
@@ -1255,7 +1241,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # have no good way of doing this.
                     #
                     # TODO: Find a way of working around this limitation
-                    if len(expanded) >= 2 or self._is_empty_generator(item):
+                    #
+                    # We suppress reachability warnings for empty generators (return; yield), since there's
+                    # no way to promote a function into a generator except by adding an "unreachable" yield.
+                    if len(expanded) >= 2 or _is_empty_generator(item):
                         self.binder.suppress_unreachable_warnings()
                     self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
@@ -6974,6 +6963,21 @@ def is_literal_none(n: Expression) -> bool:
 
 def is_literal_not_implemented(n: Expression) -> bool:
     return isinstance(n, NameExpr) and n.fullname == "builtins.NotImplemented"
+
+
+def _is_empty_generator(func: FuncItem) -> bool:
+    """
+    Checks whether a function's body is 'return; yield' (the yield being added only
+    to promote the function into a generator).
+    """
+    return (
+        len(body := func.body.body) == 2
+        and isinstance(ret_stmt := body[0], ReturnStmt)
+        and (ret_stmt.expr is None or is_literal_none(ret_stmt.expr))
+        and isinstance(expr_stmt := body[1], ExpressionStmt)
+        and isinstance(yield_expr := expr_stmt.expr, YieldExpr)
+        and (yield_expr.expr is None or is_literal_none(yield_expr.expr))
+    )
 
 
 def builtin_item_type(tp: Type) -> Type | None:
