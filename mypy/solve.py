@@ -61,7 +61,7 @@ def solve_constraints(
             cmap[con.type_var].append(con)
 
     if allow_polymorphic:
-        solutions = solve_non_linear(vars + extra_vars, constraints, cmap)
+        solutions = solve_non_linear(vars + extra_vars, constraints)
     else:
         solutions = {}
         for tv, cs in cmap.items():
@@ -88,7 +88,7 @@ def solve_constraints(
 
 
 def solve_non_linear(
-    vars: list[TypeVarId], constraints: list[Constraint], cmap: dict[TypeVarId, list[Constraint]]
+    vars: list[TypeVarId], constraints: list[Constraint]
 ) -> dict[TypeVarId, Type | None]:
     """Solve set of constraints that may include non-linear ones, like T <: List[S].
 
@@ -99,21 +99,15 @@ def solve_non_linear(
       * Variables in leaf SCCs that don't have constant bounds are free (choose one per SCC)
       * Solve constraints iteratively starting from leafs, updating targets after each step.
     """
-    extra_constraints = []
-    for tvar in vars:
-        extra_constraints.extend(propagate_constraints_for(tvar, SUBTYPE_OF, cmap))
-        extra_constraints.extend(propagate_constraints_for(tvar, SUPERTYPE_OF, cmap))
-    constraints += remove_dups(extra_constraints)
+    originals = {c.type_var: c.origin_type_var for c in constraints}
+    for c in constraints:
+        for extra_tv in c.extra_tvars:
+            originals[extra_tv.id] = extra_tv
+    graph, lowers, uppers = transitive_closure(vars, constraints)
 
-    # Recompute constraint map after propagating.
-    cmap = {tv: [] for tv in vars}
-    for con in constraints:
-        if con.type_var in vars:
-            cmap[con.type_var].append(con)
-
-    dmap = compute_dependencies(cmap)
+    dmap = compute_dependencies(vars, graph, lowers, uppers)
     sccs = list(strongly_connected_components(set(vars), dmap))
-    if all(check_linear(scc, cmap) for scc in sccs):
+    if all(check_linear(scc, lowers, uppers) for scc in sccs):
         raw_batches = list(topsort(prepare_sccs(sccs, dmap)))
         leafs = raw_batches[0]
         free_vars = []
@@ -122,11 +116,7 @@ def solve_non_linear(
             # same SCC then the only meaningful solution we can express, is that
             # each variable is equal to a new free variable. For example if we
             # have T <: S, S <: U, we deduce: T = S = U = <free>.
-            if all(
-                isinstance(c.target, TypeVarType) and c.target.id in vars
-                for tv in scc
-                for c in cmap[tv]
-            ):
+            if all(not lowers[tv] and not uppers[tv] for tv in scc):
                 # For convenience with current type application machinery, we randomly
                 # choose one of the existing type variables in SCC and designate it as free
                 # instead of defining a new type variable as a common solution.
@@ -142,9 +132,21 @@ def solve_non_linear(
                 next_bc.extend(list(scc))
             batches.append(next_bc)
 
+        # Update lowers/uppers with free vars, so these can now be used
+        # as valid solutions.
+        for l, u in graph.copy():
+            if l == u:
+                continue
+            if l in free_vars:
+                lowers[u].add(originals[l])
+                graph.remove((l, u))
+            if u in free_vars:
+                uppers[l].add(originals[u])
+                graph.remove((l, u))
+
         solutions: dict[TypeVarId, Type | None] = {}
         for flat_batch in batches:
-            solutions.update(solve_iteratively(flat_batch, cmap, free_vars))
+            solutions.update(solve_iteratively(flat_batch, graph, lowers, uppers, free_vars))
         # We remove the solutions like T = T for free variables. This will indicate
         # to the apply function, that they should not be touched.
         # TODO: return list of free type variables explicitly, this logic is fragile
@@ -157,7 +159,11 @@ def solve_non_linear(
 
 
 def solve_iteratively(
-    batch: list[TypeVarId], cmap: dict[TypeVarId, list[Constraint]], free_vars: list[TypeVarId]
+    batch: list[TypeVarId],
+    graph: set[tuple[TypeVarId, TypeVarId]],
+    lowers: dict[TypeVarId, set[Type]],
+    uppers: dict[TypeVarId, set[Type]],
+    free_vars: list[TypeVarId],
 ) -> dict[TypeVarId, Type | None]:
     """Solve constraints sequentially, updating constraint targets after each step.
 
@@ -171,17 +177,11 @@ def solve_iteratively(
     designate S as free, and therefore T = List[S] is a valid solution for T.
     """
     solutions = {}
-    relevant_constraints = []
-    for tv in batch:
-        relevant_constraints.extend(cmap.get(tv, []))
-    lowers, uppers = transitive_closure(batch, relevant_constraints)
     s_batch = set(batch)
     not_allowed_vars = [v for v in batch if v not in free_vars]
     while s_batch:
-        for tv in s_batch:
-            if any(not get_vars(l, not_allowed_vars) for l in lowers[tv]) or any(
-                not get_vars(u, not_allowed_vars) for u in uppers[tv]
-            ):
+        for tv in sorted(s_batch, key=lambda x: x.raw_id):
+            if lowers[tv] or uppers[tv]:
                 solvable_tv = tv
                 break
         else:
@@ -194,15 +194,30 @@ def solve_iteratively(
             # TODO: support backtracking lower/upper bound choices and order within SCCs.
             # (will require switching this function from iterative to recursive).
             continue
-        # Update the (transitive) constraints if there is a solution.
-        # TODO: do update from graph even within batch
-        # TODO: no need to update lowers/uppers/cmap within batch
-        subs = {solvable_tv: result}
-        lowers = {tv: {expand_type(l, subs) for l in lowers[tv]} for tv in lowers}
-        uppers = {tv: {expand_type(u, subs) for u in uppers[tv]} for tv in uppers}
-        for v in cmap:
-            for c in cmap[v]:
-                c.target = expand_type(c.target, subs)
+
+        # Update the (transitive) bounds from graph if there is a solution.
+        # This is needed to guarantee solutions will never contradict the initial
+        # constraints. For example, consider {T <: S, T <: A, S :> B} with A :> B.
+        # If we would not update the uppers/lowers from graph, we would infer T = A, S = B
+        # which is not correct.
+        for l, u in graph.copy():
+            if l == u:
+                continue
+            if l == solvable_tv:
+                lowers[u].add(result)
+                graph.remove((l, u))
+            if u == solvable_tv:
+                uppers[l].add(result)
+                graph.remove((l, u))
+
+    # We can update uppers/lowers only once after solving the whole SCC,
+    # since uppers/lowers can't depend on type variables in the SCC
+    # (and we would reject such SCC as non-linear and therefore not solvable).
+    subs = {tv: s for (tv, s) in solutions.items() if s is not None}
+    for tv in lowers:
+        lowers[tv] = {expand_type(lt, subs) for lt in lowers[tv]}
+    for tv in uppers:
+        uppers[tv] = {expand_type(ut, subs) for ut in uppers[tv]}
     return solutions
 
 
@@ -278,44 +293,11 @@ def normalize_constraints(
     return [c for c in remove_dups(constraints) if c.type_var in vars]
 
 
-def propagate_constraints_for(
-    var: TypeVarId, direction: int, cmap: dict[TypeVarId, list[Constraint]]
-) -> list[Constraint]:
-    """Propagate via linear constraints to get additional constraints for `var`.
-
-    For example if we have constraints:
-        [T <: int, S <: T, S :> str]
-    we can add two more
-        [S <: int, T :> str]
-    """
-    extra_constraints = []
-    seen = set()
-    front = [var]
-    if cmap[var]:
-        var_def = cmap[var][0].origin_type_var
-    else:
-        return []
-    while front:
-        tv = front.pop(0)
-        for c in cmap[tv]:
-            if (
-                isinstance(c.target, TypeVarType)
-                and c.target.id not in seen
-                and c.target.id in cmap
-                and c.op == direction
-            ):
-                front.append(c.target.id)
-                seen.add(c.target.id)
-            elif c.op == direction:
-                new_c = Constraint(var_def, direction, c.target)
-                if new_c not in cmap[var]:
-                    extra_constraints.append(new_c)
-    return extra_constraints
-
-
 def transitive_closure(
     tvars: list[TypeVarId], constraints: list[Constraint]
-) -> tuple[dict[TypeVarId, set[Type]], dict[TypeVarId, set[Type]]]:
+) -> tuple[
+    set[tuple[TypeVarId, TypeVarId]], dict[TypeVarId, set[Type]], dict[TypeVarId, set[Type]]
+]:
     """Find transitive closure for given constraints on type variables.
 
     Transitive closure gives maximal set of lower/upper bounds for each type variable,
@@ -372,11 +354,14 @@ def transitive_closure(
             for ut in uppers[c.type_var]:
                 remaining |= set(infer_constraints(ut, c.target, SUPERTYPE_OF))
                 remaining |= set(infer_constraints(c.target, ut, SUBTYPE_OF))
-    return lowers, uppers
+    return graph, lowers, uppers
 
 
 def compute_dependencies(
-    cmap: dict[TypeVarId, list[Constraint]]
+    tvars: list[TypeVarId],
+    graph: set[tuple[TypeVarId, TypeVarId]],
+    lowers: dict[TypeVarId, set[Type]],
+    uppers: dict[TypeVarId, set[Type]],
 ) -> dict[TypeVarId, list[TypeVarId]]:
     """Compute dependencies between type variables induced by constraints.
 
@@ -384,25 +369,33 @@ def compute_dependencies(
     we will need to solve for S first before we can solve for T.
     """
     res = {}
-    vars = list(cmap.keys())
-    for tv in cmap:
+    for tv in tvars:
         deps = set()
-        for c in cmap[tv]:
-            deps |= get_vars(c.target, vars)
+        for lt in lowers[tv]:
+            deps |= get_vars(lt, tvars)
+        for ut in uppers[tv]:
+            deps |= get_vars(ut, tvars)
+        for other in tvars:
+            if other == tv:
+                # TODO: is there a value in either skipping or adding trivial deps?
+                continue
+            if (tv, other) in graph or (other, tv) in graph:
+                deps.add(other)
         res[tv] = list(deps)
     return res
 
 
-def check_linear(scc: set[TypeVarId], cmap: dict[TypeVarId, list[Constraint]]) -> bool:
+def check_linear(
+    scc: set[TypeVarId], lowers: dict[TypeVarId, set[Type]], uppers: dict[TypeVarId, set[Type]]
+) -> bool:
     """Check there are only linear constraints between type variables in SCC.
 
     Linear are constraints like T <: S (while T <: F[S] are non-linear).
     """
     for tv in scc:
-        if any(
-            get_vars(c.target, list(scc)) and not isinstance(c.target, TypeVarType)
-            for c in cmap[tv]
-        ):
+        if any(get_vars(lt, list(scc)) for lt in lowers[tv]):
+            return False
+        if any(get_vars(ut, list(scc)) for ut in uppers[tv]):
             return False
     return True
 

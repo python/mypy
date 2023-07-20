@@ -912,7 +912,6 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     # depends on this old behaviour.
                     and not any(tv.id.raw_id == 0 for tv in cactual.variables)
                 ):
-                    # TODO: implement secondary constraints
                     # TODO: fix polymorphic application to support new vars
                     res.extend(infer_constraints(cactual, template, neg_op(self.direction)))
                     extra_tvars = True
