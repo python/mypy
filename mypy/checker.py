@@ -6970,8 +6970,9 @@ def _is_empty_generator(func: FuncItem) -> bool:
     Checks whether a function's body is 'return; yield' (the yield being added only
     to promote the function into a generator).
     """
+    body = func.body.body
     return (
-        len(body := func.body.body) == 2
+        len(body) == 2
         and isinstance(ret_stmt := body[0], ReturnStmt)
         and (ret_stmt.expr is None or is_literal_none(ret_stmt.expr))
         and isinstance(expr_stmt := body[1], ExpressionStmt)
