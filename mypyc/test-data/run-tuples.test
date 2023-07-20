@@ -261,7 +261,7 @@ def test_final_boxed_tuple() -> None:
 # tuple->tuple coerces are optimized away with each tuple item being
 # coerced individually instead. No need to test that here.
 from typing import Any, Tuple, cast
-from mypy_extensions import i64, i32, i16
+from mypy_extensions import i64, i32, i16, u8
 from testutil import assertRaises
 
 class A: pass
@@ -292,8 +292,10 @@ def test_errors_generic() -> None:
         t6: Tuple[i64, i32, i16] = cast(Any, (1, 2**32, 3))
     with assertRaises(OverflowError, "int too large to convert to i64"):
         t7: Tuple[i64, i32, i16] = cast(Any, (2**64, 2, 3))
+    with assertRaises(OverflowError, "int too large or small to convert to u8"):
+        t8: Tuple[u8, u8] = cast(Any, (1, 2**8))
 
     with assertRaises(TypeError, "tuple[int] object expected; got int"):
-        t8: Tuple[int] = cast(Any, 1)
+        t9: Tuple[int] = cast(Any, 1)
     with assertRaises(TypeError, "tuple[int] object expected; got tuple[int, int]"):
-        t9: Tuple[int] = cast(Any, (1, 2))
+        t10: Tuple[int] = cast(Any, (1, 2))
