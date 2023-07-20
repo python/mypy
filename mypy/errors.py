@@ -722,6 +722,8 @@ class Errors:
                 blocker=False,
                 only_once=False,
                 allow_dups=False,
+                origin=(self.file, [line]),
+                target=self.target_module,
             )
             self._add_error_info(file, info)
 
@@ -774,6 +776,8 @@ class Errors:
                 blocker=False,
                 only_once=False,
                 allow_dups=False,
+                origin=(self.file, [line]),
+                target=self.target_module,
             )
             self._add_error_info(file, info)
 
