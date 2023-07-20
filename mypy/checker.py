@@ -1235,16 +1235,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             new_frame.types[key] = narrowed_type
                             self.binder.declarations[key] = old_binder.declarations[key]
                 with self.scope.push_function(defn):
-                    # We suppress reachability warnings when we use TypeVars with value
+                    # We suppress reachability warnings for empty generators (return; yield), since there's
+                    # no way to promote a function into a generator except by adding an "unreachable" yield.
+                    #
+                    # We also suppress reachability warnings when we use TypeVars with value
                     # restrictions: we only want to report a warning if a certain statement is
                     # marked as being suppressed in *all* of the expansions, but we currently
                     # have no good way of doing this.
                     #
                     # TODO: Find a way of working around this limitation
-                    #
-                    # We suppress reachability warnings for empty generators (return; yield), since there's
-                    # no way to promote a function into a generator except by adding an "unreachable" yield.
-                    if len(expanded) >= 2 or _is_empty_generator(item):
+                    if _is_empty_generator(item) or len(expanded) >= 2:
                         self.binder.suppress_unreachable_warnings()
                     self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
