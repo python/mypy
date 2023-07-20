@@ -1454,3 +1454,11 @@ from typing import Generator
 def f() -> Generator[None, None, None]:
     return
     yield
+
+[case testIntentionallyEmptyGenerator_None]
+# flags: --warn-unreachable
+from typing import Generator
+
+def f() -> Generator[None, None, None]:
+    return None
+    yield None
