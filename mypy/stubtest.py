@@ -1635,7 +1635,7 @@ def get_stub(module: str) -> nodes.MypyFile | None:
 
 def get_typeshed_stdlib_modules(
     custom_typeshed_dir: str | None, version_info: tuple[int, int] | None = None
-) -> list[str]:
+) -> set[str]:
     """Returns a list of stdlib modules in typeshed (for current Python version)."""
     stdlib_py_versions = mypy.modulefinder.load_stdlib_py_versions(custom_typeshed_dir)
     if version_info is None:
@@ -1657,14 +1657,44 @@ def get_typeshed_stdlib_modules(
         typeshed_dir = Path(mypy.build.default_data_dir()) / "typeshed"
     stdlib_dir = typeshed_dir / "stdlib"
 
-    modules = []
+    modules: set[str] = set()
     for path in stdlib_dir.rglob("*.pyi"):
         if path.stem == "__init__":
             path = path.parent
         module = ".".join(path.relative_to(stdlib_dir).parts[:-1] + (path.stem,))
         if exists_in_version(module):
-            modules.append(module)
-    return sorted(modules)
+            modules.add(module)
+    return modules
+
+
+def get_importable_stdlib_modules() -> set[str] | None:
+    """If possible, return all importable stdlib modules at runtime.
+
+    This isn't so easy on Python <3.10; just return `None` on older versions to signal failure.
+    """
+    if sys.version_info < (3, 10):
+        return None
+    modules: set[str] = set()
+    for module in sys.stdlib_module_names:
+        if module in ANNOYING_STDLIB_MODULES:
+            continue
+        try:
+            runtime = silent_import_module(module)
+        except ImportError:
+            continue
+        else:
+            modules.add(module)
+            try:
+                # some stdlib modules (e.g. `nt`) don't have __path__ set...
+                runtime_path = runtime.__path__
+                runtime_name = runtime.__name__
+            except AttributeError:
+                continue
+            else:
+                modules.update(
+                    m.name for m in pkgutil.walk_packages(runtime_path, runtime_name + ".")
+                )
+    return modules
 
 
 def get_allowlist_entries(allowlist_file: str) -> Iterator[str]:
@@ -1695,6 +1725,10 @@ class _Arguments:
     version: str
 
 
+# typeshed added a stub for __main__, but that causes stubtest to check itself
+ANNOYING_STDLIB_MODULES: typing_extensions.Final = frozenset({"antigravity", "this", "__main__"})
+
+
 def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
     """This is stubtest! It's time to test the stubs!"""
     # Load the allowlist. This is a series of strings corresponding to Error.object_desc
@@ -1717,10 +1751,9 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
                 "cannot pass both --check-typeshed and a list of modules",
             )
             return 1
-        modules = get_typeshed_stdlib_modules(args.custom_typeshed_dir)
-        # typeshed added a stub for __main__, but that causes stubtest to check itself
-        annoying_modules = {"antigravity", "this", "__main__"}
-        modules = [m for m in modules if m not in annoying_modules]
+        typeshed_modules = get_typeshed_stdlib_modules(args.custom_typeshed_dir)
+        runtime_modules = get_importable_stdlib_modules() or set()
+        modules = sorted((typeshed_modules | runtime_modules) - ANNOYING_STDLIB_MODULES)
 
     if not modules:
         print(_style("error:", color="red", bold=True), "no modules to check")
