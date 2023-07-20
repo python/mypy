@@ -1245,7 +1245,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # have no good way of doing this.
                     #
                     # TODO: Find a way of working around this limitation
-                    if _is_empty_generator(item) or len(expanded) >= 2:
+                    if _is_empty_generator_function(item) or len(expanded) >= 2:
                         self.binder.suppress_unreachable_warnings()
                     self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
@@ -6966,7 +6966,7 @@ def is_literal_not_implemented(n: Expression) -> bool:
     return isinstance(n, NameExpr) and n.fullname == "builtins.NotImplemented"
 
 
-def _is_empty_generator(func: FuncItem) -> bool:
+def _is_empty_generator_function(func: FuncItem) -> bool:
     """
     Checks whether a function's body is 'return; yield' (the yield being added only
     to promote the function into a generator).

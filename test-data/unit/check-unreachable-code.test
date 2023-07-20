@@ -1447,7 +1447,7 @@ def f() -> None:
     x = 0 # This should not be reported as unreachable
 [builtins fixtures/exception.pyi]
 
-[case testIntentionallyEmptyGenerator]
+[case testIntentionallyEmptyGeneratorFunction]
 # flags: --warn-unreachable
 from typing import Generator
 
@@ -1455,7 +1455,7 @@ def f() -> Generator[None, None, None]:
     return
     yield
 
-[case testIntentionallyEmptyGenerator_None]
+[case testIntentionallyEmptyGeneratorFunction_None]
 # flags: --warn-unreachable
 from typing import Generator
 
