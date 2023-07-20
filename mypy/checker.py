@@ -6969,7 +6969,7 @@ def is_literal_not_implemented(n: Expression) -> bool:
 def _is_empty_generator_function(func: FuncItem) -> bool:
     """
     Checks whether a function's body is 'return; yield' (the yield being added only
-    to promote the function into a generator).
+    to promote the function into a generator function).
     """
     body = func.body.body
     return (
