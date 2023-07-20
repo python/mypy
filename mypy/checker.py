@@ -132,6 +132,7 @@ from mypy.nodes import (
     Var,
     WhileStmt,
     WithStmt,
+    YieldExpr,
     is_final_node,
 )
 from mypy.options import Options
@@ -1063,6 +1064,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         yield None
         self.inferred_attribute_types = old_types
 
+    def _is_empty_generator(self, func: FuncItem) -> bool:
+        """
+        Checks whether a function's body is 'return; yield' (the yield being added only
+        to promote the function into a generator).
+        """
+        return (
+            len(body := func.body.body) == 2
+            and isinstance(ret_stmt := body[0], ReturnStmt)
+            and ret_stmt.expr is None
+            and isinstance(expr_stmt := body[1], ExpressionStmt)
+            and isinstance(yield_expr := expr_stmt.expr, YieldExpr)
+            and yield_expr.expr is None
+        )
+
     def check_func_def(
         self, defn: FuncItem, typ: CallableType, name: str | None, allow_empty: bool = False
     ) -> None:
@@ -1240,7 +1255,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # have no good way of doing this.
                     #
                     # TODO: Find a way of working around this limitation
-                    if len(expanded) >= 2:
+                    if len(expanded) >= 2 or self._is_empty_generator(item):
                         self.binder.suppress_unreachable_warnings()
                     self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
