@@ -11,8 +11,8 @@ import shutil
 import sys
 import time
 from importlib import resources as importlib_resources
-from typing import IO, Callable, Container, Iterable, Sequence, Sized, TypeVar
-from typing_extensions import Final, Literal
+from typing import IO, Callable, Container, Final, Iterable, Sequence, Sized, TypeVar
+from typing_extensions import Literal
 
 try:
     import curses
@@ -421,10 +421,10 @@ def get_unique_redefinition_name(name: str, existing: Container[str]) -> str:
 def check_python_version(program: str) -> None:
     """Report issues with the Python used to run mypy, dmypy, or stubgen"""
     # Check for known bad Python versions.
-    if sys.version_info[:2] < (3, 7):
+    if sys.version_info[:2] < (3, 8):
         sys.exit(
-            "Running {name} with Python 3.6 or lower is not supported; "
-            "please upgrade to 3.7 or newer".format(name=program)
+            "Running {name} with Python 3.7 or lower is not supported; "
+            "please upgrade to 3.8 or newer".format(name=program)
         )
 
 

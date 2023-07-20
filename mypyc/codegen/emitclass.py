@@ -270,7 +270,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     # that isn't what we want.
 
     # XXX: there is no reason for the __weakref__ stuff to be mixed up with __dict__
-    if cl.has_dict:
+    if cl.has_dict and not has_managed_dict(cl, emitter):
         # __dict__ lives right after the struct and __weakref__ lives right after that
         # TODO: They should get members in the struct instead of doing this nonsense.
         weak_offset = f"{base_size} + sizeof(PyObject *)"

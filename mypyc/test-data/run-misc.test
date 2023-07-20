@@ -1108,25 +1108,14 @@ assert not C
 # make the initial import fail
 assert False
 
-class C:
-    def __init__(self):
-        self.x = 1
-        self.y = 2
-def test() -> None:
-    a = C()
 [file driver.py]
 # load native, cause PyInit to be run, create the module but don't finish initializing the globals
-try:
-    import native
-except:
-    pass
-try:
-    # try accessing those globals that were never properly initialized
-    import native
-    native.test()
-# should fail with AssertionError due to `assert False` in other function
-except AssertionError:
-    pass
+for _ in range(2):
+    try:
+        import native
+        raise RuntimeError('exception expected')
+    except AssertionError:
+        pass
 
 [case testRepeatedUnderscoreFunctions]
 def _(arg): pass

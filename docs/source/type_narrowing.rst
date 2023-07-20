@@ -271,7 +271,7 @@ Generic TypeGuards
       else:
           reveal_type(names)  # tuple[str, ...]
 
-Typeguards with parameters
+TypeGuards with parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Type guard functions can accept extra arguments:
@@ -293,7 +293,7 @@ Type guard functions can accept extra arguments:
 TypeGuards as methods
 ~~~~~~~~~~~~~~~~~~~~~
 
- A method can also serve as the ``TypeGuard``:
+A method can also serve as a ``TypeGuard``:
 
 .. code-block:: python
 

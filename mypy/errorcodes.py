@@ -6,7 +6,7 @@ These can be used for filtering specific errors.
 from __future__ import annotations
 
 from collections import defaultdict
-from typing_extensions import Final
+from typing import Final
 
 from mypy_extensions import mypyc_attr
 
@@ -144,7 +144,7 @@ SAFE_SUPER: Final = ErrorCode(
     "safe-super", "Warn about calls to abstract methods with empty/trivial bodies", "General"
 )
 TOP_LEVEL_AWAIT: Final = ErrorCode(
-    "top-level-await", "Warn about top level await experessions", "General"
+    "top-level-await", "Warn about top level await expressions", "General"
 )
 
 # These error codes aren't enabled by default.
@@ -234,6 +234,12 @@ USED_BEFORE_DEF: Final[ErrorCode] = ErrorCode(
 )
 UNUSED_IGNORE: Final = ErrorCode(
     "unused-ignore", "Ensure that all type ignores are used", "General", default_enabled=False
+)
+EXPLICIT_OVERRIDE_REQUIRED: Final = ErrorCode(
+    "explicit-override",
+    "Require @override decorator if method is overriding a base class method",
+    "General",
+    default_enabled=False,
 )
 
 

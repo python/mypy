@@ -11,6 +11,7 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Final,
     Iterator,
     List,
     Optional,
@@ -20,7 +21,7 @@ from typing import (
     Union,
     cast,
 )
-from typing_extensions import Final, TypeAlias as _TypeAlias, TypeGuard
+from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 
 from mypy_extensions import trait
 
@@ -511,7 +512,7 @@ class FuncBase(Node):
         "info",
         "is_property",
         "is_class",  # Uses "@classmethod" (explicit or implicit)
-        "is_static",  # Uses "@staticmethod"
+        "is_static",  # Uses "@staticmethod" (explicit or implicit)
         "is_final",  # Uses "@final"
         "is_explicit_override",  # Uses "@override"
         "_fullname",
@@ -1002,7 +1003,7 @@ class Var(SymbolNode):
         # If constant value is a simple literal,
         # store the literal value (unboxed) for the benefit of
         # tools like mypyc.
-        self.final_value: int | float | bool | str | None = None
+        self.final_value: int | float | complex | bool | str | None = None
         # Where the value was set (only for class attributes)
         self.final_unset_in_class = False
         self.final_set_in_init = False
@@ -2802,6 +2803,25 @@ class TempNode(Expression):
         return visitor.visit_temp_node(self)
 
 
+# Special attributes not collected as protocol members by Python 3.12
+# See typing._SPECIAL_NAMES
+EXCLUDED_PROTOCOL_ATTRIBUTES: Final = frozenset(
+    {
+        "__abstractmethods__",
+        "__annotations__",
+        "__dict__",
+        "__doc__",
+        "__init__",
+        "__module__",
+        "__new__",
+        "__slots__",
+        "__subclasshook__",
+        "__weakref__",
+        "__class_getitem__",  # Since Python 3.9
+    }
+)
+
+
 class TypeInfo(SymbolNode):
     """The type structure of a single class.
 
@@ -3115,6 +3135,8 @@ class TypeInfo(SymbolNode):
                 for name, node in base.names.items():
                     if isinstance(node.node, (TypeAlias, TypeVarExpr, MypyFile)):
                         # These are auxiliary definitions (and type aliases are prohibited).
+                        continue
+                    if name in EXCLUDED_PROTOCOL_ATTRIBUTES:
                         continue
                     members.add(name)
         return sorted(list(members))

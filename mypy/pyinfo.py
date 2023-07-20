@@ -2,10 +2,10 @@ from __future__ import annotations
 
 """Utilities to find the site and prefix information of a Python executable.
 
-This file MUST remain compatible with all Python 3.7+ versions. Since we cannot make any assumptions about the
-Python being executed, this module should not use *any* dependencies outside of the standard
-library found in Python 3.7. This file is run each mypy run, so it should be kept as fast as
-possible.
+This file MUST remain compatible with all Python 3.8+ versions. Since we cannot make any
+assumptions about the Python being executed, this module should not use *any* dependencies outside
+of the standard library found in Python 3.8. This file is run each mypy run, so it should be kept
+as fast as possible.
 """
 import sys
 

@@ -31,7 +31,6 @@ def f(x):  # E: Invalid type comment or annotation
   pass
 
 [case testFastParseInvalidTypes3]
-# flags: --python-version 3.6
 # All of these should not crash
 from typing import Callable, Tuple, Iterable
 
@@ -228,8 +227,8 @@ def g():  # E: Type signature has too many arguments
 assert 1, 2
 assert (1, 2)  # E: Assertion is always true, perhaps remove parentheses?
 assert (1, 2), 3  # E: Assertion is always true, perhaps remove parentheses?
-assert ()
 assert (1,)  # E: Assertion is always true, perhaps remove parentheses?
+assert ()
 [builtins fixtures/tuple.pyi]
 
 [case testFastParseAssertMessage]

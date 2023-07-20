@@ -5,15 +5,12 @@ repos:
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
-  - repo: https://github.com/psf/black
+  - repo: https://github.com/hauntsaninja/black-pre-commit-mirror
     rev: 23.3.0  # must match test-requirements.txt
     hooks:
       - id: black
-  - repo: https://github.com/pycqa/isort
-    rev: 5.12.0  # must match test-requirements.txt
-    hooks:
-      - id: isort
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.0.272  # must match test-requirements.txt
     hooks:
       - id: ruff
+        args: [--exit-non-zero-on-fix]

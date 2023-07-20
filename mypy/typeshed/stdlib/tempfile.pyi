@@ -380,6 +380,7 @@ else:
 # It does not actually derive from IO[AnyStr], but it does mostly behave
 # like one.
 class SpooledTemporaryFile(IO[AnyStr], _SpooledTemporaryFileBase):
+    _file: IO[AnyStr]
     @property
     def encoding(self) -> str: ...  # undocumented
     @property

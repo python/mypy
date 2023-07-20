@@ -1,8 +1,7 @@
 """Plugin for supporting the functools standard library module."""
 from __future__ import annotations
 
-from typing import NamedTuple
-from typing_extensions import Final
+from typing import Final, NamedTuple
 
 import mypy.plugin
 from mypy.nodes import ARG_POS, ARG_STAR2, Argument, FuncItem, Var

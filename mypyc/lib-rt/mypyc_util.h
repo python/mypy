@@ -53,8 +53,11 @@ typedef PyObject CPyModule;
 // Tag bit used for long integers
 #define CPY_INT_TAG 1
 
-// Error value for fixed-width (low-level) integers
+// Error value for signed fixed-width (low-level) integers
 #define CPY_LL_INT_ERROR -113
+
+// Error value for unsigned fixed-width (low-level) integers
+#define CPY_LL_UINT_ERROR 239
 
 // Error value for floats
 #define CPY_FLOAT_ERROR -113.0
