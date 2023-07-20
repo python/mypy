@@ -1235,8 +1235,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             new_frame.types[key] = narrowed_type
                             self.binder.declarations[key] = old_binder.declarations[key]
                 with self.scope.push_function(defn):
-                    # We suppress reachability warnings for empty generators (return; yield), since there's
-                    # no way to promote a function into a generator except by adding an "unreachable" yield.
+                    # We suppress reachability warnings for empty generator functions
+                    # (return; yield), since the most idiomatic way to promote a function into a
+                    # generator function is often to add an "unreachable" yield.
                     #
                     # We also suppress reachability warnings when we use TypeVars with value
                     # restrictions: we only want to report a warning if a certain statement is
