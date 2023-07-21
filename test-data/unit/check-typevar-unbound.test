@@ -15,8 +15,7 @@ def g() -> U: # E: A function returning TypeVar should receive at least one argu
 
 V = TypeVar('V', int, str)
 
-# TODO: this should also give an error
-def h() -> V:
+def h() -> V:  # E: A function returning TypeVar should receive at least one argument containing the same TypeVar
     ...
 
 [case testInnerFunctionTypeVar]
