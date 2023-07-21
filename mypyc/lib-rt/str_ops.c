@@ -239,3 +239,16 @@ PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors) {
         return NULL;
     }
 }
+
+int CPyStr_Compare(PyObject *left, PyObject *right) {
+    if (likely(PyUnicode_CheckExact(left) && PyUnicode_CheckExact(right))) {
+        return PyUnicode_Compare(left, right);
+    } else {
+        int ret = PyObject_RichCompareBool(left, right, Py_EQ);
+        if (ret == 1)
+            return 0;
+        if (ret == 0)
+            return 1;
+        return -1;
+    }
+}

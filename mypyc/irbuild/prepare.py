@@ -263,6 +263,8 @@ def prepare_class_def(
             ir.builtin_base = "PyBaseExceptionObject"
         elif cls.fullname == "builtins.dict":
             ir.builtin_base = "PyDictObject"
+        elif cls.fullname == "builtins.str":
+            pass
         elif cls.fullname.startswith("builtins."):
             if not can_subclass_builtin(cls.fullname):
                 # Note that if we try to subclass a C extension class that

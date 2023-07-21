@@ -639,3 +639,20 @@ def test_encode() -> None:
     assert u'\u00E1'.encode('latin1') == b'\xe1'
     with assertRaises(UnicodeEncodeError):
         u.encode('latin1')
+
+[case testCustomCompare]
+
+class S(str):
+    def __eq__(self, other):
+        return False
+
+def test_custom_compare() -> None:
+    s: S = S("x")
+    assert s != "x"
+
+    s1: str = 'xxx'
+    s2: str = 'xxx'
+    s3: str = 'yyy'
+
+    assert s1 == s2
+    assert s1 != s3
