@@ -1127,7 +1127,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             message_registry.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT, typ.ret_type
                         )
                     self.check_unbound_return_typevar(typ)
-                elif isinstance(original_typ.ret_type, TypeVarType) and original_typ.ret_type.values:
+                elif (
+                    isinstance(original_typ.ret_type, TypeVarType) and original_typ.ret_type.values
+                ):
                     # Since type vars with values are expanded, the return type is changed
                     # to a raw value. This is a hack to get it back.
                     self.check_unbound_return_typevar(original_typ)
