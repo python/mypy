@@ -75,7 +75,8 @@ class ModuleNotFoundReason(Enum):
         doc_link = "See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports"
         if self is ModuleNotFoundReason.NOT_FOUND:
             msg = 'Cannot find implementation or library stub for module named "{module}"'
-            notes = [doc_link]
+            pip_install_suggestion = "The following command may help: pip install {module}"
+            notes = [doc_link, pip_install_suggestion]
         elif self is ModuleNotFoundReason.WRONG_WORKING_DIRECTORY:
             msg = 'Cannot find implementation or library stub for module named "{module}"'
             notes = [
