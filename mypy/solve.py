@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Iterable
+from typing import Iterable, Sequence
 
 from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, neg_op, infer_constraints
 from mypy.expandtype import expand_type
@@ -23,16 +23,17 @@ from mypy.types import (
     UnionType,
     get_proper_type,
     remove_dups,
+    TypeVarLikeType,
 )
 from mypy.typestate import type_state
 
 
 def solve_constraints(
-    vars: list[TypeVarId],
+    original_vars: Sequence[TypeVarLikeType],
     constraints: list[Constraint],
     strict: bool = True,
     allow_polymorphic: bool = False,
-) -> list[Type | None]:
+) -> tuple[list[Type | None], list[TypeVarType]]:
     """Solve type constraints.
 
     Return the best type(s) for type variables; each type can be None if the value of the variable
@@ -42,13 +43,16 @@ def solve_constraints(
     pick NoneType as the value of the type variable.  If strict=False,
     pick AnyType.
     """
+    vars = [tv.id for tv in original_vars]
     if not vars:
-        return []
+        return [], []
 
+    originals = {tv.id: tv for tv in original_vars}
     extra_vars: list[TypeVarId] = []
     # Get additional variables from generic actuals.
     for c in constraints:
         extra_vars.extend([v.id for v in c.extra_tvars if v.id not in vars + extra_vars])
+        originals.update({v.id: v for v in c.extra_tvars if v.id not in originals})
     if allow_polymorphic:
         # Constraints like T :> S and S <: T are semantically the same, but they are
         # represented differently. Normalize the constraint list w.r.t this equivalence.
@@ -61,9 +65,10 @@ def solve_constraints(
             cmap[con.type_var].append(con)
 
     if allow_polymorphic:
-        solutions = solve_non_linear(vars + extra_vars, constraints, vars)
+        solutions, free_vars = solve_non_linear(vars + extra_vars, constraints, vars, originals)
     else:
         solutions = {}
+        free_vars = []
         for tv, cs in cmap.items():
             if not cs:
                 continue
@@ -91,12 +96,15 @@ def solve_constraints(
             else:
                 candidate = AnyType(TypeOfAny.special_form)
             res.append(candidate)
-    return res
+    return res, [originals[tv] for tv in free_vars]
 
 
 def solve_non_linear(
-    vars: list[TypeVarId], constraints: list[Constraint], original_vars: list[TypeVarId]
-) -> dict[TypeVarId, Type | None]:
+    vars: list[TypeVarId],
+    constraints: list[Constraint],
+    original_vars: list[TypeVarId],
+    originals: dict[TypeVarId, TypeVarLikeType],
+) -> tuple[dict[TypeVarId, Type | None], list[TypeVarId]]:
     """Solve set of constraints that may include non-linear ones, like T <: List[S].
 
     The whole algorithm consists of five steps:
@@ -106,63 +114,49 @@ def solve_non_linear(
       * Variables in leaf SCCs that don't have constant bounds are free (choose one per SCC)
       * Solve constraints iteratively starting from leafs, updating targets after each step.
     """
-    originals = {c.type_var: c.origin_type_var for c in constraints}
-    for c in constraints:
-        for extra_tv in c.extra_tvars:
-            originals[extra_tv.id] = extra_tv
     graph, lowers, uppers = transitive_closure(vars, constraints)
 
     dmap = compute_dependencies(vars, graph, lowers, uppers)
     sccs = list(strongly_connected_components(set(vars), dmap))
-    if all(check_linear(scc, lowers, uppers) for scc in sccs):
-        raw_batches = list(topsort(prepare_sccs(sccs, dmap)))
-        leafs = raw_batches[0]
-        free_vars = []
-        for scc in leafs:
-            # If all constrain targets in this SCC are type variables within the
-            # same SCC then the only meaningful solution we can express, is that
-            # each variable is equal to a new free variable. For example if we
-            # have T <: S, S <: U, we deduce: T = S = U = <free>.
-            if all(not lowers[tv] and not uppers[tv] for tv in scc):
-                # For convenience with current type application machinery, we randomly
-                # choose one of the existing type variables in SCC and designate it as free
-                # instead of defining a new type variable as a common solution.
-                # TODO: be careful about upper bounds (or values) when introducing free vars.
-                free_vars.append(sorted(scc, key=lambda x: (x not in original_vars, x.raw_id))[0])
+    if not all(check_linear(scc, lowers, uppers) for scc in sccs):
+        return {}, []
+    raw_batches = list(topsort(prepare_sccs(sccs, dmap)))
 
-        # Flatten the SCCs that are independent, we can solve them together,
-        # since we don't need to update any targets in between.
-        batches = []
-        for batch in raw_batches:
-            next_bc = []
-            for scc in batch:
-                next_bc.extend(list(scc))
-            batches.append(next_bc)
+    free_vars = []
+    for scc in raw_batches[0]:
+        # If all constrain targets in this SCC are type variables within the
+        # same SCC then the only meaningful solution we can express, is that
+        # each variable is equal to a new free variable. For example if we
+        # have T <: S, S <: U, we deduce: T = S = U = <free>.
+        if all(not lowers[tv] and not uppers[tv] for tv in scc):
+            # For convenience with current type application machinery, we randomly
+            # choose one of the existing type variables in SCC and designate it as free
+            # instead of defining a new type variable as a common solution.
+            # TODO: be careful about upper bounds (or values) when introducing free vars.
+            free_vars.append(sorted(scc, key=lambda x: (x not in original_vars, x.raw_id))[0])
 
-        # Update lowers/uppers with free vars, so these can now be used
-        # as valid solutions.
-        for l, u in graph.copy():
-            if l == u:
-                continue
-            if l in free_vars:
-                lowers[u].add(originals[l])
-                graph.remove((l, u))
-            if u in free_vars:
-                uppers[l].add(originals[u])
-                graph.remove((l, u))
+    # Update lowers/uppers with free vars, so these can now be used
+    # as valid solutions.
+    for l, u in graph.copy():
+        if l in free_vars:
+            lowers[u].add(originals[l])
+        if u in free_vars:
+            uppers[l].add(originals[u])
 
-        solutions: dict[TypeVarId, Type | None] = {}
-        for flat_batch in batches:
-            solutions.update(solve_iteratively(flat_batch, graph, lowers, uppers, free_vars))
-        # We remove the solutions like T = T for free variables. This will indicate
-        # to the apply function, that they should not be touched.
-        # TODO: return list of free type variables explicitly, this logic is fragile
-        # (but if we do, we need to be careful everything works in incremental modes).
-        for tv in free_vars:
-            if tv in solutions:
-                del solutions[tv]
-        return solutions
-    return {}
+    # Flatten the SCCs that are independent, we can solve them together,
+    # since we don't need to update any targets in between.
+    batches = []
+    for batch in raw_batches:
+        next_bc = []
+        for scc in batch:
+            next_bc.extend(list(scc))
+        batches.append(next_bc)
+
+    solutions: dict[TypeVarId, Type | None] = {}
+    for flat_batch in batches:
+        res = solve_iteratively(flat_batch, graph, lowers, uppers, free_vars)
+        solutions.update(res)
+    return solutions, free_vars
 
 
 def solve_iteratively(

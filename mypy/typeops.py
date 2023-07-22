@@ -313,7 +313,9 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
         original_type = get_proper_type(original_type)
 
         all_ids = func.type_var_ids()
-        typeargs = infer_type_arguments(all_ids, self_param_type, original_type, is_supertype=True)
+        typeargs = infer_type_arguments(
+            func.variables, self_param_type, original_type, is_supertype=True
+        )
         if (
             is_classmethod
             # TODO: why do we need the extra guards here?
@@ -322,7 +324,7 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
         ):
             # In case we call a classmethod through an instance x, fallback to type(x)
             typeargs = infer_type_arguments(
-                all_ids, self_param_type, TypeType(original_type), is_supertype=True
+                func.variables, self_param_type, TypeType(original_type), is_supertype=True
             )
 
         ids = [tid for tid in all_ids if any(tid == t.id for t in get_type_vars(self_param_type))]

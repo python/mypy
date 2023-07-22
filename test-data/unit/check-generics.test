@@ -2913,7 +2913,7 @@ def dec(f: Callable[[S], T]) -> Callable[[S], T]:
     ...
 def test(x: List[U]) -> List[U]:
     ...
-reveal_type(dec(test))  # N: Revealed type is "def [U] (builtins.list[U`1]) -> builtins.list[U`1]"
+reveal_type(dec(test))  # N: Revealed type is "def [U] (builtins.list[U`-1]) -> builtins.list[U`-1]"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCallableGenericAlias]
