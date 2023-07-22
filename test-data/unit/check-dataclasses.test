@@ -1127,7 +1127,6 @@ class Foo:
 
 [case testNoComplainFieldNoneStrict]
 # flags: --python-version 3.7
-# flags: --strict-optional
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -1264,7 +1263,7 @@ class Deferred: pass
 [builtins fixtures/dataclasses.pyi]
 
 [case testDeferredDataclassInitSignatureSubclass]
-# flags: --strict-optional --python-version 3.7
+# flags: --python-version 3.7
 from dataclasses import dataclass
 from typing import Optional
 
@@ -1745,7 +1744,7 @@ reveal_type(Child2[int, A]([A()], [1]).b)  # N: Revealed type is "builtins.list[
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassInheritOptionalType]
-# flags: --python-version 3.7 --strict-optional
+# flags: --python-version 3.7
 from dataclasses import dataclass
 from typing import Any, Callable, Generic, TypeVar, List, Optional
 
@@ -1979,7 +1978,6 @@ B = List[C]
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassSelfType]
-# flags: --strict-optional
 from dataclasses import dataclass
 from typing import Self, TypeVar, Generic, Optional
 
@@ -2104,7 +2102,6 @@ a2 = replace(a, q='42')  # E: Argument "q" to "replace" of "A" has incompatible 
 reveal_type(a2)  # N: Revealed type is "__main__.A"
 
 [case testReplaceUnion]
-# flags: --strict-optional
 from typing import Generic, Union, TypeVar
 from dataclasses import dataclass, replace, InitVar
 
@@ -2136,7 +2133,6 @@ _ = replace(a_or_b, y=42, init_var=42)  # E: Argument "y" to "replace" of "Union
 [builtins fixtures/dataclasses.pyi]
 
 [case testReplaceUnionOfTypeVar]
-# flags: --strict-optional
 from typing import Generic, Union, TypeVar
 from dataclasses import dataclass, replace
 

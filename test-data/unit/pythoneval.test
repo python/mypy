@@ -1649,7 +1649,6 @@ foo(list((list(""), "")))
 [out]
 
 [case testNarrowTypeForDictKeys]
-# flags: --strict-optional
 from typing import Dict, KeysView, Optional
 
 d: Dict[str, int]
@@ -1667,10 +1666,10 @@ else:
     reveal_type(k)
 
 [out]
-_testNarrowTypeForDictKeys.py:7: note: Revealed type is "builtins.str"
-_testNarrowTypeForDictKeys.py:9: note: Revealed type is "Union[builtins.str, None]"
-_testNarrowTypeForDictKeys.py:14: note: Revealed type is "builtins.str"
-_testNarrowTypeForDictKeys.py:16: note: Revealed type is "Union[builtins.str, None]"
+_testNarrowTypeForDictKeys.py:6: note: Revealed type is "builtins.str"
+_testNarrowTypeForDictKeys.py:8: note: Revealed type is "Union[builtins.str, None]"
+_testNarrowTypeForDictKeys.py:13: note: Revealed type is "builtins.str"
+_testNarrowTypeForDictKeys.py:15: note: Revealed type is "Union[builtins.str, None]"
 
 [case testTypeAliasWithNewStyleUnion]
 # flags: --python-version 3.10

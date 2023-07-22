@@ -248,7 +248,6 @@ def main1(a: object) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardOverload]
-# flags: --strict-optional
 from typing import overload, Any, Callable, Iterable, Iterator, List, Optional, TypeVar
 from typing_extensions import TypeGuard
 

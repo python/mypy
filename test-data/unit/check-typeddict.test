@@ -595,7 +595,6 @@ reveal_type(f(g))  # N: Revealed type is "TypedDict({'x': builtins.int, 'y': bui
 [builtins fixtures/dict.pyi]
 
 [case testMeetOfTypedDictsWithIncompatibleCommonKeysIsUninhabited]
-# flags: --strict-optional
 from mypy_extensions import TypedDict
 from typing import TypeVar, Callable
 XYa = TypedDict('XYa', {'x': int, 'y': int})
@@ -619,7 +618,6 @@ reveal_type(f(g))  # N: Revealed type is "TypedDict({'x': builtins.int, 'z': bui
 
 # TODO: It would be more accurate for the meet to be TypedDict instead.
 [case testMeetOfTypedDictWithCompatibleMappingIsUninhabitedForNow]
-# flags: --strict-optional
 from mypy_extensions import TypedDict
 from typing import TypeVar, Callable, Mapping
 X = TypedDict('X', {'x': int})
@@ -631,7 +629,6 @@ reveal_type(f(g))  # N: Revealed type is "<nothing>"
 [builtins fixtures/dict.pyi]
 
 [case testMeetOfTypedDictWithIncompatibleMappingIsUninhabited]
-# flags: --strict-optional
 from mypy_extensions import TypedDict
 from typing import TypeVar, Callable, Mapping
 X = TypedDict('X', {'x': int})
@@ -643,7 +640,6 @@ reveal_type(f(g))  # N: Revealed type is "<nothing>"
 [builtins fixtures/dict.pyi]
 
 [case testMeetOfTypedDictWithCompatibleMappingSuperclassIsUninhabitedForNow]
-# flags: --strict-optional
 from mypy_extensions import TypedDict
 from typing import TypeVar, Callable, Iterable
 X = TypedDict('X', {'x': int})
@@ -677,7 +673,6 @@ reveal_type(f(g))  # N: Revealed type is "TypedDict({'x'?: builtins.int, 'y': bu
 [builtins fixtures/dict.pyi]
 
 [case testMeetOfTypedDictsWithIncompatibleNonTotalAndTotal]
-# flags: --strict-optional
 from mypy_extensions import TypedDict
 from typing import TypeVar, Callable
 XY = TypedDict('XY', {'x': int, 'y': int}, total=False)
@@ -972,7 +967,6 @@ if int():
 -- Other TypedDict methods
 
 [case testTypedDictGetMethod]
-# flags: --strict-optional
 from mypy_extensions import TypedDict
 class A: pass
 D = TypedDict('D', {'x': int, 'y': str})
@@ -986,7 +980,6 @@ reveal_type(d.get('y', None)) # N: Revealed type is "Union[builtins.str, None]"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictGetMethodTypeContext]
-# flags: --strict-optional
 from typing import List
 from mypy_extensions import TypedDict
 class A: pass
@@ -1044,7 +1037,6 @@ p.get('x', 1 + 'y')     # E: Unsupported operand types for + ("int" and "str")
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictChainedGetWithEmptyDictDefault]
-# flags: --strict-optional
 from mypy_extensions import TypedDict
 C = TypedDict('C', {'a': int})
 D = TypedDict('D', {'x': C, 'y': str})

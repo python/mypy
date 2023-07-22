@@ -179,10 +179,10 @@ def main() -> None:
     print("Created typeshed sync commit.")
 
     commits_to_cherry_pick = [
-        "9f4c0d8af",  # LiteralString reverts
-        "56f434336",  # sum reverts
-        "71c4269df",  # ctypes reverts
-        "186fbb18e",  # ParamSpec for functools.wraps
+        "2f6b6e66c",  # LiteralString reverts
+        "120af30e7",  # sum reverts
+        "1866d28f1",  # ctypes reverts
+        "3240da455",  # ParamSpec for functools.wraps
     ]
     for commit in commits_to_cherry_pick:
         try:
