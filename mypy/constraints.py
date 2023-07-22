@@ -913,7 +913,11 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     and not any(tv.id.raw_id == 0 for tv in cactual.variables)
                 ):
                     # TODO: fix polymorphic application to support new vars
-                    res.extend(infer_constraints(cactual, template, neg_op(self.direction)))
+                    res.extend(
+                        infer_constraints(
+                            cactual, template, neg_op(self.direction), skip_neg_op=True
+                        )
+                    )
                     extra_tvars = True
 
                 # We can't infer constraints from arguments if the template is Callable[..., T]

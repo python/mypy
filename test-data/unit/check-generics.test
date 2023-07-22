@@ -2898,8 +2898,7 @@ def test1(x: V) -> V: ...
 def test2(x: V, y: V) -> V: ...
 
 reveal_type(dec1(test1))  # N: Revealed type is "def () -> def [T] (T`1) -> T`1"
-# TODO: support this situation
-reveal_type(dec2(test2))  # N: Revealed type is "def (builtins.object) -> def (builtins.object) -> builtins.object"
+reveal_type(dec2(test2))  # N: Revealed type is "def [T] (T`3) -> def (T`3) -> T`3"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCallableNewVariable]

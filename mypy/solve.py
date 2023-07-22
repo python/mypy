@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from typing import Iterable
 
 from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, neg_op, infer_constraints
@@ -43,16 +44,15 @@ def solve_constraints(
     """
     if not vars:
         return []
+
+    extra_vars: list[TypeVarId] = []
+    # Get additional variables from generic actuals.
+    for c in constraints:
+        extra_vars.extend([v.id for v in c.extra_tvars if v.id not in vars + extra_vars])
     if allow_polymorphic:
         # Constraints like T :> S and S <: T are semantically the same, but they are
         # represented differently. Normalize the constraint list w.r.t this equivalence.
-        constraints = normalize_constraints(constraints, vars)
-
-    extra_vars: list[TypeVarId] = []
-    if allow_polymorphic:
-        # Get additional variables from generic actuals.
-        for c in constraints:
-            extra_vars.extend([v.id for v in c.extra_tvars if v.id not in vars + extra_vars])
+        constraints = normalize_constraints(constraints, vars + extra_vars)
 
     # Collect a list of constraints for each type variable.
     cmap: dict[TypeVarId, list[Constraint]] = {tv: [] for tv in vars + extra_vars}
@@ -61,7 +61,7 @@ def solve_constraints(
             cmap[con.type_var].append(con)
 
     if allow_polymorphic:
-        solutions = solve_non_linear(vars + extra_vars, constraints)
+        solutions = solve_non_linear(vars + extra_vars, constraints, vars)
     else:
         solutions = {}
         for tv, cs in cmap.items():
@@ -69,7 +69,14 @@ def solve_constraints(
                 continue
             lowers = [c.target for c in cs if c.op == SUPERTYPE_OF]
             uppers = [c.target for c in cs if c.op == SUBTYPE_OF]
-            solutions[tv] = solve_one(lowers, uppers, [])
+            solution = solve_one(lowers, uppers, [])
+
+            # Do not leak type variables in non-polymorphic solutions.
+            # XXX: somehow this breaks defaultdict partial types.
+            if solution is None or not get_vars(
+                solution, [tv for tv in extra_vars if tv not in vars]
+            ):
+                solutions[tv] = solution
 
     res: list[Type | None] = []
     for v in vars:
@@ -88,7 +95,7 @@ def solve_constraints(
 
 
 def solve_non_linear(
-    vars: list[TypeVarId], constraints: list[Constraint]
+    vars: list[TypeVarId], constraints: list[Constraint], original_vars: list[TypeVarId]
 ) -> dict[TypeVarId, Type | None]:
     """Solve set of constraints that may include non-linear ones, like T <: List[S].
 
@@ -121,7 +128,7 @@ def solve_non_linear(
                 # choose one of the existing type variables in SCC and designate it as free
                 # instead of defining a new type variable as a common solution.
                 # TODO: be careful about upper bounds (or values) when introducing free vars.
-                free_vars.append(sorted(scc, key=lambda x: x.raw_id)[0])
+                free_vars.append(sorted(scc, key=lambda x: (x not in original_vars, x.raw_id))[0])
 
         # Flatten the SCCs that are independent, we can solve them together,
         # since we don't need to update any targets in between.
@@ -309,8 +316,8 @@ def transitive_closure(
       * {T} <: S <: {U, int}
       * {T, S} <: U <: {int}
     """
-    uppers: dict[TypeVarId, set[Type]] = {tv: set() for tv in tvars}
-    lowers: dict[TypeVarId, set[Type]] = {tv: set() for tv in tvars}
+    uppers: dict[TypeVarId, set[Type]] = defaultdict(set)
+    lowers: dict[TypeVarId, set[Type]] = defaultdict(set)
     graph: set[tuple[TypeVarId, TypeVarId]] = {(tv, tv) for tv in tvars}
 
     remaining = set(constraints)
