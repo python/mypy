@@ -913,6 +913,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     # depends on this old behaviour.
                     and not any(tv.id.raw_id == 0 for tv in cactual.variables)
                 ):
+                    # If the actual callable is generic, infer constraints in the opposite
+                    # direction, and indicate to the solver there are extra type variables
+                    # to solve for (see more details in mypy/solve.py).
                     res.extend(
                         infer_constraints(
                             cactual, template, neg_op(self.direction), skip_neg_op=True
