@@ -345,6 +345,8 @@ def transitive_closure(
                     remaining |= set(infer_constraints(lt, ut, SUBTYPE_OF))
                     remaining |= set(infer_constraints(ut, lt, SUPERTYPE_OF))
         elif c.op == SUBTYPE_OF:
+            if c.target in uppers[c.type_var]:
+                continue
             for l in tvars:
                 if (l, c.type_var) in graph:
                     uppers[l].add(c.target)
@@ -353,6 +355,8 @@ def transitive_closure(
                 remaining |= set(infer_constraints(c.target, lt, SUPERTYPE_OF))
         else:
             assert c.op == SUPERTYPE_OF
+            if c.target in lowers[c.type_var]:
+                continue
             for u in tvars:
                 if (c.type_var, u) in graph:
                     lowers[u].add(c.target)
