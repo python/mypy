@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import pytest
-
 from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints
 from mypy.test.helpers import Suite
 from mypy.test.typefixture import TypeFixture
