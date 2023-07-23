@@ -716,6 +716,7 @@ class RegularClass:
     class NestedNamedTuple(NamedTuple):
         x: int
         y: str = 'a'
+    z: str = 'b'
 
 # TODO: make sure that nested classes in `NamedTuple` are supported:
 class NamedTupleWithNestedClass(NamedTuple):
@@ -740,6 +741,7 @@ class RegularClass:
     class NestedNamedTuple(NamedTuple):
         x: int
         y: str = ...
+    z: str
 
 class NamedTupleWithNestedClass(NamedTuple): ...
 
