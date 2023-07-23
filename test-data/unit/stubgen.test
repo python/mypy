@@ -698,7 +698,7 @@ class Y(NamedTuple):
     a: int
     b: str
 
-[case testNamedTupleClassSyntax]
+[case testNamedTupleClassSyntax_semanal]
 from typing import NamedTuple
 
 class A(NamedTuple):
@@ -708,16 +708,40 @@ class A(NamedTuple):
 class B(A):
     z1: str
     z2 = 1
+    z3: str = 'b'
+
+class RegularClass:
+    x: int
+    y: str = 'a'
+    class NestedNamedTuple(NamedTuple):
+        x: int
+        y: str = 'a'
+
+# TODO: make sure that nested classes in `NamedTuple` are supported:
+class NamedTupleWithNestedClass(NamedTuple):
+    class Nested:
+        x: int
+        y: str = 'a'
 [out]
 from typing import NamedTuple
 
 class A(NamedTuple):
     x: int
-    y: str
+    y: str = ...
 
 class B(A):
     z1: str
     z2: int
+    z3: str
+
+class RegularClass:
+    x: int
+    y: str
+    class NestedNamedTuple(NamedTuple):
+        x: int
+        y: str = ...
+
+class NamedTupleWithNestedClass(NamedTuple): ...
 
 [case testEmptyNamedtuple]
 import collections, typing
