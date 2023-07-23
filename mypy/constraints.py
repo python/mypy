@@ -194,7 +194,9 @@ def infer_constraints(
       ((T, S), (X, Y))  -->  T :> X and S :> Y
       (X[T], Any)       -->  T <: Any and T :> Any
 
-    The constraints are represented as Constraint objects.
+    The constraints are represented as Constraint objects. If skip_neg_op == True,
+    then skip adding reverse (polymorphic) constraints (since this is already a call
+    to infer such constraints).
     """
     if any(
         get_proper_type(template) == get_proper_type(t)

@@ -62,12 +62,9 @@ def infer_function_type_arguments(
 
 
 def infer_type_arguments(
-    type_var_ids: Sequence[TypeVarLikeType],
-    template: Type,
-    actual: Type,
-    is_supertype: bool = False,
+    type_vars: Sequence[TypeVarLikeType], template: Type, actual: Type, is_supertype: bool = False
 ) -> list[Type | None]:
     # Like infer_function_type_arguments, but only match a single type
     # against a generic type.
     constraints = infer_constraints(template, actual, SUPERTYPE_OF if is_supertype else SUBTYPE_OF)
-    return solve_constraints(type_var_ids, constraints)[0]
+    return solve_constraints(type_vars, constraints)[0]
