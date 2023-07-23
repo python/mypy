@@ -491,7 +491,6 @@ class BaseStubGenerator:
     IGNORED_DUNDERS: Final = {
         "__all__",
         "__author__",
-        "__version__",
         "__about__",
         "__copyright__",
         "__email__",

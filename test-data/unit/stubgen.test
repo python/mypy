@@ -315,6 +315,7 @@ __all__ = []
 __author__ = ''
 __version__ = ''
 [out]
+__version__: str
 
 [case testBaseClass]
 class A: ...
@@ -2908,6 +2909,8 @@ __uri__ = ''
 __version__ = ''
 
 [out]
+from m import __version__ as __version__
+
 class A: ...
 
 [case testHideDunderModuleAttributesWithAll_import]
@@ -2937,6 +2940,7 @@ __uri__ = ''
 __version__ = ''
 
 [out]
+from m import __version__ as __version__
 
 [case testAttrsClass_semanal]
 import attrs
