@@ -3878,11 +3878,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return True
         if len(t.args) == 1:
             arg = get_proper_type(t.args[0])
-            # TODO: This is too permissive -- we only allow TypeVarType since
-            #       they leak in cases like defaultdict(list) due to a bug.
-            #       This can result in incorrect types being inferred, but only
-            #       in rare cases.
-            if isinstance(arg, (TypeVarType, UninhabitedType, NoneType)):
+            if self.options.new_type_inference:
+                allowed = isinstance(arg, (UninhabitedType, NoneType))
+            else:
+                # Allow leaked TypeVars for legacy inference logic.
+                allowed = isinstance(arg, (UninhabitedType, NoneType, TypeVarType))
+            if allowed:
                 return True
         return False
 

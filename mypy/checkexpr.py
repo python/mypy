@@ -1965,11 +1965,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     freeze_all_type_vars(applied)
                     return applied
                 # If it didn't work, erase free variables as <nothing>, to avoid confusing errors.
+                unknown = UninhabitedType()
+                unknown.ambiguous = True
                 inferred_args = [
-                    expand_type(a, {v.id: UninhabitedType() for v in callee_type.variables})
+                    expand_type(
+                        a, {v.id: unknown for v in list(callee_type.variables) + free_vars}
+                    )
                     if a is not None
                     else None
-                    for a in inferred_args
+                    for a in poly_inferred_args
                 ]
         else:
             # In dynamically typed functions use implicit 'Any' types for

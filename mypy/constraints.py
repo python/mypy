@@ -661,13 +661,13 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     assert mapped.type.type_var_tuple_prefix is not None
                     assert mapped.type.type_var_tuple_suffix is not None
 
-                    unpack_constraints, mapped_args, instance_args = build_constraints_for_unpack(
-                        mapped.args,
-                        mapped.type.type_var_tuple_prefix,
-                        mapped.type.type_var_tuple_suffix,
+                    unpack_constraints, instance_args, mapped_args = build_constraints_for_unpack(
                         instance.args,
                         instance.type.type_var_tuple_prefix,
                         instance.type.type_var_tuple_suffix,
+                        mapped.args,
+                        mapped.type.type_var_tuple_prefix,
+                        mapped.type.type_var_tuple_suffix,
                         self.direction,
                     )
                     res.extend(unpack_constraints)
@@ -1217,6 +1217,9 @@ def find_and_build_constraints_for_unpack(
 
 
 def build_constraints_for_unpack(
+    # TODO: this naming is misleading, these should be "actual", not "mapped"
+    # both template and actual can be mapped before, depending on direction.
+    # Also the convention is to put template related args first.
     mapped: tuple[Type, ...],
     mapped_prefix_len: int | None,
     mapped_suffix_len: int | None,

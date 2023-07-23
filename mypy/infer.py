@@ -12,7 +12,7 @@ from mypy.constraints import (
 )
 from mypy.nodes import ArgKind
 from mypy.solve import solve_constraints
-from mypy.types import CallableType, Instance, Type, TypeVarId, TypeVarType, TypeVarLikeType
+from mypy.types import CallableType, Instance, Type, TypeVarLikeType
 
 
 class ArgumentInferContext(NamedTuple):
@@ -37,7 +37,7 @@ def infer_function_type_arguments(
     context: ArgumentInferContext,
     strict: bool = True,
     allow_polymorphic: bool = False,
-) -> tuple[list[Type | None], list[TypeVarType]]:
+) -> tuple[list[Type | None], list[TypeVarLikeType]]:
     """Infer the type arguments of a generic function.
 
     Return an array of lower bound types for the type variables -1 (at
@@ -62,7 +62,10 @@ def infer_function_type_arguments(
 
 
 def infer_type_arguments(
-    type_var_ids: Sequence[TypeVarLikeType], template: Type, actual: Type, is_supertype: bool = False
+    type_var_ids: Sequence[TypeVarLikeType],
+    template: Type,
+    actual: Type,
+    is_supertype: bool = False,
 ) -> list[Type | None]:
     # Like infer_function_type_arguments, but only match a single type
     # against a generic type.

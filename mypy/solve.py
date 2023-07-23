@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Iterable, Sequence
 
-from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, neg_op, infer_constraints
+from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints, neg_op
 from mypy.expandtype import expand_type
 from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
 from mypy.join import join_types
@@ -18,12 +18,12 @@ from mypy.types import (
     Type,
     TypeOfAny,
     TypeVarId,
+    TypeVarLikeType,
     TypeVarType,
     UninhabitedType,
     UnionType,
     get_proper_type,
     remove_dups,
-    TypeVarLikeType,
 )
 from mypy.typestate import type_state
 
@@ -33,7 +33,7 @@ def solve_constraints(
     constraints: list[Constraint],
     strict: bool = True,
     allow_polymorphic: bool = False,
-) -> tuple[list[Type | None], list[TypeVarType]]:
+) -> tuple[list[Type | None], list[TypeVarLikeType]]:
     """Solve type constraints.
 
     Return the best type(s) for type variables; each type can be None if the value of the variable
@@ -65,7 +65,13 @@ def solve_constraints(
             cmap[con.type_var].append(con)
 
     if allow_polymorphic:
-        solutions, free_vars = solve_non_linear(vars + extra_vars, constraints, vars, originals)
+        if constraints:
+            solutions, free_vars = solve_non_linear(
+                vars + extra_vars, constraints, vars, originals
+            )
+        else:
+            solutions = {}
+            free_vars = []
     else:
         solutions = {}
         free_vars = []
@@ -77,7 +83,6 @@ def solve_constraints(
             solution = solve_one(lowers, uppers, [])
 
             # Do not leak type variables in non-polymorphic solutions.
-            # XXX: somehow this breaks defaultdict partial types.
             if solution is None or not get_vars(
                 solution, [tv for tv in extra_vars if tv not in vars]
             ):
