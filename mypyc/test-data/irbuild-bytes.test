@@ -71,7 +71,7 @@ def neq(x: bytes, y: bytes) -> bool:
 [out]
 def eq(x, y):
     x, y :: bytes
-    r0 :: int32
+    r0 :: i32
     r1, r2 :: bit
 L0:
     r0 = CPyBytes_Compare(x, y)
@@ -80,7 +80,7 @@ L0:
     return r2
 def neq(x, y):
     x, y :: bytes
-    r0 :: int32
+    r0 :: i32
     r1, r2 :: bit
 L0:
     r0 = CPyBytes_Compare(x, y)

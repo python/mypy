@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum, unique
-from typing_extensions import Final
+from typing import Final
 
 from mypy.checkstrformat import (
     ConversionSpecifier,

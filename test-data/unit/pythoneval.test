@@ -867,7 +867,7 @@ _program.py:20: error: Argument 1 to "tst" has incompatible type "defaultdict[st
 _program.py:24: error: Invalid index type "str" for "MyDDict[Dict[<nothing>, <nothing>]]"; expected type "int"
 
 [case testNoSubcriptionOfStdlibCollections]
-# flags: --python-version 3.6
+# flags: --python-version 3.7
 import collections
 from collections import Counter
 from typing import TypeVar
@@ -1441,7 +1441,7 @@ accepts_named_tuple(b)
 accepts_named_tuple(1)
 accepts_named_tuple((1, 2))
 [out]
-_testNamedTupleTypeInheritanceSpecialCase.py:8: note: Revealed type is "collections.OrderedDict[builtins.str, Any]"
+_testNamedTupleTypeInheritanceSpecialCase.py:8: note: Revealed type is "builtins.dict[builtins.str, Any]"
 _testNamedTupleTypeInheritanceSpecialCase.py:9: note: Revealed type is "builtins.tuple[builtins.str, ...]"
 _testNamedTupleTypeInheritanceSpecialCase.py:10: note: Revealed type is "builtins.dict[builtins.str, Any]"
 _testNamedTupleTypeInheritanceSpecialCase.py:17: error: Argument 1 to "accepts_named_tuple" has incompatible type "int"; expected "NamedTuple"
@@ -1649,7 +1649,6 @@ foo(list((list(""), "")))
 [out]
 
 [case testNarrowTypeForDictKeys]
-# flags: --strict-optional
 from typing import Dict, KeysView, Optional
 
 d: Dict[str, int]
@@ -1667,10 +1666,10 @@ else:
     reveal_type(k)
 
 [out]
-_testNarrowTypeForDictKeys.py:7: note: Revealed type is "builtins.str"
-_testNarrowTypeForDictKeys.py:9: note: Revealed type is "Union[builtins.str, None]"
-_testNarrowTypeForDictKeys.py:14: note: Revealed type is "builtins.str"
-_testNarrowTypeForDictKeys.py:16: note: Revealed type is "Union[builtins.str, None]"
+_testNarrowTypeForDictKeys.py:6: note: Revealed type is "builtins.str"
+_testNarrowTypeForDictKeys.py:8: note: Revealed type is "Union[builtins.str, None]"
+_testNarrowTypeForDictKeys.py:13: note: Revealed type is "builtins.str"
+_testNarrowTypeForDictKeys.py:15: note: Revealed type is "Union[builtins.str, None]"
 
 [case testTypeAliasWithNewStyleUnion]
 # flags: --python-version 3.10
@@ -2094,7 +2093,6 @@ grouped = groupby(pairs, key=fst)
 [out]
 
 [case testDataclassReplaceOptional]
-# flags: --strict-optional
 from dataclasses import dataclass, replace
 from typing import Optional
 
@@ -2107,5 +2105,18 @@ reveal_type(a)
 a2 = replace(a, x=None)  # OK
 reveal_type(a2)
 [out]
-_testDataclassReplaceOptional.py:10: note: Revealed type is "_testDataclassReplaceOptional.A"
-_testDataclassReplaceOptional.py:12: note: Revealed type is "_testDataclassReplaceOptional.A"
+_testDataclassReplaceOptional.py:9: note: Revealed type is "_testDataclassReplaceOptional.A"
+_testDataclassReplaceOptional.py:11: note: Revealed type is "_testDataclassReplaceOptional.A"
+
+[case testDataclassStrictOptionalAlwaysSet]
+from dataclasses import dataclass
+from typing import Callable, Optional
+
+@dataclass
+class Description:
+    name_fn: Callable[[Optional[int]], Optional[str]]
+
+def f(d: Description) -> None:
+    reveal_type(d.name_fn)
+[out]
+_testDataclassStrictOptionalAlwaysSet.py:9: note: Revealed type is "def (Union[builtins.int, None]) -> Union[builtins.str, None]"

@@ -210,7 +210,9 @@ override has a compatible signature:
 
 In order to ensure that your code remains correct when renaming methods,
 it can be helpful to explicitly mark a method as overriding a base
-method. This can be done with the ``@override`` decorator. If the base
+method. This can be done with the ``@override`` decorator. ``@override``
+can be imported from ``typing`` starting with Python 3.12 or from
+``typing_extensions`` for use with older Python versions. If the base
 method is then renamed while the overriding method is not, mypy will
 show an error:
 
@@ -232,6 +234,11 @@ show an error:
        @override
        def g(self, y: str) -> None:   # Error: no corresponding base method found
            ...
+
+.. note::
+
+   Use :ref:`--enable-error-code explicit-override <code-explicit-override>` to require
+   that method overrides use the ``@override`` decorator. Emit an error if it is missing.
 
 You can also override a statically typed method with a dynamically
 typed one. This allows dynamically typed code to override methods

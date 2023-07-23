@@ -815,21 +815,30 @@ def transform_basic_comparison(
         return builder.compare_tagged(left, right, op, line)
     if is_fixed_width_rtype(left.type) and op in int_comparison_op_mapping:
         if right.type == left.type:
-            op_id = ComparisonOp.signed_ops[op]
+            if left.type.is_signed:
+                op_id = ComparisonOp.signed_ops[op]
+            else:
+                op_id = ComparisonOp.unsigned_ops[op]
             return builder.builder.comparison_op(left, right, op_id, line)
         elif isinstance(right, Integer):
-            op_id = ComparisonOp.signed_ops[op]
+            if left.type.is_signed:
+                op_id = ComparisonOp.signed_ops[op]
+            else:
+                op_id = ComparisonOp.unsigned_ops[op]
             return builder.builder.comparison_op(
-                left, Integer(right.value >> 1, left.type), op_id, line
+                left, builder.coerce(right, left.type, line), op_id, line
             )
     elif (
         is_fixed_width_rtype(right.type)
         and op in int_comparison_op_mapping
         and isinstance(left, Integer)
     ):
-        op_id = ComparisonOp.signed_ops[op]
+        if right.type.is_signed:
+            op_id = ComparisonOp.signed_ops[op]
+        else:
+            op_id = ComparisonOp.unsigned_ops[op]
         return builder.builder.comparison_op(
-            Integer(left.value >> 1, right.type), right, op_id, line
+            builder.coerce(left, right.type, line), right, op_id, line
         )
 
     negate = False

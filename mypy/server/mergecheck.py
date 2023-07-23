@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing_extensions import Final
+from typing import Final
 
 from mypy.nodes import Decorator, FakeInfo, FuncDef, SymbolNode, Var
 from mypy.server.objgraph import get_path, get_reachable_graph

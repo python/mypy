@@ -5,8 +5,7 @@ from __future__ import annotations
 import pprint
 import sys
 import textwrap
-from typing import Callable
-from typing_extensions import Final
+from typing import Callable, Final
 
 from mypyc.codegen.literals import Literals
 from mypyc.common import (
@@ -48,6 +47,7 @@ from mypyc.ir.rtypes import (
     is_short_int_rprimitive,
     is_str_rprimitive,
     is_tuple_rprimitive,
+    is_uint8_rprimitive,
     object_rprimitive,
     optional_value_type,
 )
@@ -923,10 +923,18 @@ class Emitter:
             self.emit_line(f"{dest} = CPyLong_AsInt16({src});")
             if not isinstance(error, AssignHandler):
                 self.emit_unbox_failure_with_overlapping_error_value(dest, typ, failure)
+        elif is_uint8_rprimitive(typ):
+            # Whether we are borrowing or not makes no difference.
+            assert not optional  # Not supported for overlapping error values
+            if declare_dest:
+                self.emit_line(f"uint8_t {dest};")
+            self.emit_line(f"{dest} = CPyLong_AsUInt8({src});")
+            if not isinstance(error, AssignHandler):
+                self.emit_unbox_failure_with_overlapping_error_value(dest, typ, failure)
         elif is_float_rprimitive(typ):
             assert not optional  # Not supported for overlapping error values
             if declare_dest:
-                self.emit_line("double {};".format(dest))
+                self.emit_line(f"double {dest};")
             # TODO: Don't use __float__ and __index__
             self.emit_line(f"{dest} = PyFloat_AsDouble({src});")
             self.emit_lines(f"if ({dest} == -1.0 && PyErr_Occurred()) {{", failure, "}")
@@ -1014,7 +1022,7 @@ class Emitter:
             self.emit_lines(f"{declaration}{dest} = Py_None;")
             if not can_borrow:
                 self.emit_inc_ref(dest, object_rprimitive)
-        elif is_int32_rprimitive(typ) or is_int16_rprimitive(typ):
+        elif is_int32_rprimitive(typ) or is_int16_rprimitive(typ) or is_uint8_rprimitive(typ):
             self.emit_line(f"{declaration}{dest} = PyLong_FromLong({src});")
         elif is_int64_rprimitive(typ):
             self.emit_line(f"{declaration}{dest} = PyLong_FromLongLong({src});")

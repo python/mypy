@@ -27,8 +27,8 @@ will be incomplete.
 from __future__ import annotations
 
 from contextlib import nullcontext
-from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import TYPE_CHECKING, Callable, Final, List, Optional, Tuple, Union
+from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.build
 import mypy.state

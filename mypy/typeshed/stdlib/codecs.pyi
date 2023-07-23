@@ -96,6 +96,7 @@ class _IncrementalDecoder(Protocol):
     def __call__(self, errors: str = ...) -> IncrementalDecoder: ...
 
 class CodecInfo(tuple[_Encoder, _Decoder, _StreamReader, _StreamWriter]):
+    _is_text_encoding: bool
     @property
     def encode(self) -> _Encoder: ...
     @property

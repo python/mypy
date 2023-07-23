@@ -732,7 +732,6 @@ class InvalidReturn:
 [builtins fixtures/bool.pyi]
 
 [case testErrorCodeOverloadedOperatorMethod]
-# flags: --strict-optional
 from typing import Optional, overload
 
 class A:
@@ -758,7 +757,6 @@ class C:
 x - C()  # type: ignore[operator]
 
 [case testErrorCodeMultiLineBinaryOperatorOperand]
-# flags: --strict-optional
 from typing import Optional
 
 class C: pass
@@ -897,7 +895,6 @@ if any_or_object:
 [builtins fixtures/list.pyi]
 
 [case testTruthyFunctions]
-# flags: --strict-optional
 def f():
     pass
 if f:  # E: Function "f" could always be true in boolean context  [truthy-function]
@@ -907,7 +904,7 @@ if not f:  # E: Function "f" could always be true in boolean context  [truthy-fu
 conditional_result = 'foo' if f else 'bar'  # E: Function "f" could always be true in boolean context  [truthy-function]
 
 [case testTruthyIterable]
-# flags: --strict-optional --enable-error-code truthy-iterable
+# flags: --enable-error-code truthy-iterable
 from typing import Iterable
 def func(var: Iterable[str]) -> None:
     if var:  # E: "var" has type "Iterable[str]" which can always be true in boolean context. Consider using "Collection[str]" instead.  [truthy-iterable]
@@ -995,7 +992,6 @@ var: int = ""  # E: Incompatible types in assignment (expression has type "str",
 show_error_codes = True
 
 [case testErrorCodeUnsafeSuper_no_empty]
-# flags: --strict-optional
 from abc import abstractmethod
 
 class Base:
@@ -1008,7 +1004,6 @@ class Sub(Base):
 [builtins fixtures/exception.pyi]
 
 [case testDedicatedErrorCodeForEmpty_no_empty]
-# flags: --strict-optional
 from typing import Optional
 def foo() -> int: ...  # E: Missing return statement  [empty-body]
 def bar() -> None: ...

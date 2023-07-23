@@ -29,10 +29,7 @@ class UpdateDataSuite(Suite):
 
             test_nodeid = f"mypy/test/testcheck.py::TypeCheckSuite::{p.name}"
             args = [sys.executable, "-m", "pytest", "-n", "0", "-s", "--update-data", test_nodeid]
-            if sys.version_info >= (3, 8):
-                cmd = shlex.join(args)
-            else:
-                cmd = " ".join(args)
+            cmd = shlex.join(args)
             for i in range(max_attempts - 1, -1, -1):
                 res = subprocess.run(args, cwd=p_root)
                 if res.returncode == 0:

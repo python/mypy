@@ -1,6 +1,7 @@
 import email.message
 import io
 import ssl
+import sys
 import types
 from _typeshed import ReadableBuffer, SupportsRead, WriteableBuffer
 from collections.abc import Callable, Iterable, Iterator, Mapping
@@ -175,19 +176,31 @@ class HTTPConnection:
 class HTTPSConnection(HTTPConnection):
     # Can be `None` if `.connect()` was not called:
     sock: ssl.SSLSocket | Any
-    def __init__(
-        self,
-        host: str,
-        port: int | None = None,
-        key_file: str | None = None,
-        cert_file: str | None = None,
-        timeout: float | None = ...,
-        source_address: tuple[str, int] | None = None,
-        *,
-        context: ssl.SSLContext | None = None,
-        check_hostname: bool | None = None,
-        blocksize: int = 8192,
-    ) -> None: ...
+    if sys.version_info >= (3, 12):
+        def __init__(
+            self,
+            host: str,
+            port: str | None = None,
+            *,
+            timeout: float | None = ...,
+            source_address: tuple[str, int] | None = None,
+            context: ssl.SSLContext | None = None,
+            blocksize: int = 8192,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            host: str,
+            port: int | None = None,
+            key_file: str | None = None,
+            cert_file: str | None = None,
+            timeout: float | None = ...,
+            source_address: tuple[str, int] | None = None,
+            *,
+            context: ssl.SSLContext | None = None,
+            check_hostname: bool | None = None,
+            blocksize: int = 8192,
+        ) -> None: ...
 
 class HTTPException(Exception): ...
 

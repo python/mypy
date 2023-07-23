@@ -6,8 +6,8 @@ import itertools
 import time
 from collections import defaultdict
 from contextlib import contextmanager
-from typing import Callable, ClassVar, Iterable, Iterator, List, Optional, Sequence, cast
-from typing_extensions import Final, TypeAlias as _TypeAlias, overload
+from typing import Callable, ClassVar, Final, Iterable, Iterator, List, Optional, Sequence, cast
+from typing_extensions import TypeAlias as _TypeAlias, overload
 
 import mypy.checker
 import mypy.errorcodes as codes
@@ -2350,15 +2350,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(caller_type, DeletedType):
             self.msg.deleted_as_rvalue(caller_type, context)
         # Only non-abstract non-protocol class can be given where Type[...] is expected...
-        elif (
-            isinstance(caller_type, CallableType)
-            and isinstance(callee_type, TypeType)
-            and caller_type.is_type_obj()
-            and (caller_type.type_object().is_abstract or caller_type.type_object().is_protocol)
-            and isinstance(callee_type.item, Instance)
-            and (callee_type.item.type.is_abstract or callee_type.item.type.is_protocol)
-            and not self.chk.allow_abstract_call
-        ):
+        elif self.has_abstract_type_part(caller_type, callee_type):
             self.msg.concrete_only_call(callee_type, context)
         elif not is_subtype(caller_type, callee_type, options=self.chk.options):
             code = self.msg.incompatible_argument(
@@ -3078,7 +3070,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Expressions of form [...] * e get special type inference.
             return self.check_list_multiply(e)
         if e.op == "%":
-            if isinstance(e.left, BytesExpr) and self.chk.options.python_version >= (3, 5):
+            if isinstance(e.left, BytesExpr):
                 return self.strfrm_checker.check_str_interpolation(e.left, e.right)
             if isinstance(e.left, StrExpr):
                 return self.strfrm_checker.check_str_interpolation(e.left, e.right)
@@ -5482,6 +5474,26 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return narrow_declared_type(known_type, restriction)
         return known_type
 
+    def has_abstract_type_part(self, caller_type: ProperType, callee_type: ProperType) -> bool:
+        # TODO: support other possible types here
+        if isinstance(caller_type, TupleType) and isinstance(callee_type, TupleType):
+            return any(
+                self.has_abstract_type(get_proper_type(caller), get_proper_type(callee))
+                for caller, callee in zip(caller_type.items, callee_type.items)
+            )
+        return self.has_abstract_type(caller_type, callee_type)
+
+    def has_abstract_type(self, caller_type: ProperType, callee_type: ProperType) -> bool:
+        return (
+            isinstance(caller_type, CallableType)
+            and isinstance(callee_type, TypeType)
+            and caller_type.is_type_obj()
+            and (caller_type.type_object().is_abstract or caller_type.type_object().is_protocol)
+            and isinstance(callee_type.item, Instance)
+            and (callee_type.item.type.is_abstract or callee_type.item.type.is_protocol)
+            and not self.chk.allow_abstract_call
+        )
+
 
 def has_any_type(t: Type, ignore_in_type_obj: bool = False) -> bool:
     """Whether t contains an Any type"""
@@ -5579,7 +5591,7 @@ def replace_callable_return_type(c: CallableType, new_ret_type: Type) -> Callabl
     return c.copy_modified(ret_type=new_ret_type)
 
 
-def apply_poly(tp: CallableType, poly_tvars: Sequence[TypeVarLikeType]) -> Optional[CallableType]:
+def apply_poly(tp: CallableType, poly_tvars: Sequence[TypeVarLikeType]) -> CallableType | None:
     """Make free type variables generic in the type if possible.
 
     This will translate the type `tp` while trying to create valid bindings for

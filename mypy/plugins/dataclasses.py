@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterator, Optional
-from typing_extensions import Final
+from typing import TYPE_CHECKING, Final, Iterator, Literal
 
 from mypy import errorcodes, message_registry
 from mypy.expandtype import expand_type, expand_type_by_instance
@@ -87,7 +86,7 @@ _TRANSFORM_SPEC_FOR_DATACLASSES: Final = DataclassTransformSpec(
     field_specifiers=("dataclasses.Field", "dataclasses.field"),
 )
 _INTERNAL_REPLACE_SYM_NAME: Final = "__mypy-replace"
-_INTERNAL_POST_INIT_SYM_NAME: Final = "__mypy-__post_init__"
+_INTERNAL_POST_INIT_SYM_NAME: Final = "__mypy-post_init"
 
 
 class DataclassAttribute:
@@ -104,6 +103,7 @@ class DataclassAttribute:
         info: TypeInfo,
         kw_only: bool,
         is_neither_frozen_nor_nonfrozen: bool,
+        api: SemanticAnalyzerPluginInterface,
     ) -> None:
         self.name = name
         self.alias = alias
@@ -116,15 +116,35 @@ class DataclassAttribute:
         self.info = info
         self.kw_only = kw_only
         self.is_neither_frozen_nor_nonfrozen = is_neither_frozen_nor_nonfrozen
+        self._api = api
 
-    def to_argument(self, current_info: TypeInfo) -> Argument:
-        arg_kind = ARG_POS
-        if self.kw_only and self.has_default:
-            arg_kind = ARG_NAMED_OPT
-        elif self.kw_only and not self.has_default:
-            arg_kind = ARG_NAMED
-        elif not self.kw_only and self.has_default:
-            arg_kind = ARG_OPT
+    def to_argument(
+        self, current_info: TypeInfo, *, of: Literal["__init__", "replace", "__post_init__"]
+    ) -> Argument:
+        if of == "__init__":
+            arg_kind = ARG_POS
+            if self.kw_only and self.has_default:
+                arg_kind = ARG_NAMED_OPT
+            elif self.kw_only and not self.has_default:
+                arg_kind = ARG_NAMED
+            elif not self.kw_only and self.has_default:
+                arg_kind = ARG_OPT
+        elif of == "replace":
+            arg_kind = ARG_NAMED if self.is_init_var and not self.has_default else ARG_NAMED_OPT
+        elif of == "__post_init__":
+            # We always use `ARG_POS` without a default value, because it is practical.
+            # Consider this case:
+            #
+            # @dataclass
+            # class My:
+            #     y: dataclasses.InitVar[str] = 'a'
+            #     def __post_init__(self, y: str) -> None: ...
+            #
+            # We would be *required* to specify `y: str = ...` if default is added here.
+            # But, most people won't care about adding default values to `__post_init__`,
+            # because it is not designed to be called directly, and duplicating default values
+            # for the sake of type-checking is unpleasant.
+            arg_kind = ARG_POS
         return Argument(
             variable=self.to_var(current_info),
             type_annotation=self.expand_type(current_info),
@@ -132,13 +152,16 @@ class DataclassAttribute:
             kind=arg_kind,
         )
 
-    def expand_type(self, current_info: TypeInfo) -> Optional[Type]:
+    def expand_type(self, current_info: TypeInfo) -> Type | None:
         if self.type is not None and self.info.self_type is not None:
             # In general, it is not safe to call `expand_type()` during semantic analyzis,
             # however this plugin is called very late, so all types should be fully ready.
             # Also, it is tricky to avoid eager expansion of Self types here (e.g. because
             # we serialize attributes).
-            return expand_type(self.type, {self.info.self_type.id: fill_typevars(current_info)})
+            with state.strict_optional_set(self._api.options.strict_optional):
+                return expand_type(
+                    self.type, {self.info.self_type.id: fill_typevars(current_info)}
+                )
         return self.type
 
     def to_var(self, current_info: TypeInfo) -> Var:
@@ -165,13 +188,14 @@ class DataclassAttribute:
     ) -> DataclassAttribute:
         data = data.copy()
         typ = deserialize_and_fixup_type(data.pop("type"), api)
-        return cls(type=typ, info=info, **data)
+        return cls(type=typ, info=info, **data, api=api)
 
     def expand_typevar_from_subtype(self, sub_type: TypeInfo) -> None:
         """Expands type vars in the context of a subtype when an attribute is inherited
         from a generic super type."""
         if self.type is not None:
-            self.type = map_type_from_supertype(self.type, sub_type, self.info)
+            with state.strict_optional_set(self._api.options.strict_optional):
+                self.type = map_type_from_supertype(self.type, sub_type, self.info)
 
 
 class DataclassTransformer:
@@ -230,12 +254,11 @@ class DataclassTransformer:
             and ("__init__" not in info.names or info.names["__init__"].plugin_generated)
             and attributes
         ):
-            with state.strict_optional_set(self._api.options.strict_optional):
-                args = [
-                    attr.to_argument(info)
-                    for attr in attributes
-                    if attr.is_in_init and not self._is_kw_only_type(attr.type)
-                ]
+            args = [
+                attr.to_argument(info, of="__init__")
+                for attr in attributes
+                if attr.is_in_init and not self._is_kw_only_type(attr.type)
+            ]
 
             if info.fallback_to_any:
                 # Make positional args optional since we don't know their order.
@@ -342,7 +365,6 @@ class DataclassTransformer:
             and (
                 "__match_args__" not in info.names or info.names["__match_args__"].plugin_generated
             )
-            and attributes
             and py_version >= (3, 10)
         ):
             str_type = self._api.named_type("builtins.str")
@@ -355,8 +377,7 @@ class DataclassTransformer:
         self._add_dataclass_fields_magic_attribute()
 
         if self._spec is _TRANSFORM_SPEC_FOR_DATACLASSES:
-            with state.strict_optional_set(self._api.options.strict_optional):
-                self._add_internal_replace_method(attributes)
+            self._add_internal_replace_method(attributes)
         if "__post_init__" in info.names:
             self._add_internal_post_init_method(attributes)
 
@@ -372,70 +393,26 @@ class DataclassTransformer:
         Stashes the signature of 'dataclasses.replace(...)' for this specific dataclass
         to be used later whenever 'dataclasses.replace' is called for this dataclass.
         """
-        arg_types: list[Type] = []
-        arg_kinds = []
-        arg_names: list[str | None] = []
-
-        info = self._cls.info
-        for attr in attributes:
-            attr_type = attr.expand_type(info)
-            assert attr_type is not None
-            arg_types.append(attr_type)
-            arg_kinds.append(
-                ARG_NAMED if attr.is_init_var and not attr.has_default else ARG_NAMED_OPT
-            )
-            arg_names.append(attr.name)
-
-        signature = CallableType(
-            arg_types=arg_types,
-            arg_kinds=arg_kinds,
-            arg_names=arg_names,
-            ret_type=NoneType(),
-            fallback=self._api.named_type("builtins.function"),
-        )
-
-        info.names[_INTERNAL_REPLACE_SYM_NAME] = SymbolTableNode(
-            kind=MDEF, node=FuncDef(typ=signature), plugin_generated=True
+        add_method_to_class(
+            self._api,
+            self._cls,
+            _INTERNAL_REPLACE_SYM_NAME,
+            args=[attr.to_argument(self._cls.info, of="replace") for attr in attributes],
+            return_type=NoneType(),
+            is_staticmethod=True,
         )
 
     def _add_internal_post_init_method(self, attributes: list[DataclassAttribute]) -> None:
-        arg_types: list[Type] = [fill_typevars(self._cls.info)]
-        arg_kinds = [ARG_POS]
-        arg_names: list[str | None] = ["self"]
-
-        info = self._cls.info
-        for attr in attributes:
-            if not attr.is_init_var:
-                continue
-            attr_type = attr.expand_type(info)
-            assert attr_type is not None
-            arg_types.append(attr_type)
-            # We always use `ARG_POS` without a default value, because it is practical.
-            # Consider this case:
-            #
-            # @dataclass
-            # class My:
-            #     y: dataclasses.InitVar[str] = 'a'
-            #     def __post_init__(self, y: str) -> None: ...
-            #
-            # We would be *required* to specify `y: str = ...` if default is added here.
-            # But, most people won't care about adding default values to `__post_init__`,
-            # because it is not designed to be called directly, and duplicating default values
-            # for the sake of type-checking is unpleasant.
-            arg_kinds.append(ARG_POS)
-            arg_names.append(attr.name)
-
-        signature = CallableType(
-            arg_types=arg_types,
-            arg_kinds=arg_kinds,
-            arg_names=arg_names,
-            ret_type=NoneType(),
-            fallback=self._api.named_type("builtins.function"),
-            name="__post_init__",
-        )
-
-        info.names[_INTERNAL_POST_INIT_SYM_NAME] = SymbolTableNode(
-            kind=MDEF, node=FuncDef(typ=signature), plugin_generated=True
+        add_method_to_class(
+            self._api,
+            self._cls,
+            _INTERNAL_POST_INIT_SYM_NAME,
+            args=[
+                attr.to_argument(self._cls.info, of="__post_init__")
+                for attr in attributes
+                if attr.is_init_var
+            ],
+            return_type=NoneType(),
         )
 
     def add_slots(
@@ -466,8 +443,14 @@ class DataclassTransformer:
                 self._cls,
             )
             return
-
         info.slots = generated_slots
+
+        # Now, insert `.__slots__` attribute to class namespace:
+        slots_type = TupleType(
+            [self._api.named_type("builtins.str") for _ in generated_slots],
+            self._api.named_type("builtins.tuple"),
+        )
+        add_attribute_to_class(self._api, self._cls, "__slots__", slots_type)
 
     def reset_init_only_vars(self, info: TypeInfo, attributes: list[DataclassAttribute]) -> None:
         """Remove init-only vars from the class and reset init var declarations."""
@@ -546,8 +529,7 @@ class DataclassTransformer:
                 # TODO: We shouldn't be performing type operations during the main
                 #       semantic analysis pass, since some TypeInfo attributes might
                 #       still be in flux. This should be performed in a later phase.
-                with state.strict_optional_set(self._api.options.strict_optional):
-                    attr.expand_typevar_from_subtype(cls.info)
+                attr.expand_typevar_from_subtype(cls.info)
                 found_attrs[name] = attr
 
                 sym_node = cls.info.names.get(name)
@@ -678,7 +660,8 @@ class DataclassTransformer:
                     )
 
             current_attr_names.add(lhs.name)
-            init_type = self._infer_dataclass_attr_init_type(sym, lhs.name, stmt)
+            with state.strict_optional_set(self._api.options.strict_optional):
+                init_type = self._infer_dataclass_attr_init_type(sym, lhs.name, stmt)
             found_attrs[lhs.name] = DataclassAttribute(
                 name=lhs.name,
                 alias=alias,
@@ -693,6 +676,7 @@ class DataclassTransformer:
                 is_neither_frozen_nor_nonfrozen=_has_direct_dataclass_transform_metaclass(
                     cls.info
                 ),
+                api=self._api,
             )
 
         all_attrs = list(found_attrs.values())
@@ -1110,20 +1094,18 @@ def is_processed_dataclass(info: TypeInfo | None) -> bool:
 def check_post_init(api: TypeChecker, defn: FuncItem, info: TypeInfo) -> None:
     if defn.type is None:
         return
-
-    ideal_sig = info.get_method(_INTERNAL_POST_INIT_SYM_NAME)
-    if ideal_sig is None or ideal_sig.type is None:
-        return
-
-    # We set it ourself, so it is always fine:
-    assert isinstance(ideal_sig.type, ProperType)
-    assert isinstance(ideal_sig.type, FunctionLike)
-    # Type of `FuncItem` is always `FunctionLike`:
     assert isinstance(defn.type, FunctionLike)
+
+    ideal_sig_method = info.get_method(_INTERNAL_POST_INIT_SYM_NAME)
+    assert ideal_sig_method is not None and ideal_sig_method.type is not None
+    ideal_sig = ideal_sig_method.type
+    assert isinstance(ideal_sig, ProperType)  # we set it ourselves
+    assert isinstance(ideal_sig, CallableType)
+    ideal_sig = ideal_sig.copy_modified(name="__post_init__")
 
     api.check_override(
         override=defn.type,
-        original=ideal_sig.type,
+        original=ideal_sig,
         name="__post_init__",
         name_in_super="__post_init__",
         supertype="dataclass",

@@ -8,8 +8,7 @@ import subprocess
 import sys
 import time
 from gettext import gettext
-from typing import IO, Any, NoReturn, Sequence, TextIO
-from typing_extensions import Final
+from typing import IO, Any, Final, NoReturn, Sequence, TextIO
 
 from mypy import build, defaults, state, util
 from mypy.config_parser import get_config_module_names, parse_config_file, parse_version
@@ -594,14 +593,6 @@ def process_options(
         metavar="x.y",
         help="Type check code assuming it will be running on Python x.y",
         dest="special-opts:python_version",
-    )
-    platform_group.add_argument(
-        "-2",
-        "--py2",
-        dest="special-opts:python_version",
-        action="store_const",
-        const=defaults.PYTHON2_VERSION,
-        help="Use Python 2 mode (same as --python-version 2.7)",
     )
     platform_group.add_argument(
         "--platform",

@@ -5,7 +5,7 @@ These happen after semantic analysis and before type checking.
 
 from __future__ import annotations
 
-from typing_extensions import Final
+from typing import Final
 
 from mypy.errors import Errors
 from mypy.nodes import (

@@ -11,6 +11,7 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Final,
     Iterator,
     List,
     Optional,
@@ -20,7 +21,7 @@ from typing import (
     Union,
     cast,
 )
-from typing_extensions import Final, TypeAlias as _TypeAlias, TypeGuard
+from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 
 from mypy_extensions import trait
 
@@ -511,7 +512,7 @@ class FuncBase(Node):
         "info",
         "is_property",
         "is_class",  # Uses "@classmethod" (explicit or implicit)
-        "is_static",  # Uses "@staticmethod"
+        "is_static",  # Uses "@staticmethod" (explicit or implicit)
         "is_final",  # Uses "@final"
         "is_explicit_override",  # Uses "@override"
         "_fullname",

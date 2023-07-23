@@ -49,8 +49,7 @@ import os.path
 import sys
 import traceback
 from collections import defaultdict
-from typing import Iterable, Mapping
-from typing_extensions import Final
+from typing import Final, Iterable, Mapping
 
 import mypy.build
 import mypy.mixedtraverser
@@ -81,6 +80,7 @@ from mypy.nodes import (
     CallExpr,
     ClassDef,
     ComparisonExpr,
+    ComplexExpr,
     Decorator,
     DictExpr,
     EllipsisExpr,
@@ -661,7 +661,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             "_typeshed": ["Incomplete"],
             "typing": ["Any", "TypeVar", "NamedTuple"],
             "collections.abc": ["Generator"],
-            "typing_extensions": ["TypedDict"],
+            "typing_extensions": ["TypedDict", "ParamSpec", "TypeVarTuple"],
         }
         for pkg, imports in known_imports.items():
             for t in imports:
@@ -1159,10 +1159,14 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         Used to know if assignments look like type aliases, function alias,
         or module alias.
         """
-        # Assignment of TypeVar(...) are passed through
+        # Assignment of TypeVar(...)  and other typevar-likes are passed through
         if isinstance(expr, CallExpr) and self.get_fullname(expr.callee) in (
             "typing.TypeVar",
             "typing_extensions.TypeVar",
+            "typing.ParamSpec",
+            "typing_extensions.ParamSpec",
+            "typing.TypeVarTuple",
+            "typing_extensions.TypeVarTuple",
         ):
             return True
         elif isinstance(expr, EllipsisExpr):
@@ -1393,6 +1397,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def get_str_type_of_node(
         self, rvalue: Expression, can_infer_optional: bool = False, can_be_any: bool = True
     ) -> str:
+        rvalue = self.maybe_unwrap_unary_expr(rvalue)
+
         if isinstance(rvalue, IntExpr):
             return "int"
         if isinstance(rvalue, StrExpr):
@@ -1401,8 +1407,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return "bytes"
         if isinstance(rvalue, FloatExpr):
             return "float"
-        if isinstance(rvalue, UnaryExpr) and isinstance(rvalue.expr, IntExpr):
-            return "int"
+        if isinstance(rvalue, ComplexExpr):  # 1j
+            return "complex"
+        if isinstance(rvalue, OpExpr) and rvalue.op in ("-", "+"):  # -1j + 1
+            if isinstance(self.maybe_unwrap_unary_expr(rvalue.left), ComplexExpr) or isinstance(
+                self.maybe_unwrap_unary_expr(rvalue.right), ComplexExpr
+            ):
+                return "complex"
         if isinstance(rvalue, NameExpr) and rvalue.name in ("True", "False"):
             return "bool"
         if can_infer_optional and isinstance(rvalue, NameExpr) and rvalue.name == "None":
@@ -1413,6 +1424,40 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return self.typing_name("Incomplete")
         else:
             return ""
+
+    def maybe_unwrap_unary_expr(self, expr: Expression) -> Expression:
+        """Unwrap (possibly nested) unary expressions.
+
+        But, some unary expressions can change the type of expression.
+        While we want to preserve it. For example, `~True` is `int`.
+        So, we only allow a subset of unary expressions to be unwrapped.
+        """
+        if not isinstance(expr, UnaryExpr):
+            return expr
+
+        # First, try to unwrap `[+-]+ (int|float|complex)` expr:
+        math_ops = ("+", "-")
+        if expr.op in math_ops:
+            while isinstance(expr, UnaryExpr):
+                if expr.op not in math_ops or not isinstance(
+                    expr.expr, (IntExpr, FloatExpr, ComplexExpr, UnaryExpr)
+                ):
+                    break
+                expr = expr.expr
+            return expr
+
+        # Next, try `not bool` expr:
+        if expr.op == "not":
+            while isinstance(expr, UnaryExpr):
+                if expr.op != "not" or not isinstance(expr.expr, (NameExpr, UnaryExpr)):
+                    break
+                if isinstance(expr.expr, NameExpr) and expr.expr.name not in ("True", "False"):
+                    break
+                expr = expr.expr
+            return expr
+
+        # This is some other unary expr, we cannot do anything with it (yet?).
+        return expr
 
     def print_annotation(self, t: Type) -> str:
         printer = AnnotationPrinter(self)

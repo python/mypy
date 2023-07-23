@@ -80,20 +80,6 @@ def g(arg: int) -> None: # E: Argument to register "str" is incompatible with ty
 
 [builtins fixtures/args.pyi]
 
-[case testDispatchBasedOnTypeAnnotationsRequires37-xfail]
-# flags: --python-version 3.6
-# the docs for singledispatch say that register didn't accept type annotations until python 3.7
-from functools import singledispatch
-
-@singledispatch
-def f(arg) -> None:
-    pass
-@f.register
-def g(arg: int) -> None: # E: Singledispatch based on type annotations is only supported in Python 3.7 and greater
-    pass
-
-[builtins fixtures/args.pyi]
-
 [case testTypePassedAsArgumentToRegister]
 from functools import singledispatch
 

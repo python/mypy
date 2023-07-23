@@ -5,8 +5,7 @@ For example, 3 + 5 can be constant folded into 8.
 
 from __future__ import annotations
 
-from typing import Union
-from typing_extensions import Final
+from typing import Final, Union
 
 from mypy.nodes import (
     ComplexExpr,
