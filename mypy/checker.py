@@ -1244,7 +1244,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 with self.scope.push_function(defn):
                     # We suppress reachability warnings for empty generator functions
                     # (return; yield) which have a "yield" that's unreachable by definition
-                    # since it's only there to promote the function into a generator.
+                    # since it's only there to promote the function into a generator function.
                     #
                     # We also suppress reachability warnings when we use TypeVars with value
                     # restrictions: we only want to report a warning if a certain statement is
