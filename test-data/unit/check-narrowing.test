@@ -1263,7 +1263,7 @@ def g() -> None:
 [builtins fixtures/dict.pyi]
 
 
-[case testNarrowingNoneEquality]
+[case testNarrowingOptionalEqualsNone]
 from typing import Optional
 
 class A: ...
