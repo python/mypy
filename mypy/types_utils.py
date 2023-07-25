@@ -108,6 +108,11 @@ def is_optional(t: Type) -> bool:
     )
 
 
+def can_be_none(t: Type) -> bool:
+    t = get_proper_type(t)
+    return isinstance(t, NoneType) or is_optional(t)
+
+
 def remove_optional(typ: Type) -> Type:
     typ = get_proper_type(typ)
     if isinstance(typ, UnionType):
