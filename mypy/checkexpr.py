@@ -3787,11 +3787,24 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         ):
             self.msg.unreachable_right_operand(e.op, e.right)
 
+        # Whether expanded_left_type is less precise than ctx,
+        # the expression in the paranthesis is equivalent to f"Union[{ctx}, None]" == str(expanded_left_type)
+        # See https://github.com/python/mypy/issues/15534
+        expanded_left_type_is_imprecise = isinstance(expanded_left_type, NoneType) or (
+            isinstance(expanded_left_type, UnionType)
+            and expanded_left_type.items
+            and len(expanded_left_type.items) == 2
+            and expanded_left_type.items[0] == ctx
+            and isinstance(get_proper_type(expanded_left_type.items[1]), NoneType)
+        )
         # If right_map is None then we know mypy considers the right branch
         # to be unreachable and therefore any errors found in the right branch
         # should be suppressed.
         with self.msg.filter_errors(filter_errors=right_map is None):
-            right_type = self.analyze_cond_branch(right_map, e.right, expanded_left_type)
+            if expanded_left_type_is_imprecise:
+                right_type = self.accept(e.right, ctx)
+            else:
+                right_type = self.analyze_cond_branch(right_map, e.right, expanded_left_type)
 
         if left_map is None and right_map is None:
             return UninhabitedType()
