@@ -132,6 +132,7 @@ from mypy.nodes import (
     Var,
     WhileStmt,
     WithStmt,
+    YieldExpr,
     is_final_node,
 )
 from mypy.options import Options
@@ -1241,13 +1242,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             new_frame.types[key] = narrowed_type
                             self.binder.declarations[key] = old_binder.declarations[key]
                 with self.scope.push_function(defn):
-                    # We suppress reachability warnings when we use TypeVars with value
+                    # We suppress reachability warnings for empty generator functions
+                    # (return; yield) which have a "yield" that's unreachable by definition
+                    # since it's only there to promote the function into a generator function.
+                    #
+                    # We also suppress reachability warnings when we use TypeVars with value
                     # restrictions: we only want to report a warning if a certain statement is
                     # marked as being suppressed in *all* of the expansions, but we currently
                     # have no good way of doing this.
                     #
                     # TODO: Find a way of working around this limitation
-                    if len(expanded) >= 2:
+                    if _is_empty_generator_function(item) or len(expanded) >= 2:
                         self.binder.suppress_unreachable_warnings()
                     self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
@@ -6966,6 +6971,22 @@ def is_literal_none(n: Expression) -> bool:
 
 def is_literal_not_implemented(n: Expression) -> bool:
     return isinstance(n, NameExpr) and n.fullname == "builtins.NotImplemented"
+
+
+def _is_empty_generator_function(func: FuncItem) -> bool:
+    """
+    Checks whether a function's body is 'return; yield' (the yield being added only
+    to promote the function into a generator function).
+    """
+    body = func.body.body
+    return (
+        len(body) == 2
+        and isinstance(ret_stmt := body[0], ReturnStmt)
+        and (ret_stmt.expr is None or is_literal_none(ret_stmt.expr))
+        and isinstance(expr_stmt := body[1], ExpressionStmt)
+        and isinstance(yield_expr := expr_stmt.expr, YieldExpr)
+        and (yield_expr.expr is None or is_literal_none(yield_expr.expr))
+    )
 
 
 def builtin_item_type(tp: Type) -> Type | None:
