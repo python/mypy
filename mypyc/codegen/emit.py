@@ -759,10 +759,12 @@ class Emitter:
             self.emit_line(f"PyObject *{dest};")
         good_label = self.new_label()
         if optional:
-            self.emit_line(f"if ({src} == NULL) {{")
-            self.emit_line(f"{dest} = {self.c_error_value(typ)};")
-            self.emit_line(f"goto {good_label};")
-            self.emit_line("}")
+            self.emit_lines(
+                f"if ({src} == NULL) {{",
+                f"{dest} = {self.c_error_value(typ)};",
+                f"goto {good_label};",
+                "}",
+            )
         for item in typ.items:
             self.emit_cast(
                 src,
@@ -1030,9 +1032,11 @@ class Emitter:
             self.emit_line(f"{declaration}{dest} = PyFloat_FromDouble({src});")
         elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
-            self.emit_line(f"{declaration}{dest} = PyTuple_New({len(typ.types)});")
-            self.emit_line(f"if (unlikely({dest} == NULL))")
-            self.emit_line("    CPyError_OutOfMemory();")
+            self.emit_lines(
+                f"{declaration}{dest} = PyTuple_New({len(typ.types)});",
+                f"if (unlikely({dest} == NULL))",
+                "    CPyError_OutOfMemory();",
+            )
             # TODO: Fail if dest is None
             for i in range(0, len(typ.types)):
                 if not typ.is_unboxed:
@@ -1072,9 +1076,11 @@ class Emitter:
             # Not refcounted -> no pointers -> no GC interaction.
             return
         elif isinstance(rtype, RPrimitive) and rtype.name == "builtins.int":
-            self.emit_line(f"if (CPyTagged_CheckLong({target})) {{")
-            self.emit_line(f"Py_VISIT(CPyTagged_LongAsObject({target}));")
-            self.emit_line("}")
+            self.emit_lines(
+                f"if (CPyTagged_CheckLong({target})) {{",
+                f"Py_VISIT(CPyTagged_LongAsObject({target}));",
+                "}",
+            )
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_gc_visit(f"{target}.f{i}", item_type)
@@ -1094,11 +1100,13 @@ class Emitter:
             # Not refcounted -> no pointers -> no GC interaction.
             return
         elif isinstance(rtype, RPrimitive) and rtype.name == "builtins.int":
-            self.emit_line(f"if (CPyTagged_CheckLong({target})) {{")
-            self.emit_line(f"CPyTagged __tmp = {target};")
-            self.emit_line(f"{target} = {self.c_undefined_value(rtype)};")
-            self.emit_line("Py_XDECREF(CPyTagged_LongAsObject(__tmp));")
-            self.emit_line("}")
+            self.emit_lines(
+                f"if (CPyTagged_CheckLong({target})) {{",
+                f"CPyTagged __tmp = {target};",
+                f"{target} = {self.c_undefined_value(rtype)};",
+                "Py_XDECREF(CPyTagged_LongAsObject(__tmp));",
+                "}",
+            )
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_gc_clear(f"{target}.f{i}", item_type)
@@ -1156,9 +1164,11 @@ class Emitter:
     def emit_unbox_failure_with_overlapping_error_value(
         self, dest: str, typ: RType, failure: str
     ) -> None:
-        self.emit_line(f"if ({dest} == {self.c_error_value(typ)} && PyErr_Occurred()) {{")
-        self.emit_line(failure)
-        self.emit_line("}")
+        self.emit_lines(
+            f"if ({dest} == {self.c_error_value(typ)} && PyErr_Occurred()) {{",
+            failure,
+            "}",
+        )
 
 
 def c_array_initializer(components: list[str], *, indented: bool = False) -> str:

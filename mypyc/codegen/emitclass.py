@@ -472,9 +472,11 @@ def generate_vtables(
         )
 
     # Emit vtable setup function
-    emitter.emit_line("static bool")
-    emitter.emit_line(f"{NATIVE_PREFIX}{vtable_setup_name}(void)")
-    emitter.emit_line("{")
+    emitter.emit_lines(
+        "static bool",
+        f"{NATIVE_PREFIX}{vtable_setup_name}(void)",
+        "{",
+    )
 
     if base.allow_interpreted_subclasses and not shadow:
         emitter.emit_line(f"{NATIVE_PREFIX}{vtable_setup_name}_shadow();")
@@ -489,8 +491,10 @@ def generate_vtables(
 
     generate_vtable(base.vtable_entries, vtable_name, emitter, subtables, shadow)
 
-    emitter.emit_line("return 1;")
-    emitter.emit_line("}")
+    emitter.emit_lines(
+        "return 1;",
+        "}",
+    )
 
     return vtable_name if not subtables else f"{vtable_name} + {len(subtables) * 3}"
 
@@ -555,20 +559,24 @@ def generate_setup_for_class(
     emitter: Emitter,
 ) -> None:
     """Generate a native function that allocates an instance of a class."""
-    emitter.emit_line("static PyObject *")
-    emitter.emit_line(f"{func_name}(PyTypeObject *type)")
-    emitter.emit_line("{")
-    emitter.emit_line(f"{cl.struct_name(emitter.names)} *self;")
-    emitter.emit_line(f"self = ({cl.struct_name(emitter.names)} *)type->tp_alloc(type, 0);")
-    emitter.emit_line("if (self == NULL)")
-    emitter.emit_line("    return NULL;")
+    emitter.emit_lines(
+        "static PyObject *",
+        f"{func_name}(PyTypeObject *type)",
+        "{",
+        f"{cl.struct_name(emitter.names)} *self;",
+        f"self = ({cl.struct_name(emitter.names)} *)type->tp_alloc(type, 0);",
+        "if (self == NULL)",
+        "    return NULL;",
+    )
 
     if shadow_vtable_name:
-        emitter.emit_line(f"if (type != {emitter.type_struct_name(cl)}) {{")
-        emitter.emit_line(f"self->vtable = {shadow_vtable_name};")
-        emitter.emit_line("} else {")
-        emitter.emit_line(f"self->vtable = {vtable_name};")
-        emitter.emit_line("}")
+        emitter.emit_lines(
+            f"if (type != {emitter.type_struct_name(cl)}) {{",
+            f"self->vtable = {shadow_vtable_name};",
+            "} else {",
+            f"self->vtable = {vtable_name};",
+            "}",
+        )
     else:
         emitter.emit_line(f"self->vtable = {vtable_name};")
     for i in range(0, len(cl.bitmap_attrs), BITMAP_BITS):
@@ -599,8 +607,10 @@ def generate_setup_for_class(
             "}",
         )
 
-    emitter.emit_line("return (PyObject *)self;")
-    emitter.emit_line("}")
+    emitter.emit_lines(
+        "return (PyObject *)self;",
+        "}",
+    )
 
 
 def generate_constructor_for_class(
@@ -612,37 +622,42 @@ def generate_constructor_for_class(
     emitter: Emitter,
 ) -> None:
     """Generate a native function that allocates and initializes an instance of a class."""
-    emitter.emit_line(f"{native_function_header(fn, emitter)}")
-    emitter.emit_line("{")
-    emitter.emit_line(f"PyObject *self = {setup_name}({emitter.type_struct_name(cl)});")
-    emitter.emit_line("if (self == NULL)")
-    emitter.emit_line("    return NULL;")
+    emitter.emit_lines(
+        f"{native_function_header(fn, emitter)}",
+        "{",
+        f"PyObject *self = {setup_name}({emitter.type_struct_name(cl)});",
+        "if (self == NULL)",
+        "    return NULL;",
+    )
     args = ", ".join(["self"] + [REG_PREFIX + arg.name for arg in fn.sig.args])
     if init_fn is not None:
-        emitter.emit_line(
+        emitter.emit_lines(
             "char res = {}{}{}({});".format(
                 emitter.get_group_prefix(init_fn.decl),
                 NATIVE_PREFIX,
                 init_fn.cname(emitter.names),
                 args,
-            )
+            ),
+            "if (res == 2) {",
+            "Py_DECREF(self);",
+            "return NULL;",
+            "}",
         )
-        emitter.emit_line("if (res == 2) {")
-        emitter.emit_line("Py_DECREF(self);")
-        emitter.emit_line("return NULL;")
-        emitter.emit_line("}")
 
     # If there is a nontrivial ctor that we didn't define, invoke it via tp_init
     elif len(fn.sig.args) > 1:
-        emitter.emit_line(f"int res = {emitter.type_struct_name(cl)}->tp_init({args});")
+        emitter.emit_lines(
+            f"int res = {emitter.type_struct_name(cl)}->tp_init({args});",
+            "if (res < 0) {",
+            "Py_DECREF(self);",
+            "return NULL;",
+            "}",
+        )
 
-        emitter.emit_line("if (res < 0) {")
-        emitter.emit_line("Py_DECREF(self);")
-        emitter.emit_line("return NULL;")
-        emitter.emit_line("}")
-
-    emitter.emit_line("return self;")
-    emitter.emit_line("}")
+    emitter.emit_lines(
+        "return self;",
+        "}",
+    )
 
 
 def generate_init_for_class(cl: ClassIR, init_fn: FuncIR, emitter: Emitter) -> str:
@@ -654,9 +669,11 @@ def generate_init_for_class(cl: ClassIR, init_fn: FuncIR, emitter: Emitter) -> s
     """
     func_name = f"{cl.name_prefix(emitter.names)}_init"
 
-    emitter.emit_line("static int")
-    emitter.emit_line(f"{func_name}(PyObject *self, PyObject *args, PyObject *kwds)")
-    emitter.emit_line("{")
+    emitter.emit_lines(
+        "static int",
+        f"{func_name}(PyObject *self, PyObject *args, PyObject *kwds)",
+        "{",
+    )
     if cl.allow_interpreted_subclasses or cl.builtin_base:
         emitter.emit_line(
             "return {}{}(self, args, kwds) != NULL ? 0 : -1;".format(
@@ -678,17 +695,19 @@ def generate_new_for_class(
     init_fn: FuncIR | None,
     emitter: Emitter,
 ) -> None:
-    emitter.emit_line("static PyObject *")
-    emitter.emit_line(f"{func_name}(PyTypeObject *type, PyObject *args, PyObject *kwds)")
-    emitter.emit_line("{")
+    emitter.emit_lines(
+        "static PyObject *",
+        f"{func_name}(PyTypeObject *type, PyObject *args, PyObject *kwds)",
+        "{",
+    )
     # TODO: Check and unbox arguments
     if not cl.allow_interpreted_subclasses:
-        emitter.emit_line(f"if (type != {emitter.type_struct_name(cl)}) {{")
-        emitter.emit_line(
-            'PyErr_SetString(PyExc_TypeError, "interpreted classes cannot inherit from compiled");'
+        emitter.emit_lines(
+            f"if (type != {emitter.type_struct_name(cl)}) {{",
+            'PyErr_SetString(PyExc_TypeError, "interpreted classes cannot inherit from compiled");',
+            "return NULL;",
+            "}",
         )
-        emitter.emit_line("return NULL;")
-        emitter.emit_line("}")
 
     if not init_fn or cl.allow_interpreted_subclasses or cl.builtin_base or cl.is_serializable():
         # Match Python semantics -- __new__ doesn't call __init__.
@@ -697,30 +716,30 @@ def generate_new_for_class(
         # __new__ of a native class implicitly calls __init__ so that we
         # can enforce that instances are always properly initialized. This
         # is needed to support always defined attributes.
-        emitter.emit_line(f"PyObject *self = {setup_name}(type);")
-        emitter.emit_lines("if (self == NULL)", "    return NULL;")
-        emitter.emit_line(
-            f"PyObject *ret = {PREFIX}{init_fn.cname(emitter.names)}(self, args, kwds);"
+        emitter.emit_lines(
+            f"PyObject *self = {setup_name}(type);",
+            "if (self == NULL)", "    return NULL;",
+            f"PyObject *ret = {PREFIX}{init_fn.cname(emitter.names)}(self, args, kwds);",
+            "if (ret == NULL)", "    return NULL;",
+            "return self;",
         )
-        emitter.emit_lines("if (ret == NULL)", "    return NULL;")
-        emitter.emit_line("return self;")
     emitter.emit_line("}")
 
 
 def generate_new_for_trait(cl: ClassIR, func_name: str, emitter: Emitter) -> None:
-    emitter.emit_line("static PyObject *")
-    emitter.emit_line(f"{func_name}(PyTypeObject *type, PyObject *args, PyObject *kwds)")
-    emitter.emit_line("{")
-    emitter.emit_line(f"if (type != {emitter.type_struct_name(cl)}) {{")
-    emitter.emit_line(
+    emitter.emit_lines(
+        "static PyObject *",
+        f"{func_name}(PyTypeObject *type, PyObject *args, PyObject *kwds)",
+        "{",
+        f"if (type != {emitter.type_struct_name(cl)}) {{",
         "PyErr_SetString(PyExc_TypeError, "
-        '"interpreted classes cannot inherit from compiled traits");'
+        '"interpreted classes cannot inherit from compiled traits");',
+        "} else {",
+        'PyErr_SetString(PyExc_TypeError, "traits may not be directly created");',
+        "}",
+        "return NULL;",
+        "}",
     )
-    emitter.emit_line("} else {")
-    emitter.emit_line('PyErr_SetString(PyExc_TypeError, "traits may not be directly created");')
-    emitter.emit_line("}")
-    emitter.emit_line("return NULL;")
-    emitter.emit_line("}")
 
 
 def generate_traverse_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -> None:
@@ -775,16 +794,18 @@ def generate_clear_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -> N
 def generate_dealloc_for_class(
     cl: ClassIR, dealloc_func_name: str, clear_func_name: str, emitter: Emitter
 ) -> None:
-    emitter.emit_line("static void")
-    emitter.emit_line(f"{dealloc_func_name}({cl.struct_name(emitter.names)} *self)")
-    emitter.emit_line("{")
-    emitter.emit_line("PyObject_GC_UnTrack(self);")
-    # The trashcan is needed to handle deep recursive deallocations
-    emitter.emit_line(f"CPy_TRASHCAN_BEGIN(self, {dealloc_func_name})")
-    emitter.emit_line(f"{clear_func_name}(self);")
-    emitter.emit_line("Py_TYPE(self)->tp_free((PyObject *)self);")
-    emitter.emit_line("CPy_TRASHCAN_END(self)")
-    emitter.emit_line("}")
+    emitter.emit_lines(
+        "static void",
+        f"{dealloc_func_name}({cl.struct_name(emitter.names)} *self)",
+        "{",
+        "PyObject_GC_UnTrack(self);",
+        # The trashcan is needed to handle deep recursive deallocations
+        f"CPy_TRASHCAN_BEGIN(self, {dealloc_func_name})",
+        f"{clear_func_name}(self);",
+        "Py_TYPE(self)->tp_free((PyObject *)self);",
+        "CPy_TRASHCAN_END(self)",
+        "}",
+    )
 
 
 def generate_methods_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
@@ -933,10 +954,12 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
 
     if not always_defined:
         emitter.emit_undefined_attr_check(rtype, attr_expr, "==", "self", attr, cl, unlikely=True)
-        emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
-        emitter.emit_line(f'    "attribute {repr(attr)} of {repr(cl.name)} undefined");')
-        emitter.emit_line("return NULL;")
-        emitter.emit_line("}")
+        emitter.emit_lines(
+            "PyErr_SetString(PyExc_AttributeError,",
+            f'    "attribute {repr(attr)} of {repr(cl.name)} undefined");',
+            "return NULL;",
+            "}",
+        )
     emitter.emit_inc_ref(f"self->{attr_field}", rtype)
     emitter.emit_box(f"self->{attr_field}", "retval", rtype, declare_dest=True)
     emitter.emit_line("return retval;")
@@ -955,13 +978,13 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
 
     deletable = cl.is_deletable(attr)
     if not deletable:
-        emitter.emit_line("if (value == NULL) {")
-        emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
-        emitter.emit_line(
-            f'    "{repr(cl.name)} object attribute {repr(attr)} cannot be deleted");'
+        emitter.emit_lines(
+            "if (value == NULL) {",
+            "PyErr_SetString(PyExc_AttributeError,",
+            f'    "{repr(cl.name)} object attribute {repr(attr)} cannot be deleted");',
+            "return -1;",
+            "}",
         )
-        emitter.emit_line("return -1;")
-        emitter.emit_line("}")
 
     # HACK: Don't consider refcounted values as always defined, since it's possible to
     #       access uninitialized values via 'gc.get_objects()'. Accessing non-refcounted

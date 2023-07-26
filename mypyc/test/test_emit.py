@@ -50,6 +50,16 @@ CPyStatics[1]; /* [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
                   21, 22, 23, 24, 25, 26, 27, 28, 29] */\n"""
         )
 
+    def test_emit_lines(self) -> None:
+        emitter = Emitter(self.context, {})
+        emitter.emit_lines(
+            "line;",
+            "a {",
+            "f();",
+            "}",
+        )
+        assert emitter.fragments == ["line;\n", "a {\n", "    f();\n", "}\n"]
+
     def test_emit_undefined_value_for_simple_type(self) -> None:
         emitter = Emitter(self.context, {})
         assert emitter.c_undefined_value(int_rprimitive) == "CPY_INT_TAG"

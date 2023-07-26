@@ -567,20 +567,24 @@ class GroupGenerator:
         # (which are shared between shared libraries via dynamic
         # exports tables and not accessed directly.)
         ext_declarations = Emitter(self.context)
-        ext_declarations.emit_line(f"#ifndef MYPYC_NATIVE{self.group_suffix}_H")
-        ext_declarations.emit_line(f"#define MYPYC_NATIVE{self.group_suffix}_H")
-        ext_declarations.emit_line("#include <Python.h>")
-        ext_declarations.emit_line("#include <CPy.h>")
+        ext_declarations.emit_lines(
+            f"#ifndef MYPYC_NATIVE{self.group_suffix}_H",
+            f"#define MYPYC_NATIVE{self.group_suffix}_H",
+            "#include <Python.h>",
+            "#include <CPy.h>",
+        )
 
         declarations = Emitter(self.context)
-        declarations.emit_line(f"#ifndef MYPYC_NATIVE_INTERNAL{self.group_suffix}_H")
-        declarations.emit_line(f"#define MYPYC_NATIVE_INTERNAL{self.group_suffix}_H")
-        declarations.emit_line("#include <Python.h>")
-        declarations.emit_line("#include <CPy.h>")
-        declarations.emit_line(f'#include "__native{self.short_group_suffix}.h"')
-        declarations.emit_line()
-        declarations.emit_line("int CPyGlobalsInit(void);")
-        declarations.emit_line()
+        declarations.emit_lines(
+            f"#ifndef MYPYC_NATIVE_INTERNAL{self.group_suffix}_H",
+            f"#define MYPYC_NATIVE_INTERNAL{self.group_suffix}_H",
+            "#include <Python.h>",
+            "#include <CPy.h>",
+            f'#include "__native{self.short_group_suffix}.h"',
+            "",
+            "int CPyGlobalsInit(void);",
+            "",
+        )
 
         for module_name, module in self.modules.items():
             self.declare_finals(module_name, module.final_names, declarations)
@@ -868,9 +872,11 @@ class GroupGenerator:
                     "NULL /* docstring */}},"
                 ).format(name=name, cname=fn.cname(emitter.names), prefix=PREFIX, flag=flag)
             )
-        emitter.emit_line("{NULL, NULL, 0, NULL}")
-        emitter.emit_line("};")
-        emitter.emit_line()
+        emitter.emit_lines(
+            "{NULL, NULL, 0, NULL}",
+            "};",
+            "",
+        )
 
         # Emit module definition struct
         emitter.emit_lines(
