@@ -872,11 +872,7 @@ class GroupGenerator:
                     "NULL /* docstring */}},"
                 ).format(name=name, cname=fn.cname(emitter.names), prefix=PREFIX, flag=flag)
             )
-        emitter.emit_lines(
-            "{NULL, NULL, 0, NULL}",
-            "};",
-            "",
-        )
+        emitter.emit_lines("{NULL, NULL, 0, NULL}", "};", "")
 
         # Emit module definition struct
         emitter.emit_lines(

@@ -1165,9 +1165,7 @@ class Emitter:
         self, dest: str, typ: RType, failure: str
     ) -> None:
         self.emit_lines(
-            f"if ({dest} == {self.c_error_value(typ)} && PyErr_Occurred()) {{",
-            failure,
-            "}",
+            f"if ({dest} == {self.c_error_value(typ)} && PyErr_Occurred()) {{", failure, "}"
         )
 
 

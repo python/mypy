@@ -52,12 +52,7 @@ CPyStatics[1]; /* [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
 
     def test_emit_lines(self) -> None:
         emitter = Emitter(self.context, {})
-        emitter.emit_lines(
-            "line;",
-            "a {",
-            "f();",
-            "}",
-        )
+        emitter.emit_lines("line;", "a {", "f();", "}")
         assert emitter.fragments == ["line;\n", "a {\n", "    f();\n", "}\n"]
 
     def test_emit_undefined_value_for_simple_type(self) -> None:

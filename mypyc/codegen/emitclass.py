@@ -472,11 +472,7 @@ def generate_vtables(
         )
 
     # Emit vtable setup function
-    emitter.emit_lines(
-        "static bool",
-        f"{NATIVE_PREFIX}{vtable_setup_name}(void)",
-        "{",
-    )
+    emitter.emit_lines("static bool", f"{NATIVE_PREFIX}{vtable_setup_name}(void)", "{")
 
     if base.allow_interpreted_subclasses and not shadow:
         emitter.emit_line(f"{NATIVE_PREFIX}{vtable_setup_name}_shadow();")
@@ -491,10 +487,7 @@ def generate_vtables(
 
     generate_vtable(base.vtable_entries, vtable_name, emitter, subtables, shadow)
 
-    emitter.emit_lines(
-        "return 1;",
-        "}",
-    )
+    emitter.emit_lines("return 1;", "}")
 
     return vtable_name if not subtables else f"{vtable_name} + {len(subtables) * 3}"
 
@@ -607,10 +600,7 @@ def generate_setup_for_class(
             "}",
         )
 
-    emitter.emit_lines(
-        "return (PyObject *)self;",
-        "}",
-    )
+    emitter.emit_lines("return (PyObject *)self;", "}")
 
 
 def generate_constructor_for_class(
@@ -654,10 +644,7 @@ def generate_constructor_for_class(
             "}",
         )
 
-    emitter.emit_lines(
-        "return self;",
-        "}",
-    )
+    emitter.emit_lines("return self;", "}")
 
 
 def generate_init_for_class(cl: ClassIR, init_fn: FuncIR, emitter: Emitter) -> str:
@@ -670,9 +657,7 @@ def generate_init_for_class(cl: ClassIR, init_fn: FuncIR, emitter: Emitter) -> s
     func_name = f"{cl.name_prefix(emitter.names)}_init"
 
     emitter.emit_lines(
-        "static int",
-        f"{func_name}(PyObject *self, PyObject *args, PyObject *kwds)",
-        "{",
+        "static int", f"{func_name}(PyObject *self, PyObject *args, PyObject *kwds)", "{"
     )
     if cl.allow_interpreted_subclasses or cl.builtin_base:
         emitter.emit_line(
@@ -718,9 +703,11 @@ def generate_new_for_class(
         # is needed to support always defined attributes.
         emitter.emit_lines(
             f"PyObject *self = {setup_name}(type);",
-            "if (self == NULL)", "    return NULL;",
+            "if (self == NULL)",
+            "    return NULL;",
             f"PyObject *ret = {PREFIX}{init_fn.cname(emitter.names)}(self, args, kwds);",
-            "if (ret == NULL)", "    return NULL;",
+            "if (ret == NULL)",
+            "    return NULL;",
             "return self;",
         )
     emitter.emit_line("}")
