@@ -1,0 +1,6 @@
+[case testBooleanOpRightType]
+from typing import Dict
+def foo(x: Dict[str, str]) -> str: return x.get("a") or x.get("b", "c")
+def bar(x: Dict[str, str]) -> str: return None or  x.get("c","d")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
