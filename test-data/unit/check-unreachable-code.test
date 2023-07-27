@@ -1446,3 +1446,19 @@ def f() -> None:
     Foo()['a'] = 'a'
     x = 0 # This should not be reported as unreachable
 [builtins fixtures/exception.pyi]
+
+[case testIntentionallyEmptyGeneratorFunction]
+# flags: --warn-unreachable
+from typing import Generator
+
+def f() -> Generator[None, None, None]:
+    return
+    yield
+
+[case testIntentionallyEmptyGeneratorFunction_None]
+# flags: --warn-unreachable
+from typing import Generator
+
+def f() -> Generator[None, None, None]:
+    return None
+    yield None
