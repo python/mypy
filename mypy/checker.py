@@ -215,13 +215,7 @@ from mypy.types import (
     is_literal_type,
     is_named_instance,
 )
-from mypy.types_utils import (
-    can_be_none,
-    is_optional,
-    remove_optional,
-    store_argument_type,
-    strip_type,
-)
+from mypy.types_utils import is_optional, remove_optional, store_argument_type, strip_type
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars, fill_typevars_with_any, has_no_typevars
 from mypy.util import is_dunder, is_sunder, is_typeshed_file
@@ -5664,7 +5658,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             )
                             if (
                                 collection_item_type is not None
-                                and not can_be_none(collection_item_type)
+                                and not is_optional(collection_item_type)
                                 and not (
                                     isinstance(collection_item_type, Instance)
                                     and collection_item_type.type.fullname == "builtins.object"
@@ -6071,7 +6065,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         non_optional_types = []
         for i in chain_indices:
             typ = operand_types[i]
-            if not can_be_none(typ):
+            if not is_optional(typ):
                 non_optional_types.append(typ)
 
         # Make sure we have a mixture of optional and non-optional types.
