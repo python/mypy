@@ -717,12 +717,6 @@ class RegularClass:
         x: int
         y: str = 'a'
     z: str = 'b'
-
-# TODO: make sure that nested classes in `NamedTuple` are supported:
-class NamedTupleWithNestedClass(NamedTuple):
-    class Nested:
-        x: int
-        y: str = 'a'
 [out]
 from typing import NamedTuple
 
@@ -743,7 +737,22 @@ class RegularClass:
         y: str = ...
     z: str
 
-class NamedTupleWithNestedClass(NamedTuple): ...
+
+[case testNestedClassInNamedTuple_semanal-xfail]
+from typing import NamedTuple
+
+# TODO: make sure that nested classes in `NamedTuple` are supported:
+class NamedTupleWithNestedClass(NamedTuple):
+    class Nested:
+        x: int
+        y: str = 'a'
+[out]
+from typing import NamedTuple
+
+class NamedTupleWithNestedClass(NamedTuple):
+    class Nested:
+        x: int
+        y: str
 
 [case testEmptyNamedtuple]
 import collections, typing
