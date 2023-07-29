@@ -390,11 +390,17 @@ class A(NamedTuple):
     class B(NamedTuple):
         x: str
         y: int = 1
+        def method(self) -> int: ...
 
 # Correct:
 A(1)
 A.B('a')
 A.B('a', 2)
+
+b: A.B
+reveal_type(b.x)  # N: Revealed type is "builtins.str"
+reveal_type(b.y)  # N: Revealed type is "builtins.int"
+reveal_type(b.method())  # N: Revealed type is "builtins.int"
 
 # Incorrect:
 A.B()  # E: Missing positional argument "x" in call to "B"
