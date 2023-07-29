@@ -7146,6 +7146,8 @@ def flatten_types(t: Type) -> list[Type]:
     t = get_proper_type(t)
     if isinstance(t, TupleType):
         return [b for a in t.items for b in flatten_types(a)]
+    elif is_named_instance(t, "builtins.tuple"):
+        return [t.args[0]]
     else:
         return [t]
 
