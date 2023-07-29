@@ -149,7 +149,6 @@ class NamedTupleAnalyzer:
         default_items: dict[str, Expression] = {}
         statements: list[Statement] = []
         for stmt in defn.defs.body:
-            # Processing fields of a namedtuple:
             if not isinstance(stmt, AssignmentStmt):
                 # Still allow pass or ... (for empty namedtuples).
                 if isinstance(stmt, PassStmt) or (
