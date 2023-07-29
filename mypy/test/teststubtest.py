@@ -1638,6 +1638,36 @@ class StubtestUnit(unittest.TestCase):
         )
 
     @collect_cases
+    def test_named_tuple_typing_and_collections(self) -> Iterator[Case]:
+        yield Case(
+            stub="from typing import NamedTuple",
+            runtime="from collections import namedtuple",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class X1(NamedTuple):
+                bar: int
+                foo: str = ...
+            """,
+            runtime="""
+            X1 = namedtuple('X1', ['bar', 'foo'], defaults=['a'])
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class X2(NamedTuple):
+                bar: int
+                foo: str
+            """,
+            runtime="""
+            X2 = namedtuple('X1', ['bar', 'foo'], defaults=['a'])
+            """,
+            error="X2.__new__",
+        )
+
+    @collect_cases
     def test_type_var(self) -> Iterator[Case]:
         yield Case(
             stub="from typing import TypeVar", runtime="from typing import TypeVar", error=None
