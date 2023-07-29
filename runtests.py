@@ -50,10 +50,14 @@ cmds = {
     # Self type check
     "self": [
         executable,
-        "-m", "mypy",
-        "--config-file", "mypy_self_check.ini",
-        "-p", "mypy",
-        "-p", "mypyc",
+        "-m",
+        "mypy",
+        "--config-file",
+        "mypy_self_check.ini",
+        "-p",
+        "mypy",
+        "-p",
+        "mypyc",
     ],
     # Lint
     "lint": ["pre-commit", "run", "--all-files"],
