@@ -1632,7 +1632,7 @@ class StubtestUnit(unittest.TestCase):
                 bar: int
                 foo: str = 'a'
             """,
-            # `__new__` will miss a deafult value for a `foo` parameter,
+            # `__new__` will miss a default value for a `foo` parameter,
             # but we don't generate special errors for `foo` missing `...` part.
             error="X2.__new__",
         )
