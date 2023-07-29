@@ -10225,6 +10225,7 @@ class NT(NamedTuple):
     class C: ...
     x: int
     y: A
+    assert True
 
 [file f.py]
 A = int
@@ -10232,9 +10233,9 @@ A = int
 A = str
 [builtins fixtures/tuple.pyi]
 [out]
-m.py:5: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+m.py:8: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
 ==
-m.py:5: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+m.py:8: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
 
 [case testTypedDictNestedClassRecheck]
 import n
