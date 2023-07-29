@@ -71,7 +71,7 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
 
     def visit_partial_type(self, t: PartialType) -> ProperType:
         # Should not get here.
-        raise RuntimeError()
+        raise RuntimeError("Cannot erase partial types")
 
     def visit_deleted_type(self, t: DeletedType) -> ProperType:
         return t
