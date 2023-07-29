@@ -149,7 +149,7 @@ class NamedTupleAnalyzer:
         default_items: dict[str, Expression] = {}
         statements: list[Statement] = []
         for stmt in defn.defs.body:
-            statements.append(stmt)
+            # Processing fields of a namedtuple:
             if not isinstance(stmt, AssignmentStmt):
                 # Still allow pass or ... (for empty namedtuples).
                 if isinstance(stmt, PassStmt) or (
@@ -162,16 +162,20 @@ class NamedTupleAnalyzer:
                 # And docstrings.
                 if isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, StrExpr):
                     continue
-                statements.pop()
+                # And nested classes, they need to be analyzed further:
+                if isinstance(stmt, ClassDef):
+                    statements.append(stmt)
+                    continue
+
                 defn.removed_statements.append(stmt)
                 self.fail(NAMEDTUP_CLASS_ERROR, stmt)
             elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
                 # An assignment, but an invalid one.
-                statements.pop()
                 defn.removed_statements.append(stmt)
                 self.fail(NAMEDTUP_CLASS_ERROR, stmt)
             else:
                 # Append name and type in this case...
+                statements.append(stmt)
                 name = stmt.lvalues[0].name
                 items.append(name)
                 if stmt.type is None:
