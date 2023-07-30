@@ -1145,7 +1145,7 @@ def f(x: str) -> None: pass
 f(1.1)
 f('')
 f(1)
-f(()) # E: No overload variant of "f" matches argument type "Tuple[]" \
+f(()) # E: No overload variant of "f" matches argument type "Tuple[()]" \
       # N: Possible overload variants: \
       # N:     def f(x: float) -> None \
       # N:     def f(x: str) -> None

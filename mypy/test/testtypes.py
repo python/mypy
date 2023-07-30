@@ -129,16 +129,28 @@ class TypesSuite(Suite):
         )
         assert_equal(str(c3), "def (X? =, *Y?) -> Any")
 
-    def test_tuple_type(self) -> None:
+    def test_tuple_type_upper(self) -> None:
         options = Options()
         options.force_uppercase_builtins = True
-        assert_equal(TupleType([], self.fx.std_tuple).str_with_options(options), "Tuple[]")
+        assert_equal(TupleType([], self.fx.std_tuple).str_with_options(options), "Tuple[()]")
         assert_equal(TupleType([self.x], self.fx.std_tuple).str_with_options(options), "Tuple[X?]")
         assert_equal(
             TupleType(
                 [self.x, AnyType(TypeOfAny.special_form)], self.fx.std_tuple
             ).str_with_options(options),
             "Tuple[X?, Any]",
+        )
+
+    def test_tuple_type_lower(self) -> None:
+        options = Options()
+        options.force_uppercase_builtins = False
+        assert_equal(TupleType([], self.fx.std_tuple).str_with_options(options), "tuple[()]")
+        assert_equal(TupleType([self.x], self.fx.std_tuple).str_with_options(options), "tuple[X?]")
+        assert_equal(
+            TupleType(
+                [self.x, AnyType(TypeOfAny.special_form)], self.fx.std_tuple
+            ).str_with_options(options),
+            "tuple[X?, Any]",
         )
 
     def test_type_variable_binding(self) -> None:

@@ -1568,8 +1568,8 @@ class AnnAssign(stmt):
    value: str
    simple: int
 
-reveal_type(AST.__match_args__)  # N: Revealed type is "Tuple[]"
-reveal_type(stmt.__match_args__)  # N: Revealed type is "Tuple[]"
+reveal_type(AST.__match_args__)  # N: Revealed type is "Tuple[()]"
+reveal_type(stmt.__match_args__)  # N: Revealed type is "Tuple[()]"
 reveal_type(AnnAssign.__match_args__)  # N: Revealed type is "Tuple[Literal['target']?, Literal['annotation']?, Literal['value']?, Literal['simple']?]"
 
 AnnAssign.__match_args__ = ('a', 'b', 'c', 'd')  # E: Cannot assign to "__match_args__"

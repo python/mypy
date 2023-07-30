@@ -1896,7 +1896,7 @@ reveal_type(t.__match_args__)  # N: Revealed type is "Tuple[Literal['bar']]"
 class Empty:
     ...
 e: Empty
-reveal_type(e.__match_args__)  # N: Revealed type is "Tuple[]"
+reveal_type(e.__match_args__)  # N: Revealed type is "Tuple[()]"
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassWithoutMatchArgs]
