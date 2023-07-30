@@ -2507,10 +2507,11 @@ def format_type_inner(
         # Prefer the name of the fallback class (if not tuple), as it's more informative.
         if typ.partial_fallback.type.fullname != "builtins.tuple":
             return format(typ.partial_fallback)
+        type_items = format_list(typ.items) or "()"
         if options.use_lowercase_names():
-            s = f"tuple[{format_list(typ.items)}]"
+            s = f"tuple[{type_items}]"
         else:
-            s = f"Tuple[{format_list(typ.items)}]"
+            s = f"Tuple[{type_items}]"
         return s
     elif isinstance(typ, TypedDictType):
         # If the TypedDictType is named, return the name
