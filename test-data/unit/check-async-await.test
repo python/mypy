@@ -475,7 +475,7 @@ async def gen() -> AsyncGenerator[int, str]:
 
 async def h() -> None:
     g = gen()
-    await g.asend(())  # E: Argument 1 to "asend" of "AsyncGenerator" has incompatible type "Tuple[]"; expected "str"
+    await g.asend(())  # E: Argument 1 to "asend" of "AsyncGenerator" has incompatible type "Tuple[()]"; expected "str"
     reveal_type(await g.asend('hello'))  # N: Revealed type is "builtins.int"
 
 [builtins fixtures/dict.pyi]
