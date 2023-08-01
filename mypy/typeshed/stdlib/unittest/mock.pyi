@@ -389,7 +389,11 @@ if sys.version_info >= (3, 8):
     class AsyncMagicMixin(MagicMixin):
         def __init__(self, *args: Any, **kw: Any) -> None: ...
 
-    class AsyncMock(AsyncMockMixin, AsyncMagicMixin, Mock): ...
+    class AsyncMock(AsyncMockMixin, AsyncMagicMixin, Mock):
+        # Improving the `reset_mock` signature.
+        # It is defined on `AsyncMockMixin` with `*args, **kwargs`, which is not ideal.
+        # But, `NonCallableMock` super-class has the better version.
+        def reset_mock(self, visited: Any = None, *, return_value: bool = False, side_effect: bool = False) -> None: ...
 
 class MagicProxy:
     name: str
