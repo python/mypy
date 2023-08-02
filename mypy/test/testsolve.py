@@ -138,6 +138,25 @@ class SolveSuite(Suite):
             allow_polymorphic=True,
         )
 
+    def test_poly_free_pair_with_bounds(self) -> None:
+        t_prime = self.fx.t.copy_modified(upper_bound=self.fx.b)
+        self.assert_solve(
+            [self.fx.t, self.fx.ub],
+            [self.subc(self.fx.t, self.fx.ub)],
+            [t_prime, t_prime],
+            [t_prime],
+            allow_polymorphic=True,
+        )
+
+    def test_poly_free_pair_with_bounds_uninhabited(self) -> None:
+        self.assert_solve(
+            [self.fx.ub, self.fx.uc],
+            [self.subc(self.fx.ub, self.fx.uc)],
+            [self.fx.uninhabited, self.fx.uninhabited],
+            [],
+            allow_polymorphic=True,
+        )
+
     def test_poly_bounded_chain(self) -> None:
         # B <: T <: U <: S <: A
         self.assert_solve(
@@ -216,6 +235,15 @@ class SolveSuite(Suite):
             {(self.fx.t.id, self.fx.s.id)},
             {self.fx.t.id: set(), self.fx.s.id: {self.fx.b}},
             {self.fx.t.id: {self.fx.a}, self.fx.s.id: set()},
+        )
+
+    def test_secondary_constraint_closure(self) -> None:
+        self.assert_transitive_closure(
+            [self.fx.t.id, self.fx.s.id],
+            [self.supc(self.fx.s, self.fx.gt), self.subc(self.fx.s, self.fx.ga)],
+            set(),
+            {self.fx.t.id: set(), self.fx.s.id: {self.fx.gt}},
+            {self.fx.t.id: {self.fx.a}, self.fx.s.id: {self.fx.ga}},
         )
 
     def assert_solve(

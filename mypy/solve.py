@@ -16,6 +16,7 @@ from mypy.typeops import get_type_vars
 from mypy.types import (
     AnyType,
     Instance,
+    NoneType,
     ProperType,
     Type,
     TypeOfAny,
@@ -298,7 +299,8 @@ def choose_free(
 
     common_upper_bound = meet_type_list([t.upper_bound for t in scc])
     common_upper_bound_p = get_proper_type(common_upper_bound)
-    if isinstance(common_upper_bound_p, UninhabitedType):
+    # We include None for when strict-optional is disabled.
+    if isinstance(common_upper_bound_p, (UninhabitedType, NoneType)):
         # This will cause to infer <nothing>, which is better than a free TypeVar
         # that has an upper bound <nothing>.
         return None
