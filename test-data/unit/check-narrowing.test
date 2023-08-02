@@ -1263,6 +1263,32 @@ def g() -> None:
 [builtins fixtures/dict.pyi]
 
 
+[case testNarrowingOptionalEqualsNone]
+from typing import Optional
+
+class A: ...
+
+val: Optional[A]
+
+if val == None:
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+else:
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+if val != None:
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+else:
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+
+if val in (None,):
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+else:
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+if val not in (None,):
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+else:
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+[builtins fixtures/primitives.pyi]
+
 [case testNarrowingWithTupleOfTypes]
 from typing import Tuple, Type
 
