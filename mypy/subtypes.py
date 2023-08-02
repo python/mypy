@@ -14,6 +14,7 @@ from mypy.maptype import map_instance_to_supertype
 # Circular import; done in the function instead.
 # import mypy.solve
 from mypy.nodes import (
+    ARG_POS,
     ARG_STAR,
     ARG_STAR2,
     CONTRAVARIANT,
@@ -1698,11 +1699,30 @@ def unify_generic_callable(
         return_constraint_direction = mypy.constraints.SUBTYPE_OF
 
     constraints: list[mypy.constraints.Constraint] = []
-    for arg_type, target_arg_type in zip(type.arg_types, target.arg_types):
-        c = mypy.constraints.infer_constraints(
-            arg_type, target_arg_type, mypy.constraints.SUPERTYPE_OF
-        )
-        constraints.extend(c)
+    # check by names
+    argument_names_map = {}
+
+    for i in range(len(target.arg_types)):
+        if target.arg_names[i] and target.arg_kinds[i] != ARG_POS:
+            argument_names_map[target.arg_names[i]] = target.arg_types[i]
+
+    for i in range(len(type.arg_types)):
+        if type.arg_names[i] and type.arg_names[i] in argument_names_map:
+            c = mypy.constraints.infer_constraints(
+                argument_names_map[type.arg_names[i]],
+                type.arg_types[i],
+                mypy.constraints.SUPERTYPE_OF,
+            )
+            constraints.extend(c)
+
+    # check pos-only arguments
+    for arg, target_arg in zip(type.formal_arguments(), target.formal_arguments()):
+        if arg.pos is not None and target_arg.pos is not None:
+            c = mypy.constraints.infer_constraints(
+                arg.typ, target_arg.typ, mypy.constraints.SUPERTYPE_OF
+            )
+            constraints.extend(c)
+
     if not ignore_return:
         c = mypy.constraints.infer_constraints(
             type.ret_type, target.ret_type, return_constraint_direction
