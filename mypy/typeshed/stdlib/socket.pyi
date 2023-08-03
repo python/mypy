@@ -202,6 +202,7 @@ if sys.platform != "win32" and sys.platform != "darwin":
         TCP_QUICKACK as TCP_QUICKACK,
         TCP_SYNCNT as TCP_SYNCNT,
         TCP_WINDOW_CLAMP as TCP_WINDOW_CLAMP,
+        TCP_USER_TIMEOUT as TCP_USER_TIMEOUT,
     )
 if sys.platform != "win32":
     from _socket import (
