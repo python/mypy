@@ -6554,3 +6554,18 @@ class Snafu(object):
 reveal_type(Snafu().snafu('123'))  # N: Revealed type is "builtins.str"
 reveal_type(Snafu.snafu('123'))  # N: Revealed type is "builtins.str"
 [builtins fixtures/staticmethod.pyi]
+
+[case testOverloadedWithInternalTypeVars]
+# flags: --new-type-inference
+import m
+
+[file m.pyi]
+from typing import Callable, TypeVar, overload
+
+T = TypeVar("T")
+S = TypeVar("S", bound=str)
+
+@overload
+def foo(x: int = ...) -> Callable[[T], T]: ...
+@overload
+def foo(x: S = ...) -> Callable[[T], T]: ...

@@ -734,8 +734,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     #     def foo(x: str) -> str: ...
                     #
                     # See Python 2's map function for a concrete example of this kind of overload.
+                    current_class = self.scope.active_class()
+                    type_vars = current_class.defn.type_vars if current_class else []
                     with state.strict_optional_set(True):
-                        if is_unsafe_overlapping_overload_signatures(sig1, sig2):
+                        if is_unsafe_overlapping_overload_signatures(sig1, sig2, type_vars):
                             self.msg.overloaded_signatures_overlap(i + 1, i + j + 2, item.func)
 
             if impl_type is not None:
@@ -1702,7 +1704,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             first = forward_tweaked
             second = reverse_tweaked
 
-        return is_unsafe_overlapping_overload_signatures(first, second)
+        current_class = self.scope.active_class()
+        type_vars = current_class.defn.type_vars if current_class else []
+        return is_unsafe_overlapping_overload_signatures(first, second, type_vars)
 
     def check_inplace_operator_method(self, defn: FuncBase) -> None:
         """Check an inplace operator method such as __iadd__.
@@ -3918,11 +3922,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return True
         if len(t.args) == 1:
             arg = get_proper_type(t.args[0])
-            # TODO: This is too permissive -- we only allow TypeVarType since
-            #       they leak in cases like defaultdict(list) due to a bug.
-            #       This can result in incorrect types being inferred, but only
-            #       in rare cases.
-            if isinstance(arg, (TypeVarType, UninhabitedType, NoneType)):
+            if self.options.new_type_inference:
+                allowed = isinstance(arg, (UninhabitedType, NoneType))
+            else:
+                # Allow leaked TypeVars for legacy inference logic.
+                allowed = isinstance(arg, (UninhabitedType, NoneType, TypeVarType))
+            if allowed:
                 return True
         return False
 
@@ -7179,7 +7184,7 @@ def are_argument_counts_overlapping(t: CallableType, s: CallableType) -> bool:
 
 
 def is_unsafe_overlapping_overload_signatures(
-    signature: CallableType, other: CallableType
+    signature: CallableType, other: CallableType, class_type_vars: list[TypeVarLikeType]
 ) -> bool:
     """Check if two overloaded signatures are unsafely overlapping or partially overlapping.
 
@@ -7198,8 +7203,8 @@ def is_unsafe_overlapping_overload_signatures(
     # This lets us identify cases where the two signatures use completely
     # incompatible types -- e.g. see the testOverloadingInferUnionReturnWithMixedTypevars
     # test case.
-    signature = detach_callable(signature)
-    other = detach_callable(other)
+    signature = detach_callable(signature, class_type_vars)
+    other = detach_callable(other, class_type_vars)
 
     # Note: We repeat this check twice in both directions due to a slight
     # asymmetry in 'is_callable_compatible'. When checking for partial overlaps,
@@ -7230,7 +7235,7 @@ def is_unsafe_overlapping_overload_signatures(
     )
 
 
-def detach_callable(typ: CallableType) -> CallableType:
+def detach_callable(typ: CallableType, class_type_vars: list[TypeVarLikeType]) -> CallableType:
     """Ensures that the callable's type variables are 'detached' and independent of the context.
 
     A callable normally keeps track of the type variables it uses within its 'variables' field.
@@ -7240,42 +7245,17 @@ def detach_callable(typ: CallableType) -> CallableType:
     This function will traverse the callable and find all used type vars and add them to the
     variables field if it isn't already present.
 
-    The caller can then unify on all type variables whether or not the callable is originally
-    from a class or not."""
-    type_list = typ.arg_types + [typ.ret_type]
-
-    appear_map: dict[str, list[int]] = {}
-    for i, inner_type in enumerate(type_list):
-        typevars_available = get_type_vars(inner_type)
-        for var in typevars_available:
-            if var.fullname not in appear_map:
-                appear_map[var.fullname] = []
-            appear_map[var.fullname].append(i)
-
-    used_type_var_names = set()
-    for var_name, appearances in appear_map.items():
-        used_type_var_names.add(var_name)
-
-    all_type_vars = get_type_vars(typ)
-    new_variables = []
-    for var in set(all_type_vars):
-        if var.fullname not in used_type_var_names:
-            continue
-        new_variables.append(
-            TypeVarType(
-                name=var.name,
-                fullname=var.fullname,
-                id=var.id,
-                values=var.values,
-                upper_bound=var.upper_bound,
-                default=var.default,
-                variance=var.variance,
-            )
-        )
-    out = typ.copy_modified(
-        variables=new_variables, arg_types=type_list[:-1], ret_type=type_list[-1]
+    The caller can then unify on all type variables whether the callable is originally from
+    the class or not."""
+    if not class_type_vars:
+        # Fast path, nothing to update.
+        return typ
+    seen_type_vars = set()
+    for t in typ.arg_types + [typ.ret_type]:
+        seen_type_vars |= set(get_type_vars(t))
+    return typ.copy_modified(
+        variables=list(typ.variables) + [tv for tv in class_type_vars if tv in seen_type_vars]
     )
-    return out
 
 
 def overload_can_never_match(signature: CallableType, other: CallableType) -> bool:
