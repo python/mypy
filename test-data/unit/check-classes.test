@@ -495,8 +495,15 @@ class bool(int):
     def __new__(cls, __o: object):
         pass
 
+class Falsey:
+    def __bool__(self) -> Literal[False]: pass
+
+reveal_type(bool(Falsey()))  # N: Revealed type is "Literal[False]"
+
 class int:
     def __new__(cls) -> Literal[0]: pass
+
+reveal_type(int())  # N: Revealed type is "Literal[0]"
 [typing fixtures/typing-medium.pyi]
 
 [case testOverride__new__WithLiteralReturnFailing]
