@@ -1545,9 +1545,13 @@ def get_qualified_name(o: Expression) -> str:
 
 
 def remove_blacklisted_modules(modules: list[StubSource]) -> list[StubSource]:
-    return [
-        module for module in modules if module.path is None or not is_blacklisted_path(module.path)
-    ]
+    filtered_modules = []
+    for module in modules:
+        if module.path is None or not is_blacklisted_path(module.path):
+            filtered_modules.append(module)
+        else:
+            print(f"Ignoring module '{module.path}'.")
+    return filtered_modules
 
 
 def is_blacklisted_path(path: str) -> bool:
