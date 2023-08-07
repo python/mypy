@@ -252,3 +252,12 @@ int CPyStr_Compare(PyObject *left, PyObject *right) {
         return -1;
     }
 }
+
+int CPyStr_CompareNeq(PyObject *left, PyObject *right) {
+    if (likely(PyUnicode_CheckExact(left) && PyUnicode_CheckExact(right))) {
+        return PyUnicode_Compare(left, right);
+    } else {
+        int ret = PyObject_RichCompareBool(left, right, Py_NE);
+        return ret;
+    }
+}

@@ -66,6 +66,13 @@ unicode_compare = custom_op(
     error_kind=ERR_MAGIC,
 )
 
+unicode_compare_neq = custom_op(
+    arg_types=[str_rprimitive, str_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyStr_CompareNeq",
+    error_kind=ERR_MAGIC,
+)
+
 # str[index] (for an int index)
 method_op(
     name="__getitem__",
