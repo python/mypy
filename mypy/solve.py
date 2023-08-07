@@ -12,7 +12,7 @@ from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsor
 from mypy.join import join_types
 from mypy.meet import meet_type_list, meet_types
 from mypy.subtypes import is_subtype
-from mypy.typeops import get_type_vars
+from mypy.typeops import get_all_type_vars
 from mypy.types import (
     AnyType,
     Instance,
@@ -463,4 +463,4 @@ def check_linear(scc: set[TypeVarId], lowers: Bounds, uppers: Bounds) -> bool:
 
 def get_vars(target: Type, vars: list[TypeVarId]) -> set[TypeVarId]:
     """Find type variables for which we are solving in a target type."""
-    return {tv.id for tv in get_type_vars(target)} & set(vars)
+    return {tv.id for tv in get_all_type_vars(target)} & set(vars)

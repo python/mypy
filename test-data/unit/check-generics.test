@@ -3035,3 +3035,39 @@ reveal_type(dec1(id2))  # N: Revealed type is "def [S in (builtins.int, builtins
 reveal_type(dec2(id1))  # N: Revealed type is "def [UC <: __main__.C] (UC`5) -> builtins.list[UC`5]"
 reveal_type(dec2(id2))  # N: Revealed type is "def (<nothing>) -> builtins.list[<nothing>]" \
                         # E: Argument 1 to "dec2" has incompatible type "Callable[[V], V]"; expected "Callable[[<nothing>], <nothing>]"
+
+[case testInferenceAgainstGenericParamSpecBasicInList]
+# flags: --new-type-inference
+from typing import TypeVar, Callable, List, Tuple
+from typing_extensions import ParamSpec
+
+T = TypeVar('T')
+P = ParamSpec('P')
+U = TypeVar('U')
+V = TypeVar('V')
+
+def dec(f: Callable[P, T]) -> Callable[P, List[T]]: ...
+def id(x: U) -> U: ...
+def either(x: U, y: U) -> U: ...
+def pair(x: U, y: V) -> Tuple[U, V]: ...
+reveal_type(dec(id))  # N: Revealed type is "def [T] (x: T`2) -> builtins.list[T`2]"
+reveal_type(dec(either))  # N: Revealed type is "def [T] (x: T`4, y: T`4) -> builtins.list[T`4]"
+reveal_type(dec(pair))  # N: Revealed type is "def [U, V] (x: U`-1, y: V`-2) -> builtins.list[Tuple[U`-1, V`-2]]"
+[builtins fixtures/list.pyi]
+
+[case testInferenceAgainstGenericParamSpecBasicDeList]
+# flags: --new-type-inference
+from typing import TypeVar, Callable, List, Tuple
+from typing_extensions import ParamSpec
+
+T = TypeVar('T')
+P = ParamSpec('P')
+U = TypeVar('U')
+V = TypeVar('V')
+
+def dec(f: Callable[P, List[T]]) -> Callable[P, T]: ...
+def id(x: U) -> U: ...
+def either(x: U, y: U) -> U: ...
+reveal_type(dec(id))  # N: Revealed type is "def [T] (x: builtins.list[T`2]) -> T`2"
+reveal_type(dec(either))  # N: Revealed type is "def [T] (x: builtins.list[T`4], y: builtins.list[T`4]) -> T`4"
+[builtins fixtures/list.pyi]

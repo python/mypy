@@ -899,7 +899,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             cactual = self.actual.with_unpacked_kwargs()
             param_spec = template.param_spec()
             if param_spec is None:
-                # FIX verify argument counts
+                # TODO: verify argument counts; more generally, use some "formal to actual" map
                 # TODO: Erase template variables if it is generic?
                 if (
                     type_state.infer_polymorphic
@@ -943,16 +943,29 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         cactual_args = cactual.arg_types
                     # The lengths should match, but don't crash (it will error elsewhere).
                     for t, a in zip(template_args, cactual_args):
+                        if isinstance(a, ParamSpecType) and not isinstance(t, ParamSpecType):
+                            # This avoids bogus constraints like T <: P.args
+                            # TODO: figure out a more principled way to skip arg_kind mismatch
+                            # (see also a similar to do item in corresponding branch below)
+                            continue
                         # Negate direction due to function argument type contravariance.
                         res.extend(infer_constraints(t, a, neg_op(self.direction)))
             else:
                 # sometimes, it appears we try to get constraints between two paramspec callables?
 
-                # TODO: Direction
                 # TODO: check the prefixes match
                 prefix = param_spec.prefix
                 prefix_len = len(prefix.arg_types)
                 cactual_ps = cactual.param_spec()
+
+                if type_state.infer_polymorphic and cactual.variables and not self.skip_neg_op:
+                    # Similar logic to the branch above.
+                    res.extend(
+                        infer_constraints(
+                            cactual, template, neg_op(self.direction), skip_neg_op=True
+                        )
+                    )
+                    extra_tvars = True
 
                 if not cactual_ps:
                     max_prefix_len = len([k for k in cactual.arg_kinds if k in (ARG_POS, ARG_OPT)])
@@ -960,17 +973,22 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     res.append(
                         Constraint(
                             param_spec,
-                            SUBTYPE_OF,
-                            cactual.copy_modified(
+                            neg_op(self.direction),
+                            Parameters(
                                 arg_types=cactual.arg_types[prefix_len:],
                                 arg_kinds=cactual.arg_kinds[prefix_len:],
                                 arg_names=cactual.arg_names[prefix_len:],
-                                ret_type=UninhabitedType(),
+                                variables=cactual.variables
+                                if not type_state.infer_polymorphic
+                                else [],
                             ),
                         )
                     )
                 else:
-                    res.append(Constraint(param_spec, SUBTYPE_OF, cactual_ps))
+                    if not param_spec.prefix.arg_types or cactual_ps.prefix.arg_types:
+                        # TODO: figure out a more general logic to reject shorter prefix in actual.
+                        # This may be actually fixed by a more general to do item above.
+                        res.append(Constraint(param_spec, neg_op(self.direction), cactual_ps))
 
                 # compare prefixes
                 cactual_prefix = cactual.copy_modified(
@@ -979,7 +997,6 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     arg_names=cactual.arg_names[:prefix_len],
                 )
 
-                # TODO: see above "FIX" comments for param_spec is None case
                 # TODO: this assumes positional arguments
                 for t, a in zip(prefix.arg_types, cactual_prefix.arg_types):
                     res.extend(infer_constraints(t, a, neg_op(self.direction)))

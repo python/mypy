@@ -122,6 +122,7 @@ from mypy.typeops import (
     false_only,
     fixup_partial_type,
     function_type,
+    get_all_type_vars,
     get_type_vars,
     is_literal_type_like,
     make_simplified_union,
@@ -145,6 +146,7 @@ from mypy.types import (
     LiteralValue,
     NoneType,
     Overloaded,
+    Parameters,
     ParamSpecFlavor,
     ParamSpecType,
     PartialType,
@@ -167,6 +169,7 @@ from mypy.types import (
     get_proper_types,
     has_recursive_types,
     is_named_instance,
+    remove_dups,
     split_with_prefix_and_suffix,
 )
 from mypy.types_utils import (
@@ -5632,18 +5635,24 @@ class PolyTranslator(TypeTranslator):
         self.bound_tvars: set[TypeVarLikeType] = set()
         self.seen_aliases: set[TypeInfo] = set()
 
-    def visit_callable_type(self, t: CallableType) -> Type:
-        found_vars = set()
+    def collect_vars(self, t: CallableType | Parameters) -> list[TypeVarLikeType]:
+        found_vars = []
         for arg in t.arg_types:
-            found_vars |= set(get_type_vars(arg)) & self.poly_tvars
+            found_vars += [
+                tv
+                for tv in get_all_type_vars(arg)
+                if tv in self.poly_tvars and tv not in self.bound_tvars
+            ]
+        return remove_dups(found_vars)
 
-        found_vars -= self.bound_tvars
-        self.bound_tvars |= found_vars
+    def visit_callable_type(self, t: CallableType) -> Type:
+        found_vars = self.collect_vars(t)
+        self.bound_tvars |= set(found_vars)
         result = super().visit_callable_type(t)
-        self.bound_tvars -= found_vars
+        self.bound_tvars -= set(found_vars)
 
         assert isinstance(result, ProperType) and isinstance(result, CallableType)
-        result.variables = list(result.variables) + list(found_vars)
+        result.variables = list(result.variables) + found_vars
         return result
 
     def visit_type_var(self, t: TypeVarType) -> Type:
@@ -5652,8 +5661,9 @@ class PolyTranslator(TypeTranslator):
         return super().visit_type_var(t)
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:
-        # TODO: Support polymorphic apply for ParamSpec.
-        raise PolyTranslationError()
+        if t in self.poly_tvars and t not in self.bound_tvars:
+            raise PolyTranslationError()
+        return super().visit_param_spec(t)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
         # TODO: Support polymorphic apply for TypeVarTuple.
@@ -5669,6 +5679,21 @@ class PolyTranslator(TypeTranslator):
         raise PolyTranslationError()
 
     def visit_instance(self, t: Instance) -> Type:
+        if t.type.has_param_spec_type:
+            param_spec_index = next(
+                i for (i, tv) in enumerate(t.type.defn.type_vars) if isinstance(tv, ParamSpecType)
+            )
+            p = get_proper_type(t.args[param_spec_index])
+            if isinstance(p, Parameters):
+                found_vars = self.collect_vars(p)
+                self.bound_tvars |= set(found_vars)
+                new_args = [a.accept(self) for a in t.args]
+                self.bound_tvars -= set(found_vars)
+
+                repl = new_args[param_spec_index]
+                assert isinstance(repl, ProperType) and isinstance(repl, Parameters)
+                repl.variables = list(repl.variables) + list(found_vars)
+                return t.copy_modified(args=new_args)
         # There is the same problem with callback protocols as with aliases
         # (callback protocols are essentially more flexible aliases to callables).
         # Note: consider supporting bindings in instances, e.g. LRUCache[[x: T], T].

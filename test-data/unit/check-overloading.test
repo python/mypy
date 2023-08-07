@@ -6456,7 +6456,7 @@ P = ParamSpec("P")
 R = TypeVar("R")
 
 @overload
-def func(x: Callable[Concatenate[Any, P], R]) -> Callable[P, R]: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def func(x: Callable[Concatenate[Any, P], R]) -> Callable[P, R]: ...
 @overload
 def func(x: Callable[P, R]) -> Callable[Concatenate[str, P], R]: ...
 def func(x: Callable[..., R]) -> Callable[..., R]: ...
@@ -6474,7 +6474,7 @@ eggs = lambda: 'eggs'
 reveal_type(func(eggs))  # N: Revealed type is "def (builtins.str) -> builtins.str"
 
 spam: Callable[..., str] = lambda x, y: 'baz'
-reveal_type(func(spam))  # N: Revealed type is "def (*Any, **Any) -> builtins.str"
+reveal_type(func(spam))  # N: Revealed type is "def (*Any, **Any) -> Any"
 
 [builtins fixtures/paramspec.pyi]
 
