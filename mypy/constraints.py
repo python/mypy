@@ -580,6 +580,17 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         # ... which seems like the only case this can happen. Better to fail loudly.
         if isinstance(self.actual, AnyType):
             return self.infer_against_any(template.arg_types, self.actual)
+        if type_state.infer_polymorphic and isinstance(self.actual, Parameters):
+            res = []
+            if len(template.arg_types) == len(self.actual.arg_types):
+                # TODO: this may assume positional arguments
+                for tt, at, k in zip(
+                    template.arg_types, self.actual.arg_types, self.actual.arg_kinds
+                ):
+                    if k in (ARG_STAR, ARG_STAR2):
+                        continue
+                    res.extend(infer_constraints(tt, at, self.direction))
+            return res
         raise RuntimeError("Parameters cannot be constrained to")
 
     # Non-leaf types
@@ -986,8 +997,12 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     arg_names=cactual.arg_names[:prefix_len],
                 )
 
-                # TODO: this assumes positional arguments
-                for t, a in zip(prefix.arg_types, cactual_prefix.arg_types):
+                # TODO: this may assume positional arguments
+                for t, a, k in zip(
+                    prefix.arg_types, cactual_prefix.arg_types, cactual_prefix.arg_kinds
+                ):
+                    if k in (ARG_STAR, ARG_STAR2):
+                        continue
                     res.extend(infer_constraints(t, a, neg_op(self.direction)))
 
             template_ret_type, cactual_ret_type = template.ret_type, cactual.ret_type

@@ -5638,11 +5638,15 @@ class PolyTranslator(TypeTranslator):
     def collect_vars(self, t: CallableType | Parameters) -> list[TypeVarLikeType]:
         found_vars = []
         for arg in t.arg_types:
-            found_vars += [
-                tv
-                for tv in get_all_type_vars(arg)
-                if tv in self.poly_tvars and tv not in self.bound_tvars
-            ]
+            for tv in get_all_type_vars(arg):
+                if isinstance(tv, ParamSpecType):
+                    normalized: TypeVarLikeType = tv.copy_modified(
+                        flavor=ParamSpecFlavor.BARE, prefix=Parameters([], [], [])
+                    )
+                else:
+                    normalized = tv
+                if normalized in self.poly_tvars and normalized not in self.bound_tvars:
+                    found_vars.append(normalized)
         return remove_dups(found_vars)
 
     def visit_callable_type(self, t: CallableType) -> Type:

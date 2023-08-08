@@ -3090,6 +3090,7 @@ def pair(x: U, y: V) -> Tuple[U, V]: ...
 reveal_type(dec(id))  # N: Revealed type is "def () -> def [T] (T`1) -> T`1"
 reveal_type(dec(either))  # N: Revealed type is "def [T] (y: T`4) -> def (T`4) -> T`4"
 reveal_type(dec(pair))  # N: Revealed type is "def [V] (y: V`-2) -> def [T] (T`7) -> Tuple[T`7, V`-2]"
+reveal_type(dec(dec))  # N: Revealed type is "def () -> def [T, P, S] (def (T`-1, *P.args, **P.kwargs) -> S`-3) -> def (*P.args, **P.kwargs) -> def (T`-1) -> S`-3"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericParamSpecPopOn]
@@ -3110,4 +3111,45 @@ def pair(x: U) -> Callable[[V], Tuple[V, U]]: ...
 reveal_type(dec(id))  # N: Revealed type is "def [T] (T`2) -> T`2"
 reveal_type(dec(either))  # N: Revealed type is "def [T] (T`5, x: T`5) -> T`5"
 reveal_type(dec(pair))  # N: Revealed type is "def [T, U] (T`8, x: U`-1) -> Tuple[T`8, U`-1]"
+# This is counter-intuitive but looks correct, dec matches itself only if P is empty
+reveal_type(dec(dec))  # N: Revealed type is "def [T, S] (T`11, f: def () -> def (T`11) -> S`12) -> S`12"
+[builtins fixtures/list.pyi]
+
+[case testInferenceAgainstGenericParamSpecVsParamSpec]
+# flags: --new-type-inference
+from typing import TypeVar, Callable, List, Tuple, Generic
+from typing_extensions import ParamSpec, Concatenate
+
+T = TypeVar('T')
+P = ParamSpec('P')
+Q = ParamSpec('Q')
+
+class Foo(Generic[P]): ...
+class Bar(Generic[P, T]): ...
+
+def dec(f: Callable[P, T]) -> Callable[P, List[T]]: ...
+def f(*args: Q.args, **kwargs: Q.kwargs) -> Foo[Q]: ...
+reveal_type(dec(f))  # N: Revealed type is "def [P] (*P.args, **P.kwargs) -> builtins.list[__main__.Foo[P`1]]"
+g: Callable[Concatenate[int, Q], Foo[Q]]
+reveal_type(dec(g))  # N: Revealed type is "def [Q] (builtins.int, *Q.args, **Q.kwargs) -> builtins.list[__main__.Foo[Q`-1]]"
+h: Callable[Concatenate[T, Q], Bar[Q, T]]
+reveal_type(dec(h))  # N: Revealed type is "def [T, Q] (T`-1, *Q.args, **Q.kwargs) -> builtins.list[__main__.Bar[Q`-2, T`-1]]"
+[builtins fixtures/list.pyi]
+
+[case testInferenceAgainstGenericParamSpecSecondary]
+# flags: --new-type-inference
+from typing import TypeVar, Callable, List, Tuple, Generic
+from typing_extensions import ParamSpec, Concatenate
+
+T = TypeVar('T')
+P = ParamSpec('P')
+Q = ParamSpec('Q')
+
+class Foo(Generic[P]): ...
+
+def dec(f: Callable[P, Foo[P]]) -> Callable[P, Foo[P]]: ...
+g: Callable[[T], Foo[[int]]]
+reveal_type(dec(g))  # N: Revealed type is "def (builtins.int) -> __main__.Foo[[builtins.int]]"
+h: Callable[Q, Foo[[int]]]
+reveal_type(dec(g))  # N: Revealed type is "def (builtins.int) -> __main__.Foo[[builtins.int]]"
 [builtins fixtures/list.pyi]

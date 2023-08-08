@@ -1244,9 +1244,23 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 )
             else:
                 # Callable[P, RET] (where P is ParamSpec)
-                maybe_ret = self.analyze_callable_args_for_paramspec(
-                    callable_args, ret_type, fallback
-                ) or self.analyze_callable_args_for_concatenate(callable_args, ret_type, fallback)
+                with self.tvar_scope_frame():
+                    # Temporarily bind ParamSpecs to allow code like this:
+                    #     my_fun: Callable[Q, Foo[Q]]
+                    # We usually do this later in visit_callable_type(), but the analysis
+                    # below happens at very early stage.
+                    variables = []
+                    for name, tvar_expr in self.find_type_var_likes(callable_args):
+                        variables.append(self.tvar_scope.bind_new(name, tvar_expr))
+                    maybe_ret = self.analyze_callable_args_for_paramspec(
+                        callable_args, ret_type, fallback
+                    ) or self.analyze_callable_args_for_concatenate(
+                        callable_args, ret_type, fallback
+                    )
+                    if maybe_ret:
+                        maybe_ret = maybe_ret.copy_modified(
+                            ret_type=ret_type.accept(self), variables=variables
+                        )
                 if maybe_ret is None:
                     # Callable[?, RET] (where ? is something invalid)
                     self.fail(

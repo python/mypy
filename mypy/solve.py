@@ -17,6 +17,7 @@ from mypy.types import (
     AnyType,
     Instance,
     NoneType,
+    ParamSpecType,
     ProperType,
     Type,
     TypeOfAny,
@@ -346,8 +347,11 @@ def normalize_constraints(
     """
     res = constraints.copy()
     for c in constraints:
-        # TODO: be careful with ParamSpecType here.
-        if isinstance(c.target, TypeVarType):
+        if (
+            isinstance(c.target, TypeVarType)
+            or isinstance(c.target, ParamSpecType)
+            and not c.target.prefix.arg_types
+        ):
             res.append(Constraint(c.target, neg_op(c.op), c.origin_type_var))
     return [c for c in remove_dups(constraints) if c.type_var in vars]
 
@@ -381,7 +385,14 @@ def transitive_closure(
     remaining = set(constraints)
     while remaining:
         c = remaining.pop()
-        if isinstance(c.target, TypeVarType) and c.target.id in tvars:
+        # Note that ParamSpec constraint P <: Q may be considered linear only if Q has no prefix,
+        # for cases like P <: Concatenate[T, Q] we should consider this non-linear and put {P} and
+        # {T, Q} into separate SCCs.
+        if (
+            isinstance(c.target, TypeVarType)
+            or isinstance(c.target, ParamSpecType)
+            and not c.target.prefix.arg_types
+        ) and c.target.id in tvars:
             if c.op == SUBTYPE_OF:
                 lower, upper = c.type_var, c.target.id
             else:
