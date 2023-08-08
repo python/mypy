@@ -239,7 +239,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             # TODO: what does prefix mean in this case?
             # TODO: why does this case even happen? Instances aren't plural.
             return repl
-        elif isinstance(repl, (ParamSpecType, Parameters, CallableType)):
+        elif isinstance(repl, (ParamSpecType, Parameters)):
             if isinstance(repl, ParamSpecType):
                 return repl.copy_modified(
                     flavor=t.flavor,
@@ -395,7 +395,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             # must expand both of them with all the argument types,
             # kinds and names in the replacement. The return type in
             # the replacement is ignored.
-            if isinstance(repl, (CallableType, Parameters)):
+            if isinstance(repl, Parameters):
                 # Substitute *args: P.args, **kwargs: P.kwargs
                 prefix = param_spec.prefix
                 # we need to expand the types in the prefix, so might as well

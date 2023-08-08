@@ -9,7 +9,7 @@ import mypy.typeops
 from mypy.argmap import ArgTypeExpander
 from mypy.erasetype import erase_typevars
 from mypy.maptype import map_instance_to_supertype
-from mypy.nodes import ARG_OPT, ARG_POS, CONTRAVARIANT, COVARIANT, ArgKind
+from mypy.nodes import ARG_OPT, ARG_POS, ARG_STAR, ARG_STAR2, CONTRAVARIANT, COVARIANT, ArgKind
 from mypy.types import (
     TUPLE_LIKE_INSTANCE_NAMES,
     AnyType,
@@ -40,7 +40,6 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
-    callable_with_ellipsis,
     get_proper_type,
     has_recursive_types,
     has_type_vars,
@@ -699,12 +698,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     elif isinstance(tvar, ParamSpecType) and isinstance(mapped_arg, ParamSpecType):
                         suffix = get_proper_type(instance_arg)
 
-                        if isinstance(suffix, CallableType):
-                            prefix = mapped_arg.prefix
-                            from_concat = bool(prefix.arg_types) or suffix.from_concatenate
-                            suffix = suffix.copy_modified(from_concatenate=from_concat)
-
-                        if isinstance(suffix, (Parameters, CallableType)):
+                        if isinstance(suffix, Parameters):
                             # no such thing as variance for ParamSpecs
                             # TODO: is there a case I am missing?
                             # TODO: constraints between prefixes
@@ -769,12 +763,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     ):
                         suffix = get_proper_type(mapped_arg)
 
-                        if isinstance(suffix, CallableType):
-                            prefix = template_arg.prefix
-                            from_concat = bool(prefix.arg_types) or suffix.from_concatenate
-                            suffix = suffix.copy_modified(from_concatenate=from_concat)
-
-                        if isinstance(suffix, (Parameters, CallableType)):
+                        if isinstance(suffix, Parameters):
                             # no such thing as variance for ParamSpecs
                             # TODO: is there a case I am missing?
                             # TODO: constraints between prefixes
@@ -1023,7 +1012,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     Constraint(
                         param_spec,
                         SUBTYPE_OF,
-                        callable_with_ellipsis(any_type, any_type, template.fallback),
+                        Parameters([any_type, any_type], [ARG_STAR, ARG_STAR2], [None, None]),
                     )
                 ]
             res.extend(infer_constraints(template.ret_type, any_type, self.direction))

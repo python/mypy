@@ -2042,9 +2042,8 @@ class CallableType(FunctionLike):
 
         return arg_type.copy_modified(flavor=ParamSpecFlavor.BARE, prefix=prefix)
 
-    def expand_param_spec(
-        self, c: CallableType | Parameters, no_prefix: bool = False
-    ) -> CallableType:
+    def expand_param_spec(self, c: Parameters, no_prefix: bool = False) -> CallableType:
+        # TODO: try deleting variables from Parameters after new type inference is default.
         variables = c.variables
 
         if no_prefix:
