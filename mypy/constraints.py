@@ -699,7 +699,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         suffix = get_proper_type(instance_arg)
 
                         if isinstance(suffix, Parameters):
-                            # no such thing as variance for ParamSpecs
+                            # No such thing as variance for ParamSpecs, consider them covariant
                             # TODO: is there a case I am missing?
                             # TODO: constraints between prefixes
                             prefix = mapped_arg.prefix
@@ -708,9 +708,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                                 suffix.arg_kinds[len(prefix.arg_kinds) :],
                                 suffix.arg_names[len(prefix.arg_names) :],
                             )
-                            res.append(Constraint(mapped_arg, SUPERTYPE_OF, suffix))
+                            res.append(Constraint(mapped_arg, self.direction, suffix))
                         elif isinstance(suffix, ParamSpecType):
-                            res.append(Constraint(mapped_arg, SUPERTYPE_OF, suffix))
+                            res.append(Constraint(mapped_arg, self.direction, suffix))
                     else:
                         # This case should have been handled above.
                         assert not isinstance(tvar, TypeVarTupleType)
@@ -764,7 +764,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         suffix = get_proper_type(mapped_arg)
 
                         if isinstance(suffix, Parameters):
-                            # no such thing as variance for ParamSpecs
+                            # No such thing as variance for ParamSpecs, consider them covariant
                             # TODO: is there a case I am missing?
                             # TODO: constraints between prefixes
                             prefix = template_arg.prefix
@@ -774,9 +774,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                                 suffix.arg_kinds[len(prefix.arg_kinds) :],
                                 suffix.arg_names[len(prefix.arg_names) :],
                             )
-                            res.append(Constraint(template_arg, SUPERTYPE_OF, suffix))
+                            res.append(Constraint(template_arg, self.direction, suffix))
                         elif isinstance(suffix, ParamSpecType):
-                            res.append(Constraint(template_arg, SUPERTYPE_OF, suffix))
+                            res.append(Constraint(template_arg, self.direction, suffix))
                     else:
                         # This case should have been handled above.
                         assert not isinstance(tvar, TypeVarTupleType)
