@@ -999,7 +999,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             res.extend(infer_constraints(template_ret_type, cactual_ret_type, self.direction))
             if extra_tvars:
                 for c in res:
-                    c.extra_tvars = list(cactual.variables)
+                    c.extra_tvars += cactual.variables
             return res
         elif isinstance(self.actual, AnyType):
             param_spec = template.param_spec()

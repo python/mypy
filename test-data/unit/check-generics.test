@@ -3071,3 +3071,43 @@ def either(x: U, y: U) -> U: ...
 reveal_type(dec(id))  # N: Revealed type is "def [T] (x: builtins.list[T`2]) -> T`2"
 reveal_type(dec(either))  # N: Revealed type is "def [T] (x: builtins.list[T`4], y: builtins.list[T`4]) -> T`4"
 [builtins fixtures/list.pyi]
+
+[case testInferenceAgainstGenericParamSpecPopOff]
+# flags: --new-type-inference
+from typing import TypeVar, Callable, List, Tuple
+from typing_extensions import ParamSpec, Concatenate
+
+T = TypeVar('T')
+S = TypeVar('S')
+P = ParamSpec('P')
+U = TypeVar('U')
+V = TypeVar('V')
+
+def dec(f: Callable[Concatenate[T, P], S]) -> Callable[P, Callable[[T], S]]: ...
+def id(x: U) -> U: ...
+def either(x: U, y: U) -> U: ...
+def pair(x: U, y: V) -> Tuple[U, V]: ...
+reveal_type(dec(id))  # N: Revealed type is "def () -> def [T] (T`1) -> T`1"
+reveal_type(dec(either))  # N: Revealed type is "def [T] (y: T`4) -> def (T`4) -> T`4"
+reveal_type(dec(pair))  # N: Revealed type is "def [V] (y: V`-2) -> def [T] (T`7) -> Tuple[T`7, V`-2]"
+[builtins fixtures/list.pyi]
+
+[case testInferenceAgainstGenericParamSpecPopOn]
+# flags: --new-type-inference
+from typing import TypeVar, Callable, List, Tuple
+from typing_extensions import ParamSpec, Concatenate
+
+T = TypeVar('T')
+S = TypeVar('S')
+P = ParamSpec('P')
+U = TypeVar('U')
+V = TypeVar('V')
+
+def dec(f: Callable[P, Callable[[T], S]]) -> Callable[Concatenate[T, P], S]: ...
+def id() -> Callable[[U], U]: ...
+def either(x: U) -> Callable[[U], U]: ...
+def pair(x: U) -> Callable[[V], Tuple[V, U]]: ...
+reveal_type(dec(id))  # N: Revealed type is "def [T] (T`2) -> T`2"
+reveal_type(dec(either))  # N: Revealed type is "def [T] (T`5, x: T`5) -> T`5"
+reveal_type(dec(pair))  # N: Revealed type is "def [T, U] (T`8, x: U`-1) -> Tuple[T`8, U`-1]"
+[builtins fixtures/list.pyi]

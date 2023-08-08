@@ -346,6 +346,7 @@ def normalize_constraints(
     """
     res = constraints.copy()
     for c in constraints:
+        # TODO: be careful with ParamSpecType here.
         if isinstance(c.target, TypeVarType):
             res.append(Constraint(c.target, neg_op(c.op), c.origin_type_var))
     return [c for c in remove_dups(constraints) if c.type_var in vars]
