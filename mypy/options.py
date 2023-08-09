@@ -360,9 +360,11 @@ class Options:
 
         self.disable_bytearray_promotion = False
         self.disable_memoryview_promotion = False
-
         self.force_uppercase_builtins = False
         self.force_union_syntax = False
+
+        # Sets custom output format
+        self.output = ""
 
     def use_lowercase_names(self) -> bool:
         if self.python_version >= (3, 9):
