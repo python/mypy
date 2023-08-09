@@ -1555,3 +1555,16 @@ def test(x: U) -> U: ...
 reveal_type(dec)  # N: Revealed type is "def [P, T] (f: def (*P.args, **P.kwargs) -> T`-2) -> def (*P.args, **P.kwargs) -> builtins.list[T`-2]"
 reveal_type(dec(test))  # N: Revealed type is "def [T] (x: T`2) -> builtins.list[T`2]"
 [builtins fixtures/paramspec.pyi]
+
+[case testParamSpecNestedApplyNoCrash]
+from typing import Callable, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+def apply(fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T: ...
+def test() -> None: ...
+# TODO: avoid this error, although it may be non-trivial.
+apply(apply, test)  # E: Argument 2 to "apply" has incompatible type "Callable[[], None]"; expected "Callable[P, T]"
+[builtins fixtures/paramspec.pyi]
