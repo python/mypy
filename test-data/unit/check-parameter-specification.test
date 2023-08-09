@@ -1029,7 +1029,7 @@ j = Job(generic_f)
 reveal_type(j)  # N: Revealed type is "__main__.Job[[x: _T`-1]]"
 
 jf = j.into_callable()
-reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T`-1)"
+reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T`2)"
 reveal_type(jf(1))  # N: Revealed type is "None"
 [builtins fixtures/paramspec.pyi]
 
@@ -1051,7 +1051,7 @@ j = Job(generic_f)
 reveal_type(j)  # N: Revealed type is "__main__.Job[[x: _T`2], _T`2]"
 
 jf = j.into_callable()
-reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T`2) -> _T`2"
+reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T`3) -> _T`3"
 reveal_type(jf(1))  # N: Revealed type is "builtins.int"
 [builtins fixtures/paramspec.pyi]
 

@@ -3223,3 +3223,20 @@ def dec2(f: Callable[Concatenate[str, W], U]) -> Callable[Concatenate[bytes, W],
 reveal_type(transform(dec))  # N: Revealed type is "def [P, T] (def (builtins.int, *P.args, **P.kwargs) -> T`2) -> def (builtins.int, *P.args, **P.kwargs) -> T`2"
 reveal_type(transform(dec2))  # N: Revealed type is "def [W, T] (def (builtins.int, builtins.str, *W.args, **W.kwargs) -> T`6) -> def (builtins.int, builtins.bytes, *W.args, **W.kwargs) -> T`6"
 [builtins fixtures/tuple.pyi]
+
+[case testNoAccidentalVariableClashInNestedGeneric]
+# flags: --new-type-inference
+from typing import TypeVar, Callable, Generic, Tuple
+
+T = TypeVar('T')
+S = TypeVar('S')
+U = TypeVar('U')
+
+def pipe(x: T, f1: Callable[[T], S], f2: Callable[[S], U]) -> U: ...
+def and_then(a: T) -> Callable[[S], Tuple[S, T]]: ...
+
+def apply(a: S, b: T) -> None:
+    v1 = and_then(b)
+    v2: Callable[[Tuple[S, T]], None]
+    return pipe(a, v1, v2)
+[builtins fixtures/tuple.pyi]

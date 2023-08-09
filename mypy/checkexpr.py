@@ -17,7 +17,12 @@ from mypy.checkmember import analyze_member_access, freeze_all_type_vars, type_o
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.erasetype import erase_type, remove_instance_last_known_values, replace_meta_vars
 from mypy.errors import ErrorWatcher, report_internal_error
-from mypy.expandtype import expand_type, expand_type_by_instance, freshen_function_type_vars
+from mypy.expandtype import (
+    expand_type,
+    expand_type_by_instance,
+    freshen_all_functions_type_vars,
+    freshen_function_type_vars,
+)
 from mypy.infer import ArgumentInferContext, infer_function_type_arguments, infer_type_arguments
 from mypy.literals import literal
 from mypy.maptype import map_instance_to_supertype
@@ -1572,6 +1577,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             callee.arg_names,
             lambda i: self.accept(args[i]),
         )
+
+        # This is tricky: return type may contain its own type variables, like in
+        # def [S] (S) -> def [T] (T) -> tuple[S, T], so we need to update their ids
+        # to avoid possible id clashes if this call itself appears in a generic
+        # function body.
+        ret_type = get_proper_type(callee.ret_type)
+        if isinstance(ret_type, CallableType) and ret_type.variables:
+            fresh_ret_type = freshen_all_functions_type_vars(callee.ret_type)
+            freeze_all_type_vars(fresh_ret_type)
+            callee = callee.copy_modified(ret_type=fresh_ret_type)
 
         if callee.is_generic():
             need_refresh = any(
