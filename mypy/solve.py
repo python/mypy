@@ -336,7 +336,9 @@ def is_trivial_bound(tp: ProperType) -> bool:
 
 
 def normalize_constraints(
-    constraints: list[Constraint], vars: list[TypeVarId]
+    # TODO: delete this function?
+    constraints: list[Constraint],
+    vars: list[TypeVarId],
 ) -> list[Constraint]:
     """Normalize list of constraints (to simplify life for the non-linear solver).
 

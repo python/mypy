@@ -109,7 +109,6 @@ def apply_generic_arguments(
     if param_spec is not None:
         nt = id_to_type.get(param_spec.id)
         if nt is not None:
-            nt = get_proper_type(nt)
             if isinstance(nt, Parameters):
                 callable = callable.expand_param_spec(nt)
 

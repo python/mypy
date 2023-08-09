@@ -3165,6 +3165,25 @@ h: Callable[Concatenate[T, Q], Bar[Q, T]]
 reveal_type(dec(h))  # N: Revealed type is "def [T, Q] (T`-1, *Q.args, **Q.kwargs) -> builtins.list[__main__.Bar[Q`-2, T`-1]]"
 [builtins fixtures/list.pyi]
 
+[case testInferenceAgainstGenericParamSpecVsParamSpecConcatenate]
+# flags: --new-type-inference
+from typing import TypeVar, Callable, List, Tuple, Generic
+from typing_extensions import ParamSpec, Concatenate
+
+T = TypeVar('T')
+P = ParamSpec('P')
+Q = ParamSpec('Q')
+
+class Foo(Generic[P]): ...
+class Bar(Generic[P, T]): ...
+
+def dec(f: Callable[P, int]) -> Callable[P, Foo[P]]: ...
+h: Callable[Concatenate[T, Q], int]
+g: Callable[Concatenate[T, Q], int]
+h = g
+reveal_type(dec(h))  # N: Revealed type is "def [T, Q] (T`-1, *Q.args, **Q.kwargs) -> __main__.Foo[[T`-1, **Q`-2]]"
+[builtins fixtures/list.pyi]
+
 [case testInferenceAgainstGenericParamSpecSecondary]
 # flags: --new-type-inference
 from typing import TypeVar, Callable, List, Tuple, Generic
@@ -3182,3 +3201,25 @@ reveal_type(dec(g))  # N: Revealed type is "def (builtins.int) -> __main__.Foo[[
 h: Callable[Q, Foo[[int]]]
 reveal_type(dec(g))  # N: Revealed type is "def (builtins.int) -> __main__.Foo[[builtins.int]]"
 [builtins fixtures/list.pyi]
+
+[case testInferenceAgainstGenericParamSpecSecondOrder]
+# flags: --new-type-inference
+from typing import TypeVar, Callable
+from typing_extensions import ParamSpec, Concatenate
+
+T = TypeVar('T')
+S = TypeVar('S')
+P = ParamSpec('P')
+Q = ParamSpec('Q')
+U = TypeVar('U')
+W = ParamSpec('W')
+
+def transform(
+    dec: Callable[[Callable[P, T]], Callable[Q, S]]
+) -> Callable[[Callable[Concatenate[int, P], T]], Callable[Concatenate[int, Q], S]]: ...
+
+def dec(f: Callable[W, U]) -> Callable[W, U]: ...
+def dec2(f: Callable[Concatenate[str, W], U]) -> Callable[Concatenate[bytes, W], U]: ...
+reveal_type(transform(dec))  # N: Revealed type is "def [P, T] (def (builtins.int, *P.args, **P.kwargs) -> T`2) -> def (builtins.int, *P.args, **P.kwargs) -> T`2"
+reveal_type(transform(dec2))  # N: Revealed type is "def [W, T] (def (builtins.int, builtins.str, *W.args, **W.kwargs) -> T`6) -> def (builtins.int, builtins.bytes, *W.args, **W.kwargs) -> T`6"
+[builtins fixtures/tuple.pyi]

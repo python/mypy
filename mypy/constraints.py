@@ -576,18 +576,22 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         raise RuntimeError("Mypy bug: unpack should be handled at a higher level.")
 
     def visit_parameters(self, template: Parameters) -> list[Constraint]:
-        # constraining Any against C[P] turns into infer_against_any([P], Any)
-        # ... which seems like the only case this can happen. Better to fail loudly.
+        # Constraining Any against C[P] turns into infer_against_any([P], Any)
+        # ... which seems like the only case this can happen. Better to fail loudly otherwise.
         if isinstance(self.actual, AnyType):
             return self.infer_against_any(template.arg_types, self.actual)
         if type_state.infer_polymorphic and isinstance(self.actual, Parameters):
+            # For polymorphic inference we need to be able to infer secondary constraints
+            # in situations like [x: T] <: P <: [x: int].
             res = []
             if len(template.arg_types) == len(self.actual.arg_types):
-                # TODO: this may assume positional arguments
-                for tt, at, k in zip(
-                    template.arg_types, self.actual.arg_types, self.actual.arg_kinds
+                for tt, at, tk, ak in zip(
+                    template.arg_types,
+                    self.actual.arg_types,
+                    template.arg_kinds,
+                    self.actual.arg_kinds,
                 ):
-                    if k in (ARG_STAR, ARG_STAR2):
+                    if tk == ARG_STAR and ak != ARG_STAR or tk == ARG_STAR2 and ak != ARG_STAR2:
                         continue
                     res.extend(infer_constraints(tt, at, self.direction))
             return res
@@ -696,7 +700,6 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 # N.B: We use zip instead of indexing because the lengths might have
                 # mismatches during daemon reprocessing.
                 for tvar, mapped_arg, instance_arg in zip(tvars, mapped_args, instance_args):
-                    # TODO(PEP612): More ParamSpec work (or is Parameters the only thing accepted)
                     if isinstance(tvar, TypeVarType):
                         # The constraints for generic type parameters depend on variance.
                         # Include constraints from both directions if invariant.
@@ -707,21 +710,27 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                                 infer_constraints(mapped_arg, instance_arg, neg_op(self.direction))
                             )
                     elif isinstance(tvar, ParamSpecType) and isinstance(mapped_arg, ParamSpecType):
-                        suffix = get_proper_type(instance_arg)
-
-                        if isinstance(suffix, Parameters):
-                            # No such thing as variance for ParamSpecs, consider them covariant
-                            # TODO: is there a case I am missing?
+                        prefix = mapped_arg.prefix
+                        if isinstance(instance_arg, Parameters):
+                            # No such thing as variance for ParamSpecs, consider them invariant
                             # TODO: constraints between prefixes
-                            prefix = mapped_arg.prefix
-                            suffix = suffix.copy_modified(
-                                suffix.arg_types[len(prefix.arg_types) :],
-                                suffix.arg_kinds[len(prefix.arg_kinds) :],
-                                suffix.arg_names[len(prefix.arg_names) :],
+                            suffix: Type = instance_arg.copy_modified(
+                                instance_arg.arg_types[len(prefix.arg_types) :],
+                                instance_arg.arg_kinds[len(prefix.arg_kinds) :],
+                                instance_arg.arg_names[len(prefix.arg_names) :],
                             )
-                            res.append(Constraint(mapped_arg, self.direction, suffix))
-                        elif isinstance(suffix, ParamSpecType):
-                            res.append(Constraint(mapped_arg, self.direction, suffix))
+                            res.append(Constraint(mapped_arg, SUBTYPE_OF, suffix))
+                            res.append(Constraint(mapped_arg, SUPERTYPE_OF, suffix))
+                        elif isinstance(instance_arg, ParamSpecType):
+                            suffix = instance_arg.copy_modified(
+                                prefix=Parameters(
+                                    instance_arg.prefix.arg_types[len(prefix.arg_types) :],
+                                    instance_arg.prefix.arg_kinds[len(prefix.arg_kinds) :],
+                                    instance_arg.prefix.arg_names[len(prefix.arg_names) :],
+                                )
+                            )
+                            res.append(Constraint(mapped_arg, SUBTYPE_OF, suffix))
+                            res.append(Constraint(mapped_arg, SUPERTYPE_OF, suffix))
                     else:
                         # This case should have been handled above.
                         assert not isinstance(tvar, TypeVarTupleType)
@@ -772,22 +781,27 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     elif isinstance(tvar, ParamSpecType) and isinstance(
                         template_arg, ParamSpecType
                     ):
-                        suffix = get_proper_type(mapped_arg)
-
-                        if isinstance(suffix, Parameters):
-                            # No such thing as variance for ParamSpecs, consider them covariant
-                            # TODO: is there a case I am missing?
+                        prefix = template_arg.prefix
+                        if isinstance(mapped_arg, Parameters):
+                            # No such thing as variance for ParamSpecs, consider them invariant
                             # TODO: constraints between prefixes
-                            prefix = template_arg.prefix
-
-                            suffix = suffix.copy_modified(
-                                suffix.arg_types[len(prefix.arg_types) :],
-                                suffix.arg_kinds[len(prefix.arg_kinds) :],
-                                suffix.arg_names[len(prefix.arg_names) :],
+                            suffix = mapped_arg.copy_modified(
+                                mapped_arg.arg_types[len(prefix.arg_types) :],
+                                mapped_arg.arg_kinds[len(prefix.arg_kinds) :],
+                                mapped_arg.arg_names[len(prefix.arg_names) :],
                             )
-                            res.append(Constraint(template_arg, self.direction, suffix))
-                        elif isinstance(suffix, ParamSpecType):
-                            res.append(Constraint(template_arg, self.direction, suffix))
+                            res.append(Constraint(template_arg, SUBTYPE_OF, suffix))
+                            res.append(Constraint(template_arg, SUPERTYPE_OF, suffix))
+                        elif isinstance(mapped_arg, ParamSpecType):
+                            suffix = mapped_arg.copy_modified(
+                                prefix=Parameters(
+                                    mapped_arg.prefix.arg_types[len(prefix.arg_types) :],
+                                    mapped_arg.prefix.arg_kinds[len(prefix.arg_kinds) :],
+                                    mapped_arg.prefix.arg_names[len(prefix.arg_names) :],
+                                )
+                            )
+                            res.append(Constraint(template_arg, SUBTYPE_OF, suffix))
+                            res.append(Constraint(template_arg, SUPERTYPE_OF, suffix))
                     else:
                         # This case should have been handled above.
                         assert not isinstance(tvar, TypeVarTupleType)
@@ -926,7 +940,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 # We can't infer constraints from arguments if the template is Callable[..., T]
                 # (with literal '...').
                 if not template.is_ellipsis_args:
-                    if find_unpack_in_list(template.arg_types) is not None:
+                    unpack_present = find_unpack_in_list(template.arg_types)
+                    if unpack_present is not None:
                         (
                             unpack_constraints,
                             cactual_args_t,
@@ -942,17 +957,25 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         template_args = template.arg_types
                         cactual_args = cactual.arg_types
                     # The lengths should match, but don't crash (it will error elsewhere).
-                    for t, a in zip(template_args, cactual_args):
-                        if isinstance(a, ParamSpecType) and not isinstance(t, ParamSpecType):
+                    for t, a, tk, ak in zip(
+                        template_args, cactual_args, template.arg_kinds, cactual.arg_kinds
+                    ):
+                        # Unpack may have shifted indices.
+                        if not unpack_present:
                             # This avoids bogus constraints like T <: P.args
-                            # TODO: figure out a more principled way to skip arg_kind mismatch
-                            # (see also a similar to do item in corresponding branch below)
+                            if (
+                                tk == ARG_STAR
+                                and ak != ARG_STAR
+                                or tk == ARG_STAR2
+                                and ak != ARG_STAR2
+                            ):
+                                continue
+                        if isinstance(a, ParamSpecType):
+                            # TODO: can we infer something useful for *T vs P?
                             continue
                         # Negate direction due to function argument type contravariance.
                         res.extend(infer_constraints(t, a, neg_op(self.direction)))
             else:
-                # sometimes, it appears we try to get constraints between two paramspec callables?
-
                 # TODO: check the prefixes match
                 prefix = param_spec.prefix
                 prefix_len = len(prefix.arg_types)
@@ -985,19 +1008,23 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         )
                     )
                 else:
-                    if not param_spec.prefix.arg_types or cactual_ps.prefix.arg_types:
-                        # TODO: figure out a more general logic to reject shorter prefix in actual.
-                        # This may be actually fixed by a more general to do item above.
+                    if len(param_spec.prefix.arg_types) <= len(cactual_ps.prefix.arg_types):
+                        cactual_ps = cactual_ps.copy_modified(
+                            prefix=Parameters(
+                                arg_types=cactual_ps.prefix.arg_types[prefix_len:],
+                                arg_kinds=cactual_ps.prefix.arg_kinds[prefix_len:],
+                                arg_names=cactual_ps.prefix.arg_names[prefix_len:],
+                            )
+                        )
                         res.append(Constraint(param_spec, neg_op(self.direction), cactual_ps))
 
-                # compare prefixes
+                # Compare prefixes as well
                 cactual_prefix = cactual.copy_modified(
                     arg_types=cactual.arg_types[:prefix_len],
                     arg_kinds=cactual.arg_kinds[:prefix_len],
                     arg_names=cactual.arg_names[:prefix_len],
                 )
 
-                # TODO: this may assume positional arguments
                 for t, a, k in zip(
                     prefix.arg_types, cactual_prefix.arg_types, cactual_prefix.arg_kinds
                 ):

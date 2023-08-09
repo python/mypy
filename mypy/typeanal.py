@@ -1546,6 +1546,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if analyzed.prefix.arg_types:
                 self.fail("Invalid location for Concatenate", t, code=codes.VALID_TYPE)
                 self.note("You can use Concatenate as the first argument to Callable", t)
+                analyzed = AnyType(TypeOfAny.from_error)
             else:
                 self.fail(
                     f'Invalid location for ParamSpec "{analyzed.name}"', t, code=codes.VALID_TYPE
@@ -1555,6 +1556,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     "'Callable[{}, int]'".format(analyzed.name),
                     t,
                 )
+                analyzed = AnyType(TypeOfAny.from_error)
         return analyzed
 
     def anal_var_def(self, var_def: TypeVarLikeType) -> TypeVarLikeType:
