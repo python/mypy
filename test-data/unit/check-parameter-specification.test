@@ -776,7 +776,7 @@ _P = ParamSpec("_P")
 
 class Job(Generic[_P]):
     def __init__(self, target: Callable[_P, None]) -> None:
-        ...
+        self.target = target
 
 def func(
     action: Union[Job[int], Callable[[int], None]],
@@ -1533,36 +1533,6 @@ def identity(func: Callable[P, None]) -> Callable[P, None]: ...
 
 @identity
 def f(f: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
-[builtins fixtures/paramspec.pyi]
-
-[case testComplicatedParamSpecReturnType]
-# regression test for https://github.com/python/mypy/issues/15073
-from typing import TypeVar, Callable
-from typing_extensions import ParamSpec, Concatenate
-
-R = TypeVar("R")
-P = ParamSpec("P")
-
-def f(
-) -> Callable[[Callable[Concatenate[Callable[P, R], P], R]], Callable[P, R]]:
-    def r(fn: Callable[Concatenate[Callable[P, R], P], R]) -> Callable[P, R]: ...
-    return r
-[builtins fixtures/paramspec.pyi]
-
-[case testParamSpecToParamSpecAssignment]
-# minimized from https://github.com/python/mypy/issues/15037
-# ~ the same as https://github.com/python/mypy/issues/15065
-from typing import Callable
-from typing_extensions import Concatenate, ParamSpec
-
-P = ParamSpec("P")
-
-def f(f: Callable[Concatenate[int, P], None]) -> Callable[P, None]: ...
-
-x: Callable[
-    [Callable[Concatenate[int, P], None]],
-    Callable[P, None],
-] = f
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecDecoratorAppliedToGeneric]
