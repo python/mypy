@@ -6,7 +6,7 @@ from collections import defaultdict
 from typing import Iterable, Sequence
 from typing_extensions import TypeAlias as _TypeAlias
 
-from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints, neg_op
+from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints
 from mypy.expandtype import expand_type
 from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
 from mypy.join import join_types
@@ -27,7 +27,6 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     get_proper_type,
-    remove_dups,
 )
 from mypy.typestate import type_state
 
@@ -63,10 +62,6 @@ def solve_constraints(
     for c in constraints:
         extra_vars.extend([v.id for v in c.extra_tvars if v.id not in vars + extra_vars])
         originals.update({v.id: v for v in c.extra_tvars if v.id not in originals})
-    if allow_polymorphic:
-        # Constraints like T :> S and S <: T are semantically the same, but they are
-        # represented differently. Normalize the constraint list w.r.t this equivalence.
-        constraints = normalize_constraints(constraints, vars + extra_vars)
 
     # Collect a list of constraints for each type variable.
     cmap: dict[TypeVarId, list[Constraint]] = {tv: [] for tv in vars + extra_vars}
@@ -333,29 +328,6 @@ def choose_free(
 
 def is_trivial_bound(tp: ProperType) -> bool:
     return isinstance(tp, Instance) and tp.type.fullname == "builtins.object"
-
-
-def normalize_constraints(
-    # TODO: delete this function?
-    constraints: list[Constraint],
-    vars: list[TypeVarId],
-) -> list[Constraint]:
-    """Normalize list of constraints (to simplify life for the non-linear solver).
-
-    This includes two things currently:
-      * Complement T :> S by S <: T
-      * Remove strict duplicates
-      * Remove constrains for unrelated variables
-    """
-    res = constraints.copy()
-    for c in constraints:
-        if (
-            isinstance(c.target, TypeVarType)
-            or isinstance(c.target, ParamSpecType)
-            and not c.target.prefix.arg_types
-        ):
-            res.append(Constraint(c.target, neg_op(c.op), c.origin_type_var))
-    return [c for c in remove_dups(constraints) if c.type_var in vars]
 
 
 def transitive_closure(

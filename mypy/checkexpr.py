@@ -5715,6 +5715,11 @@ class PolyTranslator(TypeTranslator):
 
     def visit_instance(self, t: Instance) -> Type:
         if t.type.has_param_spec_type:
+            # We need this special-casing to preserve the possibility to store a
+            # generic function in an instance type. Things like
+            #     forall T . Foo[[x: T], T]
+            # are not really expressible in current type system, but this looks like
+            # a useful feature, so let's keep it.
             param_spec_index = next(
                 i for (i, tv) in enumerate(t.type.defn.type_vars) if isinstance(tv, ParamSpecType)
             )

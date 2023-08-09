@@ -960,15 +960,12 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     for t, a, tk, ak in zip(
                         template_args, cactual_args, template.arg_kinds, cactual.arg_kinds
                     ):
-                        # Unpack may have shifted indices.
-                        if not unpack_present:
-                            # This avoids bogus constraints like T <: P.args
-                            if (
-                                tk == ARG_STAR
-                                and ak != ARG_STAR
-                                or tk == ARG_STAR2
-                                and ak != ARG_STAR2
-                            ):
+                        # This avoids bogus constraints like T <: P.args
+                        if (tk == ARG_STAR and ak != ARG_STAR) or (
+                            tk == ARG_STAR2 and ak != ARG_STAR2
+                        ):
+                            # Unpack may have shifted indices.
+                            if not unpack_present:
                                 continue
                         if isinstance(a, ParamSpecType):
                             # TODO: can we infer something useful for *T vs P?
