@@ -1858,6 +1858,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             #        def identity(x: T) -> T: return x
             #
             #        expects_literal(identity(3))  # Should type-check
+            # TODO: we may want to add similar exception if all arguments are lambdas, since
+            # in this case external context is almost everything we have.
             if not is_generic_instance(ctx) and not is_literal_type_like(ctx):
                 return callable.copy_modified()
         args = infer_type_arguments(callable.variables, ret_type, erased_ctx)
@@ -4677,8 +4679,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # they must be considered as indeterminate. We use ErasedType since it
         # does not affect type inference results (it is for purposes like this
         # only).
-        callable_ctx = get_proper_type(replace_meta_vars(ctx, ErasedType()))
-        assert isinstance(callable_ctx, CallableType)
+        if self.chk.options.new_type_inference:
+            # With new type inference we can preserve argument types even if they
+            # are generic, since new inference algorithm can handle constraints
+            # like S <: T (we still erase return type since it's ultimately unknown).
+            extra_vars = []
+            for arg in ctx.arg_types:
+                meta_vars = [tv for tv in get_all_type_vars(arg) if tv.id.is_meta_var()]
+                extra_vars.extend([tv for tv in meta_vars if tv not in extra_vars])
+            callable_ctx = ctx.copy_modified(
+                ret_type=replace_meta_vars(ctx.ret_type, ErasedType()),
+                variables=list(ctx.variables) + extra_vars,
+            )
+        else:
+            erased_ctx = replace_meta_vars(ctx, ErasedType())
+            assert isinstance(erased_ctx, ProperType) and isinstance(erased_ctx, CallableType)
+            callable_ctx = erased_ctx
 
         # The callable_ctx may have a fallback of builtins.type if the context
         # is a constructor -- but this fallback doesn't make sense for lambdas.

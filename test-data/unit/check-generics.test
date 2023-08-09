@@ -2713,6 +2713,7 @@ reveal_type(func(1))  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
 [case testGenericLambdaGenericMethodNoCrash]
+# flags: --new-type-inference
 from typing import TypeVar, Union, Callable, Generic
 
 S = TypeVar("S")
@@ -2723,7 +2724,7 @@ def f(x: Callable[[G[T]], int]) -> T: ...
 class G(Generic[T]):
     def g(self, x: S) -> Union[S, T]: ...
 
-f(lambda x: x.g(0))  # E: Cannot infer type argument 1 of "f"
+f(lambda x: x.g(0))  # E: Incompatible return value type (got "Union[int, T]", expected "int")
 
 [case testDictStarInference]
 class B: ...
@@ -3035,6 +3036,34 @@ reveal_type(dec1(id2))  # N: Revealed type is "def [S in (builtins.int, builtins
 reveal_type(dec2(id1))  # N: Revealed type is "def [UC <: __main__.C] (UC`5) -> builtins.list[UC`5]"
 reveal_type(dec2(id2))  # N: Revealed type is "def (<nothing>) -> builtins.list[<nothing>]" \
                         # E: Argument 1 to "dec2" has incompatible type "Callable[[V], V]"; expected "Callable[[<nothing>], <nothing>]"
+
+[case testInferenceAgainstGenericLambdas]
+# flags: --new-type-inference
+from typing import TypeVar, Callable, List
+
+S = TypeVar('S')
+T = TypeVar('T')
+
+def dec1(f: Callable[[T], T]) -> Callable[[T], List[T]]:
+    ...
+def dec2(f: Callable[[S], T]) -> Callable[[S], List[T]]:
+    ...
+def dec3(f: Callable[[List[S]], T]) -> Callable[[S], T]:
+    ...
+def dec4(f: Callable[[S], List[T]]) -> Callable[[S], T]:
+    ...
+def dec5(f: Callable[[int], T]) -> Callable[[int], List[T]]:
+    def g(x: int) -> List[T]:
+        return [f(x)] * x
+    return g
+
+reveal_type(dec1(lambda x: x))  # N: Revealed type is "def [T] (T`2) -> builtins.list[T`2]"
+reveal_type(dec2(lambda x: x))  # N: Revealed type is "def [S] (S`3) -> builtins.list[S`3]"
+reveal_type(dec3(lambda x: x[0]))  # N: Revealed type is "def [S] (S`5) -> S`5"
+reveal_type(dec4(lambda x: [x]))  # N: Revealed type is "def [S] (S`7) -> S`7"
+reveal_type(dec1(lambda x: 1))  # N: Revealed type is "def (builtins.int) -> builtins.list[builtins.int]"
+reveal_type(dec5(lambda x: x))  # N: Revealed type is "def (builtins.int) -> builtins.list[builtins.int]"
+[builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericParamSpecBasicInList]
 # flags: --new-type-inference

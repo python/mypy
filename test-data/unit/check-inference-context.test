@@ -693,6 +693,7 @@ f(lambda: None)
 g(lambda: None)
 
 [case testIsinstanceInInferredLambda]
+# flags: --new-type-inference
 from typing import TypeVar, Callable, Optional
 T = TypeVar('T')
 S = TypeVar('S')
@@ -700,7 +701,7 @@ class A: pass
 class B(A): pass
 class C(A): pass
 def f(func: Callable[[T], S], *z: T, r: Optional[S] = None) -> S: pass
-f(lambda x: 0 if isinstance(x, B) else 1) # E: Cannot infer type argument 1 of "f"
+reveal_type(f(lambda x: 0 if isinstance(x, B) else 1))  # N: Revealed type is "builtins.int"
 f(lambda x: 0 if isinstance(x, B) else 1, A())() # E: "int" not callable
 f(lambda x: x if isinstance(x, B) else B(), A(), r=B())() # E: "B" not callable
 f(
