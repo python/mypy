@@ -107,6 +107,12 @@ HAS_TYPE: Final = ErrorCode(
 IMPORT: Final = ErrorCode(
     "import", "Require that imported module can be found or has stubs", "General"
 )
+IMPORT_NOT_FOUND: Final = ErrorCode(
+    "import-not-found", "Require that imported module can be found", "General", sub_code_of=IMPORT
+)
+IMPORT_UNTYPED: Final = ErrorCode(
+    "import-untyped", "Require that imported module has stubs", "General", sub_code_of=IMPORT
+)
 NO_REDEF: Final = ErrorCode("no-redef", "Check that each name is defined once", "General")
 FUNC_RETURNS_VALUE: Final = ErrorCode(
     "func-returns-value", "Check that called function returns a value in value context", "General"

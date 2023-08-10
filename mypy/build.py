@@ -2780,7 +2780,16 @@ def module_not_found(
     else:
         daemon = manager.options.fine_grained_incremental
         msg, notes = reason.error_message_templates(daemon)
-        errors.report(line, 0, msg.format(module=target), code=codes.IMPORT)
+        if reason == ModuleNotFoundReason.NOT_FOUND:
+            code = codes.IMPORT_NOT_FOUND
+        elif (
+            reason == ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
+            or reason == ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
+        ):
+            code = codes.IMPORT_UNTYPED
+        else:
+            code = codes.IMPORT
+        errors.report(line, 0, msg.format(module=target), code=code)
         top_level, second_level = get_top_two_prefixes(target)
         if second_level in legacy_bundled_packages or second_level in non_bundled_packages:
             top_level = second_level
