@@ -474,36 +474,15 @@ class B(A):
         pass
 
 [case testOverride__new__WithLiteralReturnPassing]
-[file builtins.py]
-from typing import Literal, Protocol, overload
+from typing import Literal
 
-class str: pass
-class dict: pass
-class float: pass
-
-class _Truthy(Protocol):
-    def __bool__(self) -> Literal[True]: pass
-
-class _Falsy(Protocol):
+class Falsy:
     def __bool__(self) -> Literal[False]: pass
 
-class bool(int):
-    @overload
-    def __new__(cls, __o: _Truthy) -> Literal[True]: pass
-    @overload
-    def __new__(cls, __o: _Falsy) -> Literal[False]: pass
-    def __new__(cls, __o: object):
-        pass
-
-class Falsey:
-    def __bool__(self) -> Literal[False]: pass
-
-reveal_type(bool(Falsey()))  # N: Revealed type is "Literal[False]"
-
-class int:
-    def __new__(cls) -> Literal[0]: pass
-
+reveal_type(bool(Falsy()))  # N: Revealed type is "Literal[False]"
 reveal_type(int())  # N: Revealed type is "Literal[0]"
+
+[builtins fixtures/literal__new__.pyi]
 [typing fixtures/typing-medium.pyi]
 
 [case testOverride__new__WithLiteralReturnFailing]
