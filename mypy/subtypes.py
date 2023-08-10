@@ -1417,7 +1417,7 @@ def is_callable_compatible(
     if left.variables:
         # Apply generic type variables away in left via type inference.
         unified = unify_generic_callable(
-            left, right, ignore_return=ignore_return, no_unify_none=True
+            left, right, ignore_return=ignore_return, no_unify_none=no_unify_none
         )
         if unified is None:
             return False
@@ -1431,7 +1431,7 @@ def is_callable_compatible(
     # lets us preserve the 'symmetry' property of allow_partial_overlap.
     if allow_partial_overlap and right.variables:
         unified = unify_generic_callable(
-            right, left, ignore_return=ignore_return, no_unify_none=True
+            right, left, ignore_return=ignore_return, no_unify_none=no_unify_none
         )
         if unified is not None:
             right = unified
