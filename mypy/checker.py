@@ -7216,22 +7216,32 @@ def is_unsafe_overlapping_overload_signatures(
     #
     # This discrepancy is unfortunately difficult to get rid of, so we repeat the
     # checks twice in both directions for now.
+    #
+    # Note that we ignore possible overlap between type variables and None. This
+    # is technically unsafe, but unsafety is tiny and this prevents some common
+    # use cases like:
+    #     @overload
+    #     def foo(x: None) -> None: ..
+    #     @overload
+    #     def foo(x: T) -> Foo[T]: ...
     return is_callable_compatible(
         signature,
         other,
-        is_compat=is_overlapping_types_no_promote_no_uninhabited,
+        is_compat=is_overlapping_types_no_promote_no_uninhabited_no_none,
         is_compat_return=lambda l, r: not is_subtype_no_promote(l, r),
         ignore_return=False,
         check_args_covariantly=True,
         allow_partial_overlap=True,
+        no_unify_none=True,
     ) or is_callable_compatible(
         other,
         signature,
-        is_compat=is_overlapping_types_no_promote_no_uninhabited,
+        is_compat=is_overlapping_types_no_promote_no_uninhabited_no_none,
         is_compat_return=lambda l, r: not is_subtype_no_promote(r, l),
         ignore_return=False,
         check_args_covariantly=False,
         allow_partial_overlap=True,
+        no_unify_none=True,
     )
 
 
@@ -7717,12 +7727,18 @@ def is_subtype_no_promote(left: Type, right: Type) -> bool:
     return is_subtype(left, right, ignore_promotions=True)
 
 
-def is_overlapping_types_no_promote_no_uninhabited(left: Type, right: Type) -> bool:
+def is_overlapping_types_no_promote_no_uninhabited_no_none(left: Type, right: Type) -> bool:
     # For the purpose of unsafe overload checks we consider list[<nothing>] and list[int]
     # non-overlapping. This is consistent with how we treat list[int] and list[str] as
     # non-overlapping, despite [] belongs to both. Also this will prevent false positives
     # for failed type inference during unification.
-    return is_overlapping_types(left, right, ignore_promotions=True, ignore_uninhabited=True)
+    return is_overlapping_types(
+        left,
+        right,
+        ignore_promotions=True,
+        ignore_uninhabited=True,
+        prohibit_none_typevar_overlap=True,
+    )
 
 
 def is_private(node_name: str) -> bool:
