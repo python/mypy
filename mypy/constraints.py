@@ -963,8 +963,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         if (tk == ARG_STAR and ak != ARG_STAR) or (
                             tk == ARG_STAR2 and ak != ARG_STAR2
                         ):
-                            # Unpack may have shifted indices.
-                            if not unpack_present:
+                            if cactual.param_spec():
+                                # TODO: we should be more careful also for non-ParamSpec functions
                                 continue
                         if isinstance(a, ParamSpecType):
                             # TODO: can we infer something useful for *T vs P?

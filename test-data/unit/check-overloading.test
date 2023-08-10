@@ -6569,3 +6569,20 @@ S = TypeVar("S", bound=str)
 def foo(x: int = ...) -> Callable[[T], T]: ...
 @overload
 def foo(x: S = ...) -> Callable[[T], T]: ...
+
+[case testOverloadGenericStarArgOverlap]
+from typing import Any, Callable, TypeVar, overload, Union, Tuple, List
+
+F = TypeVar("F", bound=Callable[..., Any])
+S = TypeVar("S", bound=int)
+
+def id(f: F) -> F: ...
+
+@overload
+def struct(*cols: S) -> int: ...
+@overload
+def struct(__cols: Union[List[S], Tuple[S, ...]]) -> int: ...
+@id
+def struct(*cols: Union[S, Union[List[S], Tuple[S, ...]]]) -> int:
+    pass
+[builtins fixtures/tuple.pyi]
