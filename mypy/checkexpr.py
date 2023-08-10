@@ -1606,7 +1606,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     lambda i: self.accept(args[i]),
                 )
             callee = self.infer_function_type_arguments(
-                callee, args, arg_kinds, formal_to_actual, context
+                callee, args, arg_kinds, arg_names, formal_to_actual, need_refresh, context
             )
             if need_refresh:
                 formal_to_actual = map_actuals_to_formals(
@@ -1896,7 +1896,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         callee_type: CallableType,
         args: list[Expression],
         arg_kinds: list[ArgKind],
+        arg_names: Sequence[str | None] | None,
         formal_to_actual: list[list[int]],
+        need_refresh: bool,
         context: Context,
     ) -> CallableType:
         """Infer the type arguments for a generic callee type.
@@ -1938,7 +1940,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if 2 in arg_pass_nums:
                 # Second pass of type inference.
                 (callee_type, inferred_args) = self.infer_function_type_arguments_pass2(
-                    callee_type, args, arg_kinds, formal_to_actual, inferred_args, context
+                    callee_type,
+                    args,
+                    arg_kinds,
+                    arg_names,
+                    formal_to_actual,
+                    inferred_args,
+                    need_refresh,
+                    context,
                 )
 
             if (
@@ -1964,6 +1973,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 or set(get_type_vars(a)) & set(callee_type.variables)
                 for a in inferred_args
             ):
+                if need_refresh:
+                    # Technically we need to refresh formal_to_actual after *each* inference pass,
+                    # since each pass can expand ParamSpec or TypeVarTuple. Although such situations
+                    # are very rare, not doing this can cause crashes.
+                    formal_to_actual = map_actuals_to_formals(
+                        arg_kinds,
+                        arg_names,
+                        callee_type.arg_kinds,
+                        callee_type.arg_names,
+                        lambda a: self.accept(args[a]),
+                    )
                 # If the regular two-phase inference didn't work, try inferring type
                 # variables while allowing for polymorphic solutions, i.e. for solutions
                 # potentially involving free variables.
@@ -2011,8 +2031,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         callee_type: CallableType,
         args: list[Expression],
         arg_kinds: list[ArgKind],
+        arg_names: Sequence[str | None] | None,
         formal_to_actual: list[list[int]],
         old_inferred_args: Sequence[Type | None],
+        need_refresh: bool,
         context: Context,
     ) -> tuple[CallableType, list[Type | None]]:
         """Perform second pass of generic function type argument inference.
@@ -2034,6 +2056,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if isinstance(arg, (NoneType, UninhabitedType)) or has_erased_component(arg):
                 inferred_args[i] = None
         callee_type = self.apply_generic_arguments(callee_type, inferred_args, context)
+        if need_refresh:
+            formal_to_actual = map_actuals_to_formals(
+                arg_kinds,
+                arg_names,
+                callee_type.arg_kinds,
+                callee_type.arg_names,
+                lambda a: self.accept(args[a]),
+            )
 
         arg_types = self.infer_arg_types_in_context(callee_type, args, arg_kinds, formal_to_actual)
 

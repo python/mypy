@@ -918,7 +918,6 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 if (
                     type_state.infer_polymorphic
                     and cactual.variables
-                    and cactual.param_spec() is None
                     and not self.skip_neg_op
                     # Technically, the correct inferred type for application of e.g.
                     # Callable[..., T] -> Callable[..., T] (with literal ellipsis), to a generic
