@@ -102,7 +102,7 @@ def build_ir_for_single_file2(
 
     # By default generate IR compatible with the earliest supported Python C API.
     # If a test needs more recent API features, this should be overridden.
-    compiler_options = compiler_options or CompilerOptions(capi_version=(3, 5))
+    compiler_options = compiler_options or CompilerOptions(capi_version=(3, 7))
     options = Options()
     options.show_traceback = True
     options.hide_error_codes = True
@@ -272,7 +272,7 @@ def infer_ir_build_options_from_test_name(name: str) -> CompilerOptions | None:
         return None
     if "_32bit" in name and not IS_32_BIT_PLATFORM:
         return None
-    options = CompilerOptions(strip_asserts="StripAssert" in name, capi_version=(3, 5))
+    options = CompilerOptions(strip_asserts="StripAssert" in name, capi_version=(3, 7))
     # A suffix like _python3.8 is used to set the target C API version.
     m = re.search(r"_python([3-9]+)_([0-9]+)(_|\b)", name)
     if m:
