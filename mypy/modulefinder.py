@@ -337,14 +337,9 @@ class FindModuleCache:
             # If this is not a directory then we can't traverse further into it
             if not self.fscache.isdir(dir_path):
                 break
-        if approved_stub_package_exists(components[0]):
-            if len(components) == 1 or (
-                self.find_module(components[0])
-                is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
-            ):
+        for i in range(len(components), 0, -1):
+            if approved_stub_package_exists(".".join(components[:i])):
                 return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
-        if approved_stub_package_exists(".".join(components[:2])):
-            return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
         if plausible_match:
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
         else:

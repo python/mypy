@@ -3121,26 +3121,28 @@ import google.cloud
 from google.cloud import x
 
 [case testErrorFromGoogleCloud]
-import google.cloud
+import google.cloud  # E: Cannot find implementation or library stub for module named "google.cloud" \
+                     # E: Cannot find implementation or library stub for module named "google"
 from google.cloud import x
-import google.non_existent
+import google.non_existent  # E: Cannot find implementation or library stub for module named "google.non_existent"
 from google.non_existent import x
-[out]
-main:1: error: Library stubs not installed for "google.cloud"
-main:1: note: Hint: "python3 -m pip install types-google-cloud-ndb"
-main:1: note: (or run "mypy --install-types" to install all missing stub packages)
-main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-main:1: error: Cannot find implementation or library stub for module named "google"
-main:3: error: Cannot find implementation or library stub for module named "google.non_existent"
+
+import google.cloud.ndb  # E: Library stubs not installed for "google.cloud.ndb" \
+                         # N: Hint: "python3 -m pip install types-google-cloud-ndb" \
+                         # N: (or run "mypy --install-types" to install all missing stub packages) \
+                         # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+from google.cloud import ndb
 
 [case testMissingSubmoduleOfInstalledStubPackage]
 import bleach.xyz
 from bleach.abc import fgh
 [file bleach/__init__.pyi]
 [out]
-main:1: error: Cannot find implementation or library stub for module named "bleach.xyz"
+main:1: error: Library stubs not installed for "bleach.xyz"
+main:1: note: Hint: "python3 -m pip install types-bleach"
+main:1: note: (or run "mypy --install-types" to install all missing stub packages)
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-main:2: error: Cannot find implementation or library stub for module named "bleach.abc"
+main:2: error: Library stubs not installed for "bleach.abc"
 
 [case testMissingSubmoduleOfInstalledStubPackageIgnored]
 # flags: --ignore-missing-imports
