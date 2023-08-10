@@ -350,6 +350,40 @@ definitions or calls.
     This flag reports an error whenever a function with type annotations
     calls a function defined without annotations.
 
+.. option:: --untyped-call-exception
+
+    This flag allows to selectively disable :option:`--disallow-untyped-calls`
+    for functions and methods defined in specific packages, modules, or classes.
+    Note that each exception entry acts as a prefix. For example:
+
+    .. code-block:: python
+
+        # mypy --disallow-untyped-calls  --untyped-call-exception=foo --untyped-call-exception=bar.A
+        from foo import test_foo
+        from bar import A, B
+        from baz import test_baz
+
+        test_foo(42)  # OK, function comes from module `foo`
+        test_baz(42)  # E: Call to untyped function "test_baz" in typed context
+
+        a: A
+        b: B
+        a.meth()  # OK, method was defined in class `bar.A`
+        b.meth()  # E: Call to untyped function "meth" in typed context
+
+        # file foo.py
+        def test_foo(x): pass
+
+        # file bar.py
+        class A:
+            def meth(self): pass
+        class B:
+            def meth(self): pass
+
+        # file baz.py
+        def test_baz(x): pass
+
+
 .. option:: --disallow-untyped-defs
 
     This flag reports an error whenever it encounters a function definition

@@ -490,7 +490,37 @@ section of the command line docs.
     :default: False
 
     Disallows calling functions without type annotations from functions with type
-    annotations.
+    annotations. Note that when used in per-module options, it enables/disables
+    this check **inside** the module(s) specified, not for functions that come
+    from that module(s), for example config like this:
+
+    .. code-block:: ini
+
+        [mypy]
+        disallow_untyped_calls = True
+
+        [mypy-some.library.*]
+        disallow_untyped_calls = False
+
+    will disable this check inside ``some.library``, not for your code that
+    imports ``some.library``. If you want to selectively disable this check for
+    all your code that imports ``some.library`` you should instead use
+    :confval:`untyped_call_exception`, for example:
+
+    .. code-block:: ini
+
+        [mypy]
+        disallow_untyped_calls = True
+        untyped_call_exception = some.library
+
+.. confval:: untyped_call_exception
+
+    :type: comma-separated list of strings
+
+    Selectively excludes functions and methods defined in specific packages,
+    modules, and classes from action of :confval:`disallow_untyped_calls`.
+    Note, this option does not support per-file configuration, the exception
+    list is defined globally for all your code.
 
 .. confval:: disallow_untyped_defs
 
