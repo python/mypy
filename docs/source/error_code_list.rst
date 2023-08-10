@@ -673,6 +673,8 @@ Example:
 
 See :ref:`ignore-missing-imports` for how to work around these errors.
 
+.. _code-import-untyped:
+
 Check that import target can be found [import-untyped]
 --------------------------------------------------------
 
