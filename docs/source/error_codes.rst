@@ -43,11 +43,7 @@ Silencing errors based on error codes
 You can use a special comment ``# type: ignore[code, ...]`` to only
 ignore errors with a specific error code (or codes) on a particular
 line.  This can be used even if you have not configured mypy to show
-error codes. Currently it's only possible to disable arbitrary error
-codes on individual lines using this comment.
-
-You can also use :option:`--disable-error-code <mypy --disable-error-code>`
-to disable specific error codes globally.
+error codes.
 
 This example shows how to ignore an error about an imported name mypy
 thinks is undefined:
@@ -58,17 +54,17 @@ thinks is undefined:
    # definition.
    from foolib import foo  # type: ignore[attr-defined]
 
-
-Enabling specific error codes
------------------------------
+Enabling/disabling specific error codes globally
+------------------------------------------------
 
 There are command-line flags and config file settings for enabling
 certain optional error codes, such as :option:`--disallow-untyped-defs <mypy --disallow-untyped-defs>`,
 which enables the ``no-untyped-def`` error code.
 
-You can use :option:`--enable-error-code <mypy --enable-error-code>` to
-enable specific error codes that don't have a dedicated command-line
-flag or config file setting.
+You can use :option:`--enable-error-code <mypy --enable-error-code>`
+and :option:`--disable-error-code <mypy --disable-error-code>`
+to enable or disable specific error codes that don't have a dedicated
+command-line flag or config file setting.
 
 Per-module enabling/disabling error codes
 -----------------------------------------
@@ -107,8 +103,9 @@ still keep the other two error codes enabled. The overall logic is following:
 
 * Individual config sections *adjust* them per glob/module
 
-* Inline ``# mypy: ...`` comments can further *adjust* them for a specific
-  module
+* Inline ``# mypy: disable-error-code="..."`` comments can further
+  *adjust* them for a specific module.
+  For example: ``# mypy: disable-error-code="truthy-bool, ignore-without-code"``
 
 So one can e.g. enable some code globally, disable it for all tests in
 the corresponding config section, and then re-enable it with an inline
