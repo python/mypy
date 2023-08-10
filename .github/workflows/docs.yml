@@ -20,11 +20,12 @@ jobs:
     env:
       TOXENV: docs
       TOX_SKIP_MISSING_INTERPRETERS: False
+      VERIFY_MYPY_ERROR_CODES: 1
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.7'
+          python-version: '3.8'
       - name: Install tox
         run: pip install --upgrade 'setuptools!=50' tox==4.4.4
       - name: Setup tox environment

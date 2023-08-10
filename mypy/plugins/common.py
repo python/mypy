@@ -28,9 +28,7 @@ from mypy.semanal_shared import (
     require_bool_literal_argument,
     set_callable_name,
 )
-from mypy.typeops import (  # noqa: F401  # Part of public API
-    try_getting_str_literals as try_getting_str_literals,
-)
+from mypy.typeops import try_getting_str_literals as try_getting_str_literals
 from mypy.types import (
     AnyType,
     CallableType,
@@ -45,7 +43,7 @@ from mypy.types import (
     deserialize_type,
     get_proper_type,
 )
-from mypy.types_utils import is_optional
+from mypy.types_utils import is_overlapping_none
 from mypy.typevars import fill_typevars
 from mypy.util import get_unique_redefinition_name
 
@@ -143,7 +141,7 @@ def find_shallow_matching_overload_item(overload: Overloaded, call: CallExpr) ->
                         break
                 elif (
                     arg_none
-                    and not is_optional(arg_type)
+                    and not is_overlapping_none(arg_type)
                     and not (
                         isinstance(arg_type, Instance)
                         and arg_type.type.fullname == "builtins.object"

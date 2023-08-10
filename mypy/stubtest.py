@@ -209,7 +209,12 @@ def test_module(module_name: str) -> Iterator[Error]:
     except KeyboardInterrupt:
         raise
     except BaseException as e:
-        yield Error([module_name], f"failed to import, {type(e).__name__}: {e}", stub, MISSING)
+        note = ""
+        if isinstance(e, ModuleNotFoundError):
+            note = " Maybe install the runtime package or alter PYTHONPATH?"
+        yield Error(
+            [module_name], f"failed to import.{note} {type(e).__name__}: {e}", stub, MISSING
+        )
         return
 
     with warnings.catch_warnings():
@@ -491,7 +496,11 @@ def verify_typeinfo(
     )
 
     # Check everything already defined on the stub class itself (i.e. not inherited)
-    to_check = set(stub.names)
+    #
+    # Filter out non-identifier names, as these are (hopefully always?) whacky/fictional things
+    # (like __mypy-replace or __mypy-post_init, etc.) that don't exist at runtime,
+    # and exist purely for internal mypy reasons
+    to_check = {name for name in stub.names if name.isidentifier()}
     # Check all public things on the runtime class
     to_check.update(
         m for m in vars(runtime) if not is_probably_private(m) and m not in IGNORABLE_CLASS_DUNDERS
@@ -668,7 +677,7 @@ def _verify_arg_default_value(
 
 
 def maybe_strip_cls(name: str, args: list[nodes.Argument]) -> list[nodes.Argument]:
-    if name in ("__init_subclass__", "__class_getitem__"):
+    if args and name in ("__init_subclass__", "__class_getitem__"):
         # These are implicitly classmethods. If the stub chooses not to have @classmethod, we
         # should remove the cls argument
         if args[0].variable.name == "cls":

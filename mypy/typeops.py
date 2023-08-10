@@ -76,12 +76,18 @@ def is_recursive_pair(s: Type, t: Type) -> bool:
             isinstance(get_proper_type(t), (Instance, UnionType))
             or isinstance(t, TypeAliasType)
             and t.is_recursive
+            # Tuple types are special, they can cause an infinite recursion even if
+            # the other type is not recursive, because of the tuple fallback that is
+            # calculated "on the fly".
+            or isinstance(get_proper_type(s), TupleType)
         )
     if isinstance(t, TypeAliasType) and t.is_recursive:
         return (
             isinstance(get_proper_type(s), (Instance, UnionType))
             or isinstance(s, TypeAliasType)
             and s.is_recursive
+            # Same as above.
+            or isinstance(get_proper_type(t), TupleType)
         )
     return False
 
@@ -307,7 +313,9 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
         original_type = get_proper_type(original_type)
 
         all_ids = func.type_var_ids()
-        typeargs = infer_type_arguments(all_ids, self_param_type, original_type, is_supertype=True)
+        typeargs = infer_type_arguments(
+            func.variables, self_param_type, original_type, is_supertype=True
+        )
         if (
             is_classmethod
             # TODO: why do we need the extra guards here?
@@ -316,7 +324,7 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
         ):
             # In case we call a classmethod through an instance x, fallback to type(x)
             typeargs = infer_type_arguments(
-                all_ids, self_param_type, TypeType(original_type), is_supertype=True
+                func.variables, self_param_type, TypeType(original_type), is_supertype=True
             )
 
         ids = [tid for tid in all_ids if any(tid == t.id for t in get_type_vars(self_param_type))]
@@ -704,7 +712,7 @@ def callable_type(
     fdef: FuncItem, fallback: Instance, ret_type: Type | None = None
 ) -> CallableType:
     # TODO: somewhat unfortunate duplication with prepare_method_signature in semanal
-    if fdef.info and not fdef.is_static and fdef.arg_names:
+    if fdef.info and (not fdef.is_static or fdef.name == "__new__") and fdef.arg_names:
         self_type: Type = fill_typevars(fdef.info)
         if fdef.is_class or fdef.name == "__new__":
             self_type = TypeType.make_normalized(self_type)

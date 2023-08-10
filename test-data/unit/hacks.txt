@@ -5,17 +5,6 @@ Due to historical reasons, test cases contain things that may appear
 baffling without extra context. This file attempts to describe most of
 them.
 
-Strict optional is disabled be default
---------------------------------------
-
-Strict optional checking is enabled in mypy by default, but test cases
-must enable it explicitly, either through `# flags: --strict-optional`
-or by including `optional` as a substring in your test file name.
-
-The reason for this is that many test cases written before strict
-optional was implemented use the idiom `x = None # type: t`, and
-updating all of these test cases would take a lot of work.
-
 Dummy if statements to prevent redefinition
 -------------------------------------------
 

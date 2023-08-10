@@ -248,7 +248,6 @@ def main1(a: object) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardOverload]
-# flags: --strict-optional
 from typing import overload, Any, Callable, Iterable, Iterator, List, Optional, TypeVar
 from typing_extensions import TypeGuard
 
@@ -619,10 +618,6 @@ def bad_typeguard(*, x: object) -> TypeGuard[int]: # line 15
 # In Python 3.8 the line number associated with FunctionDef nodes changed
 [builtins fixtures/classmethod.pyi]
 [out]
-main:4: error: TypeGuard functions must have a positional argument
-main:11: error: TypeGuard functions must have a positional argument
-main:15: error: TypeGuard functions must have a positional argument
-[out version>=3.8]
 main:4: error: TypeGuard functions must have a positional argument
 main:12: error: TypeGuard functions must have a positional argument
 main:15: error: TypeGuard functions must have a positional argument

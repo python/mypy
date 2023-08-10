@@ -47,4 +47,5 @@ class list(Generic[_T], Sequence[_T]):
 
 class function: pass
 class classmethod: pass
+class staticmethod: pass
 property = object()

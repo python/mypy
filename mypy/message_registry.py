@@ -8,8 +8,7 @@ add a method to MessageBuilder and call this instead.
 
 from __future__ import annotations
 
-from typing import NamedTuple
-from typing_extensions import Final
+from typing import Final, NamedTuple
 
 from mypy import errorcodes as codes
 
@@ -181,7 +180,7 @@ INVALID_TYPEVAR_AS_TYPEARG: Final = 'Type variable "{}" not valid as type argume
 INVALID_TYPEVAR_ARG_BOUND: Final = 'Type argument {} of "{}" must be a subtype of {}'
 INVALID_TYPEVAR_ARG_VALUE: Final = 'Invalid type argument value for "{}"'
 TYPEVAR_VARIANCE_DEF: Final = 'TypeVar "{}" may only be a literal bool'
-TYPEVAR_BOUND_MUST_BE_TYPE: Final = 'TypeVar "bound" must be a type'
+TYPEVAR_ARG_MUST_BE_TYPE: Final = '{} "{}" must be a type'
 TYPEVAR_UNEXPECTED_ARGUMENT: Final = 'Unexpected argument to "TypeVar()"'
 UNBOUND_TYPEVAR: Final = (
     "A function returning TypeVar should receive at least "
@@ -277,6 +276,7 @@ CANNOT_MODIFY_MATCH_ARGS: Final = 'Cannot assign to "__match_args__"'
 DATACLASS_FIELD_ALIAS_MUST_BE_LITERAL: Final = (
     '"alias" argument to dataclass field must be a string literal'
 )
+DATACLASS_POST_INIT_MUST_BE_A_FUNCTION: Final = '"__post_init__" method must be an instance method'
 
 # fastparse
 FAILED_TO_MERGE_OVERLOADS: Final = ErrorMessage(

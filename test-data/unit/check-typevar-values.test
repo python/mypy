@@ -97,8 +97,8 @@ def f(x: AB) -> AB:
 from typing import TypeVar
 T = TypeVar('T', int, str)
 def f(x: T) -> T:
-    a = None  # type: T
-    b = None # type: T
+    a: T
+    b: T
     if 1:
         a = x
         b = x
@@ -248,10 +248,10 @@ def g(a: T) -> None:
 from typing import TypeVar, Generic, Any
 X = TypeVar('X', int, str)
 class A(Generic[X]): pass
-a = None  # type: A[int]
-b = None  # type: A[str]
-d = None  # type: A[object] # E: Value of type variable "X" of "A" cannot be "object"
-c = None  # type: A[Any]
+a: A[int]
+b: A[str]
+d: A[object]  # E: Value of type variable "X" of "A" cannot be "object"
+c: A[Any]
 
 [case testConstructGenericTypeWithTypevarValuesAndTypeInference]
 from typing import TypeVar, Generic, Any, cast
@@ -272,11 +272,11 @@ Z = TypeVar('Z')
 class D(Generic[X]):
     def __init__(self, x: X) -> None: pass
 def f(x: X) -> None:
-    a = None  # type: D[X]
+    a: D[X]
 def g(x: Y) -> None:
-    a = None  # type: D[Y]
+    a: D[Y]
 def h(x: Z) -> None:
-    a = None  # type: D[Z]
+    a: D[Z]
 [out]
 main:11: error: Invalid type argument value for "D"
 main:13: error: Type variable "Z" not valid as type argument value for "D"
@@ -287,7 +287,7 @@ X = TypeVar('X', int, str)
 class S(str): pass
 class C(Generic[X]):
     def __init__(self, x: X) -> None: pass
-x = None  # type: C[str]
+x: C[str]
 y = C(S())
 if int():
     x = y
@@ -412,10 +412,10 @@ class B: pass
 X = TypeVar('X', A, B)
 Y = TypeVar('Y', int, str)
 class C(Generic[X, Y]): pass
-a = None  # type: C[A, int]
-b = None  # type: C[B, str]
-c = None  # type: C[int, int] # E: Value of type variable "X" of "C" cannot be "int"
-d = None  # type: C[A, A]     # E: Value of type variable "Y" of "C" cannot be "A"
+a: C[A, int]
+b: C[B, str]
+c: C[int, int]  # E: Value of type variable "X" of "C" cannot be "int"
+d: C[A, A]      # E: Value of type variable "Y" of "C" cannot be "A"
 
 [case testCallGenericFunctionUsingMultipleTypevarsWithValues]
 from typing import TypeVar
@@ -512,7 +512,7 @@ class C(A[str]):
 from typing import TypeVar, Generic
 T = TypeVar('T', int, str)
 class C(Generic[T]):
-    def f(self, x: int = None) -> None: pass
+    def f(self, x: int = 2) -> None: pass
 
 [case testTypevarValuesWithOverloadedFunctionSpecialCase]
 from foo import *

@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from typing import Iterable, Mapping, Sequence, TypeVar, cast, overload
-from typing_extensions import Final
+from typing import Final, Iterable, Mapping, Sequence, TypeVar, cast, overload
 
 from mypy.nodes import ARG_POS, ARG_STAR, ArgKind, Var
 from mypy.state import state
-from mypy.type_visitor import TypeTranslator
 from mypy.types import (
     ANY_STRATEGY,
     AnyType,
@@ -43,6 +41,9 @@ from mypy.types import (
     split_with_prefix_and_suffix,
 )
 from mypy.typevartuples import find_unpack_in_list, split_with_instance
+
+# Solving the import cycle:
+import mypy.type_visitor  # ruff: isort: skip
 
 # WARNING: these functions should never (directly or indirectly) depend on
 # is_subtype(), meet_types(), join_types() etc.
@@ -167,7 +168,7 @@ def freshen_all_functions_type_vars(t: T) -> T:
         return result
 
 
-class FreshenCallableVisitor(TypeTranslator):
+class FreshenCallableVisitor(mypy.type_visitor.TypeTranslator):
     def visit_callable_type(self, t: CallableType) -> Type:
         result = super().visit_callable_type(t)
         assert isinstance(result, ProperType) and isinstance(result, CallableType)
@@ -271,6 +272,11 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             return repl
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
+        # Sometimes solver may need to expand a type variable with (a copy of) itself
+        # (usually together with other TypeVars, but it is hard to filter out TypeVarTuples).
+        repl = self.variables[t.id]
+        if isinstance(repl, TypeVarTupleType):
+            return repl
         raise NotImplementedError
 
     def visit_unpack_type(self, t: UnpackType) -> Type:

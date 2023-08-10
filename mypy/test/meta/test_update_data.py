@@ -1,7 +1,13 @@
+"""
+A "meta test" which tests the `--update-data` feature for updating .test files.
+Updating the expected output, especially when it's in the form of inline (comment) assertions,
+can be brittle, which is why we're "meta-testing" here.
+"""
 import shlex
 import subprocess
 import sys
 import textwrap
+import uuid
 from pathlib import Path
 
 from mypy.test.config import test_data_prefix
@@ -14,19 +20,18 @@ class UpdateDataSuite(Suite):
         Runs a suite of data test cases through 'pytest --update-data' until either tests pass
         or until a maximum number of attempts (needed for incremental tests).
         """
-        p = Path(test_data_prefix) / "check-update-data.test"
+        p_test_data = Path(test_data_prefix)
+        p_root = p_test_data.parent.parent
+        p = p_test_data / f"check-meta-{uuid.uuid4()}.test"
         assert not p.exists()
         try:
             p.write_text(textwrap.dedent(data_suite).lstrip())
 
             test_nodeid = f"mypy/test/testcheck.py::TypeCheckSuite::{p.name}"
             args = [sys.executable, "-m", "pytest", "-n", "0", "-s", "--update-data", test_nodeid]
-            if sys.version_info >= (3, 8):
-                cmd = shlex.join(args)
-            else:
-                cmd = " ".join(args)
+            cmd = shlex.join(args)
             for i in range(max_attempts - 1, -1, -1):
-                res = subprocess.run(args)
+                res = subprocess.run(args, cwd=p_root)
                 if res.returncode == 0:
                     break
                 print(f"`{cmd}` returned {res.returncode}: {i} attempts remaining")

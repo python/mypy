@@ -241,7 +241,7 @@ def f(x: float = 1.5) -> float:
 [out]
 def f(x, __bitmap):
     x :: float
-    __bitmap, r0 :: uint32
+    __bitmap, r0 :: u32
     r1 :: bit
 L0:
     r0 = __bitmap & 1

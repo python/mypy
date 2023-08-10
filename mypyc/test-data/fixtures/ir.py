@@ -87,6 +87,8 @@ class str:
     @overload
     def __init__(self, x: object) -> None: pass
     def __add__(self, x: str) -> str: pass
+    def __mul__(self, x: int) -> str: pass
+    def __rmul__(self, x: int) -> str: pass
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
     def __lt__(self, x: str) -> bool: ...
@@ -134,7 +136,9 @@ class float:
 class complex:
     def __init__(self, x: object, y: object = None) -> None: pass
     def __add__(self, n: complex) -> complex: pass
+    def __radd__(self, n: float) -> complex: pass
     def __sub__(self, n: complex) -> complex: pass
+    def __rsub__(self, n: float) -> complex: pass
     def __mul__(self, n: complex) -> complex: pass
     def __truediv__(self, n: complex) -> complex: pass
     def __neg__(self) -> complex: pass
@@ -145,6 +149,8 @@ class bytes:
     @overload
     def __init__(self, x: object) -> None: ...
     def __add__(self, x: bytes) -> bytes: ...
+    def __mul__(self, x: int) -> bytes: ...
+    def __rmul__(self, x: int) -> bytes: ...
     def __eq__(self, x: object) -> bool: ...
     def __ne__(self, x: object) -> bool: ...
     @overload

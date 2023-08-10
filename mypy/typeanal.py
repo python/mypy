@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import itertools
 from contextlib import contextmanager
-from typing import Callable, Iterable, Iterator, List, Sequence, Tuple, TypeVar
-from typing_extensions import Final, Protocol
+from typing import Callable, Final, Iterable, Iterator, List, Sequence, Tuple, TypeVar
+from typing_extensions import Protocol
 
 from mypy import errorcodes as codes, message_registry, nodes
 from mypy.errorcodes import ErrorCode
@@ -1256,7 +1256,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         code=codes.VALID_TYPE,
                     )
                     self.note(
-                        "See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas",  # noqa: E501
+                        "See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas",
                         t,
                     )
                     return AnyType(TypeOfAny.from_error)
@@ -1841,19 +1841,6 @@ def set_any_tvars(
         else:
             args.append(any_type)
     return TypeAliasType(node, args, newline, newcolumn)
-
-
-def remove_dups(tvars: list[T]) -> list[T]:
-    if len(tvars) <= 1:
-        return tvars
-    # Get unique elements in order of appearance
-    all_tvars: set[T] = set()
-    new_tvars: list[T] = []
-    for t in tvars:
-        if t not in all_tvars:
-            new_tvars.append(t)
-            all_tvars.add(t)
-    return new_tvars
 
 
 def flatten_tvars(lists: list[list[T]]) -> list[T]:

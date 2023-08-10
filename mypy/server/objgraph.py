@@ -5,8 +5,7 @@ from __future__ import annotations
 import types
 import weakref
 from collections.abc import Iterable
-from typing import Iterator, Mapping
-from typing_extensions import Final
+from typing import Final, Iterator, Mapping
 
 method_descriptor_type: Final = type(object.__dir__)
 method_wrapper_type: Final = type(object().__ne__)
@@ -46,7 +45,7 @@ def get_edge_candidates(o: object) -> Iterator[tuple[object, object]]:
             try:
                 if attr not in ATTR_BLACKLIST and hasattr(o, attr) and not isproperty(o, attr):
                     e = getattr(o, attr)
-                    if not type(e) in ATOMIC_TYPE_BLACKLIST:
+                    if type(e) not in ATOMIC_TYPE_BLACKLIST:
                         yield attr, e
             except AssertionError:
                 pass
@@ -70,7 +69,7 @@ def get_edges(o: object) -> Iterator[tuple[object, object]]:
                 if se is not o and se is not type(o) and hasattr(s, "__self__"):
                     yield s.__self__, se
         else:
-            if not type(e) in TYPE_BLACKLIST:
+            if type(e) not in TYPE_BLACKLIST:
                 yield s, e
 
 

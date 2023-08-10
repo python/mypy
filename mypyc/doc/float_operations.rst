@@ -14,6 +14,8 @@ Construction
 * ``float(x: int)``
 * ``float(x: i64)``
 * ``float(x: i32)``
+* ``float(x: i16)``
+* ``float(x: u8)``
 * ``float(x: str)``
 * ``float(x: float)`` (no-op)
 
@@ -28,8 +30,10 @@ Functions
 ---------
 
 * ``int(f)``
-* ``i32(f)`` (convert to ``i32``)
-* ``i64(f)`` (convert to ``i64``)
+* ``i64(f)`` (convert to 64-bit signed integer)
+* ``i32(f)`` (convert to 32-bit signed integer)
+* ``i16(f)`` (convert to 16-bit signed integer)
+* ``u8(f)`` (convert to 8-bit unsigned integer)
 * ``abs(f)``
 * ``math.sin(f)``
 * ``math.cos(f)``

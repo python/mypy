@@ -450,7 +450,8 @@ class C: pass
 from foo import *
 [file foo.pyi]
 from typing import overload
-a, b = None, None # type: (A, B)
+a: A
+b: B
 if int():
     b = f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 if int():
@@ -492,7 +493,8 @@ class C: pass
 from foo import *
 [file foo.pyi]
 from typing import overload
-a, b = None, None # type: (A, B)
+a: A
+b: B
 if int():
     b = a.f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 if int():
@@ -514,7 +516,8 @@ class B: pass
 from foo import *
 [file foo.pyi]
 from typing import overload
-a, b = None, None # type: (A, B)
+a: A
+b: B
 if int():
     a = f(a)
 if int():
@@ -549,7 +552,10 @@ from foo import *
 [file foo.pyi]
 from typing import overload, TypeVar, Generic
 t = TypeVar('t')
-ab, ac, b, c = None, None, None, None # type: (A[B], A[C], B, C)
+ab: A[B]
+ac: A[C]
+b: B
+c: C
 if int():
     b = f(ab)
     c = f(ac)
@@ -569,7 +575,8 @@ class C: pass
 from foo import *
 [file foo.pyi]
 from typing import overload
-a, b = None, None # type: (A, B)
+a: A
+b: B
 a = A(a)
 a = A(b)
 a = A(object()) # E: No overload variant of "A" matches argument type "object" \
@@ -589,8 +596,8 @@ class B: pass
 from foo import *
 [file foo.pyi]
 from typing import overload, Callable
-o = None # type: object
-a = None # type: A
+o: object
+a: A
 
 if int():
     a = f # E: Incompatible types in assignment (expression has type overloaded function, variable has type "A")
@@ -607,7 +614,8 @@ class A: pass
 from foo import *
 [file foo.pyi]
 from typing import overload
-t, a = None, None # type: (type, A)
+t: type
+a: A
 
 if int():
     a = A # E: Incompatible types in assignment (expression has type "Type[A]", variable has type "A")
@@ -625,7 +633,8 @@ class B: pass
 from foo import *
 [file foo.pyi]
 from typing import overload
-a, b = None, None # type: int, str
+a: int
+b: str
 if int():
     a = A()[a]
 if int():
@@ -647,7 +656,9 @@ from foo import *
 [file foo.pyi]
 from typing import TypeVar, Generic, overload
 t = TypeVar('t')
-a, b, c = None, None, None # type: (A, B, C[A])
+a: A
+b: B
+c: C[A]
 if int():
     a = c[a]
     b = c[a] # E: Incompatible types in assignment (expression has type "A", variable has type "B")
@@ -761,7 +772,8 @@ from typing import overload
 def f(t: type) -> 'A': pass
 @overload
 def f(t: 'A') -> 'B': pass
-a, b = None, None # type: (A, B)
+a: A
+b: B
 if int():
     a = f(A)
 if int():
@@ -1133,7 +1145,7 @@ def f(x: str) -> None: pass
 f(1.1)
 f('')
 f(1)
-f(()) # E: No overload variant of "f" matches argument type "Tuple[]" \
+f(()) # E: No overload variant of "f" matches argument type "Tuple[()]" \
       # N: Possible overload variants: \
       # N:     def f(x: float) -> None \
       # N:     def f(x: str) -> None
@@ -1215,6 +1227,7 @@ f(*(1, '', 1))() # E: No overload variant of "f" matches argument type "Tuple[in
 [builtins fixtures/tuple.pyi]
 
 [case testPreferExactSignatureMatchInOverload]
+# flags: --no-strict-optional
 from foo import *
 [file foo.pyi]
 from typing import overload, List
@@ -3251,7 +3264,6 @@ f(x, B())  # E: Argument 1 to "f" has incompatible type "Union[A, B]"; expected 
 [builtins fixtures/tuple.pyi]
 
 [case testOverloadInferUnionWithMixOfPositionalAndOptionalArgs]
-# flags: --strict-optional
 from typing import overload, Union, Optional
 
 class A: ...
@@ -3590,7 +3602,6 @@ reveal_type(g(b))  # N: Revealed type is "builtins.str"
 reveal_type(g(c))  # N: Revealed type is "builtins.str"
 
 [case testOverloadsAndNoneWithStrictOptional]
-# flags: --strict-optional
 from typing import overload, Optional
 
 @overload
@@ -3638,7 +3649,6 @@ reveal_type(mymap(f3, seq))  # N: Revealed type is "typing.Iterable[builtins.str
 [typing fixtures/typing-medium.pyi]
 
 [case testOverloadsNoneAndTypeVarsWithStrictOptional]
-# flags: --strict-optional
 from typing import Callable, Iterable, TypeVar, overload, Optional
 
 T = TypeVar('T')
@@ -3695,7 +3705,6 @@ def test_narrow_int() -> None:
 [typing fixtures/typing-medium.pyi]
 
 [case testOverloadsAndNoReturnNarrowTypeWithStrictOptional1]
-# flags: --strict-optional
 from typing import overload, Union, NoReturn
 
 @overload
@@ -3759,7 +3768,6 @@ def test_narrow_none() -> None:
 [typing fixtures/typing-medium.pyi]
 
 [case testOverloadsAndNoReturnNarrowTypeWithStrictOptional2]
-# flags: --strict-optional
 from typing import overload, Union, TypeVar, NoReturn, Optional
 
 T = TypeVar('T')
@@ -3823,7 +3831,6 @@ def test_narrow_none_v2() -> None:
 [typing fixtures/typing-medium.pyi]
 
 [case testOverloadsAndNoReturnNarrowTypeWithStrictOptional3]
-# flags: --strict-optional
 from typing import overload, TypeVar, NoReturn, Optional
 
 @overload
@@ -4635,7 +4642,6 @@ def none_second(x: int) -> int:
     return x
 
 [case testOverloadsWithNoneComingSecondIsOkInStrictOptional]
-# flags: --strict-optional
 from typing import overload, Optional
 
 @overload
@@ -4659,8 +4665,8 @@ def none_loose_impl(x: int) -> int: ...
 def none_loose_impl(x: int) -> int:
     return x
 [out]
-main:22: error: Overloaded function implementation does not accept all possible arguments of signature 1
-main:22: error: Overloaded function implementation cannot produce return type of signature 1
+main:21: error: Overloaded function implementation does not accept all possible arguments of signature 1
+main:21: error: Overloaded function implementation cannot produce return type of signature 1
 
 [case testTooManyUnionsException]
 from typing import overload, Union
@@ -4745,7 +4751,7 @@ main:12: note:          @overload
 main:12: note:          def __add__(self, Other, /) -> B
 main:12: note:          @overload
 main:12: note:          def __add__(self, A, /) -> A
-main:12: note: Overloaded operator methods cannot have wider argument types in overrides
+main:12: note: Overloaded operator methods can't have wider argument types in overrides
 main:32: note: Revealed type is "__main__.Other"
 
 [case testOverloadErrorMessageManyMatches]
@@ -5405,26 +5411,26 @@ if False:
 def f2(g): ...
 reveal_type(f2(A()))  # N: Revealed type is "__main__.A"
 reveal_type(f2(C()))  # E: No overload variant of "f2" matches argument type "C" \
-    # N: Possible overload variants: \
-    # N:     def f2(g: A) -> A \
-    # N:     def f2(g: B) -> B \
-    # N: Revealed type is "Any"
+                      # N: Possible overload variants: \
+                      # N:     def f2(g: A) -> A \
+                      # N:     def f2(g: B) -> B \
+                      # N: Revealed type is "Any"
 
 @overload
 def f3(g: A) -> A: ...
 @overload
 def f3(g: B) -> B: ...
-if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+if maybe_true:  # E: Condition can't be inferred, unable to merge overloads \
                 # E: Name "maybe_true" is not defined
     @overload
     def f3(g: C) -> C: ...
 def f3(g): ...
 reveal_type(f3(A()))  # N: Revealed type is "__main__.A"
 reveal_type(f3(C()))  # E: No overload variant of "f3" matches argument type "C" \
-    # N: Possible overload variants: \
-    # N:     def f3(g: A) -> A \
-    # N:     def f3(g: B) -> B \
-    # N: Revealed type is "Any"
+                      # N: Possible overload variants: \
+                      # N:     def f3(g: A) -> A \
+                      # N:     def f3(g: B) -> B \
+                      # N: Revealed type is "Any"
 
 if True:
     @overload
@@ -5731,10 +5737,10 @@ def f1(x): ...
 reveal_type(f1(A()))  # N: Revealed type is "__main__.A"
 reveal_type(f1(B()))  # N: Revealed type is "__main__.B"
 reveal_type(f1(D()))  # E: No overload variant of "f1" matches argument type "D" \
-    # N: Possible overload variants: \
-    # N:     def f1(x: A) -> A \
-    # N:     def f1(x: B) -> B \
-    # N: Revealed type is "Any"
+                      # N: Possible overload variants: \
+                      # N:     def f1(x: A) -> A \
+                      # N:     def f1(x: B) -> B \
+                      # N: Revealed type is "Any"
 
 @overload
 def f2(x: A) -> A: ...
@@ -5751,14 +5757,14 @@ def f2(x): ...
 reveal_type(f2(A()))  # N: Revealed type is "__main__.A"
 reveal_type(f2(B()))  # N: Revealed type is "__main__.B"
 reveal_type(f2(C()))  # E: No overload variant of "f2" matches argument type "C" \
-    # N: Possible overload variants: \
-    # N:     def f2(x: A) -> A \
-    # N:     def f2(x: B) -> B \
-    # N: Revealed type is "Any"
+                      # N: Possible overload variants: \
+                      # N:     def f2(x: A) -> A \
+                      # N:     def f2(x: B) -> B \
+                      # N: Revealed type is "Any"
 
 @overload  # E: Single overload definition, multiple required
 def f3(x: A) -> A: ...
-if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+if maybe_true:  # E: Condition can't be inferred, unable to merge overloads \
                 # E: Name "maybe_true" is not defined
     @overload
     def f3(x: B) -> B: ...
@@ -5771,13 +5777,13 @@ else:
 def f3(x): ...
 reveal_type(f3(A()))  # N: Revealed type is "__main__.A"
 reveal_type(f3(B()))  # E: No overload variant of "f3" matches argument type "B" \
-    # N: Possible overload variant: \
-    # N:     def f3(x: A) -> A \
-    # N: Revealed type is "Any"
+                      # N: Possible overload variant: \
+                      # N:     def f3(x: A) -> A \
+                      # N: Revealed type is "Any"
 
 @overload  # E: Single overload definition, multiple required
 def f4(x: A) -> A: ...
-if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+if maybe_true:  # E: Condition can't be inferred, unable to merge overloads \
                 # E: Name "maybe_true" is not defined
     @overload
     def f4(x: B) -> B: ...
@@ -5787,9 +5793,10 @@ else:
 def f4(x): ...
 reveal_type(f4(A()))  # N: Revealed type is "__main__.A"
 reveal_type(f4(B()))  # E: No overload variant of "f4" matches argument type "B" \
-    # N: Possible overload variant: \
-    # N:     def f4(x: A) -> A \
-    # N: Revealed type is "Any"
+                      # N: Possible overload variant: \
+                      # N:     def f4(x: A) -> A \
+                      # N: Revealed type is "Any"
+
 
 [case testOverloadIfElse3]
 # flags: --always-false False
@@ -5817,10 +5824,10 @@ else:
 def f1(x): ...
 reveal_type(f1(A()))  # N: Revealed type is "__main__.A"
 reveal_type(f1(B()))  # E: No overload variant of "f1" matches argument type "B" \
-    # N: Possible overload variants: \
-    # N:     def f1(x: A) -> A \
-    # N:     def f1(x: D) -> D \
-    # N: Revealed type is "Any"
+                      # N: Possible overload variants: \
+                      # N:     def f1(x: A) -> A \
+                      # N:     def f1(x: D) -> D \
+                      # N: Revealed type is "Any"
 reveal_type(f1(D()))  # N: Revealed type is "__main__.D"
 
 @overload  # E: Single overload definition, multiple required
@@ -5828,7 +5835,7 @@ def f2(x: A) -> A: ...
 if False:
     @overload
     def f2(x: B) -> B: ...
-elif maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+elif maybe_true:  # E: Condition can't be inferred, unable to merge overloads \
                   # E: Name "maybe_true" is not defined
     @overload
     def f2(x: C) -> C: ...
@@ -5838,13 +5845,13 @@ else:
 def f2(x): ...
 reveal_type(f2(A()))  # N: Revealed type is "__main__.A"
 reveal_type(f2(C()))  # E: No overload variant of "f2" matches argument type "C" \
-    # N: Possible overload variant: \
-    # N:     def f2(x: A) -> A \
-    # N: Revealed type is "Any"
+                      # N: Possible overload variant: \
+                      # N:     def f2(x: A) -> A \
+                      # N: Revealed type is "Any"
 
 @overload  # E: Single overload definition, multiple required
 def f3(x: A) -> A: ...
-if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+if maybe_true:  # E: Condition can't be inferred, unable to merge overloads \
                 # E: Name "maybe_true" is not defined
     @overload
     def f3(x: B) -> B: ...
@@ -5857,14 +5864,14 @@ else:
 def f3(x): ...
 reveal_type(f3(A()))  # N: Revealed type is "__main__.A"
 reveal_type(f3(B()))  # E: No overload variant of "f3" matches argument type "B" \
-    # N: Possible overload variant: \
-    # N:     def f3(x: A) -> A \
-    # N: Revealed type is "Any"
+                      # N: Possible overload variant: \
+                      # N:     def f3(x: A) -> A \
+                      # N: Revealed type is "Any"
 
 def g(bool_var: bool) -> None:
     @overload
     def f4(x: A) -> A: ...
-    if bool_var:  # E: Condition cannot be inferred, unable to merge overloads
+    if bool_var:  # E: Condition can't be inferred, unable to merge overloads
         @overload
         def f4(x: B) -> B: ...
     elif maybe_true:  # E: Name "maybe_true" is not defined
@@ -5880,10 +5887,11 @@ def g(bool_var: bool) -> None:
     def f4(x): ...
     reveal_type(f4(E()))  # N: Revealed type is "__main__.E"
     reveal_type(f4(B()))  # E: No overload variant of "f4" matches argument type "B" \
-        # N: Possible overload variants: \
-        # N:     def f4(x: A) -> A \
-        # N:     def f4(x: E) -> E \
-        # N: Revealed type is "Any"
+                          # N: Possible overload variants: \
+                          # N:     def f4(x: A) -> A \
+                          # N:     def f4(x: E) -> E \
+                          # N: Revealed type is "Any"
+
 
 [case testOverloadIfSkipUnknownExecution]
 # flags: --always-true True
@@ -5901,14 +5909,14 @@ class D: ...
 
 @overload  # E: Single overload definition, multiple required
 def f1(x: A) -> A: ...
-if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+if maybe_true:  # E: Condition can't be inferred, unable to merge overloads \
                 # E: Name "maybe_true" is not defined
     @overload
     def f1(x: B) -> B: ...
 def f1(x): ...
 reveal_type(f1(A()))  # N: Revealed type is "__main__.A"
 
-if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+if maybe_true:  # E: Condition can't be inferred, unable to merge overloads \
                 # E: Name "maybe_true" is not defined
     @overload
     def f2(x: A) -> A: ...
@@ -5918,15 +5926,15 @@ def f2(x: B) -> B: ...
 def f2(x: C) -> C: ...
 def f2(x): ...
 reveal_type(f2(A()))  # E: No overload variant of "f2" matches argument type "A" \
-    # N: Possible overload variants: \
-    # N:     def f2(x: B) -> B \
-    # N:     def f2(x: C) -> C \
-    # N: Revealed type is "Any"
+                      # N: Possible overload variants: \
+                      # N:     def f2(x: B) -> B \
+                      # N:     def f2(x: C) -> C \
+                      # N: Revealed type is "Any"
 
 if True:
     @overload  # E: Single overload definition, multiple required
     def f3(x: A) -> A: ...
-    if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+    if maybe_true:  # E: Condition can't be inferred, unable to merge overloads \
                     # E: Name "maybe_true" is not defined
         @overload
         def f3(x: B) -> B: ...
@@ -5934,7 +5942,7 @@ if True:
 reveal_type(f3(A()))  # N: Revealed type is "__main__.A"
 
 if True:
-    if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+    if maybe_true:  # E: Condition can't be inferred, unable to merge overloads \
                     # E: Name "maybe_true" is not defined
         @overload
         def f4(x: A) -> A: ...
@@ -5944,10 +5952,10 @@ if True:
     def f4(x: C) -> C: ...
     def f4(x): ...
 reveal_type(f4(A()))  # E: No overload variant of "f4" matches argument type "A" \
-    # N: Possible overload variants: \
-    # N:     def f4(x: B) -> B \
-    # N:     def f4(x: C) -> C \
-    # N: Revealed type is "Any"
+                      # N: Possible overload variants: \
+                      # N:     def f4(x: B) -> B \
+                      # N:     def f4(x: C) -> C \
+                      # N: Revealed type is "Any"
 
 [case testOverloadIfDontSkipUnrelatedOverload]
 # flags: --always-true True
@@ -6187,16 +6195,16 @@ if False:
 def f8(x): ...
 reveal_type(f8(A()))  # N: Revealed type is "__main__.A"
 reveal_type(f8(C()))  # E: No overload variant of "f8" matches argument type "C" \
-    # N: Possible overload variants: \
-    # N:     def f8(x: A) -> A \
-    # N:     def f8(x: B) -> B \
-    # N: Revealed type is "Any"
+                      # N: Possible overload variants: \
+                      # N:     def f8(x: A) -> A \
+                      # N:     def f8(x: B) -> B \
+                      # N: Revealed type is "Any"
 
-if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+if maybe_true:  # E: Condition can't be inferred, unable to merge overloads \
                 # E: Name "maybe_true" is not defined
     @overload
     def f9(x: A) -> A: ...
-if another_maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+if another_maybe_true:  # E: Condition can't be inferred, unable to merge overloads \
                         # E: Name "another_maybe_true" is not defined
     @overload
     def f9(x: B) -> B: ...
@@ -6206,18 +6214,18 @@ def f9(x: C) -> C: ...
 def f9(x: D) -> D: ...
 def f9(x): ...
 reveal_type(f9(A()))  # E: No overload variant of "f9" matches argument type "A" \
-    # N: Possible overload variants: \
-    # N:     def f9(x: C) -> C \
-    # N:     def f9(x: D) -> D \
-    # N: Revealed type is "Any"
+                      # N: Possible overload variants: \
+                      # N:     def f9(x: C) -> C \
+                      # N:     def f9(x: D) -> D \
+                      # N: Revealed type is "Any"
 reveal_type(f9(C()))  # N: Revealed type is "__main__.C"
 
 if True:
-    if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+    if maybe_true:  # E: Condition can't be inferred, unable to merge overloads \
                     # E: Name "maybe_true" is not defined
         @overload
         def f10(x: A) -> A: ...
-    if another_maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+    if another_maybe_true:  # E: Condition can't be inferred, unable to merge overloads \
                             # E: Name "another_maybe_true" is not defined
         @overload
         def f10(x: B) -> B: ...
@@ -6227,10 +6235,10 @@ if True:
     def f10(x: D) -> D: ...
     def f10(x): ...
 reveal_type(f10(A()))  # E: No overload variant of "f10" matches argument type "A" \
-    # N: Possible overload variants: \
-    # N:     def f10(x: C) -> C \
-    # N:     def f10(x: D) -> D \
-    # N: Revealed type is "Any"
+                       # N: Possible overload variants: \
+                       # N:     def f10(x: C) -> C \
+                       # N:     def f10(x: D) -> D \
+                       # N: Revealed type is "Any"
 reveal_type(f10(C()))  # N: Revealed type is "__main__.C"
 
 if some_var:  # E: Name "some_var" is not defined
@@ -6251,6 +6259,7 @@ if True:
     def f12(x: B) -> B: ...
     def f12(x): ...
 reveal_type(f12(A()))  # N: Revealed type is "__main__.A"
+
 [typing fixtures/typing-medium.pyi]
 
 [case testOverloadIfUnconditionalFuncDef]
@@ -6406,7 +6415,7 @@ def f1(g: A) -> A: ...
 if True:
     @overload  # E: Single overload definition, multiple required
     def f1(g: B) -> B: ...
-    if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+    if maybe_true:  # E: Condition can't be inferred, unable to merge overloads \
                     # E: Name "maybe_true" is not defined
         @overload
         def f1(g: C) -> C: ...
@@ -6432,7 +6441,7 @@ if True:
     def f3(g: B) -> B: ...
     if True:
         pass  # Some other node
-        @overload  # E: Name "f3" already defined on line 32  \
+        @overload  # E: Name "f3" already defined on line 32 \
                    # E: An overloaded function outside a stub file must have an implementation
         def f3(g: C) -> C: ...
         @overload
@@ -6545,3 +6554,18 @@ class Snafu(object):
 reveal_type(Snafu().snafu('123'))  # N: Revealed type is "builtins.str"
 reveal_type(Snafu.snafu('123'))  # N: Revealed type is "builtins.str"
 [builtins fixtures/staticmethod.pyi]
+
+[case testOverloadedWithInternalTypeVars]
+# flags: --new-type-inference
+import m
+
+[file m.pyi]
+from typing import Callable, TypeVar, overload
+
+T = TypeVar("T")
+S = TypeVar("S", bound=str)
+
+@overload
+def foo(x: int = ...) -> Callable[[T], T]: ...
+@overload
+def foo(x: S = ...) -> Callable[[T], T]: ...

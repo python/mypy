@@ -73,6 +73,9 @@ if sys.version_info >= (3, 8):
 if sys.version_info >= (3, 10):
     __all__ += ["SOFT_KEYWORD"]
 
+if sys.version_info >= (3, 12):
+    __all__ += ["EXCLAMATION", "FSTRING_END", "FSTRING_MIDDLE", "FSTRING_START"]
+
 ENDMARKER: int
 NAME: int
 NUMBER: int
@@ -144,6 +147,12 @@ if sys.version_info >= (3, 8):
     EXACT_TOKEN_TYPES: dict[str, int]
 if sys.version_info >= (3, 10):
     SOFT_KEYWORD: int
+
+if sys.version_info >= (3, 12):
+    EXCLAMATION: int
+    FSTRING_END: int
+    FSTRING_MIDDLE: int
+    FSTRING_START: int
 
 def ISTERMINAL(x: int) -> bool: ...
 def ISNONTERMINAL(x: int) -> bool: ...

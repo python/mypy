@@ -7,7 +7,7 @@ def f() -> i64:
     return y
 [out]
 def f():
-    x, y :: int64
+    x, y :: i64
 L0:
     x = 5
     y = x
@@ -40,7 +40,7 @@ def all_comparisons(x: i64) -> int:
     return y
 [out]
 def min(x, y):
-    x, y :: int64
+    x, y :: i64
     r0 :: bit
 L0:
     r0 = x < y :: signed
@@ -52,7 +52,7 @@ L2:
 L3:
     unreachable
 def all_comparisons(x):
-    x :: int64
+    x :: i64
     r0 :: bit
     y :: int
     r1, r2, r3, r4, r5 :: bit
@@ -110,7 +110,7 @@ def f(x: i64, y: i64) -> i64:
     return y - z
 [out]
 def f(x, y):
-    x, y, r0, z, r1 :: int64
+    x, y, r0, z, r1 :: i64
 L0:
     r0 = x + y
     z = r0
@@ -125,7 +125,7 @@ def f() -> i64:
     return -i
 [out]
 def f():
-    i, r0 :: int64
+    i, r0 :: i64
 L0:
     i = -3
     r0 = 0 - i
@@ -140,7 +140,7 @@ def unary(x: i64) -> i64:
     return x
 [out]
 def unary(x):
-    x, r0, y :: int64
+    x, r0, y :: i64
 L0:
     r0 = x ^ -1
     y = r0
@@ -157,12 +157,12 @@ def f(a: Any) -> None:
 [out]
 def f(a):
     a :: object
-    r0, b :: int64
+    r0, b :: i64
     r1 :: object
 L0:
-    r0 = unbox(int64, a)
+    r0 = unbox(i64, a)
     b = r0
-    r1 = box(int64, b)
+    r1 = box(i64, b)
     a = r1
     return 1
 
@@ -177,20 +177,20 @@ def set(a: List[i64], i: i64, x: i64) -> None:
 [out]
 def get(a, i):
     a :: list
-    i :: int64
+    i :: i64
     r0 :: object
-    r1 :: int64
+    r1 :: i64
 L0:
     r0 = CPyList_GetItemInt64(a, i)
-    r1 = unbox(int64, r0)
+    r1 = unbox(i64, r0)
     return r1
 def set(a, i, x):
     a :: list
-    i, x :: int64
+    i, x :: i64
     r0 :: object
     r1 :: bit
 L0:
-    r0 = box(int64, x)
+    r0 = box(i64, x)
     r1 = CPyList_SetItemInt64(a, i, r0)
     return 1
 
@@ -203,7 +203,7 @@ def f() -> i64:
     return 3 - b
 [out]
 def f():
-    a, r0, b, r1 :: int64
+    a, r0, b, r1 :: i64
 L0:
     a = 1
     r0 = a + 2
@@ -222,7 +222,7 @@ def f(a: i64) -> i64:
     return 3
 [out]
 def f(a):
-    a :: int64
+    a :: i64
     r0, r1 :: bit
 L0:
     r0 = a < 3 :: signed
@@ -257,7 +257,7 @@ def others(a: i64, b: i64) -> i64:
     return a
 [out]
 def add(a):
-    a, b, r0, r1 :: int64
+    a, b, r0, r1 :: i64
 L0:
     b = a
     r0 = b + 1
@@ -266,7 +266,7 @@ L0:
     a = r1
     return a
 def others(a, b):
-    a, b, r0, r1, r2, r3, r4, r5, r6 :: int64
+    a, b, r0, r1, r2, r3, r4, r5, r6 :: i64
 L0:
     r0 = a - b
     a = r0
@@ -307,7 +307,7 @@ def unary(a: i64) -> i64:
     return ~a
 [out]
 def forward(a, b):
-    a, b, r0, r1, r2, r3, r4 :: int64
+    a, b, r0, r1, r2, r3, r4 :: i64
 L0:
     r0 = a & 1
     b = r0
@@ -321,7 +321,7 @@ L0:
     b = r4
     return b
 def reverse(a, b):
-    a, b, r0, r1, r2, r3, r4 :: int64
+    a, b, r0, r1, r2, r3, r4 :: i64
 L0:
     r0 = 1 & a
     b = r0
@@ -335,7 +335,7 @@ L0:
     b = r4
     return b
 def unary(a):
-    a, r0 :: int64
+    a, r0 :: i64
 L0:
     r0 = a ^ -1
     return r0
@@ -355,11 +355,11 @@ def divide_by_zero(x: i64) -> i64:
     return x // 0
 [out]
 def constant_divisor(x):
-    x, r0, r1 :: int64
+    x, r0, r1 :: i64
     r2, r3, r4 :: bit
-    r5 :: int64
+    r5 :: i64
     r6 :: bit
-    r7 :: int64
+    r7 :: i64
 L0:
     r0 = x / 7
     r1 = r0
@@ -377,22 +377,22 @@ L2:
 L3:
     return r1
 def variable_divisor(x, y):
-    x, y, r0 :: int64
+    x, y, r0 :: i64
 L0:
     r0 = CPyInt64_Divide(x, y)
     return r0
 def constant_lhs(x):
-    x, r0 :: int64
+    x, r0 :: i64
 L0:
     r0 = CPyInt64_Divide(27, x)
     return r0
 def divide_by_neg_one(x):
-    x, r0 :: int64
+    x, r0 :: i64
 L0:
     r0 = CPyInt64_Divide(x, -1)
     return r0
 def divide_by_zero(x):
-    x, r0 :: int64
+    x, r0 :: i64
 L0:
     r0 = CPyInt64_Divide(x, 0)
     return r0
@@ -410,9 +410,9 @@ def mod_by_zero(x: i64) -> i64:
     return x % 0
 [out]
 def constant_divisor(x):
-    x, r0, r1 :: int64
+    x, r0, r1 :: i64
     r2, r3, r4, r5 :: bit
-    r6 :: int64
+    r6 :: i64
 L0:
     r0 = x % 7
     r1 = r0
@@ -429,17 +429,17 @@ L2:
 L3:
     return r1
 def variable_divisor(x, y):
-    x, y, r0 :: int64
+    x, y, r0 :: i64
 L0:
     r0 = CPyInt64_Remainder(x, y)
     return r0
 def constant_lhs(x):
-    x, r0 :: int64
+    x, r0 :: i64
 L0:
     r0 = CPyInt64_Remainder(27, x)
     return r0
 def mod_by_zero(x):
-    x, r0 :: int64
+    x, r0 :: i64
 L0:
     r0 = CPyInt64_Remainder(x, 0)
     return r0
@@ -455,11 +455,11 @@ def by_variable(x: i64, y: i64) -> i64:
     return x
 [out]
 def by_constant(x):
-    x, r0, r1 :: int64
+    x, r0, r1 :: i64
     r2, r3, r4 :: bit
-    r5 :: int64
+    r5 :: i64
     r6 :: bit
-    r7 :: int64
+    r7 :: i64
 L0:
     r0 = x / 7
     r1 = r0
@@ -478,7 +478,7 @@ L3:
     x = r1
     return x
 def by_variable(x, y):
-    x, y, r0 :: int64
+    x, y, r0 :: i64
 L0:
     r0 = CPyInt64_Divide(x, y)
     x = r0
@@ -495,9 +495,9 @@ def by_variable(x: i64, y: i64) -> i64:
     return x
 [out]
 def by_constant(x):
-    x, r0, r1 :: int64
+    x, r0, r1 :: i64
     r2, r3, r4, r5 :: bit
-    r6 :: int64
+    r6 :: i64
 L0:
     r0 = x % 7
     r1 = r0
@@ -515,7 +515,7 @@ L3:
     x = r1
     return x
 def by_variable(x, y):
-    x, y, r0 :: int64
+    x, y, r0 :: i64
 L0:
     r0 = CPyInt64_Remainder(x, y)
     x = r0
@@ -532,14 +532,14 @@ def f(x: i64) -> None:
         g(n)
 [out]
 def g(a):
-    a :: int64
+    a :: i64
 L0:
     return 1
 def f(x):
-    x, r0, n :: int64
+    x, r0, n :: i64
     r1 :: bit
     r2 :: None
-    r3 :: int64
+    r3 :: i64
 L0:
     r0 = 0
     n = r0
@@ -566,10 +566,10 @@ def int_to_i64(a):
     a :: int
     r0 :: native_int
     r1 :: bit
-    r2, r3 :: int64
+    r2, r3 :: i64
     r4 :: ptr
     r5 :: c_ptr
-    r6 :: int64
+    r6 :: i64
 L0:
     r0 = a & 1
     r1 = r0 == 0
@@ -594,7 +594,7 @@ def i64_to_int(a: i64) -> int:
     return a
 [out]
 def i64_to_int(a):
-    a :: int64
+    a :: i64
     r0, r1 :: bit
     r2, r3, r4 :: int
 L0:
@@ -620,7 +620,7 @@ def i64_to_int(a: i64) -> int:
     return a
 [out]
 def i64_to_int(a):
-    a :: int64
+    a :: i64
     r0, r1 :: bit
     r2, r3 :: int
     r4 :: native_int
@@ -636,7 +636,7 @@ L2:
     r3 = r2
     goto L4
 L3:
-    r4 = truncate a: int64 to native_int
+    r4 = truncate a: i64 to native_int
     r5 = r4 << 1
     r3 = r5
 L4:
@@ -658,23 +658,23 @@ def h() -> i64:
     return x + y + t[0]
 [out]
 def f(x, y):
-    x, y :: int64
-    r0 :: tuple[int64, int64]
+    x, y :: i64
+    r0 :: tuple[i64, i64]
 L0:
     r0 = (x, y)
     return r0
 def g():
     r0 :: tuple[int, int]
-    r1 :: tuple[int64, int64]
+    r1 :: tuple[i64, i64]
 L0:
     r0 = (2, 4)
     r1 = (1, 2)
     return r1
 def h():
-    r0 :: tuple[int64, int64]
-    r1, x, r2, y :: int64
-    r3, t :: tuple[int64, int64]
-    r4, r5, r6 :: int64
+    r0 :: tuple[i64, i64]
+    r1, x, r2, y :: i64
+    r3, t :: tuple[i64, i64]
+    r4, r5, r6 :: i64
 L0:
     r0 = g()
     r1 = r0[0]
@@ -694,14 +694,14 @@ def f(x: i64, y: int) -> i64:
     return x + y
 [out]
 def f(x, y):
-    x :: int64
+    x :: i64
     y :: int
     r0 :: native_int
     r1 :: bit
-    r2, r3 :: int64
+    r2, r3 :: i64
     r4 :: ptr
     r5 :: c_ptr
-    r6, r7 :: int64
+    r6, r7 :: i64
 L0:
     r0 = y & 1
     r1 = r0 == 0
@@ -727,13 +727,13 @@ def f(x: int, y: i64) -> i64:
 [out]
 def f(x, y):
     x :: int
-    y :: int64
+    y :: i64
     r0 :: native_int
     r1 :: bit
-    r2, r3 :: int64
+    r2, r3 :: i64
     r4 :: ptr
     r5 :: c_ptr
-    r6, r7 :: int64
+    r6, r7 :: i64
 L0:
     r0 = x & 1
     r1 = r0 == 0
@@ -760,14 +760,14 @@ def f(y: i64) -> int:
     return x
 [out]
 def f(y):
-    y :: int64
+    y :: i64
     x :: int
     r0 :: native_int
     r1 :: bit
-    r2, r3 :: int64
+    r2, r3 :: i64
     r4 :: ptr
     r5 :: c_ptr
-    r6, r7 :: int64
+    r6, r7 :: i64
     r8, r9 :: bit
     r10, r11, r12 :: int
 L0:
@@ -812,13 +812,13 @@ def f(y: int) -> i64:
 [out]
 def f(y):
     y :: int
-    x :: int64
+    x :: i64
     r0 :: native_int
     r1 :: bit
-    r2, r3 :: int64
+    r2, r3 :: i64
     r4 :: ptr
     r5 :: c_ptr
-    r6, r7 :: int64
+    r6, r7 :: i64
 L0:
     x = 0
     r0 = y & 1
@@ -846,13 +846,13 @@ def f(x: int, y: i64) -> bool:
 [out]
 def f(x, y):
     x :: int
-    y :: int64
+    y :: i64
     r0 :: native_int
     r1 :: bit
-    r2, r3 :: int64
+    r2, r3 :: i64
     r4 :: ptr
     r5 :: c_ptr
-    r6 :: int64
+    r6 :: i64
     r7 :: bit
 L0:
     r0 = x & 1
@@ -878,14 +878,14 @@ def f(x: i64, y: int) -> bool:
     return x == y
 [out]
 def f(x, y):
-    x :: int64
+    x :: i64
     y :: int
     r0 :: native_int
     r1 :: bit
-    r2, r3 :: int64
+    r2, r3 :: i64
     r4 :: ptr
     r5 :: c_ptr
-    r6 :: int64
+    r6 :: i64
     r7 :: bit
 L0:
     r0 = y & 1
@@ -912,20 +912,20 @@ def f(x: int, y: i64) -> bool:
 [out]
 def f(x, y):
     x :: int
-    y :: int64
+    y :: i64
     r0 :: native_int
     r1 :: bit
-    r2, r3, r4 :: int64
+    r2, r3, r4 :: i64
     r5 :: ptr
     r6 :: c_ptr
-    r7 :: int64
+    r7 :: i64
     r8 :: bit
 L0:
     r0 = x & 1
     r1 = r0 == 0
     if r1 goto L1 else goto L2 :: bool
 L1:
-    r2 = extend signed x: builtins.int to int64
+    r2 = extend signed x: builtins.int to i64
     r3 = r2 >> 1
     r4 = r3
     goto L3
@@ -949,7 +949,7 @@ def f(x: i64) -> i64:
     return 3
 [out]
 def f(x):
-    x :: int64
+    x :: i64
     r0, r1 :: bit
 L0:
     r0 = x != 0
@@ -975,14 +975,14 @@ def g(x: i64, y: int) -> int:
     return y
 [out]
 def f(x, y):
-    x :: int64
+    x :: i64
     y :: int
     r0 :: native_int
     r1 :: bit
-    r2, r3 :: int64
+    r2, r3 :: i64
     r4 :: ptr
     r5 :: c_ptr
-    r6 :: int64
+    r6 :: i64
 L0:
     r0 = y & 1
     r1 = r0 == 0
@@ -1001,7 +1001,7 @@ L3:
     x = r3
     return x
 def g(x, y):
-    x :: int64
+    x :: i64
     y :: int
     r0, r1 :: bit
     r2, r3, r4 :: int
@@ -1043,7 +1043,7 @@ class C:
 [out]
 def add_simple(c):
     c :: __main__.C
-    r0, r1, r2 :: int64
+    r0, r1, r2 :: i64
 L0:
     r0 = c.x
     r1 = c.y
@@ -1051,7 +1051,7 @@ L0:
     return r2
 def inplace_add_simple(c):
     c :: __main__.C
-    r0, r1, r2 :: int64
+    r0, r1, r2 :: i64
     r3 :: bool
 L0:
     r0 = c.x
@@ -1062,9 +1062,9 @@ L0:
 def add_borrow(d):
     d :: __main__.D
     r0 :: __main__.C
-    r1 :: int64
+    r1 :: i64
     r2 :: __main__.C
-    r3, r4 :: int64
+    r3, r4 :: i64
 L0:
     r0 = borrow d.c
     r1 = r0.x
@@ -1095,7 +1095,7 @@ class C:
 [out]
 def bitwise_simple(c):
     c :: __main__.C
-    r0, r1, r2 :: int64
+    r0, r1, r2 :: i64
 L0:
     r0 = c.x
     r1 = c.y
@@ -1103,7 +1103,7 @@ L0:
     return r2
 def inplace_bitwide_simple(c):
     c :: __main__.C
-    r0, r1, r2 :: int64
+    r0, r1, r2 :: i64
     r3 :: bool
 L0:
     r0 = c.x
@@ -1114,9 +1114,9 @@ L0:
 def bitwise_borrow(d):
     d :: __main__.D
     r0 :: __main__.C
-    r1 :: int64
+    r1 :: i64
     r2 :: __main__.C
-    r3, r4 :: int64
+    r3, r4 :: i64
 L0:
     r0 = borrow d.c
     r1 = r0.x
@@ -1137,7 +1137,7 @@ class C:
     s: str
 [out]
 def f(n):
-    n :: int64
+    n :: i64
     r0 :: __main__.C
     r1 :: list
     r2, r3 :: ptr
@@ -1170,13 +1170,13 @@ def f(a: List[i64], n: i64) -> bool:
 [out]
 def f(a, n):
     a :: list
-    n :: int64
+    n :: i64
     r0 :: object
-    r1 :: int64
+    r1 :: i64
     r2 :: bit
 L0:
     r0 = CPyList_GetItemInt64Borrow(a, n)
-    r1 = unbox(int64, r0)
+    r1 = unbox(i64, r0)
     r2 = r1 == 0
     keep_alive a, n
     if r2 goto L1 else goto L2 :: bool
@@ -1201,11 +1201,11 @@ def g(a: List[i64], y: i64) -> bool:
 [out]
 def f(a, y):
     a :: list
-    y :: int64
+    y :: i64
     r0 :: ptr
     r1 :: native_int
     r2 :: short_int
-    r3 :: int64
+    r3 :: i64
     r4 :: bit
 L0:
     r0 = get_element_ptr a ob_size :: PyVarObject
@@ -1221,11 +1221,11 @@ L2:
     return 0
 def g(a, y):
     a :: list
-    y :: int64
+    y :: i64
     r0 :: ptr
     r1 :: native_int
     r2 :: short_int
-    r3 :: int64
+    r3 :: i64
     r4 :: bit
 L0:
     r0 = get_element_ptr a ob_size :: PyVarObject
@@ -1248,7 +1248,7 @@ def f(n: i64) -> List[i64]:
     return [n] * n
 [out]
 def f(n):
-    n :: int64
+    n :: i64
     r0 :: list
     r1 :: object
     r2, r3 :: ptr
@@ -1257,7 +1257,7 @@ def f(n):
     r9 :: list
 L0:
     r0 = PyList_New(1)
-    r1 = box(int64, n)
+    r1 = box(i64, n)
     r2 = get_element_ptr r0 ob_item :: PyListObject
     r3 = load_mem r2 :: ptr*
     set_mem r3, r1 :: builtins.object*
@@ -1297,11 +1297,11 @@ def lt_i64(a: List[i64], n: i64) -> bool:
 [out]
 def add_i64(a, n):
     a :: list
-    n :: int64
+    n :: i64
     r0 :: ptr
     r1 :: native_int
     r2 :: short_int
-    r3, r4 :: int64
+    r3, r4 :: i64
 L0:
     r0 = get_element_ptr a ob_size :: PyVarObject
     r1 = load_mem r0 :: native_int*
@@ -1312,11 +1312,11 @@ L0:
     return r4
 def add_i64_2(a, n):
     a :: list
-    n :: int64
+    n :: i64
     r0 :: ptr
     r1 :: native_int
     r2 :: short_int
-    r3, r4 :: int64
+    r3, r4 :: i64
 L0:
     r0 = get_element_ptr a ob_size :: PyVarObject
     r1 = load_mem r0 :: native_int*
@@ -1327,11 +1327,11 @@ L0:
     return r4
 def eq_i64(a, n):
     a :: list
-    n :: int64
+    n :: i64
     r0 :: ptr
     r1 :: native_int
     r2 :: short_int
-    r3 :: int64
+    r3 :: i64
     r4 :: bit
 L0:
     r0 = get_element_ptr a ob_size :: PyVarObject
@@ -1347,11 +1347,11 @@ L2:
     return 0
 def lt_i64(a, n):
     a :: list
-    n :: int64
+    n :: i64
     r0 :: ptr
     r1 :: native_int
     r2 :: short_int
-    r3 :: int64
+    r3 :: i64
     r4 :: bit
 L0:
     r0 = get_element_ptr a ob_size :: PyVarObject
@@ -1376,10 +1376,10 @@ def f(x: Optional[i64]) -> i64:
     return x
 [out]
 def f(x):
-    x :: union[int64, None]
+    x :: union[i64, None]
     r0 :: object
     r1 :: bit
-    r2 :: int64
+    r2 :: i64
 L0:
     r0 = load_address _Py_NoneStruct
     r1 = x == r0
@@ -1387,7 +1387,7 @@ L0:
 L1:
     return 1
 L2:
-    r2 = unbox(int64, x)
+    r2 = unbox(i64, x)
     return r2
 
 [case testI64DefaultValueSingle]
@@ -1400,10 +1400,10 @@ def g() -> i64:
     return f(7) + f(8, 9)
 [out]
 def f(x, y, __bitmap):
-    x, y :: int64
-    __bitmap, r0 :: uint32
+    x, y :: i64
+    __bitmap, r0 :: u32
     r1 :: bit
-    r2 :: int64
+    r2 :: i64
 L0:
     r0 = __bitmap & 1
     r1 = r0 == 0
@@ -1414,7 +1414,7 @@ L2:
     r2 = x + y
     return r2
 def g():
-    r0, r1, r2 :: int64
+    r0, r1, r2 :: i64
 L0:
     r0 = f(7, 0, 0)
     r1 = f(8, 9, 1)
@@ -1431,12 +1431,12 @@ def g() -> i64:
     return f(7) + f(8, 9) + f(1, 2, 3) + f(4, 5, 6, 7)
 [out]
 def f(a, b, c, d, __bitmap):
-    a, b :: int64
+    a, b :: i64
     c :: int
-    d :: int64
-    __bitmap, r0 :: uint32
+    d :: i64
+    __bitmap, r0 :: u32
     r1 :: bit
-    r2 :: uint32
+    r2 :: u32
     r3 :: bit
 L0:
     r0 = __bitmap & 1
@@ -1458,9 +1458,9 @@ L6:
     return 0
 def g():
     r0 :: int
-    r1 :: int64
+    r1 :: i64
     r2 :: int
-    r3, r4, r5, r6, r7, r8 :: int64
+    r3, r4, r5, r6, r7, r8 :: i64
 L0:
     r0 = <error> :: int
     r1 = f(7, 0, r0, 0, 0)
@@ -1486,8 +1486,8 @@ def f(c: C) -> None:
 [out]
 def C.m(self, x, __bitmap):
     self :: __main__.C
-    x :: int64
-    __bitmap, r0 :: uint32
+    x :: i64
+    __bitmap, r0 :: u32
     r1 :: bit
 L0:
     r0 = __bitmap & 1
@@ -1506,7 +1506,10 @@ L0:
     return 1
 
 [case testI64ExplicitConversionFromNativeInt]
-from mypy_extensions import i64, i32
+from mypy_extensions import i64, i32, i16
+
+def from_i16(x: i16) -> i64:
+    return i64(x)
 
 def from_i32(x: i32) -> i64:
     return i64(x)
@@ -1514,14 +1517,20 @@ def from_i32(x: i32) -> i64:
 def from_i64(x: i64) -> i64:
     return i64(x)
 [out]
-def from_i32(x):
-    x :: int32
-    r0 :: int64
+def from_i16(x):
+    x :: i16
+    r0 :: i64
 L0:
-    r0 = extend signed x: int32 to int64
+    r0 = extend signed x: i16 to i64
+    return r0
+def from_i32(x):
+    x :: i32
+    r0 :: i64
+L0:
+    r0 = extend signed x: i32 to i64
     return r0
 def from_i64(x):
-    x :: int64
+    x :: i64
 L0:
     return x
 
@@ -1535,10 +1544,10 @@ def f(x):
     x :: int
     r0 :: native_int
     r1 :: bit
-    r2, r3 :: int64
+    r2, r3 :: i64
     r4 :: ptr
     r5 :: c_ptr
-    r6 :: int64
+    r6 :: i64
 L0:
     r0 = x & 1
     r1 = r0 == 0
@@ -1563,7 +1572,7 @@ def f(x: i64) -> int:
     return int(x)
 [out]
 def f(x):
-    x :: int64
+    x :: i64
     r0, r1 :: bit
     r2, r3, r4 :: int
 L0:
@@ -1591,7 +1600,7 @@ def f() -> None:
     z = i64(-3)
 [out]
 def f():
-    x, y, z :: int64
+    x, y, z :: i64
 L0:
     x = 0
     y = 11
@@ -1606,9 +1615,9 @@ def f() -> None:
         y = x
 [out]
 def f():
-    r0, x :: int64
+    r0, x :: i64
     r1 :: bit
-    y, r2 :: int64
+    y, r2 :: i64
 L0:
     r0 = 0
     x = r0
@@ -1633,9 +1642,9 @@ def f() -> None:
         y = x
 [out]
 def f():
-    r0, x :: int64
+    r0, x :: i64
     r1 :: bit
-    y, r2 :: int64
+    y, r2 :: i64
 L0:
     r0 = 0
     x = r0
@@ -1662,8 +1671,8 @@ class D(C):
 [out]
 def C.f(self, x, __bitmap):
     self :: __main__.C
-    x :: int64
-    __bitmap, r0 :: uint32
+    x :: i64
+    __bitmap, r0 :: u32
     r1 :: bit
 L0:
     r0 = __bitmap & 1
@@ -1675,8 +1684,8 @@ L2:
     return 1
 def D.f(self, x, __bitmap):
     self :: __main__.D
-    x :: int64
-    __bitmap, r0 :: uint32
+    x :: i64
+    __bitmap, r0 :: u32
     r1 :: bit
 L0:
     r0 = __bitmap & 1
@@ -1742,26 +1751,26 @@ def compare_bool_to_i64(n: i64, b: bool) -> bool:
     return True
 [out]
 def add_bool_to_int(n, b):
-    n :: int64
+    n :: i64
     b :: bool
-    r0, r1 :: int64
+    r0, r1 :: i64
 L0:
-    r0 = extend b: builtins.bool to int64
+    r0 = extend b: builtins.bool to i64
     r1 = n + r0
     return r1
 def compare_bool_to_i64(n, b):
-    n :: int64
+    n :: i64
     b :: bool
-    r0 :: int64
+    r0 :: i64
     r1 :: bit
-    r2 :: int64
+    r2 :: i64
     r3 :: bit
 L0:
-    r0 = extend b: builtins.bool to int64
+    r0 = extend b: builtins.bool to i64
     r1 = n == r0
     if r1 goto L1 else goto L2 :: bool
 L1:
-    r2 = extend b: builtins.bool to int64
+    r2 = extend b: builtins.bool to i64
     r3 = r2 != n
     return r3
 L2:
@@ -1779,18 +1788,18 @@ def cast_int(x: int) -> i64:
 [out]
 def cast_object(o):
     o :: object
-    r0 :: int64
+    r0 :: i64
 L0:
-    r0 = unbox(int64, o)
+    r0 = unbox(i64, o)
     return r0
 def cast_int(x):
     x :: int
     r0 :: native_int
     r1 :: bit
-    r2, r3 :: int64
+    r2, r3 :: i64
     r4 :: ptr
     r5 :: c_ptr
-    r6 :: int64
+    r6 :: i64
 L0:
     r0 = x & 1
     r1 = r0 == 0
@@ -1819,16 +1828,16 @@ def cast_int(x):
     x :: int
     r0 :: native_int
     r1 :: bit
-    r2, r3, r4 :: int64
+    r2, r3, r4 :: i64
     r5 :: ptr
     r6 :: c_ptr
-    r7 :: int64
+    r7 :: i64
 L0:
     r0 = x & 1
     r1 = r0 == 0
     if r1 goto L1 else goto L2 :: bool
 L1:
-    r2 = extend signed x: builtins.int to int64
+    r2 = extend signed x: builtins.int to i64
     r3 = r2 >> 1
     r4 = r3
     goto L3
@@ -1865,25 +1874,25 @@ def float_to_i64(x: float) -> i64:
 [out]
 def bool_to_i64(b):
     b :: bool
-    r0 :: int64
+    r0 :: i64
 L0:
-    r0 = extend b: builtins.bool to int64
+    r0 = extend b: builtins.bool to i64
     return r0
 def str_to_i64(s):
     s :: str
     r0 :: object
-    r1 :: int64
+    r1 :: i64
 L0:
     r0 = CPyLong_FromStr(s)
-    r1 = unbox(int64, r0)
+    r1 = unbox(i64, r0)
     return r1
 def str_to_i64_with_base(s):
     s :: str
     r0 :: object
-    r1 :: int64
+    r1 :: i64
 L0:
     r0 = CPyLong_FromStrWithBase(s, 4)
-    r1 = unbox(int64, r0)
+    r1 = unbox(i64, r0)
     return r1
 def C.__int__(self):
     self :: __main__.C
@@ -1891,7 +1900,7 @@ L0:
     return 5
 def instance_to_i64(c):
     c :: __main__.C
-    r0 :: int64
+    r0 :: i64
 L0:
     r0 = c.__int__()
     return r0
@@ -1900,10 +1909,10 @@ def float_to_i64(x):
     r0 :: int
     r1 :: native_int
     r2 :: bit
-    r3, r4 :: int64
+    r3, r4 :: i64
     r5 :: ptr
     r6 :: c_ptr
-    r7 :: int64
+    r7 :: i64
 L0:
     r0 = CPyTagged_FromFloat(x)
     r1 = r0 & 1
@@ -1933,17 +1942,17 @@ def float_to_i64(x):
     r0 :: int
     r1 :: native_int
     r2 :: bit
-    r3, r4, r5 :: int64
+    r3, r4, r5 :: i64
     r6 :: ptr
     r7 :: c_ptr
-    r8 :: int64
+    r8 :: i64
 L0:
     r0 = CPyTagged_FromFloat(x)
     r1 = r0 & 1
     r2 = r1 == 0
     if r2 goto L1 else goto L2 :: bool
 L1:
-    r3 = extend signed r0: builtins.int to int64
+    r3 = extend signed r0: builtins.int to i64
     r4 = r3 >> 1
     r5 = r4
     goto L3
@@ -1963,7 +1972,7 @@ def i64_to_float(x: i64) -> float:
     return float(x)
 [out]
 def i64_to_float(x):
-    x :: int64
+    x :: i64
     r0, r1 :: bit
     r2, r3, r4 :: int
     r5 :: float
@@ -1991,7 +2000,7 @@ def i64_to_float(x: i64) -> float:
     return float(x)
 [out]
 def i64_to_float(x):
-    x :: int64
+    x :: i64
     r0, r1 :: bit
     r2, r3 :: int
     r4 :: native_int
@@ -2008,7 +2017,7 @@ L2:
     r3 = r2
     goto L4
 L3:
-    r4 = truncate x: int64 to native_int
+    r4 = truncate x: i64 to native_int
     r5 = r4 << 1
     r3 = r5
 L4:
@@ -2033,22 +2042,22 @@ def narrow2(x: Union[C, i64]) -> i64:
     return x.a
 [out]
 def narrow1(x):
-    x :: union[__main__.C, int64]
+    x :: union[__main__.C, i64]
     r0 :: object
-    r1 :: int32
+    r1 :: i32
     r2 :: bit
     r3 :: bool
-    r4 :: int64
+    r4 :: i64
     r5 :: __main__.C
-    r6 :: int64
+    r6 :: i64
 L0:
     r0 = load_address PyLong_Type
     r1 = PyObject_IsInstance(x, r0)
     r2 = r1 >= 0 :: signed
-    r3 = truncate r1: int32 to builtins.bool
+    r3 = truncate r1: i32 to builtins.bool
     if r3 goto L1 else goto L2 :: bool
 L1:
-    r4 = unbox(int64, x)
+    r4 = unbox(i64, x)
     return r4
 L2:
     r5 = borrow cast(__main__.C, x)
@@ -2056,22 +2065,22 @@ L2:
     keep_alive x
     return r6
 def narrow2(x):
-    x :: union[__main__.C, int64]
+    x :: union[__main__.C, i64]
     r0 :: object
-    r1 :: int32
+    r1 :: i32
     r2 :: bit
     r3 :: bool
-    r4 :: int64
+    r4 :: i64
     r5 :: __main__.C
-    r6 :: int64
+    r6 :: i64
 L0:
     r0 = load_address PyLong_Type
     r1 = PyObject_IsInstance(x, r0)
     r2 = r1 >= 0 :: signed
-    r3 = truncate r1: int32 to builtins.bool
+    r3 = truncate r1: i32 to builtins.bool
     if r3 goto L1 else goto L2 :: bool
 L1:
-    r4 = unbox(int64, x)
+    r4 = unbox(i64, x)
     return r4
 L2:
     r5 = borrow cast(__main__.C, x)
@@ -2090,17 +2099,17 @@ def g(n: int) -> None:
     t: tuple[i64, i64] = (1, n)
 [out]
 def f(t):
-    t :: tuple[int, int64, int]
+    t :: tuple[int, i64, int]
     r0 :: int
-    r1 :: int64
+    r1 :: i64
     r2 :: int
     r3 :: native_int
     r4 :: bit
-    r5, r6 :: int64
+    r5, r6 :: i64
     r7 :: ptr
     r8 :: c_ptr
-    r9 :: int64
-    r10, tt :: tuple[int, int64, int64]
+    r9 :: i64
+    r10, tt :: tuple[int, i64, i64]
 L0:
     r0 = t[0]
     r1 = t[1]
@@ -2128,11 +2137,11 @@ def g(n):
     r1 :: int
     r2 :: native_int
     r3 :: bit
-    r4, r5 :: int64
+    r4, r5 :: i64
     r6 :: ptr
     r7 :: c_ptr
-    r8 :: int64
-    r9, t :: tuple[int64, int64]
+    r8 :: i64
+    r9, t :: tuple[i64, i64]
 L0:
     r0 = (2, n)
     r1 = r0[1]

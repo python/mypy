@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import typing_extensions
 from abc import abstractmethod
-from typing import Callable
-from typing_extensions import Final
+from typing import Callable, Final
 
 from mypy.nodes import (
     AssignmentStmt,
@@ -498,6 +498,14 @@ def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
                 if builder.options.capi_version < (3, 8):
                     # TypedDict was added to typing in Python 3.8.
                     module = "typing_extensions"
+                    # TypedDict is not a real type on typing_extensions 4.7.0+
+                    name = "_TypedDict"
+                    if isinstance(typing_extensions.TypedDict, type):
+                        raise RuntimeError(
+                            "It looks like you may have an old version "
+                            "of typing_extensions installed. "
+                            "typing_extensions>=4.7.0 is required on Python 3.7."
+                        )
             else:
                 # In Python 3.9 TypedDict is not a real type.
                 name = "_TypedDict"

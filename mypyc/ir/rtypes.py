@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
-from typing_extensions import Final
+from typing_extensions import Final, TypeGuard
 
 from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name
 from mypyc.namegen import NameGenerator
@@ -206,13 +206,12 @@ class RPrimitive(RType):
         self.error_overlap = error_overlap
         if ctype == "CPyTagged":
             self.c_undefined = "CPY_INT_TAG"
-        elif ctype in ("int32_t", "int64_t"):
+        elif ctype in ("int16_t", "int32_t", "int64_t"):
             # This is basically an arbitrary value that is pretty
             # unlikely to overlap with a real value.
             self.c_undefined = "-113"
-        elif ctype in ("CPyPtr", "uint32_t", "uint64_t"):
-            # TODO: For low-level integers, we need to invent an overlapping
-            #       error value, similar to int64_t above.
+        elif ctype == "CPyPtr":
+            # TODO: Invent an overlapping error value?
             self.c_undefined = "0"
         elif ctype == "PyObject *":
             # Boxed types use the null pointer as the error value.
@@ -223,6 +222,8 @@ class RPrimitive(RType):
             self.c_undefined = "NULL"
         elif ctype == "double":
             self.c_undefined = "-113.0"
+        elif ctype in ("uint8_t", "uint16_t", "uint32_t", "uint64_t"):
+            self.c_undefined = "239"  # An arbitrary number
         else:
             assert False, "Unrecognized ctype: %r" % ctype
 
@@ -290,8 +291,18 @@ short_int_rprimitive: Final = RPrimitive(
 
 # Low level integer types (correspond to C integer types)
 
+int16_rprimitive: Final = RPrimitive(
+    "i16",
+    is_unboxed=True,
+    is_refcounted=False,
+    is_native_int=True,
+    is_signed=True,
+    ctype="int16_t",
+    size=2,
+    error_overlap=True,
+)
 int32_rprimitive: Final = RPrimitive(
-    "int32",
+    "i32",
     is_unboxed=True,
     is_refcounted=False,
     is_native_int=True,
@@ -301,7 +312,7 @@ int32_rprimitive: Final = RPrimitive(
     error_overlap=True,
 )
 int64_rprimitive: Final = RPrimitive(
-    "int64",
+    "i64",
     is_unboxed=True,
     is_refcounted=False,
     is_native_int=True,
@@ -310,23 +321,49 @@ int64_rprimitive: Final = RPrimitive(
     size=8,
     error_overlap=True,
 )
+uint8_rprimitive: Final = RPrimitive(
+    "u8",
+    is_unboxed=True,
+    is_refcounted=False,
+    is_native_int=True,
+    is_signed=False,
+    ctype="uint8_t",
+    size=1,
+    error_overlap=True,
+)
+
+# The following unsigned native int types (u16, u32, u64) are not
+# exposed to the user. They are for internal use within mypyc only.
+
+u16_rprimitive: Final = RPrimitive(
+    "u16",
+    is_unboxed=True,
+    is_refcounted=False,
+    is_native_int=True,
+    is_signed=False,
+    ctype="uint16_t",
+    size=2,
+    error_overlap=True,
+)
 uint32_rprimitive: Final = RPrimitive(
-    "uint32",
+    "u32",
     is_unboxed=True,
     is_refcounted=False,
     is_native_int=True,
     is_signed=False,
     ctype="uint32_t",
     size=4,
+    error_overlap=True,
 )
 uint64_rprimitive: Final = RPrimitive(
-    "uint64",
+    "u64",
     is_unboxed=True,
     is_refcounted=False,
     is_native_int=True,
     is_signed=False,
     ctype="uint64_t",
     size=8,
+    error_overlap=True,
 )
 
 # The C 'int' type
@@ -432,7 +469,11 @@ def is_short_int_rprimitive(rtype: RType) -> bool:
     return rtype is short_int_rprimitive
 
 
-def is_int32_rprimitive(rtype: RType) -> bool:
+def is_int16_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
+    return rtype is int16_rprimitive
+
+
+def is_int32_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return rtype is int32_rprimitive or (
         rtype is c_pyssize_t_rprimitive and rtype._ctype == "int32_t"
     )
@@ -444,8 +485,17 @@ def is_int64_rprimitive(rtype: RType) -> bool:
     )
 
 
-def is_fixed_width_rtype(rtype: RType) -> bool:
-    return is_int32_rprimitive(rtype) or is_int64_rprimitive(rtype)
+def is_fixed_width_rtype(rtype: RType) -> TypeGuard[RPrimitive]:
+    return (
+        is_int64_rprimitive(rtype)
+        or is_int32_rprimitive(rtype)
+        or is_int16_rprimitive(rtype)
+        or is_uint8_rprimitive(rtype)
+    )
+
+
+def is_uint8_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
+    return rtype is uint8_rprimitive
 
 
 def is_uint32_rprimitive(rtype: RType) -> bool:
@@ -536,6 +586,10 @@ class TupleNameVisitor(RTypeVisitor[str]):
             return "8"  # "8 byte integer"
         elif t._ctype == "int32_t":
             return "4"  # "4 byte integer"
+        elif t._ctype == "int16_t":
+            return "2"  # "2 byte integer"
+        elif t._ctype == "uint8_t":
+            return "U1"  # "1 byte unsigned integer"
         elif t._ctype == "double":
             return "F"
         assert not t.is_unboxed, f"{t} unexpected unboxed type"
@@ -970,3 +1024,15 @@ PyListObject = RStruct(
     names=["ob_base", "ob_item", "allocated"],
     types=[PyVarObject, pointer_rprimitive, c_pyssize_t_rprimitive],
 )
+
+
+def check_native_int_range(rtype: RPrimitive, n: int) -> bool:
+    """Is n within the range of a native, fixed-width int type?
+
+    Assume the type is a fixed-width int type.
+    """
+    if not rtype.is_signed:
+        return 0 <= n < (1 << (8 * rtype.size))
+    else:
+        limit = 1 << (rtype.size * 8 - 1)
+        return -limit <= n < limit

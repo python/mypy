@@ -41,7 +41,6 @@ typedef struct tuple_T3OOO {
     PyObject *f1;
     PyObject *f2;
 } tuple_T3OOO;
-static tuple_T3OOO tuple_undefined_T3OOO = { NULL, NULL, NULL };
 #endif
 
 // Our return tuple wrapper for dictionary iteration helper.
@@ -52,7 +51,6 @@ typedef struct tuple_T3CIO {
     CPyTagged f1;  // Last dict offset
     PyObject *f2;  // Next dictionary key or value
 } tuple_T3CIO;
-static tuple_T3CIO tuple_undefined_T3CIO = { 2, CPY_INT_TAG, NULL };
 #endif
 
 // Same as above but for both key and value.
@@ -64,7 +62,6 @@ typedef struct tuple_T4CIOO {
     PyObject *f2;  // Next dictionary key
     PyObject *f3;  // Next dictionary value
 } tuple_T4CIOO;
-static tuple_T4CIOO tuple_undefined_T4CIOO = { 2, CPY_INT_TAG, NULL, NULL };
 #endif
 
 
@@ -158,6 +155,12 @@ int32_t CPyLong_AsInt32(PyObject *o);
 int32_t CPyInt32_Divide(int32_t x, int32_t y);
 int32_t CPyInt32_Remainder(int32_t x, int32_t y);
 void CPyInt32_Overflow(void);
+int16_t CPyLong_AsInt16(PyObject *o);
+int16_t CPyInt16_Divide(int16_t x, int16_t y);
+int16_t CPyInt16_Remainder(int16_t x, int16_t y);
+void CPyInt16_Overflow(void);
+uint8_t CPyLong_AsUInt8(PyObject *o);
+void CPyUInt8_Overflow(void);
 double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y);
 
 static inline int CPyTagged_CheckLong(CPyTagged x) {
