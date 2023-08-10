@@ -90,11 +90,7 @@ from mypy.plugin import ChainedPlugin, Plugin, ReportConfigContext
 from mypy.plugins.default import DefaultPlugin
 from mypy.renaming import LimitedVariableRenameVisitor, VariableRenameVisitor
 from mypy.stats import dump_type_stats
-from mypy.stubinfo import (
-    legacy_bundled_packages,
-    non_bundled_packages,
-    stub_distribution_name,
-)
+from mypy.stubinfo import legacy_bundled_packages, non_bundled_packages, stub_distribution_name
 from mypy.types import Type
 from mypy.typestate import reset_global_state, type_state
 from mypy.version import __version__
