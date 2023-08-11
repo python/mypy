@@ -2503,7 +2503,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             callable_name=callable_name,
             object_type=object_type,
         )
-        if union_interrupted:
+        # Do not show the extra error is the union math was forced.
+        if union_interrupted and not none_type_var_overlap:
             self.chk.fail(message_registry.TOO_MANY_UNION_COMBINATIONS, context)
         return result
 
