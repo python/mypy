@@ -157,3 +157,19 @@ from typing_extensions import Annotated
 a: Annotated[int, 1:2]
 reveal_type(a)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
+
+[case testAnnotatedNotRequired]
+from typing import TypedDict, NotRequired
+from typing_extensions import Annotated
+class Movie(TypedDict):
+    title: Annotated[str, "metadata"]
+    year: Annotated[NotRequired[int], "year_metadata"]
+m1: Movie = {
+    "title": "End of the World",
+    "year": 1977,
+}
+m2: Movie = {
+    "title": "End of the World",
+}
+[typing fixtures/typing-typeddict.pyi]
+[builtins fixtures/dict.pyi]
