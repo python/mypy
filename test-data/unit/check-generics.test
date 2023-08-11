@@ -3244,3 +3244,22 @@ def apply(a: S, b: T) -> None:
     v2: Callable[[Tuple[S, T]], None]
     return pipe(a, v1, v2)
 [builtins fixtures/tuple.pyi]
+
+[case testInferenceAgainstGenericParamSpecSpuriousBoundsNotUsed]
+# flags: --new-type-inference
+from typing import TypeVar, Callable, Generic
+from typing_extensions import ParamSpec, Concatenate
+
+Q = ParamSpec("Q")
+class Foo(Generic[Q]): ...
+
+T1 = TypeVar("T1", bound=Foo[...])
+T2 = TypeVar("T2", bound=Foo[...])
+P = ParamSpec("P")
+def pop_off(fn: Callable[Concatenate[T1, P], T2]) -> Callable[P, Callable[[T1], T2]]:
+    ...
+
+@pop_off
+def test(command: Foo[Q]) -> Foo[Q]: ...
+reveal_type(test)  # N: Revealed type is "def () -> def [Q] (__main__.Foo[Q`-1]) -> __main__.Foo[Q`-1]"
+[builtins fixtures/tuple.pyi]

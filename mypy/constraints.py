@@ -862,7 +862,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         elif isinstance(actual, TupleType) and self.direction == SUPERTYPE_OF:
             return infer_constraints(template, mypy.typeops.tuple_fallback(actual), self.direction)
         elif isinstance(actual, TypeVarType):
-            if not actual.values:
+            if not actual.values and not actual.id.is_meta_var():
                 return infer_constraints(template, actual.upper_bound, self.direction)
             return []
         elif isinstance(actual, ParamSpecType):
