@@ -165,6 +165,8 @@ def infer_constraints_for_callable(
                 actual_type = mapper.expand_actual_type(
                     actual_arg_type, arg_kinds[actual], callee.arg_names[i], callee.arg_kinds[i]
                 )
+                # TODO: if callee has ParamSpec, we need to collect all actuals that map to star
+                # args and create single constraint between P and resulting Parameters instead.
                 c = infer_constraints(callee.arg_types[i], actual_type, SUPERTYPE_OF)
                 constraints.extend(c)
 
@@ -585,13 +587,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             # in situations like [x: T] <: P <: [x: int].
             res = []
             if len(template.arg_types) == len(self.actual.arg_types):
-                for tt, at, tk, ak in zip(
-                    template.arg_types,
-                    self.actual.arg_types,
-                    template.arg_kinds,
-                    self.actual.arg_kinds,
-                ):
-                    if tk == ARG_STAR and ak != ARG_STAR or tk == ARG_STAR2 and ak != ARG_STAR2:
+                for tt, at in zip(template.arg_types, self.actual.arg_types):
+                    # This avoids bogus constraints like T <: P.args
+                    if isinstance(at, ParamSpecType):
                         continue
                     res.extend(infer_constraints(tt, at, self.direction))
             return res
@@ -906,6 +904,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         # Normalize callables before matching against each other.
         # Note that non-normalized callables can be created in annotations
         # using e.g. callback protocols.
+        # TODO: check that callables match? Ideally we should not infer constraints
+        # callables that can never be subtypes of one another in given direction.
         template = template.with_unpacked_kwargs()
         extra_tvars = False
         if isinstance(self.actual, CallableType):
@@ -913,7 +913,6 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             cactual = self.actual.with_unpacked_kwargs()
             param_spec = template.param_spec()
             if param_spec is None:
-                # TODO: verify argument counts; more generally, use some "formal to actual" map
                 # TODO: Erase template variables if it is generic?
                 if (
                     type_state.infer_polymorphic
@@ -955,24 +954,19 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     else:
                         template_args = template.arg_types
                         cactual_args = cactual.arg_types
-                    # The lengths should match, but don't crash (it will error elsewhere).
-                    for t, a, tk, ak in zip(
-                        template_args, cactual_args, template.arg_kinds, cactual.arg_kinds
-                    ):
+                    # TODO: use some more principled "formal to actual" logic
+                    # instead of this lock-step loop over argument types. This identical
+                    # logic should be used in 5 places: in Parameters vs Parameters
+                    # inference, in Instance vs Instance inference for prefixes (two
+                    # branches), and in Callable vs Callable inference (two branches).
+                    for t, a in zip(template_args, cactual_args):
                         # This avoids bogus constraints like T <: P.args
-                        if (tk == ARG_STAR and ak != ARG_STAR) or (
-                            tk == ARG_STAR2 and ak != ARG_STAR2
-                        ):
-                            if cactual.param_spec():
-                                # TODO: we should be more careful also for non-ParamSpec functions
-                                continue
                         if isinstance(a, ParamSpecType):
                             # TODO: can we infer something useful for *T vs P?
                             continue
                         # Negate direction due to function argument type contravariance.
                         res.extend(infer_constraints(t, a, neg_op(self.direction)))
             else:
-                # TODO: check the prefixes match
                 prefix = param_spec.prefix
                 prefix_len = len(prefix.arg_types)
                 cactual_ps = cactual.param_spec()
@@ -1021,10 +1015,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     arg_names=cactual.arg_names[:prefix_len],
                 )
 
-                for t, a, k in zip(
-                    prefix.arg_types, cactual_prefix.arg_types, cactual_prefix.arg_kinds
-                ):
-                    if k in (ARG_STAR, ARG_STAR2):
+                for t, a in zip(prefix.arg_types, cactual_prefix.arg_types):
+                    if isinstance(a, ParamSpecType):
                         continue
                     res.extend(infer_constraints(t, a, neg_op(self.direction)))
 
