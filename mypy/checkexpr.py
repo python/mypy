@@ -2674,6 +2674,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             foo(x)
         we want this call to infer list[int] | None, not list[int | None].
         """
+        if not plausible_targets or not arg_types:
+            return False
         has_optional_arg = False
         for arg_type in get_proper_types(arg_types):
             if not isinstance(arg_type, UnionType):
