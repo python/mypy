@@ -565,7 +565,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 assert object_type is not None
                 fullname = self.method_fullname(object_type, member)
             if not fullname or not any(
-                fullname.startswith(p) for p in self.chk.options.untyped_call_exception
+                fullname == p or fullname.startswith(f"{p}.")
+                for p in self.chk.options.untyped_call_exception
             ):
                 self.msg.untyped_function_call(callee_type, e)
 

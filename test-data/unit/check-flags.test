@@ -2082,9 +2082,11 @@ f(reveal_type(y)) # E: Call to untyped function "f" in typed context \
 from foo import test_foo
 from bar import A, B
 from baz import test_baz
+from foobar import bad
 
 test_foo(42)  # OK
 test_baz(42)  # E: Call to untyped function "test_baz" in typed context
+bad(42)  # E: Call to untyped function "bad" in typed context
 
 a: A
 b: B
@@ -2092,6 +2094,8 @@ a.meth()  # OK
 b.meth()  # E: Call to untyped function "meth" in typed context
 [file foo.py]
 def test_foo(x): pass
+[file foobar.py]
+def bad(x): pass
 [file bar.py]
 class A:
     def meth(self): pass

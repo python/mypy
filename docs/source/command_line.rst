@@ -354,35 +354,28 @@ definitions or calls.
 
     This flag allows to selectively disable :option:`--disallow-untyped-calls`
     for functions and methods defined in specific packages, modules, or classes.
-    Note that each exception entry acts as a prefix. For example:
+    Note that each exception entry acts as a prefix. For example (assuming there
+    are no type annotations for ``numpy`` available):
 
     .. code-block:: python
 
-        # mypy --disallow-untyped-calls  --untyped-call-exception=foo --untyped-call-exception=bar.A
-        from foo import test_foo
-        from bar import A, B
-        from baz import test_baz
+        # mypy --disallow-untyped-calls
+        #      --untyped-call-exception=numpy.random
+        #      --untyped-call-exception=foo.A
+        import numpy as np
+        from foo import A, B
 
-        test_foo(42)  # OK, function comes from module `foo`
-        test_baz(42)  # E: Call to untyped function "test_baz" in typed context
+        np.random.gamma(1.0)  # OK, function comes from package `numpy.random`
+        np.fft.fft([1, 2, 3])  # E: Call to untyped function "fft" in typed context
 
-        a: A
-        b: B
-        a.meth()  # OK, method was defined in class `bar.A`
-        b.meth()  # E: Call to untyped function "meth" in typed context
+        A().meth()  # OK, method was defined in class `bar.A`
+        B().meth()  # E: Call to untyped function "meth" in typed context
 
         # file foo.py
-        def test_foo(x): pass
-
-        # file bar.py
         class A:
             def meth(self): pass
         class B:
             def meth(self): pass
-
-        # file baz.py
-        def test_baz(x): pass
-
 
 .. option:: --disallow-untyped-defs
 

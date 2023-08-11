@@ -519,8 +519,9 @@ section of the command line docs.
 
     Selectively excludes functions and methods defined in specific packages,
     modules, and classes from action of :confval:`disallow_untyped_calls`.
-    Note, this option does not support per-file configuration, the exception
-    list is defined globally for all your code.
+    This also applies to all submodules of packages (i.e. everything inside
+    a given prefix). Note, this option does not support per-file configuration,
+    the exception list is defined globally for all your code.
 
 .. confval:: disallow_untyped_defs
 
