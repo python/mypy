@@ -2185,7 +2185,8 @@ def bar2(*x: int) -> int: ...
 [builtins fixtures/tuple.pyi]
 
 [case testOverloadDetectsPossibleMatchesWithGenerics]
-from typing import overload, TypeVar, Generic
+# flags: --strict-optional
+from typing import overload, TypeVar, Generic, Optional, List
 
 T = TypeVar('T')
 # The examples below are unsafe, but it is a quite common pattern
@@ -2197,6 +2198,22 @@ def foo(x: None, y: None) -> str: ...
 @overload
 def foo(x: T, y: T) -> int: ...
 def foo(x): ...
+
+oi: Optional[int]
+reveal_type(foo(None, None))  # N: Revealed type is "builtins.str"
+reveal_type(foo(None, 42))  # N: Revealed type is "builtins.int"
+reveal_type(foo(42, 42))  # N: Revealed type is "builtins.int"
+reveal_type(foo(oi, None))  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(foo(oi, 42))  # N: Revealed type is "builtins.int"
+reveal_type(foo(oi, oi))  # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+@overload
+def foo_list(x: None) -> None: ...
+@overload
+def foo_list(x: T) -> List[T]: ...
+def foo_list(x): ...
+
+reveal_type(foo_list(oi))  # N: Revealed type is "Union[builtins.list[builtins.int], None]"
 
 # What if 'T' is 'object'?
 @overload
@@ -2223,6 +2240,7 @@ def baz(x: str, y: str) -> str: ...  # E: Overloaded function signatures 1 and 2
 @overload
 def baz(x: T, y: T) -> int: ...
 def baz(x): ...
+[builtins fixtures/tuple.pyi]
 
 [case testOverloadFlagsPossibleMatches]
 from wrapper import *
