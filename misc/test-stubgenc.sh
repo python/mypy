@@ -29,7 +29,7 @@ function stubgenc_test() {
 }
 
 # create stubs without docstrings
-stubgenc_test stubgen -p pybind11_mypy_demo  
+stubgenc_test stubgen -p pybind11_mypy_demo
 # create stubs with docstrings
-stubgenc_test stubgen-include-docs -p pybind11_mypy_demo --include-docstrings 
+stubgenc_test stubgen-include-docs -p pybind11_mypy_demo --include-docstrings
 exit $EXIT

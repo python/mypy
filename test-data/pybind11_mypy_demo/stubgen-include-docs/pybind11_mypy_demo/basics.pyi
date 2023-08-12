@@ -67,46 +67,46 @@ class Point:
     def __init__(self) -> None:
         """__init__(*args, **kwargs)
         Overloaded function.
-        
+
         1. __init__(self: pybind11_mypy_demo.basics.Point) -> None
-        
+
         2. __init__(self: pybind11_mypy_demo.basics.Point, x: float, y: float) -> None"""
     @overload
     def __init__(self, x: float, y: float) -> None:
         """__init__(*args, **kwargs)
         Overloaded function.
-        
+
         1. __init__(self: pybind11_mypy_demo.basics.Point) -> None
-        
+
         2. __init__(self: pybind11_mypy_demo.basics.Point, x: float, y: float) -> None"""
     @overload
     def distance_to(self, x: float, y: float) -> float:
         """distance_to(*args, **kwargs)
         Overloaded function.
-        
+
         1. distance_to(self: pybind11_mypy_demo.basics.Point, x: float, y: float) -> float
-        
+
         2. distance_to(self: pybind11_mypy_demo.basics.Point, other: pybind11_mypy_demo.basics.Point) -> float"""
     @overload
     def distance_to(self, other: Point) -> float:
         """distance_to(*args, **kwargs)
         Overloaded function.
-        
+
         1. distance_to(self: pybind11_mypy_demo.basics.Point, x: float, y: float) -> float
-        
+
         2. distance_to(self: pybind11_mypy_demo.basics.Point, other: pybind11_mypy_demo.basics.Point) -> float"""
     @property
     def length(self) -> float: ...
 
 def answer() -> int:
     '''answer() -> int
-    
+
     answer docstring, with end quote"'''
 def midpoint(left: float, right: float) -> float:
     """midpoint(left: float, right: float) -> float"""
 def sum(arg0: int, arg1: int) -> int:
     '''sum(arg0: int, arg1: int) -> int
-    
+
     multiline docstring test, edge case quotes """\'\'\''''
 def weighted_midpoint(left: float, right: float, alpha: float = ...) -> float:
     """weighted_midpoint(left: float, right: float, alpha: float = 0.5) -> float"""

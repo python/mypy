@@ -3241,7 +3241,7 @@ class A:
     a multiline docstring"""
     def func():
         """func docstring
-        
+
         don't forget to indent"""
     def nodoc():
         ...
@@ -3252,7 +3252,7 @@ class B:
         ...
     def nodoc():
         ...
-    
+
 [out]
 class A:
     def func() -> None: ...
