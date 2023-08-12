@@ -115,6 +115,10 @@ class HTTPResponse(io.BufferedIOBase, BinaryIO):  # type: ignore[misc]  # incomp
     chunk_left: int | None
     length: int | None
     will_close: bool
+    # url is set on instances of the class in urllib.request.AbstractHTTPHandler.do_open
+    # to match urllib.response.addinfourl's interface.
+    # It's not set in HTTPResponse.__init__ or any other method on the class
+    url: str
     def __init__(self, sock: socket, debuglevel: int = 0, method: str | None = None, url: str | None = None) -> None: ...
     def peek(self, n: int = -1) -> bytes: ...
     def read(self, amt: int | None = None) -> bytes: ...
