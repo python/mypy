@@ -1379,6 +1379,38 @@ def f() -> None:
         x = 1  # E: Statement is unreachable
 [builtins fixtures/dict.pyi]
 
+[case testUnreachableLiteralFrom__bool__]
+# flags: --warn-unreachable
+from typing_extensions import Literal
+
+class Truth:
+    def __bool__(self) -> Literal[True]: ...
+
+class Lie:
+    def __bool__(self) -> Literal[False]: ...
+
+class Maybe:
+    def __bool__(self) -> Literal[True | False]: ...
+
+t = Truth()
+if t:
+    x = 1
+else:
+    x = 2  # E: Statement is unreachable
+
+if Lie():
+    x = 3  # E: Statement is unreachable
+
+if Maybe():
+    x = 4
+
+
+def foo() -> bool: ...
+
+y = Truth() or foo()  # E: Right operand of "or" is never evaluated
+z = Lie() and foo()  # E: Right operand of "and" is never evaluated
+[builtins fixtures/dict.pyi]
+
 [case testUnreachableModuleBody1]
 # flags: --warn-unreachable
 from typing import NoReturn
