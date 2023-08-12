@@ -1027,9 +1027,20 @@ example:
 
    top = await f()  # Error: "await" outside function  [top-level-await]
 
+.. _code-await-not-async:
+
+Warn about await expressions used outside of coroutines [await-not-async]
+-------------------------------------------------------------------------
+
+``await`` must be used inside a coroutine.
+
+.. code-block:: python
+
+   async def f() -> None:
+       ...
+
    def g() -> None:
-       # This is a blocker error and cannot be silenced.
-       await f()  # Error: "await" outside coroutine ("async def")
+       await f()  # Error: "await" outside coroutine ("async def")  [await-not-async]
 
 .. _code-assert-type:
 
