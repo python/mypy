@@ -974,7 +974,7 @@ crasher = [await foo(x) for x in [1, 2, 3]]  # E: "await" outside function  [top
 
 def bad() -> None:
     # These are always critical / syntax issues:
-    y = [await foo(x) for x in [1, 2, 3]]  # E: "await" outside coroutine ("async def")
+    y = [await foo(x) for x in [1, 2, 3]]  # E: "await" outside coroutine ("async def")  [await-not-async]
 async def good() -> None:
     y = [await foo(x) for x in [1, 2, 3]]  # OK
 [builtins fixtures/async_await.pyi]
