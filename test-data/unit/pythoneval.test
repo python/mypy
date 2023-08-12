@@ -1482,14 +1482,12 @@ frozenset({1}) == [1]  # Error
 {1: 2}.keys() == frozenset({1})
 {1: 2}.items() == {(1, 2)}
 
-{1: 2}.keys() == {'no'}  # Error
+{1: 2}.keys() == {'no'}  # OK
 {1: 2}.values() == {2}  # Error
-{1: 2}.keys() == [1]  # Error
+{1: 2}.keys() == [1]  # OK
 [out]
 _testStrictEqualityAllowlist.py:5: error: Non-overlapping equality check (left operand type: "FrozenSet[int]", right operand type: "List[int]")
-_testStrictEqualityAllowlist.py:11: error: Non-overlapping equality check (left operand type: "dict_keys[int, int]", right operand type: "Set[str]")
 _testStrictEqualityAllowlist.py:12: error: Non-overlapping equality check (left operand type: "dict_values[int, int]", right operand type: "Set[int]")
-_testStrictEqualityAllowlist.py:13: error: Non-overlapping equality check (left operand type: "dict_keys[int, int]", right operand type: "List[int]")
 
 [case testUnreachableWithStdlibContextManagers]
 # mypy: warn-unreachable, strict-optional
