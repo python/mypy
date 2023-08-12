@@ -24,6 +24,12 @@ void CPy_Reraise(void) {
 }
 
 void CPyErr_SetObjectAndTraceback(PyObject *type, PyObject *value, PyObject *traceback) {
+    if (!PyType_Check(type) && value == Py_None) {
+        // The first argument must be an exception instance
+        value = type;
+        type = (PyObject *)Py_TYPE(value);
+    }
+
     // Set the value and traceback of an error. Because calling
     // PyErr_Restore takes away a reference to each object passed in
     // as an argument, we manually increase the reference count of
@@ -230,7 +236,11 @@ void CPy_AddTraceback(const char *filename, const char *funcname, int line, PyOb
     return;
 
 error:
+#if CPY_3_12_FEATURES
+    _PyErr_ChainExceptions1(exc);
+#else
     _PyErr_ChainExceptions(exc, val, tb);
+#endif
 }
 
 CPy_NOINLINE

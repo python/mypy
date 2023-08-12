@@ -4,15 +4,16 @@ from __future__ import annotations
 
 import itertools
 import time
+from collections import defaultdict
 from contextlib import contextmanager
-from typing import Callable, ClassVar, Iterator, List, Optional, Sequence, cast
-from typing_extensions import Final, TypeAlias as _TypeAlias, overload
+from typing import Callable, ClassVar, Final, Iterable, Iterator, List, Optional, Sequence, cast
+from typing_extensions import TypeAlias as _TypeAlias, overload
 
 import mypy.checker
 import mypy.errorcodes as codes
 from mypy import applytype, erasetype, join, message_registry, nodes, operators, types
 from mypy.argmap import ArgTypeExpander, map_actuals_to_formals, map_formals_to_actuals
-from mypy.checkmember import analyze_member_access, type_object_type
+from mypy.checkmember import analyze_member_access, freeze_all_type_vars, type_object_type
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.erasetype import erase_type, remove_instance_last_known_values, replace_meta_vars
 from mypy.errors import ErrorWatcher, report_internal_error
@@ -98,12 +99,19 @@ from mypy.plugin import (
 )
 from mypy.semanal_enum import ENUM_BASES
 from mypy.state import state
-from mypy.subtypes import is_equivalent, is_same_type, is_subtype, non_method_protocol_members
+from mypy.subtypes import (
+    find_member,
+    is_equivalent,
+    is_same_type,
+    is_subtype,
+    non_method_protocol_members,
+)
 from mypy.traverser import has_await_expression
+from mypy.type_visitor import TypeTranslator
 from mypy.typeanal import (
     check_for_explicit_any,
-    expand_type_alias,
     has_any_from_unimported_type,
+    instantiate_type_alias,
     make_optional_type,
     set_any_tvars,
 )
@@ -114,6 +122,7 @@ from mypy.typeops import (
     false_only,
     fixup_partial_type,
     function_type,
+    get_type_vars,
     is_literal_type_like,
     make_simplified_union,
     simple_literal_type,
@@ -140,25 +149,29 @@ from mypy.types import (
     ParamSpecType,
     PartialType,
     ProperType,
-    StarType,
     TupleType,
     Type,
     TypeAliasType,
     TypedDictType,
     TypeOfAny,
     TypeType,
+    TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
     UninhabitedType,
     UnionType,
     UnpackType,
+    flatten_nested_tuples,
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
     has_recursive_types,
-    is_generic_instance,
     is_named_instance,
-    is_optional,
+    split_with_prefix_and_suffix,
+)
+from mypy.types_utils import (
+    is_generic_instance,
+    is_overlapping_none,
     is_self_type_like,
     remove_optional,
 )
@@ -171,7 +184,7 @@ from mypy.visitor import ExpressionVisitor
 # Type of callback user for checking individual function arguments. See
 # check_args() below for details.
 ArgChecker: _TypeAlias = Callable[
-    [Type, Type, ArgKind, Type, int, int, CallableType, Optional[Type], Context, Context], None,
+    [Type, Type, ArgKind, Type, int, int, CallableType, Optional[Type], Context, Context], None
 ]
 
 # Maximum nesting level for math union in overloads, setting this to large values
@@ -193,6 +206,11 @@ OVERLAPPING_TYPES_ALLOWLIST: Final = [
     "_collections_abc.dict_keys",
     "_collections_abc.dict_items",
 ]
+OVERLAPPING_BYTES_ALLOWLIST: Final = {
+    "builtins.bytes",
+    "builtins.bytearray",
+    "builtins.memoryview",
+}
 
 
 class TooManyUnions(Exception):
@@ -297,6 +315,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # on whether current expression is a callee, to give better error messages
         # related to type context.
         self.is_callee = False
+        type_state.infer_polymorphic = self.chk.options.new_type_inference
 
     def reset(self) -> None:
         self.resolved_type = {}
@@ -682,70 +701,183 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         context: Context,
         orig_callee: Type | None,
     ) -> Type:
-        if len(args) >= 1 and all([ak == ARG_NAMED for ak in arg_kinds]):
-            # ex: Point(x=42, y=1337)
-            assert all(arg_name is not None for arg_name in arg_names)
-            item_names = cast(List[str], arg_names)
-            item_args = args
-            return self.check_typeddict_call_with_kwargs(
-                callee, dict(zip(item_names, item_args)), context, orig_callee
-            )
+        if args and all([ak in (ARG_NAMED, ARG_STAR2) for ak in arg_kinds]):
+            # ex: Point(x=42, y=1337, **extras)
+            # This is a bit ugly, but this is a price for supporting all possible syntax
+            # variants for TypedDict constructors.
+            kwargs = zip([StrExpr(n) if n is not None else None for n in arg_names], args)
+            result = self.validate_typeddict_kwargs(kwargs=kwargs, callee=callee)
+            if result is not None:
+                validated_kwargs, always_present_keys = result
+                return self.check_typeddict_call_with_kwargs(
+                    callee, validated_kwargs, context, orig_callee, always_present_keys
+                )
+            return AnyType(TypeOfAny.from_error)
 
         if len(args) == 1 and arg_kinds[0] == ARG_POS:
             unique_arg = args[0]
             if isinstance(unique_arg, DictExpr):
-                # ex: Point({'x': 42, 'y': 1337})
+                # ex: Point({'x': 42, 'y': 1337, **extras})
                 return self.check_typeddict_call_with_dict(
-                    callee, unique_arg, context, orig_callee
+                    callee, unique_arg.items, context, orig_callee
                 )
             if isinstance(unique_arg, CallExpr) and isinstance(unique_arg.analyzed, DictExpr):
-                # ex: Point(dict(x=42, y=1337))
+                # ex: Point(dict(x=42, y=1337, **extras))
                 return self.check_typeddict_call_with_dict(
-                    callee, unique_arg.analyzed, context, orig_callee
+                    callee, unique_arg.analyzed.items, context, orig_callee
                 )
 
-        if len(args) == 0:
+        if not args:
             # ex: EmptyDict()
-            return self.check_typeddict_call_with_kwargs(callee, {}, context, orig_callee)
+            return self.check_typeddict_call_with_kwargs(callee, {}, context, orig_callee, set())
 
         self.chk.fail(message_registry.INVALID_TYPEDDICT_ARGS, context)
         return AnyType(TypeOfAny.from_error)
 
-    def validate_typeddict_kwargs(self, kwargs: DictExpr) -> dict[str, Expression] | None:
-        item_args = [item[1] for item in kwargs.items]
+    def validate_typeddict_kwargs(
+        self, kwargs: Iterable[tuple[Expression | None, Expression]], callee: TypedDictType
+    ) -> tuple[dict[str, list[Expression]], set[str]] | None:
+        # All (actual or mapped from ** unpacks) expressions that can match given key.
+        result = defaultdict(list)
+        # Keys that are guaranteed to be present no matter what (e.g. for all items of a union)
+        always_present_keys = set()
+        # Indicates latest encountered ** unpack among items.
+        last_star_found = None
 
-        item_names = []  # List[str]
-        for item_name_expr, item_arg in kwargs.items:
-            literal_value = None
+        for item_name_expr, item_arg in kwargs:
             if item_name_expr:
                 key_type = self.accept(item_name_expr)
                 values = try_getting_str_literals(item_name_expr, key_type)
+                literal_value = None
                 if values and len(values) == 1:
                     literal_value = values[0]
-            if literal_value is None:
-                key_context = item_name_expr or item_arg
-                self.chk.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, key_context)
-                return None
+                if literal_value is None:
+                    key_context = item_name_expr or item_arg
+                    self.chk.fail(
+                        message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
+                        key_context,
+                        code=codes.LITERAL_REQ,
+                    )
+                    return None
+                else:
+                    # A directly present key unconditionally shadows all previously found
+                    # values from ** items.
+                    # TODO: for duplicate keys, type-check all values.
+                    result[literal_value] = [item_arg]
+                    always_present_keys.add(literal_value)
             else:
-                item_names.append(literal_value)
-        return dict(zip(item_names, item_args))
+                last_star_found = item_arg
+                if not self.validate_star_typeddict_item(
+                    item_arg, callee, result, always_present_keys
+                ):
+                    return None
+        if self.chk.options.extra_checks and last_star_found is not None:
+            absent_keys = []
+            for key in callee.items:
+                if key not in callee.required_keys and key not in result:
+                    absent_keys.append(key)
+            if absent_keys:
+                # Having an optional key not explicitly declared by a ** unpacked
+                # TypedDict is unsafe, it may be an (incompatible) subtype at runtime.
+                # TODO: catch the cases where a declared key is overridden by a subsequent
+                # ** item without it (and not again overriden with complete ** item).
+                self.msg.non_required_keys_absent_with_star(absent_keys, last_star_found)
+        return result, always_present_keys
+
+    def validate_star_typeddict_item(
+        self,
+        item_arg: Expression,
+        callee: TypedDictType,
+        result: dict[str, list[Expression]],
+        always_present_keys: set[str],
+    ) -> bool:
+        """Update keys/expressions from a ** expression in TypedDict constructor.
+
+        Note `result` and `always_present_keys` are updated in place. Return true if the
+        expression `item_arg` may valid in `callee` TypedDict context.
+        """
+        with self.chk.local_type_map(), self.msg.filter_errors():
+            inferred = get_proper_type(self.accept(item_arg, type_context=callee))
+        possible_tds = []
+        if isinstance(inferred, TypedDictType):
+            possible_tds = [inferred]
+        elif isinstance(inferred, UnionType):
+            for item in get_proper_types(inferred.relevant_items()):
+                if isinstance(item, TypedDictType):
+                    possible_tds.append(item)
+                elif not self.valid_unpack_fallback_item(item):
+                    self.msg.unsupported_target_for_star_typeddict(item, item_arg)
+                    return False
+        elif not self.valid_unpack_fallback_item(inferred):
+            self.msg.unsupported_target_for_star_typeddict(inferred, item_arg)
+            return False
+        all_keys: set[str] = set()
+        for td in possible_tds:
+            all_keys |= td.items.keys()
+        for key in all_keys:
+            arg = TempNode(
+                UnionType.make_union([td.items[key] for td in possible_tds if key in td.items])
+            )
+            arg.set_line(item_arg)
+            if all(key in td.required_keys for td in possible_tds):
+                always_present_keys.add(key)
+                # Always present keys override previously found values. This is done
+                # to support use cases like `Config({**defaults, **overrides})`, where
+                # some `overrides` types are narrower that types in `defaults`, and
+                # former are too wide for `Config`.
+                if result[key]:
+                    first = result[key][0]
+                    if not isinstance(first, TempNode):
+                        # We must always preserve any non-synthetic values, so that
+                        # we will accept them even if they are shadowed.
+                        result[key] = [first, arg]
+                    else:
+                        result[key] = [arg]
+                else:
+                    result[key] = [arg]
+            else:
+                # If this key is not required at least in some item of a union
+                # it may not shadow previous item, so we need to type check both.
+                result[key].append(arg)
+        return True
+
+    def valid_unpack_fallback_item(self, typ: ProperType) -> bool:
+        if isinstance(typ, AnyType):
+            return True
+        if not isinstance(typ, Instance) or not typ.type.has_base("typing.Mapping"):
+            return False
+        mapped = map_instance_to_supertype(typ, self.chk.lookup_typeinfo("typing.Mapping"))
+        return all(isinstance(a, AnyType) for a in get_proper_types(mapped.args))
 
     def match_typeddict_call_with_dict(
-        self, callee: TypedDictType, kwargs: DictExpr, context: Context
+        self,
+        callee: TypedDictType,
+        kwargs: list[tuple[Expression | None, Expression]],
+        context: Context,
     ) -> bool:
-        validated_kwargs = self.validate_typeddict_kwargs(kwargs=kwargs)
-        if validated_kwargs is not None:
+        result = self.validate_typeddict_kwargs(kwargs=kwargs, callee=callee)
+        if result is not None:
+            validated_kwargs, _ = result
             return callee.required_keys <= set(validated_kwargs.keys()) <= set(callee.items.keys())
         else:
             return False
 
     def check_typeddict_call_with_dict(
-        self, callee: TypedDictType, kwargs: DictExpr, context: Context, orig_callee: Type | None
+        self,
+        callee: TypedDictType,
+        kwargs: list[tuple[Expression | None, Expression]],
+        context: Context,
+        orig_callee: Type | None,
     ) -> Type:
-        validated_kwargs = self.validate_typeddict_kwargs(kwargs=kwargs)
-        if validated_kwargs is not None:
+        result = self.validate_typeddict_kwargs(kwargs=kwargs, callee=callee)
+        if result is not None:
+            validated_kwargs, always_present_keys = result
             return self.check_typeddict_call_with_kwargs(
-                callee, kwargs=validated_kwargs, context=context, orig_callee=orig_callee
+                callee,
+                kwargs=validated_kwargs,
+                context=context,
+                orig_callee=orig_callee,
+                always_present_keys=always_present_keys,
             )
         else:
             return AnyType(TypeOfAny.from_error)
@@ -786,20 +918,37 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def check_typeddict_call_with_kwargs(
         self,
         callee: TypedDictType,
-        kwargs: dict[str, Expression],
+        kwargs: dict[str, list[Expression]],
         context: Context,
         orig_callee: Type | None,
+        always_present_keys: set[str],
     ) -> Type:
         actual_keys = kwargs.keys()
-        if not (callee.required_keys <= actual_keys <= callee.items.keys()):
-            expected_keys = [
-                key
-                for key in callee.items.keys()
-                if key in callee.required_keys or key in actual_keys
-            ]
-            self.msg.unexpected_typeddict_keys(
-                callee, expected_keys=expected_keys, actual_keys=list(actual_keys), context=context
-            )
+        if not (
+            callee.required_keys <= always_present_keys and actual_keys <= callee.items.keys()
+        ):
+            if not (actual_keys <= callee.items.keys()):
+                self.msg.unexpected_typeddict_keys(
+                    callee,
+                    expected_keys=[
+                        key
+                        for key in callee.items.keys()
+                        if key in callee.required_keys or key in actual_keys
+                    ],
+                    actual_keys=list(actual_keys),
+                    context=context,
+                )
+            if not (callee.required_keys <= always_present_keys):
+                self.msg.unexpected_typeddict_keys(
+                    callee,
+                    expected_keys=[
+                        key for key in callee.items.keys() if key in callee.required_keys
+                    ],
+                    actual_keys=[
+                        key for key in always_present_keys if key in callee.required_keys
+                    ],
+                    context=context,
+                )
             if callee.required_keys > actual_keys:
                 # found_set is a sub-set of the required_keys
                 # This means we're missing some keys and as such, we can't
@@ -822,7 +971,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         with self.msg.filter_errors(), self.chk.local_type_map():
             orig_ret_type, _ = self.check_callable_call(
                 infer_callee,
-                list(kwargs.values()),
+                # We use first expression for each key to infer type variables of a generic
+                # TypedDict. This is a bit arbitrary, but in most cases will work better than
+                # trying to infer a union or a join.
+                [args[0] for args in kwargs.values()],
                 [ArgKind.ARG_NAMED] * len(kwargs),
                 context,
                 list(kwargs.keys()),
@@ -837,19 +989,20 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # this may give a better error message.
             ret_type = callee
 
-        for (item_name, item_expected_type) in ret_type.items.items():
+        for item_name, item_expected_type in ret_type.items.items():
             if item_name in kwargs:
-                item_value = kwargs[item_name]
-                self.chk.check_simple_assignment(
-                    lvalue_type=item_expected_type,
-                    rvalue=item_value,
-                    context=item_value,
-                    msg=ErrorMessage(
-                        message_registry.INCOMPATIBLE_TYPES.value, code=codes.TYPEDDICT_ITEM
-                    ),
-                    lvalue_name=f'TypedDict item "{item_name}"',
-                    rvalue_name="expression",
-                )
+                item_values = kwargs[item_name]
+                for item_value in item_values:
+                    self.chk.check_simple_assignment(
+                        lvalue_type=item_expected_type,
+                        rvalue=item_value,
+                        context=item_value,
+                        msg=ErrorMessage(
+                            message_registry.INCOMPATIBLE_TYPES.value, code=codes.TYPEDDICT_ITEM
+                        ),
+                        lvalue_name=f'TypedDict item "{item_name}"',
+                        rvalue_name="expression",
+                    )
 
         return orig_ret_type
 
@@ -1661,7 +1814,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # valid results.
         erased_ctx = replace_meta_vars(ctx, ErasedType())
         ret_type = callable.ret_type
-        if is_optional(ret_type) and is_optional(ctx):
+        if is_overlapping_none(ret_type) and is_overlapping_none(ctx):
             # If both the context and the return type are optional, unwrap the optional,
             # since in 99% cases this is what a user expects. In other words, we replace
             #     Optional[T] <: Optional[int]
@@ -1704,7 +1857,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             #        expects_literal(identity(3))  # Should type-check
             if not is_generic_instance(ctx) and not is_literal_type_like(ctx):
                 return callable.copy_modified()
-        args = infer_type_arguments(callable.type_var_ids(), ret_type, erased_ctx)
+        args = infer_type_arguments(callable.variables, ret_type, erased_ctx)
         # Only substitute non-Uninhabited and non-erased types.
         new_args: list[Type | None] = []
         for arg in args:
@@ -1753,7 +1906,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 else:
                     pass1_args.append(arg)
 
-            inferred_args = infer_function_type_arguments(
+            inferred_args, _ = infer_function_type_arguments(
                 callee_type,
                 pass1_args,
                 arg_kinds,
@@ -1784,6 +1937,49 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     inferred_args[0] = self.named_type("builtins.str")
                 elif not first_arg or not is_subtype(self.named_type("builtins.str"), first_arg):
                     self.chk.fail(message_registry.KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE, context)
+
+            if self.chk.options.new_type_inference and any(
+                a is None
+                or isinstance(get_proper_type(a), UninhabitedType)
+                or set(get_type_vars(a)) & set(callee_type.variables)
+                for a in inferred_args
+            ):
+                # If the regular two-phase inference didn't work, try inferring type
+                # variables while allowing for polymorphic solutions, i.e. for solutions
+                # potentially involving free variables.
+                # TODO: support the similar inference for return type context.
+                poly_inferred_args, free_vars = infer_function_type_arguments(
+                    callee_type,
+                    arg_types,
+                    arg_kinds,
+                    formal_to_actual,
+                    context=self.argument_infer_context(),
+                    strict=self.chk.in_checked_function(),
+                    allow_polymorphic=True,
+                )
+                poly_callee_type = self.apply_generic_arguments(
+                    callee_type, poly_inferred_args, context
+                )
+                # Try applying inferred polymorphic type if possible, e.g. Callable[[T], T] can
+                # be interpreted as def [T] (T) -> T, but dict[T, T] cannot be expressed.
+                applied = apply_poly(poly_callee_type, free_vars)
+                if applied is not None and all(
+                    a is not None and not isinstance(get_proper_type(a), UninhabitedType)
+                    for a in poly_inferred_args
+                ):
+                    freeze_all_type_vars(applied)
+                    return applied
+                # If it didn't work, erase free variables as <nothing>, to avoid confusing errors.
+                unknown = UninhabitedType()
+                unknown.ambiguous = True
+                inferred_args = [
+                    expand_type(
+                        a, {v.id: unknown for v in list(callee_type.variables) + free_vars}
+                    )
+                    if a is not None
+                    else None
+                    for a in poly_inferred_args
+                ]
         else:
             # In dynamically typed functions use implicit 'Any' types for
             # type variables.
@@ -1821,7 +2017,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         arg_types = self.infer_arg_types_in_context(callee_type, args, arg_kinds, formal_to_actual)
 
-        inferred_args = infer_function_type_arguments(
+        inferred_args, _ = infer_function_type_arguments(
             callee_type,
             arg_types,
             arg_kinds,
@@ -2049,7 +2245,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if (
                     isinstance(first_actual_arg_type, TupleType)
                     and len(first_actual_arg_type.items) == 1
-                    and isinstance(get_proper_type(first_actual_arg_type.items[0]), UnpackType)
+                    and isinstance(first_actual_arg_type.items[0], UnpackType)
                 ):
                     # TODO: use walrus operator
                     actual_types = [first_actual_arg_type.items[0]] + [
@@ -2076,7 +2272,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                             callee_arg_types = unpacked_type.items
                             callee_arg_kinds = [ARG_POS] * len(actuals)
                         else:
-                            inner_unpack = get_proper_type(unpacked_type.items[inner_unpack_index])
+                            inner_unpack = unpacked_type.items[inner_unpack_index]
                             assert isinstance(inner_unpack, UnpackType)
                             inner_unpacked_type = get_proper_type(inner_unpack.type)
                             # We assume heterogenous tuples are desugared earlier
@@ -2118,7 +2314,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if actual_kind == nodes.ARG_STAR2 and not self.is_valid_keyword_var_arg(
                     actual_type
                 ):
-                    is_mapping = is_subtype(actual_type, self.chk.named_type("typing.Mapping"))
+                    is_mapping = is_subtype(
+                        actual_type, self.chk.named_type("_typeshed.SupportsKeysAndGetItem")
+                    )
                     self.msg.invalid_keyword_var_arg(actual_type, is_mapping, context)
                 expanded_actual = mapper.expand_actual_type(
                     actual_type, actual_kind, callee.arg_names[i], callee_arg_kind
@@ -2157,15 +2355,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(caller_type, DeletedType):
             self.msg.deleted_as_rvalue(caller_type, context)
         # Only non-abstract non-protocol class can be given where Type[...] is expected...
-        elif (
-            isinstance(caller_type, CallableType)
-            and isinstance(callee_type, TypeType)
-            and caller_type.is_type_obj()
-            and (caller_type.type_object().is_abstract or caller_type.type_object().is_protocol)
-            and isinstance(callee_type.item, Instance)
-            and (callee_type.item.type.is_abstract or callee_type.item.type.is_protocol)
-            and not self.chk.allow_abstract_call
-        ):
+        elif self.has_abstract_type_part(caller_type, callee_type):
             self.msg.concrete_only_call(callee_type, context)
         elif not is_subtype(caller_type, callee_type, options=self.chk.options):
             code = self.msg.incompatible_argument(
@@ -2329,10 +2519,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         def has_shape(typ: Type) -> bool:
             typ = get_proper_type(typ)
-            return (
-                isinstance(typ, TupleType)
-                or isinstance(typ, TypedDictType)
-                or (isinstance(typ, Instance) and typ.type.is_named_tuple)
+            return isinstance(typ, (TupleType, TypedDictType)) or (
+                isinstance(typ, Instance) and typ.type.is_named_tuple
             )
 
         matches: list[CallableType] = []
@@ -2415,8 +2603,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 inferred_types.append(infer_type)
                 type_maps.append(m)
 
-        if len(matches) == 0:
-            # No match was found
+        if not matches:
             return None
         elif any_causes_overload_ambiguity(matches, return_types, arg_types, arg_kinds, arg_names):
             # An argument of type or containing the type 'Any' caused ambiguity.
@@ -2888,7 +3075,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Expressions of form [...] * e get special type inference.
             return self.check_list_multiply(e)
         if e.op == "%":
-            if isinstance(e.left, BytesExpr) and self.chk.options.python_version >= (3, 5):
+            if isinstance(e.left, BytesExpr):
                 return self.strfrm_checker.check_str_interpolation(e.left, e.right)
             if isinstance(e.left, StrExpr):
                 return self.strfrm_checker.check_str_interpolation(e.left, e.right)
@@ -2919,68 +3106,108 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         That is, 'a < b > c == d' is check as 'a < b and b > c and c == d'
         """
         result: Type | None = None
-        sub_result: Type | None = None
+        sub_result: Type
 
         # Check each consecutive operand pair and their operator
         for left, right, operator in zip(e.operands, e.operands[1:], e.operators):
             left_type = self.accept(left)
 
-            method_type: mypy.types.Type | None = None
-
             if operator == "in" or operator == "not in":
+                # This case covers both iterables and containers, which have different meanings.
+                # For a container, the in operator calls the __contains__ method.
+                # For an iterable, the in operator iterates over the iterable, and compares each item one-by-one.
+                # We allow `in` for a union of containers and iterables as long as at least one of them matches the
+                # type of the left operand, as the operation will simply return False if the union's container/iterator
+                # type doesn't match the left operand.
+
                 # If the right operand has partial type, look it up without triggering
                 # a "Need type annotation ..." message, as it would be noise.
                 right_type = self.find_partial_type_ref_fast_path(right)
                 if right_type is None:
                     right_type = self.accept(right)  # Validate the right operand
 
-                # Keep track of whether we get type check errors (these won't be reported, they
-                # are just to verify whether something is valid typing wise).
-                with self.msg.filter_errors(save_filtered_errors=True) as local_errors:
-                    _, method_type = self.check_method_call_by_name(
-                        method="__contains__",
-                        base_type=right_type,
-                        args=[left],
-                        arg_kinds=[ARG_POS],
-                        context=e,
-                    )
+                right_type = get_proper_type(right_type)
+                item_types: Sequence[Type] = [right_type]
+                if isinstance(right_type, UnionType):
+                    item_types = list(right_type.relevant_items())
 
                 sub_result = self.bool_type()
-                # Container item type for strict type overlap checks. Note: we need to only
-                # check for nominal type, because a usual "Unsupported operands for in"
-                # will be reported for types incompatible with __contains__().
-                # See testCustomContainsCheckStrictEquality for an example.
-                cont_type = self.chk.analyze_container_item_type(right_type)
-                if isinstance(right_type, PartialType):
-                    # We don't really know if this is an error or not, so just shut up.
-                    pass
-                elif (
-                    local_errors.has_new_errors()
-                    and
-                    # is_valid_var_arg is True for any Iterable
-                    self.is_valid_var_arg(right_type)
-                ):
-                    _, itertype = self.chk.analyze_iterable_item_type(right)
-                    method_type = CallableType(
-                        [left_type],
-                        [nodes.ARG_POS],
-                        [None],
-                        self.bool_type(),
-                        self.named_type("builtins.function"),
-                    )
-                    if not is_subtype(left_type, itertype):
-                        self.msg.unsupported_operand_types("in", left_type, right_type, e)
-                # Only show dangerous overlap if there are no other errors.
-                elif (
-                    not local_errors.has_new_errors()
-                    and cont_type
-                    and self.dangerous_comparison(
-                        left_type, cont_type, original_container=right_type, prefer_literal=False
-                    )
-                ):
-                    self.msg.dangerous_comparison(left_type, cont_type, "container", e)
-                else:
-                    self.msg.add_errors(local_errors.filtered_errors())
+
+                container_types: list[Type] = []
+                iterable_types: list[Type] = []
+                failed_out = False
+                encountered_partial_type = False
+
+                for item_type in item_types:
+                    # Keep track of whether we get type check errors (these won't be reported, they
+                    # are just to verify whether something is valid typing wise).
+                    with self.msg.filter_errors(save_filtered_errors=True) as container_errors:
+                        _, method_type = self.check_method_call_by_name(
+                            method="__contains__",
+                            base_type=item_type,
+                            args=[left],
+                            arg_kinds=[ARG_POS],
+                            context=e,
+                            original_type=right_type,
+                        )
+                        # Container item type for strict type overlap checks. Note: we need to only
+                        # check for nominal type, because a usual "Unsupported operands for in"
+                        # will be reported for types incompatible with __contains__().
+                        # See testCustomContainsCheckStrictEquality for an example.
+                        cont_type = self.chk.analyze_container_item_type(item_type)
+
+                    if isinstance(item_type, PartialType):
+                        # We don't really know if this is an error or not, so just shut up.
+                        encountered_partial_type = True
+                        pass
+                    elif (
+                        container_errors.has_new_errors()
+                        and
+                        # is_valid_var_arg is True for any Iterable
+                        self.is_valid_var_arg(item_type)
+                    ):
+                        # it's not a container, but it is an iterable
+                        with self.msg.filter_errors(save_filtered_errors=True) as iterable_errors:
+                            _, itertype = self.chk.analyze_iterable_item_type_without_expression(
+                                item_type, e
+                            )
+                        if iterable_errors.has_new_errors():
+                            self.msg.add_errors(iterable_errors.filtered_errors())
+                            failed_out = True
+                        else:
+                            method_type = CallableType(
+                                [left_type],
+                                [nodes.ARG_POS],
+                                [None],
+                                self.bool_type(),
+                                self.named_type("builtins.function"),
+                            )
+                            e.method_types.append(method_type)
+                            iterable_types.append(itertype)
+                    elif not container_errors.has_new_errors() and cont_type:
+                        container_types.append(cont_type)
+                        e.method_types.append(method_type)
+                    else:
+                        self.msg.add_errors(container_errors.filtered_errors())
+                        failed_out = True
+
+                if not encountered_partial_type and not failed_out:
+                    iterable_type = UnionType.make_union(iterable_types)
+                    if not is_subtype(left_type, iterable_type):
+                        if not container_types:
+                            self.msg.unsupported_operand_types("in", left_type, right_type, e)
+                        else:
+                            container_type = UnionType.make_union(container_types)
+                            if self.dangerous_comparison(
+                                left_type,
+                                container_type,
+                                original_container=right_type,
+                                prefer_literal=False,
+                            ):
+                                self.msg.dangerous_comparison(
+                                    left_type, container_type, "container", e
+                                )
+
             elif operator in operators.op_methods:
                 method = operators.op_methods[operator]
 
@@ -2988,6 +3215,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     sub_result, method_type = self.check_op(
                         method, left_type, right, e, allow_reverse=True
                     )
+                    e.method_types.append(method_type)
 
                 # Only show dangerous overlap if there are no other errors. See
                 # testCustomEqCheckStrictEquality for an example.
@@ -3007,11 +3235,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     left_type = try_getting_literal(left_type)
                     right_type = try_getting_literal(right_type)
                     self.msg.dangerous_comparison(left_type, right_type, "identity", e)
-                method_type = None
+                e.method_types.append(None)
             else:
                 raise RuntimeError(f"Unknown comparison operator {operator}")
-
-            e.method_types.append(method_type)
 
             #  Determine type of boolean-and of result and sub_result
             if result is None:
@@ -3122,6 +3348,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return self.dangerous_comparison(left.args[0], right.args[0])
             elif left_name in ("builtins.list", "builtins.tuple") and right_name == left_name:
                 return self.dangerous_comparison(left.args[0], right.args[0])
+            elif left_name in OVERLAPPING_BYTES_ALLOWLIST and right_name in (
+                OVERLAPPING_BYTES_ALLOWLIST
+            ):
+                return False
         if isinstance(left, LiteralType) and isinstance(right, LiteralType):
             if isinstance(left.value, bool) and isinstance(right.value, bool):
                 # Comparing different booleans is not dangerous.
@@ -3315,7 +3545,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             is_subtype(right_type, left_type)
             and isinstance(left_type, Instance)
             and isinstance(right_type, Instance)
-            and left_type.type.alt_promote is not right_type.type
+            and not (
+                left_type.type.alt_promote is not None
+                and left_type.type.alt_promote.type is right_type.type
+            )
             and lookup_definer(left_type, op_name) != lookup_definer(right_type, rev_op_name)
         ):
             # When we do "A() + B()" where B is a subclass of A, we'll actually try calling
@@ -3863,6 +4096,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             always_allow_any=True,
         )
         target_type = expr.type
+        proper_source_type = get_proper_type(source_type)
+        if (
+            isinstance(proper_source_type, mypy.types.Instance)
+            and proper_source_type.last_known_value is not None
+        ):
+            source_type = proper_source_type.last_known_value
         if not is_same_type(source_type, target_type):
             if not self.chk.in_checked_function():
                 self.msg.note(
@@ -3906,13 +4145,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         There are two different options here, depending on whether expr refers
         to a type alias or directly to a generic class. In the first case we need
-        to use a dedicated function typeanal.expand_type_alias(). This
-        is due to some differences in how type arguments are applied and checked.
+        to use a dedicated function typeanal.instantiate_type_alias(). This
+        is due to slight differences in how type arguments are applied and checked.
         """
         if isinstance(tapp.expr, RefExpr) and isinstance(tapp.expr.node, TypeAlias):
             # Subscription of a (generic) alias in runtime context, expand the alias.
-            item = expand_type_alias(
-                tapp.expr.node, tapp.types, self.chk.fail, tapp.expr.node.no_args, tapp
+            item = instantiate_type_alias(
+                tapp.expr.node,
+                tapp.types,
+                self.chk.fail,
+                tapp.expr.node.no_args,
+                tapp,
+                self.chk.options,
             )
             item = get_proper_type(item)
             if isinstance(item, Instance):
@@ -3977,7 +4221,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         disallow_any = self.chk.options.disallow_any_generics and self.is_callee
         item = get_proper_type(
             set_any_tvars(
-                alias, ctx.line, ctx.column, disallow_any=disallow_any, fail=self.msg.fail
+                alias,
+                ctx.line,
+                ctx.column,
+                self.chk.options,
+                disallow_any=disallow_any,
+                fail=self.msg.fail,
             )
         )
         if isinstance(item, Instance):
@@ -4004,6 +4253,35 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # The _SpecialForm type can be used in some runtime contexts (e.g. it may have __or__).
             return self.named_type("typing._SpecialForm")
 
+    def split_for_callable(
+        self, t: CallableType, args: Sequence[Type], ctx: Context
+    ) -> list[Type]:
+        """Handle directly applying type arguments to a variadic Callable.
+
+        This is needed in situations where e.g. variadic class object appears in
+        runtime context. For example:
+            class C(Generic[T, Unpack[Ts]]): ...
+            x = C[int, str]()
+
+        We simply group the arguments that need to go into Ts variable into a TupleType,
+        similar to how it is done in other places using split_with_prefix_and_suffix().
+        """
+        vars = t.variables
+        if not vars or not any(isinstance(v, TypeVarTupleType) for v in vars):
+            return list(args)
+
+        prefix = next(i for (i, v) in enumerate(vars) if isinstance(v, TypeVarTupleType))
+        suffix = len(vars) - prefix - 1
+        args = flatten_nested_tuples(args)
+        if len(args) < len(vars) - 1:
+            self.msg.incompatible_type_application(len(vars), len(args), ctx)
+            return [AnyType(TypeOfAny.from_error)] * len(vars)
+
+        tvt = vars[prefix]
+        assert isinstance(tvt, TypeVarTupleType)
+        start, middle, end = split_with_prefix_and_suffix(tuple(args), prefix, suffix)
+        return list(start) + [TupleType(list(middle), tvt.tuple_fallback)] + list(end)
+
     def apply_type_arguments_to_callable(
         self, tp: Type, args: Sequence[Type], ctx: Context
     ) -> Type:
@@ -4017,19 +4295,28 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         tp = get_proper_type(tp)
 
         if isinstance(tp, CallableType):
-            if len(tp.variables) != len(args):
+            if len(tp.variables) != len(args) and not any(
+                isinstance(v, TypeVarTupleType) for v in tp.variables
+            ):
                 if tp.is_type_obj() and tp.type_object().fullname == "builtins.tuple":
                     # TODO: Specialize the callable for the type arguments
                     return tp
                 self.msg.incompatible_type_application(len(tp.variables), len(args), ctx)
                 return AnyType(TypeOfAny.from_error)
-            return self.apply_generic_arguments(tp, args, ctx)
+            return self.apply_generic_arguments(tp, self.split_for_callable(tp, args, ctx), ctx)
         if isinstance(tp, Overloaded):
             for it in tp.items:
-                if len(it.variables) != len(args):
+                if len(it.variables) != len(args) and not any(
+                    isinstance(v, TypeVarTupleType) for v in it.variables
+                ):
                     self.msg.incompatible_type_application(len(it.variables), len(args), ctx)
                     return AnyType(TypeOfAny.from_error)
-            return Overloaded([self.apply_generic_arguments(it, args, ctx) for it in tp.items])
+            return Overloaded(
+                [
+                    self.apply_generic_arguments(it, self.split_for_callable(it, args, ctx), ctx)
+                    for it in tp.items
+                ]
+            )
         return AnyType(TypeOfAny.special_form)
 
     def visit_list_expr(self, e: ListExpr) -> Type:
@@ -4083,7 +4370,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Used for list and set expressions, as well as for tuples
         # containing star expressions that don't refer to a
         # Tuple. (Note: "lst" stands for list-set-tuple. :-)
-        tv = TypeVarType("T", "T", -1, [], self.object_type())
+        tv = TypeVarType(
+            "T",
+            "T",
+            id=-1,
+            values=[],
+            upper_bound=self.object_type(),
+            default=AnyType(TypeOfAny.from_omitted_generics),
+        )
         constructor = CallableType(
             [tv],
             [nodes.ARG_STAR],
@@ -4214,7 +4508,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self, e: DictExpr, typeddict_context: TypedDictType
     ) -> Type:
         orig_ret_type = self.check_typeddict_call_with_dict(
-            callee=typeddict_context, kwargs=e, context=e, orig_callee=None
+            callee=typeddict_context, kwargs=e.items, context=e, orig_callee=None
         )
         ret_type = get_proper_type(orig_ret_type)
         if isinstance(ret_type, TypedDictType):
@@ -4250,12 +4544,33 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if dt:
             return dt
 
+        # Define type variables (used in constructors below).
+        kt = TypeVarType(
+            "KT",
+            "KT",
+            id=-1,
+            values=[],
+            upper_bound=self.object_type(),
+            default=AnyType(TypeOfAny.from_omitted_generics),
+        )
+        vt = TypeVarType(
+            "VT",
+            "VT",
+            id=-2,
+            values=[],
+            upper_bound=self.object_type(),
+            default=AnyType(TypeOfAny.from_omitted_generics),
+        )
+
         # Collect function arguments, watching out for **expr.
-        args: list[Expression] = []  # Regular "key: value"
-        stargs: list[Expression] = []  # For "**expr"
+        args: list[Expression] = []
+        expected_types: list[Type] = []
         for key, value in e.items:
             if key is None:
-                stargs.append(value)
+                args.append(value)
+                expected_types.append(
+                    self.chk.named_generic_type("_typeshed.SupportsKeysAndGetItem", [kt, vt])
+                )
             else:
                 tup = TupleExpr([key, value])
                 if key.line >= 0:
@@ -4264,48 +4579,23 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 else:
                     tup.line = value.line
                     tup.column = value.column
+                tup.end_line = value.end_line
+                tup.end_column = value.end_column
                 args.append(tup)
-        # Define type variables (used in constructors below).
-        kt = TypeVarType("KT", "KT", -1, [], self.object_type())
-        vt = TypeVarType("VT", "VT", -2, [], self.object_type())
-        rv = None
-        # Call dict(*args), unless it's empty and stargs is not.
-        if args or not stargs:
-            # The callable type represents a function like this:
-            #
-            #   def <unnamed>(*v: Tuple[kt, vt]) -> Dict[kt, vt]: ...
-            constructor = CallableType(
-                [TupleType([kt, vt], self.named_type("builtins.tuple"))],
-                [nodes.ARG_STAR],
-                [None],
-                self.chk.named_generic_type("builtins.dict", [kt, vt]),
-                self.named_type("builtins.function"),
-                name="<dict>",
-                variables=[kt, vt],
-            )
-            rv = self.check_call(constructor, args, [nodes.ARG_POS] * len(args), e)[0]
-        else:
-            # dict(...) will be called below.
-            pass
-        # Call rv.update(arg) for each arg in **stargs,
-        # except if rv isn't set yet, then set rv = dict(arg).
-        if stargs:
-            for arg in stargs:
-                if rv is None:
-                    constructor = CallableType(
-                        [self.chk.named_generic_type("typing.Mapping", [kt, vt])],
-                        [nodes.ARG_POS],
-                        [None],
-                        self.chk.named_generic_type("builtins.dict", [kt, vt]),
-                        self.named_type("builtins.function"),
-                        name="<list>",
-                        variables=[kt, vt],
-                    )
-                    rv = self.check_call(constructor, [arg], [nodes.ARG_POS], arg)[0]
-                else:
-                    self.check_method_call_by_name("update", rv, [arg], [nodes.ARG_POS], arg)
-        assert rv is not None
-        return rv
+                expected_types.append(TupleType([kt, vt], self.named_type("builtins.tuple")))
+
+        # The callable type represents a function like this (except we adjust for **expr):
+        #   def <dict>(*v: Tuple[kt, vt]) -> Dict[kt, vt]: ...
+        constructor = CallableType(
+            expected_types,
+            [nodes.ARG_POS] * len(expected_types),
+            [None] * len(expected_types),
+            self.chk.named_generic_type("builtins.dict", [kt, vt]),
+            self.named_type("builtins.function"),
+            name="<dict>",
+            variables=[kt, vt],
+        )
+        return self.check_call(constructor, args, [nodes.ARG_POS] * len(args), e)[0]
 
     def find_typeddict_context(
         self, context: Type | None, dict_expr: DictExpr
@@ -4318,7 +4608,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             for item in context.items:
                 item_contexts = self.find_typeddict_context(item, dict_expr)
                 for item_context in item_contexts:
-                    if self.match_typeddict_call_with_dict(item_context, dict_expr, dict_expr):
+                    if self.match_typeddict_call_with_dict(
+                        item_context, dict_expr.items, dict_expr
+                    ):
                         items.append(item_context)
             return items
         # No TypedDict type in context.
@@ -4403,7 +4695,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 is_ellipsis_args=False,
                 arg_types=[AnyType(TypeOfAny.special_form)] * len(arg_kinds),
                 arg_kinds=arg_kinds,
-                arg_names=e.arg_names[:],
+                arg_names=e.arg_names.copy(),
             )
 
         if ARG_STAR in arg_kinds or ARG_STAR2 in arg_kinds:
@@ -4584,7 +4876,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return type_type, instance_type
 
     def visit_slice_expr(self, e: SliceExpr) -> Type:
-        expected = make_optional_type(self.named_type("builtins.int"))
+        try:
+            supports_index = self.chk.named_type("typing_extensions.SupportsIndex")
+        except KeyError:
+            supports_index = self.chk.named_type("builtins.int")  # thanks, fixture life
+        expected = make_optional_type(supports_index)
         for index in [e.begin_index, e.end_index, e.stride]:
             if index:
                 t = self.accept(index)
@@ -4630,7 +4926,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             # Infer the type of the list comprehension by using a synthetic generic
             # callable type.
-            tv = TypeVarType("T", "T", -1, [], self.object_type())
+            tv = TypeVarType(
+                "T",
+                "T",
+                id=-1,
+                values=[],
+                upper_bound=self.object_type(),
+                default=AnyType(TypeOfAny.from_omitted_generics),
+            )
             tv_list: list[Type] = [tv]
             constructor = CallableType(
                 tv_list,
@@ -4650,8 +4953,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             # Infer the type of the list comprehension by using a synthetic generic
             # callable type.
-            ktdef = TypeVarType("KT", "KT", -1, [], self.object_type())
-            vtdef = TypeVarType("VT", "VT", -2, [], self.object_type())
+            ktdef = TypeVarType(
+                "KT",
+                "KT",
+                id=-1,
+                values=[],
+                upper_bound=self.object_type(),
+                default=AnyType(TypeOfAny.from_omitted_generics),
+            )
+            vtdef = TypeVarType(
+                "VT",
+                "VT",
+                id=-2,
+                values=[],
+                upper_bound=self.object_type(),
+                default=AnyType(TypeOfAny.from_omitted_generics),
+            )
             constructor = CallableType(
                 [ktdef, vtdef],
                 [nodes.ARG_POS, nodes.ARG_POS],
@@ -4862,15 +5179,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def is_valid_var_arg(self, typ: Type) -> bool:
         """Is a type valid as a *args argument?"""
         typ = get_proper_type(typ)
-        return (
-            isinstance(typ, TupleType)
-            or is_subtype(
-                typ,
-                self.chk.named_generic_type("typing.Iterable", [AnyType(TypeOfAny.special_form)]),
-            )
-            or isinstance(typ, AnyType)
-            or isinstance(typ, ParamSpecType)
-            or isinstance(typ, UnpackType)
+        return isinstance(typ, (TupleType, AnyType, ParamSpecType, UnpackType)) or is_subtype(
+            typ, self.chk.named_generic_type("typing.Iterable", [AnyType(TypeOfAny.special_form)])
         )
 
     def is_valid_keyword_var_arg(self, typ: Type) -> bool:
@@ -4879,14 +5189,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             is_subtype(
                 typ,
                 self.chk.named_generic_type(
-                    "typing.Mapping",
+                    "_typeshed.SupportsKeysAndGetItem",
                     [self.named_type("builtins.str"), AnyType(TypeOfAny.special_form)],
                 ),
             )
             or is_subtype(
                 typ,
                 self.chk.named_generic_type(
-                    "typing.Mapping", [UninhabitedType(), UninhabitedType()]
+                    "_typeshed.SupportsKeysAndGetItem", [UninhabitedType(), UninhabitedType()]
                 ),
             )
             or isinstance(typ, ParamSpecType)
@@ -5070,6 +5380,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return e.type
 
     def visit_type_var_expr(self, e: TypeVarExpr) -> Type:
+        p_default = get_proper_type(e.default)
+        if not (
+            isinstance(p_default, AnyType)
+            and p_default.type_of_any == TypeOfAny.from_omitted_generics
+        ):
+            if not is_subtype(p_default, e.upper_bound):
+                self.chk.fail("TypeVar default must be a subtype of the bound type", e)
+            if e.values and not any(p_default == value for value in e.values):
+                self.chk.fail("TypeVar default must be one of the constraint types", e)
         return AnyType(TypeOfAny.special_form)
 
     def visit_paramspec_expr(self, e: ParamSpecExpr) -> Type:
@@ -5114,8 +5433,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def visit__promote_expr(self, e: PromoteExpr) -> Type:
         return e.type
 
-    def visit_star_expr(self, e: StarExpr) -> StarType:
-        return StarType(self.accept(e.expr))
+    def visit_star_expr(self, e: StarExpr) -> Type:
+        # TODO: should this ever be called (see e.g. mypyc visitor)?
+        return self.accept(e.expr)
 
     def object_type(self) -> Instance:
         """Return instance type 'object'."""
@@ -5159,6 +5479,26 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return narrow_declared_type(known_type, restriction)
         return known_type
 
+    def has_abstract_type_part(self, caller_type: ProperType, callee_type: ProperType) -> bool:
+        # TODO: support other possible types here
+        if isinstance(caller_type, TupleType) and isinstance(callee_type, TupleType):
+            return any(
+                self.has_abstract_type(get_proper_type(caller), get_proper_type(callee))
+                for caller, callee in zip(caller_type.items, callee_type.items)
+            )
+        return self.has_abstract_type(caller_type, callee_type)
+
+    def has_abstract_type(self, caller_type: ProperType, callee_type: ProperType) -> bool:
+        return (
+            isinstance(caller_type, CallableType)
+            and isinstance(callee_type, TypeType)
+            and caller_type.is_type_obj()
+            and (caller_type.type_object().is_abstract or caller_type.type_object().is_protocol)
+            and isinstance(callee_type.item, Instance)
+            and (callee_type.item.type.is_abstract or callee_type.item.type.is_protocol)
+            and not self.chk.allow_abstract_call
+        )
+
 
 def has_any_type(t: Type, ignore_in_type_obj: bool = False) -> bool:
     """Whether t contains an Any type"""
@@ -5177,6 +5517,18 @@ class HasAnyType(types.BoolTypeQuery):
         if self.ignore_in_type_obj and t.is_type_obj():
             return False
         return super().visit_callable_type(t)
+
+    def visit_type_var(self, t: TypeVarType) -> bool:
+        default = [t.default] if t.has_default() else []
+        return self.query_types([t.upper_bound, *default] + t.values)
+
+    def visit_param_spec(self, t: ParamSpecType) -> bool:
+        default = [t.default] if t.has_default() else []
+        return self.query_types([t.upper_bound, *default])
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> bool:
+        default = [t.default] if t.has_default() else []
+        return self.query_types([t.upper_bound, *default])
 
 
 def has_coroutine_decorator(t: Type) -> bool:
@@ -5242,6 +5594,92 @@ def is_duplicate_mapping(
 def replace_callable_return_type(c: CallableType, new_ret_type: Type) -> CallableType:
     """Return a copy of a callable type with a different return type."""
     return c.copy_modified(ret_type=new_ret_type)
+
+
+def apply_poly(tp: CallableType, poly_tvars: Sequence[TypeVarLikeType]) -> CallableType | None:
+    """Make free type variables generic in the type if possible.
+
+    This will translate the type `tp` while trying to create valid bindings for
+    type variables `poly_tvars` while traversing the type. This follows the same rules
+    as we do during semantic analysis phase, examples:
+      * Callable[Callable[[T], T], T] -> def [T] (def (T) -> T) -> T
+      * Callable[[], Callable[[T], T]] -> def () -> def [T] (T -> T)
+      * List[T] -> None (not possible)
+    """
+    try:
+        return tp.copy_modified(
+            arg_types=[t.accept(PolyTranslator(poly_tvars)) for t in tp.arg_types],
+            ret_type=tp.ret_type.accept(PolyTranslator(poly_tvars)),
+            variables=[],
+        )
+    except PolyTranslationError:
+        return None
+
+
+class PolyTranslationError(Exception):
+    pass
+
+
+class PolyTranslator(TypeTranslator):
+    """Make free type variables generic in the type if possible.
+
+    See docstring for apply_poly() for details.
+    """
+
+    def __init__(self, poly_tvars: Sequence[TypeVarLikeType]) -> None:
+        self.poly_tvars = set(poly_tvars)
+        # This is a simplified version of TypeVarScope used during semantic analysis.
+        self.bound_tvars: set[TypeVarLikeType] = set()
+        self.seen_aliases: set[TypeInfo] = set()
+
+    def visit_callable_type(self, t: CallableType) -> Type:
+        found_vars = set()
+        for arg in t.arg_types:
+            found_vars |= set(get_type_vars(arg)) & self.poly_tvars
+
+        found_vars -= self.bound_tvars
+        self.bound_tvars |= found_vars
+        result = super().visit_callable_type(t)
+        self.bound_tvars -= found_vars
+
+        assert isinstance(result, ProperType) and isinstance(result, CallableType)
+        result.variables = list(result.variables) + list(found_vars)
+        return result
+
+    def visit_type_var(self, t: TypeVarType) -> Type:
+        if t in self.poly_tvars and t not in self.bound_tvars:
+            raise PolyTranslationError()
+        return super().visit_type_var(t)
+
+    def visit_param_spec(self, t: ParamSpecType) -> Type:
+        # TODO: Support polymorphic apply for ParamSpec.
+        raise PolyTranslationError()
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
+        # TODO: Support polymorphic apply for TypeVarTuple.
+        raise PolyTranslationError()
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        if not t.args:
+            return t.copy_modified()
+        if not t.is_recursive:
+            return get_proper_type(t).accept(self)
+        # We can't handle polymorphic application for recursive generic aliases
+        # without risking an infinite recursion, just give up for now.
+        raise PolyTranslationError()
+
+    def visit_instance(self, t: Instance) -> Type:
+        # There is the same problem with callback protocols as with aliases
+        # (callback protocols are essentially more flexible aliases to callables).
+        # Note: consider supporting bindings in instances, e.g. LRUCache[[x: T], T].
+        if t.args and t.type.is_protocol and t.type.protocol_members == ["__call__"]:
+            if t.type in self.seen_aliases:
+                raise PolyTranslationError()
+            self.seen_aliases.add(t.type)
+            call = find_member("__call__", t, t, is_operator=True)
+            assert call is not None
+            return call.accept(self)
+        return super().visit_instance(t)
 
 
 class ArgInferSecondPassQuery(types.BoolTypeQuery):
@@ -5419,7 +5857,7 @@ def any_causes_overload_ambiguity(
 
 
 def all_same_types(types: list[Type]) -> bool:
-    if len(types) == 0:
+    if not types:
         return True
     return all(is_same_type(t, types[0]) for t in types[1:])
 
@@ -5463,7 +5901,7 @@ def merge_typevars_in_callables_by_name(
                     variables.append(tv)
                 rename[tv.id] = unique_typevars[name]
 
-            target = cast(CallableType, expand_type(target, rename))
+            target = expand_type(target, rename)
         output.append(target)
 
     return output, variables

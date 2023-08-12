@@ -2,6 +2,8 @@
 #
 # Use [builtins fixtures/...pyi] if you need more features.
 
+import _typeshed
+
 class object:
     def __init__(self) -> None: pass
 

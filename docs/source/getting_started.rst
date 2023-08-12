@@ -16,7 +16,7 @@ may not make much sense otherwise.
 Installing and running mypy
 ***************************
 
-Mypy requires Python 3.7 or later to run.  You can install mypy using pip:
+Mypy requires Python 3.8 or later to run.  You can install mypy using pip:
 
 .. code-block:: shell
 
@@ -43,6 +43,8 @@ easy to adopt mypy incrementally.
 
 In order to get useful diagnostics from mypy, you must add *type annotations*
 to your code. See the section below for details.
+
+.. _getting-started-dynamic-vs-static:
 
 Dynamic vs static typing
 ************************
@@ -132,8 +134,8 @@ may be useful. See :ref:`getting-to-strict` for how to build up to ``--strict``.
 See :ref:`command-line` and :ref:`config-file` for a complete reference on
 configuration options.
 
-Additional types, and the typing module
-***************************************
+More complex types
+******************
 
 So far, we've added type hints that use only basic concrete types like
 ``str`` and ``float``. What if we want to express more complex types,
@@ -159,28 +161,11 @@ accept one or more *type parameters*. In this case, we *parameterized* :py:class
 by writing ``list[str]``. This lets mypy know that ``greet_all`` accepts specifically
 lists containing strings, and not lists containing ints or any other type.
 
-In Python 3.8 and earlier, you can instead import the
-:py:class:`~typing.List` type from the :py:mod:`typing` module:
-
-.. code-block:: python
-
-   from typing import List  # Python 3.8 and earlier
-
-   def greet_all(names: List[str]) -> None:
-       for name in names:
-           print('Hello ' + name)
-
-   ...
-
-You can find many of these more complex static types in the :py:mod:`typing` module.
-
 In the above examples, the type signature is perhaps a little too rigid.
 After all, there's no reason why this function must accept *specifically* a list --
 it would run just fine if you were to pass in a tuple, a set, or any other custom iterable.
 
-You can express this idea using the
-:py:class:`collections.abc.Iterable` (or :py:class:`typing.Iterable` in Python
-3.8 and earlier) type instead of :py:class:`list` :
+You can express this idea using :py:class:`collections.abc.Iterable`:
 
 .. code-block:: python
 
@@ -190,8 +175,19 @@ You can express this idea using the
        for name in names:
            print('Hello ' + name)
 
+This behavior is actually a fundamental aspect of the PEP 484 type system: when
+we annotate some variable with a type ``T``, we are actually telling mypy that
+variable can be assigned an instance of ``T``, or an instance of a *subtype* of ``T``.
+That is, ``list[str]`` is a subtype of ``Iterable[str]``.
+
+This also applies to inheritance, so if you have a class ``Child`` that inherits from
+``Parent``, then a value of type ``Child`` can be assigned to a variable of type ``Parent``.
+For example, a ``RuntimeError`` instance can be passed to a function that is annotated
+as taking an ``Exception``.
+
 As another example, suppose you want to write a function that can accept *either*
-ints or strings, but no other types. You can express this using the :py:data:`~typing.Union` type:
+ints or strings, but no other types. You can express this using the
+:py:data:`~typing.Union` type. For example, ``int`` is a subtype of ``Union[int, str]``:
 
 .. code-block:: python
 
@@ -203,26 +199,12 @@ ints or strings, but no other types. You can express this using the :py:data:`~t
        else:
            return user_id
 
-Similarly, suppose that you want the function to accept only strings or ``None``. You can
-again use :py:data:`~typing.Union` and use ``Union[str, None]`` -- or alternatively, use the type
-``Optional[str]``. These two types are identical and interchangeable: ``Optional[str]``
-is just a shorthand or *alias* for ``Union[str, None]``. It exists mostly as a convenience
-to help function signatures look a little cleaner:
+The :py:mod:`typing` module contains many other useful types.
 
-.. code-block:: python
+For a quick overview, look through the :ref:`mypy cheatsheet <cheat-sheet-py3>`.
 
-   from typing import Optional
-
-   def greeting(name: Optional[str] = None) -> str:
-       # Optional[str] means the same thing as Union[str, None]
-       if name is None:
-           name = 'stranger'
-       return 'Hello, ' + name
-
-The :py:mod:`typing` module contains many other useful types. You can find a
-quick overview by looking through the :ref:`mypy cheatsheet <cheat-sheet-py3>`
-and a more detailed overview (including information on how to make your own
-generic types or your own type aliases) by looking through the
+For a detailed overview (including information on how to make your own
+generic types or your own type aliases), look through the
 :ref:`type system reference <overview-type-system-reference>`.
 
 .. note::
@@ -250,10 +232,7 @@ mypy will try and *infer* as many details as possible.
 
 We saw an example of this in the ``normalize_id`` function above -- mypy understands
 basic :py:func:`isinstance <isinstance>` checks and so can infer that the ``user_id`` variable was of
-type ``int`` in the if-branch and of type ``str`` in the else-branch. Similarly, mypy
-was able to understand that ``name`` could not possibly be ``None`` in the ``greeting``
-function above, based both on the ``name is None`` check and the variable assignment
-in that if statement.
+type ``int`` in the if-branch and of type ``str`` in the else-branch.
 
 As another example, consider the following function. Mypy can type check this function
 without a problem: it will use the available context and deduce that ``output`` must be
@@ -268,114 +247,16 @@ of type ``list[float]`` and that ``num`` must be of type ``float``:
                output.append(num)
        return output
 
-Mypy will warn you if it is unable to determine the type of some variable --
-for example, when assigning an empty dictionary to some global value:
+For more details, see :ref:`type-inference-and-annotations`.
 
-.. code-block:: python
+Types from libraries
+********************
 
-    my_global_dict = {}  # Error: Need type annotation for "my_global_dict"
+Mypy can also understand how to work with types from libraries that you use.
 
-You can teach mypy what type ``my_global_dict`` is meant to have by giving it
-a type hint. For example, if you knew this variable is supposed to be a dict
-of ints to floats, you could annotate it using either variable annotations
-(introduced in Python 3.6 by :pep:`526`) or using a comment-based
-syntax like so:
-
-.. code-block:: python
-
-   # If you're using Python 3.9+
-   my_global_dict: dict[int, float] = {}
-
-   # If you're using Python 3.6+
-   my_global_dict: Dict[int, float] = {}
-
-
-Types and classes
-*****************
-
-So far, we've only seen examples of pre-existing types like the ``int``
-or ``float`` builtins, or generic types from ``collections.abc`` and
-``typing``, such as ``Iterable``. However, these aren't the only types you can
-use: in fact, you can use any Python class as a type!
-
-For example, suppose you've defined a custom class representing a bank account:
-
-.. code-block:: python
-
-    class BankAccount:
-        # Note: It is ok to omit type hints for the "self" parameter.
-        # Mypy will infer the correct type.
-
-        def __init__(self, account_name: str, initial_balance: int = 0) -> None:
-            # Note: Mypy will infer the correct types of your fields
-            # based on the types of the parameters.
-            self.account_name = account_name
-            self.balance = initial_balance
-
-        def deposit(self, amount: int) -> None:
-            self.balance += amount
-
-        def withdraw(self, amount: int) -> None:
-            self.balance -= amount
-
-        def overdrawn(self) -> bool:
-            return self.balance < 0
-
-You can declare that a function will accept any instance of your class
-by simply annotating the parameters with ``BankAccount``:
-
-.. code-block:: python
-
-    def transfer(src: BankAccount, dst: BankAccount, amount: int) -> None:
-        src.withdraw(amount)
-        dst.deposit(amount)
-
-    account_1 = BankAccount('Alice', 400)
-    account_2 = BankAccount('Bob', 200)
-    transfer(account_1, account_2, 50)
-
-In fact, the ``transfer`` function we wrote above can accept more then just
-instances of ``BankAccount``: it can also accept any instance of a *subclass*
-of ``BankAccount``. For example, suppose you write a new class that looks like this:
-
-.. code-block:: python
-
-    class AuditedBankAccount(BankAccount):
-        def __init__(self, account_name: str, initial_balance: int = 0) -> None:
-            super().__init__(account_name, initial_balance)
-            self.audit_log: list[str] = []
-
-        def deposit(self, amount: int) -> None:
-            self.audit_log.append(f"Deposited {amount}")
-            self.balance += amount
-
-        def withdraw(self, amount: int) -> None:
-            self.audit_log.append(f"Withdrew {amount}")
-            self.balance -= amount
-
-Since ``AuditedBankAccount`` is a subclass of ``BankAccount``, we can directly pass
-in instances of it into our ``transfer`` function:
-
-.. code-block:: python
-
-    audited = AuditedBankAccount('Charlie', 300)
-    transfer(account_1, audited, 100)   # Type checks!
-
-This behavior is actually a fundamental aspect of the PEP 484 type system: when
-we annotate some variable with a type ``T``, we are actually telling mypy that
-variable can be assigned an instance of ``T``, or an instance of a *subclass* of ``T``.
-The same rule applies to type hints on parameters or fields.
-
-See :ref:`class-basics` to learn more about how to work with code involving classes.
-
-
-.. _stubs-intro:
-
-Stubs files and typeshed
-************************
-
-Mypy also understands how to work with classes found in the standard library.
-For example, here is a function which uses the ``Path`` object from the
+For instance, mypy comes out of the box with an intimate knowledge of the
+Python standard library. For example, here is a function which uses the
+``Path`` object from the
 `pathlib standard library module <https://docs.python.org/3/library/pathlib.html>`_:
 
 .. code-block:: python
@@ -383,52 +264,43 @@ For example, here is a function which uses the ``Path`` object from the
     from pathlib import Path
 
     def load_template(template_path: Path, name: str) -> str:
-        # Mypy understands that 'file_path.read_text()' returns a str...
+        # Mypy knows that `template_path` has a `read_text` method that returns a str
         template = template_path.read_text()
-
-        # ...so understands this line type checks.
+        # ...so it understands this line type checks
         return template.replace('USERNAME', name)
 
-This behavior may surprise you if you're familiar with how
-Python internally works. The standard library does not use type hints
-anywhere, so how did mypy know that ``Path.read_text()`` returns a ``str``,
-or that ``str.replace(...)`` accepts exactly two ``str`` arguments?
+If a third party library you use :ref:`declares support for type checking <installed-packages>`,
+mypy will type check your use of that library based on the type hints
+it contains.
 
-The answer is that mypy comes bundled with *stub files* from the
-the `typeshed <https://github.com/python/typeshed>`_ project, which
-contains stub files for the Python builtins, the standard library,
-and selected third-party packages.
-
-A *stub file* is a file containing a skeleton of the public interface
-of that Python module, including classes, variables, functions -- and
-most importantly, their types.
-
-Mypy complains if it can't find a stub (or a real module) for a
-library module that you import. Some modules ship with stubs or inline
-annotations that mypy can automatically find, or you can install
-additional stubs using pip (see :ref:`fix-missing-imports` and
-:ref:`installed-packages` for the details). For example, you can install
-the stubs for the ``requests`` package like this:
-
-.. code-block:: shell
-
-  $ python3 -m pip install types-requests
-
-The stubs are usually packaged in a distribution named
-``types-<distribution>``.  Note that the distribution name may be
-different from the name of the package that you import. For example,
-``types-PyYAML`` contains stubs for the ``yaml`` package. Mypy can
-often suggest the name of the stub distribution:
+However, if the third party library does not have type hints, mypy will
+complain about missing type information.
 
 .. code-block:: text
 
   prog.py:1: error: Library stubs not installed for "yaml"
   prog.py:1: note: Hint: "python3 -m pip install types-PyYAML"
+  prog.py:2: error: Library stubs not installed for "requests"
+  prog.py:2: note: Hint: "python3 -m pip install types-requests"
   ...
 
-You can also :ref:`create
-stubs <stub-files>` easily. We discuss strategies for handling errors
-about missing stubs in :ref:`ignore-missing-imports`.
+In this case, you can provide mypy a different source of type information,
+by installing a *stub* package. A stub package is a package that contains
+type hints for another library, but no actual code.
+
+.. code-block:: shell
+
+  $ python3 -m pip install types-PyYAML types-requests
+
+Stubs packages for a distribution are often named ``types-<distribution>``.
+Note that a distribution name may be different from the name of the package that
+you import. For example, ``types-PyYAML`` contains stubs for the ``yaml``
+package.
+
+For more discussion on strategies for handling errors about libraries without
+type information, refer to :ref:`fix-missing-imports`.
+
+For more information about stubs, see :ref:`stub-files`.
 
 Next steps
 **********
@@ -462,6 +334,9 @@ resources:
 * You can ask questions about mypy in the
   `mypy issue tracker <https://github.com/python/mypy/issues>`_ and
   typing `Gitter chat <https://gitter.im/python/typing>`_.
+
+* For general questions about Python typing, try posting at
+  `typing discussions <https://github.com/python/typing/discussions>`_.
 
 You can also continue reading this document and skip sections that
 aren't relevant for you. You don't need to read sections in order.

@@ -20,7 +20,6 @@ from mypy.types import (
     PartialType,
     PlaceholderType,
     RawExpressionType,
-    StarType,
     SyntheticTypeVisitor,
     TupleType,
     Type,
@@ -114,9 +113,6 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
 
     def visit_type_list(self, t: TypeList) -> None:
         self.traverse_types(t.items)
-
-    def visit_star_type(self, t: StarType) -> None:
-        t.type.accept(self)
 
     def visit_ellipsis_type(self, t: EllipsisType) -> None:
         pass

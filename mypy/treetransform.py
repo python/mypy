@@ -145,7 +145,7 @@ class TransformVisitor(NodeVisitor[Node]):
     def visit_mypy_file(self, node: MypyFile) -> MypyFile:
         assert self.test_only, "This visitor should not be used for whole files."
         # NOTE: The 'names' and 'imports' instance variables will be empty!
-        ignored_lines = {line: codes[:] for line, codes in node.ignored_lines.items()}
+        ignored_lines = {line: codes.copy() for line, codes in node.ignored_lines.items()}
         new = MypyFile(self.statements(node.defs), [], node.is_bom, ignored_lines=ignored_lines)
         new._fullname = node._fullname
         new.path = node.path
@@ -153,10 +153,10 @@ class TransformVisitor(NodeVisitor[Node]):
         return new
 
     def visit_import(self, node: Import) -> Import:
-        return Import(node.ids[:])
+        return Import(node.ids.copy())
 
     def visit_import_from(self, node: ImportFrom) -> ImportFrom:
-        return ImportFrom(node.id, node.relative, node.names[:])
+        return ImportFrom(node.id, node.relative, node.names.copy())
 
     def visit_import_all(self, node: ImportAll) -> ImportAll:
         return ImportAll(node.id, node.relative)
@@ -233,6 +233,9 @@ class TransformVisitor(NodeVisitor[Node]):
         new.max_pos = original.max_pos
         new.is_overload = original.is_overload
         new.is_generator = original.is_generator
+        new.is_coroutine = original.is_coroutine
+        new.is_async_generator = original.is_async_generator
+        new.is_awaitable_coroutine = original.is_awaitable_coroutine
         new.line = original.line
 
     def visit_overloaded_func_def(self, node: OverloadedFuncDef) -> OverloadedFuncDef:
@@ -267,10 +270,10 @@ class TransformVisitor(NodeVisitor[Node]):
         return new
 
     def visit_global_decl(self, node: GlobalDecl) -> GlobalDecl:
-        return GlobalDecl(node.names[:])
+        return GlobalDecl(node.names.copy())
 
     def visit_nonlocal_decl(self, node: NonlocalDecl) -> NonlocalDecl:
-        return NonlocalDecl(node.names[:])
+        return NonlocalDecl(node.names.copy())
 
     def visit_block(self, node: Block) -> Block:
         return Block(self.statements(node.body))
@@ -513,8 +516,8 @@ class TransformVisitor(NodeVisitor[Node]):
         return CallExpr(
             self.expr(node.callee),
             self.expressions(node.args),
-            node.arg_kinds[:],
-            node.arg_names[:],
+            node.arg_kinds.copy(),
+            node.arg_names.copy(),
             self.optional_expr(node.analyzed),
         )
 
@@ -643,12 +646,17 @@ class TransformVisitor(NodeVisitor[Node]):
             node.fullname,
             self.types(node.values),
             self.type(node.upper_bound),
+            self.type(node.default),
             variance=node.variance,
         )
 
     def visit_paramspec_expr(self, node: ParamSpecExpr) -> ParamSpecExpr:
         return ParamSpecExpr(
-            node.name, node.fullname, self.type(node.upper_bound), variance=node.variance
+            node.name,
+            node.fullname,
+            self.type(node.upper_bound),
+            self.type(node.default),
+            variance=node.variance,
         )
 
     def visit_type_var_tuple_expr(self, node: TypeVarTupleExpr) -> TypeVarTupleExpr:
@@ -657,6 +665,7 @@ class TransformVisitor(NodeVisitor[Node]):
             node.fullname,
             self.type(node.upper_bound),
             node.tuple_fallback,
+            self.type(node.default),
             variance=node.variance,
         )
 

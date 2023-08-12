@@ -46,17 +46,9 @@ def run_mypy(args: list[str]) -> None:
 def assert_string_arrays_equal(expected: list[str], actual: list[str], msg: str) -> None:
     """Assert that two string arrays are equal.
 
-    We consider "can't" and "cannot" equivalent, by replacing the
-    former with the latter before comparing.
-
     Display any differences in a human-readable form.
     """
-    __tracebackhide__ = True
-
     actual = clean_up(actual)
-    actual = [line.replace("can't", "cannot") for line in actual]
-    expected = [line.replace("can't", "cannot") for line in expected]
-
     if actual != expected:
         num_skip_start = num_skipped_prefix_lines(expected, actual)
         num_skip_end = num_skipped_suffix_lines(expected, actual)
@@ -117,7 +109,7 @@ def assert_string_arrays_equal(expected: list[str], actual: list[str], msg: str)
             # long lines.
             show_align_message(expected[first_diff], actual[first_diff])
 
-        raise AssertionError(msg)
+        pytest.fail(msg, pytrace=False)
 
 
 def assert_module_equivalence(name: str, expected: Iterable[str], actual: Iterable[str]) -> None:
@@ -141,39 +133,6 @@ def assert_target_equivalence(name: str, expected: list[str], actual: list[str])
             ", ".join(actual), ", ".join(expected), name
         ),
     )
-
-
-def update_testcase_output(testcase: DataDrivenTestCase, output: list[str]) -> None:
-    assert testcase.old_cwd is not None, "test was not properly set up"
-    testcase_path = os.path.join(testcase.old_cwd, testcase.file)
-    with open(testcase_path, encoding="utf8") as f:
-        data_lines = f.read().splitlines()
-    test = "\n".join(data_lines[testcase.line : testcase.last_line])
-
-    mapping: dict[str, list[str]] = {}
-    for old, new in zip(testcase.output, output):
-        PREFIX = "error:"
-        ind = old.find(PREFIX)
-        if ind != -1 and old[:ind] == new[:ind]:
-            old, new = old[ind + len(PREFIX) :], new[ind + len(PREFIX) :]
-        mapping.setdefault(old, []).append(new)
-
-    for old in mapping:
-        if test.count(old) == len(mapping[old]):
-            betweens = test.split(old)
-
-            # Interleave betweens and mapping[old]
-            from itertools import chain
-
-            interleaved = [betweens[0]] + list(
-                chain.from_iterable(zip(mapping[old], betweens[1:]))
-            )
-            test = "".join(interleaved)
-
-    data_lines[testcase.line : testcase.last_line] = [test]
-    data = "\n".join(data_lines)
-    with open(testcase_path, "w", encoding="utf8") as f:
-        print(data, file=f)
 
 
 def show_align_message(s1: str, s2: str) -> None:
@@ -258,7 +217,7 @@ def local_sys_path_set() -> Iterator[None]:
     This can be used by test cases that do runtime imports, for example
     by the stubgen tests.
     """
-    old_sys_path = sys.path[:]
+    old_sys_path = sys.path.copy()
     if not ("" in sys.path or "." in sys.path):
         sys.path.insert(0, "")
     try:
@@ -380,13 +339,13 @@ def parse_options(
     else:
         flag_list = []
         options = Options()
-        # TODO: Enable strict optional in test cases by default (requires *many* test case changes)
-        options.strict_optional = False
         options.error_summary = False
         options.hide_error_codes = True
+        options.force_uppercase_builtins = True
+        options.force_union_syntax = True
 
     # Allow custom python version to override testfile_pyversion.
-    if all(flag.split("=")[0] not in ["--python-version", "-2", "--py2"] for flag in flag_list):
+    if all(flag.split("=")[0] != "--python-version" for flag in flag_list):
         options.python_version = testfile_pyversion(testcase.file)
 
     if testcase.config.getoption("--mypy-verbose"):

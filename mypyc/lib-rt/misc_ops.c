@@ -177,42 +177,6 @@ PyObject *CPyType_FromTemplate(PyObject *template,
     if (!name)
         goto error;
 
-    // If there is a metaclass other than type, we would like to call
-    // its __new__ function. Unfortunately there doesn't seem to be a
-    // good way to mix a C extension class and creating it via a
-    // metaclass. We need to do it anyways, though, in order to
-    // support subclassing Generic[T] prior to Python 3.7.
-    //
-    // We solve this with a kind of atrocious hack: create a parallel
-    // class using the metaclass, determine the bases of the real
-    // class by pulling them out of the parallel class, creating the
-    // real class, and then merging its dict back into the original
-    // class. There are lots of cases where this won't really work,
-    // but for the case of GenericMeta setting a bunch of properties
-    // on the class we should be fine.
-    if (metaclass != &PyType_Type) {
-        assert(bases && "non-type metaclasses require non-NULL bases");
-
-        PyObject *ns = PyDict_New();
-        if (!ns)
-            goto error;
-
-        if (bases != orig_bases) {
-            if (PyDict_SetItemString(ns, "__orig_bases__", orig_bases) < 0)
-                goto error;
-        }
-
-        dummy_class = (PyTypeObject *)PyObject_CallFunctionObjArgs(
-            (PyObject *)metaclass, name, bases, ns, NULL);
-        Py_DECREF(ns);
-        if (!dummy_class)
-            goto error;
-
-        Py_DECREF(bases);
-        bases = dummy_class->tp_bases;
-        Py_INCREF(bases);
-    }
-
     // Allocate the type and then copy the main stuff in.
     t = (PyHeapTypeObject*)PyType_GenericAlloc(&PyType_Type, 0);
     if (!t)
@@ -669,9 +633,62 @@ CPy_Super(PyObject *builtins, PyObject *self) {
     return result;
 }
 
+static bool import_single(PyObject *mod_id, PyObject **mod_static,
+                          PyObject *globals_id, PyObject *globals_name, PyObject *globals) {
+    if (*mod_static == Py_None) {
+        CPyModule *mod = PyImport_Import(mod_id);
+        if (mod == NULL) {
+            return false;
+        }
+        *mod_static = mod;
+    }
+
+    PyObject *mod_dict = PyImport_GetModuleDict();
+    CPyModule *globals_mod = CPyDict_GetItem(mod_dict, globals_id);
+    if (globals_mod == NULL) {
+        return false;
+    }
+    int ret = CPyDict_SetItem(globals, globals_name, globals_mod);
+    Py_DECREF(globals_mod);
+    if (ret < 0) {
+        return false;
+    }
+
+    return true;
+}
+
+// Table-driven import helper. See transform_import() in irbuild for the details.
+bool CPyImport_ImportMany(PyObject *modules, CPyModule **statics[], PyObject *globals,
+                          PyObject *tb_path, PyObject *tb_function, Py_ssize_t *tb_lines) {
+    for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(modules); i++) {
+        PyObject *module = PyTuple_GET_ITEM(modules, i);
+        PyObject *mod_id = PyTuple_GET_ITEM(module, 0);
+        PyObject *globals_id = PyTuple_GET_ITEM(module, 1);
+        PyObject *globals_name = PyTuple_GET_ITEM(module, 2);
+
+        if (!import_single(mod_id, statics[i], globals_id, globals_name, globals)) {
+            assert(PyErr_Occurred() && "error indicator should be set on bad import!");
+            PyObject *typ, *val, *tb;
+            PyErr_Fetch(&typ, &val, &tb);
+            const char *path = PyUnicode_AsUTF8(tb_path);
+            if (path == NULL) {
+                path = "<unable to display>";
+            }
+            const char *function = PyUnicode_AsUTF8(tb_function);
+            if (function == NULL) {
+                function = "<unable to display>";
+            }
+            PyErr_Restore(typ, val, tb);
+            CPy_AddTraceback(path, function, tb_lines[i], globals);
+            return false;
+        }
+    }
+    return true;
+}
+
 // This helper function is a simplification of cpython/ceval.c/import_from()
-PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
-                               PyObject *import_name, PyObject *as_name) {
+static PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
+                                      PyObject *import_name, PyObject *as_name) {
     // check if the imported module has an attribute by that name
     PyObject *x = PyObject_GetAttr(module, import_name);
     if (x == NULL) {
@@ -700,6 +717,31 @@ fail:
     Py_DECREF(package_path);
     Py_DECREF(errmsg);
     return NULL;
+}
+
+PyObject *CPyImport_ImportFromMany(PyObject *mod_id, PyObject *names, PyObject *as_names,
+                                   PyObject *globals) {
+    PyObject *mod = PyImport_ImportModuleLevelObject(mod_id, globals, 0, names, 0);
+    if (mod == NULL) {
+        return NULL;
+    }
+
+    for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(names); i++) {
+        PyObject *name = PyTuple_GET_ITEM(names, i);
+        PyObject *as_name = PyTuple_GET_ITEM(as_names, i);
+        PyObject *obj = CPyImport_ImportFrom(mod, mod_id, name, as_name);
+        if (obj == NULL) {
+            Py_DECREF(mod);
+            return NULL;
+        }
+        int ret = CPyDict_SetItem(globals, as_name, obj);
+        Py_DECREF(obj);
+        if (ret < 0) {
+            Py_DECREF(mod);
+            return NULL;
+        }
+    }
+    return mod;
 }
 
 // From CPython

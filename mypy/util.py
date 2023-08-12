@@ -11,8 +11,8 @@ import shutil
 import sys
 import time
 from importlib import resources as importlib_resources
-from typing import IO, Callable, Container, Iterable, Sequence, Sized, TypeVar
-from typing_extensions import Final, Literal
+from typing import IO, Callable, Container, Final, Iterable, Sequence, Sized, TypeVar
+from typing_extensions import Literal
 
 try:
     import curses
@@ -308,17 +308,6 @@ def get_prefix(fullname: str) -> str:
     return fullname.rsplit(".", 1)[0]
 
 
-def get_top_two_prefixes(fullname: str) -> tuple[str, str]:
-    """Return one and two component prefixes of a fully qualified name.
-
-    Given 'a.b.c.d', return ('a', 'a.b').
-
-    If fullname has only one component, return (fullname, fullname).
-    """
-    components = fullname.split(".", 3)
-    return components[0], ".".join(components[:2])
-
-
 def correct_relative_import(
     cur_mod_id: str, relative: int, target: str, is_cur_package_init_file: bool
 ) -> tuple[str, bool]:
@@ -421,10 +410,10 @@ def get_unique_redefinition_name(name: str, existing: Container[str]) -> str:
 def check_python_version(program: str) -> None:
     """Report issues with the Python used to run mypy, dmypy, or stubgen"""
     # Check for known bad Python versions.
-    if sys.version_info[:2] < (3, 7):
+    if sys.version_info[:2] < (3, 8):
         sys.exit(
-            "Running {name} with Python 3.6 or lower is not supported; "
-            "please upgrade to 3.7 or newer".format(name=program)
+            "Running {name} with Python 3.7 or lower is not supported; "
+            "please upgrade to 3.8 or newer".format(name=program)
         )
 
 

@@ -223,7 +223,7 @@ h(arg=0)  # E: Unexpected keyword argument "arg" for "h"
 i(arg=0)  # E: Unexpected keyword argument "arg"
 
 [case testWalrus]
-# flags: --strict-optional --python-version 3.8
+# flags: --python-version 3.8
 from typing import NamedTuple, Optional, List
 from typing_extensions import Final
 
@@ -310,7 +310,8 @@ def f(x: int = (c := 4)) -> int:
         z2: NT  # E: Variable "NT" is not valid as a type \
                 # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
-    if Alias := int:  # E: Function "Type[int]" could always be true in boolean context
+    if Alias := int:  # E: Function "Alias" could always be true in boolean context \
+                      # E: Function "int" could always be true in boolean context
         z3: Alias  # E: Variable "Alias" is not valid as a type \
                    # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
@@ -426,7 +427,7 @@ else:
 [builtins fixtures/list.pyi]
 
 [case testWalrusConditionalTypeCheck]
-# flags: --strict-optional --python-version 3.8
+# flags: --python-version 3.8
 from typing import Optional
 
 maybe_str: Optional[str]
@@ -572,6 +573,14 @@ def foo() -> None:
     x = 0
     [x := x + y for y in [1, 2, 3]]
 [builtins fixtures/dict.pyi]
+
+[case testWalrusUsedBeforeDef]
+# flags: --python-version 3.8
+class C:
+    def f(self, c: 'C') -> None: pass
+
+(x := C()).f(y)  # E: Cannot determine type of "y"  # E: Name "y" is used before definition
+(y := C()).f(y)
 
 [case testOverloadWithPositionalOnlySelf]
 # flags: --python-version 3.8
@@ -720,7 +729,6 @@ def f1() -> None:
 [builtins fixtures/dict.pyi]
 
 [case testNarrowOnSelfInGeneric]
-# flags: --strict-optional
 from typing import Generic, TypeVar, Optional
 
 T = TypeVar("T", int, str)
@@ -732,10 +740,89 @@ class C(Generic[T]):
             reveal_type(y)
         return None
 [out]
-main:10: note: Revealed type is "builtins.int"
-main:10: note: Revealed type is "builtins.str"
+main:9: note: Revealed type is "builtins.int"
+main:9: note: Revealed type is "builtins.str"
+
+[case testTypeGuardWithPositionalOnlyArg]
+# flags: --python-version 3.8
+from typing_extensions import TypeGuard
+
+def typeguard(x: object, /) -> TypeGuard[int]:
+    ...
+
+n: object
+if typeguard(n):
+    reveal_type(n)
+[builtins fixtures/tuple.pyi]
+[out]
+main:9: note: Revealed type is "builtins.int"
+
+[case testTypeGuardKeywordFollowingWalrus]
+# flags: --python-version 3.8
+from typing import cast
+from typing_extensions import TypeGuard
+
+def typeguard(x: object) -> TypeGuard[int]:
+    ...
+
+if typeguard(x=(n := cast(object, "hi"))):
+    reveal_type(n)
+[builtins fixtures/tuple.pyi]
+[out]
+main:9: note: Revealed type is "builtins.int"
 
 [case testNoCrashOnAssignmentExprClass]
 class C:
     [(j := i) for i in [1, 2, 3]]  # E: Assignment expression within a comprehension cannot be used in a class body
 [builtins fixtures/list.pyi]
+
+[case testNarrowedVariableInNestedModifiedInWalrus]
+from typing import Optional
+
+def walrus_with_nested_error(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    if x := None:
+        pass
+    nested()
+
+def walrus_with_nested_ok(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return x
+    if y := x:
+        pass
+    nested()
+
+[case testIgnoreWholeModule]
+# flags: --warn-unused-ignores
+# type: ignore
+IGNORE # type: ignore
+
+[case testUnusedIgnoreVersionCheck]
+# flags: --warn-unused-ignores
+import sys
+
+if sys.version_info < (3, 6):
+    42  # type: ignore
+else:
+    42  # type: ignore  # E: Unused "type: ignore" comment
+[builtins fixtures/ops.pyi]
+
+[case testDictExpressionErrorLocations]
+# flags: --pretty
+from typing import Dict
+
+other: Dict[str, str]
+dct: Dict[str, int] = {"a": "b", **other}
+[builtins fixtures/dict.pyi]
+[out]
+main:5: error: Dict entry 0 has incompatible type "str": "str"; expected "str": "int"
+    dct: Dict[str, int] = {"a": "b", **other}
+                           ^~~~~~~~
+main:5: error: Unpacked dict entry 1 has incompatible type "Dict[str, str]"; expected "SupportsKeysAndGetItem[str, int]"
+    dct: Dict[str, int] = {"a": "b", **other}
+                                       ^~~~~

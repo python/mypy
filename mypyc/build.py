@@ -25,7 +25,7 @@ import os.path
 import re
 import sys
 import time
-from typing import TYPE_CHECKING, Any, Dict, Iterable, NoReturn, cast
+from typing import TYPE_CHECKING, Any, Dict, Iterable, NoReturn, Union, cast
 
 from mypy.build import BuildSource
 from mypy.errors import CompileError
@@ -40,30 +40,49 @@ from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 
-if TYPE_CHECKING:
-    from distutils.core import Extension
+if sys.version_info < (3, 12):
+    if TYPE_CHECKING:
+        from distutils.core import Extension as _distutils_Extension
+        from typing_extensions import TypeAlias
 
-try:
-    # Import setuptools so that it monkey-patch overrides distutils
-    import setuptools  # noqa: F401
-except ImportError:
-    if sys.version_info >= (3, 12):
-        # Raise on Python 3.12, since distutils will go away forever
-        raise
-from distutils import ccompiler, sysconfig
+        from setuptools import Extension as _setuptools_Extension
+
+        Extension: TypeAlias = Union[_setuptools_Extension, _distutils_Extension]
+
+    try:
+        # Import setuptools so that it monkey-patch overrides distutils
+        import setuptools
+    except ImportError:
+        pass
+    from distutils import ccompiler, sysconfig
+else:
+    import setuptools
+    from setuptools import Extension
+    from setuptools._distutils import (
+        ccompiler as _ccompiler,  # type: ignore[attr-defined]
+        sysconfig as _sysconfig,  # type: ignore[attr-defined]
+    )
+
+    ccompiler = _ccompiler
+    sysconfig = _sysconfig
 
 
 def get_extension() -> type[Extension]:
     # We can work with either setuptools or distutils, and pick setuptools
     # if it has been imported.
     use_setuptools = "setuptools" in sys.modules
+    extension_class: type[Extension]
 
-    if not use_setuptools:
-        from distutils.core import Extension
+    if sys.version_info < (3, 12) and not use_setuptools:
+        import distutils.core
+
+        extension_class = distutils.core.Extension
     else:
-        from setuptools import Extension
+        if not use_setuptools:
+            sys.exit("error: setuptools not installed")
+        extension_class = setuptools.Extension
 
-    return Extension
+    return extension_class
 
 
 def setup_mypycify_vars() -> None:
@@ -216,7 +235,7 @@ def generate_c(
     if compiler_options.verbose:
         print(f"Parsed and typechecked in {t1 - t0:.3f}s")
 
-    errors = Errors()
+    errors = Errors(options)
     modules, ctext = emitmodule.compile_modules_to_c(
         result, compiler_options=compiler_options, errors=errors, groups=groups
     )

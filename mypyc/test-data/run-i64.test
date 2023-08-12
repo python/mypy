@@ -1,9 +1,7 @@
 [case testI64BasicOps]
 from typing import List, Any, Tuple, Union
 
-MYPY = False
-if MYPY:
-    from mypy_extensions import i64, i32
+from mypy_extensions import i64, i32, i16
 
 from testutil import assertRaises
 
@@ -284,6 +282,10 @@ def test_explicit_conversion_to_i64() -> None:
     assert x == -1733
     z = i64(x)
     assert z == -1733
+    a: i16 = int() + 19764
+    assert i64(a) == 19764
+    a = int() - 1
+    assert i64(a) == -1
 
 def test_explicit_conversion_overflow() -> None:
     max_i64 = int() + 2**63 - 1
@@ -317,7 +319,8 @@ def test_explicit_conversion_from_float() -> None:
     assert from_float(0.0) == 0
     assert from_float(1.456) == 1
     assert from_float(-1234.567) == -1234
-    assert from_float(2**63 - 1) == 2**63 - 1
+    # Subtract 1024 due to limited precision of 64-bit floats
+    assert from_float(2**63 - 1024) == 2**63 - 1024
     assert from_float(-2**63) == -2**63
     # The error message could be better, but this is acceptable
     with assertRaises(OverflowError, "int too large to convert to i64"):
@@ -517,12 +520,8 @@ def test_isinstance() -> None:
 from typing import Any, Tuple
 import sys
 
-from mypy_extensions import mypyc_attr
+from mypy_extensions import mypyc_attr, i64
 from typing_extensions import Final
-
-MYPY = False
-if MYPY:
-    from mypy_extensions import i64
 
 from testutil import assertRaises
 
@@ -911,9 +910,7 @@ from typing_extensions import Final
 
 MAGIC: Final = -113
 
-MYPY = False
-if MYPY:
-    from mypy_extensions import i64
+from mypy_extensions import i64
 
 def f(x: i64, y: i64 = 5) -> i64:
     return x + y
@@ -1211,9 +1208,7 @@ def test_magic_default() -> None:
 [case testI64UndefinedLocal]
 from typing_extensions import Final
 
-MYPY = False
-if MYPY:
-    from mypy_extensions import i64, i32
+from mypy_extensions import i64, i32
 
 from testutil import assertRaises
 
@@ -1346,9 +1341,7 @@ def test_many_locals() -> None:
 from typing import Any
 from typing_extensions import Final
 
-MYPY = False
-if MYPY:
-    from mypy_extensions import i64, trait
+from mypy_extensions import i64, trait
 
 from testutil import assertRaises
 
@@ -1511,3 +1504,16 @@ def test_implement_trait_attribute() -> None:
     a.y = 8
     assert a.x == 7
     assert a.y == 8
+
+class DunderErr:
+    def __contains__(self, i: i64) -> bool:
+        raise IndexError()
+
+def test_dunder_arg_check() -> None:
+    o: Any = DunderErr()
+    with assertRaises(TypeError):
+        'x' in o
+    with assertRaises(TypeError):
+        2**63 in o
+    with assertRaises(IndexError):
+        1 in o

@@ -60,6 +60,7 @@ from mypyc.irbuild.util import (
     is_trait,
 )
 from mypyc.options import CompilerOptions
+from mypyc.sametype import is_same_type
 
 
 def build_type_map(
@@ -84,7 +85,7 @@ def build_type_map(
         )
         class_ir.is_ext_class = is_extension_class(cdef)
         if class_ir.is_ext_class:
-            class_ir.deletable = cdef.info.deletable_attributes[:]
+            class_ir.deletable = cdef.info.deletable_attributes.copy()
         # If global optimizations are disabled, turn of tracking of class children
         if not options.global_opts:
             class_ir.children = None
@@ -111,6 +112,24 @@ def build_type_map(
         for func in get_module_func_defs(module):
             prepare_func_def(module.fullname, None, func, mapper)
             # TODO: what else?
+
+    # Check for incompatible attribute definitions that were not
+    # flagged by mypy but can't be supported when compiling.
+    for module, cdef in classes:
+        class_ir = mapper.type_to_ir[cdef.info]
+        for attr in class_ir.attributes:
+            for base_ir in class_ir.mro[1:]:
+                if attr in base_ir.attributes:
+                    if not is_same_type(class_ir.attributes[attr], base_ir.attributes[attr]):
+                        node = cdef.info.names[attr].node
+                        assert node is not None
+                        kind = "trait" if base_ir.is_trait else "class"
+                        errors.error(
+                            f'Type of "{attr}" is incompatible with '
+                            f'definition in {kind} "{base_ir.name}"',
+                            module.path,
+                            node.line,
+                        )
 
 
 def is_from_module(node: SymbolNode, module: MypyFile) -> bool:
@@ -256,8 +275,12 @@ def prepare_class_def(
 
     # Set up the parent class
     bases = [mapper.type_to_ir[base.type] for base in info.bases if base.type in mapper.type_to_ir]
-    if not all(c.is_trait for c in bases[1:]):
-        errors.error("Non-trait bases must appear first in parent list", path, cdef.line)
+    if len(bases) > 1 and any(not c.is_trait for c in bases) and bases[0].is_trait:
+        # If the first base is a non-trait, don't ever error here. While it is correct
+        # to error if a trait comes before the next non-trait base (e.g. non-trait, trait,
+        # non-trait), it's pointless, confusing noise from the bigger issue: multiple
+        # inheritance is *not* supported.
+        errors.error("Non-trait base must appear first in parent list", path, cdef.line)
     ir.traits = [c for c in bases if c.is_trait]
 
     mro = []  # All mypyc base classes
@@ -442,7 +465,6 @@ def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: M
 def prepare_non_ext_class_def(
     path: str, module_name: str, cdef: ClassDef, errors: Errors, mapper: Mapper
 ) -> None:
-
     ir = mapper.type_to_ir[cdef.info]
     info = cdef.info
 

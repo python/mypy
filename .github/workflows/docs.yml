@@ -3,7 +3,7 @@ name: Check documentation build
 on:
   workflow_dispatch:
   push:
-    branches: [master, 'release*']
+    branches: [main, master, 'release*']
     tags: ['*']
   pull_request:
     paths:
@@ -20,14 +20,15 @@ jobs:
     env:
       TOXENV: docs
       TOX_SKIP_MISSING_INTERPRETERS: False
+      VERIFY_MYPY_ERROR_CODES: 1
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.7'
+          python-version: '3.8'
       - name: Install tox
-        run: pip install --upgrade 'setuptools!=50' tox==3.24.5
+        run: pip install --upgrade 'setuptools!=50' tox==4.4.4
       - name: Setup tox environment
-        run: tox -e ${{ env.TOXENV }} --notest
+        run: tox run -e ${{ env.TOXENV }} --notest
       - name: Test
-        run: tox -e ${{ env.TOXENV }} --skip-pkg-install
+        run: tox run -e ${{ env.TOXENV }} --skip-pkg-install

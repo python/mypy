@@ -35,7 +35,7 @@ from mypy.version import __version__ as mypy_version
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["sphinx.ext.intersphinx"]
+extensions = ["sphinx.ext.intersphinx", "docs.source.html_builder"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -267,8 +267,8 @@ rst_prolog = ".. |...| unicode:: U+2026   .. ellipsis\n"
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "six": ("https://six.readthedocs.io", None),
-    "attrs": ("http://www.attrs.org/en/stable", None),
-    "cython": ("http://docs.cython.org/en/latest", None),
+    "attrs": ("https://www.attrs.org/en/stable/", None),
+    "cython": ("https://docs.cython.org/en/latest", None),
     "monkeytype": ("https://monkeytype.readthedocs.io/en/latest", None),
     "setuptools": ("https://setuptools.readthedocs.io/en/latest", None),
 }

@@ -52,7 +52,7 @@ Summary of how this works for certain kinds of differences:
 
 from __future__ import annotations
 
-from typing import Sequence, Tuple, Union, cast
+from typing import Sequence, Tuple, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.expandtype import expand_type
@@ -73,6 +73,7 @@ from mypy.nodes import (
     TypeVarTupleExpr,
     Var,
 )
+from mypy.semanal_shared import find_dataclass_transform_spec
 from mypy.types import (
     AnyType,
     CallableType,
@@ -189,6 +190,7 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> dict[str, Sym
                 node.variance,
                 [snapshot_type(value) for value in node.values],
                 snapshot_type(node.upper_bound),
+                snapshot_type(node.default),
             )
         elif isinstance(node, TypeAlias):
             result[name] = (
@@ -199,9 +201,19 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> dict[str, Sym
                 snapshot_optional_type(node.target),
             )
         elif isinstance(node, ParamSpecExpr):
-            result[name] = ("ParamSpec", node.variance, snapshot_type(node.upper_bound))
+            result[name] = (
+                "ParamSpec",
+                node.variance,
+                snapshot_type(node.upper_bound),
+                snapshot_type(node.default),
+            )
         elif isinstance(node, TypeVarTupleExpr):
-            result[name] = ("TypeVarTuple", node.variance, snapshot_type(node.upper_bound))
+            result[name] = (
+                "TypeVarTuple",
+                node.variance,
+                snapshot_type(node.upper_bound),
+                snapshot_type(node.default),
+            )
         else:
             assert symbol.kind != UNBOUND_IMPORTED
             if node and get_prefix(node.fullname) != name_prefix:
@@ -230,6 +242,7 @@ def snapshot_definition(node: SymbolNode | None, common: SymbolSnapshot) -> Symb
         elif isinstance(node, OverloadedFuncDef) and node.impl:
             impl = node.impl.func if isinstance(node.impl, Decorator) else node.impl
         is_trivial_body = impl.is_trivial_body if impl else False
+        dataclass_transform_spec = find_dataclass_transform_spec(node)
         return (
             "Func",
             common,
@@ -239,6 +252,7 @@ def snapshot_definition(node: SymbolNode | None, common: SymbolSnapshot) -> Symb
             node.is_static,
             signature,
             is_trivial_body,
+            dataclass_transform_spec.serialize() if dataclass_transform_spec is not None else None,
         )
     elif isinstance(node, Var):
         return ("Var", common, snapshot_optional_type(node.type), node.is_final)
@@ -256,6 +270,10 @@ def snapshot_definition(node: SymbolNode | None, common: SymbolSnapshot) -> Symb
             snapshot_definition(node.func, common),
         )
     elif isinstance(node, TypeInfo):
+        dataclass_transform_spec = node.dataclass_transform_spec
+        if dataclass_transform_spec is None:
+            dataclass_transform_spec = find_dataclass_transform_spec(node)
+
         attrs = (
             node.is_abstract,
             node.is_enum,
@@ -280,6 +298,7 @@ def snapshot_definition(node: SymbolNode | None, common: SymbolSnapshot) -> Symb
             tuple(snapshot_type(tdef) for tdef in node.defn.type_vars),
             [snapshot_type(base) for base in node.bases],
             [snapshot_type(p) for p in node._promote],
+            dataclass_transform_spec.serialize() if dataclass_transform_spec is not None else None,
         )
         prefix = node.fullname
         symbol_table = snapshot_symbol_table(prefix, node.names)
@@ -374,6 +393,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
             typ.id.meta_level,
             snapshot_types(typ.values),
             snapshot_type(typ.upper_bound),
+            snapshot_type(typ.default),
             typ.variance,
         )
 
@@ -384,6 +404,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
             typ.id.meta_level,
             typ.flavor,
             snapshot_type(typ.upper_bound),
+            snapshot_type(typ.default),
         )
 
     def visit_type_var_tuple(self, typ: TypeVarTupleType) -> SnapshotItem:
@@ -392,6 +413,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
             typ.id.raw_id,
             typ.id.meta_level,
             snapshot_type(typ.upper_bound),
+            snapshot_type(typ.default),
         )
 
     def visit_unpack_type(self, typ: UnpackType) -> SnapshotItem:
@@ -434,7 +456,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
                 tv = v.copy_modified(id=tid)
             tvs.append(tv)
             tvmap[v.id] = tv
-        return cast(CallableType, expand_type(typ, tvmap)).copy_modified(variables=tvs)
+        return expand_type(typ, tvmap).copy_modified(variables=tvs)
 
     def visit_tuple_type(self, typ: TupleType) -> SnapshotItem:
         return ("TupleType", snapshot_types(typ.items))

@@ -108,6 +108,7 @@ class Sequence(Iterable[T_co], Container[T_co]):
     def __getitem__(self, n: Any) -> T_co: pass
 
 class Mapping(Iterable[T], Generic[T, T_co], metaclass=ABCMeta):
+    def keys(self) -> Iterable[T]: pass  # Approximate return type
     def __getitem__(self, key: T) -> T_co: pass
     @overload
     def get(self, k: T) -> Optional[T_co]: pass

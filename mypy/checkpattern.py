@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import NamedTuple
-from typing_extensions import Final
+from typing import Final, NamedTuple
 
 import mypy.checker
 from mypy import message_registry
@@ -15,7 +14,8 @@ from mypy.literals import literal_hash
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import narrow_declared_type
 from mypy.messages import MessageBuilder
-from mypy.nodes import ARG_POS, Expression, NameExpr, TypeAlias, TypeInfo, Var
+from mypy.nodes import ARG_POS, Context, Expression, NameExpr, TypeAlias, TypeInfo, Var
+from mypy.options import Options
 from mypy.patterns import (
     AsPattern,
     ClassPattern,
@@ -104,7 +104,11 @@ class PatternChecker(PatternVisitor[PatternType]):
     # non_sequence_match_type_names
     non_sequence_match_types: list[Type]
 
-    def __init__(self, chk: mypy.checker.TypeChecker, msg: MessageBuilder, plugin: Plugin) -> None:
+    options: Options
+
+    def __init__(
+        self, chk: mypy.checker.TypeChecker, msg: MessageBuilder, plugin: Plugin, options: Options
+    ) -> None:
         self.chk = chk
         self.msg = msg
         self.plugin = plugin
@@ -114,6 +118,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         self.non_sequence_match_types = self.generate_types_from_names(
             non_sequence_match_type_names
         )
+        self.options = options
 
     def accept(self, o: Pattern, type_context: Type) -> PatternType:
         self.type_context.append(type_context)
@@ -242,7 +247,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             elif size_diff > 0 and star_position is None:
                 return self.early_non_match()
         else:
-            inner_type = self.get_sequence_type(current_type)
+            inner_type = self.get_sequence_type(current_type, o)
             if inner_type is None:
                 inner_type = self.chk.named_type("builtins.object")
             inner_types = [inner_type] * len(o.patterns)
@@ -309,14 +314,14 @@ class PatternChecker(PatternVisitor[PatternType]):
                 new_type = current_type
         return PatternType(new_type, rest_type, captures)
 
-    def get_sequence_type(self, t: Type) -> Type | None:
+    def get_sequence_type(self, t: Type, context: Context) -> Type | None:
         t = get_proper_type(t)
         if isinstance(t, AnyType):
             return AnyType(TypeOfAny.from_another_any, t)
         if isinstance(t, UnionType):
-            items = [self.get_sequence_type(item) for item in t.items]
+            items = [self.get_sequence_type(item, context) for item in t.items]
             not_none_items = [item for item in items if item is not None]
-            if len(not_none_items) > 0:
+            if not_none_items:
                 return make_simplified_union(not_none_items)
             else:
                 return None
@@ -324,7 +329,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         if self.chk.type_is_iterable(t) and isinstance(t, (Instance, TupleType)):
             if isinstance(t, TupleType):
                 t = tuple_fallback(t)
-            return self.chk.iterable_item_type(t)
+            return self.chk.iterable_item_type(t, context)
         else:
             return None
 
@@ -458,11 +463,11 @@ class PatternChecker(PatternVisitor[PatternType]):
         elif isinstance(type_info, TypeAlias):
             typ = type_info.target
         else:
-            if isinstance(type_info, Var):
-                name = str(type_info.type)
+            if isinstance(type_info, Var) and type_info.type is not None:
+                name = type_info.type.str_with_options(self.options)
             else:
                 name = type_info.name
-            self.msg.fail(message_registry.CLASS_PATTERN_TYPE_REQUIRED.format(name), o.class_ref)
+            self.msg.fail(message_registry.CLASS_PATTERN_TYPE_REQUIRED.format(name), o)
             return self.early_non_match()
 
         new_type, rest_type = self.chk.conditional_types_with_intersection(
@@ -508,7 +513,12 @@ class PatternChecker(PatternVisitor[PatternType]):
                     )
                     has_local_errors = local_errors.has_new_errors()
                 if has_local_errors:
-                    self.msg.fail(message_registry.MISSING_MATCH_ARGS.format(typ), o)
+                    self.msg.fail(
+                        message_registry.MISSING_MATCH_ARGS.format(
+                            typ.str_with_options(self.options)
+                        ),
+                        o,
+                    )
                     return self.early_non_match()
 
                 proper_match_args_type = get_proper_type(match_args_type)
@@ -573,7 +583,10 @@ class PatternChecker(PatternVisitor[PatternType]):
             if has_local_errors or key_type is None:
                 key_type = AnyType(TypeOfAny.from_error)
                 self.msg.fail(
-                    message_registry.CLASS_PATTERN_UNKNOWN_KEYWORD.format(typ, keyword), pattern
+                    message_registry.CLASS_PATTERN_UNKNOWN_KEYWORD.format(
+                        typ.str_with_options(self.options), keyword
+                    ),
+                    pattern,
                 )
 
             inner_type, inner_rest_type, inner_captures = self.accept(pattern, key_type)

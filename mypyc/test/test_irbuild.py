@@ -31,6 +31,7 @@ files = [
     "irbuild-set.test",
     "irbuild-str.test",
     "irbuild-bytes.test",
+    "irbuild-float.test",
     "irbuild-statements.test",
     "irbuild-nested.test",
     "irbuild-classes.test",
@@ -41,6 +42,8 @@ files = [
     "irbuild-strip-asserts.test",
     "irbuild-i64.test",
     "irbuild-i32.test",
+    "irbuild-i16.test",
+    "irbuild-u8.test",
     "irbuild-vectorcall.test",
     "irbuild-unreachable.test",
     "irbuild-isinstance.test",
@@ -48,6 +51,7 @@ files = [
     "irbuild-singledispatch.test",
     "irbuild-constant-fold.test",
     "irbuild-glue-methods.test",
+    "irbuild-math.test",
 ]
 
 if sys.version_info >= (3, 10):

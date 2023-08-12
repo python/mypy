@@ -1,5 +1,6 @@
 # builtins stub for paramspec-related test cases
 
+import _typeshed
 from typing import (
     Sequence, Generic, TypeVar, Iterable, Iterator, Tuple, Mapping, Optional, Union, Type, overload,
     Protocol

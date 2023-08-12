@@ -6,7 +6,7 @@ def copy_file(
     preserve_mode: bool = ...,
     preserve_times: bool = ...,
     update: bool = ...,
-    link: str | None = ...,
+    link: str | None = None,
     verbose: bool = ...,
     dry_run: bool = ...,
 ) -> tuple[str, str]: ...

@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from typing_extensions import Final
+from typing import Final
 
 from mypy import errorcodes as codes, message_registry
 from mypy.errorcodes import ErrorCode
+from mypy.expandtype import expand_type
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
@@ -31,7 +32,11 @@ from mypy.nodes import (
     TypeInfo,
 )
 from mypy.options import Options
-from mypy.semanal_shared import SemanticAnalyzerInterface, has_placeholder
+from mypy.semanal_shared import (
+    SemanticAnalyzerInterface,
+    has_placeholder,
+    require_bool_literal_argument,
+)
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
 from mypy.types import (
     TPDICT_NAMES,
@@ -41,7 +46,6 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeVarLikeType,
-    replace_alias_tvars,
 )
 
 TPDICT_CLASS_ERROR: Final = (
@@ -239,10 +243,8 @@ class TypedDictAnalyzer:
     ) -> dict[str, Type]:
         """Map item types to how they would look in their base with type arguments applied.
 
-        We would normally use expand_type() for such task, but we can't use it during
-        semantic analysis, because it can (indirectly) call is_subtype() etc., and it
-        will crash on placeholder types. So we hijack replace_alias_tvars() that was initially
-        intended to deal with eager expansion of generic type aliases during semantic analysis.
+        Note it is safe to use expand_type() during semantic analysis, because it should never
+        (indirectly) call is_subtype().
         """
         mapped_items = {}
         for key in valid_items:
@@ -250,10 +252,9 @@ class TypedDictAnalyzer:
             if not tvars:
                 mapped_items[key] = type_in_base
                 continue
-            mapped_type = replace_alias_tvars(
-                type_in_base, tvars, base_args, type_in_base.line, type_in_base.column
+            mapped_items[key] = expand_type(
+                type_in_base, {t.id: a for (t, a) in zip(tvars, base_args)}
             )
-            mapped_items[key] = mapped_type
         return mapped_items
 
     def analyze_typeddict_classdef_fields(
@@ -320,10 +321,7 @@ class TypedDictAnalyzer:
                     self.fail("Right hand side values are not supported in TypedDict", stmt)
         total: bool | None = True
         if "total" in defn.keywords:
-            total = self.api.parse_bool(defn.keywords["total"])
-            if total is None:
-                self.fail('Value of "total" must be True or False', defn)
-                total = True
+            total = require_bool_literal_argument(self.api, defn.keywords["total"], "total", True)
         required_keys = {
             field
             for (field, t) in zip(fields, types)
@@ -436,11 +434,9 @@ class TypedDictAnalyzer:
             )
         total: bool | None = True
         if len(args) == 3:
-            total = self.api.parse_bool(call.args[2])
+            total = require_bool_literal_argument(self.api, call.args[2], "total")
             if total is None:
-                return self.fail_typeddict_arg(
-                    'TypedDict() "total" argument must be True or False', call
-                )
+                return "", [], [], True, [], False
         dictexpr = args[1]
         tvar_defs = self.api.get_and_bind_all_tvars([t for k, t in dictexpr.items])
         res = self.parse_typeddict_fields_with_types(dictexpr.items, call)
@@ -470,7 +466,7 @@ class TypedDictAnalyzer:
         seen_keys = set()
         items: list[str] = []
         types: list[Type] = []
-        for (field_name_expr, field_type_expr) in dict_items:
+        for field_name_expr, field_type_expr in dict_items:
             if isinstance(field_name_expr, StrExpr):
                 key = field_name_expr.value
                 items.append(key)

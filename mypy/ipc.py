@@ -12,8 +12,7 @@ import shutil
 import sys
 import tempfile
 from types import TracebackType
-from typing import Callable
-from typing_extensions import Final
+from typing import Callable, Final
 
 if sys.platform == "win32":
     # This may be private, but it is needed for IPC on Windows, and is basically stable
@@ -169,7 +168,6 @@ class IPCClient(IPCBase):
 
 
 class IPCServer(IPCBase):
-
     BUFFER_SIZE: Final = 2**16
 
     def __init__(self, name: str, timeout: float | None = None) -> None:

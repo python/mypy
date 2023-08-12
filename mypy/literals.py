@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Iterable, Optional, Tuple
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import Any, Final, Iterable, Optional, Tuple
+from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.nodes import (
     LITERAL_NO,
@@ -137,6 +137,16 @@ def subkeys(key: Key) -> Iterable[Key]:
 
 def literal_hash(e: Expression) -> Key | None:
     return e.accept(_hasher)
+
+
+def extract_var_from_literal_hash(key: Key) -> Var | None:
+    """If key refers to a Var node, return it.
+
+    Return None otherwise.
+    """
+    if len(key) == 2 and key[0] == "Var" and isinstance(key[1], Var):
+        return key[1]
+    return None
 
 
 class _Hasher(ExpressionVisitor[Optional[Key]]):

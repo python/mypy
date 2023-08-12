@@ -9,7 +9,6 @@ from . import events, futures, protocols, transports
 _File: TypeAlias = int | IO[Any] | None
 
 class BaseSubprocessTransport(transports.SubprocessTransport):
-
     _closed: bool  # undocumented
     _protocol: protocols.SubprocessProtocol  # undocumented
     _loop: events.AbstractEventLoop  # undocumented
@@ -30,8 +29,8 @@ class BaseSubprocessTransport(transports.SubprocessTransport):
         stdout: _File,
         stderr: _File,
         bufsize: int,
-        waiter: futures.Future[Any] | None = ...,
-        extra: Any | None = ...,
+        waiter: futures.Future[Any] | None = None,
+        extra: Any | None = None,
         **kwargs: Any,
     ) -> None: ...
     def _start(
@@ -47,7 +46,7 @@ class BaseSubprocessTransport(transports.SubprocessTransport):
     def get_pid(self) -> int | None: ...  # type: ignore[override]
     def get_pipe_transport(self, fd: int) -> _File: ...  # type: ignore[override]
     def _check_proc(self) -> None: ...  # undocumented
-    def send_signal(self, signal: int) -> None: ...  # type: ignore[override]
+    def send_signal(self, signal: int) -> None: ...
     async def _connect_pipes(self, waiter: futures.Future[Any] | None) -> None: ...  # undocumented
     def _call(self, cb: Callable[..., object], *data: Any) -> None: ...  # undocumented
     def _pipe_connection_lost(self, fd: int, exc: BaseException | None) -> None: ...  # undocumented

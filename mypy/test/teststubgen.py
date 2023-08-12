@@ -38,7 +38,8 @@ from mypy.stubgenc import (
     generate_c_function_stub,
     generate_c_property_stub,
     generate_c_type_stub,
-    infer_method_sig,
+    infer_method_args,
+    infer_method_ret_type,
     is_c_property_readonly,
 )
 from mypy.stubutil import common_dir_prefix, remove_misplaced_type_comments, walk_packages
@@ -676,6 +677,7 @@ class StubgenPythonSuite(DataSuite):
     base_path = "."
     files = ["stubgen.test"]
 
+    @unittest.skipIf(sys.platform == "win32", "clean up fails on Windows")
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         with local_sys_path_set():
             self.run_case_inner(testcase)
@@ -768,16 +770,18 @@ class StubgencSuite(unittest.TestCase):
     """
 
     def test_infer_hash_sig(self) -> None:
-        assert_equal(infer_method_sig("__hash__"), [self_arg])
+        assert_equal(infer_method_args("__hash__"), [self_arg])
+        assert_equal(infer_method_ret_type("__hash__"), "int")
 
     def test_infer_getitem_sig(self) -> None:
-        assert_equal(infer_method_sig("__getitem__"), [self_arg, ArgSig(name="index")])
+        assert_equal(infer_method_args("__getitem__"), [self_arg, ArgSig(name="index")])
 
     def test_infer_setitem_sig(self) -> None:
         assert_equal(
-            infer_method_sig("__setitem__"),
+            infer_method_args("__setitem__"),
             [self_arg, ArgSig(name="index"), ArgSig(name="object")],
         )
+        assert_equal(infer_method_ret_type("__setitem__"), "None")
 
     def test_infer_binary_op_sig(self) -> None:
         for op in (
@@ -794,11 +798,19 @@ class StubgencSuite(unittest.TestCase):
             "mul",
             "rmul",
         ):
-            assert_equal(infer_method_sig(f"__{op}__"), [self_arg, ArgSig(name="other")])
+            assert_equal(infer_method_args(f"__{op}__"), [self_arg, ArgSig(name="other")])
+
+    def test_infer_equality_op_sig(self) -> None:
+        for op in ("eq", "ne", "lt", "le", "gt", "ge", "contains"):
+            assert_equal(infer_method_ret_type(f"__{op}__"), "bool")
 
     def test_infer_unary_op_sig(self) -> None:
         for op in ("neg", "pos"):
-            assert_equal(infer_method_sig(f"__{op}__"), [self_arg])
+            assert_equal(infer_method_args(f"__{op}__"), [self_arg])
+
+    def test_infer_cast_sig(self) -> None:
+        for op in ("float", "bool", "bytes", "int"):
+            assert_equal(infer_method_ret_type(f"__{op}__"), op)
 
     def test_generate_c_type_stub_no_crash_for_object(self) -> None:
         output: list[str] = []
@@ -809,7 +821,8 @@ class StubgencSuite(unittest.TestCase):
             "alias",
             object,
             output,
-            imports,
+            imports=imports,
+            known_modules=[mod.__name__],
             sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(imports, [])
@@ -828,7 +841,8 @@ class StubgencSuite(unittest.TestCase):
             "C",
             TestClassVariableCls,
             output,
-            imports,
+            imports=imports,
+            known_modules=[mod.__name__],
             sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(imports, [])
@@ -846,7 +860,8 @@ class StubgencSuite(unittest.TestCase):
             "C",
             TestClass,
             output,
-            imports,
+            imports=imports,
+            known_modules=[mod.__name__],
             sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(output, ["class C(KeyError): ..."])
@@ -861,7 +876,8 @@ class StubgencSuite(unittest.TestCase):
             "C",
             TestClass,
             output,
-            imports,
+            imports=imports,
+            known_modules=[mod.__name__],
             sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(output, ["class C(TestBaseClass): ..."])
@@ -881,7 +897,8 @@ class StubgencSuite(unittest.TestCase):
             "C",
             TestClass,
             output,
-            imports,
+            imports=imports,
+            known_modules=[mod.__name__],
             sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(output, ["class C(argparse.Action): ..."])
@@ -899,7 +916,8 @@ class StubgencSuite(unittest.TestCase):
             "C",
             TestClass,
             output,
-            imports,
+            imports=imports,
+            known_modules=[mod.__name__],
             sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(output, ["class C(type): ..."])
@@ -919,10 +937,12 @@ class StubgencSuite(unittest.TestCase):
             mod,
             "test",
             TestClass.test,
-            output,
-            imports,
+            output=output,
+            imports=imports,
             self_var="self",
+            cls=TestClass,
             class_name="TestClass",
+            known_modules=[mod.__name__],
             sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(output, ["def test(self, arg0: int) -> Any: ..."])
@@ -942,10 +962,12 @@ class StubgencSuite(unittest.TestCase):
             mod,
             "test",
             TestClass.test,
-            output,
-            imports,
+            output=output,
+            imports=imports,
             self_var="self",
+            cls=TestClass,
             class_name="TestClass",
+            known_modules=[mod.__name__],
             sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(output, ["def test(self, arg0: int) -> Any: ..."])
@@ -964,10 +986,12 @@ class StubgencSuite(unittest.TestCase):
             mod,
             "test",
             TestClass.test,
-            output,
-            imports,
+            output=output,
+            imports=imports,
             self_var="cls",
+            cls=TestClass,
             class_name="TestClass",
+            known_modules=[mod.__name__],
             sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(output, ["@classmethod", "def test(cls, *args, **kwargs) -> Any: ..."])
@@ -990,10 +1014,12 @@ class StubgencSuite(unittest.TestCase):
             mod,
             "test",
             TestClass.test,
-            output,
-            imports,
+            output=output,
+            imports=imports,
             self_var="cls",
+            cls=TestClass,
             class_name="TestClass",
+            known_modules=[mod.__name__],
             sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(
@@ -1023,10 +1049,12 @@ class StubgencSuite(unittest.TestCase):
             mod,
             "test",
             TestClass.test,
-            output,
-            imports,
+            output=output,
+            imports=imports,
             self_var="self",
+            cls=TestClass,
             class_name="TestClass",
+            known_modules=[mod.__name__],
             sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(output, ["def test(self, arg0: str = ...) -> Any: ..."])
@@ -1034,6 +1062,7 @@ class StubgencSuite(unittest.TestCase):
 
     def test_generate_c_function_other_module_arg(self) -> None:
         """Test that if argument references type from other module, module will be imported."""
+
         # Provide different type in python spec than in docstring to make sure, that docstring
         # information is used.
         def test(arg0: str) -> None:
@@ -1048,22 +1077,24 @@ class StubgencSuite(unittest.TestCase):
             mod,
             "test",
             test,
-            output,
-            imports,
+            output=output,
+            imports=imports,
+            known_modules=[mod.__name__],
             sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(output, ["def test(arg0: argparse.Action) -> Any: ..."])
         assert_equal(imports, ["import argparse"])
 
-    def test_generate_c_function_same_module_arg(self) -> None:
-        """Test that if argument references type from same module but using full path, no module
+    def test_generate_c_function_same_module(self) -> None:
+        """Test that if annotation references type from same module but using full path, no module
         will be imported, and type specification will be striped to local reference.
         """
+
         # Provide different type in python spec than in docstring to make sure, that docstring
         # information is used.
         def test(arg0: str) -> None:
             """
-            test(arg0: argparse.Action)
+            test(arg0: argparse.Action) -> argparse.Action
             """
 
         output: list[str] = []
@@ -1073,19 +1104,20 @@ class StubgencSuite(unittest.TestCase):
             mod,
             "test",
             test,
-            output,
-            imports,
+            output=output,
+            imports=imports,
+            known_modules=[mod.__name__],
             sig_generators=get_sig_generators(parse_options([])),
         )
-        assert_equal(output, ["def test(arg0: Action) -> Any: ..."])
+        assert_equal(output, ["def test(arg0: Action) -> Action: ..."])
         assert_equal(imports, [])
 
-    def test_generate_c_function_other_module_ret(self) -> None:
-        """Test that if return type references type from other module, module will be imported."""
+    def test_generate_c_function_other_module(self) -> None:
+        """Test that if annotation references type from other module, module will be imported."""
 
         def test(arg0: str) -> None:
             """
-            test(arg0: str) -> argparse.Action
+            test(arg0: argparse.Action) -> argparse.Action
             """
 
         output: list[str] = []
@@ -1095,21 +1127,24 @@ class StubgencSuite(unittest.TestCase):
             mod,
             "test",
             test,
-            output,
-            imports,
+            output=output,
+            imports=imports,
+            known_modules=[mod.__name__],
             sig_generators=get_sig_generators(parse_options([])),
         )
-        assert_equal(output, ["def test(arg0: str) -> argparse.Action: ..."])
-        assert_equal(imports, ["import argparse"])
+        assert_equal(output, ["def test(arg0: argparse.Action) -> argparse.Action: ..."])
+        assert_equal(set(imports), {"import argparse"})
 
-    def test_generate_c_function_same_module_ret(self) -> None:
-        """Test that if return type references type from same module but using full path,
-        no module will be imported, and type specification will be striped to local reference.
+    def test_generate_c_function_same_module_nested(self) -> None:
+        """Test that if annotation references type from same module but using full path, no module
+        will be imported, and type specification will be stripped to local reference.
         """
 
+        # Provide different type in python spec than in docstring to make sure, that docstring
+        # information is used.
         def test(arg0: str) -> None:
             """
-            test(arg0: str) -> argparse.Action
+            test(arg0: list[argparse.Action]) -> list[argparse.Action]
             """
 
         output: list[str] = []
@@ -1119,11 +1154,84 @@ class StubgencSuite(unittest.TestCase):
             mod,
             "test",
             test,
-            output,
-            imports,
+            output=output,
+            imports=imports,
+            known_modules=[mod.__name__],
             sig_generators=get_sig_generators(parse_options([])),
         )
-        assert_equal(output, ["def test(arg0: str) -> Action: ..."])
+        assert_equal(output, ["def test(arg0: list[Action]) -> list[Action]: ..."])
+        assert_equal(imports, [])
+
+    def test_generate_c_function_same_module_compound(self) -> None:
+        """Test that if annotation references type from same module but using full path, no module
+        will be imported, and type specification will be stripped to local reference.
+        """
+
+        # Provide different type in python spec than in docstring to make sure, that docstring
+        # information is used.
+        def test(arg0: str) -> None:
+            """
+            test(arg0: Union[argparse.Action, NoneType]) -> Tuple[argparse.Action, NoneType]
+            """
+
+        output: list[str] = []
+        imports: list[str] = []
+        mod = ModuleType("argparse", "")
+        generate_c_function_stub(
+            mod,
+            "test",
+            test,
+            output=output,
+            imports=imports,
+            known_modules=[mod.__name__],
+            sig_generators=get_sig_generators(parse_options([])),
+        )
+        assert_equal(output, ["def test(arg0: Union[Action,None]) -> Tuple[Action,None]: ..."])
+        assert_equal(imports, [])
+
+    def test_generate_c_function_other_module_nested(self) -> None:
+        """Test that if annotation references type from other module, module will be imported,
+        and the import will be restricted to one of the known modules."""
+
+        def test(arg0: str) -> None:
+            """
+            test(arg0: foo.bar.Action) -> other.Thing
+            """
+
+        output: list[str] = []
+        imports: list[str] = []
+        mod = ModuleType(self.__module__, "")
+        generate_c_function_stub(
+            mod,
+            "test",
+            test,
+            output=output,
+            imports=imports,
+            known_modules=["foo", "foo.spangle", "bar"],
+            sig_generators=get_sig_generators(parse_options([])),
+        )
+        assert_equal(output, ["def test(arg0: foo.bar.Action) -> other.Thing: ..."])
+        assert_equal(set(imports), {"import foo", "import other"})
+
+    def test_generate_c_function_no_crash_for_non_str_docstring(self) -> None:
+        def test(arg0: str) -> None:
+            ...
+
+        test.__doc__ = property(lambda self: "test(arg0: str) -> None")  # type: ignore[assignment]
+
+        output: list[str] = []
+        imports: list[str] = []
+        mod = ModuleType(self.__module__, "")
+        generate_c_function_stub(
+            mod,
+            "test",
+            test,
+            output=output,
+            imports=imports,
+            known_modules=[mod.__name__],
+            sig_generators=get_sig_generators(parse_options([])),
+        )
+        assert_equal(output, ["def test(*args, **kwargs) -> Any: ..."])
         assert_equal(imports, [])
 
     def test_generate_c_property_with_pybind11(self) -> None:
@@ -1190,10 +1298,12 @@ class StubgencSuite(unittest.TestCase):
             mod,
             "test",
             TestClass.test,
-            output,
-            imports,
+            output=output,
+            imports=imports,
             self_var="self",
+            cls=TestClass,
             class_name="TestClass",
+            known_modules=[mod.__name__],
             sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(output, ["def test(self, arg0: List[int]) -> Any: ..."])
@@ -1213,10 +1323,12 @@ class StubgencSuite(unittest.TestCase):
             mod,
             "test",
             TestClass.test,
-            output,
-            imports,
+            output=output,
+            imports=imports,
             self_var="self",
+            cls=TestClass,
             class_name="TestClass",
+            known_modules=[mod.__name__],
             sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(output, ["def test(self, arg0: Dict[str,int]) -> Any: ..."])
@@ -1236,10 +1348,12 @@ class StubgencSuite(unittest.TestCase):
             mod,
             "test",
             TestClass.test,
-            output,
-            imports,
+            output=output,
+            imports=imports,
             self_var="self",
+            cls=TestClass,
             class_name="TestClass",
+            known_modules=[mod.__name__],
             sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(output, ["def test(self, arg0: Dict[str,List[int]]) -> Any: ..."])
@@ -1259,10 +1373,12 @@ class StubgencSuite(unittest.TestCase):
             mod,
             "test",
             TestClass.test,
-            output,
-            imports,
+            output=output,
+            imports=imports,
             self_var="self",
+            cls=TestClass,
             class_name="TestClass",
+            known_modules=[mod.__name__],
             sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(output, ["def test(self, arg0: Dict[argparse.Action,int]) -> Any: ..."])
@@ -1282,10 +1398,12 @@ class StubgencSuite(unittest.TestCase):
             mod,
             "test",
             TestClass.test,
-            output,
-            imports,
+            output=output,
+            imports=imports,
             self_var="self",
+            cls=TestClass,
             class_name="TestClass",
+            known_modules=[mod.__name__],
             sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(output, ["def test(self, arg0: Dict[str,argparse.Action]) -> Any: ..."])
@@ -1310,10 +1428,12 @@ class StubgencSuite(unittest.TestCase):
             mod,
             "__init__",
             TestClass.__init__,
-            output,
-            imports,
+            output=output,
+            imports=imports,
             self_var="self",
+            cls=TestClass,
             class_name="TestClass",
+            known_modules=[mod.__name__],
             sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(
@@ -1325,6 +1445,42 @@ class StubgencSuite(unittest.TestCase):
                 "def __init__(self, arg0: str, arg1: str) -> None: ...",
                 "@overload",
                 "def __init__(self, *args, **kwargs) -> Any: ...",
+            ],
+        )
+        assert_equal(set(imports), {"from typing import overload"})
+
+    def test_generate_c_type_with_overload_shiboken(self) -> None:
+        class TestClass:
+            """
+            TestClass(self: TestClass, arg0: str) -> None
+            TestClass(self: TestClass, arg0: str, arg1: str) -> None
+            """
+
+            def __init__(self, arg0: str) -> None:
+                pass
+
+        output: list[str] = []
+        imports: list[str] = []
+        mod = ModuleType(TestClass.__module__, "")
+        generate_c_function_stub(
+            mod,
+            "__init__",
+            TestClass.__init__,
+            output=output,
+            imports=imports,
+            self_var="self",
+            cls=TestClass,
+            class_name="TestClass",
+            known_modules=[mod.__name__],
+            sig_generators=get_sig_generators(parse_options([])),
+        )
+        assert_equal(
+            output,
+            [
+                "@overload",
+                "def __init__(self, arg0: str) -> None: ...",
+                "@overload",
+                "def __init__(self, arg0: str, arg1: str) -> None: ...",
             ],
         )
         assert_equal(set(imports), {"from typing import overload"})

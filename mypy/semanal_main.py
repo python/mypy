@@ -27,8 +27,8 @@ will be incomplete.
 from __future__ import annotations
 
 from contextlib import nullcontext
-from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import TYPE_CHECKING, Callable, Final, List, Optional, Tuple, Union
+from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.build
 import mypy.state
@@ -41,7 +41,6 @@ from mypy.plugins import dataclasses as dataclasses_plugin
 from mypy.semanal import (
     SemanticAnalyzer,
     apply_semantic_analyzer_patches,
-    is_dataclass_transform_decorator,
     remove_imported_names_from_symtable,
 )
 from mypy.semanal_classprop import (
@@ -51,6 +50,7 @@ from mypy.semanal_classprop import (
     check_protocol_status,
 )
 from mypy.semanal_infer import infer_decorator_signature_if_simple
+from mypy.semanal_shared import find_dataclass_transform_spec
 from mypy.semanal_typeargs import TypeArgumentAnalyzer
 from mypy.server.aststrip import SavedAttributes
 from mypy.util import is_typeshed_file
@@ -190,7 +190,7 @@ def process_top_levels(graph: Graph, scc: list[str], patches: Patches) -> None:
     # Initially all namespaces in the SCC are incomplete (well they are empty).
     state.manager.incomplete_namespaces.update(scc)
 
-    worklist = scc[:]
+    worklist = scc.copy()
     # HACK: process core stuff first. This is mostly needed to support defining
     # named tuples in builtin SCC.
     if all(m in worklist for m in core_modules):
@@ -218,7 +218,7 @@ def process_top_levels(graph: Graph, scc: list[str], patches: Patches) -> None:
             state = graph[next_id]
             assert state.tree is not None
             deferred, incomplete, progress = semantic_analyze_target(
-                next_id, state, state.tree, None, final_iteration, patches
+                next_id, next_id, state, state.tree, None, final_iteration, patches
             )
             all_deferred += deferred
             any_progress = any_progress or progress
@@ -289,7 +289,7 @@ def process_top_level_function(
             # OK, this is one last pass, now missing names will be reported.
             analyzer.incomplete_namespaces.discard(module)
         deferred, incomplete, progress = semantic_analyze_target(
-            target, state, node, active_type, final_iteration, patches
+            target, module, state, node, active_type, final_iteration, patches
         )
         if final_iteration:
             assert not deferred, "Must not defer during final iteration"
@@ -318,6 +318,7 @@ def get_all_leaf_targets(file: MypyFile) -> list[TargetInfo]:
 
 def semantic_analyze_target(
     target: str,
+    module: str,
     state: State,
     node: MypyFile | FuncDef | OverloadedFuncDef | Decorator,
     active_type: TypeInfo | None,
@@ -331,7 +332,7 @@ def semantic_analyze_target(
     - was some definition incomplete (need to run another pass)
     - were any new names defined (or placeholders replaced)
     """
-    state.manager.processed_targets.append(target)
+    state.manager.processed_targets.append((module, target))
     tree = state.tree
     assert tree is not None
     analyzer = state.manager.semantic_analyzer
@@ -467,11 +468,21 @@ def apply_hooks_to_class(
             # Special case: if the decorator is itself decorated with
             # typing.dataclass_transform, apply the hook for the dataclasses plugin
             # TODO: remove special casing here
-            if hook is None and is_dataclass_transform_decorator(decorator):
+            if hook is None and find_dataclass_transform_spec(decorator):
                 hook = dataclasses_plugin.dataclass_class_maker_callback
 
             if hook:
                 ok = ok and hook(ClassDefContext(defn, decorator, self))
+
+    # Check if the class definition itself triggers a dataclass transform (via a parent class/
+    # metaclass)
+    spec = find_dataclass_transform_spec(info)
+    if spec is not None:
+        with self.file_context(file_node, options, info):
+            # We can't use the normal hook because reason = defn, and ClassDefContext only accepts
+            # an Expression for reason
+            ok = ok and dataclasses_plugin.DataclassTransformer(defn, defn, spec, self).transform()
+
     return ok
 
 

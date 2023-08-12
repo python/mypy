@@ -294,8 +294,8 @@ import typing
 x = ()
 [builtins fixtures/primitives.pyi]
 [out]
-NameExpr(2) : Tuple[]
-TupleExpr(2) : Tuple[]
+NameExpr(2) : Tuple[()]
+TupleExpr(2) : Tuple[()]
 
 [case testInferTwoTypes]
 ## NameExpr
@@ -313,8 +313,8 @@ def f() -> None:
     x = ()
 [builtins fixtures/primitives.pyi]
 [out]
-NameExpr(3) : Tuple[]
-TupleExpr(3) : Tuple[]
+NameExpr(3) : Tuple[()]
+TupleExpr(3) : Tuple[()]
 
 
 -- Basic generics
@@ -1054,6 +1054,21 @@ f(s)
 CallExpr(7) : builtins.str
 NameExpr(7) : def (x: builtins.str) -> builtins.str
 NameExpr(7) : S
+
+[case testTypeVariableWithValueRestrictionInFunction]
+## NameExpr
+from typing import TypeVar
+
+T = TypeVar("T", int, str)
+
+def f(x: T) -> T:
+    y = 1
+    return x
+[out]
+NameExpr(7) : builtins.int
+NameExpr(7) : builtins.int
+NameExpr(8) : builtins.int
+NameExpr(8) : builtins.str
 
 
 -- Binary operations

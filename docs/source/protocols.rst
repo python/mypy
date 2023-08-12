@@ -3,23 +3,24 @@
 Protocols and structural subtyping
 ==================================
 
-Mypy supports two ways of deciding whether two classes are compatible
-as types: nominal subtyping and structural subtyping. *Nominal*
-subtyping is strictly based on the class hierarchy. If class ``D``
-inherits class ``C``, it's also a subtype of ``C``, and instances of
-``D`` can be used when ``C`` instances are expected. This form of
-subtyping is used by default in mypy, since it's easy to understand
-and produces clear and concise error messages, and since it matches
-how the native :py:func:`isinstance <isinstance>` check works -- based on class
-hierarchy. *Structural* subtyping can also be useful. Class ``D`` is
-a structural subtype of class ``C`` if the former has all attributes
-and methods of the latter, and with compatible types.
+The Python type system supports two ways of deciding whether two objects are
+compatible as types: nominal subtyping and structural subtyping.
 
-Structural subtyping can be seen as a static equivalent of duck
-typing, which is well known to Python programmers. Mypy provides
-support for structural subtyping via protocol classes described
-below.  See :pep:`544` for the detailed specification of protocols
-and structural subtyping in Python.
+*Nominal* subtyping is strictly based on the class hierarchy. If class ``Dog``
+inherits class ``Animal``, it's a subtype of ``Animal``. Instances of ``Dog``
+can be used when ``Animal`` instances are expected. This form of subtyping
+subtyping is what Python's type system predominantly uses: it's easy to
+understand and produces clear and concise error messages, and matches how the
+native :py:func:`isinstance <isinstance>` check works -- based on class
+hierarchy.
+
+*Structural* subtyping is based on the operations that can be performed with an
+object. Class ``Dog`` is a structural subtype of class ``Animal`` if the former
+has all attributes and methods of the latter, and with compatible types.
+
+Structural subtyping can be seen as a static equivalent of duck typing, which is
+well known to Python programmers. See :pep:`544` for the detailed specification
+of protocols and structural subtyping in Python.
 
 .. _predefined_protocols:
 
@@ -57,8 +58,7 @@ For example, ``IntList`` below is iterable, over ``int`` values:
 
 :ref:`predefined_protocols_reference` lists all protocols defined in
 :py:mod:`typing` and the signatures of the corresponding methods you need to define
-to implement each protocol (the signatures can be left out, as always, but mypy
-won't type check unannotated methods).
+to implement each protocol.
 
 Simple user-defined protocols
 *****************************
@@ -72,30 +72,25 @@ class:
    from typing_extensions import Protocol
 
    class SupportsClose(Protocol):
-       def close(self) -> None:
-          ...  # Empty method body (explicit '...')
+       # Empty method body (explicit '...')
+       def close(self) -> None: ...
 
    class Resource:  # No SupportsClose base class!
-       # ... some methods ...
 
        def close(self) -> None:
           self.resource.release()
+
+       # ... other methods ...
 
    def close_all(items: Iterable[SupportsClose]) -> None:
        for item in items:
            item.close()
 
-   close_all([Resource(), open('some/file')])  # Okay!
+   close_all([Resource(), open('some/file')])  # OK
 
 ``Resource`` is a subtype of the ``SupportsClose`` protocol since it defines
 a compatible ``close`` method. Regular file objects returned by :py:func:`open` are
 similarly compatible with the protocol, as they support ``close()``.
-
-.. note::
-
-   The ``Protocol`` base class is provided in the ``typing_extensions``
-   package for Python 3.4-3.7. Starting with Python 3.8, ``Protocol``
-   is included in the ``typing`` module.
 
 Defining subprotocols and subclassing protocols
 ***********************************************
@@ -146,7 +141,9 @@ present if you are defining a protocol:
 
 You can also include default implementations of methods in
 protocols. If you explicitly subclass these protocols you can inherit
-these default implementations. Explicitly including a protocol as a
+these default implementations.
+
+Explicitly including a protocol as a
 base class is also a way of documenting that your class implements a
 particular protocol, and it forces mypy to verify that your class
 implementation is actually compatible with the protocol. In particular,
@@ -157,11 +154,68 @@ abstract:
 
    class SomeProto(Protocol):
        attr: int  # Note, no right hand side
-       def method(self) -> str: ...  # Literal ... here
+       def method(self) -> str: ...  # Literally just ... here
+
    class ExplicitSubclass(SomeProto):
        pass
+
    ExplicitSubclass()  # error: Cannot instantiate abstract class 'ExplicitSubclass'
                        # with abstract attributes 'attr' and 'method'
+
+Similarly, explicitly assigning to a protocol instance can be a way to ask the
+type checker to verify that your class implements a protocol:
+
+.. code-block:: python
+
+   _proto: SomeProto = cast(ExplicitSubclass, None)
+
+Invariance of protocol attributes
+*********************************
+
+A common issue with protocols is that protocol attributes are invariant.
+For example:
+
+.. code-block:: python
+
+   class Box(Protocol):
+         content: object
+
+   class IntBox:
+         content: int
+
+   def takes_box(box: Box) -> None: ...
+
+   takes_box(IntBox())  # error: Argument 1 to "takes_box" has incompatible type "IntBox"; expected "Box"
+                        # note:  Following member(s) of "IntBox" have conflicts:
+                        # note:      content: expected "object", got "int"
+
+This is because ``Box`` defines ``content`` as a mutable attribute.
+Here's why this is problematic:
+
+.. code-block:: python
+
+   def takes_box_evil(box: Box) -> None:
+       box.content = "asdf"  # This is bad, since box.content is supposed to be an object
+
+   my_int_box = IntBox()
+   takes_box_evil(my_int_box)
+   my_int_box.content + 1  # Oops, TypeError!
+
+This can be fixed by declaring ``content`` to be read-only in the ``Box``
+protocol using ``@property``:
+
+.. code-block:: python
+
+   class Box(Protocol):
+       @property
+       def content(self) -> object: ...
+
+   class IntBox:
+       content: int
+
+   def takes_box(box: Box) -> None: ...
+
+   takes_box(IntBox(42))  # OK
 
 Recursive protocols
 *******************
@@ -197,7 +251,7 @@ Using isinstance() with protocols
 
 You can use a protocol class with :py:func:`isinstance` if you decorate it
 with the ``@runtime_checkable`` class decorator. The decorator adds
-support for basic runtime structural checks:
+rudimentary support for runtime structural checks:
 
 .. code-block:: python
 
@@ -214,16 +268,23 @@ support for basic runtime structural checks:
    def use(handles: int) -> None: ...
 
    mug = Mug()
-   if isinstance(mug, Portable):
-      use(mug.handles)  # Works statically and at runtime
+   if isinstance(mug, Portable):  # Works at runtime!
+      use(mug.handles)
 
 :py:func:`isinstance` also works with the :ref:`predefined protocols <predefined_protocols>`
 in :py:mod:`typing` such as :py:class:`~typing.Iterable`.
 
-.. note::
+.. warning::
    :py:func:`isinstance` with protocols is not completely safe at runtime.
    For example, signatures of methods are not checked. The runtime
-   implementation only checks that all protocol members are defined.
+   implementation only checks that all protocol members exist,
+   not that they have the correct type. :py:func:`issubclass` with protocols
+   will only check for the existence of methods.
+
+.. note::
+   :py:func:`isinstance` with protocols can also be surprisingly slow.
+   In many cases, you're better served by using :py:func:`hasattr` to
+   check for the presence of attributes.
 
 .. _callback_protocols:
 
@@ -256,7 +317,7 @@ member:
    batch_proc([], bad_cb)   # Error! Argument 2 has incompatible type because of
                             # different name and kind in the callback
 
-Callback protocols and :py:data:`~typing.Callable` types can be used interchangeably.
+Callback protocols and :py:data:`~typing.Callable` types can be used mostly interchangeably.
 Argument names in :py:meth:`__call__ <object.__call__>` methods must be identical, unless
 a double underscore prefix is used. For example:
 

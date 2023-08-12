@@ -105,7 +105,11 @@ class NewTypeAnalyzer:
         else:
             if old_type is not None:
                 message = "Argument 2 to NewType(...) must be subclassable (got {})"
-                self.fail(message.format(format_type(old_type)), s, code=codes.VALID_NEWTYPE)
+                self.fail(
+                    message.format(format_type(old_type, self.options)),
+                    s,
+                    code=codes.VALID_NEWTYPE,
+                )
             # Otherwise the error was already reported.
             old_type = AnyType(TypeOfAny.from_error)
             object_type = self.api.named_type("builtins.object")

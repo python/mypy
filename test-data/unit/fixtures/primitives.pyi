@@ -1,4 +1,5 @@
 # builtins stub with non-generic primitive types
+import _typeshed
 from typing import Generic, TypeVar, Sequence, Iterator, Mapping, Iterable, Tuple, Union
 
 T = TypeVar('T')
@@ -44,7 +45,8 @@ class memoryview(Sequence[int]):
     def __iter__(self) -> Iterator[int]: pass
     def __contains__(self, other: object) -> bool: pass
     def __getitem__(self, item: int) -> int: pass
-class tuple(Generic[T]): pass
+class tuple(Generic[T]):
+    def __contains__(self, other: object) -> bool: pass
 class list(Sequence[T]):
     def __iter__(self) -> Iterator[T]: pass
     def __contains__(self, other: object) -> bool: pass

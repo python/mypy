@@ -1,12 +1,12 @@
 from collections.abc import Callable
 from email.message import Message
 from email.policy import Policy
-from typing import IO, Union
+from typing import IO
 from typing_extensions import TypeAlias
 
 # Definitions imported by multiple submodules in typeshed
-_ParamType: TypeAlias = Union[str, tuple[str | None, str | None, str]]  # noqa: Y047
-_ParamsType: TypeAlias = Union[str, None, tuple[str, str | None, str]]  # noqa: Y047
+_ParamType: TypeAlias = str | tuple[str | None, str | None, str]  # noqa: Y047
+_ParamsType: TypeAlias = str | None | tuple[str, str | None, str]  # noqa: Y047
 
 def message_from_string(s: str, _class: Callable[[], Message] = ..., *, policy: Policy = ...) -> Message: ...
 def message_from_bytes(s: bytes | bytearray, _class: Callable[[], Message] = ..., *, policy: Policy = ...) -> Message: ...

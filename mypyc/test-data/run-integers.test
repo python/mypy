@@ -173,6 +173,7 @@ assert test_isinstance_int_and_not_bool(1) == True
 
 [case testIntOps]
 from typing import Any
+from testutil import assertRaises
 
 def check_and(x: int, y: int) -> None:
     # eval() can be trusted to calculate expected result
@@ -390,7 +391,7 @@ def test_no_op_conversion() -> None:
     for x in 1, 55, -1, -7, 1 << 50, 1 << 101, -(1 << 50), -(1 << 101):
         assert no_op_conversion(x) == x
 
-def test_divide() -> None:
+def test_floor_divide() -> None:
     for x in range(-100, 100):
         for y in range(-100, 100):
             if y != 0:
@@ -469,6 +470,25 @@ def test_floor_divide_by_literal() -> None:
         assert div_by_2(i) == i_boxed // int('2')
         assert div_by_3(i) == i_boxed // int('3')
         assert div_by_4(i) == i_boxed // int('4')
+
+def test_true_divide() -> None:
+    for x in range(-150, 100):
+        for y in range(-150, 100):
+            if y != 0:
+                assert x / y == getattr(x, "__truediv__")(y)
+    large1 = (123 + int())**123
+    large2 = (121 + int())**121
+    assert large1 / large2 == getattr(large1, "__truediv__")(large2)
+    assert large1 / 135 == getattr(large1, "__truediv__")(135)
+    assert large1 / -2 == getattr(large1, "__truediv__")(-2)
+    assert 17 / large2 == getattr(17, "__truediv__")(large2)
+
+    huge = 10**1000 + int()
+    with assertRaises(OverflowError, "integer division result too large for a float"):
+        huge / 2
+    with assertRaises(OverflowError, "integer division result too large for a float"):
+        huge / -2
+    assert 1 / huge == 0.0
 
 [case testIntMinMax]
 def test_int_min_max() -> None:

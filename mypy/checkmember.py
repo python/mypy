@@ -312,17 +312,14 @@ def analyze_instance_member_access(
 
         if method.is_property:
             assert isinstance(method, OverloadedFuncDef)
-            first_item = cast(Decorator, method.items[0])
+            first_item = method.items[0]
+            assert isinstance(first_item, Decorator)
             return analyze_var(name, first_item.var, typ, info, mx)
         if mx.is_lvalue:
             mx.msg.cant_assign_to_method(mx.context)
         signature = function_type(method, mx.named_type("builtins.function"))
         signature = freshen_all_functions_type_vars(signature)
-        if name == "__new__" or method.is_static:
-            # __new__ is special and behaves like a static method -- don't strip
-            # the first argument.
-            pass
-        else:
+        if not method.is_static:
             if name != "__call__":
                 # TODO: use proper treatment of special methods on unions instead
                 #       of this hack here and below (i.e. mx.self_type).
@@ -387,7 +384,7 @@ def analyze_type_callable_member_access(name: str, typ: FunctionLike, mx: Member
             # See https://github.com/python/mypy/pull/1787 for more info.
             # TODO: do not rely on same type variables being present in all constructor overloads.
             result = analyze_class_attribute_access(
-                ret_type, name, mx, original_vars=typ.items[0].variables
+                ret_type, name, mx, original_vars=typ.items[0].variables, mcs_fallback=typ.fallback
             )
             if result:
                 return result
@@ -412,6 +409,13 @@ def analyze_type_type_member_access(
         upper_bound = get_proper_type(typ.item.upper_bound)
         if isinstance(upper_bound, Instance):
             item = upper_bound
+        elif isinstance(upper_bound, UnionType):
+            return _analyze_member_access(
+                name,
+                TypeType.make_normalized(upper_bound, line=typ.line, column=typ.column),
+                mx,
+                override_info,
+            )
         elif isinstance(upper_bound, TupleType):
             item = tuple_fallback(upper_bound)
         elif isinstance(upper_bound, AnyType):
@@ -426,17 +430,21 @@ def analyze_type_type_member_access(
         if isinstance(typ.item.item, Instance):
             item = typ.item.item.type.metaclass_type
     ignore_messages = False
+
+    if item is not None:
+        fallback = item.type.metaclass_type or fallback
+
     if item and not mx.is_operator:
         # See comment above for why operators are skipped
-        result = analyze_class_attribute_access(item, name, mx, override_info)
+        result = analyze_class_attribute_access(
+            item, name, mx, mcs_fallback=fallback, override_info=override_info
+        )
         if result:
             if not (isinstance(get_proper_type(result), AnyType) and item.type.fallback_to_any):
                 return result
             else:
                 # We don't want errors on metaclass lookup for classes with Any fallback
                 ignore_messages = True
-    if item is not None:
-        fallback = item.type.metaclass_type or fallback
 
     with mx.msg.filter_errors(filter_errors=ignore_messages):
         return _analyze_member_access(name, fallback, mx, override_info)
@@ -629,7 +637,10 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
     dunder_get = descriptor_type.type.get_method("__get__")
     if dunder_get is None:
         mx.msg.fail(
-            message_registry.DESCRIPTOR_GET_NOT_CALLABLE.format(descriptor_type), mx.context
+            message_registry.DESCRIPTOR_GET_NOT_CALLABLE.format(
+                descriptor_type.str_with_options(mx.msg.options)
+            ),
+            mx.context,
         )
         return AnyType(TypeOfAny.from_error)
 
@@ -686,7 +697,10 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
 
     if not isinstance(inferred_dunder_get_type, CallableType):
         mx.msg.fail(
-            message_registry.DESCRIPTOR_GET_NOT_CALLABLE.format(descriptor_type), mx.context
+            message_registry.DESCRIPTOR_GET_NOT_CALLABLE.format(
+                descriptor_type.str_with_options(mx.msg.options)
+            ),
+            mx.context,
         )
         return AnyType(TypeOfAny.from_error)
 
@@ -717,12 +731,12 @@ def analyze_var(
     """Analyze access to an attribute via a Var node.
 
     This is conceptually part of analyze_member_access and the arguments are similar.
-
-    itype is the class object in which var is defined
+    itype is the instance type in which attribute should be looked up
     original_type is the type of E in the expression E.var
     if implicit is True, the original Var was created as an assignment to self
     """
     # Found a member variable.
+    original_itype = itype
     itype = map_instance_to_supertype(itype, var.info)
     typ = var.type
     if typ:
@@ -738,6 +752,16 @@ def analyze_var(
             get_proper_type(mx.original_type)
         ):
             t = expand_self_type(var, t, mx.original_type)
+        elif (
+            mx.is_self
+            and original_itype.type != var.info
+            # If an attribute with Self-type was defined in a supertype, we need to
+            # rebind the Self type variable to Self type variable of current class...
+            and original_itype.type.self_type is not None
+            # ...unless `self` has an explicit non-trivial annotation.
+            and original_itype == mx.chk.scope.active_self_type()
+        ):
+            t = expand_self_type(var, t, original_itype.type.self_type)
         t = get_proper_type(expand_type_by_instance(t, itype))
         freeze_all_type_vars(t)
         result: Type = t
@@ -879,6 +903,8 @@ def analyze_class_attribute_access(
     itype: Instance,
     name: str,
     mx: MemberContext,
+    *,
+    mcs_fallback: Instance,
     override_info: TypeInfo | None = None,
     original_vars: Sequence[TypeVarLikeType] | None = None,
 ) -> Type | None:
@@ -903,6 +929,22 @@ def analyze_class_attribute_access(
                 return itype.extra_attrs.attrs[name]
         if info.fallback_to_any or info.meta_fallback_to_any:
             return apply_class_attr_hook(mx, hook, AnyType(TypeOfAny.special_form))
+        return None
+
+    if (
+        isinstance(node.node, Var)
+        and not node.node.is_classvar
+        and not hook
+        and mcs_fallback.type.get(name)
+    ):
+        # If the same attribute is declared on the metaclass and the class but with different types,
+        # and the attribute on the class is not a ClassVar,
+        # the type of the attribute on the metaclass should take priority
+        # over the type of the attribute on the class,
+        # when the attribute is being accessed from the class object itself.
+        #
+        # Return `None` here to signify that the name should be looked up
+        # on the class object itself rather than the instance.
         return None
 
     is_decorated = isinstance(node.node, Decorator)
@@ -1150,7 +1192,7 @@ def add_class_tvars(
             t = freshen_all_functions_type_vars(t)
             t = bind_self(t, original_type, is_classmethod=True)
             assert isuper is not None
-            t = cast(CallableType, expand_type_by_instance(t, isuper))
+            t = expand_type_by_instance(t, isuper)
             freeze_all_type_vars(t)
         return t.copy_modified(variables=list(tvars) + list(t.variables))
     elif isinstance(t, Overloaded):

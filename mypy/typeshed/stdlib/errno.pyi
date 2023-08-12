@@ -91,9 +91,15 @@ ECANCELED: int  # undocumented
 ENOTRECOVERABLE: int  # undocumented
 EOWNERDEAD: int  # undocumented
 
+if sys.platform == "sunos5" or sys.platform == "solaris":  # noqa: Y008
+    ELOCKUNMAPPED: int
+    ENOTACTIVE: int
+
 if sys.platform != "win32":
     ENOTBLK: int
     EMULTIHOP: int
+
+if sys.platform == "darwin":
     # All of the below are undocumented
     EAUTH: int
     EBADARCH: int
@@ -112,9 +118,8 @@ if sys.platform != "win32":
     EPWROFF: int
     ERPCMISMATCH: int
     ESHLIBVERS: int
-
-    if sys.platform != "darwin" or sys.version_info >= (3, 11):
-        EQFULL: int  # undocumented
+    if sys.version_info >= (3, 11):
+        EQFULL: int
 
 if sys.platform != "darwin":
     EDEADLOCK: int
@@ -164,9 +169,6 @@ if sys.platform != "win32" and sys.platform != "darwin":
     ENOKEY: int
     ENOMEDIUM: int
     ERFKILL: int
-    EL: int
-    ELOCKUNMAPPED: int
-    ENOTACTIVE: int
 
 if sys.platform == "win32":
     # All of these are undocumented

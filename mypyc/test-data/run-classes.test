@@ -662,42 +662,107 @@ Traceback (most recent call last):
 AttributeError: attribute 'x' of 'X' undefined
 
 [case testClassMethods]
-MYPY = False
-if MYPY:
-    from typing import ClassVar
+from typing import ClassVar, Any
+from typing_extensions import final
+from mypy_extensions import mypyc_attr
+
+from interp import make_interpreted_subclass
+
 class C:
-    lurr: 'ClassVar[int]' = 9
+    lurr: ClassVar[int] = 9
     @staticmethod
-    def foo(x: int) -> int: return 10 + x
+    def foo(x: int) -> int:
+        return 10 + x
     @classmethod
-    def bar(cls, x: int) -> int: return cls.lurr + x
+    def bar(cls, x: int) -> int:
+        return cls.lurr + x
     @staticmethod
-    def baz(x: int, y: int = 10) -> int: return y - x
+    def baz(x: int, y: int = 10) -> int:
+        return y - x
     @classmethod
-    def quux(cls, x: int, y: int = 10) -> int: return y - x
+    def quux(cls, x: int, y: int = 10) -> int:
+        return y - x
+    @classmethod
+    def call_other(cls, x: int) -> int:
+        return cls.quux(x, 3)
 
 class D(C):
     def f(self) -> int:
         return super().foo(1) + super().bar(2) + super().baz(10) + super().quux(10)
 
-def test1() -> int:
+def ctest1() -> int:
     return C.foo(1) + C.bar(2) + C.baz(10) + C.quux(10) + C.quux(y=10, x=9)
-def test2() -> int:
+
+def ctest2() -> int:
     c = C()
     return c.foo(1) + c.bar(2) + c.baz(10)
-[file driver.py]
-from native import *
-assert C.foo(10) == 20
-assert C.bar(10) == 19
-c = C()
-assert c.foo(10) == 20
-assert c.bar(10) == 19
 
-assert test1() == 23
-assert test2() == 22
+CAny: Any = C
 
-d = D()
-assert d.f() == 22
+def test_classmethod_using_any() -> None:
+    assert CAny.foo(10) == 20
+    assert CAny.bar(10) == 19
+
+def test_classmethod_on_instance() -> None:
+    c = C()
+    assert c.foo(10) == 20
+    assert c.bar(10) == 19
+    assert c.call_other(1) == 2
+
+def test_classmethod_misc() -> None:
+    assert ctest1() == 23
+    assert ctest2() == 22
+    assert C.call_other(2) == 1
+
+def test_classmethod_using_super() -> None:
+    d = D()
+    assert d.f() == 22
+
+@final
+class F1:
+    @classmethod
+    def f(cls, x: int) -> int:
+        return cls.g(x)
+
+    @classmethod
+    def g(cls, x: int) -> int:
+        return x + 1
+
+class F2:  # Implicitly final (no subclasses)
+    @classmethod
+    def f(cls, x: int) -> int:
+        return cls.g(x)
+
+    @classmethod
+    def g(cls, x: int) -> int:
+        return x + 1
+
+def test_classmethod_of_final_class() -> None:
+    assert F1.f(5) == 6
+    assert F2.f(7) == 8
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class CI:
+    @classmethod
+    def f(cls, x: int) -> int:
+        return cls.g(x)
+
+    @classmethod
+    def g(cls, x: int) -> int:
+        return x + 1
+
+def test_classmethod_with_allow_interpreted() -> None:
+    assert CI.f(4) == 5
+    sub = make_interpreted_subclass(CI)
+    assert sub.f(4) == 7
+
+[file interp.py]
+def make_interpreted_subclass(base):
+    class Sub(base):
+        @classmethod
+        def g(cls, x: int) -> int:
+            return x + 3
+    return Sub
 
 [case testSuper]
 from mypy_extensions import trait
@@ -1305,9 +1370,8 @@ except TypeError as e:
 
 [case testMetaclass]
 from meta import Meta
-import six
 
-class Nothing1(metaclass=Meta):
+class Nothing(metaclass=Meta):
     pass
 
 def ident(x): return x
@@ -1316,15 +1380,7 @@ def ident(x): return x
 class Test:
     pass
 
-class Nothing2(six.with_metaclass(Meta, Test)):
-    pass
-
-@six.add_metaclass(Meta)
-class Nothing3:
-    pass
-
 [file meta.py]
-from typing import Any
 class Meta(type):
     def __new__(mcs, name, bases, dct):
         dct['X'] = 10
@@ -1332,10 +1388,8 @@ class Meta(type):
 
 
 [file driver.py]
-from native import Nothing1, Nothing2, Nothing3
-assert Nothing1.X == 10
-assert Nothing2.X == 10
-assert Nothing3.X == 10
+from native import Nothing
+assert Nothing.X == 10
 
 [case testPickling]
 from mypy_extensions import trait, mypyc_attr

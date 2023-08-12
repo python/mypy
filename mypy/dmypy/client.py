@@ -244,6 +244,7 @@ daemon_parser = p = subparsers.add_parser("daemon", help="Run daemon in foregrou
 p.add_argument(
     "--timeout", metavar="TIMEOUT", type=int, help="Server shutdown timeout (in seconds)"
 )
+p.add_argument("--log-file", metavar="FILE", type=str, help="Direct daemon stdout/stderr to FILE")
 p.add_argument(
     "flags", metavar="FLAG", nargs="*", type=str, help="Regular mypy flags (precede with --)"
 )
@@ -608,21 +609,22 @@ def do_daemon(args: argparse.Namespace) -> None:
     # Lazy import so this import doesn't slow down other commands.
     from mypy.dmypy_server import Server, process_start_options
 
+    if args.log_file:
+        sys.stdout = sys.stderr = open(args.log_file, "a", buffering=1)
+        fd = sys.stdout.fileno()
+        os.dup2(fd, 2)
+        os.dup2(fd, 1)
+
     if args.options_data:
         from mypy.options import Options
 
-        options_dict, timeout, log_file = pickle.loads(base64.b64decode(args.options_data))
+        options_dict = pickle.loads(base64.b64decode(args.options_data))
         options_obj = Options()
         options = options_obj.apply_changes(options_dict)
-        if log_file:
-            sys.stdout = sys.stderr = open(log_file, "a", buffering=1)
-            fd = sys.stdout.fileno()
-            os.dup2(fd, 2)
-            os.dup2(fd, 1)
     else:
         options = process_start_options(args.flags, allow_sources=False)
-        timeout = args.timeout
-    Server(options, args.status_file, timeout=timeout).serve()
+
+    Server(options, args.status_file, timeout=args.timeout).serve()
 
 
 @action(help_parser)
@@ -665,10 +667,15 @@ def request(
         return {"error": str(err)}
     # TODO: Other errors, e.g. ValueError, UnicodeError
     else:
-        # Display debugging output written to stdout in the server process for convenience.
+        # Display debugging output written to stdout/stderr in the server process for convenience.
         stdout = response.get("stdout")
         if stdout:
             sys.stdout.write(stdout)
+        stderr = response.get("stderr")
+        if stderr:
+            print("-" * 79)
+            print("stderr:")
+            sys.stdout.write(stderr)
         return response
 
 

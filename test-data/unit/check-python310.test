@@ -1140,7 +1140,6 @@ match m:
         reveal_type(a)
 
 [case testMatchRedefiningPatternGuard]
-# flags: --strict-optional
 m: str
 
 match m:
@@ -1382,7 +1381,6 @@ def f(x: int | str) -> int:  # E: Missing return statement
 [builtins fixtures/isinstance.pyi]
 
 [case testMatchNarrowDownUnionPartially]
-# flags: --strict-optional
 
 def f(x: int | str) -> None:
     match x:
@@ -1493,7 +1491,6 @@ def f(x: A) -> None:
     reveal_type(y)  # N: Revealed type is "Union[__main__.<subclass of "A" and "B">, __main__.<subclass of "A" and "C">]"
 
 [case testMatchWithBreakAndContinue]
-# flags: --strict-optional
 def f(x: int | str | None) -> None:
     i = int()
     while i:
@@ -1571,8 +1568,8 @@ class AnnAssign(stmt):
    value: str
    simple: int
 
-reveal_type(AST.__match_args__)  # N: Revealed type is "Tuple[]"
-reveal_type(stmt.__match_args__)  # N: Revealed type is "Tuple[]"
+reveal_type(AST.__match_args__)  # N: Revealed type is "Tuple[()]"
+reveal_type(stmt.__match_args__)  # N: Revealed type is "Tuple[()]"
 reveal_type(AnnAssign.__match_args__)  # N: Revealed type is "Tuple[Literal['target']?, Literal['annotation']?, Literal['value']?, Literal['simple']?]"
 
 AnnAssign.__match_args__ = ('a', 'b', 'c', 'd')  # E: Cannot assign to "__match_args__"
@@ -1626,7 +1623,6 @@ def func(e: Union[str, tuple[str]]) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testMatchTupleOptionalNoCrash]
-# flags: --strict-optional
 foo: tuple[int] | None
 match foo:
     case x,:
@@ -1813,6 +1809,19 @@ def f1(x: int) -> int:
 
 [typing fixtures/typing-medium.pyi]
 
+[case testUsedBeforeDefMatchWalrus]
+# flags: --enable-error-code used-before-def
+import typing
+
+def f0(x: int) -> None:
+    a = y  # E: Cannot determine type of "y"  # E: Name "y" is used before definition
+    match y := x:
+        case 1:
+            b = y
+        case 2:
+            c = y
+    d = y
+
 [case testTypeAliasWithNewUnionSyntaxAndNoneLeftOperand]
 from typing import overload
 class C:
@@ -1828,3 +1837,139 @@ class D: pass
 X = None | C
 Y = None | D
 [builtins fixtures/type.pyi]
+
+[case testMatchStatementWalrus]
+class A:
+    a = 1
+
+def returns_a_or_none() -> A | None:
+    return A()
+
+def returns_a() -> A:
+    return A()
+
+def f() -> None:
+    match x := returns_a_or_none():
+        case A():
+            reveal_type(x.a)  # N: Revealed type is "builtins.int"
+    match x := returns_a():
+        case A():
+            reveal_type(x.a)  # N: Revealed type is "builtins.int"
+    y = returns_a_or_none()
+    match y:
+        case A():
+            reveal_type(y.a)  # N: Revealed type is "builtins.int"
+
+[case testNarrowedVariableInNestedModifiedInMatch]
+from typing import Optional
+
+def match_stmt_error1(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    match object():
+        case str(x):
+            pass
+    nested()
+
+def foo(x): pass
+
+def match_stmt_ok1(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return x
+    match foo(x):
+        case str(y):
+            z = x
+    nested()
+
+def match_stmt_error2(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    match [None]:
+        case [x]:
+            pass
+    nested()
+
+def match_stmt_error3(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    match {'a': None}:
+        case {'a': x}:
+            pass
+    nested()
+
+def match_stmt_error4(x: Optional[list[str]]) -> None:
+    if x is None:
+        x = ["a"]
+    def nested() -> list[str]:
+        return x  # E: Incompatible return value type (got "Optional[List[str]]", expected "List[str]")
+    match ["a"]:
+        case [*x]:
+            pass
+    nested()
+
+class C:
+    a: str
+
+def match_stmt_error5(x: Optional[str]) -> None:
+    if x is None:
+        x = "a"
+    def nested() -> str:
+        return x  # E: Incompatible return value type (got "Optional[str]", expected "str")
+    match C():
+        case C(a=x):
+            pass
+    nested()
+[builtins fixtures/tuple.pyi]
+
+[case testMatchSubjectRedefinition]
+# flags: --allow-redefinition
+def transform1(a: str) -> int:
+    ...
+
+def transform2(a: int) -> str:
+    ...
+
+def redefinition_good(a: str):
+    a = transform1(a)
+
+    match (a + 1):
+        case _:
+            ...
+
+
+def redefinition_bad(a: int):
+    a = transform2(a)
+
+    match (a + 1):  # E: Unsupported operand types for + ("str" and "int")
+        case _:
+            ...
+
+[builtins fixtures/primitives.pyi]
+
+[case testPatternMatchingClassPatternLocation]
+# See https://github.com/python/mypy/issues/15496
+from some_missing_lib import DataFrame, Series  # type: ignore[import]
+from typing import TypeVar
+
+T = TypeVar("T", Series, DataFrame)
+
+def f(x: T) -> None:
+    match x:
+        case Series() | DataFrame():  # type: ignore[misc]
+            pass
+
+def f2(x: T) -> None:
+    match x:
+        case Series():  # type: ignore[misc]
+            pass
+        case DataFrame():  # type: ignore[misc]
+            pass
+[builtins fixtures/primitives.pyi]

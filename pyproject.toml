@@ -6,20 +6,18 @@ requires = [
     "setuptools >= 40.6.2",
     "wheel >= 0.30.0",
     # the following is from mypy-requirements.txt
-    "typing_extensions>=3.10",
-    "mypy_extensions>=0.4.3",
-    "typed_ast>=1.4.0,<2; python_version<'3.8'",
+    "typing_extensions>=4.1.0",
+    "mypy_extensions>=1.0.0",
     "tomli>=1.1.0; python_version<'3.11'",
     # the following is from build-requirements.txt
     "types-psutil",
     "types-setuptools",
-    "types-typed-ast>=1.5.8,<1.6.0",
 ]
 build-backend = "setuptools.build_meta"
 
 [tool.black]
 line-length = 99
-target-version = ["py37", "py38", "py39", "py310", "py311"]
+target-version = ["py38", "py39", "py310", "py311"]
 skip-magic-trailing-comma = true
 force-exclude = '''
 ^/mypy/typeshed|
@@ -27,14 +25,99 @@ force-exclude = '''
 ^/test-data
 '''
 
-[tool.isort]
-profile = "black"
-line_length = 99
-combine_as_imports = true
-skip_gitignore = true
-extra_standard_library = ["typing_extensions"]
-skip_glob = [
-    "mypy/typeshed/*",
-    "mypyc/test-data/*",
-    "test-data/*",
+[tool.ruff]
+line-length = 99
+target-version = "py38"
+fix = true
+
+select = [
+  "E",       # pycodestyle (error)
+  "F",       # pyflakes
+  "B",       # flake8-bugbear
+  "I",       # isort
+  "RUF100",  # Unused noqa comments
+  "PGH004"   # blanket noqa comments
+]
+
+ignore = [
+  "B006",  # use of mutable defaults in function signatures
+  "B007",  # Loop control variable not used within the loop body.
+  "B011",  # Don't use assert False
+  "B023",  # Function definition does not bind loop variable
+  "E203",  # conflicts with black
+  "E402",  # module level import not at top of file
+  "E501",  # conflicts with black
+  "E731",  # Do not assign a `lambda` expression, use a `def`
+  "E741",  # Ambiguous variable name
+]
+
+unfixable = [
+    "F841",  # unused variable. ruff keeps the call, but mostly we want to get rid of it all
+    "F601",  # automatic fix might obscure issue
+    "F602",  # automatic fix might obscure issue
+    "B018",  # automatic fix might obscure issue
+]
+
+extend-exclude = [
+  "@*",
+  # Sphinx configuration is irrelevant
+  "docs/source/conf.py",
+  "mypyc/doc/conf.py",
+  # tests have more relaxed styling requirements
+  # fixtures have their own .pyi-specific configuration
+  "test-data/*",
+  "mypyc/test-data/*",
+  # typeshed has its own .pyi-specific configuration
+  "mypy/typeshed/*",
+]
+
+[tool.ruff.isort]
+combine-as-imports = true
+extra-standard-library = ["typing_extensions"]
+
+[tool.check-manifest]
+ignore = ["**/.readthedocs.yaml"]
+
+[tool.pytest.ini_options]
+minversion = "6.0.0"
+testpaths = ["mypy/test", "mypyc/test"]
+python_files = 'test*.py'
+
+# Where do the test cases come from?  We provide our own collection
+# logic by implementing `pytest_pycollect_makeitem` in mypy.test.data;
+# the test files import that module, and pytest sees the magic name
+# and invokes it at the relevant moment.  See
+# https://doc.pytest.org/en/latest/how-to/writing_plugins.html#collection-hooks
+
+# Both our plugin and unittest provide their own collection logic,
+# So we can disable the default python collector by giving it empty
+# patterns to search for.
+# Note that unittest requires that no "Test*" classes exist.
+python_classes = []
+python_functions = []
+
+# always run in parallel (requires pytest-xdist, see test-requirements.txt)
+# and enable strict mode: require all markers
+# to be defined and raise on invalid config values
+addopts = "-nauto --strict-markers --strict-config"
+
+# treat xpasses as test failures so they get converted to regular tests as soon as possible
+xfail_strict = true
+
+[tool.coverage.run]
+branch = true
+source = "mypy"
+parallel = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+omit = 'mypy/test/*'
+exclude_lines = [
+  '\#\s*pragma: no cover',
+  '^\s*raise AssertionError\b',
+  '^\s*raise NotImplementedError\b',
+  '^\s*return NotImplemented\b',
+  '^\s*raise$',
+  '''^if __name__ == ['"]__main__['"]:$''',
 ]

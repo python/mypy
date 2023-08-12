@@ -5,8 +5,7 @@ This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 
 from __future__ import annotations
 
-from typing import cast
-from typing_extensions import Final
+from typing import Final, cast
 
 from mypy.nodes import (
     ARG_NAMED,
@@ -27,6 +26,7 @@ from mypy.nodes import (
     TupleExpr,
     TypeInfo,
     Var,
+    is_StrExpr_list,
 )
 from mypy.options import Options
 from mypy.semanal_shared import SemanticAnalyzerInterface
@@ -177,8 +177,8 @@ class EnumCallAnalyzer:
                 items.append(field)
         elif isinstance(names, (TupleExpr, ListExpr)):
             seq_items = names.items
-            if all(isinstance(seq_item, StrExpr) for seq_item in seq_items):
-                items = [cast(StrExpr, seq_item).value for seq_item in seq_items]
+            if is_StrExpr_list(seq_items):
+                items = [seq_item.value for seq_item in seq_items]
             elif all(
                 isinstance(seq_item, (TupleExpr, ListExpr))
                 and len(seq_item.items) == 2
@@ -220,18 +220,18 @@ class EnumCallAnalyzer:
                     items.append(field)
             else:
                 return self.fail_enum_call_arg(
-                    "%s() expects a string, tuple, list or dict literal as the second argument"
+                    "Second argument of %s() must be string, tuple, list or dict literal for mypy to determine Enum members"
                     % class_name,
                     call,
                 )
         else:
             # TODO: Allow dict(x=1, y=2) as a substitute for {'x': 1, 'y': 2}?
             return self.fail_enum_call_arg(
-                "%s() expects a string, tuple, list or dict literal as the second argument"
+                "Second argument of %s() must be string, tuple, list or dict literal for mypy to determine Enum members"
                 % class_name,
                 call,
             )
-        if len(items) == 0:
+        if not items:
             return self.fail_enum_call_arg(f"{class_name}() needs at least one item", call)
         if not values:
             values = [None] * len(items)

@@ -41,7 +41,6 @@ typedef struct tuple_T3OOO {
     PyObject *f1;
     PyObject *f2;
 } tuple_T3OOO;
-static tuple_T3OOO tuple_undefined_T3OOO = { NULL, NULL, NULL };
 #endif
 
 // Our return tuple wrapper for dictionary iteration helper.
@@ -52,7 +51,6 @@ typedef struct tuple_T3CIO {
     CPyTagged f1;  // Last dict offset
     PyObject *f2;  // Next dictionary key or value
 } tuple_T3CIO;
-static tuple_T3CIO tuple_undefined_T3CIO = { 2, CPY_INT_TAG, NULL };
 #endif
 
 // Same as above but for both key and value.
@@ -64,7 +62,6 @@ typedef struct tuple_T4CIOO {
     PyObject *f2;  // Next dictionary key
     PyObject *f3;  // Next dictionary value
 } tuple_T4CIOO;
-static tuple_T4CIOO tuple_undefined_T4CIOO = { 2, CPY_INT_TAG, NULL, NULL };
 #endif
 
 
@@ -147,9 +144,9 @@ CPyTagged CPyTagged_Lshift(CPyTagged left, CPyTagged right);
 bool CPyTagged_IsEq_(CPyTagged left, CPyTagged right);
 bool CPyTagged_IsLt_(CPyTagged left, CPyTagged right);
 PyObject *CPyTagged_Str(CPyTagged n);
+CPyTagged CPyTagged_FromFloat(double f);
 PyObject *CPyLong_FromStrWithBase(PyObject *o, CPyTagged base);
 PyObject *CPyLong_FromStr(PyObject *o);
-PyObject *CPyLong_FromFloat(PyObject *o);
 PyObject *CPyBool_Str(bool b);
 int64_t CPyLong_AsInt64(PyObject *o);
 int64_t CPyInt64_Divide(int64_t x, int64_t y);
@@ -158,6 +155,13 @@ int32_t CPyLong_AsInt32(PyObject *o);
 int32_t CPyInt32_Divide(int32_t x, int32_t y);
 int32_t CPyInt32_Remainder(int32_t x, int32_t y);
 void CPyInt32_Overflow(void);
+int16_t CPyLong_AsInt16(PyObject *o);
+int16_t CPyInt16_Divide(int16_t x, int16_t y);
+int16_t CPyInt16_Remainder(int16_t x, int16_t y);
+void CPyInt16_Overflow(void);
+uint8_t CPyLong_AsUInt8(PyObject *o);
+void CPyUInt8_Overflow(void);
+double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y);
 
 static inline int CPyTagged_CheckLong(CPyTagged x) {
     return x & CPY_INT_TAG;
@@ -283,6 +287,24 @@ static inline bool CPyTagged_IsLe(CPyTagged left, CPyTagged right) {
 }
 
 
+// Float operations
+
+
+double CPyFloat_FloorDivide(double x, double y);
+double CPyFloat_Pow(double x, double y);
+double CPyFloat_Sin(double x);
+double CPyFloat_Cos(double x);
+double CPyFloat_Tan(double x);
+double CPyFloat_Sqrt(double x);
+double CPyFloat_Exp(double x);
+double CPyFloat_Log(double x);
+CPyTagged CPyFloat_Floor(double x);
+CPyTagged CPyFloat_Ceil(double x);
+double CPyFloat_FromTagged(CPyTagged x);
+bool CPyFloat_IsInf(double x);
+bool CPyFloat_IsNaN(double x);
+
+
 // Generic operations (that work with arbitrary types)
 
 
@@ -344,6 +366,7 @@ CPyTagged CPyObject_Hash(PyObject *o);
 PyObject *CPyObject_GetAttr3(PyObject *v, PyObject *name, PyObject *defl);
 PyObject *CPyIter_Next(PyObject *iter);
 PyObject *CPyNumber_Power(PyObject *base, PyObject *index);
+PyObject *CPyNumber_InPlacePower(PyObject *base, PyObject *index);
 PyObject *CPyObject_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 
 
@@ -449,7 +472,6 @@ PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter);
 
 
 int CPyBytes_Compare(PyObject *left, PyObject *right);
-
 
 
 // Set operations
@@ -603,8 +625,10 @@ PyObject *CPy_Super(PyObject *builtins, PyObject *self);
 PyObject *CPy_CallReverseOpMethod(PyObject *left, PyObject *right, const char *op,
                                   _Py_Identifier *method);
 
-PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
-                               PyObject *import_name, PyObject *as_name);
+bool CPyImport_ImportMany(PyObject *modules, CPyModule **statics[], PyObject *globals,
+                          PyObject *tb_path, PyObject *tb_function, Py_ssize_t *tb_lines);
+PyObject *CPyImport_ImportFromMany(PyObject *mod_id, PyObject *names, PyObject *as_names,
+                                   PyObject *globals);
 
 PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func, PyObject *cls,
                                              PyObject *func);

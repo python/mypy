@@ -17,8 +17,8 @@ import sys
 import time
 import traceback
 from contextlib import redirect_stderr, redirect_stdout
-from typing import AbstractSet, Any, Callable, List, Sequence, Tuple
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import AbstractSet, Any, Callable, Final, List, Sequence, Tuple
+from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.build
 import mypy.errors
@@ -56,8 +56,12 @@ if sys.platform == "win32":
         It also pickles the options to be unpickled by mypy.
         """
         command = [sys.executable, "-m", "mypy.dmypy", "--status-file", status_file, "daemon"]
-        pickled_options = pickle.dumps((options.snapshot(), timeout, log_file))
+        pickled_options = pickle.dumps(options.snapshot())
         command.append(f'--options-data="{base64.b64encode(pickled_options).decode()}"')
+        if timeout:
+            command.append(f"--timeout={timeout}")
+        if log_file:
+            command.append(f"--log-file={log_file}")
         info = STARTUPINFO()
         info.dwFlags = 0x1  # STARTF_USESHOWWINDOW aka use wShowWindow's value
         info.wShowWindow = 0  # SW_HIDE aka make the window invisible
@@ -163,7 +167,6 @@ ChangesAndRemovals: _TypeAlias = Tuple[ModulePathPairs, ModulePathPairs]
 
 
 class Server:
-
     # NOTE: the instance is constructed in the parent process but
     # serve() is called in the grandchild (by daemonize()).
 
@@ -215,7 +218,9 @@ class Server:
                 with server:
                     data = receive(server)
                     debug_stdout = io.StringIO()
+                    debug_stderr = io.StringIO()
                     sys.stdout = debug_stdout
+                    sys.stderr = debug_stderr
                     resp: dict[str, Any] = {}
                     if "command" not in data:
                         resp = {"error": "No command found in request"}
@@ -233,9 +238,11 @@ class Server:
                                 resp = {"error": "Daemon crashed!\n" + "".join(tb)}
                                 resp.update(self._response_metadata())
                                 resp["stdout"] = debug_stdout.getvalue()
+                                resp["stderr"] = debug_stderr.getvalue()
                                 server.write(json.dumps(resp).encode("utf8"))
                                 raise
                     resp["stdout"] = debug_stdout.getvalue()
+                    resp["stderr"] = debug_stderr.getvalue()
                     try:
                         resp.update(self._response_metadata())
                         server.write(json.dumps(resp).encode("utf8"))
@@ -323,7 +330,7 @@ class Server:
                         header=argparse.SUPPRESS,
                     )
             # Signal that we need to restart if the options have changed
-            if self.options_snapshot != options.snapshot():
+            if not options.compare_stable(self.options_snapshot):
                 return {"restart": "configuration changed"}
             if __version__ != version:
                 return {"restart": "mypy version changed"}
@@ -596,7 +603,7 @@ class Server:
         messages = fine_grained_manager.update(changed, [], followed=True)
 
         # Follow deps from changed modules (still within graph).
-        worklist = changed[:]
+        worklist = changed.copy()
         while worklist:
             module = worklist.pop()
             if module[0] not in graph:
@@ -703,7 +710,7 @@ class Server:
         """
         changed = []
         new_files = []
-        worklist = roots[:]
+        worklist = roots.copy()
         seen.update(source.module for source in worklist)
         while worklist:
             nxt = worklist.pop()
@@ -824,7 +831,6 @@ class Server:
     def update_changed(
         self, sources: list[BuildSource], remove: list[str], update: list[str]
     ) -> ChangesAndRemovals:
-
         changed_paths = self.fswatcher.update_changed(remove, update)
         return self._find_changed(sources, changed_paths)
 
@@ -851,6 +857,21 @@ class Server:
             assert path
             removed.append((source.module, path))
 
+        # Always add modules that were (re-)added, since they may be detected as not changed by
+        # fswatcher (if they were actually not changed), but they may still need to be checked
+        # in case they had errors before they were deleted from sources on previous runs.
+        previous_modules = {source.module for source in self.previous_sources}
+        changed_set = set(changed)
+        changed.extend(
+            [
+                (source.module, source.path)
+                for source in sources
+                if source.path
+                and source.module not in previous_modules
+                and (source.module, source.path) not in changed_set
+            ]
+        )
+
         # Find anything that has had its module path change because of added or removed __init__s
         last = {s.path: s.module for s in self.previous_sources}
         for s in sources:
@@ -875,8 +896,6 @@ class Server:
         force_reload: bool = False,
     ) -> dict[str, object]:
         """Locate and inspect expression(s)."""
-        if sys.version_info < (3, 8):
-            return {"error": 'Python 3.8 required for "inspect" command'}
         if not self.fine_grained_manager:
             return {
                 "error": 'Command "inspect" is only valid after a "check" command'

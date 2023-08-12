@@ -6,7 +6,7 @@ class FullyQualifiedTestPlugin(Plugin):
         if 'FullyQualifiedTest' in fullname:
             assert fullname.startswith('__main__.') and not ' of ' in fullname, fullname
             return my_hook
-    
+
         return None
 
 def my_hook(ctx: MethodSigContext) -> CallableType:

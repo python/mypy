@@ -13,8 +13,8 @@ implementation simple.
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Callable, Dict, Match, Pattern, Tuple, Union, cast
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import TYPE_CHECKING, Callable, Dict, Final, Match, Pattern, Tuple, Union, cast
+from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.errorcodes as codes
 from mypy.errors import Errors
@@ -139,7 +139,6 @@ class ConversionSpecifier:
     def __init__(
         self, match: Match[str], start_pos: int = -1, non_standard_format_spec: bool = False
     ) -> None:
-
         self.whole_seq = match.group()
         self.start_pos = start_pos
 
@@ -435,9 +434,9 @@ class StringFormatterChecker:
                 actual_type, "__str__"
             ):
                 self.msg.fail(
-                    'On Python 3 formatting "b\'abc\'" with "{}" '
-                    'produces "b\'abc\'", not "abc"; '
-                    'use "{!r}" if this is desired behavior',
+                    'If x = b\'abc\' then f"{x}" or "{}".format(x) produces "b\'abc\'", '
+                    'not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x). '
+                    "Otherwise, decode the bytes",
                     call,
                     code=codes.STR_BYTES_PY3,
                 )
@@ -589,7 +588,7 @@ class StringFormatterChecker:
             return repl
         assert spec.field
 
-        temp_errors = Errors()
+        temp_errors = Errors(self.chk.options)
         dummy = DUMMY_FIELD_NAME + spec.field[len(spec.key) :]
         temp_ast: Node = parse(
             dummy, fnam="<format>", module=None, options=self.chk.options, errors=temp_errors
@@ -683,14 +682,6 @@ class StringFormatterChecker:
         self.exprchk.accept(expr)
         specifiers = parse_conversion_specifiers(expr.value)
         has_mapping_keys = self.analyze_conversion_specifiers(specifiers, expr)
-        if isinstance(expr, BytesExpr) and self.chk.options.python_version < (3, 5):
-            self.msg.fail(
-                "Bytes formatting is only supported in Python 3.5 and later",
-                replacements,
-                code=codes.STRING_FORMATTING,
-            )
-            return AnyType(TypeOfAny.from_error)
-
         if has_mapping_keys is None:
             pass  # Error was reported
         elif has_mapping_keys:
@@ -844,10 +835,14 @@ class StringFormatterChecker:
         any_type = AnyType(TypeOfAny.special_form)
         if isinstance(expr, BytesExpr):
             bytes_type = self.chk.named_generic_type("builtins.bytes", [])
-            return self.chk.named_generic_type("typing.Mapping", [bytes_type, any_type])
+            return self.chk.named_generic_type(
+                "_typeshed.SupportsKeysAndGetItem", [bytes_type, any_type]
+            )
         elif isinstance(expr, StrExpr):
             str_type = self.chk.named_generic_type("builtins.str", [])
-            return self.chk.named_generic_type("typing.Mapping", [str_type, any_type])
+            return self.chk.named_generic_type(
+                "_typeshed.SupportsKeysAndGetItem", [str_type, any_type]
+            )
         else:
             assert False, "Unreachable"
 
@@ -946,9 +941,8 @@ class StringFormatterChecker:
             # Couple special cases for string formatting.
             if has_type_component(typ, "builtins.bytes"):
                 self.msg.fail(
-                    'On Python 3 formatting "b\'abc\'" with "%s" '
-                    'produces "b\'abc\'", not "abc"; '
-                    'use "%r" if this is desired behavior',
+                    'If x = b\'abc\' then "%s" % x produces "b\'abc\'", not "abc". '
+                    'If this is desired behavior use "%r" % x. Otherwise, decode the bytes',
                     context,
                     code=codes.STR_BYTES_PY3,
                 )
@@ -1021,13 +1015,6 @@ class StringFormatterChecker:
         NUMERIC_TYPES = NUMERIC_TYPES_NEW if format_call else NUMERIC_TYPES_OLD
         INT_TYPES = REQUIRE_INT_NEW if format_call else REQUIRE_INT_OLD
         if p == "b" and not format_call:
-            if self.chk.options.python_version < (3, 5):
-                self.msg.fail(
-                    'Format character "b" is only supported in Python 3.5 and later',
-                    context,
-                    code=codes.STRING_FORMATTING,
-                )
-                return None
             if not isinstance(expr, BytesExpr):
                 self.msg.fail(
                     'Format character "b" is only supported on bytes patterns',

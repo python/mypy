@@ -25,23 +25,23 @@ class TestProgram:
     testNamePatterns: list[str] | None
     def __init__(
         self,
-        module: None | str | ModuleType = ...,
-        defaultTest: str | Iterable[str] | None = ...,
-        argv: list[str] | None = ...,
-        testRunner: type[_TestRunner] | _TestRunner | None = ...,
+        module: None | str | ModuleType = "__main__",
+        defaultTest: str | Iterable[str] | None = None,
+        argv: list[str] | None = None,
+        testRunner: type[_TestRunner] | _TestRunner | None = None,
         testLoader: unittest.loader.TestLoader = ...,
-        exit: bool = ...,
-        verbosity: int = ...,
-        failfast: bool | None = ...,
-        catchbreak: bool | None = ...,
-        buffer: bool | None = ...,
-        warnings: str | None = ...,
+        exit: bool = True,
+        verbosity: int = 1,
+        failfast: bool | None = None,
+        catchbreak: bool | None = None,
+        buffer: bool | None = None,
+        warnings: str | None = None,
         *,
-        tb_locals: bool = ...,
+        tb_locals: bool = False,
     ) -> None: ...
-    def usageExit(self, msg: Any = ...) -> None: ...
+    def usageExit(self, msg: Any = None) -> None: ...
     def parseArgs(self, argv: list[str]) -> None: ...
-    def createTests(self, from_discovery: bool = ..., Loader: unittest.loader.TestLoader | None = ...) -> None: ...
+    def createTests(self, from_discovery: bool = False, Loader: unittest.loader.TestLoader | None = None) -> None: ...
     def runTests(self) -> None: ...  # undocumented
 
 main = TestProgram

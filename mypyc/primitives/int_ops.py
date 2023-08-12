@@ -19,6 +19,7 @@ from mypyc.ir.rtypes import (
     bool_rprimitive,
     c_pyssize_t_rprimitive,
     float_rprimitive,
+    int16_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
     int_rprimitive,
@@ -37,7 +38,13 @@ from mypyc.primitives.registry import (
 
 # Constructors for builtins.int and native int types have the same behavior. In
 # interpreted mode, native int types are just aliases to 'int'.
-for int_name in ("builtins.int", "mypy_extensions.i64", "mypy_extensions.i32"):
+for int_name in (
+    "builtins.int",
+    "mypy_extensions.i64",
+    "mypy_extensions.i32",
+    "mypy_extensions.i16",
+    "mypy_extensions.u8",
+):
     # These int constructors produce object_rprimitives that then need to be unboxed
     # I guess unboxing ourselves would save a check and branch though?
 
@@ -50,8 +57,8 @@ for int_name in ("builtins.int", "mypy_extensions.i64", "mypy_extensions.i32"):
     function_op(
         name=int_name,
         arg_types=[float_rprimitive],
-        return_type=object_rprimitive,
-        c_function_name="CPyLong_FromFloat",
+        return_type=int_rprimitive,
+        c_function_name="CPyTagged_FromFloat",
         error_kind=ERR_MAGIC,
     )
 
@@ -126,6 +133,10 @@ int_binary_op("%", "CPyTagged_Remainder", error_kind=ERR_MAGIC)
 int_binary_op(">>", "CPyTagged_Rshift", error_kind=ERR_MAGIC)
 int_binary_op("<<", "CPyTagged_Lshift", error_kind=ERR_MAGIC)
 
+int_binary_op(
+    "/", "CPyTagged_TrueDivide", return_type=float_rprimitive, error_kind=ERR_MAGIC_OVERLAPPING
+)
+
 # This should work because assignment operators are parsed differently
 # and the code in irbuild that handles it does the assignment
 # regardless of whether or not the operator works in place anyway.
@@ -156,6 +167,7 @@ int_invert_op = int_unary_op("~", "CPyTagged_Invert")
 
 
 # Primitives related to integer comparison operations:
+
 
 # Description for building int comparison ops
 #
@@ -226,6 +238,20 @@ int32_mod_op = custom_op(
     error_kind=ERR_MAGIC_OVERLAPPING,
 )
 
+int16_divide_op = custom_op(
+    arg_types=[int16_rprimitive, int16_rprimitive],
+    return_type=int16_rprimitive,
+    c_function_name="CPyInt16_Divide",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
+int16_mod_op = custom_op(
+    arg_types=[int16_rprimitive, int16_rprimitive],
+    return_type=int16_rprimitive,
+    c_function_name="CPyInt16_Remainder",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
 # Convert tagged int (as PyObject *) to i64
 int_to_int64_op = custom_op(
     arg_types=[object_rprimitive],
@@ -260,5 +286,19 @@ int32_overflow = custom_op(
     arg_types=[],
     return_type=void_rtype,
     c_function_name="CPyInt32_Overflow",
+    error_kind=ERR_ALWAYS,
+)
+
+int16_overflow = custom_op(
+    arg_types=[],
+    return_type=void_rtype,
+    c_function_name="CPyInt16_Overflow",
+    error_kind=ERR_ALWAYS,
+)
+
+uint8_overflow = custom_op(
+    arg_types=[],
+    return_type=void_rtype,
+    c_function_name="CPyUInt8_Overflow",
     error_kind=ERR_ALWAYS,
 )

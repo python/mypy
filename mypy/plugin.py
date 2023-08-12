@@ -250,6 +250,11 @@ class CheckerPluginInterface:
         """Construct an instance of a builtin type with given type arguments."""
         raise NotImplementedError
 
+    @abstractmethod
+    def get_expression_type(self, node: Expression, type_context: Type | None = None) -> Type:
+        """Checks the type of the given expression."""
+        raise NotImplementedError
+
 
 @trait
 class SemanticAnalyzerPluginInterface:
@@ -296,6 +301,10 @@ class SemanticAnalyzerPluginInterface:
     def parse_bool(self, expr: Expression) -> bool | None:
         """Parse True/False literals."""
         raise NotImplementedError
+
+    @abstractmethod
+    def parse_str_literal(self, expr: Expression) -> str | None:
+        """Parse string literals."""
 
     @abstractmethod
     def fail(

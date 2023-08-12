@@ -89,7 +89,7 @@ PyObject *CPyDict_SetDefaultWithEmptyDatatype(PyObject *dict, PyObject *key,
                                               int data_type) {
     PyObject *res = CPyDict_GetItem(dict, key);
     if (!res) {
-        // CPyDict_GetItem() would generates an PyExc_KeyError
+        // CPyDict_GetItem() would generates a PyExc_KeyError
         // when key is not found.
         PyErr_Clear();
 

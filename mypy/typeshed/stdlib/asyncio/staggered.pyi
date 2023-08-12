@@ -6,5 +6,5 @@ from . import events
 __all__ = ("staggered_race",)
 
 async def staggered_race(
-    coro_fns: Iterable[Callable[[], Awaitable[Any]]], delay: float | None, *, loop: events.AbstractEventLoop | None = ...
+    coro_fns: Iterable[Callable[[], Awaitable[Any]]], delay: float | None, *, loop: events.AbstractEventLoop | None = None
 ) -> tuple[Any, int | None, list[Exception | None]]: ...

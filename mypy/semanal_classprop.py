@@ -5,7 +5,7 @@ These happen after semantic analysis and before type checking.
 
 from __future__ import annotations
 
-from typing_extensions import Final
+from typing import Final
 
 from mypy.errors import Errors
 from mypy.nodes import (
@@ -181,6 +181,6 @@ def add_type_promotion(
         int_sym = builtin_names["int"]
         assert isinstance(int_sym.node, TypeInfo)
         int_sym.node._promote.append(Instance(defn.info, []))
-        defn.info.alt_promote = int_sym.node
+        defn.info.alt_promote = Instance(int_sym.node, [])
     if promote_targets:
         defn.info._promote.extend(promote_targets)

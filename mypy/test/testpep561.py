@@ -46,23 +46,39 @@ def virtualenv(python_executable: str = sys.executable) -> Iterator[tuple[str, s
             yield venv_dir, os.path.abspath(os.path.join(venv_dir, "bin", "python"))
 
 
+def upgrade_pip(python_executable: str) -> None:
+    """Install pip>=21.3.1. Required for editable installs with PEP 660."""
+    if (
+        sys.version_info >= (3, 11)
+        or (3, 10, 3) <= sys.version_info < (3, 11)
+        or (3, 9, 11) <= sys.version_info < (3, 10)
+        or (3, 8, 13) <= sys.version_info < (3, 9)
+    ):
+        # Skip for more recent Python releases which come with pip>=21.3.1
+        # out of the box - for performance reasons.
+        return
+
+    install_cmd = [python_executable, "-m", "pip", "install", "pip>=21.3.1"]
+    try:
+        with filelock.FileLock(pip_lock, timeout=pip_timeout):
+            proc = subprocess.run(install_cmd, capture_output=True, env=os.environ)
+    except filelock.Timeout as err:
+        raise Exception(f"Failed to acquire {pip_lock}") from err
+    if proc.returncode != 0:
+        raise Exception(proc.stdout.decode("utf-8") + proc.stderr.decode("utf-8"))
+
+
 def install_package(
-    pkg: str, python_executable: str = sys.executable, use_pip: bool = True, editable: bool = False
+    pkg: str, python_executable: str = sys.executable, editable: bool = False
 ) -> None:
     """Install a package from test-data/packages/pkg/"""
     working_dir = os.path.join(package_path, pkg)
     with tempfile.TemporaryDirectory() as dir:
-        if use_pip:
-            install_cmd = [python_executable, "-m", "pip", "install"]
-            if editable:
-                install_cmd.append("-e")
-            install_cmd.append(".")
-        else:
-            install_cmd = [python_executable, "setup.py"]
-            if editable:
-                install_cmd.append("develop")
-            else:
-                install_cmd.append("install")
+        install_cmd = [python_executable, "-m", "pip", "install"]
+        if editable:
+            install_cmd.append("-e")
+        install_cmd.append(".")
+
         # Note that newer versions of pip (21.3+) don't
         # follow this env variable, but this is for compatibility
         env = {"PIP_BUILD": dir}
@@ -85,18 +101,20 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
     assert python is not None, "Should be impossible"
     pkgs, pip_args = parse_pkgs(testcase.input[0])
     mypy_args = parse_mypy_args(testcase.input[1])
-    use_pip = True
     editable = False
     for arg in pip_args:
-        if arg == "no-pip":
-            use_pip = False
-        elif arg == "editable":
+        if arg == "editable":
             editable = True
-    assert pkgs != [], "No packages to install for PEP 561 test?"
+        else:
+            raise ValueError(f"Unknown pip argument: {arg}")
+    assert pkgs, "No packages to install for PEP 561 test?"
     with virtualenv(python) as venv:
         venv_dir, python_executable = venv
+        if editable:
+            # Editable installs with PEP 660 require pip>=21.3
+            upgrade_pip(python_executable)
         for pkg in pkgs:
-            install_package(pkg, python_executable, use_pip, editable)
+            install_package(pkg, python_executable, editable)
 
         cmd_line = list(mypy_args)
         has_program = not ("-p" in cmd_line or "--package" in cmd_line)

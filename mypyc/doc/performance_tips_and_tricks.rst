@@ -103,8 +103,6 @@ These things also tend to be relatively slow:
 
 * Using generator functions
 
-* Using floating point numbers (they are relatively unoptimized)
-
 * Using callable values (i.e. not leveraging early binding to call
   functions or methods)
 
@@ -159,6 +157,8 @@ Here are examples of features that are fast, in no particular order
   unit (with positional and/or keyword arguments)
 
 * Many integer operations
+
+* Many ``float`` operations
 
 * Booleans
 

@@ -210,7 +210,6 @@ def f0() -> None:
         y = x
         x = 1  # No error.
 
-
 [case testGlobalDeclarationAfterUsage]
 # flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
 def f0() -> None:
@@ -219,6 +218,7 @@ def f0() -> None:
     x = 1  # No error.
 
 x = 2
+
 [case testVarDefinedInOuterScope]
 # flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
 def f0() -> None:
@@ -227,6 +227,7 @@ def f0() -> None:
 
 f0()
 x = 1
+
 [case testDefinedInOuterScopeNoError]
 # flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
 def foo() -> None:
@@ -234,6 +235,51 @@ def foo() -> None:
 
 def bar() -> None:
     foo()
+
+[case testClassFromOuterScopeRedefined]
+# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
+class c: pass
+
+def f0() -> None:
+    s = c()  # E: Name "c" is used before definition
+    class c: pass
+
+def f1() -> None:
+    s = c()  # No error.
+
+def f2() -> None:
+    s = c()  # E: Name "c" is used before definition
+    if int():
+        class c: pass
+
+glob = c()
+def f3(x: c = glob) -> None:
+    glob = 123
+
+[case testVarFromOuterScopeRedefined]
+# flags: --enable-error-code possibly-undefined --enable-error-code used-before-def
+x = 0
+
+def f0() -> None:
+    y = x  # E: Name "x" is used before definition
+    x = 0
+
+def f1() -> None:
+    y = x  # No error.
+
+def f2() -> None:
+    y = x  # E: Name "x" is used before definition
+    global x
+
+def f3() -> None:
+    global x
+    y = x  # No error.
+
+def f4() -> None:
+    if int():
+        x = 0
+    y = x  # E: Name "x" may be undefined
+
 [case testFuncParams]
 # flags: --enable-error-code possibly-undefined
 def foo(a: int) -> None:
@@ -829,67 +875,56 @@ def f4() -> None:
         x = z  # E: Name "z" is used before definition
     z: int = 2
 
-[case testUsedBeforeDefImportsBasic]
-# flags: --enable-error-code used-before-def
+[case testUsedBeforeDefImportsBasicImportNoError]
+# flags: --enable-error-code used-before-def --enable-error-code possibly-undefined --disable-error-code no-redef
 import foo  # type: ignore
+
+a = foo  # No error.
+foo: int = 1
+
+[case testUsedBeforeDefImportsDotImport]
+# flags: --enable-error-code used-before-def --enable-error-code possibly-undefined --disable-error-code no-redef
 import x.y  # type: ignore
 
-def f0() -> None:
-    a = foo  # No error.
-    foo: int = 1
+a = y  # E: Name "y" is used before definition
+y: int = 1
 
-def f1() -> None:
-    a = y  # E: Name "y" is used before definition
-    y: int = 1
+b = x  # No error.
+x: int = 1
 
-def f2() -> None:
-    a = x  # No error.
-    x: int = 1
-
-def f3() -> None:
-    a = x.y  # No error.
-    x: int = 1
+c = x.y  # No error.
+x: int = 1
 
 [case testUsedBeforeDefImportBasicRename]
-# flags: --enable-error-code used-before-def
+# flags: --enable-error-code used-before-def --disable-error-code=no-redef
 import x.y as z  # type: ignore
 from typing import Any
 
-def f0() -> None:
-    a = z  # No error.
-    z: int = 1
+a = z  # No error.
+z: int = 1
 
-def f1() -> None:
-    a = x  # E: Name "x" is used before definition
-    x: int = 1
+a = x  # E: Name "x" is used before definition
+x: int = 1
 
-def f2() -> None:
-    a = x.y  # E: Name "x" is used before definition
-    x: Any = 1
-
-def f3() -> None:
-    a = y  # E: Name "y" is used before definition
-    y: int = 1
+a = y  # E: Name "y" is used before definition
+y: int = 1
 
 [case testUsedBeforeDefImportFrom]
-# flags: --enable-error-code used-before-def
+# flags: --enable-error-code used-before-def --disable-error-code no-redef
 from foo import x  # type: ignore
 
-def f0() -> None:
-    a = x  # No error.
-    x: int = 1
+a = x  # No error.
+x: int = 1
 
 [case testUsedBeforeDefImportFromRename]
-# flags: --enable-error-code used-before-def
+# flags: --enable-error-code used-before-def --disable-error-code no-redef
 from foo import x as y  # type: ignore
 
-def f0() -> None:
-    a = y  # No error.
-    y: int = 1
+a = y  # No error.
+y: int = 1
 
-def f1() -> None:
-    a = x  # E: Name "x" is used before definition
-    x: int = 1
+a = x  # E: Name "x" is used before definition
+x: int = 1
 
 [case testUsedBeforeDefFunctionDeclarations]
 # flags: --enable-error-code used-before-def
@@ -901,13 +936,36 @@ def f0() -> None:
     inner()  # No error.
     inner = lambda: None
 
-[case testUsedBeforeDefBuiltins]
+[case testUsedBeforeDefBuiltinsFunc]
 # flags: --enable-error-code used-before-def
 
 def f0() -> None:
-    s = type(123)
+    s = type(123)  # E: Name "type" is used before definition
     type = "abc"
     a = type
+
+def f1() -> None:
+    s = type(123)
+
+[case testUsedBeforeDefBuiltinsGlobal]
+# flags: --enable-error-code used-before-def
+
+s = type(123)
+type = "abc"
+a = type
+
+[case testUsedBeforeDefBuiltinsClass]
+# flags: --enable-error-code used-before-def
+
+class C:
+    s = type
+    type = s
+
+[case testUsedBeforeDefBuiltinsGenerator]
+# flags: --enable-error-code used-before-def
+
+def f0() -> None:
+    _ = [type for type in [type("a"), type(1)]]
 
 [case testUsedBeforeDefBuiltinsMultipass]
 # flags: --enable-error-code used-before-def

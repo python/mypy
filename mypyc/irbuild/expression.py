@@ -6,7 +6,8 @@ and mypyc.irbuild.builder.
 
 from __future__ import annotations
 
-from typing import Callable, Sequence, cast
+import math
+from typing import Callable, Sequence
 
 from mypy.nodes import (
     ARG_POS,
@@ -48,6 +49,7 @@ from mypy.nodes import (
 )
 from mypy.types import Instance, ProperType, TupleType, TypeType, get_proper_type
 from mypyc.common import MAX_SHORT_INT
+from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.ir.ops import (
     Assign,
@@ -89,7 +91,6 @@ from mypyc.irbuild.format_str_tokenizer import (
     tokenizer_printf_style,
 )
 from mypyc.irbuild.specialize import apply_function_specialization, apply_method_specialization
-from mypyc.irbuild.util import bytes_from_str
 from mypyc.primitives.bytes_ops import bytes_slice_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op
@@ -125,6 +126,10 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
         return builder.true()
     if fullname == "builtins.False":
         return builder.false()
+
+    math_literal = transform_math_literal(builder, fullname)
+    if math_literal is not None:
+        return math_literal
 
     if isinstance(expr.node, Var) and expr.node.is_final:
         value = builder.emit_load_final(
@@ -174,7 +179,7 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
             )
             return obj
         else:
-            return builder.read(builder.get_assignment_target(expr), expr.line)
+            return builder.read(builder.get_assignment_target(expr, for_read=True), expr.line)
 
     return builder.load_global(expr)
 
@@ -189,6 +194,10 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
         )
         if value is not None:
             return value
+
+    math_literal = transform_math_literal(builder, expr.fullname)
+    if math_literal is not None:
+        return math_literal
 
     if isinstance(expr.node, MypyFile) and expr.node.fullname in builder.imports:
         return builder.load_module(expr.node.fullname)
@@ -288,6 +297,9 @@ def transform_call_expr(builder: IRBuilder, expr: CallExpr) -> Value:
         callee = callee.analyzed.expr  # Unwrap type application
 
     if isinstance(callee, MemberExpr):
+        if isinstance(callee.expr, RefExpr) and isinstance(callee.expr.node, MypyFile):
+            # Call a module-level function, not a method.
+            return translate_call(builder, expr, callee)
         return apply_method_specialization(builder, expr, callee) or translate_method_call(
             builder, expr, callee
         )
@@ -336,30 +348,7 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
         # Call a method via the *class*
         assert isinstance(callee.expr.node, TypeInfo)
         ir = builder.mapper.type_to_ir[callee.expr.node]
-        decl = ir.method_decl(callee.name)
-        args = []
-        arg_kinds, arg_names = expr.arg_kinds[:], expr.arg_names[:]
-        # Add the class argument for class methods in extension classes
-        if decl.kind == FUNC_CLASSMETHOD and ir.is_ext_class:
-            args.append(builder.load_native_type_object(callee.expr.node.fullname))
-            arg_kinds.insert(0, ARG_POS)
-            arg_names.insert(0, None)
-        args += [builder.accept(arg) for arg in expr.args]
-
-        if ir.is_ext_class:
-            return builder.builder.call(decl, args, arg_kinds, arg_names, expr.line)
-        else:
-            obj = builder.accept(callee.expr)
-            return builder.gen_method_call(
-                obj,
-                callee.name,
-                args,
-                builder.node_type(expr),
-                expr.line,
-                expr.arg_kinds,
-                expr.arg_names,
-            )
-
+        return call_classmethod(builder, ir, expr, callee)
     elif builder.is_module_member_expr(callee):
         # Fall back to a PyCall for non-native module calls
         function = builder.accept(callee)
@@ -368,6 +357,17 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
             function, args, expr.line, arg_kinds=expr.arg_kinds, arg_names=expr.arg_names
         )
     else:
+        if isinstance(callee.expr, RefExpr):
+            node = callee.expr.node
+            if isinstance(node, Var) and node.is_cls:
+                typ = get_proper_type(node.type)
+                if isinstance(typ, TypeType) and isinstance(typ.item, Instance):
+                    class_ir = builder.mapper.type_to_ir.get(typ.item.type)
+                    if class_ir and class_ir.is_ext_class and class_ir.has_no_subclasses():
+                        # Call a native classmethod via cls that can be statically bound,
+                        # since the class has no subclasses.
+                        return call_classmethod(builder, class_ir, expr, callee)
+
         receiver_typ = builder.node_type(callee.expr)
 
         # If there is a specializer for this method name/type, try calling it.
@@ -378,6 +378,32 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
 
         obj = builder.accept(callee.expr)
         args = [builder.accept(arg) for arg in expr.args]
+        return builder.gen_method_call(
+            obj,
+            callee.name,
+            args,
+            builder.node_type(expr),
+            expr.line,
+            expr.arg_kinds,
+            expr.arg_names,
+        )
+
+
+def call_classmethod(builder: IRBuilder, ir: ClassIR, expr: CallExpr, callee: MemberExpr) -> Value:
+    decl = ir.method_decl(callee.name)
+    args = []
+    arg_kinds, arg_names = expr.arg_kinds.copy(), expr.arg_names.copy()
+    # Add the class argument for class methods in extension classes
+    if decl.kind == FUNC_CLASSMETHOD and ir.is_ext_class:
+        args.append(builder.load_native_type_object(ir.fullname))
+        arg_kinds.insert(0, ARG_POS)
+        arg_names.insert(0, None)
+    args += [builder.accept(arg) for arg in expr.args]
+
+    if ir.is_ext_class:
+        return builder.builder.call(decl, args, arg_kinds, arg_names, expr.line)
+    else:
+        obj = builder.accept(callee.expr)
         return builder.gen_method_call(
             obj,
             callee.name,
@@ -433,7 +459,7 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
 
     decl = base.method_decl(callee.name)
     arg_values = [builder.accept(arg) for arg in expr.args]
-    arg_kinds, arg_names = expr.arg_kinds[:], expr.arg_names[:]
+    arg_kinds, arg_names = expr.arg_kinds.copy(), expr.arg_names.copy()
 
     if decl.kind != FUNC_STATICMETHOD:
         # Grab first argument
@@ -477,7 +503,7 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
         return builder.shortcircuit_expr(expr)
 
     # Special case for string formatting
-    if expr.op == "%" and (isinstance(expr.left, StrExpr) or isinstance(expr.left, BytesExpr)):
+    if expr.op == "%" and isinstance(expr.left, (StrExpr, BytesExpr)):
         ret = translate_printf_style_formatting(builder, expr.left, expr.right)
         if ret is not None:
             return ret
@@ -547,10 +573,8 @@ def try_constant_fold(builder: IRBuilder, expr: Expression) -> Value | None:
     Return None otherwise.
     """
     value = constant_fold_expr(builder, expr)
-    if isinstance(value, int):
-        return builder.load_int(value)
-    elif isinstance(value, str):
-        return builder.load_str(value)
+    if value is not None:
+        return builder.load_literal_value(value)
     return None
 
 
@@ -632,10 +656,6 @@ def set_literal_values(builder: IRBuilder, items: Sequence[Expression]) -> list[
                 values.append(True)
             elif item.fullname == "builtins.False":
                 values.append(False)
-        elif isinstance(item, (BytesExpr, FloatExpr, ComplexExpr)):
-            # constant_fold_expr() doesn't handle these (yet?)
-            v = bytes_from_str(item.value) if isinstance(item, BytesExpr) else item.value
-            values.append(v)
         elif isinstance(item, TupleExpr):
             tuple_values = set_literal_values(builder, item.items)
             if tuple_values is not None:
@@ -655,7 +675,6 @@ def precompute_set_literal(builder: IRBuilder, s: SetExpr) -> Value | None:
     Supported items:
      - Anything supported by irbuild.constant_fold.constant_fold_expr()
      - None, True, and False
-     - Float, byte, and complex literals
      - Tuple literals with only items listed above
     """
     values = set_literal_values(builder, s.items)
@@ -689,7 +708,9 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
             lhs = e.operands[0]
             mypy_file = builder.graph["builtins"].tree
             assert mypy_file is not None
-            bool_type = Instance(cast(TypeInfo, mypy_file.names["bool"].node), [])
+            info = mypy_file.names["bool"].node
+            assert isinstance(info, TypeInfo)
+            bool_type = Instance(info, [])
             exprs = []
             for item in items:
                 expr = ComparisonExpr([cmp_op], [lhs, item])
@@ -789,26 +810,35 @@ def transform_basic_comparison(
     if (
         is_int_rprimitive(left.type)
         and is_int_rprimitive(right.type)
-        and op in int_comparison_op_mapping.keys()
+        and op in int_comparison_op_mapping
     ):
         return builder.compare_tagged(left, right, op, line)
-    if is_fixed_width_rtype(left.type) and op in int_comparison_op_mapping.keys():
+    if is_fixed_width_rtype(left.type) and op in int_comparison_op_mapping:
         if right.type == left.type:
-            op_id = ComparisonOp.signed_ops[op]
+            if left.type.is_signed:
+                op_id = ComparisonOp.signed_ops[op]
+            else:
+                op_id = ComparisonOp.unsigned_ops[op]
             return builder.builder.comparison_op(left, right, op_id, line)
         elif isinstance(right, Integer):
-            op_id = ComparisonOp.signed_ops[op]
+            if left.type.is_signed:
+                op_id = ComparisonOp.signed_ops[op]
+            else:
+                op_id = ComparisonOp.unsigned_ops[op]
             return builder.builder.comparison_op(
-                left, Integer(right.value >> 1, left.type), op_id, line
+                left, builder.coerce(right, left.type, line), op_id, line
             )
     elif (
         is_fixed_width_rtype(right.type)
-        and op in int_comparison_op_mapping.keys()
+        and op in int_comparison_op_mapping
         and isinstance(left, Integer)
     ):
-        op_id = ComparisonOp.signed_ops[op]
+        if right.type.is_signed:
+            op_id = ComparisonOp.signed_ops[op]
+        else:
+            op_id = ComparisonOp.unsigned_ops[op]
         return builder.builder.comparison_op(
-            Integer(left.value >> 1, right.type), right, op_id, line
+            builder.coerce(left, right.type, line), right, op_id, line
         )
 
     negate = False
@@ -1020,3 +1050,18 @@ def transform_assignment_expr(builder: IRBuilder, o: AssignmentExpr) -> Value:
     target = builder.get_assignment_target(o.target)
     builder.assign(target, value, o.line)
     return value
+
+
+def transform_math_literal(builder: IRBuilder, fullname: str) -> Value | None:
+    if fullname == "math.e":
+        return builder.load_float(math.e)
+    if fullname == "math.pi":
+        return builder.load_float(math.pi)
+    if fullname == "math.inf":
+        return builder.load_float(math.inf)
+    if fullname == "math.nan":
+        return builder.load_float(math.nan)
+    if fullname == "math.tau":
+        return builder.load_float(math.tau)
+
+    return None

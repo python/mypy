@@ -9,9 +9,9 @@ class MIMEApplication(MIMENonMultipart):
     def __init__(
         self,
         _data: str | bytes | bytearray,
-        _subtype: str = ...,
+        _subtype: str = "octet-stream",
         _encoder: Callable[[MIMEApplication], object] = ...,
         *,
-        policy: Policy | None = ...,
+        policy: Policy | None = None,
         **_params: _ParamsType,
     ) -> None: ...
