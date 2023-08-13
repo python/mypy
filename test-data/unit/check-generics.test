@@ -3263,3 +3263,41 @@ def pop_off(fn: Callable[Concatenate[T1, P], T2]) -> Callable[P, Callable[[T1], 
 def test(command: Foo[Q]) -> Foo[Q]: ...
 reveal_type(test)  # N: Revealed type is "def () -> def [Q] (__main__.Foo[Q`-1]) -> __main__.Foo[Q`-1]"
 [builtins fixtures/tuple.pyi]
+
+[case testInferenceAgainstGenericVariadicBasicInList]
+# flags: --new-type-inference
+from typing import Tuple, TypeVar, List, Callable
+from typing_extensions import Unpack, TypeVarTuple
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+def dec(f: Callable[[Unpack[Ts]], T]) -> Callable[[Unpack[Ts]], List[T]]: ...
+
+U = TypeVar("U")
+V = TypeVar("V")
+def id(x: U) -> U: ...
+def either(x: U, y: U) -> U: ...
+def pair(x: U, y: V) -> Tuple[U, V]: ...
+
+reveal_type(dec(id))  # N: Revealed type is "def [T] (T`2) -> builtins.list[T`2]"
+reveal_type(dec(either))  # N: Revealed type is "def [T] (T`4, T`4) -> builtins.list[T`4]"
+reveal_type(dec(pair))  # N: Revealed type is "def [U, V] (U`-1, V`-2) -> builtins.list[Tuple[U`-1, V`-2]]"
+[builtins fixtures/tuple.pyi]
+
+[case testInferenceAgainstGenericVariadicBasicDeList]
+# flags: --new-type-inference
+from typing import Tuple, TypeVar, List, Callable
+from typing_extensions import Unpack, TypeVarTuple
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+def dec(f: Callable[[Unpack[Ts]], List[T]]) -> Callable[[Unpack[Ts]], T]: ...
+
+U = TypeVar("U")
+V = TypeVar("V")
+def id(x: U) -> U: ...
+def either(x: U, y: U) -> U: ...
+
+reveal_type(dec(id))  # N: Revealed type is "def [T] (builtins.list[T`2]) -> T`2"
+reveal_type(dec(either))  # N: Revealed type is "def [T] (builtins.list[T`4], builtins.list[T`4]) -> T`4"
+[builtins fixtures/tuple.pyi]

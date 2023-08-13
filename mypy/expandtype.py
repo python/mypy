@@ -257,7 +257,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
         # Sometimes solver may need to expand a type variable with (a copy of) itself
         # (usually together with other TypeVars, but it is hard to filter out TypeVarTuples).
-        repl = self.variables[t.id]
+        repl = self.variables.get(t.id, t)
         if isinstance(repl, TypeVarTupleType):
             return repl
         raise NotImplementedError

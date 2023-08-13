@@ -961,7 +961,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     # branches), and in Callable vs Callable inference (two branches).
                     for t, a in zip(template_args, cactual_args):
                         # This avoids bogus constraints like T <: P.args
-                        if isinstance(a, ParamSpecType):
+                        if isinstance(a, (ParamSpecType, UnpackType)):
                             # TODO: can we infer something useful for *T vs P?
                             continue
                         # Negate direction due to function argument type contravariance.

@@ -5792,8 +5792,9 @@ class PolyTranslator(TypeTranslator):
         return super().visit_param_spec(t)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
-        # TODO: Support polymorphic apply for TypeVarTuple.
-        raise PolyTranslationError()
+        if t in self.poly_tvars and t not in self.bound_tvars:
+            raise PolyTranslationError()
+        return super().visit_type_var_tuple(t)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         if not t.args:
