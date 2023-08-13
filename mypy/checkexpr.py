@@ -529,13 +529,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         callee_type = get_proper_type(
             self.accept(e.callee, type_context, always_allow_any=True, is_callee=True)
         )
-        if (
-            self.chk.options.disallow_untyped_calls
-            and self.chk.in_checked_function()
-            and isinstance(callee_type, CallableType)
-            and callee_type.implicit
-        ):
-            self.msg.untyped_function_call(callee_type, e)
 
         # Figure out the full name of the callee for plugin lookup.
         object_type = None
@@ -561,6 +554,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             ):
                 member = e.callee.name
                 object_type = self.chk.lookup_type(e.callee.expr)
+
+        if (
+            self.chk.options.disallow_untyped_calls
+            and self.chk.in_checked_function()
+            and isinstance(callee_type, CallableType)
+            and callee_type.implicit
+        ):
+            if fullname is None and member is not None:
+                assert object_type is not None
+                fullname = self.method_fullname(object_type, member)
+            if not fullname or not any(
+                fullname == p or fullname.startswith(f"{p}.")
+                for p in self.chk.options.untyped_calls_exclude
+            ):
+                self.msg.untyped_function_call(callee_type, e)
+
         ret_type = self.check_call_expr_with_callee_type(
             callee_type, e, fullname, object_type, member
         )
