@@ -4,3 +4,5 @@
 23ee1e7aff357e656e3102435ad0fe3b5074571e
 # Use variable annotations (#10723)
 f98f78216ba9d6ab68c8e69c19e9f3c7926c5efe
+# run pyupgrade (#12711)
+fc335cb16315964b923eb1927e3aad1516891c28

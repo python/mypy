@@ -802,7 +802,7 @@ else:
 plugins=<ROOT>/test-data/unit/plugins/union_method.py
 
 [case testGetMethodHooksOnUnionsStrictOptional]
-# flags: --config-file tmp/mypy.ini --strict-optional
+# flags: --config-file tmp/mypy.ini
 from typing import Union
 
 class Foo:

@@ -73,6 +73,10 @@ class Constraint:
         self.op = op
         self.target = target
         self.origin_type_var = type_var
+        # These are additional type variables that should be solved for together with type_var.
+        # TODO: A cleaner solution may be to modify the return type of infer_constraints()
+        # to include these instead, but this is a rather big refactoring.
+        self.extra_tvars: list[TypeVarLikeType] = []
 
     def __repr__(self) -> str:
         op_str = "<:"
@@ -168,7 +172,9 @@ def infer_constraints_for_callable(
     return constraints
 
 
-def infer_constraints(template: Type, actual: Type, direction: int) -> list[Constraint]:
+def infer_constraints(
+    template: Type, actual: Type, direction: int, skip_neg_op: bool = False
+) -> list[Constraint]:
     """Infer type constraints.
 
     Match a template type, which may contain type variable references,
@@ -187,7 +193,9 @@ def infer_constraints(template: Type, actual: Type, direction: int) -> list[Cons
       ((T, S), (X, Y))  -->  T :> X and S :> Y
       (X[T], Any)       -->  T <: Any and T :> Any
 
-    The constraints are represented as Constraint objects.
+    The constraints are represented as Constraint objects. If skip_neg_op == True,
+    then skip adding reverse (polymorphic) constraints (since this is already a call
+    to infer such constraints).
     """
     if any(
         get_proper_type(template) == get_proper_type(t)
@@ -202,13 +210,15 @@ def infer_constraints(template: Type, actual: Type, direction: int) -> list[Cons
             # Return early on an empty branch.
             return []
         type_state.inferring.append((template, actual))
-        res = _infer_constraints(template, actual, direction)
+        res = _infer_constraints(template, actual, direction, skip_neg_op)
         type_state.inferring.pop()
         return res
-    return _infer_constraints(template, actual, direction)
+    return _infer_constraints(template, actual, direction, skip_neg_op)
 
 
-def _infer_constraints(template: Type, actual: Type, direction: int) -> list[Constraint]:
+def _infer_constraints(
+    template: Type, actual: Type, direction: int, skip_neg_op: bool
+) -> list[Constraint]:
     orig_template = template
     template = get_proper_type(template)
     actual = get_proper_type(actual)
@@ -284,7 +294,7 @@ def _infer_constraints(template: Type, actual: Type, direction: int) -> list[Con
         return []
 
     # Remaining cases are handled by ConstraintBuilderVisitor.
-    return template.accept(ConstraintBuilderVisitor(actual, direction))
+    return template.accept(ConstraintBuilderVisitor(actual, direction, skip_neg_op))
 
 
 def infer_constraints_if_possible(
@@ -510,10 +520,14 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     # TODO: The value may be None. Is that actually correct?
     actual: ProperType
 
-    def __init__(self, actual: ProperType, direction: int) -> None:
+    def __init__(self, actual: ProperType, direction: int, skip_neg_op: bool) -> None:
         # Direction must be SUBTYPE_OF or SUPERTYPE_OF.
         self.actual = actual
         self.direction = direction
+        # Whether to skip polymorphic inference (involves inference in opposite direction)
+        # this is used to prevent infinite recursion when both template and actual are
+        # generic callables.
+        self.skip_neg_op = skip_neg_op
 
     # Trivial leaf types
 
@@ -648,13 +662,13 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     assert mapped.type.type_var_tuple_prefix is not None
                     assert mapped.type.type_var_tuple_suffix is not None
 
-                    unpack_constraints, mapped_args, instance_args = build_constraints_for_unpack(
-                        mapped.args,
-                        mapped.type.type_var_tuple_prefix,
-                        mapped.type.type_var_tuple_suffix,
+                    unpack_constraints, instance_args, mapped_args = build_constraints_for_unpack(
                         instance.args,
                         instance.type.type_var_tuple_prefix,
                         instance.type.type_var_tuple_suffix,
+                        mapped.args,
+                        mapped.type.type_var_tuple_prefix,
+                        mapped.type.type_var_tuple_suffix,
                         self.direction,
                     )
                     res.extend(unpack_constraints)
@@ -879,6 +893,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         # Note that non-normalized callables can be created in annotations
         # using e.g. callback protocols.
         template = template.with_unpacked_kwargs()
+        extra_tvars = False
         if isinstance(self.actual, CallableType):
             res: list[Constraint] = []
             cactual = self.actual.with_unpacked_kwargs()
@@ -890,6 +905,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     type_state.infer_polymorphic
                     and cactual.variables
                     and cactual.param_spec() is None
+                    and not self.skip_neg_op
                     # Technically, the correct inferred type for application of e.g.
                     # Callable[..., T] -> Callable[..., T] (with literal ellipsis), to a generic
                     # like U -> U, should be Callable[..., Any], but if U is a self-type, we can
@@ -897,18 +913,15 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     # depends on this old behaviour.
                     and not any(tv.id.raw_id == 0 for tv in cactual.variables)
                 ):
-                    # If actual is generic, unify it with template. Note: this is
-                    # not an ideal solution (which would be adding the generic variables
-                    # to the constraint inference set), but it's a good first approximation,
-                    # and this will prevent leaking these variables in the solutions.
-                    # Note: this may infer constraints like T <: S or T <: List[S]
-                    # that contain variables in the target.
-                    unified = mypy.subtypes.unify_generic_callable(
-                        cactual, template, ignore_return=True
+                    # If the actual callable is generic, infer constraints in the opposite
+                    # direction, and indicate to the solver there are extra type variables
+                    # to solve for (see more details in mypy/solve.py).
+                    res.extend(
+                        infer_constraints(
+                            cactual, template, neg_op(self.direction), skip_neg_op=True
+                        )
                     )
-                    if unified is not None:
-                        cactual = unified
-                        res.extend(infer_constraints(cactual, template, neg_op(self.direction)))
+                    extra_tvars = True
 
                 # We can't infer constraints from arguments if the template is Callable[..., T]
                 # (with literal '...').
@@ -978,6 +991,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 cactual_ret_type = cactual.type_guard
 
             res.extend(infer_constraints(template_ret_type, cactual_ret_type, self.direction))
+            if extra_tvars:
+                for c in res:
+                    c.extra_tvars = list(cactual.variables)
             return res
         elif isinstance(self.actual, AnyType):
             param_spec = template.param_spec()
@@ -1205,6 +1221,9 @@ def find_and_build_constraints_for_unpack(
 
 
 def build_constraints_for_unpack(
+    # TODO: this naming is misleading, these should be "actual", not "mapped"
+    # both template and actual can be mapped before, depending on direction.
+    # Also the convention is to put template related args first.
     mapped: tuple[Type, ...],
     mapped_prefix_len: int | None,
     mapped_suffix_len: int | None,

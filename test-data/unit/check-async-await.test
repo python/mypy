@@ -183,7 +183,6 @@ async def f() -> None:
 [typing fixtures/typing-async.pyi]
 
 [case testAsyncForComprehension]
-# flags: --python-version 3.6
 from typing import Generic, Iterable, TypeVar, AsyncIterator, Tuple
 
 T = TypeVar('T')
@@ -223,7 +222,6 @@ async def generatorexp(obj: Iterable[int]):
 [typing fixtures/typing-async.pyi]
 
 [case testAsyncForComprehensionErrors]
-# flags: --python-version 3.6
 from typing import Generic, Iterable, TypeVar, AsyncIterator, Tuple
 
 T = TypeVar('T')
@@ -240,16 +238,10 @@ class asyncify(Generic[T], AsyncIterator[T]):
             raise StopAsyncIteration
 
 async def wrong_iterable(obj: Iterable[int]):
-    [i async for i in obj]
-    [i for i in asyncify(obj)]
-    {i: i async for i in obj}
-    {i: i for i in asyncify(obj)}
-
-[out]
-main:18: error: "Iterable[int]" has no attribute "__aiter__" (not async iterable)
-main:19: error: "asyncify[int]" has no attribute "__iter__"; maybe "__aiter__"? (not iterable)
-main:20: error: "Iterable[int]" has no attribute "__aiter__" (not async iterable)
-main:21: error: "asyncify[int]" has no attribute "__iter__"; maybe "__aiter__"? (not iterable)
+    [i async for i in obj]  # E: "Iterable[int]" has no attribute "__aiter__" (not async iterable)
+    [i for i in asyncify(obj)]  # E: "asyncify[int]" has no attribute "__iter__"; maybe "__aiter__"? (not iterable)
+    {i: i async for i in obj}  # E: "Iterable[int]" has no attribute "__aiter__" (not async iterable)
+    {i: i for i in asyncify(obj)}  # E: "asyncify[int]" has no attribute "__iter__"; maybe "__aiter__"? (not iterable)
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
 
@@ -340,17 +332,6 @@ async def f() -> None:
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
 
-[case testNoYieldInAsyncDef]
-# flags: --python-version 3.5
-
-async def f():
-    yield None  # E: "yield" in async function
-async def g():
-    yield  # E: "yield" in async function
-async def h():
-    x = yield  # E: "yield" in async function
-[builtins fixtures/async_await.pyi]
-
 [case testNoYieldFromInAsyncDef]
 
 async def f():
@@ -422,7 +403,6 @@ def f() -> Generator[int, str, int]:
 -- ---------------------------------------------------------------------
 
 [case testAsyncGenerator]
-# flags: --python-version 3.6
 from typing import AsyncGenerator, Generator
 
 async def f() -> int:
@@ -450,7 +430,6 @@ async def wrong_return() -> Generator[int, None, None]:  # E: The return type of
 [typing fixtures/typing-async.pyi]
 
 [case testAsyncGeneratorReturnIterator]
-# flags: --python-version 3.6
 from typing import AsyncIterator
 
 async def gen() -> AsyncIterator[int]:
@@ -466,7 +445,6 @@ async def use_gen() -> None:
 [typing fixtures/typing-async.pyi]
 
 [case testAsyncGeneratorManualIter]
-# flags: --python-version 3.6
 from typing import AsyncGenerator
 
 async def genfunc() -> AsyncGenerator[int, None]:
@@ -484,7 +462,6 @@ async def user() -> None:
 [typing fixtures/typing-async.pyi]
 
 [case testAsyncGeneratorAsend]
-# flags: --python-version 3.6
 from typing import AsyncGenerator
 
 async def f() -> None:
@@ -498,14 +475,13 @@ async def gen() -> AsyncGenerator[int, str]:
 
 async def h() -> None:
     g = gen()
-    await g.asend(())  # E: Argument 1 to "asend" of "AsyncGenerator" has incompatible type "Tuple[]"; expected "str"
+    await g.asend(())  # E: Argument 1 to "asend" of "AsyncGenerator" has incompatible type "Tuple[()]"; expected "str"
     reveal_type(await g.asend('hello'))  # N: Revealed type is "builtins.int"
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-async.pyi]
 
 [case testAsyncGeneratorAthrow]
-# flags: --python-version 3.6
 from typing import AsyncGenerator
 
 async def gen() -> AsyncGenerator[str, int]:
@@ -524,7 +500,6 @@ async def h() -> None:
 [typing fixtures/typing-async.pyi]
 
 [case testAsyncGeneratorNoSyncIteration]
-# flags: --python-version 3.6
 from typing import AsyncGenerator
 
 async def gen() -> AsyncGenerator[int, None]:
@@ -532,17 +507,13 @@ async def gen() -> AsyncGenerator[int, None]:
         yield i
 
 def h() -> None:
-    for i in gen():
+    for i in gen():  # E: "AsyncGenerator[int, None]" has no attribute "__iter__"; maybe "__aiter__"? (not iterable)
         pass
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-async.pyi]
 
-[out]
-main:9: error: "AsyncGenerator[int, None]" has no attribute "__iter__"; maybe "__aiter__"? (not iterable)
-
 [case testAsyncGeneratorNoYieldFrom]
-# flags: --python-version 3.6
 from typing import AsyncGenerator
 
 async def f() -> AsyncGenerator[int, None]:
@@ -555,7 +526,6 @@ async def gen() -> AsyncGenerator[int, None]:
 [typing fixtures/typing-async.pyi]
 
 [case testAsyncGeneratorNoReturnWithValue]
-# flags: --python-version 3.6
 from typing import AsyncGenerator
 
 async def return_int() -> AsyncGenerator[int, None]:
@@ -1004,7 +974,7 @@ crasher = [await foo(x) for x in [1, 2, 3]]  # E: "await" outside function  [top
 
 def bad() -> None:
     # These are always critical / syntax issues:
-    y = [await foo(x) for x in [1, 2, 3]]  # E: "await" outside coroutine ("async def")
+    y = [await foo(x) for x in [1, 2, 3]]  # E: "await" outside coroutine ("async def")  [await-not-async]
 async def good() -> None:
     y = [await foo(x) for x in [1, 2, 3]]  # OK
 [builtins fixtures/async_await.pyi]

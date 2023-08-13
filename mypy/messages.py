@@ -1525,6 +1525,16 @@ class MessageBuilder:
             context,
         )
 
+    def explicit_override_decorator_missing(
+        self, name: str, base_name: str, context: Context
+    ) -> None:
+        self.fail(
+            f'Method "{name}" is not using @override '
+            f'but is overriding a method in class "{base_name}"',
+            context,
+            code=codes.EXPLICIT_OVERRIDE_REQUIRED,
+        )
+
     def final_cant_override_writable(self, name: str, ctx: Context) -> None:
         self.fail(f'Cannot override writable attribute "{name}" with a final one', ctx)
 
@@ -1718,7 +1728,6 @@ class MessageBuilder:
         self, node: SymbolNode, context: Context, python_version: tuple[int, int] | None = None
     ) -> None:
         hint = ""
-        has_variable_annotations = not python_version or python_version >= (3, 6)
         pep604_supported = not python_version or python_version >= (3, 10)
         # type to recommend the user adds
         recommended_type = None
@@ -1739,18 +1748,10 @@ class MessageBuilder:
                     type_dec = f"{type_dec}, {type_dec}"
                 recommended_type = f"{alias}[{type_dec}]"
         if recommended_type is not None:
-            if has_variable_annotations:
-                hint = f' (hint: "{node.name}: {recommended_type} = ...")'
-            else:
-                hint = f' (hint: "{node.name} = ...  # type: {recommended_type}")'
-
-        if has_variable_annotations:
-            needed = "annotation"
-        else:
-            needed = "comment"
+            hint = f' (hint: "{node.name}: {recommended_type} = ...")'
 
         self.fail(
-            f'Need type {needed} for "{unmangle(node.name)}"{hint}',
+            f'Need type annotation for "{unmangle(node.name)}"{hint}',
             context,
             code=codes.VAR_ANNOTATED,
         )
@@ -2506,10 +2507,11 @@ def format_type_inner(
         # Prefer the name of the fallback class (if not tuple), as it's more informative.
         if typ.partial_fallback.type.fullname != "builtins.tuple":
             return format(typ.partial_fallback)
+        type_items = format_list(typ.items) or "()"
         if options.use_lowercase_names():
-            s = f"tuple[{format_list(typ.items)}]"
+            s = f"tuple[{type_items}]"
         else:
-            s = f"Tuple[{format_list(typ.items)}]"
+            s = f"Tuple[{type_items}]"
         return s
     elif isinstance(typ, TypedDictType):
         # If the TypedDictType is named, return the name

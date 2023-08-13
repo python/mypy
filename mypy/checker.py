@@ -132,6 +132,7 @@ from mypy.nodes import (
     Var,
     WhileStmt,
     WithStmt,
+    YieldExpr,
     is_final_node,
 )
 from mypy.options import Options
@@ -215,7 +216,7 @@ from mypy.types import (
     is_literal_type,
     is_named_instance,
 )
-from mypy.types_utils import is_optional, remove_optional, store_argument_type, strip_type
+from mypy.types_utils import is_overlapping_none, remove_optional, store_argument_type, strip_type
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars, fill_typevars_with_any, has_no_typevars
 from mypy.util import is_dunder, is_sunder, is_typeshed_file
@@ -464,14 +465,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             with self.tscope.module_scope(self.tree.fullname):
                 with self.enter_partial_types(), self.binder.top_frame_context():
                     for d in self.tree.defs:
-                        if (
-                            self.binder.is_unreachable()
-                            and self.should_report_unreachable_issues()
-                            and not self.is_raising_or_empty(d)
-                        ):
-                            self.msg.unreachable_statement(d)
-                            break
-                        self.accept(d)
+                        if self.binder.is_unreachable():
+                            if not self.should_report_unreachable_issues():
+                                break
+                            if not self.is_noop_for_reachability(d):
+                                self.msg.unreachable_statement(d)
+                                break
+                        else:
+                            self.accept(d)
 
                 assert not self.current_node_deferred
 
@@ -643,9 +644,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if defn.impl:
             defn.impl.accept(self)
         if defn.info:
-            found_base_method = self.check_method_override(defn)
-            if defn.is_explicit_override and found_base_method is False:
+            found_method_base_classes = self.check_method_override(defn)
+            if (
+                defn.is_explicit_override
+                and not found_method_base_classes
+                and found_method_base_classes is not None
+            ):
                 self.msg.no_overridable_method(defn.name, defn)
+            self.check_explicit_override_decorator(defn, found_method_base_classes, defn.impl)
             self.check_inplace_operator_method(defn)
         if not defn.is_property:
             self.check_overlapping_overloads(defn)
@@ -728,8 +734,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     #     def foo(x: str) -> str: ...
                     #
                     # See Python 2's map function for a concrete example of this kind of overload.
+                    current_class = self.scope.active_class()
+                    type_vars = current_class.defn.type_vars if current_class else []
                     with state.strict_optional_set(True):
-                        if is_unsafe_overlapping_overload_signatures(sig1, sig2):
+                        if is_unsafe_overlapping_overload_signatures(sig1, sig2, type_vars):
                             self.msg.overloaded_signatures_overlap(i + 1, i + j + 2, item.func)
 
             if impl_type is not None:
@@ -972,7 +980,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # overload, the legality of the override has already
                 # been typechecked, and decorated methods will be
                 # checked when the decorator is.
-                self.check_method_override(defn)
+                found_method_base_classes = self.check_method_override(defn)
+                self.check_explicit_override_decorator(defn, found_method_base_classes)
             self.check_inplace_operator_method(defn)
         if defn.original_def:
             # Override previous definition.
@@ -1063,6 +1072,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Type check a function definition."""
         # Expand type variables with value restrictions to ordinary types.
         expanded = self.expand_typevars(defn, typ)
+        original_typ = typ
         for item, typ in expanded:
             old_binder = self.binder
             self.binder = ConditionalTypeBinder()
@@ -1120,6 +1130,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             message_registry.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT, typ.ret_type
                         )
                     self.check_unbound_return_typevar(typ)
+                elif (
+                    isinstance(original_typ.ret_type, TypeVarType) and original_typ.ret_type.values
+                ):
+                    # Since type vars with values are expanded, the return type is changed
+                    # to a raw value. This is a hack to get it back.
+                    self.check_unbound_return_typevar(original_typ)
 
                 # Check that Generator functions have the appropriate return type.
                 if defn.is_generator:
@@ -1194,9 +1210,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     elif isinstance(arg_type, TypeVarType):
                         # Refuse covariant parameter type variables
                         # TODO: check recursively for inner type variables
-                        if arg_type.variance == COVARIANT and defn.name not in (
-                            "__init__",
-                            "__new__",
+                        if (
+                            arg_type.variance == COVARIANT
+                            and defn.name not in ("__init__", "__new__", "__post_init__")
+                            and not is_private(defn.name)  # private methods are not inherited
                         ):
                             ctx: Context = arg_type
                             if ctx.line < 0:
@@ -1227,13 +1244,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             new_frame.types[key] = narrowed_type
                             self.binder.declarations[key] = old_binder.declarations[key]
                 with self.scope.push_function(defn):
-                    # We suppress reachability warnings when we use TypeVars with value
+                    # We suppress reachability warnings for empty generator functions
+                    # (return; yield) which have a "yield" that's unreachable by definition
+                    # since it's only there to promote the function into a generator function.
+                    #
+                    # We also suppress reachability warnings when we use TypeVars with value
                     # restrictions: we only want to report a warning if a certain statement is
                     # marked as being suppressed in *all* of the expansions, but we currently
                     # have no good way of doing this.
                     #
                     # TODO: Find a way of working around this limitation
-                    if len(expanded) >= 2:
+                    if _is_empty_generator_function(item) or len(expanded) >= 2:
                         self.binder.suppress_unreachable_warnings()
                     self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
@@ -1683,7 +1704,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             first = forward_tweaked
             second = reverse_tweaked
 
-        return is_unsafe_overlapping_overload_signatures(first, second)
+        current_class = self.scope.active_class()
+        type_vars = current_class.defn.type_vars if current_class else []
+        return is_unsafe_overlapping_overload_signatures(first, second, type_vars)
 
     def check_inplace_operator_method(self, defn: FuncBase) -> None:
         """Check an inplace operator method such as __iadd__.
@@ -1813,23 +1836,41 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             return [(defn, typ)]
 
-    def check_method_override(self, defn: FuncDef | OverloadedFuncDef | Decorator) -> bool | None:
+    def check_explicit_override_decorator(
+        self,
+        defn: FuncDef | OverloadedFuncDef,
+        found_method_base_classes: list[TypeInfo] | None,
+        context: Context | None = None,
+    ) -> None:
+        if (
+            found_method_base_classes
+            and not defn.is_explicit_override
+            and defn.name not in ("__init__", "__new__")
+        ):
+            self.msg.explicit_override_decorator_missing(
+                defn.name, found_method_base_classes[0].fullname, context or defn
+            )
+
+    def check_method_override(
+        self, defn: FuncDef | OverloadedFuncDef | Decorator
+    ) -> list[TypeInfo] | None:
         """Check if function definition is compatible with base classes.
 
         This may defer the method if a signature is not available in at least one base class.
         Return ``None`` if that happens.
 
-        Return ``True`` if an attribute with the method name was found in the base class.
+        Return a list of base classes which contain an attribute with the method name.
         """
         # Check against definitions in base classes.
-        found_base_method = False
+        found_method_base_classes: list[TypeInfo] = []
         for base in defn.info.mro[1:]:
             result = self.check_method_or_accessor_override_for_base(defn, base)
             if result is None:
                 # Node was deferred, we will have another attempt later.
                 return None
-            found_base_method |= result
-        return found_base_method
+            if result:
+                found_method_base_classes.append(base)
+        return found_method_base_classes
 
     def check_method_or_accessor_override_for_base(
         self, defn: FuncDef | OverloadedFuncDef | Decorator, base: TypeInfo
@@ -2682,10 +2723,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
         for s in b.body:
             if self.binder.is_unreachable():
-                if self.should_report_unreachable_issues() and not self.is_raising_or_empty(s):
+                if not self.should_report_unreachable_issues():
+                    break
+                if not self.is_noop_for_reachability(s):
                     self.msg.unreachable_statement(s)
-                break
-            self.accept(s)
+                    break
+            else:
+                self.accept(s)
 
     def should_report_unreachable_issues(self) -> bool:
         return (
@@ -2695,11 +2739,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             and not self.binder.is_unreachable_warning_suppressed()
         )
 
-    def is_raising_or_empty(self, s: Statement) -> bool:
+    def is_noop_for_reachability(self, s: Statement) -> bool:
         """Returns 'true' if the given statement either throws an error of some kind
         or is a no-op.
 
-        We use this function mostly while handling the '--warn-unreachable' flag. When
+        We use this function while handling the '--warn-unreachable' flag. When
         that flag is present, we normally report an error on any unreachable statement.
         But if that statement is just something like a 'pass' or a just-in-case 'assert False',
         reporting an error would be annoying.
@@ -3878,11 +3922,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return True
         if len(t.args) == 1:
             arg = get_proper_type(t.args[0])
-            # TODO: This is too permissive -- we only allow TypeVarType since
-            #       they leak in cases like defaultdict(list) due to a bug.
-            #       This can result in incorrect types being inferred, but only
-            #       in rare cases.
-            if isinstance(arg, (TypeVarType, UninhabitedType, NoneType)):
+            if self.options.new_type_inference:
+                allowed = isinstance(arg, (UninhabitedType, NoneType))
+            else:
+                # Allow leaked TypeVars for legacy inference logic.
+                allowed = isinstance(arg, (UninhabitedType, NoneType, TypeVarType))
+            if allowed:
                 return True
         return False
 
@@ -4592,7 +4637,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if int_type:
             return iterator, int_type
 
-        if isinstance(iterable, TupleType):
+        if (
+            isinstance(iterable, TupleType)
+            and iterable.partial_fallback.type.fullname == "builtins.tuple"
+        ):
             joined: Type = UninhabitedType()
             for item in iterable.items:
                 joined = join_types(joined, item)
@@ -4739,9 +4787,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_incompatible_property_override(e)
         # For overloaded functions we already checked override for overload as a whole.
         if e.func.info and not e.func.is_dynamic() and not e.is_overload:
-            found_base_method = self.check_method_override(e)
-            if e.func.is_explicit_override and found_base_method is False:
+            found_method_base_classes = self.check_method_override(e)
+            if (
+                e.func.is_explicit_override
+                and not found_method_base_classes
+                and found_method_base_classes is not None
+            ):
                 self.msg.no_overridable_method(e.func.name, e.func)
+            self.check_explicit_override_decorator(e.func, found_method_base_classes)
 
         if e.func.info and e.func.name in ("__init__", "__new__"):
             if e.type and not isinstance(get_proper_type(e.type), (FunctionLike, AnyType)):
@@ -5612,13 +5665,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                     if left_index in narrowable_operand_index_to_hash:
                         # We only try and narrow away 'None' for now
-                        if is_optional(item_type):
+                        if is_overlapping_none(item_type):
                             collection_item_type = get_proper_type(
                                 builtin_item_type(iterable_type)
                             )
                             if (
                                 collection_item_type is not None
-                                and not is_optional(collection_item_type)
+                                and not is_overlapping_none(collection_item_type)
                                 and not (
                                     isinstance(collection_item_type, Instance)
                                     and collection_item_type.type.fullname == "builtins.object"
@@ -6025,7 +6078,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         non_optional_types = []
         for i in chain_indices:
             typ = operand_types[i]
-            if not is_optional(typ):
+            if not is_overlapping_none(typ):
                 non_optional_types.append(typ)
 
         # Make sure we have a mixture of optional and non-optional types.
@@ -6035,7 +6088,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if_map = {}
         for i in narrowable_operand_indices:
             expr_type = operand_types[i]
-            if not is_optional(expr_type):
+            if not is_overlapping_none(expr_type):
                 continue
             if any(is_overlapping_erased_types(expr_type, t) for t in non_optional_types):
                 if_map[operands[i]] = remove_optional(expr_type)
@@ -6928,6 +6981,22 @@ def is_literal_not_implemented(n: Expression) -> bool:
     return isinstance(n, NameExpr) and n.fullname == "builtins.NotImplemented"
 
 
+def _is_empty_generator_function(func: FuncItem) -> bool:
+    """
+    Checks whether a function's body is 'return; yield' (the yield being added only
+    to promote the function into a generator function).
+    """
+    body = func.body.body
+    return (
+        len(body) == 2
+        and isinstance(ret_stmt := body[0], ReturnStmt)
+        and (ret_stmt.expr is None or is_literal_none(ret_stmt.expr))
+        and isinstance(expr_stmt := body[1], ExpressionStmt)
+        and isinstance(yield_expr := expr_stmt.expr, YieldExpr)
+        and (yield_expr.expr is None or is_literal_none(yield_expr.expr))
+    )
+
+
 def builtin_item_type(tp: Type) -> Type | None:
     """Get the item type of a builtin container.
 
@@ -7085,6 +7154,8 @@ def flatten_types(t: Type) -> list[Type]:
     t = get_proper_type(t)
     if isinstance(t, TupleType):
         return [b for a in t.items for b in flatten_types(a)]
+    elif is_named_instance(t, "builtins.tuple"):
+        return [t.args[0]]
     else:
         return [t]
 
@@ -7113,7 +7184,7 @@ def are_argument_counts_overlapping(t: CallableType, s: CallableType) -> bool:
 
 
 def is_unsafe_overlapping_overload_signatures(
-    signature: CallableType, other: CallableType
+    signature: CallableType, other: CallableType, class_type_vars: list[TypeVarLikeType]
 ) -> bool:
     """Check if two overloaded signatures are unsafely overlapping or partially overlapping.
 
@@ -7132,8 +7203,8 @@ def is_unsafe_overlapping_overload_signatures(
     # This lets us identify cases where the two signatures use completely
     # incompatible types -- e.g. see the testOverloadingInferUnionReturnWithMixedTypevars
     # test case.
-    signature = detach_callable(signature)
-    other = detach_callable(other)
+    signature = detach_callable(signature, class_type_vars)
+    other = detach_callable(other, class_type_vars)
 
     # Note: We repeat this check twice in both directions due to a slight
     # asymmetry in 'is_callable_compatible'. When checking for partial overlaps,
@@ -7164,7 +7235,7 @@ def is_unsafe_overlapping_overload_signatures(
     )
 
 
-def detach_callable(typ: CallableType) -> CallableType:
+def detach_callable(typ: CallableType, class_type_vars: list[TypeVarLikeType]) -> CallableType:
     """Ensures that the callable's type variables are 'detached' and independent of the context.
 
     A callable normally keeps track of the type variables it uses within its 'variables' field.
@@ -7174,42 +7245,17 @@ def detach_callable(typ: CallableType) -> CallableType:
     This function will traverse the callable and find all used type vars and add them to the
     variables field if it isn't already present.
 
-    The caller can then unify on all type variables whether or not the callable is originally
-    from a class or not."""
-    type_list = typ.arg_types + [typ.ret_type]
-
-    appear_map: dict[str, list[int]] = {}
-    for i, inner_type in enumerate(type_list):
-        typevars_available = get_type_vars(inner_type)
-        for var in typevars_available:
-            if var.fullname not in appear_map:
-                appear_map[var.fullname] = []
-            appear_map[var.fullname].append(i)
-
-    used_type_var_names = set()
-    for var_name, appearances in appear_map.items():
-        used_type_var_names.add(var_name)
-
-    all_type_vars = get_type_vars(typ)
-    new_variables = []
-    for var in set(all_type_vars):
-        if var.fullname not in used_type_var_names:
-            continue
-        new_variables.append(
-            TypeVarType(
-                name=var.name,
-                fullname=var.fullname,
-                id=var.id,
-                values=var.values,
-                upper_bound=var.upper_bound,
-                default=var.default,
-                variance=var.variance,
-            )
-        )
-    out = typ.copy_modified(
-        variables=new_variables, arg_types=type_list[:-1], ret_type=type_list[-1]
+    The caller can then unify on all type variables whether the callable is originally from
+    the class or not."""
+    if not class_type_vars:
+        # Fast path, nothing to update.
+        return typ
+    seen_type_vars = set()
+    for t in typ.arg_types + [typ.ret_type]:
+        seen_type_vars |= set(get_type_vars(t))
+    return typ.copy_modified(
+        variables=list(typ.variables) + [tv for tv in class_type_vars if tv in seen_type_vars]
     )
-    return out
 
 
 def overload_can_never_match(signature: CallableType, other: CallableType) -> bool:

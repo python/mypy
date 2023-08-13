@@ -1145,7 +1145,7 @@ def f(x: str) -> None: pass
 f(1.1)
 f('')
 f(1)
-f(()) # E: No overload variant of "f" matches argument type "Tuple[]" \
+f(()) # E: No overload variant of "f" matches argument type "Tuple[()]" \
       # N: Possible overload variants: \
       # N:     def f(x: float) -> None \
       # N:     def f(x: str) -> None
@@ -3264,7 +3264,6 @@ f(x, B())  # E: Argument 1 to "f" has incompatible type "Union[A, B]"; expected 
 [builtins fixtures/tuple.pyi]
 
 [case testOverloadInferUnionWithMixOfPositionalAndOptionalArgs]
-# flags: --strict-optional
 from typing import overload, Union, Optional
 
 class A: ...
@@ -3603,7 +3602,6 @@ reveal_type(g(b))  # N: Revealed type is "builtins.str"
 reveal_type(g(c))  # N: Revealed type is "builtins.str"
 
 [case testOverloadsAndNoneWithStrictOptional]
-# flags: --strict-optional
 from typing import overload, Optional
 
 @overload
@@ -3651,7 +3649,6 @@ reveal_type(mymap(f3, seq))  # N: Revealed type is "typing.Iterable[builtins.str
 [typing fixtures/typing-medium.pyi]
 
 [case testOverloadsNoneAndTypeVarsWithStrictOptional]
-# flags: --strict-optional
 from typing import Callable, Iterable, TypeVar, overload, Optional
 
 T = TypeVar('T')
@@ -3708,7 +3705,6 @@ def test_narrow_int() -> None:
 [typing fixtures/typing-medium.pyi]
 
 [case testOverloadsAndNoReturnNarrowTypeWithStrictOptional1]
-# flags: --strict-optional
 from typing import overload, Union, NoReturn
 
 @overload
@@ -3772,7 +3768,6 @@ def test_narrow_none() -> None:
 [typing fixtures/typing-medium.pyi]
 
 [case testOverloadsAndNoReturnNarrowTypeWithStrictOptional2]
-# flags: --strict-optional
 from typing import overload, Union, TypeVar, NoReturn, Optional
 
 T = TypeVar('T')
@@ -3836,7 +3831,6 @@ def test_narrow_none_v2() -> None:
 [typing fixtures/typing-medium.pyi]
 
 [case testOverloadsAndNoReturnNarrowTypeWithStrictOptional3]
-# flags: --strict-optional
 from typing import overload, TypeVar, NoReturn, Optional
 
 @overload
@@ -4648,7 +4642,6 @@ def none_second(x: int) -> int:
     return x
 
 [case testOverloadsWithNoneComingSecondIsOkInStrictOptional]
-# flags: --strict-optional
 from typing import overload, Optional
 
 @overload
@@ -4672,8 +4665,8 @@ def none_loose_impl(x: int) -> int: ...
 def none_loose_impl(x: int) -> int:
     return x
 [out]
-main:22: error: Overloaded function implementation does not accept all possible arguments of signature 1
-main:22: error: Overloaded function implementation cannot produce return type of signature 1
+main:21: error: Overloaded function implementation does not accept all possible arguments of signature 1
+main:21: error: Overloaded function implementation cannot produce return type of signature 1
 
 [case testTooManyUnionsException]
 from typing import overload, Union
@@ -6561,3 +6554,18 @@ class Snafu(object):
 reveal_type(Snafu().snafu('123'))  # N: Revealed type is "builtins.str"
 reveal_type(Snafu.snafu('123'))  # N: Revealed type is "builtins.str"
 [builtins fixtures/staticmethod.pyi]
+
+[case testOverloadedWithInternalTypeVars]
+# flags: --new-type-inference
+import m
+
+[file m.pyi]
+from typing import Callable, TypeVar, overload
+
+T = TypeVar("T")
+S = TypeVar("S", bound=str)
+
+@overload
+def foo(x: int = ...) -> Callable[[T], T]: ...
+@overload
+def foo(x: S = ...) -> Callable[[T], T]: ...

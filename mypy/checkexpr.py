@@ -169,7 +169,12 @@ from mypy.types import (
     is_named_instance,
     split_with_prefix_and_suffix,
 )
-from mypy.types_utils import is_generic_instance, is_optional, is_self_type_like, remove_optional
+from mypy.types_utils import (
+    is_generic_instance,
+    is_overlapping_none,
+    is_self_type_like,
+    remove_optional,
+)
 from mypy.typestate import type_state
 from mypy.typevars import fill_typevars
 from mypy.typevartuples import find_unpack_in_list
@@ -1809,7 +1814,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # valid results.
         erased_ctx = replace_meta_vars(ctx, ErasedType())
         ret_type = callable.ret_type
-        if is_optional(ret_type) and is_optional(ctx):
+        if is_overlapping_none(ret_type) and is_overlapping_none(ctx):
             # If both the context and the return type are optional, unwrap the optional,
             # since in 99% cases this is what a user expects. In other words, we replace
             #     Optional[T] <: Optional[int]
@@ -1852,7 +1857,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             #        expects_literal(identity(3))  # Should type-check
             if not is_generic_instance(ctx) and not is_literal_type_like(ctx):
                 return callable.copy_modified()
-        args = infer_type_arguments(callable.type_var_ids(), ret_type, erased_ctx)
+        args = infer_type_arguments(callable.variables, ret_type, erased_ctx)
         # Only substitute non-Uninhabited and non-erased types.
         new_args: list[Type | None] = []
         for arg in args:
@@ -1901,7 +1906,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 else:
                     pass1_args.append(arg)
 
-            inferred_args = infer_function_type_arguments(
+            inferred_args, _ = infer_function_type_arguments(
                 callee_type,
                 pass1_args,
                 arg_kinds,
@@ -1943,7 +1948,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # variables while allowing for polymorphic solutions, i.e. for solutions
                 # potentially involving free variables.
                 # TODO: support the similar inference for return type context.
-                poly_inferred_args = infer_function_type_arguments(
+                poly_inferred_args, free_vars = infer_function_type_arguments(
                     callee_type,
                     arg_types,
                     arg_kinds,
@@ -1952,30 +1957,28 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     strict=self.chk.in_checked_function(),
                     allow_polymorphic=True,
                 )
-                for i, pa in enumerate(get_proper_types(poly_inferred_args)):
-                    if isinstance(pa, (NoneType, UninhabitedType)) or has_erased_component(pa):
-                        # Indicate that free variables should not be applied in the call below.
-                        poly_inferred_args[i] = None
                 poly_callee_type = self.apply_generic_arguments(
                     callee_type, poly_inferred_args, context
                 )
-                yes_vars = poly_callee_type.variables
-                no_vars = {v for v in callee_type.variables if v not in poly_callee_type.variables}
-                if not set(get_type_vars(poly_callee_type)) & no_vars:
-                    # Try applying inferred polymorphic type if possible, e.g. Callable[[T], T] can
-                    # be interpreted as def [T] (T) -> T, but dict[T, T] cannot be expressed.
-                    applied = apply_poly(poly_callee_type, yes_vars)
-                    if applied is not None and poly_inferred_args != [UninhabitedType()] * len(
-                        poly_inferred_args
-                    ):
-                        freeze_all_type_vars(applied)
-                        return applied
+                # Try applying inferred polymorphic type if possible, e.g. Callable[[T], T] can
+                # be interpreted as def [T] (T) -> T, but dict[T, T] cannot be expressed.
+                applied = apply_poly(poly_callee_type, free_vars)
+                if applied is not None and all(
+                    a is not None and not isinstance(get_proper_type(a), UninhabitedType)
+                    for a in poly_inferred_args
+                ):
+                    freeze_all_type_vars(applied)
+                    return applied
                 # If it didn't work, erase free variables as <nothing>, to avoid confusing errors.
+                unknown = UninhabitedType()
+                unknown.ambiguous = True
                 inferred_args = [
-                    expand_type(a, {v.id: UninhabitedType() for v in callee_type.variables})
+                    expand_type(
+                        a, {v.id: unknown for v in list(callee_type.variables) + free_vars}
+                    )
                     if a is not None
                     else None
-                    for a in inferred_args
+                    for a in poly_inferred_args
                 ]
         else:
             # In dynamically typed functions use implicit 'Any' types for
@@ -2014,7 +2017,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         arg_types = self.infer_arg_types_in_context(callee_type, args, arg_kinds, formal_to_actual)
 
-        inferred_args = infer_function_type_arguments(
+        inferred_args, _ = infer_function_type_arguments(
             callee_type,
             arg_types,
             arg_kinds,
@@ -2352,15 +2355,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(caller_type, DeletedType):
             self.msg.deleted_as_rvalue(caller_type, context)
         # Only non-abstract non-protocol class can be given where Type[...] is expected...
-        elif (
-            isinstance(caller_type, CallableType)
-            and isinstance(callee_type, TypeType)
-            and caller_type.is_type_obj()
-            and (caller_type.type_object().is_abstract or caller_type.type_object().is_protocol)
-            and isinstance(callee_type.item, Instance)
-            and (callee_type.item.type.is_abstract or callee_type.item.type.is_protocol)
-            and not self.chk.allow_abstract_call
-        ):
+        elif self.has_abstract_type_part(caller_type, callee_type):
             self.msg.concrete_only_call(callee_type, context)
         elif not is_subtype(caller_type, callee_type, options=self.chk.options):
             code = self.msg.incompatible_argument(
@@ -3080,7 +3075,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Expressions of form [...] * e get special type inference.
             return self.check_list_multiply(e)
         if e.op == "%":
-            if isinstance(e.left, BytesExpr) and self.chk.options.python_version >= (3, 5):
+            if isinstance(e.left, BytesExpr):
                 return self.strfrm_checker.check_str_interpolation(e.left, e.right)
             if isinstance(e.left, StrExpr):
                 return self.strfrm_checker.check_str_interpolation(e.left, e.right)
@@ -5483,6 +5478,26 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     return None
                 return narrow_declared_type(known_type, restriction)
         return known_type
+
+    def has_abstract_type_part(self, caller_type: ProperType, callee_type: ProperType) -> bool:
+        # TODO: support other possible types here
+        if isinstance(caller_type, TupleType) and isinstance(callee_type, TupleType):
+            return any(
+                self.has_abstract_type(get_proper_type(caller), get_proper_type(callee))
+                for caller, callee in zip(caller_type.items, callee_type.items)
+            )
+        return self.has_abstract_type(caller_type, callee_type)
+
+    def has_abstract_type(self, caller_type: ProperType, callee_type: ProperType) -> bool:
+        return (
+            isinstance(caller_type, CallableType)
+            and isinstance(callee_type, TypeType)
+            and caller_type.is_type_obj()
+            and (caller_type.type_object().is_abstract or caller_type.type_object().is_protocol)
+            and isinstance(callee_type.item, Instance)
+            and (callee_type.item.type.is_abstract or callee_type.item.type.is_protocol)
+            and not self.chk.allow_abstract_call
+        )
 
 
 def has_any_type(t: Type, ignore_in_type_obj: bool = False) -> bool:

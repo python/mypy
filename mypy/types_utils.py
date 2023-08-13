@@ -101,10 +101,10 @@ def is_generic_instance(tp: Type) -> bool:
     return isinstance(tp, Instance) and bool(tp.args)
 
 
-def is_optional(t: Type) -> bool:
+def is_overlapping_none(t: Type) -> bool:
     t = get_proper_type(t)
-    return isinstance(t, UnionType) and any(
-        isinstance(get_proper_type(e), NoneType) for e in t.items
+    return isinstance(t, NoneType) or (
+        isinstance(t, UnionType) and any(isinstance(get_proper_type(e), NoneType) for e in t.items)
     )
 
 

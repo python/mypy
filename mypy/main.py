@@ -595,14 +595,6 @@ def process_options(
         dest="special-opts:python_version",
     )
     platform_group.add_argument(
-        "-2",
-        "--py2",
-        dest="special-opts:python_version",
-        action="store_const",
-        const=defaults.PYTHON2_VERSION,
-        help="Use Python 2 mode (same as --python-version 2.7)",
-    )
-    platform_group.add_argument(
         "--platform",
         action="store",
         metavar="PLATFORM",

@@ -80,6 +80,7 @@ from mypy.nodes import (
     CallExpr,
     ClassDef,
     ComparisonExpr,
+    ComplexExpr,
     Decorator,
     DictExpr,
     EllipsisExpr,
@@ -101,6 +102,7 @@ from mypy.nodes import (
     OverloadedFuncDef,
     Statement,
     StrExpr,
+    TempNode,
     TupleExpr,
     TypeInfo,
     UnaryExpr,
@@ -636,6 +638,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._state = EMPTY
         self._toplevel_names: list[str] = []
         self._include_private = include_private
+        self._current_class: ClassDef | None = None
         self.import_tracker = ImportTracker()
         # Was the tree semantically analysed before?
         self.analyzed = analyzed
@@ -885,6 +888,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         return resolved_name
 
     def visit_class_def(self, o: ClassDef) -> None:
+        self._current_class = o
         self.method_names = find_method_names(o.defs.body)
         sep: int | None = None
         if not self._indent and self._state != EMPTY:
@@ -921,6 +925,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         else:
             self._state = CLASS
         self.method_names = set()
+        self._current_class = None
 
     def get_base_types(self, cdef: ClassDef) -> list[str]:
         """Get list of base classes for a class."""
@@ -1329,7 +1334,20 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 typename += f"[{final_arg}]"
         else:
             typename = self.get_str_type_of_node(rvalue)
-        return f"{self._indent}{lvalue}: {typename}\n"
+        initializer = self.get_assign_initializer(rvalue)
+        return f"{self._indent}{lvalue}: {typename}{initializer}\n"
+
+    def get_assign_initializer(self, rvalue: Expression) -> str:
+        """Does this rvalue need some special initializer value?"""
+        if self._current_class and self._current_class.info:
+            # Current rules
+            # 1. Return `...` if we are dealing with `NamedTuple` and it has an existing default value
+            if self._current_class.info.is_named_tuple and not isinstance(rvalue, TempNode):
+                return " = ..."
+            # TODO: support other possible cases, where initializer is important
+
+        # By default, no initializer is required:
+        return ""
 
     def add(self, string: str) -> None:
         """Add text to generated stub."""
@@ -1396,6 +1414,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def get_str_type_of_node(
         self, rvalue: Expression, can_infer_optional: bool = False, can_be_any: bool = True
     ) -> str:
+        rvalue = self.maybe_unwrap_unary_expr(rvalue)
+
         if isinstance(rvalue, IntExpr):
             return "int"
         if isinstance(rvalue, StrExpr):
@@ -1404,8 +1424,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return "bytes"
         if isinstance(rvalue, FloatExpr):
             return "float"
-        if isinstance(rvalue, UnaryExpr) and isinstance(rvalue.expr, IntExpr):
-            return "int"
+        if isinstance(rvalue, ComplexExpr):  # 1j
+            return "complex"
+        if isinstance(rvalue, OpExpr) and rvalue.op in ("-", "+"):  # -1j + 1
+            if isinstance(self.maybe_unwrap_unary_expr(rvalue.left), ComplexExpr) or isinstance(
+                self.maybe_unwrap_unary_expr(rvalue.right), ComplexExpr
+            ):
+                return "complex"
         if isinstance(rvalue, NameExpr) and rvalue.name in ("True", "False"):
             return "bool"
         if can_infer_optional and isinstance(rvalue, NameExpr) and rvalue.name == "None":
@@ -1416,6 +1441,40 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return self.typing_name("Incomplete")
         else:
             return ""
+
+    def maybe_unwrap_unary_expr(self, expr: Expression) -> Expression:
+        """Unwrap (possibly nested) unary expressions.
+
+        But, some unary expressions can change the type of expression.
+        While we want to preserve it. For example, `~True` is `int`.
+        So, we only allow a subset of unary expressions to be unwrapped.
+        """
+        if not isinstance(expr, UnaryExpr):
+            return expr
+
+        # First, try to unwrap `[+-]+ (int|float|complex)` expr:
+        math_ops = ("+", "-")
+        if expr.op in math_ops:
+            while isinstance(expr, UnaryExpr):
+                if expr.op not in math_ops or not isinstance(
+                    expr.expr, (IntExpr, FloatExpr, ComplexExpr, UnaryExpr)
+                ):
+                    break
+                expr = expr.expr
+            return expr
+
+        # Next, try `not bool` expr:
+        if expr.op == "not":
+            while isinstance(expr, UnaryExpr):
+                if expr.op != "not" or not isinstance(expr.expr, (NameExpr, UnaryExpr)):
+                    break
+                if isinstance(expr.expr, NameExpr) and expr.expr.name not in ("True", "False"):
+                    break
+                expr = expr.expr
+            return expr
+
+        # This is some other unary expr, we cannot do anything with it (yet?).
+        return expr
 
     def print_annotation(self, t: Type) -> str:
         printer = AnnotationPrinter(self)

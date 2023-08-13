@@ -1,5 +1,4 @@
-# This only exists in 3.11+. See VERSIONS.
-
+import sys
 from contextvars import Context
 from types import TracebackType
 from typing import TypeVar
@@ -8,7 +7,10 @@ from typing_extensions import Self
 from . import _CoroutineLike
 from .tasks import Task
 
-__all__ = ["TaskGroup"]
+if sys.version_info >= (3, 12):
+    __all__ = ("TaskGroup",)
+else:
+    __all__ = ["TaskGroup"]
 
 _T = TypeVar("_T")
 

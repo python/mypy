@@ -422,7 +422,6 @@ reveal_type(d)  # N: Revealed type is "Any"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testBasicRecursiveNamedTuple]
-# flags: --strict-optional
 from typing import NamedTuple, Optional
 
 NT = NamedTuple("NT", [("x", Optional[NT]), ("y", int)])
@@ -457,7 +456,6 @@ reveal_type(f(tnt, nt))  # N: Revealed type is "builtins.tuple[Any, ...]"
 [builtins fixtures/tuple.pyi]
 
 [case testBasicRecursiveNamedTupleClass]
-# flags: --strict-optional
 from typing import NamedTuple, Optional
 
 class NT(NamedTuple):
@@ -684,7 +682,6 @@ itd2 = TD(x=0, y=TD(x=0, y=TD(x=0, y=None)))
 [typing fixtures/typing-typeddict.pyi]
 
 [case testRecursiveTypedDictMethods]
-# flags: --strict-optional
 from typing import TypedDict
 
 class TD(TypedDict, total=False):
@@ -787,7 +784,6 @@ reveal_type(std)  # N: Revealed type is "TypedDict('__main__.STD', {'val': built
 [typing fixtures/typing-typeddict.pyi]
 
 [case testRecursiveClassLevelAlias]
-# flags: --strict-optional
 from typing import Union, Sequence
 
 class A:

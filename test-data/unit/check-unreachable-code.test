@@ -422,9 +422,9 @@ x = 1
 [out]
 
 [case testCustomSysVersionInfo]
-# flags: --python-version 3.5
+# flags: --python-version 3.11
 import sys
-if sys.version_info == (3, 5):
+if sys.version_info == (3, 11):
     x = "foo"
 else:
     x = 3
@@ -433,7 +433,7 @@ reveal_type(x)  # N: Revealed type is "builtins.str"
 [out]
 
 [case testCustomSysVersionInfo2]
-# flags: --python-version 3.5
+# flags: --python-version 3.11
 import sys
 if sys.version_info == (3, 6):
     x = "foo"
@@ -615,7 +615,6 @@ reveal_type(x)  # N: Revealed type is "__main__.B"
 [typing fixtures/typing-medium.pyi]
 
 [case testUnreachableWhenSuperclassIsAny]
-# flags: --strict-optional
 from typing import Any
 
 # This can happen if we're importing a class from a missing module
@@ -873,15 +872,15 @@ def expect_str(x: str) -> str: pass
 x: int
 if False:
     assert False
-    reveal_type(x)
+    reveal_type(x)  # E: Statement is unreachable
 
 if False:
     raise Exception()
-    reveal_type(x)
+    reveal_type(x)  # E: Statement is unreachable
 
 if False:
     assert_never(x)
-    reveal_type(x)
+    reveal_type(x)  # E: Statement is unreachable
 
 if False:
     nonthrowing_assert_never(x)  # E: Statement is unreachable
@@ -890,7 +889,7 @@ if False:
 if False:
     # Ignore obvious type errors
     assert_never(expect_str(x))
-    reveal_type(x)
+    reveal_type(x)  # E: Statement is unreachable
 [builtins fixtures/exception.pyi]
 
 [case testNeverVariants]
@@ -1380,6 +1379,38 @@ def f() -> None:
         x = 1  # E: Statement is unreachable
 [builtins fixtures/dict.pyi]
 
+[case testUnreachableLiteralFrom__bool__]
+# flags: --warn-unreachable
+from typing_extensions import Literal
+
+class Truth:
+    def __bool__(self) -> Literal[True]: ...
+
+class Lie:
+    def __bool__(self) -> Literal[False]: ...
+
+class Maybe:
+    def __bool__(self) -> Literal[True | False]: ...
+
+t = Truth()
+if t:
+    x = 1
+else:
+    x = 2  # E: Statement is unreachable
+
+if Lie():
+    x = 3  # E: Statement is unreachable
+
+if Maybe():
+    x = 4
+
+
+def foo() -> bool: ...
+
+y = Truth() or foo()  # E: Right operand of "or" is never evaluated
+z = Lie() and foo()  # E: Right operand of "and" is never evaluated
+[builtins fixtures/dict.pyi]
+
 [case testUnreachableModuleBody1]
 # flags: --warn-unreachable
 from typing import NoReturn
@@ -1447,3 +1478,19 @@ def f() -> None:
     Foo()['a'] = 'a'
     x = 0 # This should not be reported as unreachable
 [builtins fixtures/exception.pyi]
+
+[case testIntentionallyEmptyGeneratorFunction]
+# flags: --warn-unreachable
+from typing import Generator
+
+def f() -> Generator[None, None, None]:
+    return
+    yield
+
+[case testIntentionallyEmptyGeneratorFunction_None]
+# flags: --warn-unreachable
+from typing import Generator
+
+def f() -> Generator[None, None, None]:
+    return None
+    yield None

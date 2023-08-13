@@ -867,7 +867,7 @@ _program.py:20: error: Argument 1 to "tst" has incompatible type "defaultdict[st
 _program.py:24: error: Invalid index type "str" for "MyDDict[Dict[<nothing>, <nothing>]]"; expected type "int"
 
 [case testNoSubcriptionOfStdlibCollections]
-# flags: --python-version 3.6
+# flags: --python-version 3.7
 import collections
 from collections import Counter
 from typing import TypeVar
@@ -1482,14 +1482,12 @@ frozenset({1}) == [1]  # Error
 {1: 2}.keys() == frozenset({1})
 {1: 2}.items() == {(1, 2)}
 
-{1: 2}.keys() == {'no'}  # Error
+{1: 2}.keys() == {'no'}  # OK
 {1: 2}.values() == {2}  # Error
-{1: 2}.keys() == [1]  # Error
+{1: 2}.keys() == [1]  # OK
 [out]
 _testStrictEqualityAllowlist.py:5: error: Non-overlapping equality check (left operand type: "FrozenSet[int]", right operand type: "List[int]")
-_testStrictEqualityAllowlist.py:11: error: Non-overlapping equality check (left operand type: "dict_keys[int, int]", right operand type: "Set[str]")
 _testStrictEqualityAllowlist.py:12: error: Non-overlapping equality check (left operand type: "dict_values[int, int]", right operand type: "Set[int]")
-_testStrictEqualityAllowlist.py:13: error: Non-overlapping equality check (left operand type: "dict_keys[int, int]", right operand type: "List[int]")
 
 [case testUnreachableWithStdlibContextManagers]
 # mypy: warn-unreachable, strict-optional
@@ -1649,7 +1647,6 @@ foo(list((list(""), "")))
 [out]
 
 [case testNarrowTypeForDictKeys]
-# flags: --strict-optional
 from typing import Dict, KeysView, Optional
 
 d: Dict[str, int]
@@ -1667,10 +1664,10 @@ else:
     reveal_type(k)
 
 [out]
-_testNarrowTypeForDictKeys.py:7: note: Revealed type is "builtins.str"
-_testNarrowTypeForDictKeys.py:9: note: Revealed type is "Union[builtins.str, None]"
-_testNarrowTypeForDictKeys.py:14: note: Revealed type is "builtins.str"
-_testNarrowTypeForDictKeys.py:16: note: Revealed type is "Union[builtins.str, None]"
+_testNarrowTypeForDictKeys.py:6: note: Revealed type is "builtins.str"
+_testNarrowTypeForDictKeys.py:8: note: Revealed type is "Union[builtins.str, None]"
+_testNarrowTypeForDictKeys.py:13: note: Revealed type is "builtins.str"
+_testNarrowTypeForDictKeys.py:15: note: Revealed type is "Union[builtins.str, None]"
 
 [case testTypeAliasWithNewStyleUnion]
 # flags: --python-version 3.10

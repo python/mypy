@@ -1708,8 +1708,7 @@ def unify_generic_callable(
             type.ret_type, target.ret_type, return_constraint_direction
         )
         constraints.extend(c)
-    type_var_ids = [tvar.id for tvar in type.variables]
-    inferred_vars = mypy.solve.solve_constraints(type_var_ids, constraints)
+    inferred_vars, _ = mypy.solve.solve_constraints(type.variables, constraints)
     if None in inferred_vars:
         return None
     non_none_inferred_vars = cast(List[Type], inferred_vars)

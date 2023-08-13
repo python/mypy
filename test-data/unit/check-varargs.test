@@ -630,7 +630,6 @@ if int():
 [builtins fixtures/list.pyi]
 
 [case testCallerTupleVarArgsAndGenericCalleeVarArg]
-# flags: --strict-optional
 from typing import TypeVar
 
 T = TypeVar('T')

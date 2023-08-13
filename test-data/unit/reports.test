@@ -311,7 +311,7 @@ Total      0      14    100.00%
 
 
 [case testAnyExpressionsReportTypesOfAny]
-# cmd: mypy --python-version=3.6 --any-exprs-report report n.py
+# cmd: mypy --any-exprs-report report n.py
 
 [file n.py]
 from typing import Any, List

@@ -142,9 +142,6 @@ class NamedTupleAnalyzer:
           * valid statements
         or None, if any of the types are not ready.
         """
-        if self.options.python_version < (3, 6) and not is_stub_file:
-            self.fail("NamedTuple class syntax is only supported in Python 3.6", defn)
-            return [], [], {}, []
         if len(defn.base_type_exprs) > 1:
             self.fail("NamedTuple should be a single base", defn)
         items: list[str] = []

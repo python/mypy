@@ -442,3 +442,42 @@ Example:
         # The following will not generate an error on either
         # Python 3.8, or Python 3.9
         42 + "testing..."  # type: ignore
+
+.. _code-explicit-override:
+
+Check that ``@override`` is used when overriding a base class method [explicit-override]
+----------------------------------------------------------------------------------------
+
+If you use :option:`--enable-error-code explicit-override <mypy --enable-error-code>`
+mypy generates an error if you override a base class method without using the
+``@override`` decorator. An error will not be emitted for overrides of ``__init__``
+or ``__new__``. See `PEP 698 <https://peps.python.org/pep-0698/#strict-enforcement-per-project>`_.
+
+.. note::
+
+    Starting with Python 3.12, the ``@override`` decorator can be imported from ``typing``.
+    To use it with older Python versions, import it from ``typing_extensions`` instead.
+
+Example:
+
+.. code-block:: python
+
+    # Use "mypy --enable-error-code explicit-override ..."
+
+    from typing import override
+
+    class Parent:
+        def f(self, x: int) -> None:
+            pass
+
+        def g(self, y: int) -> None:
+            pass
+
+
+    class Child(Parent):
+        def f(self, x: int) -> None:  # Error: Missing @override decorator
+            pass
+
+        @override
+        def g(self, y: int) -> None:
+            pass

@@ -60,6 +60,13 @@ jobs:
           toxenv: py
           tox_extra_args: "-n 2"
           test_mypyc: true
+        - name: Test suite with py312-ubuntu, mypyc-compiled
+          python: '3.12-dev'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
+          tox_extra_args: "-n 2"
+          test_mypyc: true
 
         - name: mypyc runtime tests with py38-macos
           python: '3.8.17'
@@ -133,24 +140,6 @@ jobs:
       run: tox run -e ${{ matrix.toxenv }} --notest
     - name: Test
       run: tox run -e ${{ matrix.toxenv }} --skip-pkg-install -- ${{ matrix.tox_extra_args }}
-
-  python-nightly:
-    runs-on: ubuntu-latest
-    name: Test suite with Python nightly
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.12-dev'
-      - name: Install tox
-        run: pip install --upgrade 'setuptools!=50' tox==4.4.4
-      - name: Setup tox environment
-        run: tox run -e py --notest
-      - name: Test
-        run: tox run -e py --skip-pkg-install -- "-n 2"
-        continue-on-error: true
-      - name: Mark as a success
-        run: exit 0
 
   python_32bits:
     runs-on: ubuntu-latest

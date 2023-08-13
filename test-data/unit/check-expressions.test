@@ -1210,7 +1210,6 @@ a[:None]
 [builtins fixtures/slice.pyi]
 
 [case testNoneSliceBoundsWithStrictOptional]
-# flags: --strict-optional
 from typing import Any
 a: Any
 a[None:1]
@@ -2049,7 +2048,7 @@ x is 42
 [typing fixtures/typing-full.pyi]
 
 [case testStrictEqualityStrictOptional]
-# flags: --strict-equality --strict-optional
+# flags: --strict-equality
 
 x: str
 if x is not None:  # OK even with strict-optional
@@ -2065,7 +2064,7 @@ if x is not None:  # OK without strict-optional
 [builtins fixtures/bool.pyi]
 
 [case testStrictEqualityEqNoOptionalOverlap]
-# flags: --strict-equality --strict-optional
+# flags: --strict-equality
 from typing import Optional
 
 x: Optional[str]

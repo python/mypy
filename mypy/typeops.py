@@ -313,7 +313,9 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
         original_type = get_proper_type(original_type)
 
         all_ids = func.type_var_ids()
-        typeargs = infer_type_arguments(all_ids, self_param_type, original_type, is_supertype=True)
+        typeargs = infer_type_arguments(
+            func.variables, self_param_type, original_type, is_supertype=True
+        )
         if (
             is_classmethod
             # TODO: why do we need the extra guards here?
@@ -322,7 +324,7 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
         ):
             # In case we call a classmethod through an instance x, fallback to type(x)
             typeargs = infer_type_arguments(
-                all_ids, self_param_type, TypeType(original_type), is_supertype=True
+                func.variables, self_param_type, TypeType(original_type), is_supertype=True
             )
 
         ids = [tid for tid in all_ids if any(tid == t.id for t in get_type_vars(self_param_type))]
@@ -600,10 +602,8 @@ def true_only(t: Type) -> ProperType:
     else:
         ret_type = _get_type_special_method_bool_ret_type(t)
 
-        if ret_type and ret_type.can_be_false and not ret_type.can_be_true:
-            new_t = copy_type(t)
-            new_t.can_be_true = False
-            return new_t
+        if ret_type and not ret_type.can_be_true:
+            return UninhabitedType(line=t.line, column=t.column)
 
         new_t = copy_type(t)
         new_t.can_be_false = False
@@ -635,10 +635,8 @@ def false_only(t: Type) -> ProperType:
     else:
         ret_type = _get_type_special_method_bool_ret_type(t)
 
-        if ret_type and ret_type.can_be_true and not ret_type.can_be_false:
-            new_t = copy_type(t)
-            new_t.can_be_false = False
-            return new_t
+        if ret_type and not ret_type.can_be_false:
+            return UninhabitedType(line=t.line)
 
         new_t = copy_type(t)
         new_t.can_be_true = False

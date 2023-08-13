@@ -596,7 +596,7 @@ main:13: error: Argument 2 to "Node" has incompatible type "int"; expected "str"
 
 -- Error formatting is a bit different (and probably better) with new analyzer
 [case testGenericTypeAliasesWrongAliases]
-# flags: --show-column-numbers --python-version 3.6 --no-strict-optional
+# flags: --show-column-numbers --no-strict-optional
 from typing import TypeVar, Generic, List, Callable, Tuple, Union
 T = TypeVar('T')
 S = TypeVar('S')
@@ -2323,7 +2323,6 @@ class B(A):
 [builtins fixtures/classmethod.pyi]
 
 [case testSubclassingGenericSelfClassMethodOptional]
-# flags: --strict-optional
 from typing import TypeVar, Type, Optional
 
 AT = TypeVar('AT', bound='A')
@@ -2912,9 +2911,23 @@ def test1(x: V) -> V: ...
 def test2(x: V, y: V) -> V: ...
 
 reveal_type(dec1(test1))  # N: Revealed type is "def () -> def [T] (T`1) -> T`1"
-# TODO: support this situation
-reveal_type(dec2(test2))  # N: Revealed type is "def (builtins.object) -> def (builtins.object) -> builtins.object"
-[builtins fixtures/paramspec.pyi]
+reveal_type(dec2(test2))  # N: Revealed type is "def [T] (T`3) -> def (T`3) -> T`3"
+[builtins fixtures/list.pyi]
+
+[case testInferenceAgainstGenericCallableNewVariable]
+# flags: --new-type-inference
+from typing import TypeVar, Callable, List
+
+S = TypeVar('S')
+T = TypeVar('T')
+U = TypeVar('U')
+
+def dec(f: Callable[[S], T]) -> Callable[[S], T]:
+    ...
+def test(x: List[U]) -> List[U]:
+    ...
+reveal_type(dec(test))  # N: Revealed type is "def [U] (builtins.list[U`-1]) -> builtins.list[U`-1]"
+[builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCallableGenericAlias]
 # flags: --new-type-inference
@@ -2935,7 +2948,7 @@ reveal_type(dec(id))  # N: Revealed type is "def [S] (S`1) -> builtins.list[S`1]
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCallableGenericProtocol]
-# flags: --strict-optional --new-type-inference
+# flags: --new-type-inference
 from typing import TypeVar, Protocol, Generic, Optional
 
 T = TypeVar('T')
@@ -2951,7 +2964,7 @@ reveal_type(lift(g))  # N: Revealed type is "def [T] (Union[T`1, None]) -> Union
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericSplitOrder]
-# flags: --strict-optional --new-type-inference
+# flags: --new-type-inference
 from typing import TypeVar, Callable, List
 
 S = TypeVar('S')
@@ -2966,7 +2979,7 @@ reveal_type(dec(id, id))  # N: Revealed type is "def (builtins.int) -> builtins.
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericSplitOrderGeneric]
-# flags: --strict-optional --new-type-inference
+# flags: --new-type-inference
 from typing import TypeVar, Callable, Tuple
 
 S = TypeVar('S')
@@ -2994,3 +3007,31 @@ class C:
 
 c: C
 reveal_type(c.test())  # N: Revealed type is "__main__.C"
+
+[case testInferenceAgainstGenericBoundsAndValues]
+# flags: --new-type-inference
+from typing import TypeVar, Callable, List
+
+class B: ...
+class C(B): ...
+
+S = TypeVar('S')
+T = TypeVar('T')
+UB = TypeVar('UB', bound=B)
+UC = TypeVar('UC', bound=C)
+V = TypeVar('V', int, str)
+
+def dec1(f: Callable[[S], T]) -> Callable[[S], List[T]]:
+    ...
+def dec2(f: Callable[[UC], T]) -> Callable[[UC], List[T]]:
+    ...
+def id1(x: UB) -> UB:
+    ...
+def id2(x: V) -> V:
+    ...
+
+reveal_type(dec1(id1))  # N: Revealed type is "def [S <: __main__.B] (S`1) -> builtins.list[S`1]"
+reveal_type(dec1(id2))  # N: Revealed type is "def [S in (builtins.int, builtins.str)] (S`3) -> builtins.list[S`3]"
+reveal_type(dec2(id1))  # N: Revealed type is "def [UC <: __main__.C] (UC`5) -> builtins.list[UC`5]"
+reveal_type(dec2(id2))  # N: Revealed type is "def (<nothing>) -> builtins.list[<nothing>]" \
+                        # E: Argument 1 to "dec2" has incompatible type "Callable[[V], V]"; expected "Callable[[<nothing>], <nothing>]"
