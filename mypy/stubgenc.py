@@ -385,25 +385,19 @@ def generate_c_function_stub(
             # a sig generator indicates @classmethod by specifying the cls arg
             if class_name and signature.args and signature.args[0].name == "cls":
                 output.append("@classmethod")
+            output_signature = "def {function}({args}) -> {ret}:".format(
+                function=name,
+                args=", ".join(args),
+                ret=strip_or_import(signature.ret_type, module, known_modules, imports),
+            )
             if include_docstrings and docstr:
-                output.append(
-                    "def {function}({args}) -> {ret}:".format(
-                        function=name,
-                        args=", ".join(args),
-                        ret=strip_or_import(signature.ret_type, module, known_modules, imports),
-                    )
-                )
                 docstr_quoted = mypy.util.quote_docstring(docstr.strip())
                 docstr_indented = "\n    ".join(docstr_quoted.split("\n"))
+                output.append(output_signature)
                 output.extend(f"    {docstr_indented}".split("\n"))
             else:
-                output.append(
-                    "def {function}({args}) -> {ret}: ...".format(
-                        function=name,
-                        args=", ".join(args),
-                        ret=strip_or_import(signature.ret_type, module, known_modules, imports),
-                    )
-                )
+                output_signature += " ..."
+                output.append(output_signature)
 
 
 def strip_or_import(
