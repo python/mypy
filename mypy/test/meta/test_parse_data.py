@@ -44,8 +44,8 @@ class ParseTestDataSuite(Suite):
         assert expected in result.stdout
 
     def test_bad_ge_version_check(self) -> None:
-        # Arrange
-        data = self._dedent(
+        # Act
+        actual = _run_pytest(
             """
             [case abc]
             s: str
@@ -54,15 +54,12 @@ class ParseTestDataSuite(Suite):
             """
         )
 
-        # Act
-        actual = self._run_pytest(data)
-
         # Assert
-        assert "version>=3.8 always true since minimum runtime version is (3, 8)" in actual
+        assert "version>=3.8 always true since minimum runtime version is (3, 8)" in actual.stdout
 
     def test_bad_eq_version_check(self) -> None:
-        # Arrange
-        data = self._dedent(
+        # Act
+        actual = _run_pytest(
             """
             [case abc]
             s: str
@@ -71,8 +68,5 @@ class ParseTestDataSuite(Suite):
             """
         )
 
-        # Act
-        actual = self._run_pytest(data)
-
         # Assert
-        assert "version==3.7 always false since minimum runtime version is (3, 8)" in actual
+        assert "version==3.7 always false since minimum runtime version is (3, 8)" in actual.stdout
