@@ -350,18 +350,18 @@ definitions or calls.
     This flag reports an error whenever a function with type annotations
     calls a function defined without annotations.
 
-.. option:: --untyped-call-exception
+.. option:: --untyped-calls-exclude
 
     This flag allows to selectively disable :option:`--disallow-untyped-calls`
     for functions and methods defined in specific packages, modules, or classes.
-    Note that each exception entry acts as a prefix. For example (assuming there
+    Note that each exclude entry acts as a prefix. For example (assuming there
     are no type annotations for ``third_party_lib`` available):
 
     .. code-block:: python
 
         # mypy --disallow-untyped-calls
-        #      --untyped-call-exception=third_party_lib.module_a
-        #      --untyped-call-exception=foo.A
+        #      --untyped-calls-exclude=third_party_lib.module_a
+        #      --untyped-calls-exclude=foo.A
         from third_party_lib.module_a import some_func
         from third_party_lib.module_b import other_func
         import foo

@@ -2078,7 +2078,7 @@ f(reveal_type(y)) # E: Call to untyped function "f" in typed context \
                   # N: Revealed type is "builtins.int"
 
 [case testDisallowUntypedCallsAllowListFlags]
-# flags: --disallow-untyped-calls  --untyped-call-exception=foo --untyped-call-exception=bar.A
+# flags: --disallow-untyped-calls  --untyped-calls-exclude=foo --untyped-calls-exclude=bar.A
 from foo import test_foo
 from bar import A, B
 from baz import test_baz
@@ -2130,7 +2130,7 @@ def test_baz(x): pass
 [file mypy.ini]
 \[mypy]
 disallow_untyped_calls = True
-untyped_call_exception = foo, bar.A
+untyped_calls_exclude = foo, bar.A
 
 [case testPerModuleErrorCodes]
 # flags: --config-file tmp/mypy.ini

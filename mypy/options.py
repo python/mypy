@@ -138,7 +138,7 @@ class Options:
 
         # Always allow untyped calls for function coming from modules/packages
         # in this list (each item effectively acts as a prefix match)
-        self.untyped_call_exception: list[str] = []
+        self.untyped_calls_exclude: list[str] = []
 
         # Disallow defining untyped (or incompletely typed) functions
         self.disallow_untyped_defs = False

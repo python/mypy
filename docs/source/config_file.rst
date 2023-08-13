@@ -505,15 +505,15 @@ section of the command line docs.
     will disable this check inside ``some.library``, not for your code that
     imports ``some.library``. If you want to selectively disable this check for
     all your code that imports ``some.library`` you should instead use
-    :confval:`untyped_call_exception`, for example:
+    :confval:`untyped_calls_exclude`, for example:
 
     .. code-block:: ini
 
         [mypy]
         disallow_untyped_calls = True
-        untyped_call_exception = some.library
+        untyped_calls_exclude = some.library
 
-.. confval:: untyped_call_exception
+.. confval:: untyped_calls_exclude
 
     :type: comma-separated list of strings
 
@@ -521,7 +521,7 @@ section of the command line docs.
     modules, and classes from action of :confval:`disallow_untyped_calls`.
     This also applies to all submodules of packages (i.e. everything inside
     a given prefix). Note, this option does not support per-file configuration,
-    the exception list is defined globally for all your code.
+    the exclusions list is defined globally for all your code.
 
 .. confval:: disallow_untyped_defs
 

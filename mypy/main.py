@@ -681,7 +681,7 @@ def process_options(
         group=untyped_group,
     )
     untyped_group.add_argument(
-        "--untyped-call-exception",
+        "--untyped-calls-exclude",
         metavar="MODULE",
         action="append",
         default=[],
@@ -1320,7 +1320,7 @@ def process_options(
             % ", ".join(sorted(overlap))
         )
 
-    validate_package_allow_list(options.untyped_call_exception)
+    validate_package_allow_list(options.untyped_calls_exclude)
 
     # Process `--enable-error-code` and `--disable-error-code` flags
     disabled_codes = set(options.disable_error_code)
