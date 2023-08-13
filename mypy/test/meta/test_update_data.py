@@ -131,4 +131,4 @@ class UpdateDataSuite(Suite):
         [builtins fixtures/list.pyi]
         """
         )
-        assert result.source_updated == expected
+        assert result.input_updated == expected

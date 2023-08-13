@@ -12,8 +12,8 @@ from mypy.test.config import test_data_prefix
 
 @dataclass
 class PytestResult:
-    source: str
-    source_updated: str  # any updates made by --update-data
+    input: str
+    input_updated: str  # any updates made by --update-data
     stdout: str
     stderr: str
 
@@ -66,8 +66,8 @@ def run_pytest_data_suite(
             print(f"Exit code {proc.returncode} ({i} attempts remaining)")
 
         return PytestResult(
-            source=data_suite,
-            source_updated=p.read_text(),
+            input=data_suite,
+            input_updated=p.read_text(),
             stdout=proc.stdout.decode(),
             stderr=proc.stderr.decode(),
         )
