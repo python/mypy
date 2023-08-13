@@ -243,6 +243,7 @@ class Options:
         verbose: bool,
         quiet: bool,
         export_less: bool,
+        include_docstrings: bool,
     ) -> None:
         # See parse_options for descriptions of the flags.
         self.pyversion = pyversion
@@ -261,6 +262,7 @@ class Options:
         self.verbose = verbose
         self.quiet = quiet
         self.export_less = export_less
+        self.include_docstrings = include_docstrings
 
 
 class StubSource:
@@ -624,6 +626,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         include_private: bool = False,
         analyzed: bool = False,
         export_less: bool = False,
+        include_docstrings: bool = False,
     ) -> None:
         # Best known value of __all__.
         self._all_ = _all_
@@ -638,6 +641,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._state = EMPTY
         self._toplevel_names: list[str] = []
         self._include_private = include_private
+        self._include_docstrings = include_docstrings
         self._current_class: ClassDef | None = None
         self.import_tracker = ImportTracker()
         # Was the tree semantically analysed before?
@@ -809,7 +813,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             retfield = " -> " + retname
 
         self.add(", ".join(args))
-        self.add(f"){retfield}: ...\n")
+        self.add(f"){retfield}:")
+        if self._include_docstrings and o.docstring:
+            docstring = mypy.util.quote_docstring(o.docstring)
+            self.add(f"\n{self._indent}    {docstring}\n")
+        else:
+            self.add(" ...\n")
+
         self._state = FUNC
 
     def is_none_expr(self, expr: Expression) -> bool:
@@ -910,8 +920,11 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if base_types:
             self.add(f"({', '.join(base_types)})")
         self.add(":\n")
-        n = len(self._output)
         self._indent += "    "
+        if self._include_docstrings and o.docstring:
+            docstring = mypy.util.quote_docstring(o.docstring)
+            self.add(f"{self._indent}{docstring}\n")
+        n = len(self._output)
         self._vars.append([])
         super().visit_class_def(o)
         self._indent = self._indent[:-4]
@@ -920,7 +933,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if len(self._output) == n:
             if self._state == EMPTY_CLASS and sep is not None:
                 self._output[sep] = ""
-            self._output[-1] = self._output[-1][:-1] + " ...\n"
+            if not (self._include_docstrings and o.docstring):
+                self._output[-1] = self._output[-1][:-1] + " ...\n"
             self._state = EMPTY_CLASS
         else:
             self._state = CLASS
@@ -1710,6 +1724,7 @@ def mypy_options(stubgen_options: Options) -> MypyOptions:
     options.show_traceback = True
     options.transform_source = remove_misplaced_type_comments
     options.preserve_asts = True
+    options.include_docstrings = stubgen_options.include_docstrings
 
     # Override cache_dir if provided in the environment
     environ_cache_dir = os.getenv("MYPY_CACHE_DIR", "")
@@ -1773,6 +1788,7 @@ def generate_stub_from_ast(
     parse_only: bool = False,
     include_private: bool = False,
     export_less: bool = False,
+    include_docstrings: bool = False,
 ) -> None:
     """Use analysed (or just parsed) AST to generate type stub for single file.
 
@@ -1784,6 +1800,7 @@ def generate_stub_from_ast(
         include_private=include_private,
         analyzed=not parse_only,
         export_less=export_less,
+        include_docstrings=include_docstrings,
     )
     assert mod.ast is not None, "This function must be used only with analyzed modules"
     mod.ast.accept(gen)
@@ -1845,7 +1862,12 @@ def generate_stubs(options: Options) -> None:
         files.append(target)
         with generate_guarded(mod.module, target, options.ignore_errors, options.verbose):
             generate_stub_from_ast(
-                mod, target, options.parse_only, options.include_private, options.export_less
+                mod,
+                target,
+                options.parse_only,
+                options.include_private,
+                options.export_less,
+                include_docstrings=options.include_docstrings,
             )
 
     # Separately analyse C modules using different logic.
@@ -1859,7 +1881,11 @@ def generate_stubs(options: Options) -> None:
         files.append(target)
         with generate_guarded(mod.module, target, options.ignore_errors, options.verbose):
             generate_stub_for_c_module(
-                mod.module, target, known_modules=all_modules, sig_generators=sig_generators
+                mod.module,
+                target,
+                known_modules=all_modules,
+                sig_generators=sig_generators,
+                include_docstrings=options.include_docstrings,
             )
     num_modules = len(py_modules) + len(c_modules)
     if not options.quiet and num_modules > 0:
@@ -1912,6 +1938,11 @@ def parse_options(args: list[str]) -> Options:
         "--export-less",
         action="store_true",
         help="don't implicitly export all names imported from other modules in the same package",
+    )
+    parser.add_argument(
+        "--include-docstrings",
+        action="store_true",
+        help="include existing docstrings with the stubs",
     )
     parser.add_argument("-v", "--verbose", action="store_true", help="show more verbose messages")
     parser.add_argument("-q", "--quiet", action="store_true", help="show fewer messages")
@@ -1993,6 +2024,7 @@ def parse_options(args: list[str]) -> Options:
         verbose=ns.verbose,
         quiet=ns.quiet,
         export_less=ns.export_less,
+        include_docstrings=ns.include_docstrings,
     )
 
 

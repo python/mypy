@@ -283,6 +283,12 @@ class Options:
         # mypy. (Like mypyc.)
         self.preserve_asts = False
 
+        # If True, function and class docstrings will be extracted and retained.
+        # This isn't exposed as a command line option
+        # because it is intended for software integrating with
+        # mypy. (Like stubgen.)
+        self.include_docstrings = False
+
         # Paths of user plugins
         self.plugins: list[str] = []
 
