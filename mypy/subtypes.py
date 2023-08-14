@@ -1299,6 +1299,7 @@ def is_callable_compatible(
     check_args_covariantly: bool = False,
     allow_partial_overlap: bool = False,
     strict_concatenate: bool = False,
+    no_unify_none: bool = False,
 ) -> bool:
     """Is the left compatible with the right, using the provided compatibility check?
 
@@ -1415,7 +1416,9 @@ def is_callable_compatible(
     # (below) treats type variables on the two sides as independent.
     if left.variables:
         # Apply generic type variables away in left via type inference.
-        unified = unify_generic_callable(left, right, ignore_return=ignore_return)
+        unified = unify_generic_callable(
+            left, right, ignore_return=ignore_return, no_unify_none=no_unify_none
+        )
         if unified is None:
             return False
         left = unified
@@ -1427,7 +1430,9 @@ def is_callable_compatible(
     # So, we repeat the above checks in the opposite direction. This also
     # lets us preserve the 'symmetry' property of allow_partial_overlap.
     if allow_partial_overlap and right.variables:
-        unified = unify_generic_callable(right, left, ignore_return=ignore_return)
+        unified = unify_generic_callable(
+            right, left, ignore_return=ignore_return, no_unify_none=no_unify_none
+        )
         if unified is not None:
             right = unified
 
@@ -1687,6 +1692,8 @@ def unify_generic_callable(
     target: NormalizedCallableType,
     ignore_return: bool,
     return_constraint_direction: int | None = None,
+    *,
+    no_unify_none: bool = False,
 ) -> NormalizedCallableType | None:
     """Try to unify a generic callable type with another callable type.
 
@@ -1708,6 +1715,10 @@ def unify_generic_callable(
             type.ret_type, target.ret_type, return_constraint_direction
         )
         constraints.extend(c)
+    if no_unify_none:
+        constraints = [
+            c for c in constraints if not isinstance(get_proper_type(c.target), NoneType)
+        ]
     inferred_vars, _ = mypy.solve.solve_constraints(type.variables, constraints)
     if None in inferred_vars:
         return None
