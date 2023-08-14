@@ -689,7 +689,7 @@ reveal_type(x)  # N: Revealed type is "builtins.list[Tuple[Any, Unpack[builtins.
 
 B = Callable[[T, Unpack[Ts]], int]
 y: B
-reveal_type(y)  # N: Revealed type is "def (Any, *Unpack[builtins.tuple[Any, ...]]) -> builtins.int"
+reveal_type(y)  # N: Revealed type is "def (Any, *Any) -> builtins.int"
 
 C = G[T, Unpack[Ts], T]
 z: C
@@ -711,7 +711,7 @@ reveal_type(x)  # N: Revealed type is "builtins.list[Tuple[Any, Unpack[builtins.
 
 B = Callable[[T, S, Unpack[Ts]], int]
 y: B[int]  # E: Bad number of arguments for type alias, expected: at least 2, given: 1
-reveal_type(y)  # N: Revealed type is "def (Any, Any, *Unpack[builtins.tuple[Any, ...]]) -> builtins.int"
+reveal_type(y)  # N: Revealed type is "def (Any, Any, *Any) -> builtins.int"
 
 C = G[T, Unpack[Ts], S]
 z: C[int]  # E: Bad number of arguments for type alias, expected: at least 2, given: 1

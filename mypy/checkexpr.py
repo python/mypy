@@ -2312,11 +2312,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     ]
                     actual_kinds = [nodes.ARG_STAR] + [nodes.ARG_POS] * (len(actuals) - 1)
 
-                    assert isinstance(orig_callee_arg_type, TupleType)
-                    assert orig_callee_arg_type.items
-                    callee_arg_types = orig_callee_arg_type.items
+                    # TODO: can we really assert this? What if formal is just plain Unpack[Ts]?
+                    assert isinstance(orig_callee_arg_type, UnpackType)
+                    assert isinstance(orig_callee_arg_type.type, ProperType) and isinstance(
+                        orig_callee_arg_type.type, TupleType
+                    )
+                    assert orig_callee_arg_type.type.items
+                    callee_arg_types = orig_callee_arg_type.type.items
                     callee_arg_kinds = [nodes.ARG_STAR] + [nodes.ARG_POS] * (
-                        len(orig_callee_arg_type.items) - 1
+                        len(orig_callee_arg_type.type.items) - 1
                     )
                     expanded_tuple = True
 
@@ -5851,6 +5855,8 @@ class ArgInferSecondPassQuery(types.BoolTypeQuery):
         super().__init__(types.ANY_STRATEGY)
 
     def visit_callable_type(self, t: CallableType) -> bool:
+        # TODO: Make this consistent with ParamSpecType and TypeVarTupleType.
+        # this could make some error messages better (or at least more consistent).
         return self.query_types(t.arg_types) or t.accept(HasTypeVarQuery())
 
 
@@ -5861,6 +5867,9 @@ class HasTypeVarQuery(types.BoolTypeQuery):
         super().__init__(types.ANY_STRATEGY)
 
     def visit_type_var(self, t: TypeVarType) -> bool:
+        return True
+
+    def visit_param_spec(self, t: ParamSpecType) -> bool:
         return True
 
 

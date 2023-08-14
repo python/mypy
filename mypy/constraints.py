@@ -70,6 +70,7 @@ class Constraint:
     def __init__(self, type_var: TypeVarLikeType, op: int, target: Type) -> None:
         self.type_var = type_var.id
         self.op = op
+        # TODO: should we add "assert not isinstance(target, UnpackType)"?
         self.target = target
         self.origin_type_var = type_var
         # These are additional type variables that should be solved for together with type_var.
@@ -945,7 +946,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             cactual_args_t,
                             template_args_t,
                         ) = find_and_build_constraints_for_unpack(
-                            tuple(cactual.arg_types), tuple(template.arg_types), self.direction
+                            tuple(cactual.arg_types),
+                            tuple(template.arg_types),
+                            neg_op(self.direction),
                         )
                         template_args = list(template_args_t)
                         cactual_args = list(cactual_args_t)
@@ -1314,4 +1317,4 @@ def build_constraints_for_unpack(
             if len(template_unpack.items) == len(mapped_middle):
                 for template_arg, item in zip(template_unpack.items, mapped_middle):
                     res.extend(infer_constraints(template_arg, item, direction))
-    return (res, mapped_prefix + mapped_suffix, template_prefix + template_suffix)
+    return res, mapped_prefix + mapped_suffix, template_prefix + template_suffix
