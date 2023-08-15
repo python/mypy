@@ -5832,7 +5832,6 @@ class PolyTranslator(TypeTranslator):
                 return t.copy_modified(args=new_args)
         # There is the same problem with callback protocols as with aliases
         # (callback protocols are essentially more flexible aliases to callables).
-        # Note: consider supporting bindings in instances, e.g. LRUCache[[x: T], T].
         if t.args and t.type.is_protocol and t.type.protocol_members == ["__call__"]:
             if t.type in self.seen_aliases:
                 raise PolyTranslationError()
