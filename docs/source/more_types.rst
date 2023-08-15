@@ -2,7 +2,7 @@ More types
 ==========
 
 This section introduces a few additional kinds of types, including :py:data:`~typing.NoReturn`,
-:py:func:`NewType <typing.NewType>`, and types for async code. It also discusses
+:py:class:`~typing.NewType`, and types for async code. It also discusses
 how to give functions more precise types using overloads. All of these are only
 situationally useful, so feel free to skip this section and come back when you
 have a need for some of them.
@@ -11,7 +11,7 @@ Here's a quick summary of what's covered here:
 
 * :py:data:`~typing.NoReturn` lets you tell mypy that a function never returns normally.
 
-* :py:func:`NewType <typing.NewType>` lets you define a variant of a type that is treated as a
+* :py:class:`~typing.NewType` lets you define a variant of a type that is treated as a
   separate type by mypy but is identical to the original type at runtime.
   For example, you can have ``UserId`` as a variant of ``int`` that is
   just an ``int`` at runtime.
@@ -75,7 +75,7 @@ certain values from base class instances. Example:
         ...
 
 However, this approach introduces some runtime overhead. To avoid this, the typing
-module provides a helper object :py:func:`NewType <typing.NewType>` that creates simple unique types with
+module provides a helper object :py:class:`~typing.NewType` that creates simple unique types with
 almost zero runtime overhead. Mypy will treat the statement
 ``Derived = NewType('Derived', Base)`` as being roughly equivalent to the following
 definition:
@@ -113,12 +113,12 @@ implicitly casting from ``UserId`` where ``int`` is expected. Examples:
 
     num: int = UserId(5) + 1
 
-:py:func:`NewType <typing.NewType>` accepts exactly two arguments. The first argument must be a string literal
+:py:class:`~typing.NewType` accepts exactly two arguments. The first argument must be a string literal
 containing the name of the new type and must equal the name of the variable to which the new
 type is assigned. The second argument must be a properly subclassable class, i.e.,
 not a type construct like :py:data:`~typing.Union`, etc.
 
-The callable returned by :py:func:`NewType <typing.NewType>` accepts only one argument; this is equivalent to
+The callable returned by :py:class:`~typing.NewType` accepts only one argument; this is equivalent to
 supporting only one constructor accepting an instance of the base class (see above).
 Example:
 
@@ -139,12 +139,12 @@ Example:
     tcp_packet = TcpPacketId(127, 0)  # Fails in type checker and at runtime
 
 You cannot use :py:func:`isinstance` or :py:func:`issubclass` on the object returned by
-:py:func:`~typing.NewType`, nor can you subclass an object returned by :py:func:`~typing.NewType`.
+:py:class:`~typing.NewType`, nor can you subclass an object returned by :py:class:`~typing.NewType`.
 
 .. note::
 
-    Unlike type aliases, :py:func:`NewType <typing.NewType>` will create an entirely new and
-    unique type when used. The intended purpose of :py:func:`NewType <typing.NewType>` is to help you
+    Unlike type aliases, :py:class:`~typing.NewType` will create an entirely new and
+    unique type when used. The intended purpose of :py:class:`~typing.NewType` is to help you
     detect cases where you accidentally mixed together the old base type and the
     new derived type.
 
@@ -160,7 +160,7 @@ You cannot use :py:func:`isinstance` or :py:func:`issubclass` on the object retu
 
         name_by_id(3)  # ints and UserId are synonymous
 
-    But a similar example using :py:func:`NewType <typing.NewType>` will not typecheck:
+    But a similar example using :py:class:`~typing.NewType` will not typecheck:
 
     .. code-block:: python
 

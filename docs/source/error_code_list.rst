@@ -835,7 +835,7 @@ ellipsis ``...``, a docstring, and a ``raise NotImplementedError`` statement.
 Check the target of NewType [valid-newtype]
 -------------------------------------------
 
-The target of a :py:func:`NewType <typing.NewType>` definition must be a class type. It can't
+The target of a :py:class:`~typing.NewType` definition must be a class type. It can't
 be a union type, ``Any``, or various other special types.
 
 You can also get this error if the target has been imported from a
