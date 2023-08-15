@@ -52,8 +52,8 @@ c: C
 
 f(c)       # E: Argument 1 to "f" has incompatible type "C"; expected "A"
 f(a, b, c) # E: Argument 3 to "f" has incompatible type "C"; expected "A"
-f(g())     # E: "g" does not return a value
-f(a, g())  # E: "g" does not return a value
+f(g())     # E: "g" does not return a value (or returns None)
+f(a, g())  # E: "g" does not return a value (or returns None)
 f()
 f(a)
 f(b)

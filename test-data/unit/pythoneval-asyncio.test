@@ -261,7 +261,7 @@ try:
 finally:
     loop.close()
 [out]
-_program.py:11: error: Function does not return a value
+_program.py:11: error: Function does not return a value (or returns None)
 
 [case testErrorReturnIsNotTheSameType]
 from typing import Any

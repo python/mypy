@@ -250,7 +250,7 @@ if int():
 if int():
     f = o   # E: Incompatible types in assignment (expression has type "object", variable has type "Callable[[], None]")
 if int():
-    f = f() # E: Function does not return a value
+    f = f() # E: Function does not return a value (or returns None)
 
 if int():
     f = f
