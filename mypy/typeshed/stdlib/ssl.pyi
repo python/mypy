@@ -44,18 +44,20 @@ class SSLCertVerificationError(SSLError, ValueError):
 
 CertificateError = SSLCertVerificationError
 
-def wrap_socket(
-    sock: socket.socket,
-    keyfile: StrOrBytesPath | None = None,
-    certfile: StrOrBytesPath | None = None,
-    server_side: bool = False,
-    cert_reqs: int = ...,
-    ssl_version: int = ...,
-    ca_certs: str | None = None,
-    do_handshake_on_connect: bool = True,
-    suppress_ragged_eofs: bool = True,
-    ciphers: str | None = None,
-) -> SSLSocket: ...
+if sys.version_info < (3, 12):
+    def wrap_socket(
+        sock: socket.socket,
+        keyfile: StrOrBytesPath | None = None,
+        certfile: StrOrBytesPath | None = None,
+        server_side: bool = False,
+        cert_reqs: int = ...,
+        ssl_version: int = ...,
+        ca_certs: str | None = None,
+        do_handshake_on_connect: bool = True,
+        suppress_ragged_eofs: bool = True,
+        ciphers: str | None = None,
+    ) -> SSLSocket: ...
+
 def create_default_context(
     purpose: Purpose = ...,
     *,
@@ -95,7 +97,10 @@ else:
 _create_default_https_context: Callable[..., SSLContext]
 
 def RAND_bytes(__n: int) -> bytes: ...
-def RAND_pseudo_bytes(__n: int) -> tuple[bytes, bool]: ...
+
+if sys.version_info < (3, 12):
+    def RAND_pseudo_bytes(__n: int) -> tuple[bytes, bool]: ...
+
 def RAND_status() -> bool: ...
 def RAND_egd(path: str) -> None: ...
 def RAND_add(__string: str | ReadableBuffer, __entropy: float) -> None: ...
@@ -198,6 +203,11 @@ class Options(enum.IntFlag):
         OP_ENABLE_MIDDLEBOX_COMPAT: int
         if sys.platform == "linux":
             OP_IGNORE_UNEXPECTED_EOF: int
+    if sys.version_info >= (3, 12):
+        OP_LEGACY_SERVER_CONNECT: int
+    if sys.version_info >= (3, 12) and sys.platform != "linux":
+        OP_ENABLE_KTLS: int
+        OP_IGNORE_UNEXPECTED_EOF: int
 
 OP_ALL: Options
 OP_NO_SSLv2: Options
@@ -216,6 +226,11 @@ if sys.version_info >= (3, 8):
     OP_ENABLE_MIDDLEBOX_COMPAT: Options
     if sys.platform == "linux":
         OP_IGNORE_UNEXPECTED_EOF: Options
+if sys.version_info >= (3, 12):
+    OP_LEGACY_SERVER_CONNECT: Options
+if sys.version_info >= (3, 12) and sys.platform != "linux":
+    OP_ENABLE_KTLS: Options
+    OP_IGNORE_UNEXPECTED_EOF: Options
 
 HAS_NEVER_CHECK_COMMON_NAME: bool
 HAS_SSLv2: bool
