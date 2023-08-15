@@ -136,6 +136,9 @@ def apply_generic_arguments(
         type_guard = None
 
     # The callable may retain some type vars if only some were applied.
+    # TODO: move apply_poly() logic from checkexpr.py here when new inference
+    # becomes universally used (i.e. in all passes + in unification).
+    # With this new logic we can actually *add* some new free variables.
     remaining_tvars = [tv for tv in tvars if tv.id not in id_to_type]
 
     return callable.copy_modified(

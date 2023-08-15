@@ -5855,8 +5855,6 @@ class ArgInferSecondPassQuery(types.BoolTypeQuery):
         super().__init__(types.ANY_STRATEGY)
 
     def visit_callable_type(self, t: CallableType) -> bool:
-        # TODO: Make this consistent with ParamSpecType and TypeVarTupleType.
-        # this could make some error messages better (or at least more consistent).
         return self.query_types(t.arg_types) or t.accept(HasTypeVarQuery())
 
 

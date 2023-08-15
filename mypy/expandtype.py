@@ -269,7 +269,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         # Relevant sections that can call unpack should call expand_unpack()
         # instead.
         # However, if the item is a variadic tuple, we can simply carry it over.
-        # In particular, if we expand A[*tuple[T, ...]] with substitutions {T: str}.
+        # In particular, if we expand A[*tuple[T, ...]] with substitutions {T: str},
         # it is hard to assert this without getting proper type.
         return UnpackType(t.type.accept(self))
 

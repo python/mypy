@@ -80,6 +80,7 @@ class Constraint:
         self.type_var = type_var.id
         self.op = op
         # TODO: should we add "assert not isinstance(target, UnpackType)"?
+        # UnpackType is a synthetic type, and is never valid as a constraint target.
         self.target = target
         self.origin_type_var = type_var
         # These are additional type variables that should be solved for together with type_var.
@@ -1261,7 +1262,7 @@ def repack_callable_args(callable: CallableType, tuple_type: TypeInfo | None) ->
     """Present callable with star unpack in a normalized form.
 
     Since positional arguments cannot follow star argument, they are packed in a suffix,
-    while prefix is represented as individual positional args. We want to put in a single
+    while prefix is represented as individual positional args. We want to put all in a single
     list with unpack in the middle, and prefix/suffix on the sides (as they would appear
     in e.g. a TupleType).
     """

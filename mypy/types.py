@@ -2263,7 +2263,8 @@ class TupleType(ProperType):
         self.partial_fallback = fallback
         # TODO: flatten/normalize unpack items (very similar to unions) here.
         # Probably also for instances, type aliases, callables, and Unpack itself. For example,
-        # tuple[*tuple[X, ...], ...] -> tuple[X, ...] and Tuple[*tuple[X, ...]] -> tuple[X, ...]
+        # tuple[*tuple[X, ...], ...] -> tuple[X, ...] and Tuple[*tuple[X, ...]] -> tuple[X, ...].
+        # Currently normalization happens in expand_type() et al., which is sub-optimal.
         self.items = items
         self.implicit = implicit
 
