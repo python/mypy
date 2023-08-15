@@ -531,10 +531,10 @@ def expects_int_first(x: Callable[Concatenate[int, P], int]) -> None: ...
                     # N: This is likely because "one" has named arguments: "x". Consider marking them positional-only
 def one(x: str) -> int: ...
 
-@expects_int_first  # E: Argument 1 to "expects_int_first" has incompatible type "Callable[[NamedArg(int, 'x')], int]"; expected "Callable[[int, NamedArg(int, 'x')], int]"
+@expects_int_first  # E: Argument 1 to "expects_int_first" has incompatible type "def two(*, x: int) -> int"; expected "def (int, /, *, x: int) -> int"
 def two(*, x: int) -> int: ...
 
-@expects_int_first  # E: Argument 1 to "expects_int_first" has incompatible type "Callable[[KwArg(int)], int]"; expected "Callable[[int, KwArg(int)], int]"
+@expects_int_first  # E: Argument 1 to "expects_int_first" has incompatible type "def three(**kwargs: int) -> int"; expected "def (int, /, **kwargs: int) -> int"
 def three(**kwargs: int) -> int: ...
 
 @expects_int_first # Accepted
@@ -1325,8 +1325,8 @@ def wrong_constructor(a: bool) -> SomeClass:
     return SomeClass("a")
 
 func(SomeClass, constructor)
-func(SomeClass, wrong_constructor)  # E: Argument 1 to "func" has incompatible type "Type[SomeClass]"; expected "Callable[[VarArg(<nothing>), KwArg(<nothing>)], SomeClass]" \
-				    # E: Argument 2 to "func" has incompatible type "Callable[[bool], SomeClass]"; expected "Callable[[VarArg(<nothing>), KwArg(<nothing>)], SomeClass]"
+func(SomeClass, wrong_constructor)  # E: Argument 1 to "func" has incompatible type "Type[SomeClass]"; expected "def (*<nothing>, **<nothing>) -> SomeClass" \
+				    # E: Argument 2 to "func" has incompatible type "Callable[[bool], SomeClass]"; expected "def (*<nothing>, **<nothing>) -> SomeClass"
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecInTypeAliasBasic]

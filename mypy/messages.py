@@ -1793,7 +1793,8 @@ class MessageBuilder:
             if missing:
                 self.fail(
                     "Missing {} for TypedDict {}".format(
-                        format_key_list(missing, short=True), format_type(typ, self.options)
+                        format_typeddict_key_list(missing, short=True),
+                        format_type(typ, self.options),
                     ),
                     context,
                     code=codes.TYPEDDICT_ITEM,
@@ -1802,7 +1803,8 @@ class MessageBuilder:
             if extra:
                 self.fail(
                     "Extra {} for TypedDict {}".format(
-                        format_key_list(extra, short=True), format_type(typ, self.options)
+                        format_typeddict_key_list(extra, short=True),
+                        format_type(typ, self.options),
                     ),
                     context,
                     code=codes.TYPEDDICT_UNKNOWN_KEY,
@@ -1810,11 +1812,11 @@ class MessageBuilder:
             if missing or extra:
                 # No need to check for further errors
                 return
-        found = format_key_list(actual_keys, short=True)
+        found = format_typeddict_key_list(actual_keys, short=True)
         if not expected_keys:
             self.fail(f"Unexpected TypedDict {found}", context)
             return
-        expected = format_key_list(expected_keys)
+        expected = format_typeddict_key_list(expected_keys)
         if actual_keys and actual_set < expected_set:
             found = f"only {found}"
         self.fail(f"Expected {expected} but found {found}", context, code=codes.TYPEDDICT_ITEM)
@@ -2416,13 +2418,19 @@ def format_type_inner(
     options: Options,
     fullnames: set[str] | None,
     module_names: bool = False,
+    use_pretty_callable: bool = True,
 ) -> str:
     """
     Convert a type to a relatively short string suitable for error messages.
 
     Args:
-      verbosity: a coarse grained control on the verbosity of the type
-      fullnames: a set of names that should be printed in full
+        verbosity: a coarse grained control on the verbosity of the type
+        fullnames: a set of names that should be printed in full
+        use_pretty_callable: use the more readable `def (...) -> t` syntax instead of
+            `Callable[...]`. Simple callable types are still shown with `Callable[...]`:
+            * Callable types with only positional arguments
+            * Callable[..., X] (a type with explicit ...)
+            * Callable types with ParamSpec
     """
 
     def format(typ: Type) -> str:
@@ -2598,11 +2606,37 @@ def format_type_inner(
                 return f"Callable[..., {return_type}]"
             param_spec = func.param_spec()
             if param_spec is not None:
-                return f"Callable[{format(param_spec)}, {return_type}]"
-            args = format_callable_args(
-                func.arg_types, func.arg_kinds, func.arg_names, format, verbosity
-            )
-            return f"Callable[[{args}], {return_type}]"
+                return f"Callable[{param_spec.name}, {return_type}]"
+            arg_strings = []
+            has_non_positional = False
+            for arg_name, arg_type, arg_kind in zip(
+                func.arg_names, func.arg_types, func.arg_kinds
+            ):
+                if (
+                    arg_kind == ARG_POS
+                    and arg_name is None
+                    or verbosity == 0
+                    and arg_kind.is_positional()
+                ):
+                    arg_strings.append(format(arg_type))
+                else:
+                    has_non_positional = True
+                    constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
+                    if arg_kind.is_star() or arg_name is None:
+                        arg_strings.append("{}({})".format(constructor, format(arg_type)))
+                    else:
+                        arg_strings.append(
+                            "{}({}, {})".format(constructor, format(arg_type), repr(arg_name))
+                        )
+
+            if use_pretty_callable and has_non_positional:
+                return pretty_callable(func, options)
+            return "Callable[[{}], {}]".format(", ".join(arg_strings), return_type)
+            #     return f"Callable[{format(param_spec)}, {return_type}]"
+            # args = format_callable_args(
+            #     func.arg_types, func.arg_kinds, func.arg_names, format, verbosity
+            # )
+            # return f"Callable[[{args}], {return_type}]"
         else:
             # Use a simple representation for function types; proper
             # function types may result in long and difficult-to-read
@@ -3111,7 +3145,7 @@ def make_inferred_type_note(
     return ""
 
 
-def format_key_list(keys: list[str], *, short: bool = False) -> str:
+def format_typeddict_key_list(keys: list[str], *, short: bool = False) -> str:
     formatted_keys = [f'"{key}"' for key in keys]
     td = "" if short else "TypedDict "
     if len(keys) == 0:
