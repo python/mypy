@@ -3383,7 +3383,7 @@ def dec(f: Callable[[Unpack[Ts]], int]) -> Callable[[Unpack[Ts]], Foo[Unpack[Ts]
 h: Callable[[T, Unpack[Us]], int]
 g: Callable[[T, Unpack[Us]], int]
 h = g
-reveal_type(dec(h))  # N:
+reveal_type(dec(h))  # N: Revealed type is "def [T, Us] (T`-1, *Unpack[Us`-2]) -> __main__.Foo[T`-1, Unpack[Us`-2]]"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericVariadicSecondary]

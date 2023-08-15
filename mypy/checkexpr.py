@@ -5872,6 +5872,9 @@ class HasTypeVarQuery(types.BoolTypeQuery):
     def visit_param_spec(self, t: ParamSpecType) -> bool:
         return True
 
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> bool:
+        return True
+
 
 def has_erased_component(t: Type | None) -> bool:
     return t is not None and t.accept(HasErasedComponentsQuery())

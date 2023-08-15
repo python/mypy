@@ -384,7 +384,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                     + [
                         UnpackType(TupleType(expanded_items[prefix_len:], fallback))
                         if len(expanded_items) - prefix_len > 1
-                        else expanded_items[0]
+                        else expanded_items[prefix_len]
                     ]
                     + self.expand_types(t.arg_types[star_index + 1 :])
                 )
