@@ -1248,7 +1248,11 @@ def process_options(
             setattr(options, dest, value)
 
     # Parse config file first, so command line can override.
-    parse_config_file(options, set_strict_flags, config_file, stdout, stderr)
+    try:
+        parse_config_file(options, set_strict_flags, config_file, stdout, stderr)
+    except (argparse.ArgumentTypeError, ValueError) as err:
+        stderr.write(f"{err}")
+        sys.exit(1)
 
     # Set strict flags before parsing (if strict mode enabled), so other command
     # line options can override.
