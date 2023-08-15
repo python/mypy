@@ -1029,7 +1029,7 @@ j = Job(generic_f)
 reveal_type(j)  # N: Revealed type is "__main__.Job[[x: _T`-1]]"
 
 jf = j.into_callable()
-reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T`-1)"
+reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T`2)"
 reveal_type(jf(1))  # N: Revealed type is "None"
 [builtins fixtures/paramspec.pyi]
 
@@ -1048,10 +1048,10 @@ class Job(Generic[_P, _T]):
 def generic_f(x: _T) -> _T: ...
 
 j = Job(generic_f)
-reveal_type(j)  # N: Revealed type is "__main__.Job[[x: _T`-1], _T`-1]"
+reveal_type(j)  # N: Revealed type is "__main__.Job[[x: _T`2], _T`2]"
 
 jf = j.into_callable()
-reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T`-1) -> _T`-1"
+reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T`3) -> _T`3"
 reveal_type(jf(1))  # N: Revealed type is "builtins.int"
 [builtins fixtures/paramspec.pyi]
 
@@ -1307,7 +1307,7 @@ reveal_type(bar(C(fn=foo, x=1)))  # N: Revealed type is "__main__.C[[x: builtins
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecClassConstructor]
-from typing import ParamSpec, Callable
+from typing import ParamSpec, Callable, TypeVar
 
 P = ParamSpec("P")
 
@@ -1315,7 +1315,10 @@ class SomeClass:
     def __init__(self, a: str) -> None:
         pass
 
-def func(t: Callable[P, SomeClass], val: Callable[P, SomeClass]) -> None:
+def func(t: Callable[P, SomeClass], val: Callable[P, SomeClass]) -> Callable[P, SomeClass]:
+    pass
+
+def func_regular(t: Callable[[T], SomeClass], val: Callable[[T], SomeClass]) -> Callable[[T], SomeClass]:
     pass
 
 def constructor(a: str) -> SomeClass:
@@ -1324,9 +1327,13 @@ def constructor(a: str) -> SomeClass:
 def wrong_constructor(a: bool) -> SomeClass:
     return SomeClass("a")
 
+def wrong_name_constructor(b: bool) -> SomeClass:
+    return SomeClass("a")
+
 func(SomeClass, constructor)
-func(SomeClass, wrong_constructor)  # E: Argument 1 to "func" has incompatible type "Type[SomeClass]"; expected "Callable[[VarArg(<nothing>), KwArg(<nothing>)], SomeClass]" \
-				    # E: Argument 2 to "func" has incompatible type "Callable[[bool], SomeClass]"; expected "Callable[[VarArg(<nothing>), KwArg(<nothing>)], SomeClass]"
+reveal_type(func(SomeClass, wrong_constructor))  # N: Revealed type is "def (a: <nothing>) -> __main__.SomeClass"
+reveal_type(func_regular(SomeClass, wrong_constructor))  # N: Revealed type is "def (<nothing>) -> __main__.SomeClass"
+func(SomeClass, wrong_name_constructor)  # E: Argument 1 to "func" has incompatible type "Type[SomeClass]"; expected "Callable[[<nothing>], SomeClass]"
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecInTypeAliasBasic]
@@ -1466,8 +1473,7 @@ reveal_type(gs)  # N: Revealed type is "builtins.list[def (builtins.int, builtin
 
 T = TypeVar("T")
 class C(Generic[T]): ...
-C[Callable[P, int]]()  # E: The first argument to Callable must be a list of types, parameter specification, or "..." \
-                       # N: See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas
+C[Callable[P, int]]()
 [builtins fixtures/paramspec.pyi]
 
 [case testConcatDeferralNoCrash]
@@ -1547,5 +1553,26 @@ U = TypeVar("U")
 def dec(f: Callable[P, T]) -> Callable[P, List[T]]: ...
 def test(x: U) -> U: ...
 reveal_type(dec)  # N: Revealed type is "def [P, T] (f: def (*P.args, **P.kwargs) -> T`-2) -> def (*P.args, **P.kwargs) -> builtins.list[T`-2]"
-reveal_type(dec(test))  # N: Revealed type is "def [U] (x: U`-1) -> builtins.list[U`-1]"
+reveal_type(dec(test))  # N: Revealed type is "def [T] (x: T`2) -> builtins.list[T`2]"
+
+class A: ...
+TA = TypeVar("TA", bound=A)
+
+def test_with_bound(x: TA) -> TA: ...
+reveal_type(dec(test_with_bound))  # N: Revealed type is "def [T <: __main__.A] (x: T`4) -> builtins.list[T`4]"
+dec(test_with_bound)(0)  # E: Value of type variable "T" of function cannot be "int"
+dec(test_with_bound)(A())  # OK
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecNestedApplyNoCrash]
+from typing import Callable, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+def apply(fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T: ...
+def test() -> None: ...
+# TODO: avoid this error, although it may be non-trivial.
+apply(apply, test)  # E: Argument 2 to "apply" has incompatible type "Callable[[], None]"; expected "Callable[P, T]"
 [builtins fixtures/paramspec.pyi]

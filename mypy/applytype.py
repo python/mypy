@@ -9,7 +9,6 @@ from mypy.types import (
     AnyType,
     CallableType,
     Instance,
-    Parameters,
     ParamSpecType,
     PartialType,
     TupleType,
@@ -112,9 +111,13 @@ def apply_generic_arguments(
     if param_spec is not None:
         nt = id_to_type.get(param_spec.id)
         if nt is not None:
-            nt = get_proper_type(nt)
-            if isinstance(nt, (CallableType, Parameters)):
-                callable = callable.expand_param_spec(nt)
+            # ParamSpec expansion is special-cased, so we need to always expand callable
+            # as a whole, not expanding arguments individually.
+            callable = expand_type(callable, id_to_type)
+            assert isinstance(callable, CallableType)
+            return callable.copy_modified(
+                variables=[tv for tv in tvars if tv.id not in id_to_type]
+            )
 
     # Apply arguments to argument types.
     var_arg = callable.var_arg()

@@ -948,21 +948,30 @@ def coerce_to_literal(typ: Type) -> Type:
 
 
 def get_type_vars(tp: Type) -> list[TypeVarType]:
-    return tp.accept(TypeVarExtractor())
+    return cast("list[TypeVarType]", tp.accept(TypeVarExtractor()))
 
 
-class TypeVarExtractor(TypeQuery[List[TypeVarType]]):
-    def __init__(self) -> None:
+def get_all_type_vars(tp: Type) -> list[TypeVarLikeType]:
+    # TODO: should we always use this function instead of get_type_vars() above?
+    return tp.accept(TypeVarExtractor(include_all=True))
+
+
+class TypeVarExtractor(TypeQuery[List[TypeVarLikeType]]):
+    def __init__(self, include_all: bool = False) -> None:
         super().__init__(self._merge)
+        self.include_all = include_all
 
-    def _merge(self, iter: Iterable[list[TypeVarType]]) -> list[TypeVarType]:
+    def _merge(self, iter: Iterable[list[TypeVarLikeType]]) -> list[TypeVarLikeType]:
         out = []
         for item in iter:
             out.extend(item)
         return out
 
-    def visit_type_var(self, t: TypeVarType) -> list[TypeVarType]:
+    def visit_type_var(self, t: TypeVarType) -> list[TypeVarLikeType]:
         return [t]
+
+    def visit_param_spec(self, t: ParamSpecType) -> list[TypeVarLikeType]:
+        return [t] if self.include_all else []
 
 
 def custom_special_method(typ: Type, name: str, check_all: bool = False) -> bool:

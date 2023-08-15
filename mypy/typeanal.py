@@ -1244,9 +1244,23 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 )
             else:
                 # Callable[P, RET] (where P is ParamSpec)
-                maybe_ret = self.analyze_callable_args_for_paramspec(
-                    callable_args, ret_type, fallback
-                ) or self.analyze_callable_args_for_concatenate(callable_args, ret_type, fallback)
+                with self.tvar_scope_frame():
+                    # Temporarily bind ParamSpecs to allow code like this:
+                    #     my_fun: Callable[Q, Foo[Q]]
+                    # We usually do this later in visit_callable_type(), but the analysis
+                    # below happens at very early stage.
+                    variables = []
+                    for name, tvar_expr in self.find_type_var_likes(callable_args):
+                        variables.append(self.tvar_scope.bind_new(name, tvar_expr))
+                    maybe_ret = self.analyze_callable_args_for_paramspec(
+                        callable_args, ret_type, fallback
+                    ) or self.analyze_callable_args_for_concatenate(
+                        callable_args, ret_type, fallback
+                    )
+                    if maybe_ret:
+                        maybe_ret = maybe_ret.copy_modified(
+                            ret_type=ret_type.accept(self), variables=variables
+                        )
                 if maybe_ret is None:
                     # Callable[?, RET] (where ? is something invalid)
                     self.fail(
@@ -1532,6 +1546,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if analyzed.prefix.arg_types:
                 self.fail("Invalid location for Concatenate", t, code=codes.VALID_TYPE)
                 self.note("You can use Concatenate as the first argument to Callable", t)
+                analyzed = AnyType(TypeOfAny.from_error)
             else:
                 self.fail(
                     f'Invalid location for ParamSpec "{analyzed.name}"', t, code=codes.VALID_TYPE
@@ -1541,6 +1556,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     "'Callable[{}, int]'".format(analyzed.name),
                     t,
                 )
+                analyzed = AnyType(TypeOfAny.from_error)
         return analyzed
 
     def anal_var_def(self, var_def: TypeVarLikeType) -> TypeVarLikeType:
