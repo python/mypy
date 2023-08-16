@@ -96,6 +96,7 @@ def infer_constraints_for_callable(
     callee: CallableType,
     arg_types: Sequence[Type | None],
     arg_kinds: list[ArgKind],
+    arg_names: Sequence[str | None] | None,
     formal_to_actual: list[list[int]],
     context: ArgumentInferContext,
 ) -> list[Constraint]:
@@ -105,6 +106,20 @@ def infer_constraints_for_callable(
     """
     constraints: list[Constraint] = []
     mapper = ArgTypeExpander(context)
+
+    param_spec = callee.param_spec()
+    param_spec_arg_types = []
+    param_spec_arg_names = []
+    param_spec_arg_kinds = []
+
+    incomplete_star_mapping = False
+    for i, actuals in enumerate(formal_to_actual):
+        for actual in actuals:
+            if actual is None and callee.arg_kinds[i] in (ARG_STAR, ARG_STAR2):
+                # We can't use arguments to infer ParamSpec constraint, if only some
+                # are present in the current inference pass.
+                incomplete_star_mapping = True
+                break
 
     for i, actuals in enumerate(formal_to_actual):
         if isinstance(callee.arg_types[i], UnpackType):
@@ -165,11 +180,47 @@ def infer_constraints_for_callable(
                 actual_type = mapper.expand_actual_type(
                     actual_arg_type, arg_kinds[actual], callee.arg_names[i], callee.arg_kinds[i]
                 )
-                # TODO: if callee has ParamSpec, we need to collect all actuals that map to star
-                # args and create single constraint between P and resulting Parameters instead.
-                c = infer_constraints(callee.arg_types[i], actual_type, SUPERTYPE_OF)
-                constraints.extend(c)
-
+                if (
+                    param_spec
+                    and callee.arg_kinds[i] in (ARG_STAR, ARG_STAR2)
+                    and not incomplete_star_mapping
+                ):
+                    # If actual arguments are mapped to ParamSpec type, we can't infer individual
+                    # constraints, instead store them and infer single constraint at the end.
+                    # It is impossible to map actual kind to formal kind, so use some heuristic.
+                    # This inference is used as a fallback, so relying on heuristic should be OK.
+                    param_spec_arg_types.append(
+                        mapper.expand_actual_type(
+                            actual_arg_type, arg_kinds[actual], None, arg_kinds[actual]
+                        )
+                    )
+                    param_spec_arg_kinds.append(
+                        ARG_POS
+                        if arg_kinds[actual] not in (ARG_STAR, ARG_STAR2)
+                        else arg_kinds[actual]
+                    )
+                    param_spec_arg_names.append(arg_names[actual] if arg_names else None)
+                else:
+                    c = infer_constraints(callee.arg_types[i], actual_type, SUPERTYPE_OF)
+                    constraints.extend(c)
+    if (
+        param_spec
+        and not any(c.type_var == param_spec.id for c in constraints)
+        and not incomplete_star_mapping
+    ):
+        # Use ParamSpec constraint from arguments only if there are no other constraints,
+        # since as explained above it is quite ad-hoc.
+        constraints.append(
+            Constraint(
+                param_spec,
+                SUPERTYPE_OF,
+                Parameters(
+                    arg_types=param_spec_arg_types,
+                    arg_kinds=param_spec_arg_kinds,
+                    arg_names=param_spec_arg_names,
+                ),
+            )
+        )
     return constraints
 
 

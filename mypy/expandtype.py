@@ -383,8 +383,6 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                 t = t.expand_param_spec(repl)
                 return t.copy_modified(
                     arg_types=self.expand_types(t.arg_types),
-                    arg_kinds=t.arg_kinds,
-                    arg_names=t.arg_names,
                     ret_type=t.ret_type.accept(self),
                     type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None),
                 )

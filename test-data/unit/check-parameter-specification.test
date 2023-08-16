@@ -160,9 +160,8 @@ from typing import Callable, TypeVar
 from typing_extensions import ParamSpec
 
 P = ParamSpec('P')
-R = TypeVar('R')
 
-def f(x: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
+def f(x: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None:
     return x(*args, **kwargs)
 
 def g(x: int, y: str) -> None: ...
@@ -171,7 +170,24 @@ reveal_type(f(g, 1, y='x'))  # N: Revealed type is "None"
 f(g, 'x', y='x')  # E: Argument 2 to "f" has incompatible type "str"; expected "int"
 f(g, 1, y=1)  # E: Argument "y" to "f" has incompatible type "int"; expected "str"
 f(g)  # E: Missing positional arguments "x", "y" in call to "f"
+[builtins fixtures/dict.pyi]
 
+[case testParamSpecFunctionGeneric]
+from typing import Callable, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+R = TypeVar('R')
+
+def f(x: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
+    return x(*args, **kwargs)
+
+def g(x: int, y: str) -> None: ...
+
+reveal_type(f(g, 1, y='x'))  # N: Revealed type is "None"
+f(g, 'x', y='x')  # E: Argument 1 to "f" has incompatible type "Callable[[int, str], None]"; expected "Callable[[str, str], None]"
+f(g, 1, y=1)  # E: Argument 1 to "f" has incompatible type "Callable[[int, str], None]"; expected "Callable[[int, int], None]"
+f(g)  # E: Argument 1 to "f" has incompatible type "Callable[[int, str], None]"; expected "Callable[[], None]"
 [builtins fixtures/dict.pyi]
 
 [case testParamSpecSpecialCase]
@@ -347,14 +363,15 @@ P = ParamSpec('P')
 T = TypeVar('T')
 
 # Similar to atexit.register
-def register(f: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> Callable[P, T]: ...  # N: "register" defined here
+def register(f: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> Callable[P, T]: ...
 
 def f(x: int) -> None: pass
 
 reveal_type(register(lambda: f(1)))  # N: Revealed type is "def ()"
-reveal_type(register(lambda x: f(x), x=1))  # N: Revealed type is "def (x: Any)"
-register(lambda x: f(x))  # E: Missing positional argument "x" in call to "register"
-register(lambda x: f(x), y=1)  # E: Unexpected keyword argument "y" for "register"
+reveal_type(register(lambda x: f(x), x=1))  # N: Revealed type is "def (x: Literal[1]?)"
+register(lambda x: f(x))  # E: Cannot infer type of lambda \
+                          # E: Argument 1 to "register" has incompatible type "Callable[[Any], None]"; expected "Callable[[], None]"
+register(lambda x: f(x), y=1)  # E: Argument 1 to "register" has incompatible type "Callable[[Arg(int, 'x')], None]"; expected "Callable[[Arg(int, 'y')], None]"
 [builtins fixtures/dict.pyi]
 
 [case testParamSpecInvalidCalls]
@@ -841,8 +858,7 @@ def f(x: int) -> int:
 
 reveal_type(A().func(f, 42))  # N: Revealed type is "builtins.int"
 
-# TODO: this should reveal `int`
-reveal_type(A().func(lambda x: x + x, 42))  # N: Revealed type is "Any"
+reveal_type(A().func(lambda x: x + x, 42))  # N: Revealed type is "builtins.int"
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecConstraintOnOtherParamSpec]
@@ -1287,7 +1303,6 @@ P = ParamSpec('P')
 class Some(Generic[P]):
     def call(self, *args: P.args, **kwargs: P.kwargs): ...
 
-# TODO: this probably should be reported.
 def call(*args: P.args, **kwargs: P.kwargs): ...
 [builtins fixtures/paramspec.pyi]
 
@@ -1564,7 +1579,41 @@ dec(test_with_bound)(0)  # E: Value of type variable "T" of function cannot be "
 dec(test_with_bound)(A())  # OK
 [builtins fixtures/paramspec.pyi]
 
+[case testParamSpecArgumentParamInferenceRegular]
+from typing import TypeVar, Generic
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+class Foo(Generic[P]):
+    def call(self, *args: P.args, **kwargs: P.kwargs) -> None: ...
+def test(*args: P.args, **kwargs: P.kwargs) -> Foo[P]: ...
+
+reveal_type(test(1, 2))  # N: Revealed type is "__main__.Foo[[Literal[1]?, Literal[2]?]]"
+reveal_type(test(x=1, y=2))  # N: Revealed type is "__main__.Foo[[x: Literal[1]?, y: Literal[2]?]]"
+ints = [1, 2, 3]
+reveal_type(test(*ints))  # N: Revealed type is "__main__.Foo[[*builtins.int]]"
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecArgumentParamInferenceGeneric]
+# flags: --new-type-inference
+from typing import Callable, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+R = TypeVar("R")
+def call(f: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
+    return f(*args, **kwargs)
+
+T = TypeVar("T")
+def identity(x: T) -> T:
+    return x
+
+reveal_type(call(identity, 2))  # N: Revealed type is "builtins.int"
+y: int = call(identity, 2)
+[builtins fixtures/paramspec.pyi]
+
 [case testParamSpecNestedApplyNoCrash]
+# flags: --new-type-inference
 from typing import Callable, TypeVar
 from typing_extensions import ParamSpec
 
@@ -1572,7 +1621,6 @@ P = ParamSpec("P")
 T = TypeVar("T")
 
 def apply(fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T: ...
-def test() -> None: ...
-# TODO: avoid this error, although it may be non-trivial.
-apply(apply, test)  # E: Argument 2 to "apply" has incompatible type "Callable[[], None]"; expected "Callable[P, T]"
+def test() -> int: ...
+reveal_type(apply(apply, test))  # N: Revealed type is "builtins.int"
 [builtins fixtures/paramspec.pyi]
