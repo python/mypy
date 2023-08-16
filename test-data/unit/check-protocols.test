@@ -2890,6 +2890,12 @@ class SupportsStr(Protocol):
 def ss(s: SupportsStr) -> None: pass
 ss(None)
 
+class SupportsBool(Protocol):
+    def __bool__(self) -> bool: ...
+
+def sb(s: SupportsBool) -> None: pass
+sb(None)
+
 class HashableStr(Protocol):
     def __str__(self) -> str: ...
     def __hash__(self) -> int: ...
