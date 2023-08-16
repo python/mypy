@@ -2857,7 +2857,7 @@ c1: SupportsClassGetItem = C()
 
 [case testNoneVsProtocol]
 # mypy: strict-optional
-from typing_extensions import Protocol
+from typing_extensions import Literal, Protocol
 
 class MyHashable(Protocol):
     def __hash__(self) -> int: ...
