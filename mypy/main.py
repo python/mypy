@@ -1251,8 +1251,7 @@ def process_options(
     try:
         parse_config_file(options, set_strict_flags, config_file, stdout, stderr)
     except (argparse.ArgumentTypeError, ValueError) as err:
-        stderr.write(f"{err}")
-        sys.exit(1)
+        raise SystemExit(str(err)) from err
 
     # Set strict flags before parsing (if strict mode enabled), so other command
     # line options can override.

@@ -2207,7 +2207,6 @@ class State:
         """Check for inline mypy: options directive and parse them."""
         flags = get_mypy_comments(source)
         if flags:
-            # TODO: should this be captured as well for parser errors?
             changes, config_errors = parse_mypy_comments(flags, self.options)
             self.options = self.options.apply_changes(changes)
             self.manager.errors.set_file(self.xpath, self.id, self.options)

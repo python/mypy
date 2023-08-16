@@ -473,7 +473,7 @@ def parse_section(
                     else:
                         msg = f"{prefix}Unrecognized report type: {key}"
                         raise argparse.ArgumentTypeError(msg)
-                if key.startswith("x_"):
+                elif key.startswith("x_"):
                     pass  # Don't complain about `x_blah` flags
                 elif key.startswith("no_") and hasattr(template, key[3:]):
                     options_key = key[3:]
@@ -508,7 +508,6 @@ def parse_section(
                     v = not v
             elif callable(ct):
                 if invert:
-                    # TODO: should this be captured or it is okay to ignore
                     print(f"{prefix}Can not invert non-boolean key {options_key}", file=stderr)
                     continue
                 try:
@@ -518,7 +517,6 @@ def parse_section(
                     raise argparse.ArgumentTypeError(msg) from err
             else:
                 print(f"{prefix}Don't know what type {key} should have", file=stderr)
-                # TODO: should this be captured or it is okay to ignore as type is not known
                 continue
         except ValueError as err:
             msg = f"{prefix}{key}: {err}"
