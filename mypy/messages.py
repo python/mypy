@@ -1310,6 +1310,8 @@ class MessageBuilder:
             code=codes.OVERRIDE,
         )
 
+        original = get_proper_type(original)
+        override = get_proper_type(override)
         if (
             isinstance(original, Instance)
             and isinstance(override, Instance)
