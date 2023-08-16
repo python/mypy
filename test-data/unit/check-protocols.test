@@ -2893,8 +2893,18 @@ ss(None)
 class SupportsBool(Protocol):
     def __bool__(self) -> bool: ...
 
+class SupportsBoolLiteralTrue(Protocol):
+    def __bool__(self) -> Literal[True]: ...
+
+class SupportsBoolLiteralFalse(Protocol):
+    def __bool__(self) -> Literal[False]: ...
+
 def sb(s: SupportsBool) -> None: pass
 sb(None)
+def sblt(s: SupportsBoolLiteralTrue) -> None: pass
+sblt(None)
+def sblf(s: SupportsBoolLiteralFalse) -> None: pass
+sblf(None)
 
 class HashableStr(Protocol):
     def __str__(self) -> str: ...
