@@ -600,7 +600,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     type_state.record_negative_subtype_cache_entry(self._subtype_kind, left, right)
                 return nominal
             if right.type.is_protocol and is_protocol_implementation(
-                left, right, proper_subtype=self.proper_subtype
+                left, right, proper_subtype=self.proper_subtype, options=self.options
             ):
                 return True
             # We record negative cache entry here, and not in the protocol check like we do for
@@ -647,7 +647,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             and right.id == left.id
             and right.flavor == left.flavor
         ):
-            return True
+            return self._is_subtype(left.prefix, right.prefix)
         if isinstance(right, Parameters) and are_trivial_parameters(right):
             return True
         return self._is_subtype(left.upper_bound, self.right)
@@ -696,7 +696,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
                 strict_concatenate=(self.options.extra_checks or self.options.strict_concatenate)
                 if self.options
-                else True,
+                else False,
             )
         elif isinstance(right, Overloaded):
             return all(self._is_subtype(left, item) for item in right.items)
@@ -863,7 +863,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                         strict_concat = (
                             (self.options.extra_checks or self.options.strict_concatenate)
                             if self.options
-                            else True
+                            else False
                         )
                         if left_index not in matched_overloads and (
                             is_callable_compatible(
@@ -1003,6 +1003,7 @@ def is_protocol_implementation(
     proper_subtype: bool = False,
     class_obj: bool = False,
     skip: list[str] | None = None,
+    options: Options | None = None,
 ) -> bool:
     """Check whether 'left' implements the protocol 'right'.
 
@@ -1068,7 +1069,9 @@ def is_protocol_implementation(
                 # Nominal check currently ignores arg names
                 # NOTE: If we ever change this, be sure to also change the call to
                 # SubtypeVisitor.build_subtype_kind(...) down below.
-                is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=ignore_names)
+                is_compat = is_subtype(
+                    subtype, supertype, ignore_pos_arg_names=ignore_names, options=options
+                )
             else:
                 is_compat = is_proper_subtype(subtype, supertype)
             if not is_compat:
@@ -1080,7 +1083,7 @@ def is_protocol_implementation(
             superflags = get_member_flags(member, right)
             if IS_SETTABLE in superflags:
                 # Check opposite direction for settable attributes.
-                if not is_subtype(supertype, subtype):
+                if not is_subtype(supertype, subtype, options=options):
                     return False
             if not class_obj:
                 if IS_SETTABLE not in superflags:
@@ -1479,7 +1482,7 @@ def are_parameters_compatible(
     ignore_pos_arg_names: bool = False,
     check_args_covariantly: bool = False,
     allow_partial_overlap: bool = False,
-    strict_concatenate_check: bool = True,
+    strict_concatenate_check: bool = False,
 ) -> bool:
     """Helper function for is_callable_compatible, used for Parameter compatibility"""
     if right.is_ellipsis_args:

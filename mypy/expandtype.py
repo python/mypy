@@ -402,6 +402,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                     arg_kinds=t.arg_kinds[:-2] + prefix.arg_kinds + t.arg_kinds[-2:],
                     arg_names=t.arg_names[:-2] + prefix.arg_names + t.arg_names[-2:],
                     ret_type=t.ret_type.accept(self),
+                    from_concatenate=t.from_concatenate or bool(repl.prefix.arg_types),
                 )
 
         var_arg = t.var_arg()
