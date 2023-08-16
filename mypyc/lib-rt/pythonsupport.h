@@ -129,6 +129,65 @@ init_subclass(PyTypeObject *type, PyObject *kwds)
     return 0;
 }
 
+#if CPY_3_12_FEATURES
+
+static inline Py_ssize_t
+CPyLong_AsSsize_tAndOverflow(PyObject *vv, int *overflow)
+{
+    /* This version by Tim Peters */
+    PyLongObject *v = (PyLongObject *)vv;
+    size_t x, prev;
+    Py_ssize_t res;
+    Py_ssize_t i;
+    int sign;
+
+    *overflow = 0;
+
+    res = -1;
+    i = CPY_LONG_TAG(v);
+
+    // TODO: Combine zero and non-zero cases helow?
+    if (likely(i == (1 << CPY_NON_SIZE_BITS))) {
+        res = CPY_LONG_DIGIT(v, 0);
+    } else if (likely(i == CPY_SIGN_ZERO)) {
+        res = 0;
+    } else if (i == ((1 << CPY_NON_SIZE_BITS) | CPY_SIGN_NEGATIVE)) {
+        res = -(sdigit)CPY_LONG_DIGIT(v, 0);
+    } else {
+        sign = 1;
+        x = 0;
+        if (i & CPY_SIGN_NEGATIVE) {
+            sign = -1;
+        }
+        i >>= CPY_NON_SIZE_BITS;
+        while (--i >= 0) {
+            prev = x;
+            x = (x << PyLong_SHIFT) + CPY_LONG_DIGIT(v, i);
+            if ((x >> PyLong_SHIFT) != prev) {
+                *overflow = sign;
+                goto exit;
+            }
+        }
+        /* Haven't lost any bits, but casting to long requires extra
+         * care (see comment above).
+         */
+        if (x <= (size_t)CPY_TAGGED_MAX) {
+            res = (Py_ssize_t)x * sign;
+        }
+        else if (sign < 0 && x == CPY_TAGGED_ABS_MIN) {
+            res = CPY_TAGGED_MIN;
+        }
+        else {
+            *overflow = sign;
+            /* res is already set to -1 */
+        }
+    }
+  exit:
+    return res;
+}
+
+#else
+
 // Adapted from longobject.c in Python 3.7.0
 
 /* This function adapted from PyLong_AsLongLongAndOverflow, but with
@@ -156,11 +215,11 @@ CPyLong_AsSsize_tAndOverflow(PyObject *vv, int *overflow)
     i = Py_SIZE(v);
 
     if (likely(i == 1)) {
-        res = v->ob_digit[0];
+        res = CPY_LONG_DIGIT(v, 0);
     } else if (likely(i == 0)) {
         res = 0;
     } else if (i == -1) {
-        res = -(sdigit)v->ob_digit[0];
+        res = -(sdigit)CPY_LONG_DIGIT(v, 0);
     } else {
         sign = 1;
         x = 0;
@@ -170,7 +229,7 @@ CPyLong_AsSsize_tAndOverflow(PyObject *vv, int *overflow)
         }
         while (--i >= 0) {
             prev = x;
-            x = (x << PyLong_SHIFT) + v->ob_digit[i];
+            x = (x << PyLong_SHIFT) + CPY_LONG_DIGIT(v, i);
             if ((x >> PyLong_SHIFT) != prev) {
                 *overflow = sign;
                 goto exit;
@@ -193,6 +252,8 @@ CPyLong_AsSsize_tAndOverflow(PyObject *vv, int *overflow)
   exit:
     return res;
 }
+
+#endif
 
 // Adapted from listobject.c in Python 3.7.0
 static int

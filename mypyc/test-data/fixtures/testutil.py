@@ -7,7 +7,7 @@ from typing import (
     Any, Iterator, TypeVar, Generator, Optional, List, Tuple, Sequence,
     Union, Callable, Awaitable,
 )
-from typing_extensions import Final
+from typing import Final
 
 FLOAT_MAGIC: Final = -113.0
 

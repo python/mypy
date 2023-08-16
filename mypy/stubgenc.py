@@ -12,9 +12,9 @@ import os.path
 import re
 from abc import abstractmethod
 from types import ModuleType
-from typing import Any, Iterable, Mapping
-from typing_extensions import Final
+from typing import Any, Final, Iterable, Mapping
 
+import mypy.util
 from mypy.moduleinspect import is_c_module
 from mypy.stubdoc import (
     ArgSig,
@@ -170,6 +170,7 @@ def generate_stub_for_c_module(
     target: str,
     known_modules: list[str],
     sig_generators: Iterable[SignatureGenerator],
+    include_docstrings: bool = False,
 ) -> None:
     """Generate stub for C module.
 
@@ -202,6 +203,7 @@ def generate_stub_for_c_module(
                 known_modules=known_modules,
                 imports=imports,
                 sig_generators=sig_generators,
+                include_docstrings=include_docstrings,
             )
             done.add(name)
     types: list[str] = []
@@ -217,6 +219,7 @@ def generate_stub_for_c_module(
                 known_modules=known_modules,
                 imports=imports,
                 sig_generators=sig_generators,
+                include_docstrings=include_docstrings,
             )
             done.add(name)
     variables = []
@@ -320,15 +323,17 @@ def generate_c_function_stub(
     self_var: str | None = None,
     cls: type | None = None,
     class_name: str | None = None,
+    include_docstrings: bool = False,
 ) -> None:
     """Generate stub for a single function or method.
 
-    The result (always a single line) will be appended to 'output'.
+    The result will be appended to 'output'.
     If necessary, any required names will be added to 'imports'.
     The 'class_name' is used to find signature of __init__ or __new__ in
     'class_sigs'.
     """
     inferred: list[FunctionSig] | None = None
+    docstr: str | None = None
     if class_name:
         # method:
         assert cls is not None, "cls should be provided for methods"
@@ -380,13 +385,19 @@ def generate_c_function_stub(
             # a sig generator indicates @classmethod by specifying the cls arg
             if class_name and signature.args and signature.args[0].name == "cls":
                 output.append("@classmethod")
-            output.append(
-                "def {function}({args}) -> {ret}: ...".format(
-                    function=name,
-                    args=", ".join(args),
-                    ret=strip_or_import(signature.ret_type, module, known_modules, imports),
-                )
+            output_signature = "def {function}({args}) -> {ret}:".format(
+                function=name,
+                args=", ".join(args),
+                ret=strip_or_import(signature.ret_type, module, known_modules, imports),
             )
+            if include_docstrings and docstr:
+                docstr_quoted = mypy.util.quote_docstring(docstr.strip())
+                docstr_indented = "\n    ".join(docstr_quoted.split("\n"))
+                output.append(output_signature)
+                output.extend(f"    {docstr_indented}".split("\n"))
+            else:
+                output_signature += " ..."
+                output.append(output_signature)
 
 
 def strip_or_import(
@@ -494,6 +505,7 @@ def generate_c_type_stub(
     known_modules: list[str],
     imports: list[str],
     sig_generators: Iterable[SignatureGenerator],
+    include_docstrings: bool = False,
 ) -> None:
     """Generate stub for a single class using runtime introspection.
 
@@ -502,7 +514,7 @@ def generate_c_type_stub(
     """
     raw_lookup = getattr(obj, "__dict__")  # noqa: B009
     items = sorted(get_members(obj), key=lambda x: method_name_sort_key(x[0]))
-    names = set(x[0] for x in items)
+    names = {x[0] for x in items}
     methods: list[str] = []
     types: list[str] = []
     static_properties: list[str] = []
@@ -536,6 +548,7 @@ def generate_c_type_stub(
                 cls=obj,
                 class_name=class_name,
                 sig_generators=sig_generators,
+                include_docstrings=include_docstrings,
             )
         elif is_c_property(raw_value):
             generate_c_property_stub(
@@ -558,6 +571,7 @@ def generate_c_type_stub(
                 imports=imports,
                 known_modules=known_modules,
                 sig_generators=sig_generators,
+                include_docstrings=include_docstrings,
             )
         else:
             attrs.append((attr, value))

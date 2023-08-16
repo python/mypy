@@ -31,6 +31,7 @@ from typing import (
     Callable,
     ClassVar,
     Dict,
+    Final,
     Iterator,
     Mapping,
     NamedTuple,
@@ -38,9 +39,7 @@ from typing import (
     Sequence,
     TextIO,
 )
-from typing_extensions import Final, TypeAlias as _TypeAlias
-
-from mypy_extensions import TypedDict
+from typing_extensions import TypeAlias as _TypeAlias, TypedDict
 
 import mypy.semanal_main
 from mypy.checker import TypeChecker
@@ -56,7 +55,6 @@ from mypy.util import (
     DecodeError,
     decode_python_encoding,
     get_mypy_comments,
-    get_top_two_prefixes,
     hash_digest,
     is_stub_package_file,
     is_sub_path,
@@ -92,12 +90,7 @@ from mypy.plugin import ChainedPlugin, Plugin, ReportConfigContext
 from mypy.plugins.default import DefaultPlugin
 from mypy.renaming import LimitedVariableRenameVisitor, VariableRenameVisitor
 from mypy.stats import dump_type_stats
-from mypy.stubinfo import (
-    is_legacy_bundled_package,
-    legacy_bundled_packages,
-    non_bundled_packages,
-    stub_package_name,
-)
+from mypy.stubinfo import legacy_bundled_packages, non_bundled_packages, stub_distribution_name
 from mypy.types import Type
 from mypy.typestate import reset_global_state, type_state
 from mypy.version import __version__
@@ -343,7 +336,9 @@ class CacheMeta(NamedTuple):
 
 
 # Metadata for the fine-grained dependencies file associated with a module.
-FgDepMeta = TypedDict("FgDepMeta", {"path": str, "mtime": int})
+class FgDepMeta(TypedDict):
+    path: str
+    mtime: int
 
 
 def cache_meta_from_dict(meta: dict[str, Any], data_json: str) -> CacheMeta:
@@ -2238,7 +2233,7 @@ class State:
         analyzer = SemanticAnalyzerPreAnalysis()
         with self.wrap_context():
             analyzer.visit_file(self.tree, self.xpath, self.id, options)
-        self.manager.errors.set_unreachable_lines(self.xpath, self.tree.unreachable_lines)
+        self.manager.errors.set_skipped_lines(self.xpath, self.tree.skipped_lines)
         # TODO: Do this while constructing the AST?
         self.tree.names = SymbolTable()
         if not self.tree.is_stub:
@@ -2664,14 +2659,18 @@ def find_module_and_diagnose(
         # search path or the module has not been installed.
 
         ignore_missing_imports = options.ignore_missing_imports
-        top_level, second_level = get_top_two_prefixes(id)
+
+        id_components = id.split(".")
         # Don't honor a global (not per-module) ignore_missing_imports
         # setting for modules that used to have bundled stubs, as
         # otherwise updating mypy can silently result in new false
         # negatives. (Unless there are stubs but they are incomplete.)
         global_ignore_missing_imports = manager.options.ignore_missing_imports
         if (
-            (is_legacy_bundled_package(top_level) or is_legacy_bundled_package(second_level))
+            any(
+                ".".join(id_components[:i]) in legacy_bundled_packages
+                for i in range(len(id_components), 0, -1)
+            )
             and global_ignore_missing_imports
             and not options.ignore_missing_imports_per_module
             and result is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
@@ -2779,16 +2778,29 @@ def module_not_found(
     else:
         daemon = manager.options.fine_grained_incremental
         msg, notes = reason.error_message_templates(daemon)
-        errors.report(line, 0, msg.format(module=target), code=codes.IMPORT)
-        top_level, second_level = get_top_two_prefixes(target)
-        if second_level in legacy_bundled_packages or second_level in non_bundled_packages:
-            top_level = second_level
+        if reason == ModuleNotFoundReason.NOT_FOUND:
+            code = codes.IMPORT_NOT_FOUND
+        elif (
+            reason == ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
+            or reason == ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
+        ):
+            code = codes.IMPORT_UNTYPED
+        else:
+            code = codes.IMPORT
+        errors.report(line, 0, msg.format(module=target), code=code)
+
+        components = target.split(".")
+        for i in range(len(components), 0, -1):
+            module = ".".join(components[:i])
+            if module in legacy_bundled_packages or module in non_bundled_packages:
+                break
+
         for note in notes:
             if "{stub_dist}" in note:
-                note = note.format(stub_dist=stub_package_name(top_level))
+                note = note.format(stub_dist=stub_distribution_name(module))
             errors.report(line, 0, note, severity="note", only_once=True, code=codes.IMPORT)
         if reason is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
-            manager.missing_stub_packages.add(stub_package_name(top_level))
+            manager.missing_stub_packages.add(stub_distribution_name(module))
     errors.set_import_context(save_import_context)
 
 
@@ -3076,7 +3088,7 @@ def load_graph(
             manager.errors.report(
                 -1,
                 -1,
-                "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "  # noqa: E501
+                "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "
                 "for more info",
                 severity="note",
             )
@@ -3164,7 +3176,7 @@ def load_graph(
                             manager.errors.report(
                                 -1,
                                 0,
-                                "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "  # noqa: E501
+                                "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "
                                 "for more info",
                                 severity="note",
                             )

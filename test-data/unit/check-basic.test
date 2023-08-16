@@ -1,8 +1,8 @@
 [case testEmptyFile]
 
 [case testAssignmentAndVarDef]
-a = None # type: A
-b = None # type: B
+a: A
+b: B
 if int():
     a = a
 if int():
@@ -16,14 +16,14 @@ class A:
 class B:
     def __init__(self): pass
 
-x = None # type: A
+x: A
 x = A()
 if int():
     x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 [case testInheritInitFromObject]
 class A(object): pass
 class B(object): pass
-x = None # type: A
+x: A
 if int():
     x = A()
 if int():
@@ -31,8 +31,8 @@ if int():
 [case testImplicitInheritInitFromObject]
 class A: pass
 class B: pass
-x = None # type: A
-o = None # type: object
+x: A
+o: object
 if int():
     x = o # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 if int():
@@ -58,7 +58,7 @@ x = B() # type: A
 y = A() # type: B  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 [case testDeclaredVariableInParentheses]
 
-(x) = None # type: int
+(x) = 2 # type: int
 if int():
     x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 if int():
@@ -134,8 +134,8 @@ main:6: error: Missing positional arguments "baz", "bas" in call to "foo"
 
 [case testLocalVariables]
 def f() -> None:
-  x = None # type: A
-  y = None # type: B
+  x: A
+  y: B
   if int():
       x = x
       x = y # E: Incompatible types in assignment (expression has type "B", variable has type "A")
@@ -228,12 +228,12 @@ reveal_type(__annotations__)  # N: Revealed type is "builtins.dict[builtins.str,
 [case testLocalVariableShadowing]
 class A: pass
 class B: pass
-a = None # type: A
+a: A
 if int():
     a = B()  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
     a = A()
 def f() -> None:
-  a = None # type: B
+  a: B
   if int():
       a = A()     # E: Incompatible types in assignment (expression has type "A", variable has type "B")
       a = B()
@@ -241,8 +241,8 @@ a = B()       # E: Incompatible types in assignment (expression has type "B", va
 a = A()
 [case testGlobalDefinedInBlockWithType]
 class A: pass
-while A:
-    a = None # type: A
+while 1:
+    a: A
     if int():
         a = A()
         a = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
@@ -382,7 +382,6 @@ y = x # E: Incompatible types in assignment (expression has type "Dict[str, int]
 [builtins fixtures/dict.pyi]
 
 [case testDistinctTypes]
-# flags: --strict-optional
 import b
 
 [file a.py]

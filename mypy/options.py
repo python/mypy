@@ -4,8 +4,7 @@ import pprint
 import re
 import sys
 import sysconfig
-from typing import Any, Callable, Dict, Mapping, Pattern
-from typing_extensions import Final
+from typing import Any, Callable, Final, Mapping, Pattern
 
 from mypy import defaults
 from mypy.errorcodes import ErrorCode, error_codes
@@ -40,6 +39,7 @@ PER_MODULE_OPTIONS: Final = {
     "disallow_untyped_defs",
     "enable_error_code",
     "enabled_error_codes",
+    "extra_checks",
     "follow_imports_for_stubs",
     "follow_imports",
     "ignore_errors",
@@ -136,6 +136,10 @@ class Options:
         # Disallow calling untyped functions from typed ones
         self.disallow_untyped_calls = False
 
+        # Always allow untyped calls for function coming from modules/packages
+        # in this list (each item effectively acts as a prefix match)
+        self.untyped_calls_exclude: list[str] = []
+
         # Disallow defining untyped (or incompletely typed) functions
         self.disallow_untyped_defs = False
 
@@ -200,8 +204,11 @@ class Options:
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
         self.strict_equality = False
 
-        # Make arguments prepended via Concatenate be truly positional-only.
+        # Deprecated, use extra_checks instead.
         self.strict_concatenate = False
+
+        # Enable additional checks that are technically correct but impractical.
+        self.extra_checks = False
 
         # Report an error for any branches inferred to be unreachable as a result of
         # type analysis.
@@ -276,6 +283,12 @@ class Options:
         # mypy. (Like mypyc.)
         self.preserve_asts = False
 
+        # If True, function and class docstrings will be extracted and retained.
+        # This isn't exposed as a command line option
+        # because it is intended for software integrating with
+        # mypy. (Like stubgen.)
+        self.include_docstrings = False
+
         # Paths of user plugins
         self.plugins: list[str] = []
 
@@ -309,6 +322,7 @@ class Options:
         self.show_column_numbers: bool = False
         self.show_error_end: bool = False
         self.hide_error_codes = False
+        self.show_error_code_links = False
         # Use soft word wrap and show trimmed source snippets with error location markers.
         self.pretty = False
         self.dump_graph = False
@@ -524,7 +538,7 @@ class Options:
         return re.compile(expr + "\\Z")
 
     def select_options_affecting_cache(self) -> Mapping[str, object]:
-        result: Dict[str, object] = {}
+        result: dict[str, object] = {}
         for opt in OPTIONS_AFFECTING_CACHE:
             val = getattr(self, opt)
             if opt in ("disabled_error_codes", "enabled_error_codes"):

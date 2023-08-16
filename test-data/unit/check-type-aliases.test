@@ -12,7 +12,7 @@ U = Union[int, str]
 def f(x: U) -> None: pass
 f(1)
 f('')
-f(()) # E: Argument 1 to "f" has incompatible type "Tuple[]"; expected "Union[int, str]"
+f(()) # E: Argument 1 to "f" has incompatible type "Tuple[()]"; expected "Union[int, str]"
 [targets __main__, __main__.f]
 [builtins fixtures/tuple.pyi]
 
@@ -28,7 +28,7 @@ f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Tuple[int, st
 [case testCallableTypeAlias]
 from typing import Callable
 A = Callable[[int], None]
-f = None  # type: A
+f: A
 f(1)
 f('') # E: Argument 1 has incompatible type "str"; expected "int"
 [targets __main__]
@@ -64,7 +64,7 @@ from _m import U
 def f(x: U) -> None: pass
 f(1)
 f('x')
-f(()) # E: Argument 1 to "f" has incompatible type "Tuple[]"; expected "Union[int, str]"
+f(()) # E: Argument 1 to "f" has incompatible type "Tuple[()]"; expected "Union[int, str]"
 [file _m.py]
 from typing import Union
 U = Union[int, str]
@@ -163,12 +163,12 @@ f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "str"
 [case testEmptyTupleTypeAlias]
 from typing import Tuple, Callable
 EmptyTuple = Tuple[()]
-x = None # type: EmptyTuple
-reveal_type(x)  # N: Revealed type is "Tuple[]"
+x: EmptyTuple
+reveal_type(x)  # N: Revealed type is "Tuple[()]"
 
 EmptyTupleCallable = Callable[[Tuple[()]], None]
-f = None # type: EmptyTupleCallable
-reveal_type(f)  # N: Revealed type is "def (Tuple[])"
+f: EmptyTupleCallable
+reveal_type(f)  # N: Revealed type is "def (Tuple[()])"
 [builtins fixtures/list.pyi]
 
 [case testForwardTypeAlias]
@@ -291,7 +291,6 @@ reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
 [builtins fixtures/bool.pyi]
 
 [case testNoneAliasStrict]
-# flags: --strict-optional
 from typing import Optional, Union
 void = type(None)
 x: int

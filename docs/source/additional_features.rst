@@ -9,10 +9,9 @@ of the previous sections.
 Dataclasses
 ***********
 
-In Python 3.7, a new :py:mod:`dataclasses` module has been added to the standard library.
-This module allows defining and customizing simple boilerplate-free classes.
-They can be defined using the :py:func:`@dataclasses.dataclass
-<python:dataclasses.dataclass>` decorator:
+The :py:mod:`dataclasses` module allows defining and customizing simple
+boilerplate-free classes. They can be defined using the
+:py:func:`@dataclasses.dataclass <python:dataclasses.dataclass>` decorator:
 
 .. code-block:: python
 

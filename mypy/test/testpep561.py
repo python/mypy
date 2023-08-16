@@ -46,6 +46,28 @@ def virtualenv(python_executable: str = sys.executable) -> Iterator[tuple[str, s
             yield venv_dir, os.path.abspath(os.path.join(venv_dir, "bin", "python"))
 
 
+def upgrade_pip(python_executable: str) -> None:
+    """Install pip>=21.3.1. Required for editable installs with PEP 660."""
+    if (
+        sys.version_info >= (3, 11)
+        or (3, 10, 3) <= sys.version_info < (3, 11)
+        or (3, 9, 11) <= sys.version_info < (3, 10)
+        or (3, 8, 13) <= sys.version_info < (3, 9)
+    ):
+        # Skip for more recent Python releases which come with pip>=21.3.1
+        # out of the box - for performance reasons.
+        return
+
+    install_cmd = [python_executable, "-m", "pip", "install", "pip>=21.3.1"]
+    try:
+        with filelock.FileLock(pip_lock, timeout=pip_timeout):
+            proc = subprocess.run(install_cmd, capture_output=True, env=os.environ)
+    except filelock.Timeout as err:
+        raise Exception(f"Failed to acquire {pip_lock}") from err
+    if proc.returncode != 0:
+        raise Exception(proc.stdout.decode("utf-8") + proc.stderr.decode("utf-8"))
+
+
 def install_package(
     pkg: str, python_executable: str = sys.executable, editable: bool = False
 ) -> None:
@@ -76,11 +98,6 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
     assert testcase.old_cwd is not None, "test was not properly set up"
     python = sys.executable
 
-    if sys.version_info < (3, 8) and testcase.location[-1] == "testTypedPkgSimpleEditable":
-        # Python 3.7 doesn't ship with new enough pip to support PEP 660
-        # This is a quick hack to skip the test; we'll drop Python 3.7 support soon enough
-        return
-
     assert python is not None, "Should be impossible"
     pkgs, pip_args = parse_pkgs(testcase.input[0])
     mypy_args = parse_mypy_args(testcase.input[1])
@@ -93,6 +110,9 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
     assert pkgs, "No packages to install for PEP 561 test?"
     with virtualenv(python) as venv:
         venv_dir, python_executable = venv
+        if editable:
+            # Editable installs with PEP 660 require pip>=21.3
+            upgrade_pip(python_executable)
         for pkg in pkgs:
             install_package(pkg, python_executable, editable)
 

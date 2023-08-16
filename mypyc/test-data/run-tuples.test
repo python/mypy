@@ -98,6 +98,7 @@ assert f(Sub(3, 2)) == 3
 -- Ref: https://github.com/mypyc/mypyc/issues/924
 [case testNamedTupleClassSyntax]
 from typing import Dict, List, NamedTuple, Optional, Tuple, Union
+from typing_extensions import final
 
 class FuncIR: pass
 
@@ -120,6 +121,11 @@ class Record(NamedTuple):
 # Make sure mypyc loads the annotation string for this forward reference.
 # Ref: https://github.com/mypyc/mypyc/issues/938
 class ClassIR: pass
+
+# Ref: https://github.com/mypyc/mypyc/issues/927
+@final
+class Inextensible(NamedTuple):
+    x: int
 
 [file driver.py]
 from typing import ForwardRef, Optional

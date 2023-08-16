@@ -319,11 +319,7 @@ def analyze_instance_member_access(
             mx.msg.cant_assign_to_method(mx.context)
         signature = function_type(method, mx.named_type("builtins.function"))
         signature = freshen_all_functions_type_vars(signature)
-        if name == "__new__" or method.is_static:
-            # __new__ is special and behaves like a static method -- don't strip
-            # the first argument.
-            pass
-        else:
+        if not method.is_static:
             if name != "__call__":
                 # TODO: use proper treatment of special methods on unions instead
                 #       of this hack here and below (i.e. mx.self_type).
@@ -735,12 +731,12 @@ def analyze_var(
     """Analyze access to an attribute via a Var node.
 
     This is conceptually part of analyze_member_access and the arguments are similar.
-
-    itype is the class object in which var is defined
+    itype is the instance type in which attribute should be looked up
     original_type is the type of E in the expression E.var
     if implicit is True, the original Var was created as an assignment to self
     """
     # Found a member variable.
+    original_itype = itype
     itype = map_instance_to_supertype(itype, var.info)
     typ = var.type
     if typ:
@@ -756,6 +752,16 @@ def analyze_var(
             get_proper_type(mx.original_type)
         ):
             t = expand_self_type(var, t, mx.original_type)
+        elif (
+            mx.is_self
+            and original_itype.type != var.info
+            # If an attribute with Self-type was defined in a supertype, we need to
+            # rebind the Self type variable to Self type variable of current class...
+            and original_itype.type.self_type is not None
+            # ...unless `self` has an explicit non-trivial annotation.
+            and original_itype == mx.chk.scope.active_self_type()
+        ):
+            t = expand_self_type(var, t, original_itype.type.self_type)
         t = get_proper_type(expand_type_by_instance(t, itype))
         freeze_all_type_vars(t)
         result: Type = t

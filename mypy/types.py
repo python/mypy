@@ -9,6 +9,7 @@ from typing import (
     Any,
     ClassVar,
     Dict,
+    Final,
     Iterable,
     NamedTuple,
     NewType,
@@ -17,7 +18,7 @@ from typing import (
     Union,
     cast,
 )
-from typing_extensions import Final, Self, TypeAlias as _TypeAlias, TypeGuard, overload
+from typing_extensions import Self, TypeAlias as _TypeAlias, TypeGuard, overload
 
 import mypy.nodes
 from mypy.bogus_type import Bogus
@@ -150,7 +151,12 @@ NEVER_NAMES: Final = (
 )
 
 # Mypyc fixed-width native int types (compatible with builtins.int)
-MYPYC_NATIVE_INT_NAMES: Final = ("mypy_extensions.i64", "mypy_extensions.i32")
+MYPYC_NATIVE_INT_NAMES: Final = (
+    "mypy_extensions.i64",
+    "mypy_extensions.i32",
+    "mypy_extensions.i16",
+    "mypy_extensions.u8",
+)
 
 DATACLASS_TRANSFORM_NAMES: Final = (
     "typing.dataclass_transform",
@@ -254,7 +260,7 @@ class Type(mypy.nodes.Context):
         return True
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
-        raise RuntimeError("Not implemented")
+        raise RuntimeError("Not implemented", type(self))
 
     def __repr__(self) -> str:
         return self.accept(TypeStrVisitor(options=Options()))
@@ -1571,6 +1577,7 @@ class Parameters(ProperType):
         self.arg_kinds = arg_kinds
         self.arg_names = list(arg_names)
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
+        assert not any(isinstance(t, Parameters) for t in arg_types)
         self.min_args = arg_kinds.count(ARG_POS)
         self.is_ellipsis_args = is_ellipsis_args
         self.variables = variables or []
@@ -1782,6 +1789,11 @@ class CallableType(FunctionLike):
     ) -> None:
         super().__init__(line, column)
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
+        for t, k in zip(arg_types, arg_kinds):
+            if isinstance(t, ParamSpecType):
+                assert not t.prefix.arg_types
+                # TODO: should we assert that only ARG_STAR contain ParamSpecType?
+                # See testParamSpecJoin, that relies on passing e.g `P.args` as plain argument.
         if variables is None:
             variables = []
         self.arg_types = list(arg_types)
@@ -2027,36 +2039,21 @@ class CallableType(FunctionLike):
         if not isinstance(arg_type, ParamSpecType):
             return None
 
-        # sometimes paramspectypes are analyzed in from mysterious places,
-        # e.g. def f(prefix..., *args: P.args, **kwargs: P.kwargs) -> ...: ...
-        prefix = arg_type.prefix
-        if not prefix.arg_types:
-            # TODO: confirm that all arg kinds are positional
-            prefix = Parameters(self.arg_types[:-2], self.arg_kinds[:-2], self.arg_names[:-2])
-
+        # Prepend prefix for def f(prefix..., *args: P.args, **kwargs: P.kwargs) -> ...
+        # TODO: confirm that all arg kinds are positional
+        prefix = Parameters(self.arg_types[:-2], self.arg_kinds[:-2], self.arg_names[:-2])
         return arg_type.copy_modified(flavor=ParamSpecFlavor.BARE, prefix=prefix)
 
-    def expand_param_spec(
-        self, c: CallableType | Parameters, no_prefix: bool = False
-    ) -> CallableType:
+    def expand_param_spec(self, c: Parameters) -> CallableType:
+        # TODO: try deleting variables from Parameters after new type inference is default.
         variables = c.variables
-
-        if no_prefix:
-            return self.copy_modified(
-                arg_types=c.arg_types,
-                arg_kinds=c.arg_kinds,
-                arg_names=c.arg_names,
-                is_ellipsis_args=c.is_ellipsis_args,
-                variables=[*variables, *self.variables],
-            )
-        else:
-            return self.copy_modified(
-                arg_types=self.arg_types[:-2] + c.arg_types,
-                arg_kinds=self.arg_kinds[:-2] + c.arg_kinds,
-                arg_names=self.arg_names[:-2] + c.arg_names,
-                is_ellipsis_args=c.is_ellipsis_args,
-                variables=[*variables, *self.variables],
-            )
+        return self.copy_modified(
+            arg_types=self.arg_types[:-2] + c.arg_types,
+            arg_kinds=self.arg_kinds[:-2] + c.arg_kinds,
+            arg_names=self.arg_names[:-2] + c.arg_names,
+            is_ellipsis_args=c.is_ellipsis_args,
+            variables=[*variables, *self.variables],
+        )
 
     def with_unpacked_kwargs(self) -> NormalizedCallableType:
         if not self.unpack_kwargs:
@@ -2433,6 +2430,7 @@ class TypedDictType(ProperType):
         *,
         fallback: Instance | None = None,
         item_types: list[Type] | None = None,
+        item_names: list[str] | None = None,
         required_keys: set[str] | None = None,
     ) -> TypedDictType:
         if fallback is None:
@@ -2443,6 +2441,9 @@ class TypedDictType(ProperType):
             items = dict(zip(self.items, item_types))
         if required_keys is None:
             required_keys = self.required_keys
+        if item_names is not None:
+            items = {k: v for (k, v) in items.items() if k in item_names}
+            required_keys &= set(item_names)
         return TypedDictType(items, required_keys, fallback, self.line, self.column)
 
     def create_anonymous_fallback(self) -> Instance:
@@ -2957,7 +2958,7 @@ def get_proper_types(
 # to make it easier to gradually get modules working with mypyc.
 # Import them here, after the types are defined.
 # This is intended as a re-export also.
-from mypy.type_visitor import (  # noqa: F811,F401
+from mypy.type_visitor import (  # noqa: F811
     ALL_STRATEGY as ALL_STRATEGY,
     ANY_STRATEGY as ANY_STRATEGY,
     BoolTypeQuery as BoolTypeQuery,
@@ -3187,7 +3188,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return f"Overload({', '.join(a)})"
 
     def visit_tuple_type(self, t: TupleType) -> str:
-        s = self.list_str(t.items)
+        s = self.list_str(t.items) or "()"
         tuple_name = "tuple" if self.options.use_lowercase_names() else "Tuple"
         if t.partial_fallback and t.partial_fallback.type:
             fallback_name = t.partial_fallback.type.fullname

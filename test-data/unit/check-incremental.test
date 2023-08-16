@@ -1733,12 +1733,12 @@ class R: pass
 [file r/s.py]
 from . import m
 R = m.R
-a = None  # type: R
+a: R
 
 [file r/s.py.2]
 from . import m
 R = m.R
-a = None  # type: R
+a: R
 
 [case testIncrementalBaseClassAttributeConflict]
 class A: pass
@@ -2591,7 +2591,7 @@ def output() -> IntNode[str]:
     return Node(1, 'x')
 x = output() # type: IntNode
 
-y = None # type: IntNode
+y: IntNode
 y.x = 1
 y.y = 1
 y.y = 'x'
@@ -2612,7 +2612,7 @@ def output() -> IntNode[str]:
     return Node(1, 'x')
 x = output() # type: IntNode
 
-y = None # type: IntNode
+y: IntNode
 y.x = 1
 y.y = 1
 y.y = 'x'
@@ -2886,7 +2886,6 @@ tmp/main.py:2: error: Expression has type "Any"
 tmp/main.py:2: error: Expression has type "Any"
 
 [case testIncrementalStrictOptional]
-# flags: --strict-optional
 import a
 1 + a.foo()
 [file a.py]
@@ -2896,8 +2895,8 @@ from typing import Optional
 def foo() -> Optional[int]: return 0
 [out1]
 [out2]
-main:3: error: Unsupported operand types for + ("int" and "None")
-main:3: note: Right operand is of type "Optional[int]"
+main:2: error: Unsupported operand types for + ("int" and "None")
+main:2: note: Right operand is of type "Optional[int]"
 
 [case testAttrsIncrementalSubclassingCached]
 from a import A
@@ -3442,7 +3441,6 @@ main:2: error: Cannot find implementation or library stub for module named "a"
 main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testIncrementalInheritanceAddAnnotation]
-# flags: --strict-optional
 import a
 [file a.py]
 import b
@@ -3725,7 +3723,7 @@ import b
 [file b.py]
 -- This is a heinous hack, but we simulate having a invalid cache by clobbering
 -- the proto deps file with something with mtime mismatches.
-[file ../.mypy_cache/3.7/@deps.meta.json.2]
+[file ../.mypy_cache/3.8/@deps.meta.json.2]
 {"snapshot": {"__main__": "a7c958b001a45bd6a2a320f4e53c4c16", "a": "d41d8cd98f00b204e9800998ecf8427e", "b": "d41d8cd98f00b204e9800998ecf8427e", "builtins": "c532c89da517a4b779bcf7a964478d67"}, "deps_meta": {"@root": {"path": "@root.deps.json", "mtime": 0}, "__main__": {"path": "__main__.deps.json", "mtime": 0}, "a": {"path": "a.deps.json", "mtime": 0}, "b": {"path": "b.deps.json", "mtime": 0}, "builtins": {"path": "builtins.deps.json", "mtime": 0}}}
 [file ../.mypy_cache/.gitignore]
 # Another hack to not trigger a .gitignore creation failure "false positive"
@@ -3760,7 +3758,7 @@ import b
 [file b.py]
 -- This is a heinous hack, but we simulate having a invalid cache by deleting
 -- the proto deps file.
-[delete ../.mypy_cache/3.7/@deps.meta.json.2]
+[delete ../.mypy_cache/3.8/@deps.meta.json.2]
 [file b.py.2]
 # uh
 -- Every file should get reloaded, since the cache was invalidated
@@ -5398,7 +5396,8 @@ reveal_type(z)
 [out]
 tmp/c.py:2: note: Revealed type is "a.<subclass of "A" and "B">"
 [out2]
-tmp/c.py:2: note: Revealed type is "a.A"
+tmp/b.py:2: error: Cannot determine type of "y"
+tmp/c.py:2: note: Revealed type is "Any"
 
 [case testIsInstanceAdHocIntersectionIncrementalUnreachaableToIntersection]
 import c
@@ -5429,7 +5428,8 @@ from b import z
 reveal_type(z)
 [builtins fixtures/isinstance.pyi]
 [out]
-tmp/c.py:2: note: Revealed type is "a.A"
+tmp/b.py:2: error: Cannot determine type of "y"
+tmp/c.py:2: note: Revealed type is "Any"
 [out2]
 tmp/c.py:2: note: Revealed type is "a.<subclass of "A" and "B">"
 
@@ -5491,7 +5491,6 @@ class Foo:
 class C: pass
 
 [case testIncrementalNestedNamedTuple]
-# flags: --python-version 3.6
 import a
 
 [file a.py]
@@ -5741,7 +5740,6 @@ class C:
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleUpdateNonRecursiveToRecursiveCoarse]
-# flags: --strict-optional
 import c
 [file a.py]
 from b import M
@@ -5784,7 +5782,6 @@ tmp/c.py:5: error: Incompatible types in assignment (expression has type "Option
 tmp/c.py:7: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
 
 [case testTupleTypeUpdateNonRecursiveToRecursiveCoarse]
-# flags: --strict-optional
 import c
 [file a.py]
 from b import M
@@ -5817,7 +5814,6 @@ tmp/c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins
 tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
 
 [case testTypeAliasUpdateNonRecursiveToRecursiveCoarse]
-# flags: --strict-optional
 import c
 [file a.py]
 from b import M
@@ -5850,7 +5846,6 @@ tmp/c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins
 tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
 
 [case testTypedDictUpdateNonRecursiveToRecursiveCoarse]
-# flags: --strict-optional
 import c
 [file a.py]
 from b import M
@@ -6045,7 +6040,6 @@ tmp/m.py:9: note:     Got:
 tmp/m.py:9: note:         def update() -> str
 
 [case testAbstractBodyTurnsEmptyCoarse]
-# flags: --strict-optional
 from b import Base
 
 class Sub(Base):
@@ -6065,7 +6059,7 @@ class Base:
     def meth(self) -> int: ...
 [out]
 [out2]
-main:6: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
+main:5: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
 
 [case testNoCrashDoubleReexportFunctionEmpty]
 import m

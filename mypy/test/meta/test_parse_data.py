@@ -5,6 +5,7 @@ but to ensure we maintain a basic level of ergonomics for mypy contributors.
 import subprocess
 import sys
 import textwrap
+import uuid
 from pathlib import Path
 
 from mypy.test.config import test_data_prefix
@@ -18,7 +19,7 @@ class ParseTestDataSuite(Suite):
     def _run_pytest(self, data_suite: str) -> str:
         p_test_data = Path(test_data_prefix)
         p_root = p_test_data.parent.parent
-        p = p_test_data / "check-__fixture__.test"
+        p = p_test_data / f"check-meta-{uuid.uuid4()}.test"
         assert not p.exists()
         try:
             p.write_text(data_suite)
@@ -66,6 +67,40 @@ class ParseTestDataSuite(Suite):
             f".test:{expected_lineno}: Invalid section header [unknownsection] in case 'abc'"
         )
         assert expected in actual
+
+    def test_bad_ge_version_check(self) -> None:
+        # Arrange
+        data = self._dedent(
+            """
+            [case abc]
+            s: str
+            [out version>=3.8]
+            abc
+            """
+        )
+
+        # Act
+        actual = self._run_pytest(data)
+
+        # Assert
+        assert "version>=3.8 always true since minimum runtime version is (3, 8)" in actual
+
+    def test_bad_eq_version_check(self) -> None:
+        # Arrange
+        data = self._dedent(
+            """
+            [case abc]
+            s: str
+            [out version==3.7]
+            abc
+            """
+        )
+
+        # Act
+        actual = self._run_pytest(data)
+
+        # Assert
+        assert "version==3.7 always false since minimum runtime version is (3, 8)" in actual
 
     def test_redundant_out(self) -> None:
         # Arrange

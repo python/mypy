@@ -42,6 +42,8 @@ files = [
     "irbuild-strip-asserts.test",
     "irbuild-i64.test",
     "irbuild-i32.test",
+    "irbuild-i16.test",
+    "irbuild-u8.test",
     "irbuild-vectorcall.test",
     "irbuild-unreachable.test",
     "irbuild-isinstance.test",

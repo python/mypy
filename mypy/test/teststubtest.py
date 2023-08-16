@@ -68,6 +68,7 @@ class Mapping(Generic[_K, _V]): ...
 class Match(Generic[AnyStr]): ...
 class Sequence(Iterable[_T_co]): ...
 class Tuple(Sequence[_T_co]): ...
+class NamedTuple(tuple[Any, ...]): ...
 def overload(func: _T) -> _T: ...
 """
 
@@ -82,6 +83,7 @@ VT = TypeVar('VT')
 class object:
     __module__: str
     def __init__(self) -> None: pass
+    def __repr__(self) -> str: pass
 class type: ...
 
 class tuple(Sequence[T_co], Generic[T_co]): ...
@@ -232,17 +234,16 @@ class StubtestUnit(unittest.TestCase):
             runtime="def bad(num, text) -> None: pass",
             error="bad",
         )
-        if sys.version_info >= (3, 8):
-            yield Case(
-                stub="def good_posonly(__number: int, text: str) -> None: ...",
-                runtime="def good_posonly(num, /, text): pass",
-                error=None,
-            )
-            yield Case(
-                stub="def bad_posonly(__number: int, text: str) -> None: ...",
-                runtime="def bad_posonly(flag, /, text): pass",
-                error="bad_posonly",
-            )
+        yield Case(
+            stub="def good_posonly(__number: int, text: str) -> None: ...",
+            runtime="def good_posonly(num, /, text): pass",
+            error=None,
+        )
+        yield Case(
+            stub="def bad_posonly(__number: int, text: str) -> None: ...",
+            runtime="def bad_posonly(flag, /, text): pass",
+            error="bad_posonly",
+        )
         yield Case(
             stub="""
             class BadMethod:
@@ -283,22 +284,21 @@ class StubtestUnit(unittest.TestCase):
             runtime="def stub_posonly(number, text): pass",
             error="stub_posonly",
         )
-        if sys.version_info >= (3, 8):
-            yield Case(
-                stub="def good_posonly(__number: int, text: str) -> None: ...",
-                runtime="def good_posonly(number, /, text): pass",
-                error=None,
-            )
-            yield Case(
-                stub="def runtime_posonly(number: int, text: str) -> None: ...",
-                runtime="def runtime_posonly(number, /, text): pass",
-                error="runtime_posonly",
-            )
-            yield Case(
-                stub="def stub_posonly_570(number: int, /, text: str) -> None: ...",
-                runtime="def stub_posonly_570(number, text): pass",
-                error="stub_posonly_570",
-            )
+        yield Case(
+            stub="def good_posonly(__number: int, text: str) -> None: ...",
+            runtime="def good_posonly(number, /, text): pass",
+            error=None,
+        )
+        yield Case(
+            stub="def runtime_posonly(number: int, text: str) -> None: ...",
+            runtime="def runtime_posonly(number, /, text): pass",
+            error="runtime_posonly",
+        )
+        yield Case(
+            stub="def stub_posonly_570(number: int, /, text: str) -> None: ...",
+            runtime="def stub_posonly_570(number, text): pass",
+            error="stub_posonly_570",
+        )
 
     @collect_cases
     def test_default_presence(self) -> Iterator[Case]:
@@ -582,17 +582,16 @@ class StubtestUnit(unittest.TestCase):
             runtime="def f4(a, *args, b, **kwargs): pass",
             error=None,
         )
-        if sys.version_info >= (3, 8):
-            yield Case(
-                stub="""
-                @overload
-                def f5(__a: int) -> int: ...
-                @overload
-                def f5(__b: str) -> str: ...
-                """,
-                runtime="def f5(x, /): pass",
-                error=None,
-            )
+        yield Case(
+            stub="""
+            @overload
+            def f5(__a: int) -> int: ...
+            @overload
+            def f5(__b: str) -> str: ...
+            """,
+            runtime="def f5(x, /): pass",
+            error=None,
+        )
 
     @collect_cases
     def test_property(self) -> Iterator[Case]:
@@ -1600,6 +1599,72 @@ class StubtestUnit(unittest.TestCase):
                 a: int
             """,
             error=None,
+        )
+
+    @collect_cases
+    def test_named_tuple(self) -> Iterator[Case]:
+        yield Case(
+            stub="from typing import NamedTuple",
+            runtime="from typing import NamedTuple",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class X1(NamedTuple):
+                bar: int
+                foo: str = ...
+            """,
+            runtime="""
+            class X1(NamedTuple):
+                bar: int
+                foo: str = 'a'
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class X2(NamedTuple):
+                bar: int
+                foo: str
+            """,
+            runtime="""
+            class X2(NamedTuple):
+                bar: int
+                foo: str = 'a'
+            """,
+            # `__new__` will miss a default value for a `foo` parameter,
+            # but we don't generate special errors for `foo` missing `...` part.
+            error="X2.__new__",
+        )
+
+    @collect_cases
+    def test_named_tuple_typing_and_collections(self) -> Iterator[Case]:
+        yield Case(
+            stub="from typing import NamedTuple",
+            runtime="from collections import namedtuple",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class X1(NamedTuple):
+                bar: int
+                foo: str = ...
+            """,
+            runtime="""
+            X1 = namedtuple('X1', ['bar', 'foo'], defaults=['a'])
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class X2(NamedTuple):
+                bar: int
+                foo: str
+            """,
+            runtime="""
+            X2 = namedtuple('X1', ['bar', 'foo'], defaults=['a'])
+            """,
+            error="X2.__new__",
         )
 
     @collect_cases

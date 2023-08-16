@@ -747,7 +747,6 @@ def test3(switch: FlipFlopEnum) -> None:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingEqualityRequiresExplicitStrLiteral]
-# flags: --strict-optional
 from typing_extensions import Literal, Final
 
 A_final: Final = "A"
@@ -794,7 +793,6 @@ reveal_type(x_union)      # N: Revealed type is "Union[Literal['A'], Literal['B'
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingEqualityRequiresExplicitEnumLiteral]
-# flags: --strict-optional
 from typing import Union
 from typing_extensions import Literal, Final
 from enum import Enum
@@ -879,7 +877,7 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingEqualityDisabledForCustomEqualityChain]
-# flags: --strict-optional --strict-equality --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Union
 from typing_extensions import Literal
 
@@ -916,7 +914,7 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingUnreachableCases]
-# flags: --strict-optional --strict-equality --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Union
 from typing_extensions import Literal
 
@@ -964,7 +962,7 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingUnreachableCases2]
-# flags: --strict-optional --strict-equality --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Union
 from typing_extensions import Literal
 
@@ -1064,7 +1062,6 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingBooleanIdentityCheck]
-# flags: --strict-optional
 from typing import Optional
 from typing_extensions import Literal
 
@@ -1087,7 +1084,6 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingBooleanTruthiness]
-# flags: --strict-optional
 from typing import Optional
 from typing_extensions import Literal
 
@@ -1109,7 +1105,6 @@ reveal_type(opt_bool_val)   # N: Revealed type is "Union[builtins.bool, None]"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingBooleanBoolOp]
-# flags: --strict-optional
 from typing import Optional
 from typing_extensions import Literal
 
@@ -1138,7 +1133,6 @@ reveal_type(x) # N: Revealed type is "builtins.bool"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingTypedDictUsingEnumLiteral]
-# flags: --python-version 3.6
 from typing import Union
 from typing_extensions import TypedDict, Literal
 from enum import Enum
@@ -1162,7 +1156,6 @@ def f(d: Union[Foo, Bar]) -> None:
 [builtins fixtures/dict.pyi]
 
 [case testNarrowingUsingMetaclass]
-# flags: --strict-optional
 from typing import Type
 
 class M(type):
@@ -1182,7 +1175,6 @@ def f(t: Type[C]) -> None:
     reveal_type(t)  # N: Revealed type is "Type[__main__.C]"
 
 [case testNarrowingUsingTypeVar]
-# flags: --strict-optional
 from typing import Type, TypeVar
 
 class A: pass
@@ -1268,4 +1260,77 @@ def g() -> None:
     if foo is None:
         def foo(): ...
     foo()
+[builtins fixtures/dict.pyi]
+
+
+[case testNarrowingOptionalEqualsNone]
+from typing import Optional
+
+class A: ...
+
+val: Optional[A]
+
+if val == None:
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+else:
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+if val != None:
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+else:
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+
+if val in (None,):
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+else:
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+if val not in (None,):
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+else:
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingWithTupleOfTypes]
+from typing import Tuple, Type
+
+class Base: ...
+
+class Impl1(Base): ...
+class Impl2(Base): ...
+
+impls: Tuple[Type[Base], ...] = (Impl1, Impl2)
+some: object
+
+if isinstance(some, impls):
+    reveal_type(some)  # N: Revealed type is "__main__.Base"
+else:
+    reveal_type(some)  # N: Revealed type is "builtins.object"
+
+raw: Tuple[type, ...]
+if isinstance(some, raw):
+    reveal_type(some)  # N: Revealed type is "builtins.object"
+else:
+    reveal_type(some)  # N: Revealed type is "builtins.object"
+[builtins fixtures/dict.pyi]
+
+
+[case testNarrowingWithTupleOfTypesPy310Plus]
+# flags: --python-version 3.10
+class Base: ...
+
+class Impl1(Base): ...
+class Impl2(Base): ...
+
+some: int | Base
+
+impls: tuple[type[Base], ...] = (Impl1, Impl2)
+if isinstance(some, impls):
+    reveal_type(some)  # N: Revealed type is "__main__.Base"
+else:
+    reveal_type(some)  # N: Revealed type is "Union[builtins.int, __main__.Base]"
+
+raw: tuple[type, ...]
+if isinstance(some, raw):
+    reveal_type(some)  # N: Revealed type is "Union[builtins.int, __main__.Base]"
+else:
+    reveal_type(some)  # N: Revealed type is "Union[builtins.int, __main__.Base]"
 [builtins fixtures/dict.pyi]

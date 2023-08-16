@@ -155,6 +155,12 @@ int32_t CPyLong_AsInt32(PyObject *o);
 int32_t CPyInt32_Divide(int32_t x, int32_t y);
 int32_t CPyInt32_Remainder(int32_t x, int32_t y);
 void CPyInt32_Overflow(void);
+int16_t CPyLong_AsInt16(PyObject *o);
+int16_t CPyInt16_Divide(int16_t x, int16_t y);
+int16_t CPyInt16_Remainder(int16_t x, int16_t y);
+void CPyInt16_Overflow(void);
+uint8_t CPyLong_AsUInt8(PyObject *o);
+void CPyUInt8_Overflow(void);
 double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y);
 
 static inline int CPyTagged_CheckLong(CPyTagged x) {

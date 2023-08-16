@@ -201,7 +201,7 @@ def g() -> Any: pass
 def f() -> Any: return g()
 
 [case testOKReturnAnyIfProperSubtype]
-# flags: --warn-return-any --strict-optional
+# flags: --warn-return-any
 from typing import Any, Optional
 
 class Test(object):

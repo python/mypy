@@ -9,7 +9,6 @@ from mypy.types import (
     AnyType,
     CallableType,
     Instance,
-    Parameters,
     ParamSpecType,
     PartialType,
     TupleType,
@@ -18,6 +17,7 @@ from mypy.types import (
     TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
+    UninhabitedType,
     UnpackType,
     get_proper_type,
 )
@@ -32,13 +32,15 @@ def get_target_type(
     context: Context,
     skip_unsatisfied: bool,
 ) -> Type | None:
+    p_type = get_proper_type(type)
+    if isinstance(p_type, UninhabitedType) and tvar.has_default():
+        return tvar.default
     if isinstance(tvar, ParamSpecType):
         return type
     if isinstance(tvar, TypeVarTupleType):
         return type
     assert isinstance(tvar, TypeVarType)
     values = tvar.values
-    p_type = get_proper_type(type)
     if values:
         if isinstance(p_type, AnyType):
             return type
@@ -109,9 +111,13 @@ def apply_generic_arguments(
     if param_spec is not None:
         nt = id_to_type.get(param_spec.id)
         if nt is not None:
-            nt = get_proper_type(nt)
-            if isinstance(nt, (CallableType, Parameters)):
-                callable = callable.expand_param_spec(nt)
+            # ParamSpec expansion is special-cased, so we need to always expand callable
+            # as a whole, not expanding arguments individually.
+            callable = expand_type(callable, id_to_type)
+            assert isinstance(callable, CallableType)
+            return callable.copy_modified(
+                variables=[tv for tv in tvars if tv.id not in id_to_type]
+            )
 
     # Apply arguments to argument types.
     var_arg = callable.var_arg()

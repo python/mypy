@@ -51,8 +51,8 @@ Some important properties:
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Any, Callable, Collection, Iterable, Iterator, List, TypeVar, cast
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import Any, Callable, Collection, Final, Iterable, Iterator, List, TypeVar, cast
+from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes, message_registry
 from mypy.constant_fold import constant_fold_expr
@@ -959,9 +959,11 @@ class SemanticAnalyzer(
 
     def prepare_method_signature(self, func: FuncDef, info: TypeInfo, has_self_type: bool) -> None:
         """Check basic signature validity and tweak annotation of self/cls argument."""
-        # Only non-static methods are special.
+        # Only non-static methods are special, as well as __new__.
         functype = func.type
-        if not func.is_static:
+        if func.name == "__new__":
+            func.is_static = True
+        if not func.is_static or func.name == "__new__":
             if func.name in ["__init_subclass__", "__class_getitem__"]:
                 func.is_class = True
             if not func.arguments:
@@ -1008,7 +1010,21 @@ class SemanticAnalyzer(
                 return self.is_expected_self_type(typ.item, is_classmethod=False)
             if isinstance(typ, UnboundType):
                 sym = self.lookup_qualified(typ.name, typ, suppress_errors=True)
-                if sym is not None and sym.fullname == "typing.Type" and typ.args:
+                if (
+                    sym is not None
+                    and (
+                        sym.fullname == "typing.Type"
+                        or (
+                            sym.fullname == "builtins.type"
+                            and (
+                                self.is_stub_file
+                                or self.is_future_flag_set("annotations")
+                                or self.options.python_version >= (3, 9)
+                            )
+                        )
+                    )
+                    and typ.args
+                ):
                     return self.is_expected_self_type(typ.args[0], is_classmethod=False)
             return False
         if isinstance(typ, TypeVarType):
@@ -1383,7 +1399,7 @@ class SemanticAnalyzer(
                 # The first argument of a non-static, non-class method is like 'self'
                 # (though the name could be different), having the enclosing class's
                 # instance type.
-                if is_method and not defn.is_static and defn.arguments:
+                if is_method and (not defn.is_static or defn.name == "__new__") and defn.arguments:
                     if not defn.is_class:
                         defn.arguments[0].variable.is_self = True
                     else:
@@ -1692,6 +1708,8 @@ class SemanticAnalyzer(
     def analyze_class_body_common(self, defn: ClassDef) -> None:
         """Parts of class body analysis that are common to all kinds of class defs."""
         self.enter_class(defn.info)
+        if any(b.self_type is not None for b in defn.info.mro):
+            self.setup_self_type()
         defn.defs.accept(self)
         self.apply_class_plugin_hooks(defn)
         self.leave_class()
@@ -1744,6 +1762,10 @@ class SemanticAnalyzer(
                 self.setup_type_vars(defn, tvar_defs)
                 self.setup_alias_type_vars(defn)
                 with self.scope.class_scope(defn.info):
+                    for deco in defn.decorators:
+                        deco.accept(self)
+                        if isinstance(deco, RefExpr) and deco.fullname in FINAL_DECORATOR_NAMES:
+                            info.is_final = True
                     with self.named_tuple_analyzer.save_namedtuple_body(info):
                         self.analyze_class_body_common(defn)
             return True
@@ -2499,12 +2521,7 @@ class SemanticAnalyzer(
                 elif fullname in self.missing_modules:
                     missing_submodule = True
             # If it is still not resolved, check for a module level __getattr__
-            if (
-                module
-                and not node
-                and (module.is_stub or self.options.python_version >= (3, 7))
-                and "__getattr__" in module.names
-            ):
+            if module and not node and "__getattr__" in module.names:
                 # We store the fullname of the original definition so that we can
                 # detect whether two imported names refer to the same thing.
                 fullname = module_id + "." + id
@@ -3394,7 +3411,7 @@ class SemanticAnalyzer(
             return None
 
         value = constant_fold_expr(rvalue, self.cur_mod_id)
-        if value is None:
+        if value is None or isinstance(value, complex):
             return None
 
         if isinstance(value, bool):
@@ -5084,14 +5101,14 @@ class SemanticAnalyzer(
 
         For other variants of dict(...), return None.
         """
-        if not all(kind == ARG_NAMED for kind in call.arg_kinds):
+        if not all(kind in (ARG_NAMED, ARG_STAR2) for kind in call.arg_kinds):
             # Must still accept those args.
             for a in call.args:
                 a.accept(self)
             return None
         expr = DictExpr(
             [
-                (StrExpr(cast(str, key)), value)  # since they are all ARG_NAMED
+                (StrExpr(key) if key is not None else None, value)
                 for key, value in zip(call.arg_names, call.args)
             ]
         )
@@ -5424,11 +5441,8 @@ class SemanticAnalyzer(
                 blocker=True,
             )
         elif self.function_stack[-1].is_coroutine:
-            if self.options.python_version < (3, 6):
-                self.fail('"yield" in async function', e, serious=True, blocker=True)
-            else:
-                self.function_stack[-1].is_generator = True
-                self.function_stack[-1].is_async_generator = True
+            self.function_stack[-1].is_generator = True
+            self.function_stack[-1].is_async_generator = True
         else:
             self.function_stack[-1].is_generator = True
         if e.expr:
@@ -5441,7 +5455,12 @@ class SemanticAnalyzer(
             # support top level awaits.
             self.fail('"await" outside function', expr, serious=True, code=codes.TOP_LEVEL_AWAIT)
         elif not self.function_stack[-1].is_coroutine:
-            self.fail('"await" outside coroutine ("async def")', expr, serious=True, blocker=True)
+            self.fail(
+                '"await" outside coroutine ("async def")',
+                expr,
+                serious=True,
+                code=codes.AWAIT_NOT_ASYNC,
+            )
         expr.expr.accept(self)
 
     #
@@ -5699,9 +5718,7 @@ class SemanticAnalyzer(
                 sym = SymbolTableNode(GDEF, self.modules[fullname])
             elif self.is_incomplete_namespace(module):
                 self.record_incomplete_ref()
-            elif "__getattr__" in names and (
-                node.is_stub or self.options.python_version >= (3, 7)
-            ):
+            elif "__getattr__" in names:
                 gvar = self.create_getattr_var(names["__getattr__"], name, fullname)
                 if gvar:
                     sym = SymbolTableNode(GDEF, gvar)

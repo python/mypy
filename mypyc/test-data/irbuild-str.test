@@ -65,7 +65,7 @@ def neq(x: str, y: str) -> bool:
 [out]
 def eq(x, y):
     x, y :: str
-    r0 :: int32
+    r0 :: i32
     r1 :: bit
     r2 :: object
     r3, r4, r5 :: bit
@@ -84,7 +84,7 @@ L3:
     return r5
 def neq(x, y):
     x, y :: str
-    r0 :: int32
+    r0 :: i32
     r1 :: bit
     r2 :: object
     r3, r4, r5 :: bit

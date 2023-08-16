@@ -4,8 +4,8 @@
 
 # mypy: disallow-any-generics, no-warn-no-return
 
-from typing import List
-def foo() -> List:  # E: Missing type parameters for generic type "List"
+from typing import List, Optional
+def foo() -> Optional[List]:  # E: Missing type parameters for generic type "List"
     20
 
 [builtins fixtures/list.pyi]
@@ -15,8 +15,8 @@ def foo() -> List:  # E: Missing type parameters for generic type "List"
 # mypy: disallow-any-generics
 # mypy: no-warn-no-return
 
-from typing import List
-def foo() -> List:  # E: Missing type parameters for generic type "List"
+from typing import List, Optional
+def foo() -> Optional[List]:  # E: Missing type parameters for generic type "List"
     20
 
 [builtins fixtures/list.pyi]
@@ -25,8 +25,8 @@ def foo() -> List:  # E: Missing type parameters for generic type "List"
 
 # mypy: disallow-any-generics=true, warn-no-return=0
 
-from typing import List
-def foo() -> List:  # E: Missing type parameters for generic type "List"
+from typing import List, Optional
+def foo() -> Optional[List]:  # E: Missing type parameters for generic type "List"
     20
 
 [builtins fixtures/list.pyi]
@@ -36,8 +36,8 @@ def foo() -> List:  # E: Missing type parameters for generic type "List"
 
 # mypy: disallow-any-generics = true, warn-no-return = 0
 
-from typing import List
-def foo() -> List:  # E: Missing type parameters for generic type "List"
+from typing import List, Optional
+def foo() -> Optional[List]:  # E: Missing type parameters for generic type "List"
     20
 
 [builtins fixtures/list.pyi]
@@ -84,20 +84,20 @@ import a
 [file a.py]
 # mypy: disallow-any-generics, no-warn-no-return
 
-from typing import List
-def foo() -> List:
+from typing import List, Optional
+def foo() -> Optional[List]:
     20
 
 [file a.py.2]
 # mypy: no-warn-no-return
 
-from typing import List
-def foo() -> List:
+from typing import List, Optional
+def foo() -> Optional[List]:
     20
 
 [file a.py.3]
-from typing import List
-def foo() -> List:
+from typing import List, Optional
+def foo() -> Optional[List]:
     20
 [out]
 tmp/a.py:4: error: Missing type parameters for generic type "List"
@@ -131,8 +131,9 @@ tmp/a.py:4: error: Missing type parameters for generic type "List"
 import a, b
 [file a.py]
 # mypy: no-warn-no-return
+from typing import Optional
 
-def foo() -> int:
+def foo() -> Optional[int]:
     20
 
 [file b.py]
@@ -164,7 +165,6 @@ main:1: error: Unrecognized option: skip_file = True
 main:1: error: Setting "strict" not supported in inline configuration: specify it in a configuration file instead, or set individual inline flags (see "mypy -h" for the list of flags enabled in strict mode)
 
 [case testInlineErrorCodes]
-# flags: --strict-optional
 # mypy: enable-error-code="ignore-without-code,truthy-bool"
 class Foo:
     pass
@@ -174,7 +174,7 @@ if foo: ...  # E: "__main__.foo" has type "Foo" which does not implement __bool_
 42 + "no"  # type: ignore  # E: "type: ignore" comment without error code (consider "type: ignore[operator]" instead)
 
 [case testInlineErrorCodesOverrideConfig]
-# flags: --strict-optional --config-file tmp/mypy.ini
+# flags: --config-file tmp/mypy.ini
 import foo
 import tests.bar
 import tests.baz
@@ -242,7 +242,6 @@ class C:
         self.x = 1
 
 [case testIgnoreErrorsWithUnsafeSuperCall_no_empty]
-# flags: --strict-optional
 
 from m import C
 

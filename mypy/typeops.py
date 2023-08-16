@@ -313,7 +313,9 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
         original_type = get_proper_type(original_type)
 
         all_ids = func.type_var_ids()
-        typeargs = infer_type_arguments(all_ids, self_param_type, original_type, is_supertype=True)
+        typeargs = infer_type_arguments(
+            func.variables, self_param_type, original_type, is_supertype=True
+        )
         if (
             is_classmethod
             # TODO: why do we need the extra guards here?
@@ -322,7 +324,7 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
         ):
             # In case we call a classmethod through an instance x, fallback to type(x)
             typeargs = infer_type_arguments(
-                all_ids, self_param_type, TypeType(original_type), is_supertype=True
+                func.variables, self_param_type, TypeType(original_type), is_supertype=True
             )
 
         ids = [tid for tid in all_ids if any(tid == t.id for t in get_type_vars(self_param_type))]
@@ -600,10 +602,8 @@ def true_only(t: Type) -> ProperType:
     else:
         ret_type = _get_type_special_method_bool_ret_type(t)
 
-        if ret_type and ret_type.can_be_false and not ret_type.can_be_true:
-            new_t = copy_type(t)
-            new_t.can_be_true = False
-            return new_t
+        if ret_type and not ret_type.can_be_true:
+            return UninhabitedType(line=t.line, column=t.column)
 
         new_t = copy_type(t)
         new_t.can_be_false = False
@@ -635,10 +635,8 @@ def false_only(t: Type) -> ProperType:
     else:
         ret_type = _get_type_special_method_bool_ret_type(t)
 
-        if ret_type and ret_type.can_be_true and not ret_type.can_be_false:
-            new_t = copy_type(t)
-            new_t.can_be_false = False
-            return new_t
+        if ret_type and not ret_type.can_be_false:
+            return UninhabitedType(line=t.line)
 
         new_t = copy_type(t)
         new_t.can_be_true = False
@@ -710,7 +708,7 @@ def callable_type(
     fdef: FuncItem, fallback: Instance, ret_type: Type | None = None
 ) -> CallableType:
     # TODO: somewhat unfortunate duplication with prepare_method_signature in semanal
-    if fdef.info and not fdef.is_static and fdef.arg_names:
+    if fdef.info and (not fdef.is_static or fdef.name == "__new__") and fdef.arg_names:
         self_type: Type = fill_typevars(fdef.info)
         if fdef.is_class or fdef.name == "__new__":
             self_type = TypeType.make_normalized(self_type)
@@ -950,21 +948,30 @@ def coerce_to_literal(typ: Type) -> Type:
 
 
 def get_type_vars(tp: Type) -> list[TypeVarType]:
-    return tp.accept(TypeVarExtractor())
+    return cast("list[TypeVarType]", tp.accept(TypeVarExtractor()))
 
 
-class TypeVarExtractor(TypeQuery[List[TypeVarType]]):
-    def __init__(self) -> None:
+def get_all_type_vars(tp: Type) -> list[TypeVarLikeType]:
+    # TODO: should we always use this function instead of get_type_vars() above?
+    return tp.accept(TypeVarExtractor(include_all=True))
+
+
+class TypeVarExtractor(TypeQuery[List[TypeVarLikeType]]):
+    def __init__(self, include_all: bool = False) -> None:
         super().__init__(self._merge)
+        self.include_all = include_all
 
-    def _merge(self, iter: Iterable[list[TypeVarType]]) -> list[TypeVarType]:
+    def _merge(self, iter: Iterable[list[TypeVarLikeType]]) -> list[TypeVarLikeType]:
         out = []
         for item in iter:
             out.extend(item)
         return out
 
-    def visit_type_var(self, t: TypeVarType) -> list[TypeVarType]:
+    def visit_type_var(self, t: TypeVarType) -> list[TypeVarLikeType]:
         return [t]
+
+    def visit_param_spec(self, t: ParamSpecType) -> list[TypeVarLikeType]:
+        return [t] if self.include_all else []
 
 
 def custom_special_method(typ: Type, name: str, check_all: bool = False) -> bool:

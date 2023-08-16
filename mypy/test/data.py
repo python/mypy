@@ -12,8 +12,8 @@ import tempfile
 from abc import abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterator, NamedTuple, NoReturn, Pattern, Union
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import Any, Final, Iterator, NamedTuple, NoReturn, Pattern, Union
+from typing_extensions import TypeAlias as _TypeAlias
 
 import pytest
 
@@ -169,13 +169,17 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
                         version = tuple(int(x) for x in version_str.split("."))
                     except ValueError:
                         _item_fail(f"{version_str!r} is not a valid python version")
-                    if version < defaults.PYTHON3_VERSION:
-                        _item_fail(
-                            f"Version check against {version}; must be >= {defaults.PYTHON3_VERSION}"
-                        )
                     if compare_op == ">=":
+                        if version <= defaults.PYTHON3_VERSION:
+                            _item_fail(
+                                f"{arg} always true since minimum runtime version is {defaults.PYTHON3_VERSION}"
+                            )
                         version_check = sys.version_info >= version
                     elif compare_op == "==":
+                        if version < defaults.PYTHON3_VERSION:
+                            _item_fail(
+                                f"{arg} always false since minimum runtime version is {defaults.PYTHON3_VERSION}"
+                            )
                         if not 1 < len(version) < 4:
                             _item_fail(
                                 f'Only minor or patch version checks are currently supported with "==": {version_str!r}'
@@ -387,7 +391,10 @@ class DataDrivenTestCase(pytest.Item):
     def reportinfo(self) -> tuple[str, int, str]:
         return self.file, self.line, self.name
 
-    def repr_failure(self, excinfo: Any, style: Any | None = None) -> str:
+    def repr_failure(
+        self, excinfo: pytest.ExceptionInfo[BaseException], style: Any | None = None
+    ) -> str:
+        excrepr: object
         if isinstance(excinfo.value, SystemExit):
             # We assume that before doing exit() (which raises SystemExit) we've printed
             # enough context about what happened so that a stack trace is not useful.
@@ -397,7 +404,7 @@ class DataDrivenTestCase(pytest.Item):
         elif isinstance(excinfo.value, pytest.fail.Exception) and not excinfo.value.pytrace:
             excrepr = excinfo.exconly()
         else:
-            self.parent._prunetraceback(excinfo)
+            excinfo.traceback = self.parent._traceback_filter(excinfo)
             excrepr = excinfo.getrepr(style="short")
 
         return f"data: {self.file}:{self.line}:\n{excrepr}"
@@ -621,6 +628,13 @@ def pytest_addoption(parser: Any) -> None:
         choices=SUPPORTED_DEBUGGERS,
         help="Run the first mypyc run test with the specified debugger",
     )
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    if config.getoption("--update-data") and config.getoption("--numprocesses", default=1) > 1:
+        raise pytest.UsageError(
+            "--update-data incompatible with parallelized tests; re-run with -n 1"
+        )
 
 
 # This function name is special to pytest.  See

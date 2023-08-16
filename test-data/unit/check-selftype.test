@@ -509,6 +509,58 @@ class E:
     def __init_subclass__(cls) -> None:
         reveal_type(cls)  # N: Revealed type is "Type[__main__.E]"
 
+[case testSelfTypeNew_explicit]
+from typing import TypeVar, Type
+
+T = TypeVar('T', bound='A')
+class A:
+    @staticmethod
+    def __new__(cls: Type[T]) -> T:
+        return cls()
+
+    @classmethod
+    def __init_subclass__(cls: Type[T]) -> None:
+        pass
+
+class B:
+    @staticmethod
+    def __new__(cls: Type[T]) -> T:  # E: The erased type of self "Type[__main__.A]" is not a supertype of its class "Type[__main__.B]"
+        return cls()
+
+    @classmethod
+    def __init_subclass__(cls: Type[T]) -> None:  # E: The erased type of self "Type[__main__.A]" is not a supertype of its class "Type[__main__.B]"
+        pass
+
+class C:
+    @staticmethod
+    def __new__(cls: Type[C]) -> C:
+        return cls()
+
+    @classmethod
+    def __init_subclass__(cls: Type[C]) -> None:
+        pass
+
+class D:
+    @staticmethod
+    def __new__(cls: D) -> D:  # E: The erased type of self "__main__.D" is not a supertype of its class "Type[__main__.D]"
+        return cls
+
+    @classmethod
+    def __init_subclass__(cls: D) -> None:  # E: The erased type of self "__main__.D" is not a supertype of its class "Type[__main__.D]"
+        pass
+
+class E:
+    @staticmethod
+    def __new__(cls) -> E:
+        reveal_type(cls)  # N: Revealed type is "Type[__main__.E]"
+        return cls()
+
+    @classmethod
+    def __init_subclass__(cls) -> None:
+        reveal_type(cls)  # N: Revealed type is "Type[__main__.E]"
+
+[builtins fixtures/classmethod.pyi]
+
 [case testSelfTypePropertyUnion]
 from typing import Union
 class A:
@@ -845,7 +897,8 @@ class Base(Protocol):
 
 class TweakFunc:
     def func(self: Base) -> int:
-        return reveal_type(super().func())  # N: Revealed type is "builtins.int"
+        return reveal_type(super().func())  # E: Call to abstract method "func" of "Base" with trivial body via super() is unsafe \
+                                            # N: Revealed type is "builtins.int"
 
 class Good:
     def func(self) -> int: ...
@@ -1217,14 +1270,14 @@ class AClass:
         ...
 
 def foo(x: Type[AClass]) -> None:
-    reveal_type(x.delete)  # N: Revealed type is "Overload(def (id: builtins.int, id2: builtins.int) -> builtins.int, def (id: __main__.AClass, id2: None =) -> builtins.int)"
+    reveal_type(x.delete)  # N: Revealed type is "Overload(def (id: builtins.int, id2: builtins.int) -> Union[builtins.int, None], def (id: __main__.AClass, id2: None =) -> Union[builtins.int, None])"
     y = x()
-    reveal_type(y.delete)  # N: Revealed type is "Overload(def (id: builtins.int, id2: builtins.int) -> builtins.int, def (id: __main__.AClass, id2: None =) -> builtins.int)"
+    reveal_type(y.delete)  # N: Revealed type is "Overload(def (id: builtins.int, id2: builtins.int) -> Union[builtins.int, None], def (id: __main__.AClass, id2: None =) -> Union[builtins.int, None])"
     y.delete(10, 20)
     y.delete(y)
 
 def bar(x: AClass) -> None:
-    reveal_type(x.delete)  # N: Revealed type is "Overload(def (id: builtins.int, id2: builtins.int) -> builtins.int, def (id: __main__.AClass, id2: None =) -> builtins.int)"
+    reveal_type(x.delete)  # N: Revealed type is "Overload(def (id: builtins.int, id2: builtins.int) -> Union[builtins.int, None], def (id: __main__.AClass, id2: None =) -> Union[builtins.int, None])"
     x.delete(10, 20)
 [builtins fixtures/classmethod.pyi]
 
@@ -1665,6 +1718,23 @@ class C:
         return cls()
 [builtins fixtures/classmethod.pyi]
 
+[case testTypingSelfRedundantAllowed_pep585]
+# flags: --python-version 3.9
+from typing import Self
+
+class C:
+    def f(self: Self) -> Self:
+        d: Defer
+        class Defer: ...
+        return self
+
+    @classmethod
+    def g(cls: type[Self]) -> Self:
+        d: DeferAgain
+        class DeferAgain: ...
+        return cls()
+[builtins fixtures/classmethod.pyi]
+
 [case testTypingSelfRedundantWarning]
 # mypy: enable-error-code="redundant-self"
 
@@ -1678,6 +1748,25 @@ class C:
 
     @classmethod
     def g(cls: Type[Self]) -> Self:  # E: Redundant "Self" annotation for the first method argument
+        d: DeferAgain
+        class DeferAgain: ...
+        return cls()
+[builtins fixtures/classmethod.pyi]
+
+[case testTypingSelfRedundantWarning_pep585]
+# flags: --python-version 3.9
+# mypy: enable-error-code="redundant-self"
+
+from typing import Self
+
+class C:
+    def copy(self: Self) -> Self:  # E: Redundant "Self" annotation for the first method argument
+        d: Defer
+        class Defer: ...
+        return self
+
+    @classmethod
+    def g(cls: type[Self]) -> Self:  # E: Redundant "Self" annotation for the first method argument
         d: DeferAgain
         class DeferAgain: ...
         return cls()
@@ -1867,3 +1956,20 @@ class B:
             return B()  # E: Incompatible return value type (got "B", expected "A")
 
 [builtins fixtures/isinstancelist.pyi]
+
+[case testAttributeOnSelfAttributeInSubclass]
+from typing import List, Self
+
+class A:
+    x: Self
+    xs: List[Self]
+
+class B(A):
+    extra: int
+
+    def meth(self) -> None:
+        reveal_type(self.x)  # N: Revealed type is "Self`0"
+        reveal_type(self.xs[0])  # N: Revealed type is "Self`0"
+        reveal_type(self.x.extra)  # N: Revealed type is "builtins.int"
+        reveal_type(self.xs[0].extra)  # N: Revealed type is "builtins.int"
+[builtins fixtures/list.pyi]

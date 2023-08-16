@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence
-from typing_extensions import Final
+from typing import Final, Sequence
 
 from mypy.nodes import ARG_POS, ArgKind, Block, FuncDef
 from mypyc.common import BITMAP_BITS, JsonDict, bitmap_name, get_id_from_name, short_id_from_name
@@ -86,7 +85,7 @@ class FuncSignature:
             return self.args[: -self.num_bitmap_args]
         return self.args
 
-    def bound_sig(self) -> "FuncSignature":
+    def bound_sig(self) -> FuncSignature:
         if self.num_bitmap_args:
             return FuncSignature(self.args[1 : -self.num_bitmap_args], self.ret_type)
         else:

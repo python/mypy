@@ -677,6 +677,7 @@ class StubgenPythonSuite(DataSuite):
     base_path = "."
     files = ["stubgen.test"]
 
+    @unittest.skipIf(sys.platform == "win32", "clean up fails on Windows")
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         with local_sys_path_set():
             self.run_case_inner(testcase)
@@ -1211,6 +1212,27 @@ class StubgencSuite(unittest.TestCase):
         )
         assert_equal(output, ["def test(arg0: foo.bar.Action) -> other.Thing: ..."])
         assert_equal(set(imports), {"import foo", "import other"})
+
+    def test_generate_c_function_no_crash_for_non_str_docstring(self) -> None:
+        def test(arg0: str) -> None:
+            ...
+
+        test.__doc__ = property(lambda self: "test(arg0: str) -> None")  # type: ignore[assignment]
+
+        output: list[str] = []
+        imports: list[str] = []
+        mod = ModuleType(self.__module__, "")
+        generate_c_function_stub(
+            mod,
+            "test",
+            test,
+            output=output,
+            imports=imports,
+            known_modules=[mod.__name__],
+            sig_generators=get_sig_generators(parse_options([])),
+        )
+        assert_equal(output, ["def test(*args, **kwargs) -> Any: ..."])
+        assert_equal(imports, [])
 
     def test_generate_c_property_with_pybind11(self) -> None:
         """Signatures included by PyBind11 inside property.fget are read."""

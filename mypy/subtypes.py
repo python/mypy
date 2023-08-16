@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Any, Callable, Iterator, List, TypeVar, cast
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import Any, Callable, Final, Iterator, List, TypeVar, cast
+from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.applytype
 import mypy.constraints
@@ -694,7 +694,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 right,
                 is_compat=self._is_subtype,
                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
-                strict_concatenate=self.options.strict_concatenate if self.options else True,
+                strict_concatenate=(self.options.extra_checks or self.options.strict_concatenate)
+                if self.options
+                else True,
             )
         elif isinstance(right, Overloaded):
             return all(self._is_subtype(left, item) for item in right.items)
@@ -858,7 +860,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     else:
                         # If this one overlaps with the supertype in any way, but it wasn't
                         # an exact match, then it's a potential error.
-                        strict_concat = self.options.strict_concatenate if self.options else True
+                        strict_concat = (
+                            (self.options.extra_checks or self.options.strict_concatenate)
+                            if self.options
+                            else True
+                        )
                         if left_index not in matched_overloads and (
                             is_callable_compatible(
                                 left_item,
@@ -1293,6 +1299,7 @@ def is_callable_compatible(
     check_args_covariantly: bool = False,
     allow_partial_overlap: bool = False,
     strict_concatenate: bool = False,
+    no_unify_none: bool = False,
 ) -> bool:
     """Is the left compatible with the right, using the provided compatibility check?
 
@@ -1409,7 +1416,9 @@ def is_callable_compatible(
     # (below) treats type variables on the two sides as independent.
     if left.variables:
         # Apply generic type variables away in left via type inference.
-        unified = unify_generic_callable(left, right, ignore_return=ignore_return)
+        unified = unify_generic_callable(
+            left, right, ignore_return=ignore_return, no_unify_none=no_unify_none
+        )
         if unified is None:
             return False
         left = unified
@@ -1421,7 +1430,9 @@ def is_callable_compatible(
     # So, we repeat the above checks in the opposite direction. This also
     # lets us preserve the 'symmetry' property of allow_partial_overlap.
     if allow_partial_overlap and right.variables:
-        unified = unify_generic_callable(right, left, ignore_return=ignore_return)
+        unified = unify_generic_callable(
+            right, left, ignore_return=ignore_return, no_unify_none=no_unify_none
+        )
         if unified is not None:
             right = unified
 
@@ -1681,6 +1692,8 @@ def unify_generic_callable(
     target: NormalizedCallableType,
     ignore_return: bool,
     return_constraint_direction: int | None = None,
+    *,
+    no_unify_none: bool = False,
 ) -> NormalizedCallableType | None:
     """Try to unify a generic callable type with another callable type.
 
@@ -1692,18 +1705,25 @@ def unify_generic_callable(
         return_constraint_direction = mypy.constraints.SUBTYPE_OF
 
     constraints: list[mypy.constraints.Constraint] = []
-    for arg_type, target_arg_type in zip(type.arg_types, target.arg_types):
-        c = mypy.constraints.infer_constraints(
-            arg_type, target_arg_type, mypy.constraints.SUPERTYPE_OF
-        )
-        constraints.extend(c)
+    # There is some special logic for inference in callables, so better use them
+    # as wholes instead of picking separate arguments.
+    cs = mypy.constraints.infer_constraints(
+        type.copy_modified(ret_type=UninhabitedType()),
+        target.copy_modified(ret_type=UninhabitedType()),
+        mypy.constraints.SUBTYPE_OF,
+        skip_neg_op=True,
+    )
+    constraints.extend(cs)
     if not ignore_return:
         c = mypy.constraints.infer_constraints(
             type.ret_type, target.ret_type, return_constraint_direction
         )
         constraints.extend(c)
-    type_var_ids = [tvar.id for tvar in type.variables]
-    inferred_vars = mypy.solve.solve_constraints(type_var_ids, constraints)
+    if no_unify_none:
+        constraints = [
+            c for c in constraints if not isinstance(get_proper_type(c.target), NoneType)
+        ]
+    inferred_vars, _ = mypy.solve.solve_constraints(type.variables, constraints)
     if None in inferred_vars:
         return None
     non_none_inferred_vars = cast(List[Type], inferred_vars)

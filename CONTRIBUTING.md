@@ -88,11 +88,8 @@ pytest -n0 -k 'test_name'
 # Run all test cases in the "test-data/unit/check-dataclasses.test" file
 pytest mypy/test/testcheck.py::TypeCheckSuite::check-dataclasses.test
 
-# Run the linter
-flake8
-
-# Run formatters
-black . && isort .
+# Run the formatters and linters
+python runtests.py lint
 ```
 
 For an in-depth guide on running and writing tests,
@@ -153,10 +150,6 @@ to review, which helps your pull request get merged quickly!  Standard
 advice about good pull requests for open-source projects applies; we
 have [our own writeup](https://github.com/python/mypy/wiki/Good-Pull-Request)
 of this advice.
-
-We are using `black` and `isort` to enforce a consistent coding style.
-Run `black . && isort .` before your commits, otherwise you would receive
-a CI failure.
 
 Also, do not squash your commits after you have submitted a pull request, as this
 erases context during review. We will squash commits when the pull request is merged.
