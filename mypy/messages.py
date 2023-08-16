@@ -1310,6 +1310,20 @@ class MessageBuilder:
             code=codes.OVERRIDE,
         )
 
+        if (
+            isinstance(original, Instance)
+            and isinstance(override, Instance)
+            and override.type.fullname == "typing.AsyncIterator"
+            and original.type.fullname == "typing.Coroutine"
+            and len(original.args) == 3
+            and original.args[2] == override
+        ):
+            self.note(f'Consider declaring "{name}" in {target} without "async"', context)
+            self.note(
+                "See https://mypy.readthedocs.io/en/stable/more_types.html#asynchronous-iterators",
+                context,
+            )
+
     def override_target(self, name: str, name_in_super: str, supertype: str) -> str:
         target = f'supertype "{supertype}"'
         if name_in_super != name:
