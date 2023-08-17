@@ -1485,10 +1485,6 @@ def are_parameters_compatible(
     if right.is_ellipsis_args:
         return True
 
-    if right.imprecise_arg_kinds:
-        allow_partial_overlap = True
-        ignore_pos_arg_names = True
-
     left_star = left.var_arg()
     left_star2 = left.kw_arg()
     right_star = right.var_arg()
