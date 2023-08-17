@@ -2902,7 +2902,7 @@ class SupportsBoolLiteralFalse(Protocol):
 def sb(s: SupportsBool) -> None: pass
 sb(None)
 def sblt(s: SupportsBoolLiteralTrue) -> None: pass
-sblt(None)
+sblt(None)  # E: Argument 1 to "sblt" has incompatible type "None"; expected "SupportsBoolLiteralTrue"
 def sblf(s: SupportsBoolLiteralFalse) -> None: pass
 sblf(None)
 
