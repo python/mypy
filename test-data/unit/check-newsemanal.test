@@ -3207,8 +3207,7 @@ class User:
         self.first_name = value
 
     def __init__(self, name: str) -> None:
-        self.name = name  # E: Cannot assign to a method \
-                          # E: Cannot determine type of "name"
+        self.name = name  # E: Cannot assign to a method
 
 [case testNewAnalyzerMemberNameMatchesTypedDict]
 from typing import Union, Any
