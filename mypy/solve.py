@@ -274,11 +274,7 @@ def solve_one(
             return None
     elif top is None:
         candidate = bottom
-    elif is_subtype(bottom, top, ignore_pos_arg_names=isinstance(type_var, ParamSpecType)):
-        # We ignore positional argument names to handle rare but important corner case, when
-        # constraints from both callable inference (more precise) and from ParamSpec vs arguments
-        # (more ad-hoc) are both present (e.g. if they were inferred at different nesting levels).
-        # In such case we conservatively solve [int] <: P <: [x: int] as P = [int].
+    elif is_subtype(bottom, top):
         candidate = bottom
     else:
         candidate = None

@@ -194,10 +194,9 @@ def infer_constraints_for_callable(
                             actual_arg_type, arg_kinds[actual], None, arg_kinds[actual]
                         )
                     )
+                    actual_kind = arg_kinds[actual]
                     param_spec_arg_kinds.append(
-                        ARG_POS
-                        if arg_kinds[actual] not in (ARG_STAR, ARG_STAR2)
-                        else arg_kinds[actual]
+                        ARG_POS if actual_kind not in (ARG_STAR, ARG_STAR2) else actual_kind
                     )
                     param_spec_arg_names.append(arg_names[actual] if arg_names else None)
                 else:
@@ -218,6 +217,7 @@ def infer_constraints_for_callable(
                     arg_types=param_spec_arg_types,
                     arg_kinds=param_spec_arg_kinds,
                     arg_names=param_spec_arg_names,
+                    imprecise_arg_kinds=True,
                 ),
             )
         )
@@ -1031,34 +1031,6 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     )
                     extra_tvars = True
 
-                if not cactual_ps:
-                    max_prefix_len = len([k for k in cactual.arg_kinds if k in (ARG_POS, ARG_OPT)])
-                    prefix_len = min(prefix_len, max_prefix_len)
-                    res.append(
-                        Constraint(
-                            param_spec,
-                            neg_op(self.direction),
-                            Parameters(
-                                arg_types=cactual.arg_types[prefix_len:],
-                                arg_kinds=cactual.arg_kinds[prefix_len:],
-                                arg_names=cactual.arg_names[prefix_len:],
-                                variables=cactual.variables
-                                if not type_state.infer_polymorphic
-                                else [],
-                            ),
-                        )
-                    )
-                else:
-                    if len(param_spec.prefix.arg_types) <= len(cactual_ps.prefix.arg_types):
-                        cactual_ps = cactual_ps.copy_modified(
-                            prefix=Parameters(
-                                arg_types=cactual_ps.prefix.arg_types[prefix_len:],
-                                arg_kinds=cactual_ps.prefix.arg_kinds[prefix_len:],
-                                arg_names=cactual_ps.prefix.arg_names[prefix_len:],
-                            )
-                        )
-                        res.append(Constraint(param_spec, neg_op(self.direction), cactual_ps))
-
                 # Compare prefixes as well
                 cactual_prefix = cactual.copy_modified(
                     arg_types=cactual.arg_types[:prefix_len],
@@ -1070,6 +1042,47 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     if isinstance(a, ParamSpecType):
                         continue
                     res.extend(infer_constraints(t, a, neg_op(self.direction)))
+
+                if not cactual_ps:
+                    max_prefix_len = len([k for k in cactual.arg_kinds if k in (ARG_POS, ARG_OPT)])
+                    prefix_len = min(prefix_len, max_prefix_len)
+                    # This logic matches top-level callable constraint exception, if we managed
+                    # to get other constraints for ParamSpec, don't infer one with imprecise kinds
+                    if not (
+                        any(c.type_var == param_spec.id for c in res)
+                        and cactual.imprecise_arg_kinds
+                    ):
+                        res.append(
+                            Constraint(
+                                param_spec,
+                                neg_op(self.direction),
+                                Parameters(
+                                    arg_types=cactual.arg_types[prefix_len:],
+                                    arg_kinds=cactual.arg_kinds[prefix_len:],
+                                    arg_names=cactual.arg_names[prefix_len:],
+                                    variables=cactual.variables
+                                    if not type_state.infer_polymorphic
+                                    else [],
+                                    imprecise_arg_kinds=cactual.imprecise_arg_kinds,
+                                ),
+                            )
+                        )
+                else:
+                    if len(param_spec.prefix.arg_types) <= len(
+                        cactual_ps.prefix.arg_types
+                    ) and not (
+                        any(c.type_var == param_spec.id for c in res)
+                        and cactual_ps.prefix.imprecise_arg_kinds
+                    ):
+                        cactual_ps = cactual_ps.copy_modified(
+                            prefix=Parameters(
+                                arg_types=cactual_ps.prefix.arg_types[prefix_len:],
+                                arg_kinds=cactual_ps.prefix.arg_kinds[prefix_len:],
+                                arg_names=cactual_ps.prefix.arg_names[prefix_len:],
+                                imprecise_arg_kinds=cactual_ps.prefix.imprecise_arg_kinds,
+                            )
+                        )
+                        res.append(Constraint(param_spec, neg_op(self.direction), cactual_ps))
 
             template_ret_type, cactual_ret_type = template.ret_type, cactual.ret_type
             if template.type_guard is not None:

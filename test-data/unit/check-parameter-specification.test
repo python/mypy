@@ -160,23 +160,6 @@ from typing import Callable, TypeVar
 from typing_extensions import ParamSpec
 
 P = ParamSpec('P')
-
-def f(x: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None:
-    return x(*args, **kwargs)
-
-def g(x: int, y: str) -> None: ...
-
-reveal_type(f(g, 1, y='x'))  # N: Revealed type is "None"
-f(g, 'x', y='x')  # E: Argument 2 to "f" has incompatible type "str"; expected "int"
-f(g, 1, y=1)  # E: Argument "y" to "f" has incompatible type "int"; expected "str"
-f(g)  # E: Missing positional arguments "x", "y" in call to "f"
-[builtins fixtures/dict.pyi]
-
-[case testParamSpecFunctionGeneric]
-from typing import Callable, TypeVar
-from typing_extensions import ParamSpec
-
-P = ParamSpec('P')
 R = TypeVar('R')
 
 def f(x: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
@@ -185,9 +168,9 @@ def f(x: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
 def g(x: int, y: str) -> None: ...
 
 reveal_type(f(g, 1, y='x'))  # N: Revealed type is "None"
-f(g, 'x', y='x')  # E: Argument 1 to "f" has incompatible type "Callable[[int, str], None]"; expected "Callable[[str, str], None]"
-f(g, 1, y=1)  # E: Argument 1 to "f" has incompatible type "Callable[[int, str], None]"; expected "Callable[[int, int], None]"
-f(g)  # E: Argument 1 to "f" has incompatible type "Callable[[int, str], None]"; expected "Callable[[], None]"
+f(g, 'x', y='x')  # E: Argument 2 to "f" has incompatible type "str"; expected "int"
+f(g, 1, y=1)  # E: Argument "y" to "f" has incompatible type "int"; expected "str"
+f(g)  # E: Missing positional arguments "x", "y" in call to "f"
 [builtins fixtures/dict.pyi]
 
 [case testParamSpecSpecialCase]
@@ -1636,4 +1619,16 @@ def apply(fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> None: ...
 def test(x: int) -> int: ...
 apply(apply, test, x=42)  # OK
 apply(apply, test, 42)  # Also OK (but requires some special casing)
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecApplyPosVsNamedOptional]
+from typing import Callable, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+def apply(fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> None: ...
+def test(x: str = ..., y: int = ...) -> int: ...
+apply(test, y=42)  # OK
 [builtins fixtures/paramspec.pyi]

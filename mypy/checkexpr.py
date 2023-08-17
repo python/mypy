@@ -1927,7 +1927,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 )
 
             arg_pass_nums = self.get_arg_infer_passes(
-                callee_type, arg_types, formal_to_actual, len(args)
+                callee_type, args, arg_types, formal_to_actual, len(args)
             )
 
             pass1_args: list[Type | None] = []
@@ -2097,6 +2097,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def get_arg_infer_passes(
         self,
         callee: CallableType,
+        args: list[Expression],
         arg_types: list[Type],
         formal_to_actual: list[list[int]],
         num_actuals: int,
@@ -2112,9 +2113,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         res = [1] * num_actuals
         for i, arg in enumerate(callee.arg_types):
             skip_param_spec = False
-            for j in formal_to_actual[i]:
-                p_actual = get_proper_type(arg_types[j])
-                if isinstance(p_actual, CallableType) and not p_actual.variables:
+            p_formal = get_proper_type(callee.arg_types[i])
+            if isinstance(p_formal, CallableType) and p_formal.param_spec():
+                for j in formal_to_actual[i]:
+                    p_actual = get_proper_type(arg_types[j])
                     # This is an exception from the usual logic where we put generic Callable
                     # arguments in the second pass. If we have a non-generic actual, it is
                     # likely to infer good constraints, for example if we have:
@@ -2123,9 +2125,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     #   run(test, 1, 2)
                     # we will use `test` for inference, since it will allow to infer also
                     # argument *names* for P <: [x: int, y: int].
-                    skip_param_spec = True
-                    break
-            if arg.accept(ArgInferSecondPassQuery(skip_param_spec=skip_param_spec)):
+                    if (
+                        isinstance(p_actual, CallableType)
+                        and not p_actual.variables
+                        and not isinstance(args[j], LambdaExpr)
+                    ):
+                        skip_param_spec = True
+                        break
+            if not skip_param_spec and arg.accept(ArgInferSecondPassQuery()):
                 for j in formal_to_actual[i]:
                     res[j] = 2
         return res
@@ -5869,29 +5876,25 @@ class ArgInferSecondPassQuery(types.BoolTypeQuery):
     a type variable.
     """
 
-    def __init__(self, skip_param_spec: bool) -> None:
+    def __init__(self) -> None:
         super().__init__(types.ANY_STRATEGY)
-        self.skip_param_spec = skip_param_spec
 
     def visit_callable_type(self, t: CallableType) -> bool:
         # TODO: we need to check only for type variables of original callable.
-        return self.query_types(t.arg_types) or t.accept(
-            HasTypeVarQuery(skip_param_spec=self.skip_param_spec)
-        )
+        return self.query_types(t.arg_types) or t.accept(HasTypeVarQuery())
 
 
 class HasTypeVarQuery(types.BoolTypeQuery):
     """Visitor for querying whether a type has a type variable component."""
 
-    def __init__(self, skip_param_spec: bool) -> None:
+    def __init__(self) -> None:
         super().__init__(types.ANY_STRATEGY)
-        self.skip_param_spec = skip_param_spec
 
     def visit_type_var(self, t: TypeVarType) -> bool:
         return True
 
     def visit_param_spec(self, t: ParamSpecType) -> bool:
-        return not self.skip_param_spec
+        return True
 
 
 def has_erased_component(t: Type | None) -> bool:

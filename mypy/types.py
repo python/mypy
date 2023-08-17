@@ -1559,6 +1559,7 @@ class Parameters(ProperType):
         "min_args",
         "is_ellipsis_args",
         "variables",
+        "imprecise_arg_kinds",
     )
 
     def __init__(
@@ -1569,6 +1570,7 @@ class Parameters(ProperType):
         *,
         variables: Sequence[TypeVarLikeType] | None = None,
         is_ellipsis_args: bool = False,
+        imprecise_arg_kinds: bool = False,
         line: int = -1,
         column: int = -1,
     ) -> None:
@@ -1581,6 +1583,7 @@ class Parameters(ProperType):
         self.min_args = arg_kinds.count(ARG_POS)
         self.is_ellipsis_args = is_ellipsis_args
         self.variables = variables or []
+        self.imprecise_arg_kinds = imprecise_arg_kinds
 
     def copy_modified(
         self,
@@ -1590,6 +1593,7 @@ class Parameters(ProperType):
         *,
         variables: Bogus[Sequence[TypeVarLikeType]] = _dummy,
         is_ellipsis_args: Bogus[bool] = _dummy,
+        imprecise_arg_kinds: Bogus[bool] = _dummy,
     ) -> Parameters:
         return Parameters(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
@@ -1599,6 +1603,11 @@ class Parameters(ProperType):
                 is_ellipsis_args if is_ellipsis_args is not _dummy else self.is_ellipsis_args
             ),
             variables=variables if variables is not _dummy else self.variables,
+            imprecise_arg_kinds=(
+                imprecise_arg_kinds
+                if imprecise_arg_kinds is not _dummy
+                else self.imprecise_arg_kinds
+            ),
         )
 
     # the following are copied from CallableType. Is there a way to decrease code duplication?
@@ -1695,6 +1704,7 @@ class Parameters(ProperType):
             "arg_kinds": [int(x.value) for x in self.arg_kinds],
             "arg_names": self.arg_names,
             "variables": [tv.serialize() for tv in self.variables],
+            "imprecise_arg_kinds": self.imprecise_arg_kinds,
         }
 
     @classmethod
@@ -1705,6 +1715,7 @@ class Parameters(ProperType):
             [ArgKind(x) for x in data["arg_kinds"]],
             data["arg_names"],
             variables=[cast(TypeVarLikeType, deserialize_type(v)) for v in data["variables"]],
+            imprecise_arg_kinds=data["imprecise_arg_kinds"],
         )
 
     def __hash__(self) -> int:
@@ -1761,6 +1772,7 @@ class CallableType(FunctionLike):
         "type_guard",  # T, if -> TypeGuard[T] (ret_type is bool in this case).
         "from_concatenate",  # whether this callable is from a concatenate object
         # (this is used for error messages)
+        "imprecise_arg_kinds",
         "unpack_kwargs",  # Was an Unpack[...] with **kwargs used to define this callable?
     )
 
@@ -1785,6 +1797,7 @@ class CallableType(FunctionLike):
         def_extras: dict[str, Any] | None = None,
         type_guard: Type | None = None,
         from_concatenate: bool = False,
+        imprecise_arg_kinds: bool = False,
         unpack_kwargs: bool = False,
     ) -> None:
         super().__init__(line, column)
@@ -1811,6 +1824,7 @@ class CallableType(FunctionLike):
         self.special_sig = special_sig
         self.from_type_type = from_type_type
         self.from_concatenate = from_concatenate
+        self.imprecise_arg_kinds = imprecise_arg_kinds
         if not bound_args:
             bound_args = ()
         self.bound_args = bound_args
@@ -1853,6 +1867,7 @@ class CallableType(FunctionLike):
         def_extras: Bogus[dict[str, Any]] = _dummy,
         type_guard: Bogus[Type | None] = _dummy,
         from_concatenate: Bogus[bool] = _dummy,
+        imprecise_arg_kinds: Bogus[bool] = _dummy,
         unpack_kwargs: Bogus[bool] = _dummy,
     ) -> CT:
         modified = CallableType(
@@ -1877,6 +1892,11 @@ class CallableType(FunctionLike):
             type_guard=type_guard if type_guard is not _dummy else self.type_guard,
             from_concatenate=(
                 from_concatenate if from_concatenate is not _dummy else self.from_concatenate
+            ),
+            imprecise_arg_kinds=(
+                imprecise_arg_kinds
+                if imprecise_arg_kinds is not _dummy
+                else self.imprecise_arg_kinds
             ),
             unpack_kwargs=unpack_kwargs if unpack_kwargs is not _dummy else self.unpack_kwargs,
         )
@@ -2129,6 +2149,7 @@ class CallableType(FunctionLike):
             "def_extras": dict(self.def_extras),
             "type_guard": self.type_guard.serialize() if self.type_guard is not None else None,
             "from_concatenate": self.from_concatenate,
+            "imprecise_arg_kinds": self.imprecise_arg_kinds,
             "unpack_kwargs": self.unpack_kwargs,
         }
 
@@ -2152,6 +2173,7 @@ class CallableType(FunctionLike):
                 deserialize_type(data["type_guard"]) if data["type_guard"] is not None else None
             ),
             from_concatenate=data["from_concatenate"],
+            imprecise_arg_kinds=data["imprecise_arg_kinds"],
             unpack_kwargs=data["unpack_kwargs"],
         )
 
