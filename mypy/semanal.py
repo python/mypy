@@ -1156,7 +1156,8 @@ class SemanticAnalyzer(
         if types and not any(
             # If some overload items are decorated with other decorators, then
             # the overload type will be determined during type checking.
-            isinstance(it, Decorator) and len(it.decorators) > 1 for it in defn.items
+            isinstance(it, Decorator) and len(it.decorators) > 1
+            for it in defn.items
         ):
             # TODO: should we enforce decorated overloads consistency somehow?
             # Some existing code uses both styles:
