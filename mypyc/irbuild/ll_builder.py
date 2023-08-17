@@ -1527,14 +1527,12 @@ class LowLevelIRBuilder:
 
     def compare_strings(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         """Compare two strings"""
-
-        # since the operation may invoke an override method, different c functions
-        # need to be invoked based on the operator used
+        # The C-API string compare function doesn't handle subclasses that override __eq__
+        # or __ne__ correctly. Use a wrapper that does.
         if op == "==":
             compare_result = self.call_c(unicode_compare, [lhs, rhs], line)
         else:
             compare_result = self.call_c(unicode_compare_neq, [lhs, rhs], line)
-
         error_constant = Integer(-1, c_int_rprimitive, line)
         compare_error_check = self.add(
             ComparisonOp(compare_result, error_constant, ComparisonOp.EQ, line)
