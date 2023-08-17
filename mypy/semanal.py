@@ -1153,7 +1153,9 @@ class SemanticAnalyzer(
             elif not non_overload_indexes:
                 self.handle_missing_overload_implementation(defn)
 
-        if types:
+        if types and (not isinstance(defn.impl, Decorator) or not defn.impl.decorators):
+            # TODO: should we enforce decorated overloads consistency somehow?
+            # TODO: how do support decorated overloads in stubs without major slow-down?
             defn.type = Overloaded(types)
             defn.type.line = defn.line
 
