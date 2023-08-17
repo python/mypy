@@ -323,7 +323,7 @@ def analyze_instance_member_access(
             if method.type is None:
                 # Overloads may be not ready if they are decorated. Handle this in same
                 # manner as we would handle a regular decorated function: defer if possible.
-                if not mx.no_deferral:
+                if not mx.no_deferral and method.items:
                     mx.not_ready_callback(method.name, mx.context)
                 return AnyType(TypeOfAny.special_form)
             assert isinstance(method.type, Overloaded)

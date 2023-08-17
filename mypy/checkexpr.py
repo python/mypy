@@ -355,7 +355,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             result = function_type(node, self.named_type("builtins.function"))
         elif isinstance(node, OverloadedFuncDef):
             if node.type is None:
-                if self.chk.in_checked_function():
+                if self.chk.in_checked_function() and node.items:
                     self.chk.handle_cannot_determine_type(node.name, e)
                 result = AnyType(TypeOfAny.from_error)
             else:
