@@ -657,7 +657,7 @@ def test_compare() -> None:
     assert s2 == s2
     assert s3 == s3
 
-[case testCustomCompare]
+[case testOverridenCompare]
 from interp import StrEqualNever, StrEqualAlways
 
 def test_custom_compare() -> None:
