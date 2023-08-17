@@ -2116,9 +2116,11 @@ class MessageBuilder:
             return
 
         # Report member type conflicts
-        conflict_types = get_conflict_protocol_types(subtype, supertype, class_obj=class_obj)
+        conflict_types = get_conflict_protocol_types(
+            subtype, supertype, class_obj=class_obj, options=self.options
+        )
         if conflict_types and (
-            not is_subtype(subtype, erase_type(supertype))
+            not is_subtype(subtype, erase_type(supertype), options=self.options)
             or not subtype.type.defn.type_vars
             or not supertype.type.defn.type_vars
         ):
@@ -2780,7 +2782,11 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
             slash = True
 
     # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
-    if isinstance(tp.definition, FuncDef) and hasattr(tp.definition, "arguments"):
+    if (
+        isinstance(tp.definition, FuncDef)
+        and hasattr(tp.definition, "arguments")
+        and not tp.from_concatenate
+    ):
         definition_arg_names = [arg.variable.name for arg in tp.definition.arguments]
         if (
             len(definition_arg_names) > len(tp.arg_names)
@@ -2857,7 +2863,7 @@ def get_missing_protocol_members(left: Instance, right: Instance, skip: list[str
 
 
 def get_conflict_protocol_types(
-    left: Instance, right: Instance, class_obj: bool = False
+    left: Instance, right: Instance, class_obj: bool = False, options: Options | None = None
 ) -> list[tuple[str, Type, Type]]:
     """Find members that are defined in 'left' but have incompatible types.
     Return them as a list of ('member', 'got', 'expected').
@@ -2872,9 +2878,9 @@ def get_conflict_protocol_types(
         subtype = mypy.typeops.get_protocol_member(left, member, class_obj)
         if not subtype:
             continue
-        is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True)
+        is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True, options=options)
         if IS_SETTABLE in get_member_flags(member, right):
-            is_compat = is_compat and is_subtype(supertype, subtype)
+            is_compat = is_compat and is_subtype(supertype, subtype, options=options)
         if not is_compat:
             conflicts.append((member, subtype, supertype))
     return conflicts

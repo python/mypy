@@ -1577,7 +1577,21 @@ def test() -> None: ...
 apply(apply, test)  # E: Argument 2 to "apply" has incompatible type "Callable[[], None]"; expected "Callable[P, T]"
 [builtins fixtures/paramspec.pyi]
 
-[case testParamSpecPrefixSubtypingInvalid]
+[case testParamSpecPrefixSubtypingGenericInvalid]
+from typing import Generic
+from typing_extensions import ParamSpec, Concatenate
+
+P = ParamSpec("P")
+
+class A(Generic[P]):
+    def foo(self, *args: P.args, **kwargs: P.kwargs):
+        ...
+
+def bar(b: A[P]) -> A[Concatenate[int, P]]:
+    return b  # E: Incompatible return value type (got "A[P]", expected "A[[int, **P]]")
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecPrefixSubtypingProtocolInvalid]
 from typing import Protocol
 from typing_extensions import ParamSpec, Concatenate
 
@@ -1625,5 +1639,10 @@ class B(Protocol[P]):
         ...
 
 def bar(b: B[P]) -> A[Concatenate[int, P]]:
-    return b  # E: Incompatible return value type (got "B[P]", expected "A[[int, **P]]")
+    return b  # E: Incompatible return value type (got "B[P]", expected "A[[int, **P]]") \
+              # N: Following member(s) of "B[P]" have conflicts: \
+              # N:     Expected: \
+              # N:         def foo(self, a: int, int, /, *args: P.args, **kwargs: P.kwargs) -> Any \
+              # N:     Got: \
+              # N:         def foo(self, a: int, b: int, *args: P.args, **kwargs: P.kwargs) -> Any
 [builtins fixtures/paramspec.pyi]
