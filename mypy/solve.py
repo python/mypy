@@ -85,7 +85,7 @@ def solve_constraints(
                 continue
             lowers = [c.target for c in cs if c.op == SUPERTYPE_OF]
             uppers = [c.target for c in cs if c.op == SUBTYPE_OF]
-            solution = solve_one(lowers, uppers)
+            solution = solve_one(originals[tv], lowers, uppers)
 
             # Do not leak type variables in non-polymorphic solutions.
             if solution is None or not get_vars(
@@ -163,13 +163,17 @@ def solve_with_dependent(
 
     solutions: dict[TypeVarId, Type | None] = {}
     for flat_batch in batches:
-        res = solve_iteratively(flat_batch, graph, lowers, uppers)
+        res = solve_iteratively(flat_batch, graph, lowers, uppers, originals)
         solutions.update(res)
     return solutions, [free_solutions[tv] for tv in free_vars]
 
 
 def solve_iteratively(
-    batch: list[TypeVarId], graph: Graph, lowers: Bounds, uppers: Bounds
+    batch: list[TypeVarId],
+    graph: Graph,
+    lowers: Bounds,
+    uppers: Bounds,
+    originals: dict[TypeVarId, TypeVarLikeType],
 ) -> Solutions:
     """Solve transitive closure sequentially, updating upper/lower bounds after each step.
 
@@ -195,7 +199,7 @@ def solve_iteratively(
             break
         # Solve each solvable type variable separately.
         s_batch.remove(solvable_tv)
-        result = solve_one(lowers[solvable_tv], uppers[solvable_tv])
+        result = solve_one(originals[solvable_tv], lowers[solvable_tv], uppers[solvable_tv])
         solutions[solvable_tv] = result
         if result is None:
             # TODO: support backtracking lower/upper bound choices and order within SCCs.
@@ -228,7 +232,9 @@ def solve_iteratively(
     return solutions
 
 
-def solve_one(lowers: Iterable[Type], uppers: Iterable[Type]) -> Type | None:
+def solve_one(
+    type_var: TypeVarLikeType, lowers: Iterable[Type], uppers: Iterable[Type]
+) -> Type | None:
     """Solve constraints by finding by using meets of upper bounds, and joins of lower bounds."""
     bottom: Type | None = None
     top: Type | None = None
@@ -268,7 +274,11 @@ def solve_one(lowers: Iterable[Type], uppers: Iterable[Type]) -> Type | None:
             return None
     elif top is None:
         candidate = bottom
-    elif is_subtype(bottom, top):
+    elif is_subtype(bottom, top, ignore_pos_arg_names=isinstance(type_var, ParamSpecType)):
+        # We ignore positional argument names to handle rare but important corner case, when
+        # constraints from both callable inference (more precise) and from ParamSpec vs arguments
+        # (more ad-hoc) are both present (e.g. if they were inferred at different nesting levels).
+        # In such case we conservatively solve [int] <: P <: [x: int] as P = [int].
         candidate = bottom
     else:
         candidate = None

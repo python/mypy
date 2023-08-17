@@ -4853,6 +4853,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.chk.fail(message_registry.CANNOT_INFER_LAMBDA_TYPE, e)
             return None, None
 
+        # Type of lambda must have correct argument names, to prevent false
+        # negatives when lambdas appear in `ParamSpec` context.
         return callable_ctx.copy_modified(arg_names=e.arg_names), callable_ctx
 
     def visit_super_expr(self, e: SuperExpr) -> Type:

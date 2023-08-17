@@ -1624,3 +1624,16 @@ def apply(fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T: ...
 def test() -> int: ...
 reveal_type(apply(apply, test))  # N: Revealed type is "builtins.int"
 [builtins fixtures/paramspec.pyi]
+
+[case testParamSpecNestedApplyPosVsNamed]
+from typing import Callable, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+def apply(fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> None: ...
+def test(x: int) -> int: ...
+apply(apply, test, x=42)  # OK
+apply(apply, test, 42)  # Also OK (but requires some special casing)
+[builtins fixtures/paramspec.pyi]
