@@ -591,7 +591,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     code=codes.VALID_TYPE,
                 )
                 return AnyType(TypeOfAny.from_error)
-            return self.anal_type(t.args[0])
+            return self.anal_type(t.args[0], allow_required=self.allow_required)
         elif fullname in ("typing_extensions.Required", "typing.Required"):
             if not self.allow_required:
                 self.fail(
@@ -1527,11 +1527,18 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_param_spec_literals = old_allow_param_spec_literals
         return self.check_unpacks_in_list(res)
 
-    def anal_type(self, t: Type, nested: bool = True, *, allow_param_spec: bool = False) -> Type:
+    def anal_type(
+        self,
+        t: Type,
+        nested: bool = True,
+        *,
+        allow_param_spec: bool = False,
+        allow_required: bool = False,
+    ) -> Type:
         if nested:
             self.nesting_level += 1
         old_allow_required = self.allow_required
-        self.allow_required = False
+        self.allow_required = allow_required
         try:
             analyzed = t.accept(self)
         finally:
