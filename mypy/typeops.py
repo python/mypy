@@ -303,7 +303,7 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
         return cast(F, func)
     self_param_type = get_proper_type(func.arg_types[0])
 
-    variables: Sequence[TypeVarLikeType] = []
+    variables: Sequence[TypeVarLikeType]
     if func.variables and supported_self_type(self_param_type):
         from mypy.infer import infer_type_arguments
 
@@ -312,46 +312,40 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
             original_type = erase_to_bound(self_param_type)
         original_type = get_proper_type(original_type)
 
-        all_ids = func.type_var_ids()
+        # Find which of method type variables appear in the type of "self".
+        self_ids = {tv.id for tv in get_all_type_vars(self_param_type)}
+        self_vars = [tv for tv in func.variables if tv.id in self_ids]
+
+        # Solve for these type arguments using the actual class or instance type.
         typeargs = infer_type_arguments(
-            func.variables, self_param_type, original_type, is_supertype=True
+            self_vars, self_param_type, original_type, is_supertype=True
         )
         if (
             is_classmethod
-            # TODO: why do we need the extra guards here?
             and any(isinstance(get_proper_type(t), UninhabitedType) for t in typeargs)
             and isinstance(original_type, (Instance, TypeVarType, TupleType))
         ):
-            # In case we call a classmethod through an instance x, fallback to type(x)
+            # In case we call a classmethod through an instance x, fallback to type(x).
             typeargs = infer_type_arguments(
-                func.variables, self_param_type, TypeType(original_type), is_supertype=True
+                self_vars, self_param_type, TypeType(original_type), is_supertype=True
             )
 
-        ids = [tid for tid in all_ids if any(tid == t.id for t in get_type_vars(self_param_type))]
-
+        # Update the method signature with the solutions found.
         # Technically, some constrains might be unsolvable, make them <nothing>.
         to_apply = [t if t is not None else UninhabitedType() for t in typeargs]
-
-        def expand(target: Type) -> Type:
-            return expand_type(target, {id: to_apply[all_ids.index(id)] for id in ids})
-
-        arg_types = [expand(x) for x in func.arg_types[1:]]
-        ret_type = expand(func.ret_type)
-        variables = [v for v in func.variables if v.id not in ids]
+        func = expand_type(func, {tv.id: arg for tv, arg in zip(self_vars, to_apply)})
+        variables = [v for v in func.variables if v not in self_vars]
     else:
-        arg_types = func.arg_types[1:]
-        ret_type = func.ret_type
         variables = func.variables
 
     original_type = get_proper_type(original_type)
     if isinstance(original_type, CallableType) and original_type.is_type_obj():
         original_type = TypeType.make_normalized(original_type.ret_type)
     res = func.copy_modified(
-        arg_types=arg_types,
+        arg_types=func.arg_types[1:],
         arg_kinds=func.arg_kinds[1:],
         arg_names=func.arg_names[1:],
         variables=variables,
-        ret_type=ret_type,
         bound_args=[original_type],
     )
     return cast(F, res)
