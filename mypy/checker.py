@@ -4068,7 +4068,23 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     f"{lvalue_name} has type",
                     notes=notes,
                 )
+
+            if isinstance(rvalue_type, CallableType) and isinstance(lvalue_type, CallableType):
+                self.check_compliance_with_pep692_assignment_rules(
+                    rvalue_type, lvalue_type, context
+                )
+
             return rvalue_type
+
+    def check_compliance_with_pep692_assignment_rules(
+        self, source: CallableType, destination: CallableType, context: Context
+    ) -> None:
+        # Destination contains kwargs and source doesn't.
+        if destination.unpack_kwargs and not source.is_kw_arg:
+            self.fail(
+                "Incompatible function signatures - variable contains **kwargs and the expression does not. See PEP 692 for more details.",
+                context,
+            )
 
     def check_member_assignment(
         self, instance_type: Type, attribute_type: Type, rvalue: Expression, context: Context

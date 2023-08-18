@@ -1042,10 +1042,11 @@ class TypeList(ProperType):
 
 class UnpackType(ProperType):
     """Type operator Unpack from PEP646. Can be either with Unpack[]
-    or unpacking * syntax.
+    or unpacking * syntax. It can also be used for typing **kwargs (PEP692).
 
     The inner type should be either a TypeVarTuple, a constant size
-    tuple, or a variable length tuple, or a union of one of those.
+    tuple, or a variable length tuple, or a union of one of those OR a
+    TypedDict.
     """
 
     __slots__ = ["type"]

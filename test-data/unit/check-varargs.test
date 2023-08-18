@@ -769,6 +769,19 @@ def foo(arg: bool, **kwargs: Unpack[Person]) -> None: ...
 reveal_type(foo)  # N: Revealed type is "def (arg: builtins.bool, **kwargs: Unpack[TypedDict('__main__.Person', {'name': builtins.str, 'age': builtins.int})])"
 [builtins fixtures/dict.pyi]
 
+[case testUnpackKwargsTypeInsideOfTheFunction]
+from typing import assert_type
+from typing_extensions import TypedDict, Unpack
+
+class Person(TypedDict):
+    name: str
+    age: int
+
+def foo(**kwargs: Unpack[Person]):
+    assert_type(kwargs, Person)
+
+[builtins fixtures/dict.pyi]
+
 [case testUnpackOutsideOfKwargs]
 from typing_extensions import Unpack, TypedDict
 class Person(TypedDict):
@@ -797,6 +810,8 @@ class Person(TypedDict):
     name: str
     age: int
 def foo(name: str, **kwargs: Unpack[Person]) -> None:  # E: Overlap between argument names and ** TypedDict items: "name"
+    ...
+def bar(name:str, /, **kwargs: Unpack[Person]) -> None:  # OK
     ...
 [builtins fixtures/dict.pyi]
 
@@ -855,6 +870,42 @@ def bar(**kwargs: Unpack[Square]):
     ...
 bar(side=12)
 [builtins fixtures/dict.pyi]
+
+[case testUnpackTypedDictRequired]
+from typing import Required, TypedDict
+from typing_extensions import Unpack
+
+class Movie(TypedDict, total=False):
+    name: Required[str]
+    year: Required[int]
+    based_on: str
+
+def foo(**kwargs: Unpack[Movie]): ...
+
+foo(name="Life of Brian", year=1979)  # OK
+foo(name="Harry Potter and the Philosopher's Stone", year=2001, based_on="book")  # OK
+
+foo(name="Harry Potter and the Philosopher's Stone", based_on="book")  # E: Missing named argument "year" for "foo"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testUnpackTypedDictNotRequired]
+from typing import NotRequired, TypedDict
+from typing_extensions import Unpack
+
+class Movie(TypedDict, total=True):
+    name: str
+    year: int
+    based_on: NotRequired[str]
+
+def foo(**kwargs: Unpack[Movie]): ...
+
+foo(name="Life of Brian", year=1979)  # OK
+foo(name="Harry Potter and the Philosopher's Stone", year=2001, based_on="book")  # OK
+
+foo(name="Harry Potter and the Philosopher's Stone", based_on="book")  # E: Missing named argument "year" for "foo"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testUnpackUnexpectedKeyword]
 from typing_extensions import Unpack, TypedDict
@@ -1079,3 +1130,166 @@ class C:
 class D:
     def __init__(self, **kwds: Unpack[int, str]) -> None: ...  # E: Unpack[...] requires exactly one type argument
 [builtins fixtures/dict.pyi]
+
+[case testUnpackKwargsAssignmentWhenSourceIsUntyped]
+from typing_extensions import Unpack, TypedDict
+
+class Movie(TypedDict):
+    name: str
+    year: int
+
+def src(**kwargs): ...
+def dest(**kwargs: Unpack[Movie]): ...
+
+dest = src  # OK
+[builtins fixtures/dict.pyi]
+
+[case testUnpackKwargsAssignmentWhenSourceHasTraditionallyTypedKwargs]
+from typing_extensions import Unpack, TypedDict
+
+class Vehicle:
+    ...
+
+class Car(Vehicle):
+    ...
+
+class Motorcycle(Vehicle):
+    ...
+
+def src(**kwargs: Vehicle): ...
+
+class Vehicles(TypedDict):
+    car: Car
+    moto: Motorcycle
+
+def dest(**kwargs: Unpack[Vehicles]): ...
+
+dest = src  # OK
+[builtins fixtures/dict.pyi]
+
+[case testUnpackKwargsAssignmentWhenDestinationHasTraditionallyTypedKwargs]
+from typing_extensions import Unpack, TypedDict
+
+class Vehicle:
+    ...
+
+class Car(Vehicle):
+    ...
+
+class Motorcycle(Vehicle):
+    ...
+
+def dest(**kwargs: Vehicle): ...
+
+class Vehicles(TypedDict):
+    car: Car
+    moto: Motorcycle
+
+def src(**kwargs: Unpack[Vehicles]): ...
+
+dest = src  # E: Incompatible types in assignment (expression has type "Callable[[KwArg(Vehicles)], Any]", variable has type "Callable[[KwArg(Vehicle)], Any]")
+[builtins fixtures/dict.pyi]
+
+[case testUnpackKwargsAssignmentWhenOnlySourceContainsKwargs]
+from typing import NotRequired
+from typing_extensions import Unpack, TypedDict
+
+class Animal(TypedDict):
+    name: str
+
+class Dog(Animal):
+    breed: str
+
+class Example(TypedDict):
+    animal: Animal
+    string: str
+    number: NotRequired[int]
+
+def src(**kwargs: Unpack[Example]): ...
+def dest(*, animal: Dog, string: str, number: int = ...): ...
+
+dest = src  # OK
+
+def dest_with_positional_args(animal: Dog, string: str, number: int = ...): ...
+
+dest_with_positional_args = src  # E: Incompatible types in assignment (expression has type "Callable[[KwArg(Example)], Any]", variable has type "Callable[[Dog, str, int], Any]")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testUnpackKwargsAssignmentWhenOnlyDestinationContainsKwargs]
+from typing_extensions import Unpack, TypedDict
+
+class Animal(TypedDict):
+    name: str
+
+class Dog(Animal):
+    breed: str
+
+def dest(**kwargs: Unpack[Animal]): ...
+def src(name: str): ...
+
+dog: Dog = {"name": "Daisy", "breed": "Labrador"}
+animal: Animal = dog
+
+dest = src  # E: Incompatible function signatures - variable contains **kwargs and the expression does not. See PEP 692 for more details.
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testUnpackKwargsAssignmentWhenBothSidesContainKwargsTypedWithUnpack]
+from typing_extensions import Unpack, TypedDict
+
+class Animal(TypedDict):
+    name: str
+
+class Dog(Animal):
+    breed: str
+
+def accept_animal(**kwargs: Unpack[Animal]): ...
+def accept_dog(**kwargs: Unpack[Dog]): ...
+
+accept_dog = accept_animal  # OK
+
+def also_accept_animal(**kwargs: Unpack[Animal]): ...
+def also_accept_dog(**kwargs: Unpack[Dog]): ...
+
+also_accept_animal = also_accept_dog  # E: Incompatible types in assignment (expression has type "Callable[[KwArg(Dog)], Any]", variable has type "Callable[[KwArg(Animal)], Any]")
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testPassingKwargsFromFunctionToFunction]
+from typing_extensions import Unpack, TypedDict
+
+class Animal(TypedDict):
+    name: str
+
+class Dog(Animal):
+    breed: str
+
+def takes_name(name: str):
+    ...
+
+dog: Dog = {"name": "Daisy", "breed": "Labrador"}
+animal: Animal = dog
+
+def foo(**kwargs: Unpack[Animal]):
+    return kwargs["name"]
+
+def bar(**kwargs: Unpack[Animal]):
+    takes_name(**kwargs)
+
+def baz(animal: Animal):
+    takes_name(**animal)
+
+def spam(**kwargs: Unpack[Animal]):
+    baz(kwargs)
+
+foo(**animal)  # OK! foo only expects and uses keywords of 'Animal'.
+
+bar(**animal)  # E: This will fail at runtime because 'breed' keyword will be passed to 'takes_name' as well.
+
+spam(**animal)  # E: Again, 'breed' keyword will be eventually passed to 'takes_name'.
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
