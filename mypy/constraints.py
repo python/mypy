@@ -595,15 +595,11 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             return self.infer_against_any(template.arg_types, self.actual)
         if type_state.infer_polymorphic and isinstance(self.actual, Parameters):
             # For polymorphic inference we need to be able to infer secondary constraints
-            # in situations like [x: T] <: P <: [x: int].
-            res = []
-            if len(template.arg_types) == len(self.actual.arg_types):
-                for tt, at in zip(template.arg_types, self.actual.arg_types):
-                    # This avoids bogus constraints like T <: P.args
-                    if isinstance(at, ParamSpecType):
-                        continue
-                    res.extend(infer_constraints(tt, at, self.direction))
-            return res
+            # in situations like [x: T] <: P <: [x: int]. Note we invert direction, since
+            # this function expects direction between callables.
+            return infer_callable_arguments_constraints(
+                template, self.actual, neg_op(self.direction)
+            )
         raise RuntimeError("Parameters cannot be constrained to")
 
     # Non-leaf types
@@ -722,7 +718,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         prefix = mapped_arg.prefix
                         if isinstance(instance_arg, Parameters):
                             # No such thing as variance for ParamSpecs, consider them invariant
-                            # TODO: constraints between prefixes
+                            # TODO: constraints between prefixes using
+                            # infer_callable_arguments_constraints()
                             suffix: Type = instance_arg.copy_modified(
                                 instance_arg.arg_types[len(prefix.arg_types) :],
                                 instance_arg.arg_kinds[len(prefix.arg_kinds) :],
@@ -793,7 +790,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         prefix = template_arg.prefix
                         if isinstance(mapped_arg, Parameters):
                             # No such thing as variance for ParamSpecs, consider them invariant
-                            # TODO: constraints between prefixes
+                            # TODO: constraints between prefixes using
+                            # infer_callable_arguments_constraints()
                             suffix = mapped_arg.copy_modified(
                                 mapped_arg.arg_types[len(prefix.arg_types) :],
                                 mapped_arg.arg_kinds[len(prefix.arg_kinds) :],
@@ -962,24 +960,12 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         unpack_constraints = build_constraints_for_simple_unpack(
                             template_types, actual_types, neg_op(self.direction)
                         )
-                        template_args = []
-                        cactual_args = []
                         res.extend(unpack_constraints)
                     else:
-                        template_args = template.arg_types
-                        cactual_args = cactual.arg_types
-                    # TODO: use some more principled "formal to actual" logic
-                    # instead of this lock-step loop over argument types. This identical
-                    # logic should be used in 5 places: in Parameters vs Parameters
-                    # inference, in Instance vs Instance inference for prefixes (two
-                    # branches), and in Callable vs Callable inference (two branches).
-                    for t, a in zip(template_args, cactual_args):
-                        # This avoids bogus constraints like T <: P.args
-                        if isinstance(a, (ParamSpecType, UnpackType)):
-                            # TODO: can we infer something useful for *T vs P?
-                            continue
                         # Negate direction due to function argument type contravariance.
-                        res.extend(infer_constraints(t, a, neg_op(self.direction)))
+                        res.extend(
+                            infer_callable_arguments_constraints(template, cactual, self.direction)
+                        )
             else:
                 prefix = param_spec.prefix
                 prefix_len = len(prefix.arg_types)
@@ -1028,11 +1014,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     arg_kinds=cactual.arg_kinds[:prefix_len],
                     arg_names=cactual.arg_names[:prefix_len],
                 )
-
-                for t, a in zip(prefix.arg_types, cactual_prefix.arg_types):
-                    if isinstance(a, ParamSpecType):
-                        continue
-                    res.extend(infer_constraints(t, a, neg_op(self.direction)))
+                res.extend(
+                    infer_callable_arguments_constraints(prefix, cactual_prefix, self.direction)
+                )
 
             template_ret_type, cactual_ret_type = template.ret_type, cactual.ret_type
             if template.type_guard is not None:
@@ -1435,3 +1419,85 @@ def build_constraints_for_unpack(
                 for template_arg, item in zip(template_unpack.items, mapped_middle):
                     res.extend(infer_constraints(template_arg, item, direction))
     return res, mapped_prefix + mapped_suffix, template_prefix + template_suffix
+
+
+def infer_directed_constraints(left: Type, right: Type, direction: int) -> list[Constraint]:
+    """Infer constraints between two arguments using direction between original callables."""
+    if isinstance(left, (ParamSpecType, UnpackType)) or isinstance(
+        right, (ParamSpecType, UnpackType)
+    ):
+        # This avoids bogus constraints like T <: P.args
+        # TODO: can we infer something useful for *T vs P?
+        return []
+    if direction == SUBTYPE_OF:
+        # We invert direction to account for argument contravariance.
+        return infer_constraints(left, right, neg_op(direction))
+    else:
+        return infer_constraints(right, left, neg_op(direction))
+
+
+def infer_callable_arguments_constraints(
+    template: CallableType | Parameters, actual: CallableType | Parameters, direction: int
+) -> list[Constraint]:
+    """Infer constraints between argument types of two callables.
+
+    This function essentially extracts four steps from are_parameters_compatible() in
+    subtypes.py that involve subtype checks between argument types. We keep the argument
+    matching logic, but ignore various strictness flags present there, and checks that
+    do not involve subtyping. Then in place of every subtype check we put an infer_constrains()
+    check for the same types.
+    """
+    res = []
+    if direction == SUBTYPE_OF:
+        left, right = template, actual
+    else:
+        left, right = actual, template
+    left_star = left.var_arg()
+    left_star2 = left.kw_arg()
+    right_star = right.var_arg()
+    right_star2 = right.kw_arg()
+
+    # Numbering of steps below matches the one in are_parameters_compatible() for convenience.
+    # Phase 1a: compare star vs star arguments.
+    if left_star is not None and right_star is not None:
+        res.extend(infer_directed_constraints(left_star.typ, right_star.typ, direction))
+    if left_star2 is not None and right_star2 is not None:
+        res.extend(infer_directed_constraints(left_star2.typ, right_star2.typ, direction))
+
+    # Phase 1b: compare left args with corresponding non-star right arguments.
+    for right_arg in right.formal_arguments():
+        left_arg = mypy.typeops.callable_corresponding_argument(left, right_arg)
+        if left_arg is None:
+            continue
+        res.extend(infer_directed_constraints(left_arg.typ, right_arg.typ, direction))
+
+    # Phase 1c: compare left args with right *args.
+    if right_star is not None:
+        right_by_position = right.try_synthesizing_arg_from_vararg(None)
+        assert right_by_position is not None
+        i = right_star.pos
+        assert i is not None
+        while i < len(left.arg_kinds) and left.arg_kinds[i].is_positional():
+            left_by_position = left.argument_by_position(i)
+            assert left_by_position is not None
+            res.extend(
+                infer_directed_constraints(left_by_position.typ, right_by_position.typ, direction)
+            )
+            i += 1
+
+    # Phase 1d: compare left args with right **kwargs.
+    if right_star2 is not None:
+        right_names = {name for name in right.arg_names if name is not None}
+        left_only_names = set()
+        for name, kind in zip(left.arg_names, left.arg_kinds):
+            if name is None or kind.is_star() or name in right_names:
+                continue
+            left_only_names.add(name)
+
+        right_by_name = right.try_synthesizing_arg_from_kwarg(None)
+        assert right_by_name is not None
+        for name in left_only_names:
+            left_by_name = left.argument_by_name(name)
+            assert left_by_name is not None
+            res.extend(infer_directed_constraints(left_by_name.typ, right_by_name.typ, direction))
+    return res

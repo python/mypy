@@ -1545,9 +1545,6 @@ class FormalArgument(NamedTuple):
     required: bool
 
 
-# TODO: should this take bound typevars too? what would this take?
-#   ex: class Z(Generic[P, T]): ...; Z[[V], V]
-# What does a typevar even mean in this context?
 class Parameters(ProperType):
     """Type that represents the parameters to a function.
 
@@ -1602,7 +1599,7 @@ class Parameters(ProperType):
             variables=variables if variables is not _dummy else self.variables,
         )
 
-    # the following are copied from CallableType. Is there a way to decrease code duplication?
+    # TODO: here is a lot of code duplication with Callable type, fix this.
     def var_arg(self) -> FormalArgument | None:
         """The formal argument for *args."""
         for position, (type, kind) in enumerate(zip(self.arg_types, self.arg_kinds)):
