@@ -674,6 +674,27 @@ def f(x: int) -> None: ...
 n.foo(f)
 [builtins fixtures/paramspec.pyi]
 
+[case testLastParameterToConcatenateAndInvalidCallable]
+# See https://github.com/python/mypy/issues/13518
+from typing_extensions import Concatenate, ParamSpec
+from typing import Callable, TypeVar, Any
+
+P = ParamSpec("P")
+
+def f(fn: Callable[Concatenate[P, int], None]): ...  # E: The last parameter to Concatenate needs to be a ParamSpec
+reveal_type(f)  # N: Revealed type is "def [P] (fn: def (*Any, **Any) -> Any) -> Any"
+[builtins fixtures/paramspec.pyi]
+
+[case testUnboundParamSpecInConcatenateWithAlias]
+from typing import Callable
+from typing_extensions import Concatenate, ParamSpec
+
+P = ParamSpec('P')
+
+X = Callable[Concatenate[int, P], None]  # E: The last parameter to Concatenate needs to be a ParamSpec \
+                                         # E: ParamSpec "P" is unbound
+[builtins fixtures/paramspec.pyi]
+
 [case testParamSpecLiteralsTypeApplication]
 from typing_extensions import ParamSpec
 from typing import Generic, Callable

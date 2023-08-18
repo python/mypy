@@ -1175,8 +1175,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def analyze_callable_args_for_concatenate(
         self, callable_args: Type, ret_type: Type, fallback: Instance
     ) -> CallableType | None:
-        """Construct a 'Callable[C, RET]', where C is Concatenate[..., P], returning None if we
-        cannot.
+        """Construct a 'Callable[C, RET]', where C is Concatenate[..., P]
+
+        Return `None` if we cannot.
         """
         if not isinstance(callable_args, UnboundType):
             return None
@@ -1188,7 +1189,17 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if sym.node.fullname not in ("typing_extensions.Concatenate", "typing.Concatenate"):
             return None
 
-        tvar_def = self.anal_type(callable_args, allow_param_spec=True)
+        tvar_def = get_proper_type(self.anal_type(callable_args, allow_param_spec=True))
+        if isinstance(tvar_def, AnyType) and tvar_def.type_of_any == TypeOfAny.from_error:
+            # Some error happened, we won't be able to construct a proper type anyway.
+            # So, instead return a callable that accepts anything.
+            return CallableType(
+                arg_names=[None] * 2,
+                arg_types=[AnyType(TypeOfAny.from_error)] * 2,
+                arg_kinds=[ARG_STAR, ARG_STAR2],
+                ret_type=AnyType(TypeOfAny.from_error),
+                fallback=fallback,
+            )
         if not isinstance(tvar_def, ParamSpecType):
             if self.allow_unbound_tvars and isinstance(tvar_def, UnboundType):
                 sym = self.lookup_qualified(tvar_def.name, callable_args)
