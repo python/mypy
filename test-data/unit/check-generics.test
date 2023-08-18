@@ -3062,10 +3062,10 @@ def dec5(f: Callable[[int], T]) -> Callable[[int], List[T]]:
 reveal_type(dec1(lambda x: x))  # N: Revealed type is "def [T] (T`3) -> builtins.list[T`3]"
 reveal_type(dec2(lambda x: x))  # N: Revealed type is "def [S] (S`4) -> builtins.list[S`4]"
 reveal_type(dec3(lambda x: x[0]))  # N: Revealed type is "def [S] (S`6) -> S`6"
-reveal_type(dec4(lambda x: [x]))  # N: Revealed type is "def [S] (S`8) -> S`8"
+reveal_type(dec4(lambda x: [x]))  # N: Revealed type is "def [S] (S`9) -> S`9"
 reveal_type(dec1(lambda x: 1))  # N: Revealed type is "def (builtins.int) -> builtins.list[builtins.int]"
 reveal_type(dec5(lambda x: x))  # N: Revealed type is "def (builtins.int) -> builtins.list[builtins.int]"
-reveal_type(dec3(lambda x: x))  # N: Revealed type is "def [S] (S`15) -> builtins.list[S`15]"
+reveal_type(dec3(lambda x: x))  # N: Revealed type is "def [S] (S`16) -> builtins.list[S`16]"
 dec4(lambda x: x)  # E: Incompatible return value type (got "S", expected "List[object]")
 [builtins fixtures/list.pyi]
 

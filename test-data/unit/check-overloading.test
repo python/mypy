@@ -6613,3 +6613,30 @@ def struct(__cols: Union[List[S], Tuple[S, ...]]) -> int: ...
 def struct(*cols: Union[S, Union[List[S], Tuple[S, ...]]]) -> int:
     pass
 [builtins fixtures/tuple.pyi]
+
+[case testRegularGenericDecoratorOverload]
+from typing import Callable, overload, TypeVar, List
+
+S = TypeVar("S")
+T = TypeVar("T")
+def transform(func: Callable[[S], List[T]]) -> Callable[[S], T]: ...
+
+@overload
+def foo(x: int) -> List[float]: ...
+@overload
+def foo(x: str) -> List[str]: ...
+def foo(x): ...
+
+reveal_type(transform(foo))  # N: Revealed type is "Overload(def (builtins.int) -> builtins.float, def (builtins.str) -> builtins.str)"
+
+@transform
+@overload
+def bar(x: int) -> List[float]: ...
+@transform
+@overload
+def bar(x: str) -> List[str]: ...
+@transform
+def bar(x): ...
+
+reveal_type(bar)  # N: Revealed type is "Overload(def (builtins.int) -> builtins.float, def (builtins.str) -> builtins.str)"
+[builtins fixtures/paramspec.pyi]
