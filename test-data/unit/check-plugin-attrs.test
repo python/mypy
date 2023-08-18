@@ -1568,6 +1568,9 @@ reveal_type(f(A)[0])  # N: Revealed type is "attr.Attribute[builtins.int]"
 reveal_type(f(A).b)  # N: Revealed type is "attr.Attribute[builtins.int]"
 f(A).x  # E: "____main___A_AttrsAttributes__" has no attribute "x"
 
+for ff in f(A):
+    reveal_type(ff)  # N: Revealed type is "attr.Attribute[Any]"
+
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testAttrsGenericFields]
@@ -2250,3 +2253,27 @@ c = attrs.assoc(c, name=42)  # E: Argument "name" to "assoc" of "C" has incompat
 
 [builtins fixtures/plugin_attrs.pyi]
 [typing fixtures/typing-medium.pyi]
+
+[case testFrozenInheritFromGeneric]
+from typing import Generic, TypeVar
+from attrs import field, frozen
+
+T = TypeVar('T')
+
+def f(s: str) -> int:
+    ...
+
+@frozen
+class A(Generic[T]):
+    x: T
+    y: int = field(converter=f)
+
+@frozen
+class B(A[int]):
+    pass
+
+b = B(42, 'spam')
+reveal_type(b.x)  # N: Revealed type is "builtins.int"
+reveal_type(b.y)  # N: Revealed type is "builtins.int"
+
+[builtins fixtures/plugin_attrs.pyi]

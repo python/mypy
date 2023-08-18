@@ -1375,19 +1375,19 @@ class B: pass
 [builtins fixtures/list.pyi]
 
 [case testUninferableLambda]
+# flags: --new-type-inference
 from typing import TypeVar, Callable
 X = TypeVar('X')
 def f(x: Callable[[X], X]) -> X: pass
-y = f(lambda x: x) # E: Cannot infer type argument 1 of "f"
+y = f(lambda x: x)  # E: Need type annotation for "y"
 
 [case testUninferableLambdaWithTypeError]
+# flags: --new-type-inference
 from typing import TypeVar, Callable
 X = TypeVar('X')
 def f(x: Callable[[X], X], y: str) -> X: pass
-y = f(lambda x: x, 1) # Fail
-[out]
-main:4: error: Cannot infer type argument 1 of "f"
-main:4: error: Argument 2 to "f" has incompatible type "int"; expected "str"
+y = f(lambda x: x, 1) # E: Need type annotation for "y" \
+                      # E: Argument 2 to "f" has incompatible type "int"; expected "str"
 
 [case testInferLambdaNone]
 # flags: --no-strict-optional

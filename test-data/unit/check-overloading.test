@@ -1145,7 +1145,7 @@ def f(x: str) -> None: pass
 f(1.1)
 f('')
 f(1)
-f(()) # E: No overload variant of "f" matches argument type "Tuple[]" \
+f(()) # E: No overload variant of "f" matches argument type "Tuple[()]" \
       # N: Possible overload variants: \
       # N:     def f(x: float) -> None \
       # N:     def f(x: str) -> None
@@ -2185,35 +2185,62 @@ def bar2(*x: int) -> int: ...
 [builtins fixtures/tuple.pyi]
 
 [case testOverloadDetectsPossibleMatchesWithGenerics]
-from typing import overload, TypeVar, Generic
+# flags: --strict-optional
+from typing import overload, TypeVar, Generic, Optional, List
 
 T = TypeVar('T')
+# The examples below are unsafe, but it is a quite common pattern
+# so we ignore the possibility of type variables taking value `None`
+# for the purpose of overload overlap checks.
 
 @overload
-def foo(x: None, y: None) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def foo(x: None, y: None) -> str: ...
 @overload
 def foo(x: T, y: T) -> int: ...
 def foo(x): ...
 
+oi: Optional[int]
+reveal_type(foo(None, None))  # N: Revealed type is "builtins.str"
+reveal_type(foo(None, 42))  # N: Revealed type is "builtins.int"
+reveal_type(foo(42, 42))  # N: Revealed type is "builtins.int"
+reveal_type(foo(oi, None))  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(foo(oi, 42))  # N: Revealed type is "builtins.int"
+reveal_type(foo(oi, oi))  # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+@overload
+def foo_list(x: None) -> None: ...
+@overload
+def foo_list(x: T) -> List[T]: ...
+def foo_list(x): ...
+
+reveal_type(foo_list(oi))  # N: Revealed type is "Union[builtins.list[builtins.int], None]"
+
 # What if 'T' is 'object'?
 @overload
-def bar(x: None, y: int) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def bar(x: None, y: int) -> str: ...
 @overload
 def bar(x: T, y: T) -> int: ...
 def bar(x, y): ...
 
 class Wrapper(Generic[T]):
     @overload
-    def foo(self, x: None, y: None) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+    def foo(self, x: None, y: None) -> str: ...
     @overload
     def foo(self, x: T, y: None) -> int: ...
     def foo(self, x): ...
 
     @overload
-    def bar(self, x: None, y: int) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+    def bar(self, x: None, y: int) -> str: ...
     @overload
     def bar(self, x: T, y: T) -> int: ...
     def bar(self, x, y): ...
+
+@overload
+def baz(x: str, y: str) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def baz(x: T, y: T) -> int: ...
+def baz(x): ...
+[builtins fixtures/tuple.pyi]
 
 [case testOverloadFlagsPossibleMatches]
 from wrapper import *
@@ -3996,7 +4023,7 @@ T = TypeVar('T')
 
 class FakeAttribute(Generic[T]):
     @overload
-    def dummy(self, instance: None, owner: Type[T]) -> 'FakeAttribute[T]': ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+    def dummy(self, instance: None, owner: Type[T]) -> 'FakeAttribute[T]': ...
     @overload
     def dummy(self, instance: T, owner: Type[T]) -> int: ...
     def dummy(self, instance: Optional[T], owner: Type[T]) -> Union['FakeAttribute[T]', int]: ...
@@ -6474,7 +6501,7 @@ eggs = lambda: 'eggs'
 reveal_type(func(eggs))  # N: Revealed type is "def (builtins.str) -> builtins.str"
 
 spam: Callable[..., str] = lambda x, y: 'baz'
-reveal_type(func(spam))  # N: Revealed type is "def (*Any, **Any) -> builtins.str"
+reveal_type(func(spam))  # N: Revealed type is "def (*Any, **Any) -> Any"
 
 [builtins fixtures/paramspec.pyi]
 
@@ -6554,3 +6581,35 @@ class Snafu(object):
 reveal_type(Snafu().snafu('123'))  # N: Revealed type is "builtins.str"
 reveal_type(Snafu.snafu('123'))  # N: Revealed type is "builtins.str"
 [builtins fixtures/staticmethod.pyi]
+
+[case testOverloadedWithInternalTypeVars]
+# flags: --new-type-inference
+import m
+
+[file m.pyi]
+from typing import Callable, TypeVar, overload
+
+T = TypeVar("T")
+S = TypeVar("S", bound=str)
+
+@overload
+def foo(x: int = ...) -> Callable[[T], T]: ...
+@overload
+def foo(x: S = ...) -> Callable[[T], T]: ...
+
+[case testOverloadGenericStarArgOverlap]
+from typing import Any, Callable, TypeVar, overload, Union, Tuple, List
+
+F = TypeVar("F", bound=Callable[..., Any])
+S = TypeVar("S", bound=int)
+
+def id(f: F) -> F: ...
+
+@overload
+def struct(*cols: S) -> int: ...
+@overload
+def struct(__cols: Union[List[S], Tuple[S, ...]]) -> int: ...
+@id
+def struct(*cols: Union[S, Union[List[S], Tuple[S, ...]]]) -> int:
+    pass
+[builtins fixtures/tuple.pyi]

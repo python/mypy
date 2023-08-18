@@ -5,12 +5,14 @@ repos:
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
-  - repo: https://github.com/hauntsaninja/black-pre-commit-mirror
-    rev: 23.3.0  # must match test-requirements.txt
+  - repo: https://github.com/psf/black-pre-commit-mirror
+    rev: 23.7.0  # must match test-requirements.txt
     hooks:
       - id: black
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.0.272  # must match test-requirements.txt
+    rev: v0.0.281  # must match test-requirements.txt
     hooks:
       - id: ruff
         args: [--exit-non-zero-on-fix]
+ci:
+  autoupdate_schedule: quarterly

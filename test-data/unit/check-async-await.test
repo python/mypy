@@ -475,7 +475,7 @@ async def gen() -> AsyncGenerator[int, str]:
 
 async def h() -> None:
     g = gen()
-    await g.asend(())  # E: Argument 1 to "asend" of "AsyncGenerator" has incompatible type "Tuple[]"; expected "str"
+    await g.asend(())  # E: Argument 1 to "asend" of "AsyncGenerator" has incompatible type "Tuple[()]"; expected "str"
     reveal_type(await g.asend('hello'))  # N: Revealed type is "builtins.int"
 
 [builtins fixtures/dict.pyi]
@@ -974,7 +974,7 @@ crasher = [await foo(x) for x in [1, 2, 3]]  # E: "await" outside function  [top
 
 def bad() -> None:
     # These are always critical / syntax issues:
-    y = [await foo(x) for x in [1, 2, 3]]  # E: "await" outside coroutine ("async def")
+    y = [await foo(x) for x in [1, 2, 3]]  # E: "await" outside coroutine ("async def")  [await-not-async]
 async def good() -> None:
     y = [await foo(x) for x in [1, 2, 3]]  # OK
 [builtins fixtures/async_await.pyi]

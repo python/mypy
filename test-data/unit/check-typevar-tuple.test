@@ -58,7 +58,7 @@ f_args3: Tuple[int, str, bool]
 reveal_type(f(f_args))  # N: Revealed type is "Tuple[builtins.str, builtins.str]"
 reveal_type(f(f_args2))  # N: Revealed type is "Tuple[builtins.str]"
 reveal_type(f(f_args3))  # N: Revealed type is "Tuple[builtins.str, builtins.str, builtins.bool]"
-f(empty)  # E: Argument 1 to "f" has incompatible type "Tuple[]"; expected "Tuple[int]"
+f(empty)  # E: Argument 1 to "f" has incompatible type "Tuple[()]"; expected "Tuple[int]"
 f(bad_args)  # E: Argument 1 to "f" has incompatible type "Tuple[str, str]"; expected "Tuple[int, str]"
 # TODO: This hits a crash where we assert len(templates.items) == 1. See visit_tuple_type
 # in mypy/constraints.py.

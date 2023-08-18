@@ -119,8 +119,8 @@ void bind_basics(py::module& basics) {
   using namespace basics;
 
   // Functions
-  basics.def("answer", &answer);
-  basics.def("sum", &sum);
+  basics.def("answer", &answer, "answer docstring, with end quote\""); // tests explicit docstrings
+  basics.def("sum", &sum, "multiline docstring test, edge case quotes \"\"\"'''");
   basics.def("midpoint", &midpoint, py::arg("left"), py::arg("right"));
   basics.def("weighted_midpoint", weighted_midpoint, py::arg("left"), py::arg("right"), py::arg("alpha")=0.5);
 

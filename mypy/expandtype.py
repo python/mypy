@@ -231,47 +231,35 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         return repl
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:
-        # set prefix to something empty so we don't duplicate it
-        repl = get_proper_type(
-            self.variables.get(t.id, t.copy_modified(prefix=Parameters([], [], [])))
-        )
-        if isinstance(repl, Instance):
-            # TODO: what does prefix mean in this case?
-            # TODO: why does this case even happen? Instances aren't plural.
-            return repl
-        elif isinstance(repl, (ParamSpecType, Parameters, CallableType)):
-            if isinstance(repl, ParamSpecType):
-                return repl.copy_modified(
-                    flavor=t.flavor,
-                    prefix=t.prefix.copy_modified(
-                        arg_types=t.prefix.arg_types + repl.prefix.arg_types,
-                        arg_kinds=t.prefix.arg_kinds + repl.prefix.arg_kinds,
-                        arg_names=t.prefix.arg_names + repl.prefix.arg_names,
-                    ),
-                )
-            else:
-                # if the paramspec is *P.args or **P.kwargs:
-                if t.flavor != ParamSpecFlavor.BARE:
-                    assert isinstance(repl, CallableType), "Should not be able to get here."
-                    # Is this always the right thing to do?
-                    param_spec = repl.param_spec()
-                    if param_spec:
-                        return param_spec.with_flavor(t.flavor)
-                    else:
-                        return repl
-                else:
-                    return Parameters(
-                        t.prefix.arg_types + repl.arg_types,
-                        t.prefix.arg_kinds + repl.arg_kinds,
-                        t.prefix.arg_names + repl.arg_names,
-                        variables=[*t.prefix.variables, *repl.variables],
-                    )
-
+        # Set prefix to something empty, so we don't duplicate it below.
+        repl = self.variables.get(t.id, t.copy_modified(prefix=Parameters([], [], [])))
+        if isinstance(repl, ParamSpecType):
+            return repl.copy_modified(
+                flavor=t.flavor,
+                prefix=t.prefix.copy_modified(
+                    arg_types=self.expand_types(t.prefix.arg_types + repl.prefix.arg_types),
+                    arg_kinds=t.prefix.arg_kinds + repl.prefix.arg_kinds,
+                    arg_names=t.prefix.arg_names + repl.prefix.arg_names,
+                ),
+            )
+        elif isinstance(repl, Parameters):
+            assert t.flavor == ParamSpecFlavor.BARE
+            return Parameters(
+                self.expand_types(t.prefix.arg_types + repl.arg_types),
+                t.prefix.arg_kinds + repl.arg_kinds,
+                t.prefix.arg_names + repl.arg_names,
+                variables=[*t.prefix.variables, *repl.variables],
+            )
         else:
-            # TODO: should this branch be removed? better not to fail silently
+            # TODO: replace this with "assert False"
             return repl
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
+        # Sometimes solver may need to expand a type variable with (a copy of) itself
+        # (usually together with other TypeVars, but it is hard to filter out TypeVarTuples).
+        repl = self.variables[t.id]
+        if isinstance(repl, TypeVarTupleType):
+            return repl
         raise NotImplementedError
 
     def visit_unpack_type(self, t: UnpackType) -> Type:
@@ -382,7 +370,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
     def visit_callable_type(self, t: CallableType) -> CallableType:
         param_spec = t.param_spec()
         if param_spec is not None:
-            repl = get_proper_type(self.variables.get(param_spec.id))
+            repl = self.variables.get(param_spec.id)
             # If a ParamSpec in a callable type is substituted with a
             # callable type, we can't use normal substitution logic,
             # since ParamSpec is actually split into two components
@@ -390,35 +378,29 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             # must expand both of them with all the argument types,
             # kinds and names in the replacement. The return type in
             # the replacement is ignored.
-            if isinstance(repl, (CallableType, Parameters)):
-                # Substitute *args: P.args, **kwargs: P.kwargs
-                prefix = param_spec.prefix
-                # we need to expand the types in the prefix, so might as well
-                # not get them in the first place
-                t = t.expand_param_spec(repl, no_prefix=True)
+            if isinstance(repl, Parameters):
+                # We need to expand both the types in the prefix and the ParamSpec itself
+                t = t.expand_param_spec(repl)
                 return t.copy_modified(
-                    arg_types=self.expand_types(prefix.arg_types) + t.arg_types,
-                    arg_kinds=prefix.arg_kinds + t.arg_kinds,
-                    arg_names=prefix.arg_names + t.arg_names,
+                    arg_types=self.expand_types(t.arg_types),
                     ret_type=t.ret_type.accept(self),
                     type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None),
                 )
-            # TODO: Conceptually, the "len(t.arg_types) == 2" should not be here. However, this
-            #       errors without it. Either figure out how to eliminate this or place an
-            #       explanation for why this is necessary.
-            elif isinstance(repl, ParamSpecType) and len(t.arg_types) == 2:
-                # We're substituting one paramspec for another; this can mean that the prefix
-                # changes. (e.g. sub Concatenate[int, P] for Q)
+            elif isinstance(repl, ParamSpecType):
+                # We're substituting one ParamSpec for another; this can mean that the prefix
+                # changes, e.g. substitute Concatenate[int, P] in place of Q.
                 prefix = repl.prefix
-                old_prefix = param_spec.prefix
-
-                # Check assumptions. I'm not sure what order to place new prefix vs old prefix:
-                assert not old_prefix.arg_types or not prefix.arg_types
-
-                t = t.copy_modified(
-                    arg_types=prefix.arg_types + old_prefix.arg_types + t.arg_types,
-                    arg_kinds=prefix.arg_kinds + old_prefix.arg_kinds + t.arg_kinds,
-                    arg_names=prefix.arg_names + old_prefix.arg_names + t.arg_names,
+                clean_repl = repl.copy_modified(prefix=Parameters([], [], []))
+                return t.copy_modified(
+                    arg_types=self.expand_types(t.arg_types[:-2] + prefix.arg_types)
+                    + [
+                        clean_repl.with_flavor(ParamSpecFlavor.ARGS),
+                        clean_repl.with_flavor(ParamSpecFlavor.KWARGS),
+                    ],
+                    arg_kinds=t.arg_kinds[:-2] + prefix.arg_kinds + t.arg_kinds[-2:],
+                    arg_names=t.arg_names[:-2] + prefix.arg_names + t.arg_names[-2:],
+                    ret_type=t.ret_type.accept(self),
+                    from_concatenate=t.from_concatenate or bool(repl.prefix.arg_types),
                 )
 
         var_arg = t.var_arg()

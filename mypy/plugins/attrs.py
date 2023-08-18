@@ -803,7 +803,7 @@ def _make_frozen(ctx: mypy.plugin.ClassDefContext, attributes: list[Attribute]) 
         else:
             # This variable belongs to a super class so create new Var so we
             # can modify it.
-            var = Var(attribute.name, ctx.cls.info[attribute.name].type)
+            var = Var(attribute.name, attribute.init_type)
             var.info = ctx.cls.info
             var._fullname = f"{ctx.cls.info.fullname}.{var.name}"
             ctx.cls.info.names[var.name] = SymbolTableNode(MDEF, var)

@@ -107,7 +107,48 @@ class BaseEventLoop(AbstractEventLoop):
         flags: int = 0,
     ) -> list[tuple[AddressFamily, SocketKind, int, str, tuple[str, int] | tuple[str, int, int, int]]]: ...
     async def getnameinfo(self, sockaddr: tuple[str, int] | tuple[str, int, int, int], flags: int = 0) -> tuple[str, str]: ...
-    if sys.version_info >= (3, 11):
+    if sys.version_info >= (3, 12):
+        @overload
+        async def create_connection(
+            self,
+            protocol_factory: Callable[[], _ProtocolT],
+            host: str = ...,
+            port: int = ...,
+            *,
+            ssl: _SSLContext = None,
+            family: int = 0,
+            proto: int = 0,
+            flags: int = 0,
+            sock: None = None,
+            local_addr: tuple[str, int] | None = None,
+            server_hostname: str | None = None,
+            ssl_handshake_timeout: float | None = None,
+            ssl_shutdown_timeout: float | None = None,
+            happy_eyeballs_delay: float | None = None,
+            interleave: int | None = None,
+            all_errors: bool = False,
+        ) -> tuple[Transport, _ProtocolT]: ...
+        @overload
+        async def create_connection(
+            self,
+            protocol_factory: Callable[[], _ProtocolT],
+            host: None = None,
+            port: None = None,
+            *,
+            ssl: _SSLContext = None,
+            family: int = 0,
+            proto: int = 0,
+            flags: int = 0,
+            sock: socket,
+            local_addr: None = None,
+            server_hostname: str | None = None,
+            ssl_handshake_timeout: float | None = None,
+            ssl_shutdown_timeout: float | None = None,
+            happy_eyeballs_delay: float | None = None,
+            interleave: int | None = None,
+            all_errors: bool = False,
+        ) -> tuple[Transport, _ProtocolT]: ...
+    elif sys.version_info >= (3, 11):
         @overload
         async def create_connection(
             self,
@@ -426,5 +467,7 @@ class BaseEventLoop(AbstractEventLoop):
     # Debug flag management.
     def get_debug(self) -> bool: ...
     def set_debug(self, enabled: bool) -> None: ...
-    if sys.version_info >= (3, 9):
+    if sys.version_info >= (3, 12):
+        async def shutdown_default_executor(self, timeout: float | None = None) -> None: ...
+    elif sys.version_info >= (3, 9):
         async def shutdown_default_executor(self) -> None: ...

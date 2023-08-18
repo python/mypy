@@ -698,6 +698,62 @@ class Y(NamedTuple):
     a: int
     b: str
 
+[case testNamedTupleClassSyntax_semanal]
+from typing import NamedTuple
+
+class A(NamedTuple):
+    x: int
+    y: str = 'a'
+
+class B(A):
+    z1: str
+    z2 = 1
+    z3: str = 'b'
+
+class RegularClass:
+    x: int
+    y: str = 'a'
+    class NestedNamedTuple(NamedTuple):
+        x: int
+        y: str = 'a'
+    z: str = 'b'
+[out]
+from typing import NamedTuple
+
+class A(NamedTuple):
+    x: int
+    y: str = ...
+
+class B(A):
+    z1: str
+    z2: int
+    z3: str
+
+class RegularClass:
+    x: int
+    y: str
+    class NestedNamedTuple(NamedTuple):
+        x: int
+        y: str = ...
+    z: str
+
+
+[case testNestedClassInNamedTuple_semanal-xfail]
+from typing import NamedTuple
+
+# TODO: make sure that nested classes in `NamedTuple` are supported:
+class NamedTupleWithNestedClass(NamedTuple):
+    class Nested:
+        x: int
+        y: str = 'a'
+[out]
+from typing import NamedTuple
+
+class NamedTupleWithNestedClass(NamedTuple):
+    class Nested:
+        x: int
+        y: str
+
 [case testEmptyNamedtuple]
 import collections, typing
 X = collections.namedtuple('X', [])
@@ -3126,6 +3182,85 @@ def f2():
 [out]
 def f1(): ...
 def f2(): ...
+
+[case testIncludeDocstrings]
+# flags:  --include-docstrings
+class A:
+    """class docstring
+
+    a multiline docstring"""
+    def func():
+        """func docstring
+        don't forget to indent"""
+        ...
+    def nodoc():
+        ...
+class B:
+    def quoteA():
+        '''func docstring with quotes"""\\n
+        and an end quote\''''
+        ...
+    def quoteB():
+        '''func docstring with quotes"""
+        \'\'\'
+        and an end quote\\"'''
+        ...
+    def quoteC():
+        """func docstring with end quote\\\""""
+        ...
+    def quoteD():
+        r'''raw with quotes\"'''
+        ...
+[out]
+class A:
+    """class docstring
+
+    a multiline docstring"""
+    def func() -> None:
+        """func docstring
+        don't forget to indent"""
+    def nodoc() -> None: ...
+
+class B:
+    def quoteA() -> None:
+        '''func docstring with quotes"""\\n
+        and an end quote\''''
+    def quoteB() -> None:
+        '''func docstring with quotes"""
+        \'\'\'
+        and an end quote\\"'''
+    def quoteC() -> None:
+        '''func docstring with end quote\\"'''
+    def quoteD() -> None:
+        '''raw with quotes\\"'''
+
+[case testIgnoreDocstrings]
+class A:
+    """class docstring
+
+    a multiline docstring"""
+    def func():
+        """func docstring
+
+        don't forget to indent"""
+    def nodoc():
+        ...
+
+class B:
+    def func():
+        """func docstring"""
+        ...
+    def nodoc():
+        ...
+
+[out]
+class A:
+    def func() -> None: ...
+    def nodoc() -> None: ...
+
+class B:
+    def func() -> None: ...
+    def nodoc() -> None: ...
 
 [case testKnownMagicMethodsReturnTypes]
 class Some:

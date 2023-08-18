@@ -648,8 +648,18 @@ the issue:
 
 .. _code-import:
 
-Check that import target can be found [import]
-----------------------------------------------
+Check for an issue with imports [import]
+----------------------------------------
+
+Mypy generates an error if it can't resolve an `import` statement.
+This is a parent error code of `import-not-found` and `import-untyped`
+
+See :ref:`ignore-missing-imports` for how to work around these errors.
+
+.. _code-import-not-found:
+
+Check that import target can be found [import-not-found]
+--------------------------------------------------------
 
 Mypy generates an error if it can't find the source code or a stub file
 for an imported module.
@@ -658,10 +668,30 @@ Example:
 
 .. code-block:: python
 
-    # Error: Cannot find implementation or library stub for module named 'acme'  [import]
-    import acme
+    # Error: Cannot find implementation or library stub for module named "m0dule_with_typo"  [import-not-found]
+    import m0dule_with_typo
 
 See :ref:`ignore-missing-imports` for how to work around these errors.
+
+.. _code-import-untyped:
+
+Check that import target can be found [import-untyped]
+--------------------------------------------------------
+
+Mypy generates an error if it can find the source code for an imported module,
+but that module does not provide type annotations (via :ref:`PEP 561 <installed-packages>`).
+
+Example:
+
+.. code-block:: python
+
+    # Error: Library stubs not installed for "bs4"  [import-untyped]
+    import bs4
+    # Error: Skipping analyzing "no_py_typed": module is installed, but missing library stubs or py.typed marker  [import-untyped]
+    import no_py_typed
+
+In some cases, these errors can be fixed by installing an appropriate
+stub package. See :ref:`ignore-missing-imports` for more details.
 
 .. _code-no-redef:
 
@@ -805,7 +835,7 @@ ellipsis ``...``, a docstring, and a ``raise NotImplementedError`` statement.
 Check the target of NewType [valid-newtype]
 -------------------------------------------
 
-The target of a :py:func:`NewType <typing.NewType>` definition must be a class type. It can't
+The target of a :py:class:`~typing.NewType` definition must be a class type. It can't
 be a union type, ``Any``, or various other special types.
 
 You can also get this error if the target has been imported from a
@@ -997,9 +1027,20 @@ example:
 
    top = await f()  # Error: "await" outside function  [top-level-await]
 
+.. _code-await-not-async:
+
+Warn about await expressions used outside of coroutines [await-not-async]
+-------------------------------------------------------------------------
+
+``await`` must be used inside a coroutine.
+
+.. code-block:: python
+
+   async def f() -> None:
+       ...
+
    def g() -> None:
-       # This is a blocker error and cannot be silenced.
-       await f()  # Error: "await" outside coroutine ("async def")
+       await f()  # Error: "await" outside coroutine ("async def")  [await-not-async]
 
 .. _code-assert-type:
 
