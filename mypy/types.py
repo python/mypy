@@ -1045,7 +1045,8 @@ class UnpackType(ProperType):
     or unpacking * syntax.
 
     The inner type should be either a TypeVarTuple, a constant size
-    tuple, or a variable length tuple, or a union of one of those.
+    tuple, or a variable length tuple. Type aliases to these are not allowed,
+    except during semantic analysis.
     """
 
     __slots__ = ["type"]
@@ -2260,6 +2261,10 @@ class TupleType(ProperType):
     ) -> None:
         super().__init__(line, column)
         self.partial_fallback = fallback
+        # TODO: flatten/normalize unpack items (very similar to unions) here.
+        # Probably also for instances, type aliases, callables, and Unpack itself. For example,
+        # tuple[*tuple[X, ...], ...] -> tuple[X, ...] and Tuple[*tuple[X, ...]] -> tuple[X, ...].
+        # Currently normalization happens in expand_type() et al., which is sub-optimal.
         self.items = items
         self.implicit = implicit
 

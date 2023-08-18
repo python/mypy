@@ -2373,11 +2373,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     ]
                     actual_kinds = [nodes.ARG_STAR] + [nodes.ARG_POS] * (len(actuals) - 1)
 
-                    assert isinstance(orig_callee_arg_type, TupleType)
-                    assert orig_callee_arg_type.items
-                    callee_arg_types = orig_callee_arg_type.items
+                    # TODO: can we really assert this? What if formal is just plain Unpack[Ts]?
+                    assert isinstance(orig_callee_arg_type, UnpackType)
+                    assert isinstance(orig_callee_arg_type.type, ProperType) and isinstance(
+                        orig_callee_arg_type.type, TupleType
+                    )
+                    assert orig_callee_arg_type.type.items
+                    callee_arg_types = orig_callee_arg_type.type.items
                     callee_arg_kinds = [nodes.ARG_STAR] + [nodes.ARG_POS] * (
-                        len(orig_callee_arg_type.items) - 1
+                        len(orig_callee_arg_type.type.items) - 1
                     )
                     expanded_tuple = True
 
@@ -5853,8 +5857,9 @@ class PolyTranslator(TypeTranslator):
         return super().visit_param_spec(t)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
-        # TODO: Support polymorphic apply for TypeVarTuple.
-        raise PolyTranslationError()
+        if t in self.poly_tvars and t not in self.bound_tvars:
+            raise PolyTranslationError()
+        return super().visit_type_var_tuple(t)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         if not t.args:
@@ -5888,7 +5893,6 @@ class PolyTranslator(TypeTranslator):
                 return t.copy_modified(args=new_args)
         # There is the same problem with callback protocols as with aliases
         # (callback protocols are essentially more flexible aliases to callables).
-        # Note: consider supporting bindings in instances, e.g. LRUCache[[x: T], T].
         if t.args and t.type.is_protocol and t.type.protocol_members == ["__call__"]:
             if t.type in self.seen_aliases:
                 raise PolyTranslationError()
@@ -5921,6 +5925,12 @@ class HasTypeVarQuery(types.BoolTypeQuery):
         super().__init__(types.ANY_STRATEGY)
 
     def visit_type_var(self, t: TypeVarType) -> bool:
+        return True
+
+    def visit_param_spec(self, t: ParamSpecType) -> bool:
+        return True
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> bool:
         return True
 
 
