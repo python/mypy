@@ -1339,11 +1339,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return callee
 
     def is_generic_decorator_overload_call(
-        self, callee_type: ProperType, args: list[Expression]
+        self, callee_type: CallableType, args: list[Expression]
     ) -> Overloaded | None:
         """Check if this looks like an application of a generic function to overload argument."""
-        if not isinstance(callee_type, CallableType) or not callee_type.variables:
-            return None
+        assert callee_type.variables
         if len(callee_type.arg_types) != 1 or len(args) != 1:
             # TODO: can we handle more general cases?
             return None
@@ -1501,16 +1500,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         callee = get_proper_type(callee)
 
-        overloaded = self.is_generic_decorator_overload_call(callee, args)
-        if overloaded is not None:
-            # Special casing for inline application of generic callables to overloads.
-            # Supporting general case would be tricky, but this should cover 95% of cases.
-            assert isinstance(callee, CallableType)
-            overloaded_result = self.handle_decorator_overload_call(callee, overloaded, context)
-            if overloaded_result is not None:
-                return overloaded_result
-
         if isinstance(callee, CallableType):
+            if callee.variables:
+                overloaded = self.is_generic_decorator_overload_call(callee, args)
+                if overloaded is not None:
+                    # Special casing for inline application of generic callables to overloads.
+                    # Supporting general case would be tricky, but this should cover 95% of cases.
+                    overloaded_result = self.handle_decorator_overload_call(
+                        callee, overloaded, context
+                    )
+                    if overloaded_result is not None:
+                        return overloaded_result
+
             return self.check_callable_call(
                 callee,
                 args,
