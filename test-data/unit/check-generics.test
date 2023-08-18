@@ -3062,10 +3062,10 @@ def dec5(f: Callable[[int], T]) -> Callable[[int], List[T]]:
 reveal_type(dec1(lambda x: x))  # N: Revealed type is "def [T] (T`3) -> builtins.list[T`3]"
 reveal_type(dec2(lambda x: x))  # N: Revealed type is "def [S] (S`4) -> builtins.list[S`4]"
 reveal_type(dec3(lambda x: x[0]))  # N: Revealed type is "def [S] (S`6) -> S`6"
-reveal_type(dec4(lambda x: [x]))  # N: Revealed type is "def [S] (S`8) -> S`8"
+reveal_type(dec4(lambda x: [x]))  # N: Revealed type is "def [S] (S`9) -> S`9"
 reveal_type(dec1(lambda x: 1))  # N: Revealed type is "def (builtins.int) -> builtins.list[builtins.int]"
 reveal_type(dec5(lambda x: x))  # N: Revealed type is "def (builtins.int) -> builtins.list[builtins.int]"
-reveal_type(dec3(lambda x: x))  # N: Revealed type is "def [S] (S`15) -> builtins.list[S`15]"
+reveal_type(dec3(lambda x: x))  # N: Revealed type is "def [S] (S`16) -> builtins.list[S`16]"
 dec4(lambda x: x)  # E: Incompatible return value type (got "S", expected "List[object]")
 [builtins fixtures/list.pyi]
 
@@ -3144,7 +3144,7 @@ def pair(x: U) -> Callable[[V], Tuple[V, U]]: ...
 reveal_type(dec(id))  # N: Revealed type is "def [T] (T`2) -> T`2"
 reveal_type(dec(either))  # N: Revealed type is "def [T] (T`5, x: T`5) -> T`5"
 reveal_type(dec(pair))  # N: Revealed type is "def [T, U] (T`8, x: U`-1) -> Tuple[T`8, U`-1]"
-# This is counter-intuitive but looks correct, dec matches itself only if P is empty
+# This is counter-intuitive but looks correct, dec matches itself only if P can be empty
 reveal_type(dec(dec))  # N: Revealed type is "def [T, S] (T`11, f: def () -> def (T`11) -> S`12) -> S`12"
 [builtins fixtures/list.pyi]
 
@@ -3179,7 +3179,6 @@ P = ParamSpec('P')
 Q = ParamSpec('Q')
 
 class Foo(Generic[P]): ...
-class Bar(Generic[P, T]): ...
 
 def dec(f: Callable[P, int]) -> Callable[P, Foo[P]]: ...
 h: Callable[Concatenate[T, Q], int]
@@ -3263,3 +3262,144 @@ def pop_off(fn: Callable[Concatenate[T1, P], T2]) -> Callable[P, Callable[[T1], 
 def test(command: Foo[Q]) -> Foo[Q]: ...
 reveal_type(test)  # N: Revealed type is "def () -> def [Q] (__main__.Foo[Q`-1]) -> __main__.Foo[Q`-1]"
 [builtins fixtures/tuple.pyi]
+
+[case testInferenceAgainstGenericVariadicBasicInList]
+# flags: --new-type-inference
+from typing import Tuple, TypeVar, List, Callable
+from typing_extensions import Unpack, TypeVarTuple
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+def dec(f: Callable[[Unpack[Ts]], T]) -> Callable[[Unpack[Ts]], List[T]]: ...
+
+U = TypeVar("U")
+V = TypeVar("V")
+def id(x: U) -> U: ...
+def either(x: U, y: U) -> U: ...
+def pair(x: U, y: V) -> Tuple[U, V]: ...
+
+reveal_type(dec(id))  # N: Revealed type is "def [T] (T`2) -> builtins.list[T`2]"
+reveal_type(dec(either))  # N: Revealed type is "def [T] (T`4, T`4) -> builtins.list[T`4]"
+reveal_type(dec(pair))  # N: Revealed type is "def [U, V] (U`-1, V`-2) -> builtins.list[Tuple[U`-1, V`-2]]"
+[builtins fixtures/tuple.pyi]
+
+[case testInferenceAgainstGenericVariadicBasicDeList]
+# flags: --new-type-inference
+from typing import Tuple, TypeVar, List, Callable
+from typing_extensions import Unpack, TypeVarTuple
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+def dec(f: Callable[[Unpack[Ts]], List[T]]) -> Callable[[Unpack[Ts]], T]: ...
+
+U = TypeVar("U")
+V = TypeVar("V")
+def id(x: U) -> U: ...
+def either(x: U, y: U) -> U: ...
+
+reveal_type(dec(id))  # N: Revealed type is "def [T] (builtins.list[T`2]) -> T`2"
+reveal_type(dec(either))  # N: Revealed type is "def [T] (builtins.list[T`4], builtins.list[T`4]) -> T`4"
+[builtins fixtures/tuple.pyi]
+
+[case testInferenceAgainstGenericVariadicPopOff]
+# flags: --new-type-inference
+from typing import TypeVar, Callable, List, Tuple
+from typing_extensions import Unpack, TypeVarTuple
+
+T = TypeVar("T")
+S = TypeVar("S")
+Ts = TypeVarTuple("Ts")
+def dec(f: Callable[[T, Unpack[Ts]], S]) -> Callable[[Unpack[Ts]], Callable[[T], S]]: ...
+
+U = TypeVar("U")
+V = TypeVar("V")
+def id(x: U) -> U: ...
+def either(x: U, y: U) -> U: ...
+def pair(x: U, y: V) -> Tuple[U, V]: ...
+
+reveal_type(dec(id))  # N: Revealed type is "def () -> def [T] (T`1) -> T`1"
+reveal_type(dec(either))  # N: Revealed type is "def [T] (T`4) -> def (T`4) -> T`4"
+reveal_type(dec(pair))  # N: Revealed type is "def [V] (V`-2) -> def [T] (T`7) -> Tuple[T`7, V`-2]"
+reveal_type(dec(dec))  # N: Revealed type is "def () -> def [T, Ts, S] (def (T`-1, *Unpack[Ts`-2]) -> S`-3) -> def (*Unpack[Ts`-2]) -> def (T`-1) -> S`-3"
+[builtins fixtures/list.pyi]
+
+[case testInferenceAgainstGenericVariadicPopOn]
+# flags: --new-type-inference
+from typing import TypeVar, Callable, List, Tuple
+from typing_extensions import Unpack, TypeVarTuple
+
+T = TypeVar("T")
+S = TypeVar("S")
+Ts = TypeVarTuple("Ts")
+def dec(f: Callable[[Unpack[Ts]], Callable[[T], S]]) -> Callable[[T, Unpack[Ts]], S]: ...
+
+U = TypeVar("U")
+V = TypeVar("V")
+def id() -> Callable[[U], U]: ...
+def either(x: U) -> Callable[[U], U]: ...
+def pair(x: U) -> Callable[[V], Tuple[V, U]]: ...
+
+reveal_type(dec(id))  # N: Revealed type is "def [T] (T`2) -> T`2"
+reveal_type(dec(either))  # N: Revealed type is "def [T] (T`5, T`5) -> T`5"
+reveal_type(dec(pair))  # N: Revealed type is "def [T, U] (T`8, U`-1) -> Tuple[T`8, U`-1]"
+# This is counter-intuitive but looks correct, dec matches itself only if Ts is empty
+reveal_type(dec(dec))  # N: Revealed type is "def [T, S] (T`11, def () -> def (T`11) -> S`12) -> S`12"
+[builtins fixtures/list.pyi]
+
+[case testInferenceAgainstGenericVariadicVsVariadic]
+# flags: --new-type-inference
+from typing import TypeVar, Callable, List, Generic
+from typing_extensions import Unpack, TypeVarTuple
+
+T = TypeVar("T")
+S = TypeVar("S")
+Ts = TypeVarTuple("Ts")
+Us = TypeVarTuple("Us")
+
+class Foo(Generic[Unpack[Ts]]): ...
+class Bar(Generic[Unpack[Ts], T]): ...
+
+def dec(f: Callable[[Unpack[Ts]], T]) -> Callable[[Unpack[Ts]], List[T]]: ...
+# TODO: do not crash on Foo[Us] (with missing Unpack), instead give an error.
+def f(*args: Unpack[Us]) -> Foo[Unpack[Us]]: ...
+reveal_type(dec(f))  # N: Revealed type is "def [Ts] (*Unpack[Ts`1]) -> builtins.list[__main__.Foo[Unpack[Ts`1]]]"
+g: Callable[[Unpack[Us]], Foo[Unpack[Us]]]
+reveal_type(dec(g))  # N: Revealed type is "def [Ts] (*Unpack[Ts`3]) -> builtins.list[__main__.Foo[Unpack[Ts`3]]]"
+[builtins fixtures/list.pyi]
+
+[case testInferenceAgainstGenericVariadicVsVariadicConcatenate]
+# flags: --new-type-inference
+from typing import TypeVar, Callable, Generic
+from typing_extensions import Unpack, TypeVarTuple
+
+T = TypeVar("T")
+S = TypeVar("S")
+Ts = TypeVarTuple("Ts")
+Us = TypeVarTuple("Us")
+
+class Foo(Generic[Unpack[Ts]]): ...
+
+def dec(f: Callable[[Unpack[Ts]], int]) -> Callable[[Unpack[Ts]], Foo[Unpack[Ts]]]: ...
+h: Callable[[T, Unpack[Us]], int]
+g: Callable[[T, Unpack[Us]], int]
+h = g
+reveal_type(dec(h))  # N: Revealed type is "def [T, Us] (T`-1, *Unpack[Us`-2]) -> __main__.Foo[T`-1, Unpack[Us`-2]]"
+[builtins fixtures/list.pyi]
+
+[case testInferenceAgainstGenericVariadicSecondary]
+# flags: --new-type-inference
+from typing import TypeVar, Callable, Generic
+from typing_extensions import Unpack, TypeVarTuple
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+Us = TypeVarTuple("Us")
+
+class Foo(Generic[Unpack[Ts]]): ...
+
+def dec(f: Callable[[Unpack[Ts]], Foo[Unpack[Ts]]]) -> Callable[[Unpack[Ts]], Foo[Unpack[Ts]]]: ...
+g: Callable[[T], Foo[int]]
+reveal_type(dec(g))  # N: Revealed type is "def (builtins.int) -> __main__.Foo[builtins.int]"
+h: Callable[[Unpack[Us]], Foo[int]]
+reveal_type(dec(g))  # N: Revealed type is "def (builtins.int) -> __main__.Foo[builtins.int]"
+[builtins fixtures/list.pyi]

@@ -353,12 +353,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(node, FuncDef):
             # Reference to a global function.
             result = function_type(node, self.named_type("builtins.function"))
-        elif isinstance(node, OverloadedFuncDef) and node.type is not None:
-            # node.type is None when there are multiple definitions of a function
-            # and it's decorated by something that is not typing.overload
-            # TODO: use a dummy Overloaded instead of AnyType in this case
-            # like we do in mypy.types.function_type()?
-            result = node.type
+        elif isinstance(node, OverloadedFuncDef):
+            if node.type is None:
+                if self.chk.in_checked_function() and node.items:
+                    self.chk.handle_cannot_determine_type(node.name, e)
+                result = AnyType(TypeOfAny.from_error)
+            else:
+                result = node.type
         elif isinstance(node, TypeInfo):
             # Reference to a type object.
             if node.typeddict_type:
@@ -1337,6 +1338,55 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         return callee
 
+    def is_generic_decorator_overload_call(
+        self, callee_type: CallableType, args: list[Expression]
+    ) -> Overloaded | None:
+        """Check if this looks like an application of a generic function to overload argument."""
+        assert callee_type.variables
+        if len(callee_type.arg_types) != 1 or len(args) != 1:
+            # TODO: can we handle more general cases?
+            return None
+        if not isinstance(get_proper_type(callee_type.arg_types[0]), CallableType):
+            return None
+        if not isinstance(get_proper_type(callee_type.ret_type), CallableType):
+            return None
+        with self.chk.local_type_map():
+            with self.msg.filter_errors():
+                arg_type = get_proper_type(self.accept(args[0], type_context=None))
+        if isinstance(arg_type, Overloaded):
+            return arg_type
+        return None
+
+    def handle_decorator_overload_call(
+        self, callee_type: CallableType, overloaded: Overloaded, ctx: Context
+    ) -> tuple[Type, Type] | None:
+        """Type-check application of a generic callable to an overload.
+
+        We check call on each individual overload item, and then combine results into a new
+        overload. This function should be only used if callee_type takes and returns a Callable.
+        """
+        result = []
+        inferred_args = []
+        for item in overloaded.items:
+            arg = TempNode(typ=item)
+            with self.msg.filter_errors() as err:
+                item_result, inferred_arg = self.check_call(callee_type, [arg], [ARG_POS], ctx)
+            if err.has_new_errors():
+                # This overload doesn't match.
+                continue
+            p_item_result = get_proper_type(item_result)
+            if not isinstance(p_item_result, CallableType):
+                continue
+            p_inferred_arg = get_proper_type(inferred_arg)
+            if not isinstance(p_inferred_arg, CallableType):
+                continue
+            inferred_args.append(p_inferred_arg)
+            result.append(p_item_result)
+        if not result or not inferred_args:
+            # None of the overload matched (or overload was initially malformed).
+            return None
+        return Overloaded(result), Overloaded(inferred_args)
+
     def check_call_expr_with_callee_type(
         self,
         callee_type: Type,
@@ -1451,6 +1501,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         callee = get_proper_type(callee)
 
         if isinstance(callee, CallableType):
+            if callee.variables:
+                overloaded = self.is_generic_decorator_overload_call(callee, args)
+                if overloaded is not None:
+                    # Special casing for inline application of generic callables to overloads.
+                    # Supporting general case would be tricky, but this should cover 95% of cases.
+                    overloaded_result = self.handle_decorator_overload_call(
+                        callee, overloaded, context
+                    )
+                    if overloaded_result is not None:
+                        return overloaded_result
+
             return self.check_callable_call(
                 callee,
                 args,
@@ -2340,11 +2401,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     ]
                     actual_kinds = [nodes.ARG_STAR] + [nodes.ARG_POS] * (len(actuals) - 1)
 
-                    assert isinstance(orig_callee_arg_type, TupleType)
-                    assert orig_callee_arg_type.items
-                    callee_arg_types = orig_callee_arg_type.items
+                    # TODO: can we really assert this? What if formal is just plain Unpack[Ts]?
+                    assert isinstance(orig_callee_arg_type, UnpackType)
+                    assert isinstance(orig_callee_arg_type.type, ProperType) and isinstance(
+                        orig_callee_arg_type.type, TupleType
+                    )
+                    assert orig_callee_arg_type.type.items
+                    callee_arg_types = orig_callee_arg_type.type.items
                     callee_arg_kinds = [nodes.ARG_STAR] + [nodes.ARG_POS] * (
-                        len(orig_callee_arg_type.items) - 1
+                        len(orig_callee_arg_type.type.items) - 1
                     )
                     expanded_tuple = True
 
@@ -5822,8 +5887,9 @@ class PolyTranslator(TypeTranslator):
         return super().visit_param_spec(t)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
-        # TODO: Support polymorphic apply for TypeVarTuple.
-        raise PolyTranslationError()
+        if t in self.poly_tvars and t not in self.bound_tvars:
+            raise PolyTranslationError()
+        return super().visit_type_var_tuple(t)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         if not t.args:
@@ -5857,7 +5923,6 @@ class PolyTranslator(TypeTranslator):
                 return t.copy_modified(args=new_args)
         # There is the same problem with callback protocols as with aliases
         # (callback protocols are essentially more flexible aliases to callables).
-        # Note: consider supporting bindings in instances, e.g. LRUCache[[x: T], T].
         if t.args and t.type.is_protocol and t.type.protocol_members == ["__call__"]:
             if t.type in self.seen_aliases:
                 raise PolyTranslationError()
@@ -5894,6 +5959,9 @@ class HasTypeVarQuery(types.BoolTypeQuery):
         return True
 
     def visit_param_spec(self, t: ParamSpecType) -> bool:
+        return True
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> bool:
         return True
 
 

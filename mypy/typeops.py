@@ -973,6 +973,9 @@ class TypeVarExtractor(TypeQuery[List[TypeVarLikeType]]):
     def visit_param_spec(self, t: ParamSpecType) -> list[TypeVarLikeType]:
         return [t] if self.include_all else []
 
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> list[TypeVarLikeType]:
+        return [t] if self.include_all else []
+
 
 def custom_special_method(typ: Type, name: str, check_all: bool = False) -> bool:
     """Does this type have a custom special method such as __format__() or __eq__()?

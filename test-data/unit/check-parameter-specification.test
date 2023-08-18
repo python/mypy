@@ -1632,3 +1632,101 @@ def apply(fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> None: ...
 def test(x: str = ..., y: int = ...) -> int: ...
 apply(test, y=42)  # OK
 [builtins fixtures/paramspec.pyi]
+
+[case testParamSpecPrefixSubtypingGenericInvalid]
+from typing import Generic
+from typing_extensions import ParamSpec, Concatenate
+
+P = ParamSpec("P")
+
+class A(Generic[P]):
+    def foo(self, *args: P.args, **kwargs: P.kwargs):
+        ...
+
+def bar(b: A[P]) -> A[Concatenate[int, P]]:
+    return b  # E: Incompatible return value type (got "A[P]", expected "A[[int, **P]]")
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecPrefixSubtypingProtocolInvalid]
+from typing import Protocol
+from typing_extensions import ParamSpec, Concatenate
+
+P = ParamSpec("P")
+
+class A(Protocol[P]):
+    def foo(self, *args: P.args, **kwargs: P.kwargs):
+        ...
+
+def bar(b: A[P]) -> A[Concatenate[int, P]]:
+    return b  # E: Incompatible return value type (got "A[P]", expected "A[[int, **P]]")
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecPrefixSubtypingValidNonStrict]
+from typing import Protocol
+from typing_extensions import ParamSpec, Concatenate
+
+P = ParamSpec("P")
+
+class A(Protocol[P]):
+    def foo(self, a: int, *args: P.args, **kwargs: P.kwargs):
+        ...
+
+class B(Protocol[P]):
+    def foo(self, a: int, b: int, *args: P.args, **kwargs: P.kwargs):
+        ...
+
+def bar(b: B[P]) -> A[Concatenate[int, P]]:
+    return b
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecPrefixSubtypingInvalidStrict]
+# flags: --extra-checks
+from typing import Protocol
+from typing_extensions import ParamSpec, Concatenate
+
+P = ParamSpec("P")
+
+class A(Protocol[P]):
+    def foo(self, a: int, *args: P.args, **kwargs: P.kwargs):
+        ...
+
+class B(Protocol[P]):
+    def foo(self, a: int, b: int, *args: P.args, **kwargs: P.kwargs):
+        ...
+
+def bar(b: B[P]) -> A[Concatenate[int, P]]:
+    return b  # E: Incompatible return value type (got "B[P]", expected "A[[int, **P]]") \
+              # N: Following member(s) of "B[P]" have conflicts: \
+              # N:     Expected: \
+              # N:         def foo(self, a: int, int, /, *args: P.args, **kwargs: P.kwargs) -> Any \
+              # N:     Got: \
+              # N:         def foo(self, a: int, b: int, *args: P.args, **kwargs: P.kwargs) -> Any
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecDecoratorOverload]
+from typing import Callable, overload, TypeVar, List
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+T = TypeVar("T")
+def transform(func: Callable[P, List[T]]) -> Callable[P, T]: ...
+
+@overload
+def foo(x: int) -> List[float]: ...
+@overload
+def foo(x: str) -> List[str]: ...
+def foo(x): ...
+
+reveal_type(transform(foo))  # N: Revealed type is "Overload(def (x: builtins.int) -> builtins.float, def (x: builtins.str) -> builtins.str)"
+
+@transform
+@overload
+def bar(x: int) -> List[float]: ...
+@transform
+@overload
+def bar(x: str) -> List[str]: ...
+@transform
+def bar(x): ...
+
+reveal_type(bar)  # N: Revealed type is "Overload(def (x: builtins.int) -> builtins.float, def (x: builtins.str) -> builtins.str)"
+[builtins fixtures/paramspec.pyi]

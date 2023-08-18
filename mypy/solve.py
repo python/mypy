@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Iterable, Sequence
+from typing import Iterable, Sequence, Tuple
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints
@@ -19,13 +19,16 @@ from mypy.types import (
     NoneType,
     ParamSpecType,
     ProperType,
+    TupleType,
     Type,
     TypeOfAny,
     TypeVarId,
     TypeVarLikeType,
+    TypeVarTupleType,
     TypeVarType,
     UninhabitedType,
     UnionType,
+    UnpackType,
     get_proper_type,
 )
 from mypy.typestate import type_state
@@ -330,6 +333,23 @@ def is_trivial_bound(tp: ProperType) -> bool:
     return isinstance(tp, Instance) and tp.type.fullname == "builtins.object"
 
 
+def find_linear(c: Constraint) -> Tuple[bool, TypeVarId | None]:
+    """Find out if this constraint represent a linear relationship, return target id if yes."""
+    if isinstance(c.origin_type_var, TypeVarType):
+        if isinstance(c.target, TypeVarType):
+            return True, c.target.id
+    if isinstance(c.origin_type_var, ParamSpecType):
+        if isinstance(c.target, ParamSpecType) and not c.target.prefix.arg_types:
+            return True, c.target.id
+    if isinstance(c.origin_type_var, TypeVarTupleType):
+        target = get_proper_type(c.target)
+        if isinstance(target, TupleType) and len(target.items) == 1:
+            item = target.items[0]
+            if isinstance(item, UnpackType) and isinstance(item.type, TypeVarTupleType):
+                return True, item.type.id
+    return False, None
+
+
 def transitive_closure(
     tvars: list[TypeVarId], constraints: list[Constraint]
 ) -> tuple[Graph, Bounds, Bounds]:
@@ -361,16 +381,15 @@ def transitive_closure(
         c = remaining.pop()
         # Note that ParamSpec constraint P <: Q may be considered linear only if Q has no prefix,
         # for cases like P <: Concatenate[T, Q] we should consider this non-linear and put {P} and
-        # {T, Q} into separate SCCs.
-        if (
-            isinstance(c.target, TypeVarType)
-            or isinstance(c.target, ParamSpecType)
-            and not c.target.prefix.arg_types
-        ) and c.target.id in tvars:
+        # {T, Q} into separate SCCs. Similarly, Ts <: Tuple[*Us] considered linear, while
+        # Ts <: Tuple[*Us, U] is non-linear.
+        is_linear, target_id = find_linear(c)
+        if is_linear and target_id in tvars:
+            assert target_id is not None
             if c.op == SUBTYPE_OF:
-                lower, upper = c.type_var, c.target.id
+                lower, upper = c.type_var, target_id
             else:
-                lower, upper = c.target.id, c.type_var
+                lower, upper = target_id, c.type_var
             if (lower, upper) in graph:
                 continue
             graph |= {
