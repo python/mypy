@@ -4973,7 +4973,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.push_type_map(pattern_map)
                         self.push_type_map(pattern_type.captures)
                     if g is not None:
-                        with self.binder.frame_context(can_skip=True, fall_through=3):
+                        with self.binder.frame_context(can_skip=False, fall_through=3):
                             gt = get_proper_type(self.expr_checker.accept(g))
 
                             if isinstance(gt, DeletedType):
@@ -4981,6 +4981,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                             guard_map, guard_else_map = self.find_isinstance_check(g)
                             else_map = or_conditional_maps(else_map, guard_else_map)
+
+                            # If the guard narrowed the subject, copy the narrowed types over
+                            if isinstance(p, AsPattern):
+                                case_target = p.pattern or p.name
+                                if isinstance(case_target, NameExpr):
+                                    for type_map in (guard_map, else_map):
+                                        if not type_map:
+                                            continue
+                                        for expr in list(type_map):
+                                            if not (
+                                                isinstance(expr, NameExpr)
+                                                and expr.fullname == case_target.fullname
+                                            ):
+                                                continue
+                                            type_map[s.subject] = type_map[expr]
 
                             self.push_type_map(guard_map)
                             self.accept(b)
