@@ -1556,6 +1556,8 @@ class Parameters(ProperType):
         "arg_names",
         "min_args",
         "is_ellipsis_args",
+        # TODO: variables don't really belong here, but they are used to allow hacky support
+        # for forall . Foo[[x: T], T] by capturing generic callable with ParamSpec, see #15909
         "variables",
     )
 
@@ -2043,7 +2045,6 @@ class CallableType(FunctionLike):
         return arg_type.copy_modified(flavor=ParamSpecFlavor.BARE, prefix=prefix)
 
     def expand_param_spec(self, c: Parameters) -> CallableType:
-        # TODO: try deleting variables from Parameters after new type inference is default.
         variables = c.variables
         return self.copy_modified(
             arg_types=self.arg_types[:-2] + c.arg_types,
