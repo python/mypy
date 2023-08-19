@@ -28,7 +28,7 @@ static PyObject *vec_proxy_call(PyObject *self, PyObject *args, PyObject *kw)
     VecProxy *p = (VecProxy *)self;
     if (p->depth == 0) {
         if (init == NULL) {
-            VecT vec = Vec_T_New(0, p->item_type);
+            VecT vec = Vec_T_New(0, 0, p->item_type);
             if (VEC_IS_ERROR(vec))
                 return NULL;
             return Vec_T_Box(vec, p->item_type);
@@ -37,7 +37,7 @@ static PyObject *vec_proxy_call(PyObject *self, PyObject *args, PyObject *kw)
         }
     } else {
         if (init == NULL) {
-            VecTExt vec = Vec_T_Ext_New(0, p->item_type, p->depth);
+            VecTExt vec = Vec_T_Ext_New(0, 0, p->item_type, p->depth);
             if (VEC_IS_ERROR(vec))
                 return NULL;
             return Vec_T_Ext_Box(vec);

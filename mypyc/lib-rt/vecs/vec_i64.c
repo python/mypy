@@ -43,11 +43,13 @@ VecI64 Vec_I64_Unbox(PyObject *obj) {
     }
 }
 
-VecI64 Vec_I64_New(Py_ssize_t size) {
-    VecI64 vec = vec_i64_alloc(size);
+VecI64 Vec_I64_New(Py_ssize_t size, Py_ssize_t cap) {
+    if (cap < size)
+        size = cap;
+    VecI64 vec = vec_i64_alloc(cap);
     if (VEC_IS_ERROR(vec))
         return vec;
-    for (Py_ssize_t i = 0; i < size; i++) {
+    for (Py_ssize_t i = 0; i < cap; i++) {
         vec.buf->items[i] = 0;
     }
     vec.len = size;
@@ -96,7 +98,7 @@ PyObject *vec_i64_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
         return NULL;
     }
     if (init == NULL) {
-        return Vec_I64_Box(Vec_I64_New(0));
+        return Vec_I64_Box(Vec_I64_New(0, 0));
     } else {
         return (PyObject *)Vec_I64_FromIterable(init);
     }

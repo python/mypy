@@ -112,7 +112,7 @@ typedef tuple_T2V88 VecI64PopResult;
 typedef struct _VecI64Features {
     PyTypeObject *boxed_type;
     PyTypeObject *buf_type;
-    VecI64 (*alloc)(Py_ssize_t);
+    VecI64 (*alloc)(Py_ssize_t, Py_ssize_t);
     PyObject *(*box)(VecI64);
     VecI64 (*unbox)(PyObject *);
     VecI64 (*append)(VecI64, int64_t);
@@ -143,7 +143,7 @@ typedef tuple_T2VOO VecTPopResult;
 typedef struct _VecTFeatures {
     PyTypeObject *boxed_type;
     PyTypeObject *buf_type;
-    VecT (*alloc)(Py_ssize_t, size_t);
+    VecT (*alloc)(Py_ssize_t, Py_ssize_t, size_t);
     PyObject *(*box)(VecT, size_t);
     VecT (*unbox)(PyObject *, size_t);
     VecT (*append)(VecT, PyObject *, size_t);
@@ -168,7 +168,7 @@ typedef struct {
 typedef struct _VecTExtFeatures {
     PyTypeObject *boxed_type;
     PyTypeObject *buf_type;
-    VecTExt (*alloc)(Py_ssize_t, size_t, size_t depth);
+    VecTExt (*alloc)(Py_ssize_t, Py_ssize_t, size_t, size_t depth);
     PyObject *(*box)(VecTExt);
     VecTExt (*unbox)(PyObject *, size_t, size_t depth);
     VecTExt (*append)(VecTExt, VecbufTExtItem);
@@ -255,7 +255,7 @@ static inline int VecT_ItemCheck(VecT v, PyObject *item, size_t item_type) {
     }
 }
 
-VecT Vec_T_New(Py_ssize_t size, size_t item_type);
+VecT Vec_T_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type);
 PyObject *Vec_T_FromIterable(size_t item_type, PyObject *iterable);
 PyObject *Vec_T_Box(VecT vec, size_t item_type);
 VecT Vec_T_Append(VecT vec, PyObject *x, size_t item_type);
@@ -286,7 +286,7 @@ static inline int VecTExt_ItemCheck(VecTExt v, PyObject *it) {
     }
 }
 
-VecTExt Vec_T_Ext_New(Py_ssize_t size, size_t item_type, size_t depth);
+VecTExt Vec_T_Ext_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_t depth);
 PyObject *Vec_T_Ext_FromIterable(size_t item_type, size_t depth, PyObject *iterable);
 PyObject *Vec_T_Ext_Box(VecTExt);
 VecTExt Vec_T_Ext_Append(VecTExt vec, VecbufTExtItem x);

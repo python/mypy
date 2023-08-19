@@ -51,11 +51,13 @@ VecTExt Vec_T_Ext_Unbox(PyObject *obj, size_t item_type, size_t depth) {
     return Vec_T_Ext_Error();
 }
 
-VecTExt Vec_T_Ext_New(Py_ssize_t size, size_t item_type, size_t depth) {
-    VecTExt vec = vec_t_ext_alloc(size, item_type, depth);
+VecTExt Vec_T_Ext_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_t depth) {
+    if (cap < size)
+        cap = size;
+    VecTExt vec = vec_t_ext_alloc(cap, item_type, depth);
     if (VEC_IS_ERROR(vec))
         return vec;
-    for (Py_ssize_t i = 0; i < size; i++) {
+    for (Py_ssize_t i = 0; i < cap; i++) {
         vec.buf->items[i].len = -1;
         vec.buf->items[i].buf = NULL;
     }

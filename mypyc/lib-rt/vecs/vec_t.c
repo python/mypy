@@ -64,11 +64,13 @@ VecT Vec_T_Unbox(PyObject *obj, size_t item_type) {
     return Vec_T_Error();
 }
 
-VecT Vec_T_New(Py_ssize_t size, size_t item_type) {
-    VecT vec = vec_t_alloc(size, item_type);
+VecT Vec_T_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type) {
+    if (cap < size)
+        cap = size;
+    VecT vec = vec_t_alloc(cap, item_type);
     if (VEC_IS_ERROR(vec))
         return vec;
-    for (Py_ssize_t i = 0; i < size; i++) {
+    for (Py_ssize_t i = 0; i < cap; i++) {
         vec.buf->items[i] = NULL;
     }
     vec.len = size;
