@@ -38,6 +38,74 @@ def foo6(x: Callable[[P], int]) -> None: ...  # E: Invalid location for ParamSpe
                                               # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
 [builtins fixtures/paramspec.pyi]
 
+[case testParamSpecImports]
+import lib
+from lib import Base
+
+class C(Base[[int]]):
+    def test(self, x: int): ...
+
+class D(lib.Base[[int]]):
+    def test(self, x: int): ...
+
+class E(lib.Base[...]): ...
+reveal_type(E().test)  # N: Revealed type is "def (*Any, **Any)"
+
+[file lib.py]
+from typing import Generic
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+class Base(Generic[P]):
+    def test(self, *args: P.args, **kwargs: P.kwargs) -> None:
+        ...
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecEllipsisInAliases]
+from typing import Any, Callable, Generic, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+R = TypeVar('R')
+Alias = Callable[P, R]
+
+class B(Generic[P]): ...
+Other = B[P]
+
+T = TypeVar('T', bound=Alias[..., Any])
+Alias[..., Any]  # E: Type application is only supported for generic classes
+B[...]
+Other[...]
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecEllipsisInConcatenate]
+from typing import Any, Callable, Generic, TypeVar
+from typing_extensions import ParamSpec, Concatenate
+
+P = ParamSpec('P')
+R = TypeVar('R')
+Alias = Callable[P, R]
+
+IntFun = Callable[Concatenate[int, ...], None]
+f: IntFun
+reveal_type(f)  # N: Revealed type is "def (builtins.int, *Any, **Any)"
+
+g: Callable[Concatenate[int, ...], None]
+reveal_type(g)  # N: Revealed type is "def (builtins.int, *Any, **Any)"
+
+class B(Generic[P]):
+    def test(self, *args: P.args, **kwargs: P.kwargs) -> None:
+        ...
+
+x: B[Concatenate[int, ...]]
+reveal_type(x.test)  # N: Revealed type is "def (builtins.int, *Any, **Any)"
+
+Bad = Callable[Concatenate[int, [int, str]], None]  # E: The last parameter to Concatenate needs to be a ParamSpec \
+                                                    # E: Bracketed expression "[...]" is not valid as a type
+def bad(fn: Callable[Concatenate[P, int], None]):  # E: The last parameter to Concatenate needs to be a ParamSpec
+    ...
+[builtins fixtures/paramspec.pyi]
+
 [case testParamSpecContextManagerLike]
 from typing import Callable, List, Iterator, TypeVar
 from typing_extensions import ParamSpec
@@ -1431,8 +1499,7 @@ from typing import ParamSpec, Generic, List, TypeVar, Callable
 P = ParamSpec("P")
 T = TypeVar("T")
 A = List[T]
-def f(x: A[[int, str]]) -> None: ...  # E: Bracketed expression "[...]" is not valid as a type \
-                                      # N: Did you mean "List[...]"?
+def f(x: A[[int, str]]) -> None: ...  # E: Bracketed expression "[...]" is not valid as a type
 def g(x: A[P]) -> None: ...  # E: Invalid location for ParamSpec "P" \
                              # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
 

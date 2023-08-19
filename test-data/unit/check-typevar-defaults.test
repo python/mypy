@@ -59,9 +59,9 @@ from typing import TypeVar, ParamSpec, Tuple
 from typing_extensions import TypeVarTuple, Unpack
 
 T1 = TypeVar("T1", default=2)  # E: TypeVar "default" must be a type
-T2 = TypeVar("T2", default=[int, str])  # E: Bracketed expression "[...]" is not valid as a type \
-                                        # N: Did you mean "List[...]"? \
-                                        # E: TypeVar "default" must be a type
+T2 = TypeVar("T2", default=[int])  # E: Bracketed expression "[...]" is not valid as a type \
+                                   # N: Did you mean "List[...]"? \
+                                   # E: TypeVar "default" must be a type
 
 P1 = ParamSpec("P1", default=int)  # E: The default argument to ParamSpec must be a list expression, ellipsis, or a ParamSpec
 P2 = ParamSpec("P2", default=2)  # E: The default argument to ParamSpec must be a list expression, ellipsis, or a ParamSpec

@@ -5285,20 +5285,18 @@ class SemanticAnalyzer(
         else:
             items = [index]
 
-        # whether param spec literals be allowed here
-        # TODO: should this be computed once and passed in?
-        #   or is there a better way to do this?
+        # TODO: this needs a clean-up.
+        # Probably always allow Parameters literals, and validate in semanal_typeargs.py
         base = expr.base
         if isinstance(base, RefExpr) and isinstance(base.node, TypeAlias):
             alias = base.node
-            target = get_proper_type(alias.target)
-            if isinstance(target, Instance):
-                has_param_spec = target.type.has_param_spec_type
-                num_args = len(target.type.type_vars)
+            if any(isinstance(t, ParamSpecType) for t in alias.alias_tvars):
+                has_param_spec = True
+                num_args = len(alias.alias_tvars)
             else:
                 has_param_spec = False
                 num_args = -1
-        elif isinstance(base, NameExpr) and isinstance(base.node, TypeInfo):
+        elif isinstance(base, RefExpr) and isinstance(base.node, TypeInfo):
             has_param_spec = base.node.has_param_spec_type
             num_args = len(base.node.type_vars)
         else:

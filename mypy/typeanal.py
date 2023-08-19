@@ -226,6 +226,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_required = allow_required
         # Are we in a context where ParamSpec literals are allowed?
         self.allow_param_spec_literals = allow_param_spec_literals
+        # Are we in context where literal "..." specifically is allowed?
+        self.allow_ellipsis = False
         # Should we report an error whenever we encounter a RawExpressionType outside
         # of a Literal context: e.g. whenever we encounter an invalid type? Normally,
         # we want to report an error, but the caller may want to do more specialized
@@ -461,9 +463,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             self.api.fail("Concatenate needs type arguments", t, code=codes.VALID_TYPE)
             return AnyType(TypeOfAny.from_error)
 
-        # last argument has to be ParamSpec
-        ps = self.anal_type(t.args[-1], allow_param_spec=True)
-        if not isinstance(ps, ParamSpecType):
+        # Last argument has to be ParamSpec or Ellipsis.
+        ps = self.anal_type(t.args[-1], allow_param_spec=True, allow_ellipsis=True)
+        if not isinstance(ps, (ParamSpecType, Parameters)):
             if isinstance(ps, UnboundType) and self.allow_unbound_tvars:
                 sym = self.lookup_qualified(ps.name, t)
                 if sym is not None and isinstance(sym.node, ParamSpecExpr):
@@ -477,11 +479,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
         # TODO: this may not work well with aliases, if those worked.
         #   Those should be special-cased.
-        elif ps.prefix.arg_types:
+        elif isinstance(ps, ParamSpecType) and ps.prefix.arg_types:
             self.api.fail("Nested Concatenates are invalid", t, code=codes.VALID_TYPE)
 
         args = self.anal_array(t.args[:-1])
-        pre = ps.prefix
+        pre = ps.prefix if isinstance(ps, ParamSpecType) else ps
 
         # mypy can't infer this :(
         names: list[str | None] = [None] * len(args)
@@ -489,7 +491,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         pre = Parameters(
             args + pre.arg_types, [ARG_POS] * len(args) + pre.arg_kinds, names + pre.arg_names
         )
-        return ps.copy_modified(prefix=pre)
+        return ps.copy_modified(prefix=pre) if isinstance(ps, ParamSpecType) else pre
 
     def try_analyze_special_unbound_type(self, t: UnboundType, fullname: str) -> Type | None:
         """Bind special type that is recognized through magic name such as 'typing.Any'.
@@ -880,7 +882,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return t
 
     def visit_type_list(self, t: TypeList) -> Type:
-        # paramspec literal (Z[[int, str, Whatever]])
+        # Parameters literal (Z[[int, str, Whatever]])
         if self.allow_param_spec_literals:
             params = self.analyze_callable_args(t)
             if params:
@@ -893,7 +895,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             self.fail(
                 'Bracketed expression "[...]" is not valid as a type', t, code=codes.VALID_TYPE
             )
-            self.note('Did you mean "List[...]"?', t)
+            if len(t.items) == 1:
+                self.note('Did you mean "List[...]"?', t)
             return AnyType(TypeOfAny.from_error)
 
     def visit_callable_argument(self, t: CallableArgument) -> Type:
@@ -1106,7 +1109,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         assert False, "Internal error: Unexpected partial type"
 
     def visit_ellipsis_type(self, t: EllipsisType) -> Type:
-        if self.allow_param_spec_literals:
+        if self.allow_ellipsis or self.allow_param_spec_literals:
             any_type = AnyType(TypeOfAny.explicit)
             return Parameters(
                 [any_type, any_type], [ARG_STAR, ARG_STAR2], [None, None], is_ellipsis_args=True
@@ -1174,7 +1177,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def analyze_callable_args_for_concatenate(
         self, callable_args: Type, ret_type: Type, fallback: Instance
-    ) -> CallableType | None:
+    ) -> CallableType | AnyType | None:
         """Construct a 'Callable[C, RET]', where C is Concatenate[..., P], returning None if we
         cannot.
         """
@@ -1189,7 +1192,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return None
 
         tvar_def = self.anal_type(callable_args, allow_param_spec=True)
-        if not isinstance(tvar_def, ParamSpecType):
+        if not isinstance(tvar_def, (ParamSpecType, Parameters)):
             if self.allow_unbound_tvars and isinstance(tvar_def, UnboundType):
                 sym = self.lookup_qualified(tvar_def.name, callable_args)
                 if sym is not None and isinstance(sym.node, ParamSpecExpr):
@@ -1198,7 +1201,18 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     return callable_with_ellipsis(
                         AnyType(TypeOfAny.explicit), ret_type=ret_type, fallback=fallback
                     )
-            return None
+            # Error was already given, so prevent further errors.
+            return AnyType(TypeOfAny.from_error)
+        if isinstance(tvar_def, Parameters):
+            # This comes from Concatenate[int, ...]
+            return CallableType(
+                arg_types=tvar_def.arg_types,
+                arg_names=tvar_def.arg_names,
+                arg_kinds=tvar_def.arg_kinds,
+                ret_type=ret_type,
+                fallback=fallback,
+                from_concatenate=True,
+            )
 
         # ick, CallableType should take ParamSpecType
         prefix = tvar_def.prefix
@@ -1257,7 +1271,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     ) or self.analyze_callable_args_for_concatenate(
                         callable_args, ret_type, fallback
                     )
-                    if maybe_ret:
+                    if isinstance(maybe_ret, CallableType):
                         maybe_ret = maybe_ret.copy_modified(
                             ret_type=ret_type.accept(self), variables=variables
                         )
@@ -1274,6 +1288,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         t,
                     )
                     return AnyType(TypeOfAny.from_error)
+                elif isinstance(maybe_ret, AnyType):
+                    return maybe_ret
                 ret = maybe_ret
         else:
             if self.options.disallow_any_generics:
@@ -1527,17 +1543,27 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_param_spec_literals = old_allow_param_spec_literals
         return self.check_unpacks_in_list(res)
 
-    def anal_type(self, t: Type, nested: bool = True, *, allow_param_spec: bool = False) -> Type:
+    def anal_type(
+        self,
+        t: Type,
+        nested: bool = True,
+        *,
+        allow_param_spec: bool = False,
+        allow_ellipsis: bool = False,
+    ) -> Type:
         if nested:
             self.nesting_level += 1
         old_allow_required = self.allow_required
         self.allow_required = False
+        old_allow_ellipsis = self.allow_ellipsis
+        self.allow_ellipsis = allow_ellipsis
         try:
             analyzed = t.accept(self)
         finally:
             if nested:
                 self.nesting_level -= 1
             self.allow_required = old_allow_required
+            self.allow_ellipsis = old_allow_ellipsis
         if (
             not allow_param_spec
             and isinstance(analyzed, ParamSpecType)
