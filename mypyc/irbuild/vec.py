@@ -304,24 +304,42 @@ def convert_to_t_ext_item(builder: LowLevelIRBuilder, item: Value) -> Value:
     return builder.add(SetElement(temp, "buf", vec_buf))
 
 
+def vec_item_type(builder: LowLevelIRBuilder, item_type: RType, line: int) -> Value:
+    typeobj, optional, depth = vec_item_type_info(builder, item_type, line)
+    if isinstance(typeobj, Integer):
+        return typeobj
+    else:
+        # Create an integer which will hold the type object * as an integral value.
+        # Assign implicitly coerces between pointer/integer types.
+        typeval = Register(pointer_rprimitive)
+        builder.add(Assign(typeval, typeobj))
+        if optional:
+            typeval = builder.add(
+                IntOp(pointer_rprimitive, typeval, Integer(1, pointer_rprimitive), IntOp.OR)
+            )
+        return typeval
+
+
 def vec_append(builder: LowLevelIRBuilder, vec: Value, item: Value, line: int) -> Value:
     vec_type = vec.type
     assert isinstance(vec_type, RVec)
     item_type = vec_type.item_type
     coerced_item = builder.coerce(item, item_type, line)
+    item_type_arg = []
     if is_int64_rprimitive(item_type):
         name = "VecI64Api.append"
     elif vec_depth(vec_type) == 0:
         name = "VecTApi.append"
+        item_type_arg = [vec_item_type(builder, item_type, line)]
     else:
         coerced_item = convert_to_t_ext_item(builder, coerced_item)
         name = "VecTExtApi.append"
     call = builder.add(
         CallC(
             name,
-            [vec, coerced_item],
+            [vec, coerced_item] + item_type_arg,
             vec_type,
-            steals=[True, False],
+            steals=[True, False] + ([False] if item_type_arg else []),
             is_borrowed=False,
             error_kind=ERR_MAGIC,
             line=line,

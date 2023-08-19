@@ -114,6 +114,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         )
         self.vi64 = add_local("vi64", RVec(int64_rprimitive))
         self.vs = add_local("vs", RVec(str_rprimitive))
+        self.vs_opt = add_local("vs", RVec(RUnion([str_rprimitive, none_rprimitive])))
         self.vvs = add_local("vvs", RVec(RVec(str_rprimitive)))
         ir = ClassIR("A", "mod")
         ir.attributes = {
@@ -371,7 +372,10 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 
     def test_box_vec(self) -> None:
         self.assert_emit(Box(self.vi64), """cpy_r_r0 = VecI64Api.box(cpy_r_vi64);""")
-        self.assert_emit(Box(self.vs), """cpy_r_r0 = VecTApi.box(cpy_r_vs);""")
+        self.assert_emit(Box(self.vs),
+                         """cpy_r_r0 = VecTApi.box(cpy_r_vs, (size_t)&PyUnicode_Type);""")
+        self.assert_emit(Box(self.vs_opt),
+                         """cpy_r_r0 = VecTApi.box(cpy_r_vs, (size_t)&PyUnicode_Type | 1);""")
         self.assert_emit(Box(self.vvs), """cpy_r_r0 = VecTExtApi.box(cpy_r_vvs);""")
 
     def test_unbox_vec(self) -> None:

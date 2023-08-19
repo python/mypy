@@ -1092,13 +1092,10 @@ class Emitter:
                 self.emit_line(f"{dest} = VecI64Api.unbox({src});")
             else:
                 depth = typ.depth()
-                optional = typ.is_optional()
                 if is_int64_rprimitive(typ.unwrap_item_type()):
                     type_value = "VEC_ITEM_TYPE_I64"
                 else:
-                    type_value = f"(size_t)&{self.vec_item_type_c(typ)}"
-                    if optional:
-                        type_value = f"{type_value} | 1"
+                    type_value = self.vec_item_type_c(typ)
                 if depth == 0:
                     self.emit_line(f"{dest} = VecTApi.unbox({src}, {type_value});")
                 else:
@@ -1109,7 +1106,10 @@ class Emitter:
 
     def vec_item_type_c(self, typ: RVec) -> str:
         item_type = typ.unwrap_item_type()
-        return self.type_c_name(item_type)
+        type_value = f"(size_t)&{self.type_c_name(item_type)}"
+        if typ.is_optional():
+            type_value = f"{type_value} | 1"
+        return type_value
 
     def type_c_name(self, typ: RPrimitive | RInstance) -> str | None:
         if isinstance(typ, RPrimitive) and typ.is_refcounted:
@@ -1175,10 +1175,15 @@ class Emitter:
         elif isinstance(typ, RVec):
             if is_int64_rprimitive(typ.item_type):
                 api = "VecI64Api"
-            elif typ.depth() == 0:
-                api = "VecTApi"
-            else:
+            elif typ.depth() > 0:
                 api = "VecTExtApi"
+            else:
+                api = "VecTApi"
+                # Empty vecs of this sort don't describe item type, so it needs to be
+                # passed explicitly.
+                item_type = self.vec_item_type_c(typ)
+                self.emit_line(f"{declaration}{dest} = {api}.box({src}, {item_type});")
+                return
             self.emit_line(f"{declaration}{dest} = {api}.box({src});")
         else:
             assert not typ.is_unboxed
