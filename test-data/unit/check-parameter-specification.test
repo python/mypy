@@ -1669,7 +1669,12 @@ class A(Protocol[P]):
         ...
 
 def bar(b: A[P]) -> A[Concatenate[int, P]]:
-    return b  # E: Incompatible return value type (got "A[P]", expected "A[[int, **P]]")
+    return b  # E: Incompatible return value type (got "A[P]", expected "A[[int, **P]]") \
+              # N: Following member(s) of "A[P]" have conflicts: \
+              # N:     Expected: \
+              # N:         def foo(self, int, /, *args: P.args, **kwargs: P.kwargs) -> Any \
+              # N:     Got: \
+              # N:         def foo(self, *args: P.args, **kwargs: P.kwargs) -> Any
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecPrefixSubtypingValidNonStrict]
