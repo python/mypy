@@ -11,7 +11,7 @@ def f() -> vec[i64]:
 def f():
     r0 :: vec[int64]
 L0:
-    r0 = VecI64Api.alloc(0)
+    r0 = VecI64Api.alloc(0, 0)
     return r0
 
 [case testVecI64Len]
@@ -125,7 +125,7 @@ def f():
     r1 :: object
     r2, r3, r4, r5 :: ptr
 L0:
-    r0 = VecI64Api.alloc(3)
+    r0 = VecI64Api.alloc(3, 3)
     r1 = r0.buf
     r2 = get_element_ptr r1 items :: VecbufI64Object
     set_mem r2, 1 :: int64*
@@ -154,7 +154,7 @@ def f(n):
     r6 :: bit
     r7 :: ptr
 L0:
-    r0 = VecI64Api.alloc(n)
+    r0 = VecI64Api.alloc(n, n)
     r1 = r0.buf
     r2 = get_element_ptr r1 items :: VecbufI64Object
     r3 = n * 8
@@ -189,7 +189,7 @@ def f(n, x):
     r6 :: bit
     r7 :: ptr
 L0:
-    r0 = VecI64Api.alloc(3)
+    r0 = VecI64Api.alloc(3, 3)
     r1 = r0.buf
     r2 = get_element_ptr r1 items :: VecbufI64Object
     r3 = 3 * 8
@@ -223,7 +223,7 @@ def f(n):
     r5 :: vec[int64]
     r6 :: int64
 L0:
-    r0 = VecI64Api.alloc(0)
+    r0 = VecI64Api.alloc(0, 0)
     r1 = r0
     r2 = 0
     x = r2
@@ -258,7 +258,7 @@ def f():
     r6 :: short_int
     r7 :: int64
 L0:
-    r0 = VecI64Api.alloc(0)
+    r0 = VecI64Api.alloc(0, 0)
     r1 = r0
     r2 = 0
     r3 = r2 >> 1

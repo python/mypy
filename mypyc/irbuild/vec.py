@@ -86,7 +86,8 @@ def vec_create(
     item_type = vtype.item_type
     if is_int64_rprimitive(item_type):
         call = CallC(
-            "VecI64Api.alloc", [length], vtype, False, False, error_kind=ERR_MAGIC, line=line
+            "VecI64Api.alloc", [length, length], vtype, False, False, error_kind=ERR_MAGIC,
+            line=line
         )
         return builder.add(call)
 
@@ -107,7 +108,7 @@ def vec_create(
         if depth == 0:
             call = CallC(
                 "VecTApi.alloc",
-                [length, typeval],
+                [length, length, typeval],
                 vtype,
                 False,
                 False,
@@ -119,6 +120,7 @@ def vec_create(
             call = CallC(
                 "VecTExtApi.alloc",
                 [
+                    length,
                     length,
                     typeval,
                     Integer(depth, int32_rprimitive),

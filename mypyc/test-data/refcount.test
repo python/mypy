@@ -1561,7 +1561,7 @@ L0:
     r1 = load_address PyUnicode_Type
     r2 = r1
     r3 = r2 | 1
-    r4 = VecTApi.alloc(n, r3)
+    r4 = VecTApi.alloc(n, n, r3)
     r5 = r4.buf
     r6 = get_element_ptr r5 items :: VecbufTObject
     r7 = n * 8
@@ -1648,7 +1648,7 @@ L0:
     r1 = 'y'
     r2 = load_address PyUnicode_Type
     r3 = r2
-    r4 = VecTApi.alloc(2, r3)
+    r4 = VecTApi.alloc(2, 2, r3)
     r5 = r4.buf
     r6 = get_element_ptr r5 items :: VecbufTObject
     inc_ref r0
@@ -1796,7 +1796,7 @@ def f(v, n):
 L0:
     r0 = load_address PyUnicode_Type
     r1 = r0
-    r2 = VecTExtApi.alloc(0, r1, 1)
+    r2 = VecTExtApi.alloc(0, 0, r1, 1)
     r3 = r2.len
     r4 = n < r3 :: unsigned
     if r4 goto L2 else goto L3 :: bool

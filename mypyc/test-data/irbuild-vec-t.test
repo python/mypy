@@ -19,7 +19,7 @@ def primitive():
 L0:
     r0 = load_address PyUnicode_Type
     r1 = r0
-    r2 = VecTApi.alloc(0, r1)
+    r2 = VecTApi.alloc(0, 0, r1)
     return r2
 def native_class():
     r0 :: object
@@ -28,7 +28,7 @@ def native_class():
 L0:
     r0 = __main__.C :: type
     r1 = r0
-    r2 = VecTApi.alloc(0, r1)
+    r2 = VecTApi.alloc(0, 0, r1)
     return r2
 
 [case testVecTAppend]
@@ -70,7 +70,7 @@ L0:
     r0 = load_address PyUnicode_Type
     r1 = r0
     r2 = r1 | 1
-    r3 = VecTApi.alloc(0, r2)
+    r3 = VecTApi.alloc(0, 0, r2)
     return r3
 def native_class():
     r0 :: object
@@ -80,7 +80,7 @@ L0:
     r0 = __main__.C :: type
     r1 = r0
     r2 = r1 | 1
-    r3 = VecTApi.alloc(0, r2)
+    r3 = VecTApi.alloc(0, 0, r2)
     return r3
 
 [case testVecTOptionalAppend]
@@ -243,7 +243,7 @@ def f(n):
 L0:
     r0 = load_address PyUnicode_Type
     r1 = r0
-    r2 = VecTApi.alloc(0, r1)
+    r2 = VecTApi.alloc(0, 0, r1)
     r3 = r2
     r4 = 0
     x = r4
