@@ -35,7 +35,6 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
-    flatten_nested_tuples,
     flatten_nested_unions,
     get_proper_type,
     split_with_prefix_and_suffix,
@@ -460,9 +459,6 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         indicates use of Any or some error occurred earlier. In this case callers should
         simply propagate the resulting type.
         """
-        # TODO: this will cause a crash on aliases like A = Tuple[int, Unpack[A]].
-        # Although it is unlikely anyone will write this, we should fail gracefully.
-        typs = flatten_nested_tuples(typs)
         items: list[Type] = []
         for item in typs:
             if isinstance(item, UnpackType) and isinstance(item.type, TypeVarTupleType):

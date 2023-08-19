@@ -168,7 +168,6 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
-    flatten_nested_tuples,
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
@@ -4448,7 +4447,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         prefix = next(i for (i, v) in enumerate(vars) if isinstance(v, TypeVarTupleType))
         suffix = len(vars) - prefix - 1
-        args = flatten_nested_tuples(args)
         if len(args) < len(vars) - 1:
             self.msg.incompatible_type_application(len(vars), len(args), ctx)
             return [AnyType(TypeOfAny.from_error)] * len(vars)
