@@ -144,9 +144,9 @@ typedef struct _VecTFeatures {
     PyTypeObject *boxed_type;
     PyTypeObject *buf_type;
     VecT (*alloc)(Py_ssize_t, size_t);
-    PyObject *(*box)(VecT);
+    PyObject *(*box)(VecT, size_t);
     VecT (*unbox)(PyObject *, size_t);
-    VecT (*append)(VecT, PyObject *);
+    VecT (*append)(VecT, PyObject *, size_t);
     VecTPopResult (*pop)(VecT, Py_ssize_t);
     VecT (*remove)(VecT, PyObject *);
     // TODO: Py_ssize_t
@@ -189,7 +189,8 @@ typedef struct {
 } VecCapsule;
 
 #define BUF_SIZE(b) ((b)->ob_base.ob_size)
-#define BUF_ITEM_TYPE(b) ((PyTypeObject *)((b)->item_type & ~1))
+#define ITEM_TYPE(t) ((PyTypeObject *)((t) & ~1))
+#define BUF_ITEM_TYPE(b) ITEM_TYPE((b)->item_type)
 #define VEC_CAP(v) ((v).buf->ob_base.ob_size)
 #define VEC_IS_ERROR(v) ((v).len < 0)
 #define VEC_DECREF(v) Py_XDECREF((v).buf)
@@ -242,10 +243,10 @@ static inline int VecT_Check(PyObject *o) {
     return o->ob_type == &VecTType;
 }
 
-static inline int VecT_ItemCheck(VecT v, PyObject *item) {
-    if (PyObject_TypeCheck(item, BUF_ITEM_TYPE(v.buf))) {
+static inline int VecT_ItemCheck(VecT v, PyObject *item, size_t item_type) {
+    if (PyObject_TypeCheck(item, ITEM_TYPE(item_type))) {
         return 1;
-    } else if ((v.buf->item_type & 1) && item == Py_None) {
+    } else if ((item_type & 1) && item == Py_None) {
         return 1;
     } else {
         // TODO: better error message
@@ -256,8 +257,8 @@ static inline int VecT_ItemCheck(VecT v, PyObject *item) {
 
 VecT Vec_T_New(Py_ssize_t size, size_t item_type);
 PyObject *Vec_T_FromIterable(size_t item_type, PyObject *iterable);
-PyObject *Vec_T_Box(VecT);
-VecT Vec_T_Append(VecT vec, PyObject *x);
+PyObject *Vec_T_Box(VecT vec, size_t item_type);
+VecT Vec_T_Append(VecT vec, PyObject *x, size_t item_type);
 VecT Vec_T_Remove(VecT vec, PyObject *x);
 VecTPopResult Vec_T_Pop(VecT v, Py_ssize_t index);
 
@@ -335,7 +336,7 @@ static inline PyObject *Vec_T_Ext_BoxItem(VecTExt v, VecbufTExtItem item) {
         return Vec_T_Ext_Box(v);
     } else {
         // Item is a non-nested vec
-        size_t item_type = v.buf->item_type & ~1;
+        size_t item_type = v.buf->item_type;
         if (item_type == VEC_ITEM_TYPE_I64) {
             // vec[i64]
             VecI64 v = { .len = item.len, .buf = (VecbufI64Object *)item.buf };
@@ -343,7 +344,7 @@ static inline PyObject *Vec_T_Ext_BoxItem(VecTExt v, VecbufTExtItem item) {
         } else {
             // Generic vec[t]
             VecT v = { .len = item.len, .buf = (VecbufTObject *)item.buf };
-            return Vec_T_Box(v);
+            return Vec_T_Box(v, item_type);
         }
     }
 }

@@ -31,7 +31,7 @@ static PyObject *vec_proxy_call(PyObject *self, PyObject *args, PyObject *kw)
             VecT vec = Vec_T_New(0, p->item_type);
             if (VEC_IS_ERROR(vec))
                 return NULL;
-            return Vec_T_Box(vec);
+            return Vec_T_Box(vec, p->item_type);
         } else {
             return Vec_T_FromIterable(p->item_type, init);
         }
@@ -356,14 +356,14 @@ static PyObject *vecs_append(PyObject *self, PyObject *args)
         return Vec_I64_Box(v);
     } else if (VecT_Check(vec)) {
         VecT v = ((VecTObject *)vec)->vec;
-        if (!VecT_ItemCheck(v, item)) {
+        if (!VecT_ItemCheck(v, item, v.buf->item_type)) {
             return NULL;
         }
         VEC_INCREF(v);
-        v = Vec_T_Append(v, item);
+        v = Vec_T_Append(v, item, v.buf->item_type);
         if (VEC_IS_ERROR(v))
             return NULL;
-        return Vec_T_Box(v);
+        return Vec_T_Box(v, v.buf->item_type);
     } else if (VecTExt_Check(vec)) {
         VecTExt v = ((VecTExtObject *)vec)->vec;
         VecbufTExtItem vecitem;
@@ -403,14 +403,14 @@ static PyObject *vecs_remove(PyObject *self, PyObject *args)
         return Vec_I64_Box(v);
     } else if (VecT_Check(vec)) {
         VecT v = ((VecTObject *)vec)->vec;
-        if (!VecT_ItemCheck(v, item)) {
+        if (!VecT_ItemCheck(v, item, v.buf->item_type)) {
             return NULL;
         }
         VEC_INCREF(v);
         v = Vec_T_Remove(v, item);
         if (VEC_IS_ERROR(v))
             return NULL;
-        return Vec_T_Box(v);
+        return Vec_T_Box(v, v.buf->item_type);
     } else if (VecTExt_Check(vec)) {
         VecTExt v = ((VecTExtObject *)vec)->vec;
         VecbufTExtItem vecitem;
@@ -456,7 +456,7 @@ static PyObject *vecs_pop(PyObject *self, PyObject *args)
         if (VEC_IS_ERROR(r.f0))
             return NULL;
 
-        result_item0 = Vec_T_Box(r.f0);
+        result_item0 = Vec_T_Box(r.f0, v.buf->item_type);
         if (result_item0 == NULL) {
             Py_DECREF(r.f1);
             return NULL;
