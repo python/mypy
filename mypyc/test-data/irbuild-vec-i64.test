@@ -477,3 +477,58 @@ def pop_nth(v, n):
 L0:
     r0 = VecI64Api.pop(v, n)
     return r0
+
+[case testVecI64InPlaceOp]
+from vecs import vec, remove
+from mypy_extensions import i64
+
+def inplace(v: vec[i64], n: i64, m: i64) -> None:
+    v[n] += m
+[out]
+def inplace(v, n, m):
+    v :: vec[int64]
+    n, m :: int64
+    r0 :: native_int
+    r1 :: bit
+    r2 :: bool
+    r3 :: object
+    r4 :: ptr
+    r5 :: int64
+    r6 :: ptr
+    r7, r8 :: int64
+    r9 :: native_int
+    r10 :: bit
+    r11 :: bool
+    r12 :: object
+    r13 :: ptr
+    r14 :: int64
+    r15 :: ptr
+L0:
+    r0 = v.len
+    r1 = n < r0 :: unsigned
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = raise IndexError
+    unreachable
+L2:
+    r3 = v.buf
+    r4 = get_element_ptr r3 items :: VecbufI64Object
+    r5 = n * 8
+    r6 = r4 + r5
+    r7 = load_mem r6 :: int64*
+    keep_alive v
+    r8 = r7 + m
+    r9 = v.len
+    r10 = n < r9 :: unsigned
+    if r10 goto L4 else goto L3 :: bool
+L3:
+    r11 = raise IndexError
+    unreachable
+L4:
+    r12 = v.buf
+    r13 = get_element_ptr r12 items :: VecbufI64Object
+    r14 = n * 8
+    r15 = r13 + r14
+    set_mem r15, r8 :: int64*
+    keep_alive v
+    return 1

@@ -88,6 +88,19 @@ def test_set_item() -> None:
     with assertRaises(IndexError):
         v[2 + int()] = 6
 
+def test_operator_assignment() -> None:
+    v = vec[i64]([3, 4])
+    x: i64 = int()
+    v[x] += 2
+    assert v[0] == 5
+    v[x + 1] -= 10
+    assert v[1] == -6
+    y = int()
+    v[y] += 6
+    assert v[y] == 11
+    v[y + 1] *= 2
+    assert v[1 + y] == -12
+
 def test_box_and_unbox() -> None:
     v = vec[i64]([3, 5])
     o: Any = v
