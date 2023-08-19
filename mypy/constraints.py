@@ -1421,7 +1421,7 @@ def build_constraints_for_unpack(
     return res, mapped_prefix + mapped_suffix, template_prefix + template_suffix
 
 
-def infer_directed_constraints(left: Type, right: Type, direction: int) -> list[Constraint]:
+def infer_directed_arg_constraints(left: Type, right: Type, direction: int) -> list[Constraint]:
     """Infer constraints between two arguments using direction between original callables."""
     if isinstance(left, (ParamSpecType, UnpackType)) or isinstance(
         right, (ParamSpecType, UnpackType)
@@ -1444,8 +1444,8 @@ def infer_callable_arguments_constraints(
     This function essentially extracts four steps from are_parameters_compatible() in
     subtypes.py that involve subtype checks between argument types. We keep the argument
     matching logic, but ignore various strictness flags present there, and checks that
-    do not involve subtyping. Then in place of every subtype check we put an infer_constrains()
-    check for the same types.
+    do not involve subtyping. Then in place of every subtype check we put an infer_constraints()
+    call for the same types.
     """
     res = []
     if direction == SUBTYPE_OF:
@@ -1460,16 +1460,16 @@ def infer_callable_arguments_constraints(
     # Numbering of steps below matches the one in are_parameters_compatible() for convenience.
     # Phase 1a: compare star vs star arguments.
     if left_star is not None and right_star is not None:
-        res.extend(infer_directed_constraints(left_star.typ, right_star.typ, direction))
+        res.extend(infer_directed_arg_constraints(left_star.typ, right_star.typ, direction))
     if left_star2 is not None and right_star2 is not None:
-        res.extend(infer_directed_constraints(left_star2.typ, right_star2.typ, direction))
+        res.extend(infer_directed_arg_constraints(left_star2.typ, right_star2.typ, direction))
 
     # Phase 1b: compare left args with corresponding non-star right arguments.
     for right_arg in right.formal_arguments():
         left_arg = mypy.typeops.callable_corresponding_argument(left, right_arg)
         if left_arg is None:
             continue
-        res.extend(infer_directed_constraints(left_arg.typ, right_arg.typ, direction))
+        res.extend(infer_directed_arg_constraints(left_arg.typ, right_arg.typ, direction))
 
     # Phase 1c: compare left args with right *args.
     if right_star is not None:
@@ -1481,7 +1481,9 @@ def infer_callable_arguments_constraints(
             left_by_position = left.argument_by_position(i)
             assert left_by_position is not None
             res.extend(
-                infer_directed_constraints(left_by_position.typ, right_by_position.typ, direction)
+                infer_directed_arg_constraints(
+                    left_by_position.typ, right_by_position.typ, direction
+                )
             )
             i += 1
 
@@ -1499,5 +1501,7 @@ def infer_callable_arguments_constraints(
         for name in left_only_names:
             left_by_name = left.argument_by_name(name)
             assert left_by_name is not None
-            res.extend(infer_directed_constraints(left_by_name.typ, right_by_name.typ, direction))
+            res.extend(
+                infer_directed_arg_constraints(left_by_name.typ, right_by_name.typ, direction)
+            )
     return res
