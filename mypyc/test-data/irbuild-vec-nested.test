@@ -17,12 +17,12 @@ def f():
 L0:
     r0 = load_address PyUnicode_Type
     r1 = r0
-    r2 = VecTExtApi.alloc(0, r1, 0, 1)
+    r2 = VecTExtApi.alloc(0, r1, 1)
     return r2
 def g():
     r0 :: vec[vec[int64]]
 L0:
-    r0 = VecTExtApi.alloc(0, 2, 0, 1)
+    r0 = VecTExtApi.alloc(0, 2, 1)
     return r0
 
 [case testVecNestedAppend]

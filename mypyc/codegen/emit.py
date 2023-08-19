@@ -1092,18 +1092,18 @@ class Emitter:
                 self.emit_line(f"{dest} = VecI64Api.unbox({src});")
             else:
                 depth = typ.depth()
-                optionals = typ.optional_flags()
+                optional = typ.is_optional()
                 if is_int64_rprimitive(typ.unwrap_item_type()):
                     type_value = "VEC_ITEM_TYPE_I64"
                 else:
                     type_value = f"(size_t)&{self.vec_item_type_c(typ)}"
-                    if optionals & (1 << depth):
+                    if optional:
                         type_value = f"{type_value} | 1"
                 if depth == 0:
                     self.emit_line(f"{dest} = VecTApi.unbox({src}, {type_value});")
                 else:
                     self.emit_line(
-                        f"{dest} = VecTExtApi.unbox({src}, {type_value}, {optionals}, {depth});")
+                        f"{dest} = VecTExtApi.unbox({src}, {type_value}, {depth});")
         else:
             assert False, "Unboxing not implemented: %s" % typ
 

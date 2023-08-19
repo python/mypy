@@ -90,7 +90,7 @@ def vec_create(
         )
         return builder.add(call)
 
-    typeobj, optionals, depth = vec_item_type_info(builder, item_type, line)
+    typeobj, optional, depth = vec_item_type_info(builder, item_type, line)
     if typeobj is not None:
         typeval: Value
         if isinstance(typeobj, Integer):
@@ -100,7 +100,7 @@ def vec_create(
             # Assign implicitly coerces between pointer/integer types.
             typeval = Register(pointer_rprimitive)
             builder.add(Assign(typeval, typeobj))
-            if optionals & 1:
+            if optional:
                 typeval = builder.add(
                     IntOp(pointer_rprimitive, typeval, Integer(1, pointer_rprimitive), IntOp.OR)
                 )
@@ -121,7 +121,6 @@ def vec_create(
                 [
                     length,
                     typeval,
-                    Integer(optionals, int32_rprimitive),
                     Integer(depth, int32_rprimitive),
                 ],
                 vtype,
@@ -187,7 +186,7 @@ VEC_TYPE_INFO_I64: Final = 2
 
 def vec_item_type_info(
     builder: LowLevelIRBuilder, typ: RType, line: int
-) -> Tuple[Optional[Value], int, int]:
+) -> Tuple[Optional[Value], bool, int]:
     if isinstance(typ, RPrimitive) and typ.is_refcounted:
         typ, src = builtin_names[typ.name]
         return builder.load_address(src, typ), 0, 0
@@ -197,14 +196,13 @@ def vec_item_type_info(
         return Integer(VEC_TYPE_INFO_I64, c_size_t_rprimitive), 0, 0
     elif isinstance(typ, RUnion):
         non_opt = optional_value_type(typ)
-        if non_opt is not None:
-            typeval, optionals, depth = vec_item_type_info(builder, non_opt, line)
-            if typeval is not None:
-                return typeval, optionals | 1, depth
-    elif isinstance(typ, RVec):
-        typeval, optionals, depth = vec_item_type_info(builder, typ.item_type, line)
+        typeval, _, _ = vec_item_type_info(builder, non_opt, line)
         if typeval is not None:
-            return typeval, optionals << 1, depth + 1
+            return typeval, True, 0
+    elif isinstance(typ, RVec):
+        typeval, optional, depth = vec_item_type_info(builder, typ.item_type, line)
+        if typeval is not None:
+            return typeval, optional, depth + 1
     return None, 0, 0
 
 

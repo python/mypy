@@ -1060,18 +1060,13 @@ class RVec(RType):
             else:
                 assert False, f"unexpected item type: {self.item_type}"
 
-    def optional_flags(self) -> int:
+    def is_optional(self) -> bool:
         item_type = self.item_type
         if isinstance(item_type, RUnion):
-            item_type = optional_value_type(item_type)
-            assert item_type is not None
-            if isinstance(item_type, RVec):
-                return (item_type.optional_flags() << 1) | 1
-            else:
-                return 1
+            return True
         elif isinstance(item_type, RVec):
-            return item_type.optional_flags() << 1
-        return 0
+            return item_type.is_optional()
+        return False
 
     def depth(self) -> int:
         item_type = self.item_type

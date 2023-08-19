@@ -393,13 +393,11 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 
     def test_unbox_vec_nested(self) -> None:
         self.assert_emit(Unbox(self.o, RVec(RVec(str_rprimitive)), 55),
-                        """cpy_r_r0 = VecTExtApi.unbox(cpy_r_o, (size_t)&PyUnicode_Type, 0, 1);""")
+                        """cpy_r_r0 = VecTExtApi.unbox(cpy_r_o, (size_t)&PyUnicode_Type, 1);""")
         self.assert_emit(Unbox(self.o, RVec(RVec(RUnion([str_rprimitive, none_rprimitive]))), 55),
-                        """cpy_r_r0 = VecTExtApi.unbox(cpy_r_o, (size_t)&PyUnicode_Type | 1, 2, 1);""")
-        self.assert_emit(Unbox(self.o, RVec(RUnion([RVec(str_rprimitive), none_rprimitive])), 55),
-                        """cpy_r_r0 = VecTExtApi.unbox(cpy_r_o, (size_t)&PyUnicode_Type, 1, 1);""")
+                        """cpy_r_r0 = VecTExtApi.unbox(cpy_r_o, (size_t)&PyUnicode_Type | 1, 1);""")
         self.assert_emit(Unbox(self.o, RVec(RVec(int64_rprimitive)), 55),
-                        """cpy_r_r0 = VecTExtApi.unbox(cpy_r_o, VEC_ITEM_TYPE_I64, 0, 1);""")
+                        """cpy_r_r0 = VecTExtApi.unbox(cpy_r_o, VEC_ITEM_TYPE_I64, 1);""")
 
     def test_list_append(self) -> None:
         self.assert_emit(

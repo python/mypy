@@ -1796,7 +1796,7 @@ def f(v, n):
 L0:
     r0 = load_address PyUnicode_Type
     r1 = r0
-    r2 = VecTExtApi.alloc(0, r1, 0, 1)
+    r2 = VecTExtApi.alloc(0, r1, 1)
     r3 = r2.len
     r4 = n < r3 :: unsigned
     if r4 goto L2 else goto L3 :: bool
