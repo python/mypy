@@ -14,14 +14,13 @@ static inline PyObject *box_vec_item_by_index(VecTExt v, Py_ssize_t index) {
 }
 
 
-// Alloc a partially initialized vec. Caller *must* initialize len and buf->items.
-static VecTExt vec_t_ext_alloc(Py_ssize_t size, size_t item_type, int32_t optionals,
-                               int32_t depth) {
+// Alloc a partially initialized vec. Caller *must* initialize len and buf->items of the
+// return value.
+static VecTExt vec_t_ext_alloc(Py_ssize_t size, size_t item_type, size_t depth) {
     VecbufTExtObject *buf = PyObject_GC_NewVar(VecbufTExtObject, &VecbufTExtType, size);
     if (buf == NULL)
         return Vec_T_Ext_Error();
     buf->item_type = item_type;
-    buf->optionals = optionals;
     buf->depth = depth;
     if (!vec_is_magic_item_type(item_type))
         Py_INCREF(BUF_ITEM_TYPE(buf));
@@ -39,12 +38,10 @@ PyObject *Vec_T_Ext_Box(VecTExt vec) {
     return (PyObject *)obj;
 }
 
-VecTExt Vec_T_Ext_Unbox(PyObject *obj, size_t item_type, int optionals, int depth) {
+VecTExt Vec_T_Ext_Unbox(PyObject *obj, size_t item_type, size_t depth) {
     if (obj->ob_type == &VecTExtType) {
         VecTExt result = ((VecTExtObject *)obj)->vec;
-        if (result.buf->item_type == item_type
-            && result.buf->optionals == optionals
-            && result.buf->depth == depth) {
+        if (result.buf->item_type == item_type && result.buf->depth == depth) {
             VEC_INCREF(result);  // TODO: Should we borrow instead?
             return result;
         }
@@ -54,8 +51,8 @@ VecTExt Vec_T_Ext_Unbox(PyObject *obj, size_t item_type, int optionals, int dept
     return Vec_T_Ext_Error();
 }
 
-VecTExt Vec_T_Ext_New(Py_ssize_t size, size_t item_type, int32_t optionals, int32_t depth) {
-    VecTExt vec = vec_t_ext_alloc(size, item_type, optionals, depth);
+VecTExt Vec_T_Ext_New(Py_ssize_t size, size_t item_type, size_t depth) {
+    VecTExt vec = vec_t_ext_alloc(size, item_type, depth);
     if (VEC_IS_ERROR(vec))
         return vec;
     for (Py_ssize_t i = 0; i < size; i++) {
@@ -68,7 +65,7 @@ VecTExt Vec_T_Ext_New(Py_ssize_t size, size_t item_type, int32_t optionals, int3
 
 PyObject *vec_t_ext_repr(PyObject *self) {
     VecTExt v = ((VecTExtObject *)self)->vec;
-    return vec_repr(self, v.buf->item_type, v.buf->depth, v.buf->optionals, 1);
+    return vec_repr(self, v.buf->item_type, v.buf->depth, 1);
 }
 
 PyObject *vec_t_ext_get_item(PyObject *o, Py_ssize_t i) {
@@ -95,8 +92,7 @@ VecTExt Vec_T_Ext_Slice(VecTExt vec, int64_t start, int64_t end) {
     if (end > vec.len)
         end = vec.len;
     int64_t slicelength = end - start;
-    VecTExt res = vec_t_ext_alloc(slicelength, vec.buf->item_type, vec.buf->optionals,
-                                  vec.buf->depth);
+    VecTExt res = vec_t_ext_alloc(slicelength, vec.buf->item_type, vec.buf->depth);
     if (VEC_IS_ERROR(res))
         return res;
     res.len = slicelength;
@@ -125,8 +121,7 @@ PyObject *vec_t_ext_subscript(PyObject *self, PyObject *item) {
         if (PySlice_Unpack(item, &start, &stop, &step) < 0)
             return NULL;
         Py_ssize_t slicelength = PySlice_AdjustIndices(vec.len, &start, &stop, step);
-        VecTExt res = vec_t_ext_alloc(slicelength, vec.buf->item_type, vec.buf->optionals,
-                                      vec.buf->depth);
+        VecTExt res = vec_t_ext_alloc(slicelength, vec.buf->item_type, vec.buf->depth);
         if (VEC_IS_ERROR(res))
             return NULL;
         res.len = slicelength;
@@ -166,8 +161,7 @@ static PyObject *compare_vec_t_ext_eq(VecTExt x, VecTExt y, int op) {
     PyObject *res;
     if (x.len != y.len
             || x.buf->item_type != y.buf->item_type
-            || x.buf->depth != y.buf->depth
-            || x.buf->optionals != y.buf->optionals) {
+            || x.buf->depth != y.buf->depth) {
         cmp = 0;
     } else {
         for (Py_ssize_t i = 0; i < x.len; i++) {
@@ -217,8 +211,7 @@ VecTExt Vec_T_Ext_Append(VecTExt vec, VecbufTExtItem x) {
     } else {
         Py_ssize_t new_size = 2 * cap + 1;
         // TODO: Avoid initializing to zero here
-        VecTExt new = vec_t_ext_alloc(new_size, vec.buf->item_type, vec.buf->optionals,
-                                      vec.buf->depth);
+        VecTExt new = vec_t_ext_alloc(new_size, vec.buf->item_type, vec.buf->depth);
         if (VEC_IS_ERROR(new)) {
             VEC_DECREF(x);
             return new;
@@ -422,9 +415,8 @@ PyTypeObject VecTExtType = {
     // TODO: free
 };
 
-PyObject *Vec_T_Ext_FromIterable(size_t item_type, int32_t optionals, int32_t depth,
-                                 PyObject *iterable) {
-    VecTExt v = vec_t_ext_alloc(0, item_type, optionals, depth);
+PyObject *Vec_T_Ext_FromIterable(size_t item_type, size_t depth, PyObject *iterable) {
+    VecTExt v = vec_t_ext_alloc(0, item_type, depth);
     if (VEC_IS_ERROR(v))
         return NULL;
     v.len = 0;

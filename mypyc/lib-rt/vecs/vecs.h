@@ -8,7 +8,7 @@
 // use PyErr_Occurred() since this overlaps with valid integer values.
 #define MYPYC_INT_ERROR -113
 
-// Item type constants; must be even but not multiples of 4
+// Item type constants; must be even but not multiples of 4 (2 + 4 * n)
 #define VEC_ITEM_TYPE_I64 2
 
 inline size_t vec_is_magic_item_type(size_t item_type) {
@@ -41,10 +41,11 @@ typedef struct _VecbufTExtItem {
 // Nested vec type: vec[vec[...]], vec[vec[...] | None], etc.
 typedef struct _VecbufTExtObject {
     PyObject_VAR_HEAD
-    // Tagged pointer to PyTypeObject *. The lowest bit is 1 for optional item type.
+    // Tagged pointer to PyTypeObject *. Lowest bit is set for optional item type.
+    // The second lowest bit is set for a packed item type (VEC_ITEM_TYPE_*).
     size_t item_type;
-    int32_t depth;  // Number of nested VecTExt or VecT types
-    int32_t optionals;  // Flags for optional types on each nesting level
+    // Number of nested vec types (of any kind, at least 1)
+    size_t depth;
     VecbufTExtItem items[1];
 } VecbufTExtObject;
 
@@ -167,9 +168,9 @@ typedef struct {
 typedef struct _VecTExtFeatures {
     PyTypeObject *boxed_type;
     PyTypeObject *buf_type;
-    VecTExt (*alloc)(Py_ssize_t, size_t, int optionals, int depth);
+    VecTExt (*alloc)(Py_ssize_t, size_t, size_t depth);
     PyObject *(*box)(VecTExt);
-    VecTExt (*unbox)(PyObject *, size_t, int optionals, int depth);
+    VecTExt (*unbox)(PyObject *, size_t, size_t depth);
     VecTExt (*append)(VecTExt, VecbufTExtItem);
     VecTExtPopResult (*pop)(VecTExt, Py_ssize_t);
     VecTExt (*remove)(VecTExt, VecbufTExtItem);
@@ -268,15 +269,14 @@ static inline int VecTExt_Check(PyObject *o) {
 
 static inline int VecTExt_ItemCheck(VecTExt v, PyObject *it) {
     // TODO: vec[i64] item type
-    if (it == Py_None && (v.buf->optionals & 1)) {
+    if (it == Py_None && (v.buf->item_type & 1)) {
         return 1;
     } else if (v.buf->depth == 1 && it->ob_type == &VecTType
                && ((VecTExtObject *)it)->vec.buf->item_type == v.buf->item_type) {
         return 1;
     } else if (it->ob_type == &VecTExtType
                && ((VecTExtObject *)it)->vec.buf->depth == v.buf->depth - 1
-               && ((VecTExtObject *)it)->vec.buf->item_type == v.buf->item_type
-               && ((VecTExtObject *)it)->vec.buf->optionals == (v.buf->optionals >> 1)) {
+               && ((VecTExtObject *)it)->vec.buf->item_type == v.buf->item_type) {
         return 1;
     } else {
         // TODO: better error message
@@ -285,9 +285,8 @@ static inline int VecTExt_ItemCheck(VecTExt v, PyObject *it) {
     }
 }
 
-VecTExt Vec_T_Ext_New(Py_ssize_t size, size_t item_type, int32_t optionals, int32_t depth);
-PyObject *Vec_T_Ext_FromIterable(size_t item_type, int32_t optionals, int32_t depth,
-                                 PyObject *iterable);
+VecTExt Vec_T_Ext_New(Py_ssize_t size, size_t item_type, size_t depth);
+PyObject *Vec_T_Ext_FromIterable(size_t item_type, size_t depth, PyObject *iterable);
 PyObject *Vec_T_Ext_Box(VecTExt);
 VecTExt Vec_T_Ext_Append(VecTExt vec, VecbufTExtItem x);
 VecTExt Vec_T_Ext_Remove(VecTExt vec, VecbufTExtItem x);
@@ -296,13 +295,7 @@ VecTExtPopResult Vec_T_Ext_Pop(VecTExt v, Py_ssize_t index);
 // Return 0 on success, -1 on error. Store unboxed item in *unboxed if successful.
 // Return a *borrowed* reference.
 static inline int Vec_T_Ext_UnboxItem(VecTExt v, PyObject *item, VecbufTExtItem *unboxed) {
-    int optionals = v.buf->optionals;
-    if (item == Py_None && (optionals & 1)) {
-        unboxed->len = -1;
-        unboxed->buf = NULL;
-        return 0;
-    }
-    int depth = v.buf->depth;
+    size_t depth = v.buf->depth;
     if (depth == 1) {
         // TODO: vec[i64]
         if (item->ob_type == &VecTType) {
@@ -321,8 +314,7 @@ static inline int Vec_T_Ext_UnboxItem(VecTExt v, PyObject *item, VecbufTExtItem 
     } else if (item->ob_type == &VecTExtType) {
         VecTExtObject *o = (VecTExtObject *)item;
         if (o->vec.buf->depth == v.buf->depth - 1
-            && o->vec.buf->item_type == v.buf->item_type
-            && o->vec.buf->optionals == (optionals >> 1)) {
+            && o->vec.buf->item_type == v.buf->item_type) {
             unboxed->len = o->vec.len;
             unboxed->buf = (PyObject *)o->vec.buf;
             return 0;
@@ -366,9 +358,8 @@ static inline int check_float_error(PyObject *o) {
     return 0;
 }
 
-PyObject *vec_type_to_str(size_t item_type, int32_t depth, int32_t optionals);
-PyObject *vec_repr(PyObject *vec, size_t item_type, int32_t depth, int32_t optionals,
-                   int verbose);
+PyObject *vec_type_to_str(size_t item_type, size_t depth);
+PyObject *vec_repr(PyObject *vec, size_t item_type, size_t depth, int verbose);
 PyObject *vec_generic_richcompare(Py_ssize_t *len, PyObject **items,
                                   Py_ssize_t *other_len, PyObject **other_items,
                                   int op);

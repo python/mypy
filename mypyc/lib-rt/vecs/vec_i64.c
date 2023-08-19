@@ -103,7 +103,7 @@ PyObject *vec_i64_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
 }
 
 PyObject *vec_i64_repr(PyObject *self) {
-    return vec_repr(self, (size_t)I64TypeObj, 0, 0, 1);
+    return vec_repr(self, (size_t)I64TypeObj, 0, 1);
 }
 
 PyObject *vec_i64_get_item(PyObject *o, Py_ssize_t i) {
