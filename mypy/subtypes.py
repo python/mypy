@@ -1633,6 +1633,10 @@ def are_args_compatible(
     allow_partial_overlap: bool,
     is_compat: Callable[[Type, Type], bool],
 ) -> bool:
+    if left.required and right.required:
+        # If both arguments are required allow_partial_overlap has no effect.
+        allow_partial_overlap = False
+
     def is_different(left_item: object | None, right_item: object | None) -> bool:
         """Checks if the left and right items are different.
 
@@ -1660,7 +1664,7 @@ def are_args_compatible(
 
     # If right's argument is optional, left's must also be
     # (unless we're relaxing the checks to allow potential
-    # rather then definite compatibility).
+    # rather than definite compatibility).
     if not allow_partial_overlap and not right.required and left.required:
         return False
 
