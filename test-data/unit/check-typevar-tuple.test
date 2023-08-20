@@ -831,3 +831,56 @@ def dec(f: Callable[[Unpack[Ts]], T]) -> Callable[[Unpack[Ts]], T]: ...
 def f(*args: Unpack[Us]) -> Foo[Us]: ...  # E: TypeVarTuple "Us" is only valid with an unpack
 dec(f)  # No crash
 [builtins fixtures/tuple.pyi]
+
+[case testHomogeneousGenericTupleUnpackInferenceNoCrash1]
+from typing import Any, TypeVar, Tuple, Type, Optional
+from typing_extensions import Unpack
+
+T = TypeVar("T")
+def convert(obj: Any, *to_classes: Unpack[Tuple[Type[T], ...]]) -> Optional[T]:
+    ...
+
+x = convert(1, int, float)
+reveal_type(x)  # N: Revealed type is "Union[builtins.float, None]"
+[builtins fixtures/tuple.pyi]
+
+[case testHomogeneousGenericTupleUnpackInferenceNoCrash2]
+from typing import TypeVar, Tuple, Callable, Iterable
+from typing_extensions import Unpack
+
+T = TypeVar("T")
+def combine(x: T, y: T) -> T: ...
+def reduce(fn: Callable[[T, T], T], xs: Iterable[T]) -> T: ...
+
+def pipeline(*xs: Unpack[Tuple[int, Unpack[Tuple[str, ...]], bool]]) -> None:
+    reduce(combine, xs)
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicStarArgsCallNoCrash]
+from typing import TypeVar, Callable, Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+X = TypeVar("X")
+Y = TypeVar("Y")
+Xs = TypeVarTuple("Xs")
+Ys = TypeVarTuple("Ys")
+
+def nil() -> Tuple[()]:
+    return ()
+
+def cons(
+    f: Callable[[X], Y],
+    g: Callable[[Unpack[Xs]], Tuple[Unpack[Ys]]],
+) -> Callable[[X, Unpack[Xs]], Tuple[Y, Unpack[Ys]]]:
+    def wrapped(x: X, *xs: Unpack[Xs]) -> Tuple[Y, Unpack[Ys]]:
+        y, ys = f(x), g(*xs)
+        return y, *ys
+    return wrapped
+
+def star(f: Callable[[X], Y]) -> Callable[[Unpack[Tuple[X, ...]]], Tuple[Y, ...]]:
+    def wrapped(*xs: X):
+        if not xs:
+            return nil()
+        return cons(f, star(f))(*xs)
+    return wrapped
+[builtins fixtures/tuple.pyi]
