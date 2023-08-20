@@ -8,7 +8,7 @@ import mypy.applytype
 import mypy.constraints
 import mypy.typeops
 from mypy.erasetype import erase_type
-from mypy.expandtype import expand_self_type, expand_type, expand_type_by_instance
+from mypy.expandtype import expand_self_type, expand_type_by_instance
 from mypy.maptype import map_instance_to_supertype
 
 # Circular import; done in the function instead.
@@ -1404,8 +1404,8 @@ def is_callable_compatible(
         whether or not we check the args covariantly.
     """
     # Normalize both types before comparing them.
-    left = left.with_unpacked_kwargs()
-    right = right.with_unpacked_kwargs()
+    left = left.with_unpacked_kwargs().with_normalized_var_args()
+    right = right.with_unpacked_kwargs().with_normalized_var_args()
 
     if is_compat_return is None:
         is_compat_return = is_compat
@@ -1503,18 +1503,6 @@ def are_parameters_compatible(
     left_star2 = left.kw_arg()
     right_star = right.var_arg()
     right_star2 = right.kw_arg()
-
-    if right_star and isinstance(right_star.typ, UnpackType):
-        # TODO: factor out normalization code to avoid the import.
-        expanded = expand_type(right, {})
-        assert isinstance(expanded, (Parameters, CallableType))
-        right = cast(NormalizedCallableType, expanded)
-        right_star = right.var_arg()
-    if left_star and isinstance(left_star.typ, UnpackType):
-        expanded = expand_type(left, {})
-        assert isinstance(expanded, (Parameters, CallableType))
-        left = cast(NormalizedCallableType, expanded)
-        left_star = left.var_arg()
 
     # Treat "def _(*a: Any, **kw: Any) -> X" similarly to "Callable[..., X]"
     if are_trivial_parameters(right):

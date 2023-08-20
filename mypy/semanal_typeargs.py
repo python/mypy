@@ -142,9 +142,8 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         info = t.type
         if isinstance(info, FakeInfo):
             return  # https://github.com/python/mypy/issues/11079
-        # TODO: we can also normalize tuple[*tuple[X, ...], ...] -> tuple[X, ...]
-        # bit this looks quite rare corner case (and we should be able to handle it).
         t.args = tuple(flatten_nested_tuples(t.args))
+        # TODO: fix #15410 and #15411.
         self.validate_args(info.name, t.args, info.defn.type_vars, t)
         super().visit_instance(t)
 

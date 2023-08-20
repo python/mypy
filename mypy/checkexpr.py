@@ -168,6 +168,7 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    find_unpack_in_list,
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
@@ -184,7 +185,6 @@ from mypy.types_utils import (
 )
 from mypy.typestate import type_state
 from mypy.typevars import fill_typevars
-from mypy.typevartuples import find_unpack_in_list
 from mypy.util import split_module_names
 from mypy.visitor import ExpressionVisitor
 
@@ -1599,7 +1599,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         See the docstring of check_call for more information.
         """
         # Always unpack **kwargs before checking a call.
-        callee = callee.with_unpacked_kwargs()
+        callee = callee.with_unpacked_kwargs().with_normalized_var_args()
         if callable_name is None and callee.name:
             callable_name = callee.name
         ret_type = get_proper_type(callee.ret_type)
@@ -1638,11 +1638,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.msg.cannot_instantiate_abstract_class(
                 callee.type_object().name, abstract_attributes, context
             )
-
-        callee_star = callee.var_arg()
-        if callee_star is not None and isinstance(callee_star.typ, UnpackType):
-            # TODO: factor out normalization code to avoid weird call.
-            callee = expand_type(callee, {})
 
         formal_to_actual = map_actuals_to_formals(
             arg_kinds,

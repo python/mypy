@@ -49,6 +49,7 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    find_unpack_in_list,
     get_proper_type,
     has_recursive_types,
     has_type_vars,
@@ -57,7 +58,7 @@ from mypy.types import (
 )
 from mypy.types_utils import is_union_with_any
 from mypy.typestate import type_state
-from mypy.typevartuples import extract_unpack, find_unpack_in_list, split_with_mapped_and_template
+from mypy.typevartuples import extract_unpack, split_with_mapped_and_template
 
 if TYPE_CHECKING:
     from mypy.infer import ArgumentInferContext
