@@ -884,3 +884,41 @@ def star(f: Callable[[X], Y]) -> Callable[[Unpack[Tuple[X, ...]]], Tuple[Y, ...]
         return cons(f, star(f))(*xs)
     return wrapped
 [builtins fixtures/tuple.pyi]
+
+[case testInvalidTypeVarTupleUseNoCrash]
+from typing_extensions import TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+
+def f(x: Ts) -> Ts:  # E: TypeVarTuple "Ts" is only valid with an unpack
+    return x
+
+v = f(1, 2, "A")  # E: Too many arguments for "f"
+reveal_type(v)  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleSimpleDecoratorWorks]
+from typing import TypeVar, Callable
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+T = TypeVar("T")
+
+def decorator(f: Callable[[Unpack[Ts]], T]) -> Callable[[Unpack[Ts]], T]:
+    def wrapper(*args: Unpack[Ts]) -> T:
+        return f(*args)
+    return wrapper
+
+@decorator
+def f(a: int, b: int) -> int: ...
+reveal_type(f)  # N: Revealed type is "def (builtins.int, builtins.int) -> builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testTupleWithUnpackIterator]
+from typing import Tuple
+from typing_extensions import Unpack
+
+def pipeline(*xs: Unpack[Tuple[int, Unpack[Tuple[float, ...]], bool]]) -> None:
+    for x in xs:
+        reveal_type(x)  # N: Revealed type is "builtins.float"
+[builtins fixtures/tuple.pyi]
