@@ -4216,6 +4216,7 @@ class SemanticAnalyzer(
         *,
         allow_unbound_tvars: bool = False,
         allow_param_spec_literals: bool = False,
+        allow_unpack: bool = False,
         report_invalid_typevar_arg: bool = True,
     ) -> ProperType | None:
         try:
@@ -4227,6 +4228,7 @@ class SemanticAnalyzer(
                 report_invalid_types=False,
                 allow_unbound_tvars=allow_unbound_tvars,
                 allow_param_spec_literals=allow_param_spec_literals,
+                allow_unpack=allow_unpack,
             )
             if analyzed is None:
                 # Type variables are special: we need to place them in the symbol table
@@ -4378,6 +4380,7 @@ class SemanticAnalyzer(
                     s,
                     allow_unbound_tvars=True,
                     report_invalid_typevar_arg=False,
+                    allow_unpack=True,
                 )
                 default = tv_arg or AnyType(TypeOfAny.from_error)
                 if not isinstance(default, UnpackType):
@@ -6493,6 +6496,7 @@ class SemanticAnalyzer(
         allow_type_any: bool = False,
         allow_unbound_tvars: bool = False,
         allow_param_spec_literals: bool = False,
+        allow_unpack: bool = False,
     ) -> Type | None:
         if isinstance(expr, CallExpr):
             # This is a legacy syntax intended mostly for Python 2, we keep it for
@@ -6523,6 +6527,7 @@ class SemanticAnalyzer(
             allow_type_any=allow_type_any,
             allow_unbound_tvars=allow_unbound_tvars,
             allow_param_spec_literals=allow_param_spec_literals,
+            allow_unpack=allow_unpack,
         )
 
     def analyze_type_expr(self, expr: Expression) -> None:

@@ -1051,10 +1051,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         line=t.line,
                         column=t.column,
                     )
-        self.allow_unpack = True
-        result = self.anal_type(t, nested=nested)
-        self.allow_unpack = False
-        return result
+        return self.anal_type(t, nested=nested, allow_unpack=True)
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         # Overloaded types are manually constructed in semanal.py by analyzing the
@@ -1580,13 +1577,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     ) -> list[Type]:
         old_allow_param_spec_literals = self.allow_param_spec_literals
         self.allow_param_spec_literals = allow_param_spec_literals
-        old_allow_unpack = self.allow_unpack
-        self.allow_unpack = allow_unpack
         res: list[Type] = []
         for t in a:
-            res.append(self.anal_type(t, nested, allow_param_spec=allow_param_spec))
+            res.append(
+                self.anal_type(
+                    t, nested, allow_param_spec=allow_param_spec, allow_unpack=allow_unpack
+                )
+            )
         self.allow_param_spec_literals = old_allow_param_spec_literals
-        self.allow_unpack = old_allow_unpack
         return self.check_unpacks_in_list(res)
 
     def anal_type(
@@ -1595,6 +1593,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         nested: bool = True,
         *,
         allow_param_spec: bool = False,
+        allow_unpack: bool = False,
         allow_ellipsis: bool = False,
     ) -> Type:
         if nested:
@@ -1603,6 +1602,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_required = False
         old_allow_ellipsis = self.allow_ellipsis
         self.allow_ellipsis = allow_ellipsis
+        old_allow_unpack = self.allow_unpack
+        self.allow_unpack = allow_unpack
         try:
             analyzed = t.accept(self)
         finally:
@@ -1610,6 +1611,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 self.nesting_level -= 1
             self.allow_required = old_allow_required
             self.allow_ellipsis = old_allow_ellipsis
+            self.allow_unpack = old_allow_unpack
         if (
             not allow_param_spec
             and isinstance(analyzed, ParamSpecType)

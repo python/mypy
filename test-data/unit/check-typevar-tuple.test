@@ -60,9 +60,10 @@ reveal_type(f(f_args2))  # N: Revealed type is "Tuple[builtins.str]"
 reveal_type(f(f_args3))  # N: Revealed type is "Tuple[builtins.str, builtins.str, builtins.bool]"
 f(empty)  # E: Argument 1 to "f" has incompatible type "Tuple[()]"; expected "Tuple[int]"
 f(bad_args)  # E: Argument 1 to "f" has incompatible type "Tuple[str, str]"; expected "Tuple[int, str]"
-# TODO: This hits a crash where we assert len(templates.items) == 1. See visit_tuple_type
-# in mypy/constraints.py.
-#f(var_len_tuple)
+
+# The reason for error in subtle: actual can be empty, formal cannot.
+reveal_type(f(var_len_tuple))  # N: Revealed type is "Tuple[builtins.str, Unpack[builtins.tuple[builtins.int, ...]]]" \
+                               # E: Argument 1 to "f" has incompatible type "Tuple[int, ...]"; expected "Tuple[int, Unpack[Tuple[int, ...]]]"
 
 g_args: Tuple[str, int]
 reveal_type(g(g_args))  # N: Revealed type is "Tuple[builtins.str, builtins.str]"
@@ -127,7 +128,6 @@ bad2: Unpack[Tuple[int, ...]]  # E: Unpack is only valid in a variadic position
 
 m1: Mixed1[int, str, bool]
 reveal_type(m1)  # N: Revealed type is "__main__.Mixed1[builtins.int, builtins.str, builtins.bool]"
-
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTupleGenericClassWithFunctions]
@@ -146,7 +146,6 @@ def foo(t: Variadic[int, Unpack[Ts], object]) -> Tuple[int, Unpack[Ts]]:
 
 v: Variadic[int, str, bool, object]
 reveal_type(foo(v))  # N: Revealed type is "Tuple[builtins.int, builtins.str, builtins.bool]"
-
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTupleGenericClassWithMethods]
@@ -166,7 +165,6 @@ class Variadic(Generic[T, Unpack[Ts], S]):
 
 v: Variadic[float, str, bool, object]
 reveal_type(v.foo(0))  # N: Revealed type is "Tuple[builtins.int, builtins.str, builtins.bool]"
-
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTupleIsNotValidAliasTarget]
@@ -209,8 +207,8 @@ shape = (Height(480), Width(640))
 x: Array[Height, Width] = Array(shape)
 reveal_type(abs(x))  # N: Revealed type is "__main__.Array[__main__.Height, __main__.Width]"
 reveal_type(x + x)  # N: Revealed type is "__main__.Array[__main__.Height, __main__.Width]"
-
 [builtins fixtures/tuple.pyi]
+
 [case testTypeVarTuplePep646ArrayExampleWithDType]
 from typing import Generic, Tuple, TypeVar, Protocol, NewType
 from typing_extensions import TypeVarTuple, Unpack
@@ -245,7 +243,6 @@ shape = (Height(480), Width(640))
 x: Array[float, Height, Width] = Array(shape)
 reveal_type(abs(x))  # N: Revealed type is "__main__.Array[builtins.float, __main__.Height, __main__.Width]"
 reveal_type(x + x)  # N: Revealed type is "__main__.Array[builtins.float, __main__.Height, __main__.Width]"
-
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTuplePep646ArrayExampleInfer]
@@ -291,8 +288,8 @@ c = del_batch_axis(b)
 reveal_type(c)  # N: Revealed type is "__main__.Array[__main__.Height, __main__.Width]"
 d = add_batch_channels(a)
 reveal_type(d)  # N: Revealed type is "__main__.Array[__main__.Batch, __main__.Height, __main__.Width, __main__.Channels]"
-
 [builtins fixtures/tuple.pyi]
+
 [case testTypeVarTuplePep646TypeVarConcatenation]
 from typing import Generic, TypeVar, NewType, Tuple
 from typing_extensions import TypeVarTuple, Unpack
@@ -309,6 +306,7 @@ def prefix_tuple(
 z = prefix_tuple(x=0, y=(True, 'a'))
 reveal_type(z)  # N: Revealed type is "Tuple[builtins.int, builtins.bool, builtins.str]"
 [builtins fixtures/tuple.pyi]
+
 [case testTypeVarTuplePep646TypeVarTupleUnpacking]
 from typing import Generic, TypeVar, NewType, Any, Tuple
 from typing_extensions import TypeVarTuple, Unpack
@@ -361,8 +359,6 @@ reveal_type(bad)  # N: Revealed type is "def [Ts, Ts2] (x: Tuple[builtins.int, U
 def bad2(x: Tuple[int, Unpack[Tuple[int, ...]], str, Unpack[Tuple[str, ...]]]) -> None:  # E: More than one Unpack in a type is not allowed
     ...
 reveal_type(bad2)  # N: Revealed type is "def (x: Tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]], builtins.str])"
-
-
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTuplePep646TypeVarStarArgsBasic]
@@ -378,8 +374,8 @@ def args_to_tuple(*args: Unpack[Ts]) -> Tuple[Unpack[Ts]]:
     return args
 
 reveal_type(args_to_tuple(1, 'a'))  # N: Revealed type is "Tuple[Literal[1]?, Literal['a']?]"
-
 [builtins fixtures/tuple.pyi]
+
 [case testTypeVarTuplePep646TypeVarStarArgs]
 from typing import Tuple
 from typing_extensions import TypeVarTuple, Unpack
@@ -408,8 +404,6 @@ with_prefix_suffix(*bad_t)  # E: Too few arguments for "with_prefix_suffix"
 
 def foo(*args: Unpack[Ts]) -> None:
     reveal_type(with_prefix_suffix(True, "bar", *args, 5))  # N: Revealed type is "Tuple[builtins.bool, builtins.str, Unpack[Ts`-1], builtins.int]"
-
-
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTuplePep646TypeVarStarArgsFixedLengthTuple]
@@ -420,17 +414,23 @@ def foo(*args: Unpack[Tuple[int, str]]) -> None:
     reveal_type(args)  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
 
 foo(0, "foo")
-foo(0, 1)  # E: Argument 2 to "foo" has incompatible type "int"; expected "Unpack[Tuple[int, str]]"
-foo("foo", "bar")  # E: Argument 1 to "foo" has incompatible type "str"; expected "Unpack[Tuple[int, str]]"
-foo(0, "foo", 1)  # E: Invalid number of arguments
-foo(0)  # E: Invalid number of arguments
-foo()  # E: Invalid number of arguments
+foo(0, 1)  # E: Argument 2 to "foo" has incompatible type "int"; expected "str"
+foo("foo", "bar")  # E: Argument 1 to "foo" has incompatible type "str"; expected "int"
+foo(0, "foo", 1)  # E: Too many arguments for "foo"
+foo(0)  # E: Too few arguments for "foo"
+foo()  # E: Too few arguments for "foo"
 foo(*(0, "foo"))
 
-# TODO: fix this case to do something sensible.
-#def foo2(*args: Unpack[Tuple[bool, Unpack[Tuple[int, str]], bool]]) -> None:
-#    reveal_type(args)
+def foo2(*args: Unpack[Tuple[bool, Unpack[Tuple[int, str]], bool]]) -> None:
+    reveal_type(args)  # N: Revealed type is "Tuple[builtins.bool, builtins.int, builtins.str, builtins.bool]"
 
+# It is hard to normalize callable types in definition, because there is deep relation between `FuncDef.type`
+# and `FuncDef.arguments`, therefore various typeops need to be sure to normalize Callable types before using them.
+reveal_type(foo2)  # N: Revealed type is "def (*args: Unpack[Tuple[builtins.bool, builtins.int, builtins.str, builtins.bool]])"
+
+class C:
+    def foo2(self, *args: Unpack[Tuple[bool, Unpack[Tuple[int, str]], bool]]) -> None: ...
+reveal_type(C().foo2)  # N: Revealed type is "def (*args: Unpack[Tuple[builtins.bool, builtins.int, builtins.str, builtins.bool]])"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTuplePep646TypeVarStarArgsVariableLengthTuple]
@@ -450,9 +450,9 @@ def foo2(*args: Unpack[Tuple[str, Unpack[Tuple[int, ...]], bool, bool]]) -> None
     # reveal_type(args[1])
 
 foo2("bar", 1, 2, 3, False, True)
-foo2(0, 1, 2, 3, False, True)  # E: Argument 1 to "foo2" has incompatible type "int"; expected "Unpack[Tuple[str, Unpack[Tuple[int, ...]], bool, bool]]"
-foo2("bar", "bar", 2, 3, False, True)  # E: Argument 2 to "foo2" has incompatible type "str"; expected "Unpack[Tuple[str, Unpack[Tuple[int, ...]], bool, bool]]"
-foo2("bar", 1, 2, 3, 4, True)  # E: Argument 5 to "foo2" has incompatible type "int"; expected "Unpack[Tuple[str, Unpack[Tuple[int, ...]], bool, bool]]"
+foo2(0, 1, 2, 3, False, True)  # E: Argument 1 to "foo2" has incompatible type "int"; expected "str"
+foo2("bar", "bar", 2, 3, False, True)  # E: Argument 2 to "foo2" has incompatible type "str"; expected "Unpack[Tuple[Unpack[Tuple[int, ...]], bool, bool]]"
+foo2("bar", 1, 2, 3, 4, True)  # E: Argument 5 to "foo2" has incompatible type "int"; expected "Unpack[Tuple[Unpack[Tuple[int, ...]], bool, bool]]"
 foo2(*("bar", 1, 2, 3, False, True))
 [builtins fixtures/tuple.pyi]
 
@@ -547,8 +547,7 @@ def call(
     *args: Unpack[Ts],
 ) -> None:
     ...
-    # TODO: exposes unhandled case in checkexpr
-    # target(*args)
+    target(*args)
 
 class A:
     def func(self, arg1: int, arg2: str) -> None: ...
@@ -566,7 +565,6 @@ call(A().func, 0, 1)  # E: Argument 1 to "call" has incompatible type "Callable[
 call(A().func2, 0, 0)
 call(A().func3, 0, 1, 2)
 call(A().func3)
-
 [builtins fixtures/tuple.pyi]
 
 [case testVariadicAliasBasicTuple]

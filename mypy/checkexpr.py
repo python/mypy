@@ -1639,6 +1639,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 callee.type_object().name, abstract_attributes, context
             )
 
+        callee_star = callee.var_arg()
+        if callee_star is not None and isinstance(callee_star.typ, UnpackType):
+            # TODO: factor out normalization code to avoid weird call.
+            callee = expand_type(callee, {})
+
         formal_to_actual = map_actuals_to_formals(
             arg_kinds,
             arg_names,
@@ -2408,6 +2413,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                 + unpacked_type.items[inner_unpack_index + 1 :]
                             )
                             callee_arg_kinds = [ARG_POS] * len(actuals)
+                    elif isinstance(unpacked_type, TypeVarTupleType):
+                        callee_arg_types = [orig_callee_arg_type]
+                        callee_arg_kinds = [ARG_STAR]
                     else:
                         assert isinstance(unpacked_type, Instance)
                         assert unpacked_type.type.fullname == "builtins.tuple"

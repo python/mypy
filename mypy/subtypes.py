@@ -8,7 +8,7 @@ import mypy.applytype
 import mypy.constraints
 import mypy.typeops
 from mypy.erasetype import erase_type
-from mypy.expandtype import expand_self_type, expand_type_by_instance
+from mypy.expandtype import expand_self_type, expand_type, expand_type_by_instance
 from mypy.maptype import map_instance_to_supertype
 
 # Circular import; done in the function instead.
@@ -659,6 +659,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return self._is_subtype(left.upper_bound, self.right)
 
     def visit_unpack_type(self, left: UnpackType) -> bool:
+        # TODO: Ideally we should not need this (since it is not a real type).
+        # Instead callers (prevous level types) handle it when it appears in type list.
         if isinstance(self.right, UnpackType):
             return self._is_subtype(left.type, self.right.type)
         if isinstance(self.right, Instance) and self.right.type.fullname == "builtins.object":
@@ -752,7 +754,15 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     # TODO: We shouldn't need this special case. This is currently needed
                     #       for isinstance(x, tuple), though it's unclear why.
                     return True
-                return all(self._is_subtype(li, iter_type) for li in left.items)
+                for li in left.items:
+                    if isinstance(li, UnpackType):
+                        unpack = get_proper_type(li.type)
+                        if isinstance(unpack, Instance):
+                            assert unpack.type.fullname == "builtins.tuple"
+                            li = unpack.args[0]
+                    if not self._is_subtype(li, iter_type):
+                        return False
+                return True
             elif self._is_subtype(left.partial_fallback, right) and self._is_subtype(
                 mypy.typeops.tuple_fallback(left), right
             ):
@@ -760,6 +770,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return False
         elif isinstance(right, TupleType):
             if len(left.items) != len(right.items):
+                # TODO: handle tuple with variadic items better.
                 return False
             if any(not self._is_subtype(l, r) for l, r in zip(left.items, right.items)):
                 return False
@@ -1493,6 +1504,18 @@ def are_parameters_compatible(
     right_star = right.var_arg()
     right_star2 = right.kw_arg()
 
+    if right_star and isinstance(right_star.typ, UnpackType):
+        # TODO: factor out normalization code to avoid the import.
+        expanded = expand_type(right, {})
+        assert isinstance(expanded, (Parameters, CallableType))
+        right = cast(NormalizedCallableType, expanded)
+        right_star = right.var_arg()
+    if left_star and isinstance(left_star.typ, UnpackType):
+        expanded = expand_type(left, {})
+        assert isinstance(expanded, (Parameters, CallableType))
+        left = cast(NormalizedCallableType, expanded)
+        left_star = left.var_arg()
+
     # Treat "def _(*a: Any, **kw: Any) -> X" similarly to "Callable[..., X]"
     if are_trivial_parameters(right):
         return True
@@ -1549,6 +1572,7 @@ def are_parameters_compatible(
     # Phase 1c: Check var args. Right has an infinite series of optional positional
     #           arguments. Get all further positional args of left, and make sure
     #           they're more general then the corresponding member in right.
+    # TODO: are we handling UnpackType correctly here?
     if right_star is not None:
         # Synthesize an anonymous formal argument for the right
         right_by_position = right.try_synthesizing_arg_from_vararg(None)

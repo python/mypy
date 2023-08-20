@@ -116,6 +116,7 @@ def tuple_fallback(typ: TupleType) -> Instance:
                 raise NotImplementedError(unpacked_type)
         else:
             items.append(item)
+    # TODO: we should really use a union here, tuple types are special.
     return Instance(info, [join_type_list(items)], extra_attrs=typ.partial_fallback.extra_attrs)
 
 
