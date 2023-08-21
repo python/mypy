@@ -436,7 +436,7 @@ class SSLContext:
         server_side: bool = False,
         do_handshake_on_connect: bool = True,
         suppress_ragged_eofs: bool = True,
-        server_hostname: str | None = None,
+        server_hostname: str | bytes | None = None,
         session: SSLSession | None = None,
     ) -> SSLSocket: ...
     def wrap_bio(
@@ -444,7 +444,7 @@ class SSLContext:
         incoming: MemoryBIO,
         outgoing: MemoryBIO,
         server_side: bool = False,
-        server_hostname: str | None = None,
+        server_hostname: str | bytes | None = None,
         session: SSLSession | None = None,
     ) -> SSLObject: ...
     def session_stats(self) -> dict[str, int]: ...
