@@ -4271,6 +4271,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             allow_none_return=True,
             always_allow_any=True,
         )
+        if self.chk.current_node_deferred:
+            return source_type
+
         target_type = expr.type
         proper_source_type = get_proper_type(source_type)
         if (
