@@ -1053,12 +1053,12 @@ T = TypeVar("T")
 def dec(f: Callable[[], T]) -> Callable[[], T]:
     return f
 
-def method1() -> None:
-    some_enum = _inner_method1()
-    assert_type(some_enum, int)
+def func() -> None:
+    some = _inner_func()
+    assert_type(some, int)
 
 @dec
-def _inner_method1() -> int:
+def _inner_func() -> int:
     return 1
 [builtins fixtures/tuple.pyi]
 
