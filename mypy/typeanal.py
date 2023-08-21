@@ -646,7 +646,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 self.fail("Unpack[...] requires exactly one type argument", t)
                 return AnyType(TypeOfAny.from_error)
             if not self.allow_unpack:
-                self.fail("Unpack is only valid in a variadic position", t)
+                self.fail(message_registry.INVALID_UNPACK_POSITION, t, code=codes.VALID_TYPE)
                 return AnyType(TypeOfAny.from_error)
             self.allow_type_var_tuple = True
             result = UnpackType(self.anal_type(t.args[0]), line=t.line, column=t.column)
@@ -975,7 +975,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 validated_args: list[Type] = []
                 for i, at in enumerate(arg_types):
                     if isinstance(at, UnpackType) and i not in (star_index, star2_index):
-                        self.fail("Unpack is only valid in a variadic position", at)
+                        self.fail(
+                            message_registry.INVALID_UNPACK_POSITION, at, code=codes.VALID_TYPE
+                        )
                         validated_args.append(AnyType(TypeOfAny.from_error))
                     else:
                         validated_args.append(at)

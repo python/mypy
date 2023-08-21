@@ -355,15 +355,20 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                 )
 
         var_arg = t.var_arg()
+        needs_normalization = False
         if var_arg is not None and isinstance(var_arg.typ, UnpackType):
+            needs_normalization = True
             arg_types = self.interpolate_args_for_unpack(t, var_arg.typ)
         else:
             arg_types = self.expand_types(t.arg_types)
-        return t.copy_modified(
+        expanded = t.copy_modified(
             arg_types=arg_types,
             ret_type=t.ret_type.accept(self),
             type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None),
-        ).with_normalized_var_args()
+        )
+        if needs_normalization:
+            return expanded.with_normalized_var_args()
+        return expanded
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         items: list[CallableType] = []

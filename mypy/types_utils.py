@@ -54,7 +54,7 @@ def strip_type(typ: Type) -> Type:
 
 
 def is_invalid_recursive_alias(seen_nodes: set[TypeAlias], target: Type) -> bool:
-    """Flag aliases like A = Union[int, A] (and similar mutual aliases).
+    """Flag aliases like A = Union[int, A], T = tuple[int, *T] (and similar mutual aliases).
 
     Such aliases don't make much sense, and cause problems in later phases.
     """

@@ -660,7 +660,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     def visit_unpack_type(self, left: UnpackType) -> bool:
         # TODO: Ideally we should not need this (since it is not a real type).
-        # Instead callers (prevous level types) handle it when it appears in type list.
+        # Instead callers (upper level types) should handle it when it appears in type list.
         if isinstance(self.right, UnpackType):
             return self._is_subtype(left.type, self.right.type)
         if isinstance(self.right, Instance) and self.right.type.fullname == "builtins.object":

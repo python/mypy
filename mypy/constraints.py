@@ -159,6 +159,7 @@ def infer_constraints_for_callable(
                 inner_unpacked_type = get_proper_type(inner_unpack.type)
                 suffix_len = len(unpacked_type.items) - 1
                 if isinstance(inner_unpacked_type, TypeVarTupleType):
+                    # Variadic item can be either *Ts...
                     constraints.append(
                         Constraint(
                             inner_unpacked_type,
@@ -169,6 +170,7 @@ def infer_constraints_for_callable(
                         )
                     )
                 else:
+                    # ...or it can be a homogeneous tuple.
                     assert (
                         isinstance(inner_unpacked_type, Instance)
                         and inner_unpacked_type.type.fullname == "builtins.tuple"
