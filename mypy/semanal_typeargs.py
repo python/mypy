@@ -226,15 +226,13 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
             return
         if isinstance(proper_type, Instance) and proper_type.type.fullname == "builtins.tuple":
             return
-        if (
-            isinstance(proper_type, UnboundType)
-            or isinstance(proper_type, AnyType)
-            and proper_type.type_of_any == TypeOfAny.from_error
-        ):
+        if isinstance(proper_type, AnyType) and proper_type.type_of_any == TypeOfAny.from_error:
             return
-        self.fail(
-            message_registry.INVALID_UNPACK.format(format_type(proper_type, self.options)), typ
-        )
+        if not isinstance(proper_type, UnboundType):
+            # Avoid extra errors if there were some errors already.
+            self.fail(
+                message_registry.INVALID_UNPACK.format(format_type(proper_type, self.options)), typ
+            )
         typ.type = AnyType(TypeOfAny.from_error)
 
     def check_type_var_values(

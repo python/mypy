@@ -2414,7 +2414,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     else:
                         # TODO: Any and <nothing> can appear in Unpack (as a result of user error),
                         # fail gracefully here and elsewhere (and/or normalize them away).
-                        # TODO: figure out how UnboundType can leak here.
                         assert isinstance(unpacked_type, Instance)
                         assert unpacked_type.type.fullname == "builtins.tuple"
                         callee_arg_types = [unpacked_type.args[0]] * len(actuals)
