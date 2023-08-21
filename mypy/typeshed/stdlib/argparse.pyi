@@ -1,4 +1,5 @@
 import sys
+from _typeshed import sentinel
 from collections.abc import Callable, Generator, Iterable, Sequence
 from re import Pattern
 from typing import IO, Any, Generic, NewType, NoReturn, Protocol, TypeVar, overload
@@ -334,7 +335,21 @@ class Action(_AttributeHolder):
     if sys.version_info >= (3, 9):
         def format_usage(self) -> str: ...
 
-if sys.version_info >= (3, 9):
+if sys.version_info >= (3, 12):
+    class BooleanOptionalAction(Action):
+        def __init__(
+            self,
+            option_strings: Sequence[str],
+            dest: str,
+            default: _T | str | None = None,
+            type: Callable[[str], _T] | FileType | None = sentinel,  # noqa: Y011
+            choices: Iterable[_T] | None = sentinel,  # noqa: Y011
+            required: bool = False,
+            help: str | None = None,
+            metavar: str | tuple[str, ...] | None = sentinel,  # noqa: Y011
+        ) -> None: ...
+
+elif sys.version_info >= (3, 9):
     class BooleanOptionalAction(Action):
         def __init__(
             self,
