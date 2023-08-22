@@ -779,44 +779,44 @@ def analyze_var(
         if (
             var.is_initialized_in_class
             and (not is_instance_var(var) or mx.is_operator)
-            and isinstance(typ, FunctionLike)
-            and not typ.is_type_obj()
         ):
-            if mx.is_lvalue:
-                if var.is_property:
-                    if not var.is_settable_property:
-                        mx.msg.read_only_property(name, itype.type, mx.context)
-                else:
-                    mx.msg.cant_assign_to_method(mx.context)
+            call_type = _analyze_member_access("__call__", typ, mx)
+            if isinstance(call_type, FunctionLike) and not call_type.is_type_obj():
+                if mx.is_lvalue:
+                    if var.is_property:
+                        if not var.is_settable_property:
+                            mx.msg.read_only_property(name, itype.type, mx.context)
+                    else:
+                        mx.msg.cant_assign_to_method(mx.context)
 
-            if not var.is_staticmethod:
-                # Class-level function objects and classmethods become bound methods:
-                # the former to the instance, the latter to the class.
-                functype = typ
-                # Use meet to narrow original_type to the dispatched type.
-                # For example, assume
-                # * A.f: Callable[[A1], None] where A1 <: A (maybe A1 == A)
-                # * B.f: Callable[[B1], None] where B1 <: B (maybe B1 == B)
-                # * x: Union[A1, B1]
-                # In `x.f`, when checking `x` against A1 we assume x is compatible with A
-                # and similarly for B1 when checking against B
-                dispatched_type = meet.meet_types(mx.original_type, itype)
-                signature = freshen_all_functions_type_vars(functype)
-                bound = get_proper_type(expand_self_type(var, signature, mx.original_type))
-                assert isinstance(bound, FunctionLike)
-                signature = bound
-                signature = check_self_arg(
-                    signature, dispatched_type, var.is_classmethod, mx.context, name, mx.msg
-                )
-                signature = bind_self(signature, mx.self_type, var.is_classmethod)
-                expanded_signature = expand_type_by_instance(signature, itype)
-                freeze_all_type_vars(expanded_signature)
-                if var.is_property:
-                    # A property cannot have an overloaded type => the cast is fine.
-                    assert isinstance(expanded_signature, CallableType)
-                    result = expanded_signature.ret_type
-                else:
-                    result = expanded_signature
+                if not var.is_staticmethod:
+                    # Class-level function objects and classmethods become bound methods:
+                    # the former to the instance, the latter to the class.
+                    functype = call_type
+                    # Use meet to narrow original_type to the dispatched type.
+                    # For example, assume
+                    # * A.f: Callable[[A1], None] where A1 <: A (maybe A1 == A)
+                    # * B.f: Callable[[B1], None] where B1 <: B (maybe B1 == B)
+                    # * x: Union[A1, B1]
+                    # In `x.f`, when checking `x` against A1 we assume x is compatible with A
+                    # and similarly for B1 when checking against B
+                    dispatched_type = meet.meet_types(mx.original_type, itype)
+                    signature = freshen_all_functions_type_vars(functype)
+                    bound = get_proper_type(expand_self_type(var, signature, mx.original_type))
+                    assert isinstance(bound, FunctionLike)
+                    signature = bound
+                    signature = check_self_arg(
+                        signature, dispatched_type, var.is_classmethod, mx.context, name, mx.msg
+                    )
+                    signature = bind_self(signature, mx.self_type, var.is_classmethod)
+                    expanded_signature = expand_type_by_instance(signature, itype)
+                    freeze_all_type_vars(expanded_signature)
+                    if var.is_property:
+                        # A property cannot have an overloaded type => the cast is fine.
+                        assert isinstance(expanded_signature, CallableType)
+                        result = expanded_signature.ret_type
+                    else:
+                        result = expanded_signature
     else:
         if not var.is_ready and not mx.no_deferral:
             mx.not_ready_callback(var.name, mx.context)
