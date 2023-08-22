@@ -139,8 +139,6 @@ class Flag(Enum):
         __ror__ = __or__
         __rand__ = __and__
         __rxor__ = __xor__
-
-class IntFlag(int, Flag): pass
 """
 
 
@@ -1012,30 +1010,30 @@ class StubtestUnit(unittest.TestCase):
         )
         yield Case(
             stub="""
-            class Flags1(enum.IntFlag):
+            class Flags1(enum.Flag):
                 a: int
                 b: int
             def foo(x: Flags1 = ...) -> None: ...
             """,
             runtime="""
-            class Flags1(enum.IntFlag):
-                a = 0b000000000100
-                b = 0b000000001000
+            class Flags1(enum.Flag):
+                a = 1
+                b = 2
             def foo(x=Flags1.a|Flags1.b): pass
             """,
             error=None,
         )
         yield Case(
             stub="""
-            class Flags2(enum.IntFlag):
+            class Flags2(enum.Flag):
                 a: int
                 b: int
             def bar(x: Flags2 | None = None) -> None: ...
             """,
             runtime="""
-            class Flags2(enum.IntFlag):
-                a = 0b000000000100
-                b = 0b000000001000
+            class Flags2(enum.Flag):
+                a = 1
+                b = 2
             def bar(x=Flags2.a|Flags2.b): pass
             """,
             error="bar",
