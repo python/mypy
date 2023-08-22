@@ -780,7 +780,13 @@ def analyze_var(
             var.is_initialized_in_class
             and (not is_instance_var(var) or mx.is_operator)
         ):
-            call_type = _analyze_member_access("__call__", typ, mx)
+            call_type: ProperType
+            if isinstance(typ, FunctionLike) and not typ.is_type_obj():
+                call_type = typ
+            elif var.is_property:
+                call_type = get_proper_type(_analyze_member_access("__call__", typ, mx))
+            else:
+                call_type = typ
             if isinstance(call_type, FunctionLike) and not call_type.is_type_obj():
                 if mx.is_lvalue:
                     if var.is_property:
