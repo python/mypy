@@ -1038,6 +1038,36 @@ class StubtestUnit(unittest.TestCase):
             """,
             error="bar",
         )
+        yield Case(
+            stub="""
+            class Flags3(enum.Flag):
+                a: int
+                b: int
+            def baz(x: Flags3 | None = ...) -> None: ...
+            """,
+            runtime="""
+            class Flags3(enum.Flag):
+                a = 1
+                b = 2
+            def baz(x=Flags3(0)): pass
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class Flags4(enum.Flag):
+                a: int
+                b: int
+            def spam(x: Flags4 | None = None) -> None: ...
+            """,
+            runtime="""
+            class Flags4(enum.Flag):
+                a = 1
+                b = 2
+            def spam(x=Flags4(0)): pass
+            """,
+            error="spam",
+        )
 
     @collect_cases
     def test_decorator(self) -> Iterator[Case]:
