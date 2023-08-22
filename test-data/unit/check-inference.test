@@ -3553,3 +3553,136 @@ class E(D): ...
 
 reveal_type([E(), D()])  # N: Revealed type is "builtins.list[__main__.D]"
 reveal_type([D(), E()])  # N: Revealed type is "builtins.list[__main__.D]"
+
+[case testCallableInferenceAgainstCallablePosVsStar]
+from typing import TypeVar, Callable, Tuple
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+def f(x: Callable[[T, S], None]) -> Tuple[T, S]: ...
+def g(*x: int) -> None: ...
+reveal_type(f(g))  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+[builtins fixtures/list.pyi]
+
+[case testCallableInferenceAgainstCallableStarVsPos]
+from typing import TypeVar, Callable, Tuple, Protocol
+
+T = TypeVar('T', contravariant=True)
+S = TypeVar('S', contravariant=True)
+
+class Call(Protocol[T, S]):
+    def __call__(self, __x: T, *args: S) -> None: ...
+
+def f(x: Call[T, S]) -> Tuple[T, S]: ...
+def g(*x: int) -> None: ...
+reveal_type(f(g))  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+[builtins fixtures/list.pyi]
+
+[case testCallableInferenceAgainstCallableNamedVsStar]
+from typing import TypeVar, Callable, Tuple, Protocol
+
+T = TypeVar('T', contravariant=True)
+S = TypeVar('S', contravariant=True)
+
+class Call(Protocol[T, S]):
+    def __call__(self, *, x: T, y: S) -> None: ...
+
+def f(x: Call[T, S]) -> Tuple[T, S]: ...
+def g(**kwargs: int) -> None: ...
+reveal_type(f(g))  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+[builtins fixtures/list.pyi]
+
+[case testCallableInferenceAgainstCallableStarVsNamed]
+from typing import TypeVar, Callable, Tuple, Protocol
+
+T = TypeVar('T', contravariant=True)
+S = TypeVar('S', contravariant=True)
+
+class Call(Protocol[T, S]):
+    def __call__(self, *, x: T, **kwargs: S) -> None: ...
+
+def f(x: Call[T, S]) -> Tuple[T, S]: ...
+def g(**kwargs: int) -> None: pass
+reveal_type(f(g))  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+[builtins fixtures/list.pyi]
+
+[case testCallableInferenceAgainstCallableNamedVsNamed]
+from typing import TypeVar, Callable, Tuple, Protocol
+
+T = TypeVar('T', contravariant=True)
+S = TypeVar('S', contravariant=True)
+
+class Call(Protocol[T, S]):
+    def __call__(self, *, x: T, y: S) -> None: ...
+
+def f(x: Call[T, S]) -> Tuple[T, S]: ...
+
+# Note: order of names is different w.r.t. protocol
+def g(*, y: int, x: str) -> None: pass
+reveal_type(f(g))  # N: Revealed type is "Tuple[builtins.str, builtins.int]"
+[builtins fixtures/list.pyi]
+
+[case testCallableInferenceAgainstCallablePosOnlyVsNamed]
+from typing import TypeVar, Callable, Tuple, Protocol
+
+T = TypeVar('T', contravariant=True)
+S = TypeVar('S', contravariant=True)
+
+class Call(Protocol[T]):
+    def __call__(self, *, x: T) -> None: ...
+
+def f(x: Call[T]) -> Tuple[T, T]: ...
+
+def g(__x: str) -> None: pass
+reveal_type(f(g))  # N: Revealed type is "Tuple[<nothing>, <nothing>]" \
+                   # E: Argument 1 to "f" has incompatible type "Callable[[str], None]"; expected "Call[<nothing>]"
+[builtins fixtures/list.pyi]
+
+[case testCallableInferenceAgainstCallableNamedVsPosOnly]
+from typing import TypeVar, Callable, Tuple, Protocol
+
+T = TypeVar('T', contravariant=True)
+S = TypeVar('S', contravariant=True)
+
+class Call(Protocol[T]):
+    def __call__(self, __x: T) -> None: ...
+
+def f(x: Call[T]) -> Tuple[T, T]: ...
+
+def g(*, x: str) -> None: pass
+reveal_type(f(g))  # N: Revealed type is "Tuple[<nothing>, <nothing>]" \
+                   # E: Argument 1 to "f" has incompatible type "Callable[[NamedArg(str, 'x')], None]"; expected "Call[<nothing>]"
+[builtins fixtures/list.pyi]
+
+[case testCallableInferenceAgainstCallablePosOnlyVsKwargs]
+from typing import TypeVar, Callable, Tuple, Protocol
+
+T = TypeVar('T', contravariant=True)
+S = TypeVar('S', contravariant=True)
+
+class Call(Protocol[T]):
+    def __call__(self, __x: T) -> None: ...
+
+def f(x: Call[T]) -> Tuple[T, T]: ...
+
+def g(**x: str) -> None: pass
+reveal_type(f(g))  # N: Revealed type is "Tuple[<nothing>, <nothing>]" \
+                   # E: Argument 1 to "f" has incompatible type "Callable[[KwArg(str)], None]"; expected "Call[<nothing>]"
+[builtins fixtures/list.pyi]
+
+[case testCallableInferenceAgainstCallableNamedVsArgs]
+from typing import TypeVar, Callable, Tuple, Protocol
+
+T = TypeVar('T', contravariant=True)
+S = TypeVar('S', contravariant=True)
+
+class Call(Protocol[T]):
+    def __call__(self, *, x: T) -> None: ...
+
+def f(x: Call[T]) -> Tuple[T, T]: ...
+
+def g(*args: str) -> None: pass
+reveal_type(f(g))  # N: Revealed type is "Tuple[<nothing>, <nothing>]" \
+                   # E: Argument 1 to "f" has incompatible type "Callable[[VarArg(str)], None]"; expected "Call[<nothing>]"
+[builtins fixtures/list.pyi]
