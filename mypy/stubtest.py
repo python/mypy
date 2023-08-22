@@ -1553,7 +1553,7 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> mypy.types.Type | None:
     value: bool | int | str
     if isinstance(runtime, bytes):
         value = bytes_to_human_readable_repr(runtime)
-    elif isinstance(runtime, enum.Enum):
+    elif isinstance(runtime, enum.Enum) and isinstance(runtime.name, str):
         value = runtime.name
     elif isinstance(runtime, (bool, int, str)):
         value = runtime
