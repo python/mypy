@@ -1,4 +1,3 @@
-import sys
 from typing import Any, TypeVar, Union, Type, Sized, Iterator
 
 _T = TypeVar('_T')
@@ -36,13 +35,6 @@ def unique(enumeration: _T) -> _T: pass
 
 class Flag(Enum):
     def __or__(self: _T, other: Union[int, _T]) -> _T: pass
-    def __and__(self: _T, other: _T) -> _T: pass
-    def __xor__(self: _T, other: _T) -> _T: pass
-    def __invert__(self) -> Self: pass
-    if sys.version_info >= (3, 11):
-        __ror__ = __or__
-        __rand__ = __and__
-        __rxor__ = __xor__
 
 
 class IntFlag(int, Flag):

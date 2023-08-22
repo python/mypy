@@ -64,6 +64,7 @@ _R = TypeVar("_R", covariant=True)
 
 class Coroutine(Generic[_T_co, _S, _R]): ...
 class Iterable(Generic[_T_co]): ...
+class Iterator(Iterable[_T_co]): ...
 class Mapping(Generic[_K, _V]): ...
 class Match(Generic[AnyStr]): ...
 class Sequence(Iterable[_T_co]): ...
@@ -86,7 +87,9 @@ class object:
     def __repr__(self) -> str: pass
 class type: ...
 
-class tuple(Sequence[T_co], Generic[T_co]): ...
+class tuple(Sequence[T_co], Generic[T_co]):
+    def __ge__(self, __other: tuple[T_co, ...]) -> bool: pass
+
 class dict(Mapping[KT, VT]): ...
 
 class function: pass
@@ -105,6 +108,41 @@ def classmethod(f: T) -> T: ...
 def staticmethod(f: T) -> T: ...
 """
 
+stubtest_enum_stub = """
+import sys
+from typing import Any, TypeVar, Iterator
+
+_T = TypeVar('_T')
+
+class EnumMeta(type):
+    def __len__(self) -> int: pass
+    def __iter__(self: type[_T]) -> Iterator[_T]: pass
+    def __reversed__(self: type[_T]) -> Iterator[_T]: pass
+    def __getitem__(self: type[_T], name: str) -> _T: pass
+
+class Enum(metaclass=EnumMeta):
+    def __new__(cls: type[_T], value: object) -> _T: pass
+    def __repr__(self) -> str: pass
+    def __str__(self) -> str: pass
+    def __format__(self, format_spec: str) -> str: pass
+    def __hash__(self) -> Any: pass
+    def __reduce_ex__(self, proto: Any) -> Any: pass
+    name: str
+    value: Any
+
+class Flag(Enum):
+    def __or__(self: _T, other: _T) -> _T: pass
+    def __and__(self: _T, other: _T) -> _T: pass
+    def __xor__(self: _T, other: _T) -> _T: pass
+    def __invert__(self: _T) -> _T: pass
+    if sys.version_info >= (3, 11):
+        __ror__ = __or__
+        __rand__ = __and__
+        __rxor__ = __xor__
+
+class IntFlag(int, Flag): pass
+"""
+
 
 def run_stubtest(
     stub: str, runtime: str, options: list[str], config_file: str | None = None
@@ -114,6 +152,8 @@ def run_stubtest(
             f.write(stubtest_builtins_stub)
         with open("typing.pyi", "w") as f:
             f.write(stubtest_typing_stub)
+        with open("enum.pyi", "w") as f:
+            f.write(stubtest_enum_stub)
         with open(f"{TEST_MODULE_NAME}.pyi", "w") as f:
             f.write(stub)
         with open(f"{TEST_MODULE_NAME}.py", "w") as f:
