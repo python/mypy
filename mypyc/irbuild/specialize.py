@@ -89,6 +89,7 @@ from mypyc.primitives.dict_ops import (
     dict_values_op,
 )
 from mypyc.primitives.list_ops import new_list_set_item_op
+from mypyc.primitives.str_ops import str_from_ordinal_op
 from mypyc.primitives.tuple_ops import new_tuple_set_item_op
 
 # Specializers are attempted before compiling the arguments to the
@@ -820,3 +821,10 @@ def translate_float(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Valu
         # No-op float conversion.
         return builder.accept(arg)
     return None
+
+
+@specialize_function("builtins.chr")
+def translate_chr(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
+        return None
+    return builder.call_c(str_from_ordinal_op, [builder.accept(expr.args[0])], expr.line)
