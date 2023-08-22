@@ -776,10 +776,7 @@ def analyze_var(
         freeze_all_type_vars(t)
         result: Type = t
         typ = get_proper_type(typ)
-        if (
-            var.is_initialized_in_class
-            and (not is_instance_var(var) or mx.is_operator)
-        ):
+        if var.is_initialized_in_class and (not is_instance_var(var) or mx.is_operator):
             call_type: ProperType
             if isinstance(typ, FunctionLike) and not typ.is_type_obj():
                 call_type = typ
