@@ -954,22 +954,51 @@ class StubtestUnit(unittest.TestCase):
 
     @collect_cases
     def test_enum(self) -> Iterator[Case]:
+        yield Case(stub="import enum", runtime="import enum", error=None)
         yield Case(
             stub="""
-            import enum
             class X(enum.Enum):
                 a: int
                 b: str
                 c: str
             """,
             runtime="""
-            import enum
             class X(enum.Enum):
                 a = 1
                 b = "asdf"
                 c = 2
             """,
             error="X.c",
+        )
+        yield Case(
+            stub="""
+            class Flags1(enum.IntFlag):
+                a: int
+                b: int
+            def foo(x: Flags1 = ...) -> None: ...
+            """,
+            runtime="""
+            class Flags1(enum.IntFlag):
+                a = 0b000000000100
+                b = 0b000000001000
+            def foo(x=Flags1.a|Flags1.b): pass
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class Flags2(enum.IntFlag):
+                a: int
+                b: int
+            def bar(x: Flags2 | None = None) -> None: ...
+            """,
+            runtime="""
+            class Flags2(enum.IntFlag):
+                a = 0b000000000100
+                b = 0b000000001000
+            def bar(x=Flags2.a|Flags2.b): pass
+            """,
+            error="bar",
         )
 
     @collect_cases
