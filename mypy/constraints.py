@@ -49,6 +49,7 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    find_unpack_in_list,
     get_proper_type,
     has_recursive_types,
     has_type_vars,
@@ -57,7 +58,7 @@ from mypy.types import (
 )
 from mypy.types_utils import is_union_with_any
 from mypy.typestate import type_state
-from mypy.typevartuples import extract_unpack, find_unpack_in_list, split_with_mapped_and_template
+from mypy.typevartuples import extract_unpack, split_with_mapped_and_template
 
 if TYPE_CHECKING:
     from mypy.infer import ArgumentInferContext
@@ -155,16 +156,33 @@ def infer_constraints_for_callable(
                 # not to hold we can always handle the prefixes too.
                 inner_unpack = unpacked_type.items[0]
                 assert isinstance(inner_unpack, UnpackType)
-                inner_unpacked_type = inner_unpack.type
-                assert isinstance(inner_unpacked_type, TypeVarTupleType)
+                inner_unpacked_type = get_proper_type(inner_unpack.type)
                 suffix_len = len(unpacked_type.items) - 1
-                constraints.append(
-                    Constraint(
-                        inner_unpacked_type,
-                        SUPERTYPE_OF,
-                        TupleType(actual_types[:-suffix_len], inner_unpacked_type.tuple_fallback),
+                if isinstance(inner_unpacked_type, TypeVarTupleType):
+                    # Variadic item can be either *Ts...
+                    constraints.append(
+                        Constraint(
+                            inner_unpacked_type,
+                            SUPERTYPE_OF,
+                            TupleType(
+                                actual_types[:-suffix_len], inner_unpacked_type.tuple_fallback
+                            ),
+                        )
                     )
-                )
+                else:
+                    # ...or it can be a homogeneous tuple.
+                    assert (
+                        isinstance(inner_unpacked_type, Instance)
+                        and inner_unpacked_type.type.fullname == "builtins.tuple"
+                    )
+                    for at in actual_types[:-suffix_len]:
+                        constraints.extend(
+                            infer_constraints(inner_unpacked_type.args[0], at, SUPERTYPE_OF)
+                        )
+                # Now handle the suffix (if any).
+                if suffix_len:
+                    for tt, at in zip(unpacked_type.items[1:], actual_types[-suffix_len:]):
+                        constraints.extend(infer_constraints(tt, at, SUPERTYPE_OF))
             else:
                 assert False, "mypy bug: unhandled constraint inference case"
         else:
@@ -863,6 +881,16 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             and self.direction == SUPERTYPE_OF
         ):
             for item in actual.items:
+                if isinstance(item, UnpackType):
+                    unpacked = get_proper_type(item.type)
+                    if isinstance(unpacked, TypeVarType):
+                        # Cannot infer anything for T from [T, ...] <: *Ts
+                        continue
+                    assert (
+                        isinstance(unpacked, Instance)
+                        and unpacked.type.fullname == "builtins.tuple"
+                    )
+                    item = unpacked.args[0]
                 cb = infer_constraints(template.args[0], item, SUPERTYPE_OF)
                 res.extend(cb)
             return res

@@ -3680,7 +3680,10 @@ class SemanticAnalyzer(
         """Prohibit and fix recursive type aliases that are invalid/unsupported."""
         messages = []
         if is_invalid_recursive_alias({current_node}, current_node.target):
-            messages.append("Invalid recursive alias: a union item of itself")
+            target = (
+                "tuple" if isinstance(get_proper_type(current_node.target), TupleType) else "union"
+            )
+            messages.append(f"Invalid recursive alias: a {target} item of itself")
         if detect_diverging_alias(
             current_node, current_node.target, self.lookup_qualified, self.tvar_scope
         ):
@@ -4213,6 +4216,7 @@ class SemanticAnalyzer(
         *,
         allow_unbound_tvars: bool = False,
         allow_param_spec_literals: bool = False,
+        allow_unpack: bool = False,
         report_invalid_typevar_arg: bool = True,
     ) -> ProperType | None:
         try:
@@ -4224,6 +4228,7 @@ class SemanticAnalyzer(
                 report_invalid_types=False,
                 allow_unbound_tvars=allow_unbound_tvars,
                 allow_param_spec_literals=allow_param_spec_literals,
+                allow_unpack=allow_unpack,
             )
             if analyzed is None:
                 # Type variables are special: we need to place them in the symbol table
@@ -4375,6 +4380,7 @@ class SemanticAnalyzer(
                     s,
                     allow_unbound_tvars=True,
                     report_invalid_typevar_arg=False,
+                    allow_unpack=True,
                 )
                 default = tv_arg or AnyType(TypeOfAny.from_error)
                 if not isinstance(default, UnpackType):
@@ -5289,6 +5295,7 @@ class SemanticAnalyzer(
         # Probably always allow Parameters literals, and validate in semanal_typeargs.py
         base = expr.base
         if isinstance(base, RefExpr) and isinstance(base.node, TypeAlias):
+            allow_unpack = base.node.tvar_tuple_index is not None
             alias = base.node
             if any(isinstance(t, ParamSpecType) for t in alias.alias_tvars):
                 has_param_spec = True
@@ -5297,9 +5304,11 @@ class SemanticAnalyzer(
                 has_param_spec = False
                 num_args = -1
         elif isinstance(base, RefExpr) and isinstance(base.node, TypeInfo):
+            allow_unpack = base.node.has_type_var_tuple_type
             has_param_spec = base.node.has_param_spec_type
             num_args = len(base.node.type_vars)
         else:
+            allow_unpack = False
             has_param_spec = False
             num_args = -1
 
@@ -5317,6 +5326,7 @@ class SemanticAnalyzer(
                 allow_unbound_tvars=self.allow_unbound_tvars,
                 allow_placeholder=True,
                 allow_param_spec_literals=has_param_spec,
+                allow_unpack=allow_unpack,
             )
             if analyzed is None:
                 return None
@@ -6486,6 +6496,7 @@ class SemanticAnalyzer(
         allow_type_any: bool = False,
         allow_unbound_tvars: bool = False,
         allow_param_spec_literals: bool = False,
+        allow_unpack: bool = False,
     ) -> Type | None:
         if isinstance(expr, CallExpr):
             # This is a legacy syntax intended mostly for Python 2, we keep it for
@@ -6516,6 +6527,7 @@ class SemanticAnalyzer(
             allow_type_any=allow_type_any,
             allow_unbound_tvars=allow_unbound_tvars,
             allow_param_spec_literals=allow_param_spec_literals,
+            allow_unpack=allow_unpack,
         )
 
     def analyze_type_expr(self, expr: Expression) -> None:
@@ -6537,6 +6549,7 @@ class SemanticAnalyzer(
         allow_placeholder: bool = False,
         allow_required: bool = False,
         allow_param_spec_literals: bool = False,
+        allow_unpack: bool = False,
         report_invalid_types: bool = True,
         prohibit_self_type: str | None = None,
         allow_type_any: bool = False,
@@ -6555,6 +6568,7 @@ class SemanticAnalyzer(
             allow_placeholder=allow_placeholder,
             allow_required=allow_required,
             allow_param_spec_literals=allow_param_spec_literals,
+            allow_unpack=allow_unpack,
             prohibit_self_type=prohibit_self_type,
             allow_type_any=allow_type_any,
         )
@@ -6575,6 +6589,7 @@ class SemanticAnalyzer(
         allow_placeholder: bool = False,
         allow_required: bool = False,
         allow_param_spec_literals: bool = False,
+        allow_unpack: bool = False,
         report_invalid_types: bool = True,
         prohibit_self_type: str | None = None,
         allow_type_any: bool = False,
@@ -6612,6 +6627,7 @@ class SemanticAnalyzer(
             allow_placeholder=allow_placeholder,
             allow_required=allow_required,
             allow_param_spec_literals=allow_param_spec_literals,
+            allow_unpack=allow_unpack,
             report_invalid_types=report_invalid_types,
             prohibit_self_type=prohibit_self_type,
             allow_type_any=allow_type_any,

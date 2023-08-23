@@ -4665,10 +4665,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             isinstance(iterable, TupleType)
             and iterable.partial_fallback.type.fullname == "builtins.tuple"
         ):
-            joined: Type = UninhabitedType()
-            for item in iterable.items:
-                joined = join_types(joined, item)
-            return iterator, joined
+            return iterator, tuple_fallback(iterable).args[0]
         else:
             # Non-tuple iterable.
             return iterator, echk.check_method_call_by_name("__next__", iterator, [], [], expr)[0]

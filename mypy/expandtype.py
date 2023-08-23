@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Final, Iterable, Mapping, Sequence, TypeVar, cast, overload
 
-from mypy.nodes import ARG_POS, ARG_STAR, ArgKind, Var
+from mypy.nodes import ARG_STAR, Var
 from mypy.state import state
 from mypy.types import (
     ANY_STRATEGY,
@@ -35,12 +35,11 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
-    flatten_nested_tuples,
     flatten_nested_unions,
     get_proper_type,
     split_with_prefix_and_suffix,
 )
-from mypy.typevartuples import find_unpack_in_list, split_with_instance
+from mypy.typevartuples import split_with_instance
 
 # Solving the import cycle:
 import mypy.type_visitor  # ruff: isort: skip
@@ -294,11 +293,10 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
     def visit_parameters(self, t: Parameters) -> Type:
         return t.copy_modified(arg_types=self.expand_types(t.arg_types))
 
-    # TODO: can we simplify this method? It is too long.
-    def interpolate_args_for_unpack(
-        self, t: CallableType, var_arg: UnpackType
-    ) -> tuple[list[str | None], list[ArgKind], list[Type]]:
+    def interpolate_args_for_unpack(self, t: CallableType, var_arg: UnpackType) -> list[Type]:
         star_index = t.arg_kinds.index(ARG_STAR)
+        prefix = self.expand_types(t.arg_types[:star_index])
+        suffix = self.expand_types(t.arg_types[star_index + 1 :])
 
         var_arg_type = get_proper_type(var_arg.type)
         # We have something like Unpack[Tuple[Unpack[Ts], X1, X2]]
@@ -306,89 +304,19 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             expanded_tuple = var_arg_type.accept(self)
             assert isinstance(expanded_tuple, ProperType) and isinstance(expanded_tuple, TupleType)
             expanded_items = expanded_tuple.items
+            fallback = var_arg_type.partial_fallback
         else:
             # We have plain Unpack[Ts]
+            assert isinstance(var_arg_type, TypeVarTupleType)
+            fallback = var_arg_type.tuple_fallback
             expanded_items_res = self.expand_unpack(var_arg)
             if isinstance(expanded_items_res, list):
                 expanded_items = expanded_items_res
             else:
                 # We got Any or <nothing>
-                arg_types = (
-                    t.arg_types[:star_index] + [expanded_items_res] + t.arg_types[star_index + 1 :]
-                )
-                return t.arg_names, t.arg_kinds, arg_types
-
-        expanded_unpack_index = find_unpack_in_list(expanded_items)
-        # This is the case where we just have Unpack[Tuple[X1, X2, X3]]
-        # (for example if either the tuple had no unpacks, or the unpack in the
-        # tuple got fully expanded to something with fixed length)
-        if expanded_unpack_index is None:
-            arg_names = (
-                t.arg_names[:star_index]
-                + [None] * len(expanded_items)
-                + t.arg_names[star_index + 1 :]
-            )
-            arg_kinds = (
-                t.arg_kinds[:star_index]
-                + [ARG_POS] * len(expanded_items)
-                + t.arg_kinds[star_index + 1 :]
-            )
-            arg_types = (
-                self.expand_types(t.arg_types[:star_index])
-                + expanded_items
-                + self.expand_types(t.arg_types[star_index + 1 :])
-            )
-        else:
-            # If Unpack[Ts] simplest form still has an unpack or is a
-            # homogenous tuple, then only the prefix can be represented as
-            # positional arguments, and we pass Tuple[Unpack[Ts-1], Y1, Y2]
-            # as the star arg, for example.
-            expanded_unpack = expanded_items[expanded_unpack_index]
-            assert isinstance(expanded_unpack, UnpackType)
-
-            # Extract the TypeVarTuple, so we can get a tuple fallback from it.
-            expanded_unpacked_tvt = expanded_unpack.type
-            if isinstance(expanded_unpacked_tvt, TypeVarTupleType):
-                fallback = expanded_unpacked_tvt.tuple_fallback
-            else:
-                # This can happen when tuple[Any, ...] is used to "patch" a variadic
-                # generic type without type arguments provided, or when substitution is
-                # homogeneous tuple.
-                assert isinstance(expanded_unpacked_tvt, ProperType)
-                assert isinstance(expanded_unpacked_tvt, Instance)
-                assert expanded_unpacked_tvt.type.fullname == "builtins.tuple"
-                fallback = expanded_unpacked_tvt
-
-            prefix_len = expanded_unpack_index
-            arg_names = t.arg_names[:star_index] + [None] * prefix_len + t.arg_names[star_index:]
-            arg_kinds = (
-                t.arg_kinds[:star_index] + [ARG_POS] * prefix_len + t.arg_kinds[star_index:]
-            )
-            if (
-                len(expanded_items) == 1
-                and isinstance(expanded_unpack.type, ProperType)
-                and isinstance(expanded_unpack.type, Instance)
-            ):
-                assert expanded_unpack.type.type.fullname == "builtins.tuple"
-                # Normalize *args: *tuple[X, ...] -> *args: X
-                arg_types = (
-                    self.expand_types(t.arg_types[:star_index])
-                    + [expanded_unpack.type.args[0]]
-                    + self.expand_types(t.arg_types[star_index + 1 :])
-                )
-            else:
-                arg_types = (
-                    self.expand_types(t.arg_types[:star_index])
-                    + expanded_items[:prefix_len]
-                    # Constructing the Unpack containing the tuple without the prefix.
-                    + [
-                        UnpackType(TupleType(expanded_items[prefix_len:], fallback))
-                        if len(expanded_items) - prefix_len > 1
-                        else expanded_items[prefix_len]
-                    ]
-                    + self.expand_types(t.arg_types[star_index + 1 :])
-                )
-        return arg_names, arg_kinds, arg_types
+                return prefix + [expanded_items_res] + suffix
+        new_unpack = UnpackType(TupleType(expanded_items, fallback))
+        return prefix + [new_unpack] + suffix
 
     def visit_callable_type(self, t: CallableType) -> CallableType:
         param_spec = t.param_spec()
@@ -427,20 +355,20 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                 )
 
         var_arg = t.var_arg()
+        needs_normalization = False
         if var_arg is not None and isinstance(var_arg.typ, UnpackType):
-            arg_names, arg_kinds, arg_types = self.interpolate_args_for_unpack(t, var_arg.typ)
+            needs_normalization = True
+            arg_types = self.interpolate_args_for_unpack(t, var_arg.typ)
         else:
-            arg_names = t.arg_names
-            arg_kinds = t.arg_kinds
             arg_types = self.expand_types(t.arg_types)
-
-        return t.copy_modified(
+        expanded = t.copy_modified(
             arg_types=arg_types,
-            arg_names=arg_names,
-            arg_kinds=arg_kinds,
             ret_type=t.ret_type.accept(self),
             type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None),
         )
+        if needs_normalization:
+            return expanded.with_normalized_var_args()
+        return expanded
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         items: list[CallableType] = []
@@ -460,9 +388,6 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         indicates use of Any or some error occurred earlier. In this case callers should
         simply propagate the resulting type.
         """
-        # TODO: this will cause a crash on aliases like A = Tuple[int, Unpack[A]].
-        # Although it is unlikely anyone will write this, we should fail gracefully.
-        typs = flatten_nested_tuples(typs)
         items: list[Type] = []
         for item in typs:
             if isinstance(item, UnpackType) and isinstance(item.type, TypeVarTupleType):

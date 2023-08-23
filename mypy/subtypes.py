@@ -660,6 +660,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return self._is_subtype(left.upper_bound, self.right)
 
     def visit_unpack_type(self, left: UnpackType) -> bool:
+        # TODO: Ideally we should not need this (since it is not a real type).
+        # Instead callers (upper level types) should handle it when it appears in type list.
         if isinstance(self.right, UnpackType):
             return self._is_subtype(left.type, self.right.type)
         if isinstance(self.right, Instance) and self.right.type.fullname == "builtins.object":
@@ -744,7 +746,15 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     # TODO: We shouldn't need this special case. This is currently needed
                     #       for isinstance(x, tuple), though it's unclear why.
                     return True
-                return all(self._is_subtype(li, iter_type) for li in left.items)
+                for li in left.items:
+                    if isinstance(li, UnpackType):
+                        unpack = get_proper_type(li.type)
+                        if isinstance(unpack, Instance):
+                            assert unpack.type.fullname == "builtins.tuple"
+                            li = unpack.args[0]
+                    if not self._is_subtype(li, iter_type):
+                        return False
+                return True
             elif self._is_subtype(left.partial_fallback, right) and self._is_subtype(
                 mypy.typeops.tuple_fallback(left), right
             ):
@@ -752,6 +762,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return False
         elif isinstance(right, TupleType):
             if len(left.items) != len(right.items):
+                # TODO: handle tuple with variadic items better.
                 return False
             if any(not self._is_subtype(l, r) for l, r in zip(left.items, right.items)):
                 return False
@@ -1385,8 +1396,8 @@ def is_callable_compatible(
         whether or not we check the args covariantly.
     """
     # Normalize both types before comparing them.
-    left = left.with_unpacked_kwargs()
-    right = right.with_unpacked_kwargs()
+    left = left.with_unpacked_kwargs().with_normalized_var_args()
+    right = right.with_unpacked_kwargs().with_normalized_var_args()
 
     if is_compat_return is None:
         is_compat_return = is_compat
@@ -1539,6 +1550,7 @@ def are_parameters_compatible(
     # Phase 1c: Check var args. Right has an infinite series of optional positional
     #           arguments. Get all further positional args of left, and make sure
     #           they're more general than the corresponding member in right.
+    # TODO: are we handling UnpackType correctly here?
     if right_star is not None:
         # Synthesize an anonymous formal argument for the right
         right_by_position = right.try_synthesizing_arg_from_vararg(None)

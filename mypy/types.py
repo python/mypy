@@ -2075,6 +2075,68 @@ class CallableType(FunctionLike):
             )
         )
 
+    def with_normalized_var_args(self) -> Self:
+        var_arg = self.var_arg()
+        if not var_arg or not isinstance(var_arg.typ, UnpackType):
+            return self
+        unpacked = get_proper_type(var_arg.typ.type)
+        if not isinstance(unpacked, TupleType):
+            # Note that we don't normalize *args: *tuple[X, ...] -> *args: X,
+            # this should be done once in semanal_typeargs.py for user-defined types,
+            # and we ourselves should never construct such type.
+            return self
+        unpack_index = find_unpack_in_list(unpacked.items)
+        if unpack_index == 0 and len(unpacked.items) > 1:
+            # Already normalized.
+            return self
+
+        # Boilerplate:
+        var_arg_index = self.arg_kinds.index(ARG_STAR)
+        types_prefix = self.arg_types[:var_arg_index]
+        kinds_prefix = self.arg_kinds[:var_arg_index]
+        names_prefix = self.arg_names[:var_arg_index]
+        types_suffix = self.arg_types[var_arg_index + 1 :]
+        kinds_suffix = self.arg_kinds[var_arg_index + 1 :]
+        names_suffix = self.arg_names[var_arg_index + 1 :]
+        no_name: str | None = None  # to silence mypy
+
+        # Now we have something non-trivial to do.
+        if unpack_index is None:
+            # Plain *Tuple[X, Y, Z] -> replace with ARG_POS completely
+            types_middle = unpacked.items
+            kinds_middle = [ARG_POS] * len(unpacked.items)
+            names_middle = [no_name] * len(unpacked.items)
+        else:
+            # *Tuple[X, *Ts, Y, Z] or *Tuple[X, *tuple[T, ...], X, Z], here
+            # we replace the prefix by ARG_POS (this is how some places expect
+            # Callables to be represented)
+            nested_unpack = unpacked.items[unpack_index]
+            assert isinstance(nested_unpack, UnpackType)
+            nested_unpacked = get_proper_type(nested_unpack.type)
+            if unpack_index == len(unpacked.items) - 1:
+                # Normalize also single item tuples like
+                #   *args: *Tuple[*tuple[X, ...]] -> *args: X
+                #   *args: *Tuple[*Ts] -> *args: *Ts
+                # This may be not strictly necessary, but these are very verbose.
+                if isinstance(nested_unpacked, Instance):
+                    assert nested_unpacked.type.fullname == "builtins.tuple"
+                    new_unpack = nested_unpacked.args[0]
+                else:
+                    assert isinstance(nested_unpacked, TypeVarTupleType)
+                    new_unpack = nested_unpack
+            else:
+                new_unpack = UnpackType(
+                    unpacked.copy_modified(items=unpacked.items[unpack_index:])
+                )
+            types_middle = unpacked.items[:unpack_index] + [new_unpack]
+            kinds_middle = [ARG_POS] * unpack_index + [ARG_STAR]
+            names_middle = [no_name] * unpack_index + [self.arg_names[var_arg_index]]
+        return self.copy_modified(
+            arg_types=types_prefix + types_middle + types_suffix,
+            arg_kinds=kinds_prefix + kinds_middle + kinds_suffix,
+            arg_names=names_prefix + names_middle + names_suffix,
+        )
+
     def __hash__(self) -> int:
         # self.is_type_obj() will fail if self.fallback.type is a FakeInfo
         if isinstance(self.fallback.type, FakeInfo):
@@ -2259,10 +2321,6 @@ class TupleType(ProperType):
     ) -> None:
         super().__init__(line, column)
         self.partial_fallback = fallback
-        # TODO: flatten/normalize unpack items (very similar to unions) here.
-        # Probably also for instances, type aliases, callables, and Unpack itself. For example,
-        # tuple[*tuple[X, ...], ...] -> tuple[X, ...] and Tuple[*tuple[X, ...]] -> tuple[X, ...].
-        # Currently normalization happens in expand_type() et al., which is sub-optimal.
         self.items = items
         self.implicit = implicit
 
@@ -3424,6 +3482,20 @@ def flatten_nested_unions(
             # Must preserve original aliases when possible.
             flat_items.append(t)
     return flat_items
+
+
+def find_unpack_in_list(items: Sequence[Type]) -> int | None:
+    unpack_index: int | None = None
+    for i, item in enumerate(items):
+        if isinstance(item, UnpackType):
+            # We cannot fail here, so we must check this in an earlier
+            # semanal phase.
+            # Funky code here avoids mypyc narrowing the type of unpack_index.
+            old_index = unpack_index
+            assert old_index is None
+            # Don't return so that we can also sanity check there is only one.
+            unpack_index = i
+    return unpack_index
 
 
 def flatten_nested_tuples(types: Sequence[Type]) -> list[Type]:

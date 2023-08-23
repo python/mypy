@@ -168,7 +168,7 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
-    flatten_nested_tuples,
+    find_unpack_in_list,
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
@@ -185,7 +185,6 @@ from mypy.types_utils import (
 )
 from mypy.typestate import type_state
 from mypy.typevars import fill_typevars
-from mypy.typevartuples import find_unpack_in_list
 from mypy.util import split_module_names
 from mypy.visitor import ExpressionVisitor
 
@@ -1600,7 +1599,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         See the docstring of check_call for more information.
         """
         # Always unpack **kwargs before checking a call.
-        callee = callee.with_unpacked_kwargs()
+        callee = callee.with_unpacked_kwargs().with_normalized_var_args()
         if callable_name is None and callee.name:
             callable_name = callee.name
         ret_type = get_proper_type(callee.ret_type)
@@ -2409,7 +2408,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                 + unpacked_type.items[inner_unpack_index + 1 :]
                             )
                             callee_arg_kinds = [ARG_POS] * len(actuals)
+                    elif isinstance(unpacked_type, TypeVarTupleType):
+                        callee_arg_types = [orig_callee_arg_type]
+                        callee_arg_kinds = [ARG_STAR]
                     else:
+                        # TODO: Any and <nothing> can appear in Unpack (as a result of user error),
+                        # fail gracefully here and elsewhere (and/or normalize them away).
                         assert isinstance(unpacked_type, Instance)
                         assert unpacked_type.type.fullname == "builtins.tuple"
                         callee_arg_types = [unpacked_type.args[0]] * len(actuals)
@@ -4451,7 +4455,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         prefix = next(i for (i, v) in enumerate(vars) if isinstance(v, TypeVarTupleType))
         suffix = len(vars) - prefix - 1
-        args = flatten_nested_tuples(args)
         if len(args) < len(vars) - 1:
             self.msg.incompatible_type_application(len(vars), len(args), ctx)
             return [AnyType(TypeOfAny.from_error)] * len(vars)
