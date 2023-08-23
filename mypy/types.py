@@ -260,7 +260,7 @@ class Type(mypy.nodes.Context):
         return True
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
-        raise RuntimeError("Not implemented")
+        raise RuntimeError("Not implemented", type(self))
 
     def __repr__(self) -> str:
         return self.accept(TypeStrVisitor(options=Options()))
@@ -1045,7 +1045,8 @@ class UnpackType(ProperType):
     or unpacking * syntax.
 
     The inner type should be either a TypeVarTuple, a constant size
-    tuple, or a variable length tuple, or a union of one of those.
+    tuple, or a variable length tuple. Type aliases to these are not allowed,
+    except during semantic analysis.
     """
 
     __slots__ = ["type"]
@@ -1544,9 +1545,6 @@ class FormalArgument(NamedTuple):
     required: bool
 
 
-# TODO: should this take bound typevars too? what would this take?
-#   ex: class Z(Generic[P, T]): ...; Z[[V], V]
-# What does a typevar even mean in this context?
 class Parameters(ProperType):
     """Type that represents the parameters to a function.
 
@@ -1558,6 +1556,8 @@ class Parameters(ProperType):
         "arg_names",
         "min_args",
         "is_ellipsis_args",
+        # TODO: variables don't really belong here, but they are used to allow hacky support
+        # for forall . Foo[[x: T], T] by capturing generic callable with ParamSpec, see #15909
         "variables",
     )
 
@@ -1577,6 +1577,7 @@ class Parameters(ProperType):
         self.arg_kinds = arg_kinds
         self.arg_names = list(arg_names)
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
+        assert not any(isinstance(t, Parameters) for t in arg_types)
         self.min_args = arg_kinds.count(ARG_POS)
         self.is_ellipsis_args = is_ellipsis_args
         self.variables = variables or []
@@ -1600,7 +1601,7 @@ class Parameters(ProperType):
             variables=variables if variables is not _dummy else self.variables,
         )
 
-    # the following are copied from CallableType. Is there a way to decrease code duplication?
+    # TODO: here is a lot of code duplication with Callable type, fix this.
     def var_arg(self) -> FormalArgument | None:
         """The formal argument for *args."""
         for position, (type, kind) in enumerate(zip(self.arg_types, self.arg_kinds)):
@@ -1788,6 +1789,11 @@ class CallableType(FunctionLike):
     ) -> None:
         super().__init__(line, column)
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
+        for t, k in zip(arg_types, arg_kinds):
+            if isinstance(t, ParamSpecType):
+                assert not t.prefix.arg_types
+                # TODO: should we assert that only ARG_STAR contain ParamSpecType?
+                # See testParamSpecJoin, that relies on passing e.g `P.args` as plain argument.
         if variables is None:
             variables = []
         self.arg_types = list(arg_types)
@@ -2033,36 +2039,20 @@ class CallableType(FunctionLike):
         if not isinstance(arg_type, ParamSpecType):
             return None
 
-        # sometimes paramspectypes are analyzed in from mysterious places,
-        # e.g. def f(prefix..., *args: P.args, **kwargs: P.kwargs) -> ...: ...
-        prefix = arg_type.prefix
-        if not prefix.arg_types:
-            # TODO: confirm that all arg kinds are positional
-            prefix = Parameters(self.arg_types[:-2], self.arg_kinds[:-2], self.arg_names[:-2])
-
+        # Prepend prefix for def f(prefix..., *args: P.args, **kwargs: P.kwargs) -> ...
+        # TODO: confirm that all arg kinds are positional
+        prefix = Parameters(self.arg_types[:-2], self.arg_kinds[:-2], self.arg_names[:-2])
         return arg_type.copy_modified(flavor=ParamSpecFlavor.BARE, prefix=prefix)
 
-    def expand_param_spec(
-        self, c: CallableType | Parameters, no_prefix: bool = False
-    ) -> CallableType:
+    def expand_param_spec(self, c: Parameters) -> CallableType:
         variables = c.variables
-
-        if no_prefix:
-            return self.copy_modified(
-                arg_types=c.arg_types,
-                arg_kinds=c.arg_kinds,
-                arg_names=c.arg_names,
-                is_ellipsis_args=c.is_ellipsis_args,
-                variables=[*variables, *self.variables],
-            )
-        else:
-            return self.copy_modified(
-                arg_types=self.arg_types[:-2] + c.arg_types,
-                arg_kinds=self.arg_kinds[:-2] + c.arg_kinds,
-                arg_names=self.arg_names[:-2] + c.arg_names,
-                is_ellipsis_args=c.is_ellipsis_args,
-                variables=[*variables, *self.variables],
-            )
+        return self.copy_modified(
+            arg_types=self.arg_types[:-2] + c.arg_types,
+            arg_kinds=self.arg_kinds[:-2] + c.arg_kinds,
+            arg_names=self.arg_names[:-2] + c.arg_names,
+            is_ellipsis_args=c.is_ellipsis_args,
+            variables=[*variables, *self.variables],
+        )
 
     def with_unpacked_kwargs(self) -> NormalizedCallableType:
         if not self.unpack_kwargs:
@@ -2269,6 +2259,10 @@ class TupleType(ProperType):
     ) -> None:
         super().__init__(line, column)
         self.partial_fallback = fallback
+        # TODO: flatten/normalize unpack items (very similar to unions) here.
+        # Probably also for instances, type aliases, callables, and Unpack itself. For example,
+        # tuple[*tuple[X, ...], ...] -> tuple[X, ...] and Tuple[*tuple[X, ...]] -> tuple[X, ...].
+        # Currently normalization happens in expand_type() et al., which is sub-optimal.
         self.items = items
         self.implicit = implicit
 
@@ -3197,7 +3191,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return f"Overload({', '.join(a)})"
 
     def visit_tuple_type(self, t: TupleType) -> str:
-        s = self.list_str(t.items)
+        s = self.list_str(t.items) or "()"
         tuple_name = "tuple" if self.options.use_lowercase_names() else "Tuple"
         if t.partial_fallback and t.partial_fallback.type:
             fallback_name = t.partial_fallback.type.fullname

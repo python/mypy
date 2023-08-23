@@ -1372,7 +1372,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "__main__.Medal"
 
 [case testMatchNarrowUsingPatternGuardSpecialCase]
-def f(x: int | str) -> int:  # E: Missing return statement
+def f(x: int | str) -> int:
     match x:
         case x if isinstance(x, str):
             return 0
@@ -1568,8 +1568,8 @@ class AnnAssign(stmt):
    value: str
    simple: int
 
-reveal_type(AST.__match_args__)  # N: Revealed type is "Tuple[]"
-reveal_type(stmt.__match_args__)  # N: Revealed type is "Tuple[]"
+reveal_type(AST.__match_args__)  # N: Revealed type is "Tuple[()]"
+reveal_type(stmt.__match_args__)  # N: Revealed type is "Tuple[()]"
 reveal_type(AnnAssign.__match_args__)  # N: Revealed type is "Tuple[Literal['target']?, Literal['annotation']?, Literal['value']?, Literal['simple']?]"
 
 AnnAssign.__match_args__ = ('a', 'b', 'c', 'd')  # E: Cannot assign to "__match_args__"
@@ -1972,4 +1972,47 @@ def f2(x: T) -> None:
             pass
         case DataFrame():  # type: ignore[misc]
             pass
+[builtins fixtures/primitives.pyi]
+
+[case testMatchGuardReachability]
+# flags: --warn-unreachable
+def f1(e: int) -> int:
+    match e:
+        case x if True:
+            return x
+        case _:
+            return 0  # E: Statement is unreachable
+    e = 0  # E: Statement is unreachable
+
+
+def f2(e: int) -> int:
+    match e:
+        case x if bool():
+            return x
+        case _:
+            return 0
+    e = 0  # E: Statement is unreachable
+
+def f3(e: int | str | bytes) -> int:
+    match e:
+        case x if isinstance(x, int):
+            return x
+        case [x]:
+            return 0  # E: Statement is unreachable
+        case str(x):
+            return 0
+    reveal_type(e)  # N: Revealed type is "builtins.bytes"
+    return 0
+
+def f4(e: int | str | bytes) -> int:
+    match e:
+        case int(x):
+            pass
+        case [x]:
+            return 0  # E: Statement is unreachable
+        case x if isinstance(x, str):
+            return 0
+    reveal_type(e)  # N: Revealed type is "Union[builtins.int, builtins.bytes]"
+    return 0
+
 [builtins fixtures/primitives.pyi]

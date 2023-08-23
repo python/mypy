@@ -365,7 +365,6 @@ class DataclassTransformer:
             and (
                 "__match_args__" not in info.names or info.names["__match_args__"].plugin_generated
             )
-            and attributes
             and py_version >= (3, 10)
         ):
             str_type = self._api.named_type("builtins.str")

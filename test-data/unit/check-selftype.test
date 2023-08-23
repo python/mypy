@@ -1973,3 +1973,45 @@ class B(A):
         reveal_type(self.x.extra)  # N: Revealed type is "builtins.int"
         reveal_type(self.xs[0].extra)  # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
+
+[case testSelfTypesWithParamSpecExtract]
+from typing import Any, Callable, Generic, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+F = TypeVar("F", bound=Callable[..., Any])
+class Example(Generic[F]):
+    def __init__(self, fn: F) -> None:
+        ...
+    def __call__(self: Example[Callable[P, Any]], *args: P.args, **kwargs: P.kwargs) -> None:
+        ...
+
+def test_fn(a: int, b: str) -> None:
+    ...
+
+example = Example(test_fn)
+example()  # E: Missing positional arguments "a", "b" in call to "__call__" of "Example"
+example(1, "b")  # OK
+[builtins fixtures/list.pyi]
+
+[case testSelfTypesWithParamSpecInfer]
+from typing import TypeVar, Protocol, Type, Callable
+from typing_extensions import ParamSpec
+
+R = TypeVar("R", covariant=True)
+P = ParamSpec("P")
+class AsyncP(Protocol[P]):
+    def meth(self, *args: P.args, **kwargs: P.kwargs) -> None:
+        ...
+
+class Async:
+    @classmethod
+    def async_func(cls: Type[AsyncP[P]]) -> Callable[P, int]:
+        ...
+
+class Add(Async):
+    def meth(self, x: int, y: int) -> None: ...
+
+reveal_type(Add.async_func())  # N: Revealed type is "def (x: builtins.int, y: builtins.int) -> builtins.int"
+reveal_type(Add().async_func())  # N: Revealed type is "def (x: builtins.int, y: builtins.int) -> builtins.int"
+[builtins fixtures/classmethod.pyi]

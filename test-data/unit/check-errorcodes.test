@@ -183,7 +183,7 @@ from defusedxml import xyz  # type: ignore[import]
 
 [case testErrorCodeBadIgnore]
 import nostub # type: ignore xyz  # E: Invalid "type: ignore" comment  [syntax] \
-                                  # E: Cannot find implementation or library stub for module named "nostub"  [import] \
+                                  # E: Cannot find implementation or library stub for module named "nostub"  [import-not-found] \
                                   # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 import nostub # type: ignore[  # E: Invalid "type: ignore" comment  [syntax]
 import nostub # type: ignore[foo  # E: Invalid "type: ignore" comment  [syntax]
@@ -211,7 +211,7 @@ def f(x,  # type: int  # type: ignore[
     pass
 [out]
 main:2: error: Invalid "type: ignore" comment  [syntax]
-main:2: error: Cannot find implementation or library stub for module named "nostub"  [import]
+main:2: error: Cannot find implementation or library stub for module named "nostub"  [import-not-found]
 main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main:3: error: Invalid "type: ignore" comment  [syntax]
 main:4: error: Invalid "type: ignore" comment  [syntax]
@@ -522,12 +522,12 @@ if int() is str():  # E: Non-overlapping identity check (left operand type: "int
 [builtins fixtures/primitives.pyi]
 
 [case testErrorCodeMissingModule]
-from defusedxml import xyz  # E: Cannot find implementation or library stub for module named "defusedxml"  [import]
-from nonexistent import foobar  # E: Cannot find implementation or library stub for module named "nonexistent"  [import]
-import nonexistent2  # E: Cannot find implementation or library stub for module named "nonexistent2"  [import]
-from nonexistent3 import *  # E: Cannot find implementation or library stub for module named "nonexistent3"  [import]
+from defusedxml import xyz  # E: Cannot find implementation or library stub for module named "defusedxml"  [import-not-found]
+from nonexistent import foobar  # E: Cannot find implementation or library stub for module named "nonexistent"  [import-not-found]
+import nonexistent2  # E: Cannot find implementation or library stub for module named "nonexistent2"  [import-not-found]
+from nonexistent3 import *  # E: Cannot find implementation or library stub for module named "nonexistent3"  [import-not-found]
 from pkg import bad  # E: Module "pkg" has no attribute "bad"  [attr-defined]
-from pkg.bad2 import bad3  # E: Cannot find implementation or library stub for module named "pkg.bad2"  [import] \
+from pkg.bad2 import bad3  # E: Cannot find implementation or library stub for module named "pkg.bad2"  [import-not-found] \
                            # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 [file pkg/__init__.py]
 

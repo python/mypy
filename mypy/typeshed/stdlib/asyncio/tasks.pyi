@@ -285,7 +285,26 @@ else:
 # since the only reason why `asyncio.Future` is invariant is the `set_result()` method,
 # and `asyncio.Task.set_result()` always raises.
 class Task(Future[_T_co], Generic[_T_co]):  # type: ignore[type-var]  # pyright: ignore[reportGeneralTypeIssues]
-    if sys.version_info >= (3, 8):
+    if sys.version_info >= (3, 12):
+        def __init__(
+            self,
+            coro: _TaskCompatibleCoro[_T_co],
+            *,
+            loop: AbstractEventLoop = ...,
+            name: str | None,
+            context: Context | None = None,
+            eager_start: bool = False,
+        ) -> None: ...
+    elif sys.version_info >= (3, 11):
+        def __init__(
+            self,
+            coro: _TaskCompatibleCoro[_T_co],
+            *,
+            loop: AbstractEventLoop = ...,
+            name: str | None,
+            context: Context | None = None,
+        ) -> None: ...
+    elif sys.version_info >= (3, 8):
         def __init__(
             self, coro: _TaskCompatibleCoro[_T_co], *, loop: AbstractEventLoop = ..., name: str | None = ...
         ) -> None: ...
@@ -295,6 +314,8 @@ class Task(Future[_T_co], Generic[_T_co]):  # type: ignore[type-var]  # pyright:
         def get_coro(self) -> _TaskCompatibleCoro[_T_co]: ...
         def get_name(self) -> str: ...
         def set_name(self, __value: object) -> None: ...
+    if sys.version_info >= (3, 12):
+        def get_context(self) -> Context: ...
 
     def get_stack(self, *, limit: int | None = None) -> list[FrameType]: ...
     def print_stack(self, *, limit: int | None = None, file: TextIO | None = None) -> None: ...

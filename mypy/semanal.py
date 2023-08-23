@@ -1153,7 +1153,16 @@ class SemanticAnalyzer(
             elif not non_overload_indexes:
                 self.handle_missing_overload_implementation(defn)
 
-        if types:
+        if types and not any(
+            # If some overload items are decorated with other decorators, then
+            # the overload type will be determined during type checking.
+            isinstance(it, Decorator) and len(it.decorators) > 1
+            for it in defn.items
+        ):
+            # TODO: should we enforce decorated overloads consistency somehow?
+            # Some existing code uses both styles:
+            #   * Put decorator only on implementation, use "effective" types in overloads
+            #   * Put decorator everywhere, use "bare" types in overloads.
             defn.type = Overloaded(types)
             defn.type.line = defn.line
 
@@ -5276,20 +5285,18 @@ class SemanticAnalyzer(
         else:
             items = [index]
 
-        # whether param spec literals be allowed here
-        # TODO: should this be computed once and passed in?
-        #   or is there a better way to do this?
+        # TODO: this needs a clean-up.
+        # Probably always allow Parameters literals, and validate in semanal_typeargs.py
         base = expr.base
         if isinstance(base, RefExpr) and isinstance(base.node, TypeAlias):
             alias = base.node
-            target = get_proper_type(alias.target)
-            if isinstance(target, Instance):
-                has_param_spec = target.type.has_param_spec_type
-                num_args = len(target.type.type_vars)
+            if any(isinstance(t, ParamSpecType) for t in alias.alias_tvars):
+                has_param_spec = True
+                num_args = len(alias.alias_tvars)
             else:
                 has_param_spec = False
                 num_args = -1
-        elif isinstance(base, NameExpr) and isinstance(base.node, TypeInfo):
+        elif isinstance(base, RefExpr) and isinstance(base.node, TypeInfo):
             has_param_spec = base.node.has_param_spec_type
             num_args = len(base.node.type_vars)
         else:
@@ -5455,7 +5462,12 @@ class SemanticAnalyzer(
             # support top level awaits.
             self.fail('"await" outside function', expr, serious=True, code=codes.TOP_LEVEL_AWAIT)
         elif not self.function_stack[-1].is_coroutine:
-            self.fail('"await" outside coroutine ("async def")', expr, serious=True, blocker=True)
+            self.fail(
+                '"await" outside coroutine ("async def")',
+                expr,
+                serious=True,
+                code=codes.AWAIT_NOT_ASYNC,
+            )
         expr.expr.accept(self)
 
     #

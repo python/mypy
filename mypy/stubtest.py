@@ -496,7 +496,11 @@ def verify_typeinfo(
     )
 
     # Check everything already defined on the stub class itself (i.e. not inherited)
-    to_check = set(stub.names)
+    #
+    # Filter out non-identifier names, as these are (hopefully always?) whacky/fictional things
+    # (like __mypy-replace or __mypy-post_init, etc.) that don't exist at runtime,
+    # and exist purely for internal mypy reasons
+    to_check = {name for name in stub.names if name.isidentifier()}
     # Check all public things on the runtime class
     to_check.update(
         m for m in vars(runtime) if not is_probably_private(m) and m not in IGNORABLE_CLASS_DUNDERS
@@ -1549,7 +1553,7 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> mypy.types.Type | None:
     value: bool | int | str
     if isinstance(runtime, bytes):
         value = bytes_to_human_readable_repr(runtime)
-    elif isinstance(runtime, enum.Enum):
+    elif isinstance(runtime, enum.Enum) and isinstance(runtime.name, str):
         value = runtime.name
     elif isinstance(runtime, (bool, int, str)):
         value = runtime
