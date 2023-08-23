@@ -1205,13 +1205,13 @@ reveal_type(subtup if int() else tup2)  # N: Revealed type is "builtins.tuple[bu
 [case testTupleWithUndersizedContext]
 a = ([1], 'x')
 if int():
-    a = ([], 'x', 1)  # E: Incompatible types in assignment (expression has type "Tuple[List[int], str, int]", variable has type "Tuple[List[int], str]")
+    a = ([], 'x', 1)  # E: Incompatible types in assignment (expression has type "Tuple[List[builtins.int], Literal['x'], Literal[1]]", variable has type "Tuple[List[builtins.int], builtins.str]")
 [builtins fixtures/tuple.pyi]
 
 [case testTupleWithOversizedContext]
 a = (1, [1], 'x')
 if int():
-    a = (1, [])  # E: Incompatible types in assignment (expression has type "Tuple[int, List[int]]", variable has type "Tuple[int, List[int], str]")
+    a = (1, [])  # E: Incompatible types in assignment (expression has type "Tuple[Literal[1], List[builtins.int]]", variable has type "Tuple[builtins.int, List[builtins.int], str]")
 [builtins fixtures/tuple.pyi]
 
 [case testTupleWithoutContext]
@@ -1397,7 +1397,7 @@ t1: Tuple[int, ...] = (1, 2, 3, 4, 5, 6, 7, 8, "str", "str", "str", "str") # E: 
                                                                            # N: Expression tuple item 10 has type "str"; "int" expected;
 
 # short tuple initializer assignment
-t2: Tuple[int, ...] = (1, 2, "s", 4) # E: Incompatible types in assignment (expression has type "Tuple[int, int, str, int]", variable has type "Tuple[int, ...]")
+t2: Tuple[int, ...] = (1, 2, "s", 4) # E: Incompatible types in assignment (expression has type "Tuple[Literal[1], Literal[2], str, Literal[4]]", variable has type "Tuple[builtins.int, ...]")
 
 # long initializer assignment with few mismatches, no ellipsis
 t3: Tuple[int, int, int, int, int, int, int, int, int, int, int, int] = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, "str", "str") # E: Incompatible types in assignment (2 tuple items are incompatible) \
@@ -1411,10 +1411,21 @@ t4: Tuple[int, int, int, int, int, int, int, int, int, int, int, int] = (1, 2, 3
                                                                                                                              # N: Expression tuple item 10 has type "str"; "int" expected;
 
 # short tuple initializer assignment, no ellipsis
-t5: Tuple[int, int] = (1, 2, "s", 4)  # E: Incompatible types in assignment (expression has type "Tuple[int, int, str, int]", variable has type "Tuple[int, int]")
+t5: Tuple[int, int] = (1, 2, "s", 4)  # E: Incompatible types in assignment (expression has type "Tuple[Literal[1], Literal[2], str, Literal[4]]", variable has type "Tuple[builtins.int, builtins.int]")
 
 # long initializer assignment with mismatched pairs
 t6: Tuple[int, int, int, int, int, int, int, int, int, int, int, int] = (1, 2, 3, 4, 5, 6, 7, 8, "str", "str", "str", "str", 1, 1, 1, 1, 1) # E: Incompatible types in assignment (expression has type Tuple[int, int, ... <15 more items>], variable has type Tuple[int, int, ... <10 more items>])
+
+
+
+
+
+
+
+
+
+
+
 
 [builtins fixtures/tuple.pyi]
 

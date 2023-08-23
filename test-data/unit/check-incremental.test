@@ -4393,10 +4393,15 @@ class C:
 [out]
 [out2]
 main:5: error: Cannot assign to final name "x"
+main:5: error: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 main:6: error: Cannot assign to final name "x"
+main:6: error: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 main:8: error: Cannot assign to final attribute "y"
+main:8: error: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 main:9: error: Cannot assign to final attribute "z"
+main:9: error: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 main:10: error: Cannot assign to final attribute "y"
+main:10: error: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 
 [case testFinalAddFinalVarOverride]
 from mod import C
@@ -4426,9 +4431,13 @@ class C:
 [out]
 [out2]
 main:4: error: Cannot assign to final name "x"
+main:4: error: Incompatible types in assignment (expression has type "Literal[2]", base class "C" defined the type as "Literal[1]")
 main:6: error: Cannot assign to final attribute "y"
+main:6: error: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 main:8: error: Cannot assign to final name "y"
+main:8: error: Incompatible types in assignment (expression has type "Literal[2]", base class "C" defined the type as "Literal[1]")
 main:10: error: Cannot assign to final attribute "x"
+main:10: error: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 
 [case testFinalAddFinalMethodOverride]
 from mod import C

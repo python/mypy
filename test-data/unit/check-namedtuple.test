@@ -312,8 +312,8 @@ if int():
 if int():
     l = [A(1)]
 if int():
-    a = (1,)  # E: Incompatible types in assignment (expression has type "Tuple[int]", \
-                   variable has type "A")
+    a = (1,)  # E: Incompatible types in assignment (expression has type "Tuple[Literal[1]]", variable has type "A")
+
 [builtins fixtures/list.pyi]
 
 [case testNamedTupleMissingClassAttribute]
@@ -1000,7 +1000,7 @@ print_namedtuple(b6)  # ok
 
 print_namedtuple(1)  # E: Argument 1 to "print_namedtuple" has incompatible type "int"; expected "NamedTuple"
 print_namedtuple(('bar',))  # E: Argument 1 to "print_namedtuple" has incompatible type "Tuple[str]"; expected "NamedTuple"
-print_namedtuple((1, 2))  # E: Argument 1 to "print_namedtuple" has incompatible type "Tuple[int, int]"; expected "NamedTuple"
+print_namedtuple((1, 2))  # E: Argument 1 to "print_namedtuple" has incompatible type "Tuple[Literal[1], Literal[2]]"; expected "NamedTuple"
 print_namedtuple((b1,))  # E: Argument 1 to "print_namedtuple" has incompatible type "Tuple[Bar]"; expected "NamedTuple"
 t: Tuple[str, ...]
 print_namedtuple(t)  # E: Argument 1 to "print_namedtuple" has incompatible type "Tuple[str, ...]"; expected "NamedTuple"
@@ -1048,7 +1048,7 @@ def bad1() -> NamedTuple:
 def bad2() -> NamedTuple:
     return ()  # E: Incompatible return value type (got "Tuple[()]", expected "NamedTuple")
 def bad3() -> NamedTuple:
-    return (1, 2)  # E: Incompatible return value type (got "Tuple[int, int]", expected "NamedTuple")
+    return (1, 2)  # E: Incompatible return value type (got "Tuple[Literal[1], Literal[2]]", expected "NamedTuple")
 
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]

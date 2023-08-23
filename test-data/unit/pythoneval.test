@@ -799,7 +799,7 @@ def p(t: Tuple[str, ...]) -> None:
 ''.startswith(('x', b'y'))
 [out]
 _program.py:6: error: "str" not callable
-_program.py:8: error: Argument 1 to "startswith" of "str" has incompatible type "Tuple[str, bytes]"; expected "Union[str, Tuple[str, ...]]"
+_program.py:8: error: Argument 1 to "startswith" of "str" has incompatible type "Tuple[Literal['x'], bytes]"; expected "Union[builtins.str, Tuple[builtins.str, ...]]"
 
 [case testMultiplyTupleByInteger]
 n = 4
@@ -1066,7 +1066,7 @@ a[0] = 'x', 1
 a[1] = 2, 'y'
 a[:] = [('z', 3)]
 [out]
-_program.py:4: error: Incompatible types in assignment (expression has type "Tuple[int, str]", target has type "Tuple[str, int]")
+_program.py:4: error: Incompatible types in assignment (expression has type "Tuple[Literal[2], Literal['y']]", target has type "Tuple[builtins.str, builtins.int]")
 
 [case testContextManager]
 import contextlib
@@ -1347,7 +1347,7 @@ class C:
     __slots__: List[int] = []
 [out]
 _testInvalidSlots.py:3: error: Invalid type for "__slots__" (actual type "int", expected type "Union[str, Iterable[str]]")
-_testInvalidSlots.py:5: error: Invalid type for "__slots__" (actual type "Tuple[int, int]", expected type "Union[str, Iterable[str]]")
+_testInvalidSlots.py:5: error: Invalid type for "__slots__" (actual type "Tuple[Literal[1], Literal[2]]", expected type "Union[str, Iterable[str]]")
 _testInvalidSlots.py:7: error: Invalid type for "__slots__" (actual type "List[int]", expected type "Union[str, Iterable[str]]")
 
 [case testDictWithStarStarSpecialCase]
@@ -1445,7 +1445,7 @@ _testNamedTupleTypeInheritanceSpecialCase.py:8: note: Revealed type is "builtins
 _testNamedTupleTypeInheritanceSpecialCase.py:9: note: Revealed type is "builtins.tuple[builtins.str, ...]"
 _testNamedTupleTypeInheritanceSpecialCase.py:10: note: Revealed type is "builtins.dict[builtins.str, Any]"
 _testNamedTupleTypeInheritanceSpecialCase.py:17: error: Argument 1 to "accepts_named_tuple" has incompatible type "int"; expected "NamedTuple"
-_testNamedTupleTypeInheritanceSpecialCase.py:18: error: Argument 1 to "accepts_named_tuple" has incompatible type "Tuple[int, int]"; expected "NamedTuple"
+_testNamedTupleTypeInheritanceSpecialCase.py:18: error: Argument 1 to "accepts_named_tuple" has incompatible type "Tuple[Literal[1], Literal[2]]"; expected "NamedTuple"
 
 [case testNewAnalyzerBasicTypeshed_newsemanal]
 from typing import Dict, List, Tuple

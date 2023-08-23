@@ -472,7 +472,10 @@ def int_neg_callback(ctx: MethodContext) -> Type:
             else:
                 return ctx.type.copy_modified(
                     last_known_value=LiteralType(
-                        value=-value, fallback=ctx.type, line=ctx.type.line, column=ctx.type.column
+                        value=-value,
+                        fallback=ctx.type.copy_modified(last_known_value=None),
+                        line=ctx.type.line,
+                        column=ctx.type.column,
                     )
                 )
     elif isinstance(ctx.type, LiteralType):

@@ -1423,7 +1423,8 @@ class Medal(Enum):
     silver = 2
 
 # Another value:
-Medal.gold = 0  # E: Cannot assign to final attribute "gold"
+Medal.gold = 0  # E: Cannot assign to final attribute "gold" \
+                # E: Incompatible types in assignment (expression has type "Literal[0]", variable has type "Literal[1]")
 # Same value:
 Medal.silver = 2  # E: Cannot assign to final attribute "silver"
 
@@ -1449,10 +1450,13 @@ reveal_type(Foo.A.value)  # N: Revealed type is "Literal[1]?"
 
 class Bar(Enum):
     A = 1
-    B = A = 2  # E: Attempted to reuse member name "A" in Enum definition "Bar"
+    B = A = 2  # E: Attempted to reuse member name "A" in Enum definition "Bar" \
+               # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 class Baz(Enum):
     A = 1
-    B, A = (1, 2)  # E: Attempted to reuse member name "A" in Enum definition "Baz"
+    B, A = (1, 2)  # E: Attempted to reuse member name "A" in Enum definition "Baz" \
+                   # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
+
 [builtins fixtures/tuple.pyi]
 
 [case testEnumReusedKeysOverlapWithLocalVar]
@@ -1760,8 +1764,10 @@ class EI(IntEnum):
     __annotations__ = {'a': int}
     __dict__ = {'a': 1}
 
-E._order_ = 'a'  # E: Cannot assign to final attribute "_order_"
-EI.value = 2     # E: Cannot assign to final attribute "value"
+E._order_ = 'a'  # E: Cannot assign to final attribute "_order_" \
+                 # E: Incompatible types in assignment (expression has type "Literal['a']", variable has type "Literal['X Y']")
+EI.value = 2     # E: Cannot assign to final attribute "value" \
+                 # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 [builtins fixtures/dict.pyi]
 
 [case testEnumNotFinalWithMethodsAndUninitializedValues]
@@ -2121,3 +2127,15 @@ class AllPartialList(Enum):
 
     def check(self) -> None:
         reveal_type(self.value)  # N: Revealed type is "builtins.list[Any]"
+
+[case testEnumValueWithTupleType]
+import enum
+from typing import Tuple
+
+class Color(enum.Enum):
+    WHITE = (255, 255, 255)
+    BLACK = (0, 0, 0)
+
+x: Color
+reveal_type(x.value)  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]

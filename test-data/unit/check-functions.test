@@ -2002,8 +2002,7 @@ f(x=4) + '' # E: Unsupported operand types for + ("int" and "str")
 from typing import Callable
 def f(x: Callable[..., int]) -> None:
     if int():
-        x = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[..., int]")
-[out]
+        x = 1  # E: Incompatible types in assignment (expression has type "Literal[1]", variable has type "Callable[..., builtins.int]")
 
 [case testCallableWithArbitraryArgsInGenericFunction]
 from typing import Callable, TypeVar

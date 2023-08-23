@@ -2,24 +2,24 @@
 [case testTupleLowercaseSettingOff]
 # flags: --python-version 3.9 --force-uppercase-builtins
 x = (3,)
-x = 3 # E: Incompatible types in assignment (expression has type "int", variable has type "Tuple[int]")
+x = 3 # E: Incompatible types in assignment (expression has type "Literal[3]", variable has type "Tuple[builtins.int]")
 [builtins fixtures/tuple.pyi]
 
 [case testTupleLowercaseSettingOn]
 # flags: --python-version 3.9 --no-force-uppercase-builtins
 x = (3,)
-x = 3 # E: Incompatible types in assignment (expression has type "int", variable has type "tuple[int]")
+x = 3 # E: Incompatible types in assignment (expression has type "Literal[3]", variable has type "tuple[builtins.int]")
 [builtins fixtures/tuple.pyi]
 
 [case testListLowercaseSettingOff]
 # flags: --python-version 3.9 --force-uppercase-builtins
 x = [3]
-x = 3  # E: Incompatible types in assignment (expression has type "int", variable has type "List[int]")
+x = 3  # E: Incompatible types in assignment (expression has type "Literal[3]", variable has type "List[builtins.int]")
 
 [case testListLowercaseSettingOn]
 # flags: --python-version 3.9 --no-force-uppercase-builtins
 x = [3]
-x = 3  # E: Incompatible types in assignment (expression has type "int", variable has type "list[int]")
+x = 3  # E: Incompatible types in assignment (expression has type "Literal[3]", variable has type "list[builtins.int]")
 
 [case testDictLowercaseSettingOff]
 # flags: --python-version 3.9 --force-uppercase-builtins
@@ -34,13 +34,13 @@ x = 3  # E: Incompatible types in assignment (expression has type "int", variabl
 [case testSetLowercaseSettingOff]
 # flags: --python-version 3.9 --force-uppercase-builtins
 x = {3}
-x = 3  # E: Incompatible types in assignment (expression has type "int", variable has type "Set[int]")
+x = 3  # E: Incompatible types in assignment (expression has type "Literal[3]", variable has type "Set[builtins.int]")
 [builtins fixtures/set.pyi]
 
 [case testSetLowercaseSettingOn]
 # flags: --python-version 3.9 --no-force-uppercase-builtins
 x = {3}
-x = 3  # E: Incompatible types in assignment (expression has type "int", variable has type "set[int]")
+x = 3  # E: Incompatible types in assignment (expression has type "Literal[3]", variable has type "set[builtins.int]")
 [builtins fixtures/set.pyi]
 
 [case testTypeLowercaseSettingOff]

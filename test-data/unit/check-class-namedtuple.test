@@ -212,8 +212,8 @@ a = l[0]
 (i,) = l[0]
 i, i = l[0]  # E: Need more than 1 value to unpack (2 expected)
 l = [A(1)]
-a = (1,)  # E: Incompatible types in assignment (expression has type "Tuple[int]", \
-               variable has type "A")
+a = (1,)  # E: Incompatible types in assignment (expression has type "Tuple[Literal[1]]", variable has type "A")
+
 [builtins fixtures/list.pyi]
 
 [case testNewNamedTupleMissingClassAttribute]

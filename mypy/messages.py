@@ -14,6 +14,7 @@ from __future__ import annotations
 import difflib
 import itertools
 import re
+from collections import defaultdict
 from contextlib import contextmanager
 from textwrap import dedent
 from typing import Any, Callable, Collection, Final, Iterable, Iterator, List, Sequence, cast
@@ -2471,6 +2472,10 @@ def format_type_inner(
         if itype.type.fullname == "typing._SpecialForm":
             # This is not a real type but used for some typing-related constructs.
             return "<typing special form>"
+        if itype.last_known_value and (
+            fullnames and f"typing.Literal[{itype.last_known_value.value}]" in fullnames
+        ):
+            return format(itype.last_known_value)
         if itype.type.fullname in reverse_builtin_aliases and not options.use_lowercase_names():
             alias = reverse_builtin_aliases[itype.type.fullname]
             base_str = alias.split(".")[-1]
@@ -2653,10 +2658,13 @@ def find_type_overlaps(*types: Type) -> set[str]:
     This is used to ensure that distinct types with the same short name are printed
     with their fullname.
     """
-    d: dict[str, set[str]] = {}
+    d: dict[str, set[str]] = defaultdict(set)
     for type in types:
         for inst in collect_all_instances(type):
-            d.setdefault(inst.type.name, set()).add(inst.type.fullname)
+            if inst.last_known_value:
+                d[inst.type.name].add(f"typing.Literal[{inst.last_known_value.value}]")
+            else:
+                d[inst.type.name].add(inst.type.fullname)
     for shortname in d.keys():
         if f"typing.{shortname}" in TYPES_FOR_UNIMPORTED_HINTS:
             d[shortname].add(f"typing.{shortname}")

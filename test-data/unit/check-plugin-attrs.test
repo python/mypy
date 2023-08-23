@@ -31,7 +31,8 @@ class A:
 reveal_type(A)  # N: Revealed type is "def (a: builtins.int, b: builtins.list[builtins.int], c: builtins.str =, d: builtins.int =) -> __main__.A"
 A(1, [2])
 A(1, [2], '3', 4)
-A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "List[int]" # E: Argument 3 to "A" has incompatible type "int"; expected "str"
+A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "Literal[2]"; expected "List[builtins.int]" \
+               # E: Argument 3 to "A" has incompatible type "int"; expected "str"
 A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
 [builtins fixtures/list.pyi]
 
@@ -49,7 +50,8 @@ class A:
 reveal_type(A)  # N: Revealed type is "def (a: builtins.int, b: builtins.list[builtins.int], c: builtins.str =, d: builtins.int =) -> __main__.A"
 A(1, [2])
 A(1, [2], '3', 4)
-A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "List[int]" # E: Argument 3 to "A" has incompatible type "int"; expected "str"
+A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "Literal[2]"; expected "List[builtins.int]" \
+               # E: Argument 3 to "A" has incompatible type "int"; expected "str"
 A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
 [builtins fixtures/list.pyi]
 
@@ -67,7 +69,8 @@ class A:
 reveal_type(A)  # N: Revealed type is "def (a: builtins.int, b: builtins.list[builtins.int], c: builtins.str =, d: builtins.int =) -> __main__.A"
 A(1, [2])
 A(1, [2], '3', 4)
-A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "List[int]" # E: Argument 3 to "A" has incompatible type "int"; expected "str"
+A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "Literal[2]"; expected "List[builtins.int]" \
+               # E: Argument 3 to "A" has incompatible type "int"; expected "str"
 A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
 [builtins fixtures/list.pyi]
 
@@ -120,7 +123,7 @@ class A:
 reveal_type(A)  # N: Revealed type is "def (a: Any, b: builtins.list[builtins.int], c: Any =, d: Any =) -> __main__.A"
 A(1, [2])
 A(1, [2], '3', 4)
-A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "List[int]"
+A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "Literal[2]"; expected "List[builtins.int]"
 A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
 [builtins fixtures/list.pyi]
 

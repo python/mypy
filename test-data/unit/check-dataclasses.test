@@ -1941,9 +1941,11 @@ class SecondClass:
     SECOND_CONST: Final = FirstClass.FIRST_CONST  # E: Need type argument for Final[...] with non-literal default in dataclass
 
 reveal_type(FirstClass().FIRST_CONST)  # N: Revealed type is "Literal[3]?"
-FirstClass().FIRST_CONST = 42  # E: Cannot assign to final attribute "FIRST_CONST"
+FirstClass().FIRST_CONST = 42  # E: Cannot assign to final attribute "FIRST_CONST" \
+                               # E: Incompatible types in assignment (expression has type "Literal[42]", variable has type "Literal[3]")
 reveal_type(SecondClass().SECOND_CONST)  # N: Revealed type is "Literal[3]?"
-SecondClass().SECOND_CONST = 42  # E: Cannot assign to final attribute "SECOND_CONST"
+SecondClass().SECOND_CONST = 42  # E: Cannot assign to final attribute "SECOND_CONST" \
+                                 # E: Incompatible types in assignment (expression has type "Literal[42]", variable has type "Literal[3]")
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassFieldsProtocol]

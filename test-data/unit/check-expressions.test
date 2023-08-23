@@ -1675,7 +1675,7 @@ dict(undefined) # E: Name "undefined" is not defined
 from typing import Dict
 d = dict([(1, 'x'), (2, 'y')])
 d() # E: "Dict[int, str]" not callable
-d2 = dict([(1, 'x')]) # type: Dict[str, str] # E: List item 0 has incompatible type "Tuple[int, str]"; expected "Tuple[str, str]"
+d2 = dict([(1, 'x')]) # type: Dict[str, str] # E: List item 0 has incompatible type "Tuple[int, Literal['x']]"; expected "Tuple[builtins.str, builtins.str]"
 [builtins fixtures/dict.pyi]
 
 [case testDictFromIterableAndKeywordArg]

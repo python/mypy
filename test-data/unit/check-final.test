@@ -365,11 +365,14 @@ def f2() -> None:
 y = 1
 y
 y: Final = 2  # E: Cannot redefine an existing name as final
-y = 3  # E: Cannot assign to final name "y"
+y = 3  # E: Cannot assign to final name "y" \
+       # E: Incompatible types in assignment (expression has type "Literal[3]", variable has type "Literal[2]")
 
 z: Final = 1
-z: Final = 2  # E: Cannot redefine an existing name as final
-z = 3  # E: Cannot assign to final name "z"
+z: Final = 2  # E: Cannot redefine an existing name as final \
+              # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
+z = 3  # E: Cannot assign to final name "z" \
+       # E: Incompatible types in assignment (expression has type "Literal[3]", variable has type "Literal[1]")
 
 [case testFinalReassignModuleVar2]
 # flags: --allow-redefinition
@@ -379,7 +382,8 @@ x: Final = 1
 x
 def f() -> int:
     global x
-    x = 3  # E: Cannot assign to final name "x"
+    x = 3  # E: Cannot assign to final name "x" \
+           # E: Incompatible types in assignment (expression has type "Literal[3]", variable has type "Literal[1]")
     return x
 
 y = 1
@@ -395,10 +399,12 @@ from typing import Final
 
 x: Final = 1
 x
-x = 2  # E: Cannot assign to final name "x"
+x = 2  # E: Cannot assign to final name "x" \
+       # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 def f() -> int:
     global x
-    x = 3  # E: Cannot assign to final name "x"
+    x = 3  # E: Cannot assign to final name "x" \
+           # E: Incompatible types in assignment (expression has type "Literal[3]", variable has type "Literal[1]")
     return x
 
 x2: Final = 1
@@ -413,8 +419,10 @@ y: Final = 2  # E: Cannot redefine an existing name as final
 y = 3  # E: Cannot assign to final name "y"
 
 z: Final = 1
-z: Final = 2  # E: Cannot redefine an existing name as final
-z = 3  # E: Cannot assign to final name "z"
+z: Final = 2  # E: Cannot redefine an existing name as final \
+              # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
+z = 3  # E: Cannot assign to final name "z" \
+       # E: Incompatible types in assignment (expression has type "Literal[3]", variable has type "Literal[1]")
 
 [case testFinalReassignModuleReexport]
 
@@ -453,10 +461,12 @@ def f() -> None:
     x = 1  # E: Cannot assign to final name "x"
 
     y: Final = 1
-    y: Final = 2  # E: Cannot redefine an existing name as final
+    y: Final = 2  # E: Cannot redefine an existing name as final \
+                  # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
     def nested() -> None:
         nonlocal nl
-        nl = 1  # E: Cannot assign to final name "nl"
+        nl = 1  # E: Cannot assign to final name "nl" \
+                # E: Incompatible types in assignment (expression has type "Literal[1]", variable has type "Literal[0]")
 [out]
 
 [case testFinalReassignModuleVarExternal]
@@ -472,7 +482,8 @@ from typing import Final
 
 class C:
     x: Final = 1
-    x = 2  # E: Cannot assign to final name "x"
+    x = 2  # E: Cannot assign to final name "x" \
+           # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 
     y = 1  # E: Cannot assign to final name "y"
     y: Final = 2  # E: Cannot redefine an existing name as final
@@ -487,7 +498,8 @@ class C:
         self.y = 1
         self.y: Final = 2  # E: Cannot redefine an existing name as final
     def meth(self) -> None:
-        self.x = 2  # E: Cannot assign to final attribute "x"
+        self.x = 2  # E: Cannot assign to final attribute "x" \
+                    # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 [out]
 
 [case testFinalReassignInstanceVarClassVsInit]
@@ -499,7 +511,8 @@ class C:
     def __init__(self) -> None:
         # Methods are processed after top-level in new analyzer.
         self.x: Final = 1  # E: Cannot redefine an existing name as final
-        self.y = 2  # E: Cannot assign to final attribute "y"
+        self.y = 2  # E: Cannot assign to final attribute "y" \
+                    # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
     x = 2
 [out]
 
@@ -511,14 +524,19 @@ class C:
     def __init__(self) -> None:
         self.y: Final = 1
     def meth(self) -> None:
-        self.x = 2  # E: Cannot assign to final attribute "x"
-        self.y = 2  # E: Cannot assign to final attribute "y"
+        self.x = 2  # E: Cannot assign to final attribute "x" \
+                    # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
+        self.y = 2  # E: Cannot assign to final attribute "y" \
+                    # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
     def other(self) -> None:
-        self.x = 2  # E: Cannot assign to final attribute "x"
-        self.y = 2  # E: Cannot assign to final attribute "y"
+        self.x = 2  # E: Cannot assign to final attribute "x" \
+                    # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
+        self.y = 2  # E: Cannot assign to final attribute "y" \
+                    # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
     @classmethod
     def cm(cls) -> None:
-        cls.x = 2  # E: Cannot assign to final attribute "x"
+        cls.x = 2  # E: Cannot assign to final attribute "x" \
+                   # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
         cls.y  # E: Cannot access final instance attribute "y" on class object
 [builtins fixtures/classmethod.pyi]
 [out]
@@ -533,10 +551,13 @@ class C:
 
 class D(C): pass
 
-C.x = 2  # E: Cannot assign to final attribute "x"
-D.x = 2  # E: Cannot assign to final attribute "x"
+C.x = 2  # E: Cannot assign to final attribute "x" \
+         # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
+D.x = 2  # E: Cannot assign to final attribute "x" \
+         # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 D.y = 2  # E: Cannot access final instance attribute "y" on class object \
-         # E: Cannot assign to final attribute "y"
+         # E: Cannot assign to final attribute "y" \
+         # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 [out]
 
 [case testFinalReassignInstanceVarExternalInstance]
@@ -549,9 +570,12 @@ class C:
 
 class D(C): pass
 
-C().x = 2  # E: Cannot assign to final attribute "x"
-D().x = 2  # E: Cannot assign to final attribute "x"
-D().y = 2  # E: Cannot assign to final attribute "y"
+C().x = 2  # E: Cannot assign to final attribute "x" \
+           # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
+D().x = 2  # E: Cannot assign to final attribute "x" \
+           # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
+D().y = 2  # E: Cannot assign to final attribute "y" \
+           # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 [out]
 
 [case testFinalWorksWithComplexTargets]
@@ -629,8 +653,10 @@ class B(A):
     def __init__(self) -> None:
         self.y: Final = 1
 class C(B):
-    x: Final = 2  # E: Cannot override final attribute "x" (previously declared in base class "B")
-    y: Final = 2  # E: Cannot override final attribute "y" (previously declared in base class "B")
+    x: Final = 2  # E: Cannot override final attribute "x" (previously declared in base class "B") \
+                  # E: Incompatible types in assignment (expression has type "Literal[2]", base class "B" defined the type as "Literal[1]")
+    y: Final = 2  # E: Cannot override final attribute "y" (previously declared in base class "B") \
+                  # E: Incompatible types in assignment (expression has type "Literal[2]", base class "B" defined the type as "Literal[1]")
 [builtins fixtures/property.pyi]
 [out]
 
@@ -648,11 +674,15 @@ class B(A):
         self.y: Final = 1
 class C(B):
     def __init__(self) -> None:
-        self.x = 2  # E: Cannot assign to final attribute "x"
-        self.y = 2  # E: Cannot assign to final attribute "y"
+        self.x = 2  # E: Cannot assign to final attribute "x" \
+                    # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
+        self.y = 2  # E: Cannot assign to final attribute "y" \
+                    # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
     def meth(self) -> None:
-        self.x = 3  # E: Cannot assign to final attribute "x"
-        self.y = 3  # E: Cannot assign to final attribute "y"
+        self.x = 3  # E: Cannot assign to final attribute "x" \
+                    # E: Incompatible types in assignment (expression has type "Literal[3]", variable has type "Literal[1]")
+        self.y = 3  # E: Cannot assign to final attribute "y" \
+                    # E: Incompatible types in assignment (expression has type "Literal[3]", variable has type "Literal[1]")
 [builtins fixtures/property.pyi]
 [out]
 
@@ -670,8 +700,10 @@ class B(A):
         self.y: Final = 1
 class C(B):
     def __init__(self) -> None:
-        self.x: Final = 2  # E: Cannot override final attribute "x" (previously declared in base class "B")
-        self.y: Final = 2  # E: Cannot override final attribute "y" (previously declared in base class "B")
+        self.x: Final = 2  # E: Cannot override final attribute "x" (previously declared in base class "B") \
+                           # E: Incompatible types in assignment (expression has type "Literal[2]", base class "B" defined the type as "Literal[1]")
+        self.y: Final = 2  # E: Cannot override final attribute "y" (previously declared in base class "B") \
+                           # E: Incompatible types in assignment (expression has type "Literal[2]", base class "B" defined the type as "Literal[1]")
 [builtins fixtures/property.pyi]
 [out]
 
@@ -741,9 +773,12 @@ class B:
         self.x = 2
 class C(A, B): ...  # E: Cannot override writable attribute "x" with a final one
 class D(B, A): ...  # E: Cannot override final attribute "x" (previously declared in base class "A")
-C.x = 3  # E: Cannot assign to final attribute "x"
+C.x = 3  # E: Cannot assign to final attribute "x" \
+         # E: Incompatible types in assignment (expression has type "Literal[3]", variable has type "Literal[1]")
 D.x = 3  # E: Cannot assign to final attribute "x"
-C().x = 4  # E: Cannot assign to final attribute "x"
+C().x = 4  # E: Cannot assign to final attribute "x" \
+           # E: Incompatible types in assignment (expression has type "Literal[4]", variable has type "Literal[1]")
+# TODO: this missing error is a sign of a bug!!
 D().x = 4  # E: Cannot assign to final attribute "x"
 [out]
 
@@ -1018,11 +1053,13 @@ class D(B):
 from typing_extensions import final, Final
 
 x: Final = 1
-x = 2  # E: Cannot assign to final name "x"
+x = 2  # E: Cannot assign to final name "x" \
+       # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 
 class S:
     x: Final = 1
-S.x = 2  # E: Cannot assign to final attribute "x"
+S.x = 2  # E: Cannot assign to final attribute "x" \
+         # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 
 class B:
     @final
@@ -1040,11 +1077,13 @@ class E(F): ...  # E: Cannot inherit from final class "F"
 from typing_extensions import final as f, Final as F
 
 x: F = 1
-x = 2  # E: Cannot assign to final name "x"
+x = 2  # E: Cannot assign to final name "x" \
+       # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 
 class S:
     x: F = 1
-S.x = 2  # E: Cannot assign to final attribute "x"
+S.x = 2  # E: Cannot assign to final attribute "x" \
+         # E: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 
 class B:
     @f

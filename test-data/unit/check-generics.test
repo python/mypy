@@ -558,7 +558,7 @@ IntIntNode = Node[int, int]
 SameNode = Node[T, T]
 
 def output_bad() -> IntNode[str]:
-    return Node(1, 1) # Error - bad return type, see out
+    return Node(1, 1) # E: Argument 2 to "Node" has incompatible type "int"; expected "str"
 
 def input(x: IntNode[str]) -> None:
     pass
@@ -573,7 +573,7 @@ def func(x: IntNode[T]) -> IntNode[T]:
     return x
 reveal_type(func) # N: Revealed type is "def [T] (x: __main__.Node[builtins.int, T`-1]) -> __main__.Node[builtins.int, T`-1]"
 
-func(1) # E: Argument 1 to "func" has incompatible type "int"; expected "Node[int, <nothing>]"
+func(1) # E: Argument 1 to "func" has incompatible type "Literal[1]"; expected "Node[builtins.int, <nothing>]"
 func(Node('x', 1)) # E: Argument 1 to "Node" has incompatible type "str"; expected "int"
 reveal_type(func(Node(1, 'x'))) # N: Revealed type is "__main__.Node[builtins.int, builtins.str]"
 
@@ -590,9 +590,6 @@ def wrap(x: T) -> IntNode[T]:
 
 z: str
 reveal_type(wrap(z)) # N: Revealed type is "__main__.Node[builtins.int, builtins.str]"
-
-[out]
-main:13: error: Argument 2 to "Node" has incompatible type "int"; expected "str"
 
 -- Error formatting is a bit different (and probably better) with new analyzer
 [case testGenericTypeAliasesWrongAliases]
@@ -744,21 +741,19 @@ class L(List[TupledNode[T]]):
     ...
 
 def f_bad(x: T) -> D[T]:
-    return D(1)  # Error, see out
+    return D(1)  # E: Argument 1 to "D" has incompatible type "int"; expected "Tuple[T, T]"
 
 L[int]().append(Node((1, 1)))
-L[int]().append(5) # E: Argument 1 to "append" of "list" has incompatible type "int"; expected "Node[Tuple[int, int]]"
+L[int]().append(5) # E: Argument 1 to "append" of "list" has incompatible type "Literal[5]"; expected "Node[Tuple[builtins.int, builtins.int]]"
 
 x = D((1, 1)) # type: D[int]
-y = D(5) # type: D[int] # E: Argument 1 to "D" has incompatible type "int"; expected "Tuple[int, int]"
+y = D(5) # type: D[int] # E: Argument 1 to "D" has incompatible type "Literal[5]"; expected "Tuple[builtins.int, builtins.int]"
 
 def f(x: T) -> D[T]:
     return D((x, x))
 reveal_type(f('a'))  # N: Revealed type is "__main__.D[builtins.str]"
 
 [builtins fixtures/list.pyi]
-[out]
-main:15: error: Argument 1 to "D" has incompatible type "int"; expected "Tuple[T, T]"
 
 [case testGenericTypeAliasesSubclassingBad]
 
@@ -806,7 +801,7 @@ def f(x: T) -> UNode[T]:
 reveal_type(f(1)) # N: Revealed type is "Union[builtins.int, __main__.Node[builtins.int]]"
 
 TNode = Union[T, Node[int]]
-s = 1 # type: TNode[str] # E: Incompatible types in assignment (expression has type "int", variable has type "Union[str, Node[int]]")
+s = 1 # type: TNode[str] # E: Incompatible types in assignment (expression has type "Literal[1]", variable has type "Union[str, Node[builtins.int]]")
 
 if not isinstance(s, str):
     s.x = 1
@@ -814,6 +809,7 @@ if not isinstance(s, str):
 z = None # type: TNode # Same as TNode[Any]
 z.x
 z.foo() # E: Item "Node[int]" of "Union[Any, Node[int]]" has no attribute "foo"
+
 
 [builtins fixtures/isinstance.pyi]
 
@@ -834,7 +830,7 @@ reveal_type(x) # N: Revealed type is "builtins.int"
 def f2(x: IntTP[T]) -> IntTP[T]:
     return x
 
-f2((1, 2, 3)) # E: Argument 1 to "f2" has incompatible type "Tuple[int, int, int]"; expected "Tuple[int, <nothing>]"
+f2((1, 2, 3)) # E: Argument 1 to "f2" has incompatible type "Tuple[Literal[1], Literal[2], Literal[3]]"; expected "Tuple[builtins.int, <nothing>]"
 reveal_type(f2((1, 'x'))) # N: Revealed type is "Tuple[builtins.int, builtins.str]"
 
 [builtins fixtures/for.pyi]
@@ -859,13 +855,11 @@ reveal_type(make_cb(1)) # N: Revealed type is "def (*Any, **Any) -> builtins.int
 def use_cb(arg: T, cb: C2[T]) -> Node[T]:
     return cb(arg, arg)
 
-use_cb(1, 1) # E: Argument 2 to "use_cb" has incompatible type "int"; expected "Callable[[int, int], Node[int]]"
+use_cb(1, 1) # E: Argument 2 to "use_cb" has incompatible type "Literal[1]"; expected "Callable[[builtins.int, builtins.int], Node[builtins.int]]"
 my_cb: C2[int]
 use_cb('x', my_cb) # E: Argument 2 to "use_cb" has incompatible type "Callable[[int, int], Node[int]]"; expected "Callable[[str, str], Node[str]]"
 reveal_type(use_cb(1, my_cb)) # N: Revealed type is "__main__.Node[builtins.int]"
 [builtins fixtures/tuple.pyi]
-
-[out]
 
 [case testGenericTypeAliasesPEPBasedExample]
 from typing import TypeVar, List, Tuple

@@ -7498,7 +7498,7 @@ def t() -> Tuple[str]: ...
 [builtins fixtures/list.pyi]
 [out]
 ==
-main:5: error: Incompatible return value type (got "Tuple[int, str]", expected "Tuple[int, int]")
+main:5: error: Incompatible return value type (got "Tuple[Literal[1], str]", expected "Tuple[builtins.int, builtins.int]")
 main:8: error: List item 1 has incompatible type "Tuple[str]"; expected "int"
 
 [case testUnpackInExpression2-only_when_nocache]
@@ -8264,10 +8264,15 @@ class C:
 [out]
 ==
 main:5: error: Cannot assign to final name "x"
+main:5: error: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 main:7: error: Cannot assign to final name "x"
+main:7: error: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 main:10: error: Cannot assign to final attribute "y"
+main:10: error: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 main:11: error: Cannot assign to final attribute "z"
+main:11: error: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 main:12: error: Cannot assign to final attribute "y"
+main:12: error: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 
 [case testFinalAddFinalVarOverrideFine]
 from mod import C
@@ -8297,9 +8302,13 @@ class C:
 [out]
 ==
 main:4: error: Cannot assign to final name "x"
+main:4: error: Incompatible types in assignment (expression has type "Literal[2]", base class "C" defined the type as "Literal[1]")
 main:6: error: Cannot assign to final attribute "y"
+main:6: error: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 main:8: error: Cannot assign to final name "y"
+main:8: error: Incompatible types in assignment (expression has type "Literal[2]", base class "C" defined the type as "Literal[1]")
 main:10: error: Cannot assign to final attribute "x"
+main:10: error: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
 
 [case testFinalAddFinalMethodOverrideFine]
 from mod import C

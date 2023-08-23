@@ -418,7 +418,7 @@ def bar() -> List[A]:
 
 def baz() -> Union[A, int]:
     b = True
-    return a.A() if b else 10  # E: Incompatible return value type (got "Union[a.A, int]", expected "Union[b.A, int]")
+    return a.A() if b else 10  # E: Incompatible return value type (got "Union[a.A, Literal[10]]", expected "Union[b.A, builtins.int]")
 
 def spam() -> Optional[A]:
     return a.A()  # E: Incompatible return value type (got "a.A", expected "Optional[b.A]")

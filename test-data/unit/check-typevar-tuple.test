@@ -422,8 +422,8 @@ def foo(*args: Unpack[Tuple[int, str]]) -> None:
     reveal_type(args)  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
 
 foo(0, "foo")
-foo(0, 1)  # E: Argument 2 to "foo" has incompatible type "int"; expected "Unpack[Tuple[int, str]]"
-foo("foo", "bar")  # E: Argument 1 to "foo" has incompatible type "str"; expected "Unpack[Tuple[int, str]]"
+foo(0, 1)  # E: Argument 2 to "foo" has incompatible type "Literal[1]"; expected "Unpack[Tuple[builtins.int, str]]"
+foo("foo", "bar")  # E: Argument 1 to "foo" has incompatible type "Literal['foo']"; expected "Unpack[Tuple[int, builtins.str]]"
 foo(0, "foo", 1)  # E: Invalid number of arguments
 foo(0)  # E: Invalid number of arguments
 foo()  # E: Invalid number of arguments
@@ -453,9 +453,9 @@ def foo2(*args: Unpack[Tuple[str, Unpack[Tuple[int, ...]], bool, bool]]) -> None
     # reveal_type(args[1])
 
 foo2("bar", 1, 2, 3, False, True)
-foo2(0, 1, 2, 3, False, True)  # E: Argument 1 to "foo2" has incompatible type "int"; expected "Unpack[Tuple[str, Unpack[Tuple[int, ...]], bool, bool]]"
-foo2("bar", "bar", 2, 3, False, True)  # E: Argument 2 to "foo2" has incompatible type "str"; expected "Unpack[Tuple[str, Unpack[Tuple[int, ...]], bool, bool]]"
-foo2("bar", 1, 2, 3, 4, True)  # E: Argument 5 to "foo2" has incompatible type "int"; expected "Unpack[Tuple[str, Unpack[Tuple[int, ...]], bool, bool]]"
+foo2(0, 1, 2, 3, False, True)  # E: Argument 1 to "foo2" has incompatible type "Literal[0]"; expected "Unpack[Tuple[str, Unpack[Tuple[builtins.int, ...]], bool, bool]]"
+foo2("bar", "bar", 2, 3, False, True)  # E: Argument 2 to "foo2" has incompatible type "Literal['bar']"; expected "Unpack[Tuple[builtins.str, Unpack[Tuple[int, ...]], bool, bool]]"
+foo2("bar", 1, 2, 3, 4, True)  # E: Argument 5 to "foo2" has incompatible type "Literal[4]"; expected "Unpack[Tuple[str, Unpack[Tuple[builtins.int, ...]], bool, bool]]"
 foo2(*("bar", 1, 2, 3, False, True))
 [builtins fixtures/tuple.pyi]
 

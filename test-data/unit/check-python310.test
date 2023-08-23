@@ -1572,7 +1572,8 @@ reveal_type(AST.__match_args__)  # N: Revealed type is "Tuple[()]"
 reveal_type(stmt.__match_args__)  # N: Revealed type is "Tuple[()]"
 reveal_type(AnnAssign.__match_args__)  # N: Revealed type is "Tuple[Literal['target']?, Literal['annotation']?, Literal['value']?, Literal['simple']?]"
 
-AnnAssign.__match_args__ = ('a', 'b', 'c', 'd')  # E: Cannot assign to "__match_args__"
+AnnAssign.__match_args__ = ('a', 'b', 'c', 'd')  # E: Cannot assign to "__match_args__" \
+                                                 # E: Incompatible types in assignment (expression has type "Tuple[Literal['a'], Literal['b'], Literal['c'], Literal['d']]", variable has type "Tuple[Literal['target'], Literal['annotation'], Literal['value'], Literal['simple']]")
 __match_args__ = 0
 
 def f(x: AST) -> None:

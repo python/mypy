@@ -44,12 +44,11 @@ main:12: error: Argument 1 to "TcpPacketId" has incompatible type "int"; expecte
 from typing import NewType, Tuple
 TwoTuple = NewType('TwoTuple', Tuple[int, str])
 a = TwoTuple((3, "a"))
-b = TwoTuple(("a", 3))  # E: Argument 1 to "TwoTuple" has incompatible type "Tuple[str, int]"; expected "Tuple[int, str]"
+b = TwoTuple(("a", 3))  # E: Argument 1 to "TwoTuple" has incompatible type "Tuple[Literal['a'], Literal[3]]"; expected "Tuple[builtins.int, builtins.str]"
 
 reveal_type(a[0])  # N: Revealed type is "builtins.int"
 reveal_type(a[1])  # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testNewTypeWithLists]
 from typing import NewType, List

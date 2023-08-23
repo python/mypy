@@ -2882,7 +2882,7 @@ def also_works() -> Tuple[Literal[1]]:
 
 def invalid_literal_value() -> Tuple[Literal[1]]:
     x: Final = (2,)
-    return x  # E: Incompatible return value type (got "Tuple[int]", expected "Tuple[Literal[1]]")
+    return x  # E: Incompatible return value type (got "Tuple[Literal[2]]", expected "Tuple[Literal[1]]")
 
 def invalid_literal_type() -> Tuple[Literal[1]]:
     x: Final = (True,)
@@ -2890,15 +2890,15 @@ def invalid_literal_type() -> Tuple[Literal[1]]:
 
 def incorrect_return1() -> Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]:
     if x:
-        return (False, 5)  # E: Incompatible return value type (got "Tuple[bool, int]", expected "Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]")
+        return (False, 5)  # E: Incompatible return value type (got "Tuple[Literal[False], Literal[5]]", expected "Union[Tuple[Literal[True], builtins.int], Tuple[Literal[False], str]]")
     else:
-        return (True, 'oops')  # E: Incompatible return value type (got "Tuple[bool, str]", expected "Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]")
+        return (True, 'oops')  # E: Incompatible return value type (got "Tuple[Literal[True], Literal['oops']]", expected "Union[Tuple[Literal[True], int], Tuple[Literal[False], builtins.str]]")
 
 def incorrect_return2() -> Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]:
     if x:
-        return (bool(), 5)  # E: Incompatible return value type (got "Tuple[bool, int]", expected "Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]")
+        return (bool(), 5)  # E: Incompatible return value type (got "Tuple[bool, Literal[5]]", expected "Union[Tuple[Literal[True], builtins.int], Tuple[Literal[False], str]]")
     else:
-        return (bool(), 'oops')  # E: Incompatible return value type (got "Tuple[bool, str]", expected "Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]")
+        return (bool(), 'oops')  # E: Incompatible return value type (got "Tuple[bool, Literal['oops']]", expected "Union[Tuple[Literal[True], int], Tuple[Literal[False], builtins.str]]")
 [builtins fixtures/bool.pyi]
 
 [case testLiteralSubtypeContext]
