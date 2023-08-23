@@ -11,6 +11,7 @@ import collections.abc
 import copy
 import enum
 import importlib
+import importlib.machinery
 import inspect
 import os
 import pkgutil
@@ -25,7 +26,7 @@ import warnings
 from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
-from typing import Any, Generic, Iterator, TypeVar, Union
+from typing import AbstractSet, Any, Generic, Iterator, TypeVar, Union
 from typing_extensions import get_origin, is_typeddict
 
 import mypy.build
@@ -1671,34 +1672,64 @@ def get_typeshed_stdlib_modules(
     return modules
 
 
-def get_importable_stdlib_modules() -> set[str] | None:
-    """If possible, return all importable stdlib modules at runtime.
+def get_importable_stdlib_modules() -> set[str]:
+    """Return all importable stdlib modules at runtime."""
+    all_stdlib_modules: AbstractSet[str]
+    if sys.version_info >= (3, 10):
+        all_stdlib_modules = sys.stdlib_module_names
+    else:
+        python_exe_dir = Path(sys.executable).parent
+        all_stdlib_modules = {
+            m.name
+            for m in pkgutil.iter_modules()
+            if (
+                isinstance(m.module_finder, importlib.machinery.FileFinder)
+                and python_exe_dir in Path(m.module_finder.path).parents
+            )
+        }
+        all_stdlib_modules.update(sys.builtin_module_names)
 
-    This isn't so easy on Python <3.10; just return `None` on older versions to signal failure.
-    """
-    if sys.version_info < (3, 10):
-        return None
-    modules: set[str] = set()
-    for module in sys.stdlib_module_names:
-        if module in ANNOYING_STDLIB_MODULES:
+    importable_stdlib_modules: set[str] = set()
+    for module_name in all_stdlib_modules:
+        if module_name in ANNOYING_STDLIB_MODULES:
             continue
+
         try:
-            runtime = silent_import_module(module)
+            runtime = silent_import_module(module_name)
         except ImportError:
             continue
         else:
-            modules.add(module)
+            importable_stdlib_modules.add(module_name)
+
+        try:
+            # some stdlib modules (e.g. `nt`) don't have __path__ set...
+            runtime_path = runtime.__path__
+            runtime_name = runtime.__name__
+        except AttributeError:
+            continue
+
+        for submodule in pkgutil.walk_packages(runtime_path, runtime_name + "."):
+            submodule_name = submodule.name
+
+            # There are many annoying *.__main__ stdlib modules,
+            # and including stubs for them isn't really that useful anyway:
+            # tkinter.__main__ opens a tkinter windows; unittest.__main__ raises SystemExit; etc.
+            #
+            # The idlelib.* submodules are similarly annoying in opening random tkinter windows,
+            # and we're unlikely to ever add stubs for idlelib in typeshed
+            # (see discussion in https://github.com/python/typeshed/pull/9193)
+            if submodule_name.endswith(".__main__") or submodule_name.startswith("idlelib."):
+                continue
+
             try:
-                # some stdlib modules (e.g. `nt`) don't have __path__ set...
-                runtime_path = runtime.__path__
-                runtime_name = runtime.__name__
-            except AttributeError:
+                silent_import_module(submodule_name)
+            # importing multiprocessing.popen_forkserver on Windows raises AttributeError...
+            except Exception:
                 continue
             else:
-                modules.update(
-                    m.name for m in pkgutil.walk_packages(runtime_path, runtime_name + ".")
-                )
-    return modules
+                importable_stdlib_modules.add(submodule_name)
+
+    return importable_stdlib_modules
 
 
 def get_allowlist_entries(allowlist_file: str) -> Iterator[str]:
@@ -1756,7 +1787,7 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
             )
             return 1
         typeshed_modules = get_typeshed_stdlib_modules(args.custom_typeshed_dir)
-        runtime_modules = get_importable_stdlib_modules() or set()
+        runtime_modules = get_importable_stdlib_modules()
         modules = sorted((typeshed_modules | runtime_modules) - ANNOYING_STDLIB_MODULES)
 
     if not modules:
