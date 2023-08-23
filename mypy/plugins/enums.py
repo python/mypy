@@ -157,12 +157,14 @@ def enum_value_callback(ctx: mypy.plugin.AttributeContext) -> Type:
         # The value-type is still known.
         if isinstance(ctx.type, Instance):
             return _infer_enum_value_type(ctx.type.type, ctx)
-        elif isinstance(ctx.type, UnionType) and all(
-            isinstance(item, Instance) for item in ctx.type.items
-        ):
-            return make_simplified_union(
-                [_infer_enum_value_type(item.type, ctx) for item in ctx.type.items]
-            )
+        elif isinstance(ctx.type, UnionType):
+            union_items = []
+            for item in ctx.type.items:
+                proper_item = get_proper_type(item)
+                if not isinstance(proper_item, Instance):
+                    return ctx.default_attr_type
+                union_items.append(_infer_enum_value_type(proper_item.type, ctx))
+            return make_simplified_union(union_items)
         return ctx.default_attr_type
 
     assert isinstance(ctx.type, Instance)
