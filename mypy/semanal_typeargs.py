@@ -18,7 +18,7 @@ from mypy.nodes import ARG_STAR, Block, ClassDef, Context, FakeInfo, FuncItem, M
 from mypy.options import Options
 from mypy.scope import Scope
 from mypy.subtypes import is_same_type, is_subtype
-from mypy.typeanal import set_any_tvars
+from mypy.typeanal import fix_type_var_tuple_argument, set_any_tvars
 from mypy.types import (
     AnyType,
     CallableType,
@@ -143,7 +143,26 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         if isinstance(info, FakeInfo):
             return  # https://github.com/python/mypy/issues/11079
         t.args = tuple(flatten_nested_tuples(t.args))
-        # TODO: fix #15410 and #15411.
+        if t.type.has_type_var_tuple_type:
+            # Regular Instances are already validated in typeanal.py.
+            # TODO: do something with partial overlap (probably just reject).
+            # also in other places where split_with_prefix_and_suffix() is used.
+            correct = len(t.args) >= len(t.type.type_vars) - 1
+            if any(
+                isinstance(a, UnpackType) and isinstance(get_proper_type(a.type), Instance)
+                for a in t.args
+            ):
+                correct = True
+            if not correct:
+                exp_len = f"at least {len(t.type.type_vars) - 1}"
+                self.fail(
+                    f"Bad number of arguments, expected: {exp_len}, given: {len(t.args)}",
+                    t,
+                    code=codes.TYPE_ARG,
+                )
+                any_type = AnyType(TypeOfAny.from_error)
+                t.args = (any_type,) * len(t.type.type_vars)
+                fix_type_var_tuple_argument(any_type, t)
         self.validate_args(info.name, t.args, info.defn.type_vars, t)
         super().visit_instance(t)
 

@@ -322,6 +322,7 @@ class TypeAliasType(Type):
             assert isinstance(self.alias.target, Instance)  # type: ignore[misc]
             return self.alias.target.copy_modified(args=self.args)
 
+        # TODO: this logic duplicates the one in expand_type_by_instance().
         if self.alias.tvar_tuple_index is None:
             mapping = {v.id: s for (v, s) in zip(self.alias.alias_tvars, self.args)}
         else:

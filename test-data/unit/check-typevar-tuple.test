@@ -922,3 +922,81 @@ def pipeline(*xs: Unpack[Tuple[int, Unpack[Tuple[float, ...]], bool]]) -> None:
     for x in xs:
         reveal_type(x)  # N: Revealed type is "builtins.float"
 [builtins fixtures/tuple.pyi]
+
+[case testFixedUnpackItemInInstanceArguments]
+from typing import TypeVar, Callable, Tuple, Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+T = TypeVar("T")
+S = TypeVar("S")
+Ts = TypeVarTuple("Ts")
+
+class C(Generic[T, Unpack[Ts], S]):
+    prefix: T
+    suffix: S
+    middle: Tuple[Unpack[Ts]]
+
+Ints = Tuple[int, int]
+c: C[Unpack[Ints]]
+reveal_type(c.prefix)  # N: Revealed type is "builtins.int"
+reveal_type(c.suffix)  # N: Revealed type is "builtins.int"
+reveal_type(c.middle)  # N: Revealed type is "Tuple[()]"
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicUnpackItemInInstanceArguments]
+from typing import TypeVar, Callable, Tuple, Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+T = TypeVar("T")
+S = TypeVar("S")
+Ts = TypeVarTuple("Ts")
+
+class Other(Generic[Unpack[Ts]]): ...
+class C(Generic[T, Unpack[Ts], S]):
+    prefix: T
+    suffix: S
+    x: Tuple[Unpack[Ts]]
+    y: Callable[[Unpack[Ts]], None]
+    z: Other[Unpack[Ts]]
+
+Ints = Tuple[int, ...]
+c: C[Unpack[Ints]]
+reveal_type(c.prefix)  # N: Revealed type is "builtins.int"
+reveal_type(c.suffix)  # N: Revealed type is "builtins.int"
+reveal_type(c.x)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+reveal_type(c.y)  # N: Revealed type is "def (*builtins.int)"
+reveal_type(c.z)  # N: Revealed type is "__main__.Other[Unpack[builtins.tuple[builtins.int, ...]]]"
+[builtins fixtures/tuple.pyi]
+
+[case testTooFewItemsInInstanceArguments]
+from typing import Generic, TypeVar
+from typing_extensions import TypeVarTuple, Unpack
+
+T = TypeVar("T")
+S = TypeVar("S")
+Ts = TypeVarTuple("Ts")
+class C(Generic[T, Unpack[Ts], S]): ...
+
+c: C[int]  # E: Bad number of arguments, expected: at least 2, given: 1
+reveal_type(c)  # N: Revealed type is "__main__.C[Any, Unpack[builtins.tuple[Any, ...]], Any]"
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicClassUpperBoundCheck]
+from typing import Tuple, TypeVar, Generic
+from typing_extensions import Unpack, TypeVarTuple
+
+class A: ...
+class B: ...
+class C: ...
+class D: ...
+
+T = TypeVar("T", bound=int)
+S = TypeVar("S", bound=str)
+Ts = TypeVarTuple("Ts")
+
+class G(Generic[T, Unpack[Ts], S]): ...
+First = Tuple[A, B]
+Second = Tuple[C, D]
+x: G[Unpack[First], Unpack[Second]]  # E: Type argument "A" of "G" must be a subtype of "int" \
+                                     # E: Type argument "D" of "G" must be a subtype of "str"
+[builtins fixtures/tuple.pyi]

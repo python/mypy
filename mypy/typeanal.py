@@ -1795,6 +1795,13 @@ def fix_instance(
         fix_type_var_tuple_argument(any_type, t)
 
         return
+
+    if t.type.has_type_var_tuple_type:
+        # This can be only correctly analyzed when all arguments are fully
+        # analyzed, because there may be a variadic item among them, so we
+        # do this in semanal_typeargs.py.
+        return
+
     # Invalid number of type parameters.
     fail(
         wrong_type_arg_count(len(t.type.type_vars), str(len(t.args)), t.type.name),
@@ -1805,7 +1812,6 @@ def fix_instance(
     # otherwise the type checker may crash as it expects
     # things to be right.
     t.args = tuple(AnyType(TypeOfAny.from_error) for _ in t.type.type_vars)
-    fix_type_var_tuple_argument(AnyType(TypeOfAny.from_error), t)
     t.invalid = True
 
 
