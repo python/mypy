@@ -25,8 +25,8 @@ from mypy.types import (
     LiteralType,
     ProperType,
     Type,
-    get_proper_type,
     UnionType,
+    get_proper_type,
 )
 
 ENUM_NAME_ACCESS: Final = {f"{prefix}.name" for prefix in ENUM_BASES} | {
@@ -161,10 +161,7 @@ def enum_value_callback(ctx: mypy.plugin.AttributeContext) -> Type:
             isinstance(item, Instance) for item in ctx.type.items
         ):
             return make_simplified_union(
-                [
-                    _infer_enum_value_type(item.type, ctx)
-                    for item in ctx.type.items
-                ]
+                [_infer_enum_value_type(item.type, ctx) for item in ctx.type.items]
             )
         return ctx.default_attr_type
 
