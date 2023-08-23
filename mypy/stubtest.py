@@ -1678,16 +1678,17 @@ def get_importable_stdlib_modules() -> set[str]:
     if sys.version_info >= (3, 10):
         all_stdlib_modules = sys.stdlib_module_names
     else:
+        all_stdlib_modules = set(sys.builtin_module_names)
         python_exe_dir = Path(sys.executable).parent
-        all_stdlib_modules = {
-            m.name
-            for m in pkgutil.iter_modules()
-            if (
-                isinstance(m.module_finder, importlib.machinery.FileFinder)
-                and python_exe_dir in Path(m.module_finder.path).parents
-            )
-        }
-        all_stdlib_modules.update(sys.builtin_module_names)
+        for m in pkgutil.iter_modules():
+            finder = m.module_finder
+            if isinstance(finder, importlib.machinery.FileFinder):
+                finder_path = Path(finder.path)
+                if (
+                    python_exe_dir in finder_path.parents
+                    and "site-packages" not in finder_path.parts
+                ):
+                    all_stdlib_modules.add(m.name)
 
     importable_stdlib_modules: set[str] = set()
     for module_name in all_stdlib_modules:
