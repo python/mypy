@@ -459,10 +459,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # TODO: should these be re-analyzed to get rid of this inconsistency?
         count = len(an_args)
         if count > 0:
-            first_arg = get_proper_type(an_args[0])
-            if not (count == 1 and isinstance(first_arg, (Parameters, ParamSpecType, AnyType))):
-                return [Parameters(an_args, [ARG_POS] * count, [None] * count)]
-        return list(an_args)
+            if count == 1 and isinstance(get_proper_type(an_args[0]), AnyType):
+                # Single Any is interpreted as ..., rather that a single argument with Ay type.
+                # I didn't find this in the PEP, but it sounds reasonable.
+                return list(an_args)
+            if any(isinstance(a, (Parameters, ParamSpecType)) for a in an_args):
+                # Nested parameter specifications are not allowed.
+                return list(an_args)
+        return [Parameters(an_args, [ARG_POS] * count, [None] * count)]
 
     def cannot_resolve_type(self, t: UnboundType) -> None:
         # TODO: Move error message generation to messages.py. We'd first
