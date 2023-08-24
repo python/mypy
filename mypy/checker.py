@@ -5804,7 +5804,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # respectively
         original_vartype = self.lookup_type(node)
         if not is_walrus_value:
-            # We don't check `:=` values in expresions like `(a := A())`,
+            # We don't check `:=` values in expressions like `(a := A())`,
             # because they produce two error messages.
             self._check_for_truthy_type(original_vartype, node)
         vartype = try_expanding_sum_type_to_union(original_vartype, "builtins.bool")
