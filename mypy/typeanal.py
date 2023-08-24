@@ -460,7 +460,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         count = len(an_args)
         if count > 0:
             if count == 1 and isinstance(get_proper_type(an_args[0]), AnyType):
-                # Single Any is interpreted as ..., rather that a single argument with Ay type.
+                # Single Any is interpreted as ..., rather that a single argument with Any type.
                 # I didn't find this in the PEP, but it sounds reasonable.
                 return list(an_args)
             if any(isinstance(a, (Parameters, ParamSpecType)) for a in an_args):
