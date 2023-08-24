@@ -458,14 +458,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # These do not support mypy_extensions VarArgs, etc. as they were already analyzed
         # TODO: should these be re-analyzed to get rid of this inconsistency?
         count = len(an_args)
-        if count > 0:
-            if count == 1 and isinstance(get_proper_type(an_args[0]), AnyType):
-                # Single Any is interpreted as ..., rather that a single argument with Any type.
-                # I didn't find this in the PEP, but it sounds reasonable.
-                return list(an_args)
-            if any(isinstance(a, (Parameters, ParamSpecType)) for a in an_args):
-                # Nested parameter specifications are not allowed.
-                return list(an_args)
+        if count == 0:
+            return []
+        if count == 1 and isinstance(get_proper_type(an_args[0]), AnyType):
+            # Single Any is interpreted as ..., rather that a single argument with Any type.
+            # I didn't find this in the PEP, but it sounds reasonable.
+            return list(an_args)
+        if any(isinstance(a, (Parameters, ParamSpecType)) for a in an_args):
+            # Nested parameter specifications are not allowed.
+            return list(an_args)
         return [Parameters(an_args, [ARG_POS] * count, [None] * count)]
 
     def cannot_resolve_type(self, t: UnboundType) -> None:
