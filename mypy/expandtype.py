@@ -409,10 +409,10 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                 # Normalize Tuple[*Tuple[X, ...]] -> Tuple[X, ...]
                 item = items[0]
                 if isinstance(item, UnpackType):
-                    assert isinstance(item.type, ProperType)
-                    if isinstance(item.type, Instance):
-                        assert item.type.type.fullname == "builtins.tuple"
-                        return item.type
+                    unpacked = get_proper_type(item.type)
+                    if isinstance(unpacked, Instance):
+                        assert unpacked.type.fullname == "builtins.tuple"
+                        return unpacked
             fallback = t.partial_fallback.accept(self)
             assert isinstance(fallback, ProperType) and isinstance(fallback, Instance)
             return t.copy_modified(items=items, fallback=fallback)
