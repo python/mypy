@@ -1198,12 +1198,12 @@ def add_class_tvars(
     # (i.e. appear in the return type of the class object on which the method was accessed).
     if isinstance(t, CallableType):
         tvars = original_vars if original_vars is not None else []
+        t = freshen_all_functions_type_vars(t)
         if is_classmethod:
-            t = freshen_all_functions_type_vars(t)
             t = bind_self(t, original_type, is_classmethod=True)
             assert isuper is not None
             t = expand_type_by_instance(t, isuper)
-            freeze_all_type_vars(t)
+        freeze_all_type_vars(t)
         return t.copy_modified(variables=list(tvars) + list(t.variables))
     elif isinstance(t, Overloaded):
         return Overloaded(

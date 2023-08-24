@@ -3035,10 +3035,10 @@ main:15: error: Unsupported left operand type for >= ("NoCmp")
 [case testAttrsIncrementalDunder]
 from a import A
 reveal_type(A)  # N: Revealed type is "def (a: builtins.int) -> a.A"
-reveal_type(A.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
-reveal_type(A.__le__)  # N: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
-reveal_type(A.__gt__)  # N: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
-reveal_type(A.__ge__)  # N: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
+reveal_type(A.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`3, other: _AT`3) -> builtins.bool"
+reveal_type(A.__le__)  # N: Revealed type is "def [_AT] (self: _AT`4, other: _AT`4) -> builtins.bool"
+reveal_type(A.__gt__)  # N: Revealed type is "def [_AT] (self: _AT`5, other: _AT`5) -> builtins.bool"
+reveal_type(A.__ge__)  # N: Revealed type is "def [_AT] (self: _AT`6, other: _AT`6) -> builtins.bool"
 
 A(1) < A(2)
 A(1) <= A(2)
@@ -3072,10 +3072,10 @@ class A:
 [stale]
 [out2]
 main:2: note: Revealed type is "def (a: builtins.int) -> a.A"
-main:3: note: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
-main:4: note: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
-main:5: note: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
-main:6: note: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
+main:3: note: Revealed type is "def [_AT] (self: _AT`1, other: _AT`1) -> builtins.bool"
+main:4: note: Revealed type is "def [_AT] (self: _AT`2, other: _AT`2) -> builtins.bool"
+main:5: note: Revealed type is "def [_AT] (self: _AT`3, other: _AT`3) -> builtins.bool"
+main:6: note: Revealed type is "def [_AT] (self: _AT`4, other: _AT`4) -> builtins.bool"
 main:15: error: Unsupported operand types for < ("A" and "int")
 main:16: error: Unsupported operand types for <= ("A" and "int")
 main:17: error: Unsupported operand types for > ("A" and "int")
@@ -3963,10 +3963,10 @@ class A:
 tmp/b.py:3: note: Revealed type is "def (a: builtins.int) -> a.A"
 tmp/b.py:4: note: Revealed type is "def (builtins.object, builtins.object) -> builtins.bool"
 tmp/b.py:5: note: Revealed type is "def (builtins.object, builtins.object) -> builtins.bool"
-tmp/b.py:6: note: Revealed type is "def [_DT] (self: _DT`-1, other: _DT`-1) -> builtins.bool"
-tmp/b.py:7: note: Revealed type is "def [_DT] (self: _DT`-1, other: _DT`-1) -> builtins.bool"
-tmp/b.py:8: note: Revealed type is "def [_DT] (self: _DT`-1, other: _DT`-1) -> builtins.bool"
-tmp/b.py:9: note: Revealed type is "def [_DT] (self: _DT`-1, other: _DT`-1) -> builtins.bool"
+tmp/b.py:6: note: Revealed type is "def [_DT] (self: _DT`1, other: _DT`1) -> builtins.bool"
+tmp/b.py:7: note: Revealed type is "def [_DT] (self: _DT`2, other: _DT`2) -> builtins.bool"
+tmp/b.py:8: note: Revealed type is "def [_DT] (self: _DT`3, other: _DT`3) -> builtins.bool"
+tmp/b.py:9: note: Revealed type is "def [_DT] (self: _DT`4, other: _DT`4) -> builtins.bool"
 tmp/b.py:18: error: Unsupported operand types for < ("A" and "int")
 tmp/b.py:19: error: Unsupported operand types for <= ("A" and "int")
 tmp/b.py:20: error: Unsupported operand types for > ("A" and "int")
@@ -6325,7 +6325,7 @@ reveal_type(D.meth)
 reveal_type(D().meth)
 [out]
 [out2]
-tmp/m.py:4: note: Revealed type is "def [Self <: lib.C] (self: Self`0, other: Self`0) -> Self`0"
+tmp/m.py:4: note: Revealed type is "def [Self <: lib.C] (self: Self`1, other: Self`1) -> Self`1"
 tmp/m.py:5: note: Revealed type is "def (other: m.D) -> m.D"
 
 [case testIncrementalNestedGenericCallableCrash]
