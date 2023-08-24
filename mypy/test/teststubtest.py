@@ -1068,6 +1068,26 @@ class StubtestUnit(unittest.TestCase):
             """,
             error="spam",
         )
+        yield Case(
+            stub="""
+            from typing_extensions import Final, Literal
+            class BytesEnum(bytes, enum.Enum):
+                a: bytes
+            FOO: Literal[BytesEnum.a]
+            BAR: Final = BytesEnum.a
+            BAZ: BytesEnum
+            EGGS: bytes
+            """,
+            runtime="""
+            class BytesEnum(bytes, enum.Enum):
+                a = b'foo'
+            FOO = BytesEnum.a
+            BAR = BytesEnum.a
+            BAZ = BytesEnum.a
+            EGGS = BytesEnum.a
+            """,
+            error=None,
+        )
 
     @collect_cases
     def test_decorator(self) -> Iterator[Case]:
