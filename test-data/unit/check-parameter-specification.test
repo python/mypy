@@ -349,12 +349,16 @@ T = TypeVar('T')
 def register(f: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> Callable[P, T]: ...
 
 def f(x: int) -> None: pass
+def g(x: int, y: str) -> None: pass
 
 reveal_type(register(lambda: f(1)))  # N: Revealed type is "def ()"
 reveal_type(register(lambda x: f(x), x=1))  # N: Revealed type is "def (x: Literal[1]?)"
 register(lambda x: f(x))  # E: Cannot infer type of lambda \
                           # E: Argument 1 to "register" has incompatible type "Callable[[Any], None]"; expected "Callable[[], None]"
 register(lambda x: f(x), y=1)  # E: Argument 1 to "register" has incompatible type "Callable[[Arg(int, 'x')], None]"; expected "Callable[[Arg(int, 'y')], None]"
+reveal_type(register(lambda x: f(x), 1))  # N: Revealed type is "def (Literal[1]?)"
+reveal_type(register(lambda x, y: g(x, y), 1, "a"))  # N: Revealed type is "def (Literal[1]?, Literal['a']?)"
+reveal_type(register(lambda x, y: g(x, y), 1, y="a"))  # N: Revealed type is "def (Literal[1]?, y: Literal['a']?)"
 [builtins fixtures/dict.pyi]
 
 [case testParamSpecInvalidCalls]
