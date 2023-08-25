@@ -1741,3 +1741,26 @@ def bar(x): ...
 
 reveal_type(bar)  # N: Revealed type is "Overload(def (x: builtins.int) -> builtins.float, def (x: builtins.str) -> builtins.str)"
 [builtins fixtures/paramspec.pyi]
+
+[case testParamSpecDecoratorOverloadNoCrashOnInvalidTypeVar]
+from typing import Any, Callable, List
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+T = 1
+
+Alias = Callable[P, List[T]]  # type: ignore
+def dec(fn: Callable[P, T]) -> Alias[P, T]: ...  # type: ignore
+f: Any
+dec(f)  # No crash
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecErrorNestedParams]
+from typing import Generic
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+class C(Generic[P]): ...
+c: C[int, [int, str], str]  # E: Nested parameter specifications are not allowed
+reveal_type(c)  # N: Revealed type is "__main__.C[Any]"
+[builtins fixtures/paramspec.pyi]

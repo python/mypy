@@ -458,11 +458,30 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # These do not support mypy_extensions VarArgs, etc. as they were already analyzed
         # TODO: should these be re-analyzed to get rid of this inconsistency?
         count = len(an_args)
-        if count > 0:
-            first_arg = get_proper_type(an_args[0])
-            if not (count == 1 and isinstance(first_arg, (Parameters, ParamSpecType, AnyType))):
-                return [Parameters(an_args, [ARG_POS] * count, [None] * count)]
-        return list(an_args)
+        if count == 0:
+            return []
+        if count == 1 and isinstance(get_proper_type(an_args[0]), AnyType):
+            # Single Any is interpreted as ..., rather that a single argument with Any type.
+            # I didn't find this in the PEP, but it sounds reasonable.
+            return list(an_args)
+        if any(isinstance(a, (Parameters, ParamSpecType)) for a in an_args):
+            if len(an_args) > 1:
+                first_wrong = next(
+                    arg for arg in an_args if isinstance(arg, (Parameters, ParamSpecType))
+                )
+                self.fail(
+                    "Nested parameter specifications are not allowed",
+                    first_wrong,
+                    code=codes.VALID_TYPE,
+                )
+                return [AnyType(TypeOfAny.from_error)]
+            return list(an_args)
+        first = an_args[0]
+        return [
+            Parameters(
+                an_args, [ARG_POS] * count, [None] * count, line=first.line, column=first.column
+            )
+        ]
 
     def cannot_resolve_type(self, t: UnboundType) -> None:
         # TODO: Move error message generation to messages.py. We'd first
@@ -503,7 +522,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         names: list[str | None] = [None] * len(args)
 
         pre = Parameters(
-            args + pre.arg_types, [ARG_POS] * len(args) + pre.arg_kinds, names + pre.arg_names
+            args + pre.arg_types,
+            [ARG_POS] * len(args) + pre.arg_kinds,
+            names + pre.arg_names,
+            line=t.line,
+            column=t.column,
         )
         return ps.copy_modified(prefix=pre) if isinstance(ps, ParamSpecType) else pre
 
@@ -913,7 +936,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if params:
                 ts, kinds, names = params
                 # bind these types
-                return Parameters(self.anal_array(ts), kinds, names)
+                return Parameters(self.anal_array(ts), kinds, names, line=t.line, column=t.column)
             else:
                 return AnyType(TypeOfAny.from_error)
         else:
