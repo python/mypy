@@ -82,6 +82,7 @@ from mypy.types import (
     UnionType,
     UnpackType,
     callable_with_ellipsis,
+    flatten_nested_tuples,
     flatten_nested_unions,
     get_proper_type,
     has_type_vars,
@@ -738,8 +739,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if info.special_alias:
                 return instantiate_type_alias(
                     info.special_alias,
-                    # TODO: should we allow NamedTuples generic in ParamSpec and TypeVarTuple?
-                    self.anal_array(args),
+                    # TODO: should we allow NamedTuples generic in ParamSpec?
+                    self.anal_array(args, allow_unpack=True),
                     self.fail,
                     False,
                     ctx,
@@ -757,7 +758,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return instantiate_type_alias(
                     info.special_alias,
                     # TODO: should we allow TypedDicts generic in ParamSpec?
-                    self.anal_array(args),
+                    self.anal_array(args, allow_unpack=True),
                     self.fail,
                     False,
                     ctx,
@@ -945,7 +946,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return t
 
     def visit_unpack_type(self, t: UnpackType) -> Type:
-        raise NotImplementedError
+        if not self.allow_unpack:
+            self.fail(message_registry.INVALID_UNPACK_POSITION, t.type, code=codes.VALID_TYPE)
+            return AnyType(TypeOfAny.from_error)
+        return UnpackType(self.anal_type(t.type))
 
     def visit_parameters(self, t: Parameters) -> Type:
         raise NotImplementedError("ParamSpec literals cannot have unbound TypeVars")
@@ -1886,7 +1890,10 @@ def instantiate_type_alias(
     # TODO: we need to check args validity w.r.t alias.alias_tvars.
     # Otherwise invalid instantiations will be allowed in runtime context.
     # Note: in type context, these will be still caught by semanal_typeargs.
-    typ = TypeAliasType(node, args, ctx.line, ctx.column)
+    # Type aliases are special, since they can be expanded during semantic analysis,
+    # so we need to normalize them as soon as possible.
+    # TODO: can this cause an infinite recursion?
+    typ = TypeAliasType(node, flatten_nested_tuples(args), ctx.line, ctx.column)
     assert typ.alias is not None
     # HACK: Implement FlexibleAlias[T, typ] by expanding it to typ here.
     if (
