@@ -1687,7 +1687,13 @@ def get_importable_stdlib_modules() -> set[str]:
         for finder, module_group in modules_by_finder.items():
             if (
                 "site-packages" not in Path(finder.path).parents
-                and {"json", "_json", "_queue"} & module_group
+                # if "_queue" is present, it's most likely the module finder
+                # for stdlib extension modules;
+                # if "queue" is present, it's most likely the module finder
+                # for pure-Python stdlib modules.
+                # In either case, we'll want to add all the modules that the finder has to offer us.
+                # This is a bit hacky, but seems to work well in a cross-platform way.
+                and {"_queue", "queue"} & module_group
             ):
                 all_stdlib_modules.update(module_group)
 
@@ -1736,6 +1742,8 @@ def get_importable_stdlib_modules() -> set[str]:
             except KeyboardInterrupt:
                 raise
             # importing multiprocessing.popen_forkserver on Windows raises AttributeError...
+            # some submodules also appear to raise SystemExit as well on some Python versions
+            # (not sure exactly which)
             except BaseException:
                 continue
             else:
