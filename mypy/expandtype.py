@@ -336,6 +336,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                     arg_types=self.expand_types(t.arg_types),
                     ret_type=t.ret_type.accept(self),
                     type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None),
+                    imprecise_arg_kinds=(t.imprecise_arg_kinds or repl.imprecise_arg_kinds),
                 )
             elif isinstance(repl, ParamSpecType):
                 # We're substituting one ParamSpec for another; this can mean that the prefix
@@ -352,6 +353,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                     arg_names=t.arg_names[:-2] + prefix.arg_names + t.arg_names[-2:],
                     ret_type=t.ret_type.accept(self),
                     from_concatenate=t.from_concatenate or bool(repl.prefix.arg_types),
+                    imprecise_arg_kinds=(t.imprecise_arg_kinds or prefix.imprecise_arg_kinds),
                 )
 
         var_arg = t.var_arg()
