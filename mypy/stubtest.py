@@ -1724,8 +1724,10 @@ def get_importable_stdlib_modules() -> set[str]:
 
             try:
                 silent_import_module(submodule_name)
+            except KeyboardInterrupt:
+                raise
             # importing multiprocessing.popen_forkserver on Windows raises AttributeError...
-            except Exception:
+            except BaseException:
                 continue
             else:
                 importable_stdlib_modules.add(submodule_name)
