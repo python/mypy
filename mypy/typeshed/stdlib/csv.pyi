@@ -21,6 +21,9 @@ from _csv import (
     unregister_dialect as unregister_dialect,
     writer as writer,
 )
+
+if sys.version_info >= (3, 12):
+    from _csv import QUOTE_STRINGS as QUOTE_STRINGS, QUOTE_NOTNULL as QUOTE_NOTNULL
 from _typeshed import SupportsWrite
 from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
 from typing import Any, Generic, TypeVar, overload
@@ -57,6 +60,8 @@ __all__ = [
     "DictWriter",
     "unix_dialect",
 ]
+if sys.version_info >= (3, 12):
+    __all__ += ["QUOTE_STRINGS", "QUOTE_NOTNULL"]
 
 _T = TypeVar("_T")
 

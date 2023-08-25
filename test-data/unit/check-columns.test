@@ -27,7 +27,6 @@ A().f(1, 1) # E:10: Argument 2 to "f" of "A" has incompatible type "int"; expect
 (A().f(1, 'hello', 'hi')) # E:2: Too many arguments for "f" of "A"
 
 [case testColumnsInvalidArgumentType]
-# flags: --strict-optional
 def f(x: int, y: str) -> None: ...
 def g(*x: int) -> None: pass
 def h(**x: int) -> None: pass
@@ -386,10 +385,6 @@ f(g(
 ))
 x[0]
 [out]
-main:2:10:2:10: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main:6:3:6:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
-main:8:1:8:1: error: Value of type "int" is not indexable
-[out version>=3.8]
 main:2:10:2:17: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 main:6:3:7:1: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 main:8:1:8:4: error: Value of type "int" is not indexable

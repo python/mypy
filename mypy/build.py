@@ -31,22 +31,20 @@ from typing import (
     Callable,
     ClassVar,
     Dict,
-    Iterable,
+    Final,
     Iterator,
     Mapping,
     NamedTuple,
     NoReturn,
     Sequence,
     TextIO,
-    TypeVar,
 )
-from typing_extensions import Final, TypeAlias as _TypeAlias
-
-from mypy_extensions import TypedDict
+from typing_extensions import TypeAlias as _TypeAlias, TypedDict
 
 import mypy.semanal_main
 from mypy.checker import TypeChecker
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
+from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.messages import MessageBuilder
 from mypy.nodes import Import, ImportAll, ImportBase, ImportFrom, MypyFile, SymbolTable, TypeInfo
@@ -57,7 +55,6 @@ from mypy.util import (
     DecodeError,
     decode_python_encoding,
     get_mypy_comments,
-    get_top_two_prefixes,
     hash_digest,
     is_stub_package_file,
     is_sub_path,
@@ -93,12 +90,7 @@ from mypy.plugin import ChainedPlugin, Plugin, ReportConfigContext
 from mypy.plugins.default import DefaultPlugin
 from mypy.renaming import LimitedVariableRenameVisitor, VariableRenameVisitor
 from mypy.stats import dump_type_stats
-from mypy.stubinfo import (
-    is_legacy_bundled_package,
-    legacy_bundled_packages,
-    non_bundled_packages,
-    stub_package_name,
-)
+from mypy.stubinfo import legacy_bundled_packages, non_bundled_packages, stub_distribution_name
 from mypy.types import Type
 from mypy.typestate import reset_global_state, type_state
 from mypy.version import __version__
@@ -344,7 +336,9 @@ class CacheMeta(NamedTuple):
 
 
 # Metadata for the fine-grained dependencies file associated with a module.
-FgDepMeta = TypedDict("FgDepMeta", {"path": str, "mtime": int})
+class FgDepMeta(TypedDict):
+    path: str
+    mtime: int
 
 
 def cache_meta_from_dict(meta: dict[str, Any], data_json: str) -> CacheMeta:
@@ -2239,7 +2233,7 @@ class State:
         analyzer = SemanticAnalyzerPreAnalysis()
         with self.wrap_context():
             analyzer.visit_file(self.tree, self.xpath, self.id, options)
-        self.manager.errors.set_unreachable_lines(self.xpath, self.tree.unreachable_lines)
+        self.manager.errors.set_skipped_lines(self.xpath, self.tree.skipped_lines)
         # TODO: Do this while constructing the AST?
         self.tree.names = SymbolTable()
         if not self.tree.is_stub:
@@ -2665,14 +2659,18 @@ def find_module_and_diagnose(
         # search path or the module has not been installed.
 
         ignore_missing_imports = options.ignore_missing_imports
-        top_level, second_level = get_top_two_prefixes(id)
+
+        id_components = id.split(".")
         # Don't honor a global (not per-module) ignore_missing_imports
         # setting for modules that used to have bundled stubs, as
         # otherwise updating mypy can silently result in new false
         # negatives. (Unless there are stubs but they are incomplete.)
         global_ignore_missing_imports = manager.options.ignore_missing_imports
         if (
-            (is_legacy_bundled_package(top_level) or is_legacy_bundled_package(second_level))
+            any(
+                ".".join(id_components[:i]) in legacy_bundled_packages
+                for i in range(len(id_components), 0, -1)
+            )
             and global_ignore_missing_imports
             and not options.ignore_missing_imports_per_module
             and result is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
@@ -2780,16 +2778,29 @@ def module_not_found(
     else:
         daemon = manager.options.fine_grained_incremental
         msg, notes = reason.error_message_templates(daemon)
-        errors.report(line, 0, msg.format(module=target), code=codes.IMPORT)
-        top_level, second_level = get_top_two_prefixes(target)
-        if second_level in legacy_bundled_packages or second_level in non_bundled_packages:
-            top_level = second_level
+        if reason == ModuleNotFoundReason.NOT_FOUND:
+            code = codes.IMPORT_NOT_FOUND
+        elif (
+            reason == ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
+            or reason == ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
+        ):
+            code = codes.IMPORT_UNTYPED
+        else:
+            code = codes.IMPORT
+        errors.report(line, 0, msg.format(module=target), code=code)
+
+        components = target.split(".")
+        for i in range(len(components), 0, -1):
+            module = ".".join(components[:i])
+            if module in legacy_bundled_packages or module in non_bundled_packages:
+                break
+
         for note in notes:
             if "{stub_dist}" in note:
-                note = note.format(stub_dist=stub_package_name(top_level))
+                note = note.format(stub_dist=stub_distribution_name(module))
             errors.report(line, 0, note, severity="note", only_once=True, code=codes.IMPORT)
         if reason is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
-            manager.missing_stub_packages.add(stub_package_name(top_level))
+            manager.missing_stub_packages.add(stub_distribution_name(module))
     errors.set_import_context(save_import_context)
 
 
@@ -3077,7 +3088,7 @@ def load_graph(
             manager.errors.report(
                 -1,
                 -1,
-                "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "  # noqa: E501
+                "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "
                 "for more info",
                 severity="note",
             )
@@ -3165,7 +3176,7 @@ def load_graph(
                             manager.errors.report(
                                 -1,
                                 0,
-                                "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "  # noqa: E501
+                                "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "
                                 "for more info",
                                 severity="note",
                             )
@@ -3466,15 +3477,8 @@ def sorted_components(
     edges = {id: deps_filtered(graph, vertices, id, pri_max) for id in vertices}
     sccs = list(strongly_connected_components(vertices, edges))
     # Topsort.
-    sccsmap = {id: frozenset(scc) for scc in sccs for id in scc}
-    data: dict[AbstractSet[str], set[AbstractSet[str]]] = {}
-    for scc in sccs:
-        deps: set[AbstractSet[str]] = set()
-        for id in scc:
-            deps.update(sccsmap[x] for x in deps_filtered(graph, vertices, id, pri_max))
-        data[frozenset(scc)] = deps
     res = []
-    for ready in topsort(data):
+    for ready in topsort(prepare_sccs(sccs, edges)):
         # Sort the sets in ready by reversed smallest State.order.  Examples:
         #
         # - If ready is [{x}, {y}], x.order == 1, y.order == 2, we get
@@ -3497,100 +3501,6 @@ def deps_filtered(graph: Graph, vertices: AbstractSet[str], id: str, pri_max: in
         for dep in state.dependencies
         if dep in vertices and state.priorities.get(dep, PRI_HIGH) < pri_max
     ]
-
-
-def strongly_connected_components(
-    vertices: AbstractSet[str], edges: dict[str, list[str]]
-) -> Iterator[set[str]]:
-    """Compute Strongly Connected Components of a directed graph.
-
-    Args:
-      vertices: the labels for the vertices
-      edges: for each vertex, gives the target vertices of its outgoing edges
-
-    Returns:
-      An iterator yielding strongly connected components, each
-      represented as a set of vertices.  Each input vertex will occur
-      exactly once; vertices not part of a SCC are returned as
-      singleton sets.
-
-    From https://code.activestate.com/recipes/578507/.
-    """
-    identified: set[str] = set()
-    stack: list[str] = []
-    index: dict[str, int] = {}
-    boundaries: list[int] = []
-
-    def dfs(v: str) -> Iterator[set[str]]:
-        index[v] = len(stack)
-        stack.append(v)
-        boundaries.append(index[v])
-
-        for w in edges[v]:
-            if w not in index:
-                yield from dfs(w)
-            elif w not in identified:
-                while index[w] < boundaries[-1]:
-                    boundaries.pop()
-
-        if boundaries[-1] == index[v]:
-            boundaries.pop()
-            scc = set(stack[index[v] :])
-            del stack[index[v] :]
-            identified.update(scc)
-            yield scc
-
-    for v in vertices:
-        if v not in index:
-            yield from dfs(v)
-
-
-T = TypeVar("T")
-
-
-def topsort(data: dict[T, set[T]]) -> Iterable[set[T]]:
-    """Topological sort.
-
-    Args:
-      data: A map from vertices to all vertices that it has an edge
-            connecting it to.  NOTE: This data structure
-            is modified in place -- for normalization purposes,
-            self-dependencies are removed and entries representing
-            orphans are added.
-
-    Returns:
-      An iterator yielding sets of vertices that have an equivalent
-      ordering.
-
-    Example:
-      Suppose the input has the following structure:
-
-        {A: {B, C}, B: {D}, C: {D}}
-
-      This is normalized to:
-
-        {A: {B, C}, B: {D}, C: {D}, D: {}}
-
-      The algorithm will yield the following values:
-
-        {D}
-        {B, C}
-        {A}
-
-    From https://code.activestate.com/recipes/577413/.
-    """
-    # TODO: Use a faster algorithm?
-    for k, v in data.items():
-        v.discard(k)  # Ignore self dependencies.
-    for item in set.union(*data.values()) - set(data.keys()):
-        data[item] = set()
-    while True:
-        ready = {item for item, dep in data.items() if not dep}
-        if not ready:
-            break
-        yield ready
-        data = {item: (dep - ready) for item, dep in data.items() if item not in ready}
-    assert not data, f"A cyclic dependency exists amongst {data!r}"
 
 
 def missing_stubs_file(cache_dir: str) -> str:

@@ -15,7 +15,6 @@ __all__ = [
     "str",
     "atof",
     "atoi",
-    "format",
     "format_string",
     "currency",
     "normalize",
@@ -31,6 +30,9 @@ __all__ = [
 
 if sys.version_info >= (3, 11):
     __all__ += ["getencoding"]
+
+if sys.version_info < (3, 12):
+    __all__ += ["format"]
 
 # This module defines a function "str()", which is why "str" can't be used
 # as a type annotation or type alias.
@@ -123,7 +125,12 @@ def normalize(localename: _str) -> _str: ...
 def resetlocale(category: int = ...) -> None: ...
 def strcoll(__os1: _str, __os2: _str) -> int: ...
 def strxfrm(__string: _str) -> _str: ...
-def format(percent: _str, value: float | Decimal, grouping: bool = False, monetary: bool = False, *additional: Any) -> _str: ...
+
+if sys.version_info < (3, 12):
+    def format(
+        percent: _str, value: float | Decimal, grouping: bool = False, monetary: bool = False, *additional: Any
+    ) -> _str: ...
+
 def format_string(f: _str, val: Any, grouping: bool = False, monetary: bool = False) -> _str: ...
 def currency(val: float | Decimal, symbol: bool = True, grouping: bool = False, international: bool = False) -> _str: ...
 def delocalize(string: _str) -> _str: ...

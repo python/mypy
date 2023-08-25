@@ -8,8 +8,7 @@ add a method to MessageBuilder and call this instead.
 
 from __future__ import annotations
 
-from typing import NamedTuple
-from typing_extensions import Final
+from typing import Final, NamedTuple
 
 from mypy import errorcodes as codes
 
@@ -172,7 +171,8 @@ BARE_GENERIC: Final = "Missing type parameters for generic type {}"
 IMPLICIT_GENERIC_ANY_BUILTIN: Final = (
     'Implicit generic "Any". Use "{}" and specify generic parameters'
 )
-INVALID_UNPACK = "{} cannot be unpacked (must be tuple or TypeVarTuple)"
+INVALID_UNPACK: Final = "{} cannot be unpacked (must be tuple or TypeVarTuple)"
+INVALID_UNPACK_POSITION: Final = "Unpack is only valid in a variadic position"
 
 # TypeVar
 INCOMPATIBLE_TYPEVAR_VALUE: Final = 'Value of type variable "{}" of {} cannot be {}'
@@ -277,6 +277,7 @@ CANNOT_MODIFY_MATCH_ARGS: Final = 'Cannot assign to "__match_args__"'
 DATACLASS_FIELD_ALIAS_MUST_BE_LITERAL: Final = (
     '"alias" argument to dataclass field must be a string literal'
 )
+DATACLASS_POST_INIT_MUST_BE_A_FUNCTION: Final = '"__post_init__" method must be an instance method'
 
 # fastparse
 FAILED_TO_MERGE_OVERLOADS: Final = ErrorMessage(

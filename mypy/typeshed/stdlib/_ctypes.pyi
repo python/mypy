@@ -22,6 +22,9 @@ RTLD_LOCAL: int
 if sys.version_info >= (3, 11):
     CTYPES_MAX_ARGCOUNT: int
 
+if sys.version_info >= (3, 12):
+    SIZEOF_TIME_T: int
+
 if sys.platform == "win32":
     # Description, Source, HelpFile, HelpContext, scode
     _COMError_Details: TypeAlias = tuple[str | None, str | None, str | None, int | None, int | None]

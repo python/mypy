@@ -83,6 +83,9 @@ if sys.version_info >= (3, 8):
 if sys.version_info >= (3, 10):
     __all__ += ["SOFT_KEYWORD"]
 
+if sys.version_info >= (3, 12):
+    __all__ += ["EXCLAMATION", "FSTRING_END", "FSTRING_MIDDLE", "FSTRING_START"]
+
 if sys.version_info >= (3, 8):
     from token import EXACT_TOKEN_TYPES as EXACT_TOKEN_TYPES
 else:

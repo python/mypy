@@ -587,3 +587,14 @@ class C(B):
     def f(self, x: int) -> C: ...
 class B: ...
 [builtins fixtures/classmethod.pyi]
+
+[case testCallableUnionCallback]
+from typing import Union, Callable, TypeVar
+
+TA = TypeVar("TA", bound="A")
+class A:
+    def __call__(self: TA, other: Union[Callable, TA]) -> TA: ...
+a: A
+a()  # E: Missing positional argument "other" in call to "__call__" of "A"
+a(a)
+a(lambda: None)

@@ -1,0 +1,25 @@
+[case testReplace]
+[file model.py]
+from dataclasses import dataclass
+
+@dataclass
+class Model:
+    x: int = 0
+[file replace.py]
+from dataclasses import replace
+from model import Model
+
+m = Model()
+replace(m, x=42)
+
+[file model.py.2]
+from dataclasses import dataclass
+
+@dataclass
+class Model:
+    x: str = 'hello'
+
+[builtins fixtures/dataclasses.pyi]
+[out]
+==
+replace.py:5: error: Argument "x" to "replace" of "Model" has incompatible type "int"; expected "str"

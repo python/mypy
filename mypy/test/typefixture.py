@@ -219,6 +219,10 @@ class TypeFixture:
         self._add_bool_dunder(self.bool_type_info)
         self._add_bool_dunder(self.ai)
 
+        # TypeVars with non-trivial bounds
+        self.ub = make_type_var("UB", 5, [], self.b, variance)  # UB`5 (type variable)
+        self.uc = make_type_var("UC", 6, [], self.c, variance)  # UC`6 (type variable)
+
         def make_type_var_tuple(name: str, id: int, upper_bound: Type) -> TypeVarTupleType:
             return TypeVarTupleType(
                 name,

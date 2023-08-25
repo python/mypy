@@ -5,8 +5,8 @@ and potentially other mutable TypeInfo state. This module contains mutable globa
 
 from __future__ import annotations
 
-from typing import Dict, Set, Tuple
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import Dict, Final, Set, Tuple
+from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.nodes import TypeInfo
 from mypy.server.trigger import make_trigger
@@ -93,6 +93,9 @@ class TypeState:
     inferring: Final[list[tuple[Type, Type]]]
     # Whether to use joins or unions when solving constraints, see checkexpr.py for details.
     infer_unions: bool
+    # Whether to use new type inference algorithm that can infer polymorphic types.
+    # This is temporary and will be removed soon when new algorithm is more polished.
+    infer_polymorphic: bool
 
     # N.B: We do all of the accesses to these properties through
     # TypeState, instead of making these classmethods and accessing
@@ -110,6 +113,7 @@ class TypeState:
         self._assuming_proper = []
         self.inferring = []
         self.infer_unions = False
+        self.infer_polymorphic = False
 
     def is_assumed_subtype(self, left: Type, right: Type) -> bool:
         for l, r in reversed(self._assuming):
@@ -311,7 +315,7 @@ type_state: Final = TypeState()
 def reset_global_state() -> None:
     """Reset most existing global state.
 
-    Currently most of it is in this module. Few exceptions are strict optional status and
+    Currently most of it is in this module. Few exceptions are strict optional status
     and functools.lru_cache.
     """
     type_state.reset_all_subtype_caches()

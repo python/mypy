@@ -5,9 +5,7 @@ from __future__ import annotations
 import re
 from unittest import TestCase, skipUnless
 
-import mypy.expandtype
 from mypy.erasetype import erase_type, remove_instance_last_known_values
-from mypy.expandtype import expand_type
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.join import join_simple, join_types
 from mypy.meet import meet_types, narrow_declared_type
@@ -52,6 +50,9 @@ from mypy.types import (
     get_proper_type,
     has_recursive_types,
 )
+
+# Solving the import cycle:
+import mypy.expandtype  # ruff: isort: skip
 
 
 class TypesSuite(Suite):
@@ -128,10 +129,10 @@ class TypesSuite(Suite):
         )
         assert_equal(str(c3), "def (X? =, *Y?) -> Any")
 
-    def test_tuple_type(self) -> None:
+    def test_tuple_type_upper(self) -> None:
         options = Options()
         options.force_uppercase_builtins = True
-        assert_equal(TupleType([], self.fx.std_tuple).str_with_options(options), "Tuple[]")
+        assert_equal(TupleType([], self.fx.std_tuple).str_with_options(options), "Tuple[()]")
         assert_equal(TupleType([self.x], self.fx.std_tuple).str_with_options(options), "Tuple[X?]")
         assert_equal(
             TupleType(
@@ -268,7 +269,7 @@ class TypeOpsSuite(Suite):
         for id, t in map_items:
             lower_bounds[id] = t
 
-        exp = expand_type(orig, lower_bounds)
+        exp = mypy.expandtype.expand_type(orig, lower_bounds)
         # Remove erased tags (asterisks).
         assert_equal(str(exp).replace("*", ""), str(result))
 
@@ -899,13 +900,11 @@ class JoinSuite(Suite):
         self.assert_join(ov(c(fx.a, fx.a), c(fx.b, fx.b)), c(any, fx.b), c(any, fx.b))
         self.assert_join(ov(c(fx.a, fx.a), c(any, fx.b)), c(fx.b, fx.b), c(any, fx.b))
 
-    @skip
     def test_join_interface_types(self) -> None:
         self.assert_join(self.fx.f, self.fx.f, self.fx.f)
         self.assert_join(self.fx.f, self.fx.f2, self.fx.o)
         self.assert_join(self.fx.f, self.fx.f3, self.fx.f)
 
-    @skip
     def test_join_interface_and_class_types(self) -> None:
         self.assert_join(self.fx.o, self.fx.f, self.fx.o)
         self.assert_join(self.fx.a, self.fx.f, self.fx.o)
@@ -1180,7 +1179,6 @@ class MeetSuite(Suite):
         self.assert_meet(self.fx.e, self.fx.e2, self.fx.nonet)
         self.assert_meet(self.fx.e2, self.fx.e3, self.fx.nonet)
 
-    @skip
     def test_meet_with_generic_interfaces(self) -> None:
         fx = InterfaceTypeFixture()
         self.assert_meet(fx.gfa, fx.m1, fx.m1)
@@ -1466,7 +1464,7 @@ def make_call(*items: tuple[str, str | None]) -> CallExpr:
 class TestExpandTypeLimitGetProperType(TestCase):
     # WARNING: do not increase this number unless absolutely necessary,
     # and you understand what you are doing.
-    ALLOWED_GET_PROPER_TYPES = 8
+    ALLOWED_GET_PROPER_TYPES = 7
 
     @skipUnless(mypy.expandtype.__file__.endswith(".py"), "Skip for compiled mypy")
     def test_count_get_proper_type(self) -> None:

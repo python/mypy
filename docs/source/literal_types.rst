@@ -329,12 +329,9 @@ perform an exhaustiveness check, you need to update your code to use an
 .. code-block:: python
 
   from typing import Literal, NoReturn
+  from typing_extensions import assert_never
 
   PossibleValues = Literal['one', 'two']
-
-  def assert_never(value: NoReturn) -> NoReturn:
-      # This also works at runtime as well
-      assert False, f'This code should never be reached, got: {value}'
 
   def validate(x: PossibleValues) -> bool:
       if x == 'one':
@@ -443,10 +440,7 @@ Let's start with a definition:
 
   from enum import Enum
   from typing import NoReturn
-
-  def assert_never(value: NoReturn) -> NoReturn:
-      # This also works in runtime as well:
-      assert False, f'This code should never be reached, got: {value}'
+  from typing_extensions import assert_never
 
   class Direction(Enum):
       up = 'up'

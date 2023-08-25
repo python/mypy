@@ -5,6 +5,7 @@ but to ensure we maintain a basic level of ergonomics for mypy contributors.
 import subprocess
 import sys
 import textwrap
+import uuid
 from pathlib import Path
 
 from mypy.test.config import test_data_prefix
@@ -16,13 +17,15 @@ class ParseTestDataSuite(Suite):
         return textwrap.dedent(s).lstrip()
 
     def _run_pytest(self, data_suite: str) -> str:
-        p = Path(test_data_prefix) / "check-__fixture__.test"
+        p_test_data = Path(test_data_prefix)
+        p_root = p_test_data.parent.parent
+        p = p_test_data / f"check-meta-{uuid.uuid4()}.test"
         assert not p.exists()
         try:
             p.write_text(data_suite)
             test_nodeid = f"mypy/test/testcheck.py::TypeCheckSuite::{p.name}"
             args = [sys.executable, "-m", "pytest", "-n", "0", "-s", test_nodeid]
-            proc = subprocess.run(args, capture_output=True, check=False)
+            proc = subprocess.run(args, cwd=p_root, capture_output=True, check=False)
             return proc.stdout.decode()
         finally:
             p.unlink()
@@ -64,3 +67,37 @@ class ParseTestDataSuite(Suite):
             f".test:{expected_lineno}: Invalid section header [unknownsection] in case 'abc'"
         )
         assert expected in actual
+
+    def test_bad_ge_version_check(self) -> None:
+        # Arrange
+        data = self._dedent(
+            """
+            [case abc]
+            s: str
+            [out version>=3.8]
+            abc
+            """
+        )
+
+        # Act
+        actual = self._run_pytest(data)
+
+        # Assert
+        assert "version>=3.8 always true since minimum runtime version is (3, 8)" in actual
+
+    def test_bad_eq_version_check(self) -> None:
+        # Arrange
+        data = self._dedent(
+            """
+            [case abc]
+            s: str
+            [out version==3.7]
+            abc
+            """
+        )
+
+        # Act
+        actual = self._run_pytest(data)
+
+        # Assert
+        assert "version==3.7 always false since minimum runtime version is (3, 8)" in actual

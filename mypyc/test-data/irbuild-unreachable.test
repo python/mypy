@@ -11,7 +11,7 @@ def f():
     r1 :: str
     r2 :: object
     r3, r4 :: str
-    r5 :: int32
+    r5 :: i32
     r6 :: bit
     r7 :: object
     r8, r9, r10 :: bit
@@ -68,7 +68,7 @@ def f():
     r1 :: str
     r2 :: object
     r3, r4 :: str
-    r5 :: int32
+    r5 :: i32
     r6 :: bit
     r7 :: object
     r8, r9, r10 :: bit

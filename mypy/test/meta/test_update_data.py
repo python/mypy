@@ -7,6 +7,7 @@ import shlex
 import subprocess
 import sys
 import textwrap
+import uuid
 from pathlib import Path
 
 from mypy.test.config import test_data_prefix
@@ -21,17 +22,14 @@ class UpdateDataSuite(Suite):
         """
         p_test_data = Path(test_data_prefix)
         p_root = p_test_data.parent.parent
-        p = p_test_data / "check-__fixture__.test"
+        p = p_test_data / f"check-meta-{uuid.uuid4()}.test"
         assert not p.exists()
         try:
             p.write_text(textwrap.dedent(data_suite).lstrip())
 
             test_nodeid = f"mypy/test/testcheck.py::TypeCheckSuite::{p.name}"
             args = [sys.executable, "-m", "pytest", "-n", "0", "-s", "--update-data", test_nodeid]
-            if sys.version_info >= (3, 8):
-                cmd = shlex.join(args)
-            else:
-                cmd = " ".join(args)
+            cmd = shlex.join(args)
             for i in range(max_attempts - 1, -1, -1):
                 res = subprocess.run(args, cwd=p_root)
                 if res.returncode == 0:

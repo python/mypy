@@ -4,30 +4,15 @@ from __future__ import annotations
 
 from typing import Sequence
 
-from mypy.nodes import ARG_POS, ARG_STAR
 from mypy.types import (
-    CallableType,
     Instance,
     ProperType,
     Type,
     UnpackType,
+    find_unpack_in_list,
     get_proper_type,
     split_with_prefix_and_suffix,
 )
-
-
-def find_unpack_in_list(items: Sequence[Type]) -> int | None:
-    unpack_index: int | None = None
-    for i, item in enumerate(items):
-        if isinstance(item, UnpackType):
-            # We cannot fail here, so we must check this in an earlier
-            # semanal phase.
-            # Funky code here avoids mypyc narrowing the type of unpack_index.
-            old_index = unpack_index
-            assert old_index is None
-            # Don't return so that we can also sanity check there is only one.
-            unpack_index = i
-    return unpack_index
 
 
 def split_with_instance(
@@ -179,20 +164,3 @@ def extract_unpack(types: Sequence[Type]) -> ProperType | None:
         if isinstance(types[0], UnpackType):
             return get_proper_type(types[0].type)
     return None
-
-
-def replace_starargs(callable: CallableType, types: list[Type]) -> CallableType:
-    star_index = callable.arg_kinds.index(ARG_STAR)
-    arg_kinds = (
-        callable.arg_kinds[:star_index]
-        + [ARG_POS] * len(types)
-        + callable.arg_kinds[star_index + 1 :]
-    )
-    arg_names = (
-        callable.arg_names[:star_index]
-        + [None] * len(types)
-        + callable.arg_names[star_index + 1 :]
-    )
-    arg_types = callable.arg_types[:star_index] + types + callable.arg_types[star_index + 1 :]
-
-    return callable.copy_modified(arg_types=arg_types, arg_names=arg_names, arg_kinds=arg_kinds)

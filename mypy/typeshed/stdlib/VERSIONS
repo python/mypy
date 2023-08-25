@@ -112,7 +112,7 @@ dbm: 2.7-
 decimal: 2.7-
 difflib: 2.7-
 dis: 2.7-
-distutils: 2.7-
+distutils: 2.7-3.11
 distutils.command.bdist_msi: 2.7-3.10
 distutils.command.bdist_wininst: 2.7-3.9
 doctest: 2.7-
@@ -147,7 +147,7 @@ html: 3.0-
 http: 3.0-
 imaplib: 2.7-
 imghdr: 2.7-
-imp: 2.7-
+imp: 2.7-3.11
 importlib: 2.7-
 importlib.metadata: 3.8-
 importlib.metadata._meta: 3.10-

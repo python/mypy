@@ -29,7 +29,6 @@ from mypy.types import (
     Parameters,
     ParamSpecType,
     PartialType,
-    PlaceholderType,
     ProperType,
     TupleType,
     Type,
@@ -246,14 +245,6 @@ def join_types(s: Type, t: Type, instance_joiner: InstanceJoiner | None = None) 
     if isinstance(s, UninhabitedType) and not isinstance(t, UninhabitedType):
         s, t = t, s
 
-    # We shouldn't run into PlaceholderTypes here, but in practice we can encounter them
-    # here in the presence of undefined names
-    if isinstance(t, PlaceholderType) and not isinstance(s, PlaceholderType):
-        # mypyc does not allow switching the values like above.
-        return s.accept(TypeJoinVisitor(t))
-    elif isinstance(t, PlaceholderType):
-        return AnyType(TypeOfAny.from_error)
-
     # Meets/joins require callable type normalization.
     s, t = normalize_callables(s, t)
 
@@ -324,8 +315,14 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         raise NotImplementedError
 
     def visit_parameters(self, t: Parameters) -> ProperType:
-        if self.s == t:
-            return t
+        if isinstance(self.s, Parameters):
+            if len(t.arg_types) != len(self.s.arg_types):
+                return self.default(self.s)
+            return t.copy_modified(
+                # Note that since during constraint inference we already treat whole ParamSpec as
+                # contravariant, we should join individual items, not meet them like for Callables
+                arg_types=[join_types(s_a, t_a) for s_a, t_a in zip(self.s.arg_types, t.arg_types)]
+            )
         else:
             return self.default(self.s)
 

@@ -840,6 +840,24 @@ reveal_type(bar.base)  # N: Revealed type is "builtins.int"
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassTransformReplace]
+from dataclasses import replace
+from typing import dataclass_transform, Type
+
+@dataclass_transform()
+def my_dataclass(cls: Type) -> Type:
+    return cls
+
+@my_dataclass
+class Person:
+    name: str
+
+p = Person('John')
+y = replace(p, name='Bob')  # E: Argument 1 to "replace" has incompatible type "Person"; expected a dataclass
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassTransformSimpleDescriptor]
 # flags: --python-version 3.11
 
@@ -1001,18 +1019,19 @@ class Desc:
     def __get__(self, instance: object, owner: Any) -> str: ...
     def __get__(self, instance, owner): ...
 
-    def __set__(self, instance: Any, value: bytes) -> None: ...
+    def __set__(self, instance: Any, value: bytes | None) -> None: ...
 
 @my_dataclass
 class C:
     x: Desc
 
 c = C(x=b'x')
-C(x=1)  # E: Argument "x" to "C" has incompatible type "int"; expected "bytes"
+c = C(x=None)
+C(x=1)  # E: Argument "x" to "C" has incompatible type "int"; expected "Optional[bytes]"
 reveal_type(c.x)  # N: Revealed type is "builtins.str"
 reveal_type(C.x)  # N: Revealed type is "builtins.int"
 c.x = b'x'
-c.x = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "bytes")
+c.x = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Optional[bytes]")
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
@@ -1051,5 +1070,6 @@ class Desc2:
 class C:
     x: Desc  # E: Unsupported signature for "__set__" in "Desc"
     y: Desc2  # E: Unsupported "__set__" in "Desc2"
+
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]

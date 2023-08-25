@@ -59,9 +59,9 @@ from typing import TypeVar, ParamSpec, Tuple
 from typing_extensions import TypeVarTuple, Unpack
 
 T1 = TypeVar("T1", default=2)  # E: TypeVar "default" must be a type
-T2 = TypeVar("T2", default=[int, str])  # E: Bracketed expression "[...]" is not valid as a type \
-                                        # N: Did you mean "List[...]"? \
-                                        # E: TypeVar "default" must be a type
+T2 = TypeVar("T2", default=[int])  # E: Bracketed expression "[...]" is not valid as a type \
+                                   # N: Did you mean "List[...]"? \
+                                   # E: TypeVar "default" must be a type
 
 P1 = ParamSpec("P1", default=int)  # E: The default argument to ParamSpec must be a list expression, ellipsis, or a ParamSpec
 P2 = ParamSpec("P2", default=2)  # E: The default argument to ParamSpec must be a list expression, ellipsis, or a ParamSpec
@@ -71,4 +71,48 @@ P4 = ParamSpec("P4", default=[2, int])  # E: Argument 0 of ParamSpec default mus
 Ts1 = TypeVarTuple("Ts1", default=2) # E: The default argument to TypeVarTuple must be an Unpacked tuple
 Ts2 = TypeVarTuple("Ts2", default=int)  # E: The default argument to TypeVarTuple must be an Unpacked tuple
 Ts3 = TypeVarTuple("Ts3", default=Tuple[int])  # E: The default argument to TypeVarTuple must be an Unpacked tuple
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarDefaultsInvalid2]
+from typing import TypeVar, List, Union
+
+T1 = TypeVar("T1", bound=str, default=int)  # E: TypeVar default must be a subtype of the bound type
+T2 = TypeVar("T2", bound=List[str], default=List[int])  # E: TypeVar default must be a subtype of the bound type
+T3 = TypeVar("T3", int, str, default=bytes)  # E: TypeVar default must be one of the constraint types
+T4 = TypeVar("T4", int, str, default=Union[int, str])  # E: TypeVar default must be one of the constraint types
+T5 = TypeVar("T5", float, str, default=int)  # E: TypeVar default must be one of the constraint types
+
+[case testTypeVarDefaultsFunctions]
+from typing import TypeVar, ParamSpec, List, Union, Callable, Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+T1 = TypeVar("T1", default=str)
+T2 = TypeVar("T2", bound=str, default=str)
+T3 = TypeVar("T3", bytes, str, default=str)
+P1 = ParamSpec("P1", default=[int, str])
+Ts1 = TypeVarTuple("Ts1", default=Unpack[Tuple[int, str]])
+
+def callback1(x: str) -> None: ...
+
+def func_a1(x: Union[int, T1]) -> T1: ...
+reveal_type(func_a1(2))  # N: Revealed type is "builtins.str"
+reveal_type(func_a1(2.1))  # N: Revealed type is "builtins.float"
+
+def func_a2(x: Union[int, T1]) -> List[T1]: ...
+reveal_type(func_a2(2))  # N: Revealed type is "builtins.list[builtins.str]"
+reveal_type(func_a2(2.1))  # N: Revealed type is "builtins.list[builtins.float]"
+
+def func_a3(x: Union[int, T2]) -> T2: ...
+reveal_type(func_a3(2))  # N: Revealed type is "builtins.str"
+
+def func_a4(x: Union[int, T3]) -> T3: ...
+reveal_type(func_a4(2))  # N: Revealed type is "builtins.str"
+
+def func_b1(x: Union[int, Callable[P1, None]]) -> Callable[P1, None]: ...
+reveal_type(func_b1(callback1))  # N: Revealed type is "def (x: builtins.str)"
+reveal_type(func_b1(2))  # N: Revealed type is "def (builtins.int, builtins.str)"
+
+def func_c1(x: Union[int, Callable[[Unpack[Ts1]], None]]) -> Tuple[Unpack[Ts1]]: ...
+# reveal_type(func_c1(callback1))  # Revealed type is "builtins.tuple[str]"  # TODO
+# reveal_type(func_c1(2))  # Revealed type is "builtins.tuple[builtins.int, builtins.str]"  # TODO
 [builtins fixtures/tuple.pyi]

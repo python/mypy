@@ -2,6 +2,7 @@ import os
 import sys
 from _typeshed import BytesPath, FileDescriptorOrPath, StrOrBytesPath, StrPath, SupportsRead, SupportsWrite
 from collections.abc import Callable, Iterable, Sequence
+from tarfile import _TarfileFilter
 from typing import Any, AnyStr, NamedTuple, Protocol, TypeVar, overload
 from typing_extensions import TypeAlias
 
@@ -192,9 +193,9 @@ def register_archive_format(
 ) -> None: ...
 def unregister_archive_format(name: str) -> None: ...
 
-if sys.version_info >= (3, 12):
+if sys.version_info >= (3, 8):
     def unpack_archive(
-        filename: StrPath, extract_dir: StrPath | None = None, format: str | None = None, *, filter: str | None = None
+        filename: StrPath, extract_dir: StrPath | None = None, format: str | None = None, *, filter: _TarfileFilter | None = None
     ) -> None: ...
 
 else:
