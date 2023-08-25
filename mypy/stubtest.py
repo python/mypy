@@ -1720,7 +1720,13 @@ def get_importable_stdlib_modules() -> set[str]:
             # The idlelib.* submodules are similarly annoying in opening random tkinter windows,
             # and we're unlikely to ever add stubs for idlelib in typeshed
             # (see discussion in https://github.com/python/typeshed/pull/9193)
-            if submodule_name.endswith(".__main__") or submodule_name.startswith("idlelib."):
+            #
+            # test.* modules do weird things like raising unraisable exceptions in __del__ methods
+            if (
+                submodule_name.endswith(".__main__")
+                or submodule_name.startswith("idlelib.")
+                or submodule_name.startswith("test.")
+            ):
                 continue
 
             try:
