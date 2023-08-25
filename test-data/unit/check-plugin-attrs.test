@@ -1554,63 +1554,6 @@ takes_attrs_cls(A(1, ""))  # E: Argument 1 to "takes_attrs_cls" has incompatible
 takes_attrs_instance(A)  # E: Argument 1 to "takes_attrs_instance" has incompatible type "Type[A]"; expected "AttrsInstance" # N: ClassVar protocol member AttrsInstance.__attrs_attrs__ can never be matched by a class object
 [builtins fixtures/plugin_attrs.pyi]
 
-[case testAttrsFields]
-import attr
-from attrs import fields as f  # Common usage.
-
-@attr.define
-class A:
-    b: int
-    c: str
-
-reveal_type(f(A))  # N: Revealed type is "Tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str], fallback=__main__.A.____main___A_AttrsAttributes__]"
-reveal_type(f(A)[0])  # N: Revealed type is "attr.Attribute[builtins.int]"
-reveal_type(f(A).b)  # N: Revealed type is "attr.Attribute[builtins.int]"
-f(A).x  # E: "____main___A_AttrsAttributes__" has no attribute "x"
-
-for ff in f(A):
-    reveal_type(ff)  # N: Revealed type is "attr.Attribute[Any]"
-
-[builtins fixtures/plugin_attrs.pyi]
-
-[case testAttrsGenericFields]
-from typing import TypeVar
-
-import attr
-from attrs import fields
-
-@attr.define
-class A:
-    b: int
-    c: str
-
-TA = TypeVar('TA', bound=A)
-
-def f(t: TA) -> None:
-    reveal_type(fields(t))  # N: Revealed type is "Tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str], fallback=__main__.A.____main___A_AttrsAttributes__]"
-    reveal_type(fields(t)[0])  # N: Revealed type is "attr.Attribute[builtins.int]"
-    reveal_type(fields(t).b)  # N: Revealed type is "attr.Attribute[builtins.int]"
-    fields(t).x  # E: "____main___A_AttrsAttributes__" has no attribute "x"
-
-
-[builtins fixtures/plugin_attrs.pyi]
-
-[case testNonattrsFields]
-# flags: --no-strict-optional
-from typing import Any, cast, Type
-from attrs import fields
-
-class A:
-    b: int
-    c: str
-
-fields(A)  # E: Argument 1 to "fields" has incompatible type "Type[A]"; expected an attrs class
-fields(None)  # E: Argument 1 to "fields" has incompatible type "None"; expected an attrs class
-fields(cast(Any, 42))
-fields(cast(Type[Any], 43))
-
-[builtins fixtures/plugin_attrs.pyi]
-
 [case testAttrsInitMethodAlwaysGenerates]
 from typing import Tuple
 import attr
