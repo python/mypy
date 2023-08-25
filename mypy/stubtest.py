@@ -1721,7 +1721,9 @@ def get_importable_stdlib_modules() -> set[str]:
             # and we're unlikely to ever add stubs for idlelib in typeshed
             # (see discussion in https://github.com/python/typeshed/pull/9193)
             #
-            # test.* modules do weird things like raising unraisable exceptions in __del__ methods
+            # test.* modules do weird things like raising exceptions in __del__ methods,
+            # leading to unraisable exceptions being logged to the terminal
+            # as a warning at the end of the stubtest run
             if (
                 submodule_name.endswith(".__main__")
                 or submodule_name.startswith("idlelib.")
