@@ -415,7 +415,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                         assert unpacked.type.fullname == "builtins.tuple"
                         if t.partial_fallback.type.fullname != "builtins.tuple":
                             # If it is a subtype (like named tuple) we need to preserve it,
-                            # this essentially mimics the logix in tuple_fallback().
+                            # this essentially mimics the logic in tuple_fallback().
                             return t.partial_fallback.accept(self)
                         return unpacked
             fallback = t.partial_fallback.accept(self)

@@ -86,6 +86,8 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         # correct aliases. Also, variadic aliases are better to check when fully analyzed,
         # so we do this here.
         assert t.alias is not None, f"Unfixed type alias {t.type_ref}"
+        # TODO: consider moving this validation to typeanal.py, expanding invalid aliases
+        # during semantic analysis may cause crashes.
         if t.alias.tvar_tuple_index is not None:
             correct = len(t.args) >= len(t.alias.alias_tvars) - 1
             if any(
