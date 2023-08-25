@@ -23,6 +23,7 @@ import types
 import typing
 import typing_extensions
 import warnings
+from collections import defaultdict
 from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
@@ -1679,16 +1680,16 @@ def get_importable_stdlib_modules() -> set[str]:
         all_stdlib_modules = sys.stdlib_module_names
     else:
         all_stdlib_modules = set(sys.builtin_module_names)
-        python_exe_dir = Path(sys.executable).parent
+        modules_by_finder: defaultdict[importlib.machinery.FileFinder, set[str]] = defaultdict(set)
         for m in pkgutil.iter_modules():
-            finder = m.module_finder
-            if isinstance(finder, importlib.machinery.FileFinder):
-                finder_path = Path(finder.path)
-                if (
-                    python_exe_dir in finder_path.parents
-                    and "site-packages" not in finder_path.parts
-                ):
-                    all_stdlib_modules.add(m.name)
+            if isinstance(m.module_finder, importlib.machinery.FileFinder):
+                modules_by_finder[m.module_finder].add(m.name)
+        for finder, module_group in modules_by_finder.items():
+            if (
+                "site-packages" not in Path(finder.path).parents
+                and {"json", "_json", "_queue"} & module_group
+            ):
+                all_stdlib_modules.update(module_group)
 
     importable_stdlib_modules: set[str] = set()
     for module_name in all_stdlib_modules:
