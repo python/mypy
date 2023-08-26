@@ -272,7 +272,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         # it is hard to assert this without getting proper type.
         return UnpackType(t.type.accept(self))
 
-    def expand_unpack(self, t: UnpackType) -> list[Type] | AnyType | UninhabitedType:
+    def expand_unpack(self, t: UnpackType) -> list[Type]:
         assert isinstance(t.type, TypeVarTupleType)
         repl = get_proper_type(self.variables.get(t.type.id, t.type))
         if isinstance(repl, TupleType):
@@ -284,9 +284,9 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         ):
             return [UnpackType(typ=repl)]
         elif isinstance(repl, (AnyType, UninhabitedType)):
-            # tuple[Any, ...] for Any would be better, but we don't have
-            # the type info to construct that type here.
-            return repl
+            # Replace *Ts = Any with *Ts = *tuple[Any, ...] and some for <nothing>.
+            # These types may appear here as a result of user error or failed inference.
+            return [UnpackType(t.type.tuple_fallback.copy_modified(args=[repl]))]
         else:
             raise RuntimeError(f"Invalid type replacement to expand: {repl}")
 
@@ -309,12 +309,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             # We have plain Unpack[Ts]
             assert isinstance(var_arg_type, TypeVarTupleType)
             fallback = var_arg_type.tuple_fallback
-            expanded_items_res = self.expand_unpack(var_arg)
-            if isinstance(expanded_items_res, list):
-                expanded_items = expanded_items_res
-            else:
-                # We got Any or <nothing>
-                return prefix + [expanded_items_res] + suffix
+            expanded_items = self.expand_unpack(var_arg)
         new_unpack = UnpackType(TupleType(expanded_items, fallback))
         return prefix + [new_unpack] + suffix
 
@@ -393,14 +388,8 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         items: list[Type] = []
         for item in typs:
             if isinstance(item, UnpackType) and isinstance(item.type, TypeVarTupleType):
-                unpacked_items = self.expand_unpack(item)
-                if isinstance(unpacked_items, (AnyType, UninhabitedType)):
-                    # TODO: better error for <nothing>, something like tuple of unknown?
-                    return unpacked_items
-                else:
-                    items.extend(unpacked_items)
+                items.extend(self.expand_unpack(item))
             else:
-                # Must preserve original aliases when possible.
                 items.append(item.accept(self))
         return items
 

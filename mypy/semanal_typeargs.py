@@ -7,7 +7,7 @@ operations, including subtype checks.
 
 from __future__ import annotations
 
-from typing import Sequence
+from typing import Callable, Sequence
 
 from mypy import errorcodes as codes, message_registry
 from mypy.errorcodes import ErrorCode
@@ -42,11 +42,18 @@ from mypy.types import (
 
 
 class TypeArgumentAnalyzer(MixedTraverserVisitor):
-    def __init__(self, errors: Errors, options: Options, is_typeshed_file: bool) -> None:
+    def __init__(
+        self,
+        errors: Errors,
+        options: Options,
+        is_typeshed_file: bool,
+        named_type: Callable[[str, list[Type]], Instance],
+    ) -> None:
         super().__init__()
         self.errors = errors
         self.options = options
         self.is_typeshed_file = is_typeshed_file
+        self.named_type = named_type
         self.scope = Scope()
         # Should we also analyze function definitions, or only module top-levels?
         self.recurse_into_functions = True
@@ -243,16 +250,16 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
             return
         if isinstance(proper_type, TypeVarTupleType):
             return
+        # TODO: this should probably be .has_base("builtins.tuple"), also elsewhere.
         if isinstance(proper_type, Instance) and proper_type.type.fullname == "builtins.tuple":
             return
-        if isinstance(proper_type, AnyType) and proper_type.type_of_any == TypeOfAny.from_error:
-            return
-        if not isinstance(proper_type, UnboundType):
-            # Avoid extra errors if there were some errors already.
+        if not isinstance(proper_type, (UnboundType, AnyType)):
+            # Avoid extra errors if there were some errors already. Also interpret plain Any
+            # as tuple[Any, ...] (this is better for the code in type checker).
             self.fail(
                 message_registry.INVALID_UNPACK.format(format_type(proper_type, self.options)), typ
             )
-        typ.type = AnyType(TypeOfAny.from_error)
+        typ.type = self.named_type("builtins.tuple", [AnyType(TypeOfAny.from_error)])
 
     def check_type_var_values(
         self, name: str, actuals: list[Type], arg_name: str, valids: list[Type], context: Context
