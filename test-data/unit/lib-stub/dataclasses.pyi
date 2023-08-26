@@ -1,6 +1,9 @@
-from typing import Any, Callable, Generic, Mapping, Optional, TypeVar, overload, Type
+from _typeshed import DataclassInstance
+from typing import Any, Callable, Generic, Literal, Mapping, Optional, TypeVar, overload, Type
+from typing_extensions import TypeGuard
 
 _T = TypeVar('_T')
+_DataclassT = TypeVar("_DataclassT", bound=DataclassInstance)
 
 class InitVar(Generic[_T]):
     ...
@@ -33,4 +36,12 @@ def field(*,
 
 class Field(Generic[_T]): pass
 
-def replace(__obj: _T, **changes: Any) -> _T: ...
+@overload
+def is_dataclass(obj: DataclassInstance) -> Literal[True]: ...
+@overload
+def is_dataclass(obj: type) -> TypeGuard[type[DataclassInstance]]: ...
+@overload
+def is_dataclass(obj: object) -> TypeGuard[DataclassInstance | type[DataclassInstance]]: ...
+
+
+def replace(__obj: _DataclassT, **changes: Any) -> _DataclassT: ...
