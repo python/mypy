@@ -93,31 +93,31 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         # correct aliases. Also, variadic aliases are better to check when fully analyzed,
         # so we do this here.
         assert t.alias is not None, f"Unfixed type alias {t.type_ref}"
-        args = flatten_nested_tuples(t.args)
+        # TODO: consider moving this validation to typeanal.py, expanding invalid aliases
+        # during semantic analysis may cause crashes.
         if t.alias.tvar_tuple_index is not None:
-            correct = len(args) >= len(t.alias.alias_tvars) - 1
+            correct = len(t.args) >= len(t.alias.alias_tvars) - 1
             if any(
                 isinstance(a, UnpackType) and isinstance(get_proper_type(a.type), Instance)
-                for a in args
+                for a in t.args
             ):
                 correct = True
         else:
-            correct = len(args) == len(t.alias.alias_tvars)
+            correct = len(t.args) == len(t.alias.alias_tvars)
         if not correct:
             if t.alias.tvar_tuple_index is not None:
                 exp_len = f"at least {len(t.alias.alias_tvars) - 1}"
             else:
                 exp_len = f"{len(t.alias.alias_tvars)}"
             self.fail(
-                f"Bad number of arguments for type alias, expected: {exp_len}, given: {len(args)}",
+                "Bad number of arguments for type alias,"
+                f" expected: {exp_len}, given: {len(t.args)}",
                 t,
                 code=codes.TYPE_ARG,
             )
             t.args = set_any_tvars(
                 t.alias, t.line, t.column, self.options, from_error=True, fail=self.fail
             ).args
-        else:
-            t.args = args
         is_error = self.validate_args(t.alias.name, t.args, t.alias.alias_tvars, t)
         if not is_error:
             # If there was already an error for the alias itself, there is no point in checking
