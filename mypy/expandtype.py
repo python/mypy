@@ -269,7 +269,8 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         # instead.
         # However, if the item is a variadic tuple, we can simply carry it over.
         # In particular, if we expand A[*tuple[T, ...]] with substitutions {T: str},
-        # it is hard to assert this without getting proper type.
+        # it is hard to assert this without getting proper type. Another important
+        # example is non-normalized types when called from semanal.py.
         return UnpackType(t.type.accept(self))
 
     def expand_unpack(self, t: UnpackType) -> list[Type] | AnyType | UninhabitedType:
@@ -414,6 +415,10 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                     unpacked = get_proper_type(item.type)
                     if isinstance(unpacked, Instance):
                         assert unpacked.type.fullname == "builtins.tuple"
+                        if t.partial_fallback.type.fullname != "builtins.tuple":
+                            # If it is a subtype (like named tuple) we need to preserve it,
+                            # this essentially mimics the logic in tuple_fallback().
+                            return t.partial_fallback.accept(self)
                         return unpacked
             fallback = t.partial_fallback.accept(self)
             assert isinstance(fallback, ProperType) and isinstance(fallback, Instance)
