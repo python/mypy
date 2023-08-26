@@ -123,7 +123,6 @@ def test_equality_different_types() -> None:
     assert vec[vec[str]]() != vec[vec[bytes]]()
     assert vec[vec[str]]() != vec[vec[i64]]()
 
-"""
 def test_slicing() -> None:
     v = vec[vec[str]](vec[str]([str(i)]) for i in range(5))
     assert v[1:4] == vec[vec[str]]([v[1], v[2], v[3]])
@@ -153,11 +152,10 @@ def test_slicing_with_step() -> None:
         v[1:3:0]
 
 def test_slicing_with_different_item_types() -> None:
-    v = vec[Optional[str]](['x', None, 'y'])
-    assert v[1:] == vec[Optional[str]]([None, 'y'])
-    vv = vec[vec[str]]([vec[str](['x']), vec[str](['y'])])
-    assert vv[1:] == vec[vec[str]]([vec[str](['y'])])
+    v = vec[vec[i64]]([vec[i64]([11]), vec[i64]([22])])
+    assert v[1:] == vec[vec[i64]]([vec[i64]([22])])
 
+"""
 def test_remove() -> None:
     a = ['4x', '7x', '9x']
     vv = [vec[str]([s]) for s in a]
@@ -193,16 +191,16 @@ def test_remove() -> None:
         remove(v, vb)
 
 def test_pop_last() -> None:
-    v = vec[Optional[vec[str]]]([vec[str](['4']), None, vec[str](['9'])])
+    v = vec[vec[str]]([vec[str](['4']), vec[str](['6']), vec[str](['9'])])
     v, item = pop(v)
     assert item == vec[str](['9'])
-    assert v == vec[Optional[vec[str]]]([vec[str](['4']), None])
+    assert v == vec[vec[str]]([vec[str](['4']), vec[str](['6'])])
     v, item = pop(v)
-    assert item is None
-    assert v == vec[Optional[vec[str]]]([vec[str](['4'])])
+    assert item == vec[str](['6'])
+    assert v == vec[vec[str]]([vec[str](['4'])])
     v, item = pop(v)
     assert item == vec[str](['4'])
-    assert v == vec[Optional[vec[str]]]()
+    assert v == vec[vec[str]]()
     with assertRaises(IndexError):
         pop(v)
 
