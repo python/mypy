@@ -590,6 +590,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                             ):
                                 nominal = False
                         else:
+                            # TODO: everywhere else ParamSpecs are handled as invariant.
                             if not check_type_parameter(
                                 lefta, righta, COVARIANT, self.proper_subtype, self.subtype_context
                             ):
@@ -659,6 +660,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return self._is_subtype(left.upper_bound, self.right)
 
     def visit_unpack_type(self, left: UnpackType) -> bool:
+        # TODO: Ideally we should not need this (since it is not a real type).
+        # Instead callers (upper level types) should handle it when it appears in type list.
         if isinstance(self.right, UnpackType):
             return self._is_subtype(left.type, self.right.type)
         if isinstance(self.right, Instance) and self.right.type.fullname == "builtins.object":
@@ -666,13 +669,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return False
 
     def visit_parameters(self, left: Parameters) -> bool:
-        if isinstance(self.right, (Parameters, CallableType)):
-            right = self.right
-            if isinstance(right, CallableType):
-                right = right.with_unpacked_kwargs()
+        if isinstance(self.right, Parameters):
+            # TODO: direction here should be opposite, this function expects
+            # order of callables, while parameters are contravariant.
             return are_parameters_compatible(
                 left,
-                right,
+                self.right,
                 is_compat=self._is_subtype,
                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
             )
@@ -723,14 +725,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, TypeType):
             # This is unsound, we don't check the __init__ signature.
             return left.is_type_obj() and self._is_subtype(left.ret_type, right.item)
-        elif isinstance(right, Parameters):
-            # this doesn't check return types.... but is needed for is_equivalent
-            return are_parameters_compatible(
-                left.with_unpacked_kwargs(),
-                right,
-                is_compat=self._is_subtype,
-                ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
-            )
         else:
             return False
 
@@ -752,7 +746,15 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     # TODO: We shouldn't need this special case. This is currently needed
                     #       for isinstance(x, tuple), though it's unclear why.
                     return True
-                return all(self._is_subtype(li, iter_type) for li in left.items)
+                for li in left.items:
+                    if isinstance(li, UnpackType):
+                        unpack = get_proper_type(li.type)
+                        if isinstance(unpack, Instance):
+                            assert unpack.type.fullname == "builtins.tuple"
+                            li = unpack.args[0]
+                    if not self._is_subtype(li, iter_type):
+                        return False
+                return True
             elif self._is_subtype(left.partial_fallback, right) and self._is_subtype(
                 mypy.typeops.tuple_fallback(left), right
             ):
@@ -760,6 +762,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return False
         elif isinstance(right, TupleType):
             if len(left.items) != len(right.items):
+                # TODO: handle tuple with variadic items better.
                 return False
             if any(not self._is_subtype(l, r) for l, r in zip(left.items, right.items)):
                 return False
@@ -1393,8 +1396,8 @@ def is_callable_compatible(
         whether or not we check the args covariantly.
     """
     # Normalize both types before comparing them.
-    left = left.with_unpacked_kwargs()
-    right = right.with_unpacked_kwargs()
+    left = left.with_unpacked_kwargs().with_normalized_var_args()
+    right = right.with_unpacked_kwargs().with_normalized_var_args()
 
     if is_compat_return is None:
         is_compat_return = is_compat
@@ -1456,7 +1459,6 @@ def is_callable_compatible(
         right,
         is_compat=is_compat,
         ignore_pos_arg_names=ignore_pos_arg_names,
-        check_args_covariantly=check_args_covariantly,
         allow_partial_overlap=allow_partial_overlap,
         strict_concatenate_check=strict_concatenate_check,
     )
@@ -1492,7 +1494,6 @@ def are_parameters_compatible(
     *,
     is_compat: Callable[[Type, Type], bool],
     ignore_pos_arg_names: bool = False,
-    check_args_covariantly: bool = False,
     allow_partial_overlap: bool = False,
     strict_concatenate_check: bool = False,
 ) -> bool:
@@ -1548,7 +1549,7 @@ def are_parameters_compatible(
 
     # Phase 1b: Check non-star args: for every arg right can accept, left must
     #           also accept. The only exception is if we are allowing partial
-    #           partial overlaps: in that case, we ignore optional args on the right.
+    #           overlaps: in that case, we ignore optional args on the right.
     for right_arg in right.formal_arguments():
         left_arg = mypy.typeops.callable_corresponding_argument(left, right_arg)
         if left_arg is None:
@@ -1562,7 +1563,8 @@ def are_parameters_compatible(
 
     # Phase 1c: Check var args. Right has an infinite series of optional positional
     #           arguments. Get all further positional args of left, and make sure
-    #           they're more general then the corresponding member in right.
+    #           they're more general than the corresponding member in right.
+    # TODO: are we handling UnpackType correctly here?
     if right_star is not None and not trivial_suffix:
         # Synthesize an anonymous formal argument for the right
         right_by_position = right.try_synthesizing_arg_from_vararg(None)
@@ -1589,7 +1591,7 @@ def are_parameters_compatible(
 
     # Phase 1d: Check kw args. Right has an infinite series of optional named
     #           arguments. Get all further named args of left, and make sure
-    #           they're more general then the corresponding member in right.
+    #           they're more general than the corresponding member in right.
     if right_star2 is not None and not trivial_suffix:
         right_names = {name for name in right.arg_names if name is not None}
         left_only_names = set()
@@ -1657,6 +1659,10 @@ def are_args_compatible(
     allow_partial_overlap: bool,
     is_compat: Callable[[Type, Type], bool],
 ) -> bool:
+    if left.required and right.required:
+        # If both arguments are required allow_partial_overlap has no effect.
+        allow_partial_overlap = False
+
     def is_different(left_item: object | None, right_item: object | None) -> bool:
         """Checks if the left and right items are different.
 
@@ -1684,7 +1690,7 @@ def are_args_compatible(
 
     # If right's argument is optional, left's must also be
     # (unless we're relaxing the checks to allow potential
-    # rather then definite compatibility).
+    # rather than definite compatibility).
     if not allow_partial_overlap and not right.required and left.required:
         return False
 

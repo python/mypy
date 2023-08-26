@@ -36,6 +36,19 @@ Incomplete: TypeAlias = Any
 # To describe a function parameter that is unused and will work with anything.
 Unused: TypeAlias = object
 
+# Used to mark arguments that default to a sentinel value. This prevents
+# stubtest from complaining about the default value not matching.
+#
+# def foo(x: int | None = sentinel) -> None: ...
+#
+# In cases where the sentinel object is exported and can be used by user code,
+# a construct like this is better:
+#
+# _SentinelType = NewType("_SentinelType", object)
+# sentinel: _SentinelType
+# def foo(x: int | None | _SentinelType = ...) -> None: ...
+sentinel = Any  # noqa: Y026
+
 # stable
 class IdentityFunction(Protocol):
     def __call__(self, __x: _T) -> _T: ...

@@ -1045,6 +1045,23 @@ def reduce_it(s: Scalar) -> Scalar:
 assert_type(reduce_it(True), Scalar)
 [builtins fixtures/tuple.pyi]
 
+[case testAssertTypeWithDeferredNodes]
+from typing import Callable, TypeVar, assert_type
+
+T = TypeVar("T")
+
+def dec(f: Callable[[], T]) -> Callable[[], T]:
+    return f
+
+def func() -> None:
+    some = _inner_func()
+    assert_type(some, int)
+
+@dec
+def _inner_func() -> int:
+    return 1
+[builtins fixtures/tuple.pyi]
+
 -- None return type
 -- ----------------
 

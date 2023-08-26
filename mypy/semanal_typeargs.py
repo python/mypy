@@ -14,13 +14,14 @@ from mypy.errorcodes import ErrorCode
 from mypy.errors import Errors
 from mypy.messages import format_type
 from mypy.mixedtraverser import MixedTraverserVisitor
-from mypy.nodes import Block, ClassDef, Context, FakeInfo, FuncItem, MypyFile
+from mypy.nodes import ARG_STAR, Block, ClassDef, Context, FakeInfo, FuncItem, MypyFile
 from mypy.options import Options
 from mypy.scope import Scope
 from mypy.subtypes import is_same_type, is_subtype
-from mypy.typeanal import set_any_tvars
+from mypy.typeanal import fix_type_var_tuple_argument, set_any_tvars
 from mypy.types import (
     AnyType,
+    CallableType,
     Instance,
     Parameters,
     ParamSpecType,
@@ -116,20 +117,58 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
             # the expansion, most likely it will result in the same kind of error.
             get_proper_type(t).accept(self)
 
+    def visit_tuple_type(self, t: TupleType) -> None:
+        t.items = flatten_nested_tuples(t.items)
+        # We could also normalize Tuple[*tuple[X, ...]] -> tuple[X, ...] like in
+        # expand_type() but we can't do this here since it is not a translator visitor,
+        # and we need to return an Instance instead of TupleType.
+        super().visit_tuple_type(t)
+
+    def visit_callable_type(self, t: CallableType) -> None:
+        super().visit_callable_type(t)
+        # Normalize trivial unpack in var args as *args: *tuple[X, ...] -> *args: X
+        if t.is_var_arg:
+            star_index = t.arg_kinds.index(ARG_STAR)
+            star_type = t.arg_types[star_index]
+            if isinstance(star_type, UnpackType):
+                p_type = get_proper_type(star_type.type)
+                if isinstance(p_type, Instance):
+                    assert p_type.type.fullname == "builtins.tuple"
+                    t.arg_types[star_index] = p_type.args[0]
+
     def visit_instance(self, t: Instance) -> None:
         # Type argument counts were checked in the main semantic analyzer pass. We assume
         # that the counts are correct here.
         info = t.type
         if isinstance(info, FakeInfo):
             return  # https://github.com/python/mypy/issues/11079
+        t.args = tuple(flatten_nested_tuples(t.args))
+        if t.type.has_type_var_tuple_type:
+            # Regular Instances are already validated in typeanal.py.
+            # TODO: do something with partial overlap (probably just reject).
+            # also in other places where split_with_prefix_and_suffix() is used.
+            correct = len(t.args) >= len(t.type.type_vars) - 1
+            if any(
+                isinstance(a, UnpackType) and isinstance(get_proper_type(a.type), Instance)
+                for a in t.args
+            ):
+                correct = True
+            if not correct:
+                exp_len = f"at least {len(t.type.type_vars) - 1}"
+                self.fail(
+                    f"Bad number of arguments, expected: {exp_len}, given: {len(t.args)}",
+                    t,
+                    code=codes.TYPE_ARG,
+                )
+                any_type = AnyType(TypeOfAny.from_error)
+                t.args = (any_type,) * len(t.type.type_vars)
+                fix_type_var_tuple_argument(any_type, t)
         self.validate_args(info.name, t.args, info.defn.type_vars, t)
         super().visit_instance(t)
 
     def validate_args(
         self, name: str, args: Sequence[Type], type_vars: list[TypeVarLikeType], ctx: Context
     ) -> bool:
-        # TODO: we need to do flatten_nested_tuples and validate arg count for instances
-        # similar to how do we do this for type aliases above, but this may have perf penalty.
         if any(isinstance(v, TypeVarTupleType) for v in type_vars):
             prefix = next(i for (i, v) in enumerate(type_vars) if isinstance(v, TypeVarTupleType))
             tvt = type_vars[prefix]
@@ -198,6 +237,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         return is_error
 
     def visit_unpack_type(self, typ: UnpackType) -> None:
+        super().visit_unpack_type(typ)
         proper_type = get_proper_type(typ.type)
         if isinstance(proper_type, TupleType):
             return
@@ -205,18 +245,14 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
             return
         if isinstance(proper_type, Instance) and proper_type.type.fullname == "builtins.tuple":
             return
-        if (
-            isinstance(proper_type, UnboundType)
-            or isinstance(proper_type, AnyType)
-            and proper_type.type_of_any == TypeOfAny.from_error
-        ):
+        if isinstance(proper_type, AnyType) and proper_type.type_of_any == TypeOfAny.from_error:
             return
-
-        # TODO: Infer something when it can't be unpacked to allow rest of
-        # typechecking to work.
-        self.fail(
-            message_registry.INVALID_UNPACK.format(format_type(proper_type, self.options)), typ
-        )
+        if not isinstance(proper_type, UnboundType):
+            # Avoid extra errors if there were some errors already.
+            self.fail(
+                message_registry.INVALID_UNPACK.format(format_type(proper_type, self.options)), typ
+            )
+        typ.type = AnyType(TypeOfAny.from_error)
 
     def check_type_var_values(
         self, name: str, actuals: list[Type], arg_name: str, valids: list[Type], context: Context
