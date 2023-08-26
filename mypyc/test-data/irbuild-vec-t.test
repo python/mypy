@@ -309,3 +309,17 @@ main:11: error: Invalid item type for "vec"
 main:12: error: Invalid item type for "vec"
 main:13: error: Invalid item type for "vec"
 main:14: error: Invalid item type for "vec"
+
+[case testVecTCheckItemTypeDuringConstruction]
+from vecs import vec
+from typing import Optional, Union
+
+def f() -> None:
+    vec[Optional[int]]()
+    vec[Union[str, bytes]]()
+    vec[Optional[vec[str]]]()
+
+[out]
+main:5: error: Invalid item type for "vec"
+main:6: error: Invalid item type for "vec"
+main:7: error: Invalid item type for "vec"
