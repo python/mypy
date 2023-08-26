@@ -3193,7 +3193,7 @@ from test1 import aaaa  # E: Module "test1" has no attribute "aaaa"
 import b
 [file a.py]
 class Foo:
-    def frobnicate(self, x: str, *args, **kwargs): pass
+    def frobnicate(self, x, *args, **kwargs): pass
 [file b.py]
 from a import Foo
 class Bar(Foo):
@@ -3201,21 +3201,21 @@ class Bar(Foo):
 [file b.py.2]
 from a import Foo
 class Bar(Foo):
-    def frobnicate(self, *args: int) -> None: pass
+    def frobnicate(self, *args) -> None: pass
 [file b.py.3]
 from a import Foo
 class Bar(Foo):
-    def frobnicate(self, *args: int) -> None: pass # type: ignore[override] # I know
+    def frobnicate(self, *args) -> None: pass # type: ignore[override] # I know
 [builtins fixtures/dict.pyi]
 [out1]
 tmp/b.py:3: error: Signature of "frobnicate" incompatible with supertype "Foo"
 tmp/b.py:3: note:      Superclass:
-tmp/b.py:3: note:          def frobnicate(self, x: str, *args: Any, **kwargs: Any) -> Any
+tmp/b.py:3: note:          def frobnicate(self, x: Any, *args: Any, **kwargs: Any) -> Any
 tmp/b.py:3: note:      Subclass:
 tmp/b.py:3: note:          def frobnicate(self) -> None
 [out2]
 tmp/b.py:3: error: Signature of "frobnicate" incompatible with supertype "Foo"
 tmp/b.py:3: note:      Superclass:
-tmp/b.py:3: note:          def frobnicate(self, x: str, *args: Any, **kwargs: Any) -> Any
+tmp/b.py:3: note:          def frobnicate(self, x: Any, *args: Any, **kwargs: Any) -> Any
 tmp/b.py:3: note:      Subclass:
-tmp/b.py:3: note:          def frobnicate(self, *args: int) -> None
+tmp/b.py:3: note:          def frobnicate(self, *args: Any) -> None

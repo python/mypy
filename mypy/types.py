@@ -1775,6 +1775,7 @@ class CallableType(FunctionLike):
         # (this is used for error messages)
         "imprecise_arg_kinds",
         "unpack_kwargs",  # Was an Unpack[...] with **kwargs used to define this callable?
+        "erased",  # Is this callable created as an erased form of a more precise type?
     )
 
     def __init__(
@@ -1800,6 +1801,7 @@ class CallableType(FunctionLike):
         from_concatenate: bool = False,
         imprecise_arg_kinds: bool = False,
         unpack_kwargs: bool = False,
+        erased: bool = False,
     ) -> None:
         super().__init__(line, column)
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
@@ -1847,6 +1849,7 @@ class CallableType(FunctionLike):
             self.def_extras = {}
         self.type_guard = type_guard
         self.unpack_kwargs = unpack_kwargs
+        self.erased = erased
 
     def copy_modified(
         self: CT,
@@ -1870,6 +1873,7 @@ class CallableType(FunctionLike):
         from_concatenate: Bogus[bool] = _dummy,
         imprecise_arg_kinds: Bogus[bool] = _dummy,
         unpack_kwargs: Bogus[bool] = _dummy,
+        erased: Bogus[bool] = _dummy,
     ) -> CT:
         modified = CallableType(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
@@ -1900,6 +1904,7 @@ class CallableType(FunctionLike):
                 else self.imprecise_arg_kinds
             ),
             unpack_kwargs=unpack_kwargs if unpack_kwargs is not _dummy else self.unpack_kwargs,
+            erased=erased if erased is not _dummy else self.erased,
         )
         # Optimization: Only NewTypes are supported as subtypes since
         # the class is effectively final, so we can use a cast safely.
@@ -2213,6 +2218,7 @@ class CallableType(FunctionLike):
             "from_concatenate": self.from_concatenate,
             "imprecise_arg_kinds": self.imprecise_arg_kinds,
             "unpack_kwargs": self.unpack_kwargs,
+            "erased": self.erased,
         }
 
     @classmethod
@@ -2237,6 +2243,7 @@ class CallableType(FunctionLike):
             from_concatenate=data["from_concatenate"],
             imprecise_arg_kinds=data["imprecise_arg_kinds"],
             unpack_kwargs=data["unpack_kwargs"],
+            erased=data["erased"],
         )
 
 

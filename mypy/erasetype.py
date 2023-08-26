@@ -175,6 +175,13 @@ class TypeVarEraser(TypeTranslator):
             return self.replacement
         return t
 
+    def visit_callable_type(self, t: CallableType) -> Type:
+        result = super().visit_callable_type(t)
+        if t.param_spec():
+            assert isinstance(result, ProperType) and isinstance(result, CallableType)
+            result.erased = True
+        return result
+
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         # Type alias target can't contain bound type variables (not bound by the type
         # alias itself), so it is safe to just erase the arguments.

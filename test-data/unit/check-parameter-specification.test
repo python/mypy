@@ -1829,3 +1829,109 @@ class C(Generic[P]): ...
 c: C[int, [int, str], str]  # E: Nested parameter specifications are not allowed
 reveal_type(c)  # N: Revealed type is "__main__.C[Any]"
 [builtins fixtures/paramspec.pyi]
+
+[case testParamSpecConcatenateSelfType]
+from typing import Callable
+from typing_extensions import ParamSpec, Concatenate
+
+P = ParamSpec("P")
+class A:
+    def __init__(self, a_param_1: str) -> None: ...
+
+    @classmethod
+    def add_params(cls: Callable[P, A]) -> Callable[Concatenate[float, P], A]:
+        def new_constructor(i: float, *args: P.args, **kwargs: P.kwargs) -> A:
+            return cls(*args, **kwargs)
+        return new_constructor
+
+    @classmethod
+    def remove_params(cls: Callable[Concatenate[str, P], A]) -> Callable[P, A]:
+        def new_constructor(*args: P.args, **kwargs: P.kwargs) -> A:
+            return cls("my_special_str", *args, **kwargs)
+        return new_constructor
+
+reveal_type(A.add_params())  # N: Revealed type is "def (builtins.float, a_param_1: builtins.str) -> __main__.A"
+reveal_type(A.remove_params())  # N: Revealed type is "def () -> __main__.A"
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecConcatenateCallbackProtocol]
+from typing import Protocol, TypeVar
+from typing_extensions import ParamSpec, Concatenate
+
+P = ParamSpec("P")
+R = TypeVar("R", covariant=True)
+
+class Path: ...
+
+class Function(Protocol[P, R]):
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> R: ...
+
+def file_cache(fn: Function[Concatenate[Path, P], R]) -> Function[P, R]:
+    def wrapper(*args: P.args, **kw: P.kwargs) -> R:
+        return fn(Path(), *args, **kw)
+    return wrapper
+
+@file_cache
+def get_thing(path: Path, *, some_arg: int) -> int: ...
+reveal_type(get_thing)  # N: Revealed type is "__main__.Function[[*, some_arg: builtins.int], builtins.int]"
+get_thing(some_arg=1)  # OK
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecConcatenateKeywordOnly]
+from typing import Callable, TypeVar
+from typing_extensions import ParamSpec, Concatenate
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+class Path: ...
+
+def file_cache(fn: Callable[Concatenate[Path, P], R]) -> Callable[P, R]:
+    def wrapper(*args: P.args, **kw: P.kwargs) -> R:
+        return fn(Path(), *args, **kw)
+    return wrapper
+
+@file_cache
+def get_thing(path: Path, *, some_arg: int) -> int: ...
+reveal_type(get_thing)  # N: Revealed type is "def (*, some_arg: builtins.int) -> builtins.int"
+get_thing(some_arg=1)  # OK
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecConcatenateCallbackApply]
+from typing import Callable, Protocol
+from typing_extensions import ParamSpec, Concatenate
+
+P = ParamSpec("P")
+
+class FuncType(Protocol[P]):
+    def __call__(self, x: int, s: str, *args: P.args, **kw_args: P.kwargs) -> str: ...
+
+def forwarder1(fp: FuncType[P], *args: P.args, **kw_args: P.kwargs) -> str:
+    return fp(0, '', *args, **kw_args)
+
+def forwarder2(fp: Callable[Concatenate[int, str, P], str], *args: P.args, **kw_args: P.kwargs) -> str:
+    return fp(0, '', *args, **kw_args)
+
+def my_f(x: int, s: str, d: bool) -> str: ...
+forwarder1(my_f, True)  # OK
+forwarder2(my_f, True)  # OK
+forwarder1(my_f, 1.0)  # E: Argument 2 to "forwarder1" has incompatible type "float"; expected "bool"
+forwarder2(my_f, 1.0)  # E: Argument 2 to "forwarder2" has incompatible type "float"; expected "bool"
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecCallbackProtocolSelf]
+from typing import Callable, Protocol, TypeVar
+from typing_extensions import ParamSpec, Concatenate
+
+Params = ParamSpec("Params")
+Result = TypeVar("Result", covariant=True)
+
+class FancyMethod(Protocol):
+    def __call__(self, arg1: int, arg2: str) -> bool: ...
+    def return_me(self: Callable[Params, Result]) -> Callable[Params, Result]: ...
+    def return_part(self: Callable[Concatenate[int, Params], Result]) -> Callable[Params, Result]: ...
+
+m: FancyMethod
+reveal_type(m.return_me())  # N: Revealed type is "def (arg1: builtins.int, arg2: builtins.str) -> builtins.bool"
+reveal_type(m.return_part())  # N: Revealed type is "def (arg2: builtins.str) -> builtins.bool"
+[builtins fixtures/paramspec.pyi]
