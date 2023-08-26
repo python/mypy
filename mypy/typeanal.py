@@ -883,6 +883,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         ):
             return AnyType(TypeOfAny.from_error)
 
+
         # Check type argument count.
         instance.args = tuple(flatten_nested_tuples(instance.args))
         if not (self.defining_alias and self.nesting_level == 0) and not validate_instance(

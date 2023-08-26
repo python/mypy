@@ -263,3 +263,49 @@ L3:
     goto L1
 L4:
     return r3
+
+[case testVecTCheckItemType]
+from vecs import vec
+from typing import Tuple
+
+def bad1(v: vec[Tuple[str, str]]) -> None: pass
+def bad2(v: vec[int]) -> None: pass
+def bad3(v: vec) -> None: pass
+
+def ok1(v: vec[str], v2: vec[bytes]) -> None: pass
+def ok2(v: vec[Tuple[str, ...]]) -> None: pass
+def ok3(v: vec[object]) -> None: pass
+[out]
+main:4: error: Invalid item type for "vec"
+main:5: error: Invalid item type for "vec"
+main:6: error: Invalid item type for "vec"
+
+[case testVecTCheckItemTypeUnion]
+from vecs import vec
+from typing import Tuple, Union, Optional
+from mypy_extensions import i64
+
+def bad1(v: vec[Union[str, bytes]]) -> None: pass
+def bad2(v: vec[Union[str, bytes, None]]) -> None: pass
+def bad3(v: vec[Union[int, None]]) -> None: pass
+def bad4(v: vec[Union[None, int]]) -> None: pass
+def bad5(v: vec[Union[i64, None]]) -> None: pass
+def bad6(v: vec[Union[None, i64]]) -> None: pass
+def bad7(v: vec[Union[bool, None]]) -> None: pass
+def bad9(v: vec[Union[float, None]]) -> None: pass
+def bad10(v: vec[Union[vec[str], None]]) -> None: pass
+def bad11(v: vec[Optional[vec[str]]]) -> None: pass
+
+def ok1(v: vec[Union[str, None]]) -> None: pass
+def ok2(v: vec[Union[None, str]]) -> None: pass
+[out]
+main:5: error: Invalid item type for "vec"
+main:6: error: Invalid item type for "vec"
+main:7: error: Invalid item type for "vec"
+main:8: error: Invalid item type for "vec"
+main:9: error: Invalid item type for "vec"
+main:10: error: Invalid item type for "vec"
+main:11: error: Invalid item type for "vec"
+main:12: error: Invalid item type for "vec"
+main:13: error: Invalid item type for "vec"
+main:14: error: Invalid item type for "vec"
