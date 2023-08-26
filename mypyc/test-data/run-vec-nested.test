@@ -75,13 +75,12 @@ def test_get_item_error() -> None:
     with assertRaises(IndexError):
         v[-3]
 
-"""
 def test_len() -> None:
-    v = vec[Optional[vec[str]]]()
+    v = vec[vec[str]]()
     assert len(v) == 0
     v = append(v, vec[str](['1']))
     assert len(v) == 1
-    v = append(v, None)
+    v = append(v, vec[str]())
     assert len(v) == 2
     for i in range(100):
         v = append(v, vec[str](['i']))
@@ -121,6 +120,10 @@ def test_equality_different_types() -> None:
     assert a != d
     assert d == d
 
+    assert vec[vec[str]]() != vec[vec[bytes]]()
+    assert vec[vec[str]]() != vec[vec[i64]]()
+
+"""
 def test_slicing() -> None:
     v = vec[vec[str]](vec[str]([str(i)]) for i in range(5))
     assert v[1:4] == vec[vec[str]]([v[1], v[2], v[3]])
