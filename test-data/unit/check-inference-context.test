@@ -625,8 +625,10 @@ reveal_type((lambda x, y: x + y)(1, 2))  # N: Revealed type is "builtins.int"
 reveal_type((lambda s, i: s)(i=0, s='x')) # N: Revealed type is "Literal['x']?"
 reveal_type((lambda s, i: i)(i=0, s='x')) # N: Revealed type is "Literal[0]?"
 reveal_type((lambda x, s, i: x)(1.0, i=0, s='x')) # N: Revealed type is "builtins.float"
-(lambda x, s, i: x)() # E: Too few arguments
-(lambda: 0)(1) # E: Too many arguments
+if object():
+    (lambda x, s, i: x)() # E: Too few arguments
+if object():
+    (lambda: 0)(1) # E: Too many arguments
 -- varargs are not handled, but it should not crash
 reveal_type((lambda *k, s, i: i)(type, i=0, s='x')) # N: Revealed type is "Any"
 reveal_type((lambda s, *k, i: i)(i=0, s='x')) # N: Revealed type is "Any"
@@ -691,6 +693,7 @@ f(lambda: None)
 g(lambda: None)
 
 [case testIsinstanceInInferredLambda]
+# flags: --new-type-inference
 from typing import TypeVar, Callable, Optional
 T = TypeVar('T')
 S = TypeVar('S')
@@ -698,7 +701,7 @@ class A: pass
 class B(A): pass
 class C(A): pass
 def f(func: Callable[[T], S], *z: T, r: Optional[S] = None) -> S: pass
-f(lambda x: 0 if isinstance(x, B) else 1) # E: Cannot infer type argument 1 of "f"
+reveal_type(f(lambda x: 0 if isinstance(x, B) else 1))  # N: Revealed type is "builtins.int"
 f(lambda x: 0 if isinstance(x, B) else 1, A())() # E: "int" not callable
 f(lambda x: x if isinstance(x, B) else B(), A(), r=B())() # E: "B" not callable
 f(
@@ -923,7 +926,6 @@ reveal_type(f(None)) # N: Revealed type is "Union[None, builtins.list[builtins.i
 [builtins fixtures/list.pyi]
 
 [case testUnionWithGenericTypeItemContextAndStrictOptional]
-# flags: --strict-optional
 from typing import TypeVar, Union, List
 
 T = TypeVar('T')
@@ -951,7 +953,6 @@ reveal_type(c.f(None)) # N: Revealed type is "Union[builtins.list[builtins.int],
 [builtins fixtures/list.pyi]
 
 [case testGenericMethodCalledInGenericContext]
-# flags: --strict-optional
 from typing import TypeVar, Generic
 
 _KT = TypeVar('_KT')
@@ -1219,7 +1220,6 @@ x: Iterable[Union[A, B]] = f(B())
 [builtins fixtures/list.pyi]
 
 [case testWideOuterContextOptional]
-# flags: --strict-optional
 from typing import Optional, Type, TypeVar
 
 class Custom:
@@ -1233,7 +1233,6 @@ def b(x: T) -> Optional[T]:
     return a(x)
 
 [case testWideOuterContextOptionalGenericReturn]
-# flags: --strict-optional
 from typing import Optional, Type, TypeVar, Iterable
 
 class Custom:
@@ -1247,7 +1246,6 @@ def b(x: T) -> Iterable[Optional[T]]:
     return a(x)
 
 [case testWideOuterContextOptionalMethod]
-# flags: --strict-optional
 from typing import Optional, Type, TypeVar
 
 class A: pass
@@ -1280,7 +1278,6 @@ def bar(xs: List[S]) -> S:
 [builtins fixtures/list.pyi]
 
 [case testWideOuterContextOptionalTypeVarReturn]
-# flags: --strict-optional
 from typing import Callable, Iterable, List, Optional, TypeVar
 
 class C:
@@ -1296,7 +1293,6 @@ def g(l: List[C], x: str) -> Optional[C]:
 [builtins fixtures/list.pyi]
 
 [case testWideOuterContextOptionalTypeVarReturnLambda]
-# flags: --strict-optional
 from typing import Callable, Iterable, List, Optional, TypeVar
 
 class C:
@@ -1333,7 +1329,6 @@ y: List[str] = f([]) \
 [builtins fixtures/list.pyi]
 
 [case testWideOuterContextNoArgs]
-# flags: --strict-optional
 from typing import TypeVar, Optional
 
 T = TypeVar('T', bound=int)
@@ -1342,7 +1337,6 @@ def f(x: Optional[T] = None) -> T: ...
 y: str = f()
 
 [case testWideOuterContextNoArgsError]
-# flags: --strict-optional
 from typing import TypeVar, Optional, List
 
 T = TypeVar('T', bound=int)
@@ -1425,7 +1419,6 @@ bar({1: 2})
 [builtins fixtures/dict.pyi]
 
 [case testOptionalTypeNarrowedByGenericCall]
-# flags: --strict-optional
 from typing import Dict, Optional
 
 d: Dict[str, str] = {}
@@ -1437,7 +1430,6 @@ def foo(arg: Optional[str] = None) -> None:
 [builtins fixtures/dict.pyi]
 
 [case testOptionalTypeNarrowedByGenericCall2]
-# flags: --strict-optional
 from typing import Dict, Optional
 
 d: Dict[str, str] = {}
@@ -1449,7 +1441,6 @@ if x:
 [builtins fixtures/dict.pyi]
 
 [case testOptionalTypeNarrowedByGenericCall3]
-# flags: --strict-optional
 from typing import Generic, TypeVar, Union
 
 T = TypeVar("T")
@@ -1462,7 +1453,6 @@ def foo(arg: Union[str, int]) -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testOptionalTypeNarrowedByGenericCall4]
-# flags: --strict-optional
 from typing import Optional, List, Generic, TypeVar
 
 T = TypeVar("T", covariant=True)

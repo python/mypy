@@ -203,7 +203,7 @@ class Node(Context):
         return ans
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
-        raise RuntimeError("Not implemented")
+        raise RuntimeError("Not implemented", type(self))
 
 
 @trait
@@ -213,7 +213,7 @@ class Statement(Node):
     __slots__ = ()
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
-        raise RuntimeError("Not implemented")
+        raise RuntimeError("Not implemented", type(self))
 
 
 @trait
@@ -223,7 +223,7 @@ class Expression(Node):
     __slots__ = ()
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
-        raise RuntimeError("Not implemented")
+        raise RuntimeError("Not implemented", type(self))
 
 
 class FakeExpression(Expression):
@@ -751,6 +751,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "is_mypy_only",
         # Present only when a function is decorated with @typing.datasclass_transform or similar
         "dataclass_transform_spec",
+        "docstring",
     )
 
     __match_args__ = ("name", "arguments", "type", "body")
@@ -779,6 +780,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # Definitions that appear in if TYPE_CHECKING are marked with this flag.
         self.is_mypy_only = False
         self.dataclass_transform_spec: DataclassTransformSpec | None = None
+        self.docstring: str | None = None
 
     @property
     def name(self) -> str:
@@ -1081,6 +1083,7 @@ class ClassDef(Statement):
         "analyzed",
         "has_incompatible_baseclass",
         "deco_line",
+        "docstring",
         "removed_statements",
     )
 
@@ -1127,6 +1130,7 @@ class ClassDef(Statement):
         self.has_incompatible_baseclass = False
         # Used for error reporting (to keep backwad compatibility with pre-3.8)
         self.deco_line: int | None = None
+        self.docstring: str | None = None
         self.removed_statements = []
 
     @property
@@ -2621,27 +2625,14 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
 class TypeAliasExpr(Expression):
     """Type alias expression (rvalue)."""
 
-    __slots__ = ("type", "tvars", "no_args", "node")
+    __slots__ = ("node",)
 
-    __match_args__ = ("type", "tvars", "no_args", "node")
+    __match_args__ = ("node",)
 
-    # The target type.
-    type: mypy.types.Type
-    # Names of type variables used to define the alias
-    tvars: list[str]
-    # Whether this alias was defined in bare form. Used to distinguish
-    # between
-    #     A = List
-    # and
-    #     A = List[Any]
-    no_args: bool
     node: TypeAlias
 
     def __init__(self, node: TypeAlias) -> None:
         super().__init__()
-        self.type = node.target
-        self.tvars = [v.name for v in node.alias_tvars]
-        self.no_args = node.no_args
         self.node = node
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:

@@ -630,7 +630,6 @@ if int():
 [builtins fixtures/list.pyi]
 
 [case testCallerTupleVarArgsAndGenericCalleeVarArg]
-# flags: --strict-optional
 from typing import TypeVar
 
 T = TypeVar('T')
@@ -776,7 +775,7 @@ class Person(TypedDict):
     name: str
     age: int
 
-def foo(x: Unpack[Person]) -> None:  # E: "Person" cannot be unpacked (must be tuple or TypeVarTuple)
+def foo(x: Unpack[Person]) -> None:  # E: Unpack is only valid in a variadic position
     ...
 def bar(x: int, *args: Unpack[Person]) -> None:  # E: "Person" cannot be unpacked (must be tuple or TypeVarTuple)
     ...

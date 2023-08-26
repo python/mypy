@@ -87,7 +87,6 @@ D = TypedDict('D', {
 -- Define TypedDict (Class syntax)
 
 [case testCanCreateTypedDictWithClass]
-# flags: --python-version 3.6
 from mypy_extensions import TypedDict
 
 class Point(TypedDict):
@@ -99,7 +98,6 @@ reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point', {'x': builtin
 [builtins fixtures/dict.pyi]
 
 [case testCanCreateTypedDictWithSubclass]
-# flags: --python-version 3.6
 from mypy_extensions import TypedDict
 
 class Point1D(TypedDict):
@@ -113,7 +111,6 @@ reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point2D', {'x': built
 [builtins fixtures/dict.pyi]
 
 [case testCanCreateTypedDictWithSubclass2]
-# flags: --python-version 3.6
 from mypy_extensions import TypedDict
 
 class Point1D(TypedDict):
@@ -126,7 +123,6 @@ reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point2D', {'x': built
 [builtins fixtures/dict.pyi]
 
 [case testCanCreateTypedDictClassEmpty]
-# flags: --python-version 3.6
 from mypy_extensions import TypedDict
 
 class EmptyDict(TypedDict):
@@ -138,10 +134,7 @@ reveal_type(p)  # N: Revealed type is "TypedDict('__main__.EmptyDict', {})"
 
 
 [case testCanCreateTypedDictWithClassOldVersion]
-# flags: --python-version 3.5
-
-# Test that we can use class-syntax to merge TypedDicts even in
-# versions without type annotations
+# Test that we can use class-syntax to merge function-based TypedDicts
 
 from mypy_extensions import TypedDict
 
@@ -165,7 +158,6 @@ foo({'name': 'lol', 'year': 2009, 'based_on': 0})  # E: Incompatible types (expr
 -- Define TypedDict (Class syntax errors)
 
 [case testCannotCreateTypedDictWithClassOtherBases]
-# flags: --python-version 3.6
 from mypy_extensions import TypedDict
 
 class A: pass
@@ -195,7 +187,6 @@ class C(TypedDict, TypedDict): # E: Duplicate base class "TypedDict"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testCannotCreateTypedDictWithClassWithOtherStuff]
-# flags: --python-version 3.6
 from mypy_extensions import TypedDict
 
 class Point(TypedDict):
@@ -251,7 +242,6 @@ Point = TypedDict('Point', {'x': int, 'y': int, '_fallback': object})
 [builtins fixtures/dict.pyi]
 
 [case testCanCreateTypedDictWithClassUnderscores]
-# flags: --python-version 3.6
 from mypy_extensions import TypedDict
 
 class Point(TypedDict):
@@ -263,7 +253,6 @@ reveal_type(p) # N: Revealed type is "TypedDict('__main__.Point', {'x': builtins
 [builtins fixtures/dict.pyi]
 
 [case testCannotCreateTypedDictWithDuplicateKey1]
-# flags: --python-version 3.6
 from mypy_extensions import TypedDict
 
 class Bad(TypedDict):
@@ -291,7 +280,6 @@ reveal_type(d2) # N: Revealed type is "TypedDict('__main__.D2', {'x': builtins.s
 [typing fixtures/typing-typeddict.pyi]
 
 [case testCanCreateTypedDictWithClassOverwriting]
-# flags: --python-version 3.6
 from mypy_extensions import TypedDict
 
 class Point1(TypedDict):
@@ -306,7 +294,6 @@ reveal_type(b) # N: Revealed type is "TypedDict('__main__.Bad', {'x': builtins.i
 [builtins fixtures/dict.pyi]
 
 [case testCanCreateTypedDictWithClassOverwriting2]
-# flags: --python-version 3.6
 from mypy_extensions import TypedDict
 
 class Point1(TypedDict):
@@ -608,7 +595,6 @@ reveal_type(f(g))  # N: Revealed type is "TypedDict({'x': builtins.int, 'y': bui
 [builtins fixtures/dict.pyi]
 
 [case testMeetOfTypedDictsWithIncompatibleCommonKeysIsUninhabited]
-# flags: --strict-optional
 from mypy_extensions import TypedDict
 from typing import TypeVar, Callable
 XYa = TypedDict('XYa', {'x': int, 'y': int})
@@ -632,7 +618,6 @@ reveal_type(f(g))  # N: Revealed type is "TypedDict({'x': builtins.int, 'z': bui
 
 # TODO: It would be more accurate for the meet to be TypedDict instead.
 [case testMeetOfTypedDictWithCompatibleMappingIsUninhabitedForNow]
-# flags: --strict-optional
 from mypy_extensions import TypedDict
 from typing import TypeVar, Callable, Mapping
 X = TypedDict('X', {'x': int})
@@ -644,7 +629,6 @@ reveal_type(f(g))  # N: Revealed type is "<nothing>"
 [builtins fixtures/dict.pyi]
 
 [case testMeetOfTypedDictWithIncompatibleMappingIsUninhabited]
-# flags: --strict-optional
 from mypy_extensions import TypedDict
 from typing import TypeVar, Callable, Mapping
 X = TypedDict('X', {'x': int})
@@ -656,7 +640,6 @@ reveal_type(f(g))  # N: Revealed type is "<nothing>"
 [builtins fixtures/dict.pyi]
 
 [case testMeetOfTypedDictWithCompatibleMappingSuperclassIsUninhabitedForNow]
-# flags: --strict-optional
 from mypy_extensions import TypedDict
 from typing import TypeVar, Callable, Iterable
 X = TypedDict('X', {'x': int})
@@ -690,7 +673,6 @@ reveal_type(f(g))  # N: Revealed type is "TypedDict({'x'?: builtins.int, 'y': bu
 [builtins fixtures/dict.pyi]
 
 [case testMeetOfTypedDictsWithIncompatibleNonTotalAndTotal]
-# flags: --strict-optional
 from mypy_extensions import TypedDict
 from typing import TypeVar, Callable
 XY = TypedDict('XY', {'x': int, 'y': int}, total=False)
@@ -985,7 +967,6 @@ if int():
 -- Other TypedDict methods
 
 [case testTypedDictGetMethod]
-# flags: --strict-optional
 from mypy_extensions import TypedDict
 class A: pass
 D = TypedDict('D', {'x': int, 'y': str})
@@ -999,7 +980,6 @@ reveal_type(d.get('y', None)) # N: Revealed type is "Union[builtins.str, None]"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictGetMethodTypeContext]
-# flags: --strict-optional
 from typing import List
 from mypy_extensions import TypedDict
 class A: pass
@@ -1057,7 +1037,6 @@ p.get('x', 1 + 'y')     # E: Unsupported operand types for + ("int" and "str")
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictChainedGetWithEmptyDictDefault]
-# flags: --strict-optional
 from mypy_extensions import TypedDict
 C = TypedDict('C', {'a': int})
 D = TypedDict('D', {'x': C, 'y': str})
@@ -1774,7 +1753,6 @@ reveal_type(td.pop('c'))  # E: TypedDict "TDA" has no key "c" \
 [typing fixtures/typing-typeddict.pyi]
 
 [case testCanCreateTypedDictWithTypingExtensions]
-# flags: --python-version 3.6
 from typing_extensions import TypedDict
 
 class Point(TypedDict):

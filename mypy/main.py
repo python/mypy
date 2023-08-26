@@ -11,7 +11,12 @@ from gettext import gettext
 from typing import IO, Any, Final, NoReturn, Sequence, TextIO
 
 from mypy import build, defaults, state, util
-from mypy.config_parser import get_config_module_names, parse_config_file, parse_version
+from mypy.config_parser import (
+    get_config_module_names,
+    parse_config_file,
+    parse_version,
+    validate_package_allow_list,
+)
 from mypy.errorcodes import error_codes
 from mypy.errors import CompileError
 from mypy.find_sources import InvalidSourceList, create_source_list
@@ -595,14 +600,6 @@ def process_options(
         dest="special-opts:python_version",
     )
     platform_group.add_argument(
-        "-2",
-        "--py2",
-        dest="special-opts:python_version",
-        action="store_const",
-        const=defaults.PYTHON2_VERSION,
-        help="Use Python 2 mode (same as --python-version 2.7)",
-    )
-    platform_group.add_argument(
         "--platform",
         action="store",
         metavar="PLATFORM",
@@ -682,6 +679,14 @@ def process_options(
         help="Disallow calling functions without type annotations"
         " from functions with type annotations",
         group=untyped_group,
+    )
+    untyped_group.add_argument(
+        "--untyped-calls-exclude",
+        metavar="MODULE",
+        action="append",
+        default=[],
+        help="Disable --disallow-untyped-calls for functions/methods coming"
+        " from specific package, module, or class",
     )
     add_invertible_flag(
         "--disallow-untyped-defs",
@@ -1314,6 +1319,8 @@ def process_options(
             "You can't make a variable always true and always false (%s)"
             % ", ".join(sorted(overlap))
         )
+
+    validate_package_allow_list(options.untyped_calls_exclude)
 
     # Process `--enable-error-code` and `--disable-error-code` flags
     disabled_codes = set(options.disable_error_code)

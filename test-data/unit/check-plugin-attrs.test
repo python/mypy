@@ -185,10 +185,10 @@ from attr import attrib, attrs
 class A:
     a: int
 reveal_type(A)  # N: Revealed type is "def (a: builtins.int) -> __main__.A"
-reveal_type(A.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
-reveal_type(A.__le__)  # N: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
-reveal_type(A.__gt__)  # N: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
-reveal_type(A.__ge__)  # N: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
+reveal_type(A.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`3, other: _AT`3) -> builtins.bool"
+reveal_type(A.__le__)  # N: Revealed type is "def [_AT] (self: _AT`4, other: _AT`4) -> builtins.bool"
+reveal_type(A.__gt__)  # N: Revealed type is "def [_AT] (self: _AT`5, other: _AT`5) -> builtins.bool"
+reveal_type(A.__ge__)  # N: Revealed type is "def [_AT] (self: _AT`6, other: _AT`6) -> builtins.bool"
 
 A(1) < A(2)
 A(1) <= A(2)
@@ -989,10 +989,10 @@ class C(A, B): pass
 @attr.s
 class D(A): pass
 
-reveal_type(A.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
-reveal_type(B.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
-reveal_type(C.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
-reveal_type(D.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
+reveal_type(A.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`5, other: _AT`5) -> builtins.bool"
+reveal_type(B.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`6, other: _AT`6) -> builtins.bool"
+reveal_type(C.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`7, other: _AT`7) -> builtins.bool"
+reveal_type(D.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`8, other: _AT`8) -> builtins.bool"
 
 A() < A()
 B() < B()
@@ -1199,7 +1199,6 @@ class C:
 [builtins fixtures/bool.pyi]
 
 [case testAttrsOptionalConverter]
-# flags: --strict-optional
 import attr
 from attr.converters import optional
 from typing import Optional
@@ -1219,7 +1218,6 @@ A(None, None)
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testAttrsOptionalConverterNewPackage]
-# flags: --strict-optional
 import attrs
 from attrs.converters import optional
 from typing import Optional
@@ -1570,6 +1568,9 @@ reveal_type(f(A)[0])  # N: Revealed type is "attr.Attribute[builtins.int]"
 reveal_type(f(A).b)  # N: Revealed type is "attr.Attribute[builtins.int]"
 f(A).x  # E: "____main___A_AttrsAttributes__" has no attribute "x"
 
+for ff in f(A):
+    reveal_type(ff)  # N: Revealed type is "attr.Attribute[Any]"
+
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testAttrsGenericFields]
@@ -1631,6 +1632,24 @@ reveal_type(A.__attrs_init__)  # N: Revealed type is "def (self: __main__.A, b: 
 [case testAttrsClassWithSlots]
 import attr
 
+@attr.define
+class Define:
+    b: int = attr.ib()
+
+    def __attrs_post_init__(self) -> None:
+        self.b = 1
+        self.c = 2  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.Define"
+
+
+@attr.define(slots=False)
+class DefineSlotsFalse:
+    b: int = attr.ib()
+
+    def __attrs_post_init__(self) -> None:
+        self.b = 1
+        self.c = 2
+
+
 @attr.s(slots=True)
 class A:
     b: int = attr.ib()
@@ -1656,6 +1675,33 @@ class C:
     def __attrs_post_init__(self) -> None:
         self.b = 1  # E: Trying to assign name "b" that is not in "__slots__" of type "__main__.C"
         self.c = 2  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.C"
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testRuntimeSlotsAttr]
+from attr import dataclass
+
+@dataclass(slots=True)
+class Some:
+    x: int
+    y: str
+    z: bool
+
+reveal_type(Some.__slots__)  # N: Revealed type is "Tuple[builtins.str, builtins.str, builtins.str]"
+
+@dataclass(slots=True)
+class Other:
+    x: int
+    y: str
+
+reveal_type(Other.__slots__)  # N: Revealed type is "Tuple[builtins.str, builtins.str]"
+
+
+@dataclass
+class NoSlots:
+    x: int
+    y: str
+
+NoSlots.__slots__  # E: "Type[NoSlots]" has no attribute "__slots__"
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testAttrsWithMatchArgs]
@@ -2207,3 +2253,27 @@ c = attrs.assoc(c, name=42)  # E: Argument "name" to "assoc" of "C" has incompat
 
 [builtins fixtures/plugin_attrs.pyi]
 [typing fixtures/typing-medium.pyi]
+
+[case testFrozenInheritFromGeneric]
+from typing import Generic, TypeVar
+from attrs import field, frozen
+
+T = TypeVar('T')
+
+def f(s: str) -> int:
+    ...
+
+@frozen
+class A(Generic[T]):
+    x: T
+    y: int = field(converter=f)
+
+@frozen
+class B(A[int]):
+    pass
+
+b = B(42, 'spam')
+reveal_type(b.x)  # N: Revealed type is "builtins.int"
+reveal_type(b.y)  # N: Revealed type is "builtins.int"
+
+[builtins fixtures/plugin_attrs.pyi]

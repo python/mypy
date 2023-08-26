@@ -2571,18 +2571,6 @@ import n
 [file n.pyi]
 class C: pass
 
-[case testNewAnalyzerModuleGetAttrInPython36]
-# flags: --python-version 3.6
-import m
-import n
-
-x: m.n.C # E: Name "m.n.C" is not defined
-y: n.D # E: Name "n.D" is not defined
-[file m.py]
-import n
-[file n.py]
-def __getattr__(x): pass
-
 [case testNewAnalyzerModuleGetAttrInPython37]
 # flags: --python-version 3.7
 import m
@@ -3219,8 +3207,7 @@ class User:
         self.first_name = value
 
     def __init__(self, name: str) -> None:
-        self.name = name  # E: Cannot assign to a method \
-                          # E: Incompatible types in assignment (expression has type "str", variable has type "Callable[..., Any]")
+        self.name = name  # E: Cannot assign to a method
 
 [case testNewAnalyzerMemberNameMatchesTypedDict]
 from typing import Union, Any

@@ -935,7 +935,6 @@ if int():
     b = D2()
 
 [case testConstructorJoinsWithCustomMetaclass]
-# flags: --strict-optional
 from typing import TypeVar
 import abc
 
@@ -1163,7 +1162,7 @@ def test() -> None:
             reveal_type(x)  # N: Revealed type is "T`-1"
             reveal_type(x.returns_int())  # N: Revealed type is "builtins.int"
             return foo
-    reveal_type(Foo.bar)  # N: Revealed type is "def [T <: __main__.Foo@5] (self: __main__.Foo@5, foo: T`-1) -> T`-1"
+    reveal_type(Foo.bar)  # N: Revealed type is "def [T <: __main__.Foo@5] (self: __main__.Foo@5, foo: T`1) -> T`1"
 
 [case testGenericClassWithInvalidTypevarUseWithinFunction]
 from typing import TypeVar
@@ -1629,7 +1628,6 @@ a = A()
 reveal_type(a.f)  # N: Revealed type is "__main__.D"
 
 [case testAccessingDescriptorFromClass]
-# flags: --strict-optional
 from d import D, Base
 class A(Base):
     f = D()
@@ -1647,7 +1645,6 @@ class D:
 [builtins fixtures/bool.pyi]
 
 [case testAccessingDescriptorFromClassWrongBase]
-# flags: --strict-optional
 from d import D, Base
 class A:
     f = D()
@@ -1664,13 +1661,13 @@ class D:
     def __get__(self, inst: Base, own: Type[Base]) -> str: pass
 [builtins fixtures/bool.pyi]
 [out]
-main:5: error: Argument 2 to "__get__" of "D" has incompatible type "Type[A]"; expected "Type[Base]"
-main:5: note: Revealed type is "d.D"
-main:6: error: No overload variant of "__get__" of "D" matches argument types "A", "Type[A]"
-main:6: note: Possible overload variants:
-main:6: note:     def __get__(self, inst: None, own: Type[Base]) -> D
-main:6: note:     def __get__(self, inst: Base, own: Type[Base]) -> str
-main:6: note: Revealed type is "Any"
+main:4: error: Argument 2 to "__get__" of "D" has incompatible type "Type[A]"; expected "Type[Base]"
+main:4: note: Revealed type is "d.D"
+main:5: error: No overload variant of "__get__" of "D" matches argument types "A", "Type[A]"
+main:5: note: Possible overload variants:
+main:5: note:     def __get__(self, inst: None, own: Type[Base]) -> D
+main:5: note:     def __get__(self, inst: Base, own: Type[Base]) -> str
+main:5: note: Revealed type is "Any"
 
 [case testAccessingGenericNonDataDescriptor]
 from typing import TypeVar, Type, Generic, Any
@@ -1702,7 +1699,6 @@ a.g = ''
 a.g = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testAccessingGenericDescriptorFromClass]
-# flags: --strict-optional
 from d import D
 class A:
     f = D(10)  # type: D[A, int]
@@ -1724,7 +1720,6 @@ class D(Generic[T, V]):
 [builtins fixtures/bool.pyi]
 
 [case testAccessingGenericDescriptorFromInferredClass]
-# flags: --strict-optional
 from typing import Type
 from d import D
 class A:
@@ -1745,11 +1740,10 @@ class D(Generic[T, V]):
     def __get__(self, inst: T, own: Type[T]) -> V: pass
 [builtins fixtures/bool.pyi]
 [out]
-main:8: note: Revealed type is "d.D[__main__.A, builtins.int]"
-main:9: note: Revealed type is "d.D[__main__.A, builtins.str]"
+main:7: note: Revealed type is "d.D[__main__.A, builtins.int]"
+main:8: note: Revealed type is "d.D[__main__.A, builtins.str]"
 
 [case testAccessingGenericDescriptorFromClassBadOverload]
-# flags: --strict-optional
 from d import D
 class A:
     f = D(10)  # type: D[A, int]
@@ -1766,11 +1760,11 @@ class D(Generic[T, V]):
     def __get__(self, inst: T, own: Type[T]) -> V: pass
 [builtins fixtures/bool.pyi]
 [out]
-main:5: error: No overload variant of "__get__" of "D" matches argument types "None", "Type[A]"
-main:5: note: Possible overload variants:
-main:5: note:     def __get__(self, inst: None, own: None) -> D[A, int]
-main:5: note:     def __get__(self, inst: A, own: Type[A]) -> int
-main:5: note: Revealed type is "Any"
+main:4: error: No overload variant of "__get__" of "D" matches argument types "None", "Type[A]"
+main:4: note: Possible overload variants:
+main:4: note:     def __get__(self, inst: None, own: None) -> D[A, int]
+main:4: note:     def __get__(self, inst: A, own: Type[A]) -> int
+main:4: note: Revealed type is "Any"
 
 [case testAccessingNonDataDescriptorSubclass]
 from typing import Any
@@ -6484,7 +6478,6 @@ def deco(f: Callable[..., T]) -> Callable[..., Tuple[T, int]]: ...
 [out]
 
 [case testOptionalDescriptorsBinder]
-# flags: --strict-optional
 from typing import Type, TypeVar, Optional
 T = TypeVar('T')
 
@@ -6698,7 +6691,6 @@ class C(Generic[T]):
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceTypeSubclass]
-# flags: --strict-optional
 from typing import Type, Optional
 class Base: ...
 class One(Base):
@@ -7725,10 +7717,14 @@ class D:
     def __new__(cls) -> NoReturn: ...
     def __init__(self) -> NoReturn: ...
 
-reveal_type(A())  # N: Revealed type is "<nothing>"
-reveal_type(B())  # N: Revealed type is "<nothing>"
-reveal_type(C())  # N: Revealed type is "<nothing>"
-reveal_type(D())  # N: Revealed type is "<nothing>"
+if object():
+    reveal_type(A())  # N: Revealed type is "<nothing>"
+if object():
+    reveal_type(B())  # N: Revealed type is "<nothing>"
+if object():
+    reveal_type(C())  # N: Revealed type is "<nothing>"
+if object():
+    reveal_type(D())  # N: Revealed type is "<nothing>"
 
 [case testOverloadedNewAndInitNoReturn]
 from typing import NoReturn, overload
@@ -7767,13 +7763,20 @@ class D:
     def __init__(self, a: int) -> None: ...
     def __init__(self, a: int = ...) -> None: ...
 
-reveal_type(A())  # N: Revealed type is "<nothing>"
+if object():
+    reveal_type(A())  # N: Revealed type is "<nothing>"
 reveal_type(A(1))  # N: Revealed type is "__main__.A"
-reveal_type(B())  # N: Revealed type is "<nothing>"
+
+if object():
+    reveal_type(B())  # N: Revealed type is "<nothing>"
 reveal_type(B(1))  # N: Revealed type is "__main__.B"
-reveal_type(C())  # N: Revealed type is "<nothing>"
+
+if object():
+    reveal_type(C())  # N: Revealed type is "<nothing>"
 reveal_type(C(1))  # N: Revealed type is "__main__.C"
-reveal_type(D())  # N: Revealed type is "<nothing>"
+
+if object():
+    reveal_type(D())  # N: Revealed type is "<nothing>"
 reveal_type(D(1))  # N: Revealed type is "__main__.D"
 
 [case testClassScopeImportWithWrapperAndError]

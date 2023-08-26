@@ -1019,18 +1019,19 @@ class Desc:
     def __get__(self, instance: object, owner: Any) -> str: ...
     def __get__(self, instance, owner): ...
 
-    def __set__(self, instance: Any, value: bytes) -> None: ...
+    def __set__(self, instance: Any, value: bytes | None) -> None: ...
 
 @my_dataclass
 class C:
     x: Desc
 
 c = C(x=b'x')
-C(x=1)  # E: Argument "x" to "C" has incompatible type "int"; expected "bytes"
+c = C(x=None)
+C(x=1)  # E: Argument "x" to "C" has incompatible type "int"; expected "Optional[bytes]"
 reveal_type(c.x)  # N: Revealed type is "builtins.str"
 reveal_type(C.x)  # N: Revealed type is "builtins.int"
 c.x = b'x'
-c.x = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "bytes")
+c.x = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Optional[bytes]")
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]

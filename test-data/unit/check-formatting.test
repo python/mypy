@@ -103,7 +103,6 @@ a = None # type: Any
 [typing fixtures/typing-medium.pyi]
 
 [case testStringInterpolationC]
-# flags: --python-version 3.6
 '%c' % 1
 '%c' % 1.0   # E: "%c" requires int or char (expression has type "float")
 '%c' % 's'
@@ -232,18 +231,12 @@ t5: Iterable[str] = ('A', 'B')
 -- Bytes interpolation
 -- --------------------
 
-
-[case testBytesInterpolationBefore35]
-# flags: --python-version 3.4
-b'%b' % 1  # E: Unsupported left operand type for % ("bytes")
-
 [case testBytesInterpolation]
 b'%b' % 1  # E: Incompatible types in string interpolation (expression has type "int", placeholder has type "bytes")
 b'%b' % b'1'
 b'%a' % 3
 
 [case testBytesInterpolationC]
-# flags: --python-version 3.6
 b'%c' % 1
 b'%c' % 1.0   # E: "%c" requires an integer in range(256) or a single byte (expression has type "float")
 b'%c' % 's'   # E: "%c" requires an integer in range(256) or a single byte (expression has type "str")
@@ -489,6 +482,23 @@ class D(bytes):
         return "overrides __str__ of bytes"
 
 '{}'.format(D())
+[builtins fixtures/primitives.pyi]
+
+[case testNoSpuriousFormattingErrorsDuringFailedOverlodMatch]
+from typing import overload, Callable
+
+@overload
+def sub(pattern: str, repl: Callable[[str], str]) -> str: ...
+@overload
+def sub(pattern: bytes, repl: Callable[[bytes], bytes]) -> bytes: ...
+def sub(pattern: object, repl: object) -> object:
+    pass
+
+def better_snakecase(text: str) -> str:
+    # Mypy used to emit a spurious error here
+    # warning about interpolating bytes into an f-string:
+    text = sub(r"([A-Z])([A-Z]+)([A-Z](?:[^A-Z]|$))", lambda match: f"{match}")
+    return text
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallFinal]

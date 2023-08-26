@@ -296,7 +296,7 @@ mypy.ini: [mypy]: ignore_missing_imports: Not a boolean: nah
 [file mypy.ini]
 \[mypy]
 \[mypy-*]
-python_version = 3.4
+python_version = 3.11
 [out]
 mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (python_version)
 == Return code: 0
@@ -592,7 +592,7 @@ main.py:1: error: Cannot find implementation or library stub for module named "a
 \[tool.mypy]
 python_version = 3.10
 [out]
-pyproject.toml: [mypy]: python_version: Python 3.1 is not supported (must be 3.4 or higher). You may need to put quotes around your Python version
+pyproject.toml: [mypy]: python_version: Python 3.1 is not supported (must be 3.7 or higher). You may need to put quotes around your Python version
 == Return code: 0
 
 [case testPythonVersionTooOld10]
@@ -604,13 +604,13 @@ python_version = 1.0
 mypy.ini: [mypy]: python_version: Python major version '1' out of range (must be 3)
 == Return code: 0
 
-[case testPythonVersionTooOld33]
+[case testPythonVersionTooOld36]
 # cmd: mypy -c pass
 [file mypy.ini]
 \[mypy]
-python_version = 3.3
+python_version = 3.6
 [out]
-mypy.ini: [mypy]: python_version: Python 3.3 is not supported (must be 3.4 or higher)
+mypy.ini: [mypy]: python_version: Python 3.6 is not supported (must be 3.7 or higher)
 == Return code: 0
 
 [case testPythonVersionTooNew40]
@@ -633,18 +633,18 @@ usage: mypy [-h] [-v] [-V] [more options; see below]
 mypy: error: Mypy no longer supports checking Python 2 code. Consider pinning to mypy<0.980 if you need to check Python 2 code.
 == Return code: 2
 
-[case testPythonVersionAccepted34]
+[case testPythonVersionAccepted37]
 # cmd: mypy -c pass
 [file mypy.ini]
 \[mypy]
-python_version = 3.4
+python_version = 3.7
 [out]
 
-[case testPythonVersionAccepted36]
+[case testPythonVersionAccepted311]
 # cmd: mypy -c pass
 [file mypy.ini]
 \[mypy]
-python_version = 3.6
+python_version = 3.11
 [out]
 
 -- This should be a dumping ground for tests of plugins that are sensitive to
@@ -676,11 +676,11 @@ int_pow.py:10: note: Revealed type is "builtins.int"
 int_pow.py:11: note: Revealed type is "Any"
 == Return code: 0
 
-[case testDisallowAnyGenericsBuiltinCollections]
+[case testDisallowAnyGenericsBuiltinCollectionsPre39]
 # cmd: mypy m.py
 [file mypy.ini]
 \[mypy]
-python_version=3.6
+python_version = 3.8
 \[mypy-m]
 disallow_any_generics = True
 

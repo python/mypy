@@ -143,7 +143,7 @@ t3 = None # type: Tuple[A, B]
 a, b, c = None, None, None # type: (A, B, C)
 
 if int():
-    t2 = ()        # E: Incompatible types in assignment (expression has type "Tuple[]", variable has type "Tuple[A]")
+    t2 = ()        # E: Incompatible types in assignment (expression has type "Tuple[()]", variable has type "Tuple[A]")
 if int():
     t2 = (a, a)    # E: Incompatible types in assignment (expression has type "Tuple[A, A]", variable has type "Tuple[A]")
 if int():
@@ -1244,9 +1244,9 @@ f(0)  # E: Argument 1 to "f" has incompatible type "int"; expected "Tuple[Any, .
 from typing import Tuple
 def f(a: Tuple[()]) -> None: pass
 f(())
-f((1,))  # E: Argument 1 to "f" has incompatible type "Tuple[int]"; expected "Tuple[]"
-f(('', ''))  # E: Argument 1 to "f" has incompatible type "Tuple[str, str]"; expected "Tuple[]"
-f(0)  # E: Argument 1 to "f" has incompatible type "int"; expected "Tuple[]"
+f((1,))  # E: Argument 1 to "f" has incompatible type "Tuple[int]"; expected "Tuple[()]"
+f(('', ''))  # E: Argument 1 to "f" has incompatible type "Tuple[str, str]"; expected "Tuple[()]"
+f(0)  # E: Argument 1 to "f" has incompatible type "int"; expected "Tuple[()]"
 [builtins fixtures/tuple.pyi]
 
 [case testNonliteralTupleIndex]
@@ -1455,8 +1455,7 @@ x7, x8, y7, y8 = *points2, *points3 # E: Contiguous iterable with same type expe
 x9, y9, x10, y10, z5 = *points2, 1, *points2 # E: Contiguous iterable with same type expected
 [builtins fixtures/tuple.pyi]
 
-[case testAssignEmptyPy36]
-# flags: --python-version 3.6
+[case testAssignEmpty]
 () = []
 
 [case testAssignEmptyBogus]
@@ -1468,7 +1467,7 @@ from typing import Tuple
 t = ('',) * 2
 reveal_type(t)  # N: Revealed type is "Tuple[builtins.str, builtins.str]"
 t2 = ('',) * -1
-reveal_type(t2)  # N: Revealed type is "Tuple[]"
+reveal_type(t2)  # N: Revealed type is "Tuple[()]"
 t3 = ('', 1) * 2
 reveal_type(t3)  # N: Revealed type is "Tuple[builtins.str, builtins.int, builtins.str, builtins.int]"
 def f() -> Tuple[str, ...]:
@@ -1476,12 +1475,21 @@ def f() -> Tuple[str, ...]:
 reveal_type(f() * 2)  # N: Revealed type is "builtins.tuple[builtins.str, ...]"
 [builtins fixtures/tuple.pyi]
 
+[case testEmptyTupleTypeRepr]
+from typing import Tuple
+
+def f() -> Tuple[()]: ...
+
+reveal_type(f)    # N: Revealed type is "def () -> Tuple[()]"
+reveal_type(f())  # N: Revealed type is "Tuple[()]"
+[builtins fixtures/tuple.pyi]
+
 [case testMultiplyTupleByIntegerLiteralReverse]
 from typing import Tuple
 t = 2 * ('',)
 reveal_type(t)  # N: Revealed type is "Tuple[builtins.str, builtins.str]"
 t2 = -1 * ('',)
-reveal_type(t2)  # N: Revealed type is "Tuple[]"
+reveal_type(t2)  # N: Revealed type is "Tuple[()]"
 t3 = 2 * ('', 1)
 reveal_type(t3)  # N: Revealed type is "Tuple[builtins.str, builtins.int, builtins.str, builtins.int]"
 def f() -> Tuple[str, ...]:
