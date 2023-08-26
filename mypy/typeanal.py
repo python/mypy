@@ -568,7 +568,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 instance = self.named_type("builtins.tuple", [self.anal_type(t.args[0])])
                 instance.line = t.line
                 return instance
-            return self.tuple_type(self.anal_array(t.args, allow_unpack=True))
+            return self.tuple_type(
+                self.anal_array(t.args, allow_unpack=True), line=t.line, column=t.column
+            )
         elif fullname == "typing.Union":
             items = self.anal_array(t.args)
             return UnionType.make_union(items)
@@ -968,7 +970,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return t
 
     def visit_unpack_type(self, t: UnpackType) -> Type:
-        raise NotImplementedError
+        if not self.allow_unpack:
+            self.fail(message_registry.INVALID_UNPACK_POSITION, t.type, code=codes.VALID_TYPE)
+            return AnyType(TypeOfAny.from_error)
+        return UnpackType(self.anal_type(t.type))
 
     def visit_parameters(self, t: Parameters) -> Type:
         raise NotImplementedError("ParamSpec literals cannot have unbound TypeVars")
@@ -1364,12 +1369,22 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         assert isinstance(ret, CallableType)
         return ret.accept(self)
 
+    def refers_to_full_names(self, arg: UnboundType, names: Sequence[str]) -> bool:
+        sym = self.lookup_qualified(arg.name, arg)
+        if sym is not None:
+            if sym.fullname in names:
+                return True
+        return False
+
     def analyze_callable_args(
         self, arglist: TypeList
     ) -> tuple[list[Type], list[ArgKind], list[str | None]] | None:
         args: list[Type] = []
         kinds: list[ArgKind] = []
         names: list[str | None] = []
+        seen_unpack = False
+        unpack_types: list[Type] = []
+        invalid_unpacks = []
         for arg in arglist.items:
             if isinstance(arg, CallableArgument):
                 args.append(arg.typ)
@@ -1390,20 +1405,42 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     if arg.name is not None and kind.is_star():
                         self.fail(f"{arg.constructor} arguments should not have names", arg)
                         return None
-            elif isinstance(arg, UnboundType):
-                kind = ARG_POS
-                # Potentially a unpack.
-                sym = self.lookup_qualified(arg.name, arg)
-                if sym is not None:
-                    if sym.fullname in ("typing_extensions.Unpack", "typing.Unpack"):
-                        kind = ARG_STAR
-                args.append(arg)
-                kinds.append(kind)
-                names.append(None)
+            elif (
+                isinstance(arg, UnboundType)
+                and self.refers_to_full_names(arg, ("typing_extensions.Unpack", "typing.Unpack"))
+                or isinstance(arg, UnpackType)
+            ):
+                if seen_unpack:
+                    # Multiple unpacks, preserve them, so we can give an error later.
+                    invalid_unpacks.append(arg)
+                    continue
+                seen_unpack = True
+                unpack_types.append(arg)
             else:
-                args.append(arg)
-                kinds.append(ARG_POS)
-                names.append(None)
+                if seen_unpack:
+                    unpack_types.append(arg)
+                else:
+                    args.append(arg)
+                    kinds.append(ARG_POS)
+                    names.append(None)
+        if seen_unpack:
+            if len(unpack_types) == 1:
+                args.append(unpack_types[0])
+            else:
+                first = unpack_types[0]
+                if isinstance(first, UnpackType):
+                    # UnpackType doesn't have its own line/column numbers,
+                    # so use the unpacked type for error messages.
+                    first = first.type
+                args.append(
+                    UnpackType(self.tuple_type(unpack_types, line=first.line, column=first.column))
+                )
+            kinds.append(ARG_STAR)
+            names.append(None)
+        for arg in invalid_unpacks:
+            args.append(arg)
+            kinds.append(ARG_STAR)
+            names.append(None)
         # Note that arglist below is only used for error context.
         check_arg_names(names, [arglist] * len(args), self.fail, "Callable")
         check_arg_kinds(kinds, [arglist] * len(args), self.fail)
@@ -1713,9 +1750,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             self.fail("More than one Unpack in a type is not allowed", final_unpack)
         return new_items
 
-    def tuple_type(self, items: list[Type]) -> TupleType:
+    def tuple_type(self, items: list[Type], line: int, column: int) -> TupleType:
         any_type = AnyType(TypeOfAny.special_form)
-        return TupleType(items, fallback=self.named_type("builtins.tuple", [any_type]))
+        return TupleType(
+            items, fallback=self.named_type("builtins.tuple", [any_type]), line=line, column=column
+        )
 
 
 TypeVarLikeList = List[Tuple[str, TypeVarLikeExpr]]
