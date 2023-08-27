@@ -1,6 +1,6 @@
 <img src="docs/source/mypy_light.svg" alt="mypy logo" width="300px"/>
 
-Mypy: Static Typing for Python
+Mypy: Static Typing for Python 
 =======================================
 
 [![Stable Version](https://img.shields.io/pypi/v/mypy?color=blue)](https://pypi.org/project/mypy/)
@@ -17,8 +17,8 @@ Got a question?
 
 We are always happy to answer questions! Here are some good places to ask them:
 
-- for anything you're curious about, try [gitter chat](https://gitter.im/python/typing)
-- for general questions about Python typing, try [typing discussions](https://github.com/python/typing/discussions)
+- For anything you're curious about, try [gitter chat](https://gitter.im/python/typing)
+- For general questions about Python typing, try [typing discussions](https://github.com/python/typing/discussions)
 
 If you're just getting started,
 [the documentation](https://mypy.readthedocs.io/en/stable/index.html)
