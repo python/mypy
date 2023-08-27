@@ -1,6 +1,11 @@
-from _typeshed import DataclassInstance
-from typing import Any, Callable, Generic, Literal, Mapping, Optional, TypeVar, overload, Type
+from typing import Any, Callable, Generic, Literal, Mapping, Optional, TypeVar, overload, Type, \
+    Protocol, ClassVar
 from typing_extensions import TypeGuard
+
+# DataclassInstance is in _typeshed.pyi normally, but alas we can't do the same for lib-stub
+# due to test-data/unit/lib-stub/builtins.pyi not having 'tuple'.
+class DataclassInstance(Protocol):
+    __dataclass_fields__: ClassVar[dict[str, Field[Any]]]
 
 _T = TypeVar('_T')
 _DataclassT = TypeVar("_DataclassT", bound=DataclassInstance)
