@@ -329,7 +329,7 @@ static inline int Vec_T_Ext_UnboxItem(VecTExt v, PyObject *item, VecbufTExtItem 
 static inline PyObject *Vec_T_Ext_BoxItem(VecTExt v, VecbufTExtItem item) {
     if (item.len < 0)
         Py_RETURN_NONE;
-    Py_INCREF(item.buf);
+    Py_XINCREF(item.buf);
     if (v.buf->depth > 1) {
         // Item is a nested vec
         VecTExt v = { .len = item.len, .buf = (VecbufTExtObject *)item.buf };
