@@ -1,6 +1,6 @@
 <img src="docs/source/mypy_light.svg" alt="mypy logo" width="300px"/>
 
-Mypy: Static Typing for Python 
+Mypy: Static Typing for Python
 =======================================
 
 [![Stable Version](https://img.shields.io/pypi/v/mypy?color=blue)](https://pypi.org/project/mypy/)
