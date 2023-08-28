@@ -5503,7 +5503,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return if_map, else_map
 
     def find_isinstance_check(
-        self, node: Expression, *, is_walrus_value: bool = False
+        self, node: Expression, *, in_boolean_context: bool = True
     ) -> tuple[TypeMap, TypeMap]:
         """Find any isinstance checks (within a chain of ands).  Includes
         implicit and explicit checks for None and calls to callable.
@@ -5518,13 +5518,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         May return {}, {}.
         Can return None, None in situations involving NoReturn.
         """
-        if_map, else_map = self.find_isinstance_check_helper(node, is_walrus_value=is_walrus_value)
+        if_map, else_map = self.find_isinstance_check_helper(
+            node, in_boolean_context=in_boolean_context
+        )
         new_if_map = self.propagate_up_typemap_info(if_map)
         new_else_map = self.propagate_up_typemap_info(else_map)
         return new_if_map, new_else_map
 
     def find_isinstance_check_helper(
-        self, node: Expression, *, is_walrus_value: bool = False
+        self, node: Expression, *, in_boolean_context: bool = True
     ) -> tuple[TypeMap, TypeMap]:
         if is_true_literal(node):
             return {}, None
@@ -5756,16 +5758,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if_map = {}
             else_map = {}
 
-            if_assignment_map, else_assignment_map = self.find_isinstance_check(node.target)
+            if_assignment_map, else_assignment_map = self.find_isinstance_check(
+                node.target, in_boolean_context=False
+            )
 
             if if_assignment_map is not None:
                 if_map.update(if_assignment_map)
             if else_assignment_map is not None:
                 else_map.update(else_assignment_map)
 
-            if_condition_map, else_condition_map = self.find_isinstance_check(
-                node.value, is_walrus_value=True
-            )
+            if_condition_map, else_condition_map = self.find_isinstance_check(node.value)
 
             if if_condition_map is not None:
                 if_map.update(if_condition_map)
@@ -5803,7 +5805,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # Restrict the type of the variable to True-ish/False-ish in the if and else branches
         # respectively
         original_vartype = self.lookup_type(node)
-        if not is_walrus_value:
+        if not in_boolean_context:
             # We don't check `:=` values in expresions like `(a := A())`,
             # because they produce two error messages.
             self._check_for_truthy_type(original_vartype, node)
