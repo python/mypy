@@ -5758,16 +5758,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if_map = {}
             else_map = {}
 
-            if_assignment_map, else_assignment_map = self.find_isinstance_check(
-                node.target, in_boolean_context=False
-            )
+            if_assignment_map, else_assignment_map = self.find_isinstance_check(node.target)
 
             if if_assignment_map is not None:
                 if_map.update(if_assignment_map)
             if else_assignment_map is not None:
                 else_map.update(else_assignment_map)
 
-            if_condition_map, else_condition_map = self.find_isinstance_check(node.value)
+            if_condition_map, else_condition_map = self.find_isinstance_check(
+                node.value, in_boolean_context=False
+            )
 
             if if_condition_map is not None:
                 if_map.update(if_condition_map)
