@@ -64,6 +64,10 @@ VecT Vec_T_Unbox(PyObject *obj, size_t item_type) {
     return Vec_T_Error();
 }
 
+VecT Vec_T_ConvertFromNested(VecbufTExtItem item) {
+    return (VecT) { item.len, (VecbufTObject *)item.buf };
+}
+
 VecT Vec_T_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type) {
     if (cap < size)
         cap = size;
@@ -437,6 +441,7 @@ VecTFeatures TFeatures = {
     Vec_T_New,
     Vec_T_Box,
     Vec_T_Unbox,
+    Vec_T_ConvertFromNested,
     Vec_T_Append,
     Vec_T_Pop,
     Vec_T_Remove,

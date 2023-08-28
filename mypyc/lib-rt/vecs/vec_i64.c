@@ -43,6 +43,10 @@ VecI64 Vec_I64_Unbox(PyObject *obj) {
     }
 }
 
+VecI64 Vec_I64_ConvertFromNested(VecbufTExtItem item) {
+    return (VecI64) { item.len, (VecbufI64Object *)item.buf };
+}
+
 VecI64 Vec_I64_New(Py_ssize_t size, Py_ssize_t cap) {
     if (cap < size)
         size = cap;
@@ -332,6 +336,7 @@ VecI64Features I64Features = {
     Vec_I64_New,
     Vec_I64_Box,
     Vec_I64_Unbox,
+    Vec_I64_ConvertFromNested,
     Vec_I64_Append,
     Vec_I64_Pop,
     Vec_I64_Remove,

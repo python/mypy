@@ -51,6 +51,10 @@ VecTExt Vec_T_Ext_Unbox(PyObject *obj, size_t item_type, size_t depth) {
     return Vec_T_Ext_Error();
 }
 
+VecTExt Vec_T_Ext_ConvertFromNested(VecbufTExtItem item) {
+    return (VecTExt) { item.len, (VecbufTExtObject *)item.buf };
+}
+
 VecTExt Vec_T_Ext_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_t depth) {
     if (cap < size)
         cap = size;
@@ -459,6 +463,7 @@ VecTExtFeatures TExtFeatures = {
     Vec_T_Ext_New,
     Vec_T_Ext_Box,
     Vec_T_Ext_Unbox,
+    Vec_T_Ext_ConvertFromNested,
     Vec_T_Ext_Append,
     Vec_T_Ext_Pop,
     Vec_T_Ext_Remove,

@@ -115,6 +115,7 @@ typedef struct _VecI64Features {
     VecI64 (*alloc)(Py_ssize_t, Py_ssize_t);
     PyObject *(*box)(VecI64);
     VecI64 (*unbox)(PyObject *);
+    VecI64 (*convert_from_nested)(VecbufTExtItem);
     VecI64 (*append)(VecI64, int64_t);
     VecI64PopResult (*pop)(VecI64, Py_ssize_t);
     VecI64 (*remove)(VecI64, int64_t);
@@ -146,6 +147,7 @@ typedef struct _VecTFeatures {
     VecT (*alloc)(Py_ssize_t, Py_ssize_t, size_t);
     PyObject *(*box)(VecT, size_t);
     VecT (*unbox)(PyObject *, size_t);
+    VecT (*convert_from_nested)(VecbufTExtItem);
     VecT (*append)(VecT, PyObject *, size_t);
     VecTPopResult (*pop)(VecT, Py_ssize_t);
     VecT (*remove)(VecT, PyObject *);
@@ -178,6 +180,7 @@ typedef struct _VecTExtFeatures {
     VecTExt (*alloc)(Py_ssize_t, Py_ssize_t, size_t, size_t depth);
     PyObject *(*box)(VecTExt);
     VecTExt (*unbox)(PyObject *, size_t, size_t depth);
+    VecTExt (*convert_from_nested)(VecbufTExtItem);
     VecTExt (*append)(VecTExt, VecbufTExtItem);
     VecTExtPopResult (*pop)(VecTExt, Py_ssize_t);
     VecTExt (*remove)(VecTExt, VecbufTExtItem);
