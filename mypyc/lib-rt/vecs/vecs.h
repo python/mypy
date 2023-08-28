@@ -157,10 +157,17 @@ typedef struct _VecTFeatures {
     // iter?
 } VecTFeatures;
 
-typedef struct {
-    VecTExt vec;
-    VecbufTExtItem item;
-} VecTExtPopResult;
+
+#ifndef MYPYC_DECLARED_tuple_T2VvVi
+#define MYPYC_DECLARED_tuple_T2VvVi
+typedef struct tuple_T2VvVi {
+    VecTExt f0;
+    VecbufTExtItem f1;
+} tuple_T2VvVi;
+static tuple_T2VvVi tuple_undefined_T2VvVi = { { -1, NULL } , { -1, NULL } };
+#endif
+
+typedef tuple_T2VvVi VecTExtPopResult;
 
 // vec[T] operations for complex item types + type object (stored in a capsule)
 //

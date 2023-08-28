@@ -466,20 +466,20 @@ static PyObject *vecs_pop(PyObject *self, PyObject *args)
         VecTExt v = ((VecTExtObject *)vec)->vec;
         VecTExtPopResult r;
         r = Vec_T_Ext_Pop(v, index);
-        if (VEC_IS_ERROR(r.vec))
+        if (VEC_IS_ERROR(r.f0))
             return NULL;
 
-        result_item0 = Vec_T_Ext_Box(r.vec);
+        result_item0 = Vec_T_Ext_Box(r.f0);
         if (result_item0 == NULL) {
-            Py_DECREF(r.vec.buf);
-            Py_DECREF(r.item.buf);
+            Py_DECREF(r.f0.buf);
+            Py_DECREF(r.f1.buf);
             return NULL;
         }
 
-        result_item1 = Vec_T_Ext_BoxItem(r.vec, r.item);
+        result_item1 = Vec_T_Ext_BoxItem(r.f0, r.f1);
         if (result_item1 == NULL) {
             Py_DECREF(result_item0);
-            Py_DECREF(r.item.buf);
+            Py_DECREF(r.f1.buf);
             return NULL;
         }
     } else {
