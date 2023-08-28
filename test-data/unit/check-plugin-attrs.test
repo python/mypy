@@ -1677,6 +1677,21 @@ class C:
         self.c = 2  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.C"
 [builtins fixtures/plugin_attrs.pyi]
 
+[case testAttrsClassWithSlotsDerivedFromNonSlots]
+import attrs
+
+class A:
+    pass
+
+@attrs.define(slots=True)
+class B(A):
+    x: int
+
+    def __attrs_post_init__(self) -> None:
+        self.y = 42
+
+[builtins fixtures/plugin_attrs.pyi]
+
 [case testRuntimeSlotsAttr]
 from attr import dataclass
 

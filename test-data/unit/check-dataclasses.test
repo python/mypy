@@ -1519,6 +1519,22 @@ class Some:
         self.y = 1  # E: Trying to assign name "y" that is not in "__slots__" of type "__main__.Some"
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassWithSlotsDerivedFromNonSlot]
+# flags: --python-version 3.10
+from dataclasses import dataclass
+
+class A:
+    pass
+
+@dataclass(slots=True)
+class B(A):
+    x: int
+
+    def __post_init__(self) -> None:
+        self.y = 42
+
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassWithSlotsConflict]
 # flags: --python-version 3.10
 from dataclasses import dataclass

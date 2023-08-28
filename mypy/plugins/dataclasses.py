@@ -443,6 +443,12 @@ class DataclassTransformer:
                 self._cls,
             )
             return
+
+        if any(p.slots is None for p in info.mro[1:-1]):
+            # At least one type in mro (excluding `self` and `object`)
+            # does not have concrete `__slots__` defined. Ignoring.
+            return
+
         info.slots = generated_slots
 
         # Now, insert `.__slots__` attribute to class namespace:
