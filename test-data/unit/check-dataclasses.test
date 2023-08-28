@@ -2237,11 +2237,11 @@ replace(None)  # E: Value of type variable "_DataclassT" of "replace" cannot be 
 from dataclasses import is_dataclass, replace
 
 def f(x: object) -> None:
-  # error before type-guard
-  y = replace(x)  # E: Value of type variable "_DataclassT" of "replace" cannot be "object"
-  # no error after type-guard
-  if is_dataclass(x) and not isinstance(x, type):
-    y = replace(x)
+  _ = replace(x)  # E: Value of type variable "_DataclassT" of "replace" cannot be "object"
+  if is_dataclass(x):
+    _ = replace(x)  # E: Value of type variable "_DataclassT" of "replace" cannot be "Union[DataclassInstance, Type[DataclassInstance]]"
+    if not isinstance(x, type):
+      _ = replace(x)
 
 [builtins fixtures/tuple.pyi]
 
