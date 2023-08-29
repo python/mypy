@@ -309,7 +309,7 @@ Found 1 error in 1 file (checked 2 source files)
 $ {python} -c "import sys; sys.stdout.write(open('log').read())"
 -- make sure the meta file didn't get updated. we use this as an imperfect proxy for
 -- whether the source file got rehashed, which we don't want it to have been.
-$ {python} -c "x = open('.mypy_cache/3.11/bar.meta.json').read(); y = open('asdf.json').read(); assert x == y"
+$ {python} -c "x = open('.mypy_cache/3.11/bar.meta.json', 'rb').read(); y = open('asdf.json', 'rb').read(); assert x == y"
 
 [case testDaemonSuggest]
 $ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary

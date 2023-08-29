@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+from gzip import decompress
 
 from mypy import build
 from mypy.modulefinder import BuildSource
@@ -33,8 +34,8 @@ class RefInfoSuite(DataSuite):
         major, minor = sys.version_info[:2]
         ref_path = os.path.join(options.cache_dir, f"{major}.{minor}", "__main__.refs.json")
 
-        with open(ref_path) as refs_file:
-            data = json.load(refs_file)
+        with open(ref_path, "rb") as refs_file:
+            data = json.loads(decompress(refs_file.read()))
 
         a = []
         for item in data:
