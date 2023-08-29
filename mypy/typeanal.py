@@ -1329,9 +1329,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         callable_args, ret_type, fallback
                     )
                     if isinstance(maybe_ret, CallableType):
-                        maybe_ret = maybe_ret.copy_modified(
-                            ret_type=ret_type.accept(self), variables=variables
-                        )
+                        maybe_ret = maybe_ret.copy_modified(variables=variables)
                 if maybe_ret is None:
                     # Callable[?, RET] (where ? is something invalid)
                     self.fail(
@@ -1723,7 +1721,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         num_unpacks = 0
         final_unpack = None
         for item in items:
-            # TODO: handle forward references here.
+            # TODO: handle forward references here, they appear as Unpack[Any].
             if isinstance(item, UnpackType) and not isinstance(
                 get_proper_type(item.type), TupleType
             ):
@@ -1885,8 +1883,8 @@ def instantiate_type_alias(
     args = flatten_nested_tuples(args)
     if any(unknown_unpack(a) for a in args):
         # This type is not ready to be validated, because of unknown total count.
-        # TODO: is it OK to fill with TypeOfAny.from_error instead of special form?
-        return set_any_tvars(node, ctx.line, ctx.column, options, from_error=True)
+        # Note that we keep the kind of Any for consistency.
+        return set_any_tvars(node, ctx.line, ctx.column, options, special_form=True)
 
     exp_len = len(node.alias_tvars)
     act_len = len(args)
@@ -1990,11 +1988,14 @@ def set_any_tvars(
     *,
     from_error: bool = False,
     disallow_any: bool = False,
+    special_form: bool = False,
     fail: MsgCallback | None = None,
     unexpanded_type: Type | None = None,
 ) -> TypeAliasType:
     if from_error or disallow_any:
         type_of_any = TypeOfAny.from_error
+    elif special_form:
+        type_of_any = TypeOfAny.special_form
     else:
         type_of_any = TypeOfAny.from_omitted_generics
     if disallow_any and node.alias_tvars:
@@ -2245,9 +2246,11 @@ def make_optional_type(t: Type) -> Type:
 
 
 def validate_instance(t: Instance, fail: MsgCallback) -> bool:
+    """Check if this is a well-formed instance with respect to argument count/positions."""
     # TODO: combine logic with instantiate_type_alias().
     if any(unknown_unpack(a) for a in t.args):
         # This type is not ready to be validated, because of unknown total count.
+        # TODO: is it OK to fill with TypeOfAny.from_error instead of special form?
         return False
     if t.type.has_type_var_tuple_type:
         correct = len(t.args) >= len(t.type.type_vars) - 1
@@ -2344,6 +2347,12 @@ class HasSelfType(BoolTypeQuery):
 
 
 def unknown_unpack(t: Type) -> bool:
+    """Check if a given type is an unpack of an unknown type.
+
+    Unfortunately, there is no robust way to distinguish forward references from
+    genuine undefined names here. But this worked well so far, although it looks
+    quite fragile.
+    """
     if isinstance(t, UnpackType):
         unpacked = get_proper_type(t.type)
         if isinstance(unpacked, AnyType) and unpacked.type_of_any == TypeOfAny.special_form:

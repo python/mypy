@@ -165,6 +165,8 @@ class TypeVarEraser(TypeTranslator):
             return self.replacement
         return t
 
+    # TODO: below two methods duplicate some logic with expand_type().
+    # In fact, we may want to refactor this whole visitor to use expand_type().
     def visit_instance(self, t: Instance) -> Type:
         result = super().visit_instance(t)
         assert isinstance(result, ProperType) and isinstance(result, Instance)
