@@ -972,25 +972,6 @@ def _has_direct_dataclass_transform_metaclass(info: TypeInfo) -> bool:
     )
 
 
-def _fail_not_dataclass(ctx: FunctionSigContext, t: Type, parent_t: Type) -> None:
-    t_name = format_type_bare(t, ctx.api.options)
-    if parent_t is t:
-        msg = (
-            f'Argument 1 to "replace" has a variable type "{t_name}" not bound to a dataclass'
-            if isinstance(t, TypeVarType)
-            else f'Argument 1 to "replace" has incompatible type "{t_name}"; expected a dataclass'
-        )
-    else:
-        pt_name = format_type_bare(parent_t, ctx.api.options)
-        msg = (
-            f'Argument 1 to "replace" has type "{pt_name}" whose item "{t_name}" is not bound to a dataclass'
-            if isinstance(t, TypeVarType)
-            else f'Argument 1 to "replace" has incompatible type "{pt_name}" whose item "{t_name}" is not a dataclass'
-        )
-
-    ctx.api.fail(msg, ctx.context)
-
-
 def _get_expanded_dataclasses_fields(
     ctx: FunctionSigContext, typ: ProperType, display_typ: ProperType, parent_typ: ProperType
 ) -> list[CallableType] | None:
@@ -999,9 +980,7 @@ def _get_expanded_dataclasses_fields(
     For generic classes, the field types are expanded.
     If the type contains Any or a non-dataclass, returns None; in the latter case, also reports an error.
     """
-    if isinstance(typ, AnyType):
-        return None
-    elif isinstance(typ, UnionType):
+    if isinstance(typ, UnionType):
         ret: list[CallableType] | None = []
         for item in typ.relevant_items():
             item = get_proper_type(item)
@@ -1018,14 +997,12 @@ def _get_expanded_dataclasses_fields(
     elif isinstance(typ, Instance):
         replace_sym = typ.type.get_method(_INTERNAL_REPLACE_SYM_NAME)
         if replace_sym is None:
-            _fail_not_dataclass(ctx, display_typ, parent_typ)
             return None
         replace_sig = replace_sym.type
         assert isinstance(replace_sig, ProperType)
         assert isinstance(replace_sig, CallableType)
         return [expand_type_by_instance(replace_sig, typ)]
     else:
-        _fail_not_dataclass(ctx, display_typ, parent_typ)
         return None
 
 
