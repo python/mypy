@@ -12,13 +12,6 @@ on:
     - 'mypy/stubdoc.py'
     - 'test-data/stubgen/**'
 
-permissions:
-  contents: read
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
-
 jobs:
   stubgenc:
     # Check stub file generation for a small pybind11 project
