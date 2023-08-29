@@ -2185,6 +2185,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     #   run(test, 1, 2)
                     # we will use `test` for inference, since it will allow to infer also
                     # argument *names* for P <: [x: int, y: int].
+                    if isinstance(p_actual, Instance):
+                        call_method = find_member("__call__", p_actual, p_actual, is_operator=True)
+                        if call_method is not None:
+                            p_actual = get_proper_type(call_method)
                     if (
                         isinstance(p_actual, CallableType)
                         and not p_actual.variables
