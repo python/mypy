@@ -5,6 +5,9 @@ on:
     branches: [main, master, 'release*']
     tags: ['*']
 
+permissions:
+  contents: write
+
 jobs:
   build-wheels:
     if: github.repository == 'python/mypy'
