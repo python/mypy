@@ -619,8 +619,7 @@ T = TypeVar("T")
 Ts = TypeVarTuple("Ts")
 
 A = List[Tuple[T, Unpack[Ts], T]]
-B = A[Unpack[Ts]]
-x: B[int, str, str]
+x: A[int, str, str]
 reveal_type(x)  # N: Revealed type is "builtins.list[Tuple[builtins.int, builtins.str, builtins.str, builtins.int]]"
 [builtins fixtures/tuple.pyi]
 
@@ -1117,4 +1116,106 @@ reveal_type(td)  # N: Revealed type is "TypedDict('__main__.A', {'fn': def (buil
 
 def bad() -> int: ...
 td2 = A({"fn": bad, "val": 42})  # E: Incompatible types (expression has type "Callable[[], int]", TypedDict item "fn" has type "Callable[[], None]")
+[builtins fixtures/tuple.pyi]
+
+[case testFixedUnpackWithRegularInstance]
+from typing import Tuple, Generic, TypeVar
+from typing_extensions import Unpack
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+T3 = TypeVar("T3")
+T4 = TypeVar("T4")
+
+class C(Generic[T1, T2, T3, T4]): ...
+x: C[int, Unpack[Alias], str]
+Alias = Tuple[int, str]
+reveal_type(x)  # N: Revealed type is "__main__.C[builtins.int, builtins.int, builtins.str, builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicUnpackWithRegularInstance]
+from typing import Tuple, Generic, TypeVar
+from typing_extensions import Unpack
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+T3 = TypeVar("T3")
+T4 = TypeVar("T4")
+
+class C(Generic[T1, T2, T3, T4]): ...
+x: C[int, Unpack[Alias], str, str]  # E: Unpack is only valid in a variadic position
+Alias = Tuple[int, ...]
+reveal_type(x)  # N: Revealed type is "__main__.C[Any, Any, Any, Any]"
+y: C[int, Unpack[Undefined]]  # E: Name "Undefined" is not defined
+reveal_type(y)  # N: Revealed type is "__main__.C[Any, Any, Any, Any]"
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicAliasInvalidUnpackNoCrash]
+from typing import Tuple, Generic, Union, List
+from typing_extensions import Unpack, TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+Alias = Tuple[int, Unpack[Ts], str]
+
+A = Union[int, str]
+x: List[Alias[int, Unpack[A], str]]  # E: "Union[int, str]" cannot be unpacked (must be tuple or TypeVarTuple)
+reveal_type(x)  # N: Revealed type is "builtins.list[Tuple[builtins.int, builtins.int, Unpack[builtins.tuple[Any, ...]], builtins.str, builtins.str]]"
+y: List[Alias[int, Unpack[Undefined], str]]  # E: Name "Undefined" is not defined
+reveal_type(y)  # N: Revealed type is "builtins.list[Tuple[builtins.int, Unpack[builtins.tuple[Any, ...]], builtins.str]]"
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicAliasForwardRefToFixedUnpack]
+from typing import Tuple, Generic, TypeVar
+from typing_extensions import Unpack, TypeVarTuple
+
+T = TypeVar("T")
+S = TypeVar("S")
+Ts = TypeVarTuple("Ts")
+Alias = Tuple[T, Unpack[Ts], S]
+x: Alias[int, Unpack[Other]]
+Other = Tuple[int, str]
+reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.int, builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicAliasForwardRefToVariadicUnpack]
+from typing import Tuple, Generic, TypeVar
+from typing_extensions import Unpack, TypeVarTuple
+
+T = TypeVar("T")
+S = TypeVar("S")
+Ts = TypeVarTuple("Ts")
+Alias = Tuple[T, Unpack[Ts], S]
+x: Alias[int, Unpack[Other]]
+Other = Tuple[int, ...]
+reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]], builtins.int]"
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicInstanceStrictPrefixSuffixCheck]
+from typing import Tuple, Generic, TypeVar
+from typing_extensions import Unpack, TypeVarTuple
+
+T = TypeVar("T")
+S = TypeVar("S")
+Ts = TypeVarTuple("Ts")
+class C(Generic[T, Unpack[Ts], S]): ...
+
+def foo(x: Tuple[Unpack[Ts]]) -> Tuple[Unpack[Ts]]:
+    y: C[int, Unpack[Ts]]  # E: TypeVarTuple cannot be split
+    z: C[Unpack[Ts], int]  # E: TypeVarTuple cannot be split
+    return x
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicAliasStrictPrefixSuffixCheck]
+from typing import Tuple, TypeVar
+from typing_extensions import Unpack, TypeVarTuple
+
+T = TypeVar("T")
+S = TypeVar("S")
+Ts = TypeVarTuple("Ts")
+Alias = Tuple[T, Unpack[Ts], S]
+
+def foo(x: Tuple[Unpack[Ts]]) -> Tuple[Unpack[Ts]]:
+    y: Alias[int, Unpack[Ts]]  # E: TypeVarTuple cannot be split
+    z: Alias[Unpack[Ts], int]  # E: TypeVarTuple cannot be split
+    return x
 [builtins fixtures/tuple.pyi]
