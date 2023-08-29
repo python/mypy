@@ -1111,9 +1111,4 @@ def fields_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
         assert ret_type is not None
         return ctx.default_signature.copy_modified(arg_types=arg_types, ret_type=ret_type)
 
-    ctx.api.fail(
-        f'Argument 1 to "fields" has incompatible type "{format_type_bare(proper_type, ctx.api.options)}"; expected an attrs class',
-        ctx.context,
-    )
-
     return ctx.default_signature

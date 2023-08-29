@@ -1596,16 +1596,18 @@ def f(t: TA) -> None:
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testNonattrsFields]
-# flags: --no-strict-optional
 from typing import Any, cast, Type
-from attrs import fields
+from attrs import fields, has
 
 class A:
     b: int
     c: str
 
-fields(A)  # E: Argument 1 to "fields" has incompatible type "Type[A]"; expected an attrs class
-fields(None)  # E: Argument 1 to "fields" has incompatible type "None"; expected an attrs class
+if has(A):
+    fields(A)
+else:
+    fields(A)  # E: Argument 1 to "fields" has incompatible type "Type[A]"; expected "Type[AttrsInstance]"
+fields(None)  # E: Argument 1 to "fields" has incompatible type "None"; expected "Type[AttrsInstance]"
 fields(cast(Any, 42))
 fields(cast(Type[Any], 43))
 
@@ -2167,7 +2169,8 @@ TA = TypeVar('TA', bound=A)
 TB = TypeVar('TB', bound=B)
 
 def f(b_or_t: TA | TB | int) -> None:
-    a2 = attrs.evolve(b_or_t)   # E: Argument 1 to "evolve" has type "Union[TA, TB, int]" whose item "TB" is not bound to an attrs class  # E: Argument 1 to "evolve" has incompatible type "Union[TA, TB, int]" whose item "int" is not an attrs class
+    a2 = attrs.evolve(b_or_t)  # E: Argument 1 to "evolve" has type "Union[TA, TB, int]" whose item "TB" is not bound to an attrs class \
+                               # E: Argument 1 to "evolve" has incompatible type "Union[TA, TB, int]" whose item "int" is not an attrs class
 
 
 [builtins fixtures/plugin_attrs.pyi]
@@ -2216,7 +2219,8 @@ def h(t: TNone) -> None:
     _ = attrs.evolve(t, x=42)  # E: Argument 1 to "evolve" has a variable type "TNone" not bound to an attrs class
 
 def x(t: TUnion) -> None:
-    _ = attrs.evolve(t, x=42)  # E: Argument 1 to "evolve" has incompatible type "TUnion" whose item "str" is not an attrs class  # E: Argument 1 to "evolve" has incompatible type "TUnion" whose item "int" is not an attrs class
+    _ = attrs.evolve(t, x=42)  # E: Argument 1 to "evolve" has incompatible type "TUnion" whose item "str" is not an attrs class \
+                               # E: Argument 1 to "evolve" has incompatible type "TUnion" whose item "int" is not an attrs class
 
 [builtins fixtures/plugin_attrs.pyi]
 
