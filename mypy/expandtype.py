@@ -212,6 +212,14 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
 
     def visit_instance(self, t: Instance) -> Type:
         args = self.expand_types_with_unpack(list(t.args))
+        if t.type.fullname == "builtins.tuple":
+            # Normalize Tuple[*Tuple[X, ...], ...] -> Tuple[X, ...]
+            arg = args[0]
+            if isinstance(arg, UnpackType):
+                unpacked = get_proper_type(arg.type)
+                if isinstance(unpacked, Instance):
+                    assert unpacked.type.fullname == "builtins.tuple"
+                    args = list(unpacked.args)
         return t.copy_modified(args=args)
 
     def visit_type_var(self, t: TypeVarType) -> Type:

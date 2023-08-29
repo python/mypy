@@ -1051,8 +1051,7 @@ reveal_type(y.fn)  # N: Revealed type is "def (builtins.int, builtins.str)"
 
 z: A[Unpack[Tuple[int, ...]]]
 reveal_type(z)  # N: Revealed type is "__main__.A[Unpack[builtins.tuple[builtins.int, ...]]]"
-# TODO: this requires fixing map_instance_to_supertype().
-# reveal_type(z[0])
+reveal_type(z[0])  # N: Revealed type is "builtins.int"
 reveal_type(z.fn)  # N: Revealed type is "def (*builtins.int)"
 
 t: A[int, Unpack[Tuple[int, str]], str]
@@ -1219,3 +1218,18 @@ def foo(x: Tuple[Unpack[Ts]]) -> Tuple[Unpack[Ts]]:
     z: Alias[Unpack[Ts], int]  # E: TypeVarTuple cannot be split
     return x
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleWithIsInstance]
+# flags: --warn-unreachable
+from typing import Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+TP = TypeVarTuple("TP")
+class A(Tuple[Unpack[TP]]): ...
+
+def test(d: A[int, str]) -> None:
+    if isinstance(d, A):
+        reveal_type(d)  # N: Revealed type is "Tuple[builtins.int, builtins.str, fallback=__main__.A[builtins.int, builtins.str]]"
+    else:
+        reveal_type(d)  # E: Statement is unreachable
+[builtins fixtures/isinstancelist.pyi]

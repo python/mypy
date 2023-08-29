@@ -165,9 +165,39 @@ class TypeVarEraser(TypeTranslator):
             return self.replacement
         return t
 
+    def visit_instance(self, t: Instance) -> Type:
+        result = super().visit_instance(t)
+        assert isinstance(result, ProperType) and isinstance(result, Instance)
+        if t.type.fullname == "builtins.tuple":
+            # Normalize Tuple[*Tuple[X, ...], ...] -> Tuple[X, ...]
+            arg = result.args[0]
+            if isinstance(arg, UnpackType):
+                unpacked = get_proper_type(arg.type)
+                if isinstance(unpacked, Instance):
+                    assert unpacked.type.fullname == "builtins.tuple"
+                    return unpacked
+        return result
+
+    def visit_tuple_type(self, t: TupleType) -> Type:
+        result = super().visit_tuple_type(t)
+        assert isinstance(result, ProperType) and isinstance(result, TupleType)
+        if len(result.items) == 1:
+            # Normalize Tuple[*Tuple[X, ...]] -> Tuple[X, ...]
+            item = result.items[0]
+            if isinstance(item, UnpackType):
+                unpacked = get_proper_type(item.type)
+                if isinstance(unpacked, Instance):
+                    assert unpacked.type.fullname == "builtins.tuple"
+                    if result.partial_fallback.type.fullname != "builtins.tuple":
+                        # If it is a subtype (like named tuple) we need to preserve it,
+                        # this essentially mimics the logic in tuple_fallback().
+                        return result.partial_fallback.accept(self)
+                    return unpacked
+        return result
+
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
         if self.erase_id(t.id):
-            return self.replacement
+            return t.tuple_fallback.copy_modified(args=[self.replacement])
         return t
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:

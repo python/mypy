@@ -121,6 +121,14 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         if isinstance(info, FakeInfo):
             return  # https://github.com/python/mypy/issues/11079
         self.validate_args(info.name, t.args, info.defn.type_vars, t)
+        if t.type.fullname == "builtins.tuple" and len(t.args) == 1:
+            # Normalize Tuple[*Tuple[X, ...], ...] -> Tuple[X, ...]
+            arg = t.args[0]
+            if isinstance(arg, UnpackType):
+                unpacked = get_proper_type(arg.type)
+                if isinstance(unpacked, Instance):
+                    assert unpacked.type.fullname == "builtins.tuple"
+                    t.args = unpacked.args
 
     def validate_args(
         self, name: str, args: Sequence[Type], type_vars: list[TypeVarLikeType], ctx: Context
