@@ -853,7 +853,7 @@ class Person:
     name: str
 
 p = Person('John')
-y = replace(p, name='Bob')  # E: Argument 1 to "replace" has incompatible type "Person"; expected a dataclass
+y = replace(p, name='Bob')
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dataclasses.pyi]
