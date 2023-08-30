@@ -285,7 +285,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         ):
             return [UnpackType(typ=repl)]
         elif isinstance(repl, (AnyType, UninhabitedType)):
-            # Replace *Ts = Any with *Ts = *tuple[Any, ...] and some for <nothing>.
+            # Replace *Ts = Any with *Ts = *tuple[Any, ...] and some for Never.
             # These types may appear here as a result of user error or failed inference.
             return [UnpackType(t.type.tuple_fallback.copy_modified(args=[repl]))]
         else:

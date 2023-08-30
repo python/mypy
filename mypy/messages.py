@@ -2052,7 +2052,7 @@ class MessageBuilder:
         if supertype.type.fullname in exclusions.get(type(subtype), []):
             return
         if any(isinstance(tp, UninhabitedType) for tp in get_proper_types(supertype.args)):
-            # We don't want to add notes for failed inference (e.g. Iterable[<nothing>]).
+            # We don't want to add notes for failed inference (e.g. Iterable[Never]).
             # This will be only confusing a user even more.
             return
 
@@ -2379,7 +2379,7 @@ def quote_type_string(type_string: str) -> str:
     """Quotes a type representation for use in messages."""
     no_quote_regex = r"^<(tuple|union): \d+ items>$"
     if (
-        type_string in ["Module", "overloaded function", "<nothing>", "<deleted>"]
+        type_string in ["Module", "overloaded function", "Never", "<deleted>"]
         or type_string.startswith("Module ")
         or re.match(no_quote_regex, type_string) is not None
         or type_string.endswith("?")
@@ -2581,7 +2581,7 @@ def format_type_inner(
         if typ.is_noreturn:
             return "NoReturn"
         else:
-            return "<nothing>"
+            return "Never"
     elif isinstance(typ, TypeType):
         type_name = "type" if options.use_lowercase_names() else "Type"
         return f"{type_name}[{format(typ.item)}]"

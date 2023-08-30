@@ -2134,8 +2134,8 @@ T = TypeVar('T')
 class A(Generic[T]):
     x: T  # exercises meet(T=int, int) = int
     y: bool  # exercises meet(bool, int) = bool
-    z: str  # exercises meet(str, bytes) = <nothing>
-    w: dict  # exercises meet(dict, <nothing>) = <nothing>
+    z: str  # exercises meet(str, bytes) = Never
+    w: dict  # exercises meet(dict, Never) = Never
     init_var: InitVar[int]  # exercises (non-optional, optional) = non-optional
 
 @dataclass
@@ -2149,8 +2149,8 @@ class B:
 a_or_b: Union[A[int], B]
 _ = replace(a_or_b, x=42, y=True, init_var=42)
 _ = replace(a_or_b, x=42, y=True)  # E: Missing named argument "init_var" for "replace" of "Union[A[int], B]"
-_ = replace(a_or_b, x=42, y=True, z='42', init_var=42)  # E: Argument "z" to "replace" of "Union[A[int], B]" has incompatible type "str"; expected <nothing>
-_ = replace(a_or_b, x=42, y=True, w={}, init_var=42)  # E: Argument "w" to "replace" of "Union[A[int], B]" has incompatible type "Dict[<nothing>, <nothing>]"; expected <nothing>
+_ = replace(a_or_b, x=42, y=True, z='42', init_var=42)  # E: Argument "z" to "replace" of "Union[A[int], B]" has incompatible type "str"; expected Never
+_ = replace(a_or_b, x=42, y=True, w={}, init_var=42)  # E: Argument "w" to "replace" of "Union[A[int], B]" has incompatible type "Dict[Never, Never]"; expected Never
 _ = replace(a_or_b, y=42, init_var=42)  # E: Argument "y" to "replace" of "Union[A[int], B]" has incompatible type "int"; expected "bool"
 
 [builtins fixtures/tuple.pyi]

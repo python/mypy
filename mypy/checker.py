@@ -3934,7 +3934,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         Examples:
 
           * t is 'int' --> True
-          * t is 'list[<nothing>]' --> True
+          * t is 'list[Never]' --> True
           * t is 'dict[...]' --> False (only generic types with a single type
             argument supported)
         """
@@ -3980,7 +3980,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
           x = []  # type: ignore
           x.append(1)   # Should be ok!
 
-        We implement this here by giving x a valid type (replacing inferred <nothing> with Any).
+        We implement this here by giving x a valid type (replacing inferred Never with Any).
         """
         fallback = self.inference_error_fallback_type(type)
         self.set_inferred_type(var, lvalue, fallback)
@@ -7403,7 +7403,7 @@ def is_valid_inferred_type(typ: Type, is_lvalue_final: bool = False) -> bool:
 class InvalidInferredTypes(BoolTypeQuery):
     """Find type components that are not valid for an inferred type.
 
-    These include <Erased> type, and any <nothing> types resulting from failed
+    These include <Erased> type, and any uninhabited types resulting from failed
     (ambiguous) type inference.
     """
 
@@ -7424,7 +7424,7 @@ class InvalidInferredTypes(BoolTypeQuery):
 
 
 class SetNothingToAny(TypeTranslator):
-    """Replace all ambiguous <nothing> types with Any (to avoid spurious extra errors)."""
+    """Replace all ambiguous Uninhabited types with Any (to avoid spurious extra errors)."""
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
         if t.ambiguous:
@@ -7432,7 +7432,7 @@ class SetNothingToAny(TypeTranslator):
         return t
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
-        # Target of the alias cannot be an ambiguous <nothing>, so we just
+        # Target of the alias cannot be an ambiguous UninhabitedType, so we just
         # replace the arguments.
         return t.copy_modified(args=[a.accept(self) for a in t.args])
 
@@ -7774,7 +7774,7 @@ def is_subtype_no_promote(left: Type, right: Type) -> bool:
 
 
 def is_overlapping_types_no_promote_no_uninhabited_no_none(left: Type, right: Type) -> bool:
-    # For the purpose of unsafe overload checks we consider list[<nothing>] and list[int]
+    # For the purpose of unsafe overload checks we consider list[Never] and list[int]
     # non-overlapping. This is consistent with how we treat list[int] and list[str] as
     # non-overlapping, despite [] belongs to both. Also this will prevent false positives
     # for failed type inference during unification.

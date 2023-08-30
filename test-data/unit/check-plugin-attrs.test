@@ -1181,7 +1181,7 @@ def my_factory() -> int:
     return 7
 @attr.s
 class A:
-    x: int = attr.ib(factory=list)  # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "int")
+    x: int = attr.ib(factory=list)  # E: Incompatible types in assignment (expression has type "List[Never]", variable has type "int")
     y: str = attr.ib(factory=my_factory) # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 [builtins fixtures/list.pyi]
 
@@ -2131,8 +2131,8 @@ T = TypeVar('T')
 class A(Generic[T]):
     x: T  # exercises meet(T=int, int) = int
     y: bool  # exercises meet(bool, int) = bool
-    z: str  # exercises meet(str, bytes) = <nothing>
-    w: dict  # exercises meet(dict, <nothing>) = <nothing>
+    z: str  # exercises meet(str, bytes) = Never
+    w: dict  # exercises meet(dict, Never) = Never
 
 
 @attrs.define
@@ -2144,8 +2144,8 @@ class B:
 
 a_or_b: A[int] | B
 a2 = attrs.evolve(a_or_b, x=42, y=True)
-a2 = attrs.evolve(a_or_b, x=42, y=True, z='42')  # E: Argument "z" to "evolve" of "Union[A[int], B]" has incompatible type "str"; expected <nothing>
-a2 = attrs.evolve(a_or_b, x=42, y=True, w={})  # E: Argument "w" to "evolve" of "Union[A[int], B]" has incompatible type "Dict[<nothing>, <nothing>]"; expected <nothing>
+a2 = attrs.evolve(a_or_b, x=42, y=True, z='42')  # E: Argument "z" to "evolve" of "Union[A[int], B]" has incompatible type "str"; expected Never
+a2 = attrs.evolve(a_or_b, x=42, y=True, w={})  # E: Argument "w" to "evolve" of "Union[A[int], B]" has incompatible type "Dict[Never, Never]"; expected Never
 
 [builtins fixtures/plugin_attrs.pyi]
 
