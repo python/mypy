@@ -783,7 +783,11 @@ def analyze_var(
                 call_type = get_proper_type(_analyze_member_access("__call__", typ, mx))
             else:
                 call_type = typ
-            if isinstance(call_type, Instance) and call_type.type.get_method("__call__"):
+            if (
+                isinstance(call_type, Instance)
+                and call_type.type.is_protocol
+                and call_type.type.get_method("__call__")
+            ):
                 call_type = get_proper_type(_analyze_member_access("__call__", typ, mx))
 
         if isinstance(call_type, FunctionLike) and not call_type.is_type_obj():
