@@ -439,6 +439,11 @@ def parse_section(
         options_key = key
         if key in config_types:
             ct = config_types[key]
+        elif key in ("enabled_error_codes", "disabled_error_codes"):
+            # These should be "enable_error_code" and "disable_error_code". But because these fields
+            # exist on Options, we would otherwise accept them here and crash later.
+            print(f"{prefix}Unrecognized option: {key} = {section[key]}", file=stderr)
+            continue
         else:
             dv = None
             # We have to keep new_semantic_analyzer in Options
