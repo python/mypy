@@ -41,7 +41,6 @@ from mypy.erasetype import erase_type, erase_typevars, remove_instance_last_know
 from mypy.errorcodes import TYPE_VAR, UNUSED_AWAITABLE, UNUSED_COROUTINE, ErrorCode
 from mypy.errors import Errors, ErrorWatcher, report_internal_error
 from mypy.expandtype import expand_self_type, expand_type, expand_type_by_instance
-from mypy.join import join_types
 from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import is_overlapping_erased_types, is_overlapping_types
@@ -4666,6 +4665,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     ) -> tuple[Type, Type]:
         """Analyse iterable type and return iterator and iterator item types."""
         echk = self.expr_checker
+        iterable: Type
         iterable = get_proper_type(type)
         iterator = echk.check_method_call_by_name("__iter__", iterable, [], [], context)[0]
 
