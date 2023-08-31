@@ -330,7 +330,7 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
             )
 
         # Update the method signature with the solutions found.
-        # Technically, some constraints might be unsolvable, make them <nothing>.
+        # Technically, some constraints might be unsolvable, make them Never.
         to_apply = [t if t is not None else UninhabitedType() for t in typeargs]
         func = expand_type(func, {tv.id: arg for tv, arg in zip(self_vars, to_apply)})
         variables = [v for v in func.variables if v not in self_vars]

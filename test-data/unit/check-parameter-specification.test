@@ -1401,9 +1401,9 @@ def wrong_name_constructor(b: bool) -> SomeClass:
     return SomeClass("a")
 
 func(SomeClass, constructor)
-reveal_type(func(SomeClass, wrong_constructor))  # N: Revealed type is "def (a: <nothing>) -> __main__.SomeClass"
-reveal_type(func_regular(SomeClass, wrong_constructor))  # N: Revealed type is "def (<nothing>) -> __main__.SomeClass"
-func(SomeClass, wrong_name_constructor)  # E: Argument 1 to "func" has incompatible type "Type[SomeClass]"; expected "Callable[[<nothing>], SomeClass]"
+reveal_type(func(SomeClass, wrong_constructor))  # N: Revealed type is "def (a: Never) -> __main__.SomeClass"
+reveal_type(func_regular(SomeClass, wrong_constructor))  # N: Revealed type is "def (Never) -> __main__.SomeClass"
+func(SomeClass, wrong_name_constructor)  # E: Argument 1 to "func" has incompatible type "Type[SomeClass]"; expected "Callable[[Never], SomeClass]"
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecInTypeAliasBasic]

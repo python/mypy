@@ -2080,7 +2080,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 ):
                     freeze_all_type_vars(applied)
                     return applied
-                # If it didn't work, erase free variables as <nothing>, to avoid confusing errors.
+                # If it didn't work, erase free variables as uninhabited, to avoid confusing errors.
                 unknown = UninhabitedType()
                 unknown.ambiguous = True
                 inferred_args = [
@@ -2444,7 +2444,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         callee_arg_types = [orig_callee_arg_type]
                         callee_arg_kinds = [ARG_STAR]
                     else:
-                        # TODO: Any and <nothing> can appear in Unpack (as a result of user error),
+                        # TODO: Any and Never can appear in Unpack (as a result of user error),
                         # fail gracefully here and elsewhere (and/or normalize them away).
                         assert isinstance(unpacked_type, Instance)
                         assert unpacked_type.type.fullname == "builtins.tuple"
