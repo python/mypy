@@ -144,7 +144,7 @@ def main(
         sys.exit(code)
 
     # HACK: keep res alive so that mypyc won't free it before the hard_exit
-    list([res])
+    [res]
 
 
 def run_build(
