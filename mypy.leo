@@ -14,6 +14,15 @@
 </v>
 </v>
 <v t="ekr.20230614124254.1"><vh> Recursive import script</vh></v>
+<v t="ekr.20230901115600.1"><vh>--- recent files</vh>
+<v t="ekr.20230831011819.1360"><vh>@clean freetree.py</vh>
+<v t="ekr.20230831011819.1362"><vh>class TreeFreer</vh>
+<v t="ekr.20230831011819.1363"><vh>TreeFreer.visit_block</vh></v>
+</v>
+<v t="ekr.20230831011819.1364"><vh>function: free_tree</vh></v>
+</v>
+</v>
+<v t="ekr.20230901115548.1"><vh>mypy:</vh>
 <v t="ekr.20230831070358.1"><vh>--- dmypy</vh>
 <v t="ekr.20230831011819.905"><vh>@clean dmypy_os.py</vh>
 <v t="ekr.20230831011819.906"><vh>&lt;&lt; dmypy_os.py: preamble &gt;&gt;</vh></v>
@@ -137,7 +146,6 @@
 <v t="ekr.20230831011819.1053"><vh>function: report_internal_error</vh></v>
 </v>
 <v t="ekr.20230831011820.62"><vh>@clean message_registry.py</vh>
-<v t="ekr.20230831011820.64"><vh>&lt;&lt; message_registry.py: declarations &gt;&gt;</vh></v>
 <v t="ekr.20230831011820.65"><vh>class ErrorMessage</vh>
 <v t="ekr.20230831011820.66"><vh>ErrorMessage.format</vh></v>
 <v t="ekr.20230831011820.67"><vh>ErrorMessage.with_additional_msg</vh></v>
@@ -1824,12 +1832,7 @@
 <v t="ekr.20230831011821.1067"><vh>@clean version.py</vh></v>
 </v>
 <v t="ekr.20230831071850.1"><vh>--- Traversers &amp; tree utils</vh>
-<v t="ekr.20230831011819.1360"><vh>@clean freetree.py</vh>
-<v t="ekr.20230831011819.1362"><vh>class TreeFreer</vh>
-<v t="ekr.20230831011819.1363"><vh>TreeFreer.visit_block</vh></v>
-</v>
-<v t="ekr.20230831011819.1364"><vh>function: free_tree</vh></v>
-</v>
+<v t="ekr.20230831011819.1360"></v>
 <v t="ekr.20230831011819.1449"><vh>@clean inspections.py</vh>
 <v t="ekr.20230831011819.1450"><vh>&lt;&lt; inspections.py: preamble &gt;&gt;</vh></v>
 <v t="ekr.20230831011819.1451"><vh>function: node_starts_after</vh></v>
@@ -5434,7 +5437,7 @@
 <v t="ekr.20230831011821.1066"><vh>function: quote_docstring</vh></v>
 </v>
 </v>
-<v t="ekr.20230831011819.1360"></v>
+</v>
 </vnodes>
 <tnodes>
 <t tx="ekr.20230613022138.1"># Disable flake8 tests</t>
@@ -73850,7 +73853,13 @@ ultimately consumed by messages.MessageBuilder.fail(). For more non-trivial mess
 add a method to MessageBuilder and call this instead.
 """
 
-&lt;&lt; message_registry.py: declarations &gt;&gt;
+from __future__ import annotations
+
+from typing import Final, NamedTuple
+
+from mypy import errorcodes as codes
+
+
 @others
 
 
@@ -74317,14 +74326,6 @@ def __init__(self, type: mypy.types.ProperType) -&gt; None:
     """NewType expression NewType(...)."""
 
     @others
-</t>
-<t tx="ekr.20230831011820.64">from __future__ import annotations
-
-from typing import Final, NamedTuple
-
-from mypy import errorcodes as codes
-
-
 </t>
 <t tx="ekr.20230831011820.640">__slots__ = ("name", "old_type", "info")
 
@@ -93536,5 +93537,7 @@ def visit_callable_argument(self, t: CallableArgument) -&gt; None:
 <t tx="ekr.20230831071740.1"></t>
 <t tx="ekr.20230831071850.1"></t>
 <t tx="ekr.20230901114501.1">promote-section-definition</t>
+<t tx="ekr.20230901115548.1"></t>
+<t tx="ekr.20230901115600.1"></t>
 </tnodes>
 </leo_file>
