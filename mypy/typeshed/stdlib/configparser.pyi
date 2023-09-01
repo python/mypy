@@ -5,31 +5,53 @@ from re import Pattern
 from typing import Any, ClassVar, TypeVar, overload
 from typing_extensions import Literal, TypeAlias
 
-__all__ = [
-    "NoSectionError",
-    "DuplicateOptionError",
-    "DuplicateSectionError",
-    "NoOptionError",
-    "InterpolationError",
-    "InterpolationDepthError",
-    "InterpolationMissingOptionError",
-    "InterpolationSyntaxError",
-    "ParsingError",
-    "MissingSectionHeaderError",
-    "ConfigParser",
-    "RawConfigParser",
-    "Interpolation",
-    "BasicInterpolation",
-    "ExtendedInterpolation",
-    "LegacyInterpolation",
-    "SectionProxy",
-    "ConverterMapping",
-    "DEFAULTSECT",
-    "MAX_INTERPOLATION_DEPTH",
-]
-
-if sys.version_info < (3, 12):
-    __all__ += ["SafeConfigParser"]
+if sys.version_info >= (3, 12):
+    __all__ = (
+        "NoSectionError",
+        "DuplicateOptionError",
+        "DuplicateSectionError",
+        "NoOptionError",
+        "InterpolationError",
+        "InterpolationDepthError",
+        "InterpolationMissingOptionError",
+        "InterpolationSyntaxError",
+        "ParsingError",
+        "MissingSectionHeaderError",
+        "ConfigParser",
+        "RawConfigParser",
+        "Interpolation",
+        "BasicInterpolation",
+        "ExtendedInterpolation",
+        "LegacyInterpolation",
+        "SectionProxy",
+        "ConverterMapping",
+        "DEFAULTSECT",
+        "MAX_INTERPOLATION_DEPTH",
+    )
+else:
+    __all__ = [
+        "NoSectionError",
+        "DuplicateOptionError",
+        "DuplicateSectionError",
+        "NoOptionError",
+        "InterpolationError",
+        "InterpolationDepthError",
+        "InterpolationMissingOptionError",
+        "InterpolationSyntaxError",
+        "ParsingError",
+        "MissingSectionHeaderError",
+        "ConfigParser",
+        "SafeConfigParser",
+        "RawConfigParser",
+        "Interpolation",
+        "BasicInterpolation",
+        "ExtendedInterpolation",
+        "LegacyInterpolation",
+        "SectionProxy",
+        "ConverterMapping",
+        "DEFAULTSECT",
+        "MAX_INTERPOLATION_DEPTH",
+    ]
 
 _Section: TypeAlias = Mapping[str, str]
 _Parser: TypeAlias = MutableMapping[str, _Section]
@@ -128,7 +150,8 @@ class RawConfigParser(_Parser):
     def read_file(self, f: Iterable[str], source: str | None = None) -> None: ...
     def read_string(self, string: str, source: str = "<string>") -> None: ...
     def read_dict(self, dictionary: Mapping[str, Mapping[str, Any]], source: str = "<dict>") -> None: ...
-    def readfp(self, fp: Iterable[str], filename: str | None = None) -> None: ...
+    if sys.version_info < (3, 12):
+        def readfp(self, fp: Iterable[str], filename: str | None = None) -> None: ...
     # These get* methods are partially applied (with the same names) in
     # SectionProxy; the stubs should be kept updated together
     @overload
@@ -277,7 +300,11 @@ class InterpolationSyntaxError(InterpolationError): ...
 class ParsingError(Error):
     source: str
     errors: list[tuple[int, str]]
-    def __init__(self, source: str | None = None, filename: str | None = None) -> None: ...
+    if sys.version_info >= (3, 12):
+        def __init__(self, source: str) -> None: ...
+    else:
+        def __init__(self, source: str | None = None, filename: str | None = None) -> None: ...
+
     def append(self, lineno: int, line: str) -> None: ...
 
 class MissingSectionHeaderError(ParsingError):

@@ -243,12 +243,6 @@ if sys.version_info >= (3, 10):
     async def sleep(delay: float) -> None: ...
     @overload
     async def sleep(delay: float, result: _T) -> _T: ...
-    @overload
-    async def wait(fs: Iterable[_FT], *, timeout: float | None = None, return_when: str = "ALL_COMPLETED") -> tuple[set[_FT], set[_FT]]: ...  # type: ignore[misc]
-    @overload
-    async def wait(
-        fs: Iterable[Awaitable[_T]], *, timeout: float | None = None, return_when: str = "ALL_COMPLETED"
-    ) -> tuple[set[Task[_T]], set[Task[_T]]]: ...
     async def wait_for(fut: _FutureLike[_T], timeout: float | None) -> _T: ...
 
 else:
@@ -257,6 +251,25 @@ else:
     async def sleep(delay: float, *, loop: AbstractEventLoop | None = None) -> None: ...
     @overload
     async def sleep(delay: float, result: _T, *, loop: AbstractEventLoop | None = None) -> _T: ...
+    async def wait_for(fut: _FutureLike[_T], timeout: float | None, *, loop: AbstractEventLoop | None = None) -> _T: ...
+
+if sys.version_info >= (3, 11):
+    @overload
+    async def wait(fs: Iterable[_FT], *, timeout: float | None = None, return_when: str = "ALL_COMPLETED") -> tuple[set[_FT], set[_FT]]: ...  # type: ignore[misc]
+    @overload
+    async def wait(
+        fs: Iterable[Task[_T]], *, timeout: float | None = None, return_when: str = "ALL_COMPLETED"
+    ) -> tuple[set[Task[_T]], set[Task[_T]]]: ...
+
+elif sys.version_info >= (3, 10):
+    @overload
+    async def wait(fs: Iterable[_FT], *, timeout: float | None = None, return_when: str = "ALL_COMPLETED") -> tuple[set[_FT], set[_FT]]: ...  # type: ignore[misc]
+    @overload
+    async def wait(
+        fs: Iterable[Awaitable[_T]], *, timeout: float | None = None, return_when: str = "ALL_COMPLETED"
+    ) -> tuple[set[Task[_T]], set[Task[_T]]]: ...
+
+else:
     @overload
     async def wait(  # type: ignore[misc]
         fs: Iterable[_FT],
@@ -273,7 +286,6 @@ else:
         timeout: float | None = None,
         return_when: str = "ALL_COMPLETED",
     ) -> tuple[set[Task[_T]], set[Task[_T]]]: ...
-    async def wait_for(fut: _FutureLike[_T], timeout: float | None, *, loop: AbstractEventLoop | None = None) -> _T: ...
 
 if sys.version_info >= (3, 12):
     _TaskCompatibleCoro: TypeAlias = Coroutine[Any, Any, _T_co]
@@ -291,7 +303,7 @@ class Task(Future[_T_co], Generic[_T_co]):  # type: ignore[type-var]  # pyright:
             coro: _TaskCompatibleCoro[_T_co],
             *,
             loop: AbstractEventLoop = ...,
-            name: str | None,
+            name: str | None = ...,
             context: Context | None = None,
             eager_start: bool = False,
         ) -> None: ...
@@ -301,7 +313,7 @@ class Task(Future[_T_co], Generic[_T_co]):  # type: ignore[type-var]  # pyright:
             coro: _TaskCompatibleCoro[_T_co],
             *,
             loop: AbstractEventLoop = ...,
-            name: str | None,
+            name: str | None = ...,
             context: Context | None = None,
         ) -> None: ...
     elif sys.version_info >= (3, 8):

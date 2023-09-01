@@ -69,7 +69,7 @@ class _CData(metaclass=_CDataMeta):
     def __buffer__(self, __flags: int) -> memoryview: ...
     def __release_buffer__(self, __buffer: memoryview) -> None: ...
 
-class _SimpleCData(Generic[_T], _CData):
+class _SimpleCData(_CData, Generic[_T]):
     value: _T
     # The TypeVar can be unsolved here,
     # but we can't use overloads without creating many, many mypy false-positive errors
@@ -78,7 +78,7 @@ class _SimpleCData(Generic[_T], _CData):
 class _CanCastTo(_CData): ...
 class _PointerLike(_CanCastTo): ...
 
-class _Pointer(Generic[_CT], _PointerLike, _CData):
+class _Pointer(_PointerLike, _CData, Generic[_CT]):
     _type_: type[_CT]
     contents: _CT
     @overload
@@ -140,7 +140,7 @@ class _StructUnionBase(_CData, metaclass=_StructUnionMeta):
 class Union(_StructUnionBase): ...
 class Structure(_StructUnionBase): ...
 
-class Array(Generic[_CT], _CData):
+class Array(_CData, Generic[_CT]):
     @property
     @abstractmethod
     def _length_(self) -> int: ...
