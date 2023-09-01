@@ -434,21 +434,23 @@ def parse_section(
     """
     results: dict[str, object] = {}
     report_dirs: dict[str, str] = {}
+
+    # Because these fields exist on Options, without proactive checking, we would accept them
+    # and crash later
+    invalid_options = {
+        "enabled_error_codes": "enable_error_code",
+        "disabled_error_codes": "disable_error_code",
+    }
+
     for key in section:
         invert = False
         options_key = key
         if key in config_types:
             ct = config_types[key]
-        elif key in ("enabled_error_codes", "disabled_error_codes"):
-            # These should be "enable_error_code" and "disable_error_code". But because these fields
-            # exist on Options, we would otherwise accept them here and crash later.
-            suggestion = {
-                "enabled_error_codes": "enable_error_code",
-                "disabled_error_codes": "disable_error_code",
-            }
+        elif key in invalid_options:
             print(
                 f"{prefix}Unrecognized option: {key} = {section[key]}"
-                f" (did you mean {suggestion[key]}?)",
+                f" (did you mean {invalid_options[key]}?)",
                 file=stderr,
             )
             continue
