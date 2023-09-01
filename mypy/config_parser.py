@@ -442,7 +442,15 @@ def parse_section(
         elif key in ("enabled_error_codes", "disabled_error_codes"):
             # These should be "enable_error_code" and "disable_error_code". But because these fields
             # exist on Options, we would otherwise accept them here and crash later.
-            print(f"{prefix}Unrecognized option: {key} = {section[key]}", file=stderr)
+            suggestion = {
+                "enabled_error_codes": "enable_error_code",
+                "disabled_error_codes": "disable_error_code",
+            }
+            print(
+                f"{prefix}Unrecognized option: {key} = {section[key]}"
+                f" (did you mean {suggestion[key]}?)",
+                file=stderr,
+            )
             continue
         else:
             dv = None
