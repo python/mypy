@@ -41,7 +41,6 @@ from mypy.erasetype import erase_type, erase_typevars, remove_instance_last_know
 from mypy.errorcodes import TYPE_VAR, UNUSED_AWAITABLE, UNUSED_COROUTINE, ErrorCode
 from mypy.errors import Errors, ErrorWatcher, report_internal_error
 from mypy.expandtype import expand_self_type, expand_type, expand_type_by_instance
-from mypy.join import join_types
 from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import is_overlapping_erased_types, is_overlapping_types
@@ -4653,13 +4652,22 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def analyze_iterable_item_type(self, expr: Expression) -> tuple[Type, Type]:
         """Analyse iterable expression and return iterator and iterator item types."""
-        echk = self.expr_checker
-        iterable = get_proper_type(echk.accept(expr))
-        iterator = echk.check_method_call_by_name("__iter__", iterable, [], [], expr)[0]
-
+        iterator, iterable = self.analyze_iterable_item_type_without_expression(
+            self.expr_checker.accept(expr), context=expr
+        )
         int_type = self.analyze_range_native_int_type(expr)
         if int_type:
             return iterator, int_type
+        return iterator, iterable
+
+    def analyze_iterable_item_type_without_expression(
+        self, type: Type, context: Context
+    ) -> tuple[Type, Type]:
+        """Analyse iterable type and return iterator and iterator item types."""
+        echk = self.expr_checker
+        iterable: Type
+        iterable = get_proper_type(type)
+        iterator = echk.check_method_call_by_name("__iter__", iterable, [], [], context)[0]
 
         if (
             isinstance(iterable, TupleType)
@@ -4668,27 +4676,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return iterator, tuple_fallback(iterable).args[0]
         else:
             # Non-tuple iterable.
-            return iterator, echk.check_method_call_by_name("__next__", iterator, [], [], expr)[0]
-
-    def analyze_iterable_item_type_without_expression(
-        self, type: Type, context: Context
-    ) -> tuple[Type, Type]:
-        """Analyse iterable type and return iterator and iterator item types."""
-        echk = self.expr_checker
-        iterable = get_proper_type(type)
-        iterator = echk.check_method_call_by_name("__iter__", iterable, [], [], context)[0]
-
-        if isinstance(iterable, TupleType):
-            joined: Type = UninhabitedType()
-            for item in iterable.items:
-                joined = join_types(joined, item)
-            return iterator, joined
-        else:
-            # Non-tuple iterable.
-            return (
-                iterator,
-                echk.check_method_call_by_name("__next__", iterator, [], [], context)[0],
-            )
+            iterable = echk.check_method_call_by_name("__next__", iterator, [], [], context)[0]
+            return iterator, iterable
 
     def analyze_range_native_int_type(self, expr: Expression) -> Type | None:
         """Try to infer native int item type from arguments to range(...).
