@@ -10,10 +10,10 @@
 <v t="ekr.20230613022138.1"><vh>@settings</vh>
 <v t="ekr.20230613022224.1"><vh>@bool run-flake8-on-write = False</vh></v>
 <v t="ekr.20230828050824.1"><vh>@button backup</vh></v>
+<v t="ekr.20230901114501.1"><vh>@data history-list</vh></v>
 </v>
 </v>
 <v t="ekr.20230614124254.1"><vh> Recursive import script</vh></v>
-<v t="ekr.20230831011819.2"><vh>path: mypy</vh>
 <v t="ekr.20230831070358.1"><vh>--- dmypy</vh>
 <v t="ekr.20230831011819.905"><vh>@clean dmypy_os.py</vh>
 <v t="ekr.20230831011819.906"><vh>&lt;&lt; dmypy_os.py: preamble &gt;&gt;</vh></v>
@@ -1825,7 +1825,6 @@
 </v>
 <v t="ekr.20230831071850.1"><vh>--- Traversers &amp; tree utils</vh>
 <v t="ekr.20230831011819.1360"><vh>@clean freetree.py</vh>
-<v t="ekr.20230831011819.1361"><vh>&lt;&lt; freetree.py: preamble &gt;&gt;</vh></v>
 <v t="ekr.20230831011819.1362"><vh>class TreeFreer</vh>
 <v t="ekr.20230831011819.1363"><vh>TreeFreer.visit_block</vh></v>
 </v>
@@ -5435,7 +5434,7 @@
 <v t="ekr.20230831011821.1066"><vh>function: quote_docstring</vh></v>
 </v>
 </v>
-</v>
+<v t="ekr.20230831011819.1360"></v>
 </vnodes>
 <tnodes>
 <t tx="ekr.20230613022138.1"># Disable flake8 tests</t>
@@ -12149,18 +12148,16 @@ def missing_info(modules: dict[str, MypyFile]) -&gt; TypeInfo:
 </t>
 <t tx="ekr.20230831011819.1360">@path mypy
 """Generic node traverser visitor"""
-&lt;&lt; freetree.py: preamble &gt;&gt;
-@others
-@language python
-@tabwidth -4
-</t>
-<t tx="ekr.20230831011819.1361">
+
 from __future__ import annotations
 
 from mypy.nodes import Block, MypyFile
 from mypy.traverser import TraverserVisitor
 
 
+@others
+@language python
+@tabwidth -4
 </t>
 <t tx="ekr.20230831011819.1362">class TreeFreer(TraverserVisitor):
     @others
@@ -19177,7 +19174,6 @@ def is_generator_return_type(self, typ: Type, is_coroutine: bool) -&gt; bool:
     return is_subtype(agt, typ)
 
 </t>
-<t tx="ekr.20230831011819.2"></t>
 <t tx="ekr.20230831011819.20">def map_formals_to_actuals(
     actual_kinds: list[nodes.ArgKind],
     actual_names: Sequence[str | None] | None,
@@ -93539,5 +93535,6 @@ def visit_callable_argument(self, t: CallableArgument) -&gt; None:
 <t tx="ekr.20230831071452.1"></t>
 <t tx="ekr.20230831071740.1"></t>
 <t tx="ekr.20230831071850.1"></t>
+<t tx="ekr.20230901114501.1">promote-section-definition</t>
 </tnodes>
 </leo_file>
