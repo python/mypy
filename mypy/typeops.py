@@ -197,9 +197,9 @@ def class_callable(
         # by accident. Like `Hashable` is a subtype of `object`. See #11799
         and isinstance(default_ret_type, Instance)
         and not default_ret_type.type.is_protocol
-        # Only use the declared return type from __new__ or declared self in __init__
+        # Only use the declared return type from declared self in __init__
         # if it is actually returning a subtype of what we would return otherwise.
-        and is_subtype(explicit_type, default_ret_type, ignore_type_params=True)
+        and (is_new or is_subtype(explicit_type, default_ret_type, ignore_type_params=True))
     ):
         ret_type: Type = explicit_type
     else:

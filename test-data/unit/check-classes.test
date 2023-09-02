@@ -6883,7 +6883,7 @@ class A:
     def __new__(cls) -> int:  # E: Incompatible return type for "__new__" (returns "int", but must return a subtype of "A")
         pass
 
-reveal_type(A())  # N: Revealed type is "__main__.A"
+reveal_type(A())  # N: Revealed type is "builtins.int"
 
 [case testNewReturnType4]
 from typing import TypeVar, Type
@@ -6960,7 +6960,7 @@ class A:
 class B(A):
     pass
 
-reveal_type(B())  # N: Revealed type is "__main__.B"
+reveal_type(B())  # N: Revealed type is "__main__.A"
 
 [case testNewReturnType10]
 # https://github.com/python/mypy/issues/11398
