@@ -728,9 +728,9 @@ def f(v: vec[i64], i: i64, n: i64) -> None:
     v = remove(v, n)
 [out]
 def f(v, i, n):
-    v :: vec[int64]
-    i, n :: int64
-    r0 :: vec[int64]
+    v :: vec[i64]
+    i, n :: i64
+    r0 :: vec[i64]
     r1 :: None
 L0:
     r0 = VecI64Api.remove(v, n)

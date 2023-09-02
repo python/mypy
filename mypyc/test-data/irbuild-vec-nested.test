@@ -20,7 +20,7 @@ L0:
     r2 = VecTExtApi.alloc(0, 0, r1, 1)
     return r2
 def g():
-    r0 :: vec[vec[int64]]
+    r0 :: vec[vec[i64]]
 L0:
     r0 = VecTExtApi.alloc(0, 0, 2, 1)
     return r0
@@ -55,12 +55,12 @@ def f(v: vec[vec[i64]], vv: vec[i64]) -> vec[vec[i64]]:
     return append(v, vv)
 [out]
 def f(v, vv):
-    v :: vec[vec[int64]]
-    vv :: vec[int64]
+    v :: vec[vec[i64]]
+    vv :: vec[i64]
     r0 :: native_int
     r1 :: object
     r2, r3 :: VecbufTExtItem{len:native_int, buf:object_nrc}
-    r4 :: vec[vec[int64]]
+    r4 :: vec[vec[i64]]
 L0:
     r0 = vv.len
     r1 = vv.buf
@@ -88,7 +88,7 @@ L0:
     r0 = v.len
     return r0
 def g(v):
-    v :: vec[vec[int64]]
+    v :: vec[vec[i64]]
     r0 :: native_int
 L0:
     r0 = v.len
@@ -103,13 +103,13 @@ def f(v: vec[vec[str]], n: i64) -> vec[str]:
 [out]
 def f(v, n):
     v :: vec[vec[str]]
-    n :: int64
+    n :: i64
     r0 :: native_int
     r1 :: bit
     r2 :: bool
     r3 :: object
     r4 :: ptr
-    r5 :: int64
+    r5 :: i64
     r6 :: ptr
     r7 :: vec[str]
 L0:
@@ -136,16 +136,16 @@ def f(v: vec[vec[i64]], n: i64) -> vec[i64]:
     return v[n]
 [out]
 def f(v, n):
-    v :: vec[vec[int64]]
-    n :: int64
+    v :: vec[vec[i64]]
+    n :: i64
     r0 :: native_int
     r1 :: bit
     r2 :: bool
     r3 :: object
     r4 :: ptr
-    r5 :: int64
+    r5 :: i64
     r6 :: ptr
-    r7 :: vec[int64]
+    r7 :: vec[i64]
 L0:
     r0 = v.len
     r1 = n < r0 :: unsigned
@@ -158,7 +158,7 @@ L2:
     r4 = get_element_ptr r3 items :: VecbufTExtObject
     r5 = n * 16
     r6 = r4 + r5
-    r7 = load_mem r6 :: vec[int64]*
+    r7 = load_mem r6 :: vec[i64]*
     keep_alive v
     return r7
 
@@ -170,24 +170,24 @@ def f(v: vec[vec[i64]], n: i64) -> i64:
     return v[n][n]
 [out]
 def f(v, n):
-    v :: vec[vec[int64]]
-    n :: int64
+    v :: vec[vec[i64]]
+    n :: i64
     r0 :: native_int
     r1 :: bit
     r2 :: bool
     r3 :: object
     r4 :: ptr
-    r5 :: int64
+    r5 :: i64
     r6 :: ptr
-    r7 :: vec[int64]
+    r7 :: vec[i64]
     r8 :: native_int
     r9 :: bit
     r10 :: bool
     r11 :: object
     r12 :: ptr
-    r13 :: int64
+    r13 :: i64
     r14 :: ptr
-    r15 :: int64
+    r15 :: i64
 L0:
     r0 = v.len
     r1 = n < r0 :: unsigned
@@ -200,7 +200,7 @@ L2:
     r4 = get_element_ptr r3 items :: VecbufTExtObject
     r5 = n * 16
     r6 = r4 + r5
-    r7 = borrow load_mem r6 :: vec[int64]*
+    r7 = borrow load_mem r6 :: vec[i64]*
     r8 = r7.len
     r9 = n < r8 :: unsigned
     if r9 goto L4 else goto L3 :: bool
@@ -212,7 +212,7 @@ L4:
     r12 = get_element_ptr r11 items :: VecbufI64Object
     r13 = n * 8
     r14 = r12 + r13
-    r15 = load_mem r14 :: int64*
+    r15 = load_mem r14 :: i64*
     keep_alive v, r7
     return r15
 
@@ -225,13 +225,13 @@ def f(v: vec[vec[vec[str]]], n: i64) -> vec[vec[str]]:
 [out]
 def f(v, n):
     v :: vec[vec[vec[str]]]
-    n :: int64
+    n :: i64
     r0 :: native_int
     r1 :: bit
     r2 :: bool
     r3 :: object
     r4 :: ptr
-    r5 :: int64
+    r5 :: i64
     r6 :: ptr
     r7 :: vec[vec[str]]
 L0:

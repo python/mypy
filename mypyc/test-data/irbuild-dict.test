@@ -159,7 +159,7 @@ def increment(d):
     r6 :: object
     r7, k :: str
     r8, r9, r10 :: object
-    r11 :: int32
+    r11 :: i32
     r12, r13, r14 :: bit
 L0:
     r0 = 0
@@ -249,7 +249,7 @@ def print_dict_methods(d1, d2):
     r6 :: object
     r7, v :: int
     r8 :: object
-    r9 :: int32
+    r9 :: i32
     r10 :: bit
     r11 :: bool
     r12, r13 :: bit
@@ -262,7 +262,7 @@ def print_dict_methods(d1, d2):
     r20, r21 :: object
     r22, r23, k :: int
     r24, r25, r26, r27, r28 :: object
-    r29 :: int32
+    r29 :: i32
     r30, r31, r32 :: bit
 L0:
     r0 = 0
@@ -281,7 +281,7 @@ L2:
     r8 = box(int, v)
     r9 = PyDict_Contains(d2, r8)
     r10 = r9 >= 0 :: signed
-    r11 = truncate r9: int32 to builtins.bool
+    r11 = truncate r9: i32 to builtins.bool
     if r11 goto L3 else goto L4 :: bool
 L3:
     return 1
@@ -384,7 +384,7 @@ def typeddict(d):
     r8, k :: str
     v :: object
     r9 :: str
-    r10 :: int32
+    r10 :: i32
     r11 :: bit
     r12 :: object
     r13, r14, r15 :: bit

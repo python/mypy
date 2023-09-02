@@ -147,13 +147,13 @@ def f(v: vec[str], n: i64) -> str:
 [out]
 def f(v, n):
     v :: vec[str]
-    n :: int64
+    n :: i64
     r0 :: native_int
     r1 :: bit
     r2 :: bool
     r3 :: object
     r4 :: ptr
-    r5 :: int64
+    r5 :: i64
     r6 :: ptr
     r7 :: str
 L0:
@@ -182,13 +182,13 @@ def f(v: vec[Optional[str]], n: i64) -> Optional[str]:
 [out]
 def f(v, n):
     v :: vec[union[str, None]]
-    n :: int64
+    n :: i64
     r0 :: native_int
     r1 :: bit
     r2 :: bool
     r3 :: object
     r4 :: ptr
-    r5 :: int64
+    r5 :: i64
     r6 :: ptr
     r7 :: union[str, None]
 L0:
@@ -229,17 +229,17 @@ def f(n: i64) -> vec[str]:
     return vec[str](['x' for x in range(i64(5))])
 [out]
 def f(n):
-    n :: int64
+    n :: i64
     r0 :: object
     r1 :: ptr
     r2, r3 :: vec[str]
-    r4, x :: int64
+    r4, x :: i64
     r5 :: bit
     r6 :: str
     r7 :: object
     r8 :: ptr
     r9 :: vec[str]
-    r10 :: int64
+    r10 :: i64
 L0:
     r0 = load_address PyUnicode_Type
     r1 = r0
