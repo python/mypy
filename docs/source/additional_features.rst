@@ -104,7 +104,7 @@ as a dataclass decorator, consider using the :py:func:`~typing.dataclass_transfo
 
     from dataclasses import dataclass, Field
     from typing import TypeVar, dataclass_transform
-    
+
     T = TypeVar('T')
 
     @dataclass_transform(field_specifiers=(Field,))
