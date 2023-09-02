@@ -741,7 +741,7 @@ returns ``None``:
    # OK: we don't do anything with the return value
    f()
 
-   # Error: "f" does not return a value (or returns None)  [func-returns-value]
+   # Error: "f" does not return a value (it only ever returns None)  [func-returns-value]
    if f():
         print("not false")
 

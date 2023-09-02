@@ -1024,7 +1024,7 @@ class MessageBuilder:
         callee_type = get_proper_type(callee_type)
         callee_name = callable_name(callee_type) if isinstance(callee_type, FunctionLike) else None
         name = callee_name or "Function"
-        message = f"{name} does not return a value (or returns None)"
+        message = f"{name} does not return a value (it only ever returns None)"
         self.fail(message, context, code=codes.FUNC_RETURNS_VALUE)
 
     def deleted_as_rvalue(self, typ: DeletedType, context: Context) -> None:

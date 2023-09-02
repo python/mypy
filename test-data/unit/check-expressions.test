@@ -1062,15 +1062,15 @@ class A:
 a: A
 o: object
 if int():
-    a = f()         # E: "f" does not return a value (or returns None)
+    a = f()         # E: "f" does not return a value (it only ever returns None)
 if int():
-    o = a()         # E: Function does not return a value (or returns None)
+    o = a()         # E: Function does not return a value (it only ever returns None)
 if int():
-    o = A().g(a)    # E: "g" of "A" does not return a value (or returns None)
+    o = A().g(a)    # E: "g" of "A" does not return a value (it only ever returns None)
 if int():
-    o = A.g(a, a)   # E: "g" of "A" does not return a value (or returns None)
-A().g(f())      # E: "f" does not return a value (or returns None)
-x: A = f()      # E: "f" does not return a value (or returns None)
+    o = A.g(a, a)   # E: "g" of "A" does not return a value (it only ever returns None)
+A().g(f())      # E: "f" does not return a value (it only ever returns None)
+x: A = f()      # E: "f" does not return a value (it only ever returns None)
 f()
 A().g(a)
 [builtins fixtures/tuple.pyi]
@@ -1079,15 +1079,15 @@ A().g(a)
 import typing
 def f() -> None: pass
 
-if f():   # E: "f" does not return a value (or returns None)
+if f():   # E: "f" does not return a value (it only ever returns None)
     pass
-elif f(): # E: "f" does not return a value (or returns None)
+elif f(): # E: "f" does not return a value (it only ever returns None)
     pass
-while f(): # E: "f" does not return a value (or returns None)
+while f(): # E: "f" does not return a value (it only ever returns None)
     pass
 def g() -> object:
-    return f() # E: "f" does not return a value (or returns None)
-raise f() # E: "f" does not return a value (or returns None)
+    return f() # E: "f" does not return a value (it only ever returns None)
+raise f() # E: "f" does not return a value (it only ever returns None)
 [builtins fixtures/exception.pyi]
 
 [case testNoneReturnTypeWithExpressions]
@@ -1098,13 +1098,13 @@ class A:
     def __add__(self, x: 'A') -> 'A': pass
 
 a: A
-[f()]       # E: "f" does not return a value (or returns None)
-f() + a     # E: "f" does not return a value (or returns None)
-a + f()     # E: "f" does not return a value (or returns None)
-f() == a    # E: "f" does not return a value (or returns None)
-a != f()    # E: "f" does not return a value (or returns None)
+[f()]       # E: "f" does not return a value (it only ever returns None)
+f() + a     # E: "f" does not return a value (it only ever returns None)
+a + f()     # E: "f" does not return a value (it only ever returns None)
+f() == a    # E: "f" does not return a value (it only ever returns None)
+a != f()    # E: "f" does not return a value (it only ever returns None)
 cast(A, f())
-f().foo     # E: "f" does not return a value (or returns None)
+f().foo     # E: "f" does not return a value (it only ever returns None)
 [builtins fixtures/list.pyi]
 
 [case testNoneReturnTypeWithExpressions2]
@@ -1117,14 +1117,14 @@ class A:
 
 a: A
 b: bool
-f() in a   # E: "f" does not return a value (or returns None)  # E: Unsupported right operand type for in ("A")
-a < f()    # E: "f" does not return a value (or returns None)
-f() <= a   # E: "f" does not return a value (or returns None)
-a in f()   # E: "f" does not return a value (or returns None)
--f()       # E: "f" does not return a value (or returns None)
-not f()    # E: "f" does not return a value (or returns None)
-f() and b  # E: "f" does not return a value (or returns None)
-b or f()   # E: "f" does not return a value (or returns None)
+f() in a   # E: "f" does not return a value (it only ever returns None)  # E: Unsupported right operand type for in ("A")
+a < f()    # E: "f" does not return a value (it only ever returns None)
+f() <= a   # E: "f" does not return a value (it only ever returns None)
+a in f()   # E: "f" does not return a value (it only ever returns None)
+-f()       # E: "f" does not return a value (it only ever returns None)
+not f()    # E: "f" does not return a value (it only ever returns None)
+f() and b  # E: "f" does not return a value (it only ever returns None)
+b or f()   # E: "f" does not return a value (it only ever returns None)
 [builtins fixtures/bool.pyi]
 
 
@@ -1424,7 +1424,7 @@ if int():
 [case testConditionalExpressionWithEmptyCondition]
 import typing
 def f() -> None: pass
-x = 1 if f() else 2 # E: "f" does not return a value (or returns None)
+x = 1 if f() else 2 # E: "f" does not return a value (it only ever returns None)
 
 [case testConditionalExpressionWithSubtyping]
 import typing
@@ -1487,7 +1487,7 @@ from typing import List, Union
 x = []
 y = ""
 x.append(y) if bool() else x.append(y)
-z = x.append(y) if bool() else x.append(y) # E: "append" of "list" does not return a value (or returns None)
+z = x.append(y) if bool() else x.append(y) # E: "append" of "list" does not return a value (it only ever returns None)
 [builtins fixtures/list.pyi]
 
 -- Special cases
@@ -1587,7 +1587,7 @@ def f(x: int) -> None:
 [builtins fixtures/for.pyi]
 [out]
 main:1: error: The return type of a generator function should be "Generator" or one of its supertypes
-main:2: error: "f" does not return a value (or returns None)
+main:2: error: "f" does not return a value (it only ever returns None)
 main:2: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testYieldExpressionWithNone]
@@ -1607,7 +1607,7 @@ from typing import Iterator
 def f() -> Iterator[int]:
     yield 5
 def g() -> Iterator[int]:
-    a = yield from f()  # E: Function does not return a value (or returns None)
+    a = yield from f()  # E: Function does not return a value (it only ever returns None)
 
 [case testYieldFromGeneratorHasValue]
 from typing import Iterator, Generator
@@ -1622,12 +1622,12 @@ def g() -> Iterator[int]:
 [case testYieldFromTupleExpression]
 from typing import Generator
 def g() -> Generator[int, None, None]:
-    x = yield from ()  # E: Function does not return a value (or returns None)
-    x = yield from (0, 1, 2)  # E: Function does not return a value (or returns None)
+    x = yield from ()  # E: Function does not return a value (it only ever returns None)
+    x = yield from (0, 1, 2)  # E: Function does not return a value (it only ever returns None)
     x = yield from (0, "ERROR")  # E: Incompatible types in "yield from" (actual type "object", expected type "int") \
-                                 # E: Function does not return a value (or returns None)
+                                 # E: Function does not return a value (it only ever returns None)
     x = yield from ("ERROR",)  # E: Incompatible types in "yield from" (actual type "str", expected type "int") \
-                               # E: Function does not return a value (or returns None)
+                               # E: Function does not return a value (it only ever returns None)
 [builtins fixtures/tuple.pyi]
 
 -- dict(...)
