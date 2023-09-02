@@ -380,7 +380,7 @@ therefore :code:`a or b` will always be a string, but Mypy will not be able to t
 Tracking these sort of cross-variable conditions in a type checker would add significant complexity
 and performance overhead.
 
-You may override the type checker with a :ref:`cast <casts>`, help it with an assertion,
+You can use an ``assert`` to convince the type checker, override it with a :ref:`cast <casts>`
 or rewrite the function to be slightly more verbose:
 
 .. code-block:: python
