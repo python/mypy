@@ -1360,7 +1360,7 @@ class Bar(Foo):
     A = 1
     B = 2
 
-a = Bar.A  # E: "Type[Foo]" has no attribute "A"
+a = Bar.A
 reveal_type(a.value)    # N: Revealed type is "Any"
 reveal_type(a._value_)  # N: Revealed type is "Any"
 [builtins fixtures/primitives.pyi]

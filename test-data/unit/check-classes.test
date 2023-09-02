@@ -6913,8 +6913,8 @@ class O(Generic[T]):
     def __new__(cls, x: int = 0) -> O[Any]:
         pass
 
-reveal_type(O())  # N: Revealed type is "__main__.O[builtins.int]"
-reveal_type(O(10))  # N: Revealed type is "__main__.O[builtins.str]"
+reveal_type(O())  # N: Revealed type is "__main__.O[Never]"
+reveal_type(O(10))  # N: Revealed type is "__main__.O[Never]"
 
 [case testNewReturnType6]
 from typing import Tuple, Optional
@@ -6960,7 +6960,7 @@ class A:
 class B(A):
     pass
 
-reveal_type(B())  # N: Revealed type is "__main__.A"
+reveal_type(B())  # N: Revealed type is "__main__.B"
 
 [case testNewReturnType10]
 # https://github.com/python/mypy/issues/11398
@@ -6993,6 +6993,19 @@ class MyMetaClass(type):
 class MyClass(metaclass=MyMetaClass):
     pass
 
+[case testNewReturnType13]
+from typing import Protocol
+
+class Foo(Protocol):
+    def foo(self) -> str: ...
+
+class A:
+    def __new__(cls) -> Foo: ...  # E: Incompatible return type for "__new__" (returns "Foo", but must return a subtype of "A")
+
+reveal_type(A())  # E: Cannot instantiate protocol class "Foo" \
+                  # N: Revealed type is "__main__.Foo"
+reveal_type(A().foo())  # E: Cannot instantiate protocol class "Foo" \
+                        # N: Revealed type is "builtins.str"
 
 [case testMetaclassPlaceholderNode]
 from sympy.assumptions import ManagedProperties
