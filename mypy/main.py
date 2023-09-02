@@ -187,7 +187,8 @@ def run_build(
         and not options.non_interactive
     ):
         print(
-            "Warning: unused section(s) in {}: {}".format(
+            "Warning: unused section(s) in %s: %s"
+            % (
                 options.config_file,
                 get_config_module_names(
                     options.config_file,
