@@ -144,6 +144,11 @@ def ast3_parse(
 NamedExpr = ast3.NamedExpr
 Constant = ast3.Constant
 
+if sys.version_info >= (3, 12):
+    ast_TypeAlias = ast3.TypeAlias
+else:
+    ast_TypeAlias = Any
+
 if sys.version_info >= (3, 10):
     Match = ast3.Match
     MatchValue = ast3.MatchValue
@@ -936,6 +941,14 @@ class ASTConverter:
                 arg_types = [AnyType(TypeOfAny.from_error)] * len(args)
                 return_type = AnyType(TypeOfAny.from_error)
         else:
+            if sys.version_info >= (3, 12) and n.type_params:
+                self.fail(
+                    ErrorMessage("PEP 695 generics are not yet supported", code=codes.VALID_TYPE),
+                    n.type_params[0].lineno,
+                    n.type_params[0].col_offset,
+                    blocker=False,
+                )
+
             arg_types = [a.type_annotation for a in args]
             return_type = TypeConverter(
                 self.errors, line=n.returns.lineno if n.returns else lineno
@@ -1109,6 +1122,14 @@ class ASTConverter:
     def visit_ClassDef(self, n: ast3.ClassDef) -> ClassDef:
         self.class_and_function_stack.append("C")
         keywords = [(kw.arg, self.visit(kw.value)) for kw in n.keywords if kw.arg]
+
+        if sys.version_info >= (3, 12) and n.type_params:
+            self.fail(
+                ErrorMessage("PEP 695 generics are not yet supported", code=codes.VALID_TYPE),
+                n.type_params[0].lineno,
+                n.type_params[0].col_offset,
+                blocker=False,
+            )
 
         cdef = ClassDef(
             n.name,
@@ -1715,6 +1736,16 @@ class ASTConverter:
     # MatchOr(expr* pattern)
     def visit_MatchOr(self, n: MatchOr) -> OrPattern:
         node = OrPattern([self.visit(pattern) for pattern in n.patterns])
+        return self.set_line(node, n)
+
+    def visit_TypeAlias(self, n: ast_TypeAlias) -> AssignmentStmt:
+        self.fail(
+            ErrorMessage("PEP 695 type aliases are not yet supported", code=codes.VALID_TYPE),
+            n.lineno,
+            n.col_offset,
+            blocker=False,
+        )
+        node = AssignmentStmt([NameExpr(n.name.id)], self.visit(n.value))
         return self.set_line(node, n)
 
 
