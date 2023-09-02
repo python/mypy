@@ -85,37 +85,6 @@ We can also use ``assert`` to narrow types in the same context:
      print(x + '!')  # Typechecks with `mypy`, but fails in runtime.
 
 
-Limitations of narrowing
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-Mypy's analysis is limited to individual symbols and it will not track
-relationships between symbols. For example, in the following code
-it's easy to deduce that if :code:`a` is None then :code:`b` must not be,
-therefore :code:`a or b` will always be a string, but Mypy will not be able to tell that:
-
-.. code-block:: python
-
-    def f(a: str | None, b: str | None) -> str:
-        if a is not None or b is not None:
-            return a or b  # Incompatible return value type (got "str | None", expected "str")
-        return 'spam'
-
-Tracking these sort of cross-variable conditions in a type checker would add significant complexity
-and performance overhead and would be computationally infeasible in all but the most basic cases.
-
-You may override the type checker with a :ref:`cast <casts>`, or rewrite the function to be
-slightly more verbose:
-
-.. code-block:: python
-
-    def f(a: str | None, b: str | None) -> str:
-        if a is not None:
-            return a
-        elif b is not None:
-            return b
-        return 'spam'
-
-
 issubclass
 ~~~~~~~~~~
 
@@ -392,3 +361,33 @@ What happens here?
 .. note::
 
   The same will work with ``isinstance(x := a, float)`` as well.
+
+Limitations
+-----------
+
+Mypy's analysis is limited to individual symbols and it will not track
+relationships between symbols. For example, in the following code
+it's easy to deduce that if :code:`a` is None then :code:`b` must not be,
+therefore :code:`a or b` will always be a string, but Mypy will not be able to tell that:
+
+.. code-block:: python
+
+    def f(a: str | None, b: str | None) -> str:
+        if a is not None or b is not None:
+            return a or b  # Incompatible return value type (got "str | None", expected "str")
+        return 'spam'
+
+Tracking these sort of cross-variable conditions in a type checker would add significant complexity
+and performance overhead.
+
+You may override the type checker with a :ref:`cast <casts>`, help it with an assertion,
+or rewrite the function to be slightly more verbose:
+
+.. code-block:: python
+
+    def f(a: str | None, b: str | None) -> str:
+        if a is not None:
+            return a
+        elif b is not None:
+            return b
+        return 'spam'
