@@ -196,6 +196,7 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
             and len(rvalue_reg.type.types) == len(first_lvalue.items)
             and len(lvalues) == 1
             and all(is_simple_lvalue(item) for item in first_lvalue.items)
+            and any(t.is_refcounted for t in rvalue_reg.type.types)
     ):
         lvalue = first_lvalue
         n = len(lvalue.items)
