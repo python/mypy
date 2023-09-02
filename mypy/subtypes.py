@@ -58,8 +58,10 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    find_unpack_in_list,
     get_proper_type,
     is_named_instance,
+    split_with_prefix_and_suffix,
 )
 from mypy.types_utils import flatten_types
 from mypy.typestate import SubtypeKind, type_state
@@ -278,7 +280,13 @@ def _is_subtype(
     left = get_proper_type(left)
     right = get_proper_type(right)
 
-    if not proper_subtype and isinstance(right, (AnyType, UnboundType, ErasedType)):
+    # Note: Unpack type should not be a subtype of Any, since it may represent
+    # multiple types. This should always go through the visitor, to check arity.
+    if (
+        not proper_subtype
+        and isinstance(right, (AnyType, UnboundType, ErasedType))
+        and not isinstance(left, UnpackType)
+    ):
         # TODO: should we consider all types proper subtypes of UnboundType and/or
         # ErasedType as we do for non-proper subtyping.
         return True
@@ -437,6 +445,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right = self.right
         if isinstance(right, TupleType) and right.partial_fallback.type.is_enum:
             return self._is_subtype(left, mypy.typeops.tuple_fallback(right))
+        if isinstance(right, TupleType) and len(right.items) == 1:
+            # Non-normalized Tuple type (may be left after semantic analysis).
+            item = right.items[0]
+            if isinstance(item, UnpackType):
+                unpacked = get_proper_type(item.type)
+                if isinstance(unpacked, Instance):
+                    return self._is_subtype(left, unpacked)
+            return False
         if isinstance(right, Instance):
             if type_state.is_cached_subtype_check(self._subtype_kind, left, right):
                 return True
@@ -761,8 +777,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return True
             return False
         elif isinstance(right, TupleType):
+            # If right has a variadic unpack this needs special handling. If there is a TypeVarTuple
+            # unpack, item count must coincide. If the left has variadic unpack but right
+            # doesn't have one, we will fall through to False down the line.
+            if self.variadic_tuple_subtype(left, right):
+                return True
             if len(left.items) != len(right.items):
-                # TODO: handle tuple with variadic items better.
                 return False
             if any(not self._is_subtype(l, r) for l, r in zip(left.items, right.items)):
                 return False
@@ -777,6 +797,59 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return self._is_subtype(lfallback, rfallback)
         else:
             return False
+
+    def variadic_tuple_subtype(self, left: TupleType, right: TupleType) -> bool:
+        right_unpack_index = find_unpack_in_list(right.items)
+        if right_unpack_index is None:
+            return False
+        right_unpack = right.items[right_unpack_index]
+        assert isinstance(right_unpack, UnpackType)
+        right_unpacked = get_proper_type(right_unpack.type)
+        if not isinstance(right_unpacked, Instance):
+            return False
+        assert right_unpacked.type.fullname == "builtins.tuple"
+        right_item = right_unpacked.args[0]
+        right_prefix = right_unpack_index
+        right_suffix = len(right.items) - right_prefix - 1
+        left_unpack_index = find_unpack_in_list(left.items)
+        if left_unpack_index is None:
+            if len(left.items) < right_prefix + right_suffix:
+                return False
+            prefix, middle, suffix = split_with_prefix_and_suffix(
+                tuple(left.items), right_prefix, right_suffix
+            )
+            if not all(
+                self._is_subtype(li, ri) for li, ri in zip(prefix, right.items[:right_prefix])
+            ):
+                return False
+            if right_suffix and not all(
+                self._is_subtype(li, ri) for li, ri in zip(suffix, right.items[-right_suffix:])
+            ):
+                return False
+            return all(self._is_subtype(li, right_item) for li in middle)
+        else:
+            if len(left.items) < len(right.items):
+                return False
+            left_unpack = left.items[left_unpack_index]
+            assert isinstance(left_unpack, UnpackType)
+            left_unpacked = get_proper_type(left_unpack.type)
+            if not isinstance(left_unpacked, Instance):
+                return False
+            assert left_unpacked.type.fullname == "builtins.tuple"
+            left_item = left_unpacked.args[0]
+            if not self._is_subtype(left_item, right_item):
+                return False
+            left_prefix = left_unpack_index
+            left_suffix = len(left.items) - left_prefix - 1
+            max_overlap = max(0, right_prefix - left_prefix, right_suffix - left_suffix)
+            for overlap in range(max_overlap + 1):
+                repr_items = left.items[:left_prefix] + [left_item] * overlap
+                if left_suffix:
+                    repr_items += left.items[-left_suffix:]
+                left_repr = left.copy_modified(items=repr_items)
+                if not self._is_subtype(left_repr, right):
+                    return False
+            return True
 
     def visit_typeddict_type(self, left: TypedDictType) -> bool:
         right = self.right

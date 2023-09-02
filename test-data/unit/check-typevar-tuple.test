@@ -1233,3 +1233,70 @@ def test(d: A[int, str]) -> None:
     else:
         reveal_type(d)  # E: Statement is unreachable
 [builtins fixtures/isinstancelist.pyi]
+
+[case testVariadicTupleSubtyping]
+from typing import Tuple
+from typing_extensions import Unpack
+
+def f1(x: Tuple[float, ...]) -> None: ...
+def f2(x: Tuple[float, Unpack[Tuple[float, ...]]]) -> None: ...
+def f3(x: Tuple[Unpack[Tuple[float, ...]], float]) -> None: ...
+def f4(x: Tuple[float, Unpack[Tuple[float, ...]], float]) -> None: ...
+
+t1: Tuple[int, int]
+t2: Tuple[int, Unpack[Tuple[int, ...]]]
+t3: Tuple[Unpack[Tuple[int, ...]], int]
+t4: Tuple[int, Unpack[Tuple[int, ...]], int]
+t5: Tuple[int, ...]
+
+f1(t1)
+f1(t2)
+f1(t3)
+f1(t4)
+f1(t5)
+
+f2(t1)
+f2(t2)
+f2(t3)
+f2(t4)
+f2(t5)  # E: Argument 1 to "f2" has incompatible type "Tuple[int, ...]"; expected "Tuple[float, Unpack[Tuple[float, ...]]]"
+
+f3(t1)
+f3(t2)
+f3(t3)
+f3(t4)
+f3(t5)  # E: Argument 1 to "f3" has incompatible type "Tuple[int, ...]"; expected "Tuple[Unpack[Tuple[float, ...]], float]"
+
+f4(t1)
+f4(t2)  # E: Argument 1 to "f4" has incompatible type "Tuple[int, Unpack[Tuple[int, ...]]]"; expected "Tuple[float, Unpack[Tuple[float, ...]], float]"
+f4(t3)  # E: Argument 1 to "f4" has incompatible type "Tuple[Unpack[Tuple[int, ...]], int]"; expected "Tuple[float, Unpack[Tuple[float, ...]], float]"
+f4(t4)
+f4(t5)  # E: Argument 1 to "f4" has incompatible type "Tuple[int, ...]"; expected "Tuple[float, Unpack[Tuple[float, ...]], float]"
+
+t5_verbose: Tuple[Unpack[Tuple[int, ...]]]
+t5 = t5_verbose  # OK
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicTupleInference]
+from typing import List, Tuple, TypeVar
+from typing_extensions import TypeVarTuple, Unpack
+
+T = TypeVar("T")
+def f(x: Tuple[int, Unpack[Tuple[T, ...]]]) -> T: ...
+
+vt0: Tuple[int, ...]
+f(vt0)  # E: Argument 1 to "f" has incompatible type "Tuple[int, ...]"; expected "Tuple[int, Unpack[Tuple[int, ...]]]"
+
+vt1: Tuple[Unpack[Tuple[int, ...]], int]
+reveal_type(f(vt1))  # N: Revealed type is "builtins.int"
+
+S = TypeVar("S")
+Ts = TypeVarTuple("Ts")
+def g(x: Tuple[T, Unpack[Ts], S]) -> Tuple[T, Unpack[Ts], S]: ...
+g(vt0)  # E: Argument 1 to "g" has incompatible type "Tuple[int, ...]"; expected "Tuple[int, Unpack[Tuple[int, ...]], int]"
+
+U = TypeVar("U")
+def h(x: List[Tuple[T, S, U]]) -> Tuple[T, S, U]: ...
+vt2: Tuple[Unpack[Tuple[int, ...]], int]
+vt2 = h(reveal_type([]))  # N: Revealed type is "builtins.list[Tuple[builtins.int, builtins.int, builtins.int]]"
+[builtins fixtures/tuple.pyi]

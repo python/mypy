@@ -1049,7 +1049,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         )
                         res.extend(unpack_constraints)
                     else:
-                        # Negate direction due to function argument type contravariance.
+                        # TODO: do we need some special-casing when unpack is present in actual
+                        # but not in template?
                         res.extend(
                             infer_callable_arguments_constraints(template, cactual, self.direction)
                         )
@@ -1170,11 +1171,27 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             res: list[Constraint] = []
             if unpack_index is not None:
                 if is_varlength_tuple:
+                    # Variadic tuple can be only a supertype of a tuple type, but even if
+                    # direction is opposite, inferring something may give better error messages.
                     unpack_type = template.items[unpack_index]
                     assert isinstance(unpack_type, UnpackType)
-                    unpacked_type = unpack_type.type
-                    assert isinstance(unpacked_type, TypeVarTupleType)
-                    return [Constraint(type_var=unpacked_type, op=self.direction, target=actual)]
+                    unpacked_type = get_proper_type(unpack_type.type)
+                    if isinstance(unpacked_type, TypeVarTupleType):
+                        res = [
+                            Constraint(type_var=unpacked_type, op=self.direction, target=actual)
+                        ]
+                    else:
+                        assert (
+                            isinstance(unpacked_type, Instance)
+                            and unpacked_type.type.fullname == "builtins.tuple"
+                        )
+                        res = infer_constraints(unpacked_type, actual, self.direction)
+                    assert isinstance(actual, Instance)
+                    for i, ti in enumerate(template.items):
+                        if i == unpack_index:
+                            continue
+                        res.extend(infer_constraints(ti, actual.args[0], self.direction))
+                    return res
                 else:
                     assert isinstance(actual, TupleType)
                     unpack_constraints = build_constraints_for_simple_unpack(
@@ -1184,8 +1201,33 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     template_items: tuple[Type, ...] = ()
                     res.extend(unpack_constraints)
             elif isinstance(actual, TupleType):
-                actual_items = tuple(actual.items)
-                template_items = tuple(template.items)
+                a_unpack_index = find_unpack_in_list(actual.items)
+                if a_unpack_index is not None:
+                    a_unpack = actual.items[a_unpack_index]
+                    assert isinstance(a_unpack, UnpackType)
+                    a_unpacked = get_proper_type(a_unpack.type)
+                    if len(actual.items) + 1 <= len(template.items):
+                        a_prefix_len = a_unpack_index
+                        a_suffix_len = len(actual.items) - a_unpack_index - 1
+                        t_prefix, t_middle, t_suffix = split_with_prefix_and_suffix(
+                            tuple(template.items), a_prefix_len, a_suffix_len
+                        )
+                        actual_items = tuple(actual.items[:a_prefix_len])
+                        if a_suffix_len:
+                            actual_items += tuple(actual.items[-a_suffix_len:])
+                        template_items = t_prefix + t_suffix
+                        if isinstance(a_unpacked, Instance):
+                            assert a_unpacked.type.fullname == "builtins.tuple"
+                            for tm in t_middle:
+                                res.extend(
+                                    infer_constraints(tm, a_unpacked.args[0], self.direction)
+                                )
+                    else:
+                        actual_items = ()
+                        template_items = ()
+                else:
+                    actual_items = tuple(actual.items)
+                    template_items = tuple(template.items)
             else:
                 return res
 
@@ -1439,6 +1481,16 @@ def build_constraints_for_simple_unpack(
                         res.extend(infer_constraints(tp.args[0], a_tp.args[0], direction))
         elif isinstance(tp, TypeVarTupleType):
             res.append(Constraint(tp, direction, TupleType(list(middle), tp.tuple_fallback)))
+    elif actual_unpack is not None:
+        actual_unpack_type = actual_args[actual_unpack]
+        assert isinstance(actual_unpack_type, UnpackType)
+        a_unpacked = get_proper_type(actual_unpack_type.type)
+        if isinstance(a_unpacked, Instance) and a_unpacked.type.fullname == "builtins.tuple":
+            t_unpack = template_args[template_unpack]
+            assert isinstance(t_unpack, UnpackType)
+            tp = get_proper_type(t_unpack.type)
+            if isinstance(tp, Instance) and tp.type.fullname == "builtins.tuple":
+                res.extend(infer_constraints(tp.args[0], a_unpacked.args[0], direction))
     return res
 
 
