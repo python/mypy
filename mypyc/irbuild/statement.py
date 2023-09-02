@@ -61,9 +61,11 @@ from mypyc.ir.ops import (
     TupleGet,
     Unreachable,
     Value,
+    Unborrow,
 )
 from mypyc.ir.rtypes import (
     RInstance,
+    RTuple,
     c_pyssize_t_rprimitive,
     exc_rtuple,
     is_tagged,
@@ -183,8 +185,29 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
 
     line = stmt.rvalue.line
     rvalue_reg = builder.accept(stmt.rvalue)
+
     if builder.non_function_scope() and stmt.is_final_def:
         builder.init_final_static(first_lvalue, rvalue_reg)
+
+    # Special case multiple assignments like 'x, y = expr' to reduce refcount ops.
+    if (
+            isinstance(first_lvalue, (TupleExpr, ListExpr))
+            and isinstance(rvalue_reg.type, RTuple)
+            and len(rvalue_reg.type.types) == len(first_lvalue.items)
+            and len(lvalues) == 1
+            and all(is_simple_lvalue(item) for item in first_lvalue.items)
+    ):
+        lvalue = first_lvalue
+        n = len(lvalue.items)
+        for i in range(n):
+            target = builder.get_assignment_target(lvalue.items[i])
+            rvalue_item = builder.add(TupleGet(rvalue_reg, i, borrow=True))
+            rvalue_item = builder.add(Unborrow(rvalue_item))
+            builder.assign(target, rvalue_item, line)
+        builder.builder.keep_alive([rvalue_reg], steal=True)
+        builder.flush_keep_alives()
+        return
+
     for lvalue in lvalues:
         target = builder.get_assignment_target(lvalue)
         builder.assign(target, rvalue_reg, line)

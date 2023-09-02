@@ -1452,7 +1452,7 @@ class Unborrow(RegisterOp):
         self.type = src.type
 
     def sources(self) -> list[Value]:
-        return self.src.copy()
+        return [self.src]
 
     def stolen(self) -> list[Value]:
         return []
