@@ -105,7 +105,7 @@ as a dataclass decorator, consider using the :py:func:`~typing.dataclass_transfo
     from dataclasses import dataclass, Field
     from typing import dataclass_transform
 
-    @dataclass_transform(fields=(Field,))
+    @dataclass_transform(field_specifiers=(Field,))
     def my_dataclass(cls: type[T]) -> type[T]:
       ...
       return dataclass(cls)
@@ -119,9 +119,9 @@ Mypy supports the :py:func:`~typing.dataclass_transform` decorator as described 
 
 .. note::
 
-    Pragmatically, such classes would appear to have the internal attribute :code:`__dataclass_fields__`
-    (even though they might lack it in runtime) and dataclass functions such as :py:func:`dataclasses.is_dataclass`
-    and :py:func:`dataclasses.fields` would appear to accept them as if they were dataclasses
+    Pragmatically, mypy will assume such classes have the internal attribute :code:`__dataclass_fields__`
+    (even though they might lack it in runtime) and will assume functions such as :py:func:`dataclasses.is_dataclass`
+    and :py:func:`dataclasses.fields` to treat them as if they were dataclasses
     (even though they may fail at runtime).
 
 .. _attrs_package:
