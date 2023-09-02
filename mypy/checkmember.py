@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Sequence, cast
+from typing import TYPE_CHECKING, Callable, Optional, Sequence, cast
 
 from mypy import meet, message_registry, subtypes
 from mypy.erasetype import erase_typevars
@@ -776,12 +776,17 @@ def analyze_var(
         freeze_all_type_vars(t)
         result: Type = t
         typ = get_proper_type(typ)
-        if (
-            var.is_initialized_in_class
-            and (not is_instance_var(var) or mx.is_operator)
-            and isinstance(typ, FunctionLike)
-            and not typ.is_type_obj()
-        ):
+
+        call_type: Optional[ProperType] = None
+        if var.is_initialized_in_class and (not is_instance_var(var) or mx.is_operator):
+            if isinstance(typ, FunctionLike) and not typ.is_type_obj():
+                call_type = typ
+            elif var.is_property:
+                call_type = get_proper_type(_analyze_member_access("__call__", typ, mx))
+            else:
+                call_type = typ
+
+        if isinstance(call_type, FunctionLike) and not call_type.is_type_obj():
             if mx.is_lvalue:
                 if var.is_property:
                     if not var.is_settable_property:
@@ -792,7 +797,7 @@ def analyze_var(
             if not var.is_staticmethod:
                 # Class-level function objects and classmethods become bound methods:
                 # the former to the instance, the latter to the class.
-                functype = typ
+                functype: FunctionLike = call_type
                 # Use meet to narrow original_type to the dispatched type.
                 # For example, assume
                 # * A.f: Callable[[A1], None] where A1 <: A (maybe A1 == A)

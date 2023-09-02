@@ -1021,18 +1021,11 @@ class MessageBuilder:
 
     def does_not_return_value(self, callee_type: Type | None, context: Context) -> None:
         """Report an error about use of an unusable type."""
-        name: str | None = None
         callee_type = get_proper_type(callee_type)
-        if isinstance(callee_type, FunctionLike):
-            name = callable_name(callee_type)
-        if name is not None:
-            self.fail(
-                f"{capitalize(name)} does not return a value",
-                context,
-                code=codes.FUNC_RETURNS_VALUE,
-            )
-        else:
-            self.fail("Function does not return a value", context, code=codes.FUNC_RETURNS_VALUE)
+        callee_name = callable_name(callee_type) if isinstance(callee_type, FunctionLike) else None
+        name = callee_name or "Function"
+        message = f"{name} does not return a value (it only ever returns None)"
+        self.fail(message, context, code=codes.FUNC_RETURNS_VALUE)
 
     def deleted_as_rvalue(self, typ: DeletedType, context: Context) -> None:
         """Report an error about using an deleted type as an rvalue."""
@@ -1309,6 +1302,22 @@ class MessageBuilder:
             context,
             code=codes.OVERRIDE,
         )
+
+        original = get_proper_type(original)
+        override = get_proper_type(override)
+        if (
+            isinstance(original, Instance)
+            and isinstance(override, Instance)
+            and override.type.fullname == "typing.AsyncIterator"
+            and original.type.fullname == "typing.Coroutine"
+            and len(original.args) == 3
+            and original.args[2] == override
+        ):
+            self.note(f'Consider declaring "{name}" in {target} without "async"', context)
+            self.note(
+                "See https://mypy.readthedocs.io/en/stable/more_types.html#asynchronous-iterators",
+                context,
+            )
 
     def override_target(self, name: str, name_in_super: str, supertype: str) -> str:
         target = f'supertype "{supertype}"'
@@ -2052,7 +2061,7 @@ class MessageBuilder:
         if supertype.type.fullname in exclusions.get(type(subtype), []):
             return
         if any(isinstance(tp, UninhabitedType) for tp in get_proper_types(supertype.args)):
-            # We don't want to add notes for failed inference (e.g. Iterable[<nothing>]).
+            # We don't want to add notes for failed inference (e.g. Iterable[Never]).
             # This will be only confusing a user even more.
             return
 
@@ -2379,7 +2388,7 @@ def quote_type_string(type_string: str) -> str:
     """Quotes a type representation for use in messages."""
     no_quote_regex = r"^<(tuple|union): \d+ items>$"
     if (
-        type_string in ["Module", "overloaded function", "<nothing>", "<deleted>"]
+        type_string in ["Module", "overloaded function", "Never", "<deleted>"]
         or type_string.startswith("Module ")
         or re.match(no_quote_regex, type_string) is not None
         or type_string.endswith("?")
@@ -2581,7 +2590,7 @@ def format_type_inner(
         if typ.is_noreturn:
             return "NoReturn"
         else:
-            return "<nothing>"
+            return "Never"
     elif isinstance(typ, TypeType):
         type_name = "type" if options.use_lowercase_names() else "Type"
         return f"{type_name}[{format(typ.item)}]"

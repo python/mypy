@@ -169,8 +169,8 @@ class C(B): pass
 import typing
 def f() -> None: pass
 
-(None, f()) # E: "f" does not return a value
-(f(), None) # E: "f" does not return a value
+(None, f()) # E: "f" does not return a value (it only ever returns None)
+(f(), None) # E: "f" does not return a value (it only ever returns None)
 [builtins fixtures/tuple.pyi]
 
 

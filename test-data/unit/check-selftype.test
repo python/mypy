@@ -1520,7 +1520,7 @@ from typing import Self, TypeVar, Tuple
 T = TypeVar("T")
 class C:
     def meth(self: T) -> Tuple[Self, T]: ...  # E: Method cannot have explicit self annotation and Self type
-reveal_type(C().meth())  # N: Revealed type is "Tuple[<nothing>, __main__.C]"
+reveal_type(C().meth())  # N: Revealed type is "Tuple[Never, __main__.C]"
 [builtins fixtures/property.pyi]
 
 [case testTypingSelfProperty]
@@ -1558,7 +1558,7 @@ class C:
 
 class D(C): ...
 reveal_type(D.meth())  # N: Revealed type is "__main__.D"
-reveal_type(D.bad())  # N: Revealed type is "<nothing>"
+reveal_type(D.bad())  # N: Revealed type is "Never"
 [builtins fixtures/classmethod.pyi]
 
 [case testTypingSelfOverload]

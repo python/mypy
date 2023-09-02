@@ -900,15 +900,15 @@ from typing_extensions import NoReturn as TENoReturn
 from mypy_extensions import NoReturn as MENoReturn
 
 bottom1: Never
-reveal_type(bottom1)  # N: Revealed type is "<nothing>"
+reveal_type(bottom1)  # N: Revealed type is "Never"
 bottom2: TENever
-reveal_type(bottom2)  # N: Revealed type is "<nothing>"
+reveal_type(bottom2)  # N: Revealed type is "Never"
 bottom3: NoReturn
-reveal_type(bottom3)  # N: Revealed type is "<nothing>"
+reveal_type(bottom3)  # N: Revealed type is "Never"
 bottom4: TENoReturn
-reveal_type(bottom4)  # N: Revealed type is "<nothing>"
+reveal_type(bottom4)  # N: Revealed type is "Never"
 bottom5: MENoReturn
-reveal_type(bottom5)  # N: Revealed type is "<nothing>"
+reveal_type(bottom5)  # N: Revealed type is "Never"
 
 [builtins fixtures/tuple.pyi]
 
