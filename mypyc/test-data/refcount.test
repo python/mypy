@@ -656,6 +656,26 @@ L1:
 L2:
     return 4
 
+[case testReturnTuple]
+from typing import Tuple
+
+class C: pass
+def f() -> Tuple[C, C]:
+    a = C()
+    b = C()
+    return a, b
+[out]
+def f():
+    r0, a, r1, b :: __main__.C
+    r2 :: tuple[__main__.C, __main__.C]
+L0:
+    r0 = C()
+    a = r0
+    r1 = C()
+    b = r1
+    r2 = (a, b)
+    return r2
+
 [case testUnicodeLiteral]
 def f() -> str:
     return "some string"

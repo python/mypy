@@ -500,7 +500,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         dest = self.reg(op)
         src = self.reg(op.src)
         self.emit_line(f"{dest} = {src}.f{op.index};")
-        self.emit_inc_ref(dest, op.type)
+        if not op.is_borrowed:
+            self.emit_inc_ref(dest, op.type)
 
     def get_dest_assign(self, dest: Value) -> str:
         if not dest.is_void:

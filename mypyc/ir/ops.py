@@ -792,6 +792,9 @@ class TupleSet(RegisterOp):
     def sources(self) -> list[Value]:
         return self.items.copy()
 
+    def stolen(self) -> list[Value]:
+        return self.items.copy()
+
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_tuple_set(self)
 
@@ -801,13 +804,14 @@ class TupleGet(RegisterOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, src: Value, index: int, line: int = -1) -> None:
+    def __init__(self, src: Value, index: int, line: int = -1, *, borrow: bool = False) -> None:
         super().__init__(line)
         self.src = src
         self.index = index
         assert isinstance(src.type, RTuple), "TupleGet only operates on tuples"
         assert index >= 0
         self.type = src.type.types[index]
+        self.is_borrowed = borrow
 
     def sources(self) -> list[Value]:
         return [self.src]

@@ -154,7 +154,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return self.format("%s = %r :: %s", name, op.value, op.namespace)
 
     def visit_tuple_get(self, op: TupleGet) -> str:
-        return self.format("%r = %r[%d]", op, op.src, op.index)
+        return self.format("%r = %s%r[%d]", op, self.borrow_prefix(op), op.src, op.index)
 
     def visit_tuple_set(self, op: TupleSet) -> str:
         item_str = ", ".join(self.format("%r", item) for item in op.items)
