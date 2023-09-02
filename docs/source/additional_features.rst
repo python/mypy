@@ -103,12 +103,14 @@ as a dataclass decorator, consider using the :py:func:`~typing.dataclass_transfo
 .. code-block:: python
 
     from dataclasses import dataclass, Field
-    from typing import dataclass_transform
+    from typing import TypeVar, dataclass_transform
+    
+    T = TypeVar('T')
 
     @dataclass_transform(field_specifiers=(Field,))
     def my_dataclass(cls: type[T]) -> type[T]:
-      ...
-      return dataclass(cls)
+        ...
+        return dataclass(cls)
 
 
 Data Class Transforms
