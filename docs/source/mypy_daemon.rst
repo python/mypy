@@ -59,6 +59,11 @@ you have a large codebase.)
    back to the stable functionality.  See :ref:`follow-imports` for
    details on how these work.
 
+.. note::
+
+    The mypy daemon automatically enables ``--local-partial-types`` by default.
+
+
 Daemon client commands
 **********************
 

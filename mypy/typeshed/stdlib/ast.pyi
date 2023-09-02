@@ -3,7 +3,7 @@ import sys
 from _ast import *
 from _typeshed import ReadableBuffer, Unused
 from collections.abc import Iterator
-from typing import Any, TypeVar, overload
+from typing import Any, TypeVar as _TypeVar, overload
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 8):
@@ -168,7 +168,7 @@ class NodeTransformer(NodeVisitor):
     #       The usual return type is AST | None, but Iterable[AST]
     #       is also allowed in some cases -- this needs to be mapped.
 
-_T = TypeVar("_T", bound=AST)
+_T = _TypeVar("_T", bound=AST)
 
 if sys.version_info >= (3, 8):
     @overload

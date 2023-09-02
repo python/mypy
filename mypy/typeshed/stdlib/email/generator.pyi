@@ -1,11 +1,12 @@
 from _typeshed import SupportsWrite
 from email.message import Message
 from email.policy import Policy
+from typing_extensions import Self
 
 __all__ = ["Generator", "DecodedGenerator", "BytesGenerator"]
 
 class Generator:
-    def clone(self, fp: SupportsWrite[str]) -> Generator: ...
+    def clone(self, fp: SupportsWrite[str]) -> Self: ...
     def write(self, s: str) -> None: ...
     def __init__(
         self,
@@ -17,9 +18,7 @@ class Generator:
     ) -> None: ...
     def flatten(self, msg: Message, unixfrom: bool = False, linesep: str | None = None) -> None: ...
 
-class BytesGenerator:
-    def clone(self, fp: SupportsWrite[bytes]) -> BytesGenerator: ...
-    def write(self, s: str) -> None: ...
+class BytesGenerator(Generator):
     def __init__(
         self,
         outfp: SupportsWrite[bytes],
@@ -28,7 +27,6 @@ class BytesGenerator:
         *,
         policy: Policy | None = None,
     ) -> None: ...
-    def flatten(self, msg: Message, unixfrom: bool = False, linesep: str | None = None) -> None: ...
 
 class DecodedGenerator(Generator):
     def __init__(

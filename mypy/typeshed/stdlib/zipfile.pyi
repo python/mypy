@@ -1,6 +1,6 @@
 import io
 import sys
-from _typeshed import StrOrBytesPath, StrPath, _BufferWithLen
+from _typeshed import SizedBuffer, StrOrBytesPath, StrPath
 from collections.abc import Callable, Iterable, Iterator
 from os import PathLike
 from types import TracebackType
@@ -179,7 +179,7 @@ class ZipFile:
     def writestr(
         self,
         zinfo_or_arcname: str | ZipInfo,
-        data: _BufferWithLen | str,
+        data: SizedBuffer | str,
         compress_type: int | None = None,
         compresslevel: int | None = None,
     ) -> None: ...

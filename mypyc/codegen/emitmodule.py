@@ -43,7 +43,6 @@ from mypyc.common import (
     TOP_LEVEL_NAME,
     shared_lib_name,
     short_id_from_name,
-    use_fastcall,
     use_vectorcall,
 )
 from mypyc.errors import Errors
@@ -51,7 +50,7 @@ from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR, ModuleIRs, deserialize_modules
 from mypyc.ir.ops import DeserMaps, LoadLiteral
-from mypyc.ir.rtypes import RTuple, RType
+from mypyc.ir.rtypes import RType
 from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.prepare import load_type_map
@@ -1052,11 +1051,7 @@ class GroupGenerator:
     def final_definition(self, module: str, name: str, typ: RType, emitter: Emitter) -> str:
         static_name = emitter.static_name(name, module)
         # Here we rely on the fact that undefined value and error value are always the same
-        if isinstance(typ, RTuple):
-            # We need to inline because initializer must be static
-            undefined = "{{ {} }}".format("".join(emitter.tuple_undefined_value_helper(typ)))
-        else:
-            undefined = emitter.c_undefined_value(typ)
+        undefined = emitter.c_initializer_undefined_value(typ)
         return f"{emitter.ctype_spaced(typ)}{static_name} = {undefined};"
 
     def declare_static_pyobject(self, identifier: str, emitter: Emitter) -> None:
@@ -1111,8 +1106,8 @@ def is_fastcall_supported(fn: FuncIR, capi_version: tuple[int, int]) -> bool:
             # We can use vectorcalls (PEP 590) when supported
             return use_vectorcall(capi_version)
         # TODO: Support fastcall for __init__.
-        return use_fastcall(capi_version) and fn.name != "__init__"
-    return use_fastcall(capi_version)
+        return fn.name != "__init__"
+    return True
 
 
 def collect_literals(fn: FuncIR, literals: Literals) -> None:

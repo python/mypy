@@ -713,7 +713,7 @@ def __top_level__():
     r18 :: str
     r19 :: dict
     r20 :: str
-    r21 :: int32
+    r21 :: i32
     r22 :: bit
     r23 :: object_ptr
     r24 :: object_ptr[1]
@@ -1146,7 +1146,7 @@ def f(x: Any, y: Any, z: Any) -> None:
 [out]
 def f(x, y, z):
     x, y, z :: object
-    r0 :: int32
+    r0 :: i32
     r1 :: bit
 L0:
     r0 = PyObject_SetItem(x, y, z)
@@ -1172,13 +1172,16 @@ L0:
 
 [case testLoadComplex]
 def load() -> complex:
-    return 5j+1.0
+    real = 1
+    return 5j+real
 [out]
 def load():
+    real :: int
     r0, r1, r2 :: object
 L0:
+    real = 2
     r0 = 5j
-    r1 = box(float, 1.0)
+    r1 = box(int, real)
     r2 = PyNumber_Add(r0, r1)
     return r2
 
@@ -1422,13 +1425,13 @@ def lst(x: List[int]) -> int:
 [out]
 def obj(x):
     x :: object
-    r0 :: int32
+    r0 :: i32
     r1 :: bit
     r2 :: bool
 L0:
     r0 = PyObject_IsTrue(x)
     r1 = r0 >= 0 :: signed
-    r2 = truncate r0: int32 to builtins.bool
+    r2 = truncate r0: i32 to builtins.bool
     if r2 goto L1 else goto L2 :: bool
 L1:
     return 2
@@ -1530,7 +1533,7 @@ def opt_o(x):
     r0 :: object
     r1 :: bit
     r2 :: object
-    r3 :: int32
+    r3 :: i32
     r4 :: bit
     r5 :: bool
 L0:
@@ -1541,7 +1544,7 @@ L1:
     r2 = cast(object, x)
     r3 = PyObject_IsTrue(r2)
     r4 = r3 >= 0 :: signed
-    r5 = truncate r3: int32 to builtins.bool
+    r5 = truncate r3: i32 to builtins.bool
     if r5 goto L2 else goto L3 :: bool
 L2:
     return 2
@@ -1613,7 +1616,7 @@ def __top_level__():
     r5 :: dict
     r6 :: str
     r7 :: object
-    r8 :: int32
+    r8 :: i32
     r9 :: bit
     r10 :: dict
     r11 :: str
@@ -1728,7 +1731,7 @@ def main() -> None:
 def foo(x):
     x :: union[int, str]
     r0 :: object
-    r1 :: int32
+    r1 :: i32
     r2 :: bit
     r3 :: bool
     r4 :: __main__.B
@@ -1737,7 +1740,7 @@ L0:
     r0 = load_address PyLong_Type
     r1 = PyObject_IsInstance(x, r0)
     r2 = r1 >= 0 :: signed
-    r3 = truncate r1: int32 to builtins.bool
+    r3 = truncate r1: i32 to builtins.bool
     if r3 goto L1 else goto L2 :: bool
 L1:
     r4 = B()
@@ -1900,7 +1903,7 @@ def g():
     r8 :: str
     r9 :: object
     r10 :: dict
-    r11 :: int32
+    r11 :: i32
     r12 :: bit
     r13 :: tuple
     r14 :: object
@@ -1930,7 +1933,7 @@ def h():
     r6 :: str
     r7 :: object
     r8 :: dict
-    r9 :: int32
+    r9 :: i32
     r10 :: bit
     r11 :: object
     r12 :: tuple
@@ -2059,7 +2062,7 @@ def f():
     r26, r27 :: bit
     r28 :: int
     r29 :: object
-    r30 :: int32
+    r30 :: i32
     r31 :: bit
     r32 :: short_int
 L0:
@@ -2158,7 +2161,7 @@ def f():
     r26, r27 :: bit
     r28 :: int
     r29, r30 :: object
-    r31 :: int32
+    r31 :: i32
     r32 :: bit
     r33 :: short_int
 L0:
@@ -2427,7 +2430,7 @@ def __top_level__():
     r22, r23 :: object
     r24 :: dict
     r25 :: str
-    r26 :: int32
+    r26 :: i32
     r27 :: bit
     r28 :: str
     r29 :: dict
@@ -2436,14 +2439,14 @@ def __top_level__():
     r34 :: tuple
     r35 :: dict
     r36 :: str
-    r37 :: int32
+    r37 :: i32
     r38 :: bit
     r39 :: dict
     r40 :: str
     r41, r42, r43 :: object
     r44 :: dict
     r45 :: str
-    r46 :: int32
+    r46 :: i32
     r47 :: bit
     r48 :: str
     r49 :: dict
@@ -2454,14 +2457,14 @@ def __top_level__():
     r54, r55 :: object
     r56 :: dict
     r57 :: str
-    r58 :: int32
+    r58 :: i32
     r59 :: bit
     r60 :: list
     r61, r62, r63 :: object
     r64, r65, r66, r67 :: ptr
     r68 :: dict
     r69 :: str
-    r70 :: int32
+    r70 :: i32
     r71 :: bit
 L0:
     r0 = builtins :: module
@@ -2629,7 +2632,7 @@ def A.__ne__(__mypyc_self__, rhs):
     __mypyc_self__ :: __main__.A
     rhs, r0, r1 :: object
     r2 :: bit
-    r3 :: int32
+    r3 :: i32
     r4 :: bit
     r5 :: bool
     r6 :: object
@@ -2641,7 +2644,7 @@ L0:
 L1:
     r3 = PyObject_Not(r0)
     r4 = r3 >= 0 :: signed
-    r5 = truncate r3: int32 to builtins.bool
+    r5 = truncate r3: i32 to builtins.bool
     r6 = box(bool, r5)
     return r6
 L2:
@@ -2833,7 +2836,7 @@ def c():
     r11 :: bool
     r12 :: dict
     r13 :: str
-    r14 :: int32
+    r14 :: i32
     r15 :: bit
     r16 :: str
     r17 :: object
@@ -2883,7 +2886,7 @@ def __top_level__():
     r18, r19 :: object
     r20 :: dict
     r21 :: str
-    r22 :: int32
+    r22 :: i32
     r23 :: bit
 L0:
     r0 = builtins :: module
@@ -3154,7 +3157,7 @@ def lol(x: Any):
 def lol(x):
     x :: object
     r0, r1 :: str
-    r2 :: int32
+    r2 :: i32
     r3 :: bit
     r4 :: object
 L0:
@@ -3459,13 +3462,13 @@ def f(x: object) -> bool:
 [out]
 def f(x):
     x :: object
-    r0 :: int32
+    r0 :: i32
     r1 :: bit
     r2 :: bool
 L0:
     r0 = PyObject_IsTrue(x)
     r1 = r0 >= 0 :: signed
-    r2 = truncate r0: int32 to builtins.bool
+    r2 = truncate r0: i32 to builtins.bool
     return r2
 
 [case testLocalImports]
@@ -3490,7 +3493,7 @@ def root():
     r7 :: dict
     r8 :: str
     r9 :: object
-    r10 :: int32
+    r10 :: i32
     r11 :: bit
     r12 :: dict
     r13, r14 :: object
@@ -3501,7 +3504,7 @@ def root():
     r19 :: dict
     r20 :: str
     r21 :: object
-    r22 :: int32
+    r22 :: i32
     r23 :: bit
 L0:
     r0 = __main__.globals :: static
@@ -3547,7 +3550,7 @@ def submodule():
     r7 :: dict
     r8 :: str
     r9 :: object
-    r10 :: int32
+    r10 :: i32
     r11 :: bit
     r12 :: dict
     r13 :: str
@@ -3586,14 +3589,14 @@ def f(x: object) -> bool:
 [out]
 def f(x):
     x, r0 :: object
-    r1 :: int32
+    r1 :: i32
     r2 :: bit
     r3 :: bool
 L0:
     r0 = load_address PyBool_Type
     r1 = PyObject_IsInstance(x, r0)
     r2 = r1 >= 0 :: signed
-    r3 = truncate r1: int32 to builtins.bool
+    r3 = truncate r1: i32 to builtins.bool
     return r3
 
 [case testRangeObject]

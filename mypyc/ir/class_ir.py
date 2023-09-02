@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List, NamedTuple, Optional
+from typing import List, NamedTuple
 
 from mypyc.common import PROPSET_PREFIX, JsonDict
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature
@@ -73,7 +73,7 @@ class VTableMethod(NamedTuple):
     cls: "ClassIR"
     name: str
     method: FuncIR
-    shadow_method: Optional[FuncIR]
+    shadow_method: FuncIR | None
 
 
 VTableEntries = List[VTableMethod]
@@ -192,7 +192,7 @@ class ClassIR:
         # bitmap for types such as native ints that can't have a dedicated error
         # value that doesn't overlap a valid value. The bitmap is used if the
         # value of an attribute is the same as the error value.
-        self.bitmap_attrs: List[str] = []
+        self.bitmap_attrs: list[str] = []
 
     def __repr__(self) -> str:
         return (

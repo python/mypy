@@ -472,7 +472,7 @@ class DependencyVisitor(TraverserVisitor):
                 self.add_dependency(make_trigger(class_name + ".__init__"))
                 self.add_dependency(make_trigger(class_name + ".__new__"))
             if isinstance(rvalue, IndexExpr) and isinstance(rvalue.analyzed, TypeAliasExpr):
-                self.add_type_dependencies(rvalue.analyzed.type)
+                self.add_type_dependencies(rvalue.analyzed.node.target)
             elif typ:
                 self.add_type_dependencies(typ)
         else:
@@ -1039,6 +1039,8 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
             triggers.append(make_trigger(typ.fullname))
         if typ.upper_bound:
             triggers.extend(self.get_type_triggers(typ.upper_bound))
+        if typ.default:
+            triggers.extend(self.get_type_triggers(typ.default))
         for val in typ.values:
             triggers.extend(self.get_type_triggers(val))
         return triggers
@@ -1047,6 +1049,10 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         triggers = []
         if typ.fullname:
             triggers.append(make_trigger(typ.fullname))
+        if typ.upper_bound:
+            triggers.extend(self.get_type_triggers(typ.upper_bound))
+        if typ.default:
+            triggers.extend(self.get_type_triggers(typ.default))
         triggers.extend(self.get_type_triggers(typ.upper_bound))
         return triggers
 
@@ -1054,6 +1060,10 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         triggers = []
         if typ.fullname:
             triggers.append(make_trigger(typ.fullname))
+        if typ.upper_bound:
+            triggers.extend(self.get_type_triggers(typ.upper_bound))
+        if typ.default:
+            triggers.extend(self.get_type_triggers(typ.default))
         triggers.extend(self.get_type_triggers(typ.upper_bound))
         return triggers
 

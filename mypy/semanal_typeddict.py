@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing_extensions import Final
+from typing import Final
 
 from mypy import errorcodes as codes, message_registry
 from mypy.errorcodes import ErrorCode
@@ -252,6 +252,7 @@ class TypedDictAnalyzer:
             if not tvars:
                 mapped_items[key] = type_in_base
                 continue
+            # TODO: simple zip can't be used for variadic types.
             mapped_items[key] = expand_type(
                 type_in_base, {t.id: a for (t, a) in zip(tvars, base_args)}
             )

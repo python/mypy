@@ -1,4 +1,13 @@
-from typing import TypeVar, overload, Callable, Any, Optional, Union, Sequence, Mapping
+from typing import TypeVar, overload, Callable, Any, Optional, Union, Sequence, Mapping, \
+    Protocol, ClassVar, Type
+from typing_extensions import TypeGuard
+
+from attr import Attribute as Attribute
+
+
+class AttrsInstance(Protocol):
+    __attrs_attrs__: ClassVar[Any]
+
 
 _T = TypeVar('_T')
 _C = TypeVar('_C', bound=type)
@@ -129,3 +138,5 @@ def field(
 
 def evolve(inst: _T, **changes: Any) -> _T: ...
 def assoc(inst: _T, **changes: Any) -> _T: ...
+def has(cls: type) -> TypeGuard[Type[AttrsInstance]]: ...
+def fields(cls: Type[AttrsInstance]) -> Any: ...

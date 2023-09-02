@@ -119,7 +119,7 @@ The ``setup.py`` file could look like this:
 
 .. code-block:: python
 
-    from distutils.core import setup
+    from setuptools import setup
 
     setup(
         name="SuperPackageA",
@@ -128,11 +128,6 @@ The ``setup.py`` file could look like this:
         package_data={"package_a": ["py.typed"]},
         packages=["package_a"]
     )
-
-.. note::
-
-   If you use :doc:`setuptools <setuptools:index>`, you must pass the option ``zip_safe=False`` to
-   ``setup()``, or mypy will not be able to find the installed package.
 
 Some packages have a mix of stub files and runtime files. These packages also
 require a ``py.typed`` file. An example can be seen below:
@@ -150,7 +145,7 @@ The ``setup.py`` file might look like this:
 
 .. code-block:: python
 
-    from distutils.core import setup
+    from setuptools import setup
 
     setup(
         name="SuperPackageB",
@@ -180,7 +175,7 @@ The ``setup.py`` might look like this:
 
 .. code-block:: python
 
-    from distutils.core import setup
+    from setuptools import setup
 
     setup(
         name="SuperPackageC",

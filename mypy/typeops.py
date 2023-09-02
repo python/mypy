@@ -76,12 +76,18 @@ def is_recursive_pair(s: Type, t: Type) -> bool:
             isinstance(get_proper_type(t), (Instance, UnionType))
             or isinstance(t, TypeAliasType)
             and t.is_recursive
+            # Tuple types are special, they can cause an infinite recursion even if
+            # the other type is not recursive, because of the tuple fallback that is
+            # calculated "on the fly".
+            or isinstance(get_proper_type(s), TupleType)
         )
     if isinstance(t, TypeAliasType) and t.is_recursive:
         return (
             isinstance(get_proper_type(s), (Instance, UnionType))
             or isinstance(s, TypeAliasType)
             and s.is_recursive
+            # Same as above.
+            or isinstance(get_proper_type(t), TupleType)
         )
     return False
 
@@ -99,14 +105,18 @@ def tuple_fallback(typ: TupleType) -> Instance:
             unpacked_type = get_proper_type(item.type)
             if isinstance(unpacked_type, TypeVarTupleType):
                 items.append(unpacked_type.upper_bound)
-            elif isinstance(unpacked_type, TupleType):
-                # TODO: might make sense to do recursion here to support nested unpacks
-                # of tuple constants
-                items.extend(unpacked_type.items)
+            elif (
+                isinstance(unpacked_type, Instance)
+                and unpacked_type.type.fullname == "builtins.tuple"
+            ):
+                items.append(unpacked_type.args[0])
+            elif isinstance(unpacked_type, (AnyType, UninhabitedType)):
+                continue
             else:
-                raise NotImplementedError
+                raise NotImplementedError(unpacked_type)
         else:
             items.append(item)
+    # TODO: we should really use a union here, tuple types are special.
     return Instance(info, [join_type_list(items)], extra_attrs=typ.partial_fallback.extra_attrs)
 
 
@@ -292,7 +302,7 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
         return cast(F, func)
     self_param_type = get_proper_type(func.arg_types[0])
 
-    variables: Sequence[TypeVarLikeType] = []
+    variables: Sequence[TypeVarLikeType]
     if func.variables and supported_self_type(self_param_type):
         from mypy.infer import infer_type_arguments
 
@@ -301,44 +311,40 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
             original_type = erase_to_bound(self_param_type)
         original_type = get_proper_type(original_type)
 
-        all_ids = func.type_var_ids()
-        typeargs = infer_type_arguments(all_ids, self_param_type, original_type, is_supertype=True)
+        # Find which of method type variables appear in the type of "self".
+        self_ids = {tv.id for tv in get_all_type_vars(self_param_type)}
+        self_vars = [tv for tv in func.variables if tv.id in self_ids]
+
+        # Solve for these type arguments using the actual class or instance type.
+        typeargs = infer_type_arguments(
+            self_vars, self_param_type, original_type, is_supertype=True
+        )
         if (
             is_classmethod
-            # TODO: why do we need the extra guards here?
             and any(isinstance(get_proper_type(t), UninhabitedType) for t in typeargs)
             and isinstance(original_type, (Instance, TypeVarType, TupleType))
         ):
-            # In case we call a classmethod through an instance x, fallback to type(x)
+            # In case we call a classmethod through an instance x, fallback to type(x).
             typeargs = infer_type_arguments(
-                all_ids, self_param_type, TypeType(original_type), is_supertype=True
+                self_vars, self_param_type, TypeType(original_type), is_supertype=True
             )
 
-        ids = [tid for tid in all_ids if any(tid == t.id for t in get_type_vars(self_param_type))]
-
-        # Technically, some constrains might be unsolvable, make them <nothing>.
+        # Update the method signature with the solutions found.
+        # Technically, some constraints might be unsolvable, make them Never.
         to_apply = [t if t is not None else UninhabitedType() for t in typeargs]
-
-        def expand(target: Type) -> Type:
-            return expand_type(target, {id: to_apply[all_ids.index(id)] for id in ids})
-
-        arg_types = [expand(x) for x in func.arg_types[1:]]
-        ret_type = expand(func.ret_type)
-        variables = [v for v in func.variables if v.id not in ids]
+        func = expand_type(func, {tv.id: arg for tv, arg in zip(self_vars, to_apply)})
+        variables = [v for v in func.variables if v not in self_vars]
     else:
-        arg_types = func.arg_types[1:]
-        ret_type = func.ret_type
         variables = func.variables
 
     original_type = get_proper_type(original_type)
     if isinstance(original_type, CallableType) and original_type.is_type_obj():
         original_type = TypeType.make_normalized(original_type.ret_type)
     res = func.copy_modified(
-        arg_types=arg_types,
+        arg_types=func.arg_types[1:],
         arg_kinds=func.arg_kinds[1:],
         arg_names=func.arg_names[1:],
         variables=variables,
-        ret_type=ret_type,
         bound_args=[original_type],
     )
     return cast(F, res)
@@ -589,10 +595,8 @@ def true_only(t: Type) -> ProperType:
     else:
         ret_type = _get_type_special_method_bool_ret_type(t)
 
-        if ret_type and ret_type.can_be_false and not ret_type.can_be_true:
-            new_t = copy_type(t)
-            new_t.can_be_true = False
-            return new_t
+        if ret_type and not ret_type.can_be_true:
+            return UninhabitedType(line=t.line, column=t.column)
 
         new_t = copy_type(t)
         new_t.can_be_false = False
@@ -624,10 +628,8 @@ def false_only(t: Type) -> ProperType:
     else:
         ret_type = _get_type_special_method_bool_ret_type(t)
 
-        if ret_type and ret_type.can_be_true and not ret_type.can_be_false:
-            new_t = copy_type(t)
-            new_t.can_be_false = False
-            return new_t
+        if ret_type and not ret_type.can_be_false:
+            return UninhabitedType(line=t.line)
 
         new_t = copy_type(t)
         new_t.can_be_true = False
@@ -699,7 +701,7 @@ def callable_type(
     fdef: FuncItem, fallback: Instance, ret_type: Type | None = None
 ) -> CallableType:
     # TODO: somewhat unfortunate duplication with prepare_method_signature in semanal
-    if fdef.info and not fdef.is_static and fdef.arg_names:
+    if fdef.info and (not fdef.is_static or fdef.name == "__new__") and fdef.arg_names:
         self_type: Type = fill_typevars(fdef.info)
         if fdef.is_class or fdef.name == "__new__":
             self_type = TypeType.make_normalized(self_type)
@@ -939,21 +941,33 @@ def coerce_to_literal(typ: Type) -> Type:
 
 
 def get_type_vars(tp: Type) -> list[TypeVarType]:
-    return tp.accept(TypeVarExtractor())
+    return cast("list[TypeVarType]", tp.accept(TypeVarExtractor()))
 
 
-class TypeVarExtractor(TypeQuery[List[TypeVarType]]):
-    def __init__(self) -> None:
+def get_all_type_vars(tp: Type) -> list[TypeVarLikeType]:
+    # TODO: should we always use this function instead of get_type_vars() above?
+    return tp.accept(TypeVarExtractor(include_all=True))
+
+
+class TypeVarExtractor(TypeQuery[List[TypeVarLikeType]]):
+    def __init__(self, include_all: bool = False) -> None:
         super().__init__(self._merge)
+        self.include_all = include_all
 
-    def _merge(self, iter: Iterable[list[TypeVarType]]) -> list[TypeVarType]:
+    def _merge(self, iter: Iterable[list[TypeVarLikeType]]) -> list[TypeVarLikeType]:
         out = []
         for item in iter:
             out.extend(item)
         return out
 
-    def visit_type_var(self, t: TypeVarType) -> list[TypeVarType]:
+    def visit_type_var(self, t: TypeVarType) -> list[TypeVarLikeType]:
         return [t]
+
+    def visit_param_spec(self, t: ParamSpecType) -> list[TypeVarLikeType]:
+        return [t] if self.include_all else []
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> list[TypeVarLikeType]:
+        return [t] if self.include_all else []
 
 
 def custom_special_method(typ: Type, name: str, check_all: bool = False) -> bool:

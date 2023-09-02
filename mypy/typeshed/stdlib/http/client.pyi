@@ -1,6 +1,7 @@
 import email.message
 import io
 import ssl
+import sys
 import types
 from _typeshed import ReadableBuffer, SupportsRead, WriteableBuffer
 from collections.abc import Callable, Iterable, Iterator, Mapping
@@ -114,6 +115,10 @@ class HTTPResponse(io.BufferedIOBase, BinaryIO):  # type: ignore[misc]  # incomp
     chunk_left: int | None
     length: int | None
     will_close: bool
+    # url is set on instances of the class in urllib.request.AbstractHTTPHandler.do_open
+    # to match urllib.response.addinfourl's interface.
+    # It's not set in HTTPResponse.__init__ or any other method on the class
+    url: str
     def __init__(self, sock: socket, debuglevel: int = 0, method: str | None = None, url: str | None = None) -> None: ...
     def peek(self, n: int = -1) -> bytes: ...
     def read(self, amt: int | None = None) -> bytes: ...
@@ -175,19 +180,31 @@ class HTTPConnection:
 class HTTPSConnection(HTTPConnection):
     # Can be `None` if `.connect()` was not called:
     sock: ssl.SSLSocket | Any
-    def __init__(
-        self,
-        host: str,
-        port: int | None = None,
-        key_file: str | None = None,
-        cert_file: str | None = None,
-        timeout: float | None = ...,
-        source_address: tuple[str, int] | None = None,
-        *,
-        context: ssl.SSLContext | None = None,
-        check_hostname: bool | None = None,
-        blocksize: int = 8192,
-    ) -> None: ...
+    if sys.version_info >= (3, 12):
+        def __init__(
+            self,
+            host: str,
+            port: str | None = None,
+            *,
+            timeout: float | None = ...,
+            source_address: tuple[str, int] | None = None,
+            context: ssl.SSLContext | None = None,
+            blocksize: int = 8192,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            host: str,
+            port: int | None = None,
+            key_file: str | None = None,
+            cert_file: str | None = None,
+            timeout: float | None = ...,
+            source_address: tuple[str, int] | None = None,
+            *,
+            context: ssl.SSLContext | None = None,
+            check_hostname: bool | None = None,
+            blocksize: int = 8192,
+        ) -> None: ...
 
 class HTTPException(Exception): ...
 

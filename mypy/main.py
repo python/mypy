@@ -8,11 +8,15 @@ import subprocess
 import sys
 import time
 from gettext import gettext
-from typing import IO, Any, NoReturn, Sequence, TextIO
-from typing_extensions import Final
+from typing import IO, Any, Final, NoReturn, Sequence, TextIO
 
 from mypy import build, defaults, state, util
-from mypy.config_parser import get_config_module_names, parse_config_file, parse_version
+from mypy.config_parser import (
+    get_config_module_names,
+    parse_config_file,
+    parse_version,
+    validate_package_allow_list,
+)
 from mypy.errorcodes import error_codes
 from mypy.errors import CompileError
 from mypy.find_sources import InvalidSourceList, create_source_list
@@ -596,14 +600,6 @@ def process_options(
         dest="special-opts:python_version",
     )
     platform_group.add_argument(
-        "-2",
-        "--py2",
-        dest="special-opts:python_version",
-        action="store_const",
-        const=defaults.PYTHON2_VERSION,
-        help="Use Python 2 mode (same as --python-version 2.7)",
-    )
-    platform_group.add_argument(
         "--platform",
         action="store",
         metavar="PLATFORM",
@@ -684,6 +680,14 @@ def process_options(
         " from functions with type annotations",
         group=untyped_group,
     )
+    untyped_group.add_argument(
+        "--untyped-calls-exclude",
+        metavar="MODULE",
+        action="append",
+        default=[],
+        help="Disable --disallow-untyped-calls for functions/methods coming"
+        " from specific package, module, or class",
+    )
     add_invertible_flag(
         "--disallow-untyped-defs",
         default=False,
@@ -696,7 +700,8 @@ def process_options(
         "--disallow-incomplete-defs",
         default=False,
         strict_flag=True,
-        help="Disallow defining functions with incomplete type annotations",
+        help="Disallow defining functions with incomplete type annotations "
+        "(while still allowing entirely unannotated definitions)",
         group=untyped_group,
     )
     add_invertible_flag(
@@ -825,10 +830,12 @@ def process_options(
     )
 
     add_invertible_flag(
-        "--strict-concatenate",
+        "--extra-checks",
         default=False,
         strict_flag=True,
-        help="Make arguments prepended via Concatenate be truly positional-only",
+        help="Enable additional checks that are technically correct but may be impractical "
+        "in real code. For example, this prohibits partial overlap in TypedDict updates, "
+        "and makes arguments prepended via Concatenate positional-only",
         group=strictness_group,
     )
 
@@ -882,6 +889,12 @@ def process_options(
         "--hide-error-codes",
         default=False,
         help="Hide error codes in error messages",
+        group=error_group,
+    )
+    add_invertible_flag(
+        "--show-error-code-links",
+        default=False,
+        help="Show links to error code documentation",
         group=error_group,
     )
     add_invertible_flag(
@@ -981,6 +994,11 @@ def process_options(
         metavar="MODULE",
         dest="custom_typing_module",
         help="Use a custom typing module",
+    )
+    internals_group.add_argument(
+        "--new-type-inference",
+        action="store_true",
+        help="Enable new experimental type inference algorithm",
     )
     internals_group.add_argument(
         "--disable-recursive-aliases",
@@ -1149,6 +1167,8 @@ def process_options(
     parser.add_argument(
         "--disable-memoryview-promotion", action="store_true", help=argparse.SUPPRESS
     )
+    # This flag is deprecated, it has been moved to --extra-checks
+    parser.add_argument("--strict-concatenate", action="store_true", help=argparse.SUPPRESS)
 
     # options specifying code to check
     code_group = parser.add_argument_group(
@@ -1220,8 +1240,11 @@ def process_options(
         parser.error(f"Cannot find config file '{config_file}'")
 
     options = Options()
+    strict_option_set = False
 
     def set_strict_flags() -> None:
+        nonlocal strict_option_set
+        strict_option_set = True
         for dest, value in strict_flag_assignments:
             setattr(options, dest, value)
 
@@ -1297,6 +1320,8 @@ def process_options(
             % ", ".join(sorted(overlap))
         )
 
+    validate_package_allow_list(options.untyped_calls_exclude)
+
     # Process `--enable-error-code` and `--disable-error-code` flags
     disabled_codes = set(options.disable_error_code)
     enabled_codes = set(options.enable_error_code)
@@ -1330,12 +1355,12 @@ def process_options(
 
     # Set build flags.
     if special_opts.find_occurrences:
-        state.find_occurrences = special_opts.find_occurrences.split(".")
-        assert state.find_occurrences is not None
-        if len(state.find_occurrences) < 2:
+        _find_occurrences = tuple(special_opts.find_occurrences.split("."))
+        if len(_find_occurrences) < 2:
             parser.error("Can only find occurrences of class members.")
-        if len(state.find_occurrences) != 2:
+        if len(_find_occurrences) != 2:
             parser.error("Can only find occurrences of non-nested class members.")
+        state.find_occurrences = _find_occurrences  # type: ignore[assignment]
 
     # Set reports.
     for flag, val in vars(special_opts).items():
@@ -1373,6 +1398,8 @@ def process_options(
             "Warning: --enable-recursive-aliases is deprecated;"
             " recursive types are enabled by default"
         )
+    if options.strict_concatenate and not strict_option_set:
+        print("Warning: --strict-concatenate is deprecated; use --extra-checks instead")
 
     # Set target.
     if special_opts.modules + special_opts.packages:

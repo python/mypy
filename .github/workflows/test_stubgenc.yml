@@ -3,7 +3,7 @@ name: Test stubgenc on pybind11-mypy-demo
 on:
   workflow_dispatch:
   push:
-    branches: [master, 'release*']
+    branches: [main, master, 'release*']
     tags: ['*']
   pull_request:
     paths:
@@ -11,6 +11,13 @@ on:
     - 'mypy/stubgenc.py'
     - 'mypy/stubdoc.py'
     - 'test-data/stubgen/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   stubgenc:

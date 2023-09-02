@@ -27,16 +27,7 @@ def fill_typevars(typ: TypeInfo) -> Instance | TupleType:
         tv: TypeVarLikeType | UnpackType = typ.defn.type_vars[i]
         # Change the line number
         if isinstance(tv, TypeVarType):
-            tv = TypeVarType(
-                tv.name,
-                tv.fullname,
-                tv.id,
-                tv.values,
-                tv.upper_bound,
-                tv.variance,
-                line=-1,
-                column=-1,
-            )
+            tv = tv.copy_modified(line=-1, column=-1)
         elif isinstance(tv, TypeVarTupleType):
             tv = UnpackType(
                 TypeVarTupleType(
@@ -45,6 +36,7 @@ def fill_typevars(typ: TypeInfo) -> Instance | TupleType:
                     tv.id,
                     tv.upper_bound,
                     tv.tuple_fallback,
+                    tv.default,
                     line=-1,
                     column=-1,
                 )
@@ -52,7 +44,14 @@ def fill_typevars(typ: TypeInfo) -> Instance | TupleType:
         else:
             assert isinstance(tv, ParamSpecType)
             tv = ParamSpecType(
-                tv.name, tv.fullname, tv.id, tv.flavor, tv.upper_bound, line=-1, column=-1
+                tv.name,
+                tv.fullname,
+                tv.id,
+                tv.flavor,
+                tv.upper_bound,
+                tv.default,
+                line=-1,
+                column=-1,
             )
         tvs.append(tv)
     inst = Instance(typ, tvs)

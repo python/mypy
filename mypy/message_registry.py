@@ -8,8 +8,7 @@ add a method to MessageBuilder and call this instead.
 
 from __future__ import annotations
 
-from typing import NamedTuple
-from typing_extensions import Final
+from typing import Final, NamedTuple
 
 from mypy import errorcodes as codes
 
@@ -172,7 +171,8 @@ BARE_GENERIC: Final = "Missing type parameters for generic type {}"
 IMPLICIT_GENERIC_ANY_BUILTIN: Final = (
     'Implicit generic "Any". Use "{}" and specify generic parameters'
 )
-INVALID_UNPACK = "{} cannot be unpacked (must be tuple or TypeVarTuple)"
+INVALID_UNPACK: Final = "{} cannot be unpacked (must be tuple or TypeVarTuple)"
+INVALID_UNPACK_POSITION: Final = "Unpack is only valid in a variadic position"
 
 # TypeVar
 INCOMPATIBLE_TYPEVAR_VALUE: Final = 'Value of type variable "{}" of {} cannot be {}'
@@ -181,7 +181,7 @@ INVALID_TYPEVAR_AS_TYPEARG: Final = 'Type variable "{}" not valid as type argume
 INVALID_TYPEVAR_ARG_BOUND: Final = 'Type argument {} of "{}" must be a subtype of {}'
 INVALID_TYPEVAR_ARG_VALUE: Final = 'Invalid type argument value for "{}"'
 TYPEVAR_VARIANCE_DEF: Final = 'TypeVar "{}" may only be a literal bool'
-TYPEVAR_BOUND_MUST_BE_TYPE: Final = 'TypeVar "bound" must be a type'
+TYPEVAR_ARG_MUST_BE_TYPE: Final = '{} "{}" must be a type'
 TYPEVAR_UNEXPECTED_ARGUMENT: Final = 'Unexpected argument to "TypeVar()"'
 UNBOUND_TYPEVAR: Final = (
     "A function returning TypeVar should receive at least "
@@ -277,6 +277,7 @@ CANNOT_MODIFY_MATCH_ARGS: Final = 'Cannot assign to "__match_args__"'
 DATACLASS_FIELD_ALIAS_MUST_BE_LITERAL: Final = (
     '"alias" argument to dataclass field must be a string literal'
 )
+DATACLASS_POST_INIT_MUST_BE_A_FUNCTION: Final = '"__post_init__" method must be an instance method'
 
 # fastparse
 FAILED_TO_MERGE_OVERLOADS: Final = ErrorMessage(
@@ -289,7 +290,7 @@ TYPE_IGNORE_WITH_ERRCODE_ON_MODULE: Final = ErrorMessage(
 )
 INVALID_TYPE_IGNORE: Final = ErrorMessage('Invalid "type: ignore" comment', codes.SYNTAX)
 TYPE_COMMENT_SYNTAX_ERROR_VALUE: Final = ErrorMessage(
-    'syntax error in type comment "{}"', codes.SYNTAX
+    'Syntax error in type comment "{}"', codes.SYNTAX
 )
 ELLIPSIS_WITH_OTHER_TYPEARGS: Final = ErrorMessage(
     "Ellipses cannot accompany other argument types in function type signature", codes.SYNTAX

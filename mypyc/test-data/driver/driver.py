@@ -18,7 +18,7 @@ for name in dir(native):
         try:
             test_func()
         except Exception as e:
-            failures.append(sys.exc_info())
+            failures.append((name, sys.exc_info()))
 
 if failures:
     from traceback import print_exception, format_tb
@@ -32,12 +32,17 @@ if failures:
         return m.group(1)
 
     # Sort failures by line number of test function.
-    failures = sorted(failures, key=lambda e: extract_line(e[2]))
+    failures = sorted(failures, key=lambda e: extract_line(e[1][2]))
 
     # If there are multiple failures, print stack traces of all but the final failure.
-    for e in failures[:-1]:
+    for name, e in failures[:-1]:
+        print(f'<< {name} >>')
+        sys.stdout.flush()
         print_exception(*e)
         print()
+        sys.stdout.flush()
 
     # Raise exception for the last failure. Test runner will show the traceback.
-    raise failures[-1][1]
+    print(f'<< {failures[-1][0]} >>')
+    sys.stdout.flush()
+    raise failures[-1][1][1]

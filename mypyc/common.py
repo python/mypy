@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import sys
 import sysconfig
-from typing import Any, Dict
-from typing_extensions import Final
+from typing import Any, Dict, Final
 
 from mypy.util import unnamed_function
 
@@ -97,11 +96,6 @@ def short_name(name: str) -> str:
     if name.startswith("builtins."):
         return name[9:]
     return name
-
-
-def use_fastcall(capi_version: tuple[int, int]) -> bool:
-    # We can use METH_FASTCALL for faster wrapper functions on Python 3.7+.
-    return capi_version >= (3, 7)
 
 
 def use_vectorcall(capi_version: tuple[int, int]) -> bool:

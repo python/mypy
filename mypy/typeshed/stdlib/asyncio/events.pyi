@@ -2,12 +2,13 @@ import ssl
 import sys
 from _typeshed import FileDescriptorLike, ReadableBuffer, StrPath, Unused, WriteableBuffer
 from abc import ABCMeta, abstractmethod
-from collections.abc import Awaitable, Callable, Coroutine, Generator, Sequence
+from collections.abc import Callable, Coroutine, Generator, Sequence
 from contextvars import Context
 from socket import AddressFamily, SocketKind, _Address, _RetAddress, socket
 from typing import IO, Any, Protocol, TypeVar, overload
 from typing_extensions import Literal, Self, TypeAlias
 
+from . import _AwaitableLike, _CoroutineLike
 from .base_events import Server
 from .futures import Future
 from .protocols import BaseProtocol
@@ -75,6 +76,8 @@ class Handle:
     def cancel(self) -> None: ...
     def _run(self) -> None: ...
     def cancelled(self) -> bool: ...
+    if sys.version_info >= (3, 12):
+        def get_context(self) -> Context: ...
 
 class TimerHandle(Handle):
     def __init__(
@@ -85,6 +88,7 @@ class TimerHandle(Handle):
         loop: AbstractEventLoop,
         context: Context | None = None,
     ) -> None: ...
+    def __hash__(self) -> int: ...
     def when(self) -> float: ...
     def __lt__(self, other: TimerHandle) -> bool: ...
     def __le__(self, other: TimerHandle) -> bool: ...
@@ -112,13 +116,8 @@ class AbstractEventLoop:
     slow_callback_duration: float
     @abstractmethod
     def run_forever(self) -> None: ...
-    # Can't use a union, see mypy issue  # 1873.
-    @overload
     @abstractmethod
-    def run_until_complete(self, future: Generator[Any, None, _T]) -> _T: ...
-    @overload
-    @abstractmethod
-    def run_until_complete(self, future: Awaitable[_T]) -> _T: ...
+    def run_until_complete(self, future: _AwaitableLike[_T]) -> _T: ...
     @abstractmethod
     def stop(self) -> None: ...
     @abstractmethod
@@ -158,20 +157,14 @@ class AbstractEventLoop:
     if sys.version_info >= (3, 11):
         @abstractmethod
         def create_task(
-            self,
-            coro: Coroutine[Any, Any, _T] | Generator[Any, None, _T],
-            *,
-            name: str | None = None,
-            context: Context | None = None,
+            self, coro: _CoroutineLike[_T], *, name: str | None = None, context: Context | None = None
         ) -> Task[_T]: ...
     elif sys.version_info >= (3, 8):
         @abstractmethod
-        def create_task(
-            self, coro: Coroutine[Any, Any, _T] | Generator[Any, None, _T], *, name: str | None = None
-        ) -> Task[_T]: ...
+        def create_task(self, coro: _CoroutineLike[_T], *, name: str | None = None) -> Task[_T]: ...
     else:
         @abstractmethod
-        def create_task(self, coro: Coroutine[Any, Any, _T] | Generator[Any, None, _T]) -> Task[_T]: ...
+        def create_task(self, coro: _CoroutineLike[_T]) -> Task[_T]: ...
 
     @abstractmethod
     def set_task_factory(self, factory: _TaskFactory | None) -> None: ...
@@ -368,7 +361,7 @@ class AbstractEventLoop:
             server_hostname: str | None = None,
             ssl_handshake_timeout: float | None = None,
             ssl_shutdown_timeout: float | None = None,
-        ) -> Transport: ...
+        ) -> Transport | None: ...
         async def create_unix_server(
             self,
             protocol_factory: _ProtocolFactory,
@@ -428,7 +421,7 @@ class AbstractEventLoop:
             server_side: bool = False,
             server_hostname: str | None = None,
             ssl_handshake_timeout: float | None = None,
-        ) -> Transport: ...
+        ) -> Transport | None: ...
         async def create_unix_server(
             self,
             protocol_factory: _ProtocolFactory,

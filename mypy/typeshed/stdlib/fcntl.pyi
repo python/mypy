@@ -1,7 +1,7 @@
 import sys
 from _typeshed import FileDescriptorLike, ReadOnlyBuffer, WriteableBuffer
 from typing import Any, overload
-from typing_extensions import Literal
+from typing_extensions import Buffer, Literal
 
 if sys.platform != "win32":
     FASYNC: int
@@ -20,6 +20,9 @@ if sys.platform != "win32":
     F_SETOWN: int
     F_UNLCK: int
     F_WRLCK: int
+
+    F_GETLEASE: int
+    F_SETLEASE: int
     if sys.platform == "darwin":
         F_FULLFSYNC: int
         F_NOCACHE: int
@@ -30,11 +33,9 @@ if sys.platform != "win32":
         F_SETSIG: int
         F_SHLCK: int
         F_SETLK64: int
-        F_SETLEASE: int
         F_GETSIG: int
         F_NOTIFY: int
         F_EXLCK: int
-        F_GETLEASE: int
         F_GETLK64: int
         if sys.version_info >= (3, 8):
             F_ADD_SEALS: int
@@ -104,13 +105,19 @@ if sys.platform != "win32":
     def fcntl(__fd: FileDescriptorLike, __cmd: int, __arg: int = 0) -> int: ...
     @overload
     def fcntl(__fd: FileDescriptorLike, __cmd: int, __arg: str | ReadOnlyBuffer) -> bytes: ...
+    # If arg is an int, return int
     @overload
     def ioctl(__fd: FileDescriptorLike, __request: int, __arg: int = 0, __mutate_flag: bool = True) -> int: ...
+    # The return type works as follows:
+    # - If arg is a read-write buffer, return int if mutate_flag is True, otherwise bytes
+    # - If arg is a read-only buffer, return bytes (and ignore the value of mutate_flag)
+    # We can't represent that precisely as we can't distinguish between read-write and read-only
+    # buffers, so we add overloads for a few unambiguous cases and use Any for the rest.
     @overload
-    def ioctl(__fd: FileDescriptorLike, __request: int, __arg: WriteableBuffer, __mutate_flag: Literal[True] = True) -> int: ...
+    def ioctl(__fd: FileDescriptorLike, __request: int, __arg: bytes, __mutate_flag: bool = True) -> bytes: ...
     @overload
     def ioctl(__fd: FileDescriptorLike, __request: int, __arg: WriteableBuffer, __mutate_flag: Literal[False]) -> bytes: ...
     @overload
-    def ioctl(__fd: FileDescriptorLike, __request: int, __arg: ReadOnlyBuffer, __mutate_flag: bool = True) -> bytes: ...
+    def ioctl(__fd: FileDescriptorLike, __request: int, __arg: Buffer, __mutate_flag: bool = True) -> Any: ...
     def flock(__fd: FileDescriptorLike, __operation: int) -> None: ...
     def lockf(__fd: FileDescriptorLike, __cmd: int, __len: int = 0, __start: int = 0, __whence: int = 0) -> Any: ...

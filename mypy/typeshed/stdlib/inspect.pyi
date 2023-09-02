@@ -2,6 +2,7 @@ import dis
 import enum
 import sys
 import types
+from _typeshed import StrPath
 from collections import OrderedDict
 from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Generator, Mapping, Sequence, Set as AbstractSet
 from types import (
@@ -127,8 +128,21 @@ if sys.version_info >= (3, 11):
         "walktree",
     ]
 
+    if sys.version_info >= (3, 12):
+        __all__ += [
+            "markcoroutinefunction",
+            "AGEN_CLOSED",
+            "AGEN_CREATED",
+            "AGEN_RUNNING",
+            "AGEN_SUSPENDED",
+            "getasyncgenlocals",
+            "getasyncgenstate",
+            "BufferFlags",
+        ]
+
 _P = ParamSpec("_P")
 _T = TypeVar("_T")
+_F = TypeVar("_F", bound=Callable[..., Any])
 _T_cont = TypeVar("_T_cont", contravariant=True)
 _V_cont = TypeVar("_V_cont", contravariant=True)
 
@@ -177,11 +191,14 @@ if sys.version_info >= (3, 11):
     @overload
     def getmembers_static(object: object, predicate: _GetMembersPredicate | None = None) -> _GetMembersReturn: ...
 
-def getmodulename(path: str) -> str | None: ...
+def getmodulename(path: StrPath) -> str | None: ...
 def ismodule(object: object) -> TypeGuard[ModuleType]: ...
 def isclass(object: object) -> TypeGuard[type[Any]]: ...
 def ismethod(object: object) -> TypeGuard[MethodType]: ...
 def isfunction(object: object) -> TypeGuard[FunctionType]: ...
+
+if sys.version_info >= (3, 12):
+    def markcoroutinefunction(func: _F) -> _F: ...
 
 if sys.version_info >= (3, 8):
     @overload
@@ -337,6 +354,7 @@ class Signature:
         def from_callable(cls, obj: _IntrospectableCallable, *, follow_wrapped: bool = True) -> Self: ...
 
     def __eq__(self, other: object) -> bool: ...
+    def __hash__(self) -> int: ...
 
 if sys.version_info >= (3, 10):
     def get_annotations(
@@ -358,6 +376,17 @@ class _ParameterKind(enum.IntEnum):
     if sys.version_info >= (3, 8):
         @property
         def description(self) -> str: ...
+
+if sys.version_info >= (3, 12):
+    AGEN_CREATED: Literal["AGEN_CREATED"]
+    AGEN_RUNNING: Literal["AGEN_RUNNING"]
+    AGEN_SUSPENDED: Literal["AGEN_SUSPENDED"]
+    AGEN_CLOSED: Literal["AGEN_CLOSED"]
+
+    def getasyncgenstate(
+        agen: AsyncGenerator[Any, Any]
+    ) -> Literal["AGEN_CREATED", "AGEN_RUNNING", "AGEN_SUSPENDED", "AGEN_CLOSED"]: ...
+    def getasyncgenlocals(agen: AsyncGeneratorType[Any, Any]) -> dict[str, Any]: ...
 
 class Parameter:
     def __init__(self, name: str, kind: _ParameterKind, *, default: Any = ..., annotation: Any = ...) -> None: ...
@@ -385,6 +414,7 @@ class Parameter:
         annotation: Any = ...,
     ) -> Self: ...
     def __eq__(self, other: object) -> bool: ...
+    def __hash__(self) -> int: ...
 
 class BoundArguments:
     arguments: OrderedDict[str, Any]
@@ -598,3 +628,25 @@ def classify_class_attrs(cls: type) -> list[Attribute]: ...
 
 if sys.version_info >= (3, 9):
     class ClassFoundException(Exception): ...
+
+if sys.version_info >= (3, 12):
+    class BufferFlags(enum.IntFlag):
+        SIMPLE: int
+        WRITABLE: int
+        FORMAT: int
+        ND: int
+        STRIDES: int
+        C_CONTIGUOUS: int
+        F_CONTIGUOUS: int
+        ANY_CONTIGUOUS: int
+        INDIRECT: int
+        CONTIG: int
+        CONTIG_RO: int
+        STRIDED: int
+        STRIDED_RO: int
+        RECORDS: int
+        RECORDS_RO: int
+        FULL: int
+        FULL_RO: int
+        READ: int
+        WRITE: int

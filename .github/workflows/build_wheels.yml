@@ -2,8 +2,11 @@ name: Trigger wheel build
 
 on:
   push:
-    branches: [master, 'release*']
+    branches: [main, master, 'release*']
     tags: ['*']
+
+permissions:
+  contents: write
 
 jobs:
   build-wheels:
@@ -13,7 +16,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.7'
+          python-version: '3.11'
       - name: Trigger script
         env:
           WHEELS_PUSH_TOKEN: ${{ secrets.WHEELS_PUSH_TOKEN }}

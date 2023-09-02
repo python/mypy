@@ -1,7 +1,7 @@
 [case testI32BasicOps]
 from typing import Any, Tuple
 
-from mypy_extensions import i32, i64
+from mypy_extensions import i16, i32, i64
 
 from testutil import assertRaises
 
@@ -259,11 +259,15 @@ def test_explicit_conversion_to_i32() -> None:
     n64: i64 = 1733
     x = i32(n64)
     assert x == 1733
-    n32 = -1733
+    n32: i32 = -1733
     x = i32(n32)
     assert x == -1733
     z = i32(x)
     assert z == -1733
+    a: i16 = int() + 19764
+    assert i32(a) == 19764
+    a = int() - 1
+    assert i32(a) == -1
 
 def test_explicit_conversion_overflow() -> None:
     max_i32 = int() + 2**31 - 1

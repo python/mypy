@@ -1,12 +1,13 @@
 import ssl
 import sys
 from _typeshed import FileDescriptorLike, ReadableBuffer, WriteableBuffer
+from asyncio import _AwaitableLike, _CoroutineLike
 from asyncio.events import AbstractEventLoop, AbstractServer, Handle, TimerHandle, _TaskFactory
 from asyncio.futures import Future
 from asyncio.protocols import BaseProtocol
 from asyncio.tasks import Task
 from asyncio.transports import BaseTransport, DatagramTransport, ReadTransport, SubprocessTransport, Transport, WriteTransport
-from collections.abc import Awaitable, Callable, Coroutine, Generator, Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from contextvars import Context
 from socket import AddressFamily, SocketKind, _Address, _RetAddress, socket
 from typing import IO, Any, TypeVar, overload
@@ -63,11 +64,7 @@ class Server(AbstractServer):
 
 class BaseEventLoop(AbstractEventLoop):
     def run_forever(self) -> None: ...
-    # Can't use a union, see mypy issue  # 1873.
-    @overload
-    def run_until_complete(self, future: Generator[Any, None, _T]) -> _T: ...
-    @overload
-    def run_until_complete(self, future: Awaitable[_T]) -> _T: ...
+    def run_until_complete(self, future: _AwaitableLike[_T]) -> _T: ...
     def stop(self) -> None: ...
     def is_running(self) -> bool: ...
     def is_closed(self) -> bool: ...
@@ -86,13 +83,11 @@ class BaseEventLoop(AbstractEventLoop):
     def create_future(self) -> Future[Any]: ...
     # Tasks methods
     if sys.version_info >= (3, 11):
-        def create_task(
-            self, coro: Coroutine[Any, Any, _T] | Generator[Any, None, _T], *, name: object = None, context: Context | None = None
-        ) -> Task[_T]: ...
+        def create_task(self, coro: _CoroutineLike[_T], *, name: object = None, context: Context | None = None) -> Task[_T]: ...
     elif sys.version_info >= (3, 8):
-        def create_task(self, coro: Coroutine[Any, Any, _T] | Generator[Any, None, _T], *, name: object = None) -> Task[_T]: ...
+        def create_task(self, coro: _CoroutineLike[_T], *, name: object = None) -> Task[_T]: ...
     else:
-        def create_task(self, coro: Coroutine[Any, Any, _T] | Generator[Any, None, _T]) -> Task[_T]: ...
+        def create_task(self, coro: _CoroutineLike[_T]) -> Task[_T]: ...
 
     def set_task_factory(self, factory: _TaskFactory | None) -> None: ...
     def get_task_factory(self) -> _TaskFactory | None: ...
@@ -112,7 +107,48 @@ class BaseEventLoop(AbstractEventLoop):
         flags: int = 0,
     ) -> list[tuple[AddressFamily, SocketKind, int, str, tuple[str, int] | tuple[str, int, int, int]]]: ...
     async def getnameinfo(self, sockaddr: tuple[str, int] | tuple[str, int, int, int], flags: int = 0) -> tuple[str, str]: ...
-    if sys.version_info >= (3, 11):
+    if sys.version_info >= (3, 12):
+        @overload
+        async def create_connection(
+            self,
+            protocol_factory: Callable[[], _ProtocolT],
+            host: str = ...,
+            port: int = ...,
+            *,
+            ssl: _SSLContext = None,
+            family: int = 0,
+            proto: int = 0,
+            flags: int = 0,
+            sock: None = None,
+            local_addr: tuple[str, int] | None = None,
+            server_hostname: str | None = None,
+            ssl_handshake_timeout: float | None = None,
+            ssl_shutdown_timeout: float | None = None,
+            happy_eyeballs_delay: float | None = None,
+            interleave: int | None = None,
+            all_errors: bool = False,
+        ) -> tuple[Transport, _ProtocolT]: ...
+        @overload
+        async def create_connection(
+            self,
+            protocol_factory: Callable[[], _ProtocolT],
+            host: None = None,
+            port: None = None,
+            *,
+            ssl: _SSLContext = None,
+            family: int = 0,
+            proto: int = 0,
+            flags: int = 0,
+            sock: socket,
+            local_addr: None = None,
+            server_hostname: str | None = None,
+            ssl_handshake_timeout: float | None = None,
+            ssl_shutdown_timeout: float | None = None,
+            happy_eyeballs_delay: float | None = None,
+            interleave: int | None = None,
+            all_errors: bool = False,
+        ) -> tuple[Transport, _ProtocolT]: ...
+    elif sys.version_info >= (3, 11):
         @overload
         async def create_connection(
             self,
@@ -268,7 +304,7 @@ class BaseEventLoop(AbstractEventLoop):
             server_hostname: str | None = None,
             ssl_handshake_timeout: float | None = None,
             ssl_shutdown_timeout: float | None = None,
-        ) -> Transport: ...
+        ) -> Transport | None: ...
         async def connect_accepted_socket(
             self,
             protocol_factory: Callable[[], _ProtocolT],
@@ -322,7 +358,7 @@ class BaseEventLoop(AbstractEventLoop):
             server_side: bool = False,
             server_hostname: str | None = None,
             ssl_handshake_timeout: float | None = None,
-        ) -> Transport: ...
+        ) -> Transport | None: ...
         async def connect_accepted_socket(
             self,
             protocol_factory: Callable[[], _ProtocolT],
@@ -431,5 +467,7 @@ class BaseEventLoop(AbstractEventLoop):
     # Debug flag management.
     def get_debug(self) -> bool: ...
     def set_debug(self, enabled: bool) -> None: ...
-    if sys.version_info >= (3, 9):
+    if sys.version_info >= (3, 12):
+        async def shutdown_default_executor(self, timeout: float | None = None) -> None: ...
+    elif sys.version_info >= (3, 9):
         async def shutdown_default_executor(self) -> None: ...

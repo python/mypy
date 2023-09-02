@@ -873,6 +873,21 @@ def has_yield_expression(fdef: FuncBase) -> bool:
     return seeker.found
 
 
+class YieldFromSeeker(FuncCollectorBase):
+    def __init__(self) -> None:
+        super().__init__()
+        self.found = False
+
+    def visit_yield_from_expr(self, o: YieldFromExpr) -> None:
+        self.found = True
+
+
+def has_yield_from_expression(fdef: FuncBase) -> bool:
+    seeker = YieldFromSeeker()
+    fdef.accept(seeker)
+    return seeker.found
+
+
 class AwaitSeeker(TraverserVisitor):
     def __init__(self) -> None:
         super().__init__()
@@ -922,3 +937,24 @@ def all_yield_expressions(node: Node) -> list[tuple[YieldExpr, bool]]:
     v = YieldCollector()
     node.accept(v)
     return v.yield_expressions
+
+
+class YieldFromCollector(FuncCollectorBase):
+    def __init__(self) -> None:
+        super().__init__()
+        self.in_assignment = False
+        self.yield_from_expressions: list[tuple[YieldFromExpr, bool]] = []
+
+    def visit_assignment_stmt(self, stmt: AssignmentStmt) -> None:
+        self.in_assignment = True
+        super().visit_assignment_stmt(stmt)
+        self.in_assignment = False
+
+    def visit_yield_from_expr(self, expr: YieldFromExpr) -> None:
+        self.yield_from_expressions.append((expr, self.in_assignment))
+
+
+def all_yield_from_expressions(node: Node) -> list[tuple[YieldFromExpr, bool]]:
+    v = YieldFromCollector()
+    node.accept(v)
+    return v.yield_from_expressions

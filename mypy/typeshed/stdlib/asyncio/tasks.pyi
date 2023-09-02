@@ -5,6 +5,7 @@ from types import FrameType
 from typing import Any, Generic, TextIO, TypeVar, overload
 from typing_extensions import Literal, TypeAlias
 
+from . import _CoroutineLike
 from .events import AbstractEventLoop
 from .futures import Future
 
@@ -242,12 +243,6 @@ if sys.version_info >= (3, 10):
     async def sleep(delay: float) -> None: ...
     @overload
     async def sleep(delay: float, result: _T) -> _T: ...
-    @overload
-    async def wait(fs: Iterable[_FT], *, timeout: float | None = None, return_when: str = "ALL_COMPLETED") -> tuple[set[_FT], set[_FT]]: ...  # type: ignore[misc]
-    @overload
-    async def wait(
-        fs: Iterable[Awaitable[_T]], *, timeout: float | None = None, return_when: str = "ALL_COMPLETED"
-    ) -> tuple[set[Task[_T]], set[Task[_T]]]: ...
     async def wait_for(fut: _FutureLike[_T], timeout: float | None) -> _T: ...
 
 else:
@@ -256,6 +251,25 @@ else:
     async def sleep(delay: float, *, loop: AbstractEventLoop | None = None) -> None: ...
     @overload
     async def sleep(delay: float, result: _T, *, loop: AbstractEventLoop | None = None) -> _T: ...
+    async def wait_for(fut: _FutureLike[_T], timeout: float | None, *, loop: AbstractEventLoop | None = None) -> _T: ...
+
+if sys.version_info >= (3, 11):
+    @overload
+    async def wait(fs: Iterable[_FT], *, timeout: float | None = None, return_when: str = "ALL_COMPLETED") -> tuple[set[_FT], set[_FT]]: ...  # type: ignore[misc]
+    @overload
+    async def wait(
+        fs: Iterable[Task[_T]], *, timeout: float | None = None, return_when: str = "ALL_COMPLETED"
+    ) -> tuple[set[Task[_T]], set[Task[_T]]]: ...
+
+elif sys.version_info >= (3, 10):
+    @overload
+    async def wait(fs: Iterable[_FT], *, timeout: float | None = None, return_when: str = "ALL_COMPLETED") -> tuple[set[_FT], set[_FT]]: ...  # type: ignore[misc]
+    @overload
+    async def wait(
+        fs: Iterable[Awaitable[_T]], *, timeout: float | None = None, return_when: str = "ALL_COMPLETED"
+    ) -> tuple[set[Task[_T]], set[Task[_T]]]: ...
+
+else:
     @overload
     async def wait(  # type: ignore[misc]
         fs: Iterable[_FT],
@@ -272,29 +286,48 @@ else:
         timeout: float | None = None,
         return_when: str = "ALL_COMPLETED",
     ) -> tuple[set[Task[_T]], set[Task[_T]]]: ...
-    async def wait_for(fut: _FutureLike[_T], timeout: float | None, *, loop: AbstractEventLoop | None = None) -> _T: ...
+
+if sys.version_info >= (3, 12):
+    _TaskCompatibleCoro: TypeAlias = Coroutine[Any, Any, _T_co]
+else:
+    _TaskCompatibleCoro: TypeAlias = Generator[_TaskYieldType, None, _T_co] | Awaitable[_T_co]
 
 # mypy and pyright complain that a subclass of an invariant class shouldn't be covariant.
 # While this is true in general, here it's sort-of okay to have a covariant subclass,
 # since the only reason why `asyncio.Future` is invariant is the `set_result()` method,
 # and `asyncio.Task.set_result()` always raises.
 class Task(Future[_T_co], Generic[_T_co]):  # type: ignore[type-var]  # pyright: ignore[reportGeneralTypeIssues]
-    if sys.version_info >= (3, 8):
+    if sys.version_info >= (3, 12):
         def __init__(
             self,
-            coro: Generator[_TaskYieldType, None, _T_co] | Awaitable[_T_co],
+            coro: _TaskCompatibleCoro[_T_co],
             *,
             loop: AbstractEventLoop = ...,
             name: str | None = ...,
+            context: Context | None = None,
+            eager_start: bool = False,
+        ) -> None: ...
+    elif sys.version_info >= (3, 11):
+        def __init__(
+            self,
+            coro: _TaskCompatibleCoro[_T_co],
+            *,
+            loop: AbstractEventLoop = ...,
+            name: str | None = ...,
+            context: Context | None = None,
+        ) -> None: ...
+    elif sys.version_info >= (3, 8):
+        def __init__(
+            self, coro: _TaskCompatibleCoro[_T_co], *, loop: AbstractEventLoop = ..., name: str | None = ...
         ) -> None: ...
     else:
-        def __init__(
-            self, coro: Generator[_TaskYieldType, None, _T_co] | Awaitable[_T_co], *, loop: AbstractEventLoop = ...
-        ) -> None: ...
+        def __init__(self, coro: _TaskCompatibleCoro[_T_co], *, loop: AbstractEventLoop = ...) -> None: ...
     if sys.version_info >= (3, 8):
-        def get_coro(self) -> Generator[_TaskYieldType, None, _T_co] | Awaitable[_T_co]: ...
+        def get_coro(self) -> _TaskCompatibleCoro[_T_co]: ...
         def get_name(self) -> str: ...
         def set_name(self, __value: object) -> None: ...
+    if sys.version_info >= (3, 12):
+        def get_context(self) -> Context: ...
 
     def get_stack(self, *, limit: int | None = None) -> list[FrameType]: ...
     def print_stack(self, *, limit: int | None = None, file: TextIO | None = None) -> None: ...
@@ -312,15 +345,13 @@ class Task(Future[_T_co], Generic[_T_co]):  # type: ignore[type-var]  # pyright:
 def all_tasks(loop: AbstractEventLoop | None = None) -> set[Task[Any]]: ...
 
 if sys.version_info >= (3, 11):
-    def create_task(
-        coro: Generator[Any, None, _T] | Coroutine[Any, Any, _T], *, name: str | None = None, context: Context | None = None
-    ) -> Task[_T]: ...
+    def create_task(coro: _CoroutineLike[_T], *, name: str | None = None, context: Context | None = None) -> Task[_T]: ...
 
 elif sys.version_info >= (3, 8):
-    def create_task(coro: Generator[Any, None, _T] | Coroutine[Any, Any, _T], *, name: str | None = None) -> Task[_T]: ...
+    def create_task(coro: _CoroutineLike[_T], *, name: str | None = None) -> Task[_T]: ...
 
 else:
-    def create_task(coro: Generator[Any, None, _T] | Coroutine[Any, Any, _T]) -> Task[_T]: ...
+    def create_task(coro: _CoroutineLike[_T]) -> Task[_T]: ...
 
 def current_task(loop: AbstractEventLoop | None = None) -> Task[Any] | None: ...
 def _enter_task(loop: AbstractEventLoop, task: Task[Any]) -> None: ...

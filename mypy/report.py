@@ -12,8 +12,8 @@ import time
 import tokenize
 from abc import ABCMeta, abstractmethod
 from operator import attrgetter
-from typing import Any, Callable, Dict, Iterator, Tuple
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import Any, Callable, Dict, Final, Iterator, Tuple
+from typing_extensions import TypeAlias as _TypeAlias
 from urllib.request import pathname2url
 
 from mypy import stats
@@ -25,7 +25,7 @@ from mypy.types import Type, TypeOfAny
 from mypy.version import __version__
 
 try:
-    from lxml import etree  # type: ignore[import]
+    from lxml import etree  # type: ignore[import-untyped]
 
     LXML_INSTALLED = True
 except ImportError:

@@ -6,8 +6,8 @@ import json
 import os
 import os.path
 from collections import Counter
-from typing import Any, Dict, Iterable
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import Any, Dict, Final, Iterable
+from typing_extensions import TypeAlias as _TypeAlias
 
 ROOT: Final = ".mypy_cache/3.5"
 

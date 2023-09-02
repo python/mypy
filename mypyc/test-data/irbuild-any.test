@@ -51,7 +51,7 @@ def f(a, n, c):
     r5 :: int
     r6 :: str
     r7 :: object
-    r8 :: int32
+    r8 :: i32
     r9 :: bit
 L0:
     r0 = box(int, n)
@@ -99,10 +99,10 @@ def f2(a, n, l):
     n :: int
     l :: list
     r0, r1, r2, r3, r4 :: object
-    r5 :: int32
+    r5 :: i32
     r6 :: bit
     r7 :: object
-    r8 :: int32
+    r8 :: i32
     r9, r10 :: bit
     r11 :: list
     r12 :: object

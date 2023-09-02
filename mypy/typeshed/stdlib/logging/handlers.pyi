@@ -5,10 +5,11 @@ import sys
 from _typeshed import ReadableBuffer, StrPath
 from collections.abc import Callable
 from logging import FileHandler, Handler, LogRecord
-from queue import Queue, SimpleQueue
 from re import Pattern
 from socket import SocketKind, socket
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Protocol, TypeVar
+
+_T = TypeVar("_T")
 
 DEFAULT_TCP_LOGGING_PORT: int
 DEFAULT_UDP_LOGGING_PORT: int
@@ -178,7 +179,7 @@ class SysLogHandler(Handler):
     facility_names: ClassVar[dict[str, int]]  # undocumented
     priority_map: ClassVar[dict[str, str]]  # undocumented
     def __init__(
-        self, address: tuple[str, int] | str = ("localhost", 514), facility: int = 1, socktype: SocketKind | None = None
+        self, address: tuple[str, int] | str = ("localhost", 514), facility: str | int = 1, socktype: SocketKind | None = None
     ) -> None: ...
     if sys.version_info >= (3, 11):
         def createSocket(self) -> None: ...
@@ -249,17 +250,21 @@ class HTTPHandler(Handler):
     if sys.version_info >= (3, 9):
         def getConnection(self, host: str, secure: bool) -> http.client.HTTPConnection: ...  # undocumented
 
+class _QueueLike(Protocol[_T]):
+    def get(self) -> _T: ...
+    def put_nowait(self, __item: _T) -> None: ...
+
 class QueueHandler(Handler):
-    queue: SimpleQueue[Any] | Queue[Any]  # undocumented
-    def __init__(self, queue: SimpleQueue[Any] | Queue[Any]) -> None: ...
+    queue: _QueueLike[Any]
+    def __init__(self, queue: _QueueLike[Any]) -> None: ...
     def prepare(self, record: LogRecord) -> Any: ...
     def enqueue(self, record: LogRecord) -> None: ...
 
 class QueueListener:
     handlers: tuple[Handler, ...]  # undocumented
     respect_handler_level: bool  # undocumented
-    queue: SimpleQueue[Any] | Queue[Any]  # undocumented
-    def __init__(self, queue: SimpleQueue[Any] | Queue[Any], *handlers: Handler, respect_handler_level: bool = False) -> None: ...
+    queue: _QueueLike[Any]  # undocumented
+    def __init__(self, queue: _QueueLike[Any], *handlers: Handler, respect_handler_level: bool = False) -> None: ...
     def dequeue(self, block: bool) -> LogRecord: ...
     def prepare(self, record: LogRecord) -> Any: ...
     def start(self) -> None: ...

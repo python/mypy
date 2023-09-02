@@ -701,11 +701,12 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         raise NotImplementedError
 
     def visit_parameters(self, t: Parameters) -> ProperType:
-        # TODO: is this the right variance?
-        if isinstance(self.s, (Parameters, CallableType)):
+        if isinstance(self.s, Parameters):
             if len(t.arg_types) != len(self.s.arg_types):
                 return self.default(self.s)
             return t.copy_modified(
+                # Note that since during constraint inference we already treat whole ParamSpec as
+                # contravariant, we should meet individual items, not join them like for Callables
                 arg_types=[meet_types(s_a, t_a) for s_a, t_a in zip(self.s.arg_types, t.arg_types)]
             )
         else:
@@ -967,11 +968,11 @@ def typed_dict_mapping_overlap(
 
     As usual empty, dictionaries lie in a gray area. In general, List[str] and List[str]
     are considered non-overlapping despite empty list belongs to both. However, List[int]
-    and List[<nothing>] are considered overlapping.
+    and List[Never] are considered overlapping.
 
     So here we follow the same logic: a TypedDict with no required keys is considered
     non-overlapping with Mapping[str, <some type>], but is considered overlapping with
-    Mapping[<nothing>, <nothing>]. This way we avoid false positives for overloads, and also
+    Mapping[Never, Never]. This way we avoid false positives for overloads, and also
     avoid false positives for comparisons like SomeTypedDict == {} under --strict-equality.
     """
     left, right = get_proper_types((left, right))

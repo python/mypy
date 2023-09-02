@@ -12,8 +12,7 @@ value has a type (RType). A value can hold various things, such as:
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Dict, Generic, List, NamedTuple, Sequence, TypeVar, Union
-from typing_extensions import Final
+from typing import TYPE_CHECKING, Final, Generic, List, NamedTuple, Sequence, TypeVar, Union
 
 from mypy_extensions import trait
 
@@ -81,6 +80,7 @@ class BasicBlock:
         self.label = label
         self.ops: list[Op] = []
         self.error_handler: BasicBlock | None = None
+        self.referenced = False
 
     @property
     def terminated(self) -> bool:
@@ -1162,6 +1162,7 @@ class ComparisonOp(RegisterOp):
     }
 
     signed_ops: Final = {"==": EQ, "!=": NEQ, "<": SLT, ">": SGT, "<=": SLE, ">=": SGE}
+    unsigned_ops: Final = {"==": EQ, "!=": NEQ, "<": ULT, ">": UGT, "<=": ULE, ">=": UGE}
 
     def __init__(self, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
         super().__init__(line)
@@ -1203,10 +1204,10 @@ class FloatOp(RegisterOp):
         self.rhs = rhs
         self.op = op
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.lhs, self.rhs]
 
-    def accept(self, visitor: "OpVisitor[T]") -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_float_op(self)
 
 
@@ -1225,10 +1226,10 @@ class FloatNeg(RegisterOp):
         self.type = float_rprimitive
         self.src = src
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.src]
 
-    def accept(self, visitor: "OpVisitor[T]") -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_float_neg(self)
 
 
@@ -1253,10 +1254,10 @@ class FloatComparisonOp(RegisterOp):
         self.rhs = rhs
         self.op = op
 
-    def sources(self) -> List[Value]:
+    def sources(self) -> list[Value]:
         return [self.lhs, self.rhs]
 
-    def accept(self, visitor: "OpVisitor[T]") -> T:
+    def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_float_comparison_op(self)
 
 
@@ -1574,5 +1575,5 @@ class OpVisitor(Generic[T]):
 # (Serialization and deserialization *will* be used for incremental
 # compilation but so far it is not hooked up to anything.)
 class DeserMaps(NamedTuple):
-    classes: Dict[str, "ClassIR"]
-    functions: Dict[str, "FuncIR"]
+    classes: dict[str, "ClassIR"]
+    functions: dict[str, "FuncIR"]

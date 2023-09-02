@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Callable, overload
-from typing_extensions import Final, Literal, Protocol
+from typing import Callable, Final, overload
+from typing_extensions import Literal, Protocol
 
 from mypy_extensions import trait
 
@@ -32,6 +32,7 @@ from mypy.tvar_scope import TypeVarLikeScope
 from mypy.type_visitor import ANY_STRATEGY, BoolTypeQuery
 from mypy.types import (
     TPDICT_FB_NAMES,
+    AnyType,
     FunctionLike,
     Instance,
     Parameters,
@@ -41,6 +42,7 @@ from mypy.types import (
     ProperType,
     TupleType,
     Type,
+    TypeOfAny,
     TypeVarId,
     TypeVarLikeType,
     get_proper_type,
@@ -308,6 +310,7 @@ def paramspec_args(
         id,
         flavor=ParamSpecFlavor.ARGS,
         upper_bound=named_type_func("builtins.tuple", [named_type_func("builtins.object")]),
+        default=AnyType(TypeOfAny.from_omitted_generics),
         line=line,
         column=column,
         prefix=prefix,
@@ -332,6 +335,7 @@ def paramspec_kwargs(
         upper_bound=named_type_func(
             "builtins.dict", [named_type_func("builtins.str"), named_type_func("builtins.object")]
         ),
+        default=AnyType(TypeOfAny.from_omitted_generics),
         line=line,
         column=column,
         prefix=prefix,

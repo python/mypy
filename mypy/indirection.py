@@ -64,13 +64,13 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
         return set()
 
     def visit_type_var(self, t: types.TypeVarType) -> set[str]:
-        return self._visit(t.values) | self._visit(t.upper_bound)
+        return self._visit(t.values) | self._visit(t.upper_bound) | self._visit(t.default)
 
     def visit_param_spec(self, t: types.ParamSpecType) -> set[str]:
-        return set()
+        return self._visit(t.upper_bound) | self._visit(t.default)
 
     def visit_type_var_tuple(self, t: types.TypeVarTupleType) -> set[str]:
-        return self._visit(t.upper_bound)
+        return self._visit(t.upper_bound) | self._visit(t.default)
 
     def visit_unpack_type(self, t: types.UnpackType) -> set[str]:
         return t.type.accept(self)

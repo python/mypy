@@ -61,7 +61,7 @@ antigravity: 2.7-
 argparse: 2.7-
 array: 2.7-
 ast: 2.7-
-asynchat: 2.7-
+asynchat: 2.7-3.11
 asyncio: 3.4-
 asyncio.mixins: 3.10-
 asyncio.exceptions: 3.8-
@@ -72,7 +72,7 @@ asyncio.taskgroups: 3.11-
 asyncio.threads: 3.9-
 asyncio.timeouts: 3.11-
 asyncio.trsock: 3.8-
-asyncore: 2.7-
+asyncore: 2.7-3.11
 atexit: 2.7-
 audioop: 2.7-
 base64: 2.7-
@@ -112,7 +112,7 @@ dbm: 2.7-
 decimal: 2.7-
 difflib: 2.7-
 dis: 2.7-
-distutils: 2.7-
+distutils: 2.7-3.11
 distutils.command.bdist_msi: 2.7-3.10
 distutils.command.bdist_wininst: 2.7-3.9
 doctest: 2.7-
@@ -147,7 +147,7 @@ html: 3.0-
 http: 3.0-
 imaplib: 2.7-
 imghdr: 2.7-
-imp: 2.7-
+imp: 2.7-3.11
 importlib: 2.7-
 importlib.metadata: 3.8-
 importlib.metadata._meta: 3.10-
@@ -228,7 +228,7 @@ shlex: 2.7-
 shutil: 2.7-
 signal: 2.7-
 site: 2.7-
-smtpd: 2.7-
+smtpd: 2.7-3.11
 smtplib: 2.7-
 sndhdr: 2.7-
 socket: 2.7-

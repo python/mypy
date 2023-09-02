@@ -6,13 +6,13 @@ def f() -> Set[int]:
 def f():
     r0 :: set
     r1 :: object
-    r2 :: int32
+    r2 :: i32
     r3 :: bit
     r4 :: object
-    r5 :: int32
+    r5 :: i32
     r6 :: bit
     r7 :: object
-    r8 :: int32
+    r8 :: i32
     r9 :: bit
 L0:
     r0 = PySet_New(0)
@@ -90,7 +90,7 @@ def test1():
     r14 :: object
     r15, x, r16 :: int
     r17 :: object
-    r18 :: int32
+    r18 :: i32
     r19 :: bit
     r20 :: short_int
     a :: set
@@ -138,7 +138,7 @@ def test2():
     r2, r3, r4 :: object
     r5, x, r6 :: int
     r7 :: object
-    r8 :: int32
+    r8 :: i32
     r9, r10 :: bit
     b :: set
 L0:
@@ -179,7 +179,7 @@ def test3():
     r15 :: object
     r16, x, r17 :: int
     r18 :: object
-    r19 :: int32
+    r19 :: i32
     r20, r21, r22 :: bit
     c :: set
 L0:
@@ -225,7 +225,7 @@ def test4():
     r2 :: bit
     r3 :: int
     r4 :: object
-    r5 :: int32
+    r5 :: i32
     r6 :: bit
     r7 :: short_int
     d :: set
@@ -256,7 +256,7 @@ def test5():
     r2 :: bit
     r3 :: int
     r4 :: object
-    r5 :: int32
+    r5 :: i32
     r6 :: bit
     r7 :: short_int
     e :: set
@@ -331,18 +331,18 @@ def test():
     r29 :: bit
     r30 :: int
     r31 :: object
-    r32 :: int32
+    r32 :: i32
     r33 :: bit
     r34 :: short_int
     r35, r36, r37 :: object
     r38, y, r39 :: int
     r40 :: object
-    r41 :: int32
+    r41 :: i32
     r42, r43 :: bit
     r44, r45, r46 :: object
     r47, x, r48 :: int
     r49 :: object
-    r50 :: int32
+    r50 :: i32
     r51, r52 :: bit
     a :: set
 L0:
@@ -452,13 +452,13 @@ def f() -> int:
 def f():
     r0 :: set
     r1 :: object
-    r2 :: int32
+    r2 :: i32
     r3 :: bit
     r4 :: object
-    r5 :: int32
+    r5 :: i32
     r6 :: bit
     r7 :: object
-    r8 :: int32
+    r8 :: i32
     r9 :: bit
     r10 :: ptr
     r11 :: native_int
@@ -489,14 +489,14 @@ def f() -> bool:
 def f():
     r0 :: set
     r1 :: object
-    r2 :: int32
+    r2 :: i32
     r3 :: bit
     r4 :: object
-    r5 :: int32
+    r5 :: i32
     r6 :: bit
     x :: set
     r7 :: object
-    r8 :: int32
+    r8 :: i32
     r9 :: bit
     r10 :: bool
 L0:
@@ -511,7 +511,7 @@ L0:
     r7 = object 5
     r8 = PySet_Contains(x, r7)
     r9 = r8 >= 0 :: signed
-    r10 = truncate r8: int32 to builtins.bool
+    r10 = truncate r8: i32 to builtins.bool
     return r10
 
 [case testSetRemove]
@@ -542,7 +542,7 @@ def f() -> Set[int]:
 def f():
     r0, x :: set
     r1 :: object
-    r2 :: int32
+    r2 :: i32
     r3 :: bit
 L0:
     r0 = PySet_New(0)
@@ -562,7 +562,7 @@ def f() -> Set[int]:
 def f():
     r0, x :: set
     r1 :: object
-    r2 :: int32
+    r2 :: i32
     r3 :: bit
 L0:
     r0 = PySet_New(0)
@@ -581,7 +581,7 @@ def f() -> Set[int]:
 [out]
 def f():
     r0, x :: set
-    r1 :: int32
+    r1 :: i32
     r2 :: bit
 L0:
     r0 = PySet_New(0)
@@ -612,7 +612,7 @@ def update(s: Set[int], x: List[int]) -> None:
 def update(s, x):
     s :: set
     x :: list
-    r0 :: int32
+    r0 :: i32
     r1 :: bit
 L0:
     r0 = _PySet_Update(s, x)
@@ -627,17 +627,17 @@ def f(x: Set[int], y: Set[int]) -> Set[int]:
 def f(x, y):
     x, y, r0 :: set
     r1 :: object
-    r2 :: int32
+    r2 :: i32
     r3 :: bit
     r4 :: object
-    r5 :: int32
+    r5 :: i32
     r6 :: bit
-    r7 :: int32
+    r7 :: i32
     r8 :: bit
-    r9 :: int32
+    r9 :: i32
     r10 :: bit
     r11 :: object
-    r12 :: int32
+    r12 :: i32
     r13 :: bit
 L0:
     r0 = PySet_New(0)
@@ -672,14 +672,14 @@ def not_precomputed_nested_set(i: int) -> bool:
 def precomputed(i):
     i :: object
     r0 :: set
-    r1 :: int32
+    r1 :: i32
     r2 :: bit
     r3 :: bool
 L0:
     r0 = frozenset({(), (None, (27,)), 1, 2.0, 3, 4j, False, b'bar', 'daylily', 'foo'})
     r1 = PySet_Contains(r0, i)
     r2 = r1 >= 0 :: signed
-    r3 = truncate r1: int32 to builtins.bool
+    r3 = truncate r1: i32 to builtins.bool
     return r3
 def not_precomputed_non_final_name(i):
     i :: int
@@ -689,10 +689,10 @@ def not_precomputed_non_final_name(i):
     r3 :: int
     r4 :: set
     r5 :: object
-    r6 :: int32
+    r6 :: i32
     r7 :: bit
     r8 :: object
-    r9 :: int32
+    r9 :: i32
     r10 :: bit
     r11 :: bool
 L0:
@@ -707,23 +707,23 @@ L0:
     r8 = box(int, i)
     r9 = PySet_Contains(r4, r8)
     r10 = r9 >= 0 :: signed
-    r11 = truncate r9: int32 to builtins.bool
+    r11 = truncate r9: i32 to builtins.bool
     return r11
 def not_precomputed_nested_set(i):
     i :: int
     r0 :: set
     r1 :: object
-    r2 :: int32
+    r2 :: i32
     r3 :: bit
     r4 :: object
     r5 :: set
-    r6 :: int32
+    r6 :: i32
     r7 :: bit
     r8 :: object
-    r9 :: int32
+    r9 :: i32
     r10 :: bit
     r11 :: object
-    r12 :: int32
+    r12 :: i32
     r13 :: bit
     r14 :: bool
 L0:
@@ -741,7 +741,7 @@ L0:
     r11 = box(int, i)
     r12 = PySet_Contains(r5, r11)
     r13 = r12 >= 0 :: signed
-    r14 = truncate r12: int32 to builtins.bool
+    r14 = truncate r12: i32 to builtins.bool
     return r14
 
 [case testForSetLiteral]
@@ -809,7 +809,7 @@ def not_precomputed():
     r3 :: int
     r4 :: set
     r5 :: object
-    r6 :: int32
+    r6 :: i32
     r7 :: bit
     r8, r9 :: object
     r10, not_optimized :: int
@@ -836,4 +836,3 @@ L4:
     r11 = CPy_NoErrOccured()
 L5:
     return 1
-

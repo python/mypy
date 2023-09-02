@@ -91,7 +91,7 @@ def f(x):
     r0 :: object
     r1 :: bit
     r2 :: __main__.A
-    r3 :: int32
+    r3 :: i32
     r4 :: bit
     r5 :: bool
 L0:
@@ -102,7 +102,7 @@ L1:
     r2 = cast(__main__.A, x)
     r3 = PyObject_IsTrue(r2)
     r4 = r3 >= 0 :: signed
-    r5 = truncate r3: int32 to builtins.bool
+    r5 = truncate r3: i32 to builtins.bool
     if r5 goto L2 else goto L3 :: bool
 L2:
     return 2
@@ -252,7 +252,7 @@ def f(x: Union[int, A]) -> int:
 def f(x):
     x :: union[int, __main__.A]
     r0 :: object
-    r1 :: int32
+    r1 :: i32
     r2 :: bit
     r3 :: bool
     r4, r5 :: int
@@ -262,7 +262,7 @@ L0:
     r0 = load_address PyLong_Type
     r1 = PyObject_IsInstance(x, r0)
     r2 = r1 >= 0 :: signed
-    r3 = truncate r1: int32 to builtins.bool
+    r3 = truncate r1: i32 to builtins.bool
     if r3 goto L1 else goto L2 :: bool
 L1:
     r4 = unbox(int, x)
@@ -337,7 +337,7 @@ L3:
 def set(o, s):
     o :: union[__main__.A, __main__.B]
     s, r0 :: str
-    r1 :: int32
+    r1 :: i32
     r2 :: bit
 L0:
     r0 = 'a'
