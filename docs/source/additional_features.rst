@@ -121,7 +121,7 @@ Mypy supports the :py:func:`~typing.dataclass_transform` decorator as described 
 
     Pragmatically, mypy will assume such classes have the internal attribute :code:`__dataclass_fields__`
     (even though they might lack it in runtime) and will assume functions such as :py:func:`dataclasses.is_dataclass`
-    and :py:func:`dataclasses.fields` to treat them as if they were dataclasses
+    and :py:func:`dataclasses.fields` treat them as if they were dataclasses
     (even though they may fail at runtime).
 
 .. _attrs_package:
