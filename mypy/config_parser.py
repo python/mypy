@@ -291,15 +291,15 @@ def parse_config_file(
                 prefix, options, set_strict_flags, section, config_types, stderr
             )
             if report_dirs:
+                reports = ", ".join(f"{s}_report" for s in sorted(report_dirs))
                 print(
-                    "%sPer-module sections should not specify reports (%s)"
-                    % (prefix, ", ".join(s + "_report" for s in sorted(report_dirs))),
+                    f"{prefix}Per-module sections should not specify reports ({reports})",
                     file=stderr,
                 )
             if set(updates) - PER_MODULE_OPTIONS:
+                flags = ", ".join(sorted(set(updates) - PER_MODULE_OPTIONS))
                 print(
-                    "%sPer-module sections should only specify per-module flags (%s)"
-                    % (prefix, ", ".join(sorted(set(updates) - PER_MODULE_OPTIONS))),
+                    f"{prefix}Per-module sections should only specify per-module flags ({flags})",
                     file=stderr,
                 )
                 updates = {k: v for k, v in updates.items() if k in PER_MODULE_OPTIONS}
@@ -315,8 +315,8 @@ def parse_config_file(
                     "*" in x and x != "*" for x in glob.split(".")
                 ):
                     print(
-                        "%sPatterns must be fully-qualified module names, optionally "
-                        "with '*' in some components (e.g spam.*.eggs.*)" % prefix,
+                        f"{prefix}Patterns must be fully-qualified module names, optionally "
+                        "with '*' in some components (e.g spam.*.eggs.*)",
                         file=stderr,
                     )
                 else:
@@ -411,8 +411,9 @@ def destructure_overrides(toml_data: dict[str, Any]) -> dict[str, Any]:
                         raise ConfigTOMLValueError(
                             "toml config file contains "
                             "[[tool.mypy.overrides]] sections with conflicting "
-                            "values. Module '%s' has two different values for '%s'"
-                            % (module, new_key)
+                            "values. Module '{}' has two different values for '{}'".format(
+                                module, new_key
+                            )
                         )
                     result[old_config_name][new_key] = new_value
 
