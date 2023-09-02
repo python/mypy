@@ -50,7 +50,7 @@ ignore = [
   "E501",  # conflicts with black
   "E731",  # Do not assign a `lambda` expression, use a `def`
   "E741",  # Ambiguous variable name
-  "UP032",
+  "UP032", # 'f-string always preferable to format' is controversial
 ]
 
 unfixable = [
