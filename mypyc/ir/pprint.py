@@ -34,6 +34,7 @@ from mypyc.ir.ops import (
     Integer,
     IntOp,
     KeepAlive,
+    Unborrow,
     LoadAddress,
     LoadErrorValue,
     LoadGlobal,
@@ -274,7 +275,15 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
             return self.format("%r = load_address %s", op, op.src)
 
     def visit_keep_alive(self, op: KeepAlive) -> str:
-        return self.format("keep_alive %s" % ", ".join(self.format("%r", v) for v in op.src))
+        if op.steal:
+            steal = "steal "
+        else:
+            steal = ""
+        return self.format("keep_alive %s%s" % (steal,
+                                                ", ".join(self.format("%r", v) for v in op.src)))
+
+    def visit_unborrow(self, op: Unborrow) -> str:
+        return self.format("%r = unborrow %r", op, op.src)
 
     # Helpers
 

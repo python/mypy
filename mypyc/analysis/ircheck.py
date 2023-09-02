@@ -27,6 +27,7 @@ from mypyc.ir.ops import (
     Integer,
     IntOp,
     KeepAlive,
+    Unborrow,
     LoadAddress,
     LoadErrorValue,
     LoadGlobal,
@@ -421,4 +422,7 @@ class OpChecker(OpVisitor[None]):
         pass
 
     def visit_keep_alive(self, op: KeepAlive) -> None:
+        pass
+
+    def visit_unborrow(self, op: Unborrow) -> None:
         pass

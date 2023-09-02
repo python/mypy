@@ -23,6 +23,7 @@ from mypyc.ir.ops import (
     InitStatic,
     IntOp,
     KeepAlive,
+    Unborrow,
     LoadAddress,
     LoadErrorValue,
     LoadGlobal,
@@ -182,6 +183,9 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
         return CLEAN
 
     def visit_keep_alive(self, op: KeepAlive) -> GenAndKill:
+        return CLEAN
+
+    def visit_unborrow(self, op: Unborrow) -> GenAndKill:
         return CLEAN
 
     def check_register_op(self, op: RegisterOp) -> GenAndKill:

@@ -29,6 +29,7 @@ from mypyc.ir.ops import (
     Integer,
     IntOp,
     KeepAlive,
+    Unborrow,
     LoadAddress,
     LoadErrorValue,
     LoadGlobal,
@@ -270,6 +271,9 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
         return self.visit_register_op(op)
 
     def visit_keep_alive(self, op: KeepAlive) -> GenAndKill[T]:
+        return self.visit_register_op(op)
+
+    def visit_unborrow(self, op: Unborrow) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
 

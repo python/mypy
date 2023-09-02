@@ -38,6 +38,7 @@ from mypyc.ir.ops import (
     Integer,
     IntOp,
     KeepAlive,
+    Unborrow,
     LoadAddress,
     LoadErrorValue,
     LoadGlobal,
@@ -745,6 +746,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
     def visit_keep_alive(self, op: KeepAlive) -> None:
         # This is a no-op.
         pass
+
+    def visit_unborrow(self, op: Unborrow) -> None:
+        # This is a no-op that propagates the source value.
+        dest = self.reg(op.dest)
+        src = self.reg(op.src)
+        self.emit_line(f"{dest} = {src};")
 
     # Helpers
 
