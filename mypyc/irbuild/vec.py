@@ -9,6 +9,7 @@ from mypyc.common import PLATFORM_SIZE
 from mypyc.ir.ops import (
     ERR_FALSE,
     ERR_MAGIC,
+    ERR_NEVER,
     Assign,
     BasicBlock,
     Branch,
@@ -27,6 +28,9 @@ from mypyc.ir.ops import (
     Undef,
     Unreachable,
     Value,
+    TupleGet,
+    TupleSet,
+    Unborrow,
 )
 from mypyc.ir.rtypes import (
     RInstance,
@@ -308,6 +312,19 @@ def convert_to_t_ext_item(builder: LowLevelIRBuilder, item: Value) -> Value:
     return builder.add(SetElement(temp, "buf", vec_buf))
 
 
+def convert_from_t_ext_item(builder: LowLevelIRBuilder, item: Value, vec_type: RVec) -> Value:
+    """Convert a value of type VecbufTExtItem to the corresponding RVec value."""
+    if is_int64_rprimitive(vec_type.item_type):
+        name = "VecI64Api.convert_from_nested"
+    elif isinstance(vec_type.item_type, RVec):
+        name = "VecTExtApi.convert_from_nested"
+    else:
+        name = "VecTApi.convert_from_nested"
+
+    return builder.add(CallC(
+        name, [item], vec_type, steals=[True], is_borrowed=False, error_kind=ERR_NEVER, line=-1))
+
+
 def vec_item_type(builder: LowLevelIRBuilder, item_type: RType, line: int) -> Value:
     typeobj, optional, depth = vec_item_type_info(builder, item_type, line)
     if isinstance(typeobj, Integer):
@@ -362,44 +379,62 @@ def vec_pop(builder: LowLevelIRBuilder, base: Value, index: Value, line: int) ->
 
     if is_int64_rprimitive(item_type):
         name = "VecI64Api.pop"
-    elif vec_depth(vec_type) == 0 and not isinstance(item_type, RUnion):
+    elif vec_depth(vec_type) == 0 and not isinstance(item_type, RUnion): # TODO fix union
         name = "VecTApi.pop"
     else:
         name = "VecTExtApi.pop"
-    call = CallC(
-        name,
-        [base, index],
-        RTuple([vec_type, item_type]),
-        steals=[False, False],
-        is_borrowed=False,
-        error_kind=ERR_MAGIC,
-        line=line,
+        # Nested vecs return a generic vec struct.
+        item_type = VecbufTExtItem
+    result = builder.add(
+        CallC(
+            name,
+            [base, index],
+            RTuple([vec_type, item_type]),
+            steals=[False, False],
+            is_borrowed=False,
+            error_kind=ERR_MAGIC,
+            line=line,
+        )
     )
-    return builder.add(call)
+    if vec_depth(vec_type) > 0:
+        orig = result
+        x = builder.add(TupleGet(result, 0, borrow=True))
+        x = builder.add(Unborrow(x))
+        y = builder.add(TupleGet(result, 1, borrow=True))
+        y = builder.add(Unborrow(y))
+        z = convert_from_t_ext_item(builder, y, vec_type.item_type)
+        result = builder.add(TupleSet([x, z], line))
+        builder.keep_alive([orig], steal=True)
+    return result
 
 
 def vec_remove(builder: LowLevelIRBuilder, vec: Value, item: Value, line: int) -> Value:
     assert isinstance(vec.type, RVec)
     vec_type = vec.type
     item_type = vec_type.item_type
-    item = builder.coerce(item, item_type, line)
+    coerced_item = builder.coerce(item, item_type, line)
 
     if is_int64_rprimitive(item_type):
         name = "VecI64Api.remove"
     elif vec_depth(vec_type) == 0 and not isinstance(item_type, RUnion):
         name = "VecTApi.remove"
     else:
+        coerced_item = convert_to_t_ext_item(builder, coerced_item)
         name = "VecTExtApi.remove"
-    call = CallC(
-        name,
-        [vec, item],
-        vec_type,
-        steals=[False, False],
-        is_borrowed=False,
-        error_kind=ERR_MAGIC,
-        line=line,
+    call = builder.add(
+        CallC(
+            name,
+            [vec, coerced_item],
+            vec_type,
+            steals=[False, False],
+            is_borrowed=False,
+            error_kind=ERR_MAGIC,
+            line=line,
+        )
     )
-    return builder.add(call)
+    if vec_depth(vec_type) > 0:
+        builder.keep_alive([item])
+    return call
 
 
 def vec_contains(builder: LowLevelIRBuilder, vec: Value, target: Value, line: int) -> Value:

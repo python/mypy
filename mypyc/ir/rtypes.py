@@ -745,6 +745,8 @@ class TupleNameVisitor(RTypeVisitor[str]):
         return "T{}{}".format(len(parts), "".join(parts))
 
     def visit_rstruct(self, t: RStruct) -> str:
+        if t.name == "VecbufTExtItem":
+            return "Vi"
         assert False, "RStruct not supported in tuple"
 
     def visit_rarray(self, t: RArray) -> str:
@@ -1036,14 +1038,17 @@ class RVec(RType):
         if is_int64_rprimitive(item_type):
             self._ctype = "VecI64"
             self.types = [c_pyssize_t_rprimitive, VecbufI64Object]
+            self.struct_type = VecI64
             self.buf_type = VecbufI64Object
         elif isinstance(non_opt, RVec):
             self._ctype = "VecTExt"
             self.types = [c_pyssize_t_rprimitive, VecbufTObject]
+            self.struct_type = VecTExt
             self.buf_type = VecbufTExtObject
         else:
             self._ctype = "VecT"
             self.types = [c_pyssize_t_rprimitive, VecbufTObject]
+            self.struct_type = VecT
             self.buf_type = VecbufTObject
 
     def unwrap_item_type(self) -> RPrimitive | RInstance:
@@ -1331,7 +1336,7 @@ VecbufI64Object = RStruct(
 #    "VecbufI64Object", is_unboxed=False, is_refcounted=True, ctype="VecbufI64Object *"
 # )
 
-# vec[i64]
+# Struct type for vec[i64] (in most cases use RVec instead).
 VecI64 = RStruct(
     name="VecI64", names=["len", "buf"], types=[c_pyssize_t_rprimitive, object_rprimitive]
 )
@@ -1342,6 +1347,11 @@ VecbufTObject = RStruct(
     name="VecbufTObject",
     names=["ob_base", "item_type", "items"],
     types=[PyVarObject, c_pyssize_t_rprimitive, object_rprimitive],
+)
+
+# Struct type for vec[t] (in most cases use RVec instead).
+VecT = RStruct(
+    name="VecT", names=["len", "buf"], types=[c_pyssize_t_rprimitive, object_rprimitive]
 )
 
 VecbufTExtItem = RStruct(
@@ -1363,10 +1373,21 @@ VecbufTExtObject = RStruct(
     ],
 )
 
+# Struct type for vec[vec[...]] (in most cases use RVec instead).
+VecTExt = RStruct(
+    name="VecTExt", names=["len", "buf"], types=[c_pyssize_t_rprimitive, object_rprimitive]
+)
+
 VecbufTExtObject_rprimitive = RPrimitive(
     "VecbufTExtObject_ptr",
     is_unboxed=False,
     is_pointer=True,
     is_refcounted=True,
     ctype="VecbufTExtObject *",
+)
+
+VecTExtPopResult = RStruct(
+    name="VecTExtPopResult",
+    names=["vec", "item"],
+    types=[VecTExt, VecbufTExtItem],
 )

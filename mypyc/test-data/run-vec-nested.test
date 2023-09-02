@@ -62,7 +62,8 @@ def test_append_nested_optional() -> None:
 
 def test_get_item() -> None:
     v = append(vec[vec[str]](), append(vec[str](), 'x'))
-    assert repr(v[0]) == "vec[str](['x'])"
+    vv = v[0]
+    assert vv == vec[str](['x'])
     v = append(v, append(vec[str](), 'y'))
     assert repr(v[0]) == "vec[str](['x'])"
     assert repr(v[1]) == "vec[str](['y'])"
@@ -155,7 +156,6 @@ def test_slicing_with_different_item_types() -> None:
     v = vec[vec[i64]]([vec[i64]([11]), vec[i64]([22])])
     assert v[1:] == vec[vec[i64]]([vec[i64]([22])])
 
-"""
 def test_remove() -> None:
     a = ['4x', '7x', '9x']
     vv = [vec[str]([s]) for s in a]
@@ -228,4 +228,3 @@ def test_pop_index() -> None:
     v, item = pop(v, 0)
     assert item == vec[str](['15'])
     assert v == vec[vec[str]]()
-"""
