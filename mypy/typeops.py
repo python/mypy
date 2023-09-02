@@ -200,7 +200,12 @@ def class_callable(
             # annotations on __new__ that hardcode the class in the return type.
             # This can then cause problems for subclasses. Preserve the old behaviour in
             # this case (although we should probably change it at some point)
-            if not is_subtype(default_ret_type, explicit_type, ignore_type_params=True):
+            # See testValueTypeWithNewInParentClass
+            # Also see testSelfTypeInGenericClassUsedFromAnotherGenericClass1
+            if (
+                not is_subtype(default_ret_type, explicit_type, ignore_type_params=True)
+                or is_subtype(explicit_type, default_ret_type, ignore_type_params=True)
+            ):
                 ret_type = explicit_type
         elif (
             # We have to skip protocols, because it can be a subtype of a return type
