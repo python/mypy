@@ -1401,9 +1401,9 @@ def wrong_name_constructor(b: bool) -> SomeClass:
     return SomeClass("a")
 
 func(SomeClass, constructor)
-reveal_type(func(SomeClass, wrong_constructor))  # N: Revealed type is "def (a: <nothing>) -> __main__.SomeClass"
-reveal_type(func_regular(SomeClass, wrong_constructor))  # N: Revealed type is "def (<nothing>) -> __main__.SomeClass"
-func(SomeClass, wrong_name_constructor)  # E: Argument 1 to "func" has incompatible type "Type[SomeClass]"; expected "Callable[[<nothing>], SomeClass]"
+reveal_type(func(SomeClass, wrong_constructor))  # N: Revealed type is "def (a: Never) -> __main__.SomeClass"
+reveal_type(func_regular(SomeClass, wrong_constructor))  # N: Revealed type is "def (Never) -> __main__.SomeClass"
+func(SomeClass, wrong_name_constructor)  # E: Argument 1 to "func" has incompatible type "Type[SomeClass]"; expected "Callable[[Never], SomeClass]"
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecInTypeAliasBasic]
@@ -1823,4 +1823,19 @@ P = ParamSpec("P")
 class C(Generic[P]): ...
 c: C[int, [int, str], str]  # E: Nested parameter specifications are not allowed
 reveal_type(c)  # N: Revealed type is "__main__.C[Any]"
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecInferenceWithCallbackProtocol]
+from typing import Protocol, Callable, ParamSpec
+
+class CB(Protocol):
+    def __call__(self, x: str, y: int) -> None: ...
+
+P = ParamSpec('P')
+def g(fn: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
+
+cb: CB
+g(cb, y=0, x='a')  # OK
+g(cb, y='a', x=0)  # E: Argument "y" to "g" has incompatible type "str"; expected "int" \
+                   # E: Argument "x" to "g" has incompatible type "int"; expected "str"
 [builtins fixtures/paramspec.pyi]
