@@ -50,7 +50,6 @@ ignore = [
   "E501",  # conflicts with black
   "E731",  # Do not assign a `lambda` expression, use a `def`
   "E741",  # Ambiguous variable name
-  "UP006",
   "UP031",
   "UP032",
 ]
