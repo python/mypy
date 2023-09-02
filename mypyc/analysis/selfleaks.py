@@ -23,7 +23,6 @@ from mypyc.ir.ops import (
     InitStatic,
     IntOp,
     KeepAlive,
-    Unborrow,
     LoadAddress,
     LoadErrorValue,
     LoadGlobal,
@@ -41,6 +40,7 @@ from mypyc.ir.ops import (
     Truncate,
     TupleGet,
     TupleSet,
+    Unborrow,
     Unbox,
     Unreachable,
 )

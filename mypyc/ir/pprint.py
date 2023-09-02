@@ -34,7 +34,6 @@ from mypyc.ir.ops import (
     Integer,
     IntOp,
     KeepAlive,
-    Unborrow,
     LoadAddress,
     LoadErrorValue,
     LoadGlobal,
@@ -52,6 +51,7 @@ from mypyc.ir.ops import (
     Truncate,
     TupleGet,
     TupleSet,
+    Unborrow,
     Unbox,
     Unreachable,
     Value,
@@ -279,8 +279,9 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
             steal = "steal "
         else:
             steal = ""
-        return self.format("keep_alive %s%s" % (steal,
-                                                ", ".join(self.format("%r", v) for v in op.src)))
+        return self.format(
+            "keep_alive %s%s" % (steal, ", ".join(self.format("%r", v) for v in op.src))
+        )
 
     def visit_unborrow(self, op: Unborrow) -> str:
         return self.format("%r = unborrow %r", op, op.src)

@@ -59,9 +59,9 @@ from mypyc.ir.ops import (
     Register,
     Return,
     TupleGet,
+    Unborrow,
     Unreachable,
     Value,
-    Unborrow,
 )
 from mypyc.ir.rtypes import (
     RInstance,
@@ -191,17 +191,16 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
 
     # Special case multiple assignments like 'x, y = expr' to reduce refcount ops.
     if (
-            isinstance(first_lvalue, (TupleExpr, ListExpr))
-            and isinstance(rvalue_reg.type, RTuple)
-            and len(rvalue_reg.type.types) == len(first_lvalue.items)
-            and len(lvalues) == 1
-            and all(is_simple_lvalue(item) for item in first_lvalue.items)
-            and any(t.is_refcounted for t in rvalue_reg.type.types)
+        isinstance(first_lvalue, (TupleExpr, ListExpr))
+        and isinstance(rvalue_reg.type, RTuple)
+        and len(rvalue_reg.type.types) == len(first_lvalue.items)
+        and len(lvalues) == 1
+        and all(is_simple_lvalue(item) for item in first_lvalue.items)
+        and any(t.is_refcounted for t in rvalue_reg.type.types)
     ):
-        lvalue = first_lvalue
-        n = len(lvalue.items)
+        n = len(first_lvalue.items)
         for i in range(n):
-            target = builder.get_assignment_target(lvalue.items[i])
+            target = builder.get_assignment_target(first_lvalue.items[i])
             rvalue_item = builder.add(TupleGet(rvalue_reg, i, borrow=True))
             rvalue_item = builder.add(Unborrow(rvalue_item))
             builder.assign(target, rvalue_item, line)
