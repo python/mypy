@@ -36,7 +36,8 @@ select = [
   "B",       # flake8-bugbear
   "I",       # isort
   "RUF100",  # Unused noqa comments
-  "PGH004"   # blanket noqa comments
+  "PGH004",  # blanket noqa comments
+  "UP",      # pyupgrade
 ]
 
 ignore = [
@@ -49,6 +50,9 @@ ignore = [
   "E501",  # conflicts with black
   "E731",  # Do not assign a `lambda` expression, use a `def`
   "E741",  # Ambiguous variable name
+  "UP006",
+  "UP031",
+  "UP032",
 ]
 
 unfixable = [
