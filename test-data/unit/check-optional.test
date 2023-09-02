@@ -361,9 +361,9 @@ def f() -> None:
 def g(x: Optional[int]) -> int:
   pass
 
-x = f()  # E: "f" does not return a value
-f() + 1  # E: "f" does not return a value
-g(f())  # E: "f" does not return a value
+x = f()  # E: "f" does not return a value (it only ever returns None)
+f() + 1  # E: "f" does not return a value (it only ever returns None)
+g(f())  # E: "f" does not return a value (it only ever returns None)
 
 [case testEmptyReturn]
 def f() -> None:
