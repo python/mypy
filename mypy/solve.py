@@ -300,8 +300,8 @@ def choose_free(
     common_upper_bound_p = get_proper_type(common_upper_bound)
     # We include None for when strict-optional is disabled.
     if isinstance(common_upper_bound_p, (UninhabitedType, NoneType)):
-        # This will cause to infer <nothing>, which is better than a free TypeVar
-        # that has an upper bound <nothing>.
+        # This will cause to infer Never, which is better than a free TypeVar
+        # that has an upper bound Never.
         return None
 
     values: list[Type] = []

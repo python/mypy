@@ -7718,13 +7718,13 @@ class D:
     def __init__(self) -> NoReturn: ...
 
 if object():
-    reveal_type(A())  # N: Revealed type is "<nothing>"
+    reveal_type(A())  # N: Revealed type is "Never"
 if object():
-    reveal_type(B())  # N: Revealed type is "<nothing>"
+    reveal_type(B())  # N: Revealed type is "Never"
 if object():
-    reveal_type(C())  # N: Revealed type is "<nothing>"
+    reveal_type(C())  # N: Revealed type is "Never"
 if object():
-    reveal_type(D())  # N: Revealed type is "<nothing>"
+    reveal_type(D())  # N: Revealed type is "Never"
 
 [case testOverloadedNewAndInitNoReturn]
 from typing import NoReturn, overload
@@ -7764,19 +7764,19 @@ class D:
     def __init__(self, a: int = ...) -> None: ...
 
 if object():
-    reveal_type(A())  # N: Revealed type is "<nothing>"
+    reveal_type(A())  # N: Revealed type is "Never"
 reveal_type(A(1))  # N: Revealed type is "__main__.A"
 
 if object():
-    reveal_type(B())  # N: Revealed type is "<nothing>"
+    reveal_type(B())  # N: Revealed type is "Never"
 reveal_type(B(1))  # N: Revealed type is "__main__.B"
 
 if object():
-    reveal_type(C())  # N: Revealed type is "<nothing>"
+    reveal_type(C())  # N: Revealed type is "Never"
 reveal_type(C(1))  # N: Revealed type is "__main__.C"
 
 if object():
-    reveal_type(D())  # N: Revealed type is "<nothing>"
+    reveal_type(D())  # N: Revealed type is "Never"
 reveal_type(D(1))  # N: Revealed type is "__main__.D"
 
 [case testClassScopeImportWithWrapperAndError]

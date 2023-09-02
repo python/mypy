@@ -7,7 +7,7 @@ operations, including subtype checks.
 
 from __future__ import annotations
 
-from typing import Sequence
+from typing import Callable, Sequence
 
 from mypy import errorcodes as codes, message_registry
 from mypy.errorcodes import ErrorCode
@@ -42,11 +42,18 @@ from mypy.types import (
 
 
 class TypeArgumentAnalyzer(MixedTraverserVisitor):
-    def __init__(self, errors: Errors, options: Options, is_typeshed_file: bool) -> None:
+    def __init__(
+        self,
+        errors: Errors,
+        options: Options,
+        is_typeshed_file: bool,
+        named_type: Callable[[str, list[Type]], Instance],
+    ) -> None:
         super().__init__()
         self.errors = errors
         self.options = options
         self.is_typeshed_file = is_typeshed_file
+        self.named_type = named_type
         self.scope = Scope()
         # Should we also analyze function definitions, or only module top-levels?
         self.recurse_into_functions = True
@@ -86,31 +93,31 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         # correct aliases. Also, variadic aliases are better to check when fully analyzed,
         # so we do this here.
         assert t.alias is not None, f"Unfixed type alias {t.type_ref}"
-        args = flatten_nested_tuples(t.args)
+        # TODO: consider moving this validation to typeanal.py, expanding invalid aliases
+        # during semantic analysis may cause crashes.
         if t.alias.tvar_tuple_index is not None:
-            correct = len(args) >= len(t.alias.alias_tvars) - 1
+            correct = len(t.args) >= len(t.alias.alias_tvars) - 1
             if any(
                 isinstance(a, UnpackType) and isinstance(get_proper_type(a.type), Instance)
-                for a in args
+                for a in t.args
             ):
                 correct = True
         else:
-            correct = len(args) == len(t.alias.alias_tvars)
+            correct = len(t.args) == len(t.alias.alias_tvars)
         if not correct:
             if t.alias.tvar_tuple_index is not None:
                 exp_len = f"at least {len(t.alias.alias_tvars) - 1}"
             else:
                 exp_len = f"{len(t.alias.alias_tvars)}"
             self.fail(
-                f"Bad number of arguments for type alias, expected: {exp_len}, given: {len(args)}",
+                "Bad number of arguments for type alias,"
+                f" expected: {exp_len}, given: {len(t.args)}",
                 t,
                 code=codes.TYPE_ARG,
             )
             t.args = set_any_tvars(
                 t.alias, t.line, t.column, self.options, from_error=True, fail=self.fail
             ).args
-        else:
-            t.args = args
         is_error = self.validate_args(t.alias.name, t.args, t.alias.alias_tvars, t)
         if not is_error:
             # If there was already an error for the alias itself, there is no point in checking
@@ -243,16 +250,16 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
             return
         if isinstance(proper_type, TypeVarTupleType):
             return
+        # TODO: this should probably be .has_base("builtins.tuple"), also elsewhere.
         if isinstance(proper_type, Instance) and proper_type.type.fullname == "builtins.tuple":
             return
-        if isinstance(proper_type, AnyType) and proper_type.type_of_any == TypeOfAny.from_error:
-            return
-        if not isinstance(proper_type, UnboundType):
-            # Avoid extra errors if there were some errors already.
+        if not isinstance(proper_type, (UnboundType, AnyType)):
+            # Avoid extra errors if there were some errors already. Also interpret plain Any
+            # as tuple[Any, ...] (this is better for the code in type checker).
             self.fail(
                 message_registry.INVALID_UNPACK.format(format_type(proper_type, self.options)), typ
             )
-        typ.type = AnyType(TypeOfAny.from_error)
+        typ.type = self.named_type("builtins.tuple", [AnyType(TypeOfAny.from_error)])
 
     def check_type_var_values(
         self, name: str, actuals: list[Type], arg_name: str, valids: list[Type], context: Context

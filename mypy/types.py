@@ -1045,9 +1045,12 @@ class UnpackType(ProperType):
     """Type operator Unpack from PEP646. Can be either with Unpack[]
     or unpacking * syntax.
 
-    The inner type should be either a TypeVarTuple, a constant size
-    tuple, or a variable length tuple. Type aliases to these are not allowed,
-    except during semantic analysis.
+    The inner type should be either a TypeVarTuple, or a variable length tuple.
+    In an exceptional case of callable star argument it can be a fixed length tuple.
+
+    Note: the above restrictions are only guaranteed by normalizations after semantic
+    analysis, if your code needs to handle UnpackType *during* semantic analysis, it is
+    wild west, technically anything can be present in the wrapped type.
     """
 
     __slots__ = ["type"]
@@ -2148,7 +2151,11 @@ class CallableType(FunctionLike):
                     assert nested_unpacked.type.fullname == "builtins.tuple"
                     new_unpack = nested_unpacked.args[0]
                 else:
-                    assert isinstance(nested_unpacked, TypeVarTupleType)
+                    if not isinstance(nested_unpacked, TypeVarTupleType):
+                        # We found a non-nomralized tuple type, this means this method
+                        # is called during semantic analysis (e.g. from get_proper_type())
+                        # there is no point in normalizing callables at this stage.
+                        return self
                     new_unpack = nested_unpack
             else:
                 new_unpack = UnpackType(
@@ -3103,7 +3110,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return "None"
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> str:
-        return "<nothing>"
+        return "Never"
 
     def visit_erased_type(self, t: ErasedType) -> str:
         return "<Erased>"
@@ -3592,6 +3599,17 @@ def remove_dups(types: list[T]) -> list[T]:
             new_types.append(t)
             all_types.add(t)
     return new_types
+
+
+def type_vars_as_args(type_vars: Sequence[TypeVarLikeType]) -> tuple[Type, ...]:
+    """Represent type variables as they would appear in a type argument list."""
+    args: list[Type] = []
+    for tv in type_vars:
+        if isinstance(tv, TypeVarTupleType):
+            args.append(UnpackType(tv))
+        else:
+            args.append(tv)
+    return tuple(args)
 
 
 # This cyclic import is unfortunate, but to avoid it we would need to move away all uses

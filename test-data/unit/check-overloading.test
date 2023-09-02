@@ -3397,11 +3397,11 @@ def wrapper() -> None:
 
     # Note: These should be fine, but mypy has an unrelated bug
     #       that makes them error out?
-    a2_overload: A = SomeType().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[A]]"; expected "W1[<nothing>]"
-    a2_union: A    = SomeType().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[A]]"; expected "Union[W1[<nothing>], W2[<nothing>]]"
+    a2_overload: A = SomeType().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[A]]"; expected "W1[Never]"
+    a2_union: A    = SomeType().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[A]]"; expected "Union[W1[Never], W2[Never]]"
 
-    SomeType().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[A]]"; expected "W1[<nothing>]"
-    SomeType().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[A]]"; expected "Union[W1[<nothing>], W2[<nothing>]]"
+    SomeType().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[A]]"; expected "W1[Never]"
+    SomeType().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[A]]"; expected "Union[W1[Never], W2[Never]]"
 
 [case testOverloadingInferUnionReturnWithBadObjectTypevarReturn]
 from typing import overload, Union, TypeVar, Generic
@@ -3425,8 +3425,8 @@ class SomeType(Generic[T]):
 def wrapper(mysterious: T) -> T:
     obj1: Union[W1[A], W2[B]]
 
-    SomeType().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "W1[<nothing>]"
-    SomeType().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "Union[W1[<nothing>], W2[<nothing>]]"
+    SomeType().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "W1[Never]"
+    SomeType().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "Union[W1[Never], W2[Never]]"
 
     SomeType[A]().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "W1[A]"
     SomeType[A]().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "Union[W1[A], W2[A]]"
