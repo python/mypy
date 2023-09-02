@@ -189,7 +189,7 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
     if builder.non_function_scope() and stmt.is_final_def:
         builder.init_final_static(first_lvalue, rvalue_reg)
 
-    # Special case multiple assignments like 'x, y = expr' to reduce refcount ops.
+    # Special-case multiple assignments like 'x, y = expr' to reduce refcount ops.
     if (
         isinstance(first_lvalue, (TupleExpr, ListExpr))
         and isinstance(rvalue_reg.type, RTuple)

@@ -1420,7 +1420,7 @@ class KeepAlive(RegisterOp):
 
 
 class Unborrow(RegisterOp):
-    """A no-op op to create a regular referece from a borrowed one.
+    """A no-op op to create a regular reference from a borrowed one.
 
     Borrowed references can only be used temporarily and the reference
     counts won't be managed. This value will be refcounted normally.
@@ -1428,7 +1428,7 @@ class Unborrow(RegisterOp):
     This is mainly useful if you split an aggregate value, such as
     a tuple, into components using borrowed values (to avoid increfs),
     and want to treat the components as sharing the original managed
-    reference. You'll also need to use KeepAlive with stel=True to
+    reference. You'll also need to use KeepAlive with steal=True to
     "consume" the original tuple reference:
 
       # t is a 2-tuple
