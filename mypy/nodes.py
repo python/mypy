@@ -573,7 +573,6 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         if items:
             # TODO: figure out how to reliably set end position (we don't know the impl here).
             self.set_line(items[0].line, items[0].column)
-        self.is_final = False
 
     @property
     def name(self) -> str:
@@ -772,7 +771,6 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # Is this an abstract method with trivial body?
         # Such methods can't be called via super().
         self.is_trivial_body = False
-        self.is_final = False
         # Original conditional definition
         self.original_def: None | FuncDef | Var | Decorator = None
         # Used for error reporting (to keep backward compatibility with pre-3.8)
