@@ -1946,16 +1946,21 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # in this case external context is almost everything we have.
             if not is_generic_instance(ctx) and not is_literal_type_like(ctx):
                 return callable.copy_modified()
-            
+
         proper_ret_type = get_proper_type(ret_type)
-        if isinstance(proper_ret_type, Instance) and proper_ret_type.type.fullname == "typing.Coroutine":
+        if (
+            isinstance(proper_ret_type, Instance)
+            and proper_ret_type.type.fullname == "typing.Coroutine"
+        ):
             proper_ret_type = proper_ret_type.args[-1]
 
-        if isinstance(proper_ret_type, UnionType) and any(isinstance(t, TypeVarType) for t in proper_ret_type.items):
+        if isinstance(proper_ret_type, UnionType) and any(
+            isinstance(t, TypeVarType) for t in proper_ret_type.items
+        ):
             # Avoid over eager inference of type variables in unions containing a type variable.
             # See github issue #15886
             return callable.copy_modified()
-        
+
         args = infer_type_arguments(callable.variables, ret_type, erased_ctx)
         # Only substitute non-Uninhabited and non-erased types.
         new_args: list[Type | None] = []
