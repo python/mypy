@@ -121,5 +121,6 @@ exclude_lines = [
   '^\s*raise NotImplementedError\b',
   '^\s*return NotImplemented\b',
   '^\s*raise$',
+  '^assert False\b',
   '''^if __name__ == ['"]__main__['"]:$''',
 ]
