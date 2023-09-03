@@ -261,7 +261,6 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         else:
             for i, item in enumerate(op.items):
                 self.emit_line(f"{dest}.f{i} = {self.reg(item)};")
-        self.emit_inc_ref(dest, tuple_type)
 
     def visit_assign(self, op: Assign) -> None:
         dest = self.reg(op.dest)
