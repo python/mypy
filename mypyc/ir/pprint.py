@@ -280,7 +280,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         else:
             steal = ""
         return self.format(
-            "keep_alive %s%s" % (steal, ", ".join(self.format("%r", v) for v in op.src))
+            "keep_alive {}{}".format(steal, ", ".join(self.format("%r", v) for v in op.src))
         )
 
     def visit_unborrow(self, op: Unborrow) -> str:
