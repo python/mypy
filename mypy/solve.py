@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Iterable, Sequence, Tuple
+from typing import Iterable, Sequence
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints
@@ -333,7 +333,7 @@ def is_trivial_bound(tp: ProperType) -> bool:
     return isinstance(tp, Instance) and tp.type.fullname == "builtins.object"
 
 
-def find_linear(c: Constraint) -> Tuple[bool, TypeVarId | None]:
+def find_linear(c: Constraint) -> tuple[bool, TypeVarId | None]:
     """Find out if this constraint represent a linear relationship, return target id if yes."""
     if isinstance(c.origin_type_var, TypeVarType):
         if isinstance(c.target, TypeVarType):
