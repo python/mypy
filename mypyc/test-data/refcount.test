@@ -1675,27 +1675,39 @@ def C.f(self, x):
     r0 :: vec[i64]
     r1 :: native_int
     r2 :: bit
-    r3 :: bool
-    r4 :: object
-    r5 :: ptr
+    r3 :: i64
+    r4 :: bit
+    r5 :: bool
     r6 :: i64
-    r7 :: ptr
-    r8 :: i64
+    r7 :: object
+    r8 :: ptr
+    r9 :: i64
+    r10 :: ptr
+    r11 :: i64
 L0:
     r0 = borrow self.v
     r1 = r0.len
     r2 = x < r1 :: unsigned
-    if r2 goto L2 else goto L1 :: bool
+    if r2 goto L4 else goto L1 :: bool
 L1:
-    r3 = raise IndexError
-    unreachable
+    r3 = x + r1
+    r4 = r3 < r1 :: unsigned
+    if r4 goto L3 else goto L2 :: bool
 L2:
-    r4 = r0.buf
-    r5 = get_element_ptr r4 items :: VecbufI64Object
-    r6 = x * 8
-    r7 = r5 + r6
-    r8 = load_mem r7 :: i64*
-    return r8
+    r5 = raise IndexError
+    unreachable
+L3:
+    r6 = r3
+    goto L5
+L4:
+    r6 = x
+L5:
+    r7 = r0.buf
+    r8 = get_element_ptr r7 items :: VecbufI64Object
+    r9 = r6 * 8
+    r10 = r8 + r9
+    r11 = load_mem r10 :: i64*
+    return r11
 
 [case testVecI64LenBorrowVec]
 from vecs import vec

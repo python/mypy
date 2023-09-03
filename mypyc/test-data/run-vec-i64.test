@@ -62,6 +62,23 @@ def test_get_item() -> None:
     with assertRaises(IndexError):
         v[2**63 - 1]
 
+def test_get_item_negative() -> None:
+    v = vec[i64]([3, 4])
+    x: i64 = int() - 1
+    assert v[x] == 4
+    assert v[int() - 2] == 3
+    x -= 1
+    assert v[x] == 3
+    assert v[int() - 1] == 4
+    with assertRaises(IndexError):
+        v[x - 1]
+    with assertRaises(IndexError):
+        v[-3]
+    with assertRaises(IndexError):
+        v[-2**63]
+    with assertRaises(IndexError):
+        v[int() - 3]
+
 def test_set_item() -> None:
     v = vec[i64]([3, 4])
     v[0] = 0
@@ -87,6 +104,32 @@ def test_set_item() -> None:
         v[1 + x] = 6
     with assertRaises(IndexError):
         v[2 + int()] = 6
+
+def test_set_item_negative() -> None:
+    v = vec[i64]([3, 4])
+    v[-1] = 0
+    assert v[-1] == 0
+
+    x: i64 = int() - 1
+
+    v[x] = 4
+    assert v[x] == 4
+
+    v[int() - 2] = 5
+    assert v[int() - 2] == 5
+
+    x -= 1
+
+    v[x] = -5
+    assert v[x] == -5
+
+    v[-1 + int()] = ERROR
+    assert v[-1] == ERROR
+
+    with assertRaises(IndexError):
+        v[x - 1] = 6
+    with assertRaises(IndexError):
+        v[int() - 3] = 6
 
 def test_operator_assignment() -> None:
     v = vec[i64]([3, 4])

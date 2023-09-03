@@ -97,7 +97,7 @@ def test_set_item_error_nested() -> None:
     with assertRaises(IndexError):
         v[3] = vec[str]()
     with assertRaises(IndexError):
-        v[-1] = vec[str]()
+        v[-4] = vec[str]()
     assert repr(v[0]) == 'vec[str]([])'
 
 def test_equality() -> None:
