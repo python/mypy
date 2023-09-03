@@ -178,6 +178,10 @@ int vec_t_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
         Py_INCREF(o);
         v.buf->items[i] = o;
         return 0;
+    } else if ((size_t)i + (size_t)v.len < (size_t)v.len) {
+        Py_INCREF(o);
+        v.buf->items[i + v.len] = o;
+        return 0;
     } else {
         PyErr_SetString(PyExc_IndexError, "index out of range");
         return -1;

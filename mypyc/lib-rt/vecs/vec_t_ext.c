@@ -152,6 +152,9 @@ PyObject *vec_t_ext_subscript(PyObject *self, PyObject *item) {
 
 int vec_t_ext_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
     VecTExt v = ((VecTExtObject *)self)->vec;
+    if ((size_t)i + (size_t)v.len < (size_t)v.len) {
+        i += v.len;
+    }
     if ((size_t)i < (size_t)v.len) {
         VecbufTExtItem item;
         if (Vec_T_Ext_UnboxItem(v, o, &item) < 0)

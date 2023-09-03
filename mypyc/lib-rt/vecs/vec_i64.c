@@ -193,6 +193,12 @@ int vec_i64_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
             return -1;
         v.buf->items[i] = x;
         return 0;
+    } else if ((size_t)i + (size_t)v.len < (size_t)v.len) {
+        long long x = PyLong_AsLongLong(o);
+        if (x == -1 && PyErr_Occurred())
+            return -1;
+        v.buf->items[i + v.len] = x;
+        return 0;
     } else {
         PyErr_SetString(PyExc_IndexError, "index out of range");
         return -1;
