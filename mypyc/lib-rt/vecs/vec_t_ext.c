@@ -104,7 +104,7 @@ VecTExt Vec_T_Ext_Slice(VecTExt vec, int64_t start, int64_t end) {
     res.len = slicelength;
     for (Py_ssize_t i = 0; i < slicelength; i++) {
         VecbufTExtItem item = vec.buf->items[start + i];
-        Py_INCREF(item.buf);
+        Py_XINCREF(item.buf);
         res.buf->items[i] = item;
     }
     return res;
