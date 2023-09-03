@@ -416,9 +416,7 @@ def destructure_overrides(toml_data: dict[str, Any]) -> dict[str, Any]:
                         raise ConfigTOMLValueError(
                             "toml config file contains "
                             "[[tool.mypy.overrides]] sections with conflicting "
-                            "values. Module '{}' has two different values for '{}'".format(
-                                module, new_key
-                            )
+                            f"values. Module '{module}' has two different values for '{new_key}'"
                         )
                     result[old_config_name][new_key] = new_value
 
