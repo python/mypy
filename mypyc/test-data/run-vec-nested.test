@@ -1,5 +1,6 @@
 [case testVecNestedBasicOps]
 from typing import Final, Any, Iterable, Optional
+import sys
 
 from mypy_extensions import i64
 from vecs import vec, append, remove, pop
@@ -28,6 +29,8 @@ def test_construct_from_initializer_nested() -> None:
 def test_repr() -> None:
     assert str(vec[vec[str]]()) == "vec[vec[str]]([])"
     assert str(vec[vec[Optional[str]]]()) == "vec[vec[str | None]]([])"
+    if sys.version_info[1] >= 10:
+        assert str(vec[vec[str | None]]()) == "vec[vec[str | None]]([])"
 
 def test_append_nested() -> None:
     v = vec[vec[str]]()
@@ -293,7 +296,7 @@ def test_doubly_nested_operations() -> None:
 
 def test_vec_i64_nested_operations() -> None:
     a = vec[i64]([11])
-    b = vec[i64]([-33])
+    b = vec[i64]()
     v = vec[vec[i64]]()
 
     # append
@@ -350,3 +353,67 @@ def test_vec_i64_nested_operations() -> None:
     assert len(v) == 1
     assert v[0] == b
     assert x == a
+
+    # TODO: box/unbox
+
+def test_doubly_nested_vec_i64_operations() -> None:
+    a = vec[vec[i64]]([vec[i64]([11])])
+    b = vec[vec[i64]]([vec[i64]()])
+    v = vec[vec[vec[i64]]]()
+
+    # append
+    v = append(v, a)
+    assert repr(v) == "vec[vec[vec[i64]]]([[[11]]])"
+    v = append(v, b)
+    assert len(v) == 2
+
+    # get item
+    assert v[0] == a
+    assert v[1] == b
+
+    # set item
+    v[0] = b
+    assert v[0] == b
+    v[0] = a
+    with assertRaises(IndexError):
+        v[2 + int()]
+    with assertRaises(IndexError):
+        v[2 + int()] = a
+
+    # slicing
+    vv = v[:1]
+    assert len(vv) == 1
+    assert vv[0] == a
+    vv = v[1:]
+    assert len(vv) == 1
+    assert vv[0] == b
+
+    # remove
+    v = remove(v, a)
+    assert len(v) == 1
+    assert v[0] == b
+    v = remove(v, b)
+    assert len(v) == 0
+
+    # pop last
+    v = append(v, a)
+    v = append(v, b)
+    v, x = pop(v)
+    assert len(v) == 1
+    assert v[0] == a
+    assert x == b
+    v, x = pop(v)
+    assert len(v) == 0
+    assert x == a
+    with assertRaises(IndexError):
+        pop(v)
+
+    # pop index
+    v = append(v, a)
+    v = append(v, b)
+    v, x = pop(v, 0)
+    assert len(v) == 1
+    assert v[0] == b
+    assert x == a
+
+    # TODO: box/unbox
