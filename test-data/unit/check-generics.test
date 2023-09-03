@@ -3402,3 +3402,31 @@ reveal_type(dec(g))  # N: Revealed type is "def (builtins.int) -> __main__.Foo[b
 h: Callable[[Unpack[Us]], Foo[int]]
 reveal_type(dec(g))  # N: Revealed type is "def (builtins.int) -> __main__.Foo[builtins.int]"
 [builtins fixtures/list.pyi]
+
+[case testEagerInferenceOfGenericUnionReturn]
+from typing import Generic, TypeVar, Union
+
+T = TypeVar("T")
+
+class Cls(Generic[T]):
+    pass
+
+def inner(c: Cls[T]) -> Union[T, int]:
+    return 1
+
+def outer(c: Cls[T]) -> Union[T, int]:
+    return inner(c)
+
+[case testEagerInferenceOfGenericUnionReturnAsync]
+from typing import Generic, TypeVar, Optional
+
+T = TypeVar("T")
+
+class Cls(Generic[T]):
+    pass
+
+async def inner(c: Cls[T]) -> Optional[T]:
+    return None
+
+async def outer(c: Cls[T]) -> Optional[T]:
+    return await inner(c)
