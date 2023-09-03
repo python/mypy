@@ -92,6 +92,10 @@ PyObject *vec_t_get_item(PyObject *o, Py_ssize_t i) {
         PyObject *item = v.buf->items[i];
         Py_INCREF(item);
         return item;
+    } else if ((size_t)i + (size_t)v.len < (size_t)v.len) {
+        PyObject *item = v.buf->items[i + v.len];
+        Py_INCREF(item);
+        return item;
     } else {
         PyErr_SetString(PyExc_IndexError, "index out of range");
         return NULL;
@@ -132,6 +136,10 @@ PyObject *vec_t_subscript(PyObject *self, PyObject *item) {
             return NULL;
         if ((size_t)i < (size_t)vec.len) {
             PyObject *item = vec.buf->items[i];
+            Py_INCREF(item);
+            return item;
+        } else if ((size_t)i + (size_t)vec.len < (size_t)vec.len) {
+            PyObject *item = vec.buf->items[i + vec.len];
             Py_INCREF(item);
             return item;
         } else {

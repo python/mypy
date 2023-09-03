@@ -78,6 +78,8 @@ PyObject *vec_t_ext_get_item(PyObject *o, Py_ssize_t i) {
     VecTExt v = ((VecTExtObject *)o)->vec;
     if ((size_t)i < (size_t)v.len) {
         return box_vec_item_by_index(v, i);
+    } else if ((size_t)i + (size_t)v.len < (size_t)v.len) {
+        return box_vec_item_by_index(v, i + v.len);
     } else {
         PyErr_SetString(PyExc_IndexError, "index out of range");
         return NULL;
@@ -118,6 +120,8 @@ PyObject *vec_t_ext_subscript(PyObject *self, PyObject *item) {
             return NULL;
         if ((size_t)i < (size_t)vec.len) {
             return box_vec_item_by_index(vec, i);
+        } else if ((size_t)i + (size_t)vec.len < (size_t)vec.len) {
+            return box_vec_item_by_index(vec, i + vec.len);
         } else {
             PyErr_SetString(PyExc_IndexError, "index out of range");
             return NULL;
