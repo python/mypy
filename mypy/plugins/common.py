@@ -295,8 +295,8 @@ def add_overloaded_method_to_class(
     # Create the final OverloadedFuncDef node:
     overload_def = OverloadedFuncDef(funcs)
     overload_def.info = cls.info
-    overload_def.is_class = items[0].is_classmethod
-    overload_def.is_static = items[0].is_staticmethod
+    overload_def.is_class = first_item.is_classmethod
+    overload_def.is_static = first_item.is_staticmethod
     sym = SymbolTableNode(MDEF, overload_def)
     sym.plugin_generated = True
 
