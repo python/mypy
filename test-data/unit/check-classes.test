@@ -7002,10 +7002,10 @@ class Foo(Protocol):
 class A:
     def __new__(cls) -> Foo: ...  # E: Incompatible return type for "__new__" (returns "Foo", but must return a subtype of "A")
 
-reveal_type(A())  # E: Cannot instantiate protocol class "Foo" \
-                  # N: Revealed type is "__main__.Foo"
-reveal_type(A().foo())  # E: Cannot instantiate protocol class "Foo" \
-                        # N: Revealed type is "builtins.str"
+reveal_type(A())  # N: Revealed type is "__main__.Foo"
+reveal_type(A().foo())  # N: Revealed type is "builtins.str"
+
+
 
 [case testNewReturnType14]
 from __future__ import annotations

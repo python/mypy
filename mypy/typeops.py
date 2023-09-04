@@ -193,6 +193,7 @@ def class_callable(
     explicit_type = init_ret_type if is_new else orig_self_type
 
     ret_type: Type = default_ret_type
+    from_type_type = init_type.from_type_type
     if isinstance(explicit_type, (Instance, TupleType, UninhabitedType)):
         if is_new:
             # For a long time, mypy didn't truly believe annotations on __new__
@@ -206,6 +207,7 @@ def class_callable(
                 default_ret_type, explicit_type, ignore_type_params=True
             ) or is_subtype(explicit_type, default_ret_type, ignore_type_params=True):
                 ret_type = explicit_type
+                from_type_type = True
         elif (
             # We have to skip protocols, because it can be a subtype of a return type
             # by accident. Like `Hashable` is a subtype of `object`. See #11799
@@ -223,6 +225,7 @@ def class_callable(
         name=None,
         variables=variables,
         special_sig=special_sig,
+        from_type_type=from_type_type,
     )
     c = callable_type.with_name(info.name)
     return c
