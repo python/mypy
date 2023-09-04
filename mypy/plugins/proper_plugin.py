@@ -1,3 +1,12 @@
+"""
+This plugin is helpful for mypy development itself.
+By default, it is not enabled for mypy users.
+
+It also can be used by plugin developers as a part of their CI checks.
+
+It finds missing ``get_proper_type()`` call, which can lead to multiple errors.
+"""
+
 from __future__ import annotations
 
 from typing import Callable
