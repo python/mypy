@@ -278,7 +278,7 @@ def add_overloaded_method_to_class(
     _prepare_class_namespace(cls, name)
 
     # Create function bodies for each passed method spec.
-    funcs = []
+    funcs: list[Decorator | FuncDef] = []
     for item in items:
         func, _sym = _add_method_by_spec(api, cls.info, name, item)
         if isinstance(func, FuncDef):
