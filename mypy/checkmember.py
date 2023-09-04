@@ -388,7 +388,7 @@ def analyze_type_callable_member_access(name: str, typ: FunctionLike, mx: Member
             # Unfortunately, generic arguments have already been determined for us. We need these,
             # see e.g. testGenericClassMethodUnboundOnClass. So just copy them over to our type.
             # This does the wrong thing with custom __new__, see testNewReturnType15, but is
-            # a lesser evil.
+            # no worse than previous behaviour.
             ret_type = bound_arg.copy_modified(args=ret_type.args)
             self_type = TypeType(ret_type)
 
