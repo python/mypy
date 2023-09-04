@@ -269,10 +269,10 @@ def add_overloaded_method_to_class(
     # Validate that passed items has matching semantics.
     first_item = items[0]
     for item in items:
-        if first_item.is_classmethod and not item.is_classmethod:
-            raise AssertionError("All items must be classemethods")
-        if first_item.is_staticmethod and not item.is_staticmethod:
-            raise AssertionError("All items must be staticmethods")
+        if first_item.is_classmethod != item.is_classmethod:
+            raise AssertionError("Either all items must be classmethods or none")
+        if first_item.is_staticmethod != item.is_staticmethod:
+            raise AssertionError("Either all items must be staticmethods or none")
 
     # Save old definition, if it exists.
     _prepare_class_namespace(cls, name)
