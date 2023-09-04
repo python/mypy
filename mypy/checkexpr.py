@@ -1952,10 +1952,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             isinstance(proper_ret_type, Instance)
             and proper_ret_type.type.fullname == "typing.Coroutine"
         ):
-            proper_ret_type = proper_ret_type.args[-1]
+            proper_ret_type = get_proper_type(proper_ret_type.args[-1])
 
-        if isinstance(proper_ret_type, UnionType) and any(
-            isinstance(t, TypeVarType) for t in proper_ret_type.items
+        proper_ctx_type = get_proper_type(ctx)
+        if (
+            isinstance(proper_ret_type, UnionType)
+            and isinstance(proper_ctx_type, UnionType)
+            and any(isinstance(t, TypeVarType) for t in proper_ret_type.items)
         ):
             # Avoid over eager inference of type variables in unions containing a type variable.
             # See github issue #15886
