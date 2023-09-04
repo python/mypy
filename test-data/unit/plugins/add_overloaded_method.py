@@ -25,7 +25,7 @@ def add_overloaded_method_hook(ctx: ClassDefContext) -> None:
 
 
 def _generate_method_specs(
-    ctx: ClassDefContext, *, is_classmethod: bool = False, is_staticmethod=False
+    ctx: ClassDefContext, *, is_classmethod: bool = False, is_staticmethod: bool = False
 ) -> list[MethodSpec]:
     return [
         MethodSpec(
