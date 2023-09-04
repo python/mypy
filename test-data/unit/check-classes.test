@@ -7007,6 +7007,41 @@ reveal_type(A())  # E: Cannot instantiate protocol class "Foo" \
 reveal_type(A().foo())  # E: Cannot instantiate protocol class "Foo" \
                         # N: Revealed type is "builtins.str"
 
+[case testNewReturnType14]
+from __future__ import annotations
+
+class A:
+    def __new__(cls) -> int: raise  # E: Incompatible return type for "__new__" (returns "int", but must return a subtype of "A")
+
+class B(A):
+    @classmethod
+    def foo(cls) -> int: raise
+
+reveal_type(B.foo())  # N: Revealed type is "builtins.int"
+[builtins fixtures/classmethod.pyi]
+
+[case testNewReturnType15]
+from typing import Generic, Type, TypeVar
+
+T = TypeVar("T")
+
+class A(Generic[T]):
+    def __new__(cls) -> B[int]: ...
+    @classmethod
+    def foo(cls: Type[T]) -> T: ...
+
+class B(A[T]): ...
+
+# These are incorrect, should be Any and str
+# See https://github.com/python/mypy/pull/16020
+reveal_type(B.foo())  # N: Revealed type is "builtins.int"
+reveal_type(B[str].foo())  # N: Revealed type is "builtins.int"
+
+class C(A[str]): ...
+
+reveal_type(C.foo())  # N: Revealed type is "builtins.str"
+[builtins fixtures/classmethod.pyi]
+
 [case testMetaclassPlaceholderNode]
 from sympy.assumptions import ManagedProperties
 from sympy.ops import AssocOp

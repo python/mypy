@@ -1466,7 +1466,7 @@ class Instance(ProperType):
     def copy_modified(
         self,
         *,
-        args: Bogus[list[Type]] = _dummy,
+        args: Bogus[Sequence[Type]] = _dummy,
         last_known_value: Bogus[LiteralType | None] = _dummy,
     ) -> Instance:
         new = Instance(

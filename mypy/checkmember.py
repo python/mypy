@@ -371,8 +371,27 @@ def validate_super_call(node: FuncBase, mx: MemberContext) -> None:
 def analyze_type_callable_member_access(name: str, typ: FunctionLike, mx: MemberContext) -> Type:
     # Class attribute.
     # TODO super?
-    ret_type = typ.items[0].ret_type
+    item = typ.items[0]
+    ret_type = item.ret_type
     assert isinstance(ret_type, ProperType)
+
+    # The following is a hack. mypy often represents types as CallableType, where the signature of
+    # CallableType is determined by __new__ or __init__ of the type (this logic is in
+    # type_object_type). Then if we ever need the TypeInfo or an instance of the type, we fish
+    # around for the return type in CallableType.type_object. Unfortunately, this is incorrect if
+    # __new__ returns an unrelated type, but we can kind of salvage things by fishing around in
+    # CallableType.bound_args
+    self_type: Type = typ
+    if len(item.bound_args) == 1 and item.bound_args[0]:
+        bound_arg = get_proper_type(item.bound_args[0])
+        if isinstance(bound_arg, Instance) and isinstance(ret_type, Instance):
+            # Unfortunately, generic arguments have already been determined for us. We need these,
+            # see e.g. testGenericClassMethodUnboundOnClass. So just copy them over to our type.
+            # This does the wrong thing with custom __new__, see testNewReturnType15, but is
+            # a lesser evil.
+            ret_type = bound_arg.copy_modified(args=ret_type.args)
+            self_type = TypeType(ret_type)
+
     if isinstance(ret_type, TupleType):
         ret_type = tuple_fallback(ret_type)
     if isinstance(ret_type, TypedDictType):
@@ -394,7 +413,11 @@ def analyze_type_callable_member_access(name: str, typ: FunctionLike, mx: Member
             # See https://github.com/python/mypy/pull/1787 for more info.
             # TODO: do not rely on same type variables being present in all constructor overloads.
             result = analyze_class_attribute_access(
-                ret_type, name, mx, original_vars=typ.items[0].variables, mcs_fallback=typ.fallback
+                ret_type,
+                name,
+                mx.copy_modified(self_type=self_type),
+                original_vars=typ.items[0].variables,
+                mcs_fallback=typ.fallback,
             )
             if result:
                 return result
