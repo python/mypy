@@ -51,7 +51,7 @@ from mypy.plugins.common import (
     _get_bool_argument,
     _get_decorator_bool_argument,
     add_attribute_to_class,
-    add_method,
+    add_method_to_class,
     deserialize_and_fixup_type,
 )
 from mypy.server.trigger import make_wildcard_trigger
@@ -952,7 +952,9 @@ class MethodAdder:
         tvd: If the method is generic these should be the type variables.
         """
         self_type = self_type if self_type is not None else self.self_type
-        add_method(self.ctx, method_name, args, ret_type, self_type, tvd)
+        add_method_to_class(
+            self.ctx.api, self.ctx.cls, method_name, args, ret_type, self_type, tvd
+        )
 
 
 def _get_attrs_init_type(typ: Instance) -> CallableType | None:
