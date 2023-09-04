@@ -680,7 +680,10 @@ class SemanticAnalyzer(
         """
         assert tree.fullname == "typing"
         for alias, target_name in type_aliases.items():
-            if type_aliases_source_versions[alias] > self.options.python_version:
+            if (
+                alias in type_aliases_source_versions
+                and type_aliases_source_versions[alias] > self.options.python_version
+            ):
                 # This alias is not available on this Python version.
                 continue
             name = alias.split(".")[-1]
