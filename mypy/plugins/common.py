@@ -266,8 +266,6 @@ def add_overloaded_method_to_class(
     """Adds a new overloaded method to a class definition."""
     assert len(items) >= 2, "Overloads must contain at least two cases"
 
-    _prepare_class_namespace(cls, name)
-
     # Validate that passed items has matching semantics.
     first_item = items[0]
     for item in items:
@@ -275,6 +273,9 @@ def add_overloaded_method_to_class(
             raise AssertionError("All items must be classemethods")
         if first_item.is_staticmethod and not item.is_staticmethod:
             raise AssertionError("All items must be staticmethods")
+
+    # Save old definition, if it exists.
+    _prepare_class_namespace(cls, name)
 
     # Create function bodies for each passed method spec.
     funcs = []
