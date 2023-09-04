@@ -18,10 +18,10 @@ from mypy.nodes import (
     JsonDict,
     NameExpr,
     Node,
+    OverloadedFuncDef,
     PassStmt,
     RefExpr,
     SymbolTableNode,
-    OverloadedFuncDef,
     TypeInfo,
     Var,
 )
@@ -239,14 +239,19 @@ def add_method_to_class(
     """Adds a new method to a class definition."""
     _prepare_class_namespace(cls, name)
 
-    func, sym = _add_method_by_spec(api, cls.info, name, MethodSpec(
-        args=args,
-        return_type=return_type,
-        self_type=self_type,
-        tvar_defs=[tvar_def] if tvar_def else None,
-        is_classmethod=is_classmethod,
-        is_staticmethod=is_staticmethod,
-    ))
+    func, sym = _add_method_by_spec(
+        api,
+        cls.info,
+        name,
+        MethodSpec(
+            args=args,
+            return_type=return_type,
+            self_type=self_type,
+            tvar_defs=[tvar_def] if tvar_def else None,
+            is_classmethod=is_classmethod,
+            is_staticmethod=is_staticmethod,
+        ),
+    )
     cls.info.names[name] = sym
     cls.info.defn.defs.body.append(func)
     return func
