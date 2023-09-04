@@ -244,12 +244,7 @@ def add_method_to_class(
         api,
         cls.info,
         name,
-        MethodSpec(
-            args=args,
-            return_type=return_type,
-            self_type=self_type,
-            tvar_defs=tvar_def,
-        ),
+        MethodSpec(args=args, return_type=return_type, self_type=self_type, tvar_defs=tvar_def),
         is_classmethod=is_classmethod,
         is_staticmethod=is_staticmethod,
     )
