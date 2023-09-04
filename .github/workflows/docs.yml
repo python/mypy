@@ -29,7 +29,7 @@ jobs:
       TOX_SKIP_MISSING_INTERPRETERS: False
       VERIFY_MYPY_ERROR_CODES: 1
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
         with:
           python-version: '3.8'
