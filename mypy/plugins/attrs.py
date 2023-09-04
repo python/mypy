@@ -952,7 +952,9 @@ class MethodAdder:
         tvd: If the method is generic these should be the type variables.
         """
         self_type = self_type if self_type is not None else self.self_type
-        add_method_to_class(self.ctx.api, self.ctx.cls, method_name, args, ret_type, self_type, tvd)
+        add_method_to_class(
+            self.ctx.api, self.ctx.cls, method_name, args, ret_type, self_type, tvd
+        )
 
 
 def _get_attrs_init_type(typ: Instance) -> CallableType | None:
