@@ -10,6 +10,7 @@ from typing_extensions import Literal, TypeAlias as _TypeAlias
 from mypy import errorcodes as codes
 from mypy.errorcodes import IMPORT, IMPORT_NOT_FOUND, IMPORT_UNTYPED, ErrorCode
 from mypy.message_registry import ErrorMessage
+from mypy.nodes import Context
 from mypy.options import Options
 from mypy.scope import Scope
 from mypy.util import DEFAULT_SOURCE_OFFSET, is_typeshed_file
@@ -185,7 +186,7 @@ class ErrorWatcher:
         assert last == self
         return False
 
-    def on_error(self, file: str, info: ErrorInfo) -> bool:
+    def on_error(self, file: str, info: ErrorInfo, *, context: Context | None) -> bool:
         """Handler called when a new error is recorded.
 
         The default implementation just sets the has_new_errors flag
@@ -197,7 +198,7 @@ class ErrorWatcher:
         if isinstance(self._filter, bool):
             should_filter = self._filter
         elif callable(self._filter):
-            should_filter = self._filter(file, info)
+            should_filter = self._filter(file, info, context)
         else:
             raise AssertionError(f"invalid error filter: {type(self._filter)}")
         if should_filter and self._filtered is not None:
@@ -276,6 +277,9 @@ class Errors:
     target_module: str | None = None
     scope: Scope | None = None
 
+    # The current context (for logging in watchers).
+    context: Context | None
+
     # Have we seen an import-related error so far? If yes, we filter out other messages
     # in some cases to avoid reporting huge numbers of errors.
     seen_import_error = False
@@ -310,6 +314,7 @@ class Errors:
         self.has_blockers = set()
         self.scope = None
         self.target_module = None
+        self.context = None
         self.seen_import_error = False
 
     def reset(self) -> None:
@@ -390,6 +395,7 @@ class Errors:
         offset: int = 0,
         end_line: int | None = None,
         end_column: int | None = None,
+        context: Context | None = None,
     ) -> None:
         """Report message at the given line using the current error context.
 
@@ -456,7 +462,12 @@ class Errors:
             origin=(self.file, origin_span),
             target=self.current_target(),
         )
-        self.add_error_info(info)
+        old_context = context
+        try:
+            self.context = context
+            self.add_error_info(info)
+        finally:
+            self.context = old_context
 
     def _add_error_info(self, file: str, info: ErrorInfo) -> None:
         assert file not in self.flushed_files
@@ -481,7 +492,7 @@ class Errors:
         while i > 0:
             i -= 1
             w = self._watchers[i]
-            if w.on_error(file, info):
+            if w.on_error(file, info, context=self.context):
                 return True
         return False
 
