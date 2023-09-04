@@ -17,28 +17,22 @@ class OverloadedMethodPlugin(Plugin):
 def add_overloaded_method_hook(ctx: ClassDefContext) -> None:
     add_overloaded_method_to_class(ctx.api, ctx.cls, "method", _generate_method_specs(ctx))
     add_overloaded_method_to_class(
-        ctx.api, ctx.cls, "clsmethod", _generate_method_specs(ctx, is_classmethod=True)
+        ctx.api, ctx.cls, "clsmethod", _generate_method_specs(ctx), is_classmethod=True
     )
     add_overloaded_method_to_class(
-        ctx.api, ctx.cls, "stmethod", _generate_method_specs(ctx, is_staticmethod=True)
+        ctx.api, ctx.cls, "stmethod", _generate_method_specs(ctx), is_staticmethod=True
     )
 
 
-def _generate_method_specs(
-    ctx: ClassDefContext, *, is_classmethod: bool = False, is_staticmethod: bool = False
-) -> list[MethodSpec]:
+def _generate_method_specs(ctx: ClassDefContext) -> list[MethodSpec]:
     return [
         MethodSpec(
             args=[Argument(Var("arg"), ctx.api.named_type("builtins.int"), None, ARG_POS)],
             return_type=ctx.api.named_type("builtins.str"),
-            is_staticmethod=is_staticmethod,
-            is_classmethod=is_classmethod,
         ),
         MethodSpec(
             args=[Argument(Var("arg"), ctx.api.named_type("builtins.str"), None, ARG_POS)],
             return_type=ctx.api.named_type("builtins.int"),
-            is_staticmethod=is_staticmethod,
-            is_classmethod=is_classmethod,
         ),
     ]
 

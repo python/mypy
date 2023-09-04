@@ -220,8 +220,6 @@ class MethodSpec(NamedTuple):
     return_type: Type
     self_type: Type | None = None
     tvar_defs: list[TypeVarType] | None = None
-    is_classmethod: bool = False
-    is_staticmethod: bool = False
 
 
 def add_method_to_class(
@@ -251,9 +249,9 @@ def add_method_to_class(
             return_type=return_type,
             self_type=self_type,
             tvar_defs=tvar_def,
-            is_classmethod=is_classmethod,
-            is_staticmethod=is_staticmethod,
         ),
+        is_classmethod=is_classmethod,
+        is_staticmethod=is_staticmethod,
     )
     cls.info.names[name] = sym
     cls.info.defn.defs.body.append(func)
@@ -265,17 +263,11 @@ def add_overloaded_method_to_class(
     cls: ClassDef,
     name: str,
     items: list[MethodSpec],
+    is_classmethod: bool = False,
+    is_staticmethod: bool = False,
 ) -> OverloadedFuncDef:
     """Adds a new overloaded method to a class definition."""
     assert len(items) >= 2, "Overloads must contain at least two cases"
-
-    # Validate that passed items has matching semantics.
-    first_item = items[0]
-    for item in items:
-        if first_item.is_classmethod != item.is_classmethod:
-            raise AssertionError("Either all items must be classmethods or none")
-        if first_item.is_staticmethod != item.is_staticmethod:
-            raise AssertionError("Either all items must be staticmethods or none")
 
     # Save old definition, if it exists.
     _prepare_class_namespace(cls, name)
@@ -283,7 +275,14 @@ def add_overloaded_method_to_class(
     # Create function bodies for each passed method spec.
     funcs: list[Decorator | FuncDef] = []
     for item in items:
-        func, _sym = _add_method_by_spec(api, cls.info, name, item)
+        func, _sym = _add_method_by_spec(
+            api,
+            cls.info,
+            name=name,
+            spec=item,
+            is_classmethod=is_classmethod,
+            is_staticmethod=is_staticmethod,
+        )
         if isinstance(func, FuncDef):
             var = Var(func.name, func.type)
             var.set_line(func.line)
@@ -299,8 +298,8 @@ def add_overloaded_method_to_class(
     # Create the final OverloadedFuncDef node:
     overload_def = OverloadedFuncDef(funcs)
     overload_def.info = cls.info
-    overload_def.is_class = first_item.is_classmethod
-    overload_def.is_static = first_item.is_staticmethod
+    overload_def.is_class = is_classmethod
+    overload_def.is_static = is_staticmethod
     sym = SymbolTableNode(MDEF, overload_def)
     sym.plugin_generated = True
 
@@ -333,8 +332,11 @@ def _add_method_by_spec(
     info: TypeInfo,
     name: str,
     spec: MethodSpec,
+    *,
+    is_classmethod: bool,
+    is_staticmethod: bool,
 ) -> tuple[FuncDef | Decorator, SymbolTableNode]:
-    args, return_type, self_type, tvar_defs, is_classmethod, is_staticmethod = spec
+    args, return_type, self_type, tvar_defs = spec
 
     assert not (
         is_classmethod is True and is_staticmethod is True
