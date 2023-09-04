@@ -138,9 +138,7 @@ type_aliases: Final = {
 
 # This keeps track of the oldest supported Python version where the corresponding
 # alias source is available.
-type_aliases_source_versions: Final = {
-    "typing.LiteralString": (3, 11),
-}
+type_aliases_source_versions: Final = {"typing.LiteralString": (3, 11)}
 
 # This keeps track of aliases in `typing_extensions`, which we treat specially.
 typing_extensions_aliases: Final = {
