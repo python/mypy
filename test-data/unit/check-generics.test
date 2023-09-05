@@ -573,7 +573,7 @@ def func(x: IntNode[T]) -> IntNode[T]:
     return x
 reveal_type(func) # N: Revealed type is "def [T] (x: __main__.Node[builtins.int, T`-1]) -> __main__.Node[builtins.int, T`-1]"
 
-func(1) # E: Argument 1 to "func" has incompatible type "int"; expected "Node[int, <nothing>]"
+func(1) # E: Argument 1 to "func" has incompatible type "int"; expected "Node[int, Never]"
 func(Node('x', 1)) # E: Argument 1 to "Node" has incompatible type "str"; expected "int"
 reveal_type(func(Node(1, 'x'))) # N: Revealed type is "__main__.Node[builtins.int, builtins.str]"
 
@@ -834,7 +834,7 @@ reveal_type(x) # N: Revealed type is "builtins.int"
 def f2(x: IntTP[T]) -> IntTP[T]:
     return x
 
-f2((1, 2, 3)) # E: Argument 1 to "f2" has incompatible type "Tuple[int, int, int]"; expected "Tuple[int, <nothing>]"
+f2((1, 2, 3)) # E: Argument 1 to "f2" has incompatible type "Tuple[int, int, int]"; expected "Tuple[int, Never]"
 reveal_type(f2((1, 'x'))) # N: Revealed type is "Tuple[builtins.int, builtins.str]"
 
 [builtins fixtures/for.pyi]
@@ -904,7 +904,7 @@ n.y = 'x' # E: Incompatible types in assignment (expression has type "str", vari
 def f(x: Node[T, T]) -> TupledNode[T]:
     return Node(x.x, (x.x, x.x))
 
-f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Node[<nothing>, <nothing>]"
+f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Node[Never, Never]"
 f(Node(1, 'x')) # E: Cannot infer type argument 1 of "f"
 reveal_type(Node('x', 'x')) # N: Revealed type is "a.Node[builtins.str, builtins.str]"
 
@@ -2279,7 +2279,7 @@ class Box(Generic[T]):
 
 class IteratorBox(Box[Iterator[T]]): ...
 
-@IteratorBox.wrap  # E: Argument 1 to "wrap" of "Box" has incompatible type "Callable[[], int]"; expected "Callable[[], Iterator[<nothing>]]"
+@IteratorBox.wrap  # E: Argument 1 to "wrap" of "Box" has incompatible type "Callable[[], int]"; expected "Callable[[], Iterator[Never]]"
 def g() -> int:
     ...
 [builtins fixtures/classmethod.pyi]
@@ -3034,8 +3034,8 @@ def id2(x: V) -> V:
 reveal_type(dec1(id1))  # N: Revealed type is "def [S <: __main__.B] (S`1) -> builtins.list[S`1]"
 reveal_type(dec1(id2))  # N: Revealed type is "def [S in (builtins.int, builtins.str)] (S`3) -> builtins.list[S`3]"
 reveal_type(dec2(id1))  # N: Revealed type is "def [UC <: __main__.C] (UC`5) -> builtins.list[UC`5]"
-reveal_type(dec2(id2))  # N: Revealed type is "def (<nothing>) -> builtins.list[<nothing>]" \
-                        # E: Argument 1 to "dec2" has incompatible type "Callable[[V], V]"; expected "Callable[[<nothing>], <nothing>]"
+reveal_type(dec2(id2))  # N: Revealed type is "def (Never) -> builtins.list[Never]" \
+                        # E: Argument 1 to "dec2" has incompatible type "Callable[[V], V]"; expected "Callable[[Never], Never]"
 
 [case testInferenceAgainstGenericLambdas]
 # flags: --new-type-inference
@@ -3360,7 +3360,6 @@ class Foo(Generic[Unpack[Ts]]): ...
 class Bar(Generic[Unpack[Ts], T]): ...
 
 def dec(f: Callable[[Unpack[Ts]], T]) -> Callable[[Unpack[Ts]], List[T]]: ...
-# TODO: do not crash on Foo[Us] (with missing Unpack), instead give an error.
 def f(*args: Unpack[Us]) -> Foo[Unpack[Us]]: ...
 reveal_type(dec(f))  # N: Revealed type is "def [Ts] (*Unpack[Ts`1]) -> builtins.list[__main__.Foo[Unpack[Ts`1]]]"
 g: Callable[[Unpack[Us]], Foo[Unpack[Us]]]

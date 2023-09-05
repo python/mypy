@@ -52,8 +52,8 @@ c: C
 
 f(c)       # E: Argument 1 to "f" has incompatible type "C"; expected "A"
 f(a, b, c) # E: Argument 3 to "f" has incompatible type "C"; expected "A"
-f(g())     # E: "g" does not return a value
-f(a, g())  # E: "g" does not return a value
+f(g())     # E: "g" does not return a value (it only ever returns None)
+f(a, g())  # E: "g" does not return a value (it only ever returns None)
 f()
 f(a)
 f(b)
@@ -604,27 +604,27 @@ class B: pass
 if int():
     a, aa = G().f(*[a]) \
       # E: Incompatible types in assignment (expression has type "List[A]", variable has type "A") \
-      # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "List[A]") \
+      # E: Incompatible types in assignment (expression has type "List[Never]", variable has type "List[A]") \
       # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
       # N: Consider using "Sequence" instead, which is covariant
 
 if int():
-    aa, a = G().f(*[a]) # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "A")
+    aa, a = G().f(*[a]) # E: Incompatible types in assignment (expression has type "List[Never]", variable has type "A")
 if int():
     ab, aa = G().f(*[a]) \
-      # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "List[A]") \
+      # E: Incompatible types in assignment (expression has type "List[Never]", variable has type "List[A]") \
       # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
       # N: Consider using "Sequence" instead, which is covariant \
       # E: Argument 1 to "f" of "G" has incompatible type "*List[A]"; expected "B"
 
 if int():
     ao, ao = G().f(*[a]) \
-      # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "List[object]") \
+      # E: Incompatible types in assignment (expression has type "List[Never]", variable has type "List[object]") \
       # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
       # N: Consider using "Sequence" instead, which is covariant
 if int():
     aa, aa = G().f(*[a]) \
-      # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "List[A]") \
+      # E: Incompatible types in assignment (expression has type "List[Never]", variable has type "List[A]") \
       # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
       # N: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/list.pyi]
@@ -775,7 +775,7 @@ class Person(TypedDict):
     name: str
     age: int
 
-def foo(x: Unpack[Person]) -> None:  # E: "Person" cannot be unpacked (must be tuple or TypeVarTuple)
+def foo(x: Unpack[Person]) -> None:  # E: Unpack is only valid in a variadic position
     ...
 def bar(x: int, *args: Unpack[Person]) -> None:  # E: "Person" cannot be unpacked (must be tuple or TypeVarTuple)
     ...

@@ -247,7 +247,7 @@ class CheckerPluginInterface:
 
     @abstractmethod
     def named_generic_type(self, name: str, args: list[Type]) -> Instance:
-        """Construct an instance of a builtin type with given type arguments."""
+        """Construct an instance of a generic type with given type arguments."""
         raise NotImplementedError
 
     @abstractmethod

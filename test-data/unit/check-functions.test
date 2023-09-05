@@ -250,7 +250,7 @@ if int():
 if int():
     f = o   # E: Incompatible types in assignment (expression has type "object", variable has type "Callable[[], None]")
 if int():
-    f = f() # E: Function does not return a value
+    f = f() # E: Function does not return a value (it only ever returns None)
 
 if int():
     f = f
@@ -3158,3 +3158,20 @@ class C(A, B):
 class D(A, B):
     def f(self, z: int) -> str: pass  # E: Method "f" is not using @override but is overriding a method in class "__main__.A"
 [typing fixtures/typing-override.pyi]
+
+[case testCallableProperty]
+from typing import Callable
+
+class something_callable:
+    def __call__(self, fn) -> str: ...
+
+def decorator(fn: Callable[..., int]) -> something_callable: ...
+
+class A:
+    @property
+    @decorator
+    def f(self) -> int: ...
+
+reveal_type(A.f)  # N: Revealed type is "__main__.something_callable"
+reveal_type(A().f)  # N: Revealed type is "builtins.str"
+[builtins fixtures/property.pyi]

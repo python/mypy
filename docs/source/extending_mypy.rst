@@ -237,3 +237,12 @@ mypy's cache for that module so that it can be rechecked. This hook
 should be used to report to mypy any relevant configuration data,
 so that mypy knows to recheck the module if the configuration changes.
 The hooks should return data encodable as JSON.
+
+Useful tools
+************
+
+Mypy ships ``mypy.plugins.proper_plugin`` plugin which can be useful
+for plugin authors, since it finds missing ``get_proper_type()`` calls,
+which is a pretty common mistake.
+
+It is recommended to enable it is a part of your plugin's CI.

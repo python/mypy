@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Iterable, Sequence, Tuple
+from typing import Iterable, Sequence
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints
@@ -300,8 +300,8 @@ def choose_free(
     common_upper_bound_p = get_proper_type(common_upper_bound)
     # We include None for when strict-optional is disabled.
     if isinstance(common_upper_bound_p, (UninhabitedType, NoneType)):
-        # This will cause to infer <nothing>, which is better than a free TypeVar
-        # that has an upper bound <nothing>.
+        # This will cause to infer Never, which is better than a free TypeVar
+        # that has an upper bound Never.
         return None
 
     values: list[Type] = []
@@ -333,7 +333,7 @@ def is_trivial_bound(tp: ProperType) -> bool:
     return isinstance(tp, Instance) and tp.type.fullname == "builtins.object"
 
 
-def find_linear(c: Constraint) -> Tuple[bool, TypeVarId | None]:
+def find_linear(c: Constraint) -> tuple[bool, TypeVarId | None]:
     """Find out if this constraint represent a linear relationship, return target id if yes."""
     if isinstance(c.origin_type_var, TypeVarType):
         if isinstance(c.target, TypeVarType):

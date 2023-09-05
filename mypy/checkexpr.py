@@ -168,7 +168,7 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
-    flatten_nested_tuples,
+    find_unpack_in_list,
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
@@ -185,7 +185,6 @@ from mypy.types_utils import (
 )
 from mypy.typestate import type_state
 from mypy.typevars import fill_typevars
-from mypy.typevartuples import find_unpack_in_list
 from mypy.util import split_module_names
 from mypy.visitor import ExpressionVisitor
 
@@ -1600,7 +1599,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         See the docstring of check_call for more information.
         """
         # Always unpack **kwargs before checking a call.
-        callee = callee.with_unpacked_kwargs()
+        callee = callee.with_unpacked_kwargs().with_normalized_var_args()
         if callable_name is None and callee.name:
             callable_name = callee.name
         ret_type = get_proper_type(callee.ret_type)
@@ -1988,7 +1987,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 )
 
             arg_pass_nums = self.get_arg_infer_passes(
-                callee_type.arg_types, formal_to_actual, len(args)
+                callee_type, args, arg_types, formal_to_actual, len(args)
             )
 
             pass1_args: list[Type | None] = []
@@ -2002,6 +2001,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 callee_type,
                 pass1_args,
                 arg_kinds,
+                arg_names,
                 formal_to_actual,
                 context=self.argument_infer_context(),
                 strict=self.chk.in_checked_function(),
@@ -2062,6 +2062,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     callee_type,
                     arg_types,
                     arg_kinds,
+                    arg_names,
                     formal_to_actual,
                     context=self.argument_infer_context(),
                     strict=self.chk.in_checked_function(),
@@ -2079,7 +2080,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 ):
                     freeze_all_type_vars(applied)
                     return applied
-                # If it didn't work, erase free variables as <nothing>, to avoid confusing errors.
+                # If it didn't work, erase free variables as uninhabited, to avoid confusing errors.
                 unknown = UninhabitedType()
                 unknown.ambiguous = True
                 inferred_args = [
@@ -2141,6 +2142,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             callee_type,
             arg_types,
             arg_kinds,
+            arg_names,
             formal_to_actual,
             context=self.argument_infer_context(),
         )
@@ -2153,7 +2155,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         )
 
     def get_arg_infer_passes(
-        self, arg_types: list[Type], formal_to_actual: list[list[int]], num_actuals: int
+        self,
+        callee: CallableType,
+        args: list[Expression],
+        arg_types: list[Type],
+        formal_to_actual: list[list[int]],
+        num_actuals: int,
     ) -> list[int]:
         """Return pass numbers for args for two-pass argument type inference.
 
@@ -2164,8 +2171,32 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         lambdas more effectively.
         """
         res = [1] * num_actuals
-        for i, arg in enumerate(arg_types):
-            if arg.accept(ArgInferSecondPassQuery()):
+        for i, arg in enumerate(callee.arg_types):
+            skip_param_spec = False
+            p_formal = get_proper_type(callee.arg_types[i])
+            if isinstance(p_formal, CallableType) and p_formal.param_spec():
+                for j in formal_to_actual[i]:
+                    p_actual = get_proper_type(arg_types[j])
+                    # This is an exception from the usual logic where we put generic Callable
+                    # arguments in the second pass. If we have a non-generic actual, it is
+                    # likely to infer good constraints, for example if we have:
+                    #   def run(Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None: ...
+                    #   def test(x: int, y: int) -> int: ...
+                    #   run(test, 1, 2)
+                    # we will use `test` for inference, since it will allow to infer also
+                    # argument *names* for P <: [x: int, y: int].
+                    if isinstance(p_actual, Instance):
+                        call_method = find_member("__call__", p_actual, p_actual, is_operator=True)
+                        if call_method is not None:
+                            p_actual = get_proper_type(call_method)
+                    if (
+                        isinstance(p_actual, CallableType)
+                        and not p_actual.variables
+                        and not isinstance(args[j], LambdaExpr)
+                    ):
+                        skip_param_spec = True
+                        break
+            if not skip_param_spec and arg.accept(ArgInferSecondPassQuery()):
                 for j in formal_to_actual[i]:
                     res[j] = 2
         return res
@@ -2409,7 +2440,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                 + unpacked_type.items[inner_unpack_index + 1 :]
                             )
                             callee_arg_kinds = [ARG_POS] * len(actuals)
+                    elif isinstance(unpacked_type, TypeVarTupleType):
+                        callee_arg_types = [orig_callee_arg_type]
+                        callee_arg_kinds = [ARG_STAR]
                     else:
+                        # TODO: Any and Never can appear in Unpack (as a result of user error),
+                        # fail gracefully here and elsewhere (and/or normalize them away).
                         assert isinstance(unpacked_type, Instance)
                         assert unpacked_type.type.fullname == "builtins.tuple"
                         callee_arg_types = [unpacked_type.args[0]] * len(actuals)
@@ -4271,6 +4307,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             allow_none_return=True,
             always_allow_any=True,
         )
+        if self.chk.current_node_deferred:
+            return source_type
+
         target_type = expr.type
         proper_source_type = get_proper_type(source_type)
         if (
@@ -4448,7 +4487,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         prefix = next(i for (i, v) in enumerate(vars) if isinstance(v, TypeVarTupleType))
         suffix = len(vars) - prefix - 1
-        args = flatten_nested_tuples(args)
         if len(args) < len(vars) - 1:
             self.msg.incompatible_type_application(len(vars), len(args), ctx)
             return [AnyType(TypeOfAny.from_error)] * len(vars)
@@ -4897,7 +4935,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.chk.fail(message_registry.CANNOT_INFER_LAMBDA_TYPE, e)
             return None, None
 
-        return callable_ctx, callable_ctx
+        # Type of lambda must have correct argument names, to prevent false
+        # negatives when lambdas appear in `ParamSpec` context.
+        return callable_ctx.copy_modified(arg_names=e.arg_names), callable_ctx
 
     def visit_super_expr(self, e: SuperExpr) -> Type:
         """Type check a super expression (non-lvalue)."""
@@ -5915,6 +5955,7 @@ class ArgInferSecondPassQuery(types.BoolTypeQuery):
         super().__init__(types.ANY_STRATEGY)
 
     def visit_callable_type(self, t: CallableType) -> bool:
+        # TODO: we need to check only for type variables of original callable.
         return self.query_types(t.arg_types) or t.accept(HasTypeVarQuery())
 
 

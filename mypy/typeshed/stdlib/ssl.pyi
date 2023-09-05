@@ -201,12 +201,13 @@ class Options(enum.IntFlag):
     OP_NO_RENEGOTIATION: int
     if sys.version_info >= (3, 8):
         OP_ENABLE_MIDDLEBOX_COMPAT: int
-        if sys.platform == "linux":
-            OP_IGNORE_UNEXPECTED_EOF: int
     if sys.version_info >= (3, 12):
         OP_LEGACY_SERVER_CONNECT: int
     if sys.version_info >= (3, 12) and sys.platform != "linux":
         OP_ENABLE_KTLS: int
+    if sys.version_info >= (3, 11):
+        OP_IGNORE_UNEXPECTED_EOF: int
+    elif sys.version_info >= (3, 8) and sys.platform == "linux":
         OP_IGNORE_UNEXPECTED_EOF: int
 
 OP_ALL: Options
@@ -224,12 +225,13 @@ OP_NO_TICKET: Options
 OP_NO_RENEGOTIATION: Options
 if sys.version_info >= (3, 8):
     OP_ENABLE_MIDDLEBOX_COMPAT: Options
-    if sys.platform == "linux":
-        OP_IGNORE_UNEXPECTED_EOF: Options
 if sys.version_info >= (3, 12):
     OP_LEGACY_SERVER_CONNECT: Options
 if sys.version_info >= (3, 12) and sys.platform != "linux":
     OP_ENABLE_KTLS: Options
+if sys.version_info >= (3, 11):
+    OP_IGNORE_UNEXPECTED_EOF: Options
+elif sys.version_info >= (3, 8) and sys.platform == "linux":
     OP_IGNORE_UNEXPECTED_EOF: Options
 
 HAS_NEVER_CHECK_COMMON_NAME: bool
@@ -436,7 +438,7 @@ class SSLContext:
         server_side: bool = False,
         do_handshake_on_connect: bool = True,
         suppress_ragged_eofs: bool = True,
-        server_hostname: str | None = None,
+        server_hostname: str | bytes | None = None,
         session: SSLSession | None = None,
     ) -> SSLSocket: ...
     def wrap_bio(
@@ -444,7 +446,7 @@ class SSLContext:
         incoming: MemoryBIO,
         outgoing: MemoryBIO,
         server_side: bool = False,
-        server_hostname: str | None = None,
+        server_hostname: str | bytes | None = None,
         session: SSLSession | None = None,
     ) -> SSLObject: ...
     def session_stats(self) -> dict[str, int]: ...

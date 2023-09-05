@@ -167,6 +167,7 @@ a.bf(False)
 b.bf(False)
 a.bf(1)
 b.bf(1)
+import typedpkg_ns.whatever as c  # type: ignore[import-untyped]
 [out]
 testNamespacePkgWStubs.py:4: error: Skipping analyzing "typedpkg_ns.b.bbb": module is installed, but missing library stubs or py.typed marker
 testNamespacePkgWStubs.py:4: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports

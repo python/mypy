@@ -896,6 +896,16 @@ match m:
         reveal_type(i)
         reveal_type(j)
 
+[case testMatchClassPatternAny]
+from typing import Any
+
+Foo: Any
+m: object
+
+match m:
+    case Foo():
+        pass
+
 [case testMatchClassPatternNestedGenerics]
 # From cpython test_patma.py
 x = [[{0: 0}]]
@@ -1144,7 +1154,7 @@ m: str
 
 match m:
     case a if a := 1:  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
-        reveal_type(a)  # N: Revealed type is "<nothing>"
+        reveal_type(a)  # N: Revealed type is "Never"
 
 [case testMatchAssigningPatternGuard]
 m: str

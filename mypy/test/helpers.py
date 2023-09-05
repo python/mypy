@@ -241,7 +241,9 @@ def num_skipped_suffix_lines(a1: list[str], a2: list[str]) -> int:
 
 
 def testfile_pyversion(path: str) -> tuple[int, int]:
-    if path.endswith("python311.test"):
+    if path.endswith("python312.test"):
+        return 3, 12
+    elif path.endswith("python311.test"):
         return 3, 11
     elif path.endswith("python310.test"):
         return 3, 10

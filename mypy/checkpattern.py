@@ -462,6 +462,12 @@ class PatternChecker(PatternVisitor[PatternType]):
             typ: Type = Instance(type_info, [any_type] * len(type_info.defn.type_vars))
         elif isinstance(type_info, TypeAlias):
             typ = type_info.target
+        elif (
+            isinstance(type_info, Var)
+            and type_info.type is not None
+            and isinstance(get_proper_type(type_info.type), AnyType)
+        ):
+            typ = type_info.type
         else:
             if isinstance(type_info, Var) and type_info.type is not None:
                 name = type_info.type.str_with_options(self.options)

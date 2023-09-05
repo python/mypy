@@ -113,6 +113,5 @@ def instance_to_type_environment(instance: Instance) -> dict[TypeVarId, Type]:
     required number of type arguments.  So this environment consists
     of the class's type variables mapped to the Instance's actual
     arguments.  The type variables are mapped by their `id`.
-
     """
     return {binder.id: arg for binder, arg in zip(instance.type.defn.type_vars, instance.args)}
