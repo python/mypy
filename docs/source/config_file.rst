@@ -816,12 +816,12 @@ These options may only be set in the global section (``[mypy]``).
 
     Show absolute paths to files.
 
-.. confval:: force_lowercase_builtins
+.. confval:: force_uppercase_builtins
 
     :type: boolean
     :default: False
 
-    Force to use ``List`` instead of ``list`` .
+    Force to use ``List`` instead of ``list``.
 
 .. confval:: force_union_syntax
 
