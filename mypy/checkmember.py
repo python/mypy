@@ -378,8 +378,8 @@ def analyze_type_callable_member_access(name: str, typ: FunctionLike, mx: Member
     # The following is a hack. mypy often represents types as CallableType, where the signature of
     # CallableType is determined by __new__ or __init__ of the type (this logic is in
     # type_object_type). Then if we ever need the TypeInfo or an instance of the type, we fish
-    # around for the return type in CallableType.type_object. Unfortunately, this is incorrect if
-    # __new__ returns an unrelated type, but we can kind of salvage things by fishing around in
+    # around for the return type, e.g. in CallableType.type_object. Unfortunately, this is incorrect
+    # if __new__ returns an unrelated type, but we can kind of salvage things here using
     # CallableType.bound_args
     self_type: Type = typ
     if len(item.bound_args) == 1 and item.bound_args[0]:
