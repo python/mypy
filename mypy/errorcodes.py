@@ -237,6 +237,9 @@ REDUNDANT_SELF_TYPE = ErrorCode(
     "General",
     default_enabled=False,
 )
+UNSAFE_OVERLOAD: Final[ErrorCode] = ErrorCode(
+    "unsafe-overload", "Warn if multiple @overload variants overlap in unsafe ways", "General"
+)
 USED_BEFORE_DEF: Final[ErrorCode] = ErrorCode(
     "used-before-def", "Warn about variables that are used before they are defined", "General"
 )
