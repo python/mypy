@@ -5471,9 +5471,9 @@
 <v t="ekr.20230831011819.4"></v>
 <v t="ekr.20230831011819.6"></v>
 <v t="ekr.20230831011819.169"></v>
+<v t="ekr.20230831011820.2011"></v>
 <v t="ekr.20230831011820.87"></v>
 <v t="ekr.20230831011819.530"></v>
-<v t="ekr.20230831011820.2011"></v>
 </vnodes>
 <tnodes>
 <t tx="ekr.20230613022138.1"># Disable flake8 tests</t>
@@ -29670,6 +29670,8 @@ def frame_context(
     elif self.has_abstract_type_part(caller_type, callee_type):
         self.msg.concrete_only_call(callee_type, context)
     elif not is_subtype(caller_type, callee_type, options=self.chk.options):
+        from leo.core import leoGlobals as g  ###
+        g.trace(g.callers(8))  ###
         code = self.msg.incompatible_argument(
             n,
             m,
@@ -78468,7 +78470,6 @@ def lookup_fully_qualified_or_none(self, name: str) -&gt; SymbolTableNode | None
                     quote_type_string(expected_type_str),
                 )
             else:
-                g.trace(g.callers(8))  ###
                 msg = "Argument {} {}has incompatible type {}; expected {}".format(
                     arg_label,
                     target,
@@ -93635,8 +93636,15 @@ test_add('a', 'b')  # Should create error.</t>
 <t tx="ekr.20230907082251.1"></t>
 <t tx="ekr.20230907082305.1">@language rest
 
-*** sitecustomize must add path to ekr-mypy2 to *start* of sys.path.
-    Otherwise __main__.py will use the version from Lib/site-packages/mypy!
+Startup:
+
+1. __main__.py adds 'ekr-mypy2' to *start* of sys.path.
+   Otherwise __main__.py woulduse code from Lib/site-packages/mypy!
+  
+2. ExpressionChecker.check_arg generates the two error messages in ekr_test.py.
+   The callers:
+   visit_expression_stmt,accept,visit_call_expr,visit_call_expr_inner,
+   check_call_expr_with_callee_type,check_call,check_callable_call,check_argument_types
 
 @language python
 </t>
