@@ -1601,8 +1601,8 @@ class MessageBuilder:
 
     def overloaded_signatures_overlap(self, index1: int, index2: int, context: Context) -> None:
         self.fail(
-            f"Overloaded function signatures {index1} and {index2} overlap with incompatible return types",
-            # "See https://mypy.readthedocs.io/en/stable/more_types.html#type-checking-the-variants.",
+            "Overloaded function signatures {} and {} overlap with "
+            "incompatible return types".format(index1, index2),
             context,
             code=codes.UNSAFE_OVERLOAD,
         )
