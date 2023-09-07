@@ -1058,12 +1058,19 @@ T = TypeVar('T')
 def my_decorator(t: Any) -> Any:
     raise
 
-@my_decorator()()  # E: Missing positional argument "t" in call to "my_decorator"
+@my_decorator()()
 class C:
     pass
 
 obj = C()
-_ = obj.magic  # E: "C" has no attribute "magic"
+_ = obj.magic
+[out]
+main:8: error: invalid syntax
+
+[out version>=3.9]
+main:8: error: Missing positional argument "t" in call to "my_decorator"
+main:13: error: "C" has no attribute "magic"
+
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/class_decorator_hook_2.py
