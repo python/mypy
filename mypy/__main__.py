@@ -11,9 +11,8 @@ if 1:  ### EKR ###
     print('*** ekr-mypy2 ***')
     print('')
     repo_path = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
-    print('repo_path', repo_path)
     if repo_path not in sys.path:
-        print(f"Add {repo_path!r} to sys.path")
+        # print(f"Add {repo_path!r} to sys.path")
         sys.path.insert(0, repo_path)
 
 from mypy.main import main, process_options
