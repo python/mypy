@@ -6,11 +6,12 @@ import os
 import sys
 import traceback
 
-if 1:  ###
+if 1:  ### EKR ###
     print('')
     print('*** ekr-mypy2 ***')
     print('')
-    repo_path = os.path.dirname(os.path.join('..', __file__))
+    repo_path = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
+    print('repo_path', repo_path)
     if repo_path not in sys.path:
         print(f"Add {repo_path!r} to sys.path")
         sys.path.insert(0, repo_path)

@@ -5460,7 +5460,6 @@
 <v t="ekr.20230907082344.1"></v>
 </v>
 <v t="ekr.20230907122234.1"><vh>--- startup</vh>
-<v t="ekr.20230831011819.4"></v>
 <v t="ekr.20230831011819.1611"></v>
 <v t="ekr.20230831011819.1612"></v>
 <v t="ekr.20230831011819.62"></v>
@@ -5469,6 +5468,8 @@
 <v t="ekr.20230831011819.166"></v>
 <v t="ekr.20230831011819.169"></v>
 </v>
+<v t="ekr.20230831011819.4"></v>
+<v t="ekr.20230831011819.6"></v>
 <v t="ekr.20230831011819.169"></v>
 <v t="ekr.20230831011820.87"></v>
 <v t="ekr.20230831011819.530"></v>
@@ -25858,11 +25859,12 @@ import os
 import sys
 import traceback
 
-if 1:  ###
+if 1:  ### EKR ###
     print('')
     print('*** ekr-mypy2 ***')
     print('')
-    repo_path = os.path.dirname(os.path.join('..', __file__))
+    repo_path = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
+    print('repo_path', repo_path)
     if repo_path not in sys.path:
         print(f"Add {repo_path!r} to sys.path")
         sys.path.insert(0, repo_path)
@@ -78467,7 +78469,7 @@ def lookup_fully_qualified_or_none(self, name: str) -&gt; SymbolTableNode | None
                     quote_type_string(expected_type_str),
                 )
             else:
-                g.trace(g.callers(8))
+                g.trace(g.callers(8))  ###
                 msg = "Argument {} {}has incompatible type {}; expected {}".format(
                     arg_label,
                     target,
