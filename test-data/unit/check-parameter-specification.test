@@ -1936,6 +1936,32 @@ reveal_type(m.return_me())  # N: Revealed type is "def (arg1: builtins.int, arg2
 reveal_type(m.return_part())  # N: Revealed type is "def (arg2: builtins.str) -> builtins.bool"
 [builtins fixtures/paramspec.pyi]
 
+[case testParamSpecInferenceCallableAgainstAny]
+from typing import Callable, TypeVar, Any
+from typing_extensions import ParamSpec, Concatenate
+
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
+
+class A: ...
+a = A()
+
+def a_func(
+    func: Callable[Concatenate[A, _P], _R],
+) -> Callable[Concatenate[Any, _P], _R]:
+    def wrapper(__a: Any, *args: _P.args, **kwargs: _P.kwargs) -> _R:
+        return func(a, *args, **kwargs)
+    return wrapper
+
+def test(a, *args): ...
+x: Any
+y: object
+
+a_func(test)
+x = a_func(test)
+y = a_func(test)
+[builtins fixtures/paramspec.pyi]
+
 [case testParamSpecInferenceWithCallbackProtocol]
 from typing import Protocol, Callable, ParamSpec
 

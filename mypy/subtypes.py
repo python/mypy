@@ -1509,9 +1509,7 @@ def are_parameters_compatible(
     # Treat "def _(*a: Any, **kw: Any) -> X" similarly to "Callable[..., X]"
     if are_trivial_parameters(right):
         return True
-
-    # Parameters should not contain nested ParamSpec, so erasure doesn't make them less general.
-    trivial_suffix = isinstance(right, CallableType) and right.erased and is_trivial_suffix(right)
+    trivial_suffix = is_trivial_suffix(right)
 
     # Match up corresponding arguments and check them for compatibility. In
     # every pair (argL, argR) of corresponding arguments from L and R, argL must
