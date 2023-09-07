@@ -8,6 +8,10 @@ on:
   pull_request:
     paths:
     - 'docs/**'
+    # We now have a docs check that fails if any error codes don't have documentation,
+    # so it's important to do the docs build on all PRs touching mypy/errorcodes.py
+    # in case somebody's adding a new error code without any docs
+    - 'mypy/errorcodes.py'
     - 'mypyc/doc/**'
     - '**/*.rst'
     - '**/*.md'
