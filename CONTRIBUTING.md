@@ -110,16 +110,8 @@ tox -e dev -- mypy --verbose test_case.py
 tox -e dev --override testenv:dev.allowlist_externals+=env -- env  # inspect the environment
 ```
 
-If you don't already have `tox` installed, you can use a virtual environment.
-
-``` bash
-# On Windows, the commands may be slightly different. For more details, see
-# https://docs.python.org/3/library/venv.html#creating-virtual-environments
-python3 -m venv venv
-source venv/bin/activate
-python3 -m pip install tox
-hash -r  # This resets shell PATH cache, not necessary on Windows
-```
+If you don't already have `tox` installed, you can use a virtual environment as
+described above to install `tox` via `pip` (e.g., ``python3 -m pip install tox``).
 
 ## First time contributors
 
