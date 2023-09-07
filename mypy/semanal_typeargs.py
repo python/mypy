@@ -18,7 +18,6 @@ from mypy.nodes import ARG_STAR, Block, ClassDef, Context, FakeInfo, FuncItem, M
 from mypy.options import Options
 from mypy.scope import Scope
 from mypy.subtypes import is_same_type, is_subtype
-from mypy.typeanal import fix_type_var_tuple_argument, set_any_tvars
 from mypy.types import (
     AnyType,
     CallableType,
@@ -88,36 +87,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
             # types, since errors there have already been reported.
             return
         self.seen_aliases.add(t)
-        # Some recursive aliases may produce spurious args. In principle this is not very
-        # important, as we would simply ignore them when expanding, but it is better to keep
-        # correct aliases. Also, variadic aliases are better to check when fully analyzed,
-        # so we do this here.
         assert t.alias is not None, f"Unfixed type alias {t.type_ref}"
-        # TODO: consider moving this validation to typeanal.py, expanding invalid aliases
-        # during semantic analysis may cause crashes.
-        if t.alias.tvar_tuple_index is not None:
-            correct = len(t.args) >= len(t.alias.alias_tvars) - 1
-            if any(
-                isinstance(a, UnpackType) and isinstance(get_proper_type(a.type), Instance)
-                for a in t.args
-            ):
-                correct = True
-        else:
-            correct = len(t.args) == len(t.alias.alias_tvars)
-        if not correct:
-            if t.alias.tvar_tuple_index is not None:
-                exp_len = f"at least {len(t.alias.alias_tvars) - 1}"
-            else:
-                exp_len = f"{len(t.alias.alias_tvars)}"
-            self.fail(
-                "Bad number of arguments for type alias,"
-                f" expected: {exp_len}, given: {len(t.args)}",
-                t,
-                code=codes.TYPE_ARG,
-            )
-            t.args = set_any_tvars(
-                t.alias, t.line, t.column, self.options, from_error=True, fail=self.fail
-            ).args
         is_error = self.validate_args(t.alias.name, t.args, t.alias.alias_tvars, t)
         if not is_error:
             # If there was already an error for the alias itself, there is no point in checking
@@ -144,34 +114,21 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                     t.arg_types[star_index] = p_type.args[0]
 
     def visit_instance(self, t: Instance) -> None:
+        super().visit_instance(t)
         # Type argument counts were checked in the main semantic analyzer pass. We assume
         # that the counts are correct here.
         info = t.type
         if isinstance(info, FakeInfo):
             return  # https://github.com/python/mypy/issues/11079
-        t.args = tuple(flatten_nested_tuples(t.args))
-        if t.type.has_type_var_tuple_type:
-            # Regular Instances are already validated in typeanal.py.
-            # TODO: do something with partial overlap (probably just reject).
-            # also in other places where split_with_prefix_and_suffix() is used.
-            correct = len(t.args) >= len(t.type.type_vars) - 1
-            if any(
-                isinstance(a, UnpackType) and isinstance(get_proper_type(a.type), Instance)
-                for a in t.args
-            ):
-                correct = True
-            if not correct:
-                exp_len = f"at least {len(t.type.type_vars) - 1}"
-                self.fail(
-                    f"Bad number of arguments, expected: {exp_len}, given: {len(t.args)}",
-                    t,
-                    code=codes.TYPE_ARG,
-                )
-                any_type = AnyType(TypeOfAny.from_error)
-                t.args = (any_type,) * len(t.type.type_vars)
-                fix_type_var_tuple_argument(any_type, t)
         self.validate_args(info.name, t.args, info.defn.type_vars, t)
-        super().visit_instance(t)
+        if t.type.fullname == "builtins.tuple" and len(t.args) == 1:
+            # Normalize Tuple[*Tuple[X, ...], ...] -> Tuple[X, ...]
+            arg = t.args[0]
+            if isinstance(arg, UnpackType):
+                unpacked = get_proper_type(arg.type)
+                if isinstance(unpacked, Instance):
+                    assert unpacked.type.fullname == "builtins.tuple"
+                    t.args = unpacked.args
 
     def validate_args(
         self, name: str, args: Sequence[Type], type_vars: list[TypeVarLikeType], ctx: Context

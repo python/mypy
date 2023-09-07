@@ -110,10 +110,8 @@ def tuple_fallback(typ: TupleType) -> Instance:
                 and unpacked_type.type.fullname == "builtins.tuple"
             ):
                 items.append(unpacked_type.args[0])
-            elif isinstance(unpacked_type, (AnyType, UninhabitedType)):
-                continue
             else:
-                raise NotImplementedError(unpacked_type)
+                raise NotImplementedError
         else:
             items.append(item)
     # TODO: we should really use a union here, tuple types are special.
