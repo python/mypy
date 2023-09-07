@@ -825,6 +825,8 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             elif is_proper_subtype(t, self.s):
                 # A named tuple that inherits from a normal class
                 return t
+            elif self.s.type.has_type_var_tuple_type and is_subtype(t, self.s):
+                return t
         return self.default(self.s)
 
     def visit_typeddict_type(self, t: TypedDictType) -> ProperType:

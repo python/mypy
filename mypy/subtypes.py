@@ -445,13 +445,20 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right = self.right
         if isinstance(right, TupleType) and right.partial_fallback.type.is_enum:
             return self._is_subtype(left, mypy.typeops.tuple_fallback(right))
-        if isinstance(right, TupleType) and len(right.items) == 1:
-            # Non-normalized Tuple type (may be left after semantic analysis).
-            item = right.items[0]
-            if isinstance(item, UnpackType):
-                unpacked = get_proper_type(item.type)
+        if isinstance(right, TupleType):
+            if len(right.items) == 1:
+                # Non-normalized Tuple type (may be left after semantic analysis).
+                item = right.items[0]
+                if isinstance(item, UnpackType):
+                    unpacked = get_proper_type(item.type)
+                    if isinstance(unpacked, Instance):
+                        return self._is_subtype(left, unpacked)
+            if len(left.args) == 1 and isinstance(left.args[0], UnpackType):
+                unpacked = get_proper_type(left.args[0].type)
                 if isinstance(unpacked, Instance):
-                    return self._is_subtype(left, unpacked)
+                    assert unpacked.type.fullname == "builtins.tuple"
+                    if isinstance(get_proper_type(unpacked.args[0]), AnyType):
+                        return self._is_subtype(left, mypy.typeops.tuple_fallback(right))
             return False
         if isinstance(right, Instance):
             if type_state.is_cached_subtype_check(self._subtype_kind, left, right):
@@ -492,106 +499,24 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     t = erased
                 nominal = True
                 if right.type.has_type_var_tuple_type:
-                    assert left.type.type_var_tuple_prefix is not None
-                    assert left.type.type_var_tuple_suffix is not None
                     assert right.type.type_var_tuple_prefix is not None
                     assert right.type.type_var_tuple_suffix is not None
-                    split_result = fully_split_with_mapped_and_template(
-                        left.args,
-                        left.type.type_var_tuple_prefix,
-                        left.type.type_var_tuple_suffix,
-                        right.args,
-                        right.type.type_var_tuple_prefix,
-                        right.type.type_var_tuple_suffix,
-                    )
-                    if split_result is None:
-                        return False
-
-                    (
-                        left_prefix,
-                        left_mprefix,
-                        left_middle,
-                        left_msuffix,
-                        left_suffix,
-                        right_prefix,
-                        right_mprefix,
-                        right_middle,
-                        right_msuffix,
-                        right_suffix,
-                    ) = split_result
-
-                    left_unpacked = extract_unpack(left_middle)
-                    right_unpacked = extract_unpack(right_middle)
-
-                    # Helper for case 2 below so we can treat them the same.
-                    def check_mixed(
-                        unpacked_type: ProperType, compare_to: tuple[Type, ...]
-                    ) -> bool:
-                        if (
-                            isinstance(unpacked_type, Instance)
-                            and unpacked_type.type.fullname == "builtins.tuple"
-                        ):
-                            return all(is_equivalent(l, unpacked_type.args[0]) for l in compare_to)
-                        if isinstance(unpacked_type, TypeVarTupleType):
-                            return False
-                        if isinstance(unpacked_type, AnyType):
-                            return True
-                        if isinstance(unpacked_type, TupleType):
-                            if len(unpacked_type.items) != len(compare_to):
-                                return False
-                            for t1, t2 in zip(unpacked_type.items, compare_to):
-                                if not is_equivalent(t1, t2):
-                                    return False
-                            return True
-                        return False
-
-                    # Case 1: Both are unpacks, in this case we check what is being
-                    # unpacked is the same.
-                    if left_unpacked is not None and right_unpacked is not None:
-                        if not is_equivalent(left_unpacked, right_unpacked):
-                            return False
-
-                    # Case 2: Only one of the types is an unpack. The equivalence
-                    # case is mostly the same but we check some additional
-                    # things when unpacking on the right.
-                    elif left_unpacked is not None and right_unpacked is None:
-                        if not check_mixed(left_unpacked, right_middle):
-                            return False
-                    elif left_unpacked is None and right_unpacked is not None:
-                        if not check_mixed(right_unpacked, left_middle):
-                            return False
-
-                    # Case 3: Neither type is an unpack. In this case we just compare
-                    # the items themselves.
-                    else:
-                        if len(left_middle) != len(right_middle):
-                            return False
-                        for left_t, right_t in zip(left_middle, right_middle):
-                            if not is_equivalent(left_t, right_t):
-                                return False
-
-                    assert len(left_mprefix) == len(right_mprefix)
-                    assert len(left_msuffix) == len(right_msuffix)
-
-                    for left_item, right_item in zip(
-                        left_mprefix + left_msuffix, right_mprefix + right_msuffix
-                    ):
-                        if not is_equivalent(left_item, right_item):
-                            return False
-
-                    left_items = t.args[: right.type.type_var_tuple_prefix]
-                    right_items = right.args[: right.type.type_var_tuple_prefix]
-                    if right.type.type_var_tuple_suffix:
-                        left_items += t.args[-right.type.type_var_tuple_suffix :]
-                        right_items += right.args[-right.type.type_var_tuple_suffix :]
-                    unpack_index = right.type.type_var_tuple_prefix
-                    assert unpack_index is not None
-                    type_params = zip(
-                        left_prefix + left_suffix,
-                        right_prefix + right_suffix,
-                        right.type.defn.type_vars[:unpack_index]
-                        + right.type.defn.type_vars[unpack_index + 1 :],
-                    )
+                    prefix = right.type.type_var_tuple_prefix
+                    suffix = right.type.type_var_tuple_suffix
+                    tvt = right.type.defn.type_vars[prefix]
+                    assert isinstance(tvt, TypeVarTupleType)
+                    fallback = tvt.tuple_fallback
+                    left_prefix, left_middle, left_suffix = split_with_prefix_and_suffix(t.args, prefix, suffix)
+                    right_prefix, right_middle, right_suffix = split_with_prefix_and_suffix(right.args, prefix, suffix)
+                    left_args = left_prefix + (TupleType(list(left_middle), fallback),) + left_suffix
+                    right_args = right_prefix + (TupleType(list(right_middle), fallback),) + right_suffix
+                    if len(t.args) == 1 and isinstance(t.args[0], UnpackType):
+                        unpacked = get_proper_type(t.args[0].type)
+                        if isinstance(unpacked, Instance):
+                            assert unpacked.type.fullname == "builtins.tuple"
+                            if isinstance(get_proper_type(unpacked.args[0]), AnyType) and not self.proper_subtype:
+                                return True
+                    type_params = zip(left_args, right_args, right.type.defn.type_vars)
                 else:
                     type_params = zip(t.args, right.args, right.type.defn.type_vars)
                 if not self.subtype_context.ignore_type_params:
