@@ -5459,12 +5459,6 @@
 <v t="ekr.20230907081931.1"><vh>@clean ekr_test.py</vh></v>
 <v t="ekr.20230907082344.1"></v>
 </v>
-<v t="ekr.20230907115554.1"><vh>--- traces</vh>
-<v t="ekr.20230831011820.1577"></v>
-<v t="ekr.20230831011820.87"></v>
-<v t="ekr.20230831011819.189"></v>
-</v>
-<v t="ekr.20230907115916.1"><vh>--- recent files</vh></v>
 <v t="ekr.20230907122234.1"><vh>--- startup</vh>
 <v t="ekr.20230831011819.4"></v>
 <v t="ekr.20230831011819.1611"></v>
@@ -5476,6 +5470,9 @@
 <v t="ekr.20230831011819.169"></v>
 </v>
 <v t="ekr.20230831011819.169"></v>
+<v t="ekr.20230831011820.87"></v>
+<v t="ekr.20230831011819.530"></v>
+<v t="ekr.20230831011820.2011"></v>
 </vnodes>
 <tnodes>
 <t tx="ekr.20230613022138.1"># Disable flake8 tests</t>
@@ -16219,7 +16216,6 @@ MEM_PROFILE: Final = False  # If True, dump memory profile
     stdout: TextIO,
     stderr: TextIO,
 ) -&gt; tuple[build.BuildResult | None, list[str], bool]:
-    
     formatter = util.FancyFormatter(stdout, stderr, options.hide_error_codes)
 
     messages = []
@@ -25862,14 +25858,14 @@ import os
 import sys
 import traceback
 
-if 0:  ###
-    print('sys.path', __file__)
-    for z in sys.path:
-        print(z)
-
-if 0:  ###
-    import mypy.main
-    print('mypy.main', mypy.main)
+if 1:  ###
+    print('')
+    print('*** ekr-mypy2 ***')
+    print('')
+    repo_path = os.path.dirname(os.path.join('..', __file__))
+    if repo_path not in sys.path:
+        print(f"Add {repo_path!r} to sys.path")
+        sys.path.insert(0, repo_path)
 
 from mypy.main import main, process_options
 from mypy.util import FancyFormatter
@@ -78471,7 +78467,7 @@ def lookup_fully_qualified_or_none(self, name: str) -&gt; SymbolTableNode | None
                     quote_type_string(expected_type_str),
                 )
             else:
-                g.trace(g.callers())
+                g.trace(g.callers(8))
                 msg = "Argument {} {}has incompatible type {}; expected {}".format(
                     arg_label,
                     target,
@@ -93636,23 +93632,26 @@ def test_add(i: int, j: int) -&gt; int:
 test_add(1, 2)
 test_add('a', 'b')  # Should create error.</t>
 <t tx="ekr.20230907082251.1"></t>
-<t tx="ekr.20230907082305.1"></t>
+<t tx="ekr.20230907082305.1">@language rest
+
+*** sitecustomize must add path to ekr-mypy2 to *start* of sys.path.
+    Otherwise __main__.py will use the version from Lib/site-packages/mypy!
+
+@language python
+</t>
 <t tx="ekr.20230907082344.1">@language python
 
 g.execute_shell_commands([
     # 'cls',
     # 'py mypy/__main__.py --debug-cache ekr_test.py',
+    r'py c:\Repos\ekr-mypy2\mypy\__main__.py ekr_test.py',
+        # --show-traceback --no-incremental ^
+        # --disallow-untyped-defs --disallow-incomplete-defs %*
     'm-test',
     'echo done',
 ])
 </t>
-<t tx="ekr.20230907115554.1">@nosearch
-
-# Word, Head, Body
-
-# found 5 nodes</t>
 <t tx="ekr.20230907115636.1"></t>
-<t tx="ekr.20230907115916.1"></t>
 <t tx="ekr.20230907122234.1"></t>
 </tnodes>
 </leo_file>

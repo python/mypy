@@ -799,7 +799,7 @@ class MessageBuilder:
                         quote_type_string(expected_type_str),
                     )
                 else:
-                    g.trace(g.callers())
+                    g.trace(g.callers(8))
                     msg = "Argument {} {}has incompatible type {}; expected {}".format(
                         arg_label,
                         target,

@@ -6,14 +6,14 @@ import os
 import sys
 import traceback
 
-if 0:  ###
-    print('sys.path', __file__)
-    for z in sys.path:
-        print(z)
-
-if 0:  ###
-    import mypy.main
-    print('mypy.main', mypy.main)
+if 1:  ###
+    print('')
+    print('*** ekr-mypy2 ***')
+    print('')
+    repo_path = os.path.dirname(os.path.join('..', __file__))
+    if repo_path not in sys.path:
+        print(f"Add {repo_path!r} to sys.path")
+        sys.path.insert(0, repo_path)
 
 from mypy.main import main, process_options
 from mypy.util import FancyFormatter
