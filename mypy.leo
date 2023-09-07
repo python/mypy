@@ -16,60 +16,6 @@
 </v>
 <v t="ekr.20230614124254.1"><vh> Recursive import script</vh></v>
 <v t="ekr.20230902050406.1"><vh>--- mypy sources</vh>
-<v t="ekr.20230902050227.1"><vh>--- Others</vh>
-<v t="ekr.20230831070358.1"><vh>--- dmypy</vh>
-<v t="ekr.20230831011819.905"><vh>@clean dmypy_os.py</vh>
-<v t="ekr.20230831011819.906"><vh>&lt;&lt; dmypy_os.py: preamble &gt;&gt;</vh></v>
-<v t="ekr.20230831011819.907"><vh>function: alive</vh></v>
-<v t="ekr.20230831011819.908"><vh>function: kill</vh></v>
-</v>
-<v t="ekr.20230831011819.909"><vh>@clean dmypy_server.py</vh>
-<v t="ekr.20230831011819.911"><vh>&lt;&lt; dmypy_server.py: declarations &gt;&gt;</vh></v>
-<v t="ekr.20230831011819.912"><vh>function: daemonize</vh></v>
-<v t="ekr.20230831011819.913"><vh>function: _daemonize_cb</vh></v>
-<v t="ekr.20230831011819.914"><vh>function: daemonize</vh></v>
-<v t="ekr.20230831011819.915"><vh>function: process_start_options</vh></v>
-<v t="ekr.20230831011819.916"><vh>function: ignore_suppressed_imports</vh></v>
-<v t="ekr.20230831011819.917"><vh>class Server</vh>
-<v t="ekr.20230831011819.918"><vh>Server.__init__</vh></v>
-<v t="ekr.20230831011819.919"><vh>Server._response_metadata</vh></v>
-<v t="ekr.20230831011819.920"><vh>Server.serve</vh></v>
-<v t="ekr.20230831011819.921"><vh>Server.run_command</vh></v>
-<v t="ekr.20230831011819.922"><vh>Server.cmd_status</vh></v>
-<v t="ekr.20230831011819.923"><vh>Server.cmd_stop</vh></v>
-<v t="ekr.20230831011819.924"><vh>Server.cmd_run</vh></v>
-<v t="ekr.20230831011819.925"><vh>Server.cmd_check</vh></v>
-<v t="ekr.20230831011819.926"><vh>Server.cmd_recheck</vh></v>
-<v t="ekr.20230831011819.927"><vh>Server.check</vh></v>
-<v t="ekr.20230831011819.928"><vh>Server.flush_caches</vh></v>
-<v t="ekr.20230831011819.929"><vh>Server.update_stats</vh></v>
-<v t="ekr.20230831011819.930"><vh>Server.following_imports</vh></v>
-<v t="ekr.20230831011819.931"><vh>Server.initialize_fine_grained</vh></v>
-<v t="ekr.20230831011819.932"><vh>Server.fine_grained_increment</vh></v>
-<v t="ekr.20230831011819.933"><vh>Server.fine_grained_increment_follow_imports</vh></v>
-<v t="ekr.20230831011819.934"><vh>Server.find_reachable_changed_modules</vh></v>
-<v t="ekr.20230831011819.935"><vh>Server.direct_imports</vh></v>
-<v t="ekr.20230831011819.936"><vh>Server.find_added_suppressed</vh></v>
-<v t="ekr.20230831011819.937"><vh>Server.increment_output</vh></v>
-<v t="ekr.20230831011819.938"><vh>Server.pretty_messages</vh></v>
-<v t="ekr.20230831011819.939"><vh>Server.update_sources</vh></v>
-<v t="ekr.20230831011819.940"><vh>Server.update_changed</vh></v>
-<v t="ekr.20230831011819.941"><vh>Server.find_changed</vh></v>
-<v t="ekr.20230831011819.942"><vh>Server._find_changed</vh></v>
-<v t="ekr.20230831011819.943"><vh>Server.cmd_inspect</vh></v>
-<v t="ekr.20230831011819.944"><vh>Server.cmd_suggest</vh></v>
-<v t="ekr.20230831011819.945"><vh>Server.cmd_hang</vh></v>
-</v>
-<v t="ekr.20230831011819.946"><vh>function: get_meminfo</vh></v>
-<v t="ekr.20230831011819.947"><vh>function: find_all_sources_in_build</vh></v>
-<v t="ekr.20230831011819.948"><vh>function: fix_module_deps</vh></v>
-<v t="ekr.20230831011819.949"><vh>function: filter_out_missing_top_level_packages</vh></v>
-</v>
-<v t="ekr.20230831011819.950"><vh>@clean dmypy_util.py</vh>
-<v t="ekr.20230831011819.952"><vh>&lt;&lt; dmypy_util.py: declarations &gt;&gt;</vh></v>
-<v t="ekr.20230831011819.953"><vh>function: receive</vh></v>
-</v>
-</v>
 <v t="ekr.20230831071452.1"><vh>--- Errors &amp; messages</vh>
 <v t="ekr.20230831011819.992"><vh>@clean errorcodes.py</vh>
 <v t="ekr.20230831011819.994"><vh>&lt;&lt; errorcodes.py: declarations &gt;&gt;</vh></v>
@@ -163,7 +109,7 @@
 <v t="ekr.20230831011820.84"><vh>MessageBuilder.unsupported_left_operand</vh></v>
 <v t="ekr.20230831011820.85"><vh>MessageBuilder.not_callable</vh></v>
 <v t="ekr.20230831011820.86"><vh>MessageBuilder.untyped_function_call</vh></v>
-<v t="ekr.20230831011820.87"><vh>MessageBuilder.incompatible_argument</vh></v>
+<v t="ekr.20230831011820.87"><vh>MessageBuilder.incompatible_argument  **trace</vh></v>
 <v t="ekr.20230831011820.88"><vh>MessageBuilder.incompatible_argument_note</vh></v>
 <v t="ekr.20230831011820.89"><vh>MessageBuilder.maybe_note_concatenate_pos_args</vh></v>
 <v t="ekr.20230831011820.90"><vh>MessageBuilder.invalid_index_type</vh></v>
@@ -409,6 +355,60 @@
 <v t="ekr.20230831011820.1086"><vh>LinePrecisionReporter.on_file</vh></v>
 <v t="ekr.20230831011820.1087"><vh>LinePrecisionReporter.on_finish</vh></v>
 </v>
+</v>
+</v>
+<v t="ekr.20230902050227.1"><vh>--- Others</vh>
+<v t="ekr.20230831070358.1"><vh>--- dmypy</vh>
+<v t="ekr.20230831011819.905"><vh>@clean dmypy_os.py</vh>
+<v t="ekr.20230831011819.906"><vh>&lt;&lt; dmypy_os.py: preamble &gt;&gt;</vh></v>
+<v t="ekr.20230831011819.907"><vh>function: alive</vh></v>
+<v t="ekr.20230831011819.908"><vh>function: kill</vh></v>
+</v>
+<v t="ekr.20230831011819.909"><vh>@clean dmypy_server.py</vh>
+<v t="ekr.20230831011819.911"><vh>&lt;&lt; dmypy_server.py: declarations &gt;&gt;</vh></v>
+<v t="ekr.20230831011819.912"><vh>function: daemonize</vh></v>
+<v t="ekr.20230831011819.913"><vh>function: _daemonize_cb</vh></v>
+<v t="ekr.20230831011819.914"><vh>function: daemonize</vh></v>
+<v t="ekr.20230831011819.915"><vh>function: process_start_options</vh></v>
+<v t="ekr.20230831011819.916"><vh>function: ignore_suppressed_imports</vh></v>
+<v t="ekr.20230831011819.917"><vh>class Server</vh>
+<v t="ekr.20230831011819.918"><vh>Server.__init__</vh></v>
+<v t="ekr.20230831011819.919"><vh>Server._response_metadata</vh></v>
+<v t="ekr.20230831011819.920"><vh>Server.serve</vh></v>
+<v t="ekr.20230831011819.921"><vh>Server.run_command</vh></v>
+<v t="ekr.20230831011819.922"><vh>Server.cmd_status</vh></v>
+<v t="ekr.20230831011819.923"><vh>Server.cmd_stop</vh></v>
+<v t="ekr.20230831011819.924"><vh>Server.cmd_run</vh></v>
+<v t="ekr.20230831011819.925"><vh>Server.cmd_check</vh></v>
+<v t="ekr.20230831011819.926"><vh>Server.cmd_recheck</vh></v>
+<v t="ekr.20230831011819.927"><vh>Server.check</vh></v>
+<v t="ekr.20230831011819.928"><vh>Server.flush_caches</vh></v>
+<v t="ekr.20230831011819.929"><vh>Server.update_stats</vh></v>
+<v t="ekr.20230831011819.930"><vh>Server.following_imports</vh></v>
+<v t="ekr.20230831011819.931"><vh>Server.initialize_fine_grained</vh></v>
+<v t="ekr.20230831011819.932"><vh>Server.fine_grained_increment</vh></v>
+<v t="ekr.20230831011819.933"><vh>Server.fine_grained_increment_follow_imports</vh></v>
+<v t="ekr.20230831011819.934"><vh>Server.find_reachable_changed_modules</vh></v>
+<v t="ekr.20230831011819.935"><vh>Server.direct_imports</vh></v>
+<v t="ekr.20230831011819.936"><vh>Server.find_added_suppressed</vh></v>
+<v t="ekr.20230831011819.937"><vh>Server.increment_output</vh></v>
+<v t="ekr.20230831011819.938"><vh>Server.pretty_messages</vh></v>
+<v t="ekr.20230831011819.939"><vh>Server.update_sources</vh></v>
+<v t="ekr.20230831011819.940"><vh>Server.update_changed</vh></v>
+<v t="ekr.20230831011819.941"><vh>Server.find_changed</vh></v>
+<v t="ekr.20230831011819.942"><vh>Server._find_changed</vh></v>
+<v t="ekr.20230831011819.943"><vh>Server.cmd_inspect</vh></v>
+<v t="ekr.20230831011819.944"><vh>Server.cmd_suggest</vh></v>
+<v t="ekr.20230831011819.945"><vh>Server.cmd_hang</vh></v>
+</v>
+<v t="ekr.20230831011819.946"><vh>function: get_meminfo</vh></v>
+<v t="ekr.20230831011819.947"><vh>function: find_all_sources_in_build</vh></v>
+<v t="ekr.20230831011819.948"><vh>function: fix_module_deps</vh></v>
+<v t="ekr.20230831011819.949"><vh>function: filter_out_missing_top_level_packages</vh></v>
+</v>
+<v t="ekr.20230831011819.950"><vh>@clean dmypy_util.py</vh>
+<v t="ekr.20230831011819.952"><vh>&lt;&lt; dmypy_util.py: declarations &gt;&gt;</vh></v>
+<v t="ekr.20230831011819.953"><vh>function: receive</vh></v>
 </v>
 </v>
 <v t="ekr.20230831070204.1"><vh>--- Stubgen</vh>
@@ -1879,7 +1879,7 @@
 <v t="ekr.20230831011819.1609"><vh>&lt;&lt; main.py: preamble &gt;&gt;</vh></v>
 <v t="ekr.20230831011819.1610"><vh>function: stat_proxy</vh></v>
 <v t="ekr.20230831011819.1611"><vh>function: main</vh></v>
-<v t="ekr.20230831011819.1612"><vh>function: run_build</vh></v>
+<v t="ekr.20230831011819.1612"><vh>function: run_build **bp</vh></v>
 <v t="ekr.20230831011819.1613"><vh>function: show_messages</vh></v>
 <v t="ekr.20230831011819.1614"><vh>class AugmentedHelpFormatter</vh>
 <v t="ekr.20230831011819.1615"><vh>AugmentedHelpFormatter.__init__</vh></v>
@@ -5452,11 +5452,30 @@
 </v>
 <v t="ekr.20230907082251.1"><vh>--- recent</vh>
 <v t="ekr.20230907081811.1"><vh>@clean ekr_test_12352.py</vh></v>
-</v>
 <v t="ekr.20230831011819.4"></v>
-<v t="ekr.20230907081931.1"><vh>@clean ekr_test.py</vh></v>
 <v t="ekr.20230831011819.1608"></v>
+</v>
+<v t="ekr.20230907115636.1"><vh>--- testing</vh>
+<v t="ekr.20230907081931.1"><vh>@clean ekr_test.py</vh></v>
 <v t="ekr.20230907082344.1"></v>
+</v>
+<v t="ekr.20230907115554.1"><vh>--- traces</vh>
+<v t="ekr.20230831011820.1577"></v>
+<v t="ekr.20230831011820.87"></v>
+<v t="ekr.20230831011819.189"></v>
+</v>
+<v t="ekr.20230907115916.1"><vh>--- recent files</vh></v>
+<v t="ekr.20230907122234.1"><vh>--- startup</vh>
+<v t="ekr.20230831011819.4"></v>
+<v t="ekr.20230831011819.1611"></v>
+<v t="ekr.20230831011819.1612"></v>
+<v t="ekr.20230831011819.62"></v>
+<v t="ekr.20230831011819.63"></v>
+<v t="ekr.20230831011819.158"></v>
+<v t="ekr.20230831011819.166"></v>
+<v t="ekr.20230831011819.169"></v>
+</v>
+<v t="ekr.20230831011819.169"></v>
 </vnodes>
 <tnodes>
 <t tx="ekr.20230613022138.1"># Disable flake8 tests</t>
@@ -16023,13 +16042,13 @@ from mypy.nodes import MypyFile, SymbolTableNode, TypeInfo
 </t>
 <t tx="ekr.20230831011819.1608">@path mypy
 """Mypy type checker command line tool."""
+
 &lt;&lt; main.py: preamble &gt;&gt;
 @others
 @language python
 @tabwidth -4
 </t>
-<t tx="ekr.20230831011819.1609">
-from __future__ import annotations
+<t tx="ekr.20230831011819.1609">from __future__ import annotations
 
 import argparse
 import os
@@ -16200,6 +16219,7 @@ MEM_PROFILE: Final = False  # If True, dump memory profile
     stdout: TextIO,
     stderr: TextIO,
 ) -&gt; tuple[build.BuildResult | None, list[str], bool]:
+    
     formatter = util.FancyFormatter(stdout, stderr, options.hide_error_codes)
 
     messages = []
@@ -17984,6 +18004,10 @@ def exit(self, status: int = 0, message: str | None = None) -&gt; NoReturn:
 
     Exception: If quick_and_dirty is set, use the cache for fresh modules.
     """
+    from leo.core import leoGlobals as g  ###
+    trace = len(scc) == 1
+    if trace:
+        g.trace(scc)
     stale = scc
     for id in stale:
         # We may already have parsed the module, or not.
@@ -17995,6 +18019,7 @@ def exit(self, status: int = 0, message: str | None = None) -&gt; NoReturn:
         # SemanticAnalyzerPass2.add_builtin_aliases for details.
         typing_mod = graph["typing"].tree
         assert typing_mod, "The typing module was not parsed"
+
     mypy.semanal_main.semantic_analysis_for_scc(graph, scc, manager.errors)
 
     # Track what modules aren't yet done so we can finish them as soon
@@ -25830,11 +25855,21 @@ def conditional_types(
 </t>
 <t tx="ekr.20230831011819.4">@path mypy
 """Mypy type checker command line tool."""
+
 from __future__ import annotations
 
 import os
 import sys
 import traceback
+
+if 0:  ###
+    print('sys.path', __file__)
+    for z in sys.path:
+        print(z)
+
+if 0:  ###
+    import mypy.main
+    print('mypy.main', mypy.main)
 
 from mypy.main import main, process_options
 from mypy.util import FancyFormatter
@@ -78250,6 +78285,8 @@ def lookup_fully_qualified_or_none(self, name: str) -&gt; SymbolTableNode | None
     Return the error code that used for the argument (multiple error
     codes are possible).
     """
+    from leo.core import leoGlobals as g  ###
+
     arg_type = get_proper_type(arg_type)
 
     target = ""
@@ -78434,6 +78471,7 @@ def lookup_fully_qualified_or_none(self, name: str) -&gt; SymbolTableNode | None
                     quote_type_string(expected_type_str),
                 )
             else:
+                g.trace(g.callers())
                 msg = "Argument {} {}has incompatible type {}; expected {}".format(
                     arg_label,
                     target,
@@ -93602,13 +93640,19 @@ test_add('a', 'b')  # Should create error.</t>
 <t tx="ekr.20230907082344.1">@language python
 
 g.execute_shell_commands([
-    # '@ECHO off',    
-    'cls',
-    # 'echo mypy-leo',
-    # 'pwd',
-    'py mypy/__main__.py --debug-cache ekr_test.py',
+    # 'cls',
+    # 'py mypy/__main__.py --debug-cache ekr_test.py',
+    'm-test',
     'echo done',
 ])
 </t>
+<t tx="ekr.20230907115554.1">@nosearch
+
+# Word, Head, Body
+
+# found 5 nodes</t>
+<t tx="ekr.20230907115636.1"></t>
+<t tx="ekr.20230907115916.1"></t>
+<t tx="ekr.20230907122234.1"></t>
 </tnodes>
 </leo_file>

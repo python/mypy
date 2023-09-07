@@ -613,6 +613,8 @@ class MessageBuilder:
         Return the error code that used for the argument (multiple error
         codes are possible).
         """
+        from leo.core import leoGlobals as g  ###
+
         arg_type = get_proper_type(arg_type)
 
         target = ""
@@ -797,6 +799,7 @@ class MessageBuilder:
                         quote_type_string(expected_type_str),
                     )
                 else:
+                    g.trace(g.callers())
                     msg = "Argument {} {}has incompatible type {}; expected {}".format(
                         arg_label,
                         target,

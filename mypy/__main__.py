@@ -6,6 +6,15 @@ import os
 import sys
 import traceback
 
+if 0:  ###
+    print('sys.path', __file__)
+    for z in sys.path:
+        print(z)
+
+if 0:  ###
+    import mypy.main
+    print('mypy.main', mypy.main)
+
 from mypy.main import main, process_options
 from mypy.util import FancyFormatter
 
