@@ -9,9 +9,9 @@ on:
     paths:
     - 'docs/**'
     # We now have a docs check that fails if any error codes don't have documentation,
-    # so it's important to do the docs build on all PRs touching the mypy/ directory
+    # so it's important to do the docs build on all PRs touching mypy/errocodes.py
     # in case somebody's adding a new error code without any docs
-    - 'mypy/**'
+    - 'mypy/errocodes.py'
     - 'mypyc/doc/**'
     - '**/*.rst'
     - '**/*.md'
