@@ -138,18 +138,7 @@ type_aliases: Final = {
 
 # This keeps track of the oldest supported Python version where the corresponding
 # alias source is available.
-type_aliases_source_versions: Final = {
-    "typing.List": (2, 7),
-    "typing.Dict": (2, 7),
-    "typing.Set": (2, 7),
-    "typing.FrozenSet": (2, 7),
-    "typing.ChainMap": (3, 3),
-    "typing.Counter": (2, 7),
-    "typing.DefaultDict": (2, 7),
-    "typing.Deque": (2, 7),
-    "typing.OrderedDict": (3, 7),
-    "typing.LiteralString": (3, 11),
-}
+type_aliases_source_versions: Final = {"typing.LiteralString": (3, 11)}
 
 # This keeps track of aliases in `typing_extensions`, which we treat specially.
 typing_extensions_aliases: Final = {
@@ -573,7 +562,6 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         if items:
             # TODO: figure out how to reliably set end position (we don't know the impl here).
             self.set_line(items[0].line, items[0].column)
-        self.is_final = False
 
     @property
     def name(self) -> str:
@@ -772,7 +760,6 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # Is this an abstract method with trivial body?
         # Such methods can't be called via super().
         self.is_trivial_body = False
-        self.is_final = False
         # Original conditional definition
         self.original_def: None | FuncDef | Var | Decorator = None
         # Used for error reporting (to keep backward compatibility with pre-3.8)

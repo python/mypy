@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Optional, Sequence, cast
+from typing import TYPE_CHECKING, Callable, Sequence, cast
 
 from mypy import meet, message_registry, subtypes
 from mypy.erasetype import erase_typevars
@@ -777,7 +777,7 @@ def analyze_var(
         result: Type = t
         typ = get_proper_type(typ)
 
-        call_type: Optional[ProperType] = None
+        call_type: ProperType | None = None
         if var.is_initialized_in_class and (not is_instance_var(var) or mx.is_operator):
             if isinstance(typ, FunctionLike) and not typ.is_type_obj():
                 call_type = typ
