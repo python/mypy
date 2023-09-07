@@ -1485,7 +1485,6 @@
 <v t="ekr.20230831071046.1"><vh>--- Top-level, build, parse</vh>
 <v t="ekr.20230831011819.3"><vh>@clean __init__.py</vh></v>
 <v t="ekr.20230831011819.4"><vh>@clean __main__.py</vh>
-<v t="ekr.20230831011819.5"><vh>&lt;&lt; __main__.py: preamble &gt;&gt;</vh></v>
 <v t="ekr.20230831011819.6"><vh>function: console_entry</vh></v>
 </v>
 <v t="ekr.20230831011819.7"><vh>@clean api.py</vh>
@@ -5451,10 +5450,12 @@
 <v t="ekr.20230902063457.1"><vh>--- is solve the key ??</vh></v>
 <v t="ekr.20230831011820.1577"></v>
 </v>
-<v t="ekr.20230907082251.1"><vh>--- testing &amp; study</vh>
+<v t="ekr.20230907082251.1"><vh>--- recent</vh>
 <v t="ekr.20230907081811.1"><vh>@clean ekr_test_12352.py</vh></v>
-<v t="ekr.20230907081931.1"><vh>@clean ekr_test.py</vh></v>
 </v>
+<v t="ekr.20230831011819.4"></v>
+<v t="ekr.20230907081931.1"><vh>@clean ekr_test.py</vh></v>
+<v t="ekr.20230831011819.1608"></v>
 <v t="ekr.20230907082344.1"></v>
 </vnodes>
 <tnodes>
@@ -25829,7 +25830,16 @@ def conditional_types(
 </t>
 <t tx="ekr.20230831011819.4">@path mypy
 """Mypy type checker command line tool."""
-&lt;&lt; __main__.py: preamble &gt;&gt;
+from __future__ import annotations
+
+import os
+import sys
+import traceback
+
+from mypy.main import main, process_options
+from mypy.util import FancyFormatter
+
+
 @others
 
 
@@ -28051,18 +28061,6 @@ def __init__(
                 )
 
     return orig_ret_type
-
-</t>
-<t tx="ekr.20230831011819.5">
-from __future__ import annotations
-
-import os
-import sys
-import traceback
-
-from mypy.main import main, process_options
-from mypy.util import FancyFormatter
-
 
 </t>
 <t tx="ekr.20230831011819.50">def allow_jump(self, index: int) -&gt; None:
@@ -93397,7 +93395,8 @@ def visit_callable_argument(self, t: CallableArgument) -&gt; None:
 <t tx="ekr.20230831071452.1"></t>
 <t tx="ekr.20230831071740.1"></t>
 <t tx="ekr.20230831071850.1"></t>
-<t tx="ekr.20230901114501.1">promote-section-definition</t>
+<t tx="ekr.20230901114501.1">test-one
+# promote-section-definition</t>
 <t tx="ekr.20230902050227.1"></t>
 <t tx="ekr.20230902050406.1"></t>
 <t tx="ekr.20230902050513.1">"""The semantic analyzer.
@@ -93602,14 +93601,14 @@ test_add('a', 'b')  # Should create error.</t>
 <t tx="ekr.20230907082305.1"></t>
 <t tx="ekr.20230907082344.1">@language python
 
-#verbose_flag = ''  # -v
-
-commands = [
+g.execute_shell_commands([
+    # '@ECHO off',    
     'cls',
-    'echo mypy-leo',
-    'py -m mypy --debug-cache ekr_test.py',
-]
-g.execute_shell_commands(commands)
-g.es_print('done')</t>
+    # 'echo mypy-leo',
+    # 'pwd',
+    'py mypy/__main__.py --debug-cache ekr_test.py',
+    'echo done',
+])
+</t>
 </tnodes>
 </leo_file>
