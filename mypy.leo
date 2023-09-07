@@ -10,11 +10,12 @@
 <v t="ekr.20230613022138.1"><vh>@settings</vh>
 <v t="ekr.20230613022224.1"><vh>@bool run-flake8-on-write = False</vh></v>
 <v t="ekr.20230828050824.1"><vh>@button backup</vh></v>
+<v t="ekr.20230907082344.1"><vh>@button test-one</vh></v>
 <v t="ekr.20230901114501.1"><vh>@data history-list</vh></v>
 </v>
 </v>
 <v t="ekr.20230614124254.1"><vh> Recursive import script</vh></v>
-<v t="ekr.20230902050406.1"><vh>mypy sources...</vh>
+<v t="ekr.20230902050406.1"><vh>--- mypy sources</vh>
 <v t="ekr.20230902050227.1"><vh>--- Others</vh>
 <v t="ekr.20230831070358.1"><vh>--- dmypy</vh>
 <v t="ekr.20230831011819.905"><vh>@clean dmypy_os.py</vh>
@@ -5442,15 +5443,19 @@
 </v>
 </v>
 </v>
+<v t="ekr.20230907082305.1"><vh>--- notes</vh>
 <v t="ekr.20230902062730.1"><vh>--- important docstrings</vh>
 <v t="ekr.20230902050513.1"></v>
 <v t="ekr.20230902062700.1"></v>
 </v>
 <v t="ekr.20230902063457.1"><vh>--- is solve the key ??</vh></v>
-<v t="ekr.20230831011820.1572"></v>
 <v t="ekr.20230831011820.1577"></v>
+</v>
+<v t="ekr.20230907082251.1"><vh>--- testing &amp; study</vh>
 <v t="ekr.20230907081811.1"><vh>@clean ekr_test_12352.py</vh></v>
 <v t="ekr.20230907081931.1"><vh>@clean ekr_test.py</vh></v>
+</v>
+<v t="ekr.20230907082344.1"></v>
 </vnodes>
 <tnodes>
 <t tx="ekr.20230613022138.1"># Disable flake8 tests</t>
@@ -93593,5 +93598,18 @@ def test_add(i: int, j: int) -&gt; int:
     
 test_add(1, 2)
 test_add('a', 'b')  # Should create error.</t>
+<t tx="ekr.20230907082251.1"></t>
+<t tx="ekr.20230907082305.1"></t>
+<t tx="ekr.20230907082344.1">@language python
+
+#verbose_flag = ''  # -v
+
+commands = [
+    'cls',
+    'echo mypy-leo',
+    'py -m mypy --debug-cache ekr_test.py',
+]
+g.execute_shell_commands(commands)
+g.es_print('done')</t>
 </tnodes>
 </leo_file>
