@@ -237,9 +237,7 @@ REDUNDANT_SELF_TYPE = ErrorCode(
     "General",
     default_enabled=False,
 )
-UNSAFE_OVERLOAD: Final[ErrorCode] = ErrorCode(
-    "unsafe-overload", "Warn if multiple @overload variants overlap in unsafe ways", "General"
-)
+
 USED_BEFORE_DEF: Final[ErrorCode] = ErrorCode(
     "used-before-def", "Warn about variables that are used before they are defined", "General"
 )
@@ -264,3 +262,10 @@ del error_codes[FILE.code]
 
 # This is a catch-all for remaining uncategorized errors.
 MISC: Final = ErrorCode("misc", "Miscellaneous other checks", "General")
+
+UNSAFE_OVERLOAD: Final[ErrorCode] = ErrorCode(
+    "unsafe-overload",
+    "Warn if multiple @overload variants overlap in unsafe ways",
+    "General",
+    sub_code_of=MISC,
+)
