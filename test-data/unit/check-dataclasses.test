@@ -2515,3 +2515,14 @@ a: MyDataclass
 b = [a, a]  # trigger joining the types
 
 [builtins fixtures/dataclasses.pyi]
+
+[case testDataclassesInvalidDecorator]
+from dataclasses import dataclass
+
+@dataclass()()  # E: Too few arguments
+class C:  # E: Cannot instantiate type "Type[Never]"
+    a: str
+
+reveal_type(C)  # N: Revealed type is "def () -> __main__.C"
+
+[builtins fixtures/dataclasses.pyi]
