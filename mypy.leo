@@ -14,15 +14,8 @@
 </v>
 </v>
 <v t="ekr.20230614124254.1"><vh> Recursive import script</vh></v>
-<v t="ekr.20230901115600.1"><vh>--- recent files</vh>
-<v t="ekr.20230831011819.1360"><vh>@clean freetree.py</vh>
-<v t="ekr.20230831011819.1362"><vh>class TreeFreer</vh>
-<v t="ekr.20230831011819.1363"><vh>TreeFreer.visit_block</vh></v>
-</v>
-<v t="ekr.20230831011819.1364"><vh>function: free_tree</vh></v>
-</v>
-</v>
-<v t="ekr.20230901115548.1"><vh>mypy:</vh>
+<v t="ekr.20230902050406.1"><vh>mypy sources...</vh>
+<v t="ekr.20230902050227.1"><vh>--- Others</vh>
 <v t="ekr.20230831070358.1"><vh>--- dmypy</vh>
 <v t="ekr.20230831011819.905"><vh>@clean dmypy_os.py</vh>
 <v t="ekr.20230831011819.906"><vh>&lt;&lt; dmypy_os.py: preamble &gt;&gt;</vh></v>
@@ -417,8 +410,599 @@
 </v>
 </v>
 </v>
+<v t="ekr.20230831070204.1"><vh>--- Stubgen</vh>
+<v t="ekr.20230831011820.1746"><vh>@clean stubdoc.py</vh>
+<v t="ekr.20230831011820.1748"><vh>&lt;&lt; stubdoc.py: declarations &gt;&gt;</vh></v>
+<v t="ekr.20230831011820.1749"><vh>function: is_valid_type</vh></v>
+<v t="ekr.20230831011820.1750"><vh>class ArgSig</vh>
+<v t="ekr.20230831011820.1751"><vh>ArgSig.__init__</vh></v>
+<v t="ekr.20230831011820.1752"><vh>ArgSig.__repr__</vh></v>
+<v t="ekr.20230831011820.1753"><vh>ArgSig.__eq__</vh></v>
+</v>
+<v t="ekr.20230831011820.1754"><vh>class FunctionSig</vh></v>
+<v t="ekr.20230831011820.1755"><vh>class DocStringParser</vh>
+<v t="ekr.20230831011820.1756"><vh>DocStringParser.__init__</vh></v>
+<v t="ekr.20230831011820.1757"><vh>DocStringParser.add_token</vh></v>
+<v t="ekr.20230831011820.1758"><vh>DocStringParser.reset</vh></v>
+<v t="ekr.20230831011820.1759"><vh>DocStringParser.get_signatures</vh></v>
+</v>
+<v t="ekr.20230831011820.1760"><vh>function: infer_sig_from_docstring</vh></v>
+<v t="ekr.20230831011820.1761"><vh>function: infer_arg_sig_from_anon_docstring</vh></v>
+<v t="ekr.20230831011820.1762"><vh>function: infer_ret_type_sig_from_docstring</vh></v>
+<v t="ekr.20230831011820.1763"><vh>function: infer_ret_type_sig_from_anon_docstring</vh></v>
+<v t="ekr.20230831011820.1764"><vh>function: parse_signature</vh></v>
+<v t="ekr.20230831011820.1765"><vh>function: build_signature</vh></v>
+<v t="ekr.20230831011820.1766"><vh>function: parse_all_signatures</vh></v>
+<v t="ekr.20230831011820.1767"><vh>function: find_unique_signatures</vh></v>
+<v t="ekr.20230831011820.1768"><vh>function: infer_prop_type_from_docstring</vh></v>
+</v>
+<v t="ekr.20230831011820.1769"><vh>@clean stubgen.py</vh>
+<v t="ekr.20230831011820.1770"><vh>&lt;&lt; stubgen.py: docstring &gt;&gt;</vh></v>
+<v t="ekr.20230831011820.1771"><vh>&lt;&lt; stubgen.py: declarations &gt;&gt;</vh></v>
+<v t="ekr.20230831011820.1772"><vh>class Options</vh>
+<v t="ekr.20230831011820.1773"><vh>Options.__init__</vh></v>
+</v>
+<v t="ekr.20230831011820.1774"><vh>class StubSource</vh>
+<v t="ekr.20230831011820.1775"><vh>StubSource.__init__</vh></v>
+<v t="ekr.20230831011820.1776"><vh>StubSource.module</vh></v>
+<v t="ekr.20230831011820.1777"><vh>StubSource.path</vh></v>
+</v>
+<v t="ekr.20230831011820.1778"><vh>class AnnotationPrinter</vh>
+<v t="ekr.20230831011820.1779"><vh>AnnotationPrinter.__init__</vh></v>
+<v t="ekr.20230831011820.1780"><vh>AnnotationPrinter.visit_any</vh></v>
+<v t="ekr.20230831011820.1781"><vh>AnnotationPrinter.visit_unbound_type</vh></v>
+<v t="ekr.20230831011820.1782"><vh>AnnotationPrinter.visit_none_type</vh></v>
+<v t="ekr.20230831011820.1783"><vh>AnnotationPrinter.visit_type_list</vh></v>
+<v t="ekr.20230831011820.1784"><vh>AnnotationPrinter.visit_union_type</vh></v>
+<v t="ekr.20230831011820.1785"><vh>AnnotationPrinter.args_str</vh></v>
+</v>
+<v t="ekr.20230831011820.1786"><vh>class AliasPrinter</vh>
+<v t="ekr.20230831011820.1787"><vh>AliasPrinter.__init__</vh></v>
+<v t="ekr.20230831011820.1788"><vh>AliasPrinter.visit_call_expr</vh></v>
+<v t="ekr.20230831011820.1789"><vh>AliasPrinter.visit_name_expr</vh></v>
+<v t="ekr.20230831011820.1790"><vh>AliasPrinter.visit_member_expr</vh></v>
+<v t="ekr.20230831011820.1791"><vh>AliasPrinter.visit_str_expr</vh></v>
+<v t="ekr.20230831011820.1792"><vh>AliasPrinter.visit_index_expr</vh></v>
+<v t="ekr.20230831011820.1793"><vh>AliasPrinter.visit_tuple_expr</vh></v>
+<v t="ekr.20230831011820.1794"><vh>AliasPrinter.visit_list_expr</vh></v>
+<v t="ekr.20230831011820.1795"><vh>AliasPrinter.visit_dict_expr</vh></v>
+<v t="ekr.20230831011820.1796"><vh>AliasPrinter.visit_ellipsis</vh></v>
+<v t="ekr.20230831011820.1797"><vh>AliasPrinter.visit_op_expr</vh></v>
+</v>
+<v t="ekr.20230831011820.1798"><vh>class ImportTracker</vh>
+<v t="ekr.20230831011820.1799"><vh>ImportTracker.__init__</vh></v>
+<v t="ekr.20230831011820.1800"><vh>ImportTracker.add_import_from</vh></v>
+<v t="ekr.20230831011820.1801"><vh>ImportTracker.add_import</vh></v>
+<v t="ekr.20230831011820.1802"><vh>ImportTracker.require_name</vh></v>
+<v t="ekr.20230831011820.1803"><vh>ImportTracker.reexport</vh></v>
+<v t="ekr.20230831011820.1804"><vh>ImportTracker.import_lines</vh></v>
+</v>
+<v t="ekr.20230831011820.1805"><vh>function: find_defined_names</vh></v>
+<v t="ekr.20230831011820.1806"><vh>class DefinitionFinder</vh>
+<v t="ekr.20230831011820.1807"><vh>DefinitionFinder.__init__</vh></v>
+<v t="ekr.20230831011820.1808"><vh>DefinitionFinder.visit_class_def</vh></v>
+<v t="ekr.20230831011820.1809"><vh>DefinitionFinder.visit_func_def</vh></v>
+</v>
+<v t="ekr.20230831011820.1810"><vh>function: find_referenced_names</vh></v>
+<v t="ekr.20230831011820.1811"><vh>class ReferenceFinder</vh>
+<v t="ekr.20230831011820.1812"><vh>ReferenceFinder.__init__</vh></v>
+<v t="ekr.20230831011820.1813"><vh>ReferenceFinder.visit_block</vh></v>
+<v t="ekr.20230831011820.1814"><vh>ReferenceFinder.visit_name_expr</vh></v>
+<v t="ekr.20230831011820.1815"><vh>ReferenceFinder.visit_instance</vh></v>
+<v t="ekr.20230831011820.1816"><vh>ReferenceFinder.visit_unbound_type</vh></v>
+<v t="ekr.20230831011820.1817"><vh>ReferenceFinder.visit_tuple_type</vh></v>
+<v t="ekr.20230831011820.1818"><vh>ReferenceFinder.visit_callable_type</vh></v>
+<v t="ekr.20230831011820.1819"><vh>ReferenceFinder.add_ref</vh></v>
+</v>
+<v t="ekr.20230831011820.1820"><vh>class StubGenerator</vh>
+<v t="ekr.20230831011820.1821"><vh>StubGenerator.__init__</vh></v>
+<v t="ekr.20230831011820.1822"><vh>StubGenerator.visit_mypy_file</vh></v>
+<v t="ekr.20230831011820.1823"><vh>StubGenerator.visit_overloaded_func_def</vh></v>
+<v t="ekr.20230831011820.1824"><vh>StubGenerator.visit_func_def</vh></v>
+<v t="ekr.20230831011820.1825"><vh>StubGenerator.is_none_expr</vh></v>
+<v t="ekr.20230831011820.1826"><vh>StubGenerator.visit_decorator</vh></v>
+<v t="ekr.20230831011820.1827"><vh>StubGenerator.process_decorator</vh></v>
+<v t="ekr.20230831011820.1828"><vh>StubGenerator.get_fullname</vh></v>
+<v t="ekr.20230831011820.1829"><vh>StubGenerator.visit_class_def</vh></v>
+<v t="ekr.20230831011820.1830"><vh>StubGenerator.get_base_types</vh></v>
+<v t="ekr.20230831011820.1831"><vh>StubGenerator.visit_block</vh></v>
+<v t="ekr.20230831011820.1832"><vh>StubGenerator.visit_assignment_stmt</vh></v>
+<v t="ekr.20230831011820.1833"><vh>StubGenerator.is_namedtuple</vh></v>
+<v t="ekr.20230831011820.1834"><vh>StubGenerator.is_typed_namedtuple</vh></v>
+<v t="ekr.20230831011820.1835"><vh>StubGenerator._get_namedtuple_fields</vh></v>
+<v t="ekr.20230831011820.1836"><vh>StubGenerator.process_namedtuple</vh></v>
+<v t="ekr.20230831011820.1837"><vh>StubGenerator.is_typeddict</vh></v>
+<v t="ekr.20230831011820.1838"><vh>StubGenerator.process_typeddict</vh></v>
+<v t="ekr.20230831011820.1839"><vh>StubGenerator.annotate_as_incomplete</vh></v>
+<v t="ekr.20230831011820.1840"><vh>StubGenerator.is_alias_expression</vh></v>
+<v t="ekr.20230831011820.1841"><vh>StubGenerator.process_typealias</vh></v>
+<v t="ekr.20230831011820.1842"><vh>StubGenerator.visit_if_stmt</vh></v>
+<v t="ekr.20230831011820.1843"><vh>StubGenerator.visit_import_all</vh></v>
+<v t="ekr.20230831011820.1844"><vh>StubGenerator.visit_import_from</vh></v>
+<v t="ekr.20230831011820.1845"><vh>StubGenerator.visit_import</vh></v>
+<v t="ekr.20230831011820.1846"><vh>StubGenerator.get_init</vh></v>
+<v t="ekr.20230831011820.1847"><vh>StubGenerator.get_assign_initializer</vh></v>
+<v t="ekr.20230831011820.1848"><vh>StubGenerator.add</vh></v>
+<v t="ekr.20230831011820.1849"><vh>StubGenerator.add_decorator</vh></v>
+<v t="ekr.20230831011820.1850"><vh>StubGenerator.clear_decorators</vh></v>
+<v t="ekr.20230831011820.1851"><vh>StubGenerator.typing_name</vh></v>
+<v t="ekr.20230831011820.1852"><vh>StubGenerator.add_typing_import</vh></v>
+<v t="ekr.20230831011820.1853"><vh>StubGenerator.add_import_line</vh></v>
+<v t="ekr.20230831011820.1854"><vh>StubGenerator.output</vh></v>
+<v t="ekr.20230831011820.1855"><vh>StubGenerator.is_not_in_all</vh></v>
+<v t="ekr.20230831011820.1856"><vh>StubGenerator.is_private_name</vh></v>
+<v t="ekr.20230831011820.1857"><vh>StubGenerator.is_private_member</vh></v>
+<v t="ekr.20230831011820.1858"><vh>StubGenerator.get_str_type_of_node</vh></v>
+<v t="ekr.20230831011820.1859"><vh>StubGenerator.maybe_unwrap_unary_expr</vh></v>
+<v t="ekr.20230831011820.1860"><vh>StubGenerator.print_annotation</vh></v>
+<v t="ekr.20230831011820.1861"><vh>StubGenerator.is_top_level</vh></v>
+<v t="ekr.20230831011820.1862"><vh>StubGenerator.record_name</vh></v>
+<v t="ekr.20230831011820.1863"><vh>StubGenerator.is_recorded_name</vh></v>
+</v>
+<v t="ekr.20230831011820.1864"><vh>function: find_method_names</vh></v>
+<v t="ekr.20230831011820.1865"><vh>class SelfTraverser</vh>
+<v t="ekr.20230831011820.1866"><vh>SelfTraverser.__init__</vh></v>
+<v t="ekr.20230831011820.1867"><vh>SelfTraverser.visit_assignment_stmt</vh></v>
+</v>
+<v t="ekr.20230831011820.1868"><vh>function: find_self_initializers</vh></v>
+<v t="ekr.20230831011820.1869"><vh>function: get_qualified_name</vh></v>
+<v t="ekr.20230831011820.1870"><vh>function: remove_blacklisted_modules</vh></v>
+<v t="ekr.20230831011820.1871"><vh>function: is_blacklisted_path</vh></v>
+<v t="ekr.20230831011820.1872"><vh>function: normalize_path_separators</vh></v>
+<v t="ekr.20230831011820.1873"><vh>function: collect_build_targets</vh></v>
+<v t="ekr.20230831011820.1874"><vh>function: find_module_paths_using_imports</vh></v>
+<v t="ekr.20230831011820.1875"><vh>function: is_non_library_module</vh></v>
+<v t="ekr.20230831011820.1876"><vh>function: translate_module_name</vh></v>
+<v t="ekr.20230831011820.1877"><vh>function: find_module_paths_using_search</vh></v>
+<v t="ekr.20230831011820.1878"><vh>function: mypy_options</vh></v>
+<v t="ekr.20230831011820.1879"><vh>function: parse_source_file</vh></v>
+<v t="ekr.20230831011820.1880"><vh>function: generate_asts_for_modules</vh></v>
+<v t="ekr.20230831011820.1881"><vh>function: generate_stub_from_ast</vh></v>
+<v t="ekr.20230831011820.1882"><vh>function: get_sig_generators</vh></v>
+<v t="ekr.20230831011820.1883"><vh>function: collect_docs_signatures</vh></v>
+<v t="ekr.20230831011820.1884"><vh>function: generate_stubs</vh></v>
+<v t="ekr.20230831011820.1885"><vh>function: parse_options</vh></v>
+<v t="ekr.20230831011820.1886"><vh>function: main</vh></v>
+</v>
+<v t="ekr.20230831011820.1887"><vh>@clean stubgenc.py</vh>
+<v t="ekr.20230831011820.1888"><vh>&lt;&lt; stubgenc.py: docstring &gt;&gt;</vh></v>
+<v t="ekr.20230831011820.1889"><vh>&lt;&lt; stubgenc.py: declarations &gt;&gt;</vh></v>
+<v t="ekr.20230831011820.1890"><vh>class SignatureGenerator</vh>
+<v t="ekr.20230831011820.1891"><vh>SignatureGenerator.remove_self_type</vh></v>
+<v t="ekr.20230831011820.1892"><vh>SignatureGenerator.get_function_sig</vh></v>
+<v t="ekr.20230831011820.1893"><vh>SignatureGenerator.get_method_sig</vh></v>
+</v>
+<v t="ekr.20230831011820.1894"><vh>class ExternalSignatureGenerator</vh>
+<v t="ekr.20230831011820.1895"><vh>ExternalSignatureGenerator.__init__</vh></v>
+<v t="ekr.20230831011820.1896"><vh>ExternalSignatureGenerator.get_function_sig</vh></v>
+<v t="ekr.20230831011820.1897"><vh>ExternalSignatureGenerator.get_method_sig</vh></v>
+</v>
+<v t="ekr.20230831011820.1898"><vh>class DocstringSignatureGenerator</vh>
+<v t="ekr.20230831011820.1899"><vh>DocstringSignatureGenerator.get_function_sig</vh></v>
+<v t="ekr.20230831011820.1900"><vh>DocstringSignatureGenerator.get_method_sig</vh></v>
+</v>
+<v t="ekr.20230831011820.1901"><vh>class FallbackSignatureGenerator</vh>
+<v t="ekr.20230831011820.1902"><vh>FallbackSignatureGenerator.get_function_sig</vh></v>
+<v t="ekr.20230831011820.1903"><vh>FallbackSignatureGenerator.get_method_sig</vh></v>
+</v>
+<v t="ekr.20230831011820.1904"><vh>function: generate_stub_for_c_module</vh></v>
+<v t="ekr.20230831011820.1905"><vh>function: add_typing_import</vh></v>
+<v t="ekr.20230831011820.1906"><vh>function: get_members</vh></v>
+<v t="ekr.20230831011820.1907"><vh>function: is_c_function</vh></v>
+<v t="ekr.20230831011820.1908"><vh>function: is_c_method</vh></v>
+<v t="ekr.20230831011820.1909"><vh>function: is_c_classmethod</vh></v>
+<v t="ekr.20230831011820.1910"><vh>function: is_c_property</vh></v>
+<v t="ekr.20230831011820.1911"><vh>function: is_c_property_readonly</vh></v>
+<v t="ekr.20230831011820.1912"><vh>function: is_c_type</vh></v>
+<v t="ekr.20230831011820.1913"><vh>function: is_pybind11_overloaded_function_docstring</vh></v>
+<v t="ekr.20230831011820.1914"><vh>function: generate_c_function_stub</vh></v>
+<v t="ekr.20230831011820.1915"><vh>function: strip_or_import</vh></v>
+<v t="ekr.20230831011820.1916"><vh>function: is_static_property</vh></v>
+<v t="ekr.20230831011820.1917"><vh>function: generate_c_property_stub</vh></v>
+<v t="ekr.20230831011820.1918"><vh>function: generate_c_type_stub</vh></v>
+<v t="ekr.20230831011820.1919"><vh>function: get_type_fullname</vh></v>
+<v t="ekr.20230831011820.1920"><vh>function: method_name_sort_key</vh></v>
+<v t="ekr.20230831011820.1921"><vh>function: is_pybind_skipped_attribute</vh></v>
+<v t="ekr.20230831011820.1922"><vh>function: is_skipped_attribute</vh></v>
+<v t="ekr.20230831011820.1923"><vh>function: infer_method_args</vh></v>
+<v t="ekr.20230831011820.1924"><vh>function: infer_method_ret_type</vh></v>
+</v>
+<v t="ekr.20230831011820.1925"><vh>@clean stubinfo.py</vh>
+<v t="ekr.20230831011820.1926"><vh>&lt;&lt; stubinfo.py: preamble &gt;&gt;</vh></v>
+<v t="ekr.20230831011820.1927"><vh>function: is_legacy_bundled_package</vh></v>
+<v t="ekr.20230831011820.1928"><vh>function: approved_stub_package_exists</vh></v>
+<v t="ekr.20230831011820.1929"><vh>function: stub_distribution_name</vh></v>
+</v>
+<v t="ekr.20230831011820.1930"><vh>@clean stubtest.py</vh>
+<v t="ekr.20230831011820.1932"><vh>&lt;&lt; stubtest.py: declarations &gt;&gt;</vh></v>
+<v t="ekr.20230831011820.1933"><vh>class Missing</vh>
+<v t="ekr.20230831011820.1934"><vh>Missing.__repr__</vh></v>
+</v>
+<v t="ekr.20230831011820.1935"><vh>function: _style</vh></v>
+<v t="ekr.20230831011820.1936"><vh>function: _truncate</vh></v>
+<v t="ekr.20230831011820.1937"><vh>class StubtestFailure</vh></v>
+<v t="ekr.20230831011820.1938"><vh>class Error</vh>
+<v t="ekr.20230831011820.1939"><vh>Error.__init__</vh></v>
+<v t="ekr.20230831011820.1940"><vh>Error.is_missing_stub</vh></v>
+<v t="ekr.20230831011820.1941"><vh>Error.is_positional_only_related</vh></v>
+<v t="ekr.20230831011820.1942"><vh>Error.get_description</vh></v>
+</v>
+<v t="ekr.20230831011820.1943"><vh>function: silent_import_module</vh></v>
+<v t="ekr.20230831011820.1944"><vh>function: test_module</vh></v>
+<v t="ekr.20230831011820.1945"><vh>function: verify</vh></v>
+<v t="ekr.20230831011820.1946"><vh>function: _verify_exported_names</vh></v>
+<v t="ekr.20230831011820.1947"><vh>function: _get_imported_symbol_names</vh></v>
+<v t="ekr.20230831011820.1948"><vh>function: verify_mypyfile</vh></v>
+<v t="ekr.20230831011820.1949"><vh>function: _verify_final</vh>
+<v t="ekr.20230831011820.1950"><vh>class SubClass</vh></v>
+</v>
+<v t="ekr.20230831011820.1951"><vh>function: _verify_metaclass</vh></v>
+<v t="ekr.20230831011820.1952"><vh>function: verify_typeinfo</vh></v>
+<v t="ekr.20230831011820.1953"><vh>function: _static_lookup_runtime</vh></v>
+<v t="ekr.20230831011820.1954"><vh>function: _verify_static_class_methods</vh></v>
+<v t="ekr.20230831011820.1955"><vh>function: _verify_arg_name</vh></v>
+<v t="ekr.20230831011820.1956"><vh>function: _verify_arg_default_value</vh></v>
+<v t="ekr.20230831011820.1957"><vh>function: maybe_strip_cls</vh></v>
+<v t="ekr.20230831011820.1958"><vh>class Signature</vh>
+<v t="ekr.20230831011820.1959"><vh>Signature.__init__</vh></v>
+<v t="ekr.20230831011820.1960"><vh>Signature.__str__</vh></v>
+<v t="ekr.20230831011820.1961"><vh>Signature.from_funcitem</vh></v>
+<v t="ekr.20230831011820.1962"><vh>Signature.from_inspect_signature</vh></v>
+<v t="ekr.20230831011820.1963"><vh>Signature.from_overloadedfuncdef</vh></v>
+</v>
+<v t="ekr.20230831011820.1964"><vh>function: _verify_signature</vh></v>
+<v t="ekr.20230831011820.1965"><vh>function: verify_funcitem</vh></v>
+<v t="ekr.20230831011820.1966"><vh>function: verify_none</vh></v>
+<v t="ekr.20230831011820.1967"><vh>function: verify_var</vh></v>
+<v t="ekr.20230831011820.1968"><vh>function: verify_overloadedfuncdef</vh></v>
+<v t="ekr.20230831011820.1969"><vh>function: verify_typevarexpr</vh></v>
+<v t="ekr.20230831011820.1970"><vh>function: verify_paramspecexpr</vh></v>
+<v t="ekr.20230831011820.1971"><vh>function: _verify_readonly_property</vh></v>
+<v t="ekr.20230831011820.1972"><vh>function: _verify_abstract_status</vh></v>
+<v t="ekr.20230831011820.1973"><vh>function: _verify_final_method</vh></v>
+<v t="ekr.20230831011820.1974"><vh>function: _resolve_funcitem_from_decorator</vh></v>
+<v t="ekr.20230831011820.1975"><vh>function: verify_decorator</vh></v>
+<v t="ekr.20230831011820.1976"><vh>function: verify_typealias</vh></v>
+<v t="ekr.20230831011820.1977"><vh>function: is_probably_private</vh></v>
+<v t="ekr.20230831011820.1978"><vh>function: is_probably_a_function</vh></v>
+<v t="ekr.20230831011820.1979"><vh>function: is_read_only_property</vh></v>
+<v t="ekr.20230831011820.1980"><vh>function: safe_inspect_signature</vh></v>
+<v t="ekr.20230831011820.1981"><vh>function: is_subtype_helper</vh></v>
+<v t="ekr.20230831011820.1982"><vh>function: get_mypy_type_of_runtime_value</vh></v>
+<v t="ekr.20230831011820.1983"><vh>function: build_stubs</vh></v>
+<v t="ekr.20230831011820.1984"><vh>function: get_stub</vh></v>
+<v t="ekr.20230831011820.1985"><vh>function: get_typeshed_stdlib_modules</vh></v>
+<v t="ekr.20230831011820.1986"><vh>function: get_importable_stdlib_modules</vh></v>
+<v t="ekr.20230831011820.1987"><vh>function: get_allowlist_entries</vh></v>
+<v t="ekr.20230831011820.1988"><vh>class _Arguments</vh></v>
+<v t="ekr.20230831011820.1989"><vh>function: test_stubs</vh></v>
+<v t="ekr.20230831011820.1990"><vh>function: parse_options</vh></v>
+<v t="ekr.20230831011820.1991"><vh>function: main</vh></v>
+</v>
+<v t="ekr.20230831011820.1992"><vh>@clean stubutil.py</vh>
+<v t="ekr.20230831011820.1993"><vh>&lt;&lt; stubutil.py: preamble &gt;&gt;</vh></v>
+<v t="ekr.20230831011820.1994"><vh>class CantImport</vh>
+<v t="ekr.20230831011820.1995"><vh>CantImport.__init__</vh></v>
+</v>
+<v t="ekr.20230831011820.1996"><vh>function: walk_packages</vh></v>
+<v t="ekr.20230831011820.1997"><vh>function: find_module_path_using_sys_path</vh></v>
+<v t="ekr.20230831011820.1998"><vh>function: find_module_path_and_all_py3</vh></v>
+<v t="ekr.20230831011820.1999"><vh>function: generate_guarded</vh></v>
+<v t="ekr.20230831011820.2000"><vh>function: report_missing</vh></v>
+<v t="ekr.20230831011820.2001"><vh>function: fail_missing</vh></v>
+<v t="ekr.20230831011820.2002"><vh>function: remove_misplaced_type_comments</vh></v>
+<v t="ekr.20230831011820.2003"><vh>function: remove_misplaced_type_comments</vh></v>
+<v t="ekr.20230831011820.2004"><vh>function: remove_misplaced_type_comments</vh></v>
+<v t="ekr.20230831011820.2005"><vh>function: common_dir_prefix</vh></v>
+</v>
+</v>
+<v t="ekr.20230831071740.1"><vh>--- Utils</vh>
+<v t="ekr.20230831011819.1316"><vh>@clean fixup.py</vh>
+<v t="ekr.20230831011819.1317"><vh>&lt;&lt; fixup.py: preamble &gt;&gt;</vh></v>
+<v t="ekr.20230831011819.1318"><vh>function: fixup_module</vh></v>
+<v t="ekr.20230831011819.1319"><vh>class NodeFixer</vh>
+<v t="ekr.20230831011819.1320"><vh>NodeFixer.__init__</vh></v>
+<v t="ekr.20230831011819.1321"><vh>NodeFixer.visit_type_info</vh></v>
+<v t="ekr.20230831011819.1322"><vh>NodeFixer.visit_symbol_table</vh></v>
+<v t="ekr.20230831011819.1323"><vh>NodeFixer.visit_func_def</vh></v>
+<v t="ekr.20230831011819.1324"><vh>NodeFixer.visit_overloaded_func_def</vh></v>
+<v t="ekr.20230831011819.1325"><vh>NodeFixer.visit_decorator</vh></v>
+<v t="ekr.20230831011819.1326"><vh>NodeFixer.visit_class_def</vh></v>
+<v t="ekr.20230831011819.1327"><vh>NodeFixer.visit_type_var_expr</vh></v>
+<v t="ekr.20230831011819.1328"><vh>NodeFixer.visit_paramspec_expr</vh></v>
+<v t="ekr.20230831011819.1329"><vh>NodeFixer.visit_type_var_tuple_expr</vh></v>
+<v t="ekr.20230831011819.1330"><vh>NodeFixer.visit_var</vh></v>
+<v t="ekr.20230831011819.1331"><vh>NodeFixer.visit_type_alias</vh></v>
+</v>
+<v t="ekr.20230831011819.1332"><vh>class TypeFixer</vh>
+<v t="ekr.20230831011819.1333"><vh>TypeFixer.__init__</vh></v>
+<v t="ekr.20230831011819.1334"><vh>TypeFixer.visit_instance</vh></v>
+<v t="ekr.20230831011819.1335"><vh>TypeFixer.visit_type_alias_type</vh></v>
+<v t="ekr.20230831011819.1336"><vh>TypeFixer.visit_any</vh></v>
+<v t="ekr.20230831011819.1337"><vh>TypeFixer.visit_callable_type</vh></v>
+<v t="ekr.20230831011819.1338"><vh>TypeFixer.visit_overloaded</vh></v>
+<v t="ekr.20230831011819.1339"><vh>TypeFixer.visit_erased_type</vh></v>
+<v t="ekr.20230831011819.1340"><vh>TypeFixer.visit_deleted_type</vh></v>
+<v t="ekr.20230831011819.1341"><vh>TypeFixer.visit_none_type</vh></v>
+<v t="ekr.20230831011819.1342"><vh>TypeFixer.visit_uninhabited_type</vh></v>
+<v t="ekr.20230831011819.1343"><vh>TypeFixer.visit_partial_type</vh></v>
+<v t="ekr.20230831011819.1344"><vh>TypeFixer.visit_tuple_type</vh></v>
+<v t="ekr.20230831011819.1345"><vh>TypeFixer.visit_typeddict_type</vh></v>
+<v t="ekr.20230831011819.1346"><vh>TypeFixer.visit_literal_type</vh></v>
+<v t="ekr.20230831011819.1347"><vh>TypeFixer.visit_type_var</vh></v>
+<v t="ekr.20230831011819.1348"><vh>TypeFixer.visit_param_spec</vh></v>
+<v t="ekr.20230831011819.1349"><vh>TypeFixer.visit_type_var_tuple</vh></v>
+<v t="ekr.20230831011819.1350"><vh>TypeFixer.visit_unpack_type</vh></v>
+<v t="ekr.20230831011819.1351"><vh>TypeFixer.visit_parameters</vh></v>
+<v t="ekr.20230831011819.1352"><vh>TypeFixer.visit_unbound_type</vh></v>
+<v t="ekr.20230831011819.1353"><vh>TypeFixer.visit_union_type</vh></v>
+<v t="ekr.20230831011819.1354"><vh>TypeFixer.visit_void</vh></v>
+<v t="ekr.20230831011819.1355"><vh>TypeFixer.visit_type_type</vh></v>
+</v>
+<v t="ekr.20230831011819.1356"><vh>function: lookup_fully_qualified_typeinfo</vh></v>
+<v t="ekr.20230831011819.1357"><vh>function: lookup_fully_qualified_alias</vh></v>
+<v t="ekr.20230831011819.1358"><vh>function: missing_info</vh></v>
+<v t="ekr.20230831011819.1359"><vh>function: missing_alias</vh></v>
+</v>
+<v t="ekr.20230831011819.1398"><vh>@clean gclogger.py</vh>
+<v t="ekr.20230831011819.1399"><vh>&lt;&lt; gclogger.py: preamble &gt;&gt;</vh></v>
+<v t="ekr.20230831011819.1400"><vh>class GcLogger</vh>
+<v t="ekr.20230831011819.1401"><vh>GcLogger.__enter__</vh></v>
+<v t="ekr.20230831011819.1402"><vh>GcLogger.gc_callback</vh></v>
+<v t="ekr.20230831011819.1403"><vh>GcLogger.__exit__</vh></v>
+<v t="ekr.20230831011819.1404"><vh>GcLogger.get_stats</vh></v>
+</v>
+</v>
+<v t="ekr.20230831011819.1405"><vh>@clean git.py</vh>
+<v t="ekr.20230831011819.1406"><vh>&lt;&lt; git.py: preamble &gt;&gt;</vh></v>
+<v t="ekr.20230831011819.1407"><vh>function: is_git_repo</vh></v>
+<v t="ekr.20230831011819.1408"><vh>function: have_git</vh></v>
+<v t="ekr.20230831011819.1409"><vh>function: git_revision</vh></v>
+<v t="ekr.20230831011819.1410"><vh>function: is_dirty</vh></v>
+</v>
+<v t="ekr.20230831011819.1411"><vh>@clean graph_utils.py</vh>
+<v t="ekr.20230831011819.1412"><vh>&lt;&lt; graph_utils.py: preamble &gt;&gt;</vh></v>
+<v t="ekr.20230831011819.1413"><vh>function: strongly_connected_components</vh></v>
+<v t="ekr.20230831011819.1414"><vh>function: prepare_sccs</vh></v>
+<v t="ekr.20230831011819.1415"><vh>function: topsort</vh></v>
+</v>
+<v t="ekr.20230831011819.1488"><vh>@clean ipc.py</vh>
+<v t="ekr.20230831011819.1490"><vh>&lt;&lt; ipc.py: declarations &gt;&gt;</vh></v>
+<v t="ekr.20230831011819.1491"><vh>class IPCException</vh></v>
+<v t="ekr.20230831011819.1492"><vh>class IPCBase</vh>
+<v t="ekr.20230831011819.1493"><vh>IPCBase.__init__</vh></v>
+<v t="ekr.20230831011819.1494"><vh>IPCBase.read</vh></v>
+<v t="ekr.20230831011819.1495"><vh>IPCBase.write</vh></v>
+<v t="ekr.20230831011819.1496"><vh>IPCBase.close</vh></v>
+</v>
+<v t="ekr.20230831011819.1497"><vh>class IPCClient</vh>
+<v t="ekr.20230831011819.1498"><vh>IPCClient.__init__</vh></v>
+<v t="ekr.20230831011819.1499"><vh>IPCClient.__enter__</vh></v>
+<v t="ekr.20230831011819.1500"><vh>IPCClient.__exit__</vh></v>
+</v>
+<v t="ekr.20230831011819.1501"><vh>class IPCServer</vh>
+<v t="ekr.20230831011819.1502"><vh>IPCServer.__init__</vh></v>
+<v t="ekr.20230831011819.1503"><vh>IPCServer.__enter__</vh></v>
+<v t="ekr.20230831011819.1504"><vh>IPCServer.__exit__</vh></v>
+<v t="ekr.20230831011819.1505"><vh>IPCServer.cleanup</vh></v>
+<v t="ekr.20230831011819.1506"><vh>IPCServer.connection_name</vh></v>
+</v>
+</v>
+<v t="ekr.20230831011820.1598"><vh>@clean stats.py</vh>
+<v t="ekr.20230831011820.1599"><vh>&lt;&lt; stats.py: preamble &gt;&gt;</vh></v>
+<v t="ekr.20230831011820.1600"><vh>class StatisticsVisitor</vh>
+<v t="ekr.20230831011820.1601"><vh>StatisticsVisitor.__init__</vh></v>
+<v t="ekr.20230831011820.1602"><vh>StatisticsVisitor.visit_mypy_file</vh></v>
+<v t="ekr.20230831011820.1603"><vh>StatisticsVisitor.visit_import_from</vh></v>
+<v t="ekr.20230831011820.1604"><vh>StatisticsVisitor.visit_import_all</vh></v>
+<v t="ekr.20230831011820.1605"><vh>StatisticsVisitor.process_import</vh></v>
+<v t="ekr.20230831011820.1606"><vh>StatisticsVisitor.visit_import</vh></v>
+<v t="ekr.20230831011820.1607"><vh>StatisticsVisitor.visit_func_def</vh></v>
+<v t="ekr.20230831011820.1608"><vh>StatisticsVisitor.enter_scope</vh></v>
+<v t="ekr.20230831011820.1609"><vh>StatisticsVisitor.is_checked_scope</vh></v>
+<v t="ekr.20230831011820.1610"><vh>StatisticsVisitor.visit_class_def</vh></v>
+<v t="ekr.20230831011820.1611"><vh>StatisticsVisitor.visit_type_application</vh></v>
+<v t="ekr.20230831011820.1612"><vh>StatisticsVisitor.visit_assignment_stmt</vh></v>
+<v t="ekr.20230831011820.1613"><vh>StatisticsVisitor.visit_expression_stmt</vh></v>
+<v t="ekr.20230831011820.1614"><vh>StatisticsVisitor.visit_pass_stmt</vh></v>
+<v t="ekr.20230831011820.1615"><vh>StatisticsVisitor.visit_break_stmt</vh></v>
+<v t="ekr.20230831011820.1616"><vh>StatisticsVisitor.visit_continue_stmt</vh></v>
+<v t="ekr.20230831011820.1617"><vh>StatisticsVisitor.visit_name_expr</vh></v>
+<v t="ekr.20230831011820.1618"><vh>StatisticsVisitor.visit_yield_from_expr</vh></v>
+<v t="ekr.20230831011820.1619"><vh>StatisticsVisitor.visit_call_expr</vh></v>
+<v t="ekr.20230831011820.1620"><vh>StatisticsVisitor.record_call_target_precision</vh></v>
+<v t="ekr.20230831011820.1621"><vh>StatisticsVisitor.record_callable_target_precision</vh></v>
+<v t="ekr.20230831011820.1622"><vh>StatisticsVisitor.visit_member_expr</vh></v>
+<v t="ekr.20230831011820.1623"><vh>StatisticsVisitor.visit_op_expr</vh></v>
+<v t="ekr.20230831011820.1624"><vh>StatisticsVisitor.visit_comparison_expr</vh></v>
+<v t="ekr.20230831011820.1625"><vh>StatisticsVisitor.visit_index_expr</vh></v>
+<v t="ekr.20230831011820.1626"><vh>StatisticsVisitor.visit_assignment_expr</vh></v>
+<v t="ekr.20230831011820.1627"><vh>StatisticsVisitor.visit_unary_expr</vh></v>
+<v t="ekr.20230831011820.1628"><vh>StatisticsVisitor.visit_str_expr</vh></v>
+<v t="ekr.20230831011820.1629"><vh>StatisticsVisitor.visit_bytes_expr</vh></v>
+<v t="ekr.20230831011820.1630"><vh>StatisticsVisitor.visit_int_expr</vh></v>
+<v t="ekr.20230831011820.1631"><vh>StatisticsVisitor.visit_float_expr</vh></v>
+<v t="ekr.20230831011820.1632"><vh>StatisticsVisitor.visit_complex_expr</vh></v>
+<v t="ekr.20230831011820.1633"><vh>StatisticsVisitor.visit_ellipsis</vh></v>
+<v t="ekr.20230831011820.1634"><vh>StatisticsVisitor.process_node</vh></v>
+<v t="ekr.20230831011820.1635"><vh>StatisticsVisitor.record_precise_if_checked_scope</vh></v>
+<v t="ekr.20230831011820.1636"><vh>StatisticsVisitor.type</vh></v>
+<v t="ekr.20230831011820.1637"><vh>StatisticsVisitor.log</vh></v>
+<v t="ekr.20230831011820.1638"><vh>StatisticsVisitor.record_line</vh></v>
+</v>
+<v t="ekr.20230831011820.1639"><vh>function: dump_type_stats</vh></v>
+<v t="ekr.20230831011820.1640"><vh>function: is_special_module</vh></v>
+<v t="ekr.20230831011820.1641"><vh>function: is_imprecise</vh></v>
+<v t="ekr.20230831011820.1642"><vh>class HasAnyQuery</vh>
+<v t="ekr.20230831011820.1643"><vh>HasAnyQuery.__init__</vh></v>
+<v t="ekr.20230831011820.1644"><vh>HasAnyQuery.visit_any</vh></v>
+</v>
+<v t="ekr.20230831011820.1645"><vh>function: is_imprecise2</vh></v>
+<v t="ekr.20230831011820.1646"><vh>class HasAnyQuery2</vh>
+<v t="ekr.20230831011820.1647"><vh>HasAnyQuery2.visit_callable_type</vh></v>
+</v>
+<v t="ekr.20230831011820.1648"><vh>function: is_generic</vh></v>
+<v t="ekr.20230831011820.1649"><vh>function: is_complex</vh></v>
+<v t="ekr.20230831011820.1650"><vh>function: ensure_dir_exists</vh></v>
+<v t="ekr.20230831011820.1651"><vh>function: is_special_form_any</vh></v>
+<v t="ekr.20230831011820.1652"><vh>function: get_original_any</vh></v>
+</v>
+<v t="ekr.20230831011820.1653"><vh>@clean strconv.py</vh>
+<v t="ekr.20230831011820.1654"><vh>&lt;&lt; strconv.py: preamble &gt;&gt;</vh></v>
+<v t="ekr.20230831011820.1655"><vh>class StrConv</vh>
+<v t="ekr.20230831011820.1656"><vh>StrConv.__init__</vh></v>
+<v t="ekr.20230831011820.1657"><vh>StrConv.stringify_type</vh></v>
+<v t="ekr.20230831011820.1658"><vh>StrConv.get_id</vh></v>
+<v t="ekr.20230831011820.1659"><vh>StrConv.format_id</vh></v>
+<v t="ekr.20230831011820.1660"><vh>StrConv.dump</vh></v>
+<v t="ekr.20230831011820.1661"><vh>StrConv.func_helper</vh></v>
+<v t="ekr.20230831011820.1662"><vh>StrConv.visit_mypy_file</vh></v>
+<v t="ekr.20230831011820.1663"><vh>StrConv.visit_import</vh></v>
+<v t="ekr.20230831011820.1664"><vh>StrConv.visit_import_from</vh></v>
+<v t="ekr.20230831011820.1665"><vh>StrConv.visit_import_all</vh></v>
+<v t="ekr.20230831011820.1666"><vh>StrConv.visit_func_def</vh></v>
+<v t="ekr.20230831011820.1667"><vh>StrConv.visit_overloaded_func_def</vh></v>
+<v t="ekr.20230831011820.1668"><vh>StrConv.visit_class_def</vh></v>
+<v t="ekr.20230831011820.1669"><vh>StrConv.visit_var</vh></v>
+<v t="ekr.20230831011820.1670"><vh>StrConv.visit_global_decl</vh></v>
+<v t="ekr.20230831011820.1671"><vh>StrConv.visit_nonlocal_decl</vh></v>
+<v t="ekr.20230831011820.1672"><vh>StrConv.visit_decorator</vh></v>
+<v t="ekr.20230831011820.1673"><vh>StrConv.visit_block</vh></v>
+<v t="ekr.20230831011820.1674"><vh>StrConv.visit_expression_stmt</vh></v>
+<v t="ekr.20230831011820.1675"><vh>StrConv.visit_assignment_stmt</vh></v>
+<v t="ekr.20230831011820.1676"><vh>StrConv.visit_operator_assignment_stmt</vh></v>
+<v t="ekr.20230831011820.1677"><vh>StrConv.visit_while_stmt</vh></v>
+<v t="ekr.20230831011820.1678"><vh>StrConv.visit_for_stmt</vh></v>
+<v t="ekr.20230831011820.1679"><vh>StrConv.visit_return_stmt</vh></v>
+<v t="ekr.20230831011820.1680"><vh>StrConv.visit_if_stmt</vh></v>
+<v t="ekr.20230831011820.1681"><vh>StrConv.visit_break_stmt</vh></v>
+<v t="ekr.20230831011820.1682"><vh>StrConv.visit_continue_stmt</vh></v>
+<v t="ekr.20230831011820.1683"><vh>StrConv.visit_pass_stmt</vh></v>
+<v t="ekr.20230831011820.1684"><vh>StrConv.visit_raise_stmt</vh></v>
+<v t="ekr.20230831011820.1685"><vh>StrConv.visit_assert_stmt</vh></v>
+<v t="ekr.20230831011820.1686"><vh>StrConv.visit_await_expr</vh></v>
+<v t="ekr.20230831011820.1687"><vh>StrConv.visit_del_stmt</vh></v>
+<v t="ekr.20230831011820.1688"><vh>StrConv.visit_try_stmt</vh></v>
+<v t="ekr.20230831011820.1689"><vh>StrConv.visit_with_stmt</vh></v>
+<v t="ekr.20230831011820.1690"><vh>StrConv.visit_match_stmt</vh></v>
+<v t="ekr.20230831011820.1691"><vh>StrConv.visit_int_expr</vh></v>
+<v t="ekr.20230831011820.1692"><vh>StrConv.visit_str_expr</vh></v>
+<v t="ekr.20230831011820.1693"><vh>StrConv.visit_bytes_expr</vh></v>
+<v t="ekr.20230831011820.1694"><vh>StrConv.str_repr</vh></v>
+<v t="ekr.20230831011820.1695"><vh>StrConv.visit_float_expr</vh></v>
+<v t="ekr.20230831011820.1696"><vh>StrConv.visit_complex_expr</vh></v>
+<v t="ekr.20230831011820.1697"><vh>StrConv.visit_ellipsis</vh></v>
+<v t="ekr.20230831011820.1698"><vh>StrConv.visit_star_expr</vh></v>
+<v t="ekr.20230831011820.1699"><vh>StrConv.visit_name_expr</vh></v>
+<v t="ekr.20230831011820.1700"><vh>StrConv.pretty_name</vh></v>
+<v t="ekr.20230831011820.1701"><vh>StrConv.visit_member_expr</vh></v>
+<v t="ekr.20230831011820.1702"><vh>StrConv.visit_yield_expr</vh></v>
+<v t="ekr.20230831011820.1703"><vh>StrConv.visit_yield_from_expr</vh></v>
+<v t="ekr.20230831011820.1704"><vh>StrConv.visit_call_expr</vh></v>
+<v t="ekr.20230831011820.1705"><vh>StrConv.visit_op_expr</vh></v>
+<v t="ekr.20230831011820.1706"><vh>StrConv.visit_comparison_expr</vh></v>
+<v t="ekr.20230831011820.1707"><vh>StrConv.visit_cast_expr</vh></v>
+<v t="ekr.20230831011820.1708"><vh>StrConv.visit_assert_type_expr</vh></v>
+<v t="ekr.20230831011820.1709"><vh>StrConv.visit_reveal_expr</vh></v>
+<v t="ekr.20230831011820.1710"><vh>StrConv.visit_assignment_expr</vh></v>
+<v t="ekr.20230831011820.1711"><vh>StrConv.visit_unary_expr</vh></v>
+<v t="ekr.20230831011820.1712"><vh>StrConv.visit_list_expr</vh></v>
+<v t="ekr.20230831011820.1713"><vh>StrConv.visit_dict_expr</vh></v>
+<v t="ekr.20230831011820.1714"><vh>StrConv.visit_set_expr</vh></v>
+<v t="ekr.20230831011820.1715"><vh>StrConv.visit_tuple_expr</vh></v>
+<v t="ekr.20230831011820.1716"><vh>StrConv.visit_index_expr</vh></v>
+<v t="ekr.20230831011820.1717"><vh>StrConv.visit_super_expr</vh></v>
+<v t="ekr.20230831011820.1718"><vh>StrConv.visit_type_application</vh></v>
+<v t="ekr.20230831011820.1719"><vh>StrConv.visit_type_var_expr</vh></v>
+<v t="ekr.20230831011820.1720"><vh>StrConv.visit_paramspec_expr</vh></v>
+<v t="ekr.20230831011820.1721"><vh>StrConv.visit_type_var_tuple_expr</vh></v>
+<v t="ekr.20230831011820.1722"><vh>StrConv.visit_type_alias_expr</vh></v>
+<v t="ekr.20230831011820.1723"><vh>StrConv.visit_namedtuple_expr</vh></v>
+<v t="ekr.20230831011820.1724"><vh>StrConv.visit_enum_call_expr</vh></v>
+<v t="ekr.20230831011820.1725"><vh>StrConv.visit_typeddict_expr</vh></v>
+<v t="ekr.20230831011820.1726"><vh>StrConv.visit__promote_expr</vh></v>
+<v t="ekr.20230831011820.1727"><vh>StrConv.visit_newtype_expr</vh></v>
+<v t="ekr.20230831011820.1728"><vh>StrConv.visit_lambda_expr</vh></v>
+<v t="ekr.20230831011820.1729"><vh>StrConv.visit_generator_expr</vh></v>
+<v t="ekr.20230831011820.1730"><vh>StrConv.visit_list_comprehension</vh></v>
+<v t="ekr.20230831011820.1731"><vh>StrConv.visit_set_comprehension</vh></v>
+<v t="ekr.20230831011820.1732"><vh>StrConv.visit_dictionary_comprehension</vh></v>
+<v t="ekr.20230831011820.1733"><vh>StrConv.visit_conditional_expr</vh></v>
+<v t="ekr.20230831011820.1734"><vh>StrConv.visit_slice_expr</vh></v>
+<v t="ekr.20230831011820.1735"><vh>StrConv.visit_temp_node</vh></v>
+<v t="ekr.20230831011820.1736"><vh>StrConv.visit_as_pattern</vh></v>
+<v t="ekr.20230831011820.1737"><vh>StrConv.visit_or_pattern</vh></v>
+<v t="ekr.20230831011820.1738"><vh>StrConv.visit_value_pattern</vh></v>
+<v t="ekr.20230831011820.1739"><vh>StrConv.visit_singleton_pattern</vh></v>
+<v t="ekr.20230831011820.1740"><vh>StrConv.visit_sequence_pattern</vh></v>
+<v t="ekr.20230831011820.1741"><vh>StrConv.visit_starred_pattern</vh></v>
+<v t="ekr.20230831011820.1742"><vh>StrConv.visit_mapping_pattern</vh></v>
+<v t="ekr.20230831011820.1743"><vh>StrConv.visit_class_pattern</vh></v>
+</v>
+<v t="ekr.20230831011820.1744"><vh>function: dump_tagged</vh></v>
+<v t="ekr.20230831011820.1745"><vh>function: indent</vh></v>
+</v>
+<v t="ekr.20230831011821.1014"><vh>@clean util.py</vh>
+<v t="ekr.20230831011821.1015"><vh>&lt;&lt; util.py: preamble &gt;&gt;</vh></v>
+<v t="ekr.20230831011821.1016"><vh>function: is_dunder</vh></v>
+<v t="ekr.20230831011821.1017"><vh>function: is_sunder</vh></v>
+<v t="ekr.20230831011821.1018"><vh>function: split_module_names</vh></v>
+<v t="ekr.20230831011821.1019"><vh>function: module_prefix</vh></v>
+<v t="ekr.20230831011821.1020"><vh>function: split_target</vh></v>
+<v t="ekr.20230831011821.1021"><vh>function: short_type</vh></v>
+<v t="ekr.20230831011821.1022"><vh>function: find_python_encoding</vh></v>
+<v t="ekr.20230831011821.1023"><vh>function: bytes_to_human_readable_repr</vh></v>
+<v t="ekr.20230831011821.1024"><vh>class DecodeError</vh></v>
+<v t="ekr.20230831011821.1025"><vh>function: decode_python_encoding</vh></v>
+<v t="ekr.20230831011821.1026"><vh>function: read_py_file</vh></v>
+<v t="ekr.20230831011821.1027"><vh>function: trim_source_line</vh></v>
+<v t="ekr.20230831011821.1028"><vh>function: get_mypy_comments</vh></v>
+<v t="ekr.20230831011821.1029"><vh>function: write_junit_xml</vh></v>
+<v t="ekr.20230831011821.1030"><vh>class IdMapper</vh>
+<v t="ekr.20230831011821.1031"><vh>IdMapper.__init__</vh></v>
+<v t="ekr.20230831011821.1032"><vh>IdMapper.id</vh></v>
+</v>
+<v t="ekr.20230831011821.1033"><vh>function: get_prefix</vh></v>
+<v t="ekr.20230831011821.1034"><vh>function: correct_relative_import</vh></v>
+<v t="ekr.20230831011821.1035"><vh>function: get_class_descriptors</vh></v>
+<v t="ekr.20230831011821.1036"><vh>function: replace_object_state</vh></v>
+<v t="ekr.20230831011821.1037"><vh>function: is_sub_path</vh></v>
+<v t="ekr.20230831011821.1038"><vh>function: hard_exit</vh></v>
+<v t="ekr.20230831011821.1039"><vh>function: unmangle</vh></v>
+<v t="ekr.20230831011821.1040"><vh>function: get_unique_redefinition_name</vh></v>
+<v t="ekr.20230831011821.1041"><vh>function: check_python_version</vh></v>
+<v t="ekr.20230831011821.1042"><vh>function: count_stats</vh></v>
+<v t="ekr.20230831011821.1043"><vh>function: split_words</vh></v>
+<v t="ekr.20230831011821.1044"><vh>function: get_terminal_width</vh></v>
+<v t="ekr.20230831011821.1045"><vh>function: soft_wrap</vh></v>
+<v t="ekr.20230831011821.1046"><vh>function: hash_digest</vh></v>
+<v t="ekr.20230831011821.1047"><vh>function: parse_gray_color</vh></v>
+<v t="ekr.20230831011821.1048"><vh>function: should_force_color</vh></v>
+<v t="ekr.20230831011821.1049"><vh>class FancyFormatter</vh>
+<v t="ekr.20230831011821.1050"><vh>FancyFormatter.__init__</vh></v>
+<v t="ekr.20230831011821.1051"><vh>FancyFormatter.initialize_vt100_colors</vh></v>
+<v t="ekr.20230831011821.1052"><vh>FancyFormatter.initialize_win_colors</vh></v>
+<v t="ekr.20230831011821.1053"><vh>FancyFormatter.initialize_unix_colors</vh></v>
+<v t="ekr.20230831011821.1054"><vh>FancyFormatter.style</vh></v>
+<v t="ekr.20230831011821.1055"><vh>FancyFormatter.fit_in_terminal</vh></v>
+<v t="ekr.20230831011821.1056"><vh>FancyFormatter.colorize</vh></v>
+<v t="ekr.20230831011821.1057"><vh>FancyFormatter.highlight_quote_groups</vh></v>
+<v t="ekr.20230831011821.1058"><vh>FancyFormatter.underline_link</vh></v>
+<v t="ekr.20230831011821.1059"><vh>FancyFormatter.format_success</vh></v>
+<v t="ekr.20230831011821.1060"><vh>FancyFormatter.format_error</vh></v>
+</v>
+<v t="ekr.20230831011821.1061"><vh>function: is_typeshed_file</vh></v>
+<v t="ekr.20230831011821.1062"><vh>function: is_stub_package_file</vh></v>
+<v t="ekr.20230831011821.1063"><vh>function: unnamed_function</vh></v>
+<v t="ekr.20230831011821.1064"><vh>function: time_spent_us</vh></v>
+<v t="ekr.20230831011821.1065"><vh>function: plural_s</vh></v>
+<v t="ekr.20230831011821.1066"><vh>function: quote_docstring</vh></v>
+</v>
+</v>
+</v>
 <v t="ekr.20230831070114.1"><vh>--- Semantic analysis</vh>
 <v t="ekr.20230831011820.1106"><vh>@clean semanal.py</vh>
+<v t="ekr.20230902050513.1"><vh>&lt;&lt; semanal.py: docstring &gt;&gt;</vh></v>
 <v t="ekr.20230831011820.1108"><vh>&lt;&lt; semanal.py: declarations &gt;&gt;</vh></v>
 <v t="ekr.20230831011820.1109"><vh>class SemanticAnalyzer</vh></v>
 <v t="ekr.20230831011820.1110"><vh>function: __init__</vh></v>
@@ -734,13 +1318,14 @@
 </v>
 </v>
 <v t="ekr.20230831011820.1419"><vh>@clean semanal_infer.py</vh>
-<v t="ekr.20230831011820.1420"><vh>&lt;&lt; semanal_infer.py: preamble &gt;&gt;</vh></v>
+<v t="ekr.20230831011820.1420"><vh>&lt;&lt; semanal_infer.py: imports &gt;&gt;</vh></v>
 <v t="ekr.20230831011820.1421"><vh>function: infer_decorator_signature_if_simple</vh></v>
 <v t="ekr.20230831011820.1422"><vh>function: is_identity_signature</vh></v>
 <v t="ekr.20230831011820.1423"><vh>function: calculate_return_type</vh></v>
 <v t="ekr.20230831011820.1424"><vh>function: find_fixed_callable_return</vh></v>
 </v>
 <v t="ekr.20230831011820.1425"><vh>@clean semanal_main.py</vh>
+<v t="ekr.20230902062700.1"><vh>&lt;&lt; semanal_main.py: docstring &gt;&gt;</vh></v>
 <v t="ekr.20230831011820.1427"><vh>&lt;&lt; semanal_main.py: declarations &gt;&gt;</vh></v>
 <v t="ekr.20230831011820.1428"><vh>function: semantic_analysis_for_scc</vh></v>
 <v t="ekr.20230831011820.1429"><vh>function: cleanup_builtin_scc</vh></v>
@@ -896,292 +1481,6 @@
 </v>
 </v>
 </v>
-<v t="ekr.20230831070204.1"><vh>--- Stubgen</vh>
-<v t="ekr.20230831011820.1746"><vh>@clean stubdoc.py</vh>
-<v t="ekr.20230831011820.1748"><vh>&lt;&lt; stubdoc.py: declarations &gt;&gt;</vh></v>
-<v t="ekr.20230831011820.1749"><vh>function: is_valid_type</vh></v>
-<v t="ekr.20230831011820.1750"><vh>class ArgSig</vh>
-<v t="ekr.20230831011820.1751"><vh>ArgSig.__init__</vh></v>
-<v t="ekr.20230831011820.1752"><vh>ArgSig.__repr__</vh></v>
-<v t="ekr.20230831011820.1753"><vh>ArgSig.__eq__</vh></v>
-</v>
-<v t="ekr.20230831011820.1754"><vh>class FunctionSig</vh></v>
-<v t="ekr.20230831011820.1755"><vh>class DocStringParser</vh>
-<v t="ekr.20230831011820.1756"><vh>DocStringParser.__init__</vh></v>
-<v t="ekr.20230831011820.1757"><vh>DocStringParser.add_token</vh></v>
-<v t="ekr.20230831011820.1758"><vh>DocStringParser.reset</vh></v>
-<v t="ekr.20230831011820.1759"><vh>DocStringParser.get_signatures</vh></v>
-</v>
-<v t="ekr.20230831011820.1760"><vh>function: infer_sig_from_docstring</vh></v>
-<v t="ekr.20230831011820.1761"><vh>function: infer_arg_sig_from_anon_docstring</vh></v>
-<v t="ekr.20230831011820.1762"><vh>function: infer_ret_type_sig_from_docstring</vh></v>
-<v t="ekr.20230831011820.1763"><vh>function: infer_ret_type_sig_from_anon_docstring</vh></v>
-<v t="ekr.20230831011820.1764"><vh>function: parse_signature</vh></v>
-<v t="ekr.20230831011820.1765"><vh>function: build_signature</vh></v>
-<v t="ekr.20230831011820.1766"><vh>function: parse_all_signatures</vh></v>
-<v t="ekr.20230831011820.1767"><vh>function: find_unique_signatures</vh></v>
-<v t="ekr.20230831011820.1768"><vh>function: infer_prop_type_from_docstring</vh></v>
-</v>
-<v t="ekr.20230831011820.1769"><vh>@clean stubgen.py</vh>
-<v t="ekr.20230831011820.1770"><vh>&lt;&lt; stubgen.py: docstring &gt;&gt;</vh></v>
-<v t="ekr.20230831011820.1771"><vh>&lt;&lt; stubgen.py: declarations &gt;&gt;</vh></v>
-<v t="ekr.20230831011820.1772"><vh>class Options</vh>
-<v t="ekr.20230831011820.1773"><vh>Options.__init__</vh></v>
-</v>
-<v t="ekr.20230831011820.1774"><vh>class StubSource</vh>
-<v t="ekr.20230831011820.1775"><vh>StubSource.__init__</vh></v>
-<v t="ekr.20230831011820.1776"><vh>StubSource.module</vh></v>
-<v t="ekr.20230831011820.1777"><vh>StubSource.path</vh></v>
-</v>
-<v t="ekr.20230831011820.1778"><vh>class AnnotationPrinter</vh>
-<v t="ekr.20230831011820.1779"><vh>AnnotationPrinter.__init__</vh></v>
-<v t="ekr.20230831011820.1780"><vh>AnnotationPrinter.visit_any</vh></v>
-<v t="ekr.20230831011820.1781"><vh>AnnotationPrinter.visit_unbound_type</vh></v>
-<v t="ekr.20230831011820.1782"><vh>AnnotationPrinter.visit_none_type</vh></v>
-<v t="ekr.20230831011820.1783"><vh>AnnotationPrinter.visit_type_list</vh></v>
-<v t="ekr.20230831011820.1784"><vh>AnnotationPrinter.visit_union_type</vh></v>
-<v t="ekr.20230831011820.1785"><vh>AnnotationPrinter.args_str</vh></v>
-</v>
-<v t="ekr.20230831011820.1786"><vh>class AliasPrinter</vh>
-<v t="ekr.20230831011820.1787"><vh>AliasPrinter.__init__</vh></v>
-<v t="ekr.20230831011820.1788"><vh>AliasPrinter.visit_call_expr</vh></v>
-<v t="ekr.20230831011820.1789"><vh>AliasPrinter.visit_name_expr</vh></v>
-<v t="ekr.20230831011820.1790"><vh>AliasPrinter.visit_member_expr</vh></v>
-<v t="ekr.20230831011820.1791"><vh>AliasPrinter.visit_str_expr</vh></v>
-<v t="ekr.20230831011820.1792"><vh>AliasPrinter.visit_index_expr</vh></v>
-<v t="ekr.20230831011820.1793"><vh>AliasPrinter.visit_tuple_expr</vh></v>
-<v t="ekr.20230831011820.1794"><vh>AliasPrinter.visit_list_expr</vh></v>
-<v t="ekr.20230831011820.1795"><vh>AliasPrinter.visit_dict_expr</vh></v>
-<v t="ekr.20230831011820.1796"><vh>AliasPrinter.visit_ellipsis</vh></v>
-<v t="ekr.20230831011820.1797"><vh>AliasPrinter.visit_op_expr</vh></v>
-</v>
-<v t="ekr.20230831011820.1798"><vh>class ImportTracker</vh>
-<v t="ekr.20230831011820.1799"><vh>ImportTracker.__init__</vh></v>
-<v t="ekr.20230831011820.1800"><vh>ImportTracker.add_import_from</vh></v>
-<v t="ekr.20230831011820.1801"><vh>ImportTracker.add_import</vh></v>
-<v t="ekr.20230831011820.1802"><vh>ImportTracker.require_name</vh></v>
-<v t="ekr.20230831011820.1803"><vh>ImportTracker.reexport</vh></v>
-<v t="ekr.20230831011820.1804"><vh>ImportTracker.import_lines</vh></v>
-</v>
-<v t="ekr.20230831011820.1805"><vh>function: find_defined_names</vh></v>
-<v t="ekr.20230831011820.1806"><vh>class DefinitionFinder</vh>
-<v t="ekr.20230831011820.1807"><vh>DefinitionFinder.__init__</vh></v>
-<v t="ekr.20230831011820.1808"><vh>DefinitionFinder.visit_class_def</vh></v>
-<v t="ekr.20230831011820.1809"><vh>DefinitionFinder.visit_func_def</vh></v>
-</v>
-<v t="ekr.20230831011820.1810"><vh>function: find_referenced_names</vh></v>
-<v t="ekr.20230831011820.1811"><vh>class ReferenceFinder</vh>
-<v t="ekr.20230831011820.1812"><vh>ReferenceFinder.__init__</vh></v>
-<v t="ekr.20230831011820.1813"><vh>ReferenceFinder.visit_block</vh></v>
-<v t="ekr.20230831011820.1814"><vh>ReferenceFinder.visit_name_expr</vh></v>
-<v t="ekr.20230831011820.1815"><vh>ReferenceFinder.visit_instance</vh></v>
-<v t="ekr.20230831011820.1816"><vh>ReferenceFinder.visit_unbound_type</vh></v>
-<v t="ekr.20230831011820.1817"><vh>ReferenceFinder.visit_tuple_type</vh></v>
-<v t="ekr.20230831011820.1818"><vh>ReferenceFinder.visit_callable_type</vh></v>
-<v t="ekr.20230831011820.1819"><vh>ReferenceFinder.add_ref</vh></v>
-</v>
-<v t="ekr.20230831011820.1820"><vh>class StubGenerator</vh>
-<v t="ekr.20230831011820.1821"><vh>StubGenerator.__init__</vh></v>
-<v t="ekr.20230831011820.1822"><vh>StubGenerator.visit_mypy_file</vh></v>
-<v t="ekr.20230831011820.1823"><vh>StubGenerator.visit_overloaded_func_def</vh></v>
-<v t="ekr.20230831011820.1824"><vh>StubGenerator.visit_func_def</vh></v>
-<v t="ekr.20230831011820.1825"><vh>StubGenerator.is_none_expr</vh></v>
-<v t="ekr.20230831011820.1826"><vh>StubGenerator.visit_decorator</vh></v>
-<v t="ekr.20230831011820.1827"><vh>StubGenerator.process_decorator</vh></v>
-<v t="ekr.20230831011820.1828"><vh>StubGenerator.get_fullname</vh></v>
-<v t="ekr.20230831011820.1829"><vh>StubGenerator.visit_class_def</vh></v>
-<v t="ekr.20230831011820.1830"><vh>StubGenerator.get_base_types</vh></v>
-<v t="ekr.20230831011820.1831"><vh>StubGenerator.visit_block</vh></v>
-<v t="ekr.20230831011820.1832"><vh>StubGenerator.visit_assignment_stmt</vh></v>
-<v t="ekr.20230831011820.1833"><vh>StubGenerator.is_namedtuple</vh></v>
-<v t="ekr.20230831011820.1834"><vh>StubGenerator.is_typed_namedtuple</vh></v>
-<v t="ekr.20230831011820.1835"><vh>StubGenerator._get_namedtuple_fields</vh></v>
-<v t="ekr.20230831011820.1836"><vh>StubGenerator.process_namedtuple</vh></v>
-<v t="ekr.20230831011820.1837"><vh>StubGenerator.is_typeddict</vh></v>
-<v t="ekr.20230831011820.1838"><vh>StubGenerator.process_typeddict</vh></v>
-<v t="ekr.20230831011820.1839"><vh>StubGenerator.annotate_as_incomplete</vh></v>
-<v t="ekr.20230831011820.1840"><vh>StubGenerator.is_alias_expression</vh></v>
-<v t="ekr.20230831011820.1841"><vh>StubGenerator.process_typealias</vh></v>
-<v t="ekr.20230831011820.1842"><vh>StubGenerator.visit_if_stmt</vh></v>
-<v t="ekr.20230831011820.1843"><vh>StubGenerator.visit_import_all</vh></v>
-<v t="ekr.20230831011820.1844"><vh>StubGenerator.visit_import_from</vh></v>
-<v t="ekr.20230831011820.1845"><vh>StubGenerator.visit_import</vh></v>
-<v t="ekr.20230831011820.1846"><vh>StubGenerator.get_init</vh></v>
-<v t="ekr.20230831011820.1847"><vh>StubGenerator.get_assign_initializer</vh></v>
-<v t="ekr.20230831011820.1848"><vh>StubGenerator.add</vh></v>
-<v t="ekr.20230831011820.1849"><vh>StubGenerator.add_decorator</vh></v>
-<v t="ekr.20230831011820.1850"><vh>StubGenerator.clear_decorators</vh></v>
-<v t="ekr.20230831011820.1851"><vh>StubGenerator.typing_name</vh></v>
-<v t="ekr.20230831011820.1852"><vh>StubGenerator.add_typing_import</vh></v>
-<v t="ekr.20230831011820.1853"><vh>StubGenerator.add_import_line</vh></v>
-<v t="ekr.20230831011820.1854"><vh>StubGenerator.output</vh></v>
-<v t="ekr.20230831011820.1855"><vh>StubGenerator.is_not_in_all</vh></v>
-<v t="ekr.20230831011820.1856"><vh>StubGenerator.is_private_name</vh></v>
-<v t="ekr.20230831011820.1857"><vh>StubGenerator.is_private_member</vh></v>
-<v t="ekr.20230831011820.1858"><vh>StubGenerator.get_str_type_of_node</vh></v>
-<v t="ekr.20230831011820.1859"><vh>StubGenerator.maybe_unwrap_unary_expr</vh></v>
-<v t="ekr.20230831011820.1860"><vh>StubGenerator.print_annotation</vh></v>
-<v t="ekr.20230831011820.1861"><vh>StubGenerator.is_top_level</vh></v>
-<v t="ekr.20230831011820.1862"><vh>StubGenerator.record_name</vh></v>
-<v t="ekr.20230831011820.1863"><vh>StubGenerator.is_recorded_name</vh></v>
-</v>
-<v t="ekr.20230831011820.1864"><vh>function: find_method_names</vh></v>
-<v t="ekr.20230831011820.1865"><vh>class SelfTraverser</vh>
-<v t="ekr.20230831011820.1866"><vh>SelfTraverser.__init__</vh></v>
-<v t="ekr.20230831011820.1867"><vh>SelfTraverser.visit_assignment_stmt</vh></v>
-</v>
-<v t="ekr.20230831011820.1868"><vh>function: find_self_initializers</vh></v>
-<v t="ekr.20230831011820.1869"><vh>function: get_qualified_name</vh></v>
-<v t="ekr.20230831011820.1870"><vh>function: remove_blacklisted_modules</vh></v>
-<v t="ekr.20230831011820.1871"><vh>function: is_blacklisted_path</vh></v>
-<v t="ekr.20230831011820.1872"><vh>function: normalize_path_separators</vh></v>
-<v t="ekr.20230831011820.1873"><vh>function: collect_build_targets</vh></v>
-<v t="ekr.20230831011820.1874"><vh>function: find_module_paths_using_imports</vh></v>
-<v t="ekr.20230831011820.1875"><vh>function: is_non_library_module</vh></v>
-<v t="ekr.20230831011820.1876"><vh>function: translate_module_name</vh></v>
-<v t="ekr.20230831011820.1877"><vh>function: find_module_paths_using_search</vh></v>
-<v t="ekr.20230831011820.1878"><vh>function: mypy_options</vh></v>
-<v t="ekr.20230831011820.1879"><vh>function: parse_source_file</vh></v>
-<v t="ekr.20230831011820.1880"><vh>function: generate_asts_for_modules</vh></v>
-<v t="ekr.20230831011820.1881"><vh>function: generate_stub_from_ast</vh></v>
-<v t="ekr.20230831011820.1882"><vh>function: get_sig_generators</vh></v>
-<v t="ekr.20230831011820.1883"><vh>function: collect_docs_signatures</vh></v>
-<v t="ekr.20230831011820.1884"><vh>function: generate_stubs</vh></v>
-<v t="ekr.20230831011820.1885"><vh>function: parse_options</vh></v>
-<v t="ekr.20230831011820.1886"><vh>function: main</vh></v>
-</v>
-<v t="ekr.20230831011820.1887"><vh>@clean stubgenc.py</vh>
-<v t="ekr.20230831011820.1888"><vh>&lt;&lt; stubgenc.py: docstring &gt;&gt;</vh></v>
-<v t="ekr.20230831011820.1889"><vh>&lt;&lt; stubgenc.py: declarations &gt;&gt;</vh></v>
-<v t="ekr.20230831011820.1890"><vh>class SignatureGenerator</vh>
-<v t="ekr.20230831011820.1891"><vh>SignatureGenerator.remove_self_type</vh></v>
-<v t="ekr.20230831011820.1892"><vh>SignatureGenerator.get_function_sig</vh></v>
-<v t="ekr.20230831011820.1893"><vh>SignatureGenerator.get_method_sig</vh></v>
-</v>
-<v t="ekr.20230831011820.1894"><vh>class ExternalSignatureGenerator</vh>
-<v t="ekr.20230831011820.1895"><vh>ExternalSignatureGenerator.__init__</vh></v>
-<v t="ekr.20230831011820.1896"><vh>ExternalSignatureGenerator.get_function_sig</vh></v>
-<v t="ekr.20230831011820.1897"><vh>ExternalSignatureGenerator.get_method_sig</vh></v>
-</v>
-<v t="ekr.20230831011820.1898"><vh>class DocstringSignatureGenerator</vh>
-<v t="ekr.20230831011820.1899"><vh>DocstringSignatureGenerator.get_function_sig</vh></v>
-<v t="ekr.20230831011820.1900"><vh>DocstringSignatureGenerator.get_method_sig</vh></v>
-</v>
-<v t="ekr.20230831011820.1901"><vh>class FallbackSignatureGenerator</vh>
-<v t="ekr.20230831011820.1902"><vh>FallbackSignatureGenerator.get_function_sig</vh></v>
-<v t="ekr.20230831011820.1903"><vh>FallbackSignatureGenerator.get_method_sig</vh></v>
-</v>
-<v t="ekr.20230831011820.1904"><vh>function: generate_stub_for_c_module</vh></v>
-<v t="ekr.20230831011820.1905"><vh>function: add_typing_import</vh></v>
-<v t="ekr.20230831011820.1906"><vh>function: get_members</vh></v>
-<v t="ekr.20230831011820.1907"><vh>function: is_c_function</vh></v>
-<v t="ekr.20230831011820.1908"><vh>function: is_c_method</vh></v>
-<v t="ekr.20230831011820.1909"><vh>function: is_c_classmethod</vh></v>
-<v t="ekr.20230831011820.1910"><vh>function: is_c_property</vh></v>
-<v t="ekr.20230831011820.1911"><vh>function: is_c_property_readonly</vh></v>
-<v t="ekr.20230831011820.1912"><vh>function: is_c_type</vh></v>
-<v t="ekr.20230831011820.1913"><vh>function: is_pybind11_overloaded_function_docstring</vh></v>
-<v t="ekr.20230831011820.1914"><vh>function: generate_c_function_stub</vh></v>
-<v t="ekr.20230831011820.1915"><vh>function: strip_or_import</vh></v>
-<v t="ekr.20230831011820.1916"><vh>function: is_static_property</vh></v>
-<v t="ekr.20230831011820.1917"><vh>function: generate_c_property_stub</vh></v>
-<v t="ekr.20230831011820.1918"><vh>function: generate_c_type_stub</vh></v>
-<v t="ekr.20230831011820.1919"><vh>function: get_type_fullname</vh></v>
-<v t="ekr.20230831011820.1920"><vh>function: method_name_sort_key</vh></v>
-<v t="ekr.20230831011820.1921"><vh>function: is_pybind_skipped_attribute</vh></v>
-<v t="ekr.20230831011820.1922"><vh>function: is_skipped_attribute</vh></v>
-<v t="ekr.20230831011820.1923"><vh>function: infer_method_args</vh></v>
-<v t="ekr.20230831011820.1924"><vh>function: infer_method_ret_type</vh></v>
-</v>
-<v t="ekr.20230831011820.1925"><vh>@clean stubinfo.py</vh>
-<v t="ekr.20230831011820.1926"><vh>&lt;&lt; stubinfo.py: preamble &gt;&gt;</vh></v>
-<v t="ekr.20230831011820.1927"><vh>function: is_legacy_bundled_package</vh></v>
-<v t="ekr.20230831011820.1928"><vh>function: approved_stub_package_exists</vh></v>
-<v t="ekr.20230831011820.1929"><vh>function: stub_distribution_name</vh></v>
-</v>
-<v t="ekr.20230831011820.1930"><vh>@clean stubtest.py</vh>
-<v t="ekr.20230831011820.1932"><vh>&lt;&lt; stubtest.py: declarations &gt;&gt;</vh></v>
-<v t="ekr.20230831011820.1933"><vh>class Missing</vh>
-<v t="ekr.20230831011820.1934"><vh>Missing.__repr__</vh></v>
-</v>
-<v t="ekr.20230831011820.1935"><vh>function: _style</vh></v>
-<v t="ekr.20230831011820.1936"><vh>function: _truncate</vh></v>
-<v t="ekr.20230831011820.1937"><vh>class StubtestFailure</vh></v>
-<v t="ekr.20230831011820.1938"><vh>class Error</vh>
-<v t="ekr.20230831011820.1939"><vh>Error.__init__</vh></v>
-<v t="ekr.20230831011820.1940"><vh>Error.is_missing_stub</vh></v>
-<v t="ekr.20230831011820.1941"><vh>Error.is_positional_only_related</vh></v>
-<v t="ekr.20230831011820.1942"><vh>Error.get_description</vh></v>
-</v>
-<v t="ekr.20230831011820.1943"><vh>function: silent_import_module</vh></v>
-<v t="ekr.20230831011820.1944"><vh>function: test_module</vh></v>
-<v t="ekr.20230831011820.1945"><vh>function: verify</vh></v>
-<v t="ekr.20230831011820.1946"><vh>function: _verify_exported_names</vh></v>
-<v t="ekr.20230831011820.1947"><vh>function: _get_imported_symbol_names</vh></v>
-<v t="ekr.20230831011820.1948"><vh>function: verify_mypyfile</vh></v>
-<v t="ekr.20230831011820.1949"><vh>function: _verify_final</vh>
-<v t="ekr.20230831011820.1950"><vh>class SubClass</vh></v>
-</v>
-<v t="ekr.20230831011820.1951"><vh>function: _verify_metaclass</vh></v>
-<v t="ekr.20230831011820.1952"><vh>function: verify_typeinfo</vh></v>
-<v t="ekr.20230831011820.1953"><vh>function: _static_lookup_runtime</vh></v>
-<v t="ekr.20230831011820.1954"><vh>function: _verify_static_class_methods</vh></v>
-<v t="ekr.20230831011820.1955"><vh>function: _verify_arg_name</vh></v>
-<v t="ekr.20230831011820.1956"><vh>function: _verify_arg_default_value</vh></v>
-<v t="ekr.20230831011820.1957"><vh>function: maybe_strip_cls</vh></v>
-<v t="ekr.20230831011820.1958"><vh>class Signature</vh>
-<v t="ekr.20230831011820.1959"><vh>Signature.__init__</vh></v>
-<v t="ekr.20230831011820.1960"><vh>Signature.__str__</vh></v>
-<v t="ekr.20230831011820.1961"><vh>Signature.from_funcitem</vh></v>
-<v t="ekr.20230831011820.1962"><vh>Signature.from_inspect_signature</vh></v>
-<v t="ekr.20230831011820.1963"><vh>Signature.from_overloadedfuncdef</vh></v>
-</v>
-<v t="ekr.20230831011820.1964"><vh>function: _verify_signature</vh></v>
-<v t="ekr.20230831011820.1965"><vh>function: verify_funcitem</vh></v>
-<v t="ekr.20230831011820.1966"><vh>function: verify_none</vh></v>
-<v t="ekr.20230831011820.1967"><vh>function: verify_var</vh></v>
-<v t="ekr.20230831011820.1968"><vh>function: verify_overloadedfuncdef</vh></v>
-<v t="ekr.20230831011820.1969"><vh>function: verify_typevarexpr</vh></v>
-<v t="ekr.20230831011820.1970"><vh>function: verify_paramspecexpr</vh></v>
-<v t="ekr.20230831011820.1971"><vh>function: _verify_readonly_property</vh></v>
-<v t="ekr.20230831011820.1972"><vh>function: _verify_abstract_status</vh></v>
-<v t="ekr.20230831011820.1973"><vh>function: _verify_final_method</vh></v>
-<v t="ekr.20230831011820.1974"><vh>function: _resolve_funcitem_from_decorator</vh></v>
-<v t="ekr.20230831011820.1975"><vh>function: verify_decorator</vh></v>
-<v t="ekr.20230831011820.1976"><vh>function: verify_typealias</vh></v>
-<v t="ekr.20230831011820.1977"><vh>function: is_probably_private</vh></v>
-<v t="ekr.20230831011820.1978"><vh>function: is_probably_a_function</vh></v>
-<v t="ekr.20230831011820.1979"><vh>function: is_read_only_property</vh></v>
-<v t="ekr.20230831011820.1980"><vh>function: safe_inspect_signature</vh></v>
-<v t="ekr.20230831011820.1981"><vh>function: is_subtype_helper</vh></v>
-<v t="ekr.20230831011820.1982"><vh>function: get_mypy_type_of_runtime_value</vh></v>
-<v t="ekr.20230831011820.1983"><vh>function: build_stubs</vh></v>
-<v t="ekr.20230831011820.1984"><vh>function: get_stub</vh></v>
-<v t="ekr.20230831011820.1985"><vh>function: get_typeshed_stdlib_modules</vh></v>
-<v t="ekr.20230831011820.1986"><vh>function: get_importable_stdlib_modules</vh></v>
-<v t="ekr.20230831011820.1987"><vh>function: get_allowlist_entries</vh></v>
-<v t="ekr.20230831011820.1988"><vh>class _Arguments</vh></v>
-<v t="ekr.20230831011820.1989"><vh>function: test_stubs</vh></v>
-<v t="ekr.20230831011820.1990"><vh>function: parse_options</vh></v>
-<v t="ekr.20230831011820.1991"><vh>function: main</vh></v>
-</v>
-<v t="ekr.20230831011820.1992"><vh>@clean stubutil.py</vh>
-<v t="ekr.20230831011820.1993"><vh>&lt;&lt; stubutil.py: preamble &gt;&gt;</vh></v>
-<v t="ekr.20230831011820.1994"><vh>class CantImport</vh>
-<v t="ekr.20230831011820.1995"><vh>CantImport.__init__</vh></v>
-</v>
-<v t="ekr.20230831011820.1996"><vh>function: walk_packages</vh></v>
-<v t="ekr.20230831011820.1997"><vh>function: find_module_path_using_sys_path</vh></v>
-<v t="ekr.20230831011820.1998"><vh>function: find_module_path_and_all_py3</vh></v>
-<v t="ekr.20230831011820.1999"><vh>function: generate_guarded</vh></v>
-<v t="ekr.20230831011820.2000"><vh>function: report_missing</vh></v>
-<v t="ekr.20230831011820.2001"><vh>function: fail_missing</vh></v>
-<v t="ekr.20230831011820.2002"><vh>function: remove_misplaced_type_comments</vh></v>
-<v t="ekr.20230831011820.2003"><vh>function: remove_misplaced_type_comments</vh></v>
-<v t="ekr.20230831011820.2004"><vh>function: remove_misplaced_type_comments</vh></v>
-<v t="ekr.20230831011820.2005"><vh>function: common_dir_prefix</vh></v>
-</v>
-</v>
 <v t="ekr.20230831071046.1"><vh>--- Top-level, build, parse</vh>
 <v t="ekr.20230831011819.3"><vh>@clean __init__.py</vh></v>
 <v t="ekr.20230831011819.4"><vh>@clean __main__.py</vh>
@@ -1189,6 +1488,7 @@
 <v t="ekr.20230831011819.6"><vh>function: console_entry</vh></v>
 </v>
 <v t="ekr.20230831011819.7"><vh>@clean api.py</vh>
+<v t="ekr.20230902063100.1"><vh>&lt;&lt; api.py: docstring &gt;&gt;</vh></v>
 <v t="ekr.20230831011819.9"><vh>&lt;&lt; api.py: declarations &gt;&gt;</vh></v>
 <v t="ekr.20230831011819.10"><vh>function: _run</vh></v>
 <v t="ekr.20230831011819.11"><vh>function: run</vh></v>
@@ -1509,6 +1809,7 @@
 <v t="ekr.20230831011819.1315"><vh>function: strip_py</vh></v>
 </v>
 <v t="ekr.20230831011819.1365"><vh>@clean fscache.py</vh>
+<v t="ekr.20230902063201.1"><vh>&lt;&lt; fscache.py: docstring &gt;&gt;</vh></v>
 <v t="ekr.20230831011819.1367"><vh>&lt;&lt; fscache.py: declarations &gt;&gt;</vh></v>
 <v t="ekr.20230831011819.1368"><vh>class FileSystemCache</vh>
 <v t="ekr.20230831011819.1369"><vh>FileSystemCache.__init__</vh></v>
@@ -1832,7 +2133,12 @@
 <v t="ekr.20230831011821.1067"><vh>@clean version.py</vh></v>
 </v>
 <v t="ekr.20230831071850.1"><vh>--- Traversers &amp; tree utils</vh>
-<v t="ekr.20230831011819.1360"></v>
+<v t="ekr.20230831011819.1360"><vh>@clean freetree.py</vh>
+<v t="ekr.20230831011819.1362"><vh>class TreeFreer</vh>
+<v t="ekr.20230831011819.1363"><vh>TreeFreer.visit_block</vh></v>
+</v>
+<v t="ekr.20230831011819.1364"><vh>function: free_tree</vh></v>
+</v>
 <v t="ekr.20230831011819.1449"><vh>@clean inspections.py</vh>
 <v t="ekr.20230831011819.1450"><vh>&lt;&lt; inspections.py: preamble &gt;&gt;</vh></v>
 <v t="ekr.20230831011819.1451"><vh>function: node_starts_after</vh></v>
@@ -3435,6 +3741,7 @@
 <v t="ekr.20230831011819.747"><vh>function: is_uninhabited</vh></v>
 </v>
 <v t="ekr.20230831011819.748"><vh>@clean checkstrformat.py</vh>
+<v t="ekr.20230902063413.1"><vh>&lt;&lt; checkstrformat.py: docstring &gt;&gt;</vh></v>
 <v t="ekr.20230831011819.750"><vh>&lt;&lt; checkstrformat.py: declarations &gt;&gt;</vh></v>
 <v t="ekr.20230831011819.751"><vh>function: compile_format_re</vh></v>
 <v t="ekr.20230831011819.752"><vh>function: compile_new_format_re</vh></v>
@@ -5134,310 +5441,16 @@
 <v t="ekr.20230831011821.1013"><vh>function: extract_unpack</vh></v>
 </v>
 </v>
-<v t="ekr.20230831071740.1"><vh>--- Utils</vh>
-<v t="ekr.20230831011819.1316"><vh>@clean fixup.py</vh>
-<v t="ekr.20230831011819.1317"><vh>&lt;&lt; fixup.py: preamble &gt;&gt;</vh></v>
-<v t="ekr.20230831011819.1318"><vh>function: fixup_module</vh></v>
-<v t="ekr.20230831011819.1319"><vh>class NodeFixer</vh>
-<v t="ekr.20230831011819.1320"><vh>NodeFixer.__init__</vh></v>
-<v t="ekr.20230831011819.1321"><vh>NodeFixer.visit_type_info</vh></v>
-<v t="ekr.20230831011819.1322"><vh>NodeFixer.visit_symbol_table</vh></v>
-<v t="ekr.20230831011819.1323"><vh>NodeFixer.visit_func_def</vh></v>
-<v t="ekr.20230831011819.1324"><vh>NodeFixer.visit_overloaded_func_def</vh></v>
-<v t="ekr.20230831011819.1325"><vh>NodeFixer.visit_decorator</vh></v>
-<v t="ekr.20230831011819.1326"><vh>NodeFixer.visit_class_def</vh></v>
-<v t="ekr.20230831011819.1327"><vh>NodeFixer.visit_type_var_expr</vh></v>
-<v t="ekr.20230831011819.1328"><vh>NodeFixer.visit_paramspec_expr</vh></v>
-<v t="ekr.20230831011819.1329"><vh>NodeFixer.visit_type_var_tuple_expr</vh></v>
-<v t="ekr.20230831011819.1330"><vh>NodeFixer.visit_var</vh></v>
-<v t="ekr.20230831011819.1331"><vh>NodeFixer.visit_type_alias</vh></v>
 </v>
-<v t="ekr.20230831011819.1332"><vh>class TypeFixer</vh>
-<v t="ekr.20230831011819.1333"><vh>TypeFixer.__init__</vh></v>
-<v t="ekr.20230831011819.1334"><vh>TypeFixer.visit_instance</vh></v>
-<v t="ekr.20230831011819.1335"><vh>TypeFixer.visit_type_alias_type</vh></v>
-<v t="ekr.20230831011819.1336"><vh>TypeFixer.visit_any</vh></v>
-<v t="ekr.20230831011819.1337"><vh>TypeFixer.visit_callable_type</vh></v>
-<v t="ekr.20230831011819.1338"><vh>TypeFixer.visit_overloaded</vh></v>
-<v t="ekr.20230831011819.1339"><vh>TypeFixer.visit_erased_type</vh></v>
-<v t="ekr.20230831011819.1340"><vh>TypeFixer.visit_deleted_type</vh></v>
-<v t="ekr.20230831011819.1341"><vh>TypeFixer.visit_none_type</vh></v>
-<v t="ekr.20230831011819.1342"><vh>TypeFixer.visit_uninhabited_type</vh></v>
-<v t="ekr.20230831011819.1343"><vh>TypeFixer.visit_partial_type</vh></v>
-<v t="ekr.20230831011819.1344"><vh>TypeFixer.visit_tuple_type</vh></v>
-<v t="ekr.20230831011819.1345"><vh>TypeFixer.visit_typeddict_type</vh></v>
-<v t="ekr.20230831011819.1346"><vh>TypeFixer.visit_literal_type</vh></v>
-<v t="ekr.20230831011819.1347"><vh>TypeFixer.visit_type_var</vh></v>
-<v t="ekr.20230831011819.1348"><vh>TypeFixer.visit_param_spec</vh></v>
-<v t="ekr.20230831011819.1349"><vh>TypeFixer.visit_type_var_tuple</vh></v>
-<v t="ekr.20230831011819.1350"><vh>TypeFixer.visit_unpack_type</vh></v>
-<v t="ekr.20230831011819.1351"><vh>TypeFixer.visit_parameters</vh></v>
-<v t="ekr.20230831011819.1352"><vh>TypeFixer.visit_unbound_type</vh></v>
-<v t="ekr.20230831011819.1353"><vh>TypeFixer.visit_union_type</vh></v>
-<v t="ekr.20230831011819.1354"><vh>TypeFixer.visit_void</vh></v>
-<v t="ekr.20230831011819.1355"><vh>TypeFixer.visit_type_type</vh></v>
+<v t="ekr.20230902062730.1"><vh>--- important docstrings</vh>
+<v t="ekr.20230902050513.1"></v>
+<v t="ekr.20230902062700.1"></v>
 </v>
-<v t="ekr.20230831011819.1356"><vh>function: lookup_fully_qualified_typeinfo</vh></v>
-<v t="ekr.20230831011819.1357"><vh>function: lookup_fully_qualified_alias</vh></v>
-<v t="ekr.20230831011819.1358"><vh>function: missing_info</vh></v>
-<v t="ekr.20230831011819.1359"><vh>function: missing_alias</vh></v>
-</v>
-<v t="ekr.20230831011819.1398"><vh>@clean gclogger.py</vh>
-<v t="ekr.20230831011819.1399"><vh>&lt;&lt; gclogger.py: preamble &gt;&gt;</vh></v>
-<v t="ekr.20230831011819.1400"><vh>class GcLogger</vh>
-<v t="ekr.20230831011819.1401"><vh>GcLogger.__enter__</vh></v>
-<v t="ekr.20230831011819.1402"><vh>GcLogger.gc_callback</vh></v>
-<v t="ekr.20230831011819.1403"><vh>GcLogger.__exit__</vh></v>
-<v t="ekr.20230831011819.1404"><vh>GcLogger.get_stats</vh></v>
-</v>
-</v>
-<v t="ekr.20230831011819.1405"><vh>@clean git.py</vh>
-<v t="ekr.20230831011819.1406"><vh>&lt;&lt; git.py: preamble &gt;&gt;</vh></v>
-<v t="ekr.20230831011819.1407"><vh>function: is_git_repo</vh></v>
-<v t="ekr.20230831011819.1408"><vh>function: have_git</vh></v>
-<v t="ekr.20230831011819.1409"><vh>function: git_revision</vh></v>
-<v t="ekr.20230831011819.1410"><vh>function: is_dirty</vh></v>
-</v>
-<v t="ekr.20230831011819.1411"><vh>@clean graph_utils.py</vh>
-<v t="ekr.20230831011819.1412"><vh>&lt;&lt; graph_utils.py: preamble &gt;&gt;</vh></v>
-<v t="ekr.20230831011819.1413"><vh>function: strongly_connected_components</vh></v>
-<v t="ekr.20230831011819.1414"><vh>function: prepare_sccs</vh></v>
-<v t="ekr.20230831011819.1415"><vh>function: topsort</vh></v>
-</v>
-<v t="ekr.20230831011819.1488"><vh>@clean ipc.py</vh>
-<v t="ekr.20230831011819.1490"><vh>&lt;&lt; ipc.py: declarations &gt;&gt;</vh></v>
-<v t="ekr.20230831011819.1491"><vh>class IPCException</vh></v>
-<v t="ekr.20230831011819.1492"><vh>class IPCBase</vh>
-<v t="ekr.20230831011819.1493"><vh>IPCBase.__init__</vh></v>
-<v t="ekr.20230831011819.1494"><vh>IPCBase.read</vh></v>
-<v t="ekr.20230831011819.1495"><vh>IPCBase.write</vh></v>
-<v t="ekr.20230831011819.1496"><vh>IPCBase.close</vh></v>
-</v>
-<v t="ekr.20230831011819.1497"><vh>class IPCClient</vh>
-<v t="ekr.20230831011819.1498"><vh>IPCClient.__init__</vh></v>
-<v t="ekr.20230831011819.1499"><vh>IPCClient.__enter__</vh></v>
-<v t="ekr.20230831011819.1500"><vh>IPCClient.__exit__</vh></v>
-</v>
-<v t="ekr.20230831011819.1501"><vh>class IPCServer</vh>
-<v t="ekr.20230831011819.1502"><vh>IPCServer.__init__</vh></v>
-<v t="ekr.20230831011819.1503"><vh>IPCServer.__enter__</vh></v>
-<v t="ekr.20230831011819.1504"><vh>IPCServer.__exit__</vh></v>
-<v t="ekr.20230831011819.1505"><vh>IPCServer.cleanup</vh></v>
-<v t="ekr.20230831011819.1506"><vh>IPCServer.connection_name</vh></v>
-</v>
-</v>
-<v t="ekr.20230831011820.1598"><vh>@clean stats.py</vh>
-<v t="ekr.20230831011820.1599"><vh>&lt;&lt; stats.py: preamble &gt;&gt;</vh></v>
-<v t="ekr.20230831011820.1600"><vh>class StatisticsVisitor</vh>
-<v t="ekr.20230831011820.1601"><vh>StatisticsVisitor.__init__</vh></v>
-<v t="ekr.20230831011820.1602"><vh>StatisticsVisitor.visit_mypy_file</vh></v>
-<v t="ekr.20230831011820.1603"><vh>StatisticsVisitor.visit_import_from</vh></v>
-<v t="ekr.20230831011820.1604"><vh>StatisticsVisitor.visit_import_all</vh></v>
-<v t="ekr.20230831011820.1605"><vh>StatisticsVisitor.process_import</vh></v>
-<v t="ekr.20230831011820.1606"><vh>StatisticsVisitor.visit_import</vh></v>
-<v t="ekr.20230831011820.1607"><vh>StatisticsVisitor.visit_func_def</vh></v>
-<v t="ekr.20230831011820.1608"><vh>StatisticsVisitor.enter_scope</vh></v>
-<v t="ekr.20230831011820.1609"><vh>StatisticsVisitor.is_checked_scope</vh></v>
-<v t="ekr.20230831011820.1610"><vh>StatisticsVisitor.visit_class_def</vh></v>
-<v t="ekr.20230831011820.1611"><vh>StatisticsVisitor.visit_type_application</vh></v>
-<v t="ekr.20230831011820.1612"><vh>StatisticsVisitor.visit_assignment_stmt</vh></v>
-<v t="ekr.20230831011820.1613"><vh>StatisticsVisitor.visit_expression_stmt</vh></v>
-<v t="ekr.20230831011820.1614"><vh>StatisticsVisitor.visit_pass_stmt</vh></v>
-<v t="ekr.20230831011820.1615"><vh>StatisticsVisitor.visit_break_stmt</vh></v>
-<v t="ekr.20230831011820.1616"><vh>StatisticsVisitor.visit_continue_stmt</vh></v>
-<v t="ekr.20230831011820.1617"><vh>StatisticsVisitor.visit_name_expr</vh></v>
-<v t="ekr.20230831011820.1618"><vh>StatisticsVisitor.visit_yield_from_expr</vh></v>
-<v t="ekr.20230831011820.1619"><vh>StatisticsVisitor.visit_call_expr</vh></v>
-<v t="ekr.20230831011820.1620"><vh>StatisticsVisitor.record_call_target_precision</vh></v>
-<v t="ekr.20230831011820.1621"><vh>StatisticsVisitor.record_callable_target_precision</vh></v>
-<v t="ekr.20230831011820.1622"><vh>StatisticsVisitor.visit_member_expr</vh></v>
-<v t="ekr.20230831011820.1623"><vh>StatisticsVisitor.visit_op_expr</vh></v>
-<v t="ekr.20230831011820.1624"><vh>StatisticsVisitor.visit_comparison_expr</vh></v>
-<v t="ekr.20230831011820.1625"><vh>StatisticsVisitor.visit_index_expr</vh></v>
-<v t="ekr.20230831011820.1626"><vh>StatisticsVisitor.visit_assignment_expr</vh></v>
-<v t="ekr.20230831011820.1627"><vh>StatisticsVisitor.visit_unary_expr</vh></v>
-<v t="ekr.20230831011820.1628"><vh>StatisticsVisitor.visit_str_expr</vh></v>
-<v t="ekr.20230831011820.1629"><vh>StatisticsVisitor.visit_bytes_expr</vh></v>
-<v t="ekr.20230831011820.1630"><vh>StatisticsVisitor.visit_int_expr</vh></v>
-<v t="ekr.20230831011820.1631"><vh>StatisticsVisitor.visit_float_expr</vh></v>
-<v t="ekr.20230831011820.1632"><vh>StatisticsVisitor.visit_complex_expr</vh></v>
-<v t="ekr.20230831011820.1633"><vh>StatisticsVisitor.visit_ellipsis</vh></v>
-<v t="ekr.20230831011820.1634"><vh>StatisticsVisitor.process_node</vh></v>
-<v t="ekr.20230831011820.1635"><vh>StatisticsVisitor.record_precise_if_checked_scope</vh></v>
-<v t="ekr.20230831011820.1636"><vh>StatisticsVisitor.type</vh></v>
-<v t="ekr.20230831011820.1637"><vh>StatisticsVisitor.log</vh></v>
-<v t="ekr.20230831011820.1638"><vh>StatisticsVisitor.record_line</vh></v>
-</v>
-<v t="ekr.20230831011820.1639"><vh>function: dump_type_stats</vh></v>
-<v t="ekr.20230831011820.1640"><vh>function: is_special_module</vh></v>
-<v t="ekr.20230831011820.1641"><vh>function: is_imprecise</vh></v>
-<v t="ekr.20230831011820.1642"><vh>class HasAnyQuery</vh>
-<v t="ekr.20230831011820.1643"><vh>HasAnyQuery.__init__</vh></v>
-<v t="ekr.20230831011820.1644"><vh>HasAnyQuery.visit_any</vh></v>
-</v>
-<v t="ekr.20230831011820.1645"><vh>function: is_imprecise2</vh></v>
-<v t="ekr.20230831011820.1646"><vh>class HasAnyQuery2</vh>
-<v t="ekr.20230831011820.1647"><vh>HasAnyQuery2.visit_callable_type</vh></v>
-</v>
-<v t="ekr.20230831011820.1648"><vh>function: is_generic</vh></v>
-<v t="ekr.20230831011820.1649"><vh>function: is_complex</vh></v>
-<v t="ekr.20230831011820.1650"><vh>function: ensure_dir_exists</vh></v>
-<v t="ekr.20230831011820.1651"><vh>function: is_special_form_any</vh></v>
-<v t="ekr.20230831011820.1652"><vh>function: get_original_any</vh></v>
-</v>
-<v t="ekr.20230831011820.1653"><vh>@clean strconv.py</vh>
-<v t="ekr.20230831011820.1654"><vh>&lt;&lt; strconv.py: preamble &gt;&gt;</vh></v>
-<v t="ekr.20230831011820.1655"><vh>class StrConv</vh>
-<v t="ekr.20230831011820.1656"><vh>StrConv.__init__</vh></v>
-<v t="ekr.20230831011820.1657"><vh>StrConv.stringify_type</vh></v>
-<v t="ekr.20230831011820.1658"><vh>StrConv.get_id</vh></v>
-<v t="ekr.20230831011820.1659"><vh>StrConv.format_id</vh></v>
-<v t="ekr.20230831011820.1660"><vh>StrConv.dump</vh></v>
-<v t="ekr.20230831011820.1661"><vh>StrConv.func_helper</vh></v>
-<v t="ekr.20230831011820.1662"><vh>StrConv.visit_mypy_file</vh></v>
-<v t="ekr.20230831011820.1663"><vh>StrConv.visit_import</vh></v>
-<v t="ekr.20230831011820.1664"><vh>StrConv.visit_import_from</vh></v>
-<v t="ekr.20230831011820.1665"><vh>StrConv.visit_import_all</vh></v>
-<v t="ekr.20230831011820.1666"><vh>StrConv.visit_func_def</vh></v>
-<v t="ekr.20230831011820.1667"><vh>StrConv.visit_overloaded_func_def</vh></v>
-<v t="ekr.20230831011820.1668"><vh>StrConv.visit_class_def</vh></v>
-<v t="ekr.20230831011820.1669"><vh>StrConv.visit_var</vh></v>
-<v t="ekr.20230831011820.1670"><vh>StrConv.visit_global_decl</vh></v>
-<v t="ekr.20230831011820.1671"><vh>StrConv.visit_nonlocal_decl</vh></v>
-<v t="ekr.20230831011820.1672"><vh>StrConv.visit_decorator</vh></v>
-<v t="ekr.20230831011820.1673"><vh>StrConv.visit_block</vh></v>
-<v t="ekr.20230831011820.1674"><vh>StrConv.visit_expression_stmt</vh></v>
-<v t="ekr.20230831011820.1675"><vh>StrConv.visit_assignment_stmt</vh></v>
-<v t="ekr.20230831011820.1676"><vh>StrConv.visit_operator_assignment_stmt</vh></v>
-<v t="ekr.20230831011820.1677"><vh>StrConv.visit_while_stmt</vh></v>
-<v t="ekr.20230831011820.1678"><vh>StrConv.visit_for_stmt</vh></v>
-<v t="ekr.20230831011820.1679"><vh>StrConv.visit_return_stmt</vh></v>
-<v t="ekr.20230831011820.1680"><vh>StrConv.visit_if_stmt</vh></v>
-<v t="ekr.20230831011820.1681"><vh>StrConv.visit_break_stmt</vh></v>
-<v t="ekr.20230831011820.1682"><vh>StrConv.visit_continue_stmt</vh></v>
-<v t="ekr.20230831011820.1683"><vh>StrConv.visit_pass_stmt</vh></v>
-<v t="ekr.20230831011820.1684"><vh>StrConv.visit_raise_stmt</vh></v>
-<v t="ekr.20230831011820.1685"><vh>StrConv.visit_assert_stmt</vh></v>
-<v t="ekr.20230831011820.1686"><vh>StrConv.visit_await_expr</vh></v>
-<v t="ekr.20230831011820.1687"><vh>StrConv.visit_del_stmt</vh></v>
-<v t="ekr.20230831011820.1688"><vh>StrConv.visit_try_stmt</vh></v>
-<v t="ekr.20230831011820.1689"><vh>StrConv.visit_with_stmt</vh></v>
-<v t="ekr.20230831011820.1690"><vh>StrConv.visit_match_stmt</vh></v>
-<v t="ekr.20230831011820.1691"><vh>StrConv.visit_int_expr</vh></v>
-<v t="ekr.20230831011820.1692"><vh>StrConv.visit_str_expr</vh></v>
-<v t="ekr.20230831011820.1693"><vh>StrConv.visit_bytes_expr</vh></v>
-<v t="ekr.20230831011820.1694"><vh>StrConv.str_repr</vh></v>
-<v t="ekr.20230831011820.1695"><vh>StrConv.visit_float_expr</vh></v>
-<v t="ekr.20230831011820.1696"><vh>StrConv.visit_complex_expr</vh></v>
-<v t="ekr.20230831011820.1697"><vh>StrConv.visit_ellipsis</vh></v>
-<v t="ekr.20230831011820.1698"><vh>StrConv.visit_star_expr</vh></v>
-<v t="ekr.20230831011820.1699"><vh>StrConv.visit_name_expr</vh></v>
-<v t="ekr.20230831011820.1700"><vh>StrConv.pretty_name</vh></v>
-<v t="ekr.20230831011820.1701"><vh>StrConv.visit_member_expr</vh></v>
-<v t="ekr.20230831011820.1702"><vh>StrConv.visit_yield_expr</vh></v>
-<v t="ekr.20230831011820.1703"><vh>StrConv.visit_yield_from_expr</vh></v>
-<v t="ekr.20230831011820.1704"><vh>StrConv.visit_call_expr</vh></v>
-<v t="ekr.20230831011820.1705"><vh>StrConv.visit_op_expr</vh></v>
-<v t="ekr.20230831011820.1706"><vh>StrConv.visit_comparison_expr</vh></v>
-<v t="ekr.20230831011820.1707"><vh>StrConv.visit_cast_expr</vh></v>
-<v t="ekr.20230831011820.1708"><vh>StrConv.visit_assert_type_expr</vh></v>
-<v t="ekr.20230831011820.1709"><vh>StrConv.visit_reveal_expr</vh></v>
-<v t="ekr.20230831011820.1710"><vh>StrConv.visit_assignment_expr</vh></v>
-<v t="ekr.20230831011820.1711"><vh>StrConv.visit_unary_expr</vh></v>
-<v t="ekr.20230831011820.1712"><vh>StrConv.visit_list_expr</vh></v>
-<v t="ekr.20230831011820.1713"><vh>StrConv.visit_dict_expr</vh></v>
-<v t="ekr.20230831011820.1714"><vh>StrConv.visit_set_expr</vh></v>
-<v t="ekr.20230831011820.1715"><vh>StrConv.visit_tuple_expr</vh></v>
-<v t="ekr.20230831011820.1716"><vh>StrConv.visit_index_expr</vh></v>
-<v t="ekr.20230831011820.1717"><vh>StrConv.visit_super_expr</vh></v>
-<v t="ekr.20230831011820.1718"><vh>StrConv.visit_type_application</vh></v>
-<v t="ekr.20230831011820.1719"><vh>StrConv.visit_type_var_expr</vh></v>
-<v t="ekr.20230831011820.1720"><vh>StrConv.visit_paramspec_expr</vh></v>
-<v t="ekr.20230831011820.1721"><vh>StrConv.visit_type_var_tuple_expr</vh></v>
-<v t="ekr.20230831011820.1722"><vh>StrConv.visit_type_alias_expr</vh></v>
-<v t="ekr.20230831011820.1723"><vh>StrConv.visit_namedtuple_expr</vh></v>
-<v t="ekr.20230831011820.1724"><vh>StrConv.visit_enum_call_expr</vh></v>
-<v t="ekr.20230831011820.1725"><vh>StrConv.visit_typeddict_expr</vh></v>
-<v t="ekr.20230831011820.1726"><vh>StrConv.visit__promote_expr</vh></v>
-<v t="ekr.20230831011820.1727"><vh>StrConv.visit_newtype_expr</vh></v>
-<v t="ekr.20230831011820.1728"><vh>StrConv.visit_lambda_expr</vh></v>
-<v t="ekr.20230831011820.1729"><vh>StrConv.visit_generator_expr</vh></v>
-<v t="ekr.20230831011820.1730"><vh>StrConv.visit_list_comprehension</vh></v>
-<v t="ekr.20230831011820.1731"><vh>StrConv.visit_set_comprehension</vh></v>
-<v t="ekr.20230831011820.1732"><vh>StrConv.visit_dictionary_comprehension</vh></v>
-<v t="ekr.20230831011820.1733"><vh>StrConv.visit_conditional_expr</vh></v>
-<v t="ekr.20230831011820.1734"><vh>StrConv.visit_slice_expr</vh></v>
-<v t="ekr.20230831011820.1735"><vh>StrConv.visit_temp_node</vh></v>
-<v t="ekr.20230831011820.1736"><vh>StrConv.visit_as_pattern</vh></v>
-<v t="ekr.20230831011820.1737"><vh>StrConv.visit_or_pattern</vh></v>
-<v t="ekr.20230831011820.1738"><vh>StrConv.visit_value_pattern</vh></v>
-<v t="ekr.20230831011820.1739"><vh>StrConv.visit_singleton_pattern</vh></v>
-<v t="ekr.20230831011820.1740"><vh>StrConv.visit_sequence_pattern</vh></v>
-<v t="ekr.20230831011820.1741"><vh>StrConv.visit_starred_pattern</vh></v>
-<v t="ekr.20230831011820.1742"><vh>StrConv.visit_mapping_pattern</vh></v>
-<v t="ekr.20230831011820.1743"><vh>StrConv.visit_class_pattern</vh></v>
-</v>
-<v t="ekr.20230831011820.1744"><vh>function: dump_tagged</vh></v>
-<v t="ekr.20230831011820.1745"><vh>function: indent</vh></v>
-</v>
-<v t="ekr.20230831011821.1014"><vh>@clean util.py</vh>
-<v t="ekr.20230831011821.1015"><vh>&lt;&lt; util.py: preamble &gt;&gt;</vh></v>
-<v t="ekr.20230831011821.1016"><vh>function: is_dunder</vh></v>
-<v t="ekr.20230831011821.1017"><vh>function: is_sunder</vh></v>
-<v t="ekr.20230831011821.1018"><vh>function: split_module_names</vh></v>
-<v t="ekr.20230831011821.1019"><vh>function: module_prefix</vh></v>
-<v t="ekr.20230831011821.1020"><vh>function: split_target</vh></v>
-<v t="ekr.20230831011821.1021"><vh>function: short_type</vh></v>
-<v t="ekr.20230831011821.1022"><vh>function: find_python_encoding</vh></v>
-<v t="ekr.20230831011821.1023"><vh>function: bytes_to_human_readable_repr</vh></v>
-<v t="ekr.20230831011821.1024"><vh>class DecodeError</vh></v>
-<v t="ekr.20230831011821.1025"><vh>function: decode_python_encoding</vh></v>
-<v t="ekr.20230831011821.1026"><vh>function: read_py_file</vh></v>
-<v t="ekr.20230831011821.1027"><vh>function: trim_source_line</vh></v>
-<v t="ekr.20230831011821.1028"><vh>function: get_mypy_comments</vh></v>
-<v t="ekr.20230831011821.1029"><vh>function: write_junit_xml</vh></v>
-<v t="ekr.20230831011821.1030"><vh>class IdMapper</vh>
-<v t="ekr.20230831011821.1031"><vh>IdMapper.__init__</vh></v>
-<v t="ekr.20230831011821.1032"><vh>IdMapper.id</vh></v>
-</v>
-<v t="ekr.20230831011821.1033"><vh>function: get_prefix</vh></v>
-<v t="ekr.20230831011821.1034"><vh>function: correct_relative_import</vh></v>
-<v t="ekr.20230831011821.1035"><vh>function: get_class_descriptors</vh></v>
-<v t="ekr.20230831011821.1036"><vh>function: replace_object_state</vh></v>
-<v t="ekr.20230831011821.1037"><vh>function: is_sub_path</vh></v>
-<v t="ekr.20230831011821.1038"><vh>function: hard_exit</vh></v>
-<v t="ekr.20230831011821.1039"><vh>function: unmangle</vh></v>
-<v t="ekr.20230831011821.1040"><vh>function: get_unique_redefinition_name</vh></v>
-<v t="ekr.20230831011821.1041"><vh>function: check_python_version</vh></v>
-<v t="ekr.20230831011821.1042"><vh>function: count_stats</vh></v>
-<v t="ekr.20230831011821.1043"><vh>function: split_words</vh></v>
-<v t="ekr.20230831011821.1044"><vh>function: get_terminal_width</vh></v>
-<v t="ekr.20230831011821.1045"><vh>function: soft_wrap</vh></v>
-<v t="ekr.20230831011821.1046"><vh>function: hash_digest</vh></v>
-<v t="ekr.20230831011821.1047"><vh>function: parse_gray_color</vh></v>
-<v t="ekr.20230831011821.1048"><vh>function: should_force_color</vh></v>
-<v t="ekr.20230831011821.1049"><vh>class FancyFormatter</vh>
-<v t="ekr.20230831011821.1050"><vh>FancyFormatter.__init__</vh></v>
-<v t="ekr.20230831011821.1051"><vh>FancyFormatter.initialize_vt100_colors</vh></v>
-<v t="ekr.20230831011821.1052"><vh>FancyFormatter.initialize_win_colors</vh></v>
-<v t="ekr.20230831011821.1053"><vh>FancyFormatter.initialize_unix_colors</vh></v>
-<v t="ekr.20230831011821.1054"><vh>FancyFormatter.style</vh></v>
-<v t="ekr.20230831011821.1055"><vh>FancyFormatter.fit_in_terminal</vh></v>
-<v t="ekr.20230831011821.1056"><vh>FancyFormatter.colorize</vh></v>
-<v t="ekr.20230831011821.1057"><vh>FancyFormatter.highlight_quote_groups</vh></v>
-<v t="ekr.20230831011821.1058"><vh>FancyFormatter.underline_link</vh></v>
-<v t="ekr.20230831011821.1059"><vh>FancyFormatter.format_success</vh></v>
-<v t="ekr.20230831011821.1060"><vh>FancyFormatter.format_error</vh></v>
-</v>
-<v t="ekr.20230831011821.1061"><vh>function: is_typeshed_file</vh></v>
-<v t="ekr.20230831011821.1062"><vh>function: is_stub_package_file</vh></v>
-<v t="ekr.20230831011821.1063"><vh>function: unnamed_function</vh></v>
-<v t="ekr.20230831011821.1064"><vh>function: time_spent_us</vh></v>
-<v t="ekr.20230831011821.1065"><vh>function: plural_s</vh></v>
-<v t="ekr.20230831011821.1066"><vh>function: quote_docstring</vh></v>
-</v>
-</v>
-</v>
+<v t="ekr.20230902063457.1"><vh>--- is solve the key ??</vh></v>
+<v t="ekr.20230831011820.1572"></v>
+<v t="ekr.20230831011820.1577"></v>
+<v t="ekr.20230907081811.1"><vh>@clean ekr_test_12352.py</vh></v>
+<v t="ekr.20230907081931.1"><vh>@clean ekr_test.py</vh></v>
 </vnodes>
 <tnodes>
 <t tx="ekr.20230613022138.1"># Disable flake8 tests</t>
@@ -12182,36 +12195,7 @@ from mypy.traverser import TraverserVisitor
     tree.defs.clear()
 </t>
 <t tx="ekr.20230831011819.1365">@path mypy
-"""Interface for accessing the file system with automatic caching.
-
-The idea is to cache the results of any file system state reads during
-a single transaction. This has two main benefits:
-
-* This avoids redundant syscalls, as we won't perform the same OS
-  operations multiple times.
-
-* This makes it easier to reason about concurrent FS updates, as different
-  operations targeting the same paths can't report different state during
-  a transaction.
-
-Note that this only deals with reading state, not writing.
-
-Properties maintained by the API:
-
-* The contents of the file are always from the same or later time compared
-  to the reported mtime of the file, even if mtime is queried after reading
-  a file.
-
-* Repeating an operation produces the same result as the first one during
-  a transaction.
-
-* Call flush() to start a new transaction (flush the caches).
-
-The API is a bit limited. It's easy to add new cached operations, however.
-You should perform all file system reads through the API to actually take
-advantage of the benefits.
-"""
-
+&lt;&lt; fscache.py: docstring &gt;&gt;
 &lt;&lt; fscache.py: declarations &gt;&gt;
 @others
 @language python
@@ -34513,51 +34497,7 @@ def analyze_instance_member_access(
 
 </t>
 <t tx="ekr.20230831011819.7">@path mypy
-"""This module makes it possible to use mypy as part of a Python application.
-
-Since mypy still changes, the API was kept utterly simple and non-intrusive.
-It just mimics command line activation without starting a new interpreter.
-So the normal docs about the mypy command line apply.
-Changes in the command line version of mypy will be immediately usable.
-
-Just import this module and then call the 'run' function with a parameter of
-type List[str], containing what normally would have been the command line
-arguments to mypy.
-
-Function 'run' returns a Tuple[str, str, int], namely
-(&lt;normal_report&gt;, &lt;error_report&gt;, &lt;exit_status&gt;),
-in which &lt;normal_report&gt; is what mypy normally writes to sys.stdout,
-&lt;error_report&gt; is what mypy normally writes to sys.stderr and exit_status is
-the exit status mypy normally returns to the operating system.
-
-Any pretty formatting is left to the caller.
-
-The 'run_dmypy' function is similar, but instead mimics invocation of
-dmypy. Note that run_dmypy is not thread-safe and modifies sys.stdout
-and sys.stderr during its invocation.
-
-Note that these APIs don't support incremental generation of error
-messages.
-
-Trivial example of code using this module:
-
-import sys
-from mypy import api
-
-result = api.run(sys.argv[1:])
-
-if result[0]:
-    print('\nType checking report:\n')
-    print(result[0])  # stdout
-
-if result[1]:
-    print('\nError report:\n')
-    print(result[1])  # stderr
-
-print('\nExit status:', result[2])
-
-"""
-
+&lt;&lt; api.py: docstring &gt;&gt;
 &lt;&lt; api.py: declarations &gt;&gt;
 @others
 @language python
@@ -36395,18 +36335,7 @@ def __init__(
     return isinstance(get_proper_type(typ), UninhabitedType)
 </t>
 <t tx="ekr.20230831011819.748">@path mypy
-"""
-Format expression type checker.
-
-This file is conceptually part of ExpressionChecker and TypeChecker. Main functionality
-is located in StringFormatterChecker.check_str_format_call() for '{}'.format(), and in
-StringFormatterChecker.check_str_interpolation() for printf-style % interpolation.
-
-Note that although at runtime format strings are parsed using custom parsers,
-here we use a regexp-based approach. This way we 99% match runtime behaviour while keeping
-implementation simple.
-"""
-
+&lt;&lt; checkstrformat.py: docstring &gt;&gt;
 &lt;&lt; checkstrformat.py: declarations &gt;&gt;
 @others
 @language python
@@ -44158,55 +44087,7 @@ def saved_scope(self, saved: SavedScope) -&gt; Iterator[None]:
                 yield
 </t>
 <t tx="ekr.20230831011820.1106">@path mypy
-"""The semantic analyzer.
-
-Bind names to definitions and do various other simple consistency
-checks.  Populate symbol tables.  The semantic analyzer also detects
-special forms which reuse generic syntax such as NamedTuple and
-cast().  Multiple analysis iterations may be needed to analyze forward
-references and import cycles. Each iteration "fills in" additional
-bindings and references until everything has been bound.
-
-For example, consider this program:
-
-  x = 1
-  y = x
-
-Here semantic analysis would detect that the assignment 'x = 1'
-defines a new variable, the type of which is to be inferred (in a
-later pass; type inference or type checking is not part of semantic
-analysis).  Also, it would bind both references to 'x' to the same
-module-level variable (Var) node.  The second assignment would also
-be analyzed, and the type of 'y' marked as being inferred.
-
-Semantic analysis of types is implemented in typeanal.py.
-
-See semanal_main.py for the top-level logic.
-
-Some important properties:
-
-* After semantic analysis is complete, no PlaceholderNode and
-  PlaceholderType instances should remain. During semantic analysis,
-  if we encounter one of these, the current target should be deferred.
-
-* A TypeInfo is only created once we know certain basic information about
-  a type, such as the MRO, existence of a Tuple base class (e.g., for named
-  tuples), and whether we have a TypedDict. We use a temporary
-  PlaceholderNode node in the symbol table if some such information is
-  missing.
-
-* For assignments, we only add a non-placeholder symbol table entry once
-  we know the sort of thing being defined (variable, NamedTuple, type alias,
-  etc.).
-
-* Every part of the analysis step must support multiple iterations over
-  the same AST nodes, and each iteration must be able to fill in arbitrary
-  things that were missing or incomplete in previous iterations.
-
-* Changes performed by the analysis need to be reversible, since mypy
-  daemon strips and reuses existing ASTs (to improve performance and/or
-  reduce memory use).
-"""
+&lt;&lt; semanal.py: docstring &gt;&gt;
 
 &lt;&lt; semanal.py: declarations &gt;&gt;
 @others
@@ -52276,7 +52157,7 @@ def fail(self, msg: str, ctx: Context) -&gt; None:
 </t>
 <t tx="ekr.20230831011820.1419">@path mypy
 """Simple type inference for decorated functions during semantic analysis."""
-&lt;&lt; semanal_infer.py: preamble &gt;&gt;
+&lt;&lt; semanal_infer.py: imports &gt;&gt;
 @others
 @language python
 @tabwidth -4
@@ -52425,32 +52306,7 @@ from mypy.typevars import has_no_typevars
     return None
 </t>
 <t tx="ekr.20230831011820.1425">@path mypy
-"""Top-level logic for the semantic analyzer.
-
-The semantic analyzer binds names, resolves imports, detects various
-special constructs that don't have dedicated AST nodes after parse
-(such as 'cast' which looks like a call), populates symbol tables, and
-performs various simple consistency checks.
-
-Semantic analysis of each SCC (strongly connected component; import
-cycle) is performed in one unit. Each module is analyzed as multiple
-separate *targets*; the module top level is one target and each function
-is a target. Nested functions are not separate targets, however. This is
-mostly identical to targets used by mypy daemon (but classes aren't
-targets in semantic analysis).
-
-We first analyze each module top level in an SCC. If we encounter some
-names that we can't bind because the target of the name may not have
-been processed yet, we *defer* the current target for further
-processing. Deferred targets will be analyzed additional times until
-everything can be bound, or we reach a maximum number of iterations.
-
-We keep track of a set of incomplete namespaces, i.e. namespaces that we
-haven't finished populating yet. References to these namespaces cause a
-deferral if they can't be satisfied. Initially every module in the SCC
-will be incomplete.
-"""
-
+&lt;&lt; semanal_main.py: docstring &gt;&gt;
 &lt;&lt; semanal_main.py: declarations &gt;&gt;
 @others
 @language python
@@ -54207,9 +54063,9 @@ ALLOW_INCOMPATIBLE_OVERRIDE: Final = ("__slots__", "__deletable__", "__match_arg
 PRIORITY_FALLBACKS: Final = 1
 
 
-@trait
 </t>
-<t tx="ekr.20230831011820.1486">class SemanticAnalyzerCoreInterface:
+<t tx="ekr.20230831011820.1486">@trait
+class SemanticAnalyzerCoreInterface:
     """A core abstract interface to generic semantic analyzer functionality.
 
     This is implemented by both semantic analyzer passes 2 and 3.
@@ -93537,7 +93393,205 @@ def visit_callable_argument(self, t: CallableArgument) -&gt; None:
 <t tx="ekr.20230831071740.1"></t>
 <t tx="ekr.20230831071850.1"></t>
 <t tx="ekr.20230901114501.1">promote-section-definition</t>
-<t tx="ekr.20230901115548.1"></t>
-<t tx="ekr.20230901115600.1"></t>
+<t tx="ekr.20230902050227.1"></t>
+<t tx="ekr.20230902050406.1"></t>
+<t tx="ekr.20230902050513.1">"""The semantic analyzer.
+
+Bind names to definitions and do various other simple consistency
+checks.  Populate symbol tables.  The semantic analyzer also detects
+special forms which reuse generic syntax such as NamedTuple and
+cast().  Multiple analysis iterations may be needed to analyze forward
+references and import cycles. Each iteration "fills in" additional
+bindings and references until everything has been bound.
+
+For example, consider this program:
+
+  x = 1
+  y = x
+
+Here semantic analysis would detect that the assignment 'x = 1'
+defines a new variable, the type of which is to be inferred (in a
+later pass; type inference or type checking is not part of semantic
+analysis).  Also, it would bind both references to 'x' to the same
+module-level variable (Var) node.  The second assignment would also
+be analyzed, and the type of 'y' marked as being inferred.
+
+Semantic analysis of types is implemented in typeanal.py.
+
+See semanal_main.py for the top-level logic.
+
+Some important properties:
+
+* After semantic analysis is complete, no PlaceholderNode and
+  PlaceholderType instances should remain. During semantic analysis,
+  if we encounter one of these, the current target should be deferred.
+
+* A TypeInfo is only created once we know certain basic information about
+  a type, such as the MRO, existence of a Tuple base class (e.g., for named
+  tuples), and whether we have a TypedDict. We use a temporary
+  PlaceholderNode node in the symbol table if some such information is
+  missing.
+
+* For assignments, we only add a non-placeholder symbol table entry once
+  we know the sort of thing being defined (variable, NamedTuple, type alias,
+  etc.).
+
+* Every part of the analysis step must support multiple iterations over
+  the same AST nodes, and each iteration must be able to fill in arbitrary
+  things that were missing or incomplete in previous iterations.
+
+* Changes performed by the analysis need to be reversible, since mypy
+  daemon strips and reuses existing ASTs (to improve performance and/or
+  reduce memory use).
+"""
+</t>
+<t tx="ekr.20230902062700.1">"""Top-level logic for the semantic analyzer.
+
+The semantic analyzer binds names, resolves imports, detects various
+special constructs that don't have dedicated AST nodes after parse
+(such as 'cast' which looks like a call), populates symbol tables, and
+performs various simple consistency checks.
+
+Semantic analysis of each SCC (strongly connected component; import
+cycle) is performed in one unit. Each module is analyzed as multiple
+separate *targets*; the module top level is one target and each function
+is a target. Nested functions are not separate targets, however. This is
+mostly identical to targets used by mypy daemon (but classes aren't
+targets in semantic analysis).
+
+We first analyze each module top level in an SCC. If we encounter some
+names that we can't bind because the target of the name may not have
+been processed yet, we *defer* the current target for further
+processing. Deferred targets will be analyzed additional times until
+everything can be bound, or we reach a maximum number of iterations.
+
+We keep track of a set of incomplete namespaces, i.e. namespaces that we
+haven't finished populating yet. References to these namespaces cause a
+deferral if they can't be satisfied. Initially every module in the SCC
+will be incomplete.
+"""
+
+</t>
+<t tx="ekr.20230902062730.1"># Found 2 marked nodes</t>
+<t tx="ekr.20230902063100.1">"""This module makes it possible to use mypy as part of a Python application.
+
+Since mypy still changes, the API was kept utterly simple and non-intrusive.
+It just mimics command line activation without starting a new interpreter.
+So the normal docs about the mypy command line apply.
+Changes in the command line version of mypy will be immediately usable.
+
+Just import this module and then call the 'run' function with a parameter of
+type List[str], containing what normally would have been the command line
+arguments to mypy.
+
+Function 'run' returns a Tuple[str, str, int], namely
+(&lt;normal_report&gt;, &lt;error_report&gt;, &lt;exit_status&gt;),
+in which &lt;normal_report&gt; is what mypy normally writes to sys.stdout,
+&lt;error_report&gt; is what mypy normally writes to sys.stderr and exit_status is
+the exit status mypy normally returns to the operating system.
+
+Any pretty formatting is left to the caller.
+
+The 'run_dmypy' function is similar, but instead mimics invocation of
+dmypy. Note that run_dmypy is not thread-safe and modifies sys.stdout
+and sys.stderr during its invocation.
+
+Note that these APIs don't support incremental generation of error
+messages.
+
+Trivial example of code using this module:
+
+import sys
+from mypy import api
+
+result = api.run(sys.argv[1:])
+
+if result[0]:
+    print('\nType checking report:\n')
+    print(result[0])  # stdout
+
+if result[1]:
+    print('\nError report:\n')
+    print(result[1])  # stderr
+
+print('\nExit status:', result[2])
+
+"""
+
+</t>
+<t tx="ekr.20230902063201.1">"""Interface for accessing the file system with automatic caching.
+
+The idea is to cache the results of any file system state reads during
+a single transaction. This has two main benefits:
+
+* This avoids redundant syscalls, as we won't perform the same OS
+  operations multiple times.
+
+* This makes it easier to reason about concurrent FS updates, as different
+  operations targeting the same paths can't report different state during
+  a transaction.
+
+Note that this only deals with reading state, not writing.
+
+Properties maintained by the API:
+
+* The contents of the file are always from the same or later time compared
+  to the reported mtime of the file, even if mtime is queried after reading
+  a file.
+
+* Repeating an operation produces the same result as the first one during
+  a transaction.
+
+* Call flush() to start a new transaction (flush the caches).
+
+The API is a bit limited. It's easy to add new cached operations, however.
+You should perform all file system reads through the API to actually take
+advantage of the benefits.
+"""
+
+</t>
+<t tx="ekr.20230902063413.1">"""
+Format expression type checker.
+
+This file is conceptually part of ExpressionChecker and TypeChecker. Main functionality
+is located in StringFormatterChecker.check_str_format_call() for '{}'.format(), and in
+StringFormatterChecker.check_str_interpolation() for printf-style % interpolation.
+
+Note that although at runtime format strings are parsed using custom parsers,
+here we use a regexp-based approach. This way we 99% match runtime behaviour while keeping
+implementation simple.
+"""
+
+</t>
+<t tx="ekr.20230902063457.1"></t>
+<t tx="ekr.20230907081811.1">"""Stand-alone test file for issue #12352"""
+
+def ekr_f_annotated(ekr_a: str) -&gt; None:
+    pass
+    
+# Passes with legacy mypy.
+def ekr_f_annotated_initialized(ekr_a: str="abc") -&gt; None:
+    pass
+
+# Fails with legacy mypy.
+# Change this case!
+def ekr_f_not_annotated(ekr_a="abc", i=1, f=0.1, aBool=True, ekr_b=b's' ) -&gt; None:
+    pass
+    
+# Later
+def ekr_f_not_annotated2(b: int, ekr_a="abc") -&gt; None:
+    pass
+    
+# a: str="abc"
+# b="xyz"
+# c: str
+</t>
+<t tx="ekr.20230907081931.1">"""Tests for studying mypy."""
+
+def test_add(i: int, j: int) -&gt; int:
+    return i + j
+    
+test_add(1, 2)
+test_add('a', 'b')  # Should create error.</t>
 </tnodes>
 </leo_file>
