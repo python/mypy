@@ -1993,34 +1993,41 @@ class SemanticAnalyzer(
             return None
         unbound = t
         sym = self.lookup_qualified(unbound.name, unbound)
-        if sym and isinstance(sym.node, PlaceholderNode):
+        if sym is None:
+            return None
+
+        if isinstance(sym.node, PlaceholderNode):
             self.record_incomplete_ref()
-        if sym and isinstance(sym.node, ParamSpecExpr):
-            if sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):
-                # It's bound by our type variable scope
-                return None
-            return unbound.name, sym.node
-        if sym and sym.fullname in ("typing.Unpack", "typing_extensions.Unpack"):
+        elif sym.fullname in ("typing.Unpack", "typing_extensions.Unpack"):
             inner_t = unbound.args[0]
             if not isinstance(inner_t, UnboundType):
                 return None
             inner_unbound = inner_t
             inner_sym = self.lookup_qualified(inner_unbound.name, inner_unbound)
-            if inner_sym and isinstance(inner_sym.node, PlaceholderNode):
+            if not inner_sym:
+                return None
+            if isinstance(inner_sym.node, PlaceholderNode):
                 self.record_incomplete_ref()
-            if inner_sym and isinstance(inner_sym.node, TypeVarTupleExpr):
+            elif isinstance(inner_sym.node, TypeVarTupleExpr):
                 if inner_sym.fullname and not self.tvar_scope.allow_binding(inner_sym.fullname):
                     # It's bound by our type variable scope
                     return None
                 return inner_unbound.name, inner_sym.node
-        if sym is None or not isinstance(sym.node, TypeVarExpr):
-            return None
         elif sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):
             # It's bound by our type variable scope
             return None
-        else:
-            assert isinstance(sym.node, TypeVarExpr)
+        elif isinstance(sym.node, (ParamSpecExpr, TypeVarExpr)):
             return unbound.name, sym.node
+
+        sym_type = get_proper_type(sym.type)
+        if isinstance(sym_type, AnyType) and sym_type.missing_import_name:
+            self.fail(
+                f"{sym_type.missing_import_name} is imported from a missing module "
+                "and cannot be used as a type variable",
+                t,
+            )
+
+        return None
 
     def get_all_bases_tvars(
         self, base_type_exprs: list[Expression], removed: list[int]
