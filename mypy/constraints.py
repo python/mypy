@@ -108,6 +108,7 @@ def infer_constraints_for_callable(
     callee: CallableType,
     arg_types: Sequence[Type | None],
     arg_kinds: list[ArgKind],
+    arg_names: Sequence[str | None] | None,
     formal_to_actual: list[list[int]],
     context: ArgumentInferContext,
 ) -> list[Constraint]:
@@ -117,6 +118,20 @@ def infer_constraints_for_callable(
     """
     constraints: list[Constraint] = []
     mapper = ArgTypeExpander(context)
+
+    param_spec = callee.param_spec()
+    param_spec_arg_types = []
+    param_spec_arg_names = []
+    param_spec_arg_kinds = []
+
+    incomplete_star_mapping = False
+    for i, actuals in enumerate(formal_to_actual):
+        for actual in actuals:
+            if actual is None and callee.arg_kinds[i] in (ARG_STAR, ARG_STAR2):
+                # We can't use arguments to infer ParamSpec constraint, if only some
+                # are present in the current inference pass.
+                incomplete_star_mapping = True
+                break
 
     for i, actuals in enumerate(formal_to_actual):
         if isinstance(callee.arg_types[i], UnpackType):
@@ -194,11 +209,47 @@ def infer_constraints_for_callable(
                 actual_type = mapper.expand_actual_type(
                     actual_arg_type, arg_kinds[actual], callee.arg_names[i], callee.arg_kinds[i]
                 )
-                # TODO: if callee has ParamSpec, we need to collect all actuals that map to star
-                # args and create single constraint between P and resulting Parameters instead.
-                c = infer_constraints(callee.arg_types[i], actual_type, SUPERTYPE_OF)
-                constraints.extend(c)
-
+                if (
+                    param_spec
+                    and callee.arg_kinds[i] in (ARG_STAR, ARG_STAR2)
+                    and not incomplete_star_mapping
+                ):
+                    # If actual arguments are mapped to ParamSpec type, we can't infer individual
+                    # constraints, instead store them and infer single constraint at the end.
+                    # It is impossible to map actual kind to formal kind, so use some heuristic.
+                    # This inference is used as a fallback, so relying on heuristic should be OK.
+                    param_spec_arg_types.append(
+                        mapper.expand_actual_type(
+                            actual_arg_type, arg_kinds[actual], None, arg_kinds[actual]
+                        )
+                    )
+                    actual_kind = arg_kinds[actual]
+                    param_spec_arg_kinds.append(
+                        ARG_POS if actual_kind not in (ARG_STAR, ARG_STAR2) else actual_kind
+                    )
+                    param_spec_arg_names.append(arg_names[actual] if arg_names else None)
+                else:
+                    c = infer_constraints(callee.arg_types[i], actual_type, SUPERTYPE_OF)
+                    constraints.extend(c)
+    if (
+        param_spec
+        and not any(c.type_var == param_spec.id for c in constraints)
+        and not incomplete_star_mapping
+    ):
+        # Use ParamSpec constraint from arguments only if there are no other constraints,
+        # since as explained above it is quite ad-hoc.
+        constraints.append(
+            Constraint(
+                param_spec,
+                SUPERTYPE_OF,
+                Parameters(
+                    arg_types=param_spec_arg_types,
+                    arg_kinds=param_spec_arg_kinds,
+                    arg_names=param_spec_arg_names,
+                    imprecise_arg_kinds=True,
+                ),
+            )
+        )
     return constraints
 
 
@@ -949,6 +1000,14 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             res: list[Constraint] = []
             cactual = self.actual.with_unpacked_kwargs()
             param_spec = template.param_spec()
+
+            template_ret_type, cactual_ret_type = template.ret_type, cactual.ret_type
+            if template.type_guard is not None:
+                template_ret_type = template.type_guard
+            if cactual.type_guard is not None:
+                cactual_ret_type = cactual.type_guard
+            res.extend(infer_constraints(template_ret_type, cactual_ret_type, self.direction))
+
             if param_spec is None:
                 # TODO: Erase template variables if it is generic?
                 if (
@@ -1008,34 +1067,6 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     )
                     extra_tvars = True
 
-                if not cactual_ps:
-                    max_prefix_len = len([k for k in cactual.arg_kinds if k in (ARG_POS, ARG_OPT)])
-                    prefix_len = min(prefix_len, max_prefix_len)
-                    res.append(
-                        Constraint(
-                            param_spec,
-                            neg_op(self.direction),
-                            Parameters(
-                                arg_types=cactual.arg_types[prefix_len:],
-                                arg_kinds=cactual.arg_kinds[prefix_len:],
-                                arg_names=cactual.arg_names[prefix_len:],
-                                variables=cactual.variables
-                                if not type_state.infer_polymorphic
-                                else [],
-                            ),
-                        )
-                    )
-                else:
-                    if len(param_spec.prefix.arg_types) <= len(cactual_ps.prefix.arg_types):
-                        cactual_ps = cactual_ps.copy_modified(
-                            prefix=Parameters(
-                                arg_types=cactual_ps.prefix.arg_types[prefix_len:],
-                                arg_kinds=cactual_ps.prefix.arg_kinds[prefix_len:],
-                                arg_names=cactual_ps.prefix.arg_names[prefix_len:],
-                            )
-                        )
-                        res.append(Constraint(param_spec, neg_op(self.direction), cactual_ps))
-
                 # Compare prefixes as well
                 cactual_prefix = cactual.copy_modified(
                     arg_types=cactual.arg_types[:prefix_len],
@@ -1046,13 +1077,40 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     infer_callable_arguments_constraints(prefix, cactual_prefix, self.direction)
                 )
 
-            template_ret_type, cactual_ret_type = template.ret_type, cactual.ret_type
-            if template.type_guard is not None:
-                template_ret_type = template.type_guard
-            if cactual.type_guard is not None:
-                cactual_ret_type = cactual.type_guard
-
-            res.extend(infer_constraints(template_ret_type, cactual_ret_type, self.direction))
+                param_spec_target: Type | None = None
+                skip_imprecise = (
+                    any(c.type_var == param_spec.id for c in res) and cactual.imprecise_arg_kinds
+                )
+                if not cactual_ps:
+                    max_prefix_len = len([k for k in cactual.arg_kinds if k in (ARG_POS, ARG_OPT)])
+                    prefix_len = min(prefix_len, max_prefix_len)
+                    # This logic matches top-level callable constraint exception, if we managed
+                    # to get other constraints for ParamSpec, don't infer one with imprecise kinds
+                    if not skip_imprecise:
+                        param_spec_target = Parameters(
+                            arg_types=cactual.arg_types[prefix_len:],
+                            arg_kinds=cactual.arg_kinds[prefix_len:],
+                            arg_names=cactual.arg_names[prefix_len:],
+                            variables=cactual.variables
+                            if not type_state.infer_polymorphic
+                            else [],
+                            imprecise_arg_kinds=cactual.imprecise_arg_kinds,
+                        )
+                else:
+                    if (
+                        len(param_spec.prefix.arg_types) <= len(cactual_ps.prefix.arg_types)
+                        and not skip_imprecise
+                    ):
+                        param_spec_target = cactual_ps.copy_modified(
+                            prefix=Parameters(
+                                arg_types=cactual_ps.prefix.arg_types[prefix_len:],
+                                arg_kinds=cactual_ps.prefix.arg_kinds[prefix_len:],
+                                arg_names=cactual_ps.prefix.arg_names[prefix_len:],
+                                imprecise_arg_kinds=cactual_ps.prefix.imprecise_arg_kinds,
+                            )
+                        )
+                if param_spec_target is not None:
+                    res.append(Constraint(param_spec, neg_op(self.direction), param_spec_target))
             if extra_tvars:
                 for c in res:
                     c.extra_tvars += cactual.variables

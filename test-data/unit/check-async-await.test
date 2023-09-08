@@ -1021,3 +1021,19 @@ def coro() -> Generator[int, None, None]:
 reveal_type(coro)  # N: Revealed type is "def () -> typing.AwaitableGenerator[builtins.int, None, None, typing.Generator[builtins.int, None, None]]"
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
+
+[case asyncIteratorInProtocol]
+from typing import AsyncIterator, Protocol
+
+class P(Protocol):
+    async def launch(self) -> AsyncIterator[int]:
+        raise BaseException
+
+class Launcher(P):
+    def launch(self) -> AsyncIterator[int]:  # E: Return type "AsyncIterator[int]" of "launch" incompatible with return type "Coroutine[Any, Any, AsyncIterator[int]]" in supertype "P" \
+                                             # N: Consider declaring "launch" in supertype "P" without "async" \
+                                             # N: See https://mypy.readthedocs.io/en/stable/more_types.html#asynchronous-iterators
+        raise BaseException
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]

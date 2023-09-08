@@ -110,10 +110,8 @@ def tuple_fallback(typ: TupleType) -> Instance:
                 and unpacked_type.type.fullname == "builtins.tuple"
             ):
                 items.append(unpacked_type.args[0])
-            elif isinstance(unpacked_type, (AnyType, UninhabitedType)):
-                continue
             else:
-                raise NotImplementedError(unpacked_type)
+                raise NotImplementedError
         else:
             items.append(item)
     # TODO: we should really use a union here, tuple types are special.
@@ -330,7 +328,7 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
             )
 
         # Update the method signature with the solutions found.
-        # Technically, some constraints might be unsolvable, make them <nothing>.
+        # Technically, some constraints might be unsolvable, make them Never.
         to_apply = [t if t is not None else UninhabitedType() for t in typeargs]
         func = expand_type(func, {tv.id: arg for tv, arg in zip(self_vars, to_apply)})
         variables = [v for v in func.variables if v not in self_vars]

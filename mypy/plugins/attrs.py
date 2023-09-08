@@ -51,7 +51,7 @@ from mypy.plugins.common import (
     _get_bool_argument,
     _get_decorator_bool_argument,
     add_attribute_to_class,
-    add_method,
+    add_method_to_class,
     deserialize_and_fixup_type,
 )
 from mypy.server.trigger import make_wildcard_trigger
@@ -893,6 +893,11 @@ def _add_attrs_magic_attribute(
 
 
 def _add_slots(ctx: mypy.plugin.ClassDefContext, attributes: list[Attribute]) -> None:
+    if any(p.slots is None for p in ctx.cls.info.mro[1:-1]):
+        # At least one type in mro (excluding `self` and `object`)
+        # does not have concrete `__slots__` defined. Ignoring.
+        return
+
     # Unlike `@dataclasses.dataclass`, `__slots__` is rewritten here.
     ctx.cls.info.slots = {attr.name for attr in attributes}
 
@@ -947,7 +952,9 @@ class MethodAdder:
         tvd: If the method is generic these should be the type variables.
         """
         self_type = self_type if self_type is not None else self.self_type
-        add_method(self.ctx, method_name, args, ret_type, self_type, tvd)
+        add_method_to_class(
+            self.ctx.api, self.ctx.cls, method_name, args, ret_type, self_type, tvd
+        )
 
 
 def _get_attrs_init_type(typ: Instance) -> CallableType | None:
@@ -1105,10 +1112,5 @@ def fields_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
         ret_type = cls.names[MAGIC_ATTR_NAME].type
         assert ret_type is not None
         return ctx.default_signature.copy_modified(arg_types=arg_types, ret_type=ret_type)
-
-    ctx.api.fail(
-        f'Argument 1 to "fields" has incompatible type "{format_type_bare(proper_type, ctx.api.options)}"; expected an attrs class',
-        ctx.context,
-    )
 
     return ctx.default_signature
