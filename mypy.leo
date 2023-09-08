@@ -5481,7 +5481,6 @@
 <v t="ekr.20230831011820.87"></v>
 <v t="ekr.20230831011819.530"></v>
 </v>
-<v t="ekr.20230907180543.1"><vh>*** Restore master. Work in test</vh></v>
 </vnodes>
 <tnodes>
 <t tx="ekr.20230613022138.1"># Disable flake8 tests</t>
@@ -78292,6 +78291,8 @@ def lookup_fully_qualified_or_none(self, name: str) -&gt; SymbolTableNode | None
     Return the error code that used for the argument (multiple error
     codes are possible).
     """
+    from leo.core import leoGlobals as g  ###
+
     arg_type = get_proper_type(arg_type)
 
     target = ""
@@ -93722,6 +93723,5 @@ if __name__ == "__main__":
         sys.exit(2)
 </t>
 <t tx="ekr.20230907180532.1"></t>
-<t tx="ekr.20230907180543.1"></t>
 </tnodes>
 </leo_file>
