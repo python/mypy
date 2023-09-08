@@ -66,7 +66,6 @@ from mypy.types import (
 from mypy.types_utils import flatten_types
 from mypy.typestate import SubtypeKind, type_state
 from mypy.typevars import fill_typevars_with_any
-from mypy.typevartuples import extract_unpack, fully_split_with_mapped_and_template
 
 # Flags for detected protocol members
 IS_SETTABLE: Final = 1
@@ -506,15 +505,26 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     tvt = right.type.defn.type_vars[prefix]
                     assert isinstance(tvt, TypeVarTupleType)
                     fallback = tvt.tuple_fallback
-                    left_prefix, left_middle, left_suffix = split_with_prefix_and_suffix(t.args, prefix, suffix)
-                    right_prefix, right_middle, right_suffix = split_with_prefix_and_suffix(right.args, prefix, suffix)
-                    left_args = left_prefix + (TupleType(list(left_middle), fallback),) + left_suffix
-                    right_args = right_prefix + (TupleType(list(right_middle), fallback),) + right_suffix
+                    left_prefix, left_middle, left_suffix = split_with_prefix_and_suffix(
+                        t.args, prefix, suffix
+                    )
+                    right_prefix, right_middle, right_suffix = split_with_prefix_and_suffix(
+                        right.args, prefix, suffix
+                    )
+                    left_args = (
+                        left_prefix + (TupleType(list(left_middle), fallback),) + left_suffix
+                    )
+                    right_args = (
+                        right_prefix + (TupleType(list(right_middle), fallback),) + right_suffix
+                    )
                     if len(t.args) == 1 and isinstance(t.args[0], UnpackType):
                         unpacked = get_proper_type(t.args[0].type)
                         if isinstance(unpacked, Instance):
                             assert unpacked.type.fullname == "builtins.tuple"
-                            if isinstance(get_proper_type(unpacked.args[0]), AnyType) and not self.proper_subtype:
+                            if (
+                                isinstance(get_proper_type(unpacked.args[0]), AnyType)
+                                and not self.proper_subtype
+                            ):
                                 return True
                     type_params = zip(left_args, right_args, right.type.defn.type_vars)
                 else:

@@ -43,8 +43,10 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    find_unpack_in_list,
     get_proper_type,
     get_proper_types,
+    split_with_prefix_and_suffix,
 )
 
 
@@ -67,7 +69,22 @@ class InstanceJoiner:
             args: list[Type] = []
             # N.B: We use zip instead of indexing because the lengths might have
             # mismatches during daemon reprocessing.
-            for ta, sa, type_var in zip(t.args, s.args, t.type.defn.type_vars):
+            if t.type.has_type_var_tuple_type:
+                assert s.type.type_var_tuple_prefix is not None
+                assert s.type.type_var_tuple_suffix is not None
+                prefix = s.type.type_var_tuple_prefix
+                suffix = s.type.type_var_tuple_suffix
+                tvt = s.type.defn.type_vars[prefix]
+                assert isinstance(tvt, TypeVarTupleType)
+                fallback = tvt.tuple_fallback
+                s_prefix, s_middle, s_suffix = split_with_prefix_and_suffix(s.args, prefix, suffix)
+                t_prefix, t_middle, t_suffix = split_with_prefix_and_suffix(t.args, prefix, suffix)
+                s_args = s_prefix + (TupleType(list(s_middle), fallback),) + s_suffix
+                t_args = t_prefix + (TupleType(list(t_middle), fallback),) + t_suffix
+            else:
+                t_args = t.args
+                s_args = s.args
+            for ta, sa, type_var in zip(t_args, s_args, t.type.defn.type_vars):
                 ta_proper = get_proper_type(ta)
                 sa_proper = get_proper_type(sa)
                 new_type: Type | None = None
@@ -93,6 +110,15 @@ class InstanceJoiner:
                         # If the types are different but equivalent, then an Any is involved
                         # so using a join in the contravariant case is also OK.
                         new_type = join_types(ta, sa, self)
+                elif isinstance(type_var, TypeVarTupleType):
+                    new_type = get_proper_type(join_types(ta, sa, self))
+                    if isinstance(new_type, Instance):
+                        assert new_type.type.fullname == "builtins.tuple"
+                        new_type = UnpackType(new_type)
+                    else:
+                        assert isinstance(new_type, TupleType)
+                        args.extend(new_type.items)
+                        continue
                 else:
                     # ParamSpec type variables behave the same, independent of variance
                     if not is_equivalent(ta, sa):
@@ -440,6 +466,96 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
                 return join_types(t, call)
         return join_types(t.fallback, s)
 
+    def join_tuples(self, s: TupleType, t: TupleType) -> list[Type] | None:
+        s_unpack_index = find_unpack_in_list(s.items)
+        t_unpack_index = find_unpack_in_list(t.items)
+        if s_unpack_index is None and t_unpack_index is None:
+            if s.length() == t.length():
+                items: list[Type] = []
+                for i in range(t.length()):
+                    items.append(join_types(t.items[i], s.items[i]))
+                return items
+            return None
+        if s_unpack_index is not None and t_unpack_index is not None:
+            s_unpack = s.items[s_unpack_index]
+            assert isinstance(s_unpack, UnpackType)
+            s_unpacked = get_proper_type(s_unpack.type)
+            t_unpack = t.items[t_unpack_index]
+            assert isinstance(t_unpack, UnpackType)
+            t_unpacked = get_proper_type(t_unpack.type)
+            if s.length() == t.length() and s_unpack_index == t_unpack_index:
+                prefix_len = t_unpack_index
+                suffix_len = t.length() - t_unpack_index - 1
+                items = []
+                for si, ti in zip(s.items[:prefix_len], t.items[:prefix_len]):
+                    items.append(join_types(si, ti))
+                joined = join_types(s_unpacked, t_unpacked)
+                if isinstance(joined, TypeVarTupleType):
+                    items.append(UnpackType(joined))
+                elif isinstance(joined, Instance) and joined.type.fullname == "builtins.tuple":
+                    items.append(UnpackType(joined))
+                else:
+                    if isinstance(t_unpacked, Instance):
+                        assert t_unpacked.type.fullname == "builtins.tuple"
+                        tuple_instance = t_unpacked
+                    else:
+                        assert isinstance(t_unpacked, TypeVarTupleType)
+                        tuple_instance = t_unpacked.tuple_fallback
+                    items.append(
+                        UnpackType(
+                            tuple_instance.copy_modified(
+                                args=[object_from_instance(tuple_instance)]
+                            )
+                        )
+                    )
+                if suffix_len:
+                    for si, ti in zip(s.items[-suffix_len:], t.items[-suffix_len:]):
+                        items.append(join_types(si, ti))
+            if s.length() == 1 or t.length() == 1:
+                if not (isinstance(s_unpacked, Instance) and isinstance(t_unpacked, Instance)):
+                    return None
+                assert s_unpacked.type.fullname == "builtins.tuple"
+                assert t_unpacked.type.fullname == "builtins.tuple"
+                mid_joined = join_types(s_unpacked.args[0], t_unpacked.args[0])
+                t_other = [a for i, a in enumerate(t.items) if i != t_unpack_index]
+                s_other = [a for i, a in enumerate(s.items) if i != s_unpack_index]
+                other_joined = join_type_list(s_other + t_other)
+                mid_joined = join_types(mid_joined, other_joined)
+                return [UnpackType(s_unpacked.copy_modified(args=[mid_joined]))]
+            # TODO: are there other case we can handle?
+            return None
+        if s_unpack_index is not None:
+            variadic = s
+            unpack_index = s_unpack_index
+            fixed = t
+        else:
+            assert t_unpack_index is not None
+            variadic = t
+            unpack_index = t_unpack_index
+            fixed = s
+        unpack = variadic.items[unpack_index]
+        assert isinstance(unpack, UnpackType)
+        unpacked = get_proper_type(unpack.type)
+        if not isinstance(unpacked, Instance):
+            return None
+        if fixed.length() < variadic.length() - 1:
+            return None
+        prefix_len = unpack_index
+        suffix_len = variadic.length() - prefix_len - 1
+        prefix, middle, suffix = split_with_prefix_and_suffix(
+            tuple(fixed.items), prefix_len, suffix_len
+        )
+        items = []
+        for fi, vi in zip(prefix, variadic.items[:prefix_len]):
+            items.append(join_types(fi, vi))
+        mid_joined = join_type_list(list(middle))
+        mid_joined = join_types(mid_joined, unpacked.args[0])
+        items.append(UnpackType(unpacked.copy_modified(args=[mid_joined])))
+        if suffix_len:
+            for fi, vi in zip(suffix, variadic.items[-suffix_len:]):
+                items.append(join_types(fi, vi))
+        return items
+
     def visit_tuple_type(self, t: TupleType) -> ProperType:
         # When given two fixed-length tuples:
         # * If they have the same length, join their subtypes item-wise:
@@ -452,17 +568,15 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         #   Tuple[int, bool] + Tuple[bool, ...] becomes Tuple[int, ...]
         # * Joining with any Sequence also returns a Sequence:
         #   Tuple[int, bool] + List[bool] becomes Sequence[int]
-        if isinstance(self.s, TupleType) and self.s.length() == t.length():
+        if isinstance(self.s, TupleType):
             if self.instance_joiner is None:
                 self.instance_joiner = InstanceJoiner()
             fallback = self.instance_joiner.join_instances(
                 mypy.typeops.tuple_fallback(self.s), mypy.typeops.tuple_fallback(t)
             )
             assert isinstance(fallback, Instance)
-            if self.s.length() == t.length():
-                items: list[Type] = []
-                for i in range(t.length()):
-                    items.append(join_types(t.items[i], self.s.items[i]))
+            items = self.join_tuples(self.s, t)
+            if items is not None:
                 return TupleType(items, fallback)
             else:
                 return fallback

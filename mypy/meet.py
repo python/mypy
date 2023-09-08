@@ -44,8 +44,10 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    find_unpack_in_list,
     get_proper_type,
     get_proper_types,
+    split_with_prefix_and_suffix,
 )
 
 # TODO Describe this module.
@@ -721,8 +723,36 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                     args: list[Type] = []
                     # N.B: We use zip instead of indexing because the lengths might have
                     # mismatches during daemon reprocessing.
-                    for ta, sia in zip(t.args, self.s.args):
-                        args.append(self.meet(ta, sia))
+                    if t.type.has_type_var_tuple_type:
+                        s = self.s
+                        assert s.type.type_var_tuple_prefix is not None
+                        assert s.type.type_var_tuple_suffix is not None
+                        prefix = s.type.type_var_tuple_prefix
+                        suffix = s.type.type_var_tuple_suffix
+                        tvt = s.type.defn.type_vars[prefix]
+                        assert isinstance(tvt, TypeVarTupleType)
+                        fallback = tvt.tuple_fallback
+                        s_prefix, s_middle, s_suffix = split_with_prefix_and_suffix(
+                            s.args, prefix, suffix
+                        )
+                        t_prefix, t_middle, t_suffix = split_with_prefix_and_suffix(
+                            t.args, prefix, suffix
+                        )
+                        s_args = s_prefix + (TupleType(list(s_middle), fallback),) + s_suffix
+                        t_args = t_prefix + (TupleType(list(t_middle), fallback),) + t_suffix
+                    else:
+                        t_args = t.args
+                        s_args = self.s.args
+                    for ta, sa, tv in zip(t_args, s_args, t.type.defn.type_vars):
+                        meet = self.meet(ta, sa)
+                        if isinstance(tv, TypeVarTupleType):
+                            if isinstance(meet, TupleType):
+                                args.extend(meet.items)
+                                continue
+                            else:
+                                assert isinstance(meet, UninhabitedType)
+                                meet = UnpackType(tv.tuple_fallback.copy_modified(args=[meet]))
+                        args.append(meet)
                     return Instance(t.type, args)
                 else:
                     if state.strict_optional:
@@ -811,11 +841,68 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                 return meet_types(t, call)
         return meet_types(t.fallback, s)
 
+    def meet_tuples(self, s: TupleType, t: TupleType) -> list[Type] | None:
+        s_unpack_index = find_unpack_in_list(s.items)
+        t_unpack_index = find_unpack_in_list(t.items)
+        if s_unpack_index is None and t_unpack_index is None:
+            if s.length() == t.length():
+                items: list[Type] = []
+                for i in range(t.length()):
+                    items.append(self.meet(t.items[i], s.items[i]))
+                return items
+            return None
+        if s_unpack_index is not None and t_unpack_index is not None:
+            # TODO: handle more cases (like strictly shorter prefix/suffix).
+            if s.length() == 1 and t.length() == 1:
+                s_unpack = s.items[0]
+                assert isinstance(s_unpack, UnpackType)
+                s_unpacked = get_proper_type(s_unpack.type)
+                t_unpack = t.items[0]
+                assert isinstance(t_unpack, UnpackType)
+                t_unpacked = get_proper_type(t_unpack.type)
+                if not (isinstance(s_unpacked, Instance) and isinstance(t_unpacked, Instance)):
+                    return None
+                meet = self.meet(s_unpacked, t_unpacked)
+                if not isinstance(meet, Instance):
+                    return None
+                return [UnpackType(meet)]
+            return None
+        if s_unpack_index is not None:
+            variadic = s
+            unpack_index = s_unpack_index
+            fixed = t
+        else:
+            assert t_unpack_index is not None
+            variadic = t
+            unpack_index = t_unpack_index
+            fixed = s
+        unpack = variadic.items[unpack_index]
+        assert isinstance(unpack, UnpackType)
+        unpacked = get_proper_type(unpack.type)
+        if not isinstance(unpacked, Instance):
+            return None
+        if fixed.length() < variadic.length() - 1:
+            return None
+        prefix_len = unpack_index
+        suffix_len = variadic.length() - prefix_len - 1
+        prefix, middle, suffix = split_with_prefix_and_suffix(
+            tuple(fixed.items), prefix_len, suffix_len
+        )
+        items = []
+        for fi, vi in zip(prefix, variadic.items[:prefix_len]):
+            items.append(self.meet(fi, vi))
+        for mi in middle:
+            items.append(self.meet(mi, unpacked.args[0]))
+        if suffix_len:
+            for fi, vi in zip(suffix, variadic.items[-suffix_len:]):
+                items.append(self.meet(fi, vi))
+        return items
+
     def visit_tuple_type(self, t: TupleType) -> ProperType:
-        if isinstance(self.s, TupleType) and self.s.length() == t.length():
-            items: list[Type] = []
-            for i in range(t.length()):
-                items.append(self.meet(t.items[i], self.s.items[i]))
+        if isinstance(self.s, TupleType):
+            items = self.meet_tuples(self.s, t)
+            if items is None:
+                return self.default(self.s)
             # TODO: What if the fallbacks are different?
             return TupleType(items, tuple_fallback(t))
         elif isinstance(self.s, Instance):
