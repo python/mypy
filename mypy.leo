@@ -109,7 +109,7 @@
 <v t="ekr.20230831011820.84"><vh>MessageBuilder.unsupported_left_operand</vh></v>
 <v t="ekr.20230831011820.85"><vh>MessageBuilder.not_callable</vh></v>
 <v t="ekr.20230831011820.86"><vh>MessageBuilder.untyped_function_call</vh></v>
-<v t="ekr.20230831011820.87"><vh>MessageBuilder.incompatible_argument  **trace</vh></v>
+<v t="ekr.20230831011820.87"><vh>MessageBuilder.incompatible_argument</vh></v>
 <v t="ekr.20230831011820.88"><vh>MessageBuilder.incompatible_argument_note</vh></v>
 <v t="ekr.20230831011820.89"><vh>MessageBuilder.maybe_note_concatenate_pos_args</vh></v>
 <v t="ekr.20230831011820.90"><vh>MessageBuilder.invalid_index_type</vh></v>
@@ -3509,7 +3509,7 @@
 <v t="ekr.20230831011819.527"><vh>ExpressionChecker.check_for_extra_actual_arguments</vh></v>
 <v t="ekr.20230831011819.528"><vh>ExpressionChecker.missing_classvar_callable_note</vh></v>
 <v t="ekr.20230831011819.529"><vh>ExpressionChecker.check_argument_types</vh></v>
-<v t="ekr.20230831011819.530"><vh>ExpressionChecker.check_arg</vh></v>
+<v t="ekr.20230831011819.530"><vh>ExpressionChecker.check_arg **trace</vh></v>
 <v t="ekr.20230831011819.531"><vh>ExpressionChecker.check_overload_call</vh></v>
 <v t="ekr.20230831011819.532"><vh>ExpressionChecker.plausible_overload_call_targets</vh></v>
 <v t="ekr.20230831011819.533"><vh>ExpressionChecker.infer_overload_return_type</vh></v>
@@ -5450,6 +5450,11 @@
 <v t="ekr.20230902063457.1"><vh>--- is solve the key ??</vh></v>
 <v t="ekr.20230831011820.1577"></v>
 </v>
+<v t="ekr.20230907180452.1"><vh>--- Major changes</vh>
+<v t="ekr.20230907180459.1"><vh>COPY: @clean __main__.py</vh>
+<v t="ekr.20230907180459.2"><vh>function: console_entry</vh></v>
+</v>
+</v>
 <v t="ekr.20230907082251.1"><vh>--- recent</vh>
 <v t="ekr.20230907081811.1"><vh>@clean ekr_test_12352.py</vh></v>
 <v t="ekr.20230831011819.4"></v>
@@ -5467,13 +5472,16 @@
 <v t="ekr.20230831011819.158"></v>
 <v t="ekr.20230831011819.166"></v>
 <v t="ekr.20230831011819.169"></v>
-</v>
 <v t="ekr.20230831011819.4"></v>
 <v t="ekr.20230831011819.6"></v>
 <v t="ekr.20230831011819.169"></v>
+</v>
+<v t="ekr.20230907180532.1"><vh>--- Error messages</vh>
 <v t="ekr.20230831011820.2011"></v>
 <v t="ekr.20230831011820.87"></v>
 <v t="ekr.20230831011819.530"></v>
+</v>
+<v t="ekr.20230907180543.1"><vh>*** Restore master. Work in test</vh></v>
 </vnodes>
 <tnodes>
 <t tx="ekr.20230613022138.1"># Disable flake8 tests</t>
@@ -78284,8 +78292,6 @@ def lookup_fully_qualified_or_none(self, name: str) -&gt; SymbolTableNode | None
     Return the error code that used for the argument (multiple error
     codes are possible).
     """
-    from leo.core import leoGlobals as g  ###
-
     arg_type = get_proper_type(arg_type)
 
     target = ""
@@ -93662,5 +93668,60 @@ g.execute_shell_commands([
 </t>
 <t tx="ekr.20230907115636.1"></t>
 <t tx="ekr.20230907122234.1"></t>
+<t tx="ekr.20230907180452.1"></t>
+<t tx="ekr.20230907180459.1">@path mypy
+"""Mypy type checker command line tool."""
+
+from __future__ import annotations
+
+import os
+import sys
+import traceback
+
+if 1:  ### EKR ###
+    print('')
+    print('*** ekr-mypy2 ***')
+    print('')
+    repo_path = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
+    if repo_path not in sys.path:
+        # print(f"Add {repo_path!r} to sys.path")
+        sys.path.insert(0, repo_path)
+
+from mypy.main import main, process_options
+from mypy.util import FancyFormatter
+
+
+@others
+
+
+if __name__ == "__main__":
+    console_entry()
+@language python
+@tabwidth -4
+</t>
+<t tx="ekr.20230907180459.2">def console_entry() -&gt; None:
+    try:
+        main()
+        sys.stdout.flush()
+        sys.stderr.flush()
+    except BrokenPipeError:
+        # Python flushes standard streams on exit; redirect remaining output
+        # to devnull to avoid another BrokenPipeError at shutdown
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, sys.stdout.fileno())
+        sys.exit(2)
+    except KeyboardInterrupt:
+        _, options = process_options(args=sys.argv[1:])
+        if options.show_traceback:
+            sys.stdout.write(traceback.format_exc())
+        formatter = FancyFormatter(sys.stdout, sys.stderr, False)
+        msg = "Interrupted\n"
+        sys.stdout.write(formatter.style(msg, color="red", bold=True))
+        sys.stdout.flush()
+        sys.stderr.flush()
+        sys.exit(2)
+</t>
+<t tx="ekr.20230907180532.1"></t>
+<t tx="ekr.20230907180543.1"></t>
 </tnodes>
 </leo_file>
