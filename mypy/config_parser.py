@@ -292,14 +292,18 @@ def parse_config_file(
             )
             if report_dirs:
                 print(
-                    "%sPer-module sections should not specify reports (%s)"
-                    % (prefix, ", ".join(s + "_report" for s in sorted(report_dirs))),
+                    prefix,
+                    "Per-module sections should not specify reports ({})".format(
+                        ", ".join(s + "_report" for s in sorted(report_dirs))
+                    ),
                     file=stderr,
                 )
             if set(updates) - PER_MODULE_OPTIONS:
                 print(
-                    "%sPer-module sections should only specify per-module flags (%s)"
-                    % (prefix, ", ".join(sorted(set(updates) - PER_MODULE_OPTIONS))),
+                    prefix,
+                    "Per-module sections should only specify per-module flags ({})".format(
+                        ", ".join(sorted(set(updates) - PER_MODULE_OPTIONS))
+                    ),
                     file=stderr,
                 )
                 updates = {k: v for k, v in updates.items() if k in PER_MODULE_OPTIONS}
@@ -315,8 +319,9 @@ def parse_config_file(
                     "*" in x and x != "*" for x in glob.split(".")
                 ):
                     print(
-                        "%sPatterns must be fully-qualified module names, optionally "
-                        "with '*' in some components (e.g spam.*.eggs.*)" % prefix,
+                        prefix,
+                        "Patterns must be fully-qualified module names, optionally "
+                        "with '*' in some components (e.g spam.*.eggs.*)",
                         file=stderr,
                     )
                 else:
@@ -329,7 +334,7 @@ def get_prefix(file_read: str, name: str) -> str:
     else:
         module_name_str = name
 
-    return f"{file_read}: [{module_name_str}]: "
+    return f"{file_read}: [{module_name_str}]:"
 
 
 def is_toml(filename: str) -> bool:
@@ -411,8 +416,7 @@ def destructure_overrides(toml_data: dict[str, Any]) -> dict[str, Any]:
                         raise ConfigTOMLValueError(
                             "toml config file contains "
                             "[[tool.mypy.overrides]] sections with conflicting "
-                            "values. Module '%s' has two different values for '%s'"
-                            % (module, new_key)
+                            f"values. Module '{module}' has two different values for '{new_key}'"
                         )
                     result[old_config_name][new_key] = new_value
 
@@ -434,11 +438,26 @@ def parse_section(
     """
     results: dict[str, object] = {}
     report_dirs: dict[str, str] = {}
+
+    # Because these fields exist on Options, without proactive checking, we would accept them
+    # and crash later
+    invalid_options = {
+        "enabled_error_codes": "enable_error_code",
+        "disabled_error_codes": "disable_error_code",
+    }
+
     for key in section:
         invert = False
         options_key = key
         if key in config_types:
             ct = config_types[key]
+        elif key in invalid_options:
+            print(
+                f"{prefix}Unrecognized option: {key} = {section[key]}"
+                f" (did you mean {invalid_options[key]}?)",
+                file=stderr,
+            )
+            continue
         else:
             dv = None
             # We have to keep new_semantic_analyzer in Options

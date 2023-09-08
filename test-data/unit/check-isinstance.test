@@ -1812,9 +1812,9 @@ reveal_type(fm)  # N: Revealed type is "__main__.FooMetaclass"
 if issubclass(fm, Foo):
     reveal_type(fm)  # N: Revealed type is "Type[__main__.Foo]"
 if issubclass(fm, Bar):
-    reveal_type(fm)  # N: Revealed type is "<nothing>"
+    reveal_type(fm)  # N: Revealed type is "Never"
 if issubclass(fm, Baz):
-    reveal_type(fm)  # N: Revealed type is "<nothing>"
+    reveal_type(fm)  # N: Revealed type is "Never"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceAndNarrowTypeVariable]

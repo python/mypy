@@ -1189,7 +1189,7 @@ def f(t: Type[T], a: A, b: B) -> None:
         reveal_type(a)  # N: Revealed type is "__main__.A"
 
     if type(b) is t:
-        reveal_type(b)  # N: Revealed type is "<nothing>"
+        reveal_type(b)  # N: Revealed type is "Never"
     else:
         reveal_type(b)  # N: Revealed type is "__main__.B"
 

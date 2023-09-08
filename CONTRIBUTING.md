@@ -62,18 +62,6 @@ like this:
 python3 runtests.py
 ```
 
-You can also use `tox` to run tests (`tox` handles setting up the test environment for you):
-
-```bash
-tox run -e py
-
-# Or some specific python version:
-tox run -e py39
-
-# Or some specific command:
-tox run -e lint
-```
-
 Some useful commands for running specific tests include:
 
 ```bash
@@ -94,6 +82,36 @@ python runtests.py lint
 
 For an in-depth guide on running and writing tests,
 see [the README in the test-data directory](test-data/unit/README.md).
+
+#### Using `tox`
+
+You can also use [`tox`](https://tox.wiki/en/latest/) to run tests and other commands.
+`tox` handles setting up test environments for you.
+
+```bash
+# Run tests
+tox run -e py
+
+# Run tests using some specific Python version
+tox run -e py311
+
+# Run a specific command
+tox run -e lint
+
+# Run a single test from the test suite
+tox run -e py -- -n0 -k 'test_name'
+
+# Run all test cases in the "test-data/unit/check-dataclasses.test" file using
+# Python 3.11 specifically
+tox run -e py311 -- mypy/test/testcheck.py::TypeCheckSuite::check-dataclasses.test
+
+# Set up a development environment with all the project libraries and run a command
+tox -e dev -- mypy --verbose test_case.py
+tox -e dev --override testenv:dev.allowlist_externals+=env -- env  # inspect the environment
+```
+
+If you don't already have `tox` installed, you can use a virtual environment as
+described above to install `tox` via `pip` (e.g., ``python3 -m pip install tox``).
 
 ## First time contributors
 
