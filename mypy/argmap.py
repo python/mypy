@@ -8,6 +8,7 @@ from mypy import nodes
 from mypy.maptype import map_instance_to_supertype
 from mypy.types import (
     AnyType,
+    CallableType,
     Instance,
     ParamSpecType,
     TupleType,
@@ -189,19 +190,23 @@ class ArgTypeExpander:
         original_actual = actual_type
         actual_type = get_proper_type(actual_type)
         if actual_kind == nodes.ARG_STAR:
-            if isinstance(actual_type, Instance) and actual_type.args:
-                from mypy.subtypes import is_subtype
+            from mypy.subtypes import find_member, is_subtype
 
-                if is_subtype(actual_type, self.context.iterable_type):
-                    return map_instance_to_supertype(
-                        actual_type, self.context.iterable_type.type
-                    ).args[0]
-                else:
-                    # We cannot properly unpack anything other
-                    # than `Iterable` type with `*`.
-                    # Just return `Any`, other parts of code would raise
-                    # a different error for improper use.
-                    return AnyType(TypeOfAny.from_error)
+            if isinstance(actual_type, Instance) and is_subtype(
+                actual_type, self.context.iterable_type
+            ):
+                iter_type = get_proper_type(
+                    find_member("__iter__", actual_type, actual_type, is_operator=True)
+                )
+                if iter_type and isinstance(iter_type, CallableType):
+                    ret_type = get_proper_type(iter_type.ret_type)
+                    if isinstance(ret_type, Instance):
+                        return ret_type.args[0]
+                # We cannot properly unpack anything other
+                # than `Iterable` type with `*`.
+                # Just return `Any`, other parts of code would raise
+                # a different error for improper use.
+                return AnyType(TypeOfAny.from_error)
             elif isinstance(actual_type, TupleType):
                 # Get the next tuple item of a tuple *arg.
                 if self.tuple_index >= len(actual_type.items):
