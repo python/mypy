@@ -613,7 +613,6 @@ class MessageBuilder:
         Return the error code that used for the argument (multiple error
         codes are possible).
         """
-        from leo.core import leoGlobals as g  ###
 
         arg_type = get_proper_type(arg_type)
 
