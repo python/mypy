@@ -32,7 +32,7 @@ class RefInfoSuite(DataSuite):
         assert not result.errors
 
         major, minor = sys.version_info[:2]
-        ref_path = os.path.join(options.cache_dir, f"{major}.{minor}", "__main__.refs.json")
+        ref_path = os.path.join(options.cache_dir, f"{major}.{minor}", "__main__.refs.json.gz")
 
         with open(ref_path, "rb") as refs_file:
             data = json.loads(decompress(refs_file.read()))
