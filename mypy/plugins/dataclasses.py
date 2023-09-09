@@ -1071,7 +1071,7 @@ def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
 
 
 def is_processed_dataclass(info: TypeInfo) -> bool:
-    return info and "dataclass" in info.metadata
+    return bool(info) and "dataclass" in info.metadata
 
 
 def check_post_init(api: TypeChecker, defn: FuncItem, info: TypeInfo) -> None:
