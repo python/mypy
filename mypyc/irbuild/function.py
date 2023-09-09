@@ -292,6 +292,7 @@ def gen_func_item(
     elif builder.fn_info.is_nested or builder.fn_info.in_non_ext:
         env_for_func = builder.fn_info.callable_class
 
+    print(builder.free_variables)
     if builder.fn_info.fitem in builder.free_variables:
         # Sort the variables to keep things deterministic
         for var in sorted(builder.free_variables[builder.fn_info.fitem], key=lambda x: x.name):
@@ -307,10 +308,12 @@ def gen_func_item(
                 # the same name and signature across conditional blocks
                 # will generate different callable classes, so the callable
                 # class that gets instantiated must be generic.
+                print('here', repr(nested_fn))
                 builder.add_var_to_env_class(
                     nested_fn, object_rprimitive, env_for_func, reassign=False
                 )
 
+    print([111], fitem.body)
     builder.accept(fitem.body)
     builder.maybe_add_implicit_return()
 
@@ -765,11 +768,14 @@ def get_func_target(builder: IRBuilder, fdef: FuncDef) -> AssignmentTarget:
     and add it to the current environment.
     """
     if fdef.original_def:
+        print([2])
         # Get the target associated with the previously defined FuncDef.
         return builder.lookup(fdef.original_def)
 
-    if builder.fn_info.is_generator or builder.fn_info.contains_nested:
-        return builder.lookup(fdef)
+    if 0:
+        if builder.fn_info.is_generator or builder.fn_info.contains_nested:
+            print([3])
+            return builder.lookup(fdef)
 
     return builder.add_local_reg(fdef, object_rprimitive)
 

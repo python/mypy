@@ -859,3 +859,12 @@ L2:
     r2 = baz(r1)
     r3 = CPyTagged_Add(n, r2)
     return r3
+
+[case testXXX]
+def f() -> None:
+    x = 0
+    y = 1
+    def g() -> None:
+        y
+    g()
+[out]

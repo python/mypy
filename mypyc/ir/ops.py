@@ -642,6 +642,9 @@ class GetAttr(RegisterOp):
 
     def __init__(self, obj: Value, attr: str, line: int, *, borrow: bool = False) -> None:
         super().__init__(line)
+        if attr == 'g':
+            print([6], obj)
+            assert False
         self.obj = obj
         self.attr = attr
         assert isinstance(obj.type, RInstance), "Attribute access not supported: %s" % obj.type

@@ -108,7 +108,9 @@ def load_env_registers(builder: IRBuilder) -> None:
         # If this is a FuncDef, then make sure to load the FuncDef into its own environment
         # class so that the function can be called recursively.
         if isinstance(fitem, FuncDef):
-            setup_func_for_recursive_call(builder, fitem, fn_info.callable_class)
+            # XXX DON'T PLEASE
+            if 0:
+                setup_func_for_recursive_call(builder, fitem, fn_info.callable_class)
 
 
 def load_outer_env(

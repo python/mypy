@@ -1236,6 +1236,7 @@ class IRBuilder:
     def add_var_to_env_class(
         self, var: SymbolNode, rtype: RType, base: FuncInfo | ImplicitClass, reassign: bool = False
     ) -> AssignmentTarget:
+        print([1], 'add_var_to_env', var.fullname)
         # First, define the variable name as an attribute of the environment class, and then
         # construct a target for that attribute.
         self.fn_info.env_class.attributes[var.name] = rtype
