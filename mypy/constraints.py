@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final, Iterable, List, Sequence, cast
+from typing import TYPE_CHECKING, Final, Iterable, List, Sequence
 
 import mypy.subtypes
 import mypy.typeops
@@ -58,7 +58,6 @@ from mypy.types import (
 )
 from mypy.types_utils import is_union_with_any
 from mypy.typestate import type_state
-from mypy.typevartuples import extract_unpack, split_with_mapped_and_template
 
 if TYPE_CHECKING:
     from mypy.infer import ArgumentInferContext
@@ -747,26 +746,19 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 if instance.type.has_type_var_tuple_type:
                     assert instance.type.type_var_tuple_prefix is not None
                     assert instance.type.type_var_tuple_suffix is not None
-                    assert mapped.type.type_var_tuple_prefix is not None
-                    assert mapped.type.type_var_tuple_suffix is not None
-
-                    unpack_constraints, instance_args, mapped_args = build_constraints_for_unpack(
-                        instance.args,
-                        instance.type.type_var_tuple_prefix,
-                        instance.type.type_var_tuple_suffix,
-                        mapped.args,
-                        mapped.type.type_var_tuple_prefix,
-                        mapped.type.type_var_tuple_suffix,
-                        self.direction,
+                    prefix_len = instance.type.type_var_tuple_prefix
+                    suffix_len = instance.type.type_var_tuple_suffix
+                    tvt = instance.type.defn.type_vars[prefix_len]
+                    assert isinstance(tvt, TypeVarTupleType)
+                    fallback = tvt.tuple_fallback
+                    i_prefix, i_middle, i_suffix = split_with_prefix_and_suffix(
+                        instance.args, prefix_len, suffix_len
                     )
-                    res.extend(unpack_constraints)
-
-                    tvars_prefix, _, tvars_suffix = split_with_prefix_and_suffix(
-                        tuple(tvars),
-                        instance.type.type_var_tuple_prefix,
-                        instance.type.type_var_tuple_suffix,
+                    m_prefix, m_middle, m_suffix = split_with_prefix_and_suffix(
+                        mapped.args, prefix_len, suffix_len
                     )
-                    tvars = cast("list[TypeVarLikeType]", list(tvars_prefix + tvars_suffix))
+                    instance_args = i_prefix + (TupleType(list(i_middle), fallback),) + i_suffix
+                    mapped_args = m_prefix + (TupleType(list(m_middle), fallback),) + m_suffix
                 else:
                     mapped_args = mapped.args
                     instance_args = instance.args
@@ -806,44 +798,36 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             )
                             res.append(Constraint(mapped_arg, SUBTYPE_OF, suffix))
                             res.append(Constraint(mapped_arg, SUPERTYPE_OF, suffix))
-                    else:
-                        # This case should have been handled above.
-                        assert not isinstance(tvar, TypeVarTupleType)
+                    elif isinstance(tvar, TypeVarTupleType):
+                        # Handle variadic type variables covariantly for consistency.
+                        res.extend(infer_constraints(mapped_arg, instance_arg, self.direction))
 
                 return res
             elif self.direction == SUPERTYPE_OF and instance.type.has_base(template.type.fullname):
                 mapped = map_instance_to_supertype(instance, template.type)
                 tvars = template.type.defn.type_vars
                 if template.type.has_type_var_tuple_type:
-                    assert mapped.type.type_var_tuple_prefix is not None
-                    assert mapped.type.type_var_tuple_suffix is not None
                     assert template.type.type_var_tuple_prefix is not None
                     assert template.type.type_var_tuple_suffix is not None
-
-                    unpack_constraints, mapped_args, template_args = build_constraints_for_unpack(
-                        mapped.args,
-                        mapped.type.type_var_tuple_prefix,
-                        mapped.type.type_var_tuple_suffix,
-                        template.args,
-                        template.type.type_var_tuple_prefix,
-                        template.type.type_var_tuple_suffix,
-                        self.direction,
+                    prefix_len = template.type.type_var_tuple_prefix
+                    suffix_len = template.type.type_var_tuple_suffix
+                    tvt = template.type.defn.type_vars[prefix_len]
+                    assert isinstance(tvt, TypeVarTupleType)
+                    fallback = tvt.tuple_fallback
+                    t_prefix, t_middle, t_suffix = split_with_prefix_and_suffix(
+                        template.args, prefix_len, suffix_len
                     )
-                    res.extend(unpack_constraints)
-
-                    tvars_prefix, _, tvars_suffix = split_with_prefix_and_suffix(
-                        tuple(tvars),
-                        template.type.type_var_tuple_prefix,
-                        template.type.type_var_tuple_suffix,
+                    m_prefix, m_middle, m_suffix = split_with_prefix_and_suffix(
+                        mapped.args, prefix_len, suffix_len
                     )
-                    tvars = cast("list[TypeVarLikeType]", list(tvars_prefix + tvars_suffix))
+                    template_args = t_prefix + (TupleType(list(t_middle), fallback),) + t_suffix
+                    mapped_args = m_prefix + (TupleType(list(m_middle), fallback),) + m_suffix
                 else:
                     mapped_args = mapped.args
                     template_args = template.args
                 # N.B: We use zip instead of indexing because the lengths might have
                 # mismatches during daemon reprocessing.
                 for tvar, mapped_arg, template_arg in zip(tvars, mapped_args, template_args):
-                    assert not isinstance(tvar, TypeVarTupleType)
                     if isinstance(tvar, TypeVarType):
                         # The constraints for generic type parameters depend on variance.
                         # Include constraints from both directions if invariant.
@@ -878,9 +862,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             )
                             res.append(Constraint(template_arg, SUBTYPE_OF, suffix))
                             res.append(Constraint(template_arg, SUPERTYPE_OF, suffix))
-                    else:
-                        # This case should have been handled above.
-                        assert not isinstance(tvar, TypeVarTupleType)
+                    elif isinstance(tvar, TypeVarTupleType):
+                        # Handle variadic type variables covariantly for consistency.
+                        res.extend(infer_constraints(template_arg, mapped_arg, self.direction))
                 return res
             if (
                 template.type.is_protocol
@@ -1492,71 +1476,6 @@ def build_constraints_for_simple_unpack(
             if isinstance(tp, Instance) and tp.type.fullname == "builtins.tuple":
                 res.extend(infer_constraints(tp.args[0], a_unpacked.args[0], direction))
     return res
-
-
-def build_constraints_for_unpack(
-    # TODO: this naming is misleading, these should be "actual", not "mapped"
-    # both template and actual can be mapped before, depending on direction.
-    # Also the convention is to put template related args first.
-    mapped: tuple[Type, ...],
-    mapped_prefix_len: int | None,
-    mapped_suffix_len: int | None,
-    template: tuple[Type, ...],
-    template_prefix_len: int,
-    template_suffix_len: int,
-    direction: int,
-) -> tuple[list[Constraint], tuple[Type, ...], tuple[Type, ...]]:
-    # TODO: this function looks broken:
-    # a) it should take into account variances, but it doesn't
-    # b) it looks like both call sites always pass identical values to args (2, 3) and (5, 6)
-    # because after map_instance_to_supertype() both template and actual have same TypeInfo.
-    if mapped_prefix_len is None:
-        mapped_prefix_len = template_prefix_len
-    if mapped_suffix_len is None:
-        mapped_suffix_len = template_suffix_len
-
-    split_result = split_with_mapped_and_template(
-        mapped,
-        mapped_prefix_len,
-        mapped_suffix_len,
-        template,
-        template_prefix_len,
-        template_suffix_len,
-    )
-    assert split_result is not None
-    (
-        mapped_prefix,
-        mapped_middle,
-        mapped_suffix,
-        template_prefix,
-        template_middle,
-        template_suffix,
-    ) = split_result
-
-    template_unpack = extract_unpack(template_middle)
-    res = []
-
-    if template_unpack is not None:
-        if isinstance(template_unpack, TypeVarTupleType):
-            res.append(
-                Constraint(
-                    template_unpack,
-                    direction,
-                    TupleType(list(mapped_middle), template_unpack.tuple_fallback),
-                )
-            )
-        elif (
-            isinstance(template_unpack, Instance)
-            and template_unpack.type.fullname == "builtins.tuple"
-        ):
-            for item in mapped_middle:
-                res.extend(infer_constraints(template_unpack.args[0], item, direction))
-
-        elif isinstance(template_unpack, TupleType):
-            if len(template_unpack.items) == len(mapped_middle):
-                for template_arg, item in zip(template_unpack.items, mapped_middle):
-                    res.extend(infer_constraints(template_arg, item, direction))
-    return res, mapped_prefix + mapped_suffix, template_prefix + template_suffix
 
 
 def infer_directed_arg_constraints(left: Type, right: Type, direction: int) -> list[Constraint]:

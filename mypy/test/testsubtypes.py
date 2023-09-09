@@ -198,6 +198,8 @@ class SubtypingSuite(Suite):
             self.fx.callable_type(self.fx.a, self.fx.b), self.fx.callable(self.fx.a, self.fx.b)
         )
 
+    # TODO: some tests here use non-normalized variadic forms (mostly fixed tuple unpacks).
+    # We may want to either replace these with normalized ones, or add matching normalized tests.
     def test_type_var_tuple(self) -> None:
         self.assert_subtype(Instance(self.fx.gvi, []), Instance(self.fx.gvi, []))
         self.assert_subtype(
@@ -221,10 +223,6 @@ class SubtypingSuite(Suite):
             Instance(self.fx.gvi, [UnpackType(self.fx.us)]),
         )
 
-        self.assert_subtype(
-            Instance(self.fx.gvi, [UnpackType(self.fx.anyt)]),
-            Instance(self.fx.gvi, [self.fx.anyt]),
-        )
         self.assert_not_subtype(
             Instance(self.fx.gvi, [UnpackType(self.fx.ss)]), Instance(self.fx.gvi, [])
         )
@@ -272,51 +270,7 @@ class SubtypingSuite(Suite):
             Instance(self.fx.gvi, [self.fx.a, UnpackType(self.fx.ss), self.fx.b, self.fx.c]),
         )
 
-    def test_type_var_tuple_unpacked_varlength_tuple(self) -> None:
-        self.assert_subtype(
-            Instance(
-                self.fx.gvi,
-                [
-                    UnpackType(
-                        TupleType(
-                            [self.fx.a, self.fx.b],
-                            fallback=Instance(self.fx.std_tuplei, [self.fx.o]),
-                        )
-                    )
-                ],
-            ),
-            Instance(self.fx.gvi, [self.fx.a, self.fx.b]),
-        )
-
     def test_type_var_tuple_unpacked_tuple(self) -> None:
-        self.assert_subtype(
-            Instance(
-                self.fx.gvi,
-                [
-                    UnpackType(
-                        TupleType(
-                            [self.fx.a, self.fx.b],
-                            fallback=Instance(self.fx.std_tuplei, [self.fx.o]),
-                        )
-                    )
-                ],
-            ),
-            Instance(self.fx.gvi, [self.fx.a, self.fx.b]),
-        )
-        self.assert_subtype(
-            Instance(
-                self.fx.gvi,
-                [
-                    UnpackType(
-                        TupleType(
-                            [self.fx.a, self.fx.b],
-                            fallback=Instance(self.fx.std_tuplei, [self.fx.o]),
-                        )
-                    )
-                ],
-            ),
-            Instance(self.fx.gvi, [self.fx.anyt, self.fx.anyt]),
-        )
         self.assert_not_subtype(
             Instance(
                 self.fx.gvi,
@@ -348,7 +302,7 @@ class SubtypingSuite(Suite):
         )
 
     def test_type_var_tuple_unpacked_variable_length_tuple(self) -> None:
-        self.assert_equivalent(
+        self.assert_subtype(
             Instance(self.fx.gvi, [self.fx.a, self.fx.a]),
             Instance(self.fx.gvi, [UnpackType(Instance(self.fx.std_tuplei, [self.fx.a]))]),
         )
