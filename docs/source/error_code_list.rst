@@ -1137,7 +1137,16 @@ Warn if multiple ``@overload`` variants overlap in unsafe ways.
     def takes_a(a: A) -> str:
         return foo(a)
 
-    assert isinstance(takes_a(B()), str)  # may fail when run
+    a: A = B()
+    value = takes_a(a)
+    # mypy will think that value is a str, but it could actually be an int
+    reveal_type(value) # Revealed type is "builtins.str"
+
+
+Note that in cases you ignore this error, mypy will usually still infer the
+types you expect.
+
+See :ref:`overloading <function-overloading>` for more explanation.
 
 .. _code-annotation-unchecked:
 
