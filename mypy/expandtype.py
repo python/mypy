@@ -255,7 +255,8 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                 variables=[*t.prefix.variables, *repl.variables],
             )
         else:
-            # TODO: replace this with "assert False"
+            # We could encode Any as trivial parameters etc., but it would be too verbose.
+            # TODO: assert this is a trivial type, like Any, Never, or object.
             return repl
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
