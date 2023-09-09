@@ -1522,3 +1522,19 @@ class Bar(aaaaaaaaaa):  # E: Name "aaaaaaaaaa" is not defined
 class FooBarTuple(Tuple[Foo, Bar]):
     ...
 [builtins fixtures/tuple.pyi]
+
+[case testTupleOverloadZipAny]
+from typing import Any, Iterable, Iterator, Tuple, TypeVar, overload
+
+T = TypeVar("T")
+
+@overload
+def zip(__i: Iterable[T]) -> Iterator[Tuple[T]]: ...
+@overload
+def zip(*i: Iterable[Any]) -> Iterator[Tuple[Any, ...]]: ...
+def zip(i): ...
+
+def g(t: Tuple):
+    reveal_type(zip(*t))  # N: Revealed type is "typing.Iterator[builtins.tuple[Any, ...]]"
+    reveal_type(zip(t))  # N: Revealed type is "typing.Iterator[Tuple[Any]]"
+[builtins fixtures/tuple.pyi]
