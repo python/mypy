@@ -453,18 +453,25 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     unpacked = get_proper_type(item.type)
                     if isinstance(unpacked, Instance):
                         return self._is_subtype(left, unpacked)
-            if len(left.args) == 1 and isinstance(left.args[0], UnpackType):
+            if left.type.has_base(right.partial_fallback.type.fullname):
                 # Special case to consider Foo[*tuple[Any, ...]] (i.e. bare Foo) a
                 # subtype of Foo[<whatever>], when Foo is user defined variadic tuple type.
-                # TODO: be sure we handle Bar <: Foo[*tuple[Any, ...]] <: Foo[<whatever>].
-                unpacked = get_proper_type(left.args[0].type)
-                if isinstance(unpacked, Instance):
-                    assert unpacked.type.fullname == "builtins.tuple"
-                    if isinstance(get_proper_type(unpacked.args[0]), AnyType):
-                        return self._is_subtype(left, mypy.typeops.tuple_fallback(right))
+                mapped = map_instance_to_supertype(left, right.partial_fallback.type)
+                if len(mapped.args) == 1 and isinstance(mapped.args[0], UnpackType):
+                    unpacked = get_proper_type(mapped.args[0].type)
+                    if isinstance(unpacked, Instance):
+                        assert unpacked.type.fullname == "builtins.tuple"
+                        if isinstance(get_proper_type(unpacked.args[0]), AnyType):
+                            return not self.proper_subtype
             # TODO: we need a special case similar to above to consider (something that maps to)
             # tuple[Any, ...] a subtype of Tuple[<whatever>].
             return False
+        if isinstance(right, TypeVarTupleType):
+            # tuple[Any, ...] is like Any in the world of tuples (see special case above).
+            if left.type.has_base("builtins.tuple"):
+                mapped = map_instance_to_supertype(left, right.tuple_fallback.type)
+                if isinstance(get_proper_type(mapped.args[0]), AnyType):
+                    return not self.proper_subtype
         if isinstance(right, Instance):
             if type_state.is_cached_subtype_check(self._subtype_kind, left, right):
                 return True

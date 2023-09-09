@@ -1308,3 +1308,45 @@ def h(x: List[Tuple[T, S, U]]) -> Tuple[T, S, U]: ...
 vt2: Tuple[Unpack[Tuple[int, ...]], int]
 vt2 = h(reveal_type([]))  # N: Revealed type is "builtins.list[Tuple[builtins.int, builtins.int, builtins.int]]"
 [builtins fixtures/tuple.pyi]
+
+[case testVariadicSelfTypeErasure]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class Array(Generic[Unpack[Ts]]):
+    def _close(self) -> None: ...
+
+    def close(self) -> None:
+        self._close()
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicTupleAnySubtype]
+from typing import Any, Generic, Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class B(Generic[Unpack[Ts]]): ...
+class C1(B[Unpack[Tuple[Any, ...]]]): ...
+c1 = C1()
+class C2(B): ...
+c2 = C2()
+x: B[int, str]
+x = c1
+x = c2
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicTupleAnySubtypeTupleType]
+from typing import Any, Generic, Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class B(Tuple[Unpack[Ts]]): ...
+class C1(B[Unpack[Tuple[Any, ...]]]): ...
+c1 = C1()
+class C2(B): ...
+c2 = C2()
+x: B[int, str]
+x = c1
+x = c2
+[builtins fixtures/tuple.pyi]

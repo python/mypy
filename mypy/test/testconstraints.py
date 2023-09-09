@@ -88,16 +88,7 @@ class ConstraintsSuite(Suite):
         fx = self.fx
         assert set(
             infer_constraints(
-                Instance(
-                    fx.gv2i,
-                    [
-                        fx.u,
-                        UnpackType(
-                            TupleType([fx.t, fx.s], fallback=Instance(fx.std_tuplei, [fx.o]))
-                        ),
-                        fx.u,
-                    ],
-                ),
+                Instance(fx.gv2i, [fx.u, fx.t, fx.s, fx.u]),
                 Instance(fx.gv2i, [fx.a, fx.b, fx.c, fx.d]),
                 SUPERTYPE_OF,
             )
