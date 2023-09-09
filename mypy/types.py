@@ -3019,7 +3019,7 @@ def get_proper_type(typ: Type | None) -> ProperType | None:
 
 
 @overload
-def get_proper_types(types: list[Type] | tuple[Type, ...]) -> list[ProperType]:  # type: ignore[unsafe-overload]
+def get_proper_types(types: list[Type] | tuple[Type, ...]) -> list[ProperType]:  # type: ignore[overload-overlap]
     ...
 
 

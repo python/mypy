@@ -1604,7 +1604,7 @@ class MessageBuilder:
             "Overloaded function signatures {} and {} overlap with "
             "incompatible return types".format(index1, index2),
             context,
-            code=codes.UNSAFE_OVERLOAD,
+            code=codes.OVERLOAD_OVERLAP,
         )
 
     def overloaded_signature_will_never_match(

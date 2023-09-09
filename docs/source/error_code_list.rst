@@ -1114,6 +1114,31 @@ Warn about cases where a bytes object may be converted to a string in an unexpec
     print(f"The alphabet starts with {b!r}")  # The alphabet starts with b'abc'
     print(f"The alphabet starts with {b.decode('utf-8')}")  # The alphabet starts with abc
 
+.. _code-overload-overlap:
+
+Check that overloaded functions don't overlap [overload-overlap]
+----------------------------------------------------------------
+
+Warn if multiple ``@overload`` variants overlap in unsafe ways.
+
+.. code-block:: python
+
+    from typing import overload
+
+    class A: ...
+    class B(A): ...
+
+    @overload
+    def foo(x: B) -> int: ...  # Error: Overloaded function signatures 1 and 2 overlap with incompatible return types  [overload-overlap]
+    @overload
+    def foo(x: A) -> str: ...
+    def foo(x): ...
+
+    def takes_a(a: A) -> str:
+        return foo(a)
+
+    assert isinstance(takes_a(B()), str)  # may fail when run
+
 .. _code-annotation-unchecked:
 
 Notify about an annotation in an unchecked function [annotation-unchecked]
