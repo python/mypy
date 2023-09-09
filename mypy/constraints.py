@@ -1409,9 +1409,8 @@ def build_constraints_for_simple_unpack(
         templates: T1, T2, Ts, Ts, Ts, ...
         actuals:   A1, As, As, As, ...
 
-    Note: this function can only be called for builtin variadic constructors: Tuple and Callable,
-    for Instances variance depends on position, and a much more complex function
-    build_constraints_for_unpack() should be used.
+    Note: this function can only be called for builtin variadic constructors: Tuple and Callable.
+    For instances, you should first find correct type argument mapping.
     """
     template_unpack = find_unpack_in_list(template_args)
     assert template_unpack is not None
