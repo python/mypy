@@ -113,7 +113,7 @@ t1: Tuple[A, A]
 t2: tuple
 
 if int():
-    t1 = t2 # E: Incompatible types in assignment (expression has type "Tuple[Any, ...]", variable has type "Tuple[A, A]")
+    t1 = t2
 if int():
     t2 = t1
 

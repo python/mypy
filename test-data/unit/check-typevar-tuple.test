@@ -60,9 +60,7 @@ reveal_type(f(f_args3))  # N: Revealed type is "Tuple[builtins.str, builtins.str
 f(empty)  # E: Argument 1 to "f" has incompatible type "Tuple[()]"; expected "Tuple[int]"
 f(bad_args)  # E: Argument 1 to "f" has incompatible type "Tuple[str, str]"; expected "Tuple[int, str]"
 
-# The reason for error in subtle: actual can be empty, formal cannot.
-reveal_type(f(var_len_tuple))  # N: Revealed type is "Tuple[builtins.str, Unpack[builtins.tuple[builtins.int, ...]]]" \
-                               # E: Argument 1 to "f" has incompatible type "Tuple[int, ...]"; expected "Tuple[int, Unpack[Tuple[int, ...]]]"
+reveal_type(f(var_len_tuple))  # N: Revealed type is "Tuple[builtins.str, Unpack[builtins.tuple[builtins.int, ...]]]"
 
 g_args: Tuple[str, int]
 reveal_type(g(g_args))  # N: Revealed type is "Tuple[builtins.str, builtins.str]"
