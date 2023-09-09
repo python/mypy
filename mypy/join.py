@@ -70,6 +70,9 @@ class InstanceJoiner:
             # N.B: We use zip instead of indexing because the lengths might have
             # mismatches during daemon reprocessing.
             if t.type.has_type_var_tuple_type:
+                # We handle joins of variadic instances by simply creating correct mapping
+                # for type arguments and compute the individual joins same as for regular
+                # instances. All the heavy lifting is done in the join of tuple types.
                 assert s.type.type_var_tuple_prefix is not None
                 assert s.type.type_var_tuple_suffix is not None
                 prefix = s.type.type_var_tuple_prefix
@@ -112,6 +115,9 @@ class InstanceJoiner:
                         new_type = join_types(ta, sa, self)
                 elif isinstance(type_var, TypeVarTupleType):
                     new_type = get_proper_type(join_types(ta, sa, self))
+                    # Put the joined arguments back into instance in the normal form:
+                    #   a) Tuple[X, Y, Z] -> [X, Y, Z]
+                    #   b) tuple[X, ...] -> [*tuple[X, ...]]
                     if isinstance(new_type, Instance):
                         assert new_type.type.fullname == "builtins.tuple"
                         new_type = UnpackType(new_type)
@@ -467,6 +473,12 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         return join_types(t.fallback, s)
 
     def join_tuples(self, s: TupleType, t: TupleType) -> list[Type] | None:
+        """Join two tuple types while handling variadic entries.
+
+        This is surprisingly tricky, and we don't handle some tricky corner cases.
+        Most of the trickiness comes from the variadic tuple items like *tuple[X, ...]
+        since they can have arbitrary partial overlaps (while *Ts can't be split).
+        """
         s_unpack_index = find_unpack_in_list(s.items)
         t_unpack_index = find_unpack_in_list(t.items)
         if s_unpack_index is None and t_unpack_index is None:
@@ -477,6 +489,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
                 return items
             return None
         if s_unpack_index is not None and t_unpack_index is not None:
+            # The most complex case: both tuples have an upack item.
             s_unpack = s.items[s_unpack_index]
             assert isinstance(s_unpack, UnpackType)
             s_unpacked = get_proper_type(s_unpack.type)
@@ -484,6 +497,9 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             assert isinstance(t_unpack, UnpackType)
             t_unpacked = get_proper_type(t_unpack.type)
             if s.length() == t.length() and s_unpack_index == t_unpack_index:
+                # We can handle a case where arity is perfectly aligned, e.g.
+                # join(Tuple[X1, *tuple[Y1, ...], Z1], Tuple[X2, *tuple[Y2, ...], Z2]).
+                # We can essentially perform the join elementwise.
                 prefix_len = t_unpack_index
                 suffix_len = t.length() - t_unpack_index - 1
                 items = []
@@ -512,6 +528,9 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
                     for si, ti in zip(s.items[-suffix_len:], t.items[-suffix_len:]):
                         items.append(join_types(si, ti))
             if s.length() == 1 or t.length() == 1:
+                # Another case we can handle is when one of tuple is purely variadic
+                # (i.e. a non-normalized form of tuple[X, ...]), in this case the join
+                # will be again purely variadic.
                 if not (isinstance(s_unpacked, Instance) and isinstance(t_unpacked, Instance)):
                     return None
                 assert s_unpacked.type.fullname == "builtins.tuple"
@@ -533,12 +552,15 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             variadic = t
             unpack_index = t_unpack_index
             fixed = s
+        # Case where one tuple has variadic item and the other one doesn't. The join will
+        # be variadic, since fixed tuple is a subtype of variadic, but not vice versa.
         unpack = variadic.items[unpack_index]
         assert isinstance(unpack, UnpackType)
         unpacked = get_proper_type(unpack.type)
         if not isinstance(unpacked, Instance):
             return None
         if fixed.length() < variadic.length() - 1:
+            # There are no non-trivial types that are supertype of both.
             return None
         prefix_len = unpack_index
         suffix_len = variadic.length() - prefix_len - 1

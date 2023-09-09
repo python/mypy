@@ -446,18 +446,24 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return self._is_subtype(left, mypy.typeops.tuple_fallback(right))
         if isinstance(right, TupleType):
             if len(right.items) == 1:
-                # Non-normalized Tuple type (may be left after semantic analysis).
+                # Non-normalized Tuple type (may be left after semantic analysis
+                # because semanal_typearg visitor is not a type translator).
                 item = right.items[0]
                 if isinstance(item, UnpackType):
                     unpacked = get_proper_type(item.type)
                     if isinstance(unpacked, Instance):
                         return self._is_subtype(left, unpacked)
             if len(left.args) == 1 and isinstance(left.args[0], UnpackType):
+                # Special case to consider Foo[*tuple[Any, ...]] (i.e. bare Foo) a
+                # subtype of Foo[<whatever>], when Foo is user defined variadic tuple type.
+                # TODO: be sure we handle Bar <: Foo[*tuple[Any, ...]] <: Foo[<whatever>].
                 unpacked = get_proper_type(left.args[0].type)
                 if isinstance(unpacked, Instance):
                     assert unpacked.type.fullname == "builtins.tuple"
                     if isinstance(get_proper_type(unpacked.args[0]), AnyType):
                         return self._is_subtype(left, mypy.typeops.tuple_fallback(right))
+            # TODO: we need a special case similar to above to consider (something that maps to)
+            # tuple[Any, ...] a subtype of Tuple[<whatever>].
             return False
         if isinstance(right, Instance):
             if type_state.is_cached_subtype_check(self._subtype_kind, left, right):
@@ -498,6 +504,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     t = erased
                 nominal = True
                 if right.type.has_type_var_tuple_type:
+                    # For variadic instances we simply find the correct type argument mappings,
+                    # all the heavy lifting is done by the tuple subtyping.
                     assert right.type.type_var_tuple_prefix is not None
                     assert right.type.type_var_tuple_suffix is not None
                     prefix = right.type.type_var_tuple_prefix
@@ -734,13 +742,23 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return False
 
     def variadic_tuple_subtype(self, left: TupleType, right: TupleType) -> bool:
+        """Check subtyping between two potentially variadic tuples.
+
+        Most non-trivial cases here are due to variadic unpacks like *tuple[X, ...],
+        we handle such unpacks as infinite unions Tuple[()] | Tuple[X] | Tuple[X, X] | ...
+
+        Note: the cases where right is fixed or has *Ts unpack should be handled
+        by the caller.
+        """
         right_unpack_index = find_unpack_in_list(right.items)
         if right_unpack_index is None:
+            # This case should be handled by the caller.
             return False
         right_unpack = right.items[right_unpack_index]
         assert isinstance(right_unpack, UnpackType)
         right_unpacked = get_proper_type(right_unpack.type)
         if not isinstance(right_unpacked, Instance):
+            # This case should be handled by the caller.
             return False
         assert right_unpacked.type.fullname == "builtins.tuple"
         right_item = right_unpacked.args[0]
@@ -748,6 +766,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right_suffix = len(right.items) - right_prefix - 1
         left_unpack_index = find_unpack_in_list(left.items)
         if left_unpack_index is None:
+            # Simple case: left is fixed, simply find correct mapping to the right
+            # (effectively selecting item with matching length from an infinite union).
             if len(left.items) < right_prefix + right_suffix:
                 return False
             prefix, middle, suffix = split_with_prefix_and_suffix(
@@ -764,14 +784,22 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return all(self._is_subtype(li, right_item) for li in middle)
         else:
             if len(left.items) < len(right.items):
+                # There are some items on the left that will never have a matching length
+                # on the right.
                 return False
             left_unpack = left.items[left_unpack_index]
             assert isinstance(left_unpack, UnpackType)
             left_unpacked = get_proper_type(left_unpack.type)
             if not isinstance(left_unpacked, Instance):
+                # *Ts unpacks can't be split.
                 return False
             assert left_unpacked.type.fullname == "builtins.tuple"
             left_item = left_unpacked.args[0]
+
+            # The most tricky case with two variadic unpacks we handle similar to union
+            # subtyping: *each* item on the left, must be a subtype of *some* item on the right.
+            # For this we first check the "asymptotic case", i.e. that both unpacks a subtypes,
+            # and then check subtyping for all finite overlaps.
             if not self._is_subtype(left_item, right_item):
                 return False
             left_prefix = left_unpack_index

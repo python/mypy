@@ -79,6 +79,7 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
     def visit_instance(self, t: Instance) -> ProperType:
         args: list[Type] = []
         for tv in t.type.defn.type_vars:
+            # Valid erasure for *Ts is *tuple[Any, ...], not just Any.
             if isinstance(tv, TypeVarTupleType):
                 args.append(
                     tv.tuple_fallback.copy_modified(args=[AnyType(TypeOfAny.special_form)])

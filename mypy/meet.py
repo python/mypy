@@ -724,6 +724,9 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                     # N.B: We use zip instead of indexing because the lengths might have
                     # mismatches during daemon reprocessing.
                     if t.type.has_type_var_tuple_type:
+                        # We handle meet of variadic instances by simply creating correct mapping
+                        # for type arguments and compute the individual meets same as for regular
+                        # instances. All the heavy lifting is done in the meet of tuple types.
                         s = self.s
                         assert s.type.type_var_tuple_prefix is not None
                         assert s.type.type_var_tuple_suffix is not None
@@ -746,6 +749,8 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                     for ta, sa, tv in zip(t_args, s_args, t.type.defn.type_vars):
                         meet = self.meet(ta, sa)
                         if isinstance(tv, TypeVarTupleType):
+                            # Correctly unpack possible outcomes of meets of tuples: it can be
+                            # either another tuple type or Never (normalized as *tuple[Never, ...])
                             if isinstance(meet, TupleType):
                                 args.extend(meet.items)
                                 continue
@@ -842,6 +847,14 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         return meet_types(t.fallback, s)
 
     def meet_tuples(self, s: TupleType, t: TupleType) -> list[Type] | None:
+        """Meet two tuple types while handling variadic entries.
+
+        This is surprisingly tricky, and we don't handle some tricky corner cases.
+        Most of the trickiness comes from the variadic tuple items like *tuple[X, ...]
+        since they can have arbitrary partial overlaps (while *Ts can't be split). This
+        function is roughly a mirror of join_tuples() w.r.t. to the fact that fixed
+        tuples are subtypes of variadic ones but not vice versa.
+        """
         s_unpack_index = find_unpack_in_list(s.items)
         t_unpack_index = find_unpack_in_list(t.items)
         if s_unpack_index is None and t_unpack_index is None:
@@ -852,7 +865,12 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                 return items
             return None
         if s_unpack_index is not None and t_unpack_index is not None:
-            # TODO: handle more cases (like strictly shorter prefix/suffix).
+            # The only simple case we can handle if both tuples are variadic
+            # is when they are purely variadic. Other cases are tricky because
+            # a variadic item is effectively a union of tuples of all length, thus
+            # potentially causing overlap between a suffix in `s` and a prefix
+            # in `t` (see how this is handled in is_subtype() for details).
+            # TODO: handle more cases (like when both prefix/suffix are strictly shorter).
             if s.length() == 1 and t.length() == 1:
                 s_unpack = s.items[0]
                 assert isinstance(s_unpack, UnpackType)
@@ -876,6 +894,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             variadic = t
             unpack_index = t_unpack_index
             fixed = s
+        # If one tuple is variadic one, and the other one is fixed, the meet will be fixed.
         unpack = variadic.items[unpack_index]
         assert isinstance(unpack, UnpackType)
         unpacked = get_proper_type(unpack.type)
@@ -913,6 +932,8 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                 # A named tuple that inherits from a normal class
                 return t
             elif self.s.type.has_type_var_tuple_type and is_subtype(t, self.s):
+                # This is a bit ad-hoc but more principled handling is tricky, and this
+                # special case is important for type narrowing in binder to work.
                 return t
         return self.default(self.s)
 
