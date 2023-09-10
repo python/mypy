@@ -961,7 +961,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if not self.allow_unpack:
             self.fail(message_registry.INVALID_UNPACK_POSITION, t.type, code=codes.VALID_TYPE)
             return AnyType(TypeOfAny.from_error)
-        return UnpackType(self.anal_type(t.type))
+        return UnpackType(self.anal_type(t.type), from_star_syntax=t.from_star_syntax)
 
     def visit_parameters(self, t: Parameters) -> Type:
         raise NotImplementedError("ParamSpec literals cannot have unbound TypeVars")
@@ -969,6 +969,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def visit_callable_type(self, t: CallableType, nested: bool = True) -> Type:
         # Every Callable can bind its own type variables, if they're not in the outer scope
         with self.tvar_scope_frame():
+            unpacked_kwargs = False
             if self.defining_alias:
                 variables = t.variables
             else:
@@ -996,6 +997,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         )
                         validated_args.append(AnyType(TypeOfAny.from_error))
                     else:
+                        if nested and isinstance(at, UnpackType) and i == star_index:
+                            # TODO: it would be better to avoid this get_proper_type() call.
+                            p_at = get_proper_type(at.type)
+                            if isinstance(p_at, TypedDictType) and not at.from_star_syntax:
+                                # Automatically detect Unpack[Foo] in Callable as backwards
+                                # compatible syntax for **Foo, if Foo is a TypedDict.
+                                at = p_at
+                                arg_kinds[i] = ARG_STAR2
+                                unpacked_kwargs = True
                         validated_args.append(at)
                 arg_types = validated_args
             # If there were multiple (invalid) unpacks, the arg types list will become shorter,
@@ -1013,6 +1023,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 fallback=(t.fallback if t.fallback.type else self.named_type("builtins.function")),
                 variables=self.anal_var_defs(variables),
                 type_guard=special,
+                unpack_kwargs=unpacked_kwargs,
             )
         return ret
 
