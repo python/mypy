@@ -1256,3 +1256,17 @@ def foo(**kwargs: Unpack[Person]) -> None:
 foo(name='Jennifer', age=38)
 [out]
 Jennifer
+
+[case testNestedFunctionDunderDict]
+def foo() -> None:
+    def inner() -> str: return "bar"
+    print(inner.__dict__)  # type: ignore[attr-defined]
+    inner.__dict__.update({"x": 1})  # type: ignore[attr-defined]
+    print(inner.__dict__)  # type: ignore[attr-defined]
+    print(inner.x)  # type: ignore[attr-defined]
+
+foo()
+[out]
+{}
+{'x': 1}
+1
