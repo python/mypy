@@ -510,7 +510,7 @@ the ``object`` argument in the second, yet the ``int`` return type is not a subt
 ``str``. Both conditions are true, so mypy will correctly flag ``unsafe_func`` as
 being unsafe.
 
-Note that in cases you ignore the overlapping overload error, mypy will usually
+Note that in cases where you ignore the overlapping overload error, mypy will usually
 still infer the types you expect at callsites.
 
 However, mypy will not detect *all* unsafe uses of overloads. For example,

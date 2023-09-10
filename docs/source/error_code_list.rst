@@ -1119,7 +1119,8 @@ Warn about cases where a bytes object may be converted to a string in an unexpec
 Check that overloaded functions don't overlap [overload-overlap]
 ----------------------------------------------------------------
 
-Warn if multiple ``@overload`` variants overlap in unsafe ways.
+Warn if multiple ``@overload`` variants overlap in potentially unsafe ways.
+This guards against the following situation:
 
 .. code-block:: python
 
@@ -1143,7 +1144,7 @@ Warn if multiple ``@overload`` variants overlap in unsafe ways.
     reveal_type(value) # Revealed type is "builtins.str"
 
 
-Note that in cases you ignore this error, mypy will usually still infer the
+Note that in cases where you ignore this error, mypy will usually still infer the
 types you expect.
 
 See :ref:`overloading <function-overloading>` for more explanation.
