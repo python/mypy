@@ -1350,3 +1350,19 @@ x: B[int, str]
 x = c1
 x = c2
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleAnyOverload]
+from typing import Any, Generic, overload, Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class Array(Generic[Unpack[Ts]]): ...
+
+class A:
+    @overload
+    def f(self, x: Tuple[Unpack[Ts]]) -> Array[Unpack[Ts]]: ...
+    @overload
+    def f(self, x: Any) -> Any: ...
+    def f(self, x: Any) -> Any:
+        ...
+[builtins fixtures/tuple.pyi]
