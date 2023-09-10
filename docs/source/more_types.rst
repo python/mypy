@@ -501,7 +501,7 @@ To prevent these kinds of issues, mypy will detect and prohibit inherently unsaf
 overlapping overloads on a best-effort basis. Two variants are considered unsafely
 overlapping when both of the following are true:
 
-1. All of the arguments of the first variant are compatible with the second.
+1. All of the arguments of the first variant are potentially compatible with the second.
 2. The return type of the first variant is *not* compatible with (e.g. is not a
    subtype of) the second.
 
@@ -509,6 +509,9 @@ So in this example, the ``int`` argument in the first variant is a subtype of
 the ``object`` argument in the second, yet the ``int`` return type is not a subtype of
 ``str``. Both conditions are true, so mypy will correctly flag ``unsafe_func`` as
 being unsafe.
+
+Note that in cases where you ignore the overlapping overload error, mypy will usually
+still infer the types you expect at callsites.
 
 However, mypy will not detect *all* unsafe uses of overloads. For example,
 suppose we modify the above snippet so it calls ``summarize`` instead of
