@@ -81,11 +81,17 @@ class NodeFixer(NodeVisitor[None]):
                 info.update_tuple_type(info.tuple_type)
                 if info.special_alias:
                     info.special_alias.alias_tvars = list(info.defn.type_vars)
+                    for i, t in enumerate(info.defn.type_vars):
+                        if isinstance(t, TypeVarTupleType):
+                            info.special_alias.tvar_tuple_index = i
             if info.typeddict_type:
                 info.typeddict_type.accept(self.type_fixer)
                 info.update_typeddict_type(info.typeddict_type)
                 if info.special_alias:
                     info.special_alias.alias_tvars = list(info.defn.type_vars)
+                    for i, t in enumerate(info.defn.type_vars):
+                        if isinstance(t, TypeVarTupleType):
+                            info.special_alias.tvar_tuple_index = i
             if info.declared_metaclass:
                 info.declared_metaclass.accept(self.type_fixer)
             if info.metaclass_type:
@@ -314,6 +320,7 @@ class TypeFixer(TypeVisitor[None]):
         p.default.accept(self)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> None:
+        t.tuple_fallback.accept(self)
         t.upper_bound.accept(self)
         t.default.accept(self)
 
@@ -335,9 +342,6 @@ class TypeFixer(TypeVisitor[None]):
         if ut.items:
             for it in ut.items:
                 it.accept(self)
-
-    def visit_void(self, o: Any) -> None:
-        pass  # Nothing to descend into.
 
     def visit_type_type(self, t: TypeType) -> None:
         t.item.accept(self)
