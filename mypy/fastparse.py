@@ -2041,7 +2041,7 @@ class TypeConverter:
 
     # Used for Callable[[X *Ys, Z], R]
     def visit_Starred(self, n: ast3.Starred) -> Type:
-        return UnpackType(self.visit(n.value))
+        return UnpackType(self.visit(n.value), from_star_syntax=True)
 
     # List(expr* elts, expr_context ctx)
     def visit_List(self, n: ast3.List) -> Type:

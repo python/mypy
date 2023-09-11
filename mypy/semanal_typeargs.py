@@ -214,7 +214,9 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
             # Avoid extra errors if there were some errors already. Also interpret plain Any
             # as tuple[Any, ...] (this is better for the code in type checker).
             self.fail(
-                message_registry.INVALID_UNPACK.format(format_type(proper_type, self.options)), typ
+                message_registry.INVALID_UNPACK.format(format_type(proper_type, self.options)),
+                typ.type,
+                code=codes.VALID_TYPE,
             )
         typ.type = self.named_type("builtins.tuple", [AnyType(TypeOfAny.from_error)])
 
