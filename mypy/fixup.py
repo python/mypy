@@ -172,11 +172,7 @@ class NodeFixer(NodeVisitor[None]):
 
     def visit_class_def(self, c: ClassDef) -> None:
         for v in c.type_vars:
-            if isinstance(v, TypeVarType):
-                for value in v.values:
-                    value.accept(self.type_fixer)
-            v.upper_bound.accept(self.type_fixer)
-            v.default.accept(self.type_fixer)
+            v.accept(self.type_fixer)
 
     def visit_type_var_expr(self, tv: TypeVarExpr) -> None:
         for value in tv.values:
@@ -190,6 +186,7 @@ class NodeFixer(NodeVisitor[None]):
 
     def visit_type_var_tuple_expr(self, tv: TypeVarTupleExpr) -> None:
         tv.upper_bound.accept(self.type_fixer)
+        tv.tuple_fallback.accept(self.type_fixer)
         tv.default.accept(self.type_fixer)
 
     def visit_var(self, v: Var) -> None:

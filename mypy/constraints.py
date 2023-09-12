@@ -1271,8 +1271,13 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     def infer_against_any(self, types: Iterable[Type], any_type: AnyType) -> list[Constraint]:
         res: list[Constraint] = []
         for t in types:
-            if isinstance(t, UnpackType) and isinstance(t.type, TypeVarTupleType):
-                res.append(Constraint(t.type, self.direction, any_type))
+            if isinstance(t, UnpackType):
+                if isinstance(t.type, TypeVarTupleType):
+                    res.append(Constraint(t.type, self.direction, any_type))
+                else:
+                    unpacked = get_proper_type(t.type)
+                    assert isinstance(unpacked, Instance)
+                    res.extend(infer_constraints(unpacked, any_type, self.direction))
             else:
                 # Note that we ignore variance and simply always use the
                 # original direction. This is because for Any targets direction is
