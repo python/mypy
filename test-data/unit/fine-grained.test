@@ -6995,6 +6995,7 @@ def outer() -> None:
     def f(x: str) -> str: pass
     def f(x: Any) -> Any:
         y: int = mod.f()
+        return y
 [file mod.py]
 def f() -> int:
     pass
@@ -7257,6 +7258,7 @@ def f(x: str) -> submod.B: pass
 def f(x) -> Any:
     y: submod.C
     y.x = int()
+    return y
 [file submod.py]
 import other
 class A: pass

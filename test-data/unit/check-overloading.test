@@ -187,6 +187,7 @@ def f(x: Any) -> Any:
     foo = 1
     if int():
         foo = "bar"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    return foo
 
 @overload
 def g(x: 'A') -> 'B': ...
@@ -4906,6 +4907,7 @@ def f() -> None:
     def g(x: T) -> Dict[int, T]: ...
     def g(*args, **kwargs) -> Any:
         reveal_type(h(C()))  # N: Revealed type is "builtins.dict[builtins.str, __main__.C]"
+        return args
 
     @overload
     def h() -> None: ...
@@ -4913,6 +4915,7 @@ def f() -> None:
     def h(x: T) -> Dict[str, T]: ...
     def h(*args, **kwargs) -> Any:
         reveal_type(g(C()))  # N: Revealed type is "builtins.dict[builtins.int, __main__.C]"
+        return args
 
 [builtins fixtures/dict.pyi]
 [out]

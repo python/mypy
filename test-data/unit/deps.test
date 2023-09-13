@@ -917,6 +917,7 @@ def f(x: str) -> submod.B: pass
 def f(x) -> Any:
     y: submod.C
     y.x
+    return y
 [file submod.py]
 class A: pass
 class B: pass
@@ -959,6 +960,7 @@ def f(x: int) -> None: pass
 def f(x: str) -> str: pass
 def f(x: Any) -> Any:
     mod.g()
+    return mod
 [file mod.py]
 def g() -> int:
     pass
@@ -976,6 +978,7 @@ def outer() -> None:
     def f(x: str) -> mod.B: pass
     def f(x: Any) -> Any:
         mod.g()
+        return mod
 [file mod.py]
 def g() -> int:
     pass
@@ -997,6 +1000,7 @@ def outer() -> None:
     def f(x: str) -> str: pass
     def f(x: Any) -> Any:
         mod.g(str())
+        return mod
 [file mod.py]
 from typing import overload
 @overload
@@ -1018,7 +1022,7 @@ class Outer:
     @overload
     def f(self, x: str, cb=mod.g) -> str: pass
     def f(self, *args: Any, **kwargs: Any) -> Any:
-        pass
+        return args
 [file mod.py]
 from typing import overload
 @overload

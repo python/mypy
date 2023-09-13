@@ -1336,7 +1336,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if self.options.warn_no_return:
                     if (
                         not self.current_node_deferred
-                        and not isinstance(return_type, (NoneType, AnyType))
+                        and not isinstance(return_type, NoneType)
+                        and (
+                            not isinstance(return_type, AnyType)
+                            or return_type.type_of_any == TypeOfAny.explicit
+                        )
                         and show_error
                     ):
                         # Control flow fell off the end of a function that was
