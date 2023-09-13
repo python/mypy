@@ -1898,12 +1898,15 @@ class MessageBuilder:
         self.fail("Parameterized generics cannot be used with class or instance checks", context)
 
     def disallowed_any_type(self, typ: Type, context: Context) -> None:
+        self.fail(self.disallowed_any_type_message(typ), context)
+
+    def disallowed_any_type_message(self, typ: Type) -> str:
         typ = get_proper_type(typ)
         if isinstance(typ, AnyType):
             message = 'Expression has type "Any"'
         else:
             message = f'Expression type contains "Any" (has type {format_type(typ, self.options)})'
-        self.fail(message, context)
+        return message
 
     def incorrectly_returning_any(self, typ: Type, context: Context) -> None:
         message = (
