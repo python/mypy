@@ -168,6 +168,7 @@ def get_item(o: Any, k: Any) -> Any:
     return o[k]
 def set_item(o: Any, k: Any, v: Any) -> Any:
     o[k] = v
+    return o
 [file driver.py]
 from native import *
 assert neg(6) == -6
