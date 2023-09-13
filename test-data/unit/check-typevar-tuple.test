@@ -1257,11 +1257,17 @@ t3: Tuple[Unpack[Tuple[int, ...]], int]
 t4: Tuple[int, Unpack[Tuple[int, ...]], int]
 t5: Tuple[int, ...]
 
+tl: Tuple[int, int, Unpack[Tuple[int, ...]]]
+tr: Tuple[Unpack[Tuple[int, ...]], int, int]
+
 f1(t1)
 f1(t2)
 f1(t3)
 f1(t4)
 f1(t5)
+
+f1(tl)
+f1(tr)
 
 f2(t1)
 f2(t2)
@@ -1269,17 +1275,26 @@ f2(t3)
 f2(t4)
 f2(t5)  # E: Argument 1 to "f2" has incompatible type "Tuple[int, ...]"; expected "Tuple[float, Unpack[Tuple[float, ...]]]"
 
+f2(tl)
+f2(tr)
+
 f3(t1)
 f3(t2)
 f3(t3)
 f3(t4)
 f3(t5)  # E: Argument 1 to "f3" has incompatible type "Tuple[int, ...]"; expected "Tuple[Unpack[Tuple[float, ...]], float]"
 
+f3(tl)
+f3(tr)
+
 f4(t1)
 f4(t2)  # E: Argument 1 to "f4" has incompatible type "Tuple[int, Unpack[Tuple[int, ...]]]"; expected "Tuple[float, Unpack[Tuple[float, ...]], float]"
 f4(t3)  # E: Argument 1 to "f4" has incompatible type "Tuple[Unpack[Tuple[int, ...]], int]"; expected "Tuple[float, Unpack[Tuple[float, ...]], float]"
 f4(t4)
 f4(t5)  # E: Argument 1 to "f4" has incompatible type "Tuple[int, ...]"; expected "Tuple[float, Unpack[Tuple[float, ...]], float]"
+
+f4(tl)
+f4(tr)
 
 t5_verbose: Tuple[Unpack[Tuple[int, ...]]]
 t5 = t5_verbose  # OK
@@ -1319,6 +1334,130 @@ class Array(Generic[Unpack[Ts]]):
 
     def close(self) -> None:
         self._close()
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicSubclassFixed]
+from typing import Generic, Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class B(Generic[Unpack[Ts]]): ...
+class C(B[int, str]): ...
+class D(B[Unpack[Tuple[int, ...]]]): ...
+
+def fii(x: B[int, int]) -> None: ...
+def fis(x: B[int, str]) -> None: ...
+def fiv(x: B[Unpack[Tuple[int, ...]]]) -> None: ...
+
+fii(C())  # E: Argument 1 to "fii" has incompatible type "C"; expected "B[int, int]"
+fii(D())  # E: Argument 1 to "fii" has incompatible type "D"; expected "B[int, int]"
+fis(C())
+fis(D())  # E: Argument 1 to "fis" has incompatible type "D"; expected "B[int, str]"
+fiv(C())  # E: Argument 1 to "fiv" has incompatible type "C"; expected "B[Unpack[Tuple[int, ...]]]"
+fiv(D())
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicSubclassSame]
+from typing import Generic, Tuple, TypeVar
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class B(Generic[Unpack[Ts]]): ...
+class C(B[Unpack[Ts]]): ...
+
+def fii(x: B[int, int]) -> None: ...
+def fis(x: B[int, str]) -> None: ...
+def fiv(x: B[Unpack[Tuple[int, ...]]]) -> None: ...
+
+cii: C[int, int]
+cis: C[int, str]
+civ: C[Unpack[Tuple[int, ...]]]
+
+fii(cii)
+fii(cis)  # E: Argument 1 to "fii" has incompatible type "C[int, str]"; expected "B[int, int]"
+fii(civ)  # E: Argument 1 to "fii" has incompatible type "C[Unpack[Tuple[int, ...]]]"; expected "B[int, int]"
+
+fis(cii)  # E: Argument 1 to "fis" has incompatible type "C[int, int]"; expected "B[int, str]"
+fis(cis)
+fis(civ)  # E: Argument 1 to "fis" has incompatible type "C[Unpack[Tuple[int, ...]]]"; expected "B[int, str]"
+
+fiv(cii)
+fiv(cis)  # E: Argument 1 to "fiv" has incompatible type "C[int, str]"; expected "B[Unpack[Tuple[int, ...]]]"
+fiv(civ)
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicSubclassExtra]
+from typing import Generic, Tuple, TypeVar
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class B(Generic[Unpack[Ts]]): ...
+
+T = TypeVar("T")
+class C(B[int, Unpack[Ts], T]): ...
+
+def ff(x: B[int, int, int]) -> None: ...
+def fv(x: B[Unpack[Tuple[int, ...]]]) -> None: ...
+
+cii: C[int, int]
+cis: C[int, str]
+civ: C[Unpack[Tuple[int, ...]]]
+
+ff(cii)
+ff(cis)  # E: Argument 1 to "ff" has incompatible type "C[int, str]"; expected "B[int, int, int]"
+ff(civ)  # E: Argument 1 to "ff" has incompatible type "C[Unpack[Tuple[int, ...]]]"; expected "B[int, int, int]"
+
+fv(cii)
+fv(cis)  # E: Argument 1 to "fv" has incompatible type "C[int, str]"; expected "B[Unpack[Tuple[int, ...]]]"
+fv(civ)
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicSubclassVariadic]
+from typing import Generic, Tuple, TypeVar
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class B(Generic[Unpack[Ts]]): ...
+T = TypeVar("T")
+class C(B[Unpack[Tuple[T, ...]]]): ...
+
+def ff(x: B[int, int]) -> None: ...
+def fv(x: B[Unpack[Tuple[int, ...]]]) -> None: ...
+
+ci: C[int]
+ff(ci)  # E: Argument 1 to "ff" has incompatible type "C[int]"; expected "B[int, int]"
+fv(ci)
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicSubclassMethodAccess]
+from typing import Generic, Tuple, TypeVar
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class B(Generic[Unpack[Ts]]):
+    def meth(self) -> Tuple[Unpack[Ts]]: ...
+
+class C1(B[int, str]): ...
+class C2(B[Unpack[Ts]]): ...
+T = TypeVar("T")
+class C3(B[int, Unpack[Ts], T]): ...
+class C4(B[Unpack[Tuple[T, ...]]]): ...
+
+c1: C1
+reveal_type(c1.meth())  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
+
+c2f: C2[int, str]
+c2v: C2[Unpack[Tuple[int, ...]]]
+reveal_type(c2f.meth())  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
+reveal_type(c2v.meth())  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+
+c3f: C3[int, str]
+c3v: C3[Unpack[Tuple[int, ...]]]
+reveal_type(c3f.meth())  # N: Revealed type is "Tuple[builtins.int, builtins.int, builtins.str]"
+reveal_type(c3v.meth())  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]], builtins.int]"
+
+c4: C4[int]
+reveal_type(c4.meth())  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/tuple.pyi]
 
 [case testVariadicTupleAnySubtype]

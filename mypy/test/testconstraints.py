@@ -20,8 +20,6 @@ class ConstraintsSuite(Suite):
                 Constraint(type_var=fx.t, op=direction, target=fx.a)
             ]
 
-    # TODO: some tests here use non-normalized variadic forms (mostly fixed tuple unpacks).
-    # We may want to either replace these with normalized ones, or add matching normalized tests.
     def test_basic_type_var_tuple_subtype(self) -> None:
         fx = self.fx
         assert infer_constraints(
@@ -103,16 +101,7 @@ class ConstraintsSuite(Suite):
         fx = self.fx
         assert set(
             infer_constraints(
-                Instance(
-                    fx.gv2i,
-                    [
-                        fx.u,
-                        UnpackType(
-                            TupleType([fx.t, fx.s], fallback=Instance(fx.std_tuplei, [fx.o]))
-                        ),
-                        fx.u,
-                    ],
-                ),
+                Instance(fx.gv2i, [fx.u, fx.t, fx.s, fx.u]),
                 Instance(fx.gv2i, [fx.a, fx.b, fx.d]),
                 SUPERTYPE_OF,
             )
