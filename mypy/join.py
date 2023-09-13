@@ -527,6 +527,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
                 if suffix_len:
                     for si, ti in zip(s.items[-suffix_len:], t.items[-suffix_len:]):
                         items.append(join_types(si, ti))
+                return items
             if s.length() == 1 or t.length() == 1:
                 # Another case we can handle is when one of tuple is purely variadic
                 # (i.e. a non-normalized form of tuple[X, ...]), in this case the join
@@ -541,7 +542,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
                 other_joined = join_type_list(s_other + t_other)
                 mid_joined = join_types(mid_joined, other_joined)
                 return [UnpackType(s_unpacked.copy_modified(args=[mid_joined]))]
-            # TODO: are there other case we can handle?
+            # TODO: are there other case we can handle (e.g. both prefix/suffix are shorter)?
             return None
         if s_unpack_index is not None:
             variadic = s
@@ -601,6 +602,11 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             if items is not None:
                 return TupleType(items, fallback)
             else:
+                # TODO: should this be a default fallback behaviour like for meet?
+                if is_proper_subtype(self.s, t):
+                    return t
+                if is_proper_subtype(t, self.s):
+                    return self.s
                 return fallback
         else:
             return join_types(self.s, mypy.typeops.tuple_fallback(t))

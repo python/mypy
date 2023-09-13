@@ -4,7 +4,7 @@ from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT
 from mypy.subtypes import is_subtype
 from mypy.test.helpers import Suite
 from mypy.test.typefixture import InterfaceTypeFixture, TypeFixture
-from mypy.types import Instance, TupleType, Type, UnpackType
+from mypy.types import Instance, Type, UnpackType
 
 
 class SubtypingSuite(Suite):

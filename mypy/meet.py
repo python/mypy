@@ -870,7 +870,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             # a variadic item is effectively a union of tuples of all length, thus
             # potentially causing overlap between a suffix in `s` and a prefix
             # in `t` (see how this is handled in is_subtype() for details).
-            # TODO: handle more cases (like when both prefix/suffix are strictly shorter).
+            # TODO: handle more cases (like when both prefix/suffix are shorter in s or t).
             if s.length() == 1 and t.length() == 1:
                 s_unpack = s.items[0]
                 assert isinstance(s_unpack, UnpackType)
