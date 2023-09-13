@@ -6650,3 +6650,23 @@ def d(x: int) -> int: ...
 def d(f: int, *, x: int) -> str: ...
 def d(*args, **kwargs): ...
 [builtins fixtures/tuple.pyi]
+
+[case testOverloadMatchWithSubexpressionError]
+# flags: --python-version 3.10
+from typing import overload
+
+@overload
+def f(a: list[int]) -> int: ...
+@overload
+def f(a: list[str]) -> str: ...
+
+def f(a: list[int] | list[str]) -> int | str:
+    return 42
+
+def g() -> list[str]:
+    return ['spam']
+
+a = f(
+    g(42)  # E: Too many arguments for "g"
+)
+reveal_type(a)  # N: Revealed type is "builtins.str"

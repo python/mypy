@@ -268,6 +268,7 @@ class MessageBuilder:
             end_column=context.end_column if context else -1,
             code=code,
             allow_dups=allow_dups,
+            context=context,
         )
 
     def fail(

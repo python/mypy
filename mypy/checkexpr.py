@@ -16,7 +16,7 @@ from mypy.argmap import ArgTypeExpander, map_actuals_to_formals, map_formals_to_
 from mypy.checkmember import analyze_member_access, freeze_all_type_vars, type_object_type
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.erasetype import erase_type, remove_instance_last_known_values, replace_meta_vars
-from mypy.errors import ErrorWatcher, report_internal_error
+from mypy.errors import ErrorInfo, ErrorWatcher, report_internal_error
 from mypy.expandtype import (
     expand_type,
     expand_type_by_instance,
@@ -2750,7 +2750,20 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         for typ in plausible_targets:
             assert self.msg is self.chk.msg
-            with self.msg.filter_errors() as w:
+
+            is_match = True
+
+            def filter_errors(_: str, err_info: ErrorInfo, err_ctx: Context | None) -> bool:
+                nonlocal is_match
+                assert isinstance(context, CallExpr)
+                if err_ctx == context or (
+                    err_info.code == codes.ARG_TYPE and err_ctx in context.args
+                ):
+                    is_match = False
+
+                return True
+
+            with self.msg.filter_errors(filter_errors=filter_errors):
                 with self.chk.local_type_map() as m:
                     ret_type, infer_type = self.check_call(
                         callee=typ,
@@ -2761,7 +2774,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         callable_name=callable_name,
                         object_type=object_type,
                     )
-            is_match = not w.has_new_errors()
             if is_match:
                 # Return early if possible; otherwise record info so we can
                 # check for ambiguity due to 'Any' below.
