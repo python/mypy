@@ -1077,7 +1077,7 @@ x = 1  # type: ignore  # E: Unused "type: ignore" comment  [unused-ignore]
 from typing import overload, Union
 
 @overload
-def unsafe_func(x: int) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types  [unsafe-overload]
+def unsafe_func(x: int) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types  [overload-overlap]
 @overload
 def unsafe_func(x: object) -> str: ...
 def unsafe_func(x: object) -> Union[int, str]:

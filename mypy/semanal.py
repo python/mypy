@@ -4414,7 +4414,8 @@ class SemanticAnalyzer(
             typevartuple_var = TypeVarTupleExpr(
                 name,
                 self.qualified_name(name),
-                self.object_type(),
+                # Upper bound for *Ts is *tuple[object, ...], it can never be object.
+                tuple_fallback.copy_modified(),
                 tuple_fallback,
                 default,
                 INVARIANT,
