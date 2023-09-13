@@ -6460,3 +6460,22 @@ P = ParamSpec("P")
 class C(Generic[P]):
     def __init__(self, fn: Callable[P, int]) -> None: ...
 [builtins fixtures/dict.pyi]
+
+[case testVariadicTupleIncrementalUpdateNoCrash]
+import m
+[file m.py]
+from typing import Any
+from lib import C
+
+x: C[Any]
+[file m.py.2]
+from lib import C
+
+x: C[int]
+[file lib.py]
+from typing import Generic, Tuple, TypeVar
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class C(Tuple[Unpack[Ts]]): ...
+[builtins fixtures/tuple.pyi]

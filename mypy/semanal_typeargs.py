@@ -207,7 +207,8 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
             return
         if isinstance(proper_type, TypeVarTupleType):
             return
-        # TODO: this should probably be .has_base("builtins.tuple"), also elsewhere.
+        # TODO: this should probably be .has_base("builtins.tuple"), also elsewhere. This is
+        # tricky however, since this needs map_instance_to_supertype() available in many places.
         if isinstance(proper_type, Instance) and proper_type.type.fullname == "builtins.tuple":
             return
         if not isinstance(proper_type, (UnboundType, AnyType)):
