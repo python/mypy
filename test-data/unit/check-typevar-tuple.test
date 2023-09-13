@@ -1366,3 +1366,14 @@ class A:
     def f(self, x: Any) -> Any:
         ...
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleInferAgainstAny]
+from typing import Any, Tuple, TypeVar
+from typing_extensions import Unpack
+
+T = TypeVar("T")
+
+def test(x: int, t: Tuple[T, ...]) -> Tuple[int, Unpack[Tuple[T, ...]]]:
+    ...
+a: Any = test(42, ())
+[builtins fixtures/tuple.pyi]
