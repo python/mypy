@@ -896,6 +896,16 @@ match m:
         reveal_type(i)
         reveal_type(j)
 
+[case testMatchClassPatternAny]
+from typing import Any
+
+Foo: Any
+m: object
+
+match m:
+    case Foo():
+        pass
+
 [case testMatchClassPatternNestedGenerics]
 # From cpython test_patma.py
 x = [[{0: 0}]]

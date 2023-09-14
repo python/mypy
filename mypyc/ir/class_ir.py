@@ -70,7 +70,7 @@ from mypyc.namegen import NameGenerator, exported_name
 
 
 class VTableMethod(NamedTuple):
-    cls: "ClassIR"
+    cls: "ClassIR"  # noqa: UP037
     name: str
     method: FuncIR
     shadow_method: FuncIR | None

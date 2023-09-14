@@ -553,15 +553,15 @@ from typing import Callable
 
 def f() -> None: pass
 
-x = f()  # E: "f" does not return a value  [func-returns-value]
+x = f()  # E: "f" does not return a value (it only ever returns None)  [func-returns-value]
 
 class A:
     def g(self) -> None: pass
 
-y = A().g()  # E: "g" of "A" does not return a value  [func-returns-value]
+y = A().g()  # E: "g" of "A" does not return a value (it only ever returns None)  [func-returns-value]
 
 c: Callable[[], None]
-z = c()  # E: Function does not return a value  [func-returns-value]
+z = c()  # E: Function does not return a value (it only ever returns None)  [func-returns-value]
 
 [case testErrorCodeInstantiateAbstract]
 from abc import abstractmethod
@@ -1072,3 +1072,17 @@ A.f = h  # type: ignore[assignment]  # E: Unused "type: ignore" comment, use nar
 [case testUnusedIgnoreEnableCode]
 # flags: --enable-error-code=unused-ignore
 x = 1  # type: ignore  # E: Unused "type: ignore" comment  [unused-ignore]
+
+[case testErrorCodeUnsafeOverloadError]
+from typing import overload, Union
+
+@overload
+def unsafe_func(x: int) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types  [overload-overlap]
+@overload
+def unsafe_func(x: object) -> str: ...
+def unsafe_func(x: object) -> Union[int, str]:
+    if isinstance(x, int):
+        return 42
+    else:
+        return "some string"
+[builtins fixtures/isinstancelist.pyi]

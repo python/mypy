@@ -2798,7 +2798,7 @@ def module_not_found(
         for note in notes:
             if "{stub_dist}" in note:
                 note = note.format(stub_dist=stub_distribution_name(module))
-            errors.report(line, 0, note, severity="note", only_once=True, code=codes.IMPORT)
+            errors.report(line, 0, note, severity="note", only_once=True, code=code)
         if reason is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
             manager.missing_stub_packages.add(stub_distribution_name(module))
     errors.set_import_context(save_import_context)

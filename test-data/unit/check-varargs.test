@@ -52,8 +52,8 @@ c: C
 
 f(c)       # E: Argument 1 to "f" has incompatible type "C"; expected "A"
 f(a, b, c) # E: Argument 3 to "f" has incompatible type "C"; expected "A"
-f(g())     # E: "g" does not return a value
-f(a, g())  # E: "g" does not return a value
+f(g())     # E: "g" does not return a value (it only ever returns None)
+f(a, g())  # E: "g" does not return a value (it only ever returns None)
 f()
 f(a)
 f(b)
@@ -1078,4 +1078,19 @@ class C:
     def __init__(self, **kwds: Unpack) -> None: ...  # E: Unpack[...] requires exactly one type argument
 class D:
     def __init__(self, **kwds: Unpack[int, str]) -> None: ...  # E: Unpack[...] requires exactly one type argument
+[builtins fixtures/dict.pyi]
+
+[case testUnpackInCallableType]
+from typing import Callable
+from typing_extensions import Unpack, TypedDict
+
+class TD(TypedDict):
+    key: str
+    value: str
+
+foo: Callable[[Unpack[TD]], None]
+foo(key="yes", value=42)  # E: Argument "value" has incompatible type "int"; expected "str"
+foo(key="yes", value="ok")
+
+bad: Callable[[*TD], None]  # E: "TD" cannot be unpacked (must be tuple or TypeVarTuple)
 [builtins fixtures/dict.pyi]

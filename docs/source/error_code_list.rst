@@ -741,7 +741,7 @@ returns ``None``:
    # OK: we don't do anything with the return value
    f()
 
-   # Error: "f" does not return a value  [func-returns-value]
+   # Error: "f" does not return a value (it only ever returns None)  [func-returns-value]
    if f():
         print("not false")
 
@@ -1113,6 +1113,41 @@ Warn about cases where a bytes object may be converted to a string in an unexpec
     # Okay
     print(f"The alphabet starts with {b!r}")  # The alphabet starts with b'abc'
     print(f"The alphabet starts with {b.decode('utf-8')}")  # The alphabet starts with abc
+
+.. _code-overload-overlap:
+
+Check that overloaded functions don't overlap [overload-overlap]
+----------------------------------------------------------------
+
+Warn if multiple ``@overload`` variants overlap in potentially unsafe ways.
+This guards against the following situation:
+
+.. code-block:: python
+
+    from typing import overload
+
+    class A: ...
+    class B(A): ...
+
+    @overload
+    def foo(x: B) -> int: ...  # Error: Overloaded function signatures 1 and 2 overlap with incompatible return types  [overload-overlap]
+    @overload
+    def foo(x: A) -> str: ...
+    def foo(x): ...
+
+    def takes_a(a: A) -> str:
+        return foo(a)
+
+    a: A = B()
+    value = takes_a(a)
+    # mypy will think that value is a str, but it could actually be an int
+    reveal_type(value) # Revealed type is "builtins.str"
+
+
+Note that in cases where you ignore this error, mypy will usually still infer the
+types you expect.
+
+See :ref:`overloading <function-overloading>` for more explanation.
 
 .. _code-annotation-unchecked:
 

@@ -62,6 +62,7 @@ OPTIONS_AFFECTING_CACHE: Final = (
     | {
         "platform",
         "bazel",
+        "new_type_inference",
         "plugins",
         "disable_bytearray_promotion",
         "disable_memoryview_promotion",

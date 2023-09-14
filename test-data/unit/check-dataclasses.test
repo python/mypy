@@ -2280,6 +2280,10 @@ reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
 
 [builtins fixtures/tuple.pyi]
 
+[case testPostInitNotMethod]
+def __post_init__() -> None:
+    pass
+
 [case testPostInitCorrectSignature]
 from typing import Any, Generic, TypeVar, Callable, Self
 from dataclasses import dataclass, InitVar

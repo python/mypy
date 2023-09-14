@@ -1076,6 +1076,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if name == "__exit__":
             self.check__exit__return_type(defn)
+        # TODO: the following logic should move to the dataclasses plugin
+        #  https://github.com/python/mypy/issues/15515
         if name == "__post_init__":
             if dataclasses_plugin.is_processed_dataclass(defn.info):
                 dataclasses_plugin.check_post_init(self, defn, defn.info)
@@ -2882,7 +2884,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     typ = self.expr_checker.accept(rvalue)
                     self.check_match_args(inferred, typ, lvalue)
                 if name == "__post_init__":
-                    if dataclasses_plugin.is_processed_dataclass(self.scope.active_class()):
+                    active_class = self.scope.active_class()
+                    if active_class and dataclasses_plugin.is_processed_dataclass(active_class):
                         self.fail(message_registry.DATACLASS_POST_INIT_MUST_BE_A_FUNCTION, rvalue)
 
             # Defer PartialType's super type checking.

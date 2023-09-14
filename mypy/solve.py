@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Iterable, Sequence, Tuple
+from typing import Iterable, Sequence
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints
@@ -144,6 +144,8 @@ def solve_with_dependent(
         if all(not lowers[tv] and not uppers[tv] for tv in scc):
             best_free = choose_free([originals[tv] for tv in scc], original_vars)
             if best_free:
+                # TODO: failing to choose may cause leaking type variables,
+                # we need to fail gracefully instead.
                 free_vars.append(best_free.id)
                 free_solutions[best_free.id] = best_free
 
@@ -323,17 +325,19 @@ def choose_free(
     best = sorted(scc, key=lambda x: (x.id not in original_vars, x.id.raw_id))[0]
     if isinstance(best, TypeVarType):
         return best.copy_modified(values=values, upper_bound=common_upper_bound)
-    if is_trivial_bound(common_upper_bound_p):
+    if is_trivial_bound(common_upper_bound_p, allow_tuple=True):
         # TODO: support more cases for ParamSpecs/TypeVarTuples
         return best
     return None
 
 
-def is_trivial_bound(tp: ProperType) -> bool:
+def is_trivial_bound(tp: ProperType, allow_tuple: bool = False) -> bool:
+    if isinstance(tp, Instance) and tp.type.fullname == "builtins.tuple":
+        return allow_tuple and is_trivial_bound(get_proper_type(tp.args[0]))
     return isinstance(tp, Instance) and tp.type.fullname == "builtins.object"
 
 
-def find_linear(c: Constraint) -> Tuple[bool, TypeVarId | None]:
+def find_linear(c: Constraint) -> tuple[bool, TypeVarId | None]:
     """Find out if this constraint represent a linear relationship, return target id if yes."""
     if isinstance(c.origin_type_var, TypeVarType):
         if isinstance(c.target, TypeVarType):

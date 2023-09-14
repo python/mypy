@@ -119,7 +119,7 @@ jobs:
       # Pytest
       PYTEST_ADDOPTS: --color=yes
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python }}
@@ -162,7 +162,7 @@ jobs:
       CXX: i686-linux-gnu-g++
       CC: i686-linux-gnu-gcc
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install 32-bit build dependencies
         run: |
           sudo dpkg --add-architecture i386 && \

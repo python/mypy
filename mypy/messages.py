@@ -1021,18 +1021,11 @@ class MessageBuilder:
 
     def does_not_return_value(self, callee_type: Type | None, context: Context) -> None:
         """Report an error about use of an unusable type."""
-        name: str | None = None
         callee_type = get_proper_type(callee_type)
-        if isinstance(callee_type, FunctionLike):
-            name = callable_name(callee_type)
-        if name is not None:
-            self.fail(
-                f"{capitalize(name)} does not return a value",
-                context,
-                code=codes.FUNC_RETURNS_VALUE,
-            )
-        else:
-            self.fail("Function does not return a value", context, code=codes.FUNC_RETURNS_VALUE)
+        callee_name = callable_name(callee_type) if isinstance(callee_type, FunctionLike) else None
+        name = callee_name or "Function"
+        message = f"{name} does not return a value (it only ever returns None)"
+        self.fail(message, context, code=codes.FUNC_RETURNS_VALUE)
 
     def deleted_as_rvalue(self, typ: DeletedType, context: Context) -> None:
         """Report an error about using an deleted type as an rvalue."""
@@ -1461,20 +1454,19 @@ class MessageBuilder:
         self.fail(f'Cannot determine type of "{name}" in base class "{base}"', context)
 
     def no_formal_self(self, name: str, item: CallableType, context: Context) -> None:
+        type = format_type(item, self.options)
         self.fail(
-            'Attribute function "%s" with type %s does not accept self argument'
-            % (name, format_type(item, self.options)),
-            context,
+            f'Attribute function "{name}" with type {type} does not accept self argument', context
         )
 
     def incompatible_self_argument(
         self, name: str, arg: Type, sig: CallableType, is_classmethod: bool, context: Context
     ) -> None:
         kind = "class attribute function" if is_classmethod else "attribute function"
+        arg_type = format_type(arg, self.options)
+        sig_type = format_type(sig, self.options)
         self.fail(
-            'Invalid self argument %s to %s "%s" with type %s'
-            % (format_type(arg, self.options), kind, name, format_type(sig, self.options)),
-            context,
+            f'Invalid self argument {arg_type} to {kind} "{name}" with type {sig_type}', context
         )
 
     def incompatible_conditional_function_def(
@@ -1494,8 +1486,8 @@ class MessageBuilder:
     ) -> None:
         attrs = format_string_list([f'"{a}"' for a in abstract_attributes])
         self.fail(
-            'Cannot instantiate abstract class "%s" with abstract '
-            "attribute%s %s" % (class_name, plural_s(abstract_attributes), attrs),
+            f'Cannot instantiate abstract class "{class_name}" with abstract '
+            f"attribute{plural_s(abstract_attributes)} {attrs}",
             context,
             code=codes.ABSTRACT,
         )
@@ -1612,6 +1604,7 @@ class MessageBuilder:
             "Overloaded function signatures {} and {} overlap with "
             "incompatible return types".format(index1, index2),
             context,
+            code=codes.OVERLOAD_OVERLAP,
         )
 
     def overloaded_signature_will_never_match(
