@@ -163,7 +163,10 @@ class ArgTypeExpander:
     import mypy
 
     def __init__(
-        self, context: ArgumentInferContext, checker: mypy.checker.TypeChecker = None
+        self,
+        context: ArgumentInferContext,
+        context_check: mypy.nodes.Context,
+        checker: mypy.checker.TypeChecker | None = None,
     ) -> None:
         # Next tuple *args index to use.
         self.tuple_index = 0
@@ -173,6 +176,8 @@ class ArgTypeExpander:
         self.context = context
         # TypeChecker to check true argument types for iterables
         self.checker = checker
+
+        self.context_check = context_check
 
     def expand_actual_type(
         self,
@@ -224,7 +229,7 @@ class ArgTypeExpander:
                     # get the true type of the arguments of the iterable
                     iterable_item_type = (
                         self.checker.analyze_iterable_item_type_without_expression(
-                            actual_type, self.context
+                            actual_type, self.context_check
                         )[1]
                     )
                     return iterable_item_type

@@ -1998,6 +1998,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     pass1_args.append(arg)
 
             inferred_args, _ = infer_function_type_arguments(
+                context,
                 self.chk,
                 callee_type,
                 pass1_args,
@@ -2060,6 +2061,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # potentially involving free variables.
                 # TODO: support the similar inference for return type context.
                 poly_inferred_args, free_vars = infer_function_type_arguments(
+                    context,
                     self.chk,
                     callee_type,
                     arg_types,
@@ -2141,6 +2143,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         arg_types = self.infer_arg_types_in_context(callee_type, args, arg_kinds, formal_to_actual)
 
         inferred_args, _ = infer_function_type_arguments(
+            context,
             self.chk,
             callee_type,
             arg_types,
@@ -2382,7 +2385,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         check_arg = check_arg or self.check_arg
         # Keep track of consumed tuple *arg items.
-        mapper = ArgTypeExpander(self.argument_infer_context(), self.chk)
+        mapper = ArgTypeExpander(self.argument_infer_context(), context, self.chk)
         for i, actuals in enumerate(formal_to_actual):
             orig_callee_arg_type = get_proper_type(callee.arg_types[i])
 

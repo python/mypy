@@ -107,6 +107,7 @@ import mypy
 
 
 def infer_constraints_for_callable(
+    context_check: mypy.nodes.Context,
     checker: mypy.checker.TypeChecker,
     callee: CallableType,
     arg_types: Sequence[Type | None],
@@ -120,7 +121,7 @@ def infer_constraints_for_callable(
     Return a list of constraints.
     """
     constraints: list[Constraint] = []
-    mapper = ArgTypeExpander(context, checker)
+    mapper = ArgTypeExpander(context, context_check, checker)
 
     param_spec = callee.param_spec()
     param_spec_arg_types = []
