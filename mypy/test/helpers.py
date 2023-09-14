@@ -78,10 +78,9 @@ def render_diff_range(
         for j, line in enumerate(lines):
             if (
                 is_matching
-                # elide the middle of matching blocks. if they are at the beginning or end, also
-                # elide the beginning or end.
-                and (j >= 3 or line_range[0] == 0)
-                and (j < len(lines) - 3 or line_range[1] == len(content))
+                # elide the middle of matching blocks
+                and j >= 3
+                and j < len(lines) - 3
             ):
                 if j == 3:
                     sys.stderr.write("  ...\n")
