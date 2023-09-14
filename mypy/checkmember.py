@@ -897,7 +897,7 @@ def check_self_arg(
             selfarg = get_proper_type(item.arg_types[0])
             if subtypes.is_subtype(dispatched_arg_type, erase_typevars(erase_to_bound(selfarg))):
                 new_items.append(item)
-            elif isinstance(selfarg, (ParamSpecType, TupleType)):
+            elif isinstance(selfarg, ParamSpecType):
                 # TODO: This is not always right. What's the most reasonable thing to do here?
                 new_items.append(item)
             elif isinstance(selfarg, TypeVarTupleType):
