@@ -228,8 +228,7 @@ def takes_tuple_aa(t: Tuple[A, A]): ...
 
 takes_tuple_aa(inst_tuple_aa)
 takes_tuple_aa(inst_tuple_aa_subclass)
-# This next one should maybe not be an error
-takes_tuple_aa(inst_tuple_any_subclass)  # E: Argument 1 to "takes_tuple_aa" has incompatible type "tuple_any_subclass"; expected "Tuple[A, A]"
+takes_tuple_aa(inst_tuple_any_subclass)
 takes_tuple_aa(inst_tuple_any_one_subclass)  # E: Argument 1 to "takes_tuple_aa" has incompatible type "tuple_any_one_subclass"; expected "Tuple[A, A]"
 takes_tuple_aa(inst_tuple_any_two_subclass)
 takes_tuple_aa(inst_tuple_obj_subclass)  # E: Argument 1 to "takes_tuple_aa" has incompatible type "tuple_obj_subclass"; expected "Tuple[A, A]"
