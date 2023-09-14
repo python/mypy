@@ -464,7 +464,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                         if isinstance(get_proper_type(unpacked.args[0]), AnyType):
                             return not self.proper_subtype
                 if (
-                    mapped.type.has_base("builtins.tuple")
+                    mapped.type.fullname == "builtins.tuple"
                     and len(mapped.args) == 1
                     and isinstance(get_proper_type(mapped.args[0]), AnyType)
                 ):
