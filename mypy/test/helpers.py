@@ -127,7 +127,10 @@ def assert_string_arrays_equal(expected: list[str], actual: list[str], msg: str)
             # long lines.
             show_align_message(expected[first_diff], actual[first_diff])
 
-        sys.stderr.write("Update the test output using --update-data")
+        sys.stderr.write(
+            "Update the test output using --update-data -n0 "
+            "(you can additionally use the -k selector to update only specific tests)"
+        )
         pytest.fail(msg, pytrace=False)
 
 
