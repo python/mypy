@@ -114,6 +114,7 @@ def assert_string_arrays_equal(expected: list[str], actual: list[str], msg: str)
         green = "\033[32m" if sys.platform != "win32" else None
         render_diff_range(actual_ranges, actual, colour=green)
 
+        sys.stderr.write("\n")
         first_diff = next(
             (i for i, (a, b) in enumerate(zip(expected, actual)) if a != b),
             max(len(expected), len(actual)),
@@ -126,6 +127,7 @@ def assert_string_arrays_equal(expected: list[str], actual: list[str], msg: str)
             # long lines.
             show_align_message(expected[first_diff], actual[first_diff])
 
+        sys.stderr.write("Update the test output using --update-data")
         pytest.fail(msg, pytrace=False)
 
 
