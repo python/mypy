@@ -1208,7 +1208,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     ):
                         if defn.is_class or defn.name == "__new__":
                             ref_type = mypy.types.TypeType.make_normalized(ref_type)
-                        erased = get_proper_type(erase_to_bound(arg_type))
+                        # This level of erasure matches the one in checkmember.check_self_arg(),
+                        # better keep these two checks consistent.
+                        erased = get_proper_type(erase_typevars(erase_to_bound(arg_type)))
                         if not is_subtype(ref_type, erased, ignore_type_params=True):
                             if (
                                 isinstance(erased, Instance)
