@@ -69,7 +69,9 @@ def diff_ranges(
     return left_ranges, right_ranges
 
 
-def render_diff_range(ranges: list[tuple[int, int]], content: list[str], colour: str | None = None) -> None:
+def render_diff_range(
+    ranges: list[tuple[int, int]], content: list[str], colour: str | None = None
+) -> None:
     for i, line_range in enumerate(ranges):
         is_matching = i % 2 == 1
         lines = content[line_range[0] : line_range[1]]
