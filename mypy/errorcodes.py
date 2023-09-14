@@ -261,3 +261,10 @@ del error_codes[FILE.code]
 
 # This is a catch-all for remaining uncategorized errors.
 MISC: Final = ErrorCode("misc", "Miscellaneous other checks", "General")
+
+OVERLOAD_OVERLAP: Final[ErrorCode] = ErrorCode(
+    "overload-overlap",
+    "Warn if multiple @overload variants overlap in unsafe ways",
+    "General",
+    sub_code_of=MISC,
+)

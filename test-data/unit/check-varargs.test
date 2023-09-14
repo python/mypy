@@ -1079,3 +1079,18 @@ class C:
 class D:
     def __init__(self, **kwds: Unpack[int, str]) -> None: ...  # E: Unpack[...] requires exactly one type argument
 [builtins fixtures/dict.pyi]
+
+[case testUnpackInCallableType]
+from typing import Callable
+from typing_extensions import Unpack, TypedDict
+
+class TD(TypedDict):
+    key: str
+    value: str
+
+foo: Callable[[Unpack[TD]], None]
+foo(key="yes", value=42)  # E: Argument "value" has incompatible type "int"; expected "str"
+foo(key="yes", value="ok")
+
+bad: Callable[[*TD], None]  # E: "TD" cannot be unpacked (must be tuple or TypeVarTuple)
+[builtins fixtures/dict.pyi]

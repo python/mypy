@@ -58,13 +58,14 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    find_unpack_in_list,
     get_proper_type,
     is_named_instance,
+    split_with_prefix_and_suffix,
 )
 from mypy.types_utils import flatten_types
 from mypy.typestate import SubtypeKind, type_state
 from mypy.typevars import fill_typevars_with_any
-from mypy.typevartuples import extract_unpack, fully_split_with_mapped_and_template
 
 # Flags for detected protocol members
 IS_SETTABLE: Final = 1
@@ -278,7 +279,13 @@ def _is_subtype(
     left = get_proper_type(left)
     right = get_proper_type(right)
 
-    if not proper_subtype and isinstance(right, (AnyType, UnboundType, ErasedType)):
+    # Note: Unpack type should not be a subtype of Any, since it may represent
+    # multiple types. This should always go through the visitor, to check arity.
+    if (
+        not proper_subtype
+        and isinstance(right, (AnyType, UnboundType, ErasedType))
+        and not isinstance(left, UnpackType)
+    ):
         # TODO: should we consider all types proper subtypes of UnboundType and/or
         # ErasedType as we do for non-proper subtyping.
         return True
@@ -437,6 +444,36 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right = self.right
         if isinstance(right, TupleType) and right.partial_fallback.type.is_enum:
             return self._is_subtype(left, mypy.typeops.tuple_fallback(right))
+        if isinstance(right, TupleType):
+            if len(right.items) == 1:
+                # Non-normalized Tuple type (may be left after semantic analysis
+                # because semanal_typearg visitor is not a type translator).
+                item = right.items[0]
+                if isinstance(item, UnpackType):
+                    unpacked = get_proper_type(item.type)
+                    if isinstance(unpacked, Instance):
+                        return self._is_subtype(left, unpacked)
+            if left.type.has_base(right.partial_fallback.type.fullname):
+                # Special case to consider Foo[*tuple[Any, ...]] (i.e. bare Foo) a
+                # subtype of Foo[<whatever>], when Foo is user defined variadic tuple type.
+                mapped = map_instance_to_supertype(left, right.partial_fallback.type)
+                if len(mapped.args) == 1 and isinstance(mapped.args[0], UnpackType):
+                    unpacked = get_proper_type(mapped.args[0].type)
+                    if isinstance(unpacked, Instance):
+                        assert unpacked.type.fullname == "builtins.tuple"
+                        if isinstance(get_proper_type(unpacked.args[0]), AnyType):
+                            return not self.proper_subtype
+                if mapped.type.fullname == "builtins.tuple" and isinstance(
+                    get_proper_type(mapped.args[0]), AnyType
+                ):
+                    return not self.proper_subtype
+            return False
+        if isinstance(right, TypeVarTupleType):
+            # tuple[Any, ...] is like Any in the world of tuples (see special case above).
+            if left.type.has_base("builtins.tuple"):
+                mapped = map_instance_to_supertype(left, right.tuple_fallback.type)
+                if isinstance(get_proper_type(mapped.args[0]), AnyType):
+                    return not self.proper_subtype
         if isinstance(right, Instance):
             if type_state.is_cached_subtype_check(self._subtype_kind, left, right):
                 return True
@@ -476,106 +513,37 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     t = erased
                 nominal = True
                 if right.type.has_type_var_tuple_type:
-                    assert left.type.type_var_tuple_prefix is not None
-                    assert left.type.type_var_tuple_suffix is not None
+                    # For variadic instances we simply find the correct type argument mappings,
+                    # all the heavy lifting is done by the tuple subtyping.
                     assert right.type.type_var_tuple_prefix is not None
                     assert right.type.type_var_tuple_suffix is not None
-                    split_result = fully_split_with_mapped_and_template(
-                        left.args,
-                        left.type.type_var_tuple_prefix,
-                        left.type.type_var_tuple_suffix,
-                        right.args,
-                        right.type.type_var_tuple_prefix,
-                        right.type.type_var_tuple_suffix,
+                    prefix = right.type.type_var_tuple_prefix
+                    suffix = right.type.type_var_tuple_suffix
+                    tvt = right.type.defn.type_vars[prefix]
+                    assert isinstance(tvt, TypeVarTupleType)
+                    fallback = tvt.tuple_fallback
+                    left_prefix, left_middle, left_suffix = split_with_prefix_and_suffix(
+                        t.args, prefix, suffix
                     )
-                    if split_result is None:
-                        return False
-
-                    (
-                        left_prefix,
-                        left_mprefix,
-                        left_middle,
-                        left_msuffix,
-                        left_suffix,
-                        right_prefix,
-                        right_mprefix,
-                        right_middle,
-                        right_msuffix,
-                        right_suffix,
-                    ) = split_result
-
-                    left_unpacked = extract_unpack(left_middle)
-                    right_unpacked = extract_unpack(right_middle)
-
-                    # Helper for case 2 below so we can treat them the same.
-                    def check_mixed(
-                        unpacked_type: ProperType, compare_to: tuple[Type, ...]
-                    ) -> bool:
-                        if (
-                            isinstance(unpacked_type, Instance)
-                            and unpacked_type.type.fullname == "builtins.tuple"
-                        ):
-                            return all(is_equivalent(l, unpacked_type.args[0]) for l in compare_to)
-                        if isinstance(unpacked_type, TypeVarTupleType):
-                            return False
-                        if isinstance(unpacked_type, AnyType):
-                            return True
-                        if isinstance(unpacked_type, TupleType):
-                            if len(unpacked_type.items) != len(compare_to):
-                                return False
-                            for t1, t2 in zip(unpacked_type.items, compare_to):
-                                if not is_equivalent(t1, t2):
-                                    return False
-                            return True
-                        return False
-
-                    # Case 1: Both are unpacks, in this case we check what is being
-                    # unpacked is the same.
-                    if left_unpacked is not None and right_unpacked is not None:
-                        if not is_equivalent(left_unpacked, right_unpacked):
-                            return False
-
-                    # Case 2: Only one of the types is an unpack. The equivalence
-                    # case is mostly the same but we check some additional
-                    # things when unpacking on the right.
-                    elif left_unpacked is not None and right_unpacked is None:
-                        if not check_mixed(left_unpacked, right_middle):
-                            return False
-                    elif left_unpacked is None and right_unpacked is not None:
-                        if not check_mixed(right_unpacked, left_middle):
-                            return False
-
-                    # Case 3: Neither type is an unpack. In this case we just compare
-                    # the items themselves.
-                    else:
-                        if len(left_middle) != len(right_middle):
-                            return False
-                        for left_t, right_t in zip(left_middle, right_middle):
-                            if not is_equivalent(left_t, right_t):
-                                return False
-
-                    assert len(left_mprefix) == len(right_mprefix)
-                    assert len(left_msuffix) == len(right_msuffix)
-
-                    for left_item, right_item in zip(
-                        left_mprefix + left_msuffix, right_mprefix + right_msuffix
-                    ):
-                        if not is_equivalent(left_item, right_item):
-                            return False
-
-                    left_items = t.args[: right.type.type_var_tuple_prefix]
-                    right_items = right.args[: right.type.type_var_tuple_prefix]
-                    if right.type.type_var_tuple_suffix:
-                        left_items += t.args[-right.type.type_var_tuple_suffix :]
-                        right_items += right.args[-right.type.type_var_tuple_suffix :]
-                    unpack_index = right.type.type_var_tuple_prefix
-                    assert unpack_index is not None
-                    type_params = zip(
-                        left_prefix + left_suffix,
-                        right_prefix + right_suffix,
-                        right.type.defn.type_vars[:unpack_index]
-                        + right.type.defn.type_vars[unpack_index + 1 :],
+                    right_prefix, right_middle, right_suffix = split_with_prefix_and_suffix(
+                        right.args, prefix, suffix
                     )
+                    left_args = (
+                        left_prefix + (TupleType(list(left_middle), fallback),) + left_suffix
+                    )
+                    right_args = (
+                        right_prefix + (TupleType(list(right_middle), fallback),) + right_suffix
+                    )
+                    if len(t.args) == 1 and isinstance(t.args[0], UnpackType):
+                        unpacked = get_proper_type(t.args[0].type)
+                        if isinstance(unpacked, Instance):
+                            assert unpacked.type.fullname == "builtins.tuple"
+                            if (
+                                isinstance(get_proper_type(unpacked.args[0]), AnyType)
+                                and not self.proper_subtype
+                            ):
+                                return True
+                    type_params = zip(left_args, right_args, right.type.defn.type_vars)
                 else:
                     type_params = zip(t.args, right.args, right.type.defn.type_vars)
                 if not self.subtype_context.ignore_type_params:
@@ -761,8 +729,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return True
             return False
         elif isinstance(right, TupleType):
+            # If right has a variadic unpack this needs special handling. If there is a TypeVarTuple
+            # unpack, item count must coincide. If the left has variadic unpack but right
+            # doesn't have one, we will fall through to False down the line.
+            if self.variadic_tuple_subtype(left, right):
+                return True
             if len(left.items) != len(right.items):
-                # TODO: handle tuple with variadic items better.
                 return False
             if any(not self._is_subtype(l, r) for l, r in zip(left.items, right.items)):
                 return False
@@ -777,6 +749,79 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return self._is_subtype(lfallback, rfallback)
         else:
             return False
+
+    def variadic_tuple_subtype(self, left: TupleType, right: TupleType) -> bool:
+        """Check subtyping between two potentially variadic tuples.
+
+        Most non-trivial cases here are due to variadic unpacks like *tuple[X, ...],
+        we handle such unpacks as infinite unions Tuple[()] | Tuple[X] | Tuple[X, X] | ...
+
+        Note: the cases where right is fixed or has *Ts unpack should be handled
+        by the caller.
+        """
+        right_unpack_index = find_unpack_in_list(right.items)
+        if right_unpack_index is None:
+            # This case should be handled by the caller.
+            return False
+        right_unpack = right.items[right_unpack_index]
+        assert isinstance(right_unpack, UnpackType)
+        right_unpacked = get_proper_type(right_unpack.type)
+        if not isinstance(right_unpacked, Instance):
+            # This case should be handled by the caller.
+            return False
+        assert right_unpacked.type.fullname == "builtins.tuple"
+        right_item = right_unpacked.args[0]
+        right_prefix = right_unpack_index
+        right_suffix = len(right.items) - right_prefix - 1
+        left_unpack_index = find_unpack_in_list(left.items)
+        if left_unpack_index is None:
+            # Simple case: left is fixed, simply find correct mapping to the right
+            # (effectively selecting item with matching length from an infinite union).
+            if len(left.items) < right_prefix + right_suffix:
+                return False
+            prefix, middle, suffix = split_with_prefix_and_suffix(
+                tuple(left.items), right_prefix, right_suffix
+            )
+            if not all(
+                self._is_subtype(li, ri) for li, ri in zip(prefix, right.items[:right_prefix])
+            ):
+                return False
+            if right_suffix and not all(
+                self._is_subtype(li, ri) for li, ri in zip(suffix, right.items[-right_suffix:])
+            ):
+                return False
+            return all(self._is_subtype(li, right_item) for li in middle)
+        else:
+            if len(left.items) < len(right.items):
+                # There are some items on the left that will never have a matching length
+                # on the right.
+                return False
+            left_unpack = left.items[left_unpack_index]
+            assert isinstance(left_unpack, UnpackType)
+            left_unpacked = get_proper_type(left_unpack.type)
+            if not isinstance(left_unpacked, Instance):
+                # *Ts unpacks can't be split.
+                return False
+            assert left_unpacked.type.fullname == "builtins.tuple"
+            left_item = left_unpacked.args[0]
+
+            # The most tricky case with two variadic unpacks we handle similar to union
+            # subtyping: *each* item on the left, must be a subtype of *some* item on the right.
+            # For this we first check the "asymptotic case", i.e. that both unpacks a subtypes,
+            # and then check subtyping for all finite overlaps.
+            if not self._is_subtype(left_item, right_item):
+                return False
+            left_prefix = left_unpack_index
+            left_suffix = len(left.items) - left_prefix - 1
+            max_overlap = max(0, right_prefix - left_prefix, right_suffix - left_suffix)
+            for overlap in range(max_overlap + 1):
+                repr_items = left.items[:left_prefix] + [left_item] * overlap
+                if left_suffix:
+                    repr_items += left.items[-left_suffix:]
+                left_repr = left.copy_modified(items=repr_items)
+                if not self._is_subtype(left_repr, right):
+                    return False
+            return True
 
     def visit_typeddict_type(self, left: TypedDictType) -> bool:
         right = self.right
@@ -1476,6 +1521,18 @@ def are_trivial_parameters(param: Parameters | NormalizedCallableType) -> bool:
     )
 
 
+def is_trivial_suffix(param: Parameters | NormalizedCallableType) -> bool:
+    param_star = param.var_arg()
+    param_star2 = param.kw_arg()
+    return (
+        param.arg_kinds[-2:] == [ARG_STAR, ARG_STAR2]
+        and param_star is not None
+        and isinstance(get_proper_type(param_star.typ), AnyType)
+        and param_star2 is not None
+        and isinstance(get_proper_type(param_star2.typ), AnyType)
+    )
+
+
 def are_parameters_compatible(
     left: Parameters | NormalizedCallableType,
     right: Parameters | NormalizedCallableType,
@@ -1497,6 +1554,7 @@ def are_parameters_compatible(
     # Treat "def _(*a: Any, **kw: Any) -> X" similarly to "Callable[..., X]"
     if are_trivial_parameters(right):
         return True
+    trivial_suffix = is_trivial_suffix(right)
 
     # Match up corresponding arguments and check them for compatibility. In
     # every pair (argL, argR) of corresponding arguments from L and R, argL must
@@ -1527,7 +1585,7 @@ def are_parameters_compatible(
         if right_arg is None:
             return False
         if left_arg is None:
-            return not allow_partial_overlap
+            return not allow_partial_overlap and not trivial_suffix
         return not is_compat(right_arg.typ, left_arg.typ)
 
     if _incompatible(left_star, right_star) or _incompatible(left_star2, right_star2):
@@ -1551,7 +1609,7 @@ def are_parameters_compatible(
     #           arguments. Get all further positional args of left, and make sure
     #           they're more general than the corresponding member in right.
     # TODO: are we handling UnpackType correctly here?
-    if right_star is not None:
+    if right_star is not None and not trivial_suffix:
         # Synthesize an anonymous formal argument for the right
         right_by_position = right.try_synthesizing_arg_from_vararg(None)
         assert right_by_position is not None
@@ -1578,7 +1636,7 @@ def are_parameters_compatible(
     # Phase 1d: Check kw args. Right has an infinite series of optional named
     #           arguments. Get all further named args of left, and make sure
     #           they're more general than the corresponding member in right.
-    if right_star2 is not None:
+    if right_star2 is not None and not trivial_suffix:
         right_names = {name for name in right.arg_names if name is not None}
         left_only_names = set()
         for name, kind in zip(left.arg_names, left.arg_kinds):

@@ -515,7 +515,6 @@ class FuncBase(Node):
         # Original, not semantically analyzed type (used for reprocessing)
         self.unanalyzed_type: mypy.types.ProperType | None = None
         # If method, reference to TypeInfo
-        # TODO: Type should be Optional[TypeInfo]
         self.info = FUNC_NO_INFO
         self.is_property = False
         self.is_class = False
