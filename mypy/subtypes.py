@@ -468,7 +468,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     and len(left.args) == 1
                     and isinstance(get_proper_type(left.args[0]), AnyType)
                 ):
-                    return True
+                    return not self.proper_subtype
             return False
         if isinstance(right, TypeVarTupleType):
             # tuple[Any, ...] is like Any in the world of tuples (see special case above).
