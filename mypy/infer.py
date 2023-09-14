@@ -29,7 +29,11 @@ class ArgumentInferContext(NamedTuple):
     iterable_type: Instance
 
 
+import mypy
+
+
 def infer_function_type_arguments(
+    checker: mypy.checker.TypeChecker,
     callee_type: CallableType,
     arg_types: Sequence[Type | None],
     arg_kinds: list[ArgKind],
@@ -54,7 +58,7 @@ def infer_function_type_arguments(
     """
     # Infer constraints.
     constraints = infer_constraints_for_callable(
-        callee_type, arg_types, arg_kinds, arg_names, formal_to_actual, context
+        checker, callee_type, arg_types, arg_kinds, arg_names, formal_to_actual, context
     )
 
     # Solve constraints.

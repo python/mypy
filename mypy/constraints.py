@@ -103,7 +103,11 @@ class Constraint:
         return (self.type_var, self.op, self.target) == (other.type_var, other.op, other.target)
 
 
+import mypy
+
+
 def infer_constraints_for_callable(
+    checker: mypy.checker.TypeChecker,
     callee: CallableType,
     arg_types: Sequence[Type | None],
     arg_kinds: list[ArgKind],
@@ -116,7 +120,7 @@ def infer_constraints_for_callable(
     Return a list of constraints.
     """
     constraints: list[Constraint] = []
-    mapper = ArgTypeExpander(context)
+    mapper = ArgTypeExpander(context, checker)
 
     param_spec = callee.param_spec()
     param_spec_arg_types = []

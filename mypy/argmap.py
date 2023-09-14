@@ -160,13 +160,19 @@ class ArgTypeExpander:
     needs a separate instance since instances have per-call state.
     """
 
-    def __init__(self, context: ArgumentInferContext) -> None:
+    import mypy
+
+    def __init__(
+        self, context: ArgumentInferContext, checker: mypy.checker.TypeChecker = None
+    ) -> None:
         # Next tuple *args index to use.
         self.tuple_index = 0
         # Keyword arguments in TypedDict **kwargs used.
         self.kwargs_used: set[str] = set()
         # Type context for `*` and `**` arg kinds.
         self.context = context
+        # TypeChecker to check true argument types for iterables
+        self.checker = checker
 
     def expand_actual_type(
         self,
@@ -214,7 +220,16 @@ class ArgTypeExpander:
                 # ParamSpec is valid in *args but it can't be unpacked.
                 return actual_type
             else:
-                return AnyType(TypeOfAny.from_error)
+                if self.checker is not None:
+                    # get the true type of the arguments of the iterable
+                    iterable_item_type = (
+                        self.checker.analyze_iterable_item_type_without_expression(
+                            actual_type, self.context
+                        )[1]
+                    )
+                    return iterable_item_type
+                else:
+                    return AnyType(TypeOfAny.from_error)
         elif actual_kind == nodes.ARG_STAR2:
             from mypy.subtypes import is_subtype
 
