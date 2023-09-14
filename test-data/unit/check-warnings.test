@@ -154,6 +154,16 @@ def implicit(x: Any):
 def explicit(x: Any) -> Any:  # E: Missing return statement
     if maybe():
         return x
+        
+def explicit_with_none(x: Any) -> Any:
+    if maybe():
+        return x
+    return None
+    
+def explicit_with_just_return(x: Any) -> Any:
+    if maybe():
+        return x
+    return
 
 def mystery(x: Any) -> Mystery:
     if maybe():
