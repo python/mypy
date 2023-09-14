@@ -29,7 +29,8 @@ class ArgumentInferContext(NamedTuple):
     iterable_type: Instance
 
 
-import mypy
+import mypy.checker
+import mypy.nodes
 
 
 def infer_function_type_arguments(

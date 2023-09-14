@@ -160,7 +160,8 @@ class ArgTypeExpander:
     needs a separate instance since instances have per-call state.
     """
 
-    import mypy
+    import mypy.checker
+    import mypy.nodes
 
     def __init__(
         self,
