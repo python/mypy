@@ -90,15 +90,10 @@ def meet_types(s: Type, t: Type) -> ProperType:
             return t
 
     if not isinstance(s, UnboundType) and not isinstance(t, UnboundType):
-        swap = isinstance(t, TupleType) and not isinstance(s, TupleType)
-        if swap:
-            s, t = t, s
         if is_proper_subtype(s, t, ignore_promotions=True):
             return s
         if is_proper_subtype(t, s, ignore_promotions=True):
             return t
-        if swap:
-            s, t = t, s
 
     if isinstance(s, ErasedType):
         return s
