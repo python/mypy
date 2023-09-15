@@ -813,8 +813,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         Note `result` and `always_present_keys` are updated in place. Return true if the
         expression `item_arg` may valid in `callee` TypedDict context.
         """
-        with self.chk.local_type_map(), self.msg.filter_errors():
-            inferred = get_proper_type(self.accept(item_arg, type_context=callee))
+        inferred = get_proper_type(self.accept(item_arg, type_context=callee))
         possible_tds = []
         if isinstance(inferred, TypedDictType):
             possible_tds = [inferred]
