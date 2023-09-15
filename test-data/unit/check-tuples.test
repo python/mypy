@@ -1444,8 +1444,7 @@ T = TypeVar('T')
 def foo(o: CallableTuple[int]) -> int:
     reveal_type(o)  # N: Revealed type is "Tuple[builtins.str, builtins.int, fallback=__main__.CallableTuple[builtins.int]]"
     reveal_type(o.count(3))  # N: Revealed type is "builtins.int"
-    # TODO: incorrect error below
-    return o(1, 2)  # E: Invalid self argument "CallableTuple[int]" to attribute function "__call__" with type "Callable[[CallableTuple[T], int, int], int]"
+    return o(1, 2)
 
 class CallableTuple(Tuple[str, T]):
     def __call__(self, n: int, m: int) -> int:

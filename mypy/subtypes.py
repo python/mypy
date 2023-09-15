@@ -467,6 +467,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 if mapped.type.fullname == right.partial_fallback.type.fullname:
                     if all(isinstance(get_proper_type(a), AnyType) for a in mapped.args):
                         return not self.proper_subtype
+                if mapped.type.tuple_type:
+                    expanded = expand_type_by_instance(mapped.type.tuple_type, mapped)
+                    assert isinstance(expanded, TupleType)
+                    if self._is_subtype(
+                        expanded,
+                        right.copy_modified(fallback=expanded.partial_fallback)
+                    ):
+                        return not self.proper_subtype
             return False
         if isinstance(right, TypeVarTupleType):
             # tuple[Any, ...] is like Any in the world of tuples (see special case above).
