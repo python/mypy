@@ -18,6 +18,7 @@ from mypy.nodes import (
     ARG_STAR2,
     CONTRAVARIANT,
     COVARIANT,
+    INVARIANT,
     Decorator,
     FuncBase,
     OverloadedFuncDef,
@@ -342,6 +343,12 @@ def _is_subtype(
 def check_type_parameter(
     left: Type, right: Type, variance: int, proper_subtype: bool, subtype_context: SubtypeContext
 ) -> bool:
+    # It is safe to consider empty collection literals and similar as covariant, since
+    # such type can't be stored in a variable, see checker.is_valid_inferred_type().
+    if variance == INVARIANT:
+        p_left = get_proper_type(left)
+        if isinstance(p_left, UninhabitedType) and p_left.ambiguous:
+            variance = COVARIANT
     if variance == COVARIANT:
         if proper_subtype:
             return is_proper_subtype(left, right, subtype_context=subtype_context)

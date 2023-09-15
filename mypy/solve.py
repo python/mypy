@@ -239,6 +239,20 @@ def solve_one(lowers: Iterable[Type], uppers: Iterable[Type]) -> Type | None:
     top: Type | None = None
     candidate: Type | None = None
 
+    # Filter out previous results of failed inference, they will only spoil the current pass...
+    new_uppers = []
+    for u in uppers:
+        pu = get_proper_type(u)
+        if not isinstance(pu, UninhabitedType) or not pu.ambiguous:
+            new_uppers.append(u)
+    uppers = new_uppers
+
+    # ...unless this is the only information we have, then we just pass it on.
+    if not uppers and not lowers:
+        candidate = UninhabitedType()
+        candidate.ambiguous = True
+        return candidate
+
     # Process each bound separately, and calculate the lower and upper
     # bounds based on constraints. Note that we assume that the constraint
     # targets do not have constraint references.
