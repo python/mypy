@@ -6479,3 +6479,28 @@ from typing_extensions import TypeVarTuple, Unpack
 Ts = TypeVarTuple("Ts")
 class C(Tuple[Unpack[Ts]]): ...
 [builtins fixtures/tuple.pyi]
+
+[case testNoIncrementalCrashOnInvalidTypedDict]
+import m
+[file m.py]
+import counts
+[file m.py.2]
+import counts
+# touch
+[file counts.py]
+from typing_extensions import TypedDict
+Counts = TypedDict("Counts", {k: int for k in "abc"})  # type: ignore
+[builtins fixtures/dict.pyi]
+
+[case testNoIncrementalCrashOnInvalidTypedDictFunc]
+import m
+[file m.py]
+import counts
+[file m.py.2]
+import counts
+# touch
+[file counts.py]
+from typing_extensions import TypedDict
+def test() -> None:
+    Counts = TypedDict("Counts", {k: int for k in "abc"})  # type: ignore
+[builtins fixtures/dict.pyi]
