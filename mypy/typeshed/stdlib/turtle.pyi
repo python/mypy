@@ -129,6 +129,9 @@ __all__ = [
     "Terminator",
 ]
 
+if sys.version_info >= (3, 12):
+    __all__ += ["teleport"]
+
 # Note: '_Color' is the alias we use for arguments and _AnyColor is the
 # alias we use for return types. Really, these two aliases should be the
 # same, but as per the "no union returns" typeshed policy, we'll return
@@ -647,6 +650,9 @@ def undobufferentries() -> int: ...
 def shape(name: None = None) -> str: ...
 @overload
 def shape(name: str) -> None: ...
+
+if sys.version_info >= (3, 12):
+    def teleport(x: float | None = None, y: float | None = None, *, fill_gap: bool = False) -> None: ...
 
 # Unsafely overlaps when no arguments are provided
 @overload

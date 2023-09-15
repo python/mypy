@@ -106,7 +106,25 @@ class Base:
 # We subclass with "Any" because mocks are explicitly designed to stand in for other types,
 # something that can't be expressed with our static type system.
 class NonCallableMock(Base, Any):
-    def __new__(__cls, *args: Any, **kw: Any) -> Self: ...
+    if sys.version_info >= (3, 12):
+        def __new__(
+            cls,
+            spec: list[str] | object | type[object] | None = None,
+            wraps: Any | None = None,
+            name: str | None = None,
+            spec_set: list[str] | object | type[object] | None = None,
+            parent: NonCallableMock | None = None,
+            _spec_state: Any | None = None,
+            _new_name: str = "",
+            _new_parent: NonCallableMock | None = None,
+            _spec_as_instance: bool = False,
+            _eat_self: bool | None = None,
+            unsafe: bool = False,
+            **kwargs: Any,
+        ) -> Self: ...
+    else:
+        def __new__(__cls, *args: Any, **kw: Any) -> Self: ...
+
     def __init__(
         self,
         spec: list[str] | object | type[object] | None = None,
