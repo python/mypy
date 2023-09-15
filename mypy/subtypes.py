@@ -463,10 +463,10 @@ class SubtypeVisitor(TypeVisitor[bool]):
                         assert unpacked.type.fullname == "builtins.tuple"
                         if isinstance(get_proper_type(unpacked.args[0]), AnyType):
                             return not self.proper_subtype
-                if mapped.type.fullname == "builtins.tuple" and isinstance(
-                    get_proper_type(mapped.args[0]), AnyType
-                ):
-                    return not self.proper_subtype
+
+                if mapped.type.fullname == right.partial_fallback.type.fullname:
+                    if all(isinstance(get_proper_type(a), AnyType) for a in mapped.args):
+                        return not self.proper_subtype
             return False
         if isinstance(right, TypeVarTupleType):
             # tuple[Any, ...] is like Any in the world of tuples (see special case above).
