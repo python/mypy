@@ -602,13 +602,11 @@ class A: pass
 class B: pass
 
 if int():
-    a, aa = G().f(*[a]) \
-      # E: Incompatible types in assignment (expression has type "List[A]", variable has type "A")
+    a, aa = G().f(*[a]) # E: Incompatible types in assignment (expression has type "List[A]", variable has type "A")
 if int():
     aa, a = G().f(*[a]) # E: Incompatible types in assignment (expression has type "List[Never]", variable has type "A")
 if int():
-    ab, aa = G().f(*[a]) \
-      # E: Incompatible types in assignment (expression has type "List[Never]", variable has type "List[A]")
+    ab, aa = G().f(*[a]) # E: Argument 1 to "f" of "G" has incompatible type "*List[A]"; expected "B"
 if int():
     ao, ao = G().f(*[a])
 if int():
