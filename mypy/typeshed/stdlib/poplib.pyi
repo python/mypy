@@ -1,5 +1,6 @@
 import socket
 import ssl
+import sys
 from builtins import list as _list  # conflicts with a method named "list"
 from re import Pattern
 from typing import Any, BinaryIO, NoReturn, overload
@@ -51,14 +52,20 @@ class POP3:
     def stls(self, context: ssl.SSLContext | None = None) -> bytes: ...
 
 class POP3_SSL(POP3):
-    def __init__(
-        self,
-        host: str,
-        port: int = 995,
-        keyfile: str | None = None,
-        certfile: str | None = None,
-        timeout: float = ...,
-        context: ssl.SSLContext | None = None,
-    ) -> None: ...
-    # "context" is actually the last argument, but that breaks LSP and it doesn't really matter because all the arguments are ignored
-    def stls(self, context: Any = None, keyfile: Any = None, certfile: Any = None) -> NoReturn: ...
+    if sys.version_info >= (3, 12):
+        def __init__(
+            self, host: str, port: int = 995, *, timeout: float = ..., context: ssl.SSLContext | None = None
+        ) -> None: ...
+        def stls(self, context: Any = None) -> NoReturn: ...
+    else:
+        def __init__(
+            self,
+            host: str,
+            port: int = 995,
+            keyfile: str | None = None,
+            certfile: str | None = None,
+            timeout: float = ...,
+            context: ssl.SSLContext | None = None,
+        ) -> None: ...
+        # "context" is actually the last argument, but that breaks LSP and it doesn't really matter because all the arguments are ignored
+        def stls(self, context: Any = None, keyfile: Any = None, certfile: Any = None) -> NoReturn: ...

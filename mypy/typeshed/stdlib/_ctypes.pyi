@@ -122,15 +122,23 @@ class CFuncPtr(_PointerLike, _CData):
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
 
-class _CField:
+_GetT = TypeVar("_GetT")
+_SetT = TypeVar("_SetT")
+
+class _CField(Generic[_CT, _GetT, _SetT]):
     offset: int
     size: int
+    @overload
+    def __get__(self, __instance: None, __owner: type[Any] | None) -> Self: ...
+    @overload
+    def __get__(self, __instance: Any, __owner: type[Any] | None) -> _GetT: ...
+    def __set__(self, __instance: Any, __value: _SetT) -> None: ...
 
 class _StructUnionMeta(_CDataMeta):
     _fields_: Sequence[tuple[str, type[_CData]] | tuple[str, type[_CData], int]]
     _pack_: int
     _anonymous_: Sequence[str]
-    def __getattr__(self, name: str) -> _CField: ...
+    def __getattr__(self, name: str) -> _CField[Any, Any, Any]: ...
 
 class _StructUnionBase(_CData, metaclass=_StructUnionMeta):
     def __init__(self, *args: Any, **kw: Any) -> None: ...
@@ -151,7 +159,11 @@ class Array(_CData, Generic[_CT]):
     def _type_(self) -> type[_CT]: ...
     @_type_.setter
     def _type_(self, value: type[_CT]) -> None: ...
-    raw: bytes  # Note: only available if _CT == c_char
+    # Note: only available if _CT == c_char
+    @property
+    def raw(self) -> bytes: ...
+    @raw.setter
+    def raw(self, value: ReadableBuffer) -> None: ...
     value: Any  # Note: bytes if _CT == c_char, str if _CT == c_wchar, unavailable otherwise
     # TODO These methods cannot be annotated correctly at the moment.
     # All of these "Any"s stand for the array's element type, but it's not possible to use _CT
