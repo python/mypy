@@ -270,8 +270,12 @@ def gen_func_item(
         setup_env_for_generator_class(builder)
         load_outer_envs(builder, builder.fn_info.generator_class)
         top_level = builder.top_level_fn_info()
-        if (builder.fn_info.is_nested and isinstance(fitem, FuncDef) and top_level
-            and top_level.any_free_nested_func):
+        if (
+            builder.fn_info.is_nested
+            and isinstance(fitem, FuncDef)
+            and top_level
+            and top_level.any_free_nested_func
+        ):
             setup_func_for_recursive_call(builder, fitem, builder.fn_info.generator_class)
         create_switch_for_generator_class(builder)
         add_raise_exception_blocks_to_generator_class(builder, fitem.line)
@@ -354,11 +358,12 @@ def has_free_nested_func(builder: IRBuilder, fitem: FuncItem) -> bool:
     If a nested function is called recursively, it's free. Typically
     it's not, and we don't need to store it in the environment.
     """
-    if any(isinstance(sym, FuncItem)
-           for sym in builder.free_variables.get(fitem, set())):
+    if any(isinstance(sym, FuncItem) for sym in builder.free_variables.get(fitem, set())):
         return True
-    return any(has_free_nested_func(builder, nested)
-               for nested in builder.encapsulating_funcs.get(fitem, []))
+    return any(
+        has_free_nested_func(builder, nested)
+        for nested in builder.encapsulating_funcs.get(fitem, [])
+    )
 
 
 def gen_func_ir(
