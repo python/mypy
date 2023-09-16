@@ -371,6 +371,9 @@ def args_to_tuple(*args: Unpack[Ts]) -> Tuple[Unpack[Ts]]:
     reveal_type(args_to_tuple(1, *args))  # N: Revealed type is "Tuple[Literal[1]?, Unpack[Ts`-1]]"
     reveal_type(args_to_tuple(*args, 'a'))  # N: Revealed type is "Tuple[Unpack[Ts`-1], Literal['a']?]"
     reveal_type(args_to_tuple(1, *args, 'a'))  # N: Revealed type is "Tuple[Literal[1]?, Unpack[Ts`-1], Literal['a']?]"
+    args_to_tuple(*args, *args)  # E: Passing multiple variadic unpacks in a call is not supported
+    ok = (1, 'a')
+    reveal_type(args_to_tuple(*ok, *ok))  # N: Revealed type is "Tuple[builtins.int, builtins.str, builtins.int, builtins.str]"
     if int():
         return args
     else:
@@ -381,6 +384,7 @@ vt: Tuple[int, ...]
 reveal_type(args_to_tuple(1, *vt))  # N: Revealed type is "Tuple[Literal[1]?, Unpack[builtins.tuple[builtins.int, ...]]]"
 reveal_type(args_to_tuple(*vt, 'a'))  # N: Revealed type is "Tuple[Unpack[builtins.tuple[builtins.int, ...]], Literal['a']?]"
 reveal_type(args_to_tuple(1, *vt, 'a'))  # N: Revealed type is "Tuple[Literal[1]?, Unpack[builtins.tuple[builtins.int, ...]], Literal['a']?]"
+args_to_tuple(*vt, *vt)  # E: Passing multiple variadic unpacks in a call is not supported
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTuplePep646TypeVarStarArgs]

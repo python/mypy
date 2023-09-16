@@ -1638,6 +1638,27 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 callee.type_object().name, abstract_attributes, context
             )
 
+        var_arg = callee.var_arg()
+        if var_arg and isinstance(var_arg.typ, UnpackType):
+            # It is hard to support multiple variadic unpacks (except for old-style *args: int),
+            # fail gracefully to avoid crashes later.
+            seen_unpack = False
+            for arg, arg_kind in zip(args, arg_kinds):
+                if arg_kind != ARG_STAR:
+                    continue
+                arg_type = get_proper_type(self.accept(arg))
+                if not isinstance(arg_type, TupleType) or any(
+                    isinstance(t, UnpackType) for t in arg_type.items
+                ):
+                    if seen_unpack:
+                        self.msg.fail(
+                            "Passing multiple variadic unpacks in a call is not supported",
+                            context,
+                            code=codes.CALL_ARG,
+                        )
+                        return AnyType(TypeOfAny.from_error), callee
+                    seen_unpack = True
+
         formal_to_actual = map_actuals_to_formals(
             arg_kinds,
             arg_names,
