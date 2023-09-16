@@ -179,7 +179,6 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
             )
             return obj
         else:
-            print([4])
             return builder.read(builder.get_assignment_target(expr, for_read=True), expr.line)
 
     return builder.load_global(expr)

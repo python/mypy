@@ -222,6 +222,7 @@ def gen_func_item(
     is_decorated = fitem in builder.fdefs_to_decorators
     is_singledispatch = fitem in builder.singledispatch_impls
     in_non_ext = False
+    any_free_nested_func = has_free_nested_func(builder, fitem)
     class_name = None
     if cdef:
         ir = builder.mapper.type_to_ir[cdef.info]
@@ -234,14 +235,15 @@ def gen_func_item(
         func_name = name
     builder.enter(
         FuncInfo(
-            fitem,
-            func_name,
-            class_name,
-            gen_func_ns(builder),
-            is_nested,
-            contains_nested,
-            is_decorated,
-            in_non_ext,
+            fitem=fitem,
+            name=func_name,
+            class_name=class_name,
+            namespace=gen_func_ns(builder),
+            is_nested=is_nested,
+            contains_nested=contains_nested,
+            is_decorated=is_decorated,
+            in_non_ext=in_non_ext,
+            any_free_nested_func=any_free_nested_func,
         )
     )
 
@@ -267,7 +269,9 @@ def gen_func_item(
         builder.enter(fn_info)
         setup_env_for_generator_class(builder)
         load_outer_envs(builder, builder.fn_info.generator_class)
-        if builder.fn_info.is_nested and isinstance(fitem, FuncDef):
+        top_level = builder.top_level_fn_info()
+        if (builder.fn_info.is_nested and isinstance(fitem, FuncDef) and top_level
+            and top_level.any_free_nested_func):
             setup_func_for_recursive_call(builder, fitem, builder.fn_info.generator_class)
         create_switch_for_generator_class(builder)
         add_raise_exception_blocks_to_generator_class(builder, fitem.line)
@@ -292,7 +296,6 @@ def gen_func_item(
     elif builder.fn_info.is_nested or builder.fn_info.in_non_ext:
         env_for_func = builder.fn_info.callable_class
 
-    print(builder.free_variables)
     if builder.fn_info.fitem in builder.free_variables:
         # Sort the variables to keep things deterministic
         for var in sorted(builder.free_variables[builder.fn_info.fitem], key=lambda x: x.name):
@@ -308,12 +311,10 @@ def gen_func_item(
                 # the same name and signature across conditional blocks
                 # will generate different callable classes, so the callable
                 # class that gets instantiated must be generic.
-                print('here', repr(nested_fn))
                 builder.add_var_to_env_class(
                     nested_fn, object_rprimitive, env_for_func, reassign=False
                 )
 
-    print([111], fitem.body)
     builder.accept(fitem.body)
     builder.maybe_add_implicit_return()
 
@@ -345,6 +346,19 @@ def gen_func_item(
         return gen_dispatch_func_ir(builder, fitem, fn_info.name, name, sig)
 
     return func_ir, func_reg
+
+
+def has_free_nested_func(builder: IRBuilder, fitem: FuncItem) -> bool:
+    """Does function have a free nested function?
+
+    If a nested function is called recursively, it's free. Typically
+    it's not, and we don't need to store it in the environment.
+    """
+    if any(isinstance(sym, FuncItem)
+           for sym in builder.free_variables.get(fitem, set())):
+        return True
+    return any(has_free_nested_func(builder, nested)
+               for nested in builder.encapsulating_funcs.get(fitem, []))
 
 
 def gen_func_ir(
@@ -768,14 +782,11 @@ def get_func_target(builder: IRBuilder, fdef: FuncDef) -> AssignmentTarget:
     and add it to the current environment.
     """
     if fdef.original_def:
-        print([2])
         # Get the target associated with the previously defined FuncDef.
         return builder.lookup(fdef.original_def)
 
-    if 0:
-        if builder.fn_info.is_generator or builder.fn_info.contains_nested:
-            print([3])
-            return builder.lookup(fdef)
+    if builder.fn_info.is_generator or builder.fn_info.any_free_nested_func:
+        return builder.lookup(fdef)
 
     return builder.add_local_reg(fdef, object_rprimitive)
 
