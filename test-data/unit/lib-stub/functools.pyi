@@ -1,4 +1,4 @@
-from typing import Generic, TypeVar, Callable, Any, Mapping
+from typing import Generic, TypeVar, Callable, Any, Mapping, overload
 
 _T = TypeVar("_T")
 

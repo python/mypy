@@ -37,15 +37,16 @@ T = TypeVar('T', bound=A)
 class G(Generic[T]):
     def __init__(self, x: T) -> None: pass
 
-v = None # type: G[A]
-w = None # type: G[B]
-x = None # type: G[str] # E: Type argument "str" of "G" must be a subtype of "A"
+v: G[A]
+w: G[B]
+x: G[str]  # E: Type argument "str" of "G" must be a subtype of "A"
 y = G('a') # E: Value of type variable "T" of "G" cannot be "str"
 z = G(A())
 z = G(B())
 
 
 [case testBoundVoid]
+# flags: --no-strict-optional
 from typing import TypeVar, Generic
 T = TypeVar('T', bound=int)
 class C(Generic[T]):
@@ -70,10 +71,11 @@ def g(): pass
 
 f(g())
 C(g())
-z = None # type: C
+z: C
 
 
 [case testBoundHigherOrderWithVoid]
+# flags: --no-strict-optional
 from typing import TypeVar, Callable
 class A: pass
 T = TypeVar('T', bound=A)

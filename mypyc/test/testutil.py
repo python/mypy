@@ -102,13 +102,13 @@ def build_ir_for_single_file2(
 
     # By default generate IR compatible with the earliest supported Python C API.
     # If a test needs more recent API features, this should be overridden.
-    compiler_options = compiler_options or CompilerOptions(capi_version=(3, 5))
+    compiler_options = compiler_options or CompilerOptions(capi_version=(3, 7))
     options = Options()
     options.show_traceback = True
     options.hide_error_codes = True
     options.use_builtins_fixtures = True
     options.strict_optional = True
-    options.python_version = (3, 6)
+    options.python_version = compiler_options.python_version or (3, 6)
     options.export_types = True
     options.preserve_asts = True
     options.allow_empty_bodies = True
@@ -121,7 +121,7 @@ def build_ir_for_single_file2(
     if result.errors:
         raise CompileError(result.errors)
 
-    errors = Errors()
+    errors = Errors(options)
     modules = build_ir(
         [result.files["__main__"]],
         result.graph,
@@ -272,11 +272,12 @@ def infer_ir_build_options_from_test_name(name: str) -> CompilerOptions | None:
         return None
     if "_32bit" in name and not IS_32_BIT_PLATFORM:
         return None
-    options = CompilerOptions(strip_asserts="StripAssert" in name, capi_version=(3, 5))
+    options = CompilerOptions(strip_asserts="StripAssert" in name, capi_version=(3, 7))
     # A suffix like _python3.8 is used to set the target C API version.
     m = re.search(r"_python([3-9]+)_([0-9]+)(_|\b)", name)
     if m:
         options.capi_version = (int(m.group(1)), int(m.group(2)))
+        options.python_version = options.capi_version
     elif "_py" in name or "_Python" in name:
         assert False, f"Invalid _py* suffix (should be _pythonX_Y): {name}"
     return options

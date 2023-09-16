@@ -36,14 +36,14 @@ import b
 def f() -> int:
     reveal_type(b.x)
     return b.x
-y = 0 + 0
+y = 0 + int()
 [file b.py]
 import a
 def g() -> int:
     reveal_type(a.y)
     return a.y
 1 / ''
-x = 1 + 1
+x = 1 + int()
 
 [out]
 ==== Errors flushed ====

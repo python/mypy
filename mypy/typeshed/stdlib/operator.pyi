@@ -1,5 +1,4 @@
 import sys
-
 from _operator import *
 
 __all__ = [

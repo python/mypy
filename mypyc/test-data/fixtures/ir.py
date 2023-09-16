@@ -1,6 +1,7 @@
 # These builtins stubs are used implicitly in AST to IR generation
 # test cases.
 
+import _typeshed
 from typing import (
     TypeVar, Generic, List, Iterator, Iterable, Dict, Optional, Tuple, Any, Set,
     overload, Mapping, Union, Callable, Sequence, FrozenSet, Protocol
@@ -8,6 +9,7 @@ from typing import (
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
+T_contra = TypeVar('T_contra', contravariant=True)
 S = TypeVar('S')
 K = TypeVar('K') # for keys in mapping
 V = TypeVar('V') # for values in mapping
@@ -15,6 +17,26 @@ V = TypeVar('V') # for values in mapping
 class __SupportsAbs(Protocol[T_co]):
     def __abs__(self) -> T_co: pass
 
+class __SupportsDivMod(Protocol[T_contra, T_co]):
+    def __divmod__(self, other: T_contra) -> T_co: ...
+
+class __SupportsRDivMod(Protocol[T_contra, T_co]):
+    def __rdivmod__(self, other: T_contra) -> T_co: ...
+
+_M = TypeVar("_M", contravariant=True)
+
+class __SupportsPow2(Protocol[T_contra, T_co]):
+    def __pow__(self, other: T_contra) -> T_co: ...
+
+class __SupportsPow3NoneOnly(Protocol[T_contra, T_co]):
+    def __pow__(self, other: T_contra, modulo: None = ...) -> T_co: ...
+
+class __SupportsPow3(Protocol[T_contra, _M, T_co]):
+    def __pow__(self, other: T_contra, modulo: _M) -> T_co: ...
+
+__SupportsSomeKindOfPow = Union[
+    __SupportsPow2[Any, Any], __SupportsPow3NoneOnly[Any, Any] | __SupportsPow3[Any, Any, Any]
+]
 
 class object:
     def __init__(self) -> None: pass
@@ -42,6 +64,7 @@ class int:
     def __floordiv__(self, x: int) -> int: pass
     def __truediv__(self, x: float) -> float: pass
     def __mod__(self, x: int) -> int: pass
+    def __divmod__(self, x: float) -> Tuple[float, float]: pass
     def __neg__(self) -> int: pass
     def __pos__(self) -> int: pass
     def __abs__(self) -> int: pass
@@ -64,6 +87,8 @@ class str:
     @overload
     def __init__(self, x: object) -> None: pass
     def __add__(self, x: str) -> str: pass
+    def __mul__(self, x: int) -> str: pass
+    def __rmul__(self, x: int) -> str: pass
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
     def __lt__(self, x: str) -> bool: ...
@@ -89,18 +114,31 @@ class str:
 class float:
     def __init__(self, x: object) -> None: pass
     def __add__(self, n: float) -> float: pass
+    def __radd__(self, n: float) -> float: pass
     def __sub__(self, n: float) -> float: pass
+    def __rsub__(self, n: float) -> float: pass
     def __mul__(self, n: float) -> float: pass
     def __truediv__(self, n: float) -> float: pass
+    def __floordiv__(self, n: float) -> float: pass
+    def __mod__(self, n: float) -> float: pass
+    def __pow__(self, n: float) -> float: pass
     def __neg__(self) -> float: pass
     def __pos__(self) -> float: pass
     def __abs__(self) -> float: pass
     def __invert__(self) -> float: pass
+    def __eq__(self, x: object) -> bool: pass
+    def __ne__(self, x: object) -> bool: pass
+    def __lt__(self, x: float) -> bool: ...
+    def __le__(self, x: float) -> bool: ...
+    def __gt__(self, x: float) -> bool: ...
+    def __ge__(self, x: float) -> bool: ...
 
 class complex:
     def __init__(self, x: object, y: object = None) -> None: pass
     def __add__(self, n: complex) -> complex: pass
+    def __radd__(self, n: float) -> complex: pass
     def __sub__(self, n: complex) -> complex: pass
+    def __rsub__(self, n: float) -> complex: pass
     def __mul__(self, n: complex) -> complex: pass
     def __truediv__(self, n: complex) -> complex: pass
     def __neg__(self) -> complex: pass
@@ -111,6 +149,8 @@ class bytes:
     @overload
     def __init__(self, x: object) -> None: ...
     def __add__(self, x: bytes) -> bytes: ...
+    def __mul__(self, x: int) -> bytes: ...
+    def __rmul__(self, x: int) -> bytes: ...
     def __eq__(self, x: object) -> bool: ...
     def __ne__(self, x: object) -> bool: ...
     @overload
@@ -221,12 +261,14 @@ class set(Generic[T]):
     def pop(self) -> T: pass
     def update(self, x: Iterable[S]) -> None: pass
     def __or__(self, s: Union[Set[S], FrozenSet[S]]) -> Set[Union[T, S]]: ...
+    def __xor__(self, s: Union[Set[S], FrozenSet[S]]) -> Set[Union[T, S]]: ...
 
 class frozenset(Generic[T]):
     def __init__(self, i: Optional[Iterable[T]] = None) -> None: pass
     def __iter__(self) -> Iterator[T]: pass
     def __len__(self) -> int: pass
     def __or__(self, s: Union[Set[S], FrozenSet[S]]) -> FrozenSet[Union[T, S]]: ...
+    def __xor__(self, s: Union[Set[S], FrozenSet[S]]) -> FrozenSet[Union[T, S]]: ...
 
 class slice: pass
 
@@ -263,6 +305,7 @@ class ValueError(Exception): pass
 class AttributeError(Exception): pass
 class ImportError(Exception): pass
 class NameError(Exception): pass
+class UnboundLocalError(NameError): pass
 class LookupError(Exception): pass
 class KeyError(LookupError): pass
 class IndexError(LookupError): pass
@@ -305,6 +348,16 @@ def zip(x: Iterable[T], y: Iterable[S]) -> Iterator[Tuple[T, S]]: ...
 def zip(x: Iterable[T], y: Iterable[S], z: Iterable[V]) -> Iterator[Tuple[T, S, V]]: ...
 def eval(e: str) -> Any: ...
 def abs(x: __SupportsAbs[T]) -> T: ...
+@overload
+def divmod(x: __SupportsDivMod[T_contra, T_co], y: T_contra) -> T_co: ...
+@overload
+def divmod(x: T_contra, y: __SupportsRDivMod[T_contra, T_co]) -> T_co: ...
+@overload
+def pow(base: __SupportsPow2[T_contra, T_co], exp: T_contra, mod: None = None) -> T_co: ...
+@overload
+def pow(base: __SupportsPow3NoneOnly[T_contra, T_co], exp: T_contra, mod: None = None) -> T_co: ...
+@overload
+def pow(base: __SupportsPow3[T_contra, _M, T_co], exp: T_contra, mod: _M) -> T_co: ...
 def exit() -> None: ...
 def min(x: T, y: T) -> T: ...
 def max(x: T, y: T) -> T: ...

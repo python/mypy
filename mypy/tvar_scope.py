@@ -90,11 +90,12 @@ class TypeVarLikeScope:
             namespace = ""
         if isinstance(tvar_expr, TypeVarExpr):
             tvar_def: TypeVarLikeType = TypeVarType(
-                name,
-                tvar_expr.fullname,
-                TypeVarId(i, namespace=namespace),
+                name=name,
+                fullname=tvar_expr.fullname,
+                id=TypeVarId(i, namespace=namespace),
                 values=tvar_expr.values,
                 upper_bound=tvar_expr.upper_bound,
+                default=tvar_expr.default,
                 variance=tvar_expr.variance,
                 line=tvar_expr.line,
                 column=tvar_expr.column,
@@ -106,6 +107,7 @@ class TypeVarLikeScope:
                 i,
                 flavor=ParamSpecFlavor.BARE,
                 upper_bound=tvar_expr.upper_bound,
+                default=tvar_expr.default,
                 line=tvar_expr.line,
                 column=tvar_expr.column,
             )
@@ -115,6 +117,8 @@ class TypeVarLikeScope:
                 tvar_expr.fullname,
                 i,
                 upper_bound=tvar_expr.upper_bound,
+                tuple_fallback=tvar_expr.tuple_fallback,
+                default=tvar_expr.default,
                 line=tvar_expr.line,
                 column=tvar_expr.column,
             )
@@ -128,7 +132,7 @@ class TypeVarLikeScope:
 
     def get_binding(self, item: str | SymbolTableNode) -> TypeVarLikeType | None:
         fullname = item.fullname if isinstance(item, SymbolTableNode) else item
-        assert fullname is not None
+        assert fullname
         if fullname in self.scope:
             return self.scope[fullname]
         elif self.parent is not None:

@@ -11,7 +11,9 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Final,
     Iterator,
+    List,
     Optional,
     Sequence,
     Tuple,
@@ -19,12 +21,12 @@ from typing import (
     Union,
     cast,
 )
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 
 from mypy_extensions import trait
 
 import mypy.strconv
-from mypy.bogus_type import Bogus
+from mypy.options import Options
 from mypy.util import short_type
 from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
 
@@ -70,14 +72,6 @@ class Context:
 
         if end_column is not None:
             self.end_column = end_column
-
-    def get_line(self) -> int:
-        """Don't use. Use x.line."""
-        return self.line
-
-    def get_column(self) -> int:
-        """Don't use. Use x.column."""
-        return self.column
 
 
 if TYPE_CHECKING:
@@ -144,18 +138,7 @@ type_aliases: Final = {
 
 # This keeps track of the oldest supported Python version where the corresponding
 # alias source is available.
-type_aliases_source_versions: Final = {
-    "typing.List": (2, 7),
-    "typing.Dict": (2, 7),
-    "typing.Set": (2, 7),
-    "typing.FrozenSet": (2, 7),
-    "typing.ChainMap": (3, 3),
-    "typing.Counter": (2, 7),
-    "typing.DefaultDict": (2, 7),
-    "typing.Deque": (2, 7),
-    "typing.OrderedDict": (3, 7),
-    "typing.LiteralString": (3, 11),
-}
+type_aliases_source_versions: Final = {"typing.LiteralString": (3, 11)}
 
 # This keeps track of aliases in `typing_extensions`, which we treat specially.
 typing_extensions_aliases: Final = {
@@ -181,7 +164,7 @@ del _nongen_builtins["builtins.str"]
 
 
 def get_nongen_builtins(python_version: tuple[int, int]) -> dict[str, str]:
-    # After 3.9 with pep585 generic builtins are allowed.
+    # After 3.9 with pep585 generic builtins are allowed
     return _nongen_builtins if python_version < (3, 9) else {}
 
 
@@ -198,13 +181,18 @@ class Node(Context):
     __slots__ = ()
 
     def __str__(self) -> str:
-        ans = self.accept(mypy.strconv.StrConv())
+        ans = self.accept(mypy.strconv.StrConv(options=Options()))
         if ans is None:
             return repr(self)
         return ans
 
+    def str_with_options(self, options: Options) -> str:
+        ans = self.accept(mypy.strconv.StrConv(options=options))
+        assert ans
+        return ans
+
     def accept(self, visitor: NodeVisitor[T]) -> T:
-        raise RuntimeError("Not implemented")
+        raise RuntimeError("Not implemented", type(self))
 
 
 @trait
@@ -214,7 +202,7 @@ class Statement(Node):
     __slots__ = ()
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
-        raise RuntimeError("Not implemented")
+        raise RuntimeError("Not implemented", type(self))
 
 
 @trait
@@ -224,7 +212,7 @@ class Expression(Node):
     __slots__ = ()
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
-        raise RuntimeError("Not implemented")
+        raise RuntimeError("Not implemented", type(self))
 
 
 class FakeExpression(Expression):
@@ -254,12 +242,10 @@ class SymbolNode(Node):
     def name(self) -> str:
         pass
 
-    # fullname can often be None even though the type system
-    # disagrees. We mark this with Bogus to let mypyc know not to
-    # worry about it.
+    # Fully qualified name
     @property
     @abstractmethod
-    def fullname(self) -> Bogus[str]:
+    def fullname(self) -> str:
         pass
 
     @abstractmethod
@@ -291,6 +277,7 @@ class MypyFile(SymbolNode):
         "names",
         "imports",
         "ignored_lines",
+        "skipped_lines",
         "is_stub",
         "is_cache_skeleton",
         "is_partial_stub_package",
@@ -301,7 +288,7 @@ class MypyFile(SymbolNode):
     __match_args__ = ("name", "path", "defs")
 
     # Fully qualified module name
-    _fullname: Bogus[str]
+    _fullname: str
     # Path to the file (empty string if not known)
     path: str
     # Top-level definitions and statements
@@ -317,6 +304,9 @@ class MypyFile(SymbolNode):
     # If the value is empty, ignore all errors; otherwise, the list contains all
     # error codes to ignore.
     ignored_lines: dict[int, list[str]]
+    # Lines that were skipped during semantic analysis e.g. due to ALWAYS_FALSE, MYPY_FALSE,
+    # or platform/version checks. Those lines would not be type-checked.
+    skipped_lines: set[int]
     # Is this file represented by a stub file (.pyi)?
     is_stub: bool
     # Is this loaded from the cache and thus missing the actual body of the file?
@@ -349,6 +339,7 @@ class MypyFile(SymbolNode):
             self.ignored_lines = ignored_lines
         else:
             self.ignored_lines = {}
+        self.skipped_lines = set()
 
         self.path = ""
         self.is_stub = False
@@ -368,7 +359,7 @@ class MypyFile(SymbolNode):
         return "" if not self._fullname else self._fullname.split(".")[-1]
 
     @property
-    def fullname(self) -> Bogus[str]:
+    def fullname(self) -> str:
         return self._fullname
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
@@ -471,60 +462,20 @@ class ImportFrom(ImportBase):
 class ImportAll(ImportBase):
     """from m import *"""
 
-    __slots__ = ("id", "relative", "imported_names")
+    __slots__ = ("id", "relative")
 
     __match_args__ = ("id", "relative")
 
     id: str
     relative: int
-    # NOTE: Only filled and used by old semantic analyzer.
-    imported_names: list[str]
 
     def __init__(self, id: str, relative: int) -> None:
         super().__init__()
         self.id = id
         self.relative = relative
-        self.imported_names = []
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_import_all(self)
-
-
-class ImportedName(SymbolNode):
-    """Indirect reference to a fullname stored in symbol table.
-
-    This node is not present in the original program as such. This is
-    just a temporary artifact in binding imported names. After semantic
-    analysis pass 2, these references should be replaced with direct
-    reference to a real AST node.
-
-    Note that this is neither a Statement nor an Expression so this
-    can't be visited.
-    """
-
-    __slots__ = ("target_fullname",)
-
-    def __init__(self, target_fullname: str) -> None:
-        super().__init__()
-        self.target_fullname = target_fullname
-
-    @property
-    def name(self) -> str:
-        return self.target_fullname.split(".")[-1]
-
-    @property
-    def fullname(self) -> str:
-        return self.target_fullname
-
-    def serialize(self) -> JsonDict:
-        assert False, "ImportedName leaked from semantic analysis"
-
-    @classmethod
-    def deserialize(cls, data: JsonDict) -> ImportedName:
-        assert False, "ImportedName should never be serialized"
-
-    def __str__(self) -> str:
-        return f"ImportedName({self.target_fullname})"
 
 
 FUNCBASE_FLAGS: Final = ["is_property", "is_class", "is_static", "is_final"]
@@ -550,8 +501,9 @@ class FuncBase(Node):
         "info",
         "is_property",
         "is_class",  # Uses "@classmethod" (explicit or implicit)
-        "is_static",  # Uses "@staticmethod"
+        "is_static",  # Uses "@staticmethod" (explicit or implicit)
         "is_final",  # Uses "@final"
+        "is_explicit_override",  # Uses "@override"
         "_fullname",
     )
 
@@ -563,15 +515,14 @@ class FuncBase(Node):
         # Original, not semantically analyzed type (used for reprocessing)
         self.unanalyzed_type: mypy.types.ProperType | None = None
         # If method, reference to TypeInfo
-        # TODO: Type should be Optional[TypeInfo]
         self.info = FUNC_NO_INFO
         self.is_property = False
         self.is_class = False
         self.is_static = False
         self.is_final = False
+        self.is_explicit_override = False
         # Name with module prefix
-        # TODO: Type should be Optional[str]
-        self._fullname = cast(Bogus[str], None)
+        self._fullname = ""
 
     @property
     @abstractmethod
@@ -579,7 +530,7 @@ class FuncBase(Node):
         pass
 
     @property
-    def fullname(self) -> Bogus[str]:
+    def fullname(self) -> str:
         return self._fullname
 
 
@@ -607,10 +558,9 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         self.items = items
         self.unanalyzed_items = items.copy()
         self.impl = None
-        if len(items) > 0:
+        if items:
             # TODO: figure out how to reliably set end position (we don't know the impl here).
             self.set_line(items[0].line, items[0].column)
-        self.is_final = False
 
     @property
     def name(self) -> str:
@@ -752,18 +702,6 @@ class FuncItem(FuncBase):
     def max_fixed_argc(self) -> int:
         return self.max_pos
 
-    def set_line(
-        self,
-        target: Context | int,
-        column: int | None = None,
-        end_line: int | None = None,
-        end_column: int | None = None,
-    ) -> None:
-        super().set_line(target, column, end_line, end_column)
-        for arg in self.arguments:
-            # TODO: set arguments line/column to their precise locations.
-            arg.set_line(self.line, self.column, self.end_line, end_column)
-
     def is_dynamic(self) -> bool:
         return self.type is None
 
@@ -798,6 +736,9 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "deco_line",
         "is_trivial_body",
         "is_mypy_only",
+        # Present only when a function is decorated with @typing.datasclass_transform or similar
+        "dataclass_transform_spec",
+        "docstring",
     )
 
     __match_args__ = ("name", "arguments", "type", "body")
@@ -818,13 +759,14 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # Is this an abstract method with trivial body?
         # Such methods can't be called via super().
         self.is_trivial_body = False
-        self.is_final = False
         # Original conditional definition
         self.original_def: None | FuncDef | Var | Decorator = None
         # Used for error reporting (to keep backward compatibility with pre-3.8)
         self.deco_line: int | None = None
         # Definitions that appear in if TYPE_CHECKING are marked with this flag.
         self.is_mypy_only = False
+        self.dataclass_transform_spec: DataclassTransformSpec | None = None
+        self.docstring: str | None = None
 
     @property
     def name(self) -> str:
@@ -850,6 +792,11 @@ class FuncDef(FuncItem, SymbolNode, Statement):
             "flags": get_flags(self, FUNCDEF_FLAGS),
             "abstract_status": self.abstract_status,
             # TODO: Do we need expanded, original_def?
+            "dataclass_transform_spec": (
+                None
+                if self.dataclass_transform_spec is None
+                else self.dataclass_transform_spec.serialize()
+            ),
         }
 
     @classmethod
@@ -872,6 +819,11 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         ret.arg_names = data["arg_names"]
         ret.arg_kinds = [ArgKind(x) for x in data["arg_kinds"]]
         ret.abstract_status = data["abstract_status"]
+        ret.dataclass_transform_spec = (
+            DataclassTransformSpec.deserialize(data["dataclass_transform_spec"])
+            if data["dataclass_transform_spec"] is not None
+            else None
+        )
         # Leave these uninitialized so that future uses will trigger an error
         del ret.arguments
         del ret.max_pos
@@ -915,7 +867,7 @@ class Decorator(SymbolNode, Statement):
         return self.func.name
 
     @property
-    def fullname(self) -> Bogus[str]:
+    def fullname(self) -> str:
         return self.func.fullname
 
     @property
@@ -951,6 +903,7 @@ class Decorator(SymbolNode, Statement):
 
 VAR_FLAGS: Final = [
     "is_self",
+    "is_cls",
     "is_initialized_in_class",
     "is_staticmethod",
     "is_classmethod",
@@ -985,6 +938,7 @@ class Var(SymbolNode):
         "type",
         "final_value",
         "is_self",
+        "is_cls",
         "is_ready",
         "is_inferred",
         "is_initialized_in_class",
@@ -1011,12 +965,14 @@ class Var(SymbolNode):
         super().__init__()
         self._name = name  # Name without module prefix
         # TODO: Should be Optional[str]
-        self._fullname = cast("Bogus[str]", None)  # Name with module prefix
+        self._fullname = ""  # Name with module prefix
         # TODO: Should be Optional[TypeInfo]
         self.info = VAR_NO_INFO
         self.type: mypy.types.Type | None = type  # Declared or inferred type, or None
         # Is this the first argument to an ordinary method (usually "self")?
         self.is_self = False
+        # Is this the first argument to a classmethod (typically "cls")?
+        self.is_cls = False
         self.is_ready = True  # If inferred, is the inferred type available?
         self.is_inferred = self.type is None
         # Is this initialized explicitly to a non-None value in class body?
@@ -1035,7 +991,7 @@ class Var(SymbolNode):
         # If constant value is a simple literal,
         # store the literal value (unboxed) for the benefit of
         # tools like mypyc.
-        self.final_value: int | float | bool | str | None = None
+        self.final_value: int | float | complex | bool | str | None = None
         # Where the value was set (only for class attributes)
         self.final_unset_in_class = False
         self.final_set_in_init = False
@@ -1063,7 +1019,7 @@ class Var(SymbolNode):
         return self._name
 
     @property
-    def fullname(self) -> Bogus[str]:
+    def fullname(self) -> str:
         return self._fullname
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
@@ -1101,7 +1057,7 @@ class ClassDef(Statement):
 
     __slots__ = (
         "name",
-        "fullname",
+        "_fullname",
         "defs",
         "type_vars",
         "base_type_exprs",
@@ -1113,12 +1069,14 @@ class ClassDef(Statement):
         "analyzed",
         "has_incompatible_baseclass",
         "deco_line",
+        "docstring",
+        "removed_statements",
     )
 
     __match_args__ = ("name", "defs")
 
     name: str  # Name of the class without module prefix
-    fullname: Bogus[str]  # Fully qualified name of the class
+    _fullname: str  # Fully qualified name of the class
     defs: Block
     type_vars: list[mypy.types.TypeVarLikeType]
     # Base class expressions (not semantically analyzed -- can be arbitrary expressions)
@@ -1131,6 +1089,8 @@ class ClassDef(Statement):
     keywords: dict[str, Expression]
     analyzed: Expression | None
     has_incompatible_baseclass: bool
+    # Used by special forms like NamedTuple and TypedDict to store invalid statements
+    removed_statements: list[Statement]
 
     def __init__(
         self,
@@ -1143,7 +1103,7 @@ class ClassDef(Statement):
     ) -> None:
         super().__init__()
         self.name = name
-        self.fullname = None  # type: ignore[assignment]
+        self._fullname = ""
         self.defs = defs
         self.type_vars = type_vars or []
         self.base_type_exprs = base_type_exprs or []
@@ -1156,6 +1116,16 @@ class ClassDef(Statement):
         self.has_incompatible_baseclass = False
         # Used for error reporting (to keep backwad compatibility with pre-3.8)
         self.deco_line: int | None = None
+        self.docstring: str | None = None
+        self.removed_statements = []
+
+    @property
+    def fullname(self) -> str:
+        return self._fullname
+
+    @fullname.setter
+    def fullname(self, v: str) -> None:
+        self._fullname = v
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_class_def(self)
@@ -1669,6 +1639,10 @@ class StrExpr(Expression):
         return visitor.visit_str_expr(self)
 
 
+def is_StrExpr_list(seq: list[Expression]) -> TypeGuard[list[StrExpr]]:
+    return all(isinstance(item, StrExpr) for item in seq)
+
+
 class BytesExpr(Expression):
     """Bytes literal"""
 
@@ -1765,7 +1739,7 @@ class RefExpr(Expression):
     __slots__ = (
         "kind",
         "node",
-        "fullname",
+        "_fullname",
         "is_new_def",
         "is_inferred_def",
         "is_alias_rvalue",
@@ -1779,7 +1753,7 @@ class RefExpr(Expression):
         # Var, FuncDef or TypeInfo that describes this
         self.node: SymbolNode | None = None
         # Fully qualified name (or name if not global)
-        self.fullname: str | None = None
+        self._fullname = ""
         # Does this define a new name?
         self.is_new_def = False
         # Does this define a new name with inferred type?
@@ -1791,6 +1765,14 @@ class RefExpr(Expression):
         self.is_alias_rvalue = False
         # Cache type guard from callable_type.type_guard
         self.type_guard: mypy.types.Type | None = None
+
+    @property
+    def fullname(self) -> str:
+        return self._fullname
+
+    @fullname.setter
+    def fullname(self, v: str) -> None:
+        self._fullname = v
 
 
 class NameExpr(RefExpr):
@@ -1805,7 +1787,7 @@ class NameExpr(RefExpr):
 
     def __init__(self, name: str) -> None:
         super().__init__()
-        self.name = name  # Name referred to (may be qualified)
+        self.name = name  # Name referred to
         # Is this a l.h.s. of a special form assignment like typed dict or type variable?
         self.is_special_form = False
 
@@ -2009,10 +1991,20 @@ class AssignmentExpr(Expression):
 
 
 class OpExpr(Expression):
-    """Binary operation (other than . or [] or comparison operators,
-    which have specific nodes)."""
+    """Binary operation.
 
-    __slots__ = ("op", "left", "right", "method_type", "right_always", "right_unreachable")
+    The dot (.), [] and comparison operators have more specific nodes.
+    """
+
+    __slots__ = (
+        "op",
+        "left",
+        "right",
+        "method_type",
+        "right_always",
+        "right_unreachable",
+        "analyzed",
+    )
 
     __match_args__ = ("left", "op", "right")
 
@@ -2025,8 +2017,12 @@ class OpExpr(Expression):
     right_always: bool
     # Per static analysis only: Is the right side unreachable?
     right_unreachable: bool
+    # Used for expressions that represent a type "X | Y" in some contexts
+    analyzed: TypeAliasExpr | None
 
-    def __init__(self, op: str, left: Expression, right: Expression) -> None:
+    def __init__(
+        self, op: str, left: Expression, right: Expression, analyzed: TypeAliasExpr | None = None
+    ) -> None:
         super().__init__()
         self.op = op
         self.left = left
@@ -2034,6 +2030,7 @@ class OpExpr(Expression):
         self.method_type = None
         self.right_always = False
         self.right_unreachable = False
+        self.analyzed = analyzed
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_op_expr(self)
@@ -2190,7 +2187,8 @@ class LambdaExpr(FuncItem, Expression):
 
     def expr(self) -> Expression:
         """Return the expression (the body) of the lambda."""
-        ret = cast(ReturnStmt, self.body.body[-1])
+        ret = self.body.body[-1]
+        assert isinstance(ret, ReturnStmt)
         expr = ret.expr
         assert expr is not None  # lambda can't have empty body
         return expr
@@ -2433,13 +2431,16 @@ class TypeVarLikeExpr(SymbolNode, Expression):
     Note that they are constructed by the semantic analyzer.
     """
 
-    __slots__ = ("_name", "_fullname", "upper_bound", "variance")
+    __slots__ = ("_name", "_fullname", "upper_bound", "default", "variance")
 
     _name: str
     _fullname: str
     # Upper bound: only subtypes of upper_bound are valid as values. By default
     # this is 'object', meaning no restriction.
     upper_bound: mypy.types.Type
+    # Default: used to resolve the TypeVar if the default is not explicitly given.
+    # By default this is 'AnyType(TypeOfAny.from_omitted_generics)'. See PEP 696.
+    default: mypy.types.Type
     # Variance of the type variable. Invariant is the default.
     # TypeVar(..., covariant=True) defines a covariant type variable.
     # TypeVar(..., contravariant=True) defines a contravariant type
@@ -2447,12 +2448,18 @@ class TypeVarLikeExpr(SymbolNode, Expression):
     variance: int
 
     def __init__(
-        self, name: str, fullname: str, upper_bound: mypy.types.Type, variance: int = INVARIANT
+        self,
+        name: str,
+        fullname: str,
+        upper_bound: mypy.types.Type,
+        default: mypy.types.Type,
+        variance: int = INVARIANT,
     ) -> None:
         super().__init__()
         self._name = name
         self._fullname = fullname
         self.upper_bound = upper_bound
+        self.default = default
         self.variance = variance
 
     @property
@@ -2478,7 +2485,7 @@ class TypeVarExpr(TypeVarLikeExpr):
 
     __slots__ = ("values",)
 
-    __match_args__ = ("name", "values", "upper_bound")
+    __match_args__ = ("name", "values", "upper_bound", "default")
 
     # Value restriction: only types in the list are valid as values. If the
     # list is empty, there is no restriction.
@@ -2490,9 +2497,10 @@ class TypeVarExpr(TypeVarLikeExpr):
         fullname: str,
         values: list[mypy.types.Type],
         upper_bound: mypy.types.Type,
+        default: mypy.types.Type,
         variance: int = INVARIANT,
     ) -> None:
-        super().__init__(name, fullname, upper_bound, variance)
+        super().__init__(name, fullname, upper_bound, default, variance)
         self.values = values
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
@@ -2505,6 +2513,7 @@ class TypeVarExpr(TypeVarLikeExpr):
             "fullname": self._fullname,
             "values": [t.serialize() for t in self.values],
             "upper_bound": self.upper_bound.serialize(),
+            "default": self.default.serialize(),
             "variance": self.variance,
         }
 
@@ -2516,6 +2525,7 @@ class TypeVarExpr(TypeVarLikeExpr):
             data["fullname"],
             [mypy.types.deserialize_type(v) for v in data["values"]],
             mypy.types.deserialize_type(data["upper_bound"]),
+            mypy.types.deserialize_type(data["default"]),
             data["variance"],
         )
 
@@ -2523,7 +2533,7 @@ class TypeVarExpr(TypeVarLikeExpr):
 class ParamSpecExpr(TypeVarLikeExpr):
     __slots__ = ()
 
-    __match_args__ = ("name", "upper_bound")
+    __match_args__ = ("name", "upper_bound", "default")
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_paramspec_expr(self)
@@ -2534,6 +2544,7 @@ class ParamSpecExpr(TypeVarLikeExpr):
             "name": self._name,
             "fullname": self._fullname,
             "upper_bound": self.upper_bound.serialize(),
+            "default": self.default.serialize(),
             "variance": self.variance,
         }
 
@@ -2544,6 +2555,7 @@ class ParamSpecExpr(TypeVarLikeExpr):
             data["name"],
             data["fullname"],
             mypy.types.deserialize_type(data["upper_bound"]),
+            mypy.types.deserialize_type(data["default"]),
             data["variance"],
         )
 
@@ -2551,9 +2563,23 @@ class ParamSpecExpr(TypeVarLikeExpr):
 class TypeVarTupleExpr(TypeVarLikeExpr):
     """Type variable tuple expression TypeVarTuple(...)."""
 
-    __slots__ = ()
+    __slots__ = "tuple_fallback"
 
-    __match_args__ = ("name", "upper_bound")
+    tuple_fallback: mypy.types.Instance
+
+    __match_args__ = ("name", "upper_bound", "default")
+
+    def __init__(
+        self,
+        name: str,
+        fullname: str,
+        upper_bound: mypy.types.Type,
+        tuple_fallback: mypy.types.Instance,
+        default: mypy.types.Type,
+        variance: int = INVARIANT,
+    ) -> None:
+        super().__init__(name, fullname, upper_bound, default, variance)
+        self.tuple_fallback = tuple_fallback
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_type_var_tuple_expr(self)
@@ -2564,6 +2590,8 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
             "name": self._name,
             "fullname": self._fullname,
             "upper_bound": self.upper_bound.serialize(),
+            "tuple_fallback": self.tuple_fallback.serialize(),
+            "default": self.default.serialize(),
             "variance": self.variance,
         }
 
@@ -2574,6 +2602,8 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
             data["name"],
             data["fullname"],
             mypy.types.deserialize_type(data["upper_bound"]),
+            mypy.types.Instance.deserialize(data["tuple_fallback"]),
+            mypy.types.deserialize_type(data["default"]),
             data["variance"],
         )
 
@@ -2581,27 +2611,14 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
 class TypeAliasExpr(Expression):
     """Type alias expression (rvalue)."""
 
-    __slots__ = ("type", "tvars", "no_args", "node")
+    __slots__ = ("node",)
 
-    __match_args__ = ("type", "tvars", "no_args", "node")
+    __match_args__ = ("node",)
 
-    # The target type.
-    type: mypy.types.Type
-    # Names of unbound type variables used to define the alias
-    tvars: list[str]
-    # Whether this alias was defined in bare form. Used to distinguish
-    # between
-    #     A = List
-    # and
-    #     A = List[Any]
-    no_args: bool
     node: TypeAlias
 
     def __init__(self, node: TypeAlias) -> None:
         super().__init__()
-        self.type = node.target
-        self.tvars = node.alias_tvars
-        self.no_args = node.no_args
         self.node = node
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
@@ -2763,6 +2780,25 @@ class TempNode(Expression):
         return visitor.visit_temp_node(self)
 
 
+# Special attributes not collected as protocol members by Python 3.12
+# See typing._SPECIAL_NAMES
+EXCLUDED_PROTOCOL_ATTRIBUTES: Final = frozenset(
+    {
+        "__abstractmethods__",
+        "__annotations__",
+        "__dict__",
+        "__doc__",
+        "__init__",
+        "__module__",
+        "__new__",
+        "__slots__",
+        "__subclasshook__",
+        "__weakref__",
+        "__class_getitem__",  # Since Python 3.9
+    }
+)
+
+
 class TypeInfo(SymbolNode):
     """The type structure of a single class.
 
@@ -2798,6 +2834,7 @@ class TypeInfo(SymbolNode):
         "inferring",
         "is_enum",
         "fallback_to_any",
+        "meta_fallback_to_any",
         "type_vars",
         "has_param_spec_type",
         "bases",
@@ -2813,9 +2850,11 @@ class TypeInfo(SymbolNode):
         "has_type_var_tuple_type",
         "type_var_tuple_prefix",
         "type_var_tuple_suffix",
+        "self_type",
+        "dataclass_transform_spec",
     )
 
-    _fullname: Bogus[str]  # Fully qualified name
+    _fullname: str  # Fully qualified name
     # Fully qualified name for the module this type was defined in. This
     # information is also in the fullname, but is harder to extract in the
     # case of nested class definitions.
@@ -2891,6 +2930,10 @@ class TypeInfo(SymbolNode):
     # (and __setattr__), but without the __getattr__ method.
     fallback_to_any: bool
 
+    # Same as above but for cases where metaclass has type Any. This will suppress
+    # all attribute errors only for *class object* access.
+    meta_fallback_to_any: bool
+
     # Information related to type annotations.
 
     # Generic type variable names (full names)
@@ -2916,7 +2959,7 @@ class TypeInfo(SymbolNode):
     # This results in some unintuitive results, such as that even
     # though i64 is compatible with int and int is compatible with
     # float, i64 is *not* compatible with float.
-    alt_promote: TypeInfo | None
+    alt_promote: mypy.types.Instance | None
 
     # Representation of a Tuple[...] base class, if the class has any
     # (e.g., for named tuples). If this is not None, the actual Type
@@ -2953,10 +2996,17 @@ class TypeInfo(SymbolNode):
     # in case we are doing multiple semantic analysis passes.
     special_alias: TypeAlias | None
 
+    # Shared type variable for typing.Self in this class (if used, otherwise None).
+    self_type: mypy.types.TypeVarType | None
+
+    # Added if the corresponding class is directly decorated with `typing.dataclass_transform`
+    dataclass_transform_spec: DataclassTransformSpec | None
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
         "fallback_to_any",
+        "meta_fallback_to_any",
         "is_named_tuple",
         "is_newtype",
         "is_protocol",
@@ -2996,6 +3046,7 @@ class TypeInfo(SymbolNode):
         self.is_final = False
         self.is_enum = False
         self.fallback_to_any = False
+        self.meta_fallback_to_any = False
         self._promote = []
         self.alt_promote = None
         self.tuple_type = None
@@ -3005,6 +3056,8 @@ class TypeInfo(SymbolNode):
         self.is_newtype = False
         self.is_intersection = False
         self.metadata = {}
+        self.self_type = None
+        self.dataclass_transform_spec = None
 
     def add_type_vars(self) -> None:
         self.has_type_var_tuple_type = False
@@ -3028,7 +3081,7 @@ class TypeInfo(SymbolNode):
         return self.defn.name
 
     @property
-    def fullname(self) -> Bogus[str]:
+    def fullname(self) -> str:
         return self._fullname
 
     def is_generic(self) -> bool:
@@ -3057,8 +3110,10 @@ class TypeInfo(SymbolNode):
         for base in self.mro[:-1]:  # we skip "object" since everyone implements it
             if base.is_protocol:
                 for name, node in base.names.items():
-                    if isinstance(node.node, (TypeAlias, TypeVarExpr)):
+                    if isinstance(node.node, (TypeAlias, TypeVarExpr, MypyFile)):
                         # These are auxiliary definitions (and type aliases are prohibited).
+                        continue
+                    if name in EXCLUDED_PROTOCOL_ATTRIBUTES:
                         continue
                     members.add(name)
         return sorted(list(members))
@@ -3157,22 +3212,21 @@ class TypeInfo(SymbolNode):
 
         This includes the most important information about the type.
         """
-        return self.dump()
+        options = Options()
+        return self.dump(
+            str_conv=mypy.strconv.StrConv(options=options),
+            type_str_conv=mypy.types.TypeStrVisitor(options=options),
+        )
 
     def dump(
-        self,
-        str_conv: mypy.strconv.StrConv | None = None,
-        type_str_conv: mypy.types.TypeStrVisitor | None = None,
+        self, str_conv: mypy.strconv.StrConv, type_str_conv: mypy.types.TypeStrVisitor
     ) -> str:
         """Return a string dump of the contents of the TypeInfo."""
-        if not str_conv:
-            str_conv = mypy.strconv.StrConv()
+
         base: str = ""
 
         def type_str(typ: mypy.types.Type) -> str:
-            if type_str_conv:
-                return typ.accept(type_str_conv)
-            return str(typ)
+            return typ.accept(type_str_conv)
 
         head = "TypeInfo" + str_conv.format_id(self)
         if self.bases:
@@ -3208,6 +3262,7 @@ class TypeInfo(SymbolNode):
             "bases": [b.serialize() for b in self.bases],
             "mro": [c.fullname for c in self.mro],
             "_promote": [p.serialize() for p in self._promote],
+            "alt_promote": None if self.alt_promote is None else self.alt_promote.serialize(),
             "declared_metaclass": (
                 None if self.declared_metaclass is None else self.declared_metaclass.serialize()
             ),
@@ -3222,6 +3277,12 @@ class TypeInfo(SymbolNode):
             "metadata": self.metadata,
             "slots": list(sorted(self.slots)) if self.slots is not None else None,
             "deletable_attributes": self.deletable_attributes,
+            "self_type": self.self_type.serialize() if self.self_type is not None else None,
+            "dataclass_transform_spec": (
+                self.dataclass_transform_spec.serialize()
+                if self.dataclass_transform_spec is not None
+                else None
+            ),
         }
         return data
 
@@ -3243,6 +3304,11 @@ class TypeInfo(SymbolNode):
             assert isinstance(t, mypy.types.ProperType)
             _promote.append(t)
         ti._promote = _promote
+        ti.alt_promote = (
+            None
+            if data["alt_promote"] is None
+            else mypy.types.Instance.deserialize(data["alt_promote"])
+        )
         ti.declared_metaclass = (
             None
             if data["declared_metaclass"] is None
@@ -3278,11 +3344,16 @@ class TypeInfo(SymbolNode):
         ti.slots = set(data["slots"]) if data["slots"] is not None else None
         ti.deletable_attributes = data["deletable_attributes"]
         set_flags(ti, data["flags"])
+        st = data["self_type"]
+        ti.self_type = mypy.types.TypeVarType.deserialize(st) if st is not None else None
+        if data.get("dataclass_transform_spec") is not None:
+            ti.dataclass_transform_spec = DataclassTransformSpec.deserialize(
+                data["dataclass_transform_spec"]
+            )
         return ti
 
 
 class FakeInfo(TypeInfo):
-
     __slots__ = ("msg",)
 
     # types.py defines a single instance of this class, called types.NOT_READY.
@@ -3342,10 +3413,9 @@ class TypeAlias(SymbolNode):
     class-valued attributes. See SemanticAnalyzerPass2.check_and_set_up_type_alias
     for details.
 
-    Aliases can be generic. Currently, mypy uses unbound type variables for
-    generic aliases and identifies them by name. Essentially, type aliases
-    work as macros that expand textually. The definition and expansion rules are
-    following:
+    Aliases can be generic. We use bound type variables for generic aliases, similar
+    to classes. Essentially, type aliases work as macros that expand textually.
+    The definition and expansion rules are following:
 
         1. An alias targeting a generic class without explicit variables act as
         the given class (this doesn't apply to TypedDict, Tuple and Callable, which
@@ -3396,11 +3466,11 @@ class TypeAlias(SymbolNode):
 
     Meaning of other fields:
 
-    target: The target type. For generic aliases contains unbound type variables
-        as nested types.
+    target: The target type. For generic aliases contains bound type variables
+        as nested types (currently TypeVar and ParamSpec are supported).
     _fullname: Qualified name of this type alias. This is used in particular
         to track fine grained dependencies from aliases.
-    alias_tvars: Names of unbound type variables used to define this alias.
+    alias_tvars: Type variables used to define this alias.
     normalized: Used to distinguish between `A = List`, and `A = list`. Both
         are internally stored using `builtins.list` (because `typing.List` is
         itself an alias), while the second cannot be subscripted because of
@@ -3418,6 +3488,7 @@ class TypeAlias(SymbolNode):
         "normalized",
         "_is_recursive",
         "eager",
+        "tvar_tuple_index",
     )
 
     __match_args__ = ("name", "target", "alias_tvars", "no_args")
@@ -3429,7 +3500,7 @@ class TypeAlias(SymbolNode):
         line: int,
         column: int,
         *,
-        alias_tvars: list[str] | None = None,
+        alias_tvars: list[mypy.types.TypeVarLikeType] | None = None,
         no_args: bool = False,
         normalized: bool = False,
         eager: bool = False,
@@ -3445,14 +3516,28 @@ class TypeAlias(SymbolNode):
         # it is the cached value.
         self._is_recursive: bool | None = None
         self.eager = eager
+        self.tvar_tuple_index = None
+        for i, t in enumerate(alias_tvars):
+            if isinstance(t, mypy.types.TypeVarTupleType):
+                self.tvar_tuple_index = i
         super().__init__(line, column)
 
     @classmethod
     def from_tuple_type(cls, info: TypeInfo) -> TypeAlias:
-        """Generate an alias to the tuple type described by a given TypeInfo."""
+        """Generate an alias to the tuple type described by a given TypeInfo.
+
+        NOTE: this doesn't set type alias type variables (for generic tuple types),
+        they must be set by the caller (when fully analyzed).
+        """
         assert info.tuple_type
+        # TODO: is it possible to refactor this to set the correct type vars here?
         return TypeAlias(
-            info.tuple_type.copy_modified(fallback=mypy.types.Instance(info, info.defn.type_vars)),
+            info.tuple_type.copy_modified(
+                # Create an Instance similar to fill_typevars().
+                fallback=mypy.types.Instance(
+                    info, mypy.types.type_vars_as_args(info.defn.type_vars)
+                )
+            ),
             info.fullname,
             info.line,
             info.column,
@@ -3460,11 +3545,19 @@ class TypeAlias(SymbolNode):
 
     @classmethod
     def from_typeddict_type(cls, info: TypeInfo) -> TypeAlias:
-        """Generate an alias to the TypedDict type described by a given TypeInfo."""
+        """Generate an alias to the TypedDict type described by a given TypeInfo.
+
+        NOTE: this doesn't set type alias type variables (for generic TypedDicts),
+        they must be set by the caller (when fully analyzed).
+        """
         assert info.typeddict_type
+        # TODO: is it possible to refactor this to set the correct type vars here?
         return TypeAlias(
             info.typeddict_type.copy_modified(
-                fallback=mypy.types.Instance(info, info.defn.type_vars)
+                # Create an Instance similar to fill_typevars().
+                fallback=mypy.types.Instance(
+                    info, mypy.types.type_vars_as_args(info.defn.type_vars)
+                )
             ),
             info.fullname,
             info.line,
@@ -3479,12 +3572,16 @@ class TypeAlias(SymbolNode):
     def fullname(self) -> str:
         return self._fullname
 
+    @property
+    def has_param_spec_type(self) -> bool:
+        return any(isinstance(v, mypy.types.ParamSpecType) for v in self.alias_tvars)
+
     def serialize(self) -> JsonDict:
         data: JsonDict = {
             ".class": "TypeAlias",
             "fullname": self._fullname,
             "target": self.target.serialize(),
-            "alias_tvars": self.alias_tvars,
+            "alias_tvars": [v.serialize() for v in self.alias_tvars],
             "no_args": self.no_args,
             "normalized": self.normalized,
             "line": self.line,
@@ -3499,7 +3596,8 @@ class TypeAlias(SymbolNode):
     def deserialize(cls, data: JsonDict) -> TypeAlias:
         assert data[".class"] == "TypeAlias"
         fullname = data["fullname"]
-        alias_tvars = data["alias_tvars"]
+        alias_tvars = [mypy.types.deserialize_type(v) for v in data["alias_tvars"]]
+        assert all(isinstance(t, mypy.types.TypeVarLikeType) for t in alias_tvars)
         target = mypy.types.deserialize_type(data["target"])
         no_args = data["no_args"]
         normalized = data["normalized"]
@@ -3510,7 +3608,7 @@ class TypeAlias(SymbolNode):
             fullname,
             line,
             column,
-            alias_tvars=alias_tvars,
+            alias_tvars=cast(List[mypy.types.TypeVarLikeType], alias_tvars),
             no_args=no_args,
             normalized=normalized,
         )
@@ -3737,11 +3835,7 @@ class SymbolTableNode:
             if prefix is not None:
                 fullname = self.node.fullname
                 if (
-                    # See the comment above SymbolNode.fullname -- fullname can often be None,
-                    # but for complex reasons it's annotated as being `Bogus[str]` instead of `str | None`,
-                    # meaning mypy erroneously thinks the `fullname is not None` check here is redundant
-                    fullname is not None  # type: ignore[redundant-expr]
-                    and "." in fullname
+                    "." in fullname
                     and fullname != prefix + "." + name
                     and not (isinstance(self.node, Var) and self.node.from_module_getattr)
                 ):
@@ -3824,6 +3918,56 @@ class SymbolTable(Dict[str, SymbolTableNode]):
             if key != ".class":
                 st[key] = SymbolTableNode.deserialize(value)
         return st
+
+
+class DataclassTransformSpec:
+    """Specifies how a dataclass-like transform should be applied. The fields here are based on the
+    parameters accepted by `typing.dataclass_transform`."""
+
+    __slots__ = (
+        "eq_default",
+        "order_default",
+        "kw_only_default",
+        "frozen_default",
+        "field_specifiers",
+    )
+
+    def __init__(
+        self,
+        *,
+        eq_default: bool | None = None,
+        order_default: bool | None = None,
+        kw_only_default: bool | None = None,
+        field_specifiers: tuple[str, ...] | None = None,
+        # Specified outside of PEP 681:
+        # frozen_default was added to CPythonin https://github.com/python/cpython/pull/99958 citing
+        # positive discussion in typing-sig
+        frozen_default: bool | None = None,
+    ):
+        self.eq_default = eq_default if eq_default is not None else True
+        self.order_default = order_default if order_default is not None else False
+        self.kw_only_default = kw_only_default if kw_only_default is not None else False
+        self.frozen_default = frozen_default if frozen_default is not None else False
+        self.field_specifiers = field_specifiers if field_specifiers is not None else ()
+
+    def serialize(self) -> JsonDict:
+        return {
+            "eq_default": self.eq_default,
+            "order_default": self.order_default,
+            "kw_only_default": self.kw_only_default,
+            "frozen_default": self.frozen_default,
+            "field_specifiers": list(self.field_specifiers),
+        }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> DataclassTransformSpec:
+        return DataclassTransformSpec(
+            eq_default=data.get("eq_default"),
+            order_default=data.get("order_default"),
+            kw_only_default=data.get("kw_only_default"),
+            frozen_default=data.get("frozen_default"),
+            field_specifiers=tuple(data.get("field_specifiers", [])),
+        )
 
 
 def get_flags(node: Node, names: list[str]) -> list[str]:

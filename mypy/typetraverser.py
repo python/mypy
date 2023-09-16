@@ -20,7 +20,6 @@ from mypy.types import (
     PartialType,
     PlaceholderType,
     RawExpressionType,
-    StarType,
     SyntheticTypeVisitor,
     TupleType,
     Type,
@@ -115,9 +114,6 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
     def visit_type_list(self, t: TypeList) -> None:
         self.traverse_types(t.items)
 
-    def visit_star_type(self, t: StarType) -> None:
-        t.type.accept(self)
-
     def visit_ellipsis_type(self, t: EllipsisType) -> None:
         pass
 
@@ -131,6 +127,9 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         pass
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
+        # TODO: sometimes we want to traverse target as well
+        # We need to find a way to indicate explicitly the intent,
+        # maybe make this method abstract (like for TypeTranslator)?
         self.traverse_types(t.args)
 
     def visit_unpack_type(self, t: UnpackType) -> None:

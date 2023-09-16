@@ -3,12 +3,11 @@ from __future__ import annotations
 from typing import Callable, Sequence
 
 import mypy.subtypes
-from mypy.expandtype import expand_type, expand_unpack_with_variables
-from mypy.nodes import ARG_POS, ARG_STAR, Context
+from mypy.expandtype import expand_type
+from mypy.nodes import Context
 from mypy.types import (
     AnyType,
     CallableType,
-    Parameters,
     ParamSpecType,
     PartialType,
     Type,
@@ -16,6 +15,7 @@ from mypy.types import (
     TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
+    UninhabitedType,
     UnpackType,
     get_proper_type,
 )
@@ -29,13 +29,15 @@ def get_target_type(
     context: Context,
     skip_unsatisfied: bool,
 ) -> Type | None:
+    p_type = get_proper_type(type)
+    if isinstance(p_type, UninhabitedType) and tvar.has_default():
+        return tvar.default
     if isinstance(tvar, ParamSpecType):
         return type
     if isinstance(tvar, TypeVarTupleType):
         return type
     assert isinstance(tvar, TypeVarType)
     values = tvar.values
-    p_type = get_proper_type(type)
     if values:
         if isinstance(p_type, AnyType):
             return type
@@ -102,42 +104,30 @@ def apply_generic_arguments(
         if target_type is not None:
             id_to_type[tvar.id] = target_type
 
+    # TODO: validate arg_kinds/arg_names for ParamSpec and TypeVarTuple replacements,
+    # not just type variable bounds above.
     param_spec = callable.param_spec()
     if param_spec is not None:
         nt = id_to_type.get(param_spec.id)
         if nt is not None:
-            nt = get_proper_type(nt)
-            if isinstance(nt, CallableType) or isinstance(nt, Parameters):
-                callable = callable.expand_param_spec(nt)
+            # ParamSpec expansion is special-cased, so we need to always expand callable
+            # as a whole, not expanding arguments individually.
+            callable = expand_type(callable, id_to_type)
+            assert isinstance(callable, CallableType)
+            return callable.copy_modified(
+                variables=[tv for tv in tvars if tv.id not in id_to_type]
+            )
 
     # Apply arguments to argument types.
     var_arg = callable.var_arg()
     if var_arg is not None and isinstance(var_arg.typ, UnpackType):
-        expanded = expand_unpack_with_variables(var_arg.typ, id_to_type)
-        assert isinstance(expanded, list)
-        # Handle other cases later.
-        for t in expanded:
-            assert not isinstance(t, UnpackType)
-        star_index = callable.arg_kinds.index(ARG_STAR)
-        arg_kinds = (
-            callable.arg_kinds[:star_index]
-            + [ARG_POS] * len(expanded)
-            + callable.arg_kinds[star_index + 1 :]
-        )
-        arg_names = (
-            callable.arg_names[:star_index]
-            + [None] * len(expanded)
-            + callable.arg_names[star_index + 1 :]
-        )
-        arg_types = (
-            [expand_type(at, id_to_type) for at in callable.arg_types[:star_index]]
-            + expanded
-            + [expand_type(at, id_to_type) for at in callable.arg_types[star_index + 1 :]]
-        )
+        callable = expand_type(callable, id_to_type)
+        assert isinstance(callable, CallableType)
+        return callable.copy_modified(variables=[tv for tv in tvars if tv.id not in id_to_type])
     else:
-        arg_types = [expand_type(at, id_to_type) for at in callable.arg_types]
-        arg_kinds = callable.arg_kinds
-        arg_names = callable.arg_names
+        callable = callable.copy_modified(
+            arg_types=[expand_type(at, id_to_type) for at in callable.arg_types]
+        )
 
     # Apply arguments to TypeGuard if any.
     if callable.type_guard is not None:
@@ -146,13 +136,13 @@ def apply_generic_arguments(
         type_guard = None
 
     # The callable may retain some type vars if only some were applied.
+    # TODO: move apply_poly() logic from checkexpr.py here when new inference
+    # becomes universally used (i.e. in all passes + in unification).
+    # With this new logic we can actually *add* some new free variables.
     remaining_tvars = [tv for tv in tvars if tv.id not in id_to_type]
 
     return callable.copy_modified(
-        arg_types=arg_types,
         ret_type=expand_type(callable.ret_type, id_to_type),
         variables=remaining_tvars,
         type_guard=type_guard,
-        arg_kinds=arg_kinds,
-        arg_names=arg_names,
     )

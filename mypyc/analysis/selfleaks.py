@@ -14,6 +14,9 @@ from mypyc.ir.ops import (
     Cast,
     ComparisonOp,
     Extend,
+    FloatComparisonOp,
+    FloatNeg,
+    FloatOp,
     GetAttr,
     GetElementPtr,
     Goto,
@@ -37,6 +40,7 @@ from mypyc.ir.ops import (
     Truncate,
     TupleGet,
     TupleSet,
+    Unborrow,
     Unbox,
     Unreachable,
 )
@@ -160,6 +164,15 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
     def visit_comparison_op(self, op: ComparisonOp) -> GenAndKill:
         return CLEAN
 
+    def visit_float_op(self, op: FloatOp) -> GenAndKill:
+        return CLEAN
+
+    def visit_float_neg(self, op: FloatNeg) -> GenAndKill:
+        return CLEAN
+
+    def visit_float_comparison_op(self, op: FloatComparisonOp) -> GenAndKill:
+        return CLEAN
+
     def visit_load_mem(self, op: LoadMem) -> GenAndKill:
         return CLEAN
 
@@ -170,6 +183,9 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
         return CLEAN
 
     def visit_keep_alive(self, op: KeepAlive) -> GenAndKill:
+        return CLEAN
+
+    def visit_unborrow(self, op: Unborrow) -> GenAndKill:
         return CLEAN
 
     def check_register_op(self, op: RegisterOp) -> GenAndKill:

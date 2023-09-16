@@ -329,12 +329,9 @@ perform an exhaustiveness check, you need to update your code to use an
 .. code-block:: python
 
   from typing import Literal, NoReturn
+  from typing_extensions import assert_never
 
   PossibleValues = Literal['one', 'two']
-
-  def assert_never(value: NoReturn) -> NoReturn:
-      # This also works at runtime as well
-      assert False, f'This code should never be reached, got: {value}'
 
   def validate(x: PossibleValues) -> bool:
       if x == 'one':
@@ -443,10 +440,7 @@ Let's start with a definition:
 
   from enum import Enum
   from typing import NoReturn
-
-  def assert_never(value: NoReturn) -> NoReturn:
-      # This also works in runtime as well:
-      assert False, f'This code should never be reached, got: {value}'
+  from typing_extensions import assert_never
 
   class Direction(Enum):
       up = 'up'
@@ -495,13 +489,13 @@ the same way Python's runtime does:
     ...     right = 'right'
     Traceback (most recent call last):
       ...
-    TypeError: Other: cannot extend enumeration 'Some'
+    TypeError: AllDirection: cannot extend enumeration 'Direction'
 
   Mypy also catches this error:
 
   .. code-block:: python
 
-    class AllDirection(Direction):  # E: Cannot inherit from final class "Some"
+    class AllDirection(Direction):  # E: Cannot inherit from final class "Direction"
         left = 'left'
         right = 'right'
 

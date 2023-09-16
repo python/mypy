@@ -37,8 +37,7 @@ optimized implementations of all ops.
 
 from __future__ import annotations
 
-from typing import List, NamedTuple, Optional, Tuple
-from typing_extensions import Final
+from typing import Final, NamedTuple
 
 from mypyc.ir.ops import StealsDescription
 from mypyc.ir.rtypes import RType
@@ -47,29 +46,27 @@ from mypyc.ir.rtypes import RType
 # is only used for primitives. We translate it away during IR building.
 ERR_NEG_INT: Final = 10
 
-CFunctionDescription = NamedTuple(
-    "CFunctionDescription",
-    [
-        ("name", str),
-        ("arg_types", List[RType]),
-        ("return_type", RType),
-        ("var_arg_type", Optional[RType]),
-        ("truncated_type", Optional[RType]),
-        ("c_function_name", str),
-        ("error_kind", int),
-        ("steals", StealsDescription),
-        ("is_borrowed", bool),
-        ("ordering", Optional[List[int]]),
-        ("extra_int_constants", List[Tuple[int, RType]]),
-        ("priority", int),
-    ],
-)
+
+class CFunctionDescription(NamedTuple):
+    name: str
+    arg_types: list[RType]
+    return_type: RType
+    var_arg_type: RType | None
+    truncated_type: RType | None
+    c_function_name: str
+    error_kind: int
+    steals: StealsDescription
+    is_borrowed: bool
+    ordering: list[int] | None
+    extra_int_constants: list[tuple[int, RType]]
+    priority: int
 
 
 # A description for C load operations including LoadGlobal and LoadAddress
-LoadAddressDescription = NamedTuple(
-    "LoadAddressDescription", [("name", str), ("type", RType), ("src", str)]
-)  # name of the target to load
+class LoadAddressDescription(NamedTuple):
+    name: str
+    type: RType
+    src: str  # name of the target to load
 
 
 # CallC op for method call(such as 'str.join')

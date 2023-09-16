@@ -3,17 +3,22 @@
 The mypy configuration file
 ===========================
 
-Mypy supports reading configuration settings from a file.  By default
-it uses the file ``mypy.ini`` with a fallback to ``.mypy.ini``, then ``pyproject.toml``,
-then ``setup.cfg`` in the current directory, then ``$XDG_CONFIG_HOME/mypy/config``, then
-``~/.config/mypy/config``, and finally ``.mypy.ini`` in the user home directory
-if none of them are found; the :option:`--config-file <mypy --config-file>` command-line flag can be used
-to read a different file instead (see :ref:`config-file-flag`).
+Mypy supports reading configuration settings from a file with the following precedence order:
+
+    1. ``./mypy.ini``
+    2. ``./.mypy.ini``
+    3. ``./pyproject.toml``
+    4. ``./setup.cfg``
+    5. ``$XDG_CONFIG_HOME/mypy/config``
+    6. ``~/.config/mypy/config``
+    7. ``~/.mypy.ini``
 
 It is important to understand that there is no merging of configuration
-files, as it would lead to ambiguity.  The :option:`--config-file <mypy --config-file>` flag
-has the highest precedence and must be correct; otherwise mypy will report
-an error and exit.  Without command line option, mypy will look for configuration files in the above mentioned order.
+files, as it would lead to ambiguity. The :option:`--config-file <mypy --config-file>`
+command-line flag has the highest precedence and
+must be correct; otherwise mypy will report an error and exit. Without the
+command line option, mypy will look for configuration files in the
+precedence order above.
 
 Most flags correspond closely to :ref:`command-line flags
 <command-line>` but there are some differences in flag names and some
@@ -103,8 +108,8 @@ their name or by (when applicable) swapping their prefix from
 ``disallow`` to ``allow`` (and vice versa).
 
 
-Examples
-********
+Example ``mypy.ini``
+********************
 
 Here is an example of a ``mypy.ini`` file. To use this config file, place it at the root
 of your repo and run mypy.
@@ -210,7 +215,7 @@ section of the command line docs.
     line.  Mypy *will* recursively type check any submodules of the provided
     package. This flag is identical to :confval:`modules` apart from this
     behavior.
-    
+
     This option may only be set in the global section (``[mypy]``).
 
 .. confval:: exclude
@@ -361,7 +366,7 @@ section of the command line docs.
 
 .. confval:: no_site_packages
 
-    :type: bool
+    :type: boolean
     :default: False
 
     Disables using type information in installed packages (see :pep:`561`).
@@ -485,7 +490,38 @@ section of the command line docs.
     :default: False
 
     Disallows calling functions without type annotations from functions with type
-    annotations.
+    annotations. Note that when used in per-module options, it enables/disables
+    this check **inside** the module(s) specified, not for functions that come
+    from that module(s), for example config like this:
+
+    .. code-block:: ini
+
+        [mypy]
+        disallow_untyped_calls = True
+
+        [mypy-some.library.*]
+        disallow_untyped_calls = False
+
+    will disable this check inside ``some.library``, not for your code that
+    imports ``some.library``. If you want to selectively disable this check for
+    all your code that imports ``some.library`` you should instead use
+    :confval:`untyped_calls_exclude`, for example:
+
+    .. code-block:: ini
+
+        [mypy]
+        disallow_untyped_calls = True
+        untyped_calls_exclude = some.library
+
+.. confval:: untyped_calls_exclude
+
+    :type: comma-separated list of strings
+
+    Selectively excludes functions and methods defined in specific packages,
+    modules, and classes from action of :confval:`disallow_untyped_calls`.
+    This also applies to all submodules of packages (i.e. everything inside
+    a given prefix). Note, this option does not support per-file configuration,
+    the exclusions list is defined globally for all your code.
 
 .. confval:: disallow_untyped_defs
 
@@ -493,14 +529,19 @@ section of the command line docs.
     :default: False
 
     Disallows defining functions without type annotations or with incomplete type
-    annotations.
+    annotations (a superset of :confval:`disallow_incomplete_defs`).
+
+    For example, it would report an error for :code:`def f(a, b)` and :code:`def f(a: int, b)`.
 
 .. confval:: disallow_incomplete_defs
 
     :type: boolean
     :default: False
 
-    Disallows defining functions with incomplete type annotations.
+    Disallows defining functions with incomplete type annotations, while still
+    allowing entirely unannotated definitions.
+
+    For example, it would report an error for :code:`def f(a: int, b)` but not :code:`def f(a, b)`.
 
 .. confval:: check_untyped_defs
 
@@ -775,6 +816,22 @@ These options may only be set in the global section (``[mypy]``).
 
     Show absolute paths to files.
 
+.. confval:: force_uppercase_builtins
+
+    :type: boolean
+    :default: False
+
+    Always use ``List`` instead of ``list`` in error messages,
+    even on Python 3.9+.
+
+.. confval:: force_union_syntax
+
+    :type: boolean
+    :default: False
+
+    Always use ``Union[]`` and ``Optional[]`` for union types
+    in error messages (instead of the ``|`` operator),
+    even on Python 3.10+.
 
 Incremental mode
 ****************
@@ -900,6 +957,12 @@ Report generation
 
 If these options are set, mypy will generate a report in the specified
 format into the specified directory.
+
+.. warning::
+
+  Generating reports disables incremental mode and can significantly slow down
+  your workflow. It is recommended to enable reporting only for specific runs
+  (e.g. in CI).
 
 .. confval:: any_exprs_report
 

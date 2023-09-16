@@ -33,8 +33,6 @@ class str:
     def startswith(self, x: 'str') -> bool: pass
     def strip(self) -> 'str': pass
 
-class unicode: pass
-
 class int:
     def __add__(self, x: 'int') -> 'int': pass
     def __radd__(self, x: 'int') -> 'int': pass
@@ -74,3 +72,5 @@ def __print(a1: object = None, a2: object = None, a3: object = None,
             a4: object = None) -> None: pass
 
 class ellipsis: pass
+
+class dict: pass

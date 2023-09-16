@@ -5,29 +5,53 @@ from re import Pattern
 from typing import Any, ClassVar, TypeVar, overload
 from typing_extensions import Literal, TypeAlias
 
-__all__ = [
-    "NoSectionError",
-    "DuplicateOptionError",
-    "DuplicateSectionError",
-    "NoOptionError",
-    "InterpolationError",
-    "InterpolationDepthError",
-    "InterpolationMissingOptionError",
-    "InterpolationSyntaxError",
-    "ParsingError",
-    "MissingSectionHeaderError",
-    "ConfigParser",
-    "SafeConfigParser",
-    "RawConfigParser",
-    "Interpolation",
-    "BasicInterpolation",
-    "ExtendedInterpolation",
-    "LegacyInterpolation",
-    "SectionProxy",
-    "ConverterMapping",
-    "DEFAULTSECT",
-    "MAX_INTERPOLATION_DEPTH",
-]
+if sys.version_info >= (3, 12):
+    __all__ = (
+        "NoSectionError",
+        "DuplicateOptionError",
+        "DuplicateSectionError",
+        "NoOptionError",
+        "InterpolationError",
+        "InterpolationDepthError",
+        "InterpolationMissingOptionError",
+        "InterpolationSyntaxError",
+        "ParsingError",
+        "MissingSectionHeaderError",
+        "ConfigParser",
+        "RawConfigParser",
+        "Interpolation",
+        "BasicInterpolation",
+        "ExtendedInterpolation",
+        "LegacyInterpolation",
+        "SectionProxy",
+        "ConverterMapping",
+        "DEFAULTSECT",
+        "MAX_INTERPOLATION_DEPTH",
+    )
+else:
+    __all__ = [
+        "NoSectionError",
+        "DuplicateOptionError",
+        "DuplicateSectionError",
+        "NoOptionError",
+        "InterpolationError",
+        "InterpolationDepthError",
+        "InterpolationMissingOptionError",
+        "InterpolationSyntaxError",
+        "ParsingError",
+        "MissingSectionHeaderError",
+        "ConfigParser",
+        "SafeConfigParser",
+        "RawConfigParser",
+        "Interpolation",
+        "BasicInterpolation",
+        "ExtendedInterpolation",
+        "LegacyInterpolation",
+        "SectionProxy",
+        "ConverterMapping",
+        "DEFAULTSECT",
+        "MAX_INTERPOLATION_DEPTH",
+    ]
 
 _Section: TypeAlias = Mapping[str, str]
 _Parser: TypeAlias = MutableMapping[str, _Section]
@@ -65,32 +89,48 @@ class RawConfigParser(_Parser):
     @overload
     def __init__(
         self,
-        defaults: Mapping[str, str | None] | None = ...,
+        defaults: Mapping[str, str | None] | None = None,
         dict_type: type[Mapping[str, str]] = ...,
-        allow_no_value: Literal[True] = ...,
         *,
-        delimiters: Sequence[str] = ...,
-        comment_prefixes: Sequence[str] = ...,
-        inline_comment_prefixes: Sequence[str] | None = ...,
-        strict: bool = ...,
-        empty_lines_in_values: bool = ...,
-        default_section: str = ...,
+        allow_no_value: Literal[True],
+        delimiters: Sequence[str] = ("=", ":"),
+        comment_prefixes: Sequence[str] = ("#", ";"),
+        inline_comment_prefixes: Sequence[str] | None = None,
+        strict: bool = True,
+        empty_lines_in_values: bool = True,
+        default_section: str = "DEFAULT",
         interpolation: Interpolation | None = ...,
         converters: _ConvertersMap = ...,
     ) -> None: ...
     @overload
     def __init__(
         self,
-        defaults: _Section | None = ...,
-        dict_type: type[Mapping[str, str]] = ...,
-        allow_no_value: bool = ...,
+        defaults: Mapping[str, str | None] | None,
+        dict_type: type[Mapping[str, str]],
+        allow_no_value: Literal[True],
         *,
-        delimiters: Sequence[str] = ...,
-        comment_prefixes: Sequence[str] = ...,
-        inline_comment_prefixes: Sequence[str] | None = ...,
-        strict: bool = ...,
-        empty_lines_in_values: bool = ...,
-        default_section: str = ...,
+        delimiters: Sequence[str] = ("=", ":"),
+        comment_prefixes: Sequence[str] = ("#", ";"),
+        inline_comment_prefixes: Sequence[str] | None = None,
+        strict: bool = True,
+        empty_lines_in_values: bool = True,
+        default_section: str = "DEFAULT",
+        interpolation: Interpolation | None = ...,
+        converters: _ConvertersMap = ...,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        defaults: _Section | None = None,
+        dict_type: type[Mapping[str, str]] = ...,
+        allow_no_value: bool = False,
+        *,
+        delimiters: Sequence[str] = ("=", ":"),
+        comment_prefixes: Sequence[str] = ("#", ";"),
+        inline_comment_prefixes: Sequence[str] | None = None,
+        strict: bool = True,
+        empty_lines_in_values: bool = True,
+        default_section: str = "DEFAULT",
         interpolation: Interpolation | None = ...,
         converters: _ConvertersMap = ...,
     ) -> None: ...
@@ -106,30 +146,31 @@ class RawConfigParser(_Parser):
     def has_section(self, section: str) -> bool: ...
     def options(self, section: str) -> list[str]: ...
     def has_option(self, section: str, option: str) -> bool: ...
-    def read(self, filenames: StrOrBytesPath | Iterable[StrOrBytesPath], encoding: str | None = ...) -> list[str]: ...
-    def read_file(self, f: Iterable[str], source: str | None = ...) -> None: ...
-    def read_string(self, string: str, source: str = ...) -> None: ...
-    def read_dict(self, dictionary: Mapping[str, Mapping[str, Any]], source: str = ...) -> None: ...
-    def readfp(self, fp: Iterable[str], filename: str | None = ...) -> None: ...
+    def read(self, filenames: StrOrBytesPath | Iterable[StrOrBytesPath], encoding: str | None = None) -> list[str]: ...
+    def read_file(self, f: Iterable[str], source: str | None = None) -> None: ...
+    def read_string(self, string: str, source: str = "<string>") -> None: ...
+    def read_dict(self, dictionary: Mapping[str, Mapping[str, Any]], source: str = "<dict>") -> None: ...
+    if sys.version_info < (3, 12):
+        def readfp(self, fp: Iterable[str], filename: str | None = None) -> None: ...
     # These get* methods are partially applied (with the same names) in
     # SectionProxy; the stubs should be kept updated together
     @overload
-    def getint(self, section: str, option: str, *, raw: bool = ..., vars: _Section | None = ...) -> int: ...
+    def getint(self, section: str, option: str, *, raw: bool = False, vars: _Section | None = None) -> int: ...
     @overload
     def getint(
-        self, section: str, option: str, *, raw: bool = ..., vars: _Section | None = ..., fallback: _T = ...
+        self, section: str, option: str, *, raw: bool = False, vars: _Section | None = None, fallback: _T = ...
     ) -> int | _T: ...
     @overload
-    def getfloat(self, section: str, option: str, *, raw: bool = ..., vars: _Section | None = ...) -> float: ...
+    def getfloat(self, section: str, option: str, *, raw: bool = False, vars: _Section | None = None) -> float: ...
     @overload
     def getfloat(
-        self, section: str, option: str, *, raw: bool = ..., vars: _Section | None = ..., fallback: _T = ...
+        self, section: str, option: str, *, raw: bool = False, vars: _Section | None = None, fallback: _T = ...
     ) -> float | _T: ...
     @overload
-    def getboolean(self, section: str, option: str, *, raw: bool = ..., vars: _Section | None = ...) -> bool: ...
+    def getboolean(self, section: str, option: str, *, raw: bool = False, vars: _Section | None = None) -> bool: ...
     @overload
     def getboolean(
-        self, section: str, option: str, *, raw: bool = ..., vars: _Section | None = ..., fallback: _T = ...
+        self, section: str, option: str, *, raw: bool = False, vars: _Section | None = None, fallback: _T = ...
     ) -> bool | _T: ...
     def _get_conv(
         self,
@@ -137,21 +178,23 @@ class RawConfigParser(_Parser):
         option: str,
         conv: Callable[[str], _T],
         *,
-        raw: bool = ...,
-        vars: _Section | None = ...,
+        raw: bool = False,
+        vars: _Section | None = None,
         fallback: _T = ...,
     ) -> _T: ...
     # This is incompatible with MutableMapping so we ignore the type
     @overload  # type: ignore[override]
-    def get(self, section: str, option: str, *, raw: bool = ..., vars: _Section | None = ...) -> str | Any: ...
+    def get(self, section: str, option: str, *, raw: bool = False, vars: _Section | None = None) -> str | Any: ...
     @overload
-    def get(self, section: str, option: str, *, raw: bool = ..., vars: _Section | None = ..., fallback: _T) -> str | _T | Any: ...
+    def get(
+        self, section: str, option: str, *, raw: bool = False, vars: _Section | None = None, fallback: _T
+    ) -> str | _T | Any: ...
     @overload
-    def items(self, *, raw: bool = ..., vars: _Section | None = ...) -> ItemsView[str, SectionProxy]: ...
+    def items(self, *, raw: bool = False, vars: _Section | None = None) -> ItemsView[str, SectionProxy]: ...
     @overload
-    def items(self, section: str, raw: bool = ..., vars: _Section | None = ...) -> list[tuple[str, str]]: ...
-    def set(self, section: str, option: str, value: str | None = ...) -> None: ...
-    def write(self, fp: SupportsWrite[str], space_around_delimiters: bool = ...) -> None: ...
+    def items(self, section: str, raw: bool = False, vars: _Section | None = None) -> list[tuple[str, str]]: ...
+    def set(self, section: str, option: str, value: str | None = None) -> None: ...
+    def write(self, fp: SupportsWrite[str], space_around_delimiters: bool = True) -> None: ...
     def remove_option(self, section: str, option: str) -> bool: ...
     def remove_section(self, section: str) -> bool: ...
     def optionxform(self, optionstr: str) -> str: ...
@@ -159,9 +202,9 @@ class RawConfigParser(_Parser):
 class ConfigParser(RawConfigParser):
     # This is incompatible with MutableMapping so we ignore the type
     @overload  # type: ignore[override]
-    def get(self, section: str, option: str, *, raw: bool = ..., vars: _Section | None = ...) -> str: ...
+    def get(self, section: str, option: str, *, raw: bool = False, vars: _Section | None = None) -> str: ...
     @overload
-    def get(self, section: str, option: str, *, raw: bool = ..., vars: _Section | None = ..., fallback: _T) -> str | _T: ...
+    def get(self, section: str, option: str, *, raw: bool = False, vars: _Section | None = None, fallback: _T) -> str | _T: ...
 
 if sys.version_info < (3, 12):
     class SafeConfigParser(ConfigParser): ...  # deprecated alias
@@ -181,11 +224,11 @@ class SectionProxy(MutableMapping[str, str]):
     def get(  # type: ignore[override]
         self,
         option: str,
-        fallback: str | None = ...,
+        fallback: str | None = None,
         *,
-        raw: bool = ...,
-        vars: _Section | None = ...,
-        _impl: Any | None = ...,
+        raw: bool = False,
+        vars: _Section | None = None,
+        _impl: Any | None = None,
         **kwargs: Any,
     ) -> str | Any: ...  # can be None in RawConfigParser's sections
     # These are partially-applied version of the methods with the same names in
@@ -216,7 +259,7 @@ class ConverterMapping(MutableMapping[str, _ConverterCallback | None]):
 
 class Error(Exception):
     message: str
-    def __init__(self, msg: str = ...) -> None: ...
+    def __init__(self, msg: str = "") -> None: ...
 
 class NoSectionError(Error):
     section: str
@@ -226,14 +269,14 @@ class DuplicateSectionError(Error):
     section: str
     source: str | None
     lineno: int | None
-    def __init__(self, section: str, source: str | None = ..., lineno: int | None = ...) -> None: ...
+    def __init__(self, section: str, source: str | None = None, lineno: int | None = None) -> None: ...
 
 class DuplicateOptionError(Error):
     section: str
     option: str
     source: str | None
     lineno: int | None
-    def __init__(self, section: str, option: str, source: str | None = ..., lineno: int | None = ...) -> None: ...
+    def __init__(self, section: str, option: str, source: str | None = None, lineno: int | None = None) -> None: ...
 
 class NoOptionError(Error):
     section: str
@@ -257,7 +300,11 @@ class InterpolationSyntaxError(InterpolationError): ...
 class ParsingError(Error):
     source: str
     errors: list[tuple[int, str]]
-    def __init__(self, source: str | None = ..., filename: str | None = ...) -> None: ...
+    if sys.version_info >= (3, 12):
+        def __init__(self, source: str) -> None: ...
+    else:
+        def __init__(self, source: str | None = None, filename: str | None = None) -> None: ...
+
     def append(self, lineno: int, line: str) -> None: ...
 
 class MissingSectionHeaderError(ParsingError):

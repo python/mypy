@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List, NamedTuple, Optional
+from typing import List, NamedTuple
 
 from mypyc.common import PROPSET_PREFIX, JsonDict
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature
@@ -69,10 +69,11 @@ from mypyc.namegen import NameGenerator, exported_name
 # placed in the class's shadow vtable (if it has one).
 
 
-VTableMethod = NamedTuple(
-    "VTableMethod",
-    [("cls", "ClassIR"), ("name", str), ("method", FuncIR), ("shadow_method", Optional[FuncIR])],
-)
+class VTableMethod(NamedTuple):
+    cls: "ClassIR"  # noqa: UP037
+    name: str
+    method: FuncIR
+    shadow_method: FuncIR | None
 
 
 VTableEntries = List[VTableMethod]
@@ -168,7 +169,9 @@ class ClassIR:
         self.base_mro: list[ClassIR] = [self]
 
         # Direct subclasses of this class (use subclasses() to also include non-direct ones)
-        # None if separate compilation prevents this from working
+        # None if separate compilation prevents this from working.
+        #
+        # Often it's better to use has_no_subclasses() or subclasses() instead.
         self.children: list[ClassIR] | None = []
 
         # Instance attributes that are initialized in the class body.
@@ -189,7 +192,7 @@ class ClassIR:
         # bitmap for types such as native ints that can't have a dedicated error
         # value that doesn't overlap a valid value. The bitmap is used if the
         # value of an attribute is the same as the error value.
-        self.bitmap_attrs: List[str] = []
+        self.bitmap_attrs: list[str] = []
 
     def __repr__(self) -> str:
         return (
@@ -278,16 +281,30 @@ class ClassIR:
     def struct_name(self, names: NameGenerator) -> str:
         return f"{exported_name(self.fullname)}Object"
 
-    def get_method_and_class(self, name: str) -> tuple[FuncIR, ClassIR] | None:
+    def get_method_and_class(
+        self, name: str, *, prefer_method: bool = False
+    ) -> tuple[FuncIR, ClassIR] | None:
         for ir in self.mro:
             if name in ir.methods:
-                return ir.methods[name], ir
+                func_ir = ir.methods[name]
+                if not prefer_method and func_ir.decl.implicit:
+                    # This is an implicit accessor, so there is also an attribute definition
+                    # which the caller prefers. This happens if an attribute overrides a
+                    # property.
+                    return None
+                return func_ir, ir
 
         return None
 
-    def get_method(self, name: str) -> FuncIR | None:
-        res = self.get_method_and_class(name)
+    def get_method(self, name: str, *, prefer_method: bool = False) -> FuncIR | None:
+        res = self.get_method_and_class(name, prefer_method=prefer_method)
         return res[0] if res else None
+
+    def has_method_decl(self, name: str) -> bool:
+        return any(name in ir.method_decls for ir in self.mro)
+
+    def has_no_subclasses(self) -> bool:
+        return self.children == [] and not self.allow_interpreted_subclasses
 
     def subclasses(self) -> set[ClassIR] | None:
         """Return all subclasses of this class, both direct and indirect.

@@ -25,13 +25,13 @@ class Class:
             super_: list[Class | str] | None,
             file: str,
             lineno: int,
-            parent: Class | None = ...,
+            parent: Class | None = None,
             *,
-            end_lineno: int | None = ...,
+            end_lineno: int | None = None,
         ) -> None: ...
     else:
         def __init__(
-            self, module: str, name: str, super: list[Class | str] | None, file: str, lineno: int, parent: Class | None = ...
+            self, module: str, name: str, super: list[Class | str] | None, file: str, lineno: int, parent: Class | None = None
         ) -> None: ...
 
 class Function:
@@ -54,13 +54,13 @@ class Function:
             name: str,
             file: str,
             lineno: int,
-            parent: Function | Class | None = ...,
-            is_async: bool = ...,
+            parent: Function | Class | None = None,
+            is_async: bool = False,
             *,
-            end_lineno: int | None = ...,
+            end_lineno: int | None = None,
         ) -> None: ...
     else:
-        def __init__(self, module: str, name: str, file: str, lineno: int, parent: Function | Class | None = ...) -> None: ...
+        def __init__(self, module: str, name: str, file: str, lineno: int, parent: Function | Class | None = None) -> None: ...
 
-def readmodule(module: str, path: Sequence[str] | None = ...) -> dict[str, Class]: ...
-def readmodule_ex(module: str, path: Sequence[str] | None = ...) -> dict[str, Class | Function | list[str]]: ...
+def readmodule(module: str, path: Sequence[str] | None = None) -> dict[str, Class]: ...
+def readmodule_ex(module: str, path: Sequence[str] | None = None) -> dict[str, Class | Function | list[str]]: ...

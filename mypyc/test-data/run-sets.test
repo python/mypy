@@ -115,3 +115,36 @@ from native import update
 s = {1, 2, 3}
 update(s, [5, 4, 3])
 assert s == {1, 2, 3, 4, 5}
+
+[case testPrecomputedFrozenSets]
+from typing import Any
+from typing_extensions import Final
+
+CONST: Final = "CONST"
+non_const = "non_const"
+
+def main_set(item: Any) -> bool:
+    return item in {None, False, 1, 2.0, "3", b"4", 5j, (6,), ((7,),), (), CONST}
+
+def main_negated_set(item: Any) -> bool:
+    return item not in {None, False, 1, 2.0, "3", b"4", 5j, (6,), ((7,),), (), CONST}
+
+def non_final_name_set(item: Any) -> bool:
+    return item in {non_const}
+
+s = set()
+for i in {None, False, 1, 2.0, "3", b"4", 5j, (6,), CONST}:
+    s.add(i)
+
+def test_in_set() -> None:
+    for item in (None, False, 1, 2.0, "3", b"4", 5j, (6,), ((7,),), (), CONST):
+        assert main_set(item), f"{item!r} should be in set_main"
+        assert not main_negated_set(item), item
+
+    global non_const
+    assert non_final_name_set(non_const)
+    non_const = "updated"
+    assert non_final_name_set("updated")
+
+def test_for_set() -> None:
+    assert not s ^ {None, False, 1, 2.0, "3", b"4", 5j, (6,), CONST}, s

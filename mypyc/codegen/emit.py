@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import pprint
 import sys
-from typing import Callable
-from typing_extensions import Final
+import textwrap
+from typing import Callable, Final
 
 from mypyc.codegen.literals import Literals
 from mypyc.common import (
@@ -33,6 +34,7 @@ from mypyc.ir.rtypes import (
     is_dict_rprimitive,
     is_fixed_width_rtype,
     is_float_rprimitive,
+    is_int16_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
@@ -45,6 +47,7 @@ from mypyc.ir.rtypes import (
     is_short_int_rprimitive,
     is_str_rprimitive,
     is_tuple_rprimitive,
+    is_uint8_rprimitive,
     object_rprimitive,
     optional_value_type,
 )
@@ -176,10 +179,10 @@ class Emitter:
     # Low-level operations
 
     def indent(self) -> None:
-        self._indent += 1
+        self._indent += 4
 
     def dedent(self) -> None:
-        self._indent -= 1
+        self._indent -= 4
         assert self._indent >= 0
 
     def label(self, label: BasicBlock) -> str:
@@ -191,10 +194,31 @@ class Emitter:
     def attr(self, name: str) -> str:
         return ATTR_PREFIX + name
 
-    def emit_line(self, line: str = "") -> None:
+    def object_annotation(self, obj: object, line: str) -> str:
+        """Build a C comment with an object's string represention.
+
+        If the comment exceeds the line length limit, it's wrapped into a
+        multiline string (with the extra lines indented to be aligned with
+        the first line's comment).
+
+        If it contains illegal characters, an empty string is returned."""
+        line_width = self._indent + len(line)
+        formatted = pprint.pformat(obj, compact=True, width=max(90 - line_width, 20))
+        if any(x in formatted for x in ("/*", "*/", "\0")):
+            return ""
+
+        if "\n" in formatted:
+            first_line, rest = formatted.split("\n", maxsplit=1)
+            comment_continued = textwrap.indent(rest, (line_width + 3) * " ")
+            return f" /* {first_line}\n{comment_continued} */"
+        else:
+            return f" /* {formatted} */"
+
+    def emit_line(self, line: str = "", *, ann: object = None) -> None:
         if line.startswith("}"):
             self.dedent()
-        self.fragments.append(self._indent * "\t" + line + "\n")
+        comment = self.object_annotation(ann, line) if ann is not None else ""
+        self.fragments.append(self._indent * " " + line + comment + "\n")
         if line.endswith("{"):
             self.indent()
 
@@ -206,6 +230,9 @@ class Emitter:
         if isinstance(label, str):
             text = label
         else:
+            if label.label == 0 or not label.referenced:
+                return
+
             text = self.label(label)
         # Extra semicolon prevents an error when the next line declares a tempvar
         self.fragments.append(f"{text}: ;\n")
@@ -319,12 +346,6 @@ class Emitter:
                 result.append(f"{self.ctype_spaced(typ)}f{i};")
                 i += 1
         result.append(f"}} {rtuple.struct_name};")
-        values = self.tuple_undefined_value_helper(rtuple)
-        result.append(
-            "static {} {} = {{ {} }};".format(
-                self.ctype(rtuple), self.tuple_undefined_value(rtuple), "".join(values)
-            )
-        )
         result.append("#endif")
         result.append("")
 
@@ -364,7 +385,8 @@ class Emitter:
         self, value: str, obj: str, rtype: RType, cl: ClassIR, attr: str, clear: bool
     ) -> None:
         if value:
-            self.emit_line(f"if (unlikely({value} == {self.c_undefined_value(rtype)})) {{")
+            check = self.error_value_check(rtype, value, "==")
+            self.emit_line(f"if (unlikely({check})) {{")
         index = cl.bitmap_attrs.index(attr)
         mask = 1 << (index & (BITMAP_BITS - 1))
         bitmap = self.attr_bitmap_expr(obj, cl, index)
@@ -389,16 +411,10 @@ class Emitter:
         *,
         unlikely: bool = False,
     ) -> None:
-        if isinstance(rtype, RTuple):
-            check = "{}".format(
-                self.tuple_undefined_check_cond(rtype, attr_expr, self.c_undefined_value, compare)
-            )
-        else:
-            undefined = self.c_undefined_value(rtype)
-            check = f"{attr_expr} {compare} {undefined}"
+        check = self.error_value_check(rtype, attr_expr, compare)
         if unlikely:
             check = f"unlikely({check})"
-        if is_fixed_width_rtype(rtype):
+        if rtype.error_overlap:
             index = cl.bitmap_attrs.index(attr)
             bit = 1 << (index & (BITMAP_BITS - 1))
             attr = self.bitmap_field(index)
@@ -406,44 +422,63 @@ class Emitter:
             check = f"{check} && !(({obj_expr})->{attr} & {bit})"
         self.emit_line(f"if ({check}) {{")
 
+    def error_value_check(self, rtype: RType, value: str, compare: str) -> str:
+        if isinstance(rtype, RTuple):
+            return self.tuple_undefined_check_cond(
+                rtype, value, self.c_error_value, compare, check_exception=False
+            )
+        else:
+            return f"{value} {compare} {self.c_error_value(rtype)}"
+
     def tuple_undefined_check_cond(
         self,
         rtuple: RTuple,
         tuple_expr_in_c: str,
         c_type_compare_val: Callable[[RType], str],
         compare: str,
+        *,
+        check_exception: bool = True,
     ) -> str:
         if len(rtuple.types) == 0:
             # empty tuple
             return "{}.empty_struct_error_flag {} {}".format(
                 tuple_expr_in_c, compare, c_type_compare_val(int_rprimitive)
             )
-        item_type = rtuple.types[0]
+        if rtuple.error_overlap:
+            i = 0
+            item_type = rtuple.types[0]
+        else:
+            for i, typ in enumerate(rtuple.types):
+                if not typ.error_overlap:
+                    item_type = rtuple.types[i]
+                    break
+            else:
+                assert False, "not expecting tuple with error overlap"
         if isinstance(item_type, RTuple):
             return self.tuple_undefined_check_cond(
-                item_type, tuple_expr_in_c + ".f0", c_type_compare_val, compare
+                item_type, tuple_expr_in_c + f".f{i}", c_type_compare_val, compare
             )
         else:
-            return f"{tuple_expr_in_c}.f0 {compare} {c_type_compare_val(item_type)}"
+            check = f"{tuple_expr_in_c}.f{i} {compare} {c_type_compare_val(item_type)}"
+            if rtuple.error_overlap and check_exception:
+                check += " && PyErr_Occurred()"
+            return check
 
     def tuple_undefined_value(self, rtuple: RTuple) -> str:
-        return "tuple_undefined_" + rtuple.unique_id
+        """Undefined tuple value suitable in an expression."""
+        return f"({rtuple.struct_name}) {self.c_initializer_undefined_value(rtuple)}"
 
-    def tuple_undefined_value_helper(self, rtuple: RTuple) -> list[str]:
-        res = []
-        # see tuple_c_declaration()
-        if len(rtuple.types) == 0:
-            return [self.c_undefined_value(int_rprimitive)]
-        for item in rtuple.types:
-            if not isinstance(item, RTuple):
-                res.append(self.c_undefined_value(item))
-            else:
-                sub_list = self.tuple_undefined_value_helper(item)
-                res.append("{ ")
-                res.extend(sub_list)
-                res.append(" }")
-            res.append(", ")
-        return res[:-1]
+    def c_initializer_undefined_value(self, rtype: RType) -> str:
+        """Undefined value represented in a form suitable for variable initialization."""
+        if isinstance(rtype, RTuple):
+            if not rtype.types:
+                # Empty tuples contain a flag so that they can still indicate
+                # error values.
+                return f"{{ {int_rprimitive.c_undefined} }}"
+            items = ", ".join([self.c_initializer_undefined_value(t) for t in rtype.types])
+            return f"{{ {items} }}"
+        else:
+            return self.c_undefined_value(rtype)
 
     # Higher-level operations
 
@@ -866,18 +901,43 @@ class Emitter:
             self.emit_line(f"    {dest} = 1;")
         elif is_int64_rprimitive(typ):
             # Whether we are borrowing or not makes no difference.
+            assert not optional  # Not supported for overlapping error values
             if declare_dest:
                 self.emit_line(f"int64_t {dest};")
             self.emit_line(f"{dest} = CPyLong_AsInt64({src});")
-            # TODO: Handle 'optional'
-            # TODO: Handle 'failure'
+            if not isinstance(error, AssignHandler):
+                self.emit_unbox_failure_with_overlapping_error_value(dest, typ, failure)
         elif is_int32_rprimitive(typ):
             # Whether we are borrowing or not makes no difference.
+            assert not optional  # Not supported for overlapping error values
             if declare_dest:
                 self.emit_line(f"int32_t {dest};")
             self.emit_line(f"{dest} = CPyLong_AsInt32({src});")
-            # TODO: Handle 'optional'
-            # TODO: Handle 'failure'
+            if not isinstance(error, AssignHandler):
+                self.emit_unbox_failure_with_overlapping_error_value(dest, typ, failure)
+        elif is_int16_rprimitive(typ):
+            # Whether we are borrowing or not makes no difference.
+            assert not optional  # Not supported for overlapping error values
+            if declare_dest:
+                self.emit_line(f"int16_t {dest};")
+            self.emit_line(f"{dest} = CPyLong_AsInt16({src});")
+            if not isinstance(error, AssignHandler):
+                self.emit_unbox_failure_with_overlapping_error_value(dest, typ, failure)
+        elif is_uint8_rprimitive(typ):
+            # Whether we are borrowing or not makes no difference.
+            assert not optional  # Not supported for overlapping error values
+            if declare_dest:
+                self.emit_line(f"uint8_t {dest};")
+            self.emit_line(f"{dest} = CPyLong_AsUInt8({src});")
+            if not isinstance(error, AssignHandler):
+                self.emit_unbox_failure_with_overlapping_error_value(dest, typ, failure)
+        elif is_float_rprimitive(typ):
+            assert not optional  # Not supported for overlapping error values
+            if declare_dest:
+                self.emit_line(f"double {dest};")
+            # TODO: Don't use __float__ and __index__
+            self.emit_line(f"{dest} = PyFloat_AsDouble({src});")
+            self.emit_lines(f"if ({dest} == -1.0 && PyErr_Occurred()) {{", failure, "}")
         elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
             if declare_dest:
@@ -962,10 +1022,12 @@ class Emitter:
             self.emit_lines(f"{declaration}{dest} = Py_None;")
             if not can_borrow:
                 self.emit_inc_ref(dest, object_rprimitive)
-        elif is_int32_rprimitive(typ):
+        elif is_int32_rprimitive(typ) or is_int16_rprimitive(typ) or is_uint8_rprimitive(typ):
             self.emit_line(f"{declaration}{dest} = PyLong_FromLong({src});")
         elif is_int64_rprimitive(typ):
             self.emit_line(f"{declaration}{dest} = PyLong_FromLongLong({src});")
+        elif is_float_rprimitive(typ):
+            self.emit_line(f"{declaration}{dest} = PyFloat_FromDouble({src});")
         elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
             self.emit_line(f"{declaration}{dest} = PyTuple_New({len(typ.types)});")
@@ -986,18 +1048,18 @@ class Emitter:
 
     def emit_error_check(self, value: str, rtype: RType, failure: str) -> None:
         """Emit code for checking a native function return value for uncaught exception."""
-        if is_fixed_width_rtype(rtype):
-            # The error value is also valid as a normal value, so we need to also check
-            # for a raised exception.
-            self.emit_line(f"if ({value} == {self.c_error_value(rtype)} && PyErr_Occurred()) {{")
-        elif not isinstance(rtype, RTuple):
-            self.emit_line(f"if ({value} == {self.c_error_value(rtype)}) {{")
-        else:
+        if isinstance(rtype, RTuple):
             if len(rtype.types) == 0:
                 return  # empty tuples can't fail.
             else:
                 cond = self.tuple_undefined_check_cond(rtype, value, self.c_error_value, "==")
                 self.emit_line(f"if ({cond}) {{")
+        elif rtype.error_overlap:
+            # The error value is also valid as a normal value, so we need to also check
+            # for a raised exception.
+            self.emit_line(f"if ({value} == {self.c_error_value(rtype)} && PyErr_Occurred()) {{")
+        else:
+            self.emit_line(f"if ({value} == {self.c_error_value(rtype)}) {{")
         self.emit_lines(failure, "}")
 
     def emit_gc_visit(self, target: str, rtype: RType) -> None:
@@ -1090,3 +1152,42 @@ class Emitter:
         self.emit_line(line)
         if DEBUG_ERRORS:
             self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
+
+    def emit_unbox_failure_with_overlapping_error_value(
+        self, dest: str, typ: RType, failure: str
+    ) -> None:
+        self.emit_line(f"if ({dest} == {self.c_error_value(typ)} && PyErr_Occurred()) {{")
+        self.emit_line(failure)
+        self.emit_line("}")
+
+
+def c_array_initializer(components: list[str], *, indented: bool = False) -> str:
+    """Construct an initializer for a C array variable.
+
+    Components are C expressions valid in an initializer.
+
+    For example, if components are ["1", "2"], the result
+    would be "{1, 2}", which can be used like this:
+
+        int a[] = {1, 2};
+
+    If the result is long, split it into multiple lines.
+    """
+    indent = " " * 4 if indented else ""
+    res = []
+    current: list[str] = []
+    cur_len = 0
+    for c in components:
+        if not current or cur_len + 2 + len(indent) + len(c) < 70:
+            current.append(c)
+            cur_len += len(c) + 2
+        else:
+            res.append(indent + ", ".join(current))
+            current = [c]
+            cur_len = len(c)
+    if not res:
+        # Result fits on a single line
+        return "{%s}" % ", ".join(current)
+    # Multi-line result
+    res.append(indent + ", ".join(current))
+    return "{\n    " + ",\n    ".join(res) + "\n" + indent + "}"

@@ -20,7 +20,7 @@ from mypyc.ir.ops import (
     Unreachable,
     Value,
 )
-from mypyc.ir.rtypes import bitmap_rprimitive, is_fixed_width_rtype
+from mypyc.ir.rtypes import bitmap_rprimitive
 
 
 def insert_uninit_checks(ir: FuncIR) -> None:
@@ -77,7 +77,7 @@ def split_blocks_at_uninits(
                         init_registers.append(src)
                         init_registers_set.add(src)
 
-                    if not is_fixed_width_rtype(src.type):
+                    if not src.type.error_overlap:
                         cur_block.ops.append(
                             Branch(
                                 src,

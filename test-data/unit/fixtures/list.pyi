@@ -36,3 +36,5 @@ class str:
 class bool(int): pass
 
 property = object() # Dummy definition.
+
+class dict: pass

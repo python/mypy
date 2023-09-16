@@ -103,14 +103,14 @@ L0:
 def h(d):
     d :: __main__.D
     r0 :: object
-    r1 :: int32
+    r1 :: i32
     r2 :: bit
     r3, r4 :: bool
 L0:
     r0 = d.__contains__(14)
     r1 = PyObject_IsTrue(r0)
     r2 = r1 >= 0 :: signed
-    r3 = truncate r1: int32 to builtins.bool
+    r3 = truncate r1: i32 to builtins.bool
     r4 = r3 ^ 1
     return r4
 
@@ -154,6 +154,12 @@ class C:
     def __abs__(self) -> int:
         return 6
 
+    def __bool__(self) -> bool:
+        return False
+
+    def __complex__(self) -> complex:
+        return 7j
+
 def f(c: C) -> None:
     -c
     ~c
@@ -161,6 +167,8 @@ def f(c: C) -> None:
     float(c)
     +c
     abs(c)
+    bool(c)
+    complex(c)
 [out]
 def C.__neg__(self):
     self :: __main__.C
@@ -176,10 +184,8 @@ L0:
     return 6
 def C.__float__(self):
     self :: __main__.C
-    r0 :: float
 L0:
-    r0 = 4.0
-    return r0
+    return 4.0
 def C.__pos__(self):
     self :: __main__.C
 L0:
@@ -188,19 +194,30 @@ def C.__abs__(self):
     self :: __main__.C
 L0:
     return 12
+def C.__bool__(self):
+    self :: __main__.C
+L0:
+    return 0
+def C.__complex__(self):
+    self :: __main__.C
+    r0 :: object
+L0:
+    r0 = 7j
+    return r0
 def f(c):
     c :: __main__.C
-    r0, r1 :: int
-    r2, r3, r4, r5 :: object
-    r6, r7 :: int
+    r0, r1, r2 :: int
+    r3 :: float
+    r4, r5 :: int
+    r6 :: bool
+    r7 :: object
 L0:
     r0 = c.__neg__()
     r1 = c.__invert__()
-    r2 = load_address PyLong_Type
-    r3 = PyObject_CallFunctionObjArgs(r2, c, 0)
-    r4 = load_address PyFloat_Type
-    r5 = PyObject_CallFunctionObjArgs(r4, c, 0)
-    r6 = c.__pos__()
-    r7 = c.__abs__()
+    r2 = c.__int__()
+    r3 = c.__float__()
+    r4 = c.__pos__()
+    r5 = c.__abs__()
+    r6 = c.__bool__()
+    r7 = c.__complex__()
     return 1
-

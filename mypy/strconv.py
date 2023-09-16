@@ -7,11 +7,13 @@ import re
 from typing import TYPE_CHECKING, Any, Sequence
 
 import mypy.nodes
+from mypy.options import Options
 from mypy.util import IdMapper, short_type
 from mypy.visitor import NodeVisitor
 
 if TYPE_CHECKING:
     import mypy.patterns
+    import mypy.types
 
 
 class StrConv(NodeVisitor[str]):
@@ -26,11 +28,19 @@ class StrConv(NodeVisitor[str]):
           IntExpr(1)))
     """
 
-    def __init__(self, show_ids: bool = False) -> None:
+    __slots__ = ["options", "show_ids", "id_mapper"]
+
+    def __init__(self, *, show_ids: bool = False, options: Options) -> None:
+        self.options = options
         self.show_ids = show_ids
         self.id_mapper: IdMapper | None = None
         if show_ids:
             self.id_mapper = IdMapper()
+
+    def stringify_type(self, t: mypy.types.Type) -> str:
+        import mypy.types
+
+        return t.accept(mypy.types.TypeStrVisitor(id_mapper=self.id_mapper, options=self.options))
 
     def get_id(self, o: object) -> int | None:
         if self.id_mapper:
@@ -50,7 +60,7 @@ class StrConv(NodeVisitor[str]):
         number. See mypy.util.dump_tagged for a description of the nodes
         argument.
         """
-        tag = short_type(obj) + ":" + str(obj.get_line())
+        tag = short_type(obj) + ":" + str(obj.line)
         if self.show_ids:
             assert self.id_mapper is not None
             tag += f"<{self.get_id(obj)}>"
@@ -144,7 +154,7 @@ class StrConv(NodeVisitor[str]):
         return self.dump(a, o)
 
     def visit_overloaded_func_def(self, o: mypy.nodes.OverloadedFuncDef) -> str:
-        a: Any = o.items[:]
+        a: Any = o.items.copy()
         if o.type:
             a.insert(0, o.type)
         if o.impl:
@@ -168,11 +178,11 @@ class StrConv(NodeVisitor[str]):
         if o.type_vars:
             a.insert(1, ("TypeVars", o.type_vars))
         if o.metaclass:
-            a.insert(1, f"Metaclass({o.metaclass})")
+            a.insert(1, f"Metaclass({o.metaclass.accept(self)})")
         if o.decorators:
             a.insert(1, ("Decorators", o.decorators))
         if o.info and o.info._promote:
-            a.insert(1, f"Promote({o.info._promote})")
+            a.insert(1, f"Promote([{','.join(self.stringify_type(p) for p in o.info._promote)}])")
         if o.info and o.info.tuple_type:
             a.insert(1, ("TupleType", [o.info.tuple_type]))
         if o.info and o.info.fallback_to_any:
@@ -367,7 +377,7 @@ class StrConv(NodeVisitor[str]):
             id = ""
         if isinstance(target_node, mypy.nodes.MypyFile) and name == fullname:
             n += id
-        elif kind == mypy.nodes.GDEF or (fullname != name and fullname is not None):
+        elif kind == mypy.nodes.GDEF or (fullname != name and fullname):
             # Append fully qualified name for global references.
             n += f" [{fullname}{id}]"
         elif kind == mypy.nodes.LDEF:
@@ -413,6 +423,8 @@ class StrConv(NodeVisitor[str]):
         return self.dump(a + extra, o)
 
     def visit_op_expr(self, o: mypy.nodes.OpExpr) -> str:
+        if o.analyzed:
+            return o.analyzed.accept(self)
         return self.dump([o.op, o.left, o.right], o)
 
     def visit_comparison_expr(self, o: mypy.nodes.ComparisonExpr) -> str:
@@ -471,7 +483,7 @@ class StrConv(NodeVisitor[str]):
         if o.values:
             a += [("Values", o.values)]
         if not mypy.types.is_named_instance(o.upper_bound, "builtins.object"):
-            a += [f"UpperBound({o.upper_bound})"]
+            a += [f"UpperBound({self.stringify_type(o.upper_bound)})"]
         return self.dump(a, o)
 
     def visit_paramspec_expr(self, o: mypy.nodes.ParamSpecExpr) -> str:
@@ -483,7 +495,7 @@ class StrConv(NodeVisitor[str]):
         if o.variance == mypy.nodes.CONTRAVARIANT:
             a += ["Variance(CONTRAVARIANT)"]
         if not mypy.types.is_named_instance(o.upper_bound, "builtins.object"):
-            a += [f"UpperBound({o.upper_bound})"]
+            a += [f"UpperBound({self.stringify_type(o.upper_bound)})"]
         return self.dump(a, o)
 
     def visit_type_var_tuple_expr(self, o: mypy.nodes.TypeVarTupleExpr) -> str:
@@ -495,14 +507,14 @@ class StrConv(NodeVisitor[str]):
         if o.variance == mypy.nodes.CONTRAVARIANT:
             a += ["Variance(CONTRAVARIANT)"]
         if not mypy.types.is_named_instance(o.upper_bound, "builtins.object"):
-            a += [f"UpperBound({o.upper_bound})"]
+            a += [f"UpperBound({self.stringify_type(o.upper_bound)})"]
         return self.dump(a, o)
 
     def visit_type_alias_expr(self, o: mypy.nodes.TypeAliasExpr) -> str:
-        return f"TypeAliasExpr({o.type})"
+        return f"TypeAliasExpr({self.stringify_type(o.node.target)})"
 
     def visit_namedtuple_expr(self, o: mypy.nodes.NamedTupleExpr) -> str:
-        return f"NamedTupleExpr:{o.line}({o.info.name}, {o.info.tuple_type})"
+        return f"NamedTupleExpr:{o.line}({o.info.name}, {self.stringify_type(o.info.tuple_type) if o.info.tuple_type is not None else None})"
 
     def visit_enum_call_expr(self, o: mypy.nodes.EnumCallExpr) -> str:
         return f"EnumCallExpr:{o.line}({o.info.name}, {o.items})"
@@ -511,7 +523,7 @@ class StrConv(NodeVisitor[str]):
         return f"TypedDictExpr:{o.line}({o.info.name})"
 
     def visit__promote_expr(self, o: mypy.nodes.PromoteExpr) -> str:
-        return f"PromoteExpr:{o.line}({o.type})"
+        return f"PromoteExpr:{o.line}({self.stringify_type(o.type)})"
 
     def visit_newtype_expr(self, o: mypy.nodes.NewTypeExpr) -> str:
         return f"NewTypeExpr:{o.line}({o.name}, {self.dump([o.old_type], o)})"
@@ -612,7 +624,9 @@ def dump_tagged(nodes: Sequence[object], tag: str | None, str_conv: StrConv) -> 
         elif isinstance(n, mypy.nodes.Node):
             a.append(indent(n.accept(str_conv), 2))
         elif isinstance(n, Type):
-            a.append(indent(n.accept(TypeStrVisitor(str_conv.id_mapper)), 2))
+            a.append(
+                indent(n.accept(TypeStrVisitor(str_conv.id_mapper, options=str_conv.options)), 2)
+            )
         elif n is not None:
             a.append(indent(str(n), 2))
     if tag:

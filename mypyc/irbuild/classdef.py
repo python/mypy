@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import typing_extensions
 from abc import abstractmethod
-from typing import Callable
-from typing_extensions import Final
+from typing import Callable, Final
 
 from mypy.nodes import (
     AssignmentStmt,
@@ -24,7 +24,8 @@ from mypy.nodes import (
     TypeInfo,
     is_class_var,
 )
-from mypy.types import ENUM_REMOVED_PROPS, Instance, get_proper_type
+from mypy.types import ENUM_REMOVED_PROPS, Instance, UnboundType, get_proper_type
+from mypyc.common import PROPSET_PREFIX
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.ops import (
@@ -53,7 +54,13 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
-from mypyc.irbuild.function import handle_ext_method, handle_non_ext_method, load_type
+from mypyc.irbuild.function import (
+    gen_property_getter_ir,
+    gen_property_setter_ir,
+    handle_ext_method,
+    handle_non_ext_method,
+    load_type,
+)
 from mypyc.irbuild.util import dataclass_type, get_func_def, is_constant, is_dataclass_decorator
 from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op
 from mypyc.primitives.generic_ops import py_hasattr_op, py_setattr_op
@@ -84,7 +91,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
     # classes aren't necessarily populated yet at
     # prepare_class_def time.
     if any(ir.base_mro[i].base != ir.base_mro[i + 1] for i in range(len(ir.base_mro) - 1)):
-        builder.error("Non-trait MRO must be linear", cdef.line)
+        builder.error("Multiple inheritance is not supported (except for traits)", cdef.line)
 
     if ir.allow_interpreted_subclasses:
         for parent in ir.mro:
@@ -150,6 +157,26 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
             pass
         else:
             builder.error("Unsupported statement in class body", stmt.line)
+
+    # Generate implicit property setters/getters
+    for name, decl in ir.method_decls.items():
+        if decl.implicit and decl.is_prop_getter:
+            getter_ir = gen_property_getter_ir(builder, decl, cdef, ir.is_trait)
+            builder.functions.append(getter_ir)
+            ir.methods[getter_ir.decl.name] = getter_ir
+
+            setter_ir = None
+            setter_name = PROPSET_PREFIX + name
+            if setter_name in ir.method_decls:
+                setter_ir = gen_property_setter_ir(
+                    builder, ir.method_decls[setter_name], cdef, ir.is_trait
+                )
+                builder.functions.append(setter_ir)
+                ir.methods[setter_name] = setter_ir
+
+            ir.properties[name] = (getter_ir, setter_ir)
+            # TODO: Generate glue method if needed?
+            # TODO: Do we need interpreted glue methods? Maybe not?
 
     cls_builder.finalize(ir)
 
@@ -471,6 +498,14 @@ def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
                 if builder.options.capi_version < (3, 8):
                     # TypedDict was added to typing in Python 3.8.
                     module = "typing_extensions"
+                    # TypedDict is not a real type on typing_extensions 4.7.0+
+                    name = "_TypedDict"
+                    if isinstance(typing_extensions.TypedDict, type):
+                        raise RuntimeError(
+                            "It looks like you may have an old version "
+                            "of typing_extensions installed. "
+                            "typing_extensions>=4.7.0 is required on Python 3.7."
+                        )
             else:
                 # In Python 3.9 TypedDict is not a real type.
                 name = "_TypedDict"
@@ -556,6 +591,7 @@ def add_non_ext_class_attr_ann(
     get_type_info: Callable[[AssignmentStmt], TypeInfo | None] | None = None,
 ) -> None:
     """Add a class attribute to __annotations__ of a non-extension class."""
+    # FIXME: try to better preserve the special forms and type parameters of generics.
     typ: Value | None = None
     if get_type_info is not None:
         type_info = get_type_info(stmt)
@@ -565,7 +601,17 @@ def add_non_ext_class_attr_ann(
     if typ is None:
         # FIXME: if get_type_info is not provided, don't fall back to stmt.type?
         ann_type = get_proper_type(stmt.type)
-        if isinstance(ann_type, Instance):
+        if (
+            isinstance(stmt.unanalyzed_type, UnboundType)
+            and stmt.unanalyzed_type.original_str_expr is not None
+        ):
+            # Annotation is a forward reference, so don't attempt to load the actual
+            # type and load the string instead.
+            #
+            # TODO: is it possible to determine whether a non-string annotation is
+            # actually a forward reference due to the __annotations__ future?
+            typ = builder.load_str(stmt.unanalyzed_type.original_str_expr)
+        elif isinstance(ann_type, Instance):
             typ = load_type(builder, ann_type.type, stmt.line)
         else:
             typ = builder.add(LoadAddress(type_object_op.type, type_object_op.src, stmt.line))
@@ -629,7 +675,7 @@ def find_attr_initializers(
                 and not isinstance(stmt.rvalue, TempNode)
             ):
                 name = stmt.lvalues[0].name
-                if name in ("__slots__", "__match_args__"):
+                if name == "__slots__":
                     continue
 
                 if name == "__deletable__":

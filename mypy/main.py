@@ -8,11 +8,15 @@ import subprocess
 import sys
 import time
 from gettext import gettext
-from typing import IO, Any, NoReturn, Sequence, TextIO
-from typing_extensions import Final
+from typing import IO, Any, Final, NoReturn, Sequence, TextIO
 
 from mypy import build, defaults, state, util
-from mypy.config_parser import get_config_module_names, parse_config_file, parse_version
+from mypy.config_parser import (
+    get_config_module_names,
+    parse_config_file,
+    parse_version,
+    validate_package_allow_list,
+)
 from mypy.errorcodes import error_codes
 from mypy.errors import CompileError
 from mypy.find_sources import InvalidSourceList, create_source_list
@@ -183,8 +187,7 @@ def run_build(
         and not options.non_interactive
     ):
         print(
-            "Warning: unused section(s) in %s: %s"
-            % (
+            "Warning: unused section(s) in {}: {}".format(
                 options.config_file,
                 get_config_module_names(
                     options.config_file,
@@ -596,14 +599,6 @@ def process_options(
         dest="special-opts:python_version",
     )
     platform_group.add_argument(
-        "-2",
-        "--py2",
-        dest="special-opts:python_version",
-        action="store_const",
-        const=defaults.PYTHON2_VERSION,
-        help="Use Python 2 mode (same as --python-version 2.7)",
-    )
-    platform_group.add_argument(
         "--platform",
         action="store",
         metavar="PLATFORM",
@@ -684,6 +679,14 @@ def process_options(
         " from functions with type annotations",
         group=untyped_group,
     )
+    untyped_group.add_argument(
+        "--untyped-calls-exclude",
+        metavar="MODULE",
+        action="append",
+        default=[],
+        help="Disable --disallow-untyped-calls for functions/methods coming"
+        " from specific package, module, or class",
+    )
     add_invertible_flag(
         "--disallow-untyped-defs",
         default=False,
@@ -696,7 +699,8 @@ def process_options(
         "--disallow-incomplete-defs",
         default=False,
         strict_flag=True,
-        help="Disallow defining functions with incomplete type annotations",
+        help="Disallow defining functions with incomplete type annotations "
+        "(while still allowing entirely unannotated definitions)",
         group=untyped_group,
     )
     add_invertible_flag(
@@ -732,6 +736,14 @@ def process_options(
         action="store_false",
         dest="strict_optional",
         help="Disable strict Optional checks (inverse: --strict-optional)",
+    )
+
+    add_invertible_flag(
+        "--force-uppercase-builtins", default=False, help=argparse.SUPPRESS, group=none_group
+    )
+
+    add_invertible_flag(
+        "--force-union-syntax", default=False, help=argparse.SUPPRESS, group=none_group
     )
 
     lint_group = parser.add_argument_group(
@@ -817,10 +829,12 @@ def process_options(
     )
 
     add_invertible_flag(
-        "--strict-concatenate",
+        "--extra-checks",
         default=False,
         strict_flag=True,
-        help="Make arguments prepended via Concatenate be truly positional-only",
+        help="Enable additional checks that are technically correct but may be impractical "
+        "in real code. For example, this prohibits partial overlap in TypedDict updates, "
+        "and makes arguments prepended via Concatenate positional-only",
         group=strictness_group,
     )
 
@@ -874,6 +888,12 @@ def process_options(
         "--hide-error-codes",
         default=False,
         help="Hide error codes in error messages",
+        group=error_group,
+    )
+    add_invertible_flag(
+        "--show-error-code-links",
+        default=False,
+        help="Show links to error code documentation",
         group=error_group,
     )
     add_invertible_flag(
@@ -975,6 +995,11 @@ def process_options(
         help="Use a custom typing module",
     )
     internals_group.add_argument(
+        "--new-type-inference",
+        action="store_true",
+        help="Enable new experimental type inference algorithm",
+    )
+    internals_group.add_argument(
         "--disable-recursive-aliases",
         action="store_true",
         help="Disable experimental support for recursive type aliases",
@@ -1008,12 +1033,17 @@ def process_options(
         help="When encountering SOURCE_FILE, read and type check "
         "the contents of SHADOW_FILE instead.",
     )
-    add_invertible_flag("--fast-exit", default=True, help=argparse.SUPPRESS, group=internals_group)
+    internals_group.add_argument("--fast-exit", action="store_true", help=argparse.SUPPRESS)
+    internals_group.add_argument(
+        "--no-fast-exit", action="store_false", dest="fast_exit", help=argparse.SUPPRESS
+    )
     # This flag is useful for mypy tests, where function bodies may be omitted. Plugin developers
     # may want to use this as well in their tests.
     add_invertible_flag(
         "--allow-empty-bodies", default=False, help=argparse.SUPPRESS, group=internals_group
     )
+    # This undocumented feature exports limited line-level dependency information.
+    internals_group.add_argument("--export-ref-info", action="store_true", help=argparse.SUPPRESS)
 
     report_group = parser.add_argument_group(
         title="Report generation", description="Generate a report in the specified format."
@@ -1082,8 +1112,14 @@ def process_options(
         "--inferstats", action="store_true", dest="dump_inference_stats", help=argparse.SUPPRESS
     )
     parser.add_argument("--dump-build-stats", action="store_true", help=argparse.SUPPRESS)
-    # dump timing  stats for each processed file into the given output file
+    # Dump timing stats for each processed file into the given output file
     parser.add_argument("--timing-stats", dest="timing_stats", help=argparse.SUPPRESS)
+    # Dump per line type checking timing stats for each processed file into the given
+    # output file. Only total time spent in each top level expression will be shown.
+    # Times are show in microseconds.
+    parser.add_argument(
+        "--line-checking-stats", dest="line_checking_stats", help=argparse.SUPPRESS
+    )
     # --debug-cache will disable any cache-related compressions/optimizations,
     # which will make the cache writing process output pretty-printed JSON (which
     # is easier to debug).
@@ -1117,6 +1153,9 @@ def process_options(
     parser.add_argument(
         "--cache-map", nargs="+", dest="special-opts:cache_map", help=argparse.SUPPRESS
     )
+    # --debug-serialize will run tree.serialize() even if cache generation is disabled.
+    # Useful for mypy_primer to detect serialize errors earlier.
+    parser.add_argument("--debug-serialize", action="store_true", help=argparse.SUPPRESS)
     # This one is deprecated, but we will keep it for few releases.
     parser.add_argument(
         "--enable-incomplete-features", action="store_true", help=argparse.SUPPRESS
@@ -1127,6 +1166,8 @@ def process_options(
     parser.add_argument(
         "--disable-memoryview-promotion", action="store_true", help=argparse.SUPPRESS
     )
+    # This flag is deprecated, it has been moved to --extra-checks
+    parser.add_argument("--strict-concatenate", action="store_true", help=argparse.SUPPRESS)
 
     # options specifying code to check
     code_group = parser.add_argument_group(
@@ -1198,8 +1239,11 @@ def process_options(
         parser.error(f"Cannot find config file '{config_file}'")
 
     options = Options()
+    strict_option_set = False
 
     def set_strict_flags() -> None:
+        nonlocal strict_option_set
+        strict_option_set = True
         for dest, value in strict_flag_assignments:
             setattr(options, dest, value)
 
@@ -1275,6 +1319,8 @@ def process_options(
             % ", ".join(sorted(overlap))
         )
 
+    validate_package_allow_list(options.untyped_calls_exclude)
+
     # Process `--enable-error-code` and `--disable-error-code` flags
     disabled_codes = set(options.disable_error_code)
     enabled_codes = set(options.enable_error_code)
@@ -1308,12 +1354,12 @@ def process_options(
 
     # Set build flags.
     if special_opts.find_occurrences:
-        state.find_occurrences = special_opts.find_occurrences.split(".")
-        assert state.find_occurrences is not None
-        if len(state.find_occurrences) < 2:
+        _find_occurrences = tuple(special_opts.find_occurrences.split("."))
+        if len(_find_occurrences) < 2:
             parser.error("Can only find occurrences of class members.")
-        if len(state.find_occurrences) != 2:
+        if len(_find_occurrences) != 2:
             parser.error("Can only find occurrences of non-nested class members.")
+        state.find_occurrences = _find_occurrences
 
     # Set reports.
     for flag, val in vars(special_opts).items():
@@ -1351,6 +1397,8 @@ def process_options(
             "Warning: --enable-recursive-aliases is deprecated;"
             " recursive types are enabled by default"
         )
+    if options.strict_concatenate and not strict_option_set:
+        print("Warning: --strict-concatenate is deprecated; use --extra-checks instead")
 
     # Set target.
     if special_opts.modules + special_opts.packages:
@@ -1476,7 +1524,7 @@ def read_types_packages_to_install(cache_dir: str, after_run: bool) -> list[str]
         # No missing stubs.
         return []
     with open(fnam) as f:
-        return [line.strip() for line in f.readlines()]
+        return [line.strip() for line in f]
 
 
 def install_types(

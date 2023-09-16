@@ -1,5 +1,5 @@
 import sys
-from _typeshed import StrOrBytesPath
+from _typeshed import FileDescriptorOrPath
 from collections.abc import Callable, Generator, Iterable, Sequence
 from re import Pattern
 from token import *
@@ -83,6 +83,9 @@ if sys.version_info >= (3, 8):
 if sys.version_info >= (3, 10):
     __all__ += ["SOFT_KEYWORD"]
 
+if sys.version_info >= (3, 12):
+    __all__ += ["EXCLAMATION", "FSTRING_END", "FSTRING_MIDDLE", "FSTRING_START"]
+
 if sys.version_info >= (3, 8):
     from token import EXACT_TOKEN_TYPES as EXACT_TOKEN_TYPES
 else:
@@ -122,10 +125,10 @@ class Untokenizer:
 # the docstring says "returns bytes" but is incorrect --
 # if the ENCODING token is missing, it skips the encode
 def untokenize(iterable: Iterable[_Token]) -> Any: ...
-def detect_encoding(readline: Callable[[], bytes]) -> tuple[str, Sequence[bytes]]: ...
-def tokenize(readline: Callable[[], bytes]) -> Generator[TokenInfo, None, None]: ...
+def detect_encoding(readline: Callable[[], bytes | bytearray]) -> tuple[str, Sequence[bytes]]: ...
+def tokenize(readline: Callable[[], bytes | bytearray]) -> Generator[TokenInfo, None, None]: ...
 def generate_tokens(readline: Callable[[], str]) -> Generator[TokenInfo, None, None]: ...  # undocumented
-def open(filename: StrOrBytesPath | int) -> TextIO: ...
+def open(filename: FileDescriptorOrPath) -> TextIO: ...
 def group(*choices: str) -> str: ...  # undocumented
 def any(*choices: str) -> str: ...  # undocumented
 def maybe(*choices: str) -> str: ...  # undocumented

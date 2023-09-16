@@ -13,6 +13,7 @@ class CompilerOptions:
         target_dir: str | None = None,
         include_runtime_files: bool | None = None,
         capi_version: tuple[int, int] | None = None,
+        python_version: tuple[int, int] | None = None,
     ) -> None:
         self.strip_asserts = strip_asserts
         self.multi_file = multi_file
@@ -28,3 +29,4 @@ class CompilerOptions:
         # binaries are backward compatible even if no recent API
         # features are used.
         self.capi_version = capi_version or sys.version_info[:2]
+        self.python_version = python_version

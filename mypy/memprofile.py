@@ -103,7 +103,7 @@ def find_recursive_objects(objs: list[object]) -> None:
             objs.append(o)
             seen.add(id(o))
 
-    for obj in objs[:]:
+    for obj in objs.copy():
         if type(obj) is FakeInfo:
             # Processing these would cause a crash.
             continue

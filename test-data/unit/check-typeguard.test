@@ -37,8 +37,8 @@ reveal_type(foo)  # N: Revealed type is "def (a: builtins.object) -> TypeGuard[b
 [case testTypeGuardCallArgsNone]
 from typing_extensions import TypeGuard
 class Point: pass
-# TODO: error on the 'def' line (insufficient args for type guard)
-def is_point() -> TypeGuard[Point]: pass
+
+def is_point() -> TypeGuard[Point]: pass  # E: TypeGuard functions must have a positional argument
 def main(a: object) -> None:
     if is_point():
         reveal_type(a)  # N: Revealed type is "builtins.object"
@@ -227,13 +227,13 @@ def main(a: object) -> None:
 from typing_extensions import TypeGuard
 def is_float(a: object, b: object = 0) -> TypeGuard[float]: pass
 def main1(a: object) -> None:
+    if is_float(a=a, b=1):
+        reveal_type(a)  # N: Revealed type is "builtins.float"
+
+    if is_float(b=1, a=a):
+        reveal_type(a)  # N: Revealed type is "builtins.float"
+
     # This is debatable -- should we support these cases?
-
-    if is_float(a=a, b=1):  # E: Type guard requires positional argument
-        reveal_type(a)  # N: Revealed type is "builtins.object"
-
-    if is_float(b=1, a=a):  # E: Type guard requires positional argument
-        reveal_type(a)  # N: Revealed type is "builtins.object"
 
     ta = (a,)
     if is_float(*ta):  # E: Type guard requires positional argument
@@ -248,7 +248,6 @@ def main1(a: object) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardOverload]
-# flags: --strict-optional
 from typing import overload, Any, Callable, Iterable, Iterator, List, Optional, TypeVar
 from typing_extensions import TypeGuard
 
@@ -597,3 +596,101 @@ def func(names: Tuple[str, ...]):
     if is_two_element_tuple(names):
         reveal_type(names)  # N: Revealed type is "Tuple[builtins.str, builtins.str]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeGuardErroneousDefinitionFails]
+from typing_extensions import TypeGuard
+
+class Z:
+    def typeguard1(self, *, x: object) -> TypeGuard[int]:  # line 4
+        ...
+
+    @staticmethod
+    def typeguard2(x: object) -> TypeGuard[int]:
+        ...
+
+    @staticmethod  # line 11
+    def typeguard3(*, x: object) -> TypeGuard[int]:
+        ...
+
+def bad_typeguard(*, x: object) -> TypeGuard[int]: # line 15
+    ...
+
+# In Python 3.8 the line number associated with FunctionDef nodes changed
+[builtins fixtures/classmethod.pyi]
+[out]
+main:4: error: TypeGuard functions must have a positional argument
+main:12: error: TypeGuard functions must have a positional argument
+main:15: error: TypeGuard functions must have a positional argument
+
+[case testTypeGuardWithKeywordArg]
+from typing_extensions import TypeGuard
+
+class Z:
+    def typeguard(self, x: object) -> TypeGuard[int]:
+        ...
+
+def typeguard(x: object) -> TypeGuard[int]:
+    ...
+
+n: object
+if typeguard(x=n):
+    reveal_type(n)  # N: Revealed type is "builtins.int"
+
+if Z().typeguard(x=n):
+    reveal_type(n)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testStaticMethodTypeGuard]
+from typing_extensions import TypeGuard
+
+class Y:
+    @staticmethod
+    def typeguard(h: object) -> TypeGuard[int]:
+        ...
+
+x: object
+if Y().typeguard(x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+if Y.typeguard(x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/classmethod.pyi]
+
+[case testTypeGuardKwargFollowingThroughOverloaded]
+from typing import overload, Union
+from typing_extensions import TypeGuard
+
+@overload
+def typeguard(x: object, y: str) -> TypeGuard[str]:
+    ...
+
+@overload
+def typeguard(x: object, y: int) -> TypeGuard[int]:
+    ...
+
+def typeguard(x: object, y: Union[int, str]) -> Union[TypeGuard[int], TypeGuard[str]]:
+    ...
+
+x: object
+if typeguard(x=x, y=42):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+if typeguard(y=42, x=x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+if typeguard(x=x, y="42"):
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+
+if typeguard(y="42", x=x):
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+[builtins fixtures/tuple.pyi]
+
+[case testGenericAliasWithTypeGuard]
+from typing import Callable, List, TypeVar
+from typing_extensions import TypeGuard, TypeAlias
+
+A = Callable[[object], TypeGuard[List[T]]]
+def foo(x: object) -> TypeGuard[List[str]]: ...
+
+def test(f: A[T]) -> T: ...
+reveal_type(test(foo))  # N: Revealed type is "builtins.str"
+[builtins fixtures/list.pyi]

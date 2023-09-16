@@ -5,23 +5,45 @@ These can be used for filtering specific errors.
 
 from __future__ import annotations
 
-from typing_extensions import Final
+from collections import defaultdict
+from typing import Final
+
+from mypy_extensions import mypyc_attr
 
 error_codes: dict[str, ErrorCode] = {}
+sub_code_map: dict[str, set[str]] = defaultdict(set)
 
 
+@mypyc_attr(allow_interpreted_subclasses=True)
 class ErrorCode:
     def __init__(
-        self, code: str, description: str, category: str, default_enabled: bool = True
+        self,
+        code: str,
+        description: str,
+        category: str,
+        default_enabled: bool = True,
+        sub_code_of: ErrorCode | None = None,
     ) -> None:
         self.code = code
         self.description = description
         self.category = category
         self.default_enabled = default_enabled
+        self.sub_code_of = sub_code_of
+        if sub_code_of is not None:
+            assert sub_code_of.sub_code_of is None, "Nested subcategories are not supported"
+            sub_code_map[sub_code_of.code].add(code)
         error_codes[code] = self
 
     def __str__(self) -> str:
         return f"<ErrorCode {self.code}>"
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ErrorCode):
+            return False
+        return self.code == other.code
+
+    def __hash__(self) -> int:
+        return hash((self.code,))
 
 
 ATTR_DEFINED: Final = ErrorCode("attr-defined", "Check that attribute exists", "General")
@@ -51,6 +73,12 @@ RETURN_VALUE: Final[ErrorCode] = ErrorCode(
 ASSIGNMENT: Final[ErrorCode] = ErrorCode(
     "assignment", "Check that assigned value is compatible with target", "General"
 )
+METHOD_ASSIGN: Final[ErrorCode] = ErrorCode(
+    "method-assign",
+    "Check that assignment target is not a method",
+    "General",
+    sub_code_of=ASSIGNMENT,
+)
 TYPE_ARG: Final = ErrorCode("type-arg", "Check that generic type arguments are present", "General")
 TYPE_VAR: Final = ErrorCode("type-var", "Check that type variable values are valid", "General")
 UNION_ATTR: Final = ErrorCode(
@@ -67,11 +95,23 @@ DICT_ITEM: Final = ErrorCode(
 TYPEDDICT_ITEM: Final = ErrorCode(
     "typeddict-item", "Check items when constructing TypedDict", "General"
 )
+TYPEDDICT_UNKNOWN_KEY: Final = ErrorCode(
+    "typeddict-unknown-key",
+    "Check unknown keys when constructing TypedDict",
+    "General",
+    sub_code_of=TYPEDDICT_ITEM,
+)
 HAS_TYPE: Final = ErrorCode(
     "has-type", "Check that type of reference can be determined", "General"
 )
 IMPORT: Final = ErrorCode(
     "import", "Require that imported module can be found or has stubs", "General"
+)
+IMPORT_NOT_FOUND: Final = ErrorCode(
+    "import-not-found", "Require that imported module can be found", "General", sub_code_of=IMPORT
+)
+IMPORT_UNTYPED: Final = ErrorCode(
+    "import-untyped", "Require that imported module has stubs", "General", sub_code_of=IMPORT
 )
 NO_REDEF: Final = ErrorCode("no-redef", "Check that each name is defined once", "General")
 FUNC_RETURNS_VALUE: Final = ErrorCode(
@@ -90,7 +130,7 @@ STRING_FORMATTING: Final = ErrorCode(
     "str-format", "Check that string formatting/interpolation is type-safe", "General"
 )
 STR_BYTES_PY3: Final = ErrorCode(
-    "str-bytes-safe", "Warn about dangerous coercions related to bytes and string types", "General"
+    "str-bytes-safe", "Warn about implicit coercions related to bytes and string types", "General"
 )
 EXIT_RETURN: Final = ErrorCode(
     "exit-return", "Warn about too general return type for '__exit__'", "General"
@@ -109,7 +149,12 @@ EMPTY_BODY: Final[ErrorCode] = ErrorCode(
 SAFE_SUPER: Final = ErrorCode(
     "safe-super", "Warn about calls to abstract methods with empty/trivial bodies", "General"
 )
-
+TOP_LEVEL_AWAIT: Final = ErrorCode(
+    "top-level-await", "Warn about top level await expressions", "General"
+)
+AWAIT_NOT_ASYNC: Final = ErrorCode(
+    "await-not-async", 'Warn about "await" outside coroutine ("async def")', "General"
+)
 # These error codes aren't enabled by default.
 NO_UNTYPED_DEF: Final[ErrorCode] = ErrorCode(
     "no-untyped-def", "Check that every function has an annotation", "General"
@@ -140,8 +185,8 @@ UNREACHABLE: Final = ErrorCode(
 ANNOTATION_UNCHECKED = ErrorCode(
     "annotation-unchecked", "Notify about type annotations in unchecked functions", "General"
 )
-PARTIALLY_DEFINED: Final[ErrorCode] = ErrorCode(
-    "partially-defined",
+POSSIBLY_UNDEFINED: Final[ErrorCode] = ErrorCode(
+    "possibly-undefined",
     "Warn about variables that are defined only in some execution paths",
     "General",
     default_enabled=False,
@@ -186,10 +231,28 @@ UNUSED_AWAITABLE: Final = ErrorCode(
     "General",
     default_enabled=False,
 )
+REDUNDANT_SELF_TYPE = ErrorCode(
+    "redundant-self",
+    "Warn about redundant Self type annotations on method first argument",
+    "General",
+    default_enabled=False,
+)
+USED_BEFORE_DEF: Final[ErrorCode] = ErrorCode(
+    "used-before-def", "Warn about variables that are used before they are defined", "General"
+)
+UNUSED_IGNORE: Final = ErrorCode(
+    "unused-ignore", "Ensure that all type ignores are used", "General", default_enabled=False
+)
+EXPLICIT_OVERRIDE_REQUIRED: Final = ErrorCode(
+    "explicit-override",
+    "Require @override decorator if method is overriding a base class method",
+    "General",
+    default_enabled=False,
+)
 
 
 # Syntax errors are often blocking.
-SYNTAX: Final = ErrorCode("syntax", "Report syntax errors", "General")
+SYNTAX: Final[ErrorCode] = ErrorCode("syntax", "Report syntax errors", "General")
 
 # This is an internal marker code for a whole-file ignore. It is not intended to
 # be user-visible.
@@ -198,3 +261,10 @@ del error_codes[FILE.code]
 
 # This is a catch-all for remaining uncategorized errors.
 MISC: Final = ErrorCode("misc", "Miscellaneous other checks", "General")
+
+OVERLOAD_OVERLAP: Final[ErrorCode] = ErrorCode(
+    "overload-overlap",
+    "Warn if multiple @overload variants overlap in unsafe ways",
+    "General",
+    sub_code_of=MISC,
+)

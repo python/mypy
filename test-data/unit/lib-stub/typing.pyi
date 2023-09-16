@@ -27,6 +27,9 @@ NoReturn = 0
 Never = 0
 NewType = 0
 ParamSpec = 0
+TypeVarTuple = 0
+Unpack = 0
+Self = 0
 TYPE_CHECKING = 0
 
 T = TypeVar('T')
@@ -47,7 +50,9 @@ class Sequence(Iterable[T_co]):
     def __getitem__(self, n: Any) -> T_co: pass
 
 # Mapping type is oversimplified intentionally.
-class Mapping(Iterable[T], Generic[T, T_co]): pass
+class Mapping(Iterable[T], Generic[T, T_co]):
+    def keys(self) -> Iterable[T]: pass  # Approximate return type
+    def __getitem__(self, key: T) -> T_co: pass
 
 class Awaitable(Protocol[T]):
     def __await__(self) -> Generator[Any, Any, T]: pass

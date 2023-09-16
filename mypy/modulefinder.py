@@ -21,8 +21,8 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
-from typing import Dict, List, NamedTuple, Optional, Tuple, Union
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import Dict, Final, List, NamedTuple, Optional, Tuple, Union
+from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy import pyinfo
 from mypy.fscache import FileSystemCache
@@ -337,14 +337,9 @@ class FindModuleCache:
             # If this is not a directory then we can't traverse further into it
             if not self.fscache.isdir(dir_path):
                 break
-        if approved_stub_package_exists(components[0]):
-            if len(components) == 1 or (
-                self.find_module(components[0])
-                is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
-            ):
+        for i in range(len(components), 0, -1):
+            if approved_stub_package_exists(".".join(components[:i])):
                 return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
-        if approved_stub_package_exists(".".join(components[:2])):
-            return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
         if plausible_match:
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
         else:
@@ -507,7 +502,11 @@ class FindModuleCache:
 
             # In namespace mode, register a potential namespace package
             if self.options and self.options.namespace_packages:
-                if fscache.exists_case(base_path, dir_prefix) and not has_init:
+                if (
+                    not has_init
+                    and fscache.exists_case(base_path, dir_prefix)
+                    and not fscache.isfile_case(base_path, dir_prefix)
+                ):
                     near_misses.append((base_path, dir_prefix))
 
             # No package, look for module.
@@ -747,12 +746,19 @@ def get_search_dirs(python_executable: str | None) -> tuple[list[str], list[str]
     else:
         # Use subprocess to get the package directory of given Python
         # executable
+        env = {**dict(os.environ), "PYTHONSAFEPATH": "1"}
         try:
             sys_path, site_packages = ast.literal_eval(
                 subprocess.check_output(
-                    [python_executable, pyinfo.__file__, "getsearchdirs"], stderr=subprocess.PIPE
+                    [python_executable, pyinfo.__file__, "getsearchdirs"],
+                    env=env,
+                    stderr=subprocess.PIPE,
                 ).decode()
             )
+        except subprocess.CalledProcessError as err:
+            print(err.stderr)
+            print(err.stdout)
+            raise
         except OSError as err:
             reason = os.strerror(err.errno)
             raise CompileError(

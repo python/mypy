@@ -28,7 +28,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.types import CallableType, get_proper_type
-from mypyc.common import LAMBDA_NAME, SELF_NAME
+from mypyc.common import LAMBDA_NAME, PROPSET_PREFIX, SELF_NAME
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.ir.func_ir import (
     FUNC_CLASSMETHOD,
@@ -123,7 +123,7 @@ def transform_decorator(builder: IRBuilder, dec: Decorator) -> None:
     # if this is a registered singledispatch implementation with no other decorators), we should
     # treat this function as a regular function, not a decorated function
     elif dec.func in builder.fdefs_to_decorators:
-        # Obtain the the function name in order to construct the name of the helper function.
+        # Obtain the function name in order to construct the name of the helper function.
         name = dec.func.fullname.split(".")[-1]
 
         # Load the callable object representing the non-decorated function, and decorate it.
@@ -397,7 +397,7 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
     builder.functions.append(func_ir)
 
     if is_decorated(builder, fdef):
-        # Obtain the the function name in order to construct the name of the helper function.
+        # Obtain the function name in order to construct the name of the helper function.
         _, _, name = fdef.fullname.rpartition(".")
         # Read the PyTypeObject representing the class, get the callable object
         # representing the non-decorated method
@@ -435,7 +435,6 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
                 class_ir.method_decls[name].sig, base.method_decls[name].sig
             )
         ):
-
             # TODO: Support contravariant subtyping in the input argument for
             # property setters. Need to make a special glue method for handling this,
             # similar to gen_glue_property.
@@ -516,7 +515,7 @@ def gen_func_ns(builder: IRBuilder) -> str:
     return "_".join(
         info.name + ("" if not info.class_name else "_" + info.class_name)
         for info in builder.fn_infos
-        if info.name and info.name != "<top level>"
+        if info.name and info.name != "<module>"
     )
 
 
@@ -643,7 +642,7 @@ def gen_glue_method(
         args = args[: -base_sig.num_bitmap_args]
         arg_kinds = arg_kinds[: -base_sig.num_bitmap_args]
         arg_names = arg_names[: -base_sig.num_bitmap_args]
-        bitmap_args = builder.builder.args[-base_sig.num_bitmap_args :]
+        bitmap_args = list(builder.builder.args[-base_sig.num_bitmap_args :])
 
     # We can do a passthrough *args/**kwargs with a native call, but if the
     # args need to get distributed out to arguments, we just let python handle it
@@ -789,7 +788,7 @@ def load_type(builder: IRBuilder, typ: TypeInfo, line: int) -> Value:
 
 
 def load_func(builder: IRBuilder, func_name: str, fullname: str | None, line: int) -> Value:
-    if fullname is not None and not fullname.startswith(builder.current_module):
+    if fullname and not fullname.startswith(builder.current_module):
         # we're calling a function in a different module
 
         # We can't use load_module_attr_by_fullname here because we need to load the function using
@@ -1026,3 +1025,42 @@ def get_native_impl_ids(builder: IRBuilder, singledispatch_func: FuncDef) -> dic
     """
     impls = builder.singledispatch_impls[singledispatch_func]
     return {impl: i for i, (typ, impl) in enumerate(impls) if not is_decorated(builder, impl)}
+
+
+def gen_property_getter_ir(
+    builder: IRBuilder, func_decl: FuncDecl, cdef: ClassDef, is_trait: bool
+) -> FuncIR:
+    """Generate an implicit trivial property getter for an attribute.
+
+    These are used if an attribute can also be accessed as a property.
+    """
+    name = func_decl.name
+    builder.enter(name)
+    self_reg = builder.add_argument("self", func_decl.sig.args[0].type)
+    if not is_trait:
+        value = builder.builder.get_attr(self_reg, name, func_decl.sig.ret_type, -1)
+        builder.add(Return(value))
+    else:
+        builder.add(Unreachable())
+    args, _, blocks, ret_type, fn_info = builder.leave()
+    return FuncIR(func_decl, args, blocks)
+
+
+def gen_property_setter_ir(
+    builder: IRBuilder, func_decl: FuncDecl, cdef: ClassDef, is_trait: bool
+) -> FuncIR:
+    """Generate an implicit trivial property setter for an attribute.
+
+    These are used if an attribute can also be accessed as a property.
+    """
+    name = func_decl.name
+    builder.enter(name)
+    self_reg = builder.add_argument("self", func_decl.sig.args[0].type)
+    value_reg = builder.add_argument("value", func_decl.sig.args[1].type)
+    assert name.startswith(PROPSET_PREFIX)
+    attr_name = name[len(PROPSET_PREFIX) :]
+    if not is_trait:
+        builder.add(SetAttr(self_reg, attr_name, value_reg, -1))
+    builder.add(Return(builder.none()))
+    args, _, blocks, ret_type, fn_info = builder.leave()
+    return FuncIR(func_decl, args, blocks)

@@ -54,7 +54,7 @@ function_op(
 )
 
 # item in set
-binary_op(
+set_in_op = binary_op(
     name="in",
     arg_types=[object_rprimitive, set_rprimitive],
     return_type=c_int_rprimitive,

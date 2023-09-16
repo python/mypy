@@ -20,7 +20,7 @@ from mypy.test.helpers import (
 )
 
 try:
-    import lxml  # type: ignore[import]
+    import lxml  # type: ignore[import-untyped]
 except ImportError:
     lxml = None
 
@@ -61,6 +61,10 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
         args.append("--hide-error-codes")
     if "--disallow-empty-bodies" not in args:
         args.append("--allow-empty-bodies")
+    if "--no-force-uppercase-builtins" not in args:
+        args.append("--force-uppercase-builtins")
+    if "--no-force-union-syntax" not in args:
+        args.append("--force-union-syntax")
     # Type check the program.
     fixed = [python3_path, "-m", "mypy"]
     env = os.environ.copy()

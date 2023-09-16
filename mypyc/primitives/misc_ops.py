@@ -7,10 +7,10 @@ from mypyc.ir.rtypes import (
     bit_rprimitive,
     bool_rprimitive,
     c_int_rprimitive,
+    c_pointer_rprimitive,
     c_pyssize_t_rprimitive,
     dict_rprimitive,
     int_rprimitive,
-    list_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
     str_rprimitive,
@@ -112,7 +112,7 @@ py_calc_meta_op = custom_op(
     is_borrowed=True,
 )
 
-# Import a module
+# Import a module (plain)
 import_op = custom_op(
     arg_types=[str_rprimitive],
     return_type=object_rprimitive,
@@ -120,25 +120,26 @@ import_op = custom_op(
     error_kind=ERR_MAGIC,
 )
 
-# Import with extra arguments (used in from import handling)
-import_extra_args_op = custom_op(
+# Table-driven import op.
+import_many_op = custom_op(
     arg_types=[
-        str_rprimitive,
-        dict_rprimitive,
-        dict_rprimitive,
-        list_rprimitive,
-        c_int_rprimitive,
+        object_rprimitive,
+        c_pointer_rprimitive,
+        object_rprimitive,
+        object_rprimitive,
+        object_rprimitive,
+        c_pointer_rprimitive,
     ],
-    return_type=object_rprimitive,
-    c_function_name="PyImport_ImportModuleLevelObject",
-    error_kind=ERR_MAGIC,
+    return_type=bit_rprimitive,
+    c_function_name="CPyImport_ImportMany",
+    error_kind=ERR_FALSE,
 )
 
-# Import-from helper op
-import_from_op = custom_op(
-    arg_types=[object_rprimitive, str_rprimitive, str_rprimitive, str_rprimitive],
+# From import helper op
+import_from_many_op = custom_op(
+    arg_types=[object_rprimitive, object_rprimitive, object_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
-    c_function_name="CPyImport_ImportFrom",
+    c_function_name="CPyImport_ImportFromMany",
     error_kind=ERR_MAGIC,
 )
 

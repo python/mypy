@@ -11,3 +11,4 @@ class bool: pass
 class int: pass
 class str: pass
 NotImplemented = cast(Any, None)
+class dict: pass

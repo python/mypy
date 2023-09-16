@@ -8,10 +8,10 @@ __all__ = ["MIMEAudio"]
 class MIMEAudio(MIMENonMultipart):
     def __init__(
         self,
-        _audiodata: str | bytes,
-        _subtype: str | None = ...,
+        _audiodata: str | bytes | bytearray,
+        _subtype: str | None = None,
         _encoder: Callable[[MIMEAudio], object] = ...,
         *,
-        policy: Policy | None = ...,
+        policy: Policy | None = None,
         **_params: _ParamsType,
     ) -> None: ...

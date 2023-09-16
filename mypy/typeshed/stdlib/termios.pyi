@@ -4,9 +4,9 @@ from typing import Any
 from typing_extensions import TypeAlias
 
 if sys.platform != "win32":
+    # Must be a list of length 7, containing 6 ints and a list of NCCS 1-character bytes or ints.
     _Attr: TypeAlias = list[int | list[bytes | int]]
 
-    # TODO constants not really documented
     B0: int
     B1000000: int
     B110: int
@@ -44,17 +44,22 @@ if sys.platform != "win32":
     BSDLY: int
     CBAUD: int
     CBAUDEX: int
+    CDEL: int
     CDSUSP: int
     CEOF: int
     CEOL: int
+    CEOL2: int
     CEOT: int
     CERASE: int
+    CESC: int
     CFLUSH: int
     CIBAUD: int
     CINTR: int
     CKILL: int
     CLNEXT: int
     CLOCAL: int
+    CNUL: int
+    COMMON: int
     CQUIT: int
     CR0: int
     CR1: int
@@ -73,6 +78,7 @@ if sys.platform != "win32":
     CSTOP: int
     CSTOPB: int
     CSUSP: int
+    CSWTCH: int
     CWERASE: int
     ECHO: int
     ECHOCTL: int
@@ -93,6 +99,7 @@ if sys.platform != "win32":
     FIONREAD: int
     FLUSHO: int
     HUPCL: int
+    IBSHIFT: int
     ICANON: int
     ICRNL: int
     IEXTEN: int
@@ -100,6 +107,7 @@ if sys.platform != "win32":
     IGNCR: int
     IGNPAR: int
     IMAXBEL: int
+    INIT_C_CC: int
     INLCR: int
     INPCK: int
     IOCSIZE_MASK: int
@@ -110,17 +118,18 @@ if sys.platform != "win32":
     IXANY: int
     IXOFF: int
     IXON: int
+    N_MOUSE: int
+    N_PPP: int
+    N_SLIP: int
+    N_STRIP: int
+    N_TTY: int
     NCC: int
     NCCS: int
     NL0: int
     NL1: int
     NLDLY: int
     NOFLSH: int
-    N_MOUSE: int
-    N_PPP: int
-    N_SLIP: int
-    N_STRIP: int
-    N_TTY: int
+    NSWTCH: int
     OCRNL: int
     OFDEL: int
     OFILL: int
@@ -151,6 +160,7 @@ if sys.platform != "win32":
     TCSADRAIN: int
     TCSAFLUSH: int
     TCSANOW: int
+    TCSASOFT: int
     TCSBRK: int
     TCSBRKP: int
     TCSETA: int
@@ -167,15 +177,11 @@ if sys.platform != "win32":
     TIOCGLCKTRMIOS: int
     TIOCGPGRP: int
     TIOCGSERIAL: int
+    TIOCGSIZE: int
     TIOCGSOFTCAR: int
     TIOCGWINSZ: int
     TIOCINQ: int
     TIOCLINUX: int
-    TIOCMBIC: int
-    TIOCMBIS: int
-    TIOCMGET: int
-    TIOCMIWAIT: int
-    TIOCMSET: int
     TIOCM_CAR: int
     TIOCM_CD: int
     TIOCM_CTS: int
@@ -187,10 +193,14 @@ if sys.platform != "win32":
     TIOCM_RTS: int
     TIOCM_SR: int
     TIOCM_ST: int
+    TIOCMBIC: int
+    TIOCMBIS: int
+    TIOCMGET: int
+    TIOCMIWAIT: int
+    TIOCMSET: int
     TIOCNOTTY: int
     TIOCNXCL: int
     TIOCOUTQ: int
-    TIOCPKT: int
     TIOCPKT_DATA: int
     TIOCPKT_DOSTOP: int
     TIOCPKT_FLUSHREAD: int
@@ -198,7 +208,9 @@ if sys.platform != "win32":
     TIOCPKT_NOSTOP: int
     TIOCPKT_START: int
     TIOCPKT_STOP: int
+    TIOCPKT: int
     TIOCSCTTY: int
+    TIOCSER_TEMT: int
     TIOCSERCONFIG: int
     TIOCSERGETLSR: int
     TIOCSERGETMULTI: int
@@ -206,14 +218,15 @@ if sys.platform != "win32":
     TIOCSERGWILD: int
     TIOCSERSETMULTI: int
     TIOCSERSWILD: int
-    TIOCSER_TEMT: int
     TIOCSETD: int
     TIOCSLCKTRMIOS: int
     TIOCSPGRP: int
     TIOCSSERIAL: int
+    TIOCSSIZE: int
     TIOCSSOFTCAR: int
     TIOCSTI: int
     TIOCSWINSZ: int
+    TIOCTTYGSTRUCT: int
     TOSTOP: int
     VDISCARD: int
     VEOF: int
@@ -238,7 +251,8 @@ if sys.platform != "win32":
     VWERASE: int
     XCASE: int
     XTABS: int
-    def tcgetattr(__fd: FileDescriptorLike) -> list[Any]: ...
+
+    def tcgetattr(__fd: FileDescriptorLike) -> list[Any]: ...  # Returns _Attr; we use Any to avoid a union in the return type
     def tcsetattr(__fd: FileDescriptorLike, __when: int, __attributes: _Attr) -> None: ...
     def tcsendbreak(__fd: FileDescriptorLike, __duration: int) -> None: ...
     def tcdrain(__fd: FileDescriptorLike) -> None: ...

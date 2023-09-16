@@ -277,3 +277,24 @@ list_slice_op = custom_op(
     c_function_name="CPyList_GetSlice",
     error_kind=ERR_MAGIC,
 )
+
+supports_sequence_protocol = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPySequence_Check",
+    error_kind=ERR_NEVER,
+)
+
+sequence_get_item = custom_op(
+    arg_types=[object_rprimitive, c_pyssize_t_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="PySequence_GetItem",
+    error_kind=ERR_NEVER,
+)
+
+sequence_get_slice = custom_op(
+    arg_types=[object_rprimitive, c_pyssize_t_rprimitive, c_pyssize_t_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="PySequence_GetSlice",
+    error_kind=ERR_MAGIC,
+)

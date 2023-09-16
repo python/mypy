@@ -69,6 +69,40 @@ def untyped_function():
   </packages>
 </coverage>
 
+[case testCoberturaStarUnpacking]
+# cmd: mypy --cobertura-xml-report build a.py
+[file a.py]
+from typing import TypedDict
+
+class MyDict(TypedDict):
+    a: int
+
+def foo(a: int) -> MyDict:
+    return {"a": a}
+md: MyDict = MyDict(**foo(42))
+[outfile build/cobertura.xml]
+<coverage timestamp="$TIMESTAMP" version="$VERSION" line-rate="0.8333" branch-rate="0">
+  <sources>
+    <source>$PWD</source>
+  </sources>
+  <packages>
+    <package complexity="1.0" name="a" branch-rate="0" line-rate="0.8333">
+      <classes>
+        <class complexity="1.0" filename="a.py" name="a.py" branch-rate="0" line-rate="0.8333">
+          <methods/>
+          <lines>
+            <line branch="false" hits="1" number="1" precision="precise"/>
+            <line branch="false" hits="1" number="3" precision="precise"/>
+            <line branch="false" hits="0" number="4" precision="any"/>
+            <line branch="false" hits="1" number="6" precision="precise"/>
+            <line branch="false" hits="1" number="7" precision="precise"/>
+            <line branch="false" hits="1" number="8" precision="precise"/>
+          </lines>
+        </class>
+      </classes>
+    </package>
+  </packages>
+</coverage>
 
 [case testAnyExprReportDivisionByZero]
 # cmd: mypy --any-exprs-report=out -c 'pass'
@@ -102,6 +136,28 @@ class A(object):
 </table>
 </body>
 </html>
+
+[case testNoCrashRecursiveAliasInReport]
+# cmd: mypy --any-exprs-report report n.py
+
+[file n.py]
+from typing import Union, List, Any, TypeVar
+
+Nested = List[Union[Any, Nested]]
+T = TypeVar("T")
+NestedGen = List[Union[T, NestedGen[T]]]
+
+x: Nested
+y: NestedGen[int]
+z: NestedGen[Any]
+
+[file report/any-exprs.txt]
+[outfile report/types-of-anys.txt]
+ Name   Unannotated   Explicit   Unimported   Omitted Generics   Error   Special Form   Implementation Artifact
+-----------------------------------------------------------------------------------------------------------------
+    n             0          4            0                  8       0              0                         0
+-----------------------------------------------------------------------------------------------------------------
+Total             0          4            0                  8       0              0                         0
 
 [case testTypeVarTreatedAsEmptyLine]
 # cmd: mypy --html-report report n.py
@@ -289,7 +345,7 @@ Total      0      14    100.00%
 
 
 [case testAnyExpressionsReportTypesOfAny]
-# cmd: mypy --python-version=3.6 --any-exprs-report report n.py
+# cmd: mypy --any-exprs-report report n.py
 
 [file n.py]
 from typing import Any, List
@@ -480,7 +536,7 @@ namespace_packages = True
 <link rel="stylesheet" type="text/css" href="../../../mypy-html.css">
 </head>
 <body>
-<h2>folder.subfolder.something</h2>           
+<h2>folder.subfolder.something</h2>
 <table>
 <caption>folder/subfolder/something.py</caption>
 <tbody><tr>

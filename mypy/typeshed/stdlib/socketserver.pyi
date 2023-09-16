@@ -1,10 +1,11 @@
 import sys
 import types
-from _typeshed import Self
+from _socket import _Address, _RetAddress
+from _typeshed import ReadableBuffer
 from collections.abc import Callable
 from socket import socket as _socket
-from typing import Any, BinaryIO, ClassVar, Union
-from typing_extensions import TypeAlias
+from typing import Any, BinaryIO, ClassVar
+from typing_extensions import Self, TypeAlias
 
 __all__ = [
     "BaseServer",
@@ -27,41 +28,40 @@ if sys.platform != "win32":
         "UnixDatagramServer",
         "UnixStreamServer",
     ]
+    if sys.version_info >= (3, 12):
+        __all__ += ["ForkingUnixStreamServer", "ForkingUnixDatagramServer"]
 
-_RequestType: TypeAlias = Union[_socket, tuple[bytes, _socket]]
-_AddressType: TypeAlias = Union[tuple[str, int], str]
+_RequestType: TypeAlias = _socket | tuple[bytes, _socket]
+_AfUnixAddress: TypeAlias = str | ReadableBuffer  # address acceptable for an AF_UNIX socket
+_AfInetAddress: TypeAlias = tuple[str | bytes | bytearray, int]  # address acceptable for an AF_INET socket
 
 # This can possibly be generic at some point:
 class BaseServer:
     address_family: int
-    server_address: tuple[str, int]
+    server_address: _Address
     socket: _socket
     allow_reuse_address: bool
     request_queue_size: int
     socket_type: int
     timeout: float | None
+    RequestHandlerClass: Callable[[Any, _RetAddress, Self], BaseRequestHandler]
     def __init__(
-        self: Self, server_address: Any, RequestHandlerClass: Callable[[Any, Any, Self], BaseRequestHandler]
+        self, server_address: _Address, RequestHandlerClass: Callable[[Any, _RetAddress, Self], BaseRequestHandler]
     ) -> None: ...
-    # It is not actually a `@property`, but we need a `Self` type:
-    @property
-    def RequestHandlerClass(self: Self) -> Callable[[Any, Any, Self], BaseRequestHandler]: ...
-    @RequestHandlerClass.setter
-    def RequestHandlerClass(self: Self, val: Callable[[Any, Any, Self], BaseRequestHandler]) -> None: ...
     def fileno(self) -> int: ...
     def handle_request(self) -> None: ...
-    def serve_forever(self, poll_interval: float = ...) -> None: ...
+    def serve_forever(self, poll_interval: float = 0.5) -> None: ...
     def shutdown(self) -> None: ...
     def server_close(self) -> None: ...
-    def finish_request(self, request: _RequestType, client_address: _AddressType) -> None: ...
+    def finish_request(self, request: _RequestType, client_address: _RetAddress) -> None: ...
     def get_request(self) -> tuple[Any, Any]: ...
-    def handle_error(self, request: _RequestType, client_address: _AddressType) -> None: ...
+    def handle_error(self, request: _RequestType, client_address: _RetAddress) -> None: ...
     def handle_timeout(self) -> None: ...
-    def process_request(self, request: _RequestType, client_address: _AddressType) -> None: ...
+    def process_request(self, request: _RequestType, client_address: _RetAddress) -> None: ...
     def server_activate(self) -> None: ...
     def server_bind(self) -> None: ...
-    def verify_request(self, request: _RequestType, client_address: _AddressType) -> bool: ...
-    def __enter__(self: Self) -> Self: ...
+    def verify_request(self, request: _RequestType, client_address: _RetAddress) -> bool: ...
+    def __enter__(self) -> Self: ...
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: types.TracebackType | None
     ) -> None: ...
@@ -72,33 +72,36 @@ class BaseServer:
 class TCPServer(BaseServer):
     if sys.version_info >= (3, 11):
         allow_reuse_port: bool
+    server_address: _AfInetAddress
     def __init__(
-        self: Self,
-        server_address: tuple[str, int],
-        RequestHandlerClass: Callable[[Any, Any, Self], BaseRequestHandler],
-        bind_and_activate: bool = ...,
+        self,
+        server_address: _AfInetAddress,
+        RequestHandlerClass: Callable[[Any, _RetAddress, Self], BaseRequestHandler],
+        bind_and_activate: bool = True,
     ) -> None: ...
-    def get_request(self) -> tuple[_socket, Any]: ...
+    def get_request(self) -> tuple[_socket, _RetAddress]: ...
 
 class UDPServer(TCPServer):
     max_packet_size: ClassVar[int]
-    def get_request(self) -> tuple[tuple[bytes, _socket], Any]: ...  # type: ignore[override]
+    def get_request(self) -> tuple[tuple[bytes, _socket], _RetAddress]: ...  # type: ignore[override]
 
 if sys.platform != "win32":
     class UnixStreamServer(BaseServer):
+        server_address: _AfUnixAddress  # type: ignore[assignment]
         def __init__(
-            self: Self,
-            server_address: str | bytes,
-            RequestHandlerClass: Callable[[Any, Any, Self], BaseRequestHandler],
-            bind_and_activate: bool = ...,
+            self,
+            server_address: _AfUnixAddress,
+            RequestHandlerClass: Callable[[Any, _RetAddress, Self], BaseRequestHandler],
+            bind_and_activate: bool = True,
         ) -> None: ...
 
     class UnixDatagramServer(BaseServer):
+        server_address: _AfUnixAddress  # type: ignore[assignment]
         def __init__(
-            self: Self,
-            server_address: str | bytes,
-            RequestHandlerClass: Callable[[Any, Any, Self], BaseRequestHandler],
-            bind_and_activate: bool = ...,
+            self,
+            server_address: _AfUnixAddress,
+            RequestHandlerClass: Callable[[Any, _RetAddress, Self], BaseRequestHandler],
+            bind_and_activate: bool = True,
         ) -> None: ...
 
 if sys.platform != "win32":
@@ -107,22 +110,25 @@ if sys.platform != "win32":
         active_children: set[int] | None  # undocumented
         max_children: int  # undocumented
         block_on_close: bool
-        def collect_children(self, *, blocking: bool = ...) -> None: ...  # undocumented
+        def collect_children(self, *, blocking: bool = False) -> None: ...  # undocumented
         def handle_timeout(self) -> None: ...  # undocumented
         def service_actions(self) -> None: ...  # undocumented
-        def process_request(self, request: _RequestType, client_address: _AddressType) -> None: ...
+        def process_request(self, request: _RequestType, client_address: _RetAddress) -> None: ...
         def server_close(self) -> None: ...
 
 class ThreadingMixIn:
     daemon_threads: bool
     block_on_close: bool
-    def process_request_thread(self, request: _RequestType, client_address: _AddressType) -> None: ...  # undocumented
-    def process_request(self, request: _RequestType, client_address: _AddressType) -> None: ...
+    def process_request_thread(self, request: _RequestType, client_address: _RetAddress) -> None: ...  # undocumented
+    def process_request(self, request: _RequestType, client_address: _RetAddress) -> None: ...
     def server_close(self) -> None: ...
 
 if sys.platform != "win32":
     class ForkingTCPServer(ForkingMixIn, TCPServer): ...
     class ForkingUDPServer(ForkingMixIn, UDPServer): ...
+    if sys.version_info >= (3, 12):
+        class ForkingUnixStreamServer(ForkingMixIn, UnixStreamServer): ...
+        class ForkingUnixDatagramServer(ForkingMixIn, UnixDatagramServer): ...
 
 class ThreadingTCPServer(ThreadingMixIn, TCPServer): ...
 class ThreadingUDPServer(ThreadingMixIn, UDPServer): ...
@@ -132,16 +138,16 @@ if sys.platform != "win32":
     class ThreadingUnixDatagramServer(ThreadingMixIn, UnixDatagramServer): ...
 
 class BaseRequestHandler:
-    # Those are technically of types, respectively:
-    # * _RequestType
-    # * _AddressType
-    # But there are some concerns that having unions here would cause
+    # `request` is technically of type _RequestType,
+    # but there are some concerns that having a union here would cause
     # too much inconvenience to people using it (see
     # https://github.com/python/typeshed/pull/384#issuecomment-234649696)
+    #
+    # Note also that _RetAddress is also just an alias for `Any`
     request: Any
-    client_address: Any
+    client_address: _RetAddress
     server: BaseServer
-    def __init__(self, request: _RequestType, client_address: _AddressType, server: BaseServer) -> None: ...
+    def __init__(self, request: _RequestType, client_address: _RetAddress, server: BaseServer) -> None: ...
     def setup(self) -> None: ...
     def handle(self) -> None: ...
     def finish(self) -> None: ...

@@ -703,39 +703,15 @@ class FlipFlopStr:
     def mutate(self) -> None:
         self.state = "state-2" if self.state == "state-1" else "state-1"
 
-def test1(switch: FlipFlopEnum) -> None:
+
+def test1(switch: FlipFlopStr) -> None:
     # Naively, we might assume the 'assert' here would narrow the type to
-    # Literal[State.A]. However, doing this ends up breaking a fair number of real-world
+    # Literal["state-1"]. However, doing this ends up breaking a fair number of real-world
     # code (usually test cases) that looks similar to this function: e.g. checks
     # to make sure a field was mutated to some particular value.
     #
     # And since mypy can't really reason about state mutation, we take a conservative
     # approach and avoid narrowing anything here.
-
-    assert switch.state == State.A
-    reveal_type(switch.state)          # N: Revealed type is "__main__.State"
-
-    switch.mutate()
-
-    assert switch.state == State.B
-    reveal_type(switch.state)          # N: Revealed type is "__main__.State"
-
-def test2(switch: FlipFlopEnum) -> None:
-    # So strictly speaking, we ought to do the same thing with 'is' comparisons
-    # for the same reasons as above. But in practice, not too many people seem to
-    # know that doing 'some_enum is MyEnum.Value' is idiomatic. So in practice,
-    # this is probably good enough for now.
-
-    assert switch.state is State.A
-    reveal_type(switch.state)          # N: Revealed type is "Literal[__main__.State.A]"
-
-    switch.mutate()
-
-    assert switch.state is State.B     # E: Non-overlapping identity check (left operand type: "Literal[State.A]", right operand type: "Literal[State.B]")
-    reveal_type(switch.state)          # E: Statement is unreachable
-
-def test3(switch: FlipFlopStr) -> None:
-    # This is the same thing as 'test1', except we try using str literals.
 
     assert switch.state == "state-1"
     reveal_type(switch.state)          # N: Revealed type is "builtins.str"
@@ -744,10 +720,33 @@ def test3(switch: FlipFlopStr) -> None:
 
     assert switch.state == "state-2"
     reveal_type(switch.state)          # N: Revealed type is "builtins.str"
+
+def test2(switch: FlipFlopEnum) -> None:
+    # This is the same thing as 'test1', except we use enums, which we allow to be narrowed
+    # to literals.
+
+    assert switch.state == State.A
+    reveal_type(switch.state)          # N: Revealed type is "Literal[__main__.State.A]"
+
+    switch.mutate()
+
+    assert switch.state == State.B     # E: Non-overlapping equality check (left operand type: "Literal[State.A]", right operand type: "Literal[State.B]")
+    reveal_type(switch.state)          # E: Statement is unreachable
+
+def test3(switch: FlipFlopEnum) -> None:
+    # Same thing, but using 'is' comparisons. Previously mypy's behaviour differed
+    # here, narrowing when using 'is', but not when using '=='.
+
+    assert switch.state is State.A
+    reveal_type(switch.state)          # N: Revealed type is "Literal[__main__.State.A]"
+
+    switch.mutate()
+
+    assert switch.state is State.B     # E: Non-overlapping identity check (left operand type: "Literal[State.A]", right operand type: "Literal[State.B]")
+    reveal_type(switch.state)          # E: Statement is unreachable
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingEqualityRequiresExplicitStrLiteral]
-# flags: --strict-optional
 from typing_extensions import Literal, Final
 
 A_final: Final = "A"
@@ -794,7 +793,7 @@ reveal_type(x_union)      # N: Revealed type is "Union[Literal['A'], Literal['B'
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingEqualityRequiresExplicitEnumLiteral]
-# flags: --strict-optional
+from typing import Union
 from typing_extensions import Literal, Final
 from enum import Enum
 
@@ -805,19 +804,19 @@ class Foo(Enum):
 A_final: Final = Foo.A
 A_literal: Literal[Foo.A]
 
-# See comments in testNarrowingEqualityRequiresExplicitStrLiteral and
-# testNarrowingEqualityFlipFlop for more on why we can't narrow here.
+# Note this is unlike testNarrowingEqualityRequiresExplicitStrLiteral
+# See also testNarrowingEqualityFlipFlop
 x1: Foo
 if x1 == Foo.A:
-    reveal_type(x1)  # N: Revealed type is "__main__.Foo"
+    reveal_type(x1)  # N: Revealed type is "Literal[__main__.Foo.A]"
 else:
-    reveal_type(x1)  # N: Revealed type is "__main__.Foo"
+    reveal_type(x1)  # N: Revealed type is "Literal[__main__.Foo.B]"
 
 x2: Foo
 if x2 == A_final:
-    reveal_type(x2)  # N: Revealed type is "__main__.Foo"
+    reveal_type(x2)  # N: Revealed type is "Literal[__main__.Foo.A]"
 else:
-    reveal_type(x2)  # N: Revealed type is "__main__.Foo"
+    reveal_type(x2)  # N: Revealed type is "Literal[__main__.Foo.B]"
 
 # But we let this narrow since there's an explicit literal in the RHS.
 x3: Foo
@@ -825,6 +824,14 @@ if x3 == A_literal:
     reveal_type(x3)  # N: Revealed type is "Literal[__main__.Foo.A]"
 else:
     reveal_type(x3)  # N: Revealed type is "Literal[__main__.Foo.B]"
+
+
+class SingletonFoo(Enum):
+    A = "A"
+
+def bar(x: Union[SingletonFoo, Foo], y: SingletonFoo) -> None:
+    if x == y:
+        reveal_type(x)  # N: Revealed type is "Literal[__main__.SingletonFoo.A]"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingEqualityDisabledForCustomEquality]
@@ -870,7 +877,7 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingEqualityDisabledForCustomEqualityChain]
-# flags: --strict-optional --strict-equality --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Union
 from typing_extensions import Literal
 
@@ -907,7 +914,7 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingUnreachableCases]
-# flags: --strict-optional --strict-equality --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Union
 from typing_extensions import Literal
 
@@ -955,7 +962,7 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingUnreachableCases2]
-# flags: --strict-optional --strict-equality --warn-unreachable
+# flags: --strict-equality --warn-unreachable
 from typing import Union
 from typing_extensions import Literal
 
@@ -1055,7 +1062,6 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingBooleanIdentityCheck]
-# flags: --strict-optional
 from typing import Optional
 from typing_extensions import Literal
 
@@ -1078,7 +1084,6 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingBooleanTruthiness]
-# flags: --strict-optional
 from typing import Optional
 from typing_extensions import Literal
 
@@ -1100,7 +1105,6 @@ reveal_type(opt_bool_val)   # N: Revealed type is "Union[builtins.bool, None]"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingBooleanBoolOp]
-# flags: --strict-optional
 from typing import Optional
 from typing_extensions import Literal
 
@@ -1129,7 +1133,6 @@ reveal_type(x) # N: Revealed type is "builtins.bool"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingTypedDictUsingEnumLiteral]
-# flags: --python-version 3.6
 from typing import Union
 from typing_extensions import TypedDict, Literal
 from enum import Enum
@@ -1153,7 +1156,6 @@ def f(d: Union[Foo, Bar]) -> None:
 [builtins fixtures/dict.pyi]
 
 [case testNarrowingUsingMetaclass]
-# flags: --strict-optional
 from typing import Type
 
 class M(type):
@@ -1173,7 +1175,6 @@ def f(t: Type[C]) -> None:
     reveal_type(t)  # N: Revealed type is "Type[__main__.C]"
 
 [case testNarrowingUsingTypeVar]
-# flags: --strict-optional
 from typing import Type, TypeVar
 
 class A: pass
@@ -1188,7 +1189,7 @@ def f(t: Type[T], a: A, b: B) -> None:
         reveal_type(a)  # N: Revealed type is "__main__.A"
 
     if type(b) is t:
-        reveal_type(b)  # N: Revealed type is "<nothing>"
+        reveal_type(b)  # N: Revealed type is "Never"
     else:
         reveal_type(b)  # N: Revealed type is "__main__.B"
 
@@ -1259,4 +1260,77 @@ def g() -> None:
     if foo is None:
         def foo(): ...
     foo()
+[builtins fixtures/dict.pyi]
+
+
+[case testNarrowingOptionalEqualsNone]
+from typing import Optional
+
+class A: ...
+
+val: Optional[A]
+
+if val == None:
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+else:
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+if val != None:
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+else:
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+
+if val in (None,):
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+else:
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+if val not in (None,):
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+else:
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingWithTupleOfTypes]
+from typing import Tuple, Type
+
+class Base: ...
+
+class Impl1(Base): ...
+class Impl2(Base): ...
+
+impls: Tuple[Type[Base], ...] = (Impl1, Impl2)
+some: object
+
+if isinstance(some, impls):
+    reveal_type(some)  # N: Revealed type is "__main__.Base"
+else:
+    reveal_type(some)  # N: Revealed type is "builtins.object"
+
+raw: Tuple[type, ...]
+if isinstance(some, raw):
+    reveal_type(some)  # N: Revealed type is "builtins.object"
+else:
+    reveal_type(some)  # N: Revealed type is "builtins.object"
+[builtins fixtures/dict.pyi]
+
+
+[case testNarrowingWithTupleOfTypesPy310Plus]
+# flags: --python-version 3.10
+class Base: ...
+
+class Impl1(Base): ...
+class Impl2(Base): ...
+
+some: int | Base
+
+impls: tuple[type[Base], ...] = (Impl1, Impl2)
+if isinstance(some, impls):
+    reveal_type(some)  # N: Revealed type is "__main__.Base"
+else:
+    reveal_type(some)  # N: Revealed type is "Union[builtins.int, __main__.Base]"
+
+raw: tuple[type, ...]
+if isinstance(some, raw):
+    reveal_type(some)  # N: Revealed type is "Union[builtins.int, __main__.Base]"
+else:
+    reveal_type(some)  # N: Revealed type is "Union[builtins.int, __main__.Base]"
 [builtins fixtures/dict.pyi]

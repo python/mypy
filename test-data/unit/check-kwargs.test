@@ -8,24 +8,27 @@ f(o=None()) # E: "None" not callable
 
 [case testSimpleKeywordArgument]
 import typing
+class A: pass
 def f(a: 'A') -> None: pass
 f(a=A())
 f(a=object()) # E: Argument "a" to "f" has incompatible type "object"; expected "A"
-class A: pass
 
 [case testTwoKeywordArgumentsNotInOrder]
 import typing
+class A: pass
+class B: pass
 def f(a: 'A', b: 'B') -> None: pass
 f(b=A(), a=A()) # E: Argument "b" to "f" has incompatible type "A"; expected "B"
 f(b=B(), a=B()) # E: Argument "a" to "f" has incompatible type "B"; expected "A"
 f(a=A(), b=B())
 f(b=B(), a=A())
-class A: pass
-class B: pass
 
 [case testOneOfSeveralOptionalKeywordArguments]
 # flags: --implicit-optional
 import typing
+class A: pass
+class B: pass
+class C: pass
 def f(a: 'A' = None, b: 'B' = None, c: 'C' = None) -> None: pass
 f(a=A())
 f(b=B())
@@ -35,38 +38,36 @@ f(a=B()) # E: Argument "a" to "f" has incompatible type "B"; expected "Optional[
 f(b=A()) # E: Argument "b" to "f" has incompatible type "A"; expected "Optional[B]"
 f(c=B()) # E: Argument "c" to "f" has incompatible type "B"; expected "Optional[C]"
 f(b=B(), c=A()) # E: Argument "c" to "f" has incompatible type "A"; expected "Optional[C]"
-class A: pass
-class B: pass
-class C: pass
-
 [case testBothPositionalAndKeywordArguments]
 import typing
+class A: pass
+class B: pass
 def f(a: 'A', b: 'B') -> None: pass
 f(A(), b=A()) # E: Argument "b" to "f" has incompatible type "A"; expected "B"
 f(A(), b=B())
-class A: pass
-class B: pass
 
 [case testContextSensitiveTypeInferenceForKeywordArg]
 from typing import List
+class A: pass
 def f(a: 'A', b: 'List[A]') -> None: pass
 f(b=[], a=A())
-class A: pass
 [builtins fixtures/list.pyi]
 
 [case testGivingArgumentAsPositionalAndKeywordArg]
+# flags: --no-strict-optional
 import typing
+class A: pass
+class B: pass
 def f(a: 'A', b: 'B' = None) -> None: pass
 f(A(), a=A()) # E: "f" gets multiple values for keyword argument "a"
-class A: pass
-class B: pass
 
 [case testGivingArgumentAsPositionalAndKeywordArg2]
+# flags: --no-strict-optional
 import typing
-def f(a: 'A' = None, b: 'B' = None) -> None: pass
-f(A(), a=A()) # E: "f" gets multiple values for keyword argument "a"
 class A: pass
 class B: pass
+def f(a: 'A' = None, b: 'B' = None) -> None: pass
+f(A(), a=A()) # E: "f" gets multiple values for keyword argument "a"
 
 [case testPositionalAndKeywordForSameArg]
 # This used to crash in check_argument_count(). See #1095.
@@ -81,80 +82,79 @@ f(b=object()) # E: Unexpected keyword argument "b" for "f"
 class A: pass
 
 [case testKeywordMisspelling]
+class A: pass
 def f(other: 'A') -> None: pass # N: "f" defined here
 f(otter=A()) # E: Unexpected keyword argument "otter" for "f"; did you mean "other"?
-class A: pass
 
 [case testMultipleKeywordsForMisspelling]
-def f(thing : 'A', other: 'A', atter: 'A', btter: 'B') -> None: pass # N: "f" defined here
-f(otter=A()) # E: Unexpected keyword argument "otter" for "f"; did you mean "other" or "atter"?
 class A: pass
 class B: pass
+def f(thing : 'A', other: 'A', atter: 'A', btter: 'B') -> None: pass # N: "f" defined here
+f(otter=A()) # E: Unexpected keyword argument "otter" for "f"; did you mean "atter" or "other"?
 
 [case testKeywordMisspellingDifferentType]
-def f(other: 'A') -> None: pass # N: "f" defined here
-f(otter=B()) # E: Unexpected keyword argument "otter" for "f"; did you mean "other"?
 class A: pass
 class B: pass
+def f(other: 'A') -> None: pass # N: "f" defined here
+f(otter=B()) # E: Unexpected keyword argument "otter" for "f"; did you mean "other"?
 
 [case testKeywordMisspellingInheritance]
-def f(atter: 'A', btter: 'B', ctter: 'C') -> None: pass # N: "f" defined here
-f(otter=B()) # E: Unexpected keyword argument "otter" for "f"; did you mean "btter" or "atter"?
 class A: pass
 class B(A): pass
 class C: pass
+def f(atter: 'A', btter: 'B', ctter: 'C') -> None: pass # N: "f" defined here
+f(otter=B()) # E: Unexpected keyword argument "otter" for "f"; did you mean "atter" or "btter"?
 
 [case testKeywordMisspellingFloatInt]
 def f(atter: float, btter: int) -> None: pass # N: "f" defined here
 x: int = 5
-f(otter=x) # E: Unexpected keyword argument "otter" for "f"; did you mean "btter" or "atter"?
+f(otter=x) # E: Unexpected keyword argument "otter" for "f"; did you mean "atter" or "btter"?
 
 [case testKeywordMisspellingVarArgs]
+class A: pass
 def f(other: 'A', *atter: 'A') -> None: pass # N: "f" defined here
 f(otter=A()) # E: Unexpected keyword argument "otter" for "f"; did you mean "other"?
-class A: pass
 [builtins fixtures/tuple.pyi]
 
 [case testKeywordMisspellingOnlyVarArgs]
+class A: pass
 def f(*other: 'A') -> None: pass # N: "f" defined here
 f(otter=A()) # E: Unexpected keyword argument "otter" for "f"
-class A: pass
 [builtins fixtures/tuple.pyi]
 
 [case testKeywordMisspellingVarArgsDifferentTypes]
-def f(other: 'B', *atter: 'A') -> None: pass # N: "f" defined here
-f(otter=A()) # E: Unexpected keyword argument "otter" for "f"; did you mean "other"?
 class A: pass
 class B: pass
+def f(other: 'B', *atter: 'A') -> None: pass # N: "f" defined here
+f(otter=A()) # E: Unexpected keyword argument "otter" for "f"; did you mean "other"?
 [builtins fixtures/tuple.pyi]
 
 [case testKeywordMisspellingVarKwargs]
+class A: pass
 def f(other: 'A', **atter: 'A') -> None: pass
 f(otter=A()) # E: Missing positional argument "other" in call to "f"
-class A: pass
 [builtins fixtures/dict.pyi]
 
 [case testKeywordArgumentsWithDynamicallyTypedCallable]
 from typing import Any
-f = None # type: Any
+f: Any
 f(x=f(), z=None()) # E: "None" not callable
 f(f, zz=None()) # E: "None" not callable
 f(x=None)
 
 [case testKeywordArgumentWithFunctionObject]
 from typing import Callable
-f = None # type: Callable[[A, B], None]
-f(a=A(), b=B())
-f(A(), b=B())
 class A: pass
 class B: pass
-[out]
-main:3: error: Unexpected keyword argument "a"
-main:3: error: Unexpected keyword argument "b"
-main:4: error: Unexpected keyword argument "b"
+f: Callable[[A, B], None]
+f(a=A(), b=B())  # E: Unexpected keyword argument "a"  # E: Unexpected keyword argument "b"
+f(A(), b=B())  # E: Unexpected keyword argument "b"
 
 [case testKeywordOnlyArguments]
+# flags: --no-strict-optional
 import typing
+class A: pass
+class B: pass
 def f(a: 'A', *, b: 'B' = None) -> None: pass
 def g(a: 'A', *, b: 'B') -> None: pass
 def h(a: 'A', *, b: 'B', aa: 'A') -> None: pass
@@ -177,13 +177,14 @@ i(A(), b=B())
 i(A(), aa=A()) # E: Missing named argument "b" for "i"
 i(A(), b=B(), aa=A())
 i(A(), aa=A(), b=B())
-
-class A: pass
-class B: pass
 
 [case testKeywordOnlyArgumentsFastparse]
-
+# flags: --no-strict-optional
 import typing
+
+class A: pass
+class B: pass
+
 def f(a: 'A', *, b: 'B' = None) -> None: pass
 def g(a: 'A', *, b: 'B') -> None: pass
 def h(a: 'A', *, b: 'B', aa: 'A') -> None: pass
@@ -206,10 +207,6 @@ i(A(), b=B())
 i(A(), aa=A()) # E: Missing named argument "b" for "i"
 i(A(), b=B(), aa=A())
 i(A(), aa=A(), b=B())
-
-class A: pass
-class B: pass
-
 [case testKwargsAfterBareArgs]
 from typing import Tuple, Any
 def f(a, *, b=None) -> None: pass
@@ -222,6 +219,8 @@ f(a, **b)
 [case testKeywordArgAfterVarArgs]
 # flags: --implicit-optional
 import typing
+class A: pass
+class B: pass
 def f(*a: 'A', b: 'B' = None) -> None: pass
 f()
 f(A())
@@ -232,13 +231,13 @@ f(A(), A(), b=B())
 f(B())      # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 f(A(), B()) # E: Argument 2 to "f" has incompatible type "B"; expected "A"
 f(b=A())    # E: Argument "b" to "f" has incompatible type "A"; expected "Optional[B]"
-class A: pass
-class B: pass
 [builtins fixtures/list.pyi]
 
 [case testKeywordArgAfterVarArgsWithBothCallerAndCalleeVarArgs]
 # flags: --implicit-optional --no-strict-optional
 from typing import List
+class A: pass
+class B: pass
 def f(*a: 'A', b: 'B' = None) -> None: pass
 a = None # type: List[A]
 f(*a)
@@ -249,18 +248,16 @@ f(A(), *a, b=B())
 f(A(), B())   # E: Argument 2 to "f" has incompatible type "B"; expected "A"
 f(A(), b=A()) # E: Argument "b" to "f" has incompatible type "A"; expected "Optional[B]"
 f(*a, b=A())  # E: Argument "b" to "f" has incompatible type "A"; expected "Optional[B]"
-class A: pass
-class B: pass
 [builtins fixtures/list.pyi]
 
 [case testCallingDynamicallyTypedFunctionWithKeywordArgs]
 import typing
+class A: pass
 def f(x, y=A()): pass  # N: "f" defined here
 f(x=A(), y=A())
 f(y=A(), x=A())
 f(y=A())      # E: Missing positional argument "x" in call to "f"
 f(A(), z=A()) # E: Unexpected keyword argument "z" for "f"
-class A: pass
 
 [case testKwargsArgumentInFunctionBody]
 from typing import Dict, Any
@@ -284,6 +281,8 @@ class A: pass
 
 [case testCallingFunctionThatAcceptsVarKwargs]
 import typing
+class A: pass
+class B: pass
 def f( **kwargs: 'A') -> None: pass
 f()
 f(x=A())
@@ -291,22 +290,20 @@ f(y=A(), z=A())
 f(x=B()) # E: Argument "x" to "f" has incompatible type "B"; expected "A"
 f(A())   # E: Too many arguments for "f"
 # Perhaps a better message would be "Too many *positional* arguments..."
-class A: pass
-class B: pass
 [builtins fixtures/dict.pyi]
 
 [case testCallingFunctionWithKeywordVarArgs]
 from typing import Dict
+class A: pass
+class B: pass
 def f( **kwargs: 'A') -> None: pass
-d = None # type: Dict[str, A]
+d: Dict[str, A]
 f(**d)
 f(x=A(), **d)
-d2 = None # type: Dict[str, B]
+d2: Dict[str, B]
 f(**d2)         # E: Argument 1 to "f" has incompatible type "**Dict[str, B]"; expected "A"
 f(x=A(), **d2)  # E: Argument 2 to "f" has incompatible type "**Dict[str, B]"; expected "A"
 f(**{'x': B()}) # E: Argument 1 to "f" has incompatible type "**Dict[str, B]"; expected "A"
-class A: pass
-class B: pass
 [builtins fixtures/dict.pyi]
 
 [case testKwargsAllowedInDunderCall]
@@ -334,9 +331,9 @@ reveal_type(formatter.__call__)  # N: Revealed type is "def (message: builtins.s
 [case testPassingMappingForKeywordVarArg]
 from typing import Mapping
 def f(**kwargs: 'A') -> None: pass
-b = None # type: Mapping
-d = None # type: Mapping[A, A]
-m = None # type: Mapping[str, A]
+b: Mapping
+d: Mapping[A, A]
+m: Mapping[str, A]
 f(**d)         # E: Keywords must be strings
 f(**m)
 f(**b)
@@ -347,19 +344,18 @@ class A: pass
 from typing import Mapping
 class MappingSubclass(Mapping[str, str]): pass
 def f(**kwargs: 'A') -> None: pass
-d = None # type: MappingSubclass
+d: MappingSubclass
 f(**d)
 class A: pass
 [builtins fixtures/dict.pyi]
 
 [case testInvalidTypeForKeywordVarArg]
-# flags: --strict-optional
 from typing import Dict, Any, Optional
+class A: pass
 def f(**kwargs: 'A') -> None: pass
 d = {} # type: Dict[A, A]
 f(**d)         # E: Keywords must be strings
 f(**A())       # E: Argument after ** must be a mapping, not "A"
-class A: pass
 kwargs: Optional[Any]
 f(**kwargs)    # E: Argument after ** must be a mapping, not "Optional[Any]"
 [builtins fixtures/dict.pyi]
@@ -367,9 +363,9 @@ f(**kwargs)    # E: Argument after ** must be a mapping, not "Optional[Any]"
 [case testPassingKeywordVarArgsToNonVarArgsFunction]
 from typing import Any, Dict
 def f(a: 'A', b: 'B') -> None: pass
-d = None # type: Dict[str, Any]
+d: Dict[str, Any]
 f(**d)
-d2 = None # type: Dict[str, A]
+d2: Dict[str, A]
 f(**d2) # E: Argument 1 to "f" has incompatible type "**Dict[str, A]"; expected "B"
 class A: pass
 class B: pass
@@ -378,8 +374,8 @@ class B: pass
 [case testBothKindsOfVarArgs]
 from typing import Any, List, Dict
 def f(a: 'A', b: 'A') -> None: pass
-l = None # type: List[Any]
-d = None # type: Dict[Any, Any]
+l: List[Any]
+d: Dict[Any, Any]
 f(*l, **d)
 class A: pass
 [builtins fixtures/dict.pyi]
@@ -390,8 +386,8 @@ def f1(a: 'A', b: 'A') -> None: pass
 def f2(a: 'A') -> None: pass
 def f3(a: 'A', **kwargs: 'A') -> None: pass
 def f4(**kwargs: 'A') -> None: pass
-d = None # type: Dict[Any, Any]
-d2 = None # type: Dict[Any, Any]
+d: Dict[Any, Any]
+d2: Dict[Any, Any]
 f1(**d, **d2)
 f2(**d, **d2)
 f3(**d, **d2)
@@ -402,7 +398,7 @@ class A: pass
 [case testPassingKeywordVarArgsToVarArgsOnlyFunction]
 from typing import Any, Dict
 def f(*args: 'A') -> None: pass
-d = None # type: Dict[Any, Any]
+d: Dict[Any, Any]
 f(**d)
 class A: pass
 [builtins fixtures/dict.pyi]
@@ -509,7 +505,7 @@ g(**{})
 
 [case testKeywordUnpackWithDifferentTypes]
 # https://github.com/python/mypy/issues/11144
-from typing import Dict, Generic, TypeVar, Mapping
+from typing import Dict, Generic, TypeVar, Mapping, Iterable
 
 T = TypeVar("T")
 T2 = TypeVar("T2")
@@ -526,6 +522,12 @@ class C(Generic[T, T2]):
 class D:
     ...
 
+class E:
+    def keys(self) -> Iterable[str]:
+        ...
+    def __getitem__(self, key: str) -> float:
+        ...
+
 def foo(**i: float) -> float:
     ...
 
@@ -533,7 +535,8 @@ a: A[str, str]
 b: B[str, str]
 c: C[str, float]
 d: D
-e = {"a": "b"}
+e: E
+f = {"a": "b"}
 
 foo(k=1.5)
 foo(**a)
@@ -541,6 +544,7 @@ foo(**b)
 foo(**c)
 foo(**d)
 foo(**e)
+foo(**f)
 
 # Correct:
 
@@ -554,9 +558,9 @@ foo(**good1)
 foo(**good2)
 foo(**good3)
 [out]
-main:29: error: Argument 1 to "foo" has incompatible type "**A[str, str]"; expected "float"
-main:30: error: Argument 1 to "foo" has incompatible type "**B[str, str]"; expected "float"
-main:31: error: Argument after ** must be a mapping, not "C[str, float]"
-main:32: error: Argument after ** must be a mapping, not "D"
-main:33: error: Argument 1 to "foo" has incompatible type "**Dict[str, str]"; expected "float"
+main:36: error: Argument 1 to "foo" has incompatible type "**A[str, str]"; expected "float"
+main:37: error: Argument 1 to "foo" has incompatible type "**B[str, str]"; expected "float"
+main:38: error: Argument after ** must be a mapping, not "C[str, float]"
+main:39: error: Argument after ** must be a mapping, not "D"
+main:41: error: Argument 1 to "foo" has incompatible type "**Dict[str, str]"; expected "float"
 [builtins fixtures/dict.pyi]

@@ -833,7 +833,7 @@ else {
 
         op.accept(visitor)
         frags = declarations.fragments + emitter.fragments
-        actual_lines = [line.strip(" \t") for line in frags]
+        actual_lines = [line.strip(" ") for line in frags]
         assert all(line.endswith("\n") for line in actual_lines)
         actual_lines = [line.rstrip("\n") for line in actual_lines]
         if not expected.strip():
@@ -894,13 +894,8 @@ class TestGenerateFunction(unittest.TestCase):
         generate_native_function(fn, emitter, "prog.py", "prog")
         result = emitter.fragments
         assert_string_arrays_equal(
-            [
-                "CPyTagged CPyDef_myfunc(CPyTagged cpy_r_arg) {\n",
-                "CPyL0: ;\n",
-                "    return cpy_r_arg;\n",
-                "}\n",
-            ],
-            [line.replace("\t", 4 * " ") for line in result],
+            ["CPyTagged CPyDef_myfunc(CPyTagged cpy_r_arg) {\n", "    return cpy_r_arg;\n", "}\n"],
+            result,
             msg="Generated code invalid",
         )
 
@@ -922,11 +917,10 @@ class TestGenerateFunction(unittest.TestCase):
             [
                 "PyObject *CPyDef_myfunc(CPyTagged cpy_r_arg) {\n",
                 "    CPyTagged cpy_r_r0;\n",
-                "CPyL0: ;\n",
                 "    cpy_r_r0 = 10;\n",
                 "    CPy_Unreachable();\n",
                 "}\n",
             ],
-            [line.replace("\t", 4 * " ") for line in result],
+            result,
             msg="Generated code invalid",
         )
