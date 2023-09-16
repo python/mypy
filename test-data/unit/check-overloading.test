@@ -6650,3 +6650,29 @@ def d(x: int) -> int: ...
 def d(f: int, *, x: int) -> str: ...
 def d(*args, **kwargs): ...
 [builtins fixtures/tuple.pyi]
+
+[case testAnyExprInHigherOrderOverload]
+# flags: --disallow-any-expr
+from typing import Any, Callable, overload
+
+@overload
+def f(fn: Callable[[int], object]) -> None: ...
+@overload
+def f(fn: object=...) -> None: ...
+
+def f(fn: object=1) -> None: ...
+
+# don't reveal erroneous Any
+f(lambda x: reveal_type(x))  # N: Revealed type is "builtins.int"
+
+# do reveal real Any
+a: Any
+def noop(x: object) -> None: ...
+f(lambda x: noop(a))  # E: Expression has type "Any"
+f(a)  # E: Expression has type "Any"
+
+# don't reveal narrowed type
+o: object
+assert isinstance(o, str)
+f(lambda _: reveal_type(o))  # N: Revealed type is "builtins.object"
+[builtins fixtures/isinstancelist.pyi]
