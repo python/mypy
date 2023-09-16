@@ -724,11 +724,22 @@ class StubgenPythonSuite(DataSuite):
 
     def parse_flags(self, program_text: str, extra: list[str]) -> Options:
         flags = re.search("# flags: (.*)$", program_text, flags=re.MULTILINE)
+        pyversion = None
         if flags:
             flag_list = flags.group(1).split()
+            for i, flag in enumerate(flag_list):
+                if flag.startswith("--python-version="):
+                    pyversion = flag.split("=", 1)[1]
+                    del flag_list[i]
+                    break
         else:
             flag_list = []
         options = parse_options(flag_list + extra)
+        if pyversion:
+            # A hack to allow testing old python versions with new language constructs
+            # This should be rarely used in general as stubgen output should not be version-specific
+            major, minor = pyversion.split(".", 1)
+            options.pyversion = (int(major), int(minor))
         if "--verbose" not in flag_list:
             options.quiet = True
         else:
@@ -1212,6 +1223,27 @@ class StubgencSuite(unittest.TestCase):
         )
         assert_equal(output, ["def test(arg0: foo.bar.Action) -> other.Thing: ..."])
         assert_equal(set(imports), {"import foo", "import other"})
+
+    def test_generate_c_function_no_crash_for_non_str_docstring(self) -> None:
+        def test(arg0: str) -> None:
+            ...
+
+        test.__doc__ = property(lambda self: "test(arg0: str) -> None")  # type: ignore[assignment]
+
+        output: list[str] = []
+        imports: list[str] = []
+        mod = ModuleType(self.__module__, "")
+        generate_c_function_stub(
+            mod,
+            "test",
+            test,
+            output=output,
+            imports=imports,
+            known_modules=[mod.__name__],
+            sig_generators=get_sig_generators(parse_options([])),
+        )
+        assert_equal(output, ["def test(*args, **kwargs) -> Any: ..."])
+        assert_equal(imports, [])
 
     def test_generate_c_property_with_pybind11(self) -> None:
         """Signatures included by PyBind11 inside property.fget are read."""

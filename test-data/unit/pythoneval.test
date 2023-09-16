@@ -863,11 +863,11 @@ MyDDict(dict)[0]
 _program.py:7: error: Argument 1 to "defaultdict" has incompatible type "Type[List[Any]]"; expected "Optional[Callable[[], str]]"
 _program.py:10: error: Invalid index type "str" for "defaultdict[int, str]"; expected type "int"
 _program.py:10: error: Incompatible types in assignment (expression has type "int", target has type "str")
-_program.py:20: error: Argument 1 to "tst" has incompatible type "defaultdict[str, List[<nothing>]]"; expected "defaultdict[int, List[<nothing>]]"
-_program.py:24: error: Invalid index type "str" for "MyDDict[Dict[<nothing>, <nothing>]]"; expected type "int"
+_program.py:20: error: Argument 1 to "tst" has incompatible type "defaultdict[str, List[Never]]"; expected "defaultdict[int, List[Never]]"
+_program.py:24: error: Invalid index type "str" for "MyDDict[Dict[Never, Never]]"; expected type "int"
 
 [case testNoSubcriptionOfStdlibCollections]
-# flags: --python-version 3.6
+# flags: --python-version 3.7
 import collections
 from collections import Counter
 from typing import TypeVar
@@ -1482,14 +1482,12 @@ frozenset({1}) == [1]  # Error
 {1: 2}.keys() == frozenset({1})
 {1: 2}.items() == {(1, 2)}
 
-{1: 2}.keys() == {'no'}  # Error
+{1: 2}.keys() == {'no'}  # OK
 {1: 2}.values() == {2}  # Error
-{1: 2}.keys() == [1]  # Error
+{1: 2}.keys() == [1]  # OK
 [out]
 _testStrictEqualityAllowlist.py:5: error: Non-overlapping equality check (left operand type: "FrozenSet[int]", right operand type: "List[int]")
-_testStrictEqualityAllowlist.py:11: error: Non-overlapping equality check (left operand type: "dict_keys[int, int]", right operand type: "Set[str]")
 _testStrictEqualityAllowlist.py:12: error: Non-overlapping equality check (left operand type: "dict_values[int, int]", right operand type: "Set[int]")
-_testStrictEqualityAllowlist.py:13: error: Non-overlapping equality check (left operand type: "dict_keys[int, int]", right operand type: "List[int]")
 
 [case testUnreachableWithStdlibContextManagers]
 # mypy: warn-unreachable, strict-optional
@@ -1649,7 +1647,6 @@ foo(list((list(""), "")))
 [out]
 
 [case testNarrowTypeForDictKeys]
-# flags: --strict-optional
 from typing import Dict, KeysView, Optional
 
 d: Dict[str, int]
@@ -1667,10 +1664,10 @@ else:
     reveal_type(k)
 
 [out]
-_testNarrowTypeForDictKeys.py:7: note: Revealed type is "builtins.str"
-_testNarrowTypeForDictKeys.py:9: note: Revealed type is "Union[builtins.str, None]"
-_testNarrowTypeForDictKeys.py:14: note: Revealed type is "builtins.str"
-_testNarrowTypeForDictKeys.py:16: note: Revealed type is "Union[builtins.str, None]"
+_testNarrowTypeForDictKeys.py:6: note: Revealed type is "builtins.str"
+_testNarrowTypeForDictKeys.py:8: note: Revealed type is "Union[builtins.str, None]"
+_testNarrowTypeForDictKeys.py:13: note: Revealed type is "builtins.str"
+_testNarrowTypeForDictKeys.py:15: note: Revealed type is "Union[builtins.str, None]"
 
 [case testTypeAliasWithNewStyleUnion]
 # flags: --python-version 3.10
@@ -2007,7 +2004,7 @@ Foo().__dict__ = {}
 _testInferenceOfDunderDictOnClassObjects.py:2: note: Revealed type is "types.MappingProxyType[builtins.str, Any]"
 _testInferenceOfDunderDictOnClassObjects.py:3: note: Revealed type is "builtins.dict[builtins.str, Any]"
 _testInferenceOfDunderDictOnClassObjects.py:4: error: Property "__dict__" defined in "type" is read-only
-_testInferenceOfDunderDictOnClassObjects.py:4: error: Incompatible types in assignment (expression has type "Dict[<nothing>, <nothing>]", variable has type "MappingProxyType[str, Any]")
+_testInferenceOfDunderDictOnClassObjects.py:4: error: Incompatible types in assignment (expression has type "Dict[Never, Never]", variable has type "MappingProxyType[str, Any]")
 
 [case testTypeVarTuple]
 # flags: --enable-incomplete-feature=TypeVarTuple --enable-incomplete-feature=Unpack --python-version=3.11

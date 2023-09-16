@@ -38,18 +38,7 @@ x.y
 x.z # E: "X" has no attribute "z"
 [builtins fixtures/tuple.pyi]
 
-[case testNamedTupleClassPython35]
-# flags: --python-version 3.5
-from typing import NamedTuple
-
-class A(NamedTuple):
-    x = 3  # type: int
-[builtins fixtures/tuple.pyi]
-[out]
-main:4: error: NamedTuple class syntax is only supported in Python 3.6
-
-[case testNamedTupleClassInStubPython35]
-# flags: --python-version 3.5
+[case testNamedTupleClassInStub]
 import foo
 
 [file foo.pyi]
@@ -942,6 +931,16 @@ reveal_type(A().b)  # N: Revealed type is "typing.NamedTuple"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 
+
+[case testEmptyNamedTupleTypeRepr]
+from typing import NamedTuple
+
+N = NamedTuple('N', [])
+n: N
+reveal_type(N)  # N: Revealed type is "def () -> Tuple[(), fallback=__main__.N]"
+reveal_type(n)  # N: Revealed type is "Tuple[(), fallback=__main__.N]"
+[builtins fixtures/tuple.pyi]
+
 [case testNamedTupleWrongfile]
 from typing import NamedTuple
 from b import Type1
@@ -1047,7 +1046,7 @@ def good6() -> NamedTuple:
 def bad1() -> NamedTuple:
     return 1  # E: Incompatible return value type (got "int", expected "NamedTuple")
 def bad2() -> NamedTuple:
-    return ()  # E: Incompatible return value type (got "Tuple[]", expected "NamedTuple")
+    return ()  # E: Incompatible return value type (got "Tuple[()]", expected "NamedTuple")
 def bad3() -> NamedTuple:
     return (1, 2)  # E: Incompatible return value type (got "Tuple[int, int]", expected "NamedTuple")
 

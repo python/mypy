@@ -802,7 +802,7 @@ else:
 plugins=<ROOT>/test-data/unit/plugins/union_method.py
 
 [case testGetMethodHooksOnUnionsStrictOptional]
-# flags: --config-file tmp/mypy.ini --strict-optional
+# flags: --config-file tmp/mypy.ini
 from typing import Union
 
 class Foo:
@@ -1011,12 +1011,34 @@ class BaseAddMethod: pass
 class MyClass(BaseAddMethod):
     pass
 
-my_class = MyClass()
 reveal_type(MyClass.foo_classmethod)  # N: Revealed type is "def ()"
 reveal_type(MyClass.foo_staticmethod)  # N: Revealed type is "def (builtins.int) -> builtins.str"
+
+my_class = MyClass()
+reveal_type(my_class.foo_classmethod)  # N: Revealed type is "def ()"
+reveal_type(my_class.foo_staticmethod)  # N: Revealed type is "def (builtins.int) -> builtins.str"
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/add_classmethod.py
+
+[case testAddOverloadedMethodPlugin]
+# flags: --config-file tmp/mypy.ini
+class AddOverloadedMethod: pass
+
+class MyClass(AddOverloadedMethod):
+    pass
+
+reveal_type(MyClass.method)  # N: Revealed type is "Overload(def (self: __main__.MyClass, arg: builtins.int) -> builtins.str, def (self: __main__.MyClass, arg: builtins.str) -> builtins.int)"
+reveal_type(MyClass.clsmethod)  # N: Revealed type is "Overload(def (arg: builtins.int) -> builtins.str, def (arg: builtins.str) -> builtins.int)"
+reveal_type(MyClass.stmethod)  # N: Revealed type is "Overload(def (arg: builtins.int) -> builtins.str, def (arg: builtins.str) -> builtins.int)"
+
+my_class = MyClass()
+reveal_type(my_class.method)  # N: Revealed type is "Overload(def (arg: builtins.int) -> builtins.str, def (arg: builtins.str) -> builtins.int)"
+reveal_type(my_class.clsmethod)  # N: Revealed type is "Overload(def (arg: builtins.int) -> builtins.str, def (arg: builtins.str) -> builtins.int)"
+reveal_type(my_class.stmethod)  # N: Revealed type is "Overload(def (arg: builtins.int) -> builtins.str, def (arg: builtins.str) -> builtins.int)"
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/add_overloaded_method.py
 
 [case testCustomErrorCodePlugin]
 # flags: --config-file tmp/mypy.ini  --show-error-codes

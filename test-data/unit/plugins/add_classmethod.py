@@ -1,4 +1,6 @@
-from typing import Callable, Optional
+from __future__ import annotations
+
+from typing import Callable
 
 from mypy.nodes import ARG_POS, Argument, Var
 from mypy.plugin import ClassDefContext, Plugin
@@ -7,7 +9,7 @@ from mypy.types import NoneType
 
 
 class ClassMethodPlugin(Plugin):
-    def get_base_class_hook(self, fullname: str) -> Optional[Callable[[ClassDefContext], None]]:
+    def get_base_class_hook(self, fullname: str) -> Callable[[ClassDefContext], None] | None:
         if "BaseAddMethod" in fullname:
             return add_extra_methods_hook
         return None
@@ -24,5 +26,5 @@ def add_extra_methods_hook(ctx: ClassDefContext) -> None:
     )
 
 
-def plugin(version):
+def plugin(version: str) -> type[ClassMethodPlugin]:
     return ClassMethodPlugin

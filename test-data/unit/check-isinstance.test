@@ -1801,7 +1801,6 @@ if issubclass(fm, Bar):
 [builtins fixtures/isinstance.pyi]
 
 [case testIssubclassWithMetaclassesStrictOptional]
-# flags: --strict-optional
 class FooMetaclass(type): ...
 class BarMetaclass(type): ...
 class Foo(metaclass=FooMetaclass): ...
@@ -1813,9 +1812,9 @@ reveal_type(fm)  # N: Revealed type is "__main__.FooMetaclass"
 if issubclass(fm, Foo):
     reveal_type(fm)  # N: Revealed type is "Type[__main__.Foo]"
 if issubclass(fm, Bar):
-    reveal_type(fm)  # N: Revealed type is "<nothing>"
+    reveal_type(fm)  # N: Revealed type is "Never"
 if issubclass(fm, Baz):
-    reveal_type(fm)  # N: Revealed type is "<nothing>"
+    reveal_type(fm)  # N: Revealed type is "Never"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceAndNarrowTypeVariable]
@@ -1906,7 +1905,6 @@ def narrow_any_to_str_then_reassign_to_int() -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testNarrowTypeAfterInList]
-# flags: --strict-optional
 from typing import List, Optional
 
 x: List[int]
@@ -1924,7 +1922,6 @@ else:
 [out]
 
 [case testNarrowTypeAfterInListOfOptional]
-# flags: --strict-optional
 from typing import List, Optional
 
 x: List[Optional[int]]
@@ -1938,7 +1935,6 @@ else:
 [out]
 
 [case testNarrowTypeAfterInListNonOverlapping]
-# flags: --strict-optional
 from typing import List, Optional
 
 x: List[str]
@@ -1952,7 +1948,6 @@ else:
 [out]
 
 [case testNarrowTypeAfterInListNested]
-# flags: --strict-optional
 from typing import List, Optional, Any
 
 x: Optional[int]
@@ -1967,7 +1962,6 @@ if x in nested_any:
 [out]
 
 [case testNarrowTypeAfterInTuple]
-# flags: --strict-optional
 from typing import Optional
 class A: pass
 class B(A): pass
@@ -1982,7 +1976,6 @@ else:
 [out]
 
 [case testNarrowTypeAfterInNamedTuple]
-# flags: --strict-optional
 from typing import NamedTuple, Optional
 class NT(NamedTuple):
     x: int
@@ -1998,7 +1991,6 @@ else:
 [out]
 
 [case testNarrowTypeAfterInDict]
-# flags: --strict-optional
 from typing import Dict, Optional
 x: Dict[str, int]
 y: Optional[str]
@@ -2015,7 +2007,6 @@ else:
 [out]
 
 [case testNarrowTypeAfterInNoAnyOrObject]
-# flags: --strict-optional
 from typing import Any, List, Optional
 x: List[Any]
 z: List[object]
@@ -2035,7 +2026,6 @@ else:
 [out]
 
 [case testNarrowTypeAfterInUserDefined]
-# flags: --strict-optional
 from typing import Container, Optional
 
 class C(Container[int]):
@@ -2057,7 +2047,6 @@ else:
 [out]
 
 [case testNarrowTypeAfterInSet]
-# flags: --strict-optional
 from typing import Optional, Set
 s: Set[str]
 
@@ -2074,7 +2063,6 @@ else:
 [out]
 
 [case testNarrowTypeAfterInTypedDict]
-# flags: --strict-optional
 from typing import Optional
 from mypy_extensions import TypedDict
 class TD(TypedDict):
@@ -2150,7 +2138,6 @@ else:
 [builtins fixtures/isinstance.pyi]
 
 [case testIsInstanceInitialNoneCheckSkipsImpossibleCasesNoStrictOptional]
-# flags: --strict-optional
 from typing import Optional, Union
 
 class A: pass
@@ -2197,7 +2184,6 @@ def foo2(x: Optional[str]) -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testNoneCheckDoesNotNarrowWhenUsingTypeVars]
-# flags: --strict-optional
 
 # Note: this test (and the following one) are testing checker.conditional_type_map:
 # if you set the 'prohibit_none_typevar_overlap' keyword argument to False when calling
@@ -2249,7 +2235,6 @@ def bar(x: Union[List[str], List[int], None]) -> None:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testNoneAndGenericTypesOverlapStrictOptional]
-# flags: --strict-optional
 from typing import Union, Optional, List
 
 # This test is the same as the one above, except for strict-optional.

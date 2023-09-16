@@ -434,7 +434,7 @@ B(1)
 C(1)
 C('a')  # E: Argument 1 to "C" has incompatible type "str"; expected "int"
 D(A(1))
-D(1)  # E: Argument 1 to "D" has incompatible type "int"; expected "A[<nothing>]"
+D(1)  # E: Argument 1 to "D" has incompatible type "int"; expected "A[Never]"
 
 
 [case testInheritedConstructor2]

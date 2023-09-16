@@ -201,6 +201,7 @@ if sys.platform != "win32" and sys.platform != "darwin":
         TCP_LINGER2 as TCP_LINGER2,
         TCP_QUICKACK as TCP_QUICKACK,
         TCP_SYNCNT as TCP_SYNCNT,
+        TCP_USER_TIMEOUT as TCP_USER_TIMEOUT,
         TCP_WINDOW_CLAMP as TCP_WINDOW_CLAMP,
     )
 if sys.platform != "win32":

@@ -385,7 +385,6 @@ y = x # E: Incompatible types in assignment (expression has type "Dict[str, int]
 [builtins fixtures/dict.pyi]
 
 [case testDistinctTypes]
-# flags: --strict-optional
 import b
 
 [file a.py]

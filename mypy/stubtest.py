@@ -11,6 +11,7 @@ import collections.abc
 import copy
 import enum
 import importlib
+import importlib.machinery
 import inspect
 import os
 import pkgutil
@@ -22,10 +23,11 @@ import types
 import typing
 import typing_extensions
 import warnings
+from collections import defaultdict
 from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
-from typing import Any, Generic, Iterator, TypeVar, Union
+from typing import AbstractSet, Any, Generic, Iterator, TypeVar, Union
 from typing_extensions import get_origin, is_typeddict
 
 import mypy.build
@@ -496,7 +498,11 @@ def verify_typeinfo(
     )
 
     # Check everything already defined on the stub class itself (i.e. not inherited)
-    to_check = set(stub.names)
+    #
+    # Filter out non-identifier names, as these are (hopefully always?) whacky/fictional things
+    # (like __mypy-replace or __mypy-post_init, etc.) that don't exist at runtime,
+    # and exist purely for internal mypy reasons
+    to_check = {name for name in stub.names if name.isidentifier()}
     # Check all public things on the runtime class
     to_check.update(
         m for m in vars(runtime) if not is_probably_private(m) and m not in IGNORABLE_CLASS_DUNDERS
@@ -1547,10 +1553,10 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> mypy.types.Type | None:
     fallback = mypy.types.Instance(type_info, [anytype() for _ in type_info.type_vars])
 
     value: bool | int | str
-    if isinstance(runtime, bytes):
-        value = bytes_to_human_readable_repr(runtime)
-    elif isinstance(runtime, enum.Enum):
+    if isinstance(runtime, enum.Enum) and isinstance(runtime.name, str):
         value = runtime.name
+    elif isinstance(runtime, bytes):
+        value = bytes_to_human_readable_repr(runtime)
     elif isinstance(runtime, (bool, int, str)):
         value = runtime
     else:
@@ -1635,7 +1641,7 @@ def get_stub(module: str) -> nodes.MypyFile | None:
 
 def get_typeshed_stdlib_modules(
     custom_typeshed_dir: str | None, version_info: tuple[int, int] | None = None
-) -> list[str]:
+) -> set[str]:
     """Returns a list of stdlib modules in typeshed (for current Python version)."""
     stdlib_py_versions = mypy.modulefinder.load_stdlib_py_versions(custom_typeshed_dir)
     if version_info is None:
@@ -1657,14 +1663,93 @@ def get_typeshed_stdlib_modules(
         typeshed_dir = Path(mypy.build.default_data_dir()) / "typeshed"
     stdlib_dir = typeshed_dir / "stdlib"
 
-    modules = []
+    modules: set[str] = set()
     for path in stdlib_dir.rglob("*.pyi"):
         if path.stem == "__init__":
             path = path.parent
         module = ".".join(path.relative_to(stdlib_dir).parts[:-1] + (path.stem,))
         if exists_in_version(module):
-            modules.append(module)
-    return sorted(modules)
+            modules.add(module)
+    return modules
+
+
+def get_importable_stdlib_modules() -> set[str]:
+    """Return all importable stdlib modules at runtime."""
+    all_stdlib_modules: AbstractSet[str]
+    if sys.version_info >= (3, 10):
+        all_stdlib_modules = sys.stdlib_module_names
+    else:
+        all_stdlib_modules = set(sys.builtin_module_names)
+        modules_by_finder: defaultdict[importlib.machinery.FileFinder, set[str]] = defaultdict(set)
+        for m in pkgutil.iter_modules():
+            if isinstance(m.module_finder, importlib.machinery.FileFinder):
+                modules_by_finder[m.module_finder].add(m.name)
+        for finder, module_group in modules_by_finder.items():
+            if (
+                "site-packages" not in Path(finder.path).parents
+                # if "_queue" is present, it's most likely the module finder
+                # for stdlib extension modules;
+                # if "queue" is present, it's most likely the module finder
+                # for pure-Python stdlib modules.
+                # In either case, we'll want to add all the modules that the finder has to offer us.
+                # This is a bit hacky, but seems to work well in a cross-platform way.
+                and {"_queue", "queue"} & module_group
+            ):
+                all_stdlib_modules.update(module_group)
+
+    importable_stdlib_modules: set[str] = set()
+    for module_name in all_stdlib_modules:
+        if module_name in ANNOYING_STDLIB_MODULES:
+            continue
+
+        try:
+            runtime = silent_import_module(module_name)
+        except ImportError:
+            continue
+        else:
+            importable_stdlib_modules.add(module_name)
+
+        try:
+            # some stdlib modules (e.g. `nt`) don't have __path__ set...
+            runtime_path = runtime.__path__
+            runtime_name = runtime.__name__
+        except AttributeError:
+            continue
+
+        for submodule in pkgutil.walk_packages(runtime_path, runtime_name + "."):
+            submodule_name = submodule.name
+
+            # There are many annoying *.__main__ stdlib modules,
+            # and including stubs for them isn't really that useful anyway:
+            # tkinter.__main__ opens a tkinter windows; unittest.__main__ raises SystemExit; etc.
+            #
+            # The idlelib.* submodules are similarly annoying in opening random tkinter windows,
+            # and we're unlikely to ever add stubs for idlelib in typeshed
+            # (see discussion in https://github.com/python/typeshed/pull/9193)
+            #
+            # test.* modules do weird things like raising exceptions in __del__ methods,
+            # leading to unraisable exceptions being logged to the terminal
+            # as a warning at the end of the stubtest run
+            if (
+                submodule_name.endswith(".__main__")
+                or submodule_name.startswith("idlelib.")
+                or submodule_name.startswith("test.")
+            ):
+                continue
+
+            try:
+                silent_import_module(submodule_name)
+            except KeyboardInterrupt:
+                raise
+            # importing multiprocessing.popen_forkserver on Windows raises AttributeError...
+            # some submodules also appear to raise SystemExit as well on some Python versions
+            # (not sure exactly which)
+            except BaseException:
+                continue
+            else:
+                importable_stdlib_modules.add(submodule_name)
+
+    return importable_stdlib_modules
 
 
 def get_allowlist_entries(allowlist_file: str) -> Iterator[str]:
@@ -1695,6 +1780,10 @@ class _Arguments:
     version: str
 
 
+# typeshed added a stub for __main__, but that causes stubtest to check itself
+ANNOYING_STDLIB_MODULES: typing_extensions.Final = frozenset({"antigravity", "this", "__main__"})
+
+
 def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
     """This is stubtest! It's time to test the stubs!"""
     # Load the allowlist. This is a series of strings corresponding to Error.object_desc
@@ -1717,10 +1806,9 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
                 "cannot pass both --check-typeshed and a list of modules",
             )
             return 1
-        modules = get_typeshed_stdlib_modules(args.custom_typeshed_dir)
-        # typeshed added a stub for __main__, but that causes stubtest to check itself
-        annoying_modules = {"antigravity", "this", "__main__"}
-        modules = [m for m in modules if m not in annoying_modules]
+        typeshed_modules = get_typeshed_stdlib_modules(args.custom_typeshed_dir)
+        runtime_modules = get_importable_stdlib_modules()
+        modules = sorted((typeshed_modules | runtime_modules) - ANNOYING_STDLIB_MODULES)
 
     if not modules:
         print(_style("error:", color="red", bold=True), "no modules to check")

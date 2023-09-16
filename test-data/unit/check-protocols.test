@@ -324,7 +324,6 @@ var: MyHashable = C()  # E: Incompatible types in assignment (expression has typ
                        # N:     __my_hash__: expected "Callable[[], int]", got "None"
 
 [case testNoneDisablesProtocolSubclassingWithStrictOptional]
-# flags: --strict-optional
 from typing import Protocol
 
 class MyHashable(Protocol):
@@ -336,7 +335,6 @@ class C(MyHashable):
 (expression has type "None", base class "MyHashable" defined the type as "Callable[[MyHashable], int]")
 
 [case testProtocolsWithNoneAndStrictOptional]
-# flags: --strict-optional
 from typing import Protocol
 class P(Protocol):
     x = 0  # type: int
@@ -348,12 +346,12 @@ x: P = C() # Error!
 def f(x: P) -> None: pass
 f(C()) # Error!
 [out]
-main:9: error: Incompatible types in assignment (expression has type "C", variable has type "P")
-main:9: note: Following member(s) of "C" have conflicts:
-main:9: note:     x: expected "int", got "None"
-main:11: error: Argument 1 to "f" has incompatible type "C"; expected "P"
-main:11: note: Following member(s) of "C" have conflicts:
-main:11: note:     x: expected "int", got "None"
+main:8: error: Incompatible types in assignment (expression has type "C", variable has type "P")
+main:8: note: Following member(s) of "C" have conflicts:
+main:8: note:     x: expected "int", got "None"
+main:10: error: Argument 1 to "f" has incompatible type "C"; expected "P"
+main:10: note: Following member(s) of "C" have conflicts:
+main:10: note:     x: expected "int", got "None"
 
 -- Semanal errors in protocol types
 -- --------------------------------
@@ -930,7 +928,7 @@ class L:
 
 def last(seq: Linked[T]) -> T:
     pass
-last(L()) # E: Argument 1 to "last" has incompatible type "L"; expected "Linked[<nothing>]"
+last(L()) # E: Argument 1 to "last" has incompatible type "L"; expected "Linked[Never]"
 
 [case testMutuallyRecursiveProtocols]
 from typing import Protocol, Sequence, List
@@ -2412,7 +2410,6 @@ x: P = None
 [out]
 
 [case testNoneSubtypeOfEmptyProtocolStrict]
-# flags: --strict-optional
 from typing import Protocol
 class P(Protocol):
     pass
@@ -2959,7 +2956,6 @@ class MyClass:
 
 
 [case testPartialAttributeNoneTypeStrictOptional]
-# flags: --strict-optional
 from typing import Optional, Protocol, runtime_checkable
 
 @runtime_checkable
@@ -3080,7 +3076,6 @@ def round(number: SupportsRound[_T], ndigits: int) -> _T: ...
 round(C(), 1)
 
 [case testEmptyBodyImplicitlyAbstractProtocol]
-# flags: --strict-optional
 from typing import Protocol, overload, Union
 
 class P1(Protocol):
@@ -3127,7 +3122,6 @@ C3()
 [builtins fixtures/classmethod.pyi]
 
 [case testEmptyBodyImplicitlyAbstractProtocolProperty]
-# flags: --strict-optional
 from typing import Protocol
 
 class P1(Protocol):
@@ -3222,7 +3216,6 @@ D() # E: Cannot instantiate abstract class "D" with abstract attribute "meth"
 [builtins fixtures/exception.pyi]
 
 [case testEmptyBodyNoneCompatibleProtocol]
-# flags: --strict-optional
 from abc import abstractmethod
 from typing import Any, Optional, Protocol, Union, overload
 from typing_extensions import TypeAlias

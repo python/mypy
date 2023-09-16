@@ -26,7 +26,7 @@ from mypy.test.helpers import (
 from mypy.test.update_data import update_testcase_output
 
 try:
-    import lxml  # type: ignore[import]
+    import lxml  # type: ignore[import-untyped]
 except ImportError:
     lxml = None
 
@@ -43,6 +43,8 @@ if sys.version_info < (3, 10):
     typecheck_files.remove("check-python310.test")
 if sys.version_info < (3, 11):
     typecheck_files.remove("check-python311.test")
+if sys.version_info < (3, 12):
+    typecheck_files.remove("check-python312.test")
 
 # Special tests for platforms with case-insensitive filesystems.
 if sys.platform not in ("darwin", "win32"):
@@ -128,8 +130,6 @@ class TypeCheckSuite(DataSuite):
         options.show_traceback = True
 
         # Enable some options automatically based on test file name.
-        if "optional" in testcase.file:
-            options.strict_optional = True
         if "columns" in testcase.file:
             options.show_column_numbers = True
         if "errorcodes" in testcase.file:

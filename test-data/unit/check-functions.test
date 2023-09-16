@@ -250,7 +250,7 @@ if int():
 if int():
     f = o   # E: Incompatible types in assignment (expression has type "object", variable has type "Callable[[], None]")
 if int():
-    f = f() # E: Function does not return a value
+    f = f() # E: Function does not return a value (it only ever returns None)
 
 if int():
     f = f
@@ -2330,7 +2330,7 @@ T = TypeVar('T')
 def deco() -> Callable[[T], T]: pass
 reveal_type(deco)  # N: Revealed type is "def () -> def [T] (T`-1) -> T`-1"
 f = deco()
-reveal_type(f)  # N: Revealed type is "def [T] (T`-1) -> T`-1"
+reveal_type(f)  # N: Revealed type is "def [T] (T`1) -> T`1"
 i = f(3)
 reveal_type(i)  # N: Revealed type is "builtins.int"
 
@@ -2343,7 +2343,7 @@ U = TypeVar('U')
 def deco(x: U) -> Callable[[T, U], T]: pass
 reveal_type(deco)  # N: Revealed type is "def [U] (x: U`-1) -> def [T] (T`-2, U`-1) -> T`-2"
 f = deco("foo")
-reveal_type(f)  # N: Revealed type is "def [T] (T`-2, builtins.str) -> T`-2"
+reveal_type(f)  # N: Revealed type is "def [T] (T`1, builtins.str) -> T`1"
 i = f(3, "eggs")
 reveal_type(i)  # N: Revealed type is "builtins.int"
 
@@ -2354,9 +2354,9 @@ T = TypeVar('T')
 R = TypeVar('R')
 def deco() -> Callable[[T], Callable[[T, R], R]]: pass
 f = deco()
-reveal_type(f)  # N: Revealed type is "def [T] (T`-1) -> def [R] (T`-1, R`-2) -> R`-2"
+reveal_type(f)  # N: Revealed type is "def [T] (T`2) -> def [R] (T`2, R`1) -> R`1"
 g = f(3)
-reveal_type(g)  # N: Revealed type is "def [R] (builtins.int, R`-2) -> R`-2"
+reveal_type(g)  # N: Revealed type is "def [R] (builtins.int, R`3) -> R`3"
 s = g(4, "foo")
 reveal_type(s)  # N: Revealed type is "builtins.str"
 
@@ -2545,7 +2545,6 @@ reveal_type(bar(None))  # N: Revealed type is "None"
 [out]
 
 [case testNoComplainOverloadNoneStrict]
-# flags: --strict-optional
 from typing import overload, Optional
 @overload
 def bar(x: None) -> None:
@@ -2574,7 +2573,6 @@ xx: Optional[int] = X(x_in)
 [out]
 
 [case testNoComplainInferredNoneStrict]
-# flags: --strict-optional
 from typing import TypeVar, Optional
 T = TypeVar('T')
 def X(val: T) -> T: ...
@@ -2759,8 +2757,7 @@ class E(D): pass
 class F(E):
     @override
     def f(self, x: int) -> str: pass
-[typing fixtures/typing-full.pyi]
-[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-override.pyi]
 
 [case explicitOverrideStaticmethod]
 # flags: --python-version 3.12
@@ -2792,8 +2789,8 @@ class D(A):
     def f(x: str) -> str: pass  # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int" \
                                 # N: This violates the Liskov substitution principle \
                                 # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
-[typing fixtures/typing-full.pyi]
-[builtins fixtures/callable.pyi]
+[typing fixtures/typing-override.pyi]
+[builtins fixtures/staticmethod.pyi]
 
 [case explicitOverrideClassmethod]
 # flags: --python-version 3.12
@@ -2825,8 +2822,8 @@ class D(A):
     def f(cls, x: str) -> str: pass  # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int" \
                                      # N: This violates the Liskov substitution principle \
                                      # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
-[typing fixtures/typing-full.pyi]
-[builtins fixtures/callable.pyi]
+[typing fixtures/typing-override.pyi]
+[builtins fixtures/classmethod.pyi]
 
 [case explicitOverrideProperty]
 # flags: --python-version 3.12
@@ -2860,8 +2857,8 @@ class D(A):
                               # N:          str \
                               # N:      Subclass: \
                               # N:          int
+[typing fixtures/typing-override.pyi]
 [builtins fixtures/property.pyi]
-[typing fixtures/typing-full.pyi]
 
 [case explicitOverrideSettableProperty]
 # flags: --python-version 3.12
@@ -2898,8 +2895,8 @@ class D(A):
 
     @f.setter
     def f(self, value: int) -> None: pass
+[typing fixtures/typing-override.pyi]
 [builtins fixtures/property.pyi]
-[typing fixtures/typing-full.pyi]
 
 [case invalidExplicitOverride]
 # flags: --python-version 3.12
@@ -2914,8 +2911,7 @@ class A: pass
 def g() -> None:
     @override  # E: "override" used with a non-method
     def h(b: bool) -> int: pass
-[typing fixtures/typing-full.pyi]
-[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-override.pyi]
 
 [case explicitOverrideSpecialMethods]
 # flags: --python-version 3.12
@@ -2931,8 +2927,7 @@ class B(A):
 class C:
     @override
     def __init__(self, a: int) -> None: pass
-[typing fixtures/typing-full.pyi]
-[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-override.pyi]
 
 [case explicitOverrideFromExtensions]
 from typing_extensions import override
@@ -2943,7 +2938,6 @@ class A:
 class B(A):
     @override
     def f2(self, x: int) -> str: pass  # E: Method "f2" is marked as an override, but no base method was found with this name
-[typing fixtures/typing-full.pyi]
 [builtins fixtures/tuple.pyi]
 
 [case explicitOverrideOverloads]
@@ -2960,8 +2954,7 @@ class B(A):
     def f2(self, x: str) -> str: pass
     @override
     def f2(self, x: int | str) -> str: pass
-[typing fixtures/typing-full.pyi]
-[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-override.pyi]
 
 [case explicitOverrideNotOnOverloadsImplementation]
 # flags: --python-version 3.12
@@ -2985,8 +2978,7 @@ class C(A):
     @overload
     def f(self, y: str) -> str: pass
     def f(self, y: int | str) -> str: pass
-[typing fixtures/typing-full.pyi]
-[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-override.pyi]
 
 [case explicitOverrideOnMultipleOverloads]
 # flags: --python-version 3.12
@@ -3012,5 +3004,174 @@ class C(A):
     def f(self, y: str) -> str: pass
     @override
     def f(self, y: int | str) -> str: pass
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-override.pyi]
+
+[case explicitOverrideCyclicDependency]
+# flags: --python-version 3.12
+import b
+[file a.py]
+from typing import override
+import b
+import c
+
+class A(b.B):
+    @override  # This is fine
+    @c.deco
+    def meth(self) -> int: ...
+[file b.py]
+import a
+import c
+
+class B:
+    @c.deco
+    def meth(self) -> int: ...
+[file c.py]
+from typing import TypeVar, Tuple, Callable
+T = TypeVar('T')
+def deco(f: Callable[..., T]) -> Callable[..., Tuple[T, int]]: ...
 [builtins fixtures/tuple.pyi]
+[typing fixtures/typing-override.pyi]
+
+[case requireExplicitOverrideMethod]
+# flags: --enable-error-code explicit-override --python-version 3.12
+from typing import override
+
+class A:
+    def f(self, x: int) -> str: pass
+
+class B(A):
+    @override
+    def f(self, y: int) -> str: pass
+
+class C(A):
+    def f(self, y: int) -> str: pass  # E: Method "f" is not using @override but is overriding a method in class "__main__.A"
+
+class D(B):
+    def f(self, y: int) -> str: pass  # E: Method "f" is not using @override but is overriding a method in class "__main__.B"
+[typing fixtures/typing-override.pyi]
+
+[case requireExplicitOverrideSpecialMethod]
+# flags: --enable-error-code explicit-override --python-version 3.12
+from typing import Callable, Self, TypeVar, override, overload
+
+T = TypeVar('T')
+def some_decorator(f: Callable[..., T]) -> Callable[..., T]: ...
+
+# Don't require override decorator for __init__ and __new__
+# See: https://github.com/python/typing/issues/1376
+class A:
+    def __init__(self) -> None: pass
+    def __new__(cls) -> Self: pass
+
+class B(A):
+    def __init__(self) -> None: pass
+    def __new__(cls) -> Self: pass
+
+class C(A):
+    @some_decorator
+    def __init__(self) -> None: pass
+
+    @some_decorator
+    def __new__(cls) -> Self: pass
+
+class D(A):
+    @overload
+    def __init__(self, x: int) -> None: ...
+    @overload
+    def __init__(self, x: str) -> None: ...
+    def __init__(self, x): pass
+
+    @overload
+    def __new__(cls, x: int) -> Self: pass
+    @overload
+    def __new__(cls, x: str) -> Self: pass
+    def __new__(cls, x): pass
+[typing fixtures/typing-override.pyi]
+
+[case requireExplicitOverrideProperty]
+# flags: --enable-error-code explicit-override --python-version 3.12
+from typing import override
+
+class A:
+    @property
+    def prop(self) -> int: pass
+
+class B(A):
+    @override
+    @property
+    def prop(self) -> int: pass
+
+class C(A):
+    @property
+    def prop(self) -> int: pass  # E: Method "prop" is not using @override but is overriding a method in class "__main__.A"
+[typing fixtures/typing-override.pyi]
+[builtins fixtures/property.pyi]
+
+[case requireExplicitOverrideOverload]
+# flags: --enable-error-code explicit-override --python-version 3.12
+from typing import overload, override
+
+class A:
+    @overload
+    def f(self, x: int) -> str: ...
+    @overload
+    def f(self, x: str) -> str: ...
+    def f(self, x): pass
+
+class B(A):
+    @overload
+    def f(self, y: int) -> str: ...
+    @overload
+    def f(self, y: str) -> str: ...
+    @override
+    def f(self, y): pass
+
+class C(A):
+    @overload
+    @override
+    def f(self, y: int) -> str: ...
+    @overload
+    def f(self, y: str) -> str: ...
+    def f(self, y): pass
+
+class D(A):
+    @overload
+    def f(self, y: int) -> str: ...
+    @overload
+    def f(self, y: str) -> str: ...
+    def f(self, y): pass  # E: Method "f" is not using @override but is overriding a method in class "__main__.A"
+[typing fixtures/typing-override.pyi]
+
+[case requireExplicitOverrideMultipleInheritance]
+# flags: --enable-error-code explicit-override --python-version 3.12
+from typing import override
+
+class A:
+    def f(self, x: int) -> str: pass
+class B:
+    def f(self, y: int) -> str: pass
+
+class C(A, B):
+    @override
+    def f(self, z: int) -> str: pass
+
+class D(A, B):
+    def f(self, z: int) -> str: pass  # E: Method "f" is not using @override but is overriding a method in class "__main__.A"
+[typing fixtures/typing-override.pyi]
+
+[case testCallableProperty]
+from typing import Callable
+
+class something_callable:
+    def __call__(self, fn) -> str: ...
+
+def decorator(fn: Callable[..., int]) -> something_callable: ...
+
+class A:
+    @property
+    @decorator
+    def f(self) -> int: ...
+
+reveal_type(A.f)  # N: Revealed type is "__main__.something_callable"
+reveal_type(A().f)  # N: Revealed type is "builtins.str"
+[builtins fixtures/property.pyi]
