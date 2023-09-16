@@ -2403,7 +2403,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     ]
                     actual_kinds = [nodes.ARG_STAR] + [nodes.ARG_POS] * (len(actuals) - 1)
 
-                    # TODO: can we really assert this? What if formal is just plain Unpack[Ts]?
+                    # If we got here, the callee was previously inferred to have a suffix.
                     assert isinstance(orig_callee_arg_type, UnpackType)
                     assert isinstance(orig_callee_arg_type.type, ProperType) and isinstance(
                         orig_callee_arg_type.type, TupleType
@@ -2429,22 +2429,29 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                             inner_unpack = unpacked_type.items[inner_unpack_index]
                             assert isinstance(inner_unpack, UnpackType)
                             inner_unpacked_type = get_proper_type(inner_unpack.type)
-                            # We assume heterogenous tuples are desugared earlier
-                            assert isinstance(inner_unpacked_type, Instance)
-                            assert inner_unpacked_type.type.fullname == "builtins.tuple"
-                            callee_arg_types = (
-                                unpacked_type.items[:inner_unpack_index]
-                                + [inner_unpacked_type.args[0]]
-                                * (len(actuals) - len(unpacked_type.items) + 1)
-                                + unpacked_type.items[inner_unpack_index + 1 :]
-                            )
-                            callee_arg_kinds = [ARG_POS] * len(actuals)
+                            if isinstance(inner_unpacked_type, TypeVarTupleType):
+                                # This branch mimics the expanded_tuple case above but for
+                                # the case where caller passed a single * unpacked tuple argument.
+                                callee_arg_types = unpacked_type.items
+                                callee_arg_kinds = [
+                                    ARG_POS if i != inner_unpack_index else ARG_STAR
+                                    for i in range(len(unpacked_type.items))
+                                ]
+                            else:
+                                # We assume heterogeneous tuples are desugared earlier.
+                                assert isinstance(inner_unpacked_type, Instance)
+                                assert inner_unpacked_type.type.fullname == "builtins.tuple"
+                                callee_arg_types = (
+                                    unpacked_type.items[:inner_unpack_index]
+                                    + [inner_unpacked_type.args[0]]
+                                    * (len(actuals) - len(unpacked_type.items) + 1)
+                                    + unpacked_type.items[inner_unpack_index + 1 :]
+                                )
+                                callee_arg_kinds = [ARG_POS] * len(actuals)
                     elif isinstance(unpacked_type, TypeVarTupleType):
                         callee_arg_types = [orig_callee_arg_type]
                         callee_arg_kinds = [ARG_STAR]
                     else:
-                        # TODO: Any and Never can appear in Unpack (as a result of user error),
-                        # fail gracefully here and elsewhere (and/or normalize them away).
                         assert isinstance(unpacked_type, Instance)
                         assert unpacked_type.type.fullname == "builtins.tuple"
                         callee_arg_types = [unpacked_type.args[0]] * len(actuals)
@@ -2456,8 +2463,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             assert len(actual_types) == len(actuals) == len(actual_kinds)
 
             if len(callee_arg_types) != len(actual_types):
-                # TODO: Improve error message
-                self.chk.fail("Invalid number of arguments", context)
+                if len(actual_types) > len(callee_arg_types):
+                    self.chk.msg.too_many_arguments(callee, context)
+                else:
+                    self.chk.msg.too_few_arguments(callee, context, None)
                 continue
 
             assert len(callee_arg_types) == len(actual_types)

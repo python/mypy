@@ -366,13 +366,21 @@ from typing_extensions import TypeVarTuple, Unpack
 
 Ts = TypeVarTuple("Ts")
 
-# TODO: add less trivial tests with prefix/suffix etc.
-# TODO: add tests that call with a type var tuple instead of just args.
 def args_to_tuple(*args: Unpack[Ts]) -> Tuple[Unpack[Ts]]:
     reveal_type(args)  # N: Revealed type is "Tuple[Unpack[Ts`-1]]"
-    return args
+    reveal_type(args_to_tuple(1, *args))  # N: Revealed type is "Tuple[Literal[1]?, Unpack[Ts`-1]]"
+    reveal_type(args_to_tuple(*args, 'a'))  # N: Revealed type is "Tuple[Unpack[Ts`-1], Literal['a']?]"
+    reveal_type(args_to_tuple(1, *args, 'a'))  # N: Revealed type is "Tuple[Literal[1]?, Unpack[Ts`-1], Literal['a']?]"
+    if int():
+        return args
+    else:
+        return args_to_tuple(*args)
 
 reveal_type(args_to_tuple(1, 'a'))  # N: Revealed type is "Tuple[Literal[1]?, Literal['a']?]"
+vt: Tuple[int, ...]
+reveal_type(args_to_tuple(1, *vt))  # N: Revealed type is "Tuple[Literal[1]?, Unpack[builtins.tuple[builtins.int, ...]]]"
+reveal_type(args_to_tuple(*vt, 'a'))  # N: Revealed type is "Tuple[Unpack[builtins.tuple[builtins.int, ...]], Literal['a']?]"
+reveal_type(args_to_tuple(1, *vt, 'a'))  # N: Revealed type is "Tuple[Literal[1]?, Unpack[builtins.tuple[builtins.int, ...]], Literal['a']?]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTuplePep646TypeVarStarArgs]
@@ -381,8 +389,17 @@ from typing_extensions import TypeVarTuple, Unpack
 
 Ts = TypeVarTuple("Ts")
 
+def args_to_tuple(*args: Unpack[Ts]) -> Tuple[Unpack[Ts]]:
+    with_prefix_suffix(*args)  # E: Too few arguments for "with_prefix_suffix" \
+                               # E: Argument 1 to "with_prefix_suffix" has incompatible type "*Tuple[Unpack[Ts]]"; expected "bool"
+    new_args = (True, "foo", *args, 5)
+    with_prefix_suffix(*new_args)
+    return args
+
 def with_prefix_suffix(*args: Unpack[Tuple[bool, str, Unpack[Ts], int]]) -> Tuple[bool, str, Unpack[Ts], int]:
     reveal_type(args)  # N: Revealed type is "Tuple[builtins.bool, builtins.str, Unpack[Ts`-1], builtins.int]"
+    reveal_type(args_to_tuple(*args))  # N: Revealed type is "Tuple[builtins.bool, builtins.str, Unpack[Ts`-1], builtins.int]"
+    reveal_type(args_to_tuple(1, *args, 'a'))  # N: Revealed type is "Tuple[Literal[1]?, builtins.bool, builtins.str, Unpack[Ts`-1], builtins.int, Literal['a']?]"
     return args
 
 reveal_type(with_prefix_suffix(True, "bar", "foo", 5))  # N: Revealed type is "Tuple[builtins.bool, builtins.str, Literal['foo']?, builtins.int]"
@@ -395,8 +412,7 @@ t = (True, "bar", "foo", 5)
 reveal_type(with_prefix_suffix(*t))  # N: Revealed type is "Tuple[builtins.bool, builtins.str, builtins.str, builtins.int]"
 reveal_type(with_prefix_suffix(True, *("bar", "foo"), 5))  # N: Revealed type is "Tuple[builtins.bool, builtins.str, Literal['foo']?, builtins.int]"
 
-# TODO: handle list case
-#reveal_type(with_prefix_suffix(True, "bar", *["foo1", "foo2"], 5))
+reveal_type(with_prefix_suffix(True, "bar", *["foo1", "foo2"], 5))  # N: Revealed type is "Tuple[builtins.bool, builtins.str, Unpack[builtins.tuple[builtins.str, ...]], builtins.int]"
 
 bad_t = (True, "bar")
 with_prefix_suffix(*bad_t)  # E: Too few arguments for "with_prefix_suffix"
@@ -908,7 +924,7 @@ def cons(
     return wrapped
 
 def star(f: Callable[[X], Y]) -> Callable[[Unpack[Tuple[X, ...]]], Tuple[Y, ...]]:
-    def wrapped(*xs: X):
+    def wrapped(*xs: X) -> Tuple[Y, ...]:
         if not xs:
             return nil()
         return cons(f, star(f))(*xs)
