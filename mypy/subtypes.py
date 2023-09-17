@@ -465,13 +465,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
                             return not self.proper_subtype
                 if all(isinstance(get_proper_type(a), AnyType) for a in mapped.args):
                     return not self.proper_subtype
-                if mapped.type.tuple_type:
-                    # similar to logic inside map_instance_to_supertype
-                    tuple_type = expand_type_by_instance(mapped.type.tuple_type, mapped)
-                    assert isinstance(tuple_type, TupleType)
-                    return self._is_subtype(
-                        tuple_type, right.copy_modified(fallback=tuple_type.partial_fallback)
-                    ) and self._is_subtype(left, mypy.typeops.tuple_fallback(right))
             return False
         if isinstance(right, TypeVarTupleType):
             # tuple[Any, ...] is like Any in the world of tuples (see special case above).
