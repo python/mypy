@@ -4157,10 +4157,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if ns is not None:
                 out = []
                 for n in ns:
-                    if n < 0:
-                        n += len(left_type.items)
-                    if 0 <= n < len(left_type.items):
-                        out.append(left_type.items[n])
+                    item = self.visit_tuple_index_helper(left_type, n)
+                    if item is not None:
+                        out.append(item)
                     else:
                         self.chk.fail(message_registry.TUPLE_INDEX_OUT_OF_RANGE, e)
                         return AnyType(TypeOfAny.from_error)
@@ -4185,6 +4184,46 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             )
             e.method_type = method_type
             return result
+
+    def visit_tuple_index_helper(self, left: TupleType, n: int) -> Type | None:
+        unpack_index = find_unpack_in_list(left.items)
+        if unpack_index is None:
+            if n < 0:
+                n += len(left.items)
+            if 0 <= n < len(left.items):
+                return left.items[n]
+            return None
+        unpack = left.items[unpack_index]
+        assert isinstance(unpack, UnpackType)
+        unpacked = get_proper_type(unpack.type)
+        if isinstance(unpacked, TypeVarTupleType):
+            # Usually we say that TypeVarTuple can't be split, be in case of
+            # indexing it seems benign to just return the fallback item, similar
+            # to what we do when indexing a regular TypeVar.
+            middle = unpacked.tuple_fallback.args[0]
+        else:
+            assert isinstance(unpacked, Instance)
+            assert unpacked.type.fullname == "builtins.tuple"
+            middle = unpacked.args[0]
+        if n >= 0:
+            if n < unpack_index:
+                return left.items[n]
+            if n >= len(left.items) - 1:
+                # For tuple[int, *tuple[str, ...], int] we allow either index 0 or 1,
+                # since variadic item may have zero items.
+                return None
+            return UnionType.make_union(
+                [middle] + left.items[unpack_index + 1 : n + 2], left.line, left.column
+            )
+        n += len(left.items)
+        if n <= 0:
+            # Similar to above, we only allow -1, and -2 for tuple[int, *tuple[str, ...], int]
+            return None
+        if n > unpack_index:
+            return left.items[n]
+        return UnionType.make_union(
+            left.items[n - 1 : unpack_index] + [middle], left.line, left.column
+        )
 
     def visit_tuple_slice_helper(self, left_type: TupleType, slic: SliceExpr) -> Type:
         begin: Sequence[int | None] = [None]
@@ -4211,7 +4250,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         items: list[Type] = []
         for b, e, s in itertools.product(begin, end, stride):
-            items.append(left_type.slice(b, e, s))
+            item = left_type.slice(b, e, s)
+            if item is None:
+                self.chk.fail(message_registry.AMBIGUOUS_SLICE_OF_VARIADIC_TUPLE, slic)
+                return AnyType(TypeOfAny.from_error)
+            items.append(item)
         return make_simplified_union(items)
 
     def try_getting_int_literals(self, index: Expression) -> list[int] | None:
@@ -4220,7 +4263,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         Otherwise, returns None.
 
         Specifically, this function is guaranteed to return a list with
-        one or more ints if one one the following is true:
+        one or more ints if one the following is true:
 
         1. 'expr' is a IntExpr or a UnaryExpr backed by an IntExpr
         2. 'typ' is a LiteralType containing an int

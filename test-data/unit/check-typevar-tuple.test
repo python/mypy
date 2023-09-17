@@ -454,7 +454,7 @@ reveal_type(C().foo2)  # N: Revealed type is "def (*args: Unpack[Tuple[builtins.
 
 [case testTypeVarTuplePep646TypeVarStarArgsVariableLengthTuple]
 from typing import Tuple
-from typing_extensions import Unpack
+from typing_extensions import Unpack, TypeVarTuple
 
 def foo(*args: Unpack[Tuple[int, ...]]) -> None:
     reveal_type(args)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
@@ -462,11 +462,26 @@ def foo(*args: Unpack[Tuple[int, ...]]) -> None:
 foo(0, 1, 2)
 foo(0, 1, "bar")  # E: Argument 3 to "foo" has incompatible type "str"; expected "int"
 
-
 def foo2(*args: Unpack[Tuple[str, Unpack[Tuple[int, ...]], bool, bool]]) -> None:
     reveal_type(args)  # N: Revealed type is "Tuple[builtins.str, Unpack[builtins.tuple[builtins.int, ...]], builtins.bool, builtins.bool]"
-    # TODO: generate an error
-    # reveal_type(args[1])
+    reveal_type(args[1])  # N: Revealed type is "builtins.int"
+
+def foo3(*args: Unpack[Tuple[str, Unpack[Tuple[int, ...]], str, float]]) -> None:
+    reveal_type(args[0])  # N: Revealed type is "builtins.str"
+    reveal_type(args[1])  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(args[2])  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.float]"
+    args[3]  # E: Tuple index out of range
+    reveal_type(args[-1])  # N: Revealed type is "builtins.float"
+    reveal_type(args[-2])  # N: Revealed type is "builtins.str"
+    reveal_type(args[-3])  # N: Revealed type is "Union[builtins.str, builtins.int]"
+    args[-4]  # E: Tuple index out of range
+    reveal_type(args[::-1])  # N: Revealed type is "Tuple[builtins.float, builtins.str, Unpack[builtins.tuple[builtins.int, ...]], builtins.str]"
+    args[::2]  # E: Ambiguous slice of a variadic tuple
+    args[:2]  # E: Ambiguous slice of a variadic tuple
+
+Ts = TypeVarTuple("Ts")
+def foo4(*args: Unpack[Tuple[str, Unpack[Ts], bool, bool]]) -> None:
+    reveal_type(args[1])  # N: Revealed type is "builtins.object"
 
 foo2("bar", 1, 2, 3, False, True)
 foo2(0, 1, 2, 3, False, True)  # E: Argument 1 to "foo2" has incompatible type "int"; expected "str"
@@ -1535,4 +1550,18 @@ T = TypeVar("T")
 def test(x: int, t: Tuple[T, ...]) -> Tuple[int, Unpack[Tuple[T, ...]]]:
     ...
 a: Any = test(42, ())
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleIndexTypeVar]
+from typing import Any, List, Sequence, Tuple, TypeVar
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+def f(data: Sequence[Tuple[Unpack[Ts]]]) -> List[Any]:
+    # Tuple may be empty
+    return [d[0] for d in data]  # E: Tuple index out of range
+
+T = TypeVar("T")
+def g(data: Sequence[Tuple[T, Unpack[Ts]]]) -> List[T]:
+    return [d[0] for d in data]  # OK
 [builtins fixtures/tuple.pyi]

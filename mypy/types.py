@@ -2418,14 +2418,53 @@ class TupleType(ProperType):
             items = self.items
         return TupleType(items, fallback, self.line, self.column)
 
-    def slice(self, begin: int | None, end: int | None, stride: int | None) -> TupleType:
-        return TupleType(
-            self.items[begin:end:stride],
-            self.partial_fallback,
-            self.line,
-            self.column,
-            self.implicit,
-        )
+    def slice(self, begin: int | None, end: int | None, stride: int | None) -> TupleType | None:
+        if any(isinstance(t, UnpackType) for t in self.items):
+            total = len(self.items)
+            unpack_index = find_unpack_in_list(self.items)
+            assert unpack_index is not None
+            if begin is None and end is None:
+                # We special-case this to support reversing variadic tuples.
+                # General support for slicing is tricky, so we handle only simple cases.
+                if stride == -1:
+                    slice_items = self.items[::-1]
+                elif stride is None or stride == 1:
+                    slice_items = self.items
+                else:
+                    return None
+            elif (begin is None or unpack_index >= begin >= 0) and (
+                end is not None and unpack_index >= end >= 0
+            ):
+                # Start and end are in the prefix, everything works in this case.
+                slice_items = self.items[begin:end:stride]
+            elif (begin is not None and unpack_index - total < begin < 0) and (
+                end is None or unpack_index - total < end < 0
+            ):
+                # Start and end are in the suffix, everything works in this case.
+                slice_items = self.items[begin:end:stride]
+            elif (begin is None or unpack_index >= begin >= 0) and (
+                end is None or unpack_index - total < end < 0
+            ):
+                # Start in the prefix, end in the suffix, we can support only trivial strides.
+                if stride is None or stride == 1:
+                    slice_items = self.items[begin:end:stride]
+                else:
+                    return None
+            elif (begin is not None and unpack_index - total < begin < 0) and (
+                end is not None and unpack_index >= end >= 0
+            ):
+                # Start in the suffix, end in the prefix, we can support only trivial strides.
+                if stride is None or stride == -1:
+                    slice_items = self.items[begin:end:stride]
+                else:
+                    return None
+            else:
+                # TODO: there some additional cases we can support for homogeneous variadic
+                # items, we can "eat away" finite number of items.
+                return None
+        else:
+            slice_items = self.items[begin:end:stride]
+        return TupleType(slice_items, self.partial_fallback, self.line, self.column, self.implicit)
 
 
 class TypedDictType(ProperType):
