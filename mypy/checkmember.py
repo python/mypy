@@ -618,6 +618,7 @@ def analyze_member_var_access(
         ):
             v = mx.module_symbol_table[name].node
             e = NameExpr(name)
+            e.set_line(mx.context)
             e.node = v
             return mx.chk.expr_checker.analyze_ref_expr(e, lvalue=mx.is_lvalue)
         return ret
