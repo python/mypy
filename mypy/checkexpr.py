@@ -4168,6 +4168,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         out.append(item)
                     else:
                         self.chk.fail(message_registry.TUPLE_INDEX_OUT_OF_RANGE, e)
+                        if any(isinstance(t, UnpackType) for t in left_type.items):
+                            self.chk.note(
+                                f"Variadic tuple can have length {left_type.length() - 1}", e
+                            )
                         return AnyType(TypeOfAny.from_error)
                 return make_simplified_union(out)
             else:
