@@ -602,7 +602,7 @@ YbZ = TypedDict('YbZ', {'y': object, 'z': int})
 T = TypeVar('T')
 def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: XYa, y: YbZ) -> None: pass
-reveal_type(f(g))  # N: Revealed type is "<nothing>"
+reveal_type(f(g))  # N: Revealed type is "Never"
 [builtins fixtures/dict.pyi]
 
 [case testMeetOfTypedDictsWithNoCommonKeysHasAllKeysAndNewFallback]
@@ -625,7 +625,7 @@ M = Mapping[str, int]
 T = TypeVar('T')
 def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: X, y: M) -> None: pass
-reveal_type(f(g))  # N: Revealed type is "<nothing>"
+reveal_type(f(g))  # N: Revealed type is "Never"
 [builtins fixtures/dict.pyi]
 
 [case testMeetOfTypedDictWithIncompatibleMappingIsUninhabited]
@@ -636,7 +636,7 @@ M = Mapping[str, str]
 T = TypeVar('T')
 def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: X, y: M) -> None: pass
-reveal_type(f(g))  # N: Revealed type is "<nothing>"
+reveal_type(f(g))  # N: Revealed type is "Never"
 [builtins fixtures/dict.pyi]
 
 [case testMeetOfTypedDictWithCompatibleMappingSuperclassIsUninhabitedForNow]
@@ -680,7 +680,7 @@ YZ = TypedDict('YZ', {'y': int, 'z': int})
 T = TypeVar('T')
 def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: XY, y: YZ) -> None: pass
-reveal_type(f(g)) # N: Revealed type is "<nothing>"
+reveal_type(f(g)) # N: Revealed type is "Never"
 [builtins fixtures/dict.pyi]
 
 
@@ -1856,7 +1856,7 @@ class Config(TypedDict):
     b: str
 
 x: Config
-x == {}  # E: Non-overlapping equality check (left operand type: "Config", right operand type: "Dict[<nothing>, <nothing>]")
+x == {}  # E: Non-overlapping equality check (left operand type: "Config", right operand type: "Dict[Never, Never]")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -3222,5 +3222,17 @@ z: Union[Any, Dict[Any, Any]]
 t1: Foo = {**x}  # E: Missing key "a" for TypedDict "Foo"
 t2: Foo = {**y}  # E: Missing key "a" for TypedDict "Foo"
 t3: Foo = {**z}  # E: Missing key "a" for TypedDict "Foo"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictUnpackError]
+from typing import TypedDict
+
+class Foo(TypedDict):
+    a: int
+
+def foo(x: int) -> Foo: ...
+
+f: Foo = {**foo("no")}  # E: Argument 1 to "foo" has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]

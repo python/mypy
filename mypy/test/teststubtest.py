@@ -64,10 +64,12 @@ _R = TypeVar("_R", covariant=True)
 
 class Coroutine(Generic[_T_co, _S, _R]): ...
 class Iterable(Generic[_T_co]): ...
+class Iterator(Iterable[_T_co]): ...
 class Mapping(Generic[_K, _V]): ...
 class Match(Generic[AnyStr]): ...
 class Sequence(Iterable[_T_co]): ...
 class Tuple(Sequence[_T_co]): ...
+class NamedTuple(tuple[Any, ...]): ...
 def overload(func: _T) -> _T: ...
 """
 
@@ -82,9 +84,12 @@ VT = TypeVar('VT')
 class object:
     __module__: str
     def __init__(self) -> None: pass
+    def __repr__(self) -> str: pass
 class type: ...
 
-class tuple(Sequence[T_co], Generic[T_co]): ...
+class tuple(Sequence[T_co], Generic[T_co]):
+    def __ge__(self, __other: tuple[T_co, ...]) -> bool: pass
+
 class dict(Mapping[KT, VT]): ...
 
 class function: pass
@@ -103,6 +108,39 @@ def classmethod(f: T) -> T: ...
 def staticmethod(f: T) -> T: ...
 """
 
+stubtest_enum_stub = """
+import sys
+from typing import Any, TypeVar, Iterator
+
+_T = TypeVar('_T')
+
+class EnumMeta(type):
+    def __len__(self) -> int: pass
+    def __iter__(self: type[_T]) -> Iterator[_T]: pass
+    def __reversed__(self: type[_T]) -> Iterator[_T]: pass
+    def __getitem__(self: type[_T], name: str) -> _T: pass
+
+class Enum(metaclass=EnumMeta):
+    def __new__(cls: type[_T], value: object) -> _T: pass
+    def __repr__(self) -> str: pass
+    def __str__(self) -> str: pass
+    def __format__(self, format_spec: str) -> str: pass
+    def __hash__(self) -> Any: pass
+    def __reduce_ex__(self, proto: Any) -> Any: pass
+    name: str
+    value: Any
+
+class Flag(Enum):
+    def __or__(self: _T, other: _T) -> _T: pass
+    def __and__(self: _T, other: _T) -> _T: pass
+    def __xor__(self: _T, other: _T) -> _T: pass
+    def __invert__(self: _T) -> _T: pass
+    if sys.version_info >= (3, 11):
+        __ror__ = __or__
+        __rand__ = __and__
+        __rxor__ = __xor__
+"""
+
 
 def run_stubtest(
     stub: str, runtime: str, options: list[str], config_file: str | None = None
@@ -112,6 +150,8 @@ def run_stubtest(
             f.write(stubtest_builtins_stub)
         with open("typing.pyi", "w") as f:
             f.write(stubtest_typing_stub)
+        with open("enum.pyi", "w") as f:
+            f.write(stubtest_enum_stub)
         with open(f"{TEST_MODULE_NAME}.pyi", "w") as f:
             f.write(stub)
         with open(f"{TEST_MODULE_NAME}.py", "w") as f:
@@ -952,22 +992,101 @@ class StubtestUnit(unittest.TestCase):
 
     @collect_cases
     def test_enum(self) -> Iterator[Case]:
+        yield Case(stub="import enum", runtime="import enum", error=None)
         yield Case(
             stub="""
-            import enum
             class X(enum.Enum):
                 a: int
                 b: str
                 c: str
             """,
             runtime="""
-            import enum
             class X(enum.Enum):
                 a = 1
                 b = "asdf"
                 c = 2
             """,
             error="X.c",
+        )
+        yield Case(
+            stub="""
+            class Flags1(enum.Flag):
+                a: int
+                b: int
+            def foo(x: Flags1 = ...) -> None: ...
+            """,
+            runtime="""
+            class Flags1(enum.Flag):
+                a = 1
+                b = 2
+            def foo(x=Flags1.a|Flags1.b): pass
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class Flags2(enum.Flag):
+                a: int
+                b: int
+            def bar(x: Flags2 | None = None) -> None: ...
+            """,
+            runtime="""
+            class Flags2(enum.Flag):
+                a = 1
+                b = 2
+            def bar(x=Flags2.a|Flags2.b): pass
+            """,
+            error="bar",
+        )
+        yield Case(
+            stub="""
+            class Flags3(enum.Flag):
+                a: int
+                b: int
+            def baz(x: Flags3 | None = ...) -> None: ...
+            """,
+            runtime="""
+            class Flags3(enum.Flag):
+                a = 1
+                b = 2
+            def baz(x=Flags3(0)): pass
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class Flags4(enum.Flag):
+                a: int
+                b: int
+            def spam(x: Flags4 | None = None) -> None: ...
+            """,
+            runtime="""
+            class Flags4(enum.Flag):
+                a = 1
+                b = 2
+            def spam(x=Flags4(0)): pass
+            """,
+            error="spam",
+        )
+        yield Case(
+            stub="""
+            from typing_extensions import Final, Literal
+            class BytesEnum(bytes, enum.Enum):
+                a: bytes
+            FOO: Literal[BytesEnum.a]
+            BAR: Final = BytesEnum.a
+            BAZ: BytesEnum
+            EGGS: bytes
+            """,
+            runtime="""
+            class BytesEnum(bytes, enum.Enum):
+                a = b'foo'
+            FOO = BytesEnum.a
+            BAR = BytesEnum.a
+            BAZ = BytesEnum.a
+            EGGS = BytesEnum.a
+            """,
+            error=None,
         )
 
     @collect_cases
@@ -1597,6 +1716,72 @@ class StubtestUnit(unittest.TestCase):
                 a: int
             """,
             error=None,
+        )
+
+    @collect_cases
+    def test_named_tuple(self) -> Iterator[Case]:
+        yield Case(
+            stub="from typing import NamedTuple",
+            runtime="from typing import NamedTuple",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class X1(NamedTuple):
+                bar: int
+                foo: str = ...
+            """,
+            runtime="""
+            class X1(NamedTuple):
+                bar: int
+                foo: str = 'a'
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class X2(NamedTuple):
+                bar: int
+                foo: str
+            """,
+            runtime="""
+            class X2(NamedTuple):
+                bar: int
+                foo: str = 'a'
+            """,
+            # `__new__` will miss a default value for a `foo` parameter,
+            # but we don't generate special errors for `foo` missing `...` part.
+            error="X2.__new__",
+        )
+
+    @collect_cases
+    def test_named_tuple_typing_and_collections(self) -> Iterator[Case]:
+        yield Case(
+            stub="from typing import NamedTuple",
+            runtime="from collections import namedtuple",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class X1(NamedTuple):
+                bar: int
+                foo: str = ...
+            """,
+            runtime="""
+            X1 = namedtuple('X1', ['bar', 'foo'], defaults=['a'])
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class X2(NamedTuple):
+                bar: int
+                foo: str
+            """,
+            runtime="""
+            X2 = namedtuple('X1', ['bar', 'foo'], defaults=['a'])
+            """,
+            error="X2.__new__",
         )
 
     @collect_cases

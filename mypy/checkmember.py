@@ -317,7 +317,17 @@ def analyze_instance_member_access(
             return analyze_var(name, first_item.var, typ, info, mx)
         if mx.is_lvalue:
             mx.msg.cant_assign_to_method(mx.context)
-        signature = function_type(method, mx.named_type("builtins.function"))
+        if not isinstance(method, OverloadedFuncDef):
+            signature = function_type(method, mx.named_type("builtins.function"))
+        else:
+            if method.type is None:
+                # Overloads may be not ready if they are decorated. Handle this in same
+                # manner as we would handle a regular decorated function: defer if possible.
+                if not mx.no_deferral and method.items:
+                    mx.not_ready_callback(method.name, mx.context)
+                return AnyType(TypeOfAny.special_form)
+            assert isinstance(method.type, Overloaded)
+            signature = method.type
         signature = freshen_all_functions_type_vars(signature)
         if not method.is_static:
             if name != "__call__":
@@ -766,12 +776,17 @@ def analyze_var(
         freeze_all_type_vars(t)
         result: Type = t
         typ = get_proper_type(typ)
-        if (
-            var.is_initialized_in_class
-            and (not is_instance_var(var) or mx.is_operator)
-            and isinstance(typ, FunctionLike)
-            and not typ.is_type_obj()
-        ):
+
+        call_type: ProperType | None = None
+        if var.is_initialized_in_class and (not is_instance_var(var) or mx.is_operator):
+            if isinstance(typ, FunctionLike) and not typ.is_type_obj():
+                call_type = typ
+            elif var.is_property:
+                call_type = get_proper_type(_analyze_member_access("__call__", typ, mx))
+            else:
+                call_type = typ
+
+        if isinstance(call_type, FunctionLike) and not call_type.is_type_obj():
             if mx.is_lvalue:
                 if var.is_property:
                     if not var.is_settable_property:
@@ -782,7 +797,7 @@ def analyze_var(
             if not var.is_staticmethod:
                 # Class-level function objects and classmethods become bound methods:
                 # the former to the instance, the latter to the class.
-                functype = typ
+                functype: FunctionLike = call_type
                 # Use meet to narrow original_type to the dispatched type.
                 # For example, assume
                 # * A.f: Callable[[A1], None] where A1 <: A (maybe A1 == A)
@@ -881,6 +896,8 @@ def check_self_arg(
             return functype
         else:
             selfarg = get_proper_type(item.arg_types[0])
+            # This level of erasure matches the one in checker.check_func_def(),
+            # better keep these two checks consistent.
             if subtypes.is_subtype(dispatched_arg_type, erase_typevars(erase_to_bound(selfarg))):
                 new_items.append(item)
             elif isinstance(selfarg, ParamSpecType):
@@ -1188,12 +1205,12 @@ def add_class_tvars(
     # (i.e. appear in the return type of the class object on which the method was accessed).
     if isinstance(t, CallableType):
         tvars = original_vars if original_vars is not None else []
+        t = freshen_all_functions_type_vars(t)
         if is_classmethod:
-            t = freshen_all_functions_type_vars(t)
             t = bind_self(t, original_type, is_classmethod=True)
             assert isuper is not None
             t = expand_type_by_instance(t, isuper)
-            freeze_all_type_vars(t)
+        freeze_all_type_vars(t)
         return t.copy_modified(variables=list(tvars) + list(t.variables))
     elif isinstance(t, Overloaded):
         return Overloaded(

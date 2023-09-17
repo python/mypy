@@ -69,7 +69,7 @@ class _CData(metaclass=_CDataMeta):
     def __buffer__(self, __flags: int) -> memoryview: ...
     def __release_buffer__(self, __buffer: memoryview) -> None: ...
 
-class _SimpleCData(Generic[_T], _CData):
+class _SimpleCData(_CData, Generic[_T]):
     value: _T
     # The TypeVar can be unsolved here,
     # but we can't use overloads without creating many, many mypy false-positive errors
@@ -78,7 +78,7 @@ class _SimpleCData(Generic[_T], _CData):
 class _CanCastTo(_CData): ...
 class _PointerLike(_CanCastTo): ...
 
-class _Pointer(Generic[_CT], _PointerLike, _CData):
+class _Pointer(_PointerLike, _CData, Generic[_CT]):
     _type_: type[_CT]
     contents: _CT
     @overload
@@ -122,15 +122,23 @@ class CFuncPtr(_PointerLike, _CData):
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
 
-class _CField:
+_GetT = TypeVar("_GetT")
+_SetT = TypeVar("_SetT")
+
+class _CField(Generic[_CT, _GetT, _SetT]):
     offset: int
     size: int
+    @overload
+    def __get__(self, __instance: None, __owner: type[Any] | None) -> Self: ...
+    @overload
+    def __get__(self, __instance: Any, __owner: type[Any] | None) -> _GetT: ...
+    def __set__(self, __instance: Any, __value: _SetT) -> None: ...
 
 class _StructUnionMeta(_CDataMeta):
     _fields_: Sequence[tuple[str, type[_CData]] | tuple[str, type[_CData], int]]
     _pack_: int
     _anonymous_: Sequence[str]
-    def __getattr__(self, name: str) -> _CField: ...
+    def __getattr__(self, name: str) -> _CField[Any, Any, Any]: ...
 
 class _StructUnionBase(_CData, metaclass=_StructUnionMeta):
     def __init__(self, *args: Any, **kw: Any) -> None: ...
@@ -140,7 +148,7 @@ class _StructUnionBase(_CData, metaclass=_StructUnionMeta):
 class Union(_StructUnionBase): ...
 class Structure(_StructUnionBase): ...
 
-class Array(Generic[_CT], _CData):
+class Array(_CData, Generic[_CT]):
     @property
     @abstractmethod
     def _length_(self) -> int: ...

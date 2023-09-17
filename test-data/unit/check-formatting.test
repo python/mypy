@@ -484,6 +484,23 @@ class D(bytes):
 '{}'.format(D())
 [builtins fixtures/primitives.pyi]
 
+[case testNoSpuriousFormattingErrorsDuringFailedOverlodMatch]
+from typing import overload, Callable
+
+@overload
+def sub(pattern: str, repl: Callable[[str], str]) -> str: ...
+@overload
+def sub(pattern: bytes, repl: Callable[[bytes], bytes]) -> bytes: ...
+def sub(pattern: object, repl: object) -> object:
+    pass
+
+def better_snakecase(text: str) -> str:
+    # Mypy used to emit a spurious error here
+    # warning about interpolating bytes into an f-string:
+    text = sub(r"([A-Z])([A-Z]+)([A-Z](?:[^A-Z]|$))", lambda match: f"{match}")
+    return text
+[builtins fixtures/primitives.pyi]
+
 [case testFormatCallFinal]
 from typing_extensions import Final
 

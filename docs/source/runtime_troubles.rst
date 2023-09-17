@@ -86,7 +86,7 @@ required to be valid Python syntax. For more details, see :pep:`563`.
 
     * :ref:`type aliases <type-aliases>`;
     * :ref:`type narrowing <type-narrowing>`;
-    * type definitions (see :py:class:`~typing.TypeVar`, :py:func:`~typing.NewType`, :py:class:`~typing.NamedTuple`);
+    * type definitions (see :py:class:`~typing.TypeVar`, :py:class:`~typing.NewType`, :py:class:`~typing.NamedTuple`);
     * base classes.
 
     .. code-block:: python
@@ -263,7 +263,7 @@ If your subclass is also generic, you can use the following:
    reveal_type(task_queue.get())  # Reveals str
 
 In Python 3.9, we can just inherit directly from ``Queue[str]`` or ``Queue[T]``
-since its :py:class:`queue.Queue` implements :py:meth:`__class_getitem__`, so
+since its :py:class:`queue.Queue` implements :py:meth:`~object.__class_getitem__`, so
 the class object can be subscripted at runtime without issue.
 
 Using types defined in stubs but not at runtime

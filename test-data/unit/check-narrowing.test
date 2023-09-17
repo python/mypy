@@ -1189,7 +1189,7 @@ def f(t: Type[T], a: A, b: B) -> None:
         reveal_type(a)  # N: Revealed type is "__main__.A"
 
     if type(b) is t:
-        reveal_type(b)  # N: Revealed type is "<nothing>"
+        reveal_type(b)  # N: Revealed type is "Never"
     else:
         reveal_type(b)  # N: Revealed type is "__main__.B"
 
@@ -1260,4 +1260,77 @@ def g() -> None:
     if foo is None:
         def foo(): ...
     foo()
+[builtins fixtures/dict.pyi]
+
+
+[case testNarrowingOptionalEqualsNone]
+from typing import Optional
+
+class A: ...
+
+val: Optional[A]
+
+if val == None:
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+else:
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+if val != None:
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+else:
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+
+if val in (None,):
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+else:
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+if val not in (None,):
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+else:
+    reveal_type(val)  # N: Revealed type is "Union[__main__.A, None]"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingWithTupleOfTypes]
+from typing import Tuple, Type
+
+class Base: ...
+
+class Impl1(Base): ...
+class Impl2(Base): ...
+
+impls: Tuple[Type[Base], ...] = (Impl1, Impl2)
+some: object
+
+if isinstance(some, impls):
+    reveal_type(some)  # N: Revealed type is "__main__.Base"
+else:
+    reveal_type(some)  # N: Revealed type is "builtins.object"
+
+raw: Tuple[type, ...]
+if isinstance(some, raw):
+    reveal_type(some)  # N: Revealed type is "builtins.object"
+else:
+    reveal_type(some)  # N: Revealed type is "builtins.object"
+[builtins fixtures/dict.pyi]
+
+
+[case testNarrowingWithTupleOfTypesPy310Plus]
+# flags: --python-version 3.10
+class Base: ...
+
+class Impl1(Base): ...
+class Impl2(Base): ...
+
+some: int | Base
+
+impls: tuple[type[Base], ...] = (Impl1, Impl2)
+if isinstance(some, impls):
+    reveal_type(some)  # N: Revealed type is "__main__.Base"
+else:
+    reveal_type(some)  # N: Revealed type is "Union[builtins.int, __main__.Base]"
+
+raw: tuple[type, ...]
+if isinstance(some, raw):
+    reveal_type(some)  # N: Revealed type is "Union[builtins.int, __main__.Base]"
+else:
+    reveal_type(some)  # N: Revealed type is "Union[builtins.int, __main__.Base]"
 [builtins fixtures/dict.pyi]

@@ -611,8 +611,7 @@ from typing_extensions import Literal
 a: (1, 2, 3)                    # E: Syntax error in type annotation \
                                 # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
 b: Literal[[1, 2, 3]]           # E: Parameter 1 of Literal[...] is invalid
-c: [1, 2, 3]                    # E: Bracketed expression "[...]" is not valid as a type \
-                                # N: Did you mean "List[...]"?
+c: [1, 2, 3]                    # E: Bracketed expression "[...]" is not valid as a type
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -1795,7 +1794,7 @@ def f6(x: Optional[Literal[1]], y: Optional[Literal[2]]) -> None: pass
 
 reveal_type(unify(f1))  # N: Revealed type is "Literal[1]"
 if object():
-    reveal_type(unify(f2))  # N: Revealed type is "<nothing>"
+    reveal_type(unify(f2))  # N: Revealed type is "Never"
 reveal_type(unify(f3))  # N: Revealed type is "Literal[1]"
 reveal_type(unify(f4))  # N: Revealed type is "Literal[1]"
 reveal_type(unify(f5))  # N: Revealed type is "Literal[1]"
@@ -1820,7 +1819,7 @@ T = TypeVar('T')
 def unify(func: Callable[[T, T], None]) -> T: pass
 def func(x: Literal[1], y: Literal[2]) -> None: pass
 
-reveal_type(unify(func))  # N: Revealed type is "<nothing>"
+reveal_type(unify(func))  # N: Revealed type is "Never"
 [builtins fixtures/list.pyi]
 [out]
 

@@ -17,6 +17,7 @@ from mypy.nodes import (
     NameExpr,
     OpExpr,
     RefExpr,
+    StarExpr,
     StrExpr,
     TupleExpr,
     UnaryExpr,
@@ -35,6 +36,7 @@ from mypy.types import (
     TypeOfAny,
     UnboundType,
     UnionType,
+    UnpackType,
 )
 
 
@@ -56,6 +58,7 @@ def expr_to_unanalyzed_type(
     options: Options | None = None,
     allow_new_syntax: bool = False,
     _parent: Expression | None = None,
+    allow_unpack: bool = False,
 ) -> ProperType:
     """Translate an expression to the corresponding type.
 
@@ -163,7 +166,10 @@ def expr_to_unanalyzed_type(
         return CallableArgument(typ, name, arg_const, expr.line, expr.column)
     elif isinstance(expr, ListExpr):
         return TypeList(
-            [expr_to_unanalyzed_type(t, options, allow_new_syntax, expr) for t in expr.items],
+            [
+                expr_to_unanalyzed_type(t, options, allow_new_syntax, expr, allow_unpack=True)
+                for t in expr.items
+            ],
             line=expr.line,
             column=expr.column,
         )
@@ -189,5 +195,9 @@ def expr_to_unanalyzed_type(
         return RawExpressionType(None, "builtins.complex", line=expr.line, column=expr.column)
     elif isinstance(expr, EllipsisExpr):
         return EllipsisType(expr.line)
+    elif allow_unpack and isinstance(expr, StarExpr):
+        return UnpackType(
+            expr_to_unanalyzed_type(expr.expr, options, allow_new_syntax), from_star_syntax=True
+        )
     else:
         raise TypeTranslationError()

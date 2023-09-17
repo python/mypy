@@ -2077,6 +2077,61 @@ y = 1
 f(reveal_type(y)) # E: Call to untyped function "f" in typed context \
                   # N: Revealed type is "builtins.int"
 
+[case testDisallowUntypedCallsAllowListFlags]
+# flags: --disallow-untyped-calls  --untyped-calls-exclude=foo --untyped-calls-exclude=bar.A
+from foo import test_foo
+from bar import A, B
+from baz import test_baz
+from foobar import bad
+
+test_foo(42)  # OK
+test_baz(42)  # E: Call to untyped function "test_baz" in typed context
+bad(42)  # E: Call to untyped function "bad" in typed context
+
+a: A
+b: B
+a.meth()  # OK
+b.meth()  # E: Call to untyped function "meth" in typed context
+[file foo.py]
+def test_foo(x): pass
+[file foobar.py]
+def bad(x): pass
+[file bar.py]
+class A:
+    def meth(self): pass
+class B:
+    def meth(self): pass
+[file baz.py]
+def test_baz(x): pass
+
+[case testDisallowUntypedCallsAllowListConfig]
+# flags: --config-file tmp/mypy.ini
+from foo import test_foo
+from bar import A, B
+from baz import test_baz
+
+test_foo(42)  # OK
+test_baz(42)  # E: Call to untyped function "test_baz" in typed context
+
+a: A
+b: B
+a.meth()  # OK
+b.meth()  # E: Call to untyped function "meth" in typed context
+[file foo.py]
+def test_foo(x): pass
+[file bar.py]
+class A:
+    def meth(self): pass
+class B:
+    def meth(self): pass
+[file baz.py]
+def test_baz(x): pass
+
+[file mypy.ini]
+\[mypy]
+disallow_untyped_calls = True
+untyped_calls_exclude = foo, bar.A
+
 [case testPerModuleErrorCodes]
 # flags: --config-file tmp/mypy.ini
 import tests.foo

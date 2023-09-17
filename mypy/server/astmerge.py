@@ -73,7 +73,6 @@ from mypy.nodes import (
     SymbolNode,
     SymbolTable,
     TypeAlias,
-    TypeAliasExpr,
     TypedDictExpr,
     TypeInfo,
     Var,
@@ -326,10 +325,6 @@ class NodeReplaceVisitor(TraverserVisitor):
         self.process_synthetic_type_info(node.info)
         super().visit_enum_call_expr(node)
 
-    def visit_type_alias_expr(self, node: TypeAliasExpr) -> None:
-        self.fixup_type(node.type)
-        super().visit_type_alias_expr(node)
-
     # Others
 
     def visit_var(self, node: Var) -> None:
@@ -467,13 +462,13 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
 
     def visit_erased_type(self, t: ErasedType) -> None:
         # This type should exist only temporarily during type inference
-        raise RuntimeError
+        raise RuntimeError("Cannot handle erased type")
 
     def visit_deleted_type(self, typ: DeletedType) -> None:
         pass
 
     def visit_partial_type(self, typ: PartialType) -> None:
-        raise RuntimeError
+        raise RuntimeError("Cannot handle partial type")
 
     def visit_tuple_type(self, typ: TupleType) -> None:
         for item in typ.items:
