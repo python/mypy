@@ -71,12 +71,12 @@ and :pep:`557`.
 Caveats/Known Issues
 ====================
 
-Some functions in the :py:mod:`dataclasses` module, such as :py:func:`~dataclasses.replace` and :py:func:`~dataclasses.asdict`,
+Some functions in the :py:mod:`dataclasses` module, such as :py:func:`~dataclasses.asdict`,
 have imprecise (too permissive) types. This will be fixed in future releases.
 
 Mypy does not yet recognize aliases of :py:func:`dataclasses.dataclass <dataclasses.dataclass>`, and will
-probably never recognize dynamically computed decorators. The following examples
-do **not** work:
+probably never recognize dynamically computed decorators. The following example
+does **not** work:
 
 .. code-block:: python
 
@@ -94,16 +94,37 @@ do **not** work:
       """
       attribute: int
 
-    @dataclass_wrapper
-    class DynamicallyDecorated:
-      """
-      Mypy doesn't recognize this as a dataclass because it is decorated by a
-      function returning `dataclass` rather than by `dataclass` itself.
-      """
-      attribute: int
-
     AliasDecorated(attribute=1) # error: Unexpected keyword argument
-    DynamicallyDecorated(attribute=1) # error: Unexpected keyword argument
+
+
+To have Mypy recognize a wrapper of :py:func:`dataclasses.dataclass <dataclasses.dataclass>`
+as a dataclass decorator, consider using the :py:func:`~typing.dataclass_transform` decorator:
+
+.. code-block:: python
+
+    from dataclasses import dataclass, Field
+    from typing import TypeVar, dataclass_transform
+
+    T = TypeVar('T')
+
+    @dataclass_transform(field_specifiers=(Field,))
+    def my_dataclass(cls: type[T]) -> type[T]:
+        ...
+        return dataclass(cls)
+
+
+Data Class Transforms
+*********************
+
+Mypy supports the :py:func:`~typing.dataclass_transform` decorator as described in
+`PEP 681 <https://www.python.org/dev/peps/pep-0681/#the-dataclass-transform-decorator>`_.
+
+.. note::
+
+    Pragmatically, mypy will assume such classes have the internal attribute :code:`__dataclass_fields__`
+    (even though they might lack it in runtime) and will assume functions such as :py:func:`dataclasses.is_dataclass`
+    and :py:func:`dataclasses.fields` treat them as if they were dataclasses
+    (even though they may fail at runtime).
 
 .. _attrs_package:
 

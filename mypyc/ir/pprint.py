@@ -51,6 +51,7 @@ from mypyc.ir.ops import (
     Truncate,
     TupleGet,
     TupleSet,
+    Unborrow,
     Unbox,
     Unreachable,
     Value,
@@ -153,7 +154,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return self.format("%s = %r :: %s", name, op.value, op.namespace)
 
     def visit_tuple_get(self, op: TupleGet) -> str:
-        return self.format("%r = %r[%d]", op, op.src, op.index)
+        return self.format("%r = %s%r[%d]", op, self.borrow_prefix(op), op.src, op.index)
 
     def visit_tuple_set(self, op: TupleSet) -> str:
         item_str = ", ".join(self.format("%r", item) for item in op.items)
@@ -274,7 +275,16 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
             return self.format("%r = load_address %s", op, op.src)
 
     def visit_keep_alive(self, op: KeepAlive) -> str:
-        return self.format("keep_alive %s" % ", ".join(self.format("%r", v) for v in op.src))
+        if op.steal:
+            steal = "steal "
+        else:
+            steal = ""
+        return self.format(
+            "keep_alive {}{}".format(steal, ", ".join(self.format("%r", v) for v in op.src))
+        )
+
+    def visit_unborrow(self, op: Unborrow) -> str:
+        return self.format("%r = unborrow %r", op, op.src)
 
     # Helpers
 

@@ -4,26 +4,52 @@ import sys
 import typing
 from _collections_abc import dict_items, dict_keys, dict_values
 from _typeshed import IdentityFunction, Incomplete
-from collections.abc import Iterable
-from typing import (  # noqa: Y022,Y039
+from typing import (  # noqa: Y022,Y037,Y038,Y039
+    IO as IO,
     TYPE_CHECKING as TYPE_CHECKING,
+    AbstractSet as AbstractSet,
     Any as Any,
+    AnyStr as AnyStr,
     AsyncContextManager as AsyncContextManager,
     AsyncGenerator as AsyncGenerator,
     AsyncIterable as AsyncIterable,
     AsyncIterator as AsyncIterator,
     Awaitable as Awaitable,
-    Callable,
+    BinaryIO as BinaryIO,
+    Callable as Callable,
     ChainMap as ChainMap,
     ClassVar as ClassVar,
+    Collection as Collection,
+    Container as Container,
     ContextManager as ContextManager,
     Coroutine as Coroutine,
     Counter as Counter,
     DefaultDict as DefaultDict,
     Deque as Deque,
-    Mapping,
+    Dict as Dict,
+    ForwardRef as ForwardRef,
+    FrozenSet as FrozenSet,
+    Generator as Generator,
+    Generic as Generic,
+    Hashable as Hashable,
+    ItemsView as ItemsView,
+    Iterable as Iterable,
+    Iterator as Iterator,
+    KeysView as KeysView,
+    List as List,
+    Mapping as Mapping,
+    MappingView as MappingView,
+    Match as Match,
+    MutableMapping as MutableMapping,
+    MutableSequence as MutableSequence,
+    MutableSet as MutableSet,
     NoReturn as NoReturn,
-    Sequence,
+    Optional as Optional,
+    Pattern as Pattern,
+    Reversible as Reversible,
+    Sequence as Sequence,
+    Set as Set,
+    Sized as Sized,
     SupportsAbs as SupportsAbs,
     SupportsBytes as SupportsBytes,
     SupportsComplex as SupportsComplex,
@@ -31,8 +57,15 @@ from typing import (  # noqa: Y022,Y039
     SupportsInt as SupportsInt,
     SupportsRound as SupportsRound,
     Text as Text,
+    TextIO as TextIO,
+    Tuple as Tuple,
     Type as Type,
+    Union as Union,
+    ValuesView as ValuesView,
     _Alias,
+    cast as cast,
+    no_type_check as no_type_check,
+    no_type_check_decorator as no_type_check_decorator,
     overload as overload,
     type_check_only,
 )
@@ -109,11 +142,50 @@ __all__ = [
     "get_original_bases",
     "get_overloads",
     "get_type_hints",
+    "AbstractSet",
+    "AnyStr",
+    "BinaryIO",
+    "Callable",
+    "Collection",
+    "Container",
+    "Dict",
+    "ForwardRef",
+    "FrozenSet",
+    "Generator",
+    "Generic",
+    "Hashable",
+    "IO",
+    "ItemsView",
+    "Iterable",
+    "Iterator",
+    "KeysView",
+    "List",
+    "Mapping",
+    "MappingView",
+    "Match",
+    "MutableMapping",
+    "MutableSequence",
+    "MutableSet",
+    "Optional",
+    "Pattern",
+    "Reversible",
+    "Sequence",
+    "Set",
+    "Sized",
+    "TextIO",
+    "Tuple",
+    "Union",
+    "ValuesView",
+    "cast",
+    "get_protocol_members",
+    "is_protocol",
+    "no_type_check",
+    "no_type_check_decorator",
 ]
 
 _T = typing.TypeVar("_T")
 _F = typing.TypeVar("_F", bound=Callable[..., Any])
-_TC = typing.TypeVar("_TC", bound=Type[object])
+_TC = typing.TypeVar("_TC", bound=type[object])
 
 # unfortunately we have to duplicate this class definition from typing.pyi or we break pytype
 class _SpecialForm:
@@ -161,8 +233,16 @@ class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
     def values(self) -> dict_values[str, object]: ...
     def __delitem__(self, k: Never) -> None: ...
     if sys.version_info >= (3, 9):
+        @overload
         def __or__(self, __value: Self) -> Self: ...
-        def __ior__(self, __value: Self) -> Self: ...
+        @overload
+        def __or__(self, __value: dict[str, Any]) -> dict[str, object]: ...
+        @overload
+        def __ror__(self, __value: Self) -> Self: ...
+        @overload
+        def __ror__(self, __value: dict[str, Any]) -> dict[str, object]: ...
+        # supposedly incompatible definitions of `__ior__` and `__or__`:
+        def __ior__(self, __value: Self) -> Self: ...  # type: ignore[misc]
 
 # TypedDict is a (non-subscriptable) special form.
 TypedDict: object
@@ -403,3 +483,9 @@ else:
         # Not actually a Protocol at runtime; see
         # https://github.com/python/typeshed/issues/10224 for why we're defining it this way
         def __buffer__(self, __flags: int) -> memoryview: ...
+
+if sys.version_info >= (3, 13):
+    from typing import get_protocol_members as get_protocol_members, is_protocol as is_protocol
+else:
+    def is_protocol(__tp: type) -> bool: ...
+    def get_protocol_members(__tp: type) -> frozenset[str]: ...

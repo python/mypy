@@ -171,7 +171,8 @@ BARE_GENERIC: Final = "Missing type parameters for generic type {}"
 IMPLICIT_GENERIC_ANY_BUILTIN: Final = (
     'Implicit generic "Any". Use "{}" and specify generic parameters'
 )
-INVALID_UNPACK = "{} cannot be unpacked (must be tuple or TypeVarTuple)"
+INVALID_UNPACK: Final = "{} cannot be unpacked (must be tuple or TypeVarTuple)"
+INVALID_UNPACK_POSITION: Final = "Unpack is only valid in a variadic position"
 
 # TypeVar
 INCOMPATIBLE_TYPEVAR_VALUE: Final = 'Value of type variable "{}" of {} cannot be {}'

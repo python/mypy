@@ -62,6 +62,7 @@ OPTIONS_AFFECTING_CACHE: Final = (
     | {
         "platform",
         "bazel",
+        "new_type_inference",
         "plugins",
         "disable_bytearray_promotion",
         "disable_memoryview_promotion",
@@ -135,6 +136,10 @@ class Options:
 
         # Disallow calling untyped functions from typed ones
         self.disallow_untyped_calls = False
+
+        # Always allow untyped calls for function coming from modules/packages
+        # in this list (each item effectively acts as a prefix match)
+        self.untyped_calls_exclude: list[str] = []
 
         # Disallow defining untyped (or incompletely typed) functions
         self.disallow_untyped_defs = False
@@ -278,6 +283,12 @@ class Options:
         # because it is intended for software integrating with
         # mypy. (Like mypyc.)
         self.preserve_asts = False
+
+        # If True, function and class docstrings will be extracted and retained.
+        # This isn't exposed as a command line option
+        # because it is intended for software integrating with
+        # mypy. (Like stubgen.)
+        self.include_docstrings = False
 
         # Paths of user plugins
         self.plugins: list[str] = []

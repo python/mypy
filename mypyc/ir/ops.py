@@ -792,6 +792,9 @@ class TupleSet(RegisterOp):
     def sources(self) -> list[Value]:
         return self.items.copy()
 
+    def stolen(self) -> list[Value]:
+        return self.items.copy()
+
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_tuple_set(self)
 
@@ -801,13 +804,14 @@ class TupleGet(RegisterOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, src: Value, index: int, line: int = -1) -> None:
+    def __init__(self, src: Value, index: int, line: int = -1, *, borrow: bool = False) -> None:
         super().__init__(line)
         self.src = src
         self.index = index
         assert isinstance(src.type, RTuple), "TupleGet only operates on tuples"
         assert index >= 0
         self.type = src.type.types[index]
+        self.is_borrowed = borrow
 
     def sources(self) -> list[Value]:
         return [self.src]
@@ -1387,19 +1391,74 @@ class KeepAlive(RegisterOp):
     If we didn't have "keep_alive x", x could be freed immediately
     after taking the address of 'item', resulting in a read after free
     on the second line.
+
+    If 'steal' is true, the value is considered to be stolen at
+    this op, i.e. it won't be decref'd. You need to ensure that
+    the value is freed otherwise, perhaps by using borrowing
+    followed by Unborrow.
+
+    Be careful with steal=True -- this can cause memory leaks.
     """
 
     error_kind = ERR_NEVER
 
-    def __init__(self, src: list[Value]) -> None:
+    def __init__(self, src: list[Value], *, steal: bool = False) -> None:
         assert src
         self.src = src
+        self.steal = steal
 
     def sources(self) -> list[Value]:
         return self.src.copy()
 
+    def stolen(self) -> list[Value]:
+        if self.steal:
+            return self.src.copy()
+        return []
+
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_keep_alive(self)
+
+
+class Unborrow(RegisterOp):
+    """A no-op op to create a regular reference from a borrowed one.
+
+    Borrowed references can only be used temporarily and the reference
+    counts won't be managed. This value will be refcounted normally.
+
+    This is mainly useful if you split an aggregate value, such as
+    a tuple, into components using borrowed values (to avoid increfs),
+    and want to treat the components as sharing the original managed
+    reference. You'll also need to use KeepAlive with steal=True to
+    "consume" the original tuple reference:
+
+      # t is a 2-tuple
+      r0 = borrow t[0]
+      r1 = borrow t[1]
+      r2 = unborrow r0
+      r3 = unborrow r1
+      # now (r2, r3) represent the tuple as separate items, and the
+      # original tuple can be considered dead and available to be
+      # stolen
+      keep_alive steal t
+
+    Be careful with this -- this can easily cause double freeing.
+    """
+
+    error_kind = ERR_NEVER
+
+    def __init__(self, src: Value) -> None:
+        assert src.is_borrowed
+        self.src = src
+        self.type = src.type
+
+    def sources(self) -> list[Value]:
+        return [self.src]
+
+    def stolen(self) -> list[Value]:
+        return []
+
+    def accept(self, visitor: OpVisitor[T]) -> T:
+        return visitor.visit_unborrow(self)
 
 
 @trait
@@ -1548,6 +1607,10 @@ class OpVisitor(Generic[T]):
     def visit_keep_alive(self, op: KeepAlive) -> T:
         raise NotImplementedError
 
+    @abstractmethod
+    def visit_unborrow(self, op: Unborrow) -> T:
+        raise NotImplementedError
+
 
 # TODO: Should the following definition live somewhere else?
 
@@ -1575,5 +1638,5 @@ class OpVisitor(Generic[T]):
 # (Serialization and deserialization *will* be used for incremental
 # compilation but so far it is not hooked up to anything.)
 class DeserMaps(NamedTuple):
-    classes: dict[str, "ClassIR"]
-    functions: dict[str, "FuncIR"]
+    classes: dict[str, ClassIR]
+    functions: dict[str, FuncIR]

@@ -69,10 +69,10 @@ class excel(Dialect): ...
 class excel_tab(excel): ...
 class unix_dialect(Dialect): ...
 
-class DictReader(Generic[_T], Iterator[_DictReadMapping[_T | Any, str | Any]]):
+class DictReader(Iterator[_DictReadMapping[_T | Any, str | Any]], Generic[_T]):
     fieldnames: Sequence[_T] | None
-    restkey: str | None
-    restval: str | None
+    restkey: _T | None
+    restval: str | Any | None
     reader: _reader
     dialect: _DialectLike
     line_num: int
@@ -81,8 +81,8 @@ class DictReader(Generic[_T], Iterator[_DictReadMapping[_T | Any, str | Any]]):
         self,
         f: Iterable[str],
         fieldnames: Sequence[_T],
-        restkey: str | None = None,
-        restval: str | None = None,
+        restkey: _T | None = None,
+        restval: str | Any | None = None,
         dialect: _DialectLike = "excel",
         *,
         delimiter: str = ",",

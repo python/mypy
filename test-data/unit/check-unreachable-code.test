@@ -900,15 +900,15 @@ from typing_extensions import NoReturn as TENoReturn
 from mypy_extensions import NoReturn as MENoReturn
 
 bottom1: Never
-reveal_type(bottom1)  # N: Revealed type is "<nothing>"
+reveal_type(bottom1)  # N: Revealed type is "Never"
 bottom2: TENever
-reveal_type(bottom2)  # N: Revealed type is "<nothing>"
+reveal_type(bottom2)  # N: Revealed type is "Never"
 bottom3: NoReturn
-reveal_type(bottom3)  # N: Revealed type is "<nothing>"
+reveal_type(bottom3)  # N: Revealed type is "Never"
 bottom4: TENoReturn
-reveal_type(bottom4)  # N: Revealed type is "<nothing>"
+reveal_type(bottom4)  # N: Revealed type is "Never"
 bottom5: MENoReturn
-reveal_type(bottom5)  # N: Revealed type is "<nothing>"
+reveal_type(bottom5)  # N: Revealed type is "Never"
 
 [builtins fixtures/tuple.pyi]
 
@@ -1379,6 +1379,38 @@ def f() -> None:
         x = 1  # E: Statement is unreachable
 [builtins fixtures/dict.pyi]
 
+[case testUnreachableLiteralFrom__bool__]
+# flags: --warn-unreachable
+from typing_extensions import Literal
+
+class Truth:
+    def __bool__(self) -> Literal[True]: ...
+
+class Lie:
+    def __bool__(self) -> Literal[False]: ...
+
+class Maybe:
+    def __bool__(self) -> Literal[True | False]: ...
+
+t = Truth()
+if t:
+    x = 1
+else:
+    x = 2  # E: Statement is unreachable
+
+if Lie():
+    x = 3  # E: Statement is unreachable
+
+if Maybe():
+    x = 4
+
+
+def foo() -> bool: ...
+
+y = Truth() or foo()  # E: Right operand of "or" is never evaluated
+z = Lie() and foo()  # E: Right operand of "and" is never evaluated
+[builtins fixtures/dict.pyi]
+
 [case testUnreachableModuleBody1]
 # flags: --warn-unreachable
 from typing import NoReturn
@@ -1446,3 +1478,19 @@ def f() -> None:
     Foo()['a'] = 'a'
     x = 0 # This should not be reported as unreachable
 [builtins fixtures/exception.pyi]
+
+[case testIntentionallyEmptyGeneratorFunction]
+# flags: --warn-unreachable
+from typing import Generator
+
+def f() -> Generator[None, None, None]:
+    return
+    yield
+
+[case testIntentionallyEmptyGeneratorFunction_None]
+# flags: --warn-unreachable
+from typing import Generator
+
+def f() -> Generator[None, None, None]:
+    return None
+    yield None
