@@ -463,8 +463,10 @@ class SubtypeVisitor(TypeVisitor[bool]):
                         assert unpacked.type.fullname == "builtins.tuple"
                         if isinstance(get_proper_type(unpacked.args[0]), AnyType):
                             return not self.proper_subtype
-            # TODO: we need a special case similar to above to consider (something that maps to)
-            # tuple[Any, ...] a subtype of Tuple[<whatever>].
+                if mapped.type.fullname == "builtins.tuple" and isinstance(
+                    get_proper_type(mapped.args[0]), AnyType
+                ):
+                    return not self.proper_subtype
             return False
         if isinstance(right, TypeVarTupleType):
             # tuple[Any, ...] is like Any in the world of tuples (see special case above).
@@ -1519,6 +1521,18 @@ def are_trivial_parameters(param: Parameters | NormalizedCallableType) -> bool:
     )
 
 
+def is_trivial_suffix(param: Parameters | NormalizedCallableType) -> bool:
+    param_star = param.var_arg()
+    param_star2 = param.kw_arg()
+    return (
+        param.arg_kinds[-2:] == [ARG_STAR, ARG_STAR2]
+        and param_star is not None
+        and isinstance(get_proper_type(param_star.typ), AnyType)
+        and param_star2 is not None
+        and isinstance(get_proper_type(param_star2.typ), AnyType)
+    )
+
+
 def are_parameters_compatible(
     left: Parameters | NormalizedCallableType,
     right: Parameters | NormalizedCallableType,
@@ -1540,6 +1554,7 @@ def are_parameters_compatible(
     # Treat "def _(*a: Any, **kw: Any) -> X" similarly to "Callable[..., X]"
     if are_trivial_parameters(right):
         return True
+    trivial_suffix = is_trivial_suffix(right)
 
     # Match up corresponding arguments and check them for compatibility. In
     # every pair (argL, argR) of corresponding arguments from L and R, argL must
@@ -1570,7 +1585,7 @@ def are_parameters_compatible(
         if right_arg is None:
             return False
         if left_arg is None:
-            return not allow_partial_overlap
+            return not allow_partial_overlap and not trivial_suffix
         return not is_compat(right_arg.typ, left_arg.typ)
 
     if _incompatible(left_star, right_star) or _incompatible(left_star2, right_star2):
@@ -1594,7 +1609,7 @@ def are_parameters_compatible(
     #           arguments. Get all further positional args of left, and make sure
     #           they're more general than the corresponding member in right.
     # TODO: are we handling UnpackType correctly here?
-    if right_star is not None:
+    if right_star is not None and not trivial_suffix:
         # Synthesize an anonymous formal argument for the right
         right_by_position = right.try_synthesizing_arg_from_vararg(None)
         assert right_by_position is not None
@@ -1621,7 +1636,7 @@ def are_parameters_compatible(
     # Phase 1d: Check kw args. Right has an infinite series of optional named
     #           arguments. Get all further named args of left, and make sure
     #           they're more general than the corresponding member in right.
-    if right_star2 is not None:
+    if right_star2 is not None and not trivial_suffix:
         right_names = {name for name in right.arg_names if name is not None}
         left_only_names = set()
         for name, kind in zip(left.arg_names, left.arg_kinds):

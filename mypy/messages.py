@@ -2132,6 +2132,9 @@ class MessageBuilder:
             not is_subtype(subtype, erase_type(supertype), options=self.options)
             or not subtype.type.defn.type_vars
             or not supertype.type.defn.type_vars
+            # Always show detailed message for ParamSpec
+            or subtype.type.has_param_spec_type
+            or supertype.type.has_param_spec_type
         ):
             type_name = format_type(subtype, self.options, module_names=True)
             self.note(f"Following member(s) of {type_name} have conflicts:", context, code=code)

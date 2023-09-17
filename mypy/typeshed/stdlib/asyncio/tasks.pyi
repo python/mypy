@@ -2,7 +2,7 @@ import concurrent.futures
 import sys
 from collections.abc import Awaitable, Coroutine, Generator, Iterable, Iterator
 from types import FrameType
-from typing import Any, Generic, TextIO, TypeVar, overload
+from typing import Any, Generic, Protocol, TextIO, TypeVar, overload
 from typing_extensions import Literal, TypeAlias
 
 from . import _CoroutineLike
@@ -14,27 +14,52 @@ if sys.version_info >= (3, 9):
 if sys.version_info >= (3, 11):
     from contextvars import Context
 
-__all__ = (
-    "Task",
-    "create_task",
-    "FIRST_COMPLETED",
-    "FIRST_EXCEPTION",
-    "ALL_COMPLETED",
-    "wait",
-    "wait_for",
-    "as_completed",
-    "sleep",
-    "gather",
-    "shield",
-    "ensure_future",
-    "run_coroutine_threadsafe",
-    "current_task",
-    "all_tasks",
-    "_register_task",
-    "_unregister_task",
-    "_enter_task",
-    "_leave_task",
-)
+if sys.version_info >= (3, 12):
+    __all__ = (
+        "Task",
+        "create_task",
+        "FIRST_COMPLETED",
+        "FIRST_EXCEPTION",
+        "ALL_COMPLETED",
+        "wait",
+        "wait_for",
+        "as_completed",
+        "sleep",
+        "gather",
+        "shield",
+        "ensure_future",
+        "run_coroutine_threadsafe",
+        "current_task",
+        "all_tasks",
+        "create_eager_task_factory",
+        "eager_task_factory",
+        "_register_task",
+        "_unregister_task",
+        "_enter_task",
+        "_leave_task",
+    )
+else:
+    __all__ = (
+        "Task",
+        "create_task",
+        "FIRST_COMPLETED",
+        "FIRST_EXCEPTION",
+        "ALL_COMPLETED",
+        "wait",
+        "wait_for",
+        "as_completed",
+        "sleep",
+        "gather",
+        "shield",
+        "ensure_future",
+        "run_coroutine_threadsafe",
+        "current_task",
+        "all_tasks",
+        "_register_task",
+        "_unregister_task",
+        "_enter_task",
+        "_leave_task",
+    )
 
 _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
@@ -356,5 +381,41 @@ else:
 def current_task(loop: AbstractEventLoop | None = None) -> Task[Any] | None: ...
 def _enter_task(loop: AbstractEventLoop, task: Task[Any]) -> None: ...
 def _leave_task(loop: AbstractEventLoop, task: Task[Any]) -> None: ...
+
+if sys.version_info >= (3, 12):
+    _TaskT_co = TypeVar("_TaskT_co", bound=Task[Any], covariant=True)
+
+    class _CustomTaskConstructor(Protocol[_TaskT_co]):
+        def __call__(
+            self,
+            __coro: _TaskCompatibleCoro[Any],
+            *,
+            loop: AbstractEventLoop,
+            name: str | None,
+            context: Context | None,
+            eager_start: bool,
+        ) -> _TaskT_co: ...
+
+    class _EagerTaskFactoryType(Protocol[_TaskT_co]):
+        def __call__(
+            self,
+            loop: AbstractEventLoop,
+            coro: _TaskCompatibleCoro[Any],
+            *,
+            name: str | None = None,
+            context: Context | None = None,
+        ) -> _TaskT_co: ...
+
+    def create_eager_task_factory(
+        custom_task_constructor: _CustomTaskConstructor[_TaskT_co],
+    ) -> _EagerTaskFactoryType[_TaskT_co]: ...
+    def eager_task_factory(
+        loop: AbstractEventLoop | None,
+        coro: _TaskCompatibleCoro[_T_co],
+        *,
+        name: str | None = None,
+        context: Context | None = None,
+    ) -> Task[_T_co]: ...
+
 def _register_task(task: Task[Any]) -> None: ...
 def _unregister_task(task: Task[Any]) -> None: ...

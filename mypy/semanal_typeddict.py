@@ -366,7 +366,13 @@ class TypedDictAnalyzer:
         name, items, types, total, tvar_defs, ok = res
         if not ok:
             # Error. Construct dummy return value.
-            info = self.build_typeddict_typeinfo("TypedDict", [], [], set(), call.line, None)
+            if var_name:
+                name = var_name
+                if is_func_scope:
+                    name += "@" + str(call.line)
+            else:
+                name = var_name = "TypedDict@" + str(call.line)
+            info = self.build_typeddict_typeinfo(name, [], [], set(), call.line, None)
         else:
             if var_name is not None and name != var_name:
                 self.fail(
@@ -395,9 +401,9 @@ class TypedDictAnalyzer:
                 name, items, types, required_keys, call.line, existing_info
             )
             info.line = node.line
-            # Store generated TypeInfo under both names, see semanal_namedtuple for more details.
-            if name != var_name or is_func_scope:
-                self.api.add_symbol_skip_local(name, info)
+        # Store generated TypeInfo under both names, see semanal_namedtuple for more details.
+        if name != var_name or is_func_scope:
+            self.api.add_symbol_skip_local(name, info)
         if var_name:
             self.api.add_symbol(var_name, info, node)
         call.analyzed = TypedDictExpr(info)
