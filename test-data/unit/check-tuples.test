@@ -1664,7 +1664,6 @@ def zip(*i: Iterable[Any]) -> Iterator[Tuple[Any, ...]]: ...
 def zip(i): ...
 
 def g(t: Tuple):
-    # Ideally, we'd infer that these are iterators of tuples
-    reveal_type(zip(*t))  # N: Revealed type is "typing.Iterator[Any]"
-    reveal_type(zip(t))  # N: Revealed type is "typing.Iterator[Any]"
+    reveal_type(zip(*t))  # N: Revealed type is "typing.Iterator[builtins.tuple[Any, ...]]"
+    reveal_type(zip(t))  # N: Revealed type is "typing.Iterator[Tuple[Any]]"
 [builtins fixtures/tuple.pyi]

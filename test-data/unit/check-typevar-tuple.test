@@ -1565,3 +1565,28 @@ T = TypeVar("T")
 def g(data: Sequence[Tuple[T, Unpack[Ts]]]) -> List[T]:
     return [d[0] for d in data]  # OK
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleOverloadMatch]
+from typing import Any, Generic, overload, Tuple, TypeVar
+from typing_extensions import TypeVarTuple, Unpack
+
+_Ts = TypeVarTuple("_Ts")
+_T = TypeVar("_T")
+_T2 = TypeVar("_T2")
+
+class Container(Generic[_T]): ...
+class Array(Generic[Unpack[_Ts]]): ...
+
+@overload
+def build(entity: Container[_T], /) -> Array[_T]: ...
+@overload
+def build(entity: Container[_T], entity2: Container[_T2], /) -> Array[_T, _T2]: ...
+@overload
+def build(*entities: Container[Any]) -> Array[Unpack[Tuple[Any, ...]]]: ...
+def build(*entities: Container[Any]) -> Array[Unpack[Tuple[Any, ...]]]:
+    ...
+
+def test(a: Container[Any], b: Container[int], c: Container[str]):
+    reveal_type(build(a, b))  # N: Revealed type is "__main__.Array[Any, builtins.int]"
+    reveal_type(build(b, c))  # N: Revealed type is "__main__.Array[builtins.int, builtins.str]"
+[builtins fixtures/tuple.pyi]

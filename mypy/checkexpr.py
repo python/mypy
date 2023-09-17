@@ -2792,11 +2792,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     )
             is_match = not w.has_new_errors()
             if is_match:
-                # Return early if possible; otherwise record info so we can
+                # Return early if possible; otherwise record info, so we can
                 # check for ambiguity due to 'Any' below.
                 if not args_contain_any:
                     return ret_type, infer_type
-                matches.append(typ)
+                p_infer_type = get_proper_type(infer_type)
+                if isinstance(p_infer_type, CallableType):
+                    # Prefer inferred types if possible, this will avoid false triggers for
+                    # Any-ambiguity caused by arguments with Any passed to generic overloads.
+                    matches.append(p_infer_type)
+                else:
+                    matches.append(typ)
                 return_types.append(ret_type)
                 inferred_types.append(infer_type)
                 type_maps.append(m)
