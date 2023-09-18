@@ -424,7 +424,7 @@ def strip_or_import(
             stripped_subtyp = strip_or_import(subtyp.strip(), module, known_modules, imports)
             if stripped_subtyp != subtyp:
                 stripped_type = re.sub(
-                    r"(^|[\[, ]+)" + re.escape(subtyp) + r"($|[\], ]+)",
+                    r"(^|[\[, ]+)" + re.escape(subtyp) + r"($|[\[\], ]+)",
                     r"\1" + stripped_subtyp + r"\2",
                     stripped_type,
                 )
