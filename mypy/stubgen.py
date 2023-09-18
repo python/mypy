@@ -1592,10 +1592,13 @@ def get_qualified_name(o: Expression) -> str:
         return ERROR_MARKER
 
 
-def remove_blacklisted_modules(modules: list[StubSource]) -> list[StubSource]:
-    return [
+def remove_blacklisted_modules(
+    modules: list[StubSource],
+) -> tuple[list[StubSource], list[StubSource]]:
+    blacklisted_removed = [
         module for module in modules if module.path is None or not is_blacklisted_path(module.path)
     ]
+    return blacklisted_removed, list(set(modules) - set(blacklisted_removed))
 
 
 def is_blacklisted_path(path: str) -> bool:
@@ -1610,7 +1613,7 @@ def normalize_path_separators(path: str) -> str:
 
 def collect_build_targets(
     options: Options, mypy_opts: MypyOptions
-) -> tuple[list[StubSource], list[StubSource]]:
+) -> tuple[list[StubSource], list[StubSource], list[StubSource]]:
     """Collect files for which we need to generate stubs.
 
     Return list of Python modules and C modules.
@@ -1635,9 +1638,9 @@ def collect_build_targets(
         py_modules = [StubSource(m.module, m.path) for m in source_list]
         c_modules = []
 
-    py_modules = remove_blacklisted_modules(py_modules)
+    py_modules, ignored_py_modules = remove_blacklisted_modules(py_modules)
 
-    return py_modules, c_modules
+    return py_modules, c_modules, ignored_py_modules
 
 
 def find_module_paths_using_imports(
@@ -1880,7 +1883,7 @@ def collect_docs_signatures(doc_dir: str) -> tuple[dict[str, str], dict[str, str
 def generate_stubs(options: Options) -> None:
     """Main entry point for the program."""
     mypy_opts = mypy_options(options)
-    py_modules, c_modules = collect_build_targets(options, mypy_opts)
+    py_modules, c_modules, ignored_py_modules = collect_build_targets(options, mypy_opts)
     sig_generators = get_sig_generators(options)
     # Use parsed sources to generate stubs for Python modules.
     generate_asts_for_modules(py_modules, options.parse_only, mypy_opts, options.verbose)
@@ -1922,12 +1925,17 @@ def generate_stubs(options: Options) -> None:
                 include_docstrings=options.include_docstrings,
             )
     num_modules = len(py_modules) + len(c_modules)
-    if not options.quiet and num_modules > 0:
+    if not options.quiet and (num_modules > 0 or len(ignored_py_modules) > 0):
         print("Processed %d modules" % num_modules)
         if len(files) == 1:
             print(f"Generated {files[0]}")
         else:
             print(f"Generated files under {common_dir_prefix(files)}" + os.sep)
+        if ignored_py_modules:
+            print(f"Ignored {len(ignored_py_modules)} modules which regarded as vendored modules")
+            if options.verbose:
+                for ignored in ignored_py_modules:
+                    print(f"\tignored: {ignored.path}")
 
 
 HEADER = """%(prog)s [-h] [more options, see -h]
