@@ -1862,7 +1862,8 @@ import stub
 
 reveal_type(stub.y)  # N: Revealed type is "builtins.int"
 reveal_type(stub.z)  # E: Module "stub" does not explicitly export attribute "z" \
-                     # N: Revealed type is "Any"
+                     # N: Revealed type is "builtins.int"
+
 
 [file stub.pyi]
 from substub import y as y
