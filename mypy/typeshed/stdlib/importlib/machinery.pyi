@@ -31,8 +31,10 @@ class ModuleSpec:
 
 class BuiltinImporter(importlib.abc.MetaPathFinder, importlib.abc.InspectLoader):
     # MetaPathFinder
-    @classmethod
-    def find_module(cls, fullname: str, path: Sequence[str] | None = None) -> importlib.abc.Loader | None: ...
+    if sys.version_info < (3, 12):
+        @classmethod
+        def find_module(cls, fullname: str, path: Sequence[str] | None = None) -> importlib.abc.Loader | None: ...
+
     @classmethod
     def find_spec(
         cls, fullname: str, path: Sequence[str] | None = None, target: types.ModuleType | None = None
@@ -47,8 +49,9 @@ class BuiltinImporter(importlib.abc.MetaPathFinder, importlib.abc.InspectLoader)
     @classmethod
     def get_source(cls, fullname: str) -> None: ...
     # Loader
-    @staticmethod
-    def module_repr(module: types.ModuleType) -> str: ...
+    if sys.version_info < (3, 12):
+        @staticmethod
+        def module_repr(module: types.ModuleType) -> str: ...
     if sys.version_info >= (3, 10):
         @staticmethod
         def create_module(spec: ModuleSpec) -> types.ModuleType | None: ...
@@ -62,8 +65,10 @@ class BuiltinImporter(importlib.abc.MetaPathFinder, importlib.abc.InspectLoader)
 
 class FrozenImporter(importlib.abc.MetaPathFinder, importlib.abc.InspectLoader):
     # MetaPathFinder
-    @classmethod
-    def find_module(cls, fullname: str, path: Sequence[str] | None = None) -> importlib.abc.Loader | None: ...
+    if sys.version_info < (3, 12):
+        @classmethod
+        def find_module(cls, fullname: str, path: Sequence[str] | None = None) -> importlib.abc.Loader | None: ...
+
     @classmethod
     def find_spec(
         cls, fullname: str, path: Sequence[str] | None = None, target: types.ModuleType | None = None
@@ -78,8 +83,9 @@ class FrozenImporter(importlib.abc.MetaPathFinder, importlib.abc.InspectLoader):
     @classmethod
     def get_source(cls, fullname: str) -> None: ...
     # Loader
-    @staticmethod
-    def module_repr(m: types.ModuleType) -> str: ...
+    if sys.version_info < (3, 12):
+        @staticmethod
+        def module_repr(m: types.ModuleType) -> str: ...
     if sys.version_info >= (3, 10):
         @staticmethod
         def create_module(spec: ModuleSpec) -> types.ModuleType | None: ...
@@ -91,8 +97,10 @@ class FrozenImporter(importlib.abc.MetaPathFinder, importlib.abc.InspectLoader):
     def exec_module(module: types.ModuleType) -> None: ...
 
 class WindowsRegistryFinder(importlib.abc.MetaPathFinder):
-    @classmethod
-    def find_module(cls, fullname: str, path: Sequence[str] | None = None) -> importlib.abc.Loader | None: ...
+    if sys.version_info < (3, 12):
+        @classmethod
+        def find_module(cls, fullname: str, path: Sequence[str] | None = None) -> importlib.abc.Loader | None: ...
+
     @classmethod
     def find_spec(
         cls, fullname: str, path: Sequence[str] | None = None, target: types.ModuleType | None = None
@@ -116,8 +124,9 @@ class PathFinder:
     def find_spec(
         cls, fullname: str, path: Sequence[str] | None = None, target: types.ModuleType | None = None
     ) -> ModuleSpec | None: ...
-    @classmethod
-    def find_module(cls, fullname: str, path: Sequence[str] | None = None) -> importlib.abc.Loader | None: ...
+    if sys.version_info < (3, 12):
+        @classmethod
+        def find_module(cls, fullname: str, path: Sequence[str] | None = None) -> importlib.abc.Loader | None: ...
 
 SOURCE_SUFFIXES: list[str]
 DEBUG_BYTECODE_SUFFIXES: list[str]

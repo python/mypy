@@ -7,6 +7,9 @@ from types import ModuleType
 from typing import Any, BinaryIO, TextIO
 from typing_extensions import TypeAlias
 
+if sys.version_info >= (3, 9):
+    from importlib.abc import Traversable
+
 __all__ = ["Package", "Resource", "contents", "is_resource", "open_binary", "open_text", "path", "read_binary", "read_text"]
 
 if sys.version_info >= (3, 9):
@@ -31,9 +34,13 @@ def is_resource(package: Package, name: str) -> bool: ...
 def contents(package: Package) -> Iterator[str]: ...
 
 if sys.version_info >= (3, 9):
-    from importlib.abc import Traversable
-    def files(package: Package) -> Traversable: ...
     def as_file(path: Traversable) -> AbstractContextManager[Path]: ...
+
+if sys.version_info >= (3, 12):
+    def files(anchor: Package | None = ...) -> Traversable: ...
+
+elif sys.version_info >= (3, 9):
+    def files(package: Package) -> Traversable: ...
 
 if sys.version_info >= (3, 10):
     from importlib.abc import ResourceReader as ResourceReader
