@@ -1434,7 +1434,21 @@ def foo(o: CallableTuple) -> int:
 class CallableTuple(Tuple[str, int]):
     def __call__(self, n: int, m: int) -> int:
         return n
+[builtins fixtures/tuple.pyi]
 
+[case testTypeTupleGenericCall]
+from typing import Generic, Tuple, TypeVar
+
+T = TypeVar('T')
+
+def foo(o: CallableTuple[int]) -> int:
+    reveal_type(o)  # N: Revealed type is "Tuple[builtins.str, builtins.int, fallback=__main__.CallableTuple[builtins.int]]"
+    reveal_type(o.count(3))  # N: Revealed type is "builtins.int"
+    return o(1, 2)
+
+class CallableTuple(Tuple[str, T]):
+    def __call__(self, n: int, m: int) -> int:
+        return n
 [builtins fixtures/tuple.pyi]
 
 [case testTupleCompatibleWithSequence]
