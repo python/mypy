@@ -6,6 +6,7 @@ import itertools
 import time
 from collections import defaultdict
 from contextlib import contextmanager
+from dataclasses import dataclass, field
 from typing import Callable, ClassVar, Final, Iterable, Iterator, List, Optional, Sequence, cast
 from typing_extensions import TypeAlias as _TypeAlias, overload
 
@@ -271,6 +272,16 @@ class Finished(Exception):
     """Raised if we can terminate overload argument check early (no match)."""
 
 
+@dataclass
+class ErrorHolder:
+    expression_checker: ExpressionChecker
+    errors: list[tuple[str, Context]] = field(default_factory=list)
+
+    def report(self) -> None:
+        for message, context in self.errors:
+            self.expression_checker.msg.fail(message, context)
+
+
 class ExpressionChecker(ExpressionVisitor[Type]):
     """Expression type checker.
 
@@ -326,6 +337,23 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def reset(self) -> None:
         self.resolved_type = {}
+
+    @contextmanager
+    def consistent_environment(self) -> Iterator[ErrorHolder]:
+        """When checking for compatibilities, some config options should be disregarded,
+        but those errors should still be reported.
+
+        Currently, this is only disallow_any_expr.
+        """
+        self._consistent_environment = True
+        self._error_holder = ErrorHolder(self)
+        try:
+            yield self._error_holder
+        finally:
+            self._consistent_environment = False
+
+    def soft_error(self, msg: str, context: Context) -> None:
+        self._error_holder.errors.append((msg, context))
 
     def visit_name_expr(self, e: NameExpr) -> Type:
         """Type check a name expression.
@@ -2742,6 +2770,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
 
         matches: list[CallableType] = []
+        match_errors: list[ErrorHolder] = []
         return_types: list[Type] = []
         inferred_types: list[Type] = []
         args_contain_any = any(map(has_any_type, arg_types))
@@ -2751,22 +2780,25 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             assert self.msg is self.chk.msg
             with self.msg.filter_errors() as w:
                 with self.chk.local_type_map() as m:
-                    ret_type, infer_type = self.check_call(
-                        callee=typ,
-                        args=args,
-                        arg_kinds=arg_kinds,
-                        arg_names=arg_names,
-                        context=context,
-                        callable_name=callable_name,
-                        object_type=object_type,
-                    )
+                    with self.consistent_environment() as errors:
+                        ret_type, infer_type = self.check_call(
+                            callee=typ,
+                            args=args,
+                            arg_kinds=arg_kinds,
+                            arg_names=arg_names,
+                            context=context,
+                            callable_name=callable_name,
+                            object_type=object_type,
+                        )
             is_match = not w.has_new_errors()
             if is_match:
                 # Return early if possible; otherwise record info so we can
                 # check for ambiguity due to 'Any' below.
                 if not args_contain_any:
+                    errors.report()
                     return ret_type, infer_type
                 matches.append(typ)
+                match_errors.append(errors)
                 return_types.append(ret_type)
                 inferred_types.append(infer_type)
                 type_maps.append(m)
@@ -2778,9 +2810,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # We try returning a precise type if we can. If not, we give up and just return 'Any'.
             if all_same_types(return_types):
                 self.chk.store_types(type_maps[0])
+                match_errors[0].report()
                 return return_types[0], inferred_types[0]
             elif all_same_types([erase_type(typ) for typ in return_types]):
                 self.chk.store_types(type_maps[0])
+                match_errors[0].report()
                 return erase_type(return_types[0]), erase_type(inferred_types[0])
             else:
                 return self.check_call(
@@ -2795,6 +2829,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         else:
             # Success! No ambiguity; return the first match.
             self.chk.store_types(type_maps[0])
+            match_errors[0].report()
             return return_types[0], inferred_types[0]
 
     def overload_erased_call_targets(
@@ -5388,7 +5423,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             and has_any_type(typ)
             and not self.chk.current_node_deferred
         ):
-            self.msg.disallowed_any_type(typ, node)
+            message = self.msg.disallowed_any_type_message(typ)
+            if self._consistent_environment:
+                self.soft_error(message, node)
+            else:
+                self.msg.fail(message, node)
 
         if not self.chk.in_checked_function() or self.chk.current_node_deferred:
             result: Type = AnyType(TypeOfAny.unannotated)
