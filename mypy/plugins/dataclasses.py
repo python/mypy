@@ -23,6 +23,7 @@ from mypy.nodes import (
     ClassDef,
     Context,
     DataclassTransformSpec,
+    Decorator,
     Expression,
     FuncDef,
     FuncItem,
@@ -574,6 +575,10 @@ class DataclassTransformer:
                 # Skip processing this node. This doesn't match the runtime behaviour,
                 # but the only alternative would be to modify the SymbolTable,
                 # and it's a little hairy to do that in a plugin.
+                continue
+            if isinstance(node, Decorator):
+                # This might be a property / field name clash.
+                # We will issue an error later.
                 continue
 
             assert isinstance(node, Var)
