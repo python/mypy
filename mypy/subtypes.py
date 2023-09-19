@@ -454,22 +454,22 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     if isinstance(unpacked, Instance):
                         return self._is_subtype(left, unpacked)
             if left.type.has_base(right.partial_fallback.type.fullname):
-                if self.proper_subtype:
-                    return False
-                # Special case to consider Foo[*tuple[Any, ...]] (i.e. bare Foo) a
-                # subtype of Foo[<whatever>], when Foo is user defined variadic tuple type.
-                mapped = map_instance_to_supertype(left, right.partial_fallback.type)
-                for arg in map(get_proper_type, mapped.args):
-                    if isinstance(arg, UnpackType):
-                        unpacked = get_proper_type(arg.type)
-                        if not isinstance(unpacked, Instance):
-                            return False
-                        assert unpacked.type.fullname == "builtins.tuple"
-                        if not isinstance(get_proper_type(unpacked.args[0]), AnyType):
-                            return False
-                    elif not isinstance(arg, AnyType):
-                        return False
-                return True
+                if not self.proper_subtype:
+                    # Special case to consider Foo[*tuple[Any, ...]] (i.e. bare Foo) a
+                    # subtype of Foo[<whatever>], when Foo is user defined variadic tuple type.
+                    mapped = map_instance_to_supertype(left, right.partial_fallback.type)
+                    for arg in map(get_proper_type, mapped.args):
+                        if isinstance(arg, UnpackType):
+                            unpacked = get_proper_type(arg.type)
+                            if not isinstance(unpacked, Instance):
+                                break
+                            assert unpacked.type.fullname == "builtins.tuple"
+                            if not isinstance(get_proper_type(unpacked.args[0]), AnyType):
+                                break
+                        elif not isinstance(arg, AnyType):
+                            break
+                    else:
+                        return True
             return False
         if isinstance(right, TypeVarTupleType):
             # tuple[Any, ...] is like Any in the world of tuples (see special case above).
