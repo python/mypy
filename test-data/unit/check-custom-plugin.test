@@ -1061,3 +1061,50 @@ reveal_type(1)  # N: Revealed type is "Literal[1]?"
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/custom_errorcode.py
+
+[case testClassDecoratorHook2]
+# flags: --config-file tmp/mypy.ini
+from typing import Any, TypeVar
+T = TypeVar('T')
+
+def my_decorator(t: Any) -> Any:
+    raise
+
+@my_decorator
+class C:
+    pass
+
+obj = C()
+reveal_type(obj.magic)  # N: Revealed type is "builtins.str"
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/class_decorator_hook_2.py
+
+[typing fixtures/typing-medium.pyi]
+
+[case testClassDecoratorHook2_incorrect]
+# flags: --config-file tmp/mypy.ini
+from typing import Any, TypeVar
+T = TypeVar('T')
+
+def my_decorator(t: Any) -> Any:
+    raise
+
+@my_decorator()()
+class C:
+    pass
+
+obj = C()
+_ = obj.magic
+[out]
+main:8: error: invalid syntax
+
+[out version>=3.9]
+main:8: error: Missing positional argument "t" in call to "my_decorator"
+main:13: error: "C" has no attribute "magic"
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/class_decorator_hook_2.py
+
+[typing fixtures/typing-medium.pyi]

@@ -1826,8 +1826,8 @@ class SemanticAnalyzer(
 
     def get_fullname_for_hook(self, expr: Expression) -> str | None:
         if isinstance(expr, CallExpr):
-            return self.get_fullname_for_hook(expr.callee)
-        elif isinstance(expr, IndexExpr):
+            expr = expr.callee
+        if isinstance(expr, IndexExpr):
             return self.get_fullname_for_hook(expr.base)
         elif isinstance(expr, RefExpr):
             if expr.fullname:
