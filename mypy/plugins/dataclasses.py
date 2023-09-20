@@ -588,7 +588,7 @@ class DataclassTransformer:
                 continue
 
             # In dataclasses, attributes are initialized in the generated __init__.
-            node.is_abstract_var = False
+            node.is_uninitialized = False
 
             # x: InitVar[int] is turned into x: int and is removed from the class.
             is_init_var = False

@@ -410,7 +410,7 @@ def _analyze_class(
                 continue
             assert isinstance(node, Var)
             node.is_initialized_in_class = False
-            node.is_abstract_var = False
+            node.is_uninitialized = False
 
     # Traverse the MRO and collect attributes from the parents.
     taken_attr_names = set(own_attrs)

@@ -654,14 +654,14 @@ class NamedTupleAnalyzer:
                     continue
                 elif isinstance(sym.node, Var):
                     # NamedTuple fields are initialized in the generated __init__.
-                    sym.node.is_abstract_var = False
+                    sym.node.is_uninitialized = False
                 # Keep existing (user-provided) definitions under mangled names, so they
                 # get semantically analyzed.
                 r_key = get_unique_redefinition_name(key, named_tuple_info.names)
                 named_tuple_info.names[r_key] = sym
             if isinstance(value.node, Var):
                 # NamedTuple fields are initialized in the generated __init__.
-                value.node.is_abstract_var = False
+                value.node.is_uninitialized = False
             named_tuple_info.names[key] = value
 
     # Helpers

@@ -163,10 +163,10 @@ def restore_saved_attrs(saved_attrs: SavedAttributes) -> None:
         if (
             existing is None
             or
-            # (An abstract Var is considered as not defined.)
+            # (An uninitialized Var is considered as not defined.)
             (
                 isinstance(existing.node, Var)
-                and existing.node.is_abstract_var
+                and existing.node.is_uninitialized
                 and not defined_in_this_class
             )
             or

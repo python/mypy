@@ -87,9 +87,9 @@ def calculate_class_abstract_status(
                     if base is typ:
                         abstract_in_this_class.append(name)
             elif isinstance(node, Var):
-                if node.is_abstract_var and name not in concrete:
-                    # If this abstract variable comes from a protocol, then `typ`
-                    # is abstract.
+                if node.is_uninitialized and name not in concrete:
+                    # If this uninitialized variable comes from a protocol, then we
+                    # treat it as an "abstract" variable and mark `typ` as abstract.
                     if base.is_protocol:
                         typ.is_abstract = True
                         abstract.append((name, IS_ABSTRACT))
@@ -99,7 +99,7 @@ def calculate_class_abstract_status(
                         uninitialized_vars.add(name)
                 elif (
                     options.warn_uninitialized_attributes
-                    and not node.is_abstract_var
+                    and not node.is_uninitialized
                     and name in uninitialized_vars
                 ):
                     # A variable can also be initialized in a parent class.
