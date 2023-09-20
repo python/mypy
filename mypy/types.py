@@ -1763,8 +1763,6 @@ class CallableType(FunctionLike):
         "definition",  # For error messages.  May be None.
         "variables",  # Type variables for a generic function
         "is_ellipsis_args",  # Is this Callable[..., t] (with literal '...')?
-        "is_classmethod_class",  # Is this callable constructed for the benefit
-        # of a classmethod's 'cls' argument?
         "implicit",  # Was this type implicitly generated instead of explicitly
         # specified by the user?
         "special_sig",  # Non-None for signatures that require special handling
