@@ -375,6 +375,17 @@ class Employee(NamedTuple):
 Employee("foo")
 [builtins fixtures/tuple.pyi]
 
+[case testUninitializedAttributeNamedTupleRunTwice]
+# flags: --warn-uninitialized-attributes
+from typing import NamedTuple
+
+NT: "N"  # Force mypy to analyze this twice.
+class N(NamedTuple):
+    x: int
+
+NT = N(1)
+[builtins fixtures/tuple.pyi]
+
 [case testUninitializedAttributeTypedDict]
 # flags: --warn-uninitialized-attributes
 from mypy_extensions import TypedDict
