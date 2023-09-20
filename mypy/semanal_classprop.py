@@ -39,7 +39,9 @@ TYPE_PROMOTIONS: Final = {
 }
 
 
-def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: Errors) -> None:
+def calculate_class_abstract_status(
+    typ: TypeInfo, is_stub_file: bool, errors: Errors, options: Options
+) -> None:
     """Calculate abstract status of a class.
 
     Set is_abstract of the type to True if the type has an unimplemented
@@ -52,6 +54,7 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
     # List of abstract attributes together with their abstract status
     abstract: list[tuple[str, int]] = []
     abstract_in_this_class: list[str] = []
+    uninitialized_vars: set[str] = set()
     if typ.is_newtype:
         # Special case: NewTypes are considered as always non-abstract, so they can be used as:
         #     Config = NewType('Config', Mapping[str, str])
@@ -85,15 +88,29 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
                         abstract_in_this_class.append(name)
             elif isinstance(node, Var):
                 if node.is_abstract_var and name not in concrete:
-                    typ.is_abstract = True
-                    abstract.append((name, IS_ABSTRACT))
-                    if base is typ:
-                        abstract_in_this_class.append(name)
+                    # If this abstract variable comes from a protocol, then `typ`
+                    # is abstract.
+                    if base.is_protocol:
+                        typ.is_abstract = True
+                        abstract.append((name, IS_ABSTRACT))
+                        if base is typ:
+                            abstract_in_this_class.append(name)
+                    elif options.warn_uninitialized_attributes:
+                        uninitialized_vars.add(name)
+                elif (
+                    options.warn_uninitialized_attributes
+                    and not node.is_abstract_var
+                    and name in uninitialized_vars
+                ):
+                    # A variable can also be initialized in a parent class.
+                    uninitialized_vars.remove(name)
             concrete.add(name)
+    typ.abstract_attributes = sorted(abstract)
+    if uninitialized_vars:
+        typ.uninitialized_vars = sorted(list(uninitialized_vars))
     # In stubs, abstract classes need to be explicitly marked because it is too
     # easy to accidentally leave a concrete class abstract by forgetting to
     # implement some methods.
-    typ.abstract_attributes = sorted(abstract)
     if is_stub_file:
         if typ.declared_metaclass and typ.declared_metaclass.type.has_base("abc.ABCMeta"):
             return

@@ -234,3 +234,238 @@ def foo(a1: A) -> int:
 class A:
     def __init__(self, x: int) -> None:
         self._x = x
+
+[case testUninitializedAttribute]
+# flags: --warn-uninitialized-attributes
+class A:
+    x: int
+a = A() # E: Class "A" has annotated but unset instance attributes: "x"
+class B(A):
+    def __init__(self) -> None:
+        self.x = 10
+B()  # OK
+class C(A): ...
+C()  # E: Class "C" has annotated but unset instance attributes: "x"
+class D(A):
+    def f(self) -> None:
+        self.x = "foo"  # E: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
+D()  # OK
+
+class E:
+    x: int
+    def __init__(self) -> None:
+        self.x = 10
+E()  #OK
+class F:
+    def __init__(self) -> None:
+        self.x = 10
+    x: int
+F()
+class G:
+    x: int
+    def f(self) -> None:
+        self.x = 10
+G()  # OK
+
+[case testUninitializedAttributeAbstract]
+# flags: --warn-uninitialized-attributes
+from abc import ABC
+
+class A(ABC):
+    x: str
+A()  # E: Class "A" has annotated but unset instance attributes: "x"
+class B(A): ...
+B()  # E: Class "B" has annotated but unset instance attributes: "x"
+class C(A):
+    def f(self) -> None:
+        self.x = "foo"
+C()
+
+[case testUninitializedAttributeMultiple]
+# flags: --warn-uninitialized-attributes
+from typing import ClassVar
+class A:
+    x: int
+    y: str = "foo"
+    z: bool
+    c: ClassVar[int]
+A()  # E: Class "A" has annotated but unset instance attributes: "x" and "z" \
+     # E: Class "A" has annotated but unset class attributes: "c"
+class B(A):
+    c = 0
+    def __init__(self) -> None:
+        self.x = 3
+B()  # E: Class "B" has annotated but unset instance attributes: "z"
+class C(B):
+    def __init__(self) -> None:
+        self.z = True
+C()  # This should ideally be an error because `super().__init__` wasn't called.
+
+[case testUninitializedAttributeDataclass]
+# flags: --warn-uninitialized-attributes
+from dataclasses import InitVar, dataclass
+from typing import ClassVar
+
+@dataclass
+class A:
+    x: int
+    y: InitVar[str]
+    z: ClassVar[bool]
+    @classmethod
+    def f(cls) -> None:
+        cls.z = True
+A(3, "foo")  # E: Class "A" has annotated but unset class attributes: "z"
+reveal_type(A.z)  # N: Revealed type is "builtins.bool"
+@dataclass
+class A2(A):
+    z: ClassVar[bool] = True
+A2(3, "foo")  # OK
+
+class B:
+    x: int
+    y: str
+
+@dataclass
+class C(B): ...
+C()  # E: Class "C" has annotated but unset instance attributes: "x" and "y"
+
+@dataclass
+class D(B):
+    x: int
+    y: str
+D(3, "foo")
+[builtins fixtures/dataclasses.pyi]
+
+[case testUninitializedAttributeAttr]
+# flags: --warn-uninitialized-attributes --python-version 3.7
+import attr
+from typing import ClassVar
+
+@attr.define
+class A:
+    x: int
+    z: ClassVar[bool]
+A(3)  # E: Class "A" has annotated but unset class attributes: "z"
+
+class B:
+    x: int
+    y: str
+
+@attr.define
+class C(B): ...
+C()  # E: Class "C" has annotated but unset instance attributes: "x" and "y"
+
+@attr.define
+class D(B):
+    x: int
+    y: str
+D(3, "foo")
+[builtins fixtures/dataclasses.pyi]
+
+[case testUninitializedAttributeNamedTuple]
+# flags: --warn-uninitialized-attributes
+from typing import NamedTuple
+
+class Employee(NamedTuple):
+    name: str
+    id: int = 3
+
+    def __repr__(self) -> str:
+        return self.name
+Employee("foo")
+[builtins fixtures/tuple.pyi]
+
+[case testUninitializedAttributeTypedDict]
+# flags: --warn-uninitialized-attributes
+from mypy_extensions import TypedDict
+
+class A(TypedDict):
+    x: int
+A(x=3)
+[builtins fixtures/tuple.pyi]
+
+[case testUninitializedAttributeOverwrite]
+# flags: --warn-uninitialized-attributes
+from typing import List
+class A:
+    x: List[int]
+    y: List[int]
+    def __init__(self) -> None:
+        self.x = []
+        self.y = 2  # E: Incompatible types in assignment (expression has type "int", variable has type "List[int]")
+a = A()
+reveal_type(a.x)  # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(a.y)  # N: Revealed type is "builtins.list[builtins.int]"
+
+[case testUninitializedAttributeStub]
+# flags: --warn-uninitialized-attributes
+from typing import TYPE_CHECKING
+from stub import A
+A()
+class B:
+    x: int
+if TYPE_CHECKING:
+    class C(B): ...
+else:
+    class C: ...
+C()  # E: Class "C" has annotated but unset instance attributes: "x"
+[file stub.pyi]
+class A:
+    x: int
+
+[case testUninitializedAttributeClassVar]
+# flags: --warn-uninitialized-attributes
+from typing import ClassVar
+from typing_extensions import Protocol
+class A:
+    CONST: int
+    CONST = 4
+A()
+
+class B:
+    CONST: ClassVar[int]
+    CONST = 4
+B()
+
+class C(Protocol):
+    CONST: ClassVar[int]
+    CONST = 4
+class D(C): ...
+D()
+[builtins fixtures/tuple.pyi]
+
+[case testUninitializedAttributeSuperClass]
+# flags: --warn-uninitialized-attributes
+class A:
+    def __init__(self, x: int):
+        self.x = x
+
+class B(A):
+    x: int
+    def __init__(self, x: int):
+        super().__init__(x)
+
+b = B(0)
+reveal_type(b.x)  # N: Revealed type is "builtins.int"
+
+class C:
+    x: int
+class D(C):
+    x: int
+D()  # E: Class "D" has annotated but unset instance attributes: "x"
+
+class E:
+    a: int
+    def __init__(self, a: int) -> None:
+         self.a = a
+
+class F(E):
+     a: int
+     b: int
+     def __init__(self, a: int, b: int) -> None:
+          super().__init__(a)
+          # or `self.a = a`
+          self.b = b
+
+E(0)  # ok
+F(1, 1)  # ok

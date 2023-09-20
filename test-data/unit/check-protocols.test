@@ -4127,3 +4127,40 @@ class P(Protocol):
 
 class C(P): ...
 C(0)  # OK
+
+[case testEmptyContainer]
+from typing import List, Protocol
+
+class P(Protocol):
+    s: str
+    l: List[str]
+
+class A(P):
+    l2: List[str]
+    def __init__(self) -> None:
+        self.s = "python"
+        self.l = []
+        self.l2 = []
+
+a = A()
+reveal_type(a.s)  # N: Revealed type is "builtins.str"
+reveal_type(a.l)  # N: Revealed type is "builtins.list[builtins.str]"
+reveal_type(a.l2)  # N: Revealed type is "builtins.list[builtins.str]"
+
+[case testClassAssignment]
+# flags: --warn-uninitialized-attributes
+from typing import ClassVar, Protocol
+
+class P(Protocol):
+    c: ClassVar[int]
+    c = 2
+class A(P): ...
+A()
+class B: ...
+b: P = B()  # E: Incompatible types in assignment (expression has type "B", variable has type "P")
+class P2(Protocol):
+    c: ClassVar[int] = 2
+class A2(P2): ...
+A2()
+class B2: ...
+b2: P2 = B2()  # E: Incompatible types in assignment (expression has type "B2", variable has type "P2")

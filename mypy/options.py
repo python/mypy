@@ -53,6 +53,7 @@ PER_MODULE_OPTIONS: Final = {
     "strict_optional",
     "warn_no_return",
     "warn_return_any",
+    "warn_uninitialized_attributes",
     "warn_unreachable",
     "warn_unused_ignores",
 }
@@ -174,6 +175,9 @@ class Options:
 
         # Warn about unused '[mypy-<pattern>]'  or '[[tool.mypy.overrides]]' config sections
         self.warn_unused_configs = False
+
+        # Warn about instantiating classes with uninitialized attributes
+        self.warn_uninitialized_attributes = False
 
         # Files in which to ignore all non-fatal errors
         self.ignore_errors = False

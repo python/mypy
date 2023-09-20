@@ -28,7 +28,7 @@ from mypy.literals import literal
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import is_overlapping_types, narrow_declared_type
 from mypy.message_registry import ErrorMessage
-from mypy.messages import MessageBuilder
+from mypy.messages import MessageBuilder, format_string_list
 from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
@@ -1610,35 +1610,61 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # An Enum() call that failed SemanticAnalyzerPass2.check_enum_call().
             return callee.ret_type, callee
 
+        typ = callee.type_object() if callee.is_type_obj() else None
         if (
-            callee.is_type_obj()
-            and callee.type_object().is_protocol
+            typ is not None
+            and typ.is_protocol
             # Exception for Type[...]
             and not callee.from_type_type
         ):
-            self.chk.fail(
-                message_registry.CANNOT_INSTANTIATE_PROTOCOL.format(callee.type_object().name),
-                context,
-            )
+            self.chk.fail(message_registry.CANNOT_INSTANTIATE_PROTOCOL.format(typ.name), context)
         elif (
-            callee.is_type_obj()
-            and callee.type_object().is_abstract
+            typ is not None
+            and typ.is_abstract
             # Exception for Type[...]
             and not callee.from_type_type
             and not callee.type_object().fallback_to_any
         ):
-            type = callee.type_object()
             # Determine whether the implicitly abstract attributes are functions with
             # None-compatible return types.
             abstract_attributes: dict[str, bool] = {}
-            for attr_name, abstract_status in type.abstract_attributes:
+            for attr_name, abstract_status in typ.abstract_attributes:
                 if abstract_status == IMPLICITLY_ABSTRACT:
-                    abstract_attributes[attr_name] = self.can_return_none(type, attr_name)
+                    abstract_attributes[attr_name] = self.can_return_none(typ, attr_name)
                 else:
                     abstract_attributes[attr_name] = False
-            self.msg.cannot_instantiate_abstract_class(
-                callee.type_object().name, abstract_attributes, context
-            )
+            self.msg.cannot_instantiate_abstract_class(typ.name, abstract_attributes, context)
+        elif (
+            typ is not None
+            and typ.uninitialized_vars
+            # Exception for Type[...]
+            and not callee.from_type_type
+            and not callee.type_object().fallback_to_any
+        ):
+            # Split the list of variables into instance and class vars.
+            ivars: list[str] = []
+            cvars: list[str] = []
+            for uninitialized in typ.uninitialized_vars:
+                for base in typ.mro:
+                    symnode = base.names.get(uninitialized)
+                    if symnode is None:
+                        continue
+                    node = symnode.node
+                    if isinstance(node, Var):
+                        if node.is_classvar:
+                            cvars.append(uninitialized)
+                        else:
+                            ivars.append(uninitialized)
+                        break
+            for vars, kind in [(ivars, "instance"), (cvars, "class")]:
+                if not vars:
+                    continue
+                self.chk.fail(
+                    message_registry.CLASS_HAS_UNINITIALIZED_VARS.format(
+                        typ.name, kind, format_string_list([f'"{v}"' for v in vars], "attributes")
+                    ),
+                    context,
+                )
 
         formal_to_actual = map_actuals_to_formals(
             arg_kinds,

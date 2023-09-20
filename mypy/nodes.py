@@ -2827,6 +2827,7 @@ class TypeInfo(SymbolNode):
         "is_protocol",
         "runtime_protocol",
         "abstract_attributes",
+        "uninitialized_vars",
         "deletable_attributes",
         "slots",
         "assuming",
@@ -2879,6 +2880,8 @@ class TypeInfo(SymbolNode):
     # List of names of abstract attributes together with their abstract status.
     # The abstract status must be one of `NOT_ABSTRACT`, `IS_ABSTRACT`, `IMPLICITLY_ABSTRACT`.
     abstract_attributes: list[tuple[str, int]]
+    # List of names of variables (instance vars and class vars) that are not initialized.
+    uninitialized_vars: list[str]
     deletable_attributes: list[str]  # Used by mypyc only
     # Does this type have concrete `__slots__` defined?
     # If class does not have `__slots__` defined then it is `None`,
@@ -3033,6 +3036,7 @@ class TypeInfo(SymbolNode):
         self.metaclass_type = None
         self.is_abstract = False
         self.abstract_attributes = []
+        self.uninitialized_vars = []
         self.deletable_attributes = []
         self.slots = None
         self.assuming = []
@@ -3257,6 +3261,7 @@ class TypeInfo(SymbolNode):
             "names": self.names.serialize(self.fullname),
             "defn": self.defn.serialize(),
             "abstract_attributes": self.abstract_attributes,
+            "uninitialized_vars": self.uninitialized_vars,
             "type_vars": self.type_vars,
             "has_param_spec_type": self.has_param_spec_type,
             "bases": [b.serialize() for b in self.bases],
@@ -3295,6 +3300,7 @@ class TypeInfo(SymbolNode):
         ti._fullname = data["fullname"]
         # TODO: Is there a reason to reconstruct ti.subtypes?
         ti.abstract_attributes = [(attr[0], attr[1]) for attr in data["abstract_attributes"]]
+        ti.uninitialized_vars = data["uninitialized_vars"]
         ti.type_vars = data["type_vars"]
         ti.has_param_spec_type = data["has_param_spec_type"]
         ti.bases = [mypy.types.Instance.deserialize(b) for b in data["bases"]]

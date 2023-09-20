@@ -531,6 +531,27 @@ potentially problematic or redundant in some way.
 
         This limitation will be removed in future releases of mypy.
 
+.. option:: --warn-uninitialized-attributes
+
+    This flag will make mypy report an error whenever it encounters a class
+    being instantiated which has attributes that were declared but never
+    initialized.
+
+    For example, in the following code, mypy will warn that ``value`` was not
+    initialized.
+
+    .. code-block:: python
+
+        class Foo:
+            value: int
+            def __init__(self) -> None:
+                self.vaelu = 3  # typo in variable name
+        foo = Foo()  # Error: 'value' is uninitialized
+
+    .. note::
+
+        Mypy cannot properly detect initialization in very dynamic code like
+        classes with a custom ``__new__`` method.
 
 .. _miscellaneous-strictness-flags:
 
