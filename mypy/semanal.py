@@ -2466,7 +2466,7 @@ class SemanticAnalyzer(
             if as_id is not None:
                 base_id = id
                 imported_id = as_id
-                module_public = use_implicit_reexport or id.split(".")[-1] == as_id
+                module_public = use_implicit_reexport or id == as_id
             else:
                 base_id = id.split(".")[0]
                 imported_id = base_id
