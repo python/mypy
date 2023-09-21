@@ -1172,9 +1172,7 @@ class StubgencSuite(unittest.TestCase):
         )
         assert_equal(
             output,
-            [
-                "def test(arg0: Action[int,OtherType[str]]) -> Action[OtherType[str,str],int]: ..."
-            ],
+            ["def test(arg0: Action[int,OtherType[str]]) -> Action[OtherType[str,str],int]: ..."],
         )
         assert_equal(imports, [])
 
