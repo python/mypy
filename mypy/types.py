@@ -2416,16 +2416,14 @@ class TupleType(ProperType):
             items = self.items
         return TupleType(items, fallback, self.line, self.column)
 
-    def slice(self, begin: int | None, end: int | None, stride: int | None, *, fallback: Instance | None) -> TupleType:
+    def slice(
+        self, begin: int | None, end: int | None, stride: int | None, *, fallback: Instance | None
+    ) -> TupleType:
         if fallback is None:
             fallback = self.partial_fallback
 
         return TupleType(
-            self.items[begin:end:stride],
-            fallback,
-            self.line,
-            self.column,
-            self.implicit,
+            self.items[begin:end:stride], fallback, self.line, self.column, self.implicit
         )
 
 
