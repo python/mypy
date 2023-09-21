@@ -1155,7 +1155,7 @@ class StubgencSuite(unittest.TestCase):
         # information is used.
         def test(arg0: str) -> None:
             """
-            test(arg0: argparse.Action[int, argparse.OtherType[str]]) -> argparse.Action[argparse.OtherType[str, str], int]
+            test(arg0: argparse.Action[int, argparse.OtherType[str]]) -> argparse.Action[argparse.OtherType[str,str], int]
             """
 
         output: list[str] = []
@@ -1173,7 +1173,7 @@ class StubgencSuite(unittest.TestCase):
         assert_equal(
             output,
             [
-                "def test(arg0: Action[int, OtherType[str]]) -> Action[OtherType[str, str], int]: ..."
+                "def test(arg0: Action[int,OtherType[str]]) -> Action[OtherType[str,str],int]: ..."
             ],
         )
         assert_equal(imports, [])
