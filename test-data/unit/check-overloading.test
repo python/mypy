@@ -6650,3 +6650,27 @@ def d(x: int) -> int: ...
 def d(f: int, *, x: int) -> str: ...
 def d(*args, **kwargs): ...
 [builtins fixtures/tuple.pyi]
+
+[case testOverloadCallableGenericSelf]
+from typing import Any, TypeVar, Generic, overload, reveal_type
+
+T = TypeVar("T")
+
+class MyCallable(Generic[T]):
+    def __init__(self, t: T):
+        self.t = t
+
+    @overload
+    def __call__(self: "MyCallable[int]") -> str: ...
+    @overload
+    def __call__(self: "MyCallable[str]") -> int: ...
+    def __call__(self): ...
+
+c = MyCallable(5)
+reveal_type(c)  # N: Revealed type is "__main__.MyCallable[builtins.int]"
+reveal_type(c())  # N: Revealed type is "builtins.str"
+
+c2 = MyCallable("test")
+reveal_type(c2)  # N: Revealed type is "__main__.MyCallable[builtins.str]"
+reveal_type(c2()) # should be int  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
