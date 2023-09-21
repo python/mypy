@@ -1170,7 +1170,12 @@ class StubgencSuite(unittest.TestCase):
             known_modules=[mod.__name__],
             sig_generators=get_sig_generators(parse_options([])),
         )
-        assert_equal(output, ["def test(arg0: Action[int, OtherType[str]]) -> Action[OtherType[str, str], int]: ..."])
+        assert_equal(
+            output,
+            [
+                "def test(arg0: Action[int, OtherType[str]]) -> Action[OtherType[str, str], int]: ..."
+            ],
+        )
         assert_equal(imports, [])
 
     def test_generate_c_function_same_module_nested(self) -> None:
