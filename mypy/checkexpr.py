@@ -4183,7 +4183,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         items: list[Type] = []
         for b, e, s in itertools.product(begin, end, stride):
-            items.append(left_type.slice(b, e, s))
+            items.append(left_type.slice(b, e, s, fallback=self.named_type("builtins.tuple")))
         return make_simplified_union(items)
 
     def try_getting_int_literals(self, index: Expression) -> list[int] | None:
