@@ -23,6 +23,7 @@ from mypy.nodes import (
     ClassDef,
     Context,
     DataclassTransformSpec,
+    Decorator,
     Expression,
     FuncDef,
     FuncItem,
@@ -375,9 +376,7 @@ class DataclassTransformer:
             add_attribute_to_class(self._api, self._cls, "__match_args__", match_args_type)
 
         self._add_dataclass_fields_magic_attribute()
-
-        if self._spec is _TRANSFORM_SPEC_FOR_DATACLASSES:
-            self._add_internal_replace_method(attributes)
+        self._add_internal_replace_method(attributes)
         if "__post_init__" in info.names:
             self._add_internal_post_init_method(attributes)
 
@@ -576,6 +575,10 @@ class DataclassTransformer:
                 # Skip processing this node. This doesn't match the runtime behaviour,
                 # but the only alternative would be to modify the SymbolTable,
                 # and it's a little hairy to do that in a plugin.
+                continue
+            if isinstance(node, Decorator):
+                # This might be a property / field name clash.
+                # We will issue an error later.
                 continue
 
             assert isinstance(node, Var)

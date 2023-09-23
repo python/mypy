@@ -1475,6 +1475,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         callable_node: Expression | None = None,
         callable_name: str | None = None,
         object_type: Type | None = None,
+        original_type: Type | None = None,
     ) -> tuple[Type, Type]:
         """Type check a call.
 
@@ -1537,7 +1538,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 is_super=False,
                 is_operator=True,
                 msg=self.msg,
-                original_type=callee,
+                original_type=original_type or callee,
                 chk=self.chk,
                 in_literal_context=self.is_literal_context(),
             )
@@ -1578,6 +1579,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 callable_node,
                 callable_name,
                 object_type,
+                original_type=callee,
             )
         else:
             return self.msg.not_callable(callee, context), AnyType(TypeOfAny.from_error)

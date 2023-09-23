@@ -1686,7 +1686,7 @@ def get_importable_stdlib_modules() -> set[str]:
                 modules_by_finder[m.module_finder].add(m.name)
         for finder, module_group in modules_by_finder.items():
             if (
-                "site-packages" not in Path(finder.path).parents
+                "site-packages" not in Path(finder.path).parts
                 # if "_queue" is present, it's most likely the module finder
                 # for stdlib extension modules;
                 # if "queue" is present, it's most likely the module finder
