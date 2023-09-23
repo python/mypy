@@ -17,7 +17,6 @@ from mypy.plugin import FunctionContext, Plugin
 from mypy.subtypes import is_proper_subtype
 from mypy.types import (
     AnyType,
-    CallableType,
     FunctionLike,
     Instance,
     NoneTyp,
