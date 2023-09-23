@@ -343,8 +343,8 @@ L0:
     return 1
 def D.f(self, x, __bitmap):
     self :: __main__.D
-    x :: int64
-    __bitmap, r0 :: uint32
+    x :: i64
+    __bitmap, r0 :: u32
     r1 :: bit
 L0:
     r0 = __bitmap & 1
@@ -371,8 +371,8 @@ class D(C):
 [out]
 def C.f(self, x, __bitmap):
     self :: __main__.C
-    x :: int64
-    __bitmap, r0 :: uint32
+    x :: i64
+    __bitmap, r0 :: u32
     r1 :: bit
 L0:
     r0 = __bitmap & 1
@@ -384,10 +384,10 @@ L2:
     return 1
 def D.f(self, x, y, __bitmap):
     self :: __main__.D
-    x, y :: int64
-    __bitmap, r0 :: uint32
+    x, y :: i64
+    __bitmap, r0 :: u32
     r1 :: bit
-    r2 :: uint32
+    r2 :: u32
     r3 :: bit
 L0:
     r0 = __bitmap & 1
@@ -405,8 +405,8 @@ L4:
     return 1
 def D.f__C_glue(self, x, __bitmap):
     self :: __main__.D
-    x :: int64
-    __bitmap :: uint32
+    x :: i64
+    __bitmap :: u32
     r0 :: None
 L0:
     r0 = D.f(self, x, 0, __bitmap)
@@ -432,6 +432,6 @@ class E:
 class EE(E):
     def f(self, x: int) -> None: pass  # Line 18
 [out]
-main:7: error: An argument with type "int64" cannot be given a default value in a method override
-main:13: error: Incompatible argument type "int64" (base class has type "int")
-main:18: error: Incompatible argument type "int" (base class has type "int64")
+main:7: error: An argument with type "i64" cannot be given a default value in a method override
+main:13: error: Incompatible argument type "i64" (base class has type "int")
+main:18: error: Incompatible argument type "int" (base class has type "i64")

@@ -1,6 +1,7 @@
 from ctypes import (
     Array,
     Structure,
+    _CField,
     _Pointer,
     _SimpleCData,
     c_byte,
@@ -20,6 +21,7 @@ from ctypes import (
     c_wchar,
     c_wchar_p,
 )
+from typing import TypeVar
 from typing_extensions import TypeAlias
 
 BYTE = c_byte
@@ -101,39 +103,42 @@ HWND = HANDLE
 SC_HANDLE = HANDLE
 SERVICE_STATUS_HANDLE = HANDLE
 
+_CIntLikeT = TypeVar("_CIntLikeT", bound=_SimpleCData[int])
+_CIntLikeField: TypeAlias = _CField[_CIntLikeT, int, _CIntLikeT | int]
+
 class RECT(Structure):
-    left: LONG
-    top: LONG
-    right: LONG
-    bottom: LONG
+    left: _CIntLikeField[LONG]
+    top: _CIntLikeField[LONG]
+    right: _CIntLikeField[LONG]
+    bottom: _CIntLikeField[LONG]
 
 RECTL = RECT
 _RECTL = RECT
 tagRECT = RECT
 
 class _SMALL_RECT(Structure):
-    Left: SHORT
-    Top: SHORT
-    Right: SHORT
-    Bottom: SHORT
+    Left: _CIntLikeField[SHORT]
+    Top: _CIntLikeField[SHORT]
+    Right: _CIntLikeField[SHORT]
+    Bottom: _CIntLikeField[SHORT]
 
 SMALL_RECT = _SMALL_RECT
 
 class _COORD(Structure):
-    X: SHORT
-    Y: SHORT
+    X: _CIntLikeField[SHORT]
+    Y: _CIntLikeField[SHORT]
 
 class POINT(Structure):
-    x: LONG
-    y: LONG
+    x: _CIntLikeField[LONG]
+    y: _CIntLikeField[LONG]
 
 POINTL = POINT
 _POINTL = POINT
 tagPOINT = POINT
 
 class SIZE(Structure):
-    cx: LONG
-    cy: LONG
+    cx: _CIntLikeField[LONG]
+    cy: _CIntLikeField[LONG]
 
 SIZEL = SIZE
 tagSIZE = SIZE
@@ -141,45 +146,45 @@ tagSIZE = SIZE
 def RGB(red: int, green: int, blue: int) -> int: ...
 
 class FILETIME(Structure):
-    dwLowDateTime: DWORD
-    dwHighDateTime: DWORD
+    dwLowDateTime: _CIntLikeField[DWORD]
+    dwHighDateTime: _CIntLikeField[DWORD]
 
 _FILETIME = FILETIME
 
 class MSG(Structure):
-    hWnd: HWND
-    message: UINT
-    wParam: WPARAM
-    lParam: LPARAM
-    time: DWORD
-    pt: POINT
+    hWnd: _CField[HWND, int | None, HWND | int | None]
+    message: _CIntLikeField[UINT]
+    wParam: _CIntLikeField[WPARAM]
+    lParam: _CIntLikeField[LPARAM]
+    time: _CIntLikeField[DWORD]
+    pt: _CField[POINT, POINT, POINT]
 
 tagMSG = MSG
 MAX_PATH: int
 
 class WIN32_FIND_DATAA(Structure):
-    dwFileAttributes: DWORD
-    ftCreationTime: FILETIME
-    ftLastAccessTime: FILETIME
-    ftLastWriteTime: FILETIME
-    nFileSizeHigh: DWORD
-    nFileSizeLow: DWORD
-    dwReserved0: DWORD
-    dwReserved1: DWORD
-    cFileName: Array[CHAR]
-    cAlternateFileName: Array[CHAR]
+    dwFileAttributes: _CIntLikeField[DWORD]
+    ftCreationTime: _CField[FILETIME, FILETIME, FILETIME]
+    ftLastAccessTime: _CField[FILETIME, FILETIME, FILETIME]
+    ftLastWriteTime: _CField[FILETIME, FILETIME, FILETIME]
+    nFileSizeHigh: _CIntLikeField[DWORD]
+    nFileSizeLow: _CIntLikeField[DWORD]
+    dwReserved0: _CIntLikeField[DWORD]
+    dwReserved1: _CIntLikeField[DWORD]
+    cFileName: _CField[Array[CHAR], bytes, bytes]
+    cAlternateFileName: _CField[Array[CHAR], bytes, bytes]
 
 class WIN32_FIND_DATAW(Structure):
-    dwFileAttributes: DWORD
-    ftCreationTime: FILETIME
-    ftLastAccessTime: FILETIME
-    ftLastWriteTime: FILETIME
-    nFileSizeHigh: DWORD
-    nFileSizeLow: DWORD
-    dwReserved0: DWORD
-    dwReserved1: DWORD
-    cFileName: Array[WCHAR]
-    cAlternateFileName: Array[WCHAR]
+    dwFileAttributes: _CIntLikeField[DWORD]
+    ftCreationTime: _CField[FILETIME, FILETIME, FILETIME]
+    ftLastAccessTime: _CField[FILETIME, FILETIME, FILETIME]
+    ftLastWriteTime: _CField[FILETIME, FILETIME, FILETIME]
+    nFileSizeHigh: _CIntLikeField[DWORD]
+    nFileSizeLow: _CIntLikeField[DWORD]
+    dwReserved0: _CIntLikeField[DWORD]
+    dwReserved1: _CIntLikeField[DWORD]
+    cFileName: _CField[Array[WCHAR], str, str]
+    cAlternateFileName: _CField[Array[WCHAR], str, str]
 
 # These pointer type definitions use _Pointer[...] instead of POINTER(...), to allow them
 # to be used in type annotations.

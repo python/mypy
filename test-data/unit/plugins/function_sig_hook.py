@@ -1,26 +1,27 @@
-from mypy.plugin import CallableType, CheckerPluginInterface, FunctionSigContext, Plugin
-from mypy.types import Instance, Type
+from __future__ import annotations
+
+from typing import Callable
+
+from mypy.plugin import FunctionSigContext, Plugin
+from mypy.types import CallableType
+
 
 class FunctionSigPlugin(Plugin):
-    def get_function_signature_hook(self, fullname):
-        if fullname == '__main__.dynamic_signature':
+    def get_function_signature_hook(
+        self, fullname: str
+    ) -> Callable[[FunctionSigContext], CallableType] | None:
+        if fullname == "__main__.dynamic_signature":
             return my_hook
         return None
 
-def _str_to_int(api: CheckerPluginInterface, typ: Type) -> Type:
-    if isinstance(typ, Instance):
-        if typ.type.fullname == 'builtins.str':
-            return api.named_generic_type('builtins.int', [])
-        elif typ.args:
-            return typ.copy_modified(args=[_str_to_int(api, t) for t in typ.args])
-
-    return typ
 
 def my_hook(ctx: FunctionSigContext) -> CallableType:
-    return ctx.default_signature.copy_modified(
-        arg_types=[_str_to_int(ctx.api, t) for t in ctx.default_signature.arg_types],
-        ret_type=_str_to_int(ctx.api, ctx.default_signature.ret_type),
-    )
+    arg1_args = ctx.args[0]
+    if len(arg1_args) != 1:
+        return ctx.default_signature
+    arg1_type = ctx.api.get_expression_type(arg1_args[0])
+    return ctx.default_signature.copy_modified(arg_types=[arg1_type], ret_type=arg1_type)
 
-def plugin(version):
+
+def plugin(version: str) -> type[FunctionSigPlugin]:
     return FunctionSigPlugin

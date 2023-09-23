@@ -51,8 +51,8 @@ Some important properties:
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Any, Callable, Collection, Iterable, Iterator, List, TypeVar, cast
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import Any, Callable, Collection, Final, Iterable, Iterator, List, TypeVar, cast
+from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes, message_registry
 from mypy.constant_fold import constant_fold_expr
@@ -234,7 +234,6 @@ from mypy.typeanal import (
     fix_instance_types,
     has_any_from_unimported_type,
     no_subscript_builtin_alias,
-    remove_dups,
     type_constructors,
 )
 from mypy.typeops import function_type, get_type_vars, try_getting_str_literals_from_type
@@ -277,6 +276,8 @@ from mypy.types import (
     get_proper_type,
     get_proper_types,
     is_named_instance,
+    remove_dups,
+    type_vars_as_args,
 )
 from mypy.types_utils import is_invalid_recursive_alias, store_argument_type
 from mypy.typevars import fill_typevars
@@ -375,7 +376,7 @@ class SemanticAnalyzer(
     missing_names: list[set[str]]
     # Callbacks that will be called after semantic analysis to tweak things.
     patches: list[tuple[int, Callable[[], None]]]
-    loop_depth = 0  # Depth of breakable loops
+    loop_depth: list[int]  # Depth of breakable loops
     cur_mod_id = ""  # Current module id (or None) (phase 2)
     _is_stub_file = False  # Are we analyzing a stub file?
     _is_typeshed_stub_file = False  # Are we analyzing a typeshed stub file?
@@ -428,7 +429,7 @@ class SemanticAnalyzer(
         self.tvar_scope = TypeVarLikeScope()
         self.function_stack = []
         self.block_depth = [0]
-        self.loop_depth = 0
+        self.loop_depth = [0]
         self.errors = errors
         self.modules = modules
         self.msg = MessageBuilder(errors, modules)
@@ -679,7 +680,10 @@ class SemanticAnalyzer(
         """
         assert tree.fullname == "typing"
         for alias, target_name in type_aliases.items():
-            if type_aliases_source_versions[alias] > self.options.python_version:
+            if (
+                alias in type_aliases_source_versions
+                and type_aliases_source_versions[alias] > self.options.python_version
+            ):
                 # This alias is not available on this Python version.
                 continue
             name = alias.split(".")[-1]
@@ -959,9 +963,11 @@ class SemanticAnalyzer(
 
     def prepare_method_signature(self, func: FuncDef, info: TypeInfo, has_self_type: bool) -> None:
         """Check basic signature validity and tweak annotation of self/cls argument."""
-        # Only non-static methods are special.
+        # Only non-static methods are special, as well as __new__.
         functype = func.type
-        if not func.is_static:
+        if func.name == "__new__":
+            func.is_static = True
+        if not func.is_static or func.name == "__new__":
             if func.name in ["__init_subclass__", "__class_getitem__"]:
                 func.is_class = True
             if not func.arguments:
@@ -1008,7 +1014,21 @@ class SemanticAnalyzer(
                 return self.is_expected_self_type(typ.item, is_classmethod=False)
             if isinstance(typ, UnboundType):
                 sym = self.lookup_qualified(typ.name, typ, suppress_errors=True)
-                if sym is not None and sym.fullname == "typing.Type" and typ.args:
+                if (
+                    sym is not None
+                    and (
+                        sym.fullname == "typing.Type"
+                        or (
+                            sym.fullname == "builtins.type"
+                            and (
+                                self.is_stub_file
+                                or self.is_future_flag_set("annotations")
+                                or self.options.python_version >= (3, 9)
+                            )
+                        )
+                    )
+                    and typ.args
+                ):
                     return self.is_expected_self_type(typ.args[0], is_classmethod=False)
             return False
         if isinstance(typ, TypeVarType):
@@ -1137,7 +1157,16 @@ class SemanticAnalyzer(
             elif not non_overload_indexes:
                 self.handle_missing_overload_implementation(defn)
 
-        if types:
+        if types and not any(
+            # If some overload items are decorated with other decorators, then
+            # the overload type will be determined during type checking.
+            isinstance(it, Decorator) and len(it.decorators) > 1
+            for it in defn.items
+        ):
+            # TODO: should we enforce decorated overloads consistency somehow?
+            # Some existing code uses both styles:
+            #   * Put decorator only on implementation, use "effective" types in overloads
+            #   * Put decorator everywhere, use "bare" types in overloads.
             defn.type = Overloaded(types)
             defn.type.line = defn.line
 
@@ -1337,6 +1366,8 @@ class SemanticAnalyzer(
                             first_item.var.is_settable_property = True
                             # Get abstractness from the original definition.
                             item.func.abstract_status = first_item.func.abstract_status
+                        if node.name == "deleter":
+                            item.func.abstract_status = first_item.func.abstract_status
                     else:
                         self.fail(
                             f"Only supported top decorator is @{first_item.func.name}.setter", item
@@ -1381,7 +1412,7 @@ class SemanticAnalyzer(
                 # The first argument of a non-static, non-class method is like 'self'
                 # (though the name could be different), having the enclosing class's
                 # instance type.
-                if is_method and not defn.is_static and defn.arguments:
+                if is_method and (not defn.is_static or defn.name == "__new__") and defn.arguments:
                     if not defn.is_class:
                         defn.arguments[0].variable.is_self = True
                     else:
@@ -1675,12 +1706,17 @@ class SemanticAnalyzer(
     def setup_alias_type_vars(self, defn: ClassDef) -> None:
         assert defn.info.special_alias is not None
         defn.info.special_alias.alias_tvars = list(defn.type_vars)
+        # It is a bit unfortunate that we need to inline some logic from TypeAlias constructor,
+        # but it is required, since type variables may change during semantic analyzer passes.
+        for i, t in enumerate(defn.type_vars):
+            if isinstance(t, TypeVarTupleType):
+                defn.info.special_alias.tvar_tuple_index = i
         target = defn.info.special_alias.target
         assert isinstance(target, ProperType)
         if isinstance(target, TypedDictType):
-            target.fallback.args = tuple(defn.type_vars)
+            target.fallback.args = type_vars_as_args(defn.type_vars)
         elif isinstance(target, TupleType):
-            target.partial_fallback.args = tuple(defn.type_vars)
+            target.partial_fallback.args = type_vars_as_args(defn.type_vars)
         else:
             assert False, f"Unexpected special alias type: {type(target)}"
 
@@ -1690,6 +1726,8 @@ class SemanticAnalyzer(
     def analyze_class_body_common(self, defn: ClassDef) -> None:
         """Parts of class body analysis that are common to all kinds of class defs."""
         self.enter_class(defn.info)
+        if any(b.self_type is not None for b in defn.info.mro):
+            self.setup_self_type()
         defn.defs.accept(self)
         self.apply_class_plugin_hooks(defn)
         self.leave_class()
@@ -1742,6 +1780,10 @@ class SemanticAnalyzer(
                 self.setup_type_vars(defn, tvar_defs)
                 self.setup_alias_type_vars(defn)
                 with self.scope.class_scope(defn.info):
+                    for deco in defn.decorators:
+                        deco.accept(self)
+                        if isinstance(deco, RefExpr) and deco.fullname in FINAL_DECORATOR_NAMES:
+                            info.is_final = True
                     with self.named_tuple_analyzer.save_namedtuple_body(info):
                         self.analyze_class_body_common(defn)
             return True
@@ -1808,12 +1850,14 @@ class SemanticAnalyzer(
         self.locals.append(None)  # Add class scope
         self.is_comprehension_stack.append(False)
         self.block_depth.append(-1)  # The class body increments this to 0
+        self.loop_depth.append(0)
         self._type = info
         self.missing_names.append(set())
 
     def leave_class(self) -> None:
         """Restore analyzer state."""
         self.block_depth.pop()
+        self.loop_depth.pop()
         self.locals.pop()
         self.is_comprehension_stack.pop()
         self._type = self.type_stack.pop()
@@ -2189,6 +2233,10 @@ class SemanticAnalyzer(
         if not self.verify_base_classes(defn):
             self.set_dummy_mro(defn.info)
             return
+        if not self.verify_duplicate_base_classes(defn):
+            # We don't want to block the typechecking process,
+            # so, we just insert `Any` as the base class and show an error.
+            self.set_any_mro(defn.info)
         self.calculate_class_mro(defn, self.object_type)
 
     def configure_tuple_base_class(self, defn: ClassDef, base: TupleType) -> Instance:
@@ -2217,6 +2265,11 @@ class SemanticAnalyzer(
         # Give it an MRO consisting of just the class itself and object.
         info.mro = [info, self.object_type().type]
         info.bad_mro = True
+
+    def set_any_mro(self, info: TypeInfo) -> None:
+        # Give it an MRO consisting direct `Any` subclass.
+        info.fallback_to_any = True
+        info.mro = [info, self.object_type().type]
 
     def calculate_class_mro(
         self, defn: ClassDef, obj_type: Callable[[], Instance] | None = None
@@ -2298,11 +2351,13 @@ class SemanticAnalyzer(
             if self.is_base_class(info, baseinfo):
                 self.fail("Cycle in inheritance hierarchy", defn)
                 cycle = True
-        dup = find_duplicate(info.direct_base_classes())
-        if dup:
-            self.fail(f'Duplicate base class "{dup.name}"', defn, blocker=True)
-            return False
         return not cycle
+
+    def verify_duplicate_base_classes(self, defn: ClassDef) -> bool:
+        dup = find_duplicate(defn.info.direct_base_classes())
+        if dup:
+            self.fail(f'Duplicate base class "{dup.name}"', defn)
+        return not dup
 
     def is_base_class(self, t: TypeInfo, s: TypeInfo) -> bool:
         """Determine if t is a base class of s (but do not use mro)."""
@@ -2411,7 +2466,7 @@ class SemanticAnalyzer(
             if as_id is not None:
                 base_id = id
                 imported_id = as_id
-                module_public = use_implicit_reexport or id.split(".")[-1] == as_id
+                module_public = use_implicit_reexport or id == as_id
             else:
                 base_id = id.split(".")[0]
                 imported_id = base_id
@@ -2484,12 +2539,7 @@ class SemanticAnalyzer(
                 elif fullname in self.missing_modules:
                     missing_submodule = True
             # If it is still not resolved, check for a module level __getattr__
-            if (
-                module
-                and not node
-                and (module.is_stub or self.options.python_version >= (3, 7))
-                and "__getattr__" in module.names
-            ):
+            if module and not node and "__getattr__" in module.names:
                 # We store the fullname of the original definition so that we can
                 # detect whether two imported names refer to the same thing.
                 fullname = module_id + "." + id
@@ -3054,6 +3104,12 @@ class SemanticAnalyzer(
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], (NameExpr, MemberExpr)):
             return False
         lvalue = s.lvalues[0]
+        if isinstance(lvalue, MemberExpr):
+            if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.callee, RefExpr):
+                fullname = s.rvalue.callee.fullname
+                if fullname == "collections.namedtuple" or fullname in TYPED_NAMEDTUPLE_NAMES:
+                    self.fail("NamedTuple type as an attribute is not supported", lvalue)
+            return False
         name = lvalue.name
         namespace = self.qualified_name(name)
         with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
@@ -3061,9 +3117,6 @@ class SemanticAnalyzer(
                 s.rvalue, name, self.is_func_scope()
             )
             if internal_name is None:
-                return False
-            if isinstance(lvalue, MemberExpr):
-                self.fail("NamedTuple type as an attribute is not supported", lvalue)
                 return False
             if internal_name != name:
                 self.fail(
@@ -3152,6 +3205,13 @@ class SemanticAnalyzer(
                 if isinstance(callee_expr, RefExpr) and callee_expr.fullname:
                     method_name = call.callee.name
                     fname = callee_expr.fullname + "." + method_name
+                elif (
+                    isinstance(callee_expr, IndexExpr)
+                    and isinstance(callee_expr.base, RefExpr)
+                    and isinstance(callee_expr.analyzed, TypeApplication)
+                ):
+                    method_name = call.callee.name
+                    fname = callee_expr.base.fullname + "." + method_name
                 elif isinstance(callee_expr, CallExpr):
                     # check if chain call
                     call = callee_expr
@@ -3208,7 +3268,7 @@ class SemanticAnalyzer(
         if lval.is_new_def:
             lval.is_inferred_def = s.type is None
 
-        if self.loop_depth > 0:
+        if self.loop_depth[-1] > 0:
             self.fail("Cannot use Final inside a loop", s)
         if self.type and self.type.is_protocol:
             self.msg.protocol_members_cant_be_final(s)
@@ -3376,7 +3436,7 @@ class SemanticAnalyzer(
             return None
 
         value = constant_fold_expr(rvalue, self.cur_mod_id)
-        if value is None:
+        if value is None or isinstance(value, complex):
             return None
 
         if isinstance(value, bool):
@@ -3636,7 +3696,10 @@ class SemanticAnalyzer(
         """Prohibit and fix recursive type aliases that are invalid/unsupported."""
         messages = []
         if is_invalid_recursive_alias({current_node}, current_node.target):
-            messages.append("Invalid recursive alias: a union item of itself")
+            target = (
+                "tuple" if isinstance(get_proper_type(current_node.target), TupleType) else "union"
+            )
+            messages.append(f"Invalid recursive alias: a {target} item of itself")
         if detect_diverging_alias(
             current_node, current_node.target, self.lookup_qualified, self.tvar_scope
         ):
@@ -4124,28 +4187,15 @@ class SemanticAnalyzer(
                 if has_values:
                     self.fail("TypeVar cannot have both values and an upper bound", context)
                     return None
-                try:
-                    # We want to use our custom error message below, so we suppress
-                    # the default error message for invalid types here.
-                    analyzed = self.expr_to_analyzed_type(
-                        param_value, allow_placeholder=True, report_invalid_types=False
-                    )
-                    if analyzed is None:
-                        # Type variables are special: we need to place them in the symbol table
-                        # soon, even if upper bound is not ready yet. Otherwise avoiding
-                        # a "deadlock" in this common pattern would be tricky:
-                        #     T = TypeVar('T', bound=Custom[Any])
-                        #     class Custom(Generic[T]):
-                        #         ...
-                        analyzed = PlaceholderType(None, [], context.line)
-                    upper_bound = get_proper_type(analyzed)
-                    if isinstance(upper_bound, AnyType) and upper_bound.is_from_error:
-                        self.fail(message_registry.TYPEVAR_BOUND_MUST_BE_TYPE, param_value)
-                        # Note: we do not return 'None' here -- we want to continue
-                        # using the AnyType as the upper bound.
-                except TypeTranslationError:
-                    self.fail(message_registry.TYPEVAR_BOUND_MUST_BE_TYPE, param_value)
+                tv_arg = self.get_typevarlike_argument("TypeVar", param_name, param_value, context)
+                if tv_arg is None:
                     return None
+                upper_bound = tv_arg
+            elif param_name == "default":
+                tv_arg = self.get_typevarlike_argument(
+                    "TypeVar", param_name, param_value, context, allow_unbound_tvars=True
+                )
+                default = tv_arg or AnyType(TypeOfAny.from_error)
             elif param_name == "values":
                 # Probably using obsolete syntax with values=(...). Explain the current syntax.
                 self.fail('TypeVar "values" argument not supported', context)
@@ -4172,6 +4222,54 @@ class SemanticAnalyzer(
         else:
             variance = INVARIANT
         return variance, upper_bound, default
+
+    def get_typevarlike_argument(
+        self,
+        typevarlike_name: str,
+        param_name: str,
+        param_value: Expression,
+        context: Context,
+        *,
+        allow_unbound_tvars: bool = False,
+        allow_param_spec_literals: bool = False,
+        allow_unpack: bool = False,
+        report_invalid_typevar_arg: bool = True,
+    ) -> ProperType | None:
+        try:
+            # We want to use our custom error message below, so we suppress
+            # the default error message for invalid types here.
+            analyzed = self.expr_to_analyzed_type(
+                param_value,
+                allow_placeholder=True,
+                report_invalid_types=False,
+                allow_unbound_tvars=allow_unbound_tvars,
+                allow_param_spec_literals=allow_param_spec_literals,
+                allow_unpack=allow_unpack,
+            )
+            if analyzed is None:
+                # Type variables are special: we need to place them in the symbol table
+                # soon, even if upper bound is not ready yet. Otherwise avoiding
+                # a "deadlock" in this common pattern would be tricky:
+                #     T = TypeVar('T', bound=Custom[Any])
+                #     class Custom(Generic[T]):
+                #         ...
+                analyzed = PlaceholderType(None, [], context.line)
+            typ = get_proper_type(analyzed)
+            if report_invalid_typevar_arg and isinstance(typ, AnyType) and typ.is_from_error:
+                self.fail(
+                    message_registry.TYPEVAR_ARG_MUST_BE_TYPE.format(typevarlike_name, param_name),
+                    param_value,
+                )
+                # Note: we do not return 'None' here -- we want to continue
+                # using the AnyType.
+            return typ
+        except TypeTranslationError:
+            if report_invalid_typevar_arg:
+                self.fail(
+                    message_registry.TYPEVAR_ARG_MUST_BE_TYPE.format(typevarlike_name, param_name),
+                    param_value,
+                )
+            return None
 
     def extract_typevarlike_name(self, s: AssignmentStmt, call: CallExpr) -> str | None:
         if not call:
@@ -4205,13 +4303,50 @@ class SemanticAnalyzer(
         if name is None:
             return False
 
-        # ParamSpec is different from a regular TypeVar:
-        # arguments are not semantically valid. But, allowed in runtime.
-        # So, we need to warn users about possible invalid usage.
-        if len(call.args) > 1:
-            self.fail("Only the first argument to ParamSpec has defined semantics", s)
+        n_values = call.arg_kinds[1:].count(ARG_POS)
+        if n_values != 0:
+            self.fail('Too many positional arguments for "ParamSpec"', s)
 
         default: Type = AnyType(TypeOfAny.from_omitted_generics)
+        for param_value, param_name in zip(
+            call.args[1 + n_values :], call.arg_names[1 + n_values :]
+        ):
+            if param_name == "default":
+                tv_arg = self.get_typevarlike_argument(
+                    "ParamSpec",
+                    param_name,
+                    param_value,
+                    s,
+                    allow_unbound_tvars=True,
+                    allow_param_spec_literals=True,
+                    report_invalid_typevar_arg=False,
+                )
+                default = tv_arg or AnyType(TypeOfAny.from_error)
+                if isinstance(tv_arg, Parameters):
+                    for i, arg_type in enumerate(tv_arg.arg_types):
+                        typ = get_proper_type(arg_type)
+                        if isinstance(typ, AnyType) and typ.is_from_error:
+                            self.fail(
+                                f"Argument {i} of ParamSpec default must be a type", param_value
+                            )
+                elif (
+                    isinstance(default, AnyType)
+                    and default.is_from_error
+                    or not isinstance(default, (AnyType, UnboundType))
+                ):
+                    self.fail(
+                        "The default argument to ParamSpec must be a list expression, ellipsis, or a ParamSpec",
+                        param_value,
+                    )
+                    default = AnyType(TypeOfAny.from_error)
+            else:
+                # ParamSpec is different from a regular TypeVar:
+                # arguments are not semantically valid. But, allowed in runtime.
+                # So, we need to warn users about possible invalid usage.
+                self.fail(
+                    "The variance and bound arguments to ParamSpec do not have defined semantics yet",
+                    s,
+                )
 
         # PEP 612 reserves the right to define bound, covariant and contravariant arguments to
         # ParamSpec in a later PEP. If and when that happens, we should do something
@@ -4245,10 +4380,33 @@ class SemanticAnalyzer(
         if not call:
             return False
 
-        if len(call.args) > 1:
-            self.fail("Only the first argument to TypeVarTuple has defined semantics", s)
+        n_values = call.arg_kinds[1:].count(ARG_POS)
+        if n_values != 0:
+            self.fail('Too many positional arguments for "TypeVarTuple"', s)
 
         default: Type = AnyType(TypeOfAny.from_omitted_generics)
+        for param_value, param_name in zip(
+            call.args[1 + n_values :], call.arg_names[1 + n_values :]
+        ):
+            if param_name == "default":
+                tv_arg = self.get_typevarlike_argument(
+                    "TypeVarTuple",
+                    param_name,
+                    param_value,
+                    s,
+                    allow_unbound_tvars=True,
+                    report_invalid_typevar_arg=False,
+                    allow_unpack=True,
+                )
+                default = tv_arg or AnyType(TypeOfAny.from_error)
+                if not isinstance(default, UnpackType):
+                    self.fail(
+                        "The default argument to TypeVarTuple must be an Unpacked tuple",
+                        param_value,
+                    )
+                    default = AnyType(TypeOfAny.from_error)
+            else:
+                self.fail(f'Unexpected keyword argument "{param_name}" for "TypeVarTuple"', s)
 
         if not self.incomplete_feature_enabled(TYPE_VAR_TUPLE, s):
             return False
@@ -4263,7 +4421,8 @@ class SemanticAnalyzer(
             typevartuple_var = TypeVarTupleExpr(
                 name,
                 self.qualified_name(name),
-                self.object_type(),
+                # Upper bound for *Ts is *tuple[object, ...], it can never be object.
+                tuple_fallback.copy_modified(),
                 tuple_fallback,
                 default,
                 INVARIANT,
@@ -4595,9 +4754,9 @@ class SemanticAnalyzer(
     def visit_while_stmt(self, s: WhileStmt) -> None:
         self.statement = s
         s.expr.accept(self)
-        self.loop_depth += 1
+        self.loop_depth[-1] += 1
         s.body.accept(self)
-        self.loop_depth -= 1
+        self.loop_depth[-1] -= 1
         self.visit_block_maybe(s.else_body)
 
     def visit_for_stmt(self, s: ForStmt) -> None:
@@ -4619,20 +4778,20 @@ class SemanticAnalyzer(
                 self.store_declared_types(s.index, analyzed)
                 s.index_type = analyzed
 
-        self.loop_depth += 1
+        self.loop_depth[-1] += 1
         self.visit_block(s.body)
-        self.loop_depth -= 1
+        self.loop_depth[-1] -= 1
 
         self.visit_block_maybe(s.else_body)
 
     def visit_break_stmt(self, s: BreakStmt) -> None:
         self.statement = s
-        if self.loop_depth == 0:
+        if self.loop_depth[-1] == 0:
             self.fail('"break" outside loop', s, serious=True, blocker=True)
 
     def visit_continue_stmt(self, s: ContinueStmt) -> None:
         self.statement = s
-        if self.loop_depth == 0:
+        if self.loop_depth[-1] == 0:
             self.fail('"continue" outside loop', s, serious=True, blocker=True)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
@@ -4974,14 +5133,14 @@ class SemanticAnalyzer(
 
         For other variants of dict(...), return None.
         """
-        if not all(kind == ARG_NAMED for kind in call.arg_kinds):
+        if not all(kind in (ARG_NAMED, ARG_STAR2) for kind in call.arg_kinds):
             # Must still accept those args.
             for a in call.args:
                 a.accept(self)
             return None
         expr = DictExpr(
             [
-                (StrExpr(cast(str, key)), value)  # since they are all ARG_NAMED
+                (StrExpr(key) if key is not None else None, value)
                 for key, value in zip(call.arg_names, call.args)
             ]
         )
@@ -5149,23 +5308,24 @@ class SemanticAnalyzer(
         else:
             items = [index]
 
-        # whether param spec literals be allowed here
-        # TODO: should this be computed once and passed in?
-        #   or is there a better way to do this?
+        # TODO: this needs a clean-up.
+        # Probably always allow Parameters literals, and validate in semanal_typeargs.py
         base = expr.base
         if isinstance(base, RefExpr) and isinstance(base.node, TypeAlias):
+            allow_unpack = base.node.tvar_tuple_index is not None
             alias = base.node
-            target = get_proper_type(alias.target)
-            if isinstance(target, Instance):
-                has_param_spec = target.type.has_param_spec_type
-                num_args = len(target.type.type_vars)
+            if any(isinstance(t, ParamSpecType) for t in alias.alias_tvars):
+                has_param_spec = True
+                num_args = len(alias.alias_tvars)
             else:
                 has_param_spec = False
                 num_args = -1
-        elif isinstance(base, NameExpr) and isinstance(base.node, TypeInfo):
+        elif isinstance(base, RefExpr) and isinstance(base.node, TypeInfo):
+            allow_unpack = base.node.has_type_var_tuple_type
             has_param_spec = base.node.has_param_spec_type
             num_args = len(base.node.type_vars)
         else:
+            allow_unpack = False
             has_param_spec = False
             num_args = -1
 
@@ -5183,6 +5343,7 @@ class SemanticAnalyzer(
                 allow_unbound_tvars=self.allow_unbound_tvars,
                 allow_placeholder=True,
                 allow_param_spec_literals=has_param_spec,
+                allow_unpack=allow_unpack,
             )
             if analyzed is None:
                 return None
@@ -5314,11 +5475,8 @@ class SemanticAnalyzer(
                 blocker=True,
             )
         elif self.function_stack[-1].is_coroutine:
-            if self.options.python_version < (3, 6):
-                self.fail('"yield" in async function', e, serious=True, blocker=True)
-            else:
-                self.function_stack[-1].is_generator = True
-                self.function_stack[-1].is_async_generator = True
+            self.function_stack[-1].is_generator = True
+            self.function_stack[-1].is_async_generator = True
         else:
             self.function_stack[-1].is_generator = True
         if e.expr:
@@ -5331,7 +5489,12 @@ class SemanticAnalyzer(
             # support top level awaits.
             self.fail('"await" outside function', expr, serious=True, code=codes.TOP_LEVEL_AWAIT)
         elif not self.function_stack[-1].is_coroutine:
-            self.fail('"await" outside coroutine ("async def")', expr, serious=True, blocker=True)
+            self.fail(
+                '"await" outside coroutine ("async def")',
+                expr,
+                serious=True,
+                code=codes.AWAIT_NOT_ASYNC,
+            )
         expr.expr.accept(self)
 
     #
@@ -5589,9 +5752,7 @@ class SemanticAnalyzer(
                 sym = SymbolTableNode(GDEF, self.modules[fullname])
             elif self.is_incomplete_namespace(module):
                 self.record_incomplete_ref()
-            elif "__getattr__" in names and (
-                node.is_stub or self.options.python_version >= (3, 7)
-            ):
+            elif "__getattr__" in names:
                 gvar = self.create_getattr_var(names["__getattr__"], name, fullname)
                 if gvar:
                     sym = SymbolTableNode(GDEF, gvar)
@@ -6127,6 +6288,7 @@ class SemanticAnalyzer(
         self.nonlocal_decls.append(set())
         # -1 since entering block will increment this to 0.
         self.block_depth.append(-1)
+        self.loop_depth.append(0)
         self.missing_names.append(set())
         try:
             yield
@@ -6136,6 +6298,7 @@ class SemanticAnalyzer(
             self.global_decls.pop()
             self.nonlocal_decls.pop()
             self.block_depth.pop()
+            self.loop_depth.pop()
             self.missing_names.pop()
 
     def is_func_scope(self) -> bool:
@@ -6348,6 +6511,9 @@ class SemanticAnalyzer(
         report_invalid_types: bool = True,
         allow_placeholder: bool = False,
         allow_type_any: bool = False,
+        allow_unbound_tvars: bool = False,
+        allow_param_spec_literals: bool = False,
+        allow_unpack: bool = False,
     ) -> Type | None:
         if isinstance(expr, CallExpr):
             # This is a legacy syntax intended mostly for Python 2, we keep it for
@@ -6376,6 +6542,9 @@ class SemanticAnalyzer(
             report_invalid_types=report_invalid_types,
             allow_placeholder=allow_placeholder,
             allow_type_any=allow_type_any,
+            allow_unbound_tvars=allow_unbound_tvars,
+            allow_param_spec_literals=allow_param_spec_literals,
+            allow_unpack=allow_unpack,
         )
 
     def analyze_type_expr(self, expr: Expression) -> None:
@@ -6397,6 +6566,7 @@ class SemanticAnalyzer(
         allow_placeholder: bool = False,
         allow_required: bool = False,
         allow_param_spec_literals: bool = False,
+        allow_unpack: bool = False,
         report_invalid_types: bool = True,
         prohibit_self_type: str | None = None,
         allow_type_any: bool = False,
@@ -6415,6 +6585,7 @@ class SemanticAnalyzer(
             allow_placeholder=allow_placeholder,
             allow_required=allow_required,
             allow_param_spec_literals=allow_param_spec_literals,
+            allow_unpack=allow_unpack,
             prohibit_self_type=prohibit_self_type,
             allow_type_any=allow_type_any,
         )
@@ -6435,6 +6606,7 @@ class SemanticAnalyzer(
         allow_placeholder: bool = False,
         allow_required: bool = False,
         allow_param_spec_literals: bool = False,
+        allow_unpack: bool = False,
         report_invalid_types: bool = True,
         prohibit_self_type: str | None = None,
         allow_type_any: bool = False,
@@ -6472,6 +6644,7 @@ class SemanticAnalyzer(
             allow_placeholder=allow_placeholder,
             allow_required=allow_required,
             allow_param_spec_literals=allow_param_spec_literals,
+            allow_unpack=allow_unpack,
             report_invalid_types=report_invalid_types,
             prohibit_self_type=prohibit_self_type,
             allow_type_any=allow_type_any,

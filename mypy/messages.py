@@ -16,8 +16,7 @@ import itertools
 import re
 from contextlib import contextmanager
 from textwrap import dedent
-from typing import Any, Callable, Collection, Iterable, Iterator, List, Sequence, cast
-from typing_extensions import Final
+from typing import Any, Callable, Collection, Final, Iterable, Iterator, List, Sequence, cast
 
 import mypy.typeops
 from mypy import errorcodes as codes, message_registry
@@ -235,6 +234,8 @@ class MessageBuilder:
             Current logic is a bit tricky, to keep as much backwards compatibility as
             possible. We may reconsider this to always be a single line (or otherwise
             simplify it) when we drop Python 3.7.
+
+            TODO: address this in follow up PR
             """
             if isinstance(ctx, (ClassDef, FuncDef)):
                 return range(ctx.deco_line or ctx.line, ctx.line + 1)
@@ -1020,18 +1021,11 @@ class MessageBuilder:
 
     def does_not_return_value(self, callee_type: Type | None, context: Context) -> None:
         """Report an error about use of an unusable type."""
-        name: str | None = None
         callee_type = get_proper_type(callee_type)
-        if isinstance(callee_type, FunctionLike):
-            name = callable_name(callee_type)
-        if name is not None:
-            self.fail(
-                f"{capitalize(name)} does not return a value",
-                context,
-                code=codes.FUNC_RETURNS_VALUE,
-            )
-        else:
-            self.fail("Function does not return a value", context, code=codes.FUNC_RETURNS_VALUE)
+        callee_name = callable_name(callee_type) if isinstance(callee_type, FunctionLike) else None
+        name = callee_name or "Function"
+        message = f"{name} does not return a value (it only ever returns None)"
+        self.fail(message, context, code=codes.FUNC_RETURNS_VALUE)
 
     def deleted_as_rvalue(self, typ: DeletedType, context: Context) -> None:
         """Report an error about using an deleted type as an rvalue."""
@@ -1253,18 +1247,21 @@ class MessageBuilder:
             code=codes.OVERRIDE,
             secondary_context=secondary_context,
         )
-        self.note(
-            "This violates the Liskov substitution principle",
-            context,
-            code=codes.OVERRIDE,
-            secondary_context=secondary_context,
-        )
-        self.note(
-            "See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides",
-            context,
-            code=codes.OVERRIDE,
-            secondary_context=secondary_context,
-        )
+        if name != "__post_init__":
+            # `__post_init__` is special, it can be incompatible by design.
+            # So, this note is misleading.
+            self.note(
+                "This violates the Liskov substitution principle",
+                context,
+                code=codes.OVERRIDE,
+                secondary_context=secondary_context,
+            )
+            self.note(
+                "See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides",
+                context,
+                code=codes.OVERRIDE,
+                secondary_context=secondary_context,
+            )
 
         if name == "__eq__" and type_name:
             multiline_msg = self.comparison_method_example_msg(class_name=type_name)
@@ -1305,6 +1302,22 @@ class MessageBuilder:
             context,
             code=codes.OVERRIDE,
         )
+
+        original = get_proper_type(original)
+        override = get_proper_type(override)
+        if (
+            isinstance(original, Instance)
+            and isinstance(override, Instance)
+            and override.type.fullname == "typing.AsyncIterator"
+            and original.type.fullname == "typing.Coroutine"
+            and len(original.args) == 3
+            and original.args[2] == override
+        ):
+            self.note(f'Consider declaring "{name}" in {target} without "async"', context)
+            self.note(
+                "See https://mypy.readthedocs.io/en/stable/more_types.html#asynchronous-iterators",
+                context,
+            )
 
     def override_target(self, name: str, name_in_super: str, supertype: str) -> str:
         target = f'supertype "{supertype}"'
@@ -1441,20 +1454,19 @@ class MessageBuilder:
         self.fail(f'Cannot determine type of "{name}" in base class "{base}"', context)
 
     def no_formal_self(self, name: str, item: CallableType, context: Context) -> None:
+        type = format_type(item, self.options)
         self.fail(
-            'Attribute function "%s" with type %s does not accept self argument'
-            % (name, format_type(item, self.options)),
-            context,
+            f'Attribute function "{name}" with type {type} does not accept self argument', context
         )
 
     def incompatible_self_argument(
         self, name: str, arg: Type, sig: CallableType, is_classmethod: bool, context: Context
     ) -> None:
         kind = "class attribute function" if is_classmethod else "attribute function"
+        arg_type = format_type(arg, self.options)
+        sig_type = format_type(sig, self.options)
         self.fail(
-            'Invalid self argument %s to %s "%s" with type %s'
-            % (format_type(arg, self.options), kind, name, format_type(sig, self.options)),
-            context,
+            f'Invalid self argument {arg_type} to {kind} "{name}" with type {sig_type}', context
         )
 
     def incompatible_conditional_function_def(
@@ -1474,8 +1486,8 @@ class MessageBuilder:
     ) -> None:
         attrs = format_string_list([f'"{a}"' for a in abstract_attributes])
         self.fail(
-            'Cannot instantiate abstract class "%s" with abstract '
-            "attribute%s %s" % (class_name, plural_s(abstract_attributes), attrs),
+            f'Cannot instantiate abstract class "{class_name}" with abstract '
+            f"attribute{plural_s(abstract_attributes)} {attrs}",
             context,
             code=codes.ABSTRACT,
         )
@@ -1519,6 +1531,16 @@ class MessageBuilder:
             f'Method "{name}" is marked as an override, '
             "but no base method was found with this name",
             context,
+        )
+
+    def explicit_override_decorator_missing(
+        self, name: str, base_name: str, context: Context
+    ) -> None:
+        self.fail(
+            f'Method "{name}" is not using @override '
+            f'but is overriding a method in class "{base_name}"',
+            context,
+            code=codes.EXPLICIT_OVERRIDE_REQUIRED,
         )
 
     def final_cant_override_writable(self, name: str, ctx: Context) -> None:
@@ -1582,6 +1604,7 @@ class MessageBuilder:
             "Overloaded function signatures {} and {} overlap with "
             "incompatible return types".format(index1, index2),
             context,
+            code=codes.OVERLOAD_OVERLAP,
         )
 
     def overloaded_signature_will_never_match(
@@ -1714,7 +1737,6 @@ class MessageBuilder:
         self, node: SymbolNode, context: Context, python_version: tuple[int, int] | None = None
     ) -> None:
         hint = ""
-        has_variable_annotations = not python_version or python_version >= (3, 6)
         pep604_supported = not python_version or python_version >= (3, 10)
         # type to recommend the user adds
         recommended_type = None
@@ -1735,24 +1757,34 @@ class MessageBuilder:
                     type_dec = f"{type_dec}, {type_dec}"
                 recommended_type = f"{alias}[{type_dec}]"
         if recommended_type is not None:
-            if has_variable_annotations:
-                hint = f' (hint: "{node.name}: {recommended_type} = ...")'
-            else:
-                hint = f' (hint: "{node.name} = ...  # type: {recommended_type}")'
-
-        if has_variable_annotations:
-            needed = "annotation"
-        else:
-            needed = "comment"
+            hint = f' (hint: "{node.name}: {recommended_type} = ...")'
 
         self.fail(
-            f'Need type {needed} for "{unmangle(node.name)}"{hint}',
+            f'Need type annotation for "{unmangle(node.name)}"{hint}',
             context,
             code=codes.VAR_ANNOTATED,
         )
 
     def explicit_any(self, ctx: Context) -> None:
         self.fail('Explicit "Any" is not allowed', ctx)
+
+    def unsupported_target_for_star_typeddict(self, typ: Type, ctx: Context) -> None:
+        self.fail(
+            "Unsupported type {} for ** expansion in TypedDict".format(
+                format_type(typ, self.options)
+            ),
+            ctx,
+            code=codes.TYPEDDICT_ITEM,
+        )
+
+    def non_required_keys_absent_with_star(self, keys: list[str], ctx: Context) -> None:
+        self.fail(
+            "Non-required {} not explicitly found in any ** item".format(
+                format_key_list(keys, short=True)
+            ),
+            ctx,
+            code=codes.TYPEDDICT_ITEM,
+        )
 
     def unexpected_typeddict_keys(
         self,
@@ -2029,7 +2061,7 @@ class MessageBuilder:
         if supertype.type.fullname in exclusions.get(type(subtype), []):
             return
         if any(isinstance(tp, UninhabitedType) for tp in get_proper_types(supertype.args)):
-            # We don't want to add notes for failed inference (e.g. Iterable[<nothing>]).
+            # We don't want to add notes for failed inference (e.g. Iterable[Never]).
             # This will be only confusing a user even more.
             return
 
@@ -2093,11 +2125,16 @@ class MessageBuilder:
             return
 
         # Report member type conflicts
-        conflict_types = get_conflict_protocol_types(subtype, supertype, class_obj=class_obj)
+        conflict_types = get_conflict_protocol_types(
+            subtype, supertype, class_obj=class_obj, options=self.options
+        )
         if conflict_types and (
-            not is_subtype(subtype, erase_type(supertype))
+            not is_subtype(subtype, erase_type(supertype), options=self.options)
             or not subtype.type.defn.type_vars
             or not supertype.type.defn.type_vars
+            # Always show detailed message for ParamSpec
+            or subtype.type.has_param_spec_type
+            or supertype.type.has_param_spec_type
         ):
             type_name = format_type(subtype, self.options, module_names=True)
             self.note(f"Following member(s) of {type_name} have conflicts:", context, code=code)
@@ -2354,7 +2391,7 @@ def quote_type_string(type_string: str) -> str:
     """Quotes a type representation for use in messages."""
     no_quote_regex = r"^<(tuple|union): \d+ items>$"
     if (
-        type_string in ["Module", "overloaded function", "<nothing>", "<deleted>"]
+        type_string in ["Module", "overloaded function", "Never", "<deleted>"]
         or type_string.startswith("Module ")
         or re.match(no_quote_regex, type_string) is not None
         or type_string.endswith("?")
@@ -2437,7 +2474,7 @@ def format_type_inner(
     if isinstance(typ, Instance):
         itype = typ
         # Get the short name of the type.
-        if itype.type.fullname in ("types.ModuleType", "_importlib_modulespec.ModuleType"):
+        if itype.type.fullname == "types.ModuleType":
             # Make some common error messages simpler and tidier.
             base_str = "Module"
             if itype.extra_attrs and itype.extra_attrs.mod_name and module_names:
@@ -2484,10 +2521,11 @@ def format_type_inner(
         # Prefer the name of the fallback class (if not tuple), as it's more informative.
         if typ.partial_fallback.type.fullname != "builtins.tuple":
             return format(typ.partial_fallback)
+        type_items = format_list(typ.items) or "()"
         if options.use_lowercase_names():
-            s = f"tuple[{format_list(typ.items)}]"
+            s = f"tuple[{type_items}]"
         else:
-            s = f"Tuple[{format_list(typ.items)}]"
+            s = f"Tuple[{type_items}]"
         return s
     elif isinstance(typ, TypedDictType):
         # If the TypedDictType is named, return the name
@@ -2555,7 +2593,7 @@ def format_type_inner(
         if typ.is_noreturn:
             return "NoReturn"
         else:
-            return "<nothing>"
+            return "Never"
     elif isinstance(typ, TypeType):
         type_name = "type" if options.use_lowercase_names() else "Type"
         return f"{type_name}[{format(typ.item)}]"
@@ -2756,7 +2794,11 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
             slash = True
 
     # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
-    if isinstance(tp.definition, FuncDef) and hasattr(tp.definition, "arguments"):
+    if (
+        isinstance(tp.definition, FuncDef)
+        and hasattr(tp.definition, "arguments")
+        and not tp.from_concatenate
+    ):
         definition_arg_names = [arg.variable.name for arg in tp.definition.arguments]
         if (
             len(definition_arg_names) > len(tp.arg_names)
@@ -2833,7 +2875,7 @@ def get_missing_protocol_members(left: Instance, right: Instance, skip: list[str
 
 
 def get_conflict_protocol_types(
-    left: Instance, right: Instance, class_obj: bool = False
+    left: Instance, right: Instance, class_obj: bool = False, options: Options | None = None
 ) -> list[tuple[str, Type, Type]]:
     """Find members that are defined in 'left' but have incompatible types.
     Return them as a list of ('member', 'got', 'expected').
@@ -2848,9 +2890,9 @@ def get_conflict_protocol_types(
         subtype = mypy.typeops.get_protocol_member(left, member, class_obj)
         if not subtype:
             continue
-        is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True)
+        is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True, options=options)
         if IS_SETTABLE in get_member_flags(member, right):
-            is_compat = is_compat and is_subtype(supertype, subtype)
+            is_compat = is_compat and is_subtype(supertype, subtype, options=options)
         if not is_compat:
             conflicts.append((member, subtype, supertype))
     return conflicts
@@ -2989,8 +3031,9 @@ def _real_quick_ratio(a: str, b: str) -> float:
 
 
 def best_matches(current: str, options: Collection[str], n: int) -> list[str]:
+    if not current:
+        return []
     # narrow down options cheaply
-    assert current
     options = [o for o in options if _real_quick_ratio(current, o) > 0.75]
     if len(options) >= 50:
         options = [o for o in options if abs(len(o) - len(current)) <= 1]

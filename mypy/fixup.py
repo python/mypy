@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
-from typing_extensions import Final
+from typing import Any, Final
 
 from mypy.lookup import lookup_fully_qualified
 from mypy.nodes import (
@@ -82,11 +81,17 @@ class NodeFixer(NodeVisitor[None]):
                 info.update_tuple_type(info.tuple_type)
                 if info.special_alias:
                     info.special_alias.alias_tvars = list(info.defn.type_vars)
+                    for i, t in enumerate(info.defn.type_vars):
+                        if isinstance(t, TypeVarTupleType):
+                            info.special_alias.tvar_tuple_index = i
             if info.typeddict_type:
                 info.typeddict_type.accept(self.type_fixer)
                 info.update_typeddict_type(info.typeddict_type)
                 if info.special_alias:
                     info.special_alias.alias_tvars = list(info.defn.type_vars)
+                    for i, t in enumerate(info.defn.type_vars):
+                        if isinstance(t, TypeVarTupleType):
+                            info.special_alias.tvar_tuple_index = i
             if info.declared_metaclass:
                 info.declared_metaclass.accept(self.type_fixer)
             if info.metaclass_type:
@@ -167,11 +172,7 @@ class NodeFixer(NodeVisitor[None]):
 
     def visit_class_def(self, c: ClassDef) -> None:
         for v in c.type_vars:
-            if isinstance(v, TypeVarType):
-                for value in v.values:
-                    value.accept(self.type_fixer)
-            v.upper_bound.accept(self.type_fixer)
-            v.default.accept(self.type_fixer)
+            v.accept(self.type_fixer)
 
     def visit_type_var_expr(self, tv: TypeVarExpr) -> None:
         for value in tv.values:
@@ -185,6 +186,7 @@ class NodeFixer(NodeVisitor[None]):
 
     def visit_type_var_tuple_expr(self, tv: TypeVarTupleExpr) -> None:
         tv.upper_bound.accept(self.type_fixer)
+        tv.tuple_fallback.accept(self.type_fixer)
         tv.default.accept(self.type_fixer)
 
     def visit_var(self, v: Var) -> None:
@@ -315,6 +317,7 @@ class TypeFixer(TypeVisitor[None]):
         p.default.accept(self)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> None:
+        t.tuple_fallback.accept(self)
         t.upper_bound.accept(self)
         t.default.accept(self)
 
@@ -336,9 +339,6 @@ class TypeFixer(TypeVisitor[None]):
         if ut.items:
             for it in ut.items:
                 it.accept(self)
-
-    def visit_void(self, o: Any) -> None:
-        pass  # Nothing to descend into.
 
     def visit_type_type(self, t: TypeType) -> None:
         t.item.accept(self)

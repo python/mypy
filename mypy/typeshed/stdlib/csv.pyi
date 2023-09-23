@@ -21,6 +21,9 @@ from _csv import (
     unregister_dialect as unregister_dialect,
     writer as writer,
 )
+
+if sys.version_info >= (3, 12):
+    from _csv import QUOTE_STRINGS as QUOTE_STRINGS, QUOTE_NOTNULL as QUOTE_NOTNULL
 from _typeshed import SupportsWrite
 from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
 from typing import Any, Generic, TypeVar, overload
@@ -57,6 +60,8 @@ __all__ = [
     "DictWriter",
     "unix_dialect",
 ]
+if sys.version_info >= (3, 12):
+    __all__ += ["QUOTE_STRINGS", "QUOTE_NOTNULL"]
 
 _T = TypeVar("_T")
 
@@ -64,10 +69,10 @@ class excel(Dialect): ...
 class excel_tab(excel): ...
 class unix_dialect(Dialect): ...
 
-class DictReader(Generic[_T], Iterator[_DictReadMapping[_T | Any, str | Any]]):
+class DictReader(Iterator[_DictReadMapping[_T | Any, str | Any]], Generic[_T]):
     fieldnames: Sequence[_T] | None
-    restkey: str | None
-    restval: str | None
+    restkey: _T | None
+    restval: str | Any | None
     reader: _reader
     dialect: _DialectLike
     line_num: int
@@ -76,8 +81,8 @@ class DictReader(Generic[_T], Iterator[_DictReadMapping[_T | Any, str | Any]]):
         self,
         f: Iterable[str],
         fieldnames: Sequence[_T],
-        restkey: str | None = None,
-        restval: str | None = None,
+        restkey: _T | None = None,
+        restval: str | Any | None = None,
         dialect: _DialectLike = "excel",
         *,
         delimiter: str = ",",

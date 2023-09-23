@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from collections import defaultdict
 from functools import reduce
-from typing import Iterable, List, Mapping, cast
-from typing_extensions import Final, Literal
+from typing import Final, Iterable, List, Mapping, cast
+from typing_extensions import Literal
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.applytype import apply_generic_arguments
-from mypy.checker import TypeChecker
 from mypy.errorcodes import LITERAL_REQ
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
@@ -52,7 +51,7 @@ from mypy.plugins.common import (
     _get_bool_argument,
     _get_decorator_bool_argument,
     add_attribute_to_class,
-    add_method,
+    add_method_to_class,
     deserialize_and_fixup_type,
 )
 from mypy.server.trigger import make_wildcard_trigger
@@ -295,6 +294,7 @@ def attr_class_maker_callback(
     ctx: mypy.plugin.ClassDefContext,
     auto_attribs_default: bool | None = False,
     frozen_default: bool = False,
+    slots_default: bool = False,
 ) -> bool:
     """Add necessary dunder methods to classes decorated with attr.s.
 
@@ -315,7 +315,7 @@ def attr_class_maker_callback(
     init = _get_decorator_bool_argument(ctx, "init", True)
     frozen = _get_frozen(ctx, frozen_default)
     order = _determine_eq_order(ctx)
-    slots = _get_decorator_bool_argument(ctx, "slots", False)
+    slots = _get_decorator_bool_argument(ctx, "slots", slots_default)
 
     auto_attribs = _get_decorator_optional_bool_argument(ctx, "auto_attribs", auto_attribs_default)
     kw_only = _get_decorator_bool_argument(ctx, "kw_only", False)
@@ -803,7 +803,7 @@ def _make_frozen(ctx: mypy.plugin.ClassDefContext, attributes: list[Attribute]) 
         else:
             # This variable belongs to a super class so create new Var so we
             # can modify it.
-            var = Var(attribute.name, ctx.cls.info[attribute.name].type)
+            var = Var(attribute.name, attribute.init_type)
             var.info = ctx.cls.info
             var._fullname = f"{ctx.cls.info.fullname}.{var.name}"
             ctx.cls.info.names[var.name] = SymbolTableNode(MDEF, var)
@@ -893,8 +893,20 @@ def _add_attrs_magic_attribute(
 
 
 def _add_slots(ctx: mypy.plugin.ClassDefContext, attributes: list[Attribute]) -> None:
+    if any(p.slots is None for p in ctx.cls.info.mro[1:-1]):
+        # At least one type in mro (excluding `self` and `object`)
+        # does not have concrete `__slots__` defined. Ignoring.
+        return
+
     # Unlike `@dataclasses.dataclass`, `__slots__` is rewritten here.
     ctx.cls.info.slots = {attr.name for attr in attributes}
+
+    # Also, inject `__slots__` attribute to class namespace:
+    slots_type = TupleType(
+        [ctx.api.named_type("builtins.str") for _ in attributes],
+        fallback=ctx.api.named_type("builtins.tuple"),
+    )
+    add_attribute_to_class(api=ctx.api, cls=ctx.cls, name="__slots__", typ=slots_type)
 
 
 def _add_match_args(ctx: mypy.plugin.ClassDefContext, attributes: list[Attribute]) -> None:
@@ -940,7 +952,9 @@ class MethodAdder:
         tvd: If the method is generic these should be the type variables.
         """
         self_type = self_type if self_type is not None else self.self_type
-        add_method(self.ctx, method_name, args, ret_type, self_type, tvd)
+        add_method_to_class(
+            self.ctx.api, self.ctx.cls, method_name, args, ret_type, self_type, tvd
+        )
 
 
 def _get_attrs_init_type(typ: Instance) -> CallableType | None:
@@ -1048,13 +1062,7 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
         return ctx.default_signature  # leave it to the type checker to complain
 
     inst_arg = ctx.args[0][0]
-
-    # <hack>
-    assert isinstance(ctx.api, TypeChecker)
-    inst_type = ctx.api.expr_checker.accept(inst_arg)
-    # </hack>
-
-    inst_type = get_proper_type(inst_type)
+    inst_type = get_proper_type(ctx.api.get_expression_type(inst_arg))
     inst_type_str = format_type_bare(inst_type, ctx.api.options)
 
     attr_types = _get_expanded_attr_types(ctx, inst_type, inst_type, inst_type)
@@ -1074,14 +1082,10 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
 
 def fields_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> CallableType:
     """Provide the signature for `attrs.fields`."""
-    if not ctx.args or len(ctx.args) != 1 or not ctx.args[0] or not ctx.args[0][0]:
+    if len(ctx.args) != 1 or len(ctx.args[0]) != 1:
         return ctx.default_signature
 
-    # <hack>
-    assert isinstance(ctx.api, TypeChecker)
-    inst_type = ctx.api.expr_checker.accept(ctx.args[0][0])
-    # </hack>
-    proper_type = get_proper_type(inst_type)
+    proper_type = get_proper_type(ctx.api.get_expression_type(ctx.args[0][0]))
 
     # fields(Any) -> Any, fields(type[Any]) -> Any
     if (
@@ -1098,7 +1102,7 @@ def fields_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
         inner = get_proper_type(proper_type.upper_bound)
         if isinstance(inner, Instance):
             # We need to work arg_types to compensate for the attrs stubs.
-            arg_types = [inst_type]
+            arg_types = [proper_type]
             cls = inner.type
     elif isinstance(proper_type, CallableType):
         cls = proper_type.type_object()
@@ -1108,10 +1112,5 @@ def fields_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
         ret_type = cls.names[MAGIC_ATTR_NAME].type
         assert ret_type is not None
         return ctx.default_signature.copy_modified(arg_types=arg_types, ret_type=ret_type)
-
-    ctx.api.fail(
-        f'Argument 1 to "fields" has incompatible type "{format_type_bare(proper_type, ctx.api.options)}"; expected an attrs class',
-        ctx.context,
-    )
 
     return ctx.default_signature
