@@ -622,6 +622,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def _visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         num_abstract = 0
+        num_async = 0
         if not defn.items:
             # In this case we have already complained about none of these being
             # valid overloads.
@@ -643,8 +644,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.visit_decorator_inner(fdef, allow_empty=True)
             if fdef.func.abstract_status in (IS_ABSTRACT, IMPLICITLY_ABSTRACT):
                 num_abstract += 1
+            if fdef.func.is_coroutine:
+                num_async += 1
         if num_abstract not in (0, len(defn.items)):
             self.fail(message_registry.INCONSISTENT_ABSTRACT_OVERLOAD, defn)
+        self.check_sync_or_async_overloads(defn, num_async)
         if defn.impl:
             defn.impl.accept(self)
         if not defn.is_property:
@@ -697,6 +701,22 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if outer_type is None:
                 self.msg.not_callable(inner_type, ctx)
         return outer_type
+
+    def check_sync_or_async_overloads(self, defn: OverloadedFuncDef, num_async: int) -> None:
+        if isinstance(defn.impl, Decorator):
+            impl_type: bool | None = defn.impl.func.is_coroutine
+        elif isinstance(defn.impl, FuncDef):
+            impl_type = defn.impl.is_coroutine
+        else:
+            impl_type = None
+
+        len_items = len(defn.items)
+        if (
+            num_async not in (0, len_items)
+            or (num_async == 0 and impl_type is True)
+            or (num_async == len_items and impl_type is False)
+        ):
+            self.fail(message_registry.INCONSISTENT_ASYNC_OVERLOAD.format(), defn)
 
     def check_overlapping_overloads(self, defn: OverloadedFuncDef) -> None:
         # At this point we should have set the impl already, and all remaining

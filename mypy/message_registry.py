@@ -97,6 +97,9 @@ CANNOT_ASSIGN_TO_TYPE: Final = "Cannot assign to a type"
 INCONSISTENT_ABSTRACT_OVERLOAD: Final = ErrorMessage(
     "Overloaded method has both abstract and non-abstract variants"
 )
+INCONSISTENT_ASYNC_OVERLOAD: Final = ErrorMessage(
+    "All overloaded items but be either sync or async"
+)
 MULTIPLE_OVERLOADS_REQUIRED: Final = ErrorMessage("Single overload definition, multiple required")
 READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE: Final = ErrorMessage(
     "Read-only property cannot override read-write property"
