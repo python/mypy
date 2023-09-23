@@ -78,10 +78,6 @@ __main__:
     non_existing2 : Gdef/Var (__main__.non_existing2) : Any
     non_existing3 : Gdef/Var (__main__.non_existing3) : Any
     non_existing4 : Gdef/Var (__main__.non_existing4) : Any)
-sys:
-  SymbolTable(
-    platform : Gdef/Var (sys.platform) : builtins.str
-    version_info : Gdef/Var (sys.version_info))
 
 [case testDecorator]
 from typing import Callable

@@ -26,3 +26,6 @@ class bool: pass
 class ellipsis: pass
 
 class tuple(typing.Generic[_T]): pass
+
+class list: pass
+class dict: pass

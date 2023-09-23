@@ -79,6 +79,17 @@ class HTTPStatus(IntEnum):
         EARLY_HINTS: Literal[103]
         IM_A_TEAPOT: Literal[418]
         TOO_EARLY: Literal[425]
+    if sys.version_info >= (3, 12):
+        @property
+        def is_informational(self) -> bool: ...
+        @property
+        def is_success(self) -> bool: ...
+        @property
+        def is_redirection(self) -> bool: ...
+        @property
+        def is_client_error(self) -> bool: ...
+        @property
+        def is_server_error(self) -> bool: ...
 
 if sys.version_info >= (3, 11):
     class HTTPMethod(StrEnum):

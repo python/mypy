@@ -6,7 +6,7 @@
 #include "CPy.h"
 
 // Returns -1 on error, 0 on inequality, 1 on equality.
-// 
+//
 // Falls back to PyObject_RichCompareBool.
 int CPyBytes_Compare(PyObject *left, PyObject *right) {
     if (PyBytes_CheckExact(left) && PyBytes_CheckExact(right)) {

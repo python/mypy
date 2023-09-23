@@ -1,5 +1,6 @@
 # Builtins stub used in tuple-related test cases.
 
+import _typeshed
 from typing import Iterable, Iterator, TypeVar, Generic, Sequence, Optional, overload, Tuple, Type
 
 T = TypeVar("T")
@@ -37,7 +38,6 @@ class bool(int): pass
 class str: pass # For convenience
 class bytes: pass
 class bytearray: pass
-class unicode: pass
 
 class list(Sequence[T], Generic[T]):
     @overload
@@ -52,3 +52,5 @@ def isinstance(x: object, t: type) -> bool: pass
 def sum(iterable: Iterable[T], start: Optional[T] = None) -> T: pass
 
 class BaseException: pass
+
+class dict: pass

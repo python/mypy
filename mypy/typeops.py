@@ -76,12 +76,18 @@ def is_recursive_pair(s: Type, t: Type) -> bool:
             isinstance(get_proper_type(t), (Instance, UnionType))
             or isinstance(t, TypeAliasType)
             and t.is_recursive
+            # Tuple types are special, they can cause an infinite recursion even if
+            # the other type is not recursive, because of the tuple fallback that is
+            # calculated "on the fly".
+            or isinstance(get_proper_type(s), TupleType)
         )
     if isinstance(t, TypeAliasType) and t.is_recursive:
         return (
             isinstance(get_proper_type(s), (Instance, UnionType))
             or isinstance(s, TypeAliasType)
             and s.is_recursive
+            # Same as above.
+            or isinstance(get_proper_type(t), TupleType)
         )
     return False
 
@@ -98,15 +104,17 @@ def tuple_fallback(typ: TupleType) -> Instance:
         if isinstance(item, UnpackType):
             unpacked_type = get_proper_type(item.type)
             if isinstance(unpacked_type, TypeVarTupleType):
-                items.append(unpacked_type.upper_bound)
-            elif isinstance(unpacked_type, TupleType):
-                # TODO: might make sense to do recursion here to support nested unpacks
-                # of tuple constants
-                items.extend(unpacked_type.items)
+                unpacked_type = get_proper_type(unpacked_type.upper_bound)
+            if (
+                isinstance(unpacked_type, Instance)
+                and unpacked_type.type.fullname == "builtins.tuple"
+            ):
+                items.append(unpacked_type.args[0])
             else:
                 raise NotImplementedError
         else:
             items.append(item)
+    # TODO: we should really use a union here, tuple types are special.
     return Instance(info, [join_type_list(items)], extra_attrs=typ.partial_fallback.extra_attrs)
 
 
@@ -243,6 +251,10 @@ def supported_self_type(typ: ProperType) -> bool:
     """
     if isinstance(typ, TypeType):
         return supported_self_type(typ.item)
+    if isinstance(typ, CallableType):
+        # Special case: allow class callable instead of Type[...] as cls annotation,
+        # as well as callable self for callback protocols.
+        return True
     return isinstance(typ, TypeVarType) or (
         isinstance(typ, Instance) and typ != fill_typevars(typ.type)
     )
@@ -292,7 +304,7 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
         return cast(F, func)
     self_param_type = get_proper_type(func.arg_types[0])
 
-    variables: Sequence[TypeVarLikeType] = []
+    variables: Sequence[TypeVarLikeType]
     if func.variables and supported_self_type(self_param_type):
         from mypy.infer import infer_type_arguments
 
@@ -301,44 +313,40 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
             original_type = erase_to_bound(self_param_type)
         original_type = get_proper_type(original_type)
 
-        all_ids = func.type_var_ids()
-        typeargs = infer_type_arguments(all_ids, self_param_type, original_type, is_supertype=True)
+        # Find which of method type variables appear in the type of "self".
+        self_ids = {tv.id for tv in get_all_type_vars(self_param_type)}
+        self_vars = [tv for tv in func.variables if tv.id in self_ids]
+
+        # Solve for these type arguments using the actual class or instance type.
+        typeargs = infer_type_arguments(
+            self_vars, self_param_type, original_type, is_supertype=True
+        )
         if (
             is_classmethod
-            # TODO: why do we need the extra guards here?
             and any(isinstance(get_proper_type(t), UninhabitedType) for t in typeargs)
             and isinstance(original_type, (Instance, TypeVarType, TupleType))
         ):
-            # In case we call a classmethod through an instance x, fallback to type(x)
+            # In case we call a classmethod through an instance x, fallback to type(x).
             typeargs = infer_type_arguments(
-                all_ids, self_param_type, TypeType(original_type), is_supertype=True
+                self_vars, self_param_type, TypeType(original_type), is_supertype=True
             )
 
-        ids = [tid for tid in all_ids if any(tid == t.id for t in get_type_vars(self_param_type))]
-
-        # Technically, some constrains might be unsolvable, make them <nothing>.
+        # Update the method signature with the solutions found.
+        # Technically, some constraints might be unsolvable, make them Never.
         to_apply = [t if t is not None else UninhabitedType() for t in typeargs]
-
-        def expand(target: Type) -> Type:
-            return expand_type(target, {id: to_apply[all_ids.index(id)] for id in ids})
-
-        arg_types = [expand(x) for x in func.arg_types[1:]]
-        ret_type = expand(func.ret_type)
-        variables = [v for v in func.variables if v.id not in ids]
+        func = expand_type(func, {tv.id: arg for tv, arg in zip(self_vars, to_apply)})
+        variables = [v for v in func.variables if v not in self_vars]
     else:
-        arg_types = func.arg_types[1:]
-        ret_type = func.ret_type
         variables = func.variables
 
     original_type = get_proper_type(original_type)
     if isinstance(original_type, CallableType) and original_type.is_type_obj():
         original_type = TypeType.make_normalized(original_type.ret_type)
     res = func.copy_modified(
-        arg_types=arg_types,
+        arg_types=func.arg_types[1:],
         arg_kinds=func.arg_kinds[1:],
         arg_names=func.arg_names[1:],
         variables=variables,
-        ret_type=ret_type,
         bound_args=[original_type],
     )
     return cast(F, res)
@@ -385,25 +393,6 @@ def callable_corresponding_argument(
     return by_name if by_name is not None else by_pos
 
 
-def simple_literal_value_key(t: ProperType) -> tuple[str, ...] | None:
-    """Return a hashable description of simple literal type.
-
-    Return None if not a simple literal type.
-
-    The return value can be used to simplify away duplicate types in
-    unions by comparing keys for equality. For now enum, string or
-    Instance with string last_known_value are supported.
-    """
-    if isinstance(t, LiteralType):
-        if t.fallback.type.is_enum or t.fallback.type.fullname == "builtins.str":
-            assert isinstance(t.value, str)
-            return "literal", t.value, t.fallback.type.fullname
-    if isinstance(t, Instance):
-        if t.last_known_value is not None and isinstance(t.last_known_value.value, str):
-            return "instance", t.last_known_value.value, t.type.fullname
-    return None
-
-
 def simple_literal_type(t: ProperType | None) -> Instance | None:
     """Extract the underlying fallback Instance type for a simple Literal"""
     if isinstance(t, Instance) and t.last_known_value is not None:
@@ -414,7 +403,6 @@ def simple_literal_type(t: ProperType | None) -> Instance | None:
 
 
 def is_simple_literal(t: ProperType) -> bool:
-    """Fast way to check if simple_literal_value_key() would return a non-None value."""
     if isinstance(t, LiteralType):
         return t.fallback.type.is_enum or t.fallback.type.fullname == "builtins.str"
     if isinstance(t, Instance):
@@ -500,68 +488,80 @@ def make_simplified_union(
 def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[Type]:
     from mypy.subtypes import is_proper_subtype
 
-    removed: set[int] = set()
-    seen: set[tuple[str, ...]] = set()
+    # The first pass through this loop, we check if later items are subtypes of earlier items.
+    # The second pass through this loop, we check if earlier items are subtypes of later items
+    # (by reversing the remaining items)
+    for _direction in range(2):
+        new_items: list[Type] = []
+        # seen is a map from a type to its index in new_items
+        seen: dict[ProperType, int] = {}
+        unduplicated_literal_fallbacks: set[Instance] | None = None
+        for ti in items:
+            proper_ti = get_proper_type(ti)
 
-    # NB: having a separate fast path for Union of Literal and slow path for other things
-    # would arguably be cleaner, however it breaks down when simplifying the Union of two
-    # different enum types as try_expanding_sum_type_to_union works recursively and will
-    # trigger intermediate simplifications that would render the fast path useless
-    for i, item in enumerate(items):
-        proper_item = get_proper_type(item)
-        if i in removed:
-            continue
-        # Avoid slow nested for loop for Union of Literal of strings/enums (issue #9169)
-        k = simple_literal_value_key(proper_item)
-        if k is not None:
-            if k in seen:
-                removed.add(i)
+            # UninhabitedType is always redundant
+            if isinstance(proper_ti, UninhabitedType):
                 continue
 
-            # NB: one would naively expect that it would be safe to skip the slow path
-            # always for literals. One would be sorely mistaken. Indeed, some simplifications
-            # such as that of None/Optional when strict optional is false, do require that we
-            # proceed with the slow path. Thankfully, all literals will have the same subtype
-            # relationship to non-literal types, so we only need to do that walk for the first
-            # literal, which keeps the fast path fast even in the presence of a mixture of
-            # literals and other types.
-            safe_skip = len(seen) > 0
-            seen.add(k)
-            if safe_skip:
-                continue
-
-        # Keep track of the truthiness info for deleted subtypes which can be relevant
-        cbt = cbf = False
-        for j, tj in enumerate(items):
-            proper_tj = get_proper_type(tj)
-            if (
-                i == j
-                # avoid further checks if this item was already marked redundant.
-                or j in removed
-                # if the current item is a simple literal then this simplification loop can
-                # safely skip all other simple literals as two literals will only ever be
-                # subtypes of each other if they are equal, which is already handled above.
-                # However, if the current item is not a literal, it might plausibly be a
-                # supertype of other literals in the union, so we must check them again.
-                # This is an important optimization as is_proper_subtype is pretty expensive.
-                or (k is not None and is_simple_literal(proper_tj))
+            duplicate_index = -1
+            # Quickly check if we've seen this type
+            if proper_ti in seen:
+                duplicate_index = seen[proper_ti]
+            elif (
+                isinstance(proper_ti, LiteralType)
+                and unduplicated_literal_fallbacks is not None
+                and proper_ti.fallback in unduplicated_literal_fallbacks
             ):
-                continue
-            # actual redundancy checks (XXX?)
-            if is_redundant_literal_instance(proper_item, proper_tj) and is_proper_subtype(
-                tj, item, keep_erased_types=keep_erased, ignore_promotions=True
-            ):
-                # We found a redundant item in the union.
-                removed.add(j)
-                cbt = cbt or tj.can_be_true
-                cbf = cbf or tj.can_be_false
-        # if deleted subtypes had more general truthiness, use that
-        if not item.can_be_true and cbt:
-            items[i] = true_or_false(item)
-        elif not item.can_be_false and cbf:
-            items[i] = true_or_false(item)
+                # This is an optimisation for unions with many LiteralType
+                # We've already checked for exact duplicates. This means that any super type of
+                # the LiteralType must be a super type of its fallback. If we've gone through
+                # the expensive loop below and found no super type for a previous LiteralType
+                # with the same fallback, we can skip doing that work again and just add the type
+                # to new_items
+                pass
+            else:
+                # If not, check if we've seen a supertype of this type
+                for j, tj in enumerate(new_items):
+                    tj = get_proper_type(tj)
+                    # If tj is an Instance with a last_known_value, do not remove proper_ti
+                    # (unless it's an instance with the same last_known_value)
+                    if (
+                        isinstance(tj, Instance)
+                        and tj.last_known_value is not None
+                        and not (
+                            isinstance(proper_ti, Instance)
+                            and tj.last_known_value == proper_ti.last_known_value
+                        )
+                    ):
+                        continue
 
-    return [items[i] for i in range(len(items)) if i not in removed]
+                    if is_proper_subtype(
+                        ti, tj, keep_erased_types=keep_erased, ignore_promotions=True
+                    ):
+                        duplicate_index = j
+                        break
+            if duplicate_index != -1:
+                # If deleted subtypes had more general truthiness, use that
+                orig_item = new_items[duplicate_index]
+                if not orig_item.can_be_true and ti.can_be_true:
+                    new_items[duplicate_index] = true_or_false(orig_item)
+                elif not orig_item.can_be_false and ti.can_be_false:
+                    new_items[duplicate_index] = true_or_false(orig_item)
+            else:
+                # We have a non-duplicate item, add it to new_items
+                seen[proper_ti] = len(new_items)
+                new_items.append(ti)
+                if isinstance(proper_ti, LiteralType):
+                    if unduplicated_literal_fallbacks is None:
+                        unduplicated_literal_fallbacks = set()
+                    unduplicated_literal_fallbacks.add(proper_ti.fallback)
+
+        items = new_items
+        if len(items) <= 1:
+            break
+        items.reverse()
+
+    return items
 
 
 def _get_type_special_method_bool_ret_type(t: Type) -> Type | None:
@@ -597,10 +597,8 @@ def true_only(t: Type) -> ProperType:
     else:
         ret_type = _get_type_special_method_bool_ret_type(t)
 
-        if ret_type and ret_type.can_be_false and not ret_type.can_be_true:
-            new_t = copy_type(t)
-            new_t.can_be_true = False
-            return new_t
+        if ret_type and not ret_type.can_be_true:
+            return UninhabitedType(line=t.line, column=t.column)
 
         new_t = copy_type(t)
         new_t.can_be_false = False
@@ -632,10 +630,8 @@ def false_only(t: Type) -> ProperType:
     else:
         ret_type = _get_type_special_method_bool_ret_type(t)
 
-        if ret_type and ret_type.can_be_true and not ret_type.can_be_false:
-            new_t = copy_type(t)
-            new_t.can_be_false = False
-            return new_t
+        if ret_type and not ret_type.can_be_false:
+            return UninhabitedType(line=t.line)
 
         new_t = copy_type(t)
         new_t.can_be_true = False
@@ -662,8 +658,7 @@ def erase_def_to_union_or_bound(tdef: TypeVarLikeType) -> Type:
     # TODO(PEP612): fix for ParamSpecType
     if isinstance(tdef, ParamSpecType):
         return AnyType(TypeOfAny.from_error)
-    assert isinstance(tdef, TypeVarType)
-    if tdef.values:
+    if isinstance(tdef, TypeVarType) and tdef.values:
         return make_simplified_union(tdef.values)
     else:
         return tdef.upper_bound
@@ -707,7 +702,7 @@ def callable_type(
     fdef: FuncItem, fallback: Instance, ret_type: Type | None = None
 ) -> CallableType:
     # TODO: somewhat unfortunate duplication with prepare_method_signature in semanal
-    if fdef.info and not fdef.is_static and fdef.arg_names:
+    if fdef.info and (not fdef.is_static or fdef.name == "__new__") and fdef.arg_names:
         self_type: Type = fill_typevars(fdef.info)
         if fdef.is_class or fdef.name == "__new__":
             self_type = TypeType.make_normalized(self_type)
@@ -947,21 +942,33 @@ def coerce_to_literal(typ: Type) -> Type:
 
 
 def get_type_vars(tp: Type) -> list[TypeVarType]:
-    return tp.accept(TypeVarExtractor())
+    return cast("list[TypeVarType]", tp.accept(TypeVarExtractor()))
 
 
-class TypeVarExtractor(TypeQuery[List[TypeVarType]]):
-    def __init__(self) -> None:
+def get_all_type_vars(tp: Type) -> list[TypeVarLikeType]:
+    # TODO: should we always use this function instead of get_type_vars() above?
+    return tp.accept(TypeVarExtractor(include_all=True))
+
+
+class TypeVarExtractor(TypeQuery[List[TypeVarLikeType]]):
+    def __init__(self, include_all: bool = False) -> None:
         super().__init__(self._merge)
+        self.include_all = include_all
 
-    def _merge(self, iter: Iterable[list[TypeVarType]]) -> list[TypeVarType]:
+    def _merge(self, iter: Iterable[list[TypeVarLikeType]]) -> list[TypeVarLikeType]:
         out = []
         for item in iter:
             out.extend(item)
         return out
 
-    def visit_type_var(self, t: TypeVarType) -> list[TypeVarType]:
+    def visit_type_var(self, t: TypeVarType) -> list[TypeVarLikeType]:
         return [t]
+
+    def visit_param_spec(self, t: ParamSpecType) -> list[TypeVarLikeType]:
+        return [t] if self.include_all else []
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> list[TypeVarLikeType]:
+        return [t] if self.include_all else []
 
 
 def custom_special_method(typ: Type, name: str, check_all: bool = False) -> bool:
@@ -989,17 +996,6 @@ def custom_special_method(typ: Type, name: str, check_all: bool = False) -> bool
         # Avoid false positives in uncertain cases.
         return True
     # TODO: support other types (see ExpressionChecker.has_member())?
-    return False
-
-
-def is_redundant_literal_instance(general: ProperType, specific: ProperType) -> bool:
-    if not isinstance(general, Instance) or general.last_known_value is None:
-        return True
-    if isinstance(specific, Instance) and specific.last_known_value == general.last_known_value:
-        return True
-    if isinstance(specific, UninhabitedType):
-        return True
-
     return False
 
 
@@ -1050,3 +1046,23 @@ def fixup_partial_type(typ: Type) -> Type:
         return UnionType.make_union([AnyType(TypeOfAny.unannotated), NoneType()])
     else:
         return Instance(typ.type, [AnyType(TypeOfAny.unannotated)] * len(typ.type.type_vars))
+
+
+def get_protocol_member(left: Instance, member: str, class_obj: bool) -> ProperType | None:
+    if member == "__call__" and class_obj:
+        # Special case: class objects always have __call__ that is just the constructor.
+        from mypy.checkmember import type_object_type
+
+        def named_type(fullname: str) -> Instance:
+            return Instance(left.type.mro[-1], [])
+
+        return type_object_type(left.type, named_type)
+
+    if member == "__call__" and left.type.is_metaclass():
+        # Special case: we want to avoid falling back to metaclass __call__
+        # if constructor signature didn't match, this can cause many false negatives.
+        return None
+
+    from mypy.subtypes import find_member
+
+    return get_proper_type(find_member(member, left, left, class_obj=class_obj))

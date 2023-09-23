@@ -427,7 +427,7 @@ async def h() -> NoReturn:  # E: Implicit return in function which does not retu
 [typing fixtures/typing-async.pyi]
 
 [case testNoWarnNoReturn]
-# flags: --no-warn-no-return --strict-optional
+# flags: --no-warn-no-return
 import typing
 
 def implicit_optional_return(arg) -> typing.Optional[str]:
@@ -1152,12 +1152,12 @@ from typing import Any
 def f(s):
     yield s
 
+def g(x) -> Any:
+    yield x  # E: Expression has type "Any"
+
 x = f(0)  # E: Expression has type "Any"
 for x in f(0):  # E: Expression has type "Any"
     g(x)  # E: Expression has type "Any"
-
-def g(x) -> Any:
-    yield x  # E: Expression has type "Any"
 
 l = [1, 2, 3]
 l[f(0)]  # E: Expression has type "Any"
@@ -1305,34 +1305,34 @@ main:3: error: Function is missing a type annotation for one or more arguments
 
 [case testDisallowIncompleteDefsAttrsNoAnnotations]
 # flags: --disallow-incomplete-defs
-import attr
+import attrs
 
-@attr.s()
+@attrs.define
 class Unannotated:
-    foo = attr.ib()
+    foo = attrs.field()
 
-[builtins fixtures/attr.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 
 [case testDisallowIncompleteDefsAttrsWithAnnotations]
 # flags: --disallow-incomplete-defs
-import attr
+import attrs
 
-@attr.s()
+@attrs.define
 class Annotated:
-    bar: int = attr.ib()
+    bar: int = attrs.field()
 
-[builtins fixtures/attr.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 
 [case testDisallowIncompleteDefsAttrsPartialAnnotations]
 # flags: --disallow-incomplete-defs
-import attr
+import attrs
 
-@attr.s()
+@attrs.define
 class PartiallyAnnotated:  # E: Function is missing a type annotation for one or more arguments
-    bar: int = attr.ib()
-    baz = attr.ib()
+    bar: int = attrs.field()
+    baz = attrs.field()
 
-[builtins fixtures/attr.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 
 [case testAlwaysTrueAlwaysFalseFlags]
 # flags: --always-true=YOLO --always-true=YOLO1 --always-false=BLAH1 --always-false BLAH --ignore-missing-imports
@@ -1611,14 +1611,22 @@ from other_module_2 import a  # E: Module "other_module_2" does not explicitly e
 reveal_type(a)  # N: Revealed type is "builtins.int"
 
 import other_module_2
-# TODO: this should also reveal builtins.int, see #13965
-reveal_type(other_module_2.a)  # E: "object" does not explicitly export attribute "a"  [attr-defined] \
-                               # N: Revealed type is "Any"
+reveal_type(other_module_2.a)  # E: Module "other_module_2" does not explicitly export attribute "a"  [attr-defined] \
+                               # N: Revealed type is "builtins.int"
+
+from other_module_2 import b  # E: Module "other_module_2" does not explicitly export attribute "b"  [attr-defined]
+reveal_type(b)  # N: Revealed type is "def (a: builtins.int) -> builtins.str"
+
+import other_module_2
+reveal_type(other_module_2.b)  # E: Module "other_module_2" does not explicitly export attribute "b"  [attr-defined] \
+                               # N: Revealed type is "def (a: builtins.int) -> builtins.str"
 
 [file other_module_1.py]
 a = 5
+def b(a: int) -> str: ...
 [file other_module_2.py]
-from other_module_1 import a
+from other_module_1 import a, b
+[builtins fixtures/module.pyi]
 
 [case testNoImplicitReexportRespectsAll]
 # flags: --no-implicit-reexport
@@ -1649,11 +1657,15 @@ __all__ = ('b',)
 [case testNoImplicitReexportGetAttr]
 # flags: --no-implicit-reexport --python-version 3.7
 from other_module_2 import a  # E: Module "other_module_2" does not explicitly export attribute "a"
+reveal_type(a)  # N: Revealed type is "builtins.int"
+from other_module_2 import b  # E: Module "other_module_2" does not explicitly export attribute "b"
+reveal_type(b)  # N: Revealed type is "builtins.str"
 [file other_module_1.py]
-from typing import Any
-def __getattr__(name: str) -> Any: ...
+b: str = "asdf"
+def __getattr__(name: str) -> int: ...
 [file other_module_2.py]
-from other_module_1 import a
+from other_module_1 import a, b
+def __getattr__(name: str) -> bytes: ...
 [builtins fixtures/tuple.pyi]
 
 [case textNoImplicitReexportSuggestions]
@@ -1733,7 +1745,7 @@ def h() -> List[Any]:  # E: Explicit "Any" is not allowed
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyExplicitVarDeclaration]
-# flags: --python-version 3.6 --disallow-any-explicit
+# flags: --disallow-any-explicit
 from typing import Any
 v: Any = ''  # E: Explicit "Any" is not allowed
 w = ''  # type: Any  # E: Explicit "Any" is not allowed
@@ -1741,7 +1753,7 @@ class X:
     y = ''  # type: Any  # E: Explicit "Any" is not allowed
 
 [case testDisallowAnyExplicitGenericVarDeclaration]
-# flags: --python-version 3.6 --disallow-any-explicit
+# flags: --disallow-any-explicit
 from typing import Any, List
 v: List[Any] = []  # E: Explicit "Any" is not allowed
 [builtins fixtures/list.pyi]
@@ -1836,7 +1848,7 @@ N = TypedDict('N', {'x': str, 'y': List})  # no error
 [builtins fixtures/dict.pyi]
 
 [case testDisallowAnyGenericsTupleNoTypeParams]
-# flags: --python-version 3.6 --disallow-any-generics
+# flags: --disallow-any-generics
 from typing import Tuple
 
 def f(s: Tuple) -> None: pass  # E: Missing type parameters for generic type "Tuple"
@@ -1877,7 +1889,7 @@ def g(l: L[str]) -> None: pass  # no error
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyGenericsGenericAlias]
-# flags: --python-version 3.6 --disallow-any-generics
+# flags: --disallow-any-generics
 from typing import TypeVar, Tuple
 
 T = TypeVar('T')
@@ -1892,7 +1904,7 @@ x: A = ('a', 'b', 1)  # E: Missing type parameters for generic type "A"
 [builtins fixtures/tuple.pyi]
 
 [case testDisallowAnyGenericsPlainList]
-# flags: --python-version 3.6 --disallow-any-generics
+# flags: --disallow-any-generics
 from typing import List
 
 def f(l: List) -> None: pass  # E: Missing type parameters for generic type "List"
@@ -1905,7 +1917,7 @@ y: List = []  # E: Missing type parameters for generic type "List"
 [builtins fixtures/list.pyi]
 
 [case testDisallowAnyGenericsCustomGenericClass]
-# flags: --python-version 3.6 --disallow-any-generics
+# flags: --disallow-any-generics
 from typing import Generic, TypeVar, Any
 
 T = TypeVar('T')
@@ -2077,6 +2089,61 @@ y = 1
 f(reveal_type(y)) # E: Call to untyped function "f" in typed context \
                   # N: Revealed type is "builtins.int"
 
+[case testDisallowUntypedCallsAllowListFlags]
+# flags: --disallow-untyped-calls  --untyped-calls-exclude=foo --untyped-calls-exclude=bar.A
+from foo import test_foo
+from bar import A, B
+from baz import test_baz
+from foobar import bad
+
+test_foo(42)  # OK
+test_baz(42)  # E: Call to untyped function "test_baz" in typed context
+bad(42)  # E: Call to untyped function "bad" in typed context
+
+a: A
+b: B
+a.meth()  # OK
+b.meth()  # E: Call to untyped function "meth" in typed context
+[file foo.py]
+def test_foo(x): pass
+[file foobar.py]
+def bad(x): pass
+[file bar.py]
+class A:
+    def meth(self): pass
+class B:
+    def meth(self): pass
+[file baz.py]
+def test_baz(x): pass
+
+[case testDisallowUntypedCallsAllowListConfig]
+# flags: --config-file tmp/mypy.ini
+from foo import test_foo
+from bar import A, B
+from baz import test_baz
+
+test_foo(42)  # OK
+test_baz(42)  # E: Call to untyped function "test_baz" in typed context
+
+a: A
+b: B
+a.meth()  # OK
+b.meth()  # E: Call to untyped function "meth" in typed context
+[file foo.py]
+def test_foo(x): pass
+[file bar.py]
+class A:
+    def meth(self): pass
+class B:
+    def meth(self): pass
+[file baz.py]
+def test_baz(x): pass
+
+[file mypy.ini]
+\[mypy]
+disallow_untyped_calls = True
+untyped_calls_exclude = foo, bar.A
+
 [case testPerModuleErrorCodes]
 # flags: --config-file tmp/mypy.ini
 import tests.foo
@@ -2101,12 +2168,12 @@ import tests.foo
 import bar
 [file bar.py]
 def foo() -> int: ...
-if foo: ...  # E: Function "Callable[[], int]" could always be true in boolean context
+if foo: ...  # E: Function "foo" could always be true in boolean context
 42 + "no"  # type: ignore  # E: "type: ignore" comment without error code (consider "type: ignore[operator]" instead)
 [file tests/__init__.py]
 [file tests/foo.py]
 def foo() -> int: ...
-if foo: ...  # E: Function "Callable[[], int]" could always be true in boolean context
+if foo: ...  # E: Function "foo" could always be true in boolean context
 42 + "no"  # type: ignore
 [file mypy.ini]
 \[mypy]
@@ -2148,3 +2215,65 @@ def f(x: bytes) -> None: ...
 f(bytearray(b"asdf"))
 f(memoryview(b"asdf"))  # E: Argument 1 to "f" has incompatible type "memoryview"; expected "bytes"
 [builtins fixtures/primitives.pyi]
+
+[case testDisableBytearrayMemoryviewPromotionStrictEquality]
+# flags: --disable-bytearray-promotion --disable-memoryview-promotion --strict-equality
+def f(x: bytes, y: bytearray, z: memoryview) -> None:
+    x == y
+    y == z
+    x == z
+    97 in x
+    97 in y
+    97 in z
+    x in y
+    x in z
+[builtins fixtures/primitives.pyi]
+
+[case testEnableBytearrayMemoryviewPromotionStrictEquality]
+# flags: --strict-equality
+def f(x: bytes, y: bytearray, z: memoryview) -> None:
+    x == y
+    y == z
+    x == z
+    97 in x
+    97 in y
+    97 in z
+    x in y
+    x in z
+[builtins fixtures/primitives.pyi]
+
+[case testNoCrashFollowImportsForStubs]
+# flags: --config-file tmp/mypy.ini
+{**{"x": "y"}}
+
+[file mypy.ini]
+\[mypy]
+follow_imports = skip
+follow_imports_for_stubs = true
+[builtins fixtures/dict.pyi]
+
+[case testReturnAnyLambda]
+# flags: --warn-return-any
+from typing import Any, Callable
+
+def cb(f: Callable[[int], int]) -> None: ...
+a: Any
+cb(lambda x: a)  # OK
+
+fn = lambda x: a
+cb(fn)
+
+[case testShowErrorCodeLinks]
+# flags: --show-error-codes --show-error-code-links
+
+x: int = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
+list(1)  # E: No overload variant of "list" matches argument type "int"  [call-overload] \
+         # N: Possible overload variants: \
+         # N:     def [T] __init__(self) -> List[T] \
+         # N:     def [T] __init__(self, x: Iterable[T]) -> List[T] \
+         # N: See https://mypy.rtfd.io/en/stable/_refs.html#code-call-overload for more info
+list(2)  # E: No overload variant of "list" matches argument type "int"  [call-overload] \
+         # N: Possible overload variants: \
+         # N:     def [T] __init__(self) -> List[T] \
+         # N:     def [T] __init__(self, x: Iterable[T]) -> List[T]
+[builtins fixtures/list.pyi]

@@ -1,7 +1,6 @@
 import sys
 
 if sys.platform == "win32":
-
     # Actual typename View, not exposed by the implementation
     class _View:
         def Execute(self, params: _Record | None = ...) -> None: ...
@@ -12,6 +11,7 @@ if sys.platform == "win32":
         # Don't exist at runtime
         __new__: None  # type: ignore[assignment]
         __init__: None  # type: ignore[assignment]
+
     # Actual typename SummaryInformation, not exposed by the implementation
     class _SummaryInformation:
         def GetProperty(self, field: int) -> int | bytes | None: ...
@@ -21,6 +21,7 @@ if sys.platform == "win32":
         # Don't exist at runtime
         __new__: None  # type: ignore[assignment]
         __init__: None  # type: ignore[assignment]
+
     # Actual typename Database, not exposed by the implementation
     class _Database:
         def OpenView(self, sql: str) -> _View: ...
@@ -30,6 +31,7 @@ if sys.platform == "win32":
         # Don't exist at runtime
         __new__: None  # type: ignore[assignment]
         __init__: None  # type: ignore[assignment]
+
     # Actual typename Record, not exposed by the implementation
     class _Record:
         def GetFieldCount(self) -> int: ...

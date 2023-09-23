@@ -1734,12 +1734,12 @@ class R: pass
 [file r/s.py]
 from . import m
 R = m.R
-a = None  # type: R
+a: R
 
 [file r/s.py.2]
 from . import m
 R = m.R
-a = None  # type: R
+a: R
 
 [case testIncrementalBaseClassAttributeConflict]
 class A: pass
@@ -2507,7 +2507,7 @@ A = Tuple[int]
 [case testNewTypeFromForwardNamedTupleIncremental]
 from typing import NewType, NamedTuple, Tuple
 
-NT = NewType('NT', N)
+NT = NewType('NT', 'N')
 class N(NamedTuple):
     x: int
 
@@ -2591,8 +2591,8 @@ class C(NamedTuple): # type: ignore
 from typing import TypeVar, Generic
 T = TypeVar('T')
 S = TypeVar('S')
-IntNode = Node[int, S]
-AnyNode = Node[S, T]
+IntNode = Node[int, S]  # type: ignore[used-before-def]
+AnyNode = Node[S, T]  # type: ignore[used-before-def]
 
 class Node(Generic[T, S]):
     def __init__(self, x: T, y: S) -> None:
@@ -2603,7 +2603,7 @@ def output() -> IntNode[str]:
     return Node(1, 'x')
 x = output() # type: IntNode
 
-y = None # type: IntNode
+y: IntNode
 y.x = 1
 y.y = 1
 y.y = 'x'
@@ -2625,7 +2625,7 @@ def output() -> IntNode[str]:
     return Node(1, 'x')
 x = output() # type: IntNode
 
-y = None # type: IntNode
+y: IntNode
 y.x = 1
 y.y = 1
 y.y = 'x'
@@ -2642,8 +2642,8 @@ class G(Generic[T]):
     x: T
 
 yg: G[M]
-z: int = G[M]().x.x
-z = G[M]().x[0]
+z: int = G[M]().x.x  # type: ignore[used-before-def]
+z = G[M]().x[0]  # type: ignore[used-before-def]
 M = NamedTuple('M', [('x', int)])
 [builtins fixtures/tuple.pyi]
 [out]
@@ -2901,7 +2901,6 @@ tmp/main.py:2: error: Expression has type "Any"
 tmp/main.py:2: error: Expression has type "Any"
 
 [case testIncrementalStrictOptional]
-# flags: --strict-optional
 import a
 1 + a.foo()
 [file a.py]
@@ -2911,13 +2910,13 @@ from typing import Optional
 def foo() -> Optional[int]: return 0
 [out1]
 [out2]
-main:3: error: Unsupported operand types for + ("int" and "None")
-main:3: note: Right operand is of type "Optional[int]"
+main:2: error: Unsupported operand types for + ("int" and "None")
+main:2: note: Right operand is of type "Optional[int]"
 
 [case testAttrsIncrementalSubclassingCached]
 from a import A
-import attr
-@attr.s(auto_attribs=True)
+import attrs
+@attrs.define
 class B(A):
     e: str = 'e'
 a = B(5, [5], 'foo')
@@ -2928,15 +2927,14 @@ a._d = 22
 a.e = 'hi'
 
 [file a.py]
-import attr
-import attr
+import attrs
 from typing import List, ClassVar
-@attr.s(auto_attribs=True)
+@attrs.define
 class A:
     a: int
     _b: List[int]
     c: str = '18'
-    _d: int = attr.ib(validator=None, default=18)
+    _d: int = attrs.field(validator=None, default=18)
     E = 7
     F: ClassVar[int] = 22
 
@@ -2946,8 +2944,8 @@ class A:
 
 [case testAttrsIncrementalSubclassingCachedConverter]
 from a import A
-import attr
-@attr.s
+import attrs
+@attrs.define
 class B(A):
     pass
 reveal_type(B)
@@ -2956,10 +2954,10 @@ reveal_type(B)
 def converter(s:int) -> str:
     return 'hello'
 
-import attr
-@attr.s
+import attrs
+@attrs.define
 class A:
-    x: str = attr.ib(converter=converter)
+    x: str = attrs.field(converter=converter)
 
 [builtins fixtures/list.pyi]
 [out1]
@@ -2970,17 +2968,17 @@ main:6: note: Revealed type is "def (x: builtins.int) -> __main__.B"
 
 [case testAttrsIncrementalSubclassingCachedType]
 from a import A
-import attr
-@attr.s
+import attrs
+@attrs.define
 class B(A):
     pass
 reveal_type(B)
 
 [file a.py]
-import attr
-@attr.s
+import attrs
+@attrs.define
 class A:
-    x = attr.ib(type=int)
+    x: int
 
 [builtins fixtures/list.pyi]
 [out1]
@@ -3006,16 +3004,16 @@ NoCmp(1) > NoCmp(2)
 NoCmp(1) >= NoCmp(2)
 
 [file a.py]
-import attr
-@attr.s(frozen=True)
+import attrs
+@attrs.frozen
 class Frozen:
-    x: int = attr.ib()
-@attr.s(init=False)
+    x: int
+@attrs.define(init=False)
 class NoInit:
-    x: int = attr.ib()
-@attr.s(eq=False)
+    x: int
+@attrs.define(eq=False)
 class NoCmp:
-    x: int = attr.ib()
+    x: int
 
 [builtins fixtures/list.pyi]
 [rechecked]
@@ -3037,10 +3035,10 @@ main:15: error: Unsupported left operand type for >= ("NoCmp")
 [case testAttrsIncrementalDunder]
 from a import A
 reveal_type(A)  # N: Revealed type is "def (a: builtins.int) -> a.A"
-reveal_type(A.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
-reveal_type(A.__le__)  # N: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
-reveal_type(A.__gt__)  # N: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
-reveal_type(A.__ge__)  # N: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
+reveal_type(A.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`3, other: _AT`3) -> builtins.bool"
+reveal_type(A.__le__)  # N: Revealed type is "def [_AT] (self: _AT`4, other: _AT`4) -> builtins.bool"
+reveal_type(A.__gt__)  # N: Revealed type is "def [_AT] (self: _AT`5, other: _AT`5) -> builtins.bool"
+reveal_type(A.__ge__)  # N: Revealed type is "def [_AT] (self: _AT`6, other: _AT`6) -> builtins.bool"
 
 A(1) < A(2)
 A(1) <= A(2)
@@ -3069,15 +3067,15 @@ from attr import attrib, attrs
 class A:
     a: int
 
-[builtins fixtures/attr.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 [rechecked]
 [stale]
 [out2]
 main:2: note: Revealed type is "def (a: builtins.int) -> a.A"
-main:3: note: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
-main:4: note: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
-main:5: note: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
-main:6: note: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
+main:3: note: Revealed type is "def [_AT] (self: _AT`1, other: _AT`1) -> builtins.bool"
+main:4: note: Revealed type is "def [_AT] (self: _AT`2, other: _AT`2) -> builtins.bool"
+main:5: note: Revealed type is "def [_AT] (self: _AT`3, other: _AT`3) -> builtins.bool"
+main:6: note: Revealed type is "def [_AT] (self: _AT`4, other: _AT`4) -> builtins.bool"
 main:15: error: Unsupported operand types for < ("A" and "int")
 main:16: error: Unsupported operand types for <= ("A" and "int")
 main:17: error: Unsupported operand types for > ("A" and "int")
@@ -3092,22 +3090,22 @@ from b import B
 B(5, 'foo')
 
 [file a.py]
-import attr
-@attr.s(auto_attribs=True)
+import attrs
+@attrs.define
 class A:
     x: int
 
 [file b.py]
-import attr
+import attrs
 from a import A
-@attr.s(auto_attribs=True)
+@attrs.define
 class B(A):
     y: str
 
 [file b.py.2]
-import attr
+import attrs
 from a import A
-@attr.s(auto_attribs=True)
+@attrs.define
 class B(A):
     y: int
 
@@ -3121,22 +3119,22 @@ main:2: error: Argument 2 to "B" has incompatible type "str"; expected "int"
 from b import B
 B(5, 'foo')
 [file a.py]
-import attr
-@attr.s(auto_attribs=True)
+import attrs
+@attrs.define
 class A:
     x: int
 
 [file b.py]
-import attr
+import attrs
 from a import A
-@attr.s(auto_attribs=True)
+@attrs.define
 class B(A):
     y: int
 
 [file b.py.2]
-import attr
+import attrs
 from a import A
-@attr.s(auto_attribs=True)
+@attrs.define
 class B(A):
     y: str
 
@@ -3152,24 +3150,24 @@ from c import C
 C(5, 'foo', True)
 
 [file a.py]
-import attr
-@attr.s
+import attrs
+@attrs.define
 class A:
-    a: int = attr.ib()
+    a: int
 
 [file b.py]
-import attr
-@attr.s
+import attrs
+@attrs.define
 class B:
-    b: str = attr.ib()
+    b: str
 
 [file c.py]
 from a import A
 from b import B
-import attr
-@attr.s
+import attrs
+@attrs.define
 class C(A, B):
-    c: bool = attr.ib()
+    c: bool
 
 [builtins fixtures/list.pyi]
 [out1]
@@ -3184,10 +3182,10 @@ from typing import Optional
 def converter(s:Optional[int]) -> int:
     ...
 
-import attr
-@attr.s
+import attrs
+@attrs.define
 class A:
-    x: int = attr.ib(converter=converter)
+    x: int = attrs.field(converter=converter)
 
 [builtins fixtures/list.pyi]
 [out1]
@@ -3254,80 +3252,80 @@ def maybe_bool(x: Optional[bool]) -> bool:
    ...
 [file base.py]
 from typing import Optional
-import attr
+import attrs
 import bar
 from foo import maybe_int
 def maybe_str(x: Optional[str]) -> str:
    ...
-@attr.s
+@attrs.define
 class Base:
-    x: int = attr.ib(converter=maybe_int)
-    y: str = attr.ib(converter=maybe_str)
-    z: bool = attr.ib(converter=bar.maybe_bool)
+    x: int = attrs.field(converter=maybe_int)
+    y: str = attrs.field(converter=maybe_str)
+    z: bool = attrs.field(converter=bar.maybe_bool)
 [file subclass.py]
 from typing import Optional
-import attr
+import attrs
 from base import Base
-@attr.s
+@attrs.define
 class A(Base): pass
 
 import bar
 from foo import maybe_int
 def maybe_str(x: Optional[str]) -> str:
    ...
-@attr.s
+@attrs.define
 class B(Base):
-    xx: int = attr.ib(converter=maybe_int)
-    yy: str = attr.ib(converter=maybe_str)
-    zz: bool = attr.ib(converter=bar.maybe_bool)
+    xx: int = attrs.field(converter=maybe_int)
+    yy: str = attrs.field(converter=maybe_str)
+    zz: bool = attrs.field(converter=bar.maybe_bool)
 
 [file submodule/__init__.py]
 [file submodule/base.py]
 from typing import Optional
-import attr
+import attrs
 import bar
 from foo import maybe_int
 def maybe_str(x: Optional[str]) -> str:
    ...
-@attr.s
+@attrs.define
 class SubBase:
-    x: int = attr.ib(converter=maybe_int)
-    y: str = attr.ib(converter=maybe_str)
-    z: bool = attr.ib(converter=bar.maybe_bool)
+    x: int = attrs.field(converter=maybe_int)
+    y: str = attrs.field(converter=maybe_str)
+    z: bool = attrs.field(converter=bar.maybe_bool)
 
 [file submodule/subclass.py]
 from typing import Optional
-import attr
+import attrs
 from base import Base
-@attr.s
+@attrs.define
 class AA(Base): pass
 
 import bar
 from foo import maybe_int
 def maybe_str(x: Optional[str]) -> str:
    ...
-@attr.s
+@attrs.define
 class BB(Base):
-    xx: int = attr.ib(converter=maybe_int)
-    yy: str = attr.ib(converter=maybe_str)
-    zz: bool = attr.ib(converter=bar.maybe_bool)
+    xx: int = attrs.field(converter=maybe_int)
+    yy: str = attrs.field(converter=maybe_str)
+    zz: bool = attrs.field(converter=bar.maybe_bool)
 
 [file submodule/subsubclass.py]
 from typing import Optional
-import attr
+import attrs
 from .base import SubBase
-@attr.s
+@attrs.define
 class SubAA(SubBase): pass
 
 import bar
 from foo import maybe_int
 def maybe_str(x: Optional[str]) -> str:
    ...
-@attr.s
+@attrs.define
 class SubBB(SubBase):
-    xx: int = attr.ib(converter=maybe_int)
-    yy: str = attr.ib(converter=maybe_str)
-    zz: bool = attr.ib(converter=bar.maybe_bool)
+    xx: int = attrs.field(converter=maybe_int)
+    yy: str = attrs.field(converter=maybe_str)
+    zz: bool = attrs.field(converter=bar.maybe_bool)
 [builtins fixtures/list.pyi]
 [out1]
 [out2]
@@ -3341,13 +3339,13 @@ tmp/a.py:17: error: Argument 2 to "SubAA" has incompatible type "int"; expected 
 tmp/a.py:18: error: Argument 5 to "SubBB" has incompatible type "int"; expected "Optional[str]"
 
 [case testAttrsIncrementalConverterInFunction]
-import attr
+import attrs
 def foo() -> None:
     def foo(x: str) -> int:
         ...
-    @attr.s
+    @attrs.define
     class A:
-        x: int = attr.ib(converter=foo)
+        x: int = attrs.field(converter=foo)
     reveal_type(A)
 [builtins fixtures/list.pyi]
 [out1]
@@ -3366,10 +3364,10 @@ from typing import List
 def converter(s:F) -> int:
     ...
 
-import attr
-@attr.s
+import attrs
+@attrs.define
 class A:
-    x: int = attr.ib(converter=converter)
+    x: int = attrs.field(converter=converter)
 
 F = List[int]
 
@@ -3383,18 +3381,18 @@ main:3: note: Revealed type is "def (x: builtins.list[builtins.int]) -> a.a.A"
 [case testAttrsIncrementalConverterType-skip]
 
 from a import C
-import attr
+import attrs
 o = C("1", "2", "3", "4")
 o = C(1, 2, "3", 4)
 reveal_type(C)
-@attr.s
+@attrs.define
 class D(C):
-    x: str = attr.ib()
+    x: str
 reveal_type(D)
 [file a.py]
 from typing import overload
-import attr
-@attr.dataclass
+import attrs
+@attrs.define
 class A:
     x: str
 @overload
@@ -3404,13 +3402,13 @@ def parse(x: int) -> int:
 def parse(x: str, y: str = '') -> int:
    ...
 def parse(x, y): ...
-@attr.s
+@attrs.define
 class C:
-    a: complex = attr.ib(converter=complex)
-    b: int = attr.ib(converter=int)
-    c: A = attr.ib(converter=A)
-    d: int = attr.ib(converter=parse)
-[builtins fixtures/attr.pyi]
+    a: complex = attrs.field(converter=complex)
+    b: int = attrs.field(converter=int)
+    c: A = attrs.field(converter=A)
+    d: int = attrs.field(converter=parse)
+[builtins fixtures/plugin_attrs.pyi]
 [out1]
 main:6: note: Revealed type is "def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str]) -> a.C"
 main:10: note: Revealed type is "def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str], x: builtins.str) -> __main__.D"
@@ -3423,20 +3421,20 @@ from a import A
 A(5)
 
 [file a.py]
-import attr
-@attr.s(auto_attribs=True)
+import attrs
+@attrs.define
 class A:
     a: int
 
 [file a.py.2]
-import attr
-@attr.s(auto_attribs=True)
+import attrs
+@attrs.define
 class A:
     a: str
 
 [file a.py.3]
-import attr
-@attr.s(auto_attribs=True)
+import attrs
+@attrs.define
 class A:
     a: int = 6
 
@@ -3458,7 +3456,6 @@ main:2: error: Cannot find implementation or library stub for module named "a"
 main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testIncrementalInheritanceAddAnnotation]
-# flags: --strict-optional
 import a
 [file a.py]
 import b
@@ -3699,8 +3696,8 @@ cache_fine_grained = False
 [file mypy.ini.2]
 \[mypy]
 cache_fine_grained = True
-[rechecked a, builtins, typing]
-[stale a, builtins, typing]
+[rechecked _typeshed, a, builtins, typing]
+[stale _typeshed, a, builtins, typing]
 [builtins fixtures/tuple.pyi]
 
 [case testIncrementalPackageNameOverload]
@@ -3741,7 +3738,7 @@ import b
 [file b.py]
 -- This is a heinous hack, but we simulate having a invalid cache by clobbering
 -- the proto deps file with something with mtime mismatches.
-[file ../.mypy_cache/3.7/@deps.meta.json.2]
+[file ../.mypy_cache/3.8/@deps.meta.json.2]
 {"snapshot": {"__main__": "a7c958b001a45bd6a2a320f4e53c4c16", "a": "d41d8cd98f00b204e9800998ecf8427e", "b": "d41d8cd98f00b204e9800998ecf8427e", "builtins": "c532c89da517a4b779bcf7a964478d67"}, "deps_meta": {"@root": {"path": "@root.deps.json", "mtime": 0}, "__main__": {"path": "__main__.deps.json", "mtime": 0}, "a": {"path": "a.deps.json", "mtime": 0}, "b": {"path": "b.deps.json", "mtime": 0}, "builtins": {"path": "builtins.deps.json", "mtime": 0}}}
 [file ../.mypy_cache/.gitignore]
 # Another hack to not trigger a .gitignore creation failure "false positive"
@@ -3751,8 +3748,8 @@ Signature: 8a477f597d28d172789f06886806bc55
 [file b.py.2]
 # uh
 -- Every file should get reloaded, since the cache was invalidated
-[stale a, b, builtins, typing]
-[rechecked a, b, builtins, typing]
+[stale _typeshed, a, b, builtins, typing]
+[rechecked _typeshed, a, b, builtins, typing]
 [builtins fixtures/tuple.pyi]
 
 [case testIncrementalBustedFineGrainedCache2]
@@ -3764,8 +3761,8 @@ import b
 [file b.py.2]
 # uh
 -- Every file should get reloaded, since the settings changed
-[stale a, b, builtins, typing]
-[rechecked a, b, builtins, typing]
+[stale _typeshed, a, b, builtins, typing]
+[rechecked _typeshed, a, b, builtins, typing]
 [builtins fixtures/tuple.pyi]
 
 [case testIncrementalBustedFineGrainedCache3]
@@ -3776,12 +3773,12 @@ import b
 [file b.py]
 -- This is a heinous hack, but we simulate having a invalid cache by deleting
 -- the proto deps file.
-[delete ../.mypy_cache/3.7/@deps.meta.json.2]
+[delete ../.mypy_cache/3.8/@deps.meta.json.2]
 [file b.py.2]
 # uh
 -- Every file should get reloaded, since the cache was invalidated
-[stale a, b, builtins, typing]
-[rechecked a, b, builtins, typing]
+[stale _typeshed, a, b, builtins, typing]
+[rechecked _typeshed, a, b, builtins, typing]
 [builtins fixtures/tuple.pyi]
 
 [case testIncrementalWorkingFineGrainedCache]
@@ -3966,10 +3963,10 @@ class A:
 tmp/b.py:3: note: Revealed type is "def (a: builtins.int) -> a.A"
 tmp/b.py:4: note: Revealed type is "def (builtins.object, builtins.object) -> builtins.bool"
 tmp/b.py:5: note: Revealed type is "def (builtins.object, builtins.object) -> builtins.bool"
-tmp/b.py:6: note: Revealed type is "def [_DT] (self: _DT`-1, other: _DT`-1) -> builtins.bool"
-tmp/b.py:7: note: Revealed type is "def [_DT] (self: _DT`-1, other: _DT`-1) -> builtins.bool"
-tmp/b.py:8: note: Revealed type is "def [_DT] (self: _DT`-1, other: _DT`-1) -> builtins.bool"
-tmp/b.py:9: note: Revealed type is "def [_DT] (self: _DT`-1, other: _DT`-1) -> builtins.bool"
+tmp/b.py:6: note: Revealed type is "def [_DT] (self: _DT`1, other: _DT`1) -> builtins.bool"
+tmp/b.py:7: note: Revealed type is "def [_DT] (self: _DT`2, other: _DT`2) -> builtins.bool"
+tmp/b.py:8: note: Revealed type is "def [_DT] (self: _DT`3, other: _DT`3) -> builtins.bool"
+tmp/b.py:9: note: Revealed type is "def [_DT] (self: _DT`4, other: _DT`4) -> builtins.bool"
 tmp/b.py:18: error: Unsupported operand types for < ("A" and "int")
 tmp/b.py:19: error: Unsupported operand types for <= ("A" and "int")
 tmp/b.py:20: error: Unsupported operand types for > ("A" and "int")
@@ -5414,7 +5411,8 @@ reveal_type(z)
 [out]
 tmp/c.py:2: note: Revealed type is "a.<subclass of "A" and "B">"
 [out2]
-tmp/c.py:2: note: Revealed type is "a.A"
+tmp/b.py:2: error: Cannot determine type of "y"
+tmp/c.py:2: note: Revealed type is "Any"
 
 [case testIsInstanceAdHocIntersectionIncrementalUnreachaableToIntersection]
 import c
@@ -5445,7 +5443,8 @@ from b import z
 reveal_type(z)
 [builtins fixtures/isinstance.pyi]
 [out]
-tmp/c.py:2: note: Revealed type is "a.A"
+tmp/b.py:2: error: Cannot determine type of "y"
+tmp/c.py:2: note: Revealed type is "Any"
 [out2]
 tmp/c.py:2: note: Revealed type is "a.<subclass of "A" and "B">"
 
@@ -5507,7 +5506,6 @@ class Foo:
 class C: pass
 
 [case testIncrementalNestedNamedTuple]
-# flags: --python-version 3.6
 import a
 
 [file a.py]
@@ -5757,7 +5755,6 @@ class C:
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleUpdateNonRecursiveToRecursiveCoarse]
-# flags: --strict-optional
 import c
 [file a.py]
 from b import M
@@ -5800,7 +5797,6 @@ tmp/c.py:5: error: Incompatible types in assignment (expression has type "Option
 tmp/c.py:7: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
 
 [case testTupleTypeUpdateNonRecursiveToRecursiveCoarse]
-# flags: --strict-optional
 import c
 [file a.py]
 from b import M
@@ -5833,7 +5829,6 @@ tmp/c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins
 tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
 
 [case testTypeAliasUpdateNonRecursiveToRecursiveCoarse]
-# flags: --strict-optional
 import c
 [file a.py]
 from b import M
@@ -5866,7 +5861,6 @@ tmp/c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins
 tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
 
 [case testTypedDictUpdateNonRecursiveToRecursiveCoarse]
-# flags: --strict-optional
 import c
 [file a.py]
 from b import M
@@ -5941,6 +5935,44 @@ tmp/b.py:4: note: Revealed type is "def ()"
 tmp/b.py:5: note: Revealed type is "def (builtins.int) -> builtins.str"
 tmp/b.py:6: note: Revealed type is "def ()"
 tmp/b.py:7: note: Revealed type is "def (builtins.int) -> builtins.str"
+
+[case testIncrementalAddOverloadedMethodPlugin]
+# flags: --config-file tmp/mypy.ini
+import b
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/add_overloaded_method.py
+
+[file a.py]
+class AddOverloadedMethod: pass
+
+class MyClass(AddOverloadedMethod):
+    pass
+
+[file b.py]
+import a
+
+[file b.py.2]
+import a
+
+reveal_type(a.MyClass.method)
+reveal_type(a.MyClass.clsmethod)
+reveal_type(a.MyClass.stmethod)
+
+my_class = a.MyClass()
+reveal_type(my_class.method)
+reveal_type(my_class.clsmethod)
+reveal_type(my_class.stmethod)
+[rechecked b]
+[out2]
+tmp/b.py:3: note: Revealed type is "Overload(def (self: a.MyClass, arg: builtins.int) -> builtins.str, def (self: a.MyClass, arg: builtins.str) -> builtins.int)"
+tmp/b.py:4: note: Revealed type is "Overload(def (arg: builtins.int) -> builtins.str, def (arg: builtins.str) -> builtins.int)"
+tmp/b.py:5: note: Revealed type is "Overload(def (arg: builtins.int) -> builtins.str, def (arg: builtins.str) -> builtins.int)"
+tmp/b.py:8: note: Revealed type is "Overload(def (arg: builtins.int) -> builtins.str, def (arg: builtins.str) -> builtins.int)"
+tmp/b.py:9: note: Revealed type is "Overload(def (arg: builtins.int) -> builtins.str, def (arg: builtins.str) -> builtins.int)"
+tmp/b.py:10: note: Revealed type is "Overload(def (arg: builtins.int) -> builtins.str, def (arg: builtins.str) -> builtins.int)"
+
 [case testGenericNamedTupleSerialization]
 import b
 [file a.py]
@@ -6054,14 +6086,13 @@ def update() -> str: ...
 [out]
 [out2]
 tmp/m.py:9: error: Argument 1 to "setup" has incompatible type Module; expected "Options"
-tmp/m.py:9: note: Following member(s) of "Module default_config" have conflicts:
+tmp/m.py:9: note: Following member(s) of Module "default_config" have conflicts:
 tmp/m.py:9: note:     Expected:
 tmp/m.py:9: note:         def update() -> bool
 tmp/m.py:9: note:     Got:
 tmp/m.py:9: note:         def update() -> str
 
 [case testAbstractBodyTurnsEmptyCoarse]
-# flags: --strict-optional
 from b import Base
 
 class Sub(Base):
@@ -6081,7 +6112,7 @@ class Base:
     def meth(self) -> int: ...
 [out]
 [out2]
-main:6: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
+main:5: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
 
 [case testNoCrashDoubleReexportFunctionEmpty]
 import m
@@ -6332,7 +6363,7 @@ reveal_type(D.meth)
 reveal_type(D().meth)
 [out]
 [out2]
-tmp/m.py:4: note: Revealed type is "def [Self <: lib.C] (self: Self`0, other: Self`0) -> Self`0"
+tmp/m.py:4: note: Revealed type is "def [Self <: lib.C] (self: Self`1, other: Self`1) -> Self`1"
 tmp/m.py:5: note: Revealed type is "def (other: m.D) -> m.D"
 
 [case testIncrementalNestedGenericCallableCrash]
@@ -6348,3 +6379,128 @@ class C(B):
         self.x = self.foo()
 [out]
 [out2]
+
+[case testNoCrashIncrementalMetaAny]
+import a
+[file a.py]
+from m import Foo
+[file a.py.2]
+from m import Foo
+# touch
+[file m.py]
+from missing_module import Meta  # type: ignore[import]
+class Foo(metaclass=Meta): ...
+
+[case testIncrementalNativeInt]
+import a
+[file a.py]
+from mypy_extensions import i64
+x: i64 = 0
+[file a.py.2]
+from mypy_extensions import i64
+x: i64 = 0
+y: int = x
+[builtins fixtures/tuple.pyi]
+[out]
+[out2]
+
+[case testGenericTypedDictWithError]
+import b
+[file a.py]
+from typing import Generic, TypeVar
+from typing_extensions import TypedDict
+
+TValue = TypeVar("TValue")
+class Dict(TypedDict, Generic[TValue]):
+    value: TValue
+
+[file b.py]
+from a import Dict, TValue
+
+def f(d: Dict[TValue]) -> TValue:
+    return d["value"]
+def g(d: Dict[TValue]) -> TValue:
+    return d["x"]
+
+[file b.py.2]
+from a import Dict, TValue
+
+def f(d: Dict[TValue]) -> TValue:
+    return d["value"]
+def g(d: Dict[TValue]) -> TValue:
+    return d["y"]
+[builtins fixtures/dict.pyi]
+[out]
+tmp/b.py:6: error: TypedDict "a.Dict[TValue]" has no key "x"
+[out2]
+tmp/b.py:6: error: TypedDict "a.Dict[TValue]" has no key "y"
+
+[case testParamSpecNoCrash]
+import m
+[file m.py]
+from typing import Callable, TypeVar
+from lib import C
+
+T = TypeVar("T")
+def test(x: Callable[..., T]) -> T: ...
+test(C)  # type: ignore
+
+[file m.py.2]
+from typing import Callable, TypeVar
+from lib import C
+
+T = TypeVar("T")
+def test(x: Callable[..., T]) -> T: ...
+test(C)  # type: ignore
+# touch
+[file lib.py]
+from typing import ParamSpec, Generic, Callable
+
+P = ParamSpec("P")
+class C(Generic[P]):
+    def __init__(self, fn: Callable[P, int]) -> None: ...
+[builtins fixtures/dict.pyi]
+
+[case testVariadicTupleIncrementalUpdateNoCrash]
+import m
+[file m.py]
+from typing import Any
+from lib import C
+
+x: C[Any]
+[file m.py.2]
+from lib import C
+
+x: C[int]
+[file lib.py]
+from typing import Generic, Tuple, TypeVar
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class C(Tuple[Unpack[Ts]]): ...
+[builtins fixtures/tuple.pyi]
+
+[case testNoIncrementalCrashOnInvalidTypedDict]
+import m
+[file m.py]
+import counts
+[file m.py.2]
+import counts
+# touch
+[file counts.py]
+from typing_extensions import TypedDict
+Counts = TypedDict("Counts", {k: int for k in "abc"})  # type: ignore
+[builtins fixtures/dict.pyi]
+
+[case testNoIncrementalCrashOnInvalidTypedDictFunc]
+import m
+[file m.py]
+import counts
+[file m.py.2]
+import counts
+# touch
+[file counts.py]
+from typing_extensions import TypedDict
+def test() -> None:
+    Counts = TypedDict("Counts", {k: int for k in "abc"})  # type: ignore
+[builtins fixtures/dict.pyi]

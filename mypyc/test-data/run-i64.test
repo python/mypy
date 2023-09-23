@@ -1,9 +1,7 @@
 [case testI64BasicOps]
-from typing import List, Any, Tuple
+from typing import List, Any, Tuple, Union
 
-MYPY = False
-if MYPY:
-    from mypy_extensions import i64, i32
+from mypy_extensions import i64, i32, i16
 
 from testutil import assertRaises
 
@@ -284,6 +282,10 @@ def test_explicit_conversion_to_i64() -> None:
     assert x == -1733
     z = i64(x)
     assert z == -1733
+    a: i16 = int() + 19764
+    assert i64(a) == 19764
+    a = int() - 1
+    assert i64(a) == -1
 
 def test_explicit_conversion_overflow() -> None:
     max_i64 = int() + 2**63 - 1
@@ -309,6 +311,69 @@ def test_i64_from_large_small_literal() -> None:
     assert x == 2**63 - 1
     x = i64(-2**63)
     assert x == -2**63
+
+def from_float(x: float) -> i64:
+    return i64(x)
+
+def test_explicit_conversion_from_float() -> None:
+    assert from_float(0.0) == 0
+    assert from_float(1.456) == 1
+    assert from_float(-1234.567) == -1234
+    # Subtract 1024 due to limited precision of 64-bit floats
+    assert from_float(2**63 - 1024) == 2**63 - 1024
+    assert from_float(-2**63) == -2**63
+    # The error message could be better, but this is acceptable
+    with assertRaises(OverflowError, "int too large to convert to i64"):
+        assert from_float(float(2**63))
+    with assertRaises(OverflowError, "int too large to convert to i64"):
+        # One ulp below the lowest valid i64 value
+        from_float(float(-2**63 - 2048))
+
+def from_str(s: str) -> i64:
+    return i64(s)
+
+def test_explicit_conversion_from_str() -> None:
+    assert from_str("0") == 0
+    assert from_str("1") == 1
+    assert from_str("-1234") == -1234
+    with assertRaises(ValueError):
+        from_str("1.2")
+
+def from_str_with_base(s: str, base: int) -> i64:
+    return i64(s, base)
+
+def test_explicit_conversion_from_str_with_base() -> None:
+    assert from_str_with_base("101", 2) == 5
+    assert from_str_with_base("109", 10) == 109
+    assert from_str_with_base("-f0A", 16) == -3850
+    assert from_str_with_base("0x1a", 16) == 26
+    assert from_str_with_base("0X1A", 16) == 26
+    with assertRaises(ValueError):
+        from_str_with_base("1.2", 16)
+
+def from_bool(b: bool) -> i64:
+    return i64(b)
+
+def test_explicit_conversion_from_bool() -> None:
+    assert from_bool(True) == 1
+    assert from_bool(False) == 0
+
+class IntConv:
+    def __init__(self, x: i64) -> None:
+        self.x = x
+
+    def __int__(self) -> i64:
+        return self.x + 1
+
+def test_explicit_conversion_from_instance() -> None:
+    assert i64(IntConv(0)) == 1
+    assert i64(IntConv(12345)) == 12346
+    assert i64(IntConv(-23)) == -22
+
+def test_explicit_conversion_from_any() -> None:
+    # This can't be specialized
+    a: Any = "101"
+    assert i64(a, base=2) == 5
 
 def test_tuple_i64() -> None:
     a: i64 = 1
@@ -435,16 +500,28 @@ def test_for_loop() -> None:
     assert n == 9
     assert sum([x * x for x in range(i64(4 + int()))]) == 1 + 4 + 9
 
+def narrow1(x: Union[str, i64]) -> i64:
+    if isinstance(x, i64):
+        return x
+    return len(x)
+
+def narrow2(x: Union[str, i64]) -> i64:
+    if isinstance(x, int):
+        return x
+    return len(x)
+
+def test_isinstance() -> None:
+    assert narrow1(123) == 123
+    assert narrow1("foobar") == 6
+    assert narrow2(123) == 123
+    assert narrow2("foobar") == 6
+
 [case testI64ErrorValuesAndUndefined]
 from typing import Any, Tuple
 import sys
 
-from mypy_extensions import mypyc_attr
+from mypy_extensions import mypyc_attr, i64
 from typing_extensions import Final
-
-MYPY = False
-if MYPY:
-    from mypy_extensions import i64
 
 from testutil import assertRaises
 
@@ -833,9 +910,7 @@ from typing_extensions import Final
 
 MAGIC: Final = -113
 
-MYPY = False
-if MYPY:
-    from mypy_extensions import i64
+from mypy_extensions import i64
 
 def f(x: i64, y: i64 = 5) -> i64:
     return x + y
@@ -1133,9 +1208,7 @@ def test_magic_default() -> None:
 [case testI64UndefinedLocal]
 from typing_extensions import Final
 
-MYPY = False
-if MYPY:
-    from mypy_extensions import i64, i32
+from mypy_extensions import i64, i32
 
 from testutil import assertRaises
 
@@ -1268,9 +1341,7 @@ def test_many_locals() -> None:
 from typing import Any
 from typing_extensions import Final
 
-MYPY = False
-if MYPY:
-    from mypy_extensions import i64, trait
+from mypy_extensions import i64, trait
 
 from testutil import assertRaises
 
@@ -1371,3 +1442,78 @@ def test_read_only_property_in_trait_implemented_as_property() -> None:
     assert t.x == 6
     with assertRaises(TypeError):
         t.y
+
+@trait
+class T2:
+    x: i64
+    y: i64
+
+class C2(T2):
+    pass
+
+def test_inherit_trait_attribute() -> None:
+    c = C2()
+    c.x = 5
+    assert c.x == 5
+    c.x = MAGIC
+    assert c.x == MAGIC
+    with assertRaises(AttributeError):
+        c.y
+    c.y = 6
+    assert c.y == 6
+    t: T2 = C2()
+    with assertRaises(AttributeError):
+        t.y
+    t = c
+    assert t.x == MAGIC
+    c.x = 55
+    assert t.x == 55
+    assert t.y == 6
+    a: Any = c
+    assert a.x == 55
+    assert a.y == 6
+    a.x = 7
+    a.y = 8
+    assert a.x == 7
+    assert a.y == 8
+
+class D2(T2):
+    x: i64
+    y: i64 = 4
+
+def test_implement_trait_attribute() -> None:
+    d = D2()
+    d.x = 5
+    assert d.x == 5
+    d.x = MAGIC
+    assert d.x == MAGIC
+    assert d.y == 4
+    d.y = 6
+    assert d.y == 6
+    t: T2 = D2()
+    assert t.y == 4
+    t = d
+    assert t.x == MAGIC
+    d.x = 55
+    assert t.x == 55
+    assert t.y == 6
+    a: Any = d
+    assert a.x == 55
+    assert a.y == 6
+    a.x = 7
+    a.y = 8
+    assert a.x == 7
+    assert a.y == 8
+
+class DunderErr:
+    def __contains__(self, i: i64) -> bool:
+        raise IndexError()
+
+def test_dunder_arg_check() -> None:
+    o: Any = DunderErr()
+    with assertRaises(TypeError):
+        'x' in o
+    with assertRaises(TypeError):
+        2**63 in o
+    with assertRaises(IndexError):
+        1 in o

@@ -136,6 +136,7 @@ class MutableSequence(Sequence[T]):
     def __setitem__(self, n: Any, o: T) -> None: pass
 
 class Mapping(Iterable[T], Generic[T, T_co], metaclass=ABCMeta):
+    def keys(self) -> Iterable[T]: pass  # Approximate return type
     def __getitem__(self, key: T) -> T_co: pass
     @overload
     def get(self, k: T) -> Optional[T_co]: pass
@@ -181,3 +182,13 @@ class _TypedDict(Mapping[str, object]):
     def __delitem__(self, k: NoReturn) -> None: ...
 
 class _SpecialForm: pass
+
+def dataclass_transform(
+    *,
+    eq_default: bool = ...,
+    order_default: bool = ...,
+    kw_only_default: bool = ...,
+    field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
+    **kwargs: Any,
+) -> Callable[[T], T]: ...
+def override(__arg: T) -> T: ...

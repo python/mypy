@@ -319,10 +319,11 @@ class MyHashable(Protocol):
 class C:
     __my_hash__ = None
 
-var: MyHashable = C()  # E: Incompatible types in assignment (expression has type "C", variable has type "MyHashable")
+var: MyHashable = C()  # E: Incompatible types in assignment (expression has type "C", variable has type "MyHashable") \
+                       # N: Following member(s) of "C" have conflicts: \
+                       # N:     __my_hash__: expected "Callable[[], int]", got "None"
 
 [case testNoneDisablesProtocolSubclassingWithStrictOptional]
-# flags: --strict-optional
 from typing import Protocol
 
 class MyHashable(Protocol):
@@ -334,7 +335,6 @@ class C(MyHashable):
 (expression has type "None", base class "MyHashable" defined the type as "Callable[[MyHashable], int]")
 
 [case testProtocolsWithNoneAndStrictOptional]
-# flags: --strict-optional
 from typing import Protocol
 class P(Protocol):
     x = 0  # type: int
@@ -346,12 +346,12 @@ x: P = C() # Error!
 def f(x: P) -> None: pass
 f(C()) # Error!
 [out]
-main:9: error: Incompatible types in assignment (expression has type "C", variable has type "P")
-main:9: note: Following member(s) of "C" have conflicts:
-main:9: note:     x: expected "int", got "None"
-main:11: error: Argument 1 to "f" has incompatible type "C"; expected "P"
-main:11: note: Following member(s) of "C" have conflicts:
-main:11: note:     x: expected "int", got "None"
+main:8: error: Incompatible types in assignment (expression has type "C", variable has type "P")
+main:8: note: Following member(s) of "C" have conflicts:
+main:8: note:     x: expected "int", got "None"
+main:10: error: Argument 1 to "f" has incompatible type "C"; expected "P"
+main:10: note: Following member(s) of "C" have conflicts:
+main:10: note:     x: expected "int", got "None"
 
 -- Semanal errors in protocol types
 -- --------------------------------
@@ -794,7 +794,7 @@ main:18: note:         def attr2(self) -> str
 [case testSelfTypesWithProtocolsBehaveAsWithNominal]
 from typing import Protocol, TypeVar
 
-T = TypeVar('T', bound=Shape)
+T = TypeVar('T', bound='Shape')
 class Shape(Protocol):
     def combine(self: T, other: T) -> T:
         pass
@@ -928,7 +928,7 @@ class L:
 
 def last(seq: Linked[T]) -> T:
     pass
-last(L()) # E: Argument 1 to "last" has incompatible type "L"; expected "Linked[<nothing>]"
+last(L()) # E: Argument 1 to "last" has incompatible type "L"; expected "Linked[Never]"
 
 [case testMutuallyRecursiveProtocols]
 from typing import Protocol, Sequence, List
@@ -1263,13 +1263,13 @@ if int():
 [builtins fixtures/classmethod.pyi]
 
 [case testOverloadedMethodsInProtocols]
-from typing import overload, Protocol, Union
+from typing import overload, Protocol, Union, Optional
 
 class P(Protocol):
     @overload
-    def f(self, x: int) -> int: pass
+    def f(self, x: int) -> Optional[int]: pass
     @overload
-    def f(self, x: str) -> str: pass
+    def f(self, x: str) -> Optional[str]: pass
 
 class C:
     def f(self, x: Union[int, str]) -> None:
@@ -1286,9 +1286,9 @@ main:18: error: Incompatible types in assignment (expression has type "D", varia
 main:18: note: Following member(s) of "D" have conflicts:
 main:18: note:     Expected:
 main:18: note:         @overload
-main:18: note:         def f(self, x: int) -> int
+main:18: note:         def f(self, x: int) -> Optional[int]
 main:18: note:         @overload
-main:18: note:         def f(self, x: str) -> str
+main:18: note:         def f(self, x: str) -> Optional[str]
 main:18: note:     Got:
 main:18: note:         def f(self, x: int) -> None
 
@@ -1441,6 +1441,7 @@ def g(x: P, y: P2) -> None: pass
 reveal_type(f(g)) # N: Revealed type is "__main__.P2"
 
 [case testMeetOfIncompatibleProtocols]
+# flags: --no-strict-optional
 from typing import Protocol, Callable, TypeVar
 
 class P(Protocol):
@@ -1634,6 +1635,7 @@ f(Alias)  # E: Only concrete class can be given where "Type[P]" is expected
 f(GoodAlias)
 
 [case testInstantiationProtocolInTypeForVariables]
+# flags: --no-strict-optional
 from typing import Type, Protocol
 
 class P(Protocol):
@@ -2280,7 +2282,6 @@ def func2(arg: Optional[A]) -> None: ...
 x: B
 func1(x)
 func2(x)
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/dict.pyi]
 [out]
 main:14: error: Argument 1 to "func1" has incompatible type "B"; expected "A"
@@ -2398,6 +2399,7 @@ x: P = None
 [out]
 
 [case testNoneSubtypeOfAllProtocolsWithoutStrictOptional]
+# flags: --no-strict-optional
 from typing import Protocol
 class P(Protocol):
     attr: int
@@ -2408,7 +2410,6 @@ x: P = None
 [out]
 
 [case testNoneSubtypeOfEmptyProtocolStrict]
-# flags: --strict-optional
 from typing import Protocol
 class P(Protocol):
     pass
@@ -2790,6 +2791,70 @@ class A(Protocol):
 
 [builtins fixtures/tuple.pyi]
 
+[case testProtocolSlotsIsNotProtocolMember]
+# https://github.com/python/mypy/issues/11884
+from typing import Protocol
+
+class Foo(Protocol):
+    __slots__ = ()
+class NoSlots:
+    pass
+class EmptySlots:
+    __slots__ = ()
+class TupleSlots:
+    __slots__ = ('x', 'y')
+class StringSlots:
+    __slots__ = 'x y'
+class InitSlots:
+    __slots__ = ('x',)
+    def __init__(self) -> None:
+        self.x = None
+def foo(f: Foo):
+    pass
+
+# All should pass:
+foo(NoSlots())
+foo(EmptySlots())
+foo(TupleSlots())
+foo(StringSlots())
+foo(InitSlots())
+[builtins fixtures/tuple.pyi]
+
+[case testProtocolSlotsAndRuntimeCheckable]
+from typing import Protocol, runtime_checkable
+
+@runtime_checkable
+class Foo(Protocol):
+    __slots__ = ()
+class Bar:
+    pass
+issubclass(Bar, Foo)  # Used to be an error, when `__slots__` counted as a protocol member
+[builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-full.pyi]
+
+
+[case testProtocolWithClassGetItem]
+# https://github.com/python/mypy/issues/11886
+from typing import Any, Iterable, Protocol, Union
+
+class B:
+    ...
+
+class C:
+    def __class_getitem__(cls, __item: Any) -> Any:
+        ...
+
+class SupportsClassGetItem(Protocol):
+    __slots__: Union[str, Iterable[str]] = ()
+    def __class_getitem__(cls, __item: Any) -> Any:
+        ...
+
+b1: SupportsClassGetItem = B()
+c1: SupportsClassGetItem = C()
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+
 [case testNoneVsProtocol]
 # mypy: strict-optional
 from typing_extensions import Protocol
@@ -2891,7 +2956,6 @@ class MyClass:
 
 
 [case testPartialAttributeNoneTypeStrictOptional]
-# flags: --strict-optional
 from typing import Optional, Protocol, runtime_checkable
 
 @runtime_checkable
@@ -3012,7 +3076,6 @@ def round(number: SupportsRound[_T], ndigits: int) -> _T: ...
 round(C(), 1)
 
 [case testEmptyBodyImplicitlyAbstractProtocol]
-# flags: --strict-optional
 from typing import Protocol, overload, Union
 
 class P1(Protocol):
@@ -3059,7 +3122,6 @@ C3()
 [builtins fixtures/classmethod.pyi]
 
 [case testEmptyBodyImplicitlyAbstractProtocolProperty]
-# flags: --strict-optional
 from typing import Protocol
 
 class P1(Protocol):
@@ -3154,7 +3216,6 @@ D() # E: Cannot instantiate abstract class "D" with abstract attribute "meth"
 [builtins fixtures/exception.pyi]
 
 [case testEmptyBodyNoneCompatibleProtocol]
-# flags: --strict-optional
 from abc import abstractmethod
 from typing import Any, Optional, Protocol, Union, overload
 from typing_extensions import TypeAlias
@@ -3191,7 +3252,6 @@ class NoneCompatible3(Protocol):
 
 class C(NoneCompatible3): ...
 C() # E: Cannot instantiate abstract class "C" with abstract attributes "f", "g" and "h"
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/classmethod.pyi]
 
 [case testEmptyBodyWithFinal]
@@ -3524,7 +3584,12 @@ class C:
 def test(arg: P) -> None: ...
 test(B)  # OK
 test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
-         # N: "C" has constructor incompatible with "__call__" of "P"
+         # N: "C" has constructor incompatible with "__call__" of "P" \
+         # N: Following member(s) of "C" have conflicts: \
+         # N:     Expected: \
+         # N:         def __call__(x: int, y: int) -> Any \
+         # N:     Got: \
+         # N:         def __init__(x: int, y: str) -> C
 
 [case testProtocolClassObjectPureCallback]
 from typing import Any, ClassVar, Protocol
@@ -3540,7 +3605,36 @@ class C:
 def test(arg: P) -> None: ...
 test(B)  # OK
 test(C)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
-         # N: "C" has constructor incompatible with "__call__" of "P"
+         # N: "C" has constructor incompatible with "__call__" of "P" \
+         # N: Following member(s) of "C" have conflicts: \
+         # N:     Expected: \
+         # N:         def __call__(x: int, y: int) -> Any \
+         # N:     Got: \
+         # N:         def __init__(x: int, y: str) -> C
+[builtins fixtures/type.pyi]
+
+[case testProtocolClassObjectCallableError]
+from typing import Protocol, Any, Callable
+
+class P(Protocol):
+    def __call__(self, app: int) -> Callable[[str], None]:
+        ...
+
+class C:
+    def __init__(self, app: str) -> None:
+        pass
+
+    def __call__(self, el: str) -> None:
+        return None
+
+p: P = C  # E: Incompatible types in assignment (expression has type "Type[C]", variable has type "P") \
+          # N: Following member(s) of "C" have conflicts: \
+          # N:     Expected: \
+          # N:         def __call__(app: int) -> Callable[[str], None] \
+          # N:     Got: \
+          # N:         def __init__(app: str) -> C \
+          # N: "P.__call__" has type "Callable[[Arg(int, 'app')], Callable[[str], None]]"
+
 [builtins fixtures/type.pyi]
 
 [case testProtocolTypeTypeAttribute]
@@ -3720,10 +3814,10 @@ setup(bad_config_1)  # E: Argument 1 to "setup" has incompatible type Module; ex
                      # N: "ModuleType" is missing following "Options" protocol member: \
                      # N:     timeout
 setup(bad_config_2)  # E: Argument 1 to "setup" has incompatible type Module; expected "Options" \
-                     # N: Following member(s) of "Module bad_config_2" have conflicts: \
+                     # N: Following member(s) of Module "bad_config_2" have conflicts: \
                      # N:     one_flag: expected "bool", got "int"
 setup(bad_config_3)  # E: Argument 1 to "setup" has incompatible type Module; expected "Options" \
-                     # N: Following member(s) of "Module bad_config_3" have conflicts: \
+                     # N: Following member(s) of Module "bad_config_3" have conflicts: \
                      # N:     Expected: \
                      # N:         def update() -> bool \
                      # N:     Got: \
@@ -3789,7 +3883,7 @@ class Result(Protocol):
 def run(x: Runner) -> None: ...
 run(runner)  # OK
 run(bad_runner)  # E: Argument 1 to "run" has incompatible type Module; expected "Runner" \
-                 # N: Following member(s) of "Module bad_runner" have conflicts: \
+                 # N: Following member(s) of Module "bad_runner" have conflicts: \
                  # N:     Expected: \
                  # N:         def (int, /) -> Result \
                  # N:     Got: \
@@ -3821,7 +3915,7 @@ class Result(Protocol):
 def run(x: Runner) -> None: ...
 run(runner)  # OK
 run(bad_runner)  # E: Argument 1 to "run" has incompatible type Module; expected "Runner" \
-                 # N: Following member(s) of "Module bad_runner" have conflicts: \
+                 # N: Following member(s) of Module "bad_runner" have conflicts: \
                  # N:     Expected: \
                  # N:         def (int, /) -> Result \
                  # N:     Got: \
@@ -3977,3 +4071,59 @@ class C:
     DEFAULT: ClassVar[C]
 
 x: P = C()
+
+[case testInferenceViaTypeTypeMetaclass]
+from typing import Iterator, Iterable, TypeVar, Type
+
+M = TypeVar("M")
+
+class Meta(type):
+    def __iter__(self: Type[M]) -> Iterator[M]: ...
+class Foo(metaclass=Meta): ...
+
+T = TypeVar("T")
+def test(x: Iterable[T]) -> T: ...
+
+reveal_type(test(Foo))  # N: Revealed type is "__main__.Foo"
+t_foo: Type[Foo]
+reveal_type(test(t_foo))  # N: Revealed type is "__main__.Foo"
+
+TF = TypeVar("TF", bound=Foo)
+def outer(cls: Type[TF]) -> TF:
+    reveal_type(test(cls))  # N: Revealed type is "TF`-1"
+    return cls()
+
+[case testProtocolImportNotMember]
+import m
+import lib
+
+class Bad:
+    x: int
+class Good:
+    x: lib.C
+
+x: m.P = Bad()  # E: Incompatible types in assignment (expression has type "Bad", variable has type "P") \
+                # N: Following member(s) of "Bad" have conflicts: \
+                # N:     x: expected "C", got "int"
+x = Good()
+
+[file m.py]
+from typing import Protocol
+
+class P(Protocol):
+    import lib
+    x: lib.C
+
+[file lib.py]
+class C: ...
+
+[case testAllowDefaultConstructorInProtocols]
+from typing import Protocol
+
+class P(Protocol):
+    x: int
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+class C(P): ...
+C(0)  # OK

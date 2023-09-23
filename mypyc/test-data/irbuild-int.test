@@ -222,3 +222,14 @@ def int_to_int(n):
     n :: int
 L0:
     return n
+
+[case testIntUnaryPlus]
+def unary_plus(n: int) -> int:
+    x = +n
+    return x
+[out]
+def unary_plus(n):
+    n, x :: int
+L0:
+    x = n
+    return x

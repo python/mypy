@@ -24,7 +24,7 @@ import requests
 
 
 def check_state() -> None:
-    if not os.path.isfile("README.md") and not os.path.isdir("mypy"):
+    if not os.path.isfile("pyproject.toml") or not os.path.isdir("mypy"):
         sys.exit("error: The current working directory must be the mypy repository root")
     out = subprocess.check_output(["git", "status", "-s", os.path.join("mypy", "typeshed")])
     if out:
@@ -35,10 +35,13 @@ def check_state() -> None:
 def update_typeshed(typeshed_dir: str, commit: str | None) -> str:
     """Update contents of local typeshed copy.
 
+    We maintain our own separate mypy_extensions stubs, since it's
+    treated specially by mypy and we make assumptions about what's there.
+    We don't sync mypy_extensions stubs here -- this is done manually.
+
     Return the normalized typeshed commit hash.
     """
     assert os.path.isdir(os.path.join(typeshed_dir, "stdlib"))
-    assert os.path.isdir(os.path.join(typeshed_dir, "stubs"))
     if commit:
         subprocess.run(["git", "checkout", commit], check=True, cwd=typeshed_dir)
     commit = git_head_commit(typeshed_dir)
@@ -48,15 +51,6 @@ def update_typeshed(typeshed_dir: str, commit: str | None) -> str:
     shutil.rmtree(stdlib_dir)
     # Copy new stdlib stubs.
     shutil.copytree(os.path.join(typeshed_dir, "stdlib"), stdlib_dir)
-    # Copy mypy_extensions stubs. We don't want to use a stub package, since it's
-    # treated specially by mypy and we make assumptions about what's there.
-    stubs_dir = os.path.join("mypy", "typeshed", "stubs")
-    shutil.rmtree(stubs_dir)
-    os.makedirs(stubs_dir)
-    shutil.copytree(
-        os.path.join(typeshed_dir, "stubs", "mypy-extensions"),
-        os.path.join(stubs_dir, "mypy-extensions"),
-    )
     shutil.copy(os.path.join(typeshed_dir, "LICENSE"), os.path.join("mypy", "typeshed"))
     return commit
 
@@ -185,12 +179,27 @@ def main() -> None:
     print("Created typeshed sync commit.")
 
     commits_to_cherry_pick = [
-        "780534b13722b7b0422178c049a1cbbf4ea4255b",  # LiteralString reverts
-        "5319fa34a8004c1568bb6f032a07b8b14cc95bed",  # sum reverts
-        "0062994228fb62975c6cef4d2c80d00c7aa1c545",  # ctypes reverts
+        "9859fe7ba",  # LiteralString reverts
+        "378a866e9",  # sum reverts
+        "2816b97d5",  # ctypes reverts
+        "7d987a105",  # ParamSpec for functools.wraps
     ]
     for commit in commits_to_cherry_pick:
-        subprocess.run(["git", "cherry-pick", commit], check=True)
+        try:
+            subprocess.run(["git", "cherry-pick", commit], check=True)
+        except subprocess.CalledProcessError:
+            if not sys.__stdin__.isatty():
+                # We're in an automated context
+                raise
+
+            # Allow the option to merge manually
+            print(
+                f"Commit {commit} failed to cherry pick."
+                " In a separate shell, please manually merge and continue cherry pick."
+            )
+            rsp = input("Did you finish the cherry pick? [y/N]: ")
+            if rsp.lower() not in {"y", "yes"}:
+                raise
         print(f"Cherry-picked {commit}.")
 
     if args.make_pr:

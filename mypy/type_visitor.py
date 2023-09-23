@@ -14,8 +14,7 @@ other modules refer to them.
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Any, Callable, Generic, Iterable, Sequence, TypeVar, cast
-from typing_extensions import Final
+from typing import Any, Callable, Final, Generic, Iterable, Sequence, TypeVar, cast
 
 from mypy_extensions import mypyc_attr, trait
 
@@ -35,7 +34,6 @@ from mypy.types import (
     PartialType,
     PlaceholderType,
     RawExpressionType,
-    StarType,
     TupleType,
     Type,
     TypeAliasType,
@@ -153,11 +151,8 @@ class TypeVisitor(Generic[T]):
 class SyntheticTypeVisitor(TypeVisitor[T]):
     """A TypeVisitor that also knows how to visit synthetic AST constructs.
 
-    Not just real types."""
-
-    @abstractmethod
-    def visit_star_type(self, t: StarType) -> T:
-        pass
+    Not just real types.
+    """
 
     @abstractmethod
     def visit_type_list(self, t: TypeList) -> T:
@@ -350,13 +345,13 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.strategy([])
 
     def visit_type_var(self, t: TypeVarType) -> T:
-        return self.query_types([t.upper_bound] + t.values)
+        return self.query_types([t.upper_bound, t.default] + t.values)
 
     def visit_param_spec(self, t: ParamSpecType) -> T:
-        return self.strategy([])
+        return self.query_types([t.upper_bound, t.default, t.prefix])
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> T:
-        return self.strategy([])
+        return self.query_types([t.upper_bound, t.default])
 
     def visit_unpack_type(self, t: UnpackType) -> T:
         return self.query_types([t.type])
@@ -385,9 +380,6 @@ class TypeQuery(SyntheticTypeVisitor[T]):
 
     def visit_literal_type(self, t: LiteralType) -> T:
         return self.strategy([])
-
-    def visit_star_type(self, t: StarType) -> T:
-        return t.type.accept(self)
 
     def visit_union_type(self, t: UnionType) -> T:
         return self.query_types(t.items)
@@ -487,13 +479,13 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
         return self.default
 
     def visit_type_var(self, t: TypeVarType) -> bool:
-        return self.query_types([t.upper_bound] + t.values)
+        return self.query_types([t.upper_bound, t.default] + t.values)
 
     def visit_param_spec(self, t: ParamSpecType) -> bool:
-        return self.default
+        return self.query_types([t.upper_bound, t.default])
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> bool:
-        return self.default
+        return self.query_types([t.upper_bound, t.default])
 
     def visit_unpack_type(self, t: UnpackType) -> bool:
         return self.query_types([t.type])
@@ -528,9 +520,6 @@ class BoolTypeQuery(SyntheticTypeVisitor[bool]):
 
     def visit_literal_type(self, t: LiteralType) -> bool:
         return self.default
-
-    def visit_star_type(self, t: StarType) -> bool:
-        return t.type.accept(self)
 
     def visit_union_type(self, t: UnionType) -> bool:
         return self.query_types(t.items)

@@ -52,7 +52,7 @@ Summary of how this works for certain kinds of differences:
 
 from __future__ import annotations
 
-from typing import Sequence, Tuple, cast
+from typing import Sequence, Tuple, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.expandtype import expand_type
@@ -73,6 +73,7 @@ from mypy.nodes import (
     TypeVarTupleExpr,
     Var,
 )
+from mypy.semanal_shared import find_dataclass_transform_spec
 from mypy.types import (
     AnyType,
     CallableType,
@@ -109,11 +110,17 @@ from mypy.util import get_prefix
 # snapshots are immutable).
 #
 # For example, the snapshot of the 'int' type is ('Instance', 'builtins.int', ()).
-SnapshotItem: _TypeAlias = Tuple[object, ...]
+
+# Type snapshots are strict, they must be hashable and ordered (e.g. for Unions).
+Primitive: _TypeAlias = Union[str, float, int, bool]  # float is for Literal[3.14] support.
+SnapshotItem: _TypeAlias = Tuple[Union[Primitive, "SnapshotItem"], ...]
+
+# Symbol snapshots can be more lenient.
+SymbolSnapshot: _TypeAlias = Tuple[object, ...]
 
 
 def compare_symbol_table_snapshots(
-    name_prefix: str, snapshot1: dict[str, SnapshotItem], snapshot2: dict[str, SnapshotItem]
+    name_prefix: str, snapshot1: dict[str, SymbolSnapshot], snapshot2: dict[str, SymbolSnapshot]
 ) -> set[str]:
     """Return names that are different in two snapshots of a symbol table.
 
@@ -155,7 +162,7 @@ def compare_symbol_table_snapshots(
     return triggers
 
 
-def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> dict[str, SnapshotItem]:
+def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> dict[str, SymbolSnapshot]:
     """Create a snapshot description that represents the state of a symbol table.
 
     The snapshot has a representation based on nested tuples and dicts
@@ -165,7 +172,7 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> dict[str, Sna
     things defined in other modules are represented just by the names of
     the targets.
     """
-    result: dict[str, SnapshotItem] = {}
+    result: dict[str, SymbolSnapshot] = {}
     for name, symbol in table.items():
         node = symbol.node
         # TODO: cross_ref?
@@ -183,6 +190,7 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> dict[str, Sna
                 node.variance,
                 [snapshot_type(value) for value in node.values],
                 snapshot_type(node.upper_bound),
+                snapshot_type(node.default),
             )
         elif isinstance(node, TypeAlias):
             result[name] = (
@@ -193,9 +201,19 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> dict[str, Sna
                 snapshot_optional_type(node.target),
             )
         elif isinstance(node, ParamSpecExpr):
-            result[name] = ("ParamSpec", node.variance, snapshot_type(node.upper_bound))
+            result[name] = (
+                "ParamSpec",
+                node.variance,
+                snapshot_type(node.upper_bound),
+                snapshot_type(node.default),
+            )
         elif isinstance(node, TypeVarTupleExpr):
-            result[name] = ("TypeVarTuple", node.variance, snapshot_type(node.upper_bound))
+            result[name] = (
+                "TypeVarTuple",
+                node.variance,
+                snapshot_type(node.upper_bound),
+                snapshot_type(node.default),
+            )
         else:
             assert symbol.kind != UNBOUND_IMPORTED
             if node and get_prefix(node.fullname) != name_prefix:
@@ -206,7 +224,7 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> dict[str, Sna
     return result
 
 
-def snapshot_definition(node: SymbolNode | None, common: tuple[object, ...]) -> tuple[object, ...]:
+def snapshot_definition(node: SymbolNode | None, common: SymbolSnapshot) -> SymbolSnapshot:
     """Create a snapshot description of a symbol table node.
 
     The representation is nested tuples and dicts. Only externally
@@ -224,6 +242,7 @@ def snapshot_definition(node: SymbolNode | None, common: tuple[object, ...]) -> 
         elif isinstance(node, OverloadedFuncDef) and node.impl:
             impl = node.impl.func if isinstance(node.impl, Decorator) else node.impl
         is_trivial_body = impl.is_trivial_body if impl else False
+        dataclass_transform_spec = find_dataclass_transform_spec(node)
         return (
             "Func",
             common,
@@ -233,6 +252,7 @@ def snapshot_definition(node: SymbolNode | None, common: tuple[object, ...]) -> 
             node.is_static,
             signature,
             is_trivial_body,
+            dataclass_transform_spec.serialize() if dataclass_transform_spec is not None else None,
         )
     elif isinstance(node, Var):
         return ("Var", common, snapshot_optional_type(node.type), node.is_final)
@@ -250,11 +270,16 @@ def snapshot_definition(node: SymbolNode | None, common: tuple[object, ...]) -> 
             snapshot_definition(node.func, common),
         )
     elif isinstance(node, TypeInfo):
+        dataclass_transform_spec = node.dataclass_transform_spec
+        if dataclass_transform_spec is None:
+            dataclass_transform_spec = find_dataclass_transform_spec(node)
+
         attrs = (
             node.is_abstract,
             node.is_enum,
             node.is_protocol,
             node.fallback_to_any,
+            node.meta_fallback_to_any,
             node.is_named_tuple,
             node.is_newtype,
             # We need this to e.g. trigger metaclass calculation in subclasses.
@@ -273,6 +298,7 @@ def snapshot_definition(node: SymbolNode | None, common: tuple[object, ...]) -> 
             tuple(snapshot_type(tdef) for tdef in node.defn.type_vars),
             [snapshot_type(base) for base in node.bases],
             [snapshot_type(p) for p in node._promote],
+            dataclass_transform_spec.serialize() if dataclass_transform_spec is not None else None,
         )
         prefix = node.fullname
         symbol_table = snapshot_symbol_table(prefix, node.names)
@@ -289,11 +315,11 @@ def snapshot_type(typ: Type) -> SnapshotItem:
     return typ.accept(SnapshotTypeVisitor())
 
 
-def snapshot_optional_type(typ: Type | None) -> SnapshotItem | None:
+def snapshot_optional_type(typ: Type | None) -> SnapshotItem:
     if typ:
         return snapshot_type(typ)
     else:
-        return None
+        return ("<not set>",)
 
 
 def snapshot_types(types: Sequence[Type]) -> SnapshotItem:
@@ -367,6 +393,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
             typ.id.meta_level,
             snapshot_types(typ.values),
             snapshot_type(typ.upper_bound),
+            snapshot_type(typ.default),
             typ.variance,
         )
 
@@ -377,6 +404,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
             typ.id.meta_level,
             typ.flavor,
             snapshot_type(typ.upper_bound),
+            snapshot_type(typ.default),
         )
 
     def visit_type_var_tuple(self, typ: TypeVarTupleType) -> SnapshotItem:
@@ -385,6 +413,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
             typ.id.raw_id,
             typ.id.meta_level,
             snapshot_type(typ.upper_bound),
+            snapshot_type(typ.default),
         )
 
     def visit_unpack_type(self, typ: UnpackType) -> SnapshotItem:
@@ -395,7 +424,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
             "Parameters",
             snapshot_types(typ.arg_types),
             tuple(encode_optional_str(name) for name in typ.arg_names),
-            tuple(typ.arg_kinds),
+            tuple(k.value for k in typ.arg_kinds),
         )
 
     def visit_callable_type(self, typ: CallableType) -> SnapshotItem:
@@ -406,7 +435,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
             snapshot_types(typ.arg_types),
             snapshot_type(typ.ret_type),
             tuple(encode_optional_str(name) for name in typ.arg_names),
-            tuple(typ.arg_kinds),
+            tuple(k.value for k in typ.arg_kinds),
             typ.is_type_obj(),
             typ.is_ellipsis_args,
             snapshot_types(typ.variables),
@@ -427,7 +456,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
                 tv = v.copy_modified(id=tid)
             tvs.append(tv)
             tvmap[v.id] = tv
-        return cast(CallableType, expand_type(typ, tvmap)).copy_modified(variables=tvs)
+        return expand_type(typ, tvmap).copy_modified(variables=tvs)
 
     def visit_tuple_type(self, typ: TupleType) -> SnapshotItem:
         return ("TupleType", snapshot_types(typ.items))
@@ -463,7 +492,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
         return ("TypeAliasType", typ.alias.fullname, snapshot_types(typ.args))
 
 
-def snapshot_untyped_signature(func: OverloadedFuncDef | FuncItem) -> tuple[object, ...]:
+def snapshot_untyped_signature(func: OverloadedFuncDef | FuncItem) -> SymbolSnapshot:
     """Create a snapshot of the signature of a function that has no explicit signature.
 
     If the arguments to a function without signature change, it must be
@@ -475,7 +504,7 @@ def snapshot_untyped_signature(func: OverloadedFuncDef | FuncItem) -> tuple[obje
     if isinstance(func, FuncItem):
         return (tuple(func.arg_names), tuple(func.arg_kinds))
     else:
-        result = []
+        result: list[SymbolSnapshot] = []
         for item in func.items:
             if isinstance(item, Decorator):
                 if item.var.type:

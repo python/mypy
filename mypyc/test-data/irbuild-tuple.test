@@ -103,7 +103,7 @@ def f(x, y):
     r1, r2 :: object
     r3, r4, r5 :: ptr
     r6, r7, r8 :: object
-    r9 :: int32
+    r9 :: i32
     r10 :: bit
     r11 :: tuple
 L0:

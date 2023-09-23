@@ -1,3 +1,4 @@
+import _ast
 import sys
 import types
 from _typeshed import (
@@ -7,6 +8,7 @@ from _typeshed import (
     OpenBinaryModeWriting,
     OpenTextMode,
     ReadableBuffer,
+    StrPath,
 )
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterator, Mapping, Sequence
@@ -18,7 +20,6 @@ from typing_extensions import Literal
 if sys.version_info >= (3, 11):
     __all__ = [
         "Loader",
-        "Finder",
         "MetaPathFinder",
         "PathEntryFinder",
         "ResourceLoader",
@@ -26,16 +27,19 @@ if sys.version_info >= (3, 11):
         "ExecutionLoader",
         "FileLoader",
         "SourceLoader",
-        "ResourceReader",
-        "Traversable",
-        "TraversableResources",
     ]
 
-class Finder(metaclass=ABCMeta): ...
+    if sys.version_info < (3, 12):
+        __all__ += ["Finder", "ResourceReader", "Traversable", "TraversableResources"]
+
+if sys.version_info < (3, 12):
+    class Finder(metaclass=ABCMeta): ...
 
 class Loader(metaclass=ABCMeta):
     def load_module(self, fullname: str) -> types.ModuleType: ...
-    def module_repr(self, module: types.ModuleType) -> str: ...
+    if sys.version_info < (3, 12):
+        def module_repr(self, module: types.ModuleType) -> str: ...
+
     def create_module(self, spec: ModuleSpec) -> types.ModuleType | None: ...
     # Not defined on the actual class for backwards-compatibility reasons,
     # but expected in new code.
@@ -52,7 +56,9 @@ class InspectLoader(Loader):
     def get_source(self, fullname: str) -> str | None: ...
     def exec_module(self, module: types.ModuleType) -> None: ...
     @staticmethod
-    def source_to_code(data: ReadableBuffer | str, path: str = ...) -> types.CodeType: ...
+    def source_to_code(
+        data: ReadableBuffer | str | _ast.Module | _ast.Expression | _ast.Interactive, path: ReadableBuffer | StrPath = "<string>"
+    ) -> types.CodeType: ...
 
 class ExecutionLoader(InspectLoader):
     @abstractmethod
@@ -64,29 +70,45 @@ class SourceLoader(ResourceLoader, ExecutionLoader, metaclass=ABCMeta):
     def get_source(self, fullname: str) -> str | None: ...
     def path_stats(self, path: str) -> Mapping[str, Any]: ...
 
-# Please keep in sync with sys._MetaPathFinder
-class MetaPathFinder(Finder):
-    def find_module(self, fullname: str, path: Sequence[str] | None) -> Loader | None: ...
-    def invalidate_caches(self) -> None: ...
-    # Not defined on the actual class, but expected to exist.
-    def find_spec(
-        self, fullname: str, path: Sequence[str] | None, target: types.ModuleType | None = ...
-    ) -> ModuleSpec | None: ...
+# The base classes differ on 3.12:
+if sys.version_info >= (3, 12):
+    # Please keep in sync with sys._MetaPathFinder
+    class MetaPathFinder(metaclass=ABCMeta):
+        def invalidate_caches(self) -> None: ...
+        # Not defined on the actual class, but expected to exist.
+        def find_spec(
+            self, fullname: str, path: Sequence[str] | None, target: types.ModuleType | None = ...
+        ) -> ModuleSpec | None: ...
 
-class PathEntryFinder(Finder):
-    def find_module(self, fullname: str) -> Loader | None: ...
-    def find_loader(self, fullname: str) -> tuple[Loader | None, Sequence[str]]: ...
-    def invalidate_caches(self) -> None: ...
-    # Not defined on the actual class, but expected to exist.
-    def find_spec(self, fullname: str, target: types.ModuleType | None = ...) -> ModuleSpec | None: ...
+    class PathEntryFinder(metaclass=ABCMeta):
+        def invalidate_caches(self) -> None: ...
+        # Not defined on the actual class, but expected to exist.
+        def find_spec(self, fullname: str, target: types.ModuleType | None = ...) -> ModuleSpec | None: ...
+
+else:
+    # Please keep in sync with sys._MetaPathFinder
+    class MetaPathFinder(Finder):
+        def find_module(self, fullname: str, path: Sequence[str] | None) -> Loader | None: ...
+        def invalidate_caches(self) -> None: ...
+        # Not defined on the actual class, but expected to exist.
+        def find_spec(
+            self, fullname: str, path: Sequence[str] | None, target: types.ModuleType | None = ...
+        ) -> ModuleSpec | None: ...
+
+    class PathEntryFinder(Finder):
+        def find_module(self, fullname: str) -> Loader | None: ...
+        def find_loader(self, fullname: str) -> tuple[Loader | None, Sequence[str]]: ...
+        def invalidate_caches(self) -> None: ...
+        # Not defined on the actual class, but expected to exist.
+        def find_spec(self, fullname: str, target: types.ModuleType | None = ...) -> ModuleSpec | None: ...
 
 class FileLoader(ResourceLoader, ExecutionLoader, metaclass=ABCMeta):
     name: str
     path: str
     def __init__(self, fullname: str, path: str) -> None: ...
     def get_data(self, path: str) -> bytes: ...
-    def get_filename(self, name: str | None = ...) -> str: ...
-    def load_module(self, name: str | None = ...) -> types.ModuleType: ...
+    def get_filename(self, name: str | None = None) -> str: ...
+    def load_module(self, name: str | None = None) -> types.ModuleType: ...
 
 class ResourceReader(metaclass=ABCMeta):
     @abstractmethod
@@ -123,7 +145,7 @@ if sys.version_info >= (3, 9):
         @abstractmethod
         def open(
             self,
-            mode: OpenTextMode = ...,
+            mode: OpenTextMode = "r",
             buffering: int = ...,
             encoding: str | None = ...,
             errors: str | None = ...,
@@ -133,7 +155,7 @@ if sys.version_info >= (3, 9):
         @overload
         @abstractmethod
         def open(
-            self, mode: OpenBinaryMode, buffering: Literal[0], encoding: None = ..., errors: None = ..., newline: None = ...
+            self, mode: OpenBinaryMode, buffering: Literal[0], encoding: None = None, errors: None = None, newline: None = None
         ) -> FileIO: ...
         # Buffering is on: return BufferedRandom, BufferedReader, or BufferedWriter
         @overload
@@ -142,9 +164,9 @@ if sys.version_info >= (3, 9):
             self,
             mode: OpenBinaryModeUpdating,
             buffering: Literal[-1, 1] = ...,
-            encoding: None = ...,
-            errors: None = ...,
-            newline: None = ...,
+            encoding: None = None,
+            errors: None = None,
+            newline: None = None,
         ) -> BufferedRandom: ...
         @overload
         @abstractmethod
@@ -152,9 +174,9 @@ if sys.version_info >= (3, 9):
             self,
             mode: OpenBinaryModeWriting,
             buffering: Literal[-1, 1] = ...,
-            encoding: None = ...,
-            errors: None = ...,
-            newline: None = ...,
+            encoding: None = None,
+            errors: None = None,
+            newline: None = None,
         ) -> BufferedWriter: ...
         @overload
         @abstractmethod
@@ -162,15 +184,15 @@ if sys.version_info >= (3, 9):
             self,
             mode: OpenBinaryModeReading,
             buffering: Literal[-1, 1] = ...,
-            encoding: None = ...,
-            errors: None = ...,
-            newline: None = ...,
+            encoding: None = None,
+            errors: None = None,
+            newline: None = None,
         ) -> BufferedReader: ...
         # Buffering cannot be determined: fall back to BinaryIO
         @overload
         @abstractmethod
         def open(
-            self, mode: OpenBinaryMode, buffering: int = ..., encoding: None = ..., errors: None = ..., newline: None = ...
+            self, mode: OpenBinaryMode, buffering: int = ..., encoding: None = None, errors: None = None, newline: None = None
         ) -> BinaryIO: ...
         # Fallback if mode is not specified
         @overload
@@ -186,12 +208,12 @@ if sys.version_info >= (3, 9):
         @abstractmethod
         def read_bytes(self) -> bytes: ...
         @abstractmethod
-        def read_text(self, encoding: str | None = ...) -> str: ...
+        def read_text(self, encoding: str | None = None) -> str: ...
 
     class TraversableResources(ResourceReader):
         @abstractmethod
         def files(self) -> Traversable: ...
-        def open_resource(self, resource: str) -> BufferedReader: ...  # type: ignore[override]
+        def open_resource(self, resource: str) -> BufferedReader: ...
         def resource_path(self, resource: Any) -> NoReturn: ...
         def is_resource(self, path: str) -> bool: ...
         def contents(self) -> Iterator[str]: ...

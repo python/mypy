@@ -297,7 +297,7 @@ f(E.X)
 from enum import IntEnum
 class E(IntEnum):
     a = 1
-x = None  # type: int
+x: int
 reveal_type(E(x))
 [out]
 main:5: note: Revealed type is "__main__.E"
@@ -306,7 +306,7 @@ main:5: note: Revealed type is "__main__.E"
 from enum import IntEnum
 class E(IntEnum):
     a = 1
-s = None  # type: str
+s: str
 reveal_type(E[s])
 [out]
 main:5: note: Revealed type is "__main__.E"
@@ -482,13 +482,13 @@ W.c
 [typing fixtures/typing-medium.pyi]
 [out]
 main:2: error: Too few arguments for Enum()
-main:3: error: Enum() expects a string, tuple, list or dict literal as the second argument
+main:3: error: Second argument of Enum() must be string, tuple, list or dict literal for mypy to determine Enum members
 main:4: error: Too many arguments for Enum()
-main:5: error: Enum() expects a string, tuple, list or dict literal as the second argument
+main:5: error: Second argument of Enum() must be string, tuple, list or dict literal for mypy to determine Enum members
 main:5: error: Name "foo" is not defined
-main:7: error: Enum() expects a string, tuple, list or dict literal as the second argument
+main:7: error: Second argument of Enum() must be string, tuple, list or dict literal for mypy to determine Enum members
 main:8: error: Too few arguments for IntEnum()
-main:9: error: IntEnum() expects a string, tuple, list or dict literal as the second argument
+main:9: error: Second argument of IntEnum() must be string, tuple, list or dict literal for mypy to determine Enum members
 main:10: error: Too many arguments for IntEnum()
 main:11: error: Enum() needs at least one item
 main:12: error: Enum() needs at least one item
@@ -549,7 +549,7 @@ reveal_type(list(Color))  # N: Revealed type is "builtins.list[__main__.Color]"
 
 [case testEnumWorkWithForward]
 from enum import Enum
-a: E = E.x
+a: E = E.x  # type: ignore[used-before-def]
 class E(Enum):
     x = 1
     y = 2
@@ -953,7 +953,6 @@ else:
 [builtins fixtures/bool.pyi]
 
 [case testEnumReachabilityWithNone]
-# flags: --strict-optional
 from enum import Enum
 from typing import Optional
 
@@ -1016,7 +1015,6 @@ reveal_type(x3) # N: Revealed type is "Union[__main__.Foo, __main__.Bar]"
 [builtins fixtures/bool.pyi]
 
 [case testEnumReachabilityPEP484ExampleWithFinal]
-# flags: --strict-optional
 from typing import Union
 from typing_extensions import Final
 from enum import Enum
@@ -1063,7 +1061,6 @@ def process(response: Union[str, Reason] = '') -> str:
 
 
 [case testEnumReachabilityPEP484ExampleSingleton]
-# flags: --strict-optional
 from typing import Union
 from typing_extensions import Final
 from enum import Enum
@@ -1088,7 +1085,6 @@ def func(x: Union[int, None, Empty] = _empty) -> int:
 [builtins fixtures/primitives.pyi]
 
 [case testEnumReachabilityPEP484ExampleSingletonWithMethod]
-# flags: --strict-optional
 from typing import Union
 from typing_extensions import Final
 from enum import Enum
@@ -1345,7 +1341,6 @@ class Foo(bytes, Enum):
 a = Foo.A
 reveal_type(a.value)    # N: Revealed type is "Any"
 reveal_type(a._value_)  # N: Revealed type is "Any"
-[builtins fixtures/__new__.pyi]
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-medium.pyi]
 
@@ -1368,7 +1363,6 @@ class Bar(Foo):
 a = Bar.A
 reveal_type(a.value)    # N: Revealed type is "Any"
 reveal_type(a._value_)  # N: Revealed type is "Any"
-[builtins fixtures/__new__.pyi]
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-medium.pyi]
 

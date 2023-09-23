@@ -27,3 +27,4 @@ class tuple(Generic[T]): pass
 class function: pass
 class ellipsis: pass
 class list(Generic[T]): pass
+class dict: pass

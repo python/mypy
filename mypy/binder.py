@@ -42,14 +42,10 @@ class Frame:
         self.types: dict[Key, Type] = {}
         self.unreachable = False
         self.conditional_frame = conditional_frame
-
-        # Should be set only if we're entering a frame where it's not
-        # possible to accurately determine whether or not contained
-        # statements will be unreachable or not.
-        #
-        # Long-term, we should improve mypy to the point where we no longer
-        # need this field.
         self.suppress_unreachable_warnings = False
+
+    def __repr__(self) -> str:
+        return f"Frame({self.id}, {self.types}, {self.unreachable}, {self.conditional_frame})"
 
 
 Assigns = DefaultDict[Expression, List[Tuple[Type, Optional[Type]]]]
@@ -63,7 +59,7 @@ class ConditionalTypeBinder:
 
     ```
     class A:
-        a = None          # type: Union[int, str]
+        a: Union[int, str] = None
     x = A()
     lst = [x]
     reveal_type(x.a)      # Union[int, str]
@@ -171,7 +167,6 @@ class ConditionalTypeBinder:
         return any(f.unreachable for f in self.frames)
 
     def is_unreachable_warning_suppressed(self) -> bool:
-        # TODO: See todo in 'is_unreachable'
         return any(f.suppress_unreachable_warnings for f in self.frames)
 
     def cleanse(self, expr: Expression) -> None:
@@ -446,6 +441,7 @@ class ConditionalTypeBinder:
         assert len(self.frames) == 1
         yield self.push_frame()
         self.pop_frame(True, 0)
+        assert len(self.frames) == 1
 
 
 def get_declaration(expr: BindableExpression) -> Type | None:

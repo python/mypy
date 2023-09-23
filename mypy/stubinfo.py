@@ -9,19 +9,15 @@ def approved_stub_package_exists(prefix: str) -> bool:
     return is_legacy_bundled_package(prefix) or prefix in non_bundled_packages
 
 
-def stub_package_name(prefix: str) -> str:
+def stub_distribution_name(prefix: str) -> str:
     return legacy_bundled_packages.get(prefix) or non_bundled_packages[prefix]
 
 
 # Stubs for these third-party packages used to be shipped with mypy.
 #
 # Map package name to PyPI stub distribution name.
-#
-# Package name can have one or two components ('a' or 'a.b').
 legacy_bundled_packages = {
     "aiofiles": "types-aiofiles",
-    "backports": "types-backports",
-    "backports_abc": "types-backports_abc",
     "bleach": "types-bleach",
     "boto": "types-boto",
     "cachetools": "types-cachetools",
@@ -76,8 +72,6 @@ legacy_bundled_packages = {
 # Package name can have one or two components ('a' or 'a.b').
 #
 # Note that these packages are omitted for now:
-#   sqlalchemy: It's unclear which stub package to suggest. There's also
-#               a mypy plugin available.
 #   pika:       typeshed's stubs are on PyPI as types-pika-ts.
 #               types-pika already exists on PyPI, and is more complete in many ways,
 #               but is a non-typeshed stubs package.
@@ -120,7 +114,7 @@ non_bundled_packages = {
     "flask_sqlalchemy": "types-Flask-SQLAlchemy",
     "fpdf": "types-fpdf2",
     "gdb": "types-gdb",
-    "google.cloud": "types-google-cloud-ndb",
+    "google.cloud.ndb": "types-google-cloud-ndb",
     "hdbcli": "types-hdbcli",
     "html5lib": "types-html5lib",
     "httplib2": "types-httplib2",
@@ -180,4 +174,9 @@ non_bundled_packages = {
     "xmltodict": "types-xmltodict",
     "xxhash": "types-xxhash",
     "zxcvbn": "types-zxcvbn",
+    # Stub packages that are not from typeshed
+    # Since these can be installed automatically via --install-types, we have a high trust bar
+    # for additions here
+    "pandas": "pandas-stubs",  # https://github.com/pandas-dev/pandas-stubs
+    "lxml": "lxml-stubs",  # https://github.com/lxml/lxml-stubs
 }

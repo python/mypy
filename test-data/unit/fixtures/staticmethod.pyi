@@ -16,6 +16,6 @@ class int:
     def from_bytes(bytes: bytes, byteorder: str) -> int: pass
 
 class str: pass
-class unicode: pass
 class bytes: pass
 class ellipsis: pass
+class dict: pass

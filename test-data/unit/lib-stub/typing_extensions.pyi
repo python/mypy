@@ -1,5 +1,5 @@
 import typing
-from typing import Any, Mapping, Iterator, NoReturn as NoReturn, Dict, Type
+from typing import Any, Mapping, Iterable, Iterator, NoReturn as NoReturn, Dict, Tuple, Type
 from typing import TYPE_CHECKING as TYPE_CHECKING
 from typing import NewType as NewType, overload as overload
 
@@ -50,10 +50,30 @@ class _TypedDict(Mapping[str, object]):
     # Mypy expects that 'default' has a type variable type.
     def pop(self, k: NoReturn, default: _T = ...) -> object: ...
     def update(self: _T, __m: _T) -> None: ...
+    def items(self) -> Iterable[Tuple[str, object]]: ...
+    def keys(self) -> Iterable[str]: ...
+    def values(self) -> Iterable[object]: ...
     if sys.version_info < (3, 0):
         def has_key(self, k: str) -> bool: ...
     def __delitem__(self, k: NoReturn) -> None: ...
+    # Stubtest's tests need the following items:
+    __required_keys__: frozenset[str]
+    __optional_keys__: frozenset[str]
+    __total__: bool
 
 def TypedDict(typename: str, fields: Dict[str, Type[_T]], *, total: Any = ...) -> Type[dict]: ...
 
 def reveal_type(__obj: T) -> T: pass
+
+def dataclass_transform(
+    *,
+    eq_default: bool = ...,
+    order_default: bool = ...,
+    kw_only_default: bool = ...,
+    field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
+    **kwargs: Any,
+) -> Callable[[T], T]: ...
+
+def override(__arg: _T) -> _T: ...
+
+_FutureFeatureFixture = 0

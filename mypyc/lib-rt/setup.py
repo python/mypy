@@ -7,12 +7,14 @@ from __future__ import annotations
 
 import sys
 from distutils.core import Extension, setup
+from typing import Any
 
+kwargs: dict[str, Any]
 if sys.platform == "darwin":
     kwargs = {"language": "c++"}
     compile_args = []
 else:
-    kwargs = {}  # type: ignore
+    kwargs = {}
     compile_args = ["--std=c++11"]
 
 setup(
@@ -21,7 +23,15 @@ setup(
     ext_modules=[
         Extension(
             "test_capi",
-            ["test_capi.cc", "init.c", "int_ops.c", "list_ops.c", "exc_ops.c", "generic_ops.c"],
+            [
+                "test_capi.cc",
+                "init.c",
+                "int_ops.c",
+                "float_ops.c",
+                "list_ops.c",
+                "exc_ops.c",
+                "generic_ops.c",
+            ],
             depends=["CPy.h", "mypyc_util.h", "pythonsupport.h"],
             extra_compile_args=["-Wno-unused-function", "-Wno-sign-compare"] + compile_args,
             library_dirs=["../external/googletest/make"],

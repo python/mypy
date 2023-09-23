@@ -15,6 +15,9 @@ on:
     - 'mypy/test/**'
     - 'test-data/**'
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
@@ -30,7 +33,7 @@ jobs:
         shard-index: [0, 1, 2, 3, 4]
       fail-fast: false
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           path: mypy_to_test
           fetch-depth: 0
@@ -48,7 +51,7 @@ jobs:
           echo "new commit"
           git rev-list --format=%s --max-count=1 $GITHUB_SHA
 
-          MERGE_BASE=$(git merge-base $GITHUB_SHA origin/master)
+          MERGE_BASE=$(git merge-base $GITHUB_SHA origin/$GITHUB_BASE_REF)
           git checkout -b base_commit $MERGE_BASE
           echo "base commit"
           git rev-list --format=%s --max-count=1 base_commit

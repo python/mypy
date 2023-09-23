@@ -26,7 +26,6 @@ class WithVariable:
         self.a = 1
         self.b = 2
         self.c = 3
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/list.pyi]
 
 
@@ -332,7 +331,6 @@ b.extra = 'extra'
 main:22: error: Trying to assign name "c" that is not in "__slots__" of type "__main__.B"
 main:43: error: Trying to assign name "c" that is not in "__slots__" of type "__main__.B"
 main:47: error: "B" has no attribute "extra"
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/property.pyi]
 
 
@@ -363,7 +361,6 @@ a.c = custom_obj
 a.d = custom_obj
 a.e = custom_obj
 [out]
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/dict.pyi]
 
 
@@ -473,7 +470,6 @@ class A:
         self.a = 1
         self.b = 2
         self.missing = 3
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/list.pyi]
 
 
@@ -486,7 +482,6 @@ class A:
         self.a = 1
         self.b = 2
         self.missing = 3
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/set.pyi]
 
 
@@ -499,7 +494,6 @@ class A:
         self.a = 1
         self.b = 2
         self.missing = 3
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/dict.pyi]
 
 

@@ -12,8 +12,8 @@ import shutil
 import sys
 import time
 from importlib import resources as importlib_resources
-from typing import IO, Callable, Container, Iterable, Sequence, Sized, TypeVar
-from typing_extensions import Final, Literal
+from typing import IO, Callable, Container, Final, Iterable, Sequence, Sized, TypeVar
+from typing_extensions import Literal
 
 try:
     import curses
@@ -309,17 +309,6 @@ def get_prefix(fullname: str) -> str:
     return fullname.rsplit(".", 1)[0]
 
 
-def get_top_two_prefixes(fullname: str) -> tuple[str, str]:
-    """Return one and two component prefixes of a fully qualified name.
-
-    Given 'a.b.c.d', return ('a', 'a.b').
-
-    If fullname has only one component, return (fullname, fullname).
-    """
-    components = fullname.split(".", 3)
-    return components[0], ".".join(components[:2])
-
-
 def correct_relative_import(
     cur_mod_id: str, relative: int, target: str, is_cur_package_init_file: bool
 ) -> tuple[str, bool]:
@@ -422,10 +411,10 @@ def get_unique_redefinition_name(name: str, existing: Container[str]) -> str:
 def check_python_version(program: str) -> None:
     """Report issues with the Python used to run mypy, dmypy, or stubgen"""
     # Check for known bad Python versions.
-    if sys.version_info[:2] < (3, 7):
+    if sys.version_info[:2] < (3, 8):
         sys.exit(
-            "Running {name} with Python 3.6 or lower is not supported; "
-            "please upgrade to 3.7 or newer".format(name=program)
+            "Running {name} with Python 3.7 or lower is not supported; "
+            "please upgrade to 3.8 or newer".format(name=program)
         )
 
 
@@ -821,6 +810,23 @@ def plural_s(s: int | Sized) -> str:
         return "s"
     else:
         return ""
+
+
+def quote_docstring(docstr: str) -> str:
+    """Returns docstring correctly encapsulated in a single or double quoted form."""
+    # Uses repr to get hint on the correct quotes and escape everything properly.
+    # Creating multiline string for prettier output.
+    docstr_repr = "\n".join(re.split(r"(?<=[^\\])\\n", repr(docstr)))
+
+    if docstr_repr.startswith("'"):
+        # Enforce double quotes when it's safe to do so.
+        # That is when double quotes are not in the string
+        # or when it doesn't end with a single quote.
+        if '"' not in docstr_repr[1:-1] and docstr_repr[-2] != "'":
+            return f'"""{docstr_repr[1:-1]}"""'
+        return f"''{docstr_repr}''"
+    else:
+        return f'""{docstr_repr}""'
 
 
 class ColoredHelpFormatter(argparse.HelpFormatter):

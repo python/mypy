@@ -39,7 +39,7 @@ understand, debug, and maintain.
 
 .. note::
 
-   Although mypy is production ready, there will be occasional changes
+   Although mypy is production ready, there may be occasional changes
    that break backward compatibility. The mypy development team tries to
    minimize the impact of changes to user code. In case of a major breaking
    change, mypy's major version will be bumped.
@@ -52,8 +52,8 @@ Contents
    :caption: First steps
 
    getting_started
-   existing_code
    cheat_sheet_py3
+   existing_code
 
 .. _overview-type-system-reference:
 
@@ -74,6 +74,7 @@ Contents
    generics
    more_types
    literal_types
+   typed_dict
    final_attrs
    metaclasses
 
@@ -108,7 +109,7 @@ Contents
    :caption: Project Links
 
    GitHub <https://github.com/python/mypy>
-   Website <http://mypy-lang.org/>
+   Website <https://mypy-lang.org/>
 
 Indices and tables
 ==================

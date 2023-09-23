@@ -7,7 +7,7 @@ class MyCInt(ctypes.c_int):
 intarr4 = ctypes.c_int * 4
 a = intarr4(1, ctypes.c_int(2), MyCInt(3), 4)
 intarr4(1, 2, 3, "invalid")  # E: Array constructor argument 4 of type "str" is not convertible to the array element type "c_int"
-reveal_type(a)  # N: Revealed type is "ctypes.Array[ctypes.c_int]"
+reveal_type(a)  # N: Revealed type is "_ctypes.Array[ctypes.c_int]"
 reveal_type(a[0])  # N: Revealed type is "builtins.int"
 reveal_type(a[1:3])  # N: Revealed type is "builtins.list[builtins.int]"
 a[0] = 42
@@ -33,7 +33,7 @@ myintarr4 = MyCInt * 4
 mya = myintarr4(1, 2, MyCInt(3), 4)
 myintarr4(1, ctypes.c_int(2), MyCInt(3), "invalid")  # E: Array constructor argument 2 of type "c_int" is not convertible to the array element type "MyCInt" \
                                                      # E: Array constructor argument 4 of type "str" is not convertible to the array element type "MyCInt"
-reveal_type(mya)  # N: Revealed type is "ctypes.Array[__main__.MyCInt]"
+reveal_type(mya)  # N: Revealed type is "_ctypes.Array[__main__.MyCInt]"
 reveal_type(mya[0])  # N: Revealed type is "__main__.MyCInt"
 reveal_type(mya[1:3])  # N: Revealed type is "builtins.list[__main__.MyCInt]"
 mya[0] = 42
@@ -63,7 +63,7 @@ class MyCInt(ctypes.c_int):
     pass
 
 mya: ctypes.Array[Union[MyCInt, ctypes.c_uint]]
-reveal_type(mya)  # N: Revealed type is "ctypes.Array[Union[__main__.MyCInt, ctypes.c_uint]]"
+reveal_type(mya)  # N: Revealed type is "_ctypes.Array[Union[__main__.MyCInt, ctypes.c_uint]]"
 reveal_type(mya[0])  # N: Revealed type is "Union[__main__.MyCInt, builtins.int]"
 reveal_type(mya[1:3])  # N: Revealed type is "builtins.list[Union[__main__.MyCInt, builtins.int]]"
 # The behavior here is not strictly correct, but intentional.
@@ -161,10 +161,10 @@ intarr4 = ctypes.c_int * 4
 intarr6 = ctypes.c_int * 6
 int_values = [1, 2, 3, 4]
 c_int_values = [ctypes.c_int(1), ctypes.c_int(2), ctypes.c_int(3), ctypes.c_int(4)]
-reveal_type(intarr4(*int_values))  # N: Revealed type is "ctypes.Array[ctypes.c_int]"
-reveal_type(intarr4(*c_int_values))  # N: Revealed type is "ctypes.Array[ctypes.c_int]"
-reveal_type(intarr6(1, ctypes.c_int(2), *int_values))  # N: Revealed type is "ctypes.Array[ctypes.c_int]"
-reveal_type(intarr6(1, ctypes.c_int(2), *c_int_values))  # N: Revealed type is "ctypes.Array[ctypes.c_int]"
+reveal_type(intarr4(*int_values))  # N: Revealed type is "_ctypes.Array[ctypes.c_int]"
+reveal_type(intarr4(*c_int_values))  # N: Revealed type is "_ctypes.Array[ctypes.c_int]"
+reveal_type(intarr6(1, ctypes.c_int(2), *int_values))  # N: Revealed type is "_ctypes.Array[ctypes.c_int]"
+reveal_type(intarr6(1, ctypes.c_int(2), *c_int_values))  # N: Revealed type is "_ctypes.Array[ctypes.c_int]"
 [typing fixtures/typing-medium.pyi]
 
 float_values = [1.0, 2.0, 3.0, 4.0]

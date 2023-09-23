@@ -49,7 +49,7 @@ class MixedTraverserVisitor(TraverserVisitor, TypeTraverserVisitor):
     def visit_type_alias_expr(self, o: TypeAliasExpr) -> None:
         super().visit_type_alias_expr(o)
         self.in_type_alias_expr = True
-        o.type.accept(self)
+        o.node.target.accept(self)
         self.in_type_alias_expr = False
 
     def visit_type_var_expr(self, o: TypeVarExpr) -> None:

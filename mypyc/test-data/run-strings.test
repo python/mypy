@@ -232,8 +232,7 @@ def test_fstring_basics() -> None:
 
     x = bytes([1, 2, 3, 4])
     # assert f'bytes: {x}' == "bytes: b'\\x01\\x02\\x03\\x04'"
-    # error: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc";
-    #        use "{!r}" if this is desired behavior behavior
+    # error: If x = b'abc' then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x). Otherwise, decode the bytes
 
     float_num = 123.4
     assert f'{float_num}' == '123.4'

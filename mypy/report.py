@@ -12,8 +12,8 @@ import time
 import tokenize
 from abc import ABCMeta, abstractmethod
 from operator import attrgetter
-from typing import Any, Callable, Dict, Iterator, Tuple, cast
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import Any, Callable, Dict, Final, Iterator, Tuple
+from typing_extensions import TypeAlias as _TypeAlias
 from urllib.request import pathname2url
 
 from mypy import stats
@@ -25,7 +25,7 @@ from mypy.types import Type, TypeOfAny
 from mypy.version import __version__
 
 try:
-    from lxml import etree  # type: ignore[import]
+    from lxml import etree  # type: ignore[import-untyped]
 
     LXML_INSTALLED = True
 except ImportError:
@@ -44,7 +44,7 @@ type_of_any_name_map: Final[collections.OrderedDict[int, str]] = collections.Ord
 )
 
 ReporterClasses: _TypeAlias = Dict[
-    str, Tuple[Callable[["Reports", str], "AbstractReporter"], bool],
+    str, Tuple[Callable[["Reports", str], "AbstractReporter"], bool]
 ]
 
 reporter_classes: Final[ReporterClasses] = {}
@@ -171,8 +171,12 @@ class LineCountReporter(AbstractReporter):
     ) -> None:
         # Count physical lines.  This assumes the file's encoding is a
         # superset of ASCII (or at least uses \n in its line endings).
-        with open(tree.path, "rb") as f:
-            physical_lines = len(f.readlines())
+        try:
+            with open(tree.path, "rb") as f:
+                physical_lines = len(f.readlines())
+        except IsADirectoryError:
+            # can happen with namespace packages
+            physical_lines = 0
 
         func_counter = FuncCounterVisitor()
         tree.accept(func_counter)
@@ -704,8 +708,9 @@ class AbstractXmlReporter(AbstractReporter):
         super().__init__(reports, output_dir)
 
         memory_reporter = reports.add_report("memory-xml", "<memory>")
+        assert isinstance(memory_reporter, MemoryXmlReporter)
         # The dependency will be called first.
-        self.memory_xml = cast(MemoryXmlReporter, memory_reporter)
+        self.memory_xml = memory_reporter
 
 
 class XmlReporter(AbstractXmlReporter):
@@ -859,7 +864,6 @@ class LinePrecisionReporter(AbstractReporter):
         type_map: dict[Expression, Type],
         options: Options,
     ) -> None:
-
         try:
             path = os.path.relpath(tree.path)
         except ValueError:

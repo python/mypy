@@ -194,7 +194,7 @@ x = 1
 match x:
     case _a.b:
         pass
-[file _a.py]
+[fixture _a.py]
 b = 1
 [out]
 MypyFile:1(

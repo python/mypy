@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import sys
 import sysconfig
-from typing import Any, Dict
-from typing_extensions import Final
+from typing import Any, Dict, Final
 
 from mypy.util import unnamed_function
 
@@ -56,7 +55,7 @@ MIN_SHORT_INT: Final = -(MAX_SHORT_INT) - 1
 MAX_LITERAL_SHORT_INT: Final = MAX_SHORT_INT
 MIN_LITERAL_SHORT_INT: Final = -MAX_LITERAL_SHORT_INT - 1
 
-# Decription of the C type used to track the definedness of attributes and
+# Description of the C type used to track the definedness of attributes and
 # the presence of argument default values that have types with overlapping
 # error values. Each tracked attribute/argument has a dedicated bit in the
 # relevant bitmap.
@@ -69,6 +68,7 @@ RUNTIME_C_FILES: Final = [
     "getargs.c",
     "getargsfast.c",
     "int_ops.c",
+    "float_ops.c",
     "str_ops.c",
     "bytes_ops.c",
     "list_ops.c",
@@ -96,11 +96,6 @@ def short_name(name: str) -> str:
     if name.startswith("builtins."):
         return name[9:]
     return name
-
-
-def use_fastcall(capi_version: tuple[int, int]) -> bool:
-    # We can use METH_FASTCALL for faster wrapper functions on Python 3.7+.
-    return capi_version >= (3, 7)
 
 
 def use_vectorcall(capi_version: tuple[int, int]) -> bool:

@@ -63,8 +63,7 @@ run this on __init__ methods, this analysis pass will be fairly quick.
 
 from __future__ import annotations
 
-from typing import Set, Tuple
-from typing_extensions import Final
+from typing import Final, Set, Tuple
 
 from mypyc.analysis.dataflow import (
     CFG,
@@ -414,7 +413,10 @@ def update_always_defined_attrs_using_subclasses(cl: ClassIR, seen: set[ClassIR]
     seen.add(cl)
 
 
-def detect_undefined_bitmap(cl: ClassIR, seen: Set[ClassIR]) -> None:
+def detect_undefined_bitmap(cl: ClassIR, seen: set[ClassIR]) -> None:
+    if cl.is_trait:
+        return
+
     if cl in seen:
         return
     seen.add(cl)
@@ -426,3 +428,9 @@ def detect_undefined_bitmap(cl: ClassIR, seen: Set[ClassIR]) -> None:
     for n, t in cl.attributes.items():
         if t.error_overlap and not cl.is_always_defined(n):
             cl.bitmap_attrs.append(n)
+
+    for base in cl.mro[1:]:
+        if base.is_trait:
+            for n, t in base.attributes.items():
+                if t.error_overlap and not cl.is_always_defined(n) and n not in cl.bitmap_attrs:
+                    cl.bitmap_attrs.append(n)

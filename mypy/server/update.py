@@ -118,8 +118,8 @@ import os
 import re
 import sys
 import time
-from typing import Callable, NamedTuple, Sequence, Union
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import Callable, Final, NamedTuple, Sequence, Union
+from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.build import (
     DEBUG_FINE_GRAINED,
@@ -151,7 +151,11 @@ from mypy.semanal_main import (
     semantic_analysis_for_scc,
     semantic_analysis_for_targets,
 )
-from mypy.server.astdiff import SnapshotItem, compare_symbol_table_snapshots, snapshot_symbol_table
+from mypy.server.astdiff import (
+    SymbolSnapshot,
+    compare_symbol_table_snapshots,
+    snapshot_symbol_table,
+)
 from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import SavedAttributes, strip_target
 from mypy.server.deps import get_dependencies_of_target, merge_dependencies
@@ -183,7 +187,7 @@ class FineGrainedBuildManager:
         # Merge in any root dependencies that may not have been loaded
         merge_dependencies(manager.load_fine_grained_deps(FAKE_ROOT_MODULE), self.deps)
         self.previous_targets_with_errors = manager.errors.targets()
-        self.previous_messages: list[str] = result.errors[:]
+        self.previous_messages: list[str] = result.errors.copy()
         # Module, if any, that had blocking errors in the last run as (id, path) tuple.
         self.blocking_error: tuple[str, str] | None = None
         # Module that we haven't processed yet but that are known to be stale.
@@ -298,7 +302,7 @@ class FineGrainedBuildManager:
                     break
 
         messages = sort_messages_preserving_file_order(messages, self.previous_messages)
-        self.previous_messages = messages[:]
+        self.previous_messages = messages.copy()
         return messages
 
     def trigger(self, target: str) -> list[str]:
@@ -318,7 +322,7 @@ class FineGrainedBuildManager:
         )
         # Preserve state needed for the next update.
         self.previous_targets_with_errors = self.manager.errors.targets()
-        self.previous_messages = self.manager.errors.new_messages()[:]
+        self.previous_messages = self.manager.errors.new_messages().copy()
         return self.update(changed_modules, [])
 
     def flush_cache(self) -> None:
@@ -417,7 +421,7 @@ class FineGrainedBuildManager:
 
         t0 = time.time()
         # Record symbol table snapshot of old version the changed module.
-        old_snapshots: dict[str, dict[str, SnapshotItem]] = {}
+        old_snapshots: dict[str, dict[str, SymbolSnapshot]] = {}
         if module in manager.modules:
             snapshot = snapshot_symbol_table(module, manager.modules[module].names)
             old_snapshots[module] = snapshot
@@ -751,7 +755,7 @@ def get_sources(
 
 def calculate_active_triggers(
     manager: BuildManager,
-    old_snapshots: dict[str, dict[str, SnapshotItem]],
+    old_snapshots: dict[str, dict[str, SymbolSnapshot]],
     new_modules: dict[str, MypyFile | None],
 ) -> set[str]:
     """Determine activated triggers by comparing old and new symbol tables.
@@ -982,6 +986,7 @@ def reprocess_nodes(
     manager.errors.set_file_ignored_lines(
         file_node.path, file_node.ignored_lines, options.ignore_errors or state.ignore_all
     )
+    manager.errors.set_skipped_lines(file_node.path, file_node.skipped_lines)
 
     targets = set()
     for node in nodes:

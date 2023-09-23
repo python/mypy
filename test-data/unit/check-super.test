@@ -11,7 +11,8 @@ class B:
   def f(self) -> 'B': pass
 class A(B):
   def f(self) -> 'A':
-    a, b = None, None # type: (A, B)
+    a: A
+    b: B
     if int():
         a = super().f() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
         a = super().g() # E: "g" undefined in superclass
@@ -26,7 +27,8 @@ class B:
   def f(self, y: 'A') -> None: pass
 class A(B):
   def f(self, y: Any) -> None:
-    a, b = None, None # type: (A, B)
+    a: A
+    b: B
     super().f(b) # E: Argument 1 to "f" of "B" has incompatible type "B"; expected "A"
     super().f(a)
     self.f(b)
@@ -35,6 +37,7 @@ class A(B):
 [out]
 
 [case testAccessingSuperInit]
+# flags: --no-strict-optional
 import typing
 class B:
     def __init__(self, x: A) -> None: pass
@@ -90,7 +93,7 @@ class B(A):
     def __new__(cls, x: int, y: str = '') -> 'B':
         super().__new__(cls, 1)
         super().__new__(cls, 1, '')  # E: Too many arguments for "__new__" of "A"
-        return None
+        return cls(1)
 B('')  # E: Argument 1 to "B" has incompatible type "str"; expected "int"
 B(1)
 B(1, 'x')

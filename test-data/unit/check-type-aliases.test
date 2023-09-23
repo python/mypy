@@ -12,7 +12,7 @@ U = Union[int, str]
 def f(x: U) -> None: pass
 f(1)
 f('')
-f(()) # E: Argument 1 to "f" has incompatible type "Tuple[]"; expected "Union[int, str]"
+f(()) # E: Argument 1 to "f" has incompatible type "Tuple[()]"; expected "Union[int, str]"
 [targets __main__, __main__.f]
 [builtins fixtures/tuple.pyi]
 
@@ -28,7 +28,7 @@ f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Tuple[int, st
 [case testCallableTypeAlias]
 from typing import Callable
 A = Callable[[int], None]
-f = None  # type: A
+f: A
 f(1)
 f('') # E: Argument 1 has incompatible type "str"; expected "int"
 [targets __main__]
@@ -64,7 +64,7 @@ from _m import U
 def f(x: U) -> None: pass
 f(1)
 f('x')
-f(()) # E: Argument 1 to "f" has incompatible type "Tuple[]"; expected "Union[int, str]"
+f(()) # E: Argument 1 to "f" has incompatible type "Tuple[()]"; expected "Union[int, str]"
 [file _m.py]
 from typing import Union
 U = Union[int, str]
@@ -169,12 +169,12 @@ f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "str"
 [case testEmptyTupleTypeAlias]
 from typing import Tuple, Callable
 EmptyTuple = Tuple[()]
-x = None # type: EmptyTuple
-reveal_type(x)  # N: Revealed type is "Tuple[]"
+x: EmptyTuple
+reveal_type(x)  # N: Revealed type is "Tuple[()]"
 
 EmptyTupleCallable = Callable[[Tuple[()]], None]
-f = None # type: EmptyTupleCallable
-reveal_type(f)  # N: Revealed type is "def (Tuple[])"
+f: EmptyTupleCallable
+reveal_type(f)  # N: Revealed type is "def (Tuple[()])"
 [builtins fixtures/list.pyi]
 
 [case testForwardTypeAlias]
@@ -206,7 +206,7 @@ B = Callable[[B], int] # E: Cannot resolve name "B" (possible cyclic definition)
 C = Type[C] # E: Cannot resolve name "C" (possible cyclic definition)
 
 [case testRecursiveAliasesErrors2]
-# flags: --disable-recursive-aliases
+# flags: --disable-recursive-aliases --disable-error-code=used-before-def
 # Recursive aliases are not supported yet.
 from typing import Type, Callable, Union
 
@@ -224,6 +224,7 @@ main:7: error: Cannot resolve name "C" (possible cyclic definition)
 main:9: note: Revealed type is "Union[Any, builtins.int]"
 
 [case testDoubleForwardAlias]
+# flags: --disable-error-code=used-before-def
 from typing import List
 x: A
 A = List[B]
@@ -233,6 +234,7 @@ reveal_type(x) # N: Revealed type is "builtins.list[builtins.list[builtins.int]]
 [out]
 
 [case testDoubleForwardAliasWithNamedTuple]
+# flags: --disable-error-code=used-before-def
 from typing import List, NamedTuple
 x: A
 A = List[B]
@@ -254,6 +256,7 @@ if isinstance(x, list):
 [out]
 
 [case testForwardRefToTypeVar]
+# flags: --disable-error-code=used-before-def
 
 from typing import TypeVar, List
 reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
@@ -302,7 +305,6 @@ reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
 [builtins fixtures/bool.pyi]
 
 [case testNoneAliasStrict]
-# flags: --strict-optional
 from typing import Optional, Union
 void = type(None)
 x: int
@@ -444,7 +446,7 @@ A = Union[None]
 [case testAliasToClassMethod]
 from typing import TypeVar, Generic, Union, Type
 
-T = TypeVar('T', bound=C)
+T = TypeVar('T', bound='C')
 
 MYPY = False
 if MYPY:
@@ -1025,3 +1027,34 @@ RHSAlias3: type = tuple[int, ...]
 WrongTypeElement = str | tuple[float, 1]  # E: Invalid type: try using Literal[1] instead?
 WrongEllipsis = str | tuple[float, float, ...]  # E: Unexpected "..."
 [builtins fixtures/tuple.pyi]
+
+[case testCompiledNoCrashOnSingleItemUnion]
+# flags: --no-strict-optional
+from typing import Callable, Union, Generic, TypeVar
+
+Alias = Callable[[], int]
+
+T = TypeVar("T")
+class C(Generic[T]):
+    attr: Union[Alias, None] = None
+
+    @classmethod
+    def test(cls) -> None:
+        cls.attr
+[builtins fixtures/classmethod.pyi]
+
+[case testRecursiveAliasTuple]
+from typing_extensions import Literal, TypeAlias
+from typing import Tuple, Union
+
+Expr: TypeAlias = Union[
+    Tuple[Literal[123], int],
+    Tuple[Literal[456], "Expr"],
+]
+
+def eval(e: Expr) -> int:
+    if e[0] == 123:
+        return e[1]
+    elif e[0] == 456:
+        return -eval(e[1])
+[builtins fixtures/dict.pyi]
