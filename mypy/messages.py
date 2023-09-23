@@ -411,7 +411,7 @@ class MessageBuilder:
         elif member == "__getitem__":
             # Indexed get.
             # TODO: Fix this consistently in format_type
-            if isinstance(original_type, CallableType) and original_type.is_type_obj():
+            if isinstance(original_type, FunctionLike) and original_type.is_type_obj():
                 self.fail(
                     "The type {} is not generic and not indexable".format(
                         format_type(original_type, self.options)

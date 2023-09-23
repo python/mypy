@@ -694,7 +694,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for expr in mypy.checker.flatten(e.args[1]):
             tp = get_proper_type(self.chk.lookup_type(expr))
             if (
-                isinstance(tp, CallableType)
+                isinstance(tp, FunctionLike)
                 and tp.is_type_obj()
                 and tp.type_object().is_protocol
                 and not tp.type_object().runtime_protocol
@@ -704,7 +704,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def check_protocol_issubclass(self, e: CallExpr) -> None:
         for expr in mypy.checker.flatten(e.args[1]):
             tp = get_proper_type(self.chk.lookup_type(expr))
-            if isinstance(tp, CallableType) and tp.is_type_obj() and tp.type_object().is_protocol:
+            if isinstance(tp, FunctionLike) and tp.is_type_obj() and tp.type_object().is_protocol:
                 attr_members = non_method_protocol_members(tp.type_object())
                 if attr_members:
                     self.chk.msg.report_non_method_protocol(tp.type_object(), attr_members, e)
@@ -4142,7 +4142,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(left_type, TypedDictType):
             return self.visit_typeddict_index_expr(left_type, e.index)
         elif (
-            isinstance(left_type, CallableType)
+            isinstance(left_type, FunctionLike)
             and left_type.is_type_obj()
             and left_type.type_object().is_enum
         ):
@@ -5721,7 +5721,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def has_abstract_type(self, caller_type: ProperType, callee_type: ProperType) -> bool:
         return (
-            isinstance(caller_type, CallableType)
+            isinstance(caller_type, FunctionLike)
             and isinstance(callee_type, TypeType)
             and caller_type.is_type_obj()
             and (caller_type.type_object().is_abstract or caller_type.type_object().is_protocol)
