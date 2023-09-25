@@ -1592,3 +1592,15 @@ def test(a: Container[Any], b: Container[int], c: Container[str]):
     reveal_type(build(a, b))  # N: Revealed type is "__main__.Array[Any, builtins.int]"
     reveal_type(build(b, c))  # N: Revealed type is "__main__.Array[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleIndexOldStyleNonNormalizedAndNonLiteral]
+from typing import Any, Tuple
+from typing_extensions import Unpack
+
+t: Tuple[Unpack[Tuple[int, ...]]]
+reveal_type(t[42])  # N: Revealed type is "builtins.int"
+i: int
+reveal_type(t[i])  # N: Revealed type is "builtins.int"
+t1: Tuple[int, Unpack[Tuple[int, ...]]]
+reveal_type(t1[i])  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]

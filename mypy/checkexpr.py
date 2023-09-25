@@ -4143,6 +4143,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Visit the index, just to make sure we have a type for it available
         self.accept(index)
 
+        if isinstance(left_type, TupleType) and any(
+            isinstance(it, UnpackType) for it in left_type.items
+        ):
+            # Normalize variadic tuples for consistency.
+            left_type = expand_type(left_type, {})
+
         if isinstance(left_type, UnionType):
             original_type = original_type or left_type
             # Don't combine literal types, since we may need them for type narrowing.
@@ -4304,10 +4310,29 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def nonliteral_tuple_index_helper(self, left_type: TupleType, index: Expression) -> Type:
         self.check_method_call_by_name("__getitem__", left_type, [index], [ARG_POS], context=index)
         # We could return the return type from above, but unions are often better than the join
-        union = make_simplified_union(left_type.items)
+        union = self.union_tuple_fallback_item(left_type)
         if isinstance(index, SliceExpr):
             return self.chk.named_generic_type("builtins.tuple", [union])
         return union
+
+    def union_tuple_fallback_item(self, left_type: TupleType) -> Type:
+        # TODO: this duplicates logic in typeops.tuple_fallback().
+        items = []
+        for item in left_type.items:
+            if isinstance(item, UnpackType):
+                unpacked_type = get_proper_type(item.type)
+                if isinstance(unpacked_type, TypeVarTupleType):
+                    unpacked_type = get_proper_type(unpacked_type.upper_bound)
+                if (
+                    isinstance(unpacked_type, Instance)
+                    and unpacked_type.type.fullname == "builtins.tuple"
+                ):
+                    items.append(unpacked_type.args[0])
+                else:
+                    raise NotImplementedError
+            else:
+                items.append(item)
+        return make_simplified_union(items)
 
     def visit_typeddict_index_expr(
         self, td_type: TypedDictType, index: Expression, setitem: bool = False
