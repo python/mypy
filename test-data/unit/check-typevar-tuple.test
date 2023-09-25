@@ -1490,6 +1490,56 @@ x = c1
 x = c2
 [builtins fixtures/tuple.pyi]
 
+[case testUnpackingVariadicTuples]
+from typing import Any, Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+def foo(arg: Tuple[int, Unpack[Ts], str]) -> None:
+    x1, y1, z1 = arg
+    reveal_type(x1)
+    reveal_type(y1)
+    reveal_type(z1)
+    x2, *y2, z2 = arg
+    reveal_type(x2)
+    reveal_type(y2)
+    reveal_type(z2)
+    x3, *y3 = arg
+    reveal_type(x3)
+    reveal_type(y3)
+    *y4, z4 = arg
+    reveal_type(y4)
+    reveal_type(z4)
+    x5, xx5, *y5, z5, zz5 = arg
+    reveal_type(x5)
+    reveal_type(xx5)
+    reveal_type(y5)
+    reveal_type(z5)
+    reveal_type(zz5)
+
+def bar(arg: Tuple[int, Unpack[Tuple[float, ...]], str]) -> None:
+    x1, y1, z1 = arg
+    reveal_type(x1)
+    reveal_type(y1)
+    reveal_type(z1)
+    x2, *y2, z2 = arg
+    reveal_type(x2)
+    reveal_type(y2)
+    reveal_type(z2)
+    x3, *y3 = arg
+    reveal_type(x3)
+    reveal_type(y3)
+    *y4, z4 = arg
+    reveal_type(y4)
+    reveal_type(z4)
+    x5, xx5, *y5, z5, zz5 = arg
+    reveal_type(x5)
+    reveal_type(xx5)
+    reveal_type(y5)
+    reveal_type(z5)
+    reveal_type(zz5)
+[builtins fixtures/tuple.pyi]
+
 [case testTypeVarTupleAnyOverload]
 from typing import Any, Generic, overload, Tuple
 from typing_extensions import TypeVarTuple, Unpack
