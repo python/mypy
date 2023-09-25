@@ -496,7 +496,9 @@ class ImportTracker:
                 name = name.rpartition(".")[0]
 
     def require_name(self, name: str) -> None:
-        self.required_names.add(name.split(".")[0])
+        while name not in self.direct_imports and "." in name:
+            name = name.rsplit(".", 1)[0]
+        self.required_names.add(name)
 
     def reexport(self, name: str) -> None:
         """Mark a given non qualified name as needed in __all__.
@@ -516,7 +518,10 @@ class ImportTracker:
         # be imported from it. the names can also be alias in the form 'original as alias'
         module_map: Mapping[str, list[str]] = defaultdict(list)
 
-        for name in sorted(self.required_names):
+        for name in sorted(
+            self.required_names,
+            key=lambda n: (self.reverse_alias[n], n) if n in self.reverse_alias else (n, ""),
+        ):
             # If we haven't seen this name in an import statement, ignore it
             if name not in self.module_for:
                 continue
@@ -540,7 +545,7 @@ class ImportTracker:
                     assert "." not in name  # Because reexports only has nonqualified names
                     result.append(f"import {name} as {name}\n")
                 else:
-                    result.append(f"import {self.direct_imports[name]}\n")
+                    result.append(f"import {name}\n")
 
         # Now generate all the from ... import ... lines collected in module_map
         for module, names in sorted(module_map.items()):
@@ -595,7 +600,7 @@ class ReferenceFinder(mypy.mixedtraverser.MixedTraverserVisitor):
         self.refs.add(e.name)
 
     def visit_instance(self, t: Instance) -> None:
-        self.add_ref(t.type.fullname)
+        self.add_ref(t.type.name)
         super().visit_instance(t)
 
     def visit_unbound_type(self, t: UnboundType) -> None:
@@ -614,7 +619,10 @@ class ReferenceFinder(mypy.mixedtraverser.MixedTraverserVisitor):
         t.ret_type.accept(self)
 
     def add_ref(self, fullname: str) -> None:
-        self.refs.add(fullname.split(".")[-1])
+        self.refs.add(fullname)
+        while "." in fullname:
+            fullname = fullname.rsplit(".", 1)[0]
+            self.refs.add(fullname)
 
 
 class StubGenerator(mypy.traverser.TraverserVisitor):
@@ -1295,6 +1303,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             if (
                 as_name is None
                 and name not in self.referenced_names
+                and not any(n.startswith(name + ".") for n in self.referenced_names)
                 and (not self._all_ or name in IGNORED_DUNDERS)
                 and not is_private
                 and module not in ("abc", "asyncio") + TYPING_MODULE_NAMES
@@ -1303,14 +1312,15 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 # exported, unless there is an explicit __all__. Note that we need to special
                 # case 'abc' since some references are deleted during semantic analysis.
                 exported = True
-            top_level = full_module.split(".")[0]
+            top_level = full_module.split(".", 1)[0]
+            self_top_level = self.module.split(".", 1)[0]
             if (
                 as_name is None
                 and not self.export_less
                 and (not self._all_ or name in IGNORED_DUNDERS)
                 and self.module
                 and not is_private
-                and top_level in (self.module.split(".")[0], "_" + self.module.split(".")[0])
+                and top_level in (self_top_level, "_" + self_top_level)
             ):
                 # Export imports from the same package, since we can't reliably tell whether they
                 # are part of the public API.
