@@ -3686,3 +3686,15 @@ def g(*args: str) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "Tuple[Never, Never]" \
                    # E: Argument 1 to "f" has incompatible type "Callable[[VarArg(str)], None]"; expected "Call[Never]"
 [builtins fixtures/list.pyi]
+
+[case testInferenceAgainstTypeVarActualBound]
+from typing import Callable, TypeVar
+
+T = TypeVar("T")
+S = TypeVar("S")
+def test(f: Callable[[T], S]) -> Callable[[T], S]: ...
+
+F = TypeVar("F", bound=Callable[..., object])
+def dec(f: F) -> F:
+    reveal_type(test(f))  # N: Revealed type is "def (Any) -> builtins.object"
+    return f

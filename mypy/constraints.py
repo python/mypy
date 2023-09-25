@@ -373,6 +373,11 @@ def _infer_constraints(
             return handle_recursive_union(template, actual, direction)
         return []
 
+    if isinstance(actual, TypeVarType) and not actual.id.is_meta_var():
+        # Unless template is also a type variable (that is handled above), using the upper
+        # bound for inference will usually give better result for actual that is a type variable.
+        actual = get_proper_type(actual.upper_bound)
+
     # Remaining cases are handled by ConstraintBuilderVisitor.
     return template.accept(ConstraintBuilderVisitor(actual, direction, skip_neg_op))
 
