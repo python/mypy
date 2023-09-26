@@ -3698,3 +3698,24 @@ F = TypeVar("F", bound=Callable[..., object])
 def dec(f: F) -> F:
     reveal_type(test(f))  # N: Revealed type is "def (Any) -> builtins.object"
     return f
+
+[case testInferenceAgainstTypeVarActualUnionBound]
+from typing import Protocol, Generic, TypeVar, Union, overload
+
+_T_co = TypeVar("_T_co", covariant=True)
+
+class SupportsFoo(Protocol[_T_co]):
+    def foo(self) -> _T_co: ...
+
+class A:
+    def foo(self) -> A: ...
+
+class B:
+    def foo(self) -> B: ...
+
+def foo(f: SupportsFoo[_T_co]) -> _T_co: ...
+
+ABT = TypeVar("ABT", bound=Union[A, B])
+
+def simpler(k: ABT):
+    foo(k)
