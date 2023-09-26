@@ -3686,3 +3686,27 @@ def g(*args: str) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "Tuple[Never, Never]" \
                    # E: Argument 1 to "f" has incompatible type "Callable[[VarArg(str)], None]"; expected "Call[Never]"
 [builtins fixtures/list.pyi]
+
+[case testInferenceWorksWithEmptyCollectionsNested]
+from typing import List, TypeVar, NoReturn
+T = TypeVar('T')
+def f(a: List[T], b: List[T]) -> T: pass
+x = ["yes"]
+reveal_type(f(x, []))  # N: Revealed type is "builtins.str"
+reveal_type(f(["yes"], []))  # N: Revealed type is "builtins.str"
+
+empty: List[NoReturn]
+f(x, empty)  # E: Cannot infer type argument 1 of "f"
+f(["no"], empty)  # E: Cannot infer type argument 1 of "f"
+[builtins fixtures/list.pyi]
+
+[case testInferenceWorksWithEmptyCollectionsUnion]
+from typing import Any, Dict, NoReturn, NoReturn, Union
+
+def foo() -> Union[Dict[str, Any], Dict[int, Any]]:
+    return {}
+
+empty: Dict[NoReturn, NoReturn]
+def bar() -> Union[Dict[str, Any], Dict[int, Any]]:
+    return empty
+[builtins fixtures/dict.pyi]
