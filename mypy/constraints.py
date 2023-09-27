@@ -328,6 +328,18 @@ def _infer_constraints(
     if isinstance(template, TypeVarType):
         return [Constraint(template, direction, actual)]
 
+    if (
+        isinstance(actual, TypeVarType)
+        and not actual.id.is_meta_var()
+        and direction == SUPERTYPE_OF
+    ):
+        # Unless template is also a type variable (or a union that contains one), using the upper
+        # bound for inference will usually give better result for actual that is a type variable.
+        if not isinstance(template, UnionType) or not any(
+            isinstance(t, TypeVarType) for t in template.items
+        ):
+            actual = get_proper_type(actual.upper_bound)
+
     # Now handle the case of either template or actual being a Union.
     # For a Union to be a subtype of another type, every item of the Union
     # must be a subtype of that type, so concatenate the constraints.
