@@ -1604,3 +1604,52 @@ reveal_type(t[i])  # N: Revealed type is "builtins.int"
 t1: Tuple[int, Unpack[Tuple[int, ...]]]
 reveal_type(t1[i])  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleNotConcreteCallable]
+from typing_extensions import Unpack, TypeVarTuple
+from typing import Callable, TypeVar, Tuple
+
+T = TypeVar("T")
+Args = TypeVarTuple("Args")
+Args2 = TypeVarTuple("Args2")
+
+def submit(fn: Callable[[Unpack[Args]], T], *args: Unpack[Args]) -> T:
+    ...
+
+def submit2(fn: Callable[[int, Unpack[Args]], T], *args: Unpack[Tuple[int, Unpack[Args]]]) -> T:
+    ...
+
+def foo(func: Callable[[Unpack[Args]], T], *args: Unpack[Args]) -> T:
+   return submit(func, *args)
+
+def foo2(func: Callable[[Unpack[Args2]], T], *args: Unpack[Args2]) -> T:
+   return submit(func, *args)
+
+def foo3(func: Callable[[int, Unpack[Args2]], T], *args: Unpack[Args2]) -> T:
+   return submit2(func, 1, *args)
+
+def foo_bad(func: Callable[[Unpack[Args2]], T], *args: Unpack[Args2]) -> T:
+   return submit2(func, 1, *args)  # E: Argument 1 to "submit2" has incompatible type "Callable[[VarArg(Unpack[Args2])], T]"; expected "Callable[[int, VarArg(Unpack[Args2])], T]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleParamSpecInteraction]
+from typing_extensions import Unpack, TypeVarTuple, ParamSpec
+from typing import Callable, TypeVar
+
+T = TypeVar("T")
+Args = TypeVarTuple("Args")
+Args2 = TypeVarTuple("Args2")
+P = ParamSpec("P")
+
+def submit(fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
+    ...
+
+def foo(func: Callable[[Unpack[Args]], T], *args: Unpack[Args]) -> T:
+   return submit(func, *args)
+
+def foo2(func: Callable[[Unpack[Args]], T], *args: Unpack[Args2]) -> T:
+   return submit(func, *args)  # E: Argument 2 to "submit" has incompatible type "*Tuple[Unpack[Args2]]"; expected "Unpack[Args]"
+
+def foo3(func: Callable[[int, Unpack[Args2]], T], *args: Unpack[Args2]) -> T:
+   return submit(func, 1, *args)
+[builtins fixtures/tuple.pyi]
