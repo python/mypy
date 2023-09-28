@@ -1650,6 +1650,6 @@ def foo(func: Callable[[Unpack[Args]], T], *args: Unpack[Args]) -> T:
 def foo2(func: Callable[[Unpack[Args]], T], *args: Unpack[Args2]) -> T:
    return submit(func, *args)  # E: Argument 2 to "submit" has incompatible type "*Tuple[Unpack[Args2]]"; expected "Unpack[Args]"
 
-def foo3(func: Callable[[Unpack[Args2]], T], *args: Unpack[Args2]) -> T:
-   return submit(func, *args)
+def foo3(func: Callable[[int, Unpack[Args2]], T], *args: Unpack[Args2]) -> T:
+   return submit(func, 1, *args)
 [builtins fixtures/tuple.pyi]
