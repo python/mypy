@@ -4093,7 +4093,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         value = self.accept(e.value)
         self.chk.check_assignment(e.target, e.value)
         self.chk.check_final(e)
-        self.chk.store_type(e.target, value)
+        if not has_uninhabited_component(value):
+            # TODO: can we get rid of this extra store_type()?
+            # Usually, check_assignment() already stores the lvalue type correctly.
+            self.chk.store_type(e.target, value)
         self.find_partial_type_ref_fast_path(e.target)
         return value
 
