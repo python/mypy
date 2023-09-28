@@ -16,21 +16,12 @@ class TestExternal(unittest.TestCase):
     @unittest.skipIf(sys.platform.startswith("win"), "rt tests don't work on windows")
     def test_c_unit_test(self) -> None:
         """Run C unit tests in a subprocess."""
-        # Build Google Test, the C++ framework we use for testing C code.
-        # The source code for Google Test is copied to this repository.
         cppflags: list[str] = []
         env = os.environ.copy()
         if sys.platform == "darwin":
             cppflags += ["-mmacosx-version-min=10.10", "-stdlib=libc++"]
         env["CPPFLAGS"] = " ".join(cppflags)
-        subprocess.check_call(
-            ["make", "libgtest.a"],
-            env=env,
-            cwd=os.path.join(base_dir, "mypyc", "external", "googletest", "make"),
-        )
         # Build Python wrapper for C unit tests.
-        env = os.environ.copy()
-        env["CPPFLAGS"] = " ".join(cppflags)
         status = subprocess.check_call(
             [sys.executable, "setup.py", "build_ext", "--inplace"],
             env=env,
