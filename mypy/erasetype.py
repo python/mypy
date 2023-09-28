@@ -82,7 +82,9 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
             # Valid erasure for *Ts is *tuple[Any, ...], not just Any.
             if isinstance(tv, TypeVarTupleType):
                 args.append(
-                    tv.tuple_fallback.copy_modified(args=[AnyType(TypeOfAny.special_form)])
+                    UnpackType(
+                        tv.tuple_fallback.copy_modified(args=[AnyType(TypeOfAny.special_form)])
+                    )
                 )
             else:
                 args.append(AnyType(TypeOfAny.special_form))

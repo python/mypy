@@ -3542,6 +3542,14 @@ T = TypeVar("T")
 def type_or_callable(value: T, tp: Union[Type[T], Callable[[int], T]]) -> T: ...
 reveal_type(type_or_callable(A("test"), A))  # N: Revealed type is "__main__.A"
 
+[case testUpperBoundAsInferenceFallback]
+from typing import Callable, TypeVar, Any, Mapping, Optional
+T = TypeVar("T", bound=Mapping[str, Any])
+def raises(opts: Optional[T]) -> T: pass
+def assertRaises(cb: Callable[..., object]) -> None: pass
+assertRaises(raises)  # OK
+[builtins fixtures/dict.pyi]
+
 [case testJoinWithAnyFallback]
 from unknown import X  # type: ignore[import]
 
@@ -3686,3 +3694,57 @@ def g(*args: str) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "Tuple[Never, Never]" \
                    # E: Argument 1 to "f" has incompatible type "Callable[[VarArg(str)], None]"; expected "Call[Never]"
 [builtins fixtures/list.pyi]
+
+[case testInferenceAgainstTypeVarActualBound]
+from typing import Callable, TypeVar
+
+T = TypeVar("T")
+S = TypeVar("S")
+def test(f: Callable[[T], S]) -> Callable[[T], S]: ...
+
+F = TypeVar("F", bound=Callable[..., object])
+def dec(f: F) -> F:
+    reveal_type(test(f))  # N: Revealed type is "def (Any) -> builtins.object"
+    return f
+
+[case testInferenceAgainstTypeVarActualUnionBound]
+from typing import Protocol, TypeVar, Union
+
+T_co = TypeVar("T_co", covariant=True)
+class SupportsFoo(Protocol[T_co]):
+    def foo(self) -> T_co: ...
+
+class A:
+    def foo(self) -> A: ...
+class B:
+    def foo(self) -> B: ...
+
+def foo(f: SupportsFoo[T_co]) -> T_co: ...
+
+ABT = TypeVar("ABT", bound=Union[A, B])
+def simpler(k: ABT):
+    foo(k)
+
+[case testInferenceWorksWithEmptyCollectionsNested]
+from typing import List, TypeVar, NoReturn
+T = TypeVar('T')
+def f(a: List[T], b: List[T]) -> T: pass
+x = ["yes"]
+reveal_type(f(x, []))  # N: Revealed type is "builtins.str"
+reveal_type(f(["yes"], []))  # N: Revealed type is "builtins.str"
+
+empty: List[NoReturn]
+f(x, empty)  # E: Cannot infer type argument 1 of "f"
+f(["no"], empty)  # E: Cannot infer type argument 1 of "f"
+[builtins fixtures/list.pyi]
+
+[case testInferenceWorksWithEmptyCollectionsUnion]
+from typing import Any, Dict, NoReturn, NoReturn, Union
+
+def foo() -> Union[Dict[str, Any], Dict[int, Any]]:
+    return {}
+
+empty: Dict[NoReturn, NoReturn]
+def bar() -> Union[Dict[str, Any], Dict[int, Any]]:
+    return empty
+[builtins fixtures/dict.pyi]

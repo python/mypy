@@ -2466,7 +2466,7 @@ class SemanticAnalyzer(
             if as_id is not None:
                 base_id = id
                 imported_id = as_id
-                module_public = use_implicit_reexport or id.split(".")[-1] == as_id
+                module_public = use_implicit_reexport or id == as_id
             else:
                 base_id = id.split(".")[0]
                 imported_id = base_id
@@ -3205,6 +3205,13 @@ class SemanticAnalyzer(
                 if isinstance(callee_expr, RefExpr) and callee_expr.fullname:
                     method_name = call.callee.name
                     fname = callee_expr.fullname + "." + method_name
+                elif (
+                    isinstance(callee_expr, IndexExpr)
+                    and isinstance(callee_expr.base, RefExpr)
+                    and isinstance(callee_expr.analyzed, TypeApplication)
+                ):
+                    method_name = call.callee.name
+                    fname = callee_expr.base.fullname + "." + method_name
                 elif isinstance(callee_expr, CallExpr):
                     # check if chain call
                     call = callee_expr

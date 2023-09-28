@@ -18,6 +18,7 @@ from mypy.nodes import (
     ARG_STAR2,
     CONTRAVARIANT,
     COVARIANT,
+    INVARIANT,
     Decorator,
     FuncBase,
     OverloadedFuncDef,
@@ -342,6 +343,12 @@ def _is_subtype(
 def check_type_parameter(
     left: Type, right: Type, variance: int, proper_subtype: bool, subtype_context: SubtypeContext
 ) -> bool:
+    # It is safe to consider empty collection literals and similar as covariant, since
+    # such type can't be stored in a variable, see checker.is_valid_inferred_type().
+    if variance == INVARIANT:
+        p_left = get_proper_type(left)
+        if isinstance(p_left, UninhabitedType) and p_left.ambiguous:
+            variance = COVARIANT
     if variance == COVARIANT:
         if proper_subtype:
             return is_proper_subtype(left, right, subtype_context=subtype_context)
@@ -454,19 +461,22 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     if isinstance(unpacked, Instance):
                         return self._is_subtype(left, unpacked)
             if left.type.has_base(right.partial_fallback.type.fullname):
-                # Special case to consider Foo[*tuple[Any, ...]] (i.e. bare Foo) a
-                # subtype of Foo[<whatever>], when Foo is user defined variadic tuple type.
-                mapped = map_instance_to_supertype(left, right.partial_fallback.type)
-                if len(mapped.args) == 1 and isinstance(mapped.args[0], UnpackType):
-                    unpacked = get_proper_type(mapped.args[0].type)
-                    if isinstance(unpacked, Instance):
-                        assert unpacked.type.fullname == "builtins.tuple"
-                        if isinstance(get_proper_type(unpacked.args[0]), AnyType):
-                            return not self.proper_subtype
-                if mapped.type.fullname == "builtins.tuple" and isinstance(
-                    get_proper_type(mapped.args[0]), AnyType
-                ):
-                    return not self.proper_subtype
+                if not self.proper_subtype:
+                    # Special case to consider Foo[*tuple[Any, ...]] (i.e. bare Foo) a
+                    # subtype of Foo[<whatever>], when Foo is user defined variadic tuple type.
+                    mapped = map_instance_to_supertype(left, right.partial_fallback.type)
+                    for arg in map(get_proper_type, mapped.args):
+                        if isinstance(arg, UnpackType):
+                            unpacked = get_proper_type(arg.type)
+                            if not isinstance(unpacked, Instance):
+                                break
+                            assert unpacked.type.fullname == "builtins.tuple"
+                            if not isinstance(get_proper_type(unpacked.args[0]), AnyType):
+                                break
+                        elif not isinstance(arg, AnyType):
+                            break
+                    else:
+                        return True
             return False
         if isinstance(right, TypeVarTupleType):
             # tuple[Any, ...] is like Any in the world of tuples (see special case above).
@@ -534,15 +544,19 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     right_args = (
                         right_prefix + (TupleType(list(right_middle), fallback),) + right_suffix
                     )
-                    if len(t.args) == 1 and isinstance(t.args[0], UnpackType):
-                        unpacked = get_proper_type(t.args[0].type)
-                        if isinstance(unpacked, Instance):
-                            assert unpacked.type.fullname == "builtins.tuple"
-                            if (
-                                isinstance(get_proper_type(unpacked.args[0]), AnyType)
-                                and not self.proper_subtype
-                            ):
-                                return True
+                    if not self.proper_subtype:
+                        for arg in map(get_proper_type, t.args):
+                            if isinstance(arg, UnpackType):
+                                unpacked = get_proper_type(arg.type)
+                                if not isinstance(unpacked, Instance):
+                                    break
+                                assert unpacked.type.fullname == "builtins.tuple"
+                                if not isinstance(get_proper_type(unpacked.args[0]), AnyType):
+                                    break
+                            elif not isinstance(arg, AnyType):
+                                break
+                        else:
+                            return True
                     type_params = zip(left_args, right_args, right.type.defn.type_vars)
                 else:
                     type_params = zip(t.args, right.args, right.type.defn.type_vars)
