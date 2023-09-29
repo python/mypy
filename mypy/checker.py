@@ -6271,7 +6271,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.checking_missing_await = False
 
     def check_possible_missing_await(
-        self, subtype: Type, supertype: Type, context: Context, code: ErrorCode
+        self, subtype: Type, supertype: Type, context: Context, code: ErrorCode | None
     ) -> None:
         """Check if the given type becomes a subtype when awaited."""
         if self.checking_missing_await:
