@@ -3451,7 +3451,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if isinstance(unpacked, TypeVarTupleType):
                         fallback = unpacked.upper_bound
                     else:
-                        assert isinstance(t, Instance) and t.type.fullname == "builtins.tuple"
+                        assert (
+                            isinstance(unpacked, Instance)
+                            and unpacked.type.fullname == "builtins.tuple"
+                        )
                         fallback = unpacked
                     new_rvalues.append(StarExpr(TempNode(fallback)))
         return new_rvalues
