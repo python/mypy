@@ -1673,6 +1673,32 @@ z2 = (*b, *b)
 reveal_type(z2)  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
 [builtins fixtures/tuple.pyi]
 
+[case testVariadicTupleInListSetExpr]
+from typing import Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+vt: Tuple[int, Unpack[Tuple[float, ...]], int]
+reveal_type([1, *vt])  # N: Revealed type is "builtins.list[builtins.float]"
+reveal_type({1, *vt})  # N: Revealed type is "builtins.set[builtins.float]"
+
+Ts = TypeVarTuple("Ts")
+def foo(arg: Tuple[int, Unpack[Ts], str]) -> None:
+    reveal_type([1, *arg])  # N: Revealed type is "builtins.list[builtins.object]"
+    reveal_type({1, *arg})  # N: Revealed type is "builtins.set[builtins.object]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testVariadicTupleInTupleContext]
+from typing import Tuple, Optional
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+def test(x: Optional[Tuple[Unpack[Ts]]] = None) -> Tuple[Unpack[Ts]]: ...
+
+vt: Tuple[int, Unpack[Tuple[float, ...]], int]
+vt = 1, *test(), 2  # OK, type context is used
+vt2 = 1, *test(), 2  # E: Need type annotation for "vt2"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeVarTupleAnyOverload]
 from typing import Any, Generic, overload, Tuple
 from typing_extensions import TypeVarTuple, Unpack
