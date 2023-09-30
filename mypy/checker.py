@@ -6237,7 +6237,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 assert call is not None
                 if not is_subtype(subtype, call, options=self.options):
                     self.msg.note_call(supertype, call, context, code=msg.code)
-        self.check_possible_missing_await(subtype, supertype, context)
+        self.check_possible_missing_await(subtype, supertype, context, code=msg.code)
         return False
 
     def get_precise_awaitable_type(self, typ: Type, local_errors: ErrorWatcher) -> Type | None:
@@ -6271,7 +6271,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.checking_missing_await = False
 
     def check_possible_missing_await(
-        self, subtype: Type, supertype: Type, context: Context
+        self, subtype: Type, supertype: Type, context: Context, code: ErrorCode | None
     ) -> None:
         """Check if the given type becomes a subtype when awaited."""
         if self.checking_missing_await:
@@ -6285,7 +6285,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 aw_type, supertype, context, msg=message_registry.INCOMPATIBLE_TYPES
             ):
                 return
-        self.msg.possible_missing_await(context)
+        self.msg.possible_missing_await(context, code)
 
     def contains_none(self, t: Type) -> bool:
         t = get_proper_type(t)

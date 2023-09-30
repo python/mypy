@@ -2563,7 +2563,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 original_caller_type, callee_type, context, code=code
             )
             if not self.msg.prefer_simple_messages():
-                self.chk.check_possible_missing_await(caller_type, callee_type, context)
+                self.chk.check_possible_missing_await(caller_type, callee_type, context, code)
 
     def check_overload_call(
         self,
