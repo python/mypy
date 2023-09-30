@@ -14,6 +14,7 @@ from mypy.types import (
     Type,
     TypedDictType,
     TypeOfAny,
+    TypeVarTupleType,
     get_proper_type,
 )
 
@@ -189,6 +190,11 @@ class ArgTypeExpander:
         original_actual = actual_type
         actual_type = get_proper_type(actual_type)
         if actual_kind == nodes.ARG_STAR:
+            if isinstance(actual_type, TypeVarTupleType):
+                # This code path is hit when *Ts is passed to a callable without
+                # any unpack types (i.e. with old-style *args: T only). The best
+                # thing we can do is to use the upper bound.
+                actual_type = get_proper_type(actual_type.upper_bound)
             if isinstance(actual_type, Instance) and actual_type.args:
                 from mypy.subtypes import is_subtype
 
