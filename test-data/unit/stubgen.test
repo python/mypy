@@ -2772,9 +2772,9 @@ y: b.Y
 z: p.a.X
 
 [out]
+import p.a
 import p.a as a
 import p.b as b
-import p.a
 
 x: a.X
 y: b.Y
@@ -2787,7 +2787,7 @@ from p import a
 x: a.X
 
 [out]
-from p import a as a
+from p import a
 
 x: a.X
 
@@ -2809,7 +2809,7 @@ from p import a
 x: a.X
 
 [out]
-from p import a as a
+from p import a
 
 x: a.X
 
@@ -2858,6 +2858,60 @@ import p.a
 
 x: a.X
 y: p.a.Y
+
+[case testNestedImports]
+import p
+import p.m1
+import p.m2
+
+x: p.X
+y: p.m1.Y
+z: p.m2.Z
+
+[out]
+import p
+import p.m1
+import p.m2
+
+x: p.X
+y: p.m1.Y
+z: p.m2.Z
+
+[case testNestedImportsAliased]
+import p as t
+import p.m1 as pm1
+import p.m2 as pm2
+
+x: t.X
+y: pm1.Y
+z: pm2.Z
+
+[out]
+import p as t
+import p.m1 as pm1
+import p.m2 as pm2
+
+x: t.X
+y: pm1.Y
+z: pm2.Z
+
+[case testNestedFromImports]
+from p import m1
+from p.m1 import sm1
+from p.m2 import sm2
+
+x: m1.X
+y: sm1.Y
+z: sm2.Z
+
+[out]
+from p import m1
+from p.m1 import sm1
+from p.m2 import sm2
+
+x: m1.X
+y: sm1.Y
+z: sm2.Z
 
 [case testOverload_fromTypingImport]
 from typing import Tuple, Union, overload

@@ -366,13 +366,25 @@ from typing_extensions import TypeVarTuple, Unpack
 
 Ts = TypeVarTuple("Ts")
 
-# TODO: add less trivial tests with prefix/suffix etc.
-# TODO: add tests that call with a type var tuple instead of just args.
 def args_to_tuple(*args: Unpack[Ts]) -> Tuple[Unpack[Ts]]:
     reveal_type(args)  # N: Revealed type is "Tuple[Unpack[Ts`-1]]"
-    return args
+    reveal_type(args_to_tuple(1, *args))  # N: Revealed type is "Tuple[Literal[1]?, Unpack[Ts`-1]]"
+    reveal_type(args_to_tuple(*args, 'a'))  # N: Revealed type is "Tuple[Unpack[Ts`-1], Literal['a']?]"
+    reveal_type(args_to_tuple(1, *args, 'a'))  # N: Revealed type is "Tuple[Literal[1]?, Unpack[Ts`-1], Literal['a']?]"
+    args_to_tuple(*args, *args)  # E: Passing multiple variadic unpacks in a call is not supported
+    ok = (1, 'a')
+    reveal_type(args_to_tuple(*ok, *ok))  # N: Revealed type is "Tuple[builtins.int, builtins.str, builtins.int, builtins.str]"
+    if int():
+        return args
+    else:
+        return args_to_tuple(*args)
 
 reveal_type(args_to_tuple(1, 'a'))  # N: Revealed type is "Tuple[Literal[1]?, Literal['a']?]"
+vt: Tuple[int, ...]
+reveal_type(args_to_tuple(1, *vt))  # N: Revealed type is "Tuple[Literal[1]?, Unpack[builtins.tuple[builtins.int, ...]]]"
+reveal_type(args_to_tuple(*vt, 'a'))  # N: Revealed type is "Tuple[Unpack[builtins.tuple[builtins.int, ...]], Literal['a']?]"
+reveal_type(args_to_tuple(1, *vt, 'a'))  # N: Revealed type is "Tuple[Literal[1]?, Unpack[builtins.tuple[builtins.int, ...]], Literal['a']?]"
+args_to_tuple(*vt, *vt)  # E: Passing multiple variadic unpacks in a call is not supported
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTuplePep646TypeVarStarArgs]
@@ -381,8 +393,17 @@ from typing_extensions import TypeVarTuple, Unpack
 
 Ts = TypeVarTuple("Ts")
 
+def args_to_tuple(*args: Unpack[Ts]) -> Tuple[Unpack[Ts]]:
+    with_prefix_suffix(*args)  # E: Too few arguments for "with_prefix_suffix" \
+                               # E: Argument 1 to "with_prefix_suffix" has incompatible type "*Tuple[Unpack[Ts]]"; expected "bool"
+    new_args = (True, "foo", *args, 5)
+    with_prefix_suffix(*new_args)
+    return args
+
 def with_prefix_suffix(*args: Unpack[Tuple[bool, str, Unpack[Ts], int]]) -> Tuple[bool, str, Unpack[Ts], int]:
     reveal_type(args)  # N: Revealed type is "Tuple[builtins.bool, builtins.str, Unpack[Ts`-1], builtins.int]"
+    reveal_type(args_to_tuple(*args))  # N: Revealed type is "Tuple[builtins.bool, builtins.str, Unpack[Ts`-1], builtins.int]"
+    reveal_type(args_to_tuple(1, *args, 'a'))  # N: Revealed type is "Tuple[Literal[1]?, builtins.bool, builtins.str, Unpack[Ts`-1], builtins.int, Literal['a']?]"
     return args
 
 reveal_type(with_prefix_suffix(True, "bar", "foo", 5))  # N: Revealed type is "Tuple[builtins.bool, builtins.str, Literal['foo']?, builtins.int]"
@@ -395,8 +416,7 @@ t = (True, "bar", "foo", 5)
 reveal_type(with_prefix_suffix(*t))  # N: Revealed type is "Tuple[builtins.bool, builtins.str, builtins.str, builtins.int]"
 reveal_type(with_prefix_suffix(True, *("bar", "foo"), 5))  # N: Revealed type is "Tuple[builtins.bool, builtins.str, Literal['foo']?, builtins.int]"
 
-# TODO: handle list case
-#reveal_type(with_prefix_suffix(True, "bar", *["foo1", "foo2"], 5))
+reveal_type(with_prefix_suffix(True, "bar", *["foo1", "foo2"], 5))  # N: Revealed type is "Tuple[builtins.bool, builtins.str, Unpack[builtins.tuple[builtins.str, ...]], builtins.int]"
 
 bad_t = (True, "bar")
 with_prefix_suffix(*bad_t)  # E: Too few arguments for "with_prefix_suffix"
@@ -434,7 +454,7 @@ reveal_type(C().foo2)  # N: Revealed type is "def (*args: Unpack[Tuple[builtins.
 
 [case testTypeVarTuplePep646TypeVarStarArgsVariableLengthTuple]
 from typing import Tuple
-from typing_extensions import Unpack
+from typing_extensions import Unpack, TypeVarTuple
 
 def foo(*args: Unpack[Tuple[int, ...]]) -> None:
     reveal_type(args)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
@@ -442,11 +462,28 @@ def foo(*args: Unpack[Tuple[int, ...]]) -> None:
 foo(0, 1, 2)
 foo(0, 1, "bar")  # E: Argument 3 to "foo" has incompatible type "str"; expected "int"
 
-
 def foo2(*args: Unpack[Tuple[str, Unpack[Tuple[int, ...]], bool, bool]]) -> None:
     reveal_type(args)  # N: Revealed type is "Tuple[builtins.str, Unpack[builtins.tuple[builtins.int, ...]], builtins.bool, builtins.bool]"
-    # TODO: generate an error
-    # reveal_type(args[1])
+    reveal_type(args[1])  # N: Revealed type is "builtins.int"
+
+def foo3(*args: Unpack[Tuple[str, Unpack[Tuple[int, ...]], str, float]]) -> None:
+    reveal_type(args[0])  # N: Revealed type is "builtins.str"
+    reveal_type(args[1])  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    reveal_type(args[2])  # N: Revealed type is "Union[builtins.int, builtins.str, builtins.float]"
+    args[3]  # E: Tuple index out of range \
+             # N: Variadic tuple can have length 3
+    reveal_type(args[-1])  # N: Revealed type is "builtins.float"
+    reveal_type(args[-2])  # N: Revealed type is "builtins.str"
+    reveal_type(args[-3])  # N: Revealed type is "Union[builtins.str, builtins.int]"
+    args[-4]  # E: Tuple index out of range \
+              # N: Variadic tuple can have length 3
+    reveal_type(args[::-1])  # N: Revealed type is "Tuple[builtins.float, builtins.str, Unpack[builtins.tuple[builtins.int, ...]], builtins.str]"
+    args[::2]  # E: Ambiguous slice of a variadic tuple
+    args[:2]  # E: Ambiguous slice of a variadic tuple
+
+Ts = TypeVarTuple("Ts")
+def foo4(*args: Unpack[Tuple[str, Unpack[Ts], bool, bool]]) -> None:
+    reveal_type(args[1])  # N: Revealed type is "builtins.object"
 
 foo2("bar", 1, 2, 3, False, True)
 foo2(0, 1, 2, 3, False, True)  # E: Argument 1 to "foo2" has incompatible type "int"; expected "str"
@@ -908,7 +945,7 @@ def cons(
     return wrapped
 
 def star(f: Callable[[X], Y]) -> Callable[[Unpack[Tuple[X, ...]]], Tuple[Y, ...]]:
-    def wrapped(*xs: X):
+    def wrapped(*xs: X) -> Tuple[Y, ...]:
         if not xs:
             return nil()
         return cons(f, star(f))(*xs)
@@ -1515,4 +1552,104 @@ T = TypeVar("T")
 def test(x: int, t: Tuple[T, ...]) -> Tuple[int, Unpack[Tuple[T, ...]]]:
     ...
 a: Any = test(42, ())
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleIndexTypeVar]
+from typing import Any, List, Sequence, Tuple, TypeVar
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+def f(data: Sequence[Tuple[Unpack[Ts]]]) -> List[Any]:
+    return [d[0] for d in data]  # E: Tuple index out of range \
+                                 # N: Variadic tuple can have length 0
+
+T = TypeVar("T")
+def g(data: Sequence[Tuple[T, Unpack[Ts]]]) -> List[T]:
+    return [d[0] for d in data]  # OK
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleOverloadMatch]
+from typing import Any, Generic, overload, Tuple, TypeVar
+from typing_extensions import TypeVarTuple, Unpack
+
+_Ts = TypeVarTuple("_Ts")
+_T = TypeVar("_T")
+_T2 = TypeVar("_T2")
+
+class Container(Generic[_T]): ...
+class Array(Generic[Unpack[_Ts]]): ...
+
+@overload
+def build(entity: Container[_T], /) -> Array[_T]: ...
+@overload
+def build(entity: Container[_T], entity2: Container[_T2], /) -> Array[_T, _T2]: ...
+@overload
+def build(*entities: Container[Any]) -> Array[Unpack[Tuple[Any, ...]]]: ...
+def build(*entities: Container[Any]) -> Array[Unpack[Tuple[Any, ...]]]:
+    ...
+
+def test(a: Container[Any], b: Container[int], c: Container[str]):
+    reveal_type(build(a, b))  # N: Revealed type is "__main__.Array[Any, builtins.int]"
+    reveal_type(build(b, c))  # N: Revealed type is "__main__.Array[builtins.int, builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleIndexOldStyleNonNormalizedAndNonLiteral]
+from typing import Any, Tuple
+from typing_extensions import Unpack
+
+t: Tuple[Unpack[Tuple[int, ...]]]
+reveal_type(t[42])  # N: Revealed type is "builtins.int"
+i: int
+reveal_type(t[i])  # N: Revealed type is "builtins.int"
+t1: Tuple[int, Unpack[Tuple[int, ...]]]
+reveal_type(t1[i])  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleNotConcreteCallable]
+from typing_extensions import Unpack, TypeVarTuple
+from typing import Callable, TypeVar, Tuple
+
+T = TypeVar("T")
+Args = TypeVarTuple("Args")
+Args2 = TypeVarTuple("Args2")
+
+def submit(fn: Callable[[Unpack[Args]], T], *args: Unpack[Args]) -> T:
+    ...
+
+def submit2(fn: Callable[[int, Unpack[Args]], T], *args: Unpack[Tuple[int, Unpack[Args]]]) -> T:
+    ...
+
+def foo(func: Callable[[Unpack[Args]], T], *args: Unpack[Args]) -> T:
+   return submit(func, *args)
+
+def foo2(func: Callable[[Unpack[Args2]], T], *args: Unpack[Args2]) -> T:
+   return submit(func, *args)
+
+def foo3(func: Callable[[int, Unpack[Args2]], T], *args: Unpack[Args2]) -> T:
+   return submit2(func, 1, *args)
+
+def foo_bad(func: Callable[[Unpack[Args2]], T], *args: Unpack[Args2]) -> T:
+   return submit2(func, 1, *args)  # E: Argument 1 to "submit2" has incompatible type "Callable[[VarArg(Unpack[Args2])], T]"; expected "Callable[[int, VarArg(Unpack[Args2])], T]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleParamSpecInteraction]
+from typing_extensions import Unpack, TypeVarTuple, ParamSpec
+from typing import Callable, TypeVar
+
+T = TypeVar("T")
+Args = TypeVarTuple("Args")
+Args2 = TypeVarTuple("Args2")
+P = ParamSpec("P")
+
+def submit(fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
+    ...
+
+def foo(func: Callable[[Unpack[Args]], T], *args: Unpack[Args]) -> T:
+   return submit(func, *args)
+
+def foo2(func: Callable[[Unpack[Args]], T], *args: Unpack[Args2]) -> T:
+   return submit(func, *args)  # E: Argument 2 to "submit" has incompatible type "*Tuple[Unpack[Args2]]"; expected "Unpack[Args]"
+
+def foo3(func: Callable[[int, Unpack[Args2]], T], *args: Unpack[Args2]) -> T:
+   return submit(func, 1, *args)
 [builtins fixtures/tuple.pyi]

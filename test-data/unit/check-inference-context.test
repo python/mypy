@@ -1321,11 +1321,7 @@ from typing import List, TypeVar
 T = TypeVar('T', bound=int)
 def f(x: List[T]) -> List[T]: ...
 
-# TODO: improve error message for such cases, see #3283 and #5706
-y: List[str] = f([]) \
- # E: Incompatible types in assignment (expression has type "List[Never]", variable has type "List[str]") \
- # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
- # N: Consider using "Sequence" instead, which is covariant
+y: List[str] = f([])
 [builtins fixtures/list.pyi]
 
 [case testWideOuterContextNoArgs]
@@ -1342,10 +1338,7 @@ from typing import TypeVar, Optional, List
 T = TypeVar('T', bound=int)
 def f(x: Optional[T] = None) -> List[T]: ...
 
-y: List[str] = f()  \
-      # E: Incompatible types in assignment (expression has type "List[Never]", variable has type "List[str]") \
-      # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
-      # N: Consider using "Sequence" instead, which is covariant
+y: List[str] = f()
 [builtins fixtures/list.pyi]
 
 [case testUseCovariantGenericOuterContext]

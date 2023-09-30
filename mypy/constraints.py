@@ -137,25 +137,38 @@ def infer_constraints_for_callable(
             unpack_type = callee.arg_types[i]
             assert isinstance(unpack_type, UnpackType)
 
-            # In this case we are binding all of the actuals to *args
+            # In this case we are binding all the actuals to *args,
             # and we want a constraint that the typevar tuple being unpacked
             # is equal to a type list of all the actuals.
             actual_types = []
+
+            unpacked_type = get_proper_type(unpack_type.type)
+            if isinstance(unpacked_type, TypeVarTupleType):
+                tuple_instance = unpacked_type.tuple_fallback
+            elif isinstance(unpacked_type, TupleType):
+                tuple_instance = unpacked_type.partial_fallback
+            else:
+                assert False, "mypy bug: unhandled constraint inference case"
+
             for actual in actuals:
                 actual_arg_type = arg_types[actual]
                 if actual_arg_type is None:
                     continue
 
-                actual_types.append(
-                    mapper.expand_actual_type(
-                        actual_arg_type,
-                        arg_kinds[actual],
-                        callee.arg_names[i],
-                        callee.arg_kinds[i],
-                    )
+                expanded_actual = mapper.expand_actual_type(
+                    actual_arg_type, arg_kinds[actual], callee.arg_names[i], callee.arg_kinds[i]
                 )
 
-            unpacked_type = get_proper_type(unpack_type.type)
+                if arg_kinds[actual] != ARG_STAR or isinstance(
+                    get_proper_type(actual_arg_type), TupleType
+                ):
+                    actual_types.append(expanded_actual)
+                else:
+                    # If we are expanding an iterable inside * actual, append a homogeneous item instead
+                    actual_types.append(
+                        UnpackType(tuple_instance.copy_modified(args=[expanded_actual]))
+                    )
+
             if isinstance(unpacked_type, TypeVarTupleType):
                 constraints.append(
                     Constraint(
@@ -327,6 +340,18 @@ def _infer_constraints(
     #     which never introduces new Union types (it uses join() instead).
     if isinstance(template, TypeVarType):
         return [Constraint(template, direction, actual)]
+
+    if (
+        isinstance(actual, TypeVarType)
+        and not actual.id.is_meta_var()
+        and direction == SUPERTYPE_OF
+    ):
+        # Unless template is also a type variable (or a union that contains one), using the upper
+        # bound for inference will usually give better result for actual that is a type variable.
+        if not isinstance(template, UnionType) or not any(
+            isinstance(t, TypeVarType) for t in template.items
+        ):
+            actual = get_proper_type(actual.upper_bound)
 
     # Now handle the case of either template or actual being a Union.
     # For a Union to be a subtype of another type, every item of the Union

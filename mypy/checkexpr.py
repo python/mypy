@@ -1640,6 +1640,27 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 callee.type_object().name, abstract_attributes, context
             )
 
+        var_arg = callee.var_arg()
+        if var_arg and isinstance(var_arg.typ, UnpackType):
+            # It is hard to support multiple variadic unpacks (except for old-style *args: int),
+            # fail gracefully to avoid crashes later.
+            seen_unpack = False
+            for arg, arg_kind in zip(args, arg_kinds):
+                if arg_kind != ARG_STAR:
+                    continue
+                arg_type = get_proper_type(self.accept(arg))
+                if not isinstance(arg_type, TupleType) or any(
+                    isinstance(t, UnpackType) for t in arg_type.items
+                ):
+                    if seen_unpack:
+                        self.msg.fail(
+                            "Passing multiple variadic unpacks in a call is not supported",
+                            context,
+                            code=codes.CALL_ARG,
+                        )
+                        return AnyType(TypeOfAny.from_error), callee
+                    seen_unpack = True
+
         formal_to_actual = map_actuals_to_formals(
             arg_kinds,
             arg_names,
@@ -2405,7 +2426,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     ]
                     actual_kinds = [nodes.ARG_STAR] + [nodes.ARG_POS] * (len(actuals) - 1)
 
-                    # TODO: can we really assert this? What if formal is just plain Unpack[Ts]?
+                    # If we got here, the callee was previously inferred to have a suffix.
                     assert isinstance(orig_callee_arg_type, UnpackType)
                     assert isinstance(orig_callee_arg_type.type, ProperType) and isinstance(
                         orig_callee_arg_type.type, TupleType
@@ -2431,22 +2452,29 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                             inner_unpack = unpacked_type.items[inner_unpack_index]
                             assert isinstance(inner_unpack, UnpackType)
                             inner_unpacked_type = get_proper_type(inner_unpack.type)
-                            # We assume heterogenous tuples are desugared earlier
-                            assert isinstance(inner_unpacked_type, Instance)
-                            assert inner_unpacked_type.type.fullname == "builtins.tuple"
-                            callee_arg_types = (
-                                unpacked_type.items[:inner_unpack_index]
-                                + [inner_unpacked_type.args[0]]
-                                * (len(actuals) - len(unpacked_type.items) + 1)
-                                + unpacked_type.items[inner_unpack_index + 1 :]
-                            )
-                            callee_arg_kinds = [ARG_POS] * len(actuals)
+                            if isinstance(inner_unpacked_type, TypeVarTupleType):
+                                # This branch mimics the expanded_tuple case above but for
+                                # the case where caller passed a single * unpacked tuple argument.
+                                callee_arg_types = unpacked_type.items
+                                callee_arg_kinds = [
+                                    ARG_POS if i != inner_unpack_index else ARG_STAR
+                                    for i in range(len(unpacked_type.items))
+                                ]
+                            else:
+                                # We assume heterogeneous tuples are desugared earlier.
+                                assert isinstance(inner_unpacked_type, Instance)
+                                assert inner_unpacked_type.type.fullname == "builtins.tuple"
+                                callee_arg_types = (
+                                    unpacked_type.items[:inner_unpack_index]
+                                    + [inner_unpacked_type.args[0]]
+                                    * (len(actuals) - len(unpacked_type.items) + 1)
+                                    + unpacked_type.items[inner_unpack_index + 1 :]
+                                )
+                                callee_arg_kinds = [ARG_POS] * len(actuals)
                     elif isinstance(unpacked_type, TypeVarTupleType):
                         callee_arg_types = [orig_callee_arg_type]
                         callee_arg_kinds = [ARG_STAR]
                     else:
-                        # TODO: Any and Never can appear in Unpack (as a result of user error),
-                        # fail gracefully here and elsewhere (and/or normalize them away).
                         assert isinstance(unpacked_type, Instance)
                         assert unpacked_type.type.fullname == "builtins.tuple"
                         callee_arg_types = [unpacked_type.args[0]] * len(actuals)
@@ -2458,8 +2486,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             assert len(actual_types) == len(actuals) == len(actual_kinds)
 
             if len(callee_arg_types) != len(actual_types):
-                # TODO: Improve error message
-                self.chk.fail("Invalid number of arguments", context)
+                if len(actual_types) > len(callee_arg_types):
+                    self.chk.msg.too_many_arguments(callee, context)
+                else:
+                    self.chk.msg.too_few_arguments(callee, context, None)
                 continue
 
             assert len(callee_arg_types) == len(actual_types)
@@ -2533,7 +2563,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 original_caller_type, callee_type, context, code=code
             )
             if not self.msg.prefer_simple_messages():
-                self.chk.check_possible_missing_await(caller_type, callee_type, context)
+                self.chk.check_possible_missing_await(caller_type, callee_type, context, code)
 
     def check_overload_call(
         self,
@@ -2764,11 +2794,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     )
             is_match = not w.has_new_errors()
             if is_match:
-                # Return early if possible; otherwise record info so we can
+                # Return early if possible; otherwise record info, so we can
                 # check for ambiguity due to 'Any' below.
                 if not args_contain_any:
                     return ret_type, infer_type
-                matches.append(typ)
+                p_infer_type = get_proper_type(infer_type)
+                if isinstance(p_infer_type, CallableType):
+                    # Prefer inferred types if possible, this will avoid false triggers for
+                    # Any-ambiguity caused by arguments with Any passed to generic overloads.
+                    matches.append(p_infer_type)
+                else:
+                    matches.append(typ)
                 return_types.append(ret_type)
                 inferred_types.append(infer_type)
                 type_maps.append(m)
@@ -4057,7 +4093,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         value = self.accept(e.value)
         self.chk.check_assignment(e.target, e.value)
         self.chk.check_final(e)
-        self.chk.store_type(e.target, value)
+        if not has_uninhabited_component(value):
+            # TODO: can we get rid of this extra store_type()?
+            # Usually, check_assignment() already stores the lvalue type correctly.
+            self.chk.store_type(e.target, value)
         self.find_partial_type_ref_fast_path(e.target)
         return value
 
@@ -4109,6 +4148,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Visit the index, just to make sure we have a type for it available
         self.accept(index)
 
+        if isinstance(left_type, TupleType) and any(
+            isinstance(it, UnpackType) for it in left_type.items
+        ):
+            # Normalize variadic tuples for consistency.
+            left_type = expand_type(left_type, {})
+
         if isinstance(left_type, UnionType):
             original_type = original_type or left_type
             # Don't combine literal types, since we may need them for type narrowing.
@@ -4129,12 +4174,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if ns is not None:
                 out = []
                 for n in ns:
-                    if n < 0:
-                        n += len(left_type.items)
-                    if 0 <= n < len(left_type.items):
-                        out.append(left_type.items[n])
+                    item = self.visit_tuple_index_helper(left_type, n)
+                    if item is not None:
+                        out.append(item)
                     else:
                         self.chk.fail(message_registry.TUPLE_INDEX_OUT_OF_RANGE, e)
+                        if any(isinstance(t, UnpackType) for t in left_type.items):
+                            self.chk.note(
+                                f"Variadic tuple can have length {left_type.length() - 1}", e
+                            )
                         return AnyType(TypeOfAny.from_error)
                 return make_simplified_union(out)
             else:
@@ -4157,6 +4205,46 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             )
             e.method_type = method_type
             return result
+
+    def visit_tuple_index_helper(self, left: TupleType, n: int) -> Type | None:
+        unpack_index = find_unpack_in_list(left.items)
+        if unpack_index is None:
+            if n < 0:
+                n += len(left.items)
+            if 0 <= n < len(left.items):
+                return left.items[n]
+            return None
+        unpack = left.items[unpack_index]
+        assert isinstance(unpack, UnpackType)
+        unpacked = get_proper_type(unpack.type)
+        if isinstance(unpacked, TypeVarTupleType):
+            # Usually we say that TypeVarTuple can't be split, be in case of
+            # indexing it seems benign to just return the fallback item, similar
+            # to what we do when indexing a regular TypeVar.
+            middle = unpacked.tuple_fallback.args[0]
+        else:
+            assert isinstance(unpacked, Instance)
+            assert unpacked.type.fullname == "builtins.tuple"
+            middle = unpacked.args[0]
+        if n >= 0:
+            if n < unpack_index:
+                return left.items[n]
+            if n >= len(left.items) - 1:
+                # For tuple[int, *tuple[str, ...], int] we allow either index 0 or 1,
+                # since variadic item may have zero items.
+                return None
+            return UnionType.make_union(
+                [middle] + left.items[unpack_index + 1 : n + 2], left.line, left.column
+            )
+        n += len(left.items)
+        if n <= 0:
+            # Similar to above, we only allow -1, and -2 for tuple[int, *tuple[str, ...], int]
+            return None
+        if n > unpack_index:
+            return left.items[n]
+        return UnionType.make_union(
+            left.items[n - 1 : unpack_index] + [middle], left.line, left.column
+        )
 
     def visit_tuple_slice_helper(self, left_type: TupleType, slic: SliceExpr) -> Type:
         begin: Sequence[int | None] = [None]
@@ -4183,7 +4271,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         items: list[Type] = []
         for b, e, s in itertools.product(begin, end, stride):
-            items.append(left_type.slice(b, e, s, fallback=self.named_type("builtins.tuple")))
+            item = left_type.slice(b, e, s, fallback=self.named_type("builtins.tuple"))
+            if item is None:
+                self.chk.fail(message_registry.AMBIGUOUS_SLICE_OF_VARIADIC_TUPLE, slic)
+                return AnyType(TypeOfAny.from_error)
+            items.append(item)
         return make_simplified_union(items)
 
     def try_getting_int_literals(self, index: Expression) -> list[int] | None:
@@ -4192,7 +4284,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         Otherwise, returns None.
 
         Specifically, this function is guaranteed to return a list with
-        one or more ints if one one the following is true:
+        one or more ints if one the following is true:
 
         1. 'expr' is a IntExpr or a UnaryExpr backed by an IntExpr
         2. 'typ' is a LiteralType containing an int
@@ -4223,10 +4315,29 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def nonliteral_tuple_index_helper(self, left_type: TupleType, index: Expression) -> Type:
         self.check_method_call_by_name("__getitem__", left_type, [index], [ARG_POS], context=index)
         # We could return the return type from above, but unions are often better than the join
-        union = make_simplified_union(left_type.items)
+        union = self.union_tuple_fallback_item(left_type)
         if isinstance(index, SliceExpr):
             return self.chk.named_generic_type("builtins.tuple", [union])
         return union
+
+    def union_tuple_fallback_item(self, left_type: TupleType) -> Type:
+        # TODO: this duplicates logic in typeops.tuple_fallback().
+        items = []
+        for item in left_type.items:
+            if isinstance(item, UnpackType):
+                unpacked_type = get_proper_type(item.type)
+                if isinstance(unpacked_type, TypeVarTupleType):
+                    unpacked_type = get_proper_type(unpacked_type.upper_bound)
+                if (
+                    isinstance(unpacked_type, Instance)
+                    and unpacked_type.type.fullname == "builtins.tuple"
+                ):
+                    items.append(unpacked_type.args[0])
+                else:
+                    raise NotImplementedError
+            else:
+                items.append(item)
+        return make_simplified_union(items)
 
     def visit_typeddict_index_expr(
         self, td_type: TypedDictType, index: Expression, setitem: bool = False
