@@ -3343,7 +3343,49 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if isinstance(proper_right_type, TupleType):
                     right_radd_method = proper_right_type.partial_fallback.type.get("__radd__")
                     if right_radd_method is None:
-                        return self.concat_tuples(proper_left_type, proper_right_type)
+                        # One cannot have two variadic items in the same tuple.
+                        if not (
+                            any(isinstance(t, UnpackType) for t in proper_left_type.items)
+                            and any(isinstance(t, UnpackType) for t in proper_right_type.items)
+                        ):
+                            return self.concat_tuples(proper_left_type, proper_right_type)
+                elif (
+                    TYPE_VAR_TUPLE in self.chk.options.enable_incomplete_feature
+                    and isinstance(proper_right_type, Instance)
+                    and self.chk.type_is_iterable(proper_right_type)
+                ):
+                    right_radd_method = proper_right_type.type.get("__radd__")
+                    if (
+                        right_radd_method is None
+                        and proper_left_type.partial_fallback.type.fullname == "builtins.tuple"
+                    ):
+                        # One cannot have two variadic items in the same tuple.
+                        if not any(isinstance(t, UnpackType) for t in proper_left_type.items):
+                            item_type = self.chk.iterable_item_type(proper_right_type, e)
+                            return proper_left_type.copy_modified(
+                                items=proper_left_type.items
+                                + [
+                                    UnpackType(
+                                        self.chk.named_generic_type("builtins.tuple", [item_type])
+                                    )
+                                ]
+                            )
+
+        if TYPE_VAR_TUPLE in self.chk.options.enable_incomplete_feature:
+            if (
+                isinstance(proper_left_type, Instance)
+                and proper_left_type.type.fullname == "builtins.tuple"
+            ):
+                proper_right_type = get_proper_type(self.accept(e.right))
+                if (
+                    isinstance(proper_right_type, TupleType)
+                    and proper_right_type.partial_fallback.type.fullname == "builtins.tuple"
+                ):
+                    # One cannot have two variadic items in the same tuple.
+                    if not any(isinstance(t, UnpackType) for t in proper_right_type.items):
+                        return proper_right_type.copy_modified(
+                            items=[UnpackType(proper_left_type)] + proper_right_type.items
+                        )
 
         if e.op in operators.op_methods:
             method = operators.op_methods[e.op]

@@ -1699,6 +1699,26 @@ vt = 1, *test(), 2  # OK, type context is used
 vt2 = 1, *test(), 2  # E: Need type annotation for "vt2"
 [builtins fixtures/tuple.pyi]
 
+[case testVariadicTupleConcatenation]
+from typing import Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+vtf: Tuple[float, ...]
+vt: Tuple[int, Unpack[Tuple[float, ...]], int]
+
+reveal_type(vt + (1, 2))  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.int, Literal[1]?, Literal[2]?]"
+reveal_type((1, 2) + vt)  # N: Revealed type is "Tuple[Literal[1]?, Literal[2]?, builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.int]"
+reveal_type(vt + vt)  # N: Revealed type is "builtins.tuple[builtins.float, ...]"
+reveal_type(vtf + (1, 2))  # N: Revealed type is "Tuple[Unpack[builtins.tuple[builtins.float, ...]], Literal[1]?, Literal[2]?]"
+reveal_type((1, 2) + vtf)  # N: Revealed type is "Tuple[Literal[1]?, Literal[2]?, Unpack[builtins.tuple[builtins.float, ...]]]"
+
+Ts = TypeVarTuple("Ts")
+def foo(arg: Tuple[int, Unpack[Ts], str]) -> None:
+    reveal_type(arg + (1, 2))  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str, Literal[1]?, Literal[2]?]"
+    reveal_type((1, 2) + arg)  # N: Revealed type is "Tuple[Literal[1]?, Literal[2]?, builtins.int, Unpack[Ts`-1], builtins.str]"
+    reveal_type(arg + arg)  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeVarTupleAnyOverload]
 from typing import Any, Generic, overload, Tuple
 from typing_extensions import TypeVarTuple, Unpack
