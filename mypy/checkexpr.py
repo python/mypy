@@ -3362,13 +3362,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         and find_unpack_in_list(proper_left_type.items) is None
                     ):
                         item_type = self.chk.iterable_item_type(proper_right_type, e)
+                        mapped = self.chk.named_generic_type("builtins.tuple", [item_type])
                         return proper_left_type.copy_modified(
-                            items=proper_left_type.items
-                            + [
-                                UnpackType(
-                                    self.chk.named_generic_type("builtins.tuple", [item_type])
-                                )
-                            ]
+                            items=proper_left_type.items + [UnpackType(mapped)]
                         )
         if TYPE_VAR_TUPLE in self.chk.options.enable_incomplete_feature:
             # Handle tuple[X, ...] + tuple[Y, Z] = tuple[*tuple[X, ...], Y, Z].
@@ -4771,11 +4767,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def tuple_context_matches(self, expr: TupleExpr, ctx: TupleType) -> bool:
         ctx_unpack_index = find_unpack_in_list(ctx.items)
         if ctx_unpack_index is None:
-            # For fixed tuples accept everything that can possibly match (even if this requires
-            # all star items to be empty).
+            # For fixed tuples accept everything that can possibly match, even if this
+            # requires all star items to be empty.
             return len([e for e in expr.items if not isinstance(e, StarExpr)]) <= len(ctx.items)
         # For variadic context, the only easy case is when structure matches exactly.
-        # TODO: use type context in more cases.
+        # TODO: try using tuple type context in more cases.
         if len([e for e in expr.items if not isinstance(e, StarExpr)]) != 1:
             return False
         expr_star_index = next(i for i, lv in enumerate(expr.items) if isinstance(lv, StarExpr))
@@ -4839,7 +4835,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 tt = self.accept(item.expr, ctx)
                 tt = get_proper_type(tt)
                 if isinstance(tt, TupleType):
-                    if any(isinstance(t, UnpackType) for t in tt.items):
+                    if find_unpack_in_list(tt.items) is not None:
                         if seen_unpack_in_items:
                             # Multiple unpack items are not allowed in tuples,
                             # fall back to instance type.
@@ -4855,21 +4851,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         # result in an error later, just do something predictable here.
                         j += len(tt.items)
                 else:
-                    # A star expression that's not a Tuple.
-                    # Treat the whole thing as a variable-length tuple.
                     if (
                         TYPE_VAR_TUPLE in self.chk.options.enable_incomplete_feature
                         and not seen_unpack_in_items
                     ):
+                        # Handle (x, *y, z), where y is e.g. tuple[Y, ...].
                         if isinstance(tt, Instance) and self.chk.type_is_iterable(tt):
                             item_type = self.chk.iterable_item_type(tt, e)
-                            items.append(
-                                UnpackType(
-                                    self.chk.named_generic_type("builtins.tuple", [item_type])
-                                )
-                            )
+                            mapped = self.chk.named_generic_type("builtins.tuple", [item_type])
+                            items.append(UnpackType(mapped))
                             seen_unpack_in_items = True
                             continue
+                    # A star expression that's not a Tuple.
+                    # Treat the whole thing as a variable-length tuple.
                     return self.check_lst_expr(e, "builtins.tuple", "<tuple>")
             else:
                 if not type_context_items or j >= len(type_context_items):
@@ -4883,7 +4877,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         result: ProperType = TupleType(
             items, self.chk.named_generic_type("builtins.tuple", [fallback_item])
         )
-        if any(isinstance(t, UnpackType) for t in items):
+        if seen_unpack_in_items:
             # Return already normalized tuple type just in case.
             result = expand_type(result, {})
         return result

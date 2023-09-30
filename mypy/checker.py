@@ -3434,6 +3434,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return False
 
     def flatten_rvalues(self, rvalues: list[Expression]) -> list[Expression]:
+        """Flatten expression list by expanding those * items that have tuple type.
+
+        For each regular type item in the tuple type use a TempNode(), for an Unpack
+        item use a corresponding StarExpr(TempNode()).
+        """
         new_rvalues = []
         for rv in rvalues:
             if not isinstance(rv, StarExpr):
@@ -3603,8 +3608,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if len(relevant_items) == 1:
                 rvalue_type = get_proper_type(relevant_items[0])
 
-        if isinstance(rvalue_type, TupleType) and any(
-            isinstance(t, UnpackType) for t in rvalue_type.items
+        if (
+            isinstance(rvalue_type, TupleType)
+            and find_unpack_in_list(rvalue_type.items) is not None
         ):
             # Normalize for consistent handling with "old-style" homogeneous tuples.
             rvalue_type = expand_type(rvalue_type, {})
