@@ -3344,9 +3344,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     right_radd_method = proper_right_type.partial_fallback.type.get("__radd__")
                     if right_radd_method is None:
                         # One cannot have two variadic items in the same tuple.
-                        if not (
-                            any(isinstance(t, UnpackType) for t in proper_left_type.items)
-                            and any(isinstance(t, UnpackType) for t in proper_right_type.items)
+                        if (
+                            find_unpack_in_list(proper_left_type.items) is None
+                            or find_unpack_in_list(proper_right_type.items) is None
                         ):
                             return self.concat_tuples(proper_left_type, proper_right_type)
                 elif (
@@ -3354,38 +3354,38 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     and isinstance(proper_right_type, Instance)
                     and self.chk.type_is_iterable(proper_right_type)
                 ):
+                    # Handle tuple[X, Y] + tuple[Z, ...] = tuple[X, Y, *tuple[Z, ...]].
                     right_radd_method = proper_right_type.type.get("__radd__")
                     if (
                         right_radd_method is None
                         and proper_left_type.partial_fallback.type.fullname == "builtins.tuple"
+                        and find_unpack_in_list(proper_left_type.items) is None
                     ):
-                        # One cannot have two variadic items in the same tuple.
-                        if not any(isinstance(t, UnpackType) for t in proper_left_type.items):
-                            item_type = self.chk.iterable_item_type(proper_right_type, e)
-                            return proper_left_type.copy_modified(
-                                items=proper_left_type.items
-                                + [
-                                    UnpackType(
-                                        self.chk.named_generic_type("builtins.tuple", [item_type])
-                                    )
-                                ]
-                            )
-
+                        item_type = self.chk.iterable_item_type(proper_right_type, e)
+                        return proper_left_type.copy_modified(
+                            items=proper_left_type.items
+                            + [
+                                UnpackType(
+                                    self.chk.named_generic_type("builtins.tuple", [item_type])
+                                )
+                            ]
+                        )
         if TYPE_VAR_TUPLE in self.chk.options.enable_incomplete_feature:
+            # Handle tuple[X, ...] + tuple[Y, Z] = tuple[*tuple[X, ...], Y, Z].
             if (
-                isinstance(proper_left_type, Instance)
+                e.op == "+"
+                and isinstance(proper_left_type, Instance)
                 and proper_left_type.type.fullname == "builtins.tuple"
             ):
                 proper_right_type = get_proper_type(self.accept(e.right))
                 if (
                     isinstance(proper_right_type, TupleType)
                     and proper_right_type.partial_fallback.type.fullname == "builtins.tuple"
+                    and find_unpack_in_list(proper_right_type.items) is None
                 ):
-                    # One cannot have two variadic items in the same tuple.
-                    if not any(isinstance(t, UnpackType) for t in proper_right_type.items):
-                        return proper_right_type.copy_modified(
-                            items=[UnpackType(proper_left_type)] + proper_right_type.items
-                        )
+                    return proper_right_type.copy_modified(
+                        items=[UnpackType(proper_left_type)] + proper_right_type.items
+                    )
 
         if e.op in operators.op_methods:
             method = operators.op_methods[e.op]
@@ -4768,21 +4768,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         )[0]
         return remove_instance_last_known_values(out)
 
-    def tuple_context_matches(self, e: TupleExpr, ctx: TupleType) -> bool:
-        if not any(isinstance(t, UnpackType) for t in ctx.items):
+    def tuple_context_matches(self, expr: TupleExpr, ctx: TupleType) -> bool:
+        ctx_unpack_index = find_unpack_in_list(ctx.items)
+        if ctx_unpack_index is None:
             # For fixed tuples accept everything that can possibly match (even if this requires
             # all star items to be empty).
-            return len([expr for expr in e.items if not isinstance(expr, StarExpr)]) <= len(
-                ctx.items
-            )
-        ctx_unpack_index = find_unpack_in_list(ctx.items)
-        assert ctx_unpack_index is not None
+            return len([e for e in expr.items if not isinstance(e, StarExpr)]) <= len(ctx.items)
         # For variadic context, the only easy case is when structure matches exactly.
         # TODO: use type context in more cases.
-        if len([expr for expr in e.items if not isinstance(expr, StarExpr)]) != 1:
+        if len([e for e in expr.items if not isinstance(e, StarExpr)]) != 1:
             return False
-        expr_star_index = next(i for i, lv in enumerate(e.items) if isinstance(lv, StarExpr))
-        return len(e.items) == len(ctx.items) and ctx_unpack_index == expr_star_index
+        expr_star_index = next(i for i, lv in enumerate(expr.items) if isinstance(lv, StarExpr))
+        return len(expr.items) == len(ctx.items) and ctx_unpack_index == expr_star_index
 
     def visit_tuple_expr(self, e: TupleExpr) -> Type:
         """Type check a tuple expression."""
@@ -4816,7 +4813,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         unpack_in_context = False
         if type_context_items is not None:
-            unpack_in_context = any(isinstance(t, UnpackType) for t in type_context_items)
+            unpack_in_context = find_unpack_in_list(type_context_items) is not None
         seen_unpack_in_items = False
 
         # Infer item types.  Give up if there's a star expression

@@ -19,7 +19,7 @@ from mypy.types import (
     UnboundType,
     UninhabitedType,
     UnionType,
-    UnpackType,
+    find_unpack_in_list,
     get_proper_type,
 )
 from mypyc.ir.class_ir import ClassIR
@@ -114,8 +114,9 @@ class Mapper:
         elif isinstance(typ, TupleType):
             # Use our unboxed tuples for raw tuples but fall back to
             # being boxed for NamedTuple or for variadic tuples.
-            if typ.partial_fallback.type.fullname == "builtins.tuple" and not any(
-                isinstance(t, UnpackType) for t in typ.items
+            if (
+                typ.partial_fallback.type.fullname == "builtins.tuple"
+                and find_unpack_in_list(typ.items) is None
             ):
                 return RTuple([self.type_to_rtype(t) for t in typ.items])
             else:
