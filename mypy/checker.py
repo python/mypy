@@ -3555,7 +3555,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.fail("Variadic tuple unpacking requires a star target", context)
                 return False
             if len(lvalues) > rvalue_count:
-                self.fail("Too many assignment targets for variadic unpack", context)
+                self.fail(message_registry.TOO_MANY_TARGETS_FOR_VARIADIC_UNPACK, context)
                 return False
             left_star_index = next(i for i, lv in enumerate(lvalues) if isinstance(lv, StarExpr))
             left_prefix = left_star_index
@@ -3568,7 +3568,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 #     x, y, *xs, z = rv
                 # it is technically valid, but is tricky to reason about.
                 # TODO: support this (at least if the r.h.s. unpack is a homogeneous tuple).
-                self.fail("Too many assignment targets for variadic unpack", context)
+                self.fail(message_registry.TOO_MANY_TARGETS_FOR_VARIADIC_UNPACK, context)
             return True
         if any(isinstance(lvalue, StarExpr) for lvalue in lvalues):
             if len(lvalues) - 1 > rvalue_count:

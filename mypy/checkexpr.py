@@ -95,6 +95,7 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
+from mypy.options import TYPE_VAR_TUPLE
 from mypy.plugin import (
     FunctionContext,
     FunctionSigContext,
@@ -2510,7 +2511,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     )
                     self.msg.invalid_keyword_var_arg(actual_type, is_mapping, context)
                 expanded_actual = mapper.expand_actual_type(
-                    actual_type, actual_kind, callee.arg_names[i], callee_arg_kind
+                    actual_type,
+                    actual_kind,
+                    callee.arg_names[i],
+                    callee_arg_kind,
+                    allow_unpack=isinstance(callee_arg_type, UnpackType),
                 )
                 check_arg(
                     expanded_actual,
@@ -4721,6 +4726,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         )[0]
         return remove_instance_last_known_values(out)
 
+    def tuple_context_matches(self, e: TupleExpr, ctx: TupleType) -> bool:
+        if not any(isinstance(t, UnpackType) for t in ctx.items):
+            # For fixed tuples accept everything that can possibly match (even if this requires
+            # all star items to be empty).
+            return len([expr for expr in e.items if not isinstance(expr, StarExpr)]) <= len(
+                ctx.items
+            )
+        ctx_unpack_index = find_unpack_in_list(ctx.items)
+        assert ctx_unpack_index is not None
+        # For variadic context, the only easy case is when structure matches exactly.
+        # TODO: use type context in more cases.
+        if len([expr for expr in e.items if not isinstance(expr, StarExpr)]) != 1:
+            return False
+        expr_star_index = next(i for i, lv in enumerate(e.items) if isinstance(lv, StarExpr))
+        return len(e.items) == len(ctx.items) and ctx_unpack_index == expr_star_index
+
     def visit_tuple_expr(self, e: TupleExpr) -> Type:
         """Type check a tuple expression."""
         # Try to determine type context for type inference.
@@ -4730,7 +4751,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             tuples_in_context = [
                 t
                 for t in get_proper_types(type_context.items)
-                if (isinstance(t, TupleType) and len(t.items) == len(e.items))
+                if (isinstance(t, TupleType) and self.tuple_context_matches(e, t))
                 or is_named_instance(t, TUPLE_LIKE_INSTANCE_NAMES)
             ]
             if len(tuples_in_context) == 1:
@@ -4740,7 +4761,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # more than one.  Either way, we can't decide on a context.
                 pass
 
-        if isinstance(type_context, TupleType):
+        if isinstance(type_context, TupleType) and self.tuple_context_matches(e, type_context):
             type_context_items = type_context.items
         elif type_context and is_named_instance(type_context, TUPLE_LIKE_INSTANCE_NAMES):
             assert isinstance(type_context, Instance)
@@ -4750,6 +4771,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # number of items than e.  In that case we use those context
         # items that match a position in e, and we'll worry about type
         # mismatches later.
+
+        unpack_in_context = False
+        if type_context_items is not None:
+            unpack_in_context = any(isinstance(t, UnpackType) for t in type_context_items)
+        seen_unpack_in_items = False
 
         # Infer item types.  Give up if there's a star expression
         # that's not a Tuple.
@@ -4763,14 +4789,48 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # TupleExpr, flatten it, so we can benefit from the
                 # context?  Counterargument: Why would anyone write
                 # (1, *(2, 3)) instead of (1, 2, 3) except in a test?
-                tt = self.accept(item.expr)
+                if unpack_in_context:
+                    # Note: this logic depends on full structure match in tuple_context_matches().
+                    assert type_context_items
+                    ctx_item = type_context_items[j]
+                    assert isinstance(ctx_item, UnpackType)
+                    ctx = ctx_item.type
+                else:
+                    ctx = None
+                tt = self.accept(item.expr, ctx)
                 tt = get_proper_type(tt)
                 if isinstance(tt, TupleType):
+                    if any(isinstance(t, UnpackType) for t in tt.items):
+                        if seen_unpack_in_items:
+                            # Multiple unpack items are not allowed in tuples,
+                            # fall back to instance type.
+                            return self.check_lst_expr(e, "builtins.tuple", "<tuple>")
+                        else:
+                            seen_unpack_in_items = True
                     items.extend(tt.items)
-                    j += len(tt.items)
+                    # Note: this logic depends on full structure match in tuple_context_matches().
+                    if unpack_in_context:
+                        j += 1
+                    else:
+                        # If there is an unpack in expressions, but not in context, this will
+                        # result in an error later, just do something predictable here.
+                        j += len(tt.items)
                 else:
                     # A star expression that's not a Tuple.
                     # Treat the whole thing as a variable-length tuple.
+                    if (
+                        TYPE_VAR_TUPLE in self.chk.options.enable_incomplete_feature
+                        and not seen_unpack_in_items
+                    ):
+                        if isinstance(tt, Instance) and self.chk.type_is_iterable(tt):
+                            item_type = self.chk.iterable_item_type(tt, e)
+                            items.append(
+                                UnpackType(
+                                    self.chk.named_generic_type("builtins.tuple", [item_type])
+                                )
+                            )
+                            seen_unpack_in_items = True
+                            continue
                     return self.check_lst_expr(e, "builtins.tuple", "<tuple>")
             else:
                 if not type_context_items or j >= len(type_context_items):
@@ -4781,7 +4841,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 items.append(tt)
         # This is a partial fallback item type. A precise type will be calculated on demand.
         fallback_item = AnyType(TypeOfAny.special_form)
-        return TupleType(items, self.chk.named_generic_type("builtins.tuple", [fallback_item]))
+        result: ProperType = TupleType(
+            items, self.chk.named_generic_type("builtins.tuple", [fallback_item])
+        )
+        if any(isinstance(t, UnpackType) for t in items):
+            # Return already normalized tuple type just in case.
+            result = expand_type(result, {})
+        return result
 
     def fast_dict_type(self, e: DictExpr) -> Type | None:
         """
