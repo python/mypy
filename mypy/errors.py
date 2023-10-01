@@ -222,8 +222,8 @@ def _to_unique_error(e: ErrorInfo) -> _UniqueErrorT:
 
 class MultiCheckErrorBuffer(ErrorWatcher):
     """
-    Buffers errors from multiple checks, which is what we do in some cases
-    like TypeVars with constraints or 'finally' blocks.
+    Buffers errors from multiple checks to the same tree node, which is what we do in some cases
+    like expanding a TypeVar with constraints, or handling a 'try' with a 'finally' clause.
 
     Some errors should be reported only if they were reported by *all* checks.
     """
