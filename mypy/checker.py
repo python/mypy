@@ -4519,7 +4519,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # from the latter context affect the type state in the code
             # that follows the try statement.)
             if not self.binder.is_unreachable():
-                err_buf.checks += 1
                 with err_buf:
                     self.accept(s.finally_body)
 

@@ -229,19 +229,32 @@ class MultiCheckErrorBuffer(ErrorWatcher):
     """
 
     _CODES = frozenset({codes.TRUTHY_BOOL})
+    _last_consecutive_check: dict[_UniqueErrorT, int]
 
     def __init__(self, errors: Errors) -> None:
         super().__init__(errors, filter_errors=True, save_filtered_errors=True)
-        self.checks = 1
+        self.check_idx = 0
+        self._last_consecutive_check = defaultdict(int)
+
+    def _track_error(self, info: ErrorInfo) -> None:
+        k = _to_unique_error(info)
+        last_consecutive_check = self._last_consecutive_check[k]
+        # if the error appeared in all previous checks, count the current check too
+        if last_consecutive_check == self.check_idx - 1:
+            self._last_consecutive_check[k] = self.check_idx
+
+    def __enter__(self):
+        self.check_idx += 1
+        return super().__enter__()
+
+    def on_error(self, file: str, info: ErrorInfo) -> bool:
+        self._track_error(info)
+        return super().on_error(file, info)
 
     def flush(self) -> None:
-        counter: dict[_UniqueErrorT, int] = defaultdict(lambda: 0)
         for error in self.filtered_errors():
-            if error.code in self._CODES:
-                counter[_to_unique_error(error)] += 1
-
-        for error in self.filtered_errors():
-            if counter[_to_unique_error(error)] in (0, self.checks):
+            v = self._last_consecutive_check.get(_to_unique_error(error))
+            if v is None or v == self.check_idx:
                 self.errors.add_error_info(error)
 
 
