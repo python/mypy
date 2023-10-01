@@ -8,7 +8,7 @@ import re
 import shutil
 import sys
 import time
-from typing import Any, Callable, Iterable, Iterator, Pattern
+from typing import IO, Any, Callable, Iterable, Iterator, Pattern
 
 # Exporting Suite as alias to TestCase for backwards compatibility
 # TODO: avoid aliasing - import and subclass TestCase directly
@@ -70,7 +70,12 @@ def diff_ranges(
 
 
 def render_diff_range(
-    ranges: list[tuple[int, int]], content: list[str], colour: str | None = None
+    ranges: list[tuple[int, int]],
+    content: list[str],
+    *,
+    colour: str | None = None,
+    output: IO[str] = sys.stderr,
+    indent: int = 2,
 ) -> None:
     for i, line_range in enumerate(ranges):
         is_matching = i % 2 == 1
@@ -83,20 +88,20 @@ def render_diff_range(
                 and j < len(lines) - 3
             ):
                 if j == 3:
-                    sys.stderr.write("  ...\n")
+                    output.write(" " * indent + "...\n")
                 continue
 
             if not is_matching and colour:
-                sys.stderr.write(colour)
+                output.write(colour)
 
-            sys.stderr.write("  " + line)
+            output.write(" " * indent + line)
 
             if not is_matching:
                 if colour:
-                    sys.stderr.write("\033[0m")
-                sys.stderr.write(" (diff)")
+                    output.write("\033[0m")
+                output.write(" (diff)")
 
-            sys.stderr.write("\n")
+            output.write("\n")
 
 
 def assert_string_arrays_equal(expected: list[str], actual: list[str], msg: str) -> None:
