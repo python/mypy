@@ -936,6 +936,21 @@ def test(x: T) -> bool:
         return False
     return True
 
+[case testTruthyFunction_TypeVar_DifferentCodes]
+# flags: --enable-error-code truthy-bool
+from typing import Callable, TypeVar
+
+class C:
+    pass
+
+T = TypeVar("T", Callable[[], int], C)
+
+def test(x: T) -> bool:
+    if not x:  # E: Function "x" could always be true in boolean context  [truthy-function] \
+               # E: "x" has type "C" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+        return False
+    return True
+
 [case testTruthyIterable]
 # flags: --enable-error-code truthy-iterable
 from typing import Iterable

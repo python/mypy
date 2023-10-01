@@ -213,11 +213,11 @@ class ErrorWatcher:
         return self._filtered
 
 
-_UniqueErrorT: _TypeAlias = Tuple[Optional[codes.ErrorCode], str, int, int, str, str]
+_UniqueErrorT: _TypeAlias = Tuple[str, int, int, int, int]
 
 
 def _to_unique_error(e: ErrorInfo) -> _UniqueErrorT:
-    return e.code, e.file, e.line, e.column, e.severity, e.message
+    return e.file, e.line, e.end_line, e.column, e.end_column
 
 
 class MultiCheckErrorBuffer(ErrorWatcher):
