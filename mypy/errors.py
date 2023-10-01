@@ -228,7 +228,7 @@ class MultiCheckErrorBuffer(ErrorWatcher):
     Some errors should be reported only if they were reported by *all* checks.
     """
 
-    _CODES = frozenset({codes.TRUTHY_BOOL})
+    _CODES = frozenset({codes.TRUTHY_BOOL, codes.TRUTHY_FUNCTION, codes.TRUTHY_ITERABLE})
     _last_consecutive_check: dict[_UniqueErrorT, int]
 
     def __init__(self, errors: Errors) -> None:
@@ -256,6 +256,19 @@ class MultiCheckErrorBuffer(ErrorWatcher):
             v = self._last_consecutive_check.get(_to_unique_error(error))
             if v is None or v == self.check_idx:
                 self.errors.add_error_info(error)
+
+
+class DummyErrorBuffer:
+    """Dummy error buffer that does nothing."""
+
+    def __enter__(self) -> DummyErrorBuffer:
+        return self
+
+    def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> Literal[False]:
+        return False
+
+    def flush(self) -> None:
+        pass
 
 
 class Errors:

@@ -39,7 +39,13 @@ from mypy.checkpattern import PatternChecker
 from mypy.constraints import SUPERTYPE_OF
 from mypy.erasetype import erase_type, erase_typevars, remove_instance_last_known_values
 from mypy.errorcodes import TYPE_VAR, UNUSED_AWAITABLE, UNUSED_COROUTINE, ErrorCode
-from mypy.errors import Errors, ErrorWatcher, MultiCheckErrorBuffer, report_internal_error
+from mypy.errors import (
+    DummyErrorBuffer,
+    Errors,
+    ErrorWatcher,
+    MultiCheckErrorBuffer,
+    report_internal_error,
+)
 from mypy.expandtype import expand_self_type, expand_type, expand_type_by_instance
 from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash
 from mypy.maptype import map_instance_to_supertype
@@ -1096,286 +1102,298 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # Expand type variables with value restrictions to ordinary types.
         expanded = self.expand_typevars(defn, typ)
         original_typ = typ
+        err_buf = MultiCheckErrorBuffer(self.errors) if len(expanded) > 1 else DummyErrorBuffer()
         for item, typ in expanded:
-            old_binder = self.binder
-            self.binder = ConditionalTypeBinder()
-            with self.binder.top_frame_context():
-                defn.expanded.append(item)
+            with err_buf:
+                old_binder = self.binder
+                self.binder = ConditionalTypeBinder()
+                with self.binder.top_frame_context():
+                    defn.expanded.append(item)
 
-                # We may be checking a function definition or an anonymous
-                # function. In the first case, set up another reference with the
-                # precise type.
-                if isinstance(item, FuncDef):
-                    fdef = item
-                    # Check if __init__ has an invalid return type.
-                    if (
-                        fdef.info
-                        and fdef.name in ("__init__", "__init_subclass__")
-                        and not isinstance(
-                            get_proper_type(typ.ret_type), (NoneType, UninhabitedType)
-                        )
-                        and not self.dynamic_funcs[-1]
-                    ):
-                        self.fail(
-                            message_registry.MUST_HAVE_NONE_RETURN_TYPE.format(fdef.name), item
-                        )
-
-                    # Check validity of __new__ signature
-                    if fdef.info and fdef.name == "__new__":
-                        self.check___new___signature(fdef, typ)
-
-                    self.check_for_missing_annotations(fdef)
-                    if self.options.disallow_any_unimported:
-                        if fdef.type and isinstance(fdef.type, CallableType):
-                            ret_type = fdef.type.ret_type
-                            if has_any_from_unimported_type(ret_type):
-                                self.msg.unimported_type_becomes_any("Return type", ret_type, fdef)
-                            for idx, arg_type in enumerate(fdef.type.arg_types):
-                                if has_any_from_unimported_type(arg_type):
-                                    prefix = f'Argument {idx + 1} to "{fdef.name}"'
-                                    self.msg.unimported_type_becomes_any(prefix, arg_type, fdef)
-                    check_for_explicit_any(
-                        fdef.type, self.options, self.is_typeshed_stub, self.msg, context=fdef
-                    )
-
-                if name:  # Special method names
-                    if defn.info and self.is_reverse_op_method(name):
-                        self.check_reverse_op_method(item, typ, name, defn)
-                    elif name in ("__getattr__", "__getattribute__"):
-                        self.check_getattr_method(typ, defn, name)
-                    elif name == "__setattr__":
-                        self.check_setattr_method(typ, defn)
-
-                # Refuse contravariant return type variable
-                if isinstance(typ.ret_type, TypeVarType):
-                    if typ.ret_type.variance == CONTRAVARIANT:
-                        self.fail(
-                            message_registry.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT, typ.ret_type
-                        )
-                    self.check_unbound_return_typevar(typ)
-                elif (
-                    isinstance(original_typ.ret_type, TypeVarType) and original_typ.ret_type.values
-                ):
-                    # Since type vars with values are expanded, the return type is changed
-                    # to a raw value. This is a hack to get it back.
-                    self.check_unbound_return_typevar(original_typ)
-
-                # Check that Generator functions have the appropriate return type.
-                if defn.is_generator:
-                    if defn.is_async_generator:
-                        if not self.is_async_generator_return_type(typ.ret_type):
-                            self.fail(
-                                message_registry.INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR, typ
-                            )
-                    else:
-                        if not self.is_generator_return_type(typ.ret_type, defn.is_coroutine):
-                            self.fail(message_registry.INVALID_RETURN_TYPE_FOR_GENERATOR, typ)
-
-                # Fix the type if decorated with `@types.coroutine` or `@asyncio.coroutine`.
-                if defn.is_awaitable_coroutine:
-                    # Update the return type to AwaitableGenerator.
-                    # (This doesn't exist in typing.py, only in typing.pyi.)
-                    t = typ.ret_type
-                    c = defn.is_coroutine
-                    ty = self.get_generator_yield_type(t, c)
-                    tc = self.get_generator_receive_type(t, c)
-                    if c:
-                        tr = self.get_coroutine_return_type(t)
-                    else:
-                        tr = self.get_generator_return_type(t, c)
-                    ret_type = self.named_generic_type(
-                        "typing.AwaitableGenerator", [ty, tc, tr, t]
-                    )
-                    typ = typ.copy_modified(ret_type=ret_type)
-                    defn.type = typ
-
-                # Push return type.
-                self.return_types.append(typ.ret_type)
-
-                # Store argument types.
-                for i in range(len(typ.arg_types)):
-                    arg_type = typ.arg_types[i]
-                    with self.scope.push_function(defn):
-                        # We temporary push the definition to get the self type as
-                        # visible from *inside* of this function/method.
-                        ref_type: Type | None = self.scope.active_self_type()
-                    if (
-                        isinstance(defn, FuncDef)
-                        and ref_type is not None
-                        and i == 0
-                        and (not defn.is_static or defn.name == "__new__")
-                        and typ.arg_kinds[0] not in [nodes.ARG_STAR, nodes.ARG_STAR2]
-                    ):
-                        if defn.is_class or defn.name == "__new__":
-                            ref_type = mypy.types.TypeType.make_normalized(ref_type)
-                        # This level of erasure matches the one in checkmember.check_self_arg(),
-                        # better keep these two checks consistent.
-                        erased = get_proper_type(erase_typevars(erase_to_bound(arg_type)))
-                        if not is_subtype(ref_type, erased, ignore_type_params=True):
-                            if (
-                                isinstance(erased, Instance)
-                                and erased.type.is_protocol
-                                or isinstance(erased, TypeType)
-                                and isinstance(erased.item, Instance)
-                                and erased.item.type.is_protocol
-                            ):
-                                # We allow the explicit self-type to be not a supertype of
-                                # the current class if it is a protocol. For such cases
-                                # the consistency check will be performed at call sites.
-                                msg = None
-                            elif typ.arg_names[i] in {"self", "cls"}:
-                                msg = message_registry.ERASED_SELF_TYPE_NOT_SUPERTYPE.format(
-                                    erased.str_with_options(self.options),
-                                    ref_type.str_with_options(self.options),
-                                )
-                            else:
-                                msg = message_registry.MISSING_OR_INVALID_SELF_TYPE
-                            if msg:
-                                self.fail(msg, defn)
-                    elif isinstance(arg_type, TypeVarType):
-                        # Refuse covariant parameter type variables
-                        # TODO: check recursively for inner type variables
+                    # We may be checking a function definition or an anonymous
+                    # function. In the first case, set up another reference with the
+                    # precise type.
+                    if isinstance(item, FuncDef):
+                        fdef = item
+                        # Check if __init__ has an invalid return type.
                         if (
-                            arg_type.variance == COVARIANT
-                            and defn.name not in ("__init__", "__new__", "__post_init__")
-                            and not is_private(defn.name)  # private methods are not inherited
+                            fdef.info
+                            and fdef.name in ("__init__", "__init_subclass__")
+                            and not isinstance(
+                                get_proper_type(typ.ret_type), (NoneType, UninhabitedType)
+                            )
+                            and not self.dynamic_funcs[-1]
                         ):
-                            ctx: Context = arg_type
-                            if ctx.line < 0:
-                                ctx = typ
-                            self.fail(message_registry.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, ctx)
-                    # Need to store arguments again for the expanded item.
-                    store_argument_type(item, i, typ, self.named_generic_type)
+                            self.fail(
+                                message_registry.MUST_HAVE_NONE_RETURN_TYPE.format(fdef.name), item
+                            )
 
-                # Type check initialization expressions.
-                body_is_trivial = is_trivial_body(defn.body)
-                self.check_default_args(item, body_is_trivial)
+                        # Check validity of __new__ signature
+                        if fdef.info and fdef.name == "__new__":
+                            self.check___new___signature(fdef, typ)
 
-            # Type check body in a new scope.
-            with self.binder.top_frame_context():
-                # Copy some type narrowings from an outer function when it seems safe enough
-                # (i.e. we can't find an assignment that might change the type of the
-                # variable afterwards).
-                new_frame: Frame | None = None
-                for frame in old_binder.frames:
-                    for key, narrowed_type in frame.types.items():
-                        key_var = extract_var_from_literal_hash(key)
-                        if key_var is not None and not self.is_var_redefined_in_outer_context(
-                            key_var, defn.line
-                        ):
-                            # It seems safe to propagate the type narrowing to a nested scope.
-                            if new_frame is None:
-                                new_frame = self.binder.push_frame()
-                            new_frame.types[key] = narrowed_type
-                            self.binder.declarations[key] = old_binder.declarations[key]
-                with self.scope.push_function(defn):
-                    # We suppress reachability warnings for empty generator functions
-                    # (return; yield) which have a "yield" that's unreachable by definition
-                    # since it's only there to promote the function into a generator function.
-                    #
-                    # We also suppress reachability warnings when we use TypeVars with value
-                    # restrictions: we only want to report a warning if a certain statement is
-                    # marked as being suppressed in *all* of the expansions, but we currently
-                    # have no good way of doing this.
-                    #
-                    # TODO: Find a way of working around this limitation
-                    if _is_empty_generator_function(item) or len(expanded) >= 2:
-                        self.binder.suppress_unreachable_warnings()
-                    self.accept(item.body)
-                unreachable = self.binder.is_unreachable()
-                if new_frame is not None:
-                    self.binder.pop_frame(True, 0)
-
-            if not unreachable:
-                if defn.is_generator or is_named_instance(
-                    self.return_types[-1], "typing.AwaitableGenerator"
-                ):
-                    return_type = self.get_generator_return_type(
-                        self.return_types[-1], defn.is_coroutine
-                    )
-                elif defn.is_coroutine:
-                    return_type = self.get_coroutine_return_type(self.return_types[-1])
-                else:
-                    return_type = self.return_types[-1]
-                return_type = get_proper_type(return_type)
-
-                allow_empty = allow_empty or self.options.allow_empty_bodies
-
-                show_error = (
-                    not body_is_trivial
-                    or
-                    # Allow empty bodies for abstract methods, overloads, in tests and stubs.
-                    (
-                        not allow_empty
-                        and not (
-                            isinstance(defn, FuncDef) and defn.abstract_status != NOT_ABSTRACT
+                        self.check_for_missing_annotations(fdef)
+                        if self.options.disallow_any_unimported:
+                            if fdef.type and isinstance(fdef.type, CallableType):
+                                ret_type = fdef.type.ret_type
+                                if has_any_from_unimported_type(ret_type):
+                                    self.msg.unimported_type_becomes_any(
+                                        "Return type", ret_type, fdef
+                                    )
+                                for idx, arg_type in enumerate(fdef.type.arg_types):
+                                    if has_any_from_unimported_type(arg_type):
+                                        prefix = f'Argument {idx + 1} to "{fdef.name}"'
+                                        self.msg.unimported_type_becomes_any(
+                                            prefix, arg_type, fdef
+                                        )
+                        check_for_explicit_any(
+                            fdef.type, self.options, self.is_typeshed_stub, self.msg, context=fdef
                         )
-                        and not self.is_stub
-                    )
-                )
 
-                # Ignore plugin generated methods, these usually don't need any bodies.
-                if defn.info is not FUNC_NO_INFO and (
-                    defn.name not in defn.info.names or defn.info.names[defn.name].plugin_generated
-                ):
-                    show_error = False
+                    if name:  # Special method names
+                        if defn.info and self.is_reverse_op_method(name):
+                            self.check_reverse_op_method(item, typ, name, defn)
+                        elif name in ("__getattr__", "__getattribute__"):
+                            self.check_getattr_method(typ, defn, name)
+                        elif name == "__setattr__":
+                            self.check_setattr_method(typ, defn)
 
-                # Ignore also definitions that appear in `if TYPE_CHECKING: ...` blocks.
-                # These can't be called at runtime anyway (similar to plugin-generated).
-                if isinstance(defn, FuncDef) and defn.is_mypy_only:
-                    show_error = False
-
-                # We want to minimize the fallout from checking empty bodies
-                # that was absent in many mypy versions.
-                if body_is_trivial and is_subtype(NoneType(), return_type):
-                    show_error = False
-
-                may_be_abstract = (
-                    body_is_trivial
-                    and defn.info is not FUNC_NO_INFO
-                    and defn.info.metaclass_type is not None
-                    and defn.info.metaclass_type.type.has_base("abc.ABCMeta")
-                )
-
-                if self.options.warn_no_return:
-                    if (
-                        not self.current_node_deferred
-                        and not isinstance(return_type, (NoneType, AnyType))
-                        and show_error
+                    # Refuse contravariant return type variable
+                    if isinstance(typ.ret_type, TypeVarType):
+                        if typ.ret_type.variance == CONTRAVARIANT:
+                            self.fail(
+                                message_registry.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT, typ.ret_type
+                            )
+                        self.check_unbound_return_typevar(typ)
+                    elif (
+                        isinstance(original_typ.ret_type, TypeVarType)
+                        and original_typ.ret_type.values
                     ):
-                        # Control flow fell off the end of a function that was
-                        # declared to return a non-None type.
-                        if isinstance(return_type, UninhabitedType):
-                            # This is a NoReturn function
-                            msg = message_registry.INVALID_IMPLICIT_RETURN
+                        # Since type vars with values are expanded, the return type is changed
+                        # to a raw value. This is a hack to get it back.
+                        self.check_unbound_return_typevar(original_typ)
+
+                    # Check that Generator functions have the appropriate return type.
+                    if defn.is_generator:
+                        if defn.is_async_generator:
+                            if not self.is_async_generator_return_type(typ.ret_type):
+                                self.fail(
+                                    message_registry.INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR, typ
+                                )
                         else:
-                            msg = message_registry.MISSING_RETURN_STATEMENT
+                            if not self.is_generator_return_type(typ.ret_type, defn.is_coroutine):
+                                self.fail(message_registry.INVALID_RETURN_TYPE_FOR_GENERATOR, typ)
+
+                    # Fix the type if decorated with `@types.coroutine` or `@asyncio.coroutine`.
+                    if defn.is_awaitable_coroutine:
+                        # Update the return type to AwaitableGenerator.
+                        # (This doesn't exist in typing.py, only in typing.pyi.)
+                        t = typ.ret_type
+                        c = defn.is_coroutine
+                        ty = self.get_generator_yield_type(t, c)
+                        tc = self.get_generator_receive_type(t, c)
+                        if c:
+                            tr = self.get_coroutine_return_type(t)
+                        else:
+                            tr = self.get_generator_return_type(t, c)
+                        ret_type = self.named_generic_type(
+                            "typing.AwaitableGenerator", [ty, tc, tr, t]
+                        )
+                        typ = typ.copy_modified(ret_type=ret_type)
+                        defn.type = typ
+
+                    # Push return type.
+                    self.return_types.append(typ.ret_type)
+
+                    # Store argument types.
+                    for i in range(len(typ.arg_types)):
+                        arg_type = typ.arg_types[i]
+                        with self.scope.push_function(defn):
+                            # We temporary push the definition to get the self type as
+                            # visible from *inside* of this function/method.
+                            ref_type: Type | None = self.scope.active_self_type()
+                        if (
+                            isinstance(defn, FuncDef)
+                            and ref_type is not None
+                            and i == 0
+                            and (not defn.is_static or defn.name == "__new__")
+                            and typ.arg_kinds[0] not in [nodes.ARG_STAR, nodes.ARG_STAR2]
+                        ):
+                            if defn.is_class or defn.name == "__new__":
+                                ref_type = mypy.types.TypeType.make_normalized(ref_type)
+                            # This level of erasure matches the one in checkmember.check_self_arg(),
+                            # better keep these two checks consistent.
+                            erased = get_proper_type(erase_typevars(erase_to_bound(arg_type)))
+                            if not is_subtype(ref_type, erased, ignore_type_params=True):
+                                if (
+                                    isinstance(erased, Instance)
+                                    and erased.type.is_protocol
+                                    or isinstance(erased, TypeType)
+                                    and isinstance(erased.item, Instance)
+                                    and erased.item.type.is_protocol
+                                ):
+                                    # We allow the explicit self-type to be not a supertype of
+                                    # the current class if it is a protocol. For such cases
+                                    # the consistency check will be performed at call sites.
+                                    msg = None
+                                elif typ.arg_names[i] in {"self", "cls"}:
+                                    msg = message_registry.ERASED_SELF_TYPE_NOT_SUPERTYPE.format(
+                                        erased.str_with_options(self.options),
+                                        ref_type.str_with_options(self.options),
+                                    )
+                                else:
+                                    msg = message_registry.MISSING_OR_INVALID_SELF_TYPE
+                                if msg:
+                                    self.fail(msg, defn)
+                        elif isinstance(arg_type, TypeVarType):
+                            # Refuse covariant parameter type variables
+                            # TODO: check recursively for inner type variables
+                            if (
+                                arg_type.variance == COVARIANT
+                                and defn.name not in ("__init__", "__new__", "__post_init__")
+                                and not is_private(defn.name)  # private methods are not inherited
+                            ):
+                                ctx: Context = arg_type
+                                if ctx.line < 0:
+                                    ctx = typ
+                                self.fail(
+                                    message_registry.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, ctx
+                                )
+                        # Need to store arguments again for the expanded item.
+                        store_argument_type(item, i, typ, self.named_generic_type)
+
+                    # Type check initialization expressions.
+                    body_is_trivial = is_trivial_body(defn.body)
+                    self.check_default_args(item, body_is_trivial)
+
+                # Type check body in a new scope.
+                with self.binder.top_frame_context():
+                    # Copy some type narrowings from an outer function when it seems safe enough
+                    # (i.e. we can't find an assignment that might change the type of the
+                    # variable afterwards).
+                    new_frame: Frame | None = None
+                    for frame in old_binder.frames:
+                        for key, narrowed_type in frame.types.items():
+                            key_var = extract_var_from_literal_hash(key)
+                            if key_var is not None and not self.is_var_redefined_in_outer_context(
+                                key_var, defn.line
+                            ):
+                                # It seems safe to propagate the type narrowing to a nested scope.
+                                if new_frame is None:
+                                    new_frame = self.binder.push_frame()
+                                new_frame.types[key] = narrowed_type
+                                self.binder.declarations[key] = old_binder.declarations[key]
+                    with self.scope.push_function(defn):
+                        # We suppress reachability warnings for empty generator functions
+                        # (return; yield) which have a "yield" that's unreachable by definition
+                        # since it's only there to promote the function into a generator function.
+                        #
+                        # We also suppress reachability warnings when we use TypeVars with value
+                        # restrictions: we only want to report a warning if a certain statement is
+                        # marked as being suppressed in *all* of the expansions, but we currently
+                        # have no good way of doing this.
+                        #
+                        # TODO: Find a way of working around this limitation
+                        if _is_empty_generator_function(item) or len(expanded) >= 2:
+                            self.binder.suppress_unreachable_warnings()
+                        self.accept(item.body)
+                    unreachable = self.binder.is_unreachable()
+                    if new_frame is not None:
+                        self.binder.pop_frame(True, 0)
+
+                if not unreachable:
+                    if defn.is_generator or is_named_instance(
+                        self.return_types[-1], "typing.AwaitableGenerator"
+                    ):
+                        return_type = self.get_generator_return_type(
+                            self.return_types[-1], defn.is_coroutine
+                        )
+                    elif defn.is_coroutine:
+                        return_type = self.get_coroutine_return_type(self.return_types[-1])
+                    else:
+                        return_type = self.return_types[-1]
+                    return_type = get_proper_type(return_type)
+
+                    allow_empty = allow_empty or self.options.allow_empty_bodies
+
+                    show_error = (
+                        not body_is_trivial
+                        or
+                        # Allow empty bodies for abstract methods, overloads, in tests and stubs.
+                        (
+                            not allow_empty
+                            and not (
+                                isinstance(defn, FuncDef) and defn.abstract_status != NOT_ABSTRACT
+                            )
+                            and not self.is_stub
+                        )
+                    )
+
+                    # Ignore plugin generated methods, these usually don't need any bodies.
+                    if defn.info is not FUNC_NO_INFO and (
+                        defn.name not in defn.info.names
+                        or defn.info.names[defn.name].plugin_generated
+                    ):
+                        show_error = False
+
+                    # Ignore also definitions that appear in `if TYPE_CHECKING: ...` blocks.
+                    # These can't be called at runtime anyway (similar to plugin-generated).
+                    if isinstance(defn, FuncDef) and defn.is_mypy_only:
+                        show_error = False
+
+                    # We want to minimize the fallout from checking empty bodies
+                    # that was absent in many mypy versions.
+                    if body_is_trivial and is_subtype(NoneType(), return_type):
+                        show_error = False
+
+                    may_be_abstract = (
+                        body_is_trivial
+                        and defn.info is not FUNC_NO_INFO
+                        and defn.info.metaclass_type is not None
+                        and defn.info.metaclass_type.type.has_base("abc.ABCMeta")
+                    )
+
+                    if self.options.warn_no_return:
+                        if (
+                            not self.current_node_deferred
+                            and not isinstance(return_type, (NoneType, AnyType))
+                            and show_error
+                        ):
+                            # Control flow fell off the end of a function that was
+                            # declared to return a non-None type.
+                            if isinstance(return_type, UninhabitedType):
+                                # This is a NoReturn function
+                                msg = message_registry.INVALID_IMPLICIT_RETURN
+                            else:
+                                msg = message_registry.MISSING_RETURN_STATEMENT
+                            if body_is_trivial:
+                                msg = msg._replace(code=codes.EMPTY_BODY)
+                            self.fail(msg, defn)
+                            if may_be_abstract:
+                                self.note(message_registry.EMPTY_BODY_ABSTRACT, defn)
+                    elif show_error:
+                        msg = message_registry.INCOMPATIBLE_RETURN_VALUE_TYPE
                         if body_is_trivial:
                             msg = msg._replace(code=codes.EMPTY_BODY)
-                        self.fail(msg, defn)
-                        if may_be_abstract:
+                        # similar to code in check_return_stmt
+                        if (
+                            not self.check_subtype(
+                                subtype_label="implicitly returns",
+                                subtype=NoneType(),
+                                supertype_label="expected",
+                                supertype=return_type,
+                                context=defn,
+                                msg=msg,
+                            )
+                            and may_be_abstract
+                        ):
                             self.note(message_registry.EMPTY_BODY_ABSTRACT, defn)
-                elif show_error:
-                    msg = message_registry.INCOMPATIBLE_RETURN_VALUE_TYPE
-                    if body_is_trivial:
-                        msg = msg._replace(code=codes.EMPTY_BODY)
-                    # similar to code in check_return_stmt
-                    if (
-                        not self.check_subtype(
-                            subtype_label="implicitly returns",
-                            subtype=NoneType(),
-                            supertype_label="expected",
-                            supertype=return_type,
-                            context=defn,
-                            msg=msg,
-                        )
-                        and may_be_abstract
-                    ):
-                        self.note(message_registry.EMPTY_BODY_ABSTRACT, defn)
 
-            self.return_types.pop()
+                self.return_types.pop()
 
-            self.binder = old_binder
+                self.binder = old_binder
+
+        err_buf.flush()
 
     def is_var_redefined_in_outer_context(self, v: Var, after_line: int) -> bool:
         """Can the variable be assigned to at module top level or outer function?
