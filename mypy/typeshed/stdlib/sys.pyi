@@ -225,9 +225,10 @@ class _thread_info(_UninstantiableStructseq, tuple[_ThreadInfoName, _ThreadInfoL
     def version(self) -> str | None: ...
 
 thread_info: _thread_info
+_ReleaseLevel: TypeAlias = Literal["alpha", "beta", "candidate", "final"]
 
 @final
-class _version_info(_UninstantiableStructseq, tuple[int, int, int, str, int]):
+class _version_info(_UninstantiableStructseq, tuple[int, int, int, _ReleaseLevel, int]):
     @property
     def major(self) -> int: ...
     @property
@@ -235,7 +236,7 @@ class _version_info(_UninstantiableStructseq, tuple[int, int, int, str, int]):
     @property
     def micro(self) -> int: ...
     @property
-    def releaselevel(self) -> str: ...
+    def releaselevel(self) -> _ReleaseLevel: ...
     @property
     def serial(self) -> int: ...
 
