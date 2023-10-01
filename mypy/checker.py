@@ -39,7 +39,7 @@ from mypy.checkpattern import PatternChecker
 from mypy.constraints import SUPERTYPE_OF
 from mypy.erasetype import erase_type, erase_typevars, remove_instance_last_known_values
 from mypy.errorcodes import TYPE_VAR, UNUSED_AWAITABLE, UNUSED_COROUTINE, ErrorCode
-from mypy.errors import Errors, ErrorWatcher, report_internal_error
+from mypy.errors import Errors, ErrorWatcher, MultiCheckErrorBuffer, report_internal_error
 from mypy.expandtype import expand_self_type, expand_type, expand_type_by_instance
 from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash
 from mypy.maptype import map_instance_to_supertype
@@ -4487,6 +4487,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def visit_try_stmt(self, s: TryStmt) -> None:
         """Type check a try statement."""
+        err_buf = MultiCheckErrorBuffer(self.errors)
+
         # Our enclosing frame will get the result if the try/except falls through.
         # This one gets all possible states after the try block exited abnormally
         # (by exception, return, break, etc.)
@@ -4501,7 +4503,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.visit_try_without_finally(s, try_frame=bool(s.finally_body))
             if s.finally_body:
                 # First we check finally_body is type safe on all abnormal exit paths
-                self.accept(s.finally_body)
+                with err_buf:
+                    self.accept(s.finally_body)
 
         if s.finally_body:
             # Then we try again for the more restricted set of options
@@ -4516,7 +4519,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # from the latter context affect the type state in the code
             # that follows the try statement.)
             if not self.binder.is_unreachable():
-                self.accept(s.finally_body)
+                err_buf.checks += 1
+                with err_buf:
+                    self.accept(s.finally_body)
+
+        err_buf.flush()
 
     def visit_try_without_finally(self, s: TryStmt, try_frame: bool) -> None:
         """Type check a try statement, ignoring the finally block.

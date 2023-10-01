@@ -892,7 +892,30 @@ if a:
 any_or_object: Union[object, Any]
 if any_or_object:
     pass
+
 [builtins fixtures/list.pyi]
+
+[case testTruthyBool_finally]
+# flags: --enable-error-code truthy-bool
+from typing import Optional
+
+class C:
+    pass
+
+# finally body is checked twice, once for the happy path (try falling through)
+# and once for the exception path. Only if both checks indicate an error that
+# we want to flag it. (see https://github.com/python/mypy/issues/16193)
+definitely_c = C()
+maybe_c: Optional[C] = None
+try:
+    maybe_c = definitely_c
+    if maybe_c:  # E: "__main__.maybe_c" has type "C" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+        pass
+finally:
+    if maybe_c:
+        pass
+    if definitely_c:  # E: "__main__.definitely_c" has type "C" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+        pass
 
 [case testTruthyFunctions]
 def f():

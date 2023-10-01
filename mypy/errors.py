@@ -213,6 +213,38 @@ class ErrorWatcher:
         return self._filtered
 
 
+_UniqueErrorT = Tuple[Optional[codes.ErrorCode], str, int, int, str, str]
+
+
+def _to_unique_error(e: ErrorInfo) -> _UniqueErrorT:
+    return e.code, e.file, e.line, e.column, e.severity, e.message
+
+
+class MultiCheckErrorBuffer(ErrorWatcher):
+    """
+    Buffers errors from multiple checks, which is what we do in some cases
+    like TypeVars with constraints or 'finally' blocks.
+
+    Some errors should be reported only if they were reported by *all* checks.
+    """
+
+    _CODES = {codes.TRUTHY_BOOL}
+
+    def __init__(self, errors: Errors) -> None:
+        super().__init__(errors, filter_errors=True, save_filtered_errors=True)
+        self.checks = 1
+
+    def flush(self) -> None:
+        counter: dict[_UniqueErrorT, int] = defaultdict(lambda: 0)
+        for error in self.filtered_errors():
+            if error.code in self._CODES:
+                counter[_to_unique_error(error)] += 1
+
+        for error in self.filtered_errors():
+            if counter[_to_unique_error(error)] in (0, self.checks):
+                self.errors.add_error_info(error)
+
+
 class Errors:
     """Container for compile errors.
 
