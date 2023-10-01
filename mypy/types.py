@@ -2418,7 +2418,7 @@ class TupleType(ProperType):
 
     def slice(
         self, begin: int | None, end: int | None, stride: int | None, *, fallback: Instance | None
-    ) -> TupleType:
+    ) -> TupleType | None:
         if fallback is None:
             fallback = self.partial_fallback
 
