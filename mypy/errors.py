@@ -213,7 +213,7 @@ class ErrorWatcher:
         return self._filtered
 
 
-_UniqueErrorT = Tuple[Optional[codes.ErrorCode], str, int, int, str, str]
+_UniqueErrorT: _TypeAlias = Tuple[Optional[codes.ErrorCode], str, int, int, str, str]
 
 
 def _to_unique_error(e: ErrorInfo) -> _UniqueErrorT:
@@ -228,7 +228,7 @@ class MultiCheckErrorBuffer(ErrorWatcher):
     Some errors should be reported only if they were reported by *all* checks.
     """
 
-    _CODES = {codes.TRUTHY_BOOL}
+    _CODES = frozenset({codes.TRUTHY_BOOL})
 
     def __init__(self, errors: Errors) -> None:
         super().__init__(errors, filter_errors=True, save_filtered_errors=True)

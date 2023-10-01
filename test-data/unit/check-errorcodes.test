@@ -902,9 +902,9 @@ from typing import Optional
 class C:
     pass
 
-# finally body is checked twice, once for the happy path (try falling through)
-# and once for the exception path. Only if both checks indicate an error that
-# we want to flag it. (see https://github.com/python/mypy/issues/16193)
+# 'finally' clause is checked twice: for success scenario ('try' clause fallthrough)
+# and for exception scenario. Only if both checks indicate an error, then we flag it.
+# See https://github.com/python/mypy/issues/16193
 definitely_c = C()
 maybe_c: Optional[C] = None
 try:
