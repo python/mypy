@@ -989,7 +989,7 @@ def custom_special_method(typ: Type, name: str, check_all: bool = False) -> bool
         return any(custom_special_method(t, name) for t in typ.items)
     if isinstance(typ, TupleType):
         return custom_special_method(tuple_fallback(typ), name, check_all)
-    if isinstance(typ, CallableType) and typ.is_type_obj():
+    if isinstance(typ, FunctionLike) and typ.is_type_obj():
         # Look up __method__ on the metaclass for class objects.
         return custom_special_method(typ.fallback, name, check_all)
     if isinstance(typ, AnyType):
