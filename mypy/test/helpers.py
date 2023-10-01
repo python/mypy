@@ -134,7 +134,7 @@ def assert_string_arrays_equal(expected: list[str], actual: list[str], msg: str)
 
         sys.stderr.write(
             "Update the test output using --update-data -n0 "
-            "(you can additionally use the -k selector to update only specific tests)"
+            "(you can additionally use the -k selector to update only specific tests)\n"
         )
         pytest.fail(msg, pytrace=False)
 
