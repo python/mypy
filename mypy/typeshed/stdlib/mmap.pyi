@@ -16,6 +16,8 @@ if sys.platform == "linux":
     MAP_EXECUTABLE: int
     if sys.version_info >= (3, 10):
         MAP_POPULATE: int
+if sys.version_info >= (3, 11) and sys.platform != "win32" and sys.platform != "darwin":
+    MAP_STACK: int
 
 if sys.platform != "win32":
     MAP_ANON: int

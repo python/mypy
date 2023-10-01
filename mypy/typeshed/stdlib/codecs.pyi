@@ -78,16 +78,16 @@ class _Stream(_WritableStream, _ReadableStream, Protocol): ...
 # They were much more common in Python 2 than in Python 3.
 
 class _Encoder(Protocol):
-    def __call__(self, input: str, errors: str = ...) -> tuple[bytes, int]: ...  # signature of Codec().encode
+    def __call__(self, __input: str, __errors: str = ...) -> tuple[bytes, int]: ...  # signature of Codec().encode
 
 class _Decoder(Protocol):
-    def __call__(self, input: bytes, errors: str = ...) -> tuple[str, int]: ...  # signature of Codec().decode
+    def __call__(self, __input: bytes, __errors: str = ...) -> tuple[str, int]: ...  # signature of Codec().decode
 
 class _StreamReader(Protocol):
-    def __call__(self, stream: _ReadableStream, errors: str = ...) -> StreamReader: ...
+    def __call__(self, __stream: _ReadableStream, __errors: str = ...) -> StreamReader: ...
 
 class _StreamWriter(Protocol):
-    def __call__(self, stream: _WritableStream, errors: str = ...) -> StreamWriter: ...
+    def __call__(self, __stream: _WritableStream, __errors: str = ...) -> StreamWriter: ...
 
 class _IncrementalEncoder(Protocol):
     def __call__(self, errors: str = ...) -> IncrementalEncoder: ...

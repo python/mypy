@@ -56,6 +56,12 @@ class _CData(metaclass=_CDataMeta):
     _b_base_: int
     _b_needsfree_: bool
     _objects: Mapping[Any, int] | None
+    # At runtime the following classmethods are available only on classes, not
+    # on instances. This can't be reflected properly in the type system:
+    #
+    # Structure.from_buffer(...)  # valid at runtime
+    # Structure(...).from_buffer(...)  # invalid at runtime
+    #
     @classmethod
     def from_buffer(cls, source: WriteableBuffer, offset: int = ...) -> Self: ...
     @classmethod
