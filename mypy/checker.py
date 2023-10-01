@@ -2986,7 +2986,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 p_rvalue_type = get_proper_type(rvalue_type)
                 p_lvalue_type = get_proper_type(lvalue_type)
                 if (
-                    isinstance(p_rvalue_type, CallableType)
+                    isinstance(p_rvalue_type, FunctionLike)
                     and p_rvalue_type.is_type_obj()
                     and (
                         p_rvalue_type.type_object().is_abstract
@@ -3771,7 +3771,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def type_is_iterable(self, type: Type) -> bool:
         type = get_proper_type(type)
-        if isinstance(type, CallableType) and type.is_type_obj():
+        if isinstance(type, FunctionLike) and type.is_type_obj():
             type = type.fallback
         return is_subtype(
             type, self.named_generic_type("typing.Iterable", [AnyType(TypeOfAny.special_form)])

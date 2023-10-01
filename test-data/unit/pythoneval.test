@@ -1801,9 +1801,9 @@ C = str | int
 D: TypeAlias = str | int
 [out]
 _testTypeAliasNotSupportedWithNewStyleUnion.py:3: error: Invalid type alias: expression is not a valid type
-_testTypeAliasNotSupportedWithNewStyleUnion.py:3: error: Value of type "Type[type]" is not indexable
+_testTypeAliasNotSupportedWithNewStyleUnion.py:3: error: The type "Type[type]" is not generic and not indexable
 _testTypeAliasNotSupportedWithNewStyleUnion.py:4: error: Invalid type alias: expression is not a valid type
-_testTypeAliasNotSupportedWithNewStyleUnion.py:4: error: Value of type "Type[type]" is not indexable
+_testTypeAliasNotSupportedWithNewStyleUnion.py:4: error: The type "Type[type]" is not generic and not indexable
 _testTypeAliasNotSupportedWithNewStyleUnion.py:5: error: Invalid type alias: expression is not a valid type
 _testTypeAliasNotSupportedWithNewStyleUnion.py:5: error: Unsupported left operand type for | ("Type[str]")
 _testTypeAliasNotSupportedWithNewStyleUnion.py:6: error: Invalid type alias: expression is not a valid type
