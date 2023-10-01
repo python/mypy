@@ -890,7 +890,10 @@ def _verify_signature(
                 # If the variable is in runtime.kwonly, it's just mislabelled as not a
                 # keyword-only argument
                 if stub_arg.variable.name not in runtime.kwonly:
-                    yield f'runtime does not have argument "{stub_arg.variable.name}"'
+                    msg = f'runtime does not have argument "{stub_arg.variable.name}"'
+                    if runtime.varkw is not None:
+                        msg += ". Maybe you forgot to make it keyword-only in the stub?"
+                    yield msg
                 else:
                     yield f'stub argument "{stub_arg.variable.name}" is not keyword-only'
             if stub.varpos is not None:
