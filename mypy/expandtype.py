@@ -42,7 +42,7 @@ from mypy.types import (
 from mypy.typevartuples import split_with_instance
 
 # Solving the import cycle:
-import mypy.type_visitor  # ruff: isort: skip
+import mypy._type_visitor  # ruff: isort: skip
 
 # WARNING: these functions should never (directly or indirectly) depend on
 # is_subtype(), meet_types(), join_types() etc.
@@ -167,7 +167,7 @@ def freshen_all_functions_type_vars(t: T) -> T:
         return result
 
 
-class FreshenCallableVisitor(mypy.type_visitor.TypeTranslator):
+class FreshenCallableVisitor(mypy._type_visitor.TypeTranslator):
     def visit_callable_type(self, t: CallableType) -> Type:
         result = super().visit_callable_type(t)
         assert isinstance(result, ProperType) and isinstance(result, CallableType)

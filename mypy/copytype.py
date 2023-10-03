@@ -28,7 +28,7 @@ from mypy.types import (
 )
 
 # type_visitor needs to be imported after types
-from mypy.type_visitor import TypeVisitor  # ruff: isort: skip
+from mypy._type_visitor import TypeVisitor  # ruff: isort: skip
 
 
 def copy_type(t: ProperType) -> ProperType:

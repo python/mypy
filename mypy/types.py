@@ -80,7 +80,7 @@ LiteralValue: _TypeAlias = Union[int, str, bool, float]
 # We should be able to remove this once we are switched to the new
 # semantic analyzer!
 if TYPE_CHECKING:
-    from mypy.type_visitor import (
+    from mypy._type_visitor import (
         SyntheticTypeVisitor as SyntheticTypeVisitor,
         TypeVisitor as TypeVisitor,
     )
@@ -3094,7 +3094,7 @@ def get_proper_types(
 # to make it easier to gradually get modules working with mypyc.
 # Import them here, after the types are defined.
 # This is intended as a re-export also.
-from mypy.type_visitor import (  # noqa: F811
+from mypy._type_visitor import (  # noqa: F811
     ALL_STRATEGY as ALL_STRATEGY,
     ANY_STRATEGY as ANY_STRATEGY,
     BoolTypeQuery as BoolTypeQuery,
