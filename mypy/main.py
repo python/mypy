@@ -33,7 +33,7 @@ MEM_PROFILE: Final = False  # If True, dump memory profile
 def stat_proxy(path: str) -> os.stat_result:
     try:
         st = orig_stat(path)
-    except os.error as err:
+    except OSError as err:
         print(f"stat({path!r}) -> {err}")
         raise
     else:
