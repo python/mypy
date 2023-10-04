@@ -58,6 +58,7 @@ unfixable = [
     "F601",  # automatic fix might obscure issue
     "F602",  # automatic fix might obscure issue
     "B018",  # automatic fix might obscure issue
+    "UP036", # sometimes it's better to just noqa this
 ]
 
 extend-exclude = [
