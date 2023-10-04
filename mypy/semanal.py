@@ -5569,7 +5569,7 @@ class SemanticAnalyzer(
             if not suppress_errors:
                 self.name_not_defined(name, ctx)
             return None
-        # 2. Class attributes (if within class definition)
+        # 2a. Class attributes (if within class definition)
         if self.type and not self.is_func_scope() and name in self.type.names:
             node = self.type.names[name]
             if not node.implicit:
@@ -5579,6 +5579,9 @@ class SemanticAnalyzer(
                 # Defined through self.x assignment
                 implicit_name = True
                 implicit_node = node
+        # 2b. Class attributes __qualname__ and __module__
+        if self.type and not self.is_func_scope() and name in {"__qualname__", "__module__"}:
+            return SymbolTableNode(MDEF, Var(name, self.str_type()))
         # 3. Local (function) scopes
         for table in reversed(self.locals):
             if table is not None and name in table:
