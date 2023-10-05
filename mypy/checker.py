@@ -134,7 +134,7 @@ from mypy.nodes import (
     YieldExpr,
     is_final_node,
 )
-from mypy.options import Options
+from mypy.options import TYPE_VAR_TUPLE, Options
 from mypy.patterns import AsPattern, StarredPattern
 from mypy.plugin import CheckerPluginInterface, Plugin
 from mypy.plugins import dataclasses as dataclasses_plugin
@@ -205,10 +205,13 @@ from mypy.types import (
     TypeType,
     TypeVarId,
     TypeVarLikeType,
+    TypeVarTupleType,
     TypeVarType,
     UnboundType,
     UninhabitedType,
     UnionType,
+    UnpackType,
+    find_unpack_in_list,
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
@@ -6129,6 +6132,121 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if_map[operands[i]] = remove_optional(expr_type)
 
         return if_map, {}
+
+    def refine_tuple_type_with_len(self, typ: TupleType, op: str, size: int) -> Type:
+        unpack_index = find_unpack_in_list(typ.items)
+        if unpack_index is None:
+            if op in ("==", "is"):
+                if typ.length() == size:
+                    return typ
+                return UninhabitedType()
+            elif op in ("!=", "is not"):
+                if typ.length() != size:
+                    return typ
+                return UninhabitedType()
+            elif op == ">":
+                if typ.length() > size:
+                    return typ
+                return UninhabitedType()
+            elif op == ">=":
+                if typ.length() >= size:
+                    return typ
+                return UninhabitedType()
+            elif op == "<":
+                if typ.length() < size:
+                    return typ
+                return UninhabitedType()
+            elif op == "<=":
+                if typ.length() <= size:
+                    return typ
+                return UninhabitedType()
+            else:
+                assert False, "Unsupported op for tuple len comparison"
+        unpack = typ.items[unpack_index]
+        assert isinstance(unpack, UnpackType)
+        unpacked = get_proper_type(unpack.type)
+        min_len = typ.length() - 1
+        if isinstance(unpacked, TypeVarTupleType):
+            if op in ("==", "is"):
+                if min_len <= size:
+                    return typ
+                return UninhabitedType()
+            elif op in ("!=", "is not"):
+                return typ
+            elif op == ">":
+                return typ
+            elif op == ">=":
+                return typ
+            elif op == "<":
+                if min_len < size:
+                    return typ
+                return UninhabitedType()
+            elif op == "<=":
+                if min_len <= size:
+                    return typ
+                return UninhabitedType()
+            else:
+                assert False, "Unsupported op for tuple len comparison"
+        assert isinstance(unpacked, Instance) and unpacked.type.fullname == "builtins.tuple"
+        arg = unpacked.args[0]
+        prefix = typ.items[:unpack_index]
+        suffix = typ.items[unpack_index + 1 :]
+        if op in ("==", "is"):
+            if min_len <= size:
+                return typ.copy_modified(items=prefix + [arg] * (size - min_len) + suffix)
+            return UninhabitedType()
+        elif op in ("!=", "is not"):
+            return typ
+        elif op == ">":
+            return typ.copy_modified(
+                items=prefix + [arg] * (size - min_len + 1) + [unpack] + suffix
+            )
+        elif op == ">=":
+            return typ.copy_modified(items=prefix + [arg] * (size - min_len) + [unpack] + suffix)
+        elif op == "<":
+            if min_len < size:
+                items = []
+                for n in range(size - min_len):
+                    items.append(typ.copy_modified(items=prefix + [arg] * n + suffix))
+                return UnionType.make_union(items, typ.line, typ.column)
+            return UninhabitedType()
+        elif op == "<=":
+            if min_len <= size:
+                items = []
+                for n in range(size - min_len + 1):
+                    items.append(typ.copy_modified(items=prefix + [arg] * n + suffix))
+                return UnionType.make_union(items, typ.line, typ.column)
+            return UninhabitedType()
+        else:
+            assert False, "Unsupported op for tuple len comparison"
+
+    def refine_instance_type_with_len(self, typ: Instance, op: str, size: int) -> Type:
+        arg = typ.args[0]
+        if op in ("==", "is"):
+            return TupleType(items=[arg] * size, fallback=typ)
+        elif op in ("!=", "is not"):
+            # TODO: return fixed union + prefixed variadic tuple?
+            return typ
+        elif op == ">":
+            if TYPE_VAR_TUPLE in self.options.enable_incomplete_feature:
+                return TupleType(items=[arg] * (size + 1) + [UnpackType(typ)], fallback=typ)
+            return typ
+        elif op == ">=":
+            if TYPE_VAR_TUPLE in self.options.enable_incomplete_feature:
+                return TupleType(items=[arg] * size + [UnpackType(typ)], fallback=typ)
+            return typ
+        elif op == "<":
+            items = []
+            for n in range(size):
+                items.append(TupleType([arg] * n, fallback=typ))
+            return UnionType.make_union(items, typ.line, typ.column)
+        elif op == "<=":
+            items = []
+            for n in range(size + 1):
+                items.append(TupleType([arg] * n, fallback=typ))
+            return UnionType.make_union(items, typ.line, typ.column)
+        else:
+            assert False, "Unsupported op for tuple len comparison"
 
     #
     # Helpers
