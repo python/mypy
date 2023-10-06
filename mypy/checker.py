@@ -5741,6 +5741,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 partial_type_maps.append((if_map, else_map))
 
+            partial_type_maps.extend(self.find_tuple_len_narrowing(node))
             return reduce_conditional_maps(partial_type_maps)
         elif isinstance(node, AssignmentExpr):
             if_map = {}
@@ -5799,6 +5800,92 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if_map = {node: if_type} if not isinstance(if_type, UninhabitedType) else None
         else_map = {node: else_type} if not isinstance(else_type, UninhabitedType) else None
         return if_map, else_map
+
+    def is_len_of_tuple(self, expr: Expression) -> bool:
+        if not isinstance(expr, CallExpr):
+            return False
+        if not refers_to_fullname(expr.callee, "builtins.len"):
+            return False
+        if len(expr.args) != 1:
+            return False
+        expr = expr.args[0]
+        if literal(expr) != LITERAL_TYPE:
+            return False
+        if not self.has_type(expr):
+            return False
+        return self.can_be_narrowed_with_len(self.lookup_type(expr))
+
+    def literal_int_expr(self, expr: Expression) -> int | None:
+        if not self.has_type(expr):
+            return None
+        expr_type = self.lookup_type(expr)
+        expr_type = coerce_to_literal(expr_type)
+        proper_type = get_proper_type(expr_type)
+        if not isinstance(proper_type, LiteralType):
+            return None
+        if not isinstance(proper_type.value, int):
+            return None
+        return proper_type.value
+
+    def find_tuple_len_narrowing(self, node: ComparisonExpr) -> list[tuple[TypeMap, TypeMap]]:
+        opposite = {"<": ">=", "<=": ">", ">": "<=", ">=": "<"}
+        type_maps = []
+        chained = []
+        last_group = set()
+        for op, left, right in node.pairwise():
+            if isinstance(left, AssignmentExpr):
+                left = left.value
+            if isinstance(right, AssignmentExpr):
+                right = right.value
+            if op in ("is", "=="):
+                last_group.add(left)
+                last_group.add(right)
+            else:
+                chained.append(("==", list(last_group)))
+                last_group = set()
+                chained.append((op, [left, right]))
+        if last_group:
+            chained.append(("==", list(last_group)))
+
+        for op, items in chained:
+            if not any(self.literal_int_expr(it) is not None for it in items):
+                continue
+            if not any(self.is_len_of_tuple(it) for it in items):
+                continue
+            if op in ("is", "=="):
+                literal_values = set()
+                tuples = []
+                for it in items:
+                    lit = self.literal_int_expr(it)
+                    if lit is not None:
+                        literal_values.add(lit)
+                        continue
+                    if self.is_len_of_tuple(it):
+                        assert isinstance(it, CallExpr)
+                        tuples.append(it.args[0])
+                if len(literal_values) > 1:
+                    return [(None, {})]
+                size = literal_values.pop()
+                for tpl in tuples:
+                    yes_type, no_type = self.narrow_with_len(self.lookup_type(tpl), op, size)
+                    yes_map = None if yes_type is None else {tpl: yes_type}
+                    no_map = None if no_type is None else {tpl: no_type}
+                    type_maps.append((yes_map, no_map))
+            else:
+                left, right = items
+                if self.is_len_of_tuple(right):
+                    left, right = right, left
+                    op = opposite.get(op, op)
+                r_size = self.literal_int_expr(right)
+                assert r_size is not None
+                assert isinstance(left, CallExpr)
+                yes_type, no_type = self.narrow_with_len(
+                    self.lookup_type(left.args[0]), op, r_size
+                )
+                yes_map = None if yes_type is None else {left.args[0]: yes_type}
+                no_map = None if no_type is None else {left.args[0]: no_type}
+                type_maps.append((yes_map, no_map))
+        return type_maps
 
     def propagate_up_typemap_info(self, new_types: TypeMap) -> TypeMap:
         """Attempts refining parent expressions of any MemberExpr or IndexExprs in new_types.
