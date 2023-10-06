@@ -202,7 +202,7 @@ setup(
     author="Jukka Lehtosalo",
     author_email="jukka.lehtosalo@iki.fi",
     url="https://www.mypy-lang.org/",
-    license="MIT License",
+    license="MIT",
     py_modules=[],
     ext_modules=ext_modules,
     packages=find_packages(),
