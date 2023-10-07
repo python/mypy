@@ -17,7 +17,7 @@ from typing_extensions import TypeAlias as _TypeAlias
 Sig: _TypeAlias = Tuple[str, str]
 
 
-_TYPE_RE: Final = re.compile(r"^[a-zA-Z_][\w\[\], ]*(\.[a-zA-Z_][\w\[\], ]*)*$")
+_TYPE_RE: Final = re.compile(r"^[a-zA-Z_][\w\[\]\(\), ]*(\.[a-zA-Z_][\w\[\]\(\), ]*)*$")
 _ARG_NAME_RE: Final = re.compile(r"\**[A-Za-z_][A-Za-z0-9_]*$")
 
 
@@ -206,6 +206,11 @@ class DocStringParser:
                     self.reset()
                     return
                 self.ret_type = self.accumulator
+                m = re.match(
+                    r"^[A-Za-z_][A-Za-z0-9_]*\.((ItemsView|KeysView|ValuesView).+)$", self.ret_type
+                )
+                if m is not None:
+                    self.ret_type = m.group(1)
                 self.accumulator = ""
                 self.state.pop()
 

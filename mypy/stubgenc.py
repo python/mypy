@@ -38,6 +38,10 @@ _DEFAULT_TYPING_IMPORTS: Final = (
     "Optional",
     "Tuple",
     "Union",
+    "Annotated",
+    "KeysView",
+    "ItemsView",
+    "ValuesView",
 )
 
 
@@ -255,7 +259,16 @@ def add_typing_import(output: list[str]) -> list[str]:
         if any(re.search(r"\b%s\b" % name, line) for line in output):
             names.append(name)
     if names:
+        if "Annotated" in names:
+            names.append("TYPE_CHECKING")
+            output = [
+                "if TYPE_CHECKING:",
+                "    if FixedSize not in vars():",
+                "        def FixedSize(value):",
+                "            pass",
+            ] + output
         return [f"from typing import {', '.join(names)}", ""] + output
+
     else:
         return output.copy()
 
@@ -271,8 +284,10 @@ def get_members(obj: object) -> list[tuple[str, Any]]:
             value = getattr(obj, name)
         except AttributeError:
             continue
-        else:
-            results.append((name, value))
+        if inspect.isclass(value) and not value.__name__.isidentifier():
+            # like `KeysView[str]`
+            continue
+        results.append((name, value))
     return results
 
 
