@@ -228,6 +228,23 @@ T = TypeVar("T")
 
 DEFAULT_LAST_PASS: Final = 1  # Pass numbers start at 0
 
+# Maximum length of fixed tuple types inferred when narrowing from variadic tuples.
+MAX_PRECISE_TUPLE_SIZE: Final = 15
+
+int_op_to_method: Final = {
+    "==": int.__eq__,
+    "is": int.__eq__,
+    "<": int.__lt__,
+    "<=": int.__le__,
+    "!=": int.__ne__,
+    "is not": int.__ne__,
+    ">": int.__gt__,
+    ">=": int.__ge__,
+}
+
+flip_ops: Final = {"<": ">=", "<=": ">", ">": "<=", ">=": "<"}
+neg_ops: Final = {**flip_ops, "==": "!=", "!=": "==", "is": "is not", "is not": "is"}
+
 DeferredNodeType: _TypeAlias = Union[FuncDef, LambdaExpr, OverloadedFuncDef, Decorator]
 FineGrainedDeferredNodeType: _TypeAlias = Union[FuncDef, MypyFile, OverloadedFuncDef]
 
@@ -5741,8 +5758,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 partial_type_maps.append((if_map, else_map))
 
-            partial_type_maps.extend(self.find_tuple_len_narrowing(node))
-            return reduce_conditional_maps(partial_type_maps)
+            if any(m != ({}, {}) for m in partial_type_maps):
+                return reduce_conditional_maps(partial_type_maps)
+            else:
+                # TODO: support regular and len() narrowing in the same chain.
+                return reduce_conditional_maps(self.find_tuple_len_narrowing(node))
         elif isinstance(node, AssignmentExpr):
             if_map = {}
             else_map = {}
@@ -5828,7 +5848,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return proper_type.value
 
     def find_tuple_len_narrowing(self, node: ComparisonExpr) -> list[tuple[TypeMap, TypeMap]]:
-        opposite = {"<": ">=", "<=": ">", ">": "<=", ">=": "<"}
         type_maps = []
         chained = []
         last_group = set()
@@ -5843,7 +5862,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             else:
                 chained.append(("==", list(last_group)))
                 last_group = set()
-                chained.append((op, [left, right]))
+                if op in {"is not", "!=", "<", "<=", ">", ">="}:
+                    chained.append((op, [left, right]))
         if last_group:
             chained.append(("==", list(last_group)))
 
@@ -5866,6 +5886,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if len(literal_values) > 1:
                     return [(None, {})]
                 size = literal_values.pop()
+                if size > MAX_PRECISE_TUPLE_SIZE:
+                    continue
                 for tpl in tuples:
                     yes_type, no_type = self.narrow_with_len(self.lookup_type(tpl), op, size)
                     yes_map = None if yes_type is None else {tpl: yes_type}
@@ -5875,9 +5897,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 left, right = items
                 if self.is_len_of_tuple(right):
                     left, right = right, left
-                    op = opposite.get(op, op)
+                    op = flip_ops.get(op, op)
                 r_size = self.literal_int_expr(right)
                 assert r_size is not None
+                if r_size > MAX_PRECISE_TUPLE_SIZE:
+                    continue
                 assert isinstance(left, CallExpr)
                 yes_type, no_type = self.narrow_with_len(
                     self.lookup_type(left.args[0]), op, r_size
@@ -6233,33 +6257,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return False
 
     def narrow_with_len(self, typ: Type, op: str, size: int) -> tuple[Type | None, Type | None]:
-        if op in "==":
-            neg_op = "!="
-        elif op in "is":
-            neg_op = "is not"
-        elif op == "!=":
-            neg_op = "=="
-        elif op == "is not":
-            neg_op = "is"
-        elif op == ">":
-            neg_op = "<="
-        elif op == ">=":
-            neg_op = "<"
-        elif op == "<":
-            neg_op = ">="
-        elif op == "<=":
-            neg_op = ">"
-        else:
-            assert False, "Unsupported op for tuple len comparison"
         typ = get_proper_type(typ)
         if isinstance(typ, TupleType):
-            yes_type = self.refine_tuple_type_with_len(typ, op, size)
-            no_type = self.refine_tuple_type_with_len(typ, neg_op, size)
-            return yes_type, no_type
+            return self.refine_tuple_type_with_len(typ, op, size)
         elif isinstance(typ, Instance) and typ.type.fullname == "builtins.tuple":
-            yes_type = self.refine_instance_type_with_len(typ, op, size)
-            no_type = self.refine_instance_type_with_len(typ, neg_op, size)
-            return yes_type, no_type
+            return self.refine_instance_type_with_len(typ, op, size)
         elif isinstance(typ, UnionType):
             yes_types = []
             no_types = []
@@ -6281,35 +6283,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             assert False, "Unsupported type for len narrowing"
 
-    def refine_tuple_type_with_len(self, typ: TupleType, op: str, size: int) -> Type | None:
+    def refine_tuple_type_with_len(
+        self, typ: TupleType, op: str, size: int
+    ) -> tuple[Type | None, Type | None]:
         unpack_index = find_unpack_in_list(typ.items)
         if unpack_index is None:
-            if op in ("==", "is"):
-                if typ.length() == size:
-                    return typ
-                return None
-            elif op in ("!=", "is not"):
-                if typ.length() != size:
-                    return typ
-                return None
-            elif op == ">":
-                if typ.length() > size:
-                    return typ
-                return None
-            elif op == ">=":
-                if typ.length() >= size:
-                    return typ
-                return None
-            elif op == "<":
-                if typ.length() < size:
-                    return typ
-                return None
-            elif op == "<=":
-                if typ.length() <= size:
-                    return typ
-                return None
-            else:
-                assert False, "Unsupported op for tuple len comparison"
+            method = int_op_to_method[op]
+            if method(typ.length(), size):
+                return typ, None
+            return None, typ
         unpack = typ.items[unpack_index]
         assert isinstance(unpack, UnpackType)
         unpacked = get_proper_type(unpack.type)
@@ -6317,85 +6299,63 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(unpacked, TypeVarTupleType):
             if op in ("==", "is"):
                 if min_len <= size:
-                    return typ
-                return None
-            elif op in ("!=", "is not"):
-                return typ
-            elif op == ">":
-                return typ
-            elif op == ">=":
-                return typ
-            elif op == "<":
+                    return typ, typ
+                return None, typ
+            elif op in ("<", "<="):
+                if op == "<=":
+                    size += 1
                 if min_len < size:
-                    return typ
-                return None
-            elif op == "<=":
-                if min_len <= size:
-                    return typ
-                return None
+                    return typ, typ
+                return None, typ
             else:
-                assert False, "Unsupported op for tuple len comparison"
+                yes_type, no_type = self.refine_tuple_type_with_len(typ, neg_ops[op], size)
+                return no_type, yes_type
         assert isinstance(unpacked, Instance) and unpacked.type.fullname == "builtins.tuple"
         arg = unpacked.args[0]
         prefix = typ.items[:unpack_index]
         suffix = typ.items[unpack_index + 1 :]
         if op in ("==", "is"):
             if min_len <= size:
-                return typ.copy_modified(items=prefix + [arg] * (size - min_len) + suffix)
-            return None
-        elif op in ("!=", "is not"):
-            return typ
-        elif op == ">":
-            return typ.copy_modified(
-                items=prefix + [arg] * (size - min_len + 1) + [unpack] + suffix
-            )
-        elif op == ">=":
-            return typ.copy_modified(items=prefix + [arg] * (size - min_len) + [unpack] + suffix)
-        elif op == "<":
+                return typ.copy_modified(items=prefix + [arg] * (size - min_len) + suffix), typ
+            return None, typ
+        elif op in ("<", "<="):
+            if op == "<=":
+                size += 1
             if min_len < size:
-                items = []
+                no_type = typ.copy_modified(
+                    items=prefix + [arg] * (size - min_len) + [unpack] + suffix
+                )
+                yes_items = []
                 for n in range(size - min_len):
-                    items.append(typ.copy_modified(items=prefix + [arg] * n + suffix))
-                return UnionType.make_union(items, typ.line, typ.column)
-            return None
-        elif op == "<=":
-            if min_len <= size:
-                items = []
-                for n in range(size - min_len + 1):
-                    items.append(typ.copy_modified(items=prefix + [arg] * n + suffix))
-                return UnionType.make_union(items, typ.line, typ.column)
-            return None
+                    yes_items.append(typ.copy_modified(items=prefix + [arg] * n + suffix))
+                return UnionType.make_union(yes_items, typ.line, typ.column), no_type
+            return None, typ
         else:
-            assert False, "Unsupported op for tuple len comparison"
+            yes_type, no_type = self.refine_tuple_type_with_len(typ, neg_ops[op], size)
+            return no_type, yes_type
 
-    def refine_instance_type_with_len(self, typ: Instance, op: str, size: int) -> Type:
+    def refine_instance_type_with_len(
+        self, typ: Instance, op: str, size: int
+    ) -> tuple[Type | None, Type | None]:
         arg = typ.args[0]
         unpack = UnpackType(self.named_generic_type("builtins.tuple", [arg]))
         if op in ("==", "is"):
-            return TupleType(items=[arg] * size, fallback=typ)
-        elif op in ("!=", "is not"):
-            # TODO: return fixed union + prefixed variadic tuple?
-            return typ
-        elif op == ">":
+            # TODO: return fixed union + prefixed variadic tuple for no_type?
+            return TupleType(items=[arg] * size, fallback=typ), typ
+        elif op in ("<", "<="):
+            if op == "<=":
+                size += 1
             if TYPE_VAR_TUPLE in self.options.enable_incomplete_feature:
-                return TupleType(items=[arg] * (size + 1) + [unpack], fallback=typ)
-            return typ
-        elif op == ">=":
-            if TYPE_VAR_TUPLE in self.options.enable_incomplete_feature:
-                return TupleType(items=[arg] * size + [unpack], fallback=typ)
-            return typ
-        elif op == "<":
+                no_type: Type | None = TupleType(items=[arg] * size + [unpack], fallback=typ)
+            else:
+                no_type = typ
             items = []
             for n in range(size):
                 items.append(TupleType([arg] * n, fallback=typ))
-            return UnionType.make_union(items, typ.line, typ.column)
-        elif op == "<=":
-            items = []
-            for n in range(size + 1):
-                items.append(TupleType([arg] * n, fallback=typ))
-            return UnionType.make_union(items, typ.line, typ.column)
+            return UnionType.make_union(items, typ.line, typ.column), no_type
         else:
-            assert False, "Unsupported op for tuple len comparison"
+            yes_type, no_type = self.refine_instance_type_with_len(typ, neg_ops[op], size)
+            return no_type, yes_type
 
     #
     # Helpers

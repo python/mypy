@@ -1336,7 +1336,7 @@ else:
 [builtins fixtures/dict.pyi]
 
 [case testNarrowingLenItemAndLenCompare]
-from typing import Tuple, Union, Any
+from typing import Any
 
 x: Any
 if len(x) == x:
@@ -1364,8 +1364,8 @@ else:
     a, b, c = x
 [builtins fixtures/len.pyi]
 
-[case testNarrowingLenVariantLengthTuple]
-from typing import Tuple, Union
+[case testNarrowingLenHomogeneousTuple]
+from typing import Tuple
 
 def make_tuple() -> Tuple[int, ...]:
     return (1, 1)
@@ -1384,7 +1384,7 @@ else:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenTypeUnaffected]
-from typing import Tuple, Union, List, Any
+from typing import Union, List
 
 def make() -> Union[str, List[int]]:
     return ""
@@ -1467,7 +1467,7 @@ else:
     reveal_type(x) # N: Revealed type is "Tuple[builtins.int, builtins.int, builtins.int]"
 [builtins fixtures/len.pyi]
 
-[case testNarrowingLenBiggerThanVariantTuple]
+[case testNarrowingLenBiggerThanHomogeneousTupleShort]
 from typing import Tuple
 
 VarTuple = Tuple[int, ...]
@@ -1477,6 +1477,21 @@ def make_tuple() -> VarTuple:
 
 x = make_tuple()
 if len(x) < 3:
+    reveal_type(x) # N: Revealed type is "Union[Tuple[()], Tuple[builtins.int], Tuple[builtins.int, builtins.int]]"
+else:
+    reveal_type(x) # N: Revealed type is "Tuple[builtins.int, builtins.int, builtins.int, Unpack[builtins.tuple[builtins.int, ...]]]"
+[builtins fixtures/len.pyi]
+
+[case testNarrowingLenBiggerThanHomogeneousTupleLong]
+from typing import Tuple
+
+VarTuple = Tuple[int, ...]
+
+def make_tuple() -> VarTuple:
+    return (1, 1)
+
+x = make_tuple()
+if len(x) < 30:
     reveal_type(x) # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 else:
     reveal_type(x) # N: Revealed type is "builtins.tuple[builtins.int, ...]"
