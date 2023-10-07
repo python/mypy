@@ -1421,7 +1421,7 @@ if len(x) == fin:
     reveal_type(x) # N: Revealed type is "Tuple[builtins.int, builtins.int, builtins.int]"
 [builtins fixtures/len.pyi]
 
-[case testNarrowingLenBiggerThan]
+[case testNarrowingLenGreaterThan]
 from typing import Tuple, Union
 
 VarTuple = Union[Tuple[int], Tuple[int, int], Tuple[int, int, int]]
@@ -1465,7 +1465,7 @@ else:
     reveal_type(x) # N: Revealed type is "Union[Tuple[builtins.int], Tuple[builtins.int, builtins.int, builtins.int, builtins.int]]"
 [builtins fixtures/len.pyi]
 
-[case testNarrowingLenBiggerThanHomogeneousTupleShort]
+[case testNarrowingLenGreaterThanHomogeneousTupleShort]
 from typing import Tuple
 
 VarTuple = Tuple[int, ...]
@@ -1513,4 +1513,67 @@ if len(x) < 2:
     reveal_type(x) # E: Statement is unreachable
 else:
     reveal_type(x) # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
+[builtins fixtures/len.pyi]
+
+[case testNarrowingLenTypeVarTupleEquals]
+from typing import Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+def foo(x: Tuple[int, Unpack[Ts], str]) -> None:
+    if len(x) == 5:
+        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+    else:
+        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+
+    if len(x) != 5:
+        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+    else:
+        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+[builtins fixtures/len.pyi]
+
+[case testNarrowingLenTypeVarTupleGreaterThan]
+from typing import Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+def foo(x: Tuple[int, Unpack[Ts], str]) -> None:
+    if len(x) > 5:
+        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+    else:
+        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+
+    if len(x) < 5:
+        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+    else:
+        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+[builtins fixtures/len.pyi]
+
+[case testNarrowingLenTypeVarTupleUnreachable]
+# flags: --warn-unreachable
+from typing import Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+def foo(x: Tuple[int, Unpack[Ts], str]) -> None:
+    if len(x) == 1:
+        reveal_type(x)  # E: Statement is unreachable
+    else:
+        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+
+    if len(x) != 1:
+        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+    else:
+        reveal_type(x)  # E: Statement is unreachable
+
+def bar(x: Tuple[int, Unpack[Ts], str]) -> None:
+    if len(x) >= 2:
+        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+    else:
+        reveal_type(x)  # E: Statement is unreachable
+
+    if len(x) < 2:
+        reveal_type(x)  # E: Statement is unreachable
+    else:
+        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
 [builtins fixtures/len.pyi]
