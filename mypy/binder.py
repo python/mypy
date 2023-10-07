@@ -12,13 +12,18 @@ from mypy.nodes import Expression, IndexExpr, MemberExpr, NameExpr, RefExpr, Typ
 from mypy.subtypes import is_same_type, is_subtype
 from mypy.types import (
     AnyType,
+    Instance,
     NoneType,
     PartialType,
+    TupleType,
     Type,
     TypeOfAny,
     TypeType,
     UnionType,
+    UnpackType,
+    find_unpack_in_list,
     get_proper_type,
+    get_proper_types,
 )
 from mypy.typevars import fill_typevars_with_any
 
@@ -213,6 +218,8 @@ class ConditionalTypeBinder:
                 for other in resulting_values[1:]:
                     assert other is not None
                     type = join_simple(self.declarations[key], type, other)
+                    if isinstance(type, UnionType) and len(type.items) > 1:
+                        type = collapse_variadic_union(type)
             if current_value is None or not is_same_type(type, current_value):
                 self._put(key, type)
                 changed = True
@@ -453,3 +460,37 @@ def get_declaration(expr: BindableExpression) -> Type | None:
         elif isinstance(expr.node, TypeInfo):
             return TypeType(fill_typevars_with_any(expr.node))
     return None
+
+
+def collapse_variadic_union(typ: UnionType) -> UnionType | TupleType | Instance:
+    items = get_proper_types(typ.items)
+    if not all(isinstance(it, TupleType) for it in items):
+        return typ
+    tuple_items = cast("list[TupleType]", items)
+    tuple_items = sorted(tuple_items, key=lambda t: len(t.items))
+    first = tuple_items[0]
+    last = tuple_items[-1]
+    unpack_index = find_unpack_in_list(last.items)
+    if unpack_index is None:
+        return typ
+    unpack = last.items[unpack_index]
+    assert isinstance(unpack, UnpackType)
+    unpacked = get_proper_type(unpack.type)
+    if not isinstance(unpacked, Instance):
+        return typ
+    assert unpacked.type.fullname == "builtins.tuple"
+    suffix = last.items[unpack_index + 1 :]
+    if len(first.items) < len(suffix):
+        return typ
+    if suffix and first.items[-len(suffix) :] != suffix:
+        return typ
+    prefix = first.items[: -len(suffix)]
+    arg = unpacked.args[0]
+    for i, it in enumerate(tuple_items[1:-1]):
+        if it.items != prefix + [arg] * (i + 1) + suffix:
+            return typ
+    if last.items != prefix + [arg] * (len(typ.items) - 1) + [unpack] + suffix:
+        return typ
+    if len(first.items) == 0:
+        return unpacked.copy_modified()
+    return TupleType(prefix + [unpack] + suffix, fallback=last.partial_fallback)
