@@ -6186,7 +6186,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Is this a type that can benefit from length check type restrictions?
 
         Currently supported types are TupleTypes, Instances of builtins.tuple, and
-        unions of such types.
+        unions involving such types.
         """
         p_typ = get_proper_type(typ)
         if isinstance(p_typ, TupleType):
@@ -6195,8 +6195,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # TODO: support tuple subclasses as well?
             return p_typ.type.fullname == "builtins.tuple"
         if isinstance(p_typ, UnionType):
-            # TODO: support mixed unions
-            return all(self.can_be_narrowed_with_len(t) for t in p_typ.items)
+            return any(self.can_be_narrowed_with_len(t) for t in p_typ.items)
         return False
 
     def literal_int_expr(self, expr: Expression) -> int | None:
@@ -6316,12 +6315,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         elif isinstance(typ, UnionType):
             yes_types = []
             no_types = []
+            other_types = []
             for t in typ.items:
+                if not self.can_be_narrowed_with_len(t):
+                    other_types.append(t)
+                    continue
                 yt, nt = self.narrow_with_len(t, op, size)
                 if yt is not None:
                     yes_types.append(yt)
                 if nt is not None:
                     no_types.append(nt)
+            yes_types += other_types
+            no_types += other_types
             if yes_types:
                 yes_type = make_simplified_union(yes_types)
             else:

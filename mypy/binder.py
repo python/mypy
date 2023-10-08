@@ -23,7 +23,6 @@ from mypy.types import (
     UnpackType,
     find_unpack_in_list,
     get_proper_type,
-    get_proper_types,
 )
 from mypy.typevars import fill_typevars_with_any
 
@@ -225,8 +224,8 @@ class ConditionalTypeBinder:
                     #     if len(x) < 10:
                     #         ...
                     # We want the type of x to be tuple[int, ...] after this block (if it is
-                    # equivalent to such type).
-                    if isinstance(type, UnionType) and len(type.items) > 1:
+                    # still equivalent to such type).
+                    if isinstance(type, UnionType):
                         type = collapse_variadic_union(type)
             if current_value is None or not is_same_type(type, current_value):
                 self._put(key, type)
@@ -470,7 +469,7 @@ def get_declaration(expr: BindableExpression) -> Type | None:
     return None
 
 
-def collapse_variadic_union(typ: UnionType) -> UnionType | TupleType | Instance:
+def collapse_variadic_union(typ: UnionType) -> Type:
     """Simplify a union involving variadic tuple if possible.
 
     This will collapse a type like e.g.
@@ -479,10 +478,17 @@ def collapse_variadic_union(typ: UnionType) -> UnionType | TupleType | Instance:
         tuple[X, *tuple[Y, ...], Z]
     which is equivalent, but much simpler form of the same type.
     """
-    items = get_proper_types(typ.items)
-    if not all(isinstance(it, TupleType) for it in items):
+    tuple_items = []
+    other_items = []
+    for t in typ.items:
+        p_t = get_proper_type(t)
+        if isinstance(p_t, TupleType):
+            tuple_items.append(p_t)
+        else:
+            other_items.append(t)
+    if len(tuple_items) <= 1:
+        # This type cannot be simplified further.
         return typ
-    tuple_items = cast("list[TupleType]", items)
     tuple_items = sorted(tuple_items, key=lambda t: len(t.items))
     first = tuple_items[0]
     last = tuple_items[-1]
@@ -517,5 +523,7 @@ def collapse_variadic_union(typ: UnionType) -> UnionType | TupleType | Instance:
     if last.items != prefix + [arg] * (len(typ.items) - 1) + [unpack] + suffix:
         return typ
     if len(first.items) == 0:
-        return unpacked.copy_modified()
-    return TupleType(prefix + [unpack] + suffix, fallback=last.partial_fallback)
+        simplified: Type = unpacked.copy_modified()
+    else:
+        simplified = TupleType(prefix + [unpack] + suffix, fallback=last.partial_fallback)
+    return UnionType.make_union([simplified] + other_items)

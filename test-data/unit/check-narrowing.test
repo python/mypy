@@ -1517,6 +1517,26 @@ else:
     reveal_type(x) # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
 [builtins fixtures/len.pyi]
 
+[case testNarrowingLenMixedTypes]
+from typing import Tuple, List, Union
+
+x: Union[Tuple[int, int], Tuple[int, int, int], List[int]]
+a = b = c = 0
+if len(x) == 3:
+    reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int, builtins.int, builtins.int], builtins.list[builtins.int]]"
+    a, b, c = x
+else:
+    reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], builtins.list[builtins.int]]"
+    a, b = x
+
+if len(x) != 3:
+    reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], builtins.list[builtins.int]]"
+    a, b = x
+else:
+    reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int, builtins.int, builtins.int], builtins.list[builtins.int]]"
+    a, b, c = x
+[builtins fixtures/len.pyi]
+
 [case testNarrowingLenTypeVarTupleEquals]
 from typing import Tuple
 from typing_extensions import TypeVarTuple, Unpack
