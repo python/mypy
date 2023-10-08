@@ -1672,3 +1672,11 @@ def bar(x: Tuple[int, Unpack[Tuple[float, ...]], str]) -> None:
     else:
         reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
 [builtins fixtures/len.pyi]
+
+[case testNarrowingLenBareExpression]
+from typing import Tuple
+
+x: Tuple[int, ...]
+assert x
+reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]]]"
+[builtins fixtures/len.pyi]

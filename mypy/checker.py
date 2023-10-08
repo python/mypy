@@ -5909,6 +5909,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         elif isinstance(node, UnaryExpr) and node.op == "not":
             left, right = self.find_isinstance_check(node.expr)
             return right, left
+        elif (
+            literal(node) == LITERAL_TYPE
+            and self.has_type(node)
+            and self.can_be_narrowed_with_len(self.lookup_type(node))
+        ):
+            yes_type, no_type = self.narrow_with_len(self.lookup_type(node), ">", 0)
+            yes_map = None if yes_type is None else {node: yes_type}
+            no_map = None if no_type is None else {node: no_type}
+            return yes_map, no_map
 
         # Restrict the type of the variable to True-ish/False-ish in the if and else branches
         # respectively
@@ -6277,10 +6286,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         unions involving such types.
         """
         p_typ = get_proper_type(typ)
+        # TODO: support tuple subclasses as well?
         if isinstance(p_typ, TupleType):
-            return True
+            return p_typ.partial_fallback.type.fullname == "builtins.tuple"
         if isinstance(p_typ, Instance):
-            # TODO: support tuple subclasses as well?
             return p_typ.type.fullname == "builtins.tuple"
         if isinstance(p_typ, UnionType):
             return any(self.can_be_narrowed_with_len(t) for t in p_typ.items)
@@ -6508,13 +6517,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 size += 1
             if TYPE_VAR_TUPLE in self.options.enable_incomplete_feature:
                 unpack = UnpackType(self.named_generic_type("builtins.tuple", [arg]))
-                no_type: Type | None = TupleType(items=[arg] * size + [unpack], fallback=typ)
+                no_type: Type = TupleType(items=[arg] * size + [unpack], fallback=typ)
             else:
                 no_type = typ
-            items = []
-            for n in range(size):
-                items.append(TupleType([arg] * n, fallback=typ))
-            return UnionType.make_union(items, typ.line, typ.column), no_type
+            if TYPE_VAR_TUPLE in self.options.enable_incomplete_feature:
+                items = []
+                for n in range(size):
+                    items.append(TupleType([arg] * n, fallback=typ))
+                yes_type: Type = UnionType.make_union(items, typ.line, typ.column)
+            else:
+                yes_type = typ
+            return yes_type, no_type
         else:
             yes_type, no_type = self.refine_instance_type_with_len(typ, neg_ops[op], size)
             return no_type, yes_type
