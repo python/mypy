@@ -218,6 +218,14 @@ class ConditionalTypeBinder:
                 for other in resulting_values[1:]:
                     assert other is not None
                     type = join_simple(self.declarations[key], type, other)
+                    # Try simplifying resulting type for unions involving variadic tuples.
+                    # Technically, everything is still valid without this step, but if we do
+                    # not do this, this may create long unions after exiting an if check like:
+                    #     x: tuple[int, ...]
+                    #     if len(x) < 10:
+                    #         ...
+                    # We want the type of x to be tuple[int, ...] after this block (if it is
+                    # equivalent to such type).
                     if isinstance(type, UnionType) and len(type.items) > 1:
                         type = collapse_variadic_union(type)
             if current_value is None or not is_same_type(type, current_value):
@@ -463,6 +471,14 @@ def get_declaration(expr: BindableExpression) -> Type | None:
 
 
 def collapse_variadic_union(typ: UnionType) -> UnionType | TupleType | Instance:
+    """Simplify a union involving variadic tuple if possible.
+
+    This will collapse a type like e.g.
+        tuple[X, Z] | tuple[X, Y, Z] | tuple[X, Y, Y, *tuple[Y, ...], Z]
+    back to
+        tuple[X, *tuple[Y, ...], Z]
+    which is equivalent, but much simpler form of the same type.
+    """
     items = get_proper_types(typ.items)
     if not all(isinstance(it, TupleType) for it in items):
         return typ
@@ -480,15 +496,24 @@ def collapse_variadic_union(typ: UnionType) -> UnionType | TupleType | Instance:
         return typ
     assert unpacked.type.fullname == "builtins.tuple"
     suffix = last.items[unpack_index + 1 :]
+
+    # Check that first item matches the expected pattern and infer prefix.
     if len(first.items) < len(suffix):
         return typ
     if suffix and first.items[-len(suffix) :] != suffix:
         return typ
-    prefix = first.items[: -len(suffix)]
+    if suffix:
+        prefix = first.items[: -len(suffix)]
+    else:
+        prefix = first.items
+
+    # Check that all middle types match the expected pattern as well.
     arg = unpacked.args[0]
     for i, it in enumerate(tuple_items[1:-1]):
         if it.items != prefix + [arg] * (i + 1) + suffix:
             return typ
+
+    # Check the last item (the one with unpack), and choose an appropriate simplified type.
     if last.items != prefix + [arg] * (len(typ.items) - 1) + [unpack] + suffix:
         return typ
     if len(first.items) == 0:
