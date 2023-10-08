@@ -1680,3 +1680,13 @@ x: Tuple[int, ...]
 assert x
 reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]]]"
 [builtins fixtures/len.pyi]
+
+[case testNarrowingLenBareExpressionWithNone]
+from typing import Tuple, Optional
+
+x: Optional[Tuple[int, ...]]
+if x:
+    reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]]]"
+else:
+    reveal_type(x)  # N: Revealed type is "Union[Tuple[()], None]"
+[builtins fixtures/len.pyi]

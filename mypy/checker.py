@@ -5914,10 +5914,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             and self.has_type(node)
             and self.can_be_narrowed_with_len(self.lookup_type(node))
         ):
+            # Combine a `len(x) > 0` check with the default logic below.
             yes_type, no_type = self.narrow_with_len(self.lookup_type(node), ">", 0)
-            yes_map = None if yes_type is None else {node: yes_type}
-            no_map = None if no_type is None else {node: no_type}
-            return yes_map, no_map
+            if yes_type is not None:
+                yes_type = true_only(yes_type)
+            else:
+                yes_type = UninhabitedType()
+            if no_type is not None:
+                no_type = false_only(no_type)
+            else:
+                no_type = UninhabitedType()
+            if_map = {node: yes_type} if not isinstance(yes_type, UninhabitedType) else None
+            else_map = {node: no_type} if not isinstance(no_type, UninhabitedType) else None
+            return if_map, else_map
 
         # Restrict the type of the variable to True-ish/False-ish in the if and else branches
         # respectively
@@ -6517,14 +6526,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 size += 1
             if TYPE_VAR_TUPLE in self.options.enable_incomplete_feature:
                 unpack = UnpackType(self.named_generic_type("builtins.tuple", [arg]))
-                no_type: Type = TupleType(items=[arg] * size + [unpack], fallback=typ)
+                no_type: Type | None = TupleType(items=[arg] * size + [unpack], fallback=typ)
             else:
                 no_type = typ
             if TYPE_VAR_TUPLE in self.options.enable_incomplete_feature:
                 items = []
                 for n in range(size):
                     items.append(TupleType([arg] * n, fallback=typ))
-                yes_type: Type = UnionType.make_union(items, typ.line, typ.column)
+                yes_type: Type | None = UnionType.make_union(items, typ.line, typ.column)
             else:
                 yes_type = typ
             return yes_type, no_type

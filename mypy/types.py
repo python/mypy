@@ -2377,7 +2377,18 @@ class TupleType(ProperType):
             # Corner case: it is a `NamedTuple` with `__bool__` method defined.
             # It can be anything: both `True` and `False`.
             return True
-        return self.length() == 0
+        if self.length() == 0:
+            return True
+        if self.length() > 1:
+            return False
+        # Special case tuple[*Ts] may or may not be false.
+        item = self.items[0]
+        if not isinstance(item, UnpackType):
+            return False
+        if not isinstance(item.type, TypeVarTupleType):
+            # Non-normalized tuple[int, ...] can be false.
+            return True
+        return item.type.min_len == 0
 
     def can_be_any_bool(self) -> bool:
         return bool(
