@@ -89,7 +89,7 @@ def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
 def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
     """Substitute type variables in type using values from an Instance.
     Type variables are considered to be bound by the class declaration."""
-    if not instance.args:
+    if not instance.args and not instance.type.has_type_var_tuple_type:
         return typ
     else:
         variables: dict[TypeVarId, Type] = {}
