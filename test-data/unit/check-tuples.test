@@ -1100,15 +1100,15 @@ reveal_type(b)  # N: Revealed type is "Tuple[builtins.int, builtins.int, builtin
 [case testTupleWithStarExpr2]
 a = [1]
 b = (0, *a)
-reveal_type(b)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+reveal_type(b)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]]]"
 [builtins fixtures/tuple.pyi]
 
 [case testTupleWithStarExpr3]
 a = ['']
 b = (0, *a)
-reveal_type(b)  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+reveal_type(b)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.str, ...]]]"
 c = (*a, '')
-reveal_type(c)  # N: Revealed type is "builtins.tuple[builtins.str, ...]"
+reveal_type(c)  # N: Revealed type is "Tuple[Unpack[builtins.tuple[builtins.str, ...]], builtins.str]"
 [builtins fixtures/tuple.pyi]
 
 [case testTupleWithStarExpr4]
@@ -1333,7 +1333,7 @@ reveal_type(subtup if int() else tup2)  # N: Revealed type is "builtins.tuple[bu
 [case testTupleWithUndersizedContext]
 a = ([1], 'x')
 if int():
-    a = ([], 'x', 1)  # E: Incompatible types in assignment (expression has type "Tuple[List[int], str, int]", variable has type "Tuple[List[int], str]")
+    a = ([], 'x', 1)  # E: Incompatible types in assignment (expression has type "Tuple[List[Never], str, int]", variable has type "Tuple[List[int], str]")
 [builtins fixtures/tuple.pyi]
 
 [case testTupleWithOversizedContext]
