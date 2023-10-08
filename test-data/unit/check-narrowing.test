@@ -1562,6 +1562,9 @@ Ts = TypeVarTuple("Ts")
 def foo(x: Tuple[int, Unpack[Ts], str]) -> None:
     if len(x) > 5:
         reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+        reveal_type(x[5])  # N: Revealed type is "builtins.object"
+        reveal_type(x[-6])  # N: Revealed type is "builtins.object"
+        reveal_type(x[-1])  # N: Revealed type is "builtins.str"
     else:
         reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
 
@@ -1569,6 +1572,14 @@ def foo(x: Tuple[int, Unpack[Ts], str]) -> None:
         reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
     else:
         reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`-1], builtins.str]"
+        x[5]  # E: Tuple index out of range \
+              # N: Variadic tuple can have length 5
+        x[-6]  # E: Tuple index out of range \
+               # N: Variadic tuple can have length 5
+    x[2]  # E: Tuple index out of range \
+          # N: Variadic tuple can have length 2
+    x[-3]  # E: Tuple index out of range \
+           # N: Variadic tuple can have length 2
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenTypeVarTupleUnreachable]

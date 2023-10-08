@@ -6354,11 +6354,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         unpack = typ.items[unpack_index]
         assert isinstance(unpack, UnpackType)
         unpacked = get_proper_type(unpack.type)
-        min_len = typ.length() - 1
         if isinstance(unpacked, TypeVarTupleType):
             # For tuples involving TypeVarTuple unpack we can't do much except
-            # inferring reachability, since we cannot really split a TypeVarTuple.
-            # TODO: support some cases by adding a min_len attribute to TypeVarTupleType.
+            # inferring reachability, and recording the restrictions on TypeVarTuple
+            # for further "manual" use elsewhere.
+            min_len = typ.length() - 1 + unpacked.min_len
             if op in ("==", "is"):
                 if min_len <= size:
                     return typ, typ
@@ -6367,7 +6367,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if op == "<=":
                     size += 1
                 if min_len < size:
-                    return typ, typ
+                    prefix = typ.items[:unpack_index]
+                    suffix = typ.items[unpack_index + 1 :]
+                    # TODO: also record max_len to avoid false negatives?
+                    unpack = UnpackType(unpacked.copy_modified(min_len=size - typ.length() + 1))
+                    return typ, typ.copy_modified(items=prefix + [unpack] + suffix)
                 return None, typ
             else:
                 yes_type, no_type = self.refine_tuple_type_with_len(typ, neg_ops[op], size)
@@ -6375,6 +6379,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # Homogeneous variadic item is the case where we are most flexible. Essentially,
         # we adjust the variadic item by "eating away" from it to satisfy the restriction.
         assert isinstance(unpacked, Instance) and unpacked.type.fullname == "builtins.tuple"
+        min_len = typ.length() - 1
         arg = unpacked.args[0]
         prefix = typ.items[:unpack_index]
         suffix = typ.items[unpack_index + 1 :]

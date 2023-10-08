@@ -32,6 +32,7 @@ class int:
     def __gt__(self, n: int) -> bool: pass
     def __le__(self, n: int) -> bool: pass
     def __ge__(self, n: int) -> bool: pass
+    def __neg__(self) -> int: pass
 class float: pass
 class bool(int): pass
 class str(Sequence[str]): pass
