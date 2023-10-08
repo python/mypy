@@ -154,7 +154,7 @@ def find_shallow_matching_overload_item(overload: Overloaded, call: CallExpr) ->
                 ):
                     ok = False
                     break
-                elif isinstance(arg_type, LiteralType) and type(arg_type.value) is bool:
+                elif isinstance(arg_type, LiteralType) and isinstance(arg_type.value, bool):
                     if not any(parse_bool(arg) == arg_type.value for arg in args):
                         ok = False
                         break

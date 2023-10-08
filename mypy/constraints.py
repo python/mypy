@@ -156,7 +156,11 @@ def infer_constraints_for_callable(
                     continue
 
                 expanded_actual = mapper.expand_actual_type(
-                    actual_arg_type, arg_kinds[actual], callee.arg_names[i], callee.arg_kinds[i]
+                    actual_arg_type,
+                    arg_kinds[actual],
+                    callee.arg_names[i],
+                    callee.arg_kinds[i],
+                    allow_unpack=True,
                 )
 
                 if arg_kinds[actual] != ARG_STAR or isinstance(

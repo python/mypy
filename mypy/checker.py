@@ -3459,6 +3459,37 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return all(self.is_assignable_slot(lvalue, u) for u in typ.items)
         return False
 
+    def flatten_rvalues(self, rvalues: list[Expression]) -> list[Expression]:
+        """Flatten expression list by expanding those * items that have tuple type.
+
+        For each regular type item in the tuple type use a TempNode(), for an Unpack
+        item use a corresponding StarExpr(TempNode()).
+        """
+        new_rvalues = []
+        for rv in rvalues:
+            if not isinstance(rv, StarExpr):
+                new_rvalues.append(rv)
+                continue
+            typ = get_proper_type(self.expr_checker.accept(rv.expr))
+            if not isinstance(typ, TupleType):
+                new_rvalues.append(rv)
+                continue
+            for t in typ.items:
+                if not isinstance(t, UnpackType):
+                    new_rvalues.append(TempNode(t))
+                else:
+                    unpacked = get_proper_type(t.type)
+                    if isinstance(unpacked, TypeVarTupleType):
+                        fallback = unpacked.upper_bound
+                    else:
+                        assert (
+                            isinstance(unpacked, Instance)
+                            and unpacked.type.fullname == "builtins.tuple"
+                        )
+                        fallback = unpacked
+                    new_rvalues.append(StarExpr(TempNode(fallback)))
+        return new_rvalues
+
     def check_assignment_to_multiple_lvalues(
         self,
         lvalues: list[Lvalue],
@@ -3468,18 +3499,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     ) -> None:
         if isinstance(rvalue, (TupleExpr, ListExpr)):
             # Recursively go into Tuple or List expression rhs instead of
-            # using the type of rhs, because this allowed more fine grained
+            # using the type of rhs, because this allows more fine-grained
             # control in cases like: a, b = [int, str] where rhs would get
             # type List[object]
             rvalues: list[Expression] = []
             iterable_type: Type | None = None
             last_idx: int | None = None
-            for idx_rval, rval in enumerate(rvalue.items):
+            for idx_rval, rval in enumerate(self.flatten_rvalues(rvalue.items)):
                 if isinstance(rval, StarExpr):
                     typs = get_proper_type(self.expr_checker.accept(rval.expr))
-                    if isinstance(typs, TupleType):
-                        rvalues.extend([TempNode(typ) for typ in typs.items])
-                    elif self.type_is_iterable(typs) and isinstance(typs, Instance):
+                    if self.type_is_iterable(typs) and isinstance(typs, Instance):
                         if iterable_type is not None and iterable_type != self.iterable_item_type(
                             typs, rvalue
                         ):
@@ -3546,8 +3575,32 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_multi_assignment(lvalues, rvalue, context, infer_lvalue_type)
 
     def check_rvalue_count_in_assignment(
-        self, lvalues: list[Lvalue], rvalue_count: int, context: Context
+        self,
+        lvalues: list[Lvalue],
+        rvalue_count: int,
+        context: Context,
+        rvalue_unpack: int | None = None,
     ) -> bool:
+        if rvalue_unpack is not None:
+            if not any(isinstance(e, StarExpr) for e in lvalues):
+                self.fail("Variadic tuple unpacking requires a star target", context)
+                return False
+            if len(lvalues) > rvalue_count:
+                self.fail(message_registry.TOO_MANY_TARGETS_FOR_VARIADIC_UNPACK, context)
+                return False
+            left_star_index = next(i for i, lv in enumerate(lvalues) if isinstance(lv, StarExpr))
+            left_prefix = left_star_index
+            left_suffix = len(lvalues) - left_star_index - 1
+            right_prefix = rvalue_unpack
+            right_suffix = rvalue_count - rvalue_unpack - 1
+            if left_suffix > right_suffix or left_prefix > right_prefix:
+                # Case of asymmetric unpack like:
+                #     rv: tuple[int, *Ts, int, int]
+                #     x, y, *xs, z = rv
+                # it is technically valid, but is tricky to reason about.
+                # TODO: support this (at least if the r.h.s. unpack is a homogeneous tuple).
+                self.fail(message_registry.TOO_MANY_TARGETS_FOR_VARIADIC_UNPACK, context)
+            return True
         if any(isinstance(lvalue, StarExpr) for lvalue in lvalues):
             if len(lvalues) - 1 > rvalue_count:
                 self.msg.wrong_number_values_to_unpack(rvalue_count, len(lvalues) - 1, context)
@@ -3580,6 +3633,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             relevant_items = rvalue_type.relevant_items()
             if len(relevant_items) == 1:
                 rvalue_type = get_proper_type(relevant_items[0])
+
+        if (
+            isinstance(rvalue_type, TupleType)
+            and find_unpack_in_list(rvalue_type.items) is not None
+        ):
+            # Normalize for consistent handling with "old-style" homogeneous tuples.
+            rvalue_type = expand_type(rvalue_type, {})
 
         if isinstance(rvalue_type, AnyType):
             for lv in lvalues:
@@ -3692,7 +3752,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         undefined_rvalue: bool,
         infer_lvalue_type: bool = True,
     ) -> None:
-        if self.check_rvalue_count_in_assignment(lvalues, len(rvalue_type.items), context):
+        rvalue_unpack = find_unpack_in_list(rvalue_type.items)
+        if self.check_rvalue_count_in_assignment(
+            lvalues, len(rvalue_type.items), context, rvalue_unpack=rvalue_unpack
+        ):
             star_index = next(
                 (i for i, lv in enumerate(lvalues) if isinstance(lv, StarExpr)), len(lvalues)
             )
@@ -3737,12 +3800,37 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.check_assignment(lv, self.temp_node(rv_type, context), infer_lvalue_type)
             if star_lv:
                 list_expr = ListExpr(
-                    [self.temp_node(rv_type, context) for rv_type in star_rv_types]
+                    [
+                        self.temp_node(rv_type, context)
+                        if not isinstance(rv_type, UnpackType)
+                        else StarExpr(self.temp_node(rv_type.type, context))
+                        for rv_type in star_rv_types
+                    ]
                 )
                 list_expr.set_line(context)
                 self.check_assignment(star_lv.expr, list_expr, infer_lvalue_type)
             for lv, rv_type in zip(right_lvs, right_rv_types):
                 self.check_assignment(lv, self.temp_node(rv_type, context), infer_lvalue_type)
+        else:
+            # Store meaningful Any types for lvalues, errors are already given
+            # by check_rvalue_count_in_assignment()
+            if infer_lvalue_type:
+                for lv in lvalues:
+                    if (
+                        isinstance(lv, NameExpr)
+                        and isinstance(lv.node, Var)
+                        and lv.node.type is None
+                    ):
+                        lv.node.type = AnyType(TypeOfAny.from_error)
+                    elif isinstance(lv, StarExpr):
+                        if (
+                            isinstance(lv.expr, NameExpr)
+                            and isinstance(lv.expr.node, Var)
+                            and lv.expr.node.type is None
+                        ):
+                            lv.expr.node.type = self.named_generic_type(
+                                "builtins.list", [AnyType(TypeOfAny.from_error)]
+                            )
 
     def lvalue_type_for_inference(self, lvalues: list[Lvalue], rvalue_type: TupleType) -> Type:
         star_index = next(
