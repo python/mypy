@@ -64,7 +64,7 @@ jobs:
           tox_extra_args: "-n 2"
           test_mypyc: true
         - name: Test suite with py312-ubuntu, mypyc-compiled
-          python: '3.12-dev'
+          python: '3.12'
           arch: x64
           os: ubuntu-latest
           toxenv: py
