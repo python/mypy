@@ -134,6 +134,7 @@ from mypy.nodes import (
     YieldExpr,
     is_final_node,
 )
+from mypy.operators import flip_ops, int_op_to_method, neg_ops
 from mypy.options import TYPE_VAR_TUPLE, Options
 from mypy.patterns import AsPattern, StarredPattern
 from mypy.plugin import CheckerPluginInterface, Plugin
@@ -230,29 +231,6 @@ DEFAULT_LAST_PASS: Final = 1  # Pass numbers start at 0
 
 # Maximum length of fixed tuple types inferred when narrowing from variadic tuples.
 MAX_PRECISE_TUPLE_SIZE: Final = 15
-
-int_op_to_method: Final = {
-    "==": int.__eq__,
-    "is": int.__eq__,
-    "<": int.__lt__,
-    "<=": int.__le__,
-    "!=": int.__ne__,
-    "is not": int.__ne__,
-    ">": int.__gt__,
-    ">=": int.__ge__,
-}
-
-flip_ops: Final = {"<": ">", "<=": ">=", ">": "<", ">=": "<="}
-neg_ops: Final = {
-    "==": "!=",
-    "!=": "==",
-    "is": "is not",
-    "is not": "is",
-    "<": ">=",
-    "<=": ">",
-    ">": "<=",
-    ">=": "<",
-}
 
 DeferredNodeType: _TypeAlias = Union[FuncDef, LambdaExpr, OverloadedFuncDef, Decorator]
 FineGrainedDeferredNodeType: _TypeAlias = Union[FuncDef, MypyFile, OverloadedFuncDef]
@@ -5894,7 +5872,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # and false if at least one of e1 and e2 is false.
             return (
                 and_conditional_maps(left_if_vars, right_if_vars),
-                or_conditional_maps(left_else_vars, right_else_vars),
+                # Note that if left else type is Any, we can't add any additional
+                # types to it, since the right maps were computed assuming
+                # the left is True, which may be not the case in the else branch.
+                or_conditional_maps(left_else_vars, right_else_vars, coalesce_any=True),
             )
         elif isinstance(node, OpExpr) and node.op == "or":
             left_if_vars, left_else_vars = self.find_isinstance_check(node.left)
@@ -6351,8 +6332,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 last_group.add(left)
                 last_group.add(right)
             else:
-                chained.append(("==", list(last_group)))
-                last_group = set()
+                if last_group:
+                    chained.append(("==", list(last_group)))
+                    last_group = set()
                 if op in {"is not", "!=", "<", "<=", ">", ">="}:
                     chained.append((op, [left, right]))
         if last_group:
@@ -7500,12 +7482,12 @@ def and_conditional_maps(m1: TypeMap, m2: TypeMap, use_meet: bool = False) -> Ty
     # Both conditions can be true; combine the information. Anything
     # we learn from either conditions' truth is valid. If the same
     # expression's type is refined by both conditions, we somewhat
-    # arbitrarily give precedence to m2. (In the future, we could use
-    # an intersection type or meet_types().)
+    # arbitrarily give precedence to m2 unless m1 value is Any.
+    # In the future, we could use an intersection type or meet_types().
     result = m2.copy()
     m2_keys = {literal_hash(n2) for n2 in m2}
     for n1 in m1:
-        if literal_hash(n1) not in m2_keys:
+        if literal_hash(n1) not in m2_keys or isinstance(get_proper_type(m1[n1]), AnyType):
             result[n1] = m1[n1]
     if use_meet:
         # For now, meet common keys only if specifically requested.
@@ -7518,10 +7500,11 @@ def and_conditional_maps(m1: TypeMap, m2: TypeMap, use_meet: bool = False) -> Ty
     return result
 
 
-def or_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
+def or_conditional_maps(m1: TypeMap, m2: TypeMap, coalesce_any: bool = False) -> TypeMap:
     """Calculate what information we can learn from the truth of (e1 or e2)
     in terms of the information that we can learn from the truth of e1 and
-    the truth of e2.
+    the truth of e2. If coalesce_any is True, consider Any a supertype when
+    joining restrictions.
     """
 
     if m1 is None:
@@ -7536,7 +7519,10 @@ def or_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
     for n1 in m1:
         for n2 in m2:
             if literal_hash(n1) == literal_hash(n2):
-                result[n1] = make_simplified_union([m1[n1], m2[n2]])
+                if coalesce_any and isinstance(get_proper_type(m1[n1]), AnyType):
+                    result[n1] = m1[n1]
+                else:
+                    result[n1] = make_simplified_union([m1[n1], m2[n2]])
     return result
 
 

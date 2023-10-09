@@ -15,6 +15,7 @@ from mypy.types import (
     Instance,
     NoneType,
     PartialType,
+    ProperType,
     TupleType,
     Type,
     TypeOfAny,
@@ -227,6 +228,14 @@ class ConditionalTypeBinder:
                     # still equivalent to such type).
                     if isinstance(type, UnionType):
                         type = collapse_variadic_union(type)
+                    if isinstance(type, ProperType) and isinstance(type, UnionType):
+                        # Simplify away any extra Any's that were added to the declared
+                        # type when popping a frame.
+                        simplified = UnionType.make_union(
+                            [t for t in type.items if not isinstance(get_proper_type(t), AnyType)]
+                        )
+                        if simplified == self.declarations[key]:
+                            type = simplified
             if current_value is None or not is_same_type(type, current_value):
                 self._put(key, type)
                 changed = True

@@ -1335,6 +1335,49 @@ else:
     reveal_type(some)  # N: Revealed type is "Union[builtins.int, __main__.Base]"
 [builtins fixtures/dict.pyi]
 
+[case testNarrowingWithAnyOps]
+from typing import Any
+
+class C: ...
+class D(C): ...
+tp: Any
+
+c: C
+if isinstance(c, tp) or isinstance(c, D):
+    reveal_type(c)  # N: Revealed type is "Union[Any, __main__.D]"
+else:
+    reveal_type(c)  # N: Revealed type is "__main__.C"
+reveal_type(c)  # N: Revealed type is "__main__.C"
+
+c1: C
+if isinstance(c1, tp) and isinstance(c1, D):
+    reveal_type(c1)  # N: Revealed type is "Any"
+else:
+    reveal_type(c1)  # N: Revealed type is "__main__.C"
+reveal_type(c1)  # N: Revealed type is "__main__.C"
+
+c2: C
+if isinstance(c2, D) or isinstance(c2, tp):
+    reveal_type(c2)  # N: Revealed type is "Union[__main__.D, Any]"
+else:
+    reveal_type(c2)  # N: Revealed type is "__main__.C"
+reveal_type(c2)  # N: Revealed type is "__main__.C"
+
+c3: C
+if isinstance(c3, D) and isinstance(c3, tp):
+    reveal_type(c3)  # N: Revealed type is "Any"
+else:
+    reveal_type(c3)  # N: Revealed type is "__main__.C"
+reveal_type(c3)  # N: Revealed type is "__main__.C"
+
+t: Any
+if isinstance(t, (list, tuple)) and isinstance(t, tuple):
+    reveal_type(t)  # N: Revealed type is "builtins.tuple[Any, ...]"
+else:
+    reveal_type(t)  # N: Revealed type is "Any"
+reveal_type(t)  # N: Revealed type is "Any"
+[builtins fixtures/isinstancelist.pyi]
+
 [case testNarrowingLenItemAndLenCompare]
 from typing import Any
 
@@ -1689,4 +1732,22 @@ if x:
     reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]]]"
 else:
     reveal_type(x)  # N: Revealed type is "Union[Tuple[()], None]"
+[builtins fixtures/len.pyi]
+
+[case testNarrowingLenMixWithAny]
+from typing import Any
+
+x: Any
+if isinstance(x, (list, tuple)) and len(x) == 0:
+    reveal_type(x)  # N: Revealed type is "Union[Tuple[()], builtins.list[Any]]"
+else:
+    reveal_type(x)  # N: Revealed type is "Any"
+reveal_type(x)  # N: Revealed type is "Any"
+
+x1: Any
+if isinstance(x1, (list, tuple)) and len(x1) > 1:
+    reveal_type(x1)  # N: Revealed type is "Union[Tuple[Any, Any, Unpack[builtins.tuple[Any, ...]]], builtins.list[Any]]"
+else:
+    reveal_type(x1)  # N: Revealed type is "Any"
+reveal_type(x1)  # N: Revealed type is "Any"
 [builtins fixtures/len.pyi]
