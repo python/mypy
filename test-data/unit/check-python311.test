@@ -96,9 +96,11 @@ class C(Generic[T, *Ts]):
 
     def test(self) -> None:
         reveal_type(self.attr)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`2], builtins.str]"
+    def meth(self, *args: *Ts) -> T: ...
 
 ci: C[*tuple[int, ...]]
 reveal_type(ci)  # N: Revealed type is "__main__.C[Unpack[builtins.tuple[builtins.int, ...]]]"
+reveal_type(ci.meth)  # N: Revealed type is "def (*args: builtins.int) -> builtins.int"
 c3: C[str, str, str]
 reveal_type(c3)  # N: Revealed type is "__main__.C[builtins.str, builtins.str, builtins.str]"
 
