@@ -1989,38 +1989,42 @@ class SemanticAnalyzer(
         return None
 
     def analyze_unbound_tvar(self, t: Type) -> tuple[str, TypeVarLikeExpr] | None:
-        if not isinstance(t, UnboundType):
-            return None
-        unbound = t
-        sym = self.lookup_qualified(unbound.name, unbound)
+        if isinstance(t, UnpackType) and isinstance(t.type, UnboundType):
+            return self.analyze_unbound_tvar_impl(t.type, allow_tvt=True)
+        if isinstance(t, UnboundType):
+            sym = self.lookup_qualified(t.name, t)
+            if sym and sym.fullname in ("typing.Unpack", "typing_extensions.Unpack"):
+                inner_t = t.args[0]
+                if isinstance(inner_t, UnboundType):
+                    return self.analyze_unbound_tvar_impl(inner_t, allow_tvt=True)
+                return None
+            return self.analyze_unbound_tvar_impl(t)
+        return None
+
+    def analyze_unbound_tvar_impl(
+        self, t: UnboundType, allow_tvt: bool = False
+    ) -> tuple[str, TypeVarLikeExpr] | None:
+        sym = self.lookup_qualified(t.name, t)
         if sym and isinstance(sym.node, PlaceholderNode):
             self.record_incomplete_ref()
-        if sym and isinstance(sym.node, ParamSpecExpr):
+        if not allow_tvt and sym and isinstance(sym.node, ParamSpecExpr):
             if sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):
                 # It's bound by our type variable scope
                 return None
-            return unbound.name, sym.node
-        if sym and sym.fullname in ("typing.Unpack", "typing_extensions.Unpack"):
-            inner_t = unbound.args[0]
-            if not isinstance(inner_t, UnboundType):
+            return t.name, sym.node
+        if allow_tvt and sym and isinstance(sym.node, TypeVarTupleExpr):
+            if sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):
+                # It's bound by our type variable scope
                 return None
-            inner_unbound = inner_t
-            inner_sym = self.lookup_qualified(inner_unbound.name, inner_unbound)
-            if inner_sym and isinstance(inner_sym.node, PlaceholderNode):
-                self.record_incomplete_ref()
-            if inner_sym and isinstance(inner_sym.node, TypeVarTupleExpr):
-                if inner_sym.fullname and not self.tvar_scope.allow_binding(inner_sym.fullname):
-                    # It's bound by our type variable scope
-                    return None
-                return inner_unbound.name, inner_sym.node
-        if sym is None or not isinstance(sym.node, TypeVarExpr):
+            return t.name, sym.node
+        if sym is None or not isinstance(sym.node, TypeVarExpr) or allow_tvt:
             return None
         elif sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):
             # It's bound by our type variable scope
             return None
         else:
             assert isinstance(sym.node, TypeVarExpr)
-            return unbound.name, sym.node
+            return t.name, sym.node
 
     def get_all_bases_tvars(
         self, base_type_exprs: list[Expression], removed: list[int]
@@ -5321,7 +5325,9 @@ class SemanticAnalyzer(
                 has_param_spec = False
                 num_args = -1
         elif isinstance(base, RefExpr) and isinstance(base.node, TypeInfo):
-            allow_unpack = base.node.has_type_var_tuple_type
+            allow_unpack = (
+                base.node.has_type_var_tuple_type or base.node.fullname == "builtins.tuple"
+            )
             has_param_spec = base.node.has_param_spec_type
             num_args = len(base.node.type_vars)
         else:
@@ -5331,7 +5337,7 @@ class SemanticAnalyzer(
 
         for item in items:
             try:
-                typearg = self.expr_to_unanalyzed_type(item)
+                typearg = self.expr_to_unanalyzed_type(item, allow_unpack=True)
             except TypeTranslationError:
                 self.fail("Type expected within [...]", expr)
                 return None
@@ -6596,8 +6602,10 @@ class SemanticAnalyzer(
         tpan.global_scope = not self.type and not self.function_stack
         return tpan
 
-    def expr_to_unanalyzed_type(self, node: Expression) -> ProperType:
-        return expr_to_unanalyzed_type(node, self.options, self.is_stub_file)
+    def expr_to_unanalyzed_type(self, node: Expression, allow_unpack: bool = False) -> ProperType:
+        return expr_to_unanalyzed_type(
+            node, self.options, self.is_stub_file, allow_unpack=allow_unpack
+        )
 
     def anal_type(
         self,

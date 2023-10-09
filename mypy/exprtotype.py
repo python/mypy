@@ -103,7 +103,10 @@ def expr_to_unanalyzed_type(
                 return expr_to_unanalyzed_type(args[0], options, allow_new_syntax, expr)
             else:
                 base.args = tuple(
-                    expr_to_unanalyzed_type(arg, options, allow_new_syntax, expr) for arg in args
+                    expr_to_unanalyzed_type(
+                        arg, options, allow_new_syntax, expr, allow_unpack=True
+                    )
+                    for arg in args
                 )
             if not base.args:
                 base.empty_tuple_index = True
