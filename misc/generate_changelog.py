@@ -54,9 +54,9 @@ def git_commit_log(rev1: str, rev2: str) -> list[CommitInfo]:
     for line in result.stdout.splitlines():
         commit, author, title = line.strip().split("\t", 2)
         pr_number = None
-        if m := re.match(r".*\(#([0-9]+)\)$", title):
+        if m := re.match(r".*\(#([0-9]+)\) *$", title):
             pr_number = int(m.group(1))
-            title = re.sub(r" *\(#[0-9]+\)$", "", title)
+            title = re.sub(r" *\(#[0-9]+\) *$", "", title)
 
         author = normalize_author(author)
         entry = CommitInfo(commit, author, title, pr_number)
@@ -85,7 +85,7 @@ def filter_omitted_commits(commits: list[CommitInfo]) -> list[CommitInfo]:
             keep = False
         if "pre-commit autoupdate" in title:
             keep = False
-        if title.startswith("Update commit hashes"):
+        if title.startswith(("Update commit hashes", "Update hashes")):
             # Internal tool change
             keep = False
         if keep:
@@ -93,17 +93,43 @@ def filter_omitted_commits(commits: list[CommitInfo]) -> list[CommitInfo]:
     return result
 
 
+def normalize_title(title: str) -> str:
+    # We sometimes add a title prefix when cherry-picking commits to a
+    # release branch. Attempt to remove these prefixes so that we can
+    # match them to the corresponding master branch.
+    if m := re.match(r"\[release [0-9.]+\] *", title, flags=re.I):
+        title = title.replace(m.group(0), "")
+    return title
+
+
+def filter_out_commits_from_old_release_branch(new_commits: list[CommitInfo],
+                                               old_commits: list[CommitInfo]) -> list[CommitInfo]:
+    old_titles = {normalize_title(commit.title) for commit in old_commits}
+    result = []
+    for commit in new_commits:
+        drop = False
+        if normalize_title(commit.title) in old_titles:
+            drop = True
+        if normalize_title(f"{commit.title} (#{commit.pr_number})") in old_titles:
+            drop = True
+        if not drop:
+            result.append(commit)
+        else:
+            print(f'NOTE: Drop "{commit.title}", since it was in previous release branch')
+    return result
+
+
 def find_changes_between_releases(old_branch: str, new_branch: str) -> list[str]:
     merge_base = git_merge_base(old_branch, new_branch)
     print(f"Merge base: {merge_base}")
     new_commits = git_commit_log(merge_base, new_branch)
-    old_commits = git_commit_log(merge_base, new_branch)
+    old_commits = git_commit_log(merge_base, old_branch)
 
     # Filter out some commits that won't be mentioned in release notes.
     new_commits = filter_omitted_commits(new_commits)
 
     # Filter out commits cherry-picked to old branch.
-    # TODO
+    new_commits = filter_out_commits_from_old_release_branch(new_commits, old_commits)
 
     return new_commits
 
