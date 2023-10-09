@@ -28,7 +28,7 @@ from mypy.literals import literal
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import is_overlapping_types, narrow_declared_type
 from mypy.message_registry import ErrorMessage
-from mypy.messages import MessageBuilder
+from mypy.messages import MessageBuilder, format_type
 from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
@@ -116,10 +116,12 @@ from mypy.traverser import has_await_expression
 from mypy.type_visitor import TypeTranslator
 from mypy.typeanal import (
     check_for_explicit_any,
+    fix_instance,
     has_any_from_unimported_type,
     instantiate_type_alias,
     make_optional_type,
     set_any_tvars,
+    validate_instance,
 )
 from mypy.typeops import (
     callable_type,
@@ -166,10 +168,12 @@ from mypy.types import (
     TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
+    UnboundType,
     UninhabitedType,
     UnionType,
     UnpackType,
     find_unpack_in_list,
+    flatten_nested_tuples,
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
@@ -4637,15 +4641,35 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         similar to how it is done in other places using split_with_prefix_and_suffix().
         """
         vars = t.variables
+        args = flatten_nested_tuples(args)
+
+        # TODO: this logic is duplicated with semanal_typeargs.
+        for tv, arg in zip(t.variables, args):
+            if isinstance(tv, ParamSpecType):
+                if not isinstance(
+                    get_proper_type(arg), (Parameters, ParamSpecType, AnyType, UnboundType)
+                ):
+                    self.chk.fail(
+                        "Can only replace ParamSpec with a parameter types list or"
+                        f" another ParamSpec, got {format_type(arg, self.chk.options)}",
+                        ctx,
+                    )
+                    return [AnyType(TypeOfAny.from_error)] * len(vars)
+
         if not vars or not any(isinstance(v, TypeVarTupleType) for v in vars):
             return list(args)
+        assert t.is_type_obj()
+        info = t.type_object()
+        # We reuse the logic from semanal phase to reduce code duplication.
+        fake = Instance(info, args, line=ctx.line, column=ctx.column)
+        if not validate_instance(fake, self.chk.fail):
+            fix_instance(
+                fake, self.chk.fail, self.chk.note, disallow_any=False, options=self.chk.options
+            )
+            args = list(fake.args)
 
         prefix = next(i for (i, v) in enumerate(vars) if isinstance(v, TypeVarTupleType))
         suffix = len(vars) - prefix - 1
-        if len(args) < len(vars) - 1:
-            self.msg.incompatible_type_application(len(vars), len(args), ctx)
-            return [AnyType(TypeOfAny.from_error)] * len(vars)
-
         tvt = vars[prefix]
         assert isinstance(tvt, TypeVarTupleType)
         start, middle, end = split_with_prefix_and_suffix(tuple(args), prefix, suffix)
