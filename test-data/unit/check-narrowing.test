@@ -1509,6 +1509,7 @@ else:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenGreaterThanHomogeneousTupleShort]
+# flags: --enable-incomplete-feature=PreciseTupleTypes
 from typing import Tuple
 
 VarTuple = Tuple[int, ...]
@@ -1534,6 +1535,7 @@ else:
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenBothSidesHomogeneousTuple]
+# flags: --enable-incomplete-feature=PreciseTupleTypes
 from typing import Tuple
 
 x: Tuple[int, ...]
@@ -1716,7 +1718,8 @@ def bar(x: Tuple[int, Unpack[Tuple[float, ...]], str]) -> None:
         reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.float, ...]], builtins.str]"
 [builtins fixtures/len.pyi]
 
-[case testNarrowingLenBareExpression]
+[case testNarrowingLenBareExpressionPrecise]
+# flags: --enable-incomplete-feature=PreciseTupleTypes
 from typing import Tuple
 
 x: Tuple[int, ...]
@@ -1724,7 +1727,18 @@ assert x
 reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]]]"
 [builtins fixtures/len.pyi]
 
-[case testNarrowingLenBareExpressionWithNone]
+[case testNarrowingLenBareExpressionTypeVarTuple]
+from typing import Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+def test(*xs: Unpack[Ts]) -> None:
+    assert xs
+    xs[0]  # OK
+[builtins fixtures/len.pyi]
+
+[case testNarrowingLenBareExpressionWithNonePrecise]
+# flags: --enable-incomplete-feature=PreciseTupleTypes
 from typing import Tuple, Optional
 
 x: Optional[Tuple[int, ...]]
@@ -1734,7 +1748,18 @@ else:
     reveal_type(x)  # N: Revealed type is "Union[Tuple[()], None]"
 [builtins fixtures/len.pyi]
 
-[case testNarrowingLenMixWithAny]
+[case testNarrowingLenBareExpressionWithNoneImprecise]
+from typing import Tuple, Optional
+
+x: Optional[Tuple[int, ...]]
+if x:
+    reveal_type(x)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+else:
+    reveal_type(x)  # N: Revealed type is "Union[builtins.tuple[builtins.int, ...], None]"
+[builtins fixtures/len.pyi]
+
+[case testNarrowingLenMixWithAnyPrecise]
+# flags: --enable-incomplete-feature=PreciseTupleTypes
 from typing import Any
 
 x: Any
@@ -1747,6 +1772,24 @@ reveal_type(x)  # N: Revealed type is "Any"
 x1: Any
 if isinstance(x1, (list, tuple)) and len(x1) > 1:
     reveal_type(x1)  # N: Revealed type is "Union[Tuple[Any, Any, Unpack[builtins.tuple[Any, ...]]], builtins.list[Any]]"
+else:
+    reveal_type(x1)  # N: Revealed type is "Any"
+reveal_type(x1)  # N: Revealed type is "Any"
+[builtins fixtures/len.pyi]
+
+[case testNarrowingLenMixWithAnyImprecise]
+from typing import Any
+
+x: Any
+if isinstance(x, (list, tuple)) and len(x) == 0:
+    reveal_type(x)  # N: Revealed type is "Union[Tuple[()], builtins.list[Any]]"
+else:
+    reveal_type(x)  # N: Revealed type is "Any"
+reveal_type(x)  # N: Revealed type is "Any"
+
+x1: Any
+if isinstance(x1, (list, tuple)) and len(x1) > 1:
+    reveal_type(x1)  # N: Revealed type is "Union[builtins.tuple[Any, ...], builtins.list[Any]]"
 else:
     reveal_type(x1)  # N: Revealed type is "Any"
 reveal_type(x1)  # N: Revealed type is "Any"

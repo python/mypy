@@ -135,7 +135,7 @@ from mypy.nodes import (
     is_final_node,
 )
 from mypy.operators import flip_ops, int_op_to_method, neg_ops
-from mypy.options import TYPE_VAR_TUPLE, Options
+from mypy.options import PRECISE_TUPLE_TYPES, Options
 from mypy.patterns import AsPattern, StarredPattern
 from mypy.plugin import CheckerPluginInterface, Plugin
 from mypy.plugins import dataclasses as dataclasses_plugin
@@ -6506,12 +6506,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         elif op in ("<", "<="):
             if op == "<=":
                 size += 1
-            if TYPE_VAR_TUPLE in self.options.enable_incomplete_feature:
+            if PRECISE_TUPLE_TYPES in self.options.enable_incomplete_feature:
                 unpack = UnpackType(self.named_generic_type("builtins.tuple", [arg]))
                 no_type: Type | None = TupleType(items=[arg] * size + [unpack], fallback=typ)
             else:
                 no_type = typ
-            if TYPE_VAR_TUPLE in self.options.enable_incomplete_feature:
+            if PRECISE_TUPLE_TYPES in self.options.enable_incomplete_feature:
                 items = []
                 for n in range(size):
                     items.append(TupleType([arg] * n, fallback=typ))
