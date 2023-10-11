@@ -7,6 +7,7 @@ from collections.abc import Callable
 from logging import FileHandler, Handler, LogRecord
 from re import Pattern
 from socket import SocketKind, socket
+from threading import Thread
 from typing import Any, ClassVar, Protocol, TypeVar
 
 _T = TypeVar("_T")
@@ -179,7 +180,7 @@ class SysLogHandler(Handler):
     facility_names: ClassVar[dict[str, int]]  # undocumented
     priority_map: ClassVar[dict[str, str]]  # undocumented
     def __init__(
-        self, address: tuple[str, int] | str = ("localhost", 514), facility: int = 1, socktype: SocketKind | None = None
+        self, address: tuple[str, int] | str = ("localhost", 514), facility: str | int = 1, socktype: SocketKind | None = None
     ) -> None: ...
     if sys.version_info >= (3, 11):
         def createSocket(self) -> None: ...
@@ -264,6 +265,7 @@ class QueueListener:
     handlers: tuple[Handler, ...]  # undocumented
     respect_handler_level: bool  # undocumented
     queue: _QueueLike[Any]  # undocumented
+    _thread: Thread | None  # undocumented
     def __init__(self, queue: _QueueLike[Any], *handlers: Handler, respect_handler_level: bool = False) -> None: ...
     def dequeue(self, block: bool) -> LogRecord: ...
     def prepare(self, record: LogRecord) -> Any: ...

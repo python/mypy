@@ -225,9 +225,10 @@ class _thread_info(_UninstantiableStructseq, tuple[_ThreadInfoName, _ThreadInfoL
     def version(self) -> str | None: ...
 
 thread_info: _thread_info
+_ReleaseLevel: TypeAlias = Literal["alpha", "beta", "candidate", "final"]
 
 @final
-class _version_info(_UninstantiableStructseq, tuple[int, int, int, str, int]):
+class _version_info(_UninstantiableStructseq, tuple[int, int, int, _ReleaseLevel, int]):
     @property
     def major(self) -> int: ...
     @property
@@ -235,7 +236,7 @@ class _version_info(_UninstantiableStructseq, tuple[int, int, int, str, int]):
     @property
     def micro(self) -> int: ...
     @property
-    def releaselevel(self) -> str: ...
+    def releaselevel(self) -> _ReleaseLevel: ...
     @property
     def serial(self) -> int: ...
 
@@ -321,7 +322,7 @@ if sys.version_info < (3, 9):
 
 if sys.version_info >= (3, 8):
     # Doesn't exist at runtime, but exported in the stubs so pytest etc. can annotate their code more easily.
-    class UnraisableHookArgs:
+    class UnraisableHookArgs(Protocol):
         exc_type: type[BaseException]
         exc_value: BaseException | None
         exc_traceback: TracebackType | None
@@ -359,3 +360,13 @@ if sys.version_info < (3, 8):
 # as part of the response to CVE-2020-10735
 def set_int_max_str_digits(maxdigits: int) -> None: ...
 def get_int_max_str_digits() -> int: ...
+
+if sys.version_info >= (3, 12):
+    def getunicodeinternedsize() -> int: ...
+    def deactivate_stack_trampoline() -> None: ...
+    def is_stack_trampoline_active() -> bool: ...
+    # It always exists, but raises on non-linux platforms:
+    if sys.platform == "linux":
+        def activate_stack_trampoline(__backend: str) -> None: ...
+    else:
+        def activate_stack_trampoline(__backend: str) -> NoReturn: ...

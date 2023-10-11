@@ -1,7 +1,7 @@
 [case testI64BasicOps]
 from typing import List, Any, Tuple, Union
 
-from mypy_extensions import i64, i32
+from mypy_extensions import i64, i32, i16
 
 from testutil import assertRaises
 
@@ -282,6 +282,10 @@ def test_explicit_conversion_to_i64() -> None:
     assert x == -1733
     z = i64(x)
     assert z == -1733
+    a: i16 = int() + 19764
+    assert i64(a) == 19764
+    a = int() - 1
+    assert i64(a) == -1
 
 def test_explicit_conversion_overflow() -> None:
     max_i64 = int() + 2**63 - 1
@@ -1500,3 +1504,16 @@ def test_implement_trait_attribute() -> None:
     a.y = 8
     assert a.x == 7
     assert a.y == 8
+
+class DunderErr:
+    def __contains__(self, i: i64) -> bool:
+        raise IndexError()
+
+def test_dunder_arg_check() -> None:
+    o: Any = DunderErr()
+    with assertRaises(TypeError):
+        'x' in o
+    with assertRaises(TypeError):
+        2**63 in o
+    with assertRaises(IndexError):
+        1 in o

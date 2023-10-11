@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from typing import FrozenSet, List, Tuple, Union
-from typing_extensions import Final, TypeGuard
+from typing import Final, FrozenSet, Tuple, Union
+from typing_extensions import TypeGuard
 
 # Supported Python literal types. All tuple / frozenset items must have supported
 # literal types as well, but we can't represent the type precisely.
@@ -140,7 +140,7 @@ class Literals:
     def encoded_tuple_values(self) -> list[str]:
         return self._encode_collection_values(self.tuple_literals)
 
-    def encoded_frozenset_values(self) -> List[str]:
+    def encoded_frozenset_values(self) -> list[str]:
         return self._encode_collection_values(self.frozenset_literals)
 
     def _encode_collection_values(
@@ -265,6 +265,8 @@ def float_to_c(x: float) -> str:
         return "INFINITY"
     elif s == "-inf":
         return "-INFINITY"
+    elif s == "nan":
+        return "NAN"
     return s
 
 

@@ -992,7 +992,7 @@ class SubO(Out): pass
 
 o: SubO
 
-reveal_type(SubO._make)  # N: Revealed type is "def (iterable: typing.Iterable[Any], *, new: Any =, len: Any =) -> Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.SubO]"
+reveal_type(SubO._make)  # N: Revealed type is "def (iterable: typing.Iterable[Any]) -> Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.SubO]"
 reveal_type(o._replace(y=Other()))  # N: Revealed type is "Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.SubO]"
 [builtins fixtures/tuple.pyi]
 
@@ -1009,7 +1009,7 @@ o: Out
 reveal_type(o)  # N: Revealed type is "Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.Out]"
 reveal_type(o.x)  # N: Revealed type is "Tuple[builtins.str, __main__.Other, fallback=__main__.In]"
 reveal_type(o.x.t)  # N: Revealed type is "__main__.Other"
-reveal_type(Out._make)  # N: Revealed type is "def (iterable: typing.Iterable[Any], *, new: Any =, len: Any =) -> Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.Out]"
+reveal_type(Out._make)  # N: Revealed type is "def (iterable: typing.Iterable[Any]) -> Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.Out]"
 [builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerIncompleteRefShadowsBuiltin1]
@@ -2149,6 +2149,7 @@ x: C
 class C:
     def frob(self, foos: Dict[Any, Foos]) -> None:
         foo = foos.get(1)
+        assert foo
         dict(foo)
 [builtins fixtures/dict.pyi]
 
@@ -2569,18 +2570,6 @@ import n
 
 [file n.pyi]
 class C: pass
-
-[case testNewAnalyzerModuleGetAttrInPython36]
-# flags: --python-version 3.6
-import m
-import n
-
-x: m.n.C # E: Name "m.n.C" is not defined
-y: n.D # E: Name "n.D" is not defined
-[file m.py]
-import n
-[file n.py]
-def __getattr__(x): pass
 
 [case testNewAnalyzerModuleGetAttrInPython37]
 # flags: --python-version 3.7
@@ -3218,8 +3207,7 @@ class User:
         self.first_name = value
 
     def __init__(self, name: str) -> None:
-        self.name = name  # E: Cannot assign to a method \
-                          # E: Incompatible types in assignment (expression has type "str", variable has type "Callable[..., Any]")
+        self.name = name  # E: Cannot assign to a method
 
 [case testNewAnalyzerMemberNameMatchesTypedDict]
 from typing import Union, Any

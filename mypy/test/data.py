@@ -11,11 +11,13 @@ import sys
 import tempfile
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Any, Iterator, NamedTuple, Pattern, Union
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from pathlib import Path
+from typing import Any, Final, Iterator, NamedTuple, NoReturn, Pattern, Union
+from typing_extensions import TypeAlias as _TypeAlias
 
 import pytest
 
+from mypy import defaults
 from mypy.test.config import PREFIX, test_data_prefix, test_temp_dir
 
 root_dir = os.path.normpath(PREFIX)
@@ -63,7 +65,6 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
         join = posixpath.join
 
     out_section_missing = case.suite.required_out_section
-    normalize_output = True
 
     files: list[tuple[str, str]] = []  # path and contents
     output_files: list[tuple[str, str | Pattern[str]]] = []  # output path and contents
@@ -76,11 +77,19 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
     targets: dict[int, list[str]] = {}  # Fine-grained targets (per fine-grained update)
     test_modules: list[str] = []  # Modules which are deemed "test" (vs "fixture")
 
+    def _case_fail(msg: str) -> NoReturn:
+        pytest.fail(f"{case.file}:{case.line}: {msg}", pytrace=False)
+
     # Process the parsed items. Each item has a header of form [id args],
     # optionally followed by lines of text.
     item = first_item = test_items[0]
     test_modules.append("__main__")
     for item in test_items[1:]:
+
+        def _item_fail(msg: str) -> NoReturn:
+            item_abs_line = case.line + item.line - 2
+            pytest.fail(f"{case.file}:{item_abs_line}: {msg}", pytrace=False)
+
         if item.id in {"file", "fixture", "outfile", "outfile-re"}:
             # Record an extra file needed for the test case.
             assert item.arg is not None
@@ -131,9 +140,11 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
             # File/directory to delete during a multi-step test case
             assert item.arg is not None
             m = re.match(r"(.*)\.([0-9]+)$", item.arg)
-            assert m, f"Invalid delete section: {item.arg}"
+            if m is None:
+                _item_fail(f"Invalid delete section {item.arg!r}")
             num = int(m.group(2))
-            assert num >= 2, f"Can't delete during step {num}"
+            if num < 2:
+                _item_fail(f"Can't delete during step {num}")
             full = join(base_path, m.group(1))
             deleted_paths.setdefault(num, set()).add(full)
         elif re.match(r"out[0-9]*$", item.id):
@@ -144,39 +155,34 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
 
             version_check = True
             for arg in args:
-                if arg == "skip-path-normalization":
-                    normalize_output = False
                 if arg.startswith("version"):
                     compare_op = arg[7:9]
                     if compare_op not in {">=", "=="}:
-                        raise ValueError(
-                            "{}, line {}: Only >= and == version checks are currently supported".format(
-                                case.file, item.line
-                            )
-                        )
+                        _item_fail("Only >= and == version checks are currently supported")
                     version_str = arg[9:]
                     try:
                         version = tuple(int(x) for x in version_str.split("."))
                     except ValueError:
-                        raise ValueError(
-                            '{}, line {}: "{}" is not a valid python version'.format(
-                                case.file, item.line, version_str
-                            )
-                        )
+                        _item_fail(f"{version_str!r} is not a valid python version")
                     if compare_op == ">=":
+                        if version <= defaults.PYTHON3_VERSION:
+                            _item_fail(
+                                f"{arg} always true since minimum runtime version is {defaults.PYTHON3_VERSION}"
+                            )
                         version_check = sys.version_info >= version
                     elif compare_op == "==":
+                        if version < defaults.PYTHON3_VERSION:
+                            _item_fail(
+                                f"{arg} always false since minimum runtime version is {defaults.PYTHON3_VERSION}"
+                            )
                         if not 1 < len(version) < 4:
-                            raise ValueError(
-                                "{}, line {}: Only minor or patch version checks "
-                                'are currently supported with "==": "{}"'.format(
-                                    case.file, item.line, version_str
-                                )
+                            _item_fail(
+                                f'Only minor or patch version checks are currently supported with "==": {version_str!r}'
                             )
                         version_check = sys.version_info[: len(version)] == version
             if version_check:
                 tmp_output = [expand_variables(line) for line in item.data]
-                if os.path.sep == "\\" and normalize_output:
+                if os.path.sep == "\\" and case.normalize_output:
                     tmp_output = [fix_win_path(line) for line in tmp_output]
                 if item.id == "out" or item.id == "out1":
                     output = tmp_output
@@ -188,10 +194,11 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
         elif item.id == "triggered" and item.arg is None:
             triggered = item.data
         else:
-            raise ValueError(f"Invalid section header {item.id} in {case.file}:{item.line}")
+            section_str = item.id + (f" {item.arg}" if item.arg else "")
+            _item_fail(f"Invalid section header [{section_str}] in case {case.name!r}")
 
     if out_section_missing:
-        raise ValueError(f"{case.file}, line {first_item.line}: Required output section not found")
+        _case_fail(f"Required output section not found in case {case.name!r}")
 
     for passnum in stale_modules.keys():
         if passnum not in rechecked_modules:
@@ -203,11 +210,7 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
             and passnum in rechecked_modules
             and not stale_modules[passnum].issubset(rechecked_modules[passnum])
         ):
-            raise ValueError(
-                (
-                    "Stale modules after pass {} must be a subset of rechecked modules ({}:{})"
-                ).format(passnum, case.file, first_item.line)
-            )
+            _case_fail(f"Stale modules after pass {passnum} must be a subset of rechecked modules")
 
     output_inline_start = len(output)
     input = first_item.data
@@ -218,10 +221,7 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
     seen_files = set()
     for file, _ in files:
         if file in seen_files:
-            raise ValueError(
-                f"{case.file}, line {first_item.line}: Duplicated filename {file}. Did you include"
-                " it multiple times?"
-            )
+            _case_fail(f"Duplicated filename {file}. Did you include it multiple times?")
 
         seen_files.add(file)
 
@@ -236,7 +236,6 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
     case.expected_rechecked_modules = rechecked_modules
     case.deleted_paths = deleted_paths
     case.triggered = triggered or []
-    case.normalize_output = normalize_output
     case.expected_fine_grained_targets = targets
     case.test_modules = test_modules
 
@@ -266,7 +265,7 @@ class DataDrivenTestCase(pytest.Item):
 
     # Whether or not we should normalize the output to standardize things like
     # forward vs backward slashes in file paths for Windows vs Linux.
-    normalize_output = True
+    normalize_output: bool
 
     # Extra attributes used by some tests.
     last_line: int
@@ -278,10 +277,12 @@ class DataDrivenTestCase(pytest.Item):
         self,
         parent: DataSuiteCollector,
         suite: DataSuite,
+        *,
         file: str,
         name: str,
         writescache: bool,
         only_when: str,
+        normalize_output: bool,
         platform: str | None,
         skip: bool,
         xfail: bool,
@@ -293,6 +294,7 @@ class DataDrivenTestCase(pytest.Item):
         self.file = file
         self.writescache = writescache
         self.only_when = only_when
+        self.normalize_output = normalize_output
         if (platform == "windows" and sys.platform != "win32") or (
             platform == "posix" and sys.platform == "win32"
         ):
@@ -366,19 +368,23 @@ class DataDrivenTestCase(pytest.Item):
         self.steps = [steps.get(num, []) for num in range(2, max_step + 1)]
 
     def teardown(self) -> None:
-        assert self.old_cwd is not None and self.tmpdir is not None, "test was not properly set up"
-        os.chdir(self.old_cwd)
-        try:
-            self.tmpdir.cleanup()
-        except OSError:
-            pass
+        if self.old_cwd is not None:
+            os.chdir(self.old_cwd)
+        if self.tmpdir is not None:
+            try:
+                self.tmpdir.cleanup()
+            except OSError:
+                pass
         self.old_cwd = None
         self.tmpdir = None
 
     def reportinfo(self) -> tuple[str, int, str]:
         return self.file, self.line, self.name
 
-    def repr_failure(self, excinfo: Any, style: Any | None = None) -> str:
+    def repr_failure(
+        self, excinfo: pytest.ExceptionInfo[BaseException], style: Any | None = None
+    ) -> str:
+        excrepr: object
         if isinstance(excinfo.value, SystemExit):
             # We assume that before doing exit() (which raises SystemExit) we've printed
             # enough context about what happened so that a stack trace is not useful.
@@ -388,7 +394,7 @@ class DataDrivenTestCase(pytest.Item):
         elif isinstance(excinfo.value, pytest.fail.Exception) and not excinfo.value.pytrace:
             excrepr = excinfo.exconly()
         else:
-            self.parent._prunetraceback(excinfo)
+            excinfo.traceback = self.parent._traceback_filter(excinfo)
             excrepr = excinfo.getrepr(style="short")
 
         return f"data: {self.file}:{self.line}:\n{excrepr}"
@@ -426,8 +432,16 @@ class TestItem:
 
     id: str
     arg: str | None
+    # Processed, collapsed text data
     data: list[str]
+    # Start line: 1-based, inclusive, relative to testcase
     line: int
+    # End line: 1-based, exclusive, relative to testcase; not same as `line + len(test_item.data)` due to collapsing
+    end_line: int
+
+    @property
+    def trimmed_newlines(self) -> int:  # compensates for strip_list
+        return self.end_line - self.line - len(self.data)
 
 
 def parse_test_data(raw_data: str, name: str) -> list[TestItem]:
@@ -449,7 +463,7 @@ def parse_test_data(raw_data: str, name: str) -> list[TestItem]:
             if id:
                 data = collapse_line_continuation(data)
                 data = strip_list(data)
-                ret.append(TestItem(id, arg, strip_list(data), i0 + 1))
+                ret.append(TestItem(id, arg, data, i0 + 1, i))
 
             i0 = i
             id = s[1:-1]
@@ -470,7 +484,7 @@ def parse_test_data(raw_data: str, name: str) -> list[TestItem]:
     if id:
         data = collapse_line_continuation(data)
         data = strip_list(data)
-        ret.append(TestItem(id, arg, data, i0 + 1))
+        ret.append(TestItem(id, arg, data, i0 + 1, i - 1))
 
     return ret
 
@@ -606,6 +620,13 @@ def pytest_addoption(parser: Any) -> None:
     )
 
 
+def pytest_configure(config: pytest.Config) -> None:
+    if config.getoption("--update-data") and config.getoption("--numprocesses", default=1) > 1:
+        raise pytest.UsageError(
+            "--update-data incompatible with parallelized tests; re-run with -n 1"
+        )
+
+
 # This function name is special to pytest.  See
 # https://doc.pytest.org/en/latest/how-to/writing_plugins.html#collection-hooks
 def pytest_pycollect_makeitem(collector: Any, name: str, obj: object) -> Any | None:
@@ -625,6 +646,17 @@ def pytest_pycollect_makeitem(collector: Any, name: str, obj: object) -> Any | N
     return None
 
 
+_case_name_pattern = re.compile(
+    r"(?P<name>[a-zA-Z_0-9]+)"
+    r"(?P<writescache>-writescache)?"
+    r"(?P<only_when>-only_when_cache|-only_when_nocache)?"
+    r"(?P<skip_path_normalization>-skip_path_normalization)?"
+    r"(-(?P<platform>posix|windows))?"
+    r"(?P<skip>-skip)?"
+    r"(?P<xfail>-xfail)?"
+)
+
+
 def split_test_cases(
     parent: DataFileCollector, suite: DataSuite, file: str
 ) -> Iterator[DataDrivenTestCase]:
@@ -635,40 +667,34 @@ def split_test_cases(
     """
     with open(file, encoding="utf-8") as f:
         data = f.read()
-    # number of groups in the below regex
-    NUM_GROUPS = 7
-    cases = re.split(
-        r"^\[case ([a-zA-Z_0-9]+)"
-        r"(-writescache)?"
-        r"(-only_when_cache|-only_when_nocache)?"
-        r"(-posix|-windows)?"
-        r"(-skip)?"
-        r"(-xfail)?"
-        r"\][ \t]*$\n",
-        data,
-        flags=re.DOTALL | re.MULTILINE,
-    )
-    line_no = cases[0].count("\n") + 1
+    cases = re.split(r"^\[case ([^]+)]+)\][ \t]*$\n", data, flags=re.DOTALL | re.MULTILINE)
+    cases_iter = iter(cases)
+    line_no = next(cases_iter).count("\n") + 1
     test_names = set()
-    for i in range(1, len(cases), NUM_GROUPS):
-        name, writescache, only_when, platform_flag, skip, xfail, data = cases[i : i + NUM_GROUPS]
+    for case_id in cases_iter:
+        data = next(cases_iter)
+
+        m = _case_name_pattern.fullmatch(case_id)
+        if not m:
+            raise RuntimeError(f"Invalid testcase id {case_id!r}")
+        name = m.group("name")
         if name in test_names:
             raise RuntimeError(
                 'Found a duplicate test name "{}" in {} on line {}'.format(
                     name, parent.name, line_no
                 )
             )
-        platform = platform_flag[1:] if platform_flag else None
         yield DataDrivenTestCase.from_parent(
             parent=parent,
             suite=suite,
             file=file,
             name=add_test_name_suffix(name, suite.test_name_suffix),
-            writescache=bool(writescache),
-            only_when=only_when,
-            platform=platform,
-            skip=bool(skip),
-            xfail=bool(xfail),
+            writescache=bool(m.group("writescache")),
+            only_when=m.group("only_when"),
+            platform=m.group("platform"),
+            skip=bool(m.group("skip")),
+            xfail=bool(m.group("xfail")),
+            normalize_output=not m.group("skip_path_normalization"),
             data=data,
             line=line_no,
         )
@@ -693,6 +719,12 @@ class DataSuiteCollector(pytest.Class):
             yield DataFileCollector.from_parent(parent=self, name=data_file)
 
 
+class DataFileFix(NamedTuple):
+    lineno: int  # 1-offset, inclusive
+    end_lineno: int  # 1-offset, exclusive
+    lines: list[str]
+
+
 class DataFileCollector(pytest.Collector):
     """Represents a single `.test` data driven test file.
 
@@ -700,6 +732,8 @@ class DataFileCollector(pytest.Collector):
     """
 
     parent: DataSuiteCollector
+
+    _fixes: list[DataFileFix]
 
     @classmethod  # We have to fight with pytest here:
     def from_parent(
@@ -715,6 +749,27 @@ class DataFileCollector(pytest.Collector):
             suite=self.parent.obj,
             file=os.path.join(self.parent.obj.data_prefix, self.name),
         )
+
+    def setup(self) -> None:
+        super().setup()
+        self._fixes = []
+
+    def teardown(self) -> None:
+        super().teardown()
+        self._apply_fixes()
+
+    def enqueue_fix(self, fix: DataFileFix) -> None:
+        self._fixes.append(fix)
+
+    def _apply_fixes(self) -> None:
+        if not self._fixes:
+            return
+        data_path = Path(self.parent.obj.data_prefix) / self.name
+        lines = data_path.read_text().split("\n")
+        # start from end to prevent line offsets from shifting as we update
+        for fix in sorted(self._fixes, reverse=True):
+            lines[fix.lineno - 1 : fix.end_lineno - 1] = fix.lines
+        data_path.write_text("\n".join(lines))
 
 
 def add_test_name_suffix(name: str, suffix: str) -> str:

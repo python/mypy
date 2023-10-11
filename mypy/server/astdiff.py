@@ -190,6 +190,7 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> dict[str, Sym
                 node.variance,
                 [snapshot_type(value) for value in node.values],
                 snapshot_type(node.upper_bound),
+                snapshot_type(node.default),
             )
         elif isinstance(node, TypeAlias):
             result[name] = (
@@ -200,9 +201,19 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> dict[str, Sym
                 snapshot_optional_type(node.target),
             )
         elif isinstance(node, ParamSpecExpr):
-            result[name] = ("ParamSpec", node.variance, snapshot_type(node.upper_bound))
+            result[name] = (
+                "ParamSpec",
+                node.variance,
+                snapshot_type(node.upper_bound),
+                snapshot_type(node.default),
+            )
         elif isinstance(node, TypeVarTupleExpr):
-            result[name] = ("TypeVarTuple", node.variance, snapshot_type(node.upper_bound))
+            result[name] = (
+                "TypeVarTuple",
+                node.variance,
+                snapshot_type(node.upper_bound),
+                snapshot_type(node.default),
+            )
         else:
             assert symbol.kind != UNBOUND_IMPORTED
             if node and get_prefix(node.fullname) != name_prefix:
@@ -382,6 +393,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
             typ.id.meta_level,
             snapshot_types(typ.values),
             snapshot_type(typ.upper_bound),
+            snapshot_type(typ.default),
             typ.variance,
         )
 
@@ -392,6 +404,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
             typ.id.meta_level,
             typ.flavor,
             snapshot_type(typ.upper_bound),
+            snapshot_type(typ.default),
         )
 
     def visit_type_var_tuple(self, typ: TypeVarTupleType) -> SnapshotItem:
@@ -400,6 +413,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
             typ.id.raw_id,
             typ.id.meta_level,
             snapshot_type(typ.upper_bound),
+            snapshot_type(typ.default),
         )
 
     def visit_unpack_type(self, typ: UnpackType) -> SnapshotItem:

@@ -16,6 +16,8 @@ if sys.platform == "linux":
     MAP_EXECUTABLE: int
     if sys.version_info >= (3, 10):
         MAP_POPULATE: int
+if sys.version_info >= (3, 11) and sys.platform != "win32" and sys.platform != "darwin":
+    MAP_STACK: int
 
 if sys.platform != "win32":
     MAP_ANON: int
@@ -76,6 +78,8 @@ class mmap(Iterable[int], Sized):
     def __iter__(self) -> Iterator[int]: ...
     def __enter__(self) -> Self: ...
     def __exit__(self, *args: Unused) -> None: ...
+    def __buffer__(self, __flags: int) -> memoryview: ...
+    def __release_buffer__(self, __buffer: memoryview) -> None: ...
 
 if sys.version_info >= (3, 8) and sys.platform != "win32":
     MADV_NORMAL: int

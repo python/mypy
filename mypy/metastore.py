@@ -112,7 +112,7 @@ class FilesystemMetadataStore(MetadataStore):
             if mtime is not None:
                 os.utime(path, times=(mtime, mtime))
 
-        except os.error:
+        except OSError:
             return False
         return True
 

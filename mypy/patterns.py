@@ -19,7 +19,7 @@ class Pattern(Node):
     __slots__ = ()
 
     def accept(self, visitor: PatternVisitor[T]) -> T:
-        raise RuntimeError("Not implemented")
+        raise RuntimeError("Not implemented", type(self))
 
 
 class AsPattern(Pattern):

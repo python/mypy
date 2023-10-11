@@ -1,6 +1,6 @@
 import sys
 from _socket import _Address as _SourceAddress
-from _typeshed import ReadableBuffer, _BufferWithLen
+from _typeshed import ReadableBuffer, SizedBuffer
 from collections.abc import Sequence
 from email.message import Message as _Message
 from re import Pattern
@@ -128,12 +128,18 @@ class SMTP:
     def auth_plain(self, challenge: ReadableBuffer | None = None) -> str: ...
     def auth_login(self, challenge: ReadableBuffer | None = None) -> str: ...
     def login(self, user: str, password: str, *, initial_response_ok: bool = True) -> _Reply: ...
-    def starttls(self, keyfile: str | None = None, certfile: str | None = None, context: SSLContext | None = None) -> _Reply: ...
+    if sys.version_info >= (3, 12):
+        def starttls(self, *, context: SSLContext | None = None) -> _Reply: ...
+    else:
+        def starttls(
+            self, keyfile: str | None = None, certfile: str | None = None, context: SSLContext | None = None
+        ) -> _Reply: ...
+
     def sendmail(
         self,
         from_addr: str,
         to_addrs: str | Sequence[str],
-        msg: _BufferWithLen | str,
+        msg: SizedBuffer | str,
         mail_options: Sequence[str] = (),
         rcpt_options: Sequence[str] = (),
     ) -> _SendErrs: ...
@@ -152,17 +158,29 @@ class SMTP_SSL(SMTP):
     keyfile: str | None
     certfile: str | None
     context: SSLContext
-    def __init__(
-        self,
-        host: str = "",
-        port: int = 0,
-        local_hostname: str | None = None,
-        keyfile: str | None = None,
-        certfile: str | None = None,
-        timeout: float = ...,
-        source_address: _SourceAddress | None = None,
-        context: SSLContext | None = None,
-    ) -> None: ...
+    if sys.version_info >= (3, 12):
+        def __init__(
+            self,
+            host: str = "",
+            port: int = 0,
+            local_hostname: str | None = None,
+            *,
+            timeout: float = ...,
+            source_address: _SourceAddress | None = None,
+            context: SSLContext | None = None,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            host: str = "",
+            port: int = 0,
+            local_hostname: str | None = None,
+            keyfile: str | None = None,
+            certfile: str | None = None,
+            timeout: float = ...,
+            source_address: _SourceAddress | None = None,
+            context: SSLContext | None = None,
+        ) -> None: ...
 
 LMTP_PORT: int
 

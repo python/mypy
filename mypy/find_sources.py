@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import functools
 import os
-from typing import Sequence
-from typing_extensions import Final
+from typing import Final, Sequence
 
 from mypy.fscache import FileSystemCache
 from mypy.modulefinder import PYTHON_EXTENSIONS, BuildSource, matches_exclude, mypy_path
@@ -160,7 +159,7 @@ class SourceFinder:
     def crawl_up_dir(self, dir: str) -> tuple[str, str]:
         return self._crawl_up_helper(dir) or ("", dir)
 
-    @functools.lru_cache()  # noqa: B019
+    @functools.lru_cache  # noqa: B019
     def _crawl_up_helper(self, dir: str) -> tuple[str, str] | None:
         """Given a directory, maybe returns module and base directory.
 

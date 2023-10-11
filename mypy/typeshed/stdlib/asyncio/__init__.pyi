@@ -1,5 +1,5 @@
 import sys
-from collections.abc import Coroutine, Generator
+from collections.abc import Awaitable, Coroutine, Generator
 from typing import Any, TypeVar
 from typing_extensions import TypeAlias
 
@@ -36,6 +36,8 @@ _T = TypeVar("_T")
 
 # Aliases imported by multiple submodules in typeshed
 if sys.version_info >= (3, 12):
-    _CoroutineLike: TypeAlias = Coroutine[Any, Any, _T]
+    _AwaitableLike: TypeAlias = Awaitable[_T]  # noqa: Y047
+    _CoroutineLike: TypeAlias = Coroutine[Any, Any, _T]  # noqa: Y047
 else:
+    _AwaitableLike: TypeAlias = Generator[Any, None, _T] | Awaitable[_T]
     _CoroutineLike: TypeAlias = Generator[Any, None, _T] | Coroutine[Any, Any, _T]
