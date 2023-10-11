@@ -909,8 +909,7 @@ class Errors:
             return []
         self.flushed_files.add(path)
         source_lines = None
-        if self.options.pretty:
-            assert self.read_source
+        if self.options.pretty and self.read_source:
             source_lines = self.read_source(path)
         return self.format_messages(self.error_info_map[path], source_lines)
 

@@ -2466,7 +2466,7 @@ class SemanticAnalyzer(
             if as_id is not None:
                 base_id = id
                 imported_id = as_id
-                module_public = use_implicit_reexport or id.split(".")[-1] == as_id
+                module_public = use_implicit_reexport or id == as_id
             else:
                 base_id = id.split(".")[0]
                 imported_id = base_id
@@ -3205,6 +3205,13 @@ class SemanticAnalyzer(
                 if isinstance(callee_expr, RefExpr) and callee_expr.fullname:
                     method_name = call.callee.name
                     fname = callee_expr.fullname + "." + method_name
+                elif (
+                    isinstance(callee_expr, IndexExpr)
+                    and isinstance(callee_expr.base, RefExpr)
+                    and isinstance(callee_expr.analyzed, TypeApplication)
+                ):
+                    method_name = call.callee.name
+                    fname = callee_expr.base.fullname + "." + method_name
                 elif isinstance(callee_expr, CallExpr):
                     # check if chain call
                     call = callee_expr
@@ -4414,7 +4421,8 @@ class SemanticAnalyzer(
             typevartuple_var = TypeVarTupleExpr(
                 name,
                 self.qualified_name(name),
-                self.object_type(),
+                # Upper bound for *Ts is *tuple[object, ...], it can never be object.
+                tuple_fallback.copy_modified(),
                 tuple_fallback,
                 default,
                 INVARIANT,
@@ -5561,7 +5569,7 @@ class SemanticAnalyzer(
             if not suppress_errors:
                 self.name_not_defined(name, ctx)
             return None
-        # 2. Class attributes (if within class definition)
+        # 2a. Class attributes (if within class definition)
         if self.type and not self.is_func_scope() and name in self.type.names:
             node = self.type.names[name]
             if not node.implicit:
@@ -5571,6 +5579,9 @@ class SemanticAnalyzer(
                 # Defined through self.x assignment
                 implicit_name = True
                 implicit_node = node
+        # 2b. Class attributes __qualname__ and __module__
+        if self.type and not self.is_func_scope() and name in {"__qualname__", "__module__"}:
+            return SymbolTableNode(MDEF, Var(name, self.str_type()))
         # 3. Local (function) scopes
         for table in reversed(self.locals):
             if table is not None and name in table:

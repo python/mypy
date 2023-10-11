@@ -126,6 +126,9 @@ if sys.version_info >= (3, 11):
         "reveal_type",
     ]
 
+if sys.version_info >= (3, 12):
+    __all__ += ["TypeAliasType", "override"]
+
 ContextManager = AbstractContextManager
 AsyncContextManager = AbstractAsyncContextManager
 
@@ -323,7 +326,9 @@ AnyStr = TypeVar("AnyStr", str, bytes)  # noqa: Y001
 
 # Technically in 3.7 this inherited from GenericMeta. But let's not reflect that, since
 # type checkers tend to assume that Protocols all have the ABCMeta metaclass.
-class _ProtocolMeta(ABCMeta): ...
+class _ProtocolMeta(ABCMeta):
+    if sys.version_info >= (3, 12):
+        def __init__(cls, *args: Any, **kwargs: Any) -> None: ...
 
 # Abstract base classes.
 
@@ -704,8 +709,10 @@ class IO(Iterator[AnyStr], Generic[AnyStr]):
     # See #8726
     @property
     def mode(self) -> str: ...
+    # Usually str, but may be bytes if a bytes path was passed to open(). See #10737.
+    # If PEP 696 becomes available, we may want to use a defaulted TypeVar here.
     @property
-    def name(self) -> str: ...
+    def name(self) -> str | Any: ...
     @abstractmethod
     def close(self) -> None: ...
     @property
@@ -945,7 +952,7 @@ if sys.version_info >= (3, 10):
 def _type_repr(obj: object) -> str: ...
 
 if sys.version_info >= (3, 12):
-    def override(__arg: _F) -> _F: ...
+    def override(__method: _F) -> _F: ...
     @_final
     class TypeAliasType:
         def __init__(

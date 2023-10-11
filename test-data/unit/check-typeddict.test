@@ -3224,3 +3224,15 @@ t2: Foo = {**y}  # E: Missing key "a" for TypedDict "Foo"
 t3: Foo = {**z}  # E: Missing key "a" for TypedDict "Foo"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictUnpackError]
+from typing import TypedDict
+
+class Foo(TypedDict):
+    a: int
+
+def foo(x: int) -> Foo: ...
+
+f: Foo = {**foo("no")}  # E: Argument 1 to "foo" has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]

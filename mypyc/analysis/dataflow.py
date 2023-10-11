@@ -46,6 +46,7 @@ from mypyc.ir.ops import (
     Truncate,
     TupleGet,
     TupleSet,
+    Unborrow,
     Unbox,
     Unreachable,
     Value,
@@ -270,6 +271,9 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
         return self.visit_register_op(op)
 
     def visit_keep_alive(self, op: KeepAlive) -> GenAndKill[T]:
+        return self.visit_register_op(op)
+
+    def visit_unborrow(self, op: Unborrow) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
 

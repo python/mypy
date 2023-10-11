@@ -196,6 +196,8 @@ def expr_to_unanalyzed_type(
     elif isinstance(expr, EllipsisExpr):
         return EllipsisType(expr.line)
     elif allow_unpack and isinstance(expr, StarExpr):
-        return UnpackType(expr_to_unanalyzed_type(expr.expr, options, allow_new_syntax))
+        return UnpackType(
+            expr_to_unanalyzed_type(expr.expr, options, allow_new_syntax), from_star_syntax=True
+        )
     else:
         raise TypeTranslationError()

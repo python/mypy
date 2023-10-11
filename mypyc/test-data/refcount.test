@@ -656,6 +656,66 @@ L1:
 L2:
     return 4
 
+[case testReturnTuple]
+from typing import Tuple
+
+class C: pass
+def f() -> Tuple[C, C]:
+    a = C()
+    b = C()
+    return a, b
+[out]
+def f():
+    r0, a, r1, b :: __main__.C
+    r2 :: tuple[__main__.C, __main__.C]
+L0:
+    r0 = C()
+    a = r0
+    r1 = C()
+    b = r1
+    r2 = (a, b)
+    return r2
+
+[case testDecomposeTuple]
+from typing import Tuple
+
+class C:
+    a: int
+
+def f() -> int:
+    x, y = g()
+    return x.a + y.a
+
+def g() -> Tuple[C, C]:
+    return C(), C()
+[out]
+def f():
+    r0 :: tuple[__main__.C, __main__.C]
+    r1, r2, x, r3, r4, y :: __main__.C
+    r5, r6, r7 :: int
+L0:
+    r0 = g()
+    r1 = borrow r0[0]
+    r2 = unborrow r1
+    x = r2
+    r3 = borrow r0[1]
+    r4 = unborrow r3
+    y = r4
+    r5 = borrow x.a
+    r6 = borrow y.a
+    r7 = CPyTagged_Add(r5, r6)
+    dec_ref x
+    dec_ref y
+    return r7
+def g():
+    r0, r1 :: __main__.C
+    r2 :: tuple[__main__.C, __main__.C]
+L0:
+    r0 = C()
+    r1 = C()
+    r2 = (r0, r1)
+    return r2
+
 [case testUnicodeLiteral]
 def f() -> str:
     return "some string"

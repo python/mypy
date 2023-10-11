@@ -5935,6 +5935,44 @@ tmp/b.py:4: note: Revealed type is "def ()"
 tmp/b.py:5: note: Revealed type is "def (builtins.int) -> builtins.str"
 tmp/b.py:6: note: Revealed type is "def ()"
 tmp/b.py:7: note: Revealed type is "def (builtins.int) -> builtins.str"
+
+[case testIncrementalAddOverloadedMethodPlugin]
+# flags: --config-file tmp/mypy.ini
+import b
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/add_overloaded_method.py
+
+[file a.py]
+class AddOverloadedMethod: pass
+
+class MyClass(AddOverloadedMethod):
+    pass
+
+[file b.py]
+import a
+
+[file b.py.2]
+import a
+
+reveal_type(a.MyClass.method)
+reveal_type(a.MyClass.clsmethod)
+reveal_type(a.MyClass.stmethod)
+
+my_class = a.MyClass()
+reveal_type(my_class.method)
+reveal_type(my_class.clsmethod)
+reveal_type(my_class.stmethod)
+[rechecked b]
+[out2]
+tmp/b.py:3: note: Revealed type is "Overload(def (self: a.MyClass, arg: builtins.int) -> builtins.str, def (self: a.MyClass, arg: builtins.str) -> builtins.int)"
+tmp/b.py:4: note: Revealed type is "Overload(def (arg: builtins.int) -> builtins.str, def (arg: builtins.str) -> builtins.int)"
+tmp/b.py:5: note: Revealed type is "Overload(def (arg: builtins.int) -> builtins.str, def (arg: builtins.str) -> builtins.int)"
+tmp/b.py:8: note: Revealed type is "Overload(def (arg: builtins.int) -> builtins.str, def (arg: builtins.str) -> builtins.int)"
+tmp/b.py:9: note: Revealed type is "Overload(def (arg: builtins.int) -> builtins.str, def (arg: builtins.str) -> builtins.int)"
+tmp/b.py:10: note: Revealed type is "Overload(def (arg: builtins.int) -> builtins.str, def (arg: builtins.str) -> builtins.int)"
+
 [case testGenericNamedTupleSerialization]
 import b
 [file a.py]
@@ -6421,4 +6459,48 @@ from typing import ParamSpec, Generic, Callable
 P = ParamSpec("P")
 class C(Generic[P]):
     def __init__(self, fn: Callable[P, int]) -> None: ...
+[builtins fixtures/dict.pyi]
+
+[case testVariadicTupleIncrementalUpdateNoCrash]
+import m
+[file m.py]
+from typing import Any
+from lib import C
+
+x: C[Any]
+[file m.py.2]
+from lib import C
+
+x: C[int]
+[file lib.py]
+from typing import Generic, Tuple, TypeVar
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class C(Tuple[Unpack[Ts]]): ...
+[builtins fixtures/tuple.pyi]
+
+[case testNoIncrementalCrashOnInvalidTypedDict]
+import m
+[file m.py]
+import counts
+[file m.py.2]
+import counts
+# touch
+[file counts.py]
+from typing_extensions import TypedDict
+Counts = TypedDict("Counts", {k: int for k in "abc"})  # type: ignore
+[builtins fixtures/dict.pyi]
+
+[case testNoIncrementalCrashOnInvalidTypedDictFunc]
+import m
+[file m.py]
+import counts
+[file m.py.2]
+import counts
+# touch
+[file counts.py]
+from typing_extensions import TypedDict
+def test() -> None:
+    Counts = TypedDict("Counts", {k: int for k in "abc"})  # type: ignore
 [builtins fixtures/dict.pyi]

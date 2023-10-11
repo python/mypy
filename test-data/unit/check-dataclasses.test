@@ -2280,6 +2280,10 @@ reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
 
 [builtins fixtures/tuple.pyi]
 
+[case testPostInitNotMethod]
+def __post_init__() -> None:
+    pass
+
 [case testPostInitCorrectSignature]
 from typing import Any, Generic, TypeVar, Callable, Self
 from dataclasses import dataclass, InitVar
@@ -2514,4 +2518,16 @@ class MyDataclass(Protocol): ...
 a: MyDataclass
 b = [a, a]  # trigger joining the types
 
+[builtins fixtures/dataclasses.pyi]
+
+[case testPropertyAndFieldRedefinitionNoCrash]
+from dataclasses import dataclass
+
+@dataclass
+class Foo:
+    @property
+    def c(self) -> int:
+        return 0
+
+    c: int  # E: Name "c" already defined on line 5
 [builtins fixtures/dataclasses.pyi]

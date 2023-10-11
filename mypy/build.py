@@ -3024,7 +3024,7 @@ def dump_graph(graph: Graph, stdout: TextIO | None = None) -> None:
             if state.path:
                 try:
                     size = os.path.getsize(state.path)
-                except os.error:
+                except OSError:
                     pass
             node.sizes[mod] = size
             for dep in state.dependencies:

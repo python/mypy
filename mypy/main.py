@@ -33,7 +33,7 @@ MEM_PROFILE: Final = False  # If True, dump memory profile
 def stat_proxy(path: str) -> os.stat_result:
     try:
         st = orig_stat(path)
-    except os.error as err:
+    except OSError as err:
         print(f"stat({path!r}) -> {err}")
         raise
     else:
@@ -1359,7 +1359,7 @@ def process_options(
             parser.error("Can only find occurrences of class members.")
         if len(_find_occurrences) != 2:
             parser.error("Can only find occurrences of non-nested class members.")
-        state.find_occurrences = _find_occurrences  # type: ignore[assignment]
+        state.find_occurrences = _find_occurrences
 
     # Set reports.
     for flag, val in vars(special_opts).items():

@@ -54,6 +54,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     extensions_map: dict[str, str]
     if sys.version_info >= (3, 12):
         index_pages: ClassVar[tuple[str, ...]]
+    directory: str
     def __init__(
         self,
         request: socketserver._RequestType,

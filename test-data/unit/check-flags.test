@@ -1611,14 +1611,22 @@ from other_module_2 import a  # E: Module "other_module_2" does not explicitly e
 reveal_type(a)  # N: Revealed type is "builtins.int"
 
 import other_module_2
-# TODO: this should also reveal builtins.int, see #13965
-reveal_type(other_module_2.a)  # E: "object" does not explicitly export attribute "a"  [attr-defined] \
-                               # N: Revealed type is "Any"
+reveal_type(other_module_2.a)  # E: Module "other_module_2" does not explicitly export attribute "a"  [attr-defined] \
+                               # N: Revealed type is "builtins.int"
+
+from other_module_2 import b  # E: Module "other_module_2" does not explicitly export attribute "b"  [attr-defined]
+reveal_type(b)  # N: Revealed type is "def (a: builtins.int) -> builtins.str"
+
+import other_module_2
+reveal_type(other_module_2.b)  # E: Module "other_module_2" does not explicitly export attribute "b"  [attr-defined] \
+                               # N: Revealed type is "def (a: builtins.int) -> builtins.str"
 
 [file other_module_1.py]
 a = 5
+def b(a: int) -> str: ...
 [file other_module_2.py]
-from other_module_1 import a
+from other_module_1 import a, b
+[builtins fixtures/module.pyi]
 
 [case testNoImplicitReexportRespectsAll]
 # flags: --no-implicit-reexport
@@ -1649,11 +1657,15 @@ __all__ = ('b',)
 [case testNoImplicitReexportGetAttr]
 # flags: --no-implicit-reexport --python-version 3.7
 from other_module_2 import a  # E: Module "other_module_2" does not explicitly export attribute "a"
+reveal_type(a)  # N: Revealed type is "builtins.int"
+from other_module_2 import b  # E: Module "other_module_2" does not explicitly export attribute "b"
+reveal_type(b)  # N: Revealed type is "builtins.str"
 [file other_module_1.py]
-from typing import Any
-def __getattr__(name: str) -> Any: ...
+b: str = "asdf"
+def __getattr__(name: str) -> int: ...
 [file other_module_2.py]
-from other_module_1 import a
+from other_module_1 import a, b
+def __getattr__(name: str) -> bytes: ...
 [builtins fixtures/tuple.pyi]
 
 [case textNoImplicitReexportSuggestions]
