@@ -15,11 +15,21 @@ CONNECTION_NAME = "dmypy-test-ipc"
 def server(msg: str, q: Queue[str]) -> None:
     server = IPCServer(CONNECTION_NAME)
     q.put(server.connection_name)
-    data = b""
+    data = ""
     while not data:
         with server:
-            server.write(msg.encode())
+            server.write(msg)
             data = server.read()
+    server.cleanup()
+
+def server_multi_message_echo(q: Queue[str]) -> None:
+    server = IPCServer(CONNECTION_NAME)
+    q.put(server.connection_name)
+    data = ""
+    with server:
+        while data != "quit":
+            data = server.read()
+            server.write(data)
     server.cleanup()
 
 
@@ -31,8 +41,8 @@ class IPCTests(TestCase):
         p.start()
         connection_name = queue.get()
         with IPCClient(connection_name, timeout=1) as client:
-            assert client.read() == msg.encode()
-            client.write(b"test")
+            assert client.read() == msg
+            client.write("test")
         queue.close()
         queue.join_thread()
         p.join()
@@ -44,12 +54,29 @@ class IPCTests(TestCase):
         p.start()
         connection_name = queue.get()
         with IPCClient(connection_name, timeout=1) as client:
-            assert client.read() == msg.encode()
-            client.write(b"")  # don't let the server hang up yet, we want to connect again.
+            assert client.read() == msg
+            client.write("")  # don't let the server hang up yet, we want to connect again.
 
         with IPCClient(connection_name, timeout=1) as client:
-            assert client.read() == msg.encode()
-            client.write(b"test")
+            assert client.read() == msg
+            client.write("test")
+        queue.close()
+        queue.join_thread()
+        p.join()
+        assert p.exitcode == 0
+
+    def test_multiple_messages(self) -> None:
+        queue: Queue[str] = Queue()
+        p = Process(target=server_multi_message_echo, args=(queue,), daemon=True)
+        p.start()
+        connection_name = queue.get()
+        with IPCClient(connection_name, timeout=1) as client:
+            client.write("test1")
+            assert client.read() == "test1"
+            client.write("test2")
+            assert client.read() == "test2"
+            client.write("quit")
+            assert client.read() == "quit"
         queue.close()
         queue.join_thread()
         p.join()

@@ -14,7 +14,7 @@ DEFAULT_STATUS_FILE: Final = ".dmypy.json"
 
 
 def receive(connection: IPCBase) -> Any:
-    """Receive JSON data from a connection until EOF.
+    """Receive single JSON data frame from a connection.
 
     Raise OSError if the data received is not valid JSON or if it is
     not a dict.
@@ -23,9 +23,19 @@ def receive(connection: IPCBase) -> Any:
     if not bdata:
         raise OSError("No data received")
     try:
-        data = json.loads(bdata.decode("utf8"))
+        data = json.loads(bdata)
     except Exception as e:
         raise OSError("Data received is not valid JSON") from e
     if not isinstance(data, dict):
         raise OSError(f"Data received is not a dict ({type(data)})")
     return data
+
+def send(connection: IPCBase, data: Any) -> None:
+    """Send data to a connection encoded and framed.
+
+    The data must be JSON-serializable. We assume that a single send call is a
+    single frame to be sent on the connect.
+    As an easy way to separate frames, we urlencode them and separate by space.
+    Last frame also has a trailing space.
+    """
+    connection.write(json.dumps(data))

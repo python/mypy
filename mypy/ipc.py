@@ -13,6 +13,7 @@ import sys
 import tempfile
 from types import TracebackType
 from typing import Callable, Final
+from urllib.parse import quote,unquote
 
 if sys.platform == "win32":
     # This may be private, but it is needed for IPC on Windows, and is basically stable
@@ -47,8 +48,9 @@ class IPCBase:
     def __init__(self, name: str, timeout: float | None) -> None:
         self.name = name
         self.timeout = timeout
+        self.buffer = bytearray()
 
-    def read(self, size: int = 100000) -> bytes:
+    def read(self, size: int = 100000) -> str:
         """Read bytes from an IPC connection until its empty."""
         bdata = bytearray()
         if sys.platform == "win32":
@@ -66,7 +68,13 @@ class IPCBase:
                 _, err = ov.GetOverlappedResult(True)
                 more = ov.getbuffer()
                 if more:
-                    bdata.extend(more)
+                    self.buffer.extend(more)
+                    space_pos = self.buffer.find(b" ")
+                    if space_pos != -1:
+                        # We have a full frame
+                        bdata = self.buffer[: space_pos]
+                        self.buffer = self.buffer[space_pos + 1 :]
+                        break
                 if err == 0:
                     # we are done!
                     break
@@ -79,15 +87,26 @@ class IPCBase:
             while True:
                 more = self.connection.recv(size)
                 if not more:
+                    # Connection closed
                     break
-                bdata.extend(more)
-        return bytes(bdata)
+                self.buffer.extend(more)
+                space_pos = self.buffer.find(b" ")
+                if space_pos != -1:
+                    # We have a full frame
+                    bdata = self.buffer[: space_pos]
+                    self.buffer = self.buffer[space_pos + 1 :]
+                    break
+        return unquote(bytes(bdata).decode("utf8"))
 
-    def write(self, data: bytes) -> None:
+    def write(self, data: str) -> None:
         """Write bytes to an IPC connection."""
+
+        # Frame the data by urlencoding it and separating by space.
+        encoded_data = (quote(data) + " ").encode("utf8")
+
         if sys.platform == "win32":
             try:
-                ov, err = _winapi.WriteFile(self.connection, data, overlapped=True)
+                ov, err = _winapi.WriteFile(self.connection, encoded_data, overlapped=True)
                 try:
                     if err == _winapi.ERROR_IO_PENDING:
                         timeout = int(self.timeout * 1000) if self.timeout else _winapi.INFINITE
@@ -101,12 +120,11 @@ class IPCBase:
                     raise
                 bytes_written, err = ov.GetOverlappedResult(True)
                 assert err == 0, err
-                assert bytes_written == len(data)
+                assert bytes_written == len(encoded_data)
             except OSError as e:
                 raise IPCException(f"Failed to write with error: {e.winerror}") from e
         else:
-            self.connection.sendall(data)
-            self.connection.shutdown(socket.SHUT_WR)
+            self.connection.sendall(encoded_data)
 
     def close(self) -> None:
         if sys.platform == "win32":
