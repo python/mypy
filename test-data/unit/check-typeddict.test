@@ -3249,8 +3249,8 @@ foo2: Foo = {'key': 2}
 
 reveal_type(foo1 | foo2)  # N: Revealed type is "TypedDict('__main__.Foo', {'key': builtins.int})"
 reveal_type(foo1 | {'key': 1})  # N: Revealed type is "TypedDict('__main__.Foo', {'key': builtins.int})"
-reveal_type(foo1 | {'key': 'a'})  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
-reveal_type(foo1 | {})  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+reveal_type(foo1 | {'key': 'a'})  # N: Revealed type is "typing.Mapping[builtins.str, builtins.object]"
+reveal_type(foo1 | {})  # N: Revealed type is "typing.Mapping[builtins.str, builtins.object]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -3267,7 +3267,7 @@ foo | 1
 main:8: error: No overload variant of "__or__" of "TypedDict" matches argument type "int"
 main:8: note: Possible overload variants:
 main:8: note:     def __or__(self, Foo, /) -> Foo
-main:8: note:     def __or__(self, Dict[str, Any], /) -> Dict[str, object]
+main:8: note:     def __or__(self, Mapping[str, object], /) -> Mapping[str, object]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
