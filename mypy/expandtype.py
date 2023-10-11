@@ -241,7 +241,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             return repl.copy_modified(
                 flavor=t.flavor,
                 prefix=t.prefix.copy_modified(
-                    arg_types=self.expand_types(t.prefix.arg_types + repl.prefix.arg_types),
+                    arg_types=self.expand_types(t.prefix.arg_types) + repl.prefix.arg_types,
                     arg_kinds=t.prefix.arg_kinds + repl.prefix.arg_kinds,
                     arg_names=t.prefix.arg_names + repl.prefix.arg_names,
                 ),
@@ -249,7 +249,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         elif isinstance(repl, Parameters):
             assert t.flavor == ParamSpecFlavor.BARE
             return Parameters(
-                self.expand_types(t.prefix.arg_types + repl.arg_types),
+                self.expand_types(t.prefix.arg_types) + repl.arg_types,
                 t.prefix.arg_kinds + repl.arg_kinds,
                 t.prefix.arg_names + repl.arg_names,
                 variables=[*t.prefix.variables, *repl.variables],
