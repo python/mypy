@@ -7450,6 +7450,7 @@ def infer_operator_assignment_method(typ: Type, operator: str) -> tuple[bool, st
     For example, if operator is '+', return (True, '__iadd__') or (False, '__add__')
     depending on which method is supported by the type.
     """
+
     def find_method(inst: Instance, method: str) -> str | None:
         if operator in operators.ops_with_inplace_method:
             inplace_method = "__i" + method[2:]
