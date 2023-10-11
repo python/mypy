@@ -3236,3 +3236,56 @@ def foo(x: int) -> Foo: ...
 f: Foo = {**foo("no")}  # E: Argument 1 to "foo" has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictWith__or__method]
+from mypy_extensions import TypedDict
+
+class Foo(TypedDict):
+    key: int
+
+foo1: Foo = {'key': 1}
+foo2: Foo = {'key': 2}
+
+reveal_type(foo1 | foo2)  # N: Revealed type is "TypedDict('__main__.Foo', {'key': builtins.int})"
+reveal_type(foo1 | {'key': 1})  # N: Revealed type is "TypedDict('__main__.Foo', {'key': builtins.int})"
+reveal_type(foo1 | {'key': 'a'})  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+reveal_type(foo1 | {})  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictWith__or__method_error]
+from mypy_extensions import TypedDict
+
+class Foo(TypedDict):
+    key: int
+
+foo: Foo = {'key': 1}
+
+foo | 1
+[out]
+main:8: error: No overload variant of "__or__" of "TypedDict" matches argument type "int"
+main:8: note: Possible overload variants:
+main:8: note:     def __or__(self, Foo, /) -> Foo
+main:8: note:     def __or__(self, Dict[str, Any], /) -> Dict[str, object]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+# TODO: add `__ror__` method check, after `__ror__` definition is fixed.
+
+[case testTypedDictWith__ior__method]
+from mypy_extensions import TypedDict
+
+class Foo(TypedDict):
+    key: int
+
+foo: Foo = {'key': 1}
+foo |= {'key': 2}
+
+foo |= {}  # E: Missing key "key" for TypedDict "Foo"
+foo |= {'key': 'a', 'b': 'a'}  # E: Extra key "b" for TypedDict "Foo" \
+                               # E: Incompatible types (expression has type "str", TypedDict item "key" has type "int")
+foo |= {'b': 2}  # E: Missing key "key" for TypedDict "Foo" \
+                 # E: Extra key "b" for TypedDict "Foo"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
