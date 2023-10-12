@@ -7454,16 +7454,16 @@ def infer_operator_assignment_method(typ: Type, operator: str) -> tuple[bool, st
     method = operators.op_methods[operator]
     existing_method = None
     if isinstance(typ, Instance):
-        existing_method = _find_inplace_method(typ, method)
+        existing_method = _find_inplace_method(typ, method, operator)
     elif isinstance(typ, TypedDictType):
-        existing_method = _find_inplace_method(typ.fallback, method)
+        existing_method = _find_inplace_method(typ.fallback, method, operator)
 
     if existing_method is not None:
         return True, existing_method
     return False, method
 
 
-def _find_inplace_method(inst: Instance, method: str) -> str | None:
+def _find_inplace_method(inst: Instance, method: str, operator: str) -> str | None:
     if operator in operators.ops_with_inplace_method:
         inplace_method = "__i" + method[2:]
         if inst.type.has_readable_member(inplace_method):
