@@ -2068,16 +2068,6 @@ class CallableType(FunctionLike):
         prefix = Parameters(self.arg_types[:-2], self.arg_kinds[:-2], self.arg_names[:-2])
         return arg_type.copy_modified(flavor=ParamSpecFlavor.BARE, prefix=prefix)
 
-    def expand_param_spec(self, c: Parameters) -> CallableType:
-        variables = c.variables
-        return self.copy_modified(
-            arg_types=self.arg_types[:-2] + c.arg_types,
-            arg_kinds=self.arg_kinds[:-2] + c.arg_kinds,
-            arg_names=self.arg_names[:-2] + c.arg_names,
-            is_ellipsis_args=c.is_ellipsis_args,
-            variables=[*variables, *self.variables],
-        )
-
     def with_unpacked_kwargs(self) -> NormalizedCallableType:
         if not self.unpack_kwargs:
             return cast(NormalizedCallableType, self)
