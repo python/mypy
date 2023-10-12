@@ -73,12 +73,13 @@ class _TypedDict(Mapping[str, object]):
     def __delitem__(self, k: NoReturn) -> None: ...
     # It is a bit of a lie:
     # 1. it is only supported since 3.9 in runtime
-    # 2. `__or__` users `dict[str, Any]`, not `Mapping[str, object]`
+    # 2. `__or__` uses `dict[str, Any]`, not `Mapping[str, object]`
     @overload
     def __or__(self, __value: Self) -> Self: ...
     @overload
     def __or__(self, __value: Mapping[str, object]) -> Mapping[str, object]: ...
     # TODO: re-enable after `__ror__` definition is fixed
+    # https://github.com/python/typeshed/issues/10678
     # @overload
     # def __ror__(self, __value: Self) -> Self: ...
     # @overload
