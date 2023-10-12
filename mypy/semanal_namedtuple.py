@@ -652,10 +652,16 @@ class NamedTupleAnalyzer:
                 if isinstance(sym.node, (FuncBase, Decorator)) and not sym.plugin_generated:
                     # Keep user-defined methods as is.
                     continue
+                elif isinstance(sym.node, Var):
+                    # Don't track the initialization status of the mangled attributes.
+                    sym.node.is_uninitialized = False
                 # Keep existing (user-provided) definitions under mangled names, so they
                 # get semantically analyzed.
                 r_key = get_unique_redefinition_name(key, named_tuple_info.names)
                 named_tuple_info.names[r_key] = sym
+            if isinstance(value.node, Var):
+                # When a NamedTuple is analyzed multiple times, we have to reset this again.
+                value.node.is_uninitialized = False
             named_tuple_info.names[key] = value
 
     # Helpers

@@ -163,8 +163,12 @@ def restore_saved_attrs(saved_attrs: SavedAttributes) -> None:
         if (
             existing is None
             or
-            # (An abstract Var is considered as not defined.)
-            (isinstance(existing.node, Var) and existing.node.is_abstract_var)
+            # (An uninitialized Var is considered as not defined.)
+            (
+                isinstance(existing.node, Var)
+                and existing.node.is_uninitialized
+                and not defined_in_this_class
+            )
             or
             # Also an explicit declaration on self creates a new Var unless
             # there is already one defined in the class body.
@@ -498,7 +502,9 @@ def calculate_class_properties(graph: Graph, scc: list[str], errors: Errors) -> 
         for _, node, _ in tree.local_definitions():
             if isinstance(node.node, TypeInfo):
                 with state.manager.semantic_analyzer.file_context(tree, state.options, node.node):
-                    calculate_class_abstract_status(node.node, tree.is_stub, errors)
+                    calculate_class_abstract_status(
+                        node.node, tree.is_stub, errors, graph[module].options
+                    )
                     check_protocol_status(node.node, errors)
                     calculate_class_vars(node.node)
                     add_type_promotion(

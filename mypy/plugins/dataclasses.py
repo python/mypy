@@ -587,6 +587,9 @@ class DataclassTransformer:
             if node.is_classvar:
                 continue
 
+            # In dataclasses, attributes are initialized in the generated __init__.
+            node.is_uninitialized = False
+
             # x: InitVar[int] is turned into x: int and is removed from the class.
             is_init_var = False
             node_type = get_proper_type(node.type)

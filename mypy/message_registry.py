@@ -165,6 +165,7 @@ ITERABLE_ALWAYS_TRUE: Final = ErrorMessage(
 )
 NOT_CALLABLE: Final = "{} not callable"
 TYPE_MUST_BE_USED: Final = "Value of type {} must be used"
+CLASS_HAS_UNINITIALIZED_VARS: Final = 'Class "{}" has annotated but unset {} attributes: {}'
 
 # Generic
 GENERIC_INSTANCE_VAR_CLASS_ACCESS: Final = (

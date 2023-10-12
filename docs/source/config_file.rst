@@ -633,6 +633,14 @@ section of the command line docs.
     Shows a warning when encountering any code inferred to be unreachable or
     redundant after performing type analysis.
 
+.. confval:: warn_uninitialized_attributes
+
+    :type: boolean
+    :default: False
+
+    Shows a warning when a class is instantiated which has attributes that
+    were declared but not initialized.
+
 
 Suppressing errors
 ******************

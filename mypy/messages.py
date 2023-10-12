@@ -2970,17 +2970,18 @@ def strip_quotes(s: str) -> str:
     return s
 
 
-def format_string_list(lst: list[str]) -> str:
+def format_string_list(lst: list[str], list_objects: str = "methods") -> str:
     assert lst
     if len(lst) == 1:
         return lst[0]
     elif len(lst) <= 5:
         return f"{', '.join(lst[:-1])} and {lst[-1]}"
     else:
-        return "%s, ... and %s (%i methods suppressed)" % (
+        return "%s, ... and %s (%i %s suppressed)" % (
             ", ".join(lst[:2]),
             lst[-1],
             len(lst) - 3,
+            list_objects,
         )
 
 
