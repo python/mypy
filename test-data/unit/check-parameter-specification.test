@@ -1976,3 +1976,40 @@ g(cb, y=0, x='a')  # OK
 g(cb, y='a', x=0)  # E: Argument "y" to "g" has incompatible type "str"; expected "int" \
                    # E: Argument "x" to "g" has incompatible type "int"; expected "str"
 [builtins fixtures/paramspec.pyi]
+
+[case testParamSpecNoCrashOnUnificationAlias]
+import mod
+[file mod.pyi]
+from typing import Callable, Protocol, TypeVar, overload
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+R_co = TypeVar("R_co", covariant=True)
+Handler = Callable[P, R_co]
+
+class HandlerDecorator(Protocol):
+    def __call__(self, handler: Handler[P, R_co]) -> Handler[P, R_co]: ...
+
+@overload
+def event(event_handler: Handler[P, R_co]) -> Handler[P, R_co]: ...
+@overload
+def event(namespace: str, *args, **kwargs) -> HandlerDecorator: ...
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecNoCrashOnUnificationCallable]
+import mod
+[file mod.pyi]
+from typing import Callable, Protocol, TypeVar, overload
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+R_co = TypeVar("R_co", covariant=True)
+
+class HandlerDecorator(Protocol):
+    def __call__(self, handler: Callable[P, R_co]) -> Callable[P, R_co]: ...
+
+@overload
+def event(event_handler: Callable[P, R_co]) -> Callable[P, R_co]: ...
+@overload
+def event(namespace: str, *args, **kwargs) -> HandlerDecorator: ...
+[builtins fixtures/paramspec.pyi]
