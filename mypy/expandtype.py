@@ -333,12 +333,14 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             # the replacement is ignored.
             if isinstance(repl, Parameters):
                 # We need to expand both the types in the prefix and the ParamSpec itself
-                t = t.expand_param_spec(repl)
                 return t.copy_modified(
-                    arg_types=self.expand_types(t.arg_types),
+                    arg_types=self.expand_types(t.arg_types[:-2]) + repl.arg_types,
+                    arg_kinds=t.arg_kinds[:-2] + repl.arg_kinds,
+                    arg_names=t.arg_names[:-2] + repl.arg_names,
                     ret_type=t.ret_type.accept(self),
                     type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None),
                     imprecise_arg_kinds=(t.imprecise_arg_kinds or repl.imprecise_arg_kinds),
+                    variables=[*repl.variables, *t.variables],
                 )
             elif isinstance(repl, ParamSpecType):
                 # We're substituting one ParamSpec for another; this can mean that the prefix
