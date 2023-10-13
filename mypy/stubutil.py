@@ -453,7 +453,10 @@ class ImportTracker:
         # be imported from it. the names can also be alias in the form 'original as alias'
         module_map: Mapping[str, list[str]] = defaultdict(list)
 
-        for name in sorted(self.required_names):
+        for name in sorted(
+            self.required_names,
+            key=lambda n: (self.reverse_alias[n], n) if n in self.reverse_alias else (n, ""),
+        ):
             # If we haven't seen this name in an import statement, ignore it
             if name not in self.module_for:
                 continue
@@ -477,7 +480,7 @@ class ImportTracker:
                     assert "." not in name  # Because reexports only has nonqualified names
                     result.append(f"import {name} as {name}\n")
                 else:
-                    result.append(f"import {self.direct_imports[name]}\n")
+                    result.append(f"import {name}\n")
 
         # Now generate all the from ... import ... lines collected in module_map
         for module, names in sorted(module_map.items()):
