@@ -17,13 +17,13 @@ import sys
 import time
 import traceback
 from contextlib import redirect_stderr, redirect_stdout
-from typing import AbstractSet, Any, Callable, Final, Iterable, List, Sequence, Tuple
+from typing import AbstractSet, Any, Callable, Final, List, Sequence, Tuple
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.build
 import mypy.errors
 import mypy.main
-from mypy.dmypy_util import receive, send
+from mypy.dmypy_util import receive, send, WriteToConn
 from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileData, FileSystemWatcher
@@ -208,21 +208,6 @@ class Server:
 
     def serve(self) -> None:
         """Serve requests, synchronously (no thread or fork)."""
-
-        class WriteToConn(object):
-            def __init__(self, server: IPCBase, output_key: str = "stdout"):
-                self.server = server
-                self.output_key = output_key
-
-            def write(self, output: str) -> int:
-                resp: dict[str, Any] = {}
-                resp[self.output_key] = output
-                send(server, resp)
-                return len(output)
-
-            def writelines(self, lines: Iterable[str]) -> None:
-                for s in lines:
-                    self.write(s)
 
         command = None
         server = IPCServer(CONNECTION_NAME, self.timeout)

@@ -13,7 +13,7 @@ import sys
 import tempfile
 from types import TracebackType
 from typing import Callable, Final
-from urllib.parse import quote,unquote
+import codecs
 
 if sys.platform == "win32":
     # This may be private, but it is needed for IPC on Windows, and is basically stable
@@ -41,6 +41,10 @@ class IPCBase:
 
     This contains logic shared between the client and server, such as reading
     and writing.
+    We want to be able to send multiple "messages" over a single connection and
+    to be able to separate the messages. We do this by encoding the messages
+    in an alphabet that does not contain spaces, then adding a space for
+    separation. The last framed message is also followed by a space.
     """
 
     connection: _IPCHandle
@@ -50,11 +54,28 @@ class IPCBase:
         self.timeout = timeout
         self.buffer = bytearray()
 
+    def frame_from_buffer(self) -> bytearray | None:
+        """Return a full frame from the bytes we have in the buffer."""
+        space_pos = self.buffer.find(b" ")
+        if space_pos == -1:
+            return None
+        # We have a full frame
+        bdata = self.buffer[: space_pos]
+        self.buffer = self.buffer[space_pos + 1 :]
+        return bdata
+
     def read(self, size: int = 100000) -> str:
-        """Read bytes from an IPC connection until its empty."""
-        bdata = bytearray()
+        """Read bytes from an IPC connection until we have a full frame."""
+        bdata : bytearray | None = bytearray()
         if sys.platform == "win32":
             while True:
+                # Check if we already have a message in the buffer before
+                # receiving any more data from the socket.
+                bdata = self.frame_from_buffer()
+                if bdata is not None:
+                    break
+
+                # Receive more data into the buffer.
                 ov, err = _winapi.ReadFile(self.connection, size, overlapped=True)
                 try:
                     if err == _winapi.ERROR_IO_PENDING:
@@ -69,11 +90,8 @@ class IPCBase:
                 more = ov.getbuffer()
                 if more:
                     self.buffer.extend(more)
-                    space_pos = self.buffer.find(b" ")
-                    if space_pos != -1:
-                        # We have a full frame
-                        bdata = self.buffer[: space_pos]
-                        self.buffer = self.buffer[space_pos + 1 :]
+                    bdata = self.frame_from_buffer()
+                    if bdata is not None:
                         break
                 if err == 0:
                     # we are done!
@@ -85,24 +103,30 @@ class IPCBase:
                     raise IPCException("ReadFile operation aborted.")
         else:
             while True:
+                # Check if we already have a message in the buffer before
+                # receiving any more data from the socket.
+                bdata = self.frame_from_buffer()
+                if bdata is not None:
+                    break
+
+                # Receive more data into the buffer.
                 more = self.connection.recv(size)
                 if not more:
                     # Connection closed
                     break
                 self.buffer.extend(more)
-                space_pos = self.buffer.find(b" ")
-                if space_pos != -1:
-                    # We have a full frame
-                    bdata = self.buffer[: space_pos]
-                    self.buffer = self.buffer[space_pos + 1 :]
-                    break
-        return unquote(bytes(bdata).decode("utf8"))
+
+        if not bdata:
+            # Socket was empty and we didn't get any frame.
+            # This should only happen if the socket was closed.
+            return ''
+        return codecs.decode(bdata, 'base64').decode("utf8")
 
     def write(self, data: str) -> None:
-        """Write bytes to an IPC connection."""
+        """Write to an IPC connection."""
 
         # Frame the data by urlencoding it and separating by space.
-        encoded_data = (quote(data) + " ").encode("utf8")
+        encoded_data = codecs.encode(data.encode("utf8"), 'base64') + b' '
 
         if sys.platform == "win32":
             try:

@@ -71,10 +71,18 @@ class IPCTests(TestCase):
         p.start()
         connection_name = queue.get()
         with IPCClient(connection_name, timeout=1) as client:
-            client.write("test1")
-            assert client.read() == "test1"
-            client.write("test2")
-            assert client.read() == "test2"
+            # "foo bar" with extra accents on letters.
+            # In UTF-8 encoding so we don't confuse editors opening this file.
+            fancy_text = b'f\xcc\xb6o\xcc\xb2\xf0\x9d\x91\x9c \xd0\xb2\xe2\xb7\xa1a\xcc\xb6r\xcc\x93\xcd\x98\xcd\x8c'
+            client.write(fancy_text.decode('utf-8'))
+            assert client.read() == fancy_text.decode('utf-8')
+
+            client.write("Test with spaces")
+            client.write("Test write before reading previous")
+            time.sleep(0)  # yield to the server to force reading of all messages by server.
+            assert client.read() == "Test with spaces"
+            assert client.read() == "Test write before reading previous"
+
             client.write("quit")
             assert client.read() == "quit"
         queue.close()

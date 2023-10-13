@@ -6,7 +6,8 @@ This should be pretty lightweight and not depend on other mypy code (other than 
 from __future__ import annotations
 
 import json
-from typing import Any, Final
+from typing import Any, Final, Iterable
+from io import TextIOWrapper
 
 from mypy.ipc import IPCBase
 
@@ -35,7 +36,23 @@ def send(connection: IPCBase, data: Any) -> None:
 
     The data must be JSON-serializable. We assume that a single send call is a
     single frame to be sent on the connect.
-    As an easy way to separate frames, we urlencode them and separate by space.
-    Last frame also has a trailing space.
     """
     connection.write(json.dumps(data))
+
+
+class WriteToConn(object):
+    """Helper class to write to a connection instead of standard output."""
+
+    def __init__(self, server: IPCBase, output_key: str = "stdout"):
+        self.server = server
+        self.output_key = output_key
+
+    def write(self, output: str) -> int:
+        resp: dict[str, Any] = {}
+        resp[self.output_key] = output
+        send(self.server, resp)
+        return len(output)
+
+    def writelines(self, lines: Iterable[str]) -> None:
+        for s in lines:
+            self.write(s)
