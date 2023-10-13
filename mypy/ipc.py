@@ -7,13 +7,13 @@ On Windows, this uses NamedPipes.
 from __future__ import annotations
 
 import base64
+import codecs
 import os
 import shutil
 import sys
 import tempfile
 from types import TracebackType
 from typing import Callable, Final
-import codecs
 
 if sys.platform == "win32":
     # This may be private, but it is needed for IPC on Windows, and is basically stable
@@ -60,13 +60,13 @@ class IPCBase:
         if space_pos == -1:
             return None
         # We have a full frame
-        bdata = self.buffer[: space_pos]
+        bdata = self.buffer[:space_pos]
         self.buffer = self.buffer[space_pos + 1 :]
         return bdata
 
     def read(self, size: int = 100000) -> str:
         """Read bytes from an IPC connection until we have a full frame."""
-        bdata : bytearray | None = bytearray()
+        bdata: bytearray | None = bytearray()
         if sys.platform == "win32":
             while True:
                 # Check if we already have a message in the buffer before
@@ -119,14 +119,14 @@ class IPCBase:
         if not bdata:
             # Socket was empty and we didn't get any frame.
             # This should only happen if the socket was closed.
-            return ''
-        return codecs.decode(bdata, 'base64').decode("utf8")
+            return ""
+        return codecs.decode(bdata, "base64").decode("utf8")
 
     def write(self, data: str) -> None:
         """Write to an IPC connection."""
 
         # Frame the data by urlencoding it and separating by space.
-        encoded_data = codecs.encode(data.encode("utf8"), 'base64') + b' '
+        encoded_data = codecs.encode(data.encode("utf8"), "base64") + b" "
 
         if sys.platform == "win32":
             try:

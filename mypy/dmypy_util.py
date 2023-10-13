@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import json
 from typing import Any, Final, Iterable
-from io import TextIOWrapper
 
 from mypy.ipc import IPCBase
 
@@ -31,6 +30,7 @@ def receive(connection: IPCBase) -> Any:
         raise OSError(f"Data received is not a dict ({type(data)})")
     return data
 
+
 def send(connection: IPCBase, data: Any) -> None:
     """Send data to a connection encoded and framed.
 
@@ -40,7 +40,7 @@ def send(connection: IPCBase, data: Any) -> None:
     connection.write(json.dumps(data))
 
 
-class WriteToConn(object):
+class WriteToConn:
     """Helper class to write to a connection instead of standard output."""
 
     def __init__(self, server: IPCBase, output_key: str = "stdout"):

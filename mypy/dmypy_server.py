@@ -23,12 +23,12 @@ from typing_extensions import TypeAlias as _TypeAlias
 import mypy.build
 import mypy.errors
 import mypy.main
-from mypy.dmypy_util import receive, send, WriteToConn
+from mypy.dmypy_util import WriteToConn, receive, send
 from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileData, FileSystemWatcher
 from mypy.inspections import InspectionEngine
-from mypy.ipc import IPCBase, IPCServer
+from mypy.ipc import IPCServer
 from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths, compute_search_paths
 from mypy.options import Options
 from mypy.server.update import FineGrainedBuildManager, refresh_suppressed_submodules

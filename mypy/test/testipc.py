@@ -22,6 +22,7 @@ def server(msg: str, q: Queue[str]) -> None:
             data = server.read()
     server.cleanup()
 
+
 def server_multi_message_echo(q: Queue[str]) -> None:
     server = IPCServer(CONNECTION_NAME)
     q.put(server.connection_name)
@@ -73,9 +74,9 @@ class IPCTests(TestCase):
         with IPCClient(connection_name, timeout=1) as client:
             # "foo bar" with extra accents on letters.
             # In UTF-8 encoding so we don't confuse editors opening this file.
-            fancy_text = b'f\xcc\xb6o\xcc\xb2\xf0\x9d\x91\x9c \xd0\xb2\xe2\xb7\xa1a\xcc\xb6r\xcc\x93\xcd\x98\xcd\x8c'
-            client.write(fancy_text.decode('utf-8'))
-            assert client.read() == fancy_text.decode('utf-8')
+            fancy_text = b"f\xcc\xb6o\xcc\xb2\xf0\x9d\x91\x9c \xd0\xb2\xe2\xb7\xa1a\xcc\xb6r\xcc\x93\xcd\x98\xcd\x8c"
+            client.write(fancy_text.decode("utf-8"))
+            assert client.read() == fancy_text.decode("utf-8")
 
             client.write("Test with spaces")
             client.write("Test write before reading previous")
