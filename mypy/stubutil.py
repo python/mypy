@@ -323,7 +323,7 @@ def infer_method_ret_type(name: str) -> str | None:
             return "int"
         elif name in ("format", "repr"):
             return "str"
-        elif name in ("init", "setitem", "del"):
+        elif name in ("init", "setitem", "del", "delitem"):
             return "None"
     return None
 
