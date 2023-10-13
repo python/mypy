@@ -342,7 +342,8 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                 prefix = repl.prefix
                 clean_repl = repl.copy_modified(prefix=Parameters([], [], []))
                 return t.copy_modified(
-                    arg_types=self.expand_types(t.arg_types[:-2] + prefix.arg_types)
+                    arg_types=self.expand_types(t.arg_types[:-2])
+                    + prefix.arg_types
                     + [
                         clean_repl.with_flavor(ParamSpecFlavor.ARGS),
                         clean_repl.with_flavor(ParamSpecFlavor.KWARGS),
