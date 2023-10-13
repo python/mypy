@@ -2013,3 +2013,36 @@ def event(event_handler: Callable[P, R_co]) -> Callable[P, R_co]: ...
 @overload
 def event(namespace: str, *args, **kwargs) -> HandlerDecorator: ...
 [builtins fixtures/paramspec.pyi]
+
+[case testParamSpecNoCrashOnUnificationPrefix]
+from typing import Any, Callable, TypeVar, overload
+from typing_extensions import ParamSpec, Concatenate
+
+T = TypeVar("T")
+U = TypeVar("U")
+V = TypeVar("V")
+W = TypeVar("W")
+P = ParamSpec("P")
+
+@overload
+def call(
+    func: Callable[Concatenate[T, P], U],
+    x: T,
+    *args: Any,
+    **kwargs: Any,
+) -> U: ...
+@overload
+def call(
+    func: Callable[Concatenate[T, U, P], V],
+    x: T,
+    y: U,
+    *args: Any,
+    **kwargs: Any,
+) -> V: ...
+def call(*args: Any, **kwargs: Any) -> Any: ...
+
+def test1(x: int) -> str: ...
+def test2(x: int, y: int) -> str: ...
+reveal_type(call(test1, 1))  # N: Revealed type is "builtins.str"
+reveal_type(call(test2, 1, 2))  # N: Revealed type is "builtins.str"
+[builtins fixtures/paramspec.pyi]
