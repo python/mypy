@@ -3249,10 +3249,10 @@ foo2: Foo = {'key': 2}
 
 reveal_type(foo1 | foo2)  # N: Revealed type is "TypedDict('__main__.Foo', {'key': builtins.int})"
 reveal_type(foo1 | {'key': 1})  # N: Revealed type is "TypedDict('__main__.Foo', {'key': builtins.int})"
-reveal_type(foo1 | {'key': 'a'})  # N: Revealed type is "typing.Mapping[builtins.str, builtins.object]"
-reveal_type(foo1 | {})  # N: Revealed type is "typing.Mapping[builtins.str, builtins.object]"
+reveal_type(foo1 | {'key': 'a'})  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+reveal_type(foo1 | {})  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-typeddict.pyi]
+[typing fixtures/typing-typeddict-iror.pyi]
 
 [case testTypedDictWith__or__method_error]
 from mypy_extensions import TypedDict
@@ -3267,11 +3267,25 @@ foo | 1
 main:8: error: No overload variant of "__or__" of "TypedDict" matches argument type "int"
 main:8: note: Possible overload variants:
 main:8: note:     def __or__(self, Foo, /) -> Foo
-main:8: note:     def __or__(self, Mapping[str, object], /) -> Mapping[str, object]
+main:8: note:     def __or__(self, Dict[str, object], /) -> Dict[str, object]
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-typeddict.pyi]
+[typing fixtures/typing-typeddict-iror.pyi]
 
-# TODO: add `__ror__` method check, after `__ror__` definition is fixed.
+[case testTypedDictWith__ror__method]
+from mypy_extensions import TypedDict
+
+class Foo(TypedDict):
+    key: int
+
+foo: Foo = {'key': 1}
+
+reveal_type({'key': 1} | foo)  # N: Revealed type is "TypedDict('__main__.Foo', {'key': builtins.int})"
+reveal_type({'key': 'a'} | foo)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+reveal_type({} | foo)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+
+1 | foo  # E: Unsupported left operand type for | ("int")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict-iror.pyi]
 
 [case testTypedDictWith__ior__method]
 from mypy_extensions import TypedDict
@@ -3288,4 +3302,4 @@ foo |= {'key': 'a', 'b': 'a'}  # E: Extra key "b" for TypedDict "Foo" \
 foo |= {'b': 2}  # E: Missing key "key" for TypedDict "Foo" \
                  # E: Extra key "b" for TypedDict "Foo"
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-typeddict.pyi]
+[typing fixtures/typing-typeddict-iror.pyi]

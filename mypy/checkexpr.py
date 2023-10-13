@@ -3318,7 +3318,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Type check '...'."""
         return self.named_type("builtins.ellipsis")
 
-    def visit_op_expr(self, e: OpExpr) -> Type:
+    def visit_op_expr(self, e: OpExpr, *, allow_reverse: bool = True) -> Type:
         """Type check a binary operator expression."""
         if e.analyzed:
             # It's actually a type expression X | Y.
@@ -3366,6 +3366,21 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         return proper_left_type.copy_modified(
                             items=proper_left_type.items + [UnpackType(mapped)]
                         )
+        if is_named_instance(proper_left_type, "builtins.dict") and e.op == "|":
+            # This is a special case for `dict | TypedDict`.
+            # Before this change this operation was not allowed ude to typing limitations,
+            # however, it does perfect sense from runtime's point of view.
+            # So, what we do now?
+            # 1. Find `dict | TypedDict` case
+            # 2. Switch `dict.__or__` to `TypedDict.__or__` (the same from typing's perspective)
+            # 3. Do not allow `dict.__ror__` to be executed, since this is a special case
+            # This can later be removed if `typeshed` can do this without special casing.
+            # https://github.com/python/mypy/pull/16249
+            proper_right_type = get_proper_type(self.accept(e.right))
+            if isinstance(proper_right_type, TypedDictType):
+                reverse_op = OpExpr(e.op, e.right, e.left)
+                reverse_op.set_line(e)
+                return self.visit_op_expr(reverse_op, allow_reverse=False)
         if TYPE_VAR_TUPLE in self.chk.options.enable_incomplete_feature:
             # Handle tuple[X, ...] + tuple[Y, Z] = tuple[*tuple[X, ...], Y, Z].
             if (
@@ -3385,7 +3400,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if e.op in operators.op_methods:
             method = operators.op_methods[e.op]
-            result, method_type = self.check_op(method, left_type, e.right, e, allow_reverse=True)
+            result, method_type = self.check_op(
+                method, left_type, e.right, e, allow_reverse=allow_reverse
+            )
             e.method_type = method_type
             return result
         else:
