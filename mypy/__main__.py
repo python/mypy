@@ -6,6 +6,15 @@ import os
 import sys
 import traceback
 
+if 1:  ### EKR ###
+    print('')
+    print('*** ekr-mypy2 ***')
+    print('')
+    repo_path = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
+    if repo_path not in sys.path:
+        # print(f"Add {repo_path!r} to sys.path")
+        sys.path.insert(0, repo_path)
+
 from mypy.main import main, process_options
 from mypy.util import FancyFormatter
 

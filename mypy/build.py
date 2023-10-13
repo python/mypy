@@ -3417,6 +3417,10 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
 
     Exception: If quick_and_dirty is set, use the cache for fresh modules.
     """
+    from leo.core import leoGlobals as g  ###
+    trace = len(scc) == 1
+    if trace:
+        g.trace(scc)
     stale = scc
     for id in stale:
         # We may already have parsed the module, or not.
@@ -3428,6 +3432,7 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
         # SemanticAnalyzerPass2.add_builtin_aliases for details.
         typing_mod = graph["typing"].tree
         assert typing_mod, "The typing module was not parsed"
+
     mypy.semanal_main.semantic_analysis_for_scc(graph, scc, manager.errors)
 
     # Track what modules aren't yet done so we can finish them as soon

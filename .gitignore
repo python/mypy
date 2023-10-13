@@ -2,6 +2,7 @@ build/
 __pycache__
 *.py[cod]
 *~
+*.leo
 /build
 /env*/
 docs/build/

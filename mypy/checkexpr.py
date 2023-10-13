@@ -2554,6 +2554,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif self.has_abstract_type_part(caller_type, callee_type):
             self.msg.concrete_only_call(callee_type, context)
         elif not is_subtype(caller_type, callee_type, options=self.chk.options):
+            from leo.core import leoGlobals as g  ###
+            g.trace(g.callers(8))  ###
             code = self.msg.incompatible_argument(
                 n,
                 m,
