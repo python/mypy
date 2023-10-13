@@ -84,12 +84,12 @@ class FunctionSig(NamedTuple):
             args = self.args
         return (
             len(args) == 2
-            and all(a.type in (None, "Any", "typing.Any") for a in args)
+            and all(a.type in (None, "object", "Any", "typing.Any") for a in args)
             and args[0].is_star_arg()
             and args[1].is_star_kwarg()
         )
 
-    def is_identity(self) -> bool:
+    def is_catchall_signature(self) -> bool:
         """Return if this signature is the catchall identity: (*args, **kwargs) -> Any"""
         return self.has_catchall_args() and self.ret_type in (None, "Any", "typing.Any")
 

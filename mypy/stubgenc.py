@@ -135,7 +135,7 @@ class DocstringSignatureGenerator(SignatureGenerator):
 
 
 def is_pybind11_overloaded_function_docstring(docstring: str, name: str) -> bool:
-    return docstring.startswith(f"{name}(*args, **kwargs)\n" + "Overloaded function.\n\n")
+    return docstring.startswith(f"{name}(*args, **kwargs)\nOverloaded function.\n\n")
 
 
 def generate_stub_for_c_module(
@@ -417,6 +417,7 @@ class InspectionStubGenerator(BaseStubGenerator):
                 ):
                     self._output.append("\n")
                 self._output.append(line + "\n")
+        self.check_undefined_names()
 
     def is_skipped_attribute(self, attr: str) -> bool:
         return (
@@ -557,6 +558,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         if self.is_private_name(name, ctx.fullname) or self.is_not_in_all(name):
             return
 
+        self.record_name(ctx.name)
         default_sig = self.get_default_function_sig(obj, ctx)
         inferred = self.get_signatures(default_sig, self.sig_generators, ctx)
         self.process_inferred_sigs(inferred)
@@ -640,6 +642,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         if self.is_private_name(name, ctx.fullname) or self.is_not_in_all(name):
             return
 
+        self.record_name(ctx.name)
         static = self.is_static_property(raw_obj)
         readonly = self.is_property_readonly(raw_obj)
         if static:
@@ -718,6 +721,8 @@ class InspectionStubGenerator(BaseStubGenerator):
         rw_properties: list[str] = []
         ro_properties: list[str] = []
         attrs: list[tuple[str, Any]] = []
+
+        self.record_name(class_name)
         self.indent()
 
         class_info = ClassInfo(class_name, "", getattr(cls, "__doc__", None), cls)
@@ -802,6 +807,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         """
         if self.is_private_name(name, f"{self.module_name}.{name}") or self.is_not_in_all(name):
             return
+        self.record_name(name)
         type_str = self.strip_or_import(self.get_type_annotation(obj))
         output.append(f"{name}: {type_str}")
 

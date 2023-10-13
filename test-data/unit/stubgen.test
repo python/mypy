@@ -747,6 +747,9 @@ x: int
 class C:
     def g(self): ...
 
+# Names in __all__ with no definition:
+#   g
+
 [case testIgnoreSlots]
 class A:
     __slots__ = ()

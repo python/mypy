@@ -438,13 +438,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         self.set_defined_names(find_defined_names(o))
         self.referenced_names = find_referenced_names(o)
         super().visit_mypy_file(o)
-        undefined_names = [name for name in self._all_ or [] if name not in self._toplevel_names]
-        if undefined_names:
-            if self._state != EMPTY:
-                self.add("\n")
-            self.add("# Names in __all__ with no definition:\n")
-            for name in sorted(undefined_names):
-                self.add(f"#   {name}\n")
+        self.check_undefined_names()
 
     def visit_overloaded_func_def(self, o: OverloadedFuncDef) -> None:
         """@property with setters and getters, @overload chain and some others."""
@@ -1524,13 +1518,13 @@ def generate_asts_for_modules(
 def generate_stub_for_py_module(
     mod: StubSource,
     target: str,
+    *,
     parse_only: bool = False,
     inspect: bool = False,
     include_private: bool = False,
     export_less: bool = False,
     include_docstrings: bool = False,
     doc_dir: str = "",
-    *,
     all_modules: list[str],
 ) -> None:
     """Use analysed (or just parsed) AST to generate type stub for single file.
@@ -1593,11 +1587,11 @@ def generate_stubs(options: Options) -> None:
             generate_stub_for_py_module(
                 mod,
                 target,
-                options.parse_only,
-                options.inspect or mod in pyc_modules,
-                options.include_private,
-                options.export_less,
-                options.include_docstrings,
+                parse_only=options.parse_only,
+                inspect=options.inspect or mod in pyc_modules,
+                include_private=options.include_private,
+                export_less=options.export_less,
+                include_docstrings=options.include_docstrings,
                 doc_dir=options.doc_dir,
                 all_modules=all_module_names,
             )

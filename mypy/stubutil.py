@@ -573,7 +573,7 @@ class BaseStubGenerator:
             self._import_lines.append(line)
 
     def get_imports(self) -> str:
-        """Return the text for the stub."""
+        """Return the import statements for the stub."""
         imports = ""
         if self._import_lines:
             imports += "".join(self._import_lines)
@@ -603,7 +603,6 @@ class BaseStubGenerator:
         """Remove one level of indentation."""
         self._indent = self._indent[:-4]
 
-    # move up
     def record_name(self, name: str) -> None:
         """Mark a name as defined.
 
@@ -612,7 +611,6 @@ class BaseStubGenerator:
         if self.is_top_level():
             self._toplevel_names.append(name)
 
-    # move up
     def is_recorded_name(self, name: str) -> bool:
         """Has this name been recorded previously?"""
         return self.is_top_level() and name in self._toplevel_names
@@ -637,6 +635,17 @@ class BaseStubGenerator:
                 # require=False means that the import won't be added unless require_name() is called
                 # for the object during generation.
                 self.add_name(f"{pkg}.{t}", require=False)
+
+    def check_undefined_names(self) -> None:
+        print(self._all_)
+        print(self._toplevel_names)
+        undefined_names = [name for name in self._all_ or [] if name not in self._toplevel_names]
+        if undefined_names:
+            if self._output:
+                self.add("\n")
+            self.add("# Names in __all__ with no definition:\n")
+            for name in sorted(undefined_names):
+                self.add(f"#   {name}\n")
 
     def get_signatures(
         self,
