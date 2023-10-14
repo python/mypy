@@ -503,6 +503,9 @@ class Errors:
                         self.used_ignored_lines[file][scope_line].append(
                             (info.code or codes.MISC).code
                         )
+                        if file not in self.ignored_files:
+                            info.hidden = True
+                            self._add_error_info(file, info)
                         return
             if file in self.ignored_files:
                 return
@@ -672,7 +675,7 @@ class Errors:
                 if info.target not in targets:
                     new_errors.append(info)
                     has_blocker |= info.blocker
-                elif info.only_once:
+                elif info.only_once and not info.hidden:
                     self.only_once_messages.remove(info.message)
             self.error_info_map[path] = new_errors
             if not has_blocker and path in self.has_blockers:
@@ -805,8 +808,9 @@ class Errors:
         return None
 
     def is_errors_for_file(self, file: str) -> bool:
-        """Are there any errors for the given file?"""
-        return file in self.error_info_map
+        """Are there any visible errors for the given file?"""
+        errors = self.error_info_map.get(file, ())
+        return any(error.hidden is False for error in errors)
 
     def prefer_simple_messages(self) -> bool:
         """Should we generate simple/fast error messages?
