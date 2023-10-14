@@ -501,19 +501,29 @@ class Errors:
                     ignores = self.ignored_lines[file]
                     if info.code and not self.is_error_code_enabled(info.code):
                         is_ignored_error = True
+                        record_ignored_line = False
                     elif scope_line not in ignores:
                         is_ignored_error = False
+                        record_ignored_line = False
                     elif not ignores[scope_line]:
                         # Empty list means that we ignore all errors
                         is_ignored_error = True
+                        record_ignored_line = True
                     elif info.code and self.is_error_code_enabled(info.code):
                         is_ignored_error = (
                             info.code.code in ignores[scope_line]
                             or info.code.sub_code_of is not None
                             and info.code.sub_code_of.code in ignores[scope_line]
                         )
+                        record_ignored_line = is_ignored_error
                     else:
                         is_ignored_error = False
+                        record_ignored_line = False
+
+                    if record_ignored_line and file not in self.ignored_files:
+                        info.hidden = True
+                        self._add_error_info(file, info)
+
                     if is_ignored_error:
                         # Annotation requests us to ignore all errors on this line.
                         self.used_ignored_lines[file][scope_line].append(
@@ -669,7 +679,7 @@ class Errors:
                 if info.target not in targets:
                     new_errors.append(info)
                     has_blocker |= info.blocker
-                elif info.only_once:
+                elif info.only_once and not info.hidden:
                     self.only_once_messages.remove(info.message)
             self.error_info_map[path] = new_errors
             if not has_blocker and path in self.has_blockers:
@@ -802,8 +812,9 @@ class Errors:
         return None
 
     def is_errors_for_file(self, file: str) -> bool:
-        """Are there any errors for the given file?"""
-        return file in self.error_info_map
+        """Are there any visible errors for the given file?"""
+        errors = self.error_info_map.get(file, ())
+        return any(error.hidden is False for error in errors)
 
     def prefer_simple_messages(self) -> bool:
         """Should we generate simple/fast error messages?
