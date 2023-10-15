@@ -19,6 +19,7 @@ from mypy.nodes import (
     ArgKind,
     ClassDef,
     Decorator,
+    FuncBase,
     FuncDef,
     FuncItem,
     LambdaExpr,
@@ -358,7 +359,7 @@ def has_nested_func_self_reference(builder: IRBuilder, fitem: FuncItem) -> bool:
     If a nested function only has references in the surrounding function,
     we don't need to add it to the environment.
     """
-    if any(isinstance(sym, FuncItem) for sym in builder.free_variables.get(fitem, set())):
+    if any(isinstance(sym, FuncBase) for sym in builder.free_variables.get(fitem, set())):
         return True
     return any(
         has_nested_func_self_reference(builder, nested)
