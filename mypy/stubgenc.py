@@ -580,7 +580,7 @@ class InspectionStubGenerator(BaseStubGenerator):
             decorators.append("@{}".format(self.add_name("typing.overload")))
 
         if ctx.is_abstract:
-            decorators.append("@{}".format(self.add_name("collections.abc.abstractmethod")))
+            decorators.append("@{}".format(self.add_name("abc.abstractmethod")))
 
         if class_info is not None:
             if self.is_staticmethod(class_info, name, obj):
