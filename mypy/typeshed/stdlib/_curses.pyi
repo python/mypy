@@ -61,7 +61,8 @@ if sys.platform != "win32":
     A_DIM: int
     A_HORIZONTAL: int
     A_INVIS: int
-    A_ITALIC: int
+    if sys.platform != "darwin":
+        A_ITALIC: int
     A_LEFT: int
     A_LOW: int
     A_NORMAL: int

@@ -70,9 +70,20 @@ if sys.platform != "win32":
         POSIX_FADV_WILLNEED: int
         POSIX_FADV_DONTNEED: int
 
-    SF_NODISKIO: int
-    SF_MNOWAIT: int
-    SF_SYNC: int
+    if sys.platform != "linux" and sys.platform != "darwin":
+        # In the os-module docs, these are marked as being available
+        # on "Unix, not Emscripten, not WASI."
+        # However, in the source code, a comment indicates they're "FreeBSD constants".
+        # sys.platform could have one of many values on a FreeBSD Python build,
+        # so the sys-module docs recommend doing `if sys.platform.startswith('freebsd')`
+        # to detect FreeBSD builds. Unfortunately that would be too dynamic
+        # for type checkers, however.
+        SF_NODISKIO: int
+        SF_MNOWAIT: int
+        SF_SYNC: int
+
+        if sys.version_info >= (3, 11):
+            SF_NOCACHE: int
 
     if sys.platform == "linux":
         XATTR_SIZE_MAX: int
@@ -282,6 +293,8 @@ if sys.platform != "win32":
     EX_PROTOCOL: int
     EX_NOPERM: int
     EX_CONFIG: int
+
+if sys.platform != "win32" and sys.platform != "darwin":
     EX_NOTFOUND: int
 
 P_NOWAIT: int
