@@ -138,9 +138,9 @@ alter the default behavior:
 .. option:: --inspect-mode
 
     Import and inspect modules instead of parsing source code. This is the default
-    behavior for c modules and pyc-only packages.  The flag is useful to force
-    inspection for pure python modules that make use of dynamically generated
-    members that would otherwiswe be omitted when using the default behavior of
+    behavior for C modules and pyc-only packages.  The flag is useful to force
+    inspection for pure Python modules that make use of dynamically generated
+    members that would otherwise be omitted when using the default behavior of
     code parsing.  Implies :option:`--no-analysis` as analysis requires source
     code.
 
