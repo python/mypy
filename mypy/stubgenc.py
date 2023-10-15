@@ -395,7 +395,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         for name, obj in items:
             if self.is_function(obj):
                 self.generate_function_stub(name, obj, output=functions)
-            elif self.is_class(obj):
+            elif inspect.isclass(obj):
                 self.generate_class_stub(name, obj, output=types)
             else:
                 self.generate_variable_stub(name, obj, output=variables)
@@ -534,9 +534,6 @@ class InspectionStubGenerator(BaseStubGenerator):
             return type(obj).__name__ in ("pybind11_static_property", "StaticProperty")
         else:
             return False
-
-    def is_class(self, obj: object) -> bool:
-        return inspect.isclass(obj) or (self.is_c_module and type(obj) is type(int))
 
     def process_inferred_sigs(self, inferred: list[FunctionSig]) -> None:
         for i, sig in enumerate(inferred):
@@ -769,7 +766,7 @@ class InspectionStubGenerator(BaseStubGenerator):
                     ro_properties,
                     class_info,
                 )
-            elif self.is_class(value) and self.is_defined_in_module(value):
+            elif inspect.isclass(value) and self.is_defined_in_module(value):
                 self.generate_class_stub(attr, value, types)
             else:
                 attrs.append((attr, value))
