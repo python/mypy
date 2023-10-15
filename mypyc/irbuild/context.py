@@ -22,7 +22,7 @@ class FuncInfo:
         contains_nested: bool = False,
         is_decorated: bool = False,
         in_non_ext: bool = False,
-        any_free_nested_func: bool = False,
+        add_nested_funcs_to_env: bool = False,
     ) -> None:
         self.fitem = fitem
         self.name = name
@@ -48,7 +48,7 @@ class FuncInfo:
         self.contains_nested = contains_nested
         self.is_decorated = is_decorated
         self.in_non_ext = in_non_ext
-        self.any_free_nested_func = any_free_nested_func
+        self.add_nested_funcs_to_env = add_nested_funcs_to_env
 
         # TODO: add field for ret_type: RType = none_rprimitive
 

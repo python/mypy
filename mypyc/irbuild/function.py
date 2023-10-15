@@ -222,7 +222,7 @@ def gen_func_item(
     is_decorated = fitem in builder.fdefs_to_decorators
     is_singledispatch = fitem in builder.singledispatch_impls
     in_non_ext = False
-    any_free_nested_func = has_free_nested_func(builder, fitem)
+    add_nested_funcs_to_env = has_nested_func_self_reference(builder, fitem)
     class_name = None
     if cdef:
         ir = builder.mapper.type_to_ir[cdef.info]
@@ -243,7 +243,7 @@ def gen_func_item(
             contains_nested=contains_nested,
             is_decorated=is_decorated,
             in_non_ext=in_non_ext,
-            any_free_nested_func=any_free_nested_func,
+            add_nested_funcs_to_env=add_nested_funcs_to_env,
         )
     )
 
@@ -274,7 +274,7 @@ def gen_func_item(
             builder.fn_info.is_nested
             and isinstance(fitem, FuncDef)
             and top_level
-            and top_level.any_free_nested_func
+            and top_level.add_nested_funcs_to_env
         ):
             setup_func_for_recursive_call(builder, fitem, builder.fn_info.generator_class)
         create_switch_for_generator_class(builder)
@@ -352,16 +352,16 @@ def gen_func_item(
     return func_ir, func_reg
 
 
-def has_free_nested_func(builder: IRBuilder, fitem: FuncItem) -> bool:
-    """Does function have a free nested function?
+def has_nested_func_self_reference(builder: IRBuilder, fitem: FuncItem) -> bool:
+    """Does a nested function contain a self-reference in its body?
 
-    If a nested function is called recursively, it's free. Typically
-    it's not, and we don't need to store it in the environment.
+    If a nested function only has references in the surrounding function,
+    we don't need to add it to the environment.
     """
     if any(isinstance(sym, FuncItem) for sym in builder.free_variables.get(fitem, set())):
         return True
     return any(
-        has_free_nested_func(builder, nested)
+        has_nested_func_self_reference(builder, nested)
         for nested in builder.encapsulating_funcs.get(fitem, [])
     )
 
@@ -790,7 +790,7 @@ def get_func_target(builder: IRBuilder, fdef: FuncDef) -> AssignmentTarget:
         # Get the target associated with the previously defined FuncDef.
         return builder.lookup(fdef.original_def)
 
-    if builder.fn_info.is_generator or builder.fn_info.any_free_nested_func:
+    if builder.fn_info.is_generator or builder.fn_info.add_nested_funcs_to_env:
         return builder.lookup(fdef)
 
     return builder.add_local_reg(fdef, object_rprimitive)
