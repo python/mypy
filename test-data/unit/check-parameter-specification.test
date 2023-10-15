@@ -1977,6 +1977,19 @@ g(cb, y='a', x=0)  # E: Argument "y" to "g" has incompatible type "str"; expecte
                    # E: Argument "x" to "g" has incompatible type "int"; expected "str"
 [builtins fixtures/paramspec.pyi]
 
+[case testParamSpecBadRuntimeTypeApplication]
+from typing import ParamSpec, TypeVar, Generic, Callable
+
+R = TypeVar("R")
+P = ParamSpec("P")
+class C(Generic[P, R]):
+    x: Callable[P, R]
+
+bad = C[int, str]()  # E: Can only replace ParamSpec with a parameter types list or another ParamSpec, got "int"
+reveal_type(bad)  # N: Revealed type is "__main__.C[Any, Any]"
+reveal_type(bad.x)  # N: Revealed type is "def (*Any, **Any) -> Any"
+[builtins fixtures/paramspec.pyi]
+
 [case testParamSpecNoCrashOnUnificationAlias]
 import mod
 [file mod.pyi]

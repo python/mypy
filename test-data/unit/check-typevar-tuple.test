@@ -1845,3 +1845,23 @@ def foo2(func: Callable[[Unpack[Args]], T], *args: Unpack[Args2]) -> T:
 def foo3(func: Callable[[int, Unpack[Args2]], T], *args: Unpack[Args2]) -> T:
    return submit(func, 1, *args)
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleRuntimeTypeApplication]
+from typing import Generic, TypeVar, Tuple
+from typing_extensions import Unpack, TypeVarTuple
+
+T = TypeVar("T")
+S = TypeVar("S")
+Ts = TypeVarTuple("Ts")
+class C(Generic[T, Unpack[Ts], S]): ...
+
+Ints = Tuple[int, int]
+x = C[Unpack[Ints]]()
+reveal_type(x)  # N: Revealed type is "__main__.C[builtins.int, builtins.int]"
+
+y = C[Unpack[Tuple[int, ...]]]()
+reveal_type(y)  # N: Revealed type is "__main__.C[builtins.int, Unpack[builtins.tuple[builtins.int, ...]], builtins.int]"
+
+z = C[int]()  # E: Bad number of arguments, expected: at least 2, given: 1
+reveal_type(z)  # N: Revealed type is "__main__.C[Any, Unpack[builtins.tuple[Any, ...]], Any]"
+[builtins fixtures/tuple.pyi]
