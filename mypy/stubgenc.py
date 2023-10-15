@@ -143,6 +143,7 @@ def generate_stub_for_c_module(
     target: str,
     known_modules: list[str],
     doc_dir: str = "",
+    *,
     include_private: bool = False,
     export_less: bool = False,
     include_docstrings: bool = False,
@@ -210,7 +211,7 @@ class InspectionStubGenerator(BaseStubGenerator):
     """Stub generator that does not parse code.
 
     Generation is performed by inspecting the module's contents, and thus works
-    for high dynamic modules, pyi files, and C modules (via the CStubGenerator
+    for highly dynamic modules, pyc files, and C modules (via the CStubGenerator
     subclass).
     """
 
