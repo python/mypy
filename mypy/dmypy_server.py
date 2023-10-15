@@ -210,6 +210,8 @@ class Server:
         """Serve requests, synchronously (no thread or fork)."""
         command = None
         server = IPCServer(CONNECTION_NAME, self.timeout)
+        orig_stdout = sys.stdout
+        orig_stderr = sys.stderr
         try:
             with open(self.status_file, "w") as f:
                 json.dump({"pid": os.getpid(), "connection_name": server.connection_name}, f)
@@ -252,6 +254,10 @@ class Server:
                         reset_global_state()
                         sys.exit(0)
         finally:
+            # Revert stdout/stderr so we can see any errors.
+            sys.stdout = orig_stdout
+            sys.stderr = orig_stderr
+
             # If the final command is something other than a clean
             # stop, remove the status file. (We can't just
             # simplify the logic and always remove the file, since
