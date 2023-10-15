@@ -2,9 +2,10 @@ import io
 import sys
 from _typeshed import SizedBuffer, StrOrBytesPath, StrPath
 from collections.abc import Callable, Iterable, Iterator
+from io import TextIOWrapper
 from os import PathLike
 from types import TracebackType
-from typing import IO, Any, Protocol, overload
+from typing import IO, Protocol, overload
 from typing_extensions import Literal, Self, TypeAlias
 
 __all__ = [
@@ -223,11 +224,18 @@ class ZipInfo:
     def FileHeader(self, zip64: bool | None = None) -> bytes: ...
 
 if sys.version_info >= (3, 8):
-    if sys.version_info < (3, 9):
-        class _PathOpenProtocol(Protocol):
-            def __call__(self, mode: _ReadWriteMode = "r", pwd: bytes | None = ..., *, force_zip64: bool = ...) -> IO[bytes]: ...
+    class CompleteDirs(ZipFile):
+        def resolve_dir(self, name: str) -> str: ...
+        @overload
+        @classmethod
+        def make(cls, source: ZipFile) -> CompleteDirs: ...
+        @overload
+        @classmethod
+        def make(cls: type[Self], source: StrPath | IO[bytes]) -> Self: ...
 
     class Path:
+        root: CompleteDirs
+        def __init__(self, root: ZipFile | StrPath | IO[bytes], at: str = "") -> None: ...
         @property
         def name(self) -> str: ...
         @property
@@ -243,19 +251,25 @@ if sys.version_info >= (3, 8):
             @property
             def stem(self) -> str: ...
 
-        def __init__(self, root: ZipFile | StrPath | IO[bytes], at: str = "") -> None: ...
         if sys.version_info >= (3, 9):
+            @overload
             def open(
                 self,
-                mode: _ReadWriteBinaryMode = "r",
+                mode: Literal["r", "w"] = "r",
                 encoding: str | None = None,
-                *args: Any,
+                errors: str | None = None,
+                newline: str | None = None,
+                line_buffering: bool = ...,
+                write_through: bool = ...,
+                *,
                 pwd: bytes | None = None,
-                **kwargs: Any,
-            ) -> IO[bytes]: ...
+            ) -> TextIOWrapper: ...
+            @overload
+            def open(self, mode: Literal["rb", "wb"], *, pwd: bytes | None = None) -> IO[bytes]: ...
         else:
-            @property
-            def open(self) -> _PathOpenProtocol: ...
+            def open(
+                self, mode: _ReadWriteBinaryMode = "r", pwd: bytes | None = None, *, force_zip64: bool = False
+            ) -> IO[bytes]: ...
 
         if sys.version_info >= (3, 10):
             def iterdir(self) -> Iterator[Self]: ...

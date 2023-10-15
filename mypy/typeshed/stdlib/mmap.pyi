@@ -28,7 +28,7 @@ if sys.platform != "win32":
     PROT_READ: int
     PROT_WRITE: int
 
-    PAGESIZE: int
+PAGESIZE: int
 
 class mmap(Iterable[int], Sized):
     if sys.platform == "win32":
