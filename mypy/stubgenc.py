@@ -33,6 +33,7 @@ from mypy.stubutil import (
     ClassInfo,
     FunctionContext,
     SignatureGenerator,
+    infer_method_arg_types,
     infer_method_ret_type,
 )
 
@@ -251,7 +252,7 @@ class InspectionStubGenerator(BaseStubGenerator):
                 # method:
                 return FunctionSig(
                     name=ctx.name,
-                    args=infer_method_args(ctx.name, ctx.class_info.self_var),
+                    args=infer_c_method_args(ctx.name, ctx.class_info.self_var),
                     ret_type=infer_method_ret_type(ctx.name),
                 )
             else:
@@ -305,6 +306,16 @@ class InspectionStubGenerator(BaseStubGenerator):
         # Add **kwargs if present
         if kwargs:
             arglist.append(ArgSig(f"**{kwargs}", get_annotation(kwargs)))
+
+        # add types for known special methods
+        if ctx.class_info is not None and all(
+            arg.type is None and arg.default is False for arg in arglist
+        ):
+            new_args = infer_method_arg_types(
+                ctx.name, ctx.class_info.self_var, [arg.name for arg in arglist if arg.name]
+            )
+            if new_args is not None:
+                arglist = new_args
 
         ret_type = get_annotation("return") or infer_method_ret_type(ctx.name)
         return FunctionSig(ctx.name, arglist, ret_type)
@@ -829,7 +840,9 @@ def is_pybind_skipped_attribute(attr: str) -> bool:
     return attr.startswith("__pybind11_module_local_")
 
 
-def infer_method_args(name: str, self_var: str = "self") -> list[ArgSig]:
+def infer_c_method_args(
+    name: str, self_var: str = "self", arg_names: list[str] | None = None
+) -> list[ArgSig]:
     args: list[ArgSig] | None = None
     if name.startswith("__") and name.endswith("__"):
         name = name[2:-2]
@@ -929,5 +942,9 @@ def infer_method_args(name: str, self_var: str = "self") -> list[ArgSig]:
                 ArgSig(name="traceback", type="types.TracebackType | None"),
             ]
     if args is None:
+        args = infer_method_arg_types(name, self_var, arg_names)
+    else:
+        args = [ArgSig(name=self_var)] + args
+    if args is None:
         args = [ArgSig(name="*args"), ArgSig(name="**kwargs")]
-    return [ArgSig(name=self_var or "self")] + args
+    return args

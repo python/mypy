@@ -33,7 +33,7 @@ from mypy.stubgen import (
     mypy_options,
     parse_options,
 )
-from mypy.stubgenc import InspectionStubGenerator, infer_method_args
+from mypy.stubgenc import InspectionStubGenerator, infer_c_method_args
 from mypy.stubutil import (
     ClassInfo,
     common_dir_prefix,
@@ -785,15 +785,15 @@ class StubgencSuite(unittest.TestCase):
     """
 
     def test_infer_hash_sig(self) -> None:
-        assert_equal(infer_method_args("__hash__"), [self_arg])
+        assert_equal(infer_c_method_args("__hash__"), [self_arg])
         assert_equal(infer_method_ret_type("__hash__"), "int")
 
     def test_infer_getitem_sig(self) -> None:
-        assert_equal(infer_method_args("__getitem__"), [self_arg, ArgSig(name="index")])
+        assert_equal(infer_c_method_args("__getitem__"), [self_arg, ArgSig(name="index")])
 
     def test_infer_setitem_sig(self) -> None:
         assert_equal(
-            infer_method_args("__setitem__"),
+            infer_c_method_args("__setitem__"),
             [self_arg, ArgSig(name="index"), ArgSig(name="object")],
         )
         assert_equal(infer_method_ret_type("__setitem__"), "None")
@@ -801,12 +801,12 @@ class StubgencSuite(unittest.TestCase):
     def test_infer_eq_op_sig(self) -> None:
         for op in ("eq", "ne", "lt", "le", "gt", "ge"):
             assert_equal(
-                infer_method_args(f"__{op}__"), [self_arg, ArgSig(name="other", type="object")]
+                infer_c_method_args(f"__{op}__"), [self_arg, ArgSig(name="other", type="object")]
             )
 
     def test_infer_binary_op_sig(self) -> None:
         for op in ("add", "radd", "sub", "rsub", "mul", "rmul"):
-            assert_equal(infer_method_args(f"__{op}__"), [self_arg, ArgSig(name="other")])
+            assert_equal(infer_c_method_args(f"__{op}__"), [self_arg, ArgSig(name="other")])
 
     def test_infer_equality_op_sig(self) -> None:
         for op in ("eq", "ne", "lt", "le", "gt", "ge", "contains"):
@@ -814,7 +814,7 @@ class StubgencSuite(unittest.TestCase):
 
     def test_infer_unary_op_sig(self) -> None:
         for op in ("neg", "pos"):
-            assert_equal(infer_method_args(f"__{op}__"), [self_arg])
+            assert_equal(infer_c_method_args(f"__{op}__"), [self_arg])
 
     def test_infer_cast_sig(self) -> None:
         for op in ("float", "bool", "bytes", "int"):

@@ -119,6 +119,7 @@ from mypy.stubutil import (
     fail_missing,
     find_module_path_and_all_py3,
     generate_guarded,
+    infer_method_arg_types,
     infer_method_ret_type,
     remove_misplaced_type_comments,
     report_missing,
@@ -480,7 +481,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             # name their 0th argument other than self/cls
             is_self_arg = i == 0 and name == "self"
             is_cls_arg = i == 0 and name == "cls"
-            typename = ""
+            typename: str | None = None
             if annotated_type and not is_self_arg and not is_cls_arg:
                 # Luckily, an argument explicitly annotated with "Any" has
                 # type "UnboundType" and will not match.
@@ -499,6 +500,15 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 name = f"**{name}"
 
             args.append(ArgSig(name, typename, default=bool(arg_.initializer)))
+
+        if ctx.class_info is not None and all(
+            arg.type is None and arg.default is False for arg in args
+        ):
+            new_args = infer_method_arg_types(
+                ctx.name, ctx.class_info.self_var, [arg.name for arg in args]
+            )
+            if new_args is not None:
+                args = new_args
 
         is_dataclass_generated = (
             self.analyzed and self.processing_dataclass and o.info.names[o.name].plugin_generated

@@ -3600,6 +3600,38 @@ class Some:
     def __float__(self) -> float: ...
     def __index__(self) -> int: ...
 
+
+[case testKnownMagicMethodsArgTypes]
+class MismatchNames:
+    def __exit__(self, tp, val, tb): ...
+
+class MatchNames:
+    def __exit__(self, type, value, traceback): ...
+
+[out]
+class MismatchNames:
+    def __exit__(self, tp: type[BaseException] | None, val: BaseException | None, tb: types.TracebackType | None) -> None: ...
+
+class MatchNames:
+    def __exit__(self, type: type[BaseException] | None, value: BaseException | None, traceback: types.TracebackType | None) -> None: ...
+
+-- Same as above (but can generate import statements)
+[case testKnownMagicMethodsArgTypes_inspect]
+class MismatchNames:
+    def __exit__(self, tp, val, tb): ...
+
+class MatchNames:
+    def __exit__(self, type, value, traceback): ...
+
+[out]
+import types
+
+class MismatchNames:
+    def __exit__(self, tp: type[BaseException] | None, val: BaseException | None, tb: types.TracebackType | None): ...
+
+class MatchNames:
+    def __exit__(self, type: type[BaseException] | None, value: BaseException | None, traceback: types.TracebackType | None): ...
+
 [case testTypeVarPEP604Bound]
 from typing import TypeVar
 T = TypeVar("T", bound=str | None)
