@@ -112,7 +112,6 @@ if USE_MYPYC:
             "stubtest.py",
             "stubgenc.py",
             "stubdoc.py",
-            "stubutil.py",
         )
     ) + (
         # Don't want to grab this accidentally

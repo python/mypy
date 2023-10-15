@@ -39,6 +39,10 @@ def is_c_module(module: ModuleType) -> bool:
     return os.path.splitext(module.__dict__["__file__"])[-1] in [".so", ".pyd", ".dll"]
 
 
+def is_pyc_only(file: str | None) -> bool:
+    return bool(file and file.endswith(".pyc") and not os.path.exists(file[:-1]))
+
+
 class InspectError(Exception):
     pass
 
