@@ -3387,7 +3387,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # This is the reverse case: `TypedDict | dict`,
                 # simply do not allow the reverse checking:
                 # do not call `__dict__.__ror__`.
-                allow_reverse = False
+                proper_right_type = get_proper_type(self.accept(e.right))
+                if is_named_instance(proper_right_type, "builtins.dict"):
+                    allow_reverse = False
 
         if TYPE_VAR_TUPLE in self.chk.options.enable_incomplete_feature:
             # Handle tuple[X, ...] + tuple[Y, Z] = tuple[*tuple[X, ...], Y, Z].
