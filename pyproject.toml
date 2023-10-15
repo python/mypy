@@ -109,13 +109,13 @@ xfail_strict = true
 
 [tool.coverage.run]
 branch = true
-source = "mypy"
+source = ["mypy"]
 parallel = true
 
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
-omit = 'mypy/test/*'
+omit = ['mypy/test/*']
 exclude_lines = [
   '\#\s*pragma: no cover',
   '^\s*raise AssertionError\b',
