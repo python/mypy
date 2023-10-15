@@ -471,7 +471,7 @@ class InspectionStubGenerator(BaseStubGenerator):
 
     def is_function(self, obj: object) -> bool:
         if self.is_c_module:
-            return inspect.isbuiltin(obj) or type(obj) is type(ord)
+            return inspect.isbuiltin(obj)
         else:
             return inspect.isfunction(obj)
 
