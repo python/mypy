@@ -231,10 +231,11 @@ from mypy.typeanal import (
     check_for_explicit_any,
     detect_diverging_alias,
     find_self_type,
-    fix_instance_types,
+    fix_instance,
     has_any_from_unimported_type,
     no_subscript_builtin_alias,
     type_constructors,
+    validate_instance,
 )
 from mypy.typeops import function_type, get_type_vars, try_getting_str_literals_from_type
 from mypy.types import (
@@ -722,7 +723,9 @@ class SemanticAnalyzer(
                 target = self.named_type_or_none(target_name, [])
                 assert target is not None
                 # Transform List to List[Any], etc.
-                fix_instance_types(target, self.fail, self.note, self.options)
+                fix_instance(
+                    target, self.fail, self.note, disallow_any=False, options=self.options
+                )
                 alias_node = TypeAlias(
                     target,
                     alias,
@@ -3455,7 +3458,7 @@ class SemanticAnalyzer(
 
     def analyze_alias(
         self, name: str, rvalue: Expression, allow_placeholder: bool = False
-    ) -> tuple[Type | None, list[TypeVarLikeType], set[str], list[str]]:
+    ) -> tuple[Type | None, list[TypeVarLikeType], set[str], list[str], bool]:
         """Check if 'rvalue' is a valid type allowed for aliasing (e.g. not a type variable).
 
         If yes, return the corresponding type, a list of
@@ -3474,7 +3477,7 @@ class SemanticAnalyzer(
             self.fail(
                 "Invalid type alias: expression is not a valid type", rvalue, code=codes.VALID_TYPE
             )
-            return None, [], set(), []
+            return None, [], set(), [], False
 
         found_type_vars = typ.accept(TypeVarLikeQuery(self, self.tvar_scope))
         tvar_defs: list[TypeVarLikeType] = []
@@ -3508,7 +3511,8 @@ class SemanticAnalyzer(
             new_tvar_defs.append(td)
 
         qualified_tvars = [node.fullname for _name, node in found_type_vars]
-        return analyzed, new_tvar_defs, depends_on, qualified_tvars
+        empty_tuple_index = typ.empty_tuple_index if isinstance(typ, UnboundType) else False
+        return analyzed, new_tvar_defs, depends_on, qualified_tvars, empty_tuple_index
 
     def is_pep_613(self, s: AssignmentStmt) -> bool:
         if s.unanalyzed_type is not None and isinstance(s.unanalyzed_type, UnboundType):
@@ -3591,9 +3595,10 @@ class SemanticAnalyzer(
             alias_tvars: list[TypeVarLikeType] = []
             depends_on: set[str] = set()
             qualified_tvars: list[str] = []
+            empty_tuple_index = False
         else:
             tag = self.track_incomplete_refs()
-            res, alias_tvars, depends_on, qualified_tvars = self.analyze_alias(
+            res, alias_tvars, depends_on, qualified_tvars, empty_tuple_index = self.analyze_alias(
                 lvalue.name, rvalue, allow_placeholder=True
             )
             if not res:
@@ -3626,8 +3631,15 @@ class SemanticAnalyzer(
         # Note: with the new (lazy) type alias representation we only need to set no_args to True
         # if the expected number of arguments is non-zero, so that aliases like A = List work.
         # However, eagerly expanding aliases like Text = str is a nice performance optimization.
-        no_args = isinstance(res, Instance) and not res.args  # type: ignore[misc]
-        fix_instance_types(res, self.fail, self.note, self.options)
+        no_args = (
+            isinstance(res, ProperType)
+            and isinstance(res, Instance)
+            and not res.args
+            and not empty_tuple_index
+        )
+        if isinstance(res, ProperType) and isinstance(res, Instance):
+            if not validate_instance(res, self.fail, empty_tuple_index):
+                fix_instance(res, self.fail, self.note, disallow_any=False, options=self.options)
         # Aliases defined within functions can't be accessed outside
         # the function, since the symbol table will no longer
         # exist. Work around by expanding them eagerly when used.

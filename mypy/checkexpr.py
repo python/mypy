@@ -4662,7 +4662,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         info = t.type_object()
         # We reuse the logic from semanal phase to reduce code duplication.
         fake = Instance(info, args, line=ctx.line, column=ctx.column)
-        if not validate_instance(fake, self.chk.fail):
+        # This code can be only called either from checking a type application, or from
+        # checking a type alias (after the caller handles no_args aliases), so we know it
+        # was initially an IndexExpr, and we allow empty tuple type arguments.
+        if not validate_instance(fake, self.chk.fail, empty_tuple_index=True):
             fix_instance(
                 fake, self.chk.fail, self.chk.note, disallow_any=False, options=self.chk.options
             )
