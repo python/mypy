@@ -242,12 +242,12 @@ from mypy.types import (
     DATACLASS_TRANSFORM_NAMES,
     FINAL_DECORATOR_NAMES,
     FINAL_TYPE_NAMES,
+    IMPORTED_REVEAL_TYPE_NAMES,
     NEVER_NAMES,
     OVERLOAD_NAMES,
     OVERRIDE_DECORATOR_NAMES,
     PROTOCOL_NAMES,
     REVEAL_TYPE_NAMES,
-    IMPORTED_REVEAL_TYPE_NAMES,
     TPDICT_NAMES,
     TYPE_ALIAS_NAMES,
     TYPED_NAMEDTUPLE_NAMES,
@@ -5043,12 +5043,14 @@ class SemanticAnalyzer(
                 return
             reveal_imported = False
             reveal_type_node = self.lookup("reveal_type", expr, suppress_errors=True)
-            if reveal_type_node and isinstance(reveal_type_node.node, FuncBase) and reveal_type_node.fullname in IMPORTED_REVEAL_TYPE_NAMES:
+            if (
+                reveal_type_node
+                and isinstance(reveal_type_node.node, FuncBase)
+                and reveal_type_node.fullname in IMPORTED_REVEAL_TYPE_NAMES
+            ):
                 reveal_imported = True
             expr.analyzed = RevealExpr(
-                kind=REVEAL_TYPE,
-                expr=expr.args[0],
-                is_imported=reveal_imported,
+                kind=REVEAL_TYPE, expr=expr.args[0], is_imported=reveal_imported
             )
             expr.analyzed.line = expr.line
             expr.analyzed.column = expr.column
