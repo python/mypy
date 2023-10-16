@@ -2135,21 +2135,26 @@ class AssertTypeExpr(Expression):
 class RevealExpr(Expression):
     """Reveal type expression reveal_type(expr) or reveal_locals() expression."""
 
-    __slots__ = ("expr", "kind", "local_nodes")
+    __slots__ = ("expr", "kind", "local_nodes", "is_imported")
 
-    __match_args__ = ("expr", "kind", "local_nodes")
+    __match_args__ = ("expr", "kind", "local_nodes", "is_imported")
 
     expr: Expression | None
     kind: int
     local_nodes: list[Var] | None
 
     def __init__(
-        self, kind: int, expr: Expression | None = None, local_nodes: list[Var] | None = None
+        self,
+        kind: int,
+        expr: Expression | None = None,
+        local_nodes: list[Var] | None = None,
+        is_imported: bool = False,
     ) -> None:
         super().__init__()
         self.expr = expr
         self.kind = kind
         self.local_nodes = local_nodes
+        self.is_imported = is_imported
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_reveal_expr(self)

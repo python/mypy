@@ -37,6 +37,7 @@ from mypy.nodes import (
     IMPLICITLY_ABSTRACT,
     LITERAL_TYPE,
     REVEAL_TYPE,
+    REVEAL_LOCALS,
     ArgKind,
     AssertTypeExpr,
     AssignmentExpr,
@@ -4498,6 +4499,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     self.msg.note(
                         "'reveal_type' always outputs 'Any' in unchecked functions", expr.expr
                     )
+                self.check_reveal_imported(expr)
             return revealed_type
         else:
             # REVEAL_LOCALS
@@ -4512,7 +4514,31 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 )
 
                 self.msg.reveal_locals(names_to_types, expr)
+                self.check_reveal_imported(expr)
             return NoneType()
+
+    def check_reveal_imported(self, expr: RevealExpr) -> None:
+        if codes.UNIMPORTED_REVEAL not in self.chk.options.enabled_error_codes:
+            return
+
+        name = ""
+        if expr.kind == REVEAL_LOCALS:
+            name = "reveal_locals"
+        elif expr.kind == REVEAL_TYPE and not expr.is_imported:
+            name = "reveal_type"
+        else:
+            return
+
+        self.chk.fail(f'Name "{name}" is not defined', expr, code=codes.UNIMPORTED_REVEAL)
+        if name == "reveal_type":
+            module = (
+                "typing" if self.chk.options.python_version >= (3, 11) else "typing_extensions"
+            )
+            hint = (
+                'Did you forget to import it from "{module}"?'
+                ' (Suggestion: "from {module} import {name}")'
+            ).format(module=module, name=name)
+            self.chk.note(hint, expr, code=codes.UNIMPORTED_REVEAL)
 
     def visit_type_application(self, tapp: TypeApplication) -> Type:
         """Type check a type application (expr[type, ...]).

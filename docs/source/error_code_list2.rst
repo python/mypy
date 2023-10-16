@@ -481,3 +481,51 @@ Example:
         @override
         def g(self, y: int) -> None:
             pass
+
+
+.. _code-unimported-reveal:
+
+Check that ``reveal_type`` is imported from typing or typing_extensions [unimported-reveal]
+-------------------------------------------------------------------------------------------
+
+MyPy used to have ``reveal_type`` as a special builtin
+that only existed during type-checking.
+In runtime it fails with expected ``NameError``,
+which can cause real problem in production, hidden from MyPy.
+
+But, in Python3.11 ``reveal_type``
+`was added to typing.py <https://docs.python.org/3/library/typing.html#typing.reveal_type>`_.
+``typing_extensions`` ported this helper to all supported Python versions.
+
+Now users can actually import ``reveal_type`` to make the runtime code safe.
+
+.. note::
+
+    Starting with Python 3.11, the ``reveal_type`` function can be imported from ``typing``.
+    To use it with older Python versions, import it from ``typing_extensions`` instead.
+
+.. code-block:: python
+
+    # Use "mypy --enable-error-code unimported-reveal"
+
+    x = 1
+    reveal_type(x)  # Error: Name "reveal_type" is not defined
+
+Correct usage:
+
+.. code-block:: python
+
+    # Use "mypy --enable-error-code unimported-reveal"
+    from typing import reveal_type   # or `typing_extensions`
+
+    x = 1
+    reveal_type(x)  # OK
+
+When this code is enabled, using ``reveal_locals`` is always an error,
+because there's no way one can import it.
+
+.. note::
+
+    Using ``type: ignore`` can be problematic with this error,
+    because it can silence ``reveal_type`` output.
+    So, it is better not to do it.

@@ -1086,3 +1086,65 @@ def unsafe_func(x: object) -> Union[int, str]:
     else:
         return "some string"
 [builtins fixtures/isinstancelist.pyi]
+
+
+###
+# unimported-reveal
+###
+
+[case testUnimportedRevealType]
+# flags: --enable-error-code=unimported-reveal
+x = 1
+reveal_type(x)
+[out]
+main:3: error: Name "reveal_type" is not defined  [unimported-reveal]
+main:3: note: Did you forget to import it from "typing_extensions"? (Suggestion: "from typing_extensions import reveal_type")
+main:3: note: Revealed type is "builtins.int"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testUnimportedRevealTypePy311]
+# flags: --enable-error-code=unimported-reveal --python-version=3.11
+x = 1
+reveal_type(x)
+[out]
+main:3: error: Name "reveal_type" is not defined  [unimported-reveal]
+main:3: note: Did you forget to import it from "typing"? (Suggestion: "from typing import reveal_type")
+main:3: note: Revealed type is "builtins.int"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testUnimportedRevealTypeInUncheckedFunc]
+# flags: --enable-error-code=unimported-reveal
+def unchecked():
+    x = 1
+    reveal_type(x)
+[out]
+main:4: error: Name "reveal_type" is not defined  [unimported-reveal]
+main:4: note: Did you forget to import it from "typing_extensions"? (Suggestion: "from typing_extensions import reveal_type")
+main:4: note: Revealed type is "Any"
+main:4: note: 'reveal_type' always outputs 'Any' in unchecked functions
+[builtins fixtures/isinstancelist.pyi]
+
+[case testUnimportedRevealTypeImportedTypingExtensions]
+# flags: --enable-error-code=unimported-reveal
+from typing_extensions import reveal_type
+x = 1
+reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testUnimportedRevealTypeImportedTyping311]
+# flags: --enable-error-code=unimported-reveal --python-version=3.11
+from typing import reveal_type
+x = 1
+reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testUnimportedRevealLocals]
+# flags: --enable-error-code=unimported-reveal
+x = 1
+reveal_locals()
+[out]
+main:3: note: Revealed local types are:
+main:3: note:     x: builtins.int
+main:3: error: Name "reveal_locals" is not defined  [unimported-reveal]
+[builtins fixtures/isinstancelist.pyi]
