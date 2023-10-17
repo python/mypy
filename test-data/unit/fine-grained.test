@@ -10337,3 +10337,20 @@ b.py:1: note: Use "-> None" if function does not return a value
 ==
 a.py:1: error: Function is missing a return type annotation
 a.py:1: note: Use "-> None" if function does not return a value
+
+[case testModuleLevelGetAttrInStub]
+import stub
+import a
+
+[file stub.pyi]
+def __getattr__(self): pass
+
+[file a.py]
+
+[file a.py.2]
+from stub import x
+from stub.pkg import y
+from stub.pkg.sub import z
+
+[out]
+==
