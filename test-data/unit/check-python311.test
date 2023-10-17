@@ -96,6 +96,7 @@ class C(Generic[T, *Ts]):
 
     def test(self) -> None:
         reveal_type(self.attr)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`2], builtins.str]"
+        self.attr = ci  # E: Incompatible types in assignment (expression has type "C[*Tuple[int, ...]]", variable has type "Tuple[int, *Ts, str]")
     def meth(self, *args: *Ts) -> T: ...
 
 ci: C[*tuple[int, ...]]
