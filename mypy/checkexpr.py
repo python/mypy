@@ -3389,7 +3389,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # however, it makes perfect sense from the runtime's point of view.
                 # So, what do we do now?
                 # 1. Find `dict | TypedDict` case
-                # 2. Switch `dict.__or__` to `TypedDict.__or__` (the same from runtime perspective)
+                # 2. Switch `dict.__or__` to `TypedDict.__ror__` (the same from both runtime and typing perspective)
                 # 3. Do not allow `dict.__ror__` to be executed, since this is a special case
                 proper_right_type = get_proper_type(self.accept(e.right))
                 if isinstance(proper_right_type, TypedDictType):
@@ -3431,7 +3431,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 )
             elif use_reverse is UseReverse.ALWAYS:
                 result, method_type = self.check_op(
-                    method,
+                    # The reverse operator here gives better error messages:
+                    # Given:
+                    #   d: dict[int, str]
+                    #   t: YourTD
+                    #   d | t
+                    # Without the switch:
+                    # - Unsupported operand types for | ("YourTD" and "dict[int, str]")
+                    # With the switch:
+                    # - Unsupported operand types for | ("dict[int, str]" and "YourTD")
+                    operators.reverse_op_methods[method],
                     base_type=self.accept(e.right),
                     arg=e.left,
                     context=e,
