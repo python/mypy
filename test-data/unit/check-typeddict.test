@@ -3239,6 +3239,7 @@ f: Foo = {**foo("no")}  # E: Argument 1 to "foo" has incompatible type "str"; ex
 
 
 [case testTypedDictWith__or__method]
+from typing import Dict
 from mypy_extensions import TypedDict
 
 class Foo(TypedDict):
@@ -3251,6 +3252,12 @@ reveal_type(foo1 | foo2)  # N: Revealed type is "TypedDict('__main__.Foo', {'key
 reveal_type(foo1 | {'key': 1})  # N: Revealed type is "TypedDict('__main__.Foo', {'key': builtins.int})"
 reveal_type(foo1 | {'key': 'a'})  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
 reveal_type(foo1 | {})  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+
+d1: Dict[str, int]
+d2: Dict[int, str]
+
+reveal_type(foo1 | d1)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+foo1 | d2  # E: Unsupported operand types for | ("Foo" and "Dict[int, str]")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict-iror.pyi]
 
@@ -3271,7 +3278,7 @@ foo | SubDict()
 main:8: error: No overload variant of "__or__" of "TypedDict" matches argument type "int"
 main:8: note: Possible overload variants:
 main:8: note:     def __or__(self, Foo, /) -> Foo
-main:8: note:     def __or__(self, Dict[str, object], /) -> Dict[str, object]
+main:8: note:     def __or__(self, Dict[str, Any], /) -> Dict[str, object]
 main:12: error: No overload variant of "__ror__" of "dict" matches argument type "Foo"
 main:12: note: Possible overload variants:
 main:12: note:     def __ror__(self, Dict[Any, Any], /) -> Dict[Any, Any]
@@ -3280,6 +3287,7 @@ main:12: note:     def [T, T2] __ror__(self, Dict[T, T2], /) -> Dict[Union[Any, 
 [typing fixtures/typing-typeddict-iror.pyi]
 
 [case testTypedDictWith__ror__method]
+from typing import Dict
 from mypy_extensions import TypedDict
 
 class Foo(TypedDict):
@@ -3290,12 +3298,20 @@ foo: Foo = {'key': 1}
 reveal_type({'key': 1} | foo)  # N: Revealed type is "TypedDict('__main__.Foo', {'key': builtins.int})"
 reveal_type({'key': 'a'} | foo)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
 reveal_type({} | foo)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+{1: 'a'} | foo  # E: Dict entry 0 has incompatible type "int": "str"; expected "str": "Any"
+
+d1: Dict[str, int]
+d2: Dict[int, str]
+
+reveal_type(d1 | foo)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+d2 | foo  # E: Unsupported operand types for | ("Dict[int, str]" and "Foo")
 
 1 | foo  # E: Unsupported left operand type for | ("int")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict-iror.pyi]
 
 [case testTypedDictWith__ior__method]
+from typing import Dict
 from mypy_extensions import TypedDict
 
 class Foo(TypedDict):
@@ -3309,5 +3325,11 @@ foo |= {'key': 'a', 'b': 'a'}  # E: Extra key "b" for TypedDict "Foo" \
                                # E: Incompatible types (expression has type "str", TypedDict item "key" has type "int")
 foo |= {'b': 2}  # E: Missing key "key" for TypedDict "Foo" \
                  # E: Extra key "b" for TypedDict "Foo"
+
+d1: Dict[str, int]
+d2: Dict[int, str]
+
+foo |= d1  # E: Argument 1 to "__ior__" of "TypedDict" has incompatible type "Dict[str, int]"; expected "Foo"
+foo |= d2  # E: Argument 1 to "__ior__" of "TypedDict" has incompatible type "Dict[int, str]"; expected "Foo"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict-iror.pyi]

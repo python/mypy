@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import enum
 import itertools
 import time
 from collections import defaultdict
 from contextlib import contextmanager
 from typing import Callable, ClassVar, Final, Iterable, Iterator, List, Optional, Sequence, cast
-from typing_extensions import TypeAlias as _TypeAlias, overload
+from typing_extensions import TypeAlias as _TypeAlias, assert_never, overload
 
 import mypy.checker
 import mypy.errorcodes as codes
@@ -270,6 +271,15 @@ def extract_refexpr_names(expr: RefExpr) -> set[str]:
 
 class Finished(Exception):
     """Raised if we can terminate overload argument check early (no match)."""
+
+
+@enum.unique
+class UseReverse(enum.IntEnum):
+    """Used in `visit_op_expr` to enable or disable reverse method checks."""
+
+    DEFAULT = 0
+    ALWAYS = 1
+    NEVER = 2
 
 
 class ExpressionChecker(ExpressionVisitor[Type]):
@@ -3318,7 +3328,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Type check '...'."""
         return self.named_type("builtins.ellipsis")
 
-    def visit_op_expr(self, e: OpExpr, *, allow_reverse: bool = True) -> Type:
+    def visit_op_expr(self, e: OpExpr, *, use_reverse: UseReverse = UseReverse.DEFAULT) -> Type:
         """Type check a binary operator expression."""
         if e.analyzed:
             # It's actually a type expression X | Y.
@@ -3374,22 +3384,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # however, it makes perfect sense from the runtime's point of view.
                 # So, what do we do now?
                 # 1. Find `dict | TypedDict` case
-                # 2. Switch `dict.__or__` to `TypedDict.__or__` (the same from typing's perspective)
+                # 2. Switch `dict.__or__` to `TypedDict.__or__` (the same from runtime perspective)
                 # 3. Do not allow `dict.__ror__` to be executed, since this is a special case
-                # This can later be removed if `typeshed` can do this without special casing.
-                # https://github.com/python/mypy/pull/16249
                 proper_right_type = get_proper_type(self.accept(e.right))
                 if isinstance(proper_right_type, TypedDictType):
-                    reverse_op = OpExpr(e.op, e.right, e.left)
-                    reverse_op.set_line(e)
-                    return self.visit_op_expr(reverse_op, allow_reverse=False)
+                    use_reverse = UseReverse.ALWAYS
             if isinstance(proper_left_type, TypedDictType):
                 # This is the reverse case: `TypedDict | dict`,
                 # simply do not allow the reverse checking:
                 # do not call `__dict__.__ror__`.
                 proper_right_type = get_proper_type(self.accept(e.right))
                 if is_named_instance(proper_right_type, "builtins.dict"):
-                    allow_reverse = False
+                    use_reverse = UseReverse.NEVER
 
         if TYPE_VAR_TUPLE in self.chk.options.enable_incomplete_feature:
             # Handle tuple[X, ...] + tuple[Y, Z] = tuple[*tuple[X, ...], Y, Z].
@@ -3410,9 +3416,24 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if e.op in operators.op_methods:
             method = operators.op_methods[e.op]
-            result, method_type = self.check_op(
-                method, left_type, e.right, e, allow_reverse=allow_reverse
-            )
+            if use_reverse is UseReverse.DEFAULT or use_reverse is UseReverse.NEVER:
+                result, method_type = self.check_op(
+                    method,
+                    base_type=left_type,
+                    arg=e.right,
+                    context=e,
+                    allow_reverse=use_reverse is UseReverse.DEFAULT,
+                )
+            elif use_reverse is UseReverse.ALWAYS:
+                result, method_type = self.check_op(
+                    method,
+                    base_type=self.accept(e.right),
+                    arg=e.left,
+                    context=e,
+                    allow_reverse=False,
+                )
+            else:
+                assert_never(use_reverse)
             e.method_type = method_type
             return result
         else:
