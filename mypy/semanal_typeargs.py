@@ -7,7 +7,7 @@ operations, including subtype checks.
 
 from __future__ import annotations
 
-from typing import Callable, Sequence
+from typing import Callable
 
 from mypy import errorcodes as codes, message_registry
 from mypy.errorcodes import ErrorCode
@@ -88,7 +88,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
             return
         self.seen_aliases.add(t)
         assert t.alias is not None, f"Unfixed type alias {t.type_ref}"
-        is_error = self.validate_args(t.alias.name, t.args, t.alias.alias_tvars, t)
+        is_error = self.validate_args(t.alias.name, tuple(t.args), t.alias.alias_tvars, t)
         if not is_error:
             # If there was already an error for the alias itself, there is no point in checking
             # the expansion, most likely it will result in the same kind of error.
@@ -131,7 +131,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                     t.args = unpacked.args
 
     def validate_args(
-        self, name: str, args: Sequence[Type], type_vars: list[TypeVarLikeType], ctx: Context
+        self, name: str, args: tuple[Type, ...], type_vars: list[TypeVarLikeType], ctx: Context
     ) -> bool:
         if any(isinstance(v, TypeVarTupleType) for v in type_vars):
             prefix = next(i for (i, v) in enumerate(type_vars) if isinstance(v, TypeVarTupleType))
@@ -140,7 +140,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
             start, middle, end = split_with_prefix_and_suffix(
                 tuple(args), prefix, len(type_vars) - prefix - 1
             )
-            args = list(start) + [TupleType(list(middle), tvt.tuple_fallback)] + list(end)
+            args = start + (TupleType(list(middle), tvt.tuple_fallback),) + end
 
         is_error = False
         for (i, arg), tvar in zip(enumerate(args), type_vars):
@@ -174,7 +174,14 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                         arg_values = [arg]
                     if self.check_type_var_values(name, arg_values, tvar.name, tvar.values, ctx):
                         is_error = True
-                if not is_subtype(arg, tvar.upper_bound):
+                # Check against upper bound. Since it's object the vast majority of the time,
+                # add fast path to avoid a potentially slow subtype check.
+                upper_bound = tvar.upper_bound
+                object_upper_bound = (
+                    type(upper_bound) is Instance
+                    and upper_bound.type.fullname == "builtins.object"
+                )
+                if not object_upper_bound and not is_subtype(arg, upper_bound):
                     if self.in_type_alias_expr and isinstance(arg, TypeVarType):
                         # Type aliases are allowed to use unconstrained type variables
                         # error will be checked at substitution point.
@@ -184,7 +191,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                         message_registry.INVALID_TYPEVAR_ARG_BOUND.format(
                             format_type(arg, self.options),
                             name,
-                            format_type(tvar.upper_bound, self.options),
+                            format_type(upper_bound, self.options),
                         ),
                         ctx,
                         code=codes.TYPE_VAR,
