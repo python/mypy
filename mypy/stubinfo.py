@@ -169,5 +169,5 @@ non_bundled_packages = {
     # Since these can be installed automatically via --install-types, we have a high trust bar
     # for additions here
     "pandas": "pandas-stubs",  # https://github.com/pandas-dev/pandas-stubs
-    "lxml": "lxml-stubs",  # https://github.com/lxml/lxml-stubs
+    "lxml": "types-lxml",  # https://github.com/abelcheung/types-lxml
 }
