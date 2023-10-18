@@ -133,6 +133,8 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
     def validate_args(
         self, name: str, args: Sequence[Type], type_vars: list[TypeVarLikeType], ctx: Context
     ) -> bool:
+        if len(args) == 0:
+            return True  # Fast path
         if any(isinstance(v, TypeVarTupleType) for v in type_vars):
             prefix = next(i for (i, v) in enumerate(type_vars) if isinstance(v, TypeVarTupleType))
             tvt = type_vars[prefix]
@@ -174,7 +176,14 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                         arg_values = [arg]
                     if self.check_type_var_values(name, arg_values, tvar.name, tvar.values, ctx):
                         is_error = True
-                if not is_subtype(arg, tvar.upper_bound):
+                # Check against upper bound. Since it's object the vast majority of the time,
+                # add fast path to avoid a potentially slow subtype check.
+                if (
+                    not (
+                        isinstance(tvar.upper_bound, Instance)
+                        and tvar.upper_bound.type.fullname == "builtins.object"
+                    )
+                ) and not is_subtype(arg, tvar.upper_bound):
                     if self.in_type_alias_expr and isinstance(arg, TypeVarType):
                         # Type aliases are allowed to use unconstrained type variables
                         # error will be checked at substitution point.
