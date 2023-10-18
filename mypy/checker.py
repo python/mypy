@@ -222,7 +222,7 @@ from mypy.types import (
 from mypy.types_utils import is_overlapping_none, remove_optional, store_argument_type, strip_type
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars, fill_typevars_with_any, has_no_typevars
-from mypy.util import is_dunder, is_sunder, is_typeshed_file
+from mypy.util import is_dunder, is_sunder
 from mypy.visitor import NodeVisitor
 
 T = TypeVar("T")
@@ -400,7 +400,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.pass_num = 0
         self.current_node_deferred = False
         self.is_stub = tree.is_stub
-        self.is_typeshed_stub = is_typeshed_file(options.abs_custom_typeshed_dir, path)
+        self.is_typeshed_stub = tree.is_typeshed_file(options)
         self.inferred_attribute_types = None
 
         # If True, process function definitions. If False, don't. This is used

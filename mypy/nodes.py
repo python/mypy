@@ -27,7 +27,7 @@ from mypy_extensions import trait
 
 import mypy.strconv
 from mypy.options import Options
-from mypy.util import short_type
+from mypy.util import is_typeshed_file, short_type
 from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
 
 if TYPE_CHECKING:
@@ -283,6 +283,7 @@ class MypyFile(SymbolNode):
         "is_partial_stub_package",
         "plugin_deps",
         "future_import_flags",
+        "_is_typeshed_file",
     )
 
     __match_args__ = ("name", "path", "defs")
@@ -319,6 +320,7 @@ class MypyFile(SymbolNode):
     plugin_deps: dict[str, set[str]]
     # Future imports defined in this file. Populated during semantic analysis.
     future_import_flags: set[str]
+    _is_typeshed_file: bool | None
 
     def __init__(
         self,
@@ -346,6 +348,7 @@ class MypyFile(SymbolNode):
         self.is_cache_skeleton = False
         self.is_partial_stub_package = False
         self.future_import_flags = set()
+        self._is_typeshed_file = None
 
     def local_definitions(self) -> Iterator[Definition]:
         """Return all definitions within the module (including nested).
@@ -370,6 +373,12 @@ class MypyFile(SymbolNode):
 
     def is_future_flag_set(self, flag: str) -> bool:
         return flag in self.future_import_flags
+
+    def is_typeshed_file(self, options: Options) -> bool:
+        # Cache result since this is called a lot
+        if self._is_typeshed_file is None:
+            self._is_typeshed_file = is_typeshed_file(options.abs_custom_typeshed_dir, self.path)
+        return self._is_typeshed_file
 
     def serialize(self) -> JsonDict:
         return {
