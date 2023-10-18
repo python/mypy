@@ -1,10 +1,16 @@
 # Mypy Release Notes
 
-### Unreleased
+## Unreleased
 
 ...
 
-### Mypy 1.6
+#### Other Notable Changes and Fixes
+...
+
+#### Acknowledgements
+...
+
+## Mypy 1.6
 
 [Tuesday, 10 October 2023](https://mypy-lang.blogspot.com/2023/10/mypy-16-released.html)
 
@@ -160,7 +166,7 @@ Thanks to all mypy contributors who contributed to this release:
 Posted by Jukka Lehtosalo
 
 
-### Mypy 1.5 Released
+## Mypy 1.5
 
 [Thursday, 10 August 2023](https://mypy-lang.blogspot.com/2023/08/mypy-15-released.html)
 
@@ -357,7 +363,7 @@ Thanks to all mypy contributors who contributed to this release:
 Posted by Valentin Stanciu
 
 
-### Mypy 1.4.0 Released
+## Mypy 1.4
 
 [Tuesday, 20 June 2023](https://mypy-lang.blogspot.com/2023/06/mypy-140-released.html)
 
@@ -587,7 +593,7 @@ I’d also like to thank my employer, Dropbox, for supporting mypy development.
 Posted by Jared Hance
 
 
-### Mypy 1.3 Released
+## Mypy 1.3
 
 [Wednesday, 10 May 2023](https://mypy-lang.blogspot.com/2023/05/mypy-13-released.html)
 
@@ -675,7 +681,7 @@ Thanks to all mypy contributors who contributed to this release:
 Posted by Wesley Collin Wright.
 
 
-### Mypy 1.2 Released
+## Mypy 1.2
 
 [Thursday, 6 April 2023](https://mypy-lang.blogspot.com/2023/04/mypy-12-released.html)
 
@@ -820,7 +826,7 @@ Thanks to all mypy contributors who contributed to this release:
 Posted by Jukka Lehtosalo
 
 
-### Mypy 1.1.1 Released
+## Mypy 1.1.1
 
 [Monday, 6 March 2023](https://mypy-lang.blogspot.com/2023/03/mypy-111-released.html)
 
@@ -940,7 +946,7 @@ We’d also like to thank our employer, Dropbox, for funding the mypy core team.
 Posted by Max Murin
 
 
-### Mypy 1.0 Released
+## Mypy 1.0
 
 [Monday, 6 February 2023](https://mypy-lang.blogspot.com/2023/02/mypy-10-released.html)
 
@@ -1243,6 +1249,6 @@ We’d also like to thank our employer, Dropbox, for funding the mypy core team.
 
 Posted by Stas Ilinskiy
 
-### Previous releases
+## Previous releases
 
 For information about previous releases, refer to the posts at https://mypy-lang.blogspot.com/
