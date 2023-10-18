@@ -964,7 +964,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if not self.allow_unpack:
             self.fail(message_registry.INVALID_UNPACK_POSITION, t.type, code=codes.VALID_TYPE)
             return AnyType(TypeOfAny.from_error)
-        return UnpackType(self.anal_type(t.type), from_star_syntax=t.from_star_syntax)
+        self.allow_type_var_tuple = True
+        result = UnpackType(self.anal_type(t.type), from_star_syntax=t.from_star_syntax)
+        self.allow_type_var_tuple = False
+        return result
 
     def visit_parameters(self, t: Parameters) -> Type:
         raise NotImplementedError("ParamSpec literals cannot have unbound TypeVars")

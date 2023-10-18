@@ -2516,6 +2516,8 @@ def format_type_inner(
             # There are type arguments. Convert the arguments to strings.
             return f"{base_str}[{format_list(itype.args)}]"
     elif isinstance(typ, UnpackType):
+        if options.use_star_unpack():
+            return f"*{format(typ.type)}"
         return f"Unpack[{format(typ.type)}]"
     elif isinstance(typ, TypeVarType):
         # This is similar to non-generic instance types.
