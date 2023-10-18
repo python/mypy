@@ -488,10 +488,10 @@ Example:
 Check that ``reveal_type`` is imported from typing or typing_extensions [unimported-reveal]
 -------------------------------------------------------------------------------------------
 
-MyPy used to have ``reveal_type`` as a special builtin
+Mypy used to have ``reveal_type`` as a special builtin
 that only existed during type-checking.
 In runtime it fails with expected ``NameError``,
-which can cause real problem in production, hidden from MyPy.
+which can cause real problem in production, hidden from mypy.
 
 But, in Python3.11 ``reveal_type``
 `was added to typing.py <https://docs.python.org/3/library/typing.html#typing.reveal_type>`_.
@@ -509,7 +509,8 @@ Now users can actually import ``reveal_type`` to make the runtime code safe.
     # Use "mypy --enable-error-code unimported-reveal"
 
     x = 1
-    reveal_type(x)  # Error: Name "reveal_type" is not defined
+    reveal_type(x)  # Note: Revealed type is "builtins.int" \
+                    # Error: Name "reveal_type" is not defined
 
 Correct usage:
 
@@ -519,13 +520,8 @@ Correct usage:
     from typing import reveal_type   # or `typing_extensions`
 
     x = 1
-    reveal_type(x)  # OK
+    # This won't raise an error:
+    reveal_type(x)  # Note: Revealed type is "builtins.int"
 
 When this code is enabled, using ``reveal_locals`` is always an error,
 because there's no way one can import it.
-
-.. note::
-
-    Using ``type: ignore`` can be problematic with this error,
-    because it can silence ``reveal_type`` output.
-    So, it is better not to do it.
