@@ -274,12 +274,16 @@ class Finished(Exception):
 
 
 @enum.unique
-class UseReverse(enum.IntEnum):
+class UseReverse(enum.Enum):
     """Used in `visit_op_expr` to enable or disable reverse method checks."""
 
     DEFAULT = 0
     ALWAYS = 1
     NEVER = 2
+
+USE_REVERSE_DEFAULT: Final = UseReverse.DEFAULT
+USE_REVERSE_ALWAYS: Final = UseReverse.ALWAYS
+USE_REVERSE_NEVER: Final = UseReverse.NEVER
 
 
 class ExpressionChecker(ExpressionVisitor[Type]):
@@ -3328,7 +3332,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Type check '...'."""
         return self.named_type("builtins.ellipsis")
 
-    def visit_op_expr(self, e: OpExpr, *, use_reverse: UseReverse = UseReverse.DEFAULT) -> Type:
+    def visit_op_expr(self, e: OpExpr, *, use_reverse: UseReverse = USE_REVERSE_DEFAULT) -> Type:
         """Type check a binary operator expression."""
         if e.analyzed:
             # It's actually a type expression X | Y.
@@ -3388,14 +3392,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # 3. Do not allow `dict.__ror__` to be executed, since this is a special case
                 proper_right_type = get_proper_type(self.accept(e.right))
                 if isinstance(proper_right_type, TypedDictType):
-                    use_reverse = UseReverse.ALWAYS
+                    use_reverse = USE_REVERSE_ALWAYS
             if isinstance(proper_left_type, TypedDictType):
                 # This is the reverse case: `TypedDict | dict`,
                 # simply do not allow the reverse checking:
                 # do not call `__dict__.__ror__`.
                 proper_right_type = get_proper_type(self.accept(e.right))
                 if is_named_instance(proper_right_type, "builtins.dict"):
-                    use_reverse = UseReverse.NEVER
+                    use_reverse = USE_REVERSE_NEVER
 
         if TYPE_VAR_TUPLE in self.chk.options.enable_incomplete_feature:
             # Handle tuple[X, ...] + tuple[Y, Z] = tuple[*tuple[X, ...], Y, Z].
