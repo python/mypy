@@ -281,6 +281,7 @@ class UseReverse(enum.Enum):
     ALWAYS = 1
     NEVER = 2
 
+
 USE_REVERSE_DEFAULT: Final = UseReverse.DEFAULT
 USE_REVERSE_ALWAYS: Final = UseReverse.ALWAYS
 USE_REVERSE_NEVER: Final = UseReverse.NEVER
