@@ -147,7 +147,7 @@ class NewTypeAnalyzer:
             and isinstance(s.lvalues[0], NameExpr)
             and isinstance(s.rvalue, CallExpr)
             and isinstance(s.rvalue.callee, RefExpr)
-            and s.rvalue.callee.fullname == "typing.NewType"
+            and (s.rvalue.callee.fullname in ("typing.NewType", "typing_extensions.NewType"))
         ):
             name = s.lvalues[0].name
 
