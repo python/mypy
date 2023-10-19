@@ -1991,7 +1991,7 @@ class State:
                 raise ModuleNotFound
 
             # Parse the file (and then some) to get the dependencies.
-            self.parse_file()
+            self.parse_file(temporary=temporary)
             self.compute_dependencies()
 
     @property
@@ -2109,7 +2109,7 @@ class State:
 
     # Methods for processing modules from source code.
 
-    def parse_file(self) -> None:
+    def parse_file(self, *, temporary: bool = False) -> None:
         """Parse file and run first pass of semantic analysis.
 
         Everything done here is local to the file. Don't depend on imported
@@ -2194,12 +2194,14 @@ class State:
         else:
             self.early_errors = manager.ast_cache[self.id][1]
 
-        modules[self.id] = self.tree
+        if not temporary:
+            modules[self.id] = self.tree
 
         if not cached:
             self.semantic_analysis_pass1()
 
-        self.check_blockers()
+        if not temporary:
+            self.check_blockers()
 
         manager.ast_cache[self.id] = (self.tree, self.early_errors)
 
