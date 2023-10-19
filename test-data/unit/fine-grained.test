@@ -10341,8 +10341,10 @@ a.py:1: note: Use "-> None" if function does not return a value
 [case testModuleLevelGetAttrInStub]
 import stub
 import a
+import b
 
-[file stub.pyi]
+[file stub/__init__.pyi]
+s: str
 def __getattr__(self): pass
 
 [file a.py]
@@ -10352,5 +10354,13 @@ from stub import x
 from stub.pkg import y
 from stub.pkg.sub import z
 
+[file b.py]
+
+[file b.py.3]
+from stub import s
+reveal_type(s)
+
 [out]
 ==
+==
+b.py:2: note: Revealed type is "builtins.str"
