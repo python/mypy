@@ -62,6 +62,7 @@ from mypy.types import (
     ParamSpecType,
     PartialType,
     PlaceholderType,
+    ProperType,
     RawExpressionType,
     RequiredType,
     SyntheticTypeVisitor,
@@ -89,7 +90,6 @@ from mypy.types import (
     has_type_vars,
 )
 from mypy.types_utils import is_bad_type_type_item
-from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars
 
 T = TypeVar("T")
@@ -425,9 +425,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 # The only case where instantiate_type_alias() can return an incorrect instance is
                 # when it is top-level instance, so no need to recurse.
                 if (
-                    isinstance(res, Instance)  # type: ignore[misc]
-                    and not self.defining_alias
-                    and not validate_instance(res, self.fail)
+                    isinstance(res, ProperType)
+                    and isinstance(res, Instance)
+                    and not (self.defining_alias and self.nesting_level == 0)
+                    and not validate_instance(res, self.fail, t.empty_tuple_index)
                 ):
                     fix_instance(
                         res,
@@ -442,7 +443,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     res = get_proper_type(res)
                 return res
             elif isinstance(node, TypeInfo):
-                return self.analyze_type_with_type_info(node, t.args, t)
+                return self.analyze_type_with_type_info(node, t.args, t, t.empty_tuple_index)
             elif node.fullname in TYPE_ALIAS_NAMES:
                 return AnyType(TypeOfAny.special_form)
             # Concatenate is an operator, no need for a proper type
@@ -700,7 +701,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return get_omitted_any(disallow_any, self.fail, self.note, typ, self.options, fullname)
 
     def analyze_type_with_type_info(
-        self, info: TypeInfo, args: Sequence[Type], ctx: Context
+        self, info: TypeInfo, args: Sequence[Type], ctx: Context, empty_tuple_index: bool
     ) -> Type:
         """Bind unbound type when were able to find target TypeInfo.
 
@@ -735,7 +736,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
         # Check type argument count.
         instance.args = tuple(flatten_nested_tuples(instance.args))
-        if not self.defining_alias and not validate_instance(instance, self.fail):
+        if not (self.defining_alias and self.nesting_level == 0) and not validate_instance(
+            instance, self.fail, empty_tuple_index
+        ):
             fix_instance(
                 instance,
                 self.fail,
@@ -961,7 +964,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if not self.allow_unpack:
             self.fail(message_registry.INVALID_UNPACK_POSITION, t.type, code=codes.VALID_TYPE)
             return AnyType(TypeOfAny.from_error)
-        return UnpackType(self.anal_type(t.type), from_star_syntax=t.from_star_syntax)
+        self.allow_type_var_tuple = True
+        result = UnpackType(self.anal_type(t.type), from_star_syntax=t.from_star_syntax)
+        self.allow_type_var_tuple = False
+        return result
 
     def visit_parameters(self, t: Parameters) -> Type:
         raise NotImplementedError("ParamSpec literals cannot have unbound TypeVars")
@@ -1203,7 +1209,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         else:
             # TODO: Handle non-TypeInfo
             assert isinstance(n.node, TypeInfo)
-            return self.analyze_type_with_type_info(n.node, t.args, t)
+            return self.analyze_type_with_type_info(n.node, t.args, t, False)
 
     def analyze_callable_args_for_paramspec(
         self, callable_args: Type, ret_type: Type, fallback: Instance
@@ -2256,7 +2262,7 @@ def make_optional_type(t: Type) -> Type:
         return UnionType([t, NoneType()], t.line, t.column)
 
 
-def validate_instance(t: Instance, fail: MsgCallback) -> bool:
+def validate_instance(t: Instance, fail: MsgCallback, empty_tuple_index: bool) -> bool:
     """Check if this is a well-formed instance with respect to argument count/positions."""
     # TODO: combine logic with instantiate_type_alias().
     if any(unknown_unpack(a) for a in t.args):
@@ -2279,8 +2285,9 @@ def validate_instance(t: Instance, fail: MsgCallback) -> bool:
             )
             return False
         elif not t.args:
-            # The Any arguments should be set by the caller.
-            return False
+            if not (empty_tuple_index and len(t.type.type_vars) == 1):
+                # The Any arguments should be set by the caller.
+                return False
         else:
             # We also need to check if we are not performing a type variable tuple split.
             unpack = find_unpack_in_list(t.args)
@@ -2311,34 +2318,6 @@ def validate_instance(t: Instance, fail: MsgCallback) -> bool:
             )
         return False
     return True
-
-
-def fix_instance_types(t: Type, fail: MsgCallback, note: MsgCallback, options: Options) -> None:
-    """Recursively fix all instance types (type argument count) in a given type.
-
-    For example 'Union[Dict, List[str, int]]' will be transformed into
-    'Union[Dict[Any, Any], List[Any]]' in place.
-    """
-    t.accept(InstanceFixer(fail, note, options))
-
-
-class InstanceFixer(TypeTraverserVisitor):
-    def __init__(self, fail: MsgCallback, note: MsgCallback, options: Options) -> None:
-        self.fail = fail
-        self.note = note
-        self.options = options
-
-    def visit_instance(self, typ: Instance) -> None:
-        super().visit_instance(typ)
-        if not validate_instance(typ, self.fail):
-            fix_instance(
-                typ,
-                self.fail,
-                self.note,
-                disallow_any=False,
-                options=self.options,
-                use_generic_error=True,
-            )
 
 
 def find_self_type(typ: Type, lookup: Callable[[str], SymbolTableNode | None]) -> bool:

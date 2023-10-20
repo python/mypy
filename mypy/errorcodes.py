@@ -249,6 +249,12 @@ EXPLICIT_OVERRIDE_REQUIRED: Final = ErrorCode(
     "General",
     default_enabled=False,
 )
+UNIMPORTED_REVEAL: Final = ErrorCode(
+    "unimported-reveal",
+    "Require explicit import from typing or typing_extensions for reveal_type",
+    "General",
+    default_enabled=False,
+)
 
 
 # Syntax errors are often blocking.

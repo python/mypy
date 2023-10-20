@@ -128,11 +128,8 @@ TUPLE_LIKE_INSTANCE_NAMES: Final = (
     "typing.Reversible",
 )
 
-REVEAL_TYPE_NAMES: Final = (
-    "builtins.reveal_type",
-    "typing.reveal_type",
-    "typing_extensions.reveal_type",
-)
+IMPORTED_REVEAL_TYPE_NAMES: Final = ("typing.reveal_type", "typing_extensions.reveal_type")
+REVEAL_TYPE_NAMES: Final = ("builtins.reveal_type", *IMPORTED_REVEAL_TYPE_NAMES)
 
 ASSERT_TYPE_NAMES: Final = ("typing.assert_type", "typing_extensions.assert_type")
 
@@ -2079,16 +2076,6 @@ class CallableType(FunctionLike):
         prefix = Parameters(self.arg_types[:-2], self.arg_kinds[:-2], self.arg_names[:-2])
         return arg_type.copy_modified(flavor=ParamSpecFlavor.BARE, prefix=prefix)
 
-    def expand_param_spec(self, c: Parameters) -> CallableType:
-        variables = c.variables
-        return self.copy_modified(
-            arg_types=self.arg_types[:-2] + c.arg_types,
-            arg_kinds=self.arg_kinds[:-2] + c.arg_kinds,
-            arg_names=self.arg_names[:-2] + c.arg_names,
-            is_ellipsis_args=c.is_ellipsis_args,
-            variables=[*variables, *self.variables],
-        )
-
     def with_unpacked_kwargs(self) -> NormalizedCallableType:
         if not self.unpack_kwargs:
             return cast(NormalizedCallableType, self)
@@ -3194,6 +3181,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                 s += f"[{self.list_str(t.args)}, ...]"
             else:
                 s += f"[{self.list_str(t.args)}]"
+        elif t.type.has_type_var_tuple_type and len(t.type.type_vars) == 1:
+            s += "[()]"
         if self.id_mapper:
             s += f"<{self.id_mapper.id(t.type)}>"
         return s

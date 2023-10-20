@@ -2505,8 +2505,10 @@ def format_type_inner(
         else:
             base_str = itype.type.name
         if not itype.args:
-            # No type arguments, just return the type name
-            return base_str
+            if not itype.type.has_type_var_tuple_type:
+                # No type arguments, just return the type name
+                return base_str
+            return base_str + "[()]"
         elif itype.type.fullname == "builtins.tuple":
             item_type_str = format(itype.args[0])
             return f"{'tuple' if options.use_lowercase_names() else 'Tuple'}[{item_type_str}, ...]"
@@ -2514,6 +2516,8 @@ def format_type_inner(
             # There are type arguments. Convert the arguments to strings.
             return f"{base_str}[{format_list(itype.args)}]"
     elif isinstance(typ, UnpackType):
+        if options.use_star_unpack():
+            return f"*{format(typ.type)}"
         return f"Unpack[{format(typ.type)}]"
     elif isinstance(typ, TypeVarType):
         # This is similar to non-generic instance types.

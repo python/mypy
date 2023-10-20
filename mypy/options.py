@@ -386,6 +386,9 @@ class Options:
             return not self.force_union_syntax
         return False
 
+    def use_star_unpack(self) -> bool:
+        return self.python_version >= (3, 11)
+
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property
     def new_semantic_analyzer(self) -> bool:

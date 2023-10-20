@@ -544,7 +544,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     right_args = (
                         right_prefix + (TupleType(list(right_middle), fallback),) + right_suffix
                     )
-                    if not self.proper_subtype:
+                    if not self.proper_subtype and t.args:
                         for arg in map(get_proper_type, t.args):
                             if isinstance(arg, UnpackType):
                                 unpacked = get_proper_type(arg.type)
@@ -557,6 +557,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                                 break
                         else:
                             return True
+                    if len(left_args) != len(right_args):
+                        return False
                     type_params = zip(left_args, right_args, right.type.defn.type_vars)
                 else:
                     type_params = zip(t.args, right.args, right.type.defn.type_vars)

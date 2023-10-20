@@ -837,15 +837,13 @@ p.a.f(1)
 [file p/__init__.py]
 [file p/a.py]
 def f(x: str) -> None: pass
-[delete p/__init__.py.2]
-[delete p/a.py.2]
-def f(x: str) -> None: pass
+[delete p.2]
 [out]
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 ==
 main:1: error: Cannot find implementation or library stub for module named "p.a"
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-main:2: error: "object" has no attribute "a"
+main:1: error: Cannot find implementation or library stub for module named "p"
 
 [case testDeletePackage2]
 import p
