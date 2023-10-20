@@ -1554,7 +1554,7 @@ class Parameters(ProperType):
 
     Used for ParamSpec analysis. Note that by convention we handle this
     type as a Callable without return type, not as a "tuple with names",
-    so that is behaves contravariantly, in particular [x: int] <: [int].
+    so that it behaves contravariantly, in particular [x: int] <: [int].
     """
 
     __slots__ = (
