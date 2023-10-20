@@ -1403,7 +1403,7 @@ def wrong_name_constructor(b: bool) -> SomeClass:
 func(SomeClass, constructor)
 reveal_type(func(SomeClass, wrong_constructor))  # N: Revealed type is "def (a: Never) -> __main__.SomeClass"
 reveal_type(func_regular(SomeClass, wrong_constructor))  # N: Revealed type is "def (Never) -> __main__.SomeClass"
-func(SomeClass, wrong_name_constructor)  # E: Argument 1 to "func" has incompatible type "Type[SomeClass]"; expected "Callable[[Never], SomeClass]"
+reveal_type(func(SomeClass, wrong_name_constructor))  # N: Revealed type is "def (Never) -> __main__.SomeClass"
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecInTypeAliasBasic]
@@ -2058,4 +2058,31 @@ def test1(x: int) -> str: ...
 def test2(x: int, y: int) -> str: ...
 reveal_type(call(test1, 1))  # N: Revealed type is "builtins.str"
 reveal_type(call(test2, 1, 2))  # N: Revealed type is "builtins.str"
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecCorrectParameterNameInference]
+from typing import Callable, Protocol
+from typing_extensions import ParamSpec, Concatenate
+
+def a(i: int) -> None: ...
+def b(__i: int) -> None: ...
+
+class WithName(Protocol):
+    def __call__(self, i: int) -> None: ...
+NoName = Callable[[int], None]
+
+def f1(__fn: WithName, i: int) -> None: ...
+def f2(__fn: NoName, i: int) -> None: ...
+
+P = ParamSpec("P")
+def d(f: Callable[P, None], fn: Callable[Concatenate[Callable[P, None], P], None]) -> Callable[P, None]:
+    def inner(*args: P.args, **kwargs: P.kwargs) -> None:
+        fn(f, *args, **kwargs)
+    return inner
+
+reveal_type(d(a, f1))  # N: Revealed type is "def (i: builtins.int)"
+reveal_type(d(a, f2))  # N: Revealed type is "def (i: builtins.int)"
+reveal_type(d(b, f1))  # E: Cannot infer type argument 1 of "d" \
+                       # N: Revealed type is "def (*Any, **Any)"
+reveal_type(d(b, f2))  # N: Revealed type is "def (builtins.int)"
 [builtins fixtures/paramspec.pyi]

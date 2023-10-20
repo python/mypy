@@ -654,8 +654,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     def visit_parameters(self, left: Parameters) -> bool:
         if isinstance(self.right, Parameters):
-            # TODO: direction here should be opposite, this function expects
-            # order of callables, while parameters are contravariant.
             return are_parameters_compatible(
                 left,
                 self.right,

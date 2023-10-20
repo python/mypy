@@ -1552,7 +1552,10 @@ class FormalArgument(NamedTuple):
 class Parameters(ProperType):
     """Type that represents the parameters to a function.
 
-    Used for ParamSpec analysis."""
+    Used for ParamSpec analysis. Note that by convention we handle this
+    type as a Callable without return type, not as a "tuple with names",
+    so that is behaves contravariantly, in particular [x: int] <: [int].
+    """
 
     __slots__ = (
         "arg_types",
