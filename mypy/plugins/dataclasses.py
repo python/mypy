@@ -23,6 +23,7 @@ from mypy.nodes import (
     ClassDef,
     Context,
     DataclassTransformSpec,
+    Decorator,
     Expression,
     FuncDef,
     FuncItem,
@@ -375,9 +376,7 @@ class DataclassTransformer:
             add_attribute_to_class(self._api, self._cls, "__match_args__", match_args_type)
 
         self._add_dataclass_fields_magic_attribute()
-
-        if self._spec is _TRANSFORM_SPEC_FOR_DATACLASSES:
-            self._add_internal_replace_method(attributes)
+        self._add_internal_replace_method(attributes)
         if "__post_init__" in info.names:
             self._add_internal_post_init_method(attributes)
 
@@ -577,6 +576,10 @@ class DataclassTransformer:
                 # but the only alternative would be to modify the SymbolTable,
                 # and it's a little hairy to do that in a plugin.
                 continue
+            if isinstance(node, Decorator):
+                # This might be a property / field name clash.
+                # We will issue an error later.
+                continue
 
             assert isinstance(node, Var)
 
@@ -727,7 +730,7 @@ class DataclassTransformer:
         for attr in attributes:
             # Classes that directly specify a dataclass_transform metaclass must be neither frozen
             # non non-frozen per PEP681. Though it is surprising, this means that attributes from
-            # such a class must be writable even if the rest of the class heirarchy is frozen. This
+            # such a class must be writable even if the rest of the class hierarchy is frozen. This
             # matches the behavior of Pyright (the reference implementation).
             if attr.is_neither_frozen_nor_nonfrozen:
                 continue

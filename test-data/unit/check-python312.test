@@ -41,8 +41,6 @@ type Alias2[**P] = Callable[P, int]  # E: PEP 695 type aliases are not yet suppo
                                      # E: Value of type "int" is not indexable \
                                      # E: Name "P" is not defined
 type Alias3[*Ts] = tuple[*Ts]  # E: PEP 695 type aliases are not yet supported \
-                               # E: Type expected within [...] \
-                               # E: The type "Type[Tuple[Any, ...]]" is not generic and not indexable \
                                # E: Name "Ts" is not defined
 
 class Cls1[T: int]: ...  # E: PEP 695 generics are not yet supported

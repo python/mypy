@@ -23,7 +23,7 @@ from typing_extensions import TypeAlias as _TypeAlias
 import mypy.build
 import mypy.errors
 import mypy.main
-from mypy.dmypy_util import receive
+from mypy.dmypy_util import WriteToConn, receive, send
 from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileData, FileSystemWatcher
@@ -208,8 +208,12 @@ class Server:
 
     def serve(self) -> None:
         """Serve requests, synchronously (no thread or fork)."""
+
         command = None
         server = IPCServer(CONNECTION_NAME, self.timeout)
+        orig_stdout = sys.stdout
+        orig_stderr = sys.stderr
+
         try:
             with open(self.status_file, "w") as f:
                 json.dump({"pid": os.getpid(), "connection_name": server.connection_name}, f)
@@ -217,10 +221,8 @@ class Server:
             while True:
                 with server:
                     data = receive(server)
-                    debug_stdout = io.StringIO()
-                    debug_stderr = io.StringIO()
-                    sys.stdout = debug_stdout
-                    sys.stderr = debug_stderr
+                    sys.stdout = WriteToConn(server, "stdout")  # type: ignore[assignment]
+                    sys.stderr = WriteToConn(server, "stderr")  # type: ignore[assignment]
                     resp: dict[str, Any] = {}
                     if "command" not in data:
                         resp = {"error": "No command found in request"}
@@ -237,21 +239,23 @@ class Server:
                                 tb = traceback.format_exception(*sys.exc_info())
                                 resp = {"error": "Daemon crashed!\n" + "".join(tb)}
                                 resp.update(self._response_metadata())
-                                resp["stdout"] = debug_stdout.getvalue()
-                                resp["stderr"] = debug_stderr.getvalue()
-                                server.write(json.dumps(resp).encode("utf8"))
+                                resp["final"] = True
+                                send(server, resp)
                                 raise
-                    resp["stdout"] = debug_stdout.getvalue()
-                    resp["stderr"] = debug_stderr.getvalue()
+                    resp["final"] = True
                     try:
                         resp.update(self._response_metadata())
-                        server.write(json.dumps(resp).encode("utf8"))
+                        send(server, resp)
                     except OSError:
                         pass  # Maybe the client hung up
                     if command == "stop":
                         reset_global_state()
                         sys.exit(0)
         finally:
+            # Revert stdout/stderr so we can see any errors.
+            sys.stdout = orig_stdout
+            sys.stderr = orig_stderr
+
             # If the final command is something other than a clean
             # stop, remove the status file. (We can't just
             # simplify the logic and always remove the file, since

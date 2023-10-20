@@ -4,7 +4,7 @@ import sys
 from _typeshed import ReadableBuffer, StrOrBytesPath, WriteableBuffer
 from collections.abc import Callable, Iterable
 from typing import Any, NamedTuple, overload
-from typing_extensions import Literal, Self, TypeAlias, TypedDict, final
+from typing_extensions import Literal, Never, Self, TypeAlias, TypedDict, final
 
 _PCTRTT: TypeAlias = tuple[tuple[str, str], ...]
 _PCTRTTT: TypeAlias = tuple[_PCTRTT, ...]
@@ -203,7 +203,6 @@ class Options(enum.IntFlag):
         OP_ENABLE_MIDDLEBOX_COMPAT: int
     if sys.version_info >= (3, 12):
         OP_LEGACY_SERVER_CONNECT: int
-    if sys.version_info >= (3, 12) and sys.platform != "linux":
         OP_ENABLE_KTLS: int
     if sys.version_info >= (3, 11):
         OP_IGNORE_UNEXPECTED_EOF: int
@@ -227,7 +226,6 @@ if sys.version_info >= (3, 8):
     OP_ENABLE_MIDDLEBOX_COMPAT: Options
 if sys.version_info >= (3, 12):
     OP_LEGACY_SERVER_CONNECT: Options
-if sys.version_info >= (3, 12) and sys.platform != "linux":
     OP_ENABLE_KTLS: Options
 if sys.version_info >= (3, 11):
     OP_IGNORE_UNEXPECTED_EOF: Options
@@ -369,6 +367,10 @@ class SSLSocket(socket.socket):
     def pending(self) -> int: ...
     if sys.version_info >= (3, 8):
         def verify_client_post_handshake(self) -> None: ...
+    # These methods always raise `NotImplementedError`:
+    def recvmsg(self, *args: Never, **kwargs: Never) -> Never: ...  # type: ignore[override]
+    def recvmsg_into(self, *args: Never, **kwargs: Never) -> Never: ...  # type: ignore[override]
+    def sendmsg(self, *args: Never, **kwargs: Never) -> Never: ...  # type: ignore[override]
 
 class TLSVersion(enum.IntEnum):
     MINIMUM_SUPPORTED: int

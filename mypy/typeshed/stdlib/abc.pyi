@@ -40,7 +40,8 @@ class abstractstaticmethod(staticmethod[_P, _R_co]):
 class abstractproperty(property):
     __isabstractmethod__: Literal[True]
 
-class ABC(metaclass=ABCMeta): ...
+class ABC(metaclass=ABCMeta):
+    __slots__ = ()
 
 def get_cache_token() -> object: ...
 

@@ -502,6 +502,11 @@ class IRBuilder:
         # Currently the stack always has at least two items: dummy and top-level.
         return len(self.fn_infos) <= 2
 
+    def top_level_fn_info(self) -> FuncInfo | None:
+        if self.non_function_scope():
+            return None
+        return self.fn_infos[2]
+
     def init_final_static(
         self,
         lvalue: Lvalue,

@@ -2,6 +2,7 @@ import sys
 from _typeshed import (
     AnyStr_co,
     BytesPath,
+    FileDescriptor,
     FileDescriptorLike,
     FileDescriptorOrPath,
     GenericPath,
@@ -69,9 +70,20 @@ if sys.platform != "win32":
         POSIX_FADV_WILLNEED: int
         POSIX_FADV_DONTNEED: int
 
-    SF_NODISKIO: int
-    SF_MNOWAIT: int
-    SF_SYNC: int
+    if sys.platform != "linux" and sys.platform != "darwin":
+        # In the os-module docs, these are marked as being available
+        # on "Unix, not Emscripten, not WASI."
+        # However, in the source code, a comment indicates they're "FreeBSD constants".
+        # sys.platform could have one of many values on a FreeBSD Python build,
+        # so the sys-module docs recommend doing `if sys.platform.startswith('freebsd')`
+        # to detect FreeBSD builds. Unfortunately that would be too dynamic
+        # for type checkers, however.
+        SF_NODISKIO: int
+        SF_MNOWAIT: int
+        SF_SYNC: int
+
+        if sys.version_info >= (3, 11):
+            SF_NOCACHE: int
 
     if sys.platform == "linux":
         XATTR_SIZE_MAX: int
@@ -120,6 +132,12 @@ if sys.platform == "linux":
     RTLD_DEEPBIND: int
     GRND_NONBLOCK: int
     GRND_RANDOM: int
+
+if sys.platform == "darwin" and sys.version_info >= (3, 12):
+    PRIO_DARWIN_BG: int
+    PRIO_DARWIN_NONUI: int
+    PRIO_DARWIN_PROCESS: int
+    PRIO_DARWIN_THREAD: int
 
 SEEK_SET: int
 SEEK_CUR: int
@@ -252,12 +270,14 @@ environ: _Environ[str]
 if sys.platform != "win32":
     environb: _Environ[bytes]
 
+if sys.version_info >= (3, 11) or sys.platform != "win32":
+    EX_OK: int
+
 if sys.platform != "win32":
     confstr_names: dict[str, int]
     pathconf_names: dict[str, int]
     sysconf_names: dict[str, int]
 
-    EX_OK: int
     EX_USAGE: int
     EX_DATAERR: int
     EX_NOINPUT: int
@@ -273,6 +293,8 @@ if sys.platform != "win32":
     EX_PROTOCOL: int
     EX_NOPERM: int
     EX_CONFIG: int
+
+if sys.platform != "win32" and sys.platform != "darwin":
     EX_NOTFOUND: int
 
 P_NOWAIT: int
@@ -339,6 +361,11 @@ class stat_result(structseq[float], tuple[int, int, int, int, int, int, int, flo
         if sys.version_info >= (3, 8):
             @property
             def st_reparse_tag(self) -> int: ...
+        if sys.version_info >= (3, 12):
+            @property
+            def st_birthtime(self) -> float: ...  # time of file creation in seconds
+            @property
+            def st_birthtime_ns(self) -> int: ...  # time of file creation in nanoseconds
     else:
         @property
         def st_blocks(self) -> int: ...  # number of blocks allocated for file
@@ -347,13 +374,13 @@ class stat_result(structseq[float], tuple[int, int, int, int, int, int, int, flo
         @property
         def st_rdev(self) -> int: ...  # type of device if an inode device
         if sys.platform != "linux":
-            # These properties are available on MacOS, but not on Windows or Ubuntu.
+            # These properties are available on MacOS, but not Ubuntu.
             # On other Unix systems (such as FreeBSD), the following attributes may be
             # available (but may be only filled out if root tries to use them):
             @property
             def st_gen(self) -> int: ...  # file generation number
             @property
-            def st_birthtime(self) -> int: ...  # time of file creation
+            def st_birthtime(self) -> float: ...  # time of file creation in seconds
     if sys.platform == "darwin":
         @property
         def st_flags(self) -> int: ...  # user defined flags for file
@@ -484,8 +511,8 @@ if sys.platform != "win32":
     def setpgid(__pid: int, __pgrp: int) -> None: ...
     def setregid(__rgid: int, __egid: int) -> None: ...
     if sys.platform != "darwin":
-        def setresgid(rgid: int, egid: int, sgid: int) -> None: ...
-        def setresuid(ruid: int, euid: int, suid: int) -> None: ...
+        def setresgid(__rgid: int, __egid: int, __sgid: int) -> None: ...
+        def setresuid(__ruid: int, __euid: int, __suid: int) -> None: ...
 
     def setreuid(__ruid: int, __euid: int) -> None: ...
     def getsid(__pid: int) -> int: ...
@@ -614,13 +641,15 @@ def open(path: StrOrBytesPath, flags: int, mode: int = 0o777, *, dir_fd: int | N
 def pipe() -> tuple[int, int]: ...
 def read(__fd: int, __length: int) -> bytes: ...
 
+if sys.version_info >= (3, 12) or sys.platform != "win32":
+    def get_blocking(__fd: int) -> bool: ...
+    def set_blocking(__fd: int, __blocking: bool) -> None: ...
+
 if sys.platform != "win32":
     def fchmod(fd: int, mode: int) -> None: ...
     def fchown(fd: int, uid: int, gid: int) -> None: ...
     def fpathconf(__fd: int, __name: str | int) -> int: ...
     def fstatvfs(__fd: int) -> statvfs_result: ...
-    def get_blocking(__fd: int) -> bool: ...
-    def set_blocking(__fd: int, __blocking: bool) -> None: ...
     def lockf(__fd: int, __command: int, __length: int) -> None: ...
     def openpty() -> tuple[int, int]: ...  # some flavors of Unix
     if sys.platform != "darwin":
@@ -641,18 +670,20 @@ if sys.platform != "win32":
         RWF_SYNC: int
         RWF_HIPRI: int
         RWF_NOWAIT: int
-    @overload
-    def sendfile(out_fd: int, in_fd: int, offset: int | None, count: int) -> int: ...
-    @overload
-    def sendfile(
-        out_fd: int,
-        in_fd: int,
-        offset: int,
-        count: int,
-        headers: Sequence[ReadableBuffer] = ...,
-        trailers: Sequence[ReadableBuffer] = ...,
-        flags: int = 0,
-    ) -> int: ...  # FreeBSD and Mac OS X only
+
+    if sys.platform == "linux":
+        def sendfile(out_fd: FileDescriptor, in_fd: FileDescriptor, offset: int | None, count: int) -> int: ...
+    else:
+        def sendfile(
+            out_fd: FileDescriptor,
+            in_fd: FileDescriptor,
+            offset: int,
+            count: int,
+            headers: Sequence[ReadableBuffer] = ...,
+            trailers: Sequence[ReadableBuffer] = ...,
+            flags: int = 0,
+        ) -> int: ...  # FreeBSD and Mac OS X only
+
     def readv(__fd: int, __buffers: SupportsLenAndGetItem[WriteableBuffer]) -> int: ...
     def writev(__fd: int, __buffers: SupportsLenAndGetItem[ReadableBuffer]) -> int: ...
 
@@ -1042,3 +1073,45 @@ if sys.version_info >= (3, 9):
 
     if sys.platform == "linux":
         def pidfd_open(pid: int, flags: int = ...) -> int: ...
+
+if sys.version_info >= (3, 12) and sys.platform == "win32":
+    def listdrives() -> list[str]: ...
+    def listmounts(volume: str) -> list[str]: ...
+    def listvolumes() -> list[str]: ...
+
+if sys.version_info >= (3, 10) and sys.platform == "linux":
+    EFD_CLOEXEC: int
+    EFD_NONBLOCK: int
+    EFD_SEMAPHORE: int
+    SPLICE_F_MORE: int
+    SPLICE_F_MOVE: int
+    SPLICE_F_NONBLOCK: int
+    def eventfd(initval: int, flags: int = 524288) -> FileDescriptor: ...
+    def eventfd_read(fd: FileDescriptor) -> int: ...
+    def eventfd_write(fd: FileDescriptor, value: int) -> None: ...
+    def splice(
+        src: FileDescriptor,
+        dst: FileDescriptor,
+        count: int,
+        offset_src: int | None = ...,
+        offset_dst: int | None = ...,
+        flags: int = 0,
+    ) -> int: ...
+
+if sys.version_info >= (3, 12) and sys.platform == "linux":
+    CLONE_FILES: int
+    CLONE_FS: int
+    CLONE_NEWCGROUP: int
+    CLONE_NEWIPC: int
+    CLONE_NEWNET: int
+    CLONE_NEWNS: int
+    CLONE_NEWPID: int
+    CLONE_NEWTIME: int
+    CLONE_NEWUSER: int
+    CLONE_NEWUTS: int
+    CLONE_SIGHAND: int
+    CLONE_SYSVSEM: int
+    CLONE_THREAD: int
+    CLONE_VM: int
+    def unshare(flags: int) -> None: ...
+    def setns(fd: FileDescriptorLike, nstype: int = 0) -> None: ...

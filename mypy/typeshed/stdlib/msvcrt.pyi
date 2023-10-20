@@ -1,8 +1,9 @@
 import sys
-from typing_extensions import Literal
+from typing_extensions import Final, Literal
 
 # This module is only available on Windows
 if sys.platform == "win32":
+    CRT_ASSEMBLY_VERSION: Final[str]
     LK_UNLCK: Literal[0]
     LK_LOCK: Literal[1]
     LK_NBLCK: Literal[2]
@@ -26,3 +27,6 @@ if sys.platform == "win32":
     def ungetch(__char: bytes | bytearray) -> None: ...
     def ungetwch(__unicode_char: str) -> None: ...
     def heapmin() -> None: ...
+    def SetErrorMode(__mode: int) -> int: ...
+    if sys.version_info >= (3, 10):
+        def GetErrorMode() -> int: ...  # undocumented

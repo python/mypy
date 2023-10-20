@@ -149,6 +149,7 @@ __all__ = [
     "Collection",
     "Container",
     "Dict",
+    "Doc",
     "ForwardRef",
     "FrozenSet",
     "Generator",
@@ -489,3 +490,9 @@ if sys.version_info >= (3, 13):
 else:
     def is_protocol(__tp: type) -> bool: ...
     def get_protocol_members(__tp: type) -> frozenset[str]: ...
+
+class Doc:
+    documentation: str
+    def __init__(self, __documentation: str) -> None: ...
+    def __hash__(self) -> int: ...
+    def __eq__(self, other: object) -> bool: ...

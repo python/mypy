@@ -44,6 +44,8 @@ if sys.platform == "win32":
     def FormatError(code: int = ...) -> str: ...
     def get_last_error() -> int: ...
     def set_last_error(value: int) -> int: ...
+    def LoadLibrary(__name: str, __load_flags: int = 0) -> int: ...
+    def FreeLibrary(__handle: int) -> None: ...
 
 class _CDataMeta(type):
     # By default mypy complains about the following two methods, because strictly speaking cls
@@ -56,6 +58,12 @@ class _CData(metaclass=_CDataMeta):
     _b_base_: int
     _b_needsfree_: bool
     _objects: Mapping[Any, int] | None
+    # At runtime the following classmethods are available only on classes, not
+    # on instances. This can't be reflected properly in the type system:
+    #
+    # Structure.from_buffer(...)  # valid at runtime
+    # Structure(...).from_buffer(...)  # invalid at runtime
+    #
     @classmethod
     def from_buffer(cls, source: WriteableBuffer, offset: int = ...) -> Self: ...
     @classmethod
@@ -122,15 +130,23 @@ class CFuncPtr(_PointerLike, _CData):
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
 
-class _CField:
+_GetT = TypeVar("_GetT")
+_SetT = TypeVar("_SetT")
+
+class _CField(Generic[_CT, _GetT, _SetT]):
     offset: int
     size: int
+    @overload
+    def __get__(self, __instance: None, __owner: type[Any] | None) -> Self: ...
+    @overload
+    def __get__(self, __instance: Any, __owner: type[Any] | None) -> _GetT: ...
+    def __set__(self, __instance: Any, __value: _SetT) -> None: ...
 
 class _StructUnionMeta(_CDataMeta):
     _fields_: Sequence[tuple[str, type[_CData]] | tuple[str, type[_CData], int]]
     _pack_: int
     _anonymous_: Sequence[str]
-    def __getattr__(self, name: str) -> _CField: ...
+    def __getattr__(self, name: str) -> _CField[Any, Any, Any]: ...
 
 class _StructUnionBase(_CData, metaclass=_StructUnionMeta):
     def __init__(self, *args: Any, **kw: Any) -> None: ...

@@ -58,6 +58,7 @@ unfixable = [
     "F601",  # automatic fix might obscure issue
     "F602",  # automatic fix might obscure issue
     "B018",  # automatic fix might obscure issue
+    "UP036", # sometimes it's better to just noqa this
 ]
 
 extend-exclude = [
@@ -108,13 +109,13 @@ xfail_strict = true
 
 [tool.coverage.run]
 branch = true
-source = "mypy"
+source = ["mypy"]
 parallel = true
 
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
-omit = 'mypy/test/*'
+omit = ['mypy/test/*']
 exclude_lines = [
   '\#\s*pragma: no cover',
   '^\s*raise AssertionError\b',

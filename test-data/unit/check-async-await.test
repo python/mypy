@@ -165,6 +165,33 @@ async def f() -> None:
 [out]
 main:4: error: "List[int]" has no attribute "__aiter__" (not async iterable)
 
+[case testAsyncForErrorNote]
+
+from typing import AsyncIterator, AsyncGenerator
+async def g() -> AsyncGenerator[str, None]:
+    pass
+
+async def f() -> None:
+    async for x in g():
+        pass
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+[out]
+main:7: error: "Coroutine[Any, Any, AsyncGenerator[str, None]]" has no attribute "__aiter__" (not async iterable)
+main:7: note: Maybe you forgot to use "await"?
+
+[case testAsyncForErrorCanBeIgnored]
+
+from typing import AsyncIterator, AsyncGenerator
+async def g() -> AsyncGenerator[str, None]:
+    pass
+
+async def f() -> None:
+    async for x in g():  # type: ignore[attr-defined]
+        pass
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+
 [case testAsyncForTypeComments]
 
 from typing import AsyncIterator, Union
