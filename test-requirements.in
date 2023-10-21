@@ -1,5 +1,5 @@
 # If you change this file (or mypy-requirements.txt or build-requirements.txt), please run:
-# pip-compile --output-file=test-requirements.txt --unsafe-package=typed-ast test-requirements.in
+# pip-compile --output-file=test-requirements.txt --strip-extras --allow-unsafe test-requirements.in
 
 -r mypy-requirements.txt
 -r build-requirements.txt
