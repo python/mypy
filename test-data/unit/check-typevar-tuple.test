@@ -1927,3 +1927,6 @@ class B(Tuple[Unpack[Tuple[int, ...]], int]): ...
 b: B
 reveal_type(b[i])  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
+
+-- Class object type of a subclass for variadic superclass with non-trivial __init__
+-- Generic self-types, and new-style Self

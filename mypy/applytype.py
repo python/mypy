@@ -121,6 +121,7 @@ def apply_generic_arguments(
     # Apply arguments to argument types.
     var_arg = callable.var_arg()
     if var_arg is not None and isinstance(var_arg.typ, UnpackType):
+        # Same as for ParamSpec, callable with variadic types needs to be expanded as a whole.
         callable = expand_type(callable, id_to_type)
         assert isinstance(callable, CallableType)
         return callable.copy_modified(variables=[tv for tv in tvars if tv.id not in id_to_type])
