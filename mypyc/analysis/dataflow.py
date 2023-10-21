@@ -72,11 +72,8 @@ class CFG:
         self.exits = exits
 
     def __str__(self) -> str:
-        lines = []
-        lines.append("exits: %s" % sorted(self.exits, key=lambda e: int(e.label)))
-        lines.append("succ: %s" % self.succ)
-        lines.append("pred: %s" % self.pred)
-        return "\n".join(lines)
+        exits = sorted(self.exits, key=lambda e: int(e.label))
+        return f"exits: {exits}\nsucc: {self.succ}\npred: {self.pred}"
 
 
 def get_cfg(blocks: list[BasicBlock]) -> CFG:
