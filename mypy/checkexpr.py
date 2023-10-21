@@ -3643,6 +3643,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 left = map_instance_to_supertype(left, abstract_set)
                 right = map_instance_to_supertype(right, abstract_set)
                 return self.dangerous_comparison(left.args[0], right.args[0])
+            elif left.type.has_base("typing.Mapping") and right.type.has_base("typing.Mapping"):
+                # Similar to above: Mapping ignores the classes, it just compares items.
+                abstract_map = self.chk.lookup_typeinfo("typing.Mapping")
+                left = map_instance_to_supertype(left, abstract_map)
+                right = map_instance_to_supertype(right, abstract_map)
+                return self.dangerous_comparison(
+                    left.args[0], right.args[0]
+                ) or self.dangerous_comparison(left.args[1], right.args[1])
             elif left_name in ("builtins.list", "builtins.tuple") and right_name == left_name:
                 return self.dangerous_comparison(left.args[0], right.args[0])
             elif left_name in OVERLAPPING_BYTES_ALLOWLIST and right_name in (
