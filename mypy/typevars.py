@@ -6,6 +6,7 @@ from mypy.types import (
     AnyType,
     Instance,
     ParamSpecType,
+    ProperType,
     TupleType,
     Type,
     TypeOfAny,
@@ -75,8 +76,11 @@ def fill_typevars_with_any(typ: TypeInfo) -> Instance | TupleType:
     inst = Instance(typ, args)
     if typ.tuple_type is None:
         return inst
-    # TODO: this will not work correctly for generic tuple types.
-    return typ.tuple_type.copy_modified(fallback=inst)
+    erased_tuple_type = erase_typevars(typ.tuple_type, {tv.id for tv in typ.defn.type_vars})
+    assert isinstance(erased_tuple_type, ProperType)
+    if isinstance(erased_tuple_type, TupleType):
+        return typ.tuple_type.copy_modified(fallback=inst)
+    return inst
 
 
 def has_no_typevars(typ: Type) -> bool:
