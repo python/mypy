@@ -1091,7 +1091,9 @@ reveal_type(y.fn)  # N: Revealed type is "def (builtins.int, builtins.str)"
 
 z: A[Unpack[Tuple[int, ...]]]
 reveal_type(z)  # N: Revealed type is "__main__.A[Unpack[builtins.tuple[builtins.int, ...]]]"
-reveal_type(z[0])  # N: Revealed type is "builtins.int"
+# TODO: this is unfortunate, but we can't return int here while we use join for tuple fallbacks.
+# If we do this, we risk crashes in other scenarios, see semanal_shared.calculate_tuple_fallback().
+reveal_type(z[0])  # N: Revealed type is "builtins.object"
 reveal_type(z.fn)  # N: Revealed type is "def (*builtins.int)"
 
 t: A[int, Unpack[Tuple[int, str]], str]
@@ -1911,4 +1913,19 @@ reveal_type(y)  # N: Revealed type is "__main__.C[builtins.int, Unpack[builtins.
 
 z = C[int]()  # E: Bad number of arguments, expected: at least 2, given: 1
 reveal_type(z)  # N: Revealed type is "__main__.C[Any, Unpack[builtins.tuple[Any, ...]], Any]"
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicTupleTupleSubclassPrefixSuffix]
+from typing import Tuple
+from typing_extensions import Unpack
+
+i: int
+
+class A(Tuple[int, Unpack[Tuple[int, ...]]]): ...
+a: A
+reveal_type(a[i])  # N: Revealed type is "builtins.int"
+
+class B(Tuple[Unpack[Tuple[int, ...]], int]): ...
+b: B
+reveal_type(b[i])  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]

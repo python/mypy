@@ -55,6 +55,7 @@ def fill_typevars(typ: TypeInfo) -> Instance | TupleType:
             )
         tvs.append(tv)
     inst = Instance(typ, tvs)
+    # TODO: do we need to also handle typeddict_type here and below?
     if typ.tuple_type is None:
         return inst
     return typ.tuple_type.copy_modified(fallback=inst)
@@ -62,9 +63,19 @@ def fill_typevars(typ: TypeInfo) -> Instance | TupleType:
 
 def fill_typevars_with_any(typ: TypeInfo) -> Instance | TupleType:
     """Apply a correct number of Any's as type arguments to a type."""
-    inst = Instance(typ, [AnyType(TypeOfAny.special_form)] * len(typ.defn.type_vars))
+    args: list[Type] = []
+    for tv in typ.defn.type_vars:
+        # Valid erasure for *Ts is *tuple[Any, ...], not just Any.
+        if isinstance(tv, TypeVarTupleType):
+            args.append(
+                UnpackType(tv.tuple_fallback.copy_modified(args=[AnyType(TypeOfAny.special_form)]))
+            )
+        else:
+            args.append(AnyType(TypeOfAny.special_form))
+    inst = Instance(typ, args)
     if typ.tuple_type is None:
         return inst
+    # TODO: this will not work correctly for generic tuple types.
     return typ.tuple_type.copy_modified(fallback=inst)
 
 
