@@ -1523,6 +1523,7 @@ reveal_type(x)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenBiggerThanHomogeneousTupleLong]
+# flags: --enable-incomplete-feature=PreciseTupleTypes
 from typing import Tuple
 
 VarTuple = Tuple[int, ...]
@@ -1793,4 +1794,28 @@ if isinstance(x1, (list, tuple)) and len(x1) > 1:
 else:
     reveal_type(x1)  # N: Revealed type is "Any"
 reveal_type(x1)  # N: Revealed type is "Any"
+[builtins fixtures/len.pyi]
+
+[case testNarrowingLenExplicitLiteralTypes]
+from typing import Tuple, Union
+from typing_extensions import Literal
+
+VarTuple = Union[
+    Tuple[int],
+    Tuple[int, int],
+    Tuple[int, int, int],
+]
+x: VarTuple
+
+supported: Literal[2]
+if len(x) == supported:
+    reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+else:
+    reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
+
+not_supported_yet: Literal[2, 3]
+if len(x) == not_supported_yet:
+    reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int], Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
+else:
+    reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int], Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
 [builtins fixtures/len.pyi]

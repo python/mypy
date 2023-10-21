@@ -6343,6 +6343,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # Second step: infer type restrictions from each group found above.
         type_maps = []
         for op, items in chained:
+            # TODO: support unions of literal types as len() comparison targets.
             if not any(self.literal_int_expr(it) is not None for it in items):
                 continue
             if not any(self.is_len_of_tuple(it) for it in items):
