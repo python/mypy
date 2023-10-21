@@ -4997,7 +4997,7 @@ class SemanticAnalyzer(
 
     def visit_star_expr(self, expr: StarExpr) -> None:
         if not expr.valid:
-            self.fail("Can use starred expression only as assignment target", expr, blocker=True)
+            self.fail("can't use starred expression here", expr, blocker=True)
         else:
             expr.expr.accept(self)
 

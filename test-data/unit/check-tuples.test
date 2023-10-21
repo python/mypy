@@ -1118,7 +1118,7 @@ a = (0, *b, '')
 [builtins fixtures/tuple.pyi]
 
 [case testUnpackSyntaxError]
-*foo  # E: Can use starred expression only as assignment target
+*foo  # E: can't use starred expression here
 [builtins fixtures/tuple.pyi]
 
 [case testUnpackBases]
