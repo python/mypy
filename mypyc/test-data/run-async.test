@@ -1,6 +1,6 @@
 # async test cases (compile and run)
 
-[case testAsync]
+[case testRunAsync]
 import asyncio
 
 async def h() -> int:
@@ -11,19 +11,29 @@ async def g() -> int:
     return await h()
 
 async def f() -> int:
-    return await g()
+    return await g() + 2
+
+async def f2() -> int:
+    x = 0
+    for i in range(2):
+        x += i + await f() + await g()
+    return x
+
+def test_1() -> None:
+    result = asyncio.run(f())
+    assert result == 3
+
+def test_2() -> None:
+    result = asyncio.run(f2())
+    assert result == 9
 
 [file asyncio/__init__.pyi]
 async def sleep(t: float) -> None: ...
+# eh, we could use the real type but it doesn't seem important
+def run(x: object) -> object: ...
 
 [typing fixtures/typing-full.pyi]
 
-[file driver.py]
-from native import f
-import asyncio
-
-result = asyncio.run(f())
-assert result == 1
 
 [case testAsyncWith]
 from testutil import async_val
