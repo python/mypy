@@ -1819,3 +1819,94 @@ if len(x) == not_supported_yet:
 else:
     reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int], Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
 [builtins fixtures/len.pyi]
+
+[case testNarrowingLenUnionOfVariadicTuples]
+from typing import Tuple, Union
+
+x: Union[Tuple[int, ...], Tuple[str, ...]]
+if len(x) == 2:
+    reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.str, builtins.str]]"
+else:
+    reveal_type(x)  # N: Revealed type is "Union[builtins.tuple[builtins.int, ...], builtins.tuple[builtins.str, ...]]"
+[builtins fixtures/len.pyi]
+
+[case testNarrowingLenUnionOfNamedTuples]
+from typing import NamedTuple, Union
+
+class Point2D(NamedTuple):
+    x: int
+    y: int
+class Point3D(NamedTuple):
+    x: int
+    y: int
+    z: int
+
+x: Union[Point2D, Point3D]
+if len(x) == 2:
+    reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.Point2D]"
+else:
+    reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.int, builtins.int, fallback=__main__.Point3D]"
+[builtins fixtures/len.pyi]
+
+[case testNarrowingLenTupleSubclass]
+from typing import Tuple
+
+class Ints(Tuple[int, ...]):
+    size: int
+
+x: Ints
+if len(x) == 2:
+    reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.Ints]"
+    reveal_type(x.size)  # N: Revealed type is "builtins.int"
+else:
+    reveal_type(x)  # N: Revealed type is "__main__.Ints"
+    reveal_type(x.size)  # N: Revealed type is "builtins.int"
+
+reveal_type(x)  # N: Revealed type is "__main__.Ints"
+[builtins fixtures/len.pyi]
+
+[case testNarrowingLenTupleSubclassCustomNotAllowed]
+from typing import Tuple
+
+class Ints(Tuple[int, ...]):
+    def __len__(self) -> int:
+        return 0
+
+x: Ints
+if len(x) > 2:
+    reveal_type(x)  # N: Revealed type is "__main__.Ints"
+else:
+    reveal_type(x)  # N: Revealed type is "__main__.Ints"
+[builtins fixtures/len.pyi]
+
+[case testNarrowingLenTupleSubclassPreciseNotAllowed]
+# flags: --enable-incomplete-feature=PreciseTupleTypes
+from typing import Tuple
+
+class Ints(Tuple[int, ...]):
+    size: int
+
+x: Ints
+if len(x) > 2:
+    reveal_type(x)  # N: Revealed type is "__main__.Ints"
+else:
+    reveal_type(x)  # N: Revealed type is "__main__.Ints"
+[builtins fixtures/len.pyi]
+
+[case testNarrowingLenUnknownLen]
+from typing import Any, Tuple, Union
+
+x: Union[Tuple[int, int], Tuple[int, int, int]]
+
+n: int
+if len(x) == n:
+    reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
+else:
+    reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
+
+a: Any
+if len(x) == a:
+    reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
+else:
+    reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
+[builtins fixtures/len.pyi]

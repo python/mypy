@@ -230,7 +230,7 @@ T = TypeVar("T")
 DEFAULT_LAST_PASS: Final = 1  # Pass numbers start at 0
 
 # Maximum length of fixed tuple types inferred when narrowing from variadic tuples.
-MAX_PRECISE_TUPLE_SIZE: Final = 15
+MAX_PRECISE_TUPLE_SIZE: Final = 8
 
 DeferredNodeType: _TypeAlias = Union[FuncDef, LambdaExpr, OverloadedFuncDef, Decorator]
 FineGrainedDeferredNodeType: _TypeAlias = Union[FuncDef, MypyFile, OverloadedFuncDef]
@@ -5894,6 +5894,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             literal(node) == LITERAL_TYPE
             and self.has_type(node)
             and self.can_be_narrowed_with_len(self.lookup_type(node))
+            # Only translate `if x` to `if len(x) > 0` when possible.
+            and not custom_special_method(self.lookup_type(node), "__bool__")
+            and self.options.strict_optional
         ):
             # Combine a `len(x) > 0` check with the default logic below.
             yes_type, no_type = self.narrow_with_len(self.lookup_type(node), ">", 0)
@@ -6275,12 +6278,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         Currently supported types are TupleTypes, Instances of builtins.tuple, and
         unions involving such types.
         """
+        if custom_special_method(typ, "__len__"):
+            # If user overrides builtin behavior, we can't do anything.
+            return False
         p_typ = get_proper_type(typ)
-        # TODO: support tuple subclasses as well?
+        # Note: we are conservative about tuple subclasses, because some code may rely on
+        # the fact that tuple_type of fallback TypeInfo matches the original TupleType.
         if isinstance(p_typ, TupleType):
-            return p_typ.partial_fallback.type.fullname == "builtins.tuple"
+            if any(isinstance(t, UnpackType) for t in p_typ.items):
+                return p_typ.partial_fallback.type.fullname == "builtins.tuple"
+            return True
         if isinstance(p_typ, Instance):
-            return p_typ.type.fullname == "builtins.tuple"
+            return p_typ.type.has_base("builtins.tuple")
         if isinstance(p_typ, UnionType):
             return any(self.can_be_narrowed_with_len(t) for t in p_typ.items)
         return False
@@ -6399,7 +6408,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         typ = get_proper_type(typ)
         if isinstance(typ, TupleType):
             return self.refine_tuple_type_with_len(typ, op, size)
-        elif isinstance(typ, Instance) and typ.type.fullname == "builtins.tuple":
+        elif isinstance(typ, Instance):
             return self.refine_instance_type_with_len(typ, op, size)
         elif isinstance(typ, UnionType):
             yes_types = []
@@ -6500,19 +6509,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self, typ: Instance, op: str, size: int
     ) -> tuple[Type | None, Type | None]:
         """Narrow a homogeneous tuple using length restrictions."""
-        arg = typ.args[0]
+        base = map_instance_to_supertype(typ, self.lookup_typeinfo("builtins.tuple"))
+        arg = base.args[0]
+        # Again, we are conservative about subclasses until we gain more confidence.
+        allow_precise = (
+            PRECISE_TUPLE_TYPES in self.options.enable_incomplete_feature
+        ) and typ.type.fullname == "builtins.tuple"
         if op in ("==", "is"):
             # TODO: return fixed union + prefixed variadic tuple for no_type?
             return TupleType(items=[arg] * size, fallback=typ), typ
         elif op in ("<", "<="):
             if op == "<=":
                 size += 1
-            if PRECISE_TUPLE_TYPES in self.options.enable_incomplete_feature:
+            if allow_precise:
                 unpack = UnpackType(self.named_generic_type("builtins.tuple", [arg]))
                 no_type: Type | None = TupleType(items=[arg] * size + [unpack], fallback=typ)
             else:
                 no_type = typ
-            if PRECISE_TUPLE_TYPES in self.options.enable_incomplete_feature:
+            if allow_precise:
                 items = []
                 for n in range(size):
                     items.append(TupleType([arg] * n, fallback=typ))

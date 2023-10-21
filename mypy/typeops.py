@@ -981,7 +981,7 @@ def custom_special_method(typ: Type, name: str, check_all: bool = False) -> bool
         method = typ.type.get(name)
         if method and isinstance(method.node, (SYMBOL_FUNCBASE_TYPES, Decorator, Var)):
             if method.node.info:
-                return not method.node.info.fullname.startswith("builtins.")
+                return not method.node.info.fullname.startswith(("builtins.", "typing."))
         return False
     if isinstance(typ, UnionType):
         if check_all:
