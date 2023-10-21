@@ -165,6 +165,9 @@ class IRBuilder:
         self.runtime_args: list[list[RuntimeArg]] = [[]]
         self.function_name_stack: list[str] = []
         self.class_ir_stack: list[ClassIR] = []
+        # Keep track of whether the next statement in a block is reachable
+        # or not, separately for each block nesting level
+        self.block_reachable_stack: list[bool] = [True]
 
         self.current_module = current_module
         self.mapper = mapper
@@ -1301,6 +1304,14 @@ class IRBuilder:
             and obj_rtype.class_ir.has_attr(expr.name)
             and not obj_rtype.class_ir.get_method(expr.name)
         )
+
+    def mark_block_unreachable(self) -> None:
+        """Mark statements in the innermost block being processed as unreachable.
+
+        This should be called after a statement that unconditionally leaves the
+        block, such as 'break' or 'return'.
+        """
+        self.block_reachable_stack[-1] = False
 
     # Lacks a good type because there wasn't a reasonable type in 3.5 :(
     def catch_errors(self, line: int) -> Any:
