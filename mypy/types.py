@@ -802,6 +802,8 @@ class TypeVarTupleType(TypeVarLikeType):
     See PEP646 for more information.
     """
 
+    __slots__ = ("tuple_fallback", "min_len")
+
     def __init__(
         self,
         name: str,
@@ -813,9 +815,13 @@ class TypeVarTupleType(TypeVarLikeType):
         *,
         line: int = -1,
         column: int = -1,
+        min_len: int = 0,
     ) -> None:
         super().__init__(name, fullname, id, upper_bound, default, line=line, column=column)
         self.tuple_fallback = tuple_fallback
+        # This value is not settable by a user. It is an internal-only thing to support
+        # len()-narrowing of variadic tuples.
+        self.min_len = min_len
 
     def serialize(self) -> JsonDict:
         assert not self.id.is_meta_var()
@@ -827,6 +833,7 @@ class TypeVarTupleType(TypeVarLikeType):
             "upper_bound": self.upper_bound.serialize(),
             "tuple_fallback": self.tuple_fallback.serialize(),
             "default": self.default.serialize(),
+            "min_len": self.min_len,
         }
 
     @classmethod
@@ -839,18 +846,19 @@ class TypeVarTupleType(TypeVarLikeType):
             deserialize_type(data["upper_bound"]),
             Instance.deserialize(data["tuple_fallback"]),
             deserialize_type(data["default"]),
+            min_len=data["min_len"],
         )
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_type_var_tuple(self)
 
     def __hash__(self) -> int:
-        return hash(self.id)
+        return hash((self.id, self.min_len))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TypeVarTupleType):
             return NotImplemented
-        return self.id == other.id
+        return self.id == other.id and self.min_len == other.min_len
 
     def copy_modified(
         self,
@@ -858,6 +866,7 @@ class TypeVarTupleType(TypeVarLikeType):
         id: Bogus[TypeVarId | int] = _dummy,
         upper_bound: Bogus[Type] = _dummy,
         default: Bogus[Type] = _dummy,
+        min_len: Bogus[int] = _dummy,
         **kwargs: Any,
     ) -> TypeVarTupleType:
         return TypeVarTupleType(
@@ -869,6 +878,7 @@ class TypeVarTupleType(TypeVarLikeType):
             self.default if default is _dummy else default,
             line=self.line,
             column=self.column,
+            min_len=self.min_len if min_len is _dummy else min_len,
         )
 
 
@@ -2354,7 +2364,18 @@ class TupleType(ProperType):
             # Corner case: it is a `NamedTuple` with `__bool__` method defined.
             # It can be anything: both `True` and `False`.
             return True
-        return self.length() == 0
+        if self.length() == 0:
+            return True
+        if self.length() > 1:
+            return False
+        # Special case tuple[*Ts] may or may not be false.
+        item = self.items[0]
+        if not isinstance(item, UnpackType):
+            return False
+        if not isinstance(item.type, TypeVarTupleType):
+            # Non-normalized tuple[int, ...] can be false.
+            return True
+        return item.type.min_len == 0
 
     def can_be_any_bool(self) -> bool:
         return bool(

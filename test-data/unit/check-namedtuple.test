@@ -878,7 +878,7 @@ reveal_type(Child.class_method())  # N: Revealed type is "Tuple[builtins.str, fa
 [builtins fixtures/classmethod.pyi]
 
 [case testNamedTupleAsConditionalStrictOptionalDisabled]
-# flags: --no-strict-optional
+# flags: --no-strict-optional --warn-unreachable
 from typing import NamedTuple
 
 class C(NamedTuple):

@@ -640,7 +640,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_type_var_tuple(self, left: TypeVarTupleType) -> bool:
         right = self.right
         if isinstance(right, TypeVarTupleType) and right.id == left.id:
-            return True
+            return left.min_len >= right.min_len
         return self._is_subtype(left.upper_bound, self.right)
 
     def visit_unpack_type(self, left: UnpackType) -> bool:

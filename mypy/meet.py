@@ -221,6 +221,8 @@ def get_possible_variants(typ: Type) -> list[Type]:
             return [typ.upper_bound]
     elif isinstance(typ, ParamSpecType):
         return [typ.upper_bound]
+    elif isinstance(typ, TypeVarTupleType):
+        return [typ.upper_bound]
     elif isinstance(typ, UnionType):
         return list(typ.items)
     elif isinstance(typ, Overloaded):
@@ -694,8 +696,8 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             return self.default(self.s)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> ProperType:
-        if self.s == t:
-            return self.s
+        if isinstance(self.s, TypeVarTupleType) and self.s.id == t.id:
+            return self.s if self.s.min_len > t.min_len else t
         else:
             return self.default(self.s)
 
