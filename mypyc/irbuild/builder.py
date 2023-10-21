@@ -172,6 +172,7 @@ class IRBuilder:
         self.graph = graph
         self.ret_types: list[RType] = []
         self.functions: list[FuncIR] = []
+        self.function_names: set[tuple[str | None, str]] = []
         self.classes: list[ClassIR] = []
         self.final_names: list[tuple[str, RType]] = []
         self.callable_class_names: set[str] = set()
@@ -1314,6 +1315,14 @@ class IRBuilder:
 
     def note(self, msg: str, line: int) -> None:
         self.errors.note(msg, self.module_path, line)
+
+    def add_function(self, func_ir: FuncIR, line: int) -> None:
+        name = (func_ir.class_name, func_ir.name)
+        if name in self.function_names:
+            self.error(f'Duplicate definition of "{name[1]}" not supported by mypyc', line)
+            return
+        self.function_names.append(name)
+        self.functions.append(func_ir)
 
 
 def gen_arg_defaults(builder: IRBuilder) -> None:
