@@ -226,10 +226,6 @@ def compile_scc_to_ir(
     if errors.num_errors > 0:
         return modules
 
-    # XXX: HOW WILL WE DEAL WITH REFCOUNTING ON THE SPILLAGE
-    # DO WE DO IT... LAST? MAYBE MAYBE MAYBE YES
-    # ONLY DO UNINIT.... YEAH OK
-
     # Insert uninit checks.
     for module in modules.values():
         for fn in module.functions:

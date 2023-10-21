@@ -24,17 +24,11 @@ def insert_spills(ir: FuncIR, env: ClassIR) -> None:
     live = analyze_live_regs(ir.blocks, cfg)
     entry_live = live.before[ir.blocks[0], 0]
 
-    # from mypyc.ir.pprint import format_func
-
-    # print('\n'.join(format_func(ir)))
-
     entry_live = {op for op in entry_live if not (isinstance(op, Register) and op.is_arg)}
-    # XXX: Actually for now, no Registers at all -- we keep the manual spills
+    # TODO: Actually for now, no Registers at all -- we keep the manual spills
     entry_live = {op for op in entry_live if not isinstance(op, Register)}
 
     ir.blocks = spill_regs(ir.blocks, env, entry_live, live)
-    # print("\n".join(format_func(ir)))
-    # print("\n\n\n=========")
 
 
 def spill_regs(
