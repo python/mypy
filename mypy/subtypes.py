@@ -258,6 +258,25 @@ def is_same_type(
     This means types may have different representation (e.g. an alias, or
     a non-simplified union) but are semantically exchangeable in all contexts.
     """
+    # First, use fast path for some common types. This is performance-critical.
+    if (
+        isinstance(a, Instance)
+        and isinstance(b, Instance)
+        and a.type == b.type
+        and len(a.args) == len(b.args)
+        and a.last_known_value is b.last_known_value
+    ):
+        return all(is_same_type(x, y) for x, y in zip(a.args, b.args))
+    elif isinstance(a, TypeVarType) and isinstance(b, TypeVarType):
+        if (
+            a.id == b.id
+            and not a.values
+            and not b.values
+            and is_same_type(a.upper_bound, b.upper_bound)
+            and a.variance == b.variance
+        ):
+            return True
+
     # Note that using ignore_promotions=True (default) makes types like int and int64
     # considered not the same type (which is the case at runtime).
     # Also Union[bool, int] (if it wasn't simplified before) will be different
