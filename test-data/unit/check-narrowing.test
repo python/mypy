@@ -1334,3 +1334,38 @@ if isinstance(some, raw):
 else:
     reveal_type(some)  # N: Revealed type is "Union[builtins.int, __main__.Base]"
 [builtins fixtures/dict.pyi]
+
+
+[case testNarrowingIsSubclassNoneType1]
+from typing import Type, Union
+
+def f(cls: Type[Union[None, int]]) -> None:
+    if issubclass(cls, int):
+        reveal_type(cls)  # N: Revealed type is "Type[builtins.int]"
+    else:
+        reveal_type(cls)  # N: Revealed type is "Type[None]"
+[builtins fixtures/isinstance.pyi]
+
+
+[case testNarrowingIsSubclassNoneType2]
+from typing import Type, Union
+
+def f(cls: Type[Union[None, int]]) -> None:
+    if issubclass(cls, type(None)):
+        reveal_type(cls)  # N: Revealed type is "Type[None]"
+    else:
+        reveal_type(cls)  # N: Revealed type is "Type[builtins.int]"
+[builtins fixtures/isinstance.pyi]
+
+
+[case testNarrowingIsSubclassNoneType3]
+from typing import Type, Union
+
+NoneType_ = type(None)
+
+def f(cls: Type[Union[None, int]]) -> None:
+    if issubclass(cls, NoneType_):
+        reveal_type(cls)  # N: Revealed type is "Type[None]"
+    else:
+        reveal_type(cls)  # N: Revealed type is "Type[builtins.int]"
+[builtins fixtures/isinstance.pyi]
