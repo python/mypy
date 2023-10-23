@@ -1572,6 +1572,10 @@ def are_parameters_compatible(
         return True
     trivial_suffix = is_trivial_suffix(right)
 
+    if right.arg_kinds == [ARG_STAR] and isinstance(get_proper_type(right.arg_types[0]), AnyType):
+        if all(k.is_positional() for k in left.arg_kinds) and ignore_pos_arg_names:
+            return True
+
     # Match up corresponding arguments and check them for compatibility. In
     # every pair (argL, argR) of corresponding arguments from L and R, argL must
     # be "more general" than argR if L is to be a subtype of R.

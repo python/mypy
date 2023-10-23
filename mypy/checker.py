@@ -7827,6 +7827,7 @@ class InvalidInferredTypes(BoolTypeQuery):
         # This is needed to prevent leaking into partial types during
         # multi-step type inference.
         return t.id.is_meta_var()
+
     # TODO: add same as above for TypeVarTuple/ParamSpec
 
 
