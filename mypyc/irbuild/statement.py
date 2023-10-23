@@ -118,8 +118,13 @@ ValueGenFunc = Callable[[], Value]
 
 def transform_block(builder: IRBuilder, block: Block) -> None:
     if not block.is_unreachable:
+        builder.block_reachable_stack.append(True)
         for stmt in block.body:
             builder.accept(stmt)
+            if not builder.block_reachable_stack[-1]:
+                # The rest of the block is unreachable, so skip it
+                break
+        builder.block_reachable_stack.pop()
     # Raise a RuntimeError if we hit a non-empty unreachable block.
     # Don't complain about empty unreachable blocks, since mypy inserts
     # those after `if MYPY`.

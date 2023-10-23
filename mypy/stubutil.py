@@ -669,8 +669,6 @@ class BaseStubGenerator:
                 self.add_name(f"{pkg}.{t}", require=False)
 
     def check_undefined_names(self) -> None:
-        print(self._all_)
-        print(self._toplevel_names)
         undefined_names = [name for name in self._all_ or [] if name not in self._toplevel_names]
         if undefined_names:
             if self._output:

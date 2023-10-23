@@ -221,6 +221,8 @@ def get_possible_variants(typ: Type) -> list[Type]:
             return [typ.upper_bound]
     elif isinstance(typ, ParamSpecType):
         return [typ.upper_bound]
+    elif isinstance(typ, TypeVarTupleType):
+        return [typ.upper_bound]
     elif isinstance(typ, UnionType):
         return list(typ.items)
     elif isinstance(typ, Overloaded):
@@ -694,8 +696,8 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             return self.default(self.s)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> ProperType:
-        if self.s == t:
-            return self.s
+        if isinstance(self.s, TypeVarTupleType) and self.s.id == t.id:
+            return self.s if self.s.min_len > t.min_len else t
         else:
             return self.default(self.s)
 
@@ -706,10 +708,10 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         if isinstance(self.s, Parameters):
             if len(t.arg_types) != len(self.s.arg_types):
                 return self.default(self.s)
+            from mypy.join import join_types
+
             return t.copy_modified(
-                # Note that since during constraint inference we already treat whole ParamSpec as
-                # contravariant, we should meet individual items, not join them like for Callables
-                arg_types=[meet_types(s_a, t_a) for s_a, t_a in zip(self.s.arg_types, t.arg_types)]
+                arg_types=[join_types(s_a, t_a) for s_a, t_a in zip(self.s.arg_types, t.arg_types)]
             )
         else:
             return self.default(self.s)

@@ -2365,6 +2365,19 @@ b"x" in data
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testStrictEqualityWithDifferentMapTypes]
+# flags: --strict-equality
+from typing import Mapping
+
+class A(Mapping[int, str]): ...
+class B(Mapping[int, str]): ...
+
+a: A
+b: B
+assert a == b
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testUnimportedHintAny]
 def f(x: Any) -> None:  # E: Name "Any" is not defined \
                         # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Any")

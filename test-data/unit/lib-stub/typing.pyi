@@ -48,6 +48,7 @@ class Generator(Iterator[T], Generic[T, U, V]):
 
 class Sequence(Iterable[T_co]):
     def __getitem__(self, n: Any) -> T_co: pass
+    def __len__(self) -> int: pass
 
 # Mapping type is oversimplified intentionally.
 class Mapping(Iterable[T], Generic[T, T_co]):

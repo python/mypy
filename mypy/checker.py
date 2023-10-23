@@ -43,7 +43,7 @@ from mypy.errors import Errors, ErrorWatcher, report_internal_error
 from mypy.expandtype import expand_self_type, expand_type, expand_type_by_instance
 from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash
 from mypy.maptype import map_instance_to_supertype
-from mypy.meet import is_overlapping_erased_types, is_overlapping_types
+from mypy.meet import is_overlapping_erased_types, is_overlapping_types, meet_types
 from mypy.message_registry import ErrorMessage
 from mypy.messages import (
     SUGGESTED_TEST_FIXTURES,
@@ -134,7 +134,8 @@ from mypy.nodes import (
     YieldExpr,
     is_final_node,
 )
-from mypy.options import Options
+from mypy.operators import flip_ops, int_op_to_method, neg_ops
+from mypy.options import PRECISE_TUPLE_TYPES, Options
 from mypy.patterns import AsPattern, StarredPattern
 from mypy.plugin import CheckerPluginInterface, Plugin
 from mypy.plugins import dataclasses as dataclasses_plugin
@@ -227,6 +228,9 @@ from mypy.visitor import NodeVisitor
 T = TypeVar("T")
 
 DEFAULT_LAST_PASS: Final = 1  # Pass numbers start at 0
+
+# Maximum length of fixed tuple types inferred when narrowing from variadic tuples.
+MAX_PRECISE_TUPLE_SIZE: Final = 8
 
 DeferredNodeType: _TypeAlias = Union[FuncDef, LambdaExpr, OverloadedFuncDef, Decorator]
 FineGrainedDeferredNodeType: _TypeAlias = Union[FuncDef, MypyFile, OverloadedFuncDef]
@@ -5829,7 +5833,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 partial_type_maps.append((if_map, else_map))
 
-            return reduce_conditional_maps(partial_type_maps)
+            # If we have found non-trivial restrictions from the regular comparisons,
+            # then return soon. Otherwise try to infer restrictions involving `len(x)`.
+            # TODO: support regular and len() narrowing in the same chain.
+            if any(m != ({}, {}) for m in partial_type_maps):
+                return reduce_conditional_maps(partial_type_maps)
+            else:
+                # Use meet for `and` maps to get correct results for chained checks
+                # like `if 1 < len(x) < 4: ...`
+                return reduce_conditional_maps(self.find_tuple_len_narrowing(node), use_meet=True)
         elif isinstance(node, AssignmentExpr):
             if_map = {}
             else_map = {}
@@ -5860,7 +5872,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # and false if at least one of e1 and e2 is false.
             return (
                 and_conditional_maps(left_if_vars, right_if_vars),
-                or_conditional_maps(left_else_vars, right_else_vars),
+                # Note that if left else type is Any, we can't add any additional
+                # types to it, since the right maps were computed assuming
+                # the left is True, which may be not the case in the else branch.
+                or_conditional_maps(left_else_vars, right_else_vars, coalesce_any=True),
             )
         elif isinstance(node, OpExpr) and node.op == "or":
             left_if_vars, left_else_vars = self.find_isinstance_check(node.left)
@@ -5875,6 +5890,27 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         elif isinstance(node, UnaryExpr) and node.op == "not":
             left, right = self.find_isinstance_check(node.expr)
             return right, left
+        elif (
+            literal(node) == LITERAL_TYPE
+            and self.has_type(node)
+            and self.can_be_narrowed_with_len(self.lookup_type(node))
+            # Only translate `if x` to `if len(x) > 0` when possible.
+            and not custom_special_method(self.lookup_type(node), "__bool__")
+            and self.options.strict_optional
+        ):
+            # Combine a `len(x) > 0` check with the default logic below.
+            yes_type, no_type = self.narrow_with_len(self.lookup_type(node), ">", 0)
+            if yes_type is not None:
+                yes_type = true_only(yes_type)
+            else:
+                yes_type = UninhabitedType()
+            if no_type is not None:
+                no_type = false_only(no_type)
+            else:
+                no_type = UninhabitedType()
+            if_map = {node: yes_type} if not isinstance(yes_type, UninhabitedType) else None
+            else_map = {node: no_type} if not isinstance(no_type, UninhabitedType) else None
+            return if_map, else_map
 
         # Restrict the type of the variable to True-ish/False-ish in the if and else branches
         # respectively
@@ -6220,6 +6256,287 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if_map[operands[i]] = remove_optional(expr_type)
 
         return if_map, {}
+
+    def is_len_of_tuple(self, expr: Expression) -> bool:
+        """Is this expression a `len(x)` call where x is a tuple or union of tuples?"""
+        if not isinstance(expr, CallExpr):
+            return False
+        if not refers_to_fullname(expr.callee, "builtins.len"):
+            return False
+        if len(expr.args) != 1:
+            return False
+        expr = expr.args[0]
+        if literal(expr) != LITERAL_TYPE:
+            return False
+        if not self.has_type(expr):
+            return False
+        return self.can_be_narrowed_with_len(self.lookup_type(expr))
+
+    def can_be_narrowed_with_len(self, typ: Type) -> bool:
+        """Is this a type that can benefit from length check type restrictions?
+
+        Currently supported types are TupleTypes, Instances of builtins.tuple, and
+        unions involving such types.
+        """
+        if custom_special_method(typ, "__len__"):
+            # If user overrides builtin behavior, we can't do anything.
+            return False
+        p_typ = get_proper_type(typ)
+        # Note: we are conservative about tuple subclasses, because some code may rely on
+        # the fact that tuple_type of fallback TypeInfo matches the original TupleType.
+        if isinstance(p_typ, TupleType):
+            if any(isinstance(t, UnpackType) for t in p_typ.items):
+                return p_typ.partial_fallback.type.fullname == "builtins.tuple"
+            return True
+        if isinstance(p_typ, Instance):
+            return p_typ.type.has_base("builtins.tuple")
+        if isinstance(p_typ, UnionType):
+            return any(self.can_be_narrowed_with_len(t) for t in p_typ.items)
+        return False
+
+    def literal_int_expr(self, expr: Expression) -> int | None:
+        """Is this expression an int literal, or a reference to an int constant?
+
+        If yes, return the corresponding int value, otherwise return None.
+        """
+        if not self.has_type(expr):
+            return None
+        expr_type = self.lookup_type(expr)
+        expr_type = coerce_to_literal(expr_type)
+        proper_type = get_proper_type(expr_type)
+        if not isinstance(proper_type, LiteralType):
+            return None
+        if not isinstance(proper_type.value, int):
+            return None
+        return proper_type.value
+
+    def find_tuple_len_narrowing(self, node: ComparisonExpr) -> list[tuple[TypeMap, TypeMap]]:
+        """Top-level logic to find type restrictions from a length check on tuples.
+
+        We try to detect `if` checks like the following:
+            x: tuple[int, int] | tuple[int, int, int]
+            y: tuple[int, int] | tuple[int, int, int]
+            if len(x) == len(y) == 2:
+                a, b = x  # OK
+                c, d = y  # OK
+
+            z: tuple[int, ...]
+            if 1 < len(z) < 4:
+                x = z  # OK
+        and report corresponding type restrictions to the binder.
+        """
+        # First step: group consecutive `is` and `==` comparisons together.
+        # This is essentially a simplified version of group_comparison_operands(),
+        # tuned to the len()-like checks. Note that we don't propagate indirect
+        # restrictions like e.g. `len(x) > foo() > 1` yet, since it is tricky.
+        # TODO: propagate indirect len() comparison restrictions.
+        chained = []
+        last_group = set()
+        for op, left, right in node.pairwise():
+            if isinstance(left, AssignmentExpr):
+                left = left.value
+            if isinstance(right, AssignmentExpr):
+                right = right.value
+            if op in ("is", "=="):
+                last_group.add(left)
+                last_group.add(right)
+            else:
+                if last_group:
+                    chained.append(("==", list(last_group)))
+                    last_group = set()
+                if op in {"is not", "!=", "<", "<=", ">", ">="}:
+                    chained.append((op, [left, right]))
+        if last_group:
+            chained.append(("==", list(last_group)))
+
+        # Second step: infer type restrictions from each group found above.
+        type_maps = []
+        for op, items in chained:
+            # TODO: support unions of literal types as len() comparison targets.
+            if not any(self.literal_int_expr(it) is not None for it in items):
+                continue
+            if not any(self.is_len_of_tuple(it) for it in items):
+                continue
+
+            # At this step we know there is at least one len(x) and one literal in the group.
+            if op in ("is", "=="):
+                literal_values = set()
+                tuples = []
+                for it in items:
+                    lit = self.literal_int_expr(it)
+                    if lit is not None:
+                        literal_values.add(lit)
+                        continue
+                    if self.is_len_of_tuple(it):
+                        assert isinstance(it, CallExpr)
+                        tuples.append(it.args[0])
+                if len(literal_values) > 1:
+                    # More than one different literal value found, like 1 == len(x) == 2,
+                    # so the corresponding branch is unreachable.
+                    return [(None, {})]
+                size = literal_values.pop()
+                if size > MAX_PRECISE_TUPLE_SIZE:
+                    # Avoid creating huge tuples from checks like if len(x) == 300.
+                    continue
+                for tpl in tuples:
+                    yes_type, no_type = self.narrow_with_len(self.lookup_type(tpl), op, size)
+                    yes_map = None if yes_type is None else {tpl: yes_type}
+                    no_map = None if no_type is None else {tpl: no_type}
+                    type_maps.append((yes_map, no_map))
+            else:
+                left, right = items
+                if self.is_len_of_tuple(right):
+                    # Normalize `1 < len(x)` and similar as `len(x) > 1`.
+                    left, right = right, left
+                    op = flip_ops.get(op, op)
+                r_size = self.literal_int_expr(right)
+                assert r_size is not None
+                if r_size > MAX_PRECISE_TUPLE_SIZE:
+                    # Avoid creating huge unions from checks like if len(x) > 300.
+                    continue
+                assert isinstance(left, CallExpr)
+                yes_type, no_type = self.narrow_with_len(
+                    self.lookup_type(left.args[0]), op, r_size
+                )
+                yes_map = None if yes_type is None else {left.args[0]: yes_type}
+                no_map = None if no_type is None else {left.args[0]: no_type}
+                type_maps.append((yes_map, no_map))
+        return type_maps
+
+    def narrow_with_len(self, typ: Type, op: str, size: int) -> tuple[Type | None, Type | None]:
+        """Dispatch tuple type narrowing logic depending on the kind of type we got."""
+        typ = get_proper_type(typ)
+        if isinstance(typ, TupleType):
+            return self.refine_tuple_type_with_len(typ, op, size)
+        elif isinstance(typ, Instance):
+            return self.refine_instance_type_with_len(typ, op, size)
+        elif isinstance(typ, UnionType):
+            yes_types = []
+            no_types = []
+            other_types = []
+            for t in typ.items:
+                if not self.can_be_narrowed_with_len(t):
+                    other_types.append(t)
+                    continue
+                yt, nt = self.narrow_with_len(t, op, size)
+                if yt is not None:
+                    yes_types.append(yt)
+                if nt is not None:
+                    no_types.append(nt)
+            yes_types += other_types
+            no_types += other_types
+            if yes_types:
+                yes_type = make_simplified_union(yes_types)
+            else:
+                yes_type = None
+            if no_types:
+                no_type = make_simplified_union(no_types)
+            else:
+                no_type = None
+            return yes_type, no_type
+        else:
+            assert False, "Unsupported type for len narrowing"
+
+    def refine_tuple_type_with_len(
+        self, typ: TupleType, op: str, size: int
+    ) -> tuple[Type | None, Type | None]:
+        """Narrow a TupleType using length restrictions."""
+        unpack_index = find_unpack_in_list(typ.items)
+        if unpack_index is None:
+            # For fixed length tuple situation is trivial, it is either reachable or not,
+            # depending on the current length, expected length, and the comparison op.
+            method = int_op_to_method[op]
+            if method(typ.length(), size):
+                return typ, None
+            return None, typ
+        unpack = typ.items[unpack_index]
+        assert isinstance(unpack, UnpackType)
+        unpacked = get_proper_type(unpack.type)
+        if isinstance(unpacked, TypeVarTupleType):
+            # For tuples involving TypeVarTuple unpack we can't do much except
+            # inferring reachability, and recording the restrictions on TypeVarTuple
+            # for further "manual" use elsewhere.
+            min_len = typ.length() - 1 + unpacked.min_len
+            if op in ("==", "is"):
+                if min_len <= size:
+                    return typ, typ
+                return None, typ
+            elif op in ("<", "<="):
+                if op == "<=":
+                    size += 1
+                if min_len < size:
+                    prefix = typ.items[:unpack_index]
+                    suffix = typ.items[unpack_index + 1 :]
+                    # TODO: also record max_len to avoid false negatives?
+                    unpack = UnpackType(unpacked.copy_modified(min_len=size - typ.length() + 1))
+                    return typ, typ.copy_modified(items=prefix + [unpack] + suffix)
+                return None, typ
+            else:
+                yes_type, no_type = self.refine_tuple_type_with_len(typ, neg_ops[op], size)
+                return no_type, yes_type
+        # Homogeneous variadic item is the case where we are most flexible. Essentially,
+        # we adjust the variadic item by "eating away" from it to satisfy the restriction.
+        assert isinstance(unpacked, Instance) and unpacked.type.fullname == "builtins.tuple"
+        min_len = typ.length() - 1
+        arg = unpacked.args[0]
+        prefix = typ.items[:unpack_index]
+        suffix = typ.items[unpack_index + 1 :]
+        if op in ("==", "is"):
+            if min_len <= size:
+                # TODO: return fixed union + prefixed variadic tuple for no_type?
+                return typ.copy_modified(items=prefix + [arg] * (size - min_len) + suffix), typ
+            return None, typ
+        elif op in ("<", "<="):
+            if op == "<=":
+                size += 1
+            if min_len < size:
+                # Note: there is some ambiguity w.r.t. to where to put the additional
+                # items: before or after the unpack. However, such types are equivalent,
+                # so we always put them before for consistency.
+                no_type = typ.copy_modified(
+                    items=prefix + [arg] * (size - min_len) + [unpack] + suffix
+                )
+                yes_items = []
+                for n in range(size - min_len):
+                    yes_items.append(typ.copy_modified(items=prefix + [arg] * n + suffix))
+                return UnionType.make_union(yes_items, typ.line, typ.column), no_type
+            return None, typ
+        else:
+            yes_type, no_type = self.refine_tuple_type_with_len(typ, neg_ops[op], size)
+            return no_type, yes_type
+
+    def refine_instance_type_with_len(
+        self, typ: Instance, op: str, size: int
+    ) -> tuple[Type | None, Type | None]:
+        """Narrow a homogeneous tuple using length restrictions."""
+        base = map_instance_to_supertype(typ, self.lookup_typeinfo("builtins.tuple"))
+        arg = base.args[0]
+        # Again, we are conservative about subclasses until we gain more confidence.
+        allow_precise = (
+            PRECISE_TUPLE_TYPES in self.options.enable_incomplete_feature
+        ) and typ.type.fullname == "builtins.tuple"
+        if op in ("==", "is"):
+            # TODO: return fixed union + prefixed variadic tuple for no_type?
+            return TupleType(items=[arg] * size, fallback=typ), typ
+        elif op in ("<", "<="):
+            if op == "<=":
+                size += 1
+            if allow_precise:
+                unpack = UnpackType(self.named_generic_type("builtins.tuple", [arg]))
+                no_type: Type | None = TupleType(items=[arg] * size + [unpack], fallback=typ)
+            else:
+                no_type = typ
+            if allow_precise:
+                items = []
+                for n in range(size):
+                    items.append(TupleType([arg] * n, fallback=typ))
+                yes_type: Type | None = UnionType.make_union(items, typ.line, typ.column)
+            else:
+                yes_type = typ
+            return yes_type, no_type
+        else:
+            yes_type, no_type = self.refine_instance_type_with_len(typ, neg_ops[op], size)
+            return no_type, yes_type
 
     #
     # Helpers
@@ -7172,7 +7489,7 @@ def builtin_item_type(tp: Type) -> Type | None:
     return None
 
 
-def and_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
+def and_conditional_maps(m1: TypeMap, m2: TypeMap, use_meet: bool = False) -> TypeMap:
     """Calculate what information we can learn from the truth of (e1 and e2)
     in terms of the information that we can learn from the truth of e1 and
     the truth of e2.
@@ -7182,22 +7499,31 @@ def and_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
         # One of the conditions can never be true.
         return None
     # Both conditions can be true; combine the information. Anything
-    # we learn from either conditions's truth is valid. If the same
+    # we learn from either conditions' truth is valid. If the same
     # expression's type is refined by both conditions, we somewhat
-    # arbitrarily give precedence to m2. (In the future, we could use
-    # an intersection type.)
+    # arbitrarily give precedence to m2 unless m1 value is Any.
+    # In the future, we could use an intersection type or meet_types().
     result = m2.copy()
     m2_keys = {literal_hash(n2) for n2 in m2}
     for n1 in m1:
-        if literal_hash(n1) not in m2_keys:
+        if literal_hash(n1) not in m2_keys or isinstance(get_proper_type(m1[n1]), AnyType):
             result[n1] = m1[n1]
+    if use_meet:
+        # For now, meet common keys only if specifically requested.
+        # This is currently used for tuple types narrowing, where having
+        # a precise result is important.
+        for n1 in m1:
+            for n2 in m2:
+                if literal_hash(n1) == literal_hash(n2):
+                    result[n1] = meet_types(m1[n1], m2[n2])
     return result
 
 
-def or_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
+def or_conditional_maps(m1: TypeMap, m2: TypeMap, coalesce_any: bool = False) -> TypeMap:
     """Calculate what information we can learn from the truth of (e1 or e2)
     in terms of the information that we can learn from the truth of e1 and
-    the truth of e2.
+    the truth of e2. If coalesce_any is True, consider Any a supertype when
+    joining restrictions.
     """
 
     if m1 is None:
@@ -7212,11 +7538,16 @@ def or_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
     for n1 in m1:
         for n2 in m2:
             if literal_hash(n1) == literal_hash(n2):
-                result[n1] = make_simplified_union([m1[n1], m2[n2]])
+                if coalesce_any and isinstance(get_proper_type(m1[n1]), AnyType):
+                    result[n1] = m1[n1]
+                else:
+                    result[n1] = make_simplified_union([m1[n1], m2[n2]])
     return result
 
 
-def reduce_conditional_maps(type_maps: list[tuple[TypeMap, TypeMap]]) -> tuple[TypeMap, TypeMap]:
+def reduce_conditional_maps(
+    type_maps: list[tuple[TypeMap, TypeMap]], use_meet: bool = False
+) -> tuple[TypeMap, TypeMap]:
     """Reduces a list containing pairs of if/else TypeMaps into a single pair.
 
     We "and" together all of the if TypeMaps and "or" together the else TypeMaps. So
@@ -7247,7 +7578,7 @@ def reduce_conditional_maps(type_maps: list[tuple[TypeMap, TypeMap]]) -> tuple[T
     else:
         final_if_map, final_else_map = type_maps[0]
         for if_map, else_map in type_maps[1:]:
-            final_if_map = and_conditional_maps(final_if_map, if_map)
+            final_if_map = and_conditional_maps(final_if_map, if_map, use_meet=use_meet)
             final_else_map = or_conditional_maps(final_else_map, else_map)
 
         return final_if_map, final_else_map

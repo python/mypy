@@ -1,4 +1,4 @@
-# Test cases for unreachable expressions
+# Test cases for unreachable expressions and statements
 
 [case testUnreachableMemberExpr]
 import sys
@@ -104,3 +104,138 @@ L5:
 L6:
     y = r11
     return 1
+
+[case testUnreachableStatementAfterReturn]
+def f(x: bool) -> int:
+    if x:
+        return 1
+        f(False)
+    return 2
+[out]
+def f(x):
+    x :: bool
+L0:
+    if x goto L1 else goto L2 :: bool
+L1:
+    return 2
+L2:
+    return 4
+
+[case testUnreachableStatementAfterContinue]
+def c() -> bool:
+    return False
+
+def f() -> None:
+    n = True
+    while n:
+        if c():
+            continue
+            if int():
+                f()
+        n = False
+[out]
+def c():
+L0:
+    return 0
+def f():
+    n, r0 :: bool
+L0:
+    n = 1
+L1:
+    if n goto L2 else goto L5 :: bool
+L2:
+    r0 = c()
+    if r0 goto L3 else goto L4 :: bool
+L3:
+    goto L1
+L4:
+    n = 0
+    goto L1
+L5:
+    return 1
+
+[case testUnreachableStatementAfterBreak]
+def c() -> bool:
+    return False
+
+def f() -> None:
+    n = True
+    while n:
+        if c():
+            break
+            if int():
+                f()
+        n = False
+[out]
+def c():
+L0:
+    return 0
+def f():
+    n, r0 :: bool
+L0:
+    n = 1
+L1:
+    if n goto L2 else goto L5 :: bool
+L2:
+    r0 = c()
+    if r0 goto L3 else goto L4 :: bool
+L3:
+    goto L5
+L4:
+    n = 0
+    goto L1
+L5:
+    return 1
+
+[case testUnreachableStatementAfterRaise]
+def f(x: bool) -> int:
+    if x:
+        raise ValueError()
+        print('hello')
+    return 2
+[out]
+def f(x):
+    x :: bool
+    r0 :: object
+    r1 :: str
+    r2, r3 :: object
+L0:
+    if x goto L1 else goto L2 :: bool
+L1:
+    r0 = builtins :: module
+    r1 = 'ValueError'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = PyObject_CallFunctionObjArgs(r2, 0)
+    CPy_Raise(r3)
+    unreachable
+L2:
+    return 4
+
+[case testUnreachableStatementAfterAssertFalse]
+def f(x: bool) -> int:
+    if x:
+        assert False
+        print('hello')
+    return 2
+[out]
+def f(x):
+    x, r0 :: bool
+    r1 :: str
+    r2 :: object
+    r3 :: str
+    r4, r5 :: object
+L0:
+    if x goto L1 else goto L4 :: bool
+L1:
+    if 0 goto L3 else goto L2 :: bool
+L2:
+    r0 = raise AssertionError
+    unreachable
+L3:
+    r1 = 'hello'
+    r2 = builtins :: module
+    r3 = 'print'
+    r4 = CPyObject_GetAttr(r2, r3)
+    r5 = PyObject_CallFunctionObjArgs(r4, r1, 0)
+L4:
+    return 4

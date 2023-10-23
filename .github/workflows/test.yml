@@ -133,7 +133,7 @@ jobs:
         ./misc/build-debug-python.sh $PYTHONVERSION $PYTHONDIR $VENV
         source $VENV/bin/activate
     - name: Install tox
-      run: pip install --upgrade 'setuptools!=50' tox==4.11.0
+      run: pip install setuptools==68.2.2 tox==4.11.0
     - name: Compiled with mypyc
       if: ${{ matrix.test_mypyc }}
       run: |
@@ -185,7 +185,7 @@ jobs:
           default: 3.11.1
           command: python -c "import platform; print(f'{platform.architecture()=} {platform.machine()=}');"
       - name: Install tox
-        run: pip install --upgrade 'setuptools!=50' tox==4.11.0
+        run: pip install setuptools==68.2.2 tox==4.11.0
       - name: Setup tox environment
         run: tox run -e py --notest
       - name: Test

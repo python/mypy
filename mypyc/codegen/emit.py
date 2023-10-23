@@ -686,7 +686,7 @@ class Emitter:
             if likely:
                 check = f"(likely{check})"
             self.emit_arg_check(src, dest, typ, check, optional)
-            self.emit_lines(f"    {dest} = {src};".format(dest, src), "else {")
+            self.emit_lines(f"    {dest} = {src};", "else {")
             self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
             self.emit_line("}")
         elif is_none_rprimitive(typ):

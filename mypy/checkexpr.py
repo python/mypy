@@ -3643,6 +3643,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 left = map_instance_to_supertype(left, abstract_set)
                 right = map_instance_to_supertype(right, abstract_set)
                 return self.dangerous_comparison(left.args[0], right.args[0])
+            elif left.type.has_base("typing.Mapping") and right.type.has_base("typing.Mapping"):
+                # Similar to above: Mapping ignores the classes, it just compares items.
+                abstract_map = self.chk.lookup_typeinfo("typing.Mapping")
+                left = map_instance_to_supertype(left, abstract_map)
+                right = map_instance_to_supertype(right, abstract_map)
+                return self.dangerous_comparison(
+                    left.args[0], right.args[0]
+                ) or self.dangerous_comparison(left.args[1], right.args[1])
             elif left_name in ("builtins.list", "builtins.tuple") and right_name == left_name:
                 return self.dangerous_comparison(left.args[0], right.args[0])
             elif left_name in OVERLAPPING_BYTES_ALLOWLIST and right_name in (
@@ -4228,9 +4236,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     else:
                         self.chk.fail(message_registry.TUPLE_INDEX_OUT_OF_RANGE, e)
                         if any(isinstance(t, UnpackType) for t in left_type.items):
-                            self.chk.note(
-                                f"Variadic tuple can have length {left_type.length() - 1}", e
-                            )
+                            min_len = self.min_tuple_length(left_type)
+                            self.chk.note(f"Variadic tuple can have length {min_len}", e)
                         return AnyType(TypeOfAny.from_error)
                 return make_simplified_union(out)
             else:
@@ -4254,6 +4261,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             e.method_type = method_type
             return result
 
+    def min_tuple_length(self, left: TupleType) -> int:
+        unpack_index = find_unpack_in_list(left.items)
+        if unpack_index is None:
+            return left.length()
+        unpack = left.items[unpack_index]
+        assert isinstance(unpack, UnpackType)
+        if isinstance(unpack.type, TypeVarTupleType):
+            return left.length() - 1 + unpack.type.min_len
+        return left.length() - 1
+
     def visit_tuple_index_helper(self, left: TupleType, n: int) -> Type | None:
         unpack_index = find_unpack_in_list(left.items)
         if unpack_index is None:
@@ -4267,31 +4284,39 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         unpacked = get_proper_type(unpack.type)
         if isinstance(unpacked, TypeVarTupleType):
             # Usually we say that TypeVarTuple can't be split, be in case of
-            # indexing it seems benign to just return the fallback item, similar
+            # indexing it seems benign to just return the upper bound item, similar
             # to what we do when indexing a regular TypeVar.
-            middle = unpacked.tuple_fallback.args[0]
+            bound = get_proper_type(unpacked.upper_bound)
+            assert isinstance(bound, Instance)
+            assert bound.type.fullname == "builtins.tuple"
+            middle = bound.args[0]
         else:
             assert isinstance(unpacked, Instance)
             assert unpacked.type.fullname == "builtins.tuple"
             middle = unpacked.args[0]
+
+        extra_items = self.min_tuple_length(left) - left.length() + 1
         if n >= 0:
-            if n < unpack_index:
-                return left.items[n]
-            if n >= len(left.items) - 1:
+            if n >= self.min_tuple_length(left):
                 # For tuple[int, *tuple[str, ...], int] we allow either index 0 or 1,
                 # since variadic item may have zero items.
                 return None
+            if n < unpack_index:
+                return left.items[n]
             return UnionType.make_union(
-                [middle] + left.items[unpack_index + 1 : n + 2], left.line, left.column
+                [middle]
+                + left.items[unpack_index + 1 : max(n - extra_items + 2, unpack_index + 1)],
+                left.line,
+                left.column,
             )
-        n += len(left.items)
-        if n <= 0:
+        n += self.min_tuple_length(left)
+        if n < 0:
             # Similar to above, we only allow -1, and -2 for tuple[int, *tuple[str, ...], int]
             return None
-        if n > unpack_index:
-            return left.items[n]
+        if n >= unpack_index + extra_items:
+            return left.items[n - extra_items + 1]
         return UnionType.make_union(
-            left.items[n - 1 : unpack_index] + [middle], left.line, left.column
+            left.items[min(n, unpack_index) : unpack_index] + [middle], left.line, left.column
         )
 
     def visit_tuple_slice_helper(self, left_type: TupleType, slic: SliceExpr) -> Type:
