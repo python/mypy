@@ -3251,13 +3251,31 @@ foo2: Foo = {'key': 2}
 reveal_type(foo1 | foo2)  # N: Revealed type is "TypedDict('__main__.Foo', {'key': builtins.int})"
 reveal_type(foo1 | {'key': 1})  # N: Revealed type is "TypedDict('__main__.Foo', {'key': builtins.int})"
 reveal_type(foo1 | {'key': 'a'})  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
-reveal_type(foo1 | {})  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+reveal_type(foo1 | {})  # N: Revealed type is "TypedDict('__main__.Foo', {'key': builtins.int})"
 
 d1: Dict[str, int]
 d2: Dict[int, str]
 
 reveal_type(foo1 | d1)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
 foo1 | d2  # E: Unsupported operand types for | ("Foo" and "Dict[int, str]")
+
+
+class Bar(TypedDict):
+    key: int
+    value: str
+
+bar: Bar
+reveal_type(bar | {})  # N: Revealed type is "TypedDict('__main__.Bar', {'key': builtins.int, 'value': builtins.str})"
+reveal_type(bar | {'key': 1, 'value': 'v'})  # N: Revealed type is "TypedDict('__main__.Bar', {'key': builtins.int, 'value': builtins.str})"
+reveal_type(bar | {'key': 1})  # N: Revealed type is "TypedDict('__main__.Bar', {'key': builtins.int, 'value': builtins.str})"
+reveal_type(bar | {'value': 'v'})  # N: Revealed type is "TypedDict('__main__.Bar', {'key': builtins.int, 'value': builtins.str})"
+reveal_type(bar | {'key': 'a'})  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+reveal_type(bar | {'value': 1})  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+reveal_type(bar | {'key': 'a', 'value': 1})  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+
+reveal_type(bar | foo1)  # N: Revealed type is "TypedDict('__main__.Bar', {'key': builtins.int, 'value': builtins.str})"
+reveal_type(bar | d1)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+bar | d2  # E: Unsupported operand types for | ("Bar" and "Dict[int, str]")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict-iror.pyi]
 
@@ -3268,21 +3286,19 @@ class Foo(TypedDict):
     key: int
 
 foo: Foo = {'key': 1}
-
 foo | 1
 
 class SubDict(dict): ...
-
 foo | SubDict()
 [out]
-main:8: error: No overload variant of "__or__" of "TypedDict" matches argument type "int"
-main:8: note: Possible overload variants:
-main:8: note:     def __or__(self, Foo, /) -> Foo
-main:8: note:     def __or__(self, Dict[str, Any], /) -> Dict[str, object]
-main:12: error: No overload variant of "__ror__" of "dict" matches argument type "Foo"
-main:12: note: Possible overload variants:
-main:12: note:     def __ror__(self, Dict[Any, Any], /) -> Dict[Any, Any]
-main:12: note:     def [T, T2] __ror__(self, Dict[T, T2], /) -> Dict[Union[Any, T], Union[Any, T2]]
+main:7: error: No overload variant of "__or__" of "TypedDict" matches argument type "int"
+main:7: note: Possible overload variants:
+main:7: note:     def __or__(self, TypedDict({'key'?: int}), /) -> Foo
+main:7: note:     def __or__(self, Dict[str, Any], /) -> Dict[str, object]
+main:10: error: No overload variant of "__ror__" of "dict" matches argument type "Foo"
+main:10: note: Possible overload variants:
+main:10: note:     def __ror__(self, Dict[Any, Any], /) -> Dict[Any, Any]
+main:10: note:     def [T, T2] __ror__(self, Dict[T, T2], /) -> Dict[Union[Any, T], Union[Any, T2]]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict-iror.pyi]
 
@@ -3297,7 +3313,7 @@ foo: Foo = {'key': 1}
 
 reveal_type({'key': 1} | foo)  # N: Revealed type is "TypedDict('__main__.Foo', {'key': builtins.int})"
 reveal_type({'key': 'a'} | foo)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
-reveal_type({} | foo)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+reveal_type({} | foo)  # N: Revealed type is "TypedDict('__main__.Foo', {'key': builtins.int})"
 {1: 'a'} | foo  # E: Dict entry 0 has incompatible type "int": "str"; expected "str": "Any"
 
 d1: Dict[str, int]
@@ -3305,8 +3321,24 @@ d2: Dict[int, str]
 
 reveal_type(d1 | foo)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
 d2 | foo  # E: Unsupported operand types for | ("Dict[int, str]" and "Foo")
-
 1 | foo  # E: Unsupported left operand type for | ("int")
+
+
+class Bar(TypedDict):
+    key: int
+    value: str
+
+bar: Bar
+reveal_type({} | bar)  # N: Revealed type is "TypedDict('__main__.Bar', {'key': builtins.int, 'value': builtins.str})"
+reveal_type({'key': 1, 'value': 'v'} | bar)  # N: Revealed type is "TypedDict('__main__.Bar', {'key': builtins.int, 'value': builtins.str})"
+reveal_type({'key': 1} | bar)  # N: Revealed type is "TypedDict('__main__.Bar', {'key': builtins.int, 'value': builtins.str})"
+reveal_type({'value': 'v'} | bar)  # N: Revealed type is "TypedDict('__main__.Bar', {'key': builtins.int, 'value': builtins.str})"
+reveal_type({'key': 'a'} | bar)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+reveal_type({'value': 1} | bar)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+reveal_type({'key': 'a', 'value': 1} | bar)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+
+reveal_type(d1 | bar)  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+d2 | bar  # E: Unsupported operand types for | ("Dict[int, str]" and "Bar")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict-iror.pyi]
 
@@ -3320,16 +3352,30 @@ class Foo(TypedDict):
 foo: Foo = {'key': 1}
 foo |= {'key': 2}
 
-foo |= {}  # E: Missing key "key" for TypedDict "Foo"
-foo |= {'key': 'a', 'b': 'a'}  # E: Extra key "b" for TypedDict "Foo" \
+foo |= {}
+foo |= {'key': 'a', 'b': 'a'}  # E: Expected TypedDict key "key" but found keys ("key", "b")  \
                                # E: Incompatible types (expression has type "str", TypedDict item "key" has type "int")
-foo |= {'b': 2}  # E: Missing key "key" for TypedDict "Foo" \
-                 # E: Extra key "b" for TypedDict "Foo"
+foo |= {'b': 2}  # E: Unexpected TypedDict key "b"
 
 d1: Dict[str, int]
 d2: Dict[int, str]
 
-foo |= d1  # E: Argument 1 to "__ior__" of "TypedDict" has incompatible type "Dict[str, int]"; expected "Foo"
-foo |= d2  # E: Argument 1 to "__ior__" of "TypedDict" has incompatible type "Dict[int, str]"; expected "Foo"
+foo |= d1  # E: Argument 1 to "__ior__" of "TypedDict" has incompatible type "Dict[str, int]"; expected "TypedDict({'key'?: int})"
+foo |= d2  # E: Argument 1 to "__ior__" of "TypedDict" has incompatible type "Dict[int, str]"; expected "TypedDict({'key'?: int})"
+
+
+class Bar(TypedDict):
+    key: int
+    value: str
+
+bar: Bar
+bar |= {}
+bar |= {'key': 1, 'value': 'a'}
+bar |= {'key': 'a', 'value': 'a', 'b': 'a'}  # E: Expected TypedDict keys ("key", "value") but found keys ("key", "value", "b") \
+                                             # E: Incompatible types (expression has type "str", TypedDict item "key" has type "int")
+
+bar |= foo
+bar |= d1  # E: Argument 1 to "__ior__" of "TypedDict" has incompatible type "Dict[str, int]"; expected "TypedDict({'key'?: int, 'value'?: str})"
+bar |= d2  # E: Argument 1 to "__ior__" of "TypedDict" has incompatible type "Dict[int, str]"; expected "TypedDict({'key'?: int, 'value'?: str})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict-iror.pyi]

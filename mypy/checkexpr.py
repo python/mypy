@@ -3333,7 +3333,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Type check '...'."""
         return self.named_type("builtins.ellipsis")
 
-    def visit_op_expr(self, e: OpExpr, *, use_reverse: UseReverse = USE_REVERSE_DEFAULT) -> Type:
+    def visit_op_expr(self, e: OpExpr) -> Type:
         """Type check a binary operator expression."""
         if e.analyzed:
             # It's actually a type expression X | Y.
@@ -3382,15 +3382,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                             items=proper_left_type.items + [UnpackType(mapped)]
                         )
 
+        use_reverse: UseReverse = USE_REVERSE_DEFAULT
         if e.op == "|":
             if is_named_instance(proper_left_type, "builtins.dict"):
                 # This is a special case for `dict | TypedDict`.
-                # Before this change this operation was not allowed due to typing limitations,
-                # however, it makes perfect sense from the runtime's point of view.
-                # So, what do we do now?
                 # 1. Find `dict | TypedDict` case
                 # 2. Switch `dict.__or__` to `TypedDict.__ror__` (the same from both runtime and typing perspective)
-                # 3. Do not allow `dict.__ror__` to be executed, since this is a special case
                 proper_right_type = get_proper_type(self.accept(e.right))
                 if isinstance(proper_right_type, TypedDictType):
                     use_reverse = USE_REVERSE_ALWAYS
@@ -3432,14 +3429,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             elif use_reverse is UseReverse.ALWAYS:
                 result, method_type = self.check_op(
                     # The reverse operator here gives better error messages:
-                    # Given:
-                    #   d: dict[int, str]
-                    #   t: YourTD
-                    #   d | t
-                    # Without the switch:
-                    # - Unsupported operand types for | ("YourTD" and "dict[int, str]")
-                    # With the switch:
-                    # - Unsupported operand types for | ("dict[int, str]" and "YourTD")
                     operators.reverse_op_methods[method],
                     base_type=self.accept(e.right),
                     arg=e.left,
