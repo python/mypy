@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import enum
 import itertools
 import time
 from collections import defaultdict
 from contextlib import contextmanager
 from typing import Callable, ClassVar, Final, Iterable, Iterator, List, Optional, Sequence, cast
-from typing_extensions import TypeAlias as _TypeAlias, overload
+from typing_extensions import TypeAlias as _TypeAlias, assert_never, overload
 
 import mypy.checker
 import mypy.errorcodes as codes
@@ -275,6 +276,20 @@ def extract_refexpr_names(expr: RefExpr) -> set[str]:
 
 class Finished(Exception):
     """Raised if we can terminate overload argument check early (no match)."""
+
+
+@enum.unique
+class UseReverse(enum.Enum):
+    """Used in `visit_op_expr` to enable or disable reverse method checks."""
+
+    DEFAULT = 0
+    ALWAYS = 1
+    NEVER = 2
+
+
+USE_REVERSE_DEFAULT: Final = UseReverse.DEFAULT
+USE_REVERSE_ALWAYS: Final = UseReverse.ALWAYS
+USE_REVERSE_NEVER: Final = UseReverse.NEVER
 
 
 class ExpressionChecker(ExpressionVisitor[Type]):
@@ -3371,6 +3386,24 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         return proper_left_type.copy_modified(
                             items=proper_left_type.items + [UnpackType(mapped)]
                         )
+
+        use_reverse: UseReverse = USE_REVERSE_DEFAULT
+        if e.op == "|":
+            if is_named_instance(proper_left_type, "builtins.dict"):
+                # This is a special case for `dict | TypedDict`.
+                # 1. Find `dict | TypedDict` case
+                # 2. Switch `dict.__or__` to `TypedDict.__ror__` (the same from both runtime and typing perspective)
+                proper_right_type = get_proper_type(self.accept(e.right))
+                if isinstance(proper_right_type, TypedDictType):
+                    use_reverse = USE_REVERSE_ALWAYS
+            if isinstance(proper_left_type, TypedDictType):
+                # This is the reverse case: `TypedDict | dict`,
+                # simply do not allow the reverse checking:
+                # do not call `__dict__.__ror__`.
+                proper_right_type = get_proper_type(self.accept(e.right))
+                if is_named_instance(proper_right_type, "builtins.dict"):
+                    use_reverse = USE_REVERSE_NEVER
+
         if TYPE_VAR_TUPLE in self.chk.options.enable_incomplete_feature:
             # Handle tuple[X, ...] + tuple[Y, Z] = tuple[*tuple[X, ...], Y, Z].
             if (
@@ -3390,7 +3423,25 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if e.op in operators.op_methods:
             method = operators.op_methods[e.op]
-            result, method_type = self.check_op(method, left_type, e.right, e, allow_reverse=True)
+            if use_reverse is UseReverse.DEFAULT or use_reverse is UseReverse.NEVER:
+                result, method_type = self.check_op(
+                    method,
+                    base_type=left_type,
+                    arg=e.right,
+                    context=e,
+                    allow_reverse=use_reverse is UseReverse.DEFAULT,
+                )
+            elif use_reverse is UseReverse.ALWAYS:
+                result, method_type = self.check_op(
+                    # The reverse operator here gives better error messages:
+                    operators.reverse_op_methods[method],
+                    base_type=self.accept(e.right),
+                    arg=e.left,
+                    context=e,
+                    allow_reverse=False,
+                )
+            else:
+                assert_never(use_reverse)
             e.method_type = method_type
             return result
         else:
