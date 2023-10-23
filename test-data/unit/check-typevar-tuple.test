@@ -1930,3 +1930,6 @@ reveal_type(b[i])  # N: Revealed type is "builtins.int"
 
 -- Class object type of a subclass for variadic superclass with non-trivial __init__
 -- Generic self-types, and new-style Self
+-- Variadic dataclass
+-- Match statement
+-- Variadic protocols (incl. suppress variance error)

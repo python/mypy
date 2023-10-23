@@ -1009,6 +1009,7 @@ def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
 
     arg_types: list[Type] = []
     for i in range(len(t.arg_types)):
+        # TODO: handle unpack (avoid crashes).
         arg_types.append(join_types(t.arg_types[i], s.arg_types[i]))
     # TODO in combine_similar_callables also applies here (names and kinds)
     # The fallback type can be either 'function' or 'type'. The result should have 'function' as

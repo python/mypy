@@ -368,6 +368,7 @@ def callable_corresponding_argument(
 ) -> FormalArgument | None:
     """Return the argument a function that corresponds to `model`"""
 
+    # TODO: this should use NormalizedCallable
     by_name = typ.argument_by_name(model.name)
     by_pos = typ.argument_by_position(model.pos)
     if by_name is None and by_pos is None:

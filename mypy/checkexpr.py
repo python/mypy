@@ -396,6 +396,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 node, ctx=e, alias_definition=e.is_alias_rvalue or lvalue
             )
         elif isinstance(node, (TypeVarExpr, ParamSpecExpr)):
+            # TODO: same for TypeVarTuple
             result = self.object_type()
         else:
             if isinstance(node, PlaceholderNode):
@@ -3295,6 +3296,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def concat_tuples(self, left: TupleType, right: TupleType) -> TupleType:
         """Concatenate two fixed length tuples."""
+        # TODO: assert that at most one has an unpack.
         return TupleType(
             items=left.items + right.items, fallback=self.named_type("builtins.tuple")
         )
@@ -6451,6 +6453,7 @@ def merge_typevars_in_callables_by_name(
                 name = tv.fullname
                 if name not in unique_typevars:
                     # TODO(PEP612): fix for ParamSpecType
+                    # Same for TypeVarTuple
                     if isinstance(tv, ParamSpecType):
                         continue
                     assert isinstance(tv, TypeVarType)

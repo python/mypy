@@ -716,6 +716,7 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
 
     arg_types: list[Type] = []
     for i in range(len(t.arg_types)):
+        # TODO: handle unpack (avoid crashes).
         arg_types.append(meet_types(t.arg_types[i], s.arg_types[i]))
     # TODO in combine_similar_callables also applies here (names and kinds; user metaclasses)
     # The fallback type can be either 'function', 'type', or some user-provided metaclass.
@@ -736,6 +737,7 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
 def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     arg_types: list[Type] = []
     for i in range(len(t.arg_types)):
+        # TODO: handle unpack (avoid crashes).
         arg_types.append(join_types(t.arg_types[i], s.arg_types[i]))
     # TODO kinds and argument names
     # TODO what should happen if one fallback is 'type' and the other is a user-provided metaclass?
