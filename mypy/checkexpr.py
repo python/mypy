@@ -370,6 +370,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if node.typeddict_type:
                 # We special-case TypedDict, because they don't define any constructor.
                 result = self.typeddict_callable(node)
+            elif node.fullname == "types.NoneType":
+                # We special case NoneType, because its stub definition is not related to None.
+                result = TypeType(NoneType())
             else:
                 result = type_object_type(node, self.named_type)
             if isinstance(result, CallableType) and isinstance(  # type: ignore[misc]
