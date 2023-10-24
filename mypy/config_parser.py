@@ -15,29 +15,13 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Final,
-    Iterable,
-    List,
-    Mapping,
-    MutableMapping,
-    Sequence,
-    TextIO,
-    Tuple,
-    Union,
-)
+from typing import Any, Callable, Final, Iterable, Mapping, MutableMapping, Sequence, TextIO, cast
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy import defaults
-from mypy.options import PER_MODULE_OPTIONS, Options
+from mypy.options import PER_MODULE_OPTIONS, ConfigValue, Options
 
-_CONFIG_VALUE_TYPES: _TypeAlias = Union[
-    str, bool, int, float, Dict[str, str], List[str], Tuple[int, int]
-]
-_INI_PARSER_CALLABLE: _TypeAlias = Callable[[Any], _CONFIG_VALUE_TYPES]
+_INI_PARSER_CALLABLE: _TypeAlias = Callable[[Any], ConfigValue]
 
 
 def parse_version(v: str | float) -> tuple[int, int]:
@@ -429,14 +413,14 @@ def parse_section(
     template: Options,
     set_strict_flags: Callable[[], None],
     section: Mapping[str, Any],
-    config_types: dict[str, Any],
+    config_types: dict[str, _INI_PARSER_CALLABLE],
     stderr: TextIO = sys.stderr,
-) -> tuple[dict[str, object], dict[str, str]]:
+) -> tuple[dict[str, ConfigValue], dict[str, str]]:
     """Parse one section of a config file.
 
     Returns a dict of option values encountered, and a dict of report directories.
     """
-    results: dict[str, object] = {}
+    results: dict[str, ConfigValue] = {}
     report_dirs: dict[str, str] = {}
 
     # Because these fields exist on Options, without proactive checking, we would accept them
@@ -446,6 +430,7 @@ def parse_section(
         "disabled_error_codes": "disable_error_code",
     }
 
+    ct: Any
     for key in section:
         invert = False
         options_key = key
@@ -496,13 +481,13 @@ def parse_section(
                 else:
                     continue
             ct = type(dv)
-        v: Any = None
+        v: ConfigValue
         try:
             if ct is bool:
                 if isinstance(section, dict):
                     v = convert_to_boolean(section.get(key))
                 else:
-                    v = section.getboolean(key)  # type: ignore[attr-defined]  # Until better stub
+                    v = cast(bool, section.getboolean(key))  # type: ignore[attr-defined]  # Until better stub
                 if invert:
                     v = not v
             elif callable(ct):
@@ -596,7 +581,7 @@ def mypy_comments_to_config_map(line: str, template: Options) -> tuple[dict[str,
 
 def parse_mypy_comments(
     args: list[tuple[int, str]], template: Options
-) -> tuple[dict[str, object], list[tuple[int, str]]]:
+) -> tuple[dict[str, ConfigValue], list[tuple[int, str]]]:
     """Parse a collection of inline mypy: configuration comments.
 
     Returns a dictionary of options to be applied and a list of error messages
@@ -604,7 +589,7 @@ def parse_mypy_comments(
     """
 
     errors: list[tuple[int, str]] = []
-    sections = {}
+    sections: dict[str, ConfigValue] = {}
 
     for lineno, line in args:
         # In order to easily match the behavior for bools, we abuse configparser.

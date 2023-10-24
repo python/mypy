@@ -4,11 +4,14 @@ import pprint
 import re
 import sys
 import sysconfig
-from typing import Any, Callable, Final, Mapping, Pattern
+from typing import Any, Callable, Dict, Final, List, Mapping, Pattern, Tuple, Union
+from typing_extensions import TypeAlias
 
 from mypy import defaults
 from mypy.errorcodes import ErrorCode, error_codes
 from mypy.util import get_class_descriptors, replace_object_state
+
+ConfigValue: TypeAlias = Union[str, bool, int, float, Dict[str, str], List[str], Tuple[int, int]]
 
 
 class BuildType:
@@ -295,7 +298,7 @@ class Options:
         self.plugins: list[str] = []
 
         # Per-module options (raw)
-        self.per_module_options: dict[str, dict[str, object]] = {}
+        self.per_module_options: dict[str, dict[str, ConfigValue]] = {}
         self._glob_options: list[tuple[str, Pattern[str]]] = []
         self.unused_configs: set[str] = set()
 
@@ -408,7 +411,7 @@ class Options:
     def __repr__(self) -> str:
         return f"Options({pprint.pformat(self.snapshot())})"
 
-    def apply_changes(self, changes: dict[str, object]) -> Options:
+    def apply_changes(self, changes: dict[str, object] | dict[str, ConfigValue]) -> Options:
         # Note: effects of this method *must* be idempotent.
         new_options = Options()
         # Under mypyc, we don't have a __dict__, so we need to do worse things.
