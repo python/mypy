@@ -5053,6 +5053,50 @@ python_version=3.6
 [out2]
 tmp/a.py:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
+[case testChangedPerModuleOptionsInvalidateCache]
+# flags: --config-file tmp/mypy.ini
+import m
+[file m.py]
+pass
+[file mypy.ini]
+\[mypy]
+\[mypy-a]
+warn_no_return = True
+[file mypy.ini.2]
+\[mypy]
+\[mypy-a]
+warn_no_return = False
+-- Every file should get reloaded, potentially contains changed modules
+[rechecked m, _typeshed, builtins, typing]
+
+[case testAddedPerModuleOptionsInvalidateCache]
+# flags: --config-file tmp/mypy.ini
+import m
+[file m.py]
+pass
+[file mypy.ini]
+\[mypy]
+[file mypy.ini.2]
+\[mypy]
+\[mypy-a]
+warn_no_return = False
+-- Every file should get reloaded, potentially contains changed modules
+[rechecked m, _typeshed, builtins, typing]
+
+[case testRemovedPerModuleOptionsInvalidateCache]
+# flags: --config-file tmp/mypy.ini
+import m
+[file m.py]
+pass
+[file mypy.ini]
+\[mypy]
+\[mypy-a]
+warn_no_return = True
+[file mypy.ini.2]
+\[mypy]
+-- Every file should get reloaded, potentially contains changed modules
+[rechecked m, _typeshed, builtins, typing]
+
 [case testPluginConfigData]
 # flags: --config-file tmp/mypy.ini
 import a
