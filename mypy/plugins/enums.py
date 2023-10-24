@@ -111,11 +111,7 @@ def _implements_new(info: TypeInfo) -> bool:
     the data type) this is allowed, because we should in general infer that an enum entry's
     value has that type.
     """
-    type_with_new = _first(
-        ti
-        for ti in info.mro
-        if ti.is_enum and ti.names.get("__new__")
-    )
+    type_with_new = _first(ti for ti in info.mro if ti.is_enum and ti.names.get("__new__"))
     if type_with_new is None:
         return False
     return type_with_new.fullname not in ("enum.Enum", "enum.IntEnum", "enum.StrEnum")
