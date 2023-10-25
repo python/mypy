@@ -2064,5 +2064,3 @@ match(b)  # E: Argument 1 to "match" has incompatible type "Bad"; expected "PC[U
           # N:     Got: \
           # N:         def meth(self, *, named: int) -> None
 [builtins fixtures/tuple.pyi]
-
--- Match statement

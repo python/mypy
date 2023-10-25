@@ -733,9 +733,13 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 for li in left.items:
                     if isinstance(li, UnpackType):
                         unpack = get_proper_type(li.type)
-                        if isinstance(unpack, Instance):
-                            assert unpack.type.fullname == "builtins.tuple"
-                            li = unpack.args[0]
+                        if isinstance(unpack, TypeVarTupleType):
+                            unpack = get_proper_type(unpack.upper_bound)
+                        assert (
+                            isinstance(unpack, Instance)
+                            and unpack.type.fullname == "builtins.tuple"
+                        )
+                        li = unpack.args[0]
                     if not self._is_subtype(li, iter_type):
                         return False
                 return True
