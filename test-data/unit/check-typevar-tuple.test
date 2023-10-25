@@ -2064,3 +2064,14 @@ match(b)  # E: Argument 1 to "match" has incompatible type "Bad"; expected "PC[U
           # N:     Got: \
           # N:         def meth(self, *, named: int) -> None
 [builtins fixtures/tuple.pyi]
+
+[case testVariadicTupleCollectionCheck]
+from typing import Tuple, Optional
+from typing_extensions import Unpack
+
+allowed: Tuple[int, Unpack[Tuple[int, ...]]]
+
+x: Optional[int]
+if x in allowed:
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]

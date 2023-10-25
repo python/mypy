@@ -1403,7 +1403,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_unbound_return_typevar(self, typ: CallableType) -> None:
         """Fails when the return typevar is not defined in arguments."""
-        # TODO: add similar check for TypeVarTuple/ParamSpec.
         if isinstance(typ.ret_type, TypeVarType) and typ.ret_type in typ.variables:
             arg_type_visitor = CollectArgTypeVarTypes()
             for argtype in typ.arg_types:
@@ -4718,7 +4717,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Helper for check_except_handler_test to retrieve handler types."""
         typ = get_proper_type(typ)
         if isinstance(typ, TupleType):
-            # TODO: handle unpack here.
             return typ.items
         elif isinstance(typ, UnionType):
             return [
@@ -7462,11 +7460,21 @@ def builtin_item_type(tp: Type) -> Type | None:
                 return None
             if not isinstance(get_proper_type(tp.args[0]), AnyType):
                 return tp.args[0]
-    elif isinstance(tp, TupleType) and all(
-        not isinstance(it, AnyType) for it in get_proper_types(tp.items)
-    ):
-        # TODO: handle unpack here.
-        return make_simplified_union(tp.items)  # this type is not externally visible
+    elif isinstance(tp, TupleType):
+        normalized_items = []
+        for it in tp.items:
+            if isinstance(it, UnpackType):
+                unpacked = get_proper_type(it.type)
+                if isinstance(unpacked, TypeVarTupleType):
+                    unpacked = get_proper_type(unpacked.upper_bound)
+                assert (
+                    isinstance(unpacked, Instance) and unpacked.type.fullname == "builtins.tuple"
+                )
+                normalized_items.append(unpacked.args[0])
+            else:
+                normalized_items.append(it)
+        if all(not isinstance(it, AnyType) for it in get_proper_types(normalized_items)):
+            return make_simplified_union(normalized_items)  # this type is not externally visible
     elif isinstance(tp, TypedDictType):
         # TypedDict always has non-optional string keys. Find the key type from the Mapping
         # base class.
@@ -7602,7 +7610,6 @@ def flatten_types(t: Type) -> list[Type]:
     """Flatten a nested sequence of tuples into one list of nodes."""
     t = get_proper_type(t)
     if isinstance(t, TupleType):
-        # TODO: handle unpack here.
         return [b for a in t.items for b in flatten_types(a)]
     elif is_named_instance(t, "builtins.tuple"):
         return [t.args[0]]
@@ -7830,8 +7837,6 @@ class InvalidInferredTypes(BoolTypeQuery):
         # This is needed to prevent leaking into partial types during
         # multi-step type inference.
         return t.id.is_meta_var()
-
-    # TODO: add same as above for TypeVarTuple/ParamSpec
 
 
 class SetNothingToAny(TypeTranslator):

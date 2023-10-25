@@ -64,6 +64,9 @@ def get_target_type(
     else:
         upper_bound = tvar.upper_bound
         if tvar.name == "Self":
+            # Internally constructed Self-types contain class type variables in upper bound,
+            # so we need to erase them to avoid false positives. This is safe because we do
+            # not support type variables in upper bounds of user defined types.
             upper_bound = erase_typevars(upper_bound)
         if not mypy.subtypes.is_subtype(type, upper_bound):
             if skip_unsatisfied:
