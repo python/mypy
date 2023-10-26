@@ -39,6 +39,7 @@ from mypy.types import (
     Instance,
     LiteralType,
     NoneType,
+    NormalizedCallableType,
     Overloaded,
     Parameters,
     ParamSpecType,
@@ -364,11 +365,10 @@ def erase_to_bound(t: Type) -> Type:
 
 
 def callable_corresponding_argument(
-    typ: CallableType | Parameters, model: FormalArgument
+    typ: NormalizedCallableType | Parameters, model: FormalArgument
 ) -> FormalArgument | None:
     """Return the argument a function that corresponds to `model`"""
 
-    # TODO: this should use NormalizedCallable
     by_name = typ.argument_by_name(model.name)
     by_pos = typ.argument_by_position(model.pos)
     if by_name is None and by_pos is None:

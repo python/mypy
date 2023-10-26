@@ -28,6 +28,7 @@ from mypy.types import (
     Instance,
     LiteralType,
     NoneType,
+    NormalizedCallableType,
     Overloaded,
     Parameters,
     ParamSpecType,
@@ -1535,7 +1536,9 @@ def infer_directed_arg_constraints(left: Type, right: Type, direction: int) -> l
 
 
 def infer_callable_arguments_constraints(
-    template: CallableType | Parameters, actual: CallableType | Parameters, direction: int
+    template: NormalizedCallableType | Parameters,
+    actual: NormalizedCallableType | Parameters,
+    direction: int,
 ) -> list[Constraint]:
     """Infer constraints between argument types of two callables.
 
