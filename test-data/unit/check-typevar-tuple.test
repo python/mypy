@@ -2075,3 +2075,14 @@ x: Optional[int]
 if x in allowed:
     reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
+
+[case testJoinOfVariadicTupleCallablesNoCrash]
+from typing import Callable, Tuple
+
+f: Callable[[int, *Tuple[str, ...], int], None]
+g: Callable[[int, *Tuple[str, ...], int], None]
+reveal_type([f, g])  # N: Revealed type is "builtins.list[def (builtins.int, *Unpack[Tuple[Unpack[builtins.tuple[builtins.str, ...]], builtins.int]])]"
+
+h: Callable[[int, *Tuple[str, ...], str], None]
+reveal_type([f, h])  # N: Revealed type is "builtins.list[def (builtins.int, *Unpack[Tuple[Unpack[builtins.tuple[builtins.str, ...]], Never]])]"
+[builtins fixtures/tuple.pyi]
