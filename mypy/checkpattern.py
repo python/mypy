@@ -256,7 +256,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             else:
                 normalized_inner_types = []
                 for it in inner_types:
-                    # Unfortunately, it is not possible to "split" the TYpeVarTuple
+                    # Unfortunately, it is not possible to "split" the TypeVarTuple
                     # into individual items, so we just use its upper bound for the whole
                     # analysis instead.
                     if isinstance(it, UnpackType) and isinstance(it.type, TypeVarTupleType):

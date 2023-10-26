@@ -7463,6 +7463,7 @@ def builtin_item_type(tp: Type) -> Type | None:
     elif isinstance(tp, TupleType):
         normalized_items = []
         for it in tp.items:
+            # This use case is probably rare, but not handling unpacks here can cause crashes.
             if isinstance(it, UnpackType):
                 unpacked = get_proper_type(it.type)
                 if isinstance(unpacked, TypeVarTupleType):

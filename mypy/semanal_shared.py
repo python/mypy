@@ -290,6 +290,7 @@ def calculate_tuple_fallback(typ: TupleType) -> None:
     assert fallback.type.fullname == "builtins.tuple"
     items = []
     for item in typ.items:
+        # TODO: this duplicates some logic in typeops.tuple_fallback().
         if isinstance(item, UnpackType):
             unpacked_type = get_proper_type(item.type)
             if isinstance(unpacked_type, TypeVarTupleType):

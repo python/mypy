@@ -2052,4 +2052,7 @@ class C(B[T, S]): ...
 
 c: C[int, str]
 reveal_type(C.copy(c))  # N: Revealed type is "__main__.C[builtins.int, builtins.str]"
+
+B.copy(42)  # E: Value of type variable "Self" of "copy" of "B" cannot be "int"
+C.copy(42)  # E: Value of type variable "Self" of "copy" of "B" cannot be "int"
 [builtins fixtures/tuple.pyi]
