@@ -1578,7 +1578,7 @@ def generate_stub_for_py_module(
     subdir = os.path.dirname(target)
     if subdir and not os.path.isdir(subdir):
         os.makedirs(subdir)
-    with open(target, "w") as file:
+    with open(target, "w", encoding="utf-8") as file:
         file.write(output)
 
 
