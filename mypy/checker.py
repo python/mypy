@@ -800,7 +800,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 # Is the overload alternative's arguments subtypes of the implementation's?
                 if not is_callable_compatible(
-                    impl, sig1, is_compat=is_subtype, ignore_return=True
+                    impl, sig1, is_compat=is_subtype, is_proper_subtype=False, ignore_return=True
                 ):
                     self.msg.overloaded_signatures_arg_specific(i + 1, defn.impl)
 
@@ -7685,6 +7685,7 @@ def is_unsafe_overlapping_overload_signatures(
         signature,
         other,
         is_compat=is_overlapping_types_no_promote_no_uninhabited_no_none,
+        is_proper_subtype=False,
         is_compat_return=lambda l, r: not is_subtype_no_promote(l, r),
         ignore_return=False,
         check_args_covariantly=True,
@@ -7694,6 +7695,7 @@ def is_unsafe_overlapping_overload_signatures(
         other,
         signature,
         is_compat=is_overlapping_types_no_promote_no_uninhabited_no_none,
+        is_proper_subtype=False,
         is_compat_return=lambda l, r: not is_subtype_no_promote(r, l),
         ignore_return=False,
         check_args_covariantly=False,
@@ -7744,7 +7746,7 @@ def overload_can_never_match(signature: CallableType, other: CallableType) -> bo
         signature, {tvar.id: erase_def_to_union_or_bound(tvar) for tvar in signature.variables}
     )
     return is_callable_compatible(
-        exp_signature, other, is_compat=is_more_precise, ignore_return=True
+        exp_signature, other, is_compat=is_more_precise, is_proper_subtype=True, ignore_return=True
     )
 
 
@@ -7754,7 +7756,9 @@ def is_more_general_arg_prefix(t: FunctionLike, s: FunctionLike) -> bool:
     #      general than one with fewer items (or just one item)?
     if isinstance(t, CallableType):
         if isinstance(s, CallableType):
-            return is_callable_compatible(t, s, is_compat=is_proper_subtype, ignore_return=True)
+            return is_callable_compatible(
+                t, s, is_compat=is_proper_subtype, is_proper_subtype=True, ignore_return=True
+            )
     elif isinstance(t, FunctionLike):
         if isinstance(s, FunctionLike):
             if len(t.items) == len(s.items):
@@ -7769,6 +7773,7 @@ def is_same_arg_prefix(t: CallableType, s: CallableType) -> bool:
         t,
         s,
         is_compat=is_same_type,
+        is_proper_subtype=True,
         ignore_return=True,
         check_args_covariantly=True,
         ignore_pos_arg_names=True,
