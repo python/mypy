@@ -43,6 +43,7 @@ def solve_constraints(
     constraints: list[Constraint],
     strict: bool = True,
     allow_polymorphic: bool = False,
+    skip_unsatisfied: bool = False,
 ) -> tuple[list[Type | None], list[TypeVarLikeType]]:
     """Solve type constraints.
 
@@ -54,6 +55,8 @@ def solve_constraints(
     If allow_polymorphic=True, then use the full algorithm that can potentially return
     free type variables in solutions (these require special care when applying). Otherwise,
     use a simplified algorithm that just solves each type variable individually if possible.
+
+    The skip_unsatisfied flag matches the same one in applytype.apply_generic_arguments().
     """
     vars = [tv.id for tv in original_vars]
     if not vars:
@@ -110,7 +113,7 @@ def solve_constraints(
                 candidate = AnyType(TypeOfAny.special_form)
             res.append(candidate)
 
-    if not free_vars:
+    if not free_vars and not skip_unsatisfied:
         # Most of the validation for solutions is done in applytype.py, but here we can
         # quickly test solutions w.r.t. to upper bounds, and use the latter (if possible),
         # if solutions are actually not valid (due to poor inference context).
