@@ -1989,7 +1989,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # in this case external context is almost everything we have.
             if not is_generic_instance(ctx) and not is_literal_type_like(ctx):
                 return callable.copy_modified()
-        args = infer_type_arguments(callable.variables, ret_type, erased_ctx)
+        args = infer_type_arguments(
+            callable.variables, ret_type, erased_ctx, skip_unsatisfied=True
+        )
         # Only substitute non-Uninhabited and non-erased types.
         new_args: list[Type | None] = []
         for arg in args:
