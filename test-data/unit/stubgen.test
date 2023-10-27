@@ -3485,7 +3485,7 @@ def f2(): ...
 class A:
     """class docstring
 
-    a multiline docstring"""
+    a multiline 😊 docstring"""
     def func():
         """func docstring
         don't forget to indent"""
@@ -3512,7 +3512,7 @@ class B:
 class A:
     """class docstring
 
-    a multiline docstring"""
+    a multiline 😊 docstring"""
     def func() -> None:
         """func docstring
         don't forget to indent"""
