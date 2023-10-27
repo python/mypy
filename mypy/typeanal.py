@@ -490,7 +490,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         #       need access to MessageBuilder here. Also move the similar
         #       message generation logic in semanal.py.
         self.api.fail(f'Cannot resolve name "{t.name}" (possible cyclic definition)', t)
-        if not self.options.disable_recursive_aliases and self.api.is_func_scope():
+        if self.api.is_func_scope():
             self.note("Recursive types are not allowed at function scope", t)
 
     def apply_concatenate_operator(self, t: UnboundType) -> Type:

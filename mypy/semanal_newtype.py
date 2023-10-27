@@ -207,8 +207,7 @@ class NewTypeAnalyzer:
             self.api.anal_type(
                 unanalyzed_type,
                 report_invalid_types=False,
-                allow_placeholder=not self.options.disable_recursive_aliases
-                and not self.api.is_func_scope(),
+                allow_placeholder=not self.api.is_func_scope(),
             )
         )
         should_defer = False
