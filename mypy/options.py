@@ -362,10 +362,6 @@ class Options:
         self.many_errors_threshold = defaults.MANY_ERRORS_THRESHOLD
         # Enable new experimental type inference algorithm.
         self.new_type_inference = False
-        # Disable recursive type aliases (currently experimental)
-        self.disable_recursive_aliases = False
-        # Deprecated reverse version of the above, do not use.
-        self.enable_recursive_aliases = False
         # Export line-level, limited, fine-grained dependency information in cache data
         # (undocumented feature).
         self.export_ref_info = False

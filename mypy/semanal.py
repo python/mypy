@@ -3608,7 +3608,7 @@ class SemanticAnalyzer(
             )
             if not res:
                 return False
-            if not self.options.disable_recursive_aliases and not self.is_func_scope():
+            if not self.is_func_scope():
                 # Only marking incomplete for top-level placeholders makes recursive aliases like
                 # `A = Sequence[str | A]` valid here, similar to how we treat base classes in class
                 # definitions, allowing `class str(Sequence[str]): ...`
@@ -6296,7 +6296,7 @@ class SemanticAnalyzer(
     def cannot_resolve_name(self, name: str | None, kind: str, ctx: Context) -> None:
         name_format = f' "{name}"' if name else ""
         self.fail(f"Cannot resolve {kind}{name_format} (possible cyclic definition)", ctx)
-        if not self.options.disable_recursive_aliases and self.is_func_scope():
+        if self.is_func_scope():
             self.note("Recursive types are not allowed at function scope", ctx)
 
     def qualified_name(self, name: str) -> str:
