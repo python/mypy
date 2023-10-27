@@ -1582,7 +1582,11 @@ def are_parameters_compatible(
         return True
     trivial_suffix = is_trivial_suffix(right) and not is_proper_subtype
 
-    if right.arg_kinds == [ARG_STAR] and isinstance(get_proper_type(right.arg_types[0]), AnyType):
+    if (
+        right.arg_kinds == [ARG_STAR]
+        and isinstance(get_proper_type(right.arg_types[0]), AnyType)
+        and not is_proper_subtype
+    ):
         # Similar to how (*Any, **Any) is considered a supertype of all callables, we consider
         # (*Any) a supertype of all callables with positional arguments. This is needed in
         # particular because we often refuse to try type inference if actual type is not
