@@ -892,7 +892,30 @@ if a:
 any_or_object: Union[object, Any]
 if any_or_object:
     pass
+
 [builtins fixtures/list.pyi]
+
+[case testTruthyBool_finally]
+# flags: --enable-error-code truthy-bool
+from typing import Optional
+
+class C:
+    pass
+
+# 'finally' clause is checked twice: for success scenario ('try' clause fallthrough)
+# and for exception scenario. Only if both checks indicate an error, then we flag it.
+# See https://github.com/python/mypy/issues/16193
+definitely_c = C()
+maybe_c: Optional[C] = None
+try:
+    maybe_c = definitely_c
+    if maybe_c:  # E: "__main__.maybe_c" has type "C" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+        pass
+finally:
+    if maybe_c:
+        pass
+    if definitely_c:  # E: "__main__.definitely_c" has type "C" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+        pass
 
 [case testTruthyFunctions]
 def f():
@@ -902,6 +925,31 @@ if f:  # E: Function "f" could always be true in boolean context  [truthy-functi
 if not f:  # E: Function "f" could always be true in boolean context  [truthy-function]
     pass
 conditional_result = 'foo' if f else 'bar'  # E: Function "f" could always be true in boolean context  [truthy-function]
+
+[case testTruthyFunction_TypeVar]
+from typing import Callable, TypeVar
+
+T = TypeVar("T", Callable[[], int], None)
+
+def test(x: T) -> bool:
+    if not x:
+        return False
+    return True
+
+[case testTruthyFunction_TypeVar_DifferentCodes]
+# flags: --enable-error-code truthy-bool
+from typing import Callable, TypeVar
+
+class C:
+    pass
+
+T = TypeVar("T", Callable[[], int], C)
+
+def test(x: T) -> bool:
+    if not x:  # E: Function "x" could always be true in boolean context  [truthy-function] \
+               # E: "x" has type "C" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+        return False
+    return True
 
 [case testTruthyIterable]
 # flags: --enable-error-code truthy-iterable

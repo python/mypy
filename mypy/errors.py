@@ -213,6 +213,64 @@ class ErrorWatcher:
         return self._filtered
 
 
+_UniqueErrorT: _TypeAlias = Tuple[str, int, int, int, int]
+
+
+def _to_unique_error(e: ErrorInfo) -> _UniqueErrorT:
+    return e.file, e.line, e.end_line, e.column, e.end_column
+
+
+class MultiCheckErrorBuffer(ErrorWatcher):
+    """
+    Buffers errors from multiple checks to the same tree node, which is what we do in some cases
+    like expanding a TypeVar with constraints, or handling a 'try' with a 'finally' clause.
+
+    Some errors should be reported only if they were reported by *all* checks.
+    """
+
+    _CODES = frozenset({codes.TRUTHY_BOOL, codes.TRUTHY_FUNCTION, codes.TRUTHY_ITERABLE})
+    _last_consecutive_check: dict[_UniqueErrorT, int]
+
+    def __init__(self, errors: Errors) -> None:
+        super().__init__(errors, filter_errors=True, save_filtered_errors=True)
+        self.check_idx = 0
+        self._last_consecutive_check = defaultdict(int)
+
+    def _track_error(self, info: ErrorInfo) -> None:
+        k = _to_unique_error(info)
+        last_consecutive_check = self._last_consecutive_check[k]
+        # if the error appeared in all previous checks, count the current check too
+        if last_consecutive_check == self.check_idx - 1:
+            self._last_consecutive_check[k] = self.check_idx
+
+    def __enter__(self):
+        self.check_idx += 1
+        return super().__enter__()
+
+    def on_error(self, file: str, info: ErrorInfo) -> bool:
+        self._track_error(info)
+        return super().on_error(file, info)
+
+    def flush(self) -> None:
+        for error in self.filtered_errors():
+            v = self._last_consecutive_check.get(_to_unique_error(error))
+            if v is None or v == self.check_idx:
+                self.errors.add_error_info(error)
+
+
+class DummyErrorBuffer:
+    """Dummy error buffer that does nothing."""
+
+    def __enter__(self) -> DummyErrorBuffer:
+        return self
+
+    def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> Literal[False]:
+        return False
+
+    def flush(self) -> None:
+        pass
+
+
 class Errors:
     """Container for compile errors.
 
