@@ -351,10 +351,13 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         if isinstance(self.s, Parameters):
             if len(t.arg_types) != len(self.s.arg_types):
                 return self.default(self.s)
+            from mypy.meet import meet_types
+
             return t.copy_modified(
-                # Note that since during constraint inference we already treat whole ParamSpec as
-                # contravariant, we should join individual items, not meet them like for Callables
-                arg_types=[join_types(s_a, t_a) for s_a, t_a in zip(self.s.arg_types, t.arg_types)]
+                arg_types=[
+                    meet_types(s_a, t_a) for s_a, t_a in zip(self.s.arg_types, t.arg_types)
+                ],
+                arg_names=combine_arg_names(self.s, t),
             )
         else:
             return self.default(self.s)
@@ -785,7 +788,9 @@ def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     )
 
 
-def combine_arg_names(t: CallableType, s: CallableType) -> list[str | None]:
+def combine_arg_names(
+    t: CallableType | Parameters, s: CallableType | Parameters
+) -> list[str | None]:
     """Produces a list of argument names compatible with both callables.
 
     For example, suppose 't' and 's' have the following signatures:

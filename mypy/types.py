@@ -1562,7 +1562,10 @@ class FormalArgument(NamedTuple):
 class Parameters(ProperType):
     """Type that represents the parameters to a function.
 
-    Used for ParamSpec analysis."""
+    Used for ParamSpec analysis. Note that by convention we handle this
+    type as a Callable without return type, not as a "tuple with names",
+    so that it behaves contravariantly, in particular [x: int] <: [int].
+    """
 
     __slots__ = (
         "arg_types",
@@ -3265,15 +3268,16 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             num_skip = 0
 
         s = ""
-        bare_asterisk = False
+        asterisk = False
         for i in range(len(t.arg_types) - num_skip):
             if s != "":
                 s += ", "
-            if t.arg_kinds[i].is_named() and not bare_asterisk:
+            if t.arg_kinds[i].is_named() and not asterisk:
                 s += "*, "
-                bare_asterisk = True
+                asterisk = True
             if t.arg_kinds[i] == ARG_STAR:
                 s += "*"
+                asterisk = True
             if t.arg_kinds[i] == ARG_STAR2:
                 s += "**"
             name = t.arg_names[i]

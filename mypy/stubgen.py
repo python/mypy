@@ -633,6 +633,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
 
         Only preserve certain special decorators such as @abstractmethod.
         """
+        o.func.is_overload = False
         for decorator in o.original_decorators:
             if not isinstance(decorator, (NameExpr, MemberExpr)):
                 continue

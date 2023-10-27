@@ -7784,12 +7784,23 @@ def infer_operator_assignment_method(typ: Type, operator: str) -> tuple[bool, st
     """
     typ = get_proper_type(typ)
     method = operators.op_methods[operator]
+    existing_method = None
     if isinstance(typ, Instance):
-        if operator in operators.ops_with_inplace_method:
-            inplace_method = "__i" + method[2:]
-            if typ.type.has_readable_member(inplace_method):
-                return True, inplace_method
+        existing_method = _find_inplace_method(typ, method, operator)
+    elif isinstance(typ, TypedDictType):
+        existing_method = _find_inplace_method(typ.fallback, method, operator)
+
+    if existing_method is not None:
+        return True, existing_method
     return False, method
+
+
+def _find_inplace_method(inst: Instance, method: str, operator: str) -> str | None:
+    if operator in operators.ops_with_inplace_method:
+        inplace_method = "__i" + method[2:]
+        if inst.type.has_readable_member(inplace_method):
+            return inplace_method
+    return None
 
 
 def is_valid_inferred_type(typ: Type, is_lvalue_final: bool = False) -> bool:

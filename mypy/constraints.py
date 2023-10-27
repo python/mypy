@@ -693,11 +693,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             return self.infer_against_any(template.arg_types, self.actual)
         if type_state.infer_polymorphic and isinstance(self.actual, Parameters):
             # For polymorphic inference we need to be able to infer secondary constraints
-            # in situations like [x: T] <: P <: [x: int]. Note we invert direction, since
-            # this function expects direction between callables.
-            return infer_callable_arguments_constraints(
-                template, self.actual, neg_op(self.direction)
-            )
+            # in situations like [x: T] <: P <: [x: int].
+            return infer_callable_arguments_constraints(template, self.actual, self.direction)
         raise RuntimeError("Parameters cannot be constrained to")
 
     # Non-leaf types
@@ -1129,7 +1126,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             )
                         )
                 if param_spec_target is not None:
-                    res.append(Constraint(param_spec, neg_op(self.direction), param_spec_target))
+                    res.append(Constraint(param_spec, self.direction, param_spec_target))
             if extra_tvars:
                 for c in res:
                     c.extra_tvars += cactual.variables

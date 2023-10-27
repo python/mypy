@@ -708,10 +708,10 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         if isinstance(self.s, Parameters):
             if len(t.arg_types) != len(self.s.arg_types):
                 return self.default(self.s)
+            from mypy.join import join_types
+
             return t.copy_modified(
-                # Note that since during constraint inference we already treat whole ParamSpec as
-                # contravariant, we should meet individual items, not join them like for Callables
-                arg_types=[meet_types(s_a, t_a) for s_a, t_a in zip(self.s.arg_types, t.arg_types)]
+                arg_types=[join_types(s_a, t_a) for s_a, t_a in zip(self.s.arg_types, t.arg_types)]
             )
         else:
             return self.default(self.s)
