@@ -4043,11 +4043,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return True
         if len(t.args) == 1:
             arg = get_proper_type(t.args[0])
-            if self.options.new_type_inference:
-                allowed = isinstance(arg, (UninhabitedType, NoneType))
-            else:
+            if self.options.old_type_inference:
                 # Allow leaked TypeVars for legacy inference logic.
                 allowed = isinstance(arg, (UninhabitedType, NoneType, TypeVarType))
+            else:
+                allowed = isinstance(arg, (UninhabitedType, NoneType))
             if allowed:
                 return True
         return False
