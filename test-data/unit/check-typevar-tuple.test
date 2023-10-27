@@ -2083,6 +2083,8 @@ reveal_type([f, g])  # N: Revealed type is "builtins.list[def (builtins.int, *Un
 
 h: Callable[[int, *Tuple[str, ...], str], None]
 reveal_type([f, h])  # N: Revealed type is "builtins.list[def (builtins.int, *Unpack[Tuple[Unpack[builtins.tuple[builtins.str, ...]], Never]])]"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeVarTupleBothUnpacksSimple]
 from typing import Tuple
 from typing_extensions import Unpack, TypeVarTuple, TypedDict
