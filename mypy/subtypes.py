@@ -658,6 +658,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 left,
                 self.right,
                 is_compat=self._is_subtype,
+                # TODO: this should pass the current value, but then couple tests fail.
+                is_proper_subtype=False,
                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
             )
         else:
@@ -677,6 +679,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 left,
                 right,
                 is_compat=self._is_subtype,
+                is_proper_subtype=self.proper_subtype,
                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
                 strict_concatenate=(self.options.extra_checks or self.options.strict_concatenate)
                 if self.options
@@ -932,6 +935,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                                 left_item,
                                 right_item,
                                 is_compat=self._is_subtype,
+                                is_proper_subtype=self.proper_subtype,
                                 ignore_return=True,
                                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
                                 strict_concatenate=strict_concat,
@@ -940,6 +944,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                                 right_item,
                                 left_item,
                                 is_compat=self._is_subtype,
+                                is_proper_subtype=self.proper_subtype,
                                 ignore_return=True,
                                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
                                 strict_concatenate=strict_concat,
@@ -1358,6 +1363,7 @@ def is_callable_compatible(
     right: CallableType,
     *,
     is_compat: Callable[[Type, Type], bool],
+    is_proper_subtype: bool,
     is_compat_return: Callable[[Type, Type], bool] | None = None,
     ignore_return: bool = False,
     ignore_pos_arg_names: bool = False,
@@ -1517,6 +1523,7 @@ def is_callable_compatible(
         left,
         right,
         is_compat=is_compat,
+        is_proper_subtype=is_proper_subtype,
         ignore_pos_arg_names=ignore_pos_arg_names,
         allow_partial_overlap=allow_partial_overlap,
         strict_concatenate_check=strict_concatenate_check,
@@ -1552,12 +1559,13 @@ def are_parameters_compatible(
     right: Parameters | NormalizedCallableType,
     *,
     is_compat: Callable[[Type, Type], bool],
+    is_proper_subtype: bool,
     ignore_pos_arg_names: bool = False,
     allow_partial_overlap: bool = False,
     strict_concatenate_check: bool = False,
 ) -> bool:
     """Helper function for is_callable_compatible, used for Parameter compatibility"""
-    if right.is_ellipsis_args:
+    if right.is_ellipsis_args and not is_proper_subtype:
         return True
 
     left_star = left.var_arg()
@@ -1566,9 +1574,9 @@ def are_parameters_compatible(
     right_star2 = right.kw_arg()
 
     # Treat "def _(*a: Any, **kw: Any) -> X" similarly to "Callable[..., X]"
-    if are_trivial_parameters(right):
+    if are_trivial_parameters(right) and not is_proper_subtype:
         return True
-    trivial_suffix = is_trivial_suffix(right)
+    trivial_suffix = is_trivial_suffix(right) and not is_proper_subtype
 
     # Match up corresponding arguments and check them for compatibility. In
     # every pair (argL, argR) of corresponding arguments from L and R, argL must
