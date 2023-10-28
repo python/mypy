@@ -575,7 +575,7 @@ class B:
 [case testDaemonInspectSelectCorrectFile]
 $ dmypy run test.py --export-types
 Daemon started
-Success: no issues found in 42 source files
+Success: no issues found in 1 source file
 $ dmypy inspect demo/test.py:1:1
 "int"
 $ dmypy inspect test.py:1:1

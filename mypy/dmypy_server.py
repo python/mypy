@@ -461,6 +461,7 @@ class Server:
         messages = result.errors
         self.fine_grained_manager = FineGrainedBuildManager(result)
 
+        original_sources_len = len(sources)
         if self.following_imports():
             sources = find_all_sources_in_build(self.fine_grained_manager.graph, sources)
             self.update_sources(sources)
@@ -525,7 +526,8 @@ class Server:
 
         __, n_notes, __ = count_stats(messages)
         status = 1 if messages and n_notes < len(messages) else 0
-        messages = self.pretty_messages(messages, len(sources), is_tty, terminal_width)
+        # We use explicit sources length to match the logic in non-incremental mode.
+        messages = self.pretty_messages(messages, original_sources_len, is_tty, terminal_width)
         return {"out": "".join(s + "\n" for s in messages), "err": "", "status": status}
 
     def fine_grained_increment(
