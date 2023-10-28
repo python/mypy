@@ -4,6 +4,7 @@ import os
 from unittest import TestCase, mock
 
 from mypy.util import get_terminal_width
+from mypy.inspections import parse_location
 
 
 class TestGetTerminalSize(TestCase):
@@ -15,3 +16,7 @@ class TestGetTerminalSize(TestCase):
         with mock.patch.object(os, "get_terminal_size", return_value=ret):
             with mock.patch.dict(os.environ, values=mock_environ, clear=True):
                 assert get_terminal_width() == 80
+
+    def test_parse_location_windows(self) -> None:
+        assert parse_location(r"C:\test.py:1:1") == (r"C:\test.py", [1, 1])
+        assert parse_location(r"C:\test.py:1:1:1:1") == (r"C:\test.py", [1, 1, 1, 1])
