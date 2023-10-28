@@ -6,7 +6,6 @@ from functools import cmp_to_key
 from typing import Callable
 
 from mypy.build import State
-from mypy.find_sources import InvalidSourceList, SourceFinder
 from mypy.messages import format_type
 from mypy.modulefinder import PYTHON_EXTENSIONS
 from mypy.nodes import (
@@ -206,9 +205,6 @@ class InspectionEngine:
         force_reload: bool = False,
     ) -> None:
         self.fg_manager = fg_manager
-        self.finder = SourceFinder(
-            self.fg_manager.manager.fscache, self.fg_manager.manager.options
-        )
         self.verbosity = verbosity
         self.limit = limit
         self.include_span = include_span
@@ -561,16 +557,14 @@ class InspectionEngine:
         if not any(file.endswith(ext) for ext in PYTHON_EXTENSIONS):
             return None, {"error": "Source file is not a Python file"}
 
-        try:
-            module, _ = self.finder.crawl_up(os.path.normpath(file))
-        except InvalidSourceList:
-            return None, {"error": "Invalid source file name: " + file}
-
-        state = self.fg_manager.graph.get(module)
+        # We are using a bit slower but robust way to find a module by path,
+        # to be sure that namespace packages are handled properly.
+        abs_path = os.path.abspath(file)
+        state = next((s for s in self.fg_manager.graph.values() if s.abspath == abs_path), None)
         self.module = state
         return (
             state,
-            {"out": f"Unknown module: {module}", "err": "", "status": 1} if state is None else {},
+            {"out": f"Unknown module: {file}", "err": "", "status": 1} if state is None else {},
         )
 
     def run_inspection(
