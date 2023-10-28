@@ -1002,16 +1002,16 @@ Enabling incomplete/experimental features
     ambiguous semantics that would benefit from feedback from the community.
     You can enable such features for early preview using this flag. Note that
     it is not guaranteed that all features will be ultimately enabled by
-    default, in *rare cases* we may decide to not go ahead with certain
+    default. In *rare cases* we may decide to not go ahead with certain
     features.
 
 List of currently incomplete/experimental features:
 
 * ``PreciseTupleTypes``: this feature will infer more precise tuple types in
-  various scenarios. Before variadic types were added to Python type system
+  various scenarios. Before variadic types were added to the Python type system
   by :pep:`646`, it was impossible to express a type like "a tuple with
-  at least two integers". The best type available was ``tuple[int, ...]``,
-  therefore, mypy applied very lenient checking for variable-length tuples.
+  at least two integers". The best type available was ``tuple[int, ...]``.
+  Therefore, mypy applied very lenient checking for variable-length tuples.
   Now this type can be expressed as ``tuple[int, int, *tuple[int, ...]]``.
   For such more precise types (when explicitly *defined* by a user) mypy,
   for example, warns about unsafe index access, and generally handles them
