@@ -557,6 +557,12 @@ class Server:
             # Use the remove/update lists to update fswatcher.
             # This avoids calling stat() for unchanged files.
             changed, removed = self.update_changed(sources, remove or [], update or [])
+        if self.options.export_types:
+            # If --export-types is given, we need to force full re-checking of all
+            # explicitly passed files, since we need to visit each expression.
+            changed += [
+                (bs.module, bs.path) for bs in sources if (bs.module, bs.path) not in changed
+            ]
         changed += self.find_added_suppressed(
             self.fine_grained_manager.graph, set(), manager.search_paths
         )
@@ -601,6 +607,11 @@ class Server:
         changed, new_files = self.find_reachable_changed_modules(
             sources, graph, seen, changed_paths
         )
+        if self.options.export_types:
+            # Same as in fine_grained_increment().
+            changed += [
+                (bs.module, bs.path) for bs in sources if (bs.module, bs.path) not in changed
+            ]
         sources.extend(new_files)
 
         # Process changes directly reachable from roots.
