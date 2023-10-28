@@ -283,14 +283,7 @@ from mypy.types import (
 )
 from mypy.types_utils import is_invalid_recursive_alias, store_argument_type
 from mypy.typevars import fill_typevars
-from mypy.util import (
-    correct_relative_import,
-    is_dunder,
-    is_typeshed_file,
-    module_prefix,
-    unmangle,
-    unnamed_function,
-)
+from mypy.util import correct_relative_import, is_dunder, module_prefix, unmangle, unnamed_function
 from mypy.visitor import NodeVisitor
 
 T = TypeVar("T")
@@ -777,9 +770,7 @@ class SemanticAnalyzer(
         self.cur_mod_id = file_node.fullname
         with scope.module_scope(self.cur_mod_id):
             self._is_stub_file = file_node.path.lower().endswith(".pyi")
-            self._is_typeshed_stub_file = is_typeshed_file(
-                options.abs_custom_typeshed_dir, file_node.path
-            )
+            self._is_typeshed_stub_file = file_node.is_typeshed_file(options)
             self.globals = file_node.names
             self.tvar_scope = TypeVarLikeScope()
 
