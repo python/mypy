@@ -40,8 +40,16 @@ from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 
-if sys.version_info < (3, 12):
-    if TYPE_CHECKING:
+try:
+    # Import setuptools so that it monkey-patch overrides distutils
+    import setuptools
+except ImportError:
+    pass
+
+if TYPE_CHECKING:
+    if sys.version_info >= (3, 12):
+        from setuptools import Extension
+    else:
         from distutils.core import Extension as _distutils_Extension
         from typing_extensions import TypeAlias
 
@@ -49,22 +57,11 @@ if sys.version_info < (3, 12):
 
         Extension: TypeAlias = Union[_setuptools_Extension, _distutils_Extension]
 
-    try:
-        # Import setuptools so that it monkey-patch overrides distutils
-        import setuptools
-    except ImportError:
-        pass
-    from distutils import ccompiler, sysconfig
+if sys.version_info >= (3, 12):
+    # From setuptools' monkeypatch
+    from distutils import ccompiler, sysconfig  # type: ignore[import-not-found]
 else:
-    import setuptools
-    from setuptools import Extension
-    from setuptools._distutils import (
-        ccompiler as _ccompiler,  # type: ignore[attr-defined]
-        sysconfig as _sysconfig,  # type: ignore[attr-defined]
-    )
-
-    ccompiler = _ccompiler
-    sysconfig = _sysconfig
+    from distutils import ccompiler, sysconfig
 
 
 def get_extension() -> type[Extension]:
