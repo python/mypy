@@ -1585,3 +1585,13 @@ disable_error_code =
 always_true =
   MY_VAR,
 [out]
+
+[case testTypeVarTupleUnpackEnabled]
+# cmd: mypy --enable-incomplete-feature=TypeVarTuple --enable-incomplete-feature=Unpack a.py
+[file a.py]
+from typing_extensions import TypeVarTuple
+Ts = TypeVarTuple("Ts")
+[out]
+Warning: TypeVarTuple is already enabled by default
+Warning: Unpack is already enabled by default
+== Return code: 0

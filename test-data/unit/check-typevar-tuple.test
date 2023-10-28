@@ -1653,6 +1653,7 @@ def foo(arg: Tuple[int, Unpack[Ts], str]) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testPackingVariadicTuplesHomogeneous]
+# flags: --enable-incomplete-feature=PreciseTupleTypes
 from typing import Tuple
 from typing_extensions import Unpack
 
@@ -1689,6 +1690,7 @@ def foo(arg: Tuple[int, Unpack[Ts], str]) -> None:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testVariadicTupleInTupleContext]
+# flags: --enable-incomplete-feature=PreciseTupleTypes
 from typing import Tuple, Optional
 from typing_extensions import TypeVarTuple, Unpack
 
@@ -1701,6 +1703,7 @@ vt2 = 1, *test(), 2  # E: Need type annotation for "vt2"
 [builtins fixtures/tuple.pyi]
 
 [case testVariadicTupleConcatenation]
+# flags: --enable-incomplete-feature=PreciseTupleTypes
 from typing import Tuple
 from typing_extensions import TypeVarTuple, Unpack
 

@@ -179,7 +179,7 @@ from mypy.nodes import (
     type_aliases_source_versions,
     typing_extensions_aliases,
 )
-from mypy.options import TYPE_VAR_TUPLE, Options
+from mypy.options import Options
 from mypy.patterns import (
     AsPattern,
     ClassPattern,
@@ -4424,9 +4424,6 @@ class SemanticAnalyzer(
                     default = AnyType(TypeOfAny.from_error)
             else:
                 self.fail(f'Unexpected keyword argument "{param_name}" for "TypeVarTuple"', s)
-
-        if not self.incomplete_feature_enabled(TYPE_VAR_TUPLE, s):
-            return False
 
         name = self.extract_typevarlike_name(s, call)
         if name is None:

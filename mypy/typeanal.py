@@ -35,7 +35,7 @@ from mypy.nodes import (
     check_arg_names,
     get_nongen_builtins,
 )
-from mypy.options import UNPACK, Options
+from mypy.options import Options
 from mypy.plugin import AnalyzeTypeContext, Plugin, TypeAnalyzerPluginInterface
 from mypy.semanal_shared import SemanticAnalyzerCoreInterface, paramspec_args, paramspec_kwargs
 from mypy.tvar_scope import TypeVarLikeScope
@@ -664,8 +664,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # In most contexts, TypeGuard[...] acts as an alias for bool (ignoring its args)
             return self.named_type("builtins.bool")
         elif fullname in ("typing.Unpack", "typing_extensions.Unpack"):
-            if not self.api.incomplete_feature_enabled(UNPACK, t):
-                return AnyType(TypeOfAny.from_error)
             if len(t.args) != 1:
                 self.fail("Unpack[...] requires exactly one type argument", t)
                 return AnyType(TypeOfAny.from_error)
