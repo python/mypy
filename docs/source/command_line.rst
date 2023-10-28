@@ -991,6 +991,58 @@ format into the specified directory.
     library or specify mypy installation with the setuptools extra
     ``mypy[reports]``.
 
+
+Enabling incomplete/experimental features
+*****************************************
+
+.. option:: --enable-incomplete-feature FEATURE
+
+    Some features may require several mypy releases to implement, for example
+    due to their complexity, potential for backwards incompatibility, or
+    ambiguous semantics that would benefit from feedback from the community.
+    You can enable such features for early preview using this flag. Note that
+    it is not guaranteed that all features will be ultimately enabled by
+    default, in *rare cases* we may decide to not go ahead with certain
+    features.
+
+List of currently incomplete/experimental features:
+
+* ``PreciseTupleTypes``: this feature will infer more precise tuple types in
+  various scenarios. Before variadic types were added to Python type system
+  by :pep:`646`, it was impossible to express a type like "a tuple with
+  at least two integers". The best type available was ``tuple[int, ...]``,
+  therefore, mypy applied very lenient checking for variable-length tuples.
+  Now this type can be expressed as ``tuple[int, int, *tuple[int, ...]]``.
+  For such more precise types (when explicitly *defined* by a user) mypy,
+  for example, warns about unsafe index access, and generally handles them
+  in a type-safe manner. However, to avoid problems in existing code, mypy
+  does not *infer* these precise types when it technically can. Here are
+  notable examples where ``PreciseTupleTypes`` infers more precise types:
+
+  .. code-block:: python
+
+     numbers: tuple[int, ...]
+
+     more_numbers = (1, *numbers, 1)
+     reveal_type(more_numbers)
+     # Without PreciseTupleTypes: tuple[int, ...]
+     # With PreciseTupleTypes: tuple[int, *tuple[int, ...], int]
+
+     other_numbers = (1, 1) + numbers
+     reveal_type(other_numbers)
+     # Without PreciseTupleTypes: tuple[int, ...]
+     # With PreciseTupleTypes: tuple[int, int, *tuple[int, ...]]
+
+     if len(numbers) > 2:
+         reveal_type(numbers)
+         # Without PreciseTupleTypes: tuple[int, ...]
+         # With PreciseTupleTypes: tuple[int, int, int, *tuple[int, ...]]
+     else:
+         reveal_type(numbers)
+         # Without PreciseTupleTypes: tuple[int, ...]
+         # With PreciseTupleTypes: tuple[()] | tuple[int] | tuple[int, int]
+
+
 Miscellaneous
 *************
 
