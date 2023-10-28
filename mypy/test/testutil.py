@@ -3,8 +3,8 @@ from __future__ import annotations
 import os
 from unittest import TestCase, mock
 
-from mypy.util import get_terminal_width
 from mypy.inspections import parse_location
+from mypy.util import get_terminal_width
 
 
 class TestGetTerminalSize(TestCase):
