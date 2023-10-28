@@ -782,13 +782,13 @@ class C:
 #   g
 
 [case testCommentForUndefinedName_inspect]
-__all__ = ['f', 'x', 'C']
+__all__ = ['f', 'x', 'C', 'g']
 def f(): ...
 x = 1
 class C:
     def g(self): ...
 [out]
-__all__ = ['f', 'x', 'C', 'g']
+__all__ = ['f', 'x', 'C']
 
 def f(): ...
 
