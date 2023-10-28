@@ -1352,7 +1352,11 @@ def find_matching_overload_item(overloaded: Overloaded, template: CallableType) 
         # Return type may be indeterminate in the template, so ignore it when performing a
         # subtype check.
         if mypy.subtypes.is_callable_compatible(
-            item, template, is_compat=mypy.subtypes.is_subtype, ignore_return=True
+            item,
+            template,
+            is_compat=mypy.subtypes.is_subtype,
+            is_proper_subtype=False,
+            ignore_return=True,
         ):
             return item
     # Fall back to the first item if we can't find a match. This is totally arbitrary --
@@ -1370,7 +1374,11 @@ def find_matching_overload_items(
         # Return type may be indeterminate in the template, so ignore it when performing a
         # subtype check.
         if mypy.subtypes.is_callable_compatible(
-            item, template, is_compat=mypy.subtypes.is_subtype, ignore_return=True
+            item,
+            template,
+            is_compat=mypy.subtypes.is_subtype,
+            is_proper_subtype=False,
+            ignore_return=True,
         ):
             res.append(item)
     if not res:

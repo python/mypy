@@ -228,10 +228,7 @@ class TypedDictAnalyzer:
                 self.fail("Invalid TypedDict type argument", ctx)
                 return None
             analyzed = self.api.anal_type(
-                type,
-                allow_required=True,
-                allow_placeholder=not self.options.disable_recursive_aliases
-                and not self.api.is_func_scope(),
+                type, allow_required=True, allow_placeholder=not self.api.is_func_scope()
             )
             if analyzed is None:
                 return None
@@ -307,8 +304,7 @@ class TypedDictAnalyzer:
                     analyzed = self.api.anal_type(
                         stmt.type,
                         allow_required=True,
-                        allow_placeholder=not self.options.disable_recursive_aliases
-                        and not self.api.is_func_scope(),
+                        allow_placeholder=not self.api.is_func_scope(),
                         prohibit_self_type="TypedDict item type",
                     )
                     if analyzed is None:
@@ -504,8 +500,7 @@ class TypedDictAnalyzer:
             analyzed = self.api.anal_type(
                 type,
                 allow_required=True,
-                allow_placeholder=not self.options.disable_recursive_aliases
-                and not self.api.is_func_scope(),
+                allow_placeholder=not self.api.is_func_scope(),
                 prohibit_self_type="TypedDict item type",
             )
             if analyzed is None:

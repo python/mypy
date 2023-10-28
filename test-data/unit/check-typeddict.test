@@ -1443,34 +1443,34 @@ reveal_type(x['a']['b']) # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
 
 [case testSelfRecursiveTypedDictInheriting]
-
 from mypy_extensions import TypedDict
-# flags: --disable-recursive-aliases
-class MovieBase(TypedDict):
-    name: str
-    year: int
 
-class Movie(MovieBase):
-    director: 'Movie' # E: Cannot resolve name "Movie" (possible cyclic definition)
+def test() -> None:
+    class MovieBase(TypedDict):
+        name: str
+        year: int
 
-m: Movie
-reveal_type(m['director']['name']) # N: Revealed type is "Any"
+    class Movie(MovieBase):
+        director: 'Movie' # E: Cannot resolve name "Movie" (possible cyclic definition) \
+                          # N: Recursive types are not allowed at function scope
+    m: Movie
+    reveal_type(m['director']['name']) # N: Revealed type is "Any"
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testSubclassOfRecursiveTypedDict]
-# flags: --disable-recursive-aliases
 from typing import List
 from mypy_extensions import TypedDict
 
-class Command(TypedDict):
-    subcommands: List['Command']  # E: Cannot resolve name "Command" (possible cyclic definition)
+def test() -> None:
+    class Command(TypedDict):
+        subcommands: List['Command']  # E: Cannot resolve name "Command" (possible cyclic definition) \
+                                      # N: Recursive types are not allowed at function scope
 
-class HelpCommand(Command):
-    pass
+    class HelpCommand(Command):
+        pass
 
-hc = HelpCommand(subcommands=[])
-reveal_type(hc)  # N: Revealed type is "TypedDict('__main__.HelpCommand', {'subcommands': builtins.list[Any]})"
+    hc = HelpCommand(subcommands=[])
+    reveal_type(hc)  # N: Revealed type is "TypedDict('__main__.HelpCommand@8', {'subcommands': builtins.list[Any]})"
 [builtins fixtures/list.pyi]
 [out]
 

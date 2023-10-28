@@ -571,8 +571,7 @@ from typing_extensions import Unpack, TypeVarTuple
 
 Ts = TypeVarTuple("Ts")
 Us = TypeVarTuple("Us")
-a: Callable[[Unpack[Ts], Unpack[Us]], int]  # E: Var args may not appear after named or var args \
-                                            # E: More than one Unpack in a type is not allowed
+a: Callable[[Unpack[Ts], Unpack[Us]], int]  # E: More than one Unpack in a type is not allowed
 reveal_type(a)  # N: Revealed type is "def [Ts, Us] (*Unpack[Ts`-1]) -> builtins.int"
 b: Callable[[Unpack], int]  # E: Unpack[...] requires exactly one type argument
 reveal_type(b)  # N: Revealed type is "def (*Any) -> builtins.int"
@@ -730,8 +729,7 @@ A = Tuple[Unpack[Ts], Unpack[Us]]  # E: More than one Unpack in a type is not al
 x: A[int, str]
 reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
 
-B = Callable[[Unpack[Ts], Unpack[Us]], int]  # E: Var args may not appear after named or var args \
-                                             # E: More than one Unpack in a type is not allowed
+B = Callable[[Unpack[Ts], Unpack[Us]], int]  # E: More than one Unpack in a type is not allowed
 y: B[int, str]
 reveal_type(y)  # N: Revealed type is "def (builtins.int, builtins.str) -> builtins.int"
 
@@ -1911,4 +1909,102 @@ reveal_type(y)  # N: Revealed type is "__main__.C[builtins.int, Unpack[builtins.
 
 z = C[int]()  # E: Bad number of arguments, expected: at least 2, given: 1
 reveal_type(z)  # N: Revealed type is "__main__.C[Any, Unpack[builtins.tuple[Any, ...]], Any]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleBothUnpacksSimple]
+from typing import Tuple
+from typing_extensions import Unpack, TypeVarTuple, TypedDict
+
+class Keywords(TypedDict):
+    a: str
+    b: str
+
+Ints = Tuple[int, ...]
+
+def f(*args: Unpack[Ints], other: str = "no", **kwargs: Unpack[Keywords]) -> None: ...
+reveal_type(f)  # N: Revealed type is "def (*args: builtins.int, other: builtins.str =, **kwargs: Unpack[TypedDict('__main__.Keywords', {'a': builtins.str, 'b': builtins.str})])"
+f(1, 2, a="a", b="b")  # OK
+f(1, 2, 3)  # E: Missing named argument "a" for "f" \
+            # E: Missing named argument "b" for "f"
+
+Ts = TypeVarTuple("Ts")
+def g(*args: Unpack[Ts], other: str = "no", **kwargs: Unpack[Keywords]) -> None: ...
+reveal_type(g)  # N: Revealed type is "def [Ts] (*args: Unpack[Ts`-1], other: builtins.str =, **kwargs: Unpack[TypedDict('__main__.Keywords', {'a': builtins.str, 'b': builtins.str})])"
+g(1, 2, a="a", b="b")  # OK
+g(1, 2, 3)  # E: Missing named argument "a" for "g" \
+            # E: Missing named argument "b" for "g"
+
+def bad(
+    *args: Unpack[Keywords],  # E: "Keywords" cannot be unpacked (must be tuple or TypeVarTuple)
+    **kwargs: Unpack[Ints],  # E: Unpack item in ** argument must be a TypedDict
+) -> None: ...
+reveal_type(bad)  # N: Revealed type is "def (*args: Any, **kwargs: Any)"
+
+def bad2(
+    one: int,
+    *args: Unpack[Keywords],  # E: "Keywords" cannot be unpacked (must be tuple or TypeVarTuple)
+    other: str = "no",
+     **kwargs: Unpack[Ints],  # E: Unpack item in ** argument must be a TypedDict
+) -> None: ...
+reveal_type(bad2)  # N: Revealed type is "def (one: builtins.int, *args: Any, other: builtins.str =, **kwargs: Any)"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleBothUnpacksCallable]
+from typing import Callable, Tuple
+from typing_extensions import Unpack, TypedDict
+
+class Keywords(TypedDict):
+    a: str
+    b: str
+Ints = Tuple[int, ...]
+
+cb: Callable[[Unpack[Ints], Unpack[Keywords]], None]
+reveal_type(cb)  # N: Revealed type is "def (*builtins.int, **Unpack[TypedDict('__main__.Keywords', {'a': builtins.str, 'b': builtins.str})])"
+
+cb2: Callable[[int, Unpack[Ints], int, Unpack[Keywords]], None]
+reveal_type(cb2)  # N: Revealed type is "def (builtins.int, *Unpack[Tuple[Unpack[builtins.tuple[builtins.int, ...]], builtins.int]], **Unpack[TypedDict('__main__.Keywords', {'a': builtins.str, 'b': builtins.str})])"
+cb2(1, 2, 3, a="a", b="b")
+cb2(1, a="a", b="b")  # E: Too few arguments
+cb2(1, 2, 3, a="a")  # E: Missing named argument "b"
+
+bad1: Callable[[Unpack[Ints], Unpack[Ints]], None]  # E: More than one Unpack in a type is not allowed
+reveal_type(bad1)  # N: Revealed type is "def (*builtins.int)"
+bad2: Callable[[Unpack[Keywords], Unpack[Keywords]], None]  # E: "Keywords" cannot be unpacked (must be tuple or TypeVarTuple)
+reveal_type(bad2)  # N: Revealed type is "def (*Any, **Unpack[TypedDict('__main__.Keywords', {'a': builtins.str, 'b': builtins.str})])"
+bad3: Callable[[Unpack[Keywords], Unpack[Ints]], None]  # E: "Keywords" cannot be unpacked (must be tuple or TypeVarTuple) \
+                                                        # E: More than one Unpack in a type is not allowed
+reveal_type(bad3)  # N: Revealed type is "def (*Any)"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleBothUnpacksApplication]
+from typing import Callable, TypeVar, Optional
+from typing_extensions import Unpack, TypeVarTuple, TypedDict
+
+class Keywords(TypedDict):
+    a: str
+    b: str
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+def test(
+    x: int,
+    func: Callable[[Unpack[Ts]], T],
+    *args: Unpack[Ts],
+    other: Optional[str] = None,
+    **kwargs: Unpack[Keywords],
+) -> T:
+    if bool():
+        func(*args, **kwargs)  # E: Extra argument "a" from **args
+    return func(*args)
+def test2(
+    x: int,
+    func: Callable[[Unpack[Ts], Unpack[Keywords]], T],
+    *args: Unpack[Ts],
+    other: Optional[str] = None,
+    **kwargs: Unpack[Keywords],
+) -> T:
+    if bool():
+        func(*args)  # E: Missing named argument "a" \
+                     # E: Missing named argument "b"
+    return func(*args, **kwargs)
 [builtins fixtures/tuple.pyi]
