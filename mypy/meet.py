@@ -869,16 +869,17 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             return None
         if s_unpack_index is not None and t_unpack_index is not None:
             # The only simple case we can handle if both tuples are variadic
-            # is when they are purely variadic. Other cases are tricky because
+            # is when their structure fully matches. Other cases are tricky because
             # a variadic item is effectively a union of tuples of all length, thus
             # potentially causing overlap between a suffix in `s` and a prefix
             # in `t` (see how this is handled in is_subtype() for details).
             # TODO: handle more cases (like when both prefix/suffix are shorter in s or t).
-            if s.length() == 1 and t.length() == 1:
-                s_unpack = s.items[0]
+            if s.length() == t.length() and s_unpack_index == t_unpack_index:
+                unpack_index = s_unpack_index
+                s_unpack = s.items[unpack_index]
                 assert isinstance(s_unpack, UnpackType)
                 s_unpacked = get_proper_type(s_unpack.type)
-                t_unpack = t.items[0]
+                t_unpack = t.items[unpack_index]
                 assert isinstance(t_unpack, UnpackType)
                 t_unpacked = get_proper_type(t_unpack.type)
                 if not (isinstance(s_unpacked, Instance) and isinstance(t_unpacked, Instance)):
@@ -886,7 +887,13 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                 meet = self.meet(s_unpacked, t_unpacked)
                 if not isinstance(meet, Instance):
                     return None
-                return [UnpackType(meet)]
+                m_prefix: list[Type] = []
+                for si, ti in zip(s.items[:unpack_index], t.items[:unpack_index]):
+                    m_prefix.append(meet_types(si, ti))
+                m_suffix: list[Type] = []
+                for si, ti in zip(s.items[unpack_index + 1 :], t.items[unpack_index + 1 :]):
+                    m_suffix.append(meet_types(si, ti))
+                return m_prefix + [UnpackType(meet)] + m_suffix
             return None
         if s_unpack_index is not None:
             variadic = s
@@ -1006,11 +1013,11 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
 
 def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
-    from mypy.join import join_types
+    from mypy.join import safe_join
 
     arg_types: list[Type] = []
     for i in range(len(t.arg_types)):
-        arg_types.append(join_types(t.arg_types[i], s.arg_types[i]))
+        arg_types.append(safe_join(t.arg_types[i], s.arg_types[i]))
     # TODO in combine_similar_callables also applies here (names and kinds)
     # The fallback type can be either 'function' or 'type'. The result should have 'function' as
     # fallback only if both operands have it as 'function'.

@@ -734,9 +734,13 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 for li in left.items:
                     if isinstance(li, UnpackType):
                         unpack = get_proper_type(li.type)
-                        if isinstance(unpack, Instance):
-                            assert unpack.type.fullname == "builtins.tuple"
-                            li = unpack.args[0]
+                        if isinstance(unpack, TypeVarTupleType):
+                            unpack = get_proper_type(unpack.upper_bound)
+                        assert (
+                            isinstance(unpack, Instance)
+                            and unpack.type.fullname == "builtins.tuple"
+                        )
+                        li = unpack.args[0]
                     if not self._is_subtype(li, iter_type):
                         return False
                 return True
@@ -1577,6 +1581,18 @@ def are_parameters_compatible(
     if are_trivial_parameters(right) and not is_proper_subtype:
         return True
     trivial_suffix = is_trivial_suffix(right) and not is_proper_subtype
+
+    if (
+        right.arg_kinds == [ARG_STAR]
+        and isinstance(get_proper_type(right.arg_types[0]), AnyType)
+        and not is_proper_subtype
+    ):
+        # Similar to how (*Any, **Any) is considered a supertype of all callables, we consider
+        # (*Any) a supertype of all callables with positional arguments. This is needed in
+        # particular because we often refuse to try type inference if actual type is not
+        # a subtype of erased template type.
+        if all(k.is_positional() for k in left.arg_kinds) and ignore_pos_arg_names:
+            return True
 
     # Match up corresponding arguments and check them for compatibility. In
     # every pair (argL, argR) of corresponding arguments from L and R, argL must
