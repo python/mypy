@@ -614,10 +614,20 @@ class BaseStubGenerator:
 
     def output(self) -> str:
         """Return the text for the stub."""
-        imports = self.get_imports()
-        if imports and self._output:
-            imports += "\n"
-        return imports + "".join(self._output)
+        pieces: list[str] = []
+        if imports := self.get_imports():
+            pieces.append(imports)
+        if dunder_all := self.get_dunder_all():
+            pieces.append(dunder_all)
+        if self._output:
+            pieces.append("".join(self._output))
+        return "\n".join(pieces)
+
+    def get_dunder_all(self) -> str:
+        """Return the __all__ list for the stub."""
+        if self._all_:
+            return f"__all__ = {self._all_!r}\n"
+        return ""
 
     def add(self, string: str) -> None:
         """Add text to generated stub."""

@@ -587,6 +587,8 @@ __all__ = [] + ['f']
 def f(): ...
 def g(): ...
 [out]
+__all__ = ['f']
+
 def f() -> None: ...
 
 [case testOmitDefsNotInAll_semanal]
@@ -594,6 +596,8 @@ __all__ = ['f']
 def f(): ...
 def g(): ...
 [out]
+__all__ = ['f']
+
 def f() -> None: ...
 
 [case testOmitDefsNotInAll_inspect]
@@ -601,6 +605,8 @@ __all__ = [] + ['f']
 def f(): ...
 def g(): ...
 [out]
+__all__ = ['f']
+
 def f(): ...
 
 [case testVarDefsNotInAll_import]
@@ -610,6 +616,8 @@ x = 1
 y = 1
 def g(): ...
 [out]
+__all__ = ['f', 'g']
+
 def f() -> None: ...
 def g() -> None: ...
 
@@ -620,6 +628,8 @@ x = 1
 y = 1
 def g(): ...
 [out]
+__all__ = ['f', 'g']
+
 def f(): ...
 def g(): ...
 
@@ -628,6 +638,8 @@ __all__ = [] + ['f']
 def f(): ...
 class A: ...
 [out]
+__all__ = ['f']
+
 def f() -> None: ...
 
 class A: ...
@@ -637,6 +649,8 @@ __all__ = [] + ['f']
 def f(): ...
 class A: ...
 [out]
+__all__ = ['f']
+
 def f(): ...
 
 class A: ...
@@ -647,6 +661,8 @@ class A:
     x = 1
     def f(self): ...
 [out]
+__all__ = ['A']
+
 class A:
     x: int
     def f(self) -> None: ...
@@ -684,6 +700,8 @@ x = 1
 [out]
 from re import match as match, sub as sub
 
+__all__ = ['match', 'sub', 'x']
+
 x: int
 
 [case testExportModule_import]
@@ -693,6 +711,8 @@ x = 1
 y = 2
 [out]
 import re as re
+
+__all__ = ['re', 'x']
 
 x: int
 
@@ -704,6 +724,8 @@ y = 2
 [out]
 import re as re
 
+__all__ = ['re', 'x']
+
 x: int
 
 [case testExportModuleAs_import]
@@ -714,6 +736,8 @@ y = 2
 [out]
 import re as rex
 
+__all__ = ['rex', 'x']
+
 x: int
 
 [case testExportModuleInPackage_import]
@@ -722,12 +746,16 @@ __all__ = ['p']
 [out]
 import urllib.parse as p
 
+__all__ = ['p']
+
 [case testExportPackageOfAModule_import]
 import urllib.parse
 __all__ = ['urllib']
 
 [out]
 import urllib as urllib
+
+__all__ = ['urllib']
 
 [case testRelativeImportAll]
 from .x import *
@@ -741,6 +769,8 @@ x = 1
 class C:
     def g(self): ...
 [out]
+__all__ = ['f', 'x', 'C', 'g']
+
 def f() -> None: ...
 
 x: int
@@ -758,6 +788,8 @@ x = 1
 class C:
     def g(self): ...
 [out]
+__all__ = ['f', 'x', 'C', 'g']
+
 def f(): ...
 
 x: int
@@ -2343,6 +2375,8 @@ else:
 [out]
 import cookielib as cookielib
 
+__all__ = ['cookielib']
+
 [case testCannotCalculateMRO_semanal]
 class X: pass
 
@@ -2788,6 +2822,8 @@ class A: pass
 # p/__init__.pyi
 from p.a import A
 
+__all__ = ['a']
+
 a: A
 # p/a.pyi
 class A: ...
@@ -2962,6 +2998,8 @@ __version__ = ''
 
 [out]
 from m import __version__ as __version__
+
+__all__ = ['__about__', '__author__', '__version__']
 
 [case testAttrsClass_semanal]
 import attrs
