@@ -626,7 +626,8 @@ class BaseStubGenerator:
     def get_dunder_all(self) -> str:
         """Return the __all__ list for the stub."""
         if self._all_:
-            return f"__all__ = {self._all_!r}\n"
+            defined_names = [name for name in self._all_ if name in self._toplevel_names]
+            return f"__all__ = {defined_names!r}\n"
         return ""
 
     def add(self, string: str) -> None:
