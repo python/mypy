@@ -2179,7 +2179,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 lambda a: self.accept(args[a]),
             )
 
-        arg_types = self.infer_arg_types_in_context(callee_type, args, arg_kinds, formal_to_actual)
+        # Same as during first pass, disable type errors (we still have partial context).
+        with self.msg.filter_errors():
+            arg_types = self.infer_arg_types_in_context(
+                callee_type, args, arg_kinds, formal_to_actual
+            )
 
         inferred_args, _ = infer_function_type_arguments(
             callee_type,
