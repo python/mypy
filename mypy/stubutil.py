@@ -626,8 +626,11 @@ class BaseStubGenerator:
     def get_dunder_all(self) -> str:
         """Return the __all__ list for the stub."""
         if self._all_:
-            defined_names = [name for name in self._all_ if name in self._toplevel_names]
-            return f"__all__ = {defined_names!r}\n"
+            # Note we emit all names in the runtime __all__ here, even if they
+            # don't actually exist. If that happens, the runtime has a bug, and
+            # it's not obvious what the correct behavior should be. We choose
+            # to reflect the runtime __all__ as closely as possible.
+            return f"__all__ = {self._all_!r}\n"
         return ""
 
     def add(self, string: str) -> None:
