@@ -62,7 +62,7 @@ OPTIONS_AFFECTING_CACHE: Final = (
     | {
         "platform",
         "bazel",
-        "new_type_inference",
+        "old_type_inference",
         "plugins",
         "disable_bytearray_promotion",
         "disable_memoryview_promotion",
@@ -360,7 +360,9 @@ class Options:
         # skip most errors after this many messages have been reported.
         # -1 means unlimited.
         self.many_errors_threshold = defaults.MANY_ERRORS_THRESHOLD
-        # Enable new experimental type inference algorithm.
+        # Disable new experimental type inference algorithm.
+        self.old_type_inference = False
+        # Deprecated reverse version of the above, do not use.
         self.new_type_inference = False
         # Export line-level, limited, fine-grained dependency information in cache data
         # (undocumented feature).
