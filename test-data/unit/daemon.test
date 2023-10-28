@@ -364,17 +364,18 @@ def bar() -> None:
 $ dmypy start
 Daemon started
 $ dmypy check foo.py
-Success: no issues found in 40 source files
+Success: no issues found in 1 source file
 $ dmypy check foo.py --export-types
 Success: no issues found in 1 source file
 $ dmypy inspect foo.py:1:1
+"int"
 [file foo.py]
 x = 1
 
 [case testDaemonInspectRun]
 $ dmypy run test1.py
 Daemon started
-Success: no issues found in 40 source files
+Success: no issues found in 1 source file
 $ dmypy run test2.py
 Success: no issues found in 1 source file
 $ dmypy run test1.py --export-types
