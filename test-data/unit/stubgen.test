@@ -2997,7 +2997,7 @@ __uri__ = ''
 __version__ = ''
 
 [out]
-from m import __version__ as __version__
+from m import __about__ as __about__, __author__ as __author__, __version__ as __version__
 
 __all__ = ['__about__', '__author__', '__version__']
 

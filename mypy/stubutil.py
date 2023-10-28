@@ -661,8 +661,7 @@ class BaseStubGenerator:
         self.defined_names = defined_names
         # Names in __all__ are required
         for name in self._all_ or ():
-            if name not in self.IGNORED_DUNDERS:
-                self.import_tracker.reexport(name)
+            self.import_tracker.reexport(name)
 
         # These are "soft" imports for objects which might appear in annotations but not have
         # a corresponding import statement.
@@ -761,7 +760,13 @@ class BaseStubGenerator:
             return False
         if name == "_":
             return False
-        return name.startswith("_") and (not name.endswith("__") or name in self.IGNORED_DUNDERS)
+        if not name.startswith("_"):
+            return False
+        if self._all_ and name in self._all_:
+            return False
+        if name.startswith("__") and name.endswith("__"):
+            return name in self.IGNORED_DUNDERS
+        return True
 
     def should_reexport(self, name: str, full_module: str, name_is_alias: bool) -> bool:
         if (
@@ -771,18 +776,21 @@ class BaseStubGenerator:
         ):
             # Special case certain names that should be exported, against our general rules.
             return True
+        if name_is_alias:
+            return False
+        if self.export_less:
+            return False
+        if not self.module_name:
+            return False
         is_private = self.is_private_name(name, full_module + "." + name)
+        if is_private:
+            return False
         top_level = full_module.split(".")[0]
         self_top_level = self.module_name.split(".", 1)[0]
-        if (
-            not name_is_alias
-            and not self.export_less
-            and (not self._all_ or name in self.IGNORED_DUNDERS)
-            and self.module_name
-            and not is_private
-            and top_level in (self_top_level, "_" + self_top_level)
-        ):
+        if top_level not in (self_top_level, "_" + self_top_level):
             # Export imports from the same package, since we can't reliably tell whether they
             # are part of the public API.
-            return True
-        return False
+            return False
+        if self._all_:
+            return name in self._all_
+        return True
