@@ -3384,7 +3384,9 @@ class SemanticAnalyzer(
         if s.type:
             lvalue = s.lvalues[-1]
             allow_tuple_literal = isinstance(lvalue, TupleExpr)
-            analyzed = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
+            analyzed = self.anal_type(
+                s.type, allow_tuple_literal=allow_tuple_literal, analyze_annotation=True
+            )
             # Don't store not ready types (including placeholders).
             if analyzed is None or has_placeholder(analyzed):
                 self.defer(s)
@@ -6602,6 +6604,7 @@ class SemanticAnalyzer(
         report_invalid_types: bool = True,
         prohibit_self_type: str | None = None,
         allow_type_any: bool = False,
+        analyze_annotation: bool = False,
     ) -> TypeAnalyser:
         if tvar_scope is None:
             tvar_scope = self.tvar_scope
@@ -6620,6 +6623,7 @@ class SemanticAnalyzer(
             allow_unpack=allow_unpack,
             prohibit_self_type=prohibit_self_type,
             allow_type_any=allow_type_any,
+            analyze_annotation=analyze_annotation,
         )
         tpan.in_dynamic_func = bool(self.function_stack and self.function_stack[-1].is_dynamic())
         tpan.global_scope = not self.type and not self.function_stack
@@ -6644,6 +6648,7 @@ class SemanticAnalyzer(
         report_invalid_types: bool = True,
         prohibit_self_type: str | None = None,
         allow_type_any: bool = False,
+        analyze_annotation: bool = False,
         third_pass: bool = False,
     ) -> Type | None:
         """Semantically analyze a type.
@@ -6682,6 +6687,7 @@ class SemanticAnalyzer(
             report_invalid_types=report_invalid_types,
             prohibit_self_type=prohibit_self_type,
             allow_type_any=allow_type_any,
+            analyze_annotation=analyze_annotation,
         )
         tag = self.track_incomplete_refs()
         typ = typ.accept(a)

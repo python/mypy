@@ -202,6 +202,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         prohibit_self_type: str | None = None,
         allowed_alias_tvars: list[TypeVarLikeType] | None = None,
         allow_type_any: bool = False,
+        analyze_annotation: bool = False,
     ) -> None:
         self.api = api
         self.fail_func = api.fail
@@ -246,6 +247,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_type_any = allow_type_any
         self.allow_type_var_tuple = False
         self.allow_unpack = allow_unpack
+        self.analyze_annotation = analyze_annotation
 
     def lookup_qualified(
         self, name: str, ctx: Context, suppress_errors: bool = False
@@ -588,7 +590,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             and (self.always_allow_new_syntax or self.options.python_version >= (3, 9))
         ):
             if len(t.args) == 0:
-                if fullname == "typing.Type":
+                if fullname == "typing.Type" or (
+                    self.analyze_annotation and (fullname == "builtins.type")
+                ):
                     any_type = self.get_omitted_any(t)
                     return TypeType(any_type, line=t.line, column=t.column)
                 else:

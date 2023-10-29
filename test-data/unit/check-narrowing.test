@@ -659,6 +659,37 @@ else:
     reveal_type(y["model"])     # N: Revealed type is "Union[TypedDict('__main__.Model1', {'key': Literal['A']}), TypedDict('__main__.Model2', {'key': Literal['B']})]"
 [builtins fixtures/primitives.pyi]
 
+[case testNarrowingTypingTypeTypeAndBuiltinTypeTypeExplicitAny]
+# flags: --python-version 3.9 --warn-unreachable --disallow-any-generics
+
+from typing import Any, Type
+
+t1: Type[Any]
+t2: type[Any]
+
+class C: ...
+
+if isinstance(t1, C):
+    reveal_type(t1)  # E: Statement is unreachable
+if isinstance(t2, C):
+    reveal_type(t2)  # E: Statement is unreachable
+[builtins fixtures/isinstance.pyi]
+
+[case testNarrowingTypingTypeTypeAndBuiltinTypeTypeImplicitAny]
+# flags: --python-version 3.9 --warn-unreachable --disallow-any-generics
+
+from typing import Type
+
+t1: Type  # E: Missing type parameters for generic type "Type"
+t2: type  # E: Missing type parameters for generic type "type"
+class C: ...
+
+if isinstance(t1, C):
+    reveal_type(t1)  # E: Statement is unreachable
+if isinstance(t2, C):
+    reveal_type(t2)  # E: Statement is unreachable
+[builtins fixtures/isinstance.pyi]
+
 [case testNarrowingExprPropagation]
 from typing import Union
 from typing_extensions import Literal
@@ -1330,7 +1361,7 @@ else:
 
 raw: tuple[type, ...]
 if isinstance(some, raw):
-    reveal_type(some)  # N: Revealed type is "Union[builtins.int, __main__.Base]"
+    reveal_type(some)  # N: Revealed type is "Any"
 else:
     reveal_type(some)  # N: Revealed type is "Union[builtins.int, __main__.Base]"
 [builtins fixtures/dict.pyi]
