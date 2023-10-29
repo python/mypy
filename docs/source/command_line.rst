@@ -133,7 +133,7 @@ imports.
 
     This flag tells mypy that top-level packages will be based in either the
     current directory, or a member of the ``MYPYPATH`` environment variable or
-    :confval:`mypy_path` config option. This option is only useful in
+    :confval:`mypy_path` config option. This option is only useful
     in the absence of `__init__.py`. See :ref:`Mapping file
     paths to modules <mapping-paths-to-modules>` for details.
 
