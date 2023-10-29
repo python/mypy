@@ -101,6 +101,8 @@ class TypedDictAnalyzer:
             fields, types, statements, required_keys = self.analyze_typeddict_classdef_fields(defn)
             if fields is None:
                 return True, None  # Defer
+            if self.api.is_func_scope() and "@" not in defn.name:
+                defn.name += "@" + str(defn.line)
             info = self.build_typeddict_typeinfo(
                 defn.name, fields, types, required_keys, defn.line, existing_info
             )
