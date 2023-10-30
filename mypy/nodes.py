@@ -3824,6 +3824,8 @@ class SymbolTableNode:
         # Include declared type of variables and functions.
         if self.type is not None:
             s += f" : {self.type}"
+        if self.cross_ref:
+            s += f" cross_ref:{self.cross_ref}"
         return s
 
     def serialize(self, prefix: str, name: str) -> JsonDict:
