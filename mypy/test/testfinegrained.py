@@ -352,7 +352,7 @@ class FineGrainedSuite(DataSuite):
             )
             val = res["error"] if "error" in res else res["out"] + res["err"]
             output.extend(val.strip().split("\n"))
-        return normalize_messages(output)
+        return output
 
     def get_suggest(self, program_text: str, incremental_step: int) -> list[tuple[str, str]]:
         step_bit = "1?" if incremental_step == 1 else str(incremental_step)

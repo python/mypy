@@ -379,7 +379,7 @@ $ dmypy inspect foo.pyc:1:1:2:2
 Source file is not a Python file
 == Return code: 2
 $ dmypy inspect bar/baz.py:1:1:2:2
-Unknown module: baz
+Unknown module: bar/baz.py
 == Return code: 1
 $ dmypy inspect foo.py:3:1:1:1
 "end_line" must not be before "line"
@@ -434,7 +434,7 @@ $ dmypy inspect foo.pyc:1:2
 Source file is not a Python file
 == Return code: 2
 $ dmypy inspect bar/baz.py:1:2
-Unknown module: baz
+Unknown module: bar/baz.py
 == Return code: 1
 $ dmypy inspect foo.py:7:5 --include-span
 7:5:7:5 -> "int"
@@ -571,3 +571,17 @@ class A:
     x: int
 class B:
     x: int
+
+[case testDaemonInspectSelectCorrectFile]
+$ dmypy run test.py --export-types
+Daemon started
+Success: no issues found in 1 source file
+$ dmypy inspect demo/test.py:1:1
+"int"
+$ dmypy inspect test.py:1:1
+"str"
+[file test.py]
+b: str
+from demo.test import a
+[file demo/test.py]
+a: int
