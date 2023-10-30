@@ -97,7 +97,7 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
-from mypy.options import TYPE_VAR_TUPLE
+from mypy.options import PRECISE_TUPLE_TYPES
 from mypy.plugin import (
     FunctionContext,
     FunctionSigContext,
@@ -3377,7 +3377,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         ):
                             return self.concat_tuples(proper_left_type, proper_right_type)
                 elif (
-                    TYPE_VAR_TUPLE in self.chk.options.enable_incomplete_feature
+                    PRECISE_TUPLE_TYPES in self.chk.options.enable_incomplete_feature
                     and isinstance(proper_right_type, Instance)
                     and self.chk.type_is_iterable(proper_right_type)
                 ):
@@ -3411,7 +3411,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if is_named_instance(proper_right_type, "builtins.dict"):
                     use_reverse = USE_REVERSE_NEVER
 
-        if TYPE_VAR_TUPLE in self.chk.options.enable_incomplete_feature:
+        if PRECISE_TUPLE_TYPES in self.chk.options.enable_incomplete_feature:
             # Handle tuple[X, ...] + tuple[Y, Z] = tuple[*tuple[X, ...], Y, Z].
             if (
                 e.op == "+"
@@ -4988,7 +4988,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         j += len(tt.items)
                 else:
                     if (
-                        TYPE_VAR_TUPLE in self.chk.options.enable_incomplete_feature
+                        PRECISE_TUPLE_TYPES in self.chk.options.enable_incomplete_feature
                         and not seen_unpack_in_items
                     ):
                         # Handle (x, *y, z), where y is e.g. tuple[Y, ...].

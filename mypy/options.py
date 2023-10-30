@@ -69,11 +69,12 @@ OPTIONS_AFFECTING_CACHE: Final = (
     }
 ) - {"debug_cache"}
 
-# Features that are currently incomplete/experimental
+# Features that are currently (or were recently) incomplete/experimental
 TYPE_VAR_TUPLE: Final = "TypeVarTuple"
 UNPACK: Final = "Unpack"
 PRECISE_TUPLE_TYPES: Final = "PreciseTupleTypes"
-INCOMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK, PRECISE_TUPLE_TYPES))
+INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES,))
+COMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK))
 
 
 class Options:
@@ -307,7 +308,6 @@ class Options:
         self.dump_type_stats = False
         self.dump_inference_stats = False
         self.dump_build_stats = False
-        self.enable_incomplete_features = False  # deprecated
         self.enable_incomplete_feature: list[str] = []
         self.timing_stats: str | None = None
         self.line_checking_stats: str | None = None
