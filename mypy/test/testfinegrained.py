@@ -149,7 +149,7 @@ class FineGrainedSuite(DataSuite):
         options.use_fine_grained_cache = self.use_cache and not build_cache
         options.cache_fine_grained = self.use_cache
         options.local_partial_types = True
-        options.export_types = True
+        options.export_types = "inspect" in testcase.file
         # Treat empty bodies safely for these test cases.
         options.allow_empty_bodies = not testcase.name.endswith("_no_empty")
         if re.search("flags:.*--follow-imports", source) is None:
