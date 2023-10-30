@@ -51,7 +51,7 @@ reverse_op: Final = {"==": "==", "!=": "!=", "<": ">", ">": "<", "<=": ">=", ">=
 
 
 def infer_reachability_of_if_statement(s: IfStmt, options: Options) -> None:
-    for i in range(len(s.expr)):
+    for i in range(len(s.expr[:1])):
         result = infer_condition_value(s.expr[i], options)
         if result in (ALWAYS_FALSE, MYPY_FALSE):
             # The condition is considered always false, so we skip the if/elif body.

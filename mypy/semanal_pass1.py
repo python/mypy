@@ -115,9 +115,9 @@ class SemanticAnalyzerPreAnalysis(TraverserVisitor):
 
     def visit_if_stmt(self, s: IfStmt) -> None:
         infer_reachability_of_if_statement(s, self.options)
-        for expr in s.expr:
+        for expr in s.expr[:1]:
             expr.accept(self)
-        for node in s.body:
+        for node in s.body[:1]:
             node.accept(self)
         if s.else_body:
             s.else_body.accept(self)

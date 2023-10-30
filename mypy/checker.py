@@ -4493,7 +4493,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # This frame records the knowledge from previous if/elif clauses not being taken.
         # Fall-through to the original frame is handled explicitly in each block.
         with self.binder.frame_context(can_skip=False, conditional_frame=True, fall_through=0):
-            for e, b in zip(s.expr, s.body):
+            for e, b in zip(s.expr[:1], s.body[:1]):
                 t = get_proper_type(self.expr_checker.accept(e))
 
                 if isinstance(t, DeletedType):

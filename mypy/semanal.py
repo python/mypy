@@ -518,7 +518,7 @@ class SemanticAnalyzer(
         def helper(defs: list[Statement]) -> None:
             for stmt in defs.copy():
                 if isinstance(stmt, IfStmt):
-                    for body in stmt.body:
+                    for body in stmt.body[:1]:
                         helper(body.body)
                     if stmt.else_body:
                         helper(stmt.else_body.body)
@@ -4805,7 +4805,7 @@ class SemanticAnalyzer(
     def visit_if_stmt(self, s: IfStmt) -> None:
         self.statement = s
         infer_reachability_of_if_statement(s, self.options)
-        for i in range(len(s.expr)):
+        for i in range(len(s.expr[:1])):
             s.expr[i].accept(self)
             self.visit_block(s.body[i])
         self.visit_block_maybe(s.else_body)

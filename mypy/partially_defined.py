@@ -386,10 +386,10 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         self.process_lvalue(o.target)
 
     def visit_if_stmt(self, o: IfStmt) -> None:
-        for e in o.expr:
+        for e in o.expr[:1]:
             e.accept(self)
         self.tracker.start_branch_statement()
-        for b in o.body:
+        for b in o.body[:1]:
             if b.is_unreachable:
                 continue
             b.accept(self)

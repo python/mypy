@@ -198,9 +198,9 @@ class TraverserVisitor(NodeVisitor[None]):
             o.expr.accept(self)
 
     def visit_if_stmt(self, o: IfStmt) -> None:
-        for e in o.expr:
+        for e in o.expr[:1]:
             e.accept(self)
-        for b in o.body:
+        for b in o.body[:1]:
             b.accept(self)
         if o.else_body:
             o.else_body.accept(self)

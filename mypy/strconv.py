@@ -251,7 +251,7 @@ class StrConv(NodeVisitor[str]):
 
     def visit_if_stmt(self, o: mypy.nodes.IfStmt) -> str:
         a: list[Any] = []
-        for i in range(len(o.expr)):
+        for i in range(len(o.expr[:1])):
             a.append(("If", [o.expr[i]]))
             a.append(("Then", o.body[i].body))
 

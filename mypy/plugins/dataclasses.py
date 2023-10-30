@@ -477,7 +477,7 @@ class DataclassTransformer:
     def _get_assignment_statements_from_if_statement(
         self, stmt: IfStmt
     ) -> Iterator[AssignmentStmt]:
-        for body in stmt.body:
+        for body in stmt.body[:1]:
             if not body.is_unreachable:
                 yield from self._get_assignment_statements_from_block(body)
         if stmt.else_body is not None and not stmt.else_body.is_unreachable:
