@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-...
+Stubgen will now include `__all__` in its output if it is in the input file (PR [16356](https://github.com/python/mypy/pull/16356)).
 
 #### Other Notable Changes and Fixes
 ...
