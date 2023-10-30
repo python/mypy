@@ -5135,7 +5135,6 @@ tmp/b.py:4: error: First argument to namedtuple() should be "NT", not "BadName"
 tmp/b.py:4: error: First argument to namedtuple() should be "NT", not "BadName"
 
 [case testNewAnalyzerIncrementalMethodNamedTuple]
-
 import a
 [file a.py]
 from b import C
@@ -6540,3 +6539,24 @@ from typing_extensions import TypedDict
 def test() -> None:
     Counts = TypedDict("Counts", {k: int for k in "abc"})  # type: ignore
 [builtins fixtures/dict.pyi]
+
+[case testNoIncrementalCrashOnTypedDictMethod]
+import a
+[file a.py]
+from b import C
+x: C
+[file a.py.2]
+from b import C
+x: C
+reveal_type(x.h)
+[file b.py]
+from typing_extensions import TypedDict
+class C:
+    def __init__(self) -> None:
+        self.h: Hidden
+        class Hidden(TypedDict):
+            x: int
+[builtins fixtures/dict.pyi]
+[out]
+[out2]
+tmp/a.py:3: note: Revealed type is "TypedDict('b.C.Hidden@5', {'x': builtins.int})"

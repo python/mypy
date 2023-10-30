@@ -10486,3 +10486,22 @@ reveal_type(s)
 ==
 ==
 b.py:2: note: Revealed type is "builtins.str"
+
+[case testRenameSubModule]
+import a
+
+[file a.py]
+import pkg.sub
+
+[file pkg/__init__.py]
+[file pkg/sub/__init__.py]
+from pkg.sub import mod
+[file pkg/sub/mod.py]
+
+[file pkg/sub/__init__.py.2]
+from pkg.sub import modb
+[delete pkg/sub/mod.py.2]
+[file pkg/sub/modb.py.2]
+
+[out]
+==
