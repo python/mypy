@@ -215,13 +215,6 @@ class InspectionEngine:
         # Module for which inspection was requested.
         self.module: State | None = None
 
-    def parse_location(self, location: str) -> tuple[str, list[int]]:
-        if location.count(":") not in [2, 4]:
-            raise ValueError("Format should be file:line:column[:end_line:end_column]")
-        parts = location.split(":")
-        module, *rest = parts
-        return module, [int(p) for p in rest]
-
     def reload_module(self, state: State) -> None:
         """Reload given module while temporary exporting types."""
         old = self.fg_manager.manager.options.export_types
@@ -575,7 +568,7 @@ class InspectionEngine:
         This can be re-used by various simple inspections.
         """
         try:
-            file, pos = self.parse_location(location)
+            file, pos = parse_location(location)
         except ValueError as err:
             return {"error": str(err)}
 
@@ -617,3 +610,18 @@ class InspectionEngine:
             result["out"] = f"No name or member expressions at {location}"
             result["status"] = 1
         return result
+
+
+def parse_location(location: str) -> tuple[str, list[int]]:
+    if location.count(":") < 2:
+        raise ValueError("Format should be file:line:column[:end_line:end_column]")
+    parts = location.rsplit(":", maxsplit=2)
+    start, *rest = parts
+    # Note: we must allow drive prefix like `C:` on Windows.
+    if start.count(":") < 2:
+        return start, [int(p) for p in rest]
+    parts = start.rsplit(":", maxsplit=2)
+    start, *start_rest = parts
+    if start.count(":") < 2:
+        return start, [int(p) for p in start_rest + rest]
+    raise ValueError("Format should be file:line:column[:end_line:end_column]")

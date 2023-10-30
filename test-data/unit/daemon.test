@@ -372,6 +372,9 @@ foo.py:3: error: Incompatible types in assignment (expression has type "str", va
 $ dmypy inspect foo:1
 Format should be file:line:column[:end_line:end_column]
 == Return code: 2
+$ dmypy inspect foo:1:2:3
+Source file is not a Python file
+== Return code: 2
 $ dmypy inspect foo.py:1:2:a:b
 invalid literal for int() with base 10: 'a'
 == Return code: 2
