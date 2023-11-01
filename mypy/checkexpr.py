@@ -2449,7 +2449,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     and isinstance(p_actual_type.items[0], UnpackType)
                     and actual_kinds == [nodes.ARG_STAR] + [nodes.ARG_POS] * (len(actuals) - 1)
                 ):
-                    # TODO: use walrus operator
                     actual_types = [p_actual_type.items[0]] + [arg_types[a] for a in actuals[1:]]
                     if isinstance(orig_callee_arg_type, UnpackType):
                         p_callee_type = get_proper_type(orig_callee_arg_type.type)
