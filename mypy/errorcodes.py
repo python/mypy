@@ -274,3 +274,6 @@ OVERLOAD_OVERLAP: Final[ErrorCode] = ErrorCode(
     "General",
     sub_code_of=MISC,
 )
+
+# This copy will not include any error codes defined later in the plugins.
+mypy_error_codes = error_codes.copy()
