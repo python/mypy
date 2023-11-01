@@ -360,6 +360,33 @@ def bar() -> None:
     x = foo('abc')  # type: str
     foo(arg='xyz')
 
+[case testDaemonInspectCheck]
+$ dmypy start
+Daemon started
+$ dmypy check foo.py
+Success: no issues found in 1 source file
+$ dmypy check foo.py --export-types
+Success: no issues found in 1 source file
+$ dmypy inspect foo.py:1:1
+"int"
+[file foo.py]
+x = 1
+
+[case testDaemonInspectRun]
+$ dmypy run test1.py
+Daemon started
+Success: no issues found in 1 source file
+$ dmypy run test2.py
+Success: no issues found in 1 source file
+$ dmypy run test1.py --export-types
+Success: no issues found in 1 source file
+$ dmypy inspect test1.py:1:1
+"int"
+[file test1.py]
+a: int
+[file test2.py]
+a: str
+
 [case testDaemonGetType]
 $ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary --python-version 3.8
 Daemon started
