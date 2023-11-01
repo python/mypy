@@ -1,20 +1,12 @@
 import _ast
 import sys
 import types
-from _typeshed import (
-    OpenBinaryMode,
-    OpenBinaryModeReading,
-    OpenBinaryModeUpdating,
-    OpenBinaryModeWriting,
-    OpenTextMode,
-    ReadableBuffer,
-    StrPath,
-)
+from _typeshed import ReadableBuffer, StrPath
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterator, Mapping, Sequence
 from importlib.machinery import ModuleSpec
-from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper
-from typing import IO, Any, BinaryIO, NoReturn, Protocol, overload, runtime_checkable
+from io import BufferedReader
+from typing import IO, Any, Protocol, overload, runtime_checkable
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 11):
@@ -139,72 +131,26 @@ if sys.version_info >= (3, 9):
             def joinpath(self, *descendants: str) -> Traversable: ...
         else:
             @abstractmethod
-            def joinpath(self, child: str) -> Traversable: ...
-        # The .open method comes from pathlib.pyi and should be kept in sync.
+            def joinpath(self, __child: str) -> Traversable: ...
+
+        # The documentation and runtime protocol allows *args, **kwargs arguments,
+        # but this would mean that all implementors would have to support them,
+        # which is not the case.
         @overload
         @abstractmethod
-        def open(
-            self,
-            mode: OpenTextMode = "r",
-            buffering: int = ...,
-            encoding: str | None = ...,
-            errors: str | None = ...,
-            newline: str | None = ...,
-        ) -> TextIOWrapper: ...
-        # Unbuffered binary mode: returns a FileIO
+        def open(self, mode: Literal["r", "w"] = "r", *, encoding: str | None = None, errors: str | None = None) -> IO[str]: ...
         @overload
         @abstractmethod
-        def open(
-            self, mode: OpenBinaryMode, buffering: Literal[0], encoding: None = None, errors: None = None, newline: None = None
-        ) -> FileIO: ...
-        # Buffering is on: return BufferedRandom, BufferedReader, or BufferedWriter
-        @overload
-        @abstractmethod
-        def open(
-            self,
-            mode: OpenBinaryModeUpdating,
-            buffering: Literal[-1, 1] = ...,
-            encoding: None = None,
-            errors: None = None,
-            newline: None = None,
-        ) -> BufferedRandom: ...
-        @overload
-        @abstractmethod
-        def open(
-            self,
-            mode: OpenBinaryModeWriting,
-            buffering: Literal[-1, 1] = ...,
-            encoding: None = None,
-            errors: None = None,
-            newline: None = None,
-        ) -> BufferedWriter: ...
-        @overload
-        @abstractmethod
-        def open(
-            self,
-            mode: OpenBinaryModeReading,
-            buffering: Literal[-1, 1] = ...,
-            encoding: None = None,
-            errors: None = None,
-            newline: None = None,
-        ) -> BufferedReader: ...
-        # Buffering cannot be determined: fall back to BinaryIO
-        @overload
-        @abstractmethod
-        def open(
-            self, mode: OpenBinaryMode, buffering: int = ..., encoding: None = None, errors: None = None, newline: None = None
-        ) -> BinaryIO: ...
-        # Fallback if mode is not specified
-        @overload
-        @abstractmethod
-        def open(
-            self, mode: str, buffering: int = ..., encoding: str | None = ..., errors: str | None = ..., newline: str | None = ...
-        ) -> IO[Any]: ...
+        def open(self, mode: Literal["rb", "wb"]) -> IO[bytes]: ...
         @property
         @abstractmethod
         def name(self) -> str: ...
-        @abstractmethod
-        def __truediv__(self, child: str) -> Traversable: ...
+        if sys.version_info >= (3, 10):
+            def __truediv__(self, __child: str) -> Traversable: ...
+        else:
+            @abstractmethod
+            def __truediv__(self, __child: str) -> Traversable: ...
+
         @abstractmethod
         def read_bytes(self) -> bytes: ...
         @abstractmethod
@@ -214,6 +160,6 @@ if sys.version_info >= (3, 9):
         @abstractmethod
         def files(self) -> Traversable: ...
         def open_resource(self, resource: str) -> BufferedReader: ...
-        def resource_path(self, resource: Any) -> NoReturn: ...
+        def resource_path(self, resource: Any) -> str: ...
         def is_resource(self, path: str) -> bool: ...
         def contents(self) -> Iterator[str]: ...

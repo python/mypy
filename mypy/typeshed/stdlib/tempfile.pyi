@@ -321,7 +321,7 @@ else:
             dir: GenericPath[AnyStr] | None = None,
         ) -> IO[Any]: ...
 
-class _TemporaryFileWrapper(IO[AnyStr], Generic[AnyStr]):
+class _TemporaryFileWrapper(IO[AnyStr]):
     file: IO[AnyStr]  # io.TextIOWrapper, io.BufferedReader or io.BufferedWriter
     name: str
     delete: bool

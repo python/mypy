@@ -2,7 +2,7 @@ import sys
 from _typeshed import AnyStr_co, StrOrBytesPath
 from collections.abc import Callable, Iterable, Iterator
 from types import TracebackType
-from typing import IO, Any, AnyStr, Generic, Protocol, overload
+from typing import IO, Any, AnyStr, Protocol, overload
 from typing_extensions import Literal, Self, TypeAlias
 
 if sys.version_info >= (3, 9):
@@ -158,7 +158,7 @@ def fileno() -> int: ...
 def isfirstline() -> bool: ...
 def isstdin() -> bool: ...
 
-class FileInput(Iterator[AnyStr], Generic[AnyStr]):
+class FileInput(Iterator[AnyStr]):
     if sys.version_info >= (3, 10):
         # encoding and errors are added
         @overload

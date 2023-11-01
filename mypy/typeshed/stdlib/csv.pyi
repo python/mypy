@@ -23,7 +23,7 @@ from _csv import (
 )
 
 if sys.version_info >= (3, 12):
-    from _csv import QUOTE_STRINGS as QUOTE_STRINGS, QUOTE_NOTNULL as QUOTE_NOTNULL
+    from _csv import QUOTE_NOTNULL as QUOTE_NOTNULL, QUOTE_STRINGS as QUOTE_STRINGS
 from _typeshed import SupportsWrite
 from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
 from typing import Any, Generic, TypeVar, overload
