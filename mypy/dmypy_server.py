@@ -393,15 +393,21 @@ class Server:
         t1 = time.time()
         manager = self.fine_grained_manager.manager
         manager.log(f"fine-grained increment: cmd_recheck: {t1 - t0:.3f}s")
-        self.options.export_types = export_types
+        old_export_types = self.options.export_types
+        self.options.export_types = self.options.export_types or export_types
         if not self.following_imports():
-            messages = self.fine_grained_increment(sources, remove, update)
+            messages = self.fine_grained_increment(
+                sources, remove, update, explicit_export_types=export_types
+            )
         else:
             assert remove is None and update is None
-            messages = self.fine_grained_increment_follow_imports(sources)
+            messages = self.fine_grained_increment_follow_imports(
+                sources, explicit_export_types=export_types
+            )
         res = self.increment_output(messages, sources, is_tty, terminal_width)
         self.flush_caches()
         self.update_stats(res)
+        self.options.export_types = old_export_types
         return res
 
     def check(
@@ -412,17 +418,21 @@ class Server:
         If is_tty is True format the output nicely with colors and summary line
         (unless disabled in self.options). Also pass the terminal_width to formatter.
         """
-        self.options.export_types = export_types
+        old_export_types = self.options.export_types
+        self.options.export_types = self.options.export_types or export_types
         if not self.fine_grained_manager:
             res = self.initialize_fine_grained(sources, is_tty, terminal_width)
         else:
             if not self.following_imports():
-                messages = self.fine_grained_increment(sources)
+                messages = self.fine_grained_increment(sources, explicit_export_types=export_types)
             else:
-                messages = self.fine_grained_increment_follow_imports(sources)
+                messages = self.fine_grained_increment_follow_imports(
+                    sources, explicit_export_types=export_types
+                )
             res = self.increment_output(messages, sources, is_tty, terminal_width)
         self.flush_caches()
         self.update_stats(res)
+        self.options.export_types = old_export_types
         return res
 
     def flush_caches(self) -> None:
@@ -535,6 +545,7 @@ class Server:
         sources: list[BuildSource],
         remove: list[str] | None = None,
         update: list[str] | None = None,
+        explicit_export_types: bool = False,
     ) -> list[str]:
         """Perform a fine-grained type checking increment.
 
@@ -545,6 +556,8 @@ class Server:
             sources: sources passed on the command line
             remove: paths of files that have been removed
             update: paths of files that have been changed or created
+            explicit_export_types: --export-type was passed in a check command
+              (as opposite to being set in dmypy start)
         """
         assert self.fine_grained_manager is not None
         manager = self.fine_grained_manager.manager
@@ -559,6 +572,10 @@ class Server:
             # Use the remove/update lists to update fswatcher.
             # This avoids calling stat() for unchanged files.
             changed, removed = self.update_changed(sources, remove or [], update or [])
+        if explicit_export_types:
+            # If --export-types is given, we need to force full re-checking of all
+            # explicitly passed files, since we need to visit each expression.
+            add_all_sources_to_changed(sources, changed)
         changed += self.find_added_suppressed(
             self.fine_grained_manager.graph, set(), manager.search_paths
         )
@@ -577,7 +594,9 @@ class Server:
         self.previous_sources = sources
         return messages
 
-    def fine_grained_increment_follow_imports(self, sources: list[BuildSource]) -> list[str]:
+    def fine_grained_increment_follow_imports(
+        self, sources: list[BuildSource], explicit_export_types: bool = False
+    ) -> list[str]:
         """Like fine_grained_increment, but follow imports."""
         t0 = time.time()
 
@@ -603,6 +622,9 @@ class Server:
         changed, new_files = self.find_reachable_changed_modules(
             sources, graph, seen, changed_paths
         )
+        if explicit_export_types:
+            # Same as in fine_grained_increment().
+            add_all_sources_to_changed(sources, changed)
         sources.extend(new_files)
 
         # Process changes directly reachable from roots.
@@ -1009,6 +1031,22 @@ def find_all_sources_in_build(
         if module not in seen:
             result.append(BuildSource(state.path, module))
     return result
+
+
+def add_all_sources_to_changed(sources: list[BuildSource], changed: list[tuple[str, str]]) -> None:
+    """Add all (explicit) sources to the list changed files in place.
+
+    Use this when re-processing of unchanged files is needed (e.g. for
+    the purpose of exporting types for inspections).
+    """
+    changed_set = set(changed)
+    changed.extend(
+        [
+            (bs.module, bs.path)
+            for bs in sources
+            if bs.path and (bs.module, bs.path) not in changed_set
+        ]
+    )
 
 
 def fix_module_deps(graph: mypy.build.Graph) -> None:
