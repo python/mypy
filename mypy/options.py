@@ -255,6 +255,8 @@ class Options:
         # Write junit.xml to given file
         self.junit_xml: str | None = None
 
+        self.junit_format: str = "global"  # global|per_file
+
         # Caching and incremental checking options
         self.incremental = True
         self.cache_dir = defaults.CACHE_DIR
