@@ -2185,3 +2185,25 @@ def test2(
                      # E: Missing named argument "b"
     return func(*args, **kwargs)
 [builtins fixtures/tuple.pyi]
+
+[case testUnpackTupleSpecialCaseNoCrash]
+from typing import Tuple, TypeVar
+from typing_extensions import Unpack
+
+T = TypeVar("T")
+
+def foo(*x: object) -> None: ...
+def bar(*x: int) -> None: ...
+def baz(*x: T) -> T: ...
+
+keys: Tuple[Unpack[Tuple[int, ...]]]
+
+foo(keys, 1)
+foo(*keys, 1)
+
+bar(keys, 1)  # E: Argument 1 to "bar" has incompatible type "Tuple[Unpack[Tuple[int, ...]]]"; expected "int"
+bar(*keys, 1)  # OK
+
+reveal_type(baz(keys, 1))  # N: Revealed type is "builtins.object"
+reveal_type(baz(*keys, 1))  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
