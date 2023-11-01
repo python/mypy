@@ -16,7 +16,7 @@ from collections.abc import (
 from importlib.machinery import ModuleSpec
 
 # pytype crashes if types.MappingProxyType inherits from collections.abc.Mapping instead of typing.Mapping
-from typing import Any, ClassVar, Generic, Mapping, Protocol, TypeVar, overload  # noqa: Y022
+from typing import Any, ClassVar, Mapping, Protocol, TypeVar, overload  # noqa: Y022
 from typing_extensions import Literal, ParamSpec, Self, TypeVarTuple, final
 
 __all__ = [
@@ -309,7 +309,7 @@ class CodeType:
         ) -> CodeType: ...
 
 @final
-class MappingProxyType(Mapping[_KT, _VT_co], Generic[_KT, _VT_co]):
+class MappingProxyType(Mapping[_KT, _VT_co]):
     __hash__: ClassVar[None]  # type: ignore[assignment]
     def __new__(cls, mapping: SupportsKeysAndGetItem[_KT, _VT_co]) -> Self: ...
     def __getitem__(self, __key: _KT) -> _VT_co: ...

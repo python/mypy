@@ -1,6 +1,6 @@
 import sys
 from collections.abc import Iterable, Iterator, MutableSet
-from typing import Any, Generic, TypeVar, overload
+from typing import Any, TypeVar, overload
 from typing_extensions import Self
 
 if sys.version_info >= (3, 9):
@@ -11,7 +11,7 @@ __all__ = ["WeakSet"]
 _S = TypeVar("_S")
 _T = TypeVar("_T")
 
-class WeakSet(MutableSet[_T], Generic[_T]):
+class WeakSet(MutableSet[_T]):
     @overload
     def __init__(self, data: None = None) -> None: ...
     @overload
