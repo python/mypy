@@ -3379,3 +3379,20 @@ bar |= d1  # E: Argument 1 to "__ior__" of "TypedDict" has incompatible type "Di
 bar |= d2  # E: Argument 1 to "__ior__" of "TypedDict" has incompatible type "Dict[int, str]"; expected "TypedDict({'key'?: int, 'value'?: str})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict-iror.pyi]
+
+[case testGenericTypedDictStrictOptionalExtending]
+from typing import Generic, TypeVar, TypedDict, Optional
+
+T = TypeVar("T")
+class Foo(TypedDict, Generic[T], total=False):
+    a: Optional[str]
+    g: Optional[T]
+
+class Bar(Foo[T], total=False):
+    other: str
+
+b: Bar[int]
+reveal_type(b["a"])  # N: Revealed type is "Union[builtins.str, None]"
+reveal_type(b["g"])  # N: Revealed type is "Union[builtins.int, None]"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
