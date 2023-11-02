@@ -284,8 +284,8 @@ class A:
     x = 1
 class B(A): pass
 class C(B):
-    a = super().whatever  # E: "super" outside of a method is not supported
     b = super(B, B).x
+    a = super().whatever  # E: "super" outside of a method is not supported
 
 [case testSuperWithObjectClassAsFirstArgument]
 class A:
