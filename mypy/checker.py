@@ -2041,7 +2041,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 pass
             elif isinstance(original_type, FunctionLike) and isinstance(typ, FunctionLike):
                 # Check that the types are compatible.
-                # TODO overloaded signatures
                 self.check_override(
                     typ,
                     original_type,
@@ -2056,7 +2055,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # Assume invariance for a non-callable attribute here. Note
                 # that this doesn't affect read-only properties which can have
                 # covariant overrides.
-                #
                 pass
             elif (
                 original_node
@@ -2636,6 +2634,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         first_type = get_proper_type(self.determine_type_of_member(first))
         second_type = get_proper_type(self.determine_type_of_member(second))
 
+        # TODO: use more principled logic to decide is_subtype() vs is_equivalent().
+        # We should rely on mutability of superclass node, not on types being Callable.
+
         # start with the special case that Instance can be a subtype of FunctionLike
         call = None
         if isinstance(first_type, Instance):
@@ -3211,7 +3212,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if base_static and compare_static:
                     lvalue_node.is_staticmethod = True
 
-            return self.check_subtype(
+            ok = self.check_subtype(
                 compare_type,
                 base_type,
                 rvalue,
@@ -3219,6 +3220,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 "expression has type",
                 f'base class "{base.name}" defined the type as',
             )
+            if (
+                ok
+                and codes.MUTABLE_OVERRIDE in self.options.enabled_error_codes
+                and self.is_writable_attribute(base_node)
+            ):
+                ok = self.check_subtype(
+                    base_type,
+                    compare_type,
+                    rvalue,
+                    message_registry.COVARIANT_OVERRIDE_OF_MUTABLE_ATTRIBUTE,
+                    f'base class "{base.name}" defined the type as',
+                    "expression has type",
+                )
+            return ok
         return True
 
     def lvalue_type_from_base(

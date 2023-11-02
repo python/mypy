@@ -1148,3 +1148,27 @@ main:3: note: Revealed local types are:
 main:3: note:     x: builtins.int
 main:3: error: Name "reveal_locals" is not defined  [unimported-reveal]
 [builtins fixtures/isinstancelist.pyi]
+
+[case testCovariantMutableOverride]
+# flags: --enable-error-code=mutable-override
+from typing import Any
+
+class C:
+    x: float
+    y: float
+    z: float
+    w: Any
+    @property
+    def foo(self) -> float: ...
+    @property
+    def bar(self) -> float: ...
+    @bar.setter
+    def bar(self, val: float) -> None: ...
+class D(C):
+    x: int  # E: Covariant override of a mutable attribute (base class "C" defined the type as "float", expression has type "int")  [mutable-override]
+    y: float
+    z: Any
+    w: float
+    foo: int
+    bar: int  # E: Covariant override of a mutable attribute (base class "C" defined the type as "float", expression has type "int")  [mutable-override]
+[builtins fixtures/property.pyi]
