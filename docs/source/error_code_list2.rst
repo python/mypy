@@ -505,8 +505,8 @@ flagged when this error code is enabled:
         x: int  # Error: Covariant override of a mutable attribute
                 # (base class "C" defined the type as "float",
                 # expression has type "int")  [mutable-override]
-        y: float
-        z: Any
+        y: float  # OK
+        z: Any  # OK
 
     def f(c: C) -> None:
         c.x = 1.1
