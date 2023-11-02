@@ -37,6 +37,7 @@ from mypy.semanal_shared import (
     has_placeholder,
     require_bool_literal_argument,
 )
+from mypy.state import state
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
 from mypy.types import (
     TPDICT_NAMES,
@@ -203,7 +204,8 @@ class TypedDictAnalyzer:
                 any_kind = TypeOfAny.from_error
             base_args = [AnyType(any_kind) for _ in tvars]
 
-        valid_items = self.map_items_to_base(valid_items, tvars, base_args)
+        with state.strict_optional_set(self.options.strict_optional):
+            valid_items = self.map_items_to_base(valid_items, tvars, base_args)
         for key in base_items:
             if key in keys:
                 self.fail(f'Overwriting TypedDict field "{key}" while merging', ctx)
