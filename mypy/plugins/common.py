@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import NamedTuple
+
 from mypy.argmap import map_actuals_to_formals
 from mypy.fixup import TypeFixer
 from mypy.nodes import (
@@ -16,9 +18,11 @@ from mypy.nodes import (
     JsonDict,
     NameExpr,
     Node,
+    OverloadedFuncDef,
     PassStmt,
     RefExpr,
     SymbolTableNode,
+    TypeInfo,
     Var,
 )
 from mypy.plugin import CheckerPluginInterface, ClassDefContext, SemanticAnalyzerPluginInterface
@@ -43,7 +47,7 @@ from mypy.types import (
     deserialize_type,
     get_proper_type,
 )
-from mypy.types_utils import is_optional
+from mypy.types_utils import is_overlapping_none
 from mypy.typevars import fill_typevars
 from mypy.util import get_unique_redefinition_name
 
@@ -141,7 +145,7 @@ def find_shallow_matching_overload_item(overload: Overloaded, call: CallExpr) ->
                         break
                 elif (
                     arg_none
-                    and not is_optional(arg_type)
+                    and not is_overlapping_none(arg_type)
                     and not (
                         isinstance(arg_type, Instance)
                         and arg_type.type.fullname == "builtins.object"
@@ -150,7 +154,7 @@ def find_shallow_matching_overload_item(overload: Overloaded, call: CallExpr) ->
                 ):
                     ok = False
                     break
-                elif isinstance(arg_type, LiteralType) and type(arg_type.value) is bool:
+                elif isinstance(arg_type, LiteralType) and isinstance(arg_type.value, bool):
                     if not any(parse_bool(arg) == arg_type.value for arg in args):
                         ok = False
                         break
@@ -209,24 +213,99 @@ def add_method(
     )
 
 
+class MethodSpec(NamedTuple):
+    """Represents a method signature to be added, except for `name`."""
+
+    args: list[Argument]
+    return_type: Type
+    self_type: Type | None = None
+    tvar_defs: list[TypeVarType] | None = None
+
+
 def add_method_to_class(
     api: SemanticAnalyzerPluginInterface | CheckerPluginInterface,
     cls: ClassDef,
     name: str,
+    # MethodSpec items kept for backward compatibility:
     args: list[Argument],
     return_type: Type,
     self_type: Type | None = None,
-    tvar_def: TypeVarType | None = None,
+    tvar_def: list[TypeVarType] | TypeVarType | None = None,
     is_classmethod: bool = False,
     is_staticmethod: bool = False,
-) -> None:
+) -> FuncDef | Decorator:
     """Adds a new method to a class definition."""
+    _prepare_class_namespace(cls, name)
 
-    assert not (
-        is_classmethod is True and is_staticmethod is True
-    ), "Can't add a new method that's both staticmethod and classmethod."
+    if tvar_def is not None and not isinstance(tvar_def, list):
+        tvar_def = [tvar_def]
 
+    func, sym = _add_method_by_spec(
+        api,
+        cls.info,
+        name,
+        MethodSpec(args=args, return_type=return_type, self_type=self_type, tvar_defs=tvar_def),
+        is_classmethod=is_classmethod,
+        is_staticmethod=is_staticmethod,
+    )
+    cls.info.names[name] = sym
+    cls.info.defn.defs.body.append(func)
+    return func
+
+
+def add_overloaded_method_to_class(
+    api: SemanticAnalyzerPluginInterface | CheckerPluginInterface,
+    cls: ClassDef,
+    name: str,
+    items: list[MethodSpec],
+    is_classmethod: bool = False,
+    is_staticmethod: bool = False,
+) -> OverloadedFuncDef:
+    """Adds a new overloaded method to a class definition."""
+    assert len(items) >= 2, "Overloads must contain at least two cases"
+
+    # Save old definition, if it exists.
+    _prepare_class_namespace(cls, name)
+
+    # Create function bodies for each passed method spec.
+    funcs: list[Decorator | FuncDef] = []
+    for item in items:
+        func, _sym = _add_method_by_spec(
+            api,
+            cls.info,
+            name=name,
+            spec=item,
+            is_classmethod=is_classmethod,
+            is_staticmethod=is_staticmethod,
+        )
+        if isinstance(func, FuncDef):
+            var = Var(func.name, func.type)
+            var.set_line(func.line)
+            func.is_decorated = True
+            func.deco_line = func.line
+
+            deco = Decorator(func, [], var)
+        else:
+            deco = func
+        deco.is_overload = True
+        funcs.append(deco)
+
+    # Create the final OverloadedFuncDef node:
+    overload_def = OverloadedFuncDef(funcs)
+    overload_def.info = cls.info
+    overload_def.is_class = is_classmethod
+    overload_def.is_static = is_staticmethod
+    sym = SymbolTableNode(MDEF, overload_def)
+    sym.plugin_generated = True
+
+    cls.info.names[name] = sym
+    cls.info.defn.defs.body.append(overload_def)
+    return overload_def
+
+
+def _prepare_class_namespace(cls: ClassDef, name: str) -> None:
     info = cls.info
+    assert info
 
     # First remove any previously generated methods with the same name
     # to avoid clashes and problems in the semantic analyzer.
@@ -234,6 +313,29 @@ def add_method_to_class(
         sym = info.names[name]
         if sym.plugin_generated and isinstance(sym.node, FuncDef):
             cls.defs.body.remove(sym.node)
+
+    # NOTE: we would like the plugin generated node to dominate, but we still
+    # need to keep any existing definitions so they get semantically analyzed.
+    if name in info.names:
+        # Get a nice unique name instead.
+        r_name = get_unique_redefinition_name(name, info.names)
+        info.names[r_name] = info.names[name]
+
+
+def _add_method_by_spec(
+    api: SemanticAnalyzerPluginInterface | CheckerPluginInterface,
+    info: TypeInfo,
+    name: str,
+    spec: MethodSpec,
+    *,
+    is_classmethod: bool,
+    is_staticmethod: bool,
+) -> tuple[FuncDef | Decorator, SymbolTableNode]:
+    args, return_type, self_type, tvar_defs = spec
+
+    assert not (
+        is_classmethod is True and is_staticmethod is True
+    ), "Can't add a new method that's both staticmethod and classmethod."
 
     if isinstance(api, SemanticAnalyzerPluginInterface):
         function_type = api.named_type("builtins.function")
@@ -258,8 +360,8 @@ def add_method_to_class(
         arg_kinds.append(arg.kind)
 
     signature = CallableType(arg_types, arg_kinds, arg_names, return_type, function_type)
-    if tvar_def:
-        signature.variables = [tvar_def]
+    if tvar_defs:
+        signature.variables = tvar_defs
 
     func = FuncDef(name, args, Block([PassStmt()]))
     func.info = info
@@ -268,13 +370,6 @@ def add_method_to_class(
     func.is_static = is_staticmethod
     func._fullname = info.fullname + "." + name
     func.line = info.line
-
-    # NOTE: we would like the plugin generated node to dominate, but we still
-    # need to keep any existing definitions so they get semantically analyzed.
-    if name in info.names:
-        # Get a nice unique name instead.
-        r_name = get_unique_redefinition_name(name, info.names)
-        info.names[r_name] = info.names[name]
 
     # Add decorator for is_staticmethod. It's unnecessary for is_classmethod.
     if is_staticmethod:
@@ -286,12 +381,12 @@ def add_method_to_class(
         dec = Decorator(func, [], v)
         dec.line = info.line
         sym = SymbolTableNode(MDEF, dec)
-    else:
-        sym = SymbolTableNode(MDEF, func)
-    sym.plugin_generated = True
-    info.names[name] = sym
+        sym.plugin_generated = True
+        return dec, sym
 
-    info.defn.defs.body.append(func)
+    sym = SymbolTableNode(MDEF, func)
+    sym.plugin_generated = True
+    return func, sym
 
 
 def add_attribute_to_class(
@@ -304,7 +399,7 @@ def add_attribute_to_class(
     override_allow_incompatible: bool = False,
     fullname: str | None = None,
     is_classvar: bool = False,
-) -> None:
+) -> Var:
     """
     Adds a new attribute to a class definition.
     This currently only generates the symbol table entry and no corresponding AssignmentStatement
@@ -335,6 +430,7 @@ def add_attribute_to_class(
     info.names[name] = SymbolTableNode(
         MDEF, node, plugin_generated=True, no_serialize=no_serialize
     )
+    return node
 
 
 def deserialize_and_fixup_type(data: str | JsonDict, api: SemanticAnalyzerPluginInterface) -> Type:

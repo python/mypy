@@ -79,7 +79,7 @@ from mypy.types import (
     UnionType,
     get_proper_type,
 )
-from mypy.types_utils import is_optional, remove_optional
+from mypy.types_utils import is_overlapping_none, remove_optional
 from mypy.util import split_target
 
 
@@ -752,7 +752,7 @@ class SuggestionEngine:
                 return 20
             if any(has_any_type(x) for x in t.items):
                 return 15
-            if not is_optional(t):
+            if not is_overlapping_none(t):
                 return 10
         if isinstance(t, CallableType) and (has_any_type(t) or is_tricky_callable(t)):
             return 10
@@ -868,7 +868,7 @@ class TypeFormatter(TypeStrVisitor):
         return t.fallback.accept(self)
 
     def visit_union_type(self, t: UnionType) -> str:
-        if len(t.items) == 2 and is_optional(t):
+        if len(t.items) == 2 and is_overlapping_none(t):
             return f"Optional[{remove_optional(t).accept(self)}]"
         else:
             return super().visit_union_type(t)

@@ -35,6 +35,7 @@ _dummy_threading: 2.7-3.8
 _heapq: 2.7-
 _imp: 3.0-
 _json: 2.7-
+_locale: 2.7-
 _markupbase: 2.7-
 _msi: 2.7-
 _operator: 3.4-
@@ -151,8 +152,12 @@ imp: 2.7-3.11
 importlib: 2.7-
 importlib.metadata: 3.8-
 importlib.metadata._meta: 3.10-
+importlib.readers: 3.10-
 importlib.resources: 3.7-
 importlib.resources.abc: 3.11-
+importlib.resources.readers: 3.11-
+importlib.resources.simple: 3.11-
+importlib.simple: 3.11-
 inspect: 2.7-
 io: 2.7-
 ipaddress: 3.3-
@@ -180,6 +185,7 @@ multiprocessing.shared_memory: 3.8-
 netrc: 2.7-
 nis: 2.7-
 nntplib: 2.7-
+nt: 2.7-
 ntpath: 2.7-
 nturl2path: 2.7-
 numbers: 2.7-
@@ -249,6 +255,7 @@ sunau: 2.7-
 symbol: 2.7-3.9
 symtable: 2.7-
 sys: 2.7-
+sys._monitoring: 3.12-  # Doesn't actually exist. See comments in the stub.
 sysconfig: 2.7-
 syslog: 2.7-
 tabnanny: 2.7-

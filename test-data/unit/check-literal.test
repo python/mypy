@@ -278,7 +278,7 @@ reveal_type(c_bytes_wrapper_alias)    # N: Revealed type is "__main__.Wrap[Liter
 [builtins fixtures/tuple.pyi]
 [out]
 
-[case testLiteralUnicodeWeirdCharacters]
+[case testLiteralUnicodeWeirdCharacters-skip_path_normalization]
 from typing import Any
 from typing_extensions import Literal
 
@@ -334,7 +334,7 @@ a1 = b3
 a1 = c3  # E: Incompatible types in assignment (expression has type "Literal['¬b ∧ λ(p)']", variable has type "Literal['\x00¬b ∧ λ(p)']")
 [builtins fixtures/tuple.pyi]
 
-[out skip-path-normalization]
+[out]
 
 [case testLiteralRenamingImportWorks]
 from typing_extensions import Literal as Foo
@@ -478,7 +478,7 @@ reveal_type(f5)  # N: Revealed type is "def (x: Literal['foo']) -> Literal['foo'
 [builtins fixtures/tuple.pyi]
 [out]
 
-[case testLiteralBasicStrUsageSlashes]
+[case testLiteralBasicStrUsageSlashes-skip_path_normalization]
 from typing_extensions import Literal
 
 a: Literal[r"foo\nbar"]
@@ -487,7 +487,7 @@ b: Literal["foo\nbar"]
 reveal_type(a)
 reveal_type(b)
 [builtins fixtures/tuple.pyi]
-[out skip-path-normalization]
+[out]
 main:6: note: Revealed type is "Literal['foo\\nbar']"
 main:7: note: Revealed type is "Literal['foo\nbar']"
 
@@ -611,8 +611,7 @@ from typing_extensions import Literal
 a: (1, 2, 3)                    # E: Syntax error in type annotation \
                                 # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
 b: Literal[[1, 2, 3]]           # E: Parameter 1 of Literal[...] is invalid
-c: [1, 2, 3]                    # E: Bracketed expression "[...]" is not valid as a type \
-                                # N: Did you mean "List[...]"?
+c: [1, 2, 3]                    # E: Bracketed expression "[...]" is not valid as a type
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -659,7 +658,6 @@ def foo(b: Literal[T]) -> Tuple[T]: pass   # E: Parameter 1 of Literal[...] is i
 --
 
 [case testLiteralMultipleValues]
-# flags: --strict-optional
 from typing_extensions import Literal
 a: Literal[1, 2, 3]
 b: Literal["a", "b", "c"]
@@ -689,7 +687,6 @@ reveal_type(b)  # N: Revealed type is "Union[Literal[1], Literal[2], Literal[3]]
 [out]
 
 [case testLiteralNestedUsage]
-# flags: --strict-optional
 
 from typing_extensions import Literal
 a: Literal[Literal[3], 4, Literal["foo"]]
@@ -753,16 +750,16 @@ Foo = Literal[5]
 [case testLiteralBiasTowardsAssumingForwardReferencesForTypeComments]
 from typing_extensions import Literal
 
-a = None  # type: Foo
+a: Foo
 reveal_type(a)      # N: Revealed type is "__main__.Foo"
 
-b = None  # type: "Foo"
+b: "Foo"
 reveal_type(b)      # N: Revealed type is "__main__.Foo"
 
-c = None  # type: Literal["Foo"]
+c: Literal["Foo"]
 reveal_type(c)      # N: Revealed type is "Literal['Foo']"
 
-d = None  # type: Literal[Foo]   # E: Parameter 1 of Literal[...] is invalid
+d: Literal[Foo]     # E: Parameter 1 of Literal[...] is invalid
 
 class Foo: pass
 [builtins fixtures/tuple.pyi]
@@ -818,7 +815,6 @@ foo(c)  # E: Argument 1 to "foo" has incompatible type "Literal[4, 'foo']"; expe
 [out]
 
 [case testLiteralCheckSubtypingStrictOptional]
-# flags: --strict-optional
 from typing import Any, NoReturn
 from typing_extensions import Literal
 
@@ -1760,7 +1756,7 @@ reveal_type(func1(identity(b)))  # N: Revealed type is "builtins.int"
 --
 
 [case testLiteralMeets]
-from typing import TypeVar, List, Callable, Union
+from typing import TypeVar, List, Callable, Union, Optional
 from typing_extensions import Literal
 
 a: Callable[[Literal[1]], int]
@@ -1794,17 +1790,19 @@ def f2(x: Literal[1], y: Literal[2]) -> None: pass
 def f3(x: Literal[1], y: int) -> None: pass
 def f4(x: Literal[1], y: object) -> None: pass
 def f5(x: Literal[1], y: Union[Literal[1], Literal[2]]) -> None: pass
+def f6(x: Optional[Literal[1]], y: Optional[Literal[2]]) -> None: pass
 
 reveal_type(unify(f1))  # N: Revealed type is "Literal[1]"
-reveal_type(unify(f2))  # N: Revealed type is "None"
+if object():
+    reveal_type(unify(f2))  # N: Revealed type is "Never"
 reveal_type(unify(f3))  # N: Revealed type is "Literal[1]"
 reveal_type(unify(f4))  # N: Revealed type is "Literal[1]"
 reveal_type(unify(f5))  # N: Revealed type is "Literal[1]"
+reveal_type(unify(f6))  # N: Revealed type is "None"
 [builtins fixtures/list.pyi]
 [out]
 
 [case testLiteralMeetsWithStrictOptional]
-# flags: --strict-optional
 from typing import TypeVar, Callable, Union
 from typing_extensions import Literal
 
@@ -1821,7 +1819,7 @@ T = TypeVar('T')
 def unify(func: Callable[[T, T], None]) -> T: pass
 def func(x: Literal[1], y: Literal[2]) -> None: pass
 
-reveal_type(unify(func))  # N: Revealed type is "<nothing>"
+reveal_type(unify(func))  # N: Revealed type is "Never"
 [builtins fixtures/list.pyi]
 [out]
 
@@ -1831,7 +1829,6 @@ reveal_type(unify(func))  # N: Revealed type is "<nothing>"
 --
 
 [case testLiteralIntelligentIndexingTuples]
-# flags: --strict-optional
 from typing import Tuple, NamedTuple, Optional, Final
 from typing_extensions import Literal
 
@@ -1875,8 +1872,9 @@ reveal_type(tup2[idx3])       # N: Revealed type is "__main__.D"
 reveal_type(tup2[idx4])       # N: Revealed type is "__main__.E"
 reveal_type(tup2[idx_neg1])   # N: Revealed type is "__main__.E"
 tup2[idx5]                    # E: Tuple index out of range
-reveal_type(tup2[idx2:idx4])  # N: Revealed type is "Tuple[__main__.C, __main__.D, fallback=__main__.Tup2Class]"
-reveal_type(tup2[::idx2])     # N: Revealed type is "Tuple[__main__.A, __main__.C, __main__.E, fallback=__main__.Tup2Class]"
+reveal_type(tup2[idx2:idx4])  # N: Revealed type is "Tuple[__main__.C, __main__.D]"
+reveal_type(tup2[::idx2])     # N: Revealed type is "Tuple[__main__.A, __main__.C, __main__.E]"
+tup3: Tup2Class = tup2[:]     # E: Incompatible types in assignment (expression has type "Tuple[A, B, C, D, E]", variable has type "Tup2Class")
 [builtins fixtures/slice.pyi]
 
 [case testLiteralIntelligentIndexingTypedDict]
@@ -1980,8 +1978,8 @@ reveal_type(tup1[0::idx1])      # N: Revealed type is "Union[Tuple[__main__.A, _
 tup1[idx_bad]                   # E: Tuple index out of range
 
 reveal_type(tup2[idx1])         # N: Revealed type is "Union[__main__.B, __main__.C]"
-reveal_type(tup2[idx1:idx2])    # N: Revealed type is "Union[Tuple[__main__.B, __main__.C, fallback=__main__.Tup2Class], Tuple[__main__.B, __main__.C, __main__.D, fallback=__main__.Tup2Class], Tuple[__main__.C, fallback=__main__.Tup2Class], Tuple[__main__.C, __main__.D, fallback=__main__.Tup2Class]]"
-reveal_type(tup2[0::idx1])      # N: Revealed type is "Union[Tuple[__main__.A, __main__.B, __main__.C, __main__.D, __main__.E, fallback=__main__.Tup2Class], Tuple[__main__.A, __main__.C, __main__.E, fallback=__main__.Tup2Class]]"
+reveal_type(tup2[idx1:idx2])    # N: Revealed type is "Union[Tuple[__main__.B, __main__.C], Tuple[__main__.B, __main__.C, __main__.D], Tuple[__main__.C], Tuple[__main__.C, __main__.D]]"
+reveal_type(tup2[0::idx1])      # N: Revealed type is "Union[Tuple[__main__.A, __main__.B, __main__.C, __main__.D, __main__.E], Tuple[__main__.A, __main__.C, __main__.E]]"
 tup2[idx_bad]                   # E: Tuple index out of range
 [builtins fixtures/slice.pyi]
 [out]
@@ -2013,7 +2011,7 @@ optional_keys: Literal["d", "e"]
 bad_keys: Literal["a", "bad"]
 
 reveal_type(test[good_keys])                      # N: Revealed type is "Union[__main__.A, __main__.B]"
-reveal_type(test.get(good_keys))                  # N: Revealed type is "Union[__main__.A, __main__.B]"
+reveal_type(test.get(good_keys))                  # N: Revealed type is "Union[__main__.A, __main__.B, None]"
 reveal_type(test.get(good_keys, 3))               # N: Revealed type is "Union[__main__.A, Literal[3]?, __main__.B]"
 reveal_type(test.pop(optional_keys))              # N: Revealed type is "Union[__main__.D, __main__.E]"
 reveal_type(test.pop(optional_keys, 3))           # N: Revealed type is "Union[__main__.D, __main__.E, Literal[3]?]"
@@ -2066,7 +2064,7 @@ x[bad_keys]         # E: TypedDict "D1" has no key "d" \
                     # E: TypedDict "D2" has no key "a"
 
 reveal_type(x[good_keys])           # N: Revealed type is "Union[__main__.B, __main__.C]"
-reveal_type(x.get(good_keys))       # N: Revealed type is "Union[__main__.B, __main__.C]"
+reveal_type(x.get(good_keys))       # N: Revealed type is "Union[__main__.B, __main__.C, None]"
 reveal_type(x.get(good_keys, 3))    # N: Revealed type is "Union[__main__.B, Literal[3]?, __main__.C]"
 reveal_type(x.get(bad_keys))        # N: Revealed type is "builtins.object"
 reveal_type(x.get(bad_keys, 3))     # N: Revealed type is "builtins.object"
@@ -2244,7 +2242,6 @@ force4(reveal_type(f.instancevar4))  # N: Revealed type is "None"
 [out]
 
 [case testLiteralFinalErasureInMutableDatastructures1]
-# flags: --strict-optional
 from typing_extensions import Final
 
 var1: Final = [0, None]

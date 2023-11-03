@@ -490,7 +490,38 @@ section of the command line docs.
     :default: False
 
     Disallows calling functions without type annotations from functions with type
-    annotations.
+    annotations. Note that when used in per-module options, it enables/disables
+    this check **inside** the module(s) specified, not for functions that come
+    from that module(s), for example config like this:
+
+    .. code-block:: ini
+
+        [mypy]
+        disallow_untyped_calls = True
+
+        [mypy-some.library.*]
+        disallow_untyped_calls = False
+
+    will disable this check inside ``some.library``, not for your code that
+    imports ``some.library``. If you want to selectively disable this check for
+    all your code that imports ``some.library`` you should instead use
+    :confval:`untyped_calls_exclude`, for example:
+
+    .. code-block:: ini
+
+        [mypy]
+        disallow_untyped_calls = True
+        untyped_calls_exclude = some.library
+
+.. confval:: untyped_calls_exclude
+
+    :type: comma-separated list of strings
+
+    Selectively excludes functions and methods defined in specific packages,
+    modules, and classes from action of :confval:`disallow_untyped_calls`.
+    This also applies to all submodules of packages (i.e. everything inside
+    a given prefix). Note, this option does not support per-file configuration,
+    the exclusions list is defined globally for all your code.
 
 .. confval:: disallow_untyped_defs
 
@@ -785,6 +816,22 @@ These options may only be set in the global section (``[mypy]``).
 
     Show absolute paths to files.
 
+.. confval:: force_uppercase_builtins
+
+    :type: boolean
+    :default: False
+
+    Always use ``List`` instead of ``list`` in error messages,
+    even on Python 3.9+.
+
+.. confval:: force_union_syntax
+
+    :type: boolean
+    :default: False
+
+    Always use ``Union[]`` and ``Optional[]`` for union types
+    in error messages (instead of the ``|`` operator),
+    even on Python 3.10+.
 
 Incremental mode
 ****************

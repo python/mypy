@@ -6,8 +6,7 @@ This is conceptually part of mypy.semanal.
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Iterator, List, Mapping, cast
-from typing_extensions import Final
+from typing import Final, Iterator, List, Mapping, cast
 
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.nodes import (
@@ -143,9 +142,6 @@ class NamedTupleAnalyzer:
           * valid statements
         or None, if any of the types are not ready.
         """
-        if self.options.python_version < (3, 6) and not is_stub_file:
-            self.fail("NamedTuple class syntax is only supported in Python 3.6", defn)
-            return [], [], {}, []
         if len(defn.base_type_exprs) > 1:
             self.fail("NamedTuple should be a single base", defn)
         items: list[str] = []
@@ -186,8 +182,7 @@ class NamedTupleAnalyzer:
                     # it would be inconsistent with type aliases.
                     analyzed = self.api.anal_type(
                         stmt.type,
-                        allow_placeholder=not self.options.disable_recursive_aliases
-                        and not self.api.is_func_scope(),
+                        allow_placeholder=not self.api.is_func_scope(),
                         prohibit_self_type="NamedTuple item type",
                     )
                     if analyzed is None:
@@ -454,8 +449,7 @@ class NamedTupleAnalyzer:
                 # We never allow recursive types at function scope.
                 analyzed = self.api.anal_type(
                     type,
-                    allow_placeholder=not self.options.disable_recursive_aliases
-                    and not self.api.is_func_scope(),
+                    allow_placeholder=not self.api.is_func_scope(),
                     prohibit_self_type="NamedTuple item type",
                 )
                 # Workaround #4987 and avoid introducing a bogus UnboundType
@@ -605,16 +599,11 @@ class NamedTupleAnalyzer:
 
         add_method("__new__", ret=selftype, args=[make_init_arg(var) for var in vars], is_new=True)
         add_method("_asdict", args=[], ret=ordereddictype)
-        special_form_any = AnyType(TypeOfAny.special_form)
         add_method(
             "_make",
             ret=selftype,
             is_classmethod=True,
-            args=[
-                Argument(Var("iterable", iterable_type), iterable_type, None, ARG_POS),
-                Argument(Var("new"), special_form_any, EllipsisExpr(), ARG_NAMED_OPT),
-                Argument(Var("len"), special_form_any, EllipsisExpr(), ARG_NAMED_OPT),
-            ],
+            args=[Argument(Var("iterable", iterable_type), iterable_type, None, ARG_POS)],
         )
 
         self_tvar_expr = TypeVarExpr(

@@ -2600,6 +2600,7 @@ if sys.platform == "win32":
         hStdError: Any | None
         wShowWindow: int
         lpAttributeList: Mapping[str, Any]
+        def copy(self) -> STARTUPINFO: ...
     from _winapi import (
         ABOVE_NORMAL_PRIORITY_CLASS as ABOVE_NORMAL_PRIORITY_CLASS,
         BELOW_NORMAL_PRIORITY_CLASS as BELOW_NORMAL_PRIORITY_CLASS,

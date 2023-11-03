@@ -1043,7 +1043,7 @@ MypyFile:1(
       default(
         Var(y)
         StrExpr()))
-    def (*x: builtins.int, *, y: builtins.str =) -> Any
+    def (*x: builtins.int, y: builtins.str =) -> Any
     VarArg(
       Var(x))
     Block:1(
@@ -1559,8 +1559,8 @@ MypyFile:1(
   ImportFrom:1(typing_extensions, [TypeVarTuple])
   AssignmentStmt:2(
     NameExpr(TV* [__main__.TV])
-    TypeVarTupleExpr:2()))
-
+    TypeVarTupleExpr:2(
+      UpperBound(builtins.tuple[builtins.object, ...]))))
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarTupleCallable]
@@ -1576,7 +1576,8 @@ MypyFile:1(
   ImportFrom:2(typing, [Callable])
   AssignmentStmt:3(
     NameExpr(Ts* [__main__.Ts])
-    TypeVarTupleExpr:3())
+    TypeVarTupleExpr:3(
+      UpperBound(builtins.tuple[builtins.object, ...])))
   FuncDef:5(
     foo
     Args(

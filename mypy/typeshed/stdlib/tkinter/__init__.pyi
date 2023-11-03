@@ -6,7 +6,7 @@ from enum import Enum
 from tkinter.constants import *
 from tkinter.font import _FontDescription
 from types import TracebackType
-from typing import Any, Generic, NamedTuple, Protocol, TypeVar, overload, type_check_only
+from typing import Any, Generic, NamedTuple, TypeVar, overload, type_check_only
 from typing_extensions import Literal, TypeAlias, TypedDict
 
 if sys.version_info >= (3, 9):
@@ -500,7 +500,7 @@ class Misc:
     bbox = grid_bbox
     def grid_columnconfigure(
         self,
-        index: _GridIndex,
+        index: _GridIndex | list[int] | tuple[int, ...],
         cnf: _GridIndexInfo = {},
         *,
         minsize: _ScreenUnits = ...,
@@ -510,7 +510,7 @@ class Misc:
     ) -> _GridIndexInfo | Any: ...  # can be None but annoying to check
     def grid_rowconfigure(
         self,
-        index: _GridIndex,
+        index: _GridIndex | list[int] | tuple[int, ...],
         cnf: _GridIndexInfo = {},
         *,
         minsize: _ScreenUnits = ...,
@@ -720,9 +720,6 @@ class Wm:
     def wm_withdraw(self) -> None: ...
     withdraw = wm_withdraw
 
-class _ExceptionReportingCallback(Protocol):
-    def __call__(self, __exc: type[BaseException], __val: BaseException, __tb: TracebackType | None) -> object: ...
-
 class Tk(Misc, Wm):
     master: None
     def __init__(
@@ -764,7 +761,7 @@ class Tk(Misc, Wm):
     config = configure
     def destroy(self) -> None: ...
     def readprofile(self, baseName: str, className: str) -> None: ...
-    report_callback_exception: _ExceptionReportingCallback
+    report_callback_exception: Callable[[type[BaseException], BaseException, TracebackType | None], object]
     # Tk has __getattr__ so that tk_instance.foo falls back to tk_instance.tk.foo
     # Please keep in sync with _tkinter.TkappType.
     # Some methods are intentionally missing because they are inherited from Misc instead.
@@ -1633,6 +1630,7 @@ class Canvas(Widget, XView, YView):
         activefill: str = ...,
         activestipple: str = ...,
         anchor: _Anchor = ...,
+        angle: float | str = ...,
         disabledfill: str = ...,
         disabledstipple: str = ...,
         fill: str = ...,
@@ -1653,6 +1651,7 @@ class Canvas(Widget, XView, YView):
         activefill: str = ...,
         activestipple: str = ...,
         anchor: _Anchor = ...,
+        angle: float | str = ...,
         disabledfill: str = ...,
         disabledstipple: str = ...,
         fill: str = ...,
@@ -2889,7 +2888,7 @@ class Scrollbar(Widget):
     def fraction(self, x: int, y: int) -> float: ...
     def identify(self, x: int, y: int) -> Literal["arrow1", "arrow2", "slider", "trough1", "trough2", ""]: ...
     def get(self) -> tuple[float, float, float, float] | tuple[float, float]: ...
-    def set(self, first: float, last: float) -> None: ...
+    def set(self, first: float | str, last: float | str) -> None: ...
 
 _TextIndex: TypeAlias = _tkinter.Tcl_Obj | str | float | Misc
 
@@ -3065,11 +3064,40 @@ class Text(Widget, XView, YView):
     def edit_separator(self) -> None: ...  # actually returns empty string
     def edit_undo(self) -> None: ...  # actually returns empty string
     def get(self, index1: _TextIndex, index2: _TextIndex | None = None) -> str: ...
-    # TODO: image_* methods
-    def image_cget(self, index, option): ...
-    def image_configure(self, index, cnf: Incomplete | None = None, **kw): ...
-    def image_create(self, index, cnf={}, **kw): ...
-    def image_names(self): ...
+    @overload
+    def image_cget(self, index: _TextIndex, option: Literal["image", "name"]) -> str: ...
+    @overload
+    def image_cget(self, index: _TextIndex, option: Literal["padx", "pady"]) -> int: ...
+    @overload
+    def image_cget(self, index: _TextIndex, option: Literal["align"]) -> Literal["baseline", "bottom", "center", "top"]: ...
+    @overload
+    def image_cget(self, index: _TextIndex, option: str) -> Any: ...
+    @overload
+    def image_configure(self, index: _TextIndex, cnf: str) -> tuple[str, str, str, str, str | int]: ...
+    @overload
+    def image_configure(
+        self,
+        index: _TextIndex,
+        cnf: dict[str, Any] | None = {},
+        *,
+        align: Literal["baseline", "bottom", "center", "top"] = ...,
+        image: _ImageSpec = ...,
+        name: str = ...,
+        padx: _ScreenUnits = ...,
+        pady: _ScreenUnits = ...,
+    ) -> dict[str, tuple[str, str, str, str, str | int]] | None: ...
+    def image_create(
+        self,
+        index: _TextIndex,
+        cnf: dict[str, Any] | None = {},
+        *,
+        align: Literal["baseline", "bottom", "center", "top"] = ...,
+        image: _ImageSpec = ...,
+        name: str = ...,
+        padx: _ScreenUnits = ...,
+        pady: _ScreenUnits = ...,
+    ) -> str: ...
+    def image_names(self) -> tuple[str, ...]: ...
     def index(self, index: _TextIndex) -> str: ...
     def insert(self, index: _TextIndex, chars: str, *args: str | list[str] | tuple[str, ...]) -> None: ...
     @overload
@@ -3167,12 +3195,45 @@ class Text(Widget, XView, YView):
     def tag_ranges(self, tagName: str) -> tuple[_tkinter.Tcl_Obj, ...]: ...
     # tag_remove and tag_delete are different
     def tag_remove(self, tagName: str, index1: _TextIndex, index2: _TextIndex | None = None) -> None: ...
-    # TODO: window_* methods
-    def window_cget(self, index, option): ...
-    def window_configure(self, index, cnf: Incomplete | None = None, **kw): ...
+    @overload
+    def window_cget(self, index: _TextIndex, option: Literal["padx", "pady"]) -> int: ...
+    @overload
+    def window_cget(self, index: _TextIndex, option: Literal["stretch"]) -> bool: ...  # actually returns Literal[0, 1]
+    @overload
+    def window_cget(self, index: _TextIndex, option: Literal["align"]) -> Literal["baseline", "bottom", "center", "top"]: ...
+    @overload  # window is set to a widget, but read as the string name.
+    def window_cget(self, index: _TextIndex, option: Literal["create", "window"]) -> str: ...
+    @overload
+    def window_cget(self, index: _TextIndex, option: str) -> Any: ...
+    @overload
+    def window_configure(self, index: _TextIndex, cnf: str) -> tuple[str, str, str, str, str | int]: ...
+    @overload
+    def window_configure(
+        self,
+        index: _TextIndex,
+        cnf: dict[str, Any] | None = None,
+        *,
+        align: Literal["baseline", "bottom", "center", "top"] = ...,
+        create: str = ...,
+        padx: _ScreenUnits = ...,
+        pady: _ScreenUnits = ...,
+        stretch: bool | Literal[0, 1] = ...,
+        window: Misc | str = ...,
+    ) -> dict[str, tuple[str, str, str, str, str | int]] | None: ...
     window_config = window_configure
-    def window_create(self, index, cnf={}, **kw) -> None: ...
-    def window_names(self): ...
+    def window_create(
+        self,
+        index: _TextIndex,
+        cnf: dict[str, Any] | None = {},
+        *,
+        align: Literal["baseline", "bottom", "center", "top"] = ...,
+        create: str = ...,
+        padx: _ScreenUnits = ...,
+        pady: _ScreenUnits = ...,
+        stretch: bool | Literal[0, 1] = ...,
+        window: Misc | str = ...,
+    ) -> None: ...
+    def window_names(self) -> tuple[str, ...]: ...
     def yview_pickplace(self, *what): ...  # deprecated
 
 class _setit:

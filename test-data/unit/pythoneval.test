@@ -863,11 +863,11 @@ MyDDict(dict)[0]
 _program.py:7: error: Argument 1 to "defaultdict" has incompatible type "Type[List[Any]]"; expected "Optional[Callable[[], str]]"
 _program.py:10: error: Invalid index type "str" for "defaultdict[int, str]"; expected type "int"
 _program.py:10: error: Incompatible types in assignment (expression has type "int", target has type "str")
-_program.py:20: error: Argument 1 to "tst" has incompatible type "defaultdict[str, List[<nothing>]]"; expected "defaultdict[int, List[<nothing>]]"
-_program.py:24: error: Invalid index type "str" for "MyDDict[Dict[<nothing>, <nothing>]]"; expected type "int"
+_program.py:20: error: Argument 1 to "tst" has incompatible type "defaultdict[str, List[Never]]"; expected "defaultdict[int, List[Never]]"
+_program.py:24: error: Invalid index type "str" for "MyDDict[Dict[Never, Never]]"; expected type "int"
 
 [case testNoSubcriptionOfStdlibCollections]
-# flags: --python-version 3.6
+# flags: --python-version 3.7
 import collections
 from collections import Counter
 from typing import TypeVar
@@ -1441,7 +1441,7 @@ accepts_named_tuple(b)
 accepts_named_tuple(1)
 accepts_named_tuple((1, 2))
 [out]
-_testNamedTupleTypeInheritanceSpecialCase.py:8: note: Revealed type is "collections.OrderedDict[builtins.str, Any]"
+_testNamedTupleTypeInheritanceSpecialCase.py:8: note: Revealed type is "builtins.dict[builtins.str, Any]"
 _testNamedTupleTypeInheritanceSpecialCase.py:9: note: Revealed type is "builtins.tuple[builtins.str, ...]"
 _testNamedTupleTypeInheritanceSpecialCase.py:10: note: Revealed type is "builtins.dict[builtins.str, Any]"
 _testNamedTupleTypeInheritanceSpecialCase.py:17: error: Argument 1 to "accepts_named_tuple" has incompatible type "int"; expected "NamedTuple"
@@ -1482,14 +1482,12 @@ frozenset({1}) == [1]  # Error
 {1: 2}.keys() == frozenset({1})
 {1: 2}.items() == {(1, 2)}
 
-{1: 2}.keys() == {'no'}  # Error
+{1: 2}.keys() == {'no'}  # OK
 {1: 2}.values() == {2}  # Error
-{1: 2}.keys() == [1]  # Error
+{1: 2}.keys() == [1]  # OK
 [out]
 _testStrictEqualityAllowlist.py:5: error: Non-overlapping equality check (left operand type: "FrozenSet[int]", right operand type: "List[int]")
-_testStrictEqualityAllowlist.py:11: error: Non-overlapping equality check (left operand type: "dict_keys[int, int]", right operand type: "Set[str]")
 _testStrictEqualityAllowlist.py:12: error: Non-overlapping equality check (left operand type: "dict_values[int, int]", right operand type: "Set[int]")
-_testStrictEqualityAllowlist.py:13: error: Non-overlapping equality check (left operand type: "dict_keys[int, int]", right operand type: "List[int]")
 
 [case testUnreachableWithStdlibContextManagers]
 # mypy: warn-unreachable, strict-optional
@@ -1570,24 +1568,24 @@ note: A user-defined top-level module with name "typing" is not supported
 # flags: --ignore-missing-imports
 import scribe  # No Python 3 stubs available for scribe
 from scribe import x
-import maxminddb  # Python 3 stubs available for maxminddb
+import docutils  # Python 3 stubs available for docutils
 import foobar_asdf
 import jack  # This has a stubs package but was never bundled with mypy, so ignoring works
 [out]
-_testIgnoreImportIfNoPython3StubAvailable.py:4: error: Library stubs not installed for "maxminddb"
-_testIgnoreImportIfNoPython3StubAvailable.py:4: note: Hint: "python3 -m pip install types-maxminddb"
+_testIgnoreImportIfNoPython3StubAvailable.py:4: error: Library stubs not installed for "docutils"
+_testIgnoreImportIfNoPython3StubAvailable.py:4: note: Hint: "python3 -m pip install types-docutils"
 _testIgnoreImportIfNoPython3StubAvailable.py:4: note: (or run "mypy --install-types" to install all missing stub packages)
 _testIgnoreImportIfNoPython3StubAvailable.py:4: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testNoPython3StubAvailable]
 import scribe
 from scribe import x
-import maxminddb
+import docutils
 [out]
 _testNoPython3StubAvailable.py:1: error: Cannot find implementation or library stub for module named "scribe"
 _testNoPython3StubAvailable.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-_testNoPython3StubAvailable.py:3: error: Library stubs not installed for "maxminddb"
-_testNoPython3StubAvailable.py:3: note: Hint: "python3 -m pip install types-maxminddb"
+_testNoPython3StubAvailable.py:3: error: Library stubs not installed for "docutils"
+_testNoPython3StubAvailable.py:3: note: Hint: "python3 -m pip install types-docutils"
 _testNoPython3StubAvailable.py:3: note: (or run "mypy --install-types" to install all missing stub packages)
 
 
@@ -1649,7 +1647,6 @@ foo(list((list(""), "")))
 [out]
 
 [case testNarrowTypeForDictKeys]
-# flags: --strict-optional
 from typing import Dict, KeysView, Optional
 
 d: Dict[str, int]
@@ -1667,10 +1664,10 @@ else:
     reveal_type(k)
 
 [out]
-_testNarrowTypeForDictKeys.py:7: note: Revealed type is "builtins.str"
-_testNarrowTypeForDictKeys.py:9: note: Revealed type is "Union[builtins.str, None]"
-_testNarrowTypeForDictKeys.py:14: note: Revealed type is "builtins.str"
-_testNarrowTypeForDictKeys.py:16: note: Revealed type is "Union[builtins.str, None]"
+_testNarrowTypeForDictKeys.py:6: note: Revealed type is "builtins.str"
+_testNarrowTypeForDictKeys.py:8: note: Revealed type is "Union[builtins.str, None]"
+_testNarrowTypeForDictKeys.py:13: note: Revealed type is "builtins.str"
+_testNarrowTypeForDictKeys.py:15: note: Revealed type is "Union[builtins.str, None]"
 
 [case testTypeAliasWithNewStyleUnion]
 # flags: --python-version 3.10
@@ -1804,9 +1801,9 @@ C = str | int
 D: TypeAlias = str | int
 [out]
 _testTypeAliasNotSupportedWithNewStyleUnion.py:3: error: Invalid type alias: expression is not a valid type
-_testTypeAliasNotSupportedWithNewStyleUnion.py:3: error: Value of type "Type[type]" is not indexable
+_testTypeAliasNotSupportedWithNewStyleUnion.py:3: error: The type "Type[type]" is not generic and not indexable
 _testTypeAliasNotSupportedWithNewStyleUnion.py:4: error: Invalid type alias: expression is not a valid type
-_testTypeAliasNotSupportedWithNewStyleUnion.py:4: error: Value of type "Type[type]" is not indexable
+_testTypeAliasNotSupportedWithNewStyleUnion.py:4: error: The type "Type[type]" is not generic and not indexable
 _testTypeAliasNotSupportedWithNewStyleUnion.py:5: error: Invalid type alias: expression is not a valid type
 _testTypeAliasNotSupportedWithNewStyleUnion.py:5: error: Unsupported left operand type for | ("Type[str]")
 _testTypeAliasNotSupportedWithNewStyleUnion.py:6: error: Invalid type alias: expression is not a valid type
@@ -2007,7 +2004,7 @@ Foo().__dict__ = {}
 _testInferenceOfDunderDictOnClassObjects.py:2: note: Revealed type is "types.MappingProxyType[builtins.str, Any]"
 _testInferenceOfDunderDictOnClassObjects.py:3: note: Revealed type is "builtins.dict[builtins.str, Any]"
 _testInferenceOfDunderDictOnClassObjects.py:4: error: Property "__dict__" defined in "type" is read-only
-_testInferenceOfDunderDictOnClassObjects.py:4: error: Incompatible types in assignment (expression has type "Dict[<nothing>, <nothing>]", variable has type "MappingProxyType[str, Any]")
+_testInferenceOfDunderDictOnClassObjects.py:4: error: Incompatible types in assignment (expression has type "Dict[Never, Never]", variable has type "MappingProxyType[str, Any]")
 
 [case testTypeVarTuple]
 # flags: --enable-incomplete-feature=TypeVarTuple --enable-incomplete-feature=Unpack --python-version=3.11
@@ -2092,3 +2089,32 @@ def fst(kv: Tuple[K, V]) -> K:
 pairs = [(len(s), s) for s in ["one", "two", "three"]]
 grouped = groupby(pairs, key=fst)
 [out]
+
+[case testDataclassReplaceOptional]
+from dataclasses import dataclass, replace
+from typing import Optional
+
+@dataclass
+class A:
+    x: Optional[int]
+
+a = A(x=42)
+reveal_type(a)
+a2 = replace(a, x=None)  # OK
+reveal_type(a2)
+[out]
+_testDataclassReplaceOptional.py:9: note: Revealed type is "_testDataclassReplaceOptional.A"
+_testDataclassReplaceOptional.py:11: note: Revealed type is "_testDataclassReplaceOptional.A"
+
+[case testDataclassStrictOptionalAlwaysSet]
+from dataclasses import dataclass
+from typing import Callable, Optional
+
+@dataclass
+class Description:
+    name_fn: Callable[[Optional[int]], Optional[str]]
+
+def f(d: Description) -> None:
+    reveal_type(d.name_fn)
+[out]
+_testDataclassStrictOptionalAlwaysSet.py:9: note: Revealed type is "def (Union[builtins.int, None]) -> Union[builtins.str, None]"

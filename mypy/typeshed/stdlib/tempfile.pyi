@@ -321,7 +321,7 @@ else:
             dir: GenericPath[AnyStr] | None = None,
         ) -> IO[Any]: ...
 
-class _TemporaryFileWrapper(Generic[AnyStr], IO[AnyStr]):
+class _TemporaryFileWrapper(IO[AnyStr]):
     file: IO[AnyStr]  # io.TextIOWrapper, io.BufferedReader or io.BufferedWriter
     name: str
     delete: bool
@@ -380,6 +380,7 @@ else:
 # It does not actually derive from IO[AnyStr], but it does mostly behave
 # like one.
 class SpooledTemporaryFile(IO[AnyStr], _SpooledTemporaryFileBase):
+    _file: IO[AnyStr]
     @property
     def encoding(self) -> str: ...  # undocumented
     @property

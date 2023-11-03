@@ -15,6 +15,9 @@ on:
     - 'mypy/test/**'
     - 'test-data/**'
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
@@ -30,7 +33,7 @@ jobs:
         shard-index: [0, 1, 2, 3, 4]
       fail-fast: false
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           path: mypy_to_test
           fetch-depth: 0

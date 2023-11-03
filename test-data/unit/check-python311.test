@@ -77,3 +77,68 @@ async def coro() -> Generator[List[Any], None, None]:
 reveal_type(coro)  # N: Revealed type is "def () -> typing.Coroutine[Any, Any, typing.Generator[builtins.list[Any], None, None]]"
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
+
+[case testTypeVarTupleNewSyntaxAnnotations]
+Ints = tuple[int, int, int]
+x: tuple[str, *Ints]
+reveal_type(x)  # N: Revealed type is "Tuple[builtins.str, builtins.int, builtins.int, builtins.int]"
+y: tuple[int, *tuple[int, ...]]
+reveal_type(y)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]]]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleNewSyntaxGenerics]
+from typing import Generic, TypeVar, TypeVarTuple
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+class C(Generic[T, *Ts]):
+    attr: tuple[int, *Ts, str]
+
+    def test(self) -> None:
+        reveal_type(self.attr)  # N: Revealed type is "Tuple[builtins.int, Unpack[Ts`2], builtins.str]"
+        self.attr = ci  # E: Incompatible types in assignment (expression has type "C[*Tuple[int, ...]]", variable has type "Tuple[int, *Ts, str]")
+    def meth(self, *args: *Ts) -> T: ...
+
+ci: C[*tuple[int, ...]]
+reveal_type(ci)  # N: Revealed type is "__main__.C[Unpack[builtins.tuple[builtins.int, ...]]]"
+reveal_type(ci.meth)  # N: Revealed type is "def (*args: builtins.int) -> builtins.int"
+c3: C[str, str, str]
+reveal_type(c3)  # N: Revealed type is "__main__.C[builtins.str, builtins.str, builtins.str]"
+
+A = C[int, *Ts]
+B = tuple[str, *tuple[str, str], str]
+z: A[*B]
+reveal_type(z)  # N: Revealed type is "__main__.C[builtins.int, builtins.str, builtins.str, builtins.str, builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleNewSyntaxCallables]
+from typing import Generic, overload, TypeVar
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+class MyClass(Generic[T1, T2]):
+    @overload
+    def __init__(self: MyClass[None, None]) -> None: ...
+
+    @overload
+    def __init__(self: MyClass[T1, None], *types: *tuple[type[T1]]) -> None: ...
+
+    @overload
+    def __init__(self: MyClass[T1, T2], *types: *tuple[type[T1], type[T2]]) -> None: ...
+
+    def __init__(self: MyClass[T1, T2], *types: *tuple[type, ...]) -> None:
+        pass
+
+myclass = MyClass()
+reveal_type(myclass)  # N: Revealed type is "__main__.MyClass[None, None]"
+myclass1 = MyClass(float)
+reveal_type(myclass1)  # N: Revealed type is "__main__.MyClass[builtins.float, None]"
+myclass2 = MyClass(float, float)
+reveal_type(myclass2)  # N: Revealed type is "__main__.MyClass[builtins.float, builtins.float]"
+myclass3 = MyClass(float, float, float)  # E: No overload variant of "MyClass" matches argument types "Type[float]", "Type[float]", "Type[float]" \
+                                         # N: Possible overload variants: \
+                                         # N:     def [T1, T2] __init__(self) -> MyClass[None, None] \
+                                         # N:     def [T1, T2] __init__(self, Type[T1], /) -> MyClass[T1, None] \
+                                         # N:     def [T1, T2] __init__(Type[T1], Type[T2], /) -> MyClass[T1, T2]
+reveal_type(myclass3)  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]

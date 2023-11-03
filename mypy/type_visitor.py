@@ -14,8 +14,7 @@ other modules refer to them.
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Any, Callable, Generic, Iterable, Sequence, TypeVar, cast
-from typing_extensions import Final
+from typing import Any, Callable, Final, Generic, Iterable, Sequence, TypeVar, cast
 
 from mypy_extensions import mypyc_attr, trait
 
@@ -349,7 +348,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.query_types([t.upper_bound, t.default] + t.values)
 
     def visit_param_spec(self, t: ParamSpecType) -> T:
-        return self.query_types([t.upper_bound, t.default])
+        return self.query_types([t.upper_bound, t.default, t.prefix])
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> T:
         return self.query_types([t.upper_bound, t.default])

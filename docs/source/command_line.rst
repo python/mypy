@@ -133,7 +133,7 @@ imports.
 
     This flag tells mypy that top-level packages will be based in either the
     current directory, or a member of the ``MYPYPATH`` environment variable or
-    :confval:`mypy_path` config option. This option is only useful in
+    :confval:`mypy_path` config option. This option is only useful
     in the absence of `__init__.py`. See :ref:`Mapping file
     paths to modules <mapping-paths-to-modules>` for details.
 
@@ -349,6 +349,34 @@ definitions or calls.
 
     This flag reports an error whenever a function with type annotations
     calls a function defined without annotations.
+
+.. option:: --untyped-calls-exclude
+
+    This flag allows to selectively disable :option:`--disallow-untyped-calls`
+    for functions and methods defined in specific packages, modules, or classes.
+    Note that each exclude entry acts as a prefix. For example (assuming there
+    are no type annotations for ``third_party_lib`` available):
+
+    .. code-block:: python
+
+        # mypy --disallow-untyped-calls
+        #      --untyped-calls-exclude=third_party_lib.module_a
+        #      --untyped-calls-exclude=foo.A
+        from third_party_lib.module_a import some_func
+        from third_party_lib.module_b import other_func
+        import foo
+
+        some_func()  # OK, function comes from module `third_party_lib.module_a`
+        other_func()  # E: Call to untyped function "other_func" in typed context
+
+        foo.A().meth()  # OK, method was defined in class `foo.A`
+        foo.B().meth()  # E: Call to untyped function "meth" in typed context
+
+        # file foo.py
+        class A:
+            def meth(self): pass
+        class B:
+            def meth(self): pass
 
 .. option:: --disallow-untyped-defs
 
@@ -612,6 +640,34 @@ of the above sections.
 
        assert text is not None  # OK, check against None is allowed as a special case.
 
+.. option:: --extra-checks
+
+    This flag enables additional checks that are technically correct but may be
+    impractical in real code. In particular, it prohibits partial overlap in
+    ``TypedDict`` updates, and makes arguments prepended via ``Concatenate``
+    positional-only. For example:
+
+    .. code-block:: python
+
+       from typing import TypedDict
+
+       class Foo(TypedDict):
+           a: int
+
+       class Bar(TypedDict):
+           a: int
+           b: int
+
+       def test(foo: Foo, bar: Bar) -> None:
+           # This is technically unsafe since foo can have a subtype of Foo at
+           # runtime, where type of key "b" is incompatible with int, see below
+           bar.update(foo)
+
+       class Bad(Foo):
+           b: str
+       bad: Bad = {"a": 0, "b": "no"}
+       test(bad, bar)
+
 .. option:: --strict
 
     This flag mode enables all optional error checking flags.  You can see the
@@ -732,6 +788,17 @@ in error messages.
     if it seems likely that most of the remaining errors will not be
     useful or they may be overly noisy. If ``N`` is negative, there is
     no limit. The default limit is 200.
+
+.. option:: --force-uppercase-builtins
+
+    Always use ``List`` instead of ``list`` in error messages,
+    even on Python 3.9+.
+
+.. option:: --force-union-syntax
+
+    Always use ``Union[]`` and ``Optional[]`` for union types
+    in error messages (instead of the ``|`` operator),
+    even on Python 3.10+.
 
 
 .. _incremental:
@@ -923,6 +990,58 @@ format into the specified directory.
     To generate this report, you must either manually install the `lxml`_
     library or specify mypy installation with the setuptools extra
     ``mypy[reports]``.
+
+
+Enabling incomplete/experimental features
+*****************************************
+
+.. option:: --enable-incomplete-feature FEATURE
+
+    Some features may require several mypy releases to implement, for example
+    due to their complexity, potential for backwards incompatibility, or
+    ambiguous semantics that would benefit from feedback from the community.
+    You can enable such features for early preview using this flag. Note that
+    it is not guaranteed that all features will be ultimately enabled by
+    default. In *rare cases* we may decide to not go ahead with certain
+    features.
+
+List of currently incomplete/experimental features:
+
+* ``PreciseTupleTypes``: this feature will infer more precise tuple types in
+  various scenarios. Before variadic types were added to the Python type system
+  by :pep:`646`, it was impossible to express a type like "a tuple with
+  at least two integers". The best type available was ``tuple[int, ...]``.
+  Therefore, mypy applied very lenient checking for variable-length tuples.
+  Now this type can be expressed as ``tuple[int, int, *tuple[int, ...]]``.
+  For such more precise types (when explicitly *defined* by a user) mypy,
+  for example, warns about unsafe index access, and generally handles them
+  in a type-safe manner. However, to avoid problems in existing code, mypy
+  does not *infer* these precise types when it technically can. Here are
+  notable examples where ``PreciseTupleTypes`` infers more precise types:
+
+  .. code-block:: python
+
+     numbers: tuple[int, ...]
+
+     more_numbers = (1, *numbers, 1)
+     reveal_type(more_numbers)
+     # Without PreciseTupleTypes: tuple[int, ...]
+     # With PreciseTupleTypes: tuple[int, *tuple[int, ...], int]
+
+     other_numbers = (1, 1) + numbers
+     reveal_type(other_numbers)
+     # Without PreciseTupleTypes: tuple[int, ...]
+     # With PreciseTupleTypes: tuple[int, int, *tuple[int, ...]]
+
+     if len(numbers) > 2:
+         reveal_type(numbers)
+         # Without PreciseTupleTypes: tuple[int, ...]
+         # With PreciseTupleTypes: tuple[int, int, int, *tuple[int, ...]]
+     else:
+         reveal_type(numbers)
+         # Without PreciseTupleTypes: tuple[int, ...]
+         # With PreciseTupleTypes: tuple[()] | tuple[int] | tuple[int, int]
+
 
 Miscellaneous
 *************

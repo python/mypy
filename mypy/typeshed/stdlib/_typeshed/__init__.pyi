@@ -7,8 +7,8 @@ from collections.abc import Awaitable, Callable, Iterable, Sequence, Set as Abst
 from dataclasses import Field
 from os import PathLike
 from types import FrameType, TracebackType
-from typing import Any, AnyStr, ClassVar, Generic, Protocol, TypeVar, overload
-from typing_extensions import Buffer, Final, Literal, LiteralString, TypeAlias, final
+from typing import Any, AnyStr, ClassVar, Generic, Protocol, SupportsFloat, SupportsInt, TypeVar, overload
+from typing_extensions import Buffer, Final, Literal, LiteralString, SupportsIndex, TypeAlias, final
 
 _KT = TypeVar("_KT")
 _KT_co = TypeVar("_KT_co", covariant=True)
@@ -35,6 +35,19 @@ Incomplete: TypeAlias = Any
 
 # To describe a function parameter that is unused and will work with anything.
 Unused: TypeAlias = object
+
+# Used to mark arguments that default to a sentinel value. This prevents
+# stubtest from complaining about the default value not matching.
+#
+# def foo(x: int | None = sentinel) -> None: ...
+#
+# In cases where the sentinel object is exported and can be used by user code,
+# a construct like this is better:
+#
+# _SentinelType = NewType("_SentinelType", object)
+# sentinel: _SentinelType
+# def foo(x: int | None | _SentinelType = ...) -> None: ...
+sentinel: Any
 
 # stable
 class IdentityFunction(Protocol):
@@ -299,3 +312,7 @@ TraceFunction: TypeAlias = Callable[[FrameType, str, Any], TraceFunction | None]
 #   https://github.com/microsoft/pyright/issues/4339
 class DataclassInstance(Protocol):
     __dataclass_fields__: ClassVar[dict[str, Field[Any]]]
+
+# Anything that can be passed to the int/float constructors
+ConvertibleToInt: TypeAlias = str | ReadableBuffer | SupportsInt | SupportsIndex | SupportsTrunc
+ConvertibleToFloat: TypeAlias = str | ReadableBuffer | SupportsFloat | SupportsIndex

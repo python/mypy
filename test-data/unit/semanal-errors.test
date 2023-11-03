@@ -361,8 +361,6 @@ main:2: error: "yield" outside function
 [case testInvalidLvalues1]
 1 = 1
 [out]
-main:1: error: can't assign to literal
-[out version>=3.8]
 main:1: error: cannot assign to literal
 [out version>=3.10]
 main:1: error: cannot assign to literal here. Maybe you meant '==' instead of '='?
@@ -370,8 +368,6 @@ main:1: error: cannot assign to literal here. Maybe you meant '==' instead of '=
 [case testInvalidLvalues2]
 (1) = 1
 [out]
-main:1: error: can't assign to literal
-[out version>=3.8]
 main:1: error: cannot assign to literal
 [out version>=3.10]
 main:1: error: cannot assign to literal here. Maybe you meant '==' instead of '='?
@@ -379,37 +375,27 @@ main:1: error: cannot assign to literal here. Maybe you meant '==' instead of '=
 [case testInvalidLvalues3]
 (1, 1) = 1
 [out]
-main:1: error: can't assign to literal
-[out version>=3.8]
 main:1: error: cannot assign to literal
 
 [case testInvalidLvalues4]
 [1, 1] = 1
 [out]
-main:1: error: can't assign to literal
-[out version>=3.8]
 main:1: error: cannot assign to literal
 
 [case testInvalidLvalues6]
 x = y = z = 1  # ok
 x, (y, 1) = 1
 [out]
-main:2: error: can't assign to literal
-[out version>=3.8]
 main:2: error: cannot assign to literal
 
 [case testInvalidLvalues7]
 x, [y, 1] = 1
 [out]
-main:1: error: can't assign to literal
-[out version>=3.8]
 main:1: error: cannot assign to literal
 
 [case testInvalidLvalues8]
 x, [y, [z, 1]] = 1
 [out]
-main:1: error: can't assign to literal
-[out version>=3.8]
 main:1: error: cannot assign to literal
 
 [case testInvalidLvalues9]
@@ -417,15 +403,11 @@ x, (y) = 1 # ok
 x, (y, (z, z)) = 1 # ok
 x, (y, (z, 1)) = 1
 [out]
-main:3: error: can't assign to literal
-[out version>=3.8]
 main:3: error: cannot assign to literal
 
 [case testInvalidLvalues10]
 x + x = 1
 [out]
-main:1: error: can't assign to operator
-[out version>=3.8]
 main:1: error: cannot assign to operator
 [out version>=3.10]
 main:1: error: cannot assign to expression here. Maybe you meant '==' instead of '='?
@@ -433,8 +415,6 @@ main:1: error: cannot assign to expression here. Maybe you meant '==' instead of
 [case testInvalidLvalues11]
 -x = 1
 [out]
-main:1: error: can't assign to operator
-[out version>=3.8]
 main:1: error: cannot assign to operator
 [out version>=3.10]
 main:1: error: cannot assign to expression here. Maybe you meant '==' instead of '='?
@@ -442,8 +422,6 @@ main:1: error: cannot assign to expression here. Maybe you meant '==' instead of
 [case testInvalidLvalues12]
 1.1 = 1
 [out]
-main:1: error: can't assign to literal
-[out version>=3.8]
 main:1: error: cannot assign to literal
 [out version>=3.10]
 main:1: error: cannot assign to literal here. Maybe you meant '==' instead of '='?
@@ -451,8 +429,6 @@ main:1: error: cannot assign to literal here. Maybe you meant '==' instead of '=
 [case testInvalidLvalues13]
 'x' = 1
 [out]
-main:1: error: can't assign to literal
-[out version>=3.8]
 main:1: error: cannot assign to literal
 [out version>=3.10]
 main:1: error: cannot assign to literal here. Maybe you meant '==' instead of '='?
@@ -460,8 +436,6 @@ main:1: error: cannot assign to literal here. Maybe you meant '==' instead of '=
 [case testInvalidLvalues14]
 x() = 1
 [out]
-main:1: error: can't assign to function call
-[out version>=3.8]
 main:1: error: cannot assign to function call
 [out version>=3.10]
 main:1: error: cannot assign to function call here. Maybe you meant '==' instead of '='?
@@ -506,28 +480,24 @@ c = 1
 d = 1
 a = *b
 [out]
-main:4: error: Can use starred expression only as assignment target
+main:4: error: can't use starred expression here
 
 [case testStarExpressionInExp]
 a = 1
 *a + 1
 [out]
-main:2: error: Can use starred expression only as assignment target
+main:2: error: can't use starred expression here
 
 [case testInvalidDel1]
 x = 1
 del x(1)
 [out]
-main:2: error: can't delete function call
-[out version>=3.8]
 main:2: error: cannot delete function call
 
 [case testInvalidDel2]
 x = 1
 del x + 1
 [out]
-main:2: error: can't delete operator
-[out version>=3.8]
 main:2: error: cannot delete operator
 [out version>=3.10]
 main:2: error: cannot delete expression
@@ -840,8 +810,8 @@ class C(Generic[t]): pass
 cast(str + str, None)    # E: Cast target is not a type
 cast(C[str][str], None)  # E: Cast target is not a type
 cast(C[str + str], None) # E: Cast target is not a type
-cast([int, str], None)   # E: Bracketed expression "[...]" is not valid as a type \
-                         # N: Did you mean "List[...]"?
+cast([int], None)   # E: Bracketed expression "[...]" is not valid as a type \
+                    # N: Did you mean "List[...]"?
 [out]
 
 [case testInvalidCastTargetType]
@@ -889,8 +859,8 @@ Any(arg=str)  # E: Any(...) is no longer supported. Use cast(Any, ...) instead
 
 [case testTypeListAsType]
 
-def f(x:[int, str]) -> None: # E: Bracketed expression "[...]" is not valid as a type \
-                             # N: Did you mean "List[...]"?
+def f(x: [int]) -> None: # E: Bracketed expression "[...]" is not valid as a type \
+                         # N: Did you mean "List[...]"?
     pass
 [out]
 
@@ -927,8 +897,6 @@ import typing
 def f(): pass
 f() = 1 # type: int
 [out]
-main:3: error: can't assign to function call
-[out version>=3.8]
 main:3: error: cannot assign to function call
 [out version>=3.10]
 main:3: error: cannot assign to function call here. Maybe you meant '==' instead of '='?
@@ -1007,8 +975,6 @@ x, y = 1, 2 # type: int # E: Tuple type expected for multiple variables
 a = 1
 a() = None # type: int
 [out]
-main:2: error: can't assign to function call
-[out version>=3.8]
 main:2: error: cannot assign to function call
 [out version>=3.10]
 main:2: error: cannot assign to function call here. Maybe you meant '==' instead of '='?
@@ -1311,8 +1277,6 @@ main:2: note: Did you forget to import it from "typing"? (Suggestion: "from typi
 def f(): pass
 with f() as 1: pass
 [out]
-main:2: error: can't assign to literal
-[out version>=3.8]
 main:2: error: cannot assign to literal
 
 [case testInvalidTypeAnnotation]
@@ -1327,8 +1291,6 @@ import typing
 def f() -> None:
     f() = 1  # type: int
 [out]
-main:3: error: can't assign to function call
-[out version>=3.8]
 main:3: error: cannot assign to function call
 [out version>=3.10]
 main:3: error: cannot assign to function call here. Maybe you meant '==' instead of '='?
@@ -1495,7 +1457,7 @@ homogenous_tuple: Tuple[Unpack[Tuple[int, ...]]]
 bad: Tuple[Unpack[int]]  # E: "int" cannot be unpacked (must be tuple or TypeVarTuple)
 [builtins fixtures/tuple.pyi]
 
-[case testTypeVarTuple]
+[case testTypeVarTupleErrors]
 from typing import Generic
 from typing_extensions import TypeVarTuple, Unpack
 
@@ -1509,15 +1471,14 @@ TP5 = TypeVarTuple(t='TP5')  # E: TypeVarTuple() expects a string literal as fir
 TP6 = TypeVarTuple('TP6', bound=int)  # E: Unexpected keyword argument "bound" for "TypeVarTuple"
 
 x: TVariadic  # E: TypeVarTuple "TVariadic" is unbound
-y: Unpack[TVariadic]  # E: TypeVarTuple "TVariadic" is unbound
+y: Unpack[TVariadic]  # E: Unpack is only valid in a variadic position
 
 
 class Variadic(Generic[Unpack[TVariadic], Unpack[TVariadic2]]):  # E: Can only use one type var tuple in a class def
     pass
 
-# TODO: this should generate an error
-#def bad_args(*args: TVariadic):
-#    pass
+def bad_args(*args: TVariadic):  # E: TypeVarTuple "TVariadic" is only valid with an unpack
+    pass
 
 def bad_kwargs(**kwargs: Unpack[TVariadic]):  # E: Unpack item in ** argument must be a TypedDict
     pass

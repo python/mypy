@@ -10,7 +10,7 @@ y = x
 [case testJoinAny]
 from typing import List, Any
 
-x = None # type: List[Any]
+x: List[Any]
 
 def foo() -> List[int]: pass
 def bar() -> List[str]: pass
@@ -51,9 +51,9 @@ def f(x: Union[int, str, List]) -> None:
 
 [case testClassAttributeInitialization]
 class A:
-    x = None # type: int
+    x: int
     def __init__(self) -> None:
-        self.y = None # type: int
+        self.y: int
         z = self.x
         w = self.y
 
@@ -71,7 +71,7 @@ def foo(x: Union[str, int]):
     y + [1]  # E: List item 0 has incompatible type "int"; expected "str"
     z = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
-x = None # type: int
+x: int
 y = [x]
 [builtins fixtures/isinstancelist.pyi]
 
@@ -124,7 +124,7 @@ x = 'a'
 
 [case testUnionMultiAssignment]
 from typing import Union
-x = None # type: Union[int, str]
+x: Union[int, str]
 if int():
     x = 1
     x = 'a'
@@ -488,7 +488,7 @@ x.y        # OK: x is known to be a B
 
 [case testIsInstanceBasic]
 from typing import Union
-x = None # type: Union[int, str]
+x: Union[int, str]
 if isinstance(x, str):
     x = x + 1   # E: Unsupported operand types for + ("str" and "int")
     x = x + 'a'
@@ -499,7 +499,7 @@ else:
 
 [case testIsInstanceIndexing]
 from typing import Union
-x = None # type: Union[int, str]
+x: Union[int, str]
 j = [x]
 if isinstance(j[0], str):
     j[0] = j[0] + 'a'
@@ -671,7 +671,7 @@ foo()
 from typing import Union
 
 def foo() -> None:
-    x = None # type: Union[int, str]
+    x: Union[int, str]
     if isinstance(x, int):
         for z in [1,2]:
             break
@@ -686,7 +686,7 @@ foo()
 [case testIsInstanceThreeUnion]
 from typing import Union, List
 
-x = None # type: Union[int, str, List[int]]
+x: Union[int, str, List[int]]
 
 while bool():
     if isinstance(x, int):
@@ -706,7 +706,7 @@ x + [1]               # E: Unsupported operand types for + ("int" and "List[int]
 
 [case testIsInstanceThreeUnion2]
 from typing import Union, List
-x = None # type: Union[int, str, List[int]]
+x: Union[int, str, List[int]]
 while bool():
     if isinstance(x, int):
         x + 1
@@ -725,7 +725,7 @@ x + [1]               # E: Unsupported operand types for + ("int" and "List[int]
 from typing import Union, List
 
 while bool():
-    x = None # type: Union[int, str, List[int]]
+    x: Union[int, str, List[int]]
     def f(): x  # Prevent redefinition
     x = 1
     if isinstance(x, int):
@@ -1787,6 +1787,7 @@ issubclass(x, (int, Iterable[int]))  # E: Parameterized generics cannot be used 
 [typing fixtures/typing-full.pyi]
 
 [case testIssubclassWithMetaclasses]
+# flags: --no-strict-optional
 class FooMetaclass(type): ...
 class Foo(metaclass=FooMetaclass): ...
 class Bar: ...
@@ -1800,7 +1801,6 @@ if issubclass(fm, Bar):
 [builtins fixtures/isinstance.pyi]
 
 [case testIssubclassWithMetaclassesStrictOptional]
-# flags: --strict-optional
 class FooMetaclass(type): ...
 class BarMetaclass(type): ...
 class Foo(metaclass=FooMetaclass): ...
@@ -1812,9 +1812,9 @@ reveal_type(fm)  # N: Revealed type is "__main__.FooMetaclass"
 if issubclass(fm, Foo):
     reveal_type(fm)  # N: Revealed type is "Type[__main__.Foo]"
 if issubclass(fm, Bar):
-    reveal_type(fm)  # N: Revealed type is "<nothing>"
+    reveal_type(fm)  # N: Revealed type is "Never"
 if issubclass(fm, Baz):
-    reveal_type(fm)  # N: Revealed type is "<nothing>"
+    reveal_type(fm)  # N: Revealed type is "Never"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceAndNarrowTypeVariable]
@@ -1905,7 +1905,6 @@ def narrow_any_to_str_then_reassign_to_int() -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testNarrowTypeAfterInList]
-# flags: --strict-optional
 from typing import List, Optional
 
 x: List[int]
@@ -1923,7 +1922,6 @@ else:
 [out]
 
 [case testNarrowTypeAfterInListOfOptional]
-# flags: --strict-optional
 from typing import List, Optional
 
 x: List[Optional[int]]
@@ -1937,7 +1935,6 @@ else:
 [out]
 
 [case testNarrowTypeAfterInListNonOverlapping]
-# flags: --strict-optional
 from typing import List, Optional
 
 x: List[str]
@@ -1951,7 +1948,6 @@ else:
 [out]
 
 [case testNarrowTypeAfterInListNested]
-# flags: --strict-optional
 from typing import List, Optional, Any
 
 x: Optional[int]
@@ -1966,7 +1962,6 @@ if x in nested_any:
 [out]
 
 [case testNarrowTypeAfterInTuple]
-# flags: --strict-optional
 from typing import Optional
 class A: pass
 class B(A): pass
@@ -1981,7 +1976,6 @@ else:
 [out]
 
 [case testNarrowTypeAfterInNamedTuple]
-# flags: --strict-optional
 from typing import NamedTuple, Optional
 class NT(NamedTuple):
     x: int
@@ -1997,7 +1991,6 @@ else:
 [out]
 
 [case testNarrowTypeAfterInDict]
-# flags: --strict-optional
 from typing import Dict, Optional
 x: Dict[str, int]
 y: Optional[str]
@@ -2014,7 +2007,6 @@ else:
 [out]
 
 [case testNarrowTypeAfterInNoAnyOrObject]
-# flags: --strict-optional
 from typing import Any, List, Optional
 x: List[Any]
 z: List[object]
@@ -2034,7 +2026,6 @@ else:
 [out]
 
 [case testNarrowTypeAfterInUserDefined]
-# flags: --strict-optional
 from typing import Container, Optional
 
 class C(Container[int]):
@@ -2056,7 +2047,6 @@ else:
 [out]
 
 [case testNarrowTypeAfterInSet]
-# flags: --strict-optional
 from typing import Optional, Set
 s: Set[str]
 
@@ -2073,7 +2063,6 @@ else:
 [out]
 
 [case testNarrowTypeAfterInTypedDict]
-# flags: --strict-optional
 from typing import Optional
 from mypy_extensions import TypedDict
 class TD(TypedDict):
@@ -2149,7 +2138,6 @@ else:
 [builtins fixtures/isinstance.pyi]
 
 [case testIsInstanceInitialNoneCheckSkipsImpossibleCasesNoStrictOptional]
-# flags: --strict-optional
 from typing import Optional, Union
 
 class A: pass
@@ -2196,7 +2184,6 @@ def foo2(x: Optional[str]) -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testNoneCheckDoesNotNarrowWhenUsingTypeVars]
-# flags: --strict-optional
 
 # Note: this test (and the following one) are testing checker.conditional_type_map:
 # if you set the 'prohibit_none_typevar_overlap' keyword argument to False when calling
@@ -2248,7 +2235,6 @@ def bar(x: Union[List[str], List[int], None]) -> None:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testNoneAndGenericTypesOverlapStrictOptional]
-# flags: --strict-optional
 from typing import Union, Optional, List
 
 # This test is the same as the one above, except for strict-optional.

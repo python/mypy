@@ -5,8 +5,7 @@ from __future__ import annotations
 import types
 import weakref
 from collections.abc import Iterable
-from typing import Iterator, Mapping
-from typing_extensions import Final
+from typing import Final, Iterator, Mapping
 
 method_descriptor_type: Final = type(object.__dir__)
 method_wrapper_type: Final = type(object().__ne__)

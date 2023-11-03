@@ -23,19 +23,7 @@ class MypyHTMLBuilder(StandaloneHTMLBuilder):
     def _verify_error_codes(self) -> None:
         from mypy.errorcodes import error_codes
 
-        known_missing = {
-            # TODO: fix these before next release
-            "annotation-unchecked",
-            "empty-body",
-            "possibly-undefined",
-            "str-format",
-            "top-level-await",
-        }
-        missing_error_codes = {
-            c
-            for c in error_codes
-            if f"code-{c}" not in self._ref_to_doc and c not in known_missing
-        }
+        missing_error_codes = {c for c in error_codes if f"code-{c}" not in self._ref_to_doc}
         if missing_error_codes:
             raise ValueError(
                 f"Some error codes are not documented: {', '.join(sorted(missing_error_codes))}"

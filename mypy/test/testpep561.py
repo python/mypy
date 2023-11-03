@@ -98,11 +98,6 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
     assert testcase.old_cwd is not None, "test was not properly set up"
     python = sys.executable
 
-    if sys.version_info < (3, 8) and testcase.location[-1] == "testTypedPkgSimpleEditable":
-        # Python 3.7 doesn't ship with new enough pip to support PEP 660
-        # This is a quick hack to skip the test; we'll drop Python 3.7 support soon enough
-        return
-
     assert python is not None, "Should be impossible"
     pkgs, pip_args = parse_pkgs(testcase.input[0])
     mypy_args = parse_mypy_args(testcase.input[1])
@@ -136,7 +131,7 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
 
         steps = testcase.find_steps()
         if steps != [[]]:
-            steps = [[]] + steps  # type: ignore[assignment]
+            steps = [[]] + steps
 
         for i, operations in enumerate(steps):
             perform_file_operations(operations)

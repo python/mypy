@@ -191,6 +191,8 @@ int16_t CPyLong_AsInt16(PyObject *o);
 int16_t CPyInt16_Divide(int16_t x, int16_t y);
 int16_t CPyInt16_Remainder(int16_t x, int16_t y);
 void CPyInt16_Overflow(void);
+uint8_t CPyLong_AsUInt8(PyObject *o);
+void CPyUInt8_Overflow(void);
 double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y);
 
 static inline int CPyTagged_CheckLong(CPyTagged x) {

@@ -684,12 +684,16 @@ plugins=<ROOT>/test-data/unit/plugins/dyn_class.py
 [case testDynamicClassHookFromClassMethod]
 # flags: --config-file tmp/mypy.ini
 
-from mod import QuerySet, Manager
+from mod import QuerySet, Manager, GenericQuerySet
 
 MyManager = Manager.from_queryset(QuerySet)
+ManagerFromGenericQuerySet = GenericQuerySet[int].as_manager()
 
 reveal_type(MyManager())  # N: Revealed type is "__main__.MyManager"
 reveal_type(MyManager().attr)  # N: Revealed type is "builtins.str"
+reveal_type(ManagerFromGenericQuerySet())  # N: Revealed type is "__main__.ManagerFromGenericQuerySet"
+reveal_type(ManagerFromGenericQuerySet().attr)  # N: Revealed type is "builtins.int"
+queryset: GenericQuerySet[int] = ManagerFromGenericQuerySet()
 
 def func(manager: MyManager) -> None:
     reveal_type(manager)   # N: Revealed type is "__main__.MyManager"
@@ -704,6 +708,12 @@ class QuerySet:
 class Manager:
     @classmethod
     def from_queryset(cls, queryset_cls: Type[QuerySet]): ...
+T = TypeVar("T")
+class GenericQuerySet(Generic[T]):
+    attr: T
+
+    @classmethod
+    def as_manager(cls): ...
 
 [builtins fixtures/classmethod.pyi]
 [file mypy.ini]
@@ -802,7 +812,7 @@ else:
 plugins=<ROOT>/test-data/unit/plugins/union_method.py
 
 [case testGetMethodHooksOnUnionsStrictOptional]
-# flags: --config-file tmp/mypy.ini --strict-optional
+# flags: --config-file tmp/mypy.ini
 from typing import Union
 
 class Foo:
@@ -1011,12 +1021,34 @@ class BaseAddMethod: pass
 class MyClass(BaseAddMethod):
     pass
 
-my_class = MyClass()
 reveal_type(MyClass.foo_classmethod)  # N: Revealed type is "def ()"
 reveal_type(MyClass.foo_staticmethod)  # N: Revealed type is "def (builtins.int) -> builtins.str"
+
+my_class = MyClass()
+reveal_type(my_class.foo_classmethod)  # N: Revealed type is "def ()"
+reveal_type(my_class.foo_staticmethod)  # N: Revealed type is "def (builtins.int) -> builtins.str"
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/add_classmethod.py
+
+[case testAddOverloadedMethodPlugin]
+# flags: --config-file tmp/mypy.ini
+class AddOverloadedMethod: pass
+
+class MyClass(AddOverloadedMethod):
+    pass
+
+reveal_type(MyClass.method)  # N: Revealed type is "Overload(def (self: __main__.MyClass, arg: builtins.int) -> builtins.str, def (self: __main__.MyClass, arg: builtins.str) -> builtins.int)"
+reveal_type(MyClass.clsmethod)  # N: Revealed type is "Overload(def (arg: builtins.int) -> builtins.str, def (arg: builtins.str) -> builtins.int)"
+reveal_type(MyClass.stmethod)  # N: Revealed type is "Overload(def (arg: builtins.int) -> builtins.str, def (arg: builtins.str) -> builtins.int)"
+
+my_class = MyClass()
+reveal_type(my_class.method)  # N: Revealed type is "Overload(def (arg: builtins.int) -> builtins.str, def (arg: builtins.str) -> builtins.int)"
+reveal_type(my_class.clsmethod)  # N: Revealed type is "Overload(def (arg: builtins.int) -> builtins.str, def (arg: builtins.str) -> builtins.int)"
+reveal_type(my_class.stmethod)  # N: Revealed type is "Overload(def (arg: builtins.int) -> builtins.str, def (arg: builtins.str) -> builtins.int)"
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/add_overloaded_method.py
 
 [case testCustomErrorCodePlugin]
 # flags: --config-file tmp/mypy.ini  --show-error-codes

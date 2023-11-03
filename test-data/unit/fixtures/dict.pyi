@@ -3,10 +3,12 @@
 from _typeshed import SupportsKeysAndGetItem
 import _typeshed
 from typing import (
-    TypeVar, Generic, Iterable, Iterator, Mapping, Tuple, overload, Optional, Union, Sequence
+    TypeVar, Generic, Iterable, Iterator, Mapping, Tuple, overload, Optional, Union, Sequence,
+    Self,
 )
 
 T = TypeVar('T')
+T2 = TypeVar('T2')
 KT = TypeVar('KT')
 VT = TypeVar('VT')
 
@@ -33,6 +35,21 @@ class dict(Mapping[KT, VT]):
     @overload
     def get(self, k: KT, default: Union[VT, T]) -> Union[VT, T]: pass
     def __len__(self) -> int: ...
+
+    # This was actually added in 3.9:
+    @overload
+    def __or__(self, __value: dict[KT, VT]) -> dict[KT, VT]: ...
+    @overload
+    def __or__(self, __value: dict[T, T2]) -> dict[Union[KT, T], Union[VT, T2]]: ...
+    @overload
+    def __ror__(self, __value: dict[KT, VT]) -> dict[KT, VT]: ...
+    @overload
+    def __ror__(self, __value: dict[T, T2]) -> dict[Union[KT, T], Union[VT, T2]]: ...
+    # dict.__ior__ should be kept roughly in line with MutableMapping.update()
+    @overload  # type: ignore[misc]
+    def __ior__(self, __value: _typeshed.SupportsKeysAndGetItem[KT, VT]) -> Self: ...
+    @overload
+    def __ior__(self, __value: Iterable[Tuple[KT, VT]]) -> Self: ...
 
 class int: # for convenience
     def __add__(self, x: Union[int, complex]) -> int: pass

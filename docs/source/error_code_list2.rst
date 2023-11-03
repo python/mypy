@@ -255,6 +255,32 @@ mypy generates an error if it thinks that an expression is redundant.
         [i for i in range(x) if isinstance(i, int)]
 
 
+.. _code-possibly-undefined:
+
+Warn about variables that are defined only in some execution paths [possibly-undefined]
+---------------------------------------------------------------------------------------
+
+If you use :option:`--enable-error-code possibly-undefined <mypy --enable-error-code>`,
+mypy generates an error if it cannot verify that a variable will be defined in
+all execution paths. This includes situations when a variable definition
+appears in a loop, in a conditional branch, in an except handler, etc. For
+example:
+
+.. code-block:: python
+
+    # Use "mypy --enable-error-code possibly-undefined ..."
+
+    from typing import Iterable
+
+    def test(values: Iterable[int], flag: bool) -> None:
+        if flag:
+            a = 1
+        z = a + 1  # Error: Name "a" may be undefined [possibly-undefined]
+
+        for v in values:
+            b = v
+        z = b + 1  # Error: Name "b" may be undefined [possibly-undefined]
+
 .. _code-truthy-bool:
 
 Check that expression is not implicitly true in boolean context [truthy-bool]
@@ -416,3 +442,86 @@ Example:
         # The following will not generate an error on either
         # Python 3.8, or Python 3.9
         42 + "testing..."  # type: ignore
+
+.. _code-explicit-override:
+
+Check that ``@override`` is used when overriding a base class method [explicit-override]
+----------------------------------------------------------------------------------------
+
+If you use :option:`--enable-error-code explicit-override <mypy --enable-error-code>`
+mypy generates an error if you override a base class method without using the
+``@override`` decorator. An error will not be emitted for overrides of ``__init__``
+or ``__new__``. See `PEP 698 <https://peps.python.org/pep-0698/#strict-enforcement-per-project>`_.
+
+.. note::
+
+    Starting with Python 3.12, the ``@override`` decorator can be imported from ``typing``.
+    To use it with older Python versions, import it from ``typing_extensions`` instead.
+
+Example:
+
+.. code-block:: python
+
+    # Use "mypy --enable-error-code explicit-override ..."
+
+    from typing import override
+
+    class Parent:
+        def f(self, x: int) -> None:
+            pass
+
+        def g(self, y: int) -> None:
+            pass
+
+
+    class Child(Parent):
+        def f(self, x: int) -> None:  # Error: Missing @override decorator
+            pass
+
+        @override
+        def g(self, y: int) -> None:
+            pass
+
+
+.. _code-unimported-reveal:
+
+Check that ``reveal_type`` is imported from typing or typing_extensions [unimported-reveal]
+-------------------------------------------------------------------------------------------
+
+Mypy used to have ``reveal_type`` as a special builtin
+that only existed during type-checking.
+In runtime it fails with expected ``NameError``,
+which can cause real problem in production, hidden from mypy.
+
+But, in Python3.11 ``reveal_type``
+`was added to typing.py <https://docs.python.org/3/library/typing.html#typing.reveal_type>`_.
+``typing_extensions`` ported this helper to all supported Python versions.
+
+Now users can actually import ``reveal_type`` to make the runtime code safe.
+
+.. note::
+
+    Starting with Python 3.11, the ``reveal_type`` function can be imported from ``typing``.
+    To use it with older Python versions, import it from ``typing_extensions`` instead.
+
+.. code-block:: python
+
+    # Use "mypy --enable-error-code unimported-reveal"
+
+    x = 1
+    reveal_type(x)  # Note: Revealed type is "builtins.int" \
+                    # Error: Name "reveal_type" is not defined
+
+Correct usage:
+
+.. code-block:: python
+
+    # Use "mypy --enable-error-code unimported-reveal"
+    from typing import reveal_type   # or `typing_extensions`
+
+    x = 1
+    # This won't raise an error:
+    reveal_type(x)  # Note: Revealed type is "builtins.int"
+
+When this code is enabled, using ``reveal_locals`` is always an error,
+because there's no way one can import it.
