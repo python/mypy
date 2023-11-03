@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 import time
+from collections import defaultdict
 from gettext import gettext
 from typing import IO, Any, Final, NoReturn, Sequence, TextIO
 
@@ -158,11 +159,14 @@ def run_build(
     formatter = util.FancyFormatter(stdout, stderr, options.hide_error_codes)
 
     messages = []
+    messages_by_file = defaultdict(list)
 
-    def flush_errors(new_messages: list[str], serious: bool) -> None:
+    def flush_errors(filename: str | None, new_messages: list[str], serious: bool) -> None:
         if options.pretty:
             new_messages = formatter.fit_in_terminal(new_messages)
         messages.extend(new_messages)
+        if new_messages:
+            messages_by_file[filename].extend(new_messages)
         if options.non_interactive:
             # Collect messages and possibly show them later.
             return
@@ -200,7 +204,7 @@ def run_build(
             ),
             file=stderr,
         )
-    maybe_write_junit_xml(time.time() - t0, serious, messages, options)
+    maybe_write_junit_xml(time.time() - t0, serious, messages, messages_by_file, options)
     return res, messages, blockers
 
 
@@ -1054,6 +1058,12 @@ def process_options(
     other_group = parser.add_argument_group(title="Miscellaneous")
     other_group.add_argument("--quickstart-file", help=argparse.SUPPRESS)
     other_group.add_argument("--junit-xml", help="Write junit.xml to the given file")
+    imports_group.add_argument(
+        "--junit-format",
+        choices=["global", "per_file"],
+        default="global",
+        help="If --junit-xml is set, specifies format. global: single test with all errors; per_file: one test entry per file with failures",
+    )
     other_group.add_argument(
         "--find-occurrences",
         metavar="CLASS.MEMBER",
@@ -1483,18 +1493,32 @@ def process_cache_map(
         options.cache_map[source] = (meta_file, data_file)
 
 
-def maybe_write_junit_xml(td: float, serious: bool, messages: list[str], options: Options) -> None:
+def maybe_write_junit_xml(
+    td: float,
+    serious: bool,
+    all_messages: list[str],
+    messages_by_file: dict[str | None, list[str]],
+    options: Options,
+) -> None:
     if options.junit_xml:
         py_version = f"{options.python_version[0]}_{options.python_version[1]}"
-        util.write_junit_xml(
-            td, serious, messages, options.junit_xml, py_version, options.platform
-        )
+        if options.junit_format == "global":
+            util.write_junit_xml(
+                td, serious, {None: all_messages}, options.junit_xml, py_version, options.platform
+            )
+        else:
+            # per_file
+            util.write_junit_xml(
+                td, serious, messages_by_file, options.junit_xml, py_version, options.platform
+            )
 
 
 def fail(msg: str, stderr: TextIO, options: Options) -> NoReturn:
     """Fail with a serious error."""
     stderr.write(f"{msg}\n")
-    maybe_write_junit_xml(0.0, serious=True, messages=[msg], options=options)
+    maybe_write_junit_xml(
+        0.0, serious=True, all_messages=[msg], messages_by_file={None: [msg]}, options=options
+    )
     sys.exit(2)
 
 

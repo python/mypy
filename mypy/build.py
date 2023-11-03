@@ -145,7 +145,7 @@ def build(
     sources: list[BuildSource],
     options: Options,
     alt_lib_path: str | None = None,
-    flush_errors: Callable[[list[str], bool], None] | None = None,
+    flush_errors: Callable[[str | None, list[str], bool], None] | None = None,
     fscache: FileSystemCache | None = None,
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
@@ -177,7 +177,9 @@ def build(
     # fields for callers that want the traditional API.
     messages = []
 
-    def default_flush_errors(new_messages: list[str], is_serious: bool) -> None:
+    def default_flush_errors(
+        filename: str | None, new_messages: list[str], is_serious: bool
+    ) -> None:
         messages.extend(new_messages)
 
     flush_errors = flush_errors or default_flush_errors
@@ -197,7 +199,7 @@ def build(
         # Patch it up to contain either none or all none of the messages,
         # depending on whether we are flushing errors.
         serious = not e.use_stdout
-        flush_errors(e.messages, serious)
+        flush_errors(None, e.messages, serious)
         e.messages = messages
         raise
 
@@ -206,7 +208,7 @@ def _build(
     sources: list[BuildSource],
     options: Options,
     alt_lib_path: str | None,
-    flush_errors: Callable[[list[str], bool], None],
+    flush_errors: Callable[[str | None, list[str], bool], None],
     fscache: FileSystemCache | None,
     stdout: TextIO,
     stderr: TextIO,
@@ -600,7 +602,7 @@ class BuildManager:
         plugin: Plugin,
         plugins_snapshot: dict[str, str],
         errors: Errors,
-        flush_errors: Callable[[list[str], bool], None],
+        flush_errors: Callable[[str | None, list[str], bool], None],
         fscache: FileSystemCache,
         stdout: TextIO,
         stderr: TextIO,
@@ -3458,7 +3460,11 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
         for id in stale:
             graph[id].transitive_error = True
     for id in stale:
-        manager.flush_errors(manager.errors.file_messages(graph[id].xpath), False)
+        manager.flush_errors(
+            manager.errors.simplify_path(graph[id].xpath),
+            manager.errors.file_messages(graph[id].xpath),
+            False,
+        )
         graph[id].write_cache()
         graph[id].mark_as_rechecked()
 
