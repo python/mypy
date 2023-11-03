@@ -255,7 +255,7 @@ UNIMPORTED_REVEAL: Final = ErrorCode(
     "General",
     default_enabled=False,
 )
-MUTABLE_OVERRIDE: Final = ErrorCode(
+MUTABLE_OVERRIDE: Final[ErrorCode] = ErrorCode(
     "mutable-override",
     "Reject covariant overrides for mutable attributes",
     "General",
