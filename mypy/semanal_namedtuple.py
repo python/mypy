@@ -182,8 +182,7 @@ class NamedTupleAnalyzer:
                     # it would be inconsistent with type aliases.
                     analyzed = self.api.anal_type(
                         stmt.type,
-                        allow_placeholder=not self.options.disable_recursive_aliases
-                        and not self.api.is_func_scope(),
+                        allow_placeholder=not self.api.is_func_scope(),
                         prohibit_self_type="NamedTuple item type",
                     )
                     if analyzed is None:
@@ -450,8 +449,7 @@ class NamedTupleAnalyzer:
                 # We never allow recursive types at function scope.
                 analyzed = self.api.anal_type(
                     type,
-                    allow_placeholder=not self.options.disable_recursive_aliases
-                    and not self.api.is_func_scope(),
+                    allow_placeholder=not self.api.is_func_scope(),
                     prohibit_self_type="NamedTuple item type",
                 )
                 # Workaround #4987 and avoid introducing a bogus UnboundType

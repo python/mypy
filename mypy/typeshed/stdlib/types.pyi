@@ -16,7 +16,7 @@ from collections.abc import (
 from importlib.machinery import ModuleSpec
 
 # pytype crashes if types.MappingProxyType inherits from collections.abc.Mapping instead of typing.Mapping
-from typing import Any, ClassVar, Generic, Mapping, Protocol, TypeVar, overload  # noqa: Y022
+from typing import Any, ClassVar, Mapping, Protocol, TypeVar, overload  # noqa: Y022
 from typing_extensions import Literal, ParamSpec, Self, TypeVarTuple, final
 
 __all__ = [
@@ -69,7 +69,7 @@ _VT_co = TypeVar("_VT_co", covariant=True)
 @final
 class _Cell:
     if sys.version_info >= (3, 8):
-        def __init__(self, __contents: object = ...) -> None: ...
+        def __new__(cls, __contents: object = ...) -> Self: ...
 
     def __eq__(self, __value: object) -> bool: ...
     __hash__: ClassVar[None]  # type: ignore[assignment]
@@ -96,14 +96,14 @@ class FunctionType:
         __type_params__: tuple[TypeVar | ParamSpec | TypeVarTuple, ...]
 
     __module__: str
-    def __init__(
-        self,
+    def __new__(
+        cls,
         code: CodeType,
         globals: dict[str, Any],
         name: str | None = ...,
         argdefs: tuple[object, ...] | None = ...,
         closure: tuple[_Cell, ...] | None = ...,
-    ) -> None: ...
+    ) -> Self: ...
     def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
     @overload
     def __get__(self, __instance: None, __owner: type) -> FunctionType: ...
@@ -162,8 +162,8 @@ class CodeType:
         def co_positions(self) -> Iterable[tuple[int | None, int | None, int | None, int | None]]: ...
 
     if sys.version_info >= (3, 11):
-        def __init__(
-            self,
+        def __new__(
+            cls,
             __argcount: int,
             __posonlyargcount: int,
             __kwonlyargcount: int,
@@ -182,10 +182,10 @@ class CodeType:
             __exceptiontable: bytes,
             __freevars: tuple[str, ...] = ...,
             __cellvars: tuple[str, ...] = ...,
-        ) -> None: ...
+        ) -> Self: ...
     elif sys.version_info >= (3, 10):
-        def __init__(
-            self,
+        def __new__(
+            cls,
             __argcount: int,
             __posonlyargcount: int,
             __kwonlyargcount: int,
@@ -202,10 +202,10 @@ class CodeType:
             __linetable: bytes,
             __freevars: tuple[str, ...] = ...,
             __cellvars: tuple[str, ...] = ...,
-        ) -> None: ...
+        ) -> Self: ...
     elif sys.version_info >= (3, 8):
-        def __init__(
-            self,
+        def __new__(
+            cls,
             __argcount: int,
             __posonlyargcount: int,
             __kwonlyargcount: int,
@@ -222,10 +222,10 @@ class CodeType:
             __lnotab: bytes,
             __freevars: tuple[str, ...] = ...,
             __cellvars: tuple[str, ...] = ...,
-        ) -> None: ...
+        ) -> Self: ...
     else:
-        def __init__(
-            self,
+        def __new__(
+            cls,
             __argcount: int,
             __kwonlyargcount: int,
             __nlocals: int,
@@ -241,7 +241,7 @@ class CodeType:
             __lnotab: bytes,
             __freevars: tuple[str, ...] = ...,
             __cellvars: tuple[str, ...] = ...,
-        ) -> None: ...
+        ) -> Self: ...
     if sys.version_info >= (3, 11):
         def replace(
             self,
@@ -309,9 +309,9 @@ class CodeType:
         ) -> CodeType: ...
 
 @final
-class MappingProxyType(Mapping[_KT, _VT_co], Generic[_KT, _VT_co]):
+class MappingProxyType(Mapping[_KT, _VT_co]):
     __hash__: ClassVar[None]  # type: ignore[assignment]
-    def __init__(self, mapping: SupportsKeysAndGetItem[_KT, _VT_co]) -> None: ...
+    def __new__(cls, mapping: SupportsKeysAndGetItem[_KT, _VT_co]) -> Self: ...
     def __getitem__(self, __key: _KT) -> _VT_co: ...
     def __iter__(self) -> Iterator[_KT]: ...
     def __len__(self) -> int: ...
@@ -444,7 +444,7 @@ class MethodType:
     def __name__(self) -> str: ...  # inherited from the added function
     @property
     def __qualname__(self) -> str: ...  # inherited from the added function
-    def __init__(self, __func: Callable[..., Any], __obj: object) -> None: ...
+    def __new__(cls, __func: Callable[..., Any], __obj: object) -> Self: ...
     def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
     def __eq__(self, __value: object) -> bool: ...
     def __hash__(self) -> int: ...
@@ -513,7 +513,7 @@ class ClassMethodDescriptorType:
 
 @final
 class TracebackType:
-    def __init__(self, tb_next: TracebackType | None, tb_frame: FrameType, tb_lasti: int, tb_lineno: int) -> None: ...
+    def __new__(cls, tb_next: TracebackType | None, tb_frame: FrameType, tb_lasti: int, tb_lineno: int) -> Self: ...
     tb_next: TracebackType | None
     # the rest are read-only even in 3.7
     @property
@@ -610,7 +610,7 @@ if sys.version_info >= (3, 9):
         def __args__(self) -> tuple[Any, ...]: ...
         @property
         def __parameters__(self) -> tuple[Any, ...]: ...
-        def __init__(self, origin: type, args: Any) -> None: ...
+        def __new__(cls, origin: type, args: Any) -> Self: ...
         def __getitem__(self, __typeargs: Any) -> GenericAlias: ...
         def __eq__(self, __value: object) -> bool: ...
         def __hash__(self) -> int: ...

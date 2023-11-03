@@ -33,6 +33,7 @@ def infer_function_type_arguments(
     callee_type: CallableType,
     arg_types: Sequence[Type | None],
     arg_kinds: list[ArgKind],
+    arg_names: Sequence[str | None] | None,
     formal_to_actual: list[list[int]],
     context: ArgumentInferContext,
     strict: bool = True,
@@ -53,7 +54,7 @@ def infer_function_type_arguments(
     """
     # Infer constraints.
     constraints = infer_constraints_for_callable(
-        callee_type, arg_types, arg_kinds, formal_to_actual, context
+        callee_type, arg_types, arg_kinds, arg_names, formal_to_actual, context
     )
 
     # Solve constraints.
@@ -62,9 +63,13 @@ def infer_function_type_arguments(
 
 
 def infer_type_arguments(
-    type_vars: Sequence[TypeVarLikeType], template: Type, actual: Type, is_supertype: bool = False
+    type_vars: Sequence[TypeVarLikeType],
+    template: Type,
+    actual: Type,
+    is_supertype: bool = False,
+    skip_unsatisfied: bool = False,
 ) -> list[Type | None]:
     # Like infer_function_type_arguments, but only match a single type
     # against a generic type.
     constraints = infer_constraints(template, actual, SUPERTYPE_OF if is_supertype else SUBTYPE_OF)
-    return solve_constraints(type_vars, constraints)[0]
+    return solve_constraints(type_vars, constraints, skip_unsatisfied=skip_unsatisfied)[0]

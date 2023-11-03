@@ -19,6 +19,7 @@ from mypy.nodes import (
     ArgKind,
     ClassDef,
     Decorator,
+    FuncBase,
     FuncDef,
     FuncItem,
     LambdaExpr,
@@ -102,7 +103,7 @@ def transform_func_def(builder: IRBuilder, fdef: FuncDef) -> None:
     if func_reg:
         builder.assign(get_func_target(builder, fdef), func_reg, fdef.line)
     maybe_insert_into_registry_dict(builder, fdef)
-    builder.functions.append(func_ir)
+    builder.add_function(func_ir, fdef.line)
 
 
 def transform_overloaded_func_def(builder: IRBuilder, o: OverloadedFuncDef) -> None:
@@ -222,6 +223,7 @@ def gen_func_item(
     is_decorated = fitem in builder.fdefs_to_decorators
     is_singledispatch = fitem in builder.singledispatch_impls
     in_non_ext = False
+    add_nested_funcs_to_env = has_nested_func_self_reference(builder, fitem)
     class_name = None
     if cdef:
         ir = builder.mapper.type_to_ir[cdef.info]
@@ -234,14 +236,15 @@ def gen_func_item(
         func_name = name
     builder.enter(
         FuncInfo(
-            fitem,
-            func_name,
-            class_name,
-            gen_func_ns(builder),
-            is_nested,
-            contains_nested,
-            is_decorated,
-            in_non_ext,
+            fitem=fitem,
+            name=func_name,
+            class_name=class_name,
+            namespace=gen_func_ns(builder),
+            is_nested=is_nested,
+            contains_nested=contains_nested,
+            is_decorated=is_decorated,
+            in_non_ext=in_non_ext,
+            add_nested_funcs_to_env=add_nested_funcs_to_env,
         )
     )
 
@@ -267,7 +270,13 @@ def gen_func_item(
         builder.enter(fn_info)
         setup_env_for_generator_class(builder)
         load_outer_envs(builder, builder.fn_info.generator_class)
-        if builder.fn_info.is_nested and isinstance(fitem, FuncDef):
+        top_level = builder.top_level_fn_info()
+        if (
+            builder.fn_info.is_nested
+            and isinstance(fitem, FuncDef)
+            and top_level
+            and top_level.add_nested_funcs_to_env
+        ):
             setup_func_for_recursive_call(builder, fitem, builder.fn_info.generator_class)
         create_switch_for_generator_class(builder)
         add_raise_exception_blocks_to_generator_class(builder, fitem.line)
@@ -342,6 +351,20 @@ def gen_func_item(
         return gen_dispatch_func_ir(builder, fitem, fn_info.name, name, sig)
 
     return func_ir, func_reg
+
+
+def has_nested_func_self_reference(builder: IRBuilder, fitem: FuncItem) -> bool:
+    """Does a nested function contain a self-reference in its body?
+
+    If a nested function only has references in the surrounding function,
+    we don't need to add it to the environment.
+    """
+    if any(isinstance(sym, FuncBase) for sym in builder.free_variables.get(fitem, set())):
+        return True
+    return any(
+        has_nested_func_self_reference(builder, nested)
+        for nested in builder.encapsulating_funcs.get(fitem, [])
+    )
 
 
 def gen_func_ir(
@@ -768,7 +791,7 @@ def get_func_target(builder: IRBuilder, fdef: FuncDef) -> AssignmentTarget:
         # Get the target associated with the previously defined FuncDef.
         return builder.lookup(fdef.original_def)
 
-    if builder.fn_info.is_generator or builder.fn_info.contains_nested:
+    if builder.fn_info.is_generator or builder.fn_info.add_nested_funcs_to_env:
         return builder.lookup(fdef)
 
     return builder.add_local_reg(fdef, object_rprimitive)

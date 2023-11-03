@@ -506,7 +506,7 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
         self.tracker.skip_branch()
 
     def visit_expression_stmt(self, o: ExpressionStmt) -> None:
-        if isinstance(self.type_map.get(o.expr, None), UninhabitedType):
+        if isinstance(self.type_map.get(o.expr, None), (UninhabitedType, type(None))):
             self.tracker.skip_branch()
         super().visit_expression_stmt(o)
 

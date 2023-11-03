@@ -607,16 +607,18 @@ tmp/b.py:4: note: Revealed type is "Tuple[Any, fallback=a.N]"
 tmp/b.py:7: note: Revealed type is "Tuple[Any, fallback=a.N]"
 
 [case testSimpleSelfReferentialNamedTuple]
-# flags: --disable-recursive-aliases
 from typing import NamedTuple
-class MyNamedTuple(NamedTuple):
-    parent: 'MyNamedTuple' # E: Cannot resolve name "MyNamedTuple" (possible cyclic definition)
 
-def bar(nt: MyNamedTuple) -> MyNamedTuple:
-    return nt
+def test() -> None:
+    class MyNamedTuple(NamedTuple):
+        parent: 'MyNamedTuple'  # E: Cannot resolve name "MyNamedTuple" (possible cyclic definition) \
+                                # N: Recursive types are not allowed at function scope
 
-x: MyNamedTuple
-reveal_type(x.parent) # N: Revealed type is "Any"
+    def bar(nt: MyNamedTuple) -> MyNamedTuple:
+        return nt
+
+    x: MyNamedTuple
+    reveal_type(x.parent) # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
 -- Some crazy self-referential named tuples and types dicts
@@ -645,106 +647,111 @@ class B:
 [out]
 
 [case testSelfRefNT1]
-# flags: --disable-recursive-aliases
 from typing import Tuple, NamedTuple
 
-Node = NamedTuple('Node', [
-        ('name', str),
-        ('children', Tuple['Node', ...]), # E: Cannot resolve name "Node" (possible cyclic definition)
-    ])
-n: Node
-reveal_type(n) # N: Revealed type is "Tuple[builtins.str, builtins.tuple[Any, ...], fallback=__main__.Node]"
+def test() -> None:
+    Node = NamedTuple('Node', [
+            ('name', str),
+            ('children', Tuple['Node', ...]),  # E: Cannot resolve name "Node" (possible cyclic definition) \
+                                               # N: Recursive types are not allowed at function scope
+        ])
+    n: Node
+    reveal_type(n) # N: Revealed type is "Tuple[builtins.str, builtins.tuple[Any, ...], fallback=__main__.Node@4]"
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNT2]
-# flags: --disable-recursive-aliases
 from typing import Tuple, NamedTuple
 
-A = NamedTuple('A', [
-        ('x', str),
-        ('y', Tuple['B', ...]), # E: Cannot resolve name "B" (possible cyclic definition)
-    ])
-class B(NamedTuple):
-    x: A
-    y: int
+def test() -> None:
+    A = NamedTuple('A', [
+            ('x', str),
+            ('y', Tuple['B', ...]),  # E: Cannot resolve name "B" (possible cyclic definition) \
+                                     # N: Recursive types are not allowed at function scope
+        ])
+    class B(NamedTuple):
+        x: A
+        y: int
 
-n: A
-reveal_type(n) # N: Revealed type is "Tuple[builtins.str, builtins.tuple[Any, ...], fallback=__main__.A]"
+    n: A
+    reveal_type(n) # N: Revealed type is "Tuple[builtins.str, builtins.tuple[Any, ...], fallback=__main__.A@4]"
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNT3]
-# flags: --disable-recursive-aliases
 from typing import NamedTuple, Tuple
 
-class B(NamedTuple):
-    x: Tuple[A, int] # E: Cannot resolve name "A" (possible cyclic definition)
-    y: int
+def test() -> None:
+    class B(NamedTuple):
+        x: Tuple[A, int]  # E: Cannot resolve name "A" (possible cyclic definition) \
+                          # N: Recursive types are not allowed at function scope
+        y: int
 
-A = NamedTuple('A', [
-        ('x', str),
-        ('y', 'B'),
-    ])
-n: B
-m: A
-reveal_type(n.x) # N: Revealed type is "Tuple[Any, builtins.int]"
-reveal_type(m[0]) # N: Revealed type is "builtins.str"
-lst = [m, n]
-reveal_type(lst[0]) # N: Revealed type is "Tuple[builtins.object, builtins.object]"
+    A = NamedTuple('A', [
+            ('x', str),
+            ('y', 'B'),
+        ])
+    n: B
+    m: A
+    reveal_type(n.x) # N: Revealed type is "Tuple[Any, builtins.int]"
+    reveal_type(m[0]) # N: Revealed type is "builtins.str"
+    lst = [m, n]
+    reveal_type(lst[0]) # N: Revealed type is "Tuple[builtins.object, builtins.object]"
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNT4]
-# flags: --disable-recursive-aliases
 from typing import NamedTuple
 
-class B(NamedTuple):
-    x: A # E: Cannot resolve name "A" (possible cyclic definition)
-    y: int
+def test() -> None:
+    class B(NamedTuple):
+        x: A  # E: Cannot resolve name "A" (possible cyclic definition) \
+              # N: Recursive types are not allowed at function scope
+        y: int
 
-class A(NamedTuple):
-    x: str
-    y: B
+    class A(NamedTuple):
+        x: str
+        y: B
 
-n: A
-reveal_type(n.y[0]) # N: Revealed type is "Any"
+    n: A
+    reveal_type(n.y[0]) # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNT5]
-# flags: --disable-recursive-aliases
 from typing import NamedTuple
 
-B = NamedTuple('B', [
-        ('x', A), # E: Cannot resolve name "A" (possible cyclic definition)  # E: Name "A" is used before definition
-        ('y', int),
-    ])
-A = NamedTuple('A', [
-        ('x', str),
-        ('y', 'B'),
-    ])
-n: A
-def f(m: B) -> None: pass
-reveal_type(n) # N: Revealed type is "Tuple[builtins.str, Tuple[Any, builtins.int, fallback=__main__.B], fallback=__main__.A]"
-reveal_type(f) # N: Revealed type is "def (m: Tuple[Any, builtins.int, fallback=__main__.B])"
+def test() -> None:
+    B = NamedTuple('B', [
+            ('x', A),  # E: Cannot resolve name "A" (possible cyclic definition)  \
+                       # N: Recursive types are not allowed at function scope \
+                       # E: Name "A" is used before definition
+            ('y', int),
+        ])
+    A = NamedTuple('A', [
+            ('x', str),
+            ('y', 'B'),
+        ])
+    n: A
+    def f(m: B) -> None: pass
+    reveal_type(n) # N: Revealed type is "Tuple[builtins.str, Tuple[Any, builtins.int, fallback=__main__.B@4], fallback=__main__.A@8]"
+    reveal_type(f) # N: Revealed type is "def (m: Tuple[Any, builtins.int, fallback=__main__.B@4])"
 [builtins fixtures/tuple.pyi]
 
 [case testRecursiveNamedTupleInBases]
-# flags: --disable-recursive-aliases
 from typing import List, NamedTuple, Union
 
-Exp = Union['A', 'B']  # E: Cannot resolve name "Exp" (possible cyclic definition) \
-                       # E: Cannot resolve name "A" (possible cyclic definition)
-class A(NamedTuple('A', [('attr', List[Exp])])): pass
-class B(NamedTuple('B', [('val', object)])): pass
+def test() -> None:
+    Exp = Union['A', 'B']  # E: Cannot resolve name "Exp" (possible cyclic definition) \
+                           # N: Recursive types are not allowed at function scope \
+                           # E: Cannot resolve name "A" (possible cyclic definition)
+    class A(NamedTuple('A', [('attr', List[Exp])])): pass
+    class B(NamedTuple('B', [('val', object)])): pass
 
-def my_eval(exp: Exp) -> int:
-    reveal_type(exp) # N: Revealed type is "Union[Any, Tuple[builtins.object, fallback=__main__.B]]"
+    exp: Exp
+    reveal_type(exp)  # N: Revealed type is "Union[Any, Tuple[builtins.object, fallback=__main__.B@6]]"
     if isinstance(exp, A):
-        my_eval(exp[0][0])
-        return my_eval(exp.attr[0])
+        reveal_type(exp[0][0])  # N: Revealed type is "Union[Any, Tuple[builtins.object, fallback=__main__.B@6]]"
+        reveal_type(exp.attr[0])  # N: Revealed type is "Union[Any, Tuple[builtins.object, fallback=__main__.B@6]]"
     if isinstance(exp, B):
-        return exp.val  # E: Incompatible return value type (got "object", expected "int")
-    return 0
-
-my_eval(A([B(1), B(2)])) # OK
+        reveal_type(exp.val)  # N: Revealed type is "builtins.object"
+    reveal_type(A([B(1), B(2)]))  # N: Revealed type is "Tuple[builtins.list[Union[Any, Tuple[builtins.object, fallback=__main__.B@6]]], fallback=__main__.A@5]"
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
@@ -771,17 +778,18 @@ tp = NamedTuple('tp', [('x', int)])
 [out]
 
 [case testSubclassOfRecursiveNamedTuple]
-# flags: --disable-recursive-aliases
 from typing import List, NamedTuple
 
-class Command(NamedTuple):
-    subcommands: List['Command'] # E: Cannot resolve name "Command" (possible cyclic definition)
+def test() -> None:
+    class Command(NamedTuple):
+        subcommands: List['Command']  # E: Cannot resolve name "Command" (possible cyclic definition) \
+                                      # N: Recursive types are not allowed at function scope
 
-class HelpCommand(Command):
-    pass
+    class HelpCommand(Command):
+        pass
 
-hc = HelpCommand(subcommands=[])
-reveal_type(hc)  # N: Revealed type is "Tuple[builtins.list[Any], fallback=__main__.HelpCommand]"
+    hc = HelpCommand(subcommands=[])
+    reveal_type(hc)  # N: Revealed type is "Tuple[builtins.list[Any], fallback=__main__.HelpCommand@7]"
 [builtins fixtures/list.pyi]
 [out]
 
@@ -878,7 +886,7 @@ reveal_type(Child.class_method())  # N: Revealed type is "Tuple[builtins.str, fa
 [builtins fixtures/classmethod.pyi]
 
 [case testNamedTupleAsConditionalStrictOptionalDisabled]
-# flags: --no-strict-optional
+# flags: --no-strict-optional --warn-unreachable
 from typing import NamedTuple
 
 class C(NamedTuple):

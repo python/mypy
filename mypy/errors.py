@@ -8,7 +8,7 @@ from typing import Callable, Final, Iterable, NoReturn, Optional, TextIO, Tuple,
 from typing_extensions import Literal, TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes
-from mypy.errorcodes import IMPORT, IMPORT_NOT_FOUND, IMPORT_UNTYPED, ErrorCode
+from mypy.errorcodes import IMPORT, IMPORT_NOT_FOUND, IMPORT_UNTYPED, ErrorCode, mypy_error_codes
 from mypy.message_registry import ErrorMessage
 from mypy.options import Options
 from mypy.scope import Scope
@@ -469,7 +469,7 @@ class Errors:
         self.error_info_map[file].append(info)
         if info.blocker:
             self.has_blockers.add(file)
-        if info.code is IMPORT:
+        if info.code in (IMPORT, IMPORT_UNTYPED, IMPORT_NOT_FOUND):
             self.seen_import_error = True
 
     def _filter_error(self, file: str, info: ErrorInfo) -> bool:
@@ -560,6 +560,7 @@ class Errors:
             and not self.options.hide_error_codes
             and info.code is not None
             and info.code not in HIDE_LINK_CODES
+            and info.code.code in mypy_error_codes
         ):
             message = f"See {BASE_RTD_URL}-{info.code.code} for more info"
             if message in self.only_once_messages:
@@ -909,8 +910,7 @@ class Errors:
             return []
         self.flushed_files.add(path)
         source_lines = None
-        if self.options.pretty:
-            assert self.read_source
+        if self.options.pretty and self.read_source:
             source_lines = self.read_source(path)
         return self.format_messages(self.error_info_map[path], source_lines)
 

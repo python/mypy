@@ -128,11 +128,8 @@ TUPLE_LIKE_INSTANCE_NAMES: Final = (
     "typing.Reversible",
 )
 
-REVEAL_TYPE_NAMES: Final = (
-    "builtins.reveal_type",
-    "typing.reveal_type",
-    "typing_extensions.reveal_type",
-)
+IMPORTED_REVEAL_TYPE_NAMES: Final = ("typing.reveal_type", "typing_extensions.reveal_type")
+REVEAL_TYPE_NAMES: Final = ("builtins.reveal_type", *IMPORTED_REVEAL_TYPE_NAMES)
 
 ASSERT_TYPE_NAMES: Final = ("typing.assert_type", "typing_extensions.assert_type")
 
@@ -322,6 +319,7 @@ class TypeAliasType(Type):
             assert isinstance(self.alias.target, Instance)  # type: ignore[misc]
             return self.alias.target.copy_modified(args=self.args)
 
+        # TODO: this logic duplicates the one in expand_type_by_instance().
         if self.alias.tvar_tuple_index is None:
             mapping = {v.id: s for (v, s) in zip(self.alias.alias_tvars, self.args)}
         else:
@@ -804,6 +802,8 @@ class TypeVarTupleType(TypeVarLikeType):
     See PEP646 for more information.
     """
 
+    __slots__ = ("tuple_fallback", "min_len")
+
     def __init__(
         self,
         name: str,
@@ -815,9 +815,13 @@ class TypeVarTupleType(TypeVarLikeType):
         *,
         line: int = -1,
         column: int = -1,
+        min_len: int = 0,
     ) -> None:
         super().__init__(name, fullname, id, upper_bound, default, line=line, column=column)
         self.tuple_fallback = tuple_fallback
+        # This value is not settable by a user. It is an internal-only thing to support
+        # len()-narrowing of variadic tuples.
+        self.min_len = min_len
 
     def serialize(self) -> JsonDict:
         assert not self.id.is_meta_var()
@@ -829,6 +833,7 @@ class TypeVarTupleType(TypeVarLikeType):
             "upper_bound": self.upper_bound.serialize(),
             "tuple_fallback": self.tuple_fallback.serialize(),
             "default": self.default.serialize(),
+            "min_len": self.min_len,
         }
 
     @classmethod
@@ -841,18 +846,19 @@ class TypeVarTupleType(TypeVarLikeType):
             deserialize_type(data["upper_bound"]),
             Instance.deserialize(data["tuple_fallback"]),
             deserialize_type(data["default"]),
+            min_len=data["min_len"],
         )
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_type_var_tuple(self)
 
     def __hash__(self) -> int:
-        return hash(self.id)
+        return hash((self.id, self.min_len))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TypeVarTupleType):
             return NotImplemented
-        return self.id == other.id
+        return self.id == other.id and self.min_len == other.min_len
 
     def copy_modified(
         self,
@@ -860,6 +866,7 @@ class TypeVarTupleType(TypeVarLikeType):
         id: Bogus[TypeVarId | int] = _dummy,
         upper_bound: Bogus[Type] = _dummy,
         default: Bogus[Type] = _dummy,
+        min_len: Bogus[int] = _dummy,
         **kwargs: Any,
     ) -> TypeVarTupleType:
         return TypeVarTupleType(
@@ -871,6 +878,7 @@ class TypeVarTupleType(TypeVarLikeType):
             self.default if default is _dummy else default,
             line=self.line,
             column=self.column,
+            min_len=self.min_len if min_len is _dummy else min_len,
         )
 
 
@@ -1044,16 +1052,22 @@ class UnpackType(ProperType):
     """Type operator Unpack from PEP646. Can be either with Unpack[]
     or unpacking * syntax.
 
-    The inner type should be either a TypeVarTuple, a constant size
-    tuple, or a variable length tuple. Type aliases to these are not allowed,
-    except during semantic analysis.
+    The inner type should be either a TypeVarTuple, or a variable length tuple.
+    In an exceptional case of callable star argument it can be a fixed length tuple.
+
+    Note: the above restrictions are only guaranteed by normalizations after semantic
+    analysis, if your code needs to handle UnpackType *during* semantic analysis, it is
+    wild west, technically anything can be present in the wrapped type.
     """
 
-    __slots__ = ["type"]
+    __slots__ = ["type", "from_star_syntax"]
 
-    def __init__(self, typ: Type, line: int = -1, column: int = -1) -> None:
+    def __init__(
+        self, typ: Type, line: int = -1, column: int = -1, from_star_syntax: bool = False
+    ) -> None:
         super().__init__(line, column)
         self.type = typ
+        self.from_star_syntax = from_star_syntax
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_unpack_type(self)
@@ -1548,7 +1562,10 @@ class FormalArgument(NamedTuple):
 class Parameters(ProperType):
     """Type that represents the parameters to a function.
 
-    Used for ParamSpec analysis."""
+    Used for ParamSpec analysis. Note that by convention we handle this
+    type as a Callable without return type, not as a "tuple with names",
+    so that it behaves contravariantly, in particular [x: int] <: [int].
+    """
 
     __slots__ = (
         "arg_types",
@@ -1559,6 +1576,7 @@ class Parameters(ProperType):
         # TODO: variables don't really belong here, but they are used to allow hacky support
         # for forall . Foo[[x: T], T] by capturing generic callable with ParamSpec, see #15909
         "variables",
+        "imprecise_arg_kinds",
     )
 
     def __init__(
@@ -1569,6 +1587,7 @@ class Parameters(ProperType):
         *,
         variables: Sequence[TypeVarLikeType] | None = None,
         is_ellipsis_args: bool = False,
+        imprecise_arg_kinds: bool = False,
         line: int = -1,
         column: int = -1,
     ) -> None:
@@ -1581,6 +1600,7 @@ class Parameters(ProperType):
         self.min_args = arg_kinds.count(ARG_POS)
         self.is_ellipsis_args = is_ellipsis_args
         self.variables = variables or []
+        self.imprecise_arg_kinds = imprecise_arg_kinds
 
     def copy_modified(
         self,
@@ -1590,6 +1610,7 @@ class Parameters(ProperType):
         *,
         variables: Bogus[Sequence[TypeVarLikeType]] = _dummy,
         is_ellipsis_args: Bogus[bool] = _dummy,
+        imprecise_arg_kinds: Bogus[bool] = _dummy,
     ) -> Parameters:
         return Parameters(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
@@ -1599,6 +1620,11 @@ class Parameters(ProperType):
                 is_ellipsis_args if is_ellipsis_args is not _dummy else self.is_ellipsis_args
             ),
             variables=variables if variables is not _dummy else self.variables,
+            imprecise_arg_kinds=(
+                imprecise_arg_kinds
+                if imprecise_arg_kinds is not _dummy
+                else self.imprecise_arg_kinds
+            ),
         )
 
     # TODO: here is a lot of code duplication with Callable type, fix this.
@@ -1695,6 +1721,7 @@ class Parameters(ProperType):
             "arg_kinds": [int(x.value) for x in self.arg_kinds],
             "arg_names": self.arg_names,
             "variables": [tv.serialize() for tv in self.variables],
+            "imprecise_arg_kinds": self.imprecise_arg_kinds,
         }
 
     @classmethod
@@ -1705,6 +1732,7 @@ class Parameters(ProperType):
             [ArgKind(x) for x in data["arg_kinds"]],
             data["arg_names"],
             variables=[cast(TypeVarLikeType, deserialize_type(v)) for v in data["variables"]],
+            imprecise_arg_kinds=data["imprecise_arg_kinds"],
         )
 
     def __hash__(self) -> int:
@@ -1745,8 +1773,6 @@ class CallableType(FunctionLike):
         "definition",  # For error messages.  May be None.
         "variables",  # Type variables for a generic function
         "is_ellipsis_args",  # Is this Callable[..., t] (with literal '...')?
-        "is_classmethod_class",  # Is this callable constructed for the benefit
-        # of a classmethod's 'cls' argument?
         "implicit",  # Was this type implicitly generated instead of explicitly
         # specified by the user?
         "special_sig",  # Non-None for signatures that require special handling
@@ -1761,6 +1787,7 @@ class CallableType(FunctionLike):
         "type_guard",  # T, if -> TypeGuard[T] (ret_type is bool in this case).
         "from_concatenate",  # whether this callable is from a concatenate object
         # (this is used for error messages)
+        "imprecise_arg_kinds",
         "unpack_kwargs",  # Was an Unpack[...] with **kwargs used to define this callable?
     )
 
@@ -1785,6 +1812,7 @@ class CallableType(FunctionLike):
         def_extras: dict[str, Any] | None = None,
         type_guard: Type | None = None,
         from_concatenate: bool = False,
+        imprecise_arg_kinds: bool = False,
         unpack_kwargs: bool = False,
     ) -> None:
         super().__init__(line, column)
@@ -1811,6 +1839,7 @@ class CallableType(FunctionLike):
         self.special_sig = special_sig
         self.from_type_type = from_type_type
         self.from_concatenate = from_concatenate
+        self.imprecise_arg_kinds = imprecise_arg_kinds
         if not bound_args:
             bound_args = ()
         self.bound_args = bound_args
@@ -1853,6 +1882,7 @@ class CallableType(FunctionLike):
         def_extras: Bogus[dict[str, Any]] = _dummy,
         type_guard: Bogus[Type | None] = _dummy,
         from_concatenate: Bogus[bool] = _dummy,
+        imprecise_arg_kinds: Bogus[bool] = _dummy,
         unpack_kwargs: Bogus[bool] = _dummy,
     ) -> CT:
         modified = CallableType(
@@ -1877,6 +1907,11 @@ class CallableType(FunctionLike):
             type_guard=type_guard if type_guard is not _dummy else self.type_guard,
             from_concatenate=(
                 from_concatenate if from_concatenate is not _dummy else self.from_concatenate
+            ),
+            imprecise_arg_kinds=(
+                imprecise_arg_kinds
+                if imprecise_arg_kinds is not _dummy
+                else self.imprecise_arg_kinds
             ),
             unpack_kwargs=unpack_kwargs if unpack_kwargs is not _dummy else self.unpack_kwargs,
         )
@@ -2044,16 +2079,6 @@ class CallableType(FunctionLike):
         prefix = Parameters(self.arg_types[:-2], self.arg_kinds[:-2], self.arg_names[:-2])
         return arg_type.copy_modified(flavor=ParamSpecFlavor.BARE, prefix=prefix)
 
-    def expand_param_spec(self, c: Parameters) -> CallableType:
-        variables = c.variables
-        return self.copy_modified(
-            arg_types=self.arg_types[:-2] + c.arg_types,
-            arg_kinds=self.arg_kinds[:-2] + c.arg_kinds,
-            arg_names=self.arg_names[:-2] + c.arg_names,
-            is_ellipsis_args=c.is_ellipsis_args,
-            variables=[*variables, *self.variables],
-        )
-
     def with_unpacked_kwargs(self) -> NormalizedCallableType:
         if not self.unpack_kwargs:
             return cast(NormalizedCallableType, self)
@@ -2073,6 +2098,72 @@ class CallableType(FunctionLike):
                 arg_types=new_arg_types,
                 unpack_kwargs=False,
             )
+        )
+
+    def with_normalized_var_args(self) -> Self:
+        var_arg = self.var_arg()
+        if not var_arg or not isinstance(var_arg.typ, UnpackType):
+            return self
+        unpacked = get_proper_type(var_arg.typ.type)
+        if not isinstance(unpacked, TupleType):
+            # Note that we don't normalize *args: *tuple[X, ...] -> *args: X,
+            # this should be done once in semanal_typeargs.py for user-defined types,
+            # and we ourselves should never construct such type.
+            return self
+        unpack_index = find_unpack_in_list(unpacked.items)
+        if unpack_index == 0 and len(unpacked.items) > 1:
+            # Already normalized.
+            return self
+
+        # Boilerplate:
+        var_arg_index = self.arg_kinds.index(ARG_STAR)
+        types_prefix = self.arg_types[:var_arg_index]
+        kinds_prefix = self.arg_kinds[:var_arg_index]
+        names_prefix = self.arg_names[:var_arg_index]
+        types_suffix = self.arg_types[var_arg_index + 1 :]
+        kinds_suffix = self.arg_kinds[var_arg_index + 1 :]
+        names_suffix = self.arg_names[var_arg_index + 1 :]
+        no_name: str | None = None  # to silence mypy
+
+        # Now we have something non-trivial to do.
+        if unpack_index is None:
+            # Plain *Tuple[X, Y, Z] -> replace with ARG_POS completely
+            types_middle = unpacked.items
+            kinds_middle = [ARG_POS] * len(unpacked.items)
+            names_middle = [no_name] * len(unpacked.items)
+        else:
+            # *Tuple[X, *Ts, Y, Z] or *Tuple[X, *tuple[T, ...], X, Z], here
+            # we replace the prefix by ARG_POS (this is how some places expect
+            # Callables to be represented)
+            nested_unpack = unpacked.items[unpack_index]
+            assert isinstance(nested_unpack, UnpackType)
+            nested_unpacked = get_proper_type(nested_unpack.type)
+            if unpack_index == len(unpacked.items) - 1:
+                # Normalize also single item tuples like
+                #   *args: *Tuple[*tuple[X, ...]] -> *args: X
+                #   *args: *Tuple[*Ts] -> *args: *Ts
+                # This may be not strictly necessary, but these are very verbose.
+                if isinstance(nested_unpacked, Instance):
+                    assert nested_unpacked.type.fullname == "builtins.tuple"
+                    new_unpack = nested_unpacked.args[0]
+                else:
+                    if not isinstance(nested_unpacked, TypeVarTupleType):
+                        # We found a non-nomralized tuple type, this means this method
+                        # is called during semantic analysis (e.g. from get_proper_type())
+                        # there is no point in normalizing callables at this stage.
+                        return self
+                    new_unpack = nested_unpack
+            else:
+                new_unpack = UnpackType(
+                    unpacked.copy_modified(items=unpacked.items[unpack_index:])
+                )
+            types_middle = unpacked.items[:unpack_index] + [new_unpack]
+            kinds_middle = [ARG_POS] * unpack_index + [ARG_STAR]
+            names_middle = [no_name] * unpack_index + [self.arg_names[var_arg_index]]
+        return self.copy_modified(
+            arg_types=types_prefix + types_middle + types_suffix,
+            arg_kinds=kinds_prefix + kinds_middle + kinds_suffix,
+            arg_names=names_prefix + names_middle + names_suffix,
         )
 
     def __hash__(self) -> int:
@@ -2128,6 +2219,7 @@ class CallableType(FunctionLike):
             "def_extras": dict(self.def_extras),
             "type_guard": self.type_guard.serialize() if self.type_guard is not None else None,
             "from_concatenate": self.from_concatenate,
+            "imprecise_arg_kinds": self.imprecise_arg_kinds,
             "unpack_kwargs": self.unpack_kwargs,
         }
 
@@ -2151,6 +2243,7 @@ class CallableType(FunctionLike):
                 deserialize_type(data["type_guard"]) if data["type_guard"] is not None else None
             ),
             from_concatenate=data["from_concatenate"],
+            imprecise_arg_kinds=data["imprecise_arg_kinds"],
             unpack_kwargs=data["unpack_kwargs"],
         )
 
@@ -2259,10 +2352,6 @@ class TupleType(ProperType):
     ) -> None:
         super().__init__(line, column)
         self.partial_fallback = fallback
-        # TODO: flatten/normalize unpack items (very similar to unions) here.
-        # Probably also for instances, type aliases, callables, and Unpack itself. For example,
-        # tuple[*tuple[X, ...], ...] -> tuple[X, ...] and Tuple[*tuple[X, ...]] -> tuple[X, ...].
-        # Currently normalization happens in expand_type() et al., which is sub-optimal.
         self.items = items
         self.implicit = implicit
 
@@ -2278,7 +2367,18 @@ class TupleType(ProperType):
             # Corner case: it is a `NamedTuple` with `__bool__` method defined.
             # It can be anything: both `True` and `False`.
             return True
-        return self.length() == 0
+        if self.length() == 0:
+            return True
+        if self.length() > 1:
+            return False
+        # Special case tuple[*Ts] may or may not be false.
+        item = self.items[0]
+        if not isinstance(item, UnpackType):
+            return False
+        if not isinstance(item.type, TypeVarTupleType):
+            # Non-normalized tuple[int, ...] can be false.
+            return True
+        return item.type.min_len == 0
 
     def can_be_any_bool(self) -> bool:
         return bool(
@@ -2327,14 +2427,58 @@ class TupleType(ProperType):
             items = self.items
         return TupleType(items, fallback, self.line, self.column)
 
-    def slice(self, begin: int | None, end: int | None, stride: int | None) -> TupleType:
-        return TupleType(
-            self.items[begin:end:stride],
-            self.partial_fallback,
-            self.line,
-            self.column,
-            self.implicit,
-        )
+    def slice(
+        self, begin: int | None, end: int | None, stride: int | None, *, fallback: Instance | None
+    ) -> TupleType | None:
+        if fallback is None:
+            fallback = self.partial_fallback
+
+        if any(isinstance(t, UnpackType) for t in self.items):
+            total = len(self.items)
+            unpack_index = find_unpack_in_list(self.items)
+            assert unpack_index is not None
+            if begin is None and end is None:
+                # We special-case this to support reversing variadic tuples.
+                # General support for slicing is tricky, so we handle only simple cases.
+                if stride == -1:
+                    slice_items = self.items[::-1]
+                elif stride is None or stride == 1:
+                    slice_items = self.items
+                else:
+                    return None
+            elif (begin is None or unpack_index >= begin >= 0) and (
+                end is not None and unpack_index >= end >= 0
+            ):
+                # Start and end are in the prefix, everything works in this case.
+                slice_items = self.items[begin:end:stride]
+            elif (begin is not None and unpack_index - total < begin < 0) and (
+                end is None or unpack_index - total < end < 0
+            ):
+                # Start and end are in the suffix, everything works in this case.
+                slice_items = self.items[begin:end:stride]
+            elif (begin is None or unpack_index >= begin >= 0) and (
+                end is None or unpack_index - total < end < 0
+            ):
+                # Start in the prefix, end in the suffix, we can support only trivial strides.
+                if stride is None or stride == 1:
+                    slice_items = self.items[begin:end:stride]
+                else:
+                    return None
+            elif (begin is not None and unpack_index - total < begin < 0) and (
+                end is not None and unpack_index >= end >= 0
+            ):
+                # Start in the suffix, end in the prefix, we can support only trivial strides.
+                if stride is None or stride == -1:
+                    slice_items = self.items[begin:end:stride]
+                else:
+                    return None
+            else:
+                # TODO: there some additional cases we can support for homogeneous variadic
+                # items, we can "eat away" finite number of items.
+                return None
+        else:
+            slice_items = self.items[begin:end:stride]
+        return TupleType(slice_items, fallback, self.line, self.column, self.implicit)
 
 
 class TypedDictType(ProperType):
@@ -2931,7 +3075,7 @@ def get_proper_type(typ: Type | None) -> ProperType | None:
 
 
 @overload
-def get_proper_types(types: list[Type] | tuple[Type, ...]) -> list[ProperType]:  # type: ignore[misc]
+def get_proper_types(types: list[Type] | tuple[Type, ...]) -> list[ProperType]:  # type: ignore[overload-overlap]
     ...
 
 
@@ -3015,7 +3159,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return "None"
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> str:
-        return "<nothing>"
+        return "Never"
 
     def visit_erased_type(self, t: ErasedType) -> str:
         return "<Erased>"
@@ -3040,6 +3184,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                 s += f"[{self.list_str(t.args)}, ...]"
             else:
                 s += f"[{self.list_str(t.args)}]"
+        elif t.type.has_type_var_tuple_type and len(t.type.type_vars) == 1:
+            s += "[()]"
         if self.id_mapper:
             s += f"<{self.id_mapper.id(t.type)}>"
         return s
@@ -3122,15 +3268,16 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             num_skip = 0
 
         s = ""
-        bare_asterisk = False
+        asterisk = False
         for i in range(len(t.arg_types) - num_skip):
             if s != "":
                 s += ", "
-            if t.arg_kinds[i].is_named() and not bare_asterisk:
+            if t.arg_kinds[i].is_named() and not asterisk:
                 s += "*, "
-                bare_asterisk = True
+                asterisk = True
             if t.arg_kinds[i] == ARG_STAR:
                 s += "*"
+                asterisk = True
             if t.arg_kinds[i] == ARG_STAR2:
                 s += "**"
             name = t.arg_names[i]
@@ -3426,6 +3573,20 @@ def flatten_nested_unions(
     return flat_items
 
 
+def find_unpack_in_list(items: Sequence[Type]) -> int | None:
+    unpack_index: int | None = None
+    for i, item in enumerate(items):
+        if isinstance(item, UnpackType):
+            # We cannot fail here, so we must check this in an earlier
+            # semanal phase.
+            # Funky code here avoids mypyc narrowing the type of unpack_index.
+            old_index = unpack_index
+            assert old_index is None
+            # Don't return so that we can also sanity check there is only one.
+            unpack_index = i
+    return unpack_index
+
+
 def flatten_nested_tuples(types: Sequence[Type]) -> list[Type]:
     """Recursively flatten TupleTypes nested with Unpack.
 
@@ -3490,6 +3651,17 @@ def remove_dups(types: list[T]) -> list[T]:
             new_types.append(t)
             all_types.add(t)
     return new_types
+
+
+def type_vars_as_args(type_vars: Sequence[TypeVarLikeType]) -> tuple[Type, ...]:
+    """Represent type variables as they would appear in a type argument list."""
+    args: list[Type] = []
+    for tv in type_vars:
+        if isinstance(tv, TypeVarTupleType):
+            args.append(UnpackType(tv))
+        else:
+            args.append(tv)
+    return tuple(args)
 
 
 # This cyclic import is unfortunate, but to avoid it we would need to move away all uses

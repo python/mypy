@@ -73,7 +73,6 @@ from mypy.nodes import (
     SymbolNode,
     SymbolTable,
     TypeAlias,
-    TypeAliasExpr,
     TypedDictExpr,
     TypeInfo,
     Var,
@@ -325,10 +324,6 @@ class NodeReplaceVisitor(TraverserVisitor):
         node.info = self.fixup_and_reset_typeinfo(node.info)
         self.process_synthetic_type_info(node.info)
         super().visit_enum_call_expr(node)
-
-    def visit_type_alias_expr(self, node: TypeAliasExpr) -> None:
-        self.fixup_type(node.type)
-        super().visit_type_alias_expr(node)
 
     # Others
 

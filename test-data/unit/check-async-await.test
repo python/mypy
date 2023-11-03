@@ -165,6 +165,33 @@ async def f() -> None:
 [out]
 main:4: error: "List[int]" has no attribute "__aiter__" (not async iterable)
 
+[case testAsyncForErrorNote]
+
+from typing import AsyncIterator, AsyncGenerator
+async def g() -> AsyncGenerator[str, None]:
+    pass
+
+async def f() -> None:
+    async for x in g():
+        pass
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+[out]
+main:7: error: "Coroutine[Any, Any, AsyncGenerator[str, None]]" has no attribute "__aiter__" (not async iterable)
+main:7: note: Maybe you forgot to use "await"?
+
+[case testAsyncForErrorCanBeIgnored]
+
+from typing import AsyncIterator, AsyncGenerator
+async def g() -> AsyncGenerator[str, None]:
+    pass
+
+async def f() -> None:
+    async for x in g():  # type: ignore[attr-defined]
+        pass
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+
 [case testAsyncForTypeComments]
 
 from typing import AsyncIterator, Union
@@ -1019,5 +1046,21 @@ def f(x: T) -> None:
 def coro() -> Generator[int, None, None]:
     yield 1
 reveal_type(coro)  # N: Revealed type is "def () -> typing.AwaitableGenerator[builtins.int, None, None, typing.Generator[builtins.int, None, None]]"
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+
+[case asyncIteratorInProtocol]
+from typing import AsyncIterator, Protocol
+
+class P(Protocol):
+    async def launch(self) -> AsyncIterator[int]:
+        raise BaseException
+
+class Launcher(P):
+    def launch(self) -> AsyncIterator[int]:  # E: Return type "AsyncIterator[int]" of "launch" incompatible with return type "Coroutine[Any, Any, AsyncIterator[int]]" in supertype "P" \
+                                             # N: Consider declaring "launch" in supertype "P" without "async" \
+                                             # N: See https://mypy.readthedocs.io/en/stable/more_types.html#asynchronous-iterators
+        raise BaseException
+
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]

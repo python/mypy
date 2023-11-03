@@ -249,6 +249,12 @@ EXPLICIT_OVERRIDE_REQUIRED: Final = ErrorCode(
     "General",
     default_enabled=False,
 )
+UNIMPORTED_REVEAL: Final = ErrorCode(
+    "unimported-reveal",
+    "Require explicit import from typing or typing_extensions for reveal_type",
+    "General",
+    default_enabled=False,
+)
 
 
 # Syntax errors are often blocking.
@@ -261,3 +267,13 @@ del error_codes[FILE.code]
 
 # This is a catch-all for remaining uncategorized errors.
 MISC: Final = ErrorCode("misc", "Miscellaneous other checks", "General")
+
+OVERLOAD_OVERLAP: Final[ErrorCode] = ErrorCode(
+    "overload-overlap",
+    "Warn if multiple @overload variants overlap in unsafe ways",
+    "General",
+    sub_code_of=MISC,
+)
+
+# This copy will not include any error codes defined later in the plugins.
+mypy_error_codes = error_codes.copy()

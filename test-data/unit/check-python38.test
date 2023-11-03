@@ -826,3 +826,11 @@ main:5: error: Dict entry 0 has incompatible type "str": "str"; expected "str": 
 main:5: error: Unpacked dict entry 1 has incompatible type "Dict[str, str]"; expected "SupportsKeysAndGetItem[str, int]"
     dct: Dict[str, int] = {"a": "b", **other}
                                        ^~~~~
+
+[case testWalrusAssignmentEmptyCollection]
+from typing import List
+
+y: List[int]
+if (y := []):
+    reveal_type(y)  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/list.pyi]

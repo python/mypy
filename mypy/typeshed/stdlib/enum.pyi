@@ -33,7 +33,7 @@ if sys.version_info >= (3, 11):
         "verify",
     ]
 
-if sys.version_info >= (3, 12):
+if sys.version_info >= (3, 11):
     __all__ += ["pickle_by_enum_name", "pickle_by_global_name"]
 
 _EnumMemberT = TypeVar("_EnumMemberT")
@@ -119,10 +119,12 @@ class EnumMeta(type):
     def __len__(self) -> int: ...
     def __bool__(self) -> Literal[True]: ...
     def __dir__(self) -> list[str]: ...
-    # Simple value lookup
+
+    # Overload 1: Value lookup on an already existing enum class (simple case)
     @overload
     def __call__(cls: type[_EnumMemberT], value: Any, names: None = None) -> _EnumMemberT: ...
-    # Functional Enum API
+
+    # Overload 2: Functional API for constructing new enum classes.
     if sys.version_info >= (3, 11):
         @overload
         def __call__(
@@ -148,6 +150,18 @@ class EnumMeta(type):
             type: type | None = None,
             start: int = 1,
         ) -> type[Enum]: ...
+
+    # Overload 3 (py312+ only): Value lookup on an already existing enum class (complex case)
+    #
+    # >>> class Foo(enum.Enum):
+    # ...     X = 1, 2, 3
+    # >>> Foo(1, 2, 3)
+    # <Foo.X: (1, 2, 3)>
+    #
+    if sys.version_info >= (3, 12):
+        @overload
+        def __call__(cls: type[_EnumMemberT], value: Any, *values: Any) -> _EnumMemberT: ...
+
     _member_names_: list[str]  # undocumented
     _member_map_: dict[str, Enum]  # undocumented
     _value2member_map_: dict[Any, Enum]  # undocumented
@@ -160,6 +174,7 @@ if sys.version_info >= (3, 11):
         def __set_name__(self, ownerclass: type[Enum], name: str) -> None: ...
         name: str
         clsname: str
+        member: Enum | None
     _magic_enum_attr = property
 else:
     _magic_enum_attr = types.DynamicClassAttribute
@@ -188,9 +203,12 @@ class Enum(metaclass=EnumMeta):
     def __hash__(self) -> int: ...
     def __format__(self, format_spec: str) -> str: ...
     def __reduce_ex__(self, proto: Unused) -> tuple[Any, ...]: ...
-    if sys.version_info >= (3, 12):
+    if sys.version_info >= (3, 11):
         def __copy__(self) -> Self: ...
         def __deepcopy__(self, memo: Any) -> Self: ...
+    if sys.version_info >= (3, 12):
+        @classmethod
+        def __signature__(cls) -> str: ...
 
 if sys.version_info >= (3, 11):
     class ReprEnum(Enum): ...
@@ -294,6 +312,6 @@ class auto(IntFlag):
     def value(self) -> Any: ...
     def __new__(cls) -> Self: ...
 
-if sys.version_info >= (3, 12):
+if sys.version_info >= (3, 11):
     def pickle_by_global_name(self: Enum, proto: int) -> str: ...
     def pickle_by_enum_name(self: _EnumMemberT, proto: int) -> tuple[Callable[..., Any], tuple[type[_EnumMemberT], str]]: ...

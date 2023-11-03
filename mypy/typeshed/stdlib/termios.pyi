@@ -3,10 +3,12 @@ from _typeshed import FileDescriptorLike
 from typing import Any
 from typing_extensions import TypeAlias
 
-if sys.platform != "win32":
-    # Must be a list of length 7, containing 6 ints and a list of NCCS 1-character bytes or ints.
-    _Attr: TypeAlias = list[int | list[bytes | int]]
+# Must be a list of length 7, containing 6 ints and a list of NCCS 1-character bytes or ints.
+_Attr: TypeAlias = list[int | list[bytes | int]] | list[int | list[bytes]] | list[int | list[int]]
+# Same as _Attr for return types; we use Any to avoid a union.
+_AttrReturn: TypeAlias = list[Any]
 
+if sys.platform != "win32":
     B0: int
     B1000000: int
     B110: int
@@ -252,7 +254,7 @@ if sys.platform != "win32":
     XCASE: int
     XTABS: int
 
-    def tcgetattr(__fd: FileDescriptorLike) -> list[Any]: ...  # Returns _Attr; we use Any to avoid a union in the return type
+    def tcgetattr(__fd: FileDescriptorLike) -> _AttrReturn: ...
     def tcsetattr(__fd: FileDescriptorLike, __when: int, __attributes: _Attr) -> None: ...
     def tcsendbreak(__fd: FileDescriptorLike, __duration: int) -> None: ...
     def tcdrain(__fd: FileDescriptorLike) -> None: ...

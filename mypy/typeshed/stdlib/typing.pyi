@@ -126,6 +126,9 @@ if sys.version_info >= (3, 11):
         "reveal_type",
     ]
 
+if sys.version_info >= (3, 12):
+    __all__ += ["TypeAliasType", "override"]
+
 ContextManager = AbstractContextManager
 AsyncContextManager = AbstractAsyncContextManager
 
@@ -323,7 +326,9 @@ AnyStr = TypeVar("AnyStr", str, bytes)  # noqa: Y001
 
 # Technically in 3.7 this inherited from GenericMeta. But let's not reflect that, since
 # type checkers tend to assume that Protocols all have the ABCMeta metaclass.
-class _ProtocolMeta(ABCMeta): ...
+class _ProtocolMeta(ABCMeta):
+    if sys.version_info >= (3, 12):
+        def __init__(cls, *args: Any, **kwargs: Any) -> None: ...
 
 # Abstract base classes.
 
@@ -522,7 +527,7 @@ class Sequence(Collection[_T_co], Reversible[_T_co], Generic[_T_co]):
     def __iter__(self) -> Iterator[_T_co]: ...
     def __reversed__(self) -> Iterator[_T_co]: ...
 
-class MutableSequence(Sequence[_T], Generic[_T]):
+class MutableSequence(Sequence[_T]):
     @abstractmethod
     def insert(self, index: int, value: _T) -> None: ...
     @overload
@@ -552,7 +557,7 @@ class MutableSequence(Sequence[_T], Generic[_T]):
     def remove(self, value: _T) -> None: ...
     def __iadd__(self, values: Iterable[_T]) -> typing_extensions.Self: ...
 
-class AbstractSet(Collection[_T_co], Generic[_T_co]):
+class AbstractSet(Collection[_T_co]):
     @abstractmethod
     def __contains__(self, x: object) -> bool: ...
     def _hash(self) -> int: ...
@@ -568,7 +573,7 @@ class AbstractSet(Collection[_T_co], Generic[_T_co]):
     def __eq__(self, other: object) -> bool: ...
     def isdisjoint(self, other: Iterable[Any]) -> bool: ...
 
-class MutableSet(AbstractSet[_T], Generic[_T]):
+class MutableSet(AbstractSet[_T]):
     @abstractmethod
     def add(self, value: _T) -> None: ...
     @abstractmethod
@@ -641,7 +646,7 @@ class Mapping(Collection[_KT], Generic[_KT, _VT_co]):
     def __contains__(self, __key: object) -> bool: ...
     def __eq__(self, __other: object) -> bool: ...
 
-class MutableMapping(Mapping[_KT, _VT], Generic[_KT, _VT]):
+class MutableMapping(Mapping[_KT, _VT]):
     @abstractmethod
     def __setitem__(self, __key: _KT, __value: _VT) -> None: ...
     @abstractmethod
@@ -698,14 +703,16 @@ TYPE_CHECKING: bool
 # In stubs, the arguments of the IO class are marked as positional-only.
 # This differs from runtime, but better reflects the fact that in reality
 # classes deriving from IO use different names for the arguments.
-class IO(Iterator[AnyStr], Generic[AnyStr]):
+class IO(Iterator[AnyStr]):
     # At runtime these are all abstract properties,
     # but making them abstract in the stub is hugely disruptive, for not much gain.
     # See #8726
     @property
     def mode(self) -> str: ...
+    # Usually str, but may be bytes if a bytes path was passed to open(). See #10737.
+    # If PEP 696 becomes available, we may want to use a defaulted TypeVar here.
     @property
-    def name(self) -> str: ...
+    def name(self) -> str | Any: ...
     @abstractmethod
     def close(self) -> None: ...
     @property
@@ -945,7 +952,7 @@ if sys.version_info >= (3, 10):
 def _type_repr(obj: object) -> str: ...
 
 if sys.version_info >= (3, 12):
-    def override(__arg: _F) -> _F: ...
+    def override(__method: _F) -> _F: ...
     @_final
     class TypeAliasType:
         def __init__(

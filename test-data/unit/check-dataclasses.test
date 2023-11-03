@@ -1519,6 +1519,22 @@ class Some:
         self.y = 1  # E: Trying to assign name "y" that is not in "__slots__" of type "__main__.Some"
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassWithSlotsDerivedFromNonSlot]
+# flags: --python-version 3.10
+from dataclasses import dataclass
+
+class A:
+    pass
+
+@dataclass(slots=True)
+class B(A):
+    x: int
+
+    def __post_init__(self) -> None:
+        self.y = 42
+
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassWithSlotsConflict]
 # flags: --python-version 3.10
 from dataclasses import dataclass
@@ -2106,6 +2122,8 @@ a2 = replace(a, x='42', q=42)  # E: Argument "x" to "replace" of "A" has incompa
 a2 = replace(a, q='42')  # E: Argument "q" to "replace" of "A" has incompatible type "str"; expected "int"
 reveal_type(a2)  # N: Revealed type is "__main__.A"
 
+[builtins fixtures/tuple.pyi]
+
 [case testReplaceUnion]
 from typing import Generic, Union, TypeVar
 from dataclasses import dataclass, replace, InitVar
@@ -2116,8 +2134,8 @@ T = TypeVar('T')
 class A(Generic[T]):
     x: T  # exercises meet(T=int, int) = int
     y: bool  # exercises meet(bool, int) = bool
-    z: str  # exercises meet(str, bytes) = <nothing>
-    w: dict  # exercises meet(dict, <nothing>) = <nothing>
+    z: str  # exercises meet(str, bytes) = Never
+    w: dict  # exercises meet(dict, Never) = Never
     init_var: InitVar[int]  # exercises (non-optional, optional) = non-optional
 
 @dataclass
@@ -2131,11 +2149,11 @@ class B:
 a_or_b: Union[A[int], B]
 _ = replace(a_or_b, x=42, y=True, init_var=42)
 _ = replace(a_or_b, x=42, y=True)  # E: Missing named argument "init_var" for "replace" of "Union[A[int], B]"
-_ = replace(a_or_b, x=42, y=True, z='42', init_var=42)  # E: Argument "z" to "replace" of "Union[A[int], B]" has incompatible type "str"; expected <nothing>
-_ = replace(a_or_b, x=42, y=True, w={}, init_var=42)  # E: Argument "w" to "replace" of "Union[A[int], B]" has incompatible type "Dict[<nothing>, <nothing>]"; expected <nothing>
+_ = replace(a_or_b, x=42, y=True, z='42', init_var=42)  # E: Argument "z" to "replace" of "Union[A[int], B]" has incompatible type "str"; expected Never
+_ = replace(a_or_b, x=42, y=True, w={}, init_var=42)  # E: Argument "w" to "replace" of "Union[A[int], B]" has incompatible type "Dict[Never, Never]"; expected Never
 _ = replace(a_or_b, y=42, init_var=42)  # E: Argument "y" to "replace" of "Union[A[int], B]" has incompatible type "int"; expected "bool"
 
-[builtins fixtures/dataclasses.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testReplaceUnionOfTypeVar]
 from typing import Generic, Union, TypeVar
@@ -2155,7 +2173,9 @@ TA = TypeVar('TA', bound=A)
 TB = TypeVar('TB', bound=B)
 
 def f(b_or_t: Union[TA, TB, int]) -> None:
-    a2 = replace(b_or_t)   # E: Argument 1 to "replace" has type "Union[TA, TB, int]" whose item "TB" is not bound to a dataclass  # E: Argument 1 to "replace" has incompatible type "Union[TA, TB, int]" whose item "int" is not a dataclass
+    a2 = replace(b_or_t)   # E: Value of type variable "_DataclassT" of "replace" cannot be "Union[TA, TB, int]"
+
+[builtins fixtures/tuple.pyi]
 
 [case testReplaceTypeVarBoundNotDataclass]
 from dataclasses import dataclass, replace
@@ -2167,16 +2187,18 @@ TNone = TypeVar('TNone', bound=None)
 TUnion = TypeVar('TUnion', bound=Union[str, int])
 
 def f1(t: TInt) -> None:
-    _ = replace(t, x=42)  # E: Argument 1 to "replace" has a variable type "TInt" not bound to a dataclass
+    _ = replace(t, x=42)  # E: Value of type variable "_DataclassT" of "replace" cannot be "TInt"
 
 def f2(t: TAny) -> TAny:
-    return replace(t, x='spam')  # E: Argument 1 to "replace" has a variable type "TAny" not bound to a dataclass
+    return replace(t, x='spam')  # E: Value of type variable "_DataclassT" of "replace" cannot be "TAny"
 
 def f3(t: TNone) -> TNone:
-    return replace(t, x='spam')  # E: Argument 1 to "replace" has a variable type "TNone" not bound to a dataclass
+    return replace(t, x='spam')  # E: Value of type variable "_DataclassT" of "replace" cannot be "TNone"
 
 def f4(t: TUnion) -> TUnion:
-    return replace(t, x='spam')  # E: Argument 1 to "replace" has incompatible type "TUnion" whose item "str" is not a dataclass  # E: Argument 1 to "replace" has incompatible type "TUnion" whose item "int" is not a dataclass
+    return replace(t, x='spam')  # E: Value of type variable "_DataclassT" of "replace" cannot be "TUnion"
+
+[builtins fixtures/tuple.pyi]
 
 [case testReplaceTypeVarBound]
 from dataclasses import dataclass, replace
@@ -2201,6 +2223,8 @@ def f(t: TA) -> TA:
 f(A(x=42))
 f(B(x=42))
 
+[builtins fixtures/tuple.pyi]
+
 [case testReplaceAny]
 from dataclasses import replace
 from typing import Any
@@ -2209,17 +2233,33 @@ a: Any
 a2 = replace(a)
 reveal_type(a2)  # N: Revealed type is "Any"
 
+[builtins fixtures/tuple.pyi]
+
 [case testReplaceNotDataclass]
 from dataclasses import replace
 
-replace(5)  # E: Argument 1 to "replace" has incompatible type "int"; expected a dataclass
+replace(5)  # E: Value of type variable "_DataclassT" of "replace" cannot be "int"
 
 class C:
     pass
 
-replace(C())  # E: Argument 1 to "replace" has incompatible type "C"; expected a dataclass
+replace(C())  # E: Value of type variable "_DataclassT" of "replace" cannot be "C"
 
-replace(None)  # E: Argument 1 to "replace" has incompatible type "None"; expected a dataclass
+replace(None)  # E: Value of type variable "_DataclassT" of "replace" cannot be "None"
+
+[builtins fixtures/tuple.pyi]
+
+[case testReplaceIsDataclass]
+from dataclasses import is_dataclass, replace
+
+def f(x: object) -> None:
+  _ = replace(x)  # E: Value of type variable "_DataclassT" of "replace" cannot be "object"
+  if is_dataclass(x):
+    _ = replace(x)  # E: Value of type variable "_DataclassT" of "replace" cannot be "Union[DataclassInstance, Type[DataclassInstance]]"
+    if not isinstance(x, type):
+      _ = replace(x)
+
+[builtins fixtures/tuple.pyi]
 
 [case testReplaceGeneric]
 from dataclasses import dataclass, replace, InitVar
@@ -2237,6 +2277,12 @@ a2 = replace(a, x=42)
 reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
 a2 = replace(a, x='42')  # E: Argument "x" to "replace" of "A[int]" has incompatible type "str"; expected "int"
 reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
+
+[builtins fixtures/tuple.pyi]
+
+[case testPostInitNotMethod]
+def __post_init__() -> None:
+    pass
 
 [case testPostInitCorrectSignature]
 from typing import Any, Generic, TypeVar, Callable, Self
@@ -2472,4 +2518,16 @@ class MyDataclass(Protocol): ...
 a: MyDataclass
 b = [a, a]  # trigger joining the types
 
+[builtins fixtures/dataclasses.pyi]
+
+[case testPropertyAndFieldRedefinitionNoCrash]
+from dataclasses import dataclass
+
+@dataclass
+class Foo:
+    @property
+    def c(self) -> int:
+        return 0
+
+    c: int  # E: Name "c" already defined on line 5
 [builtins fixtures/dataclasses.pyi]

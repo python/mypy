@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import contextlib
+import difflib
 import os
 import pathlib
 import re
 import shutil
 import sys
 import time
-from typing import Any, Callable, Iterable, Iterator, Pattern
+from typing import IO, Any, Callable, Iterable, Iterator, Pattern
 
 # Exporting Suite as alias to TestCase for backwards compatibility
 # TODO: avoid aliasing - import and subclass TestCase directly
@@ -43,64 +44,86 @@ def run_mypy(args: list[str]) -> None:
         pytest.fail(msg="Sample check failed", pytrace=False)
 
 
+def diff_ranges(
+    left: list[str], right: list[str]
+) -> tuple[list[tuple[int, int]], list[tuple[int, int]]]:
+    seq = difflib.SequenceMatcher(None, left, right)
+    # note last triple is a dummy, so don't need to worry
+    blocks = seq.get_matching_blocks()
+
+    i = 0
+    j = 0
+    left_ranges = []
+    right_ranges = []
+    for block in blocks:
+        # mismatched range
+        left_ranges.append((i, block.a))
+        right_ranges.append((j, block.b))
+
+        i = block.a + block.size
+        j = block.b + block.size
+
+        # matched range
+        left_ranges.append((block.a, i))
+        right_ranges.append((block.b, j))
+    return left_ranges, right_ranges
+
+
+def render_diff_range(
+    ranges: list[tuple[int, int]],
+    content: list[str],
+    *,
+    colour: str | None = None,
+    output: IO[str] = sys.stderr,
+    indent: int = 2,
+) -> None:
+    for i, line_range in enumerate(ranges):
+        is_matching = i % 2 == 1
+        lines = content[line_range[0] : line_range[1]]
+        for j, line in enumerate(lines):
+            if (
+                is_matching
+                # elide the middle of matching blocks
+                and j >= 3
+                and j < len(lines) - 3
+            ):
+                if j == 3:
+                    output.write(" " * indent + "...\n")
+                continue
+
+            if not is_matching and colour:
+                output.write(colour)
+
+            output.write(" " * indent + line)
+
+            if not is_matching:
+                if colour:
+                    output.write("\033[0m")
+                output.write(" (diff)")
+
+            output.write("\n")
+
+
 def assert_string_arrays_equal(expected: list[str], actual: list[str], msg: str) -> None:
     """Assert that two string arrays are equal.
 
     Display any differences in a human-readable form.
     """
     actual = clean_up(actual)
-    if actual != expected:
-        num_skip_start = num_skipped_prefix_lines(expected, actual)
-        num_skip_end = num_skipped_suffix_lines(expected, actual)
-
+    if expected != actual:
+        expected_ranges, actual_ranges = diff_ranges(expected, actual)
         sys.stderr.write("Expected:\n")
-
-        # If omit some lines at the beginning, indicate it by displaying a line
-        # with '...'.
-        if num_skip_start > 0:
-            sys.stderr.write("  ...\n")
-
-        # Keep track of the first different line.
-        first_diff = -1
-
-        # Display only this many first characters of identical lines.
-        width = 75
-
-        for i in range(num_skip_start, len(expected) - num_skip_end):
-            if i >= len(actual) or expected[i] != actual[i]:
-                if first_diff < 0:
-                    first_diff = i
-                sys.stderr.write(f"  {expected[i]:<45} (diff)")
-            else:
-                e = expected[i]
-                sys.stderr.write("  " + e[:width])
-                if len(e) > width:
-                    sys.stderr.write("...")
-            sys.stderr.write("\n")
-        if num_skip_end > 0:
-            sys.stderr.write("  ...\n")
-
+        red = "\033[31m" if sys.platform != "win32" else None
+        render_diff_range(expected_ranges, expected, colour=red)
         sys.stderr.write("Actual:\n")
-
-        if num_skip_start > 0:
-            sys.stderr.write("  ...\n")
-
-        for j in range(num_skip_start, len(actual) - num_skip_end):
-            if j >= len(expected) or expected[j] != actual[j]:
-                sys.stderr.write(f"  {actual[j]:<45} (diff)")
-            else:
-                a = actual[j]
-                sys.stderr.write("  " + a[:width])
-                if len(a) > width:
-                    sys.stderr.write("...")
-            sys.stderr.write("\n")
-        if not actual:
-            sys.stderr.write("  (empty)\n")
-        if num_skip_end > 0:
-            sys.stderr.write("  ...\n")
+        green = "\033[32m" if sys.platform != "win32" else None
+        render_diff_range(actual_ranges, actual, colour=green)
 
         sys.stderr.write("\n")
-
+        first_diff = next(
+            (i for i, (a, b) in enumerate(zip(expected, actual)) if a != b),
+            max(len(expected), len(actual)),
+        )
         if 0 <= first_diff < len(actual) and (
             len(expected[first_diff]) >= MIN_LINE_LENGTH_FOR_ALIGNMENT
             or len(actual[first_diff]) >= MIN_LINE_LENGTH_FOR_ALIGNMENT
@@ -109,6 +132,10 @@ def assert_string_arrays_equal(expected: list[str], actual: list[str], msg: str)
             # long lines.
             show_align_message(expected[first_diff], actual[first_diff])
 
+        sys.stderr.write(
+            "Update the test output using --update-data -n0 "
+            "(you can additionally use the -k selector to update only specific tests)\n"
+        )
         pytest.fail(msg, pytrace=False)
 
 
@@ -226,22 +253,10 @@ def local_sys_path_set() -> Iterator[None]:
         sys.path = old_sys_path
 
 
-def num_skipped_prefix_lines(a1: list[str], a2: list[str]) -> int:
-    num_eq = 0
-    while num_eq < min(len(a1), len(a2)) and a1[num_eq] == a2[num_eq]:
-        num_eq += 1
-    return max(0, num_eq - 4)
-
-
-def num_skipped_suffix_lines(a1: list[str], a2: list[str]) -> int:
-    num_eq = 0
-    while num_eq < min(len(a1), len(a2)) and a1[-num_eq - 1] == a2[-num_eq - 1]:
-        num_eq += 1
-    return max(0, num_eq - 4)
-
-
 def testfile_pyversion(path: str) -> tuple[int, int]:
-    if path.endswith("python311.test"):
+    if path.endswith("python312.test"):
+        return 3, 12
+    elif path.endswith("python311.test"):
         return 3, 11
     elif path.endswith("python310.test"):
         return 3, 10

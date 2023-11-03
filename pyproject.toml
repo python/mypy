@@ -36,7 +36,8 @@ select = [
   "B",       # flake8-bugbear
   "I",       # isort
   "RUF100",  # Unused noqa comments
-  "PGH004"   # blanket noqa comments
+  "PGH004",  # blanket noqa comments
+  "UP",      # pyupgrade
 ]
 
 ignore = [
@@ -49,6 +50,7 @@ ignore = [
   "E501",  # conflicts with black
   "E731",  # Do not assign a `lambda` expression, use a `def`
   "E741",  # Ambiguous variable name
+  "UP032", # 'f-string always preferable to format' is controversial
 ]
 
 unfixable = [
@@ -56,6 +58,7 @@ unfixable = [
     "F601",  # automatic fix might obscure issue
     "F602",  # automatic fix might obscure issue
     "B018",  # automatic fix might obscure issue
+    "UP036", # sometimes it's better to just noqa this
 ]
 
 extend-exclude = [
@@ -106,18 +109,19 @@ xfail_strict = true
 
 [tool.coverage.run]
 branch = true
-source = "mypy"
+source = ["mypy"]
 parallel = true
 
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
-omit = 'mypy/test/*'
+omit = ['mypy/test/*']
 exclude_lines = [
   '\#\s*pragma: no cover',
   '^\s*raise AssertionError\b',
   '^\s*raise NotImplementedError\b',
   '^\s*return NotImplemented\b',
   '^\s*raise$',
+  '^assert False\b',
   '''^if __name__ == ['"]__main__['"]:$''',
 ]

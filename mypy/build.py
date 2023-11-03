@@ -145,7 +145,7 @@ def build(
     sources: list[BuildSource],
     options: Options,
     alt_lib_path: str | None = None,
-    flush_errors: Callable[[list[str], bool], None] | None = None,
+    flush_errors: Callable[[str | None, list[str], bool], None] | None = None,
     fscache: FileSystemCache | None = None,
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
@@ -177,7 +177,9 @@ def build(
     # fields for callers that want the traditional API.
     messages = []
 
-    def default_flush_errors(new_messages: list[str], is_serious: bool) -> None:
+    def default_flush_errors(
+        filename: str | None, new_messages: list[str], is_serious: bool
+    ) -> None:
         messages.extend(new_messages)
 
     flush_errors = flush_errors or default_flush_errors
@@ -197,7 +199,7 @@ def build(
         # Patch it up to contain either none or all none of the messages,
         # depending on whether we are flushing errors.
         serious = not e.use_stdout
-        flush_errors(e.messages, serious)
+        flush_errors(None, e.messages, serious)
         e.messages = messages
         raise
 
@@ -206,7 +208,7 @@ def _build(
     sources: list[BuildSource],
     options: Options,
     alt_lib_path: str | None,
-    flush_errors: Callable[[list[str], bool], None],
+    flush_errors: Callable[[str | None, list[str], bool], None],
     fscache: FileSystemCache | None,
     stdout: TextIO,
     stderr: TextIO,
@@ -255,7 +257,8 @@ def _build(
         stdout=stdout,
         stderr=stderr,
     )
-    manager.trace(repr(options))
+    if manager.verbosity() >= 2:
+        manager.trace(repr(options))
 
     reset_global_state()
     try:
@@ -599,7 +602,7 @@ class BuildManager:
         plugin: Plugin,
         plugins_snapshot: dict[str, str],
         errors: Errors,
-        flush_errors: Callable[[list[str], bool], None],
+        flush_errors: Callable[[str | None, list[str], bool], None],
         fscache: FileSystemCache,
         stdout: TextIO,
         stderr: TextIO,
@@ -1991,7 +1994,7 @@ class State:
                 raise ModuleNotFound
 
             # Parse the file (and then some) to get the dependencies.
-            self.parse_file()
+            self.parse_file(temporary=temporary)
             self.compute_dependencies()
 
     @property
@@ -2109,7 +2112,7 @@ class State:
 
     # Methods for processing modules from source code.
 
-    def parse_file(self) -> None:
+    def parse_file(self, *, temporary: bool = False) -> None:
         """Parse file and run first pass of semantic analysis.
 
         Everything done here is local to the file. Don't depend on imported
@@ -2194,12 +2197,14 @@ class State:
         else:
             self.early_errors = manager.ast_cache[self.id][1]
 
-        modules[self.id] = self.tree
+        if not temporary:
+            modules[self.id] = self.tree
 
         if not cached:
             self.semantic_analysis_pass1()
 
-        self.check_blockers()
+        if not temporary:
+            self.check_blockers()
 
         manager.ast_cache[self.id] = (self.tree, self.early_errors)
 
@@ -2798,7 +2803,7 @@ def module_not_found(
         for note in notes:
             if "{stub_dist}" in note:
                 note = note.format(stub_dist=stub_distribution_name(module))
-            errors.report(line, 0, note, severity="note", only_once=True, code=codes.IMPORT)
+            errors.report(line, 0, note, severity="note", only_once=True, code=code)
         if reason is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
             manager.missing_stub_packages.add(stub_distribution_name(module))
     errors.set_import_context(save_import_context)
@@ -3024,7 +3029,7 @@ def dump_graph(graph: Graph, stdout: TextIO | None = None) -> None:
             if state.path:
                 try:
                     size = os.path.getsize(state.path)
-                except os.error:
+                except OSError:
                     pass
             node.sizes[mod] = size
             for dep in state.dependencies:
@@ -3455,7 +3460,11 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
         for id in stale:
             graph[id].transitive_error = True
     for id in stale:
-        manager.flush_errors(manager.errors.file_messages(graph[id].xpath), False)
+        manager.flush_errors(
+            manager.errors.simplify_path(graph[id].xpath),
+            manager.errors.file_messages(graph[id].xpath),
+            False,
+        )
         graph[id].write_cache()
         graph[id].mark_as_rechecked()
 

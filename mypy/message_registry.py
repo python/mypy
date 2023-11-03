@@ -83,6 +83,10 @@ INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION: Final = "Incompatible types in string i
 INCOMPATIBLE_TYPES_IN_CAPTURE: Final = ErrorMessage("Incompatible types in capture pattern")
 MUST_HAVE_NONE_RETURN_TYPE: Final = ErrorMessage('The return type of "{}" must be None')
 TUPLE_INDEX_OUT_OF_RANGE: Final = ErrorMessage("Tuple index out of range")
+AMBIGUOUS_SLICE_OF_VARIADIC_TUPLE: Final = ErrorMessage("Ambiguous slice of a variadic tuple")
+TOO_MANY_TARGETS_FOR_VARIADIC_UNPACK: Final = ErrorMessage(
+    "Too many assignment targets for variadic unpack"
+)
 INVALID_SLICE_INDEX: Final = ErrorMessage("Slice index must be an integer, SupportsIndex or None")
 CANNOT_INFER_LAMBDA_TYPE: Final = ErrorMessage("Cannot infer type of lambda")
 CANNOT_ACCESS_INIT: Final = (
@@ -171,7 +175,8 @@ BARE_GENERIC: Final = "Missing type parameters for generic type {}"
 IMPLICIT_GENERIC_ANY_BUILTIN: Final = (
     'Implicit generic "Any". Use "{}" and specify generic parameters'
 )
-INVALID_UNPACK = "{} cannot be unpacked (must be tuple or TypeVarTuple)"
+INVALID_UNPACK: Final = "{} cannot be unpacked (must be tuple or TypeVarTuple)"
+INVALID_UNPACK_POSITION: Final = "Unpack is only valid in a variadic position"
 
 # TypeVar
 INCOMPATIBLE_TYPEVAR_VALUE: Final = 'Value of type variable "{}" of {} cannot be {}'
@@ -201,10 +206,10 @@ SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1: Final = ErrorMessage(
 )
 TARGET_CLASS_HAS_NO_BASE_CLASS: Final = ErrorMessage("Target class has no base class")
 SUPER_OUTSIDE_OF_METHOD_NOT_SUPPORTED: Final = ErrorMessage(
-    "super() outside of a method is not supported"
+    '"super()" outside of a method is not supported'
 )
 SUPER_ENCLOSING_POSITIONAL_ARGS_REQUIRED: Final = ErrorMessage(
-    "super() requires one or more positional arguments in enclosing function"
+    '"super()" requires one or two positional arguments in enclosing function'
 )
 
 # Self-type

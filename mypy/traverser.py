@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from mypy_extensions import mypyc_attr
+from mypy_extensions import mypyc_attr, trait
 
 from mypy.nodes import (
     REVEAL_TYPE,
@@ -94,6 +94,7 @@ from mypy.patterns import (
 from mypy.visitor import NodeVisitor
 
 
+@trait
 @mypyc_attr(allow_interpreted_subclasses=True)
 class TraverserVisitor(NodeVisitor[None]):
     """A parse tree visitor that traverses the parse tree during visiting.

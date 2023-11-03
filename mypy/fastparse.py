@@ -115,6 +115,7 @@ from mypy.types import (
     TypeOfAny,
     UnboundType,
     UnionType,
+    UnpackType,
 )
 from mypy.util import bytes_to_human_readable_repr, unnamed_function
 
@@ -142,6 +143,11 @@ def ast3_parse(
 
 NamedExpr = ast3.NamedExpr
 Constant = ast3.Constant
+
+if sys.version_info >= (3, 12):
+    ast_TypeAlias = ast3.TypeAlias
+else:
+    ast_TypeAlias = Any
 
 if sys.version_info >= (3, 10):
     Match = ast3.Match
@@ -935,6 +941,14 @@ class ASTConverter:
                 arg_types = [AnyType(TypeOfAny.from_error)] * len(args)
                 return_type = AnyType(TypeOfAny.from_error)
         else:
+            if sys.version_info >= (3, 12) and n.type_params:
+                self.fail(
+                    ErrorMessage("PEP 695 generics are not yet supported", code=codes.VALID_TYPE),
+                    n.type_params[0].lineno,
+                    n.type_params[0].col_offset,
+                    blocker=False,
+                )
+
             arg_types = [a.type_annotation for a in args]
             return_type = TypeConverter(
                 self.errors, line=n.returns.lineno if n.returns else lineno
@@ -1108,6 +1122,14 @@ class ASTConverter:
     def visit_ClassDef(self, n: ast3.ClassDef) -> ClassDef:
         self.class_and_function_stack.append("C")
         keywords = [(kw.arg, self.visit(kw.value)) for kw in n.keywords if kw.arg]
+
+        if sys.version_info >= (3, 12) and n.type_params:
+            self.fail(
+                ErrorMessage("PEP 695 generics are not yet supported", code=codes.VALID_TYPE),
+                n.type_params[0].lineno,
+                n.type_params[0].col_offset,
+                blocker=False,
+            )
 
         cdef = ClassDef(
             n.name,
@@ -1716,6 +1738,16 @@ class ASTConverter:
         node = OrPattern([self.visit(pattern) for pattern in n.patterns])
         return self.set_line(node, n)
 
+    def visit_TypeAlias(self, n: ast_TypeAlias) -> AssignmentStmt:
+        self.fail(
+            ErrorMessage("PEP 695 type aliases are not yet supported", code=codes.VALID_TYPE),
+            n.lineno,
+            n.col_offset,
+            blocker=False,
+        )
+        node = AssignmentStmt([NameExpr(n.name.id)], self.visit(n.value))
+        return self.set_line(node, n)
+
 
 class TypeConverter:
     def __init__(
@@ -2006,10 +2038,15 @@ class TypeConverter:
         else:
             return self.invalid_type(n)
 
+    # Used for Callable[[X *Ys, Z], R] etc.
+    def visit_Starred(self, n: ast3.Starred) -> Type:
+        return UnpackType(self.visit(n.value), from_star_syntax=True)
+
     # List(expr* elts, expr_context ctx)
     def visit_List(self, n: ast3.List) -> Type:
         assert isinstance(n.ctx, ast3.Load)
-        return self.translate_argument_list(n.elts)
+        result = self.translate_argument_list(n.elts)
+        return result
 
 
 def stringify_name(n: AST) -> str | None:

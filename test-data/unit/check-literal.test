@@ -1794,7 +1794,7 @@ def f6(x: Optional[Literal[1]], y: Optional[Literal[2]]) -> None: pass
 
 reveal_type(unify(f1))  # N: Revealed type is "Literal[1]"
 if object():
-    reveal_type(unify(f2))  # N: Revealed type is "<nothing>"
+    reveal_type(unify(f2))  # N: Revealed type is "Never"
 reveal_type(unify(f3))  # N: Revealed type is "Literal[1]"
 reveal_type(unify(f4))  # N: Revealed type is "Literal[1]"
 reveal_type(unify(f5))  # N: Revealed type is "Literal[1]"
@@ -1819,7 +1819,7 @@ T = TypeVar('T')
 def unify(func: Callable[[T, T], None]) -> T: pass
 def func(x: Literal[1], y: Literal[2]) -> None: pass
 
-reveal_type(unify(func))  # N: Revealed type is "<nothing>"
+reveal_type(unify(func))  # N: Revealed type is "Never"
 [builtins fixtures/list.pyi]
 [out]
 
@@ -1872,8 +1872,9 @@ reveal_type(tup2[idx3])       # N: Revealed type is "__main__.D"
 reveal_type(tup2[idx4])       # N: Revealed type is "__main__.E"
 reveal_type(tup2[idx_neg1])   # N: Revealed type is "__main__.E"
 tup2[idx5]                    # E: Tuple index out of range
-reveal_type(tup2[idx2:idx4])  # N: Revealed type is "Tuple[__main__.C, __main__.D, fallback=__main__.Tup2Class]"
-reveal_type(tup2[::idx2])     # N: Revealed type is "Tuple[__main__.A, __main__.C, __main__.E, fallback=__main__.Tup2Class]"
+reveal_type(tup2[idx2:idx4])  # N: Revealed type is "Tuple[__main__.C, __main__.D]"
+reveal_type(tup2[::idx2])     # N: Revealed type is "Tuple[__main__.A, __main__.C, __main__.E]"
+tup3: Tup2Class = tup2[:]     # E: Incompatible types in assignment (expression has type "Tuple[A, B, C, D, E]", variable has type "Tup2Class")
 [builtins fixtures/slice.pyi]
 
 [case testLiteralIntelligentIndexingTypedDict]
@@ -1977,8 +1978,8 @@ reveal_type(tup1[0::idx1])      # N: Revealed type is "Union[Tuple[__main__.A, _
 tup1[idx_bad]                   # E: Tuple index out of range
 
 reveal_type(tup2[idx1])         # N: Revealed type is "Union[__main__.B, __main__.C]"
-reveal_type(tup2[idx1:idx2])    # N: Revealed type is "Union[Tuple[__main__.B, __main__.C, fallback=__main__.Tup2Class], Tuple[__main__.B, __main__.C, __main__.D, fallback=__main__.Tup2Class], Tuple[__main__.C, fallback=__main__.Tup2Class], Tuple[__main__.C, __main__.D, fallback=__main__.Tup2Class]]"
-reveal_type(tup2[0::idx1])      # N: Revealed type is "Union[Tuple[__main__.A, __main__.B, __main__.C, __main__.D, __main__.E, fallback=__main__.Tup2Class], Tuple[__main__.A, __main__.C, __main__.E, fallback=__main__.Tup2Class]]"
+reveal_type(tup2[idx1:idx2])    # N: Revealed type is "Union[Tuple[__main__.B, __main__.C], Tuple[__main__.B, __main__.C, __main__.D], Tuple[__main__.C], Tuple[__main__.C, __main__.D]]"
+reveal_type(tup2[0::idx1])      # N: Revealed type is "Union[Tuple[__main__.A, __main__.B, __main__.C, __main__.D, __main__.E], Tuple[__main__.A, __main__.C, __main__.E]]"
 tup2[idx_bad]                   # E: Tuple index out of range
 [builtins fixtures/slice.pyi]
 [out]
