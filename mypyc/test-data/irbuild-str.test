@@ -313,7 +313,7 @@ L0:
     r5 = CPy_Encode(s, r3, r4)
     return 1
 
-[case testToAndFromOrdinal]
+[case testToAndFromOrdinal_64bit]
 def to(s: str) -> int:
     return ord(s)
 def from_(i: int) -> str:
