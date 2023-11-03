@@ -1164,6 +1164,9 @@ class C:
     def bar(self) -> float: ...
     @bar.setter
     def bar(self, val: float) -> None: ...
+    baz: float
+    bad1: float
+    bad2: float
 class D(C):
     x: int  # E: Covariant override of a mutable attribute (base class "C" defined the type as "float", expression has type "int")  [mutable-override]
     y: float
@@ -1171,4 +1174,9 @@ class D(C):
     w: float
     foo: int
     bar: int  # E: Covariant override of a mutable attribute (base class "C" defined the type as "float", expression has type "int")  [mutable-override]
+    def one(self) -> None:
+        self.baz = 5
+    bad1 = 5  # E: Covariant override of a mutable attribute (base class "C" defined the type as "float", expression has type "int")  [mutable-override]
+    def other(self) -> None:
+        self.bad2: int = 5  # E: Covariant override of a mutable attribute (base class "C" defined the type as "float", expression has type "int")  [mutable-override]
 [builtins fixtures/property.pyi]
