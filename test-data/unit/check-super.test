@@ -285,7 +285,7 @@ class A:
 class B(A): pass
 class C(B):
     b = super(B, B).x
-    a = super().whatever  # E: "super" outside of a method is not supported
+    a = super().whatever  # E: "super()" outside of a method is not supported
 
 [case testSuperWithObjectClassAsFirstArgument]
 class A:
