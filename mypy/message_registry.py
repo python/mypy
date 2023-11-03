@@ -209,7 +209,7 @@ SUPER_OUTSIDE_OF_METHOD_NOT_SUPPORTED: Final = ErrorMessage(
     '"super()" outside of a method is not supported'
 )
 SUPER_ENCLOSING_POSITIONAL_ARGS_REQUIRED: Final = ErrorMessage(
-    '"super" requires one or more positional arguments in enclosing function'
+    '"super()" requires one or two positional arguments in enclosing function'
 )
 
 # Self-type
