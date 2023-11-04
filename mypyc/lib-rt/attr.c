@@ -16,22 +16,25 @@ int CPyAttr_UndeletableError(PyObject *self, CPyAttr_Context *context) {
     return -1;
 }
 
-#define _CPyAttr_SIMPLE_TYPE_CHECKS(name, type)              \
-    bool CPyAttr_##name##TypeCheck(PyObject *o) {            \
-        return PyObject_TypeCheck(o, type);                  \
-    }                                                        \
+#define _CPyAttr_OPTIONAL_TYPE_CHECK(name, type)             \
     bool CPyAttr_##name##OrNoneTypeCheck(PyObject *o) {      \
         return PyObject_TypeCheck(o, type) || o == Py_None;  \
     }
 
-_CPyAttr_SIMPLE_TYPE_CHECKS(Unicode, &PyUnicode_Type)
-_CPyAttr_SIMPLE_TYPE_CHECKS(Long, &PyLong_Type)
-_CPyAttr_SIMPLE_TYPE_CHECKS(Bool, &PyBool_Type)
-_CPyAttr_SIMPLE_TYPE_CHECKS(Float, &PyFloat_Type)
-_CPyAttr_SIMPLE_TYPE_CHECKS(Tuple, &PyTuple_Type)
-_CPyAttr_SIMPLE_TYPE_CHECKS(List, &PyList_Type)
-_CPyAttr_SIMPLE_TYPE_CHECKS(Dict, &PyDict_Type)
-_CPyAttr_SIMPLE_TYPE_CHECKS(Set, &PySet_Type)
+#define _CPyAttr_DIRECT_AND_OPTIONAL_TYPE_CHECKS(name, type) \
+    bool CPyAttr_##name##TypeCheck(PyObject *o) {            \
+        return PyObject_TypeCheck(o, type);                  \
+    }                                                        \
+    _CPyAttr_OPTIONAL_TYPE_CHECK(name, type)
+
+_CPyAttr_DIRECT_AND_OPTIONAL_TYPE_CHECKS(Unicode, &PyUnicode_Type)
+_CPyAttr_OPTIONAL_TYPE_CHECK(Long, &PyLong_Type)
+_CPyAttr_OPTIONAL_TYPE_CHECK(Bool, &PyBool_Type)
+_CPyAttr_OPTIONAL_TYPE_CHECK(Float, &PyFloat_Type)
+_CPyAttr_DIRECT_AND_OPTIONAL_TYPE_CHECKS(Tuple, &PyTuple_Type)
+_CPyAttr_DIRECT_AND_OPTIONAL_TYPE_CHECKS(List, &PyList_Type)
+_CPyAttr_DIRECT_AND_OPTIONAL_TYPE_CHECKS(Dict, &PyDict_Type)
+_CPyAttr_DIRECT_AND_OPTIONAL_TYPE_CHECKS(Set, &PySet_Type)
 
 static void set_definedness_in_bitmap(PyObject *self, CPyAttr_Context *context, bool defined) {
     uint32_t *bitmap = (uint32_t *)((char *)self + context->bitmap.offset);

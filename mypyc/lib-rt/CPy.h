@@ -96,11 +96,8 @@ int CPyAttr_UndeletableError(PyObject *self, CPyAttr_Context *context);
 
 bool CPyAttr_UnicodeTypeCheck(PyObject *o);
 bool CPyAttr_UnicodeOrNoneTypeCheck(PyObject *o);
-bool CPyAttr_LongTypeCheck(PyObject *o);
 bool CPyAttr_LongOrNoneTypeCheck(PyObject *o);
-bool CPyAttr_BoolTypeCheck(PyObject *o);
 bool CPyAttr_BoolOrNoneTypeCheck(PyObject *o);
-bool CPyAttr_FloatTypeCheck(PyObject *o);
 bool CPyAttr_FloatOrNoneTypeCheck(PyObject *o);
 bool CPyAttr_TupleTypeCheck(PyObject *o);
 bool CPyAttr_TupleOrNoneTypeCheck(PyObject *o);
