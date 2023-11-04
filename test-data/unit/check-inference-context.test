@@ -1482,3 +1482,16 @@ b: Any
 i = i if isinstance(i, int) else b
 reveal_type(i)  # N: Revealed type is "Union[Any, builtins.int]"
 [builtins fixtures/isinstance.pyi]
+
+[case testLambdaInferenceUsesNarrowedTypes]
+from typing import Optional, Callable
+
+def f1(key: Callable[[], str]) -> None: ...
+def f2(key: object) -> None: ...
+
+def g(b: Optional[str]) -> None:
+    if b:
+        f1(lambda: reveal_type(b))  # N: Revealed type is "builtins.str"
+        z: Callable[[], str] = lambda: reveal_type(b)  # N: Revealed type is "builtins.str"
+        f2(lambda: reveal_type(b))  # N: Revealed type is "builtins.str"
+        lambda: reveal_type(b)  # N: Revealed type is "builtins.str"
