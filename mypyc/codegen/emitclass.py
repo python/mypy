@@ -843,13 +843,13 @@ def attr_context_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
     return names.private_name(cl.module_name, "{}_attrcontext_{}".format(cl.name, attribute))
 
 
-def generic_getset_names(rtype: RType) -> Tuple[str | None, str | None]:
+def generic_getset_names(rtype: RType) -> tuple[str | None, str | None]:
     """Return the generic attribute (getter, setter) for a rtype.
 
     Getter/setter may be None if no generic impl. is available.
     """
     if not rtype.is_unboxed:
-        if generic_setter_boxed_type(rtype):
+        if generic_setter_type_checker(rtype):
             return ("CPyAttr_GetterPyObject", "CPyAttr_SetterPyObject")
         else:
             return ("CPyAttr_GetterPyObject", None)
@@ -863,32 +863,30 @@ def generic_getset_names(rtype: RType) -> Tuple[str | None, str | None]:
     return (None, None)
 
 
-def generic_setter_boxed_type(rtype: RType) -> str | None:
-    """Return the CPyAttr_BoxedType enum value for runtime type checks.
+def generic_setter_type_checker(rtype: RType) -> str | None:
+    or_none = ""
+    if is_optional_type(rtype):
+        or_none = "OrNone"
+        rtype = optional_value_type(rtype)
 
-    Return None if rtype is unsupported."""
     if is_str_rprimitive(rtype):
-        return "CPyAttr_UNICODE"
+        return f"CPyAttr_Unicode{or_none}TypeCheck"
     elif is_tagged(rtype):
-        return "CPyAttr_LONG"
+        return f"CPyAttr_Long{or_none}TypeCheck"
     elif is_bool_rprimitive(rtype):
-        return "CPyAttr_BOOL"
+        return f"CPyAttr_Bool{or_none}TypeCheck"
     elif is_float_rprimitive(rtype):
-        return "CPyAttr_FLOAT"
+        return f"CPyAttr_Float{or_none}TypeCheck"
     elif is_tuple_rprimitive(rtype):
-        return "CPyAttr_TUPLE"
+        return f"CPyAttr_Tuple{or_none}TypeCheck"
     elif is_list_rprimitive(rtype):
-        return "CPyAttr_LIST"
+        return f"CPyAttr_List{or_none}TypeCheck"
     elif is_dict_rprimitive(rtype):
-        return "CPyAttr_DICT"
+        return f"CPyAttr_Dict{or_none}TypeCheck"
     elif is_set_rprimitive(rtype):
-        return "CPyAttr_SET"
-    elif is_optional_type(rtype):
-        inner_rtype = optional_value_type(rtype)
-        if inner_rtype is not None:
-            return generic_setter_boxed_type(inner_rtype)
+        return f"CPyAttr_Set{or_none}TypeCheck"
     elif is_object_rprimitive(rtype):
-        return "CPyAttr_ANY"
+        return "NULL"
 
     return None
 
@@ -912,13 +910,11 @@ def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
                 bitmap = emitter.bitmap_field(index)
                 mask = emitter.attr_bitmap_mask(index)
                 emitter.emit_line(f".bitmap = {{offsetof({cl_struct}, {bitmap}), {mask}}},")
-            # The generic boxed setter needs extra type information for
-            # runtime type checks.
+            # The generic boxed setter needs to know how to perform runtime type checks.
             if generic_setter and not rtype.is_unboxed:
-                setter_ctype = generic_setter_boxed_type(rtype)
+                setter_type_checker = generic_setter_type_checker(rtype)
                 emitter.emit_line(
-                    f'.boxed_setter = {{"{emitter.pretty_name(rtype)}", {setter_ctype},'
-                    f" .optional = {c_bool(is_optional_type(rtype))}}}"
+                    f'.boxed_type = {{"{emitter.pretty_name(rtype)}", {setter_type_checker}}}'
                 )
             emitter.emit_line("};")
 

@@ -16,6 +16,22 @@ int CPyAttr_UndeletableError(PyObject *self, CPyAttr_Context *context) {
     return -1;
 }
 
+#define _CPyAttr_SIMPLE_TYPE_CHECKS(name, type)              \
+    bool CPyAttr_##name##TypeCheck(PyObject *o) {            \
+        return PyObject_TypeCheck(o, type);                  \
+    }                                                        \
+    bool CPyAttr_##name##OrNoneTypeCheck(PyObject *o) {      \
+        return PyObject_TypeCheck(o, type) || o == Py_None;  \
+    }
+
+_CPyAttr_SIMPLE_TYPE_CHECKS(Unicode, &PyUnicode_Type)
+_CPyAttr_SIMPLE_TYPE_CHECKS(Long, &PyLong_Type)
+_CPyAttr_SIMPLE_TYPE_CHECKS(Float, &PyFloat_Type)
+_CPyAttr_SIMPLE_TYPE_CHECKS(Tuple, &PyTuple_Type)
+_CPyAttr_SIMPLE_TYPE_CHECKS(List, &PyList_Type)
+_CPyAttr_SIMPLE_TYPE_CHECKS(Dict, &PyDict_Type)
+_CPyAttr_SIMPLE_TYPE_CHECKS(Set, &PySet_Type)
+
 static void set_definedness_in_bitmap(PyObject *self, CPyAttr_Context *context, bool defined) {
     uint32_t *bitmap = (uint32_t *)((char *)self + context->bitmap.offset);
     if (defined) {
@@ -70,41 +86,10 @@ int CPyAttr_SetterPyObject(PyObject *self, PyObject *value, CPyAttr_Context *con
 
     PyObject **attr = (PyObject **)((char *)self + context->offset);
     if (value != NULL) {
-        PyTypeObject *type = NULL;
-        switch (context->boxed_setter.type) {
-            case CPyAttr_UNICODE:
-                type = &PyUnicode_Type;
-                break;
-            case CPyAttr_LONG:
-                type = &PyLong_Type;
-                break;
-            case CPyAttr_BOOL:
-                type = &PyBool_Type;
-                break;
-            case CPyAttr_FLOAT:
-                type = &PyFloat_Type;
-                break;
-            case CPyAttr_TUPLE:
-                type = &PyTuple_Type;
-                break;
-            case CPyAttr_LIST:
-                type = &PyList_Type;
-                break;
-            case CPyAttr_DICT:
-                type = &PyDict_Type;
-                break;
-            case CPyAttr_SET:
-                type = &PySet_Type;
-                break;
-            case CPyAttr_ANY:
-                // Do nothing, type is already NULL.
-                break;
-        }
-        if (unlikely(type != NULL && !PyObject_TypeCheck(value, type))) {
-            if (!context->boxed_setter.optional || value != Py_None) {
-                CPy_TypeError(context->boxed_setter.type_name, value);
-                return -1;
-            }
+        if (context->boxed_type.type_check_function
+                && !context->boxed_type.type_check_function(value)) {
+            CPy_TypeError(context->boxed_type.name, value);
+            return -1;
         }
         Py_XSETREF(*attr, Py_NewRef(value));
     } else {

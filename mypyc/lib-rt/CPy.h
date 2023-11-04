@@ -67,11 +67,6 @@ typedef struct tuple_T4CIOO {
 
 // Native object operations
 
-typedef enum CPyAttr_BoxedType {
-    CPyAttr_UNICODE, CPyAttr_LONG, CPyAttr_BOOL, CPyAttr_FLOAT,
-    CPyAttr_TUPLE, CPyAttr_LIST, CPyAttr_DICT, CPyAttr_SET, CPyAttr_ANY
-} CPyAttr_BoxedType;
-
 // Closure type to drive generic attribute getters and setters.
 typedef struct CPyAttr_Context {
     const char *attr_name;
@@ -82,11 +77,10 @@ typedef struct CPyAttr_Context {
         size_t offset;
         size_t mask;
     } bitmap;
-    struct {                    // Used for generic PyObject * setter.
-        const char *type_name;
-        CPyAttr_BoxedType type;
-        bool optional;          // Is None allowed?
-    } boxed_setter;
+    struct {                    // Used by the generic PyObject * setter.
+        const char *name;
+        bool (*type_check_function)(PyObject *);
+    } boxed_type;
 } CPyAttr_Context;
 
 PyObject *CPyAttr_GetterPyObject(PyObject *self, CPyAttr_Context *context);
@@ -99,6 +93,23 @@ int CPyAttr_SetterBool(PyObject *self, PyObject *value, CPyAttr_Context *context
 int CPyAttr_SetterFloat(PyObject *self, PyObject *value, CPyAttr_Context *context);
 PyObject *CPyAttr_UndefinedError(PyObject *self, CPyAttr_Context *context);
 int CPyAttr_UndeletableError(PyObject *self, CPyAttr_Context *context);
+
+bool CPyAttr_UnicodeTypeCheck(PyObject *o);
+bool CPyAttr_UnicodeOrNoneTypeCheck(PyObject *o);
+bool CPyAttr_LongTypeCheck(PyObject *o);
+bool CPyAttr_LongOrNoneTypeCheck(PyObject *o);
+bool CPyAttr_BoolTypeCheck(PyObject *o);
+bool CPyAttr_BoolOrNoneTypeCheck(PyObject *o);
+bool CPyAttr_FloatTypeCheck(PyObject *o);
+bool CPyAttr_FloatOrNoneTypeCheck(PyObject *o);
+bool CPyAttr_TupleTypeCheck(PyObject *o);
+bool CPyAttr_TupleOrNoneTypeCheck(PyObject *o);
+bool CPyAttr_ListTypeCheck(PyObject *o);
+bool CPyAttr_ListOrNoneTypeCheck(PyObject *o);
+bool CPyAttr_DictTypeCheck(PyObject *o);
+bool CPyAttr_DictOrNoneTypeCheck(PyObject *o);
+bool CPyAttr_SetTypeCheck(PyObject *o);
+bool CPyAttr_SetOrNoneTypeCheck(PyObject *o);
 
 // Search backwards through the trait part of a vtable (which sits *before*
 // the start of the vtable proper) looking for the subvtable describing a trait
