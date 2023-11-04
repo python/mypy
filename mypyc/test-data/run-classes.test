@@ -190,6 +190,37 @@ def test_non_ext_any() -> None:
     with assertRaises(AttributeError):
         n.y
 
+[case testClassWithOptionalAttributes]
+from typing import Any, Optional
+from testutil import assertRaises
+
+class A:
+    def __init__(self) -> None:
+        self.string: Optional[str] = None
+        self.integer: Optional[int] = None
+        self.boolean: Optional[bool] = None
+        self.float: Optional[float] = None
+        self.tuple: Optional[tuple] = None
+        self.list: Optional[list] = None
+        self.nested: Optional["A"] = None
+
+ATTRS = ["string", "integer", "boolean", "float", "tuple", "list", "nested"]
+
+def test_any() -> None:
+    a: Any = A()
+    for attr in ATTRS:
+        assert getattr(a, attr) is None
+    for attr in ATTRS:
+        with assertRaises(TypeError):
+            setattr(a, attr, object())
+    a.string = "sleepy"
+    assert a.string == "sleepy"
+    a.tuple = ("cat",)
+    assert a.tuple == ("cat",)
+    a2 = A()
+    a.nested = a2
+    assert a.nested is a2
+
 [case testNonExtMisc]
 from typing import Any, overload
 

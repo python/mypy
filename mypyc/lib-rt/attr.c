@@ -26,6 +26,7 @@ int CPyAttr_UndeletableError(PyObject *self, CPyAttr_Context *context) {
 
 _CPyAttr_SIMPLE_TYPE_CHECKS(Unicode, &PyUnicode_Type)
 _CPyAttr_SIMPLE_TYPE_CHECKS(Long, &PyLong_Type)
+_CPyAttr_SIMPLE_TYPE_CHECKS(Bool, &PyBool_Type)
 _CPyAttr_SIMPLE_TYPE_CHECKS(Float, &PyFloat_Type)
 _CPyAttr_SIMPLE_TYPE_CHECKS(Tuple, &PyTuple_Type)
 _CPyAttr_SIMPLE_TYPE_CHECKS(List, &PyList_Type)
