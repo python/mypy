@@ -220,6 +220,8 @@ def test_any() -> None:
     a2 = A()
     a.nested = a2
     assert a.nested is a2
+    for attr in ATTRS:
+        setattr(a, attr, None)
 
 [case testNonExtMisc]
 from typing import Any, overload

@@ -1113,7 +1113,9 @@ def generate_reusable_native_class_type_check(rtype: RType, emitter: Emitter) ->
 
     emitter.context.declarations[name] = HeaderDeclaration(f"bool {name}(PyObject *o);")
     emitter.emit_lines(f"bool {name}(PyObject *o)", "{")
-    emitter.emit_cast("o", "o", rtype, error=ReturnHandler("false"), raise_exception=False)
+    emitter.emit_cast(
+        "o", "tmp", rtype, declare_dest=True, error=ReturnHandler("false"), raise_exception=False
+    )
     emitter.emit_lines("return true;", "}")
     return True
 
