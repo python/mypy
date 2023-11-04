@@ -843,24 +843,28 @@ def attr_context_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
     return names.private_name(cl.module_name, "{}_attrcontext_{}".format(cl.name, attribute))
 
 
-def generic_getset_names(rtype: RType) -> tuple[str | None, str | None]:
-    """Return the generic attribute (getter, setter) for a rtype.
-
-    Getter/setter may be None if no generic impl. is available.
-    """
+def generic_getter_name(rtype: RType) -> str | None:
+    """If a generic getter is available for rtype, return its name."""
     if not rtype.is_unboxed:
-        if generic_setter_type_checker(rtype):
-            return ("CPyAttr_GetterPyObject", "CPyAttr_SetterPyObject")
-        else:
-            return ("CPyAttr_GetterPyObject", None)
+        return "CPyAttr_GetterPyObject"
     elif is_tagged(rtype):
-        return ("CPyAttr_GetterTagged", "CPyAttr_SetterTagged")
+        return "CPyAttr_GetterTagged"
     elif is_float_rprimitive(rtype):
-        return ("CPyAttr_GetterFloat", "CPyAttr_SetterFloat")
+        return "CPyAttr_GetterFloat"
     elif is_bool_rprimitive(rtype):
-        return ("CPyAttr_GetterBool", "CPyAttr_SetterBool")
+        return "CPyAttr_GetterBool"
 
-    return (None, None)
+
+def generic_setter_name(rtype: RType) -> str | None:
+    """If a generic setter is available for rtype, return its name."""
+    if not rtype.is_unboxed and generic_setter_type_checker(rtype):
+        return "CPyAttr_SetterPyObject"
+    elif is_tagged(rtype):
+        return "CPyAttr_SetterTagged"
+    elif is_float_rprimitive(rtype):
+        return "CPyAttr_SetterFloat"
+    elif is_bool_rprimitive(rtype):
+        return "CPyAttr_SetterBool"
 
 
 def generic_setter_type_checker(rtype: RType) -> str | None:
@@ -896,7 +900,6 @@ def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
     if not cl.is_trait:
         for attr, rtype in cl.attributes.items():
             context_name = attr_context_name(cl, attr, emitter.names)
-            generic_getter, generic_setter = generic_getset_names(rtype)
             always_defined = cl.is_always_defined(attr) and not rtype.is_refcounted
 
             emitter.emit_line(f"static CPyAttr_Context {context_name} = {{")
@@ -911,18 +914,18 @@ def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
                 mask = emitter.attr_bitmap_mask(index)
                 emitter.emit_line(f".bitmap = {{offsetof({cl_struct}, {bitmap}), {mask}}},")
             # The generic boxed setter needs to know how to perform runtime type checks.
-            if generic_setter and not rtype.is_unboxed:
+            if generic_setter_name(rtype) and not rtype.is_unboxed:
                 setter_type_checker = generic_setter_type_checker(rtype)
                 emitter.emit_line(
                     f'.boxed_type = {{"{emitter.pretty_name(rtype)}", {setter_type_checker}}}'
                 )
             emitter.emit_line("};")
 
-            if not generic_getter:
+            if not generic_getter_name(rtype):
                 name = getter_name(cl, attr, emitter.names)
                 emitter.emit_line("static PyObject *")
                 emitter.emit_line(f"{name}({cl_struct} *self, void *closure);")
-            if not generic_setter:
+            if not generic_setter_name(rtype):
                 name = setter_name(cl, attr, emitter.names)
                 emitter.emit_line("static int")
                 emitter.emit_line(f"{name}({cl_struct} *self, PyObject *value, void *closure);")
@@ -953,11 +956,8 @@ def generate_getseters_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
     emitter.emit_line(f"static PyGetSetDef {name}[] = {{")
     if not cl.is_trait:
         for attr, rtype in cl.attributes.items():
-            attr_getter, attr_setter = generic_getset_names(rtype)
-            if attr_getter is None:
-                attr_getter = getter_name(cl, attr, emitter.names)
-            if attr_setter is None:
-                attr_setter = setter_name(cl, attr, emitter.names)
+            attr_getter = generic_getter_name(rtype) or getter_name(cl, attr, emitter.names)
+            attr_setter = generic_setter_name(rtype) or setter_name(cl, attr, emitter.names)
             context = "&{}".format(attr_context_name(cl, attr, emitter.names))
             emitter.emit_line(f'{{"{attr}",')
             emitter.emit_line(f" (getter){attr_getter}, (setter){attr_setter},")
@@ -985,11 +985,10 @@ def generate_getseters_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
 def generate_getseters(cl: ClassIR, emitter: Emitter) -> None:
     if not cl.is_trait:
         for i, (attr, rtype) in enumerate(cl.attributes.items()):
-            generic_getter, generic_setter = generic_getset_names(rtype)
-            if not generic_getter:
+            if not generic_getter_name(rtype):
                 generate_getter(cl, attr, rtype, emitter)
                 emitter.emit_line("")
-            if not generic_setter:
+            if not generic_setter_name(rtype):
                 generate_setter(cl, attr, rtype, emitter)
                 if i < len(cl.attributes) - 1:
                     emitter.emit_line("")
