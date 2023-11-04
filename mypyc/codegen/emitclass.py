@@ -879,10 +879,13 @@ def generic_boxed_setter_type_checker(rtype: RType, emitter: Emitter) -> str | N
     if is_str_rprimitive(rtype):
         return f"CPyAttr_Unicode{or_none}TypeCheck"
     elif is_tagged(rtype):
+        assert or_none, "non-optional boxed integer type should be impossible"
         return f"CPyAttr_Long{or_none}TypeCheck"
     elif is_bool_rprimitive(rtype):
+        assert or_none, "non-optional boxed boolean type should be impossible"
         return f"CPyAttr_Bool{or_none}TypeCheck"
     elif is_float_rprimitive(rtype):
+        assert or_none, "non-optional boxed float type should be impossible"
         return f"CPyAttr_Float{or_none}TypeCheck"
     elif is_tuple_rprimitive(rtype):
         return f"CPyAttr_Tuple{or_none}TypeCheck"
@@ -996,9 +999,9 @@ def generate_getseters(cl: ClassIR, emitter: Emitter) -> None:
                 generate_getter(cl, attr, rtype, emitter)
                 emitter.emit_line("")
             if generic_setter_name(rtype, emitter):
-                type_checker = generic_boxed_setter_type_checker(rtype, emitter)
-                assert type_checker is not None
-                if type_checker.startswith("CPyCustomAttr"):
+                if isinstance(rtype, RInstance) or isinstance(
+                    optional_value_type(rtype), RInstance
+                ):
                     was_newly_generated = generate_reusable_native_class_type_check(rtype, emitter)
                     if (i < len(cl.attributes) - 1) and was_newly_generated:
                         emitter.emit_line("")
@@ -1109,7 +1112,7 @@ def generate_reusable_native_class_type_check(rtype: RType, emitter: Emitter) ->
         return False
 
     emitter.context.declarations[name] = HeaderDeclaration(f"bool {name}(PyObject *o);")
-    emitter.emit_lines("bool", f"{name}(PyObject *o)", "{")
+    emitter.emit_lines(f"bool {name}(PyObject *o)", "{")
     emitter.emit_cast("o", "o", rtype, error=ReturnHandler("false"), raise_exception=False)
     emitter.emit_lines("return true;", "}")
     return True
