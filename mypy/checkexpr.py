@@ -5195,7 +5195,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         else:
             # Type context available.
             self.chk.return_types.append(inferred_type.ret_type)
-            self.chk.check_func_item(e, type_override=type_override)
+            with self.chk.tscope.function_scope(e):
+                self.chk.check_func_item(e, type_override=type_override)
             if not self.chk.has_type(e.expr()):
                 # TODO: return expression must be accepted before exiting function scope.
                 self.accept(e.expr(), allow_none_return=True)
