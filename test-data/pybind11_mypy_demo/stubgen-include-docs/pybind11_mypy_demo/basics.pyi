@@ -1,7 +1,34 @@
-from typing import ClassVar
+from typing import ClassVar, overload
 
-from typing import overload
 PI: float
+__version__: str
+
+class Foo:
+    def __init__(self, *args, **kwargs) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+    @overload
+    @staticmethod
+    def overloaded_static_method(value: int) -> int:
+        """overloaded_static_method(*args, **kwargs)
+        Overloaded function.
+
+        1. overloaded_static_method(value: int) -> int
+
+        2. overloaded_static_method(value: float) -> float"""
+    @overload
+    @staticmethod
+    def overloaded_static_method(value: float) -> float:
+        """overloaded_static_method(*args, **kwargs)
+        Overloaded function.
+
+        1. overloaded_static_method(value: int) -> int
+
+        2. overloaded_static_method(value: float) -> float"""
+    @staticmethod
+    def some_static_method(a: int, b: int) -> int:
+        """some_static_method(a: int, b: int) -> int
+
+        None"""
 
 class Point:
     class AngleUnit:
@@ -13,8 +40,6 @@ class Point:
             """__init__(self: pybind11_mypy_demo.basics.Point.AngleUnit, value: int) -> None"""
         def __eq__(self, other: object) -> bool:
             """__eq__(self: object, other: object) -> bool"""
-        def __getstate__(self) -> int:
-            """__getstate__(self: object) -> int"""
         def __hash__(self) -> int:
             """__hash__(self: object) -> int"""
         def __index__(self) -> int:
@@ -23,8 +48,6 @@ class Point:
             """__int__(self: pybind11_mypy_demo.basics.Point.AngleUnit) -> int"""
         def __ne__(self, other: object) -> bool:
             """__ne__(self: object, other: object) -> bool"""
-        def __setstate__(self, state: int) -> None:
-            """__setstate__(self: pybind11_mypy_demo.basics.Point.AngleUnit, state: int) -> None"""
         @property
         def name(self) -> str: ...
         @property
@@ -40,8 +63,6 @@ class Point:
             """__init__(self: pybind11_mypy_demo.basics.Point.LengthUnit, value: int) -> None"""
         def __eq__(self, other: object) -> bool:
             """__eq__(self: object, other: object) -> bool"""
-        def __getstate__(self) -> int:
-            """__getstate__(self: object) -> int"""
         def __hash__(self) -> int:
             """__hash__(self: object) -> int"""
         def __index__(self) -> int:
@@ -50,8 +71,6 @@ class Point:
             """__int__(self: pybind11_mypy_demo.basics.Point.LengthUnit) -> int"""
         def __ne__(self, other: object) -> bool:
             """__ne__(self: object, other: object) -> bool"""
-        def __setstate__(self, state: int) -> None:
-            """__setstate__(self: pybind11_mypy_demo.basics.Point.LengthUnit, state: int) -> None"""
         @property
         def name(self) -> str: ...
         @property
@@ -70,7 +89,8 @@ class Point:
 
         1. __init__(self: pybind11_mypy_demo.basics.Point) -> None
 
-        2. __init__(self: pybind11_mypy_demo.basics.Point, x: float, y: float) -> None"""
+        2. __init__(self: pybind11_mypy_demo.basics.Point, x: float, y: float) -> None
+        """
     @overload
     def __init__(self, x: float, y: float) -> None:
         """__init__(*args, **kwargs)
@@ -78,7 +98,8 @@ class Point:
 
         1. __init__(self: pybind11_mypy_demo.basics.Point) -> None
 
-        2. __init__(self: pybind11_mypy_demo.basics.Point, x: float, y: float) -> None"""
+        2. __init__(self: pybind11_mypy_demo.basics.Point, x: float, y: float) -> None
+        """
     @overload
     def distance_to(self, x: float, y: float) -> float:
         """distance_to(*args, **kwargs)
@@ -86,7 +107,8 @@ class Point:
 
         1. distance_to(self: pybind11_mypy_demo.basics.Point, x: float, y: float) -> float
 
-        2. distance_to(self: pybind11_mypy_demo.basics.Point, other: pybind11_mypy_demo.basics.Point) -> float"""
+        2. distance_to(self: pybind11_mypy_demo.basics.Point, other: pybind11_mypy_demo.basics.Point) -> float
+        """
     @overload
     def distance_to(self, other: Point) -> float:
         """distance_to(*args, **kwargs)
@@ -94,19 +116,19 @@ class Point:
 
         1. distance_to(self: pybind11_mypy_demo.basics.Point, x: float, y: float) -> float
 
-        2. distance_to(self: pybind11_mypy_demo.basics.Point, other: pybind11_mypy_demo.basics.Point) -> float"""
+        2. distance_to(self: pybind11_mypy_demo.basics.Point, other: pybind11_mypy_demo.basics.Point) -> float
+        """
     @property
     def length(self) -> float: ...
 
 def answer() -> int:
-    '''answer() -> int
+    """answer() -> int"""
 
-    answer docstring, with end quote"'''
 def midpoint(left: float, right: float) -> float:
     """midpoint(left: float, right: float) -> float"""
-def sum(arg0: int, arg1: int) -> int:
-    '''sum(arg0: int, arg1: int) -> int
 
-    multiline docstring test, edge case quotes """\'\'\''''
+def sum(arg0: int, arg1: int) -> int:
+    """sum(arg0: int, arg1: int) -> int"""
+
 def weighted_midpoint(left: float, right: float, alpha: float = ...) -> float:
     """weighted_midpoint(left: float, right: float, alpha: float = 0.5) -> float"""
