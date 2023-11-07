@@ -508,14 +508,14 @@ class InspectionStubGenerator(BaseStubGenerator):
             return inspect.ismethod(obj)
 
     def is_staticmethod(self, class_info: ClassInfo | None, name: str, obj: object) -> bool:
-        if self.is_c_module:
+        if class_info is None:
+            return False
+        elif self.is_c_module:
             raw_lookup = getattr(class_info.cls, "__dict__")  # noqa: B009
             raw_value = raw_lookup.get(name, obj)
             return type(raw_value).__name__ in ("staticmethod")
         else:
-            return class_info is not None and isinstance(
-                inspect.getattr_static(class_info.cls, name), staticmethod
-            )
+            return isinstance(inspect.getattr_static(class_info.cls, name), staticmethod)
 
     @staticmethod
     def is_abstract_method(obj: object) -> bool:
