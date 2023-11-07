@@ -168,7 +168,7 @@ void bind_basics(py::module& basics) {
 
   // Static methods
   py::class_<Foo> pyFoo(basics, "Foo");
-  
+
   pyFoo
     .def_static("some_static_method", &Foo::some_static_method, R"#(None)#", py::arg("a"), py::arg("b"))
     .def_static("overloaded_static_method", py::overload_cast<int>(&Foo::overloaded_static_method), py::arg("value"))
