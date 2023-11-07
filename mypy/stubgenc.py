@@ -509,7 +509,9 @@ class InspectionStubGenerator(BaseStubGenerator):
 
     def is_staticmethod(self, class_info: ClassInfo | None, name: str, obj: object) -> bool:
         if self.is_c_module:
-            return False
+            raw_lookup = getattr(class_info.cls, "__dict__")  # noqa: B009
+            raw_value = raw_lookup.get(name, obj)
+            return type(raw_value).__name__ in ("staticmethod")
         else:
             return class_info is not None and isinstance(
                 inspect.getattr_static(class_info.cls, name), staticmethod
@@ -751,7 +753,9 @@ class InspectionStubGenerator(BaseStubGenerator):
                         continue
                     attr = "__init__"
                 # FIXME: make this nicer
-                if self.is_classmethod(class_info, attr, value):
+                if self.is_staticmethod(class_info, attr, value):
+                    class_info.self_var = ""
+                elif self.is_classmethod(class_info, attr, value):
                     class_info.self_var = "cls"
                 else:
                     class_info.self_var = "self"
