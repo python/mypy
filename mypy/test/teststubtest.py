@@ -2045,7 +2045,7 @@ class StubtestUnit(unittest.TestCase):
             runtime="",
             error=None,
         )
-        # Having `@type_check_only` on a type that existist in runtime is an error
+        # Having `@type_check_only` on a type that exists at runtime is an error
         yield Case(
             stub="""
             @type_check_only
