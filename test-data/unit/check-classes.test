@@ -8012,3 +8012,43 @@ class C:
     def f(self) -> None:
         __module__  # E: Name "__module__" is not defined
         __qualname__  # E: Name "__qualname__" is not defined
+
+[case testTypeCheckOnlyInStub]
+# TODO: Ideally, in the future this import should raise an error:
+# because, we are importing a thing that does not exist in runtime.
+# But, not for now: maybe we will have a new error code for this.
+from foo import A, b
+
+a: A
+reveal_type(a.x)  # N: Revealed type is "builtins.int"
+reveal_type(b)  # N: Revealed type is "def ()"
+[file foo.pyi]
+from typing import type_check_only
+
+@type_check_only
+class A:
+    x: int
+
+@type_check_only
+def b() -> None: ...
+[builtins fixtures/bool.pyi]
+[typing fixtures/typing-full.pyi]
+
+
+[case testTypeCheckOnlyInRuntime]
+# Right now there should be no difference between runtime and stub,
+# but in the future it might change.
+from typing import type_check_only
+
+@type_check_only
+class A:
+    x: int
+
+@type_check_only
+def b() -> None: ...
+
+a: A
+reveal_type(a.x)  # N: Revealed type is "builtins.int"
+reveal_type(b)  # N: Revealed type is "def ()"
+[builtins fixtures/bool.pyi]
+[typing fixtures/typing-full.pyi]

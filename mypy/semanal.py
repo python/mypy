@@ -252,6 +252,7 @@ from mypy.types import (
     TPDICT_NAMES,
     TYPE_ALIAS_NAMES,
     TYPED_NAMEDTUPLE_NAMES,
+    TYPE_CHECK_ONLY_NAMES,
     AnyType,
     CallableType,
     FunctionLike,
@@ -1568,6 +1569,9 @@ class SemanticAnalyzer(
                     removed.append(i)
                 else:
                     self.fail("@final cannot be used with non-method functions", d)
+            elif refers_to_fullname(d, TYPE_CHECK_ONLY_NAMES):
+                # TODO: support `@overload` funcs.
+                dec.func.is_type_check_only = True
             elif isinstance(d, CallExpr) and refers_to_fullname(
                 d.callee, DATACLASS_TRANSFORM_NAMES
             ):
@@ -1868,6 +1872,8 @@ class SemanticAnalyzer(
                     self.fail("@runtime_checkable can only be used with protocol classes", defn)
             elif decorator.fullname in FINAL_DECORATOR_NAMES:
                 defn.info.is_final = True
+            elif refers_to_fullname(decorator, TYPE_CHECK_ONLY_NAMES):
+                defn.info.is_type_check_only = True
         elif isinstance(decorator, CallExpr) and refers_to_fullname(
             decorator.callee, DATACLASS_TRANSFORM_NAMES
         ):

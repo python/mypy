@@ -484,6 +484,19 @@ def _verify_metaclass(
 def verify_typeinfo(
     stub: nodes.TypeInfo, runtime: MaybeMissing[type[Any]], object_path: list[str]
 ) -> Iterator[Error]:
+    if stub.is_type_check_only:
+        # This type only exists in stubs, we only check that the runtime part
+        # is missing. Other checks are not required.
+        if not isinstance(runtime, Missing):
+            yield Error(
+                object_path,
+                'is marked as "@type_check_only", but also exists at runtime',
+                stub,
+                runtime,
+                stub_desc=repr(stub),
+            )
+        return
+
     if isinstance(runtime, Missing):
         yield Error(object_path, "is not present at runtime", stub, runtime, stub_desc=repr(stub))
         return
@@ -1066,6 +1079,7 @@ def verify_var(
 def verify_overloadedfuncdef(
     stub: nodes.OverloadedFuncDef, runtime: MaybeMissing[Any], object_path: list[str]
 ) -> Iterator[Error]:
+    # TODO: support `@type_check_only` decorator
     if isinstance(runtime, Missing):
         yield Error(object_path, "is not present at runtime", stub, runtime)
         return
@@ -1253,6 +1267,19 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> nodes.FuncItem 
 def verify_decorator(
     stub: nodes.Decorator, runtime: MaybeMissing[Any], object_path: list[str]
 ) -> Iterator[Error]:
+    if stub.func.is_type_check_only:
+        # This function only exists in stubs, we only check that the runtime part
+        # is missing. Other checks are not required.
+        if not isinstance(runtime, Missing):
+            yield Error(
+                object_path,
+                'is marked as "@type_check_only", but also exists at runtime',
+                stub,
+                runtime,
+                stub_desc=repr(stub),
+            )
+        return
+
     if isinstance(runtime, Missing):
         yield Error(object_path, "is not present at runtime", stub, runtime)
         return
