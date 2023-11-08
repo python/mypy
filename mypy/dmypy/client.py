@@ -573,7 +573,7 @@ def check_output(
         write_junit_xml(
             response["roundtrip_time"],
             bool(err),
-            messages,
+            {None: messages} if messages else {},
             junit_xml,
             response["python_version"],
             response["platform"],
