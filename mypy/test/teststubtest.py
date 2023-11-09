@@ -426,6 +426,13 @@ class StubtestUnit(unittest.TestCase):
             error=None,
         )
 
+        # Simulate "<unrepresentable>"
+        yield Case(
+            stub="def f11(text: object = None) -> None: ...",
+            runtime="def f11(text = ...): pass",
+            error=None,
+        )
+
     @collect_cases
     def test_static_class_method(self) -> Iterator[Case]:
         yield Case(

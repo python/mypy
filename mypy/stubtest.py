@@ -658,6 +658,10 @@ def _verify_arg_default_value(
                 if (
                     stub_default is not UNKNOWN
                     and stub_default is not ...
+                    # We use "..." as a hacky representation for "<unrepresentable>"
+                    # defaults on builtins, so ignore those. "..." is unlikely to be used
+                    # as a real default.
+                    and runtime_arg.default is not ...
                     and (
                         stub_default != runtime_arg.default
                         # We want the types to match exactly, e.g. in case the stub has
