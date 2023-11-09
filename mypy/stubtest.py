@@ -1440,7 +1440,20 @@ def is_read_only_property(runtime: object) -> bool:
 
 def safe_inspect_signature(runtime: Any) -> inspect.Signature | None:
     try:
-        return inspect.signature(runtime)
+        try:
+            return inspect.signature(runtime)
+        except ValueError:
+            if (
+                hasattr(runtime, "__text_signature__")
+                and "<unrepresentable>" in runtime.__text_signature__
+            ):
+                # Try to fix up the signature. Workaround for
+                # https://github.com/python/cpython/issues/87233
+                sig = runtime.__text_signature__.replace("<unrepresentable>", "...")
+                sig = inspect._signature_fromstr(inspect.Signature, runtime, sig)  # type: ignore[attr-defined]
+                return sig  # type: ignore[no-any-return]
+            else:
+                raise
     except Exception:
         # inspect.signature throws ValueError all the time
         # catch RuntimeError because of https://bugs.python.org/issue39504

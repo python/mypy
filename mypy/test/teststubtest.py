@@ -2195,6 +2195,14 @@ class StubtestMiscUnit(unittest.TestCase):
             == "def (a, b, *, c, d = ..., **kwargs)"
         )
 
+    def test_builtin_signature_with_unrepresentable_default(self) -> None:
+        sig = mypy.stubtest.safe_inspect_signature(bytes.hex)
+        assert sig is not None
+        assert (
+            str(mypy.stubtest.Signature.from_inspect_signature(sig))
+            == "def (self, sep = ..., bytes_per_sep = ...)"
+        )
+
     def test_config_file(self) -> None:
         runtime = "temp = 5\n"
         stub = "from decimal import Decimal\ntemp: Decimal\n"
