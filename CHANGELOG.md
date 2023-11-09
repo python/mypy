@@ -62,7 +62,7 @@ TODO: Write sections about these?
  * Generate error on duplicate function definitions (Jukka Lehtosalo, PR [16309](https://github.com/python/mypy/pull/16309))
  * Don't crash on unreachable statements (Jukka Lehtosalo, PR [16311](https://github.com/python/mypy/pull/16311))
  * Avoid cyclic reference in nested functions (Jukka Lehtosalo, PR [16268](https://github.com/python/mypy/pull/16268))
- * Fix direct __dict__ access on inner functions in new Python (Shantanu, PR [16084](https://github.com/python/mypy/pull/16084))
+ * Fix direct `__dict__` access on inner functions in new Python (Shantanu, PR [16084](https://github.com/python/mypy/pull/16084))
  * Make tuple packing and unpacking more efficient (Jukka Lehtosalo, PR [16022](https://github.com/python/mypy/pull/16022))
 
 #### Improvements to Error Reportong
@@ -148,8 +148,45 @@ TODO: Write sections about these?
  * Deduplicate iterable logic (Shantanu, PR [16006](https://github.com/python/mypy/pull/16006))
  * Fix inference for properties with `__call__` (Shantanu, PR [15926](https://github.com/python/mypy/pull/15926))
 
+#### Typeshed Updates
+
+Please see [git log](https://github.com/python/typeshed/commits/main?after=4a854366e03dee700109f8e758a08b2457ea2f51+0&branch=main&path=stdlib) for full list of standard library typeshed stub changes.
+
 #### Acknowledgements
-...
+
+Thanks to all mypy contributors who contributed to this release:
+
+* Albert Tugushev
+* Alex Waygood
+* Ali Hamdan
+* Anders Kaseorg
+* Anthony Sottile
+* Chad Dombrova
+* Cibin Mathew
+* dinaldoap
+* DS/Charlie
+* Eli Schwartz
+* Ganden Schaffner
+* Hamir Mahal
+* Ihor
+* Ikko Eltociear Ashimine
+* Ilya Priven
+* Ivan Levkivskyi
+* Jelle Zijlstra
+* Jukka Lehtosalo
+* Jørgen Lind
+* KotlinIsland
+* Matt Bogosian
+* Nikita Sobolev
+* Petter Friberg
+* Randolf Scholz
+* Shantanu
+* Thomas Grainger
+* Valentin Stanciu
+
+I’d also like to thank my employer, Dropbox, for supporting mypy development.
+
+Posted by Jukka Lehtosalo
 
 ## Mypy 1.6
 
