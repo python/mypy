@@ -3396,3 +3396,29 @@ reveal_type(b["a"])  # N: Revealed type is "Union[builtins.str, None]"
 reveal_type(b["g"])  # N: Revealed type is "Union[builtins.int, None]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictWithMetaclass]
+from typing import TypedDict, Generic, TypeVar
+
+T = TypeVar('T')
+
+class Meta(type): ...
+
+class WithMetaKeyword(TypedDict, metaclass=Meta):  # E: "TypedDict" cannot have a metaclass
+    ...
+
+class GenericWithMetaKeyword(TypedDict, Generic[T], metaclass=Meta):  # E: "TypedDict" cannot have a metaclass
+    ...
+
+class PositionOfErrorIsPrecise(
+    TypedDict,
+    metaclass=Meta,  # E: "TypedDict" cannot have a metaclass
+):
+    ...
+
+# We still don't allow this, because the implementation is much easier
+# and it does not make any practical sense to do it:
+class WithTypeMeta(TypedDict, metaclass=type):  # E: "TypedDict" cannot have a metaclass
+    ...
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
