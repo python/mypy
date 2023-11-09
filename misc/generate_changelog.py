@@ -40,6 +40,8 @@ def normalize_author(author: str) -> str:
     # Some ad-hoc rules to get more consistent author names.
     if author == "AlexWaygood":
         return "Alex Waygood"
+    elif author == "jhance":
+        return "Jared Hance"
     return author
 
 
