@@ -9,7 +9,7 @@ import sys
 from dataclasses import dataclass
 
 
-def find_all_release_branches() -> None:
+def find_all_release_branches() -> list[tuple[int, int]]:
     result = subprocess.run(["git", "branch", "-r"], text=True, capture_output=True, check=True)
     versions = []
     for line in result.stdout.splitlines():
@@ -124,7 +124,7 @@ def filter_out_commits_from_old_release_branch(
     return result
 
 
-def find_changes_between_releases(old_branch: str, new_branch: str) -> list[str]:
+def find_changes_between_releases(old_branch: str, new_branch: str) -> list[CommitInfo]:
     merge_base = git_merge_base(old_branch, new_branch)
     print(f"Merge base: {merge_base}")
     new_commits = git_commit_log(merge_base, new_branch)
