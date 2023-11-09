@@ -2,6 +2,8 @@
 
 ## Next release
 
+Stubgen will now include `__all__` in its output if it is in the input file (PR [16356](https://github.com/python/mypy/pull/16356)).
+
 ## Mypy 1.7 [unreleased]
 
 We’ve just uploaded mypy 1.7 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)). Mypy is a static type checker for Python. This release includes new features, performance improvements and bug fixes. You can install it as follows:
@@ -12,11 +14,32 @@ We’ve just uploaded mypy 1.7 to the Python Package Index ([PyPI](https://pypi.
 
 You can read the full documentation for this release on [Read the Docs](http://mypy.readthedocs.io).
 
-Stubgen will now include `__all__` in its output if it is in the input file (PR [16356](https://github.com/python/mypy/pull/16356)).
+#### Using TypedDict for `**kwargs` Typing
 
-#### TypeVarTuple and Unpack Support Enabled
+Mypy now has support for using `Unpack[...]` with a TypedDict type to annotate `**kwargs` arguments enabled by default. Example:
 
-TODO: Explain
+```
+# Or 'from typing_extensions import ...'
+from typing import TypedDict, Unpack
+
+class Person(TypedDict):
+    name: str
+    age: int
+
+def foo(**kwargs: Unpack[Person]) -> None:
+    ...
+
+foo(name="x", age=1)  # Ok
+foo(name=1)  # Error
+```
+
+Refer to [PEP 692](https://peps.python.org/pep-0692/) for the details.
+
+This was contributed by Ivan Levkivskyi back in 2022 ([PR 13471](https://github.com/python/mypy/pull/13471)).
+
+#### TypeVarTuple Support Enabled (Experimental)
+
+Mypy now has support for variadic generics (TypeVarTuple) enabled by default, as an experimental feature. Refer to [PEP 646](https://peps.python.org/pep-0646/) for the details.
 
 TypeVarTuple was implemented by Jared Hance and Ivan Levkivskyi over several mypy releases, with help from Jukka Lehtosalo.
 
@@ -35,15 +58,50 @@ Changes included in this release:
  * Complete type analysis of variadic types (Ivan Levkivskyi, PR [15991](https://github.com/python/mypy/pull/15991))
  * Allow TypedDict unpacking in Callable types (Ivan Levkivskyi, PR [16083](https://github.com/python/mypy/pull/16083))
 
-#### Major Changes
+#### New Way of Installing Mypyc Dependencies
 
-TODO: Write sections about these?
+If you want to install package dependencies needed by mypyc (not just mypy), you should now install `mypy[mypyc]` instead of just `mypy`:
 
- * Enable new type inference by default (Ivan Levkivskyi, PR [16345](https://github.com/python/mypy/pull/16345))
- * Narrow tuple types using len() (Ivan Levkivskyi, PR [16237](https://github.com/python/mypy/pull/16237))
- * Do not consider `import a.b as b` an explicit reexport (Anders Kaseorg, PR [14086](https://github.com/python/mypy/pull/14086))
- * Add an extra for mypyc dependencies (Shantanu, PR [16229](https://github.com/python/mypy/pull/16229))
- * Add a changelog (Shantanu, PR [16280](https://github.com/python/mypy/pull/16280))
+```
+python3 -m pip install -U 'mypy[mypyc]'
+```
+
+Mypy has many more users than mypyc, so always installing mypyc dependencies would often bring unnecessary dependencies.
+
+This change was contributed by Shantanu (PR [16229](https://github.com/python/mypy/pull/16229)).
+
+#### New Rules for Re-exports
+
+Mypy no longer considers an import such as `import a.b as b` as an explicit re-export. The old behavior was arguably inconsistent and surprising. This may impact some stub packages, such as older versions of `types-six`. You can change the import to `from a import b as b`, if treating the import as a re-export was intentional.
+
+This change was contributed by Anders Kaseorg (PR [14086](https://github.com/python/mypy/pull/14086)).
+
+#### Improved Type Inference
+
+The new type inference algorithm that was recently introduced to mypy (but was not enabled by default) is now enabled by default. It improves type inference of calls to generic callables where an argument is also a generic callable, in particular. You can use `--old-type-inference` to disable the new behavior.
+
+The new algorithm can (rarely) produce different error messages, different error codes, or errors reported on different lines. This is more likely in cases where generic types were used incorrectly.
+
+The new type inference algorithm was contributed by Ivan Levkivskyi. PR [16345](https://github.com/python/mypy/pull/16345) enabled it by default.
+
+#### Narrowing Tuple Types Using len()
+
+Mypy now can narrow tuple types using `len()` checks. Example:
+
+```
+def f(t: tuple[int, int] | tuple[int, int, int]) -> None:
+    if len(t) == 2:
+        a, b = t   # Ok
+    ...
+```
+
+This feature was contributed by Ivan Levkivskyi (PR [16237](https://github.com/python/mypy/pull/16237)).
+
+#### Mypy Changelog
+
+We now maintain a [changelog](https://github.com/python/mypy/blob/master/CHANGELOG.md) in the mypy Git repository. It mirrors the contents of [mypy release blog posts](https://mypy-lang.blogspot.com/). We will continue to also publish release blog posts. In the future, release blog posts will be created based on the changelog near a release date.
+
+This was contributed by Shantanu (PR [16280](https://github.com/python/mypy/pull/16280)).
 
 #### Mypy Daemon Improvements
 
