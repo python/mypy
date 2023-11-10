@@ -949,7 +949,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             for item in actual.items:
                 if isinstance(item, UnpackType):
                     unpacked = get_proper_type(item.type)
-                    if isinstance(unpacked, (TypeVarType, TypeVarTupleType)):
+                    if isinstance(unpacked, TypeVarTupleType):
                         # Cannot infer anything for T from [T, ...] <: *Ts
                         continue
                     assert (
