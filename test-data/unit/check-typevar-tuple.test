@@ -2229,9 +2229,9 @@ reveal_type(baz(*keys, 1))  # N: Revealed type is "builtins.int"
 [case testVariadicTupleContextNoCrash]
 from typing import Tuple, Unpack
 
-x: Tuple[int, *Tuple[int, ...]] = ()  # E: Incompatible types in assignment (expression has type "Tuple[()]", variable has type "Tuple[int, Unpack[Tuple[int, ...]]]")
-y: Tuple[int, *Tuple[int, ...]] = (1, 2)
-z: Tuple[int, *Tuple[int, ...]] = (1,)
-w: Tuple[int, *Tuple[int, ...]] = (1, *[2, 3, 4])
-t: Tuple[int, *Tuple[int, ...]] = (1, *(2, 3, 4))
+x: Tuple[int, Unpack[Tuple[int, ...]]] = ()  # E: Incompatible types in assignment (expression has type "Tuple[()]", variable has type "Tuple[int, Unpack[Tuple[int, ...]]]")
+y: Tuple[int, Unpack[Tuple[int, ...]]] = (1, 2)
+z: Tuple[int, Unpack[Tuple[int, ...]]] = (1,)
+w: Tuple[int, Unpack[Tuple[int, ...]]] = (1, *[2, 3, 4])
+t: Tuple[int, Unpack[Tuple[int, ...]]] = (1, *(2, 3, 4))
 [builtins fixtures/tuple.pyi]
