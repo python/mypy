@@ -33,7 +33,14 @@ foo(name="x", age=1)  # Ok
 foo(name=1)  # Error
 ```
 
-Refer to [PEP 692](https://peps.python.org/pep-0692/) for the details.
+The definition of `foo` above is equivalent to the one below, with keyword-only arguments `name` and `age`:
+
+```
+def foo(*, name: str, age: int) -> None:
+    ...
+```
+
+Refer to [PEP 692](https://peps.python.org/pep-0692/) for more information. Note that unlike in the current version of the PEP, mypy always treats signatures with `Unpack[SomeTypedDict]` as equivalent to their expanded forms with explicit keyword arguments, and there aren't special type checking rules for TypedDict arguments.
 
 This was contributed by Ivan Levkivskyi back in 2022 ([PR 13471](https://github.com/python/mypy/pull/13471)).
 
@@ -94,6 +101,14 @@ def f(t: tuple[int, int] | tuple[int, int, int]) -> None:
         a, b = t   # Ok
     ...
 ```
+
+This feature was contributed by Ivan Levkivskyi (PR [16237](https://github.com/python/mypy/pull/16237)).
+
+#### More Precise Tuple Lenghts (Experimental)
+
+Mypy supports experimental, more precise checking of tuple type lengths through `--enable-incomplete-feature=PreciseTupleTypes`. Refer to the [documentation](https://mypy.readthedocs.io/en/latest/command_line.html#enabling-incomplete-experimental-features) for more information.
+
+More generally, we are planning to use `--enable-incomplete-feature` to introduce experimental features that would benefit from community feedback.
 
 This feature was contributed by Ivan Levkivskyi (PR [16237](https://github.com/python/mypy/pull/16237)).
 
