@@ -4902,7 +4902,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return len([e for e in expr.items if not isinstance(e, StarExpr)]) <= len(ctx.items)
         # For variadic context, the only easy case is when structure matches exactly.
         # TODO: try using tuple type context in more cases.
-        if len([e for e in expr.items if not isinstance(e, StarExpr)]) != 1:
+        if len([e for e in expr.items if isinstance(e, StarExpr)]) != 1:
             return False
         expr_star_index = next(i for i, lv in enumerate(expr.items) if isinstance(lv, StarExpr))
         return len(expr.items) == len(ctx.items) and ctx_unpack_index == expr_star_index
@@ -4941,6 +4941,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if type_context_items is not None:
             unpack_in_context = find_unpack_in_list(type_context_items) is not None
         seen_unpack_in_items = False
+        allow_precise_tuples = (
+            unpack_in_context or PRECISE_TUPLE_TYPES in self.chk.options.enable_incomplete_feature
+        )
 
         # Infer item types.  Give up if there's a star expression
         # that's not a Tuple.
@@ -4981,10 +4984,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         # result in an error later, just do something predictable here.
                         j += len(tt.items)
                 else:
-                    if (
-                        PRECISE_TUPLE_TYPES in self.chk.options.enable_incomplete_feature
-                        and not seen_unpack_in_items
-                    ):
+                    if allow_precise_tuples and not seen_unpack_in_items:
                         # Handle (x, *y, z), where y is e.g. tuple[Y, ...].
                         if isinstance(tt, Instance) and self.chk.type_is_iterable(tt):
                             item_type = self.chk.iterable_item_type(tt, e)
