@@ -1789,6 +1789,24 @@ def test(a: Container[Any], b: Container[int], c: Container[str]):
     reveal_type(build(b, c))  # N: Revealed type is "__main__.Array[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
 
+[case testTypeVarTupleOverloadArbitraryLength]
+from typing import Any, Tuple, TypeVar, TypeVarTuple, Unpack, overload
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+@overload
+def add(self: Tuple[Unpack[Ts]], other: Tuple[T]) -> Tuple[Unpack[Ts], T]:
+    ...
+@overload
+def add(self: Tuple[T, ...], other: Tuple[T, ...]) -> Tuple[T, ...]:
+    ...
+def add(self: Any, other: Any) -> Any:
+    ...
+def test(a: Tuple[int, str], b: Tuple[bool], c: Tuple[bool, ...]):
+    reveal_type(add(a, b))  # N: Revealed type is "Tuple[builtins.int, builtins.str, builtins.bool]"
+    reveal_type(add(b, c))  # N: Revealed type is "builtins.tuple[builtins.bool, ...]"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeVarTupleIndexOldStyleNonNormalizedAndNonLiteral]
 from typing import Any, Tuple
 from typing_extensions import Unpack
