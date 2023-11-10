@@ -52,6 +52,7 @@ TypeVarTuple was implemented by Jared Hance and Ivan Levkivskyi over several myp
 
 Changes included in this release:
 
+ * Fix handling of tuple type context with unpacks (Ivan Levkivskyi, PR [16444](https://github.com/python/mypy/pull/16444))
  * Handle TypeVarTuples when checking overload constraints (robjhornby, PR [16428](https://github.com/python/mypy/pull/16428))
  * Enable Unpack/TypeVarTuple support (Ivan Levkivskyi, PR [16354](https://github.com/python/mypy/pull/16354))
  * Fix crash on unpack call special-casing (Ivan Levkivskyi, PR [16381](https://github.com/python/mypy/pull/16381))
