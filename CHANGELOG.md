@@ -103,7 +103,7 @@ def f(t: tuple[int, int] | tuple[int, int, int]) -> None:
 
 This feature was contributed by Ivan Levkivskyi (PR [16237](https://github.com/python/mypy/pull/16237)).
 
-#### More Precise Tuple Lenghts (Experimental)
+#### More Precise Tuple Lengths (Experimental)
 
 Mypy supports experimental, more precise checking of tuple type lengths through `--enable-incomplete-feature=PreciseTupleTypes`. Refer to the [documentation](https://mypy.readthedocs.io/en/latest/command_line.html#enabling-incomplete-experimental-features) for more information.
 
