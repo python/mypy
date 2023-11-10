@@ -55,6 +55,15 @@ MISSING: typing_extensions.Final = Missing()
 T = TypeVar("T")
 MaybeMissing: typing_extensions.TypeAlias = Union[T, Missing]
 
+class Unrepresentable:
+    """Marker object for unrepresentable parameter defaults."""
+    def __repr__(self) -> str:
+        return "<unrepresentable>"
+
+
+UNREPRESENTABLE: typing_extensions.Final = Unrepresentable()
+
+
 _formatter: typing_extensions.Final = FancyFormatter(sys.stdout, sys.stderr, False)
 
 
@@ -658,10 +667,7 @@ def _verify_arg_default_value(
                 if (
                     stub_default is not UNKNOWN
                     and stub_default is not ...
-                    # We use "..." as a hacky representation for "<unrepresentable>"
-                    # defaults on builtins, so ignore those. "..." is unlikely to be used
-                    # as a real default.
-                    and runtime_arg.default is not ...
+                    and runtime_arg.default is not UNREPRESENTABLE
                     and (
                         stub_default != runtime_arg.default
                         # We want the types to match exactly, e.g. in case the stub has
@@ -1455,7 +1461,14 @@ def safe_inspect_signature(runtime: Any) -> inspect.Signature | None:
                 # https://github.com/python/cpython/issues/87233
                 sig = runtime.__text_signature__.replace("<unrepresentable>", "...")
                 sig = inspect._signature_fromstr(inspect.Signature, runtime, sig)  # type: ignore[attr-defined]
-                return sig  # type: ignore[no-any-return]
+                assert isinstance(sig, inspect.Signature)
+                new_params = [
+                    parameter.replace(default=UNREPRESENTABLE)
+                    if parameter.default is ...
+                    else parameter
+                    for parameter in sig.parameters.values()
+                ]
+                return sig.replace(parameters=new_params)
             else:
                 raise
     except Exception:

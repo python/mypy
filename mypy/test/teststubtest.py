@@ -429,7 +429,10 @@ class StubtestUnit(unittest.TestCase):
         # Simulate "<unrepresentable>"
         yield Case(
             stub="def f11(text: object = None) -> None: ...",
-            runtime="def f11(text = ...): pass",
+            runtime="""
+            def f11(text=None) -> None: pass
+            f11.__text_signature__ = "(text=<unrepresentable>)"
+            """,
             error=None,
         )
 
