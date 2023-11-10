@@ -45,6 +45,7 @@ TypeVarTuple was implemented by Jared Hance and Ivan Levkivskyi over several myp
 
 Changes included in this release:
 
+ * Handle TypeVarTuples when checking overload constraints (robjhornby, PR [16428](https://github.com/python/mypy/pull/16428))
  * Enable Unpack/TypeVarTuple support (Ivan Levkivskyi, PR [16354](https://github.com/python/mypy/pull/16354))
  * Fix crash on unpack call special-casing (Ivan Levkivskyi, PR [16381](https://github.com/python/mypy/pull/16381))
  * Some final touches for variadic types support (Ivan Levkivskyi, PR [16334](https://github.com/python/mypy/pull/16334))
@@ -175,6 +176,7 @@ This was contributed by Shantanu (PR [16280](https://github.com/python/mypy/pull
 
 #### Other Notable Changes and Fixes
 
+ * Fix type narrowing in lambda expressions (Ivan Levkivskyi, PR [16407](https://github.com/python/mypy/pull/16407))
  * Avoid importing from `setuptools._distutils` (Shantanu, PR [16348](https://github.com/python/mypy/pull/16348))
  * Delete recursive aliases flags (Ivan Levkivskyi, PR [16346](https://github.com/python/mypy/pull/16346))
  * Properly use proper subtyping for callables (Ivan Levkivskyi, PR [16343](https://github.com/python/mypy/pull/16343))
