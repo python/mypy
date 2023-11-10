@@ -55,8 +55,10 @@ MISSING: typing_extensions.Final = Missing()
 T = TypeVar("T")
 MaybeMissing: typing_extensions.TypeAlias = Union[T, Missing]
 
+
 class Unrepresentable:
     """Marker object for unrepresentable parameter defaults."""
+
     def __repr__(self) -> str:
         return "<unrepresentable>"
 
