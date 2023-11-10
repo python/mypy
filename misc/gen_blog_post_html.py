@@ -23,11 +23,12 @@ def format_lists(h: str) -> str:
     a = h.splitlines()
     r = []
     i = 0
+    bullets = ('- ', '* ', ' * ')
     while i < len(a):
-        if a[i].startswith('- '):
-            r.append('<ul>')
-            while i < len(a) and a[i].startswith('- '):
-                r.append('<li>%s' % a[i][2:])
+        if a[i].startswith(bullets):
+            r.append('<p><ul>')
+            while i < len(a) and a[i].startswith(bullets):
+                r.append('<li>%s' % a[i][2:].lstrip())
                 i += 1
             r.append('</ul>')
         else:
@@ -41,14 +42,21 @@ def format_code(h: str) -> str:
     r = []
     i = 0
     while i < len(a):
-        if a[i].startswith('    '):
+        if a[i].startswith('    ') or a[i].startswith('```'):
+            indent = a[i].startswith('    ')
+            if not indent:
+                i += 1
             r.append('<pre>')
-            while i < len(a) and a[i].startswith('    '):
+            while i < len(a) and ((indent and a[i].startswith('    ')) or (not indent and not a[i].startswith('```'))):
                 # Undo &gt; and &lt;
                 line = a[i].replace('&gt;', '>').replace('&lt;', '<')
+                if not indent:
+                    line = '    ' + line
                 r.append(html.escape(line))
                 i += 1
             r.append('</pre>')
+            if not indent and a[i].startswith('```'):
+                i += 1
         else:
             r.append(a[i])
             i += 1
@@ -69,10 +77,10 @@ def convert(src: str) -> str:
     h = re.sub(r'>', '&gt;', h)
 
     # Title
-    h = re.sub(r'(?:# )?(?:Blog post: +)?(Mypy .*? Released)', r'<h1>\1</h1>', h)
+    h = re.sub(r'^## (Mypy [0-9.]+)', r'<h1>\1 Released</h1>', h, flags=re.MULTILINE)
 
     # Subheadings
-    h = re.sub(r'\n## ([A-Z`].*)\n', r'\n<h2>\1</h2>\n', h)
+    h = re.sub(r'\n#### ([A-Z`].*)\n', r'\n<h2>\1</h2>\n', h)
 
     # Sub-subheadings
     h = re.sub(r'\n\*\*([A-Z_`].*)\*\*\n', r'\n<h3>\1</h3>\n', h)
