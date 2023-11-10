@@ -176,7 +176,7 @@ This was contributed by Shantanu (PR [16280](https://github.com/python/mypy/pull
 
 #### Other Notable Changes and Fixes
 
- * Fix type narrowing in lambda expressions (Ivan Levkivskyi, PR [16407](https://github.com/python/mypy/pull/16407))
+ * Propagate narrowed types to lambda expressions (Ivan Levkivskyi, PR [16407](https://github.com/python/mypy/pull/16407))
  * Avoid importing from `setuptools._distutils` (Shantanu, PR [16348](https://github.com/python/mypy/pull/16348))
  * Delete recursive aliases flags (Ivan Levkivskyi, PR [16346](https://github.com/python/mypy/pull/16346))
  * Properly use proper subtyping for callables (Ivan Levkivskyi, PR [16343](https://github.com/python/mypy/pull/16343))
