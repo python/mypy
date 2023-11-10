@@ -3404,21 +3404,18 @@ T = TypeVar('T')
 
 class Meta(type): ...
 
-class WithMetaKeyword(TypedDict, metaclass=Meta):  # E: "TypedDict" cannot have a metaclass
+class WithMetaKeyword(TypedDict, metaclass=Meta):  # E: "TypedDict" class definition cannot have keywords other than "total", got: "metaclass"
     ...
 
-class GenericWithMetaKeyword(TypedDict, Generic[T], metaclass=Meta):  # E: "TypedDict" cannot have a metaclass
-    ...
-
-class PositionOfErrorIsPrecise(
-    TypedDict,
-    metaclass=Meta,  # E: "TypedDict" cannot have a metaclass
-):
+class GenericWithMetaKeyword(TypedDict, Generic[T], metaclass=Meta):  # E: "TypedDict" class definition cannot have keywords other than "total", got: "metaclass"
     ...
 
 # We still don't allow this, because the implementation is much easier
 # and it does not make any practical sense to do it:
-class WithTypeMeta(TypedDict, metaclass=type):  # E: "TypedDict" cannot have a metaclass
+class WithTypeMeta(TypedDict, metaclass=type):  # E: "TypedDict" class definition cannot have keywords other than "total", got: "metaclass"
+    ...
+
+class OtherKeywords(TypedDict, a=1, b=2, c=3, total=True):  # E: "TypedDict" class definition cannot have keywords other than "total", got: "a, b, c, total"
     ...
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]

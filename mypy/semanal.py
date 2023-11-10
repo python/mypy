@@ -1745,8 +1745,6 @@ class SemanticAnalyzer(
             if info is None:
                 self.mark_incomplete(defn.name, defn)
             else:
-                if defn.keywords and "metaclass" in defn.keywords:
-                    self.fail('"TypedDict" cannot have a metaclass', defn.keywords["metaclass"])
                 self.prepare_class_def(defn, info, custom_names=True)
             return True
         return False

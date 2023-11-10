@@ -323,6 +323,12 @@ class TypedDictAnalyzer:
         total: bool | None = True
         if "total" in defn.keywords:
             total = require_bool_literal_argument(self.api, defn.keywords["total"], "total", True)
+        if defn.keywords and defn.keywords.keys() != {"total"}:
+            msg = (
+                '"TypedDict" class definition cannot have keywords '
+                'other than "total", got: "{}"'
+            )
+            self.fail(msg.format(", ".join(defn.keywords)), defn)
         required_keys = {
             field
             for (field, t) in zip(fields, types)
