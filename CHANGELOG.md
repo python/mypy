@@ -4,13 +4,11 @@
 
 Stubgen will now include `__all__` in its output if it is in the input file (PR [16356](https://github.com/python/mypy/pull/16356)).
 
-## Mypy 1.7 [unreleased]
+## Mypy 1.7
 
 We’ve just uploaded mypy 1.7 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)). Mypy is a static type checker for Python. This release includes new features, performance improvements and bug fixes. You can install it as follows:
 
-```
     python3 -m pip install -U mypy
-```
 
 You can read the full documentation for this release on [Read the Docs](http://mypy.readthedocs.io).
 
@@ -42,7 +40,7 @@ def foo(*, name: str, age: int) -> None:
 
 Refer to [PEP 692](https://peps.python.org/pep-0692/) for more information. Note that unlike in the current version of the PEP, mypy always treats signatures with `Unpack[SomeTypedDict]` as equivalent to their expanded forms with explicit keyword arguments, and there aren't special type checking rules for TypedDict arguments.
 
-This was contributed by Ivan Levkivskyi back in 2022 ([PR 13471](https://github.com/python/mypy/pull/13471)).
+This was contributed by Ivan Levkivskyi back in 2022 (PR [13471](https://github.com/python/mypy/pull/13471)).
 
 #### TypeVarTuple Support Enabled (Experimental)
 
