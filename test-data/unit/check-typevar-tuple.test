@@ -2225,3 +2225,11 @@ bar(*keys, 1)  # OK
 reveal_type(baz(keys, 1))  # N: Revealed type is "builtins.object"
 reveal_type(baz(*keys, 1))  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
+
+[case testVariadicTupleContextNoCrash]
+from typing import Tuple, Unpack
+
+x: Tuple[int, *Tuple[int, ...]] = ()  # E: Incompatible types in assignment (expression has type "Tuple[()]", variable has type "Tuple[int, Unpack[Tuple[int, ...]]]")
+y: Tuple[int, *Tuple[int, ...]] = (1, 2)
+z: Tuple[int, *Tuple[int, ...]] = (1,)
+[builtins fixtures/tuple.pyi]

@@ -4902,7 +4902,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return len([e for e in expr.items if not isinstance(e, StarExpr)]) <= len(ctx.items)
         # For variadic context, the only easy case is when structure matches exactly.
         # TODO: try using tuple type context in more cases.
-        if len([e for e in expr.items if not isinstance(e, StarExpr)]) != 1:
+        if len([e for e in expr.items if isinstance(e, StarExpr)]) != 1:
             return False
         expr_star_index = next(i for i, lv in enumerate(expr.items) if isinstance(lv, StarExpr))
         return len(expr.items) == len(ctx.items) and ctx_unpack_index == expr_star_index
