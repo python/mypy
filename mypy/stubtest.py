@@ -1374,7 +1374,6 @@ IGNORABLE_CLASS_DUNDERS: typing_extensions.Final = frozenset(
         "__annotations__",
         "__text_signature__",
         "__weakref__",
-        "__del__",  # Only ever called when an object is being deleted, who cares?
         "__hash__",
         "__getattr__",  # resulting behaviour might be typed explicitly
         "__setattr__",  # defining this on a class can cause worse type checking
