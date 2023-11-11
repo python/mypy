@@ -238,10 +238,8 @@ section of the command line docs.
     Crafting a single regular expression that excludes multiple files while remaining
     human-readable can be a challenge. The above example demonstrates one approach.
     ``(?x)`` enables the ``VERBOSE`` flag for the subsequent regular expression, which
-    `ignores most whitespace and supports comments`__. The above is equivalent to:
-    ``(^one\.py$|two\.pyi$|^three\.)``.
-
-    .. __: https://docs.python.org/3/library/re.html#re.X
+    :py:data:`ignores most whitespace and supports comments <re.VERBOSE>`.
+    The above is equivalent to: ``(^one\.py$|two\.pyi$|^three\.)``.
 
     For more details, see :option:`--exclude <mypy --exclude>`.
 

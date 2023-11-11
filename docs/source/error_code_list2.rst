@@ -524,8 +524,7 @@ that only existed during type-checking.
 In runtime it fails with expected ``NameError``,
 which can cause real problem in production, hidden from mypy.
 
-But, in Python3.11 ``reveal_type``
-`was added to typing.py <https://docs.python.org/3/library/typing.html#typing.reveal_type>`_.
+But, in Python3.11 :py:func:`typing.reveal_type` was added.
 ``typing_extensions`` ported this helper to all supported Python versions.
 
 Now users can actually import ``reveal_type`` to make the runtime code safe.
