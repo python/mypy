@@ -1215,6 +1215,12 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> nodes.FuncItem 
     def apply_decorator_to_funcitem(
         decorator: nodes.Expression, func: nodes.FuncItem
     ) -> nodes.FuncItem | None:
+        if (
+            isinstance(decorator, nodes.CallExpr)
+            and isinstance(decorator.callee, nodes.RefExpr)
+            and decorator.callee.fullname in mypy.types.DEPRECATED_TYPE_NAMES
+        ):
+            return func
         if not isinstance(decorator, nodes.RefExpr):
             return None
         if not decorator.fullname:
@@ -1223,6 +1229,7 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> nodes.FuncItem 
         if (
             decorator.fullname in ("builtins.staticmethod", "abc.abstractmethod")
             or decorator.fullname in mypy.types.OVERLOAD_NAMES
+            or decorator.fullname in mypy.types.FINAL_DECORATOR_NAMES
         ):
             return func
         if decorator.fullname == "builtins.classmethod":
