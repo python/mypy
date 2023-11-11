@@ -72,6 +72,8 @@ class Tuple(Sequence[_T_co]): ...
 class NamedTuple(tuple[Any, ...]): ...
 def overload(func: _T) -> _T: ...
 def type_check_only(func: _T) -> _T: ...
+def deprecated(__msg: str) -> Callable[[_T], _T]: ...
+def final(func: _T) -> _T: ...
 """
 
 stubtest_builtins_stub = """
@@ -629,6 +631,23 @@ class StubtestUnit(unittest.TestCase):
             def f5(__b: str) -> str: ...
             """,
             runtime="def f5(x, /): pass",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            from typing import deprecated, final
+            class Foo:
+                @overload
+                @final
+                def f6(self, __a: int) -> int: ...
+                @overload
+                @deprecated("evil")
+                def f6(self, __b: str) -> str: ...
+            """,
+            runtime="""
+            class Foo:
+                def f6(self, x, /): pass
+            """,
             error=None,
         )
 

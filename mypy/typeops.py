@@ -244,15 +244,15 @@ def map_type_from_supertype(typ: Type, sub_info: TypeInfo, super_info: TypeInfo)
     return expand_type_by_instance(typ, inst_type)
 
 
-def supported_self_type(typ: ProperType) -> bool:
+def supported_self_type(typ: ProperType, allow_callable: bool = True) -> bool:
     """Is this a supported kind of explicit self-types?
 
-    Currently, this means a X or Type[X], where X is an instance or
+    Currently, this means an X or Type[X], where X is an instance or
     a type variable with an instance upper bound.
     """
     if isinstance(typ, TypeType):
         return supported_self_type(typ.item)
-    if isinstance(typ, CallableType):
+    if allow_callable and isinstance(typ, CallableType):
         # Special case: allow class callable instead of Type[...] as cls annotation,
         # as well as callable self for callback protocols.
         return True
@@ -306,7 +306,11 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
     self_param_type = get_proper_type(func.arg_types[0])
 
     variables: Sequence[TypeVarLikeType]
-    if func.variables and supported_self_type(self_param_type):
+    # Having a def __call__(self: Callable[...], ...) can cause infinite recursion. Although
+    # this special-casing looks not very principled, there is nothing meaningful we can infer
+    # from such definition, since it is inherently indefinitely recursive.
+    allow_callable = func.name is None or not func.name.startswith("__call__ of")
+    if func.variables and supported_self_type(self_param_type, allow_callable=allow_callable):
         from mypy.infer import infer_type_arguments
 
         if original_type is None:

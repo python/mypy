@@ -482,6 +482,37 @@ Example:
         def g(self, y: int) -> None:
             pass
 
+.. _code-mutable-override:
+
+Check that overrides of mutable attributes are safe
+---------------------------------------------------
+
+This will enable the check for unsafe overrides of mutable attributes. For
+historical reasons, and because this is a relatively common pattern in Python,
+this check is not enabled by default. The example below is unsafe, and will be
+flagged when this error code is enabled:
+
+.. code-block:: python
+
+    from typing import Any
+
+    class C:
+        x: float
+        y: float
+        z: float
+
+    class D(C):
+        x: int  # Error: Covariant override of a mutable attribute
+                # (base class "C" defined the type as "float",
+                # expression has type "int")  [mutable-override]
+        y: float  # OK
+        z: Any  # OK
+
+    def f(c: C) -> None:
+        c.x = 1.1
+    d = D()
+    f(d)
+    d.x >> 1  # This will crash at runtime, because d.x is now float, not an int
 
 .. _code-unimported-reveal:
 
@@ -493,8 +524,7 @@ that only existed during type-checking.
 In runtime it fails with expected ``NameError``,
 which can cause real problem in production, hidden from mypy.
 
-But, in Python3.11 ``reveal_type``
-`was added to typing.py <https://docs.python.org/3/library/typing.html#typing.reveal_type>`_.
+But, in Python3.11 :py:func:`typing.reveal_type` was added.
 ``typing_extensions`` ported this helper to all supported Python versions.
 
 Now users can actually import ``reveal_type`` to make the runtime code safe.

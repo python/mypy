@@ -63,6 +63,9 @@ INCOMPATIBLE_TYPES: Final = ErrorMessage("Incompatible types")
 INCOMPATIBLE_TYPES_IN_ASSIGNMENT: Final = ErrorMessage(
     "Incompatible types in assignment", code=codes.ASSIGNMENT
 )
+COVARIANT_OVERRIDE_OF_MUTABLE_ATTRIBUTE: Final = ErrorMessage(
+    "Covariant override of a mutable attribute", code=codes.MUTABLE_OVERRIDE
+)
 INCOMPATIBLE_TYPES_IN_AWAIT: Final = ErrorMessage('Incompatible types in "await"')
 INCOMPATIBLE_REDEFINITION: Final = ErrorMessage("Incompatible redefinition")
 INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER: Final = (
