@@ -1,7 +1,7 @@
 import _typeshed
 from typing import (
     Generic, Iterator, Iterable, Mapping, Optional, Sequence, Tuple,
-    TypeVar, Union, overload
+    TypeVar, Union, overload,
 )
 from typing_extensions import override
 
