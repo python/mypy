@@ -1570,13 +1570,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         yield
         self.tvar_scope = old_scope
 
-    def find_type_var_likes(self, t: Type, include_callables: bool = True) -> TypeVarLikeList:
-        return t.accept(
-            TypeVarLikeQuery(self.api, self.tvar_scope, include_callables=include_callables)
-        )
+    def find_type_var_likes(self, t: Type) -> TypeVarLikeList:
+        visitor = FindTypeVarVisitor(self.api, self.tvar_scope)
+        t.accept(visitor)
+        return visitor.type_var_likes
 
-    def infer_type_variables(self, type: CallableType) -> tuple[
-            list[tuple[str, TypeVarLikeExpr]], bool]:
+    def infer_type_variables(
+        self, type: CallableType
+    ) -> tuple[list[tuple[str, TypeVarLikeExpr]], bool]:
         """Infer type variables from a callable.
 
         Return tuple with these items:
@@ -2058,67 +2059,6 @@ def flatten_tvars(lists: list[list[T]]) -> list[T]:
     return result
 
 
-class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
-    """Find TypeVar and ParamSpec references in an unbound type."""
-
-    def __init__(
-        self,
-        api: SemanticAnalyzerCoreInterface,
-        scope: TypeVarLikeScope,
-        *,
-        include_callables: bool = True,
-    ) -> None:
-        super().__init__(flatten_tvars)
-        self.api = api
-        self.scope = scope
-        self.include_callables = include_callables
-        # Only include type variables in type aliases args. This would be anyway
-        # that case if we expand (as target variables would be overridden with args)
-        # and it may cause infinite recursion on invalid (diverging) recursive aliases.
-        self.skip_alias_target = True
-
-    def _seems_like_callable(self, type: UnboundType) -> bool:
-        if not type.args:
-            return False
-        return isinstance(type.args[0], (EllipsisType, TypeList, ParamSpecType))
-
-    def visit_unbound_type(self, t: UnboundType) -> TypeVarLikeList:
-        name = t.name
-        node = None
-        # Special case P.args and P.kwargs for ParamSpecs only.
-        if name.endswith("args"):
-            if name.endswith(".args") or name.endswith(".kwargs"):
-                base = ".".join(name.split(".")[:-1])
-                n = self.api.lookup_qualified(base, t)
-                if n is not None and isinstance(n.node, ParamSpecExpr):
-                    node = n
-                    name = base
-        if node is None:
-            node = self.api.lookup_qualified(name, t)
-        if (
-            node
-            and isinstance(node.node, TypeVarLikeExpr)
-            and self.scope.get_binding(node) is None
-        ):
-            assert isinstance(node.node, TypeVarLikeExpr)
-            return [(name, node.node)]
-        elif not self.include_callables and self._seems_like_callable(t):
-            return []
-        elif node and node.fullname in LITERAL_TYPE_NAMES:
-            return []
-        elif node and node.fullname in ANNOTATED_TYPE_NAMES and t.args:
-            # Don't query the second argument to Annotated for TypeVars
-            return self.query_types([t.args[0]])
-        else:
-            return super().visit_unbound_type(t)
-
-    def visit_callable_type(self, t: CallableType) -> TypeVarLikeList:
-        if self.include_callables:
-            return super().visit_callable_type(t)
-        else:
-            return []
-
-
 class DivergingAliasDetector(TrivialSyntheticTypeTranslator):
     """See docstring of detect_diverging_alias() for details."""
 
@@ -2389,14 +2329,17 @@ class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
             node = self.api.lookup_qualified(name, t)
         if node and node.fullname in SELF_TYPE_NAMES:
             self.has_self_type = True
-        if (node
+        if (
+            node
             and isinstance(node.node, TypeVarLikeExpr)
-                and self.scope.get_binding(node) is None):
+            and self.scope.get_binding(node) is None
+        ):
             if (name, node.node) not in self.type_var_likes:
                 self.type_var_likes.append((name, node.node))
         elif not self.include_callables and self._seems_like_callable(t):
-            if find_self_type(t, lambda name: self.api.lookup_qualified(name, t,
-                                                                        suppress_errors=True)):
+            if find_self_type(
+                t, lambda name: self.api.lookup_qualified(name, t, suppress_errors=True)
+            ):
                 self.has_self_type = True
             return
         elif node and node.fullname in LITERAL_TYPE_NAMES:
@@ -2482,7 +2425,7 @@ class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
         return self.process_types(t.args)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
-        # Skip type aliases already visited types to avoid infinite recursion.
+        # Skip type aliases in already visited types to avoid infinite recursion.
         if self.seen_aliases is None:
             self.seen_aliases = set()
         elif t in self.seen_aliases:
