@@ -3159,6 +3159,16 @@ class D(A, B):
     def f(self, z: int) -> str: pass  # E: Method "f" is not using @override but is overriding a method in class "__main__.A"
 [typing fixtures/typing-override.pyi]
 
+[case testExplicitOverrideAllowedForPrivate]
+# flags: --enable-error-code explicit-override --python-version 3.12
+
+class B:
+    def __f(self, y: int) -> str: pass
+
+class C(B):
+    def __f(self, y: int) -> str: pass  # OK
+[typing fixtures/typing-override.pyi]
+
 [case testCallableProperty]
 from typing import Callable
 
