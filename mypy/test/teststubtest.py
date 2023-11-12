@@ -2073,6 +2073,28 @@ class StubtestUnit(unittest.TestCase):
             runtime="class A2: ...",
             error="A2",
         )
+        # The same is true for NamedTuples and TypedDicts:
+        yield Case(
+            stub="from typing_extensions import NamedTuple, TypedDict",
+            runtime="from typing_extensions import NamedTuple, TypedDict",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            @type_check_only
+            class NT1(NamedTuple): ...
+            """,
+            runtime="class NT1(NamedTuple): ...",
+            error="NT1",
+        )
+        yield Case(
+            stub="""
+            @type_check_only
+            class TD1(TypedDict): ...
+            """,
+            runtime="class TD1(TypedDict): ...",
+            error="TD1",
+        )
         # The same is true for functions:
         yield Case(
             stub="""
