@@ -1653,10 +1653,10 @@ def are_parameters_compatible(
         if not are_args_compatible(
             left_arg,
             right_arg,
-            ignore_pos_arg_names,
-            allow_partial_overlap,
             is_compat,
-            right.imprecise_arg_kinds,
+            ignore_pos_arg_names=ignore_pos_arg_names,
+            allow_partial_overlap=allow_partial_overlap,
+            allow_imprecise_kinds=right.imprecise_arg_kinds,
         ):
             return False
 
@@ -1681,9 +1681,9 @@ def are_parameters_compatible(
             if not are_args_compatible(
                 left_by_position,
                 right_by_position,
-                ignore_pos_arg_names,
-                allow_partial_overlap,
                 is_compat,
+                ignore_pos_arg_names=ignore_pos_arg_names,
+                allow_partial_overlap=allow_partial_overlap,
             ):
                 return False
             i += 1
@@ -1716,7 +1716,11 @@ def are_parameters_compatible(
                 continue
 
             if not are_args_compatible(
-                left_by_name, right_by_name, ignore_pos_arg_names, allow_partial_overlap, is_compat
+                left_by_name,
+                right_by_name,
+                is_compat,
+                ignore_pos_arg_names=ignore_pos_arg_names,
+                allow_partial_overlap=allow_partial_overlap,
             ):
                 return False
 
@@ -1755,9 +1759,10 @@ def are_parameters_compatible(
 def are_args_compatible(
     left: FormalArgument,
     right: FormalArgument,
+    is_compat: Callable[[Type, Type], bool],
+    *,
     ignore_pos_arg_names: bool,
     allow_partial_overlap: bool,
-    is_compat: Callable[[Type, Type], bool],
     allow_imprecise_kinds: bool = False,
 ) -> bool:
     if left.required and right.required:

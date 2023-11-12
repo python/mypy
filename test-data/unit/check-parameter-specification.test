@@ -2114,7 +2114,7 @@ reveal_type(submit(  # N: Revealed type is "__main__.Result"
     backend="asyncio",
 ))
 submit(
-    run,  # E: Argument 1 to "submit" has incompatible type "Callable[[Callable[[], T_Retval], VarArg(object), DefaultNamedArg(str, 'backend')], T_Retval]"; expected "Callable[[Callable[[], Result], int], Result]"
+    run,  # E: Argument 1 to "submit" has incompatible type "Callable[[Callable[[], R], VarArg(object), DefaultNamedArg(str, 'backend')], R]"; expected "Callable[[Callable[[], Result], int], Result]"
     run_portal,
     backend=int(),
 )
