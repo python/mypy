@@ -1879,6 +1879,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             found_method_base_classes
             and not defn.is_explicit_override
             and defn.name not in ("__init__", "__new__")
+            and not is_private(defn.name)
         ):
             self.msg.explicit_override_decorator_missing(
                 defn.name, found_method_base_classes[0].fullname, context or defn
@@ -1921,7 +1922,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             base_attr = base.names.get(name)
             if base_attr:
                 # First, check if we override a final (always an error, even with Any types).
-                if is_final_node(base_attr.node):
+                if is_final_node(base_attr.node) and not is_private(name):
                     self.msg.cant_override_final(name, base.name, defn)
                 # Second, final can't override anything writeable independently of types.
                 if defn.is_final:
@@ -2679,7 +2680,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             ok = True
         # Final attributes can never be overridden, but can override
         # non-final read-only attributes.
-        if is_final_node(second.node):
+        if is_final_node(second.node) and not is_private(name):
             self.msg.cant_override_final(name, base2.name, ctx)
         if is_final_node(first.node):
             self.check_if_final_var_override_writable(name, second.node, ctx)
@@ -3292,6 +3293,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         Other situations are checked in `check_final()`.
         """
         if not isinstance(base_node, (Var, FuncBase, Decorator)):
+            return True
+        if is_private(node.name):
             return True
         if base_node.is_final and (node.is_final or not isinstance(base_node, Var)):
             # Give this error only for explicit override attempt with `Final`, or
