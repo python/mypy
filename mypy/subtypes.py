@@ -1651,7 +1651,12 @@ def are_parameters_compatible(
                 continue
             return False
         if not are_args_compatible(
-            left_arg, right_arg, ignore_pos_arg_names, allow_partial_overlap, is_compat
+            left_arg,
+            right_arg,
+            ignore_pos_arg_names,
+            allow_partial_overlap,
+            is_compat,
+            right.imprecise_arg_kinds,
         ):
             return False
 
@@ -1735,6 +1740,7 @@ def are_parameters_compatible(
             and right_by_name != right_by_pos
             and (right_by_pos.required or right_by_name.required)
             and strict_concatenate_check
+            and not right.imprecise_arg_kinds
         ):
             return False
 
@@ -1752,6 +1758,7 @@ def are_args_compatible(
     ignore_pos_arg_names: bool,
     allow_partial_overlap: bool,
     is_compat: Callable[[Type, Type], bool],
+    allow_imprecise_kinds: bool = False,
 ) -> bool:
     if left.required and right.required:
         # If both arguments are required allow_partial_overlap has no effect.
@@ -1779,7 +1786,7 @@ def are_args_compatible(
             return False
 
     # If right is at a specific position, left must have the same:
-    if is_different(left.pos, right.pos):
+    if is_different(left.pos, right.pos) and not allow_imprecise_kinds:
         return False
 
     # If right's argument is optional, left's must also be
