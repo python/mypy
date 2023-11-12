@@ -3161,7 +3161,6 @@ class D(A, B):
 
 [case testExplicitOverrideAllowedForPrivate]
 # flags: --enable-error-code explicit-override --python-version 3.12
-from typing import override
 
 class B:
     def __f(self, y: int) -> str: pass
