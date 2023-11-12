@@ -2105,7 +2105,9 @@ P = ParamSpec("P")
 
 def run(func: Callable[[], T_Retval], *args: object, backend: str = "asyncio") -> T_Retval:
     ...
-def run_portal(): ...
+
+class Result: ...
+def run_portal() -> Result: ...
 
 def submit(
     func: Callable[P, T_Retval],
@@ -2114,13 +2116,13 @@ def submit(
     **kwargs: P.kwargs,
 ) -> T_Retval: ...
 
-submit(
+reveal_type(submit(  # N: Revealed type is "__main__.Result"
     run,
     run_portal,
     backend="asyncio",
-)
+))
 submit(
-    run,  # E: Argument 1 to "submit" has incompatible type "Callable[[Callable[[], T_Retval], VarArg(object), DefaultNamedArg(str, 'backend')], T_Retval]"; expected "Callable[[Callable[[], Any], int], Any]"
+    run,  # E: Argument 1 to "submit" has incompatible type "Callable[[Callable[[], T_Retval], VarArg(object), DefaultNamedArg(str, 'backend')], T_Retval]"; expected "Callable[[Callable[[], Result], int], Result]"
     run_portal,
     backend=int(),
 )
