@@ -2100,21 +2100,13 @@ reveal_type(d(b, f2))  # N: Revealed type is "def (builtins.int)"
 from typing import Callable, TypeVar
 from typing_extensions import ParamSpec
 
-T_Retval = TypeVar("T_Retval")
+R = TypeVar("R")
 P = ParamSpec("P")
 
-def run(func: Callable[[], T_Retval], *args: object, backend: str = "asyncio") -> T_Retval:
-    ...
-
+def run(func: Callable[[], R], *args: object, backend: str = "asyncio") -> R: ...
 class Result: ...
 def run_portal() -> Result: ...
-
-def submit(
-    func: Callable[P, T_Retval],
-    /,
-    *args: P.args,
-    **kwargs: P.kwargs,
-) -> T_Retval: ...
+def submit(func: Callable[P, R], /, *args: P.args, **kwargs: P.kwargs) -> R: ...
 
 reveal_type(submit(  # N: Revealed type is "__main__.Result"
     run,
@@ -2132,12 +2124,10 @@ submit(
 from typing import Callable, TypeVar, Type
 from typing_extensions import ParamSpec
 
-ParamsT = ParamSpec("ParamsT")
+P= ParamSpec("P")
 T = TypeVar("T")
 
-def smoke_testable(
-    *args: ParamsT.args, **kwargs: ParamsT.kwargs
-) -> Callable[[Callable[ParamsT, T]], Type[T]]:
+def smoke_testable(*args: P.args, **kwargs: P.kwargs) -> Callable[[Callable[P, T]], Type[T]]:
     ...
 
 @smoke_testable(name="bob", size=512, flt=0.5)
