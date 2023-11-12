@@ -1877,9 +1877,9 @@ class SemanticAnalyzer(
     def analyze_class_decorator_common(
         self, defn: ClassDef, info: TypeInfo, decorator: Expression
     ) -> None:
-        """Common part for all class decorators.
+        """Common method for applying class decorators.
 
-        Including classes, typeddicts, and namedtuples.
+        Called on regular classes, typeddicts, and namedtuples.
         """
         if refers_to_fullname(decorator, FINAL_DECORATOR_NAMES):
             info.is_final = True
