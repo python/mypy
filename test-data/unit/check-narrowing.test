@@ -1910,3 +1910,16 @@ if len(x) == a:
 else:
     reveal_type(x)  # N: Revealed type is "Union[Tuple[builtins.int, builtins.int], Tuple[builtins.int, builtins.int, builtins.int]]"
 [builtins fixtures/len.pyi]
+
+[case testNarrowingLenUnionWithUnreachable]
+from typing import Union, Sequence
+
+def f(x: Union[int, Sequence[int]]) -> None:
+    if (
+        isinstance(x, tuple)
+        and len(x) == 2
+        and isinstance(x[0], int)
+        and isinstance(x[1], int)
+    ):
+        reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+[builtins fixtures/len.pyi]

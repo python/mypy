@@ -16,6 +16,7 @@ from mypy.subtypes import (
 from mypy.typeops import is_recursive_pair, make_simplified_union, tuple_fallback
 from mypy.types import (
     MYPYC_NATIVE_INT_NAMES,
+    TUPLE_LIKE_INSTANCE_NAMES,
     AnyType,
     CallableType,
     DeletedType,
@@ -936,7 +937,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             return TupleType(items, tuple_fallback(t))
         elif isinstance(self.s, Instance):
             # meet(Tuple[t1, t2, <...>], Tuple[s, ...]) == Tuple[meet(t1, s), meet(t2, s), <...>].
-            if self.s.type.fullname == "builtins.tuple" and self.s.args:
+            if self.s.type.fullname in TUPLE_LIKE_INSTANCE_NAMES and self.s.args:
                 return t.copy_modified(items=[meet_types(it, self.s.args[0]) for it in t.items])
             elif is_proper_subtype(t, self.s):
                 # A named tuple that inherits from a normal class
