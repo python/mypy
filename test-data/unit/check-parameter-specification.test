@@ -1687,9 +1687,18 @@ P = ParamSpec("P")
 T = TypeVar("T")
 
 def apply(fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> None: ...
+
 def test(x: int) -> int: ...
 apply(apply, test, x=42)  # OK
 apply(apply, test, 42)  # Also OK (but requires some special casing)
+apply(apply, test, "bad")  # E: Argument 1 to "apply" has incompatible type "Callable[[Callable[P, T], **P], None]"; expected "Callable[[Callable[[int], int], str], None]"
+
+def test2(x: int, y: str) -> None: ...
+apply(apply, test2, 42, "yes")
+apply(apply, test2, "no", 42)  # E: Argument 1 to "apply" has incompatible type "Callable[[Callable[P, T], **P], None]"; expected "Callable[[Callable[[int, str], None], str, int], None]"
+apply(apply, test2, x=42, y="yes")
+apply(apply, test2, y="yes", x=42)
+apply(apply, test2, y=42, x="no")  # E: Argument 1 to "apply" has incompatible type "Callable[[Callable[P, T], **P], None]"; expected "Callable[[Callable[[int, str], None], int, str], None]"
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecApplyPosVsNamedOptional]
@@ -2085,6 +2094,52 @@ reveal_type(d(a, f2))  # N: Revealed type is "def (i: builtins.int)"
 reveal_type(d(b, f1))  # E: Cannot infer type argument 1 of "d" \
                        # N: Revealed type is "def (*Any, **Any)"
 reveal_type(d(b, f2))  # N: Revealed type is "def (builtins.int)"
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecGenericWithNamedArg1]
+from typing import Callable, TypeVar
+from typing_extensions import ParamSpec
+
+R = TypeVar("R")
+P = ParamSpec("P")
+
+def run(func: Callable[[], R], *args: object, backend: str = "asyncio") -> R: ...
+class Result: ...
+def run_portal() -> Result: ...
+def submit(func: Callable[P, R], /, *args: P.args, **kwargs: P.kwargs) -> R: ...
+
+reveal_type(submit(  # N: Revealed type is "__main__.Result"
+    run,
+    run_portal,
+    backend="asyncio",
+))
+submit(
+    run,  # E: Argument 1 to "submit" has incompatible type "Callable[[Callable[[], R], VarArg(object), DefaultNamedArg(str, 'backend')], R]"; expected "Callable[[Callable[[], Result], int], Result]"
+    run_portal,
+    backend=int(),
+)
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecGenericWithNamedArg2]
+from typing import Callable, TypeVar, Type
+from typing_extensions import ParamSpec
+
+P= ParamSpec("P")
+T = TypeVar("T")
+
+def smoke_testable(*args: P.args, **kwargs: P.kwargs) -> Callable[[Callable[P, T]], Type[T]]:
+    ...
+
+@smoke_testable(name="bob", size=512, flt=0.5)
+class SomeClass:
+    def __init__(self, size: int, name: str, flt: float) -> None:
+        pass
+
+# Error message is confusing, but this is a known issue, see #4530.
+@smoke_testable(name=42, size="bad", flt=0.5)  # E: Argument 1 has incompatible type "Type[OtherClass]"; expected "Callable[[int, str, float], OtherClass]"
+class OtherClass:
+    def __init__(self, size: int, name: str, flt: float) -> None:
+        pass
 [builtins fixtures/paramspec.pyi]
 
 [case testInferenceAgainstGenericCallableUnionParamSpec]
