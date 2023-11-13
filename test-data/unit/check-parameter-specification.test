@@ -2086,3 +2086,25 @@ reveal_type(d(b, f1))  # E: Cannot infer type argument 1 of "d" \
                        # N: Revealed type is "def (*Any, **Any)"
 reveal_type(d(b, f2))  # N: Revealed type is "def (builtins.int)"
 [builtins fixtures/paramspec.pyi]
+
+[case testInferenceAgainstGenericCallableUnionParamSpec]
+from typing import Callable, TypeVar, List, Union
+from typing_extensions import ParamSpec
+
+T = TypeVar("T")
+P = ParamSpec("P")
+
+def dec(f: Callable[P, T]) -> Callable[P, List[T]]: ...
+@dec
+def func(arg: T) -> Union[T, str]:
+    ...
+reveal_type(func)  # N: Revealed type is "def [T] (arg: T`-1) -> builtins.list[Union[T`-1, builtins.str]]"
+reveal_type(func(42))  # N: Revealed type is "builtins.list[Union[builtins.int, builtins.str]]"
+
+def dec2(f: Callable[P, List[T]]) -> Callable[P, T]: ...
+@dec2
+def func2(arg: T) -> List[Union[T, str]]:
+    ...
+reveal_type(func2)  # N: Revealed type is "def [T] (arg: T`-1) -> Union[T`-1, builtins.str]"
+reveal_type(func2(42))  # N: Revealed type is "Union[builtins.int, builtins.str]"
+[builtins fixtures/paramspec.pyi]
