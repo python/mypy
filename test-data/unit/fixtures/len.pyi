@@ -10,7 +10,7 @@ class object:
 class type:
     def __init__(self, x) -> None: pass
 
-class tuple(Generic[T]):
+class tuple(Sequence[T]):
     def __len__(self) -> int: pass
 
 class list(Sequence[T]): pass

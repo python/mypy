@@ -3767,3 +3767,24 @@ def f(values: List[T]) -> T: ...
 x = foo(f([C()]))
 reveal_type(x)  # N: Revealed type is "__main__.C"
 [builtins fixtures/list.pyi]
+
+[case testInferenceAgainstGenericCallableUnion]
+from typing import Callable, TypeVar, List, Union
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+def dec(f: Callable[[S], T]) -> Callable[[S], List[T]]: ...
+@dec
+def func(arg: T) -> Union[T, str]:
+    ...
+reveal_type(func)  # N: Revealed type is "def [S] (S`1) -> builtins.list[Union[S`1, builtins.str]]"
+reveal_type(func(42))  # N: Revealed type is "builtins.list[Union[builtins.int, builtins.str]]"
+
+def dec2(f: Callable[[S], List[T]]) -> Callable[[S], T]: ...
+@dec2
+def func2(arg: T) -> List[Union[T, str]]:
+    ...
+reveal_type(func2)  # N: Revealed type is "def [S] (S`4) -> Union[S`4, builtins.str]"
+reveal_type(func2(42))  # N: Revealed type is "Union[builtins.int, builtins.str]"
+[builtins fixtures/list.pyi]
