@@ -161,9 +161,10 @@ async def x() -> None:
     value = 2
     async with ConMan() as f:
         value += f
+    assert value == 3, value
     async with ConManB() as f:
         value += f
-    assert value == 5
+    assert value == 5, value
 
 [typing fixtures/typing-full.pyi]
 [file driver.py]
