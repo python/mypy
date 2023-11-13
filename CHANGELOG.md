@@ -16,7 +16,7 @@ You can read the full documentation for this release on [Read the Docs](http://m
 
 Mypy now has support for using `Unpack[...]` with a TypedDict type to annotate `**kwargs` arguments enabled by default. Example:
 
-```
+```python
 # Or 'from typing_extensions import ...'
 from typing import TypedDict, Unpack
 
@@ -33,7 +33,7 @@ foo(name=1)  # Error
 
 The definition of `foo` above is equivalent to the one below, with keyword-only arguments `name` and `age`:
 
-```
+```python
 def foo(*, name: str, age: int) -> None:
     ...
 ```
@@ -94,7 +94,7 @@ The new type inference algorithm was contributed by Ivan Levkivskyi. PR [16345](
 
 Mypy now can narrow tuple types using `len()` checks. Example:
 
-```
+```python
 def f(t: tuple[int, int] | tuple[int, int, int]) -> None:
     if len(t) == 2:
         a, b = t   # Ok
