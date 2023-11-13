@@ -707,7 +707,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         # remove the class itself
         all_bases = all_bases[1:]
         # Remove base classes of other bases as redundant.
-        bases: list[type[Any]] = []
+        bases: list[type[object]] = []
         for base in all_bases:
             if not any(issubclass(b, base) for b in bases):
                 bases.append(base)
