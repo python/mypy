@@ -2378,6 +2378,30 @@ assert a == b
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testStrictEqualityWithRecursiveMapTypes]
+# flags: --strict-equality
+from typing import Dict
+
+R = Dict[str, R]
+
+a: R
+b: R
+assert a == b
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testStrictEqualityWithRecursiveListTypes]
+# flags: --strict-equality
+from typing import List, Union
+
+R = List[Union[str, R]]
+
+a: R
+b: R
+assert a == b
+[builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testUnimportedHintAny]
 def f(x: Any) -> None:  # E: Name "Any" is not defined \
                         # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Any")
