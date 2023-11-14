@@ -72,8 +72,15 @@ class Tuple(Sequence[_T_co]): ...
 class NamedTuple(tuple[Any, ...]): ...
 def overload(func: _T) -> _T: ...
 def type_check_only(func: _T) -> _T: ...
-def deprecated(__msg: str) -> Callable[[_T], _T]: ...
 def final(func: _T) -> _T: ...
+"""
+
+stubtest_warnings_stub = """
+from typing import Callable, TypeVar
+
+_T = TypeVar("_T")
+
+def deprecated(__msg: str) -> Callable[[_T], _T]: ...
 """
 
 stubtest_builtins_stub = """
@@ -155,6 +162,8 @@ def run_stubtest(
             f.write(stubtest_typing_stub)
         with open("enum.pyi", "w") as f:
             f.write(stubtest_enum_stub)
+        with open("warnings.pyi", "w") as f:
+            f.write(stubtest_warnings_stub)
         with open(f"{TEST_MODULE_NAME}.pyi", "w") as f:
             f.write(stub)
         with open(f"{TEST_MODULE_NAME}.py", "w") as f:
