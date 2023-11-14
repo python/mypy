@@ -3617,9 +3617,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self,
         left: Type,
         right: Type,
+        *,
         original_container: Type | None = None,
         seen_types: set[tuple[Type, Type]] | None = None,
-        *,
         prefer_literal: bool = True,
     ) -> bool:
         """Check for dangerous non-overlapping comparisons like 42 == 'no'.
