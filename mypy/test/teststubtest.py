@@ -635,7 +635,8 @@ class StubtestUnit(unittest.TestCase):
         )
         yield Case(
             stub="""
-            from typing import deprecated, final
+            from typing import final
+            from warnings import deprecated
             class Foo:
                 @overload
                 @final
