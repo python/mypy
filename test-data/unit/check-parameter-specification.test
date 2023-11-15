@@ -2108,3 +2108,26 @@ def func2(arg: T) -> List[Union[T, str]]:
 reveal_type(func2)  # N: Revealed type is "def [T] (arg: T`-1) -> Union[T`-1, builtins.str]"
 reveal_type(func2(42))  # N: Revealed type is "Union[builtins.int, builtins.str]"
 [builtins fixtures/paramspec.pyi]
+
+[case testParamSpecPreciseKindsUsedIfPossible]
+from typing import Callable, Generic
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+
+class Case(Generic[P]):
+    def __init__(self, *args: P.args, **kwargs: P.kwargs) -> None:
+        pass
+
+def _test(a: int, b: int = 0) -> None: ...
+
+def parametrize(
+    func: Callable[P, None], *cases: Case[P], **named_cases: Case[P]
+) -> Callable[[], None]:
+    ...
+
+parametrize(_test, Case(1, 2), Case(3, 4))
+parametrize(_test, Case(1, b=2), Case(3, b=4))
+parametrize(_test, Case(1, 2), Case(3))
+parametrize(_test, Case(1, 2), Case(3, b=4))
+[builtins fixtures/paramspec.pyi]
