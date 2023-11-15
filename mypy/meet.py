@@ -280,21 +280,23 @@ def is_overlapping_types(
         seen_types = set()
     if (left, right) in seen_types:
         return True
-    seen_types.add((left, right))
+    if isinstance(left, TypeAliasType) and isinstance(right, TypeAliasType):
+        seen_types.add((left, right))
 
     left, right = get_proper_types((left, right))
 
     def _is_overlapping_types(left: Type, right: Type) -> bool:
         """Encode the kind of overlapping check to perform.
 
-        This function mostly exists so we don't have to repeat keyword arguments everywhere."""
+        This function mostly exists, so we don't have to repeat keyword arguments everywhere.
+        """
         return is_overlapping_types(
             left,
             right,
             ignore_promotions=ignore_promotions,
             prohibit_none_typevar_overlap=prohibit_none_typevar_overlap,
             ignore_uninhabited=ignore_uninhabited,
-            seen_types=seen_types,
+            seen_types=seen_types.copy(),
         )
 
     # We should never encounter this type.
