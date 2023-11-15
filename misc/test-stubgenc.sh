@@ -24,7 +24,7 @@ function stubgenc_test() {
     # Compare generated stubs to expected ones
     if ! git diff --exit-code "$STUBGEN_OUTPUT_FOLDER";
     then
-        EXIT=$?
+        EXIT=1
     fi
 }
 

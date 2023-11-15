@@ -1629,6 +1629,7 @@ def generate_stubs(options: Options) -> None:
                 doc_dir=options.doc_dir,
                 include_private=options.include_private,
                 export_less=options.export_less,
+                include_docstrings=options.include_docstrings,
             )
     num_modules = len(all_modules)
     if not options.quiet and num_modules > 0:
