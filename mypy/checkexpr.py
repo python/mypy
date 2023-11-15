@@ -3617,8 +3617,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self,
         left: Type,
         right: Type,
-        original_container: Type | None = None,
         *,
+        original_container: Type | None = None,
+        seen_types: set[tuple[Type, Type]] | None = None,
         prefer_literal: bool = True,
     ) -> bool:
         """Check for dangerous non-overlapping comparisons like 42 == 'no'.
@@ -3638,6 +3639,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         if not self.chk.options.strict_equality:
             return False
+
+        if seen_types is None:
+            seen_types = set()
+        if (left, right) in seen_types:
+            return False
+        seen_types.add((left, right))
 
         left, right = get_proper_types((left, right))
 
@@ -3694,17 +3701,21 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 abstract_set = self.chk.lookup_typeinfo("typing.AbstractSet")
                 left = map_instance_to_supertype(left, abstract_set)
                 right = map_instance_to_supertype(right, abstract_set)
-                return self.dangerous_comparison(left.args[0], right.args[0])
+                return self.dangerous_comparison(
+                    left.args[0], right.args[0], seen_types=seen_types
+                )
             elif left.type.has_base("typing.Mapping") and right.type.has_base("typing.Mapping"):
                 # Similar to above: Mapping ignores the classes, it just compares items.
                 abstract_map = self.chk.lookup_typeinfo("typing.Mapping")
                 left = map_instance_to_supertype(left, abstract_map)
                 right = map_instance_to_supertype(right, abstract_map)
                 return self.dangerous_comparison(
-                    left.args[0], right.args[0]
-                ) or self.dangerous_comparison(left.args[1], right.args[1])
+                    left.args[0], right.args[0], seen_types=seen_types
+                ) or self.dangerous_comparison(left.args[1], right.args[1], seen_types=seen_types)
             elif left_name in ("builtins.list", "builtins.tuple") and right_name == left_name:
-                return self.dangerous_comparison(left.args[0], right.args[0])
+                return self.dangerous_comparison(
+                    left.args[0], right.args[0], seen_types=seen_types
+                )
             elif left_name in OVERLAPPING_BYTES_ALLOWLIST and right_name in (
                 OVERLAPPING_BYTES_ALLOWLIST
             ):
