@@ -3235,3 +3235,40 @@ class b:
 x = x[1]  # E: Cannot resolve name "x" (possible cyclic definition)
 y = 1[y]  # E: Value of type "int" is not indexable \
           # E: Cannot determine type of "y"
+
+[case testBuiltinTypeType]
+# flags: --python-version 3.10 --disallow-any-generics
+
+from typing import Any, cast, Union
+from typing_extensions import TypeAlias
+
+a: type  # E: Missing type parameters for generic type "type"
+reveal_type(a)  # N: Revealed type is "Type[Any]"
+
+b: Any
+c = cast(type, b)  # E: Missing type parameters for generic type "type"
+reveal_type(c)  # N: Revealed type is "Type[Any]"
+
+d: list[type]  # E: Missing type parameters for generic type "type"
+reveal_type(d)  # N: Revealed type is "builtins.list[Type[Any]]"
+
+class E(list[type]): ...  # E: Missing type parameters for generic type "type"
+reveal_type(E()[0])  # N: Revealed type is "Type[Any]"
+
+class F(tuple[type]): ...  # E: Missing type parameters for generic type "type"
+reveal_type(F()[0])  # N: Revealed type is "Type[Any]"
+
+class G(tuple[list[Union[type, int]], ...]): ...  # E: Missing type parameters for generic type "type"
+reveal_type(G()[0])  # N: Revealed type is "builtins.list[Union[Type[Any], builtins.int]]"
+
+h: Union[type, int]  # E: Missing type parameters for generic type "type"
+reveal_type(h)  # N: Revealed type is "Union[Type[Any], builtins.int]"
+
+i: type | int  # E: Missing type parameters for generic type "type"
+reveal_type(i)  # N: Revealed type is "Union[Type[Any], builtins.int]"
+
+j: TypeAlias = type  # E: Missing type parameters for generic type "type"
+k: j
+reveal_type(k)  # N: Revealed type is "Type[Any]"
+
+[builtins fixtures/tuple.pyi]

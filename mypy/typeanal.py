@@ -150,6 +150,7 @@ def analyze_type_alias(
         allow_placeholder=allow_placeholder,
         prohibit_self_type="type alias target",
         allowed_alias_tvars=allowed_alias_tvars,
+        analyze_annotation=True,
     )
     analyzer.in_dynamic_func = in_dynamic_func
     analyzer.global_scope = global_scope

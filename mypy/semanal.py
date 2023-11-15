@@ -5375,6 +5375,7 @@ class SemanticAnalyzer(
                 allow_placeholder=True,
                 allow_param_spec_literals=has_param_spec,
                 allow_unpack=allow_unpack,
+                analyze_annotation=True,
             )
             if analyzed is None:
                 return None
@@ -5399,7 +5400,7 @@ class SemanticAnalyzer(
 
     def visit_cast_expr(self, expr: CastExpr) -> None:
         expr.expr.accept(self)
-        analyzed = self.anal_type(expr.type)
+        analyzed = self.anal_type(expr.type, analyze_annotation=True)
         if analyzed is not None:
             expr.type = analyzed
 
@@ -5421,7 +5422,7 @@ class SemanticAnalyzer(
     def visit_type_application(self, expr: TypeApplication) -> None:
         expr.expr.accept(self)
         for i in range(len(expr.types)):
-            analyzed = self.anal_type(expr.types[i])
+            analyzed = self.anal_type(expr.types[i], analyze_annotation=True)
             if analyzed is not None:
                 expr.types[i] = analyzed
 
@@ -6579,6 +6580,7 @@ class SemanticAnalyzer(
             allow_unbound_tvars=allow_unbound_tvars,
             allow_param_spec_literals=allow_param_spec_literals,
             allow_unpack=allow_unpack,
+            analyze_annotation=isinstance(expr, IndexExpr),
         )
 
     def analyze_type_expr(self, expr: Expression) -> None:
