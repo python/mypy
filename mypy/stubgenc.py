@@ -511,7 +511,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         if class_info is None:
             return False
         elif self.is_c_module:
-            raw_lookup = getattr(class_info.cls, "__dict__")  # noqa: B009
+            raw_lookup: Mapping[str, Any] = getattr(class_info.cls, "__dict__")  # noqa: B009
             raw_value = raw_lookup.get(name, obj)
             return type(raw_value).__name__ == "staticmethod"
         else:
@@ -721,7 +721,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         The result lines will be appended to 'output'. If necessary, any
         required names will be added to 'imports'.
         """
-        raw_lookup = getattr(cls, "__dict__")  # noqa: B009
+        raw_lookup: Mapping[str, Any] = getattr(cls, "__dict__")  # noqa: B009
         items = self.get_members(cls)
         if self.resort_members:
             items = sorted(items, key=lambda x: method_name_sort_key(x[0]))
