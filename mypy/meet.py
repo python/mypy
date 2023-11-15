@@ -262,6 +262,7 @@ def is_overlapping_types(
     ignore_promotions: bool = False,
     prohibit_none_typevar_overlap: bool = False,
     ignore_uninhabited: bool = False,
+    seen_types: set[tuple[Type, Type]] | None = None,
 ) -> bool:
     """Can a value of type 'left' also be of type 'right' or vice-versa?
 
@@ -275,6 +276,12 @@ def is_overlapping_types(
         # A type guard forces the new type even if it doesn't overlap the old.
         return True
 
+    if seen_types is None:
+        seen_types = set()
+    if (left, right) in seen_types:
+        return True
+    seen_types.add((left, right))
+
     left, right = get_proper_types((left, right))
 
     def _is_overlapping_types(left: Type, right: Type) -> bool:
@@ -287,6 +294,7 @@ def is_overlapping_types(
             ignore_promotions=ignore_promotions,
             prohibit_none_typevar_overlap=prohibit_none_typevar_overlap,
             ignore_uninhabited=ignore_uninhabited,
+            seen_types=seen_types,
         )
 
     # We should never encounter this type.
