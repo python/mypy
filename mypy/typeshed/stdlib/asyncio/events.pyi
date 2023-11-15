@@ -522,7 +522,7 @@ class AbstractEventLoop:
         bufsize: Literal[0] = 0,
         encoding: None = None,
         errors: None = None,
-        text: Literal[False, None] = ...,
+        text: Literal[False] | None = ...,
         **kwargs: Any,
     ) -> tuple[SubprocessTransport, _ProtocolT]: ...
     @abstractmethod

@@ -11,7 +11,7 @@ MAIN_EXAMPLES: str
 MODULE_EXAMPLES: str
 
 class _TestRunner(Protocol):
-    def run(self, test: unittest.suite.TestSuite | unittest.case.TestCase) -> unittest.result.TestResult: ...
+    def run(self, __test: unittest.suite.TestSuite | unittest.case.TestCase) -> unittest.result.TestResult: ...
 
 # not really documented
 class TestProgram:

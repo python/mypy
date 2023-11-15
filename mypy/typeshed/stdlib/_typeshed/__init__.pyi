@@ -236,6 +236,10 @@ class SupportsNoArgReadline(Protocol[_T_co]):
 class SupportsWrite(Protocol[_T_contra]):
     def write(self, __s: _T_contra) -> object: ...
 
+# stable
+class SupportsFlush(Protocol):
+    def flush(self) -> object: ...
+
 # Unfortunately PEP 688 does not allow us to distinguish read-only
 # from writable buffers. We use these aliases for readability for now.
 # Perhaps a future extension of the buffer protocol will allow us to
