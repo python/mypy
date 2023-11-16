@@ -21,13 +21,14 @@ import sys
 import traceback
 import types
 import typing
-import typing_extensions
 import warnings
 from collections import defaultdict
 from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
 from typing import AbstractSet, Any, Generic, Iterator, TypeVar, Union
+
+import typing_extensions
 from typing_extensions import get_origin, is_typeddict
 
 import mypy.build
@@ -914,7 +915,8 @@ def _verify_signature(
     elif len(stub.pos) < len(runtime.pos):
         for runtime_arg in runtime.pos[len(stub.pos) :]:
             if runtime_arg.name not in stub.kwonly:
-                yield f'stub does not have argument "{runtime_arg.name}"'
+                if not _is_private_parameter(runtime_arg):
+                    yield f'stub does not have argument "{runtime_arg.name}"'
             else:
                 yield f'runtime argument "{runtime_arg.name}" is not keyword-only'
 
@@ -946,6 +948,8 @@ def _verify_signature(
             else:
                 yield f'runtime does not have argument "{arg}"'
     for arg in sorted(set(runtime.kwonly) - set(stub.kwonly)):
+        if _is_private_parameter(runtime.kwonly[arg]):
+            continue
         if arg in {stub_arg.variable.name for stub_arg in stub.pos}:
             # Don't report this if we've reported it before
             if not (
@@ -967,6 +971,10 @@ def _verify_signature(
             yield f'stub does not have **kwargs argument "{runtime.varkw.name}"'
     if stub.varkw is not None and runtime.varkw is None:
         yield f'runtime does not have **kwargs argument "{stub.varkw.variable.name}"'
+
+
+def _is_private_parameter(arg: inspect.Parameter) -> bool:
+    return arg.name.startswith("_") and arg.default is not inspect.Parameter.empty
 
 
 @verify.register(nodes.FuncItem)
