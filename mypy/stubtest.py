@@ -28,7 +28,6 @@ from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
 from typing import AbstractSet, Any, Generic, Iterator, TypeVar, Union
-
 from typing_extensions import get_origin, is_typeddict
 
 import mypy.build
