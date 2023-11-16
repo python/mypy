@@ -3399,9 +3399,12 @@ reveal_type(b["g"])  # N: Revealed type is "Union[builtins.int, None]"
 
 [case testNoCrashOnUnImportedAnyNotRequired]
 # flags: --disallow-any-unimported
-from typing import NotRequired, TypedDict
+from typing import NotRequired, Required, TypedDict
 from thismoduledoesntexist import T  # type: ignore[import]
 
-B = TypedDict("B", {"T": NotRequired[T]})  # E: Type of a TypedDict key becomes "Any" due to an unfollowed import
+B = TypedDict("B", {
+    "T1": NotRequired[T],  # E: Type of a TypedDict key becomes "Any" due to an unfollowed import
+    "T2": Required[T],  # E: Type of a TypedDict key becomes "Any" due to an unfollowed import
+})
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
