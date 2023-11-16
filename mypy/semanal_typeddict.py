@@ -394,6 +394,17 @@ class TypedDictAnalyzer:
             types = [  # unwrap Required[T] to just T
                 t.item if isinstance(t, RequiredType) else t for t in types
             ]
+
+            # Perform various validations after unwrapping.
+            for t in types:
+                check_for_explicit_any(
+                    t, self.options, self.api.is_typeshed_stub_file, self.msg, context=call
+                )
+            if self.options.disallow_any_unimported:
+                for t in types:
+                    if has_any_from_unimported_type(t):
+                        self.msg.unimported_type_becomes_any("Type of a TypedDict key", t, call)
+
             existing_info = None
             if isinstance(node.analyzed, TypedDictExpr):
                 existing_info = node.analyzed.info
@@ -451,15 +462,6 @@ class TypedDictAnalyzer:
             # One of the types is not ready, defer.
             return None
         items, types, ok = res
-        for t in types:
-            check_for_explicit_any(
-                t, self.options, self.api.is_typeshed_stub_file, self.msg, context=call
-            )
-
-        if self.options.disallow_any_unimported:
-            for t in types:
-                if has_any_from_unimported_type(t):
-                    self.msg.unimported_type_becomes_any("Type of a TypedDict key", t, dictexpr)
         assert total is not None
         return args[0].value, items, types, total, tvar_defs, ok
 
