@@ -350,6 +350,11 @@ class StubtestUnit(unittest.TestCase):
             error=None,
         )
         yield Case(
+            stub="def multi_priv_args() -> None: ...",
+            runtime="def multi_priv_args(_p='', _q=''): pass",
+            error=None,
+        )
+        yield Case(
             stub="def priv_kwarg_missing() -> None: ...",
             runtime="def priv_kwarg_missing(*, _p2=''): pass",
             error=None,
@@ -398,6 +403,14 @@ class StubtestUnit(unittest.TestCase):
             stub="def priv_arg_is_positional(*, _p=...) -> None: ...",
             runtime="def priv_arg_is_positional(_p=''): pass",
             error="priv_arg_is_positional",
+        )
+        # Private parameters not at the end of the parameter list must be
+        # included so that users can pass the following arguments using
+        # positional syntax.
+        yield Case(
+            stub="def priv_args_not_at_end(*, q='') -> None: ...",
+            runtime="def priv_args_not_at_end(_p='', q=''): pass",
+            error="priv_args_not_at_end",
         )
 
     @collect_cases
