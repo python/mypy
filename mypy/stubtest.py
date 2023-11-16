@@ -21,13 +21,14 @@ import sys
 import traceback
 import types
 import typing
-import typing_extensions
 import warnings
 from collections import defaultdict
 from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
 from typing import AbstractSet, Any, Generic, Iterator, TypeVar, Union
+
+import typing_extensions
 from typing_extensions import get_origin, is_typeddict
 
 import mypy.build
@@ -947,8 +948,6 @@ def _verify_signature(
             else:
                 yield f'runtime does not have argument "{arg}"'
     for arg in sorted(set(runtime.kwonly) - set(stub.kwonly)):
-        if _is_private_parameter(runtime.kwonly[arg]):
-            continue
         if arg in {stub_arg.variable.name for stub_arg in stub.pos}:
             # Don't report this if we've reported it before
             if not (
@@ -957,7 +956,8 @@ def _verify_signature(
             ):
                 yield f'stub argument "{arg}" is not keyword-only'
         else:
-            yield f'stub does not have argument "{arg}"'
+            if not _is_private_parameter(runtime.kwonly[arg]):
+                yield f'stub does not have argument "{arg}"'
 
     # Checks involving **kwargs
     if stub.varkw is None and runtime.varkw is not None:

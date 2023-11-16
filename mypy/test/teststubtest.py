@@ -376,11 +376,17 @@ class StubtestUnit(unittest.TestCase):
             runtime="def kwarg_no_default(*, _np): pass",
             error="kwarg_no_default",
         )
-        # But spot parameters that are accidentally not marked kw-only.
+        # But spot parameters that are accidentally not marked kw-only and
+        # vice-versa.
         yield Case(
             stub="def priv_arg_is_kwonly(_p=...) -> None: ...",
             runtime="def priv_arg_is_kwonly(*, _p=''): pass",
             error="priv_arg_is_kwonly",
+        )
+        yield Case(
+            stub="def priv_arg_is_positional(*, _p=...) -> None: ...",
+            runtime="def priv_arg_is_positional(_p=''): pass",
+            error="priv_arg_is_positional",
         )
 
     @collect_cases
