@@ -5,7 +5,7 @@
 Stubgen will now include `__all__` in its output if it is in the input file (PR [16356](https://github.com/python/mypy/pull/16356)).
 
 Stubtest will ignore private function/method parameters when they are missing from the stub. Private parameters
-names start with an underscore and have a default (PR [16455](https://github.com/python/mypy/pull/16455)).
+names start with an underscore and have a default (PR [16507](https://github.com/python/mypy/pull/16507)).
 
 ## Mypy 1.7
 
