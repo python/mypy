@@ -365,7 +365,8 @@ class StubtestUnit(unittest.TestCase):
             runtime="def priv_kwarg_wrong(*, _p=None): pass",
             error="priv_kwarg_wrong",
         )
-        # Private parameters must have a default.
+        # Private parameters must have a default and start with exactly one
+        # underscore.
         yield Case(
             stub="def pos_arg_no_default() -> None: ...",
             runtime="def pos_arg_no_default(_np): pass",
@@ -375,6 +376,16 @@ class StubtestUnit(unittest.TestCase):
             stub="def kwarg_no_default() -> None: ...",
             runtime="def kwarg_no_default(*, _np): pass",
             error="kwarg_no_default",
+        )
+        yield Case(
+            stub="def double_underscore_pos_arg() -> None: ...",
+            runtime="def double_underscore_pos_arg(__np = None): pass",
+            error="double_underscore_pos_arg",
+        )
+        yield Case(
+            stub="def double_underscore_kwarg() -> None: ...",
+            runtime="def double_underscore_kwarg(*, __np = None): pass",
+            error="double_underscore_kwarg",
         )
         # But spot parameters that are accidentally not marked kw-only and
         # vice-versa.
