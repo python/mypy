@@ -633,6 +633,12 @@ def _verify_arg_name(
     )
 
 
+def _stub_default_matches_runtime(evaluated_stub_default: object, runtime: object) -> bool:
+    # We want the types to match exactly, e.g. in case the stub has
+    # `bar: bool = True` and the runtime has `bar = 1` (or vice versa).
+    return evaluated_stub_default == runtime and type(evaluated_stub_default) is type(runtime)
+
+
 def _verify_arg_default_value(
     stub_arg: nodes.Argument, runtime_arg: inspect.Parameter
 ) -> Iterator[str]:
@@ -671,12 +677,7 @@ def _verify_arg_default_value(
                 if (
                     stub_default is not UNKNOWN
                     and stub_default is not ...
-                    and (
-                        stub_default != runtime_arg.default
-                        # We want the types to match exactly, e.g. in case the stub has
-                        # True and the runtime has 1 (or vice versa).
-                        or type(stub_default) is not type(runtime_arg.default)  # noqa: E721
-                    )
+                    and not _stub_default_matches_runtime(stub_default, runtime_arg.default)
                 ):
                     yield (
                         f'runtime argument "{runtime_arg.name}" '
@@ -1073,6 +1074,37 @@ def verify_var(
             yield Error(
                 object_path, f"variable differs from runtime type {runtime_type}", stub, runtime
             )
+            return
+
+    # If the stub has a default value and it's not an enum,
+    # attempt to verify that the default value matches the runtime
+    if isinstance(runtime, enum.Enum) or not stub.has_explicit_value:
+        return
+    stub_type = mypy.types.get_proper_type(stub.type)
+    if not isinstance(stub_type, mypy.types.Instance):
+        return
+
+    node_for_stub_value = stub_type.last_known_value
+    if node_for_stub_value is None:
+        return
+
+    stub_value: object
+    if isinstance(node_for_stub_value.value, (int, bool, float)):
+        stub_value = node_for_stub_value.value
+    elif isinstance(node_for_stub_value.value, str):
+        fallback = node_for_stub_value.fallback.type
+        if fallback.fullname == "builtins.str":
+            stub_value = node_for_stub_value.value
+        elif fallback.fullname == "builtins.bytes":
+            stub_value = bytes(node_for_stub_value.value, "utf-8")
+        else:
+            return
+    else:
+        return
+
+    if not _stub_default_matches_runtime(stub_value, runtime):
+        msg = f"default value for variable differs from runtime {runtime!r}"
+        yield Error(object_path, msg, stub, runtime, stub_desc=repr(stub_value))
 
 
 @verify.register(nodes.OverloadedFuncDef)
