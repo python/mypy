@@ -1568,24 +1568,24 @@ note: A user-defined top-level module with name "typing" is not supported
 # flags: --ignore-missing-imports
 import scribe  # No Python 3 stubs available for scribe
 from scribe import x
-import docutils  # Python 3 stubs available for docutils
+import python2  # Python 3 stubs available for python2
 import foobar_asdf
 import jack  # This has a stubs package but was never bundled with mypy, so ignoring works
 [out]
-_testIgnoreImportIfNoPython3StubAvailable.py:4: error: Library stubs not installed for "docutils"
-_testIgnoreImportIfNoPython3StubAvailable.py:4: note: Hint: "python3 -m pip install types-docutils"
+_testIgnoreImportIfNoPython3StubAvailable.py:4: error: Library stubs not installed for "python2"
+_testIgnoreImportIfNoPython3StubAvailable.py:4: note: Hint: "python3 -m pip install types-six"
 _testIgnoreImportIfNoPython3StubAvailable.py:4: note: (or run "mypy --install-types" to install all missing stub packages)
 _testIgnoreImportIfNoPython3StubAvailable.py:4: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testNoPython3StubAvailable]
 import scribe
 from scribe import x
-import docutils
+import python2
 [out]
 _testNoPython3StubAvailable.py:1: error: Cannot find implementation or library stub for module named "scribe"
 _testNoPython3StubAvailable.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-_testNoPython3StubAvailable.py:3: error: Library stubs not installed for "docutils"
-_testNoPython3StubAvailable.py:3: note: Hint: "python3 -m pip install types-docutils"
+_testNoPython3StubAvailable.py:3: error: Library stubs not installed for "python2"
+_testNoPython3StubAvailable.py:3: note: Hint: "python3 -m pip install types-six"
 _testNoPython3StubAvailable.py:3: note: (or run "mypy --install-types" to install all missing stub packages)
 
 
