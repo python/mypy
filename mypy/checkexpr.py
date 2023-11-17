@@ -6209,11 +6209,20 @@ class PolyTranslator(TypeTranslator):
     See docstring for apply_poly() for details.
     """
 
-    def __init__(self, poly_tvars: Sequence[TypeVarLikeType]) -> None:
+    def __init__(
+        self,
+        poly_tvars: Iterable[TypeVarLikeType],
+        bound_tvars: set[TypeVarLikeType] | None = None,
+        seen_aliases: set[TypeInfo] | None = None,
+    ) -> None:
         self.poly_tvars = set(poly_tvars)
         # This is a simplified version of TypeVarScope used during semantic analysis.
-        self.bound_tvars: set[TypeVarLikeType] = set()
-        self.seen_aliases: set[TypeInfo] = set()
+        if bound_tvars is None:
+            bound_tvars = set()
+        self.bound_tvars = bound_tvars
+        if seen_aliases is None:
+            seen_aliases = set()
+        self.seen_aliases = seen_aliases
 
     def collect_vars(self, t: CallableType | Parameters) -> list[TypeVarLikeType]:
         found_vars = []
@@ -6289,10 +6298,11 @@ class PolyTranslator(TypeTranslator):
         if t.args and t.type.is_protocol and t.type.protocol_members == ["__call__"]:
             if t.type in self.seen_aliases:
                 raise PolyTranslationError()
-            self.seen_aliases.add(t.type)
             call = find_member("__call__", t, t, is_operator=True)
             assert call is not None
-            return call.accept(self)
+            return call.accept(
+                PolyTranslator(self.poly_tvars, self.bound_tvars, self.seen_aliases | {t.type})
+            )
         return super().visit_instance(t)
 
 
