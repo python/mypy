@@ -3397,25 +3397,44 @@ reveal_type(b["g"])  # N: Revealed type is "Union[builtins.int, None]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
-[case testTypedDictWithMetaclass]
+[case testNoCrashOnUnImportedAnyNotRequired]
+# flags: --disallow-any-unimported
+from typing import NotRequired, Required, TypedDict
+from thismoduledoesntexist import T  # type: ignore[import]
+
+B = TypedDict("B", {  # E: Type of a TypedDict key becomes "Any" due to an unfollowed import
+    "T1": NotRequired[T],
+    "T2": Required[T],
+})
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictWithClassLevelKeywords]
 from typing import TypedDict, Generic, TypeVar
 
 T = TypeVar('T')
 
 class Meta(type): ...
 
-class WithMetaKeyword(TypedDict, metaclass=Meta):  # E: "TypedDict" class definition cannot have keywords other than "total", got: "metaclass"
+class WithMetaKeyword(TypedDict, metaclass=Meta):  # E: Unexpected keyword argument "metaclass" for "__init_subclass__" of "TypedDict"
     ...
 
-class GenericWithMetaKeyword(TypedDict, Generic[T], metaclass=Meta):  # E: "TypedDict" class definition cannot have keywords other than "total", got: "metaclass"
+class GenericWithMetaKeyword(TypedDict, Generic[T], metaclass=Meta):  # E: Unexpected keyword argument "metaclass" for "__init_subclass__" of "TypedDict"
     ...
 
 # We still don't allow this, because the implementation is much easier
 # and it does not make any practical sense to do it:
-class WithTypeMeta(TypedDict, metaclass=type):  # E: "TypedDict" class definition cannot have keywords other than "total", got: "metaclass"
+class WithTypeMeta(TypedDict, metaclass=type):  # E: Unexpected keyword argument "metaclass" for "__init_subclass__" of "TypedDict"
     ...
 
-class OtherKeywords(TypedDict, a=1, b=2, c=3, total=True):  # E: "TypedDict" class definition cannot have keywords other than "total", got: "a, b, c, total"
+class OtherKeywords(TypedDict, a=1, b=2, c=3, total=True):  # E: Unexpected keyword argument "a" for "__init_subclass__" of "TypedDict" \
+                                                            # E: Unexpected keyword argument "b" for "__init_subclass__" of "TypedDict" \
+                                                            # E: Unexpected keyword argument "c" for "__init_subclass__" of "TypedDict"
+    ...
+
+class TotalInTheMiddle(TypedDict, a=1, total=True, b=2, c=3):  # E: Unexpected keyword argument "a" for "__init_subclass__" of "TypedDict" \
+                                                            # E: Unexpected keyword argument "b" for "__init_subclass__" of "TypedDict" \
+                                                            # E: Unexpected keyword argument "c" for "__init_subclass__" of "TypedDict"
     ...
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
