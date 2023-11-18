@@ -6212,16 +6212,12 @@ class PolyTranslator(TypeTranslator):
     def __init__(
         self,
         poly_tvars: Iterable[TypeVarLikeType],
-        bound_tvars: set[TypeVarLikeType] | None = None,
-        seen_aliases: set[TypeInfo] | None = None,
+        bound_tvars: frozenset[TypeVarLikeType] = frozenset(),
+        seen_aliases: frozenset[TypeInfo] = frozenset(),
     ) -> None:
         self.poly_tvars = set(poly_tvars)
         # This is a simplified version of TypeVarScope used during semantic analysis.
-        if bound_tvars is None:
-            bound_tvars = set()
         self.bound_tvars = bound_tvars
-        if seen_aliases is None:
-            seen_aliases = set()
         self.seen_aliases = seen_aliases
 
     def collect_vars(self, t: CallableType | Parameters) -> list[TypeVarLikeType]:
