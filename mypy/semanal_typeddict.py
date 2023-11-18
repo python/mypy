@@ -323,6 +323,12 @@ class TypedDictAnalyzer:
         total: bool | None = True
         if "total" in defn.keywords:
             total = require_bool_literal_argument(self.api, defn.keywords["total"], "total", True)
+        if defn.keywords and defn.keywords.keys() != {"total"}:
+            for_function = ' for "__init_subclass__" of "TypedDict"'
+            for key in defn.keywords.keys():
+                if key == "total":
+                    continue
+                self.msg.unexpected_keyword_argument_for_function(for_function, key, defn)
         required_keys = {
             field
             for (field, t) in zip(fields, types)
