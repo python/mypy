@@ -102,7 +102,17 @@ class Error:
         self.stub_object = stub_object
         self.runtime_object = runtime_object
         self.stub_desc = stub_desc or str(getattr(stub_object, "type", stub_object))
-        self.runtime_desc = runtime_desc or _truncate(repr(runtime_object), 100)
+
+        if runtime_desc is None:
+            runtime_sig = safe_inspect_signature(runtime_object)
+            if runtime_sig is None:
+                self.runtime_desc = _truncate(repr(runtime_object), 100)
+            else:
+                runtime_is_async = inspect.iscoroutinefunction(runtime_object)
+                description = describe_runtime_callable(runtime_sig, is_async=runtime_is_async)
+                self.runtime_desc = _truncate(description, 100)
+        else:
+            self.runtime_desc = runtime_desc
 
     def is_missing_stub(self) -> bool:
         """Whether or not the error is for something missing from the stub."""
@@ -1000,7 +1010,7 @@ def verify_funcitem(
     if signature:
         stub_sig = Signature.from_funcitem(stub)
         runtime_sig = Signature.from_inspect_signature(signature)
-        runtime_sig_desc = f'{"async " if runtime_is_coroutine else ""}def {signature}'
+        runtime_sig_desc = describe_runtime_callable(signature, is_async=runtime_is_coroutine)
         stub_desc = str(stub_sig)
     else:
         runtime_sig_desc, stub_desc = None, None
@@ -1480,6 +1490,10 @@ def safe_inspect_signature(runtime: Any) -> inspect.Signature | None:
         # catch TypeError because of https://github.com/python/typeshed/pull/5762
         # catch AttributeError because of inspect.signature(_curses.window.border)
         return None
+
+
+def describe_runtime_callable(signature: inspect.Signature, *, is_async: bool) -> str:
+    return f'{"async " if is_async else ""}def {signature}'
 
 
 def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
