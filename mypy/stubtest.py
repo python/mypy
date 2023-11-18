@@ -55,6 +55,17 @@ MISSING: typing_extensions.Final = Missing()
 T = TypeVar("T")
 MaybeMissing: typing_extensions.TypeAlias = Union[T, Missing]
 
+
+class Unrepresentable:
+    """Marker object for unrepresentable parameter defaults."""
+
+    def __repr__(self) -> str:
+        return "<unrepresentable>"
+
+
+UNREPRESENTABLE: typing_extensions.Final = Unrepresentable()
+
+
 _formatter: typing_extensions.Final = FancyFormatter(sys.stdout, sys.stderr, False)
 
 
@@ -681,6 +692,7 @@ def _verify_arg_default_value(
                 if (
                     stub_default is not UNKNOWN
                     and stub_default is not ...
+                    and runtime_arg.default is not UNREPRESENTABLE
                     and (
                         stub_default != runtime_arg.default
                         # We want the types to match exactly, e.g. in case the stub has
@@ -1483,7 +1495,27 @@ def is_read_only_property(runtime: object) -> bool:
 
 def safe_inspect_signature(runtime: Any) -> inspect.Signature | None:
     try:
-        return inspect.signature(runtime)
+        try:
+            return inspect.signature(runtime)
+        except ValueError:
+            if (
+                hasattr(runtime, "__text_signature__")
+                and "<unrepresentable>" in runtime.__text_signature__
+            ):
+                # Try to fix up the signature. Workaround for
+                # https://github.com/python/cpython/issues/87233
+                sig = runtime.__text_signature__.replace("<unrepresentable>", "...")
+                sig = inspect._signature_fromstr(inspect.Signature, runtime, sig)  # type: ignore[attr-defined]
+                assert isinstance(sig, inspect.Signature)
+                new_params = [
+                    parameter.replace(default=UNREPRESENTABLE)
+                    if parameter.default is ...
+                    else parameter
+                    for parameter in sig.parameters.values()
+                ]
+                return sig.replace(parameters=new_params)
+            else:
+                raise
     except Exception:
         # inspect.signature throws ValueError all the time
         # catch RuntimeError because of https://bugs.python.org/issue39504
