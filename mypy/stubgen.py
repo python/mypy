@@ -22,7 +22,7 @@ Basic usage:
   => Generate out/urllib/parse.pyi.
 
   $ stubgen -p urllib
-  => Generate stubs for whole urlib package (recursively).
+  => Generate stubs for whole urllib package (recursively).
 
 For C modules, you can get more precise function signatures by parsing .rst (Sphinx)
 documentation for extra information. For this, use the --doc-dir option:
@@ -305,6 +305,13 @@ class AliasPrinter(NodeVisitor[str]):
         return repr(node.value)
 
     def visit_index_expr(self, node: IndexExpr) -> str:
+        base_fullname = self.stubgen.get_fullname(node.base)
+        if base_fullname == "typing.Union":
+            if isinstance(node.index, TupleExpr):
+                return " | ".join([item.accept(self) for item in node.index.items])
+            return node.index.accept(self)
+        if base_fullname == "typing.Optional":
+            return f"{node.index.accept(self)} | None"
         base = node.base.accept(self)
         index = node.index.accept(self)
         if len(index) > 2 and index.startswith("(") and index.endswith(")"):
@@ -675,7 +682,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 self.add_decorator(qualname, require_name=False)
 
     def get_fullname(self, expr: Expression) -> str:
-        """Return the full name resolving imports and import aliases."""
+        """Return the expression's full name."""
         if (
             self.analyzed
             and isinstance(expr, (NameExpr, MemberExpr))
@@ -684,16 +691,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         ):
             return expr.fullname
         name = get_qualified_name(expr)
-        if "." not in name:
-            real_module = self.import_tracker.module_for.get(name)
-            real_short = self.import_tracker.reverse_alias.get(name, name)
-            if real_module is None and real_short not in self.defined_names:
-                real_module = "builtins"  # not imported and not defined, must be a builtin
-        else:
-            name_module, real_short = name.split(".", 1)
-            real_module = self.import_tracker.reverse_alias.get(name_module, name_module)
-        resolved_name = real_short if real_module is None else f"{real_module}.{real_short}"
-        return resolved_name
+        return self.resolve_name(name)
 
     def visit_class_def(self, o: ClassDef) -> None:
         self._current_class = o
