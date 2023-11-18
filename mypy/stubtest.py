@@ -1010,7 +1010,7 @@ def verify_funcitem(
     if signature:
         stub_sig = Signature.from_funcitem(stub)
         runtime_sig = Signature.from_inspect_signature(signature)
-        runtime_sig_desc = describe_runtime_callable(runtime_sig, is_async=runtime_is_coroutine)
+        runtime_sig_desc = describe_runtime_callable(signature, is_async=runtime_is_coroutine)
         stub_desc = str(stub_sig)
     else:
         runtime_sig_desc, stub_desc = None, None
