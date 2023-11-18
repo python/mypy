@@ -75,14 +75,6 @@ def type_check_only(func: _T) -> _T: ...
 def final(func: _T) -> _T: ...
 """
 
-stubtest_warnings_stub = """
-from typing import Callable, TypeVar
-
-_T = TypeVar("_T")
-
-def deprecated(__msg: str) -> Callable[[_T], _T]: ...
-"""
-
 stubtest_builtins_stub = """
 from typing import Generic, Mapping, Sequence, TypeVar, overload
 
@@ -162,8 +154,6 @@ def run_stubtest(
             f.write(stubtest_typing_stub)
         with open("enum.pyi", "w") as f:
             f.write(stubtest_enum_stub)
-        with open("warnings.pyi", "w") as f:
-            f.write(stubtest_warnings_stub)
         with open(f"{TEST_MODULE_NAME}.pyi", "w") as f:
             f.write(stub)
         with open(f"{TEST_MODULE_NAME}.py", "w") as f:
@@ -645,7 +635,7 @@ class StubtestUnit(unittest.TestCase):
         yield Case(
             stub="""
             from typing import final
-            from warnings import deprecated
+            from typing_extensions import deprecated
             class Foo:
                 @overload
                 @final
