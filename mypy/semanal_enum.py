@@ -106,16 +106,19 @@ class EnumCallAnalyzer:
         items, values, ok = self.parse_enum_call_args(call, fullname.split(".")[-1])
         if not ok:
             # Error. Construct dummy return value.
-            info = self.build_enum_call_typeinfo(var_name, [], fullname, node.line)
+            name = var_name
+            if is_func_scope:
+                name += "@" + str(call.line)
+            info = self.build_enum_call_typeinfo(name, [], fullname, node.line)
         else:
             name = cast(StrExpr, call.args[0]).value
             if name != var_name or is_func_scope:
                 # Give it a unique name derived from the line number.
                 name += "@" + str(call.line)
             info = self.build_enum_call_typeinfo(name, items, fullname, call.line)
-            # Store generated TypeInfo under both names, see semanal_namedtuple for more details.
-            if name != var_name or is_func_scope:
-                self.api.add_symbol_skip_local(name, info)
+        # Store generated TypeInfo under both names, see semanal_namedtuple for more details.
+        if name != var_name or is_func_scope:
+            self.api.add_symbol_skip_local(name, info)
         call.analyzed = EnumCallExpr(info, items, values)
         call.analyzed.set_line(call)
         info.line = node.line

@@ -72,7 +72,6 @@ class Tuple(Sequence[_T_co]): ...
 class NamedTuple(tuple[Any, ...]): ...
 def overload(func: _T) -> _T: ...
 def type_check_only(func: _T) -> _T: ...
-def deprecated(__msg: str) -> Callable[[_T], _T]: ...
 def final(func: _T) -> _T: ...
 """
 
@@ -429,6 +428,16 @@ class StubtestUnit(unittest.TestCase):
             error=None,
         )
 
+        # Simulate "<unrepresentable>"
+        yield Case(
+            stub="def f11() -> None: ...",
+            runtime="""
+            def f11(text=None) -> None: pass
+            f11.__text_signature__ = "(text=<unrepresentable>)"
+            """,
+            error="f11",
+        )
+
     @collect_cases
     def test_static_class_method(self) -> Iterator[Case]:
         yield Case(
@@ -635,7 +644,8 @@ class StubtestUnit(unittest.TestCase):
         )
         yield Case(
             stub="""
-            from typing import deprecated, final
+            from typing import final
+            from typing_extensions import deprecated
             class Foo:
                 @overload
                 @final
@@ -2279,6 +2289,14 @@ class StubtestMiscUnit(unittest.TestCase):
         assert (
             str(mypy.stubtest.Signature.from_inspect_signature(inspect.signature(f)))
             == "def (a, b, *, c, d = ..., **kwargs)"
+        )
+
+    def test_builtin_signature_with_unrepresentable_default(self) -> None:
+        sig = mypy.stubtest.safe_inspect_signature(bytes.hex)
+        assert sig is not None
+        assert (
+            str(mypy.stubtest.Signature.from_inspect_signature(sig))
+            == "def (self, sep = ..., bytes_per_sep = ...)"
         )
 
     def test_config_file(self) -> None:

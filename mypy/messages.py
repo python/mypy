@@ -991,10 +991,17 @@ class MessageBuilder:
                 context,
             )
 
+    def unexpected_keyword_argument_for_function(
+        self, for_func: str, name: str, context: Context, *, matches: list[str] | None = None
+    ) -> None:
+        msg = f'Unexpected keyword argument "{name}"' + for_func
+        if matches:
+            msg += f"; did you mean {pretty_seq(matches, 'or')}?"
+        self.fail(msg, context, code=codes.CALL_ARG)
+
     def unexpected_keyword_argument(
         self, callee: CallableType, name: str, arg_type: Type, context: Context
     ) -> None:
-        msg = f'Unexpected keyword argument "{name}"' + for_function(callee)
         # Suggest intended keyword, look for type match else fallback on any match.
         matching_type_args = []
         not_matching_type_args = []
@@ -1008,9 +1015,9 @@ class MessageBuilder:
         matches = best_matches(name, matching_type_args, n=3)
         if not matches:
             matches = best_matches(name, not_matching_type_args, n=3)
-        if matches:
-            msg += f"; did you mean {pretty_seq(matches, 'or')}?"
-        self.fail(msg, context, code=codes.CALL_ARG)
+        self.unexpected_keyword_argument_for_function(
+            for_function(callee), name, context, matches=matches
+        )
         module = find_defining_module(self.modules, callee)
         if module:
             assert callee.definition is not None

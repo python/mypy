@@ -55,6 +55,17 @@ MISSING: typing_extensions.Final = Missing()
 T = TypeVar("T")
 MaybeMissing: typing_extensions.TypeAlias = Union[T, Missing]
 
+
+class Unrepresentable:
+    """Marker object for unrepresentable parameter defaults."""
+
+    def __repr__(self) -> str:
+        return "<unrepresentable>"
+
+
+UNREPRESENTABLE: typing_extensions.Final = Unrepresentable()
+
+
 _formatter: typing_extensions.Final = FancyFormatter(sys.stdout, sys.stderr, False)
 
 
@@ -102,7 +113,17 @@ class Error:
         self.stub_object = stub_object
         self.runtime_object = runtime_object
         self.stub_desc = stub_desc or str(getattr(stub_object, "type", stub_object))
-        self.runtime_desc = runtime_desc or _truncate(repr(runtime_object), 100)
+
+        if runtime_desc is None:
+            runtime_sig = safe_inspect_signature(runtime_object)
+            if runtime_sig is None:
+                self.runtime_desc = _truncate(repr(runtime_object), 100)
+            else:
+                runtime_is_async = inspect.iscoroutinefunction(runtime_object)
+                description = describe_runtime_callable(runtime_sig, is_async=runtime_is_async)
+                self.runtime_desc = _truncate(description, 100)
+        else:
+            self.runtime_desc = runtime_desc
 
     def is_missing_stub(self) -> bool:
         """Whether or not the error is for something missing from the stub."""
@@ -671,6 +692,7 @@ def _verify_arg_default_value(
                 if (
                     stub_default is not UNKNOWN
                     and stub_default is not ...
+                    and runtime_arg.default is not UNREPRESENTABLE
                     and (
                         stub_default != runtime_arg.default
                         # We want the types to match exactly, e.g. in case the stub has
@@ -1000,7 +1022,7 @@ def verify_funcitem(
     if signature:
         stub_sig = Signature.from_funcitem(stub)
         runtime_sig = Signature.from_inspect_signature(signature)
-        runtime_sig_desc = f'{"async " if runtime_is_coroutine else ""}def {signature}'
+        runtime_sig_desc = describe_runtime_callable(signature, is_async=runtime_is_coroutine)
         stub_desc = str(stub_sig)
     else:
         runtime_sig_desc, stub_desc = None, None
@@ -1473,13 +1495,37 @@ def is_read_only_property(runtime: object) -> bool:
 
 def safe_inspect_signature(runtime: Any) -> inspect.Signature | None:
     try:
-        return inspect.signature(runtime)
+        try:
+            return inspect.signature(runtime)
+        except ValueError:
+            if (
+                hasattr(runtime, "__text_signature__")
+                and "<unrepresentable>" in runtime.__text_signature__
+            ):
+                # Try to fix up the signature. Workaround for
+                # https://github.com/python/cpython/issues/87233
+                sig = runtime.__text_signature__.replace("<unrepresentable>", "...")
+                sig = inspect._signature_fromstr(inspect.Signature, runtime, sig)  # type: ignore[attr-defined]
+                assert isinstance(sig, inspect.Signature)
+                new_params = [
+                    parameter.replace(default=UNREPRESENTABLE)
+                    if parameter.default is ...
+                    else parameter
+                    for parameter in sig.parameters.values()
+                ]
+                return sig.replace(parameters=new_params)
+            else:
+                raise
     except Exception:
         # inspect.signature throws ValueError all the time
         # catch RuntimeError because of https://bugs.python.org/issue39504
         # catch TypeError because of https://github.com/python/typeshed/pull/5762
         # catch AttributeError because of inspect.signature(_curses.window.border)
         return None
+
+
+def describe_runtime_callable(signature: inspect.Signature, *, is_async: bool) -> str:
+    return f'{"async " if is_async else ""}def {signature}'
 
 
 def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
