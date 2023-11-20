@@ -204,6 +204,10 @@ class NamedTupleAnalyzer:
                         )
                 else:
                     default_items[name] = stmt.rvalue
+        if defn.keywords:
+            for_function = ' for "__init_subclass__" of "NamedTuple"'
+            for key in defn.keywords:
+                self.api.msg.unexpected_keyword_argument_for_function(for_function, key, defn)
         return items, types, default_items, statements
 
     def check_namedtuple(
