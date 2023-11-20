@@ -775,7 +775,7 @@ class SemanticAnalyzer(
             self.globals = file_node.names
             self.tvar_scope = TypeVarLikeScope()
 
-            self.named_tuple_analyzer = NamedTupleAnalyzer(options, self)
+            self.named_tuple_analyzer = NamedTupleAnalyzer(options, self, self.msg)
             self.typed_dict_analyzer = TypedDictAnalyzer(options, self, self.msg)
             self.enum_call_analyzer = EnumCallAnalyzer(options, self)
             self.newtype_analyzer = NewTypeAnalyzer(options, self, self.msg)
