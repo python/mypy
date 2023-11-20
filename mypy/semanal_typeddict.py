@@ -313,6 +313,18 @@ class TypedDictAnalyzer:
                     )
                     if analyzed is None:
                         return None, [], [], set()  # Need to defer
+                    # TypedDictAnalyzer sets the AssignmentStmt type here, but
+                    # NamedTupleAnalyzer doesn't and instead has semanal.py set it
+                    # by calling analyze_class_body_common after.
+                    #
+                    # This is because unlike TypedDicts, NamedTuples support method
+                    # definitions. So, we must handle some of what analyze_class_body_common
+                    # does here -- including modifying `stmt.type`.
+                    #
+                    # TODO: Find some way of refactoring and partially unifying
+                    #       these two codepaths?
+                    if not has_placeholder(analyzed):
+                        stmt.type = analyzed
                     types.append(analyzed)
                 # ...despite possible minor failures that allow further analysis.
                 if stmt.type is None or hasattr(stmt, "new_syntax") and not stmt.new_syntax:
