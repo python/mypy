@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from typing import Final, Iterator, List, Mapping, cast
 
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
+from mypy.messages import MessageBuilder
 from mypy.nodes import (
     ARG_NAMED_OPT,
     ARG_OPT,
@@ -42,7 +43,6 @@ from mypy.nodes import (
     Var,
     is_StrExpr_list,
 )
-from mypy.messages import MessageBuilder
 from mypy.options import Options
 from mypy.semanal_shared import (
     PRIORITY_FALLBACKS,
@@ -92,7 +92,9 @@ SELF_TVAR_NAME: Final = "_NT"
 
 
 class NamedTupleAnalyzer:
-    def __init__(self, options: Options, api: SemanticAnalyzerInterface, msg: MessageBuilder) -> None:
+    def __init__(
+        self, options: Options, api: SemanticAnalyzerInterface, msg: MessageBuilder
+    ) -> None:
         self.options = options
         self.api = api
         self.msg = msg
