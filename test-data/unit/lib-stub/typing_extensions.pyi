@@ -1,5 +1,5 @@
 import typing
-from typing import Any, Mapping, Iterable, Iterator, NoReturn as NoReturn, Dict, Tuple, Type
+from typing import Any, Callable, Mapping, Iterable, Iterator, NoReturn as NoReturn, Dict, Tuple, Type
 from typing import TYPE_CHECKING as TYPE_CHECKING
 from typing import NewType as NewType, overload as overload
 
@@ -75,5 +75,6 @@ def dataclass_transform(
 ) -> Callable[[T], T]: ...
 
 def override(__arg: _T) -> _T: ...
+def deprecated(__msg: str) -> Callable[[_T], _T]: ...
 
 _FutureFeatureFixture = 0
