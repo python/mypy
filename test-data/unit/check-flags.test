@@ -1328,9 +1328,9 @@ class Annotated:
 import attrs
 
 @attrs.define
-class PartiallyAnnotated:  # E: Function is missing a type annotation for one or more arguments
+class PartiallyAnnotated:
     bar: int = attrs.field()
-    baz = attrs.field()
+    baz = attrs.field()  # E: Need type annotation for "baz"
 
 [builtins fixtures/plugin_attrs.pyi]
 

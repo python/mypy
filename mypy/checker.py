@@ -1066,6 +1066,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         If type_override is provided, use it as the function type.
         """
+        if defn.is_plugin_generated():
+            return
+
         self.dynamic_funcs.append(defn.is_dynamic() and not type_override)
 
         with self.enter_partial_types(is_function=True):
@@ -1324,9 +1327,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 )
 
                 # Ignore plugin generated methods, these usually don't need any bodies.
-                if defn.info is not FUNC_NO_INFO and (
-                    defn.name not in defn.info.names or defn.info.names[defn.name].plugin_generated
-                ):
+                if defn.is_plugin_generated():
                     show_error = False
 
                 # Ignore also definitions that appear in `if TYPE_CHECKING: ...` blocks.
@@ -4911,7 +4912,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             sig, t2 = self.expr_checker.check_call(
                 dec, [temp], [nodes.ARG_POS], e, callable_name=fullname, object_type=object_type
             )
-        self.check_untyped_after_decorator(sig, e.func)
+        if e.decorators:
+            self.check_untyped_after_decorator(sig, e.func)
         sig = set_callable_name(sig, e.func)
         e.var.type = sig
         e.var.is_ready = True
