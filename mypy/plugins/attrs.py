@@ -628,7 +628,7 @@ def _attribute_from_attrib_maker(
         converter = convert
     converter_info = _parse_converter(ctx, converter)
 
-    if init_type is None and ctx.api.options.disallow_incomplete_defs:
+    if init_type is None and ctx.api.options.disallow_untyped_defs:
         assert lhs.node is not None
         ctx.api.msg.need_annotation_for_var(lhs.node, stmt)
 
