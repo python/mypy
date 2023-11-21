@@ -103,7 +103,7 @@ def transform_func_def(builder: IRBuilder, fdef: FuncDef) -> None:
     if func_reg:
         builder.assign(get_func_target(builder, fdef), func_reg, fdef.line)
     maybe_insert_into_registry_dict(builder, fdef)
-    builder.functions.append(func_ir)
+    builder.add_function(func_ir, fdef.line)
 
 
 def transform_overloaded_func_def(builder: IRBuilder, o: OverloadedFuncDef) -> None:

@@ -1305,6 +1305,25 @@ def g(l: List[C], x: str) -> Optional[C]:
     return f(l, lambda c: reveal_type(c).x)  # N: Revealed type is "__main__.C"
 [builtins fixtures/list.pyi]
 
+[case testPartialTypeContextWithTwoLambdas]
+from typing import Any, Generic, TypeVar, Callable
+
+def int_to_any(x: int) -> Any: ...
+def any_to_int(x: Any) -> int: ...
+def any_to_str(x: Any) -> str: ...
+
+T = TypeVar("T")
+class W(Generic[T]):
+    def __init__(
+        self, serialize: Callable[[T], Any], deserialize: Callable[[Any], T]
+    ) -> None:
+        ...
+reveal_type(W(lambda x: int_to_any(x), lambda x: any_to_int(x)))  # N: Revealed type is "__main__.W[builtins.int]"
+W(
+    lambda x: int_to_any(x),  # E: Argument 1 to "int_to_any" has incompatible type "str"; expected "int"
+    lambda x: any_to_str(x)
+)
+
 [case testWideOuterContextEmpty]
 from typing import List, TypeVar
 
@@ -1463,3 +1482,16 @@ b: Any
 i = i if isinstance(i, int) else b
 reveal_type(i)  # N: Revealed type is "Union[Any, builtins.int]"
 [builtins fixtures/isinstance.pyi]
+
+[case testLambdaInferenceUsesNarrowedTypes]
+from typing import Optional, Callable
+
+def f1(key: Callable[[], str]) -> None: ...
+def f2(key: object) -> None: ...
+
+def g(b: Optional[str]) -> None:
+    if b:
+        f1(lambda: reveal_type(b))  # N: Revealed type is "builtins.str"
+        z: Callable[[], str] = lambda: reveal_type(b)  # N: Revealed type is "builtins.str"
+        f2(lambda: reveal_type(b))  # N: Revealed type is "builtins.str"
+        lambda: reveal_type(b)  # N: Revealed type is "builtins.str"

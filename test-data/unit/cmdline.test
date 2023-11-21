@@ -1421,14 +1421,6 @@ b \d+
 b\.c \d+
 .*
 
-[case testCmdlineEnableIncompleteFeatures]
-# cmd: mypy --enable-incomplete-features a.py
-[file a.py]
-pass
-[out]
-Warning: --enable-incomplete-features is deprecated, use --enable-incomplete-feature=FEATURE instead
-== Return code: 0
-
 [case testShadowTypingModuleEarlyLoad]
 # cmd: mypy dir
 [file dir/__init__.py]
@@ -1472,12 +1464,12 @@ note: A user-defined top-level module with name "typing" is not supported
 Failed to find builtin module mypy_extensions, perhaps typeshed is broken?
 == Return code: 2
 
-[case testRecursiveAliasesFlagDeprecated]
-# cmd: mypy --enable-recursive-aliases a.py
+[case testNewTypeInferenceFlagDeprecated]
+# cmd: mypy --new-type-inference a.py
 [file a.py]
 pass
 [out]
-Warning: --enable-recursive-aliases is deprecated; recursive types are enabled by default
+Warning: --new-type-inference flag is deprecated; new type inference algorithm is already enabled by default
 == Return code: 0
 
 [case testNotesOnlyResultInExitSuccess]
@@ -1585,3 +1577,13 @@ disable_error_code =
 always_true =
   MY_VAR,
 [out]
+
+[case testTypeVarTupleUnpackEnabled]
+# cmd: mypy --enable-incomplete-feature=TypeVarTuple --enable-incomplete-feature=Unpack a.py
+[file a.py]
+from typing_extensions import TypeVarTuple
+Ts = TypeVarTuple("Ts")
+[out]
+Warning: TypeVarTuple is already enabled by default
+Warning: Unpack is already enabled by default
+== Return code: 0

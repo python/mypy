@@ -1117,3 +1117,16 @@ from typing import Final
 class MyClass:
     a: None
     a: Final[int] = 1  # E: Cannot redefine an existing name as final  # E: Name "a" already defined on line 5
+
+[case testFinalOverrideAllowedForPrivate]
+from typing import Final, final
+
+class Parent:
+    __foo: Final[int] = 0
+    @final
+    def __bar(self) -> None: ...
+
+class Child(Parent):
+    __foo: Final[int] = 1
+    @final
+    def __bar(self) -> None: ...

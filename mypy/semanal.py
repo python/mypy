@@ -179,7 +179,7 @@ from mypy.nodes import (
     type_aliases_source_versions,
     typing_extensions_aliases,
 )
-from mypy.options import TYPE_VAR_TUPLE, Options
+from mypy.options import Options
 from mypy.patterns import (
     AsPattern,
     ClassPattern,
@@ -251,6 +251,7 @@ from mypy.types import (
     REVEAL_TYPE_NAMES,
     TPDICT_NAMES,
     TYPE_ALIAS_NAMES,
+    TYPE_CHECK_ONLY_NAMES,
     TYPED_NAMEDTUPLE_NAMES,
     AnyType,
     CallableType,
@@ -283,14 +284,7 @@ from mypy.types import (
 )
 from mypy.types_utils import is_invalid_recursive_alias, store_argument_type
 from mypy.typevars import fill_typevars
-from mypy.util import (
-    correct_relative_import,
-    is_dunder,
-    is_typeshed_file,
-    module_prefix,
-    unmangle,
-    unnamed_function,
-)
+from mypy.util import correct_relative_import, is_dunder, module_prefix, unmangle, unnamed_function
 from mypy.visitor import NodeVisitor
 
 T = TypeVar("T")
@@ -777,9 +771,7 @@ class SemanticAnalyzer(
         self.cur_mod_id = file_node.fullname
         with scope.module_scope(self.cur_mod_id):
             self._is_stub_file = file_node.path.lower().endswith(".pyi")
-            self._is_typeshed_stub_file = is_typeshed_file(
-                options.abs_custom_typeshed_dir, file_node.path
-            )
+            self._is_typeshed_stub_file = file_node.is_typeshed_file(options)
             self.globals = file_node.names
             self.tvar_scope = TypeVarLikeScope()
 
@@ -950,7 +942,7 @@ class SemanticAnalyzer(
             return typ
         last_type = get_proper_type(last_type.type)
         if not isinstance(last_type, TypedDictType):
-            self.fail("Unpack item in ** argument must be a TypedDict", defn)
+            self.fail("Unpack item in ** argument must be a TypedDict", last_type)
             new_arg_types = typ.arg_types[:-1] + [AnyType(TypeOfAny.from_error)]
             return typ.copy_modified(arg_types=new_arg_types)
         overlap = set(typ.arg_names) & set(last_type.items)
@@ -1577,6 +1569,9 @@ class SemanticAnalyzer(
                     removed.append(i)
                 else:
                     self.fail("@final cannot be used with non-method functions", d)
+            elif refers_to_fullname(d, TYPE_CHECK_ONLY_NAMES):
+                # TODO: support `@overload` funcs.
+                dec.func.is_type_check_only = True
             elif isinstance(d, CallExpr) and refers_to_fullname(
                 d.callee, DATACLASS_TRANSFORM_NAMES
             ):
@@ -1748,13 +1743,12 @@ class SemanticAnalyzer(
         if is_typeddict:
             for decorator in defn.decorators:
                 decorator.accept(self)
-                if isinstance(decorator, RefExpr):
-                    if decorator.fullname in FINAL_DECORATOR_NAMES and info is not None:
-                        info.is_final = True
+                if info is not None:
+                    self.analyze_class_decorator_common(defn, info, decorator)
             if info is None:
                 self.mark_incomplete(defn.name, defn)
             else:
-                self.prepare_class_def(defn, info)
+                self.prepare_class_def(defn, info, custom_names=True)
             return True
         return False
 
@@ -1786,8 +1780,7 @@ class SemanticAnalyzer(
                 with self.scope.class_scope(defn.info):
                     for deco in defn.decorators:
                         deco.accept(self)
-                        if isinstance(deco, RefExpr) and deco.fullname in FINAL_DECORATOR_NAMES:
-                            info.is_final = True
+                        self.analyze_class_decorator_common(defn, defn.info, deco)
                     with self.named_tuple_analyzer.save_namedtuple_body(info):
                         self.analyze_class_body_common(defn)
             return True
@@ -1869,18 +1862,29 @@ class SemanticAnalyzer(
 
     def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> None:
         decorator.accept(self)
+        self.analyze_class_decorator_common(defn, defn.info, decorator)
         if isinstance(decorator, RefExpr):
             if decorator.fullname in RUNTIME_PROTOCOL_DECOS:
                 if defn.info.is_protocol:
                     defn.info.runtime_protocol = True
                 else:
                     self.fail("@runtime_checkable can only be used with protocol classes", defn)
-            elif decorator.fullname in FINAL_DECORATOR_NAMES:
-                defn.info.is_final = True
         elif isinstance(decorator, CallExpr) and refers_to_fullname(
             decorator.callee, DATACLASS_TRANSFORM_NAMES
         ):
             defn.info.dataclass_transform_spec = self.parse_dataclass_transform_spec(decorator)
+
+    def analyze_class_decorator_common(
+        self, defn: ClassDef, info: TypeInfo, decorator: Expression
+    ) -> None:
+        """Common method for applying class decorators.
+
+        Called on regular classes, typeddicts, and namedtuples.
+        """
+        if refers_to_fullname(decorator, FINAL_DECORATOR_NAMES):
+            info.is_final = True
+        elif refers_to_fullname(decorator, TYPE_CHECK_ONLY_NAMES):
+            info.is_type_check_only = True
 
     def clean_up_bases_and_infer_type_variables(
         self, defn: ClassDef, base_type_exprs: list[Expression], context: Context
@@ -2108,8 +2112,9 @@ class SemanticAnalyzer(
                 # Preserve name from previous fine-grained incremental run.
                 global_name = defn.info.name
             defn.fullname = defn.info._fullname
-            if defn.info.is_named_tuple:
-                # Named tuple nested within a class is stored in the class symbol table.
+            if defn.info.is_named_tuple or defn.info.typeddict_type:
+                # Named tuples and Typed dicts nested within a class are stored
+                # in the class symbol table.
                 self.add_symbol_skip_local(global_name, defn.info)
             else:
                 self.globals[global_name] = SymbolTableNode(GDEF, defn.info)
@@ -3625,7 +3630,7 @@ class SemanticAnalyzer(
             )
             if not res:
                 return False
-            if not self.options.disable_recursive_aliases and not self.is_func_scope():
+            if not self.is_func_scope():
                 # Only marking incomplete for top-level placeholders makes recursive aliases like
                 # `A = Sequence[str | A]` valid here, similar to how we treat base classes in class
                 # definitions, allowing `class str(Sequence[str]): ...`
@@ -4442,9 +4447,6 @@ class SemanticAnalyzer(
             else:
                 self.fail(f'Unexpected keyword argument "{param_name}" for "TypeVarTuple"', s)
 
-        if not self.incomplete_feature_enabled(TYPE_VAR_TUPLE, s):
-            return False
-
         name = self.extract_typevarlike_name(s, call)
         if name is None:
             return False
@@ -5014,7 +5016,7 @@ class SemanticAnalyzer(
 
     def visit_star_expr(self, expr: StarExpr) -> None:
         if not expr.valid:
-            self.fail("Can use starred expression only as assignment target", expr, blocker=True)
+            self.fail("can't use starred expression here", expr, blocker=True)
         else:
             expr.expr.accept(self)
 
@@ -6313,7 +6315,7 @@ class SemanticAnalyzer(
     def cannot_resolve_name(self, name: str | None, kind: str, ctx: Context) -> None:
         name_format = f' "{name}"' if name else ""
         self.fail(f"Cannot resolve {kind}{name_format} (possible cyclic definition)", ctx)
-        if not self.options.disable_recursive_aliases and self.is_func_scope():
+        if self.is_func_scope():
             self.note("Recursive types are not allowed at function scope", ctx)
 
     def qualified_name(self, name: str) -> str:

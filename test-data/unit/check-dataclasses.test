@@ -2531,3 +2531,16 @@ class Foo:
 
     c: int  # E: Name "c" already defined on line 5
 [builtins fixtures/dataclasses.pyi]
+
+[case testDataclassInheritanceWorksWithExplicitOverrides]
+# flags: --enable-error-code explicit-override
+from dataclasses  import dataclass
+
+@dataclass
+class Base:
+    x: int
+
+@dataclass
+class Child(Base):
+    y: int
+[builtins fixtures/dataclasses.pyi]

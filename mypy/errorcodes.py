@@ -255,6 +255,12 @@ UNIMPORTED_REVEAL: Final = ErrorCode(
     "General",
     default_enabled=False,
 )
+MUTABLE_OVERRIDE: Final[ErrorCode] = ErrorCode(
+    "mutable-override",
+    "Reject covariant overrides for mutable attributes",
+    "General",
+    default_enabled=False,
+)
 
 
 # Syntax errors are often blocking.
@@ -274,3 +280,6 @@ OVERLOAD_OVERLAP: Final[ErrorCode] = ErrorCode(
     "General",
     sub_code_of=MISC,
 )
+
+# This copy will not include any error codes defined later in the plugins.
+mypy_error_codes = error_codes.copy()

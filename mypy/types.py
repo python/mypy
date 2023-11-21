@@ -113,11 +113,17 @@ FINAL_TYPE_NAMES: Final = ("typing.Final", "typing_extensions.Final")
 # Supported @final decorator names.
 FINAL_DECORATOR_NAMES: Final = ("typing.final", "typing_extensions.final")
 
+# Supported @type_check_only names.
+TYPE_CHECK_ONLY_NAMES: Final = ("typing.type_check_only", "typing_extensions.type_check_only")
+
 # Supported Literal type names.
 LITERAL_TYPE_NAMES: Final = ("typing.Literal", "typing_extensions.Literal")
 
 # Supported Annotated type names.
 ANNOTATED_TYPE_NAMES: Final = ("typing.Annotated", "typing_extensions.Annotated")
+
+# Supported @deprecated type names
+DEPRECATED_TYPE_NAMES: Final = ("warnings.deprecated", "typing_extensions.deprecated")
 
 # We use this constant in various places when checking `tuple` subtyping:
 TUPLE_LIKE_INSTANCE_NAMES: Final = (
@@ -3268,15 +3274,16 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             num_skip = 0
 
         s = ""
-        bare_asterisk = False
+        asterisk = False
         for i in range(len(t.arg_types) - num_skip):
             if s != "":
                 s += ", "
-            if t.arg_kinds[i].is_named() and not bare_asterisk:
+            if t.arg_kinds[i].is_named() and not asterisk:
                 s += "*, "
-                bare_asterisk = True
+                asterisk = True
             if t.arg_kinds[i] == ARG_STAR:
                 s += "*"
+                asterisk = True
             if t.arg_kinds[i] == ARG_STAR2:
                 s += "**"
             name = t.arg_names[i]

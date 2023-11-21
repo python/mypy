@@ -47,7 +47,7 @@ Unused: TypeAlias = object
 # _SentinelType = NewType("_SentinelType", object)
 # sentinel: _SentinelType
 # def foo(x: int | None | _SentinelType = ...) -> None: ...
-sentinel = Any  # noqa: Y026
+sentinel: Any
 
 # stable
 class IdentityFunction(Protocol):
@@ -235,6 +235,10 @@ class SupportsNoArgReadline(Protocol[_T_co]):
 # stable
 class SupportsWrite(Protocol[_T_contra]):
     def write(self, __s: _T_contra) -> object: ...
+
+# stable
+class SupportsFlush(Protocol):
+    def flush(self) -> object: ...
 
 # Unfortunately PEP 688 does not allow us to distinguish read-only
 # from writable buffers. We use these aliases for readability for now.

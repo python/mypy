@@ -31,6 +31,9 @@ def map_instance_to_supertype(instance: Instance, superclass: TypeInfo) -> Insta
                     import mypy.typeops
 
                     return mypy.typeops.tuple_fallback(tuple_type)
+                elif isinstance(tuple_type, Instance):
+                    # This can happen after normalizing variadic tuples.
+                    return tuple_type
 
     if not superclass.type_vars:
         # Fast path: `superclass` has no type variables to map to.

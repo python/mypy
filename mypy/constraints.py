@@ -28,6 +28,7 @@ from mypy.types import (
     Instance,
     LiteralType,
     NoneType,
+    NormalizedCallableType,
     Overloaded,
     Parameters,
     ParamSpecType,
@@ -948,7 +949,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             for item in actual.items:
                 if isinstance(item, UnpackType):
                     unpacked = get_proper_type(item.type)
-                    if isinstance(unpacked, TypeVarType):
+                    if isinstance(unpacked, TypeVarTupleType):
                         # Cannot infer anything for T from [T, ...] <: *Ts
                         continue
                     assert (
@@ -1352,7 +1353,11 @@ def find_matching_overload_item(overloaded: Overloaded, template: CallableType) 
         # Return type may be indeterminate in the template, so ignore it when performing a
         # subtype check.
         if mypy.subtypes.is_callable_compatible(
-            item, template, is_compat=mypy.subtypes.is_subtype, ignore_return=True
+            item,
+            template,
+            is_compat=mypy.subtypes.is_subtype,
+            is_proper_subtype=False,
+            ignore_return=True,
         ):
             return item
     # Fall back to the first item if we can't find a match. This is totally arbitrary --
@@ -1370,7 +1375,11 @@ def find_matching_overload_items(
         # Return type may be indeterminate in the template, so ignore it when performing a
         # subtype check.
         if mypy.subtypes.is_callable_compatible(
-            item, template, is_compat=mypy.subtypes.is_subtype, ignore_return=True
+            item,
+            template,
+            is_compat=mypy.subtypes.is_subtype,
+            is_proper_subtype=False,
+            ignore_return=True,
         ):
             res.append(item)
     if not res:
@@ -1380,7 +1389,7 @@ def find_matching_overload_items(
     return res
 
 
-def get_tuple_fallback_from_unpack(unpack: UnpackType) -> TypeInfo | None:
+def get_tuple_fallback_from_unpack(unpack: UnpackType) -> TypeInfo:
     """Get builtins.tuple type from available types to construct homogeneous tuples."""
     tp = get_proper_type(unpack.type)
     if isinstance(tp, Instance) and tp.type.fullname == "builtins.tuple":
@@ -1391,10 +1400,10 @@ def get_tuple_fallback_from_unpack(unpack: UnpackType) -> TypeInfo | None:
         for base in tp.partial_fallback.type.mro:
             if base.fullname == "builtins.tuple":
                 return base
-    return None
+    assert False, "Invalid unpack type"
 
 
-def repack_callable_args(callable: CallableType, tuple_type: TypeInfo | None) -> list[Type]:
+def repack_callable_args(callable: CallableType, tuple_type: TypeInfo) -> list[Type]:
     """Present callable with star unpack in a normalized form.
 
     Since positional arguments cannot follow star argument, they are packed in a suffix,
@@ -1409,12 +1418,8 @@ def repack_callable_args(callable: CallableType, tuple_type: TypeInfo | None) ->
     star_type = callable.arg_types[star_index]
     suffix_types = []
     if not isinstance(star_type, UnpackType):
-        if tuple_type is not None:
-            # Re-normalize *args: X -> *args: *tuple[X, ...]
-            star_type = UnpackType(Instance(tuple_type, [star_type]))
-        else:
-            # This is unfortunate, something like tuple[Any, ...] would be better.
-            star_type = UnpackType(AnyType(TypeOfAny.from_error))
+        # Re-normalize *args: X -> *args: *tuple[X, ...]
+        star_type = UnpackType(Instance(tuple_type, [star_type]))
     else:
         tp = get_proper_type(star_type.type)
         if isinstance(tp, TupleType):
@@ -1536,7 +1541,9 @@ def infer_directed_arg_constraints(left: Type, right: Type, direction: int) -> l
 
 
 def infer_callable_arguments_constraints(
-    template: CallableType | Parameters, actual: CallableType | Parameters, direction: int
+    template: NormalizedCallableType | Parameters,
+    actual: NormalizedCallableType | Parameters,
+    direction: int,
 ) -> list[Constraint]:
     """Infer constraints between argument types of two callables.
 

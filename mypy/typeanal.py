@@ -35,7 +35,7 @@ from mypy.nodes import (
     check_arg_names,
     get_nongen_builtins,
 )
-from mypy.options import UNPACK, Options
+from mypy.options import Options
 from mypy.plugin import AnalyzeTypeContext, Plugin, TypeAnalyzerPluginInterface
 from mypy.semanal_shared import SemanticAnalyzerCoreInterface, paramspec_args, paramspec_kwargs
 from mypy.tvar_scope import TypeVarLikeScope
@@ -494,7 +494,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         #       need access to MessageBuilder here. Also move the similar
         #       message generation logic in semanal.py.
         self.api.fail(f'Cannot resolve name "{t.name}" (possible cyclic definition)', t)
-        if not self.options.disable_recursive_aliases and self.api.is_func_scope():
+        if self.api.is_func_scope():
             self.note("Recursive types are not allowed at function scope", t)
 
     def apply_concatenate_operator(self, t: UnboundType) -> Type:
@@ -670,8 +670,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # In most contexts, TypeGuard[...] acts as an alias for bool (ignoring its args)
             return self.named_type("builtins.bool")
         elif fullname in ("typing.Unpack", "typing_extensions.Unpack"):
-            if not self.api.incomplete_feature_enabled(UNPACK, t):
-                return AnyType(TypeOfAny.from_error)
             if len(t.args) != 1:
                 self.fail("Unpack[...] requires exactly one type argument", t)
                 return AnyType(TypeOfAny.from_error)
@@ -993,33 +991,40 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     self.anal_star_arg_type(t.arg_types[-2], ARG_STAR, nested=nested),
                     self.anal_star_arg_type(t.arg_types[-1], ARG_STAR2, nested=nested),
                 ]
+                # If nested is True, it means we are analyzing a Callable[...] type, rather
+                # than a function definition type. We need to "unpack" ** TypedDict annotation
+                # here (for function definitions it is done in semanal).
+                if nested and isinstance(arg_types[-1], UnpackType):
+                    # TODO: it would be better to avoid this get_proper_type() call.
+                    unpacked = get_proper_type(arg_types[-1].type)
+                    if isinstance(unpacked, TypedDictType):
+                        arg_types[-1] = unpacked
+                        unpacked_kwargs = True
+                    arg_types = self.check_unpacks_in_list(arg_types)
             else:
-                arg_types = self.anal_array(t.arg_types, nested=nested, allow_unpack=True)
                 star_index = None
                 if ARG_STAR in arg_kinds:
                     star_index = arg_kinds.index(ARG_STAR)
                 star2_index = None
                 if ARG_STAR2 in arg_kinds:
                     star2_index = arg_kinds.index(ARG_STAR2)
-                validated_args: list[Type] = []
-                for i, at in enumerate(arg_types):
-                    if isinstance(at, UnpackType) and i not in (star_index, star2_index):
-                        self.fail(
-                            message_registry.INVALID_UNPACK_POSITION, at, code=codes.VALID_TYPE
-                        )
-                        validated_args.append(AnyType(TypeOfAny.from_error))
-                    else:
-                        if nested and isinstance(at, UnpackType) and i == star_index:
-                            # TODO: it would be better to avoid this get_proper_type() call.
-                            p_at = get_proper_type(at.type)
-                            if isinstance(p_at, TypedDictType) and not at.from_star_syntax:
-                                # Automatically detect Unpack[Foo] in Callable as backwards
-                                # compatible syntax for **Foo, if Foo is a TypedDict.
-                                at = p_at
-                                arg_kinds[i] = ARG_STAR2
-                                unpacked_kwargs = True
-                        validated_args.append(at)
-                arg_types = validated_args
+                arg_types = []
+                for i, ut in enumerate(t.arg_types):
+                    at = self.anal_type(
+                        ut, nested=nested, allow_unpack=i in (star_index, star2_index)
+                    )
+                    if nested and isinstance(at, UnpackType) and i == star_index:
+                        # TODO: it would be better to avoid this get_proper_type() call.
+                        p_at = get_proper_type(at.type)
+                        if isinstance(p_at, TypedDictType) and not at.from_star_syntax:
+                            # Automatically detect Unpack[Foo] in Callable as backwards
+                            # compatible syntax for **Foo, if Foo is a TypedDict.
+                            at = p_at
+                            arg_kinds[i] = ARG_STAR2
+                            unpacked_kwargs = True
+                    arg_types.append(at)
+                if nested:
+                    arg_types = self.check_unpacks_in_list(arg_types)
             # If there were multiple (invalid) unpacks, the arg types list will become shorter,
             # we need to trim the kinds/names as well to avoid crashes.
             arg_kinds = t.arg_kinds[: len(arg_types)]
@@ -1393,8 +1398,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         names: list[str | None] = []
         seen_unpack = False
         unpack_types: list[Type] = []
-        invalid_unpacks = []
-        for arg in arglist.items:
+        invalid_unpacks: list[Type] = []
+        second_unpack_last = False
+        for i, arg in enumerate(arglist.items):
             if isinstance(arg, CallableArgument):
                 args.append(arg.typ)
                 names.append(arg.name)
@@ -1421,6 +1427,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             ):
                 if seen_unpack:
                     # Multiple unpacks, preserve them, so we can give an error later.
+                    if i == len(arglist.items) - 1 and not invalid_unpacks:
+                        # Special case: if there are just two unpacks, and the second one appears
+                        # as last type argument, it can be still valid, if the second unpacked type
+                        # is a TypedDict. This should be checked by the caller.
+                        second_unpack_last = True
                     invalid_unpacks.append(arg)
                     continue
                 seen_unpack = True
@@ -1448,7 +1459,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             names.append(None)
         for arg in invalid_unpacks:
             args.append(arg)
-            kinds.append(ARG_STAR)
+            kinds.append(ARG_STAR2 if second_unpack_last else ARG_STAR)
             names.append(None)
         # Note that arglist below is only used for error context.
         check_arg_names(names, [arglist] * len(args), self.fail, "Callable")

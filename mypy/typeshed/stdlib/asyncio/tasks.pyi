@@ -2,7 +2,7 @@ import concurrent.futures
 import sys
 from collections.abc import Awaitable, Coroutine, Generator, Iterable, Iterator
 from types import FrameType
-from typing import Any, Generic, Protocol, TextIO, TypeVar, overload
+from typing import Any, Protocol, TextIO, TypeVar, overload
 from typing_extensions import Literal, TypeAlias
 
 from . import _CoroutineLike
@@ -379,7 +379,7 @@ else:
 # While this is true in general, here it's sort-of okay to have a covariant subclass,
 # since the only reason why `asyncio.Future` is invariant is the `set_result()` method,
 # and `asyncio.Task.set_result()` always raises.
-class Task(Future[_T_co], Generic[_T_co]):  # type: ignore[type-var]  # pyright: ignore[reportGeneralTypeIssues]
+class Task(Future[_T_co]):  # type: ignore[type-var]  # pyright: ignore[reportGeneralTypeIssues]
     if sys.version_info >= (3, 12):
         def __init__(
             self,

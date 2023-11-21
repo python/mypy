@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Callable, Sequence
 
 import mypy.subtypes
+from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type
 from mypy.nodes import Context
 from mypy.types import (
@@ -62,6 +63,11 @@ def get_target_type(
         report_incompatible_typevar_value(callable, type, tvar.name, context)
     else:
         upper_bound = tvar.upper_bound
+        if tvar.name == "Self":
+            # Internally constructed Self-types contain class type variables in upper bound,
+            # so we need to erase them to avoid false positives. This is safe because we do
+            # not support type variables in upper bounds of user defined types.
+            upper_bound = erase_typevars(upper_bound)
         if not mypy.subtypes.is_subtype(type, upper_bound):
             if skip_unsatisfied:
                 return None
@@ -121,6 +127,7 @@ def apply_generic_arguments(
     # Apply arguments to argument types.
     var_arg = callable.var_arg()
     if var_arg is not None and isinstance(var_arg.typ, UnpackType):
+        # Same as for ParamSpec, callable with variadic types needs to be expanded as a whole.
         callable = expand_type(callable, id_to_type)
         assert isinstance(callable, CallableType)
         return callable.copy_modified(variables=[tv for tv in tvars if tv.id not in id_to_type])

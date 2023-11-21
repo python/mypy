@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import enum
 import itertools
 import time
 from collections import defaultdict
 from contextlib import contextmanager
 from typing import Callable, ClassVar, Final, Iterable, Iterator, List, Optional, Sequence, cast
-from typing_extensions import TypeAlias as _TypeAlias, overload
+from typing_extensions import TypeAlias as _TypeAlias, assert_never, overload
 
 import mypy.checker
 import mypy.errorcodes as codes
@@ -96,7 +97,7 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
-from mypy.options import TYPE_VAR_TUPLE
+from mypy.options import PRECISE_TUPLE_TYPES
 from mypy.plugin import (
     FunctionContext,
     FunctionSigContext,
@@ -277,6 +278,20 @@ class Finished(Exception):
     """Raised if we can terminate overload argument check early (no match)."""
 
 
+@enum.unique
+class UseReverse(enum.Enum):
+    """Used in `visit_op_expr` to enable or disable reverse method checks."""
+
+    DEFAULT = 0
+    ALWAYS = 1
+    NEVER = 2
+
+
+USE_REVERSE_DEFAULT: Final = UseReverse.DEFAULT
+USE_REVERSE_ALWAYS: Final = UseReverse.ALWAYS
+USE_REVERSE_NEVER: Final = UseReverse.NEVER
+
+
 class ExpressionChecker(ExpressionVisitor[Type]):
     """Expression type checker.
 
@@ -328,7 +343,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # on whether current expression is a callee, to give better error messages
         # related to type context.
         self.is_callee = False
-        type_state.infer_polymorphic = self.chk.options.new_type_inference
+        type_state.infer_polymorphic = not self.chk.options.old_type_inference
 
     def reset(self) -> None:
         self.resolved_type = {}
@@ -395,7 +410,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             result = self.alias_type_in_runtime_context(
                 node, ctx=e, alias_definition=e.is_alias_rvalue or lvalue
             )
-        elif isinstance(node, (TypeVarExpr, ParamSpecExpr)):
+        elif isinstance(node, (TypeVarExpr, ParamSpecExpr, TypeVarTupleExpr)):
             result = self.object_type()
         else:
             if isinstance(node, PlaceholderNode):
@@ -1974,7 +1989,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # in this case external context is almost everything we have.
             if not is_generic_instance(ctx) and not is_literal_type_like(ctx):
                 return callable.copy_modified()
-        args = infer_type_arguments(callable.variables, ret_type, erased_ctx)
+        args = infer_type_arguments(
+            callable.variables, ret_type, erased_ctx, skip_unsatisfied=True
+        )
         # Only substitute non-Uninhabited and non-erased types.
         new_args: list[Type | None] = []
         for arg in args:
@@ -2065,7 +2082,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 elif not first_arg or not is_subtype(self.named_type("builtins.str"), first_arg):
                     self.chk.fail(message_registry.KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE, context)
 
-            if self.chk.options.new_type_inference and any(
+            if not self.chk.options.old_type_inference and any(
                 a is None
                 or isinstance(get_proper_type(a), UninhabitedType)
                 or set(get_type_vars(a)) & set(callee_type.variables)
@@ -2164,7 +2181,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 lambda a: self.accept(args[a]),
             )
 
-        arg_types = self.infer_arg_types_in_context(callee_type, args, arg_kinds, formal_to_actual)
+        # Same as during first pass, disable type errors (we still have partial context).
+        with self.msg.filter_errors():
+            arg_types = self.infer_arg_types_in_context(
+                callee_type, args, arg_kinds, formal_to_actual
+            )
 
         inferred_args, _ = infer_function_type_arguments(
             callee_type,
@@ -2419,34 +2440,28 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # the suffices to the tuple, e.g. a single actual like
             # Tuple[Unpack[Ts], int]
             expanded_tuple = False
+            actual_kinds = [arg_kinds[a] for a in actuals]
             if len(actuals) > 1:
-                first_actual_arg_type = get_proper_type(arg_types[actuals[0]])
+                p_actual_type = get_proper_type(arg_types[actuals[0]])
                 if (
-                    isinstance(first_actual_arg_type, TupleType)
-                    and len(first_actual_arg_type.items) == 1
-                    and isinstance(first_actual_arg_type.items[0], UnpackType)
+                    isinstance(p_actual_type, TupleType)
+                    and len(p_actual_type.items) == 1
+                    and isinstance(p_actual_type.items[0], UnpackType)
+                    and actual_kinds == [nodes.ARG_STAR] + [nodes.ARG_POS] * (len(actuals) - 1)
                 ):
-                    # TODO: use walrus operator
-                    actual_types = [first_actual_arg_type.items[0]] + [
-                        arg_types[a] for a in actuals[1:]
-                    ]
-                    actual_kinds = [nodes.ARG_STAR] + [nodes.ARG_POS] * (len(actuals) - 1)
-
-                    # If we got here, the callee was previously inferred to have a suffix.
-                    assert isinstance(orig_callee_arg_type, UnpackType)
-                    assert isinstance(orig_callee_arg_type.type, ProperType) and isinstance(
-                        orig_callee_arg_type.type, TupleType
-                    )
-                    assert orig_callee_arg_type.type.items
-                    callee_arg_types = orig_callee_arg_type.type.items
-                    callee_arg_kinds = [nodes.ARG_STAR] + [nodes.ARG_POS] * (
-                        len(orig_callee_arg_type.type.items) - 1
-                    )
-                    expanded_tuple = True
+                    actual_types = [p_actual_type.items[0]] + [arg_types[a] for a in actuals[1:]]
+                    if isinstance(orig_callee_arg_type, UnpackType):
+                        p_callee_type = get_proper_type(orig_callee_arg_type.type)
+                        if isinstance(p_callee_type, TupleType):
+                            assert p_callee_type.items
+                            callee_arg_types = p_callee_type.items
+                            callee_arg_kinds = [nodes.ARG_STAR] + [nodes.ARG_POS] * (
+                                len(p_callee_type.items) - 1
+                            )
+                            expanded_tuple = True
 
             if not expanded_tuple:
                 actual_types = [arg_types[a] for a in actuals]
-                actual_kinds = [arg_kinds[a] for a in actuals]
                 if isinstance(orig_callee_arg_type, UnpackType):
                     unpacked_type = get_proper_type(orig_callee_arg_type.type)
                     if isinstance(unpacked_type, TupleType):
@@ -3295,6 +3310,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def concat_tuples(self, left: TupleType, right: TupleType) -> TupleType:
         """Concatenate two fixed length tuples."""
+        assert not (find_unpack_in_list(left.items) and find_unpack_in_list(right.items))
         return TupleType(
             items=left.items + right.items, fallback=self.named_type("builtins.tuple")
         )
@@ -3355,7 +3371,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         ):
                             return self.concat_tuples(proper_left_type, proper_right_type)
                 elif (
-                    TYPE_VAR_TUPLE in self.chk.options.enable_incomplete_feature
+                    PRECISE_TUPLE_TYPES in self.chk.options.enable_incomplete_feature
                     and isinstance(proper_right_type, Instance)
                     and self.chk.type_is_iterable(proper_right_type)
                 ):
@@ -3371,7 +3387,25 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         return proper_left_type.copy_modified(
                             items=proper_left_type.items + [UnpackType(mapped)]
                         )
-        if TYPE_VAR_TUPLE in self.chk.options.enable_incomplete_feature:
+
+        use_reverse: UseReverse = USE_REVERSE_DEFAULT
+        if e.op == "|":
+            if is_named_instance(proper_left_type, "builtins.dict"):
+                # This is a special case for `dict | TypedDict`.
+                # 1. Find `dict | TypedDict` case
+                # 2. Switch `dict.__or__` to `TypedDict.__ror__` (the same from both runtime and typing perspective)
+                proper_right_type = get_proper_type(self.accept(e.right))
+                if isinstance(proper_right_type, TypedDictType):
+                    use_reverse = USE_REVERSE_ALWAYS
+            if isinstance(proper_left_type, TypedDictType):
+                # This is the reverse case: `TypedDict | dict`,
+                # simply do not allow the reverse checking:
+                # do not call `__dict__.__ror__`.
+                proper_right_type = get_proper_type(self.accept(e.right))
+                if is_named_instance(proper_right_type, "builtins.dict"):
+                    use_reverse = USE_REVERSE_NEVER
+
+        if PRECISE_TUPLE_TYPES in self.chk.options.enable_incomplete_feature:
             # Handle tuple[X, ...] + tuple[Y, Z] = tuple[*tuple[X, ...], Y, Z].
             if (
                 e.op == "+"
@@ -3390,7 +3424,25 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if e.op in operators.op_methods:
             method = operators.op_methods[e.op]
-            result, method_type = self.check_op(method, left_type, e.right, e, allow_reverse=True)
+            if use_reverse is UseReverse.DEFAULT or use_reverse is UseReverse.NEVER:
+                result, method_type = self.check_op(
+                    method,
+                    base_type=left_type,
+                    arg=e.right,
+                    context=e,
+                    allow_reverse=use_reverse is UseReverse.DEFAULT,
+                )
+            elif use_reverse is UseReverse.ALWAYS:
+                result, method_type = self.check_op(
+                    # The reverse operator here gives better error messages:
+                    operators.reverse_op_methods[method],
+                    base_type=self.accept(e.right),
+                    arg=e.left,
+                    context=e,
+                    allow_reverse=False,
+                )
+            else:
+                assert_never(use_reverse)
             e.method_type = method_type
             return result
         else:
@@ -3565,8 +3617,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self,
         left: Type,
         right: Type,
-        original_container: Type | None = None,
         *,
+        original_container: Type | None = None,
+        seen_types: set[tuple[Type, Type]] | None = None,
         prefer_literal: bool = True,
     ) -> bool:
         """Check for dangerous non-overlapping comparisons like 42 == 'no'.
@@ -3586,6 +3639,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         if not self.chk.options.strict_equality:
             return False
+
+        if seen_types is None:
+            seen_types = set()
+        if (left, right) in seen_types:
+            return False
+        seen_types.add((left, right))
 
         left, right = get_proper_types((left, right))
 
@@ -3642,17 +3701,21 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 abstract_set = self.chk.lookup_typeinfo("typing.AbstractSet")
                 left = map_instance_to_supertype(left, abstract_set)
                 right = map_instance_to_supertype(right, abstract_set)
-                return self.dangerous_comparison(left.args[0], right.args[0])
+                return self.dangerous_comparison(
+                    left.args[0], right.args[0], seen_types=seen_types
+                )
             elif left.type.has_base("typing.Mapping") and right.type.has_base("typing.Mapping"):
                 # Similar to above: Mapping ignores the classes, it just compares items.
                 abstract_map = self.chk.lookup_typeinfo("typing.Mapping")
                 left = map_instance_to_supertype(left, abstract_map)
                 right = map_instance_to_supertype(right, abstract_map)
                 return self.dangerous_comparison(
-                    left.args[0], right.args[0]
-                ) or self.dangerous_comparison(left.args[1], right.args[1])
+                    left.args[0], right.args[0], seen_types=seen_types
+                ) or self.dangerous_comparison(left.args[1], right.args[1], seen_types=seen_types)
             elif left_name in ("builtins.list", "builtins.tuple") and right_name == left_name:
-                return self.dangerous_comparison(left.args[0], right.args[0])
+                return self.dangerous_comparison(
+                    left.args[0], right.args[0], seen_types=seen_types
+                )
             elif left_name in OVERLAPPING_BYTES_ALLOWLIST and right_name in (
                 OVERLAPPING_BYTES_ALLOWLIST
             ):
@@ -4850,7 +4913,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return len([e for e in expr.items if not isinstance(e, StarExpr)]) <= len(ctx.items)
         # For variadic context, the only easy case is when structure matches exactly.
         # TODO: try using tuple type context in more cases.
-        if len([e for e in expr.items if not isinstance(e, StarExpr)]) != 1:
+        if len([e for e in expr.items if isinstance(e, StarExpr)]) != 1:
             return False
         expr_star_index = next(i for i, lv in enumerate(expr.items) if isinstance(lv, StarExpr))
         return len(expr.items) == len(ctx.items) and ctx_unpack_index == expr_star_index
@@ -4889,6 +4952,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if type_context_items is not None:
             unpack_in_context = find_unpack_in_list(type_context_items) is not None
         seen_unpack_in_items = False
+        allow_precise_tuples = (
+            unpack_in_context or PRECISE_TUPLE_TYPES in self.chk.options.enable_incomplete_feature
+        )
 
         # Infer item types.  Give up if there's a star expression
         # that's not a Tuple.
@@ -4929,10 +4995,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         # result in an error later, just do something predictable here.
                         j += len(tt.items)
                 else:
-                    if (
-                        TYPE_VAR_TUPLE in self.chk.options.enable_incomplete_feature
-                        and not seen_unpack_in_items
-                    ):
+                    if allow_precise_tuples and not seen_unpack_in_items:
                         # Handle (x, *y, z), where y is e.g. tuple[Y, ...].
                         if isinstance(tt, Instance) and self.chk.type_is_iterable(tt):
                             item_type = self.chk.iterable_item_type(tt, e)
@@ -5143,7 +5206,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         else:
             # Type context available.
             self.chk.return_types.append(inferred_type.ret_type)
-            self.chk.check_func_item(e, type_override=type_override)
+            with self.chk.tscope.function_scope(e):
+                self.chk.check_func_item(e, type_override=type_override)
             if not self.chk.has_type(e.expr()):
                 # TODO: return expression must be accepted before exiting function scope.
                 self.accept(e.expr(), allow_none_return=True)
@@ -5177,7 +5241,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # they must be considered as indeterminate. We use ErasedType since it
         # does not affect type inference results (it is for purposes like this
         # only).
-        if self.chk.options.new_type_inference:
+        if not self.chk.options.old_type_inference:
             # With new type inference we can preserve argument types even if they
             # are generic, since new inference algorithm can handle constraints
             # like S <: T (we still erase return type since it's ultimately unknown).
@@ -6450,8 +6514,8 @@ def merge_typevars_in_callables_by_name(
             for tv in target.variables:
                 name = tv.fullname
                 if name not in unique_typevars:
-                    # TODO(PEP612): fix for ParamSpecType
-                    if isinstance(tv, ParamSpecType):
+                    # TODO: support ParamSpecType and TypeVarTuple.
+                    if isinstance(tv, (ParamSpecType, TypeVarTupleType)):
                         continue
                     assert isinstance(tv, TypeVarType)
                     unique_typevars[name] = tv

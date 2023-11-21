@@ -16,6 +16,7 @@ from mypy.subtypes import (
 from mypy.typeops import is_recursive_pair, make_simplified_union, tuple_fallback
 from mypy.types import (
     MYPYC_NATIVE_INT_NAMES,
+    TUPLE_LIKE_INSTANCE_NAMES,
     AnyType,
     CallableType,
     DeletedType,
@@ -261,6 +262,7 @@ def is_overlapping_types(
     ignore_promotions: bool = False,
     prohibit_none_typevar_overlap: bool = False,
     ignore_uninhabited: bool = False,
+    seen_types: set[tuple[Type, Type]] | None = None,
 ) -> bool:
     """Can a value of type 'left' also be of type 'right' or vice-versa?
 
@@ -274,18 +276,27 @@ def is_overlapping_types(
         # A type guard forces the new type even if it doesn't overlap the old.
         return True
 
+    if seen_types is None:
+        seen_types = set()
+    if (left, right) in seen_types:
+        return True
+    if isinstance(left, TypeAliasType) and isinstance(right, TypeAliasType):
+        seen_types.add((left, right))
+
     left, right = get_proper_types((left, right))
 
     def _is_overlapping_types(left: Type, right: Type) -> bool:
         """Encode the kind of overlapping check to perform.
 
-        This function mostly exists so we don't have to repeat keyword arguments everywhere."""
+        This function mostly exists, so we don't have to repeat keyword arguments everywhere.
+        """
         return is_overlapping_types(
             left,
             right,
             ignore_promotions=ignore_promotions,
             prohibit_none_typevar_overlap=prohibit_none_typevar_overlap,
             ignore_uninhabited=ignore_uninhabited,
+            seen_types=seen_types.copy(),
         )
 
     # We should never encounter this type.
@@ -462,6 +473,7 @@ def is_overlapping_types(
             left,
             right,
             is_compat=_is_overlapping_types,
+            is_proper_subtype=False,
             ignore_pos_arg_names=True,
             allow_partial_overlap=True,
         )
@@ -868,16 +880,17 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             return None
         if s_unpack_index is not None and t_unpack_index is not None:
             # The only simple case we can handle if both tuples are variadic
-            # is when they are purely variadic. Other cases are tricky because
+            # is when their structure fully matches. Other cases are tricky because
             # a variadic item is effectively a union of tuples of all length, thus
             # potentially causing overlap between a suffix in `s` and a prefix
             # in `t` (see how this is handled in is_subtype() for details).
             # TODO: handle more cases (like when both prefix/suffix are shorter in s or t).
-            if s.length() == 1 and t.length() == 1:
-                s_unpack = s.items[0]
+            if s.length() == t.length() and s_unpack_index == t_unpack_index:
+                unpack_index = s_unpack_index
+                s_unpack = s.items[unpack_index]
                 assert isinstance(s_unpack, UnpackType)
                 s_unpacked = get_proper_type(s_unpack.type)
-                t_unpack = t.items[0]
+                t_unpack = t.items[unpack_index]
                 assert isinstance(t_unpack, UnpackType)
                 t_unpacked = get_proper_type(t_unpack.type)
                 if not (isinstance(s_unpacked, Instance) and isinstance(t_unpacked, Instance)):
@@ -885,7 +898,13 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                 meet = self.meet(s_unpacked, t_unpacked)
                 if not isinstance(meet, Instance):
                     return None
-                return [UnpackType(meet)]
+                m_prefix: list[Type] = []
+                for si, ti in zip(s.items[:unpack_index], t.items[:unpack_index]):
+                    m_prefix.append(meet_types(si, ti))
+                m_suffix: list[Type] = []
+                for si, ti in zip(s.items[unpack_index + 1 :], t.items[unpack_index + 1 :]):
+                    m_suffix.append(meet_types(si, ti))
+                return m_prefix + [UnpackType(meet)] + m_suffix
             return None
         if s_unpack_index is not None:
             variadic = s
@@ -928,7 +947,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             return TupleType(items, tuple_fallback(t))
         elif isinstance(self.s, Instance):
             # meet(Tuple[t1, t2, <...>], Tuple[s, ...]) == Tuple[meet(t1, s), meet(t2, s), <...>].
-            if self.s.type.fullname == "builtins.tuple" and self.s.args:
+            if self.s.type.fullname in TUPLE_LIKE_INSTANCE_NAMES and self.s.args:
                 return t.copy_modified(items=[meet_types(it, self.s.args[0]) for it in t.items])
             elif is_proper_subtype(t, self.s):
                 # A named tuple that inherits from a normal class
@@ -1005,11 +1024,11 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
 
 def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
-    from mypy.join import join_types
+    from mypy.join import safe_join
 
     arg_types: list[Type] = []
     for i in range(len(t.arg_types)):
-        arg_types.append(join_types(t.arg_types[i], s.arg_types[i]))
+        arg_types.append(safe_join(t.arg_types[i], s.arg_types[i]))
     # TODO in combine_similar_callables also applies here (names and kinds)
     # The fallback type can be either 'function' or 'type'. The result should have 'function' as
     # fallback only if both operands have it as 'function'.
