@@ -2136,7 +2136,7 @@ tmp/foo.pyi:8: note:          def __add__(self, int, /) -> A
 tmp/foo.pyi:8: note:          @overload
 tmp/foo.pyi:8: note:          def __add__(self, str, /) -> A
 tmp/foo.pyi:8: note:          @overload
-tmp/foo.pyi:8: note:          def __add__(self, type, /) -> A
+tmp/foo.pyi:8: note:          def __add__(self, Type[Any], /) -> A
 tmp/foo.pyi:8: note: Overloaded operator methods can't have wider argument types in overrides
 
 [case testOverloadedOperatorMethodOverrideWithSwitchedItemOrder]
@@ -3431,7 +3431,7 @@ def foo(arg: Type[Any]):
 from typing import Type, Any
 def foo(arg: Type[Any]):
     reveal_type(arg.__str__)  # N: Revealed type is "def () -> builtins.str"
-    reveal_type(arg.mro())  # N: Revealed type is "builtins.list[builtins.type[Any]]"
+    reveal_type(arg.mro())  # N: Revealed type is "builtins.list[Type[Any]]"
 [builtins fixtures/type.pyi]
 [out]
 
@@ -3771,7 +3771,7 @@ def f(a: type) -> None: pass
 f(3)  # E: No overload variant of "f" matches argument type "int" \
       # N: Possible overload variants: \
       # N:     def f(a: Type[User]) -> None \
-      # N:     def f(a: type) -> None
+      # N:     def f(a: Type[Any]) -> None
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -5490,8 +5490,7 @@ def f() -> type: return M
 class C1(six.with_metaclass(M), object): pass  # E: Unsupported dynamic base class "six.with_metaclass"
 class C2(C1, six.with_metaclass(M)): pass  # E: Unsupported dynamic base class "six.with_metaclass"
 class C3(six.with_metaclass(A)): pass  # E: Metaclasses not inheriting from "type" are not supported
-@six.add_metaclass(A)  # E: Metaclasses not inheriting from "type" are not supported  \
-    # E: Argument 1 to "add_metaclass" has incompatible type "Type[A]"; expected "Type[type]"
+@six.add_metaclass(A)  # E: Metaclasses not inheriting from "type" are not supported
 
 class D3(A): pass
 class C4(six.with_metaclass(M), metaclass=M): pass  # E: Multiple metaclass definitions

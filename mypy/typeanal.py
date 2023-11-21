@@ -133,6 +133,7 @@ def analyze_type_alias(
     in_dynamic_func: bool = False,
     global_scope: bool = True,
     allowed_alias_tvars: list[TypeVarLikeType] | None = None,
+    builtin_type_is_type_type: bool = True,
 ) -> tuple[Type, set[str]]:
     """Analyze r.h.s. of a (potential) type alias definition.
 
@@ -150,7 +151,7 @@ def analyze_type_alias(
         allow_placeholder=allow_placeholder,
         prohibit_self_type="type alias target",
         allowed_alias_tvars=allowed_alias_tvars,
-        analyze_annotation=True,
+        builtin_type_is_type_type=builtin_type_is_type_type,
     )
     analyzer.in_dynamic_func = in_dynamic_func
     analyzer.global_scope = global_scope
@@ -203,7 +204,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         prohibit_self_type: str | None = None,
         allowed_alias_tvars: list[TypeVarLikeType] | None = None,
         allow_type_any: bool = False,
-        analyze_annotation: bool = False,
+        builtin_type_is_type_type: bool = True,
     ) -> None:
         self.api = api
         self.fail_func = api.fail
@@ -248,7 +249,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_type_any = allow_type_any
         self.allow_type_var_tuple = False
         self.allow_unpack = allow_unpack
-        self.analyze_annotation = analyze_annotation
+        self.builtin_type_is_type_type = builtin_type_is_type_type
 
     def lookup_qualified(
         self, name: str, ctx: Context, suppress_errors: bool = False
@@ -592,7 +593,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         ):
             if len(t.args) == 0:
                 if fullname == "typing.Type" or (
-                    self.analyze_annotation and (fullname == "builtins.type")
+                    self.builtin_type_is_type_type and (fullname == "builtins.type")
                 ):
                     any_type = self.get_omitted_any(t)
                     return TypeType(any_type, line=t.line, column=t.column)

@@ -417,6 +417,12 @@ class MessageBuilder:
             # Indexed get.
             # TODO: Fix this consistently in format_type
             if isinstance(original_type, FunctionLike) and original_type.is_type_obj():
+                if isinstance(original_type, CallableType) and isinstance(
+                    ret_type := get_proper_type(original_type.ret_type), Instance) and (
+                    ret_type.type.fullname == "builtins.type"
+                ):
+                    self.fail(message_registry.BUILTIN_TYPE_USED_AS_GENERIC, context)
+                    return None
                 self.fail(
                     "The type {} is not generic and not indexable".format(
                         format_type(original_type, self.options)

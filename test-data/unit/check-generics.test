@@ -513,7 +513,7 @@ Alias[int]("a")  # E: Argument 1 to "Node" has incompatible type "str"; expected
 [out]
 
 [case testTypeApplicationCrash]
-type[int] # this was crashing, see #2302 (comment)  # E: The type "Type[type]" is not generic and not indexable
+type[int] # this was crashing, see #2302 (comment)  # E: "builtins.type" is indexable as a type hint but neither a generic class nor a generic function
 [out]
 
 

@@ -277,7 +277,7 @@ class AnnotationPrinter(TypeStrVisitor):
 
 class ClassInfo:
     def __init__(
-        self, name: str, self_var: str, docstring: str | None = None, cls: type | None = None
+        self, name: str, self_var: str, docstring: str | None = None, cls: type[object] | None = None
     ) -> None:
         self.name = name
         self.self_var = self_var

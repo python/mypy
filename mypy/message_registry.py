@@ -175,6 +175,10 @@ BARE_GENERIC: Final = "Missing type parameters for generic type {}"
 IMPLICIT_GENERIC_ANY_BUILTIN: Final = (
     'Implicit generic "Any". Use "{}" and specify generic parameters'
 )
+BUILTIN_TYPE_USED_AS_GENERIC = (
+    '"builtins.type" is indexable as a type hint but neither a generic class nor a generic '
+    'function'
+)
 INVALID_UNPACK: Final = "{} cannot be unpacked (must be tuple or TypeVarTuple)"
 INVALID_UNPACK_POSITION: Final = "Unpack is only valid in a variadic position"
 

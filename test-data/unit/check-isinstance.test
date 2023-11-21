@@ -1883,7 +1883,7 @@ if issubclass(y): # E: Missing positional argument "t" in call to "issubclass"
 
 [case testIsInstanceTooManyArgs]
 isinstance(1, 1, 1) # E: Too many arguments for "isinstance" \
-         # E: Argument 2 to "isinstance" has incompatible type "int"; expected "Union[type, Tuple[Any, ...]]"
+         # E: Argument 2 to "isinstance" has incompatible type "int"; expected "Union[Type[Any], Tuple[Any, ...]]"
 x: object
 if isinstance(x, str, 1): # E: Too many arguments for "isinstance"
     reveal_type(x) # N: Revealed type is "builtins.object"

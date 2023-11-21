@@ -2165,7 +2165,10 @@ class SemanticAnalyzer(
 
             try:
                 base = self.expr_to_analyzed_type(
-                    base_expr, allow_placeholder=True, allow_type_any=True
+                    base_expr,
+                    allow_placeholder=True,
+                    allow_type_any=True,
+                    builtin_type_is_type_type=not refers_to_fullname(base_expr, "builtins.type"),
                 )
             except TypeTranslationError:
                 name = self.get_name_repr_of_expr(base_expr)
@@ -2215,10 +2218,14 @@ class SemanticAnalyzer(
             elif isinstance(base, TypedDictType):
                 base_types.append(base.fallback)
             else:
-                msg = "Invalid base class"
-                name = self.get_name_repr_of_expr(base_expr)
-                if name:
-                    msg += f' "{name}"'
+                if isinstance(base_expr, IndexExpr) and refers_to_fullname(
+                    base_expr.base, "builtins.type"
+                ):
+                    msg = message_registry.BUILTIN_TYPE_USED_AS_GENERIC
+                else:
+                    msg = "Invalid base class"
+                    if name := self.get_name_repr_of_expr(base_expr):
+                        msg += f' "{name}"'
                 self.fail(msg, base_expr)
                 info.fallback_to_any = True
             if self.options.disallow_any_unimported and has_any_from_unimported_type(base):
@@ -3384,9 +3391,7 @@ class SemanticAnalyzer(
         if s.type:
             lvalue = s.lvalues[-1]
             allow_tuple_literal = isinstance(lvalue, TupleExpr)
-            analyzed = self.anal_type(
-                s.type, allow_tuple_literal=allow_tuple_literal, analyze_annotation=True
-            )
+            analyzed = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
             # Don't store not ready types (including placeholders).
             if analyzed is None or has_placeholder(analyzed):
                 self.defer(s)
@@ -3464,7 +3469,11 @@ class SemanticAnalyzer(
         return typ
 
     def analyze_alias(
-        self, name: str, rvalue: Expression, allow_placeholder: bool = False
+        self,
+        name: str,
+        rvalue: Expression,
+        allow_placeholder: bool = False,
+        builtin_type_is_type_type: bool = False,
     ) -> tuple[Type | None, list[TypeVarLikeType], set[str], list[str], bool]:
         """Check if 'rvalue' is a valid type allowed for aliasing (e.g. not a type variable).
 
@@ -3505,6 +3514,7 @@ class SemanticAnalyzer(
                 in_dynamic_func=dynamic,
                 global_scope=global_scope,
                 allowed_alias_tvars=tvar_defs,
+                builtin_type_is_type_type=builtin_type_is_type_type,
             )
 
         # There can be only one variadic variable at most, the error is reported elsewhere.
@@ -3606,7 +3616,12 @@ class SemanticAnalyzer(
         else:
             tag = self.track_incomplete_refs()
             res, alias_tvars, depends_on, qualified_tvars, empty_tuple_index = self.analyze_alias(
-                lvalue.name, rvalue, allow_placeholder=True
+                lvalue.name,
+                rvalue,
+                allow_placeholder=True,
+                builtin_type_is_type_type=(
+                    s.type or not refers_to_fullname(s.rvalue, "builtins.type")
+                ),
             )
             if not res:
                 return False
@@ -5375,7 +5390,6 @@ class SemanticAnalyzer(
                 allow_placeholder=True,
                 allow_param_spec_literals=has_param_spec,
                 allow_unpack=allow_unpack,
-                analyze_annotation=True,
             )
             if analyzed is None:
                 return None
@@ -5400,7 +5414,7 @@ class SemanticAnalyzer(
 
     def visit_cast_expr(self, expr: CastExpr) -> None:
         expr.expr.accept(self)
-        analyzed = self.anal_type(expr.type, analyze_annotation=True)
+        analyzed = self.anal_type(expr.type)
         if analyzed is not None:
             expr.type = analyzed
 
@@ -5422,7 +5436,7 @@ class SemanticAnalyzer(
     def visit_type_application(self, expr: TypeApplication) -> None:
         expr.expr.accept(self)
         for i in range(len(expr.types)):
-            analyzed = self.anal_type(expr.types[i], analyze_annotation=True)
+            analyzed = self.anal_type(expr.types[i])
             if analyzed is not None:
                 expr.types[i] = analyzed
 
@@ -6549,6 +6563,7 @@ class SemanticAnalyzer(
         allow_unbound_tvars: bool = False,
         allow_param_spec_literals: bool = False,
         allow_unpack: bool = False,
+        builtin_type_is_type_type: bool = True,
     ) -> Type | None:
         if isinstance(expr, CallExpr):
             # This is a legacy syntax intended mostly for Python 2, we keep it for
@@ -6580,7 +6595,9 @@ class SemanticAnalyzer(
             allow_unbound_tvars=allow_unbound_tvars,
             allow_param_spec_literals=allow_param_spec_literals,
             allow_unpack=allow_unpack,
-            analyze_annotation=isinstance(expr, IndexExpr),
+            builtin_type_is_type_type=(
+                builtin_type_is_type_type or not refers_to_fullname(expr, "builtins.type")
+            )
         )
 
     def analyze_type_expr(self, expr: Expression) -> None:
@@ -6606,7 +6623,7 @@ class SemanticAnalyzer(
         report_invalid_types: bool = True,
         prohibit_self_type: str | None = None,
         allow_type_any: bool = False,
-        analyze_annotation: bool = False,
+        builtin_type_is_type_type: bool = True,
     ) -> TypeAnalyser:
         if tvar_scope is None:
             tvar_scope = self.tvar_scope
@@ -6625,7 +6642,7 @@ class SemanticAnalyzer(
             allow_unpack=allow_unpack,
             prohibit_self_type=prohibit_self_type,
             allow_type_any=allow_type_any,
-            analyze_annotation=analyze_annotation,
+            builtin_type_is_type_type=builtin_type_is_type_type,
         )
         tpan.in_dynamic_func = bool(self.function_stack and self.function_stack[-1].is_dynamic())
         tpan.global_scope = not self.type and not self.function_stack
@@ -6650,7 +6667,7 @@ class SemanticAnalyzer(
         report_invalid_types: bool = True,
         prohibit_self_type: str | None = None,
         allow_type_any: bool = False,
-        analyze_annotation: bool = False,
+        builtin_type_is_type_type: bool = True,
         third_pass: bool = False,
     ) -> Type | None:
         """Semantically analyze a type.
@@ -6689,7 +6706,7 @@ class SemanticAnalyzer(
             report_invalid_types=report_invalid_types,
             prohibit_self_type=prohibit_self_type,
             allow_type_any=allow_type_any,
-            analyze_annotation=analyze_annotation,
+            builtin_type_is_type_type=builtin_type_is_type_type,
         )
         tag = self.track_incomplete_refs()
         typ = typ.accept(a)

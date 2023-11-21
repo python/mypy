@@ -3209,6 +3209,25 @@ class User:
     def __init__(self, name: str) -> None:
         self.name = name  # E: Cannot assign to a method
 
+
+
+
+[case testTempTemp]
+# flags: --python-version 3.10 --disallow-any-generics
+
+from typing import Any, cast, Union, TypeVar
+from typing_extensions import TypeAlias
+
+j: TypeAlias = type  # E: Missing type parameters for generic type "type"
+class K(metaclass=j): ...  # E: Invalid metaclass "j"
+m = type
+class N(metaclass=m): ...
+
+[builtins fixtures/tuple.pyi]
+
+
+
+
 [case testNewAnalyzerMemberNameMatchesTypedDict]
 from typing import Union, Any
 from typing_extensions import TypedDict
@@ -3239,7 +3258,7 @@ y = 1[y]  # E: Value of type "int" is not indexable \
 [case testBuiltinTypeType]
 # flags: --python-version 3.10 --disallow-any-generics
 
-from typing import Any, cast, Union
+from typing import Any, cast, Union, TypeVar
 from typing_extensions import TypeAlias
 
 a: type  # E: Missing type parameters for generic type "type"
@@ -3268,7 +3287,19 @@ i: type | int  # E: Missing type parameters for generic type "type"
 reveal_type(i)  # N: Revealed type is "Union[Type[Any], builtins.int]"
 
 j: TypeAlias = type  # E: Missing type parameters for generic type "type"
-k: j
-reveal_type(k)  # N: Revealed type is "Type[Any]"
+class K(metaclass=j): ...  # E: Invalid metaclass "j"
+l: j
+reveal_type(l)  # N: Revealed type is "Type[Any]"
+
+m = type
+class N(metaclass=m): ...
+
+O = TypeVar("O", bound=type)  # E: Missing type parameters for generic type "type"
+def p(q: O) -> O: ...
+reveal_type(str)  # N: Revealed type is "def () -> builtins.str"
+
+type[str](1)  # E: "builtins.type" is indexable as a type hint but neither a generic class nor a generic function
+r = type[str]("r", (), {})  # E: "builtins.type" is indexable as a type hint but neither a generic class nor a generic function
+class S(type[str]): ...  # E: "builtins.type" is indexable as a type hint but neither a generic class nor a generic function
 
 [builtins fixtures/tuple.pyi]
