@@ -3215,25 +3215,6 @@ class User:
     def __init__(self, name: str) -> None:
         self.name = name  # E: Cannot assign to a method
 
-
-
-
-[case testTempTemp]
-# flags: --python-version 3.10 --disallow-any-generics
-
-from typing import Any, cast, Union, TypeVar
-from typing_extensions import TypeAlias
-
-j: TypeAlias = type  # E: Missing type parameters for generic type "type"
-class K(metaclass=j): ...  # E: Invalid metaclass "j"
-m = type
-class N(metaclass=m): ...
-
-[builtins fixtures/tuple.pyi]
-
-
-
-
 [case testNewAnalyzerMemberNameMatchesTypedDict]
 from typing import Union, Any
 from typing_extensions import TypedDict
@@ -3302,7 +3283,7 @@ class N(metaclass=m): ...
 
 O = TypeVar("O", bound=type)  # E: Missing type parameters for generic type "type"
 def p(q: O) -> O: ...
-reveal_type(str)  # N: Revealed type is "def () -> builtins.str"
+reveal_type(p(str))  # N: Revealed type is "def () -> builtins.str"
 
 type[str](1)  # E: "builtins.type" is indexable as a type hint but neither a generic class nor a generic function
 r = type[str]("r", (), {})  # E: "builtins.type" is indexable as a type hint but neither a generic class nor a generic function
