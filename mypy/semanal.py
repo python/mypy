@@ -6599,7 +6599,7 @@ class SemanticAnalyzer(
             allow_unpack=allow_unpack,
             builtin_type_is_type_type=(
                 builtin_type_is_type_type or not refers_to_fullname(expr, "builtins.type")
-            )
+            ),
         )
 
     def analyze_type_expr(self, expr: Expression) -> None:
