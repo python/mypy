@@ -3400,7 +3400,7 @@ class FakeInfo(TypeInfo):
     def __init__(self, msg: str) -> None:
         self.msg = msg
 
-    def __getattribute__(self, attr: str) -> type:
+    def __getattribute__(self, attr: str) -> type[object]:
         # Handle __class__ so that isinstance still works...
         if attr == "__class__":
             return object.__getattribute__(self, attr)  # type: ignore[no-any-return]

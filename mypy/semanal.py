@@ -3625,7 +3625,7 @@ class SemanticAnalyzer(
                 rvalue,
                 allow_placeholder=True,
                 builtin_type_is_type_type=(
-                    s.type or not refers_to_fullname(s.rvalue, "builtins.type")
+                    (s.type is not None) or not refers_to_fullname(s.rvalue, "builtins.type")
                 ),
             )
             if not res:
