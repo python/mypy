@@ -87,7 +87,7 @@ class bool(int): pass
 
 class ellipsis:
     __class__: object
-def isinstance(x: object, t: Union[type[Any], Tuple[type[Any], ...]]) -> bool: pass  # type: ignore
+def isinstance(x: object, t: Union[type[Any], Tuple[type[Any], ...]]) -> bool: pass  # type: ignore[misc]
 class BaseException: pass
 
 def iter(__iterable: Iterable[T]) -> Iterator[T]: pass

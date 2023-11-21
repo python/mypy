@@ -58,7 +58,7 @@ class list(Sequence[T], Generic[T]):
     def __contains__(self, item: object) -> bool: ...
     def __iter__(self) -> Iterator[T]: ...
 
-def isinstance(x: object, t: type[Any]) -> bool: pass  # type: ignore
+def isinstance(x: object, t: type[Any]) -> bool: pass  # type: ignore[misc]
 
 def sum(iterable: Iterable[T], start: Optional[T] = None) -> T: pass
 
