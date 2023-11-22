@@ -307,15 +307,19 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         suffix = self.expand_types(t.arg_types[star_index + 1 :])
 
         var_arg_type = get_proper_type(var_arg.type)
-        # We have something like Unpack[Tuple[Unpack[Ts], X1, X2]]
         if isinstance(var_arg_type, TupleType):
+            # We have something like Unpack[Tuple[Unpack[Ts], X1, X2]]
             expanded_tuple = var_arg_type.accept(self)
             assert isinstance(expanded_tuple, ProperType) and isinstance(expanded_tuple, TupleType)
             expanded_items = expanded_tuple.items
             fallback = var_arg_type.partial_fallback
+        elif isinstance(var_arg_type, Instance):
+            # We have something like Unpack[Tuple[Any, ...]]
+            expanded_items = list(var_arg_type.args)
+            fallback = var_arg_type
         else:
             # We have plain Unpack[Ts]
-            assert isinstance(var_arg_type, TypeVarTupleType)
+            assert isinstance(var_arg_type, TypeVarTupleType), type(var_arg_type)
             fallback = var_arg_type.tuple_fallback
             expanded_items = self.expand_unpack(var_arg)
         new_unpack = UnpackType(TupleType(expanded_items, fallback))
