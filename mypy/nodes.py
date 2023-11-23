@@ -710,7 +710,7 @@ class FuncItem(FuncBase):
             if self.arguments[i] is None and i < self.max_fixed_argc():
                 self.min_args = i + 1
 
-    def is_plugin_generated(self) -> bool:
+    def is_synthetic(self) -> bool:
         if self.info is FUNC_NO_INFO:
             return False
         sym = self.info.names.get(self.name)

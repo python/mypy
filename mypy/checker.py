@@ -1066,7 +1066,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         If type_override is provided, use it as the function type.
         """
-        if defn.is_plugin_generated():
+        if defn.is_synthetic():
             return
 
         self.dynamic_funcs.append(defn.is_dynamic() and not type_override)
@@ -1327,7 +1327,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 )
 
                 # Ignore plugin generated methods, these usually don't need any bodies.
-                if defn.is_plugin_generated():
+                if defn.is_synthetic():
                     show_error = False
 
                 # Ignore also definitions that appear in `if TYPE_CHECKING: ...` blocks.
