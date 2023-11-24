@@ -323,7 +323,9 @@ def attr_class_maker_callback(
     frozen = _get_frozen(ctx, frozen_default)
     order = _determine_eq_order(ctx)
     slots = _get_decorator_bool_argument(ctx, "slots", slots_default)
-    hashable = _get_decorator_bool_argument(ctx, "hash", False) or _get_decorator_bool_argument(ctx, "unsafe_hash", False)
+    hashable = _get_decorator_bool_argument(ctx, "hash", False) or _get_decorator_bool_argument(
+        ctx, "unsafe_hash", False
+    )
 
     auto_attribs = _get_decorator_optional_bool_argument(ctx, "auto_attribs", auto_attribs_default)
     kw_only = _get_decorator_bool_argument(ctx, "kw_only", False)
@@ -948,9 +950,13 @@ def _add_match_args(ctx: mypy.plugin.ClassDefContext, attributes: list[Attribute
         )
         add_attribute_to_class(api=ctx.api, cls=ctx.cls, name="__match_args__", typ=match_args)
 
+
 def _remove_hashability(ctx: mypy.plugin.ClassDefContext) -> None:
     """Remove hashability from a class."""
-    add_attribute_to_class(ctx.api, ctx.cls, "__hash__", NoneType(), is_classvar=True, overwrite_existing=True)
+    add_attribute_to_class(
+        ctx.api, ctx.cls, "__hash__", NoneType(), is_classvar=True, overwrite_existing=True
+    )
+
 
 class MethodAdder:
     """Helper to add methods to a TypeInfo.
