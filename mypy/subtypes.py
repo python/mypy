@@ -1055,9 +1055,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 #       of x is Type[int]. It's unclear what's the right way to address this.
                 return True
             item = left.item
-            if right.type.is_protocol and (
-                len(right.type.protocol_members) == 1) and (
-                right.type.protocol_members[0] == "__hash__"):
+            if (
+                right.type.is_protocol
+                and (len(right.type.protocol_members) == 1)
+                and (right.type.protocol_members[0] == "__hash__")
+            ):
                 if isinstance(item, AnyType):
                     return True
                 if isinstance(item, Instance):
