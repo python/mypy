@@ -1055,6 +1055,15 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 #       of x is Type[int]. It's unclear what's the right way to address this.
                 return True
             item = left.item
+            if right.type.fullname == "typing.Hashable":
+                if isinstance(item, AnyType):
+                    return True
+                if isinstance(item, Instance):
+                    return (
+                        (metaclass_type := item.type.metaclass_type) is None or
+                        (symtab := metaclass_type.type.get("__hash__")) is None or
+                        isinstance(symtab.node, FunctionLike)
+                    )
             if isinstance(item, TypeVarType):
                 item = get_proper_type(item.upper_bound)
             if isinstance(item, Instance):
