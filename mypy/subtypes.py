@@ -1060,9 +1060,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     return True
                 if isinstance(item, Instance):
                     return (
-                        (metaclass_type := item.type.metaclass_type) is None or
-                        (symtab := metaclass_type.type.get("__hash__")) is None or
-                        isinstance(symtab.node, FunctionLike)
+                        (metaclass_type := item.type.metaclass_type) is None
+                        or (symtab := metaclass_type.type.get("__hash__")) is None
+                        or isinstance(symtab.node, FunctionLike)
                     )
             if isinstance(item, TypeVarType):
                 item = get_proper_type(item.upper_bound)
