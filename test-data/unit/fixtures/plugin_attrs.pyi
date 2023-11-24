@@ -5,6 +5,7 @@ class object:
     def __init__(self) -> None: pass
     def __eq__(self, o: object) -> bool: pass
     def __ne__(self, o: object) -> bool: pass
+    def __hash__(self) -> int: ...
 
 class type: pass
 class bytes: pass

@@ -2321,3 +2321,60 @@ reveal_type(b.x)  # N: Revealed type is "builtins.int"
 reveal_type(b.y)  # N: Revealed type is "builtins.int"
 
 [builtins fixtures/plugin_attrs.pyi]
+
+[case testDefaultHashability]
+from typing import Hashable
+from attrs import define
+
+@define
+class A:
+    a: int
+
+a: Hashable = A(1)
+
+[out]
+main:8: error: Incompatible types in assignment (expression has type "A", variable has type "Hashable")
+main:8: note: Following member(s) of "A" have conflicts:
+main:8: note:     __hash__: expected "Callable[[], int]", got "None"
+
+[builtins fixtures/plugin_attrs.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testFrozenHashability]
+from typing import Hashable
+from attrs import frozen
+
+@frozen
+class A:
+    a: int
+
+a: Hashable = A(1)
+
+[builtins fixtures/plugin_attrs.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testManualHashHashability]
+from typing import Hashable
+from attrs import define
+
+@define(hash=True)
+class A:
+    a: int
+
+a: Hashable = A(1)
+
+[builtins fixtures/plugin_attrs.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testManualUnsafeHashHashability]
+from typing import Hashable
+from attrs import define
+
+@define(unsafe_hash=True)
+class A:
+    a: int
+
+a: Hashable = A(1)
+
+[builtins fixtures/plugin_attrs.pyi]
+[typing fixtures/typing-full.pyi]
