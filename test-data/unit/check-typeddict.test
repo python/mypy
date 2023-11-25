@@ -2708,7 +2708,7 @@ class TD(TypedDict):
 reveal_type(TD.__iter__)  # N: Revealed type is "def (typing._TypedDict) -> typing.Iterator[builtins.str]"
 reveal_type(TD.__annotations__)  # N: Revealed type is "typing.Mapping[builtins.str, builtins.object]"
 reveal_type(TD.values)  # N: Revealed type is "def (self: typing.Mapping[T`1, T_co`2]) -> typing.Iterable[T_co`2]"
-[builtins fixtures/dict.pyi]
+[builtins fixtures/dict-full.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
 [case testGenericTypedDictAlias]
@@ -3299,7 +3299,7 @@ main:10: error: No overload variant of "__ror__" of "dict" matches argument type
 main:10: note: Possible overload variants:
 main:10: note:     def __ror__(self, Dict[Any, Any], /) -> Dict[Any, Any]
 main:10: note:     def [T, T2] __ror__(self, Dict[T, T2], /) -> Dict[Union[Any, T], Union[Any, T2]]
-[builtins fixtures/dict.pyi]
+[builtins fixtures/dict-full.pyi]
 [typing fixtures/typing-typeddict-iror.pyi]
 
 [case testTypedDictWith__ror__method]
