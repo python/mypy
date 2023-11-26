@@ -635,7 +635,10 @@ def false_only(t: Type) -> ProperType:
     else:
         ret_type = _get_type_special_method_bool_ret_type(t)
 
-        if ret_type and not ret_type.can_be_false:
+        if ret_type:
+            if not ret_type.can_be_false:
+                return UninhabitedType(line=t.line)
+        elif isinstance(t, Instance) and t.type.is_final:
             return UninhabitedType(line=t.line)
 
         new_t = copy_type(t)
