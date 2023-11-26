@@ -1354,3 +1354,20 @@ class Test:
         self.item: self.Item  # E: Name "self.Item" is not defined
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
+
+[case testNoClassKeywordsForNamedTuple]
+from typing import NamedTuple
+class Test1(NamedTuple, x=1, y=2):  # E: Unexpected keyword argument "x" for "__init_subclass__" of "NamedTuple" \
+                                    # E: Unexpected keyword argument "y" for "__init_subclass__" of "NamedTuple"
+    ...
+
+class Meta(type): ...
+
+class Test2(NamedTuple, metaclass=Meta):  # E: Unexpected keyword argument "metaclass" for "__init_subclass__" of "NamedTuple"
+    ...
+
+# Technically this would work, but it is just easier for the implementation:
+class Test3(NamedTuple, metaclass=type):  # E: Unexpected keyword argument "metaclass" for "__init_subclass__" of "NamedTuple"
+    ...
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
