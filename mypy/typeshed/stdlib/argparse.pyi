@@ -120,7 +120,7 @@ class _ActionsContainer:
     def _handle_conflict_resolve(self, action: Action, conflicting_actions: Iterable[tuple[str, Action]]) -> None: ...
 
 class _FormatterClass(Protocol):
-    def __call__(self, prog: str) -> HelpFormatter: ...
+    def __call__(self, *, prog: str) -> HelpFormatter: ...
 
 class ArgumentParser(_AttributeHolder, _ActionsContainer):
     prog: str
@@ -342,11 +342,11 @@ if sys.version_info >= (3, 12):
             option_strings: Sequence[str],
             dest: str,
             default: _T | str | None = None,
-            type: Callable[[str], _T] | FileType | None = sentinel,  # noqa: Y011
-            choices: Iterable[_T] | None = sentinel,  # noqa: Y011
+            type: Callable[[str], _T] | FileType | None = sentinel,
+            choices: Iterable[_T] | None = sentinel,
             required: bool = False,
             help: str | None = None,
-            metavar: str | tuple[str, ...] | None = sentinel,  # noqa: Y011
+            metavar: str | tuple[str, ...] | None = sentinel,
         ) -> None: ...
 
 elif sys.version_info >= (3, 9):

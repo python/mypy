@@ -957,6 +957,12 @@ for x in B(), A():
 [builtins fixtures/for.pyi]
 
 [case testTupleIterable]
+from typing import Iterable, Optional, TypeVar
+
+T = TypeVar("T")
+
+def sum(iterable: Iterable[T], start: Optional[T] = None) -> T: pass
+
 y = 'a'
 x = sum((1,2))
 if int():
@@ -1103,12 +1109,28 @@ b = (0, *a)
 reveal_type(b)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/tuple.pyi]
 
+[case testTupleWithStarExpr2Precise]
+# flags: --enable-incomplete-feature=PreciseTupleTypes
+a = [1]
+b = (0, *a)
+reveal_type(b)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]]]"
+[builtins fixtures/tuple.pyi]
+
 [case testTupleWithStarExpr3]
 a = ['']
 b = (0, *a)
 reveal_type(b)  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
 c = (*a, '')
 reveal_type(c)  # N: Revealed type is "builtins.tuple[builtins.str, ...]"
+[builtins fixtures/tuple.pyi]
+
+[case testTupleWithStarExpr3Precise]
+# flags: --enable-incomplete-feature=PreciseTupleTypes
+a = ['']
+b = (0, *a)
+reveal_type(b)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.str, ...]]]"
+c = (*a, '')
+reveal_type(c)  # N: Revealed type is "Tuple[Unpack[builtins.tuple[builtins.str, ...]], builtins.str]"
 [builtins fixtures/tuple.pyi]
 
 [case testTupleWithStarExpr4]
@@ -1118,7 +1140,7 @@ a = (0, *b, '')
 [builtins fixtures/tuple.pyi]
 
 [case testUnpackSyntaxError]
-*foo  # E: Can use starred expression only as assignment target
+*foo  # E: can't use starred expression here
 [builtins fixtures/tuple.pyi]
 
 [case testUnpackBases]
@@ -1333,7 +1355,7 @@ reveal_type(subtup if int() else tup2)  # N: Revealed type is "builtins.tuple[bu
 [case testTupleWithUndersizedContext]
 a = ([1], 'x')
 if int():
-    a = ([], 'x', 1)  # E: Incompatible types in assignment (expression has type "Tuple[List[int], str, int]", variable has type "Tuple[List[int], str]")
+    a = ([], 'x', 1)  # E: Incompatible types in assignment (expression has type "Tuple[List[Never], str, int]", variable has type "Tuple[List[int], str]")
 [builtins fixtures/tuple.pyi]
 
 [case testTupleWithOversizedContext]
@@ -1678,7 +1700,16 @@ def zip(*i: Iterable[Any]) -> Iterator[Tuple[Any, ...]]: ...
 def zip(i): ...
 
 def g(t: Tuple):
-    # Ideally, we'd infer that these are iterators of tuples
-    reveal_type(zip(*t))  # N: Revealed type is "typing.Iterator[Any]"
-    reveal_type(zip(t))  # N: Revealed type is "typing.Iterator[Any]"
+    reveal_type(zip(*t))  # N: Revealed type is "typing.Iterator[builtins.tuple[Any, ...]]"
+    reveal_type(zip(t))  # N: Revealed type is "typing.Iterator[Tuple[Any]]"
+[builtins fixtures/tuple.pyi]
+
+[case testTupleSubclassSlice]
+from typing import Tuple
+
+class A: ...
+
+class tuple_aa_subclass(Tuple[A, A]): ...
+
+inst_tuple_aa_subclass: tuple_aa_subclass = tuple_aa_subclass((A(), A()))[:]  # E: Incompatible types in assignment (expression has type "Tuple[A, A]", variable has type "tuple_aa_subclass")
 [builtins fixtures/tuple.pyi]

@@ -113,11 +113,17 @@ FINAL_TYPE_NAMES: Final = ("typing.Final", "typing_extensions.Final")
 # Supported @final decorator names.
 FINAL_DECORATOR_NAMES: Final = ("typing.final", "typing_extensions.final")
 
+# Supported @type_check_only names.
+TYPE_CHECK_ONLY_NAMES: Final = ("typing.type_check_only", "typing_extensions.type_check_only")
+
 # Supported Literal type names.
 LITERAL_TYPE_NAMES: Final = ("typing.Literal", "typing_extensions.Literal")
 
 # Supported Annotated type names.
 ANNOTATED_TYPE_NAMES: Final = ("typing.Annotated", "typing_extensions.Annotated")
+
+# Supported @deprecated type names
+DEPRECATED_TYPE_NAMES: Final = ("warnings.deprecated", "typing_extensions.deprecated")
 
 # We use this constant in various places when checking `tuple` subtyping:
 TUPLE_LIKE_INSTANCE_NAMES: Final = (
@@ -128,11 +134,8 @@ TUPLE_LIKE_INSTANCE_NAMES: Final = (
     "typing.Reversible",
 )
 
-REVEAL_TYPE_NAMES: Final = (
-    "builtins.reveal_type",
-    "typing.reveal_type",
-    "typing_extensions.reveal_type",
-)
+IMPORTED_REVEAL_TYPE_NAMES: Final = ("typing.reveal_type", "typing_extensions.reveal_type")
+REVEAL_TYPE_NAMES: Final = ("builtins.reveal_type", *IMPORTED_REVEAL_TYPE_NAMES)
 
 ASSERT_TYPE_NAMES: Final = ("typing.assert_type", "typing_extensions.assert_type")
 
@@ -805,6 +808,8 @@ class TypeVarTupleType(TypeVarLikeType):
     See PEP646 for more information.
     """
 
+    __slots__ = ("tuple_fallback", "min_len")
+
     def __init__(
         self,
         name: str,
@@ -816,9 +821,13 @@ class TypeVarTupleType(TypeVarLikeType):
         *,
         line: int = -1,
         column: int = -1,
+        min_len: int = 0,
     ) -> None:
         super().__init__(name, fullname, id, upper_bound, default, line=line, column=column)
         self.tuple_fallback = tuple_fallback
+        # This value is not settable by a user. It is an internal-only thing to support
+        # len()-narrowing of variadic tuples.
+        self.min_len = min_len
 
     def serialize(self) -> JsonDict:
         assert not self.id.is_meta_var()
@@ -830,6 +839,7 @@ class TypeVarTupleType(TypeVarLikeType):
             "upper_bound": self.upper_bound.serialize(),
             "tuple_fallback": self.tuple_fallback.serialize(),
             "default": self.default.serialize(),
+            "min_len": self.min_len,
         }
 
     @classmethod
@@ -842,18 +852,19 @@ class TypeVarTupleType(TypeVarLikeType):
             deserialize_type(data["upper_bound"]),
             Instance.deserialize(data["tuple_fallback"]),
             deserialize_type(data["default"]),
+            min_len=data["min_len"],
         )
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_type_var_tuple(self)
 
     def __hash__(self) -> int:
-        return hash(self.id)
+        return hash((self.id, self.min_len))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TypeVarTupleType):
             return NotImplemented
-        return self.id == other.id
+        return self.id == other.id and self.min_len == other.min_len
 
     def copy_modified(
         self,
@@ -861,6 +872,7 @@ class TypeVarTupleType(TypeVarLikeType):
         id: Bogus[TypeVarId | int] = _dummy,
         upper_bound: Bogus[Type] = _dummy,
         default: Bogus[Type] = _dummy,
+        min_len: Bogus[int] = _dummy,
         **kwargs: Any,
     ) -> TypeVarTupleType:
         return TypeVarTupleType(
@@ -872,6 +884,7 @@ class TypeVarTupleType(TypeVarLikeType):
             self.default if default is _dummy else default,
             line=self.line,
             column=self.column,
+            min_len=self.min_len if min_len is _dummy else min_len,
         )
 
 
@@ -1555,7 +1568,10 @@ class FormalArgument(NamedTuple):
 class Parameters(ProperType):
     """Type that represents the parameters to a function.
 
-    Used for ParamSpec analysis."""
+    Used for ParamSpec analysis. Note that by convention we handle this
+    type as a Callable without return type, not as a "tuple with names",
+    so that it behaves contravariantly, in particular [x: int] <: [int].
+    """
 
     __slots__ = (
         "arg_types",
@@ -2069,16 +2085,6 @@ class CallableType(FunctionLike):
         prefix = Parameters(self.arg_types[:-2], self.arg_kinds[:-2], self.arg_names[:-2])
         return arg_type.copy_modified(flavor=ParamSpecFlavor.BARE, prefix=prefix)
 
-    def expand_param_spec(self, c: Parameters) -> CallableType:
-        variables = c.variables
-        return self.copy_modified(
-            arg_types=self.arg_types[:-2] + c.arg_types,
-            arg_kinds=self.arg_kinds[:-2] + c.arg_kinds,
-            arg_names=self.arg_names[:-2] + c.arg_names,
-            is_ellipsis_args=c.is_ellipsis_args,
-            variables=[*variables, *self.variables],
-        )
-
     def with_unpacked_kwargs(self) -> NormalizedCallableType:
         if not self.unpack_kwargs:
             return cast(NormalizedCallableType, self)
@@ -2367,7 +2373,18 @@ class TupleType(ProperType):
             # Corner case: it is a `NamedTuple` with `__bool__` method defined.
             # It can be anything: both `True` and `False`.
             return True
-        return self.length() == 0
+        if self.length() == 0:
+            return True
+        if self.length() > 1:
+            return False
+        # Special case tuple[*Ts] may or may not be false.
+        item = self.items[0]
+        if not isinstance(item, UnpackType):
+            return False
+        if not isinstance(item.type, TypeVarTupleType):
+            # Non-normalized tuple[int, ...] can be false.
+            return True
+        return item.type.min_len == 0
 
     def can_be_any_bool(self) -> bool:
         return bool(
@@ -2416,14 +2433,58 @@ class TupleType(ProperType):
             items = self.items
         return TupleType(items, fallback, self.line, self.column)
 
-    def slice(self, begin: int | None, end: int | None, stride: int | None) -> TupleType:
-        return TupleType(
-            self.items[begin:end:stride],
-            self.partial_fallback,
-            self.line,
-            self.column,
-            self.implicit,
-        )
+    def slice(
+        self, begin: int | None, end: int | None, stride: int | None, *, fallback: Instance | None
+    ) -> TupleType | None:
+        if fallback is None:
+            fallback = self.partial_fallback
+
+        if any(isinstance(t, UnpackType) for t in self.items):
+            total = len(self.items)
+            unpack_index = find_unpack_in_list(self.items)
+            assert unpack_index is not None
+            if begin is None and end is None:
+                # We special-case this to support reversing variadic tuples.
+                # General support for slicing is tricky, so we handle only simple cases.
+                if stride == -1:
+                    slice_items = self.items[::-1]
+                elif stride is None or stride == 1:
+                    slice_items = self.items
+                else:
+                    return None
+            elif (begin is None or unpack_index >= begin >= 0) and (
+                end is not None and unpack_index >= end >= 0
+            ):
+                # Start and end are in the prefix, everything works in this case.
+                slice_items = self.items[begin:end:stride]
+            elif (begin is not None and unpack_index - total < begin < 0) and (
+                end is None or unpack_index - total < end < 0
+            ):
+                # Start and end are in the suffix, everything works in this case.
+                slice_items = self.items[begin:end:stride]
+            elif (begin is None or unpack_index >= begin >= 0) and (
+                end is None or unpack_index - total < end < 0
+            ):
+                # Start in the prefix, end in the suffix, we can support only trivial strides.
+                if stride is None or stride == 1:
+                    slice_items = self.items[begin:end:stride]
+                else:
+                    return None
+            elif (begin is not None and unpack_index - total < begin < 0) and (
+                end is not None and unpack_index >= end >= 0
+            ):
+                # Start in the suffix, end in the prefix, we can support only trivial strides.
+                if stride is None or stride == -1:
+                    slice_items = self.items[begin:end:stride]
+                else:
+                    return None
+            else:
+                # TODO: there some additional cases we can support for homogeneous variadic
+                # items, we can "eat away" finite number of items.
+                return None
+        else:
+            slice_items = self.items[begin:end:stride]
+        return TupleType(slice_items, fallback, self.line, self.column, self.implicit)
 
 
 class TypedDictType(ProperType):
@@ -3129,6 +3190,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                 s += f"[{self.list_str(t.args)}, ...]"
             else:
                 s += f"[{self.list_str(t.args)}]"
+        elif t.type.has_type_var_tuple_type and len(t.type.type_vars) == 1:
+            s += "[()]"
         if self.id_mapper:
             s += f"<{self.id_mapper.id(t.type)}>"
         return s
@@ -3211,15 +3274,16 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             num_skip = 0
 
         s = ""
-        bare_asterisk = False
+        asterisk = False
         for i in range(len(t.arg_types) - num_skip):
             if s != "":
                 s += ", "
-            if t.arg_kinds[i].is_named() and not bare_asterisk:
+            if t.arg_kinds[i].is_named() and not asterisk:
                 s += "*, "
-                bare_asterisk = True
+                asterisk = True
             if t.arg_kinds[i] == ARG_STAR:
                 s += "*"
+                asterisk = True
             if t.arg_kinds[i] == ARG_STAR2:
                 s += "**"
             name = t.arg_names[i]

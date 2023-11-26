@@ -2036,3 +2036,38 @@ class Ben(Object):
         foo_method = cls.MY_MAP["foo"]
         return foo_method(Foo())
 [builtins fixtures/isinstancelist.pyi]
+
+[case testSelfTypeOnGenericClassObjectNewStyleBound]
+from typing import Generic, TypeVar, Self
+
+T = TypeVar("T")
+S = TypeVar("S")
+class B(Generic[T, S]):
+    def copy(self) -> Self: ...
+
+b: B[int, str]
+reveal_type(B.copy(b))  # N: Revealed type is "__main__.B[builtins.int, builtins.str]"
+
+class C(B[T, S]): ...
+
+c: C[int, str]
+reveal_type(C.copy(c))  # N: Revealed type is "__main__.C[builtins.int, builtins.str]"
+
+B.copy(42)  # E: Value of type variable "Self" of "copy" of "B" cannot be "int"
+C.copy(42)  # E: Value of type variable "Self" of "copy" of "B" cannot be "int"
+[builtins fixtures/tuple.pyi]
+
+[case testRecursiveSelfTypeCallMethodNoCrash]
+from typing import Callable, TypeVar
+
+T = TypeVar("T")
+class Partial:
+    def __call__(self: Callable[..., T]) -> T: ...
+
+class Partial2:
+    def __call__(self: Callable[..., T], x: T) -> T: ...
+
+p: Partial
+reveal_type(p())  # N: Revealed type is "Never"
+p2: Partial2
+reveal_type(p2(42))  # N: Revealed type is "builtins.int"

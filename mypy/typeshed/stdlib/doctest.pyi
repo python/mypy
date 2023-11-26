@@ -206,8 +206,8 @@ class DocTestCase(unittest.TestCase):
         self,
         test: DocTest,
         optionflags: int = 0,
-        setUp: Callable[[DocTest], Any] | None = None,
-        tearDown: Callable[[DocTest], Any] | None = None,
+        setUp: Callable[[DocTest], object] | None = None,
+        tearDown: Callable[[DocTest], object] | None = None,
         checker: OutputChecker | None = None,
     ) -> None: ...
     def runTest(self) -> None: ...

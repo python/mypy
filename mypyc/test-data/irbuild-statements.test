@@ -1123,3 +1123,27 @@ L6:
     r14 = CPy_NoErrOccured()
 L7:
     return 1
+
+[case testConditionalFunctionDefinition]
+if int():
+    def foo() -> int:
+        return 0
+else:
+    def foo() -> int:  # E
+        return 1
+
+def bar() -> int:
+    return 0
+
+if int():
+    def bar() -> int:  # E
+        return 1
+[out]
+main:5: error: Duplicate definition of "foo" not supported by mypyc
+main:12: error: Duplicate definition of "bar" not supported by mypyc
+
+[case testRepeatedUnderscoreFunctions]
+def _(arg): pass
+def _(arg): pass
+[out]
+main:2: error: Duplicate definition of "_" not supported by mypyc

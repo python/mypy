@@ -82,7 +82,9 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
             # Valid erasure for *Ts is *tuple[Any, ...], not just Any.
             if isinstance(tv, TypeVarTupleType):
                 args.append(
-                    tv.tuple_fallback.copy_modified(args=[AnyType(TypeOfAny.special_form)])
+                    UnpackType(
+                        tv.tuple_fallback.copy_modified(args=[AnyType(TypeOfAny.special_form)])
+                    )
                 )
             else:
                 args.append(AnyType(TypeOfAny.special_form))
@@ -98,7 +100,9 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
         raise RuntimeError("Parameters should have been bound to a class")
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> ProperType:
-        return AnyType(TypeOfAny.special_form)
+        # Likely, we can never get here because of aggressive erasure of types that
+        # can contain this, but better still return a valid replacement.
+        return t.tuple_fallback.copy_modified(args=[AnyType(TypeOfAny.special_form)])
 
     def visit_unpack_type(self, t: UnpackType) -> ProperType:
         return AnyType(TypeOfAny.special_form)

@@ -3542,6 +3542,14 @@ T = TypeVar("T")
 def type_or_callable(value: T, tp: Union[Type[T], Callable[[int], T]]) -> T: ...
 reveal_type(type_or_callable(A("test"), A))  # N: Revealed type is "__main__.A"
 
+[case testUpperBoundAsInferenceFallback]
+from typing import Callable, TypeVar, Any, Mapping, Optional
+T = TypeVar("T", bound=Mapping[str, Any])
+def raises(opts: Optional[T]) -> T: pass
+def assertRaises(cb: Callable[..., object]) -> None: pass
+assertRaises(raises)  # OK
+[builtins fixtures/dict.pyi]
+
 [case testJoinWithAnyFallback]
 from unknown import X  # type: ignore[import]
 
@@ -3685,4 +3693,123 @@ def f(x: Call[T]) -> Tuple[T, T]: ...
 def g(*args: str) -> None: pass
 reveal_type(f(g))  # N: Revealed type is "Tuple[Never, Never]" \
                    # E: Argument 1 to "f" has incompatible type "Callable[[VarArg(str)], None]"; expected "Call[Never]"
+[builtins fixtures/list.pyi]
+
+[case testInferenceAgainstTypeVarActualBound]
+from typing import Callable, TypeVar
+
+T = TypeVar("T")
+S = TypeVar("S")
+def test(f: Callable[[T], S]) -> Callable[[T], S]: ...
+
+F = TypeVar("F", bound=Callable[..., object])
+def dec(f: F) -> F:
+    reveal_type(test(f))  # N: Revealed type is "def (Any) -> builtins.object"
+    return f
+
+[case testInferenceAgainstTypeVarActualUnionBound]
+from typing import Protocol, TypeVar, Union
+
+T_co = TypeVar("T_co", covariant=True)
+class SupportsFoo(Protocol[T_co]):
+    def foo(self) -> T_co: ...
+
+class A:
+    def foo(self) -> A: ...
+class B:
+    def foo(self) -> B: ...
+
+def foo(f: SupportsFoo[T_co]) -> T_co: ...
+
+ABT = TypeVar("ABT", bound=Union[A, B])
+def simpler(k: ABT):
+    foo(k)
+
+[case testInferenceWorksWithEmptyCollectionsNested]
+from typing import List, TypeVar, NoReturn
+T = TypeVar('T')
+def f(a: List[T], b: List[T]) -> T: pass
+x = ["yes"]
+reveal_type(f(x, []))  # N: Revealed type is "builtins.str"
+reveal_type(f(["yes"], []))  # N: Revealed type is "builtins.str"
+
+empty: List[NoReturn]
+f(x, empty)  # E: Cannot infer type argument 1 of "f"
+f(["no"], empty)  # E: Cannot infer type argument 1 of "f"
+[builtins fixtures/list.pyi]
+
+[case testInferenceWorksWithEmptyCollectionsUnion]
+from typing import Any, Dict, NoReturn, NoReturn, Union
+
+def foo() -> Union[Dict[str, Any], Dict[int, Any]]:
+    return {}
+
+empty: Dict[NoReturn, NoReturn]
+def bar() -> Union[Dict[str, Any], Dict[int, Any]]:
+    return empty
+[builtins fixtures/dict.pyi]
+
+[case testUpperBoundInferenceFallbackNotOverused]
+from typing import TypeVar, Protocol, List
+
+S = TypeVar("S", covariant=True)
+class Foo(Protocol[S]):
+    def foo(self) -> S: ...
+def foo(x: Foo[S]) -> S: ...
+
+T = TypeVar("T", bound="Base")
+class Base:
+    def foo(self: T) -> T: ...
+class C(Base):
+    pass
+
+def f(values: List[T]) -> T: ...
+x = foo(f([C()]))
+reveal_type(x)  # N: Revealed type is "__main__.C"
+[builtins fixtures/list.pyi]
+
+[case testInferenceAgainstGenericCallableUnion]
+from typing import Callable, TypeVar, List, Union
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+def dec(f: Callable[[S], T]) -> Callable[[S], List[T]]: ...
+@dec
+def func(arg: T) -> Union[T, str]:
+    ...
+reveal_type(func)  # N: Revealed type is "def [S] (S`1) -> builtins.list[Union[S`1, builtins.str]]"
+reveal_type(func(42))  # N: Revealed type is "builtins.list[Union[builtins.int, builtins.str]]"
+
+def dec2(f: Callable[[S], List[T]]) -> Callable[[S], T]: ...
+@dec2
+def func2(arg: T) -> List[Union[T, str]]:
+    ...
+reveal_type(func2)  # N: Revealed type is "def [S] (S`4) -> Union[S`4, builtins.str]"
+reveal_type(func2(42))  # N: Revealed type is "Union[builtins.int, builtins.str]"
+[builtins fixtures/list.pyi]
+
+[case testInferenceAgainstGenericCallbackProtoMultiple]
+from typing import Callable, Protocol, TypeVar
+from typing_extensions import Concatenate, ParamSpec
+
+V_co = TypeVar("V_co", covariant=True)
+class Metric(Protocol[V_co]):
+    def __call__(self) -> V_co: ...
+
+T = TypeVar("T")
+P = ParamSpec("P")
+def simple_metric(func: Callable[Concatenate[int, P], T]) -> Callable[P, T]: ...
+
+@simple_metric
+def Negate(count: int, /, metric: Metric[float]) -> float: ...
+@simple_metric
+def Combine(count: int, m1: Metric[T], m2: Metric[T], /, *more: Metric[T]) -> T: ...
+
+reveal_type(Negate)  # N: Revealed type is "def (metric: __main__.Metric[builtins.float]) -> builtins.float"
+reveal_type(Combine)  # N: Revealed type is "def [T] (def () -> T`4, def () -> T`4, *more: def () -> T`4) -> T`4"
+
+def m1() -> float: ...
+def m2() -> float: ...
+reveal_type(Combine(m1, m2))  # N: Revealed type is "builtins.float"
 [builtins fixtures/list.pyi]

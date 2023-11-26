@@ -15,11 +15,22 @@ CONNECTION_NAME = "dmypy-test-ipc"
 def server(msg: str, q: Queue[str]) -> None:
     server = IPCServer(CONNECTION_NAME)
     q.put(server.connection_name)
-    data = b""
+    data = ""
     while not data:
         with server:
-            server.write(msg.encode())
+            server.write(msg)
             data = server.read()
+    server.cleanup()
+
+
+def server_multi_message_echo(q: Queue[str]) -> None:
+    server = IPCServer(CONNECTION_NAME)
+    q.put(server.connection_name)
+    data = ""
+    with server:
+        while data != "quit":
+            data = server.read()
+            server.write(data)
     server.cleanup()
 
 
@@ -31,8 +42,8 @@ class IPCTests(TestCase):
         p.start()
         connection_name = queue.get()
         with IPCClient(connection_name, timeout=1) as client:
-            assert client.read() == msg.encode()
-            client.write(b"test")
+            assert client.read() == msg
+            client.write("test")
         queue.close()
         queue.join_thread()
         p.join()
@@ -44,12 +55,37 @@ class IPCTests(TestCase):
         p.start()
         connection_name = queue.get()
         with IPCClient(connection_name, timeout=1) as client:
-            assert client.read() == msg.encode()
-            client.write(b"")  # don't let the server hang up yet, we want to connect again.
+            assert client.read() == msg
+            client.write("")  # don't let the server hang up yet, we want to connect again.
 
         with IPCClient(connection_name, timeout=1) as client:
-            assert client.read() == msg.encode()
-            client.write(b"test")
+            assert client.read() == msg
+            client.write("test")
+        queue.close()
+        queue.join_thread()
+        p.join()
+        assert p.exitcode == 0
+
+    def test_multiple_messages(self) -> None:
+        queue: Queue[str] = Queue()
+        p = Process(target=server_multi_message_echo, args=(queue,), daemon=True)
+        p.start()
+        connection_name = queue.get()
+        with IPCClient(connection_name, timeout=1) as client:
+            # "foo bar" with extra accents on letters.
+            # In UTF-8 encoding so we don't confuse editors opening this file.
+            fancy_text = b"f\xcc\xb6o\xcc\xb2\xf0\x9d\x91\x9c \xd0\xb2\xe2\xb7\xa1a\xcc\xb6r\xcc\x93\xcd\x98\xcd\x8c"
+            client.write(fancy_text.decode("utf-8"))
+            assert client.read() == fancy_text.decode("utf-8")
+
+            client.write("Test with spaces")
+            client.write("Test write before reading previous")
+            time.sleep(0)  # yield to the server to force reading of all messages by server.
+            assert client.read() == "Test with spaces"
+            assert client.read() == "Test write before reading previous"
+
+            client.write("quit")
+            assert client.read() == "quit"
         queue.close()
         queue.join_thread()
         p.join()

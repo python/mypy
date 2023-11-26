@@ -128,8 +128,23 @@ class NodeFixer(NodeVisitor[None]):
                         cross_ref, self.modules, raise_on_missing=not self.allow_missing
                     )
                     if stnode is not None:
-                        assert stnode.node is not None, (table_fullname + "." + key, cross_ref)
-                        value.node = stnode.node
+                        if stnode is value:
+                            # The node seems to refer to itself, which can mean that
+                            # the target is a deleted submodule of the current module,
+                            # and thus lookup falls back to the symbol table of the parent
+                            # package. Here's how this may happen:
+                            #
+                            #   pkg/__init__.py:
+                            #     from pkg import sub
+                            #
+                            # Now if pkg.sub is deleted, the pkg.sub symbol table entry
+                            # appears to refer to itself. Replace the entry with a
+                            # placeholder to avoid a crash. We can't delete the entry,
+                            # as it would stop dependency propagation.
+                            value.node = Var(key + "@deleted")
+                        else:
+                            assert stnode.node is not None, (table_fullname + "." + key, cross_ref)
+                            value.node = stnode.node
                     elif not self.allow_missing:
                         assert False, f"Could not find cross-ref {cross_ref}"
                     else:

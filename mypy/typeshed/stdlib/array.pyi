@@ -3,7 +3,7 @@ from _typeshed import ReadableBuffer, SupportsRead, SupportsWrite
 from collections.abc import Iterable
 
 # pytype crashes if array inherits from collections.abc.MutableSequence instead of typing.MutableSequence
-from typing import Any, Generic, MutableSequence, TypeVar, overload  # noqa: Y022
+from typing import Any, MutableSequence, TypeVar, overload  # noqa: Y022
 from typing_extensions import Literal, Self, SupportsIndex, TypeAlias
 
 if sys.version_info >= (3, 12):
@@ -18,7 +18,7 @@ _T = TypeVar("_T", int, float, str)
 
 typecodes: str
 
-class array(MutableSequence[_T], Generic[_T]):
+class array(MutableSequence[_T]):
     @property
     def typecode(self) -> _TypeCode: ...
     @property

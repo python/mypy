@@ -39,6 +39,7 @@ from mypy.types import (
     Instance,
     LiteralType,
     NoneType,
+    NormalizedCallableType,
     Overloaded,
     Parameters,
     ParamSpecType,
@@ -243,15 +244,15 @@ def map_type_from_supertype(typ: Type, sub_info: TypeInfo, super_info: TypeInfo)
     return expand_type_by_instance(typ, inst_type)
 
 
-def supported_self_type(typ: ProperType) -> bool:
+def supported_self_type(typ: ProperType, allow_callable: bool = True) -> bool:
     """Is this a supported kind of explicit self-types?
 
-    Currently, this means a X or Type[X], where X is an instance or
+    Currently, this means an X or Type[X], where X is an instance or
     a type variable with an instance upper bound.
     """
     if isinstance(typ, TypeType):
         return supported_self_type(typ.item)
-    if isinstance(typ, CallableType):
+    if allow_callable and isinstance(typ, CallableType):
         # Special case: allow class callable instead of Type[...] as cls annotation,
         # as well as callable self for callback protocols.
         return True
@@ -305,7 +306,11 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
     self_param_type = get_proper_type(func.arg_types[0])
 
     variables: Sequence[TypeVarLikeType]
-    if func.variables and supported_self_type(self_param_type):
+    # Having a def __call__(self: Callable[...], ...) can cause infinite recursion. Although
+    # this special-casing looks not very principled, there is nothing meaningful we can infer
+    # from such definition, since it is inherently indefinitely recursive.
+    allow_callable = func.name is None or not func.name.startswith("__call__ of")
+    if func.variables and supported_self_type(self_param_type, allow_callable=allow_callable):
         from mypy.infer import infer_type_arguments
 
         if original_type is None:
@@ -364,7 +369,7 @@ def erase_to_bound(t: Type) -> Type:
 
 
 def callable_corresponding_argument(
-    typ: CallableType | Parameters, model: FormalArgument
+    typ: NormalizedCallableType | Parameters, model: FormalArgument
 ) -> FormalArgument | None:
     """Return the argument a function that corresponds to `model`"""
 
@@ -981,7 +986,7 @@ def custom_special_method(typ: Type, name: str, check_all: bool = False) -> bool
         method = typ.type.get(name)
         if method and isinstance(method.node, (SYMBOL_FUNCBASE_TYPES, Decorator, Var)):
             if method.node.info:
-                return not method.node.info.fullname.startswith("builtins.")
+                return not method.node.info.fullname.startswith(("builtins.", "typing."))
         return False
     if isinstance(typ, UnionType):
         if check_all:
@@ -989,7 +994,7 @@ def custom_special_method(typ: Type, name: str, check_all: bool = False) -> bool
         return any(custom_special_method(t, name) for t in typ.items)
     if isinstance(typ, TupleType):
         return custom_special_method(tuple_fallback(typ), name, check_all)
-    if isinstance(typ, CallableType) and typ.is_type_obj():
+    if isinstance(typ, FunctionLike) and typ.is_type_obj():
         # Look up __method__ on the metaclass for class objects.
         return custom_special_method(typ.fallback, name, check_all)
     if isinstance(typ, AnyType):

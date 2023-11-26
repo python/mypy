@@ -45,7 +45,7 @@ def namedtuple(
     defaults: Iterable[Any] | None = None,
 ) -> type[tuple[Any, ...]]: ...
 
-class UserDict(MutableMapping[_KT, _VT], Generic[_KT, _VT]):
+class UserDict(MutableMapping[_KT, _VT]):
     data: dict[_KT, _VT]
     # __init__ should be kept roughly in line with `dict.__init__`, which has the same semantics
     @overload
@@ -228,7 +228,7 @@ class UserString(Sequence[UserString]):
     def upper(self) -> Self: ...
     def zfill(self, width: int) -> Self: ...
 
-class deque(MutableSequence[_T], Generic[_T]):
+class deque(MutableSequence[_T]):
     @property
     def maxlen(self) -> int | None: ...
     @overload
@@ -372,9 +372,25 @@ class OrderedDict(dict[_KT, _VT], Reversible[_KT], Generic[_KT, _VT]):
     def setdefault(self: OrderedDict[_KT, _T | None], key: _KT, default: None = None) -> _T | None: ...
     @overload
     def setdefault(self, key: _KT, default: _VT) -> _VT: ...
+    # Same as dict.pop, but accepts keyword arguments
+    @overload
+    def pop(self, key: _KT) -> _VT: ...
+    @overload
+    def pop(self, key: _KT, default: _VT) -> _VT: ...
+    @overload
+    def pop(self, key: _KT, default: _T) -> _VT | _T: ...
     def __eq__(self, __value: object) -> bool: ...
+    if sys.version_info >= (3, 9):
+        @overload
+        def __or__(self, __value: dict[_KT, _VT]) -> Self: ...
+        @overload
+        def __or__(self, __value: dict[_T1, _T2]) -> OrderedDict[_KT | _T1, _VT | _T2]: ...
+        @overload
+        def __ror__(self, __value: dict[_KT, _VT]) -> Self: ...
+        @overload
+        def __ror__(self, __value: dict[_T1, _T2]) -> OrderedDict[_KT | _T1, _VT | _T2]: ...  # type: ignore[misc]
 
-class defaultdict(dict[_KT, _VT], Generic[_KT, _VT]):
+class defaultdict(dict[_KT, _VT]):
     default_factory: Callable[[], _VT] | None
     @overload
     def __init__(self) -> None: ...
@@ -415,7 +431,7 @@ class defaultdict(dict[_KT, _VT], Generic[_KT, _VT]):
         @overload
         def __ror__(self, __value: dict[_T1, _T2]) -> defaultdict[_KT | _T1, _VT | _T2]: ...  # type: ignore[misc]
 
-class ChainMap(MutableMapping[_KT, _VT], Generic[_KT, _VT]):
+class ChainMap(MutableMapping[_KT, _VT]):
     maps: list[MutableMapping[_KT, _VT]]
     def __init__(self, *maps: MutableMapping[_KT, _VT]) -> None: ...
     def new_child(self, m: MutableMapping[_KT, _VT] | None = None) -> Self: ...

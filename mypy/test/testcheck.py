@@ -10,7 +10,6 @@ from mypy import build
 from mypy.build import Graph
 from mypy.errors import CompileError
 from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths
-from mypy.options import TYPE_VAR_TUPLE, UNPACK
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite, FileOperation, module_from_path
 from mypy.test.helpers import (
@@ -125,8 +124,6 @@ class TypeCheckSuite(DataSuite):
         # Parse options after moving files (in case mypy.ini is being moved).
         options = parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
-        if not testcase.name.endswith("_no_incomplete"):
-            options.enable_incomplete_feature = [TYPE_VAR_TUPLE, UNPACK]
         options.show_traceback = True
 
         # Enable some options automatically based on test file name.

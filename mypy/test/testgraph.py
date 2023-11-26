@@ -50,7 +50,7 @@ class GraphSuite(Suite):
             plugin=Plugin(options),
             plugins_snapshot={},
             errors=errors,
-            flush_errors=lambda msgs, serious: None,
+            flush_errors=lambda filename, msgs, serious: None,
             fscache=fscache,
             stdout=sys.stdout,
             stderr=sys.stderr,

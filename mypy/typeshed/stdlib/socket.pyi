@@ -129,7 +129,9 @@ if sys.platform != "darwin" or sys.version_info >= (3, 9):
         IPV6_RTHDR as IPV6_RTHDR,
     )
 
-if sys.platform != "darwin":
+if sys.platform == "darwin":
+    from _socket import PF_SYSTEM as PF_SYSTEM, SYSPROTO_CONTROL as SYSPROTO_CONTROL
+else:
     from _socket import SO_EXCLUSIVEADDRUSE as SO_EXCLUSIVEADDRUSE
 
 if sys.version_info >= (3, 10):

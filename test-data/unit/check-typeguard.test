@@ -694,3 +694,18 @@ def foo(x: object) -> TypeGuard[List[str]]: ...
 def test(f: A[T]) -> T: ...
 reveal_type(test(foo))  # N: Revealed type is "builtins.str"
 [builtins fixtures/list.pyi]
+
+[case testNoCrashOnDunderCallTypeGuard]
+from typing_extensions import TypeGuard
+
+class A:
+    def __call__(self, x) -> TypeGuard[int]:
+        return True
+
+a: A
+assert a(x=1)
+
+x: object
+assert a(x=x)
+reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]

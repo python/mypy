@@ -1,9 +1,8 @@
 import threading
-from _typeshed import Incomplete, ReadableBuffer, SupportsTrunc, Unused
+from _typeshed import ConvertibleToInt, Incomplete, Unused
 from collections.abc import Callable, Iterable, Mapping, MutableMapping, Sequence
 from logging import Logger, _Level as _LoggingLevel
-from typing import Any, SupportsInt
-from typing_extensions import SupportsIndex
+from typing import Any
 
 __all__ = [
     "sub_debug",
@@ -77,9 +76,4 @@ class ForkAwareLocal(threading.local): ...
 MAXFD: int
 
 def close_all_fds_except(fds: Iterable[int]) -> None: ...
-def spawnv_passfds(
-    path: bytes,
-    # args is anything that can be passed to the int constructor
-    args: Sequence[str | ReadableBuffer | SupportsInt | SupportsIndex | SupportsTrunc],
-    passfds: Sequence[int],
-) -> int: ...
+def spawnv_passfds(path: bytes, args: Sequence[ConvertibleToInt], passfds: Sequence[int]) -> int: ...

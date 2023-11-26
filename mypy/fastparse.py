@@ -1762,7 +1762,6 @@ class TypeConverter:
         self.override_column = override_column
         self.node_stack: list[AST] = []
         self.is_evaluated = is_evaluated
-        self.allow_unpack = False
 
     def convert_column(self, column: int) -> int:
         """Apply column override if defined; otherwise return column.
@@ -2039,19 +2038,14 @@ class TypeConverter:
         else:
             return self.invalid_type(n)
 
-    # Used for Callable[[X *Ys, Z], R]
+    # Used for Callable[[X *Ys, Z], R] etc.
     def visit_Starred(self, n: ast3.Starred) -> Type:
         return UnpackType(self.visit(n.value), from_star_syntax=True)
 
     # List(expr* elts, expr_context ctx)
     def visit_List(self, n: ast3.List) -> Type:
         assert isinstance(n.ctx, ast3.Load)
-        old_allow_unpack = self.allow_unpack
-        # We specifically only allow starred expressions in a list to avoid
-        # confusing errors for top-level unpacks (e.g. in base classes).
-        self.allow_unpack = True
         result = self.translate_argument_list(n.elts)
-        self.allow_unpack = old_allow_unpack
         return result
 
 

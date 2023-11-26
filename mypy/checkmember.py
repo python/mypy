@@ -272,11 +272,11 @@ def report_missing_attribute(
     mx: MemberContext,
     override_info: TypeInfo | None = None,
 ) -> Type:
-    res_type = mx.msg.has_no_attr(original_type, typ, name, mx.context, mx.module_symbol_table)
+    error_code = mx.msg.has_no_attr(original_type, typ, name, mx.context, mx.module_symbol_table)
     if not mx.msg.prefer_simple_messages():
         if may_be_awaitable_attribute(name, typ, mx, override_info):
-            mx.msg.possible_missing_await(mx.context)
-    return res_type
+            mx.msg.possible_missing_await(mx.context, error_code)
+    return AnyType(TypeOfAny.from_error)
 
 
 # The several functions that follow implement analyze_member_access for various

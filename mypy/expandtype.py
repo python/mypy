@@ -89,7 +89,7 @@ def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
 def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
     """Substitute type variables in type using values from an Instance.
     Type variables are considered to be bound by the class declaration."""
-    if not instance.args:
+    if not instance.args and not instance.type.has_type_var_tuple_type:
         return typ
     else:
         variables: dict[TypeVarId, Type] = {}
@@ -241,7 +241,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             return repl.copy_modified(
                 flavor=t.flavor,
                 prefix=t.prefix.copy_modified(
-                    arg_types=self.expand_types(t.prefix.arg_types + repl.prefix.arg_types),
+                    arg_types=self.expand_types(t.prefix.arg_types) + repl.prefix.arg_types,
                     arg_kinds=t.prefix.arg_kinds + repl.prefix.arg_kinds,
                     arg_names=t.prefix.arg_names + repl.prefix.arg_names,
                 ),
@@ -249,10 +249,11 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         elif isinstance(repl, Parameters):
             assert t.flavor == ParamSpecFlavor.BARE
             return Parameters(
-                self.expand_types(t.prefix.arg_types + repl.arg_types),
+                self.expand_types(t.prefix.arg_types) + repl.arg_types,
                 t.prefix.arg_kinds + repl.arg_kinds,
                 t.prefix.arg_names + repl.arg_names,
                 variables=[*t.prefix.variables, *repl.variables],
+                imprecise_arg_kinds=repl.imprecise_arg_kinds,
             )
         else:
             # We could encode Any as trivial parameters etc., but it would be too verbose.
@@ -333,12 +334,14 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             # the replacement is ignored.
             if isinstance(repl, Parameters):
                 # We need to expand both the types in the prefix and the ParamSpec itself
-                t = t.expand_param_spec(repl)
                 return t.copy_modified(
-                    arg_types=self.expand_types(t.arg_types),
+                    arg_types=self.expand_types(t.arg_types[:-2]) + repl.arg_types,
+                    arg_kinds=t.arg_kinds[:-2] + repl.arg_kinds,
+                    arg_names=t.arg_names[:-2] + repl.arg_names,
                     ret_type=t.ret_type.accept(self),
                     type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None),
                     imprecise_arg_kinds=(t.imprecise_arg_kinds or repl.imprecise_arg_kinds),
+                    variables=[*repl.variables, *t.variables],
                 )
             elif isinstance(repl, ParamSpecType):
                 # We're substituting one ParamSpec for another; this can mean that the prefix
@@ -346,7 +349,8 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                 prefix = repl.prefix
                 clean_repl = repl.copy_modified(prefix=Parameters([], [], []))
                 return t.copy_modified(
-                    arg_types=self.expand_types(t.arg_types[:-2] + prefix.arg_types)
+                    arg_types=self.expand_types(t.arg_types[:-2])
+                    + prefix.arg_types
                     + [
                         clean_repl.with_flavor(ParamSpecFlavor.ARGS),
                         clean_repl.with_flavor(ParamSpecFlavor.KWARGS),

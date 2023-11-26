@@ -355,7 +355,7 @@ class MessageBuilder:
         member: str,
         context: Context,
         module_symbol_table: SymbolTable | None = None,
-    ) -> Type:
+    ) -> ErrorCode | None:
         """Report a missing or non-accessible member.
 
         original_type is the top-level type on which the error occurred.
@@ -370,60 +370,67 @@ class MessageBuilder:
         directly available on original_type
 
         If member corresponds to an operator, use the corresponding operator
-        name in the messages. Return type Any.
+        name in the messages. Return the error code that was produced, if any.
         """
         original_type = get_proper_type(original_type)
         typ = get_proper_type(typ)
 
         if isinstance(original_type, Instance) and original_type.type.has_readable_member(member):
             self.fail(f'Member "{member}" is not assignable', context)
+            return None
         elif member == "__contains__":
             self.fail(
                 f"Unsupported right operand type for in ({format_type(original_type, self.options)})",
                 context,
                 code=codes.OPERATOR,
             )
+            return codes.OPERATOR
         elif member in op_methods.values():
             # Access to a binary operator member (e.g. _add). This case does
             # not handle indexing operations.
             for op, method in op_methods.items():
                 if method == member:
                     self.unsupported_left_operand(op, original_type, context)
-                    break
+                    return codes.OPERATOR
         elif member == "__neg__":
             self.fail(
                 f"Unsupported operand type for unary - ({format_type(original_type, self.options)})",
                 context,
                 code=codes.OPERATOR,
             )
+            return codes.OPERATOR
         elif member == "__pos__":
             self.fail(
                 f"Unsupported operand type for unary + ({format_type(original_type, self.options)})",
                 context,
                 code=codes.OPERATOR,
             )
+            return codes.OPERATOR
         elif member == "__invert__":
             self.fail(
                 f"Unsupported operand type for ~ ({format_type(original_type, self.options)})",
                 context,
                 code=codes.OPERATOR,
             )
+            return codes.OPERATOR
         elif member == "__getitem__":
             # Indexed get.
             # TODO: Fix this consistently in format_type
-            if isinstance(original_type, CallableType) and original_type.is_type_obj():
+            if isinstance(original_type, FunctionLike) and original_type.is_type_obj():
                 self.fail(
                     "The type {} is not generic and not indexable".format(
                         format_type(original_type, self.options)
                     ),
                     context,
                 )
+                return None
             else:
                 self.fail(
                     f"Value of type {format_type(original_type, self.options)} is not indexable",
                     context,
                     code=codes.INDEX,
                 )
+                return codes.INDEX
         elif member == "__setitem__":
             # Indexed set.
             self.fail(
@@ -433,6 +440,7 @@ class MessageBuilder:
                 context,
                 code=codes.INDEX,
             )
+            return codes.INDEX
         elif member == "__call__":
             if isinstance(original_type, Instance) and (
                 original_type.type.fullname == "builtins.function"
@@ -440,12 +448,14 @@ class MessageBuilder:
                 # "'function' not callable" is a confusing error message.
                 # Explain that the problem is that the type of the function is not known.
                 self.fail("Cannot call function of unknown type", context, code=codes.OPERATOR)
+                return codes.OPERATOR
             else:
                 self.fail(
                     message_registry.NOT_CALLABLE.format(format_type(original_type, self.options)),
                     context,
                     code=codes.OPERATOR,
                 )
+                return codes.OPERATOR
         else:
             # The non-special case: a missing ordinary attribute.
             extra = ""
@@ -501,6 +511,7 @@ class MessageBuilder:
                         context,
                         code=codes.ATTR_DEFINED,
                     )
+                return codes.ATTR_DEFINED
             elif isinstance(original_type, UnionType):
                 # The checker passes "object" in lieu of "None" for attribute
                 # checks, so we manually convert it back.
@@ -518,6 +529,7 @@ class MessageBuilder:
                     context,
                     code=codes.UNION_ATTR,
                 )
+                return codes.UNION_ATTR
             elif isinstance(original_type, TypeVarType):
                 bound = get_proper_type(original_type.upper_bound)
                 if isinstance(bound, UnionType):
@@ -531,6 +543,7 @@ class MessageBuilder:
                         context,
                         code=codes.UNION_ATTR,
                     )
+                    return codes.UNION_ATTR
             else:
                 self.fail(
                     '{} has no attribute "{}"{}'.format(
@@ -539,7 +552,8 @@ class MessageBuilder:
                     context,
                     code=codes.ATTR_DEFINED,
                 )
-        return AnyType(TypeOfAny.from_error)
+                return codes.ATTR_DEFINED
+        return None
 
     def unsupported_operand_types(
         self,
@@ -977,10 +991,17 @@ class MessageBuilder:
                 context,
             )
 
+    def unexpected_keyword_argument_for_function(
+        self, for_func: str, name: str, context: Context, *, matches: list[str] | None = None
+    ) -> None:
+        msg = f'Unexpected keyword argument "{name}"' + for_func
+        if matches:
+            msg += f"; did you mean {pretty_seq(matches, 'or')}?"
+        self.fail(msg, context, code=codes.CALL_ARG)
+
     def unexpected_keyword_argument(
         self, callee: CallableType, name: str, arg_type: Type, context: Context
     ) -> None:
-        msg = f'Unexpected keyword argument "{name}"' + for_function(callee)
         # Suggest intended keyword, look for type match else fallback on any match.
         matching_type_args = []
         not_matching_type_args = []
@@ -994,9 +1015,9 @@ class MessageBuilder:
         matches = best_matches(name, matching_type_args, n=3)
         if not matches:
             matches = best_matches(name, not_matching_type_args, n=3)
-        if matches:
-            msg += f"; did you mean {pretty_seq(matches, 'or')}?"
-        self.fail(msg, context, code=codes.CALL_ARG)
+        self.unexpected_keyword_argument_for_function(
+            for_function(callee), name, context, matches=matches
+        )
         module = find_defining_module(self.modules, callee)
         if module:
             assert callee.definition is not None
@@ -1107,8 +1128,8 @@ class MessageBuilder:
     def type_not_iterable(self, type: Type, context: Context) -> None:
         self.fail(f"{format_type(type, self.options)} object is not iterable", context)
 
-    def possible_missing_await(self, context: Context) -> None:
-        self.note('Maybe you forgot to use "await"?', context)
+    def possible_missing_await(self, context: Context, code: ErrorCode | None) -> None:
+        self.note('Maybe you forgot to use "await"?', context, code=code)
 
     def incompatible_operator_assignment(self, op: str, context: Context) -> None:
         self.fail(f"Result type of {op} incompatible in assignment", context)
@@ -2491,8 +2512,10 @@ def format_type_inner(
         else:
             base_str = itype.type.name
         if not itype.args:
-            # No type arguments, just return the type name
-            return base_str
+            if not itype.type.has_type_var_tuple_type:
+                # No type arguments, just return the type name
+                return base_str
+            return base_str + "[()]"
         elif itype.type.fullname == "builtins.tuple":
             item_type_str = format(itype.args[0])
             return f"{'tuple' if options.use_lowercase_names() else 'Tuple'}[{item_type_str}, ...]"
@@ -2500,6 +2523,8 @@ def format_type_inner(
             # There are type arguments. Convert the arguments to strings.
             return f"{base_str}[{format_list(itype.args)}]"
     elif isinstance(typ, UnpackType):
+        if options.use_star_unpack():
+            return f"*{format(typ.type)}"
         return f"Unpack[{format(typ.type)}]"
     elif isinstance(typ, TypeVarType):
         # This is similar to non-generic instance types.
