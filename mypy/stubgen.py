@@ -1257,7 +1257,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         elif isinstance(rvalue, StrExpr):
             return repr(rvalue.value), True
         elif isinstance(rvalue, BytesExpr):
-            return f"b{rvalue.value!r}", True
+            return "b" + repr(rvalue.value).replace("\\\\", "\\"), True
         elif isinstance(rvalue, TupleExpr):
             items_defaults = []
             for e in rvalue.items:
