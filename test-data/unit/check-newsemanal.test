@@ -3284,6 +3284,7 @@ class N(metaclass=m): ...
 O = TypeVar("O", bound=type)  # E: Missing type parameters for generic type "type"
 def p(q: O) -> O: ...
 reveal_type(p(str))  # N: Revealed type is "def () -> builtins.str"
+p(1)  # E: Value of type variable "O" of "p" cannot be "int"
 
 type[str](1)  # E: "builtins.type" is indexable as a type hint but neither a generic class nor a generic function
 r = type[str]("r", (), {})  # E: "builtins.type" is indexable as a type hint but neither a generic class nor a generic function
