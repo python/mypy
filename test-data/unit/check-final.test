@@ -1151,7 +1151,7 @@ reveal_type(C() and 42)  # N: Revealed type is "Literal[42]?"
 
 [builtins fixtures/bool.pyi]
 
-[case testFinalWithoutBoolButWithLen-xfail]
+[case testFinalWithoutBoolButWithLen]
 from typing_extensions import final, Literal
 
 # Per Python data model, __len__ is called if __bool__ does not exist.In a @final class,
@@ -1165,7 +1165,12 @@ class A:
 class B:
     def __len__(self) -> Literal[1]: return 1
 
+@final
+class C:
+    def __len__(self) -> Literal[0]: return 0
+
 reveal_type(A() and 42)  # N: Revealed type is "Union[__main__.A, Literal[42]?]"
-reveal_type(B() and 42)  # N: Revealed type is "__main__.A"
+reveal_type(B() and 42)  # N: Revealed type is "Literal[42]?"
+reveal_type(C() and 42)  # N: Revealed type is "__main__.C"
 
 [builtins fixtures/bool.pyi]
