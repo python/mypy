@@ -1070,10 +1070,15 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     return True
                 if isinstance(item, Instance):
                     if (
-                        (metaclass_type := item.type.metaclass_type) is None
-                        or (symtab := metaclass_type.type.get("__hash__")) is None
-                        or isinstance(symtab.node, FunctionLike)
+                        (mtype := item.type.metaclass_type) is None
+                        or (symtab := mtype.type.get("__hash__")) is None
                     ):
+                        return True
+                    supertype = get_proper_type(find_member("__hash__", right, mtype))
+                    assert supertype is not None
+                    subtype = mypy.typeops.get_protocol_member(mtype, "__hash__", False)
+                    assert subtype is not None
+                    if is_subtype(subtype, supertype, ignore_pos_arg_names=True):
                         return True
             if isinstance(item, TypeVarType):
                 item = get_proper_type(item.upper_bound)
