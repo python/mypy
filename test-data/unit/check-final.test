@@ -1154,8 +1154,8 @@ reveal_type(C() and 42)  # N: Revealed type is "Literal[42]?"
 [case testFinalWithoutBoolButWithLen]
 from typing_extensions import final, Literal
 
-# Per Python data model, __len__ is called if __bool__ does not exist.In a @final class,
-# __bool__ would not exist.
+# Per Python data model, __len__ is called if __bool__ does not exist.
+# In a @final class, __bool__ would not exist.
 
 @final
 class A:
