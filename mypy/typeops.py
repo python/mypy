@@ -600,9 +600,9 @@ def true_only(t: Type) -> ProperType:
         can_be_true_items = [item for item in new_items if item.can_be_true]
         return make_simplified_union(can_be_true_items, line=t.line, column=t.column)
     else:
-        ret_type = _get_type_method_ret_type(
-            t, name="__bool__"
-        ) or _get_type_method_ret_type(t, name="__len__")
+        ret_type = _get_type_method_ret_type(t, name="__bool__") or _get_type_method_ret_type(
+            t, name="__len__"
+        )
 
         if ret_type and not ret_type.can_be_true:
             return UninhabitedType(line=t.line, column=t.column)
@@ -635,9 +635,9 @@ def false_only(t: Type) -> ProperType:
         can_be_false_items = [item for item in new_items if item.can_be_false]
         return make_simplified_union(can_be_false_items, line=t.line, column=t.column)
     else:
-        ret_type = _get_type_method_ret_type(
-            t, name="__bool__"
-        ) or _get_type_method_ret_type(t, name="__len__")
+        ret_type = _get_type_method_ret_type(t, name="__bool__") or _get_type_method_ret_type(
+            t, name="__len__"
+        )
 
         if ret_type:
             if not ret_type.can_be_false:
