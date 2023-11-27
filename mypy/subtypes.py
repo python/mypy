@@ -1057,8 +1057,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
             item = left.item
             if (
                 right.type.is_protocol
-                and (len(right.type.protocol_members) == 1)
-                and (right.type.protocol_members[0] == "__hash__")
+                and len(right.type.protocol_members) == 1
+                and right.type.protocol_members[0] == "__hash__"
+                and (symtab := right.type.get("__hash__")) is not None
+                and isinstance(hash_ := get_proper_type(symtab.type), CallableType)
+                and len(hash_.arg_names) == 1
+                and hash_.arg_names[0] == "self"
+                and isinstance(ret := get_proper_type(hash_.ret_type), Instance)
+                and ret.type.fullname == "builtins.int"
             ):
                 if isinstance(item, AnyType):
                     return True
