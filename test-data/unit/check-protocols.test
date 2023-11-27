@@ -352,6 +352,18 @@ class C4(metaclass=M2): ...
 def g4(x: type[C4]) -> None:
     f(x)  # E: Argument 1 to "f" has incompatible type "Type[C4]"; expected "Hashable"
 
+class M3(M1):
+    def __hash__(self) -> None: ...
+class C5(metaclass=M3): ...
+def g5(x: type[C5]) -> None:
+    f(x)  # E: Argument 1 to "f" has incompatible type "Type[C5]"; expected "Hashable"
+
+class M4(M3):
+    def __hash__(self) -> int: ...  # type: ignore
+class C6(metaclass=M4): ...
+def g6(x: type[C6]) -> None:
+    f(x)
+
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
