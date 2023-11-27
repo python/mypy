@@ -37,7 +37,12 @@ class ArgSig:
     """Signature info for a single argument."""
 
     def __init__(
-        self, name: str, type: str | None = None, *, default: bool = False, default_value: str = "..."
+        self,
+        name: str,
+        type: str | None = None,
+        *,
+        default: bool = False,
+        default_value: str = "...",
     ) -> None:
         self.name = name
         self.type = type
