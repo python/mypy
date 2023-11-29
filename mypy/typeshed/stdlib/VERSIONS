@@ -250,6 +250,7 @@ sunau: 2.7-
 symbol: 2.7-3.9
 symtable: 2.7-
 sys: 2.7-
+sys._monitoring: 3.12-  # Doesn't actually exist. See comments in the stub.
 sysconfig: 2.7-
 syslog: 2.7-
 tabnanny: 2.7-

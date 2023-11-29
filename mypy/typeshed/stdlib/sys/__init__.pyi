@@ -370,3 +370,7 @@ if sys.version_info >= (3, 12):
         def activate_stack_trampoline(__backend: str) -> None: ...
     else:
         def activate_stack_trampoline(__backend: str) -> NoReturn: ...
+
+    from . import _monitoring
+
+    monitoring = _monitoring
