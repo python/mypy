@@ -1065,4 +1065,4 @@ def eval(e: Expr) -> int:
         return e[1]
     elif e[0] == 456:
         return -eval(e[1])
-[builtins fixtures/dict.pyi]
+[builtins fixtures/dict-full.pyi]

@@ -59,6 +59,8 @@ class _TypedDict(Mapping[str, object]):
     # Stubtest's tests need the following items:
     __required_keys__: frozenset[str]
     __optional_keys__: frozenset[str]
+    __readonly_keys__: frozenset[str]
+    __mutable_keys__: frozenset[str]
     __total__: bool
 
 def TypedDict(typename: str, fields: Dict[str, Type[_T]], *, total: Any = ...) -> Type[dict]: ...

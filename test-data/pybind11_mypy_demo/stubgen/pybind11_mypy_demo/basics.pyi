@@ -1,4 +1,4 @@
-from typing import ClassVar, overload
+from typing import ClassVar, List, overload
 
 PI: float
 __version__: str
@@ -47,6 +47,7 @@ class Point:
     def __init__(self) -> None: ...
     @overload
     def __init__(self, x: float, y: float) -> None: ...
+    def as_list(self) -> List[float]: ...
     @overload
     def distance_to(self, x: float, y: float) -> float: ...
     @overload
