@@ -318,7 +318,7 @@ class _patcher:
     # Ideally we'd be able to add an overload for it so that the return type is _patch[MagicMock],
     # but that's impossible with the current type system.
     @overload
-    def __call__(  # type: ignore[misc]
+    def __call__(  # type: ignore[overload-overlap]
         self,
         target: str,
         new: _T,
@@ -343,7 +343,7 @@ class _patcher:
     ) -> _patch_default_new: ...
     @overload
     @staticmethod
-    def object(  # type: ignore[misc]
+    def object(
         target: Any,
         attribute: str,
         new: _T,

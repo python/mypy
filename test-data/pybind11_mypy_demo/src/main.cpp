@@ -44,6 +44,7 @@
 
 #include <cmath>
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 
 namespace py = pybind11;
 
@@ -102,6 +103,11 @@ struct Point {
     return distance_to(other.x, other.y);
   }
 
+  std::vector<double> as_vector()
+  {
+    return std::vector<double>{x, y};
+  }
+
   double x, y;
 };
 
@@ -134,14 +140,15 @@ void bind_basics(py::module& basics) {
     .def(py::init<double, double>(), py::arg("x"), py::arg("y"))
     .def("distance_to", py::overload_cast<double, double>(&Point::distance_to, py::const_), py::arg("x"), py::arg("y"))
     .def("distance_to", py::overload_cast<const Point&>(&Point::distance_to, py::const_), py::arg("other"))
-    .def_readwrite("x", &Point::x)
+    .def("as_list", &Point::as_vector)
+    .def_readwrite("x", &Point::x, "some docstring")
     .def_property("y",
         [](Point& self){ return self.y; },
         [](Point& self, double value){ self.y = value; }
     )
     .def_property_readonly("length", &Point::length)
     .def_property_readonly_static("x_axis", [](py::object cls){return Point::x_axis;})
-    .def_property_readonly_static("y_axis", [](py::object cls){return Point::y_axis;})
+    .def_property_readonly_static("y_axis", [](py::object cls){return Point::y_axis;}, "another docstring")
     .def_readwrite_static("length_unit", &Point::length_unit)
     .def_property_static("angle_unit",
         [](py::object& /*cls*/){ return Point::angle_unit; },

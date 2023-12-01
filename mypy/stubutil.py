@@ -576,6 +576,14 @@ class BaseStubGenerator:
         self.sig_generators = self.get_sig_generators()
         # populated by visit_mypy_file
         self.module_name: str = ""
+        # These are "soft" imports for objects which might appear in annotations but not have
+        # a corresponding import statement.
+        self.known_imports = {
+            "_typeshed": ["Incomplete"],
+            "typing": ["Any", "TypeVar", "NamedTuple"],
+            "collections.abc": ["Generator"],
+            "typing_extensions": ["TypedDict", "ParamSpec", "TypeVarTuple"],
+        }
 
     def get_sig_generators(self) -> list[SignatureGenerator]:
         return []
@@ -667,15 +675,7 @@ class BaseStubGenerator:
         for name in self._all_ or ():
             self.import_tracker.reexport(name)
 
-        # These are "soft" imports for objects which might appear in annotations but not have
-        # a corresponding import statement.
-        known_imports = {
-            "_typeshed": ["Incomplete"],
-            "typing": ["Any", "TypeVar", "NamedTuple"],
-            "collections.abc": ["Generator"],
-            "typing_extensions": ["TypedDict", "ParamSpec", "TypeVarTuple"],
-        }
-        for pkg, imports in known_imports.items():
+        for pkg, imports in self.known_imports.items():
             for t in imports:
                 # require=False means that the import won't be added unless require_name() is called
                 # for the object during generation.

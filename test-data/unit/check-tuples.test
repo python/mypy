@@ -957,6 +957,12 @@ for x in B(), A():
 [builtins fixtures/for.pyi]
 
 [case testTupleIterable]
+from typing import Iterable, Optional, TypeVar
+
+T = TypeVar("T")
+
+def sum(iterable: Iterable[T], start: Optional[T] = None) -> T: pass
+
 y = 'a'
 x = sum((1,2))
 if int():
