@@ -487,8 +487,7 @@ class deprecated:
     category: type[Warning] | None
     stacklevel: int
     def __init__(self, __message: str, *, category: type[Warning] | None = ..., stacklevel: int = 1) -> None: ...  # nopep8
-
-    def __call__(self, __arg: _T) -> _T: ...
+    def __call__(self, __arg: _T) -> _T: ...  # nopep8
 
 
 if sys.version_info >= (3, 12):
