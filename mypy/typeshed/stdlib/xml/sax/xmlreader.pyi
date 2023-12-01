@@ -82,6 +82,6 @@ class AttributesNSImpl(AttributesImpl):
     def __contains__(self, name: _NSName) -> bool: ...  # type: ignore[override]
     @overload  # type: ignore[override]
     def get(self, name: _NSName, alternative: None = None) -> str | None: ...
-    @overload  # type: ignore[override]
+    @overload
     def get(self, name: _NSName, alternative: str) -> str: ...
     def items(self) -> list[tuple[_NSName, str]]: ...  # type: ignore[override]

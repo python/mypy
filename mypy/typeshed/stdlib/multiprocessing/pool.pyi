@@ -112,6 +112,7 @@ class Pool:
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None: ...
+    def __del__(self) -> None: ...
 
 class ThreadPool(Pool):
     def __init__(
