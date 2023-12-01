@@ -3473,7 +3473,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # a "Need type annotation ..." message, as it would be noise.
                 right_type = self.find_partial_type_ref_fast_path(right)
                 if right_type is None:
-                    right_type = self.accept(right)  # Validate the right operand
+                    # Validate the right operand
+                    right_type = self.accept(right)
 
                 right_type = get_proper_type(right_type)
                 item_types: Sequence[Type] = [right_type]
@@ -6094,7 +6095,8 @@ class HasAnyType(types.BoolTypeQuery):
         self.ignore_in_type_obj = ignore_in_type_obj
 
     def visit_any(self, t: AnyType) -> bool:
-        return t.type_of_any != TypeOfAny.special_form  # special forms are not real Any types
+        # special forms are not real Any types
+        return t.type_of_any != TypeOfAny.special_form
 
     def visit_callable_type(self, t: CallableType) -> bool:
         if self.ignore_in_type_obj and t.is_type_obj():

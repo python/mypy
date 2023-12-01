@@ -119,6 +119,8 @@ neg_ops: Final = {
     "!=": "==",
     "is": "is not",
     "is not": "is",
+    "in": "not in",
+    "not in": "in",
     "<": ">=",
     "<=": ">",
     ">": "<=",
