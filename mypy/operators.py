@@ -31,7 +31,8 @@ op_methods: Final = {
 
 op_methods_to_symbols: Final = {v: k for (k, v) in op_methods.items()}
 
-ops_falling_back_to_cmp: Final = {"__ne__", "__eq__", "__lt__", "__le__", "__gt__", "__ge__"}
+ops_falling_back_to_cmp: Final = {
+    "__ne__", "__eq__", "__lt__", "__le__", "__gt__", "__ge__"}
 
 
 ops_with_inplace_method: Final = {
@@ -50,7 +51,8 @@ ops_with_inplace_method: Final = {
     ">>",
 }
 
-inplace_operator_methods: Final = {"__i" + op_methods[op][2:] for op in ops_with_inplace_method}
+inplace_operator_methods: Final = {
+    "__i" + op_methods[op][2:] for op in ops_with_inplace_method}
 
 reverse_op_methods: Final = {
     "__add__": "__radd__",
@@ -119,8 +121,6 @@ neg_ops: Final = {
     "!=": "==",
     "is": "is not",
     "is not": "is",
-    "in": "not in",
-    "not in": "in",
     "<": ">=",
     "<=": ">",
     ">": "<=",
