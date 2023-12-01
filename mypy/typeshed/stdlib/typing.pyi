@@ -649,12 +649,10 @@ class MutableSet(AbstractSet[_T]):
     def clear(self) -> None: ...
     def pop(self) -> _T: ...
     def remove(self, value: _T) -> None: ...
-    def __ior__(
-        self, it: AbstractSet[_T]) -> typing_extensions.Self: ...  # type: ignore[override,misc]
+    def __ior__(self, it: AbstractSet[_T]) -> typing_extensions.Self: ...  # type: ignore[override,misc] # nopep8
 
     def __iand__(self, it: AbstractSet[Any]) -> typing_extensions.Self: ...
-    def __ixor__(
-        self, it: AbstractSet[_T]) -> typing_extensions.Self: ...  # type: ignore[override,misc]
+    def __ixor__(self, it: AbstractSet[_T]) -> typing_extensions.Self: ...  # type: ignore[override,misc] # nopep8
 
     def __isub__(self, it: AbstractSet[Any]) -> typing_extensions.Self: ...
 
@@ -675,18 +673,14 @@ class ItemsView(MappingView, AbstractSet[tuple[_KT_co, _VT_co]], Generic[_KT_co,
     if sys.version_info >= (3, 8):
         def __reversed__(self) -> Iterator[tuple[_KT_co, _VT_co]]: ...
 
-    def __or__(self, other: Iterable[_T]) -> set[tuple[_KT_co,
-                                                       _VT_co] | _T]: ...
-    def __ror__(self, other: Iterable[_T]
-                ) -> set[tuple[_KT_co, _VT_co] | _T]: ...
+    def __or__(self, other: Iterable[_T]) -> set[tuple[_KT_co, _VT_co] | _T]: ...  # nopep8
+    def __ror__(self, other: Iterable[_T]) -> set[tuple[_KT_co, _VT_co] | _T]: ...  # nopep8
 
     def __sub__(self, other: Iterable[Any]) -> set[tuple[_KT_co, _VT_co]]: ...
     def __rsub__(self, other: Iterable[_T]) -> set[_T]: ...
 
-    def __xor__(self, other: Iterable[_T]
-                ) -> set[tuple[_KT_co, _VT_co] | _T]: ...
-    def __rxor__(self, other: Iterable[_T]
-                 ) -> set[tuple[_KT_co, _VT_co] | _T]: ...
+    def __xor__(self, other: Iterable[_T]) -> set[tuple[_KT_co, _VT_co] | _T]: ...  # nopep8
+    def __rxor__(self, other: Iterable[_T]) -> set[tuple[_KT_co, _VT_co] | _T]: ...  # nopep8
 
 
 class KeysView(MappingView, AbstractSet[_KT_co]):
@@ -1031,21 +1025,18 @@ class _TypedDict(Mapping[str, object], metaclass=ABCMeta):
     def values(self) -> dict_values[str, object]: ...
     if sys.version_info >= (3, 9):
         @overload
-        def __or__(
-            self, __value: typing_extensions.Self) -> typing_extensions.Self: ...
+        def __or__(self, __value: typing_extensions.Self) -> typing_extensions.Self: ...  # nopep8
 
         @overload
         def __or__(self, __value: dict[str, Any]) -> dict[str, object]: ...
 
         @overload
-        def __ror__(
-            self, __value: typing_extensions.Self) -> typing_extensions.Self: ...
+        def __ror__(self, __value: typing_extensions.Self) -> typing_extensions.Self: ...  # nopep8
 
         @overload
         def __ror__(self, __value: dict[str, Any]) -> dict[str, object]: ...
         # supposedly incompatible definitions of __or__ and __ior__
-        def __ior__(
-            self, __value: typing_extensions.Self) -> typing_extensions.Self: ...  # type: ignore[misc]
+        def __ior__(self, __value: typing_extensions.Self) -> typing_extensions.Self: ...  # type: ignore[misc]# nopep8
 
 
 @_final
