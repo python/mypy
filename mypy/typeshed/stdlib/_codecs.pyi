@@ -47,11 +47,11 @@ _StrToStrEncoding: TypeAlias = Literal["rot13", "rot_13"]
 @overload
 def encode(obj: ReadableBuffer, encoding: _BytesToBytesEncoding, errors: str = "strict") -> bytes: ...
 @overload
-def encode(obj: str, encoding: _StrToStrEncoding, errors: str = "strict") -> str: ...  # type: ignore[misc]
+def encode(obj: str, encoding: _StrToStrEncoding, errors: str = "strict") -> str: ...  # type: ignore[overload-overlap]
 @overload
 def encode(obj: str, encoding: str = "utf-8", errors: str = "strict") -> bytes: ...
 @overload
-def decode(obj: ReadableBuffer, encoding: _BytesToBytesEncoding, errors: str = "strict") -> bytes: ...  # type: ignore[misc]
+def decode(obj: ReadableBuffer, encoding: _BytesToBytesEncoding, errors: str = "strict") -> bytes: ...  # type: ignore[overload-overlap]
 @overload
 def decode(obj: str, encoding: _StrToStrEncoding, errors: str = "strict") -> str: ...
 

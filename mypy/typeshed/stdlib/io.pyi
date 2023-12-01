@@ -94,7 +94,7 @@ class BufferedIOBase(IOBase):
 
 class FileIO(RawIOBase, BinaryIO):  # type: ignore[misc]  # incompatible definitions of writelines in the base classes
     mode: str
-    name: FileDescriptorOrPath  # type: ignore[assignment]
+    name: FileDescriptorOrPath
     def __init__(
         self, file: FileDescriptorOrPath, mode: str = ..., closefd: bool = ..., opener: _Opener | None = ...
     ) -> None: ...
