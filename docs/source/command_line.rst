@@ -787,7 +787,7 @@ in error messages.
     disable reporting most additional errors. The limit only applies
     if it seems likely that most of the remaining errors will not be
     useful or they may be overly noisy. If ``N`` is negative, there is
-    no limit. The default limit is 200.
+    no limit. The default limit is -1.
 
 .. option:: --force-uppercase-builtins
 

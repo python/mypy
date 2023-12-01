@@ -775,7 +775,7 @@ class SemanticAnalyzer(
             self.globals = file_node.names
             self.tvar_scope = TypeVarLikeScope()
 
-            self.named_tuple_analyzer = NamedTupleAnalyzer(options, self)
+            self.named_tuple_analyzer = NamedTupleAnalyzer(options, self, self.msg)
             self.typed_dict_analyzer = TypedDictAnalyzer(options, self, self.msg)
             self.enum_call_analyzer = EnumCallAnalyzer(options, self)
             self.newtype_analyzer = NewTypeAnalyzer(options, self, self.msg)
@@ -2855,22 +2855,23 @@ class SemanticAnalyzer(
         if self.check_and_set_up_type_alias(s):
             s.is_alias_def = True
             special_form = True
-        # * type variable definition
-        elif self.process_typevar_declaration(s):
-            special_form = True
-        elif self.process_paramspec_declaration(s):
-            special_form = True
-        elif self.process_typevartuple_declaration(s):
-            special_form = True
-        # * type constructors
-        elif self.analyze_namedtuple_assign(s):
-            special_form = True
-        elif self.analyze_typeddict_assign(s):
-            special_form = True
-        elif self.newtype_analyzer.process_newtype_declaration(s):
-            special_form = True
-        elif self.analyze_enum_assign(s):
-            special_form = True
+        elif isinstance(s.rvalue, CallExpr):
+            # * type variable definition
+            if self.process_typevar_declaration(s):
+                special_form = True
+            elif self.process_paramspec_declaration(s):
+                special_form = True
+            elif self.process_typevartuple_declaration(s):
+                special_form = True
+            # * type constructors
+            elif self.analyze_namedtuple_assign(s):
+                special_form = True
+            elif self.analyze_typeddict_assign(s):
+                special_form = True
+            elif self.newtype_analyzer.process_newtype_declaration(s):
+                special_form = True
+            elif self.analyze_enum_assign(s):
+                special_form = True
 
         if special_form:
             self.record_special_form_lvalue(s)
