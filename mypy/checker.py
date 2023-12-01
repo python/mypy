@@ -5841,8 +5841,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             # Set if_map for the entire tuple
                             if_map = {}
                             else_map = None
-                        else:
-                            if_map, else_map = {}, {}
+
 
                     else:
                         if left_index in narrowable_operand_index_to_hash:

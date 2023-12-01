@@ -482,8 +482,13 @@ class TypeVarTuple:
     def __iter__(self) -> Any: ...  # Unpack[Self]
 
 
-def deprecated(__msg: str, *, category: type[Warning] |
-               None = ..., stacklevel: int = 1) -> Callable[[_T], _T]: ...
+class deprecated:
+    message: str
+    category: type[Warning] | None
+    stacklevel: int
+    def __init__(self, __message: str, *, category: type[Warning] | None = ..., stacklevel: int = 1) -> None: ...  # nopep8
+
+    def __call__(self, __arg: _T) -> _T: ...
 
 
 if sys.version_info >= (3, 12):
