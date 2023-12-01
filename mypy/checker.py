@@ -5842,7 +5842,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             if_map = {}
                             else_map = None
 
-
                     else:
                         if left_index in narrowable_operand_index_to_hash:
                             # print("left in")
