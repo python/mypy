@@ -14,7 +14,6 @@ reveal_type(MyEnum.C)
 
 
 def my_function(a: MyEnum) -> bool:
-
     print(type((MyEnum.B, MyEnum.C)))
     if a == MyEnum.A:
         print(type(a))
