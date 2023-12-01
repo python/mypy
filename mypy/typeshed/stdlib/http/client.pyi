@@ -187,7 +187,7 @@ class HTTPSConnection(HTTPConnection):
         def __init__(
             self,
             host: str,
-            port: str | None = None,
+            port: int | None = None,
             *,
             timeout: float | None = ...,
             source_address: tuple[str, int] | None = None,

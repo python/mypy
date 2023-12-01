@@ -134,7 +134,7 @@ if sys.version_info >= (3, 9):
             def joinpath(self, __child: str) -> Traversable: ...
 
         # The documentation and runtime protocol allows *args, **kwargs arguments,
-        # but this would mean that all implementors would have to support them,
+        # but this would mean that all implementers would have to support them,
         # which is not the case.
         @overload
         @abstractmethod
