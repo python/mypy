@@ -5830,7 +5830,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         all_literal_enum = all(
                             self.is_literal_enum(element_expr) for element_expr in right_expr.items
                         )
-                        if all_literal_enum:
+                            if all_literal_enum:
                             # Set if_map for the entire tuple
                             if_map = {}
                             else_map = None
