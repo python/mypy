@@ -1094,6 +1094,11 @@ def process_options(
         group=other_group,
         inverse="--interactive",
     )
+    other_group.add_argument(
+        "--user",
+        action="store_true",
+        help="Install stubs to user's local python package install location when used together with --install-types",
+    )
 
     if server_options:
         # TODO: This flag is superfluous; remove after a short transition (2018-03-16)
@@ -1561,7 +1566,8 @@ def install_types(
         print()
     print("Installing missing stub packages:")
     assert options.python_executable, "Python executable required to install types"
-    cmd = [options.python_executable, "-m", "pip", "install"] + packages
+    pip_options = ["--user"] if options.user else []
+    cmd = [options.python_executable, "-m", "pip", "install"] + pip_options + packages
     print(formatter.style(" ".join(cmd), "none", bold=True))
     print()
     if not non_interactive:
