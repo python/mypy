@@ -1100,7 +1100,7 @@ def process_options(
     other_group.add_argument(
         "--user",
         action="store_true",
-        help="Install stubs to user's local python package install location when used together with --install-types",
+        help="Install stubs to the user's local python package install location when used together with --install-types",
     )
 
     if server_options:
