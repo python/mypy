@@ -81,6 +81,9 @@ def main(
     if options.non_interactive and not options.install_types:
         fail("error: --non-interactive is only supported with --install-types", stderr, options)
 
+    if options.user and not options.install_types:
+        fail("error: --user is only supported with --install-types", stderr, options)
+
     if options.install_types and not options.incremental:
         fail(
             "error: --install-types not supported with incremental mode disabled", stderr, options
