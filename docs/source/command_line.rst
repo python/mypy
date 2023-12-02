@@ -1083,6 +1083,13 @@ Miscellaneous
    stub packages were found, they are installed and then another run
    is performed.
 
+.. option:: --user
+
+   When used together with :option:`--install-types <mypy
+   --install-types>`, this causes mypy to install all suggested stub
+   packages using pip and installing them to the user's local python
+   package install location by passing `--user` to `pip` command.
+
 .. option:: --junit-xml JUNIT_XML
 
     Causes mypy to generate a JUnit XML test result document with
