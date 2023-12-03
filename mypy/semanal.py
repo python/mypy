@@ -56,7 +56,7 @@ from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes, message_registry
 from mypy.constant_fold import constant_fold_expr
-from mypy.errorcodes import ErrorCode, PROPERTY_DECORATOR
+from mypy.errorcodes import PROPERTY_DECORATOR, ErrorCode
 from mypy.errors import Errors, report_internal_error
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.messages import (
@@ -1588,7 +1588,9 @@ class SemanticAnalyzer(
         if not no_type_check and self.recurse_into_functions:
             dec.func.accept(self)
         if could_be_decorated_property and dec.decorators and dec.var.is_property:
-            self.fail("Decorators on top of @property are not supported", dec, code=PROPERTY_DECORATOR)
+            self.fail(
+                "Decorators on top of @property are not supported", dec, code=PROPERTY_DECORATOR
+            )
         if (dec.func.is_static or dec.func.is_class) and dec.var.is_property:
             self.fail("Only instance methods can be decorated with @property", dec)
         if dec.func.abstract_status == IS_ABSTRACT and dec.func.is_final:
