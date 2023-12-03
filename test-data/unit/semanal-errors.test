@@ -1242,8 +1242,10 @@ class A:
     @dec
     def g(self) -> int: pass
     @dec  # type: ignore[misc]
+    @property
     def h(self) -> int: pass
     @dec  # type: ignore[prop-decorator]
+    @property
     def i(self) -> int: pass
 [builtins fixtures/property.pyi]
 [out]
