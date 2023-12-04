@@ -56,6 +56,7 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
             module="__main__",
             errors=Errors(options),
             options=options,
+            raise_on_error=True,
         )
         a = n.str_with_options(options).split("\n")
     except CompileError as e:
@@ -91,6 +92,7 @@ def test_parse_error(testcase: DataDrivenTestCase) -> None:
             "__main__",
             errors=Errors(options),
             options=options,
+            raise_on_error=True,
         )
         raise AssertionError("No errors reported")
     except CompileError as e:
