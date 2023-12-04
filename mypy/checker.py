@@ -5840,7 +5840,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         if all_literal_enum:
                             # Set if_map for the entire tuple
                             if_map = {}
-                            else_map = None 
+                            else_map = None
 
                     else:
                         if left_index in narrowable_operand_index_to_hash:
