@@ -5842,51 +5842,52 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             if_map = {}
                             else_map = None 
 
-                    if left_index in narrowable_operand_index_to_hash:
-                        # print("left in")
-                        # We only try and narrow away 'None' for now
-                        if is_overlapping_none(item_type):
-                            collection_item_type = get_proper_type(
-                                builtin_item_type(iterable_type)
+                    else:
+                        if left_index in narrowable_operand_index_to_hash:
+                            # print("left in")
+                            # We only try and narrow away 'None' for now
+                            if is_overlapping_none(item_type):
+                                collection_item_type = get_proper_type(
+                                    builtin_item_type(iterable_type)
+                                )
+                                # print("done5", if_map, else_map)
+                                if (
+                                    collection_item_type is not None
+                                    and not is_overlapping_none(collection_item_type)
+                                    and not (
+                                        isinstance(collection_item_type, Instance)
+                                        and collection_item_type.type.fullname == "builtins.object"
+                                    )
+                                    and is_overlapping_erased_types(
+                                        item_type, collection_item_type
+                                    )
+                                ):
+                                    if_map[operands[left_index]] = remove_optional(item_type)
+
+                                    # print("done6", if_map, else_map)
+
+                        if right_index in narrowable_operand_index_to_hash:
+                            # print("right in")
+                            if_type, else_type = self.conditional_types_for_iterable(
+                                item_type, iterable_type
                             )
-                            # print("done5", if_map, else_map)
-                            if (
-                                collection_item_type is not None
-                                and not is_overlapping_none(collection_item_type)
-                                and not (
-                                    isinstance(collection_item_type, Instance)
-                                    and collection_item_type.type.fullname == "builtins.object"
-                                )
-                                and is_overlapping_erased_types(
-                                    item_type, collection_item_type
-                                )
-                            ):
-                                if_map[operands[left_index]] = remove_optional(item_type)
+                            expr = operands[right_index]
+                            # print("done7", if_map, else_map)
 
-                                # print("done6", if_map, else_map)
+                            if if_type is None:
+                                if_map = None
+                                # print("done8", if_map, else_map)
+                            else:
+                                if_map[expr] = if_type
+                                # print("done9", if_map, else_map)
 
-                    if right_index in narrowable_operand_index_to_hash:
-                        # print("right in")
-                        if_type, else_type = self.conditional_types_for_iterable(
-                            item_type, iterable_type
-                        )
-                        expr = operands[right_index]
-                        # print("done7", if_map, else_map)
+                            if else_type is None:
+                                else_map = None
+                                # print("done11", if_map, else_map)
+                            else:
+                                else_map[expr] = else_type
 
-                        if if_type is None:
-                            if_map = None
-                            # print("done8", if_map, else_map)
-                        else:
-                            if_map[expr] = if_type
-                            # print("done9", if_map, else_map)
-
-                        if else_type is None:
-                            else_map = None
-                            # print("done11", if_map, else_map)
-                        else:
-                            else_map[expr] = else_type
-
-                    # print("done12", if_map, else_map)
+                        # print("done12", if_map, else_map)
 
                 else:
                     if_map = {}
