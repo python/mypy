@@ -203,7 +203,7 @@ def parse(
     )
     # If errors are ignored, we can drop many function bodies to speed up type checking.
     strip_function_bodies = ignore_errors and (options is None or not options.preserve_asts)
-    raise_on_error = False
+
     if options is None:
         options = Options()
     errors.set_file(fnam, module, options=options)
@@ -248,9 +248,6 @@ def parse(
             code=codes.SYNTAX,
         )
         tree = MypyFile([], [], False, {})
-
-    if raise_on_error and errors.is_errors():
-        errors.raise_error()
 
     assert isinstance(tree, MypyFile)
     return tree
