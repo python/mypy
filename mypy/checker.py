@@ -5840,7 +5840,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         if all_literal_enum:
                             # Set if_map for the entire tuple
                             if_map = {}
-                            else_map = None 
+                            else_map = None
 
                     if left_index in narrowable_operand_index_to_hash:
                         # print("left in")
@@ -5857,9 +5857,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                     isinstance(collection_item_type, Instance)
                                     and collection_item_type.type.fullname == "builtins.object"
                                 )
-                                and is_overlapping_erased_types(
-                                    item_type, collection_item_type
-                                )
+                                and is_overlapping_erased_types(item_type, collection_item_type)
                             ):
                                 if_map[operands[left_index]] = remove_optional(item_type)
 
