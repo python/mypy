@@ -5254,6 +5254,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         pretty_names_list = pretty_seq(
             format_type_distinctly(*base_classes, options=self.options, bare=True), "and"
         )
+
+        new_errors = []
+        for base in base_classes:
+            if base.type.is_final:
+                new_errors.append((pretty_names_list, f'"{base.type.name}" is final'))
+        if new_errors:
+            errors.extend(new_errors)
+            return None
+
         try:
             info, full_name = _make_fake_typeinfo_and_full_name(base_classes, curr_module)
             with self.msg.filter_errors() as local_errors:
@@ -5266,10 +5275,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.check_multiple_inheritance(info)
             info.is_intersection = True
         except MroError:
-            errors.append((pretty_names_list, "inconsistent method resolution order"))
+            errors.append((pretty_names_list, "would have inconsistent method resolution order"))
             return None
         if local_errors.has_new_errors():
-            errors.append((pretty_names_list, "incompatible method signatures"))
+            errors.append((pretty_names_list, "would have incompatible method signatures"))
             return None
 
         curr_module.names[full_name] = SymbolTableNode(GDEF, info)
