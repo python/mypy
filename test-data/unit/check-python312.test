@@ -11,6 +11,11 @@ def g(x: MyList[int]) -> MyList[int]:  # E: Variable "__main__.MyList" is not va
                                        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
     return reveal_type(x)  # N: Revealed type is "MyList?[builtins.int]"
 
+type MyInt2 = int  # type: ignore[valid-type]
+
+def h(x: MyInt2) -> MyInt2:
+    return reveal_type(x)  # N: Revealed type is "builtins.int"
+
 [case test695Class]
 class MyGen[T]:  # E: PEP 695 generics are not yet supported
     def __init__(self, x: T) -> None:  # E: Name "T" is not defined

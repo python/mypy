@@ -6,7 +6,7 @@ from mypy.options import Options
 
 
 def parse(
-    source: str | bytes, fnam: str, module: str | None, errors: Errors | None, options: Options
+    source: str | bytes, fnam: str, module: str | None, errors: Errors, options: Options
 ) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
 
