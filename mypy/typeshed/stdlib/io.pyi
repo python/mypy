@@ -6,7 +6,7 @@ from _typeshed import FileDescriptorOrPath, ReadableBuffer, WriteableBuffer
 from collections.abc import Callable, Iterable, Iterator
 from os import _Opener
 from types import TracebackType
-from typing import IO, Any, BinaryIO, TextIO
+from typing import IO, Any, BinaryIO, TextIO, TypeVar, overload
 from typing_extensions import Literal, Self
 
 __all__ = [
@@ -32,6 +32,8 @@ __all__ = [
 
 if sys.version_info >= (3, 8):
     __all__ += ["open_code"]
+
+_T = TypeVar("_T")
 
 DEFAULT_BUFFER_SIZE: Literal[8192]
 
@@ -92,7 +94,7 @@ class BufferedIOBase(IOBase):
 
 class FileIO(RawIOBase, BinaryIO):  # type: ignore[misc]  # incompatible definitions of writelines in the base classes
     mode: str
-    name: FileDescriptorOrPath  # type: ignore[assignment]
+    name: FileDescriptorOrPath
     def __init__(
         self, file: FileDescriptorOrPath, mode: str = ..., closefd: bool = ..., opener: _Opener | None = ...
     ) -> None: ...
@@ -194,3 +196,9 @@ class IncrementalNewlineDecoder(codecs.IncrementalDecoder):
     @property
     def newlines(self) -> str | tuple[str, ...] | None: ...
     def setstate(self, __state: tuple[bytes, int]) -> None: ...
+
+if sys.version_info >= (3, 10):
+    @overload
+    def text_encoding(__encoding: None, __stacklevel: int = 2) -> Literal["locale", "utf-8"]: ...
+    @overload
+    def text_encoding(__encoding: _T, __stacklevel: int = 2) -> _T: ...

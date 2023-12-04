@@ -423,7 +423,7 @@ class BaseEventLoop(AbstractEventLoop):
         bufsize: Literal[0] = 0,
         encoding: None = None,
         errors: None = None,
-        text: Literal[False, None] = None,
+        text: Literal[False] | None = None,
         **kwargs: Any,
     ) -> tuple[SubprocessTransport, _ProtocolT]: ...
     async def subprocess_exec(
@@ -471,3 +471,5 @@ class BaseEventLoop(AbstractEventLoop):
         async def shutdown_default_executor(self, timeout: float | None = None) -> None: ...
     elif sys.version_info >= (3, 9):
         async def shutdown_default_executor(self) -> None: ...
+
+    def __del__(self) -> None: ...

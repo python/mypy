@@ -234,45 +234,85 @@ def get_mypy_comments(source: str) -> list[tuple[int, str]]:
     return results
 
 
-PASS_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
-<testsuite errors="0" failures="0" name="mypy" skips="0" tests="1" time="{time:.3f}">
-  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
-  </testcase>
-</testsuite>
+JUNIT_HEADER_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
+<testsuite errors="{errors}" failures="{failures}" name="mypy" skips="0" tests="{tests}" time="{time:.3f}">
 """
 
-FAIL_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
-<testsuite errors="0" failures="1" name="mypy" skips="0" tests="1" time="{time:.3f}">
-  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
+JUNIT_TESTCASE_FAIL_TEMPLATE: Final = """  <testcase classname="mypy" file="{filename}" line="1" name="{name}" time="{time:.3f}">
     <failure message="mypy produced messages">{text}</failure>
   </testcase>
-</testsuite>
 """
 
-ERROR_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
-<testsuite errors="1" failures="0" name="mypy" skips="0" tests="1" time="{time:.3f}">
-  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
+JUNIT_ERROR_TEMPLATE: Final = """  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
     <error message="mypy produced errors">{text}</error>
   </testcase>
-</testsuite>
 """
+
+JUNIT_TESTCASE_PASS_TEMPLATE: Final = """  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
+  </testcase>
+"""
+
+JUNIT_FOOTER: Final = """</testsuite>
+"""
+
+
+def _generate_junit_contents(
+    dt: float,
+    serious: bool,
+    messages_by_file: dict[str | None, list[str]],
+    version: str,
+    platform: str,
+) -> str:
+    if serious:
+        failures = 0
+        errors = len(messages_by_file)
+    else:
+        failures = len(messages_by_file)
+        errors = 0
+
+    xml = JUNIT_HEADER_TEMPLATE.format(
+        errors=errors,
+        failures=failures,
+        time=dt,
+        # If there are no messages, we still write one "test" indicating success.
+        tests=len(messages_by_file) or 1,
+    )
+
+    if not messages_by_file:
+        xml += JUNIT_TESTCASE_PASS_TEMPLATE.format(time=dt, ver=version, platform=platform)
+    else:
+        for filename, messages in messages_by_file.items():
+            if filename is not None:
+                xml += JUNIT_TESTCASE_FAIL_TEMPLATE.format(
+                    text="\n".join(messages),
+                    filename=filename,
+                    time=dt,
+                    name="mypy-py{ver}-{platform} {filename}".format(
+                        ver=version, platform=platform, filename=filename
+                    ),
+                )
+            else:
+                xml += JUNIT_TESTCASE_FAIL_TEMPLATE.format(
+                    text="\n".join(messages),
+                    filename="mypy",
+                    time=dt,
+                    name="mypy-py{ver}-{platform}".format(ver=version, platform=platform),
+                )
+
+    xml += JUNIT_FOOTER
+
+    return xml
 
 
 def write_junit_xml(
-    dt: float, serious: bool, messages: list[str], path: str, version: str, platform: str
+    dt: float,
+    serious: bool,
+    messages_by_file: dict[str | None, list[str]],
+    path: str,
+    version: str,
+    platform: str,
 ) -> None:
-    from xml.sax.saxutils import escape
-
-    if not messages and not serious:
-        xml = PASS_TEMPLATE.format(time=dt, ver=version, platform=platform)
-    elif not serious:
-        xml = FAIL_TEMPLATE.format(
-            text=escape("\n".join(messages)), time=dt, ver=version, platform=platform
-        )
-    else:
-        xml = ERROR_TEMPLATE.format(
-            text=escape("\n".join(messages)), time=dt, ver=version, platform=platform
-        )
+    xml = _generate_junit_contents(dt, serious, messages_by_file, version, platform)
 
     # checks for a directory structure in path and creates folders if needed
     xml_dirs = os.path.dirname(os.path.abspath(path))

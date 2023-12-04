@@ -16,7 +16,7 @@ from collections.abc import (
 from importlib.machinery import ModuleSpec
 
 # pytype crashes if types.MappingProxyType inherits from collections.abc.Mapping instead of typing.Mapping
-from typing import Any, ClassVar, Generic, Mapping, Protocol, TypeVar, overload  # noqa: Y022
+from typing import Any, ClassVar, Mapping, Protocol, TypeVar, overload  # noqa: Y022
 from typing_extensions import Literal, ParamSpec, Self, TypeVarTuple, final
 
 __all__ = [
@@ -309,7 +309,7 @@ class CodeType:
         ) -> CodeType: ...
 
 @final
-class MappingProxyType(Mapping[_KT, _VT_co], Generic[_KT, _VT_co]):
+class MappingProxyType(Mapping[_KT, _VT_co]):
     __hash__: ClassVar[None]  # type: ignore[assignment]
     def __new__(cls, mapping: SupportsKeysAndGetItem[_KT, _VT_co]) -> Self: ...
     def __getitem__(self, __key: _KT) -> _VT_co: ...
@@ -335,7 +335,7 @@ class SimpleNamespace:
     def __delattr__(self, __name: str) -> None: ...
 
 class _LoaderProtocol(Protocol):
-    def load_module(self, fullname: str) -> ModuleType: ...
+    def load_module(self, __fullname: str) -> ModuleType: ...
 
 class ModuleType:
     __name__: str
@@ -593,9 +593,8 @@ _R = TypeVar("_R")
 _P = ParamSpec("_P")
 
 # it's not really an Awaitable, but can be used in an await expression. Real type: Generator & Awaitable
-# The type: ignore is due to overlapping overloads, not the use of ParamSpec
 @overload
-def coroutine(func: Callable[_P, Generator[Any, Any, _R]]) -> Callable[_P, Awaitable[_R]]: ...  # type: ignore[misc]
+def coroutine(func: Callable[_P, Generator[Any, Any, _R]]) -> Callable[_P, Awaitable[_R]]: ...  # type: ignore[overload-overlap]
 @overload
 def coroutine(func: _Fn) -> _Fn: ...
 

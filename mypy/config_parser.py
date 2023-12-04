@@ -152,6 +152,17 @@ def check_follow_imports(choice: str) -> str:
     return choice
 
 
+def check_junit_format(choice: str) -> str:
+    choices = ["global", "per_file"]
+    if choice not in choices:
+        raise argparse.ArgumentTypeError(
+            "invalid choice '{}' (choose from {})".format(
+                choice, ", ".join(f"'{x}'" for x in choices)
+            )
+        )
+    return choice
+
+
 def split_commas(value: str) -> list[str]:
     # Uses a bit smarter technique to allow last trailing comma
     # and to remove last `""` item from the split.
@@ -173,6 +184,7 @@ ini_config_types: Final[dict[str, _INI_PARSER_CALLABLE]] = {
     "files": split_and_match_files,
     "quickstart_file": expand_path,
     "junit_xml": expand_path,
+    "junit_format": check_junit_format,
     "follow_imports": check_follow_imports,
     "no_site_packages": bool,
     "plugins": lambda s: [p.strip() for p in split_commas(s)],
@@ -200,6 +212,7 @@ toml_config_types.update(
         "python_version": parse_version,
         "mypy_path": lambda s: [expand_path(p) for p in try_split(s, "[,:]")],
         "files": lambda s: split_and_match_files_list(try_split(s)),
+        "junit_format": lambda s: check_junit_format(str(s)),
         "follow_imports": lambda s: check_follow_imports(str(s)),
         "plugins": try_split,
         "always_true": try_split,

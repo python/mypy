@@ -253,6 +253,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                 t.prefix.arg_kinds + repl.arg_kinds,
                 t.prefix.arg_names + repl.arg_names,
                 variables=[*t.prefix.variables, *repl.variables],
+                imprecise_arg_kinds=repl.imprecise_arg_kinds,
             )
         else:
             # We could encode Any as trivial parameters etc., but it would be too verbose.

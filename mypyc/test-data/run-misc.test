@@ -1117,10 +1117,6 @@ for _ in range(2):
     except AssertionError:
         pass
 
-[case testRepeatedUnderscoreFunctions]
-def _(arg): pass
-def _(arg): pass
-
 [case testUnderscoreFunctionsInMethods]
 
 class A:

@@ -5002,12 +5002,13 @@ class A(Tuple[int, str]): pass
 -- -----------------------
 
 [case testCrashOnSelfRecursiveNamedTupleVar]
-# flags: --disable-recursive-aliases
 from typing import NamedTuple
 
-N = NamedTuple('N', [('x', N)]) # E: Cannot resolve name "N" (possible cyclic definition)
-n: N
-reveal_type(n) # N: Revealed type is "Tuple[Any, fallback=__main__.N]"
+def test() -> None:
+    N = NamedTuple('N', [('x', N)]) # E: Cannot resolve name "N" (possible cyclic definition) \
+                                    # N: Recursive types are not allowed at function scope
+    n: N
+    reveal_type(n) # N: Revealed type is "Tuple[Any, fallback=__main__.N@4]"
 [builtins fixtures/tuple.pyi]
 
 [case testCrashOnSelfRecursiveTypedDictVar]
@@ -5032,18 +5033,20 @@ lst = [n, m]
 [builtins fixtures/isinstancelist.pyi]
 
 [case testCorrectJoinOfSelfRecursiveTypedDicts]
-# flags: --disable-recursive-aliases
 from mypy_extensions import TypedDict
 
-class N(TypedDict):
-    x: N # E: Cannot resolve name "N" (possible cyclic definition)
-class M(TypedDict):
-    x: M # E: Cannot resolve name "M" (possible cyclic definition)
+def test() -> None:
+    class N(TypedDict):
+        x: N  # E: Cannot resolve name "N" (possible cyclic definition) \
+              # N: Recursive types are not allowed at function scope
+    class M(TypedDict):
+        x: M  # E: Cannot resolve name "M" (possible cyclic definition) \
+              # N: Recursive types are not allowed at function scope
 
-n: N
-m: M
-lst = [n, m]
-reveal_type(lst[0]['x'])  # N: Revealed type is "Any"
+    n: N
+    m: M
+    lst = [n, m]
+    reveal_type(lst[0]['x'])  # N: Revealed type is "Any"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testCrashInForwardRefToNamedTupleWithIsinstance]

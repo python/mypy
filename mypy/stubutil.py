@@ -576,6 +576,14 @@ class BaseStubGenerator:
         self.sig_generators = self.get_sig_generators()
         # populated by visit_mypy_file
         self.module_name: str = ""
+        # These are "soft" imports for objects which might appear in annotations but not have
+        # a corresponding import statement.
+        self.known_imports = {
+            "_typeshed": ["Incomplete"],
+            "typing": ["Any", "TypeVar", "NamedTuple"],
+            "collections.abc": ["Generator"],
+            "typing_extensions": ["TypedDict", "ParamSpec", "TypeVarTuple"],
+        }
 
     def get_sig_generators(self) -> list[SignatureGenerator]:
         return []
@@ -614,10 +622,24 @@ class BaseStubGenerator:
 
     def output(self) -> str:
         """Return the text for the stub."""
-        imports = self.get_imports()
-        if imports and self._output:
-            imports += "\n"
-        return imports + "".join(self._output)
+        pieces: list[str] = []
+        if imports := self.get_imports():
+            pieces.append(imports)
+        if dunder_all := self.get_dunder_all():
+            pieces.append(dunder_all)
+        if self._output:
+            pieces.append("".join(self._output))
+        return "\n".join(pieces)
+
+    def get_dunder_all(self) -> str:
+        """Return the __all__ list for the stub."""
+        if self._all_:
+            # Note we emit all names in the runtime __all__ here, even if they
+            # don't actually exist. If that happens, the runtime has a bug, and
+            # it's not obvious what the correct behavior should be. We choose
+            # to reflect the runtime __all__ as closely as possible.
+            return f"__all__ = {self._all_!r}\n"
+        return ""
 
     def add(self, string: str) -> None:
         """Add text to generated stub."""
@@ -651,18 +673,9 @@ class BaseStubGenerator:
         self.defined_names = defined_names
         # Names in __all__ are required
         for name in self._all_ or ():
-            if name not in self.IGNORED_DUNDERS:
-                self.import_tracker.reexport(name)
+            self.import_tracker.reexport(name)
 
-        # These are "soft" imports for objects which might appear in annotations but not have
-        # a corresponding import statement.
-        known_imports = {
-            "_typeshed": ["Incomplete"],
-            "typing": ["Any", "TypeVar", "NamedTuple"],
-            "collections.abc": ["Generator"],
-            "typing_extensions": ["TypedDict", "ParamSpec", "TypeVarTuple"],
-        }
-        for pkg, imports in known_imports.items():
+        for pkg, imports in self.known_imports.items():
             for t in imports:
                 # require=False means that the import won't be added unless require_name() is called
                 # for the object during generation.
@@ -751,7 +764,13 @@ class BaseStubGenerator:
             return False
         if name == "_":
             return False
-        return name.startswith("_") and (not name.endswith("__") or name in self.IGNORED_DUNDERS)
+        if not name.startswith("_"):
+            return False
+        if self._all_ and name in self._all_:
+            return False
+        if name.startswith("__") and name.endswith("__"):
+            return name in self.IGNORED_DUNDERS
+        return True
 
     def should_reexport(self, name: str, full_module: str, name_is_alias: bool) -> bool:
         if (
@@ -761,18 +780,21 @@ class BaseStubGenerator:
         ):
             # Special case certain names that should be exported, against our general rules.
             return True
+        if name_is_alias:
+            return False
+        if self.export_less:
+            return False
+        if not self.module_name:
+            return False
         is_private = self.is_private_name(name, full_module + "." + name)
+        if is_private:
+            return False
         top_level = full_module.split(".")[0]
         self_top_level = self.module_name.split(".", 1)[0]
-        if (
-            not name_is_alias
-            and not self.export_less
-            and (not self._all_ or name in self.IGNORED_DUNDERS)
-            and self.module_name
-            and not is_private
-            and top_level in (self_top_level, "_" + self_top_level)
-        ):
+        if top_level not in (self_top_level, "_" + self_top_level):
             # Export imports from the same package, since we can't reliably tell whether they
             # are part of the public API.
-            return True
-        return False
+            return False
+        if self._all_:
+            return name in self._all_
+        return True

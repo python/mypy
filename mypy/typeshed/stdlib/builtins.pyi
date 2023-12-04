@@ -18,6 +18,7 @@ from _typeshed import (
     SupportsAiter,
     SupportsAnext,
     SupportsDivMod,
+    SupportsFlush,
     SupportsIter,
     SupportsKeysAndGetItem,
     SupportsLenAndGetItem,
@@ -62,6 +63,7 @@ from typing_extensions import (
     TypeAlias,
     TypeGuard,
     TypeVarTuple,
+    deprecated,
     final,
 )
 
@@ -159,8 +161,9 @@ class classmethod(Generic[_T, _P, _R_co]):
         def __wrapped__(self) -> Callable[Concatenate[type[_T], _P], _R_co]: ...
 
 class type:
+    # object.__base__ is None. Otherwise, it would be a type.
     @property
-    def __base__(self) -> type: ...
+    def __base__(self) -> type | None: ...
     __bases__: tuple[type, ...]
     @property
     def __basicsize__(self) -> int: ...
@@ -287,7 +290,7 @@ class int:
     def __pow__(self, __value: _PositiveInteger, __mod: None = None) -> int: ...
     @overload
     def __pow__(self, __value: _NegativeInteger, __mod: None = None) -> float: ...
-    # positive x -> int; negative x -> float
+    # positive __value -> int; negative __value -> float
     # return type must be Any as `int | float` causes too many false-positive errors
     @overload
     def __pow__(self, __value: int, __mod: None = None) -> Any: ...
@@ -346,7 +349,7 @@ class float:
     def __divmod__(self, __value: float) -> tuple[float, float]: ...
     @overload
     def __pow__(self, __value: int, __mod: None = None) -> float: ...
-    # positive x -> float; negative x -> complex
+    # positive __value -> float; negative __value -> complex
     # return type must be Any as `float | complex` causes too many false-positive errors
     @overload
     def __pow__(self, __value: float, __mod: None = None) -> Any: ...
@@ -843,6 +846,8 @@ class bool(int):
     @overload
     def __rxor__(self, __value: int) -> int: ...
     def __getnewargs__(self) -> tuple[int]: ...
+    @deprecated("Will throw an error in Python 3.14. Use `not` for logical negation of bools instead.")
+    def __invert__(self) -> int: ...
 
 @final
 class slice:
@@ -860,7 +865,7 @@ class slice:
     __hash__: ClassVar[None]  # type: ignore[assignment]
     def indices(self, __len: SupportsIndex) -> tuple[int, int, int]: ...
 
-class tuple(Sequence[_T_co], Generic[_T_co]):
+class tuple(Sequence[_T_co]):
     def __new__(cls, __iterable: Iterable[_T_co] = ...) -> Self: ...
     def __len__(self) -> int: ...
     def __contains__(self, __key: object) -> bool: ...
@@ -912,7 +917,7 @@ class function:
     # mypy uses `builtins.function.__get__` to represent methods, properties, and getset_descriptors so we type the return as Any.
     def __get__(self, __instance: object, __owner: type | None = None) -> Any: ...
 
-class list(MutableSequence[_T], Generic[_T]):
+class list(MutableSequence[_T]):
     @overload
     def __init__(self) -> None: ...
     @overload
@@ -967,7 +972,7 @@ class list(MutableSequence[_T], Generic[_T]):
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, __item: Any) -> GenericAlias: ...
 
-class dict(MutableMapping[_KT, _VT], Generic[_KT, _VT]):
+class dict(MutableMapping[_KT, _VT]):
     # __init__ should be kept roughly in line with `collections.UserDict.__init__`, which has similar semantics
     # Also multiprocessing.managers.SyncManager.dict()
     @overload
@@ -1040,7 +1045,7 @@ class dict(MutableMapping[_KT, _VT], Generic[_KT, _VT]):
         @overload
         def __ior__(self, __value: Iterable[tuple[_KT, _VT]]) -> Self: ...
 
-class set(MutableSet[_T], Generic[_T]):
+class set(MutableSet[_T]):
     @overload
     def __init__(self) -> None: ...
     @overload
@@ -1080,7 +1085,7 @@ class set(MutableSet[_T], Generic[_T]):
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, __item: Any) -> GenericAlias: ...
 
-class frozenset(AbstractSet[_T_co], Generic[_T_co]):
+class frozenset(AbstractSet[_T_co]):
     @overload
     def __new__(cls) -> Self: ...
     @overload
@@ -1109,7 +1114,7 @@ class frozenset(AbstractSet[_T_co], Generic[_T_co]):
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, __item: Any) -> GenericAlias: ...
 
-class enumerate(Iterator[tuple[int, _T]], Generic[_T]):
+class enumerate(Iterator[tuple[int, _T]]):
     def __new__(cls, iterable: Iterable[_T], start: int = ...) -> Self: ...
     def __iter__(self) -> Self: ...
     def __next__(self) -> tuple[int, _T]: ...
@@ -1194,7 +1199,7 @@ if sys.version_info >= (3, 10):
     # See discussion in #7491 and pure-Python implementation of `anext` at https://github.com/python/cpython/blob/ea786a882b9ed4261eafabad6011bc7ef3b5bf94/Lib/test/test_asyncgen.py#L52-L80
     def anext(__i: _SupportsSynchronousAnext[_AwaitableT]) -> _AwaitableT: ...
     @overload
-    async def anext(__i: SupportsAnext[_T], default: _VT) -> _T | _VT: ...
+    async def anext(__i: SupportsAnext[_T], __default: _VT) -> _T | _VT: ...
 
 # compile() returns a CodeType, unless the flags argument includes PyCF_ONLY_AST (=1024),
 # in which case it returns ast.AST. We have overloads for flag 0 (the default) and for
@@ -1318,7 +1323,7 @@ else:
 
 def exit(code: sys._ExitCode = None) -> NoReturn: ...
 
-class filter(Iterator[_T], Generic[_T]):
+class filter(Iterator[_T]):
     @overload
     def __new__(cls, __function: None, __iterable: Iterable[_T | None]) -> Self: ...
     @overload
@@ -1340,9 +1345,9 @@ def getattr(__o: object, __name: str, __default: None) -> Any | None: ...
 @overload
 def getattr(__o: object, __name: str, __default: bool) -> Any | bool: ...
 @overload
-def getattr(__o: object, name: str, __default: list[Any]) -> Any | list[Any]: ...
+def getattr(__o: object, __name: str, __default: list[Any]) -> Any | list[Any]: ...
 @overload
-def getattr(__o: object, name: str, __default: dict[Any, Any]) -> Any | dict[Any, Any]: ...
+def getattr(__o: object, __name: str, __default: dict[Any, Any]) -> Any | dict[Any, Any]: ...
 @overload
 def getattr(__o: object, __name: str, __default: _T) -> Any | _T: ...
 def globals() -> dict[str, Any]: ...
@@ -1357,13 +1362,13 @@ class _GetItemIterable(Protocol[_T_co]):
     def __getitem__(self, __i: int) -> _T_co: ...
 
 @overload
-def iter(__iterable: SupportsIter[_SupportsNextT]) -> _SupportsNextT: ...
+def iter(__object: SupportsIter[_SupportsNextT]) -> _SupportsNextT: ...
 @overload
-def iter(__iterable: _GetItemIterable[_T]) -> Iterator[_T]: ...
+def iter(__object: _GetItemIterable[_T]) -> Iterator[_T]: ...
 @overload
-def iter(__function: Callable[[], _T | None], __sentinel: None) -> Iterator[_T]: ...
+def iter(__object: Callable[[], _T | None], __sentinel: None) -> Iterator[_T]: ...
 @overload
-def iter(__function: Callable[[], _T], __sentinel: object) -> Iterator[_T]: ...
+def iter(__object: Callable[[], _T], __sentinel: object) -> Iterator[_T]: ...
 
 # Keep this alias in sync with unittest.case._ClassInfo
 if sys.version_info >= (3, 10):
@@ -1377,7 +1382,7 @@ def len(__obj: Sized) -> int: ...
 def license() -> None: ...
 def locals() -> dict[str, Any]: ...
 
-class map(Iterator[_S], Generic[_S]):
+class map(Iterator[_S]):
     @overload
     def __new__(cls, __func: Callable[[_T1], _S], __iter1: Iterable[_T1]) -> Self: ...
     @overload
@@ -1544,8 +1549,7 @@ def open(
 ) -> IO[Any]: ...
 def ord(__c: str | bytes | bytearray) -> int: ...
 
-class _SupportsWriteAndFlush(SupportsWrite[_T_contra], Protocol[_T_contra]):
-    def flush(self) -> None: ...
+class _SupportsWriteAndFlush(SupportsWrite[_T_contra], SupportsFlush, Protocol[_T_contra]): ...
 
 @overload
 def print(
@@ -1649,7 +1653,7 @@ else:
 
 def quit(code: sys._ExitCode = None) -> NoReturn: ...
 
-class reversed(Iterator[_T], Generic[_T]):
+class reversed(Iterator[_T]):
     @overload
     def __init__(self, __sequence: Reversible[_T]) -> None: ...
     @overload
@@ -1698,11 +1702,11 @@ _SupportsSumNoDefaultT = TypeVar("_SupportsSumNoDefaultT", bound=_SupportsSumWit
 # Instead, we special-case the most common examples of this: bool and literal integers.
 if sys.version_info >= (3, 8):
     @overload
-    def sum(__iterable: Iterable[bool], start: int = 0) -> int: ...  # type: ignore[misc]
+    def sum(__iterable: Iterable[bool], start: int = 0) -> int: ...  # type: ignore[overload-overlap]
 
 else:
     @overload
-    def sum(__iterable: Iterable[bool], __start: int = 0) -> int: ...  # type: ignore[misc]
+    def sum(__iterable: Iterable[bool], __start: int = 0) -> int: ...  # type: ignore[overload-overlap]
 
 @overload
 def sum(__iterable: Iterable[_SupportsSumNoDefaultT]) -> _SupportsSumNoDefaultT | Literal[0]: ...
@@ -1719,11 +1723,11 @@ else:
 # (A "SupportsDunderDict" protocol doesn't work)
 # Use a type: ignore to make complaints about overlapping overloads go away
 @overload
-def vars(__object: type) -> types.MappingProxyType[str, Any]: ...  # type: ignore[misc]
+def vars(__object: type) -> types.MappingProxyType[str, Any]: ...  # type: ignore[overload-overlap]
 @overload
 def vars(__object: Any = ...) -> dict[str, Any]: ...
 
-class zip(Iterator[_T_co], Generic[_T_co]):
+class zip(Iterator[_T_co]):
     if sys.version_info >= (3, 10):
         @overload
         def __new__(cls, *, strict: bool = ...) -> zip[Any]: ...

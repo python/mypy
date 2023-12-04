@@ -258,6 +258,18 @@ def is_same_type(
     This means types may have different representation (e.g. an alias, or
     a non-simplified union) but are semantically exchangeable in all contexts.
     """
+    # First, use fast path for some common types. This is performance-critical.
+    if (
+        type(a) is Instance
+        and type(b) is Instance
+        and a.type == b.type
+        and len(a.args) == len(b.args)
+        and a.last_known_value is b.last_known_value
+    ):
+        return all(is_same_type(x, y) for x, y in zip(a.args, b.args))
+    elif isinstance(a, TypeVarType) and isinstance(b, TypeVarType) and a.id == b.id:
+        return True
+
     # Note that using ignore_promotions=True (default) makes types like int and int64
     # considered not the same type (which is the case at runtime).
     # Also Union[bool, int] (if it wasn't simplified before) will be different
@@ -658,6 +670,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 left,
                 self.right,
                 is_compat=self._is_subtype,
+                # TODO: this should pass the current value, but then couple tests fail.
+                is_proper_subtype=False,
                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
             )
         else:
@@ -677,6 +691,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 left,
                 right,
                 is_compat=self._is_subtype,
+                is_proper_subtype=self.proper_subtype,
                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
                 strict_concatenate=(self.options.extra_checks or self.options.strict_concatenate)
                 if self.options
@@ -731,9 +746,13 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 for li in left.items:
                     if isinstance(li, UnpackType):
                         unpack = get_proper_type(li.type)
-                        if isinstance(unpack, Instance):
-                            assert unpack.type.fullname == "builtins.tuple"
-                            li = unpack.args[0]
+                        if isinstance(unpack, TypeVarTupleType):
+                            unpack = get_proper_type(unpack.upper_bound)
+                        assert (
+                            isinstance(unpack, Instance)
+                            and unpack.type.fullname == "builtins.tuple"
+                        )
+                        li = unpack.args[0]
                     if not self._is_subtype(li, iter_type):
                         return False
                 return True
@@ -932,6 +951,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                                 left_item,
                                 right_item,
                                 is_compat=self._is_subtype,
+                                is_proper_subtype=self.proper_subtype,
                                 ignore_return=True,
                                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
                                 strict_concatenate=strict_concat,
@@ -940,6 +960,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                                 right_item,
                                 left_item,
                                 is_compat=self._is_subtype,
+                                is_proper_subtype=self.proper_subtype,
                                 ignore_return=True,
                                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
                                 strict_concatenate=strict_concat,
@@ -1358,6 +1379,7 @@ def is_callable_compatible(
     right: CallableType,
     *,
     is_compat: Callable[[Type, Type], bool],
+    is_proper_subtype: bool,
     is_compat_return: Callable[[Type, Type], bool] | None = None,
     ignore_return: bool = False,
     ignore_pos_arg_names: bool = False,
@@ -1517,6 +1539,7 @@ def is_callable_compatible(
         left,
         right,
         is_compat=is_compat,
+        is_proper_subtype=is_proper_subtype,
         ignore_pos_arg_names=ignore_pos_arg_names,
         allow_partial_overlap=allow_partial_overlap,
         strict_concatenate_check=strict_concatenate_check,
@@ -1552,12 +1575,13 @@ def are_parameters_compatible(
     right: Parameters | NormalizedCallableType,
     *,
     is_compat: Callable[[Type, Type], bool],
+    is_proper_subtype: bool,
     ignore_pos_arg_names: bool = False,
     allow_partial_overlap: bool = False,
     strict_concatenate_check: bool = False,
 ) -> bool:
     """Helper function for is_callable_compatible, used for Parameter compatibility"""
-    if right.is_ellipsis_args:
+    if right.is_ellipsis_args and not is_proper_subtype:
         return True
 
     left_star = left.var_arg()
@@ -1566,9 +1590,21 @@ def are_parameters_compatible(
     right_star2 = right.kw_arg()
 
     # Treat "def _(*a: Any, **kw: Any) -> X" similarly to "Callable[..., X]"
-    if are_trivial_parameters(right):
+    if are_trivial_parameters(right) and not is_proper_subtype:
         return True
-    trivial_suffix = is_trivial_suffix(right)
+    trivial_suffix = is_trivial_suffix(right) and not is_proper_subtype
+
+    if (
+        right.arg_kinds == [ARG_STAR]
+        and isinstance(get_proper_type(right.arg_types[0]), AnyType)
+        and not is_proper_subtype
+    ):
+        # Similar to how (*Any, **Any) is considered a supertype of all callables, we consider
+        # (*Any) a supertype of all callables with positional arguments. This is needed in
+        # particular because we often refuse to try type inference if actual type is not
+        # a subtype of erased template type.
+        if all(k.is_positional() for k in left.arg_kinds) and ignore_pos_arg_names:
+            return True
 
     # Match up corresponding arguments and check them for compatibility. In
     # every pair (argL, argR) of corresponding arguments from L and R, argL must
@@ -1615,7 +1651,12 @@ def are_parameters_compatible(
                 continue
             return False
         if not are_args_compatible(
-            left_arg, right_arg, ignore_pos_arg_names, allow_partial_overlap, is_compat
+            left_arg,
+            right_arg,
+            is_compat,
+            ignore_pos_arg_names=ignore_pos_arg_names,
+            allow_partial_overlap=allow_partial_overlap,
+            allow_imprecise_kinds=right.imprecise_arg_kinds,
         ):
             return False
 
@@ -1640,9 +1681,9 @@ def are_parameters_compatible(
             if not are_args_compatible(
                 left_by_position,
                 right_by_position,
-                ignore_pos_arg_names,
-                allow_partial_overlap,
                 is_compat,
+                ignore_pos_arg_names=ignore_pos_arg_names,
+                allow_partial_overlap=allow_partial_overlap,
             ):
                 return False
             i += 1
@@ -1675,7 +1716,11 @@ def are_parameters_compatible(
                 continue
 
             if not are_args_compatible(
-                left_by_name, right_by_name, ignore_pos_arg_names, allow_partial_overlap, is_compat
+                left_by_name,
+                right_by_name,
+                is_compat,
+                ignore_pos_arg_names=ignore_pos_arg_names,
+                allow_partial_overlap=allow_partial_overlap,
             ):
                 return False
 
@@ -1699,6 +1744,7 @@ def are_parameters_compatible(
             and right_by_name != right_by_pos
             and (right_by_pos.required or right_by_name.required)
             and strict_concatenate_check
+            and not right.imprecise_arg_kinds
         ):
             return False
 
@@ -1713,9 +1759,11 @@ def are_parameters_compatible(
 def are_args_compatible(
     left: FormalArgument,
     right: FormalArgument,
+    is_compat: Callable[[Type, Type], bool],
+    *,
     ignore_pos_arg_names: bool,
     allow_partial_overlap: bool,
-    is_compat: Callable[[Type, Type], bool],
+    allow_imprecise_kinds: bool = False,
 ) -> bool:
     if left.required and right.required:
         # If both arguments are required allow_partial_overlap has no effect.
@@ -1743,7 +1791,7 @@ def are_args_compatible(
             return False
 
     # If right is at a specific position, left must have the same:
-    if is_different(left.pos, right.pos):
+    if is_different(left.pos, right.pos) and not allow_imprecise_kinds:
         return False
 
     # If right's argument is optional, left's must also be

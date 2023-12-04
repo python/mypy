@@ -28,6 +28,7 @@ from mypy.types import (
     Instance,
     LiteralType,
     NoneType,
+    NormalizedCallableType,
     Overloaded,
     Parameters,
     ParamSpecType,
@@ -225,25 +226,22 @@ def infer_constraints_for_callable(
                 actual_type = mapper.expand_actual_type(
                     actual_arg_type, arg_kinds[actual], callee.arg_names[i], callee.arg_kinds[i]
                 )
-                if (
-                    param_spec
-                    and callee.arg_kinds[i] in (ARG_STAR, ARG_STAR2)
-                    and not incomplete_star_mapping
-                ):
+                if param_spec and callee.arg_kinds[i] in (ARG_STAR, ARG_STAR2):
                     # If actual arguments are mapped to ParamSpec type, we can't infer individual
                     # constraints, instead store them and infer single constraint at the end.
                     # It is impossible to map actual kind to formal kind, so use some heuristic.
                     # This inference is used as a fallback, so relying on heuristic should be OK.
-                    param_spec_arg_types.append(
-                        mapper.expand_actual_type(
-                            actual_arg_type, arg_kinds[actual], None, arg_kinds[actual]
+                    if not incomplete_star_mapping:
+                        param_spec_arg_types.append(
+                            mapper.expand_actual_type(
+                                actual_arg_type, arg_kinds[actual], None, arg_kinds[actual]
+                            )
                         )
-                    )
-                    actual_kind = arg_kinds[actual]
-                    param_spec_arg_kinds.append(
-                        ARG_POS if actual_kind not in (ARG_STAR, ARG_STAR2) else actual_kind
-                    )
-                    param_spec_arg_names.append(arg_names[actual] if arg_names else None)
+                        actual_kind = arg_kinds[actual]
+                        param_spec_arg_kinds.append(
+                            ARG_POS if actual_kind not in (ARG_STAR, ARG_STAR2) else actual_kind
+                        )
+                        param_spec_arg_names.append(arg_names[actual] if arg_names else None)
                 else:
                     c = infer_constraints(callee.arg_types[i], actual_type, SUPERTYPE_OF)
                     constraints.extend(c)
@@ -266,6 +264,9 @@ def infer_constraints_for_callable(
                 ),
             )
         )
+    if any(isinstance(v, ParamSpecType) for v in callee.variables):
+        # As a perf optimization filter imprecise constraints only when we can have them.
+        constraints = filter_imprecise_kinds(constraints)
     return constraints
 
 
@@ -948,7 +949,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             for item in actual.items:
                 if isinstance(item, UnpackType):
                     unpacked = get_proper_type(item.type)
-                    if isinstance(unpacked, TypeVarType):
+                    if isinstance(unpacked, TypeVarTupleType):
                         # Cannot infer anything for T from [T, ...] <: *Ts
                         continue
                     assert (
@@ -1093,29 +1094,18 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 )
 
                 param_spec_target: Type | None = None
-                skip_imprecise = (
-                    any(c.type_var == param_spec.id for c in res) and cactual.imprecise_arg_kinds
-                )
                 if not cactual_ps:
                     max_prefix_len = len([k for k in cactual.arg_kinds if k in (ARG_POS, ARG_OPT)])
                     prefix_len = min(prefix_len, max_prefix_len)
-                    # This logic matches top-level callable constraint exception, if we managed
-                    # to get other constraints for ParamSpec, don't infer one with imprecise kinds
-                    if not skip_imprecise:
-                        param_spec_target = Parameters(
-                            arg_types=cactual.arg_types[prefix_len:],
-                            arg_kinds=cactual.arg_kinds[prefix_len:],
-                            arg_names=cactual.arg_names[prefix_len:],
-                            variables=cactual.variables
-                            if not type_state.infer_polymorphic
-                            else [],
-                            imprecise_arg_kinds=cactual.imprecise_arg_kinds,
-                        )
+                    param_spec_target = Parameters(
+                        arg_types=cactual.arg_types[prefix_len:],
+                        arg_kinds=cactual.arg_kinds[prefix_len:],
+                        arg_names=cactual.arg_names[prefix_len:],
+                        variables=cactual.variables if not type_state.infer_polymorphic else [],
+                        imprecise_arg_kinds=cactual.imprecise_arg_kinds,
+                    )
                 else:
-                    if (
-                        len(param_spec.prefix.arg_types) <= len(cactual_ps.prefix.arg_types)
-                        and not skip_imprecise
-                    ):
+                    if len(param_spec.prefix.arg_types) <= len(cactual_ps.prefix.arg_types):
                         param_spec_target = cactual_ps.copy_modified(
                             prefix=Parameters(
                                 arg_types=cactual_ps.prefix.arg_types[prefix_len:],
@@ -1352,7 +1342,11 @@ def find_matching_overload_item(overloaded: Overloaded, template: CallableType) 
         # Return type may be indeterminate in the template, so ignore it when performing a
         # subtype check.
         if mypy.subtypes.is_callable_compatible(
-            item, template, is_compat=mypy.subtypes.is_subtype, ignore_return=True
+            item,
+            template,
+            is_compat=mypy.subtypes.is_subtype,
+            is_proper_subtype=False,
+            ignore_return=True,
         ):
             return item
     # Fall back to the first item if we can't find a match. This is totally arbitrary --
@@ -1370,7 +1364,11 @@ def find_matching_overload_items(
         # Return type may be indeterminate in the template, so ignore it when performing a
         # subtype check.
         if mypy.subtypes.is_callable_compatible(
-            item, template, is_compat=mypy.subtypes.is_subtype, ignore_return=True
+            item,
+            template,
+            is_compat=mypy.subtypes.is_subtype,
+            is_proper_subtype=False,
+            ignore_return=True,
         ):
             res.append(item)
     if not res:
@@ -1380,7 +1378,7 @@ def find_matching_overload_items(
     return res
 
 
-def get_tuple_fallback_from_unpack(unpack: UnpackType) -> TypeInfo | None:
+def get_tuple_fallback_from_unpack(unpack: UnpackType) -> TypeInfo:
     """Get builtins.tuple type from available types to construct homogeneous tuples."""
     tp = get_proper_type(unpack.type)
     if isinstance(tp, Instance) and tp.type.fullname == "builtins.tuple":
@@ -1391,10 +1389,10 @@ def get_tuple_fallback_from_unpack(unpack: UnpackType) -> TypeInfo | None:
         for base in tp.partial_fallback.type.mro:
             if base.fullname == "builtins.tuple":
                 return base
-    return None
+    assert False, "Invalid unpack type"
 
 
-def repack_callable_args(callable: CallableType, tuple_type: TypeInfo | None) -> list[Type]:
+def repack_callable_args(callable: CallableType, tuple_type: TypeInfo) -> list[Type]:
     """Present callable with star unpack in a normalized form.
 
     Since positional arguments cannot follow star argument, they are packed in a suffix,
@@ -1409,12 +1407,8 @@ def repack_callable_args(callable: CallableType, tuple_type: TypeInfo | None) ->
     star_type = callable.arg_types[star_index]
     suffix_types = []
     if not isinstance(star_type, UnpackType):
-        if tuple_type is not None:
-            # Re-normalize *args: X -> *args: *tuple[X, ...]
-            star_type = UnpackType(Instance(tuple_type, [star_type]))
-        else:
-            # This is unfortunate, something like tuple[Any, ...] would be better.
-            star_type = UnpackType(AnyType(TypeOfAny.from_error))
+        # Re-normalize *args: X -> *args: *tuple[X, ...]
+        star_type = UnpackType(Instance(tuple_type, [star_type]))
     else:
         tp = get_proper_type(star_type.type)
         if isinstance(tp, TupleType):
@@ -1536,7 +1530,9 @@ def infer_directed_arg_constraints(left: Type, right: Type, direction: int) -> l
 
 
 def infer_callable_arguments_constraints(
-    template: CallableType | Parameters, actual: CallableType | Parameters, direction: int
+    template: NormalizedCallableType | Parameters,
+    actual: NormalizedCallableType | Parameters,
+    direction: int,
 ) -> list[Constraint]:
     """Infer constraints between argument types of two callables.
 
@@ -1604,3 +1600,24 @@ def infer_callable_arguments_constraints(
                 infer_directed_arg_constraints(left_by_name.typ, right_by_name.typ, direction)
             )
     return res
+
+
+def filter_imprecise_kinds(cs: list[Constraint]) -> list[Constraint]:
+    """For each ParamSpec remove all imprecise constraints, if at least one precise available."""
+    have_precise = set()
+    for c in cs:
+        if not isinstance(c.origin_type_var, ParamSpecType):
+            continue
+        if (
+            isinstance(c.target, ParamSpecType)
+            or isinstance(c.target, Parameters)
+            and not c.target.imprecise_arg_kinds
+        ):
+            have_precise.add(c.type_var)
+    new_cs = []
+    for c in cs:
+        if not isinstance(c.origin_type_var, ParamSpecType) or c.type_var not in have_precise:
+            new_cs.append(c)
+        if not isinstance(c.target, Parameters) or not c.target.imprecise_arg_kinds:
+            new_cs.append(c)
+    return new_cs

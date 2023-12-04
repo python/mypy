@@ -9908,6 +9908,128 @@ x = 0  # Arbitrary change to trigger reprocessing
 ==
 a.py:3: note: Revealed type is "Tuple[Literal[1]?, Literal['x']?]"
 
+[case testVariadicClassFineUpdateRegularToVariadic]
+from typing import Any
+from lib import C
+
+x: C[int, str]
+
+[file lib.py]
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+S = TypeVar("S")
+class C(Generic[T, S]): ...
+
+[file lib.py.2]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class C(Generic[Unpack[Ts]]): ...
+[builtins fixtures/tuple.pyi]
+[out]
+==
+
+[case testVariadicClassFineUpdateVariadicToRegular]
+from typing import Any
+from lib import C
+
+x: C[int, str, int]
+
+[file lib.py]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class C(Generic[Unpack[Ts]]): ...
+[file lib.py.2]
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+S = TypeVar("S")
+class C(Generic[T, S]): ...
+[builtins fixtures/tuple.pyi]
+[out]
+==
+main:4: error: "C" expects 2 type arguments, but 3 given
+
+-- Order of error messages is different, so we repeat the test twice.
+[case testVariadicClassFineUpdateValidToInvalidCached-only_when_cache]
+from typing import Any
+from lib import C
+
+x: C[int, str]
+
+[file lib.py]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class C(Generic[Unpack[Ts]]): ...
+
+[file lib.py.2]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class C(Generic[Ts]): ...
+[builtins fixtures/tuple.pyi]
+[out]
+==
+main:4: error: "C" expects no type arguments, but 2 given
+lib.py:5: error: Free type variable expected in Generic[...]
+
+[case testVariadicClassFineUpdateValidToInvalid-only_when_nocache]
+from typing import Any
+from lib import C
+
+x: C[int, str]
+
+[file lib.py]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class C(Generic[Unpack[Ts]]): ...
+
+[file lib.py.2]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class C(Generic[Ts]): ...
+[builtins fixtures/tuple.pyi]
+[out]
+==
+lib.py:5: error: Free type variable expected in Generic[...]
+main:4: error: "C" expects no type arguments, but 2 given
+
+[case testVariadicClassFineUpdateInvalidToValid]
+from typing import Any
+from lib import C
+
+x: C[int, str]
+
+[file lib.py]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class C(Generic[Ts]): ...
+
+[file lib.py.2]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class C(Generic[Unpack[Ts]]): ...
+[builtins fixtures/tuple.pyi]
+[out]
+lib.py:5: error: Free type variable expected in Generic[...]
+main:4: error: "C" expects no type arguments, but 2 given
+==
+
 [case testUnpackKwargsUpdateFine]
 import m
 [file shared.py]
@@ -10364,3 +10486,22 @@ reveal_type(s)
 ==
 ==
 b.py:2: note: Revealed type is "builtins.str"
+
+[case testRenameSubModule]
+import a
+
+[file a.py]
+import pkg.sub
+
+[file pkg/__init__.py]
+[file pkg/sub/__init__.py]
+from pkg.sub import mod
+[file pkg/sub/mod.py]
+
+[file pkg/sub/__init__.py.2]
+from pkg.sub import modb
+[delete pkg/sub/mod.py.2]
+[file pkg/sub/modb.py.2]
+
+[out]
+==

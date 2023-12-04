@@ -2232,7 +2232,7 @@ def foo(x: int) -> Union[Generator[A, None, None], Generator[B, None, None]]:
     yield x  # E: Incompatible types in "yield" (actual type "int", expected type "Union[A, B]")
 
 [case testNoCrashOnStarRightHandSide]
-x = *(1, 2, 3)  # E: Can use starred expression only as assignment target
+x = *(1, 2, 3)  # E: can't use starred expression here
 [builtins fixtures/tuple.pyi]
 
 

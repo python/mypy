@@ -248,7 +248,7 @@ class _Environ(MutableMapping[AnyStr, AnyStr], Generic[AnyStr]):
             unsetenv: Callable[[AnyStr, AnyStr], object],
         ) -> None: ...
 
-    def setdefault(self, key: AnyStr, value: AnyStr) -> AnyStr: ...  # type: ignore[override]
+    def setdefault(self, key: AnyStr, value: AnyStr) -> AnyStr: ...
     def copy(self) -> dict[AnyStr, AnyStr]: ...
     def __delitem__(self, key: AnyStr) -> None: ...
     def __getitem__(self, key: AnyStr) -> AnyStr: ...
@@ -923,10 +923,16 @@ def times() -> times_result: ...
 def waitpid(__pid: int, __options: int) -> tuple[int, int]: ...
 
 if sys.platform == "win32":
-    if sys.version_info >= (3, 8):
-        def startfile(path: StrOrBytesPath, operation: str | None = None) -> None: ...
+    if sys.version_info >= (3, 10):
+        def startfile(
+            filepath: StrOrBytesPath,
+            operation: str = ...,
+            arguments: str = "",
+            cwd: StrOrBytesPath | None = None,
+            show_cmd: int = 1,
+        ) -> None: ...
     else:
-        def startfile(filepath: StrOrBytesPath, operation: str | None = None) -> None: ...
+        def startfile(filepath: StrOrBytesPath, operation: str = ...) -> None: ...
 
 else:
     def spawnlp(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: StrOrBytesPath) -> int: ...
@@ -964,9 +970,9 @@ else:
     def WTERMSIG(status: int) -> int: ...
     if sys.version_info >= (3, 8):
         def posix_spawn(
-            path: StrOrBytesPath,
-            argv: _ExecVArgs,
-            env: _ExecEnv,
+            __path: StrOrBytesPath,
+            __argv: _ExecVArgs,
+            __env: _ExecEnv,
             *,
             file_actions: Sequence[tuple[Any, ...]] | None = ...,
             setpgroup: int | None = ...,
@@ -977,9 +983,9 @@ else:
             scheduler: tuple[Any, sched_param] | None = ...,
         ) -> int: ...
         def posix_spawnp(
-            path: StrOrBytesPath,
-            argv: _ExecVArgs,
-            env: _ExecEnv,
+            __path: StrOrBytesPath,
+            __argv: _ExecVArgs,
+            __env: _ExecEnv,
             *,
             file_actions: Sequence[tuple[Any, ...]] | None = ...,
             setpgroup: int | None = ...,

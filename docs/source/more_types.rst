@@ -829,7 +829,7 @@ Typing async/await
 
 Mypy lets you type coroutines that use the ``async/await`` syntax.
 For more information regarding coroutines, see :pep:`492` and the
-`asyncio documentation <https://docs.python.org/3/library/asyncio.html>`_.
+`asyncio documentation <python:library/asyncio>`_.
 
 Functions defined using ``async def`` are typed similar to normal functions.
 The return type annotation should be the same as the type of the value you

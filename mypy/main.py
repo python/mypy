@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 import time
+from collections import defaultdict
 from gettext import gettext
 from typing import IO, Any, Final, NoReturn, Sequence, TextIO
 
@@ -22,7 +23,7 @@ from mypy.errors import CompileError
 from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.fscache import FileSystemCache
 from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths, get_search_dirs, mypy_path
-from mypy.options import INCOMPLETE_FEATURES, BuildType, Options
+from mypy.options import COMPLETE_FEATURES, INCOMPLETE_FEATURES, BuildType, Options
 from mypy.split_namespace import SplitNamespace
 from mypy.version import __version__
 
@@ -158,11 +159,14 @@ def run_build(
     formatter = util.FancyFormatter(stdout, stderr, options.hide_error_codes)
 
     messages = []
+    messages_by_file = defaultdict(list)
 
-    def flush_errors(new_messages: list[str], serious: bool) -> None:
+    def flush_errors(filename: str | None, new_messages: list[str], serious: bool) -> None:
         if options.pretty:
             new_messages = formatter.fit_in_terminal(new_messages)
         messages.extend(new_messages)
+        if new_messages:
+            messages_by_file[filename].extend(new_messages)
         if options.non_interactive:
             # Collect messages and possibly show them later.
             return
@@ -200,7 +204,7 @@ def run_build(
             ),
             file=stderr,
         )
-    maybe_write_junit_xml(time.time() - t0, serious, messages, options)
+    maybe_write_junit_xml(time.time() - t0, serious, messages, messages_by_file, options)
     return res, messages, blockers
 
 
@@ -995,18 +999,13 @@ def process_options(
         help="Use a custom typing module",
     )
     internals_group.add_argument(
-        "--new-type-inference",
+        "--old-type-inference",
         action="store_true",
-        help="Enable new experimental type inference algorithm",
-    )
-    internals_group.add_argument(
-        "--disable-recursive-aliases",
-        action="store_true",
-        help="Disable experimental support for recursive type aliases",
+        help="Disable new experimental type inference algorithm",
     )
     # Deprecated reverse variant of the above.
     internals_group.add_argument(
-        "--enable-recursive-aliases", action="store_true", help=argparse.SUPPRESS
+        "--new-type-inference", action="store_true", help=argparse.SUPPRESS
     )
     parser.add_argument(
         "--enable-incomplete-feature",
@@ -1059,6 +1058,12 @@ def process_options(
     other_group = parser.add_argument_group(title="Miscellaneous")
     other_group.add_argument("--quickstart-file", help=argparse.SUPPRESS)
     other_group.add_argument("--junit-xml", help="Write junit.xml to the given file")
+    imports_group.add_argument(
+        "--junit-format",
+        choices=["global", "per_file"],
+        default="global",
+        help="If --junit-xml is set, specifies format. global: single test with all errors; per_file: one test entry per file with failures",
+    )
     other_group.add_argument(
         "--find-occurrences",
         metavar="CLASS.MEMBER",
@@ -1156,10 +1161,7 @@ def process_options(
     # --debug-serialize will run tree.serialize() even if cache generation is disabled.
     # Useful for mypy_primer to detect serialize errors earlier.
     parser.add_argument("--debug-serialize", action="store_true", help=argparse.SUPPRESS)
-    # This one is deprecated, but we will keep it for few releases.
-    parser.add_argument(
-        "--enable-incomplete-features", action="store_true", help=argparse.SUPPRESS
-    )
+
     parser.add_argument(
         "--disable-bytearray-promotion", action="store_true", help=argparse.SUPPRESS
     )
@@ -1339,14 +1341,10 @@ def process_options(
 
     # Validate incomplete features.
     for feature in options.enable_incomplete_feature:
-        if feature not in INCOMPLETE_FEATURES:
+        if feature not in INCOMPLETE_FEATURES | COMPLETE_FEATURES:
             parser.error(f"Unknown incomplete feature: {feature}")
-    if options.enable_incomplete_features:
-        print(
-            "Warning: --enable-incomplete-features is deprecated, use"
-            " --enable-incomplete-feature=FEATURE instead"
-        )
-        options.enable_incomplete_feature = list(INCOMPLETE_FEATURES)
+        if feature in COMPLETE_FEATURES:
+            print(f"Warning: {feature} is already enabled by default")
 
     # Compute absolute path for custom typeshed (if present).
     if options.custom_typeshed_dir is not None:
@@ -1392,11 +1390,12 @@ def process_options(
     if options.logical_deps:
         options.cache_fine_grained = True
 
-    if options.enable_recursive_aliases:
+    if options.new_type_inference:
         print(
-            "Warning: --enable-recursive-aliases is deprecated;"
-            " recursive types are enabled by default"
+            "Warning: --new-type-inference flag is deprecated;"
+            " new type inference algorithm is already enabled by default"
         )
+
     if options.strict_concatenate and not strict_option_set:
         print("Warning: --strict-concatenate is deprecated; use --extra-checks instead")
 
@@ -1494,18 +1493,37 @@ def process_cache_map(
         options.cache_map[source] = (meta_file, data_file)
 
 
-def maybe_write_junit_xml(td: float, serious: bool, messages: list[str], options: Options) -> None:
+def maybe_write_junit_xml(
+    td: float,
+    serious: bool,
+    all_messages: list[str],
+    messages_by_file: dict[str | None, list[str]],
+    options: Options,
+) -> None:
     if options.junit_xml:
         py_version = f"{options.python_version[0]}_{options.python_version[1]}"
-        util.write_junit_xml(
-            td, serious, messages, options.junit_xml, py_version, options.platform
-        )
+        if options.junit_format == "global":
+            util.write_junit_xml(
+                td,
+                serious,
+                {None: all_messages} if all_messages else {},
+                options.junit_xml,
+                py_version,
+                options.platform,
+            )
+        else:
+            # per_file
+            util.write_junit_xml(
+                td, serious, messages_by_file, options.junit_xml, py_version, options.platform
+            )
 
 
 def fail(msg: str, stderr: TextIO, options: Options) -> NoReturn:
     """Fail with a serious error."""
     stderr.write(f"{msg}\n")
-    maybe_write_junit_xml(0.0, serious=True, messages=[msg], options=options)
+    maybe_write_junit_xml(
+        0.0, serious=True, all_messages=[msg], messages_by_file={None: [msg]}, options=options
+    )
     sys.exit(2)
 
 

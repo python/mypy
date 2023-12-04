@@ -144,8 +144,7 @@ def store_argument_type(
         elif isinstance(arg_type, UnpackType):
             unpacked_type = get_proper_type(arg_type.type)
             if isinstance(unpacked_type, TupleType):
-                # Instead of using Tuple[Unpack[Tuple[...]]], just use
-                # Tuple[...]
+                # Instead of using Tuple[Unpack[Tuple[...]]], just use Tuple[...]
                 arg_type = unpacked_type
             elif (
                 isinstance(unpacked_type, Instance)
@@ -153,6 +152,7 @@ def store_argument_type(
             ):
                 arg_type = unpacked_type
             else:
+                # TODO: verify that we can only have a TypeVarTuple here.
                 arg_type = TupleType(
                     [arg_type],
                     fallback=named_type("builtins.tuple", [named_type("builtins.object", [])]),

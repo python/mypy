@@ -6501,7 +6501,7 @@ eggs = lambda: 'eggs'
 reveal_type(func(eggs))  # N: Revealed type is "def (builtins.str) -> builtins.str"
 
 spam: Callable[..., str] = lambda x, y: 'baz'
-reveal_type(func(spam))  # N: Revealed type is "def (*Any, **Any) -> builtins.str"
+reveal_type(func(spam))  # N: Revealed type is "def (*Any, **Any) -> Any"
 [builtins fixtures/paramspec.pyi]
 
 [case testGenericOverloadOverlapWithType]
@@ -6672,4 +6672,24 @@ reveal_type(c())  # N: Revealed type is "builtins.str"
 c2 = MyCallable("test")
 reveal_type(c2)  # N: Revealed type is "__main__.MyCallable[builtins.str]"
 reveal_type(c2()) # should be int  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testOverloadWithStarAnyFallback]
+from typing import overload, Any
+
+class A:
+    @overload
+    def f(self, e: str) -> str: ...
+    @overload
+    def f(self, *args: Any, **kwargs: Any) -> Any: ...
+    def f(self, *args, **kwargs):
+        pass
+
+class B:
+    @overload
+    def f(self, e: str, **kwargs: Any) -> str: ...
+    @overload
+    def f(self, *args: Any, **kwargs: Any) -> Any: ...
+    def f(self, *args, **kwargs):
+        pass
 [builtins fixtures/tuple.pyi]

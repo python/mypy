@@ -172,12 +172,10 @@ class TestRun(MypycDataSuite):
             # new by distutils, shift the mtime of all of the
             # generated artifacts back by a second.
             fudge_dir_mtimes(WORKDIR, -1)
-            # On Ubuntu, changing the mtime doesn't work reliably. As
+            # On some OS, changing the mtime doesn't work reliably. As
             # a workaround, sleep.
-            #
             # TODO: Figure out a better approach, since this slows down tests.
-            if sys.platform == "linux":
-                time.sleep(1.0)
+            time.sleep(1.0)
 
             step += 1
             with chdir_manager(".."):

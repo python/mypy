@@ -1,6 +1,6 @@
 import sys
 from _typeshed import StrPath
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 
 LC_CTYPE: int
 LC_COLLATE: int
@@ -10,7 +10,7 @@ LC_NUMERIC: int
 LC_ALL: int
 CHAR_MAX: int
 
-def setlocale(category: int, locale: str | Iterable[str | None] | None = None) -> str: ...
+def setlocale(__category: int, __locale: str | None = None) -> str: ...
 def localeconv() -> Mapping[str, int | str | list[int]]: ...
 
 if sys.version_info >= (3, 11):

@@ -17,7 +17,9 @@ _OptExcInfo: TypeAlias = OptExcInfo  # noqa: Y047  # TODO: obsolete, remove fall
 
 # Intentionally omits one deprecated and one optional method of `importlib.abc.MetaPathFinder`
 class _MetaPathFinder(Protocol):
-    def find_spec(self, fullname: str, path: Sequence[str] | None, target: ModuleType | None = ...) -> ModuleSpec | None: ...
+    def find_spec(
+        self, __fullname: str, __path: Sequence[str] | None, __target: ModuleType | None = ...
+    ) -> ModuleSpec | None: ...
 
 # ----- sys variables -----
 if sys.platform != "win32":
@@ -370,3 +372,7 @@ if sys.version_info >= (3, 12):
         def activate_stack_trampoline(__backend: str) -> None: ...
     else:
         def activate_stack_trampoline(__backend: str) -> NoReturn: ...
+
+    from . import _monitoring
+
+    monitoring = _monitoring
