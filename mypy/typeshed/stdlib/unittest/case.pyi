@@ -52,7 +52,7 @@ else:
         ) -> bool | None: ...
 
 if sys.version_info >= (3, 8):
-    def addModuleCleanup(__function: Callable[_P, Any], *args: _P.args, **kwargs: _P.kwargs) -> None: ...
+    def addModuleCleanup(__function: Callable[_P, object], *args: _P.args, **kwargs: _P.kwargs) -> None: ...
     def doModuleCleanups() -> None: ...
 
 if sys.version_info >= (3, 11):
@@ -136,7 +136,7 @@ class TestCase:
     def assertRaises(
         self,
         expected_exception: type[BaseException] | tuple[type[BaseException], ...],
-        callable: Callable[..., Any],
+        callable: Callable[..., object],
         *args: Any,
         **kwargs: Any,
     ) -> None: ...
@@ -149,7 +149,7 @@ class TestCase:
         self,
         expected_exception: type[BaseException] | tuple[type[BaseException], ...],
         expected_regex: str | Pattern[str],
-        callable: Callable[..., Any],
+        callable: Callable[..., object],
         *args: Any,
         **kwargs: Any,
     ) -> None: ...
@@ -161,7 +161,7 @@ class TestCase:
     def assertWarns(
         self,
         expected_warning: type[Warning] | tuple[type[Warning], ...],
-        callable: Callable[_P, Any],
+        callable: Callable[_P, object],
         *args: _P.args,
         **kwargs: _P.kwargs,
     ) -> None: ...
@@ -174,7 +174,7 @@ class TestCase:
         self,
         expected_warning: type[Warning] | tuple[type[Warning], ...],
         expected_regex: str | Pattern[str],
-        callable: Callable[_P, Any],
+        callable: Callable[_P, object],
         *args: _P.args,
         **kwargs: _P.kwargs,
     ) -> None: ...
@@ -256,9 +256,9 @@ class TestCase:
     def id(self) -> str: ...
     def shortDescription(self) -> str | None: ...
     if sys.version_info >= (3, 8):
-        def addCleanup(self, __function: Callable[_P, Any], *args: _P.args, **kwargs: _P.kwargs) -> None: ...
+        def addCleanup(self, __function: Callable[_P, object], *args: _P.args, **kwargs: _P.kwargs) -> None: ...
     else:
-        def addCleanup(self, function: Callable[_P, Any], *args: _P.args, **kwargs: _P.kwargs) -> None: ...
+        def addCleanup(self, function: Callable[_P, object], *args: _P.args, **kwargs: _P.kwargs) -> None: ...
 
     if sys.version_info >= (3, 11):
         def enterContext(self, cm: AbstractContextManager[_T]) -> _T: ...
@@ -266,7 +266,7 @@ class TestCase:
     def doCleanups(self) -> None: ...
     if sys.version_info >= (3, 8):
         @classmethod
-        def addClassCleanup(cls, __function: Callable[_P, Any], *args: _P.args, **kwargs: _P.kwargs) -> None: ...
+        def addClassCleanup(cls, __function: Callable[_P, object], *args: _P.args, **kwargs: _P.kwargs) -> None: ...
         @classmethod
         def doClassCleanups(cls) -> None: ...
 
@@ -299,9 +299,9 @@ class TestCase:
 class FunctionTestCase(TestCase):
     def __init__(
         self,
-        testFunc: Callable[[], Any],
-        setUp: Callable[[], Any] | None = None,
-        tearDown: Callable[[], Any] | None = None,
+        testFunc: Callable[[], object],
+        setUp: Callable[[], object] | None = None,
+        tearDown: Callable[[], object] | None = None,
         description: str | None = None,
     ) -> None: ...
     def runTest(self) -> None: ...

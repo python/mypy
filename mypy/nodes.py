@@ -513,6 +513,7 @@ class FuncBase(Node):
         "is_static",  # Uses "@staticmethod" (explicit or implicit)
         "is_final",  # Uses "@final"
         "is_explicit_override",  # Uses "@override"
+        "is_type_check_only",  # Uses "@type_check_only"
         "_fullname",
     )
 
@@ -530,6 +531,7 @@ class FuncBase(Node):
         self.is_static = False
         self.is_final = False
         self.is_explicit_override = False
+        self.is_type_check_only = False
         # Name with module prefix
         self._fullname = ""
 
@@ -2866,6 +2868,7 @@ class TypeInfo(SymbolNode):
         "type_var_tuple_suffix",
         "self_type",
         "dataclass_transform_spec",
+        "is_type_check_only",
     )
 
     _fullname: str  # Fully qualified name
@@ -3016,6 +3019,9 @@ class TypeInfo(SymbolNode):
     # Added if the corresponding class is directly decorated with `typing.dataclass_transform`
     dataclass_transform_spec: DataclassTransformSpec | None
 
+    # Is set to `True` when class is decorated with `@typing.type_check_only`
+    is_type_check_only: bool
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
@@ -3072,6 +3078,7 @@ class TypeInfo(SymbolNode):
         self.metadata = {}
         self.self_type = None
         self.dataclass_transform_spec = None
+        self.is_type_check_only = False
 
     def add_type_vars(self) -> None:
         self.has_type_var_tuple_type = False

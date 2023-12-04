@@ -71,6 +71,8 @@ class Sequence(Iterable[_T_co]): ...
 class Tuple(Sequence[_T_co]): ...
 class NamedTuple(tuple[Any, ...]): ...
 def overload(func: _T) -> _T: ...
+def type_check_only(func: _T) -> _T: ...
+def final(func: _T) -> _T: ...
 """
 
 stubtest_builtins_stub = """
@@ -426,6 +428,16 @@ class StubtestUnit(unittest.TestCase):
             error=None,
         )
 
+        # Simulate "<unrepresentable>"
+        yield Case(
+            stub="def f11() -> None: ...",
+            runtime="""
+            def f11(text=None) -> None: pass
+            f11.__text_signature__ = "(text=<unrepresentable>)"
+            """,
+            error="f11",
+        )
+
     @collect_cases
     def test_static_class_method(self) -> Iterator[Case]:
         yield Case(
@@ -628,6 +640,24 @@ class StubtestUnit(unittest.TestCase):
             def f5(__b: str) -> str: ...
             """,
             runtime="def f5(x, /): pass",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            from typing import final
+            from typing_extensions import deprecated
+            class Foo:
+                @overload
+                @final
+                def f6(self, __a: int) -> int: ...
+                @overload
+                @deprecated("evil")
+                def f6(self, __b: str) -> str: ...
+            """,
+            runtime="""
+            class Foo:
+                def f6(self, x, /): pass
+            """,
             error=None,
         )
 
@@ -2027,6 +2057,72 @@ class StubtestUnit(unittest.TestCase):
             error=None,
         )
 
+    @collect_cases
+    def test_type_check_only(self) -> Iterator[Case]:
+        yield Case(
+            stub="from typing import type_check_only, overload",
+            runtime="from typing import overload",
+            error=None,
+        )
+        # You can have public types that are only defined in stubs
+        # with `@type_check_only`:
+        yield Case(
+            stub="""
+            @type_check_only
+            class A1: ...
+            """,
+            runtime="",
+            error=None,
+        )
+        # Having `@type_check_only` on a type that exists at runtime is an error
+        yield Case(
+            stub="""
+            @type_check_only
+            class A2: ...
+            """,
+            runtime="class A2: ...",
+            error="A2",
+        )
+        # The same is true for NamedTuples and TypedDicts:
+        yield Case(
+            stub="from typing_extensions import NamedTuple, TypedDict",
+            runtime="from typing_extensions import NamedTuple, TypedDict",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            @type_check_only
+            class NT1(NamedTuple): ...
+            """,
+            runtime="class NT1(NamedTuple): ...",
+            error="NT1",
+        )
+        yield Case(
+            stub="""
+            @type_check_only
+            class TD1(TypedDict): ...
+            """,
+            runtime="class TD1(TypedDict): ...",
+            error="TD1",
+        )
+        # The same is true for functions:
+        yield Case(
+            stub="""
+            @type_check_only
+            def func1() -> None: ...
+            """,
+            runtime="",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            @type_check_only
+            def func2() -> None: ...
+            """,
+            runtime="def func2() -> None: ...",
+            error="func2",
+        )
+
 
 def remove_color_code(s: str) -> str:
     return re.sub("\\x1b.*?m", "", s)  # this works!
@@ -2193,6 +2289,14 @@ class StubtestMiscUnit(unittest.TestCase):
         assert (
             str(mypy.stubtest.Signature.from_inspect_signature(inspect.signature(f)))
             == "def (a, b, *, c, d = ..., **kwargs)"
+        )
+
+    def test_builtin_signature_with_unrepresentable_default(self) -> None:
+        sig = mypy.stubtest.safe_inspect_signature(bytes.hex)
+        assert sig is not None
+        assert (
+            str(mypy.stubtest.Signature.from_inspect_signature(sig))
+            == "def (self, sep = ..., bytes_per_sep = ...)"
         )
 
     def test_config_file(self) -> None:

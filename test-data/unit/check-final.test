@@ -1117,3 +1117,60 @@ from typing import Final
 class MyClass:
     a: None
     a: Final[int] = 1  # E: Cannot redefine an existing name as final  # E: Name "a" already defined on line 5
+
+[case testFinalOverrideAllowedForPrivate]
+from typing import Final, final
+
+class Parent:
+    __foo: Final[int] = 0
+    @final
+    def __bar(self) -> None: ...
+
+class Child(Parent):
+    __foo: Final[int] = 1
+    @final
+    def __bar(self) -> None: ...
+
+[case testFinalWithoutBool]
+from typing_extensions import final, Literal
+
+class A:
+    pass
+
+@final
+class B:
+    pass
+
+@final
+class C:
+    def __len__(self) -> Literal[1]: return 1
+
+reveal_type(A() and 42)  # N: Revealed type is "Union[__main__.A, Literal[42]?]"
+reveal_type(B() and 42)  # N: Revealed type is "Literal[42]?"
+reveal_type(C() and 42)  # N: Revealed type is "Literal[42]?"
+
+[builtins fixtures/bool.pyi]
+
+[case testFinalWithoutBoolButWithLen]
+from typing_extensions import final, Literal
+
+# Per Python data model, __len__ is called if __bool__ does not exist.
+# In a @final class, __bool__ would not exist.
+
+@final
+class A:
+    def __len__(self) -> int: ...
+
+@final
+class B:
+    def __len__(self) -> Literal[1]: return 1
+
+@final
+class C:
+    def __len__(self) -> Literal[0]: return 0
+
+reveal_type(A() and 42)  # N: Revealed type is "Union[__main__.A, Literal[42]?]"
+reveal_type(B() and 42)  # N: Revealed type is "Literal[42]?"
+reveal_type(C() and 42)  # N: Revealed type is "__main__.C"
+
+[builtins fixtures/bool.pyi]

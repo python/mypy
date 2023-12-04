@@ -6,7 +6,7 @@ from collections import defaultdict
 from typing import Iterable, Sequence
 from typing_extensions import TypeAlias as _TypeAlias
 
-from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints
+from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints, neg_op
 from mypy.expandtype import expand_type
 from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
 from mypy.join import join_types
@@ -68,6 +68,10 @@ def solve_constraints(
     for c in constraints:
         extra_vars.extend([v.id for v in c.extra_tvars if v.id not in vars + extra_vars])
         originals.update({v.id: v for v in c.extra_tvars if v.id not in originals})
+
+    if allow_polymorphic:
+        # Constraints inferred from unions require special handling in polymorphic inference.
+        constraints = skip_reverse_union_constraints(constraints)
 
     # Collect a list of constraints for each type variable.
     cmap: dict[TypeVarId, list[Constraint]] = {tv: [] for tv in vars + extra_vars}
@@ -431,10 +435,7 @@ def transitive_closure(
                     uppers[l] |= uppers[upper]
             for lt in lowers[lower]:
                 for ut in uppers[upper]:
-                    # TODO: what if secondary constraints result in inference
-                    # against polymorphic actual (also in below branches)?
-                    remaining |= set(infer_constraints(lt, ut, SUBTYPE_OF))
-                    remaining |= set(infer_constraints(ut, lt, SUPERTYPE_OF))
+                    add_secondary_constraints(remaining, lt, ut)
         elif c.op == SUBTYPE_OF:
             if c.target in uppers[c.type_var]:
                 continue
@@ -442,8 +443,7 @@ def transitive_closure(
                 if (l, c.type_var) in graph:
                     uppers[l].add(c.target)
             for lt in lowers[c.type_var]:
-                remaining |= set(infer_constraints(lt, c.target, SUBTYPE_OF))
-                remaining |= set(infer_constraints(c.target, lt, SUPERTYPE_OF))
+                add_secondary_constraints(remaining, lt, c.target)
         else:
             assert c.op == SUPERTYPE_OF
             if c.target in lowers[c.type_var]:
@@ -452,9 +452,22 @@ def transitive_closure(
                 if (c.type_var, u) in graph:
                     lowers[u].add(c.target)
             for ut in uppers[c.type_var]:
-                remaining |= set(infer_constraints(ut, c.target, SUPERTYPE_OF))
-                remaining |= set(infer_constraints(c.target, ut, SUBTYPE_OF))
+                add_secondary_constraints(remaining, c.target, ut)
     return graph, lowers, uppers
+
+
+def add_secondary_constraints(cs: set[Constraint], lower: Type, upper: Type) -> None:
+    """Add secondary constraints inferred between lower and upper (in place)."""
+    if isinstance(get_proper_type(upper), UnionType) and isinstance(
+        get_proper_type(lower), UnionType
+    ):
+        # When both types are unions, this can lead to inferring spurious constraints,
+        # for example Union[T, int] <: S <: Union[T, int] may infer T <: int.
+        # To avoid this, just skip them for now.
+        return
+    # TODO: what if secondary constraints result in inference against polymorphic actual?
+    cs.update(set(infer_constraints(lower, upper, SUBTYPE_OF)))
+    cs.update(set(infer_constraints(upper, lower, SUPERTYPE_OF)))
 
 
 def compute_dependencies(
@@ -492,6 +505,28 @@ def check_linear(scc: set[TypeVarId], lowers: Bounds, uppers: Bounds) -> bool:
         if any(get_vars(ut, list(scc)) for ut in uppers[tv]):
             return False
     return True
+
+
+def skip_reverse_union_constraints(cs: list[Constraint]) -> list[Constraint]:
+    """Avoid ambiguities for constraints inferred from unions during polymorphic inference.
+
+    Polymorphic inference implicitly relies on assumption that a reverse of a linear constraint
+    is a linear constraint. This is however not true in presence of union types, for example
+    T :> Union[S, int] vs S <: T. Trying to solve such constraints would be detected ambiguous
+    as (T, S) form a non-linear SCC. However, simply removing the linear part results in a valid
+    solution T = Union[S, int], S = <free>.
+
+    TODO: a cleaner solution may be to avoid inferring such constraints in first place, but
+    this would require passing around a flag through all infer_constraints() calls.
+    """
+    reverse_union_cs = set()
+    for c in cs:
+        p_target = get_proper_type(c.target)
+        if isinstance(p_target, UnionType):
+            for item in p_target.items:
+                if isinstance(item, TypeVarType):
+                    reverse_union_cs.add(Constraint(item, neg_op(c.op), c.origin_type_var))
+    return [c for c in cs if c not in reverse_union_cs]
 
 
 def get_vars(target: Type, vars: list[TypeVarId]) -> set[TypeVarId]:

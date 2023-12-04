@@ -1,4 +1,4 @@
-from typing import ClassVar, overload
+from typing import ClassVar, List, overload
 
 PI: float
 __version__: str
@@ -100,6 +100,8 @@ class Point:
 
         2. __init__(self: pybind11_mypy_demo.basics.Point, x: float, y: float) -> None
         """
+    def as_list(self) -> List[float]:
+        """as_list(self: pybind11_mypy_demo.basics.Point) -> List[float]"""
     @overload
     def distance_to(self, x: float, y: float) -> float:
         """distance_to(*args, **kwargs)
@@ -124,11 +126,12 @@ class Point:
 def answer() -> int:
     """answer() -> int"""
 
+    answer docstring, with end quote"
+    '''
 def midpoint(left: float, right: float) -> float:
     """midpoint(left: float, right: float) -> float"""
 
-def sum(arg0: int, arg1: int) -> int:
-    """sum(arg0: int, arg1: int) -> int"""
-
+    multiline docstring test, edge case quotes """\'\'\'
+    '''
 def weighted_midpoint(left: float, right: float, alpha: float = ...) -> float:
     """weighted_midpoint(left: float, right: float, alpha: float = 0.5) -> float"""
