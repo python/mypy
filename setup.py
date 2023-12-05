@@ -234,8 +234,9 @@ setup(
     python_requires=">=3.8",
     include_package_data=True,
     project_urls={
-        "News": "https://mypy-lang.org/news.html",
         "Documentation": "https://mypy.readthedocs.io/en/stable/index.html",
         "Repository": "https://github.com/python/mypy",
+        "Changelog": "https://github.com/python/mypy/blob/master/CHANGELOG.md",
+        "Issues": "https://github.com/python/mypy/issues",
     },
 )
