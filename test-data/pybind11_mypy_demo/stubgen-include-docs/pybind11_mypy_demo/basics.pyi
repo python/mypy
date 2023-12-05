@@ -14,7 +14,8 @@ class Foo:
 
         1. overloaded_static_method(value: int) -> int
 
-        2. overloaded_static_method(value: float) -> float"""
+        2. overloaded_static_method(value: float) -> float
+        """
     @overload
     @staticmethod
     def overloaded_static_method(value: float) -> float:
@@ -23,12 +24,14 @@ class Foo:
 
         1. overloaded_static_method(value: int) -> int
 
-        2. overloaded_static_method(value: float) -> float"""
+        2. overloaded_static_method(value: float) -> float
+        """
     @staticmethod
     def some_static_method(a: int, b: int) -> int:
         """some_static_method(a: int, b: int) -> int
 
-        None"""
+        None
+        """
 
 class Point:
     class AngleUnit:
@@ -124,12 +127,14 @@ class Point:
     def length(self) -> float: ...
 
 def answer() -> int:
-    """answer() -> int"""
+    '''answer() -> int
 
     answer docstring, with end quote"
     '''
 def midpoint(left: float, right: float) -> float:
     """midpoint(left: float, right: float) -> float"""
+def sum(arg0: int, arg1: int) -> int:
+    '''sum(arg0: int, arg1: int) -> int
 
     multiline docstring test, edge case quotes """\'\'\'
     '''
