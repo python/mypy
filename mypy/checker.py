@@ -7132,7 +7132,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 return yes_type, no_type
             for t in possible_target_types:
                 if isinstance(t, NoneType):
-                    errors.append((f'"{v.type.name}" and "NoneType"', f'"NoneType" is final'))
+                    errors.append((f'"{v.type.name}" and "NoneType"', '"NoneType" is final'))
                     continue
                 intersection = self.intersect_instances((v, t), errors)
                 if intersection is None:
