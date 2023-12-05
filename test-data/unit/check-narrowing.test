@@ -2087,5 +2087,8 @@ if isinstance(x, (Y, NoneType)):
     reveal_type(x)  # N: Revealed type is "__main__.<subclass of "X" and "Y">1"
 if isinstance(x, (Y, Z, NoneType)):
     reveal_type(x)  # N: Revealed type is "__main__.<subclass of "X" and "Y">2"
+if isinstance(x, (Z, NoneType)):  # E: Subclass of "X" and "Z" cannot exist: "Z" is final \
+                                  # E: Subclass of "X" and "NoneType" cannot exist: "NoneType" is final
+    reveal_type(x)  # E: Statement is unreachable
 
 [builtins fixtures/isinstance.pyi]
