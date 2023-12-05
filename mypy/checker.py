@@ -5800,7 +5800,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             is_valid_target,
                             coerce_only_in_literal_context,
                         )
-                        # print("done2", if_map, else_map)
 
                     # Strictly speaking, we should also skip this check if the objects in the expr
                     # chain have custom __eq__ or __ne__ methods. But we (maybe optimistically)
@@ -5813,10 +5812,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             expr_indices,
                             narrowable_operand_index_to_hash.keys(),
                         )
-                        # print("done3", if_map, else_map)
 
-                    # If we haven't been able to narrow types yet, we might be dealing with a
-                    # explicit type(x) == some_type check
+                    # If we haven't been able to narrow types yet, we might be dealing with a explicit type(x) == some_type check
                     if if_map == {} and else_map == {}:
                         if_map, else_map = self.find_type_equals_check(node, expr_indices)
                         # print("done4", if_map, else_map)
@@ -5825,13 +5822,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     left_index, right_index = expr_indices
                     item_type = operand_types[left_index]
                     iterable_type = operand_types[right_index]
-                    # added by me
                     right_expr = operands[right_index]
 
                     if_map, else_map = {}, {}
-                    # print(left_index, "\n")
-                    # print(right_index, "\n")
-                    # print(narrowable_operand_index_to_hash, "\n")
 
                     if isinstance(right_expr, TupleExpr):
                         all_literal_enum = all(
@@ -5844,13 +5837,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                     else:
                         if left_index in narrowable_operand_index_to_hash:
-                            # print("left in")
                             # We only try and narrow away 'None' for now
                             if is_overlapping_none(item_type):
                                 collection_item_type = get_proper_type(
                                     builtin_item_type(iterable_type)
                                 )
-                                # print("done5", if_map, else_map)
                                 if (
                                     collection_item_type is not None
                                     and not is_overlapping_none(collection_item_type)
@@ -5864,40 +5855,26 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 ):
                                     if_map[operands[left_index]] = remove_optional(item_type)
 
-                                    # print("done6", if_map, else_map)
-
                         if right_index in narrowable_operand_index_to_hash:
-                            # print("right in")
                             if_type, else_type = self.conditional_types_for_iterable(
                                 item_type, iterable_type
                             )
                             expr = operands[right_index]
-                            # print("done7", if_map, else_map)
 
                             if if_type is None:
                                 if_map = None
-                                # print("done8", if_map, else_map)
                             else:
                                 if_map[expr] = if_type
-                                # print("done9", if_map, else_map)
-
                             if else_type is None:
                                 else_map = None
-                                # print("done11", if_map, else_map)
                             else:
                                 else_map[expr] = else_type
-
-                        # print("done12", if_map, else_map)
-
                 else:
                     if_map = {}
                     else_map = {}
-                    # print("done13", if_map, else_map)
 
                 if operator in {"is not", "!=", "not in"}:
                     if_map, else_map = else_map, if_map
-
-                # print("done14", if_map, else_map)
 
                 partial_type_maps.append((if_map, else_map))
 
