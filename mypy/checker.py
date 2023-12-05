@@ -7120,9 +7120,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         possible_target_types = []
         for tr in type_ranges:
             item = get_proper_type(tr.item)
-            if not isinstance(item, Instance) or tr.is_upper_bound:
-                return yes_type, no_type
-            possible_target_types.append(item)
+            if isinstance(item, Instance):
+                possible_target_types.append(item)
+        if not possible_target_types:
+            return yes_type, no_type
 
         out = []
         errors: list[tuple[str, str]] = []
