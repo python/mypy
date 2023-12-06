@@ -181,6 +181,7 @@ from mypy.typeops import (
     tuple_fallback,
 )
 from mypy.types import (
+    ENUM_REMOVED_PROPS,
     ANY_STRATEGY,
     MYPYC_NATIVE_INT_NAMES,
     OVERLOAD_NAMES,
@@ -5831,6 +5832,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             self.is_literal_enum(element_expr) for element_expr in right_expr.items
                         )
                         if all_literal_enum:
+                            
+                            new_items = []
+                            if len(right_expr.items) != 0:
+                                # extract the enum type in the context
+                                enum_type = get_proper_type(self.lookup_type_or_none(right_expr.items[0].expr)).fallback
+                                for name, symbol in enum_type.type.names.items():
+                                    if not isinstance(symbol.node, Var):
+                                        continue
+                                    # Skip these since Enum will remove it
+                                    if name in ENUM_REMOVED_PROPS:
+                                        continue
+                                    new_items.append(LiteralType(name, enum_type))
+
                             # Set if_map for the entire tuple
                             if_map = {}
                             else_map = None
