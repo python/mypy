@@ -181,8 +181,8 @@ from mypy.typeops import (
     tuple_fallback,
 )
 from mypy.types import (
-    ENUM_REMOVED_PROPS,
     ANY_STRATEGY,
+    ENUM_REMOVED_PROPS,
     MYPYC_NATIVE_INT_NAMES,
     OVERLOAD_NAMES,
     AnyType,
@@ -5839,7 +5839,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             new_items = []
                             if len(right_expr.items) != 0:
                                 # extract the enum type in the context
-                                enum_type = get_proper_type(self.lookup_type_or_none(right_expr.items[0].expr)).fallback
+                                enum_type = get_proper_type(
+                                    self.lookup_type_or_none(right_expr.items[0].expr)
+                                ).fallback
                                 for name, symbol in enum_type.type.names.items():
                                     if not isinstance(symbol.node, Var):
                                         continue
