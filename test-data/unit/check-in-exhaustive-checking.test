@@ -3,6 +3,8 @@
 [builtins fixtures/tuple.pyi]
 from enum import Enum
 import pytest
+
+# Import assert_never for ensuring all cases in an if-elif chain are handled
 from typing_extensions import assert_never
 
 class MyEnum(Enum):
