@@ -5832,7 +5832,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             self.is_literal_enum(element_expr) for element_expr in right_expr.items
                         )
                         if all_literal_enum:
-                            
+                            # Set if_map for the entire tuple
+                            if_map = {}
+                            else_map = None
+                        else:
                             new_items = []
                             if len(right_expr.items) != 0:
                                 # extract the enum type in the context
@@ -5844,10 +5847,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                     if name in ENUM_REMOVED_PROPS:
                                         continue
                                     new_items.append(LiteralType(name, enum_type))
-
-                            # Set if_map for the entire tuple
-                            if_map = {}
-                            else_map = None
 
                     else:
                         if left_index in narrowable_operand_index_to_hash:
