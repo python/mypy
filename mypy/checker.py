@@ -5835,21 +5835,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             # Set if_map for the entire tuple
                             if_map = {}
                             else_map = None
-                        else:
-                            new_items = []
-                            if len(right_expr.items) != 0:
-                                # extract the enum type in the context
-                                enum_type = get_proper_type(
-                                    self.lookup_type_or_none(right_expr.items[0].expr)
-                                ).fallback
-                                for name, symbol in enum_type.type.names.items():
-                                    if not isinstance(symbol.node, Var):
-                                        continue
-                                    # Skip these since Enum will remove it
-                                    if name in ENUM_REMOVED_PROPS:
-                                        continue
-                                    new_items.append(LiteralType(name, enum_type))
-
+         
                     else:
                         if left_index in narrowable_operand_index_to_hash:
                             # We only try and narrow away 'None' for now
