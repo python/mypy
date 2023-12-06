@@ -1,8 +1,14 @@
 [case testInExhaustiveChecking]
 
 [builtins fixtures/tuple.pyi]
+
+# Import NoReturn for indicating functions that shouldn't return normally
 from typing_extensions import NoReturn
+
+# Import Enum to give names to specific values and link them to unique, constant values
 from enum import Enum
+
+# Import assert_never for ensuring all cases in an if-elif chain are handled
 from typing_extensions import assert_never
 
 class MyEnum(Enum):
