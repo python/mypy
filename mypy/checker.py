@@ -182,7 +182,6 @@ from mypy.typeops import (
 )
 from mypy.types import (
     ANY_STRATEGY,
-    ENUM_REMOVED_PROPS,
     MYPYC_NATIVE_INT_NAMES,
     OVERLOAD_NAMES,
     AnyType,
@@ -5835,7 +5834,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             # Set if_map for the entire tuple
                             if_map = {}
                             else_map = None
-         
+
                     else:
                         if left_index in narrowable_operand_index_to_hash:
                             # We only try and narrow away 'None' for now
