@@ -524,5 +524,5 @@ Adjusting import following behaviour is often most useful when restricted to
 specific modules. This can be accomplished by setting a per-module
 :confval:`follow_imports` config option.
 
-There is an additional setting "--no-silence-site-packages" (enabled by default) 
+There is an additional setting `--no-silence-site-packages` (enabled by default) 
 that will silence type errors found in the modules from site_packages.
