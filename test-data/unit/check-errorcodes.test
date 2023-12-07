@@ -975,11 +975,13 @@ def f(d: D, s: str) -> None:
 [typing fixtures/typing-typeddict.pyi]
 
 [case testRecommendErrorCode]
-# type: ignore[whatever]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever"`  [syntax]
+# type: ignore[whatever]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever"`  [syntax] \
+                          # N: Error code "syntax" not covered by "type: ignore" comment
 1 + "asdf"
 
 [case testRecommendErrorCode2]
-# type: ignore[whatever, other]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever, other"`  [syntax]
+# type: ignore[whatever, other]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever, other"`  [syntax] \
+                                 # N: Error code "syntax" not covered by "type: ignore" comment
 1 + "asdf"
 
 [case testShowErrorCodesInConfig]
