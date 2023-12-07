@@ -13,13 +13,11 @@ import re
 import subprocess
 import sys
 from enum import Enum, unique
-
-from mypy.errors import CompileError
-
 from typing import Dict, Final, List, NamedTuple, Optional, Tuple, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy import pyinfo
+from mypy.errors import CompileError
 from mypy.fscache import FileSystemCache
 from mypy.nodes import MypyFile
 from mypy.options import Options
