@@ -105,6 +105,7 @@ class Attribute:
     def __init__(
         self,
         name: str,
+        alias: str | None,
         info: TypeInfo,
         has_default: bool,
         init: bool,
@@ -114,6 +115,7 @@ class Attribute:
         init_type: Type | None,
     ) -> None:
         self.name = name
+        self.alias = alias
         self.info = info
         self.has_default = has_default
         self.init = init
@@ -171,12 +173,14 @@ class Attribute:
             arg_kind = ARG_OPT if self.has_default else ARG_POS
 
         # Attrs removes leading underscores when creating the __init__ arguments.
-        return Argument(Var(self.name.lstrip("_"), init_type), init_type, None, arg_kind)
+        name = self.alias or self.name.lstrip("_")
+        return Argument(Var(name, init_type), init_type, None, arg_kind)
 
     def serialize(self) -> JsonDict:
         """Serialize this object so it can be saved and restored."""
         return {
             "name": self.name,
+            "alias": self.alias,
             "has_default": self.has_default,
             "init": self.init,
             "kw_only": self.kw_only,
@@ -205,6 +209,7 @@ class Attribute:
 
         return Attribute(
             data["name"],
+            data["alias"],
             info,
             data["has_default"],
             data["init"],
@@ -498,6 +503,7 @@ def _attributes_from_assignment(
     or if auto_attribs is enabled also like this:
         x: type
         x: type = default_value
+        x: type = attr.ib(...)
     """
     for lvalue in stmt.lvalues:
         lvalues, rvalues = _parse_assignments(lvalue, stmt)
@@ -564,7 +570,7 @@ def _attribute_from_auto_attrib(
     has_rhs = not isinstance(rvalue, TempNode)
     sym = ctx.cls.info.names.get(name)
     init_type = sym.type if sym else None
-    return Attribute(name, ctx.cls.info, has_rhs, True, kw_only, None, stmt, init_type)
+    return Attribute(name, None, ctx.cls.info, has_rhs, True, kw_only, None, stmt, init_type)
 
 
 def _attribute_from_attrib_maker(
@@ -628,9 +634,20 @@ def _attribute_from_attrib_maker(
         converter = convert
     converter_info = _parse_converter(ctx, converter)
 
+    # Custom alias might be defined:
+    alias = None
+    alias_expr = _get_argument(rvalue, "alias")
+    if alias_expr:
+        alias = ctx.api.parse_str_literal(alias_expr)
+        if alias is None:
+            ctx.api.fail(
+                '"alias" argument to attrs field must be a string literal',
+                rvalue,
+                code=LITERAL_REQ,
+            )
     name = unmangle(lhs.name)
     return Attribute(
-        name, ctx.cls.info, attr_has_default, init, kw_only, converter_info, stmt, init_type
+        name, alias, ctx.cls.info, attr_has_default, init, kw_only, converter_info, stmt, init_type
     )
 
 
