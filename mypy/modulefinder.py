@@ -16,11 +16,6 @@ from enum import Enum, unique
 
 from mypy.errors import CompileError
 
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    import tomli as tomllib
-
 from typing import Dict, Final, List, NamedTuple, Optional, Tuple, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
