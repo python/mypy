@@ -1833,8 +1833,7 @@ def parse_options(args: list[str]) -> Options:
         parser.error("Cannot specify both --parse-only/--no-analysis and --inspect-mode")
 
     # Create the output folder if it doesn't already exist.
-    if not os.path.exists(ns.output_dir):
-        os.makedirs(ns.output_dir)
+    os.makedirs(ns.output_dir, exist_ok=True)
 
     return Options(
         pyversion=pyversion,

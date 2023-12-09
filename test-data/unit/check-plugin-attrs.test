@@ -1055,6 +1055,31 @@ C()
 C(_x=42)  # E: Unexpected keyword argument "_x" for "C"
 [builtins fixtures/list.pyi]
 
+[case testAttrsAliasForInit]
+from attrs import define, field
+
+@define
+class C1:
+    _x: int = field(alias="x1")
+
+c1 = C1(x1=42)
+reveal_type(c1._x)  # N: Revealed type is "builtins.int"
+c1.x1  # E: "C1" has no attribute "x1"
+C1(_x=42)  # E: Unexpected keyword argument "_x" for "C1"
+
+alias = "x2"
+@define
+class C2:
+    _x: int = field(alias=alias)  # E: "alias" argument to attrs field must be a string literal
+
+@define
+class C3:
+    _x: int = field(alias="_x")
+
+c3 = C3(_x=1)
+reveal_type(c3._x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/plugin_attrs.pyi]
+
 [case testAttrsAutoMustBeAll]
 import attr
 @attr.s(auto_attribs=True)

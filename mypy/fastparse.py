@@ -190,7 +190,7 @@ def parse(
     source: str | bytes,
     fnam: str,
     module: str | None,
-    errors: Errors | None = None,
+    errors: Errors,
     options: Options | None = None,
 ) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
@@ -199,16 +199,13 @@ def parse(
     on failure. Otherwise, use the errors object to report parse errors.
     """
     ignore_errors = (options is not None and options.ignore_errors) or (
-        errors is not None and fnam in errors.ignored_files
+        fnam in errors.ignored_files
     )
     # If errors are ignored, we can drop many function bodies to speed up type checking.
     strip_function_bodies = ignore_errors and (options is None or not options.preserve_asts)
-    raise_on_error = False
+
     if options is None:
         options = Options()
-    if errors is None:
-        errors = Errors(options)
-        raise_on_error = True
     errors.set_file(fnam, module, options=options)
     is_stub_file = fnam.endswith(".pyi")
     if is_stub_file:
@@ -228,11 +225,9 @@ def parse(
             options=options,
             is_stub=is_stub_file,
             errors=errors,
-            ignore_errors=ignore_errors,
             strip_function_bodies=strip_function_bodies,
+            path=fnam,
         ).visit(ast)
-        tree.path = fnam
-        tree.is_stub = is_stub_file
     except SyntaxError as e:
         # alias to please mypyc
         is_py38_or_earlier = sys.version_info < (3, 9)
@@ -253,9 +248,6 @@ def parse(
             code=codes.SYNTAX,
         )
         tree = MypyFile([], [], False, {})
-
-    if raise_on_error and errors.is_errors():
-        errors.raise_error()
 
     assert isinstance(tree, MypyFile)
     return tree
@@ -357,8 +349,8 @@ class ASTConverter:
         is_stub: bool,
         errors: Errors,
         *,
-        ignore_errors: bool,
         strip_function_bodies: bool,
+        path: str,
     ) -> None:
         # 'C' for class, 'D' for function signature, 'F' for function, 'L' for lambda
         self.class_and_function_stack: list[Literal["C", "D", "F", "L"]] = []
@@ -367,8 +359,8 @@ class ASTConverter:
         self.options = options
         self.is_stub = is_stub
         self.errors = errors
-        self.ignore_errors = ignore_errors
         self.strip_function_bodies = strip_function_bodies
+        self.path = path
 
         self.type_ignores: dict[int, list[str]] = {}
 
@@ -380,6 +372,10 @@ class ASTConverter:
 
     def fail(self, msg: ErrorMessage, line: int, column: int, blocker: bool = True) -> None:
         if blocker or not self.options.ignore_errors:
+            # Make sure self.errors reflects any type ignores that we have parsed
+            self.errors.set_file_ignored_lines(
+                self.path, self.type_ignores, self.options.ignore_errors
+            )
             self.errors.report(line, column, msg.value, blocker=blocker, code=msg.code)
 
     def fail_merge_overload(self, node: IfStmt) -> None:
@@ -858,8 +854,13 @@ class ASTConverter:
                 self.type_ignores[ti.lineno] = parsed
             else:
                 self.fail(message_registry.INVALID_TYPE_IGNORE, ti.lineno, -1, blocker=False)
+
         body = self.fix_function_overloads(self.translate_stmt_list(mod.body, ismodule=True))
-        return MypyFile(body, self.imports, False, self.type_ignores)
+
+        ret = MypyFile(body, self.imports, False, ignored_lines=self.type_ignores)
+        ret.is_stub = self.is_stub
+        ret.path = self.path
+        return ret
 
     # --- stmt ---
     # FunctionDef(identifier name, arguments args,
