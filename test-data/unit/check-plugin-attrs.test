@@ -2323,7 +2323,6 @@ reveal_type(b.y)  # N: Revealed type is "builtins.int"
 [builtins fixtures/plugin_attrs.pyi]
 
 [case testDefaultHashability]
-from typing import Hashable
 from attrs import define
 
 @define
@@ -2333,43 +2332,51 @@ class A:
 reveal_type(A.__hash__)  # N: Revealed type is "None"
 
 [builtins fixtures/plugin_attrs.pyi]
-[typing fixtures/typing-full.pyi]
 
 [case testFrozenHashability]
-from typing import Hashable
 from attrs import frozen
 
 @frozen
 class A:
     a: int
 
-a: Hashable = A(1)
+reveal_type(A.__hash__)  # N: Revealed type is "def (self: builtins.object) -> builtins.int"
 
 [builtins fixtures/plugin_attrs.pyi]
-[typing fixtures/typing-full.pyi]
 
 [case testManualHashHashability]
-from typing import Hashable
 from attrs import define
 
 @define(hash=True)
 class A:
     a: int
 
-a: Hashable = A(1)
+reveal_type(A.__hash__)  # N: Revealed type is "def (self: builtins.object) -> builtins.int"
 
 [builtins fixtures/plugin_attrs.pyi]
-[typing fixtures/typing-full.pyi]
 
 [case testManualUnsafeHashHashability]
-from typing import Hashable
 from attrs import define
 
 @define(unsafe_hash=True)
 class A:
     a: int
 
-a: Hashable = A(1)
+reveal_type(A.__hash__)  # N: Revealed type is "def (self: builtins.object) -> builtins.int"
 
 [builtins fixtures/plugin_attrs.pyi]
-[typing fixtures/typing-full.pyi]
+
+[case testSubclassingHashability]
+from attrs import define
+
+@define(unsafe_hash=True)
+class A:
+    a: int
+
+@define
+class B(A):
+    pass
+
+reveal_type(B.__hash__)  # N: Revealed type is "None"
+
+[builtins fixtures/plugin_attrs.pyi]
