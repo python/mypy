@@ -52,8 +52,22 @@ for v in x:  # type: int, int  # E: Syntax error in type annotation  [syntax] \
     pass
 
 [case testErrorCodeSyntaxError4]
-from __future__ import annotations
-from typing import Annotated
+[case testErrorCodeSyntaxError4]
+from typing import Dict
+from typing_extensions import Annotated
+
+class _EnvironmentVariables():
+    def __init__(self, variables: Dict) -> None:
+        self.__variables = variables
+
+def EnvironmentVariables(sort: bool):
+    return Annotated[_EnvironmentVariables, dict]
+
+def unsorted_env_variables(variables: EnvironmentVariables(sort=False)) -> None: # E: Invalid type comment or annotation  [valid-type] \
+    # N: No suggestion
+    return variables.as_json_obj()
+
+[builtins fixtures/tuple.pyi]
 
 class _EnvironmentVariables():
     def __init__(self, variables: dict[str, bytes]) -> None:

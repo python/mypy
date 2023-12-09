@@ -1836,7 +1836,7 @@ class TypeConverter:
         constructor = stringify_name(f)
 
         if self.parent() is None:
-            return self.invalid_type(e, note="")
+            return self.invalid_type(e, note="No Suggestion")
         if not isinstance(self.parent(), ast3.List):
             note = None
             if constructor:
