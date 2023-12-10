@@ -3556,7 +3556,7 @@ class SemanticAnalyzer(
 
         # It can be `A = TypeAliasType('A', ...)` call, in this case,
         # we just take the second argument and analyze it:
-        if self.check_type_alias_type_call(lvalue.name, s.rvalue):
+        if self.check_type_alias_type_call(s.rvalue, name=lvalue.name):
             rvalue = s.rvalue.args[1]
         else:
             rvalue = s.rvalue
@@ -3719,7 +3719,7 @@ class SemanticAnalyzer(
                     self.note("Use variable annotation syntax to define protocol members", s)
         return True
 
-    def check_type_alias_type_call(self, name: str, rvalue: Expression) -> TypeGuard[CallExpr]:
+    def check_type_alias_type_call(self, rvalue: Expression, *, name: str) -> TypeGuard[CallExpr]:
         if not isinstance(rvalue, CallExpr):
             return False
 
