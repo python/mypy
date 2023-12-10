@@ -52,7 +52,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from typing import Any, Callable, Collection, Final, Iterable, Iterator, List, TypeVar, cast
-from typing_extensions import TypeAlias as _TypeAlias
+from typing_extensions import TypeAlias as _TypeAlias, TypeGuard
 
 from mypy import errorcodes as codes, message_registry
 from mypy.constant_fold import constant_fold_expr
@@ -3554,7 +3554,14 @@ class SemanticAnalyzer(
             # unless using PEP 613 `cls: TypeAlias = A`
             return False
 
-        if isinstance(s.rvalue, CallExpr) and s.rvalue.analyzed:
+        # It can be `A = TypeAliasType('A', ...)` call, in this case,
+        # we just take the second argument and analyze it:
+        if self.check_type_alias_type_call(lvalue.name, s.rvalue):
+            rvalue = s.rvalue.args[1]
+        else:
+            rvalue = s.rvalue
+
+        if isinstance(rvalue, CallExpr) and rvalue.analyzed:
             return False
 
         existing = self.current_symbol_table().get(lvalue.name)
@@ -3580,7 +3587,7 @@ class SemanticAnalyzer(
             return False
 
         non_global_scope = self.type or self.is_func_scope()
-        if not pep_613 and isinstance(s.rvalue, RefExpr) and non_global_scope:
+        if not pep_613 and isinstance(rvalue, RefExpr) and non_global_scope:
             # Fourth rule (special case): Non-subscripted right hand side creates a variable
             # at class and function scopes. For example:
             #
@@ -3592,7 +3599,6 @@ class SemanticAnalyzer(
             # without this rule, this typical use case will require a lot of explicit
             # annotations (see the second rule).
             return False
-        rvalue = s.rvalue
         if not pep_613 and not self.can_be_type_alias(rvalue):
             return False
 
@@ -3712,6 +3718,19 @@ class SemanticAnalyzer(
                 if not lvalue.name[0].isupper():
                     self.note("Use variable annotation syntax to define protocol members", s)
         return True
+
+    def check_type_alias_type_call(self, name: str, rvalue: Expression) -> TypeGuard[CallExpr]:
+        if not isinstance(rvalue, CallExpr):
+            return False
+
+        names = ["typing_extensions.TypeAliasType"]
+        if self.options.python_version >= (3, 12):
+            names.append("typing.TypeAliasType")
+        if not refers_to_fullname(rvalue.callee, tuple(names)):
+            return False
+
+        # TODO: we probably need to also analyze `type_params=` usage here.
+        return self.check_typevarlike_name(rvalue, name, rvalue)
 
     def disable_invalid_recursive_aliases(
         self, s: AssignmentStmt, current_node: TypeAlias
@@ -5131,6 +5150,12 @@ class SemanticAnalyzer(
             expr.analyzed = OpExpr("divmod", expr.args[0], expr.args[1])
             expr.analyzed.line = expr.line
             expr.analyzed.accept(self)
+        elif refers_to_fullname(
+            expr.callee, ("typing.TypeAliasType", "typing_extensions.TypeAliasType")
+        ):
+            with self.allow_unbound_tvars_set():
+                for a in expr.args:
+                    a.accept(self)
         else:
             # Normal call expression.
             for a in expr.args:

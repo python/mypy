@@ -1066,3 +1066,51 @@ def eval(e: Expr) -> int:
     elif e[0] == 456:
         return -eval(e[1])
 [builtins fixtures/dict-full.pyi]
+
+[case testTypeAliasType]
+from typing import Union
+from typing_extensions import TypeAliasType
+
+TestType = TypeAliasType("TestType", Union[int, str])
+x: TestType = 42
+y: TestType = 'a'
+z: TestType = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "Union[int, str]")
+[builtins fixtures/tuple.pyi]
+
+[case testTypeAliasTypeInvalid]
+from typing_extensions import TypeAliasType
+
+TestType = TypeAliasType("T", int)  # E: String argument 1 "T" to TypeAliasType(...) does not match variable name "TestType"
+
+T1 = T2 = TypeAliasType("T", int)
+t1: T1  # E: Variable "__main__.T1" is not valid as a type \
+        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
+T3 = TypeAliasType("T3", -1)
+t3: T3  # E: Variable "__main__.T3" is not valid as a type \
+        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+[builtins fixtures/tuple.pyi]
+
+[case testTypeAliasTypeGeneric]
+from typing_extensions import TypeAliasType
+from typing import Dict, TypeVar
+
+K = TypeVar('K')
+V = TypeVar('V')
+
+TestType = TypeAliasType("TestType", Dict[K, V], type_params=(K, V))
+x: TestType[int, str] = {1: 'a'}
+y: TestType[str, int] = {'a': 1}
+z: TestType[str, int] = {1: 'a'}  # E: Dict entry 0 has incompatible type "int": "str"; expected "str": "int"
+[builtins fixtures/dict.pyi]
+
+[case testTypeAliasType312]
+# flags: --python-version 3.12
+from typing import Union, TypeAliasType
+
+TestType = TypeAliasType("TestType", int | str)
+x: TestType = 42
+y: TestType = 'a'
+z: TestType = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "Union[int, str]")
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
