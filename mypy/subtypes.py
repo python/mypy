@@ -1070,8 +1070,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     return True
                 if isinstance(item, Instance):
                     if (mtype := item.type.metaclass_type) is None or (
-                        symtab := mtype.type.get("__hash__")
-                    ) is None:
+                        mtype.type.get("__hash__") is None
+                    ):
                         return True
                     supertype = get_proper_type(find_member("__hash__", right, mtype))
                     assert supertype is not None
