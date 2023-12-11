@@ -569,15 +569,15 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
     return items
 
 
-def _get_type_special_method_bool_ret_type(t: Type) -> Type | None:
+def _get_type_method_ret_type(t: Type, *, name: str) -> Type | None:
     t = get_proper_type(t)
 
     if isinstance(t, Instance):
-        bool_method = t.type.get("__bool__")
-        if bool_method:
-            callee = get_proper_type(bool_method.type)
-            if isinstance(callee, CallableType):
-                return callee.ret_type
+        sym = t.type.get(name)
+        if sym:
+            sym_type = get_proper_type(sym.type)
+            if isinstance(sym_type, CallableType):
+                return sym_type.ret_type
 
     return None
 
@@ -600,7 +600,9 @@ def true_only(t: Type) -> ProperType:
         can_be_true_items = [item for item in new_items if item.can_be_true]
         return make_simplified_union(can_be_true_items, line=t.line, column=t.column)
     else:
-        ret_type = _get_type_special_method_bool_ret_type(t)
+        ret_type = _get_type_method_ret_type(t, name="__bool__") or _get_type_method_ret_type(
+            t, name="__len__"
+        )
 
         if ret_type and not ret_type.can_be_true:
             return UninhabitedType(line=t.line, column=t.column)
@@ -633,9 +635,14 @@ def false_only(t: Type) -> ProperType:
         can_be_false_items = [item for item in new_items if item.can_be_false]
         return make_simplified_union(can_be_false_items, line=t.line, column=t.column)
     else:
-        ret_type = _get_type_special_method_bool_ret_type(t)
+        ret_type = _get_type_method_ret_type(t, name="__bool__") or _get_type_method_ret_type(
+            t, name="__len__"
+        )
 
-        if ret_type and not ret_type.can_be_false:
+        if ret_type:
+            if not ret_type.can_be_false:
+                return UninhabitedType(line=t.line)
+        elif isinstance(t, Instance) and t.type.is_final:
             return UninhabitedType(line=t.line)
 
         new_t = copy_type(t)

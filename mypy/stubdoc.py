@@ -383,7 +383,8 @@ def infer_ret_type_sig_from_docstring(docstr: str, name: str) -> str | None:
 
 def infer_ret_type_sig_from_anon_docstring(docstr: str) -> str | None:
     """Convert signature in form of "(self: TestClass, arg0) -> int" to their return type."""
-    return infer_ret_type_sig_from_docstring("stub" + docstr.strip(), "stub")
+    lines = ["stub" + line.strip() for line in docstr.splitlines() if line.strip().startswith("(")]
+    return infer_ret_type_sig_from_docstring("".join(lines), "stub")
 
 
 def parse_signature(sig: str) -> tuple[str, list[str], list[str]] | None:

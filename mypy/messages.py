@@ -2051,7 +2051,7 @@ class MessageBuilder:
     def impossible_intersection(
         self, formatted_base_class_list: str, reason: str, context: Context
     ) -> None:
-        template = "Subclass of {} cannot exist: would have {}"
+        template = "Subclass of {} cannot exist: {}"
         self.fail(
             template.format(formatted_base_class_list, reason), context, code=codes.UNREACHABLE
         )

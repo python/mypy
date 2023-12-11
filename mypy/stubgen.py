@@ -1700,6 +1700,7 @@ def generate_stubs(options: Options) -> None:
                 doc_dir=options.doc_dir,
                 include_private=options.include_private,
                 export_less=options.export_less,
+                include_docstrings=options.include_docstrings,
             )
     num_modules = len(all_modules)
     if not options.quiet and num_modules > 0:
@@ -1832,8 +1833,7 @@ def parse_options(args: list[str]) -> Options:
         parser.error("Cannot specify both --parse-only/--no-analysis and --inspect-mode")
 
     # Create the output folder if it doesn't already exist.
-    if not os.path.exists(ns.output_dir):
-        os.makedirs(ns.output_dir)
+    os.makedirs(ns.output_dir, exist_ok=True)
 
     return Options(
         pyversion=pyversion,

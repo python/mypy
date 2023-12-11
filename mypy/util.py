@@ -314,10 +314,9 @@ def write_junit_xml(
 ) -> None:
     xml = _generate_junit_contents(dt, serious, messages_by_file, version, platform)
 
-    # checks for a directory structure in path and creates folders if needed
+    # creates folders if needed
     xml_dirs = os.path.dirname(os.path.abspath(path))
-    if not os.path.isdir(xml_dirs):
-        os.makedirs(xml_dirs)
+    os.makedirs(xml_dirs, exist_ok=True)
 
     with open(path, "wb") as f:
         f.write(xml.encode("utf-8"))
