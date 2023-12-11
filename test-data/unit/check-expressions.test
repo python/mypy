@@ -1589,8 +1589,7 @@ if str():
 ....a  # E: "ellipsis" has no attribute "a"
 
 class A: pass
-[builtins fixtures/dict.pyi]
-[out]
+[builtins fixtures/dict-full.pyi]
 
 
 -- Yield expression

@@ -5671,22 +5671,29 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if node.arg_kinds[0] != nodes.ARG_POS:
                         # the first argument might be used as a kwarg
                         called_type = get_proper_type(self.lookup_type(node.callee))
-                        assert isinstance(called_type, (CallableType, Overloaded))
+
+                        # TODO: there are some more cases in check_call() to handle.
+                        if isinstance(called_type, Instance):
+                            call = find_member(
+                                "__call__", called_type, called_type, is_operator=True
+                            )
+                            if call is not None:
+                                called_type = get_proper_type(call)
 
                         # *assuming* the overloaded function is correct, there's a couple cases:
                         #  1) The first argument has different names, but is pos-only. We don't
                         #     care about this case, the argument must be passed positionally.
                         #  2) The first argument allows keyword reference, therefore must be the
                         #     same between overloads.
-                        name = called_type.items[0].arg_names[0]
-
-                        if name in node.arg_names:
-                            idx = node.arg_names.index(name)
-                            # we want the idx-th variable to be narrowed
-                            expr = collapse_walrus(node.args[idx])
-                        else:
-                            self.fail(message_registry.TYPE_GUARD_POS_ARG_REQUIRED, node)
-                            return {}, {}
+                        if isinstance(called_type, (CallableType, Overloaded)):
+                            name = called_type.items[0].arg_names[0]
+                            if name in node.arg_names:
+                                idx = node.arg_names.index(name)
+                                # we want the idx-th variable to be narrowed
+                                expr = collapse_walrus(node.args[idx])
+                            else:
+                                self.fail(message_registry.TYPE_GUARD_POS_ARG_REQUIRED, node)
+                                return {}, {}
                     if literal(expr) == LITERAL_TYPE:
                         # Note: we wrap the target type, so that we can special case later.
                         # Namely, for isinstance() we use a normal meet, while TypeGuard is

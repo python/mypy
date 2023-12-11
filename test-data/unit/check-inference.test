@@ -3788,3 +3788,28 @@ def func2(arg: T) -> List[Union[T, str]]:
 reveal_type(func2)  # N: Revealed type is "def [S] (S`4) -> Union[S`4, builtins.str]"
 reveal_type(func2(42))  # N: Revealed type is "Union[builtins.int, builtins.str]"
 [builtins fixtures/list.pyi]
+
+[case testInferenceAgainstGenericCallbackProtoMultiple]
+from typing import Callable, Protocol, TypeVar
+from typing_extensions import Concatenate, ParamSpec
+
+V_co = TypeVar("V_co", covariant=True)
+class Metric(Protocol[V_co]):
+    def __call__(self) -> V_co: ...
+
+T = TypeVar("T")
+P = ParamSpec("P")
+def simple_metric(func: Callable[Concatenate[int, P], T]) -> Callable[P, T]: ...
+
+@simple_metric
+def Negate(count: int, /, metric: Metric[float]) -> float: ...
+@simple_metric
+def Combine(count: int, m1: Metric[T], m2: Metric[T], /, *more: Metric[T]) -> T: ...
+
+reveal_type(Negate)  # N: Revealed type is "def (metric: __main__.Metric[builtins.float]) -> builtins.float"
+reveal_type(Combine)  # N: Revealed type is "def [T] (def () -> T`4, def () -> T`4, *more: def () -> T`4) -> T`4"
+
+def m1() -> float: ...
+def m2() -> float: ...
+reveal_type(Combine(m1, m2))  # N: Revealed type is "builtins.float"
+[builtins fixtures/list.pyi]
