@@ -4876,6 +4876,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     )
 
     def visit_decorator(self, e: Decorator) -> None:
+        if e.func.is_synthetic():
+            return
         for d in e.decorators:
             if isinstance(d, RefExpr):
                 if d.fullname == "typing.no_type_check":
