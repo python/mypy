@@ -2007,7 +2007,7 @@ _testInferenceOfDunderDictOnClassObjects.py:4: error: Property "__dict__" define
 _testInferenceOfDunderDictOnClassObjects.py:4: error: Incompatible types in assignment (expression has type "Dict[Never, Never]", variable has type "MappingProxyType[str, Any]")
 
 [case testTypeVarTuple]
-# flags: --enable-incomplete-feature=TypeVarTuple --python-version=3.11
+# flags: --python-version=3.11
 from typing import Any, Callable, Unpack, TypeVarTuple
 
 Ts = TypeVarTuple("Ts")
@@ -2019,7 +2019,6 @@ def call(callback: Callable[[Unpack[Ts]], Any], *args: Unpack[Ts]) -> Any:
     ...
 
 [case testTypeVarTupleTypingExtensions]
-# flags: --enable-incomplete-feature=TypeVarTuple
 from typing_extensions import Unpack, TypeVarTuple
 from typing import Any, Callable
 
