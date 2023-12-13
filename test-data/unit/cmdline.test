@@ -1579,7 +1579,7 @@ always_true =
 [out]
 
 [case testTypeVarTupleUnpackEnabled]
-# cmd: mypy a.py
+# cmd: mypy --enable-incomplete-feature=TypeVarTuple --enable-incomplete-feature=Unpack a.py
 [file a.py]
 from typing_extensions import TypeVarTuple
 Ts = TypeVarTuple("Ts")
