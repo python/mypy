@@ -1010,7 +1010,7 @@ def process_options(
     parser.add_argument(
         "--enable-incomplete-feature",
         action="append",
-        metavar="FEATURE",
+        metavar="{" + ",".join(sorted(INCOMPLETE_FEATURES)) + "}",
         help="Enable support of incomplete/experimental features for early preview",
     )
     internals_group.add_argument(
