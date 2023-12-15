@@ -3554,6 +3554,11 @@ class SemanticAnalyzer(
             # unless using PEP 613 `cls: TypeAlias = A`
             return False
 
+        if pep_613 and self.is_func_scope():
+            # Explicit alias (Alias: TypeAlias = A) is forbidden inside of function scope.
+            self.fail("Type aliases can only be defined inside modules or classes", s)
+            return False
+
         if isinstance(s.rvalue, CallExpr) and s.rvalue.analyzed:
             return False
 

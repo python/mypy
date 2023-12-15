@@ -739,13 +739,13 @@ x6: Int6 = "str"  # E: Incompatible types in assignment (expression has type "st
 from typing_extensions import TypeAlias
 
 def f() -> None:
-    x: TypeAlias = str
+    x: TypeAlias = str  # E: Type aliases can only be defined inside modules or classes
     a: x
-    reveal_type(a)  # N: Revealed type is "builtins.str"
+    reveal_type(a)  # N: Revealed type is "Any"
 
-    y: TypeAlias = "str"
+    y: TypeAlias = "str"  # E: Type aliases can only be defined inside modules or classes
     b: y
-    reveal_type(b)  # N: Revealed type is "builtins.str"
+    reveal_type(b)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
 [case testImportCyclePep613]
