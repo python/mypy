@@ -19,6 +19,9 @@ FLAGS: dict[str, int]
 TYPE_FLAGS: int
 GLOBAL_FLAGS: int
 
+if sys.version_info >= (3, 11):
+    MAXWIDTH: int
+
 if sys.version_info < (3, 11):
     class Verbose(Exception): ...
 

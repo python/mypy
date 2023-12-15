@@ -26,7 +26,7 @@ from contextlib import AbstractContextManager
 from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper as _TextIOWrapper
 from subprocess import Popen
 from typing import IO, Any, AnyStr, BinaryIO, Generic, NoReturn, Protocol, TypeVar, overload, runtime_checkable
-from typing_extensions import Final, Literal, Self, TypeAlias, final
+from typing_extensions import Final, Literal, Self, TypeAlias, Unpack, final
 
 from . import path as _path
 
@@ -847,8 +847,12 @@ def execl(file: StrOrBytesPath, __arg0: StrOrBytesPath, *args: StrOrBytesPath) -
 def execlp(file: StrOrBytesPath, __arg0: StrOrBytesPath, *args: StrOrBytesPath) -> NoReturn: ...
 
 # These are: execle(file, *args, env) but env is pulled from the last element of the args.
-def execle(file: StrOrBytesPath, __arg0: StrOrBytesPath, *args: Any) -> NoReturn: ...
-def execlpe(file: StrOrBytesPath, __arg0: StrOrBytesPath, *args: Any) -> NoReturn: ...
+def execle(
+    file: StrOrBytesPath, *args: Unpack[tuple[StrOrBytesPath, Unpack[tuple[StrOrBytesPath, ...]], _ExecEnv]]
+) -> NoReturn: ...
+def execlpe(
+    file: StrOrBytesPath, *args: Unpack[tuple[StrOrBytesPath, Unpack[tuple[StrOrBytesPath, ...]], _ExecEnv]]
+) -> NoReturn: ...
 
 # The docs say `args: tuple or list of strings`
 # The implementation enforces tuple or list so we can't use Sequence.

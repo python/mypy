@@ -33,6 +33,9 @@ __all__ = [
 if sys.version_info >= (3, 8):
     __all__ += ["open_code"]
 
+if sys.version_info >= (3, 11):
+    __all__ += ["DEFAULT_BUFFER_SIZE", "IncrementalNewlineDecoder", "text_encoding"]
+
 _T = TypeVar("_T")
 
 DEFAULT_BUFFER_SIZE: Literal[8192]

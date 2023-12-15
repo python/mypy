@@ -320,3 +320,12 @@ class DataclassInstance(Protocol):
 # Anything that can be passed to the int/float constructors
 ConvertibleToInt: TypeAlias = str | ReadableBuffer | SupportsInt | SupportsIndex | SupportsTrunc
 ConvertibleToFloat: TypeAlias = str | ReadableBuffer | SupportsFloat | SupportsIndex
+
+# A few classes updated from Foo(str, Enum) to Foo(StrEnum). This is a convenience so these
+# can be accurate on all python versions without getting too wordy
+if sys.version_info >= (3, 11):
+    from enum import StrEnum as StrEnum
+else:
+    from enum import Enum
+
+    class StrEnum(str, Enum): ...

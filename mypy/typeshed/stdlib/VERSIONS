@@ -150,6 +150,7 @@ imaplib: 2.7-
 imghdr: 2.7-
 imp: 2.7-3.11
 importlib: 2.7-
+importlib._abc: 3.10-
 importlib.metadata: 3.8-
 importlib.metadata._meta: 3.10-
 importlib.readers: 3.10-

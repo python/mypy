@@ -1,7 +1,7 @@
 import sys
 import types
-from _typeshed import StrPath, TraceFunction
-from collections.abc import Callable, Mapping, Sequence
+from _typeshed import Incomplete, StrPath, TraceFunction
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any, TypeVar
 from typing_extensions import ParamSpec, TypeAlias
 
@@ -12,6 +12,12 @@ _P = ParamSpec("_P")
 _FileModuleFunction: TypeAlias = tuple[str, str | None, str]
 
 class CoverageResults:
+    counts: dict[tuple[str, int], int]
+    counter: dict[tuple[str, int], int]
+    calledfuncs: dict[_FileModuleFunction, int]
+    callers: dict[tuple[_FileModuleFunction, _FileModuleFunction], int]
+    inifile: StrPath | None
+    outfile: StrPath | None
     def __init__(
         self,
         counts: dict[tuple[str, int], int] | None = None,
@@ -27,7 +33,21 @@ class CoverageResults:
     ) -> tuple[int, int]: ...
     def is_ignored_filename(self, filename: str) -> bool: ...  # undocumented
 
+class _Ignore:
+    def __init__(self, modules: Iterable[str] | None = None, dirs: Iterable[StrPath] | None = None) -> None: ...
+    def names(self, filename: str, modulename: str) -> int: ...
+
 class Trace:
+    inifile: StrPath | None
+    outfile: StrPath | None
+    ignore: _Ignore
+    counts: dict[str, int]
+    pathtobasename: dict[Incomplete, Incomplete]
+    donothing: int
+    trace: int
+    start_time: int | None
+    globaltrace: TraceFunction
+    localtrace: TraceFunction
     def __init__(
         self,
         count: int = 1,
