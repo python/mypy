@@ -1,13 +1,12 @@
 import _tkinter
 import sys
-from _typeshed import Incomplete, StrOrBytesPath
+from _typeshed import Incomplete, StrEnum, StrOrBytesPath
 from collections.abc import Callable, Mapping, Sequence
-from enum import Enum
 from tkinter.constants import *
 from tkinter.font import _FontDescription
 from types import TracebackType
 from typing import Any, Generic, NamedTuple, TypeVar, overload, type_check_only
-from typing_extensions import Literal, TypeAlias, TypedDict, deprecated
+from typing_extensions import Literal, TypeAlias, TypedDict, TypeVarTuple, Unpack, deprecated
 
 if sys.version_info >= (3, 9):
     __all__ = [
@@ -195,7 +194,7 @@ if sys.version_info >= (3, 11):
         releaselevel: str
         serial: int
 
-class EventType(str, Enum):
+class EventType(StrEnum):
     Activate: str
     ButtonPress: str
     Button = ButtonPress
@@ -315,6 +314,8 @@ getdouble: Incomplete
 
 def getboolean(s): ...
 
+_Ts = TypeVarTuple("_Ts")
+
 class _GridIndexInfo(TypedDict, total=False):
     minsize: _ScreenUnits
     pad: _ScreenUnits
@@ -350,9 +351,9 @@ class Misc:
     def tk_focusPrev(self) -> Misc | None: ...
     # .after() can be called without the "func" argument, but it is basically never what you want.
     # It behaves like time.sleep() and freezes the GUI app.
-    def after(self, ms: int | Literal["idle"], func: Callable[..., object], *args: Any) -> str: ...
+    def after(self, ms: int | Literal["idle"], func: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts]) -> str: ...
     # after_idle is essentially partialmethod(after, "idle")
-    def after_idle(self, func: Callable[..., object], *args: Any) -> str: ...
+    def after_idle(self, func: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts]) -> str: ...
     def after_cancel(self, id: str) -> None: ...
     def bell(self, displayof: Literal[0] | Misc | None = 0) -> None: ...
     def clipboard_get(self, *, displayof: Misc = ..., type: str = ...) -> str: ...
