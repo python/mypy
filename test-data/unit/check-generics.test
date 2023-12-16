@@ -2297,6 +2297,19 @@ def func(x: S) -> S:
     return C[S].get()
 [builtins fixtures/classmethod.pyi]
 
+[case testGenericStaticMethodInGenericFunction]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+
+class C(Generic[T]):
+    @staticmethod
+    def get() -> T: ...
+
+def func(x: S) -> S:
+    return C[S].get()
+[builtins fixtures/staticmethod.pyi]
+
 [case testMultipleAssignmentFromAnyIterable]
 from typing import Any
 class A:

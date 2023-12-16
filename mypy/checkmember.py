@@ -1063,11 +1063,14 @@ def analyze_class_attribute_access(
         is_classmethod = (is_decorated and cast(Decorator, node.node).func.is_class) or (
             isinstance(node.node, FuncBase) and node.node.is_class
         )
+        is_staticmethod = (is_decorated and cast(Decorator, node.node).func.is_static) or (
+            isinstance(node.node, FuncBase) and node.node.is_static
+        )
         t = get_proper_type(t)
         if isinstance(t, FunctionLike) and is_classmethod:
             t = check_self_arg(t, mx.self_type, False, mx.context, name, mx.msg)
         result = add_class_tvars(
-            t, isuper, is_classmethod, mx.self_type, original_vars=original_vars
+            t, isuper, is_classmethod, is_staticmethod, mx.self_type, original_vars=original_vars
         )
         if not mx.is_lvalue:
             result = analyze_descriptor_access(result, mx)
@@ -1177,6 +1180,7 @@ def add_class_tvars(
     t: ProperType,
     isuper: Instance | None,
     is_classmethod: bool,
+    is_staticmethod: bool,
     original_type: Type,
     original_vars: Sequence[TypeVarLikeType] | None = None,
 ) -> Type:
@@ -1195,6 +1199,7 @@ def add_class_tvars(
         isuper: Current instance mapped to the superclass where method was defined, this
             is usually done by map_instance_to_supertype()
         is_classmethod: True if this method is decorated with @classmethod
+        is_staticmethod: True if this method is decorated with @staticmethod
         original_type: The value of the type B in the expression B.foo() or the corresponding
             component in case of a union (this is used to bind the self-types)
         original_vars: Type variables of the class callable on which the method was accessed
@@ -1220,6 +1225,7 @@ def add_class_tvars(
         t = freshen_all_functions_type_vars(t)
         if is_classmethod:
             t = bind_self(t, original_type, is_classmethod=True)
+        if is_classmethod or is_staticmethod:
             assert isuper is not None
             t = expand_type_by_instance(t, isuper)
         freeze_all_type_vars(t)
@@ -1230,7 +1236,12 @@ def add_class_tvars(
                 cast(
                     CallableType,
                     add_class_tvars(
-                        item, isuper, is_classmethod, original_type, original_vars=original_vars
+                        item,
+                        isuper,
+                        is_classmethod,
+                        is_staticmethod,
+                        original_type,
+                        original_vars=original_vars,
                     ),
                 )
                 for item in t.items
