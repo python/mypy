@@ -2305,7 +2305,7 @@ class A:
     def __init__(self) -> None:
         self.b = TypedDict('b', {'x': int, 'y': str})  # E: TypedDict type as attribute is not supported
 
-reveal_type(A().b)  # N: Revealed type is "Any"
+reveal_type(A().b)  # N: Revealed type is "def (*, x: builtins.int, y: builtins.str) -> TypedDict('__main__.A.b@5', {'x': builtins.int, 'y': builtins.str})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
