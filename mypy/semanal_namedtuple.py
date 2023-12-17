@@ -215,7 +215,7 @@ class NamedTupleAnalyzer:
         return items, types, default_items, statements
 
     def check_namedtuple(
-        self, node: Expression, var_name: str | None, is_func_scope: bool
+        self, node: Expression, var_name: str | None, is_func_scope: bool, is_inline: bool = False
     ) -> tuple[str | None, TypeInfo | None, list[TypeVarLikeType]]:
         """Check if a call defines a namedtuple.
 
@@ -306,7 +306,7 @@ class NamedTupleAnalyzer:
         if var_name:
             self.store_namedtuple_info(info, var_name, call, is_typed)
         else:
-            call.analyzed = NamedTupleExpr(info, is_typed=is_typed)
+            call.analyzed = NamedTupleExpr(info, is_typed=is_typed, is_inline=is_inline)
             call.analyzed.set_line(call)
         # There are three cases where we need to store the generated TypeInfo
         # second time (for the purpose of serialization):

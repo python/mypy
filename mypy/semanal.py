@@ -5209,7 +5209,7 @@ class SemanticAnalyzer(
             ):
                 return  # This is a valid and analyzed named tuple definition, nothing to do here.
         internal_name, info, tvar_defs = self.named_tuple_analyzer.check_namedtuple(
-            expr.callee, None, self.is_func_scope()
+            callee, None, self.is_func_scope(), is_inline=True
         )
         if internal_name is None:
             return
@@ -5232,7 +5232,7 @@ class SemanticAnalyzer(
             ):
                 return  # This is a valid and analyzed typed dict definition, nothing to do here.
         is_typed_dict, info, tvar_defs = self.typed_dict_analyzer.check_typeddict(
-            expr.callee, None, self.is_func_scope()
+            callee, None, self.is_func_scope(), is_inline=True
         )
         if not is_typed_dict:
             return

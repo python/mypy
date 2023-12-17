@@ -342,7 +342,7 @@ class TypedDictAnalyzer:
         return fields, types, statements, required_keys
 
     def check_typeddict(
-        self, node: Expression, var_name: str | None, is_func_scope: bool
+        self, node: Expression, var_name: str | None, is_func_scope: bool, is_inline: bool = False
     ) -> tuple[bool, TypeInfo | None, list[TypeVarLikeType]]:
         """Check if a call defines a TypedDict.
 
@@ -423,7 +423,7 @@ class TypedDictAnalyzer:
             self.api.add_symbol_skip_local(name, info)
         if var_name:
             self.api.add_symbol(var_name, info, node)
-        call.analyzed = TypedDictExpr(info)
+        call.analyzed = TypedDictExpr(info, is_inline=is_inline)
         call.analyzed.set_line(call)
         return True, info, tvar_defs
 
