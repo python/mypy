@@ -5202,8 +5202,11 @@ class SemanticAnalyzer(
 
         If so, analyze the callee into a NamedTupleExpr.
         """
-        if isinstance(expr.callee, NamedTupleExpr):
-            if expr.callee.info.tuple_type and not has_placeholder(expr.callee.info.tuple_type):
+        callee = expr.callee
+        if isinstance(callee, CallExpr) and isinstance(callee.analyzed, NamedTupleExpr):
+            if callee.analyzed.info.tuple_type and not has_placeholder(
+                callee.analyzed.info.tuple_type
+            ):
                 return  # This is a valid and analyzed named tuple definition, nothing to do here.
         internal_name, info, tvar_defs = self.named_tuple_analyzer.check_namedtuple(
             expr.callee, None, self.is_func_scope()
@@ -5222,9 +5225,10 @@ class SemanticAnalyzer(
 
         If so, analyze the callee into a TypedDictExpr.
         """
-        if isinstance(expr.callee, TypedDictExpr):
-            if expr.callee.info.typeddict_type and not has_placeholder(
-                expr.callee.info.typeddict_type
+        callee = expr.callee
+        if isinstance(callee, CallExpr) and isinstance(callee.analyzed, TypedDictExpr):
+            if callee.analyzed.info.typeddict_type and not has_placeholder(
+                callee.analyzed.info.typeddict_type
             ):
                 return  # This is a valid and analyzed typed dict definition, nothing to do here.
         is_typed_dict, info, tvar_defs = self.typed_dict_analyzer.check_typeddict(
