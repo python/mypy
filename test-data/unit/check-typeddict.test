@@ -3438,3 +3438,25 @@ class TotalInTheMiddle(TypedDict, a=1, total=True, b=2, c=3):  # E: Unexpected k
     ...
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlineInstantiation]
+from typing import TypedDict
+
+d = (TypedDict("Point2d", {'x': int, 'y': int}))(x=1, y=2)
+reveal_type(d['x'])  # N: Revealed type is "builtins.int"
+reveal_type(d['y'])  # N: Revealed type is "builtins.int"
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictInlineNoGenerics]
+from typing import TypeVar, TypedDict
+
+T = TypeVar("T")
+
+(TypedDict("Point2d", {'x': int, 'y': T}))(x=1, y=2)  # E: Generic TypedDict cannot be immediately instantiated \
+                                                      # N: Use the class syntax, or assign the type to a variable \
+                                                      # E: Incompatible types (expression has type "int", TypedDict item "y" has type "T")
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
