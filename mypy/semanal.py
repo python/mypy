@@ -5158,6 +5158,7 @@ class SemanticAnalyzer(
                 ):
                     self.all_exports = [n for n in self.all_exports if n != expr.args[0].value]
         self.analyze_namedtuple_call(expr)
+        self.analyze_typeddict_call(expr)
 
     def translate_dict_call(self, call: CallExpr) -> DictExpr | None:
         """Translate 'dict(x=y, ...)' to {'x': y, ...} and 'dict()' to {}.
@@ -5212,6 +5213,28 @@ class SemanticAnalyzer(
         if tvar_defs:
             self.fail("Generic named tuples cannot be immediately instantiated", expr)
             self.note("Use Python 3 class syntax, or assign the type to a variable", expr)
+        if not info:
+            self.defer(expr)
+
+    def analyze_typeddict_call(self, expr: CallExpr) -> None:
+        """Check if expr instantiates an inline typed dict, such as:
+            (TypedDict('MyTypedDict', {...}))(...)
+
+        If so, analyze the callee into a TypedDictExpr.
+        """
+        if isinstance(expr.callee, TypedDictExpr):
+            if expr.callee.info.typeddict_type and not has_placeholder(
+                expr.callee.info.typeddict_type
+            ):
+                return  # This is a valid and analyzed typed dict definition, nothing to do here.
+        is_typed_dict, info, tvar_defs = self.typed_dict_analyzer.check_typeddict(
+            expr.callee, None, self.is_func_scope()
+        )
+        if not is_typed_dict:
+            return
+        if tvar_defs:
+            self.fail("Generic TypedDict cannot be immediately instantiated", expr)
+            self.note("Use the class syntax, or assign the type to a variable", expr)
         if not info:
             self.defer(expr)
 

@@ -487,6 +487,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.refers_to_typeddict(e.callee)
             or isinstance(e.callee, IndexExpr)
             and self.refers_to_typeddict(e.callee.base)
+            or isinstance(e.callee, CallExpr)
+            and isinstance(e.callee.analyzed, TypedDictExpr)
         ):
             typeddict_callable = get_proper_type(self.accept(e.callee, is_callee=True))
             if isinstance(typeddict_callable, CallableType):
@@ -6012,6 +6014,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return AnyType(TypeOfAny.special_form)
 
     def visit_typeddict_expr(self, e: TypedDictExpr) -> Type:
+        typeddict_type = e.info.typeddict_type
+        if typeddict_type:
+            if self.chk.options.disallow_any_unimported and has_any_from_unimported_type(
+                typeddict_type
+            ):
+                self.msg.unimported_type_becomes_any("TypedDict type", typeddict_type, e)
+            check_for_explicit_any(
+                typeddict_type, self.chk.options, self.chk.is_typeshed_stub, self.msg, context=e
+            )
+            # Special-case for TypedDict it doesn't define a constructor.
+            return self.typeddict_callable(e.info)
         return AnyType(TypeOfAny.special_form)
 
     def visit__promote_expr(self, e: PromoteExpr) -> Type:
