@@ -6023,7 +6023,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             check_for_explicit_any(
                 typeddict_type, self.chk.options, self.chk.is_typeshed_stub, self.msg, context=e
             )
-            # Special-case for TypedDict it doesn't define a constructor.
+            # Special-case for TypedDict since it doesn't define a constructor.
             return self.typeddict_callable(e.info)
         return AnyType(TypeOfAny.special_form)
 
