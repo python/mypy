@@ -5993,6 +5993,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             check_for_explicit_any(
                 tuple_type, self.chk.options, self.chk.is_typeshed_stub, self.msg, context=e
             )
+            return type_object_type(e.info, self.named_type)
         return AnyType(TypeOfAny.special_form)
 
     def visit_enum_call_expr(self, e: EnumCallExpr) -> Type:

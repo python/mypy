@@ -275,7 +275,7 @@ class NamedTupleAnalyzer:
             name = typename
 
         if var_name is None or is_func_scope:
-            # There are two special cases where need to give it a unique name derived
+            # There are three special cases where we need to give it a unique name derived
             # from the line number:
             #   * This is a base class expression, since it often matches the class name:
             #         class NT(NamedTuple('NT', [...])):
@@ -283,6 +283,8 @@ class NamedTupleAnalyzer:
             #   * This is a local (function or method level) named tuple, since
             #     two methods of a class can define a named tuple with the same name,
             #     and they will be stored in the same namespace (see below).
+            #   * Or, this is an anonymous named tuple, which is immediately instantiated:
+            #         (NamedTuple('NT', [...]))(...)
             name += "@" + str(call.line)
         if defaults:
             default_items = {

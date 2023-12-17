@@ -5157,6 +5157,7 @@ class SemanticAnalyzer(
                     and isinstance(expr.args[0], StrExpr)
                 ):
                     self.all_exports = [n for n in self.all_exports if n != expr.args[0].value]
+        self.analyze_namedtuple_call(expr)
 
     def translate_dict_call(self, call: CallExpr) -> DictExpr | None:
         """Translate 'dict(x=y, ...)' to {'x': y, ...} and 'dict()' to {}.
@@ -5193,6 +5194,26 @@ class SemanticAnalyzer(
             self.fail(f'"{name}" must be called with {numargs} positional argument{s}', expr)
             return False
         return True
+
+    def analyze_namedtuple_call(self, expr: CallExpr) -> None:
+        """Check if expr instantiates an inline named tuple, such as:
+            (NamedTuple('MyNamedTuple', [...]))(...)
+
+        If so, analyze the callee into a NamedTupleExpr.
+        """
+        if isinstance(expr.callee, NamedTupleExpr):
+            if expr.callee.info.tuple_type and not has_placeholder(expr.callee.info.tuple_type):
+                return  # This is a valid and analyzed named tuple definition, nothing to do here.
+        internal_name, info, tvar_defs = self.named_tuple_analyzer.check_namedtuple(
+            expr.callee, None, self.is_func_scope()
+        )
+        if internal_name is None:
+            return
+        if tvar_defs:
+            self.fail("Generic named tuples cannot be immediately instantiated", expr)
+            self.note("Use Python 3 class syntax, or assign the type to a variable", expr)
+        if not info:
+            self.defer(expr)
 
     def visit_member_expr(self, expr: MemberExpr) -> None:
         base = expr.expr
