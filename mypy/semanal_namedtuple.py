@@ -283,7 +283,7 @@ class NamedTupleAnalyzer:
             #   * This is a local (function or method level) named tuple, since
             #     two methods of a class can define a named tuple with the same name,
             #     and they will be stored in the same namespace (see below).
-            #   * Or, this is an anonymous named tuple, which is immediately instantiated:
+            #   * Or, this is an inline named tuple, which is immediately instantiated:
             #         (NamedTuple('NT', [...]))(...)
             name += "@" + str(call.line)
         if defaults:
