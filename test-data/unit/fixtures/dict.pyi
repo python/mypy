@@ -5,6 +5,7 @@ import _typeshed
 from typing import (
     TypeVar, Generic, Iterable, Iterator, Mapping, Tuple, overload, Optional, Union, Sequence
 )
+from typing_extensions import override
 
 T = TypeVar('T')
 KT = TypeVar('KT')
@@ -23,8 +24,10 @@ class dict(Mapping[KT, VT]):
     def __init__(self, **kwargs: VT) -> None: pass
     @overload
     def __init__(self, arg: Iterable[Tuple[KT, VT]], **kwargs: VT) -> None: pass
+    @override
     def __getitem__(self, key: KT) -> VT: pass
     def __setitem__(self, k: KT, v: VT) -> None: pass
+    @override
     def __iter__(self) -> Iterator[KT]: pass
     def __contains__(self, item: object) -> int: pass
     def update(self, a: SupportsKeysAndGetItem[KT, VT]) -> None: pass
@@ -46,7 +49,9 @@ class str: pass # for keyword argument key type
 class bytes: pass
 
 class list(Sequence[T]): # needed by some test cases
+    @override
     def __getitem__(self, x: int) -> T: pass
+    @override
     def __iter__(self) -> Iterator[T]: pass
     def __mul__(self, x: int) -> list[T]: pass
     def __contains__(self, item: object) -> bool: pass

@@ -1,9 +1,12 @@
 import typing
+from typing_extensions import override
 
 T = typing.TypeVar('T')
 U = typing.TypeVar('U')
 class list(typing.Sequence[T]):
+    @override
     def __iter__(self) -> typing.Iterator[T]: ...
+    @override
     def __getitem__(self, i: int) -> T: ...
     def __contains__(self, item: object) -> bool: ...
 

@@ -1,6 +1,7 @@
 # Builtins stub used in set-related test cases.
 
 from typing import TypeVar, Generic, Iterator, Iterable, Set
+from typing_extensions import override
 
 T = TypeVar('T')
 
@@ -19,6 +20,7 @@ class ellipsis: pass
 
 class set(Iterable[T], Generic[T]):
     def __init__(self, iterable: Iterable[T] = ...) -> None: ...
+    @override
     def __iter__(self) -> Iterator[T]: pass
     def __contains__(self, item: object) -> bool: pass
     def __ior__(self, x: Set[T]) -> None: pass

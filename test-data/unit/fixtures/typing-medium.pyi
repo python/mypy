@@ -6,6 +6,8 @@
 # Many of the definitions have special handling in the type checker, so they
 # can just be initialized to anything.
 
+from typing_extensions import override
+
 cast = 0
 overload = 0
 Any = 0
@@ -49,6 +51,7 @@ class Iterator(Iterable[T_co], Protocol):
     def __next__(self) -> T_co: pass
 
 class Generator(Iterator[T], Generic[T, U, V]):
+    @override
     def __iter__(self) -> 'Generator[T, U, V]': pass
 
 class Sequence(Iterable[T_co]):

@@ -5390,6 +5390,7 @@ from enum import Enum
 
 class C(Enum):
     X = 0
+[builtins fixtures/tuple.pyi]
 [typing fixtures/typing-medium.pyi]
 [out]
 ==
@@ -5486,6 +5487,7 @@ C = Enum('C', 'X Y')
 from enum import Enum
 
 C = Enum('C', 'X')
+[builtins fixtures/tuple.pyi]
 [typing fixtures/typing-medium.pyi]
 [out]
 ==

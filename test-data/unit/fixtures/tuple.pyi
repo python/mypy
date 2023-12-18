@@ -2,7 +2,7 @@
 
 import _typeshed
 from typing import Iterable, Iterator, TypeVar, Generic, Sequence, Optional, overload, Tuple, Type
-
+from typing_extensions import override
 T = TypeVar("T")
 Tco = TypeVar('Tco', covariant=True)
 
@@ -14,11 +14,14 @@ class type:
     def __call__(self, *a: object) -> object: pass
 class tuple(Sequence[Tco], Generic[Tco]):
     def __new__(cls: Type[T], iterable: Iterable[Tco] = ...) -> T: ...
+    @override
     def __iter__(self) -> Iterator[Tco]: pass
     def __contains__(self, item: object) -> bool: pass
     @overload
+    @override
     def __getitem__(self, x: int) -> Tco: pass
     @overload
+    @override
     def __getitem__(self, x: slice) -> Tuple[Tco, ...]: ...
     def __mul__(self, n: int) -> Tuple[Tco, ...]: pass
     def __rmul__(self, n: int) -> Tuple[Tco, ...]: pass
@@ -41,10 +44,13 @@ class bytearray: pass
 
 class list(Sequence[T], Generic[T]):
     @overload
+    @override
     def __getitem__(self, i: int) -> T: ...
     @overload
+    @override
     def __getitem__(self, s: slice) -> list[T]: ...
     def __contains__(self, item: object) -> bool: ...
+    @override
     def __iter__(self) -> Iterator[T]: ...
 
 def isinstance(x: object, t: type) -> bool: pass

@@ -1,5 +1,6 @@
 # Builtins stub used to support attrs plugin tests.
 from typing import Union, overload, Generic, Sequence, TypeVar, Type, Iterable, Iterator
+from typing_extensions import override
 
 class object:
     def __init__(self) -> None: pass
@@ -31,6 +32,8 @@ T = TypeVar("T")
 Tco = TypeVar('Tco', covariant=True)
 class tuple(Sequence[Tco], Generic[Tco]):
     def __new__(cls: Type[T], iterable: Iterable[Tco] = ...) -> T: ...
+    @override
     def __iter__(self) -> Iterator[Tco]: pass
     def __contains__(self, item: object) -> bool: pass
+    @override
     def __getitem__(self, x: int) -> Tco: pass

@@ -7,6 +7,7 @@
 # can just be initialized to anything.
 
 from abc import ABCMeta
+from typing_extensions import override
 
 cast = 0
 assert_type = 0
@@ -63,6 +64,7 @@ class Mapping(Iterable[T], Generic[T, T_co], metaclass=ABCMeta):
 class _TypedDict(Mapping[str, object]):
     # Needed to make this class non-abstract. It is explicitly declared abstract in
     # typeshed, but we don't want to import abc here, as it would slow down the tests.
+    @override
     def __iter__(self) -> Iterator[str]: ...
     def copy(self: T) -> T: ...
     # Using NoReturn so that only calls using the plugin hook can go through.
