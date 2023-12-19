@@ -4918,6 +4918,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         expr_star_index = next(i for i, lv in enumerate(expr.items) if isinstance(lv, StarExpr))
         return len(expr.items) == len(ctx.items) and ctx_unpack_index == expr_star_index
 
+    def union_with_tuple_context_matches(
+        self, expr: TupleExpr, ctx: UnionType
+    ) -> TupleType | None:
+        for item in ctx.items:
+            item = get_proper_type(item)
+            if isinstance(item, TupleType) and self.tuple_context_matches(expr, item):
+                return item
+            elif isinstance(item, UnionType):
+                inner = self.union_with_tuple_context_matches(expr, item)
+                if inner:
+                    return inner
+        return None
+
     def visit_tuple_expr(self, e: TupleExpr) -> Type:
         """Type check a tuple expression."""
         # Try to determine type context for type inference.
@@ -4943,6 +4956,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             assert isinstance(type_context, Instance)
             if type_context.args:
                 type_context_items = [type_context.args[0]] * len(e.items)
+        elif isinstance(type_context, UnionType):
+            inner_tuple = self.union_with_tuple_context_matches(e, type_context)
+            if inner_tuple:
+                type_context_items = inner_tuple.items
         # NOTE: it's possible for the context to have a different
         # number of items than e.  In that case we use those context
         # items that match a position in e, and we'll worry about type
