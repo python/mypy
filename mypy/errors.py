@@ -676,7 +676,7 @@ class Errors:
                     new_errors.append(info)
                     has_blocker |= info.blocker
                 elif info.only_once:
-                    self.only_once_messages.remove(info.message)
+                    self.only_once_messages.discard(info.message)
             self.error_info_map[path] = new_errors
             if not has_blocker and path in self.has_blockers:
                 self.has_blockers.remove(path)
