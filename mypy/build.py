@@ -11,13 +11,14 @@ The function build() is the main interface to this module.
 # TODO: More consistent terminology, e.g. path/fnam, module/id, state/file
 
 from __future__ import annotations
-import pathlib
+
 import collections
 import contextlib
 import errno
 import gc
 import json
 import os
+import pathlib
 import platform
 import re
 import stat
