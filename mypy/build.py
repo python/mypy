@@ -11,7 +11,7 @@ The function build() is the main interface to this module.
 # TODO: More consistent terminology, e.g. path/fnam, module/id, state/file
 
 from __future__ import annotations
-
+import pathlib
 import collections
 import contextlib
 import errno
@@ -3078,7 +3078,7 @@ def load_graph(
                 path=bs.path,
                 source=bs.text,
                 manager=manager,
-                root_source=not bs.followed,
+                root_source=not (bs.followed or bs.module == "builtins"),
             )
         except ModuleNotFound:
             continue
@@ -3533,6 +3533,8 @@ def record_missing_stub_packages(cache_dir: str, missing_stub_packages: set[str]
 
 
 def is_silent_import_module(manager: BuildManager, path: str) -> bool:
+    if pathlib.Path(path).name == "builtins.pyi":
+        return True
     if manager.options.no_silence_site_packages:
         return False
     # Silence errors in site-package dirs and typeshed
