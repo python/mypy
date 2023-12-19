@@ -940,7 +940,10 @@ class Errors:
         # TODO: Make sure that either target is always defined or that not being defined
         #       is okay for fine-grained incremental checking.
         return {
-            info.target for errs in self.error_info_map.values() for info in errs if info.target
+            info.target
+            for errs in self.error_info_map.values()
+            for info in errs
+            if info.target and not info.hidden
         }
 
     def render_messages(self, errors: list[ErrorInfo]) -> list[ErrorTuple]:
