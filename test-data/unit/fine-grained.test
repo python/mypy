@@ -10529,3 +10529,39 @@ a = 1  # type: ignore
 main.py:1: error: "type: ignore" comment without error code
 ==
 main.py:1: error: "type: ignore" comment without error code
+
+
+[case testUnusedTypeIgnorePreservedOnRerunWithIgnoredMissingImports]
+# flags: --no-error-summary --ignore-missing-imports --warn-unused-ignores
+import foo
+[file foo/__init__.py]
+from bar import *
+[file foo/__init__.py.2]
+from bar import *
+# Comment to trigger reload.
+[file foo/empty.py]
+[file bar.py]
+from foo import empty
+a = 1  # type: ignore
+[out]
+bar.py:2: error: Unused "type: ignore" comment
+==
+bar.py:2: error: Unused "type: ignore" comment
+
+
+[case testModuleDoesNotExistPreservedOnRerun]
+# flags: --no-error-summary --ignore-missing-imports
+import foo
+[file foo/__init__.py]
+from bar import *
+[file bar.py]
+from foo import does_not_exist
+from unused.submodule import *
+[file bar.py.2]
+from foo import does_not_exist
+from unused.submodule import *
+# Comment to trigger reload.
+[out]
+bar.py:1: error: Module "foo" has no attribute "does_not_exist"  [attr-defined]
+==
+bar.py:1: error: Module "foo" has no attribute "does_not_exist"  [attr-defined]
