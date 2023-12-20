@@ -498,7 +498,25 @@ class Errors:
                 # Check each line in this context for "type: ignore" comments.
                 # line == end_line for most nodes, so we only loop once.
                 for scope_line in lines:
-                    is_ignored_error = self.is_ignored_error(scope_line, info, self.ignored_lines[file])
+                    ignores = self.ignored_lines[file]
+                    if info.blocker:
+                        # Blocking errors can never be ignored
+                        is_ignored_error = False
+                    elif info.code and not self.is_error_code_enabled(info.code):
+                        is_ignored_error = True
+                    elif scope_line not in ignores:
+                        is_ignored_error = False
+                    elif not ignores[scope_line]:
+                        # Empty list means that we ignore all errors
+                        is_ignored_error = True
+                    elif info.code and self.is_error_code_enabled(info.code):
+                        is_ignored_error = (
+                            info.code.code in ignores[scope_line]
+                            or info.code.sub_code_of is not None
+                            and info.code.sub_code_of.code in ignores[scope_line]
+                        )
+                    else:
+                        is_ignored_error = False
                     if is_ignored_error:
                         # Annotation requests us to ignore all errors on this line.
                         self.used_ignored_lines[file][scope_line].append(
@@ -630,28 +648,6 @@ class Errors:
             target=info.target,
         )
         self._add_error_info(info.origin[0], new_info)
-
-    def is_ignored_error(self, scope_line: int, info: ErrorInfo, ignores: dict[int, list[str]]) -> bool:
-        if info.blocker:
-            # Blocking errors can never be ignored
-            is_ignored_error = False
-        elif info.code and not self.is_error_code_enabled(info.code):
-            is_ignored_error = True
-        elif scope_line not in ignores:
-            is_ignored_error = False
-        elif not ignores[scope_line]:
-            # Empty list means that we ignore all errors
-            is_ignored_error = True
-        elif info.code and self.is_error_code_enabled(info.code):
-            is_ignored_error = (
-                info.code.code in ignores[scope_line]
-                or info.code.sub_code_of is not None
-                and info.code.sub_code_of.code in ignores[scope_line]
-            )
-        else:
-            is_ignored_error = False
-
-        return is_ignored_error
 
     def is_error_code_enabled(self, error_code: ErrorCode) -> bool:
         if self.options:
