@@ -501,21 +501,26 @@ class Errors:
                     ignores = self.ignored_lines[file]
                     if info.code and not self.is_error_code_enabled(info.code):
                         is_ignored_error = True
+                        record_ignored_line = False
                     elif scope_line not in ignores:
                         is_ignored_error = False
+                        record_ignored_line = False
                     elif not ignores[scope_line]:
                         # Empty list means that we ignore all errors
                         is_ignored_error = True
+                        record_ignored_line = True
                     elif info.code and self.is_error_code_enabled(info.code):
                         is_ignored_error = (
                             info.code.code in ignores[scope_line]
                             or info.code.sub_code_of is not None
                             and info.code.sub_code_of.code in ignores[scope_line]
                         )
+                        record_ignored_line = is_ignored_error
                     else:
                         is_ignored_error = False
+                        record_ignored_line = False
 
-                    if is_ignored_error and file not in self.ignored_files:
+                    if record_ignored_line and file not in self.ignored_files:
                         info.hidden = True
                         self._add_error_info(file, info)
 
