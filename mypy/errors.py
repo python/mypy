@@ -514,14 +514,16 @@ class Errors:
                         )
                     else:
                         is_ignored_error = False
+
+                    if is_ignored_error and file not in self.ignored_files:
+                        info.hidden = True
+                        self._add_error_info(file, info)
+
                     if is_ignored_error:
                         # Annotation requests us to ignore all errors on this line.
                         self.used_ignored_lines[file][scope_line].append(
                             (info.code or codes.MISC).code
                         )
-                        if file not in self.ignored_files:
-                            info.hidden = True
-                            self._add_error_info(file, info)
                         return
             if file in self.ignored_files:
                 return
