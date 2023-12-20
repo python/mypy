@@ -631,22 +631,22 @@ class Errors:
         )
         self._add_error_info(info.origin[0], new_info)
 
-    def is_ignored_error(self, line: int, info: ErrorInfo, ignores: dict[int, list[str]]) -> bool:
+    def is_ignored_error(self, scope_line: int, info: ErrorInfo, ignores: dict[int, list[str]]) -> bool:
         if info.blocker:
             # Blocking errors can never be ignored
             is_ignored_error = False
         elif info.code and not self.is_error_code_enabled(info.code):
             is_ignored_error = True
-        elif line not in ignores:
+        elif scope_line not in ignores:
             is_ignored_error = False
-        elif not ignores[line]:
+        elif not ignores[scope_line]:
             # Empty list means that we ignore all errors
             is_ignored_error = True
         elif info.code and self.is_error_code_enabled(info.code):
             is_ignored_error = (
-                info.code.code in ignores[line]
+                info.code.code in ignores[scope_line]
                 or info.code.sub_code_of is not None
-                and info.code.sub_code_of.code in ignores[line]
+                and info.code.sub_code_of.code in ignores[scope_line]
             )
         else:
             is_ignored_error = False
