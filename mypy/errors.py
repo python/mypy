@@ -498,7 +498,8 @@ class Errors:
                 # Check each line in this context for "type: ignore" comments.
                 # line == end_line for most nodes, so we only loop once.
                 for scope_line in lines:
-                    if self.is_ignored_error(scope_line, info, self.ignored_lines[file]):
+                    is_ignored_error = self.is_ignored_error(scope_line, info, self.ignored_lines[file])
+                    if is_ignored_error:
                         # Annotation requests us to ignore all errors on this line.
                         self.used_ignored_lines[file][scope_line].append(
                             (info.code or codes.MISC).code
