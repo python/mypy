@@ -499,10 +499,7 @@ class Errors:
                 # line == end_line for most nodes, so we only loop once.
                 for scope_line in lines:
                     ignores = self.ignored_lines[file]
-                    if info.blocker:
-                        # Blocking errors can never be ignored
-                        is_ignored_error = False
-                    elif info.code and not self.is_error_code_enabled(info.code):
+                    if info.code and not self.is_error_code_enabled(info.code):
                         is_ignored_error = True
                     elif scope_line not in ignores:
                         is_ignored_error = False
