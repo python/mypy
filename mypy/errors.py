@@ -495,10 +495,10 @@ class Errors:
             return
         if not info.blocker:  # Blockers cannot be ignored
             if file in self.ignored_lines:
+                ignores = self.ignored_lines[file]
                 # Check each line in this context for "type: ignore" comments.
                 # line == end_line for most nodes, so we only loop once.
                 for scope_line in lines:
-                    ignores = self.ignored_lines[file]
                     if info.code and not self.is_error_code_enabled(info.code):
                         is_ignored_error = True
                         record_ignored_line = False
