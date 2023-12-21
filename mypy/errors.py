@@ -500,17 +500,14 @@ class Errors:
             for scope_line in lines:
                 is_ignored_error = self._is_ignored_error(info, scope_line, ignores)
 
-                record_ignored_line = self._should_record_ignored_line(info, file, is_ignored_error)
-
-                if record_ignored_line:
-                    info.hidden = True
-                    self._add_error_info(file, info)
-
                 if is_ignored_error:
                     # Annotation requests us to ignore all errors on this line.
                     self.used_ignored_lines[file][scope_line].append(
                         (info.code or codes.MISC).code
                     )
+                    if self._should_record_ignored_line(info, file, is_ignored_error):
+                        info.hidden = True
+                        self._add_error_info(file, info)
                     return
             if file in self.ignored_files:
                 return
