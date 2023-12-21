@@ -598,14 +598,15 @@ class Errors:
         """
         Return whether the supplied ErrorInfo should be ignored for the line in question.
         """
-        if info.code and not self.is_error_code_enabled(info.code):
+        error_code_is_enabled = info.code and self.is_error_code_enabled(info.code)
+        if not error_code_is_enabled:
             return True
         elif scope_line not in ignores:
             return False
         elif not ignores[scope_line]:
             # Empty list means that we ignore all errors
             return True
-        elif info.code and self.is_error_code_enabled(info.code):
+        elif info.code:
             return (
                 info.code.code in ignores[scope_line]
                 or info.code.sub_code_of is not None
