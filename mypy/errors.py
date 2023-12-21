@@ -500,14 +500,7 @@ class Errors:
             for scope_line in lines:
                 is_ignored_error = self._is_ignored_error(info, scope_line, ignores)
 
-                # Should we record it as a hidden error?
-                # This is necessary to prevent us from misreporting unused ignores on subsequent daemon runs.
-                if file in self.ignored_files:
-                    record_ignored_line = False
-                elif info.code and not self.is_error_code_enabled(info.code):
-                    record_ignored_line = False
-                else:
-                    record_ignored_line = is_ignored_error
+                record_ignored_line = self._should_record_ignored_line(info, file, is_ignored_error)
 
                 if record_ignored_line:
                     info.hidden = True
@@ -601,7 +594,9 @@ class Errors:
             )
             self._add_error_info(file, info)
 
-    def _is_ignored_error(self, info: ErrorInfo, scope_line: int, ignores: dict[int, list[str]]) -> bool:
+    def _is_ignored_error(
+        self, info: ErrorInfo, scope_line: int, ignores: dict[int, list[str]]
+    ) -> bool:
         """
         Return whether the supplied ErrorInfo should be ignored for the line in question.
         """
@@ -620,6 +615,21 @@ class Errors:
             )
         else:
             return False
+
+    def _should_record_ignored_line(
+        self, info: ErrorInfo, file: str, is_ignored_error: bool
+    ) -> bool:
+        """
+        Return whether we should record an error in the supplied ErrorInfo as a hidden error.
+
+        This is necessary to prevent us from misreporting unused ignores on subsequent daemon runs.
+        """
+        if file in self.ignored_files:
+            return False
+        elif info.code and not self.is_error_code_enabled(info.code):
+            return False
+        else:
+            return is_ignored_error
 
     def has_many_errors(self) -> bool:
         if self.options.many_errors_threshold < 0:
