@@ -494,12 +494,11 @@ class Errors:
         if self._filter_error(file, info):
             return
         if not info.blocker:  # Blockers cannot be ignored
-            ignores = self.ignored_lines.get(file, {})
             should_record_ignored_lines_for_info = self._should_record_ignored_lines(info)
             # Check each line in this context for "type: ignore" comments.
             # line == end_line for most nodes, so we only loop once.
             for scope_line in lines:
-                is_ignored_error = self._is_ignored_error(info, scope_line, ignores)
+                is_ignored_error = self._is_ignored_error(info, scope_line)
 
                 if is_ignored_error:
                     # Annotation requests us to ignore all errors on this line.
@@ -592,12 +591,13 @@ class Errors:
             )
             self._add_error_info(file, info)
 
-    def _is_ignored_error(
-        self, info: ErrorInfo, scope_line: int, ignores: dict[int, list[str]]
-    ) -> bool:
+    def _is_ignored_error(self, info: ErrorInfo, scope_line: int) -> bool:
         """
         Return whether the supplied ErrorInfo should be ignored for the line in question.
         """
+        file = info.origin[0]
+        ignores = self.ignored_lines.get(file, {})
+
         error_code_is_enabled = info.code and self.is_error_code_enabled(info.code)
         if not error_code_is_enabled:
             return True
