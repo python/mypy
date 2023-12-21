@@ -505,7 +505,7 @@ class Errors:
                     self.used_ignored_lines[file][scope_line].append(
                         (info.code or codes.MISC).code
                     )
-                    if self._should_record_ignored_line(info):
+                    if self._should_record_ignored_lines(info):
                         info.hidden = True
                         self._add_error_info(file, info)
                     return
@@ -613,9 +613,9 @@ class Errors:
         else:
             return False
 
-    def _should_record_ignored_line(self, info: ErrorInfo) -> bool:
+    def _should_record_ignored_lines(self, info: ErrorInfo) -> bool:
         """
-        Return whether we should record an error in the supplied ErrorInfo as a hidden error.
+        Return whether we should record any ignored errors in the supplied ErrorInfo as a hidden error.
 
         This is necessary to prevent us from misreporting unused ignores on subsequent daemon runs.
         """
