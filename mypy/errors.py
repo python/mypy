@@ -494,42 +494,41 @@ class Errors:
         if self._filter_error(file, info):
             return
         if not info.blocker:  # Blockers cannot be ignored
-            if file in self.ignored_lines:
-                ignores = self.ignored_lines[file]
-                # Check each line in this context for "type: ignore" comments.
-                # line == end_line for most nodes, so we only loop once.
-                for scope_line in lines:
-                    if info.code and not self.is_error_code_enabled(info.code):
-                        is_ignored_error = True
-                        record_ignored_line = False
-                    elif scope_line not in ignores:
-                        is_ignored_error = False
-                        record_ignored_line = False
-                    elif not ignores[scope_line]:
-                        # Empty list means that we ignore all errors
-                        is_ignored_error = True
-                        record_ignored_line = True
-                    elif info.code and self.is_error_code_enabled(info.code):
-                        is_ignored_error = (
-                            info.code.code in ignores[scope_line]
-                            or info.code.sub_code_of is not None
-                            and info.code.sub_code_of.code in ignores[scope_line]
-                        )
-                        record_ignored_line = is_ignored_error
-                    else:
-                        is_ignored_error = False
-                        record_ignored_line = False
+            ignores = self.ignored_lines.get(file, {})
+            # Check each line in this context for "type: ignore" comments.
+            # line == end_line for most nodes, so we only loop once.
+            for scope_line in lines:
+                if info.code and not self.is_error_code_enabled(info.code):
+                    is_ignored_error = True
+                    record_ignored_line = False
+                elif scope_line not in ignores:
+                    is_ignored_error = False
+                    record_ignored_line = False
+                elif not ignores[scope_line]:
+                    # Empty list means that we ignore all errors
+                    is_ignored_error = True
+                    record_ignored_line = True
+                elif info.code and self.is_error_code_enabled(info.code):
+                    is_ignored_error = (
+                        info.code.code in ignores[scope_line]
+                        or info.code.sub_code_of is not None
+                        and info.code.sub_code_of.code in ignores[scope_line]
+                    )
+                    record_ignored_line = is_ignored_error
+                else:
+                    is_ignored_error = False
+                    record_ignored_line = False
 
-                    if record_ignored_line and file not in self.ignored_files:
-                        info.hidden = True
-                        self._add_error_info(file, info)
+                if record_ignored_line and file not in self.ignored_files:
+                    info.hidden = True
+                    self._add_error_info(file, info)
 
-                    if is_ignored_error:
-                        # Annotation requests us to ignore all errors on this line.
-                        self.used_ignored_lines[file][scope_line].append(
-                            (info.code or codes.MISC).code
-                        )
-                        return
+                if is_ignored_error:
+                    # Annotation requests us to ignore all errors on this line.
+                    self.used_ignored_lines[file][scope_line].append(
+                        (info.code or codes.MISC).code
+                    )
+                    return
             if file in self.ignored_files:
                 return
         if info.only_once:
