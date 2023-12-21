@@ -2,7 +2,86 @@
 
 ## Next release
 
-Stubgen will now include `__all__` in its output if it is in the input file (PR [16356](https://github.com/python/mypy/pull/16356)).
+## Mypy 1.8
+
+We’ve just uploaded mypy 1.8 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)). Mypy is a static type checker for Python. This release includes new features, performance improvements and bug fixes. You can install it as follows:
+
+    python3 -m pip install -U mypy
+
+You can read the full documentation for this release on [Read the Docs](http://mypy.readthedocs.io).
+
+#### Typechecking Improvements
+ * Do not intersect types in isinstance checks if at least one is final (Christoph Tyralla, PR [16330](https://github.com/python/mypy/pull/16330))
+ * Detect that @final class without __bool__ cannot have falsey instances (Ilya Priven, PR [16566](https://github.com/python/mypy/pull/16566))
+ * Do not allow `TypedDict` classes with extra keywords (Nikita Sobolev, PR [16438](https://github.com/python/mypy/pull/16438))
+ * Do not allow class-level keywords for `NamedTuple` (Nikita Sobolev, PR [16526](https://github.com/python/mypy/pull/16526))
+ * Make imprecise constraints handling more robust (Ivan Levkivskyi, PR [16502](https://github.com/python/mypy/pull/16502))
+ * Fix strict-optional in extending generic TypedDict (Ivan Levkivskyi, PR [16398](https://github.com/python/mypy/pull/16398))
+ * Allow type ignores of PEP 695 constructs (Shantanu, PR [16608](https://github.com/python/mypy/pull/16608))
+ * Refactor class decorator: this enables `type_check_only` support for `TypedDict` and `NamedTuple` (Nikita Sobolev, PR [16469](https://github.com/python/mypy/pull/16469))
+
+#### Performance Improvements
+ * Add fast path to analyzing special form assignments (Jukka Lehtosalo, PR [16561](https://github.com/python/mypy/pull/16561))
+
+#### Improvements to Error Reporting
+ * Don't show docs links for plugin error codes (Ivan Levkivskyi, PR [16383](https://github.com/python/mypy/pull/16383))
+ * Improve error messages for `super` checks and add more tests (Nikita Sobolev, PR [16393](https://github.com/python/mypy/pull/16393))
+ * Add error code for mutable covariant override (Ivan Levkivskyi, PR [16399](https://github.com/python/mypy/pull/16399))
+
+#### Stubgen Improvements
+ * Preserve simple defaults in function signatures (Ali Hamdan, PR [15355](https://github.com/python/mypy/pull/15355))
+ * Include __all__ in output (Jelle Zijlstra, PR [16356](https://github.com/python/mypy/pull/16356))
+ * Fix stubgen regressions with pybind11 and mypy 1.7 (Chad Dombrova, PR [16504](https://github.com/python/mypy/pull/16504))
+
+#### Stubtest Improvements
+ * Improve handling of unrepresentable defaults (Jelle Zijlstra, PR [16433](https://github.com/python/mypy/pull/16433))
+ * Print more helpful errors if a function is missing from stub (Alex Waygood, PR [16517](https://github.com/python/mypy/pull/16517))
+ * Support `@type_check_only` decorator (Nikita Sobolev, PR [16422](https://github.com/python/mypy/pull/16422))
+ * Warn about missing __del__ (Shantanu, PR [16456](https://github.com/python/mypy/pull/16456))
+ * Fix crashes with some uses of final and deprecated (Shantanu, PR [16457](https://github.com/python/mypy/pull/16457))
+
+#### Fixes to Crashes
+ * Fix crash with type alias to `Callable[[Unpack[Tuple[Any, ...]]], Any]` (Alex Waygood, PR [16541](https://github.com/python/mypy/pull/16541))
+ * Fix crash on TypeGuard in __call__ (Ivan Levkivskyi, PR [16516](https://github.com/python/mypy/pull/16516))
+ * Fix crash on invalid enum in method (Ivan Levkivskyi, PR [16511](https://github.com/python/mypy/pull/16511))
+ * Fix crash on unimported Any in TypedDict (Ivan Levkivskyi, PR [16510](https://github.com/python/mypy/pull/16510))
+
+#### Documentation Updates
+ * Update soft-error-limit default value to -1 (Sveinung Gundersen, PR [16542](https://github.com/python/mypy/pull/16542))
+ * Support Sphinx 7.x (Michael R. Crusoe, PR [16460](https://github.com/python/mypy/pull/16460))
+
+#### Other Notable Changes and Fixes
+ * Allow mypy to output a junit file with per-file results (Matthew Wright, PR [16388](https://github.com/python/mypy/pull/16388))
+
+#### Typeshed Updates
+
+Please see [git log](https://github.com/python/typeshed/commits/main?after=4a854366e03dee700109f8e758a08b2457ea2f51+0&branch=main&path=stdlib) for full list of standard library typeshed stub changes.
+
+#### Acknowledgements
+
+​Thanks to all mypy contributors who contributed to this release:
+
+- Alex Waygood
+- Ali Hamdan
+- Chad Dombrova
+- Christoph Tyralla
+- Ilya Priven
+- Ivan Levkivskyi
+- Jelle Zijlstra
+- Jukka Lehtosalo
+- Marcel Telka
+- Matthew Wright
+- Michael R. Crusoe
+- Nikita Sobolev
+- Ole Peder Brandtzæg
+- robjhornby
+- Shantanu
+- Sveinung Gundersen
+- Valentin Stanciu
+
+I’d also like to thank my employer, Dropbox, for supporting mypy development.
+
+Posted by Wesley Collin Wright
 
 ## Mypy 1.7
 
