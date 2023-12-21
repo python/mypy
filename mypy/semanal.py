@@ -2893,6 +2893,7 @@ class SemanticAnalyzer(
         self.process__all__(s)
         self.process__deletable__(s)
         self.process__slots__(s)
+        self.process__module__(s)
 
     def analyze_identity_global_assignment(self, s: AssignmentStmt) -> bool:
         """Special case 'X = X' in global scope.
@@ -4717,6 +4718,22 @@ class SemanticAnalyzer(
                 assert super_type.slots is not None
                 slots.extend(super_type.slots)
             self.type.slots = set(slots)
+
+    def process__module__(self, s: AssignmentStmt) -> None:
+        """
+        Processing ``__module__`` if defined in type.
+        """
+        # if isinstance(self.type, TypeInfo) and "ZoneInfo" in self.type.fullname:
+        #     breakpoint()
+        if (
+            isinstance(self.type, TypeInfo)
+            and len(s.lvalues) == 1
+            and isinstance(s.lvalues[0], NameExpr)
+            and s.lvalues[0].name == "__module__"
+            and s.lvalues[0].kind == MDEF
+            and isinstance(s.rvalue, StrExpr)
+        ):
+            self.type.module_override = s.rvalue.value
 
     #
     # Misc statements

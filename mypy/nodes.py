@@ -2831,6 +2831,7 @@ class TypeInfo(SymbolNode):
     __slots__ = (
         "_fullname",
         "module_name",
+        "module_override",
         "defn",
         "mro",
         "_mro_refs",
@@ -2876,6 +2877,8 @@ class TypeInfo(SymbolNode):
     # information is also in the fullname, but is harder to extract in the
     # case of nested class definitions.
     module_name: str
+    # The value of this type's __module__ attribute, if it's set explicitly.
+    module_override: str | None
     defn: ClassDef  # Corresponding ClassDef
     # Method Resolution Order: the order of looking up attributes. The first
     # value always to refers to this class.
@@ -3042,6 +3045,7 @@ class TypeInfo(SymbolNode):
         self.names = names
         self.defn = defn
         self.module_name = module_name
+        self.module_override = None
         self.type_vars = []
         self.has_param_spec_type = False
         self.has_type_var_tuple_type = False
@@ -3105,6 +3109,17 @@ class TypeInfo(SymbolNode):
     def fullname(self) -> str:
         return self._fullname
 
+    @property
+    def qualname(self) -> str:
+        return self.fullname[len(self.module_name) + 1 :]
+
+    @property
+    def realname(self) -> str:
+        """Like fullname, but adjusted for explicit __module__ attributes"""
+        if self.module_override:
+            return f"{self.module_override}.{self.qualname}"
+        return self.fullname
+
     def is_generic(self) -> bool:
         """Is the type generic (i.e. does it have type variables)?"""
         return len(self.type_vars) > 0
@@ -3147,7 +3162,7 @@ class TypeInfo(SymbolNode):
             raise KeyError(name)
 
     def __repr__(self) -> str:
-        return f"<TypeInfo {self.fullname}>"
+        return f"<TypeInfo {self.realname}>"
 
     def __bool__(self) -> bool:
         # We defined this here instead of just overriding it in
@@ -3253,7 +3268,7 @@ class TypeInfo(SymbolNode):
         if self.bases:
             base = f"Bases({', '.join(type_str(base) for base in self.bases)})"
         mro = "Mro({})".format(
-            ", ".join(item.fullname + str_conv.format_id(item) for item in self.mro)
+            ", ".join(item.realname + str_conv.format_id(item) for item in self.mro)
         )
         names = []
         for name in sorted(self.names):
@@ -3262,7 +3277,7 @@ class TypeInfo(SymbolNode):
             if isinstance(node, Var) and node.type:
                 description += f" ({type_str(node.type)})"
             names.append(description)
-        items = [f"Name({self.fullname})", base, mro, ("Names", names)]
+        items = [f"Name({self.realname})", base, mro, ("Names", names)]
         if self.declared_metaclass:
             items.append(f"DeclaredMetaclass({type_str(self.declared_metaclass)})")
         if self.metaclass_type:
@@ -3274,6 +3289,7 @@ class TypeInfo(SymbolNode):
         data = {
             ".class": "TypeInfo",
             "module_name": self.module_name,
+            "module_override": self.module_override,
             "fullname": self.fullname,
             "names": self.names.serialize(self.fullname),
             "defn": self.defn.serialize(),
@@ -3314,6 +3330,7 @@ class TypeInfo(SymbolNode):
         module_name = data["module_name"]
         ti = TypeInfo(names, defn, module_name)
         ti._fullname = data["fullname"]
+        ti.module_override = data["module_override"]
         # TODO: Is there a reason to reconstruct ti.subtypes?
         ti.abstract_attributes = [(attr[0], attr[1]) for attr in data["abstract_attributes"]]
         ti.type_vars = data["type_vars"]
