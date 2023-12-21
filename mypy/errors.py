@@ -504,15 +504,9 @@ class Errors:
                 # This is necessary to prevent us from misreporting unused ignores on subsequent daemon runs.
                 if info.code and not self.is_error_code_enabled(info.code):
                     record_ignored_line = False
-                elif scope_line not in ignores:
-                    record_ignored_line = False
-                elif not ignores[scope_line]:
-                    record_ignored_line = True
-                elif info.code and self.is_error_code_enabled(info.code):
-                    record_ignored_line = is_ignored_error
                 else:
-                    record_ignored_line = False
-
+                    record_ignored_line = is_ignored_error
+                
                 if record_ignored_line and file not in self.ignored_files:
                     info.hidden = True
                     self._add_error_info(file, info)
