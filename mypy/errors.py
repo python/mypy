@@ -495,6 +495,7 @@ class Errors:
             return
         if not info.blocker:  # Blockers cannot be ignored
             ignores = self.ignored_lines.get(file, {})
+            should_record_ignored_lines_for_info = self._should_record_ignored_lines(info)
             # Check each line in this context for "type: ignore" comments.
             # line == end_line for most nodes, so we only loop once.
             for scope_line in lines:
@@ -505,7 +506,7 @@ class Errors:
                     self.used_ignored_lines[file][scope_line].append(
                         (info.code or codes.MISC).code
                     )
-                    if self._should_record_ignored_lines(info):
+                    if should_record_ignored_lines_for_info:
                         info.hidden = True
                         self._add_error_info(file, info)
                     return
