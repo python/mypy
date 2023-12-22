@@ -301,7 +301,7 @@ reveal_type(X._field_defaults)  # N: Revealed type is "builtins.dict[builtins.st
 # but it's inferred as `Mapping[str, object]` here due to the fixture we're using
 reveal_type(X.__annotations__)  # N: Revealed type is "typing.Mapping[builtins.str, builtins.object]"
 
-[builtins fixtures/dict.pyi]
+[builtins fixtures/dict-full.pyi]
 
 [case testNewNamedTupleUnit]
 from typing import NamedTuple

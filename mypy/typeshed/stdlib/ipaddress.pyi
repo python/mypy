@@ -1,5 +1,5 @@
 import sys
-from collections.abc import Container, Iterable, Iterator
+from collections.abc import Iterable, Iterator
 from typing import Any, Generic, SupportsInt, TypeVar, overload
 from typing_extensions import Literal, Self, TypeAlias
 
@@ -70,7 +70,7 @@ class _BaseAddress(_IPAddressBase, SupportsInt):
     @property
     def packed(self) -> bytes: ...
 
-class _BaseNetwork(_IPAddressBase, Container[_A], Iterable[_A], Generic[_A]):
+class _BaseNetwork(_IPAddressBase, Generic[_A]):
     network_address: _A
     netmask: _A
     def __init__(self, address: object, strict: bool = ...) -> None: ...

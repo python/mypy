@@ -4,27 +4,30 @@ from _ast import *
 from _typeshed import ReadableBuffer, Unused
 from collections.abc import Iterator
 from typing import Any, TypeVar as _TypeVar, overload
-from typing_extensions import Literal
+from typing_extensions import Literal, deprecated
 
 if sys.version_info >= (3, 8):
     class _ABC(type):
         if sys.version_info >= (3, 9):
             def __init__(cls, *args: Unused) -> None: ...
 
+    @deprecated("Replaced by ast.Constant; removal scheduled for Python 3.14")
     class Num(Constant, metaclass=_ABC):
         value: int | float | complex
-
+    @deprecated("Replaced by ast.Constant; removal scheduled for Python 3.14")
     class Str(Constant, metaclass=_ABC):
         value: str
         # Aliases for value, for backwards compatibility
         s: str
-
+    @deprecated("Replaced by ast.Constant; removal scheduled for Python 3.14")
     class Bytes(Constant, metaclass=_ABC):
         value: bytes
         # Aliases for value, for backwards compatibility
         s: bytes
-
+    @deprecated("Replaced by ast.Constant; removal scheduled for Python 3.14")
     class NameConstant(Constant, metaclass=_ABC): ...
+
+    @deprecated("Replaced by ast.Constant; removal scheduled for Python 3.14")
     class Ellipsis(Constant, metaclass=_ABC): ...
 
 if sys.version_info >= (3, 9):

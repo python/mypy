@@ -253,6 +253,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                 t.prefix.arg_kinds + repl.arg_kinds,
                 t.prefix.arg_names + repl.arg_names,
                 variables=[*t.prefix.variables, *repl.variables],
+                imprecise_arg_kinds=repl.imprecise_arg_kinds,
             )
         else:
             # We could encode Any as trivial parameters etc., but it would be too verbose.
@@ -306,18 +307,24 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         suffix = self.expand_types(t.arg_types[star_index + 1 :])
 
         var_arg_type = get_proper_type(var_arg.type)
-        # We have something like Unpack[Tuple[Unpack[Ts], X1, X2]]
-        if isinstance(var_arg_type, TupleType):
-            expanded_tuple = var_arg_type.accept(self)
-            assert isinstance(expanded_tuple, ProperType) and isinstance(expanded_tuple, TupleType)
-            expanded_items = expanded_tuple.items
-            fallback = var_arg_type.partial_fallback
+        if isinstance(var_arg_type, Instance):
+            # we have something like Unpack[Tuple[Any, ...]]
+            new_unpack = var_arg
         else:
-            # We have plain Unpack[Ts]
-            assert isinstance(var_arg_type, TypeVarTupleType)
-            fallback = var_arg_type.tuple_fallback
-            expanded_items = self.expand_unpack(var_arg)
-        new_unpack = UnpackType(TupleType(expanded_items, fallback))
+            if isinstance(var_arg_type, TupleType):
+                # We have something like Unpack[Tuple[Unpack[Ts], X1, X2]]
+                expanded_tuple = var_arg_type.accept(self)
+                assert isinstance(expanded_tuple, ProperType) and isinstance(
+                    expanded_tuple, TupleType
+                )
+                expanded_items = expanded_tuple.items
+                fallback = var_arg_type.partial_fallback
+            else:
+                # We have plain Unpack[Ts]
+                assert isinstance(var_arg_type, TypeVarTupleType), type(var_arg_type)
+                fallback = var_arg_type.tuple_fallback
+                expanded_items = self.expand_unpack(var_arg)
+            new_unpack = UnpackType(TupleType(expanded_items, fallback))
         return prefix + [new_unpack] + suffix
 
     def visit_callable_type(self, t: CallableType) -> CallableType:

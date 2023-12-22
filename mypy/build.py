@@ -2174,8 +2174,8 @@ class State:
                     self.id,
                     self.xpath,
                     source,
-                    self.ignore_all or self.options.ignore_errors,
-                    self.options,
+                    ignore_errors=self.ignore_all or self.options.ignore_errors,
+                    options=self.options,
                 )
 
             else:

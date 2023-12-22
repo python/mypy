@@ -2235,3 +2235,45 @@ z: Tuple[int, Unpack[Tuple[int, ...]]] = (1,)
 w: Tuple[int, Unpack[Tuple[int, ...]]] = (1, *[2, 3, 4])
 t: Tuple[int, Unpack[Tuple[int, ...]]] = (1, *(2, 3, 4))
 [builtins fixtures/tuple.pyi]
+
+[case testAliasToCallableWithUnpack]
+from typing import Any, Callable, Tuple, Unpack
+
+_CallableValue = Callable[[Unpack[Tuple[Any, ...]]], Any]
+def higher_order(f: _CallableValue) -> None: ...
+
+def good1(*args: int) -> None: ...
+def good2(*args: str) -> int: ...
+
+def bad1(a: str, b: int, /) -> None: ...
+def bad2(c: bytes, *args: int) -> str: ...
+def bad3(*, d: str) -> int: ...
+def bad4(**kwargs: None) -> None: ...
+
+higher_order(good1)
+higher_order(good2)
+
+higher_order(bad1)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[str, int], None]"; expected "Callable[[VarArg(Any)], Any]"
+higher_order(bad2)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[bytes, VarArg(int)], str]"; expected "Callable[[VarArg(Any)], Any]"
+higher_order(bad3)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[NamedArg(str, 'd')], int]"; expected "Callable[[VarArg(Any)], Any]"
+higher_order(bad4)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[KwArg(None)], None]"; expected "Callable[[VarArg(Any)], Any]"
+[builtins fixtures/tuple.pyi]
+
+[case testAliasToCallableWithUnpack2]
+from typing import Any, Callable, Tuple, Unpack
+
+_CallableValue = Callable[[int, str, Unpack[Tuple[Any, ...]], int], Any]
+def higher_order(f: _CallableValue) -> None: ...
+
+def good(a: int, b: str, *args: Unpack[Tuple[Unpack[Tuple[Any, ...]], int]]) -> int: ...
+def bad1(a: str, b: int, /) -> None: ...
+def bad2(c: bytes, *args: int) -> str: ...
+def bad3(*, d: str) -> int: ...
+def bad4(**kwargs: None) -> None: ...
+
+higher_order(good)
+higher_order(bad1)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[str, int], None]"; expected "Callable[[int, str, VarArg(Unpack[Tuple[Unpack[Tuple[Any, ...]], int]])], Any]"
+higher_order(bad2)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[bytes, VarArg(int)], str]"; expected "Callable[[int, str, VarArg(Unpack[Tuple[Unpack[Tuple[Any, ...]], int]])], Any]"
+higher_order(bad3)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[NamedArg(str, 'd')], int]"; expected "Callable[[int, str, VarArg(Unpack[Tuple[Unpack[Tuple[Any, ...]], int]])], Any]"
+higher_order(bad4)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[KwArg(None)], None]"; expected "Callable[[int, str, VarArg(Unpack[Tuple[Unpack[Tuple[Any, ...]], int]])], Any]"
+[builtins fixtures/tuple.pyi]

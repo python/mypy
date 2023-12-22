@@ -33,6 +33,9 @@ __all__ = [
 if sys.version_info >= (3, 8):
     __all__ += ["open_code"]
 
+if sys.version_info >= (3, 11):
+    __all__ += ["DEFAULT_BUFFER_SIZE", "IncrementalNewlineDecoder", "text_encoding"]
+
 _T = TypeVar("_T")
 
 DEFAULT_BUFFER_SIZE: Literal[8192]
@@ -94,7 +97,7 @@ class BufferedIOBase(IOBase):
 
 class FileIO(RawIOBase, BinaryIO):  # type: ignore[misc]  # incompatible definitions of writelines in the base classes
     mode: str
-    name: FileDescriptorOrPath  # type: ignore[assignment]
+    name: FileDescriptorOrPath
     def __init__(
         self, file: FileDescriptorOrPath, mode: str = ..., closefd: bool = ..., opener: _Opener | None = ...
     ) -> None: ...

@@ -119,9 +119,10 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
                 self.funcs_to_decorators[dec.func] = decorators_to_store
         super().visit_decorator(dec)
 
-    def visit_func_def(self, fdef: FuncItem) -> None:
+    def visit_func_def(self, fdef: FuncDef) -> None:
         # TODO: What about overloaded functions?
         self.visit_func(fdef)
+        self.visit_symbol_node(fdef)
 
     def visit_lambda_expr(self, expr: LambdaExpr) -> None:
         self.visit_func(expr)

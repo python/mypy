@@ -128,6 +128,7 @@ class StreamReaderProtocol(FlowControlMixin, protocols.Protocol):
         client_connected_cb: _ClientConnectedCallback | None = None,
         loop: events.AbstractEventLoop | None = None,
     ) -> None: ...
+    def __del__(self) -> None: ...
 
 class StreamWriter:
     def __init__(
@@ -161,6 +162,8 @@ class StreamWriter:
         async def start_tls(
             self, sslcontext: ssl.SSLContext, *, server_hostname: str | None = None, ssl_handshake_timeout: float | None = None
         ) -> None: ...
+    if sys.version_info >= (3, 11):
+        def __del__(self) -> None: ...
 
 class StreamReader(AsyncIterator[bytes]):
     def __init__(self, limit: int = 65536, loop: events.AbstractEventLoop | None = None) -> None: ...

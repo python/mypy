@@ -6560,3 +6560,26 @@ class C:
 [out]
 [out2]
 tmp/a.py:3: note: Revealed type is "TypedDict('b.C.Hidden@5', {'x': builtins.int})"
+
+[case testNoIncrementalCrashOnInvalidEnumMethod]
+import a
+[file a.py]
+from lib import TheClass
+[file a.py.2]
+from lib import TheClass
+x: TheClass
+reveal_type(x.enum_type)
+[file lib.py]
+import enum
+
+class TheClass:
+    def __init__(self) -> None:
+        names = ["foo"]
+        pyenum = enum.Enum('Blah', {  # type: ignore[misc]
+            x.upper(): x
+            for x in names
+        })
+        self.enum_type = pyenum
+[out]
+[out2]
+tmp/a.py:3: note: Revealed type is "def (value: builtins.object) -> lib.TheClass.pyenum@6"

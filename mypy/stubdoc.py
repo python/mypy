@@ -36,11 +36,19 @@ def is_valid_type(s: str) -> bool:
 class ArgSig:
     """Signature info for a single argument."""
 
-    def __init__(self, name: str, type: str | None = None, default: bool = False):
+    def __init__(
+        self,
+        name: str,
+        type: str | None = None,
+        *,
+        default: bool = False,
+        default_value: str = "...",
+    ) -> None:
         self.name = name
         self.type = type
         # Does this argument have a default value?
         self.default = default
+        self.default_value = default_value
 
     def is_star_arg(self) -> bool:
         return self.name.startswith("*") and not self.name.startswith("**")
@@ -59,6 +67,7 @@ class ArgSig:
                 self.name == other.name
                 and self.type == other.type
                 and self.default == other.default
+                and self.default_value == other.default_value
             )
         return False
 
@@ -119,10 +128,10 @@ class FunctionSig(NamedTuple):
             if arg_type:
                 arg_def += ": " + arg_type
                 if arg.default:
-                    arg_def += " = ..."
+                    arg_def += f" = {arg.default_value}"
 
             elif arg.default:
-                arg_def += "=..."
+                arg_def += f"={arg.default_value}"
 
             args.append(arg_def)
 
@@ -374,7 +383,8 @@ def infer_ret_type_sig_from_docstring(docstr: str, name: str) -> str | None:
 
 def infer_ret_type_sig_from_anon_docstring(docstr: str) -> str | None:
     """Convert signature in form of "(self: TestClass, arg0) -> int" to their return type."""
-    return infer_ret_type_sig_from_docstring("stub" + docstr.strip(), "stub")
+    lines = ["stub" + line.strip() for line in docstr.splitlines() if line.strip().startswith("(")]
+    return infer_ret_type_sig_from_docstring("".join(lines), "stub")
 
 
 def parse_signature(sig: str) -> tuple[str, list[str], list[str]] | None:

@@ -99,6 +99,7 @@ from mypy.nodes import (
     NameExpr,
     OpExpr,
     OverloadedFuncDef,
+    SetExpr,
     Statement,
     StrExpr,
     TempNode,
@@ -491,15 +492,21 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             if kind.is_named() and not any(arg.name.startswith("*") for arg in args):
                 args.append(ArgSig("*"))
 
+            default = "..."
             if arg_.initializer:
                 if not typename:
                     typename = self.get_str_type_of_node(arg_.initializer, True, False)
+                potential_default, valid = self.get_str_default_of_node(arg_.initializer)
+                if valid and len(potential_default) <= 200:
+                    default = potential_default
             elif kind == ARG_STAR:
                 name = f"*{name}"
             elif kind == ARG_STAR2:
                 name = f"**{name}"
 
-            args.append(ArgSig(name, typename, default=bool(arg_.initializer)))
+            args.append(
+                ArgSig(name, typename, default=bool(arg_.initializer), default_value=default)
+            )
 
         if ctx.class_info is not None and all(
             arg.type is None and arg.default is False for arg in args
@@ -1234,6 +1241,70 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         # This is some other unary expr, we cannot do anything with it (yet?).
         return expr
 
+    def get_str_default_of_node(self, rvalue: Expression) -> tuple[str, bool]:
+        """Get a string representation of the default value of a node.
+
+        Returns a 2-tuple of the default and whether or not it is valid.
+        """
+        if isinstance(rvalue, NameExpr):
+            if rvalue.name in ("None", "True", "False"):
+                return rvalue.name, True
+        elif isinstance(rvalue, (IntExpr, FloatExpr)):
+            return f"{rvalue.value}", True
+        elif isinstance(rvalue, UnaryExpr):
+            if isinstance(rvalue.expr, (IntExpr, FloatExpr)):
+                return f"{rvalue.op}{rvalue.expr.value}", True
+        elif isinstance(rvalue, StrExpr):
+            return repr(rvalue.value), True
+        elif isinstance(rvalue, BytesExpr):
+            return "b" + repr(rvalue.value).replace("\\\\", "\\"), True
+        elif isinstance(rvalue, TupleExpr):
+            items_defaults = []
+            for e in rvalue.items:
+                e_default, valid = self.get_str_default_of_node(e)
+                if not valid:
+                    break
+                items_defaults.append(e_default)
+            else:
+                closing = ",)" if len(items_defaults) == 1 else ")"
+                default = "(" + ", ".join(items_defaults) + closing
+                return default, True
+        elif isinstance(rvalue, ListExpr):
+            items_defaults = []
+            for e in rvalue.items:
+                e_default, valid = self.get_str_default_of_node(e)
+                if not valid:
+                    break
+                items_defaults.append(e_default)
+            else:
+                default = "[" + ", ".join(items_defaults) + "]"
+                return default, True
+        elif isinstance(rvalue, SetExpr):
+            items_defaults = []
+            for e in rvalue.items:
+                e_default, valid = self.get_str_default_of_node(e)
+                if not valid:
+                    break
+                items_defaults.append(e_default)
+            else:
+                if items_defaults:
+                    default = "{" + ", ".join(items_defaults) + "}"
+                    return default, True
+        elif isinstance(rvalue, DictExpr):
+            items_defaults = []
+            for k, v in rvalue.items:
+                if k is None:
+                    break
+                k_default, k_valid = self.get_str_default_of_node(k)
+                v_default, v_valid = self.get_str_default_of_node(v)
+                if not (k_valid and v_valid):
+                    break
+                items_defaults.append(f"{k_default}: {v_default}")
+            else:
+                default = "{" + ", ".join(items_defaults) + "}"
+                return default, True
+        return "...", False
+
     def should_reexport(self, name: str, full_module: str, name_is_alias: bool) -> bool:
         is_private = self.is_private_name(name, full_module + "." + name)
         if (
@@ -1629,6 +1700,7 @@ def generate_stubs(options: Options) -> None:
                 doc_dir=options.doc_dir,
                 include_private=options.include_private,
                 export_less=options.export_less,
+                include_docstrings=options.include_docstrings,
             )
     num_modules = len(all_modules)
     if not options.quiet and num_modules > 0:
@@ -1761,8 +1833,7 @@ def parse_options(args: list[str]) -> Options:
         parser.error("Cannot specify both --parse-only/--no-analysis and --inspect-mode")
 
     # Create the output folder if it doesn't already exist.
-    if not os.path.exists(ns.output_dir):
-        os.makedirs(ns.output_dir)
+    os.makedirs(ns.output_dir, exist_ok=True)
 
     return Options(
         pyversion=pyversion,

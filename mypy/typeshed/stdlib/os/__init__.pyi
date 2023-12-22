@@ -26,7 +26,7 @@ from contextlib import AbstractContextManager
 from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper as _TextIOWrapper
 from subprocess import Popen
 from typing import IO, Any, AnyStr, BinaryIO, Generic, NoReturn, Protocol, TypeVar, overload, runtime_checkable
-from typing_extensions import Final, Literal, Self, TypeAlias, final
+from typing_extensions import Final, Literal, Self, TypeAlias, Unpack, final
 
 from . import path as _path
 
@@ -248,7 +248,7 @@ class _Environ(MutableMapping[AnyStr, AnyStr], Generic[AnyStr]):
             unsetenv: Callable[[AnyStr, AnyStr], object],
         ) -> None: ...
 
-    def setdefault(self, key: AnyStr, value: AnyStr) -> AnyStr: ...  # type: ignore[override]
+    def setdefault(self, key: AnyStr, value: AnyStr) -> AnyStr: ...
     def copy(self) -> dict[AnyStr, AnyStr]: ...
     def __delitem__(self, key: AnyStr) -> None: ...
     def __getitem__(self, key: AnyStr) -> AnyStr: ...
@@ -847,8 +847,12 @@ def execl(file: StrOrBytesPath, __arg0: StrOrBytesPath, *args: StrOrBytesPath) -
 def execlp(file: StrOrBytesPath, __arg0: StrOrBytesPath, *args: StrOrBytesPath) -> NoReturn: ...
 
 # These are: execle(file, *args, env) but env is pulled from the last element of the args.
-def execle(file: StrOrBytesPath, __arg0: StrOrBytesPath, *args: Any) -> NoReturn: ...
-def execlpe(file: StrOrBytesPath, __arg0: StrOrBytesPath, *args: Any) -> NoReturn: ...
+def execle(
+    file: StrOrBytesPath, *args: Unpack[tuple[StrOrBytesPath, Unpack[tuple[StrOrBytesPath, ...]], _ExecEnv]]
+) -> NoReturn: ...
+def execlpe(
+    file: StrOrBytesPath, *args: Unpack[tuple[StrOrBytesPath, Unpack[tuple[StrOrBytesPath, ...]], _ExecEnv]]
+) -> NoReturn: ...
 
 # The docs say `args: tuple or list of strings`
 # The implementation enforces tuple or list so we can't use Sequence.
@@ -923,10 +927,16 @@ def times() -> times_result: ...
 def waitpid(__pid: int, __options: int) -> tuple[int, int]: ...
 
 if sys.platform == "win32":
-    if sys.version_info >= (3, 8):
-        def startfile(path: StrOrBytesPath, operation: str | None = None) -> None: ...
+    if sys.version_info >= (3, 10):
+        def startfile(
+            filepath: StrOrBytesPath,
+            operation: str = ...,
+            arguments: str = "",
+            cwd: StrOrBytesPath | None = None,
+            show_cmd: int = 1,
+        ) -> None: ...
     else:
-        def startfile(filepath: StrOrBytesPath, operation: str | None = None) -> None: ...
+        def startfile(filepath: StrOrBytesPath, operation: str = ...) -> None: ...
 
 else:
     def spawnlp(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: StrOrBytesPath) -> int: ...
@@ -964,9 +974,9 @@ else:
     def WTERMSIG(status: int) -> int: ...
     if sys.version_info >= (3, 8):
         def posix_spawn(
-            path: StrOrBytesPath,
-            argv: _ExecVArgs,
-            env: _ExecEnv,
+            __path: StrOrBytesPath,
+            __argv: _ExecVArgs,
+            __env: _ExecEnv,
             *,
             file_actions: Sequence[tuple[Any, ...]] | None = ...,
             setpgroup: int | None = ...,
@@ -977,9 +987,9 @@ else:
             scheduler: tuple[Any, sched_param] | None = ...,
         ) -> int: ...
         def posix_spawnp(
-            path: StrOrBytesPath,
-            argv: _ExecVArgs,
-            env: _ExecEnv,
+            __path: StrOrBytesPath,
+            __argv: _ExecVArgs,
+            __env: _ExecEnv,
             *,
             file_actions: Sequence[tuple[Any, ...]] | None = ...,
             setpgroup: int | None = ...,
