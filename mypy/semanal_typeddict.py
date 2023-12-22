@@ -119,9 +119,10 @@ class TypedDictAnalyzer:
         typeddict_bases: list[Expression] = []
         typeddict_bases_set = set()
         for expr in defn.base_type_exprs:
-            ok, info, _ = self.check_typeddict(expr, None, False)
-            if ok and info is not None:
+            ok, maybe_type_info, _ = self.check_typeddict(expr, None, False)
+            if ok and maybe_type_info is not None:
                 # expr is a CallExpr
+                info = maybe_type_info
                 typeddict_bases_set.add(info.fullname)
                 typeddict_bases.append(expr)
             elif isinstance(expr, RefExpr) and expr.fullname in TPDICT_NAMES:
@@ -183,10 +184,10 @@ class TypedDictAnalyzer:
         required_keys: set[str],
         ctx: Context,
     ) -> None:
+        base_args: list[Type] = []
         if isinstance(base, RefExpr):
             assert isinstance(base.node, TypeInfo)
             info = base.node
-            base_args: list[Type] = []
         elif isinstance(base, IndexExpr):
             assert isinstance(base.base, RefExpr)
             assert isinstance(base.base.node, TypeInfo)
@@ -199,7 +200,6 @@ class TypedDictAnalyzer:
             assert isinstance(base, CallExpr)
             assert isinstance(base.analyzed, TypedDictExpr)
             info = base.analyzed.info
-            base_args: list[Type] = []
 
         assert info.typeddict_type is not None
         base_typed_dict = info.typeddict_type
