@@ -2164,8 +2164,16 @@ class SemanticAnalyzer(
             if (
                 isinstance(base_expr, RefExpr)
                 and base_expr.fullname in TYPED_NAMEDTUPLE_NAMES + TPDICT_NAMES
+            ) or (
+                isinstance(base_expr, CallExpr)
+                and isinstance(base_expr.callee, RefExpr)
+                and base_expr.callee.fullname in TPDICT_NAMES
             ):
                 # Ignore magic bases for now.
+                # For example:
+                #  class Foo(TypedDict): ...  # RefExpr
+                #  class Foo(NamedTuple): ...  # RefExpr
+                #  class Foo(TypedDict("Foo", {"a": int})): ...  # CallExpr
                 continue
 
             try:
