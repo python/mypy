@@ -395,6 +395,8 @@ class NodeReplaceVisitor(TraverserVisitor):
         # tables separately, unlike normal classes.
         self.process_type_info(info)
         for name, node in info.names.items():
+            if isinstance(node.node, TypeInfo):
+                continue  # There might be nested classes in some cases, skip them
             if node.node:
                 node.node.accept(self)
 

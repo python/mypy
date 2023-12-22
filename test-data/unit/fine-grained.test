@@ -10314,23 +10314,25 @@ import m
 from typing import NamedTuple
 
 class NT(NamedTuple):
-    class C: ...
+    class C: ...  # classes are fine
     x: int
     y: int
+    assert True  # assert statements are not allowed
 
 [file m.py.2]
 from typing import NamedTuple
 
 class NT(NamedTuple):
-    class C: ...
+    class C: ...  # classes are fine
     x: int
     y: int
+    assert True  # assert statements are not allowed
 # change
 [builtins fixtures/tuple.pyi]
 [out]
-m.py:4: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+m.py:7: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
 ==
-m.py:4: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+m.py:7: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
 
 [case testNamedTupleNestedClassRecheck]
 import n
@@ -10345,6 +10347,7 @@ class NT(NamedTuple):
     class C: ...
     x: int
     y: A
+    assert True
 
 [file f.py]
 A = int
@@ -10352,9 +10355,9 @@ A = int
 A = str
 [builtins fixtures/tuple.pyi]
 [out]
-m.py:5: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+m.py:8: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
 ==
-m.py:5: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+m.py:8: error: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
 
 [case testTypedDictNestedClassRecheck]
 import n

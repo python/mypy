@@ -368,6 +368,46 @@ class X(NamedTuple):
     y = 2  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
 [builtins fixtures/tuple.pyi]
 
+[case testNewNamedTupleWithNestedClass]
+from typing import NamedTuple
+
+class A(NamedTuple):
+    x: int
+    class B:
+        x: str
+
+a: A
+reveal_type(A.B)  # N: Revealed type is "def () -> __main__.A.B"
+b: A.B
+reveal_type(b.x)  # N: Revealed type is "builtins.str"
+[builtins fixtures/tuple.pyi]
+
+[case testNewNamedTupleWithNestedNamedTuple]
+from typing import NamedTuple
+
+class A(NamedTuple):
+    x: int
+    class B(NamedTuple):
+        x: str
+        y: int = 1
+        def method(self) -> int: ...
+
+# Correct:
+A(1)
+A.B('a')
+A.B('a', 2)
+
+b: A.B
+reveal_type(b.x)  # N: Revealed type is "builtins.str"
+reveal_type(b.y)  # N: Revealed type is "builtins.int"
+reveal_type(b.method())  # N: Revealed type is "builtins.int"
+
+# Incorrect:
+A.B()  # E: Missing positional argument "x" in call to "B"
+A.B(1, 'a')  # E: Argument 1 to "B" has incompatible type "int"; expected "str" \
+             # E: Argument 2 to "B" has incompatible type "str"; expected "int"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeUsingTypeCNamedTuple]
 from typing import NamedTuple, Type
 
