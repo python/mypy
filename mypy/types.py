@@ -56,7 +56,7 @@ JsonDict: _TypeAlias = Dict[str, Any]
 # 1. types.LiteralType's serialize and deserialize methods: this method
 #    needs to make sure it can convert the below types into JSON and back.
 #
-# 2. types.LiteralType's 'alue_repr` method: this method is ultimately used
+# 2. types.LiteralType's 'value_repr` method: this method is ultimately used
 #    by TypeStrVisitor's visit_literal_type to generate a reasonable
 #    repr-able output.
 #
