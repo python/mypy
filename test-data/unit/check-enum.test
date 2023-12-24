@@ -175,6 +175,59 @@ def infer_truth(truth: Truth) -> None:
     reveal_type(truth.value) # N: Revealed type is "builtins.bool"
 [builtins fixtures/bool.pyi]
 
+[case testEnumNameAndValueForUnion]
+from typing import Union
+from enum import Enum
+class E1(Enum):
+    A = 1
+    B = 2
+class E2(Enum):
+    A = 3
+    B = 4
+e: Union[E1, E2]
+reveal_type(e.value)    # N: Revealed type is "Union[Literal[1]?, Literal[2]?, Literal[3]?, Literal[4]?]"
+[builtins fixtures/bool.pyi]
+
+[case testEnumNameAndValueForUnionOfHeterogenousEnums]
+from typing import Union
+from enum import Enum
+class E1(Enum):
+    A = 1
+    B = 'b'
+class E2(Enum):
+    C = 3
+    D = 'd'
+e: Union[E1, E2]
+reveal_type(e.value)    # N: Revealed type is "Any"
+[builtins fixtures/bool.pyi]
+
+[case testEnumNameAndValueForHeterogenousUnionOfHomogenousEnums]
+from typing import Union
+from enum import Enum
+class E1(Enum):
+    A = 1
+    B = 2
+class E2(Enum):
+    C = 'c'
+    D = 'd'
+e: Union[E1, E2]
+reveal_type(e.value)    # N: Revealed type is "Union[Literal[1]?, Literal[2]?, Literal['c']?, Literal['d']?]"
+[builtins fixtures/bool.pyi]
+
+[case testEnumNameAndValueForEnumsWithNonInstanceItems]
+from typing import Union
+from typing_extensions import Literal
+from enum import Enum
+class E1(Enum):
+    A = 1
+    B = 2
+class E2(Enum):
+    C = 3
+    D = 4
+e: Union[E1, Literal[E2.C]]
+reveal_type(e.value)    # N: Revealed type is "Any"
+[builtins fixtures/bool.pyi]
+
 [case testEnumUnique]
 import enum
 @enum.unique
