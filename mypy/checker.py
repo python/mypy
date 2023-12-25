@@ -5046,7 +5046,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # Create a dummy subject expression to handle cases where a match
         # statement's subject is not a literal value which prevent us from correctly
         # narrowing types and checking exhaustivity
-        named_subject = NameExpr("match") if isinstance(s.subject, CallExpr) else s.subject
+        named_subject = NameExpr("dummy-match") if isinstance(s.subject, CallExpr) else s.subject
         with self.binder.frame_context(can_skip=False, fall_through=0):
             subject_type = get_proper_type(self.expr_checker.accept(s.subject))
             self.store_type(named_subject, subject_type)
