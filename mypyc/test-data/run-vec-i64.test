@@ -364,3 +364,10 @@ v: Final = vec[i64]([5, 6])
 
 def test_final() -> None:
     assert v == vec[i64]([5, 6])
+
+def fdefault(v: vec[i64] = vec[i64]([5])) -> vec[i64]:
+    return v
+
+def test_default_arg() -> None:
+    assert fdefault() == vec[i64]([5])
+    assert fdefault(vec[i64]()) == vec[i64]()

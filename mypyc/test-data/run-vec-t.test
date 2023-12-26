@@ -344,6 +344,13 @@ v: Final = vec[str](["x", "y"])
 def test_final() -> None:
     assert v == vec[str](["x", "y"])
 
+def fdefault(v: vec[str] = vec[str](["x"])) -> vec[str]:
+    return v
+
+def test_default_arg() -> None:
+    assert fdefault() == vec[str](["x"])
+    assert fdefault(vec[str](["y"])) == vec[str](["y"])
+
 [case testVecTBasicOps_python_3_10]
 from vecs import vec, append, remove, pop
 
