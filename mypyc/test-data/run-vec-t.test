@@ -2,7 +2,7 @@
 -- Also tests for vec[t | None], which uses the same representation.
 
 [case testVecTBasicOps]
-from typing import Final, Any, Iterable, Optional
+from typing import Final, Any, Iterable, Optional, Tuple
 
 from mypy_extensions import i64
 from vecs import vec, append, remove, pop
@@ -350,6 +350,25 @@ def fdefault(v: vec[str] = vec[str](["x"])) -> vec[str]:
 def test_default_arg() -> None:
     assert fdefault() == vec[str](["x"])
     assert fdefault(vec[str](["y"])) == vec[str](["y"])
+
+def ftuple(b: bool) -> Tuple[vec[str], vec[str]]:
+    if b:
+        raise RuntimeError()
+    return vec[str](["x"]), vec[str]()
+
+def test_tuple() -> None:
+    t = ftuple(False)
+    assert len(t) == 2
+    assert t[0] == vec[str](["x"])
+    assert t[1] == vec[str]()
+    a, b = t
+    assert a == t[0]
+    assert b == t[1]
+    try:
+        ftuple(True)
+        assert False
+    except RuntimeError:
+        pass
 
 [case testVecTBasicOps_python_3_10]
 from vecs import vec, append, remove, pop

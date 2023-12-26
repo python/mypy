@@ -1,5 +1,5 @@
 [case testVecNestedBasicOps]
-from typing import Final, Any, Iterable, Optional
+from typing import Final, Any, Iterable, Optional, Tuple
 import sys
 
 from mypy_extensions import i64
@@ -430,3 +430,19 @@ def test_default_arg() -> None:
     assert fdefault() == vec[vec[str]]()
     v = vec[vec[str]]([vec[str](["x"])])
     assert fdefault(v) == v
+
+def ftuple(b: bool) -> Tuple[vec[vec[str]], vec[vec[str]]]:
+    if b:
+        raise RuntimeError()
+    return vec[vec[str]]([vec[str]()]), vec[vec[str]]()
+
+def test_tuple() -> None:
+    t = ftuple(False)
+    assert len(t) == 2
+    assert t[0] == vec[vec[str]]([vec[str]()])
+    assert t[1] == vec[vec[str]]()
+    a, b = t
+    assert a == t[0]
+    assert b == t[1]
+    with assertRaises(RuntimeError):
+        ftuple(True)

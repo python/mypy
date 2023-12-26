@@ -2,7 +2,7 @@
 -- which use a similar runtime representation.
 
 [case testVecI64BasicOps]
-from typing import Final, Any, Iterable
+from typing import Final, Any, Iterable, Tuple
 
 from mypy_extensions import i64
 from vecs import vec, append, remove, pop
@@ -371,3 +371,19 @@ def fdefault(v: vec[i64] = vec[i64]([5])) -> vec[i64]:
 def test_default_arg() -> None:
     assert fdefault() == vec[i64]([5])
     assert fdefault(vec[i64]()) == vec[i64]()
+
+def ftuple(b: bool) -> Tuple[vec[i64], vec[i64]]:
+    if b:
+        raise RuntimeError()
+    return vec[i64]([5]), vec[i64]()
+
+def test_tuple() -> None:
+    t = ftuple(False)
+    assert len(t) == 2
+    assert t[0] == vec[i64]([5])
+    assert t[1] == vec[i64]()
+    a, b = t
+    assert a == t[0]
+    assert b == t[1]
+    with assertRaises(RuntimeError):
+        ftuple(True)
