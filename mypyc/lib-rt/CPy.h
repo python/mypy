@@ -77,10 +77,7 @@ typedef struct CPyAttr_Context {
         size_t offset;
         size_t mask;
     } bitmap;
-    struct {                    // Used by the generic PyObject * setter.
-        const char *name;
-        bool (*type_check_function)(PyObject *);
-    } boxed_type;
+    bool allow_none;
 } CPyAttr_Context;
 
 PyObject *CPyAttr_GetterPyObject(PyObject *self, CPyAttr_Context *context);
@@ -88,25 +85,21 @@ PyObject *CPyAttr_GetterTagged(PyObject *self, CPyAttr_Context *context);
 PyObject *CPyAttr_GetterBool(PyObject *self, CPyAttr_Context *context);
 PyObject *CPyAttr_GetterFloat(PyObject *self, CPyAttr_Context *context);
 int CPyAttr_SetterPyObject(PyObject *self, PyObject *value, CPyAttr_Context *context);
+
+int CPyAttr_SetterUnicode(PyObject *self, PyObject *value, CPyAttr_Context *context);
+int CPyAttr_SetterLongOrNone(PyObject *self, PyObject *value, CPyAttr_Context *context);
+int CPyAttr_SetterBoolOrNone(PyObject *self, PyObject *value, CPyAttr_Context *context);
+int CPyAttr_SetterFloatOrNone(PyObject *self, PyObject *value, CPyAttr_Context *context);
+int CPyAttr_SetterTuple(PyObject *self, PyObject *value, CPyAttr_Context *context);
+int CPyAttr_SetterList(PyObject *self, PyObject *value, CPyAttr_Context *context);
+int CPyAttr_SetterDict(PyObject *self, PyObject *value, CPyAttr_Context *context);
+int CPyAttr_SetterSet(PyObject *self, PyObject *value, CPyAttr_Context *context);
+
 int CPyAttr_SetterTagged(PyObject *self, PyObject *value, CPyAttr_Context *context);
 int CPyAttr_SetterBool(PyObject *self, PyObject *value, CPyAttr_Context *context);
 int CPyAttr_SetterFloat(PyObject *self, PyObject *value, CPyAttr_Context *context);
 PyObject *CPyAttr_UndefinedError(PyObject *self, CPyAttr_Context *context);
 int CPyAttr_UndeletableError(PyObject *self, CPyAttr_Context *context);
-
-bool CPyAttr_UnicodeTypeCheck(PyObject *o);
-bool CPyAttr_UnicodeOrNoneTypeCheck(PyObject *o);
-bool CPyAttr_LongOrNoneTypeCheck(PyObject *o);
-bool CPyAttr_BoolOrNoneTypeCheck(PyObject *o);
-bool CPyAttr_FloatOrNoneTypeCheck(PyObject *o);
-bool CPyAttr_TupleTypeCheck(PyObject *o);
-bool CPyAttr_TupleOrNoneTypeCheck(PyObject *o);
-bool CPyAttr_ListTypeCheck(PyObject *o);
-bool CPyAttr_ListOrNoneTypeCheck(PyObject *o);
-bool CPyAttr_DictTypeCheck(PyObject *o);
-bool CPyAttr_DictOrNoneTypeCheck(PyObject *o);
-bool CPyAttr_SetTypeCheck(PyObject *o);
-bool CPyAttr_SetOrNoneTypeCheck(PyObject *o);
 
 // Search backwards through the trait part of a vtable (which sits *before*
 // the start of the vtable proper) looking for the subvtable describing a trait

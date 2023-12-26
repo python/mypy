@@ -30,12 +30,14 @@ from mypyc.ir.rtypes import (
     is_float_rprimitive,
     is_list_rprimitive,
     is_object_rprimitive,
+    is_optional_type,
     is_set_rprimitive,
     is_str_rprimitive,
     is_tagged,
     is_tuple_rprimitive,
     object_rprimitive,
     optional_value_type,
+    unwrap_optional_type,
 )
 from mypyc.namegen import NameGenerator
 from mypyc.sametype import is_same_type
@@ -858,49 +860,42 @@ def generic_getter_name(rtype: RType) -> str | None:
 
 def generic_setter_name(rtype: RType, emitter: Emitter) -> str | None:
     """If a generic setter is available for rtype, return its name."""
-    if not rtype.is_unboxed and generic_boxed_setter_type_checker(rtype, emitter):
-        return "CPyAttr_SetterPyObject"
+    if not rtype.is_unboxed:
+        or_none = ""
+        if inner_rtype := optional_value_type(rtype):
+            or_none = "OrNone"
+            rtype = inner_rtype
+
+        if is_str_rprimitive(rtype):
+            return "CPyAttr_SetterUnicode"
+        elif is_tagged(rtype):
+            assert or_none, "non-optional boxed integer type should be impossible"
+            return "CPyAttr_SetterLongOrNone"
+        elif is_bool_rprimitive(rtype):
+            assert or_none, "non-optional boxed boolean type should be impossible"
+            return "CPyAttr_SetterBoolOrNone"
+        elif is_float_rprimitive(rtype):
+            assert or_none, "non-optional boxed float type should be impossible"
+            return "CPyAttr_SetterFloatOrNone"
+        elif is_tuple_rprimitive(rtype):
+            return "CPyAttr_SetterTuple"
+        elif is_list_rprimitive(rtype):
+            return "CPyAttr_SetterList"
+        elif is_dict_rprimitive(rtype):
+            return "CPyAttr_SetterDict"
+        elif is_set_rprimitive(rtype):
+            return "CPyAttr_SetterSet"
+        elif isinstance(rtype, RInstance):
+            class_name = rtype.class_ir.name_prefix(emitter.names)
+            return f"CPyCustomAttr_Setter{class_name}{or_none}"
+        elif is_object_rprimitive(rtype):
+            return "CPyAttr_SetterPyObject"
     elif is_tagged(rtype):
         return "CPyAttr_SetterTagged"
     elif is_float_rprimitive(rtype):
         return "CPyAttr_SetterFloat"
     elif is_bool_rprimitive(rtype):
         return "CPyAttr_SetterBool"
-    return None
-
-
-def generic_boxed_setter_type_checker(rtype: RType, emitter: Emitter) -> str | None:
-    """Return the name of the type checking function for a boxed rtype."""
-    or_none = ""
-    if inner_rtype := optional_value_type(rtype):
-        or_none = "OrNone"
-        rtype = inner_rtype
-
-    if is_str_rprimitive(rtype):
-        return f"CPyAttr_Unicode{or_none}TypeCheck"
-    elif is_tagged(rtype):
-        assert or_none, "non-optional boxed integer type should be impossible"
-        return f"CPyAttr_Long{or_none}TypeCheck"
-    elif is_bool_rprimitive(rtype):
-        assert or_none, "non-optional boxed boolean type should be impossible"
-        return f"CPyAttr_Bool{or_none}TypeCheck"
-    elif is_float_rprimitive(rtype):
-        assert or_none, "non-optional boxed float type should be impossible"
-        return f"CPyAttr_Float{or_none}TypeCheck"
-    elif is_tuple_rprimitive(rtype):
-        return f"CPyAttr_Tuple{or_none}TypeCheck"
-    elif is_list_rprimitive(rtype):
-        return f"CPyAttr_List{or_none}TypeCheck"
-    elif is_dict_rprimitive(rtype):
-        return f"CPyAttr_Dict{or_none}TypeCheck"
-    elif is_set_rprimitive(rtype):
-        return f"CPyAttr_Set{or_none}TypeCheck"
-    elif is_object_rprimitive(rtype):
-        return "NULL"
-    elif isinstance(rtype, RInstance):
-        class_name = rtype.class_ir.name_prefix(emitter.names)
-        return f"CPyCustomAttr_{class_name}{or_none}_TypeCheck"
-
     return None
 
 
@@ -922,18 +917,16 @@ def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
                 bitmap = emitter.bitmap_field(index)
                 mask = emitter.attr_bitmap_mask(index)
                 emitter.emit_line(f".bitmap = {{offsetof({cl_struct}, {bitmap}), {mask}}},")
-            # The generic boxed setter needs to know how to perform runtime type checks.
-            if generic_setter_name(rtype, emitter) and not rtype.is_unboxed:
-                rtype_name = emitter.pretty_name(rtype)
-                type_checker = generic_boxed_setter_type_checker(rtype, emitter)
-                emitter.emit_line(f'.boxed_type = {{"{rtype_name}", {type_checker}}}')
+            generic_setter = generic_setter_name(rtype, emitter)
+            if generic_setter and not rtype.is_unboxed and is_optional_type(rtype):
+                emitter.emit_line(".allow_none = true")
             emitter.emit_line("};")
 
             if not generic_getter_name(rtype):
                 name = getter_name(cl, attr, emitter.names)
                 emitter.emit_line("static PyObject *")
                 emitter.emit_line(f"{name}({cl_struct} *self, void *closure);")
-            if not generic_setter_name(rtype, emitter):
+            if not generic_setter:
                 name = setter_name(cl, attr, emitter.names)
                 emitter.emit_line("static int")
                 emitter.emit_line(f"{name}({cl_struct} *self, PyObject *value, void *closure);")
@@ -999,12 +992,8 @@ def generate_getseters(cl: ClassIR, emitter: Emitter) -> None:
                 generate_getter(cl, attr, rtype, emitter)
                 emitter.emit_line("")
             if generic_setter_name(rtype, emitter):
-                if isinstance(rtype, RInstance) or isinstance(
-                    optional_value_type(rtype), RInstance
-                ):
-                    was_newly_generated = generate_reusable_native_class_type_check(rtype, emitter)
-                    if (i < len(cl.attributes) - 1) and was_newly_generated:
-                        emitter.emit_line("")
+                if isinstance(unwrap_optional_type(rtype), RInstance):
+                    generate_reusable_native_class_setter(rtype, emitter)
             else:
                 generate_setter(cl, attr, rtype, emitter)
                 if i < len(cl.attributes) - 1:
@@ -1045,7 +1034,7 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     emitter.emit_inc_ref(f"self->{attr_field}", rtype)
     emitter.emit_box(f"self->{attr_field}", "retval", rtype, declare_dest=True)
     emitter.emit_line("return retval;")
-    emitter.emit_line("}")
+    emitter.emit_line("}\n")
 
 
 def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> None:
@@ -1102,22 +1091,29 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     emitter.emit_line("}")
 
 
-def generate_reusable_native_class_type_check(rtype: RType, emitter: Emitter) -> bool:
-    """Generate a type checking function for the generic boxed attribute setter.
-
-    Returns True if a new type checking function was generated, otherwise False."""
-    name = generic_boxed_setter_type_checker(rtype, emitter)
+def generate_reusable_native_class_setter(rtype: RType, emitter: Emitter) -> None:
+    name = generic_setter_name(rtype, emitter)
     assert name is not None and name.startswith("CPyCustomAttr")
     if name in emitter.context.declarations:
-        return False
+        return
 
-    emitter.context.declarations[name] = HeaderDeclaration(f"bool {name}(PyObject *o);")
-    emitter.emit_lines(f"bool {name}(PyObject *o)", "{")
-    emitter.emit_cast(
-        "o", "tmp", rtype, declare_dest=True, error=ReturnHandler("false"), raise_exception=False
-    )
-    emitter.emit_lines("return true;", "}")
-    return True
+    signature = f"int {name}(PyObject *self, PyObject *value, CPyAttr_Context *context)"
+    emitter.context.declarations[name] = HeaderDeclaration(f"{signature};")
+    emitter.emit_lines(signature, "{")
+
+    emitter.emit_line("if (value == NULL && !context->deletable) {")
+    emitter.emit_line("return CPyAttr_UndeletableError((PyObject *)self, context);")
+    emitter.emit_lines("}", "")
+
+    emitter.emit_line("PyObject **attr = (PyObject **)((char *)self + context->offset);")
+    emitter.emit_line("if (value != NULL) {")
+    emitter.emit_cast("value", "tmp", rtype, declare_dest=True, error=ReturnHandler("-1"))
+    emitter.emit_line("Py_XSETREF(*attr, Py_NewRef(tmp));")
+    emitter.emit_line("} else {")
+    emitter.emit_line("Py_CLEAR(*attr);")
+    emitter.emit_line("}")
+
+    emitter.emit_lines("return 0;", "}", "")
 
 
 def generate_readonly_getter(

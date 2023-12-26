@@ -16,26 +16,6 @@ int CPyAttr_UndeletableError(PyObject *self, CPyAttr_Context *context) {
     return -1;
 }
 
-#define _CPyAttr_OPTIONAL_TYPE_CHECK(name, type)             \
-    bool CPyAttr_##name##OrNoneTypeCheck(PyObject *o) {      \
-        return PyObject_TypeCheck(o, type) || o == Py_None;  \
-    }
-
-#define _CPyAttr_DIRECT_AND_OPTIONAL_TYPE_CHECKS(name, type) \
-    bool CPyAttr_##name##TypeCheck(PyObject *o) {            \
-        return PyObject_TypeCheck(o, type);                  \
-    }                                                        \
-    _CPyAttr_OPTIONAL_TYPE_CHECK(name, type)
-
-_CPyAttr_DIRECT_AND_OPTIONAL_TYPE_CHECKS(Unicode, &PyUnicode_Type)
-_CPyAttr_OPTIONAL_TYPE_CHECK(Long, &PyLong_Type)
-_CPyAttr_OPTIONAL_TYPE_CHECK(Bool, &PyBool_Type)
-_CPyAttr_OPTIONAL_TYPE_CHECK(Float, &PyFloat_Type)
-_CPyAttr_DIRECT_AND_OPTIONAL_TYPE_CHECKS(Tuple, &PyTuple_Type)
-_CPyAttr_DIRECT_AND_OPTIONAL_TYPE_CHECKS(List, &PyList_Type)
-_CPyAttr_DIRECT_AND_OPTIONAL_TYPE_CHECKS(Dict, &PyDict_Type)
-_CPyAttr_DIRECT_AND_OPTIONAL_TYPE_CHECKS(Set, &PySet_Type)
-
 static void set_definedness_in_bitmap(PyObject *self, CPyAttr_Context *context, bool defined) {
     uint32_t *bitmap = (uint32_t *)((char *)self + context->bitmap.offset);
     if (defined) {
@@ -90,17 +70,44 @@ int CPyAttr_SetterPyObject(PyObject *self, PyObject *value, CPyAttr_Context *con
 
     PyObject **attr = (PyObject **)((char *)self + context->offset);
     if (value != NULL) {
-        if (context->boxed_type.type_check_function
-                && !context->boxed_type.type_check_function(value)) {
-            CPy_TypeError(context->boxed_type.name, value);
-            return -1;
-        }
         Py_XSETREF(*attr, Py_NewRef(value));
     } else {
         Py_CLEAR(*attr);
     }
     return 0;
 }
+
+#define _CPyAttr_BUILTIN_SETTER(name, typechecker, typename)                                    \
+    int CPyAttr_Setter##name(PyObject *self, PyObject *value, CPyAttr_Context *context) {       \
+        if (unlikely(value == NULL && !context->deletable)) {                                   \
+            return CPyAttr_UndeletableError(self, context);                                     \
+        }                                                                                       \
+                                                                                                \
+        PyObject **attr = (PyObject **)((char *)self + context->offset);                        \
+        if (value != NULL) {                                                                    \
+            if (unlikely(!typechecker(value) && !(value == Py_None && context->allow_none))) {  \
+                if (context->allow_none) {                                                      \
+                    CPy_TypeError(typename " or None", value);                                  \
+                } else {                                                                        \
+                    CPy_TypeError(typename, value);                                             \
+                }                                                                               \
+                return -1;                                                                      \
+            }                                                                                   \
+            Py_XSETREF(*attr, Py_NewRef(value));                                                \
+        } else {                                                                                \
+            Py_CLEAR(*attr);                                                                    \
+        }                                                                                       \
+        return 0;                                                                               \
+    }
+
+_CPyAttr_BUILTIN_SETTER(Unicode, PyUnicode_Check, "str")
+_CPyAttr_BUILTIN_SETTER(LongOrNone, PyLong_Check, "int")
+_CPyAttr_BUILTIN_SETTER(BoolOrNone, PyBool_Check, "bool")
+_CPyAttr_BUILTIN_SETTER(FloatOrNone, PyFloat_Check, "float")
+_CPyAttr_BUILTIN_SETTER(Tuple, PyTuple_Check, "tuple")
+_CPyAttr_BUILTIN_SETTER(List, PyList_Check, "list")
+_CPyAttr_BUILTIN_SETTER(Dict, PyDict_Check, "dict")
+_CPyAttr_BUILTIN_SETTER(Set, PySet_Check, "set")
 
 int CPyAttr_SetterTagged(PyObject *self, PyObject *value, CPyAttr_Context *context) {
     if (value == NULL && !context->deletable) {
