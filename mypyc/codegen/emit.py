@@ -1114,14 +1114,14 @@ class Emitter:
 
     def vec_item_type_c(self, typ: RVec) -> str:
         item_type = typ.unwrap_item_type()
-        type_value = f"(size_t)&{self.type_c_name(item_type)}"
+        type_value = f"(size_t){self.type_c_ptr(item_type)}"
         if typ.is_optional():
             type_value = f"{type_value} | 1"
         return type_value
 
-    def type_c_name(self, typ: RPrimitive | RInstance) -> str | None:
+    def type_c_ptr(self, typ: RPrimitive | RInstance) -> str | None:
         if isinstance(typ, RPrimitive) and typ.is_refcounted:
-            return builtin_names[typ.name][1]
+            return "&" + builtin_names[typ.name][1]
         elif isinstance(typ, RInstance):
             return self.type_struct_name(typ.class_ir)
         return None

@@ -392,7 +392,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         )
         self.assert_emit(
             Unbox(self.o, RVec(self.r.type), 55),
-            """cpy_r_r0 = VecTApi.unbox(cpy_r_o, (size_t)&CPyType_A);""",
+            """cpy_r_r0 = VecTApi.unbox(cpy_r_o, (size_t)CPyType_A);""",
         )
 
     def test_unbox_vec_nested(self) -> None:
