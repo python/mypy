@@ -950,6 +950,7 @@ class Emitter:
             declare_dest: If True, also declare the variable 'dest'
             error: What happens on error
             raise_exception: If True, also raise TypeError on failure
+            optional: If True, NULL src value is allowed and will map to error value
             borrow: If True, create a borrowed reference
 
         """
@@ -1084,8 +1085,12 @@ class Emitter:
         elif isinstance(typ, RVec):
             if declare_dest:
                 self.emit_line(f"{self.ctype(typ)} {dest};")
-            # TODO: Handle 'optional'
             # TODO: Handle 'failure'
+
+            if optional:
+                self.emit_line(f"if ({src} == NULL) {{")
+                self.emit_line(f"{dest} = {self.c_error_value(typ)};")
+                self.emit_line("} else {")
 
             # TODO: Use helper function to pick the api variant
             if is_int64_rprimitive(typ.item_type):
@@ -1101,6 +1106,9 @@ class Emitter:
                 else:
                     self.emit_line(
                         f"{dest} = VecTExtApi.unbox({src}, {type_value}, {depth});")
+
+            if optional:
+                self.emit_line("}")
         else:
             assert False, "Unboxing not implemented: %s" % typ
 

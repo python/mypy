@@ -430,6 +430,9 @@ def test_default_arg() -> None:
     assert fdefault() == vec[vec[str]]()
     v = vec[vec[str]]([vec[str](["x"])])
     assert fdefault(v) == v
+    f_any: Any = fdefault
+    assert f_any() == vec[vec[str]]()
+    assert f_any(v) == v
 
 def ftuple(b: bool) -> Tuple[vec[vec[str]], vec[vec[str]]]:
     if b:
@@ -446,3 +449,8 @@ def test_tuple() -> None:
     assert b == t[1]
     with assertRaises(RuntimeError):
         ftuple(True)
+    f_any: Any = ftuple
+    t2 = f_any(False)
+    assert t == t2
+    with assertRaises(RuntimeError):
+        f_any(True)

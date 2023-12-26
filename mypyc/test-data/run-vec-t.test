@@ -350,6 +350,9 @@ def fdefault(v: vec[str] = vec[str](["x"])) -> vec[str]:
 def test_default_arg() -> None:
     assert fdefault() == vec[str](["x"])
     assert fdefault(vec[str](["y"])) == vec[str](["y"])
+    f_any: Any = fdefault
+    assert f_any() == vec[str](["x"])
+    assert f_any(vec[str](["y"])) == vec[str](["y"])
 
 def ftuple(b: bool) -> Tuple[vec[str], vec[str]]:
     if b:
@@ -364,11 +367,13 @@ def test_tuple() -> None:
     a, b = t
     assert a == t[0]
     assert b == t[1]
-    try:
+    with assertRaises(RuntimeError):
         ftuple(True)
-        assert False
-    except RuntimeError:
-        pass
+    f_any: Any = ftuple
+    t2 = f_any(False)
+    assert t == t2
+    with assertRaises(RuntimeError):
+        f_any(True)
 
 [case testVecTBasicOps_python_3_10]
 from vecs import vec, append, remove, pop

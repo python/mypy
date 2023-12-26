@@ -371,6 +371,9 @@ def fdefault(v: vec[i64] = vec[i64]([5])) -> vec[i64]:
 def test_default_arg() -> None:
     assert fdefault() == vec[i64]([5])
     assert fdefault(vec[i64]()) == vec[i64]()
+    f_any: Any = fdefault
+    assert f_any() == vec[i64]([5])
+    assert f_any(vec[i64]([6])) == vec[i64]([6])
 
 def ftuple(b: bool) -> Tuple[vec[i64], vec[i64]]:
     if b:
