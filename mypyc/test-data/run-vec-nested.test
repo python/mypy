@@ -418,6 +418,18 @@ def test_doubly_nested_vec_i64_operations() -> None:
 
     # TODO: box/unbox
 
+def f(x: vec[vec[str]]) -> None:
+    pass
+
+def test_wrapper_arg_check() -> None:
+    f_any: Any = f
+    with assertRaises(TypeError):
+        f_any(vec[str]())
+    with assertRaises(TypeError):
+        f_any(None)
+    with assertRaises(TypeError):
+        f_any([])
+
 v: Final = vec[vec[str]]([vec[str](["x"])])
 
 def test_final() -> None:

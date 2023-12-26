@@ -113,10 +113,10 @@ def test_box_and_unbox() -> None:
     assert v2[0] == "3"
     assert v2[1] == "6"
     o2: Any = None
-    with assertRaises(TypeError, "vec[t] expected"):
+    with assertRaises(TypeError, "vec[str] object expected; got None"):
         v2 = o2
     o3: Any = vec[bytes]([])
-    with assertRaises(TypeError, "vec[t] expected"):
+    with assertRaises(TypeError, "vec[str] object expected; got vec"):
         v2 = o3
 
 def test_box_and_unbox_optional() -> None:
@@ -133,11 +133,12 @@ def test_box_and_unbox_optional() -> None:
     assert v2 == vec[str](["5"])
 
     o3: Any = vec[str]()
-    with assertRaises(TypeError, "vec[t] expected"):
+    # TODO: Use str | None instead union
+    with assertRaises(TypeError, "vec[str | None] object expected; got vec"):
         v = o3
 
     o4: Any = vec[Optional[str]](["3"])
-    with assertRaises(TypeError, "vec[t] expected"):
+    with assertRaises(TypeError, "vec[str] object expected; got vec"):
         v2 = o4
 
 def test_construct_from_list_multiply() -> None:
@@ -338,6 +339,14 @@ def test_pop_index() -> None:
     v, n = pop(v, 0)
     assert n == "15"
     assert v == vec[str]()
+
+def f(x: vec[str]) -> None:
+    pass
+
+def test_wrapper_arg_check() -> None:
+    f_any: Any = f
+    with assertRaises(TypeError):
+        f_any([])
 
 v: Final = vec[str](["x", "y"])
 

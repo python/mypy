@@ -1085,7 +1085,6 @@ class Emitter:
         elif isinstance(typ, RVec):
             if declare_dest:
                 self.emit_line(f"{self.ctype(typ)} {dest};")
-            # TODO: Handle 'failure'
 
             if optional:
                 self.emit_line(f"if ({src} == NULL) {{")
@@ -1106,6 +1105,10 @@ class Emitter:
                 else:
                     self.emit_line(
                         f"{dest} = VecTExtApi.unbox({src}, {type_value}, {depth});")
+
+            self.emit_line(f"if (VEC_IS_ERROR({dest})) {{")
+            self.emit_line(failure)
+            self.emit_line("}")
 
             if optional:
                 self.emit_line("}")

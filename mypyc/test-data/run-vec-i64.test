@@ -156,10 +156,11 @@ def test_box_and_unbox() -> None:
     assert v2[0] == 3
     assert v2[1] == 6
     o2: Any = "x"
-    with assertRaises(TypeError, "vec[i64] expected"):
+    with assertRaises(TypeError, "vec[i64] object expected; got str"):
         v2 = o2
     o3: Any = vec[str]([])
-    with assertRaises(TypeError, "vec[i64] expected"):
+    # TODO: Better message
+    with assertRaises(TypeError, "vec[i64] object expected; got vec"):
         v2 = o3
 
 def test_construct_from_list_multiply() -> None:
@@ -359,6 +360,14 @@ def test_pop_index() -> None:
     v, n = pop(v, 0)
     assert n == 15
     assert v == vec[i64]()
+
+def f(x: vec[i64]) -> None:
+    pass
+
+def test_wrapper_arg_check() -> None:
+    f_any: Any = f
+    with assertRaises(TypeError):
+        f_any([])
 
 v: Final = vec[i64]([5, 6])
 

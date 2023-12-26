@@ -1561,7 +1561,7 @@ def f(n):
     n :: i64
     r0, r1 :: object
     r2, r3 :: ptr
-    r4 :: vec[union[str, None]]
+    r4 :: vec[str | None]
     r5 :: object
     r6 :: ptr
     r7 :: i64

@@ -1094,8 +1094,15 @@ class RVec(RType):
     def accept(self, visitor: "RTypeVisitor[T]") -> T:
         return visitor.visit_rvec(self)
 
+    def __str__(self) -> str:
+        if self.is_optional() and self.depth() == 0:
+            type_str = f"{self.unwrap_item_type()} | None"
+        else:
+            type_str = str(self.item_type)
+        return f"vec[{type_str}]"
+
     def __repr__(self) -> str:
-        return "<RVec[%s]>" % self.item_type
+        return "<RVec[%s]>" % self.item_type_str
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, RVec) and other.item_type == self.item_type
