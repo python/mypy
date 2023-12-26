@@ -417,3 +417,8 @@ def test_doubly_nested_vec_i64_operations() -> None:
     assert x == a
 
     # TODO: box/unbox
+
+v: Final = vec[vec[str]]([vec[str](["x"])])
+
+def test_final() -> None:
+    assert v == vec[vec[str]]([vec[str](["x"])])

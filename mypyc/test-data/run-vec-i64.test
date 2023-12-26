@@ -359,3 +359,8 @@ def test_pop_index() -> None:
     v, n = pop(v, 0)
     assert n == 15
     assert v == vec[i64]()
+
+v: Final = vec[i64]([5, 6])
+
+def test_final() -> None:
+    assert v == vec[i64]([5, 6])

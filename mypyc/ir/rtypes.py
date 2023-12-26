@@ -136,6 +136,8 @@ def deserialize_type(data: JsonDict | str, ctx: DeserMaps) -> RType:
         return RTuple.deserialize(data, ctx)
     elif data[".class"] == "RUnion":
         return RUnion.deserialize(data, ctx)
+    elif data[".class"] == "RVec":
+        return RVec.deserialize(data, ctx)
     raise NotImplementedError("unexpected .class {}".format(data[".class"]))
 
 
@@ -1102,7 +1104,11 @@ class RVec(RType):
         return hash(self.item_type) ^ 1
 
     def serialize(self) -> str:
-        return self.name
+        return {".class": "RVec", "item_type": self.item_type.serialize()}
+
+    @classmethod
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> RTuple:
+        return RVec(deserialize_type(data["item_type"], ctx))
 
 
 def vec_depth(t: RVec) -> int:
