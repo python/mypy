@@ -26,12 +26,12 @@ typedef struct _VecI64BufObject {
 } VecI64BufObject;
 
 // Simple generic vecbuf: vecbuf[t] when t is a type object
-typedef struct _VecbufTObject {
+typedef struct _VecTBufObject {
     PyObject_VAR_HEAD
     // Tagged pointer to PyTypeObject *. The lowest bit is 1 for optional item type.
     size_t item_type;
     PyObject *items[1];
-} VecbufTObject;
+} VecTBufObject;
 
 typedef struct _VecNestedBufItem {
     Py_ssize_t len;
@@ -60,7 +60,7 @@ typedef struct _VecI64 {
 
 typedef struct _VecT {
     Py_ssize_t len;
-    VecbufTObject *buf;
+    VecTBufObject *buf;
 } VecT;
 
 typedef struct _VecNested {
@@ -224,7 +224,7 @@ inline VecNested VecVec_Error() {
 // Type objects
 
 extern PyTypeObject VecI64BufType;
-extern PyTypeObject VecbufTType;
+extern PyTypeObject VecTBufType;
 extern PyTypeObject VecNestedBufType;
 
 extern PyTypeObject VecI64Type;
@@ -353,7 +353,7 @@ static inline PyObject *VecVec_BoxItem(VecNested v, VecNestedBufItem item) {
             return VecI64_Box(v);
         } else {
             // Generic vec[t]
-            VecT v = { .len = item.len, .buf = (VecbufTObject *)item.buf };
+            VecT v = { .len = item.len, .buf = (VecTBufObject *)item.buf };
             return VecT_Box(v, item_type);
         }
     }

@@ -546,7 +546,7 @@ PyInit_vecs(void)
 
     if (PyType_Ready(&VecTType) < 0)
         return NULL;
-    if (PyType_Ready(&VecbufTType) < 0)
+    if (PyType_Ready(&VecTBufType) < 0)
         return NULL;
 
     if (PyType_Ready(&VecNestedType) < 0)

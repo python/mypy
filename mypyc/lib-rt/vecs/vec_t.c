@@ -10,8 +10,8 @@
 #include <Python.h>
 #include "vecs.h"
 
-static inline VecbufTObject *alloc_buf(Py_ssize_t size, size_t item_type) {
-    VecbufTObject *buf = PyObject_GC_NewVar(VecbufTObject, &VecbufTType, size);
+static inline VecTBufObject *alloc_buf(Py_ssize_t size, size_t item_type) {
+    VecTBufObject *buf = PyObject_GC_NewVar(VecTBufObject, &VecTBufType, size);
     if (buf == NULL)
         return NULL;
     buf->item_type = item_type;
@@ -23,7 +23,7 @@ static inline VecbufTObject *alloc_buf(Py_ssize_t size, size_t item_type) {
 // Alloc a partially initialized vec. Caller *must* immediately initialize len (and buf->items
 // if size > 0).
 static VecT vec_alloc(Py_ssize_t size, size_t item_type) {
-    VecbufTObject *buf;
+    VecTBufObject *buf;
 
     if (size == 0) {
         buf = NULL;
@@ -65,7 +65,7 @@ VecT VecT_Unbox(PyObject *obj, size_t item_type) {
 }
 
 VecT VecT_ConvertFromNested(VecNestedBufItem item) {
-    return (VecT) { item.len, (VecbufTObject *)item.buf };
+    return (VecT) { item.len, (VecTBufObject *)item.buf };
 }
 
 VecT VecT_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type) {
@@ -322,7 +322,7 @@ VecT_dealloc(VecTObject *self)
 }
 
 static int
-VecbufT_traverse(VecbufTObject *self, visitproc visit, void *arg)
+VecTBuf_traverse(VecTBufObject *self, visitproc visit, void *arg)
 {
     Py_VISIT(BUF_ITEM_TYPE(self));
     for (Py_ssize_t i = 0; i < BUF_SIZE(self); i++) {
@@ -332,7 +332,7 @@ VecbufT_traverse(VecbufTObject *self, visitproc visit, void *arg)
 }
 
 static int
-VecbufT_clear(VecbufTObject *self)
+VecTBuf_clear(VecTBufObject *self)
 {
     if (self->item_type) {
         Py_DECREF(BUF_ITEM_TYPE(self));
@@ -345,10 +345,10 @@ VecbufT_clear(VecbufTObject *self)
 }
 
 static void
-VecbufT_dealloc(VecbufTObject *self)
+VecTBuf_dealloc(VecTBufObject *self)
 {
     PyObject_GC_UnTrack(self);
-    Py_TRASHCAN_BEGIN(self, VecbufT_dealloc)
+    Py_TRASHCAN_BEGIN(self, VecTBuf_dealloc)
     if (self->item_type) {
         Py_DECREF(BUF_ITEM_TYPE(self));
         self->item_type = 0;
@@ -379,18 +379,18 @@ static PyMethodDef vec_methods[] = {
     {NULL, NULL, 0, NULL},  /* Sentinel */
 };
 
-PyTypeObject VecbufTType = {
+PyTypeObject VecTBufType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "vecbuf",
     .tp_doc = "vec doc",
-    .tp_basicsize = sizeof(VecbufTObject) - sizeof(PyObject *),
+    .tp_basicsize = sizeof(VecTBufObject) - sizeof(PyObject *),
     .tp_itemsize = sizeof(PyObject *),
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
-    .tp_traverse = (traverseproc)VecbufT_traverse,
+    .tp_traverse = (traverseproc)VecTBuf_traverse,
     //.tp_new = vecbuf_i64_new, //??
     .tp_free = PyObject_GC_Del,
-    .tp_clear = (inquiry)VecbufT_clear,
-    .tp_dealloc = (destructor)VecbufT_dealloc,
+    .tp_clear = (inquiry)VecTBuf_clear,
+    .tp_dealloc = (destructor)VecTBuf_dealloc,
 };
 
 PyTypeObject VecTType = {
@@ -449,7 +449,7 @@ PyObject *VecT_FromIterable(size_t item_type, PyObject *iterable) {
 
 VecTFeatures TFeatures = {
     &VecTType,
-    &VecbufTType,
+    &VecTBufType,
     VecT_New,
     VecT_Box,
     VecT_Unbox,
