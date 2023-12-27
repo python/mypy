@@ -22,7 +22,7 @@ static VecTExt vec_alloc(Py_ssize_t size, size_t item_type, size_t depth) {
         return VecVec_Error();
     buf->item_type = item_type;
     buf->depth = depth;
-    if (!vec_is_magic_item_type(item_type))
+    if (!Vec_IsMagicItemType(item_type))
         Py_INCREF(BUF_ITEM_TYPE(buf));
     VecTExt res = { .buf = buf };
     PyObject_GC_Track(buf);
@@ -339,7 +339,7 @@ VecVec_dealloc(VecTObject *self)
 static int
 VecbufTExt_traverse(VecbufTExtObject *self, visitproc visit, void *arg)
 {
-    if (!vec_is_magic_item_type(self->item_type))
+    if (!Vec_IsMagicItemType(self->item_type))
         Py_VISIT(BUF_ITEM_TYPE(self));
     for (Py_ssize_t i = 0; i < BUF_SIZE(self); i++) {
         Py_VISIT(self->items[i].buf);
@@ -350,7 +350,7 @@ VecbufTExt_traverse(VecbufTExtObject *self, visitproc visit, void *arg)
 static int
 VecbufTExt_clear(VecbufTExtObject *self)
 {
-    if (self->item_type && !vec_is_magic_item_type(self->item_type)) {
+    if (self->item_type && !Vec_IsMagicItemType(self->item_type)) {
         Py_DECREF(BUF_ITEM_TYPE(self));
         self->item_type = 0;
     }
@@ -365,7 +365,7 @@ VecbufTExt_dealloc(VecbufTExtObject *self)
 {
     PyObject_GC_UnTrack(self);
     Py_TRASHCAN_BEGIN(self, VecbufTExt_dealloc)
-    if (self->item_type && !vec_is_magic_item_type(self->item_type)) {
+    if (self->item_type && !Vec_IsMagicItemType(self->item_type)) {
         Py_DECREF(BUF_ITEM_TYPE(self));
         self->item_type = 0;
     }

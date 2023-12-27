@@ -50,7 +50,7 @@ static PyObject *vec_proxy_call(PyObject *self, PyObject *args, PyObject *kw)
 static int
 VecProxy_traverse(VecProxy *self, visitproc visit, void *arg)
 {
-    if (!vec_is_magic_item_type(self->item_type))
+    if (!Vec_IsMagicItemType(self->item_type))
         Py_VISIT((PyObject *)(self->item_type & ~1));
     return 0;
 }
@@ -58,7 +58,7 @@ VecProxy_traverse(VecProxy *self, visitproc visit, void *arg)
 static void
 VecProxy_dealloc(VecProxy *self)
 {
-    if (self->item_type && !vec_is_magic_item_type(self->item_type)) {
+    if (self->item_type && !Vec_IsMagicItemType(self->item_type)) {
         Py_DECREF((PyObject *)(self->item_type & ~1));
         self->item_type = 0;
     }
@@ -342,7 +342,7 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
         return NULL;
 
     if (VecI64_Check(vec)) {
-        if (check_float_error(item))
+        if (Vec_CheckFloatError(item))
             return NULL;
         int64_t x = PyLong_AsLong(item);
         if (x == -1 && PyErr_Occurred()) {
@@ -389,7 +389,7 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
         return NULL;
 
     if (VecI64_Check(vec)) {
-        if (check_float_error(item))
+        if (Vec_CheckFloatError(item))
             return NULL;
         int64_t x = PyLong_AsLong(item);
         if (x == -1 && PyErr_Occurred()) {

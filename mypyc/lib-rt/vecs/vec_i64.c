@@ -184,7 +184,7 @@ PyObject *vec_subscript(PyObject *self, PyObject *item) {
 }
 
 int vec_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
-    if (check_float_error(o))
+    if (Vec_CheckFloatError(o))
         return -1;
     VecI64 v = ((VecI64Object *)self)->vec;
     if ((size_t)i < (size_t)v.len) {

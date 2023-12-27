@@ -11,7 +11,7 @@
 // Item type constants; must be even but not multiples of 4 (2 + 4 * n)
 #define VEC_ITEM_TYPE_I64 2
 
-inline size_t vec_is_magic_item_type(size_t item_type) {
+inline size_t Vec_IsMagicItemType(size_t item_type) {
     return item_type & 2;
 }
 
@@ -361,7 +361,7 @@ static inline PyObject *VecVec_BoxItem(VecTExt v, VecbufTExtItem item) {
 
 // Misc helpers
 
-static inline int check_float_error(PyObject *o) {
+static inline int Vec_CheckFloatError(PyObject *o) {
     if (PyFloat_Check(o)) {
         PyErr_SetString(PyExc_TypeError, "integer argument expected, got float");
         return 1;
