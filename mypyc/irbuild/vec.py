@@ -197,13 +197,14 @@ def vec_item_type_info(
 ) -> Tuple[Optional[Value], bool, int]:
     if isinstance(typ, RPrimitive) and typ.is_refcounted:
         typ, src = builtin_names[typ.name]
-        return builder.load_address(src, typ), 0, 0
+        return builder.load_address(src, typ), False, 0
     elif isinstance(typ, RInstance):
-        return builder.load_native_type_object(typ.name), 0, 0
+        return builder.load_native_type_object(typ.name), False, 0
     elif is_int64_rprimitive(typ):
-        return Integer(VEC_TYPE_INFO_I64, c_size_t_rprimitive), 0, 0
+        return Integer(VEC_TYPE_INFO_I64, c_size_t_rprimitive), False, 0
     elif isinstance(typ, RUnion):
         non_opt = optional_value_type(typ)
+        assert non_opt is not None
         typeval, _, _ = vec_item_type_info(builder, non_opt, line)
         if typeval is not None:
             return typeval, True, 0
@@ -211,7 +212,7 @@ def vec_item_type_info(
         typeval, optional, depth = vec_item_type_info(builder, typ.item_type, line)
         if typeval is not None:
             return typeval, optional, depth + 1
-    return None, 0, 0
+    return None, False, 0
 
 
 def vec_len(builder: LowLevelIRBuilder, val: Value) -> Value:
@@ -346,11 +347,13 @@ def convert_from_t_ext_item(builder: LowLevelIRBuilder, item: Value, vec_type: R
 
 def vec_item_type(builder: LowLevelIRBuilder, item_type: RType, line: int) -> Value:
     typeobj, optional, depth = vec_item_type_info(builder, item_type, line)
+    assert typeobj is not None
     if isinstance(typeobj, Integer):
         return typeobj
     else:
         # Create an integer which will hold the type object * as an integral value.
         # Assign implicitly coerces between pointer/integer types.
+        typeval: Value
         typeval = Register(pointer_rprimitive)
         builder.add(Assign(typeval, typeobj))
         if optional:
@@ -421,6 +424,7 @@ def vec_pop(builder: LowLevelIRBuilder, base: Value, index: Value, line: int) ->
         x = builder.add(Unborrow(x))
         y = builder.add(TupleGet(result, 1, borrow=True))
         y = builder.add(Unborrow(y))
+        assert isinstance(vec_type.item_type, RVec)
         z = convert_from_t_ext_item(builder, y, vec_type.item_type)
         result = builder.add(TupleSet([x, z], line))
         builder.keep_alive([orig], steal=True)

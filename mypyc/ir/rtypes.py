@@ -1058,8 +1058,9 @@ class RVec(RType):
         item_type = self.item_type
         while True:
             if isinstance(item_type, RUnion):
-                item_type = optional_value_type(item_type)
-                assert item_type is not None
+                value_type = optional_value_type(item_type)
+                assert value_type is not None
+                item_type = value_type
             elif isinstance(item_type, RVec):
                 item_type = item_type.item_type
             elif isinstance(item_type, (RPrimitive, RInstance)):
@@ -1078,8 +1079,9 @@ class RVec(RType):
     def depth(self) -> int:
         item_type = self.item_type
         if isinstance(item_type, RUnion):
-            item_type = optional_value_type(item_type)
-            assert item_type is not None
+            value_type = optional_value_type(item_type)
+            assert value_type is not None
+            item_type = value_type
         if isinstance(item_type, RVec):
             return 1 + item_type.depth()
         return 0
@@ -1102,7 +1104,7 @@ class RVec(RType):
         return f"vec[{type_str}]"
 
     def __repr__(self) -> str:
-        return "<RVec[%s]>" % self.item_type_str
+        return "<RVec[%s]>" % self.item_type
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, RVec) and other.item_type == self.item_type
@@ -1110,11 +1112,11 @@ class RVec(RType):
     def __hash__(self) -> int:
         return hash(self.item_type) ^ 1
 
-    def serialize(self) -> str:
+    def serialize(self) -> JsonDict:
         return {".class": "RVec", "item_type": self.item_type.serialize()}
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> RTuple:
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> RVec:
         return RVec(deserialize_type(data["item_type"], ctx))
 
 

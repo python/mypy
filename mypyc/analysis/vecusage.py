@@ -33,7 +33,7 @@ def func_needs_vec(func: FuncIR) -> bool:
     return False
 
 
-def uses_vec_type(typ: RType) -> None:
+def uses_vec_type(typ: RType) -> bool:
     if isinstance(typ, RVec):
         return True
     if isinstance(typ, RUnion) and any(uses_vec_type(t) for t in typ.items):
