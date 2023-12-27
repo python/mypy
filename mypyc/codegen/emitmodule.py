@@ -586,7 +586,7 @@ class GroupGenerator:
         self.declare_global("VecCapsule *", "VecApi")
         self.declare_global("VecI64Features ", "VecI64Api")
         self.declare_global("VecTFeatures ", "VecTApi")
-        self.declare_global("VecTExtFeatures ", "VecTExtApi")
+        self.declare_global("VecNestedFeatures ", "VecNestedApi")
 
         for module_name, module in self.modules.items():
             if multi_file:
@@ -974,7 +974,7 @@ class GroupGenerator:
             "if (!VecApi) return -1;",
             "VecI64Api = *VecApi->i64;",
             "VecTApi = *VecApi->t;",
-            "VecTExtApi = *VecApi->t_ext;",
+            "VecNestedApi = *VecApi->nested;",
         )
 
         emitter.emit_lines("is_initialized = 1;", "return 0;", "}")

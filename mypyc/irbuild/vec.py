@@ -39,7 +39,7 @@ from mypyc.ir.rtypes import (
     RType,
     RUnion,
     RVec,
-    VecbufTExtItem,
+    VecNestedBufItem,
     bool_rprimitive,
     c_int_rprimitive,
     c_pyssize_t_rprimitive,
@@ -122,7 +122,7 @@ def vec_create(
             return builder.add(call)
         else:
             call = CallC(
-                "VecTExtApi.alloc",
+                "VecNestedApi.alloc",
                 [
                     length,
                     length,
@@ -327,16 +327,16 @@ def vec_set_item(
 def convert_to_t_ext_item(builder: LowLevelIRBuilder, item: Value) -> Value:
     vec_len = builder.add(GetElement(item, "len"))
     vec_buf = builder.add(GetElement(item, "buf"))
-    temp = builder.add(SetElement(Undef(VecbufTExtItem), "len", vec_len))
+    temp = builder.add(SetElement(Undef(VecNestedBufItem), "len", vec_len))
     return builder.add(SetElement(temp, "buf", vec_buf))
 
 
 def convert_from_t_ext_item(builder: LowLevelIRBuilder, item: Value, vec_type: RVec) -> Value:
-    """Convert a value of type VecbufTExtItem to the corresponding RVec value."""
+    """Convert a value of type VecNestedBufItem to the corresponding RVec value."""
     if is_int64_rprimitive(vec_type.item_type):
         name = "VecI64Api.convert_from_nested"
     elif isinstance(vec_type.item_type, RVec):
-        name = "VecTExtApi.convert_from_nested"
+        name = "VecNestedApi.convert_from_nested"
     else:
         name = "VecTApi.convert_from_nested"
 
@@ -373,7 +373,7 @@ def vec_append(builder: LowLevelIRBuilder, vec: Value, item: Value, line: int) -
         item_type_arg = [vec_item_type(builder, item_type, line)]
     else:
         coerced_item = convert_to_t_ext_item(builder, coerced_item)
-        name = "VecTExtApi.append"
+        name = "VecNestedApi.append"
     call = builder.add(
         CallC(
             name,
@@ -401,9 +401,9 @@ def vec_pop(builder: LowLevelIRBuilder, base: Value, index: Value, line: int) ->
     elif vec_depth(vec_type) == 0 and not isinstance(item_type, RUnion): # TODO fix union
         name = "VecTApi.pop"
     else:
-        name = "VecTExtApi.pop"
+        name = "VecNestedApi.pop"
         # Nested vecs return a generic vec struct.
-        item_type = VecbufTExtItem
+        item_type = VecNestedBufItem
     result = builder.add(
         CallC(
             name,
@@ -439,7 +439,7 @@ def vec_remove(builder: LowLevelIRBuilder, vec: Value, item: Value, line: int) -
         name = "VecTApi.remove"
     else:
         coerced_item = convert_to_t_ext_item(builder, coerced_item)
-        name = "VecTExtApi.remove"
+        name = "VecNestedApi.remove"
     call = builder.add(
         CallC(
             name,
@@ -503,7 +503,7 @@ def vec_slice(
     elif vec_depth(vec_type) == 0 and not isinstance(item_type, RUnion):
         name = "VecTApi.slice"
     else:
-        name = "VecTExtApi.slice"
+        name = "VecNestedApi.slice"
     call = CallC(
         name,
         [vec, begin, end],

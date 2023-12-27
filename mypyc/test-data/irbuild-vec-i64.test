@@ -70,7 +70,7 @@ L4:
     r5 = i
 L5:
     r6 = v.buf
-    r7 = get_element_ptr r6 items :: VecbufI64Object
+    r7 = get_element_ptr r6 items :: VecI64BufObject
     r8 = r5 * 8
     r9 = r7 + r8
     r10 = load_mem r9 :: i64*
@@ -130,7 +130,7 @@ L4:
     r5 = i
 L5:
     r6 = v.buf
-    r7 = get_element_ptr r6 items :: VecbufI64Object
+    r7 = get_element_ptr r6 items :: VecI64BufObject
     r8 = r5 * 8
     r9 = r7 + r8
     set_mem r9, x :: i64*
@@ -151,7 +151,7 @@ def f():
 L0:
     r0 = VecI64Api.alloc(3, 3)
     r1 = r0.buf
-    r2 = get_element_ptr r1 items :: VecbufI64Object
+    r2 = get_element_ptr r1 items :: VecI64BufObject
     set_mem r2, 1 :: i64*
     r3 = r2 + 8
     set_mem r3, 5 :: i64*
@@ -180,7 +180,7 @@ def f(n):
 L0:
     r0 = VecI64Api.alloc(n, n)
     r1 = r0.buf
-    r2 = get_element_ptr r1 items :: VecbufI64Object
+    r2 = get_element_ptr r1 items :: VecI64BufObject
     r3 = n * 8
     r4 = r2 + r3
     r5 = r2
@@ -215,7 +215,7 @@ def f(n, x):
 L0:
     r0 = VecI64Api.alloc(3, 3)
     r1 = r0.buf
-    r2 = get_element_ptr r1 items :: VecbufI64Object
+    r2 = get_element_ptr r1 items :: VecI64BufObject
     r3 = 3 * 8
     r4 = r2 + r3
     r5 = r2
@@ -332,7 +332,7 @@ L1:
     if r2 goto L2 else goto L4 :: bool
 L2:
     r3 = v.buf
-    r4 = get_element_ptr r3 items :: VecbufI64Object
+    r4 = get_element_ptr r3 items :: VecI64BufObject
     r5 = r0 * 8
     r6 = r4 + r5
     r7 = load_mem r6 :: i64*
@@ -370,7 +370,7 @@ def contains(v, n):
 L0:
     r0 = v.len
     r1 = v.buf
-    r2 = get_element_ptr r1 items :: VecbufI64Object
+    r2 = get_element_ptr r1 items :: VecI64BufObject
     r3 = r0 * 8
     r4 = r2 + r3
     r5 = r2
@@ -432,7 +432,7 @@ L4:
     r5 = 0
 L5:
     r6 = v.buf
-    r7 = get_element_ptr r6 items :: VecbufI64Object
+    r7 = get_element_ptr r6 items :: VecI64BufObject
     r8 = r5 * 8
     r9 = r7 + r8
     r10 = load_mem r9 :: i64*
@@ -563,7 +563,7 @@ L4:
     r5 = n
 L5:
     r6 = v.buf
-    r7 = get_element_ptr r6 items :: VecbufI64Object
+    r7 = get_element_ptr r6 items :: VecI64BufObject
     r8 = r5 * 8
     r9 = r7 + r8
     r10 = load_mem r9 :: i64*
@@ -586,7 +586,7 @@ L9:
     r17 = n
 L10:
     r18 = v.buf
-    r19 = get_element_ptr r18 items :: VecbufI64Object
+    r19 = get_element_ptr r18 items :: VecI64BufObject
     r20 = r17 * 8
     r21 = r19 + r20
     set_mem r21, r11 :: i64*

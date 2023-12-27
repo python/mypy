@@ -747,7 +747,7 @@ class TupleNameVisitor(RTypeVisitor[str]):
         return "T{}{}".format(len(parts), "".join(parts))
 
     def visit_rstruct(self, t: RStruct) -> str:
-        if t.name == "VecbufTExtItem":
+        if t.name == "VecNestedBufItem":
             return "Vi"
         assert False, "RStruct not supported in tuple"
 
@@ -1039,19 +1039,19 @@ class RVec(RType):
             non_opt = item_type
         if is_int64_rprimitive(item_type):
             self._ctype = "VecI64"
-            self.types = [c_pyssize_t_rprimitive, VecbufI64Object]
+            self.types = [c_pyssize_t_rprimitive, VecI64BufObject]
             self.struct_type = VecI64
-            self.buf_type = VecbufI64Object
+            self.buf_type = VecI64BufObject
         elif isinstance(non_opt, RVec):
-            self._ctype = "VecTExt"
-            self.types = [c_pyssize_t_rprimitive, VecbufTObject]
-            self.struct_type = VecTExt
-            self.buf_type = VecbufTExtObject
+            self._ctype = "VecNested"
+            self.types = [c_pyssize_t_rprimitive, VecTBufObject]
+            self.struct_type = VecNested
+            self.buf_type = VecNestedBufObject
         else:
             self._ctype = "VecT"
-            self.types = [c_pyssize_t_rprimitive, VecbufTObject]
+            self.types = [c_pyssize_t_rprimitive, VecTBufObject]
             self.struct_type = VecT
-            self.buf_type = VecbufTObject
+            self.buf_type = VecTBufObject
 
     def unwrap_item_type(self) -> RPrimitive | RInstance:
         """Return the non-optional value (non-vec) item type in a potentially nested vec."""
@@ -1339,14 +1339,14 @@ VecObject = RStruct(
 
 
 # Buffer for vec[i64]
-VecbufI64Object = RStruct(
-    name="VecbufI64Object",
+VecI64BufObject = RStruct(
+    name="VecI64BufObject",
     names=["ob_base", "len", "items"],
     types=[PyVarObject, int64_rprimitive],
 )
 
 # vecbuf_i64_rprimitive: Final = RPrimitive(
-#    "VecbufI64Object", is_unboxed=False, is_refcounted=True, ctype="VecbufI64Object *"
+#    "VecI64BufObject", is_unboxed=False, is_refcounted=True, ctype="VecI64BufObject *"
 # )
 
 # Struct type for vec[i64] (in most cases use RVec instead).
@@ -1356,8 +1356,8 @@ VecI64 = RStruct(
 
 
 # Buffer for vec[t]
-VecbufTObject = RStruct(
-    name="VecbufTObject",
+VecTBufObject = RStruct(
+    name="VecTBufObject",
     names=["ob_base", "item_type", "items"],
     types=[PyVarObject, c_pyssize_t_rprimitive, object_rprimitive],
 )
@@ -1367,40 +1367,40 @@ VecT = RStruct(
     name="VecT", names=["len", "buf"], types=[c_pyssize_t_rprimitive, object_rprimitive]
 )
 
-VecbufTExtItem = RStruct(
-    name="VecbufTExtItem",
+VecNestedBufItem = RStruct(
+    name="VecNestedBufItem",
     names=["len", "buf"],
     types=[c_pyssize_t_rprimitive, object_non_refcounted_rprimitive],
 )
 
 # Buffer for vec[vec[t]]
-VecbufTExtObject = RStruct(
-    name="VecbufTExtObject",
+VecNestedBufObject = RStruct(
+    name="VecNestedBufObject",
     names=["ob_base", "item_type", "depth", "optionals", "items"],
     types=[
         PyVarObject,
         c_pyssize_t_rprimitive,
         int32_rprimitive,
         int32_rprimitive,
-        VecbufTExtItem,
+        VecNestedBufItem,
     ],
 )
 
 # Struct type for vec[vec[...]] (in most cases use RVec instead).
-VecTExt = RStruct(
-    name="VecTExt", names=["len", "buf"], types=[c_pyssize_t_rprimitive, object_rprimitive]
+VecNested = RStruct(
+    name="VecNested", names=["len", "buf"], types=[c_pyssize_t_rprimitive, object_rprimitive]
 )
 
-VecbufTExtObject_rprimitive = RPrimitive(
-    "VecbufTExtObject_ptr",
+VecNestedBufObject_rprimitive = RPrimitive(
+    "VecNestedBufObject_ptr",
     is_unboxed=False,
     is_pointer=True,
     is_refcounted=True,
-    ctype="VecbufTExtObject *",
+    ctype="VecNestedBufObject *",
 )
 
-VecTExtPopResult = RStruct(
-    name="VecTExtPopResult",
+VecNestedPopResult = RStruct(
+    name="VecNestedPopResult",
     names=["vec", "item"],
-    types=[VecTExt, VecbufTExtItem],
+    types=[VecNested, VecNestedBufItem],
 )

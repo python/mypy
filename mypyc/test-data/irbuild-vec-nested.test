@@ -17,12 +17,12 @@ def f():
 L0:
     r0 = load_address PyUnicode_Type
     r1 = r0
-    r2 = VecTExtApi.alloc(0, 0, r1, 1)
+    r2 = VecNestedApi.alloc(0, 0, r1, 1)
     return r2
 def g():
     r0 :: vec[vec[i64]]
 L0:
-    r0 = VecTExtApi.alloc(0, 0, 2, 1)
+    r0 = VecNestedApi.alloc(0, 0, 2, 1)
     return r0
 
 [case testVecNestedAppend]
@@ -36,14 +36,14 @@ def f(v, vv):
     vv :: vec[str]
     r0 :: native_int
     r1 :: object
-    r2, r3 :: VecbufTExtItem{len:native_int, buf:object_nrc}
+    r2, r3 :: VecNestedBufItem{len:native_int, buf:object_nrc}
     r4 :: vec[vec[str]]
 L0:
     r0 = vv.len
     r1 = vv.buf
     r2 = set_element undef, len, r0
     r3 = set_element r2, buf, r1
-    r4 = VecTExtApi.append(v, r3)
+    r4 = VecNestedApi.append(v, r3)
     keep_alive vv
     return r4
 
@@ -59,14 +59,14 @@ def f(v, vv):
     vv :: vec[i64]
     r0 :: native_int
     r1 :: object
-    r2, r3 :: VecbufTExtItem{len:native_int, buf:object_nrc}
+    r2, r3 :: VecNestedBufItem{len:native_int, buf:object_nrc}
     r4 :: vec[vec[i64]]
 L0:
     r0 = vv.len
     r1 = vv.buf
     r2 = set_element undef, len, r0
     r3 = set_element r2, buf, r1
-    r4 = VecTExtApi.append(v, r3)
+    r4 = VecNestedApi.append(v, r3)
     keep_alive vv
     return r4
 
@@ -133,7 +133,7 @@ L4:
     r5 = n
 L5:
     r6 = v.buf
-    r7 = get_element_ptr r6 items :: VecbufTExtObject
+    r7 = get_element_ptr r6 items :: VecNestedBufObject
     r8 = r5 * 16
     r9 = r7 + r8
     r10 = load_mem r9 :: vec[str]*
@@ -179,7 +179,7 @@ L4:
     r5 = n
 L5:
     r6 = v.buf
-    r7 = get_element_ptr r6 items :: VecbufTExtObject
+    r7 = get_element_ptr r6 items :: VecNestedBufObject
     r8 = r5 * 16
     r9 = r7 + r8
     r10 = load_mem r9 :: vec[i64]*
@@ -236,7 +236,7 @@ L4:
     r5 = n
 L5:
     r6 = v.buf
-    r7 = get_element_ptr r6 items :: VecbufTExtObject
+    r7 = get_element_ptr r6 items :: VecNestedBufObject
     r8 = r5 * 16
     r9 = r7 + r8
     r10 = borrow load_mem r9 :: vec[i64]*
@@ -257,7 +257,7 @@ L9:
     r16 = n
 L10:
     r17 = r10.buf
-    r18 = get_element_ptr r17 items :: VecbufI64Object
+    r18 = get_element_ptr r17 items :: VecI64BufObject
     r19 = r16 * 8
     r20 = r18 + r19
     r21 = load_mem r20 :: i64*
@@ -303,7 +303,7 @@ L4:
     r5 = n
 L5:
     r6 = v.buf
-    r7 = get_element_ptr r6 items :: VecbufTExtObject
+    r7 = get_element_ptr r6 items :: VecNestedBufObject
     r8 = r5 * 16
     r9 = r7 + r8
     r10 = load_mem r9 :: vec[vec[str]]*

@@ -177,7 +177,7 @@ L4:
     r5 = n
 L5:
     r6 = v.buf
-    r7 = get_element_ptr r6 items :: VecbufTObject
+    r7 = get_element_ptr r6 items :: VecTBufObject
     r8 = r5 * 8
     r9 = r7 + r8
     r10 = load_mem r9 :: builtins.str*
@@ -224,7 +224,7 @@ L4:
     r5 = n
 L5:
     r6 = v.buf
-    r7 = get_element_ptr r6 items :: VecbufTObject
+    r7 = get_element_ptr r6 items :: VecTBufObject
     r8 = r5 * 8
     r9 = r7 + r8
     r10 = load_mem r9 :: union*

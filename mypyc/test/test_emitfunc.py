@@ -376,7 +376,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                          """cpy_r_r0 = VecTApi.box(cpy_r_vs, (size_t)&PyUnicode_Type);""")
         self.assert_emit(Box(self.vs_opt),
                          """cpy_r_r0 = VecTApi.box(cpy_r_vs, (size_t)&PyUnicode_Type | 1);""")
-        self.assert_emit(Box(self.vvs), """cpy_r_r0 = VecTExtApi.box(cpy_r_vvs);""")
+        self.assert_emit(Box(self.vvs), """cpy_r_r0 = VecNestedApi.box(cpy_r_vvs);""")
 
     def test_unbox_vec(self) -> None:
         self.assert_emit(
@@ -415,23 +415,23 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_unbox_vec_nested(self) -> None:
         self.assert_emit(
             Unbox(self.o, RVec(RVec(str_rprimitive)), 55),
-            """cpy_r_r0 = VecTExtApi.unbox(cpy_r_o, (size_t)&PyUnicode_Type, 1);
+            """cpy_r_r0 = VecNestedApi.unbox(cpy_r_o, (size_t)&PyUnicode_Type, 1);
                if (VEC_IS_ERROR(cpy_r_r0)) {
-                   CPy_TypeError("vec[vec[str]]", cpy_r_o); cpy_r_r0 = (VecTExt) { -1, NULL };
+                   CPy_TypeError("vec[vec[str]]", cpy_r_o); cpy_r_r0 = (VecNested) { -1, NULL };
                }
                """)
         self.assert_emit(
             Unbox(self.o, RVec(RVec(RUnion([str_rprimitive, none_rprimitive]))), 55),
-            """cpy_r_r0 = VecTExtApi.unbox(cpy_r_o, (size_t)&PyUnicode_Type | 1, 1);
+            """cpy_r_r0 = VecNestedApi.unbox(cpy_r_o, (size_t)&PyUnicode_Type | 1, 1);
                if (VEC_IS_ERROR(cpy_r_r0)) {
-                   CPy_TypeError("vec[vec[str | None]]", cpy_r_o); cpy_r_r0 = (VecTExt) { -1, NULL };
+                   CPy_TypeError("vec[vec[str | None]]", cpy_r_o); cpy_r_r0 = (VecNested) { -1, NULL };
                }
                """)
         self.assert_emit(
             Unbox(self.o, RVec(RVec(int64_rprimitive)), 55),
-            """cpy_r_r0 = VecTExtApi.unbox(cpy_r_o, VEC_ITEM_TYPE_I64, 1);
+            """cpy_r_r0 = VecNestedApi.unbox(cpy_r_o, VEC_ITEM_TYPE_I64, 1);
                if (VEC_IS_ERROR(cpy_r_r0)) {
-                   CPy_TypeError("vec[vec[i64]]", cpy_r_o); cpy_r_r0 = (VecTExt) { -1, NULL };
+                   CPy_TypeError("vec[vec[i64]]", cpy_r_o); cpy_r_r0 = (VecNested) { -1, NULL };
                }
                """)
 

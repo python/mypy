@@ -1104,7 +1104,7 @@ class Emitter:
                     self.emit_line(f"{dest} = VecTApi.unbox({src}, {type_value});")
                 else:
                     self.emit_line(
-                        f"{dest} = VecTExtApi.unbox({src}, {type_value}, {depth});")
+                        f"{dest} = VecNestedApi.unbox({src}, {type_value}, {depth});")
 
             self.emit_line(f"if (VEC_IS_ERROR({dest})) {{")
             self.emit_line(failure)
@@ -1187,7 +1187,7 @@ class Emitter:
             if is_int64_rprimitive(typ.item_type):
                 api = "VecI64Api"
             elif typ.depth() > 0:
-                api = "VecTExtApi"
+                api = "VecNestedApi"
             else:
                 api = "VecTApi"
                 # Empty vecs of this sort don't describe item type, so it needs to be
