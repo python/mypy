@@ -65,7 +65,7 @@ VecProxy_dealloc(VecProxy *self)
     PyObject_GC_Del(self);
 }
 
-PyObject *vec_type_to_str(size_t item_type, size_t depth) {
+PyObject *Vec_TypeToStr(size_t item_type, size_t depth) {
     PyObject *item;
     if (depth == 0)
         if ((item_type & ~1) == VEC_ITEM_TYPE_I64) {
@@ -77,7 +77,7 @@ PyObject *vec_type_to_str(size_t item_type, size_t depth) {
             }
         }
     else
-        item = vec_type_to_str(item_type, depth - 1);
+        item = Vec_TypeToStr(item_type, depth - 1);
 
     return PyUnicode_FromFormat("vec[%U]", item);
 }
@@ -90,7 +90,7 @@ PyObject *VecProxy_repr(PyObject *self) {
     PyObject *sep = Py_BuildValue("s", "");
     PyList_Append(l, prefix);
     VecProxy *v = (VecProxy *)self;
-    PyList_Append(l, vec_type_to_str(v->item_type, v->depth));
+    PyList_Append(l, Vec_TypeToStr(v->item_type, v->depth));
     PyList_Append(l, suffix);
     return PyUnicode_Join(sep, l);
 }
@@ -220,7 +220,7 @@ PyObject *Vec_GenericRepr(PyObject *vec, size_t item_type, size_t depth, int ver
     PyObject *sep = Py_BuildValue("s", "");
     PyObject *comma = Py_BuildValue("s", ", ");
     if (verbose) {
-        prefix = vec_type_to_str(item_type, depth);
+        prefix = Vec_TypeToStr(item_type, depth);
         mid = Py_BuildValue("s", "([");
         suffix = Py_BuildValue("s", "])");
     } else {
@@ -254,7 +254,7 @@ PyObject *Vec_GenericRepr(PyObject *vec, size_t item_type, size_t depth, int ver
 }
 
 // Generic comparison implementation for vecs with PyObject * items.
-PyObject *vec_generic_richcompare(Py_ssize_t *len, PyObject **items,
+PyObject *Vec_GenericRichcompare(Py_ssize_t *len, PyObject **items,
                                   Py_ssize_t *other_len, PyObject **other_items,
                                   int op) {
     int cmp = 1;
@@ -282,7 +282,7 @@ PyObject *vec_generic_richcompare(Py_ssize_t *len, PyObject **items,
     return res;
 }
 
-int vec_generic_remove(Py_ssize_t *len, PyObject **items, PyObject *item) {
+int Vec_GenericRemove(Py_ssize_t *len, PyObject **items, PyObject *item) {
     for (Py_ssize_t i = 0; i < *len; i++) {
         int match = 0;
         if (items[i] == item)
@@ -306,7 +306,7 @@ int vec_generic_remove(Py_ssize_t *len, PyObject **items, PyObject *item) {
     return 0;
 }
 
-PyObject *vec_generic_pop(Py_ssize_t *len, PyObject **items, Py_ssize_t index) {
+PyObject *Vec_GenericPop(Py_ssize_t *len, PyObject **items, Py_ssize_t index) {
     if (index < 0)
         index += *len;
 
@@ -323,12 +323,12 @@ PyObject *vec_generic_pop(Py_ssize_t *len, PyObject **items, Py_ssize_t index) {
     return item;
 }
 
-PyObject *vec_generic_pop_wrapper(Py_ssize_t *len, PyObject **items, PyObject *args) {
+PyObject *Vec_GenericPopWrapper(Py_ssize_t *len, PyObject **items, PyObject *args) {
     Py_ssize_t index = -1;
     if (!PyArg_ParseTuple(args, "|n:pop", &index))
         return NULL;
 
-    return vec_generic_pop(len, items, index);
+    return Vec_GenericPop(len, items, index);
 }
 
 // Module-level functions

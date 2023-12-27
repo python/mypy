@@ -200,7 +200,7 @@ static PyObject *vec_richcompare(PyObject *self, PyObject *other, int op) {
                 res = op == Py_EQ ? Py_False : Py_True;
             } else {
                 // TODO: why pointers to len?
-                return vec_generic_richcompare(&x.len, x.buf->items, &y.len, y.buf->items, op);
+                return Vec_GenericRichcompare(&x.len, x.buf->items, &y.len, y.buf->items, op);
             }
         }
     } else

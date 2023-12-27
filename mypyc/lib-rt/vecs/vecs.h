@@ -369,13 +369,13 @@ static inline int check_float_error(PyObject *o) {
     return 0;
 }
 
-PyObject *vec_type_to_str(size_t item_type, size_t depth);
+PyObject *Vec_TypeToStr(size_t item_type, size_t depth);
 PyObject *Vec_GenericRepr(PyObject *vec, size_t item_type, size_t depth, int verbose);
-PyObject *vec_generic_richcompare(Py_ssize_t *len, PyObject **items,
+PyObject *Vec_GenericRichcompare(Py_ssize_t *len, PyObject **items,
                                   Py_ssize_t *other_len, PyObject **other_items,
                                   int op);
-int vec_generic_remove(Py_ssize_t *len, PyObject **items, PyObject *item);
-PyObject *vec_generic_pop_wrapper(Py_ssize_t *len, PyObject **items, PyObject *args);
-PyObject *vec_generic_pop(Py_ssize_t *len, PyObject **items, Py_ssize_t index);
+int Vec_GenericRemove(Py_ssize_t *len, PyObject **items, PyObject *item);
+PyObject *Vec_GenericPopWrapper(Py_ssize_t *len, PyObject **items, PyObject *args);
+PyObject *Vec_GenericPop(Py_ssize_t *len, PyObject **items, Py_ssize_t index);
 
 #endif
