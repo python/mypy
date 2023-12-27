@@ -216,7 +216,7 @@ inline VecT VecT_Error() {
     return v;
 }
 
-inline VecTExt VecT_Ext_Error() {
+inline VecTExt VecVec_Error() {
     VecTExt v = { .len = -1 };
     return v;
 }
@@ -296,16 +296,16 @@ static inline int VecTExt_ItemCheck(VecTExt v, PyObject *it) {
     }
 }
 
-VecTExt VecT_Ext_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_t depth);
-PyObject *VecT_Ext_FromIterable(size_t item_type, size_t depth, PyObject *iterable);
-PyObject *VecT_Ext_Box(VecTExt);
-VecTExt VecT_Ext_Append(VecTExt vec, VecbufTExtItem x);
-VecTExt VecT_Ext_Remove(VecTExt vec, VecbufTExtItem x);
-VecTExtPopResult VecT_Ext_Pop(VecTExt v, Py_ssize_t index);
+VecTExt VecVec_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_t depth);
+PyObject *VecVec_FromIterable(size_t item_type, size_t depth, PyObject *iterable);
+PyObject *VecVec_Box(VecTExt);
+VecTExt VecVec_Append(VecTExt vec, VecbufTExtItem x);
+VecTExt VecVec_Remove(VecTExt vec, VecbufTExtItem x);
+VecTExtPopResult VecVec_Pop(VecTExt v, Py_ssize_t index);
 
 // Return 0 on success, -1 on error. Store unboxed item in *unboxed if successful.
 // Return a *borrowed* reference.
-static inline int VecT_Ext_UnboxItem(VecTExt v, PyObject *item, VecbufTExtItem *unboxed) {
+static inline int VecVec_UnboxItem(VecTExt v, PyObject *item, VecbufTExtItem *unboxed) {
     size_t depth = v.buf->depth;
     if (depth == 1) {
         // TODO: vec[i64]
@@ -336,14 +336,14 @@ static inline int VecT_Ext_UnboxItem(VecTExt v, PyObject *item, VecbufTExtItem *
     return -1;
 }
 
-static inline PyObject *VecT_Ext_BoxItem(VecTExt v, VecbufTExtItem item) {
+static inline PyObject *VecVec_BoxItem(VecTExt v, VecbufTExtItem item) {
     if (item.len < 0)
         Py_RETURN_NONE;
     Py_XINCREF(item.buf);
     if (v.buf->depth > 1) {
         // Item is a nested vec
         VecTExt v = { .len = item.len, .buf = (VecbufTExtObject *)item.buf };
-        return VecT_Ext_Box(v);
+        return VecVec_Box(v);
     } else {
         // Item is a non-nested vec
         size_t item_type = v.buf->item_type;

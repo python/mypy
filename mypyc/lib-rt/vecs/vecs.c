@@ -37,12 +37,12 @@ static PyObject *vec_proxy_call(PyObject *self, PyObject *args, PyObject *kw)
         }
     } else {
         if (init == NULL) {
-            VecTExt vec = VecT_Ext_New(0, 0, p->item_type, p->depth);
+            VecTExt vec = VecVec_New(0, 0, p->item_type, p->depth);
             if (VEC_IS_ERROR(vec))
                 return NULL;
-            return VecT_Ext_Box(vec);
+            return VecVec_Box(vec);
         } else {
-            return VecT_Ext_FromIterable(p->item_type, p->depth, init);
+            return VecVec_FromIterable(p->item_type, p->depth, init);
         }
     }
 }
@@ -367,13 +367,13 @@ static PyObject *vecs_append(PyObject *self, PyObject *args)
     } else if (VecTExt_Check(vec)) {
         VecTExt v = ((VecTExtObject *)vec)->vec;
         VecbufTExtItem vecitem;
-        if (VecT_Ext_UnboxItem(v, item, &vecitem) < 0)
+        if (VecVec_UnboxItem(v, item, &vecitem) < 0)
             return NULL;
         VEC_INCREF(v);
-        v = VecT_Ext_Append(v, vecitem);
+        v = VecVec_Append(v, vecitem);
         if (VEC_IS_ERROR(v))
             return NULL; // TODO: decref?
-        return VecT_Ext_Box(v);
+        return VecVec_Box(v);
     } else {
         PyErr_SetString(PyExc_TypeError, "vec argument expected");
         return NULL;
@@ -414,13 +414,13 @@ static PyObject *vecs_remove(PyObject *self, PyObject *args)
     } else if (VecTExt_Check(vec)) {
         VecTExt v = ((VecTExtObject *)vec)->vec;
         VecbufTExtItem vecitem;
-        if (VecT_Ext_UnboxItem(v, item, &vecitem) < 0)
+        if (VecVec_UnboxItem(v, item, &vecitem) < 0)
             return NULL;
         VEC_INCREF(v);
-        v = VecT_Ext_Remove(v, vecitem);
+        v = VecVec_Remove(v, vecitem);
         if (VEC_IS_ERROR(v))
             return NULL; // TODO: decref?
-        return VecT_Ext_Box(v);
+        return VecVec_Box(v);
     } else {
         PyErr_SetString(PyExc_TypeError, "vec argument expected");
         return NULL;
@@ -465,18 +465,18 @@ static PyObject *vecs_pop(PyObject *self, PyObject *args)
     } else if (VecTExt_Check(vec)) {
         VecTExt v = ((VecTExtObject *)vec)->vec;
         VecTExtPopResult r;
-        r = VecT_Ext_Pop(v, index);
+        r = VecVec_Pop(v, index);
         if (VEC_IS_ERROR(r.f0))
             return NULL;
 
-        result_item0 = VecT_Ext_Box(r.f0);
+        result_item0 = VecVec_Box(r.f0);
         if (result_item0 == NULL) {
             Py_DECREF(r.f0.buf);
             Py_DECREF(r.f1.buf);
             return NULL;
         }
 
-        result_item1 = VecT_Ext_BoxItem(r.f0, r.f1);
+        result_item1 = VecVec_BoxItem(r.f0, r.f1);
         if (result_item1 == NULL) {
             Py_DECREF(result_item0);
             Py_DECREF(r.f1.buf);
