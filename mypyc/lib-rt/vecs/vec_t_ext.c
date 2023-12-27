@@ -313,24 +313,24 @@ VecTExtPopResult VecVec_Pop(VecTExt v, Py_ssize_t index) {
 }
 
 static int
-VecTExt_traverse(VecTObject *self, visitproc visit, void *arg)
+VecVec_traverse(VecTObject *self, visitproc visit, void *arg)
 {
     Py_VISIT(self->vec.buf);
     return 0;
 }
 
 static int
-VecTExt_clear(VecTObject *self)
+VecVec_clear(VecTObject *self)
 {
     Py_CLEAR(self->vec.buf);
     return 0;
 }
 
 static void
-VecTExt_dealloc(VecTObject *self)
+VecVec_dealloc(VecTObject *self)
 {
     PyObject_GC_UnTrack(self);
-    Py_TRASHCAN_BEGIN(self, VecTExt_dealloc)
+    Py_TRASHCAN_BEGIN(self, VecVec_dealloc)
     Py_CLEAR(self->vec.buf);
     Py_TYPE(self)->tp_free((PyObject *)self);
     Py_TRASHCAN_END
@@ -416,9 +416,9 @@ PyTypeObject VecTExtType = {
     .tp_basicsize = sizeof(VecTExtObject) - sizeof(PyObject *),
     .tp_itemsize = sizeof(PyObject *),
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
-    .tp_traverse = (traverseproc)VecTExt_traverse,
-    .tp_clear = (inquiry)VecTExt_clear,
-    .tp_dealloc = (destructor)VecTExt_dealloc,
+    .tp_traverse = (traverseproc)VecVec_traverse,
+    .tp_clear = (inquiry)VecVec_clear,
+    .tp_dealloc = (destructor)VecVec_dealloc,
     //.tp_free = PyObject_GC_Del,
     .tp_repr = (reprfunc)vec_repr,
     .tp_as_sequence = &VecTExtSequence,

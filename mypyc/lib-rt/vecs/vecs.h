@@ -274,11 +274,11 @@ VecTPopResult VecT_Pop(VecT v, Py_ssize_t index);
 
 // vec[t] operations (extended)
 
-static inline int VecTExt_Check(PyObject *o) {
+static inline int VecVec_Check(PyObject *o) {
     return o->ob_type == &VecTExtType;
 }
 
-static inline int VecTExt_ItemCheck(VecTExt v, PyObject *it) {
+static inline int VecVec_ItemCheck(VecTExt v, PyObject *it) {
     // TODO: vec[i64] item type
     if (it == Py_None && (v.buf->item_type & 1)) {
         return 1;

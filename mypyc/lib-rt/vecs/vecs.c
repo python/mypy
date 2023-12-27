@@ -364,7 +364,7 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
         if (VEC_IS_ERROR(v))
             return NULL;
         return VecT_Box(v, v.buf->item_type);
-    } else if (VecTExt_Check(vec)) {
+    } else if (VecVec_Check(vec)) {
         VecTExt v = ((VecTExtObject *)vec)->vec;
         VecbufTExtItem vecitem;
         if (VecVec_UnboxItem(v, item, &vecitem) < 0)
@@ -411,7 +411,7 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
         if (VEC_IS_ERROR(v))
             return NULL;
         return VecT_Box(v, v.buf->item_type);
-    } else if (VecTExt_Check(vec)) {
+    } else if (VecVec_Check(vec)) {
         VecTExt v = ((VecTExtObject *)vec)->vec;
         VecbufTExtItem vecitem;
         if (VecVec_UnboxItem(v, item, &vecitem) < 0)
@@ -462,7 +462,7 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
             return NULL;
         }
         result_item1 = r.f1;
-    } else if (VecTExt_Check(vec)) {
+    } else if (VecVec_Check(vec)) {
         VecTExt v = ((VecTExtObject *)vec)->vec;
         VecTExtPopResult r;
         r = VecVec_Pop(v, index);
