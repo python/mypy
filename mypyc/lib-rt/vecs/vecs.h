@@ -193,7 +193,7 @@ typedef struct _VecNestedFeatures {
 typedef struct {
     VecI64Features *i64;
     VecTFeatures *t;
-    VecNestedFeatures *t_ext;
+    VecNestedFeatures *nested;
 } VecCapsule;
 
 #define BUF_SIZE(b) ((b)->ob_base.ob_size)
