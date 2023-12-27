@@ -333,7 +333,7 @@ PyObject *vec_generic_pop_wrapper(Py_ssize_t *len, PyObject **items, PyObject *a
 
 // Module-level functions
 
-static PyObject *vecs_append(PyObject *self, PyObject *args)
+static PyObject *vec_append(PyObject *self, PyObject *args)
 {
     PyObject *vec;
     PyObject *item;
@@ -380,7 +380,7 @@ static PyObject *vecs_append(PyObject *self, PyObject *args)
     }
 }
 
-static PyObject *vecs_remove(PyObject *self, PyObject *args)
+static PyObject *vec_remove(PyObject *self, PyObject *args)
 {
     PyObject *vec;
     PyObject *item;
@@ -427,7 +427,7 @@ static PyObject *vecs_remove(PyObject *self, PyObject *args)
     }
 }
 
-static PyObject *vecs_pop(PyObject *self, PyObject *args)
+static PyObject *vec_pop(PyObject *self, PyObject *args)
 {
     PyObject *vec;
     Py_ssize_t index = -1;
@@ -505,9 +505,9 @@ static PyObject *vecs_pop(PyObject *self, PyObject *args)
 }
 
 static PyMethodDef VecsMethods[] = {
-    {"append",  vecs_append, METH_VARARGS, "Append a value to the end of a vec"},
-    {"remove",  vecs_remove, METH_VARARGS, "Remove first occurrence of value"},
-    {"pop",  vecs_pop, METH_VARARGS, "Remove and return item at index (default last)"},
+    {"append",  vec_append, METH_VARARGS, "Append a value to the end of a vec"},
+    {"remove",  vec_remove, METH_VARARGS, "Remove first occurrence of value"},
+    {"pop",  vec_pop, METH_VARARGS, "Remove and return item at index (default last)"},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
