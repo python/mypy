@@ -278,24 +278,6 @@ static inline int VecVec_Check(PyObject *o) {
     return o->ob_type == &VecNestedType;
 }
 
-static inline int VecVec_ItemCheck(VecNested v, PyObject *it) {
-    // TODO: vec[i64] item type
-    if (it == Py_None && (v.buf->item_type & 1)) {
-        return 1;
-    } else if (v.buf->depth == 1 && it->ob_type == &VecTType
-               && ((VecNestedObject *)it)->vec.buf->item_type == v.buf->item_type) {
-        return 1;
-    } else if (it->ob_type == &VecNestedType
-               && ((VecNestedObject *)it)->vec.buf->depth == v.buf->depth - 1
-               && ((VecNestedObject *)it)->vec.buf->item_type == v.buf->item_type) {
-        return 1;
-    } else {
-        // TODO: better error message
-        PyErr_SetString(PyExc_TypeError, "invalid item type");
-        return 0;
-    }
-}
-
 VecNested VecVec_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_t depth);
 PyObject *VecVec_FromIterable(size_t item_type, size_t depth, PyObject *iterable);
 PyObject *VecVec_Box(VecNested);
