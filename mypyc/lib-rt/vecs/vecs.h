@@ -138,9 +138,9 @@ static tuple_T2VOO tuple_undefined_T2VOO = { { -1, NULL } , NULL };
 
 typedef tuple_T2VOO VecTPopResult;
 
-// vec[T] operations + type object (stored in a capsule)
+// vec[T] operations + type objects (stored in a capsule)
 //
-// T is a class type
+// T is a class type or class type | None
 typedef struct _VecTFeatures {
     PyTypeObject *boxed_type;
     PyTypeObject *buf_type;
@@ -171,9 +171,7 @@ static tuple_T2VvVi tuple_undefined_T2VvVi = { { -1, NULL } , { -1, NULL } };
 
 typedef tuple_T2VvVi VecNestedPopResult;
 
-// vec[T] operations for complex item types + type object (stored in a capsule)
-//
-// T can be T | None or vec[T] (or a combination of these)
+// Nested vec operations + type objects (stored in a capsule)
 typedef struct _VecNestedFeatures {
     PyTypeObject *boxed_type;
     PyTypeObject *buf_type;
@@ -247,7 +245,7 @@ VecI64 VecI64_Append(VecI64, int64_t x);
 VecI64 VecI64_Remove(VecI64, int64_t x);
 VecI64PopResult VecI64_Pop(VecI64 v, Py_ssize_t index);
 
-// vec[t] operations (simple)
+// vec[t] operations
 
 static inline int VecT_Check(PyObject *o) {
     return o->ob_type == &VecTType;
@@ -272,7 +270,7 @@ VecT VecT_Append(VecT vec, PyObject *x, size_t item_type);
 VecT VecT_Remove(VecT vec, PyObject *x);
 VecTPopResult VecT_Pop(VecT v, Py_ssize_t index);
 
-// vec[t] operations (extended)
+// Nested vec operations
 
 static inline int VecVec_Check(PyObject *o) {
     return o->ob_type == &VecNestedType;

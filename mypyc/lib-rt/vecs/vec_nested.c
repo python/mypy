@@ -2,7 +2,7 @@
 //
 // Examples of types supported:
 //  - vec[vec[i64]]
-//  - vec[vec[str]]
+//  - vec[vec[vec[str]]]
 //  - vec[vec[str | None]]
 
 #define PY_SSIZE_T_CLEAN

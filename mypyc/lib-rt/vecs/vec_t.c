@@ -1,8 +1,9 @@
-// Implementation of generic vec[t], when t is a plain type object.
+// Implementation of generic vec[t], when t is a plain type object (possibly optional).
 //
 // Examples of types supported:
 //
 //  - vec[str]
+//  - vec[str | None]
 //  - vec[object]
 //  - vec[UserClass]
 
@@ -20,8 +21,8 @@ static inline VecTBufObject *alloc_buf(Py_ssize_t size, size_t item_type) {
     return buf;
 }
 
-// Alloc a partially initialized vec. Caller *must* immediately initialize len (and buf->items
-// if size > 0).
+// Alloc a partially initialized vec. Caller *must* immediately initialize len, and buf->items
+// if size > 0.
 static VecT vec_alloc(Py_ssize_t size, size_t item_type) {
     VecTBufObject *buf;
 
