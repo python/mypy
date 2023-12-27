@@ -30,12 +30,12 @@ static VecT vec_t_alloc(Py_ssize_t size, size_t item_type) {
     } else {
         buf = alloc_buf(size, item_type);
         if (buf == NULL)
-            return Vec_T_Error();
+            return VecT_Error();
     }
     return (VecT) { .buf = buf };
 }
 
-PyObject *Vec_T_Box(VecT vec, size_t item_type) {
+PyObject *VecT_Box(VecT vec, size_t item_type) {
     // An unboxed empty vec may have a NULL buf, but a boxed vec must have it
     // allocated, since it contains the item type
     if (vec.buf == NULL) {
@@ -51,7 +51,7 @@ PyObject *Vec_T_Box(VecT vec, size_t item_type) {
     return (PyObject *)obj;
 }
 
-VecT Vec_T_Unbox(PyObject *obj, size_t item_type) {
+VecT VecT_Unbox(PyObject *obj, size_t item_type) {
     if (obj->ob_type == &VecTType) {
         VecT result = ((VecTObject *)obj)->vec;
         if (result.buf->item_type == item_type) {
@@ -61,14 +61,14 @@ VecT Vec_T_Unbox(PyObject *obj, size_t item_type) {
     }
     // TODO: Better error message, with name of type
     PyErr_SetString(PyExc_TypeError, "vec[t] expected");
-    return Vec_T_Error();
+    return VecT_Error();
 }
 
-VecT Vec_T_ConvertFromNested(VecbufTExtItem item) {
+VecT VecT_ConvertFromNested(VecbufTExtItem item) {
     return (VecT) { item.len, (VecbufTObject *)item.buf };
 }
 
-VecT Vec_T_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type) {
+VecT VecT_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type) {
     if (cap < size)
         cap = size;
     VecT vec = vec_t_alloc(cap, item_type);
@@ -102,7 +102,7 @@ PyObject *vec_t_get_item(PyObject *o, Py_ssize_t i) {
     }
 }
 
-VecT Vec_T_Slice(VecT vec, int64_t start, int64_t end) {
+VecT VecT_Slice(VecT vec, int64_t start, int64_t end) {
     if (start < 0)
         start += vec.len;
     if (end < 0)
@@ -162,7 +162,7 @@ PyObject *vec_t_subscript(PyObject *self, PyObject *item) {
             res.buf->items[i] = item;
             j += step;
         }
-        return Vec_T_Box(res, vec.buf->item_type);
+        return VecT_Box(res, vec.buf->item_type);
     } else {
         PyErr_Format(PyExc_TypeError, "vec indices must be integers or slices, not %.100s",
                      item->ob_type->tp_name);
@@ -209,7 +209,7 @@ PyObject *vec_t_richcompare(PyObject *self, PyObject *other, int op) {
     return res;
 }
 
-VecT Vec_T_Append(VecT vec, PyObject *x, size_t item_type) {
+VecT VecT_Append(VecT vec, PyObject *x, size_t item_type) {
     if (vec.buf == NULL) {
         VecT new = vec_t_alloc(1, item_type);
         if (VEC_IS_ERROR(new))
@@ -243,7 +243,7 @@ VecT Vec_T_Append(VecT vec, PyObject *x, size_t item_type) {
     }
 }
 
-VecT Vec_T_Remove(VecT v, PyObject *arg) {
+VecT VecT_Remove(VecT v, PyObject *arg) {
     PyObject **items = v.buf->items;
     for (Py_ssize_t i = 0; i < v.len; i++) {
         int match = 0;
@@ -252,7 +252,7 @@ VecT Vec_T_Remove(VecT v, PyObject *arg) {
         else {
             int itemcmp = PyObject_RichCompareBool(items[i], arg, Py_EQ);
             if (itemcmp < 0)
-                return Vec_T_Error();
+                return VecT_Error();
             match = itemcmp;
         }
         if (match) {
@@ -269,10 +269,10 @@ VecT Vec_T_Remove(VecT v, PyObject *arg) {
         }
     }
     PyErr_SetString(PyExc_ValueError, "vec.remove(x): x not in vec");
-    return Vec_T_Error();
+    return VecT_Error();
 }
 
-VecTPopResult Vec_T_Pop(VecT v, Py_ssize_t index) {
+VecTPopResult VecT_Pop(VecT v, Py_ssize_t index) {
     VecTPopResult result;
 
     if (index < 0)
@@ -280,7 +280,7 @@ VecTPopResult Vec_T_Pop(VecT v, Py_ssize_t index) {
 
     if (index < 0 || index >= v.len) {
         PyErr_SetString(PyExc_IndexError, "index out of range");
-        result.f0 = Vec_T_Error();
+        result.f0 = VecT_Error();
         result.f1 = NULL;
         return result;
     }
@@ -412,7 +412,7 @@ PyTypeObject VecTType = {
     // TODO: free
 };
 
-PyObject *Vec_T_FromIterable(size_t item_type, PyObject *iterable) {
+PyObject *VecT_FromIterable(size_t item_type, PyObject *iterable) {
     VecT v = vec_t_alloc(0, item_type);
     if (VEC_IS_ERROR(v))
         return NULL;
@@ -431,7 +431,7 @@ PyObject *Vec_T_FromIterable(size_t item_type, PyObject *iterable) {
             Py_DECREF(item);
             return NULL;
         }
-        v = Vec_T_Append(v, item, item_type);
+        v = VecT_Append(v, item, item_type);
         Py_DECREF(item);
         if (VEC_IS_ERROR(v)) {
             Py_DECREF(iter);
@@ -444,18 +444,18 @@ PyObject *Vec_T_FromIterable(size_t item_type, PyObject *iterable) {
         VEC_DECREF(v);
         return NULL;
     }
-    return Vec_T_Box(v, item_type);
+    return VecT_Box(v, item_type);
 }
 
 VecTFeatures TFeatures = {
     &VecTType,
     &VecbufTType,
-    Vec_T_New,
-    Vec_T_Box,
-    Vec_T_Unbox,
-    Vec_T_ConvertFromNested,
-    Vec_T_Append,
-    Vec_T_Pop,
-    Vec_T_Remove,
-    Vec_T_Slice,
+    VecT_New,
+    VecT_Box,
+    VecT_Unbox,
+    VecT_ConvertFromNested,
+    VecT_Append,
+    VecT_Pop,
+    VecT_Remove,
+    VecT_Slice,
 };

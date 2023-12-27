@@ -10,7 +10,7 @@
 #include "vecs.h"
 
 static inline PyObject *box_vec_item_by_index(VecTExt v, Py_ssize_t index) {
-    return Vec_T_Ext_BoxItem(v, v.buf->items[index]);
+    return VecT_Ext_BoxItem(v, v.buf->items[index]);
 }
 
 
@@ -19,7 +19,7 @@ static inline PyObject *box_vec_item_by_index(VecTExt v, Py_ssize_t index) {
 static VecTExt vec_t_ext_alloc(Py_ssize_t size, size_t item_type, size_t depth) {
     VecbufTExtObject *buf = PyObject_GC_NewVar(VecbufTExtObject, &VecbufTExtType, size);
     if (buf == NULL)
-        return Vec_T_Ext_Error();
+        return VecT_Ext_Error();
     buf->item_type = item_type;
     buf->depth = depth;
     if (!vec_is_magic_item_type(item_type))
@@ -29,7 +29,7 @@ static VecTExt vec_t_ext_alloc(Py_ssize_t size, size_t item_type, size_t depth) 
     return res;
 }
 
-PyObject *Vec_T_Ext_Box(VecTExt vec) {
+PyObject *VecT_Ext_Box(VecTExt vec) {
     VecTExtObject *obj = PyObject_GC_New(VecTExtObject, &VecTExtType);
     if (obj == NULL)
         return NULL;
@@ -38,7 +38,7 @@ PyObject *Vec_T_Ext_Box(VecTExt vec) {
     return (PyObject *)obj;
 }
 
-VecTExt Vec_T_Ext_Unbox(PyObject *obj, size_t item_type, size_t depth) {
+VecTExt VecT_Ext_Unbox(PyObject *obj, size_t item_type, size_t depth) {
     if (obj->ob_type == &VecTExtType) {
         VecTExt result = ((VecTExtObject *)obj)->vec;
         if (result.buf->item_type == item_type && result.buf->depth == depth) {
@@ -48,14 +48,14 @@ VecTExt Vec_T_Ext_Unbox(PyObject *obj, size_t item_type, size_t depth) {
     }
     // TODO: Better error message, with name of type
     PyErr_SetString(PyExc_TypeError, "vec[t] expected");
-    return Vec_T_Ext_Error();
+    return VecT_Ext_Error();
 }
 
-VecTExt Vec_T_Ext_ConvertFromNested(VecbufTExtItem item) {
+VecTExt VecT_Ext_ConvertFromNested(VecbufTExtItem item) {
     return (VecTExt) { item.len, (VecbufTExtObject *)item.buf };
 }
 
-VecTExt Vec_T_Ext_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_t depth) {
+VecTExt VecT_Ext_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_t depth) {
     if (cap < size)
         cap = size;
     VecTExt vec = vec_t_ext_alloc(cap, item_type, depth);
@@ -86,7 +86,7 @@ PyObject *vec_t_ext_get_item(PyObject *o, Py_ssize_t i) {
     }
 }
 
-VecTExt Vec_T_Ext_Slice(VecTExt vec, int64_t start, int64_t end) {
+VecTExt VecT_Ext_Slice(VecTExt vec, int64_t start, int64_t end) {
     if (start < 0)
         start += vec.len;
     if (end < 0)
@@ -142,7 +142,7 @@ PyObject *vec_t_ext_subscript(PyObject *self, PyObject *item) {
             res.buf->items[i] = item;
             j += step;
         }
-        return Vec_T_Ext_Box(res);
+        return VecT_Ext_Box(res);
     } else {
         PyErr_Format(PyExc_TypeError, "vec indices must be integers or slices, not %.100s",
                      item->ob_type->tp_name);
@@ -157,7 +157,7 @@ int vec_t_ext_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
     }
     if ((size_t)i < (size_t)v.len) {
         VecbufTExtItem item;
-        if (Vec_T_Ext_UnboxItem(v, o, &item) < 0)
+        if (VecT_Ext_UnboxItem(v, o, &item) < 0)
             return -1;
         VEC_INCREF(item);
         VEC_DECREF(v.buf->items[i]);
@@ -214,7 +214,7 @@ PyObject *vec_t_ext_richcompare(PyObject *self, PyObject *other, int op) {
 }
 
 // Steals reference to vec (but not x)
-VecTExt Vec_T_Ext_Append(VecTExt vec, VecbufTExtItem x) {
+VecTExt VecT_Ext_Append(VecTExt vec, VecbufTExtItem x) {
     Py_ssize_t cap = VEC_CAP(vec);
     VEC_INCREF(x);
     if (vec.len < cap) {
@@ -242,12 +242,12 @@ VecTExt Vec_T_Ext_Append(VecTExt vec, VecbufTExtItem x) {
     }
 }
 
-VecTExt Vec_T_Ext_Remove(VecTExt self, VecbufTExtItem arg) {
+VecTExt VecT_Ext_Remove(VecTExt self, VecbufTExtItem arg) {
     VecbufTExtItem *items = self.buf->items;
 
-    PyObject *boxed_arg = Vec_T_Ext_BoxItem(self, arg);
+    PyObject *boxed_arg = VecT_Ext_BoxItem(self, arg);
     if (boxed_arg == NULL)
-        return Vec_T_Ext_Error();
+        return VecT_Ext_Error();
 
     for (Py_ssize_t i = 0; i < self.len; i++) {
         int match = 0;
@@ -257,13 +257,13 @@ VecTExt Vec_T_Ext_Remove(VecTExt self, VecbufTExtItem arg) {
             PyObject *item = box_vec_item_by_index(self, i);
             if (item == NULL) {
                 Py_DECREF(boxed_arg);
-                return Vec_T_Ext_Error();
+                return VecT_Ext_Error();
             }
             int itemcmp = PyObject_RichCompareBool(item, boxed_arg, Py_EQ);
             Py_DECREF(item);
             if (itemcmp < 0) {
                 Py_DECREF(boxed_arg);
-                return Vec_T_Ext_Error();
+                return VecT_Ext_Error();
             }
             match = itemcmp;
         }
@@ -283,10 +283,10 @@ VecTExt Vec_T_Ext_Remove(VecTExt self, VecbufTExtItem arg) {
     }
     Py_DECREF(boxed_arg);
     PyErr_SetString(PyExc_ValueError, "vec.remove(x): x not in vec");
-    return Vec_T_Ext_Error();
+    return VecT_Ext_Error();
 }
 
-VecTExtPopResult Vec_T_Ext_Pop(VecTExt v, Py_ssize_t index) {
+VecTExtPopResult VecT_Ext_Pop(VecTExt v, Py_ssize_t index) {
     VecTExtPopResult result;
 
     if (index < 0)
@@ -294,7 +294,7 @@ VecTExtPopResult Vec_T_Ext_Pop(VecTExt v, Py_ssize_t index) {
 
     if (index < 0 || index >= v.len) {
         PyErr_SetString(PyExc_IndexError, "index out of range");
-        result.f0 = Vec_T_Ext_Error();
+        result.f0 = VecT_Ext_Error();
         result.f1.len = 0;
         result.f1.buf = NULL;
         return result;
@@ -428,7 +428,7 @@ PyTypeObject VecTExtType = {
     // TODO: free
 };
 
-PyObject *Vec_T_Ext_FromIterable(size_t item_type, size_t depth, PyObject *iterable) {
+PyObject *VecT_Ext_FromIterable(size_t item_type, size_t depth, PyObject *iterable) {
     VecTExt v = vec_t_ext_alloc(0, item_type, depth);
     if (VEC_IS_ERROR(v))
         return NULL;
@@ -442,13 +442,13 @@ PyObject *Vec_T_Ext_FromIterable(size_t item_type, size_t depth, PyObject *itera
     PyObject *item;
     while ((item = PyIter_Next(iter)) != NULL) {
         VecbufTExtItem vecitem;
-        if (Vec_T_Ext_UnboxItem(v, item, &vecitem) < 0) {
+        if (VecT_Ext_UnboxItem(v, item, &vecitem) < 0) {
             Py_DECREF(iter);
             VEC_DECREF(v);
             Py_DECREF(item);
             return NULL;
         }
-        v = Vec_T_Ext_Append(v, vecitem);
+        v = VecT_Ext_Append(v, vecitem);
         Py_DECREF(item);
         if (VEC_IS_ERROR(v)) {
             Py_DECREF(iter);
@@ -461,18 +461,18 @@ PyObject *Vec_T_Ext_FromIterable(size_t item_type, size_t depth, PyObject *itera
         VEC_DECREF(v);
         return NULL;
     }
-    return Vec_T_Ext_Box(v);
+    return VecT_Ext_Box(v);
 }
 
 VecTExtFeatures TExtFeatures = {
     &VecTExtType,
     &VecbufTExtType,
-    Vec_T_Ext_New,
-    Vec_T_Ext_Box,
-    Vec_T_Ext_Unbox,
-    Vec_T_Ext_ConvertFromNested,
-    Vec_T_Ext_Append,
-    Vec_T_Ext_Pop,
-    Vec_T_Ext_Remove,
-    Vec_T_Ext_Slice,
+    VecT_Ext_New,
+    VecT_Ext_Box,
+    VecT_Ext_Unbox,
+    VecT_Ext_ConvertFromNested,
+    VecT_Ext_Append,
+    VecT_Ext_Pop,
+    VecT_Ext_Remove,
+    VecT_Ext_Slice,
 };

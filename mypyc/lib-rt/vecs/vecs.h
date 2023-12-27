@@ -211,12 +211,12 @@ inline VecI64 Vec_I64_Error() {
     return v;
 }
 
-inline VecT Vec_T_Error() {
+inline VecT VecT_Error() {
     VecT v = { .len = -1 };
     return v;
 }
 
-inline VecTExt Vec_T_Ext_Error() {
+inline VecTExt VecT_Ext_Error() {
     VecTExt v = { .len = -1 };
     return v;
 }
@@ -265,12 +265,12 @@ static inline int VecT_ItemCheck(VecT v, PyObject *item, size_t item_type) {
     }
 }
 
-VecT Vec_T_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type);
-PyObject *Vec_T_FromIterable(size_t item_type, PyObject *iterable);
-PyObject *Vec_T_Box(VecT vec, size_t item_type);
-VecT Vec_T_Append(VecT vec, PyObject *x, size_t item_type);
-VecT Vec_T_Remove(VecT vec, PyObject *x);
-VecTPopResult Vec_T_Pop(VecT v, Py_ssize_t index);
+VecT VecT_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type);
+PyObject *VecT_FromIterable(size_t item_type, PyObject *iterable);
+PyObject *VecT_Box(VecT vec, size_t item_type);
+VecT VecT_Append(VecT vec, PyObject *x, size_t item_type);
+VecT VecT_Remove(VecT vec, PyObject *x);
+VecTPopResult VecT_Pop(VecT v, Py_ssize_t index);
 
 // vec[t] operations (extended)
 
@@ -296,16 +296,16 @@ static inline int VecTExt_ItemCheck(VecTExt v, PyObject *it) {
     }
 }
 
-VecTExt Vec_T_Ext_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_t depth);
-PyObject *Vec_T_Ext_FromIterable(size_t item_type, size_t depth, PyObject *iterable);
-PyObject *Vec_T_Ext_Box(VecTExt);
-VecTExt Vec_T_Ext_Append(VecTExt vec, VecbufTExtItem x);
-VecTExt Vec_T_Ext_Remove(VecTExt vec, VecbufTExtItem x);
-VecTExtPopResult Vec_T_Ext_Pop(VecTExt v, Py_ssize_t index);
+VecTExt VecT_Ext_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_t depth);
+PyObject *VecT_Ext_FromIterable(size_t item_type, size_t depth, PyObject *iterable);
+PyObject *VecT_Ext_Box(VecTExt);
+VecTExt VecT_Ext_Append(VecTExt vec, VecbufTExtItem x);
+VecTExt VecT_Ext_Remove(VecTExt vec, VecbufTExtItem x);
+VecTExtPopResult VecT_Ext_Pop(VecTExt v, Py_ssize_t index);
 
 // Return 0 on success, -1 on error. Store unboxed item in *unboxed if successful.
 // Return a *borrowed* reference.
-static inline int Vec_T_Ext_UnboxItem(VecTExt v, PyObject *item, VecbufTExtItem *unboxed) {
+static inline int VecT_Ext_UnboxItem(VecTExt v, PyObject *item, VecbufTExtItem *unboxed) {
     size_t depth = v.buf->depth;
     if (depth == 1) {
         // TODO: vec[i64]
@@ -336,14 +336,14 @@ static inline int Vec_T_Ext_UnboxItem(VecTExt v, PyObject *item, VecbufTExtItem 
     return -1;
 }
 
-static inline PyObject *Vec_T_Ext_BoxItem(VecTExt v, VecbufTExtItem item) {
+static inline PyObject *VecT_Ext_BoxItem(VecTExt v, VecbufTExtItem item) {
     if (item.len < 0)
         Py_RETURN_NONE;
     Py_XINCREF(item.buf);
     if (v.buf->depth > 1) {
         // Item is a nested vec
         VecTExt v = { .len = item.len, .buf = (VecbufTExtObject *)item.buf };
-        return Vec_T_Ext_Box(v);
+        return VecT_Ext_Box(v);
     } else {
         // Item is a non-nested vec
         size_t item_type = v.buf->item_type;
@@ -354,7 +354,7 @@ static inline PyObject *Vec_T_Ext_BoxItem(VecTExt v, VecbufTExtItem item) {
         } else {
             // Generic vec[t]
             VecT v = { .len = item.len, .buf = (VecbufTObject *)item.buf };
-            return Vec_T_Box(v, item_type);
+            return VecT_Box(v, item_type);
         }
     }
 }
