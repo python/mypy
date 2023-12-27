@@ -16,7 +16,7 @@ static inline PyObject *box_vec_item_by_index(VecTExt v, Py_ssize_t index) {
 
 // Alloc a partially initialized vec. Caller *must* initialize len and buf->items of the
 // return value.
-static VecTExt vec_t_ext_alloc(Py_ssize_t size, size_t item_type, size_t depth) {
+static VecTExt vec_alloc(Py_ssize_t size, size_t item_type, size_t depth) {
     VecbufTExtObject *buf = PyObject_GC_NewVar(VecbufTExtObject, &VecbufTExtType, size);
     if (buf == NULL)
         return VecVec_Error();
@@ -58,7 +58,7 @@ VecTExt VecVec_ConvertFromNested(VecbufTExtItem item) {
 VecTExt VecVec_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_t depth) {
     if (cap < size)
         cap = size;
-    VecTExt vec = vec_t_ext_alloc(cap, item_type, depth);
+    VecTExt vec = vec_alloc(cap, item_type, depth);
     if (VEC_IS_ERROR(vec))
         return vec;
     for (Py_ssize_t i = 0; i < cap; i++) {
@@ -69,12 +69,12 @@ VecTExt VecVec_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_t dep
     return vec;
 }
 
-PyObject *vec_t_ext_repr(PyObject *self) {
+static PyObject *vec_repr(PyObject *self) {
     VecTExt v = ((VecTExtObject *)self)->vec;
     return Vec_GenericRepr(self, v.buf->item_type, v.buf->depth, 1);
 }
 
-PyObject *vec_t_ext_get_item(PyObject *o, Py_ssize_t i) {
+static PyObject *vec_get_item(PyObject *o, Py_ssize_t i) {
     VecTExt v = ((VecTExtObject *)o)->vec;
     if ((size_t)i < (size_t)v.len) {
         return box_vec_item_by_index(v, i);
@@ -100,7 +100,7 @@ VecTExt VecVec_Slice(VecTExt vec, int64_t start, int64_t end) {
     if (end > vec.len)
         end = vec.len;
     int64_t slicelength = end - start;
-    VecTExt res = vec_t_ext_alloc(slicelength, vec.buf->item_type, vec.buf->depth);
+    VecTExt res = vec_alloc(slicelength, vec.buf->item_type, vec.buf->depth);
     if (VEC_IS_ERROR(res))
         return res;
     res.len = slicelength;
@@ -112,7 +112,7 @@ VecTExt VecVec_Slice(VecTExt vec, int64_t start, int64_t end) {
     return res;
 }
 
-PyObject *vec_t_ext_subscript(PyObject *self, PyObject *item) {
+static PyObject *vec_subscript(PyObject *self, PyObject *item) {
     VecTExt vec = ((VecTExtObject *)self)->vec;
     if (PyIndex_Check(item)) {
         Py_ssize_t i = PyNumber_AsSsize_t(item, PyExc_IndexError);
@@ -131,7 +131,7 @@ PyObject *vec_t_ext_subscript(PyObject *self, PyObject *item) {
         if (PySlice_Unpack(item, &start, &stop, &step) < 0)
             return NULL;
         Py_ssize_t slicelength = PySlice_AdjustIndices(vec.len, &start, &stop, step);
-        VecTExt res = vec_t_ext_alloc(slicelength, vec.buf->item_type, vec.buf->depth);
+        VecTExt res = vec_alloc(slicelength, vec.buf->item_type, vec.buf->depth);
         if (VEC_IS_ERROR(res))
             return NULL;
         res.len = slicelength;
@@ -150,7 +150,7 @@ PyObject *vec_t_ext_subscript(PyObject *self, PyObject *item) {
     }
 }
 
-int vec_t_ext_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
+static int vec_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
     VecTExt v = ((VecTExtObject *)self)->vec;
     if ((size_t)i + (size_t)v.len < (size_t)v.len) {
         i += v.len;
@@ -169,7 +169,7 @@ int vec_t_ext_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
     }
 }
 
-static PyObject *compare_vec_t_ext_eq(VecTExt x, VecTExt y, int op) {
+static PyObject *compare_vec_eq(VecTExt x, VecTExt y, int op) {
     int cmp = 1;
     PyObject *res;
     if (x.len != y.len
@@ -198,13 +198,13 @@ static PyObject *compare_vec_t_ext_eq(VecTExt x, VecTExt y, int op) {
     return res;
 }
 
-PyObject *vec_t_ext_richcompare(PyObject *self, PyObject *other, int op) {
+PyObject *vec_richcompare(PyObject *self, PyObject *other, int op) {
     PyObject *res;
     if (op == Py_EQ || op == Py_NE) {
         if (other->ob_type != &VecTExtType) {
             res = op == Py_EQ ? Py_False : Py_True;
         } else {
-            return compare_vec_t_ext_eq(((VecTExtObject *)self)->vec,
+            return compare_vec_eq(((VecTExtObject *)self)->vec,
                                         ((VecTExtObject *)other)->vec, op);
         }
     } else
@@ -224,7 +224,7 @@ VecTExt VecVec_Append(VecTExt vec, VecbufTExtItem x) {
     } else {
         Py_ssize_t new_size = 2 * cap + 1;
         // TODO: Avoid initializing to zero here
-        VecTExt new = vec_t_ext_alloc(new_size, vec.buf->item_type, vec.buf->depth);
+        VecTExt new = vec_alloc(new_size, vec.buf->item_type, vec.buf->depth);
         if (VEC_IS_ERROR(new)) {
             VEC_DECREF(x);
             return new;
@@ -383,15 +383,15 @@ static Py_ssize_t vec_ext_length(PyObject *o) {
 
 static PyMappingMethods VecTExtMapping = {
     .mp_length = vec_ext_length,
-    .mp_subscript = vec_t_ext_subscript,
+    .mp_subscript = vec_subscript,
 };
 
 static PySequenceMethods VecTExtSequence = {
-    .sq_item = vec_t_ext_get_item,
-    .sq_ass_item = vec_t_ext_ass_item,
+    .sq_item = vec_get_item,
+    .sq_ass_item = vec_ass_item,
 };
 
-static PyMethodDef vec_t_ext_methods[] = {
+static PyMethodDef vec_methods[] = {
     {NULL, NULL, 0, NULL},  /* Sentinel */
 };
 
@@ -420,16 +420,16 @@ PyTypeObject VecTExtType = {
     .tp_clear = (inquiry)VecTExt_clear,
     .tp_dealloc = (destructor)VecTExt_dealloc,
     //.tp_free = PyObject_GC_Del,
-    .tp_repr = (reprfunc)vec_t_ext_repr,
+    .tp_repr = (reprfunc)vec_repr,
     .tp_as_sequence = &VecTExtSequence,
     .tp_as_mapping = &VecTExtMapping,
-    .tp_richcompare = vec_t_ext_richcompare,
-    .tp_methods = vec_t_ext_methods,
+    .tp_richcompare = vec_richcompare,
+    .tp_methods = vec_methods,
     // TODO: free
 };
 
 PyObject *VecVec_FromIterable(size_t item_type, size_t depth, PyObject *iterable) {
-    VecTExt v = vec_t_ext_alloc(0, item_type, depth);
+    VecTExt v = vec_alloc(0, item_type, depth);
     if (VEC_IS_ERROR(v))
         return NULL;
     v.len = 0;
