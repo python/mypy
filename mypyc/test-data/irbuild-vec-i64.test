@@ -266,6 +266,16 @@ L3:
 L4:
     return r1
 
+[case testVecI64XXX]
+from vecs import vec
+from mypy_extensions import i64
+from typing import List
+
+def f(n: i64, l: List[i64]) -> vec[i64]:
+    return vec[i64]([x + 1 for x in l])
+[out]
+
+
 [case testVecI64ConstructFromRange]
 from vecs import vec, pop
 from mypy_extensions import i64
@@ -592,4 +602,3 @@ L10:
     set_mem r21, r11 :: i64*
     keep_alive v
     return 1
-
