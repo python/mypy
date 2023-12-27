@@ -20,10 +20,10 @@ inline size_t Vec_IsMagicItemType(size_t item_type) {
 
 
 // vecbuf[i64]
-typedef struct _VecbufI64Object {
+typedef struct _VecI64BufObject {
     PyObject_VAR_HEAD
     int64_t items[1];
-} VecbufI64Object;
+} VecI64BufObject;
 
 // Simple generic vecbuf: vecbuf[t] when t is a type object
 typedef struct _VecbufTObject {
@@ -33,21 +33,21 @@ typedef struct _VecbufTObject {
     PyObject *items[1];
 } VecbufTObject;
 
-typedef struct _VecbufTExtItem {
+typedef struct _VecNestedBufItem {
     Py_ssize_t len;
     PyObject *buf;
-} VecbufTExtItem;
+} VecNestedBufItem;
 
 // Nested vec type: vec[vec[...]], vec[vec[...] | None], etc.
-typedef struct _VecbufTExtObject {
+typedef struct _VecNestedBufObject {
     PyObject_VAR_HEAD
     // Tagged pointer to PyTypeObject *. Lowest bit is set for optional item type.
     // The second lowest bit is set for a packed item type (VEC_ITEM_TYPE_*).
     size_t item_type;
     // Number of nested vec types (of any kind, at least 1)
     size_t depth;
-    VecbufTExtItem items[1];
-} VecbufTExtObject;
+    VecNestedBufItem items[1];
+} VecNestedBufObject;
 
 
 // Unboxed vec objects
@@ -55,7 +55,7 @@ typedef struct _VecbufTExtObject {
 
 typedef struct _VecI64 {
     Py_ssize_t len;
-    VecbufI64Object *buf;
+    VecI64BufObject *buf;
 } VecI64;
 
 typedef struct _VecT {
@@ -65,7 +65,7 @@ typedef struct _VecT {
 
 typedef struct _VecNested {
     Py_ssize_t len;
-    VecbufTExtObject *buf;
+    VecNestedBufObject *buf;
 } VecNested;
 
 
@@ -115,7 +115,7 @@ typedef struct _VecI64Features {
     VecI64 (*alloc)(Py_ssize_t, Py_ssize_t);
     PyObject *(*box)(VecI64);
     VecI64 (*unbox)(PyObject *);
-    VecI64 (*convert_from_nested)(VecbufTExtItem);
+    VecI64 (*convert_from_nested)(VecNestedBufItem);
     VecI64 (*append)(VecI64, int64_t);
     VecI64PopResult (*pop)(VecI64, Py_ssize_t);
     VecI64 (*remove)(VecI64, int64_t);
@@ -147,7 +147,7 @@ typedef struct _VecTFeatures {
     VecT (*alloc)(Py_ssize_t, Py_ssize_t, size_t);
     PyObject *(*box)(VecT, size_t);
     VecT (*unbox)(PyObject *, size_t);
-    VecT (*convert_from_nested)(VecbufTExtItem);
+    VecT (*convert_from_nested)(VecNestedBufItem);
     VecT (*append)(VecT, PyObject *, size_t);
     VecTPopResult (*pop)(VecT, Py_ssize_t);
     VecT (*remove)(VecT, PyObject *);
@@ -164,7 +164,7 @@ typedef struct _VecTFeatures {
 #define MYPYC_DECLARED_tuple_T2VvVi
 typedef struct tuple_T2VvVi {
     VecNested f0;
-    VecbufTExtItem f1;
+    VecNestedBufItem f1;
 } tuple_T2VvVi;
 static tuple_T2VvVi tuple_undefined_T2VvVi = { { -1, NULL } , { -1, NULL } };
 #endif
@@ -180,10 +180,10 @@ typedef struct _VecNestedFeatures {
     VecNested (*alloc)(Py_ssize_t, Py_ssize_t, size_t, size_t depth);
     PyObject *(*box)(VecNested);
     VecNested (*unbox)(PyObject *, size_t, size_t depth);
-    VecNested (*convert_from_nested)(VecbufTExtItem);
-    VecNested (*append)(VecNested, VecbufTExtItem);
+    VecNested (*convert_from_nested)(VecNestedBufItem);
+    VecNested (*append)(VecNested, VecNestedBufItem);
     VecNestedPopResult (*pop)(VecNested, Py_ssize_t);
-    VecNested (*remove)(VecNested, VecbufTExtItem);
+    VecNested (*remove)(VecNested, VecNestedBufItem);
     // TODO: Py_ssize_t
     VecNested (*slice)(VecNested, int64_t, int64_t);
     // PyObject *(*extend)(PyObject *, PyObject *);
@@ -223,9 +223,9 @@ inline VecNested VecVec_Error() {
 
 // Type objects
 
-extern PyTypeObject VecbufI64Type;
+extern PyTypeObject VecI64BufType;
 extern PyTypeObject VecbufTType;
-extern PyTypeObject VecbufTExtType;
+extern PyTypeObject VecNestedBufType;
 
 extern PyTypeObject VecI64Type;
 extern PyTypeObject VecTType;
@@ -299,13 +299,13 @@ static inline int VecVec_ItemCheck(VecNested v, PyObject *it) {
 VecNested VecVec_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_t depth);
 PyObject *VecVec_FromIterable(size_t item_type, size_t depth, PyObject *iterable);
 PyObject *VecVec_Box(VecNested);
-VecNested VecVec_Append(VecNested vec, VecbufTExtItem x);
-VecNested VecVec_Remove(VecNested vec, VecbufTExtItem x);
+VecNested VecVec_Append(VecNested vec, VecNestedBufItem x);
+VecNested VecVec_Remove(VecNested vec, VecNestedBufItem x);
 VecNestedPopResult VecVec_Pop(VecNested v, Py_ssize_t index);
 
 // Return 0 on success, -1 on error. Store unboxed item in *unboxed if successful.
 // Return a *borrowed* reference.
-static inline int VecVec_UnboxItem(VecNested v, PyObject *item, VecbufTExtItem *unboxed) {
+static inline int VecVec_UnboxItem(VecNested v, PyObject *item, VecNestedBufItem *unboxed) {
     size_t depth = v.buf->depth;
     if (depth == 1) {
         // TODO: vec[i64]
@@ -336,20 +336,20 @@ static inline int VecVec_UnboxItem(VecNested v, PyObject *item, VecbufTExtItem *
     return -1;
 }
 
-static inline PyObject *VecVec_BoxItem(VecNested v, VecbufTExtItem item) {
+static inline PyObject *VecVec_BoxItem(VecNested v, VecNestedBufItem item) {
     if (item.len < 0)
         Py_RETURN_NONE;
     Py_XINCREF(item.buf);
     if (v.buf->depth > 1) {
         // Item is a nested vec
-        VecNested v = { .len = item.len, .buf = (VecbufTExtObject *)item.buf };
+        VecNested v = { .len = item.len, .buf = (VecNestedBufObject *)item.buf };
         return VecVec_Box(v);
     } else {
         // Item is a non-nested vec
         size_t item_type = v.buf->item_type;
         if (item_type == VEC_ITEM_TYPE_I64) {
             // vec[i64]
-            VecI64 v = { .len = item.len, .buf = (VecbufI64Object *)item.buf };
+            VecI64 v = { .len = item.len, .buf = (VecI64BufObject *)item.buf };
             return VecI64_Box(v);
         } else {
             // Generic vec[t]

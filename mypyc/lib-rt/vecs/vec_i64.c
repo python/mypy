@@ -5,12 +5,12 @@
 // Alloc a partially initialized vec. Caller *must* initialize len.
 static VecI64 vec_alloc(Py_ssize_t size)
 {
-    VecbufI64Object *buf;
+    VecI64BufObject *buf;
     /* TODO: Check for overflow */
     if (size == 0) {
         buf = NULL;
     } else {
-        buf = PyObject_NewVar(VecbufI64Object, &VecbufI64Type, size);
+        buf = PyObject_NewVar(VecI64BufObject, &VecI64BufType, size);
         if (buf == NULL)
             return VecI64_Error();
     }
@@ -43,8 +43,8 @@ VecI64 VecI64_Unbox(PyObject *obj) {
     }
 }
 
-VecI64 VecI64_ConvertFromNested(VecbufTExtItem item) {
-    return (VecI64) { item.len, (VecbufI64Object *)item.buf };
+VecI64 VecI64_ConvertFromNested(VecNestedBufItem item) {
+    return (VecI64) { item.len, (VecI64BufObject *)item.buf };
 }
 
 VecI64 VecI64_New(Py_ssize_t size, Py_ssize_t cap) {
@@ -312,7 +312,7 @@ static PyMethodDef vec_methods[] = {
     {NULL, NULL, 0, NULL},  /* Sentinel */
 };
 
-PyTypeObject VecbufI64Type = {
+PyTypeObject VecI64BufType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "vecbuf[i64]",
     .tp_doc = "vec doc",
@@ -342,7 +342,7 @@ PyTypeObject VecI64Type = {
 
 VecI64Features I64Features = {
     &VecI64Type,
-    &VecbufI64Type,
+    &VecI64BufType,
     VecI64_New,
     VecI64_Box,
     VecI64_Unbox,

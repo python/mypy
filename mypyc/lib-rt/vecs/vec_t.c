@@ -64,7 +64,7 @@ VecT VecT_Unbox(PyObject *obj, size_t item_type) {
     return VecT_Error();
 }
 
-VecT VecT_ConvertFromNested(VecbufTExtItem item) {
+VecT VecT_ConvertFromNested(VecNestedBufItem item) {
     return (VecT) { item.len, (VecbufTObject *)item.buf };
 }
 

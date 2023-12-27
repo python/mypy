@@ -366,7 +366,7 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
         return VecT_Box(v, v.buf->item_type);
     } else if (VecVec_Check(vec)) {
         VecNested v = ((VecNestedObject *)vec)->vec;
-        VecbufTExtItem vecitem;
+        VecNestedBufItem vecitem;
         if (VecVec_UnboxItem(v, item, &vecitem) < 0)
             return NULL;
         VEC_INCREF(v);
@@ -413,7 +413,7 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
         return VecT_Box(v, v.buf->item_type);
     } else if (VecVec_Check(vec)) {
         VecNested v = ((VecNestedObject *)vec)->vec;
-        VecbufTExtItem vecitem;
+        VecNestedBufItem vecitem;
         if (VecVec_UnboxItem(v, item, &vecitem) < 0)
             return NULL;
         VEC_INCREF(v);
@@ -551,12 +551,12 @@ PyInit_vecs(void)
 
     if (PyType_Ready(&VecNestedType) < 0)
         return NULL;
-    if (PyType_Ready(&VecbufTExtType) < 0)
+    if (PyType_Ready(&VecNestedBufType) < 0)
         return NULL;
 
     if (PyType_Ready(&VecI64Type) < 0)
         return NULL;
-    if (PyType_Ready(&VecbufI64Type) < 0)
+    if (PyType_Ready(&VecI64BufType) < 0)
         return NULL;
 
     PyObject *m = PyModule_Create(&vecsmodule);

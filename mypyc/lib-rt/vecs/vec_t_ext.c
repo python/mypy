@@ -17,7 +17,7 @@ static inline PyObject *box_vec_item_by_index(VecNested v, Py_ssize_t index) {
 // Alloc a partially initialized vec. Caller *must* initialize len and buf->items of the
 // return value.
 static VecNested vec_alloc(Py_ssize_t size, size_t item_type, size_t depth) {
-    VecbufTExtObject *buf = PyObject_GC_NewVar(VecbufTExtObject, &VecbufTExtType, size);
+    VecNestedBufObject *buf = PyObject_GC_NewVar(VecNestedBufObject, &VecNestedBufType, size);
     if (buf == NULL)
         return VecVec_Error();
     buf->item_type = item_type;
@@ -51,8 +51,8 @@ VecNested VecVec_Unbox(PyObject *obj, size_t item_type, size_t depth) {
     return VecVec_Error();
 }
 
-VecNested VecVec_ConvertFromNested(VecbufTExtItem item) {
-    return (VecNested) { item.len, (VecbufTExtObject *)item.buf };
+VecNested VecVec_ConvertFromNested(VecNestedBufItem item) {
+    return (VecNested) { item.len, (VecNestedBufObject *)item.buf };
 }
 
 VecNested VecVec_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_t depth) {
@@ -105,7 +105,7 @@ VecNested VecVec_Slice(VecNested vec, int64_t start, int64_t end) {
         return res;
     res.len = slicelength;
     for (Py_ssize_t i = 0; i < slicelength; i++) {
-        VecbufTExtItem item = vec.buf->items[start + i];
+        VecNestedBufItem item = vec.buf->items[start + i];
         Py_XINCREF(item.buf);
         res.buf->items[i] = item;
     }
@@ -137,7 +137,7 @@ static PyObject *vec_subscript(PyObject *self, PyObject *item) {
         res.len = slicelength;
         Py_ssize_t j = start;
         for (Py_ssize_t i = 0; i < slicelength; i++) {
-            VecbufTExtItem item = vec.buf->items[j];
+            VecNestedBufItem item = vec.buf->items[j];
             Py_INCREF(item.buf);
             res.buf->items[i] = item;
             j += step;
@@ -156,7 +156,7 @@ static int vec_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
         i += v.len;
     }
     if ((size_t)i < (size_t)v.len) {
-        VecbufTExtItem item;
+        VecNestedBufItem item;
         if (VecVec_UnboxItem(v, o, &item) < 0)
             return -1;
         VEC_INCREF(item);
@@ -214,7 +214,7 @@ PyObject *vec_richcompare(PyObject *self, PyObject *other, int op) {
 }
 
 // Steals reference to vec (but not x)
-VecNested VecVec_Append(VecNested vec, VecbufTExtItem x) {
+VecNested VecVec_Append(VecNested vec, VecNestedBufItem x) {
     Py_ssize_t cap = VEC_CAP(vec);
     VEC_INCREF(x);
     if (vec.len < cap) {
@@ -230,11 +230,11 @@ VecNested VecVec_Append(VecNested vec, VecbufTExtItem x) {
             return new;
         }
         // Copy items to new vec.
-        memcpy(new.buf->items, vec.buf->items, sizeof(VecbufTExtItem) * vec.len);
+        memcpy(new.buf->items, vec.buf->items, sizeof(VecNestedBufItem) * vec.len);
         // TODO: How to safely represent deleted items?
-        memset(new.buf->items + vec.len, 0, sizeof(VecbufTExtItem) * (new_size - vec.len));
+        memset(new.buf->items + vec.len, 0, sizeof(VecNestedBufItem) * (new_size - vec.len));
         // Clear the items in the old vec. We avoid reference count manipulation.
-        memset(vec.buf->items, 0, sizeof(VecbufTExtItem) * vec.len);
+        memset(vec.buf->items, 0, sizeof(VecNestedBufItem) * vec.len);
         new.buf->items[vec.len] = x;
         new.len = vec.len + 1;
         VEC_DECREF(vec);
@@ -242,8 +242,8 @@ VecNested VecVec_Append(VecNested vec, VecbufTExtItem x) {
     }
 }
 
-VecNested VecVec_Remove(VecNested self, VecbufTExtItem arg) {
-    VecbufTExtItem *items = self.buf->items;
+VecNested VecVec_Remove(VecNested self, VecNestedBufItem arg) {
+    VecNestedBufItem *items = self.buf->items;
 
     PyObject *boxed_arg = VecVec_BoxItem(self, arg);
     if (boxed_arg == NULL)
@@ -300,7 +300,7 @@ VecNestedPopResult VecVec_Pop(VecNested v, Py_ssize_t index) {
         return result;
     }
 
-    VecbufTExtItem *items = v.buf->items;
+    VecNestedBufItem *items = v.buf->items;
     result.f1 = items[index];
     for (Py_ssize_t i = index; i < v.len - 1; i++)
         items[i] = items[i + 1];
@@ -337,7 +337,7 @@ VecVec_dealloc(VecTObject *self)
 }
 
 static int
-VecbufTExt_traverse(VecbufTExtObject *self, visitproc visit, void *arg)
+VecNestedBuf_traverse(VecNestedBufObject *self, visitproc visit, void *arg)
 {
     if (!Vec_IsMagicItemType(self->item_type))
         Py_VISIT(BUF_ITEM_TYPE(self));
@@ -348,7 +348,7 @@ VecbufTExt_traverse(VecbufTExtObject *self, visitproc visit, void *arg)
 }
 
 static int
-VecbufTExt_clear(VecbufTExtObject *self)
+VecNestedBuf_clear(VecNestedBufObject *self)
 {
     if (self->item_type && !Vec_IsMagicItemType(self->item_type)) {
         Py_DECREF(BUF_ITEM_TYPE(self));
@@ -361,10 +361,10 @@ VecbufTExt_clear(VecbufTExtObject *self)
 }
 
 static void
-VecbufTExt_dealloc(VecbufTExtObject *self)
+VecNestedBuf_dealloc(VecNestedBufObject *self)
 {
     PyObject_GC_UnTrack(self);
-    Py_TRASHCAN_BEGIN(self, VecbufTExt_dealloc)
+    Py_TRASHCAN_BEGIN(self, VecNestedBuf_dealloc)
     if (self->item_type && !Vec_IsMagicItemType(self->item_type)) {
         Py_DECREF(BUF_ITEM_TYPE(self));
         self->item_type = 0;
@@ -395,18 +395,18 @@ static PyMethodDef vec_methods[] = {
     {NULL, NULL, 0, NULL},  /* Sentinel */
 };
 
-PyTypeObject VecbufTExtType = {
+PyTypeObject VecNestedBufType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "vecbuf",
     .tp_doc = "vec doc",
-    .tp_basicsize = sizeof(VecbufTExtObject) - sizeof(VecbufTExtItem),
-    .tp_itemsize = sizeof(VecbufTExtItem),
+    .tp_basicsize = sizeof(VecNestedBufObject) - sizeof(VecNestedBufItem),
+    .tp_itemsize = sizeof(VecNestedBufItem),
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
-    .tp_traverse = (traverseproc)VecbufTExt_traverse,
+    .tp_traverse = (traverseproc)VecNestedBuf_traverse,
     //.tp_new = vecbuf_i64_new, //??
     .tp_free = PyObject_GC_Del,
-    .tp_clear = (inquiry)VecbufTExt_clear,
-    .tp_dealloc = (destructor)VecbufTExt_dealloc,
+    .tp_clear = (inquiry)VecNestedBuf_clear,
+    .tp_dealloc = (destructor)VecNestedBuf_dealloc,
 };
 
 PyTypeObject VecNestedType = {
@@ -441,7 +441,7 @@ PyObject *VecVec_FromIterable(size_t item_type, size_t depth, PyObject *iterable
     }
     PyObject *item;
     while ((item = PyIter_Next(iter)) != NULL) {
-        VecbufTExtItem vecitem;
+        VecNestedBufItem vecitem;
         if (VecVec_UnboxItem(v, item, &vecitem) < 0) {
             Py_DECREF(iter);
             VEC_DECREF(v);
@@ -466,7 +466,7 @@ PyObject *VecVec_FromIterable(size_t item_type, size_t depth, PyObject *iterable
 
 VecNestedFeatures TExtFeatures = {
     &VecNestedType,
-    &VecbufTExtType,
+    &VecNestedBufType,
     VecVec_New,
     VecVec_Box,
     VecVec_Unbox,
