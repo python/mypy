@@ -1,9 +1,9 @@
-// Implementation of generic vec[t], when t is an optional type or nested generic vec.
+// Implementation of nested vec[t], when t is a vec type.
 //
 // Examples of types supported:
-//  - vec[str | None]
+//  - vec[vec[i64]]
 //  - vec[vec[str]]
-//  - vec[vec[str | None] | None]
+//  - vec[vec[str | None]]
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>

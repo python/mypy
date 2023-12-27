@@ -12,7 +12,7 @@ static VecI64 vec_i64_alloc(Py_ssize_t size)
     } else {
         buf = PyObject_NewVar(VecbufI64Object, &VecbufI64Type, size);
         if (buf == NULL)
-            return Vec_I64_Error();
+            return VecI64_Error();
     }
     VecI64 res = { .buf = buf };
     return res;
@@ -23,7 +23,7 @@ static void vec_i64_dealloc(VecI64Object *self) {
     PyObject_Del(self);
 }
 
-PyObject *Vec_I64_Box(VecI64 vec) {
+PyObject *VecI64_Box(VecI64 vec) {
     VecI64Object *obj = PyObject_New(VecI64Object, &VecI64Type);
     if (obj == NULL)
         return NULL;
@@ -31,7 +31,7 @@ PyObject *Vec_I64_Box(VecI64 vec) {
     return (PyObject *)obj;
 }
 
-VecI64 Vec_I64_Unbox(PyObject *obj) {
+VecI64 VecI64_Unbox(PyObject *obj) {
     if (obj->ob_type == &VecI64Type) {
         VecI64 result = ((VecI64Object *)obj)->vec;
         VEC_INCREF(result);  // TODO: Should we borrow instead?
@@ -39,15 +39,15 @@ VecI64 Vec_I64_Unbox(PyObject *obj) {
     } else {
         // TODO: Better error message
         PyErr_SetString(PyExc_TypeError, "vec[i64] expected");
-        return Vec_I64_Error();
+        return VecI64_Error();
     }
 }
 
-VecI64 Vec_I64_ConvertFromNested(VecbufTExtItem item) {
+VecI64 VecI64_ConvertFromNested(VecbufTExtItem item) {
     return (VecI64) { item.len, (VecbufI64Object *)item.buf };
 }
 
-VecI64 Vec_I64_New(Py_ssize_t size, Py_ssize_t cap) {
+VecI64 VecI64_New(Py_ssize_t size, Py_ssize_t cap) {
     if (cap < size)
         size = cap;
     VecI64 vec = vec_i64_alloc(cap);
@@ -60,7 +60,7 @@ VecI64 Vec_I64_New(Py_ssize_t size, Py_ssize_t cap) {
     return vec;
 }
 
-PyObject *Vec_I64_FromIterable(PyObject *iterable) {
+PyObject *VecI64_FromIterable(PyObject *iterable) {
     VecI64 v = vec_i64_alloc(0);
     if (VEC_IS_ERROR(v))
         return NULL;
@@ -80,7 +80,7 @@ PyObject *Vec_I64_FromIterable(PyObject *iterable) {
             VEC_DECREF(v);
             return NULL;
         }
-        v = Vec_I64_Append(v, x);
+        v = VecI64_Append(v, x);
         if (VEC_IS_ERROR(v)) {
             Py_DECREF(iter);
             VEC_DECREF(v);
@@ -92,7 +92,7 @@ PyObject *Vec_I64_FromIterable(PyObject *iterable) {
         VEC_DECREF(v);
         return NULL;
     }
-    return Vec_I64_Box(v);
+    return VecI64_Box(v);
 }
 
 PyObject *vec_i64_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
@@ -102,9 +102,9 @@ PyObject *vec_i64_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
         return NULL;
     }
     if (init == NULL) {
-        return Vec_I64_Box(Vec_I64_New(0, 0));
+        return VecI64_Box(VecI64_New(0, 0));
     } else {
-        return (PyObject *)Vec_I64_FromIterable(init);
+        return (PyObject *)VecI64_FromIterable(init);
     }
 }
 
@@ -124,7 +124,7 @@ PyObject *vec_i64_get_item(PyObject *o, Py_ssize_t i) {
     }
 }
 
-VecI64 Vec_I64_Slice(VecI64 vec, int64_t start, int64_t end) {
+VecI64 VecI64_Slice(VecI64 vec, int64_t start, int64_t end) {
     if (start < 0)
         start += vec.len;
     if (end < 0)
@@ -175,7 +175,7 @@ PyObject *vec_i64_subscript(PyObject *self, PyObject *item) {
             res.buf->items[i] = vec.buf->items[j];
             j += step;
         }
-        return Vec_I64_Box(res);
+        return VecI64_Box(res);
     } else {
         PyErr_Format(PyExc_TypeError, "vec indices must be integers or slices, not %.100s",
                      item->ob_type->tp_name);
@@ -239,7 +239,7 @@ static PyObject *vec_i64_richcompare(PyObject *self, PyObject *other, int op) {
     return res;
 }
 
-VecI64 Vec_I64_Append(VecI64 vec, int64_t x) {
+VecI64 VecI64_Append(VecI64 vec, int64_t x) {
     if (vec.buf && vec.len < VEC_CAP(vec)) {
         vec.buf->items[vec.len] = x;
         vec.len++;
@@ -249,7 +249,7 @@ VecI64 Vec_I64_Append(VecI64 vec, int64_t x) {
         Py_ssize_t new_size = 2 * cap + 1;
         VecI64 new = vec_i64_alloc(new_size);
         if (VEC_IS_ERROR(new))
-            return Vec_I64_Error();
+            return VecI64_Error();
         new.len = vec.len + 1;
         if (vec.len > 0)
             memcpy(new.buf->items, vec.buf->items, sizeof(int64_t) * vec.len);
@@ -259,7 +259,7 @@ VecI64 Vec_I64_Append(VecI64 vec, int64_t x) {
     }
 }
 
-VecI64 Vec_I64_Remove(VecI64 v, int64_t x) {
+VecI64 VecI64_Remove(VecI64 v, int64_t x) {
     for (Py_ssize_t i = 0; i < v.len; i++) {
         if (v.buf->items[i] == x) {
             for (; i < v.len - 1; i++) {
@@ -271,10 +271,10 @@ VecI64 Vec_I64_Remove(VecI64 v, int64_t x) {
         }
     }
     PyErr_SetString(PyExc_ValueError, "vec.remove(x): x not in vec");
-    return Vec_I64_Error();
+    return VecI64_Error();
 }
 
-VecI64PopResult Vec_I64_Pop(VecI64 v, Py_ssize_t index) {
+VecI64PopResult VecI64_Pop(VecI64 v, Py_ssize_t index) {
     VecI64PopResult result;
 
     if (index < 0)
@@ -282,7 +282,7 @@ VecI64PopResult Vec_I64_Pop(VecI64 v, Py_ssize_t index) {
 
     if (index < 0 || index >= v.len) {
         PyErr_SetString(PyExc_IndexError, "index out of range");
-        result.f0 = Vec_I64_Error();
+        result.f0 = VecI64_Error();
         result.f1 = 0;
         return result;
     }
@@ -343,12 +343,12 @@ PyTypeObject VecI64Type = {
 VecI64Features I64Features = {
     &VecI64Type,
     &VecbufI64Type,
-    Vec_I64_New,
-    Vec_I64_Box,
-    Vec_I64_Unbox,
-    Vec_I64_ConvertFromNested,
-    Vec_I64_Append,
-    Vec_I64_Pop,
-    Vec_I64_Remove,
-    Vec_I64_Slice,
+    VecI64_New,
+    VecI64_Box,
+    VecI64_Unbox,
+    VecI64_ConvertFromNested,
+    VecI64_Append,
+    VecI64_Pop,
+    VecI64_Remove,
+    VecI64_Slice,
 };

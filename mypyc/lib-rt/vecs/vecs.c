@@ -350,10 +350,10 @@ static PyObject *vecs_append(PyObject *self, PyObject *args)
         }
         VecI64 v = ((VecI64Object *)vec)->vec;
         VEC_INCREF(v);
-        v = Vec_I64_Append(v, x);
+        v = VecI64_Append(v, x);
         if (VEC_IS_ERROR(v))
             return NULL; // TODO: decref?
-        return Vec_I64_Box(v);
+        return VecI64_Box(v);
     } else if (VecT_Check(vec)) {
         VecT v = ((VecTObject *)vec)->vec;
         if (!VecT_ItemCheck(v, item, v.buf->item_type)) {
@@ -397,10 +397,10 @@ static PyObject *vecs_remove(PyObject *self, PyObject *args)
         }
         VecI64 v = ((VecI64Object *)vec)->vec;
         VEC_INCREF(v);
-        v = Vec_I64_Remove(v, x);
+        v = VecI64_Remove(v, x);
         if (VEC_IS_ERROR(v))
             return NULL; // TODO: decref?
-        return Vec_I64_Box(v);
+        return VecI64_Box(v);
     } else if (VecT_Check(vec)) {
         VecT v = ((VecTObject *)vec)->vec;
         if (!VecT_ItemCheck(v, item, v.buf->item_type)) {
@@ -441,11 +441,11 @@ static PyObject *vecs_pop(PyObject *self, PyObject *args)
     if (VecI64_Check(vec)) {
         VecI64 v = ((VecI64Object *)vec)->vec;
         VecI64PopResult r;
-        r = Vec_I64_Pop(v, index);
+        r = VecI64_Pop(v, index);
         if (VEC_IS_ERROR(r.f0))
             return NULL;
 
-        result_item0 = Vec_I64_Box(r.f0);
+        result_item0 = VecI64_Box(r.f0);
         if (result_item0 == NULL)
             return NULL;
         result_item1 = PyLong_FromLongLong(r.f1);

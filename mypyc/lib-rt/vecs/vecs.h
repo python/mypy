@@ -206,7 +206,7 @@ typedef struct {
 #define VEC_DECREF(v) Py_XDECREF((v).buf)
 #define VEC_INCREF(v) Py_XINCREF((v).buf)
 
-inline VecI64 Vec_I64_Error() {
+inline VecI64 VecI64_Error() {
     VecI64 v = { .len = -1 };
     return v;
 }
@@ -242,10 +242,10 @@ static inline int VecI64_Check(PyObject *o) {
     return o->ob_type == &VecI64Type;
 }
 
-PyObject *Vec_I64_Box(VecI64);
-VecI64 Vec_I64_Append(VecI64, int64_t x);
-VecI64 Vec_I64_Remove(VecI64, int64_t x);
-VecI64PopResult Vec_I64_Pop(VecI64 v, Py_ssize_t index);
+PyObject *VecI64_Box(VecI64);
+VecI64 VecI64_Append(VecI64, int64_t x);
+VecI64 VecI64_Remove(VecI64, int64_t x);
+VecI64PopResult VecI64_Pop(VecI64 v, Py_ssize_t index);
 
 // vec[t] operations (simple)
 
@@ -350,7 +350,7 @@ static inline PyObject *VecVec_BoxItem(VecTExt v, VecbufTExtItem item) {
         if (item_type == VEC_ITEM_TYPE_I64) {
             // vec[i64]
             VecI64 v = { .len = item.len, .buf = (VecbufI64Object *)item.buf };
-            return Vec_I64_Box(v);
+            return VecI64_Box(v);
         } else {
             // Generic vec[t]
             VecT v = { .len = item.len, .buf = (VecbufTObject *)item.buf };
