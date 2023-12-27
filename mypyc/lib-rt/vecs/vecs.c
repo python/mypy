@@ -15,7 +15,7 @@ typedef struct {
     // Tagged pointer to PyTypeObject *, lowest bit set for optional item type
     // Can also be one of magic VEC_ITEM_TYPE_* constants
     size_t item_type;
-    size_t depth;  // Number of nested VecTExt or VecT types
+    size_t depth;  // Number of nested VecNested or VecT types
 } VecProxy;
 
 static PyObject *vec_proxy_call(PyObject *self, PyObject *args, PyObject *kw)
@@ -37,7 +37,7 @@ static PyObject *vec_proxy_call(PyObject *self, PyObject *args, PyObject *kw)
         }
     } else {
         if (init == NULL) {
-            VecTExt vec = VecVec_New(0, 0, p->item_type, p->depth);
+            VecNested vec = VecVec_New(0, 0, p->item_type, p->depth);
             if (VEC_IS_ERROR(vec))
                 return NULL;
             return VecVec_Box(vec);
@@ -365,7 +365,7 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
             return NULL;
         return VecT_Box(v, v.buf->item_type);
     } else if (VecVec_Check(vec)) {
-        VecTExt v = ((VecTExtObject *)vec)->vec;
+        VecNested v = ((VecNestedObject *)vec)->vec;
         VecbufTExtItem vecitem;
         if (VecVec_UnboxItem(v, item, &vecitem) < 0)
             return NULL;
@@ -412,7 +412,7 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
             return NULL;
         return VecT_Box(v, v.buf->item_type);
     } else if (VecVec_Check(vec)) {
-        VecTExt v = ((VecTExtObject *)vec)->vec;
+        VecNested v = ((VecNestedObject *)vec)->vec;
         VecbufTExtItem vecitem;
         if (VecVec_UnboxItem(v, item, &vecitem) < 0)
             return NULL;
@@ -463,8 +463,8 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
         }
         result_item1 = r.f1;
     } else if (VecVec_Check(vec)) {
-        VecTExt v = ((VecTExtObject *)vec)->vec;
-        VecTExtPopResult r;
+        VecNested v = ((VecNestedObject *)vec)->vec;
+        VecNestedPopResult r;
         r = VecVec_Pop(v, index);
         if (VEC_IS_ERROR(r.f0))
             return NULL;
@@ -549,7 +549,7 @@ PyInit_vecs(void)
     if (PyType_Ready(&VecbufTType) < 0)
         return NULL;
 
-    if (PyType_Ready(&VecTExtType) < 0)
+    if (PyType_Ready(&VecNestedType) < 0)
         return NULL;
     if (PyType_Ready(&VecbufTExtType) < 0)
         return NULL;
