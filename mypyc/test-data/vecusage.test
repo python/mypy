@@ -1,0 +1,68 @@
+[case testNoVecNeeded]
+class vec: pass
+class RVec: pass
+def append(v: vec) -> None:
+    pass
+
+def f() -> None:
+    append(vec())
+[out]
+False
+
+[case testVecUsedInFunction]
+from vecs import vec
+
+def f() -> None:
+    vec[str]()
+[out]
+True
+
+[case testVecUsedInMethod]
+from vecs import vec
+
+class C:
+    def m(self) -> None:
+        vec[str]()
+[out]
+True
+
+[case testVecUsedAtTopLevel]
+from vecs import vec
+
+vec[str]()
+[out]
+True
+
+[case testVecUsedInArgTypeOnly]
+from vecs import vec
+
+def f(v: vec[str]) -> None:
+    pass
+[out]
+True
+
+[case testVecUsedInReturnTypeOnly]
+from vecs import vec
+
+def f() -> vec[str]:
+    assert False
+[out]
+True
+
+[case testVecUsedInAttributeTypeOnly]
+from vecs import vec
+
+class C:
+    v: vec[str]
+[out]
+True
+
+[case testVecUsedInPropertyTypeOnly]
+from vecs import vec
+
+class C:
+    @property
+    def f(self) -> vec[str]:
+        assert False
+[out]
+True

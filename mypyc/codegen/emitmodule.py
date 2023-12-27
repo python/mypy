@@ -74,6 +74,7 @@ from mypyc.transform.lower import lower_ir
 from mypyc.transform.refcount import insert_ref_count_opcodes
 from mypyc.transform.spill import insert_spills
 from mypyc.transform.uninit import insert_uninit_checks
+from mypyc.analysis.vecusage import needs_vec_capsule
 
 # All the modules being compiled are divided into "groups". A group
 # is a set of modules that are placed into the same shared library.
@@ -549,6 +550,7 @@ class GroupGenerator:
         # Multi-phase init is needed to enable free-threading. In the future we'll
         # probably want to enable it always, but we'll wait until it's stable.
         self.multi_phase_init = IS_FREE_THREADED
+        self.use_vec_capsule = any(needs_vec_capsule(m) for m in self.modules.values())
 
     @property
     def group_suffix(self) -> str:
@@ -583,10 +585,11 @@ class GroupGenerator:
 
         self.generate_literal_tables()
 
-        self.declare_global("VecCapsule *", "VecApi")
-        self.declare_global("VecI64Features ", "VecI64Api")
-        self.declare_global("VecTFeatures ", "VecTApi")
-        self.declare_global("VecNestedFeatures ", "VecNestedApi")
+        if self.use_vec_capsule:
+            self.declare_global("VecCapsule *", "VecApi")
+            self.declare_global("VecI64Features ", "VecI64Api")
+            self.declare_global("VecTFeatures ", "VecTApi")
+            self.declare_global("VecNestedFeatures ", "VecNestedApi")
 
         for module_name, module in self.modules.items():
             if multi_file:
@@ -641,6 +644,8 @@ class GroupGenerator:
         source_deps = collect_source_dependencies(self.modules)
         for source_dep in sorted(source_deps, key=lambda d: d.path):
             ext_declarations.emit_line(f'#include "{source_dep.get_header()}"')
+        if self.use_vec_capsule:
+            ext_declarations.emit_line('#include "vecs.h"')
 
         declarations = Emitter(self.context)
         declarations.emit_line(f"#ifndef MYPYC_LIBRT_INTERNAL{self.group_suffix}_H")
@@ -969,13 +974,14 @@ class GroupGenerator:
             f"if (CPyStatics_Initialize(CPyStatics, {values}) < 0) {{", "return -1;", "}"
         )
 
-        emitter.emit_lines(
-            'VecApi = PyCapsule_Import("vecs._C_API", 0);',
-            "if (!VecApi) return -1;",
-            "VecI64Api = *VecApi->i64;",
-            "VecTApi = *VecApi->t;",
-            "VecNestedApi = *VecApi->nested;",
-        )
+        if self.use_vec_capsule:
+            emitter.emit_lines(
+                'VecApi = PyCapsule_Import("vecs._C_API", 0);',
+                "if (!VecApi) return -1;",
+                "VecI64Api = *VecApi->i64;",
+                "VecTApi = *VecApi->t;",
+                "VecNestedApi = *VecApi->nested;",
+            )
 
         emitter.emit_lines("is_initialized = 1;", "return 0;", "}")
 
