@@ -380,11 +380,14 @@ def translate_list_from_generator_call(
         and expr.arg_kinds[0] == ARG_POS
         and isinstance(expr.args[0], GeneratorExpr)
     ):
+        def set_item(x: Value, y: Value, z: Value, line: int) -> None:
+            builder.call_c(new_list_set_item_op, [x, y, z], line)
+
         return sequence_from_generator_preallocate_helper(
             builder,
             expr.args[0],
             empty_op_llbuilder=builder.builder.new_list_op_with_length,
-            set_item_op=new_list_set_item_op,
+            set_item_op=set_item,
         )
     return None
 
@@ -405,11 +408,14 @@ def translate_tuple_from_generator_call(
         and expr.arg_kinds[0] == ARG_POS
         and isinstance(expr.args[0], GeneratorExpr)
     ):
+        def set_item(x: Value, y: Value, z: Value, line: int) -> None:
+            builder.call_c(new_tuple_set_item_op, [x, y, z], line)
+
         return sequence_from_generator_preallocate_helper(
             builder,
             expr.args[0],
             empty_op_llbuilder=builder.builder.new_tuple_with_length,
-            set_item_op=new_tuple_set_item_op,
+            set_item_op=set_item,
         )
     return None
 

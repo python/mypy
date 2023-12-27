@@ -325,6 +325,19 @@ def vec_set_item(
     builder.keep_alive([base])
 
 
+def vec_init_item_unsafe(
+    builder: LowLevelIRBuilder, base: Value, index: Value, item: Value, line: int
+) -> None:
+    assert isinstance(base.type, RVec)
+    index = as_platform_int(builder, index, line)
+    vtype = base.type
+    item_addr = vec_item_ptr(builder, base, index)
+    item_type = vtype.item_type
+    item = builder.coerce(item, item_type, line)
+    builder.set_mem(item_addr, item_type, item)
+    builder.keep_alive([base])
+
+
 def convert_to_t_ext_item(builder: LowLevelIRBuilder, item: Value) -> Value:
     vec_len = builder.add(GetElement(item, "len"))
     vec_buf = builder.add(GetElement(item, "buf"))

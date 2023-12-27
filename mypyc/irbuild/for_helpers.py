@@ -70,7 +70,7 @@ from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
 from mypyc.irbuild.targets import AssignmentTarget, AssignmentTargetTuple
-from mypyc.irbuild.vec import vec_append, vec_create, vec_get_item_unsafe
+from mypyc.irbuild.vec import vec_append, vec_create, vec_get_item_unsafe, vec_init_item_unsafe
 from mypyc.primitives.dict_ops import (
     dict_check_size_op,
     dict_item_iter_op,
@@ -213,7 +213,7 @@ def sequence_from_generator_preallocate_helper(
     builder: IRBuilder,
     gen: GeneratorExpr,
     empty_op_llbuilder: Callable[[Value, int], Value],
-    set_item_op: CFunctionDescription,
+    set_item_op: Callable[[Value, Value, Value, int], None], # CFunctionDescription,
 ) -> Value | None:
     """Generate a new tuple or list from a simple generator expression.
 
@@ -300,12 +300,15 @@ def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Valu
     if raise_error_if_contains_unreachable_names(builder, gen):
         return builder.none()
 
+    def set_item(x: Value, y: Value, z: Value, line: int) -> None:
+        builder.call_c(new_list_set_item_op, [x, y, z], line)
+
     # Try simplest list comprehension, otherwise fall back to general one
     val = sequence_from_generator_preallocate_helper(
         builder,
         gen,
         empty_op_llbuilder=builder.builder.new_list_op_with_length,
-        set_item_op=new_list_set_item_op,
+        set_item_op=set_item,
     )
     if val is not None:
         return val
@@ -358,6 +361,20 @@ def translate_set_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value
 
 
 def translate_vec_comprehension(builder: IRBuilder, vec_type: RVec, gen: GeneratorExpr) -> Value:
+    def set_item(x: Value, y: Value, z: Value, line: int) -> None:
+        vec_init_item_unsafe(builder.builder, x, y, z, line)
+
+    # Try simplest comprehension, otherwise fall back to general one
+    val = sequence_from_generator_preallocate_helper(
+        builder,
+        gen,
+        empty_op_llbuilder=lambda length, line: vec_create(builder.builder,
+                                                           vec_type, length, line),
+        set_item_op=set_item,
+    )
+    if val is not None:
+        return val
+
     vec = Register(vec_type)
     builder.assign(vec, vec_create(builder.builder, vec_type, 0, gen.line), gen.line)
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists, gen.is_async))
