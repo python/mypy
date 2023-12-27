@@ -266,7 +266,7 @@ L3:
 L4:
     return r1
 
-[case testVecI64FastListComprehension]
+[case testVecI64FastComprehensionFromList]
 from vecs import vec
 from mypy_extensions import i64
 from typing import List
@@ -320,6 +320,61 @@ L3:
     goto L1
 L4:
     return r2
+
+[case testVecI64FastComprehensionFromVec]
+from vecs import vec
+from mypy_extensions import i64
+from typing import List
+
+def f(n: i64, v: vec[i64]) -> vec[i64]:
+    return vec[i64]([x + 1 for x in v])
+[out]
+def f(n, v):
+    n :: i64
+    v :: vec[i64]
+    r0 :: native_int
+    r1 :: vec[i64]
+    r2, r3 :: native_int
+    r4 :: bit
+    r5 :: object
+    r6 :: ptr
+    r7 :: native_int
+    r8 :: ptr
+    r9, x, r10 :: i64
+    r11 :: object
+    r12 :: ptr
+    r13 :: native_int
+    r14 :: ptr
+    r15 :: native_int
+L0:
+    r0 = v.len
+    r1 = VecI64Api.alloc(r0, r0)
+    r2 = 0
+L1:
+    r3 = v.len
+    r4 = r2 < r3 :: signed
+    if r4 goto L2 else goto L4 :: bool
+L2:
+    r5 = v.buf
+    r6 = get_element_ptr r5 items :: VecI64BufObject
+    r7 = r2 * 8
+    r8 = r6 + r7
+    r9 = load_mem r8 :: i64*
+    keep_alive v
+    x = r9
+    r10 = x + 1
+    r11 = r1.buf
+    r12 = get_element_ptr r11 items :: VecI64BufObject
+    r13 = r2 * 8
+    r14 = r12 + r13
+    set_mem r14, r10 :: i64*
+    keep_alive r1
+L3:
+    r15 = r2 + 1
+    r2 = r15
+    goto L1
+L4:
+    return r1
 
 [case testVecI64ConstructFromRange]
 from vecs import vec, pop
