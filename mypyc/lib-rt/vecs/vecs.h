@@ -370,7 +370,7 @@ static inline int check_float_error(PyObject *o) {
 }
 
 PyObject *vec_type_to_str(size_t item_type, size_t depth);
-PyObject *vec_repr(PyObject *vec, size_t item_type, size_t depth, int verbose);
+PyObject *Vec_GenericRepr(PyObject *vec, size_t item_type, size_t depth, int verbose);
 PyObject *vec_generic_richcompare(Py_ssize_t *len, PyObject **items,
                                   Py_ssize_t *other_len, PyObject **other_items,
                                   int op);

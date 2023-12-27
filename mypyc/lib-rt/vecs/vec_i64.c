@@ -3,7 +3,7 @@
 #include "vecs.h"
 
 // Alloc a partially initialized vec. Caller *must* initialize len.
-static VecI64 vec_i64_alloc(Py_ssize_t size)
+static VecI64 vec_alloc(Py_ssize_t size)
 {
     VecbufI64Object *buf;
     /* TODO: Check for overflow */
@@ -18,7 +18,7 @@ static VecI64 vec_i64_alloc(Py_ssize_t size)
     return res;
 }
 
-static void vec_i64_dealloc(VecI64Object *self) {
+static void vec_dealloc(VecI64Object *self) {
     Py_CLEAR(self->vec.buf);
     PyObject_Del(self);
 }
@@ -50,7 +50,7 @@ VecI64 VecI64_ConvertFromNested(VecbufTExtItem item) {
 VecI64 VecI64_New(Py_ssize_t size, Py_ssize_t cap) {
     if (cap < size)
         size = cap;
-    VecI64 vec = vec_i64_alloc(cap);
+    VecI64 vec = vec_alloc(cap);
     if (VEC_IS_ERROR(vec))
         return vec;
     for (Py_ssize_t i = 0; i < cap; i++) {
@@ -61,7 +61,7 @@ VecI64 VecI64_New(Py_ssize_t size, Py_ssize_t cap) {
 }
 
 PyObject *VecI64_FromIterable(PyObject *iterable) {
-    VecI64 v = vec_i64_alloc(0);
+    VecI64 v = vec_alloc(0);
     if (VEC_IS_ERROR(v))
         return NULL;
     v.len = 0;
@@ -95,7 +95,7 @@ PyObject *VecI64_FromIterable(PyObject *iterable) {
     return VecI64_Box(v);
 }
 
-PyObject *vec_i64_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
+PyObject *vec_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
     static char *kwlist[] = {"", NULL};
     PyObject *init = NULL;
     if (!PyArg_ParseTupleAndKeywords(args, kw, "|O:vec", kwlist, &init)) {
@@ -108,11 +108,11 @@ PyObject *vec_i64_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
     }
 }
 
-PyObject *vec_i64_repr(PyObject *self) {
-    return vec_repr(self, (size_t)I64TypeObj, 0, 1);
+PyObject *vec_repr(PyObject *self) {
+    return Vec_GenericRepr(self, (size_t)I64TypeObj, 0, 1);
 }
 
-PyObject *vec_i64_get_item(PyObject *o, Py_ssize_t i) {
+PyObject *vec_get_item(PyObject *o, Py_ssize_t i) {
     VecI64 v = ((VecI64Object *)o)->vec;
     if ((size_t)i < (size_t)v.len) {
         return PyLong_FromLongLong(v.buf->items[i]);
@@ -138,7 +138,7 @@ VecI64 VecI64_Slice(VecI64 vec, int64_t start, int64_t end) {
     if (end > vec.len)
         end = vec.len;
     int64_t slicelength = end - start;
-    VecI64 res = vec_i64_alloc(slicelength);
+    VecI64 res = vec_alloc(slicelength);
     if (VEC_IS_ERROR(res))
         return res;
     res.len = slicelength;
@@ -147,7 +147,7 @@ VecI64 VecI64_Slice(VecI64 vec, int64_t start, int64_t end) {
     return res;
 }
 
-PyObject *vec_i64_subscript(PyObject *self, PyObject *item) {
+PyObject *vec_subscript(PyObject *self, PyObject *item) {
     VecI64 vec = ((VecI64Object *)self)->vec;
     if (PyIndex_Check(item)) {
         Py_ssize_t i = PyNumber_AsSsize_t(item, PyExc_IndexError);
@@ -166,7 +166,7 @@ PyObject *vec_i64_subscript(PyObject *self, PyObject *item) {
         if (PySlice_Unpack(item, &start, &stop, &step) < 0)
             return NULL;
         Py_ssize_t slicelength = PySlice_AdjustIndices(vec.len, &start, &stop, step);
-        VecI64 res = vec_i64_alloc(slicelength);
+        VecI64 res = vec_alloc(slicelength);
         if (VEC_IS_ERROR(res))
             return NULL;
         res.len = slicelength;
@@ -183,7 +183,7 @@ PyObject *vec_i64_subscript(PyObject *self, PyObject *item) {
     }
 }
 
-int vec_i64_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
+int vec_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
     if (check_float_error(o))
         return -1;
     VecI64 v = ((VecI64Object *)self)->vec;
@@ -210,7 +210,7 @@ static Py_ssize_t vec_length(PyObject *o) {
     return ((VecI64Object *)o)->vec.len;
 }
 
-static PyObject *vec_i64_richcompare(PyObject *self, PyObject *other, int op) {
+static PyObject *vec_richcompare(PyObject *self, PyObject *other, int op) {
     int cmp = 1;
     PyObject *res;
     if (op == Py_EQ || op == Py_NE) {
@@ -247,7 +247,7 @@ VecI64 VecI64_Append(VecI64 vec, int64_t x) {
     } else {
         Py_ssize_t cap = vec.buf ? VEC_CAP(vec) : 0;
         Py_ssize_t new_size = 2 * cap + 1;
-        VecI64 new = vec_i64_alloc(new_size);
+        VecI64 new = vec_alloc(new_size);
         if (VEC_IS_ERROR(new))
             return VecI64_Error();
         new.len = vec.len + 1;
@@ -300,15 +300,15 @@ VecI64PopResult VecI64_Pop(VecI64 v, Py_ssize_t index) {
 
 static PyMappingMethods VecI64Mapping = {
     .mp_length = vec_length,
-    .mp_subscript = vec_i64_subscript,
+    .mp_subscript = vec_subscript,
 };
 
 static PySequenceMethods VecI64Sequence = {
-    .sq_item = vec_i64_get_item,
-    .sq_ass_item = vec_i64_ass_item,
+    .sq_item = vec_get_item,
+    .sq_ass_item = vec_ass_item,
 };
 
-static PyMethodDef vec_i64_methods[] = {
+static PyMethodDef vec_methods[] = {
     {NULL, NULL, 0, NULL},  /* Sentinel */
 };
 
@@ -330,14 +330,14 @@ PyTypeObject VecI64Type = {
     .tp_basicsize = sizeof(VecI64Object),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT,
-    .tp_new = vec_i64_new,
+    .tp_new = vec_new,
     //.tp_free = PyObject_Del,
-    .tp_dealloc = (destructor)vec_i64_dealloc,
-    .tp_repr = (reprfunc)vec_i64_repr,
+    .tp_dealloc = (destructor)vec_dealloc,
+    .tp_repr = (reprfunc)vec_repr,
     .tp_as_sequence = &VecI64Sequence,
     .tp_as_mapping = &VecI64Mapping,
-    .tp_richcompare = vec_i64_richcompare,
-    .tp_methods = vec_i64_methods,
+    .tp_richcompare = vec_richcompare,
+    .tp_methods = vec_methods,
 };
 
 VecI64Features I64Features = {

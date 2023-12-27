@@ -210,7 +210,7 @@ PyTypeObject VecGenericType = {
     .tp_methods = vec_methods,
 };
 
-PyObject *vec_repr(PyObject *vec, size_t item_type, size_t depth, int verbose) {
+PyObject *Vec_GenericRepr(PyObject *vec, size_t item_type, size_t depth, int verbose) {
     // TODO: Check for errors
     // TODO: Refcount handling
     PyObject *l = Py_BuildValue("[]");
@@ -239,7 +239,7 @@ PyObject *vec_repr(PyObject *vec, size_t item_type, size_t depth, int verbose) {
         if (depth == 0 || it == Py_None) {
             r = PyObject_Repr(it);
         } else {
-            r = vec_repr(it, item_type, depth - 1, 0);
+            r = Vec_GenericRepr(it, item_type, depth - 1, 0);
         }
         if (r == NULL)
             return NULL;

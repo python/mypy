@@ -83,7 +83,7 @@ VecT VecT_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type) {
 
 PyObject *vec_t_repr(PyObject *self) {
     VecTObject *v = (VecTObject *)self;
-    return vec_repr(self, v->vec.buf->item_type, 0, 1);
+    return Vec_GenericRepr(self, v->vec.buf->item_type, 0, 1);
 }
 
 PyObject *vec_t_get_item(PyObject *o, Py_ssize_t i) {

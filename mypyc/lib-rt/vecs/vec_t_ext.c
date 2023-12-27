@@ -71,7 +71,7 @@ VecTExt VecVec_New(Py_ssize_t size, Py_ssize_t cap, size_t item_type, size_t dep
 
 PyObject *vec_t_ext_repr(PyObject *self) {
     VecTExt v = ((VecTExtObject *)self)->vec;
-    return vec_repr(self, v.buf->item_type, v.buf->depth, 1);
+    return Vec_GenericRepr(self, v.buf->item_type, v.buf->depth, 1);
 }
 
 PyObject *vec_t_ext_get_item(PyObject *o, Py_ssize_t i) {
