@@ -87,7 +87,7 @@ from mypy.nodes import (
     YieldFromExpr,
     check_arg_names,
 )
-from mypy.options import Options
+from mypy.options import Options, NEW_GENERIC_SYNTAX
 from mypy.patterns import (
     AsPattern,
     ClassPattern,
@@ -884,6 +884,8 @@ class ASTConverter:
 
         arg_kinds = [arg.kind for arg in args]
         arg_names = [None if arg.pos_only else arg.variable.name for arg in args]
+        # Type parameters, if using new syntax for generics (PEP 695)
+        explicit_type_params: list[tuple[str, Type | None]] | None = None
 
         arg_types: list[Type | None] = []
         if no_type_check:
@@ -937,12 +939,22 @@ class ASTConverter:
                 return_type = AnyType(TypeOfAny.from_error)
         else:
             if sys.version_info >= (3, 12) and n.type_params:
-                self.fail(
-                    ErrorMessage("PEP 695 generics are not yet supported", code=codes.VALID_TYPE),
-                    n.type_params[0].lineno,
-                    n.type_params[0].col_offset,
-                    blocker=False,
-                )
+                if NEW_GENERIC_SYNTAX in self.options.enable_incomplete_feature:
+                    explicit_type_params = []
+                    for p in n.type_params:
+                        if p.bound is None:
+                            bound = None
+                        else:
+                            bound = TypeConverter(self.errors, line=p.lineno).visit(p.bound)
+                        explicit_type_params.append((p.name, bound))
+                else:
+                    self.fail(
+                        ErrorMessage("PEP 695 generics are not yet supported",
+                                     code=codes.VALID_TYPE),
+                        n.type_params[0].lineno,
+                        n.type_params[0].col_offset,
+                        blocker=False,
+                    )
 
             arg_types = [a.type_annotation for a in args]
             return_type = TypeConverter(
@@ -986,7 +998,7 @@ class ASTConverter:
         self.class_and_function_stack.pop()
         self.class_and_function_stack.append("F")
         body = self.as_required_block(n.body, can_strip=True, is_coroutine=is_coroutine)
-        func_def = FuncDef(n.name, args, body, func_type)
+        func_def = FuncDef(n.name, args, body, func_type, explicit_type_params)
         if isinstance(func_def.type, CallableType):
             # semanal.py does some in-place modifications we want to avoid
             func_def.unanalyzed_type = func_def.type.copy_modified()

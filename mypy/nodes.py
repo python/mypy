@@ -667,11 +667,12 @@ class FuncItem(FuncBase):
 
     __slots__ = (
         "arguments",  # Note that can be unset if deserialized (type is a lie!)
-        "arg_names",  # Names of arguments
-        "arg_kinds",  # Kinds of arguments
+        "arg_names",  # Names of parameters
+        "arg_kinds",  # Kinds of parameters
         "min_args",  # Minimum number of arguments
         "max_pos",  # Maximum number of positional arguments, -1 if no explicit
         # limit (*args not included)
+        "type_args",  # New-style type parameters (PEP 695)
         "body",  # Body of the function
         "is_overload",  # Is this an overload variant of function with more than
         # one overload variant?
@@ -689,12 +690,14 @@ class FuncItem(FuncBase):
         arguments: list[Argument] | None = None,
         body: Block | None = None,
         typ: mypy.types.FunctionLike | None = None,
+        type_args: list[tuple[str, mypy.types.Type | None]] | None = None,
     ) -> None:
         super().__init__()
         self.arguments = arguments or []
         self.arg_names = [None if arg.pos_only else arg.variable.name for arg in self.arguments]
         self.arg_kinds: list[ArgKind] = [arg.kind for arg in self.arguments]
         self.max_pos: int = self.arg_kinds.count(ARG_POS) + self.arg_kinds.count(ARG_OPT)
+        self.type_args = type_args
         self.body: Block = body or Block([])
         self.type = typ
         self.unanalyzed_type = typ
@@ -761,8 +764,9 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         arguments: list[Argument] | None = None,
         body: Block | None = None,
         typ: mypy.types.FunctionLike | None = None,
+        type_args: list[tuple[str, mypy.types.Type | None]] | None = None,
     ) -> None:
-        super().__init__(arguments, body, typ)
+        super().__init__(arguments, body, typ, type_args)
         self._name = name
         self.is_decorated = False
         self.is_conditional = False  # Defined conditionally (within block)?
