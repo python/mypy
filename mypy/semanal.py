@@ -837,6 +837,16 @@ class SemanticAnalyzer(
     def analyze_func_def(self, defn: FuncDef) -> None:
         self.function_stack.append(defn)
 
+        for tv in defn.type_args if defn.type_args else []:
+            tve = TypeVarExpr(
+                name=tv[0],
+                fullname=tv[0],
+                values=[],
+                upper_bound=self.named_type("builtins.object"),
+                default=AnyType(TypeOfAny.from_omitted_generics),
+            )
+            self.add_symbol(tv[0], tve, defn)
+
         if defn.type:
             assert isinstance(defn.type, CallableType)
             has_self_type = self.update_function_type_variables(defn.type, defn)
@@ -942,6 +952,11 @@ class SemanticAnalyzer(
                 assert ret_type is not None, "Internal error: typing.Coroutine not found"
                 defn.type = defn.type.copy_modified(ret_type=ret_type)
                 self.wrapped_coro_return_types[defn] = defn.type
+
+        for tv in defn.type_args if defn.type_args else []:
+            names = self.current_symbol_table()
+            del names[tv[0]]
+
 
     def remove_unpack_kwargs(self, defn: FuncDef, typ: CallableType) -> CallableType:
         if not typ.arg_kinds or typ.arg_kinds[-1] is not ArgKind.ARG_STAR2:
