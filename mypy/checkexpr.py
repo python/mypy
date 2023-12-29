@@ -5943,17 +5943,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         # Determine the type of the entire yield from expression.
         iter_type = get_proper_type(iter_type)
-        if isinstance(iter_type, Instance) and iter_type.type.fullname == "typing.Generator":
-            expr_type = self.chk.get_generator_return_type(iter_type, False)
-        else:
-            # Non-Generators don't return anything from `yield from` expressions.
-            # However special-case Any (which might be produced by an error).
-            actual_item_type = get_proper_type(actual_item_type)
-            if isinstance(actual_item_type, AnyType):
-                expr_type = AnyType(TypeOfAny.from_another_any, source_any=actual_item_type)
-            else:
-                # Treat `Iterator[X]` as a shorthand for `Generator[X, None, Any]`.
-                expr_type = NoneType()
+        expr_type = self.chk.get_generator_return_type(iter_type, is_coroutine=False)
 
         if not allow_none_return and isinstance(get_proper_type(expr_type), NoneType):
             self.chk.msg.does_not_return_value(None, e)
