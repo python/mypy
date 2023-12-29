@@ -8908,7 +8908,11 @@ def is_overlapping_types_for_overload(left: Type, right: Type) -> bool:
 
 
 def is_private(node_name: str) -> bool:
-    """Check if node is private to class definition."""
+    """Check if node is private to class definition.
+
+    Since Mypy supports name mangling, `is_private` is likely only required for
+    internally introduced names like `__mypy-replace` and `__mypy-post_init`.
+    """
     return node_name.startswith("__") and not node_name.endswith("__")
 
 
