@@ -384,6 +384,11 @@ class NameMangler(ast3.NodeTransformer):
         self.generic_visit(node)
         return node
 
+    def visit_arg(self, node: ast3.arg) -> ast3.arg:
+        node.arg = self._mangle(node.arg)
+        self.generic_visit(node)
+        return node
+
     def visit_Name(self, node: Name) -> Name:
         node.id = self._mangle(node.id)
         self.generic_visit(node)
