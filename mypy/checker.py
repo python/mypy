@@ -2698,25 +2698,26 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_final_enum(self, defn: ClassDef, base: TypeInfo) -> None:
         for sym in base.names.values():
-            if self.is_final_enum_value(sym):
+            if self.is_final_enum_value(sym, base):
                 self.fail(f'Cannot extend enum with existing members: "{base.name}"', defn)
                 break
 
-    def is_final_enum_value(self, sym: SymbolTableNode) -> bool:
+    def is_final_enum_value(self, sym: SymbolTableNode, base: TypeInfo) -> bool:
         if isinstance(sym.node, (FuncBase, Decorator)):
             return False  # A method is fine
         if not isinstance(sym.node, Var):
             return True  # Can be a class or anything else
 
         # Now, only `Var` is left, we need to check:
-        # 1. Private name like in `__prop = 1`
+        # 1. Mangled name like in `_class__prop = 1`
         # 2. Dunder name like `__hash__ = some_hasher`
         # 3. Sunder name like `_order_ = 'a, b, c'`
         # 4. If it is a method / descriptor like in `method = classmethod(func)`
+        name = sym.node.name
         if (
-            is_private(sym.node.name)
-            or is_dunder(sym.node.name)
-            or is_sunder(sym.node.name)
+            name.startswith(f"_{base.name}__") and not name.endswith("__")
+            or is_dunder(name)
+            or is_sunder(name)
             # TODO: make sure that `x = @class/staticmethod(func)`
             # and `x = property(prop)` both work correctly.
             # Now they are incorrectly counted as enum members.
