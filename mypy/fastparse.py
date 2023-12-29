@@ -353,6 +353,51 @@ def find_disallowed_expression_in_annotation_scope(expr: ast3.expr | None) -> as
     return None
 
 
+class NameMangler(ast3.NodeTransformer):
+    """Mangle all private identifiers within a class body (including nested classes)."""
+
+    _name_complete: str
+    _name_trimmed: str
+
+    def __init__(self, classname: str) -> None:
+        self._name_complete = classname
+        self._name_trimmed = classname.lstrip("_")
+
+    def _mangle(self, name: str) -> str:
+        """Mangle the given name if it looks like a private attribute."""
+        if name.startswith("__") and not name.endswith("__"):
+            return f"_{self._name_trimmed}{name}"
+        return name
+
+    def visit_Attribute(self, node: ast3.Attribute) -> ast3.Attribute:
+        node.attr = self._mangle(node.attr)
+        self.generic_visit(node)
+        return node
+
+    def visit_FunctionDef(self, node: ast3.FunctionDef) -> ast3.FunctionDef:
+        node.name = self._mangle(node.name)
+        self.generic_visit(node)
+        return node
+
+    def visit_AsyncFunctionDef(self, node: ast3.AsyncFunctionDef) -> ast3.AsyncFunctionDef:
+        node.name = self._mangle(node.name)
+        self.generic_visit(node)
+        return node
+
+    def visit_Name(self, node: Name) -> Name:
+        node.id = self._mangle(node.id)
+        self.generic_visit(node)
+        return node
+
+    def visit_ClassDef(self, node: ast3.ClassDef) -> ast3.ClassDef:
+        if self._name_complete == node.name:
+            self.generic_visit(node)
+        else:
+            NameMangler(node.name).visit(node)
+            node.name = self._mangle(node.name)
+        return node
+
+
 class ASTConverter:
     def __init__(
         self,
@@ -1132,6 +1177,8 @@ class ASTConverter:
 
         if sys.version_info >= (3, 12) and n.type_params:
             explicit_type_params = self.translate_type_params(n.type_params)
+
+        NameMangler(n.name).visit(n)
 
         cdef = ClassDef(
             n.name,
