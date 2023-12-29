@@ -1074,6 +1074,7 @@ class ClassDef(Statement):
         "name",
         "_fullname",
         "defs",
+        "type_args",
         "type_vars",
         "base_type_exprs",
         "removed_base_type_exprs",
@@ -1093,6 +1094,10 @@ class ClassDef(Statement):
     name: str  # Name of the class without module prefix
     _fullname: str  # Fully qualified name of the class
     defs: Block
+    # New-style type parameters (PEP 695), unanalyzed
+    type_args: list[tuple[str, mypy.types.Type | None]] | None
+    # Semantically analyzed type parameters (all syntax variants)
+    # TODO: Move these to TypeInfo? These partially duplicate type_args.
     type_vars: list[mypy.types.TypeVarLikeType]
     # Base class expressions (not semantically analyzed -- can be arbitrary expressions)
     base_type_exprs: list[Expression]
@@ -1115,12 +1120,14 @@ class ClassDef(Statement):
         base_type_exprs: list[Expression] | None = None,
         metaclass: Expression | None = None,
         keywords: list[tuple[str, Expression]] | None = None,
+        type_args: list[tuple[str, mypy.types.Type | None]] | None = None
     ) -> None:
         super().__init__()
         self.name = name
         self._fullname = ""
         self.defs = defs
         self.type_vars = type_vars or []
+        self.type_args = type_args
         self.base_type_exprs = base_type_exprs or []
         self.removed_base_type_exprs = []
         self.info = CLASSDEF_NO_INFO

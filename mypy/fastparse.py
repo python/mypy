@@ -940,13 +940,7 @@ class ASTConverter:
         else:
             if sys.version_info >= (3, 12) and n.type_params:
                 if NEW_GENERIC_SYNTAX in self.options.enable_incomplete_feature:
-                    explicit_type_params = []
-                    for p in n.type_params:
-                        if p.bound is None:
-                            bound = None
-                        else:
-                            bound = TypeConverter(self.errors, line=p.lineno).visit(p.bound)
-                        explicit_type_params.append((p.name, bound))
+                    explicit_type_params = self.translate_type_params(n.type_params)
                 else:
                     self.fail(
                         ErrorMessage("PEP 695 generics are not yet supported",
@@ -1132,13 +1126,19 @@ class ASTConverter:
         self.class_and_function_stack.append("C")
         keywords = [(kw.arg, self.visit(kw.value)) for kw in n.keywords if kw.arg]
 
+        # Type parameters, if using new syntax for generics (PEP 695)
+        explicit_type_params: list[tuple[str, Type | None]] | None = None
+
         if sys.version_info >= (3, 12) and n.type_params:
-            self.fail(
-                ErrorMessage("PEP 695 generics are not yet supported", code=codes.VALID_TYPE),
-                n.type_params[0].lineno,
-                n.type_params[0].col_offset,
-                blocker=False,
-            )
+            if NEW_GENERIC_SYNTAX in self.options.enable_incomplete_feature:
+                explicit_type_params = self.translate_type_params(n.type_params)
+            else:
+                self.fail(
+                    ErrorMessage("PEP 695 generics are not yet supported", code=codes.VALID_TYPE),
+                    n.type_params[0].lineno,
+                    n.type_params[0].col_offset,
+                    blocker=False,
+                )
 
         cdef = ClassDef(
             n.name,
@@ -1147,6 +1147,7 @@ class ASTConverter:
             self.translate_expr_list(n.bases),
             metaclass=dict(keywords).get("metaclass"),
             keywords=keywords,
+            type_args=explicit_type_params,
         )
         cdef.decorators = self.translate_expr_list(n.decorator_list)
         # Set lines to match the old mypy 0.700 lines, in order to keep
@@ -1161,6 +1162,16 @@ class ASTConverter:
         cdef.end_column = getattr(n, "end_col_offset", None)
         self.class_and_function_stack.pop()
         return cdef
+
+    def translate_type_params(self, type_params: Any) -> list[tuple[str, Type | None]]:
+        explicit_type_params = []
+        for p in type_params:
+            if p.bound is None:
+                bound = None
+            else:
+                bound = TypeConverter(self.errors, line=p.lineno).visit(p.bound)
+            explicit_type_params.append((p.name, bound))
+        return explicit_type_params
 
     # Return(expr? value)
     def visit_Return(self, n: ast3.Return) -> ReturnStmt:
