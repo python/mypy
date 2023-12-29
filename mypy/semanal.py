@@ -787,6 +787,7 @@ class SemanticAnalyzer(
             self.num_incomplete_refs = 0
 
             if active_type:
+                self.push_type_args(active_type.defn.type_args, active_type.defn)
                 self.incomplete_type_stack.append(False)
                 scope.enter_class(active_type)
                 self.enter_class(active_type.defn.info)
@@ -800,6 +801,7 @@ class SemanticAnalyzer(
                 self.leave_class()
                 self._type = None
                 self.incomplete_type_stack.pop()
+                self.pop_type_args(active_type.defn.type_args)
         del self.options
 
     #
@@ -837,15 +839,7 @@ class SemanticAnalyzer(
     def analyze_func_def(self, defn: FuncDef) -> None:
         self.function_stack.append(defn)
 
-        for tv in defn.type_args if defn.type_args else []:
-            tve = TypeVarExpr(
-                name=tv[0],
-                fullname=tv[0],
-                values=[],
-                upper_bound=self.named_type("builtins.object"),
-                default=AnyType(TypeOfAny.from_omitted_generics),
-            )
-            self.add_symbol(tv[0], tve, defn)
+        self.push_type_args(defn.type_args, defn)
 
         if defn.type:
             assert isinstance(defn.type, CallableType)
@@ -953,10 +947,7 @@ class SemanticAnalyzer(
                 defn.type = defn.type.copy_modified(ret_type=ret_type)
                 self.wrapped_coro_return_types[defn] = defn.type
 
-        for tv in defn.type_args if defn.type_args else []:
-            names = self.current_symbol_table()
-            del names[tv[0]]
-
+        self.pop_type_args(defn.type_args)
 
     def remove_unpack_kwargs(self, defn: FuncDef, typ: CallableType) -> CallableType:
         if not typ.arg_kinds or typ.arg_kinds[-1] is not ArgKind.ARG_STAR2:
@@ -1633,8 +1624,31 @@ class SemanticAnalyzer(
         self.incomplete_type_stack.append(not defn.info)
         namespace = self.qualified_name(defn.name)
         with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
+            self.push_type_args(defn.type_args, defn)
             self.analyze_class(defn)
+            self.pop_type_args(defn.type_args)
         self.incomplete_type_stack.pop()
+
+    def push_type_args(self, type_args: list[tuple[str, Type | None]] | None,
+                       context: Context) -> None:
+        if not type_args:
+            return
+        for tv in type_args:
+            tve = TypeVarExpr(
+                name=tv[0],
+                fullname=tv[0],
+                values=[],
+                upper_bound=self.named_type("builtins.object"),
+                default=AnyType(TypeOfAny.from_omitted_generics),
+            )
+            self.add_symbol(tv[0], tve, context)
+
+    def pop_type_args(self, type_args: list[tuple[str, Type | None]] | None) -> None:
+        if not type_args:
+            return
+        for tv in type_args:
+            names = self.current_symbol_table()
+            del names[tv[0]]
 
     def analyze_class(self, defn: ClassDef) -> None:
         fullname = self.qualified_name(defn.name)
@@ -1929,6 +1943,13 @@ class SemanticAnalyzer(
         removed: list[int] = []
         declared_tvars: TypeVarLikeList = []
         is_protocol = False
+        if defn.type_args is not None:
+            for n, _ in defn.type_args:
+                node = self.lookup(n, context)
+                assert node is not None
+                assert isinstance(node.node, TypeVarLikeExpr)
+                declared_tvars.append((n, node.node))
+
         for i, base_expr in enumerate(base_type_exprs):
             if isinstance(base_expr, StarExpr):
                 base_expr.valid = True
