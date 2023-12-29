@@ -115,3 +115,42 @@ reveal_type(C("x"))  # N: Revealed type is "__main__.C[builtins.str]"
 c: C[int] = C(1)
 reveal_type(c.x)  # N: Revealed type is "builtins.int"
 reveal_type(c.ident(1))  # N: Revealed type is "builtins.int"
+
+[case testPEP695InferVarianceSimple]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+class Invariant[T]:
+    def f(self, x: T) -> None:
+        pass
+
+    def g(self) -> T | None:
+        return None
+
+a: Invariant[object]
+b: Invariant[int]
+if int():
+    a = b  # E: Incompatible types in assignment (expression has type "Invariant[int]", variable has type "Invariant[object]")
+if int():
+    b = a  # E: Incompatible types in assignment (expression has type "Invariant[object]", variable has type "Invariant[int]")
+
+class Covariant[T]:
+    def g(self) -> T | None:
+        return None
+
+c: Covariant[object]
+d: Covariant[int]
+if int():
+    c = d
+if int():
+    d = c  # E: Incompatible types in assignment (expression has type "Covariant[object]", variable has type "Covariant[int]")
+
+class Contravariant[T]:
+    def f(self, x: T) -> None:
+        pass
+
+e: Contravariant[object]
+f: Contravariant[int]
+if int():
+    e = f  # E: Incompatible types in assignment (expression has type "Contravariant[int]", variable has type "Contravariant[object]")
+if int():
+    f = e
