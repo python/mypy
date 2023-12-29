@@ -85,7 +85,7 @@ def f() -> Generator[int, None, None]:
 from typing import Iterator
 def f() -> Iterator[int]:
     yield 1
-    return "foo"
+    return "foo" # E: No return value expected
 [out]
 
 
@@ -2230,6 +2230,32 @@ class B: pass
 
 def foo(x: int) -> Union[Generator[A, None, None], Generator[B, None, None]]:
     yield x  # E: Incompatible types in "yield" (actual type "int", expected type "Union[A, B]")
+
+[case testYieldFromUnionOfGenerators]
+from typing import Generator, Union
+
+class T: pass
+
+def foo(arg: Union[Generator[int, None, T], Generator[str, None, T]]) -> Generator[Union[int, str], None, T]:
+    return (yield from arg)
+
+[case testYieldFromInvalidUnionReturn]
+from typing import Generator, Union
+
+class T: pass
+class R: pass
+
+def foo(arg: Union[T, R]) -> Generator[Union[int, str], None, T]:
+    return (yield from arg) # E: "yield from" can't be applied to "Union[T, R]"
+
+[case testYieldFromUnionOfGeneratorWithIterableStr]
+from typing import Generator, Union, Iterable, Optional
+
+class T: pass
+
+def foo(arg: Union[Generator[int, None, T], Iterable[str]]) -> Generator[Union[int, str], None, Optional[T]]:
+    return (yield from arg)
+[builtins fixtures/tuple.pyi]
 
 [case testNoCrashOnStarRightHandSide]
 x = *(1, 2, 3)  # E: can't use starred expression here
