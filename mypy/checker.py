@@ -2715,8 +2715,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # 4. If it is a method / descriptor like in `method = classmethod(func)`
         name = sym.node.name
         if (
-            name.startswith(f"_{base.name}__")
-            and not name.endswith("__")
+            (name.startswith(f"_{base.name}__") and not name.endswith("__"))
             or is_dunder(name)
             or is_sunder(name)
             # TODO: make sure that `x = @class/staticmethod(func)`
