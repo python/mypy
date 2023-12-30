@@ -358,10 +358,14 @@ class NameMangler(ast3.NodeTransformer):
 
     _name_complete: str
     _name_trimmed: str
+    _unmangled_args: set[str]
+
+    _MANGLE_ARGS: bool = False
 
     def __init__(self, classname: str) -> None:
         self._name_complete = classname
         self._name_trimmed = classname.lstrip("_")
+        self._unmangled_args = set()
 
     def _mangle(self, name: str) -> str:
         """Mangle the given name if it looks like a private attribute."""
@@ -376,21 +380,35 @@ class NameMangler(ast3.NodeTransformer):
 
     def visit_FunctionDef(self, node: ast3.FunctionDef) -> ast3.FunctionDef:
         node.name = self._mangle(node.name)
-        self.generic_visit(node)
+        if self._MANGLE_ARGS:
+            self.generic_visit(node)
+        else:
+            mangler = NameMangler(self._name_complete)
+            for subnode in ast3.iter_child_nodes(node):
+                mangler.visit(subnode)
         return node
 
     def visit_AsyncFunctionDef(self, node: ast3.AsyncFunctionDef) -> ast3.AsyncFunctionDef:
         node.name = self._mangle(node.name)
-        self.generic_visit(node)
+        if self._MANGLE_ARGS:
+            self.generic_visit(node)
+        else:
+            mangler = NameMangler(self._name_complete)
+            for subnode in ast3.iter_child_nodes(node):
+                mangler.visit(subnode)
         return node
 
     def visit_arg(self, node: ast3.arg) -> ast3.arg:
-        node.arg = self._mangle(node.arg)
+        if self._MANGLE_ARGS:
+            node.arg = self._mangle(node.arg)
+        else:
+            self._unmangled_args.add(node.arg)
         self.generic_visit(node)
         return node
 
     def visit_Name(self, node: Name) -> Name:
-        node.id = self._mangle(node.id)
+        if self._MANGLE_ARGS or (node.id not in self._unmangled_args):
+            node.id = self._mangle(node.id)
         self.generic_visit(node)
         return node
 
