@@ -2121,3 +2121,50 @@ class AllPartialList(Enum):
 
     def check(self) -> None:
         reveal_type(self.value)  # N: Revealed type is "builtins.list[Any]"
+
+[case testEnumLiteralsSupportedByPlugin]
+from enum import Enum
+from typing_extensions import Literal
+
+class E(Enum):
+    A = 1
+    B = 2
+
+x: Literal[E.A]
+reveal_type(x)  # N: Revealed type is "Literal[__main__.E.A]"
+reveal_type(x.value)  # N: Revealed type is "Literal[1]?"
+reveal_type(x.name)  # N: Revealed type is "Literal['A']?"
+
+e: E
+if e is E.A:
+    reveal_type(e)  # N: Revealed type is "Literal[__main__.E.A]"
+    reveal_type(e.value)  # N: Revealed type is "Literal[1]?"
+    reveal_type(e.name)  # N: Revealed type is "Literal['A']?"
+else:
+    reveal_type(e)  # N: Revealed type is "Literal[__main__.E.B]"
+    reveal_type(e.value)  # N: Revealed type is "Literal[2]?"
+    reveal_type(e.name)  # N: Revealed type is "Literal['B']?"
+
+y: Literal[E.A, E.B]
+reveal_type(y)  # N: Revealed type is "Union[Literal[__main__.E.A], Literal[__main__.E.B]]"
+reveal_type(y.value)  # N: Revealed type is "Union[Literal[1]?, Literal[2]?]"
+reveal_type(y.name)  # N: Revealed type is "builtins.str"
+[builtins fixtures/tuple.pyi]
+
+[case testEnumUnionsSupportedByPlugin]
+from enum import Enum
+from typing import Union
+
+class E1(Enum):
+    A = 1
+    B = 2
+
+class E2(Enum):
+    C = 1
+    D = 2
+
+x: Union[E1, E2]
+reveal_type(x)  # N: Revealed type is "Union[__main__.E1, __main__.E2]"
+reveal_type(x.value)  # N: Revealed type is "Union[Literal[1]?, Literal[2]?]"
+reveal_type(x.name)  # N: Revealed type is "builtins.str"
+[builtins fixtures/tuple.pyi]
