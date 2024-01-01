@@ -3137,7 +3137,7 @@ class TypeInfo(SymbolNode):
                     if name in EXCLUDED_PROTOCOL_ATTRIBUTES:
                         continue
                     members.add(name)
-        return sorted(list(members))
+        return sorted(members)
 
     def __getitem__(self, name: str) -> SymbolTableNode:
         n = self.get(name)
@@ -3296,7 +3296,7 @@ class TypeInfo(SymbolNode):
             else self.typeddict_type.serialize(),
             "flags": get_flags(self, TypeInfo.FLAGS),
             "metadata": self.metadata,
-            "slots": list(sorted(self.slots)) if self.slots is not None else None,
+            "slots": sorted(self.slots) if self.slots is not None else None,
             "deletable_attributes": self.deletable_attributes,
             "self_type": self.self_type.serialize() if self.self_type is not None else None,
             "dataclass_transform_spec": (
@@ -3966,7 +3966,7 @@ class DataclassTransformSpec:
         # frozen_default was added to CPythonin https://github.com/python/cpython/pull/99958 citing
         # positive discussion in typing-sig
         frozen_default: bool | None = None,
-    ):
+    ) -> None:
         self.eq_default = eq_default if eq_default is not None else True
         self.order_default = order_default if order_default is not None else False
         self.kw_only_default = kw_only_default if kw_only_default is not None else False

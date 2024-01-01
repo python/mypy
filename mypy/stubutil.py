@@ -558,7 +558,7 @@ class BaseStubGenerator:
         include_private: bool = False,
         export_less: bool = False,
         include_docstrings: bool = False,
-    ):
+    ) -> None:
         # Best known value of __all__.
         self._all_ = _all_
         self._include_private = include_private

@@ -29,6 +29,7 @@ try:
 except ImportError:
     lxml = None
 
+
 import pytest
 
 # List of files that contain test case descriptions.
@@ -99,9 +100,11 @@ class TypeCheckSuite(DataSuite):
     def run_case_once(
         self,
         testcase: DataDrivenTestCase,
-        operations: list[FileOperation] = [],
+        operations: list[FileOperation] | None = None,
         incremental_step: int = 0,
     ) -> None:
+        if operations is None:
+            operations = []
         original_program_text = "\n".join(testcase.input)
         module_data = self.parse_module(original_program_text, incremental_step)
 

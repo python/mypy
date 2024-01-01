@@ -270,7 +270,7 @@ class VariableRenameVisitor(TraverserVisitor):
         This will be called at the end of a scope.
         """
         is_func = self.scope_kinds[-1] == FUNCTION
-        for name, refs in self.refs[-1].items():
+        for refs in self.refs[-1].values():
             if len(refs) == 1:
                 # Only one definition -- no renaming needed.
                 continue

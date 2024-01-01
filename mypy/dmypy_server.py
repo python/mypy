@@ -1055,7 +1055,7 @@ def fix_module_deps(graph: mypy.build.Graph) -> None:
     This can make some suppressed dependencies non-suppressed, and vice versa (if modules
     have been added to or removed from the build).
     """
-    for module, state in graph.items():
+    for state in graph.values():
         new_suppressed = []
         new_dependencies = []
         for dep in state.dependencies + state.suppressed:

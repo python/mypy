@@ -2319,7 +2319,7 @@ class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
 
         # Special case P.args and P.kwargs for ParamSpecs only.
         if name.endswith("args"):
-            if name.endswith(".args") or name.endswith(".kwargs"):
+            if name.endswith((".args", ".kwargs")):
                 base = ".".join(name.split(".")[:-1])
                 n = self.api.lookup_qualified(base, t)
                 if n is not None and isinstance(n.node, ParamSpecExpr):
