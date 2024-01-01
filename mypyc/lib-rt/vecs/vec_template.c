@@ -128,9 +128,9 @@ PyObject *vec_repr(PyObject *self) {
 PyObject *vec_get_item(PyObject *o, Py_ssize_t i) {
     VecI64 v = ((VEC_OBJECT *)o)->vec;
     if ((size_t)i < (size_t)v.len) {
-        return PyLong_FromLongLong(v.buf->items[i]);
+        return BOX_ITEM(v.buf->items[i]);
     } else if ((size_t)i + (size_t)v.len < (size_t)v.len) {
-        return PyLong_FromLongLong(v.buf->items[i + v.len]);
+        return BOX_ITEM(v.buf->items[i + v.len]);
     } else {
         PyErr_SetString(PyExc_IndexError, "index out of range");
         return NULL;
@@ -167,9 +167,9 @@ PyObject *vec_subscript(PyObject *self, PyObject *item) {
         if (i == -1 && PyErr_Occurred())
             return NULL;
         if ((size_t)i < (size_t)vec.len) {
-            return PyLong_FromLongLong(vec.buf->items[i]);
+            return BOX_ITEM(vec.buf->items[i]);
         } else if ((size_t)i + (size_t)vec.len < (size_t)vec.len) {
-            return PyLong_FromLongLong(vec.buf->items[i + vec.len]);
+            return BOX_ITEM(vec.buf->items[i + vec.len]);
         } else {
             PyErr_SetString(PyExc_IndexError, "index out of range");
             return NULL;
@@ -353,7 +353,7 @@ PyTypeObject VEC_TYPE = {
     .tp_methods = vec_methods,
 };
 
-NAME(Features) I64Features = {
+NAME(Features) FEATURES = {
     &VEC_TYPE,
     &BUF_TYPE,
     FUNC(New),
