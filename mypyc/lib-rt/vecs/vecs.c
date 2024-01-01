@@ -4,6 +4,7 @@
 
 
 PyTypeObject *I64TypeObj;
+PyTypeObject *U8TypeObj;
 
 
 // vec type proxy
@@ -70,6 +71,8 @@ PyObject *Vec_TypeToStr(size_t item_type, size_t depth) {
     if (depth == 0)
         if ((item_type & ~1) == VEC_ITEM_TYPE_I64) {
             item = PyUnicode_FromFormat("i64");
+        } else if ((item_type & ~1) == VEC_ITEM_TYPE_U8) {
+            item = PyUnicode_FromFormat("u8");
         } else if ((item_type & ~1) == VEC_ITEM_TYPE_FLOAT) {
             item = PyUnicode_FromFormat("float");
         } else {
@@ -147,6 +150,9 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
     if (item == (PyObject *)I64TypeObj) {
         Py_INCREF(&VecI64Type);
         return (PyObject *)&VecI64Type;
+    } else if (item == (PyObject *)U8TypeObj) {
+        Py_INCREF(&VecU8Type);
+        return (PyObject *)&VecU8Type;
     } else if (item == (PyObject *)&PyFloat_Type) {
         Py_INCREF(&VecFloatType);
         return (PyObject *)&VecFloatType;
@@ -177,6 +183,10 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
         } else {
             if (item == (PyObject *)&VecI64Type) {
                 item_type = VEC_ITEM_TYPE_I64;
+                depth = 1;
+                // TODO: Check optionals?
+            } else if (item == (PyObject *)&VecU8Type) {
+                item_type = VEC_ITEM_TYPE_U8;
                 depth = 1;
                 // TODO: Check optionals?
             } else if (item == (PyObject *)&VecFloatType) {
@@ -361,6 +371,17 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
         if (VEC_IS_ERROR(v))
             return NULL; // TODO: decref?
         return VecI64_Box(v);
+    } else if (VecU8_Check(vec)) {
+        uint8_t x = VecU8_UnboxItem(item);
+        if (VecU8_IsUnboxError(x)) {
+            return NULL;
+        }
+        VecU8 v = ((VecU8Object *)vec)->vec;
+        VEC_INCREF(v);
+        v = VecU8_Append(v, x);
+        if (VEC_IS_ERROR(v))
+            return NULL; // TODO: decref?
+        return VecU8_Box(v);
     } else if (VecFloat_Check(vec)) {
         double x = VecFloat_UnboxItem(item);
         if (VecFloat_IsUnboxError(x)) {
@@ -417,6 +438,17 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
         if (VEC_IS_ERROR(v))
             return NULL; // TODO: decref?
         return VecI64_Box(v);
+    } else if (VecU8_Check(vec)) {
+        uint8_t x = VecU8_UnboxItem(item);
+        if (VecU8_IsUnboxError(x)) {
+            return NULL;
+        }
+        VecU8 v = ((VecU8Object *)vec)->vec;
+        VEC_INCREF(v);
+        v = VecU8_Remove(v, x);
+        if (VEC_IS_ERROR(v))
+            return NULL; // TODO: decref?
+        return VecU8_Box(v);
     } else if (VecFloat_Check(vec)) {
         double x = VecFloat_UnboxItem(item);
         if (VecFloat_IsUnboxError(x)) {
@@ -474,6 +506,15 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
         if ((result_item0 = VecI64_Box(r.f0)) == NULL)
             return NULL;
         result_item1 = VecI64_BoxItem(r.f1);
+    } else if (VecU8_Check(vec)) {
+        VecU8 v = ((VecU8Object *)vec)->vec;
+        VecU8PopResult r;
+        r = VecU8_Pop(v, index);
+        if (VEC_IS_ERROR(r.f0))
+            return NULL;
+        if ((result_item0 = VecU8_Box(r.f0)) == NULL)
+            return NULL;
+        result_item1 = VecU8_BoxItem(r.f1);
     } else if (VecFloat_Check(vec)) {
         VecFloat v = ((VecFloatObject *)vec)->vec;
         VecFloatPopResult r;
@@ -554,6 +595,7 @@ static VecCapsule Capsule = {
     &TFeatures,
     &TExtFeatures,
     &I64Features,
+    &U8Features,
     &FloatFeatures,
 };
 
@@ -568,6 +610,11 @@ PyInit_vecs(void)
     I64TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "i64");
     // TODO: Check that it's a type object!
     if (I64TypeObj == NULL) {
+        return NULL;
+    }
+    U8TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "u8");
+    // TODO: Check that it's a type object!
+    if (U8TypeObj == NULL) {
         return NULL;
     }
 
@@ -589,6 +636,10 @@ PyInit_vecs(void)
     if (PyType_Ready(&VecI64Type) < 0)
         return NULL;
     if (PyType_Ready(&VecI64BufType) < 0)
+        return NULL;
+    if (PyType_Ready(&VecU8Type) < 0)
+        return NULL;
+    if (PyType_Ready(&VecU8BufType) < 0)
         return NULL;
     if (PyType_Ready(&VecFloatType) < 0)
         return NULL;

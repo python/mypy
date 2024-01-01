@@ -10,6 +10,7 @@
 
 // Item type constants; must be even but not multiples of 4 (2 + 4 * n)
 #define VEC_ITEM_TYPE_I64 2
+#define VEC_ITEM_TYPE_U8 14
 #define VEC_ITEM_TYPE_FLOAT 18
 
 inline size_t Vec_IsMagicItemType(size_t item_type) {
@@ -25,6 +26,12 @@ typedef struct _VecI64BufObject {
     PyObject_VAR_HEAD
     int64_t items[1];
 } VecI64BufObject;
+
+// vecbuf[u8]
+typedef struct _VecU8BufObject {
+    PyObject_VAR_HEAD
+    uint8_t items[1];
+} VecU8BufObject;
 
 // vecbuf[float]
 typedef struct _VecFloatBufObject {
@@ -65,6 +72,11 @@ typedef struct _VecI64 {
     VecI64BufObject *buf;
 } VecI64;
 
+typedef struct _VecU8 {
+    Py_ssize_t len;
+    VecU8BufObject *buf;
+} VecU8;
+
 typedef struct _VecFloat {
     Py_ssize_t len;
     VecFloatBufObject *buf;
@@ -96,6 +108,12 @@ typedef struct _VecI64Object {
     VecI64 vec;
 } VecI64Object;
 
+// Boxed vec[u8]
+typedef struct _VecU8Object {
+    PyObject_HEAD
+    VecU8 vec;
+} VecU8Object;
+
 // Boxed vec[float]
 typedef struct _VecFloatObject {
     PyObject_HEAD
@@ -124,6 +142,15 @@ typedef struct tuple_T2V88 {
 static tuple_T2V88 tuple_undefined_T2V88 = { { -1, NULL } , 0 };
 #endif
 
+#ifndef MYPYC_DECLARED_tuple_T2VU1U1
+#define MYPYC_DECLARED_tuple_T2VU1U1
+typedef struct tuple_T2VU1U1 {
+    VecU8 f0;
+    uint8_t f1;
+} tuple_T2VU1U1;
+static tuple_T2VU1U1 tuple_undefined_T2VU1U1 = { { -1, NULL } , 0 };
+#endif
+
 #ifndef MYPYC_DECLARED_tuple_T2VFF
 #define MYPYC_DECLARED_tuple_T2VFF
 typedef struct tuple_T2VFF {
@@ -134,6 +161,7 @@ static tuple_T2VFF tuple_undefined_T2VFF = { { -1, NULL } , 0.0 };
 #endif
 
 typedef tuple_T2V88 VecI64PopResult;
+typedef tuple_T2VU1U1 VecU8PopResult;
 typedef tuple_T2VFF VecFloatPopResult;
 
 // vec[i64] operations + type objects (stored in a capsule)
@@ -154,6 +182,25 @@ typedef struct _VecI64Features {
     // bool (*contains)(PyObject *, int64_t);
     // iter?
 } VecI64Features;
+
+// vec[u8] operations + type objects (stored in a capsule)
+typedef struct _VecU8Features {
+    PyTypeObject *boxed_type;
+    PyTypeObject *buf_type;
+    VecU8 (*alloc)(Py_ssize_t, Py_ssize_t);
+    PyObject *(*box)(VecU8);
+    VecU8 (*unbox)(PyObject *);
+    VecU8 (*convert_from_nested)(VecNestedBufItem);
+    VecU8 (*append)(VecU8, uint8_t);
+    VecU8PopResult (*pop)(VecU8, Py_ssize_t);
+    VecU8 (*remove)(VecU8, uint8_t);
+    // TODO: Py_ssize_t
+    VecU8 (*slice)(VecU8, int64_t, int64_t);
+    // PyObject *(*extend)(PyObject *, PyObject *);
+    // PyObject *(*concat)(PyObject *, PyObject *);
+    // bool (*contains)(PyObject *, uint8_t);
+    // iter?
+} VecU8Features;
 
 // vec[float] operations + type objects (stored in a capsule)
 typedef struct _VecFloatFeatures {
@@ -241,6 +288,7 @@ typedef struct {
     VecTFeatures *t;
     VecNestedFeatures *nested;
     VecI64Features *i64;
+    VecU8Features *u8;
     VecFloatFeatures *float_;
 } VecCapsule;
 
@@ -255,18 +303,22 @@ typedef struct {
 // Type objects
 
 extern PyTypeObject VecI64BufType;
+extern PyTypeObject VecU8BufType;
 extern PyTypeObject VecFloatBufType;
 extern PyTypeObject VecTBufType;
 extern PyTypeObject VecNestedBufType;
 
 extern PyTypeObject VecI64Type;
+extern PyTypeObject VecU8Type;
 extern PyTypeObject VecFloatType;
 extern PyTypeObject VecTType;
 extern PyTypeObject VecNestedType;
 
 extern PyTypeObject *I64TypeObj;
+extern PyTypeObject *U8TypeObj;
 
 extern VecI64Features I64Features;
+extern VecU8Features U8Features;
 extern VecFloatFeatures FloatFeatures;
 extern VecTFeatures TFeatures;
 extern VecNestedFeatures TExtFeatures;
@@ -303,6 +355,39 @@ PyObject *VecI64_Box(VecI64);
 VecI64 VecI64_Append(VecI64, int64_t x);
 VecI64 VecI64_Remove(VecI64, int64_t x);
 VecI64PopResult VecI64_Pop(VecI64 v, Py_ssize_t index);
+
+// vec[u8] operations
+
+static inline int VecU8_Check(PyObject *o) {
+    return o->ob_type == &VecU8Type;
+}
+
+static inline PyObject *VecU8_BoxItem(uint8_t x) {
+    return PyLong_FromUnsignedLong(x);
+}
+
+static inline uint8_t VecU8_UnboxItem(PyObject *o) {
+    if (Vec_CheckFloatError(o))
+        return -1;
+    unsigned long x = PyLong_AsUnsignedLong(o);
+    if (x <= 255)
+        return x;
+    else if (x == (unsigned long)-1)
+        return 239;
+    else {
+        PyErr_SetString(PyExc_OverflowError, "Python int too large to convert to u8");
+        return 239;
+    }
+}
+
+static inline int VecU8_IsUnboxError(uint8_t x) {
+    return x == 239 && PyErr_Occurred();
+}
+
+PyObject *VecU8_Box(VecU8);
+VecU8 VecU8_Append(VecU8, uint8_t x);
+VecU8 VecU8_Remove(VecU8, uint8_t x);
+VecU8PopResult VecU8_Pop(VecU8 v, Py_ssize_t index);
 
 // vec[float] operations
 
@@ -382,6 +467,11 @@ static inline int VecVec_UnboxItem(VecNested v, PyObject *item, VecNestedBufItem
             unboxed->len = o->vec.len;
             unboxed->buf = (PyObject *)o->vec.buf;
             return 0;
+        } else if (item->ob_type == &VecU8Type && v.buf->item_type == VEC_ITEM_TYPE_U8) {
+            VecU8Object *o = (VecU8Object *)item;
+            unboxed->len = o->vec.len;
+            unboxed->buf = (PyObject *)o->vec.buf;
+            return 0;
         } else if (item->ob_type == &VecFloatType && v.buf->item_type == VEC_ITEM_TYPE_FLOAT) {
             VecFloatObject *o = (VecFloatObject *)item;
             unboxed->len = o->vec.len;
@@ -414,11 +504,12 @@ static inline PyObject *VecVec_BoxItem(VecNested v, VecNestedBufItem item) {
         // Item is a non-nested vec
         size_t item_type = v.buf->item_type;
         if (item_type == VEC_ITEM_TYPE_I64) {
-            // vec[i64]
             VecI64 v = { .len = item.len, .buf = (VecI64BufObject *)item.buf };
             return VecI64_Box(v);
+        } else if (item_type == VEC_ITEM_TYPE_U8) {
+            VecU8 v = { .len = item.len, .buf = (VecU8BufObject *)item.buf };
+            return VecU8_Box(v);
         } else if (item_type == VEC_ITEM_TYPE_FLOAT) {
-            // vec[float]
             VecFloat v = { .len = item.len, .buf = (VecFloatBufObject *)item.buf };
             return VecFloat_Box(v);
         } else {
