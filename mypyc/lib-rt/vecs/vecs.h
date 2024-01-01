@@ -252,16 +252,6 @@ typedef struct {
 #define VEC_DECREF(v) Py_XDECREF((v).buf)
 #define VEC_INCREF(v) Py_XINCREF((v).buf)
 
-inline VecI64 VecI64_Error() {
-    VecI64 v = { .len = -1 };
-    return v;
-}
-
-inline VecFloat VecFloat_Error() {
-    VecFloat v = { .len = -1 };
-    return v;
-}
-
 inline VecT VecT_Error() {
     VecT v = { .len = -1 };
     return v;

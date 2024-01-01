@@ -15,6 +15,11 @@
 #include <Python.h>
 #include "vecs.h"
 
+inline static VEC vec_error() {
+    VEC v = { .len = -1 };
+    return v;
+}
+
 // Alloc a partially initialized vec. Caller *must* initialize len.
 static VEC vec_alloc(Py_ssize_t size)
 {
@@ -25,7 +30,7 @@ static VEC vec_alloc(Py_ssize_t size)
     } else {
         buf = PyObject_NewVar(BUF_OBJECT, &BUF_TYPE, size);
         if (buf == NULL)
-            return FUNC(Error)();
+            return vec_error();
     }
     VEC res = { .buf = buf };
     return res;
@@ -52,7 +57,7 @@ VEC FUNC(Unbox)(PyObject *obj) {
     } else {
         // TODO: Better error message
         PyErr_SetString(PyExc_TypeError, "vec[i64] expected");
-        return FUNC(Error)();
+        return vec_error();
     }
 }
 
@@ -262,7 +267,7 @@ VEC FUNC(Append)(VEC vec, ITEM_C_TYPE x) {
         Py_ssize_t new_size = 2 * cap + 1;
         VEC new = vec_alloc(new_size);
         if (VEC_IS_ERROR(new))
-            return FUNC(Error)();
+            return vec_error();
         new.len = vec.len + 1;
         if (vec.len > 0)
             memcpy(new.buf->items, vec.buf->items, sizeof(ITEM_C_TYPE) * vec.len);
@@ -284,7 +289,7 @@ VEC FUNC(Remove)(VEC v, ITEM_C_TYPE x) {
         }
     }
     PyErr_SetString(PyExc_ValueError, "vec.remove(x): x not in vec");
-    return FUNC(Error)();
+    return vec_error();
 }
 
 NAME(PopResult) FUNC(Pop)(VEC v, Py_ssize_t index) {
@@ -295,7 +300,7 @@ NAME(PopResult) FUNC(Pop)(VEC v, Py_ssize_t index) {
 
     if (index < 0 || index >= v.len) {
         PyErr_SetString(PyExc_IndexError, "index out of range");
-        result.f0 = FUNC(Error)();
+        result.f0 = vec_error();
         result.f1 = 0;
         return result;
     }
