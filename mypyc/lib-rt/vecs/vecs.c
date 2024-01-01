@@ -351,10 +351,8 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
         return NULL;
 
     if (VecI64_Check(vec)) {
-        if (Vec_CheckFloatError(item))
-            return NULL;
-        int64_t x = PyLong_AsLong(item);
-        if (x == -1 && PyErr_Occurred()) {
+        int64_t x = VecI64_UnboxItem(item);
+        if (VecI64_IsUnboxError(x)) {
             return NULL;
         }
         VecI64 v = ((VecI64Object *)vec)->vec;
@@ -364,8 +362,8 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
             return NULL; // TODO: decref?
         return VecI64_Box(v);
     } else if (VecFloat_Check(vec)) {
-        double x = PyFloat_AsDouble(item);
-        if (x == -1 && PyErr_Occurred()) {
+        double x = VecFloat_UnboxItem(item);
+        if (VecFloat_IsUnboxError(x)) {
             return NULL;
         }
         VecFloat v = ((VecFloatObject *)vec)->vec;
@@ -409,10 +407,8 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
         return NULL;
 
     if (VecI64_Check(vec)) {
-        if (Vec_CheckFloatError(item))
-            return NULL;
-        int64_t x = PyLong_AsLong(item);
-        if (x == -1 && PyErr_Occurred()) {
+        int64_t x = VecI64_UnboxItem(item);
+        if (VecI64_IsUnboxError(x)) {
             return NULL;
         }
         VecI64 v = ((VecI64Object *)vec)->vec;
@@ -422,8 +418,8 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
             return NULL; // TODO: decref?
         return VecI64_Box(v);
     } else if (VecFloat_Check(vec)) {
-        double x = PyFloat_AsDouble(item);
-        if (x == -1 && PyErr_Occurred()) {
+        double x = VecFloat_UnboxItem(item);
+        if (VecFloat_IsUnboxError(x)) {
             return NULL;
         }
         VecFloat v = ((VecFloatObject *)vec)->vec;

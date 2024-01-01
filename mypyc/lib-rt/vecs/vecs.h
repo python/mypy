@@ -273,8 +273,26 @@ extern VecNestedFeatures TExtFeatures;
 
 // vec[i64] operations
 
+static inline int Vec_CheckFloatError(PyObject *o) {
+    if (PyFloat_Check(o)) {
+        PyErr_SetString(PyExc_TypeError, "integer argument expected, got float");
+        return 1;
+    }
+    return 0;
+}
+
 static inline int VecI64_Check(PyObject *o) {
     return o->ob_type == &VecI64Type;
+}
+
+static inline int64_t VecI64_UnboxItem(PyObject *o) {
+    if (Vec_CheckFloatError(o))
+        return -1;
+    return PyLong_AsLongLong(o);
+}
+
+static inline int VecI64_IsUnboxError(int64_t x) {
+    return x == -1 && PyErr_Occurred();
 }
 
 PyObject *VecI64_Box(VecI64);
@@ -286,6 +304,14 @@ VecI64PopResult VecI64_Pop(VecI64 v, Py_ssize_t index);
 
 static inline int VecFloat_Check(PyObject *o) {
     return o->ob_type == &VecFloatType;
+}
+
+static inline double VecFloat_UnboxItem(PyObject *o) {
+    return PyFloat_AsDouble(o);
+}
+
+static inline int VecFloat_IsUnboxError(double x) {
+    return x == -1.0 && PyErr_Occurred();
 }
 
 PyObject *VecFloat_Box(VecFloat);
@@ -396,14 +422,6 @@ static inline PyObject *VecVec_BoxItem(VecNested v, VecNestedBufItem item) {
 }
 
 // Misc helpers
-
-static inline int Vec_CheckFloatError(PyObject *o) {
-    if (PyFloat_Check(o)) {
-        PyErr_SetString(PyExc_TypeError, "integer argument expected, got float");
-        return 1;
-    }
-    return 0;
-}
 
 PyObject *Vec_TypeToStr(size_t item_type, size_t depth);
 PyObject *Vec_GenericRepr(PyObject *vec, size_t item_type, size_t depth, int verbose);

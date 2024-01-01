@@ -202,19 +202,14 @@ static PyObject *vec_subscript(PyObject *self, PyObject *item) {
 }
 
 static int vec_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
-    if (Vec_CheckFloatError(o))
+    ITEM_C_TYPE x = UNBOX_ITEM(o);
+    if (IS_UNBOX_ERROR(x))
         return -1;
     VEC v = ((VEC_OBJECT *)self)->vec;
     if ((size_t)i < (size_t)v.len) {
-        ITEM_C_TYPE x = UNBOX_ITEM(o);
-        if (IS_UNBOX_ERROR(x))
-            return -1;
         v.buf->items[i] = x;
         return 0;
     } else if ((size_t)i + (size_t)v.len < (size_t)v.len) {
-        ITEM_C_TYPE x = UNBOX_ITEM(o);
-        if (IS_UNBOX_ERROR(x))
-            return -1;
         v.buf->items[i + v.len] = x;
         return 0;
     } else {

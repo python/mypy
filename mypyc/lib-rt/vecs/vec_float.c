@@ -11,7 +11,7 @@
 #define FEATURES FloatFeatures
 
 #define BOX_ITEM(x) PyFloat_FromDouble(x)
-#define UNBOX_ITEM(x) PyFloat_AsDouble(x)
-#define IS_UNBOX_ERROR(x) ((x) == -1.0 && PyErr_Occurred())
+#define UNBOX_ITEM VecFloat_UnboxItem
+#define IS_UNBOX_ERROR VecFloat_IsUnboxError
 
 #include "vec_template.c"
