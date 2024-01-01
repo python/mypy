@@ -5,8 +5,8 @@
 // as vec[i64] or vec[float]. Assume that certain #defines are provided that
 // provide all the item type specific definitions:
 //
-//   PREFIX      type name prefix used in definitions (e.g. VecI64)
-//   VECTYPE     C struct used for the vec (e.g. VecI64)
+//   PREFIX      name prefix used for non-static definitions (e.g. VecI64)
+//   VEC         C struct used for the vec (e.g. VecI64)
 //   BOXTYPE     PyTypeObject used for a boxed vec (e.g. VecI64Object)
 //   BUFOBJ      C struct used for the buffer object (e.g. VecI64BufObject)
 //   BUFTYPE     PyTypeObject used for the buffer object (e.g. VecI64BufType)
@@ -25,7 +25,7 @@ static VecI64 vec_alloc(Py_ssize_t size)
     } else {
         buf = PyObject_NewVar(VecI64BufObject, &VecI64BufType, size);
         if (buf == NULL)
-            return VecI64_Error();
+            return PREFIX##Error();
     }
     VecI64 res = { .buf = buf };
     return res;
@@ -36,7 +36,7 @@ static void vec_dealloc(VecI64Object *self) {
     PyObject_Del(self);
 }
 
-PyObject *VecI64_Box(VecI64 vec) {
+PyObject *PREFIX##Box(VecI64 vec) {
     VecI64Object *obj = PyObject_New(VecI64Object, &VecI64Type);
     if (obj == NULL)
         return NULL;
@@ -44,7 +44,7 @@ PyObject *VecI64_Box(VecI64 vec) {
     return (PyObject *)obj;
 }
 
-VecI64 VecI64_Unbox(PyObject *obj) {
+VecI64 PREFIX##Unbox(PyObject *obj) {
     if (obj->ob_type == &VecI64Type) {
         VecI64 result = ((VecI64Object *)obj)->vec;
         VEC_INCREF(result);  // TODO: Should we borrow instead?
@@ -52,15 +52,15 @@ VecI64 VecI64_Unbox(PyObject *obj) {
     } else {
         // TODO: Better error message
         PyErr_SetString(PyExc_TypeError, "vec[i64] expected");
-        return VecI64_Error();
+        return PREFIX##Error();
     }
 }
 
-VecI64 VecI64_ConvertFromNested(VecNestedBufItem item) {
+VecI64 PREFIX##ConvertFromNested(VecNestedBufItem item) {
     return (VecI64) { item.len, (VecI64BufObject *)item.buf };
 }
 
-VecI64 VecI64_New(Py_ssize_t size, Py_ssize_t cap) {
+VecI64 PREFIX##New(Py_ssize_t size, Py_ssize_t cap) {
     if (cap < size)
         size = cap;
     VecI64 vec = vec_alloc(cap);
@@ -73,7 +73,7 @@ VecI64 VecI64_New(Py_ssize_t size, Py_ssize_t cap) {
     return vec;
 }
 
-PyObject *VecI64_FromIterable(PyObject *iterable) {
+PyObject *PREFIX##FromIterable(PyObject *iterable) {
     VecI64 v = vec_alloc(0);
     if (VEC_IS_ERROR(v))
         return NULL;
@@ -93,7 +93,7 @@ PyObject *VecI64_FromIterable(PyObject *iterable) {
             VEC_DECREF(v);
             return NULL;
         }
-        v = VecI64_Append(v, x);
+        v = PREFIX##Append(v, x);
         if (VEC_IS_ERROR(v)) {
             Py_DECREF(iter);
             VEC_DECREF(v);
@@ -105,7 +105,7 @@ PyObject *VecI64_FromIterable(PyObject *iterable) {
         VEC_DECREF(v);
         return NULL;
     }
-    return VecI64_Box(v);
+    return PREFIX##Box(v);
 }
 
 PyObject *vec_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
@@ -115,9 +115,9 @@ PyObject *vec_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
         return NULL;
     }
     if (init == NULL) {
-        return VecI64_Box(VecI64_New(0, 0));
+        return PREFIX##Box(PREFIX##New(0, 0));
     } else {
-        return (PyObject *)VecI64_FromIterable(init);
+        return (PyObject *)PREFIX##FromIterable(init);
     }
 }
 
@@ -137,7 +137,7 @@ PyObject *vec_get_item(PyObject *o, Py_ssize_t i) {
     }
 }
 
-VecI64 VecI64_Slice(VecI64 vec, int64_t start, int64_t end) {
+VecI64 PREFIX##Slice(VecI64 vec, int64_t start, int64_t end) {
     if (start < 0)
         start += vec.len;
     if (end < 0)
@@ -188,7 +188,7 @@ PyObject *vec_subscript(PyObject *self, PyObject *item) {
             res.buf->items[i] = vec.buf->items[j];
             j += step;
         }
-        return VecI64_Box(res);
+        return PREFIX##Box(res);
     } else {
         PyErr_Format(PyExc_TypeError, "vec indices must be integers or slices, not %.100s",
                      item->ob_type->tp_name);
@@ -252,7 +252,7 @@ static PyObject *vec_richcompare(PyObject *self, PyObject *other, int op) {
     return res;
 }
 
-VecI64 VecI64_Append(VecI64 vec, int64_t x) {
+VecI64 PREFIX##Append(VecI64 vec, int64_t x) {
     if (vec.buf && vec.len < VEC_CAP(vec)) {
         vec.buf->items[vec.len] = x;
         vec.len++;
@@ -262,7 +262,7 @@ VecI64 VecI64_Append(VecI64 vec, int64_t x) {
         Py_ssize_t new_size = 2 * cap + 1;
         VecI64 new = vec_alloc(new_size);
         if (VEC_IS_ERROR(new))
-            return VecI64_Error();
+            return PREFIX##Error();
         new.len = vec.len + 1;
         if (vec.len > 0)
             memcpy(new.buf->items, vec.buf->items, sizeof(int64_t) * vec.len);
@@ -272,7 +272,7 @@ VecI64 VecI64_Append(VecI64 vec, int64_t x) {
     }
 }
 
-VecI64 VecI64_Remove(VecI64 v, int64_t x) {
+VecI64 PREFIX##Remove(VecI64 v, int64_t x) {
     for (Py_ssize_t i = 0; i < v.len; i++) {
         if (v.buf->items[i] == x) {
             for (; i < v.len - 1; i++) {
@@ -284,10 +284,10 @@ VecI64 VecI64_Remove(VecI64 v, int64_t x) {
         }
     }
     PyErr_SetString(PyExc_ValueError, "vec.remove(x): x not in vec");
-    return VecI64_Error();
+    return PREFIX##Error();
 }
 
-VecI64PopResult VecI64_Pop(VecI64 v, Py_ssize_t index) {
+VecI64PopResult PREFIX##Pop(VecI64 v, Py_ssize_t index) {
     VecI64PopResult result;
 
     if (index < 0)
@@ -295,7 +295,7 @@ VecI64PopResult VecI64_Pop(VecI64 v, Py_ssize_t index) {
 
     if (index < 0 || index >= v.len) {
         PyErr_SetString(PyExc_IndexError, "index out of range");
-        result.f0 = VecI64_Error();
+        result.f0 = PREFIX##Error();
         result.f1 = 0;
         return result;
     }
@@ -356,12 +356,12 @@ PyTypeObject VecI64Type = {
 VecI64Features I64Features = {
     &VecI64Type,
     &VecI64BufType,
-    VecI64_New,
-    VecI64_Box,
-    VecI64_Unbox,
-    VecI64_ConvertFromNested,
-    VecI64_Append,
-    VecI64_Pop,
-    VecI64_Remove,
-    VecI64_Slice,
+    PREFIX##New,
+    PREFIX##Box,
+    PREFIX##Unbox,
+    PREFIX##ConvertFromNested,
+    PREFIX##Append,
+    PREFIX##Pop,
+    PREFIX##Remove,
+    PREFIX##Slice,
 };
