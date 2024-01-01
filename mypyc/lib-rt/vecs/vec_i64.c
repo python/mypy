@@ -5,6 +5,7 @@
 #define BUF_TYPE VecI64BufType
 #define NAME(suffix) VecI64##suffix
 #define FUNC(suffix) VecI64_##suffix
-#define ITEM_STR "i64"
+#define ITEM_TYPE_STR "i64"
+#define ITEM_C_TYPE int64_t
 
 #include "vec_template.c"

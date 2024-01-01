@@ -252,7 +252,7 @@ static PyObject *vec_richcompare(PyObject *self, PyObject *other, int op) {
     return res;
 }
 
-VecI64 FUNC(Append)(VecI64 vec, int64_t x) {
+VecI64 FUNC(Append)(VecI64 vec, ITEM_C_TYPE x) {
     if (vec.buf && vec.len < VEC_CAP(vec)) {
         vec.buf->items[vec.len] = x;
         vec.len++;
@@ -265,14 +265,14 @@ VecI64 FUNC(Append)(VecI64 vec, int64_t x) {
             return FUNC(Error)();
         new.len = vec.len + 1;
         if (vec.len > 0)
-            memcpy(new.buf->items, vec.buf->items, sizeof(int64_t) * vec.len);
+            memcpy(new.buf->items, vec.buf->items, sizeof(ITEM_C_TYPE) * vec.len);
         new.buf->items[vec.len] = x;
         Py_XDECREF(vec.buf);
         return new;
     }
 }
 
-VecI64 FUNC(Remove)(VecI64 v, int64_t x) {
+VecI64 FUNC(Remove)(VecI64 v, ITEM_C_TYPE x) {
     for (Py_ssize_t i = 0; i < v.len; i++) {
         if (v.buf->items[i] == x) {
             for (; i < v.len - 1; i++) {
@@ -327,10 +327,10 @@ static PyMethodDef vec_methods[] = {
 
 PyTypeObject BUF_TYPE = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "vecbuf[" ITEM_STR "]",
+    .tp_name = "vecbuf[" ITEM_TYPE_STR "]",
     .tp_doc = "vec doc",
-    .tp_basicsize = sizeof(VEC_OBJECT) - sizeof(int64_t),
-    .tp_itemsize = sizeof(int64_t),
+    .tp_basicsize = sizeof(VEC_OBJECT) - sizeof(ITEM_C_TYPE),
+    .tp_itemsize = sizeof(ITEM_C_TYPE),
     .tp_flags = Py_TPFLAGS_DEFAULT,
     //.tp_new = ??
     .tp_free = PyObject_Del,
@@ -338,7 +338,7 @@ PyTypeObject BUF_TYPE = {
 
 PyTypeObject VEC_TYPE = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "vec[" ITEM_STR "]",
+    .tp_name = "vec[" ITEM_TYPE_STR "]",
     .tp_doc = "vec doc",
     .tp_basicsize = sizeof(VEC_OBJECT),
     .tp_itemsize = 0,
