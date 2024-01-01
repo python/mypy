@@ -285,6 +285,10 @@ static inline int VecI64_Check(PyObject *o) {
     return o->ob_type == &VecI64Type;
 }
 
+static inline PyObject *VecI64_BoxItem(int64_t x) {
+    return PyLong_FromLongLong(x);
+}
+
 static inline int64_t VecI64_UnboxItem(PyObject *o) {
     if (Vec_CheckFloatError(o))
         return -1;
@@ -304,6 +308,10 @@ VecI64PopResult VecI64_Pop(VecI64 v, Py_ssize_t index);
 
 static inline int VecFloat_Check(PyObject *o) {
     return o->ob_type == &VecFloatType;
+}
+
+static inline PyObject *VecFloat_BoxItem(double x) {
+    return PyFloat_FromDouble(x);
 }
 
 static inline double VecFloat_UnboxItem(PyObject *o) {

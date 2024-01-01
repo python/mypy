@@ -471,29 +471,24 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
         r = VecI64_Pop(v, index);
         if (VEC_IS_ERROR(r.f0))
             return NULL;
-
-        result_item0 = VecI64_Box(r.f0);
-        if (result_item0 == NULL)
+        if ((result_item0 = VecI64_Box(r.f0)) == NULL)
             return NULL;
-        result_item1 = PyLong_FromLongLong(r.f1);
+        result_item1 = VecI64_BoxItem(r.f1);
     } else if (VecFloat_Check(vec)) {
         VecFloat v = ((VecFloatObject *)vec)->vec;
         VecFloatPopResult r;
         r = VecFloat_Pop(v, index);
         if (VEC_IS_ERROR(r.f0))
             return NULL;
-
-        result_item0 = VecFloat_Box(r.f0);
-        if (result_item0 == NULL)
+        if ((result_item0 = VecFloat_Box(r.f0)) == NULL)
             return NULL;
-        result_item1 = PyFloat_FromDouble(r.f1);
+        result_item1 = VecFloat_BoxItem(r.f1);
     } else if (VecT_Check(vec)) {
         VecT v = ((VecTObject *)vec)->vec;
         VecTPopResult r;
         r = VecT_Pop(v, index);
         if (VEC_IS_ERROR(r.f0))
             return NULL;
-
         result_item0 = VecT_Box(r.f0, v.buf->item_type);
         if (result_item0 == NULL) {
             Py_DECREF(r.f1);
@@ -506,14 +501,12 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
         r = VecVec_Pop(v, index);
         if (VEC_IS_ERROR(r.f0))
             return NULL;
-
         result_item0 = VecVec_Box(r.f0);
         if (result_item0 == NULL) {
             Py_DECREF(r.f0.buf);
             Py_DECREF(r.f1.buf);
             return NULL;
         }
-
         result_item1 = VecVec_BoxItem(r.f0, r.f1);
         if (result_item1 == NULL) {
             Py_DECREF(result_item0);

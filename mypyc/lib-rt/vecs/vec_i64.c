@@ -10,7 +10,7 @@
 #define ITEM_C_TYPE int64_t
 #define FEATURES I64Features
 
-#define BOX_ITEM(x) PyLong_FromLongLong(x)
+#define BOX_ITEM VecI64_BoxItem
 #define UNBOX_ITEM VecI64_UnboxItem
 #define IS_UNBOX_ERROR VecI64_IsUnboxError
 

@@ -10,7 +10,7 @@
 #define ITEM_C_TYPE double
 #define FEATURES FloatFeatures
 
-#define BOX_ITEM(x) PyFloat_FromDouble(x)
+#define BOX_ITEM VecFloat_BoxItem
 #define UNBOX_ITEM VecFloat_UnboxItem
 #define IS_UNBOX_ERROR VecFloat_IsUnboxError
 
