@@ -7,23 +7,24 @@
 //
 //   PREFIX      name prefix used for non-static definitions (e.g. VecI64)
 //   VEC         C struct used for the vec (e.g. VecI64)
-//   BOXTYPE     PyTypeObject used for a boxed vec (e.g. VecI64Object)
-//   BUFOBJ      C struct used for the buffer object (e.g. VecI64BufObject)
-//   BUFTYPE     PyTypeObject used for the buffer object (e.g. VecI64BufType)
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include "vecs.h"
 
+#define VEC_TYPE PREFIX##Type
+#define BUF_OBJECT PREFIX##BufObject
+#define BUF_TYPE PREFIX##BufType
+
 // Alloc a partially initialized vec. Caller *must* initialize len.
 static VecI64 vec_alloc(Py_ssize_t size)
 {
-    VecI64BufObject *buf;
+    BUF_OBJECT *buf;
     /* TODO: Check for overflow */
     if (size == 0) {
         buf = NULL;
     } else {
-        buf = PyObject_NewVar(VecI64BufObject, &VecI64BufType, size);
+        buf = PyObject_NewVar(BUF_OBJECT, &BUF_TYPE, size);
         if (buf == NULL)
             return PREFIX##Error();
     }
@@ -37,7 +38,7 @@ static void vec_dealloc(VecI64Object *self) {
 }
 
 PyObject *PREFIX##Box(VecI64 vec) {
-    VecI64Object *obj = PyObject_New(VecI64Object, &VecI64Type);
+    VecI64Object *obj = PyObject_New(VecI64Object, &VEC_TYPE);
     if (obj == NULL)
         return NULL;
     obj->vec = vec;
@@ -45,7 +46,7 @@ PyObject *PREFIX##Box(VecI64 vec) {
 }
 
 VecI64 PREFIX##Unbox(PyObject *obj) {
-    if (obj->ob_type == &VecI64Type) {
+    if (obj->ob_type == &VEC_TYPE) {
         VecI64 result = ((VecI64Object *)obj)->vec;
         VEC_INCREF(result);  // TODO: Should we borrow instead?
         return result;
@@ -57,7 +58,7 @@ VecI64 PREFIX##Unbox(PyObject *obj) {
 }
 
 VecI64 PREFIX##ConvertFromNested(VecNestedBufItem item) {
-    return (VecI64) { item.len, (VecI64BufObject *)item.buf };
+    return (VecI64) { item.len, (BUF_OBJECT *)item.buf };
 }
 
 VecI64 PREFIX##New(Py_ssize_t size, Py_ssize_t cap) {
@@ -227,7 +228,7 @@ static PyObject *vec_richcompare(PyObject *self, PyObject *other, int op) {
     int cmp = 1;
     PyObject *res;
     if (op == Py_EQ || op == Py_NE) {
-        if (other->ob_type != &VecI64Type)
+        if (other->ob_type != &VEC_TYPE)
             cmp = 0;
         else {
             VecI64 x = ((VecI64Object *)self)->vec;
@@ -325,7 +326,7 @@ static PyMethodDef vec_methods[] = {
     {NULL, NULL, 0, NULL},  /* Sentinel */
 };
 
-PyTypeObject VecI64BufType = {
+PyTypeObject BUF_TYPE = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "vecbuf[i64]",
     .tp_doc = "vec doc",
@@ -336,7 +337,7 @@ PyTypeObject VecI64BufType = {
     .tp_free = PyObject_Del,
 };
 
-PyTypeObject VecI64Type = {
+PyTypeObject VEC_TYPE = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "vec[i64]",
     .tp_doc = "vec doc",
@@ -354,8 +355,8 @@ PyTypeObject VecI64Type = {
 };
 
 VecI64Features I64Features = {
-    &VecI64Type,
-    &VecI64BufType,
+    &VEC_TYPE,
+    &BUF_TYPE,
     PREFIX##New,
     PREFIX##Box,
     PREFIX##Unbox,
