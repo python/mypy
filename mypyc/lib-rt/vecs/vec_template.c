@@ -6,16 +6,14 @@
 // provide all the item type specific definitions:
 //
 //   PREFIX      name prefix used for non-static definitions (e.g. VecI64)
-//   VEC         C struct used for the vec (e.g. VecI64)
+
+#ifndef PREFIX
+#error "PREFIX must be defined"
+#endif
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include "vecs.h"
-
-#define VEC_TYPE PREFIX##Type
-#define VEC_OBJECT PREFIX##Object
-#define BUF_OBJECT PREFIX##BufObject
-#define BUF_TYPE PREFIX##BufType
 
 // Alloc a partially initialized vec. Caller *must* initialize len.
 static VecI64 vec_alloc(Py_ssize_t size)
@@ -27,7 +25,7 @@ static VecI64 vec_alloc(Py_ssize_t size)
     } else {
         buf = PyObject_NewVar(BUF_OBJECT, &BUF_TYPE, size);
         if (buf == NULL)
-            return PREFIX##Error();
+            return FUNC(Error)();
     }
     VecI64 res = { .buf = buf };
     return res;
@@ -38,7 +36,7 @@ static void vec_dealloc(VEC_OBJECT *self) {
     PyObject_Del(self);
 }
 
-PyObject *PREFIX##Box(VecI64 vec) {
+PyObject *FUNC(Box)(VecI64 vec) {
     VEC_OBJECT *obj = PyObject_New(VEC_OBJECT, &VEC_TYPE);
     if (obj == NULL)
         return NULL;
@@ -46,7 +44,7 @@ PyObject *PREFIX##Box(VecI64 vec) {
     return (PyObject *)obj;
 }
 
-VecI64 PREFIX##Unbox(PyObject *obj) {
+VecI64 FUNC(Unbox)(PyObject *obj) {
     if (obj->ob_type == &VEC_TYPE) {
         VecI64 result = ((VEC_OBJECT *)obj)->vec;
         VEC_INCREF(result);  // TODO: Should we borrow instead?
@@ -54,15 +52,15 @@ VecI64 PREFIX##Unbox(PyObject *obj) {
     } else {
         // TODO: Better error message
         PyErr_SetString(PyExc_TypeError, "vec[i64] expected");
-        return PREFIX##Error();
+        return FUNC(Error)();
     }
 }
 
-VecI64 PREFIX##ConvertFromNested(VecNestedBufItem item) {
+VecI64 FUNC(ConvertFromNested)(VecNestedBufItem item) {
     return (VecI64) { item.len, (BUF_OBJECT *)item.buf };
 }
 
-VecI64 PREFIX##New(Py_ssize_t size, Py_ssize_t cap) {
+VecI64 FUNC(New)(Py_ssize_t size, Py_ssize_t cap) {
     if (cap < size)
         size = cap;
     VecI64 vec = vec_alloc(cap);
@@ -75,7 +73,7 @@ VecI64 PREFIX##New(Py_ssize_t size, Py_ssize_t cap) {
     return vec;
 }
 
-PyObject *PREFIX##FromIterable(PyObject *iterable) {
+PyObject *FUNC(FromIterable)(PyObject *iterable) {
     VecI64 v = vec_alloc(0);
     if (VEC_IS_ERROR(v))
         return NULL;
@@ -95,7 +93,7 @@ PyObject *PREFIX##FromIterable(PyObject *iterable) {
             VEC_DECREF(v);
             return NULL;
         }
-        v = PREFIX##Append(v, x);
+        v = FUNC(Append)(v, x);
         if (VEC_IS_ERROR(v)) {
             Py_DECREF(iter);
             VEC_DECREF(v);
@@ -107,7 +105,7 @@ PyObject *PREFIX##FromIterable(PyObject *iterable) {
         VEC_DECREF(v);
         return NULL;
     }
-    return PREFIX##Box(v);
+    return FUNC(Box)(v);
 }
 
 PyObject *vec_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
@@ -117,9 +115,9 @@ PyObject *vec_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
         return NULL;
     }
     if (init == NULL) {
-        return PREFIX##Box(PREFIX##New(0, 0));
+        return FUNC(Box)(FUNC(New)(0, 0));
     } else {
-        return (PyObject *)PREFIX##FromIterable(init);
+        return (PyObject *)FUNC(FromIterable)(init);
     }
 }
 
@@ -139,7 +137,7 @@ PyObject *vec_get_item(PyObject *o, Py_ssize_t i) {
     }
 }
 
-VecI64 PREFIX##Slice(VecI64 vec, int64_t start, int64_t end) {
+VecI64 FUNC(Slice)(VecI64 vec, int64_t start, int64_t end) {
     if (start < 0)
         start += vec.len;
     if (end < 0)
@@ -190,7 +188,7 @@ PyObject *vec_subscript(PyObject *self, PyObject *item) {
             res.buf->items[i] = vec.buf->items[j];
             j += step;
         }
-        return PREFIX##Box(res);
+        return FUNC(Box)(res);
     } else {
         PyErr_Format(PyExc_TypeError, "vec indices must be integers or slices, not %.100s",
                      item->ob_type->tp_name);
@@ -254,7 +252,7 @@ static PyObject *vec_richcompare(PyObject *self, PyObject *other, int op) {
     return res;
 }
 
-VecI64 PREFIX##Append(VecI64 vec, int64_t x) {
+VecI64 FUNC(Append)(VecI64 vec, int64_t x) {
     if (vec.buf && vec.len < VEC_CAP(vec)) {
         vec.buf->items[vec.len] = x;
         vec.len++;
@@ -264,7 +262,7 @@ VecI64 PREFIX##Append(VecI64 vec, int64_t x) {
         Py_ssize_t new_size = 2 * cap + 1;
         VecI64 new = vec_alloc(new_size);
         if (VEC_IS_ERROR(new))
-            return PREFIX##Error();
+            return FUNC(Error)();
         new.len = vec.len + 1;
         if (vec.len > 0)
             memcpy(new.buf->items, vec.buf->items, sizeof(int64_t) * vec.len);
@@ -274,7 +272,7 @@ VecI64 PREFIX##Append(VecI64 vec, int64_t x) {
     }
 }
 
-VecI64 PREFIX##Remove(VecI64 v, int64_t x) {
+VecI64 FUNC(Remove)(VecI64 v, int64_t x) {
     for (Py_ssize_t i = 0; i < v.len; i++) {
         if (v.buf->items[i] == x) {
             for (; i < v.len - 1; i++) {
@@ -286,18 +284,18 @@ VecI64 PREFIX##Remove(VecI64 v, int64_t x) {
         }
     }
     PyErr_SetString(PyExc_ValueError, "vec.remove(x): x not in vec");
-    return PREFIX##Error();
+    return FUNC(Error)();
 }
 
-PREFIX##PopResult PREFIX##Pop(VecI64 v, Py_ssize_t index) {
-    PREFIX##PopResult result;
+NAME(PopResult) FUNC(Pop)(VecI64 v, Py_ssize_t index) {
+    NAME(PopResult) result;
 
     if (index < 0)
         index += v.len;
 
     if (index < 0 || index >= v.len) {
         PyErr_SetString(PyExc_IndexError, "index out of range");
-        result.f0 = PREFIX##Error();
+        result.f0 = FUNC(Error)();
         result.f1 = 0;
         return result;
     }
@@ -329,7 +327,7 @@ static PyMethodDef vec_methods[] = {
 
 PyTypeObject BUF_TYPE = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "vecbuf[i64]",
+    .tp_name = "vecbuf[" ITEM_STR "]",
     .tp_doc = "vec doc",
     .tp_basicsize = sizeof(VEC_OBJECT) - sizeof(int64_t),
     .tp_itemsize = sizeof(int64_t),
@@ -340,7 +338,7 @@ PyTypeObject BUF_TYPE = {
 
 PyTypeObject VEC_TYPE = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "vec[i64]",
+    .tp_name = "vec[" ITEM_STR "]",
     .tp_doc = "vec doc",
     .tp_basicsize = sizeof(VEC_OBJECT),
     .tp_itemsize = 0,
@@ -355,15 +353,15 @@ PyTypeObject VEC_TYPE = {
     .tp_methods = vec_methods,
 };
 
-PREFIX##Features I64Features = {
+NAME(Features) I64Features = {
     &VEC_TYPE,
     &BUF_TYPE,
-    PREFIX##New,
-    PREFIX##Box,
-    PREFIX##Unbox,
-    PREFIX##ConvertFromNested,
-    PREFIX##Append,
-    PREFIX##Pop,
-    PREFIX##Remove,
-    PREFIX##Slice,
+    FUNC(New),
+    FUNC(Box),
+    FUNC(Unbox),
+    FUNC(ConvertFromNested),
+    FUNC(Append),
+    FUNC(Pop),
+    FUNC(Remove),
+    FUNC(Slice),
 };
