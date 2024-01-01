@@ -13,6 +13,7 @@
 #include "vecs.h"
 
 #define VEC_TYPE PREFIX##Type
+#define VEC_OBJECT PREFIX##Object
 #define BUF_OBJECT PREFIX##BufObject
 #define BUF_TYPE PREFIX##BufType
 
@@ -32,13 +33,13 @@ static VecI64 vec_alloc(Py_ssize_t size)
     return res;
 }
 
-static void vec_dealloc(VecI64Object *self) {
+static void vec_dealloc(VEC_OBJECT *self) {
     Py_CLEAR(self->vec.buf);
     PyObject_Del(self);
 }
 
 PyObject *PREFIX##Box(VecI64 vec) {
-    VecI64Object *obj = PyObject_New(VecI64Object, &VEC_TYPE);
+    VEC_OBJECT *obj = PyObject_New(VEC_OBJECT, &VEC_TYPE);
     if (obj == NULL)
         return NULL;
     obj->vec = vec;
@@ -47,7 +48,7 @@ PyObject *PREFIX##Box(VecI64 vec) {
 
 VecI64 PREFIX##Unbox(PyObject *obj) {
     if (obj->ob_type == &VEC_TYPE) {
-        VecI64 result = ((VecI64Object *)obj)->vec;
+        VecI64 result = ((VEC_OBJECT *)obj)->vec;
         VEC_INCREF(result);  // TODO: Should we borrow instead?
         return result;
     } else {
@@ -127,7 +128,7 @@ PyObject *vec_repr(PyObject *self) {
 }
 
 PyObject *vec_get_item(PyObject *o, Py_ssize_t i) {
-    VecI64 v = ((VecI64Object *)o)->vec;
+    VecI64 v = ((VEC_OBJECT *)o)->vec;
     if ((size_t)i < (size_t)v.len) {
         return PyLong_FromLongLong(v.buf->items[i]);
     } else if ((size_t)i + (size_t)v.len < (size_t)v.len) {
@@ -162,7 +163,7 @@ VecI64 PREFIX##Slice(VecI64 vec, int64_t start, int64_t end) {
 }
 
 PyObject *vec_subscript(PyObject *self, PyObject *item) {
-    VecI64 vec = ((VecI64Object *)self)->vec;
+    VecI64 vec = ((VEC_OBJECT *)self)->vec;
     if (PyIndex_Check(item)) {
         Py_ssize_t i = PyNumber_AsSsize_t(item, PyExc_IndexError);
         if (i == -1 && PyErr_Occurred())
@@ -200,7 +201,7 @@ PyObject *vec_subscript(PyObject *self, PyObject *item) {
 int vec_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
     if (Vec_CheckFloatError(o))
         return -1;
-    VecI64 v = ((VecI64Object *)self)->vec;
+    VecI64 v = ((VEC_OBJECT *)self)->vec;
     if ((size_t)i < (size_t)v.len) {
         long long x = PyLong_AsLongLong(o);
         if (x == -1 && PyErr_Occurred())
@@ -221,7 +222,7 @@ int vec_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
 
 static Py_ssize_t vec_length(PyObject *o) {
     // TODO: Type check o
-    return ((VecI64Object *)o)->vec.len;
+    return ((VEC_OBJECT *)o)->vec.len;
 }
 
 static PyObject *vec_richcompare(PyObject *self, PyObject *other, int op) {
@@ -231,8 +232,8 @@ static PyObject *vec_richcompare(PyObject *self, PyObject *other, int op) {
         if (other->ob_type != &VEC_TYPE)
             cmp = 0;
         else {
-            VecI64 x = ((VecI64Object *)self)->vec;
-            VecI64 y = ((VecI64Object *)other)->vec;
+            VecI64 x = ((VEC_OBJECT *)self)->vec;
+            VecI64 y = ((VEC_OBJECT *)other)->vec;
             if (x.len != y.len) {
                 cmp = 0;
             } else {
@@ -330,7 +331,7 @@ PyTypeObject BUF_TYPE = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "vecbuf[i64]",
     .tp_doc = "vec doc",
-    .tp_basicsize = sizeof(VecI64Object) - sizeof(int64_t),
+    .tp_basicsize = sizeof(VEC_OBJECT) - sizeof(int64_t),
     .tp_itemsize = sizeof(int64_t),
     .tp_flags = Py_TPFLAGS_DEFAULT,
     //.tp_new = vecbuf_i64_new, //??
@@ -341,7 +342,7 @@ PyTypeObject VEC_TYPE = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "vec[i64]",
     .tp_doc = "vec doc",
-    .tp_basicsize = sizeof(VecI64Object),
+    .tp_basicsize = sizeof(VEC_OBJECT),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_new = vec_new,
