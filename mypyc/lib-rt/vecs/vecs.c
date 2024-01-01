@@ -70,6 +70,8 @@ PyObject *Vec_TypeToStr(size_t item_type, size_t depth) {
     if (depth == 0)
         if ((item_type & ~1) == VEC_ITEM_TYPE_I64) {
             item = PyUnicode_FromFormat("i64");
+        } else if ((item_type & ~1) == VEC_ITEM_TYPE_FLOAT) {
+            item = PyUnicode_FromFormat("float");
         } else {
             item = PyObject_GetAttrString((PyObject *)(item_type & ~1), "__name__");
             if (item_type & 1) {
@@ -145,6 +147,9 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
     if (item == (PyObject *)I64TypeObj) {
         Py_INCREF(&VecI64Type);
         return (PyObject *)&VecI64Type;
+    } else if (item == (PyObject *)&PyFloat_Type) {
+        Py_INCREF(&VecFloatType);
+        return (PyObject *)&VecFloatType;
     } else {
         size_t depth = 0;
         size_t item_type;
@@ -172,6 +177,10 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
         } else {
             if (item == (PyObject *)&VecI64Type) {
                 item_type = VEC_ITEM_TYPE_I64;
+                depth = 1;
+                // TODO: Check optionals?
+            } else if (item == (PyObject *)&VecFloatType) {
+                item_type = VEC_ITEM_TYPE_FLOAT;
                 depth = 1;
                 // TODO: Check optionals?
             } else {
@@ -354,6 +363,17 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
         if (VEC_IS_ERROR(v))
             return NULL; // TODO: decref?
         return VecI64_Box(v);
+    } else if (VecFloat_Check(vec)) {
+        double x = PyFloat_AsDouble(item);
+        if (x == -1 && PyErr_Occurred()) {
+            return NULL;
+        }
+        VecFloat v = ((VecFloatObject *)vec)->vec;
+        VEC_INCREF(v);
+        v = VecFloat_Append(v, x);
+        if (VEC_IS_ERROR(v))
+            return NULL; // TODO: decref?
+        return VecFloat_Box(v);
     } else if (VecT_Check(vec)) {
         VecT v = ((VecTObject *)vec)->vec;
         if (!VecT_ItemCheck(v, item, v.buf->item_type)) {
@@ -401,6 +421,17 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
         if (VEC_IS_ERROR(v))
             return NULL; // TODO: decref?
         return VecI64_Box(v);
+    } else if (VecFloat_Check(vec)) {
+        double x = PyFloat_AsDouble(item);
+        if (x == -1 && PyErr_Occurred()) {
+            return NULL;
+        }
+        VecFloat v = ((VecFloatObject *)vec)->vec;
+        VEC_INCREF(v);
+        v = VecFloat_Remove(v, x);
+        if (VEC_IS_ERROR(v))
+            return NULL; // TODO: decref?
+        return VecFloat_Box(v);
     } else if (VecT_Check(vec)) {
         VecT v = ((VecTObject *)vec)->vec;
         if (!VecT_ItemCheck(v, item, v.buf->item_type)) {
@@ -449,6 +480,17 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
         if (result_item0 == NULL)
             return NULL;
         result_item1 = PyLong_FromLongLong(r.f1);
+    } else if (VecFloat_Check(vec)) {
+        VecFloat v = ((VecFloatObject *)vec)->vec;
+        VecFloatPopResult r;
+        r = VecFloat_Pop(v, index);
+        if (VEC_IS_ERROR(r.f0))
+            return NULL;
+
+        result_item0 = VecFloat_Box(r.f0);
+        if (result_item0 == NULL)
+            return NULL;
+        result_item1 = PyFloat_FromDouble(r.f1);
     } else if (VecT_Check(vec)) {
         VecT v = ((VecTObject *)vec)->vec;
         VecTPopResult r;
@@ -520,9 +562,10 @@ static PyModuleDef vecsmodule = {
 };
 
 static VecCapsule Capsule = {
-    &I64Features,
     &TFeatures,
     &TExtFeatures,
+    &I64Features,
+    &FloatFeatures,
 };
 
 PyMODINIT_FUNC
@@ -557,6 +600,10 @@ PyInit_vecs(void)
     if (PyType_Ready(&VecI64Type) < 0)
         return NULL;
     if (PyType_Ready(&VecI64BufType) < 0)
+        return NULL;
+    if (PyType_Ready(&VecFloatType) < 0)
+        return NULL;
+    if (PyType_Ready(&VecFloatBufType) < 0)
         return NULL;
 
     PyObject *m = PyModule_Create(&vecsmodule);
