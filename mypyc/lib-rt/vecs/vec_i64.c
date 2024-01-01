@@ -10,5 +10,7 @@
 #define FEATURES I64Features
 
 #define BOX_ITEM(x) PyLong_FromLongLong(x)
+#define UNBOX_ITEM(x) PyLong_AsLongLong(x)
+#define IS_UNBOX_ERROR(x) ((x) == -1 && PyErr_Occurred())
 
 #include "vec_template.c"

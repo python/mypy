@@ -86,9 +86,9 @@ PyObject *FUNC(FromIterable)(PyObject *iterable) {
     }
     PyObject *item;
     while ((item = PyIter_Next(iter)) != NULL) {
-        int64_t x = PyLong_AsLongLong(item);
+        ITEM_C_TYPE x = UNBOX_ITEM(item);
         Py_DECREF(item);
-        if (x == -1 && PyErr_Occurred()) {
+        if (IS_UNBOX_ERROR(x)) {
             Py_DECREF(iter);
             VEC_DECREF(v);
             return NULL;
@@ -201,14 +201,14 @@ int vec_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
         return -1;
     VecI64 v = ((VEC_OBJECT *)self)->vec;
     if ((size_t)i < (size_t)v.len) {
-        long long x = PyLong_AsLongLong(o);
-        if (x == -1 && PyErr_Occurred())
+        ITEM_C_TYPE x = UNBOX_ITEM(o);
+        if (IS_UNBOX_ERROR(x))
             return -1;
         v.buf->items[i] = x;
         return 0;
     } else if ((size_t)i + (size_t)v.len < (size_t)v.len) {
-        long long x = PyLong_AsLongLong(o);
-        if (x == -1 && PyErr_Occurred())
+        ITEM_C_TYPE x = UNBOX_ITEM(o);
+        if (IS_UNBOX_ERROR(x))
             return -1;
         v.buf->items[i + v.len] = x;
         return 0;
