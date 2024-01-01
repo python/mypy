@@ -11,6 +11,11 @@
 #include <Python.h>
 #include "vecs.h"
 
+static inline VecT vec_error() {
+    VecT v = { .len = -1 };
+    return v;
+}
+
 static inline VecTBufObject *alloc_buf(Py_ssize_t size, size_t item_type) {
     VecTBufObject *buf = PyObject_GC_NewVar(VecTBufObject, &VecTBufType, size);
     if (buf == NULL)
@@ -31,7 +36,7 @@ static VecT vec_alloc(Py_ssize_t size, size_t item_type) {
     } else {
         buf = alloc_buf(size, item_type);
         if (buf == NULL)
-            return VecT_Error();
+            return vec_error();
     }
     return (VecT) { .buf = buf };
 }
@@ -62,7 +67,7 @@ VecT VecT_Unbox(PyObject *obj, size_t item_type) {
     }
     // TODO: Better error message, with name of type
     PyErr_SetString(PyExc_TypeError, "vec[t] expected");
-    return VecT_Error();
+    return vec_error();
 }
 
 VecT VecT_ConvertFromNested(VecNestedBufItem item) {
@@ -253,7 +258,7 @@ VecT VecT_Remove(VecT v, PyObject *arg) {
         else {
             int itemcmp = PyObject_RichCompareBool(items[i], arg, Py_EQ);
             if (itemcmp < 0)
-                return VecT_Error();
+                return vec_error();
             match = itemcmp;
         }
         if (match) {
@@ -270,7 +275,7 @@ VecT VecT_Remove(VecT v, PyObject *arg) {
         }
     }
     PyErr_SetString(PyExc_ValueError, "vec.remove(x): x not in vec");
-    return VecT_Error();
+    return vec_error();
 }
 
 VecTPopResult VecT_Pop(VecT v, Py_ssize_t index) {
@@ -281,7 +286,7 @@ VecTPopResult VecT_Pop(VecT v, Py_ssize_t index) {
 
     if (index < 0 || index >= v.len) {
         PyErr_SetString(PyExc_IndexError, "index out of range");
-        result.f0 = VecT_Error();
+        result.f0 = vec_error();
         result.f1 = NULL;
         return result;
     }

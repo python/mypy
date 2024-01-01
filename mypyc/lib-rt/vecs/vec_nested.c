@@ -9,17 +9,21 @@
 #include <Python.h>
 #include "vecs.h"
 
+static inline VecNested vec_error() {
+    VecNested v = { .len = -1 };
+    return v;
+}
+
 static inline PyObject *box_vec_item_by_index(VecNested v, Py_ssize_t index) {
     return VecVec_BoxItem(v, v.buf->items[index]);
 }
-
 
 // Alloc a partially initialized vec. Caller *must* initialize len and buf->items of the
 // return value.
 static VecNested vec_alloc(Py_ssize_t size, size_t item_type, size_t depth) {
     VecNestedBufObject *buf = PyObject_GC_NewVar(VecNestedBufObject, &VecNestedBufType, size);
     if (buf == NULL)
-        return VecVec_Error();
+        return vec_error();
     buf->item_type = item_type;
     buf->depth = depth;
     if (!Vec_IsMagicItemType(item_type))
@@ -48,7 +52,7 @@ VecNested VecVec_Unbox(PyObject *obj, size_t item_type, size_t depth) {
     }
     // TODO: Better error message, with name of type
     PyErr_SetString(PyExc_TypeError, "vec[t] expected");
-    return VecVec_Error();
+    return vec_error();
 }
 
 VecNested VecVec_ConvertFromNested(VecNestedBufItem item) {
@@ -247,7 +251,7 @@ VecNested VecVec_Remove(VecNested self, VecNestedBufItem arg) {
 
     PyObject *boxed_arg = VecVec_BoxItem(self, arg);
     if (boxed_arg == NULL)
-        return VecVec_Error();
+        return vec_error();
 
     for (Py_ssize_t i = 0; i < self.len; i++) {
         int match = 0;
@@ -257,13 +261,13 @@ VecNested VecVec_Remove(VecNested self, VecNestedBufItem arg) {
             PyObject *item = box_vec_item_by_index(self, i);
             if (item == NULL) {
                 Py_DECREF(boxed_arg);
-                return VecVec_Error();
+                return vec_error();
             }
             int itemcmp = PyObject_RichCompareBool(item, boxed_arg, Py_EQ);
             Py_DECREF(item);
             if (itemcmp < 0) {
                 Py_DECREF(boxed_arg);
-                return VecVec_Error();
+                return vec_error();
             }
             match = itemcmp;
         }
@@ -283,7 +287,7 @@ VecNested VecVec_Remove(VecNested self, VecNestedBufItem arg) {
     }
     Py_DECREF(boxed_arg);
     PyErr_SetString(PyExc_ValueError, "vec.remove(x): x not in vec");
-    return VecVec_Error();
+    return vec_error();
 }
 
 VecNestedPopResult VecVec_Pop(VecNested v, Py_ssize_t index) {
@@ -294,7 +298,7 @@ VecNestedPopResult VecVec_Pop(VecNested v, Py_ssize_t index) {
 
     if (index < 0 || index >= v.len) {
         PyErr_SetString(PyExc_IndexError, "index out of range");
-        result.f0 = VecVec_Error();
+        result.f0 = vec_error();
         result.f1.len = 0;
         result.f1.buf = NULL;
         return result;

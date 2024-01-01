@@ -252,16 +252,6 @@ typedef struct {
 #define VEC_DECREF(v) Py_XDECREF((v).buf)
 #define VEC_INCREF(v) Py_XINCREF((v).buf)
 
-inline VecT VecT_Error() {
-    VecT v = { .len = -1 };
-    return v;
-}
-
-inline VecNested VecVec_Error() {
-    VecNested v = { .len = -1 };
-    return v;
-}
-
 // Type objects
 
 extern PyTypeObject VecI64BufType;
