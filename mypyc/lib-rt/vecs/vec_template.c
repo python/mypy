@@ -289,8 +289,8 @@ VecI64 PREFIX##Remove(VecI64 v, int64_t x) {
     return PREFIX##Error();
 }
 
-VecI64PopResult PREFIX##Pop(VecI64 v, Py_ssize_t index) {
-    VecI64PopResult result;
+PREFIX##PopResult PREFIX##Pop(VecI64 v, Py_ssize_t index) {
+    PREFIX##PopResult result;
 
     if (index < 0)
         index += v.len;
@@ -313,12 +313,12 @@ VecI64PopResult PREFIX##Pop(VecI64 v, Py_ssize_t index) {
     return result;
 }
 
-static PyMappingMethods VecI64Mapping = {
+static PyMappingMethods vec_mapping_methods = {
     .mp_length = vec_length,
     .mp_subscript = vec_subscript,
 };
 
-static PySequenceMethods VecI64Sequence = {
+static PySequenceMethods vec_sequence_methods = {
     .sq_item = vec_get_item,
     .sq_ass_item = vec_ass_item,
 };
@@ -334,7 +334,7 @@ PyTypeObject BUF_TYPE = {
     .tp_basicsize = sizeof(VEC_OBJECT) - sizeof(int64_t),
     .tp_itemsize = sizeof(int64_t),
     .tp_flags = Py_TPFLAGS_DEFAULT,
-    //.tp_new = vecbuf_i64_new, //??
+    //.tp_new = ??
     .tp_free = PyObject_Del,
 };
 
@@ -349,13 +349,13 @@ PyTypeObject VEC_TYPE = {
     //.tp_free = PyObject_Del,
     .tp_dealloc = (destructor)vec_dealloc,
     .tp_repr = (reprfunc)vec_repr,
-    .tp_as_sequence = &VecI64Sequence,
-    .tp_as_mapping = &VecI64Mapping,
+    .tp_as_sequence = &vec_sequence_methods,
+    .tp_as_mapping = &vec_mapping_methods,
     .tp_richcompare = vec_richcompare,
     .tp_methods = vec_methods,
 };
 
-VecI64Features I64Features = {
+PREFIX##Features I64Features = {
     &VEC_TYPE,
     &BUF_TYPE,
     PREFIX##New,
