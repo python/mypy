@@ -6,6 +6,7 @@
 #define NAME(suffix) VecI64##suffix
 #define FUNC(suffix) VecI64_##suffix
 #define ITEM_TYPE_STR "i64"
+#define ITEM_TYPE_MAGIC VEC_ITEM_TYPE_I64
 #define ITEM_C_TYPE int64_t
 #define FEATURES I64Features
 

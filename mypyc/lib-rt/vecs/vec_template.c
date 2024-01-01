@@ -122,7 +122,7 @@ static PyObject *vec_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
 }
 
 static PyObject *vec_repr(PyObject *self) {
-    return Vec_GenericRepr(self, (size_t)I64TypeObj, 0, 1);
+    return Vec_GenericRepr(self, ITEM_TYPE_MAGIC, 0, 1);
 }
 
 static PyObject *vec_get_item(PyObject *o, Py_ssize_t i) {
