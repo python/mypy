@@ -5,12 +5,14 @@ from multiprocessing.context import BaseContext, Process
 from multiprocessing.queues import Queue, SimpleQueue
 from threading import Lock, Semaphore, Thread
 from types import TracebackType
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, overload
+from typing_extensions import TypeVarTuple, Unpack
 from weakref import ref
 
 from ._base import BrokenExecutor, Executor, Future
 
 _T = TypeVar("_T")
+_Ts = TypeVarTuple("_Ts")
 
 _threads_wakeups: MutableMapping[Any, Any]
 _global_shutdown: bool
@@ -109,8 +111,8 @@ if sys.version_info >= (3, 11):
     def _process_worker(
         call_queue: Queue[_CallItem],
         result_queue: SimpleQueue[_ResultItem],
-        initializer: Callable[..., object] | None,
-        initargs: tuple[Any, ...],
+        initializer: Callable[[Unpack[_Ts]], object] | None,
+        initargs: tuple[Unpack[_Ts]],
         max_tasks: int | None = None,
     ) -> None: ...
 
@@ -118,8 +120,8 @@ else:
     def _process_worker(
         call_queue: Queue[_CallItem],
         result_queue: SimpleQueue[_ResultItem],
-        initializer: Callable[..., object] | None,
-        initargs: tuple[Any, ...],
+        initializer: Callable[[Unpack[_Ts]], object] | None,
+        initargs: tuple[Unpack[_Ts]],
     ) -> None: ...
 
 if sys.version_info >= (3, 9):
@@ -169,22 +171,61 @@ class ProcessPoolExecutor(Executor):
     _result_queue: SimpleQueue[Any]
     _work_ids: Queue[Any]
     if sys.version_info >= (3, 11):
+        @overload
         def __init__(
             self,
             max_workers: int | None = None,
             mp_context: BaseContext | None = None,
-            initializer: Callable[..., object] | None = None,
-            initargs: tuple[Any, ...] = (),
+            initializer: Callable[[], object] | None = None,
+            initargs: tuple[()] = (),
+            *,
+            max_tasks_per_child: int | None = None,
+        ) -> None: ...
+        @overload
+        def __init__(
+            self,
+            max_workers: int | None = None,
+            mp_context: BaseContext | None = None,
+            *,
+            initializer: Callable[[Unpack[_Ts]], object],
+            initargs: tuple[Unpack[_Ts]],
+            max_tasks_per_child: int | None = None,
+        ) -> None: ...
+        @overload
+        def __init__(
+            self,
+            max_workers: int | None,
+            mp_context: BaseContext | None,
+            initializer: Callable[[Unpack[_Ts]], object],
+            initargs: tuple[Unpack[_Ts]],
             *,
             max_tasks_per_child: int | None = None,
         ) -> None: ...
     else:
+        @overload
         def __init__(
             self,
             max_workers: int | None = None,
             mp_context: BaseContext | None = None,
-            initializer: Callable[..., object] | None = None,
-            initargs: tuple[Any, ...] = (),
+            initializer: Callable[[], object] | None = None,
+            initargs: tuple[()] = (),
+        ) -> None: ...
+        @overload
+        def __init__(
+            self,
+            max_workers: int | None = None,
+            mp_context: BaseContext | None = None,
+            *,
+            initializer: Callable[[Unpack[_Ts]], object],
+            initargs: tuple[Unpack[_Ts]],
+        ) -> None: ...
+        @overload
+        def __init__(
+            self,
+            max_workers: int | None,
+            mp_context: BaseContext | None,
+            initializer: Callable[[Unpack[_Ts]], object],
+            initargs: tuple[Unpack[_Ts]],
         ) -> None: ...
     if sys.version_info >= (3, 9):
         def _start_executor_manager_thread(self) -> None: ...

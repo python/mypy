@@ -25,7 +25,25 @@ _P = ParamSpec("_P")
 DIFF_OMITTED: str
 
 class _BaseTestCaseContext:
+    test_case: TestCase
     def __init__(self, test_case: TestCase) -> None: ...
+
+class _AssertRaisesBaseContext(_BaseTestCaseContext):
+    expected: type[BaseException] | tuple[type[BaseException], ...]
+    expected_regex: Pattern[str] | None
+    obj_name: str | None
+    msg: str | None
+
+    def __init__(
+        self,
+        expected: type[BaseException] | tuple[type[BaseException], ...],
+        test_case: TestCase,
+        expected_regex: str | Pattern[str] | None = None,
+    ) -> None: ...
+
+    # This returns Self if args is the empty list, and None otherwise.
+    # but it's not possible to construct an overload which expresses that
+    def handle(self, name: str, args: list[Any], kwargs: dict[str, Any]) -> Any: ...
 
 if sys.version_info >= (3, 9):
     from unittest._log import _AssertLogsContext, _LoggingWatcher
@@ -41,7 +59,6 @@ else:
 
     class _AssertLogsContext(_BaseTestCaseContext, Generic[_L]):
         LOGGING_FORMAT: ClassVar[str]
-        test_case: TestCase
         logger_name: str
         level: int
         msg: None
@@ -310,7 +327,7 @@ class FunctionTestCase(TestCase):
     def __hash__(self) -> int: ...
     def __eq__(self, other: object) -> bool: ...
 
-class _AssertRaisesContext(Generic[_E]):
+class _AssertRaisesContext(_AssertRaisesBaseContext, Generic[_E]):
     exception: _E
     def __enter__(self) -> Self: ...
     def __exit__(
@@ -319,7 +336,7 @@ class _AssertRaisesContext(Generic[_E]):
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 
-class _AssertWarnsContext:
+class _AssertWarnsContext(_AssertRaisesBaseContext):
     warning: WarningMessage
     filename: str
     lineno: int
