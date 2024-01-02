@@ -728,3 +728,27 @@ from unused.empty import *
 import a_module_which_does_not_exist
 def is_foo() -> str:
     return True  # type: ignore
+
+[case testAttrsTypeIgnoreAfterUnknownImport]
+$ dmypy start -- --warn-unused-ignores --no-error-summary
+Daemon started
+$ dmypy check -- foo.py
+foo.py:3: error: Cannot find implementation or library stub for module named "a_module_which_does_not_exist"  [import-not-found]
+foo.py:3: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+== Return code: 1
+$ dmypy check -- foo.py
+foo.py:3: error: Cannot find implementation or library stub for module named "a_module_which_does_not_exist"  [import-not-found]
+foo.py:3: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+== Return code: 1
+
+[file unused/__init__.py]
+[file unused/empty.py]
+[file foo.py]
+import attr
+from unused.empty import *
+import a_module_which_does_not_exist
+
+@attr.frozen
+class A:
+    def __init__(self) -> None:
+        self.__attrs_init__()  # type: ignore[attr-defined]
