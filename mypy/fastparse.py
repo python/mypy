@@ -416,7 +416,8 @@ class NameMangler(ast3.NodeTransformer):
 
     def visit_ClassDef(self, node: ast3.ClassDef) -> ast3.ClassDef:
         if self._name_complete == node.name:
-            self.generic_visit(node)
+            for subnode in node.body:
+                self.visit(subnode)
             self._mangle_slots(node)
         else:
             NameMangler(node.name, self._future_annotations).visit(node)

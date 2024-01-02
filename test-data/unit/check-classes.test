@@ -8560,6 +8560,14 @@ class A:
     reveal_type(__f)  # N: Revealed type is "def (self: __main__.A) -> builtins.float"
     reveal_type(_A__f)  # N: Revealed type is "def (self: __main__.A) -> builtins.float"
 
+[case testNameManglingInheritance]
+
+class __A: ...
+class B(__A): ...
+
+import enum as __enum
+class C(__enum.Flag): ...
+
 [case testNameManglingAnnotationsPast]
 
 class A:
