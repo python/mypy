@@ -50,7 +50,7 @@ from mypy.types import (
 )
 
 TPDICT_CLASS_ERROR: Final = (
-    "Invalid statement in TypedDict definition; " 'expected "field_name: field_type"'
+    'Invalid statement in TypedDict definition; expected "field_name: field_type"'
 )
 
 

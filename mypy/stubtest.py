@@ -303,11 +303,9 @@ def _verify_exported_names(
         # desirable in at least the `names_in_runtime_not_stub` case
         stub_object=MISSING,
         runtime_object=MISSING,
-        stub_desc=(
-            f"Names exported in the stub but not at runtime: " f"{names_in_stub_not_runtime}"
-        ),
+        stub_desc=(f"Names exported in the stub but not at runtime: {names_in_stub_not_runtime}"),
         runtime_desc=(
-            f"Names exported at runtime but not in the stub: " f"{names_in_runtime_not_stub}"
+            f"Names exported at runtime but not in the stub: {names_in_runtime_not_stub}"
         ),
     )
 
@@ -677,7 +675,7 @@ def _verify_arg_default_value(
                 runtime_type is not None
                 and stub_type is not None
                 # Avoid false positives for marker objects
-                and type(runtime_arg.default) != object
+                and type(runtime_arg.default) is not object
                 # And ellipsis
                 and runtime_arg.default is not ...
                 and not is_subtype_helper(runtime_type, stub_type)
@@ -897,7 +895,7 @@ def _verify_signature(
             runtime_arg.kind == inspect.Parameter.POSITIONAL_ONLY
             and not stub_arg.pos_only
             and not stub_arg.variable.name.startswith("__")
-            and not stub_arg.variable.name.strip("_") == "self"
+            and stub_arg.variable.name.strip("_") != "self"
             and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
@@ -1812,10 +1810,8 @@ def get_importable_stdlib_modules() -> set[str]:
             # test.* modules do weird things like raising exceptions in __del__ methods,
             # leading to unraisable exceptions being logged to the terminal
             # as a warning at the end of the stubtest run
-            if (
-                submodule_name.endswith(".__main__")
-                or submodule_name.startswith("idlelib.")
-                or submodule_name.startswith("test.")
+            if submodule_name.endswith(".__main__") or submodule_name.startswith(
+                ("idlelib.", "test.")
             ):
                 continue
 

@@ -739,7 +739,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         context: Context,
         orig_callee: Type | None,
     ) -> Type:
-        if args and all([ak in (ARG_NAMED, ARG_STAR2) for ak in arg_kinds]):
+        if args and all(ak in (ARG_NAMED, ARG_STAR2) for ak in arg_kinds):
             # ex: Point(x=42, y=1337, **extras)
             # This is a bit ugly, but this is a price for supporting all possible syntax
             # variants for TypedDict constructors.
@@ -4017,9 +4017,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             left_variants = [base_type]
             base_type = get_proper_type(base_type)
             if isinstance(base_type, UnionType):
-                left_variants = [
-                    item for item in flatten_nested_unions(base_type.relevant_items())
-                ]
+                left_variants = list(flatten_nested_unions(base_type.relevant_items()))
             right_type = self.accept(arg)
 
             # Step 1: We first try leaving the right arguments alone and destructure

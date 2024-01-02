@@ -187,7 +187,7 @@ class PatternChecker(PatternVisitor[PatternType]):
                 capture_types[node].append((expr, typ))
 
         captures: dict[Expression, Type] = {}
-        for var, capture_list in capture_types.items():
+        for capture_list in capture_types.values():
             typ = UninhabitedType()
             for _, other in capture_list:
                 typ = join_types(typ, other)

@@ -173,7 +173,7 @@ def run_stubtest(
 
 
 class Case:
-    def __init__(self, stub: str, runtime: str, error: str | None):
+    def __init__(self, stub: str, runtime: str, error: str | None) -> None:
         self.stub = stub
         self.runtime = runtime
         self.error = error
@@ -2226,7 +2226,7 @@ class StubtestMiscUnit(unittest.TestCase):
                 options=["--allowlist", allowlist.name, "--generate-allowlist"],
             )
             assert output == (
-                f"note: unused allowlist entry unused.*\n" f"{TEST_MODULE_NAME}.also_bad\n"
+                f"note: unused allowlist entry unused.*\n{TEST_MODULE_NAME}.also_bad\n"
             )
         finally:
             os.unlink(allowlist.name)

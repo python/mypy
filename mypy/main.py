@@ -145,7 +145,7 @@ def main(
         sys.exit(code)
 
     # HACK: keep res alive so that mypyc won't free it before the hard_exit
-    list([res])
+    list([res])  # noqa: C410
 
 
 def run_build(
@@ -349,7 +349,7 @@ class CapturableArgumentParser(argparse.ArgumentParser):
     yet output must be captured to properly support mypy.api.run.
     """
 
-    def __init__(self, *args: Any, **kwargs: Any):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.stdout = kwargs.pop("stdout", sys.stdout)
         self.stderr = kwargs.pop("stderr", sys.stderr)
         super().__init__(*args, **kwargs)
@@ -415,7 +415,7 @@ class CapturableVersionAction(argparse.Action):
         default: str = argparse.SUPPRESS,
         help: str = "show program's version number and exit",
         stdout: IO[str] | None = None,
-    ):
+    ) -> None:
         super().__init__(
             option_strings=option_strings, dest=dest, default=default, nargs=0, help=help
         )

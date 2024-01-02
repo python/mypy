@@ -3099,7 +3099,7 @@ def append_invariance_notes(
     ):
         invariant_type = "Dict"
         covariant_suggestion = (
-            'Consider using "Mapping" instead, ' "which is covariant in the value type"
+            'Consider using "Mapping" instead, which is covariant in the value type'
         )
     if invariant_type and covariant_suggestion:
         notes.append(
