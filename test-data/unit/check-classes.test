@@ -8572,3 +8572,67 @@ __y = int
 class C:
     def f(self, __x: __y, __z: int) -> None:  # E: Name "_C__y" is not defined
         reveal_type(__z)  # N: Revealed type is "builtins.int"
+
+[case testNameManglingSlots]
+
+class A:
+    __slots__ = ["__x"]
+
+    def __init__(self) -> None:
+        self.__x = 1
+
+A().__x = 1  # E: "A" has no attribute "__x"
+A()._A__x = 1
+
+class B(A):
+    def __init__(self) -> None:
+        self.__x = 1
+
+B().__x = 1  # E: "B" has no attribute "__x"
+B()._B__x = 1
+
+class C(A):
+    __slots__ = []
+
+    def __init__(self) -> None:
+        self.__x = 1  # E: Trying to assign name "_C__x" that is not in "__slots__" of type "__main__.C"
+
+C().__x = 1  # E: "C" has no attribute "__x"
+C()._C__x = 1  # E: Trying to assign name "_C__x" that is not in "__slots__" of type "__main__.C"
+
+class D(A):
+    __slots__ = ["__x"]
+
+    def __init__(self) -> None:
+        self.__x = 1
+
+D().__x = 1  # E: "D" has no attribute "__x"
+D()._D__x = 1
+
+class E(A):
+    __slots__ = ("__x",)
+
+    def __init__(self) -> None:
+        self.__x = 1
+
+E().__x = 1  # E: "E" has no attribute "__x"
+E()._E__x = 1
+
+class F(A):
+    __slots__ = "__x"
+
+    def __init__(self) -> None:
+        self.__x = 1
+
+F().__x = 1  # E: "F" has no attribute "__x"
+F()._F__x = 1
+
+class G(A):
+    __slots__ = {"__x": "docstring"}
+
+    def __init__(self) -> None:
+        self.__x = 1
+
+G().__x = 1  # E: "G" has no attribute "__x"
+G()._G__x = 1
+[builtins fixtures/dict.pyi]

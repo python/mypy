@@ -4,7 +4,7 @@ import re
 import sys
 import warnings
 from collections.abc import Sequence
-from typing import Any, Callable, Final, Literal, Optional, TypeVar, Union, cast, overload
+from typing import Any, Callable, Final, Iterable, Literal, Optional, TypeVar, Union, cast, overload
 
 from mypy import defaults, errorcodes as codes, message_registry
 from mypy.errors import Errors
@@ -415,10 +415,27 @@ class NameMangler(ast3.NodeTransformer):
     def visit_ClassDef(self, node: ast3.ClassDef) -> ast3.ClassDef:
         if self._name_complete == node.name:
             self.generic_visit(node)
+            self._mangle_slots(node)
         else:
             NameMangler(node.name).visit(node)
             node.name = self._mangle(node.name)
         return node
+
+    def _mangle_slots(self, node: ast3.ClassDef) -> None:
+        for assign in node.body:
+            if isinstance(assign, ast3.Assign):
+                for target in assign.targets:
+                    if isinstance(target, ast3.Name) and (target.id == "__slots__"):
+                        constants: Iterable[ast3.expr] = ()
+                        if isinstance(values := assign.value, ast3.Constant):
+                            constants = (values,)
+                        elif isinstance(values, (ast3.Tuple, ast3.List)):
+                            constants = values.elts
+                        elif isinstance(values, ast3.Dict):
+                            constants = (key for key in values.keys if key is not None)
+                        for value in constants:
+                            if isinstance(value, ast3.Constant) and isinstance(value.value, str):
+                                value.value = self._mangle(value.value)
 
 
 class ASTConverter:
