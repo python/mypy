@@ -358,13 +358,15 @@ class NameMangler(ast3.NodeTransformer):
 
     _name_complete: str
     _name_trimmed: str
+    _future_annotations: bool
     _unmangled_args: set[str]
 
     _MANGLE_ARGS: bool = False
 
-    def __init__(self, classname: str) -> None:
+    def __init__(self, classname: str, future_annotations: bool) -> None:
         self._name_complete = classname
         self._name_trimmed = classname.lstrip("_")
+        self._future_annotations = future_annotations
         self._unmangled_args = set()
 
     def _mangle(self, name: str) -> str:
@@ -383,7 +385,7 @@ class NameMangler(ast3.NodeTransformer):
         if self._MANGLE_ARGS:
             self.generic_visit(node)
         else:
-            mangler = NameMangler(self._name_complete)
+            mangler = NameMangler(self._name_complete, self._future_annotations)
             for subnode in ast3.iter_child_nodes(node):
                 mangler.visit(subnode)
         return node
@@ -393,7 +395,7 @@ class NameMangler(ast3.NodeTransformer):
         if self._MANGLE_ARGS:
             self.generic_visit(node)
         else:
-            mangler = NameMangler(self._name_complete)
+            mangler = NameMangler(self._name_complete, self._future_annotations)
             for subnode in ast3.iter_child_nodes(node):
                 mangler.visit(subnode)
         return node
@@ -403,13 +405,13 @@ class NameMangler(ast3.NodeTransformer):
             node.arg = self._mangle(node.arg)
         else:
             self._unmangled_args.add(node.arg)
-        self.generic_visit(node)
+        if (node.annotation is not None) and not self._future_annotations:
+            self.visit(node.annotation)
         return node
 
     def visit_Name(self, node: Name) -> Name:
         if self._MANGLE_ARGS or (node.id not in self._unmangled_args):
             node.id = self._mangle(node.id)
-        self.generic_visit(node)
         return node
 
     def visit_ClassDef(self, node: ast3.ClassDef) -> ast3.ClassDef:
@@ -417,7 +419,7 @@ class NameMangler(ast3.NodeTransformer):
             self.generic_visit(node)
             self._mangle_slots(node)
         else:
-            NameMangler(node.name).visit(node)
+            NameMangler(node.name, self._future_annotations).visit(node)
             node.name = self._mangle(node.name)
         return node
 
@@ -436,6 +438,14 @@ class NameMangler(ast3.NodeTransformer):
                         for value in constants:
                             if isinstance(value, ast3.Constant) and isinstance(value.value, str):
                                 value.value = self._mangle(value.value)
+
+    def visit_AnnAssign(self, node: ast3.AnnAssign) -> ast3.AnnAssign:
+        self.visit(node.target)
+        if node.value is not None:
+            self.visit(node.value)
+        if not self._future_annotations:
+            self.visit(node.annotation)
+        return node
 
 
 class ASTConverter:
@@ -1218,7 +1228,13 @@ class ASTConverter:
         if sys.version_info >= (3, 12) and n.type_params:
             explicit_type_params = self.translate_type_params(n.type_params)
 
-        NameMangler(n.name).visit(n)
+        future_annotations = any(
+            isinstance(i, ImportFrom)
+            and (i.id == "__future__")
+            and any(j[0] == "annotations" for j in i.names)
+            for i in self.imports
+        )
+        NameMangler(n.name, future_annotations).visit(n)
 
         cdef = ClassDef(
             n.name,
