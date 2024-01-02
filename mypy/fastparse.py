@@ -1943,8 +1943,11 @@ class TypeConverter:
         # We support specifically Literal[-4], Literal[+4], and nothing else.
         # For example, Literal[~6] or Literal[not False] is not supported.
         typ = self.visit(n.operand)
-        # Check for type() because we do not want to allow bools.
-        if isinstance(typ, RawExpressionType) and type(typ.literal_value) is int:
+        if (
+            isinstance(typ, RawExpressionType)
+            # Use type() because we do not want to allow bools.
+            and type(typ.literal_value) is int  # noqa: E721
+        ):
             if isinstance(n.op, USub):
                 typ.literal_value *= -1
                 return typ
