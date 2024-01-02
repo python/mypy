@@ -993,7 +993,7 @@ class GroupGenerator:
             result.append(decl.declaration)
             decl.mark = True
 
-        for name in marked_declarations.keys():
+        for name in marked_declarations:
             _toposort_visit(name)
 
         return result
