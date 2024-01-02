@@ -386,8 +386,7 @@ class NameMangler(ast3.NodeTransformer):
             self.generic_visit(node)
         else:
             mangler = NameMangler(self._name_complete, self._future_annotations)
-            for subnode in ast3.iter_child_nodes(node):
-                mangler.visit(subnode)
+            mangler.generic_visit(node)
         return node
 
     def visit_AsyncFunctionDef(self, node: ast3.AsyncFunctionDef) -> ast3.AsyncFunctionDef:
@@ -396,8 +395,7 @@ class NameMangler(ast3.NodeTransformer):
             self.generic_visit(node)
         else:
             mangler = NameMangler(self._name_complete, self._future_annotations)
-            for subnode in ast3.iter_child_nodes(node):
-                mangler.visit(subnode)
+            mangler.generic_visit(node)
         return node
 
     def visit_arg(self, node: ast3.arg) -> ast3.arg:
