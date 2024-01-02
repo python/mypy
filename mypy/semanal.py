@@ -4961,9 +4961,7 @@ class SemanticAnalyzer(
     def bind_name_expr(self, expr: NameExpr, sym: SymbolTableNode) -> None:
         """Bind name expression to a symbol table node."""
         if isinstance(sym.node, TypeVarExpr) and self.tvar_scope.get_binding(sym):
-            self.fail(
-                f'"{expr.name}" is a type variable and only valid in type context', expr
-            )
+            self.fail(f'"{expr.name}" is a type variable and only valid in type context', expr)
         elif isinstance(sym.node, PlaceholderNode):
             self.process_placeholder(expr.name, "name", expr)
         else:
