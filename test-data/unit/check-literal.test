@@ -591,7 +591,6 @@ from typing_extensions import Literal
 def dummy() -> int: return 3
 a: Literal[3 + 4]               # E: Invalid type: Literal[...] cannot contain arbitrary expressions
 b: Literal["  foo  ".trim()]    # E: Invalid type: Literal[...] cannot contain arbitrary expressions
-c: Literal[+42]                 # E: Invalid type: Literal[...] cannot contain arbitrary expressions
 d: Literal[~12]                 # E: Invalid type: Literal[...] cannot contain arbitrary expressions
 e: Literal[dummy()]             # E: Invalid type: Literal[...] cannot contain arbitrary expressions
 [builtins fixtures/tuple.pyi]
@@ -2739,7 +2738,7 @@ def test() -> None:
         ...
 [builtins fixtures/bool.pyi]
 
-[case testNegativeIntLiteral]
+[case testUnaryOpLiteral]
 from typing_extensions import Literal
 
 a: Literal[-2] = -2
@@ -2747,8 +2746,14 @@ b: Literal[-1] = -1
 c: Literal[0] = 0
 d: Literal[1] = 1
 e: Literal[2] = 2
+f: Literal[+1] = 1
+g: Literal[+2] = 2
+
+x: Literal[+True] = True  # E: Invalid type: Literal[...] cannot contain arbitrary expressions
+y: Literal[-True] = -1  # E: Invalid type: Literal[...] cannot contain arbitrary expressions
+z: Literal[~0] = 0  # E: Invalid type: Literal[...] cannot contain arbitrary expressions
 [out]
-[builtins fixtures/float.pyi]
+[builtins fixtures/ops.pyi]
 
 [case testNegativeIntLiteralWithFinal]
 from typing_extensions import Literal, Final
