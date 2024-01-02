@@ -4962,7 +4962,7 @@ class SemanticAnalyzer(
         """Bind name expression to a symbol table node."""
         if isinstance(sym.node, TypeVarExpr) and self.tvar_scope.get_binding(sym):
             self.fail(
-                '"{}" is a type variable and only valid in type context'.format(expr.name), expr
+                f'"{expr.name}" is a type variable and only valid in type context', expr
             )
         elif isinstance(sym.node, PlaceholderNode):
             self.process_placeholder(expr.name, "name", expr)
