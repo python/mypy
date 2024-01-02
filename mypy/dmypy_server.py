@@ -684,10 +684,11 @@ class Server:
 
         # Find all original modules in graph that were not reached -- they are deleted.
         to_delete = []
+        seen_and_ancestors = self._seen_and_ancestors(seen)
         for module_id in orig_modules:
             if module_id not in graph:
                 continue
-            if module_id not in seen:
+            if module_id not in seen_and_ancestors:
                 module_path = graph[module_id].path
                 assert module_path is not None
                 to_delete.append((module_id, module_path))
@@ -714,6 +715,29 @@ class Server:
         )
 
         return messages
+
+    def _seen_and_ancestors(self, seen: set[str]) -> set[str]:
+        """Return the set of seen modules along with any ancestors not already in the set.
+
+        For example, given this set:
+
+            {"foo", "foo.bar", "a.b.c"}
+
+        ... we would expect this set to be returned:
+
+            {"foo", "foo.bar", "a.b.c", "a.b", "a"}
+
+        This is used to stop us from deleting ancestor modules from the graph
+        when their descendants have been seen.
+        """
+        seen_paths = seen.copy()
+        for module_path in seen:
+            while module_path := module_path.rpartition(".")[0]:
+                if module_path in seen_paths:
+                    break
+                else:
+                    seen_paths.add(module_path)
+        return seen_paths
 
     def find_reachable_changed_modules(
         self,
