@@ -8570,13 +8570,19 @@ class C(__enum.Flag): ...
 
 [case testNameManglingAnnotationsPast]
 
+__y = int
+
 class A:
     __x: int
+
 class __B:
-    def f(self, a: A) -> None:
+    def f1(self, a: A) -> __y:  # E: Name "_B__y" is not defined
         a.__x  # E: "A" has no attribute "_B__x"; maybe "_A__x"?
 
-__y = int
+    def f2(self, a: A) -> "__y":
+        a.__x  # E: "A" has no attribute "_B__x"; maybe "_A__x"?
+        return 1
+
 class C:
     b1: __B  # E: Name "_C__B" is not defined
     b2: "__B"
@@ -8593,13 +8599,20 @@ reveal_type(C().b2)  # N: Revealed type is "__main__.__B"
 [case testNameManglingAnnotationsFuture]
 from __future__ import annotations
 
+__y = int
+
 class A:
     __x: int
-class __B:
-    def f(self, a: A) -> None:
-        a.__x  # E: "A" has no attribute "_B__x"; maybe "_A__x"?
 
-__y = int
+class __B:
+    def f1(self, a: A) -> __y:
+        a.__x  # E: "A" has no attribute "_B__x"; maybe "_A__x"?
+        return 1
+
+    def f2(self, a: A) -> "__y":
+        a.__x  # E: "A" has no attribute "_B__x"; maybe "_A__x"?
+        return 1
+
 class C:
     b1: __B
     b2: "__B"
