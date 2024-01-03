@@ -353,6 +353,9 @@ def find_disallowed_expression_in_annotation_scope(expr: ast3.expr | None) -> as
     return None
 
 
+_T_FuncDef = TypeVar("_T_FuncDef", ast3.FunctionDef, ast3.AsyncFunctionDef)
+
+
 class NameMangler(ast3.NodeTransformer):
     """Mangle all private identifiers within a class body (including nested classes)."""
 
@@ -381,21 +384,18 @@ class NameMangler(ast3.NodeTransformer):
         return node
 
     def visit_FunctionDef(self, node: ast3.FunctionDef) -> ast3.FunctionDef:
-        node.name = self._mangle(node.name)
-        if self._MANGLE_ARGS:
-            self.generic_visit(node)
-        else:
-            mangler = NameMangler(self._name_complete, self._future_annotations)
-            mangler.generic_visit(node)
-        return node
+        return self._visit_funcdef(node)
 
     def visit_AsyncFunctionDef(self, node: ast3.AsyncFunctionDef) -> ast3.AsyncFunctionDef:
+        return self._visit_funcdef(node)
+
+    def _visit_funcdef(self, node: _T_FuncDef) -> _T_FuncDef:
         node.name = self._mangle(node.name)
         if self._MANGLE_ARGS:
-            self.generic_visit(node)
+            mangler = self
         else:
             mangler = NameMangler(self._name_complete, self._future_annotations)
-            mangler.generic_visit(node)
+        mangler.generic_visit(node)
         return node
 
     def visit_arg(self, node: ast3.arg) -> ast3.arg:
