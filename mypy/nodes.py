@@ -1155,7 +1155,7 @@ class ClassDef(Statement):
         }
 
     @classmethod
-    def deserialize(self, data: JsonDict) -> ClassDef:
+    def deserialize(cls, data: JsonDict) -> ClassDef:
         assert data[".class"] == "ClassDef"
         res = ClassDef(
             data["name"],
