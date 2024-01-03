@@ -396,7 +396,7 @@ class NameMangler(ast3.NodeTransformer):
         else:
             mangler = NameMangler(self._name_complete, self._future_annotations)
         mangler.visit(node.args)
-        if not self._future_annotations:
+        if (node.returns is not None) and not self._future_annotations:
             mangler.visit(node.returns)
         for stmt in node.body:
             mangler.visit(stmt)
