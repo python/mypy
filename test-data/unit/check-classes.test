@@ -8595,17 +8595,20 @@ import enum as __enum
 class C(__enum.Flag): ...
 
 [case testNameManglingAnnotationsPast]
+from typing import Generic, TypeVar
 
-class A:
-    __x: int
+__T = TypeVar("__T")
+
+class A(Generic[__T]):
+    __x: __T  # E: Name "_A__T" is not defined
 
 __y = int
 class __B:
-    def f1(self, a: A) -> __y:  # E: Name "_B__y" is not defined
-        a.__x  # E: "A" has no attribute "_B__x"; maybe "_A__x"?
+    def f1(self, a: A[int]) -> __y:  # E: Name "_B__y" is not defined
+        a.__x  # E: "A[int]" has no attribute "_B__x"; maybe "_A__x"?
 
     def f2(self, a: A) -> "__y":
-        a.__x  # E: "A" has no attribute "_B__x"; maybe "_A__x"?
+        a.__x  # E: "A[Any]" has no attribute "_B__x"; maybe "_A__x"?
         return 1
 
 class C:
@@ -8623,18 +8626,20 @@ reveal_type(C().b2)  # N: Revealed type is "__main__.__B"
 
 [case testNameManglingAnnotationsFuture]
 from __future__ import annotations
+from typing import Generic, TypeVar
 
-class A:
-    __x: int
+__T = TypeVar("__T")
+class A(Generic[__T]):
+    __x: __T
 
 __y = int
 class __B:
-    def f1(self, a: A) -> __y:
-        a.__x  # E: "A" has no attribute "_B__x"; maybe "_A__x"?
+    def f1(self, a: A[int]) -> __y:
+        a.__x  # E: "A[int]" has no attribute "_B__x"; maybe "_A__x"?
         return 1
 
     def f2(self, a: A) -> "__y":
-        a.__x  # E: "A" has no attribute "_B__x"; maybe "_A__x"?
+        a.__x  # E: "A[Any]" has no attribute "_B__x"; maybe "_A__x"?
         return 1
 
 class C:
