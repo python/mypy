@@ -357,78 +357,25 @@ _T_FuncDef = TypeVar("_T_FuncDef", ast3.FunctionDef, ast3.AsyncFunctionDef)
 
 
 class NameMangler(ast3.NodeTransformer):
-    """Mangle all private identifiers within a class body (including nested classes)."""
+    """Mangle (nearly) all private identifiers within a class body (including nested classes)."""
 
-    _name_complete: str
-    _name_trimmed: str
+    _classname_complete: str
+    _classname_trimmed: str
     _mangle_annotations: bool
     _unmangled_args: set[str]
 
-    _MANGLE_ARGS: bool = False
+    _MANGLE_ARGS: bool = False  # ToDo: remove it or make it an option?
 
     def __init__(self, classname: str, mangle_annotations: bool) -> None:
-        self._name_complete = classname
-        self._name_trimmed = classname.lstrip("_")
+        self._classname_complete = classname
+        self._classname_trimmed = classname.lstrip("_")
         self._mangle_annotations = mangle_annotations
         self._unmangled_args = set()
 
-    def _mangle(self, name: str) -> str:
-        """Mangle the given name if it looks like a private attribute."""
+    def _mangle_name(self, name: str) -> str:
         if name.startswith("__") and not name.endswith("__"):
-            return f"_{self._name_trimmed}{name}"
+            return f"_{self._classname_trimmed}{name}"
         return name
-
-    def visit_Attribute(self, node: ast3.Attribute) -> ast3.Attribute:
-        node.attr = self._mangle(node.attr)
-        self.generic_visit(node)
-        return node
-
-    def visit_FunctionDef(self, node: ast3.FunctionDef) -> ast3.FunctionDef:
-        return self._visit_funcdef(node)
-
-    def visit_AsyncFunctionDef(self, node: ast3.AsyncFunctionDef) -> ast3.AsyncFunctionDef:
-        return self._visit_funcdef(node)
-
-    def _visit_funcdef(self, node: _T_FuncDef) -> _T_FuncDef:
-        node.name = self._mangle(node.name)
-        if self._MANGLE_ARGS:
-            mangler = self
-        else:
-            mangler = NameMangler(self._name_complete, self._mangle_annotations)
-        mangler.visit(node.args)
-        for dec in node.decorator_list:
-            mangler.visit(dec)
-        if self._mangle_annotations and (node.returns is not None):
-            mangler.visit(node.returns)
-        for stmt in node.body:
-            mangler.visit(stmt)
-        return node
-
-    def visit_arg(self, node: ast3.arg) -> ast3.arg:
-        if self._MANGLE_ARGS:
-            node.arg = self._mangle(node.arg)
-        else:
-            self._unmangled_args.add(node.arg)
-        if self._mangle_annotations and (node.annotation is not None):
-            self.visit(node.annotation)
-        return node
-
-    def visit_Name(self, node: Name) -> Name:
-        if self._MANGLE_ARGS or (node.id not in self._unmangled_args):
-            node.id = self._mangle(node.id)
-        return node
-
-    def visit_ClassDef(self, node: ast3.ClassDef) -> ast3.ClassDef:
-        if self._name_complete == node.name:
-            for stmt in node.body:
-                self.visit(stmt)
-            self._mangle_slots(node)
-        else:
-            for dec in node.decorator_list:
-                self.visit(dec)
-            NameMangler(node.name, self._mangle_annotations).visit(node)
-            node.name = self._mangle(node.name)
-        return node
 
     def _mangle_slots(self, node: ast3.ClassDef) -> None:
         for assign in node.body:
@@ -444,7 +391,47 @@ class NameMangler(ast3.NodeTransformer):
                             constants = (key for key in values.keys if key is not None)
                         for value in constants:
                             if isinstance(value, ast3.Constant) and isinstance(value.value, str):
-                                value.value = self._mangle(value.value)
+                                value.value = self._mangle_name(value.value)
+
+    def visit_ClassDef(self, node: ast3.ClassDef) -> ast3.ClassDef:
+        if self._classname_complete == node.name:
+            for stmt in node.body:
+                self.visit(stmt)
+            self._mangle_slots(node)
+        else:
+            for dec in node.decorator_list:
+                self.visit(dec)
+            NameMangler(node.name, self._mangle_annotations).visit(node)
+            node.name = self._mangle_name(node.name)
+        return node
+
+    def _visit_funcdef(self, node: _T_FuncDef) -> _T_FuncDef:
+        node.name = self._mangle_name(node.name)
+        if not self._MANGLE_ARGS:
+            self = NameMangler(self._classname_complete, self._mangle_annotations)
+        self.visit(node.args)
+        for dec in node.decorator_list:
+            self.visit(dec)
+        if self._mangle_annotations and (node.returns is not None):
+            self.visit(node.returns)
+        for stmt in node.body:
+            self.visit(stmt)
+        return node
+
+    def visit_FunctionDef(self, node: ast3.FunctionDef) -> ast3.FunctionDef:
+        return self._visit_funcdef(node)
+
+    def visit_AsyncFunctionDef(self, node: ast3.AsyncFunctionDef) -> ast3.AsyncFunctionDef:
+        return self._visit_funcdef(node)
+
+    def visit_arg(self, node: ast3.arg) -> ast3.arg:
+        if self._MANGLE_ARGS:
+            node.arg = self._mangle_name(node.arg)
+        else:
+            self._unmangled_args.add(node.arg)
+        if self._mangle_annotations and (node.annotation is not None):
+            self.visit(node.annotation)
+        return node
 
     def visit_AnnAssign(self, node: ast3.AnnAssign) -> ast3.AnnAssign:
         self.visit(node.target)
@@ -452,6 +439,16 @@ class NameMangler(ast3.NodeTransformer):
             self.visit(node.value)
         if self._mangle_annotations:
             self.visit(node.annotation)
+        return node
+
+    def visit_Attribute(self, node: ast3.Attribute) -> ast3.Attribute:
+        node.attr = self._mangle_name(node.attr)
+        self.generic_visit(node)
+        return node
+
+    def visit_Name(self, node: Name) -> Name:
+        if self._MANGLE_ARGS or (node.id not in self._unmangled_args):
+            node.id = self._mangle_name(node.id)
         return node
 
 
