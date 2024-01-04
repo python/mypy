@@ -7,7 +7,7 @@ from re import Pattern
 from string import Template
 from time import struct_time
 from types import FrameType, TracebackType
-from typing import Any, ClassVar, Generic, TextIO, TypeVar, overload
+from typing import Any, ClassVar, Generic, Protocol, TextIO, TypeVar, overload
 from typing_extensions import Literal, Self, TypeAlias
 
 if sys.version_info >= (3, 11):
@@ -60,13 +60,25 @@ __all__ = [
 
 if sys.version_info >= (3, 11):
     __all__ += ["getLevelNamesMapping"]
+if sys.version_info >= (3, 12):
+    __all__ += ["getHandlerByName", "getHandlerNames"]
 
 _SysExcInfoType: TypeAlias = tuple[type[BaseException], BaseException, TracebackType | None] | tuple[None, None, None]
 _ExcInfoType: TypeAlias = None | bool | _SysExcInfoType | BaseException
 _ArgsType: TypeAlias = tuple[object, ...] | Mapping[str, object]
-_FilterType: TypeAlias = Filter | Callable[[LogRecord], bool]
 _Level: TypeAlias = int | str
 _FormatStyle: TypeAlias = Literal["%", "{", "$"]
+
+if sys.version_info >= (3, 12):
+    class _SupportsFilter(Protocol):
+        def filter(self, __record: LogRecord) -> bool | LogRecord: ...
+
+    _FilterType: TypeAlias = Filter | Callable[[LogRecord], bool | LogRecord] | _SupportsFilter
+else:
+    class _SupportsFilter(Protocol):
+        def filter(self, __record: LogRecord) -> bool: ...
+
+    _FilterType: TypeAlias = Filter | Callable[[LogRecord], bool] | _SupportsFilter
 
 raiseExceptions: bool
 logThreads: bool
@@ -83,7 +95,10 @@ class Filterer:
     filters: list[_FilterType]
     def addFilter(self, filter: _FilterType) -> None: ...
     def removeFilter(self, filter: _FilterType) -> None: ...
-    def filter(self, record: LogRecord) -> bool: ...
+    if sys.version_info >= (3, 12):
+        def filter(self, record: LogRecord) -> bool | LogRecord: ...
+    else:
+        def filter(self, record: LogRecord) -> bool: ...
 
 class Manager:  # undocumented
     root: RootLogger
@@ -111,6 +126,8 @@ class Logger(Filterer):
     def isEnabledFor(self, level: int) -> bool: ...
     def getEffectiveLevel(self) -> int: ...
     def getChild(self, suffix: str) -> Self: ...  # see python/typing#980
+    if sys.version_info >= (3, 12):
+        def getChildren(self) -> set[Logger]: ...
     if sys.version_info >= (3, 8):
         def debug(
             self,
@@ -324,6 +341,10 @@ class Handler(Filterer):
     def format(self, record: LogRecord) -> str: ...
     def emit(self, record: LogRecord) -> None: ...
 
+if sys.version_info >= (3, 12):
+    def getHandlerByName(name: str) -> Handler | None: ...
+    def getHandlerNames() -> frozenset[str]: ...
+
 class Formatter:
     converter: Callable[[float | None], struct_time]
     _fmt: str | None  # undocumented
@@ -370,7 +391,10 @@ class Filter:
     name: str  # undocumented
     nlen: int  # undocumented
     def __init__(self, name: str = "") -> None: ...
-    def filter(self, record: LogRecord) -> bool: ...
+    if sys.version_info >= (3, 12):
+        def filter(self, record: LogRecord) -> bool | LogRecord: ...
+    else:
+        def filter(self, record: LogRecord) -> bool: ...
 
 class LogRecord:
     # args can be set to None by logging.handlers.QueueHandler

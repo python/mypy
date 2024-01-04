@@ -81,11 +81,17 @@ class NodeFixer(NodeVisitor[None]):
                 info.update_tuple_type(info.tuple_type)
                 if info.special_alias:
                     info.special_alias.alias_tvars = list(info.defn.type_vars)
+                    for i, t in enumerate(info.defn.type_vars):
+                        if isinstance(t, TypeVarTupleType):
+                            info.special_alias.tvar_tuple_index = i
             if info.typeddict_type:
                 info.typeddict_type.accept(self.type_fixer)
                 info.update_typeddict_type(info.typeddict_type)
                 if info.special_alias:
                     info.special_alias.alias_tvars = list(info.defn.type_vars)
+                    for i, t in enumerate(info.defn.type_vars):
+                        if isinstance(t, TypeVarTupleType):
+                            info.special_alias.tvar_tuple_index = i
             if info.declared_metaclass:
                 info.declared_metaclass.accept(self.type_fixer)
             if info.metaclass_type:
@@ -122,8 +128,23 @@ class NodeFixer(NodeVisitor[None]):
                         cross_ref, self.modules, raise_on_missing=not self.allow_missing
                     )
                     if stnode is not None:
-                        assert stnode.node is not None, (table_fullname + "." + key, cross_ref)
-                        value.node = stnode.node
+                        if stnode is value:
+                            # The node seems to refer to itself, which can mean that
+                            # the target is a deleted submodule of the current module,
+                            # and thus lookup falls back to the symbol table of the parent
+                            # package. Here's how this may happen:
+                            #
+                            #   pkg/__init__.py:
+                            #     from pkg import sub
+                            #
+                            # Now if pkg.sub is deleted, the pkg.sub symbol table entry
+                            # appears to refer to itself. Replace the entry with a
+                            # placeholder to avoid a crash. We can't delete the entry,
+                            # as it would stop dependency propagation.
+                            value.node = Var(key + "@deleted")
+                        else:
+                            assert stnode.node is not None, (table_fullname + "." + key, cross_ref)
+                            value.node = stnode.node
                     elif not self.allow_missing:
                         assert False, f"Could not find cross-ref {cross_ref}"
                     else:
@@ -166,11 +187,7 @@ class NodeFixer(NodeVisitor[None]):
 
     def visit_class_def(self, c: ClassDef) -> None:
         for v in c.type_vars:
-            if isinstance(v, TypeVarType):
-                for value in v.values:
-                    value.accept(self.type_fixer)
-            v.upper_bound.accept(self.type_fixer)
-            v.default.accept(self.type_fixer)
+            v.accept(self.type_fixer)
 
     def visit_type_var_expr(self, tv: TypeVarExpr) -> None:
         for value in tv.values:
@@ -184,6 +201,7 @@ class NodeFixer(NodeVisitor[None]):
 
     def visit_type_var_tuple_expr(self, tv: TypeVarTupleExpr) -> None:
         tv.upper_bound.accept(self.type_fixer)
+        tv.tuple_fallback.accept(self.type_fixer)
         tv.default.accept(self.type_fixer)
 
     def visit_var(self, v: Var) -> None:
@@ -314,6 +332,7 @@ class TypeFixer(TypeVisitor[None]):
         p.default.accept(self)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> None:
+        t.tuple_fallback.accept(self)
         t.upper_bound.accept(self)
         t.default.accept(self)
 
@@ -335,9 +354,6 @@ class TypeFixer(TypeVisitor[None]):
         if ut.items:
             for it in ut.items:
                 it.accept(self)
-
-    def visit_void(self, o: Any) -> None:
-        pass  # Nothing to descend into.
 
     def visit_type_type(self, t: TypeType) -> None:
         t.item.accept(self)

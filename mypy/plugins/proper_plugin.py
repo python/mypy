@@ -1,3 +1,12 @@
+"""
+This plugin is helpful for mypy development itself.
+By default, it is not enabled for mypy users.
+
+It also can be used by plugin developers as a part of their CI checks.
+
+It finds missing ``get_proper_type()`` call, which can lead to multiple errors.
+"""
+
 from __future__ import annotations
 
 from typing import Callable
@@ -8,7 +17,6 @@ from mypy.plugin import FunctionContext, Plugin
 from mypy.subtypes import is_proper_subtype
 from mypy.types import (
     AnyType,
-    CallableType,
     FunctionLike,
     Instance,
     NoneTyp,
@@ -122,7 +130,7 @@ def is_dangerous_target(typ: ProperType) -> bool:
     """Is this a dangerous target (right argument) for an isinstance() check?"""
     if isinstance(typ, TupleType):
         return any(is_dangerous_target(get_proper_type(t)) for t in typ.items)
-    if isinstance(typ, CallableType) and typ.is_type_obj():
+    if isinstance(typ, FunctionLike) and typ.is_type_obj():
         return typ.type_object().has_base("mypy.types.Type")
     return False
 

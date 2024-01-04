@@ -502,16 +502,16 @@ L0:
 [case testMultipleAssignmentBasicUnpacking]
 from typing import Tuple, Any
 
-def from_tuple(t: Tuple[int, str]) -> None:
+def from_tuple(t: Tuple[bool, None]) -> None:
     x, y = t
 
 def from_any(a: Any) -> None:
     x, y = a
 [out]
 def from_tuple(t):
-    t :: tuple[int, str]
-    r0, x :: int
-    r1, y :: str
+    t :: tuple[bool, None]
+    r0, x :: bool
+    r1, y :: None
 L0:
     r0 = t[0]
     x = r0
@@ -563,16 +563,19 @@ def from_any(a: Any) -> None:
 [out]
 def from_tuple(t):
     t :: tuple[int, object]
-    r0 :: int
-    r1, x, r2 :: object
-    r3, y :: int
+    r0, r1 :: int
+    r2, x, r3, r4 :: object
+    r5, y :: int
 L0:
-    r0 = t[0]
-    r1 = box(int, r0)
-    x = r1
-    r2 = t[1]
-    r3 = unbox(int, r2)
-    y = r3
+    r0 = borrow t[0]
+    r1 = unborrow r0
+    r2 = box(int, r1)
+    x = r2
+    r3 = borrow t[1]
+    r4 = unborrow r3
+    r5 = unbox(int, r4)
+    y = r5
+    keep_alive steal t
     return 1
 def from_any(a):
     a, r0, r1 :: object
@@ -1120,3 +1123,27 @@ L6:
     r14 = CPy_NoErrOccured()
 L7:
     return 1
+
+[case testConditionalFunctionDefinition]
+if int():
+    def foo() -> int:
+        return 0
+else:
+    def foo() -> int:  # E
+        return 1
+
+def bar() -> int:
+    return 0
+
+if int():
+    def bar() -> int:  # E
+        return 1
+[out]
+main:5: error: Duplicate definition of "foo" not supported by mypyc
+main:12: error: Duplicate definition of "bar" not supported by mypyc
+
+[case testRepeatedUnderscoreFunctions]
+def _(arg): pass
+def _(arg): pass
+[out]
+main:2: error: Duplicate definition of "_" not supported by mypyc

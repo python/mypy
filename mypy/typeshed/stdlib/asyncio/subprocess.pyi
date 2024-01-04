@@ -54,7 +54,7 @@ if sys.version_info >= (3, 11):
         bufsize: Literal[0] = 0,
         encoding: None = None,
         errors: None = None,
-        text: Literal[False, None] = None,
+        text: Literal[False] | None = None,
         # These parameters are taken by subprocess.Popen, which this ultimately delegates to
         executable: StrOrBytesPath | None = None,
         preexec_fn: Callable[[], Any] | None = None,
@@ -80,14 +80,14 @@ if sys.version_info >= (3, 11):
         stdout: int | IO[Any] | None = None,
         stderr: int | IO[Any] | None = None,
         limit: int = 65536,
-        # These parameters are forced to these values by BaseEventLoop.subprocess_shell
+        # These parameters are forced to these values by BaseEventLoop.subprocess_exec
         universal_newlines: Literal[False] = False,
-        shell: Literal[True] = True,
+        shell: Literal[False] = False,
         bufsize: Literal[0] = 0,
         encoding: None = None,
         errors: None = None,
+        text: Literal[False] | None = None,
         # These parameters are taken by subprocess.Popen, which this ultimately delegates to
-        text: bool | None = None,
         executable: StrOrBytesPath | None = None,
         preexec_fn: Callable[[], Any] | None = None,
         close_fds: bool = True,
@@ -120,7 +120,7 @@ elif sys.version_info >= (3, 10):
         bufsize: Literal[0] = 0,
         encoding: None = None,
         errors: None = None,
-        text: Literal[False, None] = None,
+        text: Literal[False] | None = None,
         # These parameters are taken by subprocess.Popen, which this ultimately delegates to
         executable: StrOrBytesPath | None = None,
         preexec_fn: Callable[[], Any] | None = None,
@@ -145,14 +145,14 @@ elif sys.version_info >= (3, 10):
         stdout: int | IO[Any] | None = None,
         stderr: int | IO[Any] | None = None,
         limit: int = 65536,
-        # These parameters are forced to these values by BaseEventLoop.subprocess_shell
+        # These parameters are forced to these values by BaseEventLoop.subprocess_exec
         universal_newlines: Literal[False] = False,
-        shell: Literal[True] = True,
+        shell: Literal[False] = False,
         bufsize: Literal[0] = 0,
         encoding: None = None,
         errors: None = None,
+        text: Literal[False] | None = None,
         # These parameters are taken by subprocess.Popen, which this ultimately delegates to
-        text: bool | None = None,
         executable: StrOrBytesPath | None = None,
         preexec_fn: Callable[[], Any] | None = None,
         close_fds: bool = True,
@@ -185,7 +185,7 @@ else:  # >= 3.9
         bufsize: Literal[0] = 0,
         encoding: None = None,
         errors: None = None,
-        text: Literal[False, None] = None,
+        text: Literal[False] | None = None,
         # These parameters are taken by subprocess.Popen, which this ultimately delegates to
         executable: StrOrBytesPath | None = None,
         preexec_fn: Callable[[], Any] | None = None,
@@ -210,14 +210,14 @@ else:  # >= 3.9
         stderr: int | IO[Any] | None = None,
         loop: events.AbstractEventLoop | None = None,
         limit: int = 65536,
-        # These parameters are forced to these values by BaseEventLoop.subprocess_shell
+        # These parameters are forced to these values by BaseEventLoop.subprocess_exec
         universal_newlines: Literal[False] = False,
-        shell: Literal[True] = True,
+        shell: Literal[False] = False,
         bufsize: Literal[0] = 0,
         encoding: None = None,
         errors: None = None,
+        text: Literal[False] | None = None,
         # These parameters are taken by subprocess.Popen, which this ultimately delegates to
-        text: bool | None = None,
         executable: StrOrBytesPath | None = None,
         preexec_fn: Callable[[], Any] | None = None,
         close_fds: bool = True,

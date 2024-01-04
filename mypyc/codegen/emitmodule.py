@@ -43,7 +43,6 @@ from mypyc.common import (
     TOP_LEVEL_NAME,
     shared_lib_name,
     short_id_from_name,
-    use_fastcall,
     use_vectorcall,
 )
 from mypyc.errors import Errors
@@ -994,7 +993,7 @@ class GroupGenerator:
             result.append(decl.declaration)
             decl.mark = True
 
-        for name, marked_declaration in marked_declarations.items():
+        for name in marked_declarations:
             _toposort_visit(name)
 
         return result
@@ -1107,8 +1106,8 @@ def is_fastcall_supported(fn: FuncIR, capi_version: tuple[int, int]) -> bool:
             # We can use vectorcalls (PEP 590) when supported
             return use_vectorcall(capi_version)
         # TODO: Support fastcall for __init__.
-        return use_fastcall(capi_version) and fn.name != "__init__"
-    return use_fastcall(capi_version)
+        return fn.name != "__init__"
+    return True
 
 
 def collect_literals(fn: FuncIR, literals: Literals) -> None:

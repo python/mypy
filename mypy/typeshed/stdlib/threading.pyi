@@ -1,3 +1,4 @@
+import _thread
 import sys
 from _typeshed import ProfileFunction, TraceFunction
 from collections.abc import Callable, Iterable, Mapping
@@ -68,12 +69,8 @@ def stack_size(size: int = ...) -> int: ...
 
 TIMEOUT_MAX: float
 
-class ThreadError(Exception): ...
-
-class local:
-    def __getattribute__(self, __name: str) -> Any: ...
-    def __setattr__(self, __name: str, __value: Any) -> None: ...
-    def __delattr__(self, __name: str) -> None: ...
+ThreadError = _thread.error
+local = _thread._local
 
 class Thread:
     name: str

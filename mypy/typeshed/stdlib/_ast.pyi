@@ -553,7 +553,7 @@ if sys.version_info >= (3, 10):
 
     class MatchSingleton(pattern):
         __match_args__ = ("value",)
-        value: Literal[True, False, None]
+        value: Literal[True, False] | None
 
     class MatchSequence(pattern):
         __match_args__ = ("patterns",)
@@ -586,7 +586,9 @@ if sys.version_info >= (3, 10):
         patterns: list[pattern]
 
 if sys.version_info >= (3, 12):
-    class type_param(AST): ...
+    class type_param(AST):
+        end_lineno: int
+        end_col_offset: int
 
     class TypeVar(type_param):
         __match_args__ = ("name", "bound")
@@ -602,7 +604,7 @@ if sys.version_info >= (3, 12):
         name: _Identifier
 
     class TypeAlias(stmt):
-        __match_args__ = ("name", "typeparams", "value")
+        __match_args__ = ("name", "type_params", "value")
         name: Name
         type_params: list[type_param]
         value: expr

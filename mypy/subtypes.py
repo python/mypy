@@ -18,6 +18,7 @@ from mypy.nodes import (
     ARG_STAR2,
     CONTRAVARIANT,
     COVARIANT,
+    INVARIANT,
     Decorator,
     FuncBase,
     OverloadedFuncDef,
@@ -58,13 +59,14 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    find_unpack_in_list,
     get_proper_type,
     is_named_instance,
+    split_with_prefix_and_suffix,
 )
 from mypy.types_utils import flatten_types
 from mypy.typestate import SubtypeKind, type_state
 from mypy.typevars import fill_typevars_with_any
-from mypy.typevartuples import extract_unpack, fully_split_with_mapped_and_template
 
 # Flags for detected protocol members
 IS_SETTABLE: Final = 1
@@ -256,6 +258,18 @@ def is_same_type(
     This means types may have different representation (e.g. an alias, or
     a non-simplified union) but are semantically exchangeable in all contexts.
     """
+    # First, use fast path for some common types. This is performance-critical.
+    if (
+        type(a) is Instance
+        and type(b) is Instance
+        and a.type == b.type
+        and len(a.args) == len(b.args)
+        and a.last_known_value is b.last_known_value
+    ):
+        return all(is_same_type(x, y) for x, y in zip(a.args, b.args))
+    elif isinstance(a, TypeVarType) and isinstance(b, TypeVarType) and a.id == b.id:
+        return True
+
     # Note that using ignore_promotions=True (default) makes types like int and int64
     # considered not the same type (which is the case at runtime).
     # Also Union[bool, int] (if it wasn't simplified before) will be different
@@ -278,7 +292,13 @@ def _is_subtype(
     left = get_proper_type(left)
     right = get_proper_type(right)
 
-    if not proper_subtype and isinstance(right, (AnyType, UnboundType, ErasedType)):
+    # Note: Unpack type should not be a subtype of Any, since it may represent
+    # multiple types. This should always go through the visitor, to check arity.
+    if (
+        not proper_subtype
+        and isinstance(right, (AnyType, UnboundType, ErasedType))
+        and not isinstance(left, UnpackType)
+    ):
         # TODO: should we consider all types proper subtypes of UnboundType and/or
         # ErasedType as we do for non-proper subtyping.
         return True
@@ -335,6 +355,12 @@ def _is_subtype(
 def check_type_parameter(
     left: Type, right: Type, variance: int, proper_subtype: bool, subtype_context: SubtypeContext
 ) -> bool:
+    # It is safe to consider empty collection literals and similar as covariant, since
+    # such type can't be stored in a variable, see checker.is_valid_inferred_type().
+    if variance == INVARIANT:
+        p_left = get_proper_type(left)
+        if isinstance(p_left, UninhabitedType) and p_left.ambiguous:
+            variance = COVARIANT
     if variance == COVARIANT:
         if proper_subtype:
             return is_proper_subtype(left, right, subtype_context=subtype_context)
@@ -437,6 +463,39 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right = self.right
         if isinstance(right, TupleType) and right.partial_fallback.type.is_enum:
             return self._is_subtype(left, mypy.typeops.tuple_fallback(right))
+        if isinstance(right, TupleType):
+            if len(right.items) == 1:
+                # Non-normalized Tuple type (may be left after semantic analysis
+                # because semanal_typearg visitor is not a type translator).
+                item = right.items[0]
+                if isinstance(item, UnpackType):
+                    unpacked = get_proper_type(item.type)
+                    if isinstance(unpacked, Instance):
+                        return self._is_subtype(left, unpacked)
+            if left.type.has_base(right.partial_fallback.type.fullname):
+                if not self.proper_subtype:
+                    # Special case to consider Foo[*tuple[Any, ...]] (i.e. bare Foo) a
+                    # subtype of Foo[<whatever>], when Foo is user defined variadic tuple type.
+                    mapped = map_instance_to_supertype(left, right.partial_fallback.type)
+                    for arg in map(get_proper_type, mapped.args):
+                        if isinstance(arg, UnpackType):
+                            unpacked = get_proper_type(arg.type)
+                            if not isinstance(unpacked, Instance):
+                                break
+                            assert unpacked.type.fullname == "builtins.tuple"
+                            if not isinstance(get_proper_type(unpacked.args[0]), AnyType):
+                                break
+                        elif not isinstance(arg, AnyType):
+                            break
+                    else:
+                        return True
+            return False
+        if isinstance(right, TypeVarTupleType):
+            # tuple[Any, ...] is like Any in the world of tuples (see special case above).
+            if left.type.has_base("builtins.tuple"):
+                mapped = map_instance_to_supertype(left, right.tuple_fallback.type)
+                if isinstance(get_proper_type(mapped.args[0]), AnyType):
+                    return not self.proper_subtype
         if isinstance(right, Instance):
             if type_state.is_cached_subtype_check(self._subtype_kind, left, right):
                 return True
@@ -476,106 +535,43 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     t = erased
                 nominal = True
                 if right.type.has_type_var_tuple_type:
-                    assert left.type.type_var_tuple_prefix is not None
-                    assert left.type.type_var_tuple_suffix is not None
+                    # For variadic instances we simply find the correct type argument mappings,
+                    # all the heavy lifting is done by the tuple subtyping.
                     assert right.type.type_var_tuple_prefix is not None
                     assert right.type.type_var_tuple_suffix is not None
-                    split_result = fully_split_with_mapped_and_template(
-                        left.args,
-                        left.type.type_var_tuple_prefix,
-                        left.type.type_var_tuple_suffix,
-                        right.args,
-                        right.type.type_var_tuple_prefix,
-                        right.type.type_var_tuple_suffix,
+                    prefix = right.type.type_var_tuple_prefix
+                    suffix = right.type.type_var_tuple_suffix
+                    tvt = right.type.defn.type_vars[prefix]
+                    assert isinstance(tvt, TypeVarTupleType)
+                    fallback = tvt.tuple_fallback
+                    left_prefix, left_middle, left_suffix = split_with_prefix_and_suffix(
+                        t.args, prefix, suffix
                     )
-                    if split_result is None:
-                        return False
-
-                    (
-                        left_prefix,
-                        left_mprefix,
-                        left_middle,
-                        left_msuffix,
-                        left_suffix,
-                        right_prefix,
-                        right_mprefix,
-                        right_middle,
-                        right_msuffix,
-                        right_suffix,
-                    ) = split_result
-
-                    left_unpacked = extract_unpack(left_middle)
-                    right_unpacked = extract_unpack(right_middle)
-
-                    # Helper for case 2 below so we can treat them the same.
-                    def check_mixed(
-                        unpacked_type: ProperType, compare_to: tuple[Type, ...]
-                    ) -> bool:
-                        if (
-                            isinstance(unpacked_type, Instance)
-                            and unpacked_type.type.fullname == "builtins.tuple"
-                        ):
-                            return all(is_equivalent(l, unpacked_type.args[0]) for l in compare_to)
-                        if isinstance(unpacked_type, TypeVarTupleType):
-                            return False
-                        if isinstance(unpacked_type, AnyType):
-                            return True
-                        if isinstance(unpacked_type, TupleType):
-                            if len(unpacked_type.items) != len(compare_to):
-                                return False
-                            for t1, t2 in zip(unpacked_type.items, compare_to):
-                                if not is_equivalent(t1, t2):
-                                    return False
-                            return True
-                        return False
-
-                    # Case 1: Both are unpacks, in this case we check what is being
-                    # unpacked is the same.
-                    if left_unpacked is not None and right_unpacked is not None:
-                        if not is_equivalent(left_unpacked, right_unpacked):
-                            return False
-
-                    # Case 2: Only one of the types is an unpack. The equivalence
-                    # case is mostly the same but we check some additional
-                    # things when unpacking on the right.
-                    elif left_unpacked is not None and right_unpacked is None:
-                        if not check_mixed(left_unpacked, right_middle):
-                            return False
-                    elif left_unpacked is None and right_unpacked is not None:
-                        if not check_mixed(right_unpacked, left_middle):
-                            return False
-
-                    # Case 3: Neither type is an unpack. In this case we just compare
-                    # the items themselves.
-                    else:
-                        if len(left_middle) != len(right_middle):
-                            return False
-                        for left_t, right_t in zip(left_middle, right_middle):
-                            if not is_equivalent(left_t, right_t):
-                                return False
-
-                    assert len(left_mprefix) == len(right_mprefix)
-                    assert len(left_msuffix) == len(right_msuffix)
-
-                    for left_item, right_item in zip(
-                        left_mprefix + left_msuffix, right_mprefix + right_msuffix
-                    ):
-                        if not is_equivalent(left_item, right_item):
-                            return False
-
-                    left_items = t.args[: right.type.type_var_tuple_prefix]
-                    right_items = right.args[: right.type.type_var_tuple_prefix]
-                    if right.type.type_var_tuple_suffix:
-                        left_items += t.args[-right.type.type_var_tuple_suffix :]
-                        right_items += right.args[-right.type.type_var_tuple_suffix :]
-                    unpack_index = right.type.type_var_tuple_prefix
-                    assert unpack_index is not None
-                    type_params = zip(
-                        left_prefix + left_suffix,
-                        right_prefix + right_suffix,
-                        right.type.defn.type_vars[:unpack_index]
-                        + right.type.defn.type_vars[unpack_index + 1 :],
+                    right_prefix, right_middle, right_suffix = split_with_prefix_and_suffix(
+                        right.args, prefix, suffix
                     )
+                    left_args = (
+                        left_prefix + (TupleType(list(left_middle), fallback),) + left_suffix
+                    )
+                    right_args = (
+                        right_prefix + (TupleType(list(right_middle), fallback),) + right_suffix
+                    )
+                    if not self.proper_subtype and t.args:
+                        for arg in map(get_proper_type, t.args):
+                            if isinstance(arg, UnpackType):
+                                unpacked = get_proper_type(arg.type)
+                                if not isinstance(unpacked, Instance):
+                                    break
+                                assert unpacked.type.fullname == "builtins.tuple"
+                                if not isinstance(get_proper_type(unpacked.args[0]), AnyType):
+                                    break
+                            elif not isinstance(arg, AnyType):
+                                break
+                        else:
+                            return True
+                    if len(left_args) != len(right_args):
+                        return False
+                    type_params = zip(left_args, right_args, right.type.defn.type_vars)
                 else:
                     type_params = zip(t.args, right.args, right.type.defn.type_vars)
                 if not self.subtype_context.ignore_type_params:
@@ -590,6 +586,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                             ):
                                 nominal = False
                         else:
+                            # TODO: everywhere else ParamSpecs are handled as invariant.
                             if not check_type_parameter(
                                 lefta, righta, COVARIANT, self.proper_subtype, self.subtype_context
                             ):
@@ -600,7 +597,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     type_state.record_negative_subtype_cache_entry(self._subtype_kind, left, right)
                 return nominal
             if right.type.is_protocol and is_protocol_implementation(
-                left, right, proper_subtype=self.proper_subtype
+                left, right, proper_subtype=self.proper_subtype, options=self.options
             ):
                 return True
             # We record negative cache entry here, and not in the protocol check like we do for
@@ -647,7 +644,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             and right.id == left.id
             and right.flavor == left.flavor
         ):
-            return True
+            return self._is_subtype(left.prefix, right.prefix)
         if isinstance(right, Parameters) and are_trivial_parameters(right):
             return True
         return self._is_subtype(left.upper_bound, self.right)
@@ -655,10 +652,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_type_var_tuple(self, left: TypeVarTupleType) -> bool:
         right = self.right
         if isinstance(right, TypeVarTupleType) and right.id == left.id:
-            return True
+            return left.min_len >= right.min_len
         return self._is_subtype(left.upper_bound, self.right)
 
     def visit_unpack_type(self, left: UnpackType) -> bool:
+        # TODO: Ideally we should not need this (since it is not a real type).
+        # Instead callers (upper level types) should handle it when it appears in type list.
         if isinstance(self.right, UnpackType):
             return self._is_subtype(left.type, self.right.type)
         if isinstance(self.right, Instance) and self.right.type.fullname == "builtins.object":
@@ -666,14 +665,13 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return False
 
     def visit_parameters(self, left: Parameters) -> bool:
-        if isinstance(self.right, (Parameters, CallableType)):
-            right = self.right
-            if isinstance(right, CallableType):
-                right = right.with_unpacked_kwargs()
+        if isinstance(self.right, Parameters):
             return are_parameters_compatible(
                 left,
-                right,
+                self.right,
                 is_compat=self._is_subtype,
+                # TODO: this should pass the current value, but then couple tests fail.
+                is_proper_subtype=False,
                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
             )
         else:
@@ -693,10 +691,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 left,
                 right,
                 is_compat=self._is_subtype,
+                is_proper_subtype=self.proper_subtype,
                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
                 strict_concatenate=(self.options.extra_checks or self.options.strict_concatenate)
                 if self.options
-                else True,
+                else False,
             )
         elif isinstance(right, Overloaded):
             return all(self._is_subtype(left, item) for item in right.items)
@@ -723,14 +722,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, TypeType):
             # This is unsound, we don't check the __init__ signature.
             return left.is_type_obj() and self._is_subtype(left.ret_type, right.item)
-        elif isinstance(right, Parameters):
-            # this doesn't check return types.... but is needed for is_equivalent
-            return are_parameters_compatible(
-                left.with_unpacked_kwargs(),
-                right,
-                is_compat=self._is_subtype,
-                ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
-            )
         else:
             return False
 
@@ -752,13 +743,30 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     # TODO: We shouldn't need this special case. This is currently needed
                     #       for isinstance(x, tuple), though it's unclear why.
                     return True
-                return all(self._is_subtype(li, iter_type) for li in left.items)
+                for li in left.items:
+                    if isinstance(li, UnpackType):
+                        unpack = get_proper_type(li.type)
+                        if isinstance(unpack, TypeVarTupleType):
+                            unpack = get_proper_type(unpack.upper_bound)
+                        assert (
+                            isinstance(unpack, Instance)
+                            and unpack.type.fullname == "builtins.tuple"
+                        )
+                        li = unpack.args[0]
+                    if not self._is_subtype(li, iter_type):
+                        return False
+                return True
             elif self._is_subtype(left.partial_fallback, right) and self._is_subtype(
                 mypy.typeops.tuple_fallback(left), right
             ):
                 return True
             return False
         elif isinstance(right, TupleType):
+            # If right has a variadic unpack this needs special handling. If there is a TypeVarTuple
+            # unpack, item count must coincide. If the left has variadic unpack but right
+            # doesn't have one, we will fall through to False down the line.
+            if self.variadic_tuple_subtype(left, right):
+                return True
             if len(left.items) != len(right.items):
                 return False
             if any(not self._is_subtype(l, r) for l, r in zip(left.items, right.items)):
@@ -774,6 +782,79 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return self._is_subtype(lfallback, rfallback)
         else:
             return False
+
+    def variadic_tuple_subtype(self, left: TupleType, right: TupleType) -> bool:
+        """Check subtyping between two potentially variadic tuples.
+
+        Most non-trivial cases here are due to variadic unpacks like *tuple[X, ...],
+        we handle such unpacks as infinite unions Tuple[()] | Tuple[X] | Tuple[X, X] | ...
+
+        Note: the cases where right is fixed or has *Ts unpack should be handled
+        by the caller.
+        """
+        right_unpack_index = find_unpack_in_list(right.items)
+        if right_unpack_index is None:
+            # This case should be handled by the caller.
+            return False
+        right_unpack = right.items[right_unpack_index]
+        assert isinstance(right_unpack, UnpackType)
+        right_unpacked = get_proper_type(right_unpack.type)
+        if not isinstance(right_unpacked, Instance):
+            # This case should be handled by the caller.
+            return False
+        assert right_unpacked.type.fullname == "builtins.tuple"
+        right_item = right_unpacked.args[0]
+        right_prefix = right_unpack_index
+        right_suffix = len(right.items) - right_prefix - 1
+        left_unpack_index = find_unpack_in_list(left.items)
+        if left_unpack_index is None:
+            # Simple case: left is fixed, simply find correct mapping to the right
+            # (effectively selecting item with matching length from an infinite union).
+            if len(left.items) < right_prefix + right_suffix:
+                return False
+            prefix, middle, suffix = split_with_prefix_and_suffix(
+                tuple(left.items), right_prefix, right_suffix
+            )
+            if not all(
+                self._is_subtype(li, ri) for li, ri in zip(prefix, right.items[:right_prefix])
+            ):
+                return False
+            if right_suffix and not all(
+                self._is_subtype(li, ri) for li, ri in zip(suffix, right.items[-right_suffix:])
+            ):
+                return False
+            return all(self._is_subtype(li, right_item) for li in middle)
+        else:
+            if len(left.items) < len(right.items):
+                # There are some items on the left that will never have a matching length
+                # on the right.
+                return False
+            left_unpack = left.items[left_unpack_index]
+            assert isinstance(left_unpack, UnpackType)
+            left_unpacked = get_proper_type(left_unpack.type)
+            if not isinstance(left_unpacked, Instance):
+                # *Ts unpacks can't be split.
+                return False
+            assert left_unpacked.type.fullname == "builtins.tuple"
+            left_item = left_unpacked.args[0]
+
+            # The most tricky case with two variadic unpacks we handle similar to union
+            # subtyping: *each* item on the left, must be a subtype of *some* item on the right.
+            # For this we first check the "asymptotic case", i.e. that both unpacks a subtypes,
+            # and then check subtyping for all finite overlaps.
+            if not self._is_subtype(left_item, right_item):
+                return False
+            left_prefix = left_unpack_index
+            left_suffix = len(left.items) - left_prefix - 1
+            max_overlap = max(0, right_prefix - left_prefix, right_suffix - left_suffix)
+            for overlap in range(max_overlap + 1):
+                repr_items = left.items[:left_prefix] + [left_item] * overlap
+                if left_suffix:
+                    repr_items += left.items[-left_suffix:]
+                left_repr = left.copy_modified(items=repr_items)
+                if not self._is_subtype(left_repr, right):
+                    return False
+            return True
 
     def visit_typeddict_type(self, left: TypedDictType) -> bool:
         right = self.right
@@ -863,13 +944,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
                         strict_concat = (
                             (self.options.extra_checks or self.options.strict_concatenate)
                             if self.options
-                            else True
+                            else False
                         )
                         if left_index not in matched_overloads and (
                             is_callable_compatible(
                                 left_item,
                                 right_item,
                                 is_compat=self._is_subtype,
+                                is_proper_subtype=self.proper_subtype,
                                 ignore_return=True,
                                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
                                 strict_concatenate=strict_concat,
@@ -878,6 +960,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                                 right_item,
                                 left_item,
                                 is_compat=self._is_subtype,
+                                is_proper_subtype=self.proper_subtype,
                                 ignore_return=True,
                                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
                                 strict_concatenate=strict_concat,
@@ -1003,6 +1086,7 @@ def is_protocol_implementation(
     proper_subtype: bool = False,
     class_obj: bool = False,
     skip: list[str] | None = None,
+    options: Options | None = None,
 ) -> bool:
     """Check whether 'left' implements the protocol 'right'.
 
@@ -1068,7 +1152,9 @@ def is_protocol_implementation(
                 # Nominal check currently ignores arg names
                 # NOTE: If we ever change this, be sure to also change the call to
                 # SubtypeVisitor.build_subtype_kind(...) down below.
-                is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=ignore_names)
+                is_compat = is_subtype(
+                    subtype, supertype, ignore_pos_arg_names=ignore_names, options=options
+                )
             else:
                 is_compat = is_proper_subtype(subtype, supertype)
             if not is_compat:
@@ -1080,7 +1166,7 @@ def is_protocol_implementation(
             superflags = get_member_flags(member, right)
             if IS_SETTABLE in superflags:
                 # Check opposite direction for settable attributes.
-                if not is_subtype(supertype, subtype):
+                if not is_subtype(supertype, subtype, options=options):
                     return False
             if not class_obj:
                 if IS_SETTABLE not in superflags:
@@ -1293,12 +1379,14 @@ def is_callable_compatible(
     right: CallableType,
     *,
     is_compat: Callable[[Type, Type], bool],
+    is_proper_subtype: bool,
     is_compat_return: Callable[[Type, Type], bool] | None = None,
     ignore_return: bool = False,
     ignore_pos_arg_names: bool = False,
     check_args_covariantly: bool = False,
     allow_partial_overlap: bool = False,
     strict_concatenate: bool = False,
+    no_unify_none: bool = False,
 ) -> bool:
     """Is the left compatible with the right, using the provided compatibility check?
 
@@ -1389,8 +1477,8 @@ def is_callable_compatible(
         whether or not we check the args covariantly.
     """
     # Normalize both types before comparing them.
-    left = left.with_unpacked_kwargs()
-    right = right.with_unpacked_kwargs()
+    left = left.with_unpacked_kwargs().with_normalized_var_args()
+    right = right.with_unpacked_kwargs().with_normalized_var_args()
 
     if is_compat_return is None:
         is_compat_return = is_compat
@@ -1415,7 +1503,9 @@ def is_callable_compatible(
     # (below) treats type variables on the two sides as independent.
     if left.variables:
         # Apply generic type variables away in left via type inference.
-        unified = unify_generic_callable(left, right, ignore_return=ignore_return)
+        unified = unify_generic_callable(
+            left, right, ignore_return=ignore_return, no_unify_none=no_unify_none
+        )
         if unified is None:
             return False
         left = unified
@@ -1427,7 +1517,9 @@ def is_callable_compatible(
     # So, we repeat the above checks in the opposite direction. This also
     # lets us preserve the 'symmetry' property of allow_partial_overlap.
     if allow_partial_overlap and right.variables:
-        unified = unify_generic_callable(right, left, ignore_return=ignore_return)
+        unified = unify_generic_callable(
+            right, left, ignore_return=ignore_return, no_unify_none=no_unify_none
+        )
         if unified is not None:
             right = unified
 
@@ -1447,8 +1539,8 @@ def is_callable_compatible(
         left,
         right,
         is_compat=is_compat,
+        is_proper_subtype=is_proper_subtype,
         ignore_pos_arg_names=ignore_pos_arg_names,
-        check_args_covariantly=check_args_covariantly,
         allow_partial_overlap=allow_partial_overlap,
         strict_concatenate_check=strict_concatenate_check,
     )
@@ -1466,18 +1558,30 @@ def are_trivial_parameters(param: Parameters | NormalizedCallableType) -> bool:
     )
 
 
+def is_trivial_suffix(param: Parameters | NormalizedCallableType) -> bool:
+    param_star = param.var_arg()
+    param_star2 = param.kw_arg()
+    return (
+        param.arg_kinds[-2:] == [ARG_STAR, ARG_STAR2]
+        and param_star is not None
+        and isinstance(get_proper_type(param_star.typ), AnyType)
+        and param_star2 is not None
+        and isinstance(get_proper_type(param_star2.typ), AnyType)
+    )
+
+
 def are_parameters_compatible(
     left: Parameters | NormalizedCallableType,
     right: Parameters | NormalizedCallableType,
     *,
     is_compat: Callable[[Type, Type], bool],
+    is_proper_subtype: bool,
     ignore_pos_arg_names: bool = False,
-    check_args_covariantly: bool = False,
     allow_partial_overlap: bool = False,
-    strict_concatenate_check: bool = True,
+    strict_concatenate_check: bool = False,
 ) -> bool:
     """Helper function for is_callable_compatible, used for Parameter compatibility"""
-    if right.is_ellipsis_args:
+    if right.is_ellipsis_args and not is_proper_subtype:
         return True
 
     left_star = left.var_arg()
@@ -1486,8 +1590,21 @@ def are_parameters_compatible(
     right_star2 = right.kw_arg()
 
     # Treat "def _(*a: Any, **kw: Any) -> X" similarly to "Callable[..., X]"
-    if are_trivial_parameters(right):
+    if are_trivial_parameters(right) and not is_proper_subtype:
         return True
+    trivial_suffix = is_trivial_suffix(right) and not is_proper_subtype
+
+    if (
+        right.arg_kinds == [ARG_STAR]
+        and isinstance(get_proper_type(right.arg_types[0]), AnyType)
+        and not is_proper_subtype
+    ):
+        # Similar to how (*Any, **Any) is considered a supertype of all callables, we consider
+        # (*Any) a supertype of all callables with positional arguments. This is needed in
+        # particular because we often refuse to try type inference if actual type is not
+        # a subtype of erased template type.
+        if all(k.is_positional() for k in left.arg_kinds) and ignore_pos_arg_names:
+            return True
 
     # Match up corresponding arguments and check them for compatibility. In
     # every pair (argL, argR) of corresponding arguments from L and R, argL must
@@ -1518,7 +1635,7 @@ def are_parameters_compatible(
         if right_arg is None:
             return False
         if left_arg is None:
-            return not allow_partial_overlap
+            return not allow_partial_overlap and not trivial_suffix
         return not is_compat(right_arg.typ, left_arg.typ)
 
     if _incompatible(left_star, right_star) or _incompatible(left_star2, right_star2):
@@ -1526,7 +1643,7 @@ def are_parameters_compatible(
 
     # Phase 1b: Check non-star args: for every arg right can accept, left must
     #           also accept. The only exception is if we are allowing partial
-    #           partial overlaps: in that case, we ignore optional args on the right.
+    #           overlaps: in that case, we ignore optional args on the right.
     for right_arg in right.formal_arguments():
         left_arg = mypy.typeops.callable_corresponding_argument(left, right_arg)
         if left_arg is None:
@@ -1534,14 +1651,20 @@ def are_parameters_compatible(
                 continue
             return False
         if not are_args_compatible(
-            left_arg, right_arg, ignore_pos_arg_names, allow_partial_overlap, is_compat
+            left_arg,
+            right_arg,
+            is_compat,
+            ignore_pos_arg_names=ignore_pos_arg_names,
+            allow_partial_overlap=allow_partial_overlap,
+            allow_imprecise_kinds=right.imprecise_arg_kinds,
         ):
             return False
 
     # Phase 1c: Check var args. Right has an infinite series of optional positional
     #           arguments. Get all further positional args of left, and make sure
-    #           they're more general then the corresponding member in right.
-    if right_star is not None:
+    #           they're more general than the corresponding member in right.
+    # TODO: are we handling UnpackType correctly here?
+    if right_star is not None and not trivial_suffix:
         # Synthesize an anonymous formal argument for the right
         right_by_position = right.try_synthesizing_arg_from_vararg(None)
         assert right_by_position is not None
@@ -1558,17 +1681,17 @@ def are_parameters_compatible(
             if not are_args_compatible(
                 left_by_position,
                 right_by_position,
-                ignore_pos_arg_names,
-                allow_partial_overlap,
                 is_compat,
+                ignore_pos_arg_names=ignore_pos_arg_names,
+                allow_partial_overlap=allow_partial_overlap,
             ):
                 return False
             i += 1
 
     # Phase 1d: Check kw args. Right has an infinite series of optional named
     #           arguments. Get all further named args of left, and make sure
-    #           they're more general then the corresponding member in right.
-    if right_star2 is not None:
+    #           they're more general than the corresponding member in right.
+    if right_star2 is not None and not trivial_suffix:
         right_names = {name for name in right.arg_names if name is not None}
         left_only_names = set()
         for name, kind in zip(left.arg_names, left.arg_kinds):
@@ -1593,7 +1716,11 @@ def are_parameters_compatible(
                 continue
 
             if not are_args_compatible(
-                left_by_name, right_by_name, ignore_pos_arg_names, allow_partial_overlap, is_compat
+                left_by_name,
+                right_by_name,
+                is_compat,
+                ignore_pos_arg_names=ignore_pos_arg_names,
+                allow_partial_overlap=allow_partial_overlap,
             ):
                 return False
 
@@ -1617,6 +1744,7 @@ def are_parameters_compatible(
             and right_by_name != right_by_pos
             and (right_by_pos.required or right_by_name.required)
             and strict_concatenate_check
+            and not right.imprecise_arg_kinds
         ):
             return False
 
@@ -1631,10 +1759,16 @@ def are_parameters_compatible(
 def are_args_compatible(
     left: FormalArgument,
     right: FormalArgument,
+    is_compat: Callable[[Type, Type], bool],
+    *,
     ignore_pos_arg_names: bool,
     allow_partial_overlap: bool,
-    is_compat: Callable[[Type, Type], bool],
+    allow_imprecise_kinds: bool = False,
 ) -> bool:
+    if left.required and right.required:
+        # If both arguments are required allow_partial_overlap has no effect.
+        allow_partial_overlap = False
+
     def is_different(left_item: object | None, right_item: object | None) -> bool:
         """Checks if the left and right items are different.
 
@@ -1657,12 +1791,12 @@ def are_args_compatible(
             return False
 
     # If right is at a specific position, left must have the same:
-    if is_different(left.pos, right.pos):
+    if is_different(left.pos, right.pos) and not allow_imprecise_kinds:
         return False
 
     # If right's argument is optional, left's must also be
     # (unless we're relaxing the checks to allow potential
-    # rather then definite compatibility).
+    # rather than definite compatibility).
     if not allow_partial_overlap and not right.required and left.required:
         return False
 
@@ -1687,6 +1821,8 @@ def unify_generic_callable(
     target: NormalizedCallableType,
     ignore_return: bool,
     return_constraint_direction: int | None = None,
+    *,
+    no_unify_none: bool = False,
 ) -> NormalizedCallableType | None:
     """Try to unify a generic callable type with another callable type.
 
@@ -1698,18 +1834,25 @@ def unify_generic_callable(
         return_constraint_direction = mypy.constraints.SUBTYPE_OF
 
     constraints: list[mypy.constraints.Constraint] = []
-    for arg_type, target_arg_type in zip(type.arg_types, target.arg_types):
-        c = mypy.constraints.infer_constraints(
-            arg_type, target_arg_type, mypy.constraints.SUPERTYPE_OF
-        )
-        constraints.extend(c)
+    # There is some special logic for inference in callables, so better use them
+    # as wholes instead of picking separate arguments.
+    cs = mypy.constraints.infer_constraints(
+        type.copy_modified(ret_type=UninhabitedType()),
+        target.copy_modified(ret_type=UninhabitedType()),
+        mypy.constraints.SUBTYPE_OF,
+        skip_neg_op=True,
+    )
+    constraints.extend(cs)
     if not ignore_return:
         c = mypy.constraints.infer_constraints(
             type.ret_type, target.ret_type, return_constraint_direction
         )
         constraints.extend(c)
-    type_var_ids = [tvar.id for tvar in type.variables]
-    inferred_vars = mypy.solve.solve_constraints(type_var_ids, constraints)
+    if no_unify_none:
+        constraints = [
+            c for c in constraints if not isinstance(get_proper_type(c.target), NoneType)
+        ]
+    inferred_vars, _ = mypy.solve.solve_constraints(type.variables, constraints)
     if None in inferred_vars:
         return None
     non_none_inferred_vars = cast(List[Type], inferred_vars)

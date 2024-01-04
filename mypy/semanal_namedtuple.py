@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from typing import Final, Iterator, List, Mapping, cast
 
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
+from mypy.messages import MessageBuilder
 from mypy.nodes import (
     ARG_NAMED_OPT,
     ARG_OPT,
@@ -84,16 +85,19 @@ NAMEDTUPLE_PROHIBITED_NAMES: Final = (
 )
 
 NAMEDTUP_CLASS_ERROR: Final = (
-    "Invalid statement in NamedTuple definition; " 'expected "field_name: field_type [= default]"'
+    'Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"'
 )
 
 SELF_TVAR_NAME: Final = "_NT"
 
 
 class NamedTupleAnalyzer:
-    def __init__(self, options: Options, api: SemanticAnalyzerInterface) -> None:
+    def __init__(
+        self, options: Options, api: SemanticAnalyzerInterface, msg: MessageBuilder
+    ) -> None:
         self.options = options
         self.api = api
+        self.msg = msg
 
     def analyze_namedtuple_classdef(
         self, defn: ClassDef, is_stub_file: bool, is_func_scope: bool
@@ -182,8 +186,7 @@ class NamedTupleAnalyzer:
                     # it would be inconsistent with type aliases.
                     analyzed = self.api.anal_type(
                         stmt.type,
-                        allow_placeholder=not self.options.disable_recursive_aliases
-                        and not self.api.is_func_scope(),
+                        allow_placeholder=not self.api.is_func_scope(),
                         prohibit_self_type="NamedTuple item type",
                     )
                     if analyzed is None:
@@ -205,6 +208,10 @@ class NamedTupleAnalyzer:
                         )
                 else:
                     default_items[name] = stmt.rvalue
+        if defn.keywords:
+            for_function = ' for "__init_subclass__" of "NamedTuple"'
+            for key in defn.keywords:
+                self.msg.unexpected_keyword_argument_for_function(for_function, key, defn)
         return items, types, default_items, statements
 
     def check_namedtuple(
@@ -450,8 +457,7 @@ class NamedTupleAnalyzer:
                 # We never allow recursive types at function scope.
                 analyzed = self.api.anal_type(
                     type,
-                    allow_placeholder=not self.options.disable_recursive_aliases
-                    and not self.api.is_func_scope(),
+                    allow_placeholder=not self.api.is_func_scope(),
                     prohibit_self_type="NamedTuple item type",
                 )
                 # Workaround #4987 and avoid introducing a bogus UnboundType

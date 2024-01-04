@@ -106,7 +106,25 @@ class Base:
 # We subclass with "Any" because mocks are explicitly designed to stand in for other types,
 # something that can't be expressed with our static type system.
 class NonCallableMock(Base, Any):
-    def __new__(__cls, *args: Any, **kw: Any) -> Self: ...
+    if sys.version_info >= (3, 12):
+        def __new__(
+            cls,
+            spec: list[str] | object | type[object] | None = None,
+            wraps: Any | None = None,
+            name: str | None = None,
+            spec_set: list[str] | object | type[object] | None = None,
+            parent: NonCallableMock | None = None,
+            _spec_state: Any | None = None,
+            _new_name: str = "",
+            _new_parent: NonCallableMock | None = None,
+            _spec_as_instance: bool = False,
+            _eat_self: bool | None = None,
+            unsafe: bool = False,
+            **kwargs: Any,
+        ) -> Self: ...
+    else:
+        def __new__(__cls, *args: Any, **kw: Any) -> Self: ...
+
     def __init__(
         self,
         spec: list[str] | object | type[object] | None = None,
@@ -300,7 +318,7 @@ class _patcher:
     # Ideally we'd be able to add an overload for it so that the return type is _patch[MagicMock],
     # but that's impossible with the current type system.
     @overload
-    def __call__(  # type: ignore[misc]
+    def __call__(  # type: ignore[overload-overlap]
         self,
         target: str,
         new: _T,
@@ -325,7 +343,7 @@ class _patcher:
     ) -> _patch_default_new: ...
     @overload
     @staticmethod
-    def object(  # type: ignore[misc]
+    def object(
         target: Any,
         attribute: str,
         new: _T,
@@ -389,7 +407,11 @@ if sys.version_info >= (3, 8):
     class AsyncMagicMixin(MagicMixin):
         def __init__(self, *args: Any, **kw: Any) -> None: ...
 
-    class AsyncMock(AsyncMockMixin, AsyncMagicMixin, Mock): ...
+    class AsyncMock(AsyncMockMixin, AsyncMagicMixin, Mock):
+        # Improving the `reset_mock` signature.
+        # It is defined on `AsyncMockMixin` with `*args, **kwargs`, which is not ideal.
+        # But, `NonCallableMock` super-class has the better version.
+        def reset_mock(self, visited: Any = None, *, return_value: bool = False, side_effect: bool = False) -> None: ...
 
 class MagicProxy:
     name: str

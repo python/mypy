@@ -129,7 +129,9 @@ if sys.platform != "darwin" or sys.version_info >= (3, 9):
         IPV6_RTHDR as IPV6_RTHDR,
     )
 
-if sys.platform != "darwin":
+if sys.platform == "darwin":
+    from _socket import PF_SYSTEM as PF_SYSTEM, SYSPROTO_CONTROL as SYSPROTO_CONTROL
+else:
     from _socket import SO_EXCLUSIVEADDRUSE as SO_EXCLUSIVEADDRUSE
 
 if sys.version_info >= (3, 10):
@@ -201,6 +203,7 @@ if sys.platform != "win32" and sys.platform != "darwin":
         TCP_LINGER2 as TCP_LINGER2,
         TCP_QUICKACK as TCP_QUICKACK,
         TCP_SYNCNT as TCP_SYNCNT,
+        TCP_USER_TIMEOUT as TCP_USER_TIMEOUT,
         TCP_WINDOW_CLAMP as TCP_WINDOW_CLAMP,
     )
 if sys.platform != "win32":

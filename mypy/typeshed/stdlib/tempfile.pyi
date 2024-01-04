@@ -321,7 +321,7 @@ else:
             dir: GenericPath[AnyStr] | None = None,
         ) -> IO[Any]: ...
 
-class _TemporaryFileWrapper(Generic[AnyStr], IO[AnyStr]):
+class _TemporaryFileWrapper(IO[AnyStr]):
     file: IO[AnyStr]  # io.TextIOWrapper, io.BufferedReader or io.BufferedWriter
     name: str
     delete: bool
@@ -629,7 +629,7 @@ class TemporaryDirectory(Generic[AnyStr]):
 
 # The overloads overlap, but they should still work fine.
 @overload
-def mkstemp(  # type: ignore[misc]
+def mkstemp(  # type: ignore[overload-overlap]
     suffix: str | None = None, prefix: str | None = None, dir: StrPath | None = None, text: bool = False
 ) -> tuple[int, str]: ...
 @overload
@@ -639,7 +639,7 @@ def mkstemp(
 
 # The overloads overlap, but they should still work fine.
 @overload
-def mkdtemp(suffix: str | None = None, prefix: str | None = None, dir: StrPath | None = None) -> str: ...  # type: ignore[misc]
+def mkdtemp(suffix: str | None = None, prefix: str | None = None, dir: StrPath | None = None) -> str: ...  # type: ignore[overload-overlap]
 @overload
 def mkdtemp(suffix: bytes | None = None, prefix: bytes | None = None, dir: BytesPath | None = None) -> bytes: ...
 def mktemp(suffix: str = "", prefix: str = "tmp", dir: StrPath | None = None) -> str: ...

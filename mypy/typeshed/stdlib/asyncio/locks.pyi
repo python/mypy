@@ -10,8 +10,10 @@ from typing_extensions import Literal, Self
 from .events import AbstractEventLoop
 from .futures import Future
 
-if sys.version_info >= (3, 11):
+if sys.version_info >= (3, 10):
     from .mixins import _LoopBoundMixin
+else:
+    _LoopBoundMixin = object
 
 if sys.version_info >= (3, 11):
     __all__ = ("Lock", "Event", "Condition", "Semaphore", "BoundedSemaphore", "Barrier")
@@ -44,7 +46,7 @@ else:
             self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None
         ) -> None: ...
 
-class Lock(_ContextManagerMixin):
+class Lock(_ContextManagerMixin, _LoopBoundMixin):
     if sys.version_info >= (3, 10):
         def __init__(self) -> None: ...
     else:
@@ -54,7 +56,7 @@ class Lock(_ContextManagerMixin):
     async def acquire(self) -> Literal[True]: ...
     def release(self) -> None: ...
 
-class Event:
+class Event(_LoopBoundMixin):
     if sys.version_info >= (3, 10):
         def __init__(self) -> None: ...
     else:
@@ -65,7 +67,7 @@ class Event:
     def clear(self) -> None: ...
     async def wait(self) -> Literal[True]: ...
 
-class Condition(_ContextManagerMixin):
+class Condition(_ContextManagerMixin, _LoopBoundMixin):
     if sys.version_info >= (3, 10):
         def __init__(self, lock: Lock | None = None) -> None: ...
     else:
@@ -79,7 +81,7 @@ class Condition(_ContextManagerMixin):
     def notify(self, n: int = 1) -> None: ...
     def notify_all(self) -> None: ...
 
-class Semaphore(_ContextManagerMixin):
+class Semaphore(_ContextManagerMixin, _LoopBoundMixin):
     _value: int
     _waiters: deque[Future[Any]]
     if sys.version_info >= (3, 10):

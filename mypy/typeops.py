@@ -39,6 +39,7 @@ from mypy.types import (
     Instance,
     LiteralType,
     NoneType,
+    NormalizedCallableType,
     Overloaded,
     Parameters,
     ParamSpecType,
@@ -104,12 +105,8 @@ def tuple_fallback(typ: TupleType) -> Instance:
         if isinstance(item, UnpackType):
             unpacked_type = get_proper_type(item.type)
             if isinstance(unpacked_type, TypeVarTupleType):
-                items.append(unpacked_type.upper_bound)
-            elif isinstance(unpacked_type, TupleType):
-                # TODO: might make sense to do recursion here to support nested unpacks
-                # of tuple constants
-                items.extend(unpacked_type.items)
-            elif (
+                unpacked_type = get_proper_type(unpacked_type.upper_bound)
+            if (
                 isinstance(unpacked_type, Instance)
                 and unpacked_type.type.fullname == "builtins.tuple"
             ):
@@ -118,6 +115,7 @@ def tuple_fallback(typ: TupleType) -> Instance:
                 raise NotImplementedError
         else:
             items.append(item)
+    # TODO: we should really use a union here, tuple types are special.
     return Instance(info, [join_type_list(items)], extra_attrs=typ.partial_fallback.extra_attrs)
 
 
@@ -246,14 +244,18 @@ def map_type_from_supertype(typ: Type, sub_info: TypeInfo, super_info: TypeInfo)
     return expand_type_by_instance(typ, inst_type)
 
 
-def supported_self_type(typ: ProperType) -> bool:
+def supported_self_type(typ: ProperType, allow_callable: bool = True) -> bool:
     """Is this a supported kind of explicit self-types?
 
-    Currently, this means a X or Type[X], where X is an instance or
+    Currently, this means an X or Type[X], where X is an instance or
     a type variable with an instance upper bound.
     """
     if isinstance(typ, TypeType):
         return supported_self_type(typ.item)
+    if allow_callable and isinstance(typ, CallableType):
+        # Special case: allow class callable instead of Type[...] as cls annotation,
+        # as well as callable self for callback protocols.
+        return True
     return isinstance(typ, TypeVarType) or (
         isinstance(typ, Instance) and typ != fill_typevars(typ.type)
     )
@@ -303,8 +305,12 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
         return cast(F, func)
     self_param_type = get_proper_type(func.arg_types[0])
 
-    variables: Sequence[TypeVarLikeType] = []
-    if func.variables and supported_self_type(self_param_type):
+    variables: Sequence[TypeVarLikeType]
+    # Having a def __call__(self: Callable[...], ...) can cause infinite recursion. Although
+    # this special-casing looks not very principled, there is nothing meaningful we can infer
+    # from such definition, since it is inherently indefinitely recursive.
+    allow_callable = func.name is None or not func.name.startswith("__call__ of")
+    if func.variables and supported_self_type(self_param_type, allow_callable=allow_callable):
         from mypy.infer import infer_type_arguments
 
         if original_type is None:
@@ -312,44 +318,40 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
             original_type = erase_to_bound(self_param_type)
         original_type = get_proper_type(original_type)
 
-        all_ids = func.type_var_ids()
-        typeargs = infer_type_arguments(all_ids, self_param_type, original_type, is_supertype=True)
+        # Find which of method type variables appear in the type of "self".
+        self_ids = {tv.id for tv in get_all_type_vars(self_param_type)}
+        self_vars = [tv for tv in func.variables if tv.id in self_ids]
+
+        # Solve for these type arguments using the actual class or instance type.
+        typeargs = infer_type_arguments(
+            self_vars, self_param_type, original_type, is_supertype=True
+        )
         if (
             is_classmethod
-            # TODO: why do we need the extra guards here?
             and any(isinstance(get_proper_type(t), UninhabitedType) for t in typeargs)
             and isinstance(original_type, (Instance, TypeVarType, TupleType))
         ):
-            # In case we call a classmethod through an instance x, fallback to type(x)
+            # In case we call a classmethod through an instance x, fallback to type(x).
             typeargs = infer_type_arguments(
-                all_ids, self_param_type, TypeType(original_type), is_supertype=True
+                self_vars, self_param_type, TypeType(original_type), is_supertype=True
             )
 
-        ids = [tid for tid in all_ids if any(tid == t.id for t in get_type_vars(self_param_type))]
-
-        # Technically, some constrains might be unsolvable, make them <nothing>.
+        # Update the method signature with the solutions found.
+        # Technically, some constraints might be unsolvable, make them Never.
         to_apply = [t if t is not None else UninhabitedType() for t in typeargs]
-
-        def expand(target: Type) -> Type:
-            return expand_type(target, {id: to_apply[all_ids.index(id)] for id in ids})
-
-        arg_types = [expand(x) for x in func.arg_types[1:]]
-        ret_type = expand(func.ret_type)
-        variables = [v for v in func.variables if v.id not in ids]
+        func = expand_type(func, {tv.id: arg for tv, arg in zip(self_vars, to_apply)})
+        variables = [v for v in func.variables if v not in self_vars]
     else:
-        arg_types = func.arg_types[1:]
-        ret_type = func.ret_type
         variables = func.variables
 
     original_type = get_proper_type(original_type)
     if isinstance(original_type, CallableType) and original_type.is_type_obj():
         original_type = TypeType.make_normalized(original_type.ret_type)
     res = func.copy_modified(
-        arg_types=arg_types,
+        arg_types=func.arg_types[1:],
         arg_kinds=func.arg_kinds[1:],
         arg_names=func.arg_names[1:],
         variables=variables,
-        ret_type=ret_type,
         bound_args=[original_type],
     )
     return cast(F, res)
@@ -367,7 +369,7 @@ def erase_to_bound(t: Type) -> Type:
 
 
 def callable_corresponding_argument(
-    typ: CallableType | Parameters, model: FormalArgument
+    typ: NormalizedCallableType | Parameters, model: FormalArgument
 ) -> FormalArgument | None:
     """Return the argument a function that corresponds to `model`"""
 
@@ -567,15 +569,15 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
     return items
 
 
-def _get_type_special_method_bool_ret_type(t: Type) -> Type | None:
+def _get_type_method_ret_type(t: Type, *, name: str) -> Type | None:
     t = get_proper_type(t)
 
     if isinstance(t, Instance):
-        bool_method = t.type.get("__bool__")
-        if bool_method:
-            callee = get_proper_type(bool_method.type)
-            if isinstance(callee, CallableType):
-                return callee.ret_type
+        sym = t.type.get(name)
+        if sym:
+            sym_type = get_proper_type(sym.type)
+            if isinstance(sym_type, CallableType):
+                return sym_type.ret_type
 
     return None
 
@@ -598,12 +600,12 @@ def true_only(t: Type) -> ProperType:
         can_be_true_items = [item for item in new_items if item.can_be_true]
         return make_simplified_union(can_be_true_items, line=t.line, column=t.column)
     else:
-        ret_type = _get_type_special_method_bool_ret_type(t)
+        ret_type = _get_type_method_ret_type(t, name="__bool__") or _get_type_method_ret_type(
+            t, name="__len__"
+        )
 
-        if ret_type and ret_type.can_be_false and not ret_type.can_be_true:
-            new_t = copy_type(t)
-            new_t.can_be_true = False
-            return new_t
+        if ret_type and not ret_type.can_be_true:
+            return UninhabitedType(line=t.line, column=t.column)
 
         new_t = copy_type(t)
         new_t.can_be_false = False
@@ -633,12 +635,15 @@ def false_only(t: Type) -> ProperType:
         can_be_false_items = [item for item in new_items if item.can_be_false]
         return make_simplified_union(can_be_false_items, line=t.line, column=t.column)
     else:
-        ret_type = _get_type_special_method_bool_ret_type(t)
+        ret_type = _get_type_method_ret_type(t, name="__bool__") or _get_type_method_ret_type(
+            t, name="__len__"
+        )
 
-        if ret_type and ret_type.can_be_true and not ret_type.can_be_false:
-            new_t = copy_type(t)
-            new_t.can_be_false = False
-            return new_t
+        if ret_type:
+            if not ret_type.can_be_false:
+                return UninhabitedType(line=t.line)
+        elif isinstance(t, Instance) and t.type.is_final:
+            return UninhabitedType(line=t.line)
 
         new_t = copy_type(t)
         new_t.can_be_true = False
@@ -665,8 +670,7 @@ def erase_def_to_union_or_bound(tdef: TypeVarLikeType) -> Type:
     # TODO(PEP612): fix for ParamSpecType
     if isinstance(tdef, ParamSpecType):
         return AnyType(TypeOfAny.from_error)
-    assert isinstance(tdef, TypeVarType)
-    if tdef.values:
+    if isinstance(tdef, TypeVarType) and tdef.values:
         return make_simplified_union(tdef.values)
     else:
         return tdef.upper_bound
@@ -950,21 +954,33 @@ def coerce_to_literal(typ: Type) -> Type:
 
 
 def get_type_vars(tp: Type) -> list[TypeVarType]:
-    return tp.accept(TypeVarExtractor())
+    return cast("list[TypeVarType]", tp.accept(TypeVarExtractor()))
 
 
-class TypeVarExtractor(TypeQuery[List[TypeVarType]]):
-    def __init__(self) -> None:
+def get_all_type_vars(tp: Type) -> list[TypeVarLikeType]:
+    # TODO: should we always use this function instead of get_type_vars() above?
+    return tp.accept(TypeVarExtractor(include_all=True))
+
+
+class TypeVarExtractor(TypeQuery[List[TypeVarLikeType]]):
+    def __init__(self, include_all: bool = False) -> None:
         super().__init__(self._merge)
+        self.include_all = include_all
 
-    def _merge(self, iter: Iterable[list[TypeVarType]]) -> list[TypeVarType]:
+    def _merge(self, iter: Iterable[list[TypeVarLikeType]]) -> list[TypeVarLikeType]:
         out = []
         for item in iter:
             out.extend(item)
         return out
 
-    def visit_type_var(self, t: TypeVarType) -> list[TypeVarType]:
+    def visit_type_var(self, t: TypeVarType) -> list[TypeVarLikeType]:
         return [t]
+
+    def visit_param_spec(self, t: ParamSpecType) -> list[TypeVarLikeType]:
+        return [t] if self.include_all else []
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> list[TypeVarLikeType]:
+        return [t] if self.include_all else []
 
 
 def custom_special_method(typ: Type, name: str, check_all: bool = False) -> bool:
@@ -977,7 +993,7 @@ def custom_special_method(typ: Type, name: str, check_all: bool = False) -> bool
         method = typ.type.get(name)
         if method and isinstance(method.node, (SYMBOL_FUNCBASE_TYPES, Decorator, Var)):
             if method.node.info:
-                return not method.node.info.fullname.startswith("builtins.")
+                return not method.node.info.fullname.startswith(("builtins.", "typing."))
         return False
     if isinstance(typ, UnionType):
         if check_all:
@@ -985,7 +1001,7 @@ def custom_special_method(typ: Type, name: str, check_all: bool = False) -> bool
         return any(custom_special_method(t, name) for t in typ.items)
     if isinstance(typ, TupleType):
         return custom_special_method(tuple_fallback(typ), name, check_all)
-    if isinstance(typ, CallableType) and typ.is_type_obj():
+    if isinstance(typ, FunctionLike) and typ.is_type_obj():
         # Look up __method__ on the metaclass for class objects.
         return custom_special_method(typ.fallback, name, check_all)
     if isinstance(typ, AnyType):

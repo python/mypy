@@ -15,7 +15,7 @@ jobs:
     if: github.repository == 'python/mypy'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
         # TODO: use whatever solution ends up working for

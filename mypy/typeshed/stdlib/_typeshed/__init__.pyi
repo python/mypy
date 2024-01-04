@@ -7,8 +7,8 @@ from collections.abc import Awaitable, Callable, Iterable, Sequence, Set as Abst
 from dataclasses import Field
 from os import PathLike
 from types import FrameType, TracebackType
-from typing import Any, AnyStr, ClassVar, Generic, Protocol, TypeVar, overload
-from typing_extensions import Buffer, Final, Literal, LiteralString, TypeAlias, final
+from typing import Any, AnyStr, ClassVar, Generic, Protocol, SupportsFloat, SupportsInt, TypeVar, overload
+from typing_extensions import Buffer, Final, Literal, LiteralString, SupportsIndex, TypeAlias, final
 
 _KT = TypeVar("_KT")
 _KT_co = TypeVar("_KT_co", covariant=True)
@@ -35,6 +35,19 @@ Incomplete: TypeAlias = Any
 
 # To describe a function parameter that is unused and will work with anything.
 Unused: TypeAlias = object
+
+# Used to mark arguments that default to a sentinel value. This prevents
+# stubtest from complaining about the default value not matching.
+#
+# def foo(x: int | None = sentinel) -> None: ...
+#
+# In cases where the sentinel object is exported and can be used by user code,
+# a construct like this is better:
+#
+# _SentinelType = NewType("_SentinelType", object)
+# sentinel: _SentinelType
+# def foo(x: int | None | _SentinelType = ...) -> None: ...
+sentinel: Any
 
 # stable
 class IdentityFunction(Protocol):
@@ -223,6 +236,10 @@ class SupportsNoArgReadline(Protocol[_T_co]):
 class SupportsWrite(Protocol[_T_contra]):
     def write(self, __s: _T_contra) -> object: ...
 
+# stable
+class SupportsFlush(Protocol):
+    def flush(self) -> object: ...
+
 # Unfortunately PEP 688 does not allow us to distinguish read-only
 # from writable buffers. We use these aliases for readability for now.
 # Perhaps a future extension of the buffer protocol will allow us to
@@ -299,3 +316,16 @@ TraceFunction: TypeAlias = Callable[[FrameType, str, Any], TraceFunction | None]
 #   https://github.com/microsoft/pyright/issues/4339
 class DataclassInstance(Protocol):
     __dataclass_fields__: ClassVar[dict[str, Field[Any]]]
+
+# Anything that can be passed to the int/float constructors
+ConvertibleToInt: TypeAlias = str | ReadableBuffer | SupportsInt | SupportsIndex | SupportsTrunc
+ConvertibleToFloat: TypeAlias = str | ReadableBuffer | SupportsFloat | SupportsIndex
+
+# A few classes updated from Foo(str, Enum) to Foo(StrEnum). This is a convenience so these
+# can be accurate on all python versions without getting too wordy
+if sys.version_info >= (3, 11):
+    from enum import StrEnum as StrEnum
+else:
+    from enum import Enum
+
+    class StrEnum(str, Enum): ...

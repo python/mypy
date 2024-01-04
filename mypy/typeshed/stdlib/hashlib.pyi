@@ -113,14 +113,7 @@ shake_128 = _VarLenHash
 shake_256 = _VarLenHash
 
 def scrypt(
-    password: ReadableBuffer,
-    *,
-    salt: ReadableBuffer | None = None,
-    n: int | None = None,
-    r: int | None = None,
-    p: int | None = None,
-    maxmem: int = 0,
-    dklen: int = 64,
+    password: ReadableBuffer, *, salt: ReadableBuffer, n: int, r: int, p: int, maxmem: int = 0, dklen: int = 64
 ) -> bytes: ...
 @final
 class _BlakeHash(_Hash):

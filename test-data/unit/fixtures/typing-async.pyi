@@ -24,6 +24,7 @@ ClassVar = 0
 Final = 0
 Literal = 0
 NoReturn = 0
+Self = 0
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)

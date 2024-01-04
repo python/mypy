@@ -93,7 +93,7 @@ def method_op(
     var_arg_type: RType | None = None,
     truncated_type: RType | None = None,
     ordering: list[int] | None = None,
-    extra_int_constants: list[tuple[int, RType]] = [],
+    extra_int_constants: list[tuple[int, RType]] | None = None,
     steals: StealsDescription = False,
     is_borrowed: bool = False,
     priority: int = 1,
@@ -122,6 +122,8 @@ def method_op(
         is_borrowed: if True, returned value is borrowed (no need to decrease refcount)
         priority: if multiple ops match, the one with the highest priority is picked
     """
+    if extra_int_constants is None:
+        extra_int_constants = []
     ops = method_call_ops.setdefault(name, [])
     desc = CFunctionDescription(
         name,
@@ -150,7 +152,7 @@ def function_op(
     var_arg_type: RType | None = None,
     truncated_type: RType | None = None,
     ordering: list[int] | None = None,
-    extra_int_constants: list[tuple[int, RType]] = [],
+    extra_int_constants: list[tuple[int, RType]] | None = None,
     steals: StealsDescription = False,
     is_borrowed: bool = False,
     priority: int = 1,
@@ -165,6 +167,8 @@ def function_op(
         name: full name of the function
         arg_types: positional argument types for which this applies
     """
+    if extra_int_constants is None:
+        extra_int_constants = []
     ops = function_ops.setdefault(name, [])
     desc = CFunctionDescription(
         name,
@@ -193,7 +197,7 @@ def binary_op(
     var_arg_type: RType | None = None,
     truncated_type: RType | None = None,
     ordering: list[int] | None = None,
-    extra_int_constants: list[tuple[int, RType]] = [],
+    extra_int_constants: list[tuple[int, RType]] | None = None,
     steals: StealsDescription = False,
     is_borrowed: bool = False,
     priority: int = 1,
@@ -205,6 +209,8 @@ def binary_op(
     Most arguments are similar to method_op(), but exactly two argument types
     are expected.
     """
+    if extra_int_constants is None:
+        extra_int_constants = []
     ops = binary_ops.setdefault(name, [])
     desc = CFunctionDescription(
         name,
@@ -232,7 +238,7 @@ def custom_op(
     var_arg_type: RType | None = None,
     truncated_type: RType | None = None,
     ordering: list[int] | None = None,
-    extra_int_constants: list[tuple[int, RType]] = [],
+    extra_int_constants: list[tuple[int, RType]] | None = None,
     steals: StealsDescription = False,
     is_borrowed: bool = False,
 ) -> CFunctionDescription:
@@ -240,6 +246,8 @@ def custom_op(
 
     Most arguments are similar to method_op().
     """
+    if extra_int_constants is None:
+        extra_int_constants = []
     return CFunctionDescription(
         "<custom>",
         arg_types,
@@ -264,7 +272,7 @@ def unary_op(
     error_kind: int,
     truncated_type: RType | None = None,
     ordering: list[int] | None = None,
-    extra_int_constants: list[tuple[int, RType]] = [],
+    extra_int_constants: list[tuple[int, RType]] | None = None,
     steals: StealsDescription = False,
     is_borrowed: bool = False,
     priority: int = 1,
@@ -276,6 +284,8 @@ def unary_op(
     Most arguments are similar to method_op(), but exactly one argument type
     is expected.
     """
+    if extra_int_constants is None:
+        extra_int_constants = []
     ops = unary_ops.setdefault(name, [])
     desc = CFunctionDescription(
         name,

@@ -45,6 +45,8 @@ from mypy.types import (
     TypeOfAny,
     TypeVarId,
     TypeVarLikeType,
+    TypeVarTupleType,
+    UnpackType,
     get_proper_type,
 )
 
@@ -286,7 +288,23 @@ def calculate_tuple_fallback(typ: TupleType) -> None:
     """
     fallback = typ.partial_fallback
     assert fallback.type.fullname == "builtins.tuple"
-    fallback.args = (join.join_type_list(list(typ.items)),) + fallback.args[1:]
+    items = []
+    for item in typ.items:
+        # TODO: this duplicates some logic in typeops.tuple_fallback().
+        if isinstance(item, UnpackType):
+            unpacked_type = get_proper_type(item.type)
+            if isinstance(unpacked_type, TypeVarTupleType):
+                unpacked_type = get_proper_type(unpacked_type.upper_bound)
+            if (
+                isinstance(unpacked_type, Instance)
+                and unpacked_type.type.fullname == "builtins.tuple"
+            ):
+                items.append(unpacked_type.args[0])
+            else:
+                raise NotImplementedError
+        else:
+            items.append(item)
+    fallback.args = (join.join_type_list(items),)
 
 
 class _NamedTypeCallback(Protocol):

@@ -74,12 +74,21 @@ class DefaultPlugin(Plugin):
             return typed_dict_setdefault_signature_callback
         elif fullname in {n + ".pop" for n in TPDICT_FB_NAMES}:
             return typed_dict_pop_signature_callback
-        elif fullname in {n + ".update" for n in TPDICT_FB_NAMES}:
-            return typed_dict_update_signature_callback
         elif fullname == "_ctypes.Array.__setitem__":
             return ctypes.array_setitem_callback
         elif fullname == singledispatch.SINGLEDISPATCH_CALLABLE_CALL_METHOD:
             return singledispatch.call_singledispatch_function_callback
+
+        typed_dict_updates = set()
+        for n in TPDICT_FB_NAMES:
+            typed_dict_updates.add(n + ".update")
+            typed_dict_updates.add(n + ".__or__")
+            typed_dict_updates.add(n + ".__ror__")
+            typed_dict_updates.add(n + ".__ior__")
+
+        if fullname in typed_dict_updates:
+            return typed_dict_update_signature_callback
+
         return None
 
     def get_method_hook(self, fullname: str) -> Callable[[MethodContext], Type] | None:
@@ -401,11 +410,16 @@ def typed_dict_delitem_callback(ctx: MethodContext) -> Type:
 
 
 def typed_dict_update_signature_callback(ctx: MethodSigContext) -> CallableType:
-    """Try to infer a better signature type for TypedDict.update."""
+    """Try to infer a better signature type for methods that update `TypedDict`.
+
+    This includes: `TypedDict.update`, `TypedDict.__or__`, `TypedDict.__ror__`,
+    and `TypedDict.__ior__`.
+    """
     signature = ctx.default_signature
     if isinstance(ctx.type, TypedDictType) and len(signature.arg_types) == 1:
         arg_type = get_proper_type(signature.arg_types[0])
-        assert isinstance(arg_type, TypedDictType)
+        if not isinstance(arg_type, TypedDictType):
+            return signature
         arg_type = arg_type.as_anonymous()
         arg_type = arg_type.copy_modified(required_keys=set())
         if ctx.args and ctx.args[0]:

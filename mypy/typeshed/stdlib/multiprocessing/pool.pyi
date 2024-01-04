@@ -91,7 +91,7 @@ class Pool:
         func: Callable[[_S], _T],
         iterable: Iterable[_S],
         chunksize: int | None = None,
-        callback: Callable[[_T], object] | None = None,
+        callback: Callable[[list[_T]], object] | None = None,
         error_callback: Callable[[BaseException], object] | None = None,
     ) -> MapResult[_T]: ...
     def imap(self, func: Callable[[_S], _T], iterable: Iterable[_S], chunksize: int | None = 1) -> IMapIterator[_T]: ...
@@ -102,7 +102,7 @@ class Pool:
         func: Callable[..., _T],
         iterable: Iterable[Iterable[Any]],
         chunksize: int | None = None,
-        callback: Callable[[_T], object] | None = None,
+        callback: Callable[[list[_T]], object] | None = None,
         error_callback: Callable[[BaseException], object] | None = None,
     ) -> AsyncResult[list[_T]]: ...
     def close(self) -> None: ...
@@ -112,6 +112,7 @@ class Pool:
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None: ...
+    def __del__(self) -> None: ...
 
 class ThreadPool(Pool):
     def __init__(

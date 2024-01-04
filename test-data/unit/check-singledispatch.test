@@ -300,7 +300,7 @@ h('a', 1) # E: Argument 2 to "h" has incompatible type "int"; expected "str"
 
 [case testDontCrashWhenRegisteringAfterError]
 import functools
-a = functools.singledispatch('a') # E: Need type annotation for "a" # E: Argument 1 to "singledispatch" has incompatible type "str"; expected "Callable[..., <nothing>]"
+a = functools.singledispatch('a') # E: Need type annotation for "a" # E: Argument 1 to "singledispatch" has incompatible type "str"; expected "Callable[..., Never]"
 
 @a.register(int)
 def default(val) -> int:
