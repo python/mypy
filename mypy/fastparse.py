@@ -420,12 +420,12 @@ class NameMangler(ast3.NodeTransformer):
 
     def visit_ClassDef(self, node: ast3.ClassDef) -> ast3.ClassDef:
         if self._name_complete == node.name:
-            for subnode in node.body:
-                self.visit(subnode)
+            for stmt in node.body:
+                self.visit(stmt)
             self._mangle_slots(node)
         else:
-            for subnode in node.decorator_list:
-                self.visit(subnode)
+            for dec in node.decorator_list:
+                self.visit(dec)
             NameMangler(node.name, self._future_annotations).visit(node)
             node.name = self._mangle(node.name)
         return node
