@@ -48,6 +48,7 @@ What is mypy?
 -------------
 
 Mypy is a static type checker for Python.
+But mypy doesn't support checking ipynb.
 
 Type checkers help ensure that you're using variables and functions in your code
 correctly. With mypy, add type hints ([PEP 484](https://www.python.org/dev/peps/pep-0484/))
