@@ -6,7 +6,7 @@ These can be used for filtering specific errors.
 from __future__ import annotations
 
 from collections import defaultdict
-from typing_extensions import Final
+from typing import Final
 
 from mypy_extensions import mypyc_attr
 
@@ -36,6 +36,14 @@ class ErrorCode:
 
     def __str__(self) -> str:
         return f"<ErrorCode {self.code}>"
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ErrorCode):
+            return False
+        return self.code == other.code
+
+    def __hash__(self) -> int:
+        return hash((self.code,))
 
 
 ATTR_DEFINED: Final = ErrorCode("attr-defined", "Check that attribute exists", "General")
@@ -99,6 +107,12 @@ HAS_TYPE: Final = ErrorCode(
 IMPORT: Final = ErrorCode(
     "import", "Require that imported module can be found or has stubs", "General"
 )
+IMPORT_NOT_FOUND: Final = ErrorCode(
+    "import-not-found", "Require that imported module can be found", "General", sub_code_of=IMPORT
+)
+IMPORT_UNTYPED: Final = ErrorCode(
+    "import-untyped", "Require that imported module has stubs", "General", sub_code_of=IMPORT
+)
 NO_REDEF: Final = ErrorCode("no-redef", "Check that each name is defined once", "General")
 FUNC_RETURNS_VALUE: Final = ErrorCode(
     "func-returns-value", "Check that called function returns a value in value context", "General"
@@ -136,9 +150,11 @@ SAFE_SUPER: Final = ErrorCode(
     "safe-super", "Warn about calls to abstract methods with empty/trivial bodies", "General"
 )
 TOP_LEVEL_AWAIT: Final = ErrorCode(
-    "top-level-await", "Warn about top level await experessions", "General"
+    "top-level-await", "Warn about top level await expressions", "General"
 )
-
+AWAIT_NOT_ASYNC: Final = ErrorCode(
+    "await-not-async", 'Warn about "await" outside coroutine ("async def")', "General"
+)
 # These error codes aren't enabled by default.
 NO_UNTYPED_DEF: Final[ErrorCode] = ErrorCode(
     "no-untyped-def", "Check that every function has an annotation", "General"
@@ -227,6 +243,24 @@ USED_BEFORE_DEF: Final[ErrorCode] = ErrorCode(
 UNUSED_IGNORE: Final = ErrorCode(
     "unused-ignore", "Ensure that all type ignores are used", "General", default_enabled=False
 )
+EXPLICIT_OVERRIDE_REQUIRED: Final = ErrorCode(
+    "explicit-override",
+    "Require @override decorator if method is overriding a base class method",
+    "General",
+    default_enabled=False,
+)
+UNIMPORTED_REVEAL: Final = ErrorCode(
+    "unimported-reveal",
+    "Require explicit import from typing or typing_extensions for reveal_type",
+    "General",
+    default_enabled=False,
+)
+MUTABLE_OVERRIDE: Final[ErrorCode] = ErrorCode(
+    "mutable-override",
+    "Reject covariant overrides for mutable attributes",
+    "General",
+    default_enabled=False,
+)
 
 
 # Syntax errors are often blocking.
@@ -239,3 +273,13 @@ del error_codes[FILE.code]
 
 # This is a catch-all for remaining uncategorized errors.
 MISC: Final = ErrorCode("misc", "Miscellaneous other checks", "General")
+
+OVERLOAD_OVERLAP: Final[ErrorCode] = ErrorCode(
+    "overload-overlap",
+    "Warn if multiple @overload variants overlap in unsafe ways",
+    "General",
+    sub_code_of=MISC,
+)
+
+# This copy will not include any error codes defined later in the plugins.
+mypy_error_codes = error_codes.copy()

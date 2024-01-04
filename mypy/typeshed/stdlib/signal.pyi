@@ -10,10 +10,8 @@ NSIG: int
 
 class Signals(IntEnum):
     SIGABRT: int
-    SIGEMT: int
     SIGFPE: int
     SIGILL: int
-    SIGINFO: int
     SIGINT: int
     SIGSEGV: int
     SIGTERM: int
@@ -47,6 +45,9 @@ class Signals(IntEnum):
         SIGWINCH: int
         SIGXCPU: int
         SIGXFSZ: int
+        if sys.platform != "linux":
+            SIGEMT: int
+            SIGINFO: int
         if sys.platform != "darwin":
             SIGCLD: int
             SIGPOLL: int
@@ -77,10 +78,8 @@ else:
     def signal(__signalnum: _SIGNUM, __handler: _HANDLER) -> _HANDLER: ...
 
 SIGABRT: Signals
-SIGEMT: Signals
 SIGFPE: Signals
 SIGILL: Signals
-SIGINFO: Signals
 SIGINT: Signals
 SIGSEGV: Signals
 SIGTERM: Signals
@@ -90,6 +89,9 @@ if sys.platform == "win32":
     CTRL_C_EVENT: Signals
     CTRL_BREAK_EVENT: Signals
 else:
+    if sys.platform != "linux":
+        SIGINFO: Signals
+        SIGEMT: Signals
     SIGALRM: Signals
     SIGBUS: Signals
     SIGCHLD: Signals
@@ -170,8 +172,12 @@ else:
             @property
             def si_band(self) -> int: ...
 
-        def sigtimedwait(sigset: Iterable[int], timeout: float) -> struct_siginfo | None: ...
-        def sigwaitinfo(sigset: Iterable[int]) -> struct_siginfo: ...
+        if sys.version_info >= (3, 10):
+            def sigtimedwait(__sigset: Iterable[int], __timeout: float) -> struct_siginfo | None: ...
+            def sigwaitinfo(__sigset: Iterable[int]) -> struct_siginfo: ...
+        else:
+            def sigtimedwait(sigset: Iterable[int], timeout: float) -> struct_siginfo | None: ...
+            def sigwaitinfo(sigset: Iterable[int]) -> struct_siginfo: ...
 
 if sys.version_info >= (3, 8):
     def strsignal(__signalnum: _SIGNUM) -> str | None: ...

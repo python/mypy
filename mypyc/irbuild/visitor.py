@@ -194,6 +194,7 @@ class IRBuilderVisitor(IRVisitor):
 
     def visit_return_stmt(self, stmt: ReturnStmt) -> None:
         transform_return_stmt(self.builder, stmt)
+        self.builder.mark_block_unreachable()
 
     def visit_assignment_stmt(self, stmt: AssignmentStmt) -> None:
         transform_assignment_stmt(self.builder, stmt)
@@ -212,12 +213,15 @@ class IRBuilderVisitor(IRVisitor):
 
     def visit_break_stmt(self, stmt: BreakStmt) -> None:
         transform_break_stmt(self.builder, stmt)
+        self.builder.mark_block_unreachable()
 
     def visit_continue_stmt(self, stmt: ContinueStmt) -> None:
         transform_continue_stmt(self.builder, stmt)
+        self.builder.mark_block_unreachable()
 
     def visit_raise_stmt(self, stmt: RaiseStmt) -> None:
         transform_raise_stmt(self.builder, stmt)
+        self.builder.mark_block_unreachable()
 
     def visit_try_stmt(self, stmt: TryStmt) -> None:
         transform_try_stmt(self.builder, stmt)

@@ -11,6 +11,8 @@ if sys.version_info >= (3, 11):
     SSL_SHUTDOWN_TIMEOUT: float
     FLOW_CONTROL_HIGH_WATER_SSL_READ: Literal[256]
     FLOW_CONTROL_HIGH_WATER_SSL_WRITE: Literal[512]
+if sys.version_info >= (3, 12):
+    THREAD_JOIN_TIMEOUT: Literal[300]
 
 class _SendfileMode(enum.Enum):
     UNSUPPORTED: int

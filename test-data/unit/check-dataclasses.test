@@ -744,6 +744,17 @@ s: str = a.bar()  # E: Incompatible types in assignment (expression has type "in
 
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassGenericCovariant]
+from dataclasses import dataclass
+from typing import Generic, TypeVar
+
+T_co = TypeVar("T_co", covariant=True)
+
+@dataclass
+class MyDataclass(Generic[T_co]):
+    a: T_co
+
+[builtins fixtures/dataclasses.pyi]
 
 [case testDataclassUntypedGenericInheritance]
 # flags: --python-version 3.7
@@ -1116,7 +1127,6 @@ class Foo:
 
 [case testNoComplainFieldNoneStrict]
 # flags: --python-version 3.7
-# flags: --strict-optional
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -1253,7 +1263,7 @@ class Deferred: pass
 [builtins fixtures/dataclasses.pyi]
 
 [case testDeferredDataclassInitSignatureSubclass]
-# flags: --strict-optional --python-version 3.7
+# flags: --python-version 3.7
 from dataclasses import dataclass
 from typing import Optional
 
@@ -1509,6 +1519,22 @@ class Some:
         self.y = 1  # E: Trying to assign name "y" that is not in "__slots__" of type "__main__.Some"
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassWithSlotsDerivedFromNonSlot]
+# flags: --python-version 3.10
+from dataclasses import dataclass
+
+class A:
+    pass
+
+@dataclass(slots=True)
+class B(A):
+    x: int
+
+    def __post_init__(self) -> None:
+        self.y = 42
+
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassWithSlotsConflict]
 # flags: --python-version 3.10
 from dataclasses import dataclass
@@ -1544,6 +1570,35 @@ class Some:
 class Other:
     __slots__ = ('x',)
     x: int
+[builtins fixtures/dataclasses.pyi]
+
+
+[case testDataclassWithSlotsRuntimeAttr]
+# flags: --python-version 3.10
+from dataclasses import dataclass
+
+@dataclass(slots=True)
+class Some:
+    x: int
+    y: str
+    z: bool
+
+reveal_type(Some.__slots__)  # N: Revealed type is "Tuple[builtins.str, builtins.str, builtins.str]"
+
+@dataclass(slots=True)
+class Other:
+    x: int
+    y: str
+
+reveal_type(Other.__slots__)  # N: Revealed type is "Tuple[builtins.str, builtins.str]"
+
+
+@dataclass
+class NoSlots:
+    x: int
+    y: str
+
+NoSlots.__slots__  # E: "Type[NoSlots]" has no attribute "__slots__"
 [builtins fixtures/dataclasses.pyi]
 
 
@@ -1705,7 +1760,7 @@ reveal_type(Child2[int, A]([A()], [1]).b)  # N: Revealed type is "builtins.list[
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassInheritOptionalType]
-# flags: --python-version 3.7 --strict-optional
+# flags: --python-version 3.7
 from dataclasses import dataclass
 from typing import Any, Callable, Generic, TypeVar, List, Optional
 
@@ -1853,6 +1908,11 @@ class Two:
     bar: int
 t: Two
 reveal_type(t.__match_args__)  # N: Revealed type is "Tuple[Literal['bar']]"
+@dataclass
+class Empty:
+    ...
+e: Empty
+reveal_type(e.__match_args__)  # N: Revealed type is "Tuple[()]"
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassWithoutMatchArgs]
@@ -1939,7 +1999,6 @@ B = List[C]
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassSelfType]
-# flags: --strict-optional
 from dataclasses import dataclass
 from typing import Self, TypeVar, Generic, Optional
 
@@ -2006,7 +2065,6 @@ e: Element[Bar]
 reveal_type(e.elements)  # N: Revealed type is "typing.Sequence[__main__.Element[__main__.Bar]]"
 [builtins fixtures/dataclasses.pyi]
 
-
 [case testIfConditionsInDefinition]
 # flags: --python-version 3.11 --always-true TRUTH
 from dataclasses import dataclass
@@ -2040,7 +2098,402 @@ Foo(
     present_4=4,
     present_5=5,
 )
+
 [builtins fixtures/dataclasses.pyi]
+
+[case testReplace]
+from dataclasses import dataclass, replace, InitVar
+from typing import ClassVar
+
+@dataclass
+class A:
+    x: int
+    q: InitVar[int]
+    q2: InitVar[int] = 0
+    c: ClassVar[int]
+
+
+a = A(x=42, q=7)
+a2 = replace(a)  # E: Missing named argument "q" for "replace" of "A"
+a2 = replace(a, q=42)
+a2 = replace(a, x=42, q=42)
+a2 = replace(a, x=42, q=42, c=7)  # E: Unexpected keyword argument "c" for "replace" of "A"
+a2 = replace(a, x='42', q=42)  # E: Argument "x" to "replace" of "A" has incompatible type "str"; expected "int"
+a2 = replace(a, q='42')  # E: Argument "q" to "replace" of "A" has incompatible type "str"; expected "int"
+reveal_type(a2)  # N: Revealed type is "__main__.A"
+
+[builtins fixtures/tuple.pyi]
+
+[case testReplaceUnion]
+from typing import Generic, Union, TypeVar
+from dataclasses import dataclass, replace, InitVar
+
+T = TypeVar('T')
+
+@dataclass
+class A(Generic[T]):
+    x: T  # exercises meet(T=int, int) = int
+    y: bool  # exercises meet(bool, int) = bool
+    z: str  # exercises meet(str, bytes) = Never
+    w: dict  # exercises meet(dict, Never) = Never
+    init_var: InitVar[int]  # exercises (non-optional, optional) = non-optional
+
+@dataclass
+class B:
+    x: int
+    y: int
+    z: bytes
+    init_var: int
+
+
+a_or_b: Union[A[int], B]
+_ = replace(a_or_b, x=42, y=True, init_var=42)
+_ = replace(a_or_b, x=42, y=True)  # E: Missing named argument "init_var" for "replace" of "Union[A[int], B]"
+_ = replace(a_or_b, x=42, y=True, z='42', init_var=42)  # E: Argument "z" to "replace" of "Union[A[int], B]" has incompatible type "str"; expected Never
+_ = replace(a_or_b, x=42, y=True, w={}, init_var=42)  # E: Argument "w" to "replace" of "Union[A[int], B]" has incompatible type "Dict[Never, Never]"; expected Never
+_ = replace(a_or_b, y=42, init_var=42)  # E: Argument "y" to "replace" of "Union[A[int], B]" has incompatible type "int"; expected "bool"
+
+[builtins fixtures/tuple.pyi]
+
+[case testReplaceUnionOfTypeVar]
+from typing import Generic, Union, TypeVar
+from dataclasses import dataclass, replace
+
+@dataclass
+class A:
+    x: int
+    y: int
+    z: str
+    w: dict
+
+class B:
+    pass
+
+TA = TypeVar('TA', bound=A)
+TB = TypeVar('TB', bound=B)
+
+def f(b_or_t: Union[TA, TB, int]) -> None:
+    a2 = replace(b_or_t)   # E: Value of type variable "_DataclassT" of "replace" cannot be "Union[TA, TB, int]"
+
+[builtins fixtures/tuple.pyi]
+
+[case testReplaceTypeVarBoundNotDataclass]
+from dataclasses import dataclass, replace
+from typing import Union, TypeVar
+
+TInt = TypeVar('TInt', bound=int)
+TAny = TypeVar('TAny')
+TNone = TypeVar('TNone', bound=None)
+TUnion = TypeVar('TUnion', bound=Union[str, int])
+
+def f1(t: TInt) -> None:
+    _ = replace(t, x=42)  # E: Value of type variable "_DataclassT" of "replace" cannot be "TInt"
+
+def f2(t: TAny) -> TAny:
+    return replace(t, x='spam')  # E: Value of type variable "_DataclassT" of "replace" cannot be "TAny"
+
+def f3(t: TNone) -> TNone:
+    return replace(t, x='spam')  # E: Value of type variable "_DataclassT" of "replace" cannot be "TNone"
+
+def f4(t: TUnion) -> TUnion:
+    return replace(t, x='spam')  # E: Value of type variable "_DataclassT" of "replace" cannot be "TUnion"
+
+[builtins fixtures/tuple.pyi]
+
+[case testReplaceTypeVarBound]
+from dataclasses import dataclass, replace
+from typing import TypeVar
+
+@dataclass
+class A:
+    x: int
+
+@dataclass
+class B(A):
+    pass
+
+TA = TypeVar('TA', bound=A)
+
+def f(t: TA) -> TA:
+    t2 = replace(t, x=42)
+    reveal_type(t2)  # N: Revealed type is "TA`-1"
+    _ = replace(t, x='42')  # E: Argument "x" to "replace" of "TA" has incompatible type "str"; expected "int"
+    return t2
+
+f(A(x=42))
+f(B(x=42))
+
+[builtins fixtures/tuple.pyi]
+
+[case testReplaceAny]
+from dataclasses import replace
+from typing import Any
+
+a: Any
+a2 = replace(a)
+reveal_type(a2)  # N: Revealed type is "Any"
+
+[builtins fixtures/tuple.pyi]
+
+[case testReplaceNotDataclass]
+from dataclasses import replace
+
+replace(5)  # E: Value of type variable "_DataclassT" of "replace" cannot be "int"
+
+class C:
+    pass
+
+replace(C())  # E: Value of type variable "_DataclassT" of "replace" cannot be "C"
+
+replace(None)  # E: Value of type variable "_DataclassT" of "replace" cannot be "None"
+
+[builtins fixtures/tuple.pyi]
+
+[case testReplaceIsDataclass]
+from dataclasses import is_dataclass, replace
+
+def f(x: object) -> None:
+  _ = replace(x)  # E: Value of type variable "_DataclassT" of "replace" cannot be "object"
+  if is_dataclass(x):
+    _ = replace(x)  # E: Value of type variable "_DataclassT" of "replace" cannot be "Union[DataclassInstance, Type[DataclassInstance]]"
+    if not isinstance(x, type):
+      _ = replace(x)
+
+[builtins fixtures/tuple.pyi]
+
+[case testReplaceGeneric]
+from dataclasses import dataclass, replace, InitVar
+from typing import ClassVar, Generic, TypeVar
+
+T = TypeVar('T')
+
+@dataclass
+class A(Generic[T]):
+    x: T
+
+a = A(x=42)
+reveal_type(a)  # N: Revealed type is "__main__.A[builtins.int]"
+a2 = replace(a, x=42)
+reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
+a2 = replace(a, x='42')  # E: Argument "x" to "replace" of "A[int]" has incompatible type "str"; expected "int"
+reveal_type(a2)  # N: Revealed type is "__main__.A[builtins.int]"
+
+[builtins fixtures/tuple.pyi]
+
+[case testPostInitNotMethod]
+def __post_init__() -> None:
+    pass
+
+[case testPostInitCorrectSignature]
+from typing import Any, Generic, TypeVar, Callable, Self
+from dataclasses import dataclass, InitVar
+
+@dataclass
+class Test1:
+    x: int
+    def __post_init__(self) -> None: ...
+
+@dataclass
+class Test2:
+    x: int
+    y: InitVar[int]
+    z: str
+    def __post_init__(self, y: int) -> None: ...
+
+@dataclass
+class Test3:
+    x: InitVar[int]
+    y: InitVar[str]
+    def __post_init__(self, x: int, y: str) -> None: ...
+
+@dataclass
+class Test4:
+    x: int
+    y: InitVar[str]
+    z: InitVar[bool] = True
+    def __post_init__(self, y: str, z: bool) -> None: ...
+
+@dataclass
+class Test5:
+    y: InitVar[str] = 'a'
+    z: InitVar[bool] = True
+    def __post_init__(self, y: str = 'a', z: bool = True) -> None: ...
+
+F = TypeVar('F', bound=Callable[..., Any])
+def identity(f: F) -> F: return f
+
+@dataclass
+class Test6:
+    y: InitVar[str]
+    @identity  # decorated method works
+    def __post_init__(self, y: str) -> None: ...
+
+T = TypeVar('T')
+
+@dataclass
+class Test7(Generic[T]):
+    t: InitVar[T]
+    def __post_init__(self, t: T) -> None: ...
+
+@dataclass
+class Test8:
+    s: InitVar[Self]
+    def __post_init__(self, s: Self) -> None: ...
+[builtins fixtures/dataclasses.pyi]
+
+[case testPostInitSubclassing]
+from dataclasses import dataclass, InitVar
+
+@dataclass
+class Base:
+    a: str
+    x: InitVar[int]
+    def __post_init__(self, x: int) -> None: ...
+
+@dataclass
+class Child(Base):
+    b: str
+    y: InitVar[str]
+    def __post_init__(self, x: int, y: str) -> None: ...
+
+@dataclass
+class GrandChild(Child):
+    c: int
+    z: InitVar[str] = "a"
+    def __post_init__(self, x: int, y: str, z: str) -> None: ...
+[builtins fixtures/dataclasses.pyi]
+
+[case testPostInitNotADataclassCheck]
+from dataclasses import dataclass, InitVar
+
+class Regular:
+    __post_init__ = 1  # can be whatever
+
+class Base:
+    x: InitVar[int]
+    def __post_init__(self) -> None: ...  # can be whatever
+
+@dataclass
+class Child(Base):
+    y: InitVar[str]
+    def __post_init__(self, y: str) -> None: ...
+[builtins fixtures/dataclasses.pyi]
+
+[case testPostInitMissingParam]
+from dataclasses import dataclass, InitVar
+
+@dataclass
+class Child:
+    y: InitVar[str]
+    def __post_init__(self) -> None: ...
+[builtins fixtures/dataclasses.pyi]
+[out]
+main:6: error: Signature of "__post_init__" incompatible with supertype "dataclass"
+main:6: note:      Superclass:
+main:6: note:          def __post_init__(self: Child, y: str) -> None
+main:6: note:      Subclass:
+main:6: note:          def __post_init__(self: Child) -> None
+
+[case testPostInitWrongTypeAndName]
+from dataclasses import dataclass, InitVar
+
+@dataclass
+class Test1:
+    y: InitVar[str]
+    def __post_init__(self, x: int) -> None: ...  # E: Argument 2 of "__post_init__" is incompatible with supertype "dataclass"; supertype defines the argument type as "str"
+
+@dataclass
+class Test2:
+    y: InitVar[str] = 'a'
+    def __post_init__(self, x: int) -> None: ...  # E: Argument 2 of "__post_init__" is incompatible with supertype "dataclass"; supertype defines the argument type as "str"
+[builtins fixtures/dataclasses.pyi]
+
+[case testPostInitExtraParam]
+from dataclasses import dataclass, InitVar
+
+@dataclass
+class Child:
+    y: InitVar[str]
+    def __post_init__(self, y: str, z: int) -> None: ...
+[builtins fixtures/dataclasses.pyi]
+[out]
+main:6: error: Signature of "__post_init__" incompatible with supertype "dataclass"
+main:6: note:      Superclass:
+main:6: note:          def __post_init__(self: Child, y: str) -> None
+main:6: note:      Subclass:
+main:6: note:          def __post_init__(self: Child, y: str, z: int) -> None
+
+[case testPostInitReturnType]
+from dataclasses import dataclass, InitVar
+
+@dataclass
+class Child:
+    y: InitVar[str]
+    def __post_init__(self, y: str) -> int: ...  # E: Return type "int" of "__post_init__" incompatible with return type "None" in supertype "dataclass"
+[builtins fixtures/dataclasses.pyi]
+
+[case testPostInitDecoratedMethodError]
+from dataclasses import dataclass, InitVar
+from typing import Any, Callable, TypeVar
+
+F = TypeVar('F', bound=Callable[..., Any])
+def identity(f: F) -> F: return f
+
+@dataclass
+class Klass:
+    y: InitVar[str]
+    @identity
+    def __post_init__(self) -> None: ...
+[builtins fixtures/dataclasses.pyi]
+[out]
+main:11: error: Signature of "__post_init__" incompatible with supertype "dataclass"
+main:11: note:      Superclass:
+main:11: note:          def __post_init__(self: Klass, y: str) -> None
+main:11: note:      Subclass:
+main:11: note:          def __post_init__(self: Klass) -> None
+
+[case testPostInitIsNotAFunction]
+from dataclasses import dataclass, InitVar
+
+@dataclass
+class Test:
+    y: InitVar[str]
+    __post_init__ = 1  # E: "__post_init__" method must be an instance method
+[builtins fixtures/dataclasses.pyi]
+
+[case testPostInitClassMethod]
+from dataclasses import dataclass, InitVar
+
+@dataclass
+class Test:
+    y: InitVar[str]
+    @classmethod
+    def __post_init__(cls) -> None: ...
+[builtins fixtures/dataclasses.pyi]
+[out]
+main:7: error: Signature of "__post_init__" incompatible with supertype "dataclass"
+main:7: note:      Superclass:
+main:7: note:          def __post_init__(self: Test, y: str) -> None
+main:7: note:      Subclass:
+main:7: note:          @classmethod
+main:7: note:          def __post_init__(cls: Type[Test]) -> None
+
+[case testPostInitStaticMethod]
+from dataclasses import dataclass, InitVar
+
+@dataclass
+class Test:
+    y: InitVar[str]
+    @staticmethod
+    def __post_init__() -> None: ...
+[builtins fixtures/dataclasses.pyi]
+[out]
+main:7: error: Signature of "__post_init__" incompatible with supertype "dataclass"
+main:7: note:      Superclass:
+main:7: note:          def __post_init__(self: Test, y: str) -> None
+main:7: note:      Subclass:
+main:7: note:          @staticmethod
+main:7: note:          def __post_init__() -> None
 
 [case testProtocolNoCrash]
 from typing import Protocol, Union, ClassVar
@@ -2053,4 +2506,41 @@ class Test(Protocol):
     x: int
     def reset(self) -> None:
         self.x = DEFAULT
+[builtins fixtures/dataclasses.pyi]
+
+[case testProtocolNoCrashOnJoining]
+from dataclasses import dataclass
+from typing import Protocol
+
+@dataclass
+class MyDataclass(Protocol): ...
+
+a: MyDataclass
+b = [a, a]  # trigger joining the types
+
+[builtins fixtures/dataclasses.pyi]
+
+[case testPropertyAndFieldRedefinitionNoCrash]
+from dataclasses import dataclass
+
+@dataclass
+class Foo:
+    @property
+    def c(self) -> int:
+        return 0
+
+    c: int  # E: Name "c" already defined on line 5
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassInheritanceWorksWithExplicitOverrides]
+# flags: --enable-error-code explicit-override
+from dataclasses  import dataclass
+
+@dataclass
+class Base:
+    x: int
+
+@dataclass
+class Child(Base):
+    y: int
 [builtins fixtures/dataclasses.pyi]

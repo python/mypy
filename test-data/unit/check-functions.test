@@ -10,8 +10,9 @@
 
 [case testCallingVariableWithFunctionType]
 from typing import Callable
-f = None # type: Callable[[A], B]
-a, b = None, None # type: (A, B)
+f: Callable[[A], B]
+a: A
+b: B
 if int():
     a = f(a)    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 if int():
@@ -82,9 +83,9 @@ from typing import Callable
 class A: pass
 class B(A): pass
 
-f = None # type: Callable[[B], A]
-g = None # type: Callable[[A], A]  # subtype of f
-h = None # type: Callable[[B], B]  # subtype of f
+f: Callable[[B], A]
+g: Callable[[A], A]  # subtype of f
+h: Callable[[B], B]  # subtype of f
 if int():
     g = h  # E: Incompatible types in assignment (expression has type "Callable[[B], B]", variable has type "Callable[[A], A]")
 if int():
@@ -132,7 +133,7 @@ ff = g
 from typing import Callable
 
 def f(a: int, b: str) -> None: pass
-f_nonames = None # type: Callable[[int, str], None]
+f_nonames: Callable[[int, str], None]
 def g(a: int, b: str = "") -> None: pass
 def h(aa: int, b: str = "") -> None: pass
 
@@ -160,7 +161,7 @@ if int():
 from typing import Any, Callable
 
 def everything(*args: Any, **kwargs: Any) -> None: pass
-everywhere = None # type: Callable[..., None]
+everywhere: Callable[..., None]
 
 def specific_1(a: int, b: str) -> None: pass
 def specific_2(a: int, *, b: str) -> None: pass
@@ -238,6 +239,7 @@ if int():
     gg = f # E: Incompatible types in assignment (expression has type "Callable[[int, str], None]", variable has type "Callable[[Arg(int, 'a'), Arg(str, 'b')], None]")
 
 [case testFunctionTypeCompatibilityWithOtherTypes]
+# flags: --no-strict-optional
 from typing import Callable
 f = None # type: Callable[[], None]
 a, o = None, None # type: (A, object)
@@ -248,7 +250,7 @@ if int():
 if int():
     f = o   # E: Incompatible types in assignment (expression has type "object", variable has type "Callable[[], None]")
 if int():
-    f = f() # E: Function does not return a value
+    f = f() # E: Function does not return a value (it only ever returns None)
 
 if int():
     f = f
@@ -272,8 +274,8 @@ def g(x: int) -> Tuple[()]:
 
 [case testFunctionSubtypingWithVoid]
 from typing import Callable
-f = None # type: Callable[[], None]
-g = None # type: Callable[[], object]
+f: Callable[[], None]
+g: Callable[[], object]
 if int():
     f = g  # E: Incompatible types in assignment (expression has type "Callable[[], object]", variable has type "Callable[[], None]")
 if int():
@@ -286,9 +288,9 @@ if int():
 
 [case testFunctionSubtypingWithMultipleArgs]
 from typing import Callable
-f = None # type: Callable[[A, A], None]
-g = None # type: Callable[[A, B], None]
-h = None # type: Callable[[B, B], None]
+f: Callable[[A, A], None]
+g: Callable[[A, B], None]
+h: Callable[[B, B], None]
 if int():
     f = g  # E: Incompatible types in assignment (expression has type "Callable[[A, B], None]", variable has type "Callable[[A, A], None]")
 if int():
@@ -313,9 +315,9 @@ class B(A): pass
 
 [case testFunctionTypesWithDifferentArgumentCounts]
 from typing import Callable
-f = None # type: Callable[[], None]
-g = None # type: Callable[[A], None]
-h = None # type: Callable[[A, A], None]
+f: Callable[[], None]
+g: Callable[[A], None]
+h: Callable[[A, A], None]
 
 if int():
     f = g   # E: Incompatible types in assignment (expression has type "Callable[[A], None]", variable has type "Callable[[], None]")
@@ -342,8 +344,8 @@ class A:
 
 def f() -> None: pass
 
-t = None # type: type
-a = None # type: A
+t: type
+a: A
 
 if int():
     a = A # E: Incompatible types in assignment (expression has type "Type[A]", variable has type "A")
@@ -356,9 +358,9 @@ if int():
 from foo import *
 [file foo.pyi]
 from typing import Callable, overload
-f = None # type: Callable[[AA], A]
-g = None # type: Callable[[B], B]
-h = None # type: Callable[[A], AA]
+f: Callable[[AA], A]
+g: Callable[[B], B]
+h: Callable[[A], AA]
 
 if int():
     h = i  # E: Incompatible types in assignment (expression has type overloaded function, variable has type "Callable[[A], AA]")
@@ -395,11 +397,13 @@ def j(x: A) -> AA:
 from foo import *
 [file foo.pyi]
 from typing import Callable, overload
-g1 = None # type: Callable[[A], A]
-g2 = None # type: Callable[[B], B]
-g3 = None # type: Callable[[C], C]
-g4 = None # type: Callable[[A], B]
-a, b, c = None, None, None # type: (A, B, C)
+g1: Callable[[A], A]
+g2: Callable[[B], B]
+g3: Callable[[C], C]
+g4: Callable[[A], B]
+a: A
+b: B
+c: C
 
 if int():
     b = f(a)  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
@@ -448,15 +452,15 @@ f([D])  # E: List item 0 has incompatible type "Type[D]"; expected "Callable[[An
 [case testSubtypingTypeTypeAsCallable]
 from typing import Callable, Type
 class A: pass
-x = None  # type: Callable[..., A]
-y = None  # type: Type[A]
+x: Callable[..., A]
+y: Type[A]
 x = y
 
 [case testSubtypingCallableAsTypeType]
 from typing import Callable, Type
 class A: pass
-x = None  # type: Callable[..., A]
-y = None  # type: Type[A]
+x: Callable[..., A]
+y: Type[A]
 if int():
     y = x  # E: Incompatible types in assignment (expression has type "Callable[..., A]", variable has type "Type[A]")
 
@@ -573,11 +577,11 @@ A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "i
 [case testMethodAsDataAttribute]
 from typing import Any, Callable, ClassVar
 class B: pass
-x = None # type: Any
+x: Any
 class A:
     f = x # type: ClassVar[Callable[[A], None]]
     g = x # type: ClassVar[Callable[[A, B], None]]
-a = None # type: A
+a: A
 a.f()
 a.g(B())
 a.f(a) # E: Too many arguments
@@ -586,21 +590,21 @@ a.g()  # E: Too few arguments
 [case testMethodWithInvalidMethodAsDataAttribute]
 from typing import Any, Callable, ClassVar
 class B: pass
-x = None # type: Any
+x: Any
 class A:
     f = x # type: ClassVar[Callable[[], None]]
     g = x # type: ClassVar[Callable[[B], None]]
-a = None # type: A
+a: A
 a.f() # E: Attribute function "f" with type "Callable[[], None]" does not accept self argument
 a.g() # E: Invalid self argument "A" to attribute function "g" with type "Callable[[B], None]"
 
 [case testMethodWithDynamicallyTypedMethodAsDataAttribute]
 from typing import Any, Callable, ClassVar
 class B: pass
-x = None # type: Any
+x: Any
 class A:
     f = x # type: ClassVar[Callable[[Any], Any]]
-a = None # type: A
+a: A
 a.f()
 a.f(a) # E: Too many arguments
 
@@ -627,7 +631,7 @@ class A:
     @overload
     def f(self, b: B) -> None: pass
     g = f
-a = None # type: A
+a: A
 a.g()
 a.g(B())
 a.g(a) # E: No overload variant matches argument type "A" \
@@ -640,7 +644,7 @@ a.g(a) # E: No overload variant matches argument type "A" \
 class A:
     def f(self, x): pass
     g = f
-a = None # type: A
+a: A
 a.g(object())
 a.g(a, a) # E: Too many arguments
 a.g()     # E: Too few arguments
@@ -652,7 +656,7 @@ class B: pass
 class A(Generic[t]):
     def f(self, x: t) -> None: pass
     g = f
-a = None # type: A[B]
+a: A[B]
 a.g(B())
 a.g(a)   # E: Argument 1 has incompatible type "A[B]"; expected "B"
 
@@ -661,11 +665,11 @@ from typing import Any, TypeVar, Generic, Callable, ClassVar
 t = TypeVar('t')
 class B: pass
 class C: pass
-x = None # type: Any
+x: Any
 class A(Generic[t]):
     f = x # type: ClassVar[Callable[[A[B]], None]]
-ab = None # type: A[B]
-ac = None # type: A[C]
+ab: A[B]
+ac: A[C]
 ab.f()
 ac.f()   # E: Invalid self argument "A[C]" to attribute function "f" with type "Callable[[A[B]], None]"
 
@@ -674,21 +678,21 @@ from typing import Any, TypeVar, Generic, Callable, ClassVar
 t = TypeVar('t')
 class B: pass
 class C: pass
-x = None # type: Any
+x: Any
 class A(Generic[t]):
     f = x # type: ClassVar[Callable[[A], None]]
-ab = None # type: A[B]
-ac = None # type: A[C]
+ab: A[B]
+ac: A[C]
 ab.f()
 ac.f()
 
 [case testCallableDataAttribute]
 from typing import Callable, ClassVar
 class A:
-    g = None # type: ClassVar[Callable[[A], None]]
+    g: ClassVar[Callable[[A], None]]
     def __init__(self, f: Callable[[], None]) -> None:
         self.f = f
-a = A(None)
+a = A(lambda: None)
 a.f()
 a.g()
 a.f(a) # E: Too many arguments
@@ -895,7 +899,7 @@ def dec(x) -> Callable[[Any], None]: pass
 class A:
     @dec
     def f(self, a, b, c): pass
-a = None # type: A
+a: A
 a.f()
 a.f(None) # E: Too many arguments for "f" of "A"
 
@@ -1945,9 +1949,9 @@ def a(f: Callable[[VarArg(int)], int]):
 from typing import Callable
 from mypy_extensions import Arg, DefaultArg
 
-int_str_fun = None # type: Callable[[int, str], str]
-int_opt_str_fun = None # type: Callable[[int, DefaultArg(str, None)], str]
-int_named_str_fun = None # type: Callable[[int, Arg(str, 's')], str]
+int_str_fun: Callable[[int, str], str]
+int_opt_str_fun: Callable[[int, DefaultArg(str, None)], str]
+int_named_str_fun: Callable[[int, Arg(str, 's')], str]
 
 def isf(ii: int, ss: str) -> str:
     return ss
@@ -2140,6 +2144,7 @@ main:8: error: Cannot use a covariant type variable as a parameter
 from typing import TypeVar, Generic, Callable
 
 [case testRejectContravariantReturnType]
+# flags: --no-strict-optional
 from typing import TypeVar, Generic
 
 t = TypeVar('t', contravariant=True)
@@ -2148,9 +2153,10 @@ class A(Generic[t]):
         return None
 [builtins fixtures/bool.pyi]
 [out]
-main:5: error: Cannot use a contravariant type variable as return type
+main:6: error: Cannot use a contravariant type variable as return type
 
 [case testAcceptCovariantReturnType]
+# flags: --no-strict-optional
 from typing import TypeVar, Generic
 
 t = TypeVar('t', covariant=True)
@@ -2158,6 +2164,7 @@ class A(Generic[t]):
     def foo(self) -> t:
         return None
 [builtins fixtures/bool.pyi]
+
 [case testAcceptContravariantArgument]
 from typing import TypeVar, Generic
 
@@ -2323,7 +2330,7 @@ T = TypeVar('T')
 def deco() -> Callable[[T], T]: pass
 reveal_type(deco)  # N: Revealed type is "def () -> def [T] (T`-1) -> T`-1"
 f = deco()
-reveal_type(f)  # N: Revealed type is "def [T] (T`-1) -> T`-1"
+reveal_type(f)  # N: Revealed type is "def [T] (T`1) -> T`1"
 i = f(3)
 reveal_type(i)  # N: Revealed type is "builtins.int"
 
@@ -2336,7 +2343,7 @@ U = TypeVar('U')
 def deco(x: U) -> Callable[[T, U], T]: pass
 reveal_type(deco)  # N: Revealed type is "def [U] (x: U`-1) -> def [T] (T`-2, U`-1) -> T`-2"
 f = deco("foo")
-reveal_type(f)  # N: Revealed type is "def [T] (T`-2, builtins.str) -> T`-2"
+reveal_type(f)  # N: Revealed type is "def [T] (T`1, builtins.str) -> T`1"
 i = f(3, "eggs")
 reveal_type(i)  # N: Revealed type is "builtins.int"
 
@@ -2347,9 +2354,9 @@ T = TypeVar('T')
 R = TypeVar('R')
 def deco() -> Callable[[T], Callable[[T, R], R]]: pass
 f = deco()
-reveal_type(f)  # N: Revealed type is "def [T] (T`-1) -> def [R] (T`-1, R`-2) -> R`-2"
+reveal_type(f)  # N: Revealed type is "def [T] (T`2) -> def [R] (T`2, R`1) -> R`1"
 g = f(3)
-reveal_type(g)  # N: Revealed type is "def [R] (builtins.int, R`-2) -> R`-2"
+reveal_type(g)  # N: Revealed type is "def [R] (builtins.int, R`3) -> R`3"
 s = g(4, "foo")
 reveal_type(s)  # N: Revealed type is "builtins.str"
 
@@ -2538,7 +2545,6 @@ reveal_type(bar(None))  # N: Revealed type is "None"
 [out]
 
 [case testNoComplainOverloadNoneStrict]
-# flags: --strict-optional
 from typing import overload, Optional
 @overload
 def bar(x: None) -> None:
@@ -2567,7 +2573,6 @@ xx: Optional[int] = X(x_in)
 [out]
 
 [case testNoComplainInferredNoneStrict]
-# flags: --strict-optional
 from typing import TypeVar, Optional
 T = TypeVar('T')
 def X(val: T) -> T: ...
@@ -2752,8 +2757,7 @@ class E(D): pass
 class F(E):
     @override
     def f(self, x: int) -> str: pass
-[typing fixtures/typing-full.pyi]
-[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-override.pyi]
 
 [case explicitOverrideStaticmethod]
 # flags: --python-version 3.12
@@ -2785,8 +2789,8 @@ class D(A):
     def f(x: str) -> str: pass  # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int" \
                                 # N: This violates the Liskov substitution principle \
                                 # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
-[typing fixtures/typing-full.pyi]
-[builtins fixtures/callable.pyi]
+[typing fixtures/typing-override.pyi]
+[builtins fixtures/staticmethod.pyi]
 
 [case explicitOverrideClassmethod]
 # flags: --python-version 3.12
@@ -2818,8 +2822,8 @@ class D(A):
     def f(cls, x: str) -> str: pass  # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int" \
                                      # N: This violates the Liskov substitution principle \
                                      # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
-[typing fixtures/typing-full.pyi]
-[builtins fixtures/callable.pyi]
+[typing fixtures/typing-override.pyi]
+[builtins fixtures/classmethod.pyi]
 
 [case explicitOverrideProperty]
 # flags: --python-version 3.12
@@ -2853,8 +2857,8 @@ class D(A):
                               # N:          str \
                               # N:      Subclass: \
                               # N:          int
+[typing fixtures/typing-override.pyi]
 [builtins fixtures/property.pyi]
-[typing fixtures/typing-full.pyi]
 
 [case explicitOverrideSettableProperty]
 # flags: --python-version 3.12
@@ -2891,8 +2895,8 @@ class D(A):
 
     @f.setter
     def f(self, value: int) -> None: pass
+[typing fixtures/typing-override.pyi]
 [builtins fixtures/property.pyi]
-[typing fixtures/typing-full.pyi]
 
 [case invalidExplicitOverride]
 # flags: --python-version 3.12
@@ -2907,8 +2911,7 @@ class A: pass
 def g() -> None:
     @override  # E: "override" used with a non-method
     def h(b: bool) -> int: pass
-[typing fixtures/typing-full.pyi]
-[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-override.pyi]
 
 [case explicitOverrideSpecialMethods]
 # flags: --python-version 3.12
@@ -2924,8 +2927,7 @@ class B(A):
 class C:
     @override
     def __init__(self, a: int) -> None: pass
-[typing fixtures/typing-full.pyi]
-[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-override.pyi]
 
 [case explicitOverrideFromExtensions]
 from typing_extensions import override
@@ -2936,7 +2938,6 @@ class A:
 class B(A):
     @override
     def f2(self, x: int) -> str: pass  # E: Method "f2" is marked as an override, but no base method was found with this name
-[typing fixtures/typing-full.pyi]
 [builtins fixtures/tuple.pyi]
 
 [case explicitOverrideOverloads]
@@ -2953,8 +2954,7 @@ class B(A):
     def f2(self, x: str) -> str: pass
     @override
     def f2(self, x: int | str) -> str: pass
-[typing fixtures/typing-full.pyi]
-[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-override.pyi]
 
 [case explicitOverrideNotOnOverloadsImplementation]
 # flags: --python-version 3.12
@@ -2978,8 +2978,7 @@ class C(A):
     @overload
     def f(self, y: str) -> str: pass
     def f(self, y: int | str) -> str: pass
-[typing fixtures/typing-full.pyi]
-[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-override.pyi]
 
 [case explicitOverrideOnMultipleOverloads]
 # flags: --python-version 3.12
@@ -3005,5 +3004,184 @@ class C(A):
     def f(self, y: str) -> str: pass
     @override
     def f(self, y: int | str) -> str: pass
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-override.pyi]
+
+[case explicitOverrideCyclicDependency]
+# flags: --python-version 3.12
+import b
+[file a.py]
+from typing import override
+import b
+import c
+
+class A(b.B):
+    @override  # This is fine
+    @c.deco
+    def meth(self) -> int: ...
+[file b.py]
+import a
+import c
+
+class B:
+    @c.deco
+    def meth(self) -> int: ...
+[file c.py]
+from typing import TypeVar, Tuple, Callable
+T = TypeVar('T')
+def deco(f: Callable[..., T]) -> Callable[..., Tuple[T, int]]: ...
 [builtins fixtures/tuple.pyi]
+[typing fixtures/typing-override.pyi]
+
+[case requireExplicitOverrideMethod]
+# flags: --enable-error-code explicit-override --python-version 3.12
+from typing import override
+
+class A:
+    def f(self, x: int) -> str: pass
+
+class B(A):
+    @override
+    def f(self, y: int) -> str: pass
+
+class C(A):
+    def f(self, y: int) -> str: pass  # E: Method "f" is not using @override but is overriding a method in class "__main__.A"
+
+class D(B):
+    def f(self, y: int) -> str: pass  # E: Method "f" is not using @override but is overriding a method in class "__main__.B"
+[typing fixtures/typing-override.pyi]
+
+[case requireExplicitOverrideSpecialMethod]
+# flags: --enable-error-code explicit-override --python-version 3.12
+from typing import Callable, Self, TypeVar, override, overload
+
+T = TypeVar('T')
+def some_decorator(f: Callable[..., T]) -> Callable[..., T]: ...
+
+# Don't require override decorator for __init__ and __new__
+# See: https://github.com/python/typing/issues/1376
+class A:
+    def __init__(self) -> None: pass
+    def __new__(cls) -> Self: pass
+
+class B(A):
+    def __init__(self) -> None: pass
+    def __new__(cls) -> Self: pass
+
+class C(A):
+    @some_decorator
+    def __init__(self) -> None: pass
+
+    @some_decorator
+    def __new__(cls) -> Self: pass
+
+class D(A):
+    @overload
+    def __init__(self, x: int) -> None: ...
+    @overload
+    def __init__(self, x: str) -> None: ...
+    def __init__(self, x): pass
+
+    @overload
+    def __new__(cls, x: int) -> Self: pass
+    @overload
+    def __new__(cls, x: str) -> Self: pass
+    def __new__(cls, x): pass
+[typing fixtures/typing-override.pyi]
+
+[case requireExplicitOverrideProperty]
+# flags: --enable-error-code explicit-override --python-version 3.12
+from typing import override
+
+class A:
+    @property
+    def prop(self) -> int: pass
+
+class B(A):
+    @override
+    @property
+    def prop(self) -> int: pass
+
+class C(A):
+    @property
+    def prop(self) -> int: pass  # E: Method "prop" is not using @override but is overriding a method in class "__main__.A"
+[typing fixtures/typing-override.pyi]
+[builtins fixtures/property.pyi]
+
+[case requireExplicitOverrideOverload]
+# flags: --enable-error-code explicit-override --python-version 3.12
+from typing import overload, override
+
+class A:
+    @overload
+    def f(self, x: int) -> str: ...
+    @overload
+    def f(self, x: str) -> str: ...
+    def f(self, x): pass
+
+class B(A):
+    @overload
+    def f(self, y: int) -> str: ...
+    @overload
+    def f(self, y: str) -> str: ...
+    @override
+    def f(self, y): pass
+
+class C(A):
+    @overload
+    @override
+    def f(self, y: int) -> str: ...
+    @overload
+    def f(self, y: str) -> str: ...
+    def f(self, y): pass
+
+class D(A):
+    @overload
+    def f(self, y: int) -> str: ...
+    @overload
+    def f(self, y: str) -> str: ...
+    def f(self, y): pass  # E: Method "f" is not using @override but is overriding a method in class "__main__.A"
+[typing fixtures/typing-override.pyi]
+
+[case requireExplicitOverrideMultipleInheritance]
+# flags: --enable-error-code explicit-override --python-version 3.12
+from typing import override
+
+class A:
+    def f(self, x: int) -> str: pass
+class B:
+    def f(self, y: int) -> str: pass
+
+class C(A, B):
+    @override
+    def f(self, z: int) -> str: pass
+
+class D(A, B):
+    def f(self, z: int) -> str: pass  # E: Method "f" is not using @override but is overriding a method in class "__main__.A"
+[typing fixtures/typing-override.pyi]
+
+[case testExplicitOverrideAllowedForPrivate]
+# flags: --enable-error-code explicit-override --python-version 3.12
+
+class B:
+    def __f(self, y: int) -> str: pass
+
+class C(B):
+    def __f(self, y: int) -> str: pass  # OK
+[typing fixtures/typing-override.pyi]
+
+[case testCallableProperty]
+from typing import Callable
+
+class something_callable:
+    def __call__(self, fn) -> str: ...
+
+def decorator(fn: Callable[..., int]) -> something_callable: ...
+
+class A:
+    @property
+    @decorator
+    def f(self) -> int: ...
+
+reveal_type(A.f)  # N: Revealed type is "__main__.something_callable"
+reveal_type(A().f)  # N: Revealed type is "builtins.str"
+[builtins fixtures/property.pyi]

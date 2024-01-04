@@ -108,9 +108,14 @@ class IMAP4:
     def print_log(self) -> None: ...
 
 class IMAP4_SSL(IMAP4):
-    keyfile: str
-    certfile: str
-    if sys.version_info >= (3, 9):
+    if sys.version_info < (3, 12):
+        keyfile: str
+        certfile: str
+    if sys.version_info >= (3, 12):
+        def __init__(
+            self, host: str = "", port: int = 993, *, ssl_context: SSLContext | None = None, timeout: float | None = None
+        ) -> None: ...
+    elif sys.version_info >= (3, 9):
         def __init__(
             self,
             host: str = "",

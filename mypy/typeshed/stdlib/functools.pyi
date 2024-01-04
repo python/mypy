@@ -34,9 +34,9 @@ _T = TypeVar("_T")
 _S = TypeVar("_S")
 
 @overload
-def reduce(function: Callable[[_T, _S], _T], sequence: Iterable[_S], initial: _T) -> _T: ...
+def reduce(__function: Callable[[_T, _S], _T], __sequence: Iterable[_S], __initial: _T) -> _T: ...
 @overload
-def reduce(function: Callable[[_T, _T], _T], sequence: Iterable[_T]) -> _T: ...
+def reduce(__function: Callable[[_T, _T], _T], __sequence: Iterable[_T]) -> _T: ...
 
 class _CacheInfo(NamedTuple):
     hits: int
@@ -70,22 +70,47 @@ if sys.version_info >= (3, 8):
 else:
     def lru_cache(maxsize: int | None = 128, typed: bool = False) -> Callable[[Callable[..., _T]], _lru_cache_wrapper[_T]]: ...
 
-WRAPPER_ASSIGNMENTS: tuple[
-    Literal["__module__"], Literal["__name__"], Literal["__qualname__"], Literal["__doc__"], Literal["__annotations__"]
-]
+if sys.version_info >= (3, 12):
+    WRAPPER_ASSIGNMENTS: tuple[
+        Literal["__module__"],
+        Literal["__name__"],
+        Literal["__qualname__"],
+        Literal["__doc__"],
+        Literal["__annotations__"],
+        Literal["__type_params__"],
+    ]
+else:
+    WRAPPER_ASSIGNMENTS: tuple[
+        Literal["__module__"], Literal["__name__"], Literal["__qualname__"], Literal["__doc__"], Literal["__annotations__"]
+    ]
 WRAPPER_UPDATES: tuple[Literal["__dict__"]]
 
-def update_wrapper(
-    wrapper: _T,
-    wrapped: _AnyCallable,
-    assigned: Sequence[str] = ("__module__", "__name__", "__qualname__", "__doc__", "__annotations__"),
-    updated: Sequence[str] = ("__dict__",),
-) -> _T: ...
-def wraps(
-    wrapped: _AnyCallable,
-    assigned: Sequence[str] = ("__module__", "__name__", "__qualname__", "__doc__", "__annotations__"),
-    updated: Sequence[str] = ("__dict__",),
-) -> IdentityFunction: ...
+if sys.version_info >= (3, 12):
+    def update_wrapper(
+        wrapper: _T,
+        wrapped: _AnyCallable,
+        assigned: Sequence[str] = ("__module__", "__name__", "__qualname__", "__doc__", "__annotations__", "__type_params__"),
+        updated: Sequence[str] = ("__dict__",),
+    ) -> _T: ...
+    def wraps(
+        wrapped: _AnyCallable,
+        assigned: Sequence[str] = ("__module__", "__name__", "__qualname__", "__doc__", "__annotations__", "__type_params__"),
+        updated: Sequence[str] = ("__dict__",),
+    ) -> IdentityFunction: ...
+
+else:
+    def update_wrapper(
+        wrapper: _T,
+        wrapped: _AnyCallable,
+        assigned: Sequence[str] = ("__module__", "__name__", "__qualname__", "__doc__", "__annotations__"),
+        updated: Sequence[str] = ("__dict__",),
+    ) -> _T: ...
+    def wraps(
+        wrapped: _AnyCallable,
+        assigned: Sequence[str] = ("__module__", "__name__", "__qualname__", "__doc__", "__annotations__"),
+        updated: Sequence[str] = ("__dict__",),
+    ) -> IdentityFunction: ...
+
 def total_ordering(cls: type[_T]) -> type[_T]: ...
 def cmp_to_key(mycmp: Callable[[_T, _T], int]) -> Callable[[_T], SupportsAllComparisons]: ...
 

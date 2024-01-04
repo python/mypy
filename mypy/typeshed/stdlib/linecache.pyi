@@ -1,5 +1,6 @@
 import sys
-from typing import Any, Protocol
+from collections.abc import Callable
+from typing import Any
 from typing_extensions import TypeAlias
 
 if sys.version_info >= (3, 9):
@@ -10,8 +11,7 @@ else:
 _ModuleGlobals: TypeAlias = dict[str, Any]
 _ModuleMetadata: TypeAlias = tuple[int, float | None, list[str], str]
 
-class _SourceLoader(Protocol):
-    def __call__(self) -> str | None: ...
+_SourceLoader: TypeAlias = tuple[Callable[[], str | None]]
 
 cache: dict[str, _SourceLoader | _ModuleMetadata]  # undocumented
 

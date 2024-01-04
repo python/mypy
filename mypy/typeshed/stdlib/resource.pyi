@@ -1,6 +1,5 @@
 import sys
 from _typeshed import structseq
-from typing import overload
 from typing_extensions import Final, final
 
 if sys.platform != "win32":
@@ -86,8 +85,8 @@ if sys.platform != "win32":
     def getrusage(__who: int) -> struct_rusage: ...
     def setrlimit(__resource: int, __limits: tuple[int, int]) -> None: ...
     if sys.platform == "linux":
-        @overload
-        def prlimit(pid: int, resource: int, limits: tuple[int, int]) -> tuple[int, int]: ...
-        @overload
-        def prlimit(pid: int, resource: int) -> tuple[int, int]: ...
+        if sys.version_info >= (3, 12):
+            def prlimit(__pid: int, __resource: int, __limits: tuple[int, int] | None = None) -> tuple[int, int]: ...
+        else:
+            def prlimit(__pid: int, __resource: int, __limits: tuple[int, int] = ...) -> tuple[int, int]: ...
     error = OSError

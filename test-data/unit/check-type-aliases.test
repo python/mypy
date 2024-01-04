@@ -12,7 +12,7 @@ U = Union[int, str]
 def f(x: U) -> None: pass
 f(1)
 f('')
-f(()) # E: Argument 1 to "f" has incompatible type "Tuple[]"; expected "Union[int, str]"
+f(()) # E: Argument 1 to "f" has incompatible type "Tuple[()]"; expected "Union[int, str]"
 [targets __main__, __main__.f]
 [builtins fixtures/tuple.pyi]
 
@@ -28,7 +28,7 @@ f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Tuple[int, st
 [case testCallableTypeAlias]
 from typing import Callable
 A = Callable[[int], None]
-f = None  # type: A
+f: A
 f(1)
 f('') # E: Argument 1 has incompatible type "str"; expected "int"
 [targets __main__]
@@ -64,7 +64,7 @@ from _m import U
 def f(x: U) -> None: pass
 f(1)
 f('x')
-f(()) # E: Argument 1 to "f" has incompatible type "Tuple[]"; expected "Union[int, str]"
+f(()) # E: Argument 1 to "f" has incompatible type "Tuple[()]"; expected "Union[int, str]"
 [file _m.py]
 from typing import Union
 U = Union[int, str]
@@ -169,12 +169,12 @@ f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "str"
 [case testEmptyTupleTypeAlias]
 from typing import Tuple, Callable
 EmptyTuple = Tuple[()]
-x = None # type: EmptyTuple
-reveal_type(x)  # N: Revealed type is "Tuple[]"
+x: EmptyTuple
+reveal_type(x)  # N: Revealed type is "Tuple[()]"
 
 EmptyTupleCallable = Callable[[Tuple[()]], None]
-f = None # type: EmptyTupleCallable
-reveal_type(f)  # N: Revealed type is "def (Tuple[])"
+f: EmptyTupleCallable
+reveal_type(f)  # N: Revealed type is "def (Tuple[()])"
 [builtins fixtures/list.pyi]
 
 [case testForwardTypeAlias]
@@ -197,30 +197,35 @@ Alias = Tuple[int, T]
 [out]
 
 [case testRecursiveAliasesErrors1]
-# flags: --disable-recursive-aliases
-# Recursive aliases are not supported yet.
 from typing import Type, Callable, Union
 
-A = Union[A, int] # E: Cannot resolve name "A" (possible cyclic definition)
-B = Callable[[B], int] # E: Cannot resolve name "B" (possible cyclic definition)
-C = Type[C] # E: Cannot resolve name "C" (possible cyclic definition)
+def test() -> None:
+    A = Union[A, int]  # E: Cannot resolve name "A" (possible cyclic definition) \
+                       # N: Recursive types are not allowed at function scope
+    B = Callable[[B], int]  # E: Cannot resolve name "B" (possible cyclic definition) \
+                            # N: Recursive types are not allowed at function scope
+    C = Type[C]  # E: Cannot resolve name "C" (possible cyclic definition) \
+                 # N: Recursive types are not allowed at function scope
 
 [case testRecursiveAliasesErrors2]
-# flags: --disable-recursive-aliases --disable-error-code=used-before-def
-# Recursive aliases are not supported yet.
+# flags: --disable-error-code=used-before-def
 from typing import Type, Callable, Union
 
-A = Union[B, int]
-B = Callable[[C], int]
-C = Type[A]
-x: A
-reveal_type(x)
+def test() -> None:
+    A = Union[B, int]
+    B = Callable[[C], int]
+    C = Type[A]
+    x: A
+    reveal_type(x)
 [out]
 main:5: error: Cannot resolve name "A" (possible cyclic definition)
+main:5: note: Recursive types are not allowed at function scope
 main:5: error: Cannot resolve name "B" (possible cyclic definition)
 main:6: error: Cannot resolve name "B" (possible cyclic definition)
+main:6: note: Recursive types are not allowed at function scope
 main:6: error: Cannot resolve name "C" (possible cyclic definition)
 main:7: error: Cannot resolve name "C" (possible cyclic definition)
+main:7: note: Recursive types are not allowed at function scope
 main:9: note: Revealed type is "Union[Any, builtins.int]"
 
 [case testDoubleForwardAlias]
@@ -245,13 +250,16 @@ reveal_type(x[0].x) # N: Revealed type is "builtins.str"
 [out]
 
 [case testJSONAliasApproximation]
-# flags: --disable-recursive-aliases
 from typing import List, Union, Dict
-x: JSON # E: Cannot resolve name "JSON" (possible cyclic definition)
-JSON = Union[int, str, List[JSON], Dict[str, JSON]] # E: Cannot resolve name "JSON" (possible cyclic definition)
-reveal_type(x) # N: Revealed type is "Any"
-if isinstance(x, list):
-    reveal_type(x) # N: Revealed type is "builtins.list[Any]"
+
+def test() -> None:
+    x: JSON  # E: Cannot resolve name "JSON" (possible cyclic definition)  \
+             # N: Recursive types are not allowed at function scope
+    JSON = Union[int, str, List[JSON], Dict[str, JSON]]  # E: Cannot resolve name "JSON" (possible cyclic definition) \
+                                                         # N: Recursive types are not allowed at function scope
+    reveal_type(x) # N: Revealed type is "Any"
+    if isinstance(x, list):
+        reveal_type(x) # N: Revealed type is "builtins.list[Any]"
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
@@ -305,7 +313,6 @@ reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
 [builtins fixtures/bool.pyi]
 
 [case testNoneAliasStrict]
-# flags: --strict-optional
 from typing import Optional, Union
 void = type(None)
 x: int
@@ -1058,4 +1065,4 @@ def eval(e: Expr) -> int:
         return e[1]
     elif e[0] == 456:
         return -eval(e[1])
-[builtins fixtures/dict.pyi]
+[builtins fixtures/dict-full.pyi]

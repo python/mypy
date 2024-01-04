@@ -113,6 +113,7 @@ if sys.version_info >= (3, 8):
         __radd__ = __add__
         def __rsub__(self, x2: float | NormalDist) -> NormalDist: ...
         __rmul__ = __mul__
+        def __hash__(self) -> int: ...
 
 if sys.version_info >= (3, 12):
     def correlation(

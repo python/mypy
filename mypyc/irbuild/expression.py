@@ -55,7 +55,6 @@ from mypyc.ir.ops import (
     Assign,
     BasicBlock,
     ComparisonOp,
-    Float,
     Integer,
     LoadAddress,
     LoadLiteral,
@@ -92,7 +91,6 @@ from mypyc.irbuild.format_str_tokenizer import (
     tokenizer_printf_style,
 )
 from mypyc.irbuild.specialize import apply_function_specialization, apply_method_specialization
-from mypyc.irbuild.util import bytes_from_str
 from mypyc.primitives.bytes_ops import bytes_slice_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op
@@ -575,12 +573,8 @@ def try_constant_fold(builder: IRBuilder, expr: Expression) -> Value | None:
     Return None otherwise.
     """
     value = constant_fold_expr(builder, expr)
-    if isinstance(value, int):
-        return builder.load_int(value)
-    elif isinstance(value, str):
-        return builder.load_str(value)
-    elif isinstance(value, float):
-        return Float(value)
+    if value is not None:
+        return builder.load_literal_value(value)
     return None
 
 
@@ -662,10 +656,6 @@ def set_literal_values(builder: IRBuilder, items: Sequence[Expression]) -> list[
                 values.append(True)
             elif item.fullname == "builtins.False":
                 values.append(False)
-        elif isinstance(item, (BytesExpr, FloatExpr, ComplexExpr)):
-            # constant_fold_expr() doesn't handle these (yet?)
-            v = bytes_from_str(item.value) if isinstance(item, BytesExpr) else item.value
-            values.append(v)
         elif isinstance(item, TupleExpr):
             tuple_values = set_literal_values(builder, item.items)
             if tuple_values is not None:
@@ -685,7 +675,6 @@ def precompute_set_literal(builder: IRBuilder, s: SetExpr) -> Value | None:
     Supported items:
      - Anything supported by irbuild.constant_fold.constant_fold_expr()
      - None, True, and False
-     - Float, byte, and complex literals
      - Tuple literals with only items listed above
     """
     values = set_literal_values(builder, s.items)
@@ -826,21 +815,30 @@ def transform_basic_comparison(
         return builder.compare_tagged(left, right, op, line)
     if is_fixed_width_rtype(left.type) and op in int_comparison_op_mapping:
         if right.type == left.type:
-            op_id = ComparisonOp.signed_ops[op]
+            if left.type.is_signed:
+                op_id = ComparisonOp.signed_ops[op]
+            else:
+                op_id = ComparisonOp.unsigned_ops[op]
             return builder.builder.comparison_op(left, right, op_id, line)
         elif isinstance(right, Integer):
-            op_id = ComparisonOp.signed_ops[op]
+            if left.type.is_signed:
+                op_id = ComparisonOp.signed_ops[op]
+            else:
+                op_id = ComparisonOp.unsigned_ops[op]
             return builder.builder.comparison_op(
-                left, Integer(right.value >> 1, left.type), op_id, line
+                left, builder.coerce(right, left.type, line), op_id, line
             )
     elif (
         is_fixed_width_rtype(right.type)
         and op in int_comparison_op_mapping
         and isinstance(left, Integer)
     ):
-        op_id = ComparisonOp.signed_ops[op]
+        if right.type.is_signed:
+            op_id = ComparisonOp.signed_ops[op]
+        else:
+            op_id = ComparisonOp.unsigned_ops[op]
         return builder.builder.comparison_op(
-            Integer(left.value >> 1, right.type), right, op_id, line
+            builder.coerce(left, right.type, line), right, op_id, line
         )
 
     negate = False

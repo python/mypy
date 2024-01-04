@@ -15,6 +15,8 @@ error codes that are enabled by default.
    options by using a :ref:`configuration file <config-file>` or
    :ref:`command-line options <command-line>`.
 
+.. _code-type-arg:
+
 Check that type arguments exist [type-arg]
 ------------------------------------------
 
@@ -33,6 +35,8 @@ Example:
     # Error: Missing type parameters for generic type "list"  [type-arg]
     def remove_dups(items: list) -> list:
         ...
+
+.. _code-no-untyped-def:
 
 Check that every function has an annotation [no-untyped-def]
 ------------------------------------------------------------
@@ -62,6 +66,8 @@ Example:
          def __init__(self) -> None:
              self.value = 0
 
+.. _code-redundant-cast:
+
 Check that cast is not redundant [redundant-cast]
 -------------------------------------------------
 
@@ -81,6 +87,8 @@ Example:
     def example(x: Count) -> int:
         # Error: Redundant cast to "int"  [redundant-cast]
         return cast(int, x)
+
+.. _code-redundant-self:
 
 Check that methods do not have redundant Self annotations [redundant-self]
 --------------------------------------------------------------------------
@@ -103,6 +111,8 @@ Example:
        # Error: Redundant "Self" annotation for the first method argument
        def copy(self: Self) -> Self:
            return type(self)()
+
+.. _code-comparison-overlap:
 
 Check that comparisons are overlapping [comparison-overlap]
 -----------------------------------------------------------
@@ -135,6 +145,8 @@ literal:
     def is_magic(x: bytes) -> bool:
         return x == b'magic'  # OK
 
+.. _code-no-untyped-call:
+
 Check that no untyped functions are called [no-untyped-call]
 ------------------------------------------------------------
 
@@ -154,6 +166,7 @@ Example:
     def bad():
         ...
 
+.. _code-no-any-return:
 
 Check that function does not return Any value [no-any-return]
 -------------------------------------------------------------
@@ -175,6 +188,8 @@ Example:
         # Error: Returning Any from function declared to return "str"  [no-any-return]
         return fields(x)[0]
 
+.. _code-no-any-unimported:
+
 Check that types have no Any components due to missing imports [no-any-unimported]
 ----------------------------------------------------------------------------------
 
@@ -195,6 +210,8 @@ that ``Cat`` falls back to ``Any`` in a type annotation:
     def feed(cat: Cat) -> None:
         ...
 
+.. _code-unreachable:
+
 Check that statement or expression is unreachable [unreachable]
 ---------------------------------------------------------------
 
@@ -213,6 +230,8 @@ incorrect control flow or conditional checks that are accidentally always true o
         return
         # Error: Statement is unreachable  [unreachable]
         print('unreachable')
+
+.. _code-redundant-expr:
 
 Check that expression is redundant [redundant-expr]
 ---------------------------------------------------
@@ -235,6 +254,34 @@ mypy generates an error if it thinks that an expression is redundant.
         # Error: If condition in comprehension is always true  [redundant-expr]
         [i for i in range(x) if isinstance(i, int)]
 
+
+.. _code-possibly-undefined:
+
+Warn about variables that are defined only in some execution paths [possibly-undefined]
+---------------------------------------------------------------------------------------
+
+If you use :option:`--enable-error-code possibly-undefined <mypy --enable-error-code>`,
+mypy generates an error if it cannot verify that a variable will be defined in
+all execution paths. This includes situations when a variable definition
+appears in a loop, in a conditional branch, in an except handler, etc. For
+example:
+
+.. code-block:: python
+
+    # Use "mypy --enable-error-code possibly-undefined ..."
+
+    from typing import Iterable
+
+    def test(values: Iterable[int], flag: bool) -> None:
+        if flag:
+            a = 1
+        z = a + 1  # Error: Name "a" may be undefined [possibly-undefined]
+
+        for v in values:
+            b = v
+        z = b + 1  # Error: Name "b" may be undefined [possibly-undefined]
+
+.. _code-truthy-bool:
 
 Check that expression is not implicitly true in boolean context [truthy-bool]
 -----------------------------------------------------------------------------
@@ -259,6 +306,7 @@ Using an iterable value in a boolean context has a separate error code
     if foo:
          ...
 
+.. _code-truthy-iterable:
 
 Check that iterable is not implicitly true in boolean context [truthy-iterable]
 -------------------------------------------------------------------------------
@@ -286,8 +334,7 @@ items`` check is actually valid. If that is the case, it is
 recommended to annotate ``items`` as ``Collection[int]`` instead of
 ``Iterable[int]``.
 
-
-.. _ignore-without-code:
+.. _code-ignore-without-code:
 
 Check that ``# type: ignore`` include an error code [ignore-without-code]
 -------------------------------------------------------------------------
@@ -319,6 +366,8 @@ Example:
     # Error: "Foo" has no attribute "nme"; maybe "name"?
     f.nme = 42  # type: ignore[assignment]
 
+.. _code-unused-awaitable:
+
 Check that awaitable return value is used [unused-awaitable]
 ------------------------------------------------------------
 
@@ -347,6 +396,8 @@ silence the error:
 
     async def g() -> None:
         _ = asyncio.create_task(f())  # No error
+
+.. _code-unused-ignore:
 
 Check that ``# type: ignore`` comment is used [unused-ignore]
 -------------------------------------------------------------
@@ -391,3 +442,116 @@ Example:
         # The following will not generate an error on either
         # Python 3.8, or Python 3.9
         42 + "testing..."  # type: ignore
+
+.. _code-explicit-override:
+
+Check that ``@override`` is used when overriding a base class method [explicit-override]
+----------------------------------------------------------------------------------------
+
+If you use :option:`--enable-error-code explicit-override <mypy --enable-error-code>`
+mypy generates an error if you override a base class method without using the
+``@override`` decorator. An error will not be emitted for overrides of ``__init__``
+or ``__new__``. See `PEP 698 <https://peps.python.org/pep-0698/#strict-enforcement-per-project>`_.
+
+.. note::
+
+    Starting with Python 3.12, the ``@override`` decorator can be imported from ``typing``.
+    To use it with older Python versions, import it from ``typing_extensions`` instead.
+
+Example:
+
+.. code-block:: python
+
+    # Use "mypy --enable-error-code explicit-override ..."
+
+    from typing import override
+
+    class Parent:
+        def f(self, x: int) -> None:
+            pass
+
+        def g(self, y: int) -> None:
+            pass
+
+
+    class Child(Parent):
+        def f(self, x: int) -> None:  # Error: Missing @override decorator
+            pass
+
+        @override
+        def g(self, y: int) -> None:
+            pass
+
+.. _code-mutable-override:
+
+Check that overrides of mutable attributes are safe
+---------------------------------------------------
+
+This will enable the check for unsafe overrides of mutable attributes. For
+historical reasons, and because this is a relatively common pattern in Python,
+this check is not enabled by default. The example below is unsafe, and will be
+flagged when this error code is enabled:
+
+.. code-block:: python
+
+    from typing import Any
+
+    class C:
+        x: float
+        y: float
+        z: float
+
+    class D(C):
+        x: int  # Error: Covariant override of a mutable attribute
+                # (base class "C" defined the type as "float",
+                # expression has type "int")  [mutable-override]
+        y: float  # OK
+        z: Any  # OK
+
+    def f(c: C) -> None:
+        c.x = 1.1
+    d = D()
+    f(d)
+    d.x >> 1  # This will crash at runtime, because d.x is now float, not an int
+
+.. _code-unimported-reveal:
+
+Check that ``reveal_type`` is imported from typing or typing_extensions [unimported-reveal]
+-------------------------------------------------------------------------------------------
+
+Mypy used to have ``reveal_type`` as a special builtin
+that only existed during type-checking.
+In runtime it fails with expected ``NameError``,
+which can cause real problem in production, hidden from mypy.
+
+But, in Python3.11 :py:func:`typing.reveal_type` was added.
+``typing_extensions`` ported this helper to all supported Python versions.
+
+Now users can actually import ``reveal_type`` to make the runtime code safe.
+
+.. note::
+
+    Starting with Python 3.11, the ``reveal_type`` function can be imported from ``typing``.
+    To use it with older Python versions, import it from ``typing_extensions`` instead.
+
+.. code-block:: python
+
+    # Use "mypy --enable-error-code unimported-reveal"
+
+    x = 1
+    reveal_type(x)  # Note: Revealed type is "builtins.int" \
+                    # Error: Name "reveal_type" is not defined
+
+Correct usage:
+
+.. code-block:: python
+
+    # Use "mypy --enable-error-code unimported-reveal"
+    from typing import reveal_type   # or `typing_extensions`
+
+    x = 1
+    # This won't raise an error:
+    reveal_type(x)  # Note: Revealed type is "builtins.int"
+
+When this code is enabled, using ``reveal_locals`` is always an error,
+because there's no way one can import it.

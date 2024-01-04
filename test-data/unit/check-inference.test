@@ -33,8 +33,8 @@ class B: pass
 [case testLvarInitializedToVoid]
 import typing
 def f() -> None:
-    a = g()    # E: "g" does not return a value
-    #b, c = g() # "g" does not return a value TODO
+    a = g()    # E: "g" does not return a value (it only ever returns None)
+    #b, c = g() # "g" does not return a value (it only ever returns None) TODO
 
 def g() -> None: pass
 [out]
@@ -54,7 +54,7 @@ class B: pass
 
 [case testInferringLvarTypeFromGvar]
 
-g = None # type: B
+g: B
 
 def f() -> None:
     a = g
@@ -78,7 +78,7 @@ def g(): pass
 
 [case testInferringExplicitDynamicTypeForLvar]
 from typing import Any
-g = None # type: Any
+g: Any
 
 def f(a: Any) -> None:
     b = g
@@ -95,8 +95,8 @@ def f(a: Any) -> None:
 
 def f() -> None:
     a = A(), B()
-    aa = None # type: A
-    bb = None # type: B
+    aa: A
+    bb: B
     if int():
         bb = a[0] # E: Incompatible types in assignment (expression has type "A", variable has type "B")
         aa = a[1] # E: Incompatible types in assignment (expression has type "B", variable has type "A")
@@ -122,8 +122,8 @@ class A: pass
 from typing import TypeVar, Generic
 T = TypeVar('T')
 class A(Generic[T]): pass
-a_i = None # type: A[int]
-a_s = None # type: A[str]
+a_i: A[int]
+a_s: A[str]
 
 def f() -> None:
     a_int = A() # type: A[int]
@@ -182,7 +182,7 @@ class B: pass
 [case testInferringLvarTypesInTupleAssignment]
 from typing import Tuple
 def f() -> None:
-    t = None # type: Tuple[A, B]
+    t: Tuple[A, B]
     a, b = t
     if int():
         a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
@@ -200,7 +200,7 @@ class B: pass
 [case testInferringLvarTypesInNestedTupleAssignment1]
 from typing import Tuple
 def f() -> None:
-    t = None # type: Tuple[A, B]
+    t: Tuple[A, B]
     a1, (a, b) = A(), t
     if int():
         a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
@@ -386,7 +386,7 @@ reveal_type(C)  # N: Revealed type is "__main__.Foo"
 
 [case testInferringLvarTypesInMultiDefWithInvalidTuple]
 from typing import Tuple
-t = None # type: Tuple[object, object, object]
+t: Tuple[object, object, object]
 
 def f() -> None:
     a, b = t         # Fail
@@ -543,9 +543,9 @@ if int():
 [case testInferSimpleGenericFunction]
 from typing import Tuple, TypeVar
 T = TypeVar('T')
-a = None # type: A
-b = None # type: B
-c = None # type: Tuple[A, object]
+a: A
+b: B
+c: Tuple[A, object]
 
 def id(a: T) -> T: pass
 
@@ -569,8 +569,8 @@ from typing import TypeVar
 T = TypeVar('T')
 def f() -> None:
     a = id
-    b = None # type: int
-    c = None # type: str
+    b: int
+    c: str
     if int():
         b = a(c) # E: Incompatible types in assignment (expression has type "str", variable has type "int")
         b = a(b)
@@ -584,7 +584,7 @@ def id(x: T) -> T:
 from typing import TypeVar
 T = TypeVar('T')
 class A: pass
-a = None # type: A
+a: A
 
 def ff() -> None:
     x = f() # E: Need type annotation for "x"
@@ -605,8 +605,8 @@ class A: pass
 class B(A): pass
 
 T = TypeVar('T')
-a = None # type: A
-b = None # type: B
+a: A
+b: B
 
 def f(a: T, b: T) -> T: pass
 
@@ -629,10 +629,11 @@ def f(a: T, b: S) -> Tuple[T, S]: pass
 class A: pass
 class B: pass
 
-a, b = None, None # type: (A, B)
-taa = None # type: Tuple[A, A]
-tab = None # type: Tuple[A, B]
-tba = None # type: Tuple[B, A]
+a: A
+b: B
+taa: Tuple[A, A]
+tab: Tuple[A, B]
+tba: Tuple[B, A]
 
 if int():
     taa = f(a, b) # E: Argument 2 to "f" has incompatible type "B"; expected "A"
@@ -651,9 +652,9 @@ if int():
 [case testConstraintSolvingWithSimpleGenerics]
 from typing import TypeVar, Generic
 T = TypeVar('T')
-ao = None # type: A[object]
-ab = None # type: A[B]
-ac = None # type: A[C]
+ao: A[object]
+ab: A[B]
+ac: A[C]
 
 def f(a: 'A[T]') -> 'A[T]': pass
 
@@ -683,8 +684,8 @@ if int():
 [case testConstraintSolvingFailureWithSimpleGenerics]
 from typing import TypeVar, Generic
 T = TypeVar('T')
-ao = None # type: A[object]
-ab = None # type: A[B]
+ao: A[object]
+ab: A[B]
 
 def f(a: 'A[T]', b: 'A[T]') -> None: pass
 
@@ -696,7 +697,9 @@ f(ao, ab) # E: Cannot infer type argument 1 of "f"
 f(ab, ao) # E: Cannot infer type argument 1 of "f"
 f(ao, ao)
 f(ab, ab)
+
 [case testTypeInferenceWithCalleeDefaultArgs]
+# flags: --no-strict-optional
 from typing import TypeVar
 T = TypeVar('T')
 a = None # type: A
@@ -809,7 +812,9 @@ class C(A, I, J): pass
 def f(a: T, b: T) -> T: pass
 
 T = TypeVar('T')
-a, i, j = None, None, None # type: (A, I, J)
+a: A
+i: I
+j: J
 
 a = f(B(), C())
 
@@ -846,7 +851,7 @@ from typing import Callable, Type, TypeVar
 T = TypeVar('T')
 def f(x: Callable[..., T]) -> T: return x()
 class A: pass
-x = None  # type: Type[A]
+x: Type[A]
 y = f(x)
 reveal_type(y)  # N: Revealed type is "__main__.A"
 
@@ -871,10 +876,10 @@ g('a')() # E: "List[str]" not callable
 # The next line is a case where there are multiple ways to satisfy a constraint
 # involving a Union. Either T = List[str] or T = str would turn out to be valid,
 # but mypy doesn't know how to branch on these two options (and potentially have
-# to backtrack later) and defaults to T = <nothing>. The result is an
+# to backtrack later) and defaults to T = Never. The result is an
 # awkward error message. Either a better error message, or simply accepting the
 # call, would be preferable here.
-g(['a']) # E: Argument 1 to "g" has incompatible type "List[str]"; expected "List[<nothing>]"
+g(['a']) # E: Argument 1 to "g" has incompatible type "List[str]"; expected "List[Never]"
 
 h(g(['a']))
 
@@ -908,7 +913,6 @@ def call(c: Callable[[int], Any], i: int) -> None:
 [out]
 
 [case testCallableMeetAndJoin]
-# flags: --python-version 3.6
 from typing import Callable, Any, TypeVar
 
 class A: ...
@@ -968,7 +972,7 @@ from typing import TypeVar, Union, List
 T = TypeVar('T')
 def f() -> List[T]: pass
 d1 = f() # type: Union[List[int], str]
-d2 = f() # type: Union[int, str] # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "Union[int, str]")
+d2 = f() # type: Union[int, str] # E: Incompatible types in assignment (expression has type "List[Never]", variable has type "Union[int, str]")
 def g(x: T) -> List[T]: pass
 d3 = g(1) # type: Union[List[int], List[str]]
 [builtins fixtures/list.pyi]
@@ -1031,7 +1035,8 @@ class A: pass
 class B: pass
 def d_ab() -> Dict[A, B]: return {}
 def d_aa() -> Dict[A, A]: return {}
-a, b = None, None # type: (A, B)
+a: A
+b: B
 d = {a:b}
 if int():
     d = d_ab()
@@ -1041,7 +1046,8 @@ if int():
 
 [case testSetLiteral]
 from typing import Any, Set
-a, x = None, None # type: (int, Any)
+a: int
+x: Any
 def s_i() -> Set[int]: return set()
 def s_s() -> Set[str]: return set()
 s = {a}
@@ -1113,7 +1119,8 @@ list_2 = [f, h]
 
 
 [case testInferenceOfFor1]
-a, b = None, None # type: (A, B)
+a: A
+b: B
 
 class A: pass
 class B: pass
@@ -1132,7 +1139,9 @@ class A: pass
 class B: pass
 class C: pass
 
-a, b, c = None, None, None # type: (A, B, C)
+a: A
+b: B
+c: C
 for x, (y, z) in [(A(), (B(), C()))]:
     b = x # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     c = y # E: Incompatible types in assignment (expression has type "B", variable has type "C")
@@ -1152,7 +1161,8 @@ for xxx, yyy in [(None, None)]:
 class A: pass
 class B: pass
 
-a, b = None, None # type: (A, B)
+a: A
+b: B
 
 for x, y in [[A()]]:
     b = x # E: Incompatible types in assignment (expression has type "A", variable has type "B")
@@ -1170,7 +1180,7 @@ for e, f in [[]]:  # E: Need type annotation for "e" \
 [case testForStatementInferenceWithVoid]
 def f() -> None: pass
 
-for x in f(): # E: "f" does not return a value
+for x in f(): # E: "f" does not return a value (it only ever returns None)
     pass
 [builtins fixtures/for.pyi]
 
@@ -1234,7 +1244,7 @@ class B: pass
 
 
 [case testMultipleAssignmentWithPartialDefinition]
-a = None # type: A
+a: A
 if int():
     x, a = a, a
     if int():
@@ -1246,7 +1256,7 @@ if int():
 class A: pass
 
 [case testMultipleAssignmentWithPartialDefinition2]
-a = None # type: A
+a: A
 if int():
     a, x = [a, a]
     if int():
@@ -1260,7 +1270,7 @@ class A: pass
 
 [case testMultipleAssignmentWithPartialDefinition3]
 from typing import Any, cast
-a = None # type: A
+a: A
 if int():
     x, a = cast(Any, a)
     if int():
@@ -1275,7 +1285,7 @@ class A: pass
 class A: pass
 class B: pass
 
-if A:
+if int():
     a = A()
     if int():
         a = A()
@@ -1365,21 +1375,22 @@ class B: pass
 [builtins fixtures/list.pyi]
 
 [case testUninferableLambda]
+# flags: --new-type-inference
 from typing import TypeVar, Callable
 X = TypeVar('X')
 def f(x: Callable[[X], X]) -> X: pass
-y = f(lambda x: x) # E: Cannot infer type argument 1 of "f"
+y = f(lambda x: x)  # E: Need type annotation for "y"
 
 [case testUninferableLambdaWithTypeError]
+# flags: --new-type-inference
 from typing import TypeVar, Callable
 X = TypeVar('X')
 def f(x: Callable[[X], X], y: str) -> X: pass
-y = f(lambda x: x, 1) # Fail
-[out]
-main:4: error: Cannot infer type argument 1 of "f"
-main:4: error: Argument 2 to "f" has incompatible type "int"; expected "str"
+y = f(lambda x: x, 1) # E: Need type annotation for "y" \
+                      # E: Argument 2 to "f" has incompatible type "int"; expected "str"
 
 [case testInferLambdaNone]
+# flags: --no-strict-optional
 from typing import Callable
 def f(x: Callable[[], None]) -> None: pass
 def g(x: Callable[[], int]) -> None: pass
@@ -1391,7 +1402,6 @@ f(b)
 g(b)
 
 [case testLambdaDefaultContext]
-# flags: --strict-optional
 from typing import Callable
 def f(a: Callable[..., None] = lambda *a, **k: None):
     pass
@@ -1442,8 +1452,8 @@ def g(cond: bool) -> Any:
 
 [case testOrOperationWithGenericOperands]
 from typing import List
-a = None # type: List[A]
-o = None # type: List[object]
+a: List[A]
+o: List[object]
 a2 = a or []
 if int():
     a = a2
@@ -1464,7 +1474,7 @@ x.y  # E: "object" has no attribute "y"
 
 [case testAccessDataAttributeBeforeItsTypeIsAvailable]
 
-a = None # type: A
+a: A
 a.x.y  # E: Cannot determine type of "x"
 class A:
    def __init__(self) -> None:
@@ -1481,7 +1491,7 @@ from typing import List, _promote
 class A: pass
 @_promote(A)
 class B: pass
-a = None  # type: List[A]
+a: List[A]
 x1 = [A(), B()]
 x2 = [B(), A()]
 x3 = [B(), B()]
@@ -1504,7 +1514,7 @@ class A: pass
 class B: pass
 @_promote(B)
 class C: pass
-a = None  # type: List[A]
+a: List[A]
 x1 = [A(), C()]
 x2 = [C(), A()]
 x3 = [B(), C()]
@@ -1800,7 +1810,6 @@ reveal_type(C().a)  # N: Revealed type is "builtins.dict[builtins.int, builtins.
 [builtins fixtures/dict.pyi]
 
 [case testInferAttributeInitializedToNoneAndAssigned]
-# flags: --strict-optional
 class C:
     def __init__(self) -> None:
         self.a = None
@@ -1847,7 +1856,6 @@ reveal_type(C().a)  # N: Revealed type is "builtins.dict[Any, Any]"
 [builtins fixtures/dict.pyi]
 
 [case testInferAttributeInitializedToNoneAndAssignedOtherMethod]
-# flags: --strict-optional
 class C:
     def __init__(self) -> None:
         self.a = None
@@ -1880,7 +1888,6 @@ reveal_type(C().a)  # N: Revealed type is "builtins.dict[Any, Any]"
 [builtins fixtures/dict.pyi]
 
 [case testInferAttributeInitializedToNoneAndAssignedClassBody]
-# flags: --strict-optional
 class C:
     a = None
     def __init__(self) -> None:
@@ -1915,6 +1922,7 @@ reveal_type(dd)  # N: Revealed type is "builtins.dict[builtins.str, builtins.int
 [builtins fixtures/dict.pyi]
 
 [case testInferFromEmptyDictWhenUsingInSpecialCase]
+# flags: --no-strict-optional
 d = None
 if 'x' in d:  # E: "None" has no attribute "__iter__" (not iterable)
     pass
@@ -1937,6 +1945,7 @@ reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
 
 [case testInferSetTypeFromInplaceOr]
+# flags: --no-strict-optional
 a = set()
 a |= {'x'}
 reveal_type(a)  # N: Revealed type is "builtins.set[builtins.str]"
@@ -1953,7 +1962,8 @@ def f() -> None:
         x = None
     else:
         x = 1
-    x() # E: "int" not callable
+    x() # E: "int" not callable \
+        # E: "None" not callable
 [out]
 
 [case testLocalVariablePartiallyTwiceInitializedToNone]
@@ -1964,7 +1974,8 @@ def f() -> None:
         x = None
     else:
         x = 1
-    x() # E: "int" not callable
+    x() # E: "int" not callable \
+        # E: "None" not callable
 [out]
 
 [case testLvarInitializedToNoneWithoutType]
@@ -1978,7 +1989,8 @@ def f() -> None:
 x = None
 if object():
     x = 1
-x() # E: "int" not callable
+x() # E: "int" not callable \
+    # E: "None" not callable
 
 [case testPartiallyInitializedToNoneAndThenToPartialList]
 x = None
@@ -2106,7 +2118,7 @@ arr = []
 arr.append(arr.append(1))
 [builtins fixtures/list.pyi]
 [out]
-main:3: error: "append" of "list" does not return a value
+main:3: error: "append" of "list" does not return a value (it only ever returns None)
 
 -- Multipass
 -- ---------
@@ -2339,8 +2351,8 @@ reveal_type(A.g)  # N: Revealed type is "def (x: builtins.str)"
 
 [case testUnificationRedundantUnion]
 from typing import Union
-a = None  # type: Union[int, str]
-b = None  # type: Union[str, tuple]
+a: Union[int, str]
+b: Union[str, tuple]
 def f(): pass
 def g(x: Union[int, str]): pass
 c = a if f() else b
@@ -2522,7 +2534,6 @@ if bool():
 [out]
 
 [case testDontMarkUnreachableAfterInferenceUninhabited2]
-# flags: --strict-optional
 from typing import TypeVar, Optional
 T = TypeVar('T')
 def f(x: Optional[T] = None) -> T: pass
@@ -2593,7 +2604,7 @@ x = ''
 reveal_type(x) # N: Revealed type is "builtins.str"
 
 [case testLocalPartialTypesWithGlobalInitializedToNoneStrictOptional]
-# flags: --local-partial-types --strict-optional
+# flags: --local-partial-types
 x = None
 
 def f() -> None:
@@ -2745,7 +2756,7 @@ class B(A):
 reveal_type(B.x) # N: Revealed type is "None"
 
 [case testLocalPartialTypesWithInheritance2]
-# flags: --local-partial-types --strict-optional
+# flags: --local-partial-types
 class A:
     x: str
 
@@ -2753,7 +2764,7 @@ class B(A):
     x = None  # E: Incompatible types in assignment (expression has type "None", base class "A" defined the type as "str")
 
 [case testLocalPartialTypesWithAnyBaseClass]
-# flags: --local-partial-types --strict-optional
+# flags: --local-partial-types
 from typing import Any
 
 A: Any
@@ -2765,7 +2776,7 @@ class C(B):
     y = None
 
 [case testLocalPartialTypesInMultipleMroItems]
-# flags: --local-partial-types --strict-optional
+# flags: --local-partial-types
 from typing import Optional
 
 class A:
@@ -3090,7 +3101,6 @@ class B(A):
     x = 2  # E: Incompatible types in assignment (expression has type "int", base class "A" defined the type as "str")
 
 [case testInheritedAttributeStrictOptional]
-# flags: --strict-optional
 class A:
     x: str
 
@@ -3116,7 +3126,7 @@ T = TypeVar('T')
 def f() -> Callable[..., NoReturn]: ...
 
 x = f()
-reveal_type(x)  # N: Revealed type is "def (*Any, **Any) -> <nothing>"
+reveal_type(x)  # N: Revealed type is "def (*Any, **Any) -> Never"
 
 [case testDeferralInNestedScopes]
 
@@ -3193,7 +3203,6 @@ x: Inv[int]
 reveal_type(f(x))  # N: Revealed type is "builtins.int"
 
 [case testOptionalTypeVarAgainstOptional]
-# flags: --strict-optional
 from typing import Optional, TypeVar, Iterable, Iterator, List
 
 _T = TypeVar('_T')
@@ -3240,7 +3249,6 @@ reveal_type(b) # N: Revealed type is "collections.defaultdict[builtins.int, buil
 [builtins fixtures/dict.pyi]
 
 [case testPartialDefaultDictListValueStrictOptional]
-# flags: --strict-optional
 from collections import defaultdict
 a = defaultdict(list)
 a['x'].append(1)
@@ -3317,7 +3325,6 @@ def g() -> None: pass
 reveal_type(f(g))  # N: Revealed type is "None"
 
 [case testInferCallableReturningNone2]
-# flags: --strict-optional
 from typing import Callable, TypeVar
 
 T = TypeVar("T")
@@ -3388,7 +3395,6 @@ def collection_from_dict_value(model: Type[T2]) -> None:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testRegression11705_Strict]
-# flags: --strict-optional
 # See: https://github.com/python/mypy/issues/11705
 from typing import Dict, Optional, NamedTuple
 class C(NamedTuple):
@@ -3438,7 +3444,6 @@ foo(("a", {"a": "b"}, "b"))
 [builtins fixtures/dict.pyi]
 
 [case testUseSupertypeAsInferenceContext]
-# flags: --strict-optional
 from typing import List, Optional
 
 class B:
@@ -3537,6 +3542,14 @@ T = TypeVar("T")
 def type_or_callable(value: T, tp: Union[Type[T], Callable[[int], T]]) -> T: ...
 reveal_type(type_or_callable(A("test"), A))  # N: Revealed type is "__main__.A"
 
+[case testUpperBoundAsInferenceFallback]
+from typing import Callable, TypeVar, Any, Mapping, Optional
+T = TypeVar("T", bound=Mapping[str, Any])
+def raises(opts: Optional[T]) -> T: pass
+def assertRaises(cb: Callable[..., object]) -> None: pass
+assertRaises(raises)  # OK
+[builtins fixtures/dict.pyi]
+
 [case testJoinWithAnyFallback]
 from unknown import X  # type: ignore[import]
 
@@ -3548,3 +3561,255 @@ class E(D): ...
 
 reveal_type([E(), D()])  # N: Revealed type is "builtins.list[__main__.D]"
 reveal_type([D(), E()])  # N: Revealed type is "builtins.list[__main__.D]"
+
+[case testCallableInferenceAgainstCallablePosVsStar]
+from typing import TypeVar, Callable, Tuple
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+def f(x: Callable[[T, S], None]) -> Tuple[T, S]: ...
+def g(*x: int) -> None: ...
+reveal_type(f(g))  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+[builtins fixtures/list.pyi]
+
+[case testCallableInferenceAgainstCallableStarVsPos]
+from typing import TypeVar, Callable, Tuple, Protocol
+
+T = TypeVar('T', contravariant=True)
+S = TypeVar('S', contravariant=True)
+
+class Call(Protocol[T, S]):
+    def __call__(self, __x: T, *args: S) -> None: ...
+
+def f(x: Call[T, S]) -> Tuple[T, S]: ...
+def g(*x: int) -> None: ...
+reveal_type(f(g))  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+[builtins fixtures/list.pyi]
+
+[case testCallableInferenceAgainstCallableNamedVsStar]
+from typing import TypeVar, Callable, Tuple, Protocol
+
+T = TypeVar('T', contravariant=True)
+S = TypeVar('S', contravariant=True)
+
+class Call(Protocol[T, S]):
+    def __call__(self, *, x: T, y: S) -> None: ...
+
+def f(x: Call[T, S]) -> Tuple[T, S]: ...
+def g(**kwargs: int) -> None: ...
+reveal_type(f(g))  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+[builtins fixtures/list.pyi]
+
+[case testCallableInferenceAgainstCallableStarVsNamed]
+from typing import TypeVar, Callable, Tuple, Protocol
+
+T = TypeVar('T', contravariant=True)
+S = TypeVar('S', contravariant=True)
+
+class Call(Protocol[T, S]):
+    def __call__(self, *, x: T, **kwargs: S) -> None: ...
+
+def f(x: Call[T, S]) -> Tuple[T, S]: ...
+def g(**kwargs: int) -> None: pass
+reveal_type(f(g))  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+[builtins fixtures/list.pyi]
+
+[case testCallableInferenceAgainstCallableNamedVsNamed]
+from typing import TypeVar, Callable, Tuple, Protocol
+
+T = TypeVar('T', contravariant=True)
+S = TypeVar('S', contravariant=True)
+
+class Call(Protocol[T, S]):
+    def __call__(self, *, x: T, y: S) -> None: ...
+
+def f(x: Call[T, S]) -> Tuple[T, S]: ...
+
+# Note: order of names is different w.r.t. protocol
+def g(*, y: int, x: str) -> None: pass
+reveal_type(f(g))  # N: Revealed type is "Tuple[builtins.str, builtins.int]"
+[builtins fixtures/list.pyi]
+
+[case testCallableInferenceAgainstCallablePosOnlyVsNamed]
+from typing import TypeVar, Callable, Tuple, Protocol
+
+T = TypeVar('T', contravariant=True)
+S = TypeVar('S', contravariant=True)
+
+class Call(Protocol[T]):
+    def __call__(self, *, x: T) -> None: ...
+
+def f(x: Call[T]) -> Tuple[T, T]: ...
+
+def g(__x: str) -> None: pass
+reveal_type(f(g))  # N: Revealed type is "Tuple[Never, Never]" \
+                   # E: Argument 1 to "f" has incompatible type "Callable[[str], None]"; expected "Call[Never]"
+[builtins fixtures/list.pyi]
+
+[case testCallableInferenceAgainstCallableNamedVsPosOnly]
+from typing import TypeVar, Callable, Tuple, Protocol
+
+T = TypeVar('T', contravariant=True)
+S = TypeVar('S', contravariant=True)
+
+class Call(Protocol[T]):
+    def __call__(self, __x: T) -> None: ...
+
+def f(x: Call[T]) -> Tuple[T, T]: ...
+
+def g(*, x: str) -> None: pass
+reveal_type(f(g))  # N: Revealed type is "Tuple[Never, Never]" \
+                   # E: Argument 1 to "f" has incompatible type "Callable[[NamedArg(str, 'x')], None]"; expected "Call[Never]"
+[builtins fixtures/list.pyi]
+
+[case testCallableInferenceAgainstCallablePosOnlyVsKwargs]
+from typing import TypeVar, Callable, Tuple, Protocol
+
+T = TypeVar('T', contravariant=True)
+S = TypeVar('S', contravariant=True)
+
+class Call(Protocol[T]):
+    def __call__(self, __x: T) -> None: ...
+
+def f(x: Call[T]) -> Tuple[T, T]: ...
+
+def g(**x: str) -> None: pass
+reveal_type(f(g))  # N: Revealed type is "Tuple[Never, Never]" \
+                   # E: Argument 1 to "f" has incompatible type "Callable[[KwArg(str)], None]"; expected "Call[Never]"
+[builtins fixtures/list.pyi]
+
+[case testCallableInferenceAgainstCallableNamedVsArgs]
+from typing import TypeVar, Callable, Tuple, Protocol
+
+T = TypeVar('T', contravariant=True)
+S = TypeVar('S', contravariant=True)
+
+class Call(Protocol[T]):
+    def __call__(self, *, x: T) -> None: ...
+
+def f(x: Call[T]) -> Tuple[T, T]: ...
+
+def g(*args: str) -> None: pass
+reveal_type(f(g))  # N: Revealed type is "Tuple[Never, Never]" \
+                   # E: Argument 1 to "f" has incompatible type "Callable[[VarArg(str)], None]"; expected "Call[Never]"
+[builtins fixtures/list.pyi]
+
+[case testInferenceAgainstTypeVarActualBound]
+from typing import Callable, TypeVar
+
+T = TypeVar("T")
+S = TypeVar("S")
+def test(f: Callable[[T], S]) -> Callable[[T], S]: ...
+
+F = TypeVar("F", bound=Callable[..., object])
+def dec(f: F) -> F:
+    reveal_type(test(f))  # N: Revealed type is "def (Any) -> builtins.object"
+    return f
+
+[case testInferenceAgainstTypeVarActualUnionBound]
+from typing import Protocol, TypeVar, Union
+
+T_co = TypeVar("T_co", covariant=True)
+class SupportsFoo(Protocol[T_co]):
+    def foo(self) -> T_co: ...
+
+class A:
+    def foo(self) -> A: ...
+class B:
+    def foo(self) -> B: ...
+
+def foo(f: SupportsFoo[T_co]) -> T_co: ...
+
+ABT = TypeVar("ABT", bound=Union[A, B])
+def simpler(k: ABT):
+    foo(k)
+
+[case testInferenceWorksWithEmptyCollectionsNested]
+from typing import List, TypeVar, NoReturn
+T = TypeVar('T')
+def f(a: List[T], b: List[T]) -> T: pass
+x = ["yes"]
+reveal_type(f(x, []))  # N: Revealed type is "builtins.str"
+reveal_type(f(["yes"], []))  # N: Revealed type is "builtins.str"
+
+empty: List[NoReturn]
+f(x, empty)  # E: Cannot infer type argument 1 of "f"
+f(["no"], empty)  # E: Cannot infer type argument 1 of "f"
+[builtins fixtures/list.pyi]
+
+[case testInferenceWorksWithEmptyCollectionsUnion]
+from typing import Any, Dict, NoReturn, NoReturn, Union
+
+def foo() -> Union[Dict[str, Any], Dict[int, Any]]:
+    return {}
+
+empty: Dict[NoReturn, NoReturn]
+def bar() -> Union[Dict[str, Any], Dict[int, Any]]:
+    return empty
+[builtins fixtures/dict.pyi]
+
+[case testUpperBoundInferenceFallbackNotOverused]
+from typing import TypeVar, Protocol, List
+
+S = TypeVar("S", covariant=True)
+class Foo(Protocol[S]):
+    def foo(self) -> S: ...
+def foo(x: Foo[S]) -> S: ...
+
+T = TypeVar("T", bound="Base")
+class Base:
+    def foo(self: T) -> T: ...
+class C(Base):
+    pass
+
+def f(values: List[T]) -> T: ...
+x = foo(f([C()]))
+reveal_type(x)  # N: Revealed type is "__main__.C"
+[builtins fixtures/list.pyi]
+
+[case testInferenceAgainstGenericCallableUnion]
+from typing import Callable, TypeVar, List, Union
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+def dec(f: Callable[[S], T]) -> Callable[[S], List[T]]: ...
+@dec
+def func(arg: T) -> Union[T, str]:
+    ...
+reveal_type(func)  # N: Revealed type is "def [S] (S`1) -> builtins.list[Union[S`1, builtins.str]]"
+reveal_type(func(42))  # N: Revealed type is "builtins.list[Union[builtins.int, builtins.str]]"
+
+def dec2(f: Callable[[S], List[T]]) -> Callable[[S], T]: ...
+@dec2
+def func2(arg: T) -> List[Union[T, str]]:
+    ...
+reveal_type(func2)  # N: Revealed type is "def [S] (S`4) -> Union[S`4, builtins.str]"
+reveal_type(func2(42))  # N: Revealed type is "Union[builtins.int, builtins.str]"
+[builtins fixtures/list.pyi]
+
+[case testInferenceAgainstGenericCallbackProtoMultiple]
+from typing import Callable, Protocol, TypeVar
+from typing_extensions import Concatenate, ParamSpec
+
+V_co = TypeVar("V_co", covariant=True)
+class Metric(Protocol[V_co]):
+    def __call__(self) -> V_co: ...
+
+T = TypeVar("T")
+P = ParamSpec("P")
+def simple_metric(func: Callable[Concatenate[int, P], T]) -> Callable[P, T]: ...
+
+@simple_metric
+def Negate(count: int, /, metric: Metric[float]) -> float: ...
+@simple_metric
+def Combine(count: int, m1: Metric[T], m2: Metric[T], /, *more: Metric[T]) -> T: ...
+
+reveal_type(Negate)  # N: Revealed type is "def (metric: __main__.Metric[builtins.float]) -> builtins.float"
+reveal_type(Combine)  # N: Revealed type is "def [T] (def () -> T`4, def () -> T`4, *more: def () -> T`4) -> T`4"
+
+def m1() -> float: ...
+def m2() -> float: ...
+reveal_type(Combine(m1, m2))  # N: Revealed type is "builtins.float"
+[builtins fixtures/list.pyi]

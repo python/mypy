@@ -63,8 +63,8 @@ print(abs(A()))
 5.5
 
 [case testAbs2]
-n = None  # type: int
-f = None  # type: float
+n: int
+f: float
 n = abs(1)
 abs(1) + 'x'  # Error
 f = abs(1.1)
@@ -95,7 +95,7 @@ print(list.__add__([1, 2], [3, 4]))
 import typing
 class A:
     x = 1
-    def f(self) -> None: print('f')
+    def f(self: typing.Optional["A"]) -> None: print('f')
 class B(A):
     pass
 B.f(None)
@@ -130,7 +130,7 @@ A docstring!
 [case testFunctionAttributes]
 import typing
 ord.__class__
-print(type(ord.__doc__ + ''))
+print(type(ord.__doc__ or '' + ''))
 print(ord.__name__)
 print(ord.__module__)
 [out]
@@ -333,25 +333,28 @@ _program.py:6: note: Revealed type is "typing.IO[Any]"
 [case testGenericPatterns]
 from typing import Pattern
 import re
-p = None  # type: Pattern[str]
+p: Pattern[str]
 p = re.compile('foo*')
-b = None  # type: Pattern[bytes]
+b: Pattern[bytes]
 b = re.compile(b'foo*')
-print(p.match('fooo').group(0))
+m = p.match('fooo')
+assert m
+print(m.group(0))
 [out]
 fooo
 
 [case testGenericMatch]
-from typing import Match
+from typing import Match, Optional
 import re
-def f(m: Match[bytes]) -> None:
+def f(m: Optional[Match[bytes]]) -> None:
+    assert m
     print(m.group(0))
 f(re.match(b'x*', b'xxy'))
 [out]
 b'xx'
 
 [case testIntFloatDucktyping]
-x = None  # type: float
+x: float
 x = 2.2
 x = 2
 def f(x: float) -> None: pass
@@ -374,18 +377,17 @@ math.sin(2)
 math.sin(2.2)
 
 [case testAbsReturnType]
-
-f = None  # type: float
-n = None  # type: int
+f: float
+n: int
 n = abs(2)
 f = abs(2.2)
 abs(2.2) + 'x'
 [out]
-_program.py:6: error: Unsupported operand types for + ("float" and "str")
+_program.py:5: error: Unsupported operand types for + ("float" and "str")
 
 [case testROperatorMethods]
-b = None  # type: bytes
-s = None  # type: str
+b: bytes
+s: str
 if int():
     s = b'foo' * 5 # Error
 if int():
@@ -434,7 +436,6 @@ True
 False
 
 [case testOverlappingOperatorMethods]
-
 class X: pass
 class A:
     def __add__(self, x) -> int:
@@ -444,11 +445,11 @@ class A:
 class B:
     def __radd__(self, x: A) -> str: return 'x'
 class C(X, B): pass
-b = None  # type: B
+b: B
 b = C()
 print(A() + b)
 [out]
-_program.py:9: error: Signatures of "__radd__" of "B" and "__add__" of "A" are unsafely overlapping
+_program.py:8: error: Signatures of "__radd__" of "B" and "__add__" of "A" are unsafely overlapping
 
 [case testBytesAndBytearrayComparisons]
 import typing
@@ -833,6 +834,7 @@ _program.py:3: error: Dict entry 1 has incompatible type "str": "str"; expected 
 _program.py:5: error: "Dict[str, int]" has no attribute "xyz"
 
 [case testDefaultDict]
+# flags: --new-type-inference
 import typing as t
 from collections import defaultdict
 
@@ -858,14 +860,14 @@ class MyDDict(t.DefaultDict[int,T], t.Generic[T]):
 MyDDict(dict)['0']
 MyDDict(dict)[0]
 [out]
-_program.py:6: error: Argument 1 to "defaultdict" has incompatible type "Type[List[Any]]"; expected "Callable[[], str]"
-_program.py:9: error: Invalid index type "str" for "defaultdict[int, str]"; expected type "int"
-_program.py:9: error: Incompatible types in assignment (expression has type "int", target has type "str")
-_program.py:19: error: Argument 1 to "tst" has incompatible type "defaultdict[str, List[<nothing>]]"; expected "defaultdict[int, List[<nothing>]]"
-_program.py:23: error: Invalid index type "str" for "MyDDict[Dict[_KT, _VT]]"; expected type "int"
+_program.py:7: error: Argument 1 to "defaultdict" has incompatible type "Type[List[Any]]"; expected "Optional[Callable[[], str]]"
+_program.py:10: error: Invalid index type "str" for "defaultdict[int, str]"; expected type "int"
+_program.py:10: error: Incompatible types in assignment (expression has type "int", target has type "str")
+_program.py:20: error: Argument 1 to "tst" has incompatible type "defaultdict[str, List[Never]]"; expected "defaultdict[int, List[Never]]"
+_program.py:24: error: Invalid index type "str" for "MyDDict[Dict[Never, Never]]"; expected type "int"
 
 [case testNoSubcriptionOfStdlibCollections]
-# flags: --python-version 3.6
+# flags: --python-version 3.7
 import collections
 from collections import Counter
 from typing import TypeVar
@@ -965,10 +967,10 @@ print(getattr(B(), 'x'))
 7
 
 [case testSortedNoError]
-from typing import Iterable, Callable, TypeVar, List, Dict
+from typing import Iterable, Callable, TypeVar, List, Dict, Optional
 T = TypeVar('T')
-def sorted(x: Iterable[T], *, key: Callable[[T], object] = None) -> None: ...
-a = None # type: List[Dict[str, str]]
+def sorted(x: Iterable[T], *, key: Optional[Callable[[T], object]] = None) -> None: ...
+a = []  # type: List[Dict[str, str]]
 sorted(a, key=lambda y: y[''])
 
 [case testAbstractProperty]
@@ -1001,9 +1003,13 @@ import re
 bre = b'a+'
 bpat = re.compile(bre)
 bpat = re.compile(bpat)
-re.search(bre, b'').groups()
+s1 = re.search(bre, b'')
+assert s1
+s1.groups()
 re.search(bre, u'') # Error
-re.search(bpat, b'').groups()
+s2 = re.search(bpat, b'')
+assert s2
+s2.groups()
 re.search(bpat, u'') # Error
 # match(), split(), findall(), finditer() are much the same, so skip those.
 # sub(), subn() have more overloads and we are checking these:
@@ -1016,11 +1022,11 @@ re.subn(bpat, b'', b'')[0] + b''
 re.subn(bre, lambda m: b'', b'')[0] + b''
 re.subn(bpat, lambda m: b'', b'')[0] + b''
 [out]
-_testReModuleBytes.py:7: error: No overload variant of "search" matches argument types "bytes", "str"
-_testReModuleBytes.py:7: note: Possible overload variants:
-_testReModuleBytes.py:7: note:     def search(pattern: Union[str, Pattern[str]], string: str, flags: Union[int, RegexFlag] = ...) -> Optional[Match[str]]
-_testReModuleBytes.py:7: note:     def search(pattern: Union[bytes, Pattern[bytes]], string: Buffer, flags: Union[int, RegexFlag] = ...) -> Optional[Match[bytes]]
-_testReModuleBytes.py:9: error: Argument 1 to "search" has incompatible type "Pattern[bytes]"; expected "Union[str, Pattern[str]]"
+_testReModuleBytes.py:9: error: No overload variant of "search" matches argument types "bytes", "str"
+_testReModuleBytes.py:9: note: Possible overload variants:
+_testReModuleBytes.py:9: note:     def search(pattern: Union[str, Pattern[str]], string: str, flags: Union[int, RegexFlag] = ...) -> Optional[Match[str]]
+_testReModuleBytes.py:9: note:     def search(pattern: Union[bytes, Pattern[bytes]], string: Buffer, flags: Union[int, RegexFlag] = ...) -> Optional[Match[bytes]]
+_testReModuleBytes.py:13: error: Argument 1 to "search" has incompatible type "Pattern[bytes]"; expected "Union[str, Pattern[str]]"
 
 [case testReModuleString]
 # Regression tests for various overloads in the re module -- string version
@@ -1028,9 +1034,13 @@ import re
 sre = 'a+'
 spat = re.compile(sre)
 spat = re.compile(spat)
-re.search(sre, '').groups()
+s1 = re.search(sre, '')
+assert s1
+s1.groups()
 re.search(sre, b'') # Error
-re.search(spat, '').groups()
+s2 = re.search(spat, '')
+assert s2
+s2.groups()
 re.search(spat, b'') # Error
 # match(), split(), findall(), finditer() are much the same, so skip those.
 # sus(), susn() have more overloads and we are checking these:
@@ -1043,11 +1053,11 @@ re.subn(spat, '', '')[0] + ''
 re.subn(sre, lambda m: '', '')[0] + ''
 re.subn(spat, lambda m: '', '')[0] + ''
 [out]
-_testReModuleString.py:7: error: No overload variant of "search" matches argument types "str", "bytes"
-_testReModuleString.py:7: note: Possible overload variants:
-_testReModuleString.py:7: note:     def search(pattern: Union[str, Pattern[str]], string: str, flags: Union[int, RegexFlag] = ...) -> Optional[Match[str]]
-_testReModuleString.py:7: note:     def search(pattern: Union[bytes, Pattern[bytes]], string: Buffer, flags: Union[int, RegexFlag] = ...) -> Optional[Match[bytes]]
-_testReModuleString.py:9: error: Argument 1 to "search" has incompatible type "Pattern[str]"; expected "Union[bytes, Pattern[bytes]]"
+_testReModuleString.py:9: error: No overload variant of "search" matches argument types "str", "bytes"
+_testReModuleString.py:9: note: Possible overload variants:
+_testReModuleString.py:9: note:     def search(pattern: Union[str, Pattern[str]], string: str, flags: Union[int, RegexFlag] = ...) -> Optional[Match[str]]
+_testReModuleString.py:9: note:     def search(pattern: Union[bytes, Pattern[bytes]], string: Buffer, flags: Union[int, RegexFlag] = ...) -> Optional[Match[bytes]]
+_testReModuleString.py:13: error: Argument 1 to "search" has incompatible type "Pattern[str]"; expected "Union[bytes, Pattern[bytes]]"
 
 [case testListSetitemTuple]
 from typing import List, Tuple
@@ -1084,7 +1094,6 @@ _program.py:17: note: Revealed type is "builtins.str"
 
 [case testTypedDictGet]
 # Test that TypedDict get plugin works with typeshed stubs
-# TODO: Make it possible to use strict optional here
 from mypy_extensions import TypedDict
 class A: pass
 D = TypedDict('D', {'x': int, 'y': str})
@@ -1096,14 +1105,14 @@ d.get()
 s = ''
 reveal_type(d.get(s))
 [out]
-_testTypedDictGet.py:7: note: Revealed type is "builtins.int"
-_testTypedDictGet.py:8: note: Revealed type is "builtins.str"
-_testTypedDictGet.py:9: note: Revealed type is "builtins.object"
-_testTypedDictGet.py:10: error: All overload variants of "get" of "Mapping" require at least one argument
-_testTypedDictGet.py:10: note: Possible overload variants:
-_testTypedDictGet.py:10: note:     def get(self, str, /) -> object
-_testTypedDictGet.py:10: note:     def [_T] get(self, str, /, default: object) -> object
-_testTypedDictGet.py:12: note: Revealed type is "builtins.object"
+_testTypedDictGet.py:6: note: Revealed type is "Union[builtins.int, None]"
+_testTypedDictGet.py:7: note: Revealed type is "Union[builtins.str, None]"
+_testTypedDictGet.py:8: note: Revealed type is "builtins.object"
+_testTypedDictGet.py:9: error: All overload variants of "get" of "Mapping" require at least one argument
+_testTypedDictGet.py:9: note: Possible overload variants:
+_testTypedDictGet.py:9: note:     def get(self, str, /) -> object
+_testTypedDictGet.py:9: note:     def [_T] get(self, str, /, default: object) -> object
+_testTypedDictGet.py:11: note: Revealed type is "builtins.object"
 
 [case testTypedDictMappingMethods]
 from mypy_extensions import TypedDict
@@ -1142,10 +1151,10 @@ _testTypedDictMappingMethods.py:16: error: Key "value" of TypedDict "Cell" canno
 _testTypedDictMappingMethods.py:21: note: Revealed type is "builtins.int"
 
 [case testCrashOnComplexCheckWithNamedTupleNext]
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
 MyNamedTuple = NamedTuple('MyNamedTuple', [('parent', 'MyNamedTuple')]) # type: ignore
-def foo(mymap) -> MyNamedTuple:
+def foo(mymap) -> Optional[MyNamedTuple]:
     return next((mymap[key] for key in mymap), None)
 [out]
 
@@ -1373,7 +1382,7 @@ JsonBlob = Dict[str, Any]
 Column = Union[List[str], List[int], List[bool], List[float], List[DateTime], List[JsonBlob]]
 
 def print_custom_table() -> None:
-    a = None  # type: Column
+    a: Column
 
     for row in simple_map(format_row, a, a, a, a, a, a, a, a):  # 8 columns
         reveal_type(row)
@@ -1432,7 +1441,7 @@ accepts_named_tuple(b)
 accepts_named_tuple(1)
 accepts_named_tuple((1, 2))
 [out]
-_testNamedTupleTypeInheritanceSpecialCase.py:8: note: Revealed type is "collections.OrderedDict[builtins.str, Any]"
+_testNamedTupleTypeInheritanceSpecialCase.py:8: note: Revealed type is "builtins.dict[builtins.str, Any]"
 _testNamedTupleTypeInheritanceSpecialCase.py:9: note: Revealed type is "builtins.tuple[builtins.str, ...]"
 _testNamedTupleTypeInheritanceSpecialCase.py:10: note: Revealed type is "builtins.dict[builtins.str, Any]"
 _testNamedTupleTypeInheritanceSpecialCase.py:17: error: Argument 1 to "accepts_named_tuple" has incompatible type "int"; expected "NamedTuple"
@@ -1473,14 +1482,12 @@ frozenset({1}) == [1]  # Error
 {1: 2}.keys() == frozenset({1})
 {1: 2}.items() == {(1, 2)}
 
-{1: 2}.keys() == {'no'}  # Error
+{1: 2}.keys() == {'no'}  # OK
 {1: 2}.values() == {2}  # Error
-{1: 2}.keys() == [1]  # Error
+{1: 2}.keys() == [1]  # OK
 [out]
 _testStrictEqualityAllowlist.py:5: error: Non-overlapping equality check (left operand type: "FrozenSet[int]", right operand type: "List[int]")
-_testStrictEqualityAllowlist.py:11: error: Non-overlapping equality check (left operand type: "dict_keys[int, int]", right operand type: "Set[str]")
 _testStrictEqualityAllowlist.py:12: error: Non-overlapping equality check (left operand type: "dict_values[int, int]", right operand type: "Set[int]")
-_testStrictEqualityAllowlist.py:13: error: Non-overlapping equality check (left operand type: "dict_keys[int, int]", right operand type: "List[int]")
 
 [case testUnreachableWithStdlibContextManagers]
 # mypy: warn-unreachable, strict-optional
@@ -1561,24 +1568,24 @@ note: A user-defined top-level module with name "typing" is not supported
 # flags: --ignore-missing-imports
 import scribe  # No Python 3 stubs available for scribe
 from scribe import x
-import maxminddb  # Python 3 stubs available for maxminddb
+import python2  # Python 3 stubs available for python2
 import foobar_asdf
 import jack  # This has a stubs package but was never bundled with mypy, so ignoring works
 [out]
-_testIgnoreImportIfNoPython3StubAvailable.py:4: error: Library stubs not installed for "maxminddb"
-_testIgnoreImportIfNoPython3StubAvailable.py:4: note: Hint: "python3 -m pip install types-maxminddb"
+_testIgnoreImportIfNoPython3StubAvailable.py:4: error: Library stubs not installed for "python2"
+_testIgnoreImportIfNoPython3StubAvailable.py:4: note: Hint: "python3 -m pip install types-six"
 _testIgnoreImportIfNoPython3StubAvailable.py:4: note: (or run "mypy --install-types" to install all missing stub packages)
 _testIgnoreImportIfNoPython3StubAvailable.py:4: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testNoPython3StubAvailable]
 import scribe
 from scribe import x
-import maxminddb
+import python2
 [out]
 _testNoPython3StubAvailable.py:1: error: Cannot find implementation or library stub for module named "scribe"
 _testNoPython3StubAvailable.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-_testNoPython3StubAvailable.py:3: error: Library stubs not installed for "maxminddb"
-_testNoPython3StubAvailable.py:3: note: Hint: "python3 -m pip install types-maxminddb"
+_testNoPython3StubAvailable.py:3: error: Library stubs not installed for "python2"
+_testNoPython3StubAvailable.py:3: note: Hint: "python3 -m pip install types-six"
 _testNoPython3StubAvailable.py:3: note: (or run "mypy --install-types" to install all missing stub packages)
 
 
@@ -1640,7 +1647,6 @@ foo(list((list(""), "")))
 [out]
 
 [case testNarrowTypeForDictKeys]
-# flags: --strict-optional
 from typing import Dict, KeysView, Optional
 
 d: Dict[str, int]
@@ -1658,10 +1664,10 @@ else:
     reveal_type(k)
 
 [out]
-_testNarrowTypeForDictKeys.py:7: note: Revealed type is "builtins.str"
-_testNarrowTypeForDictKeys.py:9: note: Revealed type is "Union[builtins.str, None]"
-_testNarrowTypeForDictKeys.py:14: note: Revealed type is "builtins.str"
-_testNarrowTypeForDictKeys.py:16: note: Revealed type is "Union[builtins.str, None]"
+_testNarrowTypeForDictKeys.py:6: note: Revealed type is "builtins.str"
+_testNarrowTypeForDictKeys.py:8: note: Revealed type is "Union[builtins.str, None]"
+_testNarrowTypeForDictKeys.py:13: note: Revealed type is "builtins.str"
+_testNarrowTypeForDictKeys.py:15: note: Revealed type is "Union[builtins.str, None]"
 
 [case testTypeAliasWithNewStyleUnion]
 # flags: --python-version 3.10
@@ -1795,9 +1801,9 @@ C = str | int
 D: TypeAlias = str | int
 [out]
 _testTypeAliasNotSupportedWithNewStyleUnion.py:3: error: Invalid type alias: expression is not a valid type
-_testTypeAliasNotSupportedWithNewStyleUnion.py:3: error: Value of type "Type[type]" is not indexable
+_testTypeAliasNotSupportedWithNewStyleUnion.py:3: error: The type "Type[type]" is not generic and not indexable
 _testTypeAliasNotSupportedWithNewStyleUnion.py:4: error: Invalid type alias: expression is not a valid type
-_testTypeAliasNotSupportedWithNewStyleUnion.py:4: error: Value of type "Type[type]" is not indexable
+_testTypeAliasNotSupportedWithNewStyleUnion.py:4: error: The type "Type[type]" is not generic and not indexable
 _testTypeAliasNotSupportedWithNewStyleUnion.py:5: error: Invalid type alias: expression is not a valid type
 _testTypeAliasNotSupportedWithNewStyleUnion.py:5: error: Unsupported left operand type for | ("Type[str]")
 _testTypeAliasNotSupportedWithNewStyleUnion.py:6: error: Invalid type alias: expression is not a valid type
@@ -1987,8 +1993,21 @@ def good9(foo1: Foo[Concatenate[int, P]], foo2: Foo[[int, str, bytes]], *args: P
 [out]
 _testStrictEqualitywithParamSpec.py:11: error: Non-overlapping equality check (left operand type: "Foo[[int]]", right operand type: "Bar[[int]]")
 
+[case testInferenceOfDunderDictOnClassObjects]
+class Foo: ...
+reveal_type(Foo.__dict__)
+reveal_type(Foo().__dict__)
+Foo.__dict__ = {}
+Foo().__dict__ = {}
+
+[out]
+_testInferenceOfDunderDictOnClassObjects.py:2: note: Revealed type is "types.MappingProxyType[builtins.str, Any]"
+_testInferenceOfDunderDictOnClassObjects.py:3: note: Revealed type is "builtins.dict[builtins.str, Any]"
+_testInferenceOfDunderDictOnClassObjects.py:4: error: Property "__dict__" defined in "type" is read-only
+_testInferenceOfDunderDictOnClassObjects.py:4: error: Incompatible types in assignment (expression has type "Dict[Never, Never]", variable has type "MappingProxyType[str, Any]")
+
 [case testTypeVarTuple]
-# flags: --enable-incomplete-feature=TypeVarTuple --enable-incomplete-feature=Unpack --python-version=3.11
+# flags: --python-version=3.11
 from typing import Any, Callable, Unpack, TypeVarTuple
 
 Ts = TypeVarTuple("Ts")
@@ -2000,7 +2019,6 @@ def call(callback: Callable[[Unpack[Ts]], Any], *args: Unpack[Ts]) -> Any:
     ...
 
 [case testTypeVarTupleTypingExtensions]
-# flags: --enable-incomplete-feature=TypeVarTuple --enable-incomplete-feature=Unpack
 from typing_extensions import Unpack, TypeVarTuple
 from typing import Any, Callable
 
@@ -2011,3 +2029,91 @@ def foo(callback: Callable[[], Any]) -> None:
 
 def call(callback: Callable[[Unpack[Ts]], Any], *args: Unpack[Ts]) -> Any:
     ...
+
+[case testDataclassReplace]
+from dataclasses import dataclass, replace
+
+@dataclass
+class A:
+    x: int
+
+a = A(x=42)
+a2 = replace(a, x=42)
+reveal_type(a2)
+a2 = replace()
+a2 = replace(a, x='spam')
+a2 = replace(a, x=42, q=42)
+[out]
+_testDataclassReplace.py:9: note: Revealed type is "_testDataclassReplace.A"
+_testDataclassReplace.py:10: error: Too few arguments for "replace"
+_testDataclassReplace.py:11: error: Argument "x" to "replace" of "A" has incompatible type "str"; expected "int"
+_testDataclassReplace.py:12: error: Unexpected keyword argument "q" for "replace" of "A"
+
+[case testGenericInferenceWithTuple]
+# flags: --new-type-inference
+from typing import TypeVar, Callable, Tuple
+
+T = TypeVar("T")
+
+def f(x: Callable[..., T]) -> T:
+    return x()
+
+x: Tuple[str, ...] = f(tuple)
+[out]
+
+[case testGenericInferenceWithDataclass]
+# flags: --new-type-inference
+from typing import Any, Collection, List
+from dataclasses import dataclass, field
+
+class Foo:
+    pass
+
+@dataclass
+class A:
+    items: Collection[Foo] = field(default_factory=list)
+[out]
+
+[case testGenericInferenceWithItertools]
+# flags: --new-type-inference
+from typing import TypeVar, Tuple
+from itertools import groupby
+K = TypeVar("K")
+V = TypeVar("V")
+
+def fst(kv: Tuple[K, V]) -> K:
+    k, v = kv
+    return k
+
+pairs = [(len(s), s) for s in ["one", "two", "three"]]
+grouped = groupby(pairs, key=fst)
+[out]
+
+[case testDataclassReplaceOptional]
+from dataclasses import dataclass, replace
+from typing import Optional
+
+@dataclass
+class A:
+    x: Optional[int]
+
+a = A(x=42)
+reveal_type(a)
+a2 = replace(a, x=None)  # OK
+reveal_type(a2)
+[out]
+_testDataclassReplaceOptional.py:9: note: Revealed type is "_testDataclassReplaceOptional.A"
+_testDataclassReplaceOptional.py:11: note: Revealed type is "_testDataclassReplaceOptional.A"
+
+[case testDataclassStrictOptionalAlwaysSet]
+from dataclasses import dataclass
+from typing import Callable, Optional
+
+@dataclass
+class Description:
+    name_fn: Callable[[Optional[int]], Optional[str]]
+
+def f(d: Description) -> None:
+    reveal_type(d.name_fn)
+[out]
+_testDataclassStrictOptionalAlwaysSet.py:9: note: Revealed type is "def (Union[builtins.int, None]) -> Union[builtins.str, None]"

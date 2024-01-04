@@ -104,7 +104,7 @@ Functions
        print(value + "!" * excitement)
 
    # Note that arguments without a type are dynamically typed (treated as Any)
-   # and that functions without any annotations not checked
+   # and that functions without any annotations are not checked
    def untyped(x):
        x.anything() + 1 + "string"  # no errors
 
@@ -178,8 +178,6 @@ Classes
    class AuditedBankAccount(BankAccount):
        # You can optionally declare instance variables in the class body
        audit_log: list[str]
-       # This is an instance variable with a default value
-       auditor_name: str = "The Spanish Inquisition"
 
        def __init__(self, account_name: str, initial_balance: int = 0) -> None:
            super().__init__(account_name, initial_balance)

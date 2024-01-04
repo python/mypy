@@ -14,7 +14,6 @@ if sys.platform != "win32":
         EX_NOHOST as EX_NOHOST,
         EX_NOINPUT as EX_NOINPUT,
         EX_NOPERM as EX_NOPERM,
-        EX_NOTFOUND as EX_NOTFOUND,
         EX_NOUSER as EX_NOUSER,
         EX_OK as EX_OK,
         EX_OSERR as EX_OSERR,
@@ -29,6 +28,7 @@ if sys.platform != "win32":
         F_TEST as F_TEST,
         F_TLOCK as F_TLOCK,
         F_ULOCK as F_ULOCK,
+        NGROUPS_MAX as NGROUPS_MAX,
         O_APPEND as O_APPEND,
         O_ASYNC as O_ASYNC,
         O_CREAT as O_CREAT,
@@ -222,6 +222,9 @@ if sys.platform != "win32":
         writev as writev,
     )
 
+    if sys.platform != "darwin":
+        from os import EX_NOTFOUND as EX_NOTFOUND
+
     if sys.platform == "linux":
         from os import (
             GRND_NONBLOCK as GRND_NONBLOCK,
@@ -236,6 +239,20 @@ if sys.platform != "win32":
             removexattr as removexattr,
             setxattr as setxattr,
         )
+
+        if sys.version_info >= (3, 10):
+            from os import (
+                EFD_CLOEXEC as EFD_CLOEXEC,
+                EFD_NONBLOCK as EFD_NONBLOCK,
+                EFD_SEMAPHORE as EFD_SEMAPHORE,
+                SPLICE_F_MORE as SPLICE_F_MORE,
+                SPLICE_F_MOVE as SPLICE_F_MOVE,
+                SPLICE_F_NONBLOCK as SPLICE_F_NONBLOCK,
+                eventfd as eventfd,
+                eventfd_read as eventfd_read,
+                eventfd_write as eventfd_write,
+                splice as splice,
+            )
     else:
         from os import chflags as chflags, lchflags as lchflags, lchmod as lchmod
 
@@ -313,6 +330,34 @@ if sys.platform != "win32":
 
     if sys.platform != "darwin":
         from os import RWF_DSYNC as RWF_DSYNC, RWF_HIPRI as RWF_HIPRI, RWF_NOWAIT as RWF_NOWAIT, RWF_SYNC as RWF_SYNC
+
+    if sys.version_info >= (3, 12) and sys.platform == "linux":
+        from os import (
+            CLONE_FILES as CLONE_FILES,
+            CLONE_FS as CLONE_FS,
+            CLONE_NEWCGROUP as CLONE_NEWCGROUP,
+            CLONE_NEWIPC as CLONE_NEWIPC,
+            CLONE_NEWNET as CLONE_NEWNET,
+            CLONE_NEWNS as CLONE_NEWNS,
+            CLONE_NEWPID as CLONE_NEWPID,
+            CLONE_NEWTIME as CLONE_NEWTIME,
+            CLONE_NEWUSER as CLONE_NEWUSER,
+            CLONE_NEWUTS as CLONE_NEWUTS,
+            CLONE_SIGHAND as CLONE_SIGHAND,
+            CLONE_SYSVSEM as CLONE_SYSVSEM,
+            CLONE_THREAD as CLONE_THREAD,
+            CLONE_VM as CLONE_VM,
+            setns as setns,
+            unshare as unshare,
+        )
+
+    if sys.version_info >= (3, 12) and sys.platform == "darwin":
+        from os import (
+            PRIO_DARWIN_BG as PRIO_DARWIN_BG,
+            PRIO_DARWIN_NONUI as PRIO_DARWIN_NONUI,
+            PRIO_DARWIN_PROCESS as PRIO_DARWIN_PROCESS,
+            PRIO_DARWIN_THREAD as PRIO_DARWIN_THREAD,
+        )
 
     # Not same as os.environ or os.environb
     # Because of this variable, we can't do "from posix import *" in os/__init__.pyi

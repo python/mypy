@@ -8,8 +8,8 @@ class A:
 class B:
     def bar(self, x: 'B', y: A) -> None: pass
 
-a = None # type: A
-b = None # type: B
+a: A
+b: B
 
 a.foo(B())  # E: Argument 1 to "foo" of "A" has incompatible type "B"; expected "A"
 a.bar(B(), A())  # E: "A" has no attribute "bar"
@@ -23,7 +23,7 @@ class A:
     def bar(self, x: 'B') -> None: pass
 class B(A): pass
 
-a = None # type: A
+a: A
 a.foo(A())
 a.foo(B())
 a.bar(A()) # E: Argument 1 to "bar" of "A" has incompatible type "A"; expected "B"
@@ -34,7 +34,7 @@ class A:
     def foo(self, x: 'B') -> None: pass
 class B(A): pass
 
-a = None # type: B
+a: B
 a.foo(A()) # Fail
 a.foo(B())
 
@@ -46,7 +46,7 @@ main:6: error: Argument 1 to "foo" of "A" has incompatible type "A"; expected "B
 class A:
     def foo(self, x: 'A') -> None: pass
 
-a = None # type: A
+a: A
 a.foo()               # Fail
 a.foo(object(), A())  # Fail
 [out]
@@ -103,7 +103,8 @@ main:5: error: "A" has no attribute "g"
 import typing
 class A:
     def f(self): pass
-A().f = None # E: Cannot assign to a method
+A().f = None  # E: Cannot assign to a method \
+              # E: Incompatible types in assignment (expression has type "None", variable has type "Callable[[], Any]")
 
 
 [case testOverrideAttributeWithMethod]
@@ -202,8 +203,8 @@ class A:
         self.a = aa
         self.b = bb
 class B: pass
-a = None # type: A
-b = None # type: B
+a: A
+b: B
 a.a = b # Fail
 a.b = a # Fail
 b.a     # Fail
@@ -217,8 +218,8 @@ main:11: error: "B" has no attribute "a"
 [case testExplicitAttributeInBody]
 
 class A:
-  x = None # type: A
-a = None # type: A
+  x: A
+a: A
 a.x = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 a.x = A()
 
@@ -458,9 +459,10 @@ class A:
     def g(self) -> 'A': pass
 class B(A):
     def f(self) -> A: pass  # Fail
-    def g(self) -> None: pass
+    def g(self) -> None: pass  # Fail
 [out]
 main:6: error: Return type "A" of "f" incompatible with return type "None" in supertype "A"
+main:7: error: Return type "None" of "g" incompatible with return type "A" in supertype "A"
 
 [case testOverride__new__WithDifferentSignature]
 class A:
@@ -907,7 +909,7 @@ b = __init__() # type: B # E: Incompatible types in assignment (expression has t
 from typing import Any, cast
 class A:
     def __init__(self, a: 'A') -> None: pass
-a = None # type: A
+a: A
 a.__init__(a)  # E: Accessing "__init__" on an instance is unsound, since instance.__init__ could be from an incompatible subclass
 (cast(Any, a)).__init__(a)
 
@@ -933,7 +935,6 @@ if int():
     b = D2()
 
 [case testConstructorJoinsWithCustomMetaclass]
-# flags: --strict-optional
 from typing import TypeVar
 import abc
 
@@ -1017,13 +1018,14 @@ class A:
 A.f(A())
 A.f(object())     # E: Argument 1 to "f" of "A" has incompatible type "object"; expected "A"
 A.f()             # E: Missing positional argument "self" in call to "f" of "A"
-A.f(None, None)   # E: Too many arguments for "f" of "A"
+A.f(None, None)   # E: Too many arguments for "f" of "A" \
+                  # E: Argument 1 to "f" of "A" has incompatible type "None"; expected "A"
 
 [case testAccessAttributeViaClass]
 import typing
 class B: pass
 class A:
-    x = None # type: A
+    x: A
 a = A.x # type: A
 b = A.x # type: B # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
@@ -1060,7 +1062,7 @@ A.f()    # E: Missing positional argument "self" in call to "f" of "A"
 import typing
 class B: pass
 class A:
-    x = None # type: B
+    x: B
 A.x = B()
 A.x = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "B")
 
@@ -1077,8 +1079,8 @@ A.x = A()   # E: Incompatible types in assignment (expression has type "A", vari
 class B: pass
 class A:
     def __init__(self, b: B) -> None: pass
-a = None # type: A
-b = None # type: B
+a: A
+b: B
 A.__init__(a, b)
 A.__init__(b, b) # E: Argument 1 to "__init__" of "A" has incompatible type "B"; expected "A"
 A.__init__(a, a) # E: Argument 2 to "__init__" of "A" has incompatible type "A"; expected "B"
@@ -1087,13 +1089,15 @@ A.__init__(a, a) # E: Argument 2 to "__init__" of "A" has incompatible type "A";
 import typing
 class A:
     def f(self): pass
-A.f = None # E: Cannot assign to a method
+A.f = None  # E: Cannot assign to a method \
+            # E: Incompatible types in assignment (expression has type "None", variable has type "Callable[[A], Any]")
 
 [case testAssignToNestedClassViaClass]
 import typing
 class A:
     class B: pass
-A.B = None # E: Cannot assign to a type
+A.B = None  # E: Cannot assign to a type \
+            # E: Incompatible types in assignment (expression has type "None", variable has type "Type[B]")
 [targets __main__]
 
 [case testAccessingClassAttributeWithTypeInferenceIssue]
@@ -1139,7 +1143,7 @@ A[int, int].x  # E: Access to generic instance variables via class is ambiguous
 def f() -> None:
     class A:
         def g(self) -> None: pass
-    a = None # type: A
+    a: A
     a.g()
     a.g(a) # E: Too many arguments for "g" of "A"
 [targets __main__, __main__.f]
@@ -1158,7 +1162,7 @@ def test() -> None:
             reveal_type(x)  # N: Revealed type is "T`-1"
             reveal_type(x.returns_int())  # N: Revealed type is "builtins.int"
             return foo
-    reveal_type(Foo.bar)  # N: Revealed type is "def [T <: __main__.Foo@5] (self: __main__.Foo@5, foo: T`-1) -> T`-1"
+    reveal_type(Foo.bar)  # N: Revealed type is "def [T <: __main__.Foo@5] (self: __main__.Foo@5, foo: T`1) -> T`1"
 
 [case testGenericClassWithInvalidTypevarUseWithinFunction]
 from typing import TypeVar
@@ -1200,7 +1204,7 @@ class A:
 
 def f() -> None:
     class A: pass
-    a = None # type: A
+    a: A
     if int():
         a = A()
         a = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
@@ -1209,7 +1213,7 @@ def f() -> None:
 [case testExternalReferenceToClassWithinClass]
 class A:
     class B: pass
-b = None # type: A.B
+b: A.B
 if int():
     b = A.B()
 if int():
@@ -1256,19 +1260,19 @@ reveal_type(Foo().Meta.name)  # N: Revealed type is "builtins.str"
 
 class A:
     def __init__(self):
-        self.x = None # type: int  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
-a = None # type: A
+        self.x: int  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+a: A
 a.x = 1
 a.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testAccessAttributeDeclaredInInitBeforeDeclaration]
 
-a = None # type: A
+a: A
 a.x = 1
 a.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 class A:
     def __init__(self):
-        self.x = None # type: int  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
+        self.x: int  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
 
 
 -- Special cases
@@ -1624,7 +1628,6 @@ a = A()
 reveal_type(a.f)  # N: Revealed type is "__main__.D"
 
 [case testAccessingDescriptorFromClass]
-# flags: --strict-optional
 from d import D, Base
 class A(Base):
     f = D()
@@ -1642,7 +1645,6 @@ class D:
 [builtins fixtures/bool.pyi]
 
 [case testAccessingDescriptorFromClassWrongBase]
-# flags: --strict-optional
 from d import D, Base
 class A:
     f = D()
@@ -1659,13 +1661,13 @@ class D:
     def __get__(self, inst: Base, own: Type[Base]) -> str: pass
 [builtins fixtures/bool.pyi]
 [out]
-main:5: error: Argument 2 to "__get__" of "D" has incompatible type "Type[A]"; expected "Type[Base]"
-main:5: note: Revealed type is "d.D"
-main:6: error: No overload variant of "__get__" of "D" matches argument types "A", "Type[A]"
-main:6: note: Possible overload variants:
-main:6: note:     def __get__(self, inst: None, own: Type[Base]) -> D
-main:6: note:     def __get__(self, inst: Base, own: Type[Base]) -> str
-main:6: note: Revealed type is "Any"
+main:4: error: Argument 2 to "__get__" of "D" has incompatible type "Type[A]"; expected "Type[Base]"
+main:4: note: Revealed type is "d.D"
+main:5: error: No overload variant of "__get__" of "D" matches argument types "A", "Type[A]"
+main:5: note: Possible overload variants:
+main:5: note:     def __get__(self, inst: None, own: Type[Base]) -> D
+main:5: note:     def __get__(self, inst: Base, own: Type[Base]) -> str
+main:5: note: Revealed type is "Any"
 
 [case testAccessingGenericNonDataDescriptor]
 from typing import TypeVar, Type, Generic, Any
@@ -1697,7 +1699,6 @@ a.g = ''
 a.g = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testAccessingGenericDescriptorFromClass]
-# flags: --strict-optional
 from d import D
 class A:
     f = D(10)  # type: D[A, int]
@@ -1719,7 +1720,6 @@ class D(Generic[T, V]):
 [builtins fixtures/bool.pyi]
 
 [case testAccessingGenericDescriptorFromInferredClass]
-# flags: --strict-optional
 from typing import Type
 from d import D
 class A:
@@ -1740,11 +1740,10 @@ class D(Generic[T, V]):
     def __get__(self, inst: T, own: Type[T]) -> V: pass
 [builtins fixtures/bool.pyi]
 [out]
-main:8: note: Revealed type is "d.D[__main__.A, builtins.int]"
-main:9: note: Revealed type is "d.D[__main__.A, builtins.str]"
+main:7: note: Revealed type is "d.D[__main__.A, builtins.int]"
+main:8: note: Revealed type is "d.D[__main__.A, builtins.str]"
 
 [case testAccessingGenericDescriptorFromClassBadOverload]
-# flags: --strict-optional
 from d import D
 class A:
     f = D(10)  # type: D[A, int]
@@ -1761,11 +1760,11 @@ class D(Generic[T, V]):
     def __get__(self, inst: T, own: Type[T]) -> V: pass
 [builtins fixtures/bool.pyi]
 [out]
-main:5: error: No overload variant of "__get__" of "D" matches argument types "None", "Type[A]"
-main:5: note: Possible overload variants:
-main:5: note:     def __get__(self, inst: None, own: None) -> D[A, int]
-main:5: note:     def __get__(self, inst: A, own: Type[A]) -> int
-main:5: note: Revealed type is "Any"
+main:4: error: No overload variant of "__get__" of "D" matches argument types "None", "Type[A]"
+main:4: note: Possible overload variants:
+main:4: note:     def __get__(self, inst: None, own: None) -> D[A, int]
+main:4: note:     def __get__(self, inst: A, own: Type[A]) -> int
+main:4: note: Revealed type is "Any"
 
 [case testAccessingNonDataDescriptorSubclass]
 from typing import Any
@@ -1960,8 +1959,8 @@ from typing import _promote
 class A: pass
 @_promote(A)
 class B: pass
-a = None  # type: A
-b = None  # type: B
+a: A
+b: B
 if int():
     b = a # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     a = b
@@ -1974,8 +1973,8 @@ class A: pass
 class B: pass
 @_promote(B)
 class C: pass
-a = None  # type: A
-c = None  # type: C
+a: A
+c: C
 if int():
     c = a # E: Incompatible types in assignment (expression has type "A", variable has type "C")
     a = c
@@ -2019,7 +2018,7 @@ tmp/foo.pyi:5: note:          @overload
 tmp/foo.pyi:5: note:          def __add__(self, int, /) -> int
 tmp/foo.pyi:5: note:          @overload
 tmp/foo.pyi:5: note:          def __add__(self, str, /) -> str
-tmp/foo.pyi:5: note: Overloaded operator methods cannot have wider argument types in overrides
+tmp/foo.pyi:5: note: Overloaded operator methods can't have wider argument types in overrides
 
 [case testOperatorMethodOverrideWideningArgumentType]
 import typing
@@ -2138,7 +2137,7 @@ tmp/foo.pyi:8: note:          @overload
 tmp/foo.pyi:8: note:          def __add__(self, str, /) -> A
 tmp/foo.pyi:8: note:          @overload
 tmp/foo.pyi:8: note:          def __add__(self, type, /) -> A
-tmp/foo.pyi:8: note: Overloaded operator methods cannot have wider argument types in overrides
+tmp/foo.pyi:8: note: Overloaded operator methods can't have wider argument types in overrides
 
 [case testOverloadedOperatorMethodOverrideWithSwitchedItemOrder]
 from foo import *
@@ -2734,8 +2733,8 @@ main:8: note: This violates the Liskov substitution principle
 main:8: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 
 [case testGetattribute]
-
-a, b = None, None # type: A, B
+a: A
+b: B
 class A:
     def __getattribute__(self, x: str) -> A:
         return A()
@@ -2790,8 +2789,8 @@ main:4: error: Invalid signature "Callable[[B, A], B]" for "__getattribute__"
 main:6: error: Invalid signature "Callable[[C, str, str], C]" for "__getattribute__"
 
 [case testGetattr]
-
-a, b = None, None # type: A, B
+a: A
+b: B
 class A:
     def __getattr__(self, x: str) -> A:
         return A()
@@ -3072,8 +3071,9 @@ C(bar='') # E: Unexpected keyword argument "bar" for "C"
 [builtins fixtures/__new__.pyi]
 
 [case testClassWith__new__AndCompatibilityWithType]
+from typing import Optional
 class C:
-    def __new__(cls, foo: int = None) -> 'C':
+    def __new__(cls, foo: Optional[int] = None) -> 'C':
         obj = object.__new__(cls)
         return obj
 def f(x: type) -> None: pass
@@ -3596,15 +3596,15 @@ main:7: note: Revealed type is "builtins.list[Type[__main__.B]]"
 [case testTypeEquivalentTypeAny]
 from typing import Type, Any
 
-a = None # type: Type[Any]
+a: Type[Any]
 b = a # type: type
 
-x = None # type: type
+x: type
 y = x # type: Type[Any]
 
 class C: ...
 
-p = None # type: type
+p: type
 q = p # type: Type[C]
 
 [builtins fixtures/list.pyi]
@@ -3614,9 +3614,9 @@ q = p # type: Type[C]
 from typing import Type, Any, TypeVar, Generic
 
 class C: ...
-x = None # type: type
-y = None # type: Type[Any]
-z = None # type: Type[C]
+x: type
+y: Type[Any]
+z: Type[C]
 
 lst = [x, y, z]
 reveal_type(lst) # N: Revealed type is "builtins.list[builtins.type]"
@@ -4540,6 +4540,39 @@ def f(TA: Type[A]):
     reveal_type(TA)  # N: Revealed type is "Type[__main__.A]"
     reveal_type(TA.x)  # N: Revealed type is "builtins.int"
 
+[case testMetaclassConflictingInstanceVars]
+from typing import ClassVar
+
+class Meta(type):
+    foo: int
+    bar: int
+    eggs: ClassVar[int] = 42
+    spam: ClassVar[int] = 42
+
+class Foo(metaclass=Meta):
+    foo: str
+    bar: ClassVar[str] = 'bar'
+    eggs: str
+    spam: ClassVar[str] = 'spam'
+
+reveal_type(Foo.foo)  # N: Revealed type is "builtins.int"
+reveal_type(Foo.bar)  # N: Revealed type is "builtins.str"
+reveal_type(Foo.eggs)  # N: Revealed type is "builtins.int"
+reveal_type(Foo.spam)  # N: Revealed type is "builtins.str"
+
+class MetaSub(Meta): ...
+
+class Bar(metaclass=MetaSub):
+    foo: str
+    bar: ClassVar[str] = 'bar'
+    eggs: str
+    spam: ClassVar[str] = 'spam'
+
+reveal_type(Bar.foo)  # N: Revealed type is "builtins.int"
+reveal_type(Bar.bar)  # N: Revealed type is "builtins.str"
+reveal_type(Bar.eggs)  # N: Revealed type is "builtins.int"
+reveal_type(Bar.spam)  # N: Revealed type is "builtins.str"
+
 [case testSubclassMetaclass]
 class M1(type):
     x = 0
@@ -4961,7 +4994,7 @@ a[0]()  # E: "int" not callable
 
 [file m.py]
 from typing import Tuple
-a = None # type: A
+a: A
 class A(Tuple[int, str]): pass
 [builtins fixtures/tuple.pyi]
 
@@ -4969,12 +5002,13 @@ class A(Tuple[int, str]): pass
 -- -----------------------
 
 [case testCrashOnSelfRecursiveNamedTupleVar]
-# flags: --disable-recursive-aliases
 from typing import NamedTuple
 
-N = NamedTuple('N', [('x', N)]) # E: Cannot resolve name "N" (possible cyclic definition)
-n: N
-reveal_type(n) # N: Revealed type is "Tuple[Any, fallback=__main__.N]"
+def test() -> None:
+    N = NamedTuple('N', [('x', N)]) # E: Cannot resolve name "N" (possible cyclic definition) \
+                                    # N: Recursive types are not allowed at function scope
+    n: N
+    reveal_type(n) # N: Revealed type is "Tuple[Any, fallback=__main__.N@4]"
 [builtins fixtures/tuple.pyi]
 
 [case testCrashOnSelfRecursiveTypedDictVar]
@@ -4999,18 +5033,20 @@ lst = [n, m]
 [builtins fixtures/isinstancelist.pyi]
 
 [case testCorrectJoinOfSelfRecursiveTypedDicts]
-# flags: --disable-recursive-aliases
 from mypy_extensions import TypedDict
 
-class N(TypedDict):
-    x: N # E: Cannot resolve name "N" (possible cyclic definition)
-class M(TypedDict):
-    x: M # E: Cannot resolve name "M" (possible cyclic definition)
+def test() -> None:
+    class N(TypedDict):
+        x: N  # E: Cannot resolve name "N" (possible cyclic definition) \
+              # N: Recursive types are not allowed at function scope
+    class M(TypedDict):
+        x: M  # E: Cannot resolve name "M" (possible cyclic definition) \
+              # N: Recursive types are not allowed at function scope
 
-n: N
-m: M
-lst = [n, m]
-reveal_type(lst[0]['x'])  # N: Revealed type is "Any"
+    n: N
+    m: M
+    lst = [n, m]
+    reveal_type(lst[0]['x'])  # N: Revealed type is "Any"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testCrashInForwardRefToNamedTupleWithIsinstance]
@@ -5069,6 +5105,7 @@ Foos = NewType('Foos', List[Foo]) # type: ignore
 
 def frob(foos: Dict[Any, Foos]) -> None:
     foo = foos.get(1)
+    assert foo
     dict(foo)
 [builtins fixtures/dict.pyi]
 [out]
@@ -5083,6 +5120,7 @@ x: C
 class C:
     def frob(self, foos: Dict[Any, Foos]) -> None:
         foo = foos.get(1)
+        assert foo
         dict(foo)
 
 reveal_type(x.frob) # N: Revealed type is "def (foos: builtins.dict[Any, __main__.Foos])"
@@ -6443,7 +6481,6 @@ def deco(f: Callable[..., T]) -> Callable[..., Tuple[T, int]]: ...
 [out]
 
 [case testOptionalDescriptorsBinder]
-# flags: --strict-optional
 from typing import Type, TypeVar, Optional
 T = TypeVar('T')
 
@@ -6657,7 +6694,6 @@ class C(Generic[T]):
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceTypeSubclass]
-# flags: --strict-optional
 from typing import Type, Optional
 class Base: ...
 class One(Base):
@@ -7684,10 +7720,14 @@ class D:
     def __new__(cls) -> NoReturn: ...
     def __init__(self) -> NoReturn: ...
 
-reveal_type(A())  # N: Revealed type is "<nothing>"
-reveal_type(B())  # N: Revealed type is "<nothing>"
-reveal_type(C())  # N: Revealed type is "<nothing>"
-reveal_type(D())  # N: Revealed type is "<nothing>"
+if object():
+    reveal_type(A())  # N: Revealed type is "Never"
+if object():
+    reveal_type(B())  # N: Revealed type is "Never"
+if object():
+    reveal_type(C())  # N: Revealed type is "Never"
+if object():
+    reveal_type(D())  # N: Revealed type is "Never"
 
 [case testOverloadedNewAndInitNoReturn]
 from typing import NoReturn, overload
@@ -7726,13 +7766,20 @@ class D:
     def __init__(self, a: int) -> None: ...
     def __init__(self, a: int = ...) -> None: ...
 
-reveal_type(A())  # N: Revealed type is "<nothing>"
+if object():
+    reveal_type(A())  # N: Revealed type is "Never"
 reveal_type(A(1))  # N: Revealed type is "__main__.A"
-reveal_type(B())  # N: Revealed type is "<nothing>"
+
+if object():
+    reveal_type(B())  # N: Revealed type is "Never"
 reveal_type(B(1))  # N: Revealed type is "__main__.B"
-reveal_type(C())  # N: Revealed type is "<nothing>"
+
+if object():
+    reveal_type(C())  # N: Revealed type is "Never"
 reveal_type(C(1))  # N: Revealed type is "__main__.C"
-reveal_type(D())  # N: Revealed type is "<nothing>"
+
+if object():
+    reveal_type(D())  # N: Revealed type is "Never"
 reveal_type(D(1))  # N: Revealed type is "__main__.D"
 
 [case testClassScopeImportWithWrapperAndError]
@@ -7957,3 +8004,11 @@ f5(1)  # E: Argument 1 to "f5" has incompatible type "int"; expected "Integral" 
        # N: Types from "numbers" aren't supported for static type checking \
        # N: See https://peps.python.org/pep-0484/#the-numeric-tower \
        # N: Consider using a protocol instead, such as typing.SupportsFloat
+
+[case testImplicitClassScopedNames]
+class C:
+    reveal_type(__module__)  # N: Revealed type is "builtins.str"
+    reveal_type(__qualname__)  # N: Revealed type is "builtins.str"
+    def f(self) -> None:
+        __module__  # E: Name "__module__" is not defined
+        __qualname__  # E: Name "__qualname__" is not defined

@@ -3,8 +3,11 @@ from _typeshed import ReadableBuffer, SupportsRead, SupportsWrite
 from collections.abc import Iterable
 
 # pytype crashes if array inherits from collections.abc.MutableSequence instead of typing.MutableSequence
-from typing import Any, Generic, MutableSequence, TypeVar, overload  # noqa: Y022
+from typing import Any, MutableSequence, TypeVar, overload  # noqa: Y022
 from typing_extensions import Literal, Self, SupportsIndex, TypeAlias
+
+if sys.version_info >= (3, 12):
+    from types import GenericAlias
 
 _IntTypeCode: TypeAlias = Literal["b", "B", "h", "H", "i", "I", "l", "L", "q", "Q"]
 _FloatTypeCode: TypeAlias = Literal["f", "d"]
@@ -15,7 +18,7 @@ _T = TypeVar("_T", int, float, str)
 
 typecodes: str
 
-class array(MutableSequence[_T], Generic[_T]):
+class array(MutableSequence[_T]):
     @property
     def typecode(self) -> _TypeCode: ...
     @property
@@ -70,6 +73,7 @@ class array(MutableSequence[_T], Generic[_T]):
     def __setitem__(self, __key: slice, __value: array[_T]) -> None: ...
     def __delitem__(self, __key: SupportsIndex | slice) -> None: ...
     def __add__(self, __value: array[_T]) -> array[_T]: ...
+    def __eq__(self, __value: object) -> bool: ...
     def __ge__(self, __value: array[_T]) -> bool: ...
     def __gt__(self, __value: array[_T]) -> bool: ...
     def __iadd__(self, __value: array[_T]) -> Self: ...  # type: ignore[override]
@@ -82,5 +86,7 @@ class array(MutableSequence[_T], Generic[_T]):
     def __deepcopy__(self, __unused: Any) -> array[_T]: ...
     def __buffer__(self, __flags: int) -> memoryview: ...
     def __release_buffer__(self, __buffer: memoryview) -> None: ...
+    if sys.version_info >= (3, 12):
+        def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 
 ArrayType = array

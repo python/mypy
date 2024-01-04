@@ -502,16 +502,16 @@ L0:
 [case testMultipleAssignmentBasicUnpacking]
 from typing import Tuple, Any
 
-def from_tuple(t: Tuple[int, str]) -> None:
+def from_tuple(t: Tuple[bool, None]) -> None:
     x, y = t
 
 def from_any(a: Any) -> None:
     x, y = a
 [out]
 def from_tuple(t):
-    t :: tuple[int, str]
-    r0, x :: int
-    r1, y :: str
+    t :: tuple[bool, None]
+    r0, x :: bool
+    r1, y :: None
 L0:
     r0 = t[0]
     x = r0
@@ -563,16 +563,19 @@ def from_any(a: Any) -> None:
 [out]
 def from_tuple(t):
     t :: tuple[int, object]
-    r0 :: int
-    r1, x, r2 :: object
-    r3, y :: int
+    r0, r1 :: int
+    r2, x, r3, r4 :: object
+    r5, y :: int
 L0:
-    r0 = t[0]
-    r1 = box(int, r0)
-    x = r1
-    r2 = t[1]
-    r3 = unbox(int, r2)
-    y = r3
+    r0 = borrow t[0]
+    r1 = unborrow r0
+    r2 = box(int, r1)
+    x = r2
+    r3 = borrow t[1]
+    r4 = unborrow r3
+    r5 = unbox(int, r4)
+    y = r5
+    keep_alive steal t
     return 1
 def from_any(a):
     a, r0, r1 :: object
@@ -651,11 +654,11 @@ def f(l: List[int], t: Tuple[int, ...]) -> None:
 def f(l, t):
     l :: list
     t :: tuple
-    r0 :: int32
+    r0 :: i32
     r1 :: bit
     r2, r3, x :: object
     r4, y :: int
-    r5 :: int32
+    r5 :: i32
     r6 :: bit
     r7, r8 :: object
     r9 :: int
@@ -701,13 +704,13 @@ L2:
     return 2
 def literal_msg(x):
     x :: object
-    r0 :: int32
+    r0 :: i32
     r1 :: bit
     r2, r3 :: bool
 L0:
     r0 = PyObject_IsTrue(x)
     r1 = r0 >= 0 :: signed
-    r2 = truncate r0: int32 to builtins.bool
+    r2 = truncate r0: i32 to builtins.bool
     if r2 goto L2 else goto L1 :: bool
 L1:
     r3 = raise AssertionError('message')
@@ -756,7 +759,7 @@ def delList():
     r3, r4, r5 :: ptr
     l :: list
     r6 :: object
-    r7 :: int32
+    r7 :: i32
     r8 :: bit
 L0:
     r0 = PyList_New(2)
@@ -779,13 +782,13 @@ def delListMultiple():
     r8, r9, r10, r11, r12, r13, r14, r15 :: ptr
     l :: list
     r16 :: object
-    r17 :: int32
+    r17 :: i32
     r18 :: bit
     r19 :: object
-    r20 :: int32
+    r20 :: i32
     r21 :: bit
     r22 :: object
-    r23 :: int32
+    r23 :: i32
     r24 :: bit
 L0:
     r0 = PyList_New(7)
@@ -837,7 +840,7 @@ def delDict():
     r2, r3 :: object
     r4, d :: dict
     r5 :: str
-    r6 :: int32
+    r6 :: i32
     r7 :: bit
 L0:
     r0 = 'one'
@@ -855,9 +858,9 @@ def delDictMultiple():
     r4, r5, r6, r7 :: object
     r8, d :: dict
     r9, r10 :: str
-    r11 :: int32
+    r11 :: i32
     r12 :: bit
-    r13 :: int32
+    r13 :: i32
     r14 :: bit
 L0:
     r0 = 'one'
@@ -901,7 +904,7 @@ L0:
 def delAttribute():
     r0, dummy :: __main__.Dummy
     r1 :: str
-    r2 :: int32
+    r2 :: i32
     r3 :: bit
 L0:
     r0 = Dummy(2, 4)
@@ -913,10 +916,10 @@ L0:
 def delAttributeMultiple():
     r0, dummy :: __main__.Dummy
     r1 :: str
-    r2 :: int32
+    r2 :: i32
     r3 :: bit
     r4 :: str
-    r5 :: int32
+    r5 :: i32
     r6 :: bit
 L0:
     r0 = Dummy(2, 4)
@@ -1029,7 +1032,7 @@ def f(a, b):
     r6, r7 :: object
     r8, x :: int
     r9, y :: bool
-    r10 :: int32
+    r10 :: i32
     r11 :: bit
     r12 :: bool
     r13 :: short_int
@@ -1055,7 +1058,7 @@ L3:
     y = r9
     r10 = PyObject_IsTrue(b)
     r11 = r10 >= 0 :: signed
-    r12 = truncate r10: int32 to builtins.bool
+    r12 = truncate r10: i32 to builtins.bool
     if r12 goto L4 else goto L5 :: bool
 L4:
     x = 2
@@ -1120,3 +1123,27 @@ L6:
     r14 = CPy_NoErrOccured()
 L7:
     return 1
+
+[case testConditionalFunctionDefinition]
+if int():
+    def foo() -> int:
+        return 0
+else:
+    def foo() -> int:  # E
+        return 1
+
+def bar() -> int:
+    return 0
+
+if int():
+    def bar() -> int:  # E
+        return 1
+[out]
+main:5: error: Duplicate definition of "foo" not supported by mypyc
+main:12: error: Duplicate definition of "bar" not supported by mypyc
+
+[case testRepeatedUnderscoreFunctions]
+def _(arg): pass
+def _(arg): pass
+[out]
+main:2: error: Duplicate definition of "_" not supported by mypyc

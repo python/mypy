@@ -511,7 +511,7 @@ class StrConv(NodeVisitor[str]):
         return self.dump(a, o)
 
     def visit_type_alias_expr(self, o: mypy.nodes.TypeAliasExpr) -> str:
-        return f"TypeAliasExpr({self.stringify_type(o.type)})"
+        return f"TypeAliasExpr({self.stringify_type(o.node.target)})"
 
     def visit_namedtuple_expr(self, o: mypy.nodes.NamedTupleExpr) -> str:
         return f"NamedTupleExpr:{o.line}({o.info.name}, {self.stringify_type(o.info.tuple_type) if o.info.tuple_type is not None else None})"

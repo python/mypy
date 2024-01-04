@@ -69,6 +69,40 @@ def untyped_function():
   </packages>
 </coverage>
 
+[case testCoberturaStarUnpacking]
+# cmd: mypy --cobertura-xml-report build a.py
+[file a.py]
+from typing import TypedDict
+
+class MyDict(TypedDict):
+    a: int
+
+def foo(a: int) -> MyDict:
+    return {"a": a}
+md: MyDict = MyDict(**foo(42))
+[outfile build/cobertura.xml]
+<coverage timestamp="$TIMESTAMP" version="$VERSION" line-rate="0.8333" branch-rate="0">
+  <sources>
+    <source>$PWD</source>
+  </sources>
+  <packages>
+    <package complexity="1.0" name="a" branch-rate="0" line-rate="0.8333">
+      <classes>
+        <class complexity="1.0" filename="a.py" name="a.py" branch-rate="0" line-rate="0.8333">
+          <methods/>
+          <lines>
+            <line branch="false" hits="1" number="1" precision="precise"/>
+            <line branch="false" hits="1" number="3" precision="precise"/>
+            <line branch="false" hits="0" number="4" precision="any"/>
+            <line branch="false" hits="1" number="6" precision="precise"/>
+            <line branch="false" hits="1" number="7" precision="precise"/>
+            <line branch="false" hits="1" number="8" precision="precise"/>
+          </lines>
+        </class>
+      </classes>
+    </package>
+  </packages>
+</coverage>
 
 [case testAnyExprReportDivisionByZero]
 # cmd: mypy --any-exprs-report=out -c 'pass'
@@ -311,7 +345,7 @@ Total      0      14    100.00%
 
 
 [case testAnyExpressionsReportTypesOfAny]
-# cmd: mypy --python-version=3.6 --any-exprs-report report n.py
+# cmd: mypy --any-exprs-report report n.py
 
 [file n.py]
 from typing import Any, List

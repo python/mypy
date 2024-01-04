@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing_extensions import Final
+from typing import Final
 
 from mypy import errorcodes as codes, message_registry
 from mypy.errorcodes import ErrorCode
@@ -37,6 +37,7 @@ from mypy.semanal_shared import (
     has_placeholder,
     require_bool_literal_argument,
 )
+from mypy.state import state
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
 from mypy.types import (
     TPDICT_NAMES,
@@ -49,7 +50,7 @@ from mypy.types import (
 )
 
 TPDICT_CLASS_ERROR: Final = (
-    "Invalid statement in TypedDict definition; " 'expected "field_name: field_type"'
+    'Invalid statement in TypedDict definition; expected "field_name: field_type"'
 )
 
 
@@ -101,6 +102,8 @@ class TypedDictAnalyzer:
             fields, types, statements, required_keys = self.analyze_typeddict_classdef_fields(defn)
             if fields is None:
                 return True, None  # Defer
+            if self.api.is_func_scope() and "@" not in defn.name:
+                defn.name += "@" + str(defn.line)
             info = self.build_typeddict_typeinfo(
                 defn.name, fields, types, required_keys, defn.line, existing_info
             )
@@ -201,7 +204,8 @@ class TypedDictAnalyzer:
                 any_kind = TypeOfAny.from_error
             base_args = [AnyType(any_kind) for _ in tvars]
 
-        valid_items = self.map_items_to_base(valid_items, tvars, base_args)
+        with state.strict_optional_set(self.options.strict_optional):
+            valid_items = self.map_items_to_base(valid_items, tvars, base_args)
         for key in base_items:
             if key in keys:
                 self.fail(f'Overwriting TypedDict field "{key}" while merging', ctx)
@@ -228,10 +232,7 @@ class TypedDictAnalyzer:
                 self.fail("Invalid TypedDict type argument", ctx)
                 return None
             analyzed = self.api.anal_type(
-                type,
-                allow_required=True,
-                allow_placeholder=not self.options.disable_recursive_aliases
-                and not self.api.is_func_scope(),
+                type, allow_required=True, allow_placeholder=not self.api.is_func_scope()
             )
             if analyzed is None:
                 return None
@@ -252,6 +253,7 @@ class TypedDictAnalyzer:
             if not tvars:
                 mapped_items[key] = type_in_base
                 continue
+            # TODO: simple zip can't be used for variadic types.
             mapped_items[key] = expand_type(
                 type_in_base, {t.id: a for (t, a) in zip(tvars, base_args)}
             )
@@ -306,8 +308,7 @@ class TypedDictAnalyzer:
                     analyzed = self.api.anal_type(
                         stmt.type,
                         allow_required=True,
-                        allow_placeholder=not self.options.disable_recursive_aliases
-                        and not self.api.is_func_scope(),
+                        allow_placeholder=not self.api.is_func_scope(),
                         prohibit_self_type="TypedDict item type",
                     )
                     if analyzed is None:
@@ -322,6 +323,12 @@ class TypedDictAnalyzer:
         total: bool | None = True
         if "total" in defn.keywords:
             total = require_bool_literal_argument(self.api, defn.keywords["total"], "total", True)
+        if defn.keywords and defn.keywords.keys() != {"total"}:
+            for_function = ' for "__init_subclass__" of "TypedDict"'
+            for key in defn.keywords:
+                if key == "total":
+                    continue
+                self.msg.unexpected_keyword_argument_for_function(for_function, key, defn)
         required_keys = {
             field
             for (field, t) in zip(fields, types)
@@ -365,7 +372,13 @@ class TypedDictAnalyzer:
         name, items, types, total, tvar_defs, ok = res
         if not ok:
             # Error. Construct dummy return value.
-            info = self.build_typeddict_typeinfo("TypedDict", [], [], set(), call.line, None)
+            if var_name:
+                name = var_name
+                if is_func_scope:
+                    name += "@" + str(call.line)
+            else:
+                name = var_name = "TypedDict@" + str(call.line)
+            info = self.build_typeddict_typeinfo(name, [], [], set(), call.line, None)
         else:
             if var_name is not None and name != var_name:
                 self.fail(
@@ -387,6 +400,17 @@ class TypedDictAnalyzer:
             types = [  # unwrap Required[T] to just T
                 t.item if isinstance(t, RequiredType) else t for t in types
             ]
+
+            # Perform various validations after unwrapping.
+            for t in types:
+                check_for_explicit_any(
+                    t, self.options, self.api.is_typeshed_stub_file, self.msg, context=call
+                )
+            if self.options.disallow_any_unimported:
+                for t in types:
+                    if has_any_from_unimported_type(t):
+                        self.msg.unimported_type_becomes_any("Type of a TypedDict key", t, call)
+
             existing_info = None
             if isinstance(node.analyzed, TypedDictExpr):
                 existing_info = node.analyzed.info
@@ -394,9 +418,9 @@ class TypedDictAnalyzer:
                 name, items, types, required_keys, call.line, existing_info
             )
             info.line = node.line
-            # Store generated TypeInfo under both names, see semanal_namedtuple for more details.
-            if name != var_name or is_func_scope:
-                self.api.add_symbol_skip_local(name, info)
+        # Store generated TypeInfo under both names, see semanal_namedtuple for more details.
+        if name != var_name or is_func_scope:
+            self.api.add_symbol_skip_local(name, info)
         if var_name:
             self.api.add_symbol(var_name, info, node)
         call.analyzed = TypedDictExpr(info)
@@ -444,15 +468,6 @@ class TypedDictAnalyzer:
             # One of the types is not ready, defer.
             return None
         items, types, ok = res
-        for t in types:
-            check_for_explicit_any(
-                t, self.options, self.api.is_typeshed_stub_file, self.msg, context=call
-            )
-
-        if self.options.disallow_any_unimported:
-            for t in types:
-                if has_any_from_unimported_type(t):
-                    self.msg.unimported_type_becomes_any("Type of a TypedDict key", t, dictexpr)
         assert total is not None
         return args[0].value, items, types, total, tvar_defs, ok
 
@@ -497,8 +512,7 @@ class TypedDictAnalyzer:
             analyzed = self.api.anal_type(
                 type,
                 allow_required=True,
-                allow_placeholder=not self.options.disable_recursive_aliases
-                and not self.api.is_func_scope(),
+                allow_placeholder=not self.api.is_func_scope(),
                 prohibit_self_type="TypedDict item type",
             )
             if analyzed is None:

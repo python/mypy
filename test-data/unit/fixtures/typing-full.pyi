@@ -30,6 +30,7 @@ Literal = 0
 TypedDict = 0
 NoReturn = 0
 NewType = 0
+Self = 0
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
@@ -192,3 +193,9 @@ def dataclass_transform(
     **kwargs: Any,
 ) -> Callable[[T], T]: ...
 def override(__arg: T) -> T: ...
+
+# Was added in 3.11
+def reveal_type(__obj: T) -> T: ...
+
+# Only exists in type checking time:
+def type_check_only(__func_or_class: T) -> T: ...

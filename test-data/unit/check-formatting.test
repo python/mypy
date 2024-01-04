@@ -4,7 +4,10 @@
 
 [case testStringInterpolationType]
 from typing import Tuple
-i, f, s, t = None, None, None, None # type: (int, float, str, Tuple[int])
+i: int
+f: float
+s: str
+t: Tuple[int]
 '%d' % i
 '%f' % f
 '%s' % s
@@ -21,7 +24,9 @@ i, f, s, t = None, None, None, None # type: (int, float, str, Tuple[int])
 
 [case testStringInterpolationSAcceptsAnyType]
 from typing import Any
-i, o, s = None, None, None # type: (int, object, str)
+i: int
+o: object
+s: str
 '%s %s %s' % (i, o, s)
 [builtins fixtures/primitives.pyi]
 
@@ -98,7 +103,6 @@ a = None # type: Any
 [typing fixtures/typing-medium.pyi]
 
 [case testStringInterpolationC]
-# flags: --python-version 3.6
 '%c' % 1
 '%c' % 1.0   # E: "%c" requires int or char (expression has type "float")
 '%c' % 's'
@@ -139,8 +143,10 @@ class BytesThing:
     def __getitem__(self, __key: bytes) -> str:
         ...
 
-a = None # type: Any
-ds, do, di = None, None, None # type: Dict[str, int], Dict[object, int], Dict[int, int]
+a: Any
+ds: Dict[str, int]
+do: Dict[object, int]
+di: Dict[int, int]
 '%(a)' % 1  # E: Format requires a mapping (expression has type "int", expected type for mapping is "SupportsKeysAndGetItem[str, Any]")
 '%()d' % a
 '%()d' % ds
@@ -225,18 +231,12 @@ t5: Iterable[str] = ('A', 'B')
 -- Bytes interpolation
 -- --------------------
 
-
-[case testBytesInterpolationBefore35]
-# flags: --python-version 3.4
-b'%b' % 1  # E: Unsupported left operand type for % ("bytes")
-
 [case testBytesInterpolation]
 b'%b' % 1  # E: Incompatible types in string interpolation (expression has type "int", placeholder has type "bytes")
 b'%b' % b'1'
 b'%a' % 3
 
 [case testBytesInterpolationC]
-# flags: --python-version 3.6
 b'%c' % 1
 b'%c' % 1.0   # E: "%c" requires an integer in range(256) or a single byte (expression has type "float")
 b'%c' % 's'   # E: "%c" requires an integer in range(256) or a single byte (expression has type "str")
@@ -482,6 +482,23 @@ class D(bytes):
         return "overrides __str__ of bytes"
 
 '{}'.format(D())
+[builtins fixtures/primitives.pyi]
+
+[case testNoSpuriousFormattingErrorsDuringFailedOverlodMatch]
+from typing import overload, Callable
+
+@overload
+def sub(pattern: str, repl: Callable[[str], str]) -> str: ...
+@overload
+def sub(pattern: bytes, repl: Callable[[bytes], bytes]) -> bytes: ...
+def sub(pattern: object, repl: object) -> object:
+    pass
+
+def better_snakecase(text: str) -> str:
+    # Mypy used to emit a spurious error here
+    # warning about interpolating bytes into an f-string:
+    text = sub(r"([A-Z])([A-Z]+)([A-Z](?:[^A-Z]|$))", lambda match: f"{match}")
+    return text
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallFinal]

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from typing import NamedTuple, Sequence, TypeVar, Union
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import Final, NamedTuple, Sequence, TypeVar, Union
+from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.messages import format_type
 from mypy.nodes import ARG_POS, Argument, Block, ClassDef, Context, SymbolTable, TypeInfo, Var

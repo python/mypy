@@ -1,3 +1,4 @@
+import _thread
 import sys
 from _typeshed import ProfileFunction, TraceFunction
 from collections.abc import Callable, Iterable, Mapping
@@ -37,6 +38,9 @@ if sys.version_info >= (3, 8):
 if sys.version_info >= (3, 10):
     __all__ += ["getprofile", "gettrace"]
 
+if sys.version_info >= (3, 12):
+    __all__ += ["setprofile_all_threads", "settrace_all_threads"]
+
 _profile_hook: ProfileFunction | None
 
 def active_count() -> int: ...
@@ -53,6 +57,10 @@ if sys.version_info >= (3, 8):
 def settrace(func: TraceFunction) -> None: ...
 def setprofile(func: ProfileFunction | None) -> None: ...
 
+if sys.version_info >= (3, 12):
+    def setprofile_all_threads(func: ProfileFunction | None) -> None: ...
+    def settrace_all_threads(func: TraceFunction) -> None: ...
+
 if sys.version_info >= (3, 10):
     def gettrace() -> TraceFunction | None: ...
     def getprofile() -> ProfileFunction | None: ...
@@ -61,12 +69,8 @@ def stack_size(size: int = ...) -> int: ...
 
 TIMEOUT_MAX: float
 
-class ThreadError(Exception): ...
-
-class local:
-    def __getattribute__(self, __name: str) -> Any: ...
-    def __setattr__(self, __name: str, __value: Any) -> None: ...
-    def __delattr__(self, __name: str) -> None: ...
+ThreadError = _thread.error
+local = _thread._local
 
 class Thread:
     name: str

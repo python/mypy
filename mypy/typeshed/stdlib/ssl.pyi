@@ -4,7 +4,7 @@ import sys
 from _typeshed import ReadableBuffer, StrOrBytesPath, WriteableBuffer
 from collections.abc import Callable, Iterable
 from typing import Any, NamedTuple, overload
-from typing_extensions import Literal, Self, TypeAlias, TypedDict, final
+from typing_extensions import Literal, Never, Self, TypeAlias, TypedDict, final
 
 _PCTRTT: TypeAlias = tuple[tuple[str, str], ...]
 _PCTRTTT: TypeAlias = tuple[_PCTRTT, ...]
@@ -44,18 +44,20 @@ class SSLCertVerificationError(SSLError, ValueError):
 
 CertificateError = SSLCertVerificationError
 
-def wrap_socket(
-    sock: socket.socket,
-    keyfile: StrOrBytesPath | None = None,
-    certfile: StrOrBytesPath | None = None,
-    server_side: bool = False,
-    cert_reqs: int = ...,
-    ssl_version: int = ...,
-    ca_certs: str | None = None,
-    do_handshake_on_connect: bool = True,
-    suppress_ragged_eofs: bool = True,
-    ciphers: str | None = None,
-) -> SSLSocket: ...
+if sys.version_info < (3, 12):
+    def wrap_socket(
+        sock: socket.socket,
+        keyfile: StrOrBytesPath | None = None,
+        certfile: StrOrBytesPath | None = None,
+        server_side: bool = False,
+        cert_reqs: int = ...,
+        ssl_version: int = ...,
+        ca_certs: str | None = None,
+        do_handshake_on_connect: bool = True,
+        suppress_ragged_eofs: bool = True,
+        ciphers: str | None = None,
+    ) -> SSLSocket: ...
+
 def create_default_context(
     purpose: Purpose = ...,
     *,
@@ -95,7 +97,10 @@ else:
 _create_default_https_context: Callable[..., SSLContext]
 
 def RAND_bytes(__n: int) -> bytes: ...
-def RAND_pseudo_bytes(__n: int) -> tuple[bytes, bool]: ...
+
+if sys.version_info < (3, 12):
+    def RAND_pseudo_bytes(__n: int) -> tuple[bytes, bool]: ...
+
 def RAND_status() -> bool: ...
 def RAND_egd(path: str) -> None: ...
 def RAND_add(__string: str | ReadableBuffer, __entropy: float) -> None: ...
@@ -196,8 +201,13 @@ class Options(enum.IntFlag):
     OP_NO_RENEGOTIATION: int
     if sys.version_info >= (3, 8):
         OP_ENABLE_MIDDLEBOX_COMPAT: int
-        if sys.platform == "linux":
-            OP_IGNORE_UNEXPECTED_EOF: int
+    if sys.version_info >= (3, 12):
+        OP_LEGACY_SERVER_CONNECT: int
+        OP_ENABLE_KTLS: int
+    if sys.version_info >= (3, 11):
+        OP_IGNORE_UNEXPECTED_EOF: int
+    elif sys.version_info >= (3, 8) and sys.platform == "linux":
+        OP_IGNORE_UNEXPECTED_EOF: int
 
 OP_ALL: Options
 OP_NO_SSLv2: Options
@@ -214,8 +224,13 @@ OP_NO_TICKET: Options
 OP_NO_RENEGOTIATION: Options
 if sys.version_info >= (3, 8):
     OP_ENABLE_MIDDLEBOX_COMPAT: Options
-    if sys.platform == "linux":
-        OP_IGNORE_UNEXPECTED_EOF: Options
+if sys.version_info >= (3, 12):
+    OP_LEGACY_SERVER_CONNECT: Options
+    OP_ENABLE_KTLS: Options
+if sys.version_info >= (3, 11):
+    OP_IGNORE_UNEXPECTED_EOF: Options
+elif sys.version_info >= (3, 8) and sys.platform == "linux":
+    OP_IGNORE_UNEXPECTED_EOF: Options
 
 HAS_NEVER_CHECK_COMMON_NAME: bool
 HAS_SSLv2: bool
@@ -352,6 +367,10 @@ class SSLSocket(socket.socket):
     def pending(self) -> int: ...
     if sys.version_info >= (3, 8):
         def verify_client_post_handshake(self) -> None: ...
+    # These methods always raise `NotImplementedError`:
+    def recvmsg(self, *args: Never, **kwargs: Never) -> Never: ...  # type: ignore[override]
+    def recvmsg_into(self, *args: Never, **kwargs: Never) -> Never: ...  # type: ignore[override]
+    def sendmsg(self, *args: Never, **kwargs: Never) -> Never: ...  # type: ignore[override]
 
 class TLSVersion(enum.IntEnum):
     MINIMUM_SUPPORTED: int
@@ -421,7 +440,7 @@ class SSLContext:
         server_side: bool = False,
         do_handshake_on_connect: bool = True,
         suppress_ragged_eofs: bool = True,
-        server_hostname: str | None = None,
+        server_hostname: str | bytes | None = None,
         session: SSLSession | None = None,
     ) -> SSLSocket: ...
     def wrap_bio(
@@ -429,7 +448,7 @@ class SSLContext:
         incoming: MemoryBIO,
         outgoing: MemoryBIO,
         server_side: bool = False,
-        server_hostname: str | None = None,
+        server_hostname: str | bytes | None = None,
         session: SSLSession | None = None,
     ) -> SSLObject: ...
     def session_stats(self) -> dict[str, int]: ...
@@ -485,6 +504,7 @@ class SSLSession:
     def time(self) -> int: ...
     @property
     def timeout(self) -> int: ...
+    def __eq__(self, __value: object) -> bool: ...
 
 class SSLErrorNumber(enum.IntEnum):
     SSL_ERROR_EOF: int

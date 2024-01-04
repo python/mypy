@@ -74,6 +74,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.semanal_shared import find_dataclass_transform_spec
+from mypy.state import state
 from mypy.types import (
     AnyType,
     CallableType,
@@ -456,7 +457,8 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
                 tv = v.copy_modified(id=tid)
             tvs.append(tv)
             tvmap[v.id] = tv
-        return expand_type(typ, tvmap).copy_modified(variables=tvs)
+        with state.strict_optional_set(True):
+            return expand_type(typ, tvmap).copy_modified(variables=tvs)
 
     def visit_tuple_type(self, typ: TupleType) -> SnapshotItem:
         return ("TupleType", snapshot_types(typ.items))

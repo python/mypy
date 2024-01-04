@@ -18,7 +18,7 @@ from mypyc.codegen.emitwrapper import (
     generate_richcompare_wrapper,
     generate_set_del_item_wrapper,
 )
-from mypyc.common import BITMAP_BITS, BITMAP_TYPE, NATIVE_PREFIX, PREFIX, REG_PREFIX, use_fastcall
+from mypyc.common import BITMAP_BITS, BITMAP_TYPE, NATIVE_PREFIX, PREFIX, REG_PREFIX
 from mypyc.ir.class_ir import ClassIR, VTableEntries
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR
 from mypyc.ir.rtypes import RTuple, RType, object_rprimitive
@@ -217,7 +217,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     fields["tp_name"] = f'"{name}"'
 
     generate_full = not cl.is_trait and not cl.builtin_base
-    needs_getseters = cl.needs_getseters or not cl.is_generated
+    needs_getseters = cl.needs_getseters or not cl.is_generated or cl.has_dict
 
     if not cl.builtin_base:
         fields["tp_new"] = new_name
@@ -270,7 +270,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     # that isn't what we want.
 
     # XXX: there is no reason for the __weakref__ stuff to be mixed up with __dict__
-    if cl.has_dict:
+    if cl.has_dict and not has_managed_dict(cl, emitter):
         # __dict__ lives right after the struct and __weakref__ lives right after that
         # TODO: They should get members in the struct instead of doing this nonsense.
         weak_offset = f"{base_size} + sizeof(PyObject *)"
@@ -284,8 +284,9 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
         fields["tp_members"] = members_name
         fields["tp_basicsize"] = f"{base_size} + 2*sizeof(PyObject *)"
-        fields["tp_dictoffset"] = base_size
-        fields["tp_weaklistoffset"] = weak_offset
+        if emitter.capi_version < (3, 12):
+            fields["tp_dictoffset"] = base_size
+            fields["tp_weaklistoffset"] = weak_offset
     else:
         fields["tp_basicsize"] = base_size
 
@@ -341,6 +342,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             # This is just a placeholder to please CPython. It will be
             # overridden during setup.
             fields["tp_call"] = "PyVectorcall_Call"
+    if has_managed_dict(cl, emitter):
+        flags.append("Py_TPFLAGS_MANAGED_DICT")
     fields["tp_flags"] = " | ".join(flags)
 
     emitter.emit_line(f"static PyTypeObject {emitter.type_struct_name(cl)}_template_ = {{")
@@ -578,7 +581,12 @@ def generate_setup_for_class(
 
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
-            emitter.emit_line(rf"self->{emitter.attr(attr)} = {emitter.c_undefined_value(rtype)};")
+            value = emitter.c_undefined_value(rtype)
+
+            # We don't need to set this field to NULL since tp_alloc() already
+            # zero-initializes `self`.
+            if value != "NULL":
+                emitter.emit_line(rf"self->{emitter.attr(attr)} = {value};")
 
     # Initialize attributes to default values, if necessary
     if defaults_fn is not None:
@@ -725,7 +733,9 @@ def generate_traverse_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
             emitter.emit_gc_visit(f"self->{emitter.attr(attr)}", rtype)
-    if cl.has_dict:
+    if has_managed_dict(cl, emitter):
+        emitter.emit_line("_PyObject_VisitManagedDict((PyObject *)self, visit, arg);")
+    elif cl.has_dict:
         struct_name = cl.struct_name(emitter.names)
         # __dict__ lives right after the struct and __weakref__ lives right after that
         emitter.emit_gc_visit(
@@ -746,7 +756,9 @@ def generate_clear_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -> N
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
             emitter.emit_gc_clear(f"self->{emitter.attr(attr)}", rtype)
-    if cl.has_dict:
+    if has_managed_dict(cl, emitter):
+        emitter.emit_line("_PyObject_ClearManagedDict((PyObject *)self);")
+    elif cl.has_dict:
         struct_name = cl.struct_name(emitter.names)
         # __dict__ lives right after the struct and __weakref__ lives right after that
         emitter.emit_gc_clear(
@@ -782,11 +794,7 @@ def generate_methods_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
             continue
         emitter.emit_line(f'{{"{fn.name}",')
         emitter.emit_line(f" (PyCFunction){PREFIX}{fn.cname(emitter.names)},")
-        if use_fastcall(emitter.capi_version):
-            flags = ["METH_FASTCALL"]
-        else:
-            flags = ["METH_VARARGS"]
-        flags.append("METH_KEYWORDS")
+        flags = ["METH_FASTCALL", "METH_KEYWORDS"]
         if fn.decl.kind == FUNC_STATICMETHOD:
             flags.append("METH_STATIC")
         elif fn.decl.kind == FUNC_CLASSMETHOD:
@@ -877,6 +885,9 @@ def generate_getseters_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
             emitter.emit_line("NULL, NULL},")
         else:
             emitter.emit_line("NULL, NULL, NULL},")
+
+    if cl.has_dict:
+        emitter.emit_line('{"__dict__", PyObject_GenericGetDict, PyObject_GenericSetDict},')
 
     emitter.emit_line("{NULL}  /* Sentinel */")
     emitter.emit_line("};")
@@ -1035,3 +1046,15 @@ def generate_property_setter(
         )
     emitter.emit_line("return 0;")
     emitter.emit_line("}")
+
+
+def has_managed_dict(cl: ClassIR, emitter: Emitter) -> bool:
+    """Should the class get the Py_TPFLAGS_MANAGED_DICT flag?"""
+    # On 3.11 and earlier the flag doesn't exist and we use
+    # tp_dictoffset instead.  If a class inherits from Exception, the
+    # flag conflicts with tp_dictoffset set in the base class.
+    return (
+        emitter.capi_version >= (3, 12)
+        and cl.has_dict
+        and cl.builtin_base != "PyBaseExceptionObject"
+    )

@@ -5,8 +5,7 @@ from __future__ import annotations
 import pprint
 import sys
 import textwrap
-from typing import Callable
-from typing_extensions import Final
+from typing import Callable, Final
 
 from mypyc.codegen.literals import Literals
 from mypyc.common import (
@@ -35,6 +34,7 @@ from mypyc.ir.rtypes import (
     is_dict_rprimitive,
     is_fixed_width_rtype,
     is_float_rprimitive,
+    is_int16_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
@@ -47,6 +47,7 @@ from mypyc.ir.rtypes import (
     is_short_int_rprimitive,
     is_str_rprimitive,
     is_tuple_rprimitive,
+    is_uint8_rprimitive,
     object_rprimitive,
     optional_value_type,
 )
@@ -345,12 +346,6 @@ class Emitter:
                 result.append(f"{self.ctype_spaced(typ)}f{i};")
                 i += 1
         result.append(f"}} {rtuple.struct_name};")
-        values = self.tuple_undefined_value_helper(rtuple)
-        result.append(
-            "static {} {} = {{ {} }};".format(
-                self.ctype(rtuple), self.tuple_undefined_value(rtuple), "".join(values)
-            )
-        )
         result.append("#endif")
         result.append("")
 
@@ -470,23 +465,20 @@ class Emitter:
             return check
 
     def tuple_undefined_value(self, rtuple: RTuple) -> str:
-        return "tuple_undefined_" + rtuple.unique_id
+        """Undefined tuple value suitable in an expression."""
+        return f"({rtuple.struct_name}) {self.c_initializer_undefined_value(rtuple)}"
 
-    def tuple_undefined_value_helper(self, rtuple: RTuple) -> list[str]:
-        res = []
-        # see tuple_c_declaration()
-        if len(rtuple.types) == 0:
-            return [self.c_undefined_value(int_rprimitive)]
-        for item in rtuple.types:
-            if not isinstance(item, RTuple):
-                res.append(self.c_undefined_value(item))
-            else:
-                sub_list = self.tuple_undefined_value_helper(item)
-                res.append("{ ")
-                res.extend(sub_list)
-                res.append(" }")
-            res.append(", ")
-        return res[:-1]
+    def c_initializer_undefined_value(self, rtype: RType) -> str:
+        """Undefined value represented in a form suitable for variable initialization."""
+        if isinstance(rtype, RTuple):
+            if not rtype.types:
+                # Empty tuples contain a flag so that they can still indicate
+                # error values.
+                return f"{{ {int_rprimitive.c_undefined} }}"
+            items = ", ".join([self.c_initializer_undefined_value(t) for t in rtype.types])
+            return f"{{ {items} }}"
+        else:
+            return self.c_undefined_value(rtype)
 
     # Higher-level operations
 
@@ -694,7 +686,7 @@ class Emitter:
             if likely:
                 check = f"(likely{check})"
             self.emit_arg_check(src, dest, typ, check, optional)
-            self.emit_lines(f"    {dest} = {src};".format(dest, src), "else {")
+            self.emit_lines(f"    {dest} = {src};", "else {")
             self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
             self.emit_line("}")
         elif is_none_rprimitive(typ):
@@ -909,28 +901,43 @@ class Emitter:
             self.emit_line(f"    {dest} = 1;")
         elif is_int64_rprimitive(typ):
             # Whether we are borrowing or not makes no difference.
+            assert not optional  # Not supported for overlapping error values
             if declare_dest:
                 self.emit_line(f"int64_t {dest};")
             self.emit_line(f"{dest} = CPyLong_AsInt64({src});")
-            # TODO: Handle 'optional'
-            # TODO: Handle 'failure'
+            if not isinstance(error, AssignHandler):
+                self.emit_unbox_failure_with_overlapping_error_value(dest, typ, failure)
         elif is_int32_rprimitive(typ):
             # Whether we are borrowing or not makes no difference.
+            assert not optional  # Not supported for overlapping error values
             if declare_dest:
                 self.emit_line(f"int32_t {dest};")
             self.emit_line(f"{dest} = CPyLong_AsInt32({src});")
-            # TODO: Handle 'optional'
-            # TODO: Handle 'failure'
-        elif is_float_rprimitive(typ):
+            if not isinstance(error, AssignHandler):
+                self.emit_unbox_failure_with_overlapping_error_value(dest, typ, failure)
+        elif is_int16_rprimitive(typ):
+            # Whether we are borrowing or not makes no difference.
+            assert not optional  # Not supported for overlapping error values
             if declare_dest:
-                self.emit_line("double {};".format(dest))
+                self.emit_line(f"int16_t {dest};")
+            self.emit_line(f"{dest} = CPyLong_AsInt16({src});")
+            if not isinstance(error, AssignHandler):
+                self.emit_unbox_failure_with_overlapping_error_value(dest, typ, failure)
+        elif is_uint8_rprimitive(typ):
+            # Whether we are borrowing or not makes no difference.
+            assert not optional  # Not supported for overlapping error values
+            if declare_dest:
+                self.emit_line(f"uint8_t {dest};")
+            self.emit_line(f"{dest} = CPyLong_AsUInt8({src});")
+            if not isinstance(error, AssignHandler):
+                self.emit_unbox_failure_with_overlapping_error_value(dest, typ, failure)
+        elif is_float_rprimitive(typ):
+            assert not optional  # Not supported for overlapping error values
+            if declare_dest:
+                self.emit_line(f"double {dest};")
             # TODO: Don't use __float__ and __index__
             self.emit_line(f"{dest} = PyFloat_AsDouble({src});")
-            self.emit_lines(
-                f"if ({dest} == -1.0 && PyErr_Occurred()) {{", f"{dest} = -113.0;", "}"
-            )
-            # TODO: Handle 'optional'
-            # TODO: Handle 'failure'
+            self.emit_lines(f"if ({dest} == -1.0 && PyErr_Occurred()) {{", failure, "}")
         elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
             if declare_dest:
@@ -1015,7 +1022,7 @@ class Emitter:
             self.emit_lines(f"{declaration}{dest} = Py_None;")
             if not can_borrow:
                 self.emit_inc_ref(dest, object_rprimitive)
-        elif is_int32_rprimitive(typ):
+        elif is_int32_rprimitive(typ) or is_int16_rprimitive(typ) or is_uint8_rprimitive(typ):
             self.emit_line(f"{declaration}{dest} = PyLong_FromLong({src});")
         elif is_int64_rprimitive(typ):
             self.emit_line(f"{declaration}{dest} = PyLong_FromLongLong({src});")
@@ -1145,6 +1152,13 @@ class Emitter:
         self.emit_line(line)
         if DEBUG_ERRORS:
             self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
+
+    def emit_unbox_failure_with_overlapping_error_value(
+        self, dest: str, typ: RType, failure: str
+    ) -> None:
+        self.emit_line(f"if ({dest} == {self.c_error_value(typ)} && PyErr_Occurred()) {{")
+        self.emit_line(failure)
+        self.emit_line("}")
 
 
 def c_array_initializer(components: list[str], *, indented: bool = False) -> str:

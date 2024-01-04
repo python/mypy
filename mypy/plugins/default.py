@@ -31,7 +31,9 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeVarType,
+    UnionType,
     get_proper_type,
+    get_proper_types,
 )
 
 
@@ -51,12 +53,14 @@ class DefaultPlugin(Plugin):
     def get_function_signature_hook(
         self, fullname: str
     ) -> Callable[[FunctionSigContext], FunctionLike] | None:
-        from mypy.plugins import attrs
+        from mypy.plugins import attrs, dataclasses
 
         if fullname in ("attr.evolve", "attrs.evolve", "attr.assoc", "attrs.assoc"):
             return attrs.evolve_function_sig_callback
         elif fullname in ("attr.fields", "attrs.fields"):
             return attrs.fields_function_sig_callback
+        elif fullname == "dataclasses.replace":
+            return dataclasses.replace_function_sig_callback
         return None
 
     def get_method_signature_hook(
@@ -70,12 +74,21 @@ class DefaultPlugin(Plugin):
             return typed_dict_setdefault_signature_callback
         elif fullname in {n + ".pop" for n in TPDICT_FB_NAMES}:
             return typed_dict_pop_signature_callback
-        elif fullname in {n + ".update" for n in TPDICT_FB_NAMES}:
-            return typed_dict_update_signature_callback
         elif fullname == "_ctypes.Array.__setitem__":
             return ctypes.array_setitem_callback
         elif fullname == singledispatch.SINGLEDISPATCH_CALLABLE_CALL_METHOD:
             return singledispatch.call_singledispatch_function_callback
+
+        typed_dict_updates = set()
+        for n in TPDICT_FB_NAMES:
+            typed_dict_updates.add(n + ".update")
+            typed_dict_updates.add(n + ".__or__")
+            typed_dict_updates.add(n + ".__ror__")
+            typed_dict_updates.add(n + ".__ior__")
+
+        if fullname in typed_dict_updates:
+            return typed_dict_update_signature_callback
+
         return None
 
     def get_method_hook(self, fullname: str) -> Callable[[MethodContext], Type] | None:
@@ -155,7 +168,9 @@ class DefaultPlugin(Plugin):
                 attrs.attr_class_maker_callback, auto_attribs_default=None, frozen_default=True
             )
         elif fullname in attrs.attr_define_makers:
-            return partial(attrs.attr_class_maker_callback, auto_attribs_default=None)
+            return partial(
+                attrs.attr_class_maker_callback, auto_attribs_default=None, slots_default=True
+            )
 
         return None
 
@@ -395,13 +410,43 @@ def typed_dict_delitem_callback(ctx: MethodContext) -> Type:
 
 
 def typed_dict_update_signature_callback(ctx: MethodSigContext) -> CallableType:
-    """Try to infer a better signature type for TypedDict.update."""
+    """Try to infer a better signature type for methods that update `TypedDict`.
+
+    This includes: `TypedDict.update`, `TypedDict.__or__`, `TypedDict.__ror__`,
+    and `TypedDict.__ior__`.
+    """
     signature = ctx.default_signature
     if isinstance(ctx.type, TypedDictType) and len(signature.arg_types) == 1:
         arg_type = get_proper_type(signature.arg_types[0])
-        assert isinstance(arg_type, TypedDictType)
+        if not isinstance(arg_type, TypedDictType):
+            return signature
         arg_type = arg_type.as_anonymous()
         arg_type = arg_type.copy_modified(required_keys=set())
+        if ctx.args and ctx.args[0]:
+            with ctx.api.msg.filter_errors():
+                inferred = get_proper_type(
+                    ctx.api.get_expression_type(ctx.args[0][0], type_context=arg_type)
+                )
+            possible_tds = []
+            if isinstance(inferred, TypedDictType):
+                possible_tds = [inferred]
+            elif isinstance(inferred, UnionType):
+                possible_tds = [
+                    t
+                    for t in get_proper_types(inferred.relevant_items())
+                    if isinstance(t, TypedDictType)
+                ]
+            items = []
+            for td in possible_tds:
+                item = arg_type.copy_modified(
+                    required_keys=(arg_type.required_keys | td.required_keys)
+                    & arg_type.items.keys()
+                )
+                if not ctx.api.options.extra_checks:
+                    item = item.copy_modified(item_names=list(td.items))
+                items.append(item)
+            if items:
+                arg_type = make_simplified_union(items)
         return signature.copy_modified(arg_types=[arg_type])
     return signature
 

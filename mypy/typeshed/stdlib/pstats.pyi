@@ -1,8 +1,7 @@
 import sys
-from _typeshed import StrOrBytesPath
+from _typeshed import StrEnum, StrOrBytesPath
 from collections.abc import Iterable
 from cProfile import Profile as _cProfile
-from enum import Enum
 from profile import Profile
 from typing import IO, Any, overload
 from typing_extensions import Literal, Self, TypeAlias
@@ -14,7 +13,7 @@ else:
 
 _Selector: TypeAlias = str | float | int
 
-class SortKey(str, Enum):
+class SortKey(StrEnum):
     CALLS: str
     CUMULATIVE: str
     FILENAME: str

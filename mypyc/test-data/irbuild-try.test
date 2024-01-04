@@ -337,7 +337,7 @@ def foo(x):
     r11, r12 :: object
     r13, r14 :: tuple[object, object, object]
     r15, r16, r17, r18 :: object
-    r19 :: int32
+    r19 :: i32
     r20 :: bit
     r21 :: bool
     r22 :: bit
@@ -372,7 +372,7 @@ L3: (handler for L2)
     r18 = PyObject_CallFunctionObjArgs(r3, r0, r15, r16, r17, 0)
     r19 = PyObject_IsTrue(r18)
     r20 = r19 >= 0 :: signed
-    r21 = truncate r19: int32 to builtins.bool
+    r21 = truncate r19: i32 to builtins.bool
     if r21 goto L5 else goto L4 :: bool
 L4:
     CPy_Reraise()
@@ -448,7 +448,7 @@ def foo(x):
     r9, r10, r11 :: object
     r12 :: None
     r13 :: object
-    r14 :: int32
+    r14 :: i32
     r15 :: bit
     r16 :: bool
     r17 :: bit
@@ -478,7 +478,7 @@ L3: (handler for L2)
     r13 = box(None, r12)
     r14 = PyObject_IsTrue(r13)
     r15 = r14 >= 0 :: signed
-    r16 = truncate r14: int32 to builtins.bool
+    r16 = truncate r14: i32 to builtins.bool
     if r16 goto L5 else goto L4 :: bool
 L4:
     CPy_Reraise()

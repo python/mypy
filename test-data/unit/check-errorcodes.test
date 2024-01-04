@@ -183,7 +183,7 @@ from defusedxml import xyz  # type: ignore[import]
 
 [case testErrorCodeBadIgnore]
 import nostub # type: ignore xyz  # E: Invalid "type: ignore" comment  [syntax] \
-                                  # E: Cannot find implementation or library stub for module named "nostub"  [import] \
+                                  # E: Cannot find implementation or library stub for module named "nostub"  [import-not-found] \
                                   # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 import nostub # type: ignore[  # E: Invalid "type: ignore" comment  [syntax]
 import nostub # type: ignore[foo  # E: Invalid "type: ignore" comment  [syntax]
@@ -211,7 +211,7 @@ def f(x,  # type: int  # type: ignore[
     pass
 [out]
 main:2: error: Invalid "type: ignore" comment  [syntax]
-main:2: error: Cannot find implementation or library stub for module named "nostub"  [import]
+main:2: error: Cannot find implementation or library stub for module named "nostub"  [import-not-found]
 main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main:3: error: Invalid "type: ignore" comment  [syntax]
 main:4: error: Invalid "type: ignore" comment  [syntax]
@@ -522,12 +522,12 @@ if int() is str():  # E: Non-overlapping identity check (left operand type: "int
 [builtins fixtures/primitives.pyi]
 
 [case testErrorCodeMissingModule]
-from defusedxml import xyz  # E: Cannot find implementation or library stub for module named "defusedxml"  [import]
-from nonexistent import foobar  # E: Cannot find implementation or library stub for module named "nonexistent"  [import]
-import nonexistent2  # E: Cannot find implementation or library stub for module named "nonexistent2"  [import]
-from nonexistent3 import *  # E: Cannot find implementation or library stub for module named "nonexistent3"  [import]
+from defusedxml import xyz  # E: Cannot find implementation or library stub for module named "defusedxml"  [import-not-found]
+from nonexistent import foobar  # E: Cannot find implementation or library stub for module named "nonexistent"  [import-not-found]
+import nonexistent2  # E: Cannot find implementation or library stub for module named "nonexistent2"  [import-not-found]
+from nonexistent3 import *  # E: Cannot find implementation or library stub for module named "nonexistent3"  [import-not-found]
 from pkg import bad  # E: Module "pkg" has no attribute "bad"  [attr-defined]
-from pkg.bad2 import bad3  # E: Cannot find implementation or library stub for module named "pkg.bad2"  [import] \
+from pkg.bad2 import bad3  # E: Cannot find implementation or library stub for module named "pkg.bad2"  [import-not-found] \
                            # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 [file pkg/__init__.py]
 
@@ -553,15 +553,15 @@ from typing import Callable
 
 def f() -> None: pass
 
-x = f()  # E: "f" does not return a value  [func-returns-value]
+x = f()  # E: "f" does not return a value (it only ever returns None)  [func-returns-value]
 
 class A:
     def g(self) -> None: pass
 
-y = A().g()  # E: "g" of "A" does not return a value  [func-returns-value]
+y = A().g()  # E: "g" of "A" does not return a value (it only ever returns None)  [func-returns-value]
 
 c: Callable[[], None]
-z = c()  # E: Function does not return a value  [func-returns-value]
+z = c()  # E: Function does not return a value (it only ever returns None)  [func-returns-value]
 
 [case testErrorCodeInstantiateAbstract]
 from abc import abstractmethod
@@ -732,7 +732,6 @@ class InvalidReturn:
 [builtins fixtures/bool.pyi]
 
 [case testErrorCodeOverloadedOperatorMethod]
-# flags: --strict-optional
 from typing import Optional, overload
 
 class A:
@@ -758,7 +757,6 @@ class C:
 x - C()  # type: ignore[operator]
 
 [case testErrorCodeMultiLineBinaryOperatorOperand]
-# flags: --strict-optional
 from typing import Optional
 
 class C: pass
@@ -897,7 +895,6 @@ if any_or_object:
 [builtins fixtures/list.pyi]
 
 [case testTruthyFunctions]
-# flags: --strict-optional
 def f():
     pass
 if f:  # E: Function "f" could always be true in boolean context  [truthy-function]
@@ -907,7 +904,7 @@ if not f:  # E: Function "f" could always be true in boolean context  [truthy-fu
 conditional_result = 'foo' if f else 'bar'  # E: Function "f" could always be true in boolean context  [truthy-function]
 
 [case testTruthyIterable]
-# flags: --strict-optional --enable-error-code truthy-iterable
+# flags: --enable-error-code truthy-iterable
 from typing import Iterable
 def func(var: Iterable[str]) -> None:
     if var:  # E: "var" has type "Iterable[str]" which can always be true in boolean context. Consider using "Collection[str]" instead.  [truthy-iterable]
@@ -978,11 +975,13 @@ def f(d: D, s: str) -> None:
 [typing fixtures/typing-typeddict.pyi]
 
 [case testRecommendErrorCode]
-# type: ignore[whatever]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever"`  [syntax]
+# type: ignore[whatever]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever"`  [syntax] \
+                          # N: Error code "syntax" not covered by "type: ignore" comment
 1 + "asdf"
 
 [case testRecommendErrorCode2]
-# type: ignore[whatever, other]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever, other"`  [syntax]
+# type: ignore[whatever, other]  # E: type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever, other"`  [syntax] \
+                                 # N: Error code "syntax" not covered by "type: ignore" comment
 1 + "asdf"
 
 [case testShowErrorCodesInConfig]
@@ -995,7 +994,6 @@ var: int = ""  # E: Incompatible types in assignment (expression has type "str",
 show_error_codes = True
 
 [case testErrorCodeUnsafeSuper_no_empty]
-# flags: --strict-optional
 from abc import abstractmethod
 
 class Base:
@@ -1008,7 +1006,6 @@ class Sub(Base):
 [builtins fixtures/exception.pyi]
 
 [case testDedicatedErrorCodeForEmpty_no_empty]
-# flags: --strict-optional
 from typing import Optional
 def foo() -> int: ...  # E: Missing return statement  [empty-body]
 def bar() -> None: ...
@@ -1077,3 +1074,111 @@ A.f = h  # type: ignore[assignment]  # E: Unused "type: ignore" comment, use nar
 [case testUnusedIgnoreEnableCode]
 # flags: --enable-error-code=unused-ignore
 x = 1  # type: ignore  # E: Unused "type: ignore" comment  [unused-ignore]
+
+[case testErrorCodeUnsafeOverloadError]
+from typing import overload, Union
+
+@overload
+def unsafe_func(x: int) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types  [overload-overlap]
+@overload
+def unsafe_func(x: object) -> str: ...
+def unsafe_func(x: object) -> Union[int, str]:
+    if isinstance(x, int):
+        return 42
+    else:
+        return "some string"
+[builtins fixtures/isinstancelist.pyi]
+
+
+###
+# unimported-reveal
+###
+
+[case testUnimportedRevealType]
+# flags: --enable-error-code=unimported-reveal
+x = 1
+reveal_type(x)
+[out]
+main:3: error: Name "reveal_type" is not defined  [unimported-reveal]
+main:3: note: Did you forget to import it from "typing_extensions"? (Suggestion: "from typing_extensions import reveal_type")
+main:3: note: Revealed type is "builtins.int"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testUnimportedRevealTypePy311]
+# flags: --enable-error-code=unimported-reveal --python-version=3.11
+x = 1
+reveal_type(x)
+[out]
+main:3: error: Name "reveal_type" is not defined  [unimported-reveal]
+main:3: note: Did you forget to import it from "typing"? (Suggestion: "from typing import reveal_type")
+main:3: note: Revealed type is "builtins.int"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testUnimportedRevealTypeInUncheckedFunc]
+# flags: --enable-error-code=unimported-reveal
+def unchecked():
+    x = 1
+    reveal_type(x)
+[out]
+main:4: error: Name "reveal_type" is not defined  [unimported-reveal]
+main:4: note: Did you forget to import it from "typing_extensions"? (Suggestion: "from typing_extensions import reveal_type")
+main:4: note: Revealed type is "Any"
+main:4: note: 'reveal_type' always outputs 'Any' in unchecked functions
+[builtins fixtures/isinstancelist.pyi]
+
+[case testUnimportedRevealTypeImportedTypingExtensions]
+# flags: --enable-error-code=unimported-reveal
+from typing_extensions import reveal_type
+x = 1
+reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testUnimportedRevealTypeImportedTyping311]
+# flags: --enable-error-code=unimported-reveal --python-version=3.11
+from typing import reveal_type
+x = 1
+reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testUnimportedRevealLocals]
+# flags: --enable-error-code=unimported-reveal
+x = 1
+reveal_locals()
+[out]
+main:3: note: Revealed local types are:
+main:3: note:     x: builtins.int
+main:3: error: Name "reveal_locals" is not defined  [unimported-reveal]
+[builtins fixtures/isinstancelist.pyi]
+
+[case testCovariantMutableOverride]
+# flags: --enable-error-code=mutable-override
+from typing import Any
+
+class C:
+    x: float
+    y: float
+    z: float
+    w: Any
+    @property
+    def foo(self) -> float: ...
+    @property
+    def bar(self) -> float: ...
+    @bar.setter
+    def bar(self, val: float) -> None: ...
+    baz: float
+    bad1: float
+    bad2: float
+class D(C):
+    x: int  # E: Covariant override of a mutable attribute (base class "C" defined the type as "float", expression has type "int")  [mutable-override]
+    y: float
+    z: Any
+    w: float
+    foo: int
+    bar: int  # E: Covariant override of a mutable attribute (base class "C" defined the type as "float", expression has type "int")  [mutable-override]
+    def one(self) -> None:
+        self.baz = 5
+    bad1 = 5  # E: Covariant override of a mutable attribute (base class "C" defined the type as "float", expression has type "int")  [mutable-override]
+    def other(self) -> None:
+        self.bad2: int = 5  # E: Covariant override of a mutable attribute (base class "C" defined the type as "float", expression has type "int")  [mutable-override]
+[builtins fixtures/property.pyi]

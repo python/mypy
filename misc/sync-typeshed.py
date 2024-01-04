@@ -179,13 +179,27 @@ def main() -> None:
     print("Created typeshed sync commit.")
 
     commits_to_cherry_pick = [
-        "c844270a4",  # LiteralString reverts
-        "9ebe5fd49",  # sum reverts
-        "d1987191f",  # ctypes reverts
-        "b1761f4c9",  # ParamSpec for functools.wraps
+        "588623ff2",  # LiteralString reverts
+        "bdcc90e85",  # sum reverts
+        "3e5d81337",  # ctypes reverts
+        "344298e3a",  # ParamSpec for functools.wraps
     ]
     for commit in commits_to_cherry_pick:
-        subprocess.run(["git", "cherry-pick", commit], check=True)
+        try:
+            subprocess.run(["git", "cherry-pick", commit], check=True)
+        except subprocess.CalledProcessError:
+            if not sys.__stdin__.isatty():
+                # We're in an automated context
+                raise
+
+            # Allow the option to merge manually
+            print(
+                f"Commit {commit} failed to cherry pick."
+                " In a separate shell, please manually merge and continue cherry pick."
+            )
+            rsp = input("Did you finish the cherry pick? [y/N]: ")
+            if rsp.lower() not in {"y", "yes"}:
+                raise
         print(f"Cherry-picked {commit}.")
 
     if args.make_pr:

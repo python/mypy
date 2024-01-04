@@ -13,8 +13,8 @@ functions are transformed in mypyc.irbuild.function.
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Any, Callable, Iterator, Sequence, Union
-from typing_extensions import Final, overload
+from typing import Any, Callable, Final, Iterator, Sequence, Union
+from typing_extensions import overload
 
 from mypy.build import Graph
 from mypy.maptype import map_instance_to_supertype
@@ -159,12 +159,15 @@ class IRBuilder:
         options: CompilerOptions,
         singledispatch_impls: dict[FuncDef, list[RegisterImplInfo]],
     ) -> None:
-        self.builder = LowLevelIRBuilder(current_module, mapper, options)
+        self.builder = LowLevelIRBuilder(current_module, errors, mapper, options)
         self.builders = [self.builder]
         self.symtables: list[dict[SymbolNode, SymbolTarget]] = [{}]
         self.runtime_args: list[list[RuntimeArg]] = [[]]
         self.function_name_stack: list[str] = []
         self.class_ir_stack: list[ClassIR] = []
+        # Keep track of whether the next statement in a block is reachable
+        # or not, separately for each block nesting level
+        self.block_reachable_stack: list[bool] = [True]
 
         self.current_module = current_module
         self.mapper = mapper
@@ -172,6 +175,7 @@ class IRBuilder:
         self.graph = graph
         self.ret_types: list[RType] = []
         self.functions: list[FuncIR] = []
+        self.function_names: set[tuple[str | None, str]] = set()
         self.classes: list[ClassIR] = []
         self.final_names: list[tuple[str, RType]] = []
         self.callable_class_names: set[str] = set()
@@ -224,6 +228,7 @@ class IRBuilder:
         """
         self.module_name = module_name
         self.module_path = module_path
+        self.builder.set_module(module_name, module_path)
 
     @overload
     def accept(self, node: Expression, *, can_borrow: bool = False) -> Value:
@@ -501,6 +506,11 @@ class IRBuilder:
         # Currently the stack always has at least two items: dummy and top-level.
         return len(self.fn_infos) <= 2
 
+    def top_level_fn_info(self) -> FuncInfo | None:
+        if self.non_function_scope():
+            return None
+        return self.fn_infos[2]
+
     def init_final_static(
         self,
         lvalue: Lvalue,
@@ -535,16 +545,14 @@ class IRBuilder:
             error_msg=f'value for final name "{error_name}" was not set',
         )
 
-    def load_final_literal_value(self, val: int | str | bytes | float | bool, line: int) -> Value:
-        """Load value of a final name or class-level attribute."""
+    def load_literal_value(self, val: int | str | bytes | float | complex | bool) -> Value:
+        """Load value of a final name, class-level attribute, or constant folded expression."""
         if isinstance(val, bool):
             if val:
                 return self.true()
             else:
                 return self.false()
         elif isinstance(val, int):
-            # TODO: take care of negative integer initializers
-            # (probably easier to fix this in mypy itself).
             return self.builder.load_int(val)
         elif isinstance(val, float):
             return self.builder.load_float(val)
@@ -552,8 +560,10 @@ class IRBuilder:
             return self.builder.load_str(val)
         elif isinstance(val, bytes):
             return self.builder.load_bytes(val)
+        elif isinstance(val, complex):
+            return self.builder.load_complex(val)
         else:
-            assert False, "Unsupported final literal value"
+            assert False, "Unsupported literal value"
 
     def get_assignment_target(
         self, lvalue: Lvalue, line: int = -1, *, for_read: bool = False
@@ -1013,7 +1023,7 @@ class IRBuilder:
             line: line number where loading occurs
         """
         if final_var.final_value is not None:  # this is safe even for non-native names
-            return self.load_final_literal_value(final_var.final_value, line)
+            return self.load_literal_value(final_var.final_value)
         elif native:
             return self.load_final_static(fullname, self.mapper.type_to_rtype(typ), line, name)
         else:
@@ -1102,7 +1112,10 @@ class IRBuilder:
     def enter(self, fn_info: FuncInfo | str = "") -> None:
         if isinstance(fn_info, str):
             fn_info = FuncInfo(name=fn_info)
-        self.builder = LowLevelIRBuilder(self.current_module, self.mapper, self.options)
+        self.builder = LowLevelIRBuilder(
+            self.current_module, self.errors, self.mapper, self.options
+        )
+        self.builder.set_module(self.module_name, self.module_path)
         self.builders.append(self.builder)
         self.symtables.append({})
         self.runtime_args.append([])
@@ -1293,6 +1306,14 @@ class IRBuilder:
             and not obj_rtype.class_ir.get_method(expr.name)
         )
 
+    def mark_block_unreachable(self) -> None:
+        """Mark statements in the innermost block being processed as unreachable.
+
+        This should be called after a statement that unconditionally leaves the
+        block, such as 'break' or 'return'.
+        """
+        self.block_reachable_stack[-1] = False
+
     # Lacks a good type because there wasn't a reasonable type in 3.5 :(
     def catch_errors(self, line: int) -> Any:
         return catch_errors(self.module_path, line)
@@ -1305,6 +1326,14 @@ class IRBuilder:
 
     def note(self, msg: str, line: int) -> None:
         self.errors.note(msg, self.module_path, line)
+
+    def add_function(self, func_ir: FuncIR, line: int) -> None:
+        name = (func_ir.class_name, func_ir.name)
+        if name in self.function_names:
+            self.error(f'Duplicate definition of "{name[1]}" not supported by mypyc', line)
+            return
+        self.function_names.add(name)
+        self.functions.append(func_ir)
 
 
 def gen_arg_defaults(builder: IRBuilder) -> None:

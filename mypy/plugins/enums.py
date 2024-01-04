@@ -12,8 +12,7 @@ semanal_enum.py).
 """
 from __future__ import annotations
 
-from typing import Iterable, Sequence, TypeVar, cast
-from typing_extensions import Final
+from typing import Final, Iterable, Sequence, TypeVar, cast
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.nodes import TypeInfo
@@ -167,11 +166,11 @@ def enum_value_callback(ctx: mypy.plugin.AttributeContext) -> Type:
                 for n in stnodes
                 if n is None or not n.implicit
             )
-            proper_types = list(
+            proper_types = [
                 _infer_value_type_with_auto_fallback(ctx, t)
                 for t in node_types
                 if t is None or not isinstance(t, CallableType)
-            )
+            ]
             underlying_type = _first(proper_types)
             if underlying_type is None:
                 return ctx.default_attr_type

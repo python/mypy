@@ -53,8 +53,11 @@ typedef PyObject CPyModule;
 // Tag bit used for long integers
 #define CPY_INT_TAG 1
 
-// Error value for fixed-width (low-level) integers
+// Error value for signed fixed-width (low-level) integers
 #define CPY_LL_INT_ERROR -113
+
+// Error value for unsigned fixed-width (low-level) integers
+#define CPY_LL_UINT_ERROR 239
 
 // Error value for floats
 #define CPY_FLOAT_ERROR -113.0
@@ -68,5 +71,48 @@ static inline CPyTagged CPyTagged_ShortFromInt(int x) {
 static inline CPyTagged CPyTagged_ShortFromSsize_t(Py_ssize_t x) {
     return x << 1;
 }
+
+// Are we targeting Python 3.12 or newer?
+#define CPY_3_12_FEATURES (PY_VERSION_HEX >= 0x030c0000)
+
+#if CPY_3_12_FEATURES
+
+// Same as macros in CPython internal/pycore_long.h, but with a CPY_ prefix
+#define CPY_NON_SIZE_BITS 3
+#define CPY_SIGN_ZERO 1
+#define CPY_SIGN_NEGATIVE 2
+#define CPY_SIGN_MASK 3
+
+#define CPY_LONG_DIGIT(o, n) ((o)->long_value.ob_digit[n])
+
+// Only available on Python 3.12 and later
+#define CPY_LONG_TAG(o) ((o)->long_value.lv_tag)
+#define CPY_LONG_IS_NEGATIVE(o) (((o)->long_value.lv_tag & CPY_SIGN_MASK) == CPY_SIGN_NEGATIVE)
+// Only available on Python 3.12 and later
+#define CPY_LONG_SIZE(o) ((o)->long_value.lv_tag >> CPY_NON_SIZE_BITS)
+// Number of digits; negative for negative ints
+#define CPY_LONG_SIZE_SIGNED(o) (CPY_LONG_IS_NEGATIVE(o) ? -CPY_LONG_SIZE(o) : CPY_LONG_SIZE(o))
+// Number of digits, assuming int is non-negative
+#define CPY_LONG_SIZE_UNSIGNED(o) CPY_LONG_SIZE(o)
+
+static inline void CPyLong_SetUnsignedSize(PyLongObject *o, Py_ssize_t n) {
+    if (n == 0)
+        o->long_value.lv_tag = CPY_SIGN_ZERO;
+    else
+        o->long_value.lv_tag = n << CPY_NON_SIZE_BITS;
+}
+
+#else
+
+#define CPY_LONG_DIGIT(o, n) ((o)->ob_digit[n])
+#define CPY_LONG_IS_NEGATIVE(o) (((o)->ob_base.ob_size < 0)
+#define CPY_LONG_SIZE_SIGNED(o) ((o)->ob_base.ob_size)
+#define CPY_LONG_SIZE_UNSIGNED(o) ((o)->ob_base.ob_size)
+
+static inline void CPyLong_SetUnsignedSize(PyLongObject *o, Py_ssize_t n) {
+    o->ob_base.ob_size = n;
+}
+
+#endif
 
 #endif

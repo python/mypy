@@ -7,18 +7,23 @@ import os
 import subprocess
 import sys
 import time
+from collections import defaultdict
 from gettext import gettext
-from typing import IO, Any, NoReturn, Sequence, TextIO
-from typing_extensions import Final
+from typing import IO, Any, Final, NoReturn, Sequence, TextIO
 
 from mypy import build, defaults, state, util
-from mypy.config_parser import get_config_module_names, parse_config_file, parse_version
+from mypy.config_parser import (
+    get_config_module_names,
+    parse_config_file,
+    parse_version,
+    validate_package_allow_list,
+)
 from mypy.errorcodes import error_codes
 from mypy.errors import CompileError
 from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.fscache import FileSystemCache
 from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths, get_search_dirs, mypy_path
-from mypy.options import INCOMPLETE_FEATURES, BuildType, Options
+from mypy.options import COMPLETE_FEATURES, INCOMPLETE_FEATURES, BuildType, Options
 from mypy.split_namespace import SplitNamespace
 from mypy.version import __version__
 
@@ -29,7 +34,7 @@ MEM_PROFILE: Final = False  # If True, dump memory profile
 def stat_proxy(path: str) -> os.stat_result:
     try:
         st = orig_stat(path)
-    except os.error as err:
+    except OSError as err:
         print(f"stat({path!r}) -> {err}")
         raise
     else:
@@ -140,7 +145,7 @@ def main(
         sys.exit(code)
 
     # HACK: keep res alive so that mypyc won't free it before the hard_exit
-    list([res])
+    list([res])  # noqa: C410
 
 
 def run_build(
@@ -154,11 +159,14 @@ def run_build(
     formatter = util.FancyFormatter(stdout, stderr, options.hide_error_codes)
 
     messages = []
+    messages_by_file = defaultdict(list)
 
-    def flush_errors(new_messages: list[str], serious: bool) -> None:
+    def flush_errors(filename: str | None, new_messages: list[str], serious: bool) -> None:
         if options.pretty:
             new_messages = formatter.fit_in_terminal(new_messages)
         messages.extend(new_messages)
+        if new_messages:
+            messages_by_file[filename].extend(new_messages)
         if options.non_interactive:
             # Collect messages and possibly show them later.
             return
@@ -183,8 +191,7 @@ def run_build(
         and not options.non_interactive
     ):
         print(
-            "Warning: unused section(s) in %s: %s"
-            % (
+            "Warning: unused section(s) in {}: {}".format(
                 options.config_file,
                 get_config_module_names(
                     options.config_file,
@@ -197,7 +204,7 @@ def run_build(
             ),
             file=stderr,
         )
-    maybe_write_junit_xml(time.time() - t0, serious, messages, options)
+    maybe_write_junit_xml(time.time() - t0, serious, messages, messages_by_file, options)
     return res, messages, blockers
 
 
@@ -342,7 +349,7 @@ class CapturableArgumentParser(argparse.ArgumentParser):
     yet output must be captured to properly support mypy.api.run.
     """
 
-    def __init__(self, *args: Any, **kwargs: Any):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.stdout = kwargs.pop("stdout", sys.stdout)
         self.stderr = kwargs.pop("stderr", sys.stderr)
         super().__init__(*args, **kwargs)
@@ -408,7 +415,7 @@ class CapturableVersionAction(argparse.Action):
         default: str = argparse.SUPPRESS,
         help: str = "show program's version number and exit",
         stdout: IO[str] | None = None,
-    ):
+    ) -> None:
         super().__init__(
             option_strings=option_strings, dest=dest, default=default, nargs=0, help=help
         )
@@ -596,14 +603,6 @@ def process_options(
         dest="special-opts:python_version",
     )
     platform_group.add_argument(
-        "-2",
-        "--py2",
-        dest="special-opts:python_version",
-        action="store_const",
-        const=defaults.PYTHON2_VERSION,
-        help="Use Python 2 mode (same as --python-version 2.7)",
-    )
-    platform_group.add_argument(
         "--platform",
         action="store",
         metavar="PLATFORM",
@@ -683,6 +682,14 @@ def process_options(
         help="Disallow calling functions without type annotations"
         " from functions with type annotations",
         group=untyped_group,
+    )
+    untyped_group.add_argument(
+        "--untyped-calls-exclude",
+        metavar="MODULE",
+        action="append",
+        default=[],
+        help="Disable --disallow-untyped-calls for functions/methods coming"
+        " from specific package, module, or class",
     )
     add_invertible_flag(
         "--disallow-untyped-defs",
@@ -826,10 +833,12 @@ def process_options(
     )
 
     add_invertible_flag(
-        "--strict-concatenate",
+        "--extra-checks",
         default=False,
         strict_flag=True,
-        help="Make arguments prepended via Concatenate be truly positional-only",
+        help="Enable additional checks that are technically correct but may be impractical "
+        "in real code. For example, this prohibits partial overlap in TypedDict updates, "
+        "and makes arguments prepended via Concatenate positional-only",
         group=strictness_group,
     )
 
@@ -883,6 +892,12 @@ def process_options(
         "--hide-error-codes",
         default=False,
         help="Hide error codes in error messages",
+        group=error_group,
+    )
+    add_invertible_flag(
+        "--show-error-code-links",
+        default=False,
+        help="Show links to error code documentation",
         group=error_group,
     )
     add_invertible_flag(
@@ -984,18 +999,18 @@ def process_options(
         help="Use a custom typing module",
     )
     internals_group.add_argument(
-        "--disable-recursive-aliases",
+        "--old-type-inference",
         action="store_true",
-        help="Disable experimental support for recursive type aliases",
+        help="Disable new experimental type inference algorithm",
     )
     # Deprecated reverse variant of the above.
     internals_group.add_argument(
-        "--enable-recursive-aliases", action="store_true", help=argparse.SUPPRESS
+        "--new-type-inference", action="store_true", help=argparse.SUPPRESS
     )
     parser.add_argument(
         "--enable-incomplete-feature",
         action="append",
-        metavar="FEATURE",
+        metavar="{" + ",".join(sorted(INCOMPLETE_FEATURES)) + "}",
         help="Enable support of incomplete/experimental features for early preview",
     )
     internals_group.add_argument(
@@ -1043,6 +1058,12 @@ def process_options(
     other_group = parser.add_argument_group(title="Miscellaneous")
     other_group.add_argument("--quickstart-file", help=argparse.SUPPRESS)
     other_group.add_argument("--junit-xml", help="Write junit.xml to the given file")
+    imports_group.add_argument(
+        "--junit-format",
+        choices=["global", "per_file"],
+        default="global",
+        help="If --junit-xml is set, specifies format. global: single test with all errors; per_file: one test entry per file with failures",
+    )
     other_group.add_argument(
         "--find-occurrences",
         metavar="CLASS.MEMBER",
@@ -1114,6 +1135,8 @@ def process_options(
     parser.add_argument("--dump-graph", action="store_true", help=argparse.SUPPRESS)
     # --semantic-analysis-only does exactly that.
     parser.add_argument("--semantic-analysis-only", action="store_true", help=argparse.SUPPRESS)
+    # Some tests use this to tell mypy that we are running a test.
+    parser.add_argument("--test-env", action="store_true", help=argparse.SUPPRESS)
     # --local-partial-types disallows partial types spanning module top level and a function
     # (implicitly defined in fine-grained incremental mode)
     parser.add_argument("--local-partial-types", action="store_true", help=argparse.SUPPRESS)
@@ -1140,16 +1163,15 @@ def process_options(
     # --debug-serialize will run tree.serialize() even if cache generation is disabled.
     # Useful for mypy_primer to detect serialize errors earlier.
     parser.add_argument("--debug-serialize", action="store_true", help=argparse.SUPPRESS)
-    # This one is deprecated, but we will keep it for few releases.
-    parser.add_argument(
-        "--enable-incomplete-features", action="store_true", help=argparse.SUPPRESS
-    )
+
     parser.add_argument(
         "--disable-bytearray-promotion", action="store_true", help=argparse.SUPPRESS
     )
     parser.add_argument(
         "--disable-memoryview-promotion", action="store_true", help=argparse.SUPPRESS
     )
+    # This flag is deprecated, it has been moved to --extra-checks
+    parser.add_argument("--strict-concatenate", action="store_true", help=argparse.SUPPRESS)
 
     # options specifying code to check
     code_group = parser.add_argument_group(
@@ -1221,8 +1243,11 @@ def process_options(
         parser.error(f"Cannot find config file '{config_file}'")
 
     options = Options()
+    strict_option_set = False
 
     def set_strict_flags() -> None:
+        nonlocal strict_option_set
+        strict_option_set = True
         for dest, value in strict_flag_assignments:
             setattr(options, dest, value)
 
@@ -1298,6 +1323,8 @@ def process_options(
             % ", ".join(sorted(overlap))
         )
 
+    validate_package_allow_list(options.untyped_calls_exclude)
+
     # Process `--enable-error-code` and `--disable-error-code` flags
     disabled_codes = set(options.disable_error_code)
     enabled_codes = set(options.enable_error_code)
@@ -1316,14 +1343,10 @@ def process_options(
 
     # Validate incomplete features.
     for feature in options.enable_incomplete_feature:
-        if feature not in INCOMPLETE_FEATURES:
+        if feature not in INCOMPLETE_FEATURES | COMPLETE_FEATURES:
             parser.error(f"Unknown incomplete feature: {feature}")
-    if options.enable_incomplete_features:
-        print(
-            "Warning: --enable-incomplete-features is deprecated, use"
-            " --enable-incomplete-feature=FEATURE instead"
-        )
-        options.enable_incomplete_feature = list(INCOMPLETE_FEATURES)
+        if feature in COMPLETE_FEATURES:
+            print(f"Warning: {feature} is already enabled by default")
 
     # Compute absolute path for custom typeshed (if present).
     if options.custom_typeshed_dir is not None:
@@ -1331,12 +1354,12 @@ def process_options(
 
     # Set build flags.
     if special_opts.find_occurrences:
-        state.find_occurrences = special_opts.find_occurrences.split(".")
-        assert state.find_occurrences is not None
-        if len(state.find_occurrences) < 2:
+        _find_occurrences = tuple(special_opts.find_occurrences.split("."))
+        if len(_find_occurrences) < 2:
             parser.error("Can only find occurrences of class members.")
-        if len(state.find_occurrences) != 2:
+        if len(_find_occurrences) != 2:
             parser.error("Can only find occurrences of non-nested class members.")
+        state.find_occurrences = _find_occurrences
 
     # Set reports.
     for flag, val in vars(special_opts).items():
@@ -1369,11 +1392,14 @@ def process_options(
     if options.logical_deps:
         options.cache_fine_grained = True
 
-    if options.enable_recursive_aliases:
+    if options.new_type_inference:
         print(
-            "Warning: --enable-recursive-aliases is deprecated;"
-            " recursive types are enabled by default"
+            "Warning: --new-type-inference flag is deprecated;"
+            " new type inference algorithm is already enabled by default"
         )
+
+    if options.strict_concatenate and not strict_option_set:
+        print("Warning: --strict-concatenate is deprecated; use --extra-checks instead")
 
     # Set target.
     if special_opts.modules + special_opts.packages:
@@ -1469,18 +1495,37 @@ def process_cache_map(
         options.cache_map[source] = (meta_file, data_file)
 
 
-def maybe_write_junit_xml(td: float, serious: bool, messages: list[str], options: Options) -> None:
+def maybe_write_junit_xml(
+    td: float,
+    serious: bool,
+    all_messages: list[str],
+    messages_by_file: dict[str | None, list[str]],
+    options: Options,
+) -> None:
     if options.junit_xml:
         py_version = f"{options.python_version[0]}_{options.python_version[1]}"
-        util.write_junit_xml(
-            td, serious, messages, options.junit_xml, py_version, options.platform
-        )
+        if options.junit_format == "global":
+            util.write_junit_xml(
+                td,
+                serious,
+                {None: all_messages} if all_messages else {},
+                options.junit_xml,
+                py_version,
+                options.platform,
+            )
+        else:
+            # per_file
+            util.write_junit_xml(
+                td, serious, messages_by_file, options.junit_xml, py_version, options.platform
+            )
 
 
 def fail(msg: str, stderr: TextIO, options: Options) -> NoReturn:
     """Fail with a serious error."""
     stderr.write(f"{msg}\n")
-    maybe_write_junit_xml(0.0, serious=True, messages=[msg], options=options)
+    maybe_write_junit_xml(
+        0.0, serious=True, all_messages=[msg], messages_by_file={None: [msg]}, options=options
+    )
     sys.exit(2)
 
 

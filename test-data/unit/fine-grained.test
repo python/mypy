@@ -97,11 +97,6 @@ class A:
 ==
 main:5: error: Missing positional argument "a" in call to "g" of "A"  [call-arg]
             a.g() # E
-            ^
-[out version>=3.8]
-==
-main:5: error: Missing positional argument "a" in call to "g" of "A"  [call-arg]
-            a.g() # E
             ^~~~~
 
 [case testFunctionMissingModuleAttribute]
@@ -196,7 +191,7 @@ main:3: error: "A" has no attribute "x"
 [case testVariableTypeBecomesInvalid]
 import m
 def f() -> None:
-    a = None # type: m.A
+    a: m.A
 [file m.py]
 class A: pass
 [file m.py.2]
@@ -1729,15 +1724,15 @@ f = 1
 main:1: error: Module "a" has no attribute "f"
 
 [case testDecoratedMethodRefresh]
-from typing import Iterator, Callable, List
+from typing import Iterator, Callable, List, Optional
 from a import f
 import a
 
-def dec(f: Callable[['A'], Iterator[int]]) -> Callable[[int], int]: pass
+def dec(f: Callable[['A'], Optional[Iterator[int]]]) -> Callable[[int], int]: pass
 
 class A:
     @dec
-    def f(self) -> Iterator[int]:
+    def f(self) -> Optional[Iterator[int]]:
         self.x = a.g()  # type: int
         return None
 [builtins fixtures/list.pyi]
@@ -2088,7 +2083,6 @@ a.py:5: error: "list" expects 1 type argument, but 2 given
 ==
 
 [case testPreviousErrorInOverloadedFunction]
-# flags: --strict-optional
 import a
 [file a.py]
 from typing import overload
@@ -3499,7 +3493,6 @@ def foo() -> None:
 b.py:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testNamedTupleUpdateNonRecursiveToRecursiveFine]
-# flags: --strict-optional
 import c
 [file a.py]
 from b import M
@@ -3542,7 +3535,6 @@ c.py:5: error: Incompatible types in assignment (expression has type "Optional[N
 c.py:7: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
 
 [case testTupleTypeUpdateNonRecursiveToRecursiveFine]
-# flags: --strict-optional
 import c
 [file a.py]
 from b import M
@@ -3575,7 +3567,6 @@ c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int
 c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
 
 [case testTypeAliasUpdateNonRecursiveToRecursiveFine]
-# flags: --strict-optional
 import c
 [file a.py]
 from b import M
@@ -4631,6 +4622,7 @@ class User:
 ==
 
 [case testNoStrictOptionalModule]
+# flags: --no-strict-optional
 import a
 a.y = a.x
 [file a.py]
@@ -4648,9 +4640,10 @@ y: int
 [out]
 ==
 ==
-main:2: error: Incompatible types in assignment (expression has type "Optional[str]", variable has type "int")
+main:3: error: Incompatible types in assignment (expression has type "Optional[str]", variable has type "int")
 
 [case testNoStrictOptionalFunction]
+# flags: --no-strict-optional
 import a
 from typing import Optional
 def f() -> None:
@@ -4671,9 +4664,10 @@ def g(x: str) -> None:
 [out]
 ==
 ==
-main:5: error: Argument 1 to "g" has incompatible type "Optional[int]"; expected "str"
+main:6: error: Argument 1 to "g" has incompatible type "Optional[int]"; expected "str"
 
 [case testNoStrictOptionalMethod]
+# flags: --no-strict-optional
 import a
 from typing import Optional
 class C:
@@ -4698,10 +4692,9 @@ class B:
 [out]
 ==
 ==
-main:6: error: Argument 1 to "g" of "B" has incompatible type "Optional[int]"; expected "str"
+main:7: error: Argument 1 to "g" of "B" has incompatible type "Optional[int]"; expected "str"
 
 [case testStrictOptionalModule]
-# flags: --strict-optional
 import a
 a.y = a.x
 [file a.py]
@@ -4714,10 +4707,9 @@ x: Optional[int]
 y: int
 [out]
 ==
-main:3: error: Incompatible types in assignment (expression has type "Optional[int]", variable has type "int")
+main:2: error: Incompatible types in assignment (expression has type "Optional[int]", variable has type "int")
 
 [case testStrictOptionalFunction]
-# flags: --strict-optional
 import a
 from typing import Optional
 def f() -> None:
@@ -4733,10 +4725,9 @@ def g(x: int) -> None:
     pass
 [out]
 ==
-main:6: error: Argument 1 to "g" has incompatible type "Optional[int]"; expected "int"
+main:5: error: Argument 1 to "g" has incompatible type "Optional[int]"; expected "int"
 
 [case testStrictOptionalMethod]
-# flags: --strict-optional
 import a
 from typing import Optional
 class C:
@@ -4755,7 +4746,7 @@ class B:
         pass
 [out]
 ==
-main:7: error: Argument 1 to "g" of "B" has incompatible type "Optional[int]"; expected "int"
+main:6: error: Argument 1 to "g" of "B" has incompatible type "Optional[int]"; expected "int"
 
 [case testPerFileStrictOptionalModule]
 import a
@@ -5281,10 +5272,11 @@ class I(metaclass=ABCMeta):
     @abstractmethod
     def f(self) -> None: pass
 [file b.py]
+from typing import Optional
 from z import I
 class Foo(I):
     pass
-def x() -> Foo: return None
+def x() -> Optional[Foo]: return None
 [file z.py.2]
 from abc import abstractmethod, ABCMeta
 class I(metaclass=ABCMeta):
@@ -5306,10 +5298,11 @@ class I(metaclass=ABCMeta):
     @abstractmethod
     def f(self) -> None: pass
 [file b.py]
+from typing import Optional
 from a import I
 class Foo(I):
     pass
-def x() -> Foo: return None
+def x() -> Optional[Foo]: return None
 [file a.py.2]
 from abc import abstractmethod, ABCMeta
 class I(metaclass=ABCMeta):
@@ -7774,7 +7767,8 @@ from typing import List
 import b
 class A(b.B):
     def meth(self) -> None:
-        self.x, *self.y = None, None  # type: str, List[str]
+        self.x: str
+        self.y: List[str]
 [file b.py]
 from typing import List
 class B:
@@ -7786,7 +7780,7 @@ class B:
 [builtins fixtures/list.pyi]
 [out]
 ==
-main:5: error: Incompatible types in assignment (expression has type "List[str]", base class "B" defined the type as "List[int]")
+main:6: error: Incompatible types in assignment (expression has type "List[str]", base class "B" defined the type as "List[int]")
 
 [case testLiskovFineVariableCleanDefInMethodNested-only_when_nocache]
 from b import B
@@ -7952,7 +7946,7 @@ class Foo(a.I):
 ==
 
 [case testImplicitOptionalRefresh1]
-# flags: --strict-optional --implicit-optional
+# flags: --implicit-optional
 from x import f
 def foo(x: int = None) -> None:
     f()
@@ -8032,7 +8026,7 @@ A = NamedTuple('A', F)  # type: ignore
 [builtins fixtures/list.pyi]
 [out]
 ==
-b.py:3: note: Revealed type is "Tuple[, fallback=a.A]"
+b.py:3: note: Revealed type is "Tuple[(), fallback=a.A]"
 
 [case testImportOnTopOfAlias1]
 from a import A
@@ -9114,27 +9108,27 @@ import a
 [file a.py]
 # mypy: no-warn-no-return
 
-from typing import List
-def foo() -> List:
+from typing import List, Optional
+def foo() -> Optional[List]:
     20
 
 [file a.py.2]
 # mypy: disallow-any-generics, no-warn-no-return
 
-from typing import List
-def foo() -> List:
+from typing import List, Optional
+def foo() -> Optional[List]:
     20
 
 [file a.py.3]
 # mypy: no-warn-no-return
 
-from typing import List
-def foo() -> List:
+from typing import List, Optional
+def foo() -> Optional[List]:
     20
 
 [file a.py.4]
-from typing import List
-def foo() -> List:
+from typing import List, Optional
+def foo() -> Optional[List]:
     20
 [out]
 ==
@@ -9666,7 +9660,8 @@ reveal_type(z)
 [out]
 c.py:2: note: Revealed type is "a.<subclass of "A" and "B">"
 ==
-c.py:2: note: Revealed type is "a.A"
+c.py:2: note: Revealed type is "Any"
+b.py:2: error: Cannot determine type of "y"
 
 [case testIsInstanceAdHocIntersectionFineGrainedIncrementalUnreachaableToIntersection]
 import c
@@ -9697,7 +9692,8 @@ from b import z
 reveal_type(z)
 [builtins fixtures/isinstance.pyi]
 [out]
-c.py:2: note: Revealed type is "a.A"
+b.py:2: error: Cannot determine type of "y"
+c.py:2: note: Revealed type is "Any"
 ==
 c.py:2: note: Revealed type is "a.<subclass of "A" and "B">"
 
@@ -9790,7 +9786,6 @@ class ExampleClass(Generic[T]):
 [out]
 ==
 [case testStrictNoneAttribute]
-# flags: --strict-optional
 from typing import Generic, TypeVar
 
 T = TypeVar('T', int, str)
@@ -9872,7 +9867,7 @@ x = 0  # Arbitrary change to trigger reprocessing
 [builtins fixtures/dict.pyi]
 [out]
 ==
-a.py:5: note: Revealed type is "def (x: builtins.int) -> builtins.str"
+a.py:5: note: Revealed type is "def (x: builtins.int) -> Union[builtins.str, None]"
 
 [case testTypeVarTupleCached]
 import a
@@ -9912,6 +9907,128 @@ x = 0  # Arbitrary change to trigger reprocessing
 [out]
 ==
 a.py:3: note: Revealed type is "Tuple[Literal[1]?, Literal['x']?]"
+
+[case testVariadicClassFineUpdateRegularToVariadic]
+from typing import Any
+from lib import C
+
+x: C[int, str]
+
+[file lib.py]
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+S = TypeVar("S")
+class C(Generic[T, S]): ...
+
+[file lib.py.2]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class C(Generic[Unpack[Ts]]): ...
+[builtins fixtures/tuple.pyi]
+[out]
+==
+
+[case testVariadicClassFineUpdateVariadicToRegular]
+from typing import Any
+from lib import C
+
+x: C[int, str, int]
+
+[file lib.py]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class C(Generic[Unpack[Ts]]): ...
+[file lib.py.2]
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+S = TypeVar("S")
+class C(Generic[T, S]): ...
+[builtins fixtures/tuple.pyi]
+[out]
+==
+main:4: error: "C" expects 2 type arguments, but 3 given
+
+-- Order of error messages is different, so we repeat the test twice.
+[case testVariadicClassFineUpdateValidToInvalidCached-only_when_cache]
+from typing import Any
+from lib import C
+
+x: C[int, str]
+
+[file lib.py]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class C(Generic[Unpack[Ts]]): ...
+
+[file lib.py.2]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class C(Generic[Ts]): ...
+[builtins fixtures/tuple.pyi]
+[out]
+==
+main:4: error: "C" expects no type arguments, but 2 given
+lib.py:5: error: Free type variable expected in Generic[...]
+
+[case testVariadicClassFineUpdateValidToInvalid-only_when_nocache]
+from typing import Any
+from lib import C
+
+x: C[int, str]
+
+[file lib.py]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class C(Generic[Unpack[Ts]]): ...
+
+[file lib.py.2]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class C(Generic[Ts]): ...
+[builtins fixtures/tuple.pyi]
+[out]
+==
+lib.py:5: error: Free type variable expected in Generic[...]
+main:4: error: "C" expects no type arguments, but 2 given
+
+[case testVariadicClassFineUpdateInvalidToValid]
+from typing import Any
+from lib import C
+
+x: C[int, str]
+
+[file lib.py]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class C(Generic[Ts]): ...
+
+[file lib.py.2]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class C(Generic[Unpack[Ts]]): ...
+[builtins fixtures/tuple.pyi]
+[out]
+lib.py:5: error: Free type variable expected in Generic[...]
+main:4: error: "C" expects no type arguments, but 2 given
+==
 
 [case testUnpackKwargsUpdateFine]
 import m
@@ -10043,7 +10160,6 @@ class C(B): ...
 main.py:4: note: Revealed type is "def () -> builtins.str"
 
 [case testAbstractBodyTurnsEmpty]
-# flags: --strict-optional
 from b import Base
 
 class Sub(Base):
@@ -10063,10 +10179,9 @@ class Base:
     def meth(self) -> int: ...
 [out]
 ==
-main:6: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
+main:5: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
 
 [case testAbstractBodyTurnsEmptyProtocol]
-# flags: --strict-optional
 from b import Base
 
 class Sub(Base):
@@ -10083,7 +10198,7 @@ class Base(Protocol):
     def meth(self) -> int: ...
 [out]
 ==
-main:6: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
+main:5: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
 
 [case testPrettyMessageSorting]
 # flags: --pretty
@@ -10101,23 +10216,6 @@ object + 1
 1()
 
 [out]
-b.py:1: error: Unsupported left operand type for + ("Type[object]")
-    object + 1
-    ^
-a.py:1: error: Unsupported operand types for + ("int" and "str")
-    1 + ''
-        ^
-==
-b.py:1: error: Unsupported left operand type for + ("Type[object]")
-    object + 1
-    ^
-b.py:2: error: "int" not callable
-    1()
-    ^
-a.py:1: error: Unsupported operand types for + ("int" and "str")
-    1 + ''
-        ^
-[out version>=3.8]
 b.py:1: error: Unsupported left operand type for + ("Type[object]")
     object + 1
     ^~~~~~~~~~
@@ -10340,3 +10438,70 @@ reveal_type(x)
 [out]
 ==
 a.py:3: note: Revealed type is "Union[def (x: builtins.int) -> builtins.int, def (*x: builtins.int) -> builtins.int]"
+
+[case testErrorInReAddedModule]
+# flags: --disallow-untyped-defs --follow-imports=error
+# cmd: mypy a.py
+# cmd2: mypy b.py
+# cmd3: mypy a.py
+
+[file a.py]
+def f(): pass
+[file b.py]
+def f(): pass
+[file unrelated.txt.3]
+[out]
+a.py:1: error: Function is missing a return type annotation
+a.py:1: note: Use "-> None" if function does not return a value
+==
+b.py:1: error: Function is missing a return type annotation
+b.py:1: note: Use "-> None" if function does not return a value
+==
+a.py:1: error: Function is missing a return type annotation
+a.py:1: note: Use "-> None" if function does not return a value
+
+[case testModuleLevelGetAttrInStub]
+import stub
+import a
+import b
+
+[file stub/__init__.pyi]
+s: str
+def __getattr__(self): pass
+
+[file a.py]
+
+[file a.py.2]
+from stub import x
+from stub.pkg import y
+from stub.pkg.sub import z
+
+[file b.py]
+
+[file b.py.3]
+from stub import s
+reveal_type(s)
+
+[out]
+==
+==
+b.py:2: note: Revealed type is "builtins.str"
+
+[case testRenameSubModule]
+import a
+
+[file a.py]
+import pkg.sub
+
+[file pkg/__init__.py]
+[file pkg/sub/__init__.py]
+from pkg.sub import mod
+[file pkg/sub/mod.py]
+
+[file pkg/sub/__init__.py.2]
+from pkg.sub import modb
+[delete pkg/sub/mod.py.2]
+[file pkg/sub/modb.py.2]
+
+[out]
+==

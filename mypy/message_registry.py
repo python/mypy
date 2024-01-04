@@ -8,8 +8,7 @@ add a method to MessageBuilder and call this instead.
 
 from __future__ import annotations
 
-from typing import NamedTuple
-from typing_extensions import Final
+from typing import Final, NamedTuple
 
 from mypy import errorcodes as codes
 
@@ -53,7 +52,7 @@ RETURN_IN_ASYNC_GENERATOR: Final = ErrorMessage(
     '"return" with value in async generator is not allowed'
 )
 INVALID_RETURN_TYPE_FOR_GENERATOR: Final = ErrorMessage(
-    'The return type of a generator function should be "Generator"' " or one of its supertypes"
+    'The return type of a generator function should be "Generator" or one of its supertypes'
 )
 INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR: Final = ErrorMessage(
     'The return type of an async generator function should be "AsyncGenerator" or one of its '
@@ -63,6 +62,9 @@ YIELD_VALUE_EXPECTED: Final = ErrorMessage("Yield value expected")
 INCOMPATIBLE_TYPES: Final = ErrorMessage("Incompatible types")
 INCOMPATIBLE_TYPES_IN_ASSIGNMENT: Final = ErrorMessage(
     "Incompatible types in assignment", code=codes.ASSIGNMENT
+)
+COVARIANT_OVERRIDE_OF_MUTABLE_ATTRIBUTE: Final = ErrorMessage(
+    "Covariant override of a mutable attribute", code=codes.MUTABLE_OVERRIDE
 )
 INCOMPATIBLE_TYPES_IN_AWAIT: Final = ErrorMessage('Incompatible types in "await"')
 INCOMPATIBLE_REDEFINITION: Final = ErrorMessage("Incompatible redefinition")
@@ -84,6 +86,10 @@ INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION: Final = "Incompatible types in string i
 INCOMPATIBLE_TYPES_IN_CAPTURE: Final = ErrorMessage("Incompatible types in capture pattern")
 MUST_HAVE_NONE_RETURN_TYPE: Final = ErrorMessage('The return type of "{}" must be None')
 TUPLE_INDEX_OUT_OF_RANGE: Final = ErrorMessage("Tuple index out of range")
+AMBIGUOUS_SLICE_OF_VARIADIC_TUPLE: Final = ErrorMessage("Ambiguous slice of a variadic tuple")
+TOO_MANY_TARGETS_FOR_VARIADIC_UNPACK: Final = ErrorMessage(
+    "Too many assignment targets for variadic unpack"
+)
 INVALID_SLICE_INDEX: Final = ErrorMessage("Slice index must be an integer, SupportsIndex or None")
 CANNOT_INFER_LAMBDA_TYPE: Final = ErrorMessage("Cannot infer type of lambda")
 CANNOT_ACCESS_INIT: Final = (
@@ -172,7 +178,8 @@ BARE_GENERIC: Final = "Missing type parameters for generic type {}"
 IMPLICIT_GENERIC_ANY_BUILTIN: Final = (
     'Implicit generic "Any". Use "{}" and specify generic parameters'
 )
-INVALID_UNPACK = "{} cannot be unpacked (must be tuple or TypeVarTuple)"
+INVALID_UNPACK: Final = "{} cannot be unpacked (must be tuple or TypeVarTuple)"
+INVALID_UNPACK_POSITION: Final = "Unpack is only valid in a variadic position"
 
 # TypeVar
 INCOMPATIBLE_TYPEVAR_VALUE: Final = 'Value of type variable "{}" of {} cannot be {}'
@@ -181,7 +188,7 @@ INVALID_TYPEVAR_AS_TYPEARG: Final = 'Type variable "{}" not valid as type argume
 INVALID_TYPEVAR_ARG_BOUND: Final = 'Type argument {} of "{}" must be a subtype of {}'
 INVALID_TYPEVAR_ARG_VALUE: Final = 'Invalid type argument value for "{}"'
 TYPEVAR_VARIANCE_DEF: Final = 'TypeVar "{}" may only be a literal bool'
-TYPEVAR_BOUND_MUST_BE_TYPE: Final = 'TypeVar "bound" must be a type'
+TYPEVAR_ARG_MUST_BE_TYPE: Final = '{} "{}" must be a type'
 TYPEVAR_UNEXPECTED_ARGUMENT: Final = 'Unexpected argument to "TypeVar()"'
 UNBOUND_TYPEVAR: Final = (
     "A function returning TypeVar should receive at least "
@@ -202,10 +209,10 @@ SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1: Final = ErrorMessage(
 )
 TARGET_CLASS_HAS_NO_BASE_CLASS: Final = ErrorMessage("Target class has no base class")
 SUPER_OUTSIDE_OF_METHOD_NOT_SUPPORTED: Final = ErrorMessage(
-    "super() outside of a method is not supported"
+    '"super()" outside of a method is not supported'
 )
 SUPER_ENCLOSING_POSITIONAL_ARGS_REQUIRED: Final = ErrorMessage(
-    "super() requires one or more positional arguments in enclosing function"
+    '"super()" requires one or two positional arguments in enclosing function'
 )
 
 # Self-type
@@ -277,6 +284,7 @@ CANNOT_MODIFY_MATCH_ARGS: Final = 'Cannot assign to "__match_args__"'
 DATACLASS_FIELD_ALIAS_MUST_BE_LITERAL: Final = (
     '"alias" argument to dataclass field must be a string literal'
 )
+DATACLASS_POST_INIT_MUST_BE_A_FUNCTION: Final = '"__post_init__" method must be an instance method'
 
 # fastparse
 FAILED_TO_MERGE_OVERLOADS: Final = ErrorMessage(
