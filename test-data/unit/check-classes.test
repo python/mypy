@@ -8532,6 +8532,32 @@ class C(B):
     async def _A__h(self) -> str:  # E: Return type "Coroutine[Any, Any, str]" of "_A__h" incompatible with return type "Coroutine[Any, Any, int]" in supertype "A"
         ...
 
+[case testNameManglingDecorator]
+from typing import Callable, Protocol, Type
+
+class FuncWrapper(Protocol):
+    def __call__(__self, f: Callable[[A], int]) -> Callable[[A], str]: ...
+def decorator_func(string: str) -> FuncWrapper: ...
+
+class ClassModifier(Protocol):
+    def __call__(__self, c: Type[A._A__B]) -> Type[A._A__B]: ...
+def decorator_class(string: str) -> ClassModifier: ...
+
+class A:
+    __x: str = "test"
+
+    @decorator_func(__x)
+    def __wrapped(self) -> int: ...
+
+    @decorator_class(__x)
+    class __B: ...
+
+a: A
+a.__wrapped()  # E: "A" has no attribute "__wrapped"; maybe "_A__wrapped"?
+reveal_type(a._A__wrapped())  # N: Revealed type is "builtins.str"
+a.__B  # E: "A" has no attribute "__B"
+reveal_type(a._A__B)  # N: Revealed type is "def () -> __main__.A._A__B"
+
 [case testNameManglingNestedClass]
 
 class A:
@@ -8570,11 +8596,10 @@ class C(__enum.Flag): ...
 
 [case testNameManglingAnnotationsPast]
 
-__y = int
-
 class A:
     __x: int
 
+__y = int
 class __B:
     def f1(self, a: A) -> __y:  # E: Name "_B__y" is not defined
         a.__x  # E: "A" has no attribute "_B__x"; maybe "_A__x"?
@@ -8599,11 +8624,10 @@ reveal_type(C().b2)  # N: Revealed type is "__main__.__B"
 [case testNameManglingAnnotationsFuture]
 from __future__ import annotations
 
-__y = int
-
 class A:
     __x: int
 
+__y = int
 class __B:
     def f1(self, a: A) -> __y:
         a.__x  # E: "A" has no attribute "_B__x"; maybe "_A__x"?
