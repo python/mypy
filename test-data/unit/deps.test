@@ -1432,7 +1432,7 @@ class B(A):
 <m.A.y> -> <m.B.y>
 <m.A> -> m, m.A, m.B
 <m.A[wildcard]> -> m
-<m.B.__mypy-replace> -> m
+<m.B._B__mypy-replace> -> m
 <m.B.y> -> m
 <m.B> -> m.B
 <m.Z> -> m
