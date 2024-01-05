@@ -210,7 +210,13 @@ def collect_cases(fn: Callable[..., Iterator[Case]]) -> Callable[..., None]:
         )
 
         actual_errors = set(output.splitlines())
-        assert actual_errors == expected_errors, output
+        if actual_errors != expected_errors:
+            output = run_stubtest(
+                stub="\n\n".join(textwrap.dedent(c.stub.lstrip("\n")) for c in cases),
+                runtime="\n\n".join(textwrap.dedent(c.runtime.lstrip("\n")) for c in cases),
+                options=[],
+            )
+            assert actual_errors == expected_errors, output
 
     return test
 
@@ -657,6 +663,56 @@ class StubtestUnit(unittest.TestCase):
             runtime="""
             class Foo:
                 def f6(self, x, /): pass
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            @overload
+            def f7(a: int, /) -> int: ...
+            @overload
+            def f7(b: str, /) -> str: ...
+            """,
+            runtime="def f7(x, /): pass",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            @overload
+            def f8(a: int, c: int = 0, /) -> int: ...
+            @overload
+            def f8(b: str, d: int, /) -> str: ...
+            """,
+            runtime="def f8(x, y, /): pass",
+            error="f8",
+        )
+        yield Case(
+            stub="""
+            @overload
+            def f9(a: int, c: int = 0, /) -> int: ...
+            @overload
+            def f9(b: str, d: int, /) -> str: ...
+            """,
+            runtime="def f9(x, y=0, /): pass",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class Bar:
+                @overload
+                def f1(self) -> int: ...
+                @overload
+                def f1(self, a: int, /) -> int: ...
+
+                @overload
+                def f2(self, a: int, /) -> int: ...
+                @overload
+                def f2(self, a: str, /) -> int: ...
+            """,
+            runtime="""
+            class Bar:
+                def f1(self, *a) -> int: ...
+                def f2(self, *a) -> int: ...
             """,
             error=None,
         )

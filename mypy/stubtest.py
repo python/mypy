@@ -828,7 +828,10 @@ class Signature(Generic[T]):
                 # argument. To accomplish this, we just make up a fake index-based name.
                 name = (
                     f"__{index}"
-                    if arg.variable.name.startswith("__") or assume_positional_only
+                    if arg.variable.name.startswith("__")
+                    or arg.pos_only
+                    or assume_positional_only
+                    or arg.variable.name.strip("_") == "self"
                     else arg.variable.name
                 )
                 all_args.setdefault(name, []).append((arg, index))
@@ -872,6 +875,7 @@ class Signature(Generic[T]):
                 type_annotation=None,
                 initializer=None,
                 kind=get_kind(arg_name),
+                pos_only=all(arg.pos_only for arg, _ in all_args[arg_name]),
             )
             if arg.kind.is_positional():
                 sig.pos.append(arg)
@@ -907,6 +911,7 @@ def _verify_signature(
         if (
             runtime_arg.kind != inspect.Parameter.POSITIONAL_ONLY
             and (stub_arg.pos_only or stub_arg.variable.name.startswith("__"))
+            and not stub_arg.variable.name.strip("_") == "self"
             and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
