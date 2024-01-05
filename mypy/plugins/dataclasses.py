@@ -422,20 +422,22 @@ class DataclassTransformer:
         Stashes the signature of 'dataclasses.replace(...)' for this specific dataclass
         to be used later whenever 'dataclasses.replace' is called for this dataclass.
         """
+        mangled_name = f"_{self._cls.name.lstrip('_')}{_INTERNAL_REPLACE_SYM_NAME}"
         add_method_to_class(
             self._api,
             self._cls,
-            _INTERNAL_REPLACE_SYM_NAME,
+            mangled_name,
             args=[attr.to_argument(self._cls.info, of="replace") for attr in attributes],
             return_type=NoneType(),
             is_staticmethod=True,
         )
 
     def _add_internal_post_init_method(self, attributes: list[DataclassAttribute]) -> None:
+        mangled_name = f"_{self._cls.name.lstrip('_')}{_INTERNAL_POST_INIT_SYM_NAME}"
         add_method_to_class(
             self._api,
             self._cls,
-            _INTERNAL_POST_INIT_SYM_NAME,
+            mangled_name,
             args=[
                 attr.to_argument(self._cls.info, of="__post_init__")
                 for attr in attributes
@@ -1027,7 +1029,8 @@ def _get_expanded_dataclasses_fields(
             ctx, get_proper_type(typ.upper_bound), display_typ, parent_typ
         )
     elif isinstance(typ, Instance):
-        replace_sym = typ.type.get_method(_INTERNAL_REPLACE_SYM_NAME)
+        mangled_name = f"_{typ.type.name.lstrip('_')}{_INTERNAL_REPLACE_SYM_NAME}"
+        replace_sym = typ.type.get_method(mangled_name)
         if replace_sym is None:
             return None
         replace_sig = replace_sym.type
@@ -1111,7 +1114,8 @@ def check_post_init(api: TypeChecker, defn: FuncItem, info: TypeInfo) -> None:
         return
     assert isinstance(defn.type, FunctionLike)
 
-    ideal_sig_method = info.get_method(_INTERNAL_POST_INIT_SYM_NAME)
+    mangled_name = f"_{info.name.lstrip('_')}{_INTERNAL_POST_INIT_SYM_NAME}"
+    ideal_sig_method = info.get_method(mangled_name)
     assert ideal_sig_method is not None and ideal_sig_method.type is not None
     ideal_sig = ideal_sig_method.type
     assert isinstance(ideal_sig, ProperType)  # we set it ourselves
