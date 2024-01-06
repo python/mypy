@@ -985,45 +985,9 @@ class ASTConverter:
                     _dummy_fallback,
                 )
 
-        # We don't want the end positions for functions to include the entire
-        # body, which is what `ast` gives us; we want to highlight only the
-        # function signature as the error / note.
-
-        # First, check for return typehint
-        ret = n.returns
-        if ret is not None:
-            # There is a return typehint; highlight to the end of it.
-            end_line = ret.end_lineno
-            end_column = ret.end_col_offset
-        elif len(n.body) > 0:
-            # There's no return type, but there is a body (which includes
-            # docstrings).
-            def_line = n.lineno
-            body_line = n.body[0].lineno
-            if def_line == body_line:
-                # Single line definition, e.g. `def foo(): pass`
-                # NOTE: this will not highlight the colon in the nonstandard
-                # case of `def foo():pass`
-                end_line = def_line
-                end_column = n.body[0].col_offset - 1
-            else:
-                # "Proper" body starting on a different line after `:`
-                # We highlight up to the line in which the body starts
-                # but at column 0, effectively ending at the end of the
-                # previous line.
-                # NOTE: this causes funny highlighting in the non-standard
-                # case below:
-                #
-                # def foo(x: int
-                #          ): pass
-                #
-                # The error will show from `d` of `def to `t` of `int`.
-                end_line = n.body[0].lineno
-                end_column = 0
-        else:
-            # Fall back to whole function.
-            end_line = getattr(n, "end_lineno", None)
-            end_column = getattr(n, "end_col_offset", None)
+        # End position is always the same.
+        end_line = getattr(n, "end_lineno", None)
+        end_column = getattr(n, "end_col_offset", None)
 
         self.class_and_function_stack.pop()
         self.class_and_function_stack.append("F")
