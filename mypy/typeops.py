@@ -343,9 +343,10 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
         # (... unless this is `__init__`, because we're going to be returning
         #  the self-type anyways.)
         to_apply = [
-            (tv, t) if t is not None else UninhabitedType()
+            (tv, t) if t is not None else (tv, UninhabitedType())
             for tv, t in zip(self_vars, typeargs)
-            if not is_init or (t is not None and not isinstance(t, UninhabitedType))
+            if not is_init
+            or (t is not None and not isinstance(get_proper_type(t), UninhabitedType))
         ]
         func = expand_type(func, {tv.id: arg for tv, arg in to_apply})
         applied_vars = {tv for tv, _ in to_apply}
