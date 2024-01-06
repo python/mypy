@@ -310,7 +310,15 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
     # this special-casing looks not very principled, there is nothing meaningful we can infer
     # from such definition, since it is inherently indefinitely recursive.
     allow_callable = func.name is None or not func.name.startswith("__call__ of")
-    if func.variables and supported_self_type(self_param_type, allow_callable=allow_callable):
+    # Binding variables off of `self` in `__init__` doesn't make sense since we use the self-
+    # type as the return type.
+    is_init = func.name is not None and func.name.startswith("__init__ of")
+
+    if (
+        func.variables
+        and supported_self_type(self_param_type, allow_callable=allow_callable)
+        and not is_init
+    ):
         from mypy.infer import infer_type_arguments
 
         if original_type is None:

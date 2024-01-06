@@ -2071,3 +2071,33 @@ p: Partial
 reveal_type(p())  # N: Revealed type is "Never"
 p2: Partial2
 reveal_type(p2(42))  # N: Revealed type is "builtins.int"
+
+[case testSelfTypeInInit]
+from typing import Generic, TypeVar, overload, Type
+
+class A:
+    ...
+
+class B(A):
+    ...
+
+E = TypeVar("E", bound=A)
+E2 = TypeVar("E2", bound=A)
+
+class H(A, Generic[E]):
+    ...
+
+class RaisesGroup(Generic[E]):
+    @overload
+    def __init__(self, a: Type[E]):
+        ...
+
+    @overload
+    def __init__(self: "RaisesGroup[H[E2]]", a: "RaisesGroup[E2]"):
+        ...
+
+    def __init__(self, a: object):
+        ...
+
+
+reveal_type(RaisesGroup(RaisesGroup(B)))  # N: Revealed type is "__main__.RaisesGroup[__main__.H[__main__.B]]"
