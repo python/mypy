@@ -1653,8 +1653,8 @@ class C:
     def __init__(self, other: Self) -> None: ...
 class D(C): ...
 
-reveal_type(C)  # N: Revealed type is "def (other: __main__.C) -> __main__.C"
-reveal_type(D)  # N: Revealed type is "def (other: __main__.D) -> __main__.D"
+reveal_type(C)  # N: Revealed type is "def [Self <: __main__.C] (other: Self`0) -> __main__.C"
+reveal_type(D)  # N: Revealed type is "def [Self <: __main__.C] (other: Self`0) -> __main__.D"
 
 [case testTypingSelfCorrectName]
 from typing import Self, List
