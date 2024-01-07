@@ -18,7 +18,8 @@ EXIT=0
 function stubgenc_test() {
     # Remove expected stubs and generate new inplace
     STUBGEN_OUTPUT_FOLDER=./test-data/pybind11_mypy_demo/$1
-    rm -rf "${STUBGEN_OUTPUT_FOLDER:?}/*"
+    rm -rf "${STUBGEN_OUTPUT_FOLDER:?}"
+
     stubgen -o "$STUBGEN_OUTPUT_FOLDER" "${@:2}"
 
     # Check if generated stubs can actually be type checked by mypy
