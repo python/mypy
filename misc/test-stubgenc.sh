@@ -21,15 +21,24 @@ function stubgenc_test() {
     rm -rf "${STUBGEN_OUTPUT_FOLDER:?}/*"
     stubgen -o "$STUBGEN_OUTPUT_FOLDER" "${@:2}"
 
+    # Check if generated stubs can actually be type checked by mypy
+    if ! mypy "$STUBGEN_OUTPUT_FOLDER";
+    then
+        echo "Stubgen test failed, because generated stubs failed to type check."
+        EXIT=1
+    fi
+
     # Compare generated stubs to expected ones
     if ! git diff --exit-code "$STUBGEN_OUTPUT_FOLDER";
     then
+        echo "Stubgen test failed, because generated stubs differ from expected outputs."
         EXIT=1
     fi
 }
 
 # create stubs without docstrings
-stubgenc_test stubgen -p pybind11_mypy_demo
+stubgenc_test expected_stubs_no_docs -p pybind11_mypy_demo
 # create stubs with docstrings
-stubgenc_test stubgen-include-docs -p pybind11_mypy_demo --include-docstrings
+stubgenc_test expected_stubs_with_docs -p pybind11_mypy_demo --include-docstrings
+
 exit $EXIT

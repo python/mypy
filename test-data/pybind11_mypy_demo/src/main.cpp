@@ -43,12 +43,85 @@
  */
 
 #include <cmath>
+#include <filesystem>
+#include <optional>
+#include <utility>
+#include <vector>
+
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <pybind11/stl/filesystem.h>
 
 namespace py = pybind11;
 
-namespace basics {
+// ----------------------------------------------------------------------------
+// Dedicated test cases
+// ----------------------------------------------------------------------------
+
+std::vector<float> funcReturningVector()
+{
+  return std::vector<float>{1.0, 2.0, 3.0};
+}
+
+std::pair<int, float> funcReturningPair()
+{
+  return std::pair{42, 1.0};
+}
+
+std::optional<int> funcReturningOptional()
+{
+  return std::nullopt;
+}
+
+std::filesystem::path funcReturningPath()
+{
+  return std::filesystem::path{"foobar"};
+}
+
+namespace dummy_sub_namespace {
+  struct HasNoBinding{};
+}
+
+// We can enforce the case of an incomplete signature by referring to a type in
+// some namespace that doesn't have a pybind11 binding.
+dummy_sub_namespace::HasNoBinding funcIncompleteSignature()
+{
+  return dummy_sub_namespace::HasNoBinding{};
+}
+
+struct TestStruct
+{
+  int field_readwrite;
+  int field_readwrite_docstring;
+  int field_readonly;
+};
+
+// Bindings
+
+void bind_test_cases(py::module& m) {
+  m.def("func_returning_vector", &funcReturningVector);
+  m.def("func_returning_pair", &funcReturningPair);
+  m.def("func_returning_optional", &funcReturningOptional);
+  m.def("func_returning_path", &funcReturningPath);
+
+  m.def("func_incomplete_signature", &funcIncompleteSignature);
+
+  py::class_<TestStruct>(m, "TestStruct")
+      .def_readwrite("field_readwrite", &TestStruct::field_readwrite)
+      .def_readwrite("field_readwrite_docstring", &TestStruct::field_readwrite_docstring, "some docstring")
+      .def_property_readonly(
+          "field_readonly",
+          [](const TestStruct& x) {
+            return x.field_readonly;
+          },
+          "some docstring");
+}
+
+// ----------------------------------------------------------------------------
+// Original demo
+// ----------------------------------------------------------------------------
+
+namespace demo {
 
 int answer() {
   return 42;
@@ -118,20 +191,22 @@ const Point Point::y_axis = Point(0, 1);
 Point::LengthUnit Point::length_unit = Point::LengthUnit::mm;
 Point::AngleUnit Point::angle_unit = Point::AngleUnit::radian;
 
-} // namespace: basics
+} // namespace: demo
 
-void bind_basics(py::module& basics) {
+// Bindings
 
-  using namespace basics;
+void bind_demo(py::module& m) {
+
+  using namespace demo;
 
   // Functions
-  basics.def("answer", &answer, "answer docstring, with end quote\""); // tests explicit docstrings
-  basics.def("sum", &sum, "multiline docstring test, edge case quotes \"\"\"'''");
-  basics.def("midpoint", &midpoint, py::arg("left"), py::arg("right"));
-  basics.def("weighted_midpoint", weighted_midpoint, py::arg("left"), py::arg("right"), py::arg("alpha")=0.5);
+  m.def("answer", &answer, "answer docstring, with end quote\""); // tests explicit docstrings
+  m.def("sum", &sum, "multiline docstring test, edge case quotes \"\"\"'''");
+  m.def("midpoint", &midpoint, py::arg("left"), py::arg("right"));
+  m.def("weighted_midpoint", weighted_midpoint, py::arg("left"), py::arg("right"), py::arg("alpha")=0.5);
 
   // Classes
-  py::class_<Point> pyPoint(basics, "Point");
+  py::class_<Point> pyPoint(m, "Point");
   py::enum_<Point::LengthUnit> pyLengthUnit(pyPoint, "LengthUnit");
   py::enum_<Point::AngleUnit> pyAngleUnit(pyPoint, "AngleUnit");
 
@@ -167,11 +242,17 @@ void bind_basics(py::module& basics) {
     .value("degree", Point::AngleUnit::degree);
 
   // Module-level attributes
-  basics.attr("PI") = std::acos(-1);
-  basics.attr("__version__") = "0.0.1";
+  m.attr("PI") = std::acos(-1);
+  m.attr("__version__") = "0.0.1";
 }
 
+// ----------------------------------------------------------------------------
+// Module entry point
+// ----------------------------------------------------------------------------
+
 PYBIND11_MODULE(pybind11_mypy_demo, m) {
-  auto basics = m.def_submodule("basics");
-  bind_basics(basics);
+  bind_test_cases(m);
+
+  auto demo = m.def_submodule("demo");
+  bind_demo(demo);
 }
