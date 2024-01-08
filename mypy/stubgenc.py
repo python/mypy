@@ -535,7 +535,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         elif self.is_c_module:
             raw_lookup: Mapping[str, Any] = getattr(class_info.cls, "__dict__")  # noqa: B009
             raw_value = raw_lookup.get(name, obj)
-            return type(raw_value).__name__ == "staticmethod"
+            return isinstance(raw_value, staticmethod)
         else:
             return isinstance(inspect.getattr_static(class_info.cls, name), staticmethod)
 
