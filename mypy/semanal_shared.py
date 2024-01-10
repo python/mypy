@@ -9,6 +9,7 @@ from typing_extensions import Literal, Protocol
 from mypy_extensions import trait
 
 from mypy import join
+from mypy._type_visitor import ANY_STRATEGY, BoolTypeQuery
 from mypy.errorcodes import LITERAL_REQ, ErrorCode
 from mypy.nodes import (
     CallExpr,
@@ -29,7 +30,6 @@ from mypy.nodes import (
 )
 from mypy.plugin import SemanticAnalyzerPluginInterface
 from mypy.tvar_scope import TypeVarLikeScope
-from mypy.type_visitor import ANY_STRATEGY, BoolTypeQuery
 from mypy.types import (
     TPDICT_FB_NAMES,
     AnyType,
