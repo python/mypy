@@ -1030,10 +1030,6 @@ def reprocess_nodes(
         if graph[module_id].type_checker().check_second_pass():
             more = True
 
-    graph[module_id].detect_possibly_undefined_vars()
-    graph[module_id].generate_unused_ignore_notes()
-    graph[module_id].generate_ignore_without_code_notes()
-
     if manager.options.export_types:
         manager.all_types.update(graph[module_id].type_map())
 
