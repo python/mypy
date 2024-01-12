@@ -88,6 +88,16 @@ class TestFileSystemCache(unittest.TestCase):
                 # this path is not under the prefix, case difference is fine.
                 assert self.isfile_case(os.path.join(other, "PKG/other_dir.py"))
 
+    def test_exists_case_1(self) -> None:
+        self.make_file("foo/bar/baz.py")
+        # Run twice to test both cached and non-cached code paths.
+        for i in range(2):
+            assert self.exists_case("foo/bar/baz.py", "foo")
+            assert self.exists_case("foo/bar", "foo")
+            assert not self.exists_case("foo/bar/non_existent1.py", "foo")
+            assert not self.exists_case("foo/bar/not_a_dir", "foo")
+            assert not self.exists_case("not_a_dir/not_a_subdir", "not_a_dir/")
+
     def make_file(self, path: str, base: str | None = None) -> None:
         if base is None:
             base = self.tempdir
@@ -99,3 +109,6 @@ class TestFileSystemCache(unittest.TestCase):
 
     def isfile_case(self, path: str) -> bool:
         return self.fscache.isfile_case(os.path.join(self.tempdir, path), self.tempdir)
+
+    def exists_case(self, path: str, prefix: str) -> bool:
+        return self.fscache.exists_case(os.path.join(self.tempdir, path), os.path.join(self.tempdir, prefix))
