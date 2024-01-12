@@ -111,4 +111,6 @@ class TestFileSystemCache(unittest.TestCase):
         return self.fscache.isfile_case(os.path.join(self.tempdir, path), self.tempdir)
 
     def exists_case(self, path: str, prefix: str) -> bool:
-        return self.fscache.exists_case(os.path.join(self.tempdir, path), os.path.join(self.tempdir, prefix))
+        return self.fscache.exists_case(
+            os.path.join(self.tempdir, path), os.path.join(self.tempdir, prefix)
+        )
