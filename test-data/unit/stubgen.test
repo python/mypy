@@ -4139,3 +4139,33 @@ from dataclasses import dataclass
 class X(missing.Base):
     a: int
     def __init__(self, *selfa_, a, **selfa__) -> None: ...
+
+[case testAlwaysUsePEP604Union]
+import typing
+import typing as t
+from typing import Optional, Union, Optional as O, Union as U
+import x
+
+union = Union[int, str]
+bad_union = Union[int]
+nested_union = Optional[Union[int, str]]
+not_union = x.Union[int, str]
+u = U[int, str]
+o = O[int]
+
+def f1(a: Union["int", Optional[tuple[int, t.Optional[int]]]]) -> int: ...
+def f2(a: typing.Union[int | x.Union[int, int], O[float]]) -> int: ...
+
+[out]
+import x
+from _typeshed import Incomplete
+
+union = int | str
+bad_union = int
+nested_union = int | str | None
+not_union: Incomplete
+u = int | str
+o = int | None
+
+def f1(a: int | tuple[int, int | None] | None) -> int: ...
+def f2(a: int | x.Union[int, int] | float | None) -> int: ...
