@@ -9,6 +9,7 @@ repos:
     rev: 23.9.1  # must match test-requirements.txt
     hooks:
       - id: black
+        exclude: '^(test-data/)'
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.1.4  # must match test-requirements.txt
     hooks:
