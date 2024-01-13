@@ -1371,3 +1371,30 @@ class Test3(NamedTuple, metaclass=type):  # E: Unexpected keyword argument "meta
     ...
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
+
+[case testNamedTupleInlineInstantiation]
+from collections import namedtuple
+from typing import NamedTuple
+
+x, y = namedtuple("Point2d", ["x", "y"])(2, 3)
+reveal_type(x)  # N: Revealed type is "Any"
+reveal_type(y)  # N: Revealed type is "Any"
+
+z, w = NamedTuple("Point2d", [("z", float), ("w", float)])(2, 3)
+reveal_type(z)  # N: Revealed type is "builtins.float"
+reveal_type(w)  # N: Revealed type is "builtins.float"
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testNamedTupleInlineNoGenerics]
+from typing import TypeVar, NamedTuple
+
+T = TypeVar("T")
+
+(NamedTuple("NT", [("x", int), ("y", T)]))(0, 0)  # E: Generic named tuples cannot be immediately instantiated \
+                                                  # N: Use Python 3 class syntax, or assign the type to a variable \
+                                                  # E: Value of type variable "_NT" of "NT@5" cannot be "int"
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]

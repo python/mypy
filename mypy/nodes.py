@@ -2644,7 +2644,7 @@ class TypeAliasExpr(Expression):
 class NamedTupleExpr(Expression):
     """Named tuple expression namedtuple(...) or NamedTuple(...)."""
 
-    __slots__ = ("info", "is_typed")
+    __slots__ = ("info", "is_typed", "is_inline")
 
     __match_args__ = ("info",)
 
@@ -2652,11 +2652,15 @@ class NamedTupleExpr(Expression):
     # the tuple item types)
     info: TypeInfo
     is_typed: bool  # whether this class was created with typing(_extensions).NamedTuple
+    # Whether this class was created inline as a call expression callee, for example:
+    #    (NamedTuple(...))(...)
+    is_inline: bool
 
-    def __init__(self, info: TypeInfo, is_typed: bool = False) -> None:
+    def __init__(self, info: TypeInfo, is_typed: bool = False, is_inline: bool = False) -> None:
         super().__init__()
         self.info = info
         self.is_typed = is_typed
+        self.is_inline = is_inline
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_namedtuple_expr(self)
@@ -2665,16 +2669,20 @@ class NamedTupleExpr(Expression):
 class TypedDictExpr(Expression):
     """Typed dict expression TypedDict(...)."""
 
-    __slots__ = ("info",)
+    __slots__ = ("info", "is_inline")
 
     __match_args__ = ("info",)
 
     # The class representation of this typed dict
     info: TypeInfo
+    # Whether this class was created inline as a call expression callee, for example:
+    #    (TypedDict(...))(...)
+    is_inline: bool
 
-    def __init__(self, info: TypeInfo) -> None:
+    def __init__(self, info: TypeInfo, is_inline: bool = False) -> None:
         super().__init__()
         self.info = info
+        self.is_inline = is_inline
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_typeddict_expr(self)

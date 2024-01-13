@@ -5160,6 +5160,8 @@ class SemanticAnalyzer(
                     and isinstance(expr.args[0], StrExpr)
                 ):
                     self.all_exports = [n for n in self.all_exports if n != expr.args[0].value]
+        self.analyze_namedtuple_call(expr)
+        self.analyze_typeddict_call(expr)
 
     def translate_dict_call(self, call: CallExpr) -> DictExpr | None:
         """Translate 'dict(x=y, ...)' to {'x': y, ...} and 'dict()' to {}.
@@ -5196,6 +5198,52 @@ class SemanticAnalyzer(
             self.fail(f'"{name}" must be called with {numargs} positional argument{s}', expr)
             return False
         return True
+
+    def analyze_namedtuple_call(self, expr: CallExpr) -> None:
+        """Check if expr instantiates an inline named tuple, such as:
+            (NamedTuple('MyNamedTuple', [...]))(...)
+
+        If so, analyze the callee into a NamedTupleExpr.
+        """
+        callee = expr.callee
+        if isinstance(callee, CallExpr) and isinstance(callee.analyzed, NamedTupleExpr):
+            if callee.analyzed.info.tuple_type and not has_placeholder(
+                callee.analyzed.info.tuple_type
+            ):
+                return  # This is a valid and analyzed named tuple definition, nothing to do here.
+        internal_name, info, tvar_defs = self.named_tuple_analyzer.check_namedtuple(
+            callee, None, self.is_func_scope(), is_inline=True
+        )
+        if internal_name is None:
+            return
+        if tvar_defs:
+            self.fail("Generic named tuples cannot be immediately instantiated", expr)
+            self.note("Use Python 3 class syntax, or assign the type to a variable", expr)
+        if not info:
+            self.defer(expr)
+
+    def analyze_typeddict_call(self, expr: CallExpr) -> None:
+        """Check if expr instantiates an inline typed dict, such as:
+            (TypedDict('MyTypedDict', {...}))(...)
+
+        If so, analyze the callee into a TypedDictExpr.
+        """
+        callee = expr.callee
+        if isinstance(callee, CallExpr) and isinstance(callee.analyzed, TypedDictExpr):
+            if callee.analyzed.info.typeddict_type and not has_placeholder(
+                callee.analyzed.info.typeddict_type
+            ):
+                return  # This is a valid and analyzed typed dict definition, nothing to do here.
+        is_typed_dict, info, tvar_defs = self.typed_dict_analyzer.check_typeddict(
+            callee, None, self.is_func_scope(), is_inline=True
+        )
+        if not is_typed_dict:
+            return
+        if tvar_defs:
+            self.fail("Generic TypedDict cannot be immediately instantiated", expr)
+            self.note("Use the class syntax, or assign the type to a variable", expr)
+        if not info:
+            self.defer(expr)
 
     def visit_member_expr(self, expr: MemberExpr) -> None:
         base = expr.expr

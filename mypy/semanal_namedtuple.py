@@ -215,7 +215,7 @@ class NamedTupleAnalyzer:
         return items, types, default_items, statements
 
     def check_namedtuple(
-        self, node: Expression, var_name: str | None, is_func_scope: bool
+        self, node: Expression, var_name: str | None, is_func_scope: bool, is_inline: bool = False
     ) -> tuple[str | None, TypeInfo | None, list[TypeVarLikeType]]:
         """Check if a call defines a namedtuple.
 
@@ -275,7 +275,7 @@ class NamedTupleAnalyzer:
             name = typename
 
         if var_name is None or is_func_scope:
-            # There are two special cases where need to give it a unique name derived
+            # There are three special cases where we need to give it a unique name derived
             # from the line number:
             #   * This is a base class expression, since it often matches the class name:
             #         class NT(NamedTuple('NT', [...])):
@@ -283,6 +283,8 @@ class NamedTupleAnalyzer:
             #   * This is a local (function or method level) named tuple, since
             #     two methods of a class can define a named tuple with the same name,
             #     and they will be stored in the same namespace (see below).
+            #   * Or, this is an inline named tuple, which is immediately instantiated:
+            #         (NamedTuple('NT', [...]))(...)
             name += "@" + str(call.line)
         if defaults:
             default_items = {
@@ -304,7 +306,7 @@ class NamedTupleAnalyzer:
         if var_name:
             self.store_namedtuple_info(info, var_name, call, is_typed)
         else:
-            call.analyzed = NamedTupleExpr(info, is_typed=is_typed)
+            call.analyzed = NamedTupleExpr(info, is_typed=is_typed, is_inline=is_inline)
             call.analyzed.set_line(call)
         # There are three cases where we need to store the generated TypeInfo
         # second time (for the purpose of serialization):
