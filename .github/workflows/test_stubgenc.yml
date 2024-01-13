@@ -10,6 +10,7 @@ on:
     - 'misc/test-stubgenc.sh'
     - 'mypy/stubgenc.py'
     - 'mypy/stubdoc.py'
+    - 'mypy/stubutil.py'
     - 'test-data/stubgen/**'
 
 permissions:

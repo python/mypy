@@ -1,6 +1,6 @@
 import os
 from . import demo as demo
-from typing import List, Optional, Tuple, overload
+from typing import List, Tuple, overload
 
 class StaticMethods:
     def __init__(self, *args, **kwargs) -> None:
@@ -42,7 +42,7 @@ class TestStruct:
 
 def func_incomplete_signature(*args, **kwargs):
     """func_incomplete_signature() -> dummy_sub_namespace::HasNoBinding"""
-def func_returning_optional() -> Optional[int]:
+def func_returning_optional() -> int | None:
     """func_returning_optional() -> Optional[int]"""
 def func_returning_pair() -> Tuple[int, float]:
     """func_returning_pair() -> Tuple[int, float]"""
