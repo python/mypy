@@ -1,4 +1,4 @@
-name: Test stubgenc on pybind11-mypy-demo
+name: Test stubgenc on pybind11_fixtures
 
 on:
   workflow_dispatch:
