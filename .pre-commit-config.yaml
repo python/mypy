@@ -1,4 +1,4 @@
-exclude: '^(mypyc/external/)|(mypy/typeshed/)|(test-data/)'  # Exclude all vendored code from lints
+exclude: '^(mypyc/external/)|(mypy/typeshed/)'  # Exclude all vendored code from lints
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0  # must match test-requirements.txt
@@ -9,6 +9,7 @@ repos:
     rev: 23.9.1  # must match test-requirements.txt
     hooks:
       - id: black
+        exclude: '^(test-data/)'
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.1.4  # must match test-requirements.txt
     hooks:
