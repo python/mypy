@@ -250,7 +250,7 @@ void bind_demo(py::module& m) {
 // Module entry point
 // ----------------------------------------------------------------------------
 
-PYBIND11_MODULE(pybind11_mypy_demo, m) {
+PYBIND11_MODULE(pybind11_fixtures, m) {
   bind_test_cases(m);
 
   auto demo = m.def_submodule("demo");

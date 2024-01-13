@@ -7,7 +7,7 @@ cd "$(dirname "$0")/.."
 
 # Install dependencies, demo project and mypy
 python -m pip install -r test-requirements.txt
-python -m pip install ./test-data/pybind11_mypy_demo
+python -m pip install ./test-data/pybind11_fixtures
 python -m pip install .
 
 EXIT=0
@@ -17,7 +17,7 @@ EXIT=0
 # everything else is passed to stubgen as its arguments
 function stubgenc_test() {
     # Remove expected stubs and generate new inplace
-    STUBGEN_OUTPUT_FOLDER=./test-data/pybind11_mypy_demo/$1
+    STUBGEN_OUTPUT_FOLDER=./test-data/pybind11_fixtures/$1
     rm -rf "${STUBGEN_OUTPUT_FOLDER:?}"
 
     stubgen -o "$STUBGEN_OUTPUT_FOLDER" "${@:2}"
@@ -38,8 +38,8 @@ function stubgenc_test() {
 }
 
 # create stubs without docstrings
-stubgenc_test expected_stubs_no_docs -p pybind11_mypy_demo
+stubgenc_test expected_stubs_no_docs -p pybind11_fixtures
 # create stubs with docstrings
-stubgenc_test expected_stubs_with_docs -p pybind11_mypy_demo --include-docstrings
+stubgenc_test expected_stubs_with_docs -p pybind11_fixtures --include-docstrings
 
 exit $EXIT
