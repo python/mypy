@@ -368,6 +368,8 @@ class A:
         return 1
     @f.setter
     def f(self, x): ...
+    @f.deleter
+    def f(self): ...
 
     def h(self):
         self.f = 1
@@ -377,6 +379,8 @@ class A:
     def f(self): ...
     @f.setter
     def f(self, x) -> None: ...
+    @f.deleter
+    def f(self) -> None: ...
     def h(self) -> None: ...
 
 [case testProperty_semanal]
@@ -386,6 +390,8 @@ class A:
         return 1
     @f.setter
     def f(self, x): ...
+    @f.deleter
+    def f(self): ...
 
     def h(self):
         self.f = 1
@@ -395,6 +401,8 @@ class A:
     def f(self): ...
     @f.setter
     def f(self, x) -> None: ...
+    @f.deleter
+    def f(self) -> None: ...
     def h(self) -> None: ...
 
 -- a read/write property is treated the same as an attribute
@@ -2338,10 +2346,12 @@ class B:
     @property
     def x(self):
         return 'x'
-
     @x.setter
     def x(self, value):
         self.y = 'y'
+    @x.deleter
+    def x(self):
+        del self.y
 
 [out]
 class A:
@@ -2355,6 +2365,8 @@ class B:
     y: str
     @x.setter
     def x(self, value) -> None: ...
+    @x.deleter
+    def x(self) -> None: ...
 
 [case testMisplacedTypeComment]
 def f():
