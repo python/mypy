@@ -318,7 +318,7 @@ def parse_type_string(
     string expression "blah" using this function.
     """
     try:
-        _, node = parse_type_comment(expr_string.strip(), line=line, column=column, errors=None)
+        _, node = parse_type_comment(f"({expr_string})", line=line, column=column, errors=None)
         if isinstance(node, UnboundType) and node.original_str_expr is None:
             node.original_str_expr = expr_string
             node.original_str_fallback = expr_fallback_name

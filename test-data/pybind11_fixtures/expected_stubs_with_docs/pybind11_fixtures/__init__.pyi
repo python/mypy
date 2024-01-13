@@ -1,6 +1,36 @@
 import os
 from . import demo as demo
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, overload
+
+class StaticMethods:
+    def __init__(self, *args, **kwargs) -> None:
+        """Initialize self.  See help(type(self)) for accurate signature."""
+    @overload
+    @staticmethod
+    def overloaded_static_method(value: int) -> int:
+        """overloaded_static_method(*args, **kwargs)
+        Overloaded function.
+
+        1. overloaded_static_method(value: int) -> int
+
+        2. overloaded_static_method(value: float) -> float
+        """
+    @overload
+    @staticmethod
+    def overloaded_static_method(value: float) -> float:
+        """overloaded_static_method(*args, **kwargs)
+        Overloaded function.
+
+        1. overloaded_static_method(value: int) -> int
+
+        2. overloaded_static_method(value: float) -> float
+        """
+    @staticmethod
+    def some_static_method(a: int, b: int) -> int:
+        """some_static_method(a: int, b: int) -> int
+
+        None
+        """
 
 class TestStruct:
     field_readwrite: int

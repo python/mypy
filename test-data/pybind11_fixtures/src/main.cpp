@@ -96,6 +96,13 @@ struct TestStruct
   int field_readonly;
 };
 
+struct StaticMethods
+{
+  static int some_static_method(int a, int b) { return 42; }
+  static int overloaded_static_method(int value) { return 42; }
+  static double overloaded_static_method(double value) { return 1.0; }
+};
+
 // Bindings
 
 void bind_test_cases(py::module& m) {
@@ -115,6 +122,20 @@ void bind_test_cases(py::module& m) {
             return x.field_readonly;
           },
           "some docstring");
+
+  // Static methods
+  py::class_<StaticMethods> pyStaticMethods(m, "StaticMethods");
+
+  pyStaticMethods
+    .def_static(
+      "some_static_method",
+      &StaticMethods::some_static_method, R"#(None)#", py::arg("a"), py::arg("b"))
+    .def_static(
+      "overloaded_static_method",
+      py::overload_cast<int>(&StaticMethods::overloaded_static_method), py::arg("value"))
+    .def_static(
+      "overloaded_static_method",
+      py::overload_cast<double>(&StaticMethods::overloaded_static_method), py::arg("value"));
 }
 
 // ----------------------------------------------------------------------------

@@ -1,6 +1,17 @@
 import os
 from . import demo as demo
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, overload
+
+class StaticMethods:
+    def __init__(self, *args, **kwargs) -> None: ...
+    @overload
+    @staticmethod
+    def overloaded_static_method(value: int) -> int: ...
+    @overload
+    @staticmethod
+    def overloaded_static_method(value: float) -> float: ...
+    @staticmethod
+    def some_static_method(a: int, b: int) -> int: ...
 
 class TestStruct:
     field_readwrite: int
