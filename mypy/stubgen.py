@@ -685,7 +685,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             elif fullname in OVERLOAD_NAMES:
                 self.add_decorator(qualname, require_name=True)
                 o.func.is_overload = True
-            elif qualname.endswith(".setter"):
+            elif qualname.endswith((".setter", ".deleter")):
                 self.add_decorator(qualname, require_name=False)
 
     def get_fullname(self, expr: Expression) -> str:
