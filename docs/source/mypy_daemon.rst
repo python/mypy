@@ -61,8 +61,7 @@ you have a large codebase.)
 
 .. note::
 
-    The mypy daemon strictly has ``--local-partial-types`` enabled.
-    This is due to Fine-grained incremental not supporting general partial types.
+    The mypy daemon requires ``--local-partial-types`` and automatically enables it.
 
 
 Daemon client commands
