@@ -98,7 +98,9 @@ class TestFileSystemCache(unittest.TestCase):
             assert self.exists_case(os.path.join("foobar", "non_existent2.py"), "foo")
             assert not self.exists_case(os.path.join("foo", "bar", "non_existent3.py"), "foo")
             assert not self.exists_case(os.path.join("foo", "bar", "not_a_dir"), "foo")
-            assert not self.exists_case(os.path.join("not_a_dir", "not_a_subdir"), "not_a_dir" + os.sep)
+            assert not self.exists_case(
+                os.path.join("not_a_dir", "not_a_subdir"), "not_a_dir" + os.sep
+            )
 
     def make_file(self, path: str, base: str | None = None) -> None:
         if base is None:
