@@ -231,7 +231,7 @@ class FileSystemCache:
             return self.exists_case_cache[path]
         head, tail = os.path.split(path)
         prefix = prefix.rstrip(os.sep)
-        if not head.startswith(prefix) or not tail:
+        if not (head.startswith(prefix + os.sep) or head == prefix) or not tail:
             # Only perform the check for paths under prefix.
             self.exists_case_cache[path] = True
             return True

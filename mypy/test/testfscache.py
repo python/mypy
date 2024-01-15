@@ -94,7 +94,9 @@ class TestFileSystemCache(unittest.TestCase):
         for i in range(2):
             assert self.exists_case(os.path.join("foo", "bar", "baz.py"), "foo")
             assert self.exists_case(os.path.join("foo", "bar"), "foo")
-            assert not self.exists_case(os.path.join("foo", "bar", "non_existent1.py"), "foo")
+            assert self.exists_case(os.path.join("foo", "bar", "non_existent1.py"), "bar")
+            assert self.exists_case(os.path.join("foobar", "non_existent2.py"), "foo")
+            assert not self.exists_case(os.path.join("foo", "bar", "non_existent3.py"), "foo")
             assert not self.exists_case(os.path.join("foo", "bar", "not_a_dir"), "foo")
             assert not self.exists_case(os.path.join("not_a_dir", "not_a_subdir"), "not_a_dir" + os.sep)
 
