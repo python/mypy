@@ -89,14 +89,14 @@ class TestFileSystemCache(unittest.TestCase):
                 assert self.isfile_case(os.path.join(other, "PKG/other_dir.py"))
 
     def test_exists_case_1(self) -> None:
-        self.make_file("foo/bar/baz.py")
+        self.make_file(os.path.join("foo", "bar", "baz.py"))
         # Run twice to test both cached and non-cached code paths.
         for i in range(2):
-            assert self.exists_case("foo/bar/baz.py", "foo")
-            assert self.exists_case("foo/bar", "foo")
-            assert not self.exists_case("foo/bar/non_existent1.py", "foo")
-            assert not self.exists_case("foo/bar/not_a_dir", "foo")
-            assert not self.exists_case("not_a_dir/not_a_subdir", "not_a_dir/")
+            assert self.exists_case(os.path.join("foo", "bar", "baz.py"), "foo")
+            assert self.exists_case(os.path.join("foo", "bar"), "foo")
+            assert not self.exists_case(os.path.join("foo", "bar", "non_existent1.py"), "foo")
+            assert not self.exists_case(os.path.join("foo", "bar", "not_a_dir"), "foo")
+            assert not self.exists_case(os.path.join("not_a_dir", "not_a_subdir"), "not_a_dir" + os.sep)
 
     def make_file(self, path: str, base: str | None = None) -> None:
         if base is None:
