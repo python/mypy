@@ -221,8 +221,8 @@ class Server:
             while True:
                 with server:
                     data = receive(server)
-                    sys.stdout = WriteToConn(server, "stdout")  # type: ignore[assignment]
-                    sys.stderr = WriteToConn(server, "stderr")  # type: ignore[assignment]
+                    sys.stdout = WriteToConn(server, "stdout", sys.stdout.isatty())
+                    sys.stderr = WriteToConn(server, "stderr", sys.stderr.isatty())
                     resp: dict[str, Any] = {}
                     if "command" not in data:
                         resp = {"error": "No command found in request"}
