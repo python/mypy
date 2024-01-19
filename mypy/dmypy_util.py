@@ -43,7 +43,7 @@ def send(connection: IPCBase, data: Any) -> None:
 class WriteToConn:
     """Helper class to write to a connection instead of standard output."""
 
-    def __init__(self, server: IPCBase, output_key: str = "stdout") -> None:
+    def __init__(self, server: IPCBase, output_key: str) -> None:
         self.server = server
         self.output_key = output_key
 
