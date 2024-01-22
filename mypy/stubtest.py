@@ -1094,9 +1094,10 @@ def verify_var(
             if runtime_type is not None and is_subtype_helper(runtime_type, stub.type):
                 should_error = False
             # We always allow setting the stub value to ...
+            proper_type = mypy.types.get_proper_type(stub.type)
             if (
-                isinstance(stub.type, mypy.types.Instance)
-                and stub.type.type.fullname == "builtins.ellipsis"
+                isinstance(proper_type, mypy.types.Instance)
+                and proper_type.type.fullname == "builtins.ellipsis"
             ):
                 should_error = False
 
