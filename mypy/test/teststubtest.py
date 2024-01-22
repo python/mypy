@@ -1140,6 +1140,25 @@ class StubtestUnit(unittest.TestCase):
             error=None,
         )
         yield Case(
+            runtime="""
+            import enum
+            class SomeObject: ...
+
+            class WeirdEnum(enum.Enum):
+                a = SomeObject()
+                b = SomeObject()
+            """,
+            stub="""
+            import enum
+            class SomeObject: ...
+            class WeirdEnum(enum.Enum):
+                _value_: SomeObject
+                a = ...
+                b = ...
+            """,
+            error=None,
+        )
+        yield Case(
             stub="""
             class Flags4(enum.Flag):
                 a: int
