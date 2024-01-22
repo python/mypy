@@ -104,7 +104,9 @@ class EnumCallAnalyzer:
         if fullname not in ENUM_BASES:
             return None
 
-        new_class_name, items, values, ok = self.parse_enum_call_args(call, fullname.split(".")[-1])
+        new_class_name, items, values, ok = self.parse_enum_call_args(
+            call, fullname.split(".")[-1]
+        )
         if not ok:
             # Error. Construct dummy return value.
             name = var_name

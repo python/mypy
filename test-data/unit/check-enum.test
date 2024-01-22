@@ -481,6 +481,8 @@ V = Enum('U', **{'a': 1})  # E: Unexpected arguments to Enum()
 W = Enum('W', 'a b')
 W.c  # E: "Type[W]" has no attribute "c"
 X = Enum('Something', 'a b')  # E: String argument 1 "Something" to enum.Enum(...) does not match variable name "X"
+reveal_type(X.a)  # N: Revealed type is "Literal[__main__.Something@23.a]?"
+X.asdf  # E: "Type[Something@23]" has no attribute "asdf"
 
 [typing fixtures/typing-medium.pyi]
 
