@@ -1,0 +1,36 @@
+[case testInExhaustiveChecking]
+
+[builtins fixtures/tuple.pyi]
+from enum import Enum
+import pytest
+
+# Import assert_never for ensuring all cases in an if-elif chain are handled
+from typing_extensions import assert_never
+
+class MyEnum(Enum):
+    A = 1
+    B = 2
+    C = 3
+
+def my_function(a: MyEnum) -> bool:
+    if a == MyEnum.A:
+        return True
+    elif a in (MyEnum.B, MyEnum.C):
+        return False
+    assert_never(a)
+
+class MyEnum2(Enum):
+    A = 1
+    B = 2
+
+def my_function2(a: MyEnum) -> bool:
+    if a in (MyEnum.A, MyEnum.B):
+        return False
+    assert_never(a)
+
+# Test cases
+def test_my_function():
+    # Test for MyEnum.A
+    assert my_function(MyEnum.A) == True, "Failed for MyEnum.A"
+
+    assert my_function2(MyEnum2.A) == True, "Failed for MyEnum.A"

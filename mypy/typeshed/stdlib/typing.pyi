@@ -107,7 +107,8 @@ if sys.version_info >= (3, 9):
     __all__ += ["Annotated", "BinaryIO", "IO", "Match", "Pattern", "TextIO"]
 
 if sys.version_info >= (3, 10):
-    __all__ += ["Concatenate", "ParamSpec", "ParamSpecArgs", "ParamSpecKwargs", "TypeAlias", "TypeGuard", "is_typeddict"]
+    __all__ += ["Concatenate", "ParamSpec", "ParamSpecArgs",
+                "ParamSpecKwargs", "TypeAlias", "TypeGuard", "is_typeddict"]
 
 if sys.version_info >= (3, 11):
     __all__ += [
@@ -133,9 +134,13 @@ ContextManager = AbstractContextManager
 AsyncContextManager = AbstractAsyncContextManager
 
 # This itself is only available during type checking
+
+
 def type_check_only(func_or_cls: _F) -> _F: ...
 
+
 Any = object()
+
 
 @_final
 class TypeVar:
@@ -152,6 +157,7 @@ class TypeVar:
     if sys.version_info >= (3, 12):
         @property
         def __infer_variance__(self) -> bool: ...
+
         def __init__(
             self,
             name: str,
@@ -171,10 +177,13 @@ class TypeVar:
     if sys.version_info >= (3, 11):
         def __typing_subst__(self, arg: Incomplete) -> Incomplete: ...
 
+
 # Used for an undocumented mypy feature. Does not exist at runtime.
 _promote = object()
 
 # N.B. Keep this definition in sync with typing_extensions._SpecialForm
+
+
 @_final
 class _SpecialForm:
     def __getitem__(self, parameters: Any) -> object: ...
@@ -182,11 +191,14 @@ class _SpecialForm:
         def __or__(self, other: Any) -> _SpecialForm: ...
         def __ror__(self, other: Any) -> _SpecialForm: ...
 
+
 _F = TypeVar("_F", bound=Callable[..., Any])
 _P = _ParamSpec("_P")
 _T = TypeVar("_T")
 
+
 def overload(func: _F) -> _F: ...
+
 
 Union: _SpecialForm
 Generic: _SpecialForm
@@ -221,7 +233,8 @@ if sys.version_info >= (3, 11):
         def __init__(self, name: str) -> None: ...
         def __iter__(self) -> Any: ...
         def __typing_subst__(self, arg: Never) -> Never: ...
-        def __typing_prepare_subst__(self, alias: Incomplete, args: Incomplete) -> Incomplete: ...
+        def __typing_prepare_subst__(
+            self, alias: Incomplete, args: Incomplete) -> Incomplete: ...
 
 if sys.version_info >= (3, 10):
     @_final
@@ -251,6 +264,7 @@ if sys.version_info >= (3, 10):
         if sys.version_info >= (3, 12):
             @property
             def __infer_variance__(self) -> bool: ...
+
             def __init__(
                 self,
                 name: str,
@@ -271,7 +285,8 @@ if sys.version_info >= (3, 10):
         def kwargs(self) -> ParamSpecKwargs: ...
         if sys.version_info >= (3, 11):
             def __typing_subst__(self, arg: Incomplete) -> Incomplete: ...
-            def __typing_prepare_subst__(self, alias: Incomplete, args: Incomplete) -> Incomplete: ...
+            def __typing_prepare_subst__(
+                self, alias: Incomplete, args: Incomplete) -> Incomplete: ...
 
         def __or__(self, right: Any) -> _SpecialForm: ...
         def __ror__(self, left: Any) -> _SpecialForm: ...
@@ -303,14 +318,20 @@ _KT_co = TypeVar("_KT_co", covariant=True)  # Key type covariant containers.
 _VT_co = TypeVar("_VT_co", covariant=True)  # Value type covariant containers.
 _TC = TypeVar("_TC", bound=Type[object])
 
+
 def no_type_check(arg: _F) -> _F: ...
-def no_type_check_decorator(decorator: Callable[_P, _T]) -> Callable[_P, _T]: ...
+
+
+def no_type_check_decorator(
+    decorator: Callable[_P, _T]) -> Callable[_P, _T]: ...
 
 # Type aliases and type constructors
+
 
 class _Alias:
     # Class for defining generic aliases for library types.
     def __getitem__(self, typeargs: Any) -> Any: ...
+
 
 List = _Alias()
 Dict = _Alias()
@@ -331,32 +352,41 @@ AnyStr = TypeVar("AnyStr", str, bytes)  # noqa: Y001
 
 # Technically in 3.7 this inherited from GenericMeta. But let's not reflect that, since
 # type checkers tend to assume that Protocols all have the ABCMeta metaclass.
+
+
 class _ProtocolMeta(ABCMeta):
     if sys.version_info >= (3, 12):
         def __init__(cls, *args: Any, **kwargs: Any) -> None: ...
 
 # Abstract base classes.
 
+
 def runtime_checkable(cls: _TC) -> _TC: ...
+
+
 @runtime_checkable
 class SupportsInt(Protocol, metaclass=ABCMeta):
     @abstractmethod
     def __int__(self) -> int: ...
+
 
 @runtime_checkable
 class SupportsFloat(Protocol, metaclass=ABCMeta):
     @abstractmethod
     def __float__(self) -> float: ...
 
+
 @runtime_checkable
 class SupportsComplex(Protocol, metaclass=ABCMeta):
     @abstractmethod
     def __complex__(self) -> complex: ...
 
+
 @runtime_checkable
 class SupportsBytes(Protocol, metaclass=ABCMeta):
     @abstractmethod
     def __bytes__(self) -> bytes: ...
+
 
 if sys.version_info >= (3, 8):
     @runtime_checkable
@@ -364,10 +394,12 @@ if sys.version_info >= (3, 8):
         @abstractmethod
         def __index__(self) -> int: ...
 
+
 @runtime_checkable
 class SupportsAbs(Protocol[_T_co]):
     @abstractmethod
     def __abs__(self) -> _T_co: ...
+
 
 @runtime_checkable
 class SupportsRound(Protocol[_T_co]):
@@ -378,10 +410,12 @@ class SupportsRound(Protocol[_T_co]):
     @abstractmethod
     def __round__(self, __ndigits: int) -> _T_co: ...
 
+
 @runtime_checkable
 class Sized(Protocol, metaclass=ABCMeta):
     @abstractmethod
     def __len__(self) -> int: ...
+
 
 @runtime_checkable
 class Hashable(Protocol, metaclass=ABCMeta):
@@ -391,10 +425,12 @@ class Hashable(Protocol, metaclass=ABCMeta):
     @abstractmethod
     def __hash__(self) -> int: ...
 
+
 @runtime_checkable
 class Iterable(Protocol[_T_co]):
     @abstractmethod
     def __iter__(self) -> Iterator[_T_co]: ...
+
 
 @runtime_checkable
 class Iterator(Iterable[_T_co], Protocol[_T_co]):
@@ -402,29 +438,38 @@ class Iterator(Iterable[_T_co], Protocol[_T_co]):
     def __next__(self) -> _T_co: ...
     def __iter__(self) -> Iterator[_T_co]: ...
 
+
 @runtime_checkable
 class Reversible(Iterable[_T_co], Protocol[_T_co]):
     @abstractmethod
     def __reversed__(self) -> Iterator[_T_co]: ...
 
+
 _YieldT_co = TypeVar("_YieldT_co", covariant=True)
 _SendT_contra = TypeVar("_SendT_contra", contravariant=True)
 _ReturnT_co = TypeVar("_ReturnT_co", covariant=True)
+
 
 class Generator(Iterator[_YieldT_co], Generic[_YieldT_co, _SendT_contra, _ReturnT_co]):
     def __next__(self) -> _YieldT_co: ...
     @abstractmethod
     def send(self, __value: _SendT_contra) -> _YieldT_co: ...
+
     @overload
     @abstractmethod
     def throw(
         self, __typ: Type[BaseException], __val: BaseException | object = None, __tb: TracebackType | None = None
     ) -> _YieldT_co: ...
+
     @overload
     @abstractmethod
-    def throw(self, __typ: BaseException, __val: None = None, __tb: TracebackType | None = None) -> _YieldT_co: ...
+    def throw(self, __typ: BaseException, __val: None = None,
+              __tb: TracebackType | None = None) -> _YieldT_co: ...
+
     def close(self) -> None: ...
-    def __iter__(self) -> Generator[_YieldT_co, _SendT_contra, _ReturnT_co]: ...
+    def __iter__(self) -> Generator[_YieldT_co,
+                                    _SendT_contra, _ReturnT_co]: ...
+
     @property
     def gi_code(self) -> CodeType: ...
     @property
@@ -434,10 +479,12 @@ class Generator(Iterator[_YieldT_co], Generic[_YieldT_co, _SendT_contra, _Return
     @property
     def gi_yieldfrom(self) -> Generator[Any, Any, Any] | None: ...
 
+
 @runtime_checkable
 class Awaitable(Protocol[_T_co]):
     @abstractmethod
     def __await__(self) -> Generator[Any, None, _T_co]: ...
+
 
 class Coroutine(Awaitable[_ReturnT_co], Generic[_YieldT_co, _SendT_contra, _ReturnT_co]):
     __name__: str
@@ -452,31 +499,40 @@ class Coroutine(Awaitable[_ReturnT_co], Generic[_YieldT_co, _SendT_contra, _Retu
     def cr_running(self) -> bool: ...
     @abstractmethod
     def send(self, __value: _SendT_contra) -> _YieldT_co: ...
+
     @overload
     @abstractmethod
     def throw(
         self, __typ: Type[BaseException], __val: BaseException | object = None, __tb: TracebackType | None = None
     ) -> _YieldT_co: ...
+
     @overload
     @abstractmethod
-    def throw(self, __typ: BaseException, __val: None = None, __tb: TracebackType | None = None) -> _YieldT_co: ...
+    def throw(self, __typ: BaseException, __val: None = None,
+              __tb: TracebackType | None = None) -> _YieldT_co: ...
+
     @abstractmethod
     def close(self) -> None: ...
 
 # NOTE: This type does not exist in typing.py or PEP 484 but mypy needs it to exist.
 # The parameters correspond to Generator, but the 4th is the original type.
+
+
 @type_check_only
 class AwaitableGenerator(
     Awaitable[_ReturnT_co],
     Generator[_YieldT_co, _SendT_contra, _ReturnT_co],
     Generic[_YieldT_co, _SendT_contra, _ReturnT_co, _S],
     metaclass=ABCMeta,
-): ...
+):
+    ...
+
 
 @runtime_checkable
 class AsyncIterable(Protocol[_T_co]):
     @abstractmethod
     def __aiter__(self) -> AsyncIterator[_T_co]: ...
+
 
 @runtime_checkable
 class AsyncIterator(AsyncIterable[_T_co], Protocol[_T_co]):
@@ -484,18 +540,23 @@ class AsyncIterator(AsyncIterable[_T_co], Protocol[_T_co]):
     def __anext__(self) -> Awaitable[_T_co]: ...
     def __aiter__(self) -> AsyncIterator[_T_co]: ...
 
+
 class AsyncGenerator(AsyncIterator[_YieldT_co], Generic[_YieldT_co, _SendT_contra]):
     def __anext__(self) -> Awaitable[_YieldT_co]: ...
     @abstractmethod
     def asend(self, __value: _SendT_contra) -> Awaitable[_YieldT_co]: ...
+
     @overload
     @abstractmethod
     def athrow(
         self, __typ: Type[BaseException], __val: BaseException | object = None, __tb: TracebackType | None = None
     ) -> Awaitable[_YieldT_co]: ...
+
     @overload
     @abstractmethod
-    def athrow(self, __typ: BaseException, __val: None = None, __tb: TracebackType | None = None) -> Awaitable[_YieldT_co]: ...
+    def athrow(self, __typ: BaseException, __val: None = None,
+               __tb: TracebackType | None = None) -> Awaitable[_YieldT_co]: ...
+
     def aclose(self) -> Awaitable[None]: ...
     @property
     def ag_await(self) -> Any: ...
@@ -506,17 +567,20 @@ class AsyncGenerator(AsyncIterator[_YieldT_co], Generic[_YieldT_co, _SendT_contr
     @property
     def ag_running(self) -> bool: ...
 
+
 @runtime_checkable
 class Container(Protocol[_T_co]):
     # This is generic more on vibes than anything else
     @abstractmethod
     def __contains__(self, __x: object) -> bool: ...
 
+
 @runtime_checkable
 class Collection(Iterable[_T_co], Container[_T_co], Protocol[_T_co]):
     # Implement Sized (but don't have it as a base class).
     @abstractmethod
     def __len__(self) -> int: ...
+
 
 class Sequence(Collection[_T_co], Reversible[_T_co]):
     @overload
@@ -531,6 +595,7 @@ class Sequence(Collection[_T_co], Reversible[_T_co]):
     def __contains__(self, value: object) -> bool: ...
     def __iter__(self) -> Iterator[_T_co]: ...
     def __reversed__(self) -> Iterator[_T_co]: ...
+
 
 class MutableSequence(Sequence[_T]):
     @abstractmethod
@@ -562,6 +627,7 @@ class MutableSequence(Sequence[_T]):
     def remove(self, value: _T) -> None: ...
     def __iadd__(self, values: Iterable[_T]) -> typing_extensions.Self: ...
 
+
 class AbstractSet(Collection[_T_co]):
     @abstractmethod
     def __contains__(self, x: object) -> bool: ...
@@ -578,6 +644,7 @@ class AbstractSet(Collection[_T_co]):
     def __eq__(self, other: object) -> bool: ...
     def isdisjoint(self, other: Iterable[Any]) -> bool: ...
 
+
 class MutableSet(AbstractSet[_T]):
     @abstractmethod
     def add(self, value: _T) -> None: ...
@@ -587,17 +654,23 @@ class MutableSet(AbstractSet[_T]):
     def clear(self) -> None: ...
     def pop(self) -> _T: ...
     def remove(self, value: _T) -> None: ...
-    def __ior__(self, it: AbstractSet[_T]) -> typing_extensions.Self: ...  # type: ignore[override,misc]
+    def __ior__(self, it: AbstractSet[_T]) -> typing_extensions.Self: ...  # type: ignore[override,misc] # nopep8
+
     def __iand__(self, it: AbstractSet[Any]) -> typing_extensions.Self: ...
-    def __ixor__(self, it: AbstractSet[_T]) -> typing_extensions.Self: ...  # type: ignore[override,misc]
+    def __ixor__(self, it: AbstractSet[_T]) -> typing_extensions.Self: ...  # type: ignore[override,misc] # nopep8
+
     def __isub__(self, it: AbstractSet[Any]) -> typing_extensions.Self: ...
+
 
 class MappingView(Sized):
     def __init__(self, mapping: Mapping[Any, Any]) -> None: ...  # undocumented
     def __len__(self) -> int: ...
 
+
 class ItemsView(MappingView, AbstractSet[tuple[_KT_co, _VT_co]], Generic[_KT_co, _VT_co]):
-    def __init__(self, mapping: Mapping[_KT_co, _VT_co]) -> None: ...  # undocumented
+    def __init__(
+        self, mapping: Mapping[_KT_co, _VT_co]) -> None: ...  # undocumented
+
     def __and__(self, other: Iterable[Any]) -> set[tuple[_KT_co, _VT_co]]: ...
     def __rand__(self, other: Iterable[_T]) -> set[_T]: ...
     def __contains__(self, item: object) -> bool: ...
@@ -605,15 +678,20 @@ class ItemsView(MappingView, AbstractSet[tuple[_KT_co, _VT_co]], Generic[_KT_co,
     if sys.version_info >= (3, 8):
         def __reversed__(self) -> Iterator[tuple[_KT_co, _VT_co]]: ...
 
-    def __or__(self, other: Iterable[_T]) -> set[tuple[_KT_co, _VT_co] | _T]: ...
-    def __ror__(self, other: Iterable[_T]) -> set[tuple[_KT_co, _VT_co] | _T]: ...
+    def __or__(self, other: Iterable[_T]) -> set[tuple[_KT_co, _VT_co] | _T]: ...  # nopep8
+    def __ror__(self, other: Iterable[_T]) -> set[tuple[_KT_co, _VT_co] | _T]: ...  # nopep8
+
     def __sub__(self, other: Iterable[Any]) -> set[tuple[_KT_co, _VT_co]]: ...
     def __rsub__(self, other: Iterable[_T]) -> set[_T]: ...
-    def __xor__(self, other: Iterable[_T]) -> set[tuple[_KT_co, _VT_co] | _T]: ...
-    def __rxor__(self, other: Iterable[_T]) -> set[tuple[_KT_co, _VT_co] | _T]: ...
+
+    def __xor__(self, other: Iterable[_T]) -> set[tuple[_KT_co, _VT_co] | _T]: ...  # nopep8
+    def __rxor__(self, other: Iterable[_T]) -> set[tuple[_KT_co, _VT_co] | _T]: ...  # nopep8
+
 
 class KeysView(MappingView, AbstractSet[_KT_co]):
-    def __init__(self, mapping: Mapping[_KT_co, Any]) -> None: ...  # undocumented
+    def __init__(
+        self, mapping: Mapping[_KT_co, Any]) -> None: ...  # undocumented
+
     def __and__(self, other: Iterable[Any]) -> set[_KT_co]: ...
     def __rand__(self, other: Iterable[_T]) -> set[_T]: ...
     def __contains__(self, key: object) -> bool: ...
@@ -628,12 +706,16 @@ class KeysView(MappingView, AbstractSet[_KT_co]):
     def __xor__(self, other: Iterable[_T]) -> set[_KT_co | _T]: ...
     def __rxor__(self, other: Iterable[_T]) -> set[_KT_co | _T]: ...
 
+
 class ValuesView(MappingView, Collection[_VT_co]):
-    def __init__(self, mapping: Mapping[Any, _VT_co]) -> None: ...  # undocumented
+    def __init__(self, mapping: Mapping[Any,
+                 _VT_co]) -> None: ...  # undocumented
+
     def __contains__(self, value: object) -> bool: ...
     def __iter__(self) -> Iterator[_VT_co]: ...
     if sys.version_info >= (3, 8):
         def __reversed__(self) -> Iterator[_VT_co]: ...
+
 
 class Mapping(Collection[_KT], Generic[_KT, _VT_co]):
     # TODO: We wish the key type could also be covariant, but that doesn't work,
@@ -650,6 +732,7 @@ class Mapping(Collection[_KT], Generic[_KT, _VT_co]):
     def values(self) -> ValuesView[_VT_co]: ...
     def __contains__(self, __key: object) -> bool: ...
     def __eq__(self, __other: object) -> bool: ...
+
 
 class MutableMapping(Mapping[_KT, _VT]):
     @abstractmethod
@@ -670,8 +753,11 @@ class MutableMapping(Mapping[_KT, _VT]):
     # -- collections.OrderedDict.setdefault
     # -- collections.ChainMap.setdefault
     # -- weakref.WeakKeyDictionary.setdefault
+
     @overload
-    def setdefault(self: MutableMapping[_KT, _T | None], __key: _KT, __default: None = None) -> _T | None: ...
+    def setdefault(self: MutableMapping[_KT, _T | None],
+                   __key: _KT, __default: None = None) -> _T | None: ...
+
     @overload
     def setdefault(self, __key: _KT, __default: _VT) -> _VT: ...
     # 'update' used to take a Union, but using overloading is better.
@@ -694,12 +780,18 @@ class MutableMapping(Mapping[_KT, _VT]):
     # -- peewee.attrdict.__iadd__
     # -- weakref.WeakValueDictionary.__ior__
     # -- weakref.WeakKeyDictionary.__ior__
+
     @overload
-    def update(self, __m: SupportsKeysAndGetItem[_KT, _VT], **kwargs: _VT) -> None: ...
+    def update(
+        self, __m: SupportsKeysAndGetItem[_KT, _VT], **kwargs: _VT) -> None: ...
+
     @overload
-    def update(self, __m: Iterable[tuple[_KT, _VT]], **kwargs: _VT) -> None: ...
+    def update(self, __m: Iterable[tuple[_KT, _VT]],
+               **kwargs: _VT) -> None: ...
+
     @overload
     def update(self, **kwargs: _VT) -> None: ...
+
 
 Text = str
 
@@ -708,6 +800,8 @@ TYPE_CHECKING: bool
 # In stubs, the arguments of the IO class are marked as positional-only.
 # This differs from runtime, but better reflects the fact that in reality
 # classes deriving from IO use different names for the arguments.
+
+
 class IO(Iterator[AnyStr]):
     # At runtime these are all abstract properties,
     # but making them abstract in the stub is hugely disruptive, for not much gain.
@@ -758,9 +852,12 @@ class IO(Iterator[AnyStr]):
     @abstractmethod
     @overload
     def writelines(self: IO[str], __lines: Iterable[str]) -> None: ...
+
     @abstractmethod
     @overload
-    def writelines(self: IO[bytes], __lines: Iterable[ReadableBuffer]) -> None: ...
+    def writelines(self: IO[bytes],
+                   __lines: Iterable[ReadableBuffer]) -> None: ...
+
     @abstractmethod
     @overload
     def writelines(self, __lines: Iterable[AnyStr]) -> None: ...
@@ -770,14 +867,17 @@ class IO(Iterator[AnyStr]):
     def __iter__(self) -> Iterator[AnyStr]: ...
     @abstractmethod
     def __enter__(self) -> IO[AnyStr]: ...
+
     @abstractmethod
     def __exit__(
         self, __type: Type[BaseException] | None, __value: BaseException | None, __traceback: TracebackType | None
     ) -> None: ...
 
+
 class BinaryIO(IO[bytes]):
     @abstractmethod
     def __enter__(self) -> BinaryIO: ...
+
 
 class TextIO(IO[str]):
     # See comment regarding the @properties in the `IO` class
@@ -793,6 +893,7 @@ class TextIO(IO[str]):
     def newlines(self) -> Any: ...  # None, str or tuple
     @abstractmethod
     def __enter__(self) -> TextIO: ...
+
 
 ByteString: typing_extensions.TypeAlias = bytes | bytearray | memoryview
 
@@ -839,6 +940,7 @@ if sys.version_info >= (3, 8):
     else:
         def get_origin(tp: Any) -> Any | None: ...
 
+
 @overload
 def cast(typ: Type[_T], val: Any) -> _T: ...
 @overload
@@ -846,12 +948,16 @@ def cast(typ: str, val: Any) -> Any: ...
 @overload
 def cast(typ: object, val: Any) -> Any: ...
 
+
 if sys.version_info >= (3, 11):
     def reveal_type(__obj: _T) -> _T: ...
     def assert_never(__arg: Never) -> Never: ...
     def assert_type(__val: _T, __typ: Any) -> _T: ...
     def clear_overloads() -> None: ...
-    def get_overloads(func: Callable[..., object]) -> Sequence[Callable[..., object]]: ...
+
+    def get_overloads(func: Callable[..., object]
+                      ) -> Sequence[Callable[..., object]]: ...
+
     def dataclass_transform(
         *,
         eq_default: bool = True,
@@ -864,6 +970,7 @@ if sys.version_info >= (3, 11):
 
 # Type constructors
 
+
 class NamedTuple(tuple[Any, ...]):
     if sys.version_info < (3, 8):
         _field_types: ClassVar[collections.OrderedDict[str, type]]
@@ -875,10 +982,15 @@ class NamedTuple(tuple[Any, ...]):
     # So we only add it to the stub on 3.12+.
     if sys.version_info >= (3, 12):
         __orig_bases__: ClassVar[tuple[Any, ...]]
+
     @overload
-    def __init__(self, __typename: str, __fields: Iterable[tuple[str, Any]]) -> None: ...
+    def __init__(self, __typename: str,
+                 __fields: Iterable[tuple[str, Any]]) -> None: ...
+
     @overload
-    def __init__(self, __typename: str, __fields: None = None, **kwargs: Any) -> None: ...
+    def __init__(self, __typename: str, __fields: None = None,
+                 **kwargs: Any) -> None: ...
+
     @classmethod
     def _make(cls, iterable: Iterable[Any]) -> typing_extensions.Self: ...
     if sys.version_info >= (3, 8):
@@ -890,6 +1002,8 @@ class NamedTuple(tuple[Any, ...]):
 
 # Internal mypy fallback type for all typed dicts (does not exist at runtime)
 # N.B. Keep this mostly in sync with typing_extensions._TypedDict/mypy_extensions._TypedDict
+
+
 @type_check_only
 class _TypedDict(Mapping[str, object], metaclass=ABCMeta):
     __total__: ClassVar[bool]
@@ -900,12 +1014,15 @@ class _TypedDict(Mapping[str, object], metaclass=ABCMeta):
     # so we only add it to the stub on 3.12+
     if sys.version_info >= (3, 12):
         __orig_bases__: ClassVar[tuple[Any, ...]]
+
     def copy(self) -> typing_extensions.Self: ...
     # Using Never so that only calls using mypy plugin hook that specialize the signature
     # can go through.
     def setdefault(self, k: _Never, default: object) -> object: ...
     # Mypy plugin hook for 'pop' expects that 'default' has a type variable type.
-    def pop(self, k: _Never, default: _T = ...) -> object: ...  # pyright: ignore[reportInvalidTypeVarUse]
+    def pop(self, k: _Never,
+            default: _T = ...) -> object: ...  # pyright: ignore[reportInvalidTypeVarUse]
+
     def update(self: _T, __m: _T) -> None: ...
     def __delitem__(self, k: _Never) -> None: ...
     def items(self) -> dict_items[str, object]: ...
@@ -913,15 +1030,19 @@ class _TypedDict(Mapping[str, object], metaclass=ABCMeta):
     def values(self) -> dict_values[str, object]: ...
     if sys.version_info >= (3, 9):
         @overload
-        def __or__(self, __value: typing_extensions.Self) -> typing_extensions.Self: ...
+        def __or__(self, __value: typing_extensions.Self) -> typing_extensions.Self: ...  # nopep8
+
         @overload
         def __or__(self, __value: dict[str, Any]) -> dict[str, object]: ...
+
         @overload
-        def __ror__(self, __value: typing_extensions.Self) -> typing_extensions.Self: ...
+        def __ror__(self, __value: typing_extensions.Self) -> typing_extensions.Self: ...  # nopep8
+
         @overload
         def __ror__(self, __value: dict[str, Any]) -> dict[str, object]: ...
         # supposedly incompatible definitions of __or__ and __ior__
-        def __ior__(self, __value: typing_extensions.Self) -> typing_extensions.Self: ...  # type: ignore[misc]
+        def __ior__(self, __value: typing_extensions.Self) -> typing_extensions.Self: ...  # type: ignore[misc]# nopep8
+
 
 @_final
 class ForwardRef:
@@ -934,7 +1055,8 @@ class ForwardRef:
     __forward_module__: Any | None
     if sys.version_info >= (3, 9):
         # The module and is_class arguments were added in later Python 3.9 versions.
-        def __init__(self, arg: str, is_argument: bool = True, module: Any | None = None, *, is_class: bool = False) -> None: ...
+        def __init__(self, arg: str, is_argument: bool = True, module: Any |
+                     None = None, *, is_class: bool = False) -> None: ...
     else:
         def __init__(self, arg: str, is_argument: bool = True) -> None: ...
 
@@ -943,7 +1065,8 @@ class ForwardRef:
             self, globalns: dict[str, Any] | None, localns: dict[str, Any] | None, recursive_guard: frozenset[str]
         ) -> Any | None: ...
     else:
-        def _evaluate(self, globalns: dict[str, Any] | None, localns: dict[str, Any] | None) -> Any | None: ...
+        def _evaluate(self, globalns: dict[str, Any] | None,
+                      localns: dict[str, Any] | None) -> Any | None: ...
 
     def __eq__(self, other: object) -> bool: ...
     def __hash__(self) -> int: ...
@@ -951,13 +1074,17 @@ class ForwardRef:
         def __or__(self, other: Any) -> _SpecialForm: ...
         def __ror__(self, other: Any) -> _SpecialForm: ...
 
+
 if sys.version_info >= (3, 10):
     def is_typeddict(tp: object) -> bool: ...
 
+
 def _type_repr(obj: object) -> str: ...
+
 
 if sys.version_info >= (3, 12):
     def override(__method: _F) -> _F: ...
+
     @_final
     class TypeAliasType:
         def __init__(
@@ -965,8 +1092,11 @@ if sys.version_info >= (3, 12):
         ) -> None: ...
         @property
         def __value__(self) -> Any: ...
+
         @property
-        def __type_params__(self) -> tuple[TypeVar | ParamSpec | TypeVarTuple, ...]: ...
+        def __type_params__(self) -> tuple[TypeVar |
+                                           ParamSpec | TypeVarTuple, ...]: ...
+
         @property
         def __parameters__(self) -> tuple[Any, ...]: ...
         @property

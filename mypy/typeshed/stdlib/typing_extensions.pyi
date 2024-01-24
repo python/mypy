@@ -190,11 +190,14 @@ _F = typing.TypeVar("_F", bound=Callable[..., Any])
 _TC = typing.TypeVar("_TC", bound=type[object])
 
 # unfortunately we have to duplicate this class definition from typing.pyi or we break pytype
+
+
 class _SpecialForm:
     def __getitem__(self, parameters: Any) -> object: ...
     if sys.version_info >= (3, 10):
         def __or__(self, other: Any) -> _SpecialForm: ...
         def __ror__(self, other: Any) -> _SpecialForm: ...
+
 
 # Do not import (and re-export) Protocol or runtime_checkable from
 # typing module because type checkers need to be able to distinguish
@@ -203,20 +206,27 @@ class _SpecialForm:
 # on older versions of Python.
 Protocol: _SpecialForm
 
+
 def runtime_checkable(cls: _TC) -> _TC: ...
+
 
 # This alias for above is kept here for backwards compatibility.
 runtime = runtime_checkable
 Final: _SpecialForm
 
+
 def final(f: _F) -> _F: ...
 
+
 Literal: _SpecialForm
+
 
 def IntVar(name: str) -> Any: ...  # returns a new TypeVar
 
 # Internal mypy fallback type for all typed dicts (does not exist at runtime)
 # N.B. Keep this mostly in sync with typing._TypedDict/mypy_extensions._TypedDict
+
+
 @type_check_only
 class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
     __required_keys__: ClassVar[frozenset[str]]
@@ -230,7 +240,9 @@ class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
     # can go through.
     def setdefault(self, k: Never, default: object) -> object: ...
     # Mypy plugin hook for 'pop' expects that 'default' has a type variable type.
-    def pop(self, k: Never, default: _T = ...) -> object: ...  # pyright: ignore[reportInvalidTypeVarUse]
+    def pop(self, k: Never,
+            default: _T = ...) -> object: ...  # pyright: ignore[reportInvalidTypeVarUse]
+
     def update(self: _T, __m: _T) -> None: ...
     def items(self) -> dict_items[str, object]: ...
     def keys(self) -> dict_keys[str, object]: ...
@@ -248,10 +260,12 @@ class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
         # supposedly incompatible definitions of `__ior__` and `__or__`:
         def __ior__(self, __value: Self) -> Self: ...  # type: ignore[misc]
 
+
 # TypedDict is a (non-subscriptable) special form.
 TypedDict: object
 
 OrderedDict = _Alias()
+
 
 def get_type_hints(
     obj: Callable[..., Any],
@@ -261,6 +275,7 @@ def get_type_hints(
 ) -> dict[str, Any]: ...
 def get_args(tp: Any) -> tuple[Any, ...]: ...
 
+
 if sys.version_info >= (3, 10):
     @overload
     def get_origin(tp: UnionType) -> type[UnionType]: ...
@@ -269,18 +284,22 @@ if sys.version_info >= (3, 9):
     @overload
     def get_origin(tp: GenericAlias) -> type: ...
 
+
 @overload
 def get_origin(tp: ParamSpecArgs | ParamSpecKwargs) -> ParamSpec: ...
 @overload
 def get_origin(tp: Any) -> Any | None: ...
 
+
 Annotated: _SpecialForm
 _AnnotatedAlias: Any  # undocumented
+
 
 @runtime_checkable
 class SupportsIndex(Protocol, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def __index__(self) -> int: ...
+
 
 # New and changed things in 3.10
 if sys.version_info >= (3, 10):
@@ -335,7 +354,9 @@ else:
     def assert_never(__arg: Never) -> Never: ...
     def assert_type(__val: _T, __typ: Any) -> _T: ...
     def clear_overloads() -> None: ...
-    def get_overloads(func: Callable[..., object]) -> Sequence[Callable[..., object]]: ...
+
+    def get_overloads(func: Callable[..., object]
+                      ) -> Sequence[Callable[..., object]]: ...
 
     Required: _SpecialForm
     NotRequired: _SpecialForm
@@ -360,10 +381,15 @@ else:
         _field_defaults: ClassVar[dict[str, Any]]
         _fields: ClassVar[tuple[str, ...]]
         __orig_bases__: ClassVar[tuple[Any, ...]]
+
         @overload
-        def __init__(self, typename: str, fields: Iterable[tuple[str, Any]] = ...) -> None: ...
+        def __init__(self, typename: str,
+                     fields: Iterable[tuple[str, Any]] = ...) -> None: ...
+
         @overload
-        def __init__(self, typename: str, fields: None = None, **kwargs: Any) -> None: ...
+        def __init__(self, typename: str, fields: None = None,
+                     **kwargs: Any) -> None: ...
+
         @classmethod
         def _make(cls, iterable: Iterable[Any]) -> Self: ...
         if sys.version_info >= (3, 8):
@@ -385,6 +411,8 @@ else:
 # The `default` parameter was added to TypeVar, ParamSpec, and TypeVarTuple (PEP 696)
 # The `infer_variance` parameter was added to TypeVar in 3.12 (PEP 695)
 # typing_extensions.override (PEP 698)
+
+
 @final
 class TypeVar:
     @property
@@ -401,6 +429,7 @@ class TypeVar:
     def __infer_variance__(self) -> bool: ...
     @property
     def __default__(self) -> Any | None: ...
+
     def __init__(
         self,
         name: str,
@@ -417,6 +446,7 @@ class TypeVar:
     if sys.version_info >= (3, 11):
         def __typing_subst__(self, arg: Incomplete) -> Incomplete: ...
 
+
 @final
 class ParamSpec:
     @property
@@ -431,6 +461,7 @@ class ParamSpec:
     def __infer_variance__(self) -> bool: ...
     @property
     def __default__(self) -> Any | None: ...
+
     def __init__(
         self,
         name: str,
@@ -445,6 +476,7 @@ class ParamSpec:
     @property
     def kwargs(self) -> ParamSpecKwargs: ...
 
+
 @final
 class TypeVarTuple:
     @property
@@ -454,12 +486,16 @@ class TypeVarTuple:
     def __init__(self, name: str, *, default: Any | None = None) -> None: ...
     def __iter__(self) -> Any: ...  # Unpack[Self]
 
+
 class deprecated:
     message: str
     category: type[Warning] | None
     stacklevel: int
-    def __init__(self, __message: str, *, category: type[Warning] | None = ..., stacklevel: int = 1) -> None: ...
+    def __init__(self, __message: str, *,
+                 category: type[Warning] | None = ..., stacklevel: int = 1) -> None: ...
+
     def __call__(self, __arg: _T) -> _T: ...
+
 
 if sys.version_info >= (3, 12):
     from collections.abc import Buffer as Buffer
@@ -468,6 +504,7 @@ if sys.version_info >= (3, 12):
 else:
     def override(__arg: _F) -> _F: ...
     def get_original_bases(__cls: type) -> tuple[Any, ...]: ...
+
     @final
     class TypeAliasType:
         def __init__(
@@ -475,8 +512,11 @@ else:
         ) -> None: ...
         @property
         def __value__(self) -> Any: ...
+
         @property
-        def __type_params__(self) -> tuple[TypeVar | ParamSpec | TypeVarTuple, ...]: ...
+        def __type_params__(self) -> tuple[TypeVar |
+                                           ParamSpec | TypeVarTuple, ...]: ...
+
         @property
         def __parameters__(self) -> tuple[Any, ...]: ...
         @property
@@ -501,10 +541,12 @@ else:
     def is_protocol(__tp: type) -> bool: ...
     def get_protocol_members(__tp: type) -> frozenset[str]: ...
 
+
 class Doc:
     documentation: str
     def __init__(self, __documentation: str) -> None: ...
     def __hash__(self) -> int: ...
     def __eq__(self, other: object) -> bool: ...
+
 
 ReadOnly: _SpecialForm

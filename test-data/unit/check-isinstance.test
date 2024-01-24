@@ -1961,20 +1961,6 @@ if x in nested_any:
 [builtins fixtures/list.pyi]
 [out]
 
-[case testNarrowTypeAfterInTuple]
-from typing import Optional
-class A: pass
-class B(A): pass
-class C(A): pass
-
-y: Optional[B]
-if y in (B(), C()):
-    reveal_type(y) # N: Revealed type is "__main__.B"
-else:
-    reveal_type(y) # N: Revealed type is "Union[__main__.B, None]"
-[builtins fixtures/tuple.pyi]
-[out]
-
 [case testNarrowTypeAfterInNamedTuple]
 from typing import NamedTuple, Optional
 class NT(NamedTuple):

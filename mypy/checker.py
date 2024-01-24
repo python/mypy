@@ -1248,7 +1248,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         if (
                             arg_type.variance == COVARIANT
                             and defn.name not in ("__init__", "__new__", "__post_init__")
-                            and not is_private(defn.name)  # private methods are not inherited
+                            # private methods are not inherited
+                            and not is_private(defn.name)
                         ):
                             ctx: Context = arg_type
                             if ctx.line < 0:
@@ -3113,7 +3114,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if (
             isinstance(lvalue_node, Var)
             and lvalue.kind in (MDEF, None)
-            and len(lvalue_node.info.bases) > 0  # None for Vars defined via self
+            # None for Vars defined via self
+            and len(lvalue_node.info.bases) > 0
         ):
             for base in lvalue_node.info.mro[1:]:
                 tnode = base.names.get(lvalue_node.name)
@@ -5718,6 +5720,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             operands = [collapse_walrus(x) for x in node.operands]
             operand_types = []
             narrowable_operand_index_to_hash = {}
+            # print(operands)
             for i, expr in enumerate(operands):
                 if not self.has_type(expr):
                     return {}, {}
@@ -5820,49 +5823,62 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             narrowable_operand_index_to_hash.keys(),
                         )
 
-                    # If we haven't been able to narrow types yet, we might be dealing with a
-                    # explicit type(x) == some_type check
+                    # If we haven't been able to narrow types yet, we might be dealing with a explicit type(x) == some_type check
                     if if_map == {} and else_map == {}:
                         if_map, else_map = self.find_type_equals_check(node, expr_indices)
+                        # print("done4", if_map, else_map)
                 elif operator in {"in", "not in"}:
                     assert len(expr_indices) == 2
                     left_index, right_index = expr_indices
                     item_type = operand_types[left_index]
                     iterable_type = operand_types[right_index]
+                    right_expr = operands[right_index]
 
                     if_map, else_map = {}, {}
 
-                    if left_index in narrowable_operand_index_to_hash:
-                        # We only try and narrow away 'None' for now
-                        if is_overlapping_none(item_type):
-                            collection_item_type = get_proper_type(
-                                builtin_item_type(iterable_type)
-                            )
-                            if (
-                                collection_item_type is not None
-                                and not is_overlapping_none(collection_item_type)
-                                and not (
-                                    isinstance(collection_item_type, Instance)
-                                    and collection_item_type.type.fullname == "builtins.object"
-                                )
-                                and is_overlapping_erased_types(item_type, collection_item_type)
-                            ):
-                                if_map[operands[left_index]] = remove_optional(item_type)
-
-                    if right_index in narrowable_operand_index_to_hash:
-                        if_type, else_type = self.conditional_types_for_iterable(
-                            item_type, iterable_type
+                    if isinstance(right_expr, TupleExpr):
+                        all_literal_enum = all(
+                            self.is_literal_enum(element_expr) for element_expr in right_expr.items
                         )
-                        expr = operands[right_index]
-                        if if_type is None:
-                            if_map = None
-                        else:
-                            if_map[expr] = if_type
-                        if else_type is None:
+                        if all_literal_enum:
+                            # Set if_map for the entire tuple
+                            if_map = {}
                             else_map = None
-                        else:
-                            else_map[expr] = else_type
 
+                    else:
+                        if left_index in narrowable_operand_index_to_hash:
+                            # We only try and narrow away 'None' for now
+                            if is_overlapping_none(item_type):
+                                collection_item_type = get_proper_type(
+                                    builtin_item_type(iterable_type)
+                                )
+                                if (
+                                    collection_item_type is not None
+                                    and not is_overlapping_none(collection_item_type)
+                                    and not (
+                                        isinstance(collection_item_type, Instance)
+                                        and collection_item_type.type.fullname == "builtins.object"
+                                    )
+                                    and is_overlapping_erased_types(
+                                        item_type, collection_item_type
+                                    )
+                                ):
+                                    if_map[operands[left_index]] = remove_optional(item_type)
+
+                        if right_index in narrowable_operand_index_to_hash:
+                            if_type, else_type = self.conditional_types_for_iterable(
+                                item_type, iterable_type
+                            )
+                            expr = operands[right_index]
+
+                            if if_type is None:
+                                if_map = None
+                            else:
+                                if_map[expr] = if_type
+                            if else_type is None:
+                                else_map = None
+                            else:
+                                else_map[expr] = else_type
                 else:
                     if_map = {}
                     else_map = {}
@@ -6161,6 +6177,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         expressions in the chain to a Literal type. Performing this coercion is sometimes
         too aggressive of a narrowing, depending on context.
         """
+
         should_coerce = True
         if coerce_only_in_literal_context:
 
@@ -6256,9 +6273,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if sum_type_name is not None:
                 expr_type = try_expanding_sum_type_to_union(expr_type, sum_type_name)
 
-            # We intentionally use 'conditional_types' directly here instead of
-            # 'self.conditional_types_with_intersection': we only compute ad-hoc
-            # intersections when working with pure instances.
             types = conditional_types(expr_type, target_type)
             partial_type_maps.append(conditional_types_to_typemaps(expr, *types))
 
@@ -7214,7 +7228,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         unit for the same reasons we sometimes treat 'True', 'False', or 'None' as a single
         primitive unit.
         """
+
         if not isinstance(n, MemberExpr) or not isinstance(n.expr, NameExpr):
+            # print(n, isinstance(n, MemberExpr))
+            # print(n, isinstance(n.expr, NameExpr))
             return False
 
         parent_type = self.lookup_type_or_none(n.expr)
@@ -7520,7 +7537,8 @@ def builtin_item_type(tp: Type) -> Type | None:
             else:
                 normalized_items.append(it)
         if all(not isinstance(it, AnyType) for it in get_proper_types(normalized_items)):
-            return make_simplified_union(normalized_items)  # this type is not externally visible
+            # this type is not externally visible
+            return make_simplified_union(normalized_items)
     elif isinstance(tp, TypedDictType):
         # TypedDict always has non-optional string keys. Find the key type from the Mapping
         # base class.
