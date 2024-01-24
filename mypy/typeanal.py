@@ -9,6 +9,7 @@ from typing_extensions import Protocol
 
 from mypy import errorcodes as codes, message_registry, nodes
 from mypy.errorcodes import ErrorCode
+from mypy.expandtype import expand_type
 from mypy.messages import MessageBuilder, format_type_bare, quote_type_string, wrong_type_arg_count
 from mypy.nodes import (
     ARG_NAMED,
@@ -75,6 +76,7 @@ from mypy.types import (
     TypeOfAny,
     TypeQuery,
     TypeType,
+    TypeVarId,
     TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
@@ -1834,14 +1836,14 @@ def get_omitted_any(
     return any_type
 
 
-def fix_type_var_tuple_argument(any_type: Type, t: Instance) -> None:
+def fix_type_var_tuple_argument(t: Instance) -> None:
     if t.type.has_type_var_tuple_type:
         args = list(t.args)
         assert t.type.type_var_tuple_prefix is not None
         tvt = t.type.defn.type_vars[t.type.type_var_tuple_prefix]
         assert isinstance(tvt, TypeVarTupleType)
         args[t.type.type_var_tuple_prefix] = UnpackType(
-            Instance(tvt.tuple_fallback.type, [any_type])
+            Instance(tvt.tuple_fallback.type, [args[t.type.type_var_tuple_prefix]])
         )
         t.args = tuple(args)
 
@@ -1855,26 +1857,42 @@ def fix_instance(
     use_generic_error: bool = False,
     unexpanded_type: Type | None = None,
 ) -> None:
-    """Fix a malformed instance by replacing all type arguments with Any.
+    """Fix a malformed instance by replacing all type arguments with TypeVar default or Any.
 
     Also emit a suitable error if this is not due to implicit Any's.
     """
-    if len(t.args) == 0:
-        if use_generic_error:
-            fullname: str | None = None
-        else:
-            fullname = t.type.fullname
-        any_type = get_omitted_any(disallow_any, fail, note, t, options, fullname, unexpanded_type)
-        t.args = (any_type,) * len(t.type.type_vars)
-        fix_type_var_tuple_argument(any_type, t)
-        return
-    # Construct the correct number of type arguments, as
-    # otherwise the type checker may crash as it expects
-    # things to be right.
-    any_type = AnyType(TypeOfAny.from_error)
-    t.args = tuple(any_type for _ in t.type.type_vars)
-    fix_type_var_tuple_argument(any_type, t)
-    t.invalid = True
+    arg_count = len(t.args)
+    min_tv_count = sum(not tv.has_default() for tv in t.type.defn.type_vars)
+    max_tv_count = len(t.type.type_vars)
+    if arg_count < min_tv_count or arg_count > max_tv_count:
+        # Don't use existing args if arg_count doesn't match
+        t.args = ()
+
+    args: list[Type] = [*(t.args[:max_tv_count])]
+    any_type: AnyType | None = None
+    env: dict[TypeVarId, Type] = {}
+
+    for tv, arg in itertools.zip_longest(t.type.defn.type_vars, t.args, fillvalue=None):
+        if tv is None:
+            continue
+        if arg is None:
+            if tv.has_default():
+                arg = tv.default
+            else:
+                if any_type is None:
+                    fullname = None if use_generic_error else t.type.fullname
+                    any_type = get_omitted_any(
+                        disallow_any, fail, note, t, options, fullname, unexpanded_type
+                    )
+                arg = any_type
+            args.append(arg)
+        env[tv.id] = arg
+    t.args = tuple(args)
+    fix_type_var_tuple_argument(t)
+    if not t.type.has_type_var_tuple_type:
+        fixed = expand_type(t, env)
+        assert isinstance(fixed, Instance)
+        t.args = fixed.args
 
 
 def instantiate_type_alias(
@@ -1963,7 +1981,7 @@ def instantiate_type_alias(
         if use_standard_error:
             # This is used if type alias is an internal representation of another type,
             # for example a generic TypedDict or NamedTuple.
-            msg = wrong_type_arg_count(exp_len, str(act_len), node.name)
+            msg = wrong_type_arg_count(exp_len, exp_len, str(act_len), node.name)
         else:
             if node.tvar_tuple_index is not None:
                 exp_len_str = f"at least {exp_len - 1}"
@@ -2217,24 +2235,27 @@ def validate_instance(t: Instance, fail: MsgCallback, empty_tuple_index: bool) -
         # TODO: is it OK to fill with TypeOfAny.from_error instead of special form?
         return False
     if t.type.has_type_var_tuple_type:
-        correct = len(t.args) >= len(t.type.type_vars) - 1
+        min_tv_count = sum(
+            not tv.has_default() and not isinstance(tv, TypeVarTupleType)
+            for tv in t.type.defn.type_vars
+        )
+        correct = len(t.args) >= min_tv_count
         if any(
             isinstance(a, UnpackType) and isinstance(get_proper_type(a.type), Instance)
             for a in t.args
         ):
             correct = True
-        if not correct:
-            exp_len = f"at least {len(t.type.type_vars) - 1}"
+        if not t.args:
+            if not (empty_tuple_index and len(t.type.type_vars) == 1):
+                # The Any arguments should be set by the caller.
+                return False
+        elif not correct:
             fail(
-                f"Bad number of arguments, expected: {exp_len}, given: {len(t.args)}",
+                f"Bad number of arguments, expected: at least {min_tv_count}, given: {len(t.args)}",
                 t,
                 code=codes.TYPE_ARG,
             )
             return False
-        elif not t.args:
-            if not (empty_tuple_index and len(t.type.type_vars) == 1):
-                # The Any arguments should be set by the caller.
-                return False
         else:
             # We also need to check if we are not performing a type variable tuple split.
             unpack = find_unpack_in_list(t.args)
@@ -2254,15 +2275,21 @@ def validate_instance(t: Instance, fail: MsgCallback, empty_tuple_index: bool) -
     elif any(isinstance(a, UnpackType) for a in t.args):
         # A variadic unpack in fixed size instance (fixed unpacks must be flattened by the caller)
         fail(message_registry.INVALID_UNPACK_POSITION, t, code=codes.VALID_TYPE)
+        t.args = ()
         return False
     elif len(t.args) != len(t.type.type_vars):
         # Invalid number of type parameters.
-        if t.args:
+        arg_count = len(t.args)
+        min_tv_count = sum(not tv.has_default() for tv in t.type.defn.type_vars)
+        max_tv_count = len(t.type.type_vars)
+        if arg_count and (arg_count < min_tv_count or arg_count > max_tv_count):
             fail(
-                wrong_type_arg_count(len(t.type.type_vars), str(len(t.args)), t.type.name),
+                wrong_type_arg_count(min_tv_count, max_tv_count, str(arg_count), t.type.name),
                 t,
                 code=codes.TYPE_ARG,
             )
+            t.args = ()
+            t.invalid = True
         return False
     return True
 
