@@ -2059,7 +2059,33 @@ def set_any_tvars(
         type_of_any = TypeOfAny.special_form
     else:
         type_of_any = TypeOfAny.from_omitted_generics
-    if disallow_any and node.alias_tvars:
+    any_type = AnyType(type_of_any, line=newline, column=newcolumn)
+
+    env: dict[TypeVarId, Type] = {}
+    used_any_type = False
+    has_type_var_tuple_type = False
+    for tv, arg in itertools.zip_longest(node.alias_tvars, args, fillvalue=None):
+        if tv is None:
+            continue
+        if arg is None:
+            if tv.has_default():
+                arg = tv.default
+            else:
+                arg = any_type
+                used_any_type = True
+            if isinstance(tv, TypeVarTupleType):
+                # TODO Handle TypeVarTuple defaults
+                has_type_var_tuple_type = True
+                arg = UnpackType(Instance(tv.tuple_fallback.type, [any_type]))
+            args.append(arg)
+        env[tv.id] = arg
+    t = TypeAliasType(node, args, newline, newcolumn)
+    if not has_type_var_tuple_type:
+        fixed = expand_type(t, env)
+        assert isinstance(fixed, TypeAliasType)
+        t.args = fixed.args
+
+    if used_any_type and disallow_any and node.alias_tvars:
         assert fail is not None
         if unexpanded_type:
             type_str = (
@@ -2075,29 +2101,6 @@ def set_any_tvars(
             Context(newline, newcolumn),
             code=codes.TYPE_ARG,
         )
-    any_type = AnyType(type_of_any, line=newline, column=newcolumn)
-
-    env: dict[TypeVarId, Type] = {}
-    has_type_var_tuple_type = False
-    for tv, arg in itertools.zip_longest(node.alias_tvars, args, fillvalue=None):
-        if tv is None:
-            continue
-        if arg is None:
-            if tv.has_default():
-                arg = tv.default
-            else:
-                arg = any_type
-            if isinstance(tv, TypeVarTupleType):
-                # TODO Handle TypeVarTuple defaults
-                has_type_var_tuple_type = True
-                arg = UnpackType(Instance(tv.tuple_fallback.type, [any_type]))
-            args.append(arg)
-        env[tv.id] = arg
-    t = TypeAliasType(node, args, newline, newcolumn)
-    if not has_type_var_tuple_type:
-        fixed = expand_type(t, env)
-        assert isinstance(fixed, TypeAliasType)
-        t.args = fixed.args
     return t
 
 

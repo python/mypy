@@ -252,7 +252,7 @@ T4 = TypeVar("T4")
 TA1 = Dict[T2, T3]
 
 def func_a1(
-    a: TA1,  # E: Missing type parameters for generic type "TA1"
+    a: TA1,
     b: TA1[float],
     c: TA1[float, float],
     d: TA1[float, float, float],  # E: Bad number of arguments for type alias, expected between 0 and 2, given: 3
@@ -320,7 +320,7 @@ class ClassB1(Generic[P2, P3]): ...
 TB1 = ClassB1[P2, P3]
 
 def func_b1(
-    a: TB1,  # E: Missing type parameters for generic type "TB1"
+    a: TB1,
     b: TB1[[float]],
     c: TB1[[float], [float]],
     d: TB1[[float], [float], [float]],  # E: Bad number of arguments for type alias, expected between 0 and 2, given: 3
@@ -361,7 +361,7 @@ Ts4 = TypeVarTuple("Ts4", default=Unpack[Tuple[()]])
 TC1 = Tuple[Unpack[Ts2]]
 
 def func_c1(
-    a: TC1,  # E: Missing type parameters for generic type "TC1"
+    a: TC1,
     b: TC1[float],
 ) -> None:
     # reveal_type(a)  # Revealed type is "Tuple[builtins.int, builtins.str]"  # TODO
@@ -370,7 +370,7 @@ def func_c1(
 TC2 = Tuple[T3, Unpack[Ts3]]
 
 def func_c2(
-    a: TC2,  # E: Missing type parameters for generic type "TC2"
+    a: TC2,
     b: TC2[int],
     c: TC2[int, Unpack[Tuple[()]]],
 ) -> None:
@@ -381,7 +381,7 @@ def func_c2(
 TC3 = Tuple[T3, Unpack[Ts4]]
 
 def func_c3(
-    a: TC3,  # E: Missing type parameters for generic type "TC3"
+    a: TC3,
     b: TC3[int],
     c: TC3[int, Unpack[Tuple[float]]],
 ) -> None:
