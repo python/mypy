@@ -374,15 +374,13 @@ def verify_mypyfile(
             if attr in {sym.get_name() for sym in symbols.get_symbols() if sym.is_assigned()}:
                 # symtable knows we assigned this symbol in the module
                 return True
-
-        if hasattr(obj, "__module__"):
-            try:
-                obj_mod = obj.__module__
-                if isinstance(obj_mod, str):
-                    return bool(obj_mod == r.__name__)
-            except Exception:
-                pass
-
+        try:
+            obj_mod = obj.__module__
+        except Exception:
+            pass
+        else:
+            if isinstance(obj_mod, str):
+                return bool(obj_mod == r.__name__)
         return True
 
     runtime_public_contents = (
