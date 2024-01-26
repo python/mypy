@@ -809,8 +809,16 @@ class BaseStubGenerator:
         return True
 
 
-def is_private_module(fully_qualified_name):
+def is_private_module(module: str) -> bool:
+    """Check if a module is private.
+
+    Return True if at least one module name starts with '_' and does not
+    end with '__'.
+
+    For example, returns True if 'foo._bar.utils' is passed.
+    Returns False if 'foo.bar.__init__' is passed.
+    """
     return any(
         name.startswith("_") and not name.endswith("__")
-        for name in fully_qualified_name.split(".")
+        for name in module.split(".")
     )
