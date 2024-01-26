@@ -366,14 +366,17 @@ def verify_mypyfile(
 
         symbols = _module_symbol_table(r)
         if symbols is not None:
-            if attr in {sym.get_name() for sym in symbols.get_symbols() if sym.is_imported()}:
+            if any(attr == sym.get_name() for sym in symbols.get_symbols() if sym.is_imported()):
                 # symtable says we got this from another module
                 return False
 
-            # but we can't just return True here, because symtable doesn't know about star imports
+            # But we can't just return True here, because symtable doesn't know about star imports
             if attr in {sym.get_name() for sym in symbols.get_symbols() if sym.is_assigned()}:
                 # symtable knows we assigned this symbol in the module
                 return True
+
+        # The __module__ attribute is unreliable for anything except functions and classes,
+        # but it's our best guess at this point
         try:
             obj_mod = obj.__module__
         except Exception:
