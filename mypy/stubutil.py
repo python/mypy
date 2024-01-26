@@ -818,7 +818,4 @@ def is_private_module(module: str) -> bool:
     For example, returns True if 'foo._bar.utils' is passed.
     Returns False if 'foo.bar.__init__' is passed.
     """
-    return any(
-        name.startswith("_") and not name.endswith("__")
-        for name in module.split(".")
-    )
+    return any(name.startswith("_") and not name.endswith("__") for name in module.split("."))
