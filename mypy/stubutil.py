@@ -807,3 +807,10 @@ class BaseStubGenerator:
         if self._all_:
             return name in self._all_
         return True
+
+
+def is_private_module(fully_qualified_name):
+    return any(
+        name.startswith("_") and not name.endswith("__")
+        for name in fully_qualified_name.split(".")
+    )
