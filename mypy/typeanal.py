@@ -1927,18 +1927,19 @@ def instantiate_type_alias(
     if any(unknown_unpack(a) for a in args):
         # This type is not ready to be validated, because of unknown total count.
         # Note that we keep the kind of Any for consistency.
-        return set_any_tvars(node, ctx.line, ctx.column, options, special_form=True)
+        return set_any_tvars(node, [], ctx.line, ctx.column, options, special_form=True)
 
-    exp_len = len(node.alias_tvars)
+    max_tv_count = len(node.alias_tvars)
     act_len = len(args)
     if (
-        exp_len > 0
+        max_tv_count > 0
         and act_len == 0
         and not (empty_tuple_index and node.tvar_tuple_index is not None)
     ):
         # Interpret bare Alias same as normal generic, i.e., Alias[Any, Any, ...]
         return set_any_tvars(
             node,
+            args,
             ctx.line,
             ctx.column,
             options,
@@ -1946,7 +1947,7 @@ def instantiate_type_alias(
             fail=fail,
             unexpanded_type=unexpanded_type,
         )
-    if exp_len == 0 and act_len == 0:
+    if max_tv_count == 0 and act_len == 0:
         if no_args:
             assert isinstance(node.target, Instance)  # type: ignore[misc]
             # Note: this is the only case where we use an eager expansion. See more info about
@@ -1954,7 +1955,7 @@ def instantiate_type_alias(
             return Instance(node.target.type, [], line=ctx.line, column=ctx.column)
         return TypeAliasType(node, [], line=ctx.line, column=ctx.column)
     if (
-        exp_len == 0
+        max_tv_count == 0
         and act_len > 0
         and isinstance(node.target, Instance)  # type: ignore[misc]
         and no_args
@@ -1967,32 +1968,48 @@ def instantiate_type_alias(
         if any(isinstance(a, UnpackType) for a in args):
             # A variadic unpack in fixed size alias (fixed unpacks must be flattened by the caller)
             fail(message_registry.INVALID_UNPACK_POSITION, ctx, code=codes.VALID_TYPE)
-            return set_any_tvars(node, ctx.line, ctx.column, options, from_error=True)
-        correct = act_len == exp_len
+            return set_any_tvars(node, [], ctx.line, ctx.column, options, from_error=True)
+        min_tv_count = sum(not tv.has_default() for tv in node.alias_tvars)
+        fill_typevars = act_len != max_tv_count
+        correct = min_tv_count <= act_len <= max_tv_count
     else:
-        correct = act_len >= exp_len - 1
+        min_tv_count = sum(
+            not tv.has_default() and not isinstance(tv, TypeVarTupleType)
+            for tv in node.alias_tvars
+        )
+        correct = act_len >= min_tv_count
         for a in args:
             if isinstance(a, UnpackType):
                 unpacked = get_proper_type(a.type)
                 if isinstance(unpacked, Instance) and unpacked.type.fullname == "builtins.tuple":
                     # Variadic tuple is always correct.
                     correct = True
-    if not correct:
-        if use_standard_error:
-            # This is used if type alias is an internal representation of another type,
-            # for example a generic TypedDict or NamedTuple.
-            msg = wrong_type_arg_count(exp_len, exp_len, str(act_len), node.name)
-        else:
-            if node.tvar_tuple_index is not None:
-                exp_len_str = f"at least {exp_len - 1}"
+        fill_typevars = not correct
+    if fill_typevars:
+        if not correct:
+            if use_standard_error:
+                # This is used if type alias is an internal representation of another type,
+                # for example a generic TypedDict or NamedTuple.
+                msg = wrong_type_arg_count(max_tv_count, max_tv_count, str(act_len), node.name)
             else:
-                exp_len_str = str(exp_len)
-            msg = (
-                "Bad number of arguments for type alias,"
-                f" expected: {exp_len_str}, given: {act_len}"
-            )
-        fail(msg, ctx, code=codes.TYPE_ARG)
-        return set_any_tvars(node, ctx.line, ctx.column, options, from_error=True)
+                if node.tvar_tuple_index is not None:
+                    msg = (
+                        "Bad number of arguments for type alias,"
+                        f" expected: at least {min_tv_count}, given: {act_len}"
+                    )
+                elif min_tv_count != max_tv_count:
+                    msg = (
+                        "Bad number of arguments for type alias,"
+                        f" expected between {min_tv_count} and {max_tv_count}, given: {act_len}"
+                    )
+                else:
+                    msg = (
+                        "Bad number of arguments for type alias,"
+                        f" expected: {min_tv_count}, given: {act_len}"
+                    )
+            fail(msg, ctx, code=codes.TYPE_ARG)
+            args = []
+        return set_any_tvars(node, args, ctx.line, ctx.column, options, from_error=True)
     elif node.tvar_tuple_index is not None:
         # We also need to check if we are not performing a type variable tuple split.
         unpack = find_unpack_in_list(args)
@@ -2006,7 +2023,7 @@ def instantiate_type_alias(
                 act_suffix = len(args) - unpack - 1
                 if act_prefix < exp_prefix or act_suffix < exp_suffix:
                     fail("TypeVarTuple cannot be split", ctx, code=codes.TYPE_ARG)
-                    return set_any_tvars(node, ctx.line, ctx.column, options, from_error=True)
+                    return set_any_tvars(node, [], ctx.line, ctx.column, options, from_error=True)
     # TODO: we need to check args validity w.r.t alias.alias_tvars.
     # Otherwise invalid instantiations will be allowed in runtime context.
     # Note: in type context, these will be still caught by semanal_typeargs.
@@ -2025,6 +2042,7 @@ def instantiate_type_alias(
 
 def set_any_tvars(
     node: TypeAlias,
+    args: list[Type],
     newline: int,
     newcolumn: int,
     options: Options,
@@ -2059,13 +2077,28 @@ def set_any_tvars(
         )
     any_type = AnyType(type_of_any, line=newline, column=newcolumn)
 
-    args: list[Type] = []
-    for tv in node.alias_tvars:
-        if isinstance(tv, TypeVarTupleType):
-            args.append(UnpackType(Instance(tv.tuple_fallback.type, [any_type])))
-        else:
-            args.append(any_type)
-    return TypeAliasType(node, args, newline, newcolumn)
+    env: dict[TypeVarId, Type] = {}
+    has_type_var_tuple_type = False
+    for tv, arg in itertools.zip_longest(node.alias_tvars, args, fillvalue=None):
+        if tv is None:
+            continue
+        if arg is None:
+            if tv.has_default():
+                arg = tv.default
+            else:
+                arg = any_type
+            if isinstance(tv, TypeVarTupleType):
+                # TODO Handle TypeVarTuple defaults
+                has_type_var_tuple_type = True
+                arg = UnpackType(Instance(tv.tuple_fallback.type, [any_type]))
+            args.append(arg)
+        env[tv.id] = arg
+    t = TypeAliasType(node, args, newline, newcolumn)
+    if not has_type_var_tuple_type:
+        fixed = expand_type(t, env)
+        assert isinstance(fixed, TypeAliasType)
+        t.args = fixed.args
+    return t
 
 
 def flatten_tvars(lists: list[list[T]]) -> list[T]:
