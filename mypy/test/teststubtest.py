@@ -1267,7 +1267,7 @@ class StubtestUnit(unittest.TestCase):
         yield Case(stub="", runtime="from string import ascii_letters", error=None)
 
     @collect_cases
-    def test_missing_no_runtime_terrible(self) -> Iterator[Case]:
+    def test_missing_no_runtime_all_terrible(self) -> Iterator[Case]:
         yield Case(
             stub="",
             runtime="""
