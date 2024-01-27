@@ -376,7 +376,7 @@ def verify_mypyfile(
                     return False
                 # But we can't just return True here, because symtable doesn't know about symbols
                 # that come from `from module import *`
-                if symbol is not None and symbol.is_assigned():
+                if symbol.is_assigned():
                     # symtable knows we assigned this symbol in the module
                     return True
 
