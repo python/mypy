@@ -81,6 +81,8 @@ PyObject *Vec_TypeToStr(size_t item_type, size_t depth) {
             item = PyUnicode_FromFormat("i32");
         } else if ((item_type & ~1) == VEC_ITEM_TYPE_I16) {
             item = PyUnicode_FromFormat("i16");
+        } else if ((item_type & ~1) == VEC_ITEM_TYPE_BOOL) {
+            item = PyUnicode_FromFormat("bool");
         } else {
             item = PyObject_GetAttrString((PyObject *)(item_type & ~1), "__name__");
             if (item_type & 1) {
@@ -168,6 +170,9 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
     } else if (item == (PyObject *)I16TypeObj) {
         Py_INCREF(&VecI16Type);
         return (PyObject *)&VecI16Type;
+    } else if (item == (PyObject *)&PyBool_Type) {
+        Py_INCREF(&VecBoolType);
+        return (PyObject *)&VecBoolType;
     } else {
         size_t depth = 0;
         size_t item_type;
@@ -213,13 +218,15 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
                 item_type = VEC_ITEM_TYPE_I16;
                 depth = 1;
                 // TODO: Check optionals?
+            } else if (item == (PyObject *)&VecBoolType) {
+                item_type = VEC_ITEM_TYPE_BOOL;
+                depth = 1;
+                // TODO: Check optionals?
             } else {
                 item_type = (size_t)item;
             }
         }
-        if (item == (PyObject *)&PyLong_Type
-            || item == (PyObject *)&PyFloat_Type
-            || item == (PyObject *)&PyBool_Type) {
+        if (item == (PyObject *)&PyLong_Type) {
             PyErr_SetString(PyExc_ValueError, "unsupported type in vec[...]");
             return NULL;
         }
@@ -435,6 +442,17 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
         if (VEC_IS_ERROR(v))
             return NULL; // TODO: decref?
         return VecI16_Box(v);
+    } else if (VecBool_Check(vec)) {
+        double x = VecBool_UnboxItem(item);
+        if (VecBool_IsUnboxError(x)) {
+            return NULL;
+        }
+        VecBool v = ((VecBoolObject *)vec)->vec;
+        VEC_INCREF(v);
+        v = VecBool_Append(v, x);
+        if (VEC_IS_ERROR(v))
+            return NULL; // TODO: decref?
+        return VecBool_Box(v);
     } else if (VecT_Check(vec)) {
         VecT v = ((VecTObject *)vec)->vec;
         if (!VecT_ItemCheck(v, item, v.buf->item_type)) {
@@ -524,6 +542,17 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
         if (VEC_IS_ERROR(v))
             return NULL; // TODO: decref?
         return VecI16_Box(v);
+    } else if (VecBool_Check(vec)) {
+        char x = VecBool_UnboxItem(item);
+        if (VecBool_IsUnboxError(x)) {
+            return NULL;
+        }
+        VecBool v = ((VecBoolObject *)vec)->vec;
+        VEC_INCREF(v);
+        v = VecBool_Remove(v, x);
+        if (VEC_IS_ERROR(v))
+            return NULL; // TODO: decref?
+        return VecBool_Box(v);
     } else if (VecT_Check(vec)) {
         VecT v = ((VecTObject *)vec)->vec;
         if (!VecT_ItemCheck(v, item, v.buf->item_type)) {
@@ -606,6 +635,15 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
         if ((result_item0 = VecI16_Box(r.f0)) == NULL)
             return NULL;
         result_item1 = VecI16_BoxItem(r.f1);
+    } else if (VecBool_Check(vec)) {
+        VecBool v = ((VecBoolObject *)vec)->vec;
+        VecBoolPopResult r;
+        r = VecBool_Pop(v, index);
+        if (VEC_IS_ERROR(r.f0))
+            return NULL;
+        if ((result_item0 = VecBool_Box(r.f0)) == NULL)
+            return NULL;
+        result_item1 = VecBool_BoxItem(r.f1);
     } else if (VecT_Check(vec)) {
         VecT v = ((VecTObject *)vec)->vec;
         VecTPopResult r;
@@ -681,6 +719,7 @@ static VecCapsule Capsule = {
     &I16Features,
     &U8Features,
     &FloatFeatures,
+    &BoolFeatures,
 };
 
 PyMODINIT_FUNC
@@ -746,6 +785,10 @@ PyInit_vecs(void)
     if (PyType_Ready(&VecFloatType) < 0)
         return NULL;
     if (PyType_Ready(&VecFloatBufType) < 0)
+        return NULL;
+    if (PyType_Ready(&VecBoolType) < 0)
+        return NULL;
+    if (PyType_Ready(&VecBoolBufType) < 0)
         return NULL;
 
     PyObject *m = PyModule_Create(&vecsmodule);

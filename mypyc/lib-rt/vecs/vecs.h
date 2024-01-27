@@ -18,6 +18,7 @@
 #define VEC_ITEM_TYPE_I16 10
 #define VEC_ITEM_TYPE_U8  14
 #define VEC_ITEM_TYPE_FLOAT 18
+#define VEC_ITEM_TYPE_BOOL 22
 
 inline size_t Vec_IsMagicItemType(size_t item_type) {
     return item_type & 2;
@@ -56,6 +57,12 @@ typedef struct _VecFloatBufObject {
     PyObject_VAR_HEAD
     double items[1];
 } VecFloatBufObject;
+
+// vecbuf[bool]
+typedef struct _VecBoolBufObject {
+    PyObject_VAR_HEAD
+    char items[1];
+} VecBoolBufObject;
 
 // Simple generic vecbuf: vecbuf[t] when t is a type object
 typedef struct _VecTBufObject {
@@ -110,6 +117,11 @@ typedef struct _VecFloat {
     VecFloatBufObject *buf;
 } VecFloat;
 
+typedef struct _VecBool {
+    Py_ssize_t len;
+    VecBoolBufObject *buf;
+} VecBool;
+
 typedef struct _VecT {
     Py_ssize_t len;
     VecTBufObject *buf;
@@ -159,6 +171,12 @@ typedef struct _VecFloatObject {
     PyObject_HEAD
     VecFloat vec;
 } VecFloatObject;
+
+// Boxed vec[bool]
+typedef struct _VecBoolObject {
+    PyObject_HEAD
+    VecBool vec;
+} VecBoolObject;
 
 // Simple boxed generic vecbuf: vecbuf[t] when t is a type object
 typedef struct _VecTObject {
@@ -218,11 +236,21 @@ typedef struct tuple_T2VFF {
 static tuple_T2VFF tuple_undefined_T2VFF = { { -1, NULL } , 0.0 };
 #endif
 
+#ifndef MYPYC_DECLARED_tuple_T2VCC
+#define MYPYC_DECLARED_tuple_T2VCC
+typedef struct tuple_T2VCC {
+    VecBool f0;
+    char f1;
+} tuple_T2VCC;
+static tuple_T2VCC tuple_undefined_T2VCC = { { -1, NULL } , 0 };
+#endif
+
 typedef tuple_T2V88 VecI64PopResult;
 typedef tuple_T2V44 VecI32PopResult;
 typedef tuple_T2V22 VecI16PopResult;
 typedef tuple_T2VU1U1 VecU8PopResult;
 typedef tuple_T2VFF VecFloatPopResult;
+typedef tuple_T2VCC VecBoolPopResult;
 
 // vec[i64] operations + type objects (stored in a capsule)
 typedef struct _VecI64Features {
@@ -319,6 +347,25 @@ typedef struct _VecFloatFeatures {
     // iter?
 } VecFloatFeatures;
 
+// vec[bool] operations + type objects (stored in a capsule)
+typedef struct _VecBoolFeatures {
+    PyTypeObject *boxed_type;
+    PyTypeObject *buf_type;
+    VecBool (*alloc)(Py_ssize_t, Py_ssize_t);
+    PyObject *(*box)(VecBool);
+    VecBool (*unbox)(PyObject *);
+    VecBool (*convert_from_nested)(VecNestedBufItem);
+    VecBool (*append)(VecBool, char);
+    VecBoolPopResult (*pop)(VecBool, Py_ssize_t);
+    VecBool (*remove)(VecBool, char);
+    // TODO: Py_ssize_t
+    VecBool (*slice)(VecBool, int64_t, int64_t);
+    // PyObject *(*extend)(PyObject *, PyObject *);
+    // PyObject *(*concat)(PyObject *, PyObject *);
+    // bool (*contains)(PyObject *, char);
+    // iter?
+} VecBoolFeatures;
+
 #ifndef MYPYC_DECLARED_tuple_T2VOO
 #define MYPYC_DECLARED_tuple_T2VOO
 typedef struct tuple_T2VOO {
@@ -390,6 +437,7 @@ typedef struct {
     VecI16Features *i16;
     VecU8Features *u8;
     VecFloatFeatures *float_;
+    VecBoolFeatures *bool_;
 } VecCapsule;
 
 #define BUF_SIZE(b) ((b)->ob_base.ob_size)
@@ -407,6 +455,7 @@ extern PyTypeObject VecI32BufType;
 extern PyTypeObject VecI16BufType;
 extern PyTypeObject VecU8BufType;
 extern PyTypeObject VecFloatBufType;
+extern PyTypeObject VecBoolBufType;
 extern PyTypeObject VecTBufType;
 extern PyTypeObject VecNestedBufType;
 
@@ -415,6 +464,7 @@ extern PyTypeObject VecI32Type;
 extern PyTypeObject VecI16Type;
 extern PyTypeObject VecU8Type;
 extern PyTypeObject VecFloatType;
+extern PyTypeObject VecBoolType;
 extern PyTypeObject VecTType;
 extern PyTypeObject VecNestedType;
 
@@ -428,6 +478,7 @@ extern VecI32Features I32Features;
 extern VecI16Features I16Features;
 extern VecU8Features U8Features;
 extern VecFloatFeatures FloatFeatures;
+extern VecBoolFeatures BoolFeatures;
 extern VecTFeatures TFeatures;
 extern VecNestedFeatures TExtFeatures;
 
@@ -580,6 +631,42 @@ VecFloat VecFloat_Append(VecFloat, double x);
 VecFloat VecFloat_Remove(VecFloat, double x);
 VecFloatPopResult VecFloat_Pop(VecFloat v, Py_ssize_t index);
 
+// vec[bool] operations
+
+static inline int VecBool_Check(PyObject *o) {
+    return o->ob_type == &VecBoolType;
+}
+
+static inline PyObject *VecBool_BoxItem(char x) {
+    if (x == 1) {
+        Py_INCREF(Py_True);
+        return Py_True;
+    } else {
+        Py_INCREF(Py_False);
+        return Py_False;
+    }
+}
+
+static inline char VecBool_UnboxItem(PyObject *o) {
+    if (o == Py_False) {
+        return 0;
+    } else if (o == Py_True) {
+        return 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "bool value expected");
+        return 2;
+    }
+}
+
+static inline int VecBool_IsUnboxError(char x) {
+    return x == 2;
+}
+
+PyObject *VecBool_Box(VecBool);
+VecBool VecBool_Append(VecBool, char x);
+VecBool VecBool_Remove(VecBool, char x);
+VecBoolPopResult VecBool_Pop(VecBool v, Py_ssize_t index);
+
 // vec[t] operations
 
 static inline int VecT_Check(PyObject *o) {
@@ -655,6 +742,11 @@ static inline int VecVec_UnboxItem(VecNested v, PyObject *item, VecNestedBufItem
             unboxed->len = o->vec.len;
             unboxed->buf = (PyObject *)o->vec.buf;
             return 0;
+        } else if (item->ob_type == &VecBoolType && v.buf->item_type == VEC_ITEM_TYPE_BOOL) {
+            VecBoolObject *o = (VecBoolObject *)item;
+            unboxed->len = o->vec.len;
+            unboxed->buf = (PyObject *)o->vec.buf;
+            return 0;
         }
     } else if (item->ob_type == &VecNestedType) {
         VecNestedObject *o = (VecNestedObject *)item;
@@ -696,6 +788,9 @@ static inline PyObject *VecVec_BoxItem(VecNested v, VecNestedBufItem item) {
         } else if (item_type == VEC_ITEM_TYPE_I16) {
             VecI16 v = { .len = item.len, .buf = (VecI16BufObject *)item.buf };
             return VecI16_Box(v);
+        } else if (item_type == VEC_ITEM_TYPE_BOOL) {
+            VecBool v = { .len = item.len, .buf = (VecBoolBufObject *)item.buf };
+            return VecBool_Box(v);
         } else {
             // Generic vec[t]
             VecT v = { .len = item.len, .buf = (VecTBufObject *)item.buf };
