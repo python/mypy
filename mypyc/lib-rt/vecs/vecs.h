@@ -8,9 +8,15 @@
 // use PyErr_Occurred() since this overlaps with valid integer values.
 #define MYPYC_INT_ERROR -113
 
-// Item type constants; must be even but not multiples of 4 (2 + 4 * n)
+// Item type constants for supported packed/specialized item types; must be
+// even but not a multiple of 4 (2 + 4 * n). Each of these has a corresponding
+// distinct implementation C extension class. For example, vec[i64] has a
+// different runtime type than vec[i32]. All other item types use generic
+// implementations.
 #define VEC_ITEM_TYPE_I64 2
-#define VEC_ITEM_TYPE_U8 14
+#define VEC_ITEM_TYPE_I32 6
+#define VEC_ITEM_TYPE_I16 10
+#define VEC_ITEM_TYPE_U8  14
 #define VEC_ITEM_TYPE_FLOAT 18
 
 inline size_t Vec_IsMagicItemType(size_t item_type) {
@@ -26,6 +32,18 @@ typedef struct _VecI64BufObject {
     PyObject_VAR_HEAD
     int64_t items[1];
 } VecI64BufObject;
+
+// vecbuf[i32]
+typedef struct _VecI32BufObject {
+    PyObject_VAR_HEAD
+    int32_t items[1];
+} VecI32BufObject;
+
+// vecbuf[i16]
+typedef struct _VecI16BufObject {
+    PyObject_VAR_HEAD
+    int16_t items[1];
+} VecI16BufObject;
 
 // vecbuf[u8]
 typedef struct _VecU8BufObject {
@@ -72,6 +90,16 @@ typedef struct _VecI64 {
     VecI64BufObject *buf;
 } VecI64;
 
+typedef struct _VecI32 {
+    Py_ssize_t len;
+    VecI32BufObject *buf;
+} VecI32;
+
+typedef struct _VecI16 {
+    Py_ssize_t len;
+    VecI16BufObject *buf;
+} VecI16;
+
 typedef struct _VecU8 {
     Py_ssize_t len;
     VecU8BufObject *buf;
@@ -108,6 +136,18 @@ typedef struct _VecI64Object {
     VecI64 vec;
 } VecI64Object;
 
+// Boxed vec[i32]
+typedef struct _VecI32Object {
+    PyObject_HEAD
+    VecI32 vec;
+} VecI32Object;
+
+// Boxed vec[i16]
+typedef struct _VecI16Object {
+    PyObject_HEAD
+    VecI16 vec;
+} VecI16Object;
+
 // Boxed vec[u8]
 typedef struct _VecU8Object {
     PyObject_HEAD
@@ -142,6 +182,24 @@ typedef struct tuple_T2V88 {
 static tuple_T2V88 tuple_undefined_T2V88 = { { -1, NULL } , 0 };
 #endif
 
+#ifndef MYPYC_DECLARED_tuple_T2V44
+#define MYPYC_DECLARED_tuple_T2V44
+typedef struct tuple_T2V44 {
+    VecI32 f0;
+    int32_t f1;
+} tuple_T2V44;
+static tuple_T2V44 tuple_undefined_T2V44 = { { -1, NULL } , 0 };
+#endif
+
+#ifndef MYPYC_DECLARED_tuple_T2V22
+#define MYPYC_DECLARED_tuple_T2V22
+typedef struct tuple_T2V22 {
+    VecI16 f0;
+    int16_t f1;
+} tuple_T2V22;
+static tuple_T2V22 tuple_undefined_T2V22 = { { -1, NULL } , 0 };
+#endif
+
 #ifndef MYPYC_DECLARED_tuple_T2VU1U1
 #define MYPYC_DECLARED_tuple_T2VU1U1
 typedef struct tuple_T2VU1U1 {
@@ -161,6 +219,8 @@ static tuple_T2VFF tuple_undefined_T2VFF = { { -1, NULL } , 0.0 };
 #endif
 
 typedef tuple_T2V88 VecI64PopResult;
+typedef tuple_T2V44 VecI32PopResult;
+typedef tuple_T2V22 VecI16PopResult;
 typedef tuple_T2VU1U1 VecU8PopResult;
 typedef tuple_T2VFF VecFloatPopResult;
 
@@ -182,6 +242,44 @@ typedef struct _VecI64Features {
     // bool (*contains)(PyObject *, int64_t);
     // iter?
 } VecI64Features;
+
+// vec[i32] operations + type objects (stored in a capsule)
+typedef struct _VecI32Features {
+    PyTypeObject *boxed_type;
+    PyTypeObject *buf_type;
+    VecI32 (*alloc)(Py_ssize_t, Py_ssize_t);
+    PyObject *(*box)(VecI32);
+    VecI32 (*unbox)(PyObject *);
+    VecI32 (*convert_from_nested)(VecNestedBufItem);
+    VecI32 (*append)(VecI32, int32_t);
+    VecI32PopResult (*pop)(VecI32, Py_ssize_t);
+    VecI32 (*remove)(VecI32, int32_t);
+    // TODO: Py_ssize_t
+    VecI32 (*slice)(VecI32, int64_t, int64_t);
+    // PyObject *(*extend)(PyObject *, PyObject *);
+    // PyObject *(*concat)(PyObject *, PyObject *);
+    // bool (*contains)(PyObject *, int32_t);
+    // iter?
+} VecI32Features;
+
+// vec[i16] operations + type objects (stored in a capsule)
+typedef struct _VecI16Features {
+    PyTypeObject *boxed_type;
+    PyTypeObject *buf_type;
+    VecI16 (*alloc)(Py_ssize_t, Py_ssize_t);
+    PyObject *(*box)(VecI16);
+    VecI16 (*unbox)(PyObject *);
+    VecI16 (*convert_from_nested)(VecNestedBufItem);
+    VecI16 (*append)(VecI16, int16_t);
+    VecI16PopResult (*pop)(VecI16, Py_ssize_t);
+    VecI16 (*remove)(VecI16, int16_t);
+    // TODO: Py_ssize_t
+    VecI16 (*slice)(VecI16, int64_t, int64_t);
+    // PyObject *(*extend)(PyObject *, PyObject *);
+    // PyObject *(*concat)(PyObject *, PyObject *);
+    // bool (*contains)(PyObject *, int16_t);
+    // iter?
+} VecI16Features;
 
 // vec[u8] operations + type objects (stored in a capsule)
 typedef struct _VecU8Features {
@@ -288,6 +386,8 @@ typedef struct {
     VecTFeatures *t;
     VecNestedFeatures *nested;
     VecI64Features *i64;
+    VecI32Features *i32;
+    VecI16Features *i16;
     VecU8Features *u8;
     VecFloatFeatures *float_;
 } VecCapsule;
@@ -303,27 +403,33 @@ typedef struct {
 // Type objects
 
 extern PyTypeObject VecI64BufType;
+extern PyTypeObject VecI32BufType;
+extern PyTypeObject VecI16BufType;
 extern PyTypeObject VecU8BufType;
 extern PyTypeObject VecFloatBufType;
 extern PyTypeObject VecTBufType;
 extern PyTypeObject VecNestedBufType;
 
 extern PyTypeObject VecI64Type;
+extern PyTypeObject VecI32Type;
+extern PyTypeObject VecI16Type;
 extern PyTypeObject VecU8Type;
 extern PyTypeObject VecFloatType;
 extern PyTypeObject VecTType;
 extern PyTypeObject VecNestedType;
 
 extern PyTypeObject *I64TypeObj;
+extern PyTypeObject *I32TypeObj;
+extern PyTypeObject *I16TypeObj;
 extern PyTypeObject *U8TypeObj;
 
 extern VecI64Features I64Features;
+extern VecI32Features I32Features;
+extern VecI16Features I16Features;
 extern VecU8Features U8Features;
 extern VecFloatFeatures FloatFeatures;
 extern VecTFeatures TFeatures;
 extern VecNestedFeatures TExtFeatures;
-
-// vec[i64] operations
 
 static inline int Vec_CheckFloatError(PyObject *o) {
     if (PyFloat_Check(o)) {
@@ -332,6 +438,8 @@ static inline int Vec_CheckFloatError(PyObject *o) {
     }
     return 0;
 }
+
+// vec[i64] operations
 
 static inline int VecI64_Check(PyObject *o) {
     return o->ob_type == &VecI64Type;
@@ -355,6 +463,56 @@ PyObject *VecI64_Box(VecI64);
 VecI64 VecI64_Append(VecI64, int64_t x);
 VecI64 VecI64_Remove(VecI64, int64_t x);
 VecI64PopResult VecI64_Pop(VecI64 v, Py_ssize_t index);
+
+// vec[i32] operations
+
+static inline int VecI32_Check(PyObject *o) {
+    return o->ob_type == &VecI32Type;
+}
+
+static inline PyObject *VecI32_BoxItem(int32_t x) {
+    return PyLong_FromLongLong(x);
+}
+
+static inline int32_t VecI32_UnboxItem(PyObject *o) {
+    if (Vec_CheckFloatError(o))
+        return -1;
+    return PyLong_AsLongLong(o);
+}
+
+static inline int VecI32_IsUnboxError(int32_t x) {
+    return x == -1 && PyErr_Occurred();
+}
+
+PyObject *VecI32_Box(VecI32);
+VecI32 VecI32_Append(VecI32, int32_t x);
+VecI32 VecI32_Remove(VecI32, int32_t x);
+VecI32PopResult VecI32_Pop(VecI32 v, Py_ssize_t index);
+
+// vec[i16] operations
+
+static inline int VecI16_Check(PyObject *o) {
+    return o->ob_type == &VecI16Type;
+}
+
+static inline PyObject *VecI16_BoxItem(int16_t x) {
+    return PyLong_FromLongLong(x);
+}
+
+static inline int16_t VecI16_UnboxItem(PyObject *o) {
+    if (Vec_CheckFloatError(o))
+        return -1;
+    return PyLong_AsLongLong(o);
+}
+
+static inline int VecI16_IsUnboxError(int16_t x) {
+    return x == -1 && PyErr_Occurred();
+}
+
+PyObject *VecI16_Box(VecI16);
+VecI16 VecI16_Append(VecI16, int16_t x);
+VecI16 VecI16_Remove(VecI16, int16_t x);
+VecI16PopResult VecI16_Pop(VecI16 v, Py_ssize_t index);
 
 // vec[u8] operations
 
@@ -477,6 +635,16 @@ static inline int VecVec_UnboxItem(VecNested v, PyObject *item, VecNestedBufItem
             unboxed->len = o->vec.len;
             unboxed->buf = (PyObject *)o->vec.buf;
             return 0;
+        } else if (item->ob_type == &VecI32Type && v.buf->item_type == VEC_ITEM_TYPE_I32) {
+            VecI32Object *o = (VecI32Object *)item;
+            unboxed->len = o->vec.len;
+            unboxed->buf = (PyObject *)o->vec.buf;
+            return 0;
+        } else if (item->ob_type == &VecI16Type && v.buf->item_type == VEC_ITEM_TYPE_I16) {
+            VecI16Object *o = (VecI16Object *)item;
+            unboxed->len = o->vec.len;
+            unboxed->buf = (PyObject *)o->vec.buf;
+            return 0;
         }
     } else if (item->ob_type == &VecNestedType) {
         VecNestedObject *o = (VecNestedObject *)item;
@@ -512,6 +680,12 @@ static inline PyObject *VecVec_BoxItem(VecNested v, VecNestedBufItem item) {
         } else if (item_type == VEC_ITEM_TYPE_FLOAT) {
             VecFloat v = { .len = item.len, .buf = (VecFloatBufObject *)item.buf };
             return VecFloat_Box(v);
+        } else if (item_type == VEC_ITEM_TYPE_I32) {
+            VecI32 v = { .len = item.len, .buf = (VecI32BufObject *)item.buf };
+            return VecI32_Box(v);
+        } else if (item_type == VEC_ITEM_TYPE_I16) {
+            VecI16 v = { .len = item.len, .buf = (VecI16BufObject *)item.buf };
+            return VecI16_Box(v);
         } else {
             // Generic vec[t]
             VecT v = { .len = item.len, .buf = (VecTBufObject *)item.buf };
