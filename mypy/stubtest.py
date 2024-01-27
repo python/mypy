@@ -364,16 +364,21 @@ def verify_mypyfile(
         if isinstance(obj, types.ModuleType):
             return False
 
-        symbols = _module_symbol_table(r)
-        if symbols is not None:
-            if any(attr == sym.get_name() for sym in symbols.get_symbols() if sym.is_imported()):
-                # symtable says we got this from another module
-                return False
-
-            # But we can't just return True here, because symtable doesn't know about star imports
-            if attr in {sym.get_name() for sym in symbols.get_symbols() if sym.is_assigned()}:
-                # symtable knows we assigned this symbol in the module
-                return True
+        symbol_table = _module_symbol_table(r)
+        if symbol_table is not None:
+            try:
+                symbol = symbol_table.lookup(attr)
+            except KeyError:
+                pass
+            else:
+                if symbol.is_imported():
+                    # symtable says we got this from another module
+                    return False
+                # But we can't just return True here, because symtable doesn't know about symbols
+                # that come from `from module import *`
+                if symbol is not None and symbol.is_assigned():
+                    # symtable knows we assigned this symbol in the module
+                    return True
 
         # The __module__ attribute is unreliable for anything except functions and classes,
         # but it's our best guess at this point
