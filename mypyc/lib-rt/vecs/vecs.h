@@ -477,7 +477,12 @@ static inline PyObject *VecI32_BoxItem(int32_t x) {
 static inline int32_t VecI32_UnboxItem(PyObject *o) {
     if (Vec_CheckFloatError(o))
         return -1;
-    return PyLong_AsLongLong(o);
+    long x = PyLong_AsLong(o);
+    if (x >= 0x80000000L || x < -0x80000000L) {
+        PyErr_SetString(PyExc_OverflowError, "Python int too large to convert to i32");
+        return -1;
+    }
+    return x;
 }
 
 static inline int VecI32_IsUnboxError(int32_t x) {
@@ -502,7 +507,12 @@ static inline PyObject *VecI16_BoxItem(int16_t x) {
 static inline int16_t VecI16_UnboxItem(PyObject *o) {
     if (Vec_CheckFloatError(o))
         return -1;
-    return PyLong_AsLongLong(o);
+    long x = PyLong_AsLong(o);
+    if (x >= 32768 || x < -32768) {
+        PyErr_SetString(PyExc_OverflowError, "Python int too large to convert to i16");
+        return -1;
+    }
+    return x;
 }
 
 static inline int VecI16_IsUnboxError(int16_t x) {
