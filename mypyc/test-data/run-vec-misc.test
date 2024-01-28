@@ -21,3 +21,24 @@ def test_create_from_values() -> None:
     assert str(vec[u8]([0, 123, 255])) == "vec[u8]([0, 123, 255])"
     assert str(vec[float]([1.5, -3.5])) == "vec[float]([1.5, -3.5])"
     assert str(vec[bool]([False, True])) == "vec[bool]([False, True])"
+
+def test_get_item() -> None:
+    assert vec[i32]([5, -12])[1] == -12
+    assert vec[i16]([6, -8])[1] == -8
+    assert vec[u8]([0, 123, 255])[2] == 255
+    assert vec[float]([1.5, -3.5])[1] == -3.5
+    assert vec[bool]([False, True])[1] == True
+
+def test_get_item_negative() -> None:
+    assert vec[i32]([5, -12])[-2] == 5
+    assert vec[i16]([6, -8])[-2] == 6
+    assert vec[u8]([0, 123, 255])[-2] == 123
+    assert vec[float]([1.5, -3.5])[-2] == 1.5
+    assert vec[bool]([False, True])[-2] == False
+
+def test_append() -> None:
+    assert append(vec[i32](), 123) == vec[i32]([123])
+    assert append(vec[i16](), 123) == vec[i16]([123])
+    assert append(vec[u8](), 123) == vec[u8]([123])
+    assert append(vec[float](), 123.5) == vec[float]([123.5])
+    assert append(vec[bool](), True) == vec[bool]([True])
