@@ -254,3 +254,87 @@ L3:
     goto L1
 L4:
     return s
+
+[case testVecMiscNestedGetItem]
+from vecs import vec
+
+from mypy_extensions import i64, i32
+
+def get_item_nested(v: vec[vec[i32]], i: i64) -> vec[i32]:
+    return v[i]
+[out]
+def get_item_nested(v, i):
+    v :: vec[vec[i32]]
+    i :: i64
+    r0 :: native_int
+    r1 :: bit
+    r2 :: i64
+    r3 :: bit
+    r4 :: bool
+    r5 :: i64
+    r6 :: object
+    r7 :: ptr
+    r8 :: i64
+    r9 :: ptr
+    r10 :: vec[i32]
+L0:
+    r0 = v.len
+    r1 = i < r0 :: unsigned
+    if r1 goto L4 else goto L1 :: bool
+L1:
+    r2 = i + r0
+    r3 = r2 < r0 :: unsigned
+    if r3 goto L3 else goto L2 :: bool
+L2:
+    r4 = raise IndexError
+    unreachable
+L3:
+    r5 = r2
+    goto L5
+L4:
+    r5 = i
+L5:
+    r6 = v.buf
+    r7 = get_element_ptr r6 items :: VecNestedBufObject
+    r8 = r5 * 16
+    r9 = r7 + r8
+    r10 = load_mem r9 :: vec[i32]*
+    keep_alive v
+    return r10
+
+[case testVecMiscNestedPop]
+from vecs import vec, pop
+
+from mypy_extensions import i64, i32
+
+def get_item_nested(v: vec[vec[i32]], i: i64) -> vec[i32]:
+    v, x = pop(v, i)
+    return x
+[out]
+def get_item_nested(v, i):
+    v :: vec[vec[i32]]
+    i :: i64
+    r0 :: tuple[vec[vec[i32]], VecNestedBufItem{len:native_int, buf:object_nrc}]
+    r1, r2 :: vec[vec[i32]]
+    r3, r4 :: VecNestedBufItem{len:native_int, buf:object_nrc}
+    r5 :: vec[i32]
+    r6 :: tuple[vec[vec[i32]], vec[i32]]
+    r7, r8 :: vec[vec[i32]]
+    r9, r10, x :: vec[i32]
+L0:
+    r0 = VecNestedApi.pop(v, i)
+    r1 = borrow r0[0]
+    r2 = unborrow r1
+    r3 = borrow r0[1]
+    r4 = unborrow r3
+    r5 = VecI32Api.convert_from_nested(r4)
+    r6 = (r2, r5)
+    keep_alive steal r0
+    r7 = borrow r6[0]
+    r8 = unborrow r7
+    v = r8
+    r9 = borrow r6[1]
+    r10 = unborrow r9
+    x = r10
+    keep_alive steal r6
+    return x

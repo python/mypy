@@ -60,21 +60,12 @@ from mypyc.ir.rtypes import (
     optional_value_type,
     pointer_rprimitive,
     vec_depth,
+    vec_api_by_item_type,
 )
 from mypyc.primitives.registry import builtin_names
 
 if TYPE_CHECKING:
     from mypyc.irbuild.ll_builder import LowLevelIRBuilder
-
-
-vec_api_by_item_type: Final = {
-    int64_rprimitive: "VecI64Api",
-    int32_rprimitive: "VecI32Api",
-    int16_rprimitive: "VecI16Api",
-    uint8_rprimitive: "VecU8Api",
-    float_rprimitive: "VecFloatApi",
-    bool_rprimitive: "VecBoolApi",
-}
 
 
 def as_platform_int(builder: LowLevelIRBuilder, v: Value, line: int) -> Value:
@@ -249,7 +240,14 @@ def vec_item_ptr(builder: LowLevelIRBuilder, vecobj: Value, index: Value) -> Val
     items_addr = vec_items(builder, vecobj)
     assert isinstance(vecobj.type, RVec)
     # TODO: Do we need to care about alignment?
-    item_size = vecobj.type.item_type.size
+    item_type = vecobj.type.item_type
+    if isinstance(item_type, RPrimitive):
+        item_size = vecobj.type.item_type.size
+    elif isinstance(item_type, RVec):
+        # TODO: Support 32-bit platforms
+        item_size = 16
+    else:
+        item_size = object_rprimitive.size
     delta = builder.int_mul(index, item_size)
     return builder.int_add(items_addr, delta)
 
@@ -358,8 +356,9 @@ def convert_to_t_ext_item(builder: LowLevelIRBuilder, item: Value) -> Value:
 
 def convert_from_t_ext_item(builder: LowLevelIRBuilder, item: Value, vec_type: RVec) -> Value:
     """Convert a value of type VecNestedBufItem to the corresponding RVec value."""
-    if is_int64_rprimitive(vec_type.item_type):
-        name = "VecI64Api.convert_from_nested"
+    api_name = vec_api_by_item_type.get(vec_type.item_type)
+    if api_name is not None:
+        name = f"{api_name}.convert_from_nested"
     elif isinstance(vec_type.item_type, RVec):
         name = "VecNestedApi.convert_from_nested"
     else:

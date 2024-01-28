@@ -66,6 +66,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
     optional_value_type,
     vec_depth,
+    vec_api_by_item_type,
 )
 from mypyc.namegen import NameGenerator, exported_name
 from mypyc.primitives.registry import builtin_names
@@ -1184,8 +1185,9 @@ class Emitter:
                         self.emit_box(f"{src}.f{i}", inner_name, typ.types[i], declare_dest=True)
                         self.emit_line(f"PyTuple_SET_ITEM({dest}, {i}, {inner_name});")
         elif isinstance(typ, RVec):
-            if is_int64_rprimitive(typ.item_type):
-                api = "VecI64Api"
+            specialized_api_name = vec_api_by_item_type.get(typ.item_type)
+            if specialized_api_name is not None:
+                api = specialized_api_name
             elif typ.depth() > 0:
                 api = "VecNestedApi"
             else:

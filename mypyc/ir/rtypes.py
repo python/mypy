@@ -1447,3 +1447,13 @@ VecNestedPopResult = RStruct(
     names=["vec", "item"],
     types=[VecNested, VecNestedBufItem],
 )
+
+
+vec_api_by_item_type: Final = {
+    int64_rprimitive: "VecI64Api",
+    int32_rprimitive: "VecI32Api",
+    int16_rprimitive: "VecI16Api",
+    uint8_rprimitive: "VecU8Api",
+    float_rprimitive: "VecFloatApi",
+    bool_rprimitive: "VecBoolApi",
+}
