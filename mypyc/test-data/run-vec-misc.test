@@ -14,3 +14,10 @@ def test_create_empty() -> None:
     assert str(vec[u8]()) == "vec[u8]([])"
     assert str(vec[float]()) == "vec[float]([])"
     assert str(vec[bool]()) == "vec[bool]([])"
+
+def test_create_from_values() -> None:
+    assert str(vec[i32]([5, -12])) == "vec[i32]([5, -12])"
+    assert str(vec[i16]([6, -8])) == "vec[i16]([6, -8])"
+    assert str(vec[u8]([0, 123, 255])) == "vec[u8]([0, 123, 255])"
+    assert str(vec[float]([1.5, -3.5])) == "vec[float]([1.5, -3.5])"
+    assert str(vec[bool]([False, True])) == "vec[bool]([False, True])"
