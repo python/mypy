@@ -116,3 +116,29 @@ L5:
     r10 = load_mem r9 :: builtins.float*
     keep_alive v
     return r10
+
+[case testVecMiscPop]
+from vecs import vec, pop
+
+from mypy_extensions import i64
+
+def pop_float(v: vec[float], i: i64) -> float:
+    v, x = pop(v)
+    return x
+[out]
+def pop_float(v, i):
+    v :: vec[float]
+    i :: i64
+    r0 :: tuple[vec[float], float]
+    r1, r2 :: vec[float]
+    r3, r4, x :: float
+L0:
+    r0 = VecFloatApi.pop(v, -1)
+    r1 = borrow r0[0]
+    r2 = unborrow r1
+    v = r2
+    r3 = borrow r0[1]
+    r4 = unborrow r3
+    x = r4
+    keep_alive steal r0
+    return x

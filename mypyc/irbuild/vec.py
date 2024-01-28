@@ -427,8 +427,9 @@ def vec_pop(builder: LowLevelIRBuilder, base: Value, index: Value, line: int) ->
     item_type = vec_type.item_type
     index = as_platform_int(builder, index, line)
 
-    if is_int64_rprimitive(item_type):
-        name = "VecI64Api.pop"
+    api_name = vec_api_by_item_type.get(item_type)
+    if api_name is not None:
+        name = f"{api_name}.pop"
     elif vec_depth(vec_type) == 0 and not isinstance(item_type, RUnion): # TODO fix union
         name = "VecTApi.pop"
     else:
