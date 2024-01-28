@@ -190,7 +190,7 @@ def remove_float(v: vec[float]) -> vec[float]:
 def remove_float(v):
     v, r0 :: vec[float]
 L0:
-    r0 = VecTApi.remove(v, 1.5)
+    r0 = VecFloatApi.remove(v, 1.5)
     return r0
 
 [case testVecMiscSlice]

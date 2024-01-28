@@ -462,8 +462,8 @@ def vec_remove(builder: LowLevelIRBuilder, vec: Value, item: Value, line: int) -
     item_type = vec_type.item_type
     coerced_item = builder.coerce(item, item_type, line)
 
-    if is_int64_rprimitive(item_type):
-        name = "VecI64Api.remove"
+    if item_type in vec_api_by_item_type:
+        name = f"{vec_api_by_item_type[item_type]}.remove"
     elif vec_depth(vec_type) == 0 and not isinstance(item_type, RUnion):
         name = "VecTApi.remove"
     else:
