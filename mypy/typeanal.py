@@ -1995,17 +1995,17 @@ def instantiate_type_alias(
                 if node.tvar_tuple_index is not None:
                     msg = (
                         "Bad number of arguments for type alias,"
-                        f" expected: at least {min_tv_count}, given: {act_len}"
+                        f" expected at least {min_tv_count}, given {act_len}"
                     )
                 elif min_tv_count != max_tv_count:
                     msg = (
                         "Bad number of arguments for type alias,"
-                        f" expected between {min_tv_count} and {max_tv_count}, given: {act_len}"
+                        f" expected between {min_tv_count} and {max_tv_count}, given {act_len}"
                     )
                 else:
                     msg = (
                         "Bad number of arguments for type alias,"
-                        f" expected: {min_tv_count}, given: {act_len}"
+                        f" expected {min_tv_count}, given {act_len}"
                     )
             fail(msg, ctx, code=codes.TYPE_ARG)
             args = []

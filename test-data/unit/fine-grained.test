@@ -4032,7 +4032,7 @@ def f(x: a.A[str]):
 [builtins fixtures/dict.pyi]
 [out]
 ==
-b.py:2: error: Bad number of arguments for type alias, expected: 2, given: 1
+b.py:2: error: Bad number of arguments for type alias, expected 2, given 1
 
 [case testAliasFineAdded]
 import b
@@ -5542,7 +5542,7 @@ main:9: error: Function "a.T" is not valid as a type
 main:9: note: Perhaps you need "Callable[...]" or a callback protocol?
 main:12: error: Function "a.T" is not valid as a type
 main:12: note: Perhaps you need "Callable[...]" or a callback protocol?
-main:12: error: Bad number of arguments for type alias, expected: 0, given: 1
+main:12: error: Bad number of arguments for type alias, expected 0, given 1
 
 [case testChangeTypeVarToModule]
 
@@ -5576,7 +5576,7 @@ main:9: error: Module "T" is not valid as a type
 main:9: note: Perhaps you meant to use a protocol matching the module structure?
 main:12: error: Module "T" is not valid as a type
 main:12: note: Perhaps you meant to use a protocol matching the module structure?
-main:12: error: Bad number of arguments for type alias, expected: 0, given: 1
+main:12: error: Bad number of arguments for type alias, expected 0, given 1
 
 [case testChangeClassToModule]
 
@@ -5628,7 +5628,7 @@ T = int
 ==
 main:5: error: Free type variable expected in Generic[...]
 main:9: error: "C" expects no type arguments, but 1 given
-main:12: error: Bad number of arguments for type alias, expected: 0, given: 1
+main:12: error: Bad number of arguments for type alias, expected 0, given 1
 
 [case testChangeTypeAliasToModule]
 
