@@ -3,7 +3,7 @@
 -- vec[i64], only test a subset of functionality.
 
 [case testVecMiscCreateEmpty]
-from vecs import vec, append
+from vecs import vec
 
 from mypy_extensions import i32, i16, u8
 
@@ -47,3 +47,72 @@ def create_bool():
 L0:
     r0 = VecBoolApi.alloc(0, 0)
     return r0
+
+[case testVecMiscAppend]
+from vecs import vec, append
+
+from mypy_extensions import i32
+
+def append_float(v: vec[float]) -> vec[float]:
+    return append(v, 1.5)
+
+def append_i32(v: vec[i32]) -> vec[i32]:
+    return append(v, 123)
+[out]
+def append_float(v):
+    v, r0 :: vec[float]
+L0:
+    r0 = VecFloatApi.append(v, 1.5)
+    return r0
+def append_i32(v):
+    v, r0 :: vec[i32]
+L0:
+    r0 = VecI32Api.append(v, 123)
+    return r0
+
+[case testVecMiscGetItem]
+from vecs import vec
+
+from mypy_extensions import i64
+
+def get_item_float(v: vec[float], i: i64) -> float:
+    return v[i]
+[out]
+def get_item_float(v, i):
+    v :: vec[float]
+    i :: i64
+    r0 :: native_int
+    r1 :: bit
+    r2 :: i64
+    r3 :: bit
+    r4 :: bool
+    r5 :: i64
+    r6 :: object
+    r7 :: ptr
+    r8 :: i64
+    r9 :: ptr
+    r10 :: float
+L0:
+    r0 = v.len
+    r1 = i < r0 :: unsigned
+    if r1 goto L4 else goto L1 :: bool
+L1:
+    r2 = i + r0
+    r3 = r2 < r0 :: unsigned
+    if r3 goto L3 else goto L2 :: bool
+L2:
+    r4 = raise IndexError
+    unreachable
+L3:
+    r5 = r2
+    goto L5
+L4:
+    r5 = i
+L5:
+    r6 = v.buf
+    r7 = get_element_ptr r6 items :: VecTBufObject
+    r8 = r5 * 8
+    r9 = r7 + r8
+    r10 = load_mem r9 :: builtins.float*
+    keep_alive v
+    return r10

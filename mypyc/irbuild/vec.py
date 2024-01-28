@@ -396,8 +396,9 @@ def vec_append(builder: LowLevelIRBuilder, vec: Value, item: Value, line: int) -
     item_type = vec_type.item_type
     coerced_item = builder.coerce(item, item_type, line)
     item_type_arg = []
-    if is_int64_rprimitive(item_type):
-        name = "VecI64Api.append"
+    api_name = vec_api_by_item_type.get(item_type)
+    if api_name is not None:
+        name = f"{api_name}.append"
     elif vec_depth(vec_type) == 0:
         name = "VecTApi.append"
         item_type_arg = [vec_item_type(builder, item_type, line)]
