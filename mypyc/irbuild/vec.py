@@ -248,11 +248,8 @@ def vec_items(builder: LowLevelIRBuilder, vecobj: Value) -> Value:
 def vec_item_ptr(builder: LowLevelIRBuilder, vecobj: Value, index: Value) -> Value:
     items_addr = vec_items(builder, vecobj)
     assert isinstance(vecobj.type, RVec)
-    # TODO: Calculate item size properly and support 32-bit platforms
-    if isinstance(vecobj.type.item_type, RVec):
-        item_size = 16
-    else:
-        item_size = 8
+    # TODO: Do we need to care about alignment?
+    item_size = vecobj.type.item_type.size
     delta = builder.int_mul(index, item_size)
     return builder.int_add(items_addr, delta)
 

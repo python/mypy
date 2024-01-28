@@ -51,23 +51,23 @@ L0:
 [case testVecMiscCreateFromList]
 from vecs import vec, remove
 
-from mypy_extensions import i64
+from mypy_extensions import i64, i32
 
-def create_float() -> vec[float]:
-    return vec[float]([1.5, 2.5])
+def create_i32() -> vec[i32]:
+    return vec[i32]([1, -5])
 [out]
-def create_float():
-    r0 :: vec[float]
+def create_i32():
+    r0 :: vec[i32]
     r1 :: object
     r2, r3, r4 :: ptr
 L0:
-    r0 = VecFloatApi.alloc(2, 2)
+    r0 = VecI32Api.alloc(2, 2)
     r1 = r0.buf
-    r2 = get_element_ptr r1 items :: VecFloatBufObject
-    set_mem r2, 1.5 :: builtins.float*
-    r3 = r2 + 8
-    set_mem r3, 2.5 :: builtins.float*
-    r4 = r3 + 8
+    r2 = get_element_ptr r1 items :: VecI32BufObject
+    set_mem r2, 1 :: i32*
+    r3 = r2 + 4
+    set_mem r3, -5 :: i32*
+    r4 = r3 + 4
     keep_alive r0
     return r0
 
@@ -98,11 +98,11 @@ from vecs import vec
 
 from mypy_extensions import i64
 
-def get_item_float(v: vec[float], i: i64) -> float:
+def get_item_bool(v: vec[bool], i: i64) -> bool:
     return v[i]
 [out]
-def get_item_float(v, i):
-    v :: vec[float]
+def get_item_bool(v, i):
+    v :: vec[bool]
     i :: i64
     r0 :: native_int
     r1 :: bit
@@ -114,7 +114,7 @@ def get_item_float(v, i):
     r7 :: ptr
     r8 :: i64
     r9 :: ptr
-    r10 :: float
+    r10 :: bool
 L0:
     r0 = v.len
     r1 = i < r0 :: unsigned
@@ -133,10 +133,10 @@ L4:
     r5 = i
 L5:
     r6 = v.buf
-    r7 = get_element_ptr r6 items :: VecFloatBufObject
+    r7 = get_element_ptr r6 items :: VecBoolBufObject
     r8 = r5 * 8
     r9 = r7 + r8
-    r10 = load_mem r9 :: builtins.float*
+    r10 = load_mem r9 :: builtins.bool*
     keep_alive v
     return r10
 
@@ -197,27 +197,27 @@ L0:
 [case testVecMiscForLoop]
 from vecs import vec, remove
 
-from mypy_extensions import i64
+from mypy_extensions import i64, i16
 
-def for_float(v: vec[float]) -> float:
-    s = 0.0
+def for_bool(v: vec[i16]) -> i16:
+    s: i16 = 0
     for x in v:
         s += x
     return s
 [out]
-def for_float(v):
-    v :: vec[float]
-    s :: float
+def for_bool(v):
+    v :: vec[i16]
+    s :: i16
     r0, r1 :: native_int
     r2 :: bit
     r3 :: object
     r4 :: ptr
     r5 :: native_int
     r6 :: ptr
-    r7, x, r8 :: float
+    r7, x, r8 :: i16
     r9 :: native_int
 L0:
-    s = 0.0
+    s = 0
     r0 = 0
 L1:
     r1 = v.len
@@ -225,10 +225,10 @@ L1:
     if r2 goto L2 else goto L4 :: bool
 L2:
     r3 = v.buf
-    r4 = get_element_ptr r3 items :: VecFloatBufObject
-    r5 = r0 * 8
+    r4 = get_element_ptr r3 items :: VecI16BufObject
+    r5 = r0 * 2
     r6 = r4 + r5
-    r7 = load_mem r6 :: builtins.float*
+    r7 = load_mem r6 :: i16*
     keep_alive v
     x = r7
     r8 = s + x
