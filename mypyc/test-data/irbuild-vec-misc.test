@@ -193,3 +193,49 @@ def remove_float(v, x, y):
 L0:
     r0 = VecFloatApi.slice(v, x, y)
     return r0
+
+[case testVecMiscForLoop]
+from vecs import vec, remove
+
+from mypy_extensions import i64
+
+def for_float(v: vec[float]) -> float:
+    s = 0.0
+    for x in v:
+        s += x
+    return s
+[out]
+def for_float(v):
+    v :: vec[float]
+    s :: float
+    r0, r1 :: native_int
+    r2 :: bit
+    r3 :: object
+    r4 :: ptr
+    r5 :: native_int
+    r6 :: ptr
+    r7, x, r8 :: float
+    r9 :: native_int
+L0:
+    s = 0.0
+    r0 = 0
+L1:
+    r1 = v.len
+    r2 = r0 < r1 :: signed
+    if r2 goto L2 else goto L4 :: bool
+L2:
+    r3 = v.buf
+    r4 = get_element_ptr r3 items :: VecFloatBufObject
+    r5 = r0 * 8
+    r6 = r4 + r5
+    r7 = load_mem r6 :: builtins.float*
+    keep_alive v
+    x = r7
+    r8 = s + x
+    s = r8
+L3:
+    r9 = r0 + 1
+    r0 = r9
+    goto L1
+L4:
+    return s
