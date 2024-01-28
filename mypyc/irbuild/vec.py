@@ -44,8 +44,11 @@ from mypyc.ir.rtypes import (
     c_int_rprimitive,
     c_pyssize_t_rprimitive,
     c_size_t_rprimitive,
-    int32_rprimitive,
     int64_rprimitive,
+    int32_rprimitive,
+    int16_rprimitive,
+    uint8_rprimitive,
+    float_rprimitive,
     is_c_py_ssize_t_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
@@ -62,6 +65,16 @@ from mypyc.primitives.registry import builtin_names
 
 if TYPE_CHECKING:
     from mypyc.irbuild.ll_builder import LowLevelIRBuilder
+
+
+vec_api_by_item_type = {
+    int64_rprimitive: "VecI64Api",
+    int32_rprimitive: "VecI32Api",
+    int16_rprimitive: "VecI16Api",
+    uint8_rprimitive: "VecU8Api",
+    float_rprimitive: "VecFloatApi",
+    bool_rprimitive: "VecBoolApi",
+}
 
 
 def as_platform_int(builder: LowLevelIRBuilder, v: Value, line: int) -> Value:
@@ -88,9 +101,10 @@ def vec_create(
     length = as_platform_int(builder, length, line)
 
     item_type = vtype.item_type
-    if is_int64_rprimitive(item_type):
+    api_name = vec_api_by_item_type.get(item_type)
+    if api_name is not None:
         call = CallC(
-            "VecI64Api.alloc", [length, length], vtype, False, False, error_kind=ERR_MAGIC,
+            f"{api_name}.alloc", [length, length], vtype, False, False, error_kind=ERR_MAGIC,
             line=line
         )
         return builder.add(call)

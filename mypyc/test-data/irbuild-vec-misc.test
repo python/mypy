@@ -1,0 +1,49 @@
+-- Test cases for packed/specialized vec item types other than vec[i64], such as
+-- vec[i32] and vec[float]. Since many of the code paths are the same as for
+-- vec[i64], only test a subset of functionality.
+
+[case testVecMiscCreateEmpty]
+from vecs import vec, append
+
+from mypy_extensions import i32, i16, u8
+
+def create_float() -> vec[float]:
+    return vec[float]()
+
+def create_i32() -> vec[i32]:
+    return vec[i32]()
+
+def create_i16() -> vec[i16]:
+    return vec[i16]()
+
+def create_u8() -> vec[u8]:
+    return vec[u8]()
+
+def create_bool() -> vec[bool]:
+    return vec[bool]()
+[out]
+def create_float():
+    r0 :: vec[float]
+L0:
+    r0 = VecFloatApi.alloc(0, 0)
+    return r0
+def create_i32():
+    r0 :: vec[i32]
+L0:
+    r0 = VecI32Api.alloc(0, 0)
+    return r0
+def create_i16():
+    r0 :: vec[i16]
+L0:
+    r0 = VecI16Api.alloc(0, 0)
+    return r0
+def create_u8():
+    r0 :: vec[u8]
+L0:
+    r0 = VecU8Api.alloc(0, 0)
+    return r0
+def create_bool():
+    r0 :: vec[bool]
+L0:
+    r0 = VecBoolApi.alloc(0, 0)
+    return r0
