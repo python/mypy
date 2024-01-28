@@ -531,8 +531,9 @@ def vec_slice(
     item_type = vec_type.item_type
     begin = builder.coerce(begin, int64_rprimitive, line)
     end = builder.coerce(end, int64_rprimitive, line)
-    if is_int64_rprimitive(item_type):
-        name = "VecI64Api.slice"
+    api_name = vec_api_by_item_type.get(item_type)
+    if api_name is not None:
+        name = f"{api_name}.slice"
     elif vec_depth(vec_type) == 0 and not isinstance(item_type, RUnion):
         name = "VecTApi.slice"
     else:
