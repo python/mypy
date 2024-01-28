@@ -142,3 +142,17 @@ L0:
     x = r4
     keep_alive steal r0
     return x
+
+[case testVecMiscRemove]
+from vecs import vec, remove
+
+from mypy_extensions import i64
+
+def remove_float(v: vec[float]) -> vec[float]:
+    return remove(v, 1.5)
+[out]
+def remove_float(v):
+    v, r0 :: vec[float]
+L0:
+    r0 = VecTApi.remove(v, 1.5)
+    return r0
