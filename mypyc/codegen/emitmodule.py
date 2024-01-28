@@ -60,7 +60,7 @@ from mypyc.ir.deps import LIBRT_BASE64, LIBRT_STRINGS, SourceDep
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR, ModuleIRs, deserialize_modules
 from mypyc.ir.ops import DeserMaps, LoadLiteral
-from mypyc.ir.rtypes import RType
+from mypyc.ir.rtypes import RType, vec_c_types, vec_api_fields, vec_api_by_item_type
 from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.prepare import load_type_map
@@ -587,7 +587,8 @@ class GroupGenerator:
 
         if self.use_vec_capsule:
             self.declare_global("VecCapsule *", "VecApi")
-            self.declare_global("VecI64Features ", "VecI64Api")
+            for vec_type in sorted(vec_c_types.values()):
+                self.declare_global(f"{vec_type}Features ", f"{vec_type}Api")
             self.declare_global("VecTFeatures ", "VecTApi")
             self.declare_global("VecNestedFeatures ", "VecNestedApi")
 
@@ -978,10 +979,12 @@ class GroupGenerator:
             emitter.emit_lines(
                 'VecApi = PyCapsule_Import("vecs._C_API", 0);',
                 "if (!VecApi) return -1;",
-                "VecI64Api = *VecApi->i64;",
                 "VecTApi = *VecApi->t;",
                 "VecNestedApi = *VecApi->nested;",
             )
+            for item_type, api_name in vec_api_by_item_type.items():
+                field_name = vec_api_fields[item_type]
+                emitter.emit_line(f"{api_name} = *VecApi->{field_name};")
 
         emitter.emit_lines("is_initialized = 1;", "return 0;", "}")
 

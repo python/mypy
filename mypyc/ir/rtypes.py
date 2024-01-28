@@ -1458,6 +1458,15 @@ vec_c_types: Final = {
     bool_rprimitive: "VecBool",
 }
 
+vec_api_fields: Final = {
+    int64_rprimitive: "i64",
+    int32_rprimitive: "i32",
+    int16_rprimitive: "i16",
+    uint8_rprimitive: "u8",
+    float_rprimitive: "float_",
+    bool_rprimitive: "bool_",
+}
+
 vec_api_by_item_type: Final = {
     int64_rprimitive: "VecI64Api",
     int32_rprimitive: "VecI32Api",
