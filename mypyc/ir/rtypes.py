@@ -1037,11 +1037,11 @@ class RVec(RType):
             non_opt = optional_value_type(item_type)
         else:
             non_opt = item_type
-        if is_int64_rprimitive(item_type):
-            self._ctype = "VecI64"
-            self.types = [c_pyssize_t_rprimitive, VecI64BufObject]
-            self.struct_type = VecI64
-            self.buf_type = VecI64BufObject
+        if item_type in vec_buf_types:
+            self._ctype = "VecI64"  # TODO
+            self.buf_type = vec_buf_types[item_type]
+            self.types = [c_pyssize_t_rprimitive, self.buf_type]
+            self.struct_type = VecI64  # TODO
         elif isinstance(non_opt, RVec):
             self._ctype = "VecNested"
             self.types = [c_pyssize_t_rprimitive, VecTBufObject]
@@ -1340,12 +1340,53 @@ VecObject = RStruct(
 """
 
 
-# Buffer for vec[i64]
+# Buffers for vec item types that have a packed representation
+
 VecI64BufObject = RStruct(
     name="VecI64BufObject",
     names=["ob_base", "len", "items"],
     types=[PyVarObject, int64_rprimitive],
 )
+
+VecI32BufObject = RStruct(
+    name="VecI32BufObject",
+    names=["ob_base", "len", "items"],
+    types=[PyVarObject, int64_rprimitive],
+)
+
+VecI16BufObject = RStruct(
+    name="VecI16BufObject",
+    names=["ob_base", "len", "items"],
+    types=[PyVarObject, int64_rprimitive],
+)
+
+VecU8BufObject = RStruct(
+    name="VecU8BufObject",
+    names=["ob_base", "len", "items"],
+    types=[PyVarObject, int64_rprimitive],
+)
+
+VecFloatBufObject = RStruct(
+    name="VecFloatBufObject",
+    names=["ob_base", "len", "items"],
+    types=[PyVarObject, int64_rprimitive],
+)
+
+VecBoolBufObject = RStruct(
+    name="VecBoolBufObject",
+    names=["ob_base", "len", "items"],
+    types=[PyVarObject, int64_rprimitive],
+)
+
+vec_buf_types: Final = {
+    int64_rprimitive: VecI64BufObject,
+    int32_rprimitive: VecI32BufObject,
+    int16_rprimitive: VecI16BufObject,
+    uint8_rprimitive: VecU8BufObject,
+    float_rprimitive: VecFloatBufObject,
+    bool_rprimitive: VecBoolBufObject,
+}
+
 
 # vecbuf_i64_rprimitive: Final = RPrimitive(
 #    "VecI64BufObject", is_unboxed=False, is_refcounted=True, ctype="VecI64BufObject *"

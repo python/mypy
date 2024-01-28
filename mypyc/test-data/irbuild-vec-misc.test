@@ -48,6 +48,29 @@ L0:
     r0 = VecBoolApi.alloc(0, 0)
     return r0
 
+[case testVecMiscCreateFromList]
+from vecs import vec, remove
+
+from mypy_extensions import i64
+
+def create_float() -> vec[float]:
+    return vec[float]([1.5, 2.5])
+[out]
+def create_float():
+    r0 :: vec[float]
+    r1 :: object
+    r2, r3, r4 :: ptr
+L0:
+    r0 = VecFloatApi.alloc(2, 2)
+    r1 = r0.buf
+    r2 = get_element_ptr r1 items :: VecFloatBufObject
+    set_mem r2, 1.5 :: builtins.float*
+    r3 = r2 + 8
+    set_mem r3, 2.5 :: builtins.float*
+    r4 = r3 + 8
+    keep_alive r0
+    return r0
+
 [case testVecMiscAppend]
 from vecs import vec, append
 
@@ -110,7 +133,7 @@ L4:
     r5 = i
 L5:
     r6 = v.buf
-    r7 = get_element_ptr r6 items :: VecTBufObject
+    r7 = get_element_ptr r6 items :: VecFloatBufObject
     r8 = r5 * 8
     r9 = r7 + r8
     r10 = load_mem r9 :: builtins.float*

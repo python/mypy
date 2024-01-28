@@ -67,7 +67,7 @@ if TYPE_CHECKING:
     from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 
 
-vec_api_by_item_type = {
+vec_api_by_item_type: Final = {
     int64_rprimitive: "VecI64Api",
     int32_rprimitive: "VecI32Api",
     int16_rprimitive: "VecI16Api",
