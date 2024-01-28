@@ -83,6 +83,7 @@ files = [
     "run-vecs-t-interp.test",
     "run-vecs-nested-interp.test",
     "run-vec-i64.test",
+    "run-vec-misc.test",
     "run-vec-t.test",
     "run-vec-nested.test",
 ]

@@ -1,6 +1,8 @@
--- Test cases for packed/specialized vec item types other than vec[i64], such as
+-- Test cases for packed/specialized vec item types other than i64, such as
 -- vec[i32] and vec[float]. Since many of the code paths are the same as for
 -- vec[i64], only test a subset of functionality.
+--
+-- vec[i64] test cases are in irbuild-vec-i64.test.
 
 [case testVecMiscCreateEmpty]
 from vecs import vec
