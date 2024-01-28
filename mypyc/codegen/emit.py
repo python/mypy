@@ -1092,9 +1092,9 @@ class Emitter:
                 self.emit_line(f"{dest} = {self.c_error_value(typ)};")
                 self.emit_line("} else {")
 
-            # TODO: Use helper function to pick the api variant
-            if is_int64_rprimitive(typ.item_type):
-                self.emit_line(f"{dest} = VecI64Api.unbox({src});")
+            specialized_api_name = vec_api_by_item_type.get(typ.item_type)
+            if specialized_api_name is not None:
+                self.emit_line(f"{dest} = {specialized_api_name}.unbox({src});")
             else:
                 depth = typ.depth()
                 if is_int64_rprimitive(typ.unwrap_item_type()):

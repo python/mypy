@@ -390,6 +390,14 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                """
         )
         self.assert_emit(
+            Unbox(self.o, RVec(int32_rprimitive), 55),
+            """cpy_r_r0 = VecI32Api.unbox(cpy_r_o);
+               if (VEC_IS_ERROR(cpy_r_r0)) {
+                   CPy_TypeError("vec[i32]", cpy_r_o); cpy_r_r0 = (VecI32) { -1, NULL };
+               }
+               """
+        )
+        self.assert_emit(
             Unbox(self.o, RVec(str_rprimitive), 55),
             """cpy_r_r0 = VecTApi.unbox(cpy_r_o, (size_t)&PyUnicode_Type);
                if (VEC_IS_ERROR(cpy_r_r0)) {

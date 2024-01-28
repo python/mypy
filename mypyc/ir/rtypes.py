@@ -1038,7 +1038,7 @@ class RVec(RType):
         else:
             non_opt = item_type
         if item_type in vec_buf_types:
-            self._ctype = "VecI64"  # TODO
+            self._ctype = vec_c_types[item_type]
             self.buf_type = vec_buf_types[item_type]
             self.types = [c_pyssize_t_rprimitive, self.buf_type]
             self.struct_type = VecI64  # TODO
@@ -1378,15 +1378,6 @@ VecBoolBufObject = RStruct(
     types=[PyVarObject, int64_rprimitive],
 )
 
-vec_buf_types: Final = {
-    int64_rprimitive: VecI64BufObject,
-    int32_rprimitive: VecI32BufObject,
-    int16_rprimitive: VecI16BufObject,
-    uint8_rprimitive: VecU8BufObject,
-    float_rprimitive: VecFloatBufObject,
-    bool_rprimitive: VecBoolBufObject,
-}
-
 
 # vecbuf_i64_rprimitive: Final = RPrimitive(
 #    "VecI64BufObject", is_unboxed=False, is_refcounted=True, ctype="VecI64BufObject *"
@@ -1448,6 +1439,24 @@ VecNestedPopResult = RStruct(
     types=[VecNested, VecNestedBufItem],
 )
 
+
+vec_buf_types: Final = {
+    int64_rprimitive: VecI64BufObject,
+    int32_rprimitive: VecI32BufObject,
+    int16_rprimitive: VecI16BufObject,
+    uint8_rprimitive: VecU8BufObject,
+    float_rprimitive: VecFloatBufObject,
+    bool_rprimitive: VecBoolBufObject,
+}
+
+vec_c_types: Final = {
+    int64_rprimitive: "VecI64",
+    int32_rprimitive: "VecI32",
+    int16_rprimitive: "VecI16",
+    uint8_rprimitive: "VecU8",
+    float_rprimitive: "VecFloat",
+    bool_rprimitive: "VecBool",
+}
 
 vec_api_by_item_type: Final = {
     int64_rprimitive: "VecI64Api",
