@@ -49,7 +49,7 @@ L0:
     return r0
 
 [case testVecMiscCreateFromList]
-from vecs import vec, remove
+from vecs import vec
 
 from mypy_extensions import i64, i32
 
@@ -69,6 +69,21 @@ L0:
     set_mem r3, -5 :: i32*
     r4 = r3 + 4
     keep_alive r0
+    return r0
+
+[case testVecMiscLen]
+from vecs import vec
+
+from mypy_extensions import i64, i32
+
+def len_i32(v: vec[i32]) -> i64:
+    return len(v)
+[out]
+def len_i32(v):
+    v :: vec[i32]
+    r0 :: native_int
+L0:
+    r0 = v.len
     return r0
 
 [case testVecMiscAppend]
@@ -134,7 +149,7 @@ L4:
 L5:
     r6 = v.buf
     r7 = get_element_ptr r6 items :: VecBoolBufObject
-    r8 = r5 * 8
+    r8 = r5 * 1
     r9 = r7 + r8
     r10 = load_mem r9 :: builtins.bool*
     keep_alive v
