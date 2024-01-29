@@ -131,7 +131,7 @@ if possible.
 
 Finally, mypy allows fine-grained control over specific import following
 behaviour. It's very easy to silently shoot yourself in the foot when playing
-around with these, so this is as a last resort. For more
+around with these, so this should be a last resort. For more
 details, look :ref:`here <follow-imports>`.
 
 Prioritise annotating widely imported modules
