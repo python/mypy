@@ -387,11 +387,11 @@ this error, try:
     installing into the environment you expect by running pip like
     ``python -m pip ...``.
 
-2.  Reading the :ref:`finding-imports` section below to make sure you
+3.  Reading the :ref:`finding-imports` section below to make sure you
     understand how exactly mypy searches for and finds modules and modify
     how you're invoking mypy accordingly.
 
-3.  Directly specifying the directory containing the module you want to
+4.  Directly specifying the directory containing the module you want to
     type check from the command line, by using the :confval:`mypy_path`
     or :confval:`files` config file options,
     or by using the ``MYPYPATH`` environment variable.
