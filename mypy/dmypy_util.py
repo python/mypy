@@ -48,8 +48,7 @@ class WriteToConn:
         self.output_key = output_key
 
     def write(self, output: str) -> int:
-        resp: dict[str, Any] = {}
-        resp[self.output_key] = output
+        resp: dict[str, Any] = {self.output_key: output}
         send(self.server, resp)
         return len(output)
 
