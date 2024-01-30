@@ -2277,3 +2277,30 @@ higher_order(bad2)  # E: Argument 1 to "higher_order" has incompatible type "Cal
 higher_order(bad3)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[NamedArg(str, 'd')], int]"; expected "Callable[[int, str, VarArg(Unpack[Tuple[Unpack[Tuple[Any, ...]], int]])], Any]"
 higher_order(bad4)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[KwArg(None)], None]"; expected "Callable[[int, str, VarArg(Unpack[Tuple[Unpack[Tuple[Any, ...]], int]])], Any]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleInvariant]
+from typing import Generic, Tuple
+from typing_extensions import Unpack, TypeVarTuple
+Ts = TypeVarTuple("Ts")
+
+class Array(Generic[Unpack[Ts]]): ...
+
+def pointwise_multiply(x: Array[Unpack[Ts]], y: Array[Unpack[Ts]]) -> Array[Unpack[Ts]]: ...
+
+def a1(x: Array[int], y: Array[str], z: Array[int, str]) -> None:
+    reveal_type(pointwise_multiply(x, x))  # N: Revealed type is "__main__.Array[builtins.int]"
+    reveal_type(pointwise_multiply(x, y))  # E: Cannot infer type argument 1 of "pointwise_multiply" \
+                                           # N: Revealed type is "__main__.Array[Unpack[builtins.tuple[Any, ...]]]"
+    reveal_type(pointwise_multiply(x, z))  # E: Cannot infer type argument 1 of "pointwise_multiply" \
+                                           # N: Revealed type is "__main__.Array[Unpack[builtins.tuple[Any, ...]]]"
+
+def func(x: Array[Unpack[Ts]], *args: Unpack[Ts]) -> Tuple[Unpack[Ts]]:
+    ...
+
+def a2(x: Array[int, str]) -> None:
+    reveal_type(func(x, 2, "Hello"))  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
+    reveal_type(func(x, 2))           # E: Cannot infer type argument 1 of "func" \
+                                      # N: Revealed type is "builtins.tuple[Any, ...]"
+    reveal_type(func(x, 2, "Hello", True))   # E: Cannot infer type argument 1 of "func" \
+                                             # N: Revealed type is "builtins.tuple[Any, ...]"
+[builtins fixtures/tuple.pyi]
