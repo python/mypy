@@ -255,7 +255,7 @@ def func_a1(
     a: TA1,
     b: TA1[float],
     c: TA1[float, float],
-    d: TA1[float, float, float],  # E: Bad number of arguments for type alias, expected between 0 and 2, given: 3
+    d: TA1[float, float, float],  # E: Bad number of arguments for type alias, expected between 0 and 2, given 3
 ) -> None:
     reveal_type(a)  # N: Revealed type is "builtins.dict[builtins.int, builtins.str]"
     reveal_type(b)  # N: Revealed type is "builtins.dict[builtins.float, builtins.str]"
@@ -269,7 +269,7 @@ def func_a2(
     b: TA2[float],
     c: TA2[float, float],
     d: TA2[float, float, float],
-    e: TA2[float, float, float, float],  # E: Bad number of arguments for type alias, expected between 1 and 3, given: 4
+    e: TA2[float, float, float, float],  # E: Bad number of arguments for type alias, expected between 1 and 3, given 4
 ) -> None:
     reveal_type(a)  # N: Revealed type is "Tuple[Any, builtins.int, builtins.str]"
     reveal_type(b)  # N: Revealed type is "Tuple[builtins.float, builtins.int, builtins.str]"
@@ -284,7 +284,7 @@ def func_a3(
     b: TA3[float],
     c: TA3[float, float],
     d: TA3[float, float, float],
-    e: TA3[float, float, float, float],  # E: Bad number of arguments for type alias, expected between 1 and 3, given: 4
+    e: TA3[float, float, float, float],  # E: Bad number of arguments for type alias, expected between 1 and 3, given 4
 ) -> None:
     reveal_type(a)  # N: Revealed type is "Union[builtins.dict[Any, builtins.int], builtins.list[builtins.str]]"
     reveal_type(b)  # N: Revealed type is "Union[builtins.dict[builtins.float, builtins.int], builtins.list[builtins.str]]"
@@ -296,10 +296,10 @@ TA4 = Tuple[T1, T4, T2]
 
 def func_a4(
     a: TA4,  # E: Missing type parameters for generic type "TA4"
-    b: TA4[float],  # E: Bad number of arguments for type alias, expected between 2 and 3, given: 1
+    b: TA4[float],  # E: Bad number of arguments for type alias, expected between 2 and 3, given 1
     c: TA4[float, float],
     d: TA4[float, float, float],
-    e: TA4[float, float, float, float],  # E: Bad number of arguments for type alias, expected between 2 and 3, given: 4
+    e: TA4[float, float, float, float],  # E: Bad number of arguments for type alias, expected between 2 and 3, given 4
 ) -> None:
     reveal_type(a)  # N: Revealed type is "Tuple[Any, Any, builtins.int]"
     reveal_type(b)  # N: Revealed type is "Tuple[Any, Any, builtins.int]"
@@ -323,7 +323,7 @@ def func_b1(
     a: TB1,
     b: TB1[[float]],
     c: TB1[[float], [float]],
-    d: TB1[[float], [float], [float]],  # E: Bad number of arguments for type alias, expected between 0 and 2, given: 3
+    d: TB1[[float], [float], [float]],  # E: Bad number of arguments for type alias, expected between 0 and 2, given 3
 ) -> None:
     reveal_type(a)  # N: Revealed type is "__main__.ClassB1[[builtins.int, builtins.str], [*Any, **Any]]"
     reveal_type(b)  # N: Revealed type is "__main__.ClassB1[[builtins.float], [*Any, **Any]]"
@@ -337,7 +337,7 @@ def func_b2(
     a: TB2,  # E: Missing type parameters for generic type "TB2"
     b: TB2[[float]],
     c: TB2[[float], [float]],
-    d: TB2[[float], [float], [float]],  # E: Bad number of arguments for type alias, expected between 1 and 2, given: 3
+    d: TB2[[float], [float], [float]],  # E: Bad number of arguments for type alias, expected between 1 and 2, given 3
 ) -> None:
     reveal_type(a)  # N: Revealed type is "__main__.ClassB2[Any, [builtins.int, builtins.str]]"
     reveal_type(b)  # N: Revealed type is "__main__.ClassB2[[builtins.float], [builtins.int, builtins.str]]"

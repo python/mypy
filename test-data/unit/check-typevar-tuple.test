@@ -769,15 +769,15 @@ Ts = TypeVarTuple("Ts")
 class G(Generic[Unpack[Ts]]): ...
 
 A = List[Tuple[T, Unpack[Ts], S]]
-x: A[int]  # E: Bad number of arguments for type alias, expected: at least 2, given: 1
+x: A[int]  # E: Bad number of arguments for type alias, expected at least 2, given 1
 reveal_type(x)  # N: Revealed type is "builtins.list[Tuple[Any, Unpack[builtins.tuple[Any, ...]], Any]]"
 
 B = Callable[[T, S, Unpack[Ts]], int]
-y: B[int]  # E: Bad number of arguments for type alias, expected: at least 2, given: 1
+y: B[int]  # E: Bad number of arguments for type alias, expected at least 2, given 1
 reveal_type(y)  # N: Revealed type is "def (Any, Any, *Any) -> builtins.int"
 
 C = G[T, Unpack[Ts], S]
-z: C[int]  # E: Bad number of arguments for type alias, expected: at least 2, given: 1
+z: C[int]  # E: Bad number of arguments for type alias, expected at least 2, given 1
 reveal_type(z)  # N: Revealed type is "__main__.G[Any, Unpack[builtins.tuple[Any, ...]], Any]"
 [builtins fixtures/tuple.pyi]
 
