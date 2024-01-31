@@ -118,6 +118,7 @@ def func_c1(x: Union[int, Callable[[Unpack[Ts1]], None]]) -> Tuple[Unpack[Ts1]]:
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarDefaultsClass1]
+# flags: --disallow-any-generics
 from typing import Generic, TypeVar, Union, overload
 
 T1 = TypeVar("T1")
@@ -149,7 +150,7 @@ def func_a1(
 class ClassA2(Generic[T1, T2, T3]): ...
 
 def func_a2(
-    a: ClassA2,
+    a: ClassA2,  # E: Missing type parameters for generic type "ClassA2"
     b: ClassA2[float],
     c: ClassA2[float, float],
     d: ClassA2[float, float, float],
@@ -180,7 +181,7 @@ class ClassA3(Generic[T1, T2]):
     def __init__(self, var: Union[int, None] = None) -> None: ...
 
 def func_a3(
-    a: ClassA3,
+    a: ClassA3,  # E: Missing type parameters for generic type "ClassA3"
     b: ClassA3[float],
     c: ClassA3[float, float],
     d: ClassA3[float, float, float],  # E: "ClassA3" expects between 1 and 2 type arguments, but 3 given
@@ -200,6 +201,7 @@ def func_a3(
     reveal_type(n)  # N: Revealed type is "Any"
 
 [case testTypeVarDefaultsClass2]
+# flags: --disallow-any-generics
 from typing import Generic, ParamSpec
 
 P1 = ParamSpec("P1")
@@ -231,7 +233,7 @@ def func_b1(
 class ClassB2(Generic[P1, P2]): ...
 
 def func_b2(
-    a: ClassB2,
+    a: ClassB2,  # E: Missing type parameters for generic type "ClassB2"
     b: ClassB2[[float]],
     c: ClassB2[[float], [float]],
     d: ClassB2[[float], [float], [float]],  # E: "ClassB2" expects between 1 and 2 type arguments, but 3 given
@@ -251,6 +253,7 @@ def func_b2(
     reveal_type(n)  # N: Revealed type is "Any"
 
 [case testTypeVarDefaultsClass3]
+# flags: --disallow-any-generics
 from typing import Generic, Tuple, TypeVar
 from typing_extensions import TypeVarTuple, Unpack
 
@@ -315,7 +318,7 @@ def func_c3(
 class ClassC4(Generic[T1, Unpack[Ts1], T3]): ...
 
 def func_c4(
-    a: ClassC4,
+    a: ClassC4,  # E: Missing type parameters for generic type "ClassC4"
     b: ClassC4[int],
     c: ClassC4[int, float],
 ) -> None:
