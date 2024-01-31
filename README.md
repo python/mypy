@@ -41,8 +41,8 @@ To report a bug or request an enhancement:
 
 To discuss a new type system feature:
 
-- discuss at [typing-sig mailing list](https://mail.python.org/archives/list/typing-sig@python.org/)
-- there is also some historical discussion [here](https://github.com/python/typing/issues)
+- discuss at [discuss.python.org](https://discuss.python.org/c/typing/32)
+- there is also some historical discussion at [typing-sig mail list](https://mail.python.org/archives/list/typing-sig@python.org/) and [github issues](https://github.com/python/typing/issues)
 
 What is mypy?
 -------------
