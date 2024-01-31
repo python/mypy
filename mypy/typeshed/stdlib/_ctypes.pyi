@@ -2,7 +2,7 @@ import sys
 from _typeshed import ReadableBuffer, WriteableBuffer
 from abc import abstractmethod
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
-from ctypes import CDLL
+from ctypes import CDLL, ArgumentError as ArgumentError
 from typing import Any, ClassVar, Generic, TypeVar, overload
 from typing_extensions import Self, TypeAlias
 
@@ -167,7 +167,11 @@ class Array(_CData, Generic[_CT]):
     def _type_(self) -> type[_CT]: ...
     @_type_.setter
     def _type_(self, value: type[_CT]) -> None: ...
-    raw: bytes  # Note: only available if _CT == c_char
+    # Note: only available if _CT == c_char
+    @property
+    def raw(self) -> bytes: ...
+    @raw.setter
+    def raw(self, value: ReadableBuffer) -> None: ...
     value: Any  # Note: bytes if _CT == c_char, str if _CT == c_wchar, unavailable otherwise
     # TODO These methods cannot be annotated correctly at the moment.
     # All of these "Any"s stand for the array's element type, but it's not possible to use _CT
@@ -196,8 +200,6 @@ class Array(_CData, Generic[_CT]):
     def __len__(self) -> int: ...
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
-
-class ArgumentError(Exception): ...
 
 def addressof(obj: _CData) -> int: ...
 def alignment(obj_or_type: _CData | type[_CData]) -> int: ...

@@ -1,6 +1,6 @@
 import enum
 import sys
-from typing_extensions import Literal
+from typing import Literal
 
 LOG_THRESHOLD_FOR_CONNLOST_WRITES: Literal[5]
 ACCEPT_RETRY_DELAY: Literal[1]

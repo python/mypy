@@ -1,10 +1,10 @@
 import _thread
 import sys
+from _thread import _excepthook, _ExceptHookArgs, get_native_id as get_native_id
 from _typeshed import ProfileFunction, TraceFunction
 from collections.abc import Callable, Iterable, Mapping
 from types import TracebackType
-from typing import Any, TypeVar
-from typing_extensions import final
+from typing import Any, TypeVar, final
 
 _T = TypeVar("_T")
 
@@ -26,14 +26,14 @@ __all__ = [
     "BrokenBarrierError",
     "Timer",
     "ThreadError",
+    "ExceptHookArgs",
     "setprofile",
     "settrace",
     "local",
     "stack_size",
+    "excepthook",
+    "get_native_id",
 ]
-
-if sys.version_info >= (3, 8):
-    __all__ += ["ExceptHookArgs", "excepthook", "get_native_id"]
 
 if sys.version_info >= (3, 10):
     __all__ += ["getprofile", "gettrace"]
@@ -50,10 +50,6 @@ def currentThread() -> Thread: ...  # deprecated alias for current_thread()
 def get_ident() -> int: ...
 def enumerate() -> list[Thread]: ...
 def main_thread() -> Thread: ...
-
-if sys.version_info >= (3, 8):
-    from _thread import get_native_id as get_native_id
-
 def settrace(func: TraceFunction) -> None: ...
 def setprofile(func: ProfileFunction | None) -> None: ...
 
@@ -90,10 +86,8 @@ class Thread:
     def start(self) -> None: ...
     def run(self) -> None: ...
     def join(self, timeout: float | None = None) -> None: ...
-    if sys.version_info >= (3, 8):
-        @property
-        def native_id(self) -> int | None: ...  # only available on some platforms
-
+    @property
+    def native_id(self) -> int | None: ...  # only available on some platforms
     def is_alive(self) -> bool: ...
     if sys.version_info < (3, 9):
         def isAlive(self) -> bool: ...
@@ -159,11 +153,8 @@ class Event:
     def clear(self) -> None: ...
     def wait(self, timeout: float | None = None) -> bool: ...
 
-if sys.version_info >= (3, 8):
-    from _thread import _excepthook, _ExceptHookArgs
-
-    excepthook = _excepthook
-    ExceptHookArgs = _ExceptHookArgs
+excepthook = _excepthook
+ExceptHookArgs = _ExceptHookArgs
 
 class Timer(Thread):
     args: Iterable[Any]  # undocumented

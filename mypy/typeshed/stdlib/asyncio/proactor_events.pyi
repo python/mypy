@@ -1,8 +1,7 @@
 import sys
 from collections.abc import Mapping
 from socket import socket
-from typing import Any, ClassVar
-from typing_extensions import Literal
+from typing import Any, ClassVar, Literal
 
 from . import base_events, constants, events, futures, streams, transports
 

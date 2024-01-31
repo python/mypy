@@ -10,8 +10,8 @@ from asyncio.transports import BaseTransport, DatagramTransport, ReadTransport, 
 from collections.abc import Callable, Iterable, Sequence
 from contextvars import Context
 from socket import AddressFamily, SocketKind, _Address, _RetAddress, socket
-from typing import IO, Any, TypeVar, overload
-from typing_extensions import Literal, TypeAlias, TypeVarTuple, Unpack
+from typing import IO, Any, Literal, TypeVar, overload
+from typing_extensions import TypeAlias, TypeVarTuple, Unpack
 
 if sys.version_info >= (3, 9):
     __all__ = ("BaseEventLoop", "Server")
@@ -53,13 +53,8 @@ class Server(AbstractServer):
     def is_serving(self) -> bool: ...
     async def start_serving(self) -> None: ...
     async def serve_forever(self) -> None: ...
-    if sys.version_info >= (3, 8):
-        @property
-        def sockets(self) -> tuple[socket, ...]: ...
-    else:
-        @property
-        def sockets(self) -> list[socket]: ...
-
+    @property
+    def sockets(self) -> tuple[socket, ...]: ...
     def close(self) -> None: ...
     async def wait_closed(self) -> None: ...
 
@@ -87,10 +82,8 @@ class BaseEventLoop(AbstractEventLoop):
     # Tasks methods
     if sys.version_info >= (3, 11):
         def create_task(self, coro: _CoroutineLike[_T], *, name: object = None, context: Context | None = None) -> Task[_T]: ...
-    elif sys.version_info >= (3, 8):
-        def create_task(self, coro: _CoroutineLike[_T], *, name: object = None) -> Task[_T]: ...
     else:
-        def create_task(self, coro: _CoroutineLike[_T]) -> Task[_T]: ...
+        def create_task(self, coro: _CoroutineLike[_T], *, name: object = None) -> Task[_T]: ...
 
     def set_task_factory(self, factory: _TaskFactory | None) -> None: ...
     def get_task_factory(self) -> _TaskFactory | None: ...
@@ -192,43 +185,6 @@ class BaseEventLoop(AbstractEventLoop):
             happy_eyeballs_delay: float | None = None,
             interleave: int | None = None,
         ) -> tuple[Transport, _ProtocolT]: ...
-    elif sys.version_info >= (3, 8):
-        @overload
-        async def create_connection(
-            self,
-            protocol_factory: Callable[[], _ProtocolT],
-            host: str = ...,
-            port: int = ...,
-            *,
-            ssl: _SSLContext = None,
-            family: int = 0,
-            proto: int = 0,
-            flags: int = 0,
-            sock: None = None,
-            local_addr: tuple[str, int] | None = None,
-            server_hostname: str | None = None,
-            ssl_handshake_timeout: float | None = None,
-            happy_eyeballs_delay: float | None = None,
-            interleave: int | None = None,
-        ) -> tuple[Transport, _ProtocolT]: ...
-        @overload
-        async def create_connection(
-            self,
-            protocol_factory: Callable[[], _ProtocolT],
-            host: None = None,
-            port: None = None,
-            *,
-            ssl: _SSLContext = None,
-            family: int = 0,
-            proto: int = 0,
-            flags: int = 0,
-            sock: socket,
-            local_addr: None = None,
-            server_hostname: str | None = None,
-            ssl_handshake_timeout: float | None = None,
-            happy_eyeballs_delay: float | None = None,
-            interleave: int | None = None,
-        ) -> tuple[Transport, _ProtocolT]: ...
     else:
         @overload
         async def create_connection(
@@ -245,6 +201,8 @@ class BaseEventLoop(AbstractEventLoop):
             local_addr: tuple[str, int] | None = None,
             server_hostname: str | None = None,
             ssl_handshake_timeout: float | None = None,
+            happy_eyeballs_delay: float | None = None,
+            interleave: int | None = None,
         ) -> tuple[Transport, _ProtocolT]: ...
         @overload
         async def create_connection(
@@ -261,6 +219,8 @@ class BaseEventLoop(AbstractEventLoop):
             local_addr: None = None,
             server_hostname: str | None = None,
             ssl_handshake_timeout: float | None = None,
+            happy_eyeballs_delay: float | None = None,
+            interleave: int | None = None,
         ) -> tuple[Transport, _ProtocolT]: ...
     if sys.version_info >= (3, 11):
         @overload

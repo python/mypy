@@ -1,8 +1,8 @@
 import _tkinter
 import sys
 import tkinter
-from typing import Any, overload
-from typing_extensions import Literal, TypeAlias, TypedDict
+from typing import Any, Literal, TypedDict, overload
+from typing_extensions import TypeAlias
 
 if sys.version_info >= (3, 9):
     __all__ = ["NORMAL", "ROMAN", "BOLD", "ITALIC", "nametofont", "Font", "families", "names"]
@@ -15,8 +15,11 @@ ITALIC: Literal["italic"]
 _FontDescription: TypeAlias = (
     str  # "Helvetica 12"
     | Font  # A font object constructed in Python
-    | list[Any]  # ("Helvetica", 12, BOLD)
-    | tuple[Any, ...]
+    | list[Any]  # ["Helvetica", 12, BOLD]
+    | tuple[str]  # ("Liberation Sans",) needs wrapping in tuple/list to handle spaces
+    | tuple[str, int]  # ("Liberation Sans", 12)
+    | tuple[str, int, str]  # ("Liberation Sans", 12, "bold")
+    | tuple[str, int, list[str] | tuple[str, ...]]  # e.g. bold and italic
     | _tkinter.Tcl_Obj  # A font object constructed in Tcl
 )
 

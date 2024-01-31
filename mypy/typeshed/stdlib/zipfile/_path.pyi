@@ -3,8 +3,8 @@ from _typeshed import StrPath
 from collections.abc import Iterator, Sequence
 from io import TextIOWrapper
 from os import PathLike
-from typing import IO, overload
-from typing_extensions import Literal, Self, TypeAlias
+from typing import IO, Literal, overload
+from typing_extensions import Self, TypeAlias
 from zipfile import ZipFile
 
 _ReadWriteBinaryMode: TypeAlias = Literal["r", "w", "rb", "wb"]

@@ -1,6 +1,5 @@
 import sys
-from typing import overload
-from typing_extensions import Literal
+from typing import Literal, overload
 
 if sys.platform != "win32":
     LOG_ALERT: Literal[1]

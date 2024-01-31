@@ -2,8 +2,8 @@ import sys
 from _typeshed import SupportsWrite, Unused
 from collections.abc import Generator, Iterable, Iterator, Mapping
 from types import FrameType, TracebackType
-from typing import Any, overload
-from typing_extensions import Literal, Self, TypeAlias
+from typing import Any, Literal, overload
+from typing_extensions import Self, TypeAlias
 
 __all__ = [
     "extract_stack",
@@ -240,8 +240,7 @@ class FrameSummary(Iterable[Any]):
     def __getitem__(self, pos: int) -> Any: ...
     def __iter__(self) -> Iterator[Any]: ...
     def __eq__(self, other: object) -> bool: ...
-    if sys.version_info >= (3, 8):
-        def __len__(self) -> Literal[4]: ...
+    def __len__(self) -> Literal[4]: ...
 
 class StackSummary(list[FrameSummary]):
     @classmethod

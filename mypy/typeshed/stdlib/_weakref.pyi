@@ -1,7 +1,7 @@
 import sys
 from collections.abc import Callable
-from typing import Any, Generic, TypeVar, overload
-from typing_extensions import Self, final
+from typing import Any, Generic, TypeVar, final, overload
+from typing_extensions import Self
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias

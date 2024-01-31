@@ -30,9 +30,9 @@ from typing import (  # noqa: Y022,Y038,Y057
     Sized as Sized,
     TypeVar,
     ValuesView as ValuesView,
+    final,
     runtime_checkable,
 )
-from typing_extensions import final
 
 __all__ = [
     "Awaitable",

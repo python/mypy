@@ -44,13 +44,7 @@ class CookieJar(Iterable[Cookie]):
 class FileCookieJar(CookieJar):
     filename: str
     delayload: bool
-    if sys.version_info >= (3, 8):
-        def __init__(
-            self, filename: StrPath | None = None, delayload: bool = False, policy: CookiePolicy | None = None
-        ) -> None: ...
-    else:
-        def __init__(self, filename: str | None = None, delayload: bool = False, policy: CookiePolicy | None = None) -> None: ...
-
+    def __init__(self, filename: StrPath | None = None, delayload: bool = False, policy: CookiePolicy | None = None) -> None: ...
     def save(self, filename: str | None = None, ignore_discard: bool = False, ignore_expires: bool = False) -> None: ...
     def load(self, filename: str | None = None, ignore_discard: bool = False, ignore_expires: bool = False) -> None: ...
     def revert(self, filename: str | None = None, ignore_discard: bool = False, ignore_expires: bool = False) -> None: ...
@@ -84,40 +78,22 @@ class DefaultCookiePolicy(CookiePolicy):
     DomainRFC2965Match: ClassVar[int]
     DomainLiberal: ClassVar[int]
     DomainStrict: ClassVar[int]
-    if sys.version_info >= (3, 8):
-        def __init__(
-            self,
-            blocked_domains: Sequence[str] | None = None,
-            allowed_domains: Sequence[str] | None = None,
-            netscape: bool = True,
-            rfc2965: bool = False,
-            rfc2109_as_netscape: bool | None = None,
-            hide_cookie2: bool = False,
-            strict_domain: bool = False,
-            strict_rfc2965_unverifiable: bool = True,
-            strict_ns_unverifiable: bool = False,
-            strict_ns_domain: int = 0,
-            strict_ns_set_initial_dollar: bool = False,
-            strict_ns_set_path: bool = False,
-            secure_protocols: Sequence[str] = ("https", "wss"),
-        ) -> None: ...
-    else:
-        def __init__(
-            self,
-            blocked_domains: Sequence[str] | None = None,
-            allowed_domains: Sequence[str] | None = None,
-            netscape: bool = True,
-            rfc2965: bool = False,
-            rfc2109_as_netscape: bool | None = None,
-            hide_cookie2: bool = False,
-            strict_domain: bool = False,
-            strict_rfc2965_unverifiable: bool = True,
-            strict_ns_unverifiable: bool = False,
-            strict_ns_domain: int = 0,
-            strict_ns_set_initial_dollar: bool = False,
-            strict_ns_set_path: bool = False,
-        ) -> None: ...
-
+    def __init__(
+        self,
+        blocked_domains: Sequence[str] | None = None,
+        allowed_domains: Sequence[str] | None = None,
+        netscape: bool = True,
+        rfc2965: bool = False,
+        rfc2109_as_netscape: bool | None = None,
+        hide_cookie2: bool = False,
+        strict_domain: bool = False,
+        strict_rfc2965_unverifiable: bool = True,
+        strict_ns_unverifiable: bool = False,
+        strict_ns_domain: int = 0,
+        strict_ns_set_initial_dollar: bool = False,
+        strict_ns_set_path: bool = False,
+        secure_protocols: Sequence[str] = ("https", "wss"),
+    ) -> None: ...
     def blocked_domains(self) -> tuple[str, ...]: ...
     def set_blocked_domains(self, blocked_domains: Sequence[str]) -> None: ...
     def is_blocked(self, domain: str) -> bool: ...

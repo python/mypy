@@ -8,18 +8,15 @@ from multiprocessing.managers import SyncManager
 from multiprocessing.pool import Pool as _Pool
 from multiprocessing.process import BaseProcess
 from multiprocessing.sharedctypes import SynchronizedArray, SynchronizedBase
-from typing import Any, ClassVar, TypeVar, overload
-from typing_extensions import Literal, TypeAlias
+from typing import Any, ClassVar, Literal, TypeVar, overload
+from typing_extensions import TypeAlias
 
 if sys.platform != "win32":
     from multiprocessing.connection import Connection
 else:
     from multiprocessing.connection import PipeConnection
 
-if sys.version_info >= (3, 8):
-    __all__ = ()
-else:
-    __all__: list[str] = []
+__all__ = ()
 
 _LockLike: TypeAlias = synchronize.Lock | synchronize.RLock
 _CT = TypeVar("_CT", bound=_CData)
@@ -39,10 +36,8 @@ class BaseContext:
     # multiprocessing.*, so the signatures should be identical (modulo self).
     @staticmethod
     def current_process() -> BaseProcess: ...
-    if sys.version_info >= (3, 8):
-        @staticmethod
-        def parent_process() -> BaseProcess | None: ...
-
+    @staticmethod
+    def parent_process() -> BaseProcess | None: ...
     @staticmethod
     def active_children() -> list[BaseProcess]: ...
     def cpu_count(self) -> int: ...
@@ -151,8 +146,6 @@ class DefaultContext(BaseContext):
     def __init__(self, context: BaseContext) -> None: ...
     def get_start_method(self, allow_none: bool = False) -> str: ...
     def get_all_start_methods(self) -> list[str]: ...
-    if sys.version_info < (3, 8):
-        __all__: ClassVar[list[str]]
 
 _default_context: DefaultContext
 
