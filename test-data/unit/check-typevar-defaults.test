@@ -118,7 +118,7 @@ def func_c1(x: Union[int, Callable[[Unpack[Ts1]], None]]) -> Tuple[Unpack[Ts1]]:
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarDefaultsClass1]
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, Union, overload
 
 T1 = TypeVar("T1")
 T2 = TypeVar("T2", default=int)
@@ -137,6 +137,15 @@ def func_a1(
     reveal_type(c)  # N: Revealed type is "__main__.ClassA1[builtins.float, builtins.float]"
     reveal_type(d)  # N: Revealed type is "__main__.ClassA1[builtins.int, builtins.str]"
 
+    k = ClassA1()
+    reveal_type(k)  # N: Revealed type is "__main__.ClassA1[builtins.int, builtins.str]"
+    l = ClassA1[float]()
+    reveal_type(l)  # N: Revealed type is "__main__.ClassA1[builtins.float, builtins.str]"
+    m = ClassA1[float, float]()
+    reveal_type(m)  # N: Revealed type is "__main__.ClassA1[builtins.float, builtins.float]"
+    n = ClassA1[float, float, float]()  # E: Type application has too many types (expected between 0 and 2)
+    reveal_type(n)  # N: Revealed type is "Any"
+
 class ClassA2(Generic[T1, T2, T3]): ...
 
 def func_a2(
@@ -151,6 +160,44 @@ def func_a2(
     reveal_type(c)  # N: Revealed type is "__main__.ClassA2[builtins.float, builtins.float, builtins.str]"
     reveal_type(d)  # N: Revealed type is "__main__.ClassA2[builtins.float, builtins.float, builtins.float]"
     reveal_type(e)  # N: Revealed type is "__main__.ClassA2[Any, builtins.int, builtins.str]"
+
+    k = ClassA2()  # E: Need type annotation for "k"
+    reveal_type(k)  # N: Revealed type is "__main__.ClassA2[Any, builtins.int, builtins.str]"
+    l = ClassA2[float]()
+    reveal_type(l)  # N: Revealed type is "__main__.ClassA2[builtins.float, builtins.int, builtins.str]"
+    m = ClassA2[float, float]()
+    reveal_type(m)  # N: Revealed type is "__main__.ClassA2[builtins.float, builtins.float, builtins.str]"
+    n = ClassA2[float, float, float]()
+    reveal_type(n)  # N: Revealed type is "__main__.ClassA2[builtins.float, builtins.float, builtins.float]"
+    o = ClassA2[float, float, float, float]()  # E: Type application has too many types (expected between 1 and 3)
+    reveal_type(o)  # N: Revealed type is "Any"
+
+class ClassA3(Generic[T1, T2]):
+    @overload
+    def __init__(self) -> None: ...
+    @overload
+    def __init__(self, var: int) -> None: ...
+    def __init__(self, var: Union[int, None] = None) -> None: ...
+
+def func_a3(
+    a: ClassA3,
+    b: ClassA3[float],
+    c: ClassA3[float, float],
+    d: ClassA3[float, float, float],  # E: "ClassA3" expects between 1 and 2 type arguments, but 3 given
+) -> None:
+    reveal_type(a)  # N: Revealed type is "__main__.ClassA3[Any, builtins.int]"
+    reveal_type(b)  # N: Revealed type is "__main__.ClassA3[builtins.float, builtins.int]"
+    reveal_type(c)  # N: Revealed type is "__main__.ClassA3[builtins.float, builtins.float]"
+    reveal_type(d)  # N: Revealed type is "__main__.ClassA3[Any, builtins.int]"
+
+    k = ClassA3()  # E: Need type annotation for "k"
+    reveal_type(k)  # N: Revealed type is "__main__.ClassA3[Any, builtins.int]"
+    l = ClassA3[float]()
+    reveal_type(l)  # N: Revealed type is "__main__.ClassA3[builtins.float, builtins.int]"
+    m = ClassA3[float, float]()
+    reveal_type(m)  # N: Revealed type is "__main__.ClassA3[builtins.float, builtins.float]"
+    n = ClassA3[float, float, float]()  # E: Type application has too many types (expected between 1 and 2)
+    reveal_type(n)  # N: Revealed type is "Any"
 
 [case testTypeVarDefaultsClass2]
 from typing import Generic, ParamSpec
@@ -172,6 +219,15 @@ def func_b1(
     reveal_type(c)  # N: Revealed type is "__main__.ClassB1[[builtins.float], [builtins.float]]"
     reveal_type(d)  # N: Revealed type is "__main__.ClassB1[[builtins.int, builtins.str], ...]"
 
+    k = ClassB1()
+    reveal_type(k)  # N: Revealed type is "__main__.ClassB1[[builtins.int, builtins.str], [*Any, **Any]]"
+    l = ClassB1[[float]]()
+    reveal_type(l)  # N: Revealed type is "__main__.ClassB1[[builtins.float], [*Any, **Any]]"
+    m = ClassB1[[float], [float]]()
+    reveal_type(m)  # N: Revealed type is "__main__.ClassB1[[builtins.float], [builtins.float]]"
+    n = ClassB1[[float], [float], [float]]()  # E: Type application has too many types (expected between 0 and 2)
+    reveal_type(n)  # N: Revealed type is "Any"
+
 class ClassB2(Generic[P1, P2]): ...
 
 def func_b2(
@@ -184,6 +240,15 @@ def func_b2(
     reveal_type(b)  # N: Revealed type is "__main__.ClassB2[[builtins.float], [builtins.int, builtins.str]]"
     reveal_type(c)  # N: Revealed type is "__main__.ClassB2[[builtins.float], [builtins.float]]"
     reveal_type(d)  # N: Revealed type is "__main__.ClassB2[Any, [builtins.int, builtins.str]]"
+
+    k = ClassB2()  # E: Need type annotation for "k"
+    reveal_type(k)  # N: Revealed type is "__main__.ClassB2[Any, [builtins.int, builtins.str]]"
+    l = ClassB2[[float]]()
+    reveal_type(l)  # N: Revealed type is "__main__.ClassB2[[builtins.float], [builtins.int, builtins.str]]"
+    m = ClassB2[[float], [float]]()
+    reveal_type(m)  # N: Revealed type is "__main__.ClassB2[[builtins.float], [builtins.float]]"
+    n = ClassB2[[float], [float], [float]]()  # E: Type application has too many types (expected between 1 and 2)
+    reveal_type(n)  # N: Revealed type is "Any"
 
 [case testTypeVarDefaultsClass3]
 from typing import Generic, Tuple, TypeVar
@@ -206,6 +271,11 @@ def func_c1(
     # reveal_type(a)  # Revealed type is "__main__.ClassC1[builtins.int, builtins.str]"  # TODO
     reveal_type(b)  # N: Revealed type is "__main__.ClassC1[builtins.float]"
 
+    # k = ClassC1()  # TODO
+    # reveal_type(k)  # Revealed type is "__main__.ClassC1[builtins.int, builtins.str]"  # TODO
+    l = ClassC1[float]()
+    reveal_type(l)  # N: Revealed type is "__main__.ClassC1[builtins.float]"
+
 class ClassC2(Generic[T3, Unpack[Ts3]]): ...
 
 def func_c2(
@@ -216,6 +286,13 @@ def func_c2(
     reveal_type(a)  # N: Revealed type is "__main__.ClassC2[builtins.str, Unpack[builtins.tuple[builtins.float, ...]]]"
     # reveal_type(b)  # Revealed type is "__main__.ClassC2[builtins.int, Unpack[builtins.tuple[builtins.float, ...]]]"  # TODO
     reveal_type(c)  # N: Revealed type is "__main__.ClassC2[builtins.int]"
+
+    # k = ClassC2()  # TODO
+    # reveal_type(k)  # Revealed type is "__main__.ClassC2[builtins.str, Unpack[builtins.tuple[builtins.float, ...]]]"  # TODO
+    l = ClassC2[int]()
+    # reveal_type(l)  # Revealed type is "__main__.ClassC2[builtins.int, Unpack[builtins.tuple[builtins.float, ...]]]"  # TODO
+    m = ClassC2[int, Unpack[Tuple[()]]]()
+    reveal_type(m)  # N: Revealed type is "__main__.ClassC2[builtins.int]"
 
 class ClassC3(Generic[T3, Unpack[Ts4]]): ...
 
@@ -228,6 +305,13 @@ def func_c3(
     reveal_type(b)  # N: Revealed type is "__main__.ClassC3[builtins.int]"
     reveal_type(c)  # N: Revealed type is "__main__.ClassC3[builtins.int, builtins.float]"
 
+    # k = ClassC3()  # TODO
+    # reveal_type(k)  # Revealed type is "__main__.ClassC3[builtins.str]"  # TODO
+    l = ClassC3[int]()
+    reveal_type(l)  # N: Revealed type is "__main__.ClassC3[builtins.int]"
+    m = ClassC3[int, Unpack[Tuple[float]]]()
+    reveal_type(m)  # N: Revealed type is "__main__.ClassC3[builtins.int, builtins.float]"
+
 class ClassC4(Generic[T1, Unpack[Ts1], T3]): ...
 
 def func_c4(
@@ -238,6 +322,13 @@ def func_c4(
     reveal_type(a)  # N: Revealed type is "__main__.ClassC4[Any, Unpack[builtins.tuple[Any, ...]], builtins.str]"
     # reveal_type(b)  # Revealed type is "__main__.ClassC4[builtins.int, builtins.str]"  # TODO
     reveal_type(c)  # N: Revealed type is "__main__.ClassC4[builtins.int, builtins.float]"
+
+    k = ClassC4()  # E: Need type annotation for "k"
+    reveal_type(k)  # N: Revealed type is "__main__.ClassC4[Any, Unpack[builtins.tuple[Any, ...]], builtins.str]"
+    l = ClassC4[int]()
+    # reveal_type(l)  # Revealed type is "__main__.ClassC4[builtins.int, builtins.str]"  # TODO
+    m = ClassC4[int, float]()
+    reveal_type(m)  # N: Revealed type is "__main__.ClassC4[builtins.int, builtins.float]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeVarDefaultsTypeAlias1]
