@@ -318,7 +318,7 @@ def func_c3(
 class ClassC4(Generic[T1, Unpack[Ts1], T3]): ...
 
 def func_c4(
-    a: ClassC4,  # E: Missing type parameters for generic type "ClassC4[()]"
+    a: ClassC4,  # E: Missing type parameters for generic type "ClassC4"
     b: ClassC4[int],
     c: ClassC4[int, float],
 ) -> None:
