@@ -4809,21 +4809,29 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         tp = get_proper_type(tp)
 
         if isinstance(tp, CallableType):
-            if len(tp.variables) != len(args) and not any(
-                isinstance(v, TypeVarTupleType) for v in tp.variables
-            ):
+            min_arg_count = sum(not v.has_default() for v in tp.variables)
+            has_type_var_tuple = any(isinstance(v, TypeVarTupleType) for v in tp.variables)
+            if (
+                len(args) < min_arg_count or len(args) > len(tp.variables)
+            ) and not has_type_var_tuple:
                 if tp.is_type_obj() and tp.type_object().fullname == "builtins.tuple":
                     # TODO: Specialize the callable for the type arguments
                     return tp
-                self.msg.incompatible_type_application(len(tp.variables), len(args), ctx)
+                self.msg.incompatible_type_application(
+                    min_arg_count, len(tp.variables), len(args), ctx
+                )
                 return AnyType(TypeOfAny.from_error)
             return self.apply_generic_arguments(tp, self.split_for_callable(tp, args, ctx), ctx)
         if isinstance(tp, Overloaded):
             for it in tp.items:
-                if len(it.variables) != len(args) and not any(
-                    isinstance(v, TypeVarTupleType) for v in it.variables
-                ):
-                    self.msg.incompatible_type_application(len(it.variables), len(args), ctx)
+                min_arg_count = sum(not v.has_default() for v in it.variables)
+                has_type_var_tuple = any(isinstance(v, TypeVarTupleType) for v in it.variables)
+                if (
+                    len(args) < min_arg_count or len(args) > len(it.variables)
+                ) and not has_type_var_tuple:
+                    self.msg.incompatible_type_application(
+                        min_arg_count, len(it.variables), len(args), ctx
+                    )
                     return AnyType(TypeOfAny.from_error)
             return Overloaded(
                 [
