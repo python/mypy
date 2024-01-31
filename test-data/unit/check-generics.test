@@ -1480,6 +1480,30 @@ if int():
     b = f(b)
 [builtins fixtures/list.pyi]
 
+[case testGenericDictWithOverload]
+from typing import Dict, Generic, TypeVar, Any, overload
+T = TypeVar("T")
+
+class Key(Generic[T]): ...
+class CustomDict(dict):
+    @overload  # type: ignore[override]
+    def __setitem__(self, key: Key[T], value: T) -> None: ...
+    @overload
+    def __setitem__(self, key: str, value: Any) -> None: ...
+    def __setitem__(self, key, value):
+        return super().__setitem__(key, value)
+
+def a1(d: Dict[str, Any]) -> None:
+    if (var := d.get("arg")) is None:
+        var = d["arg"] = {}
+        reveal_type(var)  # N: Revealed type is "builtins.dict[Any, Any]"
+
+def a2(d: CustomDict) -> None:
+    if (var := d.get("arg")) is None:
+        var = d["arg"] = {}
+        reveal_type(var)  # N: Revealed type is "builtins.dict[Any, Any]"
+[builtins fixtures/dict.pyi]
+
 
 -- Type variable scoping
 -- ---------------------
