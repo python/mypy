@@ -1,5 +1,4 @@
 [case testNarrowingParentWithStrsBasic]
-# flags: --python-version 3.7
 from dataclasses import dataclass
 from typing import NamedTuple, Tuple, Union
 from typing_extensions import Literal, TypedDict
@@ -83,7 +82,6 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingParentWithEnumsBasic]
-# flags: --python-version 3.7
 from enum import Enum
 from dataclasses import dataclass
 from typing import NamedTuple, Tuple, Union
@@ -173,7 +171,6 @@ else:
 [builtins fixtures/narrowing.pyi]
 
 [case testNarrowingParentWithIsInstanceBasic]
-# flags: --python-version 3.7
 from dataclasses import dataclass
 from typing import NamedTuple, Tuple, Union
 from typing_extensions import TypedDict

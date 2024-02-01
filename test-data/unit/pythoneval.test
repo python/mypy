@@ -1590,12 +1590,11 @@ _testNoPython3StubAvailable.py:3: note: (or run "mypy --install-types" to instal
 
 
 [case testTypingOrderedDictAlias]
-# flags: --python-version 3.7
 from typing import OrderedDict
 x: OrderedDict[str, int] = OrderedDict({})
 reveal_type(x)
 [out]
-_testTypingOrderedDictAlias.py:4: note: Revealed type is "collections.OrderedDict[builtins.str, builtins.int]"
+_testTypingOrderedDictAlias.py:3: note: Revealed type is "collections.OrderedDict[builtins.str, builtins.int]"
 
 [case testTypingExtensionsOrderedDictAlias]
 from typing_extensions import OrderedDict

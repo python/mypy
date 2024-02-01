@@ -1155,7 +1155,7 @@ def f_suppress() -> int:  # E: Missing return statement
 [builtins fixtures/tuple.pyi]
 
 [case testUnreachableFlagContextAsyncManagersNoSuppress]
-# flags: --warn-unreachable --python-version 3.7
+# flags: --warn-unreachable
 from contextlib import asynccontextmanager
 from typing import Optional, AsyncIterator, Any
 from typing_extensions import Literal
@@ -1221,7 +1221,7 @@ async def f_no_suppress_5() -> int:
 [builtins fixtures/tuple.pyi]
 
 [case testUnreachableFlagContextAsyncManagersSuppressed]
-# flags: --warn-unreachable --python-version 3.7
+# flags: --warn-unreachable
 from contextlib import asynccontextmanager
 from typing import Optional, AsyncIterator, Any
 from typing_extensions import Literal
@@ -1268,7 +1268,7 @@ async def f_mix() -> int:         # E: Missing return statement
 [builtins fixtures/tuple.pyi]
 
 [case testUnreachableFlagContextAsyncManagersAbnormal]
-# flags: --warn-unreachable --python-version 3.7
+# flags: --warn-unreachable
 from contextlib import asynccontextmanager
 from typing import Optional, AsyncIterator, Any
 from typing_extensions import Literal

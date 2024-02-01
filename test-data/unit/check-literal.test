@@ -64,7 +64,6 @@ reveal_type(bar)                    # N: Revealed type is "def (x: Tuple[Literal
 [out]
 
 [case testLiteralInsideOtherTypesTypeCommentsPython3]
-# flags: --python-version 3.7
 from typing import Tuple, Optional
 from typing_extensions import Literal
 
