@@ -867,7 +867,7 @@ _program.py:20: error: Argument 1 to "tst" has incompatible type "defaultdict[st
 _program.py:24: error: Invalid index type "str" for "MyDDict[Dict[Never, Never]]"; expected type "int"
 
 [case testNoSubcriptionOfStdlibCollections]
-# flags: --python-version 3.7
+# flags: --python-version 3.8
 import collections
 from collections import Counter
 from typing import TypeVar
@@ -1710,7 +1710,7 @@ _testTypeAliasWithNewStyleUnion.py:25: note: Revealed type is "Union[Type[builti
 _testTypeAliasWithNewStyleUnion.py:28: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
 
 [case testTypeAliasWithNewStyleUnionInStub]
-# flags: --python-version 3.7
+# flags: --python-version 3.8
 import m
 a: m.A
 reveal_type(a)

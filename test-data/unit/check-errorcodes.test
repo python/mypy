@@ -127,7 +127,7 @@ x
 y # type: ignore  # ignore the lack of error code since we're ignore the whole file
 
 [case testErrorCodeMissingMultiple]
-# flags: --enable-error-code ignore-without-code --python-version 3.7
+# flags: --enable-error-code ignore-without-code --python-version 3.8
 from __future__ import annotations
 class A:
     attr: int
