@@ -140,13 +140,11 @@ def fail_missing(mod: str, reason: ModuleNotFoundReason) -> None:
 
 
 @overload
-def remove_misplaced_type_comments(source: bytes) -> bytes:
-    ...
+def remove_misplaced_type_comments(source: bytes) -> bytes: ...
 
 
 @overload
-def remove_misplaced_type_comments(source: str) -> str:
-    ...
+def remove_misplaced_type_comments(source: str) -> str: ...
 
 
 def remove_misplaced_type_comments(source: str | bytes) -> str | bytes:

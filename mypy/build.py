@@ -8,6 +8,7 @@ file.  The individual passes are implemented in separate modules.
 
 The function build() is the main interface to this module.
 """
+
 # TODO: More consistent terminology, e.g. path/fnam, module/id, state/file
 
 from __future__ import annotations

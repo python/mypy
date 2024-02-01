@@ -237,13 +237,11 @@ def trivial_join(s: Type, t: Type) -> Type:
 @overload
 def join_types(
     s: ProperType, t: ProperType, instance_joiner: InstanceJoiner | None = None
-) -> ProperType:
-    ...
+) -> ProperType: ...
 
 
 @overload
-def join_types(s: Type, t: Type, instance_joiner: InstanceJoiner | None = None) -> Type:
-    ...
+def join_types(s: Type, t: Type, instance_joiner: InstanceJoiner | None = None) -> Type: ...
 
 
 def join_types(s: Type, t: Type, instance_joiner: InstanceJoiner | None = None) -> Type:

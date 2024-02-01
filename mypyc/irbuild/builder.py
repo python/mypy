@@ -10,6 +10,7 @@ AST node type to code that actually does the bulk of the work. For
 example, expressions are transformed in mypyc.irbuild.expression and
 functions are transformed in mypyc.irbuild.function.
 """
+
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -231,12 +232,10 @@ class IRBuilder:
         self.builder.set_module(module_name, module_path)
 
     @overload
-    def accept(self, node: Expression, *, can_borrow: bool = False) -> Value:
-        ...
+    def accept(self, node: Expression, *, can_borrow: bool = False) -> Value: ...
 
     @overload
-    def accept(self, node: Statement) -> None:
-        ...
+    def accept(self, node: Statement) -> None: ...
 
     def accept(self, node: Statement | Expression, *, can_borrow: bool = False) -> Value | None:
         """Transform an expression or a statement.

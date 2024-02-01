@@ -1519,9 +1519,11 @@ def safe_inspect_signature(runtime: Any) -> inspect.Signature | None:
                 sig = inspect._signature_fromstr(inspect.Signature, runtime, sig)  # type: ignore[attr-defined]
                 assert isinstance(sig, inspect.Signature)
                 new_params = [
-                    parameter.replace(default=UNREPRESENTABLE)
-                    if parameter.default is ...
-                    else parameter
+                    (
+                        parameter.replace(default=UNREPRESENTABLE)
+                        if parameter.default is ...
+                        else parameter
+                    )
                     for parameter in sig.parameters.values()
                 ]
                 return sig.replace(parameters=new_params)

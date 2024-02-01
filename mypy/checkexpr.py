@@ -2132,11 +2132,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 unknown = UninhabitedType()
                 unknown.ambiguous = True
                 inferred_args = [
-                    expand_type(
-                        a, {v.id: unknown for v in list(callee_type.variables) + free_vars}
+                    (
+                        expand_type(
+                            a, {v.id: unknown for v in list(callee_type.variables) + free_vars}
+                        )
+                        if a is not None
+                        else None
                     )
-                    if a is not None
-                    else None
                     for a in poly_inferred_args
                 ]
         else:
@@ -6042,14 +6044,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return self.named_type("builtins.bool")
 
     @overload
-    def narrow_type_from_binder(self, expr: Expression, known_type: Type) -> Type:
-        ...
+    def narrow_type_from_binder(self, expr: Expression, known_type: Type) -> Type: ...
 
     @overload
     def narrow_type_from_binder(
         self, expr: Expression, known_type: Type, skip_non_overlapping: bool
-    ) -> Type | None:
-        ...
+    ) -> Type | None: ...
 
     def narrow_type_from_binder(
         self, expr: Expression, known_type: Type, skip_non_overlapping: bool = False
