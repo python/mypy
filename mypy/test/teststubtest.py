@@ -173,7 +173,7 @@ def run_stubtest(
 
 
 class Case:
-    def __init__(self, stub: str, runtime: str, error: str | None):
+    def __init__(self, stub: str, runtime: str, error: str | None) -> None:
         self.stub = stub
         self.runtime = runtime
         self.error = error
@@ -210,7 +210,13 @@ def collect_cases(fn: Callable[..., Iterator[Case]]) -> Callable[..., None]:
         )
 
         actual_errors = set(output.splitlines())
-        assert actual_errors == expected_errors, output
+        if actual_errors != expected_errors:
+            output = run_stubtest(
+                stub="\n\n".join(textwrap.dedent(c.stub.lstrip("\n")) for c in cases),
+                runtime="\n\n".join(textwrap.dedent(c.runtime.lstrip("\n")) for c in cases),
+                options=[],
+            )
+            assert actual_errors == expected_errors, output
 
     return test
 
@@ -660,6 +666,56 @@ class StubtestUnit(unittest.TestCase):
             """,
             error=None,
         )
+        yield Case(
+            stub="""
+            @overload
+            def f7(a: int, /) -> int: ...
+            @overload
+            def f7(b: str, /) -> str: ...
+            """,
+            runtime="def f7(x, /): pass",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            @overload
+            def f8(a: int, c: int = 0, /) -> int: ...
+            @overload
+            def f8(b: str, d: int, /) -> str: ...
+            """,
+            runtime="def f8(x, y, /): pass",
+            error="f8",
+        )
+        yield Case(
+            stub="""
+            @overload
+            def f9(a: int, c: int = 0, /) -> int: ...
+            @overload
+            def f9(b: str, d: int, /) -> str: ...
+            """,
+            runtime="def f9(x, y=0, /): pass",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class Bar:
+                @overload
+                def f1(self) -> int: ...
+                @overload
+                def f1(self, a: int, /) -> int: ...
+
+                @overload
+                def f2(self, a: int, /) -> int: ...
+                @overload
+                def f2(self, a: str, /) -> int: ...
+            """,
+            runtime="""
+            class Bar:
+                def f1(self, *a) -> int: ...
+                def f2(self, *a) -> int: ...
+            """,
+            error=None,
+        )
 
     @collect_cases
     def test_property(self) -> Iterator[Case]:
@@ -1084,6 +1140,25 @@ class StubtestUnit(unittest.TestCase):
             error=None,
         )
         yield Case(
+            runtime="""
+            import enum
+            class SomeObject: ...
+
+            class WeirdEnum(enum.Enum):
+                a = SomeObject()
+                b = SomeObject()
+            """,
+            stub="""
+            import enum
+            class SomeObject: ...
+            class WeirdEnum(enum.Enum):
+                _value_: SomeObject
+                a = ...
+                b = ...
+            """,
+            error=None,
+        )
+        yield Case(
             stub="""
             class Flags4(enum.Flag):
                 a: int
@@ -1209,6 +1284,24 @@ class StubtestUnit(unittest.TestCase):
         yield Case(stub="", runtime="import re; constant = re.compile('foo')", error="constant")
         yield Case(stub="", runtime="from json.scanner import NUMBER_RE", error=None)
         yield Case(stub="", runtime="from string import ascii_letters", error=None)
+
+    @collect_cases
+    def test_missing_no_runtime_all_terrible(self) -> Iterator[Case]:
+        yield Case(
+            stub="",
+            runtime="""
+import sys
+import types
+import __future__
+_m = types.SimpleNamespace()
+_m.annotations = __future__.annotations
+sys.modules["_terrible_stubtest_test_module"] = _m
+
+from _terrible_stubtest_test_module import *
+assert annotations
+""",
+            error=None,
+        )
 
     @collect_cases
     def test_non_public_1(self) -> Iterator[Case]:
@@ -2226,7 +2319,7 @@ class StubtestMiscUnit(unittest.TestCase):
                 options=["--allowlist", allowlist.name, "--generate-allowlist"],
             )
             assert output == (
-                f"note: unused allowlist entry unused.*\n" f"{TEST_MODULE_NAME}.also_bad\n"
+                f"note: unused allowlist entry unused.*\n{TEST_MODULE_NAME}.also_bad\n"
             )
         finally:
             os.unlink(allowlist.name)

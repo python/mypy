@@ -126,7 +126,7 @@ PY_MINOR_VERSION: Final = sys.version_info[1]
 import ast as ast3
 
 # TODO: Index, ExtSlice are deprecated in 3.9.
-from ast import AST, Attribute, Call, FunctionType, Index, Name, Starred, UnaryOp, USub
+from ast import AST, Attribute, Call, FunctionType, Index, Name, Starred, UAdd, UnaryOp, USub
 
 
 def ast3_parse(
@@ -318,7 +318,7 @@ def parse_type_string(
     string expression "blah" using this function.
     """
     try:
-        _, node = parse_type_comment(expr_string.strip(), line=line, column=column, errors=None)
+        _, node = parse_type_comment(f"({expr_string})", line=line, column=column, errors=None)
         if isinstance(node, UnboundType) and node.original_str_expr is None:
             node.original_str_expr = expr_string
             node.original_str_fallback = expr_fallback_name
@@ -608,10 +608,9 @@ class ASTConverter:
                 # Check IfStmt block to determine if function overloads can be merged
                 if_overload_name = self._check_ifstmt_for_overloads(stmt, current_overload_name)
                 if if_overload_name is not None:
-                    (
-                        if_block_with_overload,
-                        if_unknown_truth_value,
-                    ) = self._get_executable_if_block_with_overloads(stmt)
+                    (if_block_with_overload, if_unknown_truth_value) = (
+                        self._get_executable_if_block_with_overloads(stmt)
+                    )
 
             if (
                 current_overload_name is not None
@@ -911,9 +910,11 @@ class ASTConverter:
                         # PEP 484 disallows both type annotations and type comments
                         self.fail(message_registry.DUPLICATE_TYPE_SIGNATURES, lineno, n.col_offset)
                     arg_types = [
-                        a.type_annotation
-                        if a.type_annotation is not None
-                        else AnyType(TypeOfAny.unannotated)
+                        (
+                            a.type_annotation
+                            if a.type_annotation is not None
+                            else AnyType(TypeOfAny.unannotated)
+                        )
                         for a in args
                     ]
                 else:
@@ -1790,12 +1791,10 @@ class TypeConverter:
         )
 
     @overload
-    def visit(self, node: ast3.expr) -> ProperType:
-        ...
+    def visit(self, node: ast3.expr) -> ProperType: ...
 
     @overload
-    def visit(self, node: AST | None) -> ProperType | None:
-        ...
+    def visit(self, node: AST | None) -> ProperType | None: ...
 
     def visit(self, node: AST | None) -> ProperType | None:
         """Modified visit -- keep track of the stack of nodes"""
@@ -1940,12 +1939,18 @@ class TypeConverter:
 
     # UnaryOp(op, operand)
     def visit_UnaryOp(self, n: UnaryOp) -> Type:
-        # We support specifically Literal[-4] and nothing else.
-        # For example, Literal[+4] or Literal[~6] is not supported.
+        # We support specifically Literal[-4], Literal[+4], and nothing else.
+        # For example, Literal[~6] or Literal[not False] is not supported.
         typ = self.visit(n.operand)
-        if isinstance(typ, RawExpressionType) and isinstance(n.op, USub):
-            if isinstance(typ.literal_value, int):
+        if (
+            isinstance(typ, RawExpressionType)
+            # Use type() because we do not want to allow bools.
+            and type(typ.literal_value) is int  # noqa: E721
+        ):
+            if isinstance(n.op, USub):
                 typ.literal_value *= -1
+                return typ
+            if isinstance(n.op, UAdd):
                 return typ
         return self.invalid_type(n)
 

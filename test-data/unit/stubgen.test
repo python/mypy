@@ -368,6 +368,8 @@ class A:
         return 1
     @f.setter
     def f(self, x): ...
+    @f.deleter
+    def f(self): ...
 
     def h(self):
         self.f = 1
@@ -377,6 +379,8 @@ class A:
     def f(self): ...
     @f.setter
     def f(self, x) -> None: ...
+    @f.deleter
+    def f(self) -> None: ...
     def h(self) -> None: ...
 
 [case testProperty_semanal]
@@ -386,6 +390,8 @@ class A:
         return 1
     @f.setter
     def f(self, x): ...
+    @f.deleter
+    def f(self): ...
 
     def h(self):
         self.f = 1
@@ -395,6 +401,8 @@ class A:
     def f(self): ...
     @f.setter
     def f(self, x) -> None: ...
+    @f.deleter
+    def f(self) -> None: ...
     def h(self) -> None: ...
 
 -- a read/write property is treated the same as an attribute
@@ -2338,10 +2346,12 @@ class B:
     @property
     def x(self):
         return 'x'
-
     @x.setter
     def x(self, value):
         self.y = 'y'
+    @x.deleter
+    def x(self):
+        del self.y
 
 [out]
 class A:
@@ -2355,6 +2365,8 @@ class B:
     y: str
     @x.setter
     def x(self, value) -> None: ...
+    @x.deleter
+    def x(self) -> None: ...
 
 [case testMisplacedTypeComment]
 def f():
@@ -4139,3 +4151,33 @@ from dataclasses import dataclass
 class X(missing.Base):
     a: int
     def __init__(self, *selfa_, a, **selfa__) -> None: ...
+
+[case testAlwaysUsePEP604Union]
+import typing
+import typing as t
+from typing import Optional, Union, Optional as O, Union as U
+import x
+
+union = Union[int, str]
+bad_union = Union[int]
+nested_union = Optional[Union[int, str]]
+not_union = x.Union[int, str]
+u = U[int, str]
+o = O[int]
+
+def f1(a: Union["int", Optional[tuple[int, t.Optional[int]]]]) -> int: ...
+def f2(a: typing.Union[int | x.Union[int, int], O[float]]) -> int: ...
+
+[out]
+import x
+from _typeshed import Incomplete
+
+union = int | str
+bad_union = int
+nested_union = int | str | None
+not_union: Incomplete
+u = int | str
+o = int | None
+
+def f1(a: int | tuple[int, int | None] | None) -> int: ...
+def f2(a: int | x.Union[int, int] | float | None) -> int: ...

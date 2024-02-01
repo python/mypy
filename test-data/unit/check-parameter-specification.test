@@ -1506,9 +1506,10 @@ def g(x: A[P]) -> None: ...  # E: Invalid location for ParamSpec "P" \
                              # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
 
 C = Callable[P, T]
-x: C[int]  # E: Bad number of arguments for type alias, expected: 2, given: 1
+x: C[int]  # E: Bad number of arguments for type alias, expected 2, given 1
 y: C[int, str]  # E: Can only replace ParamSpec with a parameter types list or another ParamSpec, got "int"
-z: C[int, str, bytes]  # E: Bad number of arguments for type alias, expected: 2, given: 3
+z: C[int, str, bytes]  # E: Bad number of arguments for type alias, expected 2, given 3
+
 [builtins fixtures/paramspec.pyi]
 
 [case testTrivialParametersHandledCorrectly]

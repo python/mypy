@@ -33,24 +33,29 @@ fix = true
 select = [
   "E",       # pycodestyle (error)
   "F",       # pyflakes
+  "W",       # pycodestyle (warning)
   "B",       # flake8-bugbear
   "I",       # isort
   "RUF100",  # Unused noqa comments
   "PGH004",  # blanket noqa comments
   "UP",      # pyupgrade
+  "C4",      # flake8-comprehensions
+  "SIM201", "SIM202",  # simplify comparisons involving not
+  "ISC001",  # implicitly concatenated string
+  "RET501", "RET502",  # better return None handling
 ]
 
 ignore = [
-  "B006",  # use of mutable defaults in function signatures
   "B007",  # Loop control variable not used within the loop body.
   "B011",  # Don't use assert False
   "B023",  # Function definition does not bind loop variable
-  "E203",  # conflicts with black
+  "E2",    # conflicts with black
   "E402",  # module level import not at top of file
   "E501",  # conflicts with black
   "E731",  # Do not assign a `lambda` expression, use a `def`
   "E741",  # Ambiguous variable name
   "UP032", # 'f-string always preferable to format' is controversial
+  "C416",  # There are a few cases where it's nice to have names for the dict items
 ]
 
 unfixable = [

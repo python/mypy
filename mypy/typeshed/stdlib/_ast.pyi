@@ -586,7 +586,9 @@ if sys.version_info >= (3, 10):
         patterns: list[pattern]
 
 if sys.version_info >= (3, 12):
-    class type_param(AST): ...
+    class type_param(AST):
+        end_lineno: int
+        end_col_offset: int
 
     class TypeVar(type_param):
         __match_args__ = ("name", "bound")

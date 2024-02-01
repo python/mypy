@@ -140,13 +140,11 @@ def fail_missing(mod: str, reason: ModuleNotFoundReason) -> None:
 
 
 @overload
-def remove_misplaced_type_comments(source: bytes) -> bytes:
-    ...
+def remove_misplaced_type_comments(source: bytes) -> bytes: ...
 
 
 @overload
-def remove_misplaced_type_comments(source: str) -> str:
-    ...
+def remove_misplaced_type_comments(source: str) -> str: ...
 
 
 def remove_misplaced_type_comments(source: str | bytes) -> str | bytes:
@@ -226,6 +224,11 @@ class AnnotationPrinter(TypeStrVisitor):
 
     def visit_unbound_type(self, t: UnboundType) -> str:
         s = t.name
+        fullname = self.stubgen.resolve_name(s)
+        if fullname == "typing.Union":
+            return " | ".join([item.accept(self) for item in t.args])
+        if fullname == "typing.Optional":
+            return f"{t.args[0].accept(self)} | None"
         if self.known_modules is not None and "." in s:
             # see if this object is from any of the modules that we're currently processing.
             # reverse sort so that subpackages come before parents: e.g. "foo.bar" before "foo".
@@ -558,7 +561,7 @@ class BaseStubGenerator:
         include_private: bool = False,
         export_less: bool = False,
         include_docstrings: bool = False,
-    ):
+    ) -> None:
         # Best known value of __all__.
         self._all_ = _all_
         self._include_private = include_private
@@ -588,14 +591,18 @@ class BaseStubGenerator:
     def get_sig_generators(self) -> list[SignatureGenerator]:
         return []
 
-    def refers_to_fullname(self, name: str, fullname: str | tuple[str, ...]) -> bool:
-        """Return True if the variable name identifies the same object as the given fullname(s)."""
-        if isinstance(fullname, tuple):
-            return any(self.refers_to_fullname(name, fname) for fname in fullname)
-        module, short = fullname.rsplit(".", 1)
-        return self.import_tracker.module_for.get(name) == module and (
-            name == short or self.import_tracker.reverse_alias.get(name) == short
-        )
+    def resolve_name(self, name: str) -> str:
+        """Return the full name resolving imports and import aliases."""
+        if "." not in name:
+            real_module = self.import_tracker.module_for.get(name)
+            real_short = self.import_tracker.reverse_alias.get(name, name)
+            if real_module is None and real_short not in self.defined_names:
+                real_module = "builtins"  # not imported and not defined, must be a builtin
+        else:
+            name_module, real_short = name.split(".", 1)
+            real_module = self.import_tracker.reverse_alias.get(name_module, name_module)
+        resolved_name = real_short if real_module is None else f"{real_module}.{real_short}"
+        return resolved_name
 
     def add_name(self, fullname: str, require: bool = True) -> str:
         """Add a name to be imported and return the name reference.

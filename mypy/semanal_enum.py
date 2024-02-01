@@ -148,7 +148,7 @@ class EnumCallAnalyzer:
         Return a tuple of fields, values, was there an error.
         """
         args = call.args
-        if not all([arg_kind in [ARG_POS, ARG_NAMED] for arg_kind in call.arg_kinds]):
+        if not all(arg_kind in [ARG_POS, ARG_NAMED] for arg_kind in call.arg_kinds):
             return self.fail_enum_call_arg(f"Unexpected arguments to {class_name}()", call)
         if len(args) < 2:
             return self.fail_enum_call_arg(f"Too few arguments for {class_name}()", call)

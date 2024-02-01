@@ -19,22 +19,6 @@ Most error codes are shared between multiple related error messages.
 Error codes may change in future mypy releases.
 
 
-
-Displaying error codes
-----------------------
-
-Error codes are displayed by default.  Use :option:`--hide-error-codes <mypy --hide-error-codes>`
-or config ``hide_error_codes = True`` to hide error codes. Error codes are shown inside square brackets:
-
-.. code-block:: text
-
-   $ mypy prog.py
-   prog.py:1: error: "str" has no attribute "trim"  [attr-defined]
-
-It's also possible to require error codes for ``type: ignore`` comments.
-See :ref:`ignore-without-code<code-ignore-without-code>` for more information.
-
-
 .. _silence-error-codes:
 
 Silencing errors based on error codes
@@ -121,3 +105,10 @@ Similar logic works for disabling error codes globally. If a given error code
 is a subcode of another one, it will be mentioned in the documentation for the narrower
 code. This hierarchy is not nested: there cannot be subcodes of other
 subcodes.
+
+
+Requiring error codes
+---------------------
+
+It's possible to require error codes be specified in ``type: ignore`` comments.
+See :ref:`ignore-without-code<code-ignore-without-code>` for more information.

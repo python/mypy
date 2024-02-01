@@ -227,7 +227,10 @@ class ZipInfo:
     def is_dir(self) -> bool: ...
     def FileHeader(self, zip64: bool | None = None) -> bytes: ...
 
-if sys.version_info >= (3, 8):
+if sys.version_info >= (3, 12):
+    from zipfile._path import CompleteDirs as CompleteDirs, Path as Path
+
+elif sys.version_info >= (3, 8):
     class CompleteDirs(ZipFile):
         def resolve_dir(self, name: str) -> str: ...
         @overload

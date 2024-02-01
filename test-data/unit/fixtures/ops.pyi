@@ -24,8 +24,6 @@ class tuple(Sequence[Tco]):
 
 class function: pass
 
-class bool: pass
-
 class str:
     def __init__(self, x: 'int') -> None: pass
     def __add__(self, x: 'str') -> 'str': pass
@@ -53,6 +51,8 @@ class int:
     def __le__(self, x: 'int') -> bool: pass
     def __gt__(self, x: 'int') -> bool: pass
     def __ge__(self, x: 'int') -> bool: pass
+
+class bool(int): pass
 
 class float:
     def __add__(self, x: 'float') -> 'float': pass
