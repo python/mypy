@@ -50,18 +50,15 @@ import mypy.type_visitor  # ruff: isort: skip
 
 
 @overload
-def expand_type(typ: CallableType, env: Mapping[TypeVarId, Type]) -> CallableType:
-    ...
+def expand_type(typ: CallableType, env: Mapping[TypeVarId, Type]) -> CallableType: ...
 
 
 @overload
-def expand_type(typ: ProperType, env: Mapping[TypeVarId, Type]) -> ProperType:
-    ...
+def expand_type(typ: ProperType, env: Mapping[TypeVarId, Type]) -> ProperType: ...
 
 
 @overload
-def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
-    ...
+def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type: ...
 
 
 def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
@@ -72,18 +69,15 @@ def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
 
 
 @overload
-def expand_type_by_instance(typ: CallableType, instance: Instance) -> CallableType:
-    ...
+def expand_type_by_instance(typ: CallableType, instance: Instance) -> CallableType: ...
 
 
 @overload
-def expand_type_by_instance(typ: ProperType, instance: Instance) -> ProperType:
-    ...
+def expand_type_by_instance(typ: ProperType, instance: Instance) -> ProperType: ...
 
 
 @overload
-def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
-    ...
+def expand_type_by_instance(typ: Type, instance: Instance) -> Type: ...
 
 
 def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
@@ -470,13 +464,11 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
 
 
 @overload
-def expand_self_type(var: Var, typ: ProperType, replacement: ProperType) -> ProperType:
-    ...
+def expand_self_type(var: Var, typ: ProperType, replacement: ProperType) -> ProperType: ...
 
 
 @overload
-def expand_self_type(var: Var, typ: Type, replacement: Type) -> Type:
-    ...
+def expand_self_type(var: Var, typ: Type, replacement: Type) -> Type: ...
 
 
 def expand_self_type(var: Var, typ: Type, replacement: Type) -> Type:

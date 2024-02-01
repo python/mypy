@@ -308,8 +308,7 @@ def calculate_tuple_fallback(typ: TupleType) -> None:
 
 
 class _NamedTypeCallback(Protocol):
-    def __call__(self, fully_qualified_name: str, args: list[Type] | None = None) -> Instance:
-        ...
+    def __call__(self, fully_qualified_name: str, args: list[Type] | None = None) -> Instance: ...
 
 
 def paramspec_args(
@@ -453,8 +452,7 @@ def require_bool_literal_argument(
     expression: Expression,
     name: str,
     default: Literal[True] | Literal[False],
-) -> bool:
-    ...
+) -> bool: ...
 
 
 @overload
@@ -463,8 +461,7 @@ def require_bool_literal_argument(
     expression: Expression,
     name: str,
     default: None = None,
-) -> bool | None:
-    ...
+) -> bool | None: ...
 
 
 def require_bool_literal_argument(
