@@ -2577,7 +2577,7 @@ import n
 [file n.pyi]
 class C: pass
 
-[case testNewAnalyzerModuleGetAttrInPython]
+[case testNewAnalyzerModuleGetAttr]
 import m
 import n
 
