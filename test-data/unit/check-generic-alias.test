@@ -44,7 +44,6 @@ t10: collections.ChainMap[int, str]  # E: "ChainMap" is not subscriptable, use "
 
 
 [case testGenericBuiltinFutureAnnotations]
-# flags: --python-version 3.8
 from __future__ import annotations
 t1: list
 t2: list[int]
@@ -64,7 +63,6 @@ t11: type[int]
 
 
 [case testGenericCollectionsFutureAnnotations]
-# flags: --python-version 3.8
 from __future__ import annotations
 import collections
 
