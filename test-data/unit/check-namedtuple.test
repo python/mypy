@@ -131,7 +131,6 @@ main:6: error: Unexpected keyword argument "unrecognized_arg" for "namedtuple"
 main:7: error: Too many positional arguments for "namedtuple"
 
 [case testNamedTupleDefaults]
-# flags: --python-version 3.7
 from collections import namedtuple
 
 X = namedtuple('X', ['x', 'y'], defaults=(1,))
