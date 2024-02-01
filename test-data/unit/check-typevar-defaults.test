@@ -274,8 +274,8 @@ def func_c1(
     # reveal_type(a)  # Revealed type is "__main__.ClassC1[builtins.int, builtins.str]"  # TODO
     reveal_type(b)  # N: Revealed type is "__main__.ClassC1[builtins.float]"
 
-    # k = ClassC1()  # TODO
-    # reveal_type(k)  # Revealed type is "__main__.ClassC1[builtins.int, builtins.str]"  # TODO
+    k = ClassC1()
+    reveal_type(k)  # N: Revealed type is "__main__.ClassC1[builtins.int, builtins.str]"
     l = ClassC1[float]()
     reveal_type(l)  # N: Revealed type is "__main__.ClassC1[builtins.float]"
 
@@ -290,8 +290,8 @@ def func_c2(
     # reveal_type(b)  # Revealed type is "__main__.ClassC2[builtins.int, Unpack[builtins.tuple[builtins.float, ...]]]"  # TODO
     reveal_type(c)  # N: Revealed type is "__main__.ClassC2[builtins.int]"
 
-    # k = ClassC2()  # TODO
-    # reveal_type(k)  # Revealed type is "__main__.ClassC2[builtins.str, Unpack[builtins.tuple[builtins.float, ...]]]"  # TODO
+    k = ClassC2()
+    reveal_type(k)  # N: Revealed type is "__main__.ClassC2[builtins.str, Unpack[builtins.tuple[builtins.float, ...]]]"
     l = ClassC2[int]()
     # reveal_type(l)  # Revealed type is "__main__.ClassC2[builtins.int, Unpack[builtins.tuple[builtins.float, ...]]]"  # TODO
     m = ClassC2[int, Unpack[Tuple[()]]]()
@@ -308,8 +308,8 @@ def func_c3(
     reveal_type(b)  # N: Revealed type is "__main__.ClassC3[builtins.int]"
     reveal_type(c)  # N: Revealed type is "__main__.ClassC3[builtins.int, builtins.float]"
 
-    # k = ClassC3()  # TODO
-    # reveal_type(k)  # Revealed type is "__main__.ClassC3[builtins.str]"  # TODO
+    k = ClassC3()
+    reveal_type(k)  # N: Revealed type is "__main__.ClassC3[builtins.str]"
     l = ClassC3[int]()
     reveal_type(l)  # N: Revealed type is "__main__.ClassC3[builtins.int]"
     m = ClassC3[int, Unpack[Tuple[float]]]()
