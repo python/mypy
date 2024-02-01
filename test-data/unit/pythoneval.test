@@ -1570,7 +1570,7 @@ from typing import OrderedDict
 x: OrderedDict[str, int] = OrderedDict({})
 reveal_type(x)
 [out]
-_testTypingOrderedDictAlias.py:4: note: Revealed type is "collections.OrderedDict[builtins.str, builtins.int]"
+_testTypingOrderedDictAlias.py:3: note: Revealed type is "collections.OrderedDict[builtins.str, builtins.int]"
 
 [case testTypingExtensionsOrderedDictAlias]
 from typing_extensions import OrderedDict
@@ -1736,12 +1736,12 @@ CU4: TypeAlias = int | Callable[[str | bool], str]
 [out]
 m.pyi:5: note: Revealed type is "typing._SpecialForm"
 m.pyi:22: note: Revealed type is "typing._SpecialForm"
-_testTypeAliasWithNewStyleUnionInStub.py:4: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
-_testTypeAliasWithNewStyleUnionInStub.py:6: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
-_testTypeAliasWithNewStyleUnionInStub.py:8: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
-_testTypeAliasWithNewStyleUnionInStub.py:10: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
-_testTypeAliasWithNewStyleUnionInStub.py:12: note: Revealed type is "Union[builtins.str, Type[builtins.int]]"
-_testTypeAliasWithNewStyleUnionInStub.py:14: note: Revealed type is "Union[builtins.str, Type[builtins.int]]"
+_testTypeAliasWithNewStyleUnionInStub.py:3: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
+_testTypeAliasWithNewStyleUnionInStub.py:5: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
+_testTypeAliasWithNewStyleUnionInStub.py:7: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
+_testTypeAliasWithNewStyleUnionInStub.py:9: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
+_testTypeAliasWithNewStyleUnionInStub.py:11: note: Revealed type is "Union[builtins.str, Type[builtins.int]]"
+_testTypeAliasWithNewStyleUnionInStub.py:13: note: Revealed type is "Union[builtins.str, Type[builtins.int]]"
 
 [case testEnumNameWorkCorrectlyOn311]
 # flags: --python-version 3.11
