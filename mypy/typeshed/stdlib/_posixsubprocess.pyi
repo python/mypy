@@ -1,7 +1,7 @@
 import sys
 from _typeshed import StrOrBytesPath
 from collections.abc import Callable, Sequence
-from typing_extensions import SupportsIndex
+from typing import SupportsIndex
 
 if sys.platform != "win32":
     def cloexec_pipe() -> tuple[int, int]: ...

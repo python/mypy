@@ -1,11 +1,10 @@
-import sys
 import types
 from _codecs import *
 from _typeshed import ReadableBuffer
 from abc import abstractmethod
 from collections.abc import Callable, Generator, Iterable
-from typing import Any, BinaryIO, Protocol, TextIO
-from typing_extensions import Literal, Self
+from typing import Any, BinaryIO, Literal, Protocol, TextIO
+from typing_extensions import Self
 
 __all__ = [
     "register",
@@ -129,17 +128,9 @@ def getincrementalencoder(encoding: str) -> _IncrementalEncoder: ...
 def getincrementaldecoder(encoding: str) -> _IncrementalDecoder: ...
 def getreader(encoding: str) -> _StreamReader: ...
 def getwriter(encoding: str) -> _StreamWriter: ...
-
-if sys.version_info >= (3, 8):
-    def open(
-        filename: str, mode: str = "r", encoding: str | None = None, errors: str = "strict", buffering: int = -1
-    ) -> StreamReaderWriter: ...
-
-else:
-    def open(
-        filename: str, mode: str = "r", encoding: str | None = None, errors: str = "strict", buffering: int = 1
-    ) -> StreamReaderWriter: ...
-
+def open(
+    filename: str, mode: str = "r", encoding: str | None = None, errors: str = "strict", buffering: int = -1
+) -> StreamReaderWriter: ...
 def EncodedFile(file: _Stream, data_encoding: str, file_encoding: str | None = None, errors: str = "strict") -> StreamRecoder: ...
 def iterencode(iterator: Iterable[str], encoding: str, errors: str = "strict") -> Generator[bytes, None, None]: ...
 def iterdecode(iterator: Iterable[bytes], encoding: str, errors: str = "strict") -> Generator[str, None, None]: ...

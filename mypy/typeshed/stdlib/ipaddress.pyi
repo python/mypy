@@ -1,7 +1,7 @@
 import sys
 from collections.abc import Iterable, Iterator
-from typing import Any, Generic, SupportsInt, TypeVar, overload
-from typing_extensions import Literal, Self, TypeAlias
+from typing import Any, Generic, Literal, SupportsInt, TypeVar, overload
+from typing_extensions import Self, TypeAlias
 
 # Undocumented length constants
 IPV4LENGTH: Literal[32]

@@ -1,6 +1,6 @@
 import sys
 from _typeshed import structseq
-from typing_extensions import Final, final
+from typing import Final, final
 
 if sys.platform != "win32":
     RLIMIT_AS: int

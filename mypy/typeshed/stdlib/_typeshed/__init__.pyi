@@ -7,8 +7,22 @@ from collections.abc import Awaitable, Callable, Iterable, Sequence, Set as Abst
 from dataclasses import Field
 from os import PathLike
 from types import FrameType, TracebackType
-from typing import Any, AnyStr, ClassVar, Generic, Protocol, SupportsFloat, SupportsInt, TypeVar, overload
-from typing_extensions import Buffer, Final, Literal, LiteralString, SupportsIndex, TypeAlias, final
+from typing import (
+    Any,
+    AnyStr,
+    ClassVar,
+    Final,
+    Generic,
+    Literal,
+    Protocol,
+    SupportsFloat,
+    SupportsIndex,
+    SupportsInt,
+    TypeVar,
+    final,
+    overload,
+)
+from typing_extensions import Buffer, LiteralString, TypeAlias
 
 _KT = TypeVar("_KT")
 _KT_co = TypeVar("_KT_co", covariant=True)
@@ -19,8 +33,10 @@ _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
 _T_contra = TypeVar("_T_contra", contravariant=True)
 
-# Use for "self" annotations:
-#   def __enter__(self: Self) -> Self: ...
+# Alternative to `typing_extensions.Self`, exclusively for use with `__new__`
+# in metaclasses:
+#     def __new__(cls: type[Self], ...) -> Self: ...
+# In other cases, use `typing_extensions.Self`.
 Self = TypeVar("Self")  # noqa: Y001
 
 # covariant version of typing.AnyStr, useful for protocols

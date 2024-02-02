@@ -2,8 +2,7 @@ import socket
 import sys
 from _typeshed import Incomplete, ReadableBuffer, WriteableBuffer
 from collections.abc import Callable
-from typing import IO, Any, ClassVar, NoReturn
-from typing_extensions import Literal
+from typing import IO, Any, ClassVar, Literal, NoReturn
 
 from . import events, futures, proactor_events, selector_events, streams, windows_utils
 

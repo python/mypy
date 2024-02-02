@@ -4,8 +4,7 @@ from ctypes import _CData, _SimpleCData, c_char
 from multiprocessing.context import BaseContext
 from multiprocessing.synchronize import _LockLike
 from types import TracebackType
-from typing import Any, Generic, Protocol, TypeVar, overload
-from typing_extensions import Literal
+from typing import Any, Generic, Literal, Protocol, TypeVar, overload
 
 __all__ = ["RawValue", "RawArray", "Value", "Array", "copy", "synchronized"]
 
