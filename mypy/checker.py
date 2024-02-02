@@ -2023,7 +2023,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     original_type = get_property_type(original_type)
 
             if is_property(defn):
-                inner = self.extract_callable_type(typ, context)
+                if isinstance(typ, FunctionLike):
+                    inner = typ
+                else:
+                    inner = self.extract_callable_type(typ, context)
                 if inner is not None:
                     typ = inner
                     typ = get_property_type(typ)
