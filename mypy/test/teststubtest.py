@@ -1286,6 +1286,24 @@ class StubtestUnit(unittest.TestCase):
         yield Case(stub="", runtime="from string import ascii_letters", error=None)
 
     @collect_cases
+    def test_missing_no_runtime_all_terrible(self) -> Iterator[Case]:
+        yield Case(
+            stub="",
+            runtime="""
+import sys
+import types
+import __future__
+_m = types.SimpleNamespace()
+_m.annotations = __future__.annotations
+sys.modules["_terrible_stubtest_test_module"] = _m
+
+from _terrible_stubtest_test_module import *
+assert annotations
+""",
+            error=None,
+        )
+
+    @collect_cases
     def test_non_public_1(self) -> Iterator[Case]:
         yield Case(
             stub="__all__: list[str]", runtime="", error=f"{TEST_MODULE_NAME}.__all__"

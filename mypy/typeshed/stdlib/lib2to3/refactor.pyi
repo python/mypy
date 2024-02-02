@@ -3,8 +3,7 @@ from collections.abc import Container, Generator, Iterable, Mapping
 from logging import Logger, _ExcInfoType
 from multiprocessing import JoinableQueue
 from multiprocessing.synchronize import Lock
-from typing import Any, ClassVar, NoReturn, overload
-from typing_extensions import Final
+from typing import Any, ClassVar, Final, NoReturn, overload
 
 from .btm_matcher import BottomMatcher
 from .fixer_base import BaseFix

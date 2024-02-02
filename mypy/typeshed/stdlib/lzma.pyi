@@ -1,8 +1,8 @@
 from _compression import BaseStream
 from _typeshed import ReadableBuffer, StrOrBytesPath
 from collections.abc import Mapping, Sequence
-from typing import IO, Any, TextIO, overload
-from typing_extensions import Literal, Self, TypeAlias, final
+from typing import IO, Any, Literal, TextIO, final, overload
+from typing_extensions import Self, TypeAlias
 
 __all__ = [
     "CHECK_NONE",

@@ -1,6 +1,5 @@
 import sys
-from typing import Any
-from typing_extensions import final
+from typing import Any, final
 
 class Str(str): ...
 

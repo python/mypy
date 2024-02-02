@@ -185,9 +185,11 @@ class Attribute:
             "init": self.init,
             "kw_only": self.kw_only,
             "has_converter": self.converter is not None,
-            "converter_init_type": self.converter.init_type.serialize()
-            if self.converter and self.converter.init_type
-            else None,
+            "converter_init_type": (
+                self.converter.init_type.serialize()
+                if self.converter and self.converter.init_type
+                else None
+            ),
             "context_line": self.context.line,
             "context_column": self.context.column,
             "init_type": self.init_type.serialize() if self.init_type else None,
@@ -1073,9 +1075,11 @@ def _meet_fields(types: list[Mapping[str, Type]]) -> Mapping[str, Type]:
             field_to_types[name].append(typ)
 
     return {
-        name: get_proper_type(reduce(meet_types, f_types))
-        if len(f_types) == len(types)
-        else UninhabitedType()
+        name: (
+            get_proper_type(reduce(meet_types, f_types))
+            if len(f_types) == len(types)
+            else UninhabitedType()
+        )
         for name, f_types in field_to_types.items()
     }
 

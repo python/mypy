@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing_extensions import Literal
+from typing import Literal
 
 from .fix_imports import FixImports
 

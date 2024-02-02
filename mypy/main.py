@@ -342,7 +342,6 @@ FOOTER: Final = """Environment variables:
 
 
 class CapturableArgumentParser(argparse.ArgumentParser):
-
     """Override ArgumentParser methods that use sys.stdout/sys.stderr directly.
 
     This is needed because hijacking sys.std* is not thread-safe,
@@ -396,7 +395,6 @@ class CapturableArgumentParser(argparse.ArgumentParser):
 
 
 class CapturableVersionAction(argparse.Action):
-
     """Supplement CapturableArgumentParser to handle --version.
 
     This is nearly identical to argparse._VersionAction except,

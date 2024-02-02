@@ -1,6 +1,7 @@
 import sys
 from collections.abc import Callable, Iterable
-from typing_extensions import Literal, TypeAlias
+from typing import Literal
+from typing_extensions import TypeAlias
 
 if sys.platform != "win32":
     __all__ = ["openpty", "fork", "spawn"]

@@ -1347,18 +1347,21 @@ class MessageBuilder:
         return target
 
     def incompatible_type_application(
-        self, expected_arg_count: int, actual_arg_count: int, context: Context
+        self, min_arg_count: int, max_arg_count: int, actual_arg_count: int, context: Context
     ) -> None:
-        if expected_arg_count == 0:
+        if max_arg_count == 0:
             self.fail("Type application targets a non-generic function or class", context)
-        elif actual_arg_count > expected_arg_count:
-            self.fail(
-                f"Type application has too many types ({expected_arg_count} expected)", context
-            )
+            return
+
+        if min_arg_count == max_arg_count:
+            s = f"{max_arg_count} expected"
         else:
-            self.fail(
-                f"Type application has too few types ({expected_arg_count} expected)", context
-            )
+            s = f"expected between {min_arg_count} and {max_arg_count}"
+
+        if actual_arg_count > max_arg_count:
+            self.fail(f"Type application has too many types ({s})", context)
+        else:
+            self.fail(f"Type application has too few types ({s})", context)
 
     def could_not_infer_type_arguments(
         self, callee_type: CallableType, n: int, context: Context
@@ -2512,10 +2515,10 @@ def format_type_inner(
         else:
             base_str = itype.type.name
         if not itype.args:
-            if not itype.type.has_type_var_tuple_type:
-                # No type arguments, just return the type name
-                return base_str
-            return base_str + "[()]"
+            if itype.type.has_type_var_tuple_type and len(itype.type.type_vars) == 1:
+                return base_str + "[()]"
+            # No type arguments, just return the type name
+            return base_str
         elif itype.type.fullname == "builtins.tuple":
             item_type_str = format(itype.args[0])
             return f"{'tuple' if options.use_lowercase_names() else 'Tuple'}[{item_type_str}, ...]"

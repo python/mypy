@@ -156,12 +156,9 @@ class TypedDictAnalyzer:
         # Iterate over bases in reverse order so that leftmost base class' keys take precedence
         for base in reversed(typeddict_bases):
             self.add_keys_and_types_from_base(base, keys, types, required_keys, defn)
-        (
-            new_keys,
-            new_types,
-            new_statements,
-            new_required_keys,
-        ) = self.analyze_typeddict_classdef_fields(defn, keys)
+        (new_keys, new_types, new_statements, new_required_keys) = (
+            self.analyze_typeddict_classdef_fields(defn, keys)
+        )
         if new_keys is None:
             return True, None  # Defer
         keys.extend(new_keys)

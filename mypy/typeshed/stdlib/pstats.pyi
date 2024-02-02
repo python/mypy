@@ -3,8 +3,8 @@ from _typeshed import StrEnum, StrOrBytesPath
 from collections.abc import Iterable
 from cProfile import Profile as _cProfile
 from profile import Profile
-from typing import IO, Any, overload
-from typing_extensions import Literal, Self, TypeAlias
+from typing import IO, Any, Literal, overload
+from typing_extensions import Self, TypeAlias
 
 if sys.version_info >= (3, 9):
     __all__ = ["Stats", "SortKey", "FunctionProfile", "StatsProfile"]

@@ -3,6 +3,10 @@
 The mypy configuration file
 ===========================
 
+Mypy is very configurable. This is most useful when introducing typing to
+an existing codebase. See :ref:`existing-code` for concrete advice for
+that situation.
+
 Mypy supports reading configuration settings from a file with the following precedence order:
 
     1. ``./mypy.ini``

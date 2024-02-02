@@ -1655,7 +1655,7 @@ __all__ = ('b',)
 [builtins fixtures/tuple.pyi]
 
 [case testNoImplicitReexportGetAttr]
-# flags: --no-implicit-reexport --python-version 3.7
+# flags: --no-implicit-reexport
 from other_module_2 import a  # E: Module "other_module_2" does not explicitly export attribute "a"
 reveal_type(a)  # N: Revealed type is "builtins.int"
 from other_module_2 import b  # E: Module "other_module_2" does not explicitly export attribute "b"

@@ -2132,11 +2132,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 unknown = UninhabitedType()
                 unknown.ambiguous = True
                 inferred_args = [
-                    expand_type(
-                        a, {v.id: unknown for v in list(callee_type.variables) + free_vars}
+                    (
+                        expand_type(
+                            a, {v.id: unknown for v in list(callee_type.variables) + free_vars}
+                        )
+                        if a is not None
+                        else None
                     )
-                    if a is not None
-                    else None
                     for a in poly_inferred_args
                 ]
         else:
@@ -2825,6 +2827,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # Return early if possible; otherwise record info, so we can
                 # check for ambiguity due to 'Any' below.
                 if not args_contain_any:
+                    self.chk.store_types(m)
                     return ret_type, infer_type
                 p_infer_type = get_proper_type(infer_type)
                 if isinstance(p_infer_type, CallableType):
@@ -4711,6 +4714,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         item = get_proper_type(
             set_any_tvars(
                 alias,
+                [],
                 ctx.line,
                 ctx.column,
                 self.chk.options,
@@ -4808,21 +4812,29 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         tp = get_proper_type(tp)
 
         if isinstance(tp, CallableType):
-            if len(tp.variables) != len(args) and not any(
-                isinstance(v, TypeVarTupleType) for v in tp.variables
-            ):
+            min_arg_count = sum(not v.has_default() for v in tp.variables)
+            has_type_var_tuple = any(isinstance(v, TypeVarTupleType) for v in tp.variables)
+            if (
+                len(args) < min_arg_count or len(args) > len(tp.variables)
+            ) and not has_type_var_tuple:
                 if tp.is_type_obj() and tp.type_object().fullname == "builtins.tuple":
                     # TODO: Specialize the callable for the type arguments
                     return tp
-                self.msg.incompatible_type_application(len(tp.variables), len(args), ctx)
+                self.msg.incompatible_type_application(
+                    min_arg_count, len(tp.variables), len(args), ctx
+                )
                 return AnyType(TypeOfAny.from_error)
             return self.apply_generic_arguments(tp, self.split_for_callable(tp, args, ctx), ctx)
         if isinstance(tp, Overloaded):
             for it in tp.items:
-                if len(it.variables) != len(args) and not any(
-                    isinstance(v, TypeVarTupleType) for v in it.variables
-                ):
-                    self.msg.incompatible_type_application(len(it.variables), len(args), ctx)
+                min_arg_count = sum(not v.has_default() for v in it.variables)
+                has_type_var_tuple = any(isinstance(v, TypeVarTupleType) for v in it.variables)
+                if (
+                    len(args) < min_arg_count or len(args) > len(it.variables)
+                ) and not has_type_var_tuple:
+                    self.msg.incompatible_type_application(
+                        min_arg_count, len(it.variables), len(args), ctx
+                    )
                     return AnyType(TypeOfAny.from_error)
             return Overloaded(
                 [
@@ -6032,14 +6044,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return self.named_type("builtins.bool")
 
     @overload
-    def narrow_type_from_binder(self, expr: Expression, known_type: Type) -> Type:
-        ...
+    def narrow_type_from_binder(self, expr: Expression, known_type: Type) -> Type: ...
 
     @overload
     def narrow_type_from_binder(
         self, expr: Expression, known_type: Type, skip_non_overlapping: bool
-    ) -> Type | None:
-        ...
+    ) -> Type | None: ...
 
     def narrow_type_from_binder(
         self, expr: Expression, known_type: Type, skip_non_overlapping: bool = False

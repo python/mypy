@@ -3,17 +3,21 @@ from _typeshed import FileDescriptorOrPath
 from collections.abc import Callable, Generator, Iterable, Sequence
 from re import Pattern
 from token import *
+from token import EXACT_TOKEN_TYPES as EXACT_TOKEN_TYPES
 from typing import Any, NamedTuple, TextIO
 from typing_extensions import TypeAlias
 
 __all__ = [
     "AMPER",
     "AMPEREQUAL",
+    "ASYNC",
     "AT",
     "ATEQUAL",
+    "AWAIT",
     "CIRCUMFLEX",
     "CIRCUMFLEXEQUAL",
     "COLON",
+    "COLONEQUAL",
     "COMMA",
     "COMMENT",
     "DEDENT",
@@ -68,28 +72,23 @@ __all__ = [
     "STAREQUAL",
     "STRING",
     "TILDE",
+    "TYPE_COMMENT",
+    "TYPE_IGNORE",
     "TokenInfo",
     "VBAR",
     "VBAREQUAL",
     "detect_encoding",
+    "generate_tokens",
     "tok_name",
     "tokenize",
     "untokenize",
 ]
-
-if sys.version_info >= (3, 8):
-    __all__ += ["ASYNC", "AWAIT", "COLONEQUAL", "generate_tokens", "TYPE_COMMENT", "TYPE_IGNORE"]
 
 if sys.version_info >= (3, 10):
     __all__ += ["SOFT_KEYWORD"]
 
 if sys.version_info >= (3, 12):
     __all__ += ["EXCLAMATION", "FSTRING_END", "FSTRING_MIDDLE", "FSTRING_START"]
-
-if sys.version_info >= (3, 8):
-    from token import EXACT_TOKEN_TYPES as EXACT_TOKEN_TYPES
-else:
-    EXACT_TOKEN_TYPES: dict[str, int]
 
 cookie_re: Pattern[str]
 blank_re: Pattern[bytes]

@@ -1,18 +1,11 @@
-import sys
 from collections.abc import Iterable
 from typing import TextIO
 from typing_extensions import Self
 
-if sys.version_info >= (3, 8):
-    __all__ = ["shlex", "split", "quote", "join"]
-else:
-    __all__ = ["shlex", "split", "quote"]
+__all__ = ["shlex", "split", "quote", "join"]
 
 def split(s: str, comments: bool = False, posix: bool = True) -> list[str]: ...
-
-if sys.version_info >= (3, 8):
-    def join(split_command: Iterable[str]) -> str: ...
-
+def join(split_command: Iterable[str]) -> str: ...
 def quote(s: str) -> str: ...
 
 class shlex(Iterable[str]):

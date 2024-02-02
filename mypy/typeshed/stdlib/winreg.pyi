@@ -1,7 +1,7 @@
 import sys
 from types import TracebackType
-from typing import Any
-from typing_extensions import Literal, Self, TypeAlias, final
+from typing import Any, Literal, final
+from typing_extensions import Self, TypeAlias
 
 if sys.platform == "win32":
     _KeyType: TypeAlias = HKEYType | int

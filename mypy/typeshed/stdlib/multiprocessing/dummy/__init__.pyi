@@ -12,8 +12,7 @@ from threading import (
     RLock as RLock,
     Semaphore as Semaphore,
 )
-from typing import Any
-from typing_extensions import Literal
+from typing import Any, Literal
 
 from .connection import Pipe as Pipe
 
