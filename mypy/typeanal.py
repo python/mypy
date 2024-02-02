@@ -39,6 +39,7 @@ from mypy.nodes import (
 from mypy.options import Options
 from mypy.plugin import AnalyzeTypeContext, Plugin, TypeAnalyzerPluginInterface
 from mypy.semanal_shared import SemanticAnalyzerCoreInterface, paramspec_args, paramspec_kwargs
+from mypy.state import state
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.types import (
     ANNOTATED_TYPE_NAMES,
@@ -1893,7 +1894,8 @@ def fix_instance(
     t.args = tuple(args)
     fix_type_var_tuple_argument(t)
     if not t.type.has_type_var_tuple_type:
-        fixed = expand_type(t, env)
+        with state.strict_optional_set(options.strict_optional):
+            fixed = expand_type(t, env)
         assert isinstance(fixed, Instance)
         t.args = fixed.args
 
