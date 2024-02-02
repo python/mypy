@@ -124,6 +124,7 @@ from typing import Generic, TypeVar, Union, overload
 T1 = TypeVar("T1")
 T2 = TypeVar("T2", default=int)
 T3 = TypeVar("T3", default=str)
+T4 = TypeVar("T4", default=Union[int, None])
 
 class ClassA1(Generic[T2, T3]): ...
 
@@ -199,6 +200,20 @@ def func_a3(
     reveal_type(m)  # N: Revealed type is "__main__.ClassA3[builtins.float, builtins.float]"
     n = ClassA3[float, float, float]()  # E: Type application has too many types (expected between 1 and 2)
     reveal_type(n)  # N: Revealed type is "Any"
+
+class ClassA4(Generic[T4]): ...
+
+def func_a4(
+    a: ClassA4,
+    b: ClassA4[float],
+) -> None:
+    reveal_type(a)  # N: Revealed type is "__main__.ClassA4[Union[builtins.int, None]]"
+    reveal_type(b)  # N: Revealed type is "__main__.ClassA4[builtins.float]"
+
+    k = ClassA4()
+    reveal_type(k)  # N: Revealed type is "__main__.ClassA4[Union[builtins.int, None]]"
+    l = ClassA4[float]()
+    reveal_type(l)  # N: Revealed type is "__main__.ClassA4[builtins.float]"
 
 [case testTypeVarDefaultsClass2]
 # flags: --disallow-any-generics
