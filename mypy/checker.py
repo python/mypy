@@ -2023,6 +2023,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     original_type = get_property_type(original_type)
 
             if is_property(defn):
+                inner: FunctionLike | None
                 if isinstance(typ, FunctionLike):
                     inner = typ
                 else:
