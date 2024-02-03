@@ -305,11 +305,10 @@ class PatternChecker(PatternVisitor[PatternType]):
             narrowed_inner_types = []
             inner_rest_types = []
             for inner_type, new_inner_type in zip(inner_types, new_inner_types):
-                (
-                    narrowed_inner_type,
-                    inner_rest_type,
-                ) = self.chk.conditional_types_with_intersection(
-                    new_inner_type, [get_type_range(inner_type)], o, default=new_inner_type
+                (narrowed_inner_type, inner_rest_type) = (
+                    self.chk.conditional_types_with_intersection(
+                        new_inner_type, [get_type_range(inner_type)], o, default=new_inner_type
+                    )
                 )
                 narrowed_inner_types.append(narrowed_inner_type)
                 inner_rest_types.append(inner_rest_type)

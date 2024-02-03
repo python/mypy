@@ -6,8 +6,7 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Iterator, Mapping, Sequence
 from importlib.machinery import ModuleSpec
 from io import BufferedReader
-from typing import IO, Any, Protocol, overload, runtime_checkable
-from typing_extensions import Literal
+from typing import IO, Any, Literal, Protocol, overload, runtime_checkable
 
 if sys.version_info >= (3, 11):
     __all__ = [

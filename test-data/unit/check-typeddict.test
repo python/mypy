@@ -1764,7 +1764,6 @@ reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point', {'x': builtin
 [builtins fixtures/dict.pyi]
 
 [case testCanCreateTypedDictWithTypingProper]
-# flags: --python-version 3.8
 from typing import TypedDict
 
 class Point(TypedDict):

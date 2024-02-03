@@ -1,5 +1,5 @@
 import sys
-from typing_extensions import Literal
+from typing import Literal
 
 SF_APPEND: Literal[0x00040000]
 SF_ARCHIVED: Literal[0x00010000]
@@ -78,7 +78,7 @@ def S_ISSOCK(mode: int) -> bool: ...
 def S_ISWHT(mode: int) -> bool: ...
 def filemode(mode: int) -> str: ...
 
-if sys.platform == "win32" and sys.version_info >= (3, 8):
+if sys.platform == "win32":
     IO_REPARSE_TAG_SYMLINK: int
     IO_REPARSE_TAG_MOUNT_POINT: int
     IO_REPARSE_TAG_APPEXECLINK: int

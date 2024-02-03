@@ -124,6 +124,7 @@ from typing import Generic, TypeVar, Union, overload
 T1 = TypeVar("T1")
 T2 = TypeVar("T2", default=int)
 T3 = TypeVar("T3", default=str)
+T4 = TypeVar("T4", default=Union[int, None])
 
 class ClassA1(Generic[T2, T3]): ...
 
@@ -200,6 +201,20 @@ def func_a3(
     n = ClassA3[float, float, float]()  # E: Type application has too many types (expected between 1 and 2)
     reveal_type(n)  # N: Revealed type is "Any"
 
+class ClassA4(Generic[T4]): ...
+
+def func_a4(
+    a: ClassA4,
+    b: ClassA4[float],
+) -> None:
+    reveal_type(a)  # N: Revealed type is "__main__.ClassA4[Union[builtins.int, None]]"
+    reveal_type(b)  # N: Revealed type is "__main__.ClassA4[builtins.float]"
+
+    k = ClassA4()
+    reveal_type(k)  # N: Revealed type is "__main__.ClassA4[Union[builtins.int, None]]"
+    l = ClassA4[float]()
+    reveal_type(l)  # N: Revealed type is "__main__.ClassA4[builtins.float]"
+
 [case testTypeVarDefaultsClass2]
 # flags: --disallow-any-generics
 from typing import Generic, ParamSpec
@@ -274,8 +289,8 @@ def func_c1(
     # reveal_type(a)  # Revealed type is "__main__.ClassC1[builtins.int, builtins.str]"  # TODO
     reveal_type(b)  # N: Revealed type is "__main__.ClassC1[builtins.float]"
 
-    # k = ClassC1()  # TODO
-    # reveal_type(k)  # Revealed type is "__main__.ClassC1[builtins.int, builtins.str]"  # TODO
+    k = ClassC1()
+    reveal_type(k)  # N: Revealed type is "__main__.ClassC1[builtins.int, builtins.str]"
     l = ClassC1[float]()
     reveal_type(l)  # N: Revealed type is "__main__.ClassC1[builtins.float]"
 
@@ -290,8 +305,8 @@ def func_c2(
     # reveal_type(b)  # Revealed type is "__main__.ClassC2[builtins.int, Unpack[builtins.tuple[builtins.float, ...]]]"  # TODO
     reveal_type(c)  # N: Revealed type is "__main__.ClassC2[builtins.int]"
 
-    # k = ClassC2()  # TODO
-    # reveal_type(k)  # Revealed type is "__main__.ClassC2[builtins.str, Unpack[builtins.tuple[builtins.float, ...]]]"  # TODO
+    k = ClassC2()
+    reveal_type(k)  # N: Revealed type is "__main__.ClassC2[builtins.str, Unpack[builtins.tuple[builtins.float, ...]]]"
     l = ClassC2[int]()
     # reveal_type(l)  # Revealed type is "__main__.ClassC2[builtins.int, Unpack[builtins.tuple[builtins.float, ...]]]"  # TODO
     m = ClassC2[int, Unpack[Tuple[()]]]()
@@ -308,8 +323,8 @@ def func_c3(
     reveal_type(b)  # N: Revealed type is "__main__.ClassC3[builtins.int]"
     reveal_type(c)  # N: Revealed type is "__main__.ClassC3[builtins.int, builtins.float]"
 
-    # k = ClassC3()  # TODO
-    # reveal_type(k)  # Revealed type is "__main__.ClassC3[builtins.str]"  # TODO
+    k = ClassC3()
+    reveal_type(k)  # N: Revealed type is "__main__.ClassC3[builtins.str]"
     l = ClassC3[int]()
     reveal_type(l)  # N: Revealed type is "__main__.ClassC3[builtins.int]"
     m = ClassC3[int, Unpack[Tuple[float]]]()

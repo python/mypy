@@ -1,4 +1,6 @@
-import collections  # Needed by aliases like DefaultDict, see mypy issue 2986
+# TODO: The collections import is required, otherwise mypy crashes.
+# https://github.com/python/mypy/issues/16744
+import collections  # noqa: F401  # pyright: ignore
 import sys
 import typing_extensions
 from _collections_abc import dict_items, dict_keys, dict_values
@@ -18,7 +20,7 @@ from types import (
     TracebackType,
     WrapperDescriptorType,
 )
-from typing_extensions import Never as _Never, ParamSpec as _ParamSpec, final as _final
+from typing_extensions import Never as _Never, ParamSpec as _ParamSpec
 
 if sys.version_info >= (3, 10):
     from types import UnionType
@@ -46,6 +48,7 @@ __all__ = [
     "DefaultDict",
     "Deque",
     "Dict",
+    "Final",
     "FrozenSet",
     "Generator",
     "Generic",
@@ -55,6 +58,7 @@ __all__ = [
     "Iterator",
     "KeysView",
     "List",
+    "Literal",
     "Mapping",
     "MappingView",
     "MutableMapping",
@@ -63,6 +67,7 @@ __all__ = [
     "NamedTuple",
     "NewType",
     "Optional",
+    "Protocol",
     "Reversible",
     "Sequence",
     "Set",
@@ -71,37 +76,30 @@ __all__ = [
     "SupportsBytes",
     "SupportsComplex",
     "SupportsFloat",
+    "SupportsIndex",
     "SupportsInt",
     "SupportsRound",
     "Text",
     "Tuple",
     "Type",
     "TypeVar",
+    "TypedDict",
     "Union",
     "ValuesView",
     "TYPE_CHECKING",
     "cast",
+    "final",
+    "get_args",
+    "get_origin",
     "get_type_hints",
     "no_type_check",
     "no_type_check_decorator",
     "overload",
+    "runtime_checkable",
     "ForwardRef",
     "NoReturn",
     "OrderedDict",
 ]
-
-if sys.version_info >= (3, 8):
-    __all__ += [
-        "Final",
-        "Literal",
-        "Protocol",
-        "SupportsIndex",
-        "TypedDict",
-        "final",
-        "get_args",
-        "get_origin",
-        "runtime_checkable",
-    ]
 
 if sys.version_info >= (3, 9):
     __all__ += ["Annotated", "BinaryIO", "IO", "Match", "Pattern", "TextIO"]
@@ -137,7 +135,8 @@ def type_check_only(func_or_cls: _F) -> _F: ...
 
 Any = object()
 
-@_final
+def final(f: _T) -> _T: ...
+@final
 class TypeVar:
     @property
     def __name__(self) -> str: ...
@@ -175,7 +174,7 @@ class TypeVar:
 _promote = object()
 
 # N.B. Keep this definition in sync with typing_extensions._SpecialForm
-@_final
+@final
 class _SpecialForm:
     def __getitem__(self, parameters: Any) -> object: ...
     if sys.version_info >= (3, 10):
@@ -199,12 +198,11 @@ ClassVar: _SpecialForm
 
 Optional: _SpecialForm
 Tuple: _SpecialForm
-if sys.version_info >= (3, 8):
-    Final: _SpecialForm
-    def final(f: _T) -> _T: ...
-    Literal: _SpecialForm
-    # TypedDict is a (non-subscriptable) special form.
-    TypedDict: object
+Final: _SpecialForm
+
+Literal: _SpecialForm
+# TypedDict is a (non-subscriptable) special form.
+TypedDict: object
 
 if sys.version_info >= (3, 11):
     Self: _SpecialForm
@@ -214,7 +212,7 @@ if sys.version_info >= (3, 11):
     NotRequired: _SpecialForm
     LiteralString: _SpecialForm
 
-    @_final
+    @final
     class TypeVarTuple:
         @property
         def __name__(self) -> str: ...
@@ -224,21 +222,21 @@ if sys.version_info >= (3, 11):
         def __typing_prepare_subst__(self, alias: Incomplete, args: Incomplete) -> Incomplete: ...
 
 if sys.version_info >= (3, 10):
-    @_final
+    @final
     class ParamSpecArgs:
         @property
         def __origin__(self) -> ParamSpec: ...
         def __init__(self, origin: ParamSpec) -> None: ...
         def __eq__(self, other: object) -> bool: ...
 
-    @_final
+    @final
     class ParamSpecKwargs:
         @property
         def __origin__(self) -> ParamSpec: ...
         def __init__(self, origin: ParamSpec) -> None: ...
         def __eq__(self, other: object) -> bool: ...
 
-    @_final
+    @final
     class ParamSpec:
         @property
         def __name__(self) -> str: ...
@@ -301,7 +299,7 @@ _VT = TypeVar("_VT")  # Value type.
 _T_co = TypeVar("_T_co", covariant=True)  # Any type covariant containers.
 _KT_co = TypeVar("_KT_co", covariant=True)  # Key type covariant containers.
 _VT_co = TypeVar("_VT_co", covariant=True)  # Value type covariant containers.
-_TC = TypeVar("_TC", bound=Type[object])
+_TC = TypeVar("_TC", bound=type[object])
 
 def no_type_check(arg: _F) -> _F: ...
 def no_type_check_decorator(decorator: Callable[_P, _T]) -> Callable[_P, _T]: ...
@@ -329,8 +327,6 @@ if sys.version_info >= (3, 9):
 # Predefined type variables.
 AnyStr = TypeVar("AnyStr", str, bytes)  # noqa: Y001
 
-# Technically in 3.7 this inherited from GenericMeta. But let's not reflect that, since
-# type checkers tend to assume that Protocols all have the ABCMeta metaclass.
 class _ProtocolMeta(ABCMeta):
     if sys.version_info >= (3, 12):
         def __init__(cls, *args: Any, **kwargs: Any) -> None: ...
@@ -358,11 +354,10 @@ class SupportsBytes(Protocol, metaclass=ABCMeta):
     @abstractmethod
     def __bytes__(self) -> bytes: ...
 
-if sys.version_info >= (3, 8):
-    @runtime_checkable
-    class SupportsIndex(Protocol, metaclass=ABCMeta):
-        @abstractmethod
-        def __index__(self) -> int: ...
+@runtime_checkable
+class SupportsIndex(Protocol, metaclass=ABCMeta):
+    @abstractmethod
+    def __index__(self) -> int: ...
 
 @runtime_checkable
 class SupportsAbs(Protocol[_T_co]):
@@ -418,7 +413,7 @@ class Generator(Iterator[_YieldT_co], Generic[_YieldT_co, _SendT_contra, _Return
     @overload
     @abstractmethod
     def throw(
-        self, __typ: Type[BaseException], __val: BaseException | object = None, __tb: TracebackType | None = None
+        self, __typ: type[BaseException], __val: BaseException | object = None, __tb: TracebackType | None = None
     ) -> _YieldT_co: ...
     @overload
     @abstractmethod
@@ -455,7 +450,7 @@ class Coroutine(Awaitable[_ReturnT_co], Generic[_YieldT_co, _SendT_contra, _Retu
     @overload
     @abstractmethod
     def throw(
-        self, __typ: Type[BaseException], __val: BaseException | object = None, __tb: TracebackType | None = None
+        self, __typ: type[BaseException], __val: BaseException | object = None, __tb: TracebackType | None = None
     ) -> _YieldT_co: ...
     @overload
     @abstractmethod
@@ -491,7 +486,7 @@ class AsyncGenerator(AsyncIterator[_YieldT_co], Generic[_YieldT_co, _SendT_contr
     @overload
     @abstractmethod
     def athrow(
-        self, __typ: Type[BaseException], __val: BaseException | object = None, __tb: TracebackType | None = None
+        self, __typ: type[BaseException], __val: BaseException | object = None, __tb: TracebackType | None = None
     ) -> Awaitable[_YieldT_co]: ...
     @overload
     @abstractmethod
@@ -602,9 +597,7 @@ class ItemsView(MappingView, AbstractSet[tuple[_KT_co, _VT_co]], Generic[_KT_co,
     def __rand__(self, other: Iterable[_T]) -> set[_T]: ...
     def __contains__(self, item: object) -> bool: ...
     def __iter__(self) -> Iterator[tuple[_KT_co, _VT_co]]: ...
-    if sys.version_info >= (3, 8):
-        def __reversed__(self) -> Iterator[tuple[_KT_co, _VT_co]]: ...
-
+    def __reversed__(self) -> Iterator[tuple[_KT_co, _VT_co]]: ...
     def __or__(self, other: Iterable[_T]) -> set[tuple[_KT_co, _VT_co] | _T]: ...
     def __ror__(self, other: Iterable[_T]) -> set[tuple[_KT_co, _VT_co] | _T]: ...
     def __sub__(self, other: Iterable[Any]) -> set[tuple[_KT_co, _VT_co]]: ...
@@ -618,9 +611,7 @@ class KeysView(MappingView, AbstractSet[_KT_co]):
     def __rand__(self, other: Iterable[_T]) -> set[_T]: ...
     def __contains__(self, key: object) -> bool: ...
     def __iter__(self) -> Iterator[_KT_co]: ...
-    if sys.version_info >= (3, 8):
-        def __reversed__(self) -> Iterator[_KT_co]: ...
-
+    def __reversed__(self) -> Iterator[_KT_co]: ...
     def __or__(self, other: Iterable[_T]) -> set[_KT_co | _T]: ...
     def __ror__(self, other: Iterable[_T]) -> set[_KT_co | _T]: ...
     def __sub__(self, other: Iterable[Any]) -> set[_KT_co]: ...
@@ -632,8 +623,7 @@ class ValuesView(MappingView, Collection[_VT_co]):
     def __init__(self, mapping: Mapping[Any, _VT_co]) -> None: ...  # undocumented
     def __contains__(self, value: object) -> bool: ...
     def __iter__(self) -> Iterator[_VT_co]: ...
-    if sys.version_info >= (3, 8):
-        def __reversed__(self) -> Iterator[_VT_co]: ...
+    def __reversed__(self) -> Iterator[_VT_co]: ...
 
 class Mapping(Collection[_KT], Generic[_KT, _VT_co]):
     # TODO: We wish the key type could also be covariant, but that doesn't work,
@@ -772,7 +762,7 @@ class IO(Iterator[AnyStr]):
     def __enter__(self) -> IO[AnyStr]: ...
     @abstractmethod
     def __exit__(
-        self, __type: Type[BaseException] | None, __value: BaseException | None, __traceback: TracebackType | None
+        self, __type: type[BaseException] | None, __value: BaseException | None, __traceback: TracebackType | None
     ) -> None: ...
 
 class BinaryIO(IO[bytes]):
@@ -823,24 +813,25 @@ else:
         obj: _get_type_hints_obj_allowed_types, globalns: dict[str, Any] | None = None, localns: dict[str, Any] | None = None
     ) -> dict[str, Any]: ...
 
-if sys.version_info >= (3, 8):
-    def get_args(tp: Any) -> tuple[Any, ...]: ...
+def get_args(tp: Any) -> tuple[Any, ...]: ...
 
-    if sys.version_info >= (3, 10):
-        @overload
-        def get_origin(tp: ParamSpecArgs | ParamSpecKwargs) -> ParamSpec: ...
-        @overload
-        def get_origin(tp: UnionType) -> type[UnionType]: ...
-    if sys.version_info >= (3, 9):
-        @overload
-        def get_origin(tp: GenericAlias) -> type: ...
-        @overload
-        def get_origin(tp: Any) -> Any | None: ...
-    else:
-        def get_origin(tp: Any) -> Any | None: ...
+if sys.version_info >= (3, 10):
+    @overload
+    def get_origin(tp: ParamSpecArgs | ParamSpecKwargs) -> ParamSpec: ...
+    @overload
+    def get_origin(tp: UnionType) -> type[UnionType]: ...
+
+if sys.version_info >= (3, 9):
+    @overload
+    def get_origin(tp: GenericAlias) -> type: ...
+    @overload
+    def get_origin(tp: Any) -> Any | None: ...
+
+else:
+    def get_origin(tp: Any) -> Any | None: ...
 
 @overload
-def cast(typ: Type[_T], val: Any) -> _T: ...
+def cast(typ: type[_T], val: Any) -> _T: ...
 @overload
 def cast(typ: str, val: Any) -> Any: ...
 @overload
@@ -865,9 +856,7 @@ if sys.version_info >= (3, 11):
 # Type constructors
 
 class NamedTuple(tuple[Any, ...]):
-    if sys.version_info < (3, 8):
-        _field_types: ClassVar[collections.OrderedDict[str, type]]
-    elif sys.version_info < (3, 9):
+    if sys.version_info < (3, 9):
         _field_types: ClassVar[dict[str, type]]
     _field_defaults: ClassVar[dict[str, Any]]
     _fields: ClassVar[tuple[str, ...]]
@@ -881,11 +870,7 @@ class NamedTuple(tuple[Any, ...]):
     def __init__(self, __typename: str, __fields: None = None, **kwargs: Any) -> None: ...
     @classmethod
     def _make(cls, iterable: Iterable[Any]) -> typing_extensions.Self: ...
-    if sys.version_info >= (3, 8):
-        def _asdict(self) -> dict[str, Any]: ...
-    else:
-        def _asdict(self) -> collections.OrderedDict[str, Any]: ...
-
+    def _asdict(self) -> dict[str, Any]: ...
     def _replace(self, **kwargs: Any) -> typing_extensions.Self: ...
 
 # Internal mypy fallback type for all typed dicts (does not exist at runtime)
@@ -923,7 +908,7 @@ class _TypedDict(Mapping[str, object], metaclass=ABCMeta):
         # supposedly incompatible definitions of __or__ and __ior__
         def __ior__(self, __value: typing_extensions.Self) -> typing_extensions.Self: ...  # type: ignore[misc]
 
-@_final
+@final
 class ForwardRef:
     __forward_arg__: str
     __forward_code__: CodeType
@@ -958,7 +943,7 @@ def _type_repr(obj: object) -> str: ...
 
 if sys.version_info >= (3, 12):
     def override(__method: _F) -> _F: ...
-    @_final
+    @final
     class TypeAliasType:
         def __init__(
             self, name: str, value: Any, *, type_params: tuple[TypeVar | ParamSpec | TypeVarTuple, ...] = ()

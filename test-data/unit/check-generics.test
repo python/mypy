@@ -3441,5 +3441,5 @@ def dec(f: Callable[[Unpack[Ts]], Foo[Unpack[Ts]]]) -> Callable[[Unpack[Ts]], Fo
 g: Callable[[T], Foo[int]]
 reveal_type(dec(g))  # N: Revealed type is "def (builtins.int) -> __main__.Foo[builtins.int]"
 h: Callable[[Unpack[Us]], Foo[int]]
-reveal_type(dec(g))  # N: Revealed type is "def (builtins.int) -> __main__.Foo[builtins.int]"
+reveal_type(dec(h))  # N: Revealed type is "def (builtins.int) -> __main__.Foo[builtins.int]"
 [builtins fixtures/list.pyi]

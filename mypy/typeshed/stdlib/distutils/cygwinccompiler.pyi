@@ -1,7 +1,7 @@
 from distutils.unixccompiler import UnixCCompiler
 from distutils.version import LooseVersion
 from re import Pattern
-from typing_extensions import Literal
+from typing import Literal
 
 def get_msvcr() -> list[str] | None: ...
 

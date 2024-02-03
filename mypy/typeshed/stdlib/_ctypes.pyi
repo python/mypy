@@ -2,7 +2,7 @@ import sys
 from _typeshed import ReadableBuffer, WriteableBuffer
 from abc import abstractmethod
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
-from ctypes import CDLL
+from ctypes import CDLL, ArgumentError as ArgumentError
 from typing import Any, ClassVar, Generic, TypeVar, overload
 from typing_extensions import Self, TypeAlias
 
@@ -196,8 +196,6 @@ class Array(_CData, Generic[_CT]):
     def __len__(self) -> int: ...
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
-
-class ArgumentError(Exception): ...
 
 def addressof(obj: _CData) -> int: ...
 def alignment(obj_or_type: _CData | type[_CData]) -> int: ...

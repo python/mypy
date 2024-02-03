@@ -3,8 +3,8 @@ import sys
 from _compression import BaseStream
 from _typeshed import ReadableBuffer, StrOrBytesPath, WriteableBuffer
 from collections.abc import Iterable
-from typing import IO, Any, Protocol, TextIO, overload
-from typing_extensions import Literal, Self, SupportsIndex, TypeAlias, final
+from typing import IO, Any, Literal, Protocol, SupportsIndex, TextIO, final, overload
+from typing_extensions import Self, TypeAlias
 
 __all__ = ["BZ2File", "BZ2Compressor", "BZ2Decompressor", "open", "compress", "decompress"]
 

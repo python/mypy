@@ -5,8 +5,8 @@ from builtins import list as _list  # "list" conflicts with method name
 from collections.abc import Callable, Container, Mapping, MutableMapping
 from reprlib import Repr
 from types import MethodType, ModuleType, TracebackType
-from typing import IO, Any, AnyStr, NoReturn, TypeVar
-from typing_extensions import Final, TypeGuard
+from typing import IO, Any, AnyStr, Final, NoReturn, TypeVar
+from typing_extensions import TypeGuard
 
 __all__ = ["help"]
 

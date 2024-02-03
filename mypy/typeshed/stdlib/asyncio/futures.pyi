@@ -1,25 +1,16 @@
 import sys
 from collections.abc import Awaitable, Callable, Generator, Iterable
-from concurrent.futures._base import Error, Future as _ConcurrentFuture
-from typing import Any, TypeVar
-from typing_extensions import Literal, Self, TypeGuard
+from concurrent.futures._base import Future as _ConcurrentFuture
+from contextvars import Context
+from typing import Any, Literal, TypeVar
+from typing_extensions import Self, TypeGuard
 
 from .events import AbstractEventLoop
-
-if sys.version_info < (3, 8):
-    from concurrent.futures import CancelledError as CancelledError, TimeoutError as TimeoutError
-
-    class InvalidStateError(Error): ...
-
-from contextvars import Context
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
 
-if sys.version_info >= (3, 8):
-    __all__ = ("Future", "wrap_future", "isfuture")
-else:
-    __all__ = ("CancelledError", "TimeoutError", "InvalidStateError", "Future", "wrap_future", "isfuture")
+__all__ = ("Future", "wrap_future", "isfuture")
 
 _T = TypeVar("_T")
 

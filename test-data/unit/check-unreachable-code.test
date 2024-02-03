@@ -798,7 +798,7 @@ def baz(x: int) -> int:
 [builtins fixtures/exception.pyi]
 
 [case testUnreachableFlagIgnoresSemanticAnalysisUnreachable]
-# flags: --warn-unreachable --python-version 3.7 --platform win32 --always-false FOOBAR
+# flags: --warn-unreachable --python-version 3.8 --platform win32 --always-false FOOBAR
 import sys
 from typing import TYPE_CHECKING
 
@@ -828,7 +828,7 @@ if sys.version_info == (2, 7):
 else:
     reveal_type(x)  # N: Revealed type is "builtins.int"
 
-if sys.version_info == (3, 7):
+if sys.version_info == (3, 8):
     reveal_type(x)  # N: Revealed type is "builtins.int"
 else:
     reveal_type(x)
@@ -1155,7 +1155,7 @@ def f_suppress() -> int:  # E: Missing return statement
 [builtins fixtures/tuple.pyi]
 
 [case testUnreachableFlagContextAsyncManagersNoSuppress]
-# flags: --warn-unreachable --python-version 3.7
+# flags: --warn-unreachable
 from contextlib import asynccontextmanager
 from typing import Optional, AsyncIterator, Any
 from typing_extensions import Literal
@@ -1221,7 +1221,7 @@ async def f_no_suppress_5() -> int:
 [builtins fixtures/tuple.pyi]
 
 [case testUnreachableFlagContextAsyncManagersSuppressed]
-# flags: --warn-unreachable --python-version 3.7
+# flags: --warn-unreachable
 from contextlib import asynccontextmanager
 from typing import Optional, AsyncIterator, Any
 from typing_extensions import Literal
@@ -1268,7 +1268,7 @@ async def f_mix() -> int:         # E: Missing return statement
 [builtins fixtures/tuple.pyi]
 
 [case testUnreachableFlagContextAsyncManagersAbnormal]
-# flags: --warn-unreachable --python-version 3.7
+# flags: --warn-unreachable
 from contextlib import asynccontextmanager
 from typing import Optional, AsyncIterator, Any
 from typing_extensions import Literal

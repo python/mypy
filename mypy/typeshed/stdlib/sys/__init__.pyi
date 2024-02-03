@@ -1,13 +1,13 @@
 import sys
 from _typeshed import OptExcInfo, ProfileFunction, TraceFunction, structseq
 from builtins import object as _object
-from collections.abc import AsyncGenerator, Callable, Coroutine, Sequence
+from collections.abc import AsyncGenerator, Callable, Sequence
 from importlib.abc import PathEntryFinder
 from importlib.machinery import ModuleSpec
 from io import TextIOWrapper
 from types import FrameType, ModuleType, TracebackType
-from typing import Any, NoReturn, Protocol, TextIO, TypeVar
-from typing_extensions import Final, Literal, TypeAlias, final
+from typing import Any, Final, Literal, NoReturn, Protocol, TextIO, TypeVar, final
+from typing_extensions import TypeAlias
 
 _T = TypeVar("_T")
 
@@ -55,8 +55,7 @@ platform: str
 if sys.version_info >= (3, 9):
     platlibdir: str
 prefix: str
-if sys.version_info >= (3, 8):
-    pycache_prefix: str | None
+pycache_prefix: str | None
 ps1: object
 ps2: object
 
@@ -322,18 +321,19 @@ if sys.version_info < (3, 9):
     # An 11-tuple or None
     def callstats() -> tuple[int, int, int, int, int, int, int, int, int, int, int] | None: ...
 
-if sys.version_info >= (3, 8):
-    # Doesn't exist at runtime, but exported in the stubs so pytest etc. can annotate their code more easily.
-    class UnraisableHookArgs(Protocol):
-        exc_type: type[BaseException]
-        exc_value: BaseException | None
-        exc_traceback: TracebackType | None
-        err_msg: str | None
-        object: _object
-    unraisablehook: Callable[[UnraisableHookArgs], Any]
-    def __unraisablehook__(__unraisable: UnraisableHookArgs) -> Any: ...
-    def addaudithook(hook: Callable[[str, tuple[Any, ...]], Any]) -> None: ...
-    def audit(__event: str, *args: Any) -> None: ...
+# Doesn't exist at runtime, but exported in the stubs so pytest etc. can annotate their code more easily.
+class UnraisableHookArgs(Protocol):
+    exc_type: type[BaseException]
+    exc_value: BaseException | None
+    exc_traceback: TracebackType | None
+    err_msg: str | None
+    object: _object
+
+unraisablehook: Callable[[UnraisableHookArgs], Any]
+
+def __unraisablehook__(__unraisable: UnraisableHookArgs) -> Any: ...
+def addaudithook(hook: Callable[[str, tuple[Any, ...]], Any]) -> None: ...
+def audit(__event: str, *args: Any) -> None: ...
 
 _AsyncgenHook: TypeAlias = Callable[[AsyncGenerator[Any, Any]], None] | None
 
@@ -353,12 +353,7 @@ if sys.platform == "win32":
 def get_coroutine_origin_tracking_depth() -> int: ...
 def set_coroutine_origin_tracking_depth(depth: int) -> None: ...
 
-if sys.version_info < (3, 8):
-    _CoroWrapper: TypeAlias = Callable[[Coroutine[Any, Any, Any]], Any]
-    def set_coroutine_wrapper(__wrapper: _CoroWrapper) -> None: ...
-    def get_coroutine_wrapper() -> _CoroWrapper: ...
-
-# The following two functions were added in 3.11.0, 3.10.7, 3.9.14, 3.8.14, & 3.7.14,
+# The following two functions were added in 3.11.0, 3.10.7, 3.9.14, and 3.8.14,
 # as part of the response to CVE-2020-10735
 def set_int_max_str_digits(maxdigits: int) -> None: ...
 def get_int_max_str_digits() -> int: ...
