@@ -277,6 +277,8 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
     def expand_unpack(self, t: UnpackType) -> list[Type]:
         assert isinstance(t.type, TypeVarTupleType)
         repl = get_proper_type(self.variables.get(t.type.id, t.type))
+        if isinstance(repl, UnpackType):
+            repl = get_proper_type(repl.type)
         if isinstance(repl, TupleType):
             return repl.items
         elif (
