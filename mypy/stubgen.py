@@ -1619,7 +1619,7 @@ def generate_stub_for_py_module(
     If directory for target doesn't exist it will created. Existing stub
     will be overwritten.
     """
-    if is_private_module(mod.module):
+    if not include_private and is_private_module(mod.module):
         return
 
     if inspect:
