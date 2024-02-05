@@ -1,7 +1,7 @@
 import sys
 from types import TracebackType
-from typing import IO, Any, NamedTuple, overload
-from typing_extensions import Literal, Self, TypeAlias
+from typing import IO, Any, Literal, NamedTuple, overload
+from typing_extensions import Self, TypeAlias
 
 if sys.version_info >= (3, 9):
     __all__ = ["Error", "open"]

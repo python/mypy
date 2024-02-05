@@ -1,5 +1,4 @@
 [case testNarrowingParentWithStrsBasic]
-# flags: --python-version 3.7
 from dataclasses import dataclass
 from typing import NamedTuple, Tuple, Union
 from typing_extensions import Literal, TypedDict
@@ -83,7 +82,6 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingParentWithEnumsBasic]
-# flags: --python-version 3.7
 from enum import Enum
 from dataclasses import dataclass
 from typing import NamedTuple, Tuple, Union
@@ -173,7 +171,6 @@ else:
 [builtins fixtures/narrowing.pyi]
 
 [case testNarrowingParentWithIsInstanceBasic]
-# flags: --python-version 3.7
 from dataclasses import dataclass
 from typing import NamedTuple, Tuple, Union
 from typing_extensions import TypedDict
@@ -2022,3 +2019,73 @@ def f(x: Union[int, Sequence[int]]) -> None:
     ):
         reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
 [builtins fixtures/len.pyi]
+
+[case testNarrowingIsSubclassNoneType1]
+from typing import Type, Union
+
+def f(cls: Type[Union[None, int]]) -> None:
+    if issubclass(cls, int):
+        reveal_type(cls)  # N: Revealed type is "Type[builtins.int]"
+    else:
+        reveal_type(cls)  # N: Revealed type is "Type[None]"
+[builtins fixtures/isinstance.pyi]
+
+[case testNarrowingIsSubclassNoneType2]
+from typing import Type, Union
+
+def f(cls: Type[Union[None, int]]) -> None:
+    if issubclass(cls, type(None)):
+        reveal_type(cls)  # N: Revealed type is "Type[None]"
+    else:
+        reveal_type(cls)  # N: Revealed type is "Type[builtins.int]"
+[builtins fixtures/isinstance.pyi]
+
+[case testNarrowingIsSubclassNoneType3]
+from typing import Type, Union
+
+NoneType_ = type(None)
+
+def f(cls: Type[Union[None, int]]) -> None:
+    if issubclass(cls, NoneType_):
+        reveal_type(cls)  # N: Revealed type is "Type[None]"
+    else:
+        reveal_type(cls)  # N: Revealed type is "Type[builtins.int]"
+[builtins fixtures/isinstance.pyi]
+
+[case testNarrowingIsSubclassNoneType4]
+# flags: --python-version 3.10
+
+from types import NoneType
+from typing import Type, Union
+
+def f(cls: Type[Union[None, int]]) -> None:
+    if issubclass(cls, NoneType):
+        reveal_type(cls)  # N: Revealed type is "Type[None]"
+    else:
+        reveal_type(cls)  # N: Revealed type is "Type[builtins.int]"
+[builtins fixtures/isinstance.pyi]
+
+[case testNarrowingIsInstanceNoIntersectionWithFinalTypeAndNoneType]
+# flags: --warn-unreachable --python-version 3.10
+
+from types import NoneType
+from typing import final
+
+class X: ...
+class Y: ...
+@final
+class Z: ...
+
+x: X
+
+if isinstance(x, (Y, Z)):
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "X" and "Y">"
+if isinstance(x, (Y, NoneType)):
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "X" and "Y">1"
+if isinstance(x, (Y, Z, NoneType)):
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "X" and "Y">2"
+if isinstance(x, (Z, NoneType)):  # E: Subclass of "X" and "Z" cannot exist: "Z" is final \
+                                  # E: Subclass of "X" and "NoneType" cannot exist: "NoneType" is final
+    reveal_type(x)  # E: Statement is unreachable
+
+[builtins fixtures/isinstance.pyi]

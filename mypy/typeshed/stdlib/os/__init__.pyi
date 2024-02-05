@@ -25,8 +25,22 @@ from collections.abc import Callable, Iterable, Iterator, Mapping, MutableMappin
 from contextlib import AbstractContextManager
 from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper as _TextIOWrapper
 from subprocess import Popen
-from typing import IO, Any, AnyStr, BinaryIO, Generic, NoReturn, Protocol, TypeVar, overload, runtime_checkable
-from typing_extensions import Final, Literal, Self, TypeAlias, Unpack, final
+from typing import (
+    IO,
+    Any,
+    AnyStr,
+    BinaryIO,
+    Final,
+    Generic,
+    Literal,
+    NoReturn,
+    Protocol,
+    TypeVar,
+    final,
+    overload,
+    runtime_checkable,
+)
+from typing_extensions import Self, TypeAlias, Unpack
 
 from . import path as _path
 
@@ -358,9 +372,8 @@ class stat_result(structseq[float], tuple[int, int, int, int, int, int, int, flo
     if sys.platform == "win32":
         @property
         def st_file_attributes(self) -> int: ...
-        if sys.version_info >= (3, 8):
-            @property
-            def st_reparse_tag(self) -> int: ...
+        @property
+        def st_reparse_tag(self) -> int: ...
         if sys.version_info >= (3, 12):
             @property
             def st_birthtime(self) -> float: ...  # time of file creation in seconds
@@ -962,8 +975,10 @@ else:
 
         def waitid(__idtype: int, __ident: int, __options: int) -> waitid_result | None: ...
 
-    def wait3(options: int) -> tuple[int, int, Any]: ...
-    def wait4(pid: int, options: int) -> tuple[int, int, Any]: ...
+    from resource import struct_rusage
+
+    def wait3(options: int) -> tuple[int, int, struct_rusage]: ...
+    def wait4(pid: int, options: int) -> tuple[int, int, struct_rusage]: ...
     def WCOREDUMP(__status: int) -> bool: ...
     def WIFCONTINUED(status: int) -> bool: ...
     def WIFSTOPPED(status: int) -> bool: ...
@@ -972,36 +987,35 @@ else:
     def WEXITSTATUS(status: int) -> int: ...
     def WSTOPSIG(status: int) -> int: ...
     def WTERMSIG(status: int) -> int: ...
-    if sys.version_info >= (3, 8):
-        def posix_spawn(
-            __path: StrOrBytesPath,
-            __argv: _ExecVArgs,
-            __env: _ExecEnv,
-            *,
-            file_actions: Sequence[tuple[Any, ...]] | None = ...,
-            setpgroup: int | None = ...,
-            resetids: bool = ...,
-            setsid: bool = ...,
-            setsigmask: Iterable[int] = ...,
-            setsigdef: Iterable[int] = ...,
-            scheduler: tuple[Any, sched_param] | None = ...,
-        ) -> int: ...
-        def posix_spawnp(
-            __path: StrOrBytesPath,
-            __argv: _ExecVArgs,
-            __env: _ExecEnv,
-            *,
-            file_actions: Sequence[tuple[Any, ...]] | None = ...,
-            setpgroup: int | None = ...,
-            resetids: bool = ...,
-            setsid: bool = ...,
-            setsigmask: Iterable[int] = ...,
-            setsigdef: Iterable[int] = ...,
-            scheduler: tuple[Any, sched_param] | None = ...,
-        ) -> int: ...
-        POSIX_SPAWN_OPEN: int
-        POSIX_SPAWN_CLOSE: int
-        POSIX_SPAWN_DUP2: int
+    def posix_spawn(
+        __path: StrOrBytesPath,
+        __argv: _ExecVArgs,
+        __env: _ExecEnv,
+        *,
+        file_actions: Sequence[tuple[Any, ...]] | None = ...,
+        setpgroup: int | None = ...,
+        resetids: bool = ...,
+        setsid: bool = ...,
+        setsigmask: Iterable[int] = ...,
+        setsigdef: Iterable[int] = ...,
+        scheduler: tuple[Any, sched_param] | None = ...,
+    ) -> int: ...
+    def posix_spawnp(
+        __path: StrOrBytesPath,
+        __argv: _ExecVArgs,
+        __env: _ExecEnv,
+        *,
+        file_actions: Sequence[tuple[Any, ...]] | None = ...,
+        setpgroup: int | None = ...,
+        resetids: bool = ...,
+        setsid: bool = ...,
+        setsigmask: Iterable[int] = ...,
+        setsigdef: Iterable[int] = ...,
+        scheduler: tuple[Any, sched_param] | None = ...,
+    ) -> int: ...
+    POSIX_SPAWN_OPEN: int
+    POSIX_SPAWN_CLOSE: int
+    POSIX_SPAWN_DUP2: int
 
 if sys.platform != "win32":
     @final
@@ -1045,38 +1059,36 @@ if sys.platform != "win32":
         after_in_child: Callable[..., Any] | None = ...,
     ) -> None: ...
 
-if sys.version_info >= (3, 8):
-    if sys.platform == "win32":
-        class _AddedDllDirectory:
-            path: str | None
-            def __init__(self, path: str | None, cookie: _T, remove_dll_directory: Callable[[_T], object]) -> None: ...
-            def close(self) -> None: ...
-            def __enter__(self) -> Self: ...
-            def __exit__(self, *args: Unused) -> None: ...
+if sys.platform == "win32":
+    class _AddedDllDirectory:
+        path: str | None
+        def __init__(self, path: str | None, cookie: _T, remove_dll_directory: Callable[[_T], object]) -> None: ...
+        def close(self) -> None: ...
+        def __enter__(self) -> Self: ...
+        def __exit__(self, *args: Unused) -> None: ...
 
-        def add_dll_directory(path: str) -> _AddedDllDirectory: ...
-    if sys.platform == "linux":
-        MFD_CLOEXEC: int
-        MFD_ALLOW_SEALING: int
-        MFD_HUGETLB: int
-        MFD_HUGE_SHIFT: int
-        MFD_HUGE_MASK: int
-        MFD_HUGE_64KB: int
-        MFD_HUGE_512KB: int
-        MFD_HUGE_1MB: int
-        MFD_HUGE_2MB: int
-        MFD_HUGE_8MB: int
-        MFD_HUGE_16MB: int
-        MFD_HUGE_32MB: int
-        MFD_HUGE_256MB: int
-        MFD_HUGE_512MB: int
-        MFD_HUGE_1GB: int
-        MFD_HUGE_2GB: int
-        MFD_HUGE_16GB: int
-        def memfd_create(name: str, flags: int = ...) -> int: ...
-        def copy_file_range(
-            src: int, dst: int, count: int, offset_src: int | None = ..., offset_dst: int | None = ...
-        ) -> int: ...
+    def add_dll_directory(path: str) -> _AddedDllDirectory: ...
+
+if sys.platform == "linux":
+    MFD_CLOEXEC: int
+    MFD_ALLOW_SEALING: int
+    MFD_HUGETLB: int
+    MFD_HUGE_SHIFT: int
+    MFD_HUGE_MASK: int
+    MFD_HUGE_64KB: int
+    MFD_HUGE_512KB: int
+    MFD_HUGE_1MB: int
+    MFD_HUGE_2MB: int
+    MFD_HUGE_8MB: int
+    MFD_HUGE_16MB: int
+    MFD_HUGE_32MB: int
+    MFD_HUGE_256MB: int
+    MFD_HUGE_512MB: int
+    MFD_HUGE_1GB: int
+    MFD_HUGE_2GB: int
+    MFD_HUGE_16GB: int
+    def memfd_create(name: str, flags: int = ...) -> int: ...
+    def copy_file_range(src: int, dst: int, count: int, offset_src: int | None = ..., offset_dst: int | None = ...) -> int: ...
 
 if sys.version_info >= (3, 9):
     def waitstatus_to_exitcode(status: int) -> int: ...

@@ -3,8 +3,8 @@ import ssl
 import sys
 from builtins import list as _list  # conflicts with a method named "list"
 from re import Pattern
-from typing import Any, BinaryIO, NoReturn, overload
-from typing_extensions import Literal, TypeAlias
+from typing import Any, BinaryIO, Literal, NoReturn, overload
+from typing_extensions import TypeAlias
 
 __all__ = ["POP3", "error_proto", "POP3_SSL"]
 

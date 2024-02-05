@@ -1,11 +1,10 @@
 import _tkinter
-import sys
 import tkinter
 from _typeshed import Incomplete
 from collections.abc import Callable
 from tkinter.font import _FontDescription
-from typing import Any, overload
-from typing_extensions import Literal, TypeAlias, TypedDict
+from typing import Any, Literal, TypedDict, overload
+from typing_extensions import TypeAlias
 
 __all__ = [
     "Button",
@@ -1102,11 +1101,7 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
     def parent(self, item: str | int) -> str: ...
     def prev(self, item: str | int) -> str: ...  # returning empty string means first item
     def see(self, item: str | int) -> None: ...
-    if sys.version_info >= (3, 8):
-        def selection(self) -> tuple[str, ...]: ...
-    else:
-        def selection(self, selop: Incomplete | None = ..., items: Incomplete | None = None) -> tuple[str, ...]: ...
-
+    def selection(self) -> tuple[str, ...]: ...
     @overload
     def selection_set(self, __items: list[str] | tuple[str, ...] | list[int] | tuple[int, ...]) -> None: ...
     @overload

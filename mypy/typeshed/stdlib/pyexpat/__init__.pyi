@@ -1,8 +1,8 @@
 from _typeshed import ReadableBuffer, SupportsRead
 from collections.abc import Callable
 from pyexpat import errors as errors, model as model
-from typing import Any
-from typing_extensions import TypeAlias, final
+from typing import Any, final
+from typing_extensions import TypeAlias
 
 EXPAT_VERSION: str  # undocumented
 version_info: tuple[int, int, int]  # undocumented

@@ -652,7 +652,6 @@ class M(type):
 a.py:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testDataclassUpdate1]
-# flags: --python-version 3.7
 [file a.py]
 from dataclasses import dataclass
 
@@ -691,7 +690,6 @@ b.py:8: error: Argument 1 to "B" has incompatible type "int"; expected "str"
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassUpdate2]
-# flags: --python-version 3.7
 [file c.py]
 Foo = int
 
@@ -722,7 +720,6 @@ b.py:8: error: Argument 1 to "B" has incompatible type "int"; expected "str"
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassUpdate3]
-# flags: --python-version 3.7
 from b import B
 B(1, 2)
 [file b.py]
@@ -746,10 +743,9 @@ class A:
 [builtins fixtures/dataclasses.pyi]
 [out]
 ==
-main:3: error: Missing positional argument "b" in call to "B"
+main:2: error: Missing positional argument "b" in call to "B"
 
 [case testDataclassUpdate4]
-# flags: --python-version 3.7
 from b import B
 B(1, 2)
 [file b.py]
@@ -773,10 +769,9 @@ class A:
 [builtins fixtures/dataclasses.pyi]
 [out]
 ==
-main:3: error: Missing positional argument "b" in call to "B"
+main:2: error: Missing positional argument "b" in call to "B"
 
 [case testDataclassUpdate5]
-# flags: --python-version 3.7
 from b import B
 B(1, 2)
 [file b.py]
@@ -807,11 +802,10 @@ class A:
 [builtins fixtures/dataclasses.pyi]
 [out]
 ==
-main:3: error: Missing positional argument "b" in call to "B"
+main:2: error: Missing positional argument "b" in call to "B"
 ==
 
 [case testDataclassUpdate6]
-# flags: --python-version 3.7
 from b import B
 B(1, 2) < B(1, 2)
 [file b.py]
@@ -834,10 +828,9 @@ class A:
 [builtins fixtures/dataclasses.pyi]
 [out]
 ==
-main:3: error: Unsupported left operand type for < ("B")
+main:2: error: Unsupported left operand type for < ("B")
 
 [case testDataclassUpdate8]
-# flags: --python-version 3.7
 from c import C
 C(1, 2, 3)
 [file c.py]
@@ -867,10 +860,9 @@ class A:
 [builtins fixtures/dataclasses.pyi]
 [out]
 ==
-main:3: error: Missing positional argument "c" in call to "C"
+main:2: error: Missing positional argument "c" in call to "C"
 
 [case testDataclassUpdate9]
-# flags: --python-version 3.7
 from c import C
 C(1, 2, 3)
 [file c.py]
@@ -907,7 +899,7 @@ class A:
 [builtins fixtures/dataclasses.pyi]
 [out]
 ==
-main:3: error: Missing positional argument "c" in call to "C"
+main:2: error: Missing positional argument "c" in call to "C"
 ==
 
 [case testAttrsUpdate1]
@@ -4032,7 +4024,7 @@ def f(x: a.A[str]):
 [builtins fixtures/dict.pyi]
 [out]
 ==
-b.py:2: error: Bad number of arguments for type alias, expected: 2, given: 1
+b.py:2: error: Bad number of arguments for type alias, expected 2, given 1
 
 [case testAliasFineAdded]
 import b
@@ -5542,7 +5534,7 @@ main:9: error: Function "a.T" is not valid as a type
 main:9: note: Perhaps you need "Callable[...]" or a callback protocol?
 main:12: error: Function "a.T" is not valid as a type
 main:12: note: Perhaps you need "Callable[...]" or a callback protocol?
-main:12: error: Bad number of arguments for type alias, expected: 0, given: 1
+main:12: error: Bad number of arguments for type alias, expected 0, given 1
 
 [case testChangeTypeVarToModule]
 
@@ -5576,7 +5568,7 @@ main:9: error: Module "T" is not valid as a type
 main:9: note: Perhaps you meant to use a protocol matching the module structure?
 main:12: error: Module "T" is not valid as a type
 main:12: note: Perhaps you meant to use a protocol matching the module structure?
-main:12: error: Bad number of arguments for type alias, expected: 0, given: 1
+main:12: error: Bad number of arguments for type alias, expected 0, given 1
 
 [case testChangeClassToModule]
 
@@ -5628,7 +5620,7 @@ T = int
 ==
 main:5: error: Free type variable expected in Generic[...]
 main:9: error: "C" expects no type arguments, but 1 given
-main:12: error: Bad number of arguments for type alias, expected: 0, given: 1
+main:12: error: Bad number of arguments for type alias, expected 0, given 1
 
 [case testChangeTypeAliasToModule]
 
@@ -9799,7 +9791,6 @@ class ExampleClass(Generic[T]):
 ==
 
 [case testDataclassCheckTypeVarBoundsInReprocess]
-# flags: --python-version 3.7
 from dataclasses import dataclass
 from typing import ClassVar, Protocol, Dict, TypeVar, Generic
 from m import x

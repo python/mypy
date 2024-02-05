@@ -85,7 +85,7 @@ NAMEDTUPLE_PROHIBITED_NAMES: Final = (
 )
 
 NAMEDTUP_CLASS_ERROR: Final = (
-    "Invalid statement in NamedTuple definition; " 'expected "field_name: field_type [= default]"'
+    'Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"'
 )
 
 SELF_TVAR_NAME: Final = "_NT"

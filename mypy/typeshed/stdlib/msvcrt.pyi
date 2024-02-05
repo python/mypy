@@ -1,5 +1,5 @@
 import sys
-from typing_extensions import Final, Literal
+from typing import Final, Literal
 
 # This module is only available on Windows
 if sys.platform == "win32":

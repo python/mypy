@@ -42,11 +42,11 @@ from posixpath import (
     splitext as splitext,
     supports_unicode_filenames as supports_unicode_filenames,
 )
+from typing import AnyStr, overload
+from typing_extensions import LiteralString
 
 if sys.version_info >= (3, 12):
     from posixpath import isjunction as isjunction, splitroot as splitroot
-from typing import AnyStr, overload
-from typing_extensions import LiteralString
 
 __all__ = [
     "normcase",

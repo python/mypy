@@ -1,8 +1,7 @@
 from _heapq import *
 from _typeshed import SupportsRichComparison
 from collections.abc import Callable, Iterable
-from typing import Any, TypeVar
-from typing_extensions import Final
+from typing import Any, Final, TypeVar
 
 __all__ = ["heappush", "heappop", "heapify", "heapreplace", "merge", "nlargest", "nsmallest", "heappushpop"]
 

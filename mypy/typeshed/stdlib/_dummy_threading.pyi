@@ -1,4 +1,5 @@
 import sys
+from _thread import _excepthook, _ExceptHookArgs
 from _typeshed import ProfileFunction, TraceFunction
 from collections.abc import Callable, Iterable, Mapping
 from types import TracebackType
@@ -28,10 +29,9 @@ __all__ = [
     "settrace",
     "local",
     "stack_size",
+    "ExceptHookArgs",
+    "excepthook",
 ]
-
-if sys.version_info >= (3, 8):
-    __all__ += ["ExceptHookArgs", "excepthook"]
 
 def active_count() -> int: ...
 def current_thread() -> Thread: ...
@@ -72,10 +72,8 @@ class Thread:
     def join(self, timeout: float | None = None) -> None: ...
     def getName(self) -> str: ...
     def setName(self, name: str) -> None: ...
-    if sys.version_info >= (3, 8):
-        @property
-        def native_id(self) -> int | None: ...  # only available on some platforms
-
+    @property
+    def native_id(self) -> int | None: ...  # only available on some platforms
     def is_alive(self) -> bool: ...
     if sys.version_info < (3, 9):
         def isAlive(self) -> bool: ...
@@ -138,11 +136,8 @@ class Event:
     def clear(self) -> None: ...
     def wait(self, timeout: float | None = None) -> bool: ...
 
-if sys.version_info >= (3, 8):
-    from _thread import _excepthook, _ExceptHookArgs
-
-    excepthook = _excepthook
-    ExceptHookArgs = _ExceptHookArgs
+excepthook = _excepthook
+ExceptHookArgs = _ExceptHookArgs
 
 class Timer(Thread):
     def __init__(

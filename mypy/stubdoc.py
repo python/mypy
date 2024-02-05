@@ -325,7 +325,7 @@ class DocStringParser:
             return has_arg("*args", signature) and has_arg("**kwargs", signature)
 
         # Move functions with (*args, **kwargs) in their signature to last place.
-        return list(sorted(self.signatures, key=lambda x: 1 if args_kwargs(x) else 0))
+        return sorted(self.signatures, key=lambda x: 1 if args_kwargs(x) else 0)
 
 
 def infer_sig_from_docstring(docstr: str | None, name: str) -> list[FunctionSig] | None:
