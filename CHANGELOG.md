@@ -2,6 +2,9 @@
 
 ## Next release
 
+Stubtest will ignore private function/method parameters when they are missing from the stub. Private parameters
+names start with a single underscore and have a default (PR [16507](https://github.com/python/mypy/pull/16507)).
+
 ## Mypy 1.8
 
 We’ve just uploaded mypy 1.8 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)). Mypy is a static type checker for Python. This release includes new features, performance improvements and bug fixes. You can install it as follows:
