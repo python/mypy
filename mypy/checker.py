@@ -1499,7 +1499,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.fail(message_registry.FUNCTION_TYPE_EXPECTED, fdef)
             elif isinstance(fdef.type, CallableType):
                 ret_type = get_proper_type(fdef.type.ret_type)
-                if is_unannotated_any(ret_type):
+                if is_unannotated_any(ret_type) and check_incomplete_defs:
+                    self.fail(message_registry.RETURN_TYPE_EXPECTED_INCOMPLETE_DEF, fdef)
+                elif is_unannotated_any(ret_type):
                     self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
                 elif fdef.is_generator:
                     if is_unannotated_any(
