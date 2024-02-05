@@ -67,7 +67,7 @@ ruamel-yaml==0.17.40
     # via pre-commit-hooks
 ruamel-yaml-clib==0.2.8
     # via ruamel-yaml
-ruff==0.1.15
+ruff==0.2.0
     # via -r test-requirements.in
 tomli==2.0.1
     # via -r test-requirements.in
