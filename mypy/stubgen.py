@@ -100,6 +100,7 @@ from mypy.nodes import (
     OpExpr,
     OverloadedFuncDef,
     SetExpr,
+    StarExpr,
     Statement,
     StrExpr,
     TempNode,
@@ -338,6 +339,9 @@ class AliasPrinter(NodeVisitor[str]):
 
     def visit_op_expr(self, o: OpExpr) -> str:
         return f"{o.left.accept(self)} {o.op} {o.right.accept(self)}"
+
+    def visit_star_expr(self, o: StarExpr) -> str:
+        return f"*{o.expr.accept(self)}"
 
 
 def find_defined_names(file: MypyFile) -> set[str]:

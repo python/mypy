@@ -1211,6 +1211,56 @@ T = TypeVar('T')
 
 class D(Generic[T]): ...
 
+[case testGenericClassTypeVarTuple]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+Ts = TypeVarTuple('Ts')
+class D(Generic[Unpack[Ts]]): ...
+[out]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple('Ts')
+
+class D(Generic[Unpack[Ts]]): ...
+
+[case testGenericClassTypeVarTuple_semanal]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+Ts = TypeVarTuple('Ts')
+class D(Generic[Unpack[Ts]]): ...
+[out]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple('Ts')
+
+class D(Generic[Unpack[Ts]]): ...
+
+[case testGenericClassTypeVarTuplePy311]
+# flags: --python-version=3.11
+from typing import Generic, TypeVarTuple
+Ts = TypeVarTuple('Ts')
+class D(Generic[*Ts]): ...
+[out]
+from typing import Generic, TypeVarTuple
+
+Ts = TypeVarTuple('Ts')
+
+class D(Generic[*Ts]): ...
+
+[case testGenericClassTypeVarTuplePy311_semanal]
+# flags: --python-version=3.11
+from typing import Generic, TypeVarTuple
+Ts = TypeVarTuple('Ts')
+class D(Generic[*Ts]): ...
+[out]
+from typing import Generic, TypeVarTuple
+
+Ts = TypeVarTuple('Ts')
+
+class D(Generic[*Ts]): ...
+
 [case testObjectBaseClass]
 class A(object): ...
 [out]
