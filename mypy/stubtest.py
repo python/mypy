@@ -940,7 +940,8 @@ def _verify_signature(
     elif len(stub.pos) < len(runtime.pos):
         for runtime_arg in runtime.pos[len(stub.pos) :]:
             if runtime_arg.name not in stub.kwonly:
-                yield f'stub does not have argument "{runtime_arg.name}"'
+                if not _is_private_parameter(runtime_arg):
+                    yield f'stub does not have argument "{runtime_arg.name}"'
             else:
                 yield f'runtime argument "{runtime_arg.name}" is not keyword-only'
 
@@ -980,7 +981,8 @@ def _verify_signature(
             ):
                 yield f'stub argument "{arg}" is not keyword-only'
         else:
-            yield f'stub does not have argument "{arg}"'
+            if not _is_private_parameter(runtime.kwonly[arg]):
+                yield f'stub does not have argument "{arg}"'
 
     # Checks involving **kwargs
     if stub.varkw is None and runtime.varkw is not None:
@@ -993,6 +995,14 @@ def _verify_signature(
             yield f'stub does not have **kwargs argument "{runtime.varkw.name}"'
     if stub.varkw is not None and runtime.varkw is None:
         yield f'runtime does not have **kwargs argument "{stub.varkw.variable.name}"'
+
+
+def _is_private_parameter(arg: inspect.Parameter) -> bool:
+    return (
+        arg.name.startswith("_")
+        and not arg.name.startswith("__")
+        and arg.default is not inspect.Parameter.empty
+    )
 
 
 @verify.register(nodes.FuncItem)
