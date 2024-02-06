@@ -484,11 +484,12 @@ Example:
 
 .. _code-mutable-override:
 
-Check that overrides of mutable attributes are safe
----------------------------------------------------
+Check that overrides of mutable attributes are safe [mutable-override]
+----------------------------------------------------------------------
 
-This will enable the check for unsafe overrides of mutable attributes. For
-historical reasons, and because this is a relatively common pattern in Python,
+Introduced in Mypy version 1.8,
+`mutable-override` will enable the check for unsafe overrides of mutable attributes.
+For historical reasons, and because this is a relatively common pattern in Python,
 this check is not enabled by default. The example below is unsafe, and will be
 flagged when this error code is enabled:
 
