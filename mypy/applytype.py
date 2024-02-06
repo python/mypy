@@ -147,7 +147,18 @@ def apply_generic_arguments(
     # TODO: move apply_poly() logic from checkexpr.py here when new inference
     # becomes universally used (i.e. in all passes + in unification).
     # With this new logic we can actually *add* some new free variables.
-    remaining_tvars = [tv for tv in tvars if tv.id not in id_to_type]
+    remaining_tvars: list[TypeVarLikeType] = []
+    for tv in tvars:
+        if tv.id in id_to_type:
+            continue
+        if not tv.has_default():
+            remaining_tvars.append(tv)
+            continue
+        # TypeVarLike isn't in id_to_type mapping.
+        # Only expand the TypeVar default here.
+        typ = expand_type(tv, id_to_type)
+        assert isinstance(typ, TypeVarLikeType)
+        remaining_tvars.append(typ)
 
     return callable.copy_modified(
         ret_type=expand_type(callable.ret_type, id_to_type),
