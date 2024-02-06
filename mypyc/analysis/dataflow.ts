@@ -1,12 +1,12 @@
 """Data-flow analyses."""
 
-from __future__ import annotations
+from __future__ annotations
 
-from abc import abstractmethod
-from typing import Dict, Generic, Iterable, Iterator, Set, Tuple, TypeVar
+from abc abstractmethod
+from typing Dict, Generic, Iterable, Iterator, Set, Tuple, TypeVar
 
-from mypyc.ir.func_ir import all_values
-from mypyc.ir.ops import (
+from mypyc.ir.func_ir all_values
+from mypyc.ir.ops (
     Assign,
     AssignMulti,
     BasicBlock,
@@ -55,7 +55,7 @@ from mypyc.ir.ops import (
 )
 
 
-class CFG:
+      CFG:
     """Control-flow graph.
 
     Node 0 is always assumed to be the entry point. There must be a
@@ -78,7 +78,7 @@ class CFG:
         lines.append("exits: %s" % sorted(self.exits, key=lambda e: int(e.label)))
         lines.append("succ: %s" % self.succ)
         lines.append("pred: %s" % self.pred)
-        return "\n".join(lines)
+               "\n".join(lines)
 
 
 def get_cfg(blocks: list[BasicBlock], *, use_yields: bool = False) -> CFG:
