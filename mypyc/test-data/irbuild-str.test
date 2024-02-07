@@ -70,7 +70,7 @@ def eq(x, y):
     r2 :: object
     r3, r4, r5 :: bit
 L0:
-    r0 = PyUnicode_Compare(x, y)
+    r0 = CPyStr_Compare(x, y)
     r1 = r0 == -1
     if r1 goto L1 else goto L3 :: bool
 L1:
@@ -89,7 +89,7 @@ def neq(x, y):
     r2 :: object
     r3, r4, r5 :: bit
 L0:
-    r0 = PyUnicode_Compare(x, y)
+    r0 = CPyStr_CompareNeq(x, y)
     r1 = r0 == -1
     if r1 goto L1 else goto L3 :: bool
 L1:

@@ -62,8 +62,15 @@ binary_op(
 unicode_compare = custom_op(
     arg_types=[str_rprimitive, str_rprimitive],
     return_type=c_int_rprimitive,
-    c_function_name="PyUnicode_Compare",
-    error_kind=ERR_NEVER,
+    c_function_name="CPyStr_Compare",
+    error_kind=ERR_MAGIC,
+)
+
+unicode_compare_neq = custom_op(
+    arg_types=[str_rprimitive, str_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyStr_CompareNeq",
+    error_kind=ERR_MAGIC,
 )
 
 # str[index] (for an int index)
