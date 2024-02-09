@@ -1878,8 +1878,8 @@ class _Arguments:
     allowlist: list[str]
     generate_allowlist: bool
     ignore_unused_allowlist: bool
-    mypy_config_file: str
-    custom_typeshed_dir: str
+    mypy_config_file: str | None
+    custom_typeshed_dir: str | None
     check_typeshed: bool
     version: str
 
