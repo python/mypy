@@ -1,0 +1,686 @@
+[case testTypeNarrowerBasic]
+from typing_extensions import TypeNarrower
+class Point: pass
+def is_point(a: object) -> TypeNarrower[Point]: pass
+def main(a: object) -> None:
+    if is_point(a):
+        reveal_type(a)  # N: Revealed type is "__main__.Point"
+    else:
+        reveal_type(a)  # N: Revealed type is "builtins.object"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerTypeArgsNone]
+from typing_extensions import TypeNarrower
+def foo(a: object) -> TypeNarrower:  # E: TypeNarrower must have exactly one type argument
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerTypeArgsTooMany]
+from typing_extensions import TypeNarrower
+def foo(a: object) -> TypeNarrower[int, int]:  # E: TypeNarrower must have exactly one type argument
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerTypeArgType]
+from typing_extensions import TypeNarrower
+def foo(a: object) -> TypeNarrower[42]:  # E: Invalid type: try using Literal[42] instead?
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerRepr]
+from typing_extensions import TypeNarrower
+def foo(a: object) -> TypeNarrower[int]:
+    pass
+reveal_type(foo)  # N: Revealed type is "def (a: builtins.object) -> TypeNarrower[builtins.int]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerCallArgsNone]
+from typing_extensions import TypeNarrower
+class Point: pass
+
+def is_point() -> TypeNarrower[Point]: pass  # E: TypeNarrower functions must have a positional argument
+def main(a: object) -> None:
+    if is_point():
+        reveal_type(a)  # N: Revealed type is "builtins.object"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerCallArgsMultiple]
+from typing_extensions import TypeNarrower
+class Point: pass
+def is_point(a: object, b: object) -> TypeNarrower[Point]: pass
+def main(a: object, b: object) -> None:
+    if is_point(a, b):
+        reveal_type(a)  # N: Revealed type is "__main__.Point"
+        reveal_type(b)  # N: Revealed type is "builtins.object"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerIsBool]
+from typing_extensions import TypeNarrower
+def f(a: TypeNarrower[int]) -> None: pass
+reveal_type(f)  # N: Revealed type is "def (a: builtins.bool)"
+a: TypeNarrower[int]
+reveal_type(a)  # N: Revealed type is "builtins.bool"
+class C:
+    a: TypeNarrower[int]
+reveal_type(C().a)  # N: Revealed type is "builtins.bool"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerWithTypeVar]
+from typing import TypeVar, Tuple, Type
+from typing_extensions import TypeNarrower
+T = TypeVar('T')
+def is_tuple_of_type(a: Tuple[object, ...], typ: Type[T]) -> TypeNarrower[Tuple[T, ...]]: pass
+def main(a: Tuple[object, ...]):
+    if is_tuple_of_type(a, int):
+        reveal_type(a)  # N: Revealed type is "Tuple[int, ...]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerUnionIn]
+from typing import Union
+from typing_extensions import TypeNarrower
+def is_foo(a: Union[int, str]) -> TypeNarrower[str]: pass
+def main(a: Union[str, int]) -> None:
+    if is_foo(a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+    reveal_type(a)  # N: Revealed type is "Union[builtins.str, builtins.int]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerUnionOut]
+from typing import Union
+from typing_extensions import TypeNarrower
+def is_foo(a: object) -> TypeNarrower[Union[int, str]]: pass
+def main(a: object) -> None:
+    if is_foo(a):
+        reveal_type(a)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerNonzeroFloat]
+from typing_extensions import TypeNarrower
+def is_nonzero(a: object) -> TypeNarrower[float]: pass
+def main(a: int):
+    if is_nonzero(a):
+        reveal_type(a)  # N: Revealed type is "builtins.float"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerHigherOrder]
+from typing import Callable, TypeVar, Iterable, List
+from typing_extensions import TypeNarrower
+T = TypeVar('T')
+R = TypeVar('R')
+def filter(f: Callable[[T], TypeNarrower[R]], it: Iterable[T]) -> Iterable[R]: pass
+def is_float(a: object) -> TypeNarrower[float]: pass
+a: List[object] = ["a", 0, 0.0]
+b = filter(is_float, a)
+reveal_type(b)  # N: Revealed type is "typing.Iterable[builtins.float]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerMethod]
+from typing_extensions import TypeNarrower
+class C:
+    def main(self, a: object) -> None:
+        if self.is_float(a):
+            reveal_type(self)  # N: Revealed type is "__main__.C"
+            reveal_type(a)  # N: Revealed type is "builtins.float"
+    def is_float(self, a: object) -> TypeNarrower[float]: pass
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerCrossModule]
+import guard
+from points import Point
+def main(a: object) -> None:
+    if guard.is_point(a):
+        reveal_type(a)  # N: Revealed type is "points.Point"
+[file guard.py]
+from typing_extensions import TypeNarrower
+import points
+def is_point(a: object) -> TypeNarrower[points.Point]: pass
+[file points.py]
+class Point: pass
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerBodyRequiresBool]
+from typing_extensions import TypeNarrower
+def is_float(a: object) -> TypeNarrower[float]:
+    return "not a bool"  # E: Incompatible return value type (got "str", expected "bool")
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerNarrowToTypedDict]
+from typing import Mapping, TypedDict
+from typing_extensions import TypeNarrower
+class User(TypedDict):
+    name: str
+    id: int
+def is_user(a: Mapping[str, object]) -> TypeNarrower[User]:
+    return isinstance(a.get("name"), str) and isinstance(a.get("id"), int)
+def main(a: Mapping[str, object]) -> None:
+    if is_user(a):
+        reveal_type(a)  # N: Revealed type is "TypedDict('__main__.User', {'name': builtins.str, 'id': builtins.int})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypeNarrowerInAssert]
+from typing_extensions import TypeNarrower
+def is_float(a: object) -> TypeNarrower[float]: pass
+def main(a: object) -> None:
+    assert is_float(a)
+    reveal_type(a)  # N: Revealed type is "builtins.float"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerFromAny]
+from typing import Any
+from typing_extensions import TypeNarrower
+def is_objfloat(a: object) -> TypeNarrower[float]: pass
+def is_anyfloat(a: Any) -> TypeNarrower[float]: pass
+def objmain(a: object) -> None:
+    if is_objfloat(a):
+        reveal_type(a)  # N: Revealed type is "builtins.float"
+    if is_anyfloat(a):
+        reveal_type(a)  # N: Revealed type is "builtins.float"
+def anymain(a: Any) -> None:
+    if is_objfloat(a):
+        reveal_type(a)  # N: Revealed type is "builtins.float"
+    if is_anyfloat(a):
+        reveal_type(a)  # N: Revealed type is "builtins.float"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerNegatedAndElse]
+from typing import Union
+from typing_extensions import TypeNarrower
+def is_int(a: object) -> TypeNarrower[int]: pass
+def is_str(a: object) -> TypeNarrower[str]: pass
+def intmain(a: Union[int, str]) -> None:
+    if not is_int(a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+def strmain(a: Union[int, str]) -> None:
+    if is_str(a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerClassMethod]
+from typing_extensions import TypeNarrower
+class C:
+    @classmethod
+    def is_float(cls, a: object) -> TypeNarrower[float]: pass
+    def method(self, a: object) -> None:
+        if self.is_float(a):
+            reveal_type(a)  # N: Revealed type is "builtins.float"
+def main(a: object) -> None:
+    if C.is_float(a):
+        reveal_type(a)  # N: Revealed type is "builtins.float"
+[builtins fixtures/classmethod.pyi]
+
+[case testTypeNarrowerRequiresPositionalArgs]
+from typing_extensions import TypeNarrower
+def is_float(a: object, b: object = 0) -> TypeNarrower[float]: pass
+def main1(a: object) -> None:
+    if is_float(a=a, b=1):
+        reveal_type(a)  # N: Revealed type is "builtins.float"
+
+    if is_float(b=1, a=a):
+        reveal_type(a)  # N: Revealed type is "builtins.float"
+
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerOverload]
+from typing import overload, Any, Callable, Iterable, Iterator, List, Optional, TypeVar
+from typing_extensions import TypeNarrower
+
+T = TypeVar("T")
+R = TypeVar("R")
+
+@overload
+def filter(f: Callable[[T], TypeNarrower[R]], it: Iterable[T]) -> Iterator[R]: ...
+@overload
+def filter(f: Callable[[T], bool], it: Iterable[T]) -> Iterator[T]: ...
+def filter(*args): pass
+
+def is_int_typeguard(a: object) -> TypeNarrower[int]: pass
+def is_int_bool(a: object) -> bool: pass
+
+def main(a: List[Optional[int]]) -> None:
+    bb = filter(lambda x: x is not None, a)
+    reveal_type(bb)  # N: Revealed type is "typing.Iterator[Union[builtins.int, None]]"
+    # Also, if you replace 'bool' with 'Any' in the second overload, bb is Iterator[Any]
+    cc = filter(is_int_typeguard, a)
+    reveal_type(cc)  # N: Revealed type is "typing.Iterator[builtins.int]"
+    dd = filter(is_int_bool, a)
+    reveal_type(dd)  # N: Revealed type is "typing.Iterator[Union[builtins.int, None]]"
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypeNarrowerDecorated]
+from typing import TypeVar
+from typing_extensions import TypeNarrower
+T = TypeVar("T")
+def decorator(f: T) -> T: pass
+@decorator
+def is_float(a: object) -> TypeNarrower[float]:
+    pass
+def main(a: object) -> None:
+    if is_float(a):
+        reveal_type(a)  # N: Revealed type is "builtins.float"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerMethodOverride]
+from typing_extensions import TypeNarrower
+class C:
+    def is_float(self, a: object) -> TypeNarrower[float]: pass
+class D(C):
+    def is_float(self, a: object) -> bool: pass  # Fail
+[builtins fixtures/tuple.pyi]
+[out]
+main:5: error: Signature of "is_float" incompatible with supertype "C"
+main:5: note:      Superclass:
+main:5: note:          def is_float(self, a: object) -> TypeNarrower[float]
+main:5: note:      Subclass:
+main:5: note:          def is_float(self, a: object) -> bool
+
+[case testTypeNarrowerInAnd]
+from typing import Any
+from typing_extensions import TypeNarrower
+import types
+def isclass(a: object) -> bool:
+    pass
+def ismethod(a: object) -> TypeNarrower[float]:
+    pass
+def isfunction(a: object) -> TypeNarrower[str]:
+    pass
+def isclassmethod(obj: Any) -> bool:
+    if ismethod(obj) and obj.__self__ is not None and isclass(obj.__self__):  # E: "float" has no attribute "__self__"
+        return True
+
+    return False
+def coverage(obj: Any) -> bool:
+    if not (ismethod(obj) or isfunction(obj)):
+        return True
+    return False
+[builtins fixtures/classmethod.pyi]
+
+[case testAssignToTypeNarroweredVariable1]
+from typing_extensions import TypeNarrower
+
+class A: pass
+class B(A): pass
+
+def guard(a: A) -> TypeNarrower[B]:
+    pass
+
+a = A()
+if not guard(a):
+    a = A()
+[builtins fixtures/tuple.pyi]
+
+[case testAssignToTypeNarroweredVariable2]
+from typing_extensions import TypeNarrower
+
+class A: pass
+class B: pass
+
+def guard(a: A) -> TypeNarrower[B]:
+    pass
+
+a = A()
+if not guard(a):
+    a = A()
+[builtins fixtures/tuple.pyi]
+
+[case testAssignToTypeNarroweredVariable3]
+from typing_extensions import TypeNarrower
+
+class A: pass
+class B: pass
+
+def guard(a: A) -> TypeNarrower[B]:
+    pass
+
+a = A()
+if guard(a):
+    reveal_type(a)  # N: Revealed type is "__main__.B"
+    a = B()  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    reveal_type(a)  # N: Revealed type is "__main__.B"
+    a = A()
+    reveal_type(a)  # N: Revealed type is "__main__.A"
+reveal_type(a)  # N: Revealed type is "__main__.A"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerNestedRestrictionAny]
+from typing_extensions import TypeNarrower
+from typing import Any
+
+class A: ...
+def f(x: object) -> TypeNarrower[A]: ...
+def g(x: object) -> None: ...
+
+def test(x: Any) -> None:
+    if not(f(x) or x):
+        return
+    g(reveal_type(x))  # N: Revealed type is "Union[__main__.A, Any]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerNestedRestrictionUnionOther]
+from typing_extensions import TypeNarrower
+from typing import Any
+
+class A: ...
+class B: ...
+def f(x: object) -> TypeNarrower[A]: ...
+def f2(x: object) -> TypeNarrower[B]: ...
+def g(x: object) -> None: ...
+
+def test(x: object) -> None:
+    if not(f(x) or f2(x)):
+        return
+    g(reveal_type(x))  # N: Revealed type is "Union[__main__.A, __main__.B]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerComprehensionSubtype]
+from typing import List
+from typing_extensions import TypeNarrower
+
+class Base: ...
+class Foo(Base): ...
+class Bar(Base): ...
+
+def is_foo(item: object) -> TypeNarrower[Foo]:
+    return isinstance(item, Foo)
+
+def is_bar(item: object) -> TypeNarrower[Bar]:
+    return isinstance(item, Bar)
+
+def foobar(items: List[object]):
+    a: List[Base] = [x for x in items if is_foo(x) or is_bar(x)]
+    b: List[Base] = [x for x in items if is_foo(x)]
+    c: List[Bar] = [x for x in items if is_foo(x)]  # E: List comprehension has incompatible type List[Foo]; expected List[Bar]
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerNestedRestrictionUnionIsInstance]
+from typing_extensions import TypeNarrower
+from typing import Any, List
+
+class A: ...
+def f(x: List[Any]) -> TypeNarrower[List[str]]: ...
+def g(x: object) -> None: ...
+
+def test(x: List[Any]) -> None:
+    if not(f(x) or isinstance(x, A)):
+        return
+    g(reveal_type(x))  # N: Revealed type is "Union[builtins.list[builtins.str], __main__.<subclass of "list" and "A">]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerMultipleCondition-xfail]
+from typing_extensions import TypeNarrower
+from typing import Any, List
+
+class Foo: ...
+class Bar: ...
+
+def is_foo(item: object) -> TypeNarrower[Foo]:
+    return isinstance(item, Foo)
+
+def is_bar(item: object) -> TypeNarrower[Bar]:
+    return isinstance(item, Bar)
+
+def foobar(x: object):
+    if not isinstance(x, Foo) or not isinstance(x, Bar):
+        return
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "Foo" and "Bar">"
+
+def foobar_typeguard(x: object):
+    if not is_foo(x) or not is_bar(x):
+        return
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "Foo" and "Bar">"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerAsFunctionArgAsBoolSubtype]
+from typing import Callable
+from typing_extensions import TypeNarrower
+
+def accepts_bool(f: Callable[[object], bool]): pass
+
+def with_bool_typeguard(o: object) -> TypeNarrower[bool]: pass
+def with_str_typeguard(o: object) -> TypeNarrower[str]: pass
+def with_bool(o: object) -> bool: pass
+
+accepts_bool(with_bool_typeguard)
+accepts_bool(with_str_typeguard)
+accepts_bool(with_bool)
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerAsFunctionArg]
+from typing import Callable
+from typing_extensions import TypeNarrower
+
+def accepts_typeguard(f: Callable[[object], TypeNarrower[bool]]): pass
+def different_typeguard(f: Callable[[object], TypeNarrower[str]]): pass
+
+def with_typeguard(o: object) -> TypeNarrower[bool]: pass
+def with_bool(o: object) -> bool: pass
+
+accepts_typeguard(with_typeguard)
+accepts_typeguard(with_bool)  # E: Argument 1 to "accepts_typeguard" has incompatible type "Callable[[object], bool]"; expected "Callable[[object], TypeNarrower[bool]]"
+
+different_typeguard(with_typeguard)  # E: Argument 1 to "different_typeguard" has incompatible type "Callable[[object], TypeNarrower[bool]]"; expected "Callable[[object], TypeNarrower[str]]"
+different_typeguard(with_bool)  # E: Argument 1 to "different_typeguard" has incompatible type "Callable[[object], bool]"; expected "Callable[[object], TypeNarrower[str]]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerAsGenericFunctionArg]
+from typing import Callable, TypeVar
+from typing_extensions import TypeNarrower
+
+T = TypeVar('T')
+
+def accepts_typeguard(f: Callable[[object], TypeNarrower[T]]): pass
+
+def with_bool_typeguard(o: object) -> TypeNarrower[bool]: pass
+def with_str_typeguard(o: object) -> TypeNarrower[str]: pass
+def with_bool(o: object) -> bool: pass
+
+accepts_typeguard(with_bool_typeguard)
+accepts_typeguard(with_str_typeguard)
+accepts_typeguard(with_bool)  # E: Argument 1 to "accepts_typeguard" has incompatible type "Callable[[object], bool]"; expected "Callable[[object], TypeNarrower[bool]]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerAsOverloadedFunctionArg]
+# https://github.com/python/mypy/issues/11307
+from typing import Callable, TypeVar, Generic, Any, overload
+from typing_extensions import TypeNarrower
+
+_T = TypeVar('_T')
+
+class filter(Generic[_T]):
+    @overload
+    def __init__(self, function: Callable[[object], TypeNarrower[_T]]) -> None: pass
+    @overload
+    def __init__(self, function: Callable[[_T], Any]) -> None: pass
+    def __init__(self, function): pass
+
+def is_int_typeguard(a: object) -> TypeNarrower[int]: pass
+def returns_bool(a: object) -> bool: pass
+
+reveal_type(filter(is_int_typeguard))  # N: Revealed type is "__main__.filter[builtins.int]"
+reveal_type(filter(returns_bool))  # N: Revealed type is "__main__.filter[builtins.object]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerSubtypingVariance]
+from typing import Callable
+from typing_extensions import TypeNarrower
+
+class A: pass
+class B(A): pass
+class C(B): pass
+
+def accepts_typeguard(f: Callable[[object], TypeNarrower[B]]): pass
+
+def with_typeguard_a(o: object) -> TypeNarrower[A]: pass
+def with_typeguard_b(o: object) -> TypeNarrower[B]: pass
+def with_typeguard_c(o: object) -> TypeNarrower[C]: pass
+
+accepts_typeguard(with_typeguard_a)  # E: Argument 1 to "accepts_typeguard" has incompatible type "Callable[[object], TypeNarrower[A]]"; expected "Callable[[object], TypeNarrower[B]]"
+accepts_typeguard(with_typeguard_b)
+accepts_typeguard(with_typeguard_c)  # E: Argument 1 to "accepts_typeguard" has incompatible type "Callable[[object], TypeNarrower[C]]"; expected "Callable[[object], TypeNarrower[B]]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerWithIdentityGeneric]
+from typing import TypeVar
+from typing_extensions import TypeNarrower
+
+_T = TypeVar("_T")
+
+def identity(val: _T) -> TypeNarrower[_T]:
+    pass
+
+def func1(name: _T):
+    reveal_type(name)  # N: Revealed type is "_T`-1"
+    if identity(name):
+        reveal_type(name)  # N: Revealed type is "_T`-1"
+
+def func2(name: str):
+    reveal_type(name)  # N: Revealed type is "builtins.str"
+    if identity(name):
+        reveal_type(name)  # N: Revealed type is "builtins.str"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerWithGenericInstance]
+from typing import TypeVar, List
+from typing_extensions import TypeNarrower
+
+_T = TypeVar("_T")
+
+def is_list_of_str(val: _T) -> TypeNarrower[List[_T]]:
+    pass
+
+def func(name: str):
+    reveal_type(name)  # N: Revealed type is "builtins.str"
+    if is_list_of_str(name):
+        reveal_type(name)  # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerWithTupleGeneric]
+from typing import TypeVar, Tuple
+from typing_extensions import TypeNarrower
+
+_T = TypeVar("_T")
+
+def is_two_element_tuple(val: Tuple[_T, ...]) -> TypeNarrower[Tuple[_T, _T]]:
+    pass
+
+def func(names: Tuple[str, ...]):
+    reveal_type(names)  # N: Revealed type is "builtins.tuple[builtins.str, ...]"
+    if is_two_element_tuple(names):
+        reveal_type(names)  # N: Revealed type is "Tuple[builtins.str, builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerErroneousDefinitionFails]
+from typing_extensions import TypeNarrower
+
+class Z:
+    def typeguard1(self, *, x: object) -> TypeNarrower[int]:  # E: TypeNarrower functions must have a positional argument
+        ...
+
+    @staticmethod
+    def typeguard2(x: object) -> TypeNarrower[int]:
+        ...
+
+    @staticmethod  # E: TypeNarrower functions must have a positional argument
+    def typeguard3(*, x: object) -> TypeNarrower[int]:
+        ...
+
+def bad_typeguard(*, x: object) -> TypeNarrower[int]: # E: TypeNarrower functions must have a positional argument
+    ...
+
+[builtins fixtures/classmethod.pyi]
+
+[case testTypeNarrowerWithKeywordArg]
+from typing_extensions import TypeNarrower
+
+class Z:
+    def typeguard(self, x: object) -> TypeNarrower[int]:
+        ...
+
+def typeguard(x: object) -> TypeNarrower[int]:
+    ...
+
+n: object
+if typeguard(x=n):
+    reveal_type(n)  # N: Revealed type is "builtins.int"
+
+if Z().typeguard(x=n):
+    reveal_type(n)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testStaticMethodTypeNarrower]
+from typing_extensions import TypeNarrower
+
+class Y:
+    @staticmethod
+    def typeguard(h: object) -> TypeNarrower[int]:
+        ...
+
+x: object
+if Y().typeguard(x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+if Y.typeguard(x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/classmethod.pyi]
+
+[case testTypeNarrowerKwargFollowingThroughOverloaded]
+from typing import overload, Union
+from typing_extensions import TypeNarrower
+
+@overload
+def typeguard(x: object, y: str) -> TypeNarrower[str]:
+    ...
+
+@overload
+def typeguard(x: object, y: int) -> TypeNarrower[int]:
+    ...
+
+def typeguard(x: object, y: Union[int, str]) -> Union[TypeNarrower[int], TypeNarrower[str]]:
+    ...
+
+x: object
+if typeguard(x=x, y=42):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+if typeguard(y=42, x=x):
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+if typeguard(x=x, y="42"):
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+
+if typeguard(y="42", x=x):
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+[builtins fixtures/tuple.pyi]
+
+[case testGenericAliasWithTypeNarrower]
+from typing import Callable, List, TypeVar
+from typing_extensions import TypeNarrower, TypeAlias
+
+A = Callable[[object], TypeNarrower[List[T]]]
+def foo(x: object) -> TypeNarrower[List[str]]: ...
+
+def test(f: A[T]) -> T: ...
+reveal_type(test(foo))  # N: Revealed type is "builtins.str"
+[builtins fixtures/list.pyi]
+
+[case testNoCrashOnDunderCallTypeNarrower]
+from typing_extensions import TypeNarrower
+
+class A:
+    def __call__(self, x) -> TypeNarrower[int]:
+        return True
+
+a: A
+assert a(x=1)
+
+x: object
+assert a(x=x)
+reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]

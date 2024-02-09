@@ -684,7 +684,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 if not self._is_subtype(left.type_guard, right.type_guard):
                     return False
             elif left.type_narrower is not None and right.type_narrower is not None:
-                if not self._is_subtype(left.type_narrower, right.type_narrower):
+                # For TypeNarrower we have to check both ways; it is unsafe to pass
+                # a TypeNarrower[Child] when a TypeNarrower[Parent] is expected, because
+                # if the narrower returns False, we assume that the narrowed value is
+                # *not* a Parent.
+                if not self._is_subtype(left.type_narrower, right.type_narrower) or not self._is_subtype(right.type_narrower, left.type_narrower):
                     return False
             elif right.type_guard is not None and left.type_guard is None:
                 # This means that one function has `TypeGuard` and other does not.
