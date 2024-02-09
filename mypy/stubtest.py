@@ -1486,6 +1486,7 @@ IGNORABLE_CLASS_DUNDERS: typing_extensions.Final = frozenset(
         # Added to all protocol classes on 3.12+ (or if using typing_extensions.Protocol)
         "__protocol_attrs__",
         "__callable_proto_members_only__",
+        "__non_callable_proto_members__",
         # typing implementation details, consider removing some of these:
         "__parameters__",
         "__origin__",
