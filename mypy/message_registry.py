@@ -262,7 +262,7 @@ TOO_MANY_UNION_COMBINATIONS: Final = ErrorMessage(
 
 CONTIGUOUS_ITERABLE_EXPECTED: Final = ErrorMessage("Contiguous iterable with same type expected")
 ITERABLE_TYPE_EXPECTED: Final = ErrorMessage("Invalid type '{}' for *expr (iterable expected)")
-TYPE_GUARD_POS_ARG_REQUIRED: Final = ErrorMessage("Type guard requires positional argument")
+TYPE_GUARD_POS_ARG_REQUIRED: Final = ErrorMessage("Type {} requires positional argument")
 
 # Match Statement
 MISSING_MATCH_ARGS: Final = 'Class "{}" doesn\'t define "__match_args__"'

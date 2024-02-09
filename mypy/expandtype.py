@@ -342,6 +342,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                     arg_names=t.arg_names[:-2] + repl.arg_names,
                     ret_type=t.ret_type.accept(self),
                     type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None),
+                    type_narrower=(t.type_narrower.accept(self) if t.type_narrower is not None else None),
                     imprecise_arg_kinds=(t.imprecise_arg_kinds or repl.imprecise_arg_kinds),
                     variables=[*repl.variables, *t.variables],
                 )
@@ -375,6 +376,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             arg_types=arg_types,
             ret_type=t.ret_type.accept(self),
             type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None),
+            type_narrower=(t.type_narrower.accept(self) if t.type_narrower is not None else None),
         )
         if needs_normalization:
             return expanded.with_normalized_var_args()

@@ -115,6 +115,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     if isinstance(narrowed, TypeGuardedType):  # type: ignore[misc]
         # A type guard forces the new type even if it doesn't overlap the old.
         return narrowed.type_guard
+    # TODO(jelle): TypeNarrower
 
     original_declared = declared
     original_narrowed = narrowed
@@ -275,6 +276,7 @@ def is_overlapping_types(
     ):
         # A type guard forces the new type even if it doesn't overlap the old.
         return True
+    # TODO(jelle): TypeNarrower
 
     if seen_types is None:
         seen_types = set()

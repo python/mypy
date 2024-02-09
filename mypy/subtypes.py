@@ -683,9 +683,16 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if left.type_guard is not None and right.type_guard is not None:
                 if not self._is_subtype(left.type_guard, right.type_guard):
                     return False
+            elif left.type_narrower is not None and right.type_narrower is not None:
+                if not self._is_subtype(left.type_narrower, right.type_narrower):
+                    return False
             elif right.type_guard is not None and left.type_guard is None:
                 # This means that one function has `TypeGuard` and other does not.
                 # They are not compatible. See https://github.com/python/mypy/issues/11307
+                return False
+            elif right.type_narrower is not None and left.type_narrower is not None:
+                # Similarly, if one function has typeNarrower and the other does not,
+                # they are not compatible.
                 return False
             return is_callable_compatible(
                 left,

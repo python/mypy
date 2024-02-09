@@ -1454,10 +1454,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if (
             isinstance(e.callee, RefExpr)
             and isinstance(proper_callee, CallableType)
-            and proper_callee.type_guard is not None
         ):
             # Cache it for find_isinstance_check()
-            e.callee.type_guard = proper_callee.type_guard
+            if proper_callee.type_guard is not None:
+                e.callee.type_guard = proper_callee.type_guard
+            if proper_callee.type_narrower is not None:
+                e.callee.type_narrower = proper_callee.type_narrower
         return ret_type
 
     def check_union_call_expr(self, e: CallExpr, object_type: UnionType, member: str) -> Type:
@@ -5277,7 +5279,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # is a constructor -- but this fallback doesn't make sense for lambdas.
         callable_ctx = callable_ctx.copy_modified(fallback=self.named_type("builtins.function"))
 
-        if callable_ctx.type_guard is not None:
+        if callable_ctx.type_guard is not None or callable_ctx.type_narrower is not None:
             # Lambda's return type cannot be treated as a `TypeGuard`,
             # because it is implicit. And `TypeGuard`s must be explicit.
             # See https://github.com/python/mypy/issues/9927

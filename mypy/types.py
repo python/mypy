@@ -449,6 +449,19 @@ class TypeGuardedType(Type):
         return f"TypeGuard({self.type_guard})"
 
 
+class TypeNarrowerType(Type):
+    """Only used by find_isinstance_check() etc."""
+
+    __slots__ = ("type_narrower",)
+
+    def __init__(self, type_narrower: Type) -> None:
+        super().__init__(line=type_narrower.line, column=type_narrower.column)
+        self.type_narrower = type_narrower
+
+    def __repr__(self) -> str:
+        return f"TypeNarrower({self.type_narrower})"
+
+
 class RequiredType(Type):
     """Required[T] or NotRequired[T]. Only usable at top-level of a TypedDict definition."""
 
@@ -1791,6 +1804,7 @@ class CallableType(FunctionLike):
         "def_extras",  # Information about original definition we want to serialize.
         # This is used for more detailed error messages.
         "type_guard",  # T, if -> TypeGuard[T] (ret_type is bool in this case).
+        "type_narrower",  # T, if -> TypeNarrower[T] (ret_type is bool in this case).
         "from_concatenate",  # whether this callable is from a concatenate object
         # (this is used for error messages)
         "imprecise_arg_kinds",
@@ -1817,6 +1831,7 @@ class CallableType(FunctionLike):
         bound_args: Sequence[Type | None] = (),
         def_extras: dict[str, Any] | None = None,
         type_guard: Type | None = None,
+        type_narrower: Type | None = None,
         from_concatenate: bool = False,
         imprecise_arg_kinds: bool = False,
         unpack_kwargs: bool = False,
@@ -1866,6 +1881,7 @@ class CallableType(FunctionLike):
         else:
             self.def_extras = {}
         self.type_guard = type_guard
+        self.type_narrower = type_narrower
         self.unpack_kwargs = unpack_kwargs
 
     def copy_modified(
@@ -1887,6 +1903,7 @@ class CallableType(FunctionLike):
         bound_args: Bogus[list[Type | None]] = _dummy,
         def_extras: Bogus[dict[str, Any]] = _dummy,
         type_guard: Bogus[Type | None] = _dummy,
+        type_narrower: Bogus[Type | None] = _dummy,
         from_concatenate: Bogus[bool] = _dummy,
         imprecise_arg_kinds: Bogus[bool] = _dummy,
         unpack_kwargs: Bogus[bool] = _dummy,
@@ -1911,6 +1928,7 @@ class CallableType(FunctionLike):
             bound_args=bound_args if bound_args is not _dummy else self.bound_args,
             def_extras=def_extras if def_extras is not _dummy else dict(self.def_extras),
             type_guard=type_guard if type_guard is not _dummy else self.type_guard,
+            type_narrower=type_narrower if type_narrower is not _dummy else self.type_narrower,
             from_concatenate=(
                 from_concatenate if from_concatenate is not _dummy else self.from_concatenate
             ),
@@ -2224,6 +2242,7 @@ class CallableType(FunctionLike):
             "bound_args": [(None if t is None else t.serialize()) for t in self.bound_args],
             "def_extras": dict(self.def_extras),
             "type_guard": self.type_guard.serialize() if self.type_guard is not None else None,
+            "type_narrower": self.type_narrower.serialize() if self.type_narrower is not None else None,
             "from_concatenate": self.from_concatenate,
             "imprecise_arg_kinds": self.imprecise_arg_kinds,
             "unpack_kwargs": self.unpack_kwargs,
@@ -2247,6 +2266,9 @@ class CallableType(FunctionLike):
             def_extras=data["def_extras"],
             type_guard=(
                 deserialize_type(data["type_guard"]) if data["type_guard"] is not None else None
+            ),
+            type_narrower=(
+                deserialize_type(data["type_narrower"]) if data["type_narrower"] is not None else None
             ),
             from_concatenate=data["from_concatenate"],
             imprecise_arg_kinds=data["imprecise_arg_kinds"],
@@ -3072,6 +3094,8 @@ def get_proper_type(typ: Type | None) -> ProperType | None:
         return None
     if isinstance(typ, TypeGuardedType):  # type: ignore[misc]
         typ = typ.type_guard
+    if isinstance(typ, TypeNarrowerType):  # type: ignore[misc]
+        typ = typ.type_narrower
     while isinstance(typ, TypeAliasType):
         typ = typ._expand_once()
     # TODO: store the name of original type alias on this type, so we can show it in errors.
@@ -3096,7 +3120,7 @@ def get_proper_types(
         typelist = types
         # Optimize for the common case so that we don't need to allocate anything
         if not any(
-            isinstance(t, (TypeAliasType, TypeGuardedType)) for t in typelist  # type: ignore[misc]
+            isinstance(t, (TypeAliasType, TypeGuardedType, TypeNarrowerType)) for t in typelist  # type: ignore[misc]
         ):
             return cast("list[ProperType]", typelist)
         return [get_proper_type(t) for t in typelist]
@@ -3306,6 +3330,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         if not isinstance(get_proper_type(t.ret_type), NoneType):
             if t.type_guard is not None:
                 s += f" -> TypeGuard[{t.type_guard.accept(self)}]"
+            elif t.type_narrower is not None:
+                s += f" -> TypeNarrower[{t.type_narrower.accept(self)}]"
             else:
                 s += f" -> {t.ret_type.accept(self)}"
 
