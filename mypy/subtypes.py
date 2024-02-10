@@ -688,7 +688,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 # a TypeNarrower[Child] when a TypeNarrower[Parent] is expected, because
                 # if the narrower returns False, we assume that the narrowed value is
                 # *not* a Parent.
-                if not self._is_subtype(left.type_narrower, right.type_narrower) or not self._is_subtype(right.type_narrower, left.type_narrower):
+                if not self._is_subtype(
+                    left.type_narrower, right.type_narrower
+                ) or not self._is_subtype(right.type_narrower, left.type_narrower):
                     return False
             elif right.type_guard is not None and left.type_guard is None:
                 # This means that one function has `TypeGuard` and other does not.
