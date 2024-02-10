@@ -47,6 +47,39 @@ def test_append() -> None:
     assert append(vec[float](), 123.5) == vec[float]([123.5])
     assert append(vec[bool](), True) == vec[bool]([True])
 
+def test_unbox() -> None:
+    v: vec[i64]
+
+    a = cast(Any, vec[i32]([1, 2]))
+    v_i32: vec[i32] = a
+    assert v_i32 == vec[i32]([1, 2])
+    with assertRaises(TypeError):
+        v = a
+
+    a = cast(Any, vec[i16]([1, 2]))
+    v_i16: vec[i16] = a
+    assert v_i16 == vec[i16]([1, 2])
+    with assertRaises(TypeError):
+        v = a
+
+    a = cast(Any, vec[u8]([1, 2]))
+    v_u8: vec[u8] = a
+    assert v_u8 == vec[u8]([1, 2])
+    with assertRaises(TypeError):
+        v = a
+
+    a = cast(Any, vec[float]([1, 2]))
+    v_float: vec[float] = a
+    assert v_float == vec[float]([1, 2])
+    with assertRaises(TypeError):
+        v = a
+
+    a = cast(Any, vec[bool]([True, False]))
+    v_bool: vec[bool] = a
+    assert v_bool == vec[bool]([True, False])
+    with assertRaises(TypeError):
+        v = a
+
 def test_set_item() -> None:
     v = vec[i32]([5, -12])
     v[1] = 55
