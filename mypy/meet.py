@@ -33,6 +33,7 @@ from mypy.types import (
     TupleType,
     Type,
     TypeAliasType,
+    TypeNarrowerType,
     TypedDictType,
     TypeGuardedType,
     TypeOfAny,
@@ -114,8 +115,9 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     # TODO: check infinite recursion for aliases here.
     if isinstance(narrowed, TypeGuardedType):  # type: ignore[misc]
         # A type guard forces the new type even if it doesn't overlap the old.
-        return narrowed.type_guard
-    # TODO(jelle): TypeNarrower
+        return narrowed
+    elif isinstance(narrowed, TypeNarrowerType):
+        return narrow_declared_type(declared, narrowed.type_narrower)
 
     original_declared = declared
     original_narrowed = narrowed

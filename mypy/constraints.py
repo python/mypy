@@ -1018,11 +1018,14 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             param_spec = template.param_spec()
 
             template_ret_type, cactual_ret_type = template.ret_type, cactual.ret_type
-            # TODO(jelle): TypeNarrower
             if template.type_guard is not None:
                 template_ret_type = template.type_guard
+            elif template.type_narrower is not None:
+                template_ret_type = template.type_narrower
             if cactual.type_guard is not None:
                 cactual_ret_type = cactual.type_guard
+            elif cactual.type_narrower is not None:
+                cactual_ret_type = cactual.type_narrower
             res.extend(infer_constraints(template_ret_type, cactual_ret_type, self.direction))
 
             if param_spec is None:

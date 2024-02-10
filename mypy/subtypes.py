@@ -694,7 +694,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 # This means that one function has `TypeGuard` and other does not.
                 # They are not compatible. See https://github.com/python/mypy/issues/11307
                 return False
-            elif right.type_narrower is not None and left.type_narrower is not None:
+            elif right.type_narrower is not None and left.type_narrower is None:
                 # Similarly, if one function has typeNarrower and the other does not,
                 # they are not compatible.
                 return False
