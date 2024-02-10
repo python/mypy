@@ -1135,6 +1135,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # Check validity of __new__ signature
                     if fdef.info and fdef.name == "__new__":
                         self.check___new___signature(fdef, typ)
+                    if typ.type_narrower:
+                        if not is_subtype(typ.type_narrower, typ.arg_types[0]):
+                            self.fail(
+                                message_registry.TYPE_NARROWER_NOT_SUBTYPE.format(
+                                    format_type(typ.type_narrower, self.options),
+                                    format_type(typ.arg_types[0], self.options),
+                                ),
+                                item,
+                            )
 
                     self.check_for_missing_annotations(fdef)
                     if self.options.disallow_any_unimported:

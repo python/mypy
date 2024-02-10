@@ -281,5 +281,11 @@ OVERLOAD_OVERLAP: Final[ErrorCode] = ErrorCode(
     sub_code_of=MISC,
 )
 
+TYPE_NARROWER_NOT_SUBTYPE: Final[ErrorCode] = ErrorCode(
+    "type-narrower-not-subtype",
+    "Warn if a type narrower's narrowed type is not a subtype of the original type",
+    "General",
+)
+
 # This copy will not include any error codes defined later in the plugins.
 mypy_error_codes = error_codes.copy()

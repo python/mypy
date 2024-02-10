@@ -684,3 +684,17 @@ x: object
 assert a(x=x)
 reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerMustBeSubtype]
+from typing_extensions import TypeNarrower
+from typing import List, Sequence, TypeVar
+
+def f(x: str) -> TypeNarrower[int]:  # E: Narrowed type "int" must be a subtype of input type "str"
+    pass
+
+T = TypeVar('T')
+
+def g(x: List[T]) -> TypeNarrower[Sequence[T]]:  # E: Narrowed type "Sequence[T]" must be a subtype of input type "List[T]"
+    pass
+
+[builtins fixtures/tuple.pyi]
