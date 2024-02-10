@@ -555,3 +555,19 @@ Correct usage:
 
 When this code is enabled, using ``reveal_locals`` is always an error,
 because there's no way one can import it.
+
+.. _type-narrower-not-subtype:
+
+Check that TypeNarrower narrows types [type-narrower-not-subtype]
+-----------------------------------------------------------------
+
+:pep:`742` requires that when a ``TypeNarrower`` is used, the narrowed
+type must be a subtype of the original type::
+
+    from typing_extensions import TypeNarrower
+
+    def f(x: int) -> TypeNarrower[str]:  # Error, str is not a subtype of int
+        ...
+
+    def g(x: object) -> TypeNarrower[str]:  # OK
+        ...
