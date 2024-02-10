@@ -72,7 +72,7 @@ T = TypeVar('T')
 def is_tuple_of_type(a: Tuple[object, ...], typ: Type[T]) -> TypeNarrower[Tuple[T, ...]]: pass
 def main(a: Tuple[object, ...]):
     if is_tuple_of_type(a, int):
-        reveal_type(a)  # N: Revealed type is "Tuple[int, ...]"
+        reveal_type(a)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeNarrowerUnionIn]
@@ -101,7 +101,7 @@ from typing_extensions import TypeNarrower
 def is_nonzero(a: object) -> TypeNarrower[float]: pass
 def main(a: int):
     if is_nonzero(a):
-        reveal_type(a)  # N: Revealed type is "builtins.float"
+        reveal_type(a)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeNarrowerHigherOrder]
@@ -342,9 +342,9 @@ def guard(a: A) -> TypeNarrower[B]:
 
 a = A()
 if guard(a):
-    reveal_type(a)  # N: Revealed type is "__main__.B"
+    reveal_type(a)  # N: Revealed type is "__main__.<subclass of "A" and "B">"
     a = B()  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    reveal_type(a)  # N: Revealed type is "__main__.B"
+    reveal_type(a)  # N: Revealed type is "__main__.<subclass of "A" and "B">"
     a = A()
     reveal_type(a)  # N: Revealed type is "__main__.A"
 reveal_type(a)  # N: Revealed type is "__main__.A"
@@ -559,7 +559,7 @@ def is_list_of_str(val: _T) -> TypeNarrower[List[_T]]:
 def func(name: str):
     reveal_type(name)  # N: Revealed type is "builtins.str"
     if is_list_of_str(name):
-        reveal_type(name)  # N: Revealed type is "Never"
+        reveal_type(name)  # N: Revealed type is "__main__.<subclass of "str" and "list">"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeNarrowerWithTupleGeneric]

@@ -5710,8 +5710,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 # we want the idx-th variable to be narrowed
                                 expr = collapse_walrus(node.args[idx])
                             else:
-                                kind = "guard" if node.callee.type_guard is not None else "narrower"
-                                self.fail(message_registry.TYPE_GUARD_POS_ARG_REQUIRED.format(kind), node)
+                                kind = (
+                                    "guard" if node.callee.type_guard is not None else "narrower"
+                                )
+                                self.fail(
+                                    message_registry.TYPE_GUARD_POS_ARG_REQUIRED.format(kind), node
+                                )
                                 return {}, {}
                     if literal(expr) == LITERAL_TYPE:
                         # Note: we wrap the target type, so that we can special case later.
@@ -5722,7 +5726,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         if node.callee.type_guard is not None:
                             guard_type = TypeGuardedType(node.callee.type_guard)
                         else:
-                            guard_type = TypeNarrowerType(node.callee.type_narrower)
+                            return conditional_types_to_typemaps(
+                                expr,
+                                *self.conditional_types_with_intersection(
+                                    self.lookup_type(expr),
+                                    [TypeRange(node.callee.type_narrower, is_upper_bound=False)],
+                                    expr,
+                                ),
+                            )
                         return {expr: guard_type}, {}
         elif isinstance(node, ComparisonExpr):
             # Step 1: Obtain the types of each operand and whether or not we can
