@@ -114,7 +114,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     # TODO: check infinite recursion for aliases here.
     if isinstance(narrowed, TypeGuardedType):  # type: ignore[misc]
         # A type guard forces the new type even if it doesn't overlap the old.
-        return narrowed
+        return narrowed.type_guard
 
     original_declared = declared
     original_narrowed = narrowed

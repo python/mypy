@@ -5732,7 +5732,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # Also note that a care must be taken to unwrap this back at read places
                         # where we use this to narrow down declared type.
                         if node.callee.type_guard is not None:
-                            guard_type = TypeGuardedType(node.callee.type_guard)
+                            return {expr: TypeGuardedType(node.callee.type_guard)}, {}
                         else:
                             return conditional_types_to_typemaps(
                                 expr,
@@ -5742,7 +5742,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                     expr,
                                 ),
                             )
-                        return {expr: guard_type}, {}
         elif isinstance(node, ComparisonExpr):
             # Step 1: Obtain the types of each operand and whether or not we can
             # narrow their types. (For example, we shouldn't try narrowing the
