@@ -439,7 +439,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                """)
         self.assert_emit(
             Unbox(self.o, RVec(RVec(int64_rprimitive)), 55),
-            """cpy_r_r0 = VecNestedApi.unbox(cpy_r_o, VEC_ITEM_TYPE_I64, 1);
+            """cpy_r_r0 = VecNestedApi.unbox(cpy_r_o, 2, 1);
                if (VEC_IS_ERROR(cpy_r_r0)) {
                    CPy_TypeError("vec[vec[i64]]", cpy_r_o); cpy_r_r0 = (VecNested) { -1, NULL };
                }

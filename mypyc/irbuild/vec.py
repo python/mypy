@@ -61,6 +61,7 @@ from mypyc.ir.rtypes import (
     pointer_rprimitive,
     vec_depth,
     vec_api_by_item_type,
+    vec_item_type_tags,
 )
 from mypyc.primitives.registry import builtin_names
 
@@ -205,8 +206,8 @@ def vec_item_type_info(
         return builder.load_address(src, typ), False, 0
     elif isinstance(typ, RInstance):
         return builder.load_native_type_object(typ.name), False, 0
-    elif is_int64_rprimitive(typ):
-        return Integer(VEC_TYPE_INFO_I64, c_size_t_rprimitive), False, 0
+    elif typ in vec_item_type_tags:
+        return Integer(vec_item_type_tags[typ], c_size_t_rprimitive), False, 0
     elif isinstance(typ, RUnion):
         non_opt = optional_value_type(typ)
         assert non_opt is not None

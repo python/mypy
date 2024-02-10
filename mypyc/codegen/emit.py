@@ -67,6 +67,7 @@ from mypyc.ir.rtypes import (
     optional_value_type,
     vec_depth,
     vec_api_by_item_type,
+    vec_item_type_tags,
 )
 from mypyc.namegen import NameGenerator, exported_name
 from mypyc.primitives.registry import builtin_names
@@ -1097,8 +1098,9 @@ class Emitter:
                 self.emit_line(f"{dest} = {specialized_api_name}.unbox({src});")
             else:
                 depth = typ.depth()
-                if is_int64_rprimitive(typ.unwrap_item_type()):
-                    type_value = "VEC_ITEM_TYPE_I64"
+                unwrapped = typ.unwrap_item_type()
+                if unwrapped in vec_item_type_tags:
+                    type_value = str(vec_item_type_tags[unwrapped])
                 else:
                     type_value = self.vec_item_type_c(typ)
                 if depth == 0:

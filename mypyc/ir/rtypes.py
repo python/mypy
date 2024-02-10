@@ -1475,3 +1475,15 @@ vec_api_by_item_type: Final = {
     float_rprimitive: "VecFloatApi",
     bool_rprimitive: "VecBoolApi",
 }
+
+# These are special type item type contants used in nested vecs to represent
+# item types with specialized representations. These must match definitions
+# in the vecs module (see VEC_ITEM_TYPE_I64 etc.).
+vec_item_type_tags: Final = {
+    int64_rprimitive: 2,
+    int32_rprimitive: 6,
+    int16_rprimitive: 10,
+    uint8_rprimitive: 14,
+    float_rprimitive: 18,
+    bool_rprimitive: 22,
+}
