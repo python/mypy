@@ -556,7 +556,7 @@ Correct usage:
 When this code is enabled, using ``reveal_locals`` is always an error,
 because there's no way one can import it.
 
-.. _type-narrower-not-subtype:
+.. _code-type-narrower-not-subtype:
 
 Check that TypeNarrower narrows types [type-narrower-not-subtype]
 -----------------------------------------------------------------
