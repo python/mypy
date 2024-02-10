@@ -1214,7 +1214,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # For methods and classmethods, we want the second parameter
                     if ref_type is not None and (not defn.is_static or defn.name == "__new__"):
                         arg_index = 1
-                    if arg_index < len(typ.arg_types) and not is_subtype(typ.type_narrower, typ.arg_types[arg_index]):
+                    if arg_index < len(typ.arg_types) and not is_subtype(
+                        typ.type_narrower, typ.arg_types[arg_index]
+                    ):
                         self.fail(
                             message_registry.TYPE_NARROWER_NOT_SUBTYPE.format(
                                 format_type(typ.type_narrower, self.options),
