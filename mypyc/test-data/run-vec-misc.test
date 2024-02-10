@@ -122,6 +122,22 @@ def test_set_item_negative() -> None:
     v[-1] = True
     assert v[0] and v[1]
 
+def test_for_loop() -> None:
+    a: Any = []
+    for x in vec[float]([1.5, -3.5]):
+        a.append(x)
+    assert a == [1.5, -3.5]
+
+    a = []
+    for x in vec[bool]([True, False, False, True]):
+        a.append(x)
+    assert a == [True, False, False, True]
+
+    a = []
+    for x in vec[u8]([0, 5, 237, 255]):
+        a.append(x)
+    assert a == [0, 5, 237, 255]
+
 def test_nested_basics() -> None:
     v = vec[vec[i32]]([vec[i32]([5, 6]),
                        vec[i32]([-12])])
