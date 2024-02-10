@@ -1135,15 +1135,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # Check validity of __new__ signature
                     if fdef.info and fdef.name == "__new__":
                         self.check___new___signature(fdef, typ)
-                    if typ.type_narrower:
-                        if not is_subtype(typ.type_narrower, typ.arg_types[0]):
-                            self.fail(
-                                message_registry.TYPE_NARROWER_NOT_SUBTYPE.format(
-                                    format_type(typ.type_narrower, self.options),
-                                    format_type(typ.arg_types[0], self.options),
-                                ),
-                                item,
-                            )
 
                     self.check_for_missing_annotations(fdef)
                     if self.options.disallow_any_unimported:
@@ -1217,6 +1208,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # We temporary push the definition to get the self type as
                     # visible from *inside* of this function/method.
                     ref_type: Type | None = self.scope.active_self_type()
+
+                if typ.type_narrower:
+                    arg_index = 0
+                    # For methods and classmethods, we want the second parameter
+                    if ref_type is not None and (not defn.is_static or defn.name == "__new__"):
+                        arg_index = 1
+                    if arg_index < len(typ.arg_types) and not is_subtype(typ.type_narrower, typ.arg_types[arg_index]):
+                        self.fail(
+                            message_registry.TYPE_NARROWER_NOT_SUBTYPE.format(
+                                format_type(typ.type_narrower, self.options),
+                                format_type(typ.arg_types[arg_index], self.options),
+                            ),
+                            item,
+                        )
 
                 # Store argument types.
                 for i in range(len(typ.arg_types)):

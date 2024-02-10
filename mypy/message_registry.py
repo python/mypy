@@ -325,5 +325,5 @@ ARG_NAME_EXPECTED_STRING_LITERAL: Final = ErrorMessage(
     "Expected string literal for argument name, got {}", codes.SYNTAX
 )
 TYPE_NARROWER_NOT_SUBTYPE: Final = ErrorMessage(
-    "Narrowed type {} must be a subtype of input type {}", codes.SYNTAX
+    "Narrowed type {} is not a subtype of input type {}", codes.SYNTAX
 )

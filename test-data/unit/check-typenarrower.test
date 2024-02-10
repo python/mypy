@@ -323,7 +323,7 @@ from typing_extensions import TypeNarrower
 class A: pass
 class B: pass
 
-def guard(a: A) -> TypeNarrower[B]:
+def guard(a: object) -> TypeNarrower[B]:
     pass
 
 a = A()
@@ -337,7 +337,7 @@ from typing_extensions import TypeNarrower
 class A: pass
 class B: pass
 
-def guard(a: A) -> TypeNarrower[B]:
+def guard(a: object) -> TypeNarrower[B]:
     pass
 
 a = A()
@@ -548,18 +548,18 @@ def func2(name: str):
 [builtins fixtures/tuple.pyi]
 
 [case testTypeNarrowerWithGenericInstance]
-from typing import TypeVar, List
+from typing import TypeVar, List, Iterable
 from typing_extensions import TypeNarrower
 
 _T = TypeVar("_T")
 
-def is_list_of_str(val: _T) -> TypeNarrower[List[_T]]:
+def is_list_of_str(val: Iterable[_T]) -> TypeNarrower[List[_T]]:
     pass
 
-def func(name: str):
-    reveal_type(name)  # N: Revealed type is "builtins.str"
+def func(name: Iterable[str]):
+    reveal_type(name)  # N: Revealed type is "typing.Iterable[builtins.str]"
     if is_list_of_str(name):
-        reveal_type(name)  # N: Revealed type is "__main__.<subclass of "str" and "list">"
+        reveal_type(name)  # N: Revealed type is "builtins.list[builtins.str]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeNarrowerWithTupleGeneric]
@@ -685,16 +685,45 @@ assert a(x=x)
 reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
-[case testTypeNarrowerMustBeSubtype]
+[case testTypeNarrowerMustBeSubtypeFunctions]
 from typing_extensions import TypeNarrower
 from typing import List, Sequence, TypeVar
 
-def f(x: str) -> TypeNarrower[int]:  # E: Narrowed type "int" must be a subtype of input type "str"
+def f(x: str) -> TypeNarrower[int]:  # E: Narrowed type "int" is not a subtype of input type "str"
     pass
 
 T = TypeVar('T')
 
-def g(x: List[T]) -> TypeNarrower[Sequence[T]]:  # E: Narrowed type "Sequence[T]" must be a subtype of input type "List[T]"
+def g(x: List[T]) -> TypeNarrower[Sequence[T]]:  # E: Narrowed type "Sequence[T]" is not a subtype of input type "List[T]"
     pass
 
 [builtins fixtures/tuple.pyi]
+
+[case testTypeNarrowerMustBeSubtypeMethods]
+from typing_extensions import TypeNarrower
+
+class NarrowHolder:
+    @classmethod
+    def cls_narrower_good(cls, x: object) -> TypeNarrower[int]:
+        pass
+
+    @classmethod
+    def cls_narrower_bad(cls, x: str) -> TypeNarrower[int]:  # E: Narrowed type "int" is not a subtype of input type "str"
+        pass
+
+    @staticmethod
+    def static_narrower_good(x: object) -> TypeNarrower[int]:
+        pass
+
+    @staticmethod
+    def static_narrower_bad(x: str) -> TypeNarrower[int]:  # E: Narrowed type "int" is not a subtype of input type "str"
+        pass
+
+    def inst_narrower_good(self, x: object) -> TypeNarrower[int]:
+        pass
+
+    def inst_narrower_bad(self, x: str) -> TypeNarrower[int]:  # E: Narrowed type "int" is not a subtype of input type "str"
+        pass
+
+
+[builtins fixtures/classmethod.pyi]
