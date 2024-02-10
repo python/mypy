@@ -33,7 +33,6 @@ from mypy.types import (
     TupleType,
     Type,
     TypeAliasType,
-    TypeNarrowerType,
     TypedDictType,
     TypeGuardedType,
     TypeOfAny,
@@ -116,8 +115,6 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     if isinstance(narrowed, TypeGuardedType):  # type: ignore[misc]
         # A type guard forces the new type even if it doesn't overlap the old.
         return narrowed
-    elif isinstance(narrowed, TypeNarrowerType):
-        return narrow_declared_type(declared, narrowed.type_narrower)
 
     original_declared = declared
     original_narrowed = narrowed
@@ -278,7 +275,6 @@ def is_overlapping_types(
     ):
         # A type guard forces the new type even if it doesn't overlap the old.
         return True
-    # TODO(jelle): TypeNarrower
 
     if seen_types is None:
         seen_types = set()

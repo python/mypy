@@ -449,19 +449,6 @@ class TypeGuardedType(Type):
         return f"TypeGuard({self.type_guard})"
 
 
-class TypeNarrowerType(Type):
-    """Only used by find_isinstance_check() etc."""
-
-    __slots__ = ("type_narrower",)
-
-    def __init__(self, type_narrower: Type) -> None:
-        super().__init__(line=type_narrower.line, column=type_narrower.column)
-        self.type_narrower = type_narrower
-
-    def __repr__(self) -> str:
-        return f"TypeNarrower({self.type_narrower})"
-
-
 class RequiredType(Type):
     """Required[T] or NotRequired[T]. Only usable at top-level of a TypedDict definition."""
 
@@ -3094,8 +3081,6 @@ def get_proper_type(typ: Type | None) -> ProperType | None:
         return None
     if isinstance(typ, TypeGuardedType):  # type: ignore[misc]
         typ = typ.type_guard
-    if isinstance(typ, TypeNarrowerType):  # type: ignore[misc]
-        typ = typ.type_narrower
     while isinstance(typ, TypeAliasType):
         typ = typ._expand_once()
     # TODO: store the name of original type alias on this type, so we can show it in errors.
@@ -3120,7 +3105,7 @@ def get_proper_types(
         typelist = types
         # Optimize for the common case so that we don't need to allocate anything
         if not any(
-            isinstance(t, (TypeAliasType, TypeGuardedType, TypeNarrowerType)) for t in typelist  # type: ignore[misc]
+            isinstance(t, (TypeAliasType, TypeGuardedType)) for t in typelist  # type: ignore[misc]
         ):
             return cast("list[ProperType]", typelist)
         return [get_proper_type(t) for t in typelist]

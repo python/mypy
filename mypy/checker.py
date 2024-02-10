@@ -199,7 +199,6 @@ from mypy.types import (
     TupleType,
     Type,
     TypeAliasType,
-    TypeNarrowerType,
     TypedDictType,
     TypeGuardedType,
     TypeOfAny,
