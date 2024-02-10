@@ -138,6 +138,13 @@ def test_for_loop() -> None:
         a.append(x)
     assert a == [0, 5, 237, 255]
 
+def test_comprehension() -> None:
+    v = vec[i32]([x + 1 for x in [1, 4, -5]])
+    assert list(v) == [2, 5, -4]
+
+    v = vec[float]([x + 1.5 for x in range(4)])
+    assert list(v) == [1.5, 2.5, 3.5, 4.5]
+
 def test_nested_basics() -> None:
     v = vec[vec[i32]]([vec[i32]([5, 6]),
                        vec[i32]([-12])])
