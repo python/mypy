@@ -5734,6 +5734,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         if node.callee.type_guard is not None:
                             return {expr: TypeGuardedType(node.callee.type_guard)}, {}
                         else:
+                            assert node.callee.type_narrower is not None
                             return conditional_types_to_typemaps(
                                 expr,
                                 *self.conditional_types_with_intersection(
