@@ -537,17 +537,6 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             if new_args is not None:
                 args = new_args
 
-        is_dataclass_generated = (
-            self.analyzed and self.processing_dataclass and o.info.names[o.name].plugin_generated
-        )
-        if o.name == "__init__" and is_dataclass_generated and "**" in [a.name for a in args]:
-            # The dataclass plugin generates invalid nameless "*" and "**" arguments
-            new_name = "".join(a.name.strip("*") for a in args)
-            for arg in args:
-                if arg.name == "*":
-                    arg.name = f"*{new_name}_"  # this name is guaranteed to be unique
-                elif arg.name == "**":
-                    arg.name = f"**{new_name}__"  # same here
         return args
 
     def _get_func_return(self, o: FuncDef, ctx: FunctionContext) -> str | None:
