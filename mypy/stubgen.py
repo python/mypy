@@ -110,6 +110,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.options import Options as MypyOptions
+from mypy.sharedparse import MAGIC_METHODS_POS_ARGS_ONLY
 from mypy.stubdoc import ArgSig, FunctionSig
 from mypy.stubgenc import InspectionStubGenerator, generate_stub_for_c_module
 from mypy.stubutil import (
@@ -480,6 +481,9 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
     def _get_func_args(self, o: FuncDef, ctx: FunctionContext) -> list[ArgSig]:
         args: list[ArgSig] = []
 
+        # Ignore pos-only status of magic methods whose args names are elided by mypy at parse
+        actually_pos_only_args = o.name not in MAGIC_METHODS_POS_ARGS_ONLY
+        pos_only_marker_position = 0  # Where to insert "/", if any
         for i, arg_ in enumerate(o.arguments):
             var = arg_.variable
             kind = arg_.kind
@@ -500,6 +504,9 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 if not isinstance(get_proper_type(annotated_type), AnyType):
                     typename = self.print_annotation(annotated_type)
 
+            if actually_pos_only_args and arg_.pos_only:
+                pos_only_marker_position += 1
+
             if kind.is_named() and not any(arg.name.startswith("*") for arg in args):
                 args.append(ArgSig("*"))
 
@@ -518,6 +525,8 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             args.append(
                 ArgSig(name, typename, default=bool(arg_.initializer), default_value=default)
             )
+        if pos_only_marker_position:
+            args.insert(pos_only_marker_position, ArgSig("/"))
 
         if ctx.class_info is not None and all(
             arg.type is None and arg.default is False for arg in args
