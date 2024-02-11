@@ -5047,7 +5047,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # not a literal value. This lets us correctly narrow types and check exhaustivity
         if isinstance(s.subject, CallExpr):
             id = s.subject.callee.fullname if isinstance(s.subject.callee, RefExpr) else ""
-            name = "dummy-match-" + id
+            name = "dummy-match-" + id  # this is a hack
             v = Var(name)
             named_subject = NameExpr(name)
             named_subject.node = v
