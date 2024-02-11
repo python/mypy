@@ -5043,11 +5043,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return None
 
     def visit_match_stmt(self, s: MatchStmt) -> None:
-        # Create a dummy subject expression to handle cases where a match statement's subject is
-        # not a literal value. This lets us correctly narrow types and check exhaustivity
+        named_subject: Expression
         if isinstance(s.subject, CallExpr):
+            # Create a dummy subject expression to handle cases where a match statement's subject
+            # is not a literal value. This lets us correctly narrow types and check exhaustivity
+            # This is hack!
             id = s.subject.callee.fullname if isinstance(s.subject.callee, RefExpr) else ""
-            name = "dummy-match-" + id  # this is a hack
+            name = "dummy-match-" + id
             v = Var(name)
             named_subject = NameExpr(name)
             named_subject.node = v
