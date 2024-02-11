@@ -5129,7 +5129,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def _get_recursive_sub_patterns_map(
         self, expr: Expression, typ: Type
     ) -> dict[Expression, Type]:
-        sub_patterns_map = dict[Expression, Type]()
+        sub_patterns_map: dict[Expression, Type] = {}
         typ_ = get_proper_type(typ)
         if isinstance(expr, TupleExpr) and isinstance(typ_, TupleType):
             # When matching a tuple expression with a sequence pattern, narrow individual tuple items
