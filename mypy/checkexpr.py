@@ -4437,6 +4437,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 operand = index.expr
                 if isinstance(operand, IntExpr):
                     return [-1 * operand.value]
+            if index.op == "+":
+                operand = index.expr
+                if isinstance(operand, IntExpr):
+                    return [operand.value]
         typ = get_proper_type(self.accept(index))
         if isinstance(typ, Instance) and typ.last_known_value is not None:
             typ = typ.last_known_value
