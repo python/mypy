@@ -1075,9 +1075,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def anal_type_is_arg(self, t: UnboundType, fullname: str) -> Type | None:
         if fullname in ("typing_extensions.TypeIs", "typing.TypeIs"):
             if len(t.args) != 1:
-                self.fail(
-                    "TypeIs must have exactly one type argument", t, code=codes.VALID_TYPE
-                )
+                self.fail("TypeIs must have exactly one type argument", t, code=codes.VALID_TYPE)
                 return AnyType(TypeOfAny.from_error)
             return self.anal_type(t.args[0])
         return None

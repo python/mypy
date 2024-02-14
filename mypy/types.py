@@ -2229,9 +2229,7 @@ class CallableType(FunctionLike):
             "bound_args": [(None if t is None else t.serialize()) for t in self.bound_args],
             "def_extras": dict(self.def_extras),
             "type_guard": self.type_guard.serialize() if self.type_guard is not None else None,
-            "type_is": (
-                self.type_is.serialize() if self.type_is is not None else None
-            ),
+            "type_is": (self.type_is.serialize() if self.type_is is not None else None),
             "from_concatenate": self.from_concatenate,
             "imprecise_arg_kinds": self.imprecise_arg_kinds,
             "unpack_kwargs": self.unpack_kwargs,
@@ -2256,11 +2254,7 @@ class CallableType(FunctionLike):
             type_guard=(
                 deserialize_type(data["type_guard"]) if data["type_guard"] is not None else None
             ),
-            type_is=(
-                deserialize_type(data["type_is"])
-                if data["type_is"] is not None
-                else None
-            ),
+            type_is=(deserialize_type(data["type_is"]) if data["type_is"] is not None else None),
             from_concatenate=data["from_concatenate"],
             imprecise_arg_kinds=data["imprecise_arg_kinds"],
             unpack_kwargs=data["unpack_kwargs"],
