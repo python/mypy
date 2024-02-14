@@ -1020,12 +1020,12 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             template_ret_type, cactual_ret_type = template.ret_type, cactual.ret_type
             if template.type_guard is not None:
                 template_ret_type = template.type_guard
-            elif template.type_narrower is not None:
-                template_ret_type = template.type_narrower
+            elif template.type_is is not None:
+                template_ret_type = template.type_is
             if cactual.type_guard is not None:
                 cactual_ret_type = cactual.type_guard
-            elif cactual.type_narrower is not None:
-                cactual_ret_type = cactual.type_narrower
+            elif cactual.type_is is not None:
+                cactual_ret_type = cactual.type_is
             res.extend(infer_constraints(template_ret_type, cactual_ret_type, self.direction))
 
             if param_spec is None:

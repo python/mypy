@@ -34,7 +34,7 @@ Concatenate: _SpecialForm
 TypeAlias: _SpecialForm
 
 TypeGuard: _SpecialForm
-TypeNarrower: _SpecialForm
+TypeIs: _SpecialForm
 Never: _SpecialForm
 
 TypeVarTuple: _SpecialForm

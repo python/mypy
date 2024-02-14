@@ -309,8 +309,6 @@ else:
     TypeGuard: _SpecialForm
     def is_typeddict(tp: object) -> bool: ...
 
-TypeNarrower: _SpecialForm
-
 # New and changed things in 3.11
 if sys.version_info >= (3, 11):
     from typing import (

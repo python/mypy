@@ -1209,17 +1209,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # visible from *inside* of this function/method.
                     ref_type: Type | None = self.scope.active_self_type()
 
-                if typ.type_narrower:
+                if typ.type_is:
                     arg_index = 0
                     # For methods and classmethods, we want the second parameter
                     if ref_type is not None and (not defn.is_static or defn.name == "__new__"):
                         arg_index = 1
                     if arg_index < len(typ.arg_types) and not is_subtype(
-                        typ.type_narrower, typ.arg_types[arg_index]
+                        typ.type_is, typ.arg_types[arg_index]
                     ):
                         self.fail(
                             message_registry.TYPE_NARROWER_NOT_SUBTYPE.format(
-                                format_type(typ.type_narrower, self.options),
+                                format_type(typ.type_is, self.options),
                                 format_type(typ.arg_types[arg_index], self.options),
                             ),
                             item,
@@ -2193,7 +2193,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             elif isinstance(original, CallableType) and isinstance(override, CallableType):
                 if original.type_guard is not None and override.type_guard is None:
                     fail = True
-                if original.type_narrower is not None and override.type_narrower is None:
+                if original.type_is is not None and override.type_is is None:
                     fail = True
 
         if is_private(name):
@@ -5647,7 +5647,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def find_isinstance_check(self, node: Expression) -> tuple[TypeMap, TypeMap]:
         """Find any isinstance checks (within a chain of ands).  Includes
         implicit and explicit checks for None and calls to callable.
-        Also includes TypeGuard and TypeNarrower functions.
+        Also includes TypeGuard and TypeIs functions.
 
         Return value is a map of variables to their types if the condition
         is true and a map of variables to their types if the condition is false.
@@ -5699,7 +5699,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if literal(expr) == LITERAL_TYPE and attr and len(attr) == 1:
                     return self.hasattr_type_maps(expr, self.lookup_type(expr), attr[0])
             elif isinstance(node.callee, RefExpr):
-                if node.callee.type_guard is not None or node.callee.type_narrower is not None:
+                if node.callee.type_guard is not None or node.callee.type_is is not None:
                     # TODO: Follow *args, **kwargs
                     if node.arg_kinds[0] != nodes.ARG_POS:
                         # the first argument might be used as a kwarg
@@ -5741,12 +5741,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         if node.callee.type_guard is not None:
                             return {expr: TypeGuardedType(node.callee.type_guard)}, {}
                         else:
-                            assert node.callee.type_narrower is not None
+                            assert node.callee.type_is is not None
                             return conditional_types_to_typemaps(
                                 expr,
                                 *self.conditional_types_with_intersection(
                                     self.lookup_type(expr),
-                                    [TypeRange(node.callee.type_narrower, is_upper_bound=False)],
+                                    [TypeRange(node.callee.type_is, is_upper_bound=False)],
                                     expr,
                                 ),
                             )
