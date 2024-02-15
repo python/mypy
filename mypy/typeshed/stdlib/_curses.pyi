@@ -553,5 +553,6 @@ if sys.platform != "win32":
         major: int
         minor: int
         patch: int
+
     ncurses_version: _ncurses_version
     window = _CursesWindow  # undocumented

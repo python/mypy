@@ -32,6 +32,7 @@ def get_native_id() -> int: ...  # only available on some platforms
 class _ExceptHookArgs(structseq[Any], tuple[type[BaseException], BaseException | None, TracebackType | None, Thread | None]):
     if sys.version_info >= (3, 10):
         __match_args__: Final = ("exc_type", "exc_value", "exc_traceback", "thread")
+
     @property
     def exc_type(self) -> type[BaseException]: ...
     @property

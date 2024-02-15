@@ -36,6 +36,7 @@ if sys.version_info >= (3, 9):
         percall_cumtime: float
         file_name: str
         line_number: int
+
     @dataclass(unsafe_hash=True)
     class StatsProfile:
         total_tt: float

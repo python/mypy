@@ -6,7 +6,7 @@ from _typeshed import FileDescriptorOrPath, ReadableBuffer, WriteableBuffer
 from collections.abc import Callable, Iterable, Iterator
 from os import _Opener
 from types import TracebackType
-from typing import IO, Any, BinaryIO, Literal, TextIO, TypeVar, overload
+from typing import IO, Any, BinaryIO, Literal, Protocol, TextIO, TypeVar, overload, type_check_only
 from typing_extensions import Self
 
 __all__ = [
@@ -94,7 +94,10 @@ class BufferedIOBase(IOBase):
 
 class FileIO(RawIOBase, BinaryIO):  # type: ignore[misc]  # incompatible definitions of writelines in the base classes
     mode: str
-    name: FileDescriptorOrPath
+    # The type of "name" equals the argument passed in to the constructor,
+    # but that can make FileIO incompatible with other I/O types that assume
+    # "name" is a str. In the future, making FileIO generic might help.
+    name: Any
     def __init__(
         self, file: FileDescriptorOrPath, mode: str = ..., closefd: bool = ..., opener: _Opener | None = ...
     ) -> None: ...
@@ -146,16 +149,43 @@ class TextIOBase(IOBase):
     def readlines(self, __hint: int = -1) -> list[str]: ...  # type: ignore[override]
     def read(self, __size: int | None = ...) -> str: ...
 
+@type_check_only
+class _WrappedBuffer(Protocol):
+    # "name" is wrapped by TextIOWrapper. Its type is inconsistent between
+    # the various I/O types, see the comments on TextIOWrapper.name and
+    # TextIO.name.
+    @property
+    def name(self) -> Any: ...
+    @property
+    def closed(self) -> bool: ...
+    def read(self, size: int = ..., /) -> ReadableBuffer: ...
+    # Optional: def read1(self, size: int, /) -> ReadableBuffer: ...
+    def write(self, b: bytes, /) -> object: ...
+    def flush(self) -> object: ...
+    def close(self) -> object: ...
+    def seekable(self) -> bool: ...
+    def readable(self) -> bool: ...
+    def writable(self) -> bool: ...
+    def truncate(self, size: int, /) -> int: ...
+    def fileno(self) -> int: ...
+    def isatty(self) -> int: ...
+    # Optional: Only needs to be present if seekable() returns True.
+    # def seek(self, offset: Literal[0], whence: Literal[2]) -> int: ...
+    # def tell(self) -> int: ...
+
+# TODO: Should be generic over the buffer type, but needs to wait for
+# TypeVar defaults.
 class TextIOWrapper(TextIOBase, TextIO):  # type: ignore[misc]  # incompatible definitions of write in the base classes
     def __init__(
         self,
-        buffer: IO[bytes],
+        buffer: _WrappedBuffer,
         encoding: str | None = ...,
         errors: str | None = ...,
         newline: str | None = ...,
         line_buffering: bool = ...,
         write_through: bool = ...,
     ) -> None: ...
+    # Equals the "buffer" argument passed in to the constructor.
     @property
     def buffer(self) -> BinaryIO: ...
     @property
@@ -180,7 +210,11 @@ class TextIOWrapper(TextIOBase, TextIO):  # type: ignore[misc]  # incompatible d
     def writelines(self, __lines: Iterable[str]) -> None: ...  # type: ignore[override]
     def readline(self, __size: int = -1) -> str: ...  # type: ignore[override]
     def readlines(self, __hint: int = -1) -> list[str]: ...  # type: ignore[override]
-    def seek(self, __cookie: int, __whence: int = 0) -> int: ...  # stubtest needs this
+    # Equals the "buffer" argument passed in to the constructor.
+    def detach(self) -> BinaryIO: ...
+    # TextIOWrapper's version of seek only supports a limited subset of
+    # operations.
+    def seek(self, __cookie: int, __whence: int = 0) -> int: ...
 
 class StringIO(TextIOWrapper):
     def __init__(self, initial_value: str | None = ..., newline: str | None = ...) -> None: ...

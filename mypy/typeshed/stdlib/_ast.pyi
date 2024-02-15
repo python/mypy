@@ -6,6 +6,10 @@ PyCF_ONLY_AST: Literal[1024]
 PyCF_TYPE_COMMENTS: Literal[4096]
 PyCF_ALLOW_TOP_LEVEL_AWAIT: Literal[8192]
 
+# Alias used for fields that must always be valid identifiers
+# A string `x` counts as a valid identifier if both the following are True
+# (1) `x.isidentifier()` evaluates to `True`
+# (2) `keyword.iskeyword(x)` evaluates to `False`
 _Identifier: typing_extensions.TypeAlias = str
 
 class AST:
@@ -499,7 +503,7 @@ class keyword(AST):
 class alias(AST):
     if sys.version_info >= (3, 10):
         __match_args__ = ("name", "asname")
-    name: _Identifier
+    name: str
     asname: _Identifier | None
 
 class withitem(AST):
