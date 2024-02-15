@@ -43,6 +43,7 @@ class PackageNotFoundError(ModuleNotFoundError):
 if sys.version_info >= (3, 11):
     class DeprecatedTuple:
         def __getitem__(self, item: int) -> str: ...
+
     _EntryPointBase = DeprecatedTuple
 else:
     class _EntryPointBase(NamedTuple):

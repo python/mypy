@@ -7,6 +7,7 @@ if sys.platform != "win32":
     class struct_group(structseq[Any], tuple[str, str | None, int, list[str]]):
         if sys.version_info >= (3, 10):
             __match_args__: Final = ("gr_name", "gr_passwd", "gr_gid", "gr_mem")
+
         @property
         def gr_name(self) -> str: ...
         @property

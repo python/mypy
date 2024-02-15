@@ -42,6 +42,8 @@ hexversion: int
 last_type: type[BaseException] | None
 last_value: BaseException | None
 last_traceback: TracebackType | None
+if sys.version_info >= (3, 12):
+    last_exc: BaseException  # or undefined.
 maxsize: int
 maxunicode: int
 meta_path: list[_MetaPathFinder]

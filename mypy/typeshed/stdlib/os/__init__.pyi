@@ -341,6 +341,7 @@ class stat_result(structseq[float], tuple[int, int, int, int, int, int, int, flo
     # More items may be added at the end by some implementations.
     if sys.version_info >= (3, 10):
         __match_args__: Final = ("st_mode", "st_ino", "st_dev", "st_nlink", "st_uid", "st_gid", "st_size")
+
     @property
     def st_mode(self) -> int: ...  # protection bits,
     @property
@@ -446,6 +447,7 @@ class statvfs_result(structseq[int], tuple[int, int, int, int, int, int, int, in
             "f_flag",
             "f_namemax",
         )
+
     @property
     def f_bsize(self) -> int: ...
     @property
@@ -488,6 +490,7 @@ def umask(__mask: int) -> int: ...
 class uname_result(structseq[str], tuple[str, str, str, str, str]):
     if sys.version_info >= (3, 10):
         __match_args__: Final = ("sysname", "nodename", "release", "version", "machine")
+
     @property
     def sysname(self) -> str: ...
     @property
@@ -704,6 +707,7 @@ if sys.platform != "win32":
 class terminal_size(structseq[int], tuple[int, int]):
     if sys.version_info >= (3, 10):
         __match_args__: Final = ("columns", "lines")
+
     @property
     def columns(self) -> int: ...
     @property
@@ -925,6 +929,7 @@ def system(command: StrOrBytesPath) -> int: ...
 class times_result(structseq[float], tuple[float, float, float, float, float]):
     if sys.version_info >= (3, 10):
         __match_args__: Final = ("user", "system", "children_user", "children_system", "elapsed")
+
     @property
     def user(self) -> float: ...
     @property
@@ -962,6 +967,7 @@ else:
         class waitid_result(structseq[int], tuple[int, int, int, int, int]):
             if sys.version_info >= (3, 10):
                 __match_args__: Final = ("si_pid", "si_uid", "si_signo", "si_status", "si_code")
+
             @property
             def si_pid(self) -> int: ...
             @property
@@ -1022,6 +1028,7 @@ if sys.platform != "win32":
     class sched_param(structseq[int], tuple[int]):
         if sys.version_info >= (3, 10):
             __match_args__: Final = ("sched_priority",)
+
         def __new__(cls, sched_priority: int) -> Self: ...
         @property
         def sched_priority(self) -> int: ...

@@ -52,9 +52,12 @@ class XMLParserType:
     EndDoctypeDeclHandler: Callable[[], Any] | None
     ElementDeclHandler: Callable[[str, _Model], Any] | None
     AttlistDeclHandler: Callable[[str, str, str, str | None, bool], Any] | None
-    StartElementHandler: Callable[[str, dict[str, str]], Any] | Callable[[str, list[str]], Any] | Callable[
-        [str, dict[str, str], list[str]], Any
-    ] | None
+    StartElementHandler: (
+        Callable[[str, dict[str, str]], Any]
+        | Callable[[str, list[str]], Any]
+        | Callable[[str, dict[str, str], list[str]], Any]
+        | None
+    )
     EndElementHandler: Callable[[str], Any] | None
     ProcessingInstructionHandler: Callable[[str, str], Any] | None
     CharacterDataHandler: Callable[[str], Any] | None

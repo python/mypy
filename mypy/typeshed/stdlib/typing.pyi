@@ -273,6 +273,7 @@ if sys.version_info >= (3, 10):
 
         def __or__(self, right: Any) -> _SpecialForm: ...
         def __ror__(self, left: Any) -> _SpecialForm: ...
+
     Concatenate: _SpecialForm
     TypeAlias: _SpecialForm
     TypeGuard: _SpecialForm
@@ -864,6 +865,7 @@ class NamedTuple(tuple[Any, ...]):
     # So we only add it to the stub on 3.12+.
     if sys.version_info >= (3, 12):
         __orig_bases__: ClassVar[tuple[Any, ...]]
+
     @overload
     def __init__(self, __typename: str, __fields: Iterable[tuple[str, Any]]) -> None: ...
     @overload
@@ -885,6 +887,7 @@ class _TypedDict(Mapping[str, object], metaclass=ABCMeta):
     # so we only add it to the stub on 3.12+
     if sys.version_info >= (3, 12):
         __orig_bases__: ClassVar[tuple[Any, ...]]
+
     def copy(self) -> typing_extensions.Self: ...
     # Using Never so that only calls using mypy plugin hook that specialize the signature
     # can go through.
