@@ -38,7 +38,12 @@ from mypy.nodes import (
 )
 from mypy.options import Options
 from mypy.plugin import AnalyzeTypeContext, Plugin, TypeAnalyzerPluginInterface
-from mypy.semanal_shared import SemanticAnalyzerCoreInterface, paramspec_args, paramspec_kwargs
+from mypy.semanal_shared import (
+    SemanticAnalyzerCoreInterface,
+    SemanticAnalyzerInterface,
+    paramspec_args,
+    paramspec_kwargs,
+)
 from mypy.state import state
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.types import (
@@ -2508,3 +2513,31 @@ class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
         else:
             for t in types:
                 t.accept(self)
+
+
+class TypeVarDefaultTranslator(TrivialSyntheticTypeTranslator):
+    """Type translate visitor that replaces UnboundTypes with in-scope TypeVars."""
+
+    def __init__(
+        self, api: SemanticAnalyzerInterface, tvar_expr_name: str, context: Context
+    ) -> None:
+        self.api = api
+        self.tvar_expr_name = tvar_expr_name
+        self.context = context
+
+    def visit_unbound_type(self, t: UnboundType) -> Type:
+        sym = self.api.lookup_qualified(t.name, t, suppress_errors=True)
+        if sym is not None:
+            if type_var := self.api.tvar_scope.get_binding(sym):
+                return type_var
+            if isinstance(sym.node, TypeVarLikeExpr):
+                self.api.fail(
+                    f'Type parameter "{self.tvar_expr_name}" has a default type '
+                    "that refers to one or more type variables that are out of scope",
+                    self.context,
+                )
+                return AnyType(TypeOfAny.from_error)
+        return super().visit_unbound_type(t)
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        raise NotImplementedError

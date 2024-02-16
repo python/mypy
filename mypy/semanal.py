@@ -226,6 +226,7 @@ from mypy.typeanal import (
     SELF_TYPE_NAMES,
     FindTypeVarVisitor,
     TypeAnalyser,
+    TypeVarDefaultTranslator,
     TypeVarLikeList,
     analyze_type_alias,
     check_for_explicit_any,
@@ -252,6 +253,7 @@ from mypy.types import (
     TPDICT_NAMES,
     TYPE_ALIAS_NAMES,
     TYPE_CHECK_ONLY_NAMES,
+    TYPE_VAR_LIKE_NAMES,
     TYPED_NAMEDTUPLE_NAMES,
     AnyType,
     CallableType,
@@ -1953,17 +1955,19 @@ class SemanticAnalyzer(
             defn.removed_base_type_exprs.append(defn.base_type_exprs[i])
             del base_type_exprs[i]
         tvar_defs: list[TypeVarLikeType] = []
+        last_tvar_name_with_default: str | None = None
         for name, tvar_expr in declared_tvars:
-            tvar_expr_default = tvar_expr.default
-            if isinstance(tvar_expr_default, UnboundType):
-                # TODO: - detect out of order and self-referencing TypeVars
-                #       - nested default types, e.g. list[T1]
-                n = self.lookup_qualified(
-                    tvar_expr_default.name, tvar_expr_default, suppress_errors=True
-                )
-                if n is not None and (default := self.tvar_scope.get_binding(n)) is not None:
-                    tvar_expr.default = default
+            tvar_expr.default = tvar_expr.default.accept(
+                TypeVarDefaultTranslator(self, tvar_expr.name, context)
+            )
             tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
+            if last_tvar_name_with_default is not None and not tvar_def.has_default():
+                self.msg.tvar_without_default_type(
+                    tvar_def.name, last_tvar_name_with_default, context
+                )
+                tvar_def.default = AnyType(TypeOfAny.from_error)
+            elif tvar_def.has_default():
+                last_tvar_name_with_default = tvar_def.name
             tvar_defs.append(tvar_def)
         return base_type_exprs, tvar_defs, is_protocol
 
@@ -2855,6 +2859,10 @@ class SemanticAnalyzer(
             with self.allow_unbound_tvars_set():
                 s.rvalue.accept(self)
             self.basic_type_applications = old_basic_type_applications
+        elif self.can_possibly_be_typevarlike_declaration(s):
+            # Allow unbound tvars inside TypeVarLike defaults to be evaluated lated
+            with self.allow_unbound_tvars_set():
+                s.rvalue.accept(self)
         else:
             s.rvalue.accept(self)
 
@@ -3030,6 +3038,16 @@ class SemanticAnalyzer(
             return False
         # Something that looks like Foo = Bar[Baz, ...]
         return True
+
+    def can_possibly_be_typevarlike_declaration(self, s: AssignmentStmt) -> bool:
+        """Check if r.h.s. can be a TypeVarLike declaration."""
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+            return False
+        if not isinstance(s.rvalue, CallExpr) or not isinstance(s.rvalue.callee, NameExpr):
+            return False
+        ref = s.rvalue.callee
+        ref.accept(self)
+        return ref.fullname in TYPE_VAR_LIKE_NAMES
 
     def is_type_ref(self, rv: Expression, bare: bool = False) -> bool:
         """Does this expression refer to a type?
@@ -3515,9 +3533,20 @@ class SemanticAnalyzer(
         found_type_vars = self.find_type_var_likes(typ)
         tvar_defs: list[TypeVarLikeType] = []
         namespace = self.qualified_name(name)
+        last_tvar_name_with_default: str | None = None
         with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
             for name, tvar_expr in found_type_vars:
+                tvar_expr.default = tvar_expr.default.accept(
+                    TypeVarDefaultTranslator(self, tvar_expr.name, typ)
+                )
                 tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
+                if last_tvar_name_with_default is not None and not tvar_def.has_default():
+                    self.msg.tvar_without_default_type(
+                        tvar_def.name, last_tvar_name_with_default, typ
+                    )
+                    tvar_def.default = AnyType(TypeOfAny.from_error)
+                elif tvar_def.has_default():
+                    last_tvar_name_with_default = tvar_def.name
                 tvar_defs.append(tvar_def)
 
             analyzed, depends_on = analyze_type_alias(
