@@ -397,6 +397,36 @@ def func_d2(
     n = ClassD2[int, float, str]()
     reveal_type(n)  # N: Revealed type is "__main__.ClassD2[builtins.int, builtins.float, builtins.str]"
 
+[case testTypeVarDefaultsClassRecursiveMultipleFiles]
+# flags: --disallow-any-generics
+from typing import Generic, TypeVar
+from file2 import T as T2
+
+T = TypeVar('T', default=T2)
+
+class ClassG1(Generic[T2, T]):
+    pass
+
+def func(
+    a: ClassG1,
+    b: ClassG1[str],
+    c: ClassG1[str, float],
+) -> None:
+    reveal_type(a)  # N: Revealed type is "__main__.ClassG1[builtins.int, builtins.int]"
+    reveal_type(b)  # N: Revealed type is "__main__.ClassG1[builtins.str, builtins.str]"
+    reveal_type(c)  # N: Revealed type is "__main__.ClassG1[builtins.str, builtins.float]"
+
+    k = ClassG1()
+    reveal_type(k)  # N: Revealed type is "__main__.ClassG1[builtins.int, builtins.int]"
+    l = ClassG1[str]()
+    reveal_type(l)  # N: Revealed type is "__main__.ClassG1[builtins.str, builtins.str]"
+    m = ClassG1[str, float]()
+    reveal_type(m)  # N: Revealed type is "__main__.ClassG1[builtins.str, builtins.float]"
+
+[file file2.py]
+from typing import TypeVar
+T = TypeVar('T', default=int)
+
 [case testTypeVarDefaultsTypeAlias1]
 # flags: --disallow-any-generics
 from typing import Any, Dict, List, Tuple, TypeVar, Union
