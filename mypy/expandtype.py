@@ -179,6 +179,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
 
     def __init__(self, variables: Mapping[TypeVarId, Type]) -> None:
         self.variables = variables
+        self.recursive_tvar_guard: dict[TypeVarId, Type | None] = {}
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         return t
@@ -226,6 +227,14 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             # TODO: do we really need to do this?
             # If I try to remove this special-casing ~40 tests fail on reveal_type().
             return repl.copy_modified(last_known_value=None)
+        if isinstance(repl, TypeVarType) and repl.has_default():
+            if (tvar_id := repl.id) in self.recursive_tvar_guard:
+                return self.recursive_tvar_guard[tvar_id] or repl
+            self.recursive_tvar_guard[tvar_id] = None
+            repl = repl.accept(self)
+            if isinstance(repl, TypeVarType):
+                repl.default = repl.default.accept(self)
+            self.recursive_tvar_guard[tvar_id] = repl
         return repl
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:
