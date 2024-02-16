@@ -2540,4 +2540,5 @@ class TypeVarDefaultTranslator(TrivialSyntheticTypeTranslator):
         return super().visit_unbound_type(t)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
-        raise NotImplementedError
+        # TypeAliasTypes are analyzed separately already, just return it
+        return t
