@@ -5,8 +5,8 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Callable, Coroutine, Generator, Sequence
 from contextvars import Context
 from socket import AddressFamily, SocketKind, _Address, _RetAddress, socket
-from typing import IO, Any, Protocol, TypeVar, overload
-from typing_extensions import Literal, Self, TypeAlias, deprecated
+from typing import IO, Any, Literal, Protocol, TypeVar, overload
+from typing_extensions import Self, TypeAlias, TypeVarTuple, Unpack, deprecated
 
 from . import _AwaitableLike, _CoroutineLike
 from .base_events import Server
@@ -16,46 +16,26 @@ from .tasks import Task
 from .transports import BaseTransport, DatagramTransport, ReadTransport, SubprocessTransport, Transport, WriteTransport
 from .unix_events import AbstractChildWatcher
 
-if sys.version_info >= (3, 8):
-    __all__ = (
-        "AbstractEventLoopPolicy",
-        "AbstractEventLoop",
-        "AbstractServer",
-        "Handle",
-        "TimerHandle",
-        "get_event_loop_policy",
-        "set_event_loop_policy",
-        "get_event_loop",
-        "set_event_loop",
-        "new_event_loop",
-        "get_child_watcher",
-        "set_child_watcher",
-        "_set_running_loop",
-        "get_running_loop",
-        "_get_running_loop",
-    )
-
-else:
-    __all__ = (
-        "AbstractEventLoopPolicy",
-        "AbstractEventLoop",
-        "AbstractServer",
-        "Handle",
-        "TimerHandle",
-        "SendfileNotAvailableError",
-        "get_event_loop_policy",
-        "set_event_loop_policy",
-        "get_event_loop",
-        "set_event_loop",
-        "new_event_loop",
-        "get_child_watcher",
-        "set_child_watcher",
-        "_set_running_loop",
-        "get_running_loop",
-        "_get_running_loop",
-    )
+__all__ = (
+    "AbstractEventLoopPolicy",
+    "AbstractEventLoop",
+    "AbstractServer",
+    "Handle",
+    "TimerHandle",
+    "get_event_loop_policy",
+    "set_event_loop_policy",
+    "get_event_loop",
+    "set_event_loop",
+    "new_event_loop",
+    "get_child_watcher",
+    "set_child_watcher",
+    "_set_running_loop",
+    "get_running_loop",
+    "_get_running_loop",
+)
 
 _T = TypeVar("_T")
+_Ts = TypeVarTuple("_Ts")
 _ProtocolT = TypeVar("_ProtocolT", bound=BaseProtocol)
 _Context: TypeAlias = dict[str, Any]
 _ExceptionHandler: TypeAlias = Callable[[AbstractEventLoop, _Context], object]
@@ -131,22 +111,24 @@ class AbstractEventLoop:
     # Methods scheduling callbacks.  All these return Handles.
     if sys.version_info >= (3, 9):  # "context" added in 3.9.10/3.10.2
         @abstractmethod
-        def call_soon(self, callback: Callable[..., object], *args: Any, context: Context | None = None) -> Handle: ...
+        def call_soon(
+            self, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts], context: Context | None = None
+        ) -> Handle: ...
         @abstractmethod
         def call_later(
-            self, delay: float, callback: Callable[..., object], *args: Any, context: Context | None = None
+            self, delay: float, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts], context: Context | None = None
         ) -> TimerHandle: ...
         @abstractmethod
         def call_at(
-            self, when: float, callback: Callable[..., object], *args: Any, context: Context | None = None
+            self, when: float, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts], context: Context | None = None
         ) -> TimerHandle: ...
     else:
         @abstractmethod
-        def call_soon(self, callback: Callable[..., object], *args: Any) -> Handle: ...
+        def call_soon(self, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts]) -> Handle: ...
         @abstractmethod
-        def call_later(self, delay: float, callback: Callable[..., object], *args: Any) -> TimerHandle: ...
+        def call_later(self, delay: float, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts]) -> TimerHandle: ...
         @abstractmethod
-        def call_at(self, when: float, callback: Callable[..., object], *args: Any) -> TimerHandle: ...
+        def call_at(self, when: float, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts]) -> TimerHandle: ...
 
     @abstractmethod
     def time(self) -> float: ...
@@ -159,12 +141,9 @@ class AbstractEventLoop:
         def create_task(
             self, coro: _CoroutineLike[_T], *, name: str | None = None, context: Context | None = None
         ) -> Task[_T]: ...
-    elif sys.version_info >= (3, 8):
-        @abstractmethod
-        def create_task(self, coro: _CoroutineLike[_T], *, name: str | None = None) -> Task[_T]: ...
     else:
         @abstractmethod
-        def create_task(self, coro: _CoroutineLike[_T]) -> Task[_T]: ...
+        def create_task(self, coro: _CoroutineLike[_T], *, name: str | None = None) -> Task[_T]: ...
 
     @abstractmethod
     def set_task_factory(self, factory: _TaskFactory | None) -> None: ...
@@ -173,13 +152,15 @@ class AbstractEventLoop:
     # Methods for interacting with threads
     if sys.version_info >= (3, 9):  # "context" added in 3.9.10/3.10.2
         @abstractmethod
-        def call_soon_threadsafe(self, callback: Callable[..., object], *args: Any, context: Context | None = None) -> Handle: ...
+        def call_soon_threadsafe(
+            self, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts], context: Context | None = None
+        ) -> Handle: ...
     else:
         @abstractmethod
-        def call_soon_threadsafe(self, callback: Callable[..., object], *args: Any) -> Handle: ...
+        def call_soon_threadsafe(self, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts]) -> Handle: ...
 
     @abstractmethod
-    def run_in_executor(self, executor: Any, func: Callable[..., _T], *args: Any) -> Future[_T]: ...
+    def run_in_executor(self, executor: Any, func: Callable[[Unpack[_Ts]], _T], *args: Unpack[_Ts]) -> Future[_T]: ...
     @abstractmethod
     def set_default_executor(self, executor: Any) -> None: ...
     # Network I/O methods returning Futures.
@@ -237,45 +218,6 @@ class AbstractEventLoop:
             happy_eyeballs_delay: float | None = None,
             interleave: int | None = None,
         ) -> tuple[Transport, _ProtocolT]: ...
-    elif sys.version_info >= (3, 8):
-        @overload
-        @abstractmethod
-        async def create_connection(
-            self,
-            protocol_factory: Callable[[], _ProtocolT],
-            host: str = ...,
-            port: int = ...,
-            *,
-            ssl: _SSLContext = None,
-            family: int = 0,
-            proto: int = 0,
-            flags: int = 0,
-            sock: None = None,
-            local_addr: tuple[str, int] | None = None,
-            server_hostname: str | None = None,
-            ssl_handshake_timeout: float | None = None,
-            happy_eyeballs_delay: float | None = None,
-            interleave: int | None = None,
-        ) -> tuple[Transport, _ProtocolT]: ...
-        @overload
-        @abstractmethod
-        async def create_connection(
-            self,
-            protocol_factory: Callable[[], _ProtocolT],
-            host: None = None,
-            port: None = None,
-            *,
-            ssl: _SSLContext = None,
-            family: int = 0,
-            proto: int = 0,
-            flags: int = 0,
-            sock: socket,
-            local_addr: None = None,
-            server_hostname: str | None = None,
-            ssl_handshake_timeout: float | None = None,
-            happy_eyeballs_delay: float | None = None,
-            interleave: int | None = None,
-        ) -> tuple[Transport, _ProtocolT]: ...
     else:
         @overload
         @abstractmethod
@@ -293,6 +235,8 @@ class AbstractEventLoop:
             local_addr: tuple[str, int] | None = None,
             server_hostname: str | None = None,
             ssl_handshake_timeout: float | None = None,
+            happy_eyeballs_delay: float | None = None,
+            interleave: int | None = None,
         ) -> tuple[Transport, _ProtocolT]: ...
         @overload
         @abstractmethod
@@ -310,6 +254,8 @@ class AbstractEventLoop:
             local_addr: None = None,
             server_hostname: str | None = None,
             ssl_handshake_timeout: float | None = None,
+            happy_eyeballs_delay: float | None = None,
+            interleave: int | None = None,
         ) -> tuple[Transport, _ProtocolT]: ...
     if sys.version_info >= (3, 11):
         @overload
@@ -542,14 +488,13 @@ class AbstractEventLoop:
         **kwargs: Any,
     ) -> tuple[SubprocessTransport, _ProtocolT]: ...
     @abstractmethod
-    def add_reader(self, fd: FileDescriptorLike, callback: Callable[..., Any], *args: Any) -> None: ...
+    def add_reader(self, fd: FileDescriptorLike, callback: Callable[[Unpack[_Ts]], Any], *args: Unpack[_Ts]) -> None: ...
     @abstractmethod
     def remove_reader(self, fd: FileDescriptorLike) -> bool: ...
     @abstractmethod
-    def add_writer(self, fd: FileDescriptorLike, callback: Callable[..., Any], *args: Any) -> None: ...
+    def add_writer(self, fd: FileDescriptorLike, callback: Callable[[Unpack[_Ts]], Any], *args: Unpack[_Ts]) -> None: ...
     @abstractmethod
     def remove_writer(self, fd: FileDescriptorLike) -> bool: ...
-    # Completion based I/O methods returning Futures prior to 3.7
     @abstractmethod
     async def sock_recv(self, sock: socket, nbytes: int) -> bytes: ...
     @abstractmethod
@@ -569,7 +514,7 @@ class AbstractEventLoop:
         async def sock_sendto(self, sock: socket, data: ReadableBuffer, address: _Address) -> int: ...
     # Signal handling.
     @abstractmethod
-    def add_signal_handler(self, sig: int, callback: Callable[..., object], *args: Any) -> None: ...
+    def add_signal_handler(self, sig: int, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts]) -> None: ...
     @abstractmethod
     def remove_signal_handler(self, sig: int) -> bool: ...
     # Error handlers.
@@ -627,6 +572,3 @@ else:
 def _set_running_loop(__loop: AbstractEventLoop | None) -> None: ...
 def _get_running_loop() -> AbstractEventLoop: ...
 def get_running_loop() -> AbstractEventLoop: ...
-
-if sys.version_info < (3, 8):
-    class SendfileNotAvailableError(RuntimeError): ...

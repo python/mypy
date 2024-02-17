@@ -1,8 +1,7 @@
 from _typeshed import Incomplete, StrPath
 from abc import ABCMeta, abstractmethod
 from collections.abc import MutableMapping
-from typing import ClassVar, TypeVar
-from typing_extensions import Literal
+from typing import ClassVar, Literal, TypeVar
 
 from .pytree import Base, Leaf, Node
 

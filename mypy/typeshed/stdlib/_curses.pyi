@@ -1,7 +1,7 @@
 import sys
 from _typeshed import ReadOnlyBuffer, SupportsRead
-from typing import IO, Any, NamedTuple, overload
-from typing_extensions import TypeAlias, final
+from typing import IO, Any, NamedTuple, final, overload
+from typing_extensions import TypeAlias
 
 if sys.platform != "win32":
     # Handled by PyCurses_ConvertToChtype in _cursesmodule.c.
@@ -548,10 +548,11 @@ if sys.platform != "win32":
         def vline(self, ch: _ChType, n: int) -> None: ...
         @overload
         def vline(self, y: int, x: int, ch: _ChType, n: int) -> None: ...
-    if sys.version_info >= (3, 8):
-        class _ncurses_version(NamedTuple):
-            major: int
-            minor: int
-            patch: int
-        ncurses_version: _ncurses_version
-        window = _CursesWindow  # undocumented
+
+    class _ncurses_version(NamedTuple):
+        major: int
+        minor: int
+        patch: int
+
+    ncurses_version: _ncurses_version
+    window = _CursesWindow  # undocumented

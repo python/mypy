@@ -224,9 +224,9 @@ from mypy.semanal_typeddict import TypedDictAnalyzer
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.typeanal import (
     SELF_TYPE_NAMES,
+    FindTypeVarVisitor,
     TypeAnalyser,
     TypeVarLikeList,
-    TypeVarLikeQuery,
     analyze_type_alias,
     check_for_explicit_any,
     detect_diverging_alias,
@@ -1954,6 +1954,15 @@ class SemanticAnalyzer(
             del base_type_exprs[i]
         tvar_defs: list[TypeVarLikeType] = []
         for name, tvar_expr in declared_tvars:
+            tvar_expr_default = tvar_expr.default
+            if isinstance(tvar_expr_default, UnboundType):
+                # TODO: - detect out of order and self-referencing TypeVars
+                #       - nested default types, e.g. list[T1]
+                n = self.lookup_qualified(
+                    tvar_expr_default.name, tvar_expr_default, suppress_errors=True
+                )
+                if n is not None and (default := self.tvar_scope.get_binding(n)) is not None:
+                    tvar_expr.default = default
             tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
             tvar_defs.append(tvar_def)
         return base_type_exprs, tvar_defs, is_protocol
@@ -2036,6 +2045,11 @@ class SemanticAnalyzer(
             assert isinstance(sym.node, TypeVarExpr)
             return t.name, sym.node
 
+    def find_type_var_likes(self, t: Type) -> TypeVarLikeList:
+        visitor = FindTypeVarVisitor(self, self.tvar_scope)
+        t.accept(visitor)
+        return visitor.type_var_likes
+
     def get_all_bases_tvars(
         self, base_type_exprs: list[Expression], removed: list[int]
     ) -> TypeVarLikeList:
@@ -2048,7 +2062,7 @@ class SemanticAnalyzer(
                 except TypeTranslationError:
                     # This error will be caught later.
                     continue
-                base_tvars = base.accept(TypeVarLikeQuery(self, self.tvar_scope))
+                base_tvars = self.find_type_var_likes(base)
                 tvars.extend(base_tvars)
         return remove_dups(tvars)
 
@@ -2066,7 +2080,7 @@ class SemanticAnalyzer(
             except TypeTranslationError:
                 # This error will be caught later.
                 continue
-            base_tvars = base.accept(TypeVarLikeQuery(self, self.tvar_scope))
+            base_tvars = self.find_type_var_likes(base)
             tvars.extend(base_tvars)
         tvars = remove_dups(tvars)  # Variables are defined in order of textual appearance.
         tvar_defs = []
@@ -2166,8 +2180,16 @@ class SemanticAnalyzer(
             if (
                 isinstance(base_expr, RefExpr)
                 and base_expr.fullname in TYPED_NAMEDTUPLE_NAMES + TPDICT_NAMES
+            ) or (
+                isinstance(base_expr, CallExpr)
+                and isinstance(base_expr.callee, RefExpr)
+                and base_expr.callee.fullname in TPDICT_NAMES
             ):
                 # Ignore magic bases for now.
+                # For example:
+                #  class Foo(TypedDict): ...  # RefExpr
+                #  class Foo(NamedTuple): ...  # RefExpr
+                #  class Foo(TypedDict("Foo", {"a": int})): ...  # CallExpr
                 continue
 
             try:
@@ -3496,7 +3518,7 @@ class SemanticAnalyzer(
             )
             return None, [], set(), [], False
 
-        found_type_vars = typ.accept(TypeVarLikeQuery(self, self.tvar_scope))
+        found_type_vars = self.find_type_var_likes(typ)
         tvar_defs: list[TypeVarLikeType] = []
         namespace = self.qualified_name(name)
         alias_type_vars = found_type_vars if declared_type_vars is None else declared_type_vars
@@ -4234,7 +4256,7 @@ class SemanticAnalyzer(
         if len(call.args) < 1:
             self.fail(f"Too few arguments for {typevarlike_type}()", context)
             return False
-        if not isinstance(call.args[0], StrExpr) or not call.arg_kinds[0] == ARG_POS:
+        if not isinstance(call.args[0], StrExpr) or call.arg_kinds[0] != ARG_POS:
             self.fail(f"{typevarlike_type}() expects a string literal as first argument", context)
             return False
         elif call.args[0].value != name:
@@ -5042,9 +5064,7 @@ class SemanticAnalyzer(
     def bind_name_expr(self, expr: NameExpr, sym: SymbolTableNode) -> None:
         """Bind name expression to a symbol table node."""
         if isinstance(sym.node, TypeVarExpr) and self.tvar_scope.get_binding(sym):
-            self.fail(
-                '"{}" is a type variable and only valid in type ' "context".format(expr.name), expr
-            )
+            self.fail(f'"{expr.name}" is a type variable and only valid in type context', expr)
         elif isinstance(sym.node, PlaceholderNode):
             self.process_placeholder(expr.name, "name", expr)
         else:
@@ -6896,13 +6916,13 @@ class SemanticAnalyzer(
     def parse_dataclass_transform_field_specifiers(self, arg: Expression) -> tuple[str, ...]:
         if not isinstance(arg, TupleExpr):
             self.fail('"field_specifiers" argument must be a tuple literal', arg)
-            return tuple()
+            return ()
 
         names = []
         for specifier in arg.items:
             if not isinstance(specifier, RefExpr):
                 self.fail('"field_specifiers" must only contain identifiers', specifier)
-                return tuple()
+                return ()
             names.append(specifier.fullname)
         return tuple(names)
 

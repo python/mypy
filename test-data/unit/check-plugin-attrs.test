@@ -2321,3 +2321,62 @@ reveal_type(b.x)  # N: Revealed type is "builtins.int"
 reveal_type(b.y)  # N: Revealed type is "builtins.int"
 
 [builtins fixtures/plugin_attrs.pyi]
+
+[case testDefaultHashability]
+from attrs import define
+
+@define
+class A:
+    a: int
+
+reveal_type(A.__hash__)  # N: Revealed type is "None"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testFrozenHashability]
+from attrs import frozen
+
+@frozen
+class A:
+    a: int
+
+reveal_type(A.__hash__)  # N: Revealed type is "def (self: builtins.object) -> builtins.int"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testManualHashHashability]
+from attrs import define
+
+@define(hash=True)
+class A:
+    a: int
+
+reveal_type(A.__hash__)  # N: Revealed type is "def (self: builtins.object) -> builtins.int"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testManualUnsafeHashHashability]
+from attrs import define
+
+@define(unsafe_hash=True)
+class A:
+    a: int
+
+reveal_type(A.__hash__)  # N: Revealed type is "def (self: builtins.object) -> builtins.int"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testSubclassingHashability]
+from attrs import define
+
+@define(unsafe_hash=True)
+class A:
+    a: int
+
+@define
+class B(A):
+    pass
+
+reveal_type(B.__hash__)  # N: Revealed type is "None"
+
+[builtins fixtures/plugin_attrs.pyi]

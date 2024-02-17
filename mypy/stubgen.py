@@ -22,7 +22,7 @@ Basic usage:
   => Generate out/urllib/parse.pyi.
 
   $ stubgen -p urllib
-  => Generate stubs for whole urlib package (recursively).
+  => Generate stubs for whole urllib package (recursively).
 
 For C modules, you can get more precise function signatures by parsing .rst (Sphinx)
 documentation for extra information. For this, use the --doc-dir option:
@@ -100,6 +100,7 @@ from mypy.nodes import (
     OpExpr,
     OverloadedFuncDef,
     SetExpr,
+    StarExpr,
     Statement,
     StrExpr,
     TempNode,
@@ -109,6 +110,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.options import Options as MypyOptions
+from mypy.sharedparse import MAGIC_METHODS_POS_ARGS_ONLY
 from mypy.stubdoc import ArgSig, FunctionSig
 from mypy.stubgenc import InspectionStubGenerator, generate_stub_for_c_module
 from mypy.stubutil import (
@@ -306,6 +308,13 @@ class AliasPrinter(NodeVisitor[str]):
         return repr(node.value)
 
     def visit_index_expr(self, node: IndexExpr) -> str:
+        base_fullname = self.stubgen.get_fullname(node.base)
+        if base_fullname == "typing.Union":
+            if isinstance(node.index, TupleExpr):
+                return " | ".join([item.accept(self) for item in node.index.items])
+            return node.index.accept(self)
+        if base_fullname == "typing.Optional":
+            return f"{node.index.accept(self)} | None"
         base = node.base.accept(self)
         index = node.index.accept(self)
         if len(index) > 2 and index.startswith("(") and index.endswith(")"):
@@ -331,6 +340,9 @@ class AliasPrinter(NodeVisitor[str]):
 
     def visit_op_expr(self, o: OpExpr) -> str:
         return f"{o.left.accept(self)} {o.op} {o.right.accept(self)}"
+
+    def visit_star_expr(self, o: StarExpr) -> str:
+        return f"*{o.expr.accept(self)}"
 
 
 def find_defined_names(file: MypyFile) -> set[str]:
@@ -469,6 +481,9 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
     def _get_func_args(self, o: FuncDef, ctx: FunctionContext) -> list[ArgSig]:
         args: list[ArgSig] = []
 
+        # Ignore pos-only status of magic methods whose args names are elided by mypy at parse
+        actually_pos_only_args = o.name not in MAGIC_METHODS_POS_ARGS_ONLY
+        pos_only_marker_position = 0  # Where to insert "/", if any
         for i, arg_ in enumerate(o.arguments):
             var = arg_.variable
             kind = arg_.kind
@@ -489,6 +504,9 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 if not isinstance(get_proper_type(annotated_type), AnyType):
                     typename = self.print_annotation(annotated_type)
 
+            if actually_pos_only_args and arg_.pos_only:
+                pos_only_marker_position += 1
+
             if kind.is_named() and not any(arg.name.startswith("*") for arg in args):
                 args.append(ArgSig("*"))
 
@@ -507,6 +525,8 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             args.append(
                 ArgSig(name, typename, default=bool(arg_.initializer), default_value=default)
             )
+        if pos_only_marker_position:
+            args.insert(pos_only_marker_position, ArgSig("/"))
 
         if ctx.class_info is not None and all(
             arg.type is None and arg.default is False for arg in args
@@ -517,17 +537,6 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             if new_args is not None:
                 args = new_args
 
-        is_dataclass_generated = (
-            self.analyzed and self.processing_dataclass and o.info.names[o.name].plugin_generated
-        )
-        if o.name == "__init__" and is_dataclass_generated and "**" in [a.name for a in args]:
-            # The dataclass plugin generates invalid nameless "*" and "**" arguments
-            new_name = "".join(a.name.strip("*") for a in args)
-            for arg in args:
-                if arg.name == "*":
-                    arg.name = f"*{new_name}_"  # this name is guaranteed to be unique
-                elif arg.name == "**":
-                    arg.name = f"**{new_name}__"  # same here
         return args
 
     def _get_func_return(self, o: FuncDef, ctx: FunctionContext) -> str | None:
@@ -678,11 +687,11 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
             elif fullname in OVERLOAD_NAMES:
                 self.add_decorator(qualname, require_name=True)
                 o.func.is_overload = True
-            elif qualname.endswith(".setter"):
+            elif qualname.endswith((".setter", ".deleter")):
                 self.add_decorator(qualname, require_name=False)
 
     def get_fullname(self, expr: Expression) -> str:
-        """Return the full name resolving imports and import aliases."""
+        """Return the expression's full name."""
         if (
             self.analyzed
             and isinstance(expr, (NameExpr, MemberExpr))
@@ -691,16 +700,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         ):
             return expr.fullname
         name = get_qualified_name(expr)
-        if "." not in name:
-            real_module = self.import_tracker.module_for.get(name)
-            real_short = self.import_tracker.reverse_alias.get(name, name)
-            if real_module is None and real_short not in self.defined_names:
-                real_module = "builtins"  # not imported and not defined, must be a builtin
-        else:
-            name_module, real_short = name.split(".", 1)
-            real_module = self.import_tracker.reverse_alias.get(name_module, name_module)
-        resolved_name = real_short if real_module is None else f"{real_module}.{real_short}"
-        return resolved_name
+        return self.resolve_name(name)
 
     def visit_class_def(self, o: ClassDef) -> None:
         self._current_class = o

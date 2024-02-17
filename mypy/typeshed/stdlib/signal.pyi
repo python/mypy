@@ -3,8 +3,8 @@ from _typeshed import structseq
 from collections.abc import Callable, Iterable
 from enum import IntEnum
 from types import FrameType
-from typing import Any
-from typing_extensions import Final, Never, TypeAlias, final
+from typing import Any, Final, final
+from typing_extensions import Never, TypeAlias
 
 NSIG: int
 
@@ -126,6 +126,7 @@ else:
         SIG_BLOCK: int
         SIG_UNBLOCK: int
         SIG_SETMASK: int
+
     SIG_BLOCK = Sigmasks.SIG_BLOCK
     SIG_UNBLOCK = Sigmasks.SIG_UNBLOCK
     SIG_SETMASK = Sigmasks.SIG_SETMASK
@@ -153,10 +154,12 @@ else:
         SIGRTMIN: Signals
         if sys.version_info >= (3, 11):
             SIGSTKFLT: Signals
+
         @final
         class struct_siginfo(structseq[int], tuple[int, int, int, int, int, int, int]):
             if sys.version_info >= (3, 10):
                 __match_args__: Final = ("si_signo", "si_code", "si_errno", "si_pid", "si_uid", "si_status", "si_band")
+
             @property
             def si_signo(self) -> int: ...
             @property
@@ -179,11 +182,9 @@ else:
             def sigtimedwait(sigset: Iterable[int], timeout: float) -> struct_siginfo | None: ...
             def sigwaitinfo(sigset: Iterable[int]) -> struct_siginfo: ...
 
-if sys.version_info >= (3, 8):
-    def strsignal(__signalnum: _SIGNUM) -> str | None: ...
-    def valid_signals() -> set[Signals]: ...
-    def raise_signal(__signalnum: _SIGNUM) -> None: ...
-
+def strsignal(__signalnum: _SIGNUM) -> str | None: ...
+def valid_signals() -> set[Signals]: ...
+def raise_signal(__signalnum: _SIGNUM) -> None: ...
 def set_wakeup_fd(fd: int, *, warn_on_full_buffer: bool = ...) -> int: ...
 
 if sys.version_info >= (3, 9):

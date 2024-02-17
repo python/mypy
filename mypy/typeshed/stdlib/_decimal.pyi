@@ -2,8 +2,8 @@ import numbers
 import sys
 from collections.abc import Container, Sequence
 from types import TracebackType
-from typing import Any, ClassVar, NamedTuple, overload
-from typing_extensions import Final, Literal, Self, TypeAlias
+from typing import Any, ClassVar, Final, Literal, NamedTuple, overload
+from typing_extensions import Self, TypeAlias
 
 _Decimal: TypeAlias = Decimal | int
 _DecimalNew: TypeAlias = Decimal | float | str | tuple[int, Sequence[int], int]

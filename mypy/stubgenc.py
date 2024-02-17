@@ -41,7 +41,7 @@ from mypy.stubutil import (
 class ExternalSignatureGenerator(SignatureGenerator):
     def __init__(
         self, func_sigs: dict[str, str] | None = None, class_sigs: dict[str, str] | None = None
-    ):
+    ) -> None:
         """
         Takes a mapping of function/method names to signatures and class name to
         class signatures (usually corresponds to __init__).
@@ -187,7 +187,7 @@ class CFunctionStub:
     Class that mimics a C function in order to provide parseable docstrings.
     """
 
-    def __init__(self, name: str, doc: str, is_abstract: bool = False):
+    def __init__(self, name: str, doc: str, is_abstract: bool = False) -> None:
         self.__name__ = name
         self.__doc__ = doc
         self.__abstractmethod__ = is_abstract
@@ -404,7 +404,7 @@ class InspectionStubGenerator(BaseStubGenerator):
                     if self.should_reexport(name, obj_module_name, name_is_alias=False):
                         self.import_tracker.reexport(name)
 
-        self.set_defined_names(set([name for name, obj in all_items if not inspect.ismodule(obj)]))
+        self.set_defined_names({name for name, obj in all_items if not inspect.ismodule(obj)})
 
         if self.resort_members:
             functions: list[str] = []
@@ -530,12 +530,14 @@ class InspectionStubGenerator(BaseStubGenerator):
             return inspect.ismethod(obj)
 
     def is_staticmethod(self, class_info: ClassInfo | None, name: str, obj: object) -> bool:
-        if self.is_c_module:
+        if class_info is None:
             return False
+        elif self.is_c_module:
+            raw_lookup: Mapping[str, Any] = getattr(class_info.cls, "__dict__")  # noqa: B009
+            raw_value = raw_lookup.get(name, obj)
+            return isinstance(raw_value, staticmethod)
         else:
-            return class_info is not None and isinstance(
-                inspect.getattr_static(class_info.cls, name), staticmethod
-            )
+            return isinstance(inspect.getattr_static(class_info.cls, name), staticmethod)
 
     @staticmethod
     def is_abstract_method(obj: object) -> bool:
@@ -761,11 +763,11 @@ class InspectionStubGenerator(BaseStubGenerator):
         The result lines will be appended to 'output'. If necessary, any
         required names will be added to 'imports'.
         """
-        raw_lookup = getattr(cls, "__dict__")  # noqa: B009
+        raw_lookup: Mapping[str, Any] = getattr(cls, "__dict__")  # noqa: B009
         items = self.get_members(cls)
         if self.resort_members:
             items = sorted(items, key=lambda x: method_name_sort_key(x[0]))
-        names = set(x[0] for x in items)
+        names = {x[0] for x in items}
         methods: list[str] = []
         types: list[str] = []
         static_properties: list[str] = []
@@ -793,7 +795,9 @@ class InspectionStubGenerator(BaseStubGenerator):
                         continue
                     attr = "__init__"
                 # FIXME: make this nicer
-                if self.is_classmethod(class_info, attr, value):
+                if self.is_staticmethod(class_info, attr, value):
+                    class_info.self_var = ""
+                elif self.is_classmethod(class_info, attr, value):
                     class_info.self_var = "cls"
                 else:
                     class_info.self_var = "self"

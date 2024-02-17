@@ -5,12 +5,13 @@ from collections.abc import Callable, Iterable, Iterator
 from io import TextIOWrapper
 from os import PathLike
 from types import TracebackType
-from typing import IO, Protocol, overload
-from typing_extensions import Literal, Self, TypeAlias
+from typing import IO, Literal, Protocol, overload
+from typing_extensions import Self, TypeAlias
 
 __all__ = [
     "BadZipFile",
     "BadZipfile",
+    "Path",
     "error",
     "ZIP_STORED",
     "ZIP_DEFLATED",
@@ -23,15 +24,13 @@ __all__ = [
     "LargeZipFile",
 ]
 
-if sys.version_info >= (3, 8):
-    __all__ += ["Path"]
-
-# TODO: use TypeAlias when mypy bugs are fixed
+# TODO: use TypeAlias for these two when mypy bugs are fixed
 # https://github.com/python/mypy/issues/16581
 _DateTuple = tuple[int, int, int, int, int, int]  # noqa: Y026
+_ZipFileMode = Literal["r", "w", "x", "a"]  # noqa: Y026
+
 _ReadWriteMode: TypeAlias = Literal["r", "w"]
 _ReadWriteBinaryMode: TypeAlias = Literal["r", "w", "rb", "wb"]
-_ZipFileMode: TypeAlias = Literal["r", "w", "x", "a"]
 
 class BadZipFile(Exception): ...
 
@@ -132,7 +131,7 @@ class ZipFile:
             strict_timestamps: bool = True,
             metadata_encoding: None = None,
         ) -> None: ...
-    elif sys.version_info >= (3, 8):
+    else:
         def __init__(
             self,
             file: StrPath | IO[bytes],
@@ -142,15 +141,6 @@ class ZipFile:
             compresslevel: int | None = None,
             *,
             strict_timestamps: bool = True,
-        ) -> None: ...
-    else:
-        def __init__(
-            self,
-            file: StrPath | IO[bytes],
-            mode: _ZipFileMode = "r",
-            compression: int = 0,
-            allowZip64: bool = True,
-            compresslevel: int | None = None,
         ) -> None: ...
 
     def __enter__(self) -> Self: ...
@@ -217,17 +207,15 @@ class ZipInfo:
     file_size: int
     orig_filename: str  # undocumented
     def __init__(self, filename: str = "NoName", date_time: _DateTuple = (1980, 1, 1, 0, 0, 0)) -> None: ...
-    if sys.version_info >= (3, 8):
-        @classmethod
-        def from_file(cls, filename: StrPath, arcname: StrPath | None = None, *, strict_timestamps: bool = True) -> Self: ...
-    else:
-        @classmethod
-        def from_file(cls, filename: StrPath, arcname: StrPath | None = None) -> Self: ...
-
+    @classmethod
+    def from_file(cls, filename: StrPath, arcname: StrPath | None = None, *, strict_timestamps: bool = True) -> Self: ...
     def is_dir(self) -> bool: ...
     def FileHeader(self, zip64: bool | None = None) -> bytes: ...
 
-if sys.version_info >= (3, 8):
+if sys.version_info >= (3, 12):
+    from zipfile._path import CompleteDirs as CompleteDirs, Path as Path
+
+else:
     class CompleteDirs(ZipFile):
         def resolve_dir(self, name: str) -> str: ...
         @overload

@@ -52,7 +52,7 @@ RETURN_IN_ASYNC_GENERATOR: Final = ErrorMessage(
     '"return" with value in async generator is not allowed'
 )
 INVALID_RETURN_TYPE_FOR_GENERATOR: Final = ErrorMessage(
-    'The return type of a generator function should be "Generator"' " or one of its supertypes"
+    'The return type of a generator function should be "Generator" or one of its supertypes'
 )
 INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR: Final = ErrorMessage(
     'The return type of an async generator function should be "AsyncGenerator" or one of its '

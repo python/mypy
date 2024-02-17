@@ -1,6 +1,6 @@
 import sys
 from _typeshed import structseq
-from typing_extensions import Final, final
+from typing import Final, final
 
 if sys.platform != "win32":
     RLIMIT_AS: int
@@ -24,6 +24,7 @@ if sys.platform != "win32":
         RLIMIT_RTTIME: int
         RLIMIT_SIGPENDING: int
         RUSAGE_THREAD: int
+
     @final
     class struct_rusage(
         structseq[float], tuple[float, float, int, int, int, int, int, int, int, int, int, int, int, int, int, int]
@@ -47,6 +48,7 @@ if sys.platform != "win32":
                 "ru_nvcsw",
                 "ru_nivcsw",
             )
+
         @property
         def ru_utime(self) -> float: ...
         @property

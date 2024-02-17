@@ -56,7 +56,7 @@ JsonDict: _TypeAlias = Dict[str, Any]
 # 1. types.LiteralType's serialize and deserialize methods: this method
 #    needs to make sure it can convert the below types into JSON and back.
 #
-# 2. types.LiteralType's 'alue_repr` method: this method is ultimately used
+# 2. types.LiteralType's 'value_repr` method: this method is ultimately used
 #    by TypeStrVisitor's visit_literal_type to generate a reasonable
 #    repr-able output.
 #
@@ -441,7 +441,7 @@ class TypeGuardedType(Type):
 
     __slots__ = ("type_guard",)
 
-    def __init__(self, type_guard: Type):
+    def __init__(self, type_guard: Type) -> None:
         super().__init__(line=type_guard.line, column=type_guard.column)
         self.type_guard = type_guard
 
@@ -1490,9 +1490,9 @@ class Instance(ProperType):
             args if args is not _dummy else self.args,
             self.line,
             self.column,
-            last_known_value=last_known_value
-            if last_known_value is not _dummy
-            else self.last_known_value,
+            last_known_value=(
+                last_known_value if last_known_value is not _dummy else self.last_known_value
+            ),
         )
         # We intentionally don't copy the extra_attrs here, so they will be erased.
         new.can_be_true = self.can_be_true
@@ -2834,13 +2834,13 @@ class UnionType(ProperType):
 
     @overload
     @staticmethod
-    def make_union(items: Sequence[ProperType], line: int = -1, column: int = -1) -> ProperType:
-        ...
+    def make_union(
+        items: Sequence[ProperType], line: int = -1, column: int = -1
+    ) -> ProperType: ...
 
     @overload
     @staticmethod
-    def make_union(items: Sequence[Type], line: int = -1, column: int = -1) -> Type:
-        ...
+    def make_union(items: Sequence[Type], line: int = -1, column: int = -1) -> Type: ...
 
     @staticmethod
     def make_union(items: Sequence[Type], line: int = -1, column: int = -1) -> Type:
@@ -3052,13 +3052,11 @@ class PlaceholderType(ProperType):
 
 
 @overload
-def get_proper_type(typ: None) -> None:
-    ...
+def get_proper_type(typ: None) -> None: ...
 
 
 @overload
-def get_proper_type(typ: Type) -> ProperType:
-    ...
+def get_proper_type(typ: Type) -> ProperType: ...
 
 
 def get_proper_type(typ: Type | None) -> ProperType | None:
@@ -3088,8 +3086,7 @@ def get_proper_types(types: list[Type] | tuple[Type, ...]) -> list[ProperType]: 
 @overload
 def get_proper_types(
     types: list[Type | None] | tuple[Type | None, ...]
-) -> list[ProperType | None]:
-    ...
+) -> list[ProperType | None]: ...
 
 
 def get_proper_types(
@@ -3111,7 +3108,7 @@ def get_proper_types(
 # to make it easier to gradually get modules working with mypyc.
 # Import them here, after the types are defined.
 # This is intended as a re-export also.
-from mypy.type_visitor import (  # noqa: F811
+from mypy.type_visitor import (
     ALL_STRATEGY as ALL_STRATEGY,
     ANY_STRATEGY as ANY_STRATEGY,
     BoolTypeQuery as BoolTypeQuery,

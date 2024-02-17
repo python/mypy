@@ -145,7 +145,7 @@ def main(
         sys.exit(code)
 
     # HACK: keep res alive so that mypyc won't free it before the hard_exit
-    list([res])
+    list([res])  # noqa: C410
 
 
 def run_build(
@@ -342,14 +342,13 @@ FOOTER: Final = """Environment variables:
 
 
 class CapturableArgumentParser(argparse.ArgumentParser):
-
     """Override ArgumentParser methods that use sys.stdout/sys.stderr directly.
 
     This is needed because hijacking sys.std* is not thread-safe,
     yet output must be captured to properly support mypy.api.run.
     """
 
-    def __init__(self, *args: Any, **kwargs: Any):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.stdout = kwargs.pop("stdout", sys.stdout)
         self.stderr = kwargs.pop("stderr", sys.stderr)
         super().__init__(*args, **kwargs)
@@ -396,7 +395,6 @@ class CapturableArgumentParser(argparse.ArgumentParser):
 
 
 class CapturableVersionAction(argparse.Action):
-
     """Supplement CapturableArgumentParser to handle --version.
 
     This is nearly identical to argparse._VersionAction except,
@@ -415,7 +413,7 @@ class CapturableVersionAction(argparse.Action):
         default: str = argparse.SUPPRESS,
         help: str = "show program's version number and exit",
         stdout: IO[str] | None = None,
-    ):
+    ) -> None:
         super().__init__(
             option_strings=option_strings, dest=dest, default=default, nargs=0, help=help
         )
@@ -1010,7 +1008,7 @@ def process_options(
     parser.add_argument(
         "--enable-incomplete-feature",
         action="append",
-        metavar="FEATURE",
+        metavar="{" + ",".join(sorted(INCOMPLETE_FEATURES)) + "}",
         help="Enable support of incomplete/experimental features for early preview",
     )
     internals_group.add_argument(
@@ -1135,6 +1133,8 @@ def process_options(
     parser.add_argument("--dump-graph", action="store_true", help=argparse.SUPPRESS)
     # --semantic-analysis-only does exactly that.
     parser.add_argument("--semantic-analysis-only", action="store_true", help=argparse.SUPPRESS)
+    # Some tests use this to tell mypy that we are running a test.
+    parser.add_argument("--test-env", action="store_true", help=argparse.SUPPRESS)
     # --local-partial-types disallows partial types spanning module top level and a function
     # (implicitly defined in fine-grained incremental mode)
     parser.add_argument("--local-partial-types", action="store_true", help=argparse.SUPPRESS)

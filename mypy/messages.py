@@ -1347,18 +1347,21 @@ class MessageBuilder:
         return target
 
     def incompatible_type_application(
-        self, expected_arg_count: int, actual_arg_count: int, context: Context
+        self, min_arg_count: int, max_arg_count: int, actual_arg_count: int, context: Context
     ) -> None:
-        if expected_arg_count == 0:
+        if max_arg_count == 0:
             self.fail("Type application targets a non-generic function or class", context)
-        elif actual_arg_count > expected_arg_count:
-            self.fail(
-                f"Type application has too many types ({expected_arg_count} expected)", context
-            )
+            return
+
+        if min_arg_count == max_arg_count:
+            s = f"{max_arg_count} expected"
         else:
-            self.fail(
-                f"Type application has too few types ({expected_arg_count} expected)", context
-            )
+            s = f"expected between {min_arg_count} and {max_arg_count}"
+
+        if actual_arg_count > max_arg_count:
+            self.fail(f"Type application has too many types ({s})", context)
+        else:
+            self.fail(f"Type application has too few types ({s})", context)
 
     def could_not_infer_type_arguments(
         self, callee_type: CallableType, n: int, context: Context
@@ -2512,10 +2515,10 @@ def format_type_inner(
         else:
             base_str = itype.type.name
         if not itype.args:
-            if not itype.type.has_type_var_tuple_type:
-                # No type arguments, just return the type name
-                return base_str
-            return base_str + "[()]"
+            if itype.type.has_type_var_tuple_type and len(itype.type.type_vars) == 1:
+                return base_str + "[()]"
+            # No type arguments, just return the type name
+            return base_str
         elif itype.type.fullname == "builtins.tuple":
             item_type_str = format(itype.args[0])
             return f"{'tuple' if options.use_lowercase_names() else 'Tuple'}[{item_type_str}, ...]"
@@ -3017,12 +3020,15 @@ def for_function(callee: CallableType) -> str:
     return ""
 
 
-def wrong_type_arg_count(n: int, act: str, name: str) -> str:
-    s = f"{n} type arguments"
-    if n == 0:
-        s = "no type arguments"
-    elif n == 1:
-        s = "1 type argument"
+def wrong_type_arg_count(low: int, high: int, act: str, name: str) -> str:
+    if low == high:
+        s = f"{low} type arguments"
+        if low == 0:
+            s = "no type arguments"
+        elif low == 1:
+            s = "1 type argument"
+    else:
+        s = f"between {low} and {high} type arguments"
     if act == "0":
         act = "none"
     return f'"{name}" expects {s}, but {act} given'
@@ -3099,7 +3105,7 @@ def append_invariance_notes(
     ):
         invariant_type = "Dict"
         covariant_suggestion = (
-            'Consider using "Mapping" instead, ' "which is covariant in the value type"
+            'Consider using "Mapping" instead, which is covariant in the value type'
         )
     if invariant_type and covariant_suggestion:
         notes.append(

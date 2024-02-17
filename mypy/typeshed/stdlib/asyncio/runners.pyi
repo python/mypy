@@ -2,8 +2,8 @@ import sys
 from _typeshed import Unused
 from collections.abc import Callable, Coroutine
 from contextvars import Context
-from typing import Any, TypeVar
-from typing_extensions import Self, final
+from typing import Any, TypeVar, final
+from typing_extensions import Self
 
 from .events import AbstractEventLoop
 
@@ -28,8 +28,5 @@ if sys.version_info >= (3, 12):
         main: Coroutine[Any, Any, _T], *, debug: bool | None = ..., loop_factory: Callable[[], AbstractEventLoop] | None = ...
     ) -> _T: ...
 
-elif sys.version_info >= (3, 8):
-    def run(main: Coroutine[Any, Any, _T], *, debug: bool | None = None) -> _T: ...
-
 else:
-    def run(main: Coroutine[Any, Any, _T], *, debug: bool = False) -> _T: ...
+    def run(main: Coroutine[Any, Any, _T], *, debug: bool | None = None) -> _T: ...

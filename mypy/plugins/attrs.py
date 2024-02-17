@@ -185,9 +185,11 @@ class Attribute:
             "init": self.init,
             "kw_only": self.kw_only,
             "has_converter": self.converter is not None,
-            "converter_init_type": self.converter.init_type.serialize()
-            if self.converter and self.converter.init_type
-            else None,
+            "converter_init_type": (
+                self.converter.init_type.serialize()
+                if self.converter and self.converter.init_type
+                else None
+            ),
             "context_line": self.context.line,
             "context_column": self.context.column,
             "init_type": self.init_type.serialize() if self.init_type else None,
@@ -310,6 +312,8 @@ def attr_class_maker_callback(
     it will add an __init__ or all the compare methods.
     For frozen=True it will turn the attrs into properties.
 
+    Hashability will be set according to https://www.attrs.org/en/stable/hashing.html.
+
     See https://www.attrs.org/en/stable/how-does-it-work.html for information on how attrs works.
 
     If this returns False, some required metadata was not ready yet and we need another
@@ -321,6 +325,9 @@ def attr_class_maker_callback(
     frozen = _get_frozen(ctx, frozen_default)
     order = _determine_eq_order(ctx)
     slots = _get_decorator_bool_argument(ctx, "slots", slots_default)
+    hashable = _get_decorator_bool_argument(ctx, "hash", False) or _get_decorator_bool_argument(
+        ctx, "unsafe_hash", False
+    )
 
     auto_attribs = _get_decorator_optional_bool_argument(ctx, "auto_attribs", auto_attribs_default)
     kw_only = _get_decorator_bool_argument(ctx, "kw_only", False)
@@ -359,10 +366,13 @@ def attr_class_maker_callback(
     adder = MethodAdder(ctx)
     # If  __init__ is not being generated, attrs still generates it as __attrs_init__ instead.
     _add_init(ctx, attributes, adder, "__init__" if init else ATTRS_INIT_NAME)
+
     if order:
         _add_order(ctx, adder)
     if frozen:
         _make_frozen(ctx, attributes)
+    elif not hashable:
+        _remove_hashability(ctx)
 
     return True
 
@@ -943,6 +953,13 @@ def _add_match_args(ctx: mypy.plugin.ClassDefContext, attributes: list[Attribute
         add_attribute_to_class(api=ctx.api, cls=ctx.cls, name="__match_args__", typ=match_args)
 
 
+def _remove_hashability(ctx: mypy.plugin.ClassDefContext) -> None:
+    """Remove hashability from a class."""
+    add_attribute_to_class(
+        ctx.api, ctx.cls, "__hash__", NoneType(), is_classvar=True, overwrite_existing=True
+    )
+
+
 class MethodAdder:
     """Helper to add methods to a TypeInfo.
 
@@ -1058,9 +1075,11 @@ def _meet_fields(types: list[Mapping[str, Type]]) -> Mapping[str, Type]:
             field_to_types[name].append(typ)
 
     return {
-        name: get_proper_type(reduce(meet_types, f_types))
-        if len(f_types) == len(types)
-        else UninhabitedType()
+        name: (
+            get_proper_type(reduce(meet_types, f_types))
+            if len(f_types) == len(types)
+            else UninhabitedType()
+        )
         for name, f_types in field_to_types.items()
     }
 

@@ -119,7 +119,7 @@ and mypy doesn't complain**.
         return None  # No error!
 
 You may have disabled strict optional checking (see
-:ref:`no_strict_optional` for more).
+:ref:`--no-strict-optional <no_strict_optional>` for more).
 
 .. _silencing_checker:
 

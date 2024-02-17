@@ -118,6 +118,7 @@ class closing(AbstractContextManager[_SupportsCloseT]):
 if sys.version_info >= (3, 10):
     class _SupportsAclose(Protocol):
         def aclose(self) -> Awaitable[object]: ...
+
     _SupportsAcloseT = TypeVar("_SupportsAcloseT", bound=_SupportsAclose)
 
     class aclosing(AbstractAsyncContextManager[_SupportsAcloseT]):

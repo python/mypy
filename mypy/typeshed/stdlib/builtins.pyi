@@ -50,21 +50,23 @@ from typing import (  # noqa: Y022
     SupportsBytes,
     SupportsComplex,
     SupportsFloat,
+    SupportsIndex,
     TypeVar,
+    final,
     overload,
     type_check_only,
 )
-from typing_extensions import (
+
+# we can't import `Literal` from typing or mypy crashes: see #11247
+from typing_extensions import (  # noqa: Y023
     Concatenate,
     Literal,
     ParamSpec,
     Self,
-    SupportsIndex,
     TypeAlias,
     TypeGuard,
     TypeVarTuple,
     deprecated,
-    final,
 )
 
 if sys.version_info >= (3, 9):
@@ -115,10 +117,7 @@ class object:
     # return type of pickle methods is rather hard to express in the current type system
     # see #6661 and https://docs.python.org/3/library/pickle.html#object.__reduce__
     def __reduce__(self) -> str | tuple[Any, ...]: ...
-    if sys.version_info >= (3, 8):
-        def __reduce_ex__(self, __protocol: SupportsIndex) -> str | tuple[Any, ...]: ...
-    else:
-        def __reduce_ex__(self, __protocol: int) -> str | tuple[Any, ...]: ...
+    def __reduce_ex__(self, __protocol: SupportsIndex) -> str | tuple[Any, ...]: ...
     if sys.version_info >= (3, 11):
         def __getstate__(self) -> object: ...
 
@@ -202,7 +201,7 @@ class type:
     def __instancecheck__(self, __instance: Any) -> bool: ...
     def __subclasscheck__(self, __subclass: type) -> bool: ...
     @classmethod
-    def __prepare__(metacls, __name: str, __bases: tuple[type, ...], **kwds: Any) -> Mapping[str, object]: ...
+    def __prepare__(metacls, __name: str, __bases: tuple[type, ...], **kwds: Any) -> MutableMapping[str, object]: ...
     if sys.version_info >= (3, 10):
         def __or__(self, __value: Any) -> types.UnionType: ...
         def __ror__(self, __value: Any) -> types.UnionType: ...
@@ -226,9 +225,7 @@ class int:
     def __new__(cls, __x: ConvertibleToInt = ...) -> Self: ...
     @overload
     def __new__(cls, __x: str | bytes | bytearray, base: SupportsIndex) -> Self: ...
-    if sys.version_info >= (3, 8):
-        def as_integer_ratio(self) -> tuple[int, Literal[1]]: ...
-
+    def as_integer_ratio(self) -> tuple[int, Literal[1]]: ...
     @property
     def real(self) -> int: ...
     @property
@@ -392,22 +389,15 @@ class float:
     def __bool__(self) -> bool: ...
 
 class complex:
-    if sys.version_info >= (3, 8):
-        # Python doesn't currently accept SupportsComplex for the second argument
-        @overload
-        def __new__(
-            cls,
-            real: complex | SupportsComplex | SupportsFloat | SupportsIndex = ...,
-            imag: complex | SupportsFloat | SupportsIndex = ...,
-        ) -> Self: ...
-        @overload
-        def __new__(cls, real: str | SupportsComplex | SupportsFloat | SupportsIndex | complex) -> Self: ...
-    else:
-        @overload
-        def __new__(cls, real: complex | SupportsComplex | SupportsFloat = ..., imag: complex | SupportsFloat = ...) -> Self: ...
-        @overload
-        def __new__(cls, real: str | SupportsComplex | SupportsFloat | complex) -> Self: ...
-
+    # Python doesn't currently accept SupportsComplex for the second argument
+    @overload
+    def __new__(
+        cls,
+        real: complex | SupportsComplex | SupportsFloat | SupportsIndex = ...,
+        imag: complex | SupportsFloat | SupportsIndex = ...,
+    ) -> Self: ...
+    @overload
+    def __new__(cls, real: str | SupportsComplex | SupportsFloat | SupportsIndex | complex) -> Self: ...
     @property
     def real(self) -> float: ...
     @property
@@ -452,11 +442,7 @@ class str(Sequence[str]):
     def endswith(
         self, __suffix: str | tuple[str, ...], __start: SupportsIndex | None = ..., __end: SupportsIndex | None = ...
     ) -> bool: ...
-    if sys.version_info >= (3, 8):
-        def expandtabs(self, tabsize: SupportsIndex = 8) -> str: ...  # type: ignore[misc]
-    else:
-        def expandtabs(self, tabsize: int = 8) -> str: ...  # type: ignore[misc]
-
+    def expandtabs(self, tabsize: SupportsIndex = 8) -> str: ...  # type: ignore[misc]
     def find(self, __sub: str, __start: SupportsIndex | None = ..., __end: SupportsIndex | None = ...) -> int: ...
     def format(self, *args: object, **kwargs: object) -> str: ...
     def format_map(self, map: _FormatMapMapping) -> str: ...
@@ -546,19 +532,11 @@ class bytes(Sequence[int]):
         __start: SupportsIndex | None = ...,
         __end: SupportsIndex | None = ...,
     ) -> bool: ...
-    if sys.version_info >= (3, 8):
-        def expandtabs(self, tabsize: SupportsIndex = 8) -> bytes: ...
-    else:
-        def expandtabs(self, tabsize: int = ...) -> bytes: ...
-
+    def expandtabs(self, tabsize: SupportsIndex = 8) -> bytes: ...
     def find(
         self, __sub: ReadableBuffer | SupportsIndex, __start: SupportsIndex | None = ..., __end: SupportsIndex | None = ...
     ) -> int: ...
-    if sys.version_info >= (3, 8):
-        def hex(self, sep: str | bytes = ..., bytes_per_sep: SupportsIndex = ...) -> str: ...
-    else:
-        def hex(self) -> str: ...
-
+    def hex(self, sep: str | bytes = ..., bytes_per_sep: SupportsIndex = ...) -> str: ...
     def index(
         self, __sub: ReadableBuffer | SupportsIndex, __start: SupportsIndex | None = ..., __end: SupportsIndex | None = ...
     ) -> int: ...
@@ -654,20 +632,12 @@ class bytearray(MutableSequence[int]):
         __start: SupportsIndex | None = ...,
         __end: SupportsIndex | None = ...,
     ) -> bool: ...
-    if sys.version_info >= (3, 8):
-        def expandtabs(self, tabsize: SupportsIndex = 8) -> bytearray: ...
-    else:
-        def expandtabs(self, tabsize: int = ...) -> bytearray: ...
-
+    def expandtabs(self, tabsize: SupportsIndex = 8) -> bytearray: ...
     def extend(self, __iterable_of_ints: Iterable[SupportsIndex]) -> None: ...
     def find(
         self, __sub: ReadableBuffer | SupportsIndex, __start: SupportsIndex | None = ..., __end: SupportsIndex | None = ...
     ) -> int: ...
-    if sys.version_info >= (3, 8):
-        def hex(self, sep: str | bytes = ..., bytes_per_sep: SupportsIndex = ...) -> str: ...
-    else:
-        def hex(self) -> str: ...
-
+    def hex(self, sep: str | bytes = ..., bytes_per_sep: SupportsIndex = ...) -> str: ...
     def index(
         self, __sub: ReadableBuffer | SupportsIndex, __start: SupportsIndex | None = ..., __end: SupportsIndex | None = ...
     ) -> int: ...
@@ -784,7 +754,7 @@ class memoryview(Sequence[int]):
     ) -> None: ...
     def cast(self, format: str, shape: list[int] | tuple[int, ...] = ...) -> memoryview: ...
     @overload
-    def __getitem__(self, __key: SupportsIndex) -> int: ...
+    def __getitem__(self, __key: SupportsIndex | tuple[SupportsIndex, ...]) -> int: ...
     @overload
     def __getitem__(self, __key: slice) -> memoryview: ...
     def __contains__(self, __x: object) -> bool: ...
@@ -795,24 +765,16 @@ class memoryview(Sequence[int]):
     @overload
     def __setitem__(self, __key: slice, __value: ReadableBuffer) -> None: ...
     @overload
-    def __setitem__(self, __key: SupportsIndex, __value: SupportsIndex) -> None: ...
+    def __setitem__(self, __key: SupportsIndex | tuple[SupportsIndex, ...], __value: SupportsIndex) -> None: ...
     if sys.version_info >= (3, 10):
         def tobytes(self, order: Literal["C", "F", "A"] | None = "C") -> bytes: ...
-    elif sys.version_info >= (3, 8):
-        def tobytes(self, order: Literal["C", "F", "A"] | None = None) -> bytes: ...
     else:
-        def tobytes(self) -> bytes: ...
+        def tobytes(self, order: Literal["C", "F", "A"] | None = None) -> bytes: ...
 
     def tolist(self) -> list[int]: ...
-    if sys.version_info >= (3, 8):
-        def toreadonly(self) -> memoryview: ...
-
+    def toreadonly(self) -> memoryview: ...
     def release(self) -> None: ...
-    if sys.version_info >= (3, 8):
-        def hex(self, sep: str | bytes = ..., bytes_per_sep: SupportsIndex = ...) -> str: ...
-    else:
-        def hex(self) -> str: ...
-
+    def hex(self, sep: str | bytes = ..., bytes_per_sep: SupportsIndex = ...) -> str: ...
     def __buffer__(self, __flags: int) -> memoryview: ...
     def __release_buffer__(self, __buffer: memoryview) -> None: ...
 
@@ -1026,8 +988,7 @@ class dict(MutableMapping[_KT, _VT]):
     def __delitem__(self, __key: _KT) -> None: ...
     def __iter__(self) -> Iterator[_KT]: ...
     def __eq__(self, __value: object) -> bool: ...
-    if sys.version_info >= (3, 8):
-        def __reversed__(self) -> Iterator[_KT]: ...
+    def __reversed__(self) -> Iterator[_KT]: ...
     __hash__: ClassVar[None]  # type: ignore[assignment]
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, __item: Any) -> GenericAlias: ...
@@ -1204,89 +1165,49 @@ if sys.version_info >= (3, 10):
 # compile() returns a CodeType, unless the flags argument includes PyCF_ONLY_AST (=1024),
 # in which case it returns ast.AST. We have overloads for flag 0 (the default) and for
 # explicitly passing PyCF_ONLY_AST. We fall back to Any for other values of flags.
-if sys.version_info >= (3, 8):
-    @overload
-    def compile(
-        source: str | ReadableBuffer | _ast.Module | _ast.Expression | _ast.Interactive,
-        filename: str | ReadableBuffer | _PathLike[Any],
-        mode: str,
-        flags: Literal[0],
-        dont_inherit: bool = False,
-        optimize: int = -1,
-        *,
-        _feature_version: int = -1,
-    ) -> CodeType: ...
-    @overload
-    def compile(
-        source: str | ReadableBuffer | _ast.Module | _ast.Expression | _ast.Interactive,
-        filename: str | ReadableBuffer | _PathLike[Any],
-        mode: str,
-        *,
-        dont_inherit: bool = False,
-        optimize: int = -1,
-        _feature_version: int = -1,
-    ) -> CodeType: ...
-    @overload
-    def compile(
-        source: str | ReadableBuffer | _ast.Module | _ast.Expression | _ast.Interactive,
-        filename: str | ReadableBuffer | _PathLike[Any],
-        mode: str,
-        flags: Literal[1024],
-        dont_inherit: bool = False,
-        optimize: int = -1,
-        *,
-        _feature_version: int = -1,
-    ) -> _ast.AST: ...
-    @overload
-    def compile(
-        source: str | ReadableBuffer | _ast.Module | _ast.Expression | _ast.Interactive,
-        filename: str | ReadableBuffer | _PathLike[Any],
-        mode: str,
-        flags: int,
-        dont_inherit: bool = False,
-        optimize: int = -1,
-        *,
-        _feature_version: int = -1,
-    ) -> Any: ...
-
-else:
-    @overload
-    def compile(
-        source: str | ReadableBuffer | _ast.Module | _ast.Expression | _ast.Interactive,
-        filename: str | ReadableBuffer | _PathLike[Any],
-        mode: str,
-        flags: Literal[0],
-        dont_inherit: bool = False,
-        optimize: int = -1,
-    ) -> CodeType: ...
-    @overload
-    def compile(
-        source: str | ReadableBuffer | _ast.Module | _ast.Expression | _ast.Interactive,
-        filename: str | ReadableBuffer | _PathLike[Any],
-        mode: str,
-        *,
-        dont_inherit: bool = False,
-        optimize: int = -1,
-    ) -> CodeType: ...
-    @overload
-    def compile(
-        source: str | ReadableBuffer | _ast.Module | _ast.Expression | _ast.Interactive,
-        filename: str | ReadableBuffer | _PathLike[Any],
-        mode: str,
-        flags: Literal[1024],
-        dont_inherit: bool = False,
-        optimize: int = -1,
-    ) -> _ast.AST: ...
-    @overload
-    def compile(
-        source: str | ReadableBuffer | _ast.Module | _ast.Expression | _ast.Interactive,
-        filename: str | ReadableBuffer | _PathLike[Any],
-        mode: str,
-        flags: int,
-        dont_inherit: bool = False,
-        optimize: int = -1,
-    ) -> Any: ...
-
+@overload
+def compile(
+    source: str | ReadableBuffer | _ast.Module | _ast.Expression | _ast.Interactive,
+    filename: str | ReadableBuffer | _PathLike[Any],
+    mode: str,
+    flags: Literal[0],
+    dont_inherit: bool = False,
+    optimize: int = -1,
+    *,
+    _feature_version: int = -1,
+) -> CodeType: ...
+@overload
+def compile(
+    source: str | ReadableBuffer | _ast.Module | _ast.Expression | _ast.Interactive,
+    filename: str | ReadableBuffer | _PathLike[Any],
+    mode: str,
+    *,
+    dont_inherit: bool = False,
+    optimize: int = -1,
+    _feature_version: int = -1,
+) -> CodeType: ...
+@overload
+def compile(
+    source: str | ReadableBuffer | _ast.Module | _ast.Expression | _ast.Interactive,
+    filename: str | ReadableBuffer | _PathLike[Any],
+    mode: str,
+    flags: Literal[1024],
+    dont_inherit: bool = False,
+    optimize: int = -1,
+    *,
+    _feature_version: int = -1,
+) -> _ast.AST: ...
+@overload
+def compile(
+    source: str | ReadableBuffer | _ast.Module | _ast.Expression | _ast.Interactive,
+    filename: str | ReadableBuffer | _PathLike[Any],
+    mode: str,
+    flags: int,
+    dont_inherit: bool = False,
+    optimize: int = -1,
+    *,
+    _feature_version: int = -1,
+) -> Any: ...
 def copyright() -> None: ...
 def credits() -> None: ...
 def delattr(__obj: object, __name: str) -> None: ...
@@ -1580,77 +1501,45 @@ _SupportsSomeKindOfPow = (  # noqa: Y026  # TODO: Use TypeAlias once mypy bugs a
     _SupportsPow2[Any, Any] | _SupportsPow3NoneOnly[Any, Any] | _SupportsPow3[Any, Any, Any]
 )
 
-if sys.version_info >= (3, 8):
-    # TODO: `pow(int, int, Literal[0])` fails at runtime,
-    # but adding a `NoReturn` overload isn't a good solution for expressing that (see #8566).
-    @overload
-    def pow(base: int, exp: int, mod: int) -> int: ...
-    @overload
-    def pow(base: int, exp: Literal[0], mod: None = None) -> Literal[1]: ...
-    @overload
-    def pow(base: int, exp: _PositiveInteger, mod: None = None) -> int: ...
-    @overload
-    def pow(base: int, exp: _NegativeInteger, mod: None = None) -> float: ...
-    # int base & positive-int exp -> int; int base & negative-int exp -> float
-    # return type must be Any as `int | float` causes too many false-positive errors
-    @overload
-    def pow(base: int, exp: int, mod: None = None) -> Any: ...
-    @overload
-    def pow(base: _PositiveInteger, exp: float, mod: None = None) -> float: ...
-    @overload
-    def pow(base: _NegativeInteger, exp: float, mod: None = None) -> complex: ...
-    @overload
-    def pow(base: float, exp: int, mod: None = None) -> float: ...
-    # float base & float exp could return float or complex
-    # return type must be Any (same as complex base, complex exp),
-    # as `float | complex` causes too many false-positive errors
-    @overload
-    def pow(base: float, exp: complex | _SupportsSomeKindOfPow, mod: None = None) -> Any: ...
-    @overload
-    def pow(base: complex, exp: complex | _SupportsSomeKindOfPow, mod: None = None) -> complex: ...
-    @overload
-    def pow(base: _SupportsPow2[_E, _T_co], exp: _E, mod: None = None) -> _T_co: ...
-    @overload
-    def pow(base: _SupportsPow3NoneOnly[_E, _T_co], exp: _E, mod: None = None) -> _T_co: ...
-    @overload
-    def pow(base: _SupportsPow3[_E, _M, _T_co], exp: _E, mod: _M) -> _T_co: ...
-    @overload
-    def pow(base: _SupportsSomeKindOfPow, exp: float, mod: None = None) -> Any: ...
-    @overload
-    def pow(base: _SupportsSomeKindOfPow, exp: complex, mod: None = None) -> complex: ...
+# TODO: `pow(int, int, Literal[0])` fails at runtime,
+# but adding a `NoReturn` overload isn't a good solution for expressing that (see #8566).
+@overload
+def pow(base: int, exp: int, mod: int) -> int: ...
+@overload
+def pow(base: int, exp: Literal[0], mod: None = None) -> Literal[1]: ...
+@overload
+def pow(base: int, exp: _PositiveInteger, mod: None = None) -> int: ...
+@overload
+def pow(base: int, exp: _NegativeInteger, mod: None = None) -> float: ...
 
-else:
-    @overload
-    def pow(__x: int, __y: int, __z: int) -> int: ...
-    @overload
-    def pow(__x: int, __y: Literal[0], __z: None = None) -> Literal[1]: ...
-    @overload
-    def pow(__x: int, __y: _PositiveInteger, __z: None = None) -> int: ...
-    @overload
-    def pow(__x: int, __y: _NegativeInteger, __z: None = None) -> float: ...
-    @overload
-    def pow(__x: int, __y: int, __z: None = None) -> Any: ...
-    @overload
-    def pow(__x: _PositiveInteger, __y: float, __z: None = None) -> float: ...
-    @overload
-    def pow(__x: _NegativeInteger, __y: float, __z: None = None) -> complex: ...
-    @overload
-    def pow(__x: float, __y: int, __z: None = None) -> float: ...
-    @overload
-    def pow(__x: float, __y: complex | _SupportsSomeKindOfPow, __z: None = None) -> Any: ...
-    @overload
-    def pow(__x: complex, __y: complex | _SupportsSomeKindOfPow, __z: None = None) -> complex: ...
-    @overload
-    def pow(__x: _SupportsPow2[_E, _T_co], __y: _E, __z: None = None) -> _T_co: ...
-    @overload
-    def pow(__x: _SupportsPow3NoneOnly[_E, _T_co], __y: _E, __z: None = None) -> _T_co: ...
-    @overload
-    def pow(__x: _SupportsPow3[_E, _M, _T_co], __y: _E, __z: _M) -> _T_co: ...
-    @overload
-    def pow(__x: _SupportsSomeKindOfPow, __y: float, __z: None = None) -> Any: ...
-    @overload
-    def pow(__x: _SupportsSomeKindOfPow, __y: complex, __z: None = None) -> complex: ...
+# int base & positive-int exp -> int; int base & negative-int exp -> float
+# return type must be Any as `int | float` causes too many false-positive errors
+@overload
+def pow(base: int, exp: int, mod: None = None) -> Any: ...
+@overload
+def pow(base: _PositiveInteger, exp: float, mod: None = None) -> float: ...
+@overload
+def pow(base: _NegativeInteger, exp: float, mod: None = None) -> complex: ...
+@overload
+def pow(base: float, exp: int, mod: None = None) -> float: ...
 
+# float base & float exp could return float or complex
+# return type must be Any (same as complex base, complex exp),
+# as `float | complex` causes too many false-positive errors
+@overload
+def pow(base: float, exp: complex | _SupportsSomeKindOfPow, mod: None = None) -> Any: ...
+@overload
+def pow(base: complex, exp: complex | _SupportsSomeKindOfPow, mod: None = None) -> complex: ...
+@overload
+def pow(base: _SupportsPow2[_E, _T_co], exp: _E, mod: None = None) -> _T_co: ...
+@overload
+def pow(base: _SupportsPow3NoneOnly[_E, _T_co], exp: _E, mod: None = None) -> _T_co: ...
+@overload
+def pow(base: _SupportsPow3[_E, _M, _T_co], exp: _E, mod: _M) -> _T_co: ...
+@overload
+def pow(base: _SupportsSomeKindOfPow, exp: float, mod: None = None) -> Any: ...
+@overload
+def pow(base: _SupportsSomeKindOfPow, exp: complex, mod: None = None) -> complex: ...
 def quit(code: sys._ExitCode = None) -> NoReturn: ...
 
 class reversed(Iterator[_T]):
@@ -1700,24 +1589,12 @@ _SupportsSumNoDefaultT = TypeVar("_SupportsSumNoDefaultT", bound=_SupportsSumWit
 # However, we can't express that in the stub for `sum()`
 # without creating many false-positive errors (see #7578).
 # Instead, we special-case the most common examples of this: bool and literal integers.
-if sys.version_info >= (3, 8):
-    @overload
-    def sum(__iterable: Iterable[bool], start: int = 0) -> int: ...  # type: ignore[overload-overlap]
-
-else:
-    @overload
-    def sum(__iterable: Iterable[bool], __start: int = 0) -> int: ...  # type: ignore[overload-overlap]
-
+@overload
+def sum(__iterable: Iterable[bool], start: int = 0) -> int: ...  # type: ignore[overload-overlap]
 @overload
 def sum(__iterable: Iterable[_SupportsSumNoDefaultT]) -> _SupportsSumNoDefaultT | Literal[0]: ...
-
-if sys.version_info >= (3, 8):
-    @overload
-    def sum(__iterable: Iterable[_AddableT1], start: _AddableT2) -> _AddableT1 | _AddableT2: ...
-
-else:
-    @overload
-    def sum(__iterable: Iterable[_AddableT1], __start: _AddableT2) -> _AddableT1 | _AddableT2: ...
+@overload
+def sum(__iterable: Iterable[_AddableT1], start: _AddableT2) -> _AddableT1 | _AddableT2: ...
 
 # The argument to `vars()` has to have a `__dict__` attribute, so the second overload can't be annotated with `object`
 # (A "SupportsDunderDict" protocol doesn't work)
@@ -1821,9 +1698,13 @@ def __import__(
 def __build_class__(__func: Callable[[], _Cell | Any], __name: str, *bases: Any, metaclass: Any = ..., **kwds: Any) -> Any: ...
 
 if sys.version_info >= (3, 10):
-    # In Python 3.10, EllipsisType is exposed publicly in the types module.
-    @final
-    class ellipsis: ...
+    from types import EllipsisType
+
+    # Backwards compatibility hack for folks who relied on the ellipsis type
+    # existing in typeshed in Python 3.9 and earlier.
+    ellipsis = EllipsisType
+
+    Ellipsis: EllipsisType
 
 else:
     # Actually the type of Ellipsis is <type 'ellipsis'>, but since it's
@@ -1832,7 +1713,7 @@ else:
     @type_check_only
     class ellipsis: ...
 
-Ellipsis: ellipsis
+    Ellipsis: ellipsis
 
 class BaseException:
     args: tuple[Any, ...]

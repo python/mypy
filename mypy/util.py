@@ -263,6 +263,8 @@ def _generate_junit_contents(
     version: str,
     platform: str,
 ) -> str:
+    from xml.sax.saxutils import escape
+
     if serious:
         failures = 0
         errors = len(messages_by_file)
@@ -284,7 +286,7 @@ def _generate_junit_contents(
         for filename, messages in messages_by_file.items():
             if filename is not None:
                 xml += JUNIT_TESTCASE_FAIL_TEMPLATE.format(
-                    text="\n".join(messages),
+                    text=escape("\n".join(messages)),
                     filename=filename,
                     time=dt,
                     name="mypy-py{ver}-{platform} {filename}".format(
@@ -293,7 +295,7 @@ def _generate_junit_contents(
                 )
             else:
                 xml += JUNIT_TESTCASE_FAIL_TEMPLATE.format(
-                    text="\n".join(messages),
+                    text=escape("\n".join(messages)),
                     filename="mypy",
                     time=dt,
                     name="mypy-py{ver}-{platform}".format(ver=version, platform=platform),
@@ -449,7 +451,7 @@ def get_unique_redefinition_name(name: str, existing: Container[str]) -> str:
 def check_python_version(program: str) -> None:
     """Report issues with the Python used to run mypy, dmypy, or stubgen"""
     # Check for known bad Python versions.
-    if sys.version_info[:2] < (3, 8):
+    if sys.version_info[:2] < (3, 8):  # noqa: UP036
         sys.exit(
             "Running {name} with Python 3.7 or lower is not supported; "
             "please upgrade to 3.8 or newer".format(name=program)

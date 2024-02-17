@@ -186,55 +186,113 @@ class WIN32_FIND_DATAW(Structure):
     cFileName: _CField[Array[WCHAR], str, str]
     cAlternateFileName: _CField[Array[WCHAR], str, str]
 
-# These pointer type definitions use _Pointer[...] instead of POINTER(...), to allow them
-# to be used in type annotations.
-PBOOL: TypeAlias = _Pointer[BOOL]
-LPBOOL: TypeAlias = _Pointer[BOOL]
-PBOOLEAN: TypeAlias = _Pointer[BOOLEAN]
-PBYTE: TypeAlias = _Pointer[BYTE]
-LPBYTE: TypeAlias = _Pointer[BYTE]
-PCHAR: TypeAlias = _Pointer[CHAR]
-LPCOLORREF: TypeAlias = _Pointer[COLORREF]
-PDWORD: TypeAlias = _Pointer[DWORD]
-LPDWORD: TypeAlias = _Pointer[DWORD]
-PFILETIME: TypeAlias = _Pointer[FILETIME]
-LPFILETIME: TypeAlias = _Pointer[FILETIME]
-PFLOAT: TypeAlias = _Pointer[FLOAT]
-PHANDLE: TypeAlias = _Pointer[HANDLE]
-LPHANDLE: TypeAlias = _Pointer[HANDLE]
-PHKEY: TypeAlias = _Pointer[HKEY]
-LPHKL: TypeAlias = _Pointer[HKL]
-PINT: TypeAlias = _Pointer[INT]
-LPINT: TypeAlias = _Pointer[INT]
-PLARGE_INTEGER: TypeAlias = _Pointer[LARGE_INTEGER]
-PLCID: TypeAlias = _Pointer[LCID]
-PLONG: TypeAlias = _Pointer[LONG]
-LPLONG: TypeAlias = _Pointer[LONG]
-PMSG: TypeAlias = _Pointer[MSG]
-LPMSG: TypeAlias = _Pointer[MSG]
-PPOINT: TypeAlias = _Pointer[POINT]
-LPPOINT: TypeAlias = _Pointer[POINT]
-PPOINTL: TypeAlias = _Pointer[POINTL]
-PRECT: TypeAlias = _Pointer[RECT]
-LPRECT: TypeAlias = _Pointer[RECT]
-PRECTL: TypeAlias = _Pointer[RECTL]
-LPRECTL: TypeAlias = _Pointer[RECTL]
-LPSC_HANDLE: TypeAlias = _Pointer[SC_HANDLE]
-PSHORT: TypeAlias = _Pointer[SHORT]
-PSIZE: TypeAlias = _Pointer[SIZE]
-LPSIZE: TypeAlias = _Pointer[SIZE]
-PSIZEL: TypeAlias = _Pointer[SIZEL]
-LPSIZEL: TypeAlias = _Pointer[SIZEL]
-PSMALL_RECT: TypeAlias = _Pointer[SMALL_RECT]
-PUINT: TypeAlias = _Pointer[UINT]
-LPUINT: TypeAlias = _Pointer[UINT]
-PULARGE_INTEGER: TypeAlias = _Pointer[ULARGE_INTEGER]
-PULONG: TypeAlias = _Pointer[ULONG]
-PUSHORT: TypeAlias = _Pointer[USHORT]
-PWCHAR: TypeAlias = _Pointer[WCHAR]
-PWIN32_FIND_DATAA: TypeAlias = _Pointer[WIN32_FIND_DATAA]
-LPWIN32_FIND_DATAA: TypeAlias = _Pointer[WIN32_FIND_DATAA]
-PWIN32_FIND_DATAW: TypeAlias = _Pointer[WIN32_FIND_DATAW]
-LPWIN32_FIND_DATAW: TypeAlias = _Pointer[WIN32_FIND_DATAW]
-PWORD: TypeAlias = _Pointer[WORD]
-LPWORD: TypeAlias = _Pointer[WORD]
+# These are all defined with the POINTER() function, which keeps a cache and will
+# return a previously created class if it can. The self-reported __name__
+# of these classes is f"LP_{typ.__name__}", where typ is the original class
+# passed in to the POINTER() function.
+
+# LP_c_short
+class PSHORT(_Pointer[SHORT]): ...
+
+# LP_c_ushort
+class PUSHORT(_Pointer[USHORT]): ...
+
+PWORD = PUSHORT
+LPWORD = PUSHORT
+
+# LP_c_long
+class PLONG(_Pointer[LONG]): ...
+
+LPLONG = PLONG
+PBOOL = PLONG
+LPBOOL = PLONG
+
+# LP_c_ulong
+class PULONG(_Pointer[ULONG]): ...
+
+PDWORD = PULONG
+LPDWORD = PDWORD
+LPCOLORREF = PDWORD
+PLCID = PDWORD
+
+# LP_c_int (or LP_c_long if int and long have the same size)
+class PINT(_Pointer[INT]): ...
+
+LPINT = PINT
+
+# LP_c_uint (or LP_c_ulong if int and long have the same size)
+class PUINT(_Pointer[UINT]): ...
+
+LPUINT = PUINT
+
+# LP_c_float
+class PFLOAT(_Pointer[FLOAT]): ...
+
+# LP_c_longlong (or LP_c_long if long and long long have the same size)
+class PLARGE_INTEGER(_Pointer[LARGE_INTEGER]): ...
+
+# LP_c_ulonglong (or LP_c_ulong if long and long long have the same size)
+class PULARGE_INTEGER(_Pointer[ULARGE_INTEGER]): ...
+
+# LP_c_byte types
+class PBYTE(_Pointer[BYTE]): ...
+
+LPBYTE = PBYTE
+PBOOLEAN = PBYTE
+
+# LP_c_char
+class PCHAR(_Pointer[CHAR]): ...
+
+# LP_c_wchar
+class PWCHAR(_Pointer[WCHAR]): ...
+
+# LP_c_void_p
+class PHANDLE(_Pointer[HANDLE]): ...
+
+LPHANDLE = PHANDLE
+PHKEY = PHANDLE
+LPHKL = PHANDLE
+LPSC_HANDLE = PHANDLE
+
+# LP_FILETIME
+class PFILETIME(_Pointer[FILETIME]): ...
+
+LPFILETIME = PFILETIME
+
+# LP_MSG
+class PMSG(_Pointer[MSG]): ...
+
+LPMSG = PMSG
+
+# LP_POINT
+class PPOINT(_Pointer[POINT]): ...
+
+LPPOINT = PPOINT
+PPOINTL = PPOINT
+
+# LP_RECT
+class PRECT(_Pointer[RECT]): ...
+
+LPRECT = PRECT
+PRECTL = PRECT
+LPRECTL = PRECT
+
+# LP_SIZE
+class PSIZE(_Pointer[SIZE]): ...
+
+LPSIZE = PSIZE
+PSIZEL = PSIZE
+LPSIZEL = PSIZE
+
+# LP__SMALL_RECT
+class PSMALL_RECT(_Pointer[SMALL_RECT]): ...
+
+# LP_WIN32_FIND_DATAA
+class PWIN32_FIND_DATAA(_Pointer[WIN32_FIND_DATAA]): ...
+
+LPWIN32_FIND_DATAA = PWIN32_FIND_DATAA
+
+# LP_WIN32_FIND_DATAW
+class PWIN32_FIND_DATAW(_Pointer[WIN32_FIND_DATAW]): ...
+
+LPWIN32_FIND_DATAW = PWIN32_FIND_DATAW

@@ -41,6 +41,28 @@ class TestWriteJunitXml(TestCase):
         )
         assert result == expected
 
+    def test_junit_fail_escape_xml_chars(self) -> None:
+        serious = False
+        messages_by_file: dict[str | None, list[str]] = {
+            "file1.py": ["Test failed", "another line < > &"]
+        }
+        expected = """<?xml version="1.0" encoding="utf-8"?>
+<testsuite errors="0" failures="1" name="mypy" skips="0" tests="1" time="1.230">
+  <testcase classname="mypy" file="file1.py" line="1" name="mypy-py3.14-test-plat file1.py" time="1.230">
+    <failure message="mypy produced messages">Test failed
+another line &lt; &gt; &amp;</failure>
+  </testcase>
+</testsuite>
+"""
+        result = _generate_junit_contents(
+            dt=1.23,
+            serious=serious,
+            messages_by_file=messages_by_file,
+            version="3.14",
+            platform="test-plat",
+        )
+        assert result == expected
+
     def test_junit_fail_two_files(self) -> None:
         serious = False
         messages_by_file: dict[str | None, list[str]] = {

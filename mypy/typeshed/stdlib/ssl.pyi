@@ -3,8 +3,8 @@ import socket
 import sys
 from _typeshed import ReadableBuffer, StrOrBytesPath, WriteableBuffer
 from collections.abc import Callable, Iterable
-from typing import Any, NamedTuple, overload
-from typing_extensions import Literal, Never, Self, TypeAlias, TypedDict, final
+from typing import Any, Literal, NamedTuple, TypedDict, final, overload
+from typing_extensions import Never, Self, TypeAlias
 
 _PCTRTT: TypeAlias = tuple[tuple[str, str], ...]
 _PCTRTTT: TypeAlias = tuple[_PCTRTT, ...]
@@ -199,14 +199,11 @@ class Options(enum.IntFlag):
     OP_NO_COMPRESSION: int
     OP_NO_TICKET: int
     OP_NO_RENEGOTIATION: int
-    if sys.version_info >= (3, 8):
-        OP_ENABLE_MIDDLEBOX_COMPAT: int
+    OP_ENABLE_MIDDLEBOX_COMPAT: int
     if sys.version_info >= (3, 12):
         OP_LEGACY_SERVER_CONNECT: int
         OP_ENABLE_KTLS: int
-    if sys.version_info >= (3, 11):
-        OP_IGNORE_UNEXPECTED_EOF: int
-    elif sys.version_info >= (3, 8) and sys.platform == "linux":
+    if sys.version_info >= (3, 11) or sys.platform == "linux":
         OP_IGNORE_UNEXPECTED_EOF: int
 
 OP_ALL: Options
@@ -222,14 +219,11 @@ OP_SINGLE_ECDH_USE: Options
 OP_NO_COMPRESSION: Options
 OP_NO_TICKET: Options
 OP_NO_RENEGOTIATION: Options
-if sys.version_info >= (3, 8):
-    OP_ENABLE_MIDDLEBOX_COMPAT: Options
+OP_ENABLE_MIDDLEBOX_COMPAT: Options
 if sys.version_info >= (3, 12):
     OP_LEGACY_SERVER_CONNECT: Options
     OP_ENABLE_KTLS: Options
-if sys.version_info >= (3, 11):
-    OP_IGNORE_UNEXPECTED_EOF: Options
-elif sys.version_info >= (3, 8) and sys.platform == "linux":
+if sys.version_info >= (3, 11) or sys.platform == "linux":
     OP_IGNORE_UNEXPECTED_EOF: Options
 
 HAS_NEVER_CHECK_COMMON_NAME: bool
@@ -365,8 +359,7 @@ class SSLSocket(socket.socket):
     def unwrap(self) -> socket.socket: ...
     def version(self) -> str | None: ...
     def pending(self) -> int: ...
-    if sys.version_info >= (3, 8):
-        def verify_client_post_handshake(self) -> None: ...
+    def verify_client_post_handshake(self) -> None: ...
     # These methods always raise `NotImplementedError`:
     def recvmsg(self, *args: Never, **kwargs: Never) -> Never: ...  # type: ignore[override]
     def recvmsg_into(self, *args: Never, **kwargs: Never) -> Never: ...  # type: ignore[override]
@@ -397,9 +390,8 @@ class SSLContext:
     # so making these ClassVars wouldn't be appropriate
     sslobject_class: type[SSLObject]
     sslsocket_class: type[SSLSocket]
-    if sys.version_info >= (3, 8):
-        keylog_filename: str
-        post_handshake_auth: bool
+    keylog_filename: str
+    post_handshake_auth: bool
     if sys.version_info >= (3, 10):
         security_level: int
     if sys.version_info >= (3, 10):
@@ -481,8 +473,7 @@ class SSLObject:
     def unwrap(self) -> None: ...
     def version(self) -> str | None: ...
     def get_channel_binding(self, cb_type: str = "tls-unique") -> bytes | None: ...
-    if sys.version_info >= (3, 8):
-        def verify_client_post_handshake(self) -> None: ...
+    def verify_client_post_handshake(self) -> None: ...
 
 @final
 class MemoryBIO:

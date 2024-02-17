@@ -8,6 +8,7 @@ file.  The individual passes are implemented in separate modules.
 
 The function build() is the main interface to this module.
 """
+
 # TODO: More consistent terminology, e.g. path/fnam, module/id, state/file
 
 from __future__ import annotations
@@ -682,9 +683,7 @@ class BuildManager:
         # for efficient lookup
         self.shadow_map: dict[str, str] = {}
         if self.options.shadow_file is not None:
-            self.shadow_map = {
-                source_file: shadow_file for (source_file, shadow_file) in self.options.shadow_file
-            }
+            self.shadow_map = dict(self.options.shadow_file)
         # a mapping from each file being typechecked to its possible shadow file
         self.shadow_equivalence_map: dict[str, str | None] = {}
         self.plugin = plugin
@@ -1120,7 +1119,7 @@ def read_deps_cache(manager: BuildManager, graph: Graph) -> dict[str, FgDepMeta]
     module_deps_metas = deps_meta["deps_meta"]
     assert isinstance(module_deps_metas, dict)
     if not manager.options.skip_cache_mtime_checks:
-        for id, meta in module_deps_metas.items():
+        for meta in module_deps_metas.values():
             try:
                 matched = manager.getmtime(meta["path"]) == meta["mtime"]
             except FileNotFoundError:
@@ -2093,7 +2092,7 @@ class State:
             self.meta.data_json, self.manager, "Load tree ", "Could not load tree: "
         )
         if data is None:
-            return None
+            return
 
         t0 = time.time()
         # TODO: Assert data file wasn't changed.
@@ -3383,7 +3382,7 @@ def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> 
     strongly_connected_components() below for a reference.
     """
     if len(ascc) == 1:
-        return [s for s in ascc]
+        return list(ascc)
     pri_spread = set()
     for id in ascc:
         state = graph[id]

@@ -2,8 +2,8 @@ import os
 import sys
 from _typeshed import BytesPath, FileDescriptorOrPath, StrOrBytesPath, StrPath, SupportsRichComparisonT
 from collections.abc import Sequence
-from typing import overload
-from typing_extensions import Literal, LiteralString
+from typing import Literal, overload
+from typing_extensions import LiteralString
 
 __all__ = [
     "commonprefix",

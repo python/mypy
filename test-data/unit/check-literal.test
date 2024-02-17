@@ -64,7 +64,6 @@ reveal_type(bar)                    # N: Revealed type is "def (x: Tuple[Literal
 [out]
 
 [case testLiteralInsideOtherTypesTypeCommentsPython3]
-# flags: --python-version 3.7
 from typing import Tuple, Optional
 from typing_extensions import Literal
 
@@ -398,29 +397,36 @@ from typing_extensions import Literal
 a1: Literal[4]
 b1: Literal[0x2a]
 c1: Literal[-300]
+d1: Literal[+8]
 
 reveal_type(a1)  # N: Revealed type is "Literal[4]"
 reveal_type(b1)  # N: Revealed type is "Literal[42]"
 reveal_type(c1)  # N: Revealed type is "Literal[-300]"
+reveal_type(d1)  # N: Revealed type is "Literal[8]"
 
 a2t = Literal[4]
 b2t = Literal[0x2a]
 c2t = Literal[-300]
+d2t = Literal[+8]
 a2: a2t
 b2: b2t
 c2: c2t
+d2: d2t
 
 reveal_type(a2)  # N: Revealed type is "Literal[4]"
 reveal_type(b2)  # N: Revealed type is "Literal[42]"
 reveal_type(c2)  # N: Revealed type is "Literal[-300]"
+reveal_type(d2)  # N: Revealed type is "Literal[8]"
 
 def f1(x: Literal[4]) -> Literal[4]: pass
 def f2(x: Literal[0x2a]) -> Literal[0x2a]: pass
 def f3(x: Literal[-300]) -> Literal[-300]: pass
+def f4(x: Literal[+8]) -> Literal[+8]: pass
 
 reveal_type(f1)  # N: Revealed type is "def (x: Literal[4]) -> Literal[4]"
 reveal_type(f2)  # N: Revealed type is "def (x: Literal[42]) -> Literal[42]"
 reveal_type(f3)  # N: Revealed type is "def (x: Literal[-300]) -> Literal[-300]"
+reveal_type(f4)  # N: Revealed type is "def (x: Literal[8]) -> Literal[8]"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -591,7 +597,6 @@ from typing_extensions import Literal
 def dummy() -> int: return 3
 a: Literal[3 + 4]               # E: Invalid type: Literal[...] cannot contain arbitrary expressions
 b: Literal["  foo  ".trim()]    # E: Invalid type: Literal[...] cannot contain arbitrary expressions
-c: Literal[+42]                 # E: Invalid type: Literal[...] cannot contain arbitrary expressions
 d: Literal[~12]                 # E: Invalid type: Literal[...] cannot contain arbitrary expressions
 e: Literal[dummy()]             # E: Invalid type: Literal[...] cannot contain arbitrary expressions
 [builtins fixtures/tuple.pyi]
@@ -2739,7 +2744,7 @@ def test() -> None:
         ...
 [builtins fixtures/bool.pyi]
 
-[case testNegativeIntLiteral]
+[case testUnaryOpLiteral]
 from typing_extensions import Literal
 
 a: Literal[-2] = -2
@@ -2747,14 +2752,24 @@ b: Literal[-1] = -1
 c: Literal[0] = 0
 d: Literal[1] = 1
 e: Literal[2] = 2
+f: Literal[+1] = 1
+g: Literal[+2] = 2
+h: Literal[1] = +1
+i: Literal[+2] = 2
+j: Literal[+3] = +3
+
+x: Literal[+True] = True  # E: Invalid type: Literal[...] cannot contain arbitrary expressions
+y: Literal[-True] = -1  # E: Invalid type: Literal[...] cannot contain arbitrary expressions
+z: Literal[~0] = 0  # E: Invalid type: Literal[...] cannot contain arbitrary expressions
 [out]
-[builtins fixtures/float.pyi]
+[builtins fixtures/ops.pyi]
 
 [case testNegativeIntLiteralWithFinal]
 from typing_extensions import Literal, Final
 
 ONE: Final = 1
 x: Literal[-1] = -ONE
+y: Literal[+1] = +ONE
 
 TWO: Final = 2
 THREE: Final = 3
@@ -2762,7 +2777,7 @@ THREE: Final = 3
 err_code = -TWO
 if bool():
     err_code = -THREE
-[builtins fixtures/float.pyi]
+[builtins fixtures/ops.pyi]
 
 [case testAliasForEnumTypeAsLiteral]
 from typing_extensions import Literal
