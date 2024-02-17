@@ -1954,6 +1954,15 @@ class SemanticAnalyzer(
             del base_type_exprs[i]
         tvar_defs: list[TypeVarLikeType] = []
         for name, tvar_expr in declared_tvars:
+            tvar_expr_default = tvar_expr.default
+            if isinstance(tvar_expr_default, UnboundType):
+                # TODO: - detect out of order and self-referencing TypeVars
+                #       - nested default types, e.g. list[T1]
+                n = self.lookup_qualified(
+                    tvar_expr_default.name, tvar_expr_default, suppress_errors=True
+                )
+                if n is not None and (default := self.tvar_scope.get_binding(n)) is not None:
+                    tvar_expr.default = default
             tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
             tvar_defs.append(tvar_def)
         return base_type_exprs, tvar_defs, is_protocol
@@ -2169,8 +2178,16 @@ class SemanticAnalyzer(
             if (
                 isinstance(base_expr, RefExpr)
                 and base_expr.fullname in TYPED_NAMEDTUPLE_NAMES + TPDICT_NAMES
+            ) or (
+                isinstance(base_expr, CallExpr)
+                and isinstance(base_expr.callee, RefExpr)
+                and base_expr.callee.fullname in TPDICT_NAMES
             ):
                 # Ignore magic bases for now.
+                # For example:
+                #  class Foo(TypedDict): ...  # RefExpr
+                #  class Foo(NamedTuple): ...  # RefExpr
+                #  class Foo(TypedDict("Foo", {"a": int})): ...  # CallExpr
                 continue
 
             try:

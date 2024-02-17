@@ -1,8 +1,8 @@
 import sys
 from _typeshed import SupportsWrite
 from collections.abc import Iterable, Iterator
-from typing import Any
-from typing_extensions import Final, Literal, TypeAlias
+from typing import Any, Final, Literal
+from typing_extensions import TypeAlias
 
 __version__: Final[str]
 

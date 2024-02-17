@@ -1,7 +1,7 @@
 import sys
 from collections.abc import Callable, Iterator, Mapping
-from typing import Any, ClassVar, Generic, TypeVar, overload
-from typing_extensions import ParamSpec, final
+from typing import Any, ClassVar, Generic, TypeVar, final, overload
+from typing_extensions import ParamSpec
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias

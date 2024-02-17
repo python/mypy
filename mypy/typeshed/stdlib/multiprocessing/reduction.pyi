@@ -8,8 +8,7 @@ from copyreg import _DispatchTableType
 from multiprocessing import connection
 from pickle import _ReducedType
 from socket import socket
-from typing import Any
-from typing_extensions import Literal
+from typing import Any, Literal
 
 if sys.platform == "win32":
     __all__ = ["send_handle", "recv_handle", "ForkingPickler", "register", "dump", "DupHandle", "duplicate", "steal_handle"]
@@ -32,13 +31,9 @@ register = ForkingPickler.register
 def dump(obj: Any, file: SupportsWrite[bytes], protocol: int | None = None) -> None: ...
 
 if sys.platform == "win32":
-    if sys.version_info >= (3, 8):
-        def duplicate(
-            handle: int, target_process: int | None = None, inheritable: bool = False, *, source_process: int | None = None
-        ) -> int: ...
-    else:
-        def duplicate(handle: int, target_process: int | None = None, inheritable: bool = False) -> int: ...
-
+    def duplicate(
+        handle: int, target_process: int | None = None, inheritable: bool = False, *, source_process: int | None = None
+    ) -> int: ...
     def steal_handle(source_pid: int, handle: int) -> int: ...
     def send_handle(conn: connection.PipeConnection, handle: int, destination_pid: int) -> None: ...
     def recv_handle(conn: connection.PipeConnection) -> int: ...
@@ -91,4 +86,5 @@ class AbstractReducer(metaclass=ABCMeta):
         sendfds = _sendfds
         recvfds = _recvfds
         DupFd = _DupFd
+
     def __init__(self, *args: Unused) -> None: ...

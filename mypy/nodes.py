@@ -3287,13 +3287,13 @@ class TypeInfo(SymbolNode):
             "declared_metaclass": (
                 None if self.declared_metaclass is None else self.declared_metaclass.serialize()
             ),
-            "metaclass_type": None
-            if self.metaclass_type is None
-            else self.metaclass_type.serialize(),
+            "metaclass_type": (
+                None if self.metaclass_type is None else self.metaclass_type.serialize()
+            ),
             "tuple_type": None if self.tuple_type is None else self.tuple_type.serialize(),
-            "typeddict_type": None
-            if self.typeddict_type is None
-            else self.typeddict_type.serialize(),
+            "typeddict_type": (
+                None if self.typeddict_type is None else self.typeddict_type.serialize()
+            ),
             "flags": get_flags(self, TypeInfo.FLAGS),
             "metadata": self.metadata,
             "slots": sorted(self.slots) if self.slots is not None else None,

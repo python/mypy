@@ -1,6 +1,5 @@
 from collections.abc import Callable
-from typing import IO, Any
-from typing_extensions import Literal
+from typing import IO, Any, Literal
 
 __all__ = ["Cmd"]
 

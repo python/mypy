@@ -10,7 +10,7 @@ PYTHON3_VERSION: Final = (3, 8)
 
 # Earliest Python 3.x version supported via --python-version 3.x. To run
 # mypy, at least version PYTHON3_VERSION is needed.
-PYTHON3_VERSION_MIN: Final = (3, 7)  # Keep in sync with typeshed's python support
+PYTHON3_VERSION_MIN: Final = (3, 8)  # Keep in sync with typeshed's python support
 
 CACHE_DIR: Final = ".mypy_cache"
 CONFIG_FILE: Final = ["mypy.ini", ".mypy.ini"]

@@ -4,8 +4,8 @@ import sys
 from _typeshed import Unused
 from collections.abc import Iterable, Sequence
 from time import struct_time
-from typing import ClassVar
-from typing_extensions import Literal, TypeAlias
+from typing import ClassVar, Literal
+from typing_extensions import TypeAlias
 
 __all__ = [
     "IllegalMonthError",
@@ -124,7 +124,7 @@ class HTMLCalendar(Calendar):
     def formatyear(self, theyear: int, width: int = 3) -> str: ...
     def formatyearpage(
         self, theyear: int, width: int = 3, css: str | None = "calendar.css", encoding: str | None = None
-    ) -> str: ...
+    ) -> bytes: ...
 
 class different_locale:
     def __init__(self, locale: _LocaleType) -> None: ...
@@ -166,6 +166,7 @@ if sys.version_info >= (3, 12):
         OCTOBER: Literal[10]
         NOVEMBER: Literal[11]
         DECEMBER: Literal[12]
+
     JANUARY = Month.JANUARY
     FEBRUARY = Month.FEBRUARY
     MARCH = Month.MARCH
@@ -187,6 +188,7 @@ if sys.version_info >= (3, 12):
         FRIDAY: Literal[4]
         SATURDAY: Literal[5]
         SUNDAY: Literal[6]
+
     MONDAY = Day.MONDAY
     TUESDAY = Day.TUESDAY
     WEDNESDAY = Day.WEDNESDAY

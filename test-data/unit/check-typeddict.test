@@ -1764,7 +1764,6 @@ reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point', {'x': builtin
 [builtins fixtures/dict.pyi]
 
 [case testCanCreateTypedDictWithTypingProper]
-# flags: --python-version 3.8
 from typing import TypedDict
 
 class Point(TypedDict):
@@ -3438,3 +3437,13 @@ class TotalInTheMiddle(TypedDict, a=1, total=True, b=2, c=3):  # E: Unexpected k
     ...
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testCanCreateClassWithFunctionBasedTypedDictBase]
+from mypy_extensions import TypedDict
+
+class Params(TypedDict("Params", {'x': int})):
+    pass
+
+p: Params = {'x': 2}
+reveal_type(p) # N: Revealed type is "TypedDict('__main__.Params', {'x': builtins.int})"
+[builtins fixtures/dict.pyi]

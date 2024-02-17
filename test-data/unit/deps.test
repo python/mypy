@@ -1369,7 +1369,6 @@ def h() -> None:
 <m.D> -> m.D, m.h
 
 [case testDataclassDepsOldVersion]
-# flags: --python-version 3.7
 from dataclasses import dataclass
 
 Z = int

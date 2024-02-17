@@ -1,7 +1,7 @@
 import sys
 from _typeshed import FileDescriptorLike, ReadOnlyBuffer, WriteableBuffer
-from typing import Any, overload
-from typing_extensions import Buffer, Literal
+from typing import Any, Literal, overload
+from typing_extensions import Buffer
 
 if sys.platform != "win32":
     FASYNC: int
@@ -37,13 +37,12 @@ if sys.platform != "win32":
         F_NOTIFY: int
         F_EXLCK: int
         F_GETLK64: int
-        if sys.version_info >= (3, 8):
-            F_ADD_SEALS: int
-            F_GET_SEALS: int
-            F_SEAL_GROW: int
-            F_SEAL_SEAL: int
-            F_SEAL_SHRINK: int
-            F_SEAL_WRITE: int
+        F_ADD_SEALS: int
+        F_GET_SEALS: int
+        F_SEAL_GROW: int
+        F_SEAL_SEAL: int
+        F_SEAL_SHRINK: int
+        F_SEAL_WRITE: int
         if sys.version_info >= (3, 9):
             F_OFD_GETLK: int
             F_OFD_SETLK: int

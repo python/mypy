@@ -1,4 +1,3 @@
-import sys
 from _typeshed import ReadableBuffer, SizedBuffer
 from collections.abc import Callable
 from types import ModuleType
@@ -14,29 +13,19 @@ trans_36: bytes
 
 digest_size: None
 
-if sys.version_info >= (3, 8):
-    # In reality digestmod has a default value, but the function always throws an error
-    # if the argument is not given, so we pretend it is a required argument.
-    @overload
-    def new(key: bytes | bytearray, msg: ReadableBuffer | None, digestmod: _DigestMod) -> HMAC: ...
-    @overload
-    def new(key: bytes | bytearray, *, digestmod: _DigestMod) -> HMAC: ...
-
-else:
-    def new(key: bytes | bytearray, msg: ReadableBuffer | None = None, digestmod: _DigestMod | None = None) -> HMAC: ...
+# In reality digestmod has a default value, but the function always throws an error
+# if the argument is not given, so we pretend it is a required argument.
+@overload
+def new(key: bytes | bytearray, msg: ReadableBuffer | None, digestmod: _DigestMod) -> HMAC: ...
+@overload
+def new(key: bytes | bytearray, *, digestmod: _DigestMod) -> HMAC: ...
 
 class HMAC:
     digest_size: int
     block_size: int
     @property
     def name(self) -> str: ...
-    if sys.version_info >= (3, 8):
-        def __init__(self, key: bytes | bytearray, msg: ReadableBuffer | None = None, digestmod: _DigestMod = "") -> None: ...
-    else:
-        def __init__(
-            self, key: bytes | bytearray, msg: ReadableBuffer | None = None, digestmod: _DigestMod | None = None
-        ) -> None: ...
-
+    def __init__(self, key: bytes | bytearray, msg: ReadableBuffer | None = None, digestmod: _DigestMod = "") -> None: ...
     def update(self, msg: ReadableBuffer) -> None: ...
     def digest(self) -> bytes: ...
     def hexdigest(self) -> str: ...

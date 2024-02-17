@@ -693,9 +693,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 is_compat=self._is_subtype,
                 is_proper_subtype=self.proper_subtype,
                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
-                strict_concatenate=(self.options.extra_checks or self.options.strict_concatenate)
-                if self.options
-                else False,
+                strict_concatenate=(
+                    (self.options.extra_checks or self.options.strict_concatenate)
+                    if self.options
+                    else False
+                ),
             )
         elif isinstance(right, Overloaded):
             return all(self._is_subtype(left, item) for item in right.items)

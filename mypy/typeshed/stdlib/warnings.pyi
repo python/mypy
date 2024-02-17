@@ -2,8 +2,8 @@ import sys
 from _warnings import warn as warn, warn_explicit as warn_explicit
 from collections.abc import Sequence
 from types import ModuleType, TracebackType
-from typing import Any, Generic, TextIO, TypeVar, overload
-from typing_extensions import Literal, TypeAlias
+from typing import Any, Generic, Literal, TextIO, TypeVar, overload
+from typing_extensions import TypeAlias
 
 __all__ = [
     "warn",

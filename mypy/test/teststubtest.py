@@ -347,6 +347,78 @@ class StubtestUnit(unittest.TestCase):
         )
 
     @collect_cases
+    def test_private_parameters(self) -> Iterator[Case]:
+        # Private parameters can optionally be omitted.
+        yield Case(
+            stub="def priv_pos_arg_missing() -> None: ...",
+            runtime="def priv_pos_arg_missing(_p1=None): pass",
+            error=None,
+        )
+        yield Case(
+            stub="def multi_priv_args() -> None: ...",
+            runtime="def multi_priv_args(_p='', _q=''): pass",
+            error=None,
+        )
+        yield Case(
+            stub="def priv_kwarg_missing() -> None: ...",
+            runtime="def priv_kwarg_missing(*, _p2=''): pass",
+            error=None,
+        )
+        # But if they are included, they must be correct.
+        yield Case(
+            stub="def priv_pos_arg_wrong(_p: int = ...) -> None: ...",
+            runtime="def priv_pos_arg_wrong(_p=None): pass",
+            error="priv_pos_arg_wrong",
+        )
+        yield Case(
+            stub="def priv_kwarg_wrong(*, _p: int = ...) -> None: ...",
+            runtime="def priv_kwarg_wrong(*, _p=None): pass",
+            error="priv_kwarg_wrong",
+        )
+        # Private parameters must have a default and start with exactly one
+        # underscore.
+        yield Case(
+            stub="def pos_arg_no_default() -> None: ...",
+            runtime="def pos_arg_no_default(_np): pass",
+            error="pos_arg_no_default",
+        )
+        yield Case(
+            stub="def kwarg_no_default() -> None: ...",
+            runtime="def kwarg_no_default(*, _np): pass",
+            error="kwarg_no_default",
+        )
+        yield Case(
+            stub="def double_underscore_pos_arg() -> None: ...",
+            runtime="def double_underscore_pos_arg(__np = None): pass",
+            error="double_underscore_pos_arg",
+        )
+        yield Case(
+            stub="def double_underscore_kwarg() -> None: ...",
+            runtime="def double_underscore_kwarg(*, __np = None): pass",
+            error="double_underscore_kwarg",
+        )
+        # But spot parameters that are accidentally not marked kw-only and
+        # vice-versa.
+        yield Case(
+            stub="def priv_arg_is_kwonly(_p=...) -> None: ...",
+            runtime="def priv_arg_is_kwonly(*, _p=''): pass",
+            error="priv_arg_is_kwonly",
+        )
+        yield Case(
+            stub="def priv_arg_is_positional(*, _p=...) -> None: ...",
+            runtime="def priv_arg_is_positional(_p=''): pass",
+            error="priv_arg_is_positional",
+        )
+        # Private parameters not at the end of the parameter list must be
+        # included so that users can pass the following arguments using
+        # positional syntax.
+        yield Case(
+            stub="def priv_args_not_at_end(*, q='') -> None: ...",
+            runtime="def priv_args_not_at_end(_p='', q=''): pass",
+            error="priv_args_not_at_end",
+        )
+
+    @collect_cases
     def test_default_presence(self) -> Iterator[Case]:
         yield Case(
             stub="def f1(text: str = ...) -> None: ...",
@@ -1140,6 +1212,25 @@ class StubtestUnit(unittest.TestCase):
             error=None,
         )
         yield Case(
+            runtime="""
+            import enum
+            class SomeObject: ...
+
+            class WeirdEnum(enum.Enum):
+                a = SomeObject()
+                b = SomeObject()
+            """,
+            stub="""
+            import enum
+            class SomeObject: ...
+            class WeirdEnum(enum.Enum):
+                _value_: SomeObject
+                a = ...
+                b = ...
+            """,
+            error=None,
+        )
+        yield Case(
             stub="""
             class Flags4(enum.Flag):
                 a: int
@@ -1265,6 +1356,24 @@ class StubtestUnit(unittest.TestCase):
         yield Case(stub="", runtime="import re; constant = re.compile('foo')", error="constant")
         yield Case(stub="", runtime="from json.scanner import NUMBER_RE", error=None)
         yield Case(stub="", runtime="from string import ascii_letters", error=None)
+
+    @collect_cases
+    def test_missing_no_runtime_all_terrible(self) -> Iterator[Case]:
+        yield Case(
+            stub="",
+            runtime="""
+import sys
+import types
+import __future__
+_m = types.SimpleNamespace()
+_m.annotations = __future__.annotations
+sys.modules["_terrible_stubtest_test_module"] = _m
+
+from _terrible_stubtest_test_module import *
+assert annotations
+""",
+            error=None,
+        )
 
     @collect_cases
     def test_non_public_1(self) -> Iterator[Case]:

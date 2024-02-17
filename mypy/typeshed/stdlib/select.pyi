@@ -2,8 +2,8 @@ import sys
 from _typeshed import FileDescriptorLike
 from collections.abc import Iterable
 from types import TracebackType
-from typing import Any
-from typing_extensions import Self, final
+from typing import Any, final
+from typing_extensions import Self
 
 if sys.platform != "win32":
     PIPE_BUF: int
@@ -52,6 +52,7 @@ if sys.platform != "linux" and sys.platform != "win32":
             data: Any = ...,
             udata: Any = ...,
         ) -> None: ...
+
     # BSD only
     @final
     class kqueue:
@@ -64,6 +65,7 @@ if sys.platform != "linux" and sys.platform != "win32":
         def fileno(self) -> int: ...
         @classmethod
         def fromfd(cls, __fd: FileDescriptorLike) -> kqueue: ...
+
     KQ_EV_ADD: int
     KQ_EV_CLEAR: int
     KQ_EV_DELETE: int
@@ -123,6 +125,7 @@ if sys.platform == "linux":
         def poll(self, timeout: float | None = None, maxevents: int = -1) -> list[tuple[int, int]]: ...
         @classmethod
         def fromfd(cls, __fd: FileDescriptorLike) -> epoll: ...
+
     EPOLLERR: int
     EPOLLEXCLUSIVE: int
     EPOLLET: int

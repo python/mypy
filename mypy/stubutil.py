@@ -160,13 +160,11 @@ def fail_missing(mod: str, reason: ModuleNotFoundReason) -> None:
 
 
 @overload
-def remove_misplaced_type_comments(source: bytes) -> bytes:
-    ...
+def remove_misplaced_type_comments(source: bytes) -> bytes: ...
 
 
 @overload
-def remove_misplaced_type_comments(source: str) -> str:
-    ...
+def remove_misplaced_type_comments(source: str) -> str: ...
 
 
 def remove_misplaced_type_comments(source: str | bytes) -> str | bytes:
@@ -274,6 +272,8 @@ class AnnotationPrinter(TypeStrVisitor):
             self.stubgen.import_tracker.require_name(s)
         if t.args:
             s += f"[{self.args_str(t.args)}]"
+        elif t.empty_tuple_index:
+            s += "[()]"
         return s
 
     def visit_none_type(self, t: NoneType) -> str:

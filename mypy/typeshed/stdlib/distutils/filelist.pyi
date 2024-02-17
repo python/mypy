@@ -1,7 +1,6 @@
 from collections.abc import Iterable
 from re import Pattern
-from typing import overload
-from typing_extensions import Literal
+from typing import Literal, overload
 
 # class is entirely undocumented
 class FileList:

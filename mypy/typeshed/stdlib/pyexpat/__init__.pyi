@@ -1,8 +1,8 @@
 from _typeshed import ReadableBuffer, SupportsRead
 from collections.abc import Callable
 from pyexpat import errors as errors, model as model
-from typing import Any
-from typing_extensions import TypeAlias, final
+from typing import Any, final
+from typing_extensions import TypeAlias
 
 EXPAT_VERSION: str  # undocumented
 version_info: tuple[int, int, int]  # undocumented
@@ -52,9 +52,12 @@ class XMLParserType:
     EndDoctypeDeclHandler: Callable[[], Any] | None
     ElementDeclHandler: Callable[[str, _Model], Any] | None
     AttlistDeclHandler: Callable[[str, str, str, str | None, bool], Any] | None
-    StartElementHandler: Callable[[str, dict[str, str]], Any] | Callable[[str, list[str]], Any] | Callable[
-        [str, dict[str, str], list[str]], Any
-    ] | None
+    StartElementHandler: (
+        Callable[[str, dict[str, str]], Any]
+        | Callable[[str, list[str]], Any]
+        | Callable[[str, dict[str, str], list[str]], Any]
+        | None
+    )
     EndElementHandler: Callable[[str], Any] | None
     ProcessingInstructionHandler: Callable[[str, str], Any] | None
     CharacterDataHandler: Callable[[str], Any] | None

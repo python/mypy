@@ -4,8 +4,8 @@ from collections.abc import Callable, Hashable, Iterable, Sequence
 from configparser import RawConfigParser
 from re import Pattern
 from threading import Thread
-from typing import IO, Any, overload
-from typing_extensions import Literal, Required, SupportsIndex, TypeAlias, TypedDict
+from typing import IO, Any, Literal, SupportsIndex, TypedDict, overload
+from typing_extensions import Required, TypeAlias
 
 from . import Filter, Filterer, Formatter, Handler, Logger, _FilterType, _FormatStyle, _Level
 
@@ -28,16 +28,9 @@ else:
 class _LoggerConfiguration(_RootLoggerConfiguration, TypedDict, total=False):
     propagate: bool
 
-if sys.version_info >= (3, 8):
-    _FormatterConfigurationTypedDict = TypedDict(
-        "_FormatterConfigurationTypedDict", {"class": str, "format": str, "datefmt": str, "style": _FormatStyle}, total=False
-    )
-else:
-    _FormatterConfigurationTypedDict = TypedDict(
-        "_FormatterConfigurationTypedDict",
-        {"class": str, "format": str, "datefmt": str, "style": _FormatStyle, "validate": bool},
-        total=False,
-    )
+_FormatterConfigurationTypedDict = TypedDict(
+    "_FormatterConfigurationTypedDict", {"class": str, "format": str, "datefmt": str, "style": _FormatStyle}, total=False
+)
 
 class _FilterConfigurationTypedDict(TypedDict):
     name: str

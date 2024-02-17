@@ -1,5 +1,4 @@
-from typing import Any, TypeVar
-from typing_extensions import Final
+from typing import Any, Final, TypeVar
 
 _T = TypeVar("_T")
 

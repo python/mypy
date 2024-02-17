@@ -1,15 +1,8 @@
 import sys
 from _typeshed import ReadableBuffer, WriteableBuffer
 from collections.abc import Iterable
-from typing import Any, SupportsInt, overload
+from typing import Any, SupportsIndex, overload
 from typing_extensions import TypeAlias
-
-if sys.version_info >= (3, 8):
-    from typing import SupportsIndex
-
-    _FD: TypeAlias = SupportsIndex
-else:
-    _FD: TypeAlias = SupportsInt
 
 _CMSG: TypeAlias = tuple[int, int, bytes]
 _CMSGArg: TypeAlias = tuple[int, int, ReadableBuffer]
@@ -20,18 +13,17 @@ _CMSGArg: TypeAlias = tuple[int, int, ReadableBuffer]
 _Address: TypeAlias = tuple[Any, ...] | str | ReadableBuffer
 _RetAddress: TypeAlias = Any
 
-# ----- Constants -----
-# Some socket families are listed in the "Socket families" section of the docs,
-# but not the "Constants" section. These are listed at the end of the list of
-# constants.
-#
-# Besides those and the first few constants listed, the constants are listed in
-# documentation order.
+# ===== Constants =====
+# This matches the order in the CPython documentation
+# https://docs.python.org/3/library/socket.html#constants
 
-has_ipv6: bool
+if sys.platform != "win32":
+    AF_UNIX: int
 
 AF_INET: int
 AF_INET6: int
+
+AF_UNSPEC: int
 
 SOCK_STREAM: int
 SOCK_DGRAM: int
@@ -40,162 +32,29 @@ SOCK_RDM: int
 SOCK_SEQPACKET: int
 
 if sys.platform == "linux":
+    # Availability: Linux >= 2.6.27
     SOCK_CLOEXEC: int
     SOCK_NONBLOCK: int
 
-# Address families not mentioned in the docs
-AF_APPLETALK: int
-AF_DECnet: int
-AF_IPX: int
-AF_SNA: int
-AF_UNSPEC: int
+# --------------------
+# Many constants of these forms, documented in the Unix documentation on
+# sockets and/or the IP protocol, are also defined in the socket module.
+# SO_*
+# socket.SOMAXCONN
+# MSG_*
+# SOL_*
+# SCM_*
+# IPPROTO_*
+# IPPORT_*
+# INADDR_*
+# IP_*
+# IPV6_*
+# EAI_*
+# AI_*
+# NI_*
+# TCP_*
+# --------------------
 
-if sys.platform != "win32":
-    AF_ROUTE: int
-    AF_SYSTEM: int
-    AF_UNIX: int
-
-if sys.platform != "darwin":
-    AF_IRDA: int
-
-if sys.platform != "darwin" and sys.platform != "win32":
-    AF_AAL5: int
-    AF_ASH: int
-    AF_ATMPVC: int
-    AF_ATMSVC: int
-    AF_AX25: int
-    AF_BRIDGE: int
-    AF_ECONET: int
-    AF_KEY: int
-    AF_LLC: int
-    AF_NETBEUI: int
-    AF_NETROM: int
-    AF_PPPOX: int
-    AF_ROSE: int
-    AF_SECURITY: int
-    AF_WANPIPE: int
-    AF_X25: int
-
-# The "many constants" referenced by the docs
-SOMAXCONN: int
-AI_ADDRCONFIG: int
-AI_ALL: int
-AI_CANONNAME: int
-AI_NUMERICHOST: int
-AI_NUMERICSERV: int
-AI_PASSIVE: int
-AI_V4MAPPED: int
-EAI_AGAIN: int
-EAI_BADFLAGS: int
-EAI_FAIL: int
-EAI_FAMILY: int
-EAI_MEMORY: int
-EAI_NODATA: int
-EAI_NONAME: int
-EAI_SERVICE: int
-EAI_SOCKTYPE: int
-INADDR_ALLHOSTS_GROUP: int
-INADDR_ANY: int
-INADDR_BROADCAST: int
-INADDR_LOOPBACK: int
-INADDR_MAX_LOCAL_GROUP: int
-INADDR_NONE: int
-INADDR_UNSPEC_GROUP: int
-IPPORT_RESERVED: int
-IPPORT_USERRESERVED: int
-
-if sys.platform != "win32" or sys.version_info >= (3, 8):
-    IPPROTO_AH: int
-    IPPROTO_DSTOPTS: int
-    IPPROTO_EGP: int
-    IPPROTO_ESP: int
-    IPPROTO_FRAGMENT: int
-    IPPROTO_GGP: int
-    IPPROTO_HOPOPTS: int
-    IPPROTO_ICMPV6: int
-    IPPROTO_IDP: int
-    IPPROTO_IGMP: int
-    IPPROTO_IPV4: int
-    IPPROTO_IPV6: int
-    IPPROTO_MAX: int
-    IPPROTO_ND: int
-    IPPROTO_NONE: int
-    IPPROTO_PIM: int
-    IPPROTO_PUP: int
-    IPPROTO_ROUTING: int
-    IPPROTO_SCTP: int
-
-    if sys.platform != "darwin":
-        IPPROTO_CBT: int
-        IPPROTO_ICLFXBM: int
-        IPPROTO_IGP: int
-        IPPROTO_L2TP: int
-        IPPROTO_PGM: int
-        IPPROTO_RDP: int
-        IPPROTO_ST: int
-
-IPPROTO_ICMP: int
-IPPROTO_IP: int
-IPPROTO_RAW: int
-IPPROTO_TCP: int
-IPPROTO_UDP: int
-IPV6_CHECKSUM: int
-IPV6_JOIN_GROUP: int
-IPV6_LEAVE_GROUP: int
-IPV6_MULTICAST_HOPS: int
-IPV6_MULTICAST_IF: int
-IPV6_MULTICAST_LOOP: int
-IPV6_RECVTCLASS: int
-IPV6_TCLASS: int
-IPV6_UNICAST_HOPS: int
-IPV6_V6ONLY: int
-
-if sys.platform != "darwin" or sys.version_info >= (3, 9):
-    IPV6_DONTFRAG: int
-    IPV6_HOPLIMIT: int
-    IPV6_HOPOPTS: int
-    IPV6_PKTINFO: int
-    IPV6_RECVRTHDR: int
-    IPV6_RTHDR: int
-
-IP_ADD_MEMBERSHIP: int
-IP_DROP_MEMBERSHIP: int
-IP_HDRINCL: int
-IP_MULTICAST_IF: int
-IP_MULTICAST_LOOP: int
-IP_MULTICAST_TTL: int
-IP_OPTIONS: int
-IP_RECVDSTADDR: int
-if sys.version_info >= (3, 10):
-    IP_RECVTOS: int
-elif sys.platform != "win32" and sys.platform != "darwin":
-    IP_RECVTOS: int
-IP_TOS: int
-IP_TTL: int
-MSG_CTRUNC: int
-MSG_DONTROUTE: int
-
-if sys.platform != "darwin":
-    MSG_ERRQUEUE: int
-
-MSG_OOB: int
-MSG_PEEK: int
-MSG_TRUNC: int
-MSG_WAITALL: int
-NI_DGRAM: int
-NI_MAXHOST: int
-NI_MAXSERV: int
-NI_NAMEREQD: int
-NI_NOFQDN: int
-NI_NUMERICHOST: int
-NI_NUMERICSERV: int
-SHUT_RD: int
-SHUT_RDWR: int
-SHUT_WR: int
-SOL_IP: int
-SOL_SOCKET: int
-SOL_TCP: int
-SOL_UDP: int
 SO_ACCEPTCONN: int
 SO_BROADCAST: int
 SO_DEBUG: int
@@ -213,39 +72,99 @@ SO_SNDLOWAT: int
 SO_SNDTIMEO: int
 SO_TYPE: int
 SO_USELOOPBACK: int
-if sys.platform == "linux" and sys.version_info >= (3, 11):
-    SO_INCOMING_CPU: int
-TCP_FASTOPEN: int
-TCP_KEEPCNT: int
-TCP_KEEPINTVL: int
-
-if sys.platform != "darwin":
-    TCP_KEEPIDLE: int
-
-TCP_MAXSEG: int
-TCP_NODELAY: int
+if sys.platform == "win32":
+    SO_EXCLUSIVEADDRUSE: int
 if sys.platform != "win32":
-    TCP_NOTSENT_LOWAT: int
-if sys.version_info >= (3, 10) and sys.platform == "darwin":
-    TCP_KEEPALIVE: int
-if sys.version_info >= (3, 11) and sys.platform == "darwin":
-    TCP_CONNECTION_INFO: int
+    SO_REUSEPORT: int
+if sys.platform != "win32" and sys.platform != "darwin":
+    SO_BINDTODEVICE: int
+    SO_DOMAIN: int
+    SO_MARK: int
+    SO_PASSCRED: int
+    SO_PASSSEC: int
+    SO_PEERCRED: int
+    SO_PEERSEC: int
+    SO_PRIORITY: int
+    SO_PROTOCOL: int
+    SO_SETFIB: int
 
+SOMAXCONN: int
+
+MSG_CTRUNC: int
+MSG_DONTROUTE: int
+MSG_OOB: int
+MSG_PEEK: int
+MSG_TRUNC: int
+MSG_WAITALL: int
+if sys.platform != "win32":
+    MSG_DONTWAIT: int
+    MSG_EOF: int
+    MSG_EOR: int
+    MSG_NOSIGNAL: int  # Sometimes this exists on darwin, sometimes not
 if sys.platform != "darwin":
     MSG_BCAST: int
+    MSG_ERRQUEUE: int
     MSG_MCAST: int
-    SO_EXCLUSIVEADDRUSE: int
+if sys.platform != "win32" and sys.platform != "darwin":
+    MSG_BTAG: int
+    MSG_CMSG_CLOEXEC: int
+    MSG_CONFIRM: int
+    MSG_ETAG: int
+    MSG_FASTOPEN: int
+    MSG_MORE: int
+    MSG_NOTIFICATION: int
+
+SOL_IP: int
+SOL_SOCKET: int
+SOL_TCP: int
+SOL_UDP: int
+if sys.platform != "win32" and sys.platform != "darwin":
+    SOL_ATALK: int
+    SOL_AX25: int
+    SOL_HCI: int
+    SOL_IPX: int
+    SOL_NETROM: int
+    SOL_ROSE: int
 
 if sys.platform != "win32":
-    AI_DEFAULT: int
-    AI_MASK: int
-    AI_V4MAPPED_CFG: int
-    EAI_ADDRFAMILY: int
-    EAI_BADHINTS: int
-    EAI_MAX: int
-    EAI_OVERFLOW: int
-    EAI_PROTOCOL: int
-    EAI_SYSTEM: int
+    SCM_CREDS: int
+    SCM_RIGHTS: int
+if sys.platform != "win32" and sys.platform != "darwin":
+    SCM_CREDENTIALS: int
+
+IPPROTO_ICMP: int
+IPPROTO_IP: int
+IPPROTO_RAW: int
+IPPROTO_TCP: int
+IPPROTO_UDP: int
+IPPROTO_AH: int
+IPPROTO_DSTOPTS: int
+IPPROTO_EGP: int
+IPPROTO_ESP: int
+IPPROTO_FRAGMENT: int
+IPPROTO_GGP: int
+IPPROTO_HOPOPTS: int
+IPPROTO_ICMPV6: int
+IPPROTO_IDP: int
+IPPROTO_IGMP: int
+IPPROTO_IPV4: int
+IPPROTO_IPV6: int
+IPPROTO_MAX: int
+IPPROTO_ND: int
+IPPROTO_NONE: int
+IPPROTO_PIM: int
+IPPROTO_PUP: int
+IPPROTO_ROUTING: int
+IPPROTO_SCTP: int
+if sys.platform != "darwin":
+    IPPROTO_CBT: int
+    IPPROTO_ICLFXBM: int
+    IPPROTO_IGP: int
+    IPPROTO_L2TP: int
+    IPPROTO_PGM: int
+    IPPROTO_RDP: int
+    IPPROTO_ST: int
+if sys.platform != "win32":
     IPPROTO_EON: int
     IPPROTO_GRE: int
     IPPROTO_HELLO: int
@@ -254,24 +173,78 @@ if sys.platform != "win32":
     IPPROTO_RSVP: int
     IPPROTO_TP: int
     IPPROTO_XTP: int
-    IPV6_RTHDR_TYPE_0: int
+if sys.platform != "win32" and sys.platform != "darwin":
+    IPPROTO_BIP: int
+    IPPROTO_MOBILE: int
+    IPPROTO_VRRP: int
+if sys.version_info >= (3, 9) and sys.platform == "linux":
+    # Availability: Linux >= 2.6.20, FreeBSD >= 10.1
+    IPPROTO_UDPLITE: int
+if sys.version_info >= (3, 10) and sys.platform == "linux":
+    IPPROTO_MPTCP: int
+
+IPPORT_RESERVED: int
+IPPORT_USERRESERVED: int
+
+INADDR_ALLHOSTS_GROUP: int
+INADDR_ANY: int
+INADDR_BROADCAST: int
+INADDR_LOOPBACK: int
+INADDR_MAX_LOCAL_GROUP: int
+INADDR_NONE: int
+INADDR_UNSPEC_GROUP: int
+
+IP_ADD_MEMBERSHIP: int
+IP_DROP_MEMBERSHIP: int
+IP_HDRINCL: int
+IP_MULTICAST_IF: int
+IP_MULTICAST_LOOP: int
+IP_MULTICAST_TTL: int
+IP_OPTIONS: int
+IP_RECVDSTADDR: int
+if sys.version_info >= (3, 10):
+    IP_RECVTOS: int
+elif sys.platform != "win32" and sys.platform != "darwin":
+    IP_RECVTOS: int
+IP_TOS: int
+IP_TTL: int
+if sys.platform != "win32":
     IP_DEFAULT_MULTICAST_LOOP: int
     IP_DEFAULT_MULTICAST_TTL: int
     IP_MAX_MEMBERSHIPS: int
     IP_RECVOPTS: int
     IP_RECVRETOPTS: int
     IP_RETOPTS: int
-    LOCAL_PEERCRED: int
-    MSG_DONTWAIT: int
-    MSG_EOF: int
-    MSG_EOR: int
-    MSG_NOSIGNAL: int  # Sometimes this exists on darwin, sometimes not
-    SCM_CREDS: int
-    SCM_RIGHTS: int
-    SO_REUSEPORT: int
+if sys.platform != "win32" and sys.platform != "darwin":
+    IP_TRANSPARENT: int
+    IP_BIND_ADDRESS_NO_PORT: int
+if sys.version_info >= (3, 12):
+    IP_ADD_SOURCE_MEMBERSHIP: int
+    IP_BLOCK_SOURCE: int
+    IP_DROP_SOURCE_MEMBERSHIP: int
+    IP_PKTINFO: int
+    IP_UNBLOCK_SOURCE: int
 
+IPV6_CHECKSUM: int
+IPV6_JOIN_GROUP: int
+IPV6_LEAVE_GROUP: int
+IPV6_MULTICAST_HOPS: int
+IPV6_MULTICAST_IF: int
+IPV6_MULTICAST_LOOP: int
+IPV6_RECVTCLASS: int
+IPV6_TCLASS: int
+IPV6_UNICAST_HOPS: int
+IPV6_V6ONLY: int
+if sys.version_info >= (3, 9) or sys.platform != "darwin":
+    IPV6_DONTFRAG: int
+    IPV6_HOPLIMIT: int
+    IPV6_HOPOPTS: int
+    IPV6_PKTINFO: int
+    IPV6_RECVRTHDR: int
+    IPV6_RTHDR: int
 if sys.platform != "win32":
-    if sys.platform != "darwin" or sys.version_info >= (3, 9):
+    IPV6_RTHDR_TYPE_0: int
+    if sys.version_info >= (3, 9) or sys.platform != "darwin":
         IPV6_DSTOPTS: int
         IPV6_NEXTHOP: int
         IPV6_PATHMTU: int
@@ -283,43 +256,74 @@ if sys.platform != "win32":
         IPV6_RTHDRDSTOPTS: int
         IPV6_USE_MIN_MTU: int
 
+EAI_AGAIN: int
+EAI_BADFLAGS: int
+EAI_FAIL: int
+EAI_FAMILY: int
+EAI_MEMORY: int
+EAI_NODATA: int
+EAI_NONAME: int
+EAI_SERVICE: int
+EAI_SOCKTYPE: int
+if sys.platform != "win32":
+    EAI_ADDRFAMILY: int
+    EAI_BADHINTS: int
+    EAI_MAX: int
+    EAI_OVERFLOW: int
+    EAI_PROTOCOL: int
+    EAI_SYSTEM: int
+
+AI_ADDRCONFIG: int
+AI_ALL: int
+AI_CANONNAME: int
+AI_NUMERICHOST: int
+AI_NUMERICSERV: int
+AI_PASSIVE: int
+AI_V4MAPPED: int
+if sys.platform != "win32":
+    AI_DEFAULT: int
+    AI_MASK: int
+    AI_V4MAPPED_CFG: int
+
+NI_DGRAM: int
+NI_MAXHOST: int
+NI_MAXSERV: int
+NI_NAMEREQD: int
+NI_NOFQDN: int
+NI_NUMERICHOST: int
+NI_NUMERICSERV: int
+
+TCP_FASTOPEN: int
+TCP_KEEPCNT: int
+TCP_KEEPINTVL: int
+TCP_MAXSEG: int
+TCP_NODELAY: int
+if sys.platform != "win32":
+    TCP_NOTSENT_LOWAT: int
+if sys.platform != "darwin":
+    TCP_KEEPIDLE: int
+if sys.version_info >= (3, 10) and sys.platform == "darwin":
+    TCP_KEEPALIVE: int
+if sys.version_info >= (3, 11) and sys.platform == "darwin":
+    TCP_CONNECTION_INFO: int
+
 if sys.platform != "win32" and sys.platform != "darwin":
-    IPPROTO_BIP: int
-    IPPROTO_MOBILE: int
-    IPPROTO_VRRP: int
-    IPX_TYPE: int
-    IP_TRANSPARENT: int
-    MSG_BTAG: int
-    MSG_CMSG_CLOEXEC: int
-    MSG_CONFIRM: int
-    MSG_ETAG: int
-    MSG_FASTOPEN: int
-    MSG_MORE: int
-    MSG_NOTIFICATION: int
-    SCM_CREDENTIALS: int
-    SOL_ATALK: int
-    SOL_AX25: int
-    SOL_HCI: int
-    SOL_IPX: int
-    SOL_NETROM: int
-    SOL_ROSE: int
-    SO_BINDTODEVICE: int
-    SO_MARK: int
-    SO_PASSCRED: int
-    SO_PEERCRED: int
-    SO_PRIORITY: int
-    SO_SETFIB: int
+    TCP_CONGESTION: int
     TCP_CORK: int
     TCP_DEFER_ACCEPT: int
     TCP_INFO: int
     TCP_LINGER2: int
     TCP_QUICKACK: int
     TCP_SYNCNT: int
+    TCP_USER_TIMEOUT: int
     TCP_WINDOW_CLAMP: int
 
-# Specifically-documented constants
+# --------------------
+# Specifically documented constants
+# --------------------
 
 if sys.platform == "linux":
+    # Availability: Linux >= 2.6.25, NetBSD >= 8
     AF_CAN: int
     PF_CAN: int
     SOL_CAN_BASE: int
@@ -336,6 +340,8 @@ if sys.platform == "linux":
     CAN_RTR_FLAG: int
     CAN_SFF_MASK: int
 
+if sys.platform == "linux":
+    # Availability: Linux >= 2.6.25
     CAN_BCM: int
     CAN_BCM_TX_SETUP: int
     CAN_BCM_TX_DELETE: int
@@ -349,10 +355,6 @@ if sys.platform == "linux":
     CAN_BCM_RX_STATUS: int
     CAN_BCM_RX_TIMEOUT: int
     CAN_BCM_RX_CHANGED: int
-
-    CAN_RAW_FD_FRAMES: int
-
-if sys.platform == "linux" and sys.version_info >= (3, 8):
     CAN_BCM_SETTIMER: int
     CAN_BCM_STARTTIMER: int
     CAN_BCM_TX_COUNTEVT: int
@@ -367,11 +369,20 @@ if sys.platform == "linux" and sys.version_info >= (3, 8):
     CAN_BCM_CAN_FD_FRAME: int
 
 if sys.platform == "linux":
+    # Availability: Linux >= 3.6
+    CAN_RAW_FD_FRAMES: int
+
+if sys.platform == "linux" and sys.version_info >= (3, 9):
+    # Availability: Linux >= 4.1
+    CAN_RAW_JOIN_FILTERS: int
+
+if sys.platform == "linux":
+    # Availability: Linux >= 2.6.25
     CAN_ISOTP: int
 
 if sys.platform == "linux" and sys.version_info >= (3, 9):
+    # Availability: Linux >= 5.4
     CAN_J1939: int
-    CAN_RAW_JOIN_FILTERS: int
 
     J1939_MAX_UNICAST_ADDR: int
     J1939_IDLE_ADDR: int
@@ -396,16 +407,17 @@ if sys.platform == "linux" and sys.version_info >= (3, 9):
 
     J1939_NLA_PAD: int
     J1939_NLA_BYTES_ACKED: int
-
     J1939_EE_INFO_NONE: int
     J1939_EE_INFO_TX_ABORT: int
-
     J1939_FILTER_MAX: int
 
-if sys.platform == "linux" and sys.version_info >= (3, 10):
-    IPPROTO_MPTCP: int
+if sys.version_info >= (3, 12) and sys.platform != "linux" and sys.platform != "win32" and sys.platform != "darwin":
+    # Availability: FreeBSD >= 14.0
+    AF_DIVERT: int
+    PF_DIVERT: int
 
 if sys.platform == "linux":
+    # Availability: Linux >= 2.2
     AF_PACKET: int
     PF_PACKET: int
     PACKET_BROADCAST: int
@@ -416,7 +428,11 @@ if sys.platform == "linux":
     PACKET_OTHERHOST: int
     PACKET_OUTGOING: int
 
+if sys.version_info >= (3, 12) and sys.platform == "linux":
+    ETH_P_ALL: int
+
 if sys.platform == "linux":
+    # Availability: Linux >= 2.6.30
     AF_RDS: int
     PF_RDS: int
     SOL_RDS: int
@@ -476,6 +492,7 @@ if sys.platform == "linux":
     TIPC_ZONE_SCOPE: int
 
 if sys.platform == "linux":
+    # Availability: Linux >= 2.6.38
     AF_ALG: int
     SOL_ALG: int
     ALG_OP_DECRYPT: int
@@ -490,6 +507,7 @@ if sys.platform == "linux":
     ALG_SET_PUBKEY: int
 
 if sys.platform == "linux":
+    # Availability: Linux >= 4.8 (or maybe 3.9, CPython docs are confusing)
     AF_VSOCK: int
     IOCTL_VM_SOCKETS_GET_LOCAL_CID: int
     VMADDR_CID_ANY: int
@@ -498,26 +516,65 @@ if sys.platform == "linux":
     SO_VM_SOCKETS_BUFFER_MAX_SIZE: int
     SO_VM_SOCKETS_BUFFER_SIZE: int
     SO_VM_SOCKETS_BUFFER_MIN_SIZE: int
-    VM_SOCKETS_INVALID_VERSION: int
+    VM_SOCKETS_INVALID_VERSION: int  # undocumented
 
 if sys.platform != "win32" or sys.version_info >= (3, 9):
+    # Documented as only available on BSD, macOS, but empirically sometimes
+    # available on Windows
     AF_LINK: int
 
-# BDADDR_* and HCI_* listed with other bluetooth constants below
+has_ipv6: bool
+
+if sys.platform != "darwin":
+    if sys.platform != "win32" or sys.version_info >= (3, 9):
+        BDADDR_ANY: str
+        BDADDR_LOCAL: str
 
 if sys.platform != "win32" and sys.platform != "darwin":
-    SO_DOMAIN: int
-    SO_PASSSEC: int
-    SO_PEERSEC: int
-    SO_PROTOCOL: int
-    TCP_CONGESTION: int
-    TCP_USER_TIMEOUT: int
+    HCI_FILTER: int  # not in NetBSD or DragonFlyBSD
+    HCI_TIME_STAMP: int  # not in FreeBSD, NetBSD, or DragonFlyBSD
+    HCI_DATA_DIR: int  # not in FreeBSD, NetBSD, or DragonFlyBSD
 
-if sys.platform == "linux" and sys.version_info >= (3, 8):
-    AF_QIPCRTR: int
+if sys.platform == "linux":
+    AF_QIPCRTR: int  # Availability: Linux >= 4.7
 
+if sys.version_info >= (3, 11) and sys.platform != "linux" and sys.platform != "win32" and sys.platform != "darwin":
+    # FreeBSD
+    SCM_CREDS2: int
+    LOCAL_CREDS: int
+    LOCAL_CREDS_PERSISTENT: int
+
+if sys.version_info >= (3, 11) and sys.platform == "linux":
+    SO_INCOMING_CPU: int  # Availability: Linux >= 3.9
+
+if sys.version_info >= (3, 12) and sys.platform == "win32":
+    # Availability: Windows
+    AF_HYPERV: int
+    HV_PROTOCOL_RAW: int
+    HVSOCKET_CONNECT_TIMEOUT: int
+    HVSOCKET_CONNECT_TIMEOUT_MAX: int
+    HVSOCKET_CONNECTED_SUSPEND: int
+    HVSOCKET_ADDRESS_FLAG_PASSTHRU: int
+    HV_GUID_ZERO: str
+    HV_GUID_WILDCARD: str
+    HV_GUID_BROADCAST: str
+    HV_GUID_CHILDREN: str
+    HV_GUID_LOOPBACK: str
+    HV_GUID_PARENT: str
+
+if sys.version_info >= (3, 12):
+    if sys.platform != "win32":
+        # Availability: Linux, FreeBSD, macOS
+        ETHERTYPE_ARP: int
+        ETHERTYPE_IP: int
+        ETHERTYPE_IPV6: int
+        ETHERTYPE_VLAN: int
+
+# --------------------
 # Semi-documented constants
-# (Listed under "Socket families" in the docs, but not "Constants")
+# These are alluded to under the "Socket families" section in the docs
+# https://docs.python.org/3/library/socket.html#socket-families
+# --------------------
 
 if sys.platform == "linux":
     # Netlink is defined by Linux
@@ -537,12 +594,13 @@ if sys.platform == "linux":
     NETLINK_W1: int
     NETLINK_XFRM: int
 
+if sys.platform == "darwin":
+    PF_SYSTEM: int
+    SYSPROTO_CONTROL: int
+
 if sys.platform != "darwin":
-    if sys.platform != "win32" or sys.version_info >= (3, 9):
+    if sys.version_info >= (3, 9) or sys.platform != "win32":
         AF_BLUETOOTH: int
-        BDADDR_ANY: str
-        BDADDR_LOCAL: str
-        BTPROTO_RFCOMM: int
 
 if sys.platform != "win32" and sys.platform != "darwin":
     # Linux and some BSD support is explicit in the docs
@@ -550,17 +608,65 @@ if sys.platform != "win32" and sys.platform != "darwin":
     BTPROTO_HCI: int
     BTPROTO_L2CAP: int
     BTPROTO_SCO: int  # not in FreeBSD
-    HCI_FILTER: int  # not in NetBSD or DragonFlyBSD
-    # not in FreeBSD, NetBSD, or DragonFlyBSD
-    HCI_TIME_STAMP: int
-    HCI_DATA_DIR: int
+if sys.platform != "darwin":
+    if sys.version_info >= (3, 9) or sys.platform != "win32":
+        BTPROTO_RFCOMM: int
 
-if sys.platform == "darwin":
-    # PF_SYSTEM is defined by macOS
-    PF_SYSTEM: int
-    SYSPROTO_CONTROL: int
+if sys.version_info >= (3, 9) and sys.platform == "linux":
+    UDPLITE_RECV_CSCOV: int
+    UDPLITE_SEND_CSCOV: int
 
-# ----- Exceptions -----
+# --------------------
+# Documented under socket.shutdown
+# --------------------
+SHUT_RD: int
+SHUT_RDWR: int
+SHUT_WR: int
+
+# --------------------
+# Undocumented constants
+# --------------------
+
+# Undocumented address families
+AF_APPLETALK: int
+AF_DECnet: int
+AF_IPX: int
+AF_SNA: int
+
+if sys.platform != "win32":
+    AF_ROUTE: int
+    AF_SYSTEM: int
+
+if sys.platform != "darwin":
+    AF_IRDA: int
+
+if sys.platform != "win32" and sys.platform != "darwin":
+    AF_AAL5: int
+    AF_ASH: int
+    AF_ATMPVC: int
+    AF_ATMSVC: int
+    AF_AX25: int
+    AF_BRIDGE: int
+    AF_ECONET: int
+    AF_KEY: int
+    AF_LLC: int
+    AF_NETBEUI: int
+    AF_NETROM: int
+    AF_PPPOX: int
+    AF_ROSE: int
+    AF_SECURITY: int
+    AF_WANPIPE: int
+    AF_X25: int
+
+# Miscellaneous undocumented
+
+if sys.platform != "win32":
+    LOCAL_PEERCRED: int
+
+if sys.platform != "win32" and sys.platform != "darwin":
+    IPX_TYPE: int
+
+# ===== Exceptions =====
 
 error = OSError
 
@@ -572,7 +678,7 @@ if sys.version_info >= (3, 10):
 else:
     class timeout(error): ...
 
-# ----- Classes -----
+# ===== Classes =====
 
 class socket:
     @property
@@ -584,9 +690,11 @@ class socket:
     @property
     def timeout(self) -> float | None: ...
     if sys.platform == "win32":
-        def __init__(self, family: int = ..., type: int = ..., proto: int = ..., fileno: _FD | bytes | None = ...) -> None: ...
+        def __init__(
+            self, family: int = ..., type: int = ..., proto: int = ..., fileno: SupportsIndex | bytes | None = ...
+        ) -> None: ...
     else:
-        def __init__(self, family: int = ..., type: int = ..., proto: int = ..., fileno: _FD | None = ...) -> None: ...
+        def __init__(self, family: int = ..., type: int = ..., proto: int = ..., fileno: SupportsIndex | None = ...) -> None: ...
 
     def bind(self, __address: _Address) -> None: ...
     def close(self) -> None: ...
@@ -648,10 +756,10 @@ class socket:
 
 SocketType = socket
 
-# ----- Functions -----
+# ===== Functions =====
 
-def close(__fd: _FD) -> None: ...
-def dup(__fd: _FD) -> int: ...
+def close(__fd: SupportsIndex) -> None: ...
+def dup(__fd: SupportsIndex) -> int: ...
 
 # the 5th tuple item is an address
 def getaddrinfo(
@@ -687,33 +795,8 @@ if sys.platform != "win32":
     def CMSG_SPACE(__length: int) -> int: ...
     def socketpair(__family: int = ..., __type: int = ..., __proto: int = ...) -> tuple[socket, socket]: ...
 
-# Windows added these in 3.8, but didn't have them before
-if sys.platform != "win32" or sys.version_info >= (3, 8):
-    def if_nameindex() -> list[tuple[int, str]]: ...
-    def if_nametoindex(__name: str) -> int: ...
-    def if_indextoname(__index: int) -> str: ...
+def if_nameindex() -> list[tuple[int, str]]: ...
+def if_nametoindex(__name: str) -> int: ...
+def if_indextoname(__index: int) -> str: ...
 
-if sys.version_info >= (3, 12):
-    IP_PKTINFO: int
-    IP_UNBLOCK_SOURCE: int
-    IP_BLOCK_SOURCE: int
-    IP_ADD_SOURCE_MEMBERSHIP: int
-    IP_DROP_SOURCE_MEMBERSHIP: int
-    if sys.platform == "win32":
-        AF_HYPERV: int
-        HV_PROTOCOL_RAW: int
-        HVSOCKET_CONNECT_TIMEOUT: int
-        HVSOCKET_CONNECT_TIMEOUT_MAX: int
-        HVSOCKET_CONNECTED_SUSPEND: int
-        HVSOCKET_ADDRESS_FLAG_PASSTHRU: int
-        HV_GUID_ZERO: str
-        HV_GUID_WILDCARD: str
-        HV_GUID_BROADCAST: str
-        HV_GUID_CHILDREN: str
-        HV_GUID_LOOPBACK: str
-        HV_GUID_PARENT: str
-    else:
-        ETHERTYPE_ARP: int
-        ETHERTYPE_IP: int
-        ETHERTYPE_IPV6: int
-        ETHERTYPE_VLAN: int
+CAPI: object

@@ -1,6 +1,6 @@
 from _typeshed import Incomplete, Unused
-from typing import Any, NoReturn
-from typing_extensions import Literal, TypeAlias
+from typing import Any, Literal, NoReturn
+from typing_extensions import TypeAlias
 from urllib.request import OpenerDirector
 from xml.dom.expatbuilder import ExpatBuilder, ExpatBuilderNS
 from xml.dom.minidom import Node

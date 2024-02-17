@@ -30,6 +30,20 @@ line-length = 99
 target-version = "py38"
 fix = true
 
+extend-exclude = [
+  "@*",
+  # Sphinx configuration is irrelevant
+  "docs/source/conf.py",
+  "mypyc/doc/conf.py",
+  # tests have more relaxed styling requirements
+  # fixtures have their own .pyi-specific configuration
+  "test-data/*",
+  "mypyc/test-data/*",
+  # typeshed has its own .pyi-specific configuration
+  "mypy/typeshed/*",
+]
+
+[tool.ruff.lint]
 select = [
   "E",       # pycodestyle (error)
   "F",       # pyflakes
@@ -66,20 +80,7 @@ unfixable = [
     "UP036", # sometimes it's better to just noqa this
 ]
 
-extend-exclude = [
-  "@*",
-  # Sphinx configuration is irrelevant
-  "docs/source/conf.py",
-  "mypyc/doc/conf.py",
-  # tests have more relaxed styling requirements
-  # fixtures have their own .pyi-specific configuration
-  "test-data/*",
-  "mypyc/test-data/*",
-  # typeshed has its own .pyi-specific configuration
-  "mypy/typeshed/*",
-]
-
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 combine-as-imports = true
 extra-standard-library = ["typing_extensions"]
 

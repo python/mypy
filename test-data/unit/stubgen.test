@@ -368,6 +368,8 @@ class A:
         return 1
     @f.setter
     def f(self, x): ...
+    @f.deleter
+    def f(self): ...
 
     def h(self):
         self.f = 1
@@ -377,6 +379,8 @@ class A:
     def f(self): ...
     @f.setter
     def f(self, x) -> None: ...
+    @f.deleter
+    def f(self) -> None: ...
     def h(self) -> None: ...
 
 [case testProperty_semanal]
@@ -386,6 +390,8 @@ class A:
         return 1
     @f.setter
     def f(self, x): ...
+    @f.deleter
+    def f(self): ...
 
     def h(self):
         self.f = 1
@@ -395,6 +401,8 @@ class A:
     def f(self): ...
     @f.setter
     def f(self, x) -> None: ...
+    @f.deleter
+    def f(self) -> None: ...
     def h(self) -> None: ...
 
 -- a read/write property is treated the same as an attribute
@@ -1202,6 +1210,56 @@ from typing import Generic, TypeVar
 T = TypeVar('T')
 
 class D(Generic[T]): ...
+
+[case testGenericClassTypeVarTuple]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+Ts = TypeVarTuple('Ts')
+class D(Generic[Unpack[Ts]]): ...
+[out]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple('Ts')
+
+class D(Generic[Unpack[Ts]]): ...
+
+[case testGenericClassTypeVarTuple_semanal]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+Ts = TypeVarTuple('Ts')
+class D(Generic[Unpack[Ts]]): ...
+[out]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple('Ts')
+
+class D(Generic[Unpack[Ts]]): ...
+
+[case testGenericClassTypeVarTuplePy311]
+# flags: --python-version=3.11
+from typing import Generic, TypeVarTuple
+Ts = TypeVarTuple('Ts')
+class D(Generic[*Ts]): ...
+[out]
+from typing import Generic, TypeVarTuple
+
+Ts = TypeVarTuple('Ts')
+
+class D(Generic[*Ts]): ...
+
+[case testGenericClassTypeVarTuplePy311_semanal]
+# flags: --python-version=3.11
+from typing import Generic, TypeVarTuple
+Ts = TypeVarTuple('Ts')
+class D(Generic[*Ts]): ...
+[out]
+from typing import Generic, TypeVarTuple
+
+Ts = TypeVarTuple('Ts')
+
+class D(Generic[*Ts]): ...
 
 [case testObjectBaseClass]
 class A(object): ...
@@ -2337,10 +2395,12 @@ class B:
     @property
     def x(self):
         return 'x'
-
     @x.setter
     def x(self, value):
         self.y = 'y'
+    @x.deleter
+    def x(self):
+        del self.y
 
 [out]
 class A:
@@ -2354,6 +2414,8 @@ class B:
     y: str
     @x.setter
     def x(self, value) -> None: ...
+    @x.deleter
+    def x(self) -> None: ...
 
 [case testMisplacedTypeComment]
 def f():
@@ -4019,20 +4081,21 @@ class W: ...
 class V: ...
 
 [case testDataclass_semanal]
-from dataclasses import dataclass, InitVar
+from dataclasses import InitVar, dataclass, field
 from typing import ClassVar
 
 @dataclass
 class X:
     a: int
-    b: str = "hello"
-    c: ClassVar
-    d: ClassVar = 200
+    b: InitVar[str]
+    c: str = "hello"
+    d: ClassVar
+    e: ClassVar = 200
     f: list[int] = field(init=False, default_factory=list)
     g: int = field(default=2, kw_only=True)
     h: int = 1
-    i: InitVar[str]
-    j: InitVar = 100
+    i: InitVar = 100
+    j: list[int] = field(default_factory=list)
     non_field = None
 
 @dataclass(init=False, repr=False, frozen=True)
@@ -4045,23 +4108,24 @@ from typing import ClassVar
 @dataclass
 class X:
     a: int
-    b: str = ...
-    c: ClassVar
-    d: ClassVar = ...
+    b: InitVar[str]
+    c: str = ...
+    d: ClassVar
+    e: ClassVar = ...
     f: list[int] = ...
     g: int = ...
     h: int = ...
-    i: InitVar[str]
-    j: InitVar = ...
+    i: InitVar = ...
+    j: list[int] = ...
     non_field = ...
-    def __init__(self, a, b, f, g, h, i, j) -> None: ...
+    def __init__(self, a, b, c=..., *, g=..., h=..., i=..., j=...) -> None: ...
 
 @dataclass(init=False, repr=False, frozen=True)
 class Y: ...
 
 [case testDataclassWithKwOnlyField_semanal]
 # flags: --python-version=3.10
-from dataclasses import dataclass, InitVar, KW_ONLY
+from dataclasses import dataclass, field, InitVar, KW_ONLY
 from typing import ClassVar
 
 @dataclass
@@ -4098,7 +4162,7 @@ class X:
     i: InitVar[str]
     j: InitVar = ...
     non_field = ...
-    def __init__(self, a, b, f, g, *, h, i, j) -> None: ...
+    def __init__(self, a, b=..., *, g=..., h=..., i, j=...) -> None: ...
 
 @dataclass(init=False, repr=False, frozen=True)
 class Y: ...
@@ -4129,6 +4193,13 @@ import missing
 class X(missing.Base):
     a: int
 
+@dataclass
+class Y(missing.Base):
+    generated_args: str
+    generated_args_: str
+    generated_kwargs: float
+    generated_kwargs_: float
+
 [out]
 import missing
 from dataclasses import dataclass
@@ -4136,7 +4207,15 @@ from dataclasses import dataclass
 @dataclass
 class X(missing.Base):
     a: int
-    def __init__(self, *selfa_, a, **selfa__) -> None: ...
+    def __init__(self, *generated_args, a, **generated_kwargs) -> None: ...
+
+@dataclass
+class Y(missing.Base):
+    generated_args: str
+    generated_args_: str
+    generated_kwargs: float
+    generated_kwargs_: float
+    def __init__(self, *generated_args__, generated_args, generated_args_, generated_kwargs, generated_kwargs_, **generated_kwargs__) -> None: ...
 
 [case testAlwaysUsePEP604Union]
 import typing
@@ -4212,3 +4291,39 @@ y_alias = _list[int]
 z_alias = _dict[str, float]
 v_alias = _set[int]
 w_alias = _list[_dict[str, _tuple[int, ...]]]
+
+[case testPEP570PosOnlyParams]
+def f(x=0, /): ...
+def f1(x: int, /): ...
+def f2(x: int, y: float = 1, /): ...
+def f3(x: int, /, y: float): ...
+def f4(x: int, /, y: float = 1): ...
+def f5(x: int, /, *, y: float): ...
+def f6(x: int = 0, /, *, y: float): ...
+def f7(x: int, /, *, y: float = 1): ...
+def f8(x: int = 0, /, *, y: float = 1): ...
+
+[out]
+def f(x: int = 0, /) -> None: ...
+def f1(x: int, /): ...
+def f2(x: int, y: float = 1, /): ...
+def f3(x: int, /, y: float): ...
+def f4(x: int, /, y: float = 1): ...
+def f5(x: int, /, *, y: float): ...
+def f6(x: int = 0, /, *, y: float): ...
+def f7(x: int, /, *, y: float = 1): ...
+def f8(x: int = 0, /, *, y: float = 1): ...
+
+[case testPreserveEmptyTuple]
+ann: tuple[()]
+alias = tuple[()]
+def f(x: tuple[()]): ...
+class C(tuple[()]): ...
+
+[out]
+ann: tuple[()]
+alias = tuple[()]
+
+def f(x: tuple[()]): ...
+
+class C(tuple[()]): ...

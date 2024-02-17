@@ -4,19 +4,14 @@ import threading
 from _typeshed import SupportsKeysAndGetItem, SupportsRichComparison, SupportsRichComparisonT
 from collections.abc import Callable, Iterable, Iterator, Mapping, MutableMapping, MutableSequence, Sequence
 from types import TracebackType
-from typing import Any, AnyStr, ClassVar, Generic, TypeVar, overload
-from typing_extensions import Self, SupportsIndex, TypeAlias
+from typing import Any, AnyStr, ClassVar, Generic, SupportsIndex, TypeVar, overload
+from typing_extensions import Self, TypeAlias
 
 from .connection import Connection
 from .context import BaseContext
+from .shared_memory import _SLT, ShareableList as _ShareableList, SharedMemory as _SharedMemory
 
-if sys.version_info >= (3, 8):
-    from .shared_memory import _SLT, ShareableList as _ShareableList, SharedMemory as _SharedMemory
-
-    __all__ = ["BaseManager", "SyncManager", "BaseProxy", "Token", "SharedMemoryManager"]
-
-else:
-    __all__ = ["BaseManager", "SyncManager", "BaseProxy", "Token"]
+__all__ = ["BaseManager", "SyncManager", "BaseProxy", "Token", "SharedMemoryManager"]
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -208,12 +203,10 @@ class SyncManager(BaseManager):
     def list(self) -> ListProxy[Any]: ...
 
 class RemoteError(Exception): ...
+class SharedMemoryServer(Server): ...
 
-if sys.version_info >= (3, 8):
-    class SharedMemoryServer(Server): ...
-
-    class SharedMemoryManager(BaseManager):
-        def get_server(self) -> SharedMemoryServer: ...
-        def SharedMemory(self, size: int) -> _SharedMemory: ...
-        def ShareableList(self, sequence: Iterable[_SLT] | None) -> _ShareableList[_SLT]: ...
-        def __del__(self) -> None: ...
+class SharedMemoryManager(BaseManager):
+    def get_server(self) -> SharedMemoryServer: ...
+    def SharedMemory(self, size: int) -> _SharedMemory: ...
+    def ShareableList(self, sequence: Iterable[_SLT] | None) -> _ShareableList[_SLT]: ...
+    def __del__(self) -> None: ...

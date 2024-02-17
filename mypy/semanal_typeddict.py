@@ -79,6 +79,8 @@ class TypedDictAnalyzer:
         """
         possible = False
         for base_expr in defn.base_type_exprs:
+            if isinstance(base_expr, CallExpr):
+                base_expr = base_expr.callee
             if isinstance(base_expr, IndexExpr):
                 base_expr = base_expr.base
             if isinstance(base_expr, RefExpr):
@@ -117,7 +119,13 @@ class TypedDictAnalyzer:
         typeddict_bases: list[Expression] = []
         typeddict_bases_set = set()
         for expr in defn.base_type_exprs:
-            if isinstance(expr, RefExpr) and expr.fullname in TPDICT_NAMES:
+            ok, maybe_type_info, _ = self.check_typeddict(expr, None, False)
+            if ok and maybe_type_info is not None:
+                # expr is a CallExpr
+                info = maybe_type_info
+                typeddict_bases_set.add(info.fullname)
+                typeddict_bases.append(expr)
+            elif isinstance(expr, RefExpr) and expr.fullname in TPDICT_NAMES:
                 if "TypedDict" not in typeddict_bases_set:
                     typeddict_bases_set.add("TypedDict")
                 else:
@@ -148,12 +156,9 @@ class TypedDictAnalyzer:
         # Iterate over bases in reverse order so that leftmost base class' keys take precedence
         for base in reversed(typeddict_bases):
             self.add_keys_and_types_from_base(base, keys, types, required_keys, defn)
-        (
-            new_keys,
-            new_types,
-            new_statements,
-            new_required_keys,
-        ) = self.analyze_typeddict_classdef_fields(defn, keys)
+        (new_keys, new_types, new_statements, new_required_keys) = (
+            self.analyze_typeddict_classdef_fields(defn, keys)
+        )
         if new_keys is None:
             return True, None  # Defer
         keys.extend(new_keys)
@@ -176,12 +181,11 @@ class TypedDictAnalyzer:
         required_keys: set[str],
         ctx: Context,
     ) -> None:
+        base_args: list[Type] = []
         if isinstance(base, RefExpr):
             assert isinstance(base.node, TypeInfo)
             info = base.node
-            base_args: list[Type] = []
-        else:
-            assert isinstance(base, IndexExpr)
+        elif isinstance(base, IndexExpr):
             assert isinstance(base.base, RefExpr)
             assert isinstance(base.base.node, TypeInfo)
             info = base.base.node
@@ -189,6 +193,10 @@ class TypedDictAnalyzer:
             if args is None:
                 return
             base_args = args
+        else:
+            assert isinstance(base, CallExpr)
+            assert isinstance(base.analyzed, TypedDictExpr)
+            info = base.analyzed.info
 
         assert info.typeddict_type is not None
         base_typed_dict = info.typeddict_type

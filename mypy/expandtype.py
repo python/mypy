@@ -50,18 +50,15 @@ import mypy.type_visitor  # ruff: isort: skip
 
 
 @overload
-def expand_type(typ: CallableType, env: Mapping[TypeVarId, Type]) -> CallableType:
-    ...
+def expand_type(typ: CallableType, env: Mapping[TypeVarId, Type]) -> CallableType: ...
 
 
 @overload
-def expand_type(typ: ProperType, env: Mapping[TypeVarId, Type]) -> ProperType:
-    ...
+def expand_type(typ: ProperType, env: Mapping[TypeVarId, Type]) -> ProperType: ...
 
 
 @overload
-def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
-    ...
+def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type: ...
 
 
 def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
@@ -72,18 +69,15 @@ def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
 
 
 @overload
-def expand_type_by_instance(typ: CallableType, instance: Instance) -> CallableType:
-    ...
+def expand_type_by_instance(typ: CallableType, instance: Instance) -> CallableType: ...
 
 
 @overload
-def expand_type_by_instance(typ: ProperType, instance: Instance) -> ProperType:
-    ...
+def expand_type_by_instance(typ: ProperType, instance: Instance) -> ProperType: ...
 
 
 @overload
-def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
-    ...
+def expand_type_by_instance(typ: Type, instance: Instance) -> Type: ...
 
 
 def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
@@ -185,6 +179,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
 
     def __init__(self, variables: Mapping[TypeVarId, Type]) -> None:
         self.variables = variables
+        self.recursive_tvar_guard: dict[TypeVarId, Type | None] = {}
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         return t
@@ -232,6 +227,14 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             # TODO: do we really need to do this?
             # If I try to remove this special-casing ~40 tests fail on reveal_type().
             return repl.copy_modified(last_known_value=None)
+        if isinstance(repl, TypeVarType) and repl.has_default():
+            if (tvar_id := repl.id) in self.recursive_tvar_guard:
+                return self.recursive_tvar_guard[tvar_id] or repl
+            self.recursive_tvar_guard[tvar_id] = None
+            repl = repl.accept(self)
+            if isinstance(repl, TypeVarType):
+                repl.default = repl.default.accept(self)
+            self.recursive_tvar_guard[tvar_id] = repl
         return repl
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:
@@ -283,6 +286,8 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
     def expand_unpack(self, t: UnpackType) -> list[Type]:
         assert isinstance(t.type, TypeVarTupleType)
         repl = get_proper_type(self.variables.get(t.type.id, t.type))
+        if isinstance(repl, UnpackType):
+            repl = get_proper_type(repl.type)
         if isinstance(repl, TupleType):
             return repl.items
         elif (
@@ -470,13 +475,11 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
 
 
 @overload
-def expand_self_type(var: Var, typ: ProperType, replacement: ProperType) -> ProperType:
-    ...
+def expand_self_type(var: Var, typ: ProperType, replacement: ProperType) -> ProperType: ...
 
 
 @overload
-def expand_self_type(var: Var, typ: Type, replacement: Type) -> Type:
-    ...
+def expand_self_type(var: Var, typ: Type, replacement: Type) -> Type: ...
 
 
 def expand_self_type(var: Var, typ: Type, replacement: Type) -> Type:

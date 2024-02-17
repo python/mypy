@@ -170,7 +170,6 @@ linecache: 3.0-
 locale: 3.0-
 logging: 3.0-
 lzma: 3.3-
-macpath: 3.0-3.7
 mailbox: 3.0-
 mailcap: 3.0-3.12
 marshal: 3.0-
