@@ -1147,7 +1147,7 @@ partially_generic2: Ta3[int] = {1: "a"}  # E: Dict entry 0 has incompatible type
 Ta4 = TypeAliasType("Ta4", Tuple[Unpack[Ts]], type_params=(Ts, Ts1))  # E: Can only use one type var tuple in type_params argument to TypeAliasType
 
 Ta5 = TypeAliasType("Ta5", Dict)  # Unlike old style aliases, this is not generic
-non_generic_dict: Ta5[int, str]  # E: Bad number of arguments for type alias, expected: 0, given: 2
+non_generic_dict: Ta5[int, str]  # E: Bad number of arguments for type alias, expected 0, given 2
 
 [builtins fixtures/dict.pyi]
 

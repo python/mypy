@@ -3782,7 +3782,7 @@ class SemanticAnalyzer(
         have_type_var_tuple = False
         for tp_expr in type_params:
             if isinstance(tp_expr, StarExpr):
-                tp_expr.valid = True
+                tp_expr.valid = False
             self.analyze_type_expr(tp_expr)
             try:
                 base = self.expr_to_unanalyzed_type(tp_expr)
@@ -3818,7 +3818,8 @@ class SemanticAnalyzer(
                     code=codes.TYPE_VAR,
                 )
                 continue
-            declared_tvars.append(tvar)
+            if tvar:
+                declared_tvars.append(tvar)
         return declared_tvars
 
     def disable_invalid_recursive_aliases(
