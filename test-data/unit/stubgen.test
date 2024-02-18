@@ -4292,6 +4292,21 @@ z_alias = _dict[str, float]
 v_alias = _set[int]
 w_alias = _list[_dict[str, _tuple[int, ...]]]
 
+[case testHandlingNameCollisions]
+# flags: --include-private
+from typing import Tuple
+tuple = int
+_tuple = range
+__tuple = map
+x: Tuple[int, str]
+[out]
+from builtins import tuple as ___tuple
+
+tuple = int
+_tuple = range
+__tuple = map
+x: ___tuple[int, str]
+
 [case testPEP570PosOnlyParams]
 def f(x=0, /): ...
 def f1(x: int, /): ...

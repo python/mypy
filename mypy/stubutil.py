@@ -635,6 +635,8 @@ class BaseStubGenerator:
         """
         module, name = fullname.rsplit(".", 1)
         alias = "_" + name if name in self.defined_names else None
+        while alias in self.defined_names:
+            alias = "_" + alias
         if module != "builtins" or alias:  # don't import from builtins unless needed
             self.import_tracker.add_import_from(module, [(name, alias)], require=require)
         return alias or name
