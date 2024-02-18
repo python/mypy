@@ -1,6 +1,6 @@
 import os
 from . import demo as demo
-from typing import List, Tuple, overload
+from typing import overload
 
 class StaticMethods:
     def __init__(self, *args, **kwargs) -> None:
@@ -44,9 +44,9 @@ def func_incomplete_signature(*args, **kwargs):
     """func_incomplete_signature() -> dummy_sub_namespace::HasNoBinding"""
 def func_returning_optional() -> int | None:
     """func_returning_optional() -> Optional[int]"""
-def func_returning_pair() -> Tuple[int, float]:
+def func_returning_pair() -> tuple[int, float]:
     """func_returning_pair() -> Tuple[int, float]"""
 def func_returning_path() -> os.PathLike:
     """func_returning_path() -> os.PathLike"""
-def func_returning_vector() -> List[float]:
+def func_returning_vector() -> list[float]:
     """func_returning_vector() -> List[float]"""
