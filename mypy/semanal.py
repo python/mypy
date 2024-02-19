@@ -2860,7 +2860,7 @@ class SemanticAnalyzer(
                 s.rvalue.accept(self)
             self.basic_type_applications = old_basic_type_applications
         elif self.can_possibly_be_typevarlike_declaration(s):
-            # Allow unbound tvars inside TypeVarLike defaults to be evaluated lated
+            # Allow unbound tvars inside TypeVarLike defaults to be evaluated later
             with self.allow_unbound_tvars_set():
                 s.rvalue.accept(self)
         else:
