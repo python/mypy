@@ -1,4 +1,4 @@
-from typing import ClassVar, List, overload
+from typing import ClassVar, overload
 
 PI: float
 __version__: str
@@ -73,7 +73,7 @@ class Point:
 
         2. __init__(self: pybind11_fixtures.demo.Point, x: float, y: float) -> None
         """
-    def as_list(self) -> List[float]:
+    def as_list(self) -> list[float]:
         """as_list(self: pybind11_fixtures.demo.Point) -> List[float]"""
     @overload
     def distance_to(self, x: float, y: float) -> float:

@@ -67,6 +67,8 @@ class _TypedDict(Mapping[str, object]):
     __optional_keys__: frozenset[str]
     __readonly_keys__: frozenset[str]
     __mutable_keys__: frozenset[str]
+    __closed__: bool
+    __extra_items__: Any
     __total__: bool
 
 def TypedDict(typename: str, fields: Dict[str, Type[_T]], *, total: Any = ...) -> Type[dict]: ...

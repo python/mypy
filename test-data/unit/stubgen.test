@@ -1376,9 +1376,8 @@ x: List[collections.defaultdict]
 
 [out]
 import collections
-from typing import List
 
-x: List[collections.defaultdict]
+x: list[collections.defaultdict]
 
 
 [case testAnnotationFwRefs]
@@ -2216,9 +2215,9 @@ funcs: Dict[Any, Any]
 f = funcs[a.f]
 [out]
 from _typeshed import Incomplete
-from typing import Any, Dict
+from typing import Any
 
-funcs: Dict[Any, Any]
+funcs: dict[Any, Any]
 f: Incomplete
 
 [case testAbstractMethodNameExpr]
@@ -3290,18 +3289,18 @@ def f(*args: Union[int, Tuple[int, int]]) -> int:
 
 
 [out]
-from typing import Tuple, overload
+from typing import overload
 
 class A:
     @overload
     def f(self, x: int, y: int) -> int: ...
     @overload
-    def f(self, x: Tuple[int, int]) -> int: ...
+    def f(self, x: tuple[int, int]) -> int: ...
 
 @overload
 def f(x: int, y: int) -> int: ...
 @overload
-def f(x: Tuple[int, int]) -> int: ...
+def f(x: tuple[int, int]) -> int: ...
 
 [case testOverload_fromTypingExtensionsImport]
 from typing import Tuple, Union
@@ -3332,19 +3331,18 @@ def f(*args: Union[int, Tuple[int, int]]) -> int:
 
 
 [out]
-from typing import Tuple
 from typing_extensions import overload
 
 class A:
     @overload
     def f(self, x: int, y: int) -> int: ...
     @overload
-    def f(self, x: Tuple[int, int]) -> int: ...
+    def f(self, x: tuple[int, int]) -> int: ...
 
 @overload
 def f(x: int, y: int) -> int: ...
 @overload
-def f(x: Tuple[int, int]) -> int: ...
+def f(x: tuple[int, int]) -> int: ...
 
 [case testOverload_importTyping]
 import typing
@@ -3407,22 +3405,22 @@ class A:
     @typing.overload
     def f(self, x: int, y: int) -> int: ...
     @typing.overload
-    def f(self, x: typing.Tuple[int, int]) -> int: ...
+    def f(self, x: tuple[int, int]) -> int: ...
     @typing.overload
     @classmethod
     def g(cls, x: int, y: int) -> int: ...
     @typing.overload
     @classmethod
-    def g(cls, x: typing.Tuple[int, int]) -> int: ...
+    def g(cls, x: tuple[int, int]) -> int: ...
 
 @typing.overload
 def f(x: int, y: int) -> int: ...
 @typing.overload
-def f(x: typing.Tuple[int, int]) -> int: ...
+def f(x: tuple[int, int]) -> int: ...
 @typing_extensions.overload
 def g(x: int, y: int) -> int: ...
 @typing_extensions.overload
-def g(x: typing.Tuple[int, int]) -> int: ...
+def g(x: tuple[int, int]) -> int: ...
 
 [case testOverload_importTypingAs]
 import typing as t
@@ -3485,22 +3483,22 @@ class A:
     @t.overload
     def f(self, x: int, y: int) -> int: ...
     @t.overload
-    def f(self, x: t.Tuple[int, int]) -> int: ...
+    def f(self, x: tuple[int, int]) -> int: ...
     @t.overload
     @classmethod
     def g(cls, x: int, y: int) -> int: ...
     @t.overload
     @classmethod
-    def g(cls, x: t.Tuple[int, int]) -> int: ...
+    def g(cls, x: tuple[int, int]) -> int: ...
 
 @t.overload
 def f(x: int, y: int) -> int: ...
 @t.overload
-def f(x: t.Tuple[int, int]) -> int: ...
+def f(x: tuple[int, int]) -> int: ...
 @te.overload
 def g(x: int, y: int) -> int: ...
 @te.overload
-def g(x: t.Tuple[int, int]) -> int: ...
+def g(x: tuple[int, int]) -> int: ...
 
 [case testOverloadFromImportAlias]
 from typing import overload as t_overload
@@ -4248,6 +4246,66 @@ o = int | None
 
 def f1(a: int | tuple[int, int | None] | None) -> int: ...
 def f2(a: int | x.Union[int, int] | float | None) -> int: ...
+
+[case testTypingBuiltinReplacements]
+import typing
+import typing as t
+from typing import Tuple
+import typing_extensions
+import typing_extensions as te
+from typing_extensions import List, Type
+
+# builtins are not builtins
+tuple = int
+[list,] = float
+dict, set, frozenset = str, float, int
+
+x: Tuple[t.Text, t.FrozenSet[typing.Type[float]]]
+y: typing.List[int]
+z: t.Dict[str, float]
+v: typing.Set[int]
+w: List[typing_extensions.Dict[te.FrozenSet[Type[int]], te.Tuple[te.Set[te.Text], ...]]]
+
+x_alias = Tuple[str, ...]
+y_alias = typing.List[int]
+z_alias = t.Dict[str, float]
+v_alias = typing.Set[int]
+w_alias = List[typing_extensions.Dict[str, te.Tuple[int, ...]]]
+
+[out]
+from _typeshed import Incomplete
+from builtins import dict as _dict, frozenset as _frozenset, list as _list, set as _set, tuple as _tuple
+
+tuple = int
+list: Incomplete
+dict: Incomplete
+set: Incomplete
+frozenset: Incomplete
+x: _tuple[str, _frozenset[type[float]]]
+y: _list[int]
+z: _dict[str, float]
+v: _set[int]
+w: _list[_dict[_frozenset[type[int]], _tuple[_set[str], ...]]]
+x_alias = _tuple[str, ...]
+y_alias = _list[int]
+z_alias = _dict[str, float]
+v_alias = _set[int]
+w_alias = _list[_dict[str, _tuple[int, ...]]]
+
+[case testHandlingNameCollisions]
+# flags: --include-private
+from typing import Tuple
+tuple = int
+_tuple = range
+__tuple = map
+x: Tuple[int, str]
+[out]
+from builtins import tuple as ___tuple
+
+tuple = int
+_tuple = range
+__tuple = map
+x: ___tuple[int, str]
 
 [case testPEP570PosOnlyParams]
 def f(x=0, /): ...
