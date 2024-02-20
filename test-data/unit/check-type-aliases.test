@@ -1105,6 +1105,7 @@ TestType = TypeAliasType("TestType", Dict[K, V], type_params=(K, V))
 x: TestType[int, str] = {1: 'a'}
 y: TestType[str, int] = {'a': 1}
 z: TestType[str, int] = {1: 'a'}  # E: Dict entry 0 has incompatible type "int": "str"; expected "str": "int"
+w: TestType[int]  # E: Bad number of arguments for type alias, expected 2, given 1
 
 InvertedDict = TypeAliasType("InvertedDict", Dict[K, V], type_params=(V, K))
 xi: InvertedDict[str, int] = {1: 'a'}
@@ -1169,11 +1170,10 @@ unbound_ps_alias: Ta7[[int], str]  # E: Bracketed expression "[...]" is not vali
                                    # E: Bad number of arguments for type alias, expected 0, given 2
 reveal_type(unbound_ps_alias)  # N: Revealed type is "__main__.G[Any, Any]"
 
-# TODO this does not work yet, it should report unbound P
+# TODO this does not work yet, it should report unbound P on the next line
 # Ta8 = TypeAliasType("Ta8", Callable[P, int])
-# unbound_ps_alias: Ta8[int]
-# reveal_type(unbound_ps_alias)
-
+# unbound_ps_alias2: Ta8[int]
+# reveal_type(unbound_ps_alias2)
 
 [builtins fixtures/dict.pyi]
 
