@@ -2022,7 +2022,7 @@ class SemanticAnalyzer(
         self, t: UnboundType, is_unpacked: bool = False, is_typealias_param: bool = False
     ) -> tuple[str, TypeVarLikeExpr] | None:
         if is_unpacked and is_typealias_param:
-            return None  # This should be unreachable
+            assert False, "Unreachable"
         sym = self.lookup_qualified(t.name, t)
         if sym and isinstance(sym.node, PlaceholderNode):
             self.record_incomplete_ref()
@@ -3538,6 +3538,7 @@ class SemanticAnalyzer(
                 in_dynamic_func=dynamic,
                 global_scope=global_scope,
                 allowed_alias_tvars=tvar_defs,
+                has_type_params=declared_type_vars is not None,
             )
 
         # There can be only one variadic variable at most, the error is reported elsewhere.
@@ -3588,9 +3589,11 @@ class SemanticAnalyzer(
         type_params: TypeVarLikeList | None
         if self.check_type_alias_type_call(s.rvalue, name=lvalue.name):
             rvalue = s.rvalue.args[1]
+            pep_695 = True
             type_params = self.analyze_type_alias_type_params(s.rvalue)
         else:
             rvalue = s.rvalue
+            pep_695 = False
             type_params = None
 
         if isinstance(rvalue, CallExpr) and rvalue.analyzed:
@@ -3631,7 +3634,7 @@ class SemanticAnalyzer(
             # without this rule, this typical use case will require a lot of explicit
             # annotations (see the second rule).
             return False
-        if not pep_613 and not self.can_be_type_alias(rvalue):
+        if not pep_613 and not pep_695 and not self.can_be_type_alias(rvalue):
             return False
 
         if existing and not isinstance(existing.node, (PlaceholderNode, TypeAlias)):
@@ -3686,7 +3689,7 @@ class SemanticAnalyzer(
             and isinstance(res, Instance)
             and not res.args
             and not empty_tuple_index
-            and type_params is None
+            and not pep_695
         )
         if isinstance(res, ProperType) and isinstance(res, Instance):
             if not validate_instance(res, self.fail, empty_tuple_index):
