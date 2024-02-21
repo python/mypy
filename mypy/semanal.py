@@ -3829,7 +3829,7 @@ class SemanticAnalyzer(
                 if isinstance(tvar[1], TypeVarTupleExpr):
                     if have_type_var_tuple:
                         self.fail(
-                            "Can only use one type var tuple in type_params argument to TypeAliasType",
+                            "Can only use one TypeVarTuple in type_params argument to TypeAliasType",
                             base,
                             code=codes.TYPE_VAR,
                         )

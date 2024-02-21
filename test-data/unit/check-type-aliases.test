@@ -1152,7 +1152,7 @@ partially_generic1: Ta3[int] = {"a": 1}
 reveal_type(partially_generic1)  # N: Revealed type is "builtins.dict[Any, builtins.int]"
 partially_generic2: Ta3[int] = {1: "a"}  # E: Dict entry 0 has incompatible type "int": "str"; expected "Any": "int"
 
-Ta4 = TypeAliasType("Ta4", Tuple[Unpack[Ts]], type_params=(Ts, Ts1))  # E: Can only use one type var tuple in type_params argument to TypeAliasType
+Ta4 = TypeAliasType("Ta4", Tuple[Unpack[Ts]], type_params=(Ts, Ts1))  # E: Can only use one TypeVarTuple in type_params argument to TypeAliasType
 
 Ta5 = TypeAliasType("Ta5", Dict)  # Unlike old style aliases, this is not generic
 non_generic_dict: Ta5[int, str]  # E: Bad number of arguments for type alias, expected 0, given 2
