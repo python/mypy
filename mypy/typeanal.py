@@ -329,7 +329,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 if tvar_def is None:
                     if self.allow_unbound_tvars:
                         return t
-                    if self.has_type_params:
+                    if self.defining_alias and self.has_type_params:
                         msg = f'ParamSpec "{t.name}" is not included in type_params'
                     else:
                         msg = f'ParamSpec "{t.name}" is unbound'
@@ -386,7 +386,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 if tvar_def is None:
                     if self.allow_unbound_tvars:
                         return t
-                    if self.has_type_params:
+                    if self.defining_alias and self.has_type_params:
                         msg = f'TypeVarTuple "{t.name}" is not included in type_params'
                     else:
                         msg = f'TypeVarTuple "{t.name}" is unbound'
@@ -1258,6 +1258,19 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     AnyType(TypeOfAny.explicit), ret_type=ret_type, fallback=fallback
                 )
             return None
+        elif (
+            self.defining_alias
+            and self.has_type_params
+            and tvar_def not in self.allowed_alias_tvars
+        ):
+            self.fail(
+                f'ParamSpec "{callable_args.name}" is not included in type_params',
+                callable_args,
+                code=codes.VALID_TYPE,
+            )
+            return callable_with_ellipsis(
+                AnyType(TypeOfAny.special_form), ret_type=ret_type, fallback=fallback
+            )
 
         return CallableType(
             [
@@ -1439,6 +1452,16 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 and self.refers_to_full_names(arg, ("typing_extensions.Unpack", "typing.Unpack"))
                 or isinstance(arg, UnpackType)
             ):
+                if self.defining_alias and self.has_type_params:
+                    tvar_likes = self.find_type_var_likes(arg)
+                    for name, tvar_expr in tvar_likes:
+                        if (name, tvar_expr) not in self.allowed_alias_tvars:
+                            self.fail(
+                                f'Type variable "{name}" is not included in type_params',
+                                arglist,
+                                code=codes.VALID_TYPE,
+                            )
+                            return None
                 if seen_unpack:
                     # Multiple unpacks, preserve them, so we can give an error later.
                     if i == len(arglist.items) - 1 and not invalid_unpacks:

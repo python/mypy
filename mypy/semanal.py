@@ -3842,10 +3842,15 @@ class SemanticAnalyzer(
                     base,
                     code=codes.TYPE_VAR,
                 )
+                sym = self.lookup_qualified(base.name, base)
+                if sym and sym.fullname in ("typing.Unpack", "typing_extensions.Unpack"):
+                    self.note(
+                        "Don't Unpack type variables in type_params", base, code=codes.TYPE_VAR
+                    )
                 continue
             if tvar in declared_tvars:
                 self.fail(
-                    "Duplicate type variables in type_params argument to TypeAliasType",
+                    f'Duplicate type variable "{tvar[0]}" in type_params argument to TypeAliasType',
                     base,
                     code=codes.TYPE_VAR,
                 )

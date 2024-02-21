@@ -1143,6 +1143,8 @@ Ts = TypeVarTuple("Ts")
 Ts1 = TypeVarTuple("Ts1")
 P = ParamSpec("P")
 
+Ta0 = TypeAliasType("Ta0", int, type_params=(T, T))  # E: Duplicate type variable "T" in type_params argument to TypeAliasType
+
 Ta1 = TypeAliasType("Ta1", int, type_params=K)  # E: Tuple literal expected as the type_params argument to TypeAliasType
 
 Ta2 = TypeAliasType("Ta2", int, type_params=(None,))  # E: Free type variable expected in type_params argument to TypeAliasType
@@ -1170,20 +1172,53 @@ unbound_ps_alias: Ta7[[int], str]  # E: Bracketed expression "[...]" is not vali
                                    # E: Bad number of arguments for type alias, expected 0, given 2
 reveal_type(unbound_ps_alias)  # N: Revealed type is "__main__.G[Any, Any]"
 
-# TODO this does not work yet, it should report unbound P on the next line
-# Ta8 = TypeAliasType("Ta8", Callable[P, int])
-# unbound_ps_alias2: Ta8[int]
-# reveal_type(unbound_ps_alias2)
+Ta8 = TypeAliasType("Ta8", Callable[P, int])  # E: ParamSpec "P" is not included in type_params
+unbound_ps_alias2: Ta8[int]  # E: Bad number of arguments for type alias, expected 0, given 1
+reveal_type(unbound_ps_alias2)  # N: Revealed type is "def [P] (*Any, **Any) -> builtins.int"
+
+Ta9 = TypeAliasType("Ta9", Callable[P, T])  # E: ParamSpec "P" is not included in type_params \
+                                            # E: Type variable "T" is not included in type_params
+unbound_ps_alias3: Ta9[int, str]  # E: Bad number of arguments for type alias, expected 0, given 2
+reveal_type(unbound_ps_alias3)  # N: Revealed type is "def [P] (*Any, **Any) -> Any"
+
+Ta10 = TypeAliasType("Ta10", Callable[[Unpack[Ts]], str])  # E: Type variable "Ts" is not included in type_params
+unbound_tvt_alias2: Ta10[int]  # E: Bad number of arguments for type alias, expected 0, given 1
+reveal_type(unbound_tvt_alias2)  # N: Revealed type is "Any"
 
 [builtins fixtures/dict.pyi]
 
 [case testTypeAliasType312]
 # flags: --python-version 3.12
-from typing import Union, TypeAliasType
+from typing import Callable, TypeAliasType, TypeVar, TypeVarTuple
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
 
 TestType = TypeAliasType("TestType", int | str)
 x: TestType = 42
 y: TestType = 'a'
 z: TestType = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "Union[int, str]")
+
+BadAlias1 = TypeAliasType("BadAlias1", tuple[*Ts])  # E: TypeVarTuple "Ts" is not included in type_params
+ba1: BadAlias1[int]  # E: Bad number of arguments for type alias, expected 0, given 1
+reveal_type(ba1)  # N: Revealed type is "builtins.tuple[Any, ...]"
+
+BadAlias2 = TypeAliasType("BadAlias2", Callable[[*Ts], str])  # E: Type variable "Ts" is not included in type_params
+ba2: BadAlias2[int]  # E: Bad number of arguments for type alias, expected 0, given 1
+reveal_type(ba2)  # N: Revealed type is "Any"
+
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testTypeAliasTypeNoUnpackInTypeParams311]
+# flags: --python-version 3.11
+from typing_extensions import TypeAliasType, TypeVar, TypeVarTuple, Unpack
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+
+Ta1 = TypeAliasType("Ta1", None, type_params=(*Ts,))  # E: can't use starred expression here
+Ta2 = TypeAliasType("Ta2", None, type_params=(Unpack[Ts],))  # E: Free type variable expected in type_params argument to TypeAliasType \
+                                                             # N: Don't Unpack type variables in type_params
+
+[builtins fixtures/tuple.pyi]
