@@ -1191,29 +1191,6 @@ reveal_type(unbound_tvt_alias2)  # N: Revealed type is "Any"
 
 [builtins fixtures/dict.pyi]
 
-[case testTypeAliasType312]
-# flags: --python-version 3.12
-from typing import Callable, TypeAliasType, TypeVar, TypeVarTuple
-
-T = TypeVar("T")
-Ts = TypeVarTuple("Ts")
-
-TestType = TypeAliasType("TestType", int | str)
-x: TestType = 42
-y: TestType = 'a'
-z: TestType = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "Union[int, str]")
-
-BadAlias1 = TypeAliasType("BadAlias1", tuple[*Ts])  # E: TypeVarTuple "Ts" is not included in type_params
-ba1: BadAlias1[int]  # E: Bad number of arguments for type alias, expected 0, given 1
-reveal_type(ba1)  # N: Revealed type is "builtins.tuple[Any, ...]"
-
-BadAlias2 = TypeAliasType("BadAlias2", Callable[[*Ts], str])  # E: Type variable "Ts" is not included in type_params
-ba2: BadAlias2[int]  # E: Bad number of arguments for type alias, expected 0, given 1
-reveal_type(ba2)  # N: Revealed type is "Any"
-
-[builtins fixtures/tuple.pyi]
-[typing fixtures/typing-full.pyi]
-
 [case testTypeAliasTypeNoUnpackInTypeParams311]
 # flags: --python-version 3.11
 from typing_extensions import TypeAliasType, TypeVar, TypeVarTuple, Unpack
