@@ -1455,7 +1455,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 if self.defining_alias and self.has_type_params:
                     tvar_likes = self.find_type_var_likes(arg)
                     for name, tvar_expr in tvar_likes:
-                        if (name, tvar_expr) not in self.allowed_alias_tvars:
+                        tvar_def = self.tvar_scope.get_binding(name)
+                        if tvar_def is None or tvar_def not in self.allowed_alias_tvars:
                             self.fail(
                                 f'Type variable "{name}" is not included in type_params',
                                 arglist,

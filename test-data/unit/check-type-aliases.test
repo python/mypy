@@ -1115,9 +1115,13 @@ reveal_type(xi)  # N: Revealed type is "builtins.dict[builtins.int, builtins.str
 
 VariadicAlias1 = TypeAliasType("VariadicAlias1", Tuple[Unpack[Ts]], type_params=(Ts,))
 VariadicAlias2 = TypeAliasType("VariadicAlias2", Tuple[Unpack[Ts], K], type_params=(Ts, K))
+VariadicAlias3 = TypeAliasType("VariadicAlias3", Callable[[Unpack[Ts]], int], type_params=(Ts,))
 xv: VariadicAlias1[int, str] = (1, 'a')
 yv: VariadicAlias1[str, int] = (1, 'a')  # E: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type "Tuple[str, int]")
 zv: VariadicAlias2[int, str] = (1, 'a')
+def int_in_int_out(x: int) -> int: return x
+wv: VariadicAlias3[int] = int_in_int_out
+reveal_type(wv)  # N: Revealed type is "def (builtins.int) -> builtins.int"
 
 ParamAlias = TypeAliasType("ParamAlias", Callable[P, int], type_params=(P,))
 def f(x: str, y: float) -> int: return 1
