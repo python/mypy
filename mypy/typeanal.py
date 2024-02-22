@@ -1452,17 +1452,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 and self.refers_to_full_names(arg, ("typing_extensions.Unpack", "typing.Unpack"))
                 or isinstance(arg, UnpackType)
             ):
-                if self.defining_alias and self.has_type_params:
-                    tvar_likes = self.find_type_var_likes(arg)
-                    for name, tvar_expr in tvar_likes:
-                        tvar_def = self.tvar_scope.get_binding(name)
-                        if tvar_def is None or tvar_def not in self.allowed_alias_tvars:
-                            self.fail(
-                                f'Type variable "{name}" is not included in type_params',
-                                arglist,
-                                code=codes.VALID_TYPE,
-                            )
-                            return None
                 if seen_unpack:
                     # Multiple unpacks, preserve them, so we can give an error later.
                     if i == len(arglist.items) - 1 and not invalid_unpacks:
