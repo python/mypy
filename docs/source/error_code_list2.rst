@@ -558,10 +558,10 @@ because there's no way one can import it.
 
 .. _code-type-is-not-subtype:
 
-Check that TypeIs narrows types [type-is-not-subtype]
+Check that ``TypeIs`` narrows types [type-is-not-subtype]
 -----------------------------------------------------------------
 
-:pep:`742` requires that when a ``TypeIs`` is used, the narrowed
+:pep:`742` requires that when ``TypeIs`` is used, the narrowed
 type must be a subtype of the original type::
 
     from typing_extensions import TypeIs

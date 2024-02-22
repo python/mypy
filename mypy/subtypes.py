@@ -697,7 +697,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 # They are not compatible. See https://github.com/python/mypy/issues/11307
                 return False
             elif right.type_is is not None and left.type_is is None:
-                # Similarly, if one function has typeNarrower and the other does not,
+                # Similarly, if one function has `TypeIs` and the other does not,
                 # they are not compatible.
                 return False
             return is_callable_compatible(
