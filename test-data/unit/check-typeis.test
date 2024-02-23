@@ -240,14 +240,14 @@ def filter(f: Callable[[T], TypeIs[R]], it: Iterable[T]) -> Iterator[R]: ...
 def filter(f: Callable[[T], bool], it: Iterable[T]) -> Iterator[T]: ...
 def filter(*args): pass
 
-def is_int_typeguard(a: object) -> TypeIs[int]: pass
+def is_int_typeis(a: object) -> TypeIs[int]: pass
 def is_int_bool(a: object) -> bool: pass
 
 def main(a: List[Optional[int]]) -> None:
     bb = filter(lambda x: x is not None, a)
     reveal_type(bb)  # N: Revealed type is "typing.Iterator[Union[builtins.int, None]]"
     # Also, if you replace 'bool' with 'Any' in the second overload, bb is Iterator[Any]
-    cc = filter(is_int_typeguard, a)
+    cc = filter(is_int_typeis, a)
     reveal_type(cc)  # N: Revealed type is "typing.Iterator[builtins.int]"
     dd = filter(is_int_bool, a)
     reveal_type(dd)  # N: Revealed type is "typing.Iterator[Union[builtins.int, None]]"
@@ -287,18 +287,23 @@ from typing import Any
 from typing_extensions import TypeIs
 def isclass(a: object) -> bool:
     pass
-def ismethod(a: object) -> TypeIs[float]:
+def isfloat(a: object) -> TypeIs[float]:
     pass
-def isfunction(a: object) -> TypeIs[str]:
+def isstr(a: object) -> TypeIs[str]:
     pass
-def isclassmethod(obj: Any) -> bool:
-    if ismethod(obj) and obj.__self__ is not None and isclass(obj.__self__):  # E: "float" has no attribute "__self__"
-        return True
 
-    return False
-def coverage(obj: Any) -> bool:
-    if not (ismethod(obj) or isfunction(obj)):
+def coverage1(obj: Any) -> bool:
+    if isfloat(obj) and obj.__self__ is not None and isclass(obj.__self__):  # E: "float" has no attribute "__self__"
+        reveal_type(obj)  # N: Revealed type is "builtins.float"
         return True
+    reveal_type(obj)  # N: Revealed type is "Any"
+    return False
+
+def coverage2(obj: Any) -> bool:
+    if not (isfloat(obj) or isstr(obj)):
+        reveal_type(obj)  # N: Revealed type is "Any"
+        return True
+    reveal_type(obj)  # N: Revealed type is "Union[builtins.float, builtins.str]"
     return False
 [builtins fixtures/classmethod.pyi]
 
@@ -431,7 +436,7 @@ def foobar(x: object):
         return
     reveal_type(x)  # N: Revealed type is "__main__.<subclass of "Foo" and "Bar">"
 
-def foobar_typeguard(x: object):
+def foobar_typeis(x: object):
     if not is_foo(x) or not is_bar(x):
         return
     reveal_type(x)  # N: Revealed type is "__main__.<subclass of "Foo" and "Bar">"
@@ -443,12 +448,12 @@ from typing_extensions import TypeIs
 
 def accepts_bool(f: Callable[[object], bool]): pass
 
-def with_bool_typeguard(o: object) -> TypeIs[bool]: pass
-def with_str_typeguard(o: object) -> TypeIs[str]: pass
+def with_bool_typeis(o: object) -> TypeIs[bool]: pass
+def with_str_typeis(o: object) -> TypeIs[str]: pass
 def with_bool(o: object) -> bool: pass
 
-accepts_bool(with_bool_typeguard)
-accepts_bool(with_str_typeguard)
+accepts_bool(with_bool_typeis)
+accepts_bool(with_str_typeis)
 accepts_bool(with_bool)
 [builtins fixtures/tuple.pyi]
 
@@ -456,17 +461,17 @@ accepts_bool(with_bool)
 from typing import Callable
 from typing_extensions import TypeIs
 
-def accepts_typeguard(f: Callable[[object], TypeIs[bool]]): pass
-def different_typeguard(f: Callable[[object], TypeIs[str]]): pass
+def accepts_typeis(f: Callable[[object], TypeIs[bool]]): pass
+def different_typeis(f: Callable[[object], TypeIs[str]]): pass
 
-def with_typeguard(o: object) -> TypeIs[bool]: pass
+def with_typeis(o: object) -> TypeIs[bool]: pass
 def with_bool(o: object) -> bool: pass
 
-accepts_typeguard(with_typeguard)
-accepts_typeguard(with_bool)  # E: Argument 1 to "accepts_typeguard" has incompatible type "Callable[[object], bool]"; expected "Callable[[object], TypeIs[bool]]"
+accepts_typeis(with_typeis)
+accepts_typeis(with_bool)  # E: Argument 1 to "accepts_typeis" has incompatible type "Callable[[object], bool]"; expected "Callable[[object], TypeIs[bool]]"
 
-different_typeguard(with_typeguard)  # E: Argument 1 to "different_typeguard" has incompatible type "Callable[[object], TypeIs[bool]]"; expected "Callable[[object], TypeIs[str]]"
-different_typeguard(with_bool)  # E: Argument 1 to "different_typeguard" has incompatible type "Callable[[object], bool]"; expected "Callable[[object], TypeIs[str]]"
+different_typeis(with_typeis)  # E: Argument 1 to "different_typeis" has incompatible type "Callable[[object], TypeIs[bool]]"; expected "Callable[[object], TypeIs[str]]"
+different_typeis(with_bool)  # E: Argument 1 to "different_typeis" has incompatible type "Callable[[object], bool]"; expected "Callable[[object], TypeIs[str]]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsAsGenericFunctionArg]
@@ -475,15 +480,15 @@ from typing_extensions import TypeIs
 
 T = TypeVar('T')
 
-def accepts_typeguard(f: Callable[[object], TypeIs[T]]): pass
+def accepts_typeis(f: Callable[[object], TypeIs[T]]): pass
 
-def with_bool_typeguard(o: object) -> TypeIs[bool]: pass
-def with_str_typeguard(o: object) -> TypeIs[str]: pass
+def with_bool_typeis(o: object) -> TypeIs[bool]: pass
+def with_str_typeis(o: object) -> TypeIs[str]: pass
 def with_bool(o: object) -> bool: pass
 
-accepts_typeguard(with_bool_typeguard)
-accepts_typeguard(with_str_typeguard)
-accepts_typeguard(with_bool)  # E: Argument 1 to "accepts_typeguard" has incompatible type "Callable[[object], bool]"; expected "Callable[[object], TypeIs[bool]]"
+accepts_typeis(with_bool_typeis)
+accepts_typeis(with_str_typeis)
+accepts_typeis(with_bool)  # E: Argument 1 to "accepts_typeis" has incompatible type "Callable[[object], bool]"; expected "Callable[[object], TypeIs[Never]]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsAsOverloadedFunctionArg]
@@ -500,10 +505,10 @@ class filter(Generic[_T]):
     def __init__(self, function: Callable[[_T], Any]) -> None: pass
     def __init__(self, function): pass
 
-def is_int_typeguard(a: object) -> TypeIs[int]: pass
+def is_int_typeis(a: object) -> TypeIs[int]: pass
 def returns_bool(a: object) -> bool: pass
 
-reveal_type(filter(is_int_typeguard))  # N: Revealed type is "__main__.filter[builtins.int]"
+reveal_type(filter(is_int_typeis))  # N: Revealed type is "__main__.filter[builtins.int]"
 reveal_type(filter(returns_bool))  # N: Revealed type is "__main__.filter[builtins.object]"
 [builtins fixtures/tuple.pyi]
 
@@ -515,15 +520,15 @@ class A: pass
 class B(A): pass
 class C(B): pass
 
-def accepts_typeguard(f: Callable[[object], TypeIs[B]]): pass
+def accepts_typeis(f: Callable[[object], TypeIs[B]]): pass
 
-def with_typeguard_a(o: object) -> TypeIs[A]: pass
-def with_typeguard_b(o: object) -> TypeIs[B]: pass
-def with_typeguard_c(o: object) -> TypeIs[C]: pass
+def with_typeis_a(o: object) -> TypeIs[A]: pass
+def with_typeis_b(o: object) -> TypeIs[B]: pass
+def with_typeis_c(o: object) -> TypeIs[C]: pass
 
-accepts_typeguard(with_typeguard_a)  # E: Argument 1 to "accepts_typeguard" has incompatible type "Callable[[object], TypeIs[A]]"; expected "Callable[[object], TypeIs[B]]"
-accepts_typeguard(with_typeguard_b)
-accepts_typeguard(with_typeguard_c)  # E: Argument 1 to "accepts_typeguard" has incompatible type "Callable[[object], TypeIs[C]]"; expected "Callable[[object], TypeIs[B]]"
+accepts_typeis(with_typeis_a)  # E: Argument 1 to "accepts_typeis" has incompatible type "Callable[[object], TypeIs[A]]"; expected "Callable[[object], TypeIs[B]]"
+accepts_typeis(with_typeis_b)
+accepts_typeis(with_typeis_c)  # E: Argument 1 to "accepts_typeis" has incompatible type "Callable[[object], TypeIs[C]]"; expected "Callable[[object], TypeIs[B]]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsWithIdentityGeneric]
@@ -580,18 +585,18 @@ def func(names: Tuple[str, ...]):
 from typing_extensions import TypeIs
 
 class Z:
-    def typeguard1(self, *, x: object) -> TypeIs[int]:  # E: TypeIs functions must have a positional argument
+    def typeis1(self, *, x: object) -> TypeIs[int]:  # E: TypeIs functions must have a positional argument
         ...
 
     @staticmethod
-    def typeguard2(x: object) -> TypeIs[int]:
+    def typeis2(x: object) -> TypeIs[int]:
         ...
 
     @staticmethod
-    def typeguard3(*, x: object) -> TypeIs[int]:  # E: TypeIs functions must have a positional argument
+    def typeis3(*, x: object) -> TypeIs[int]:  # E: TypeIs functions must have a positional argument
         ...
 
-def bad_typeguard(*, x: object) -> TypeIs[int]:  # E: TypeIs functions must have a positional argument
+def bad_typeis(*, x: object) -> TypeIs[int]:  # E: TypeIs functions must have a positional argument
     ...
 
 [builtins fixtures/classmethod.pyi]
@@ -600,17 +605,17 @@ def bad_typeguard(*, x: object) -> TypeIs[int]:  # E: TypeIs functions must have
 from typing_extensions import TypeIs
 
 class Z:
-    def typeguard(self, x: object) -> TypeIs[int]:
+    def typeis(self, x: object) -> TypeIs[int]:
         ...
 
-def typeguard(x: object) -> TypeIs[int]:
+def typeis(x: object) -> TypeIs[int]:
     ...
 
 n: object
-if typeguard(x=n):
+if typeis(x=n):
     reveal_type(n)  # N: Revealed type is "builtins.int"
 
-if Z().typeguard(x=n):
+if Z().typeis(x=n):
     reveal_type(n)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
@@ -619,13 +624,13 @@ from typing_extensions import TypeIs
 
 class Y:
     @staticmethod
-    def typeguard(h: object) -> TypeIs[int]:
+    def typeis(h: object) -> TypeIs[int]:
         ...
 
 x: object
-if Y().typeguard(x):
+if Y().typeis(x):
     reveal_type(x)  # N: Revealed type is "builtins.int"
-if Y.typeguard(x):
+if Y.typeis(x):
     reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/classmethod.pyi]
 
@@ -634,27 +639,27 @@ from typing import overload, Union
 from typing_extensions import TypeIs
 
 @overload
-def typeguard(x: object, y: str) -> TypeIs[str]:
+def typeis(x: object, y: str) -> TypeIs[str]:
     ...
 
 @overload
-def typeguard(x: object, y: int) -> TypeIs[int]:
+def typeis(x: object, y: int) -> TypeIs[int]:
     ...
 
-def typeguard(x: object, y: Union[int, str]) -> Union[TypeIs[int], TypeIs[str]]:
+def typeis(x: object, y: Union[int, str]) -> Union[TypeIs[int], TypeIs[str]]:
     ...
 
 x: object
-if typeguard(x=x, y=42):
+if typeis(x=x, y=42):
     reveal_type(x)  # N: Revealed type is "builtins.int"
 
-if typeguard(y=42, x=x):
+if typeis(y=42, x=x):
     reveal_type(x)  # N: Revealed type is "builtins.int"
 
-if typeguard(x=x, y="42"):
+if typeis(x=x, y="42"):
     reveal_type(x)  # N: Revealed type is "builtins.str"
 
-if typeguard(y="42", x=x):
+if typeis(y="42", x=x):
     reveal_type(x)  # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
 
@@ -726,3 +731,26 @@ class NarrowHolder:
 
 
 [builtins fixtures/classmethod.pyi]
+
+[case testTypeIsTypeGuardNoSubtyping]
+from typing_extensions import TypeGuard, TypeIs
+from typing import Callable
+
+def accept_typeis(x: Callable[[object], TypeIs[str]]):
+    pass
+
+def accept_typeguard(x: Callable[[object], TypeGuard[str]]):
+    pass
+
+def typeis(x: object) -> TypeIs[str]:
+    pass
+
+def typeguard(x: object) -> TypeGuard[str]:
+    pass
+
+accept_typeis(typeis)
+accept_typeis(typeguard)  # E: Argument 1 to "accept_typeis" has incompatible type "Callable[[object], TypeGuard[str]]"; expected "Callable[[object], TypeIs[str]]"
+accept_typeguard(typeis)  # E: Argument 1 to "accept_typeguard" has incompatible type "Callable[[object], TypeIs[str]]"; expected "Callable[[object], TypeGuard[str]]"
+accept_typeguard(typeguard)
+
+[builtins fixtures/tuple.pyi]
