@@ -149,7 +149,7 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
         args=actual_args,
         arg_kinds=actual_arg_kinds,
         arg_names=actual_arg_names,
-        context=ctx.context,
+        context=defaulted,
     )
     bound = get_proper_type(bound)
     if not isinstance(bound, CallableType):
