@@ -163,12 +163,13 @@ class DefaultPlugin(Plugin):
     def get_class_decorator_hook_2(
         self, fullname: str
     ) -> Callable[[ClassDefContext], bool] | None:
-        from mypy.plugins import attrs, dataclasses, functools
+        import mypy.plugins.functools
+        from mypy.plugins import attrs, dataclasses
 
         if fullname in dataclasses.dataclass_makers:
             return dataclasses.dataclass_class_maker_callback
-        elif fullname in functools.functools_total_ordering_makers:
-            return functools.functools_total_ordering_maker_callback
+        elif fullname in mypy.plugins.functools.functools_total_ordering_makers:
+            return mypy.plugins.functools.functools_total_ordering_maker_callback
         elif fullname in attrs.attr_class_makers:
             return attrs.attr_class_maker_callback
         elif fullname in attrs.attr_dataclass_makers:
