@@ -230,3 +230,12 @@ p3 = functools.partial(bar, 1)
 reveal_type(p3(2))  # N: Revealed type is "builtins.int"
 reveal_type(p3("a"))  # N: Revealed type is "builtins.str"
 [builtins fixtures/dict.pyi]
+
+[case testFunctoolsPartialTypeVarTuple]
+import functools
+import typing
+Ts = typing.TypeVarTuple("Ts")
+def foo(fn: typing.Callable[[typing.Unpack[Ts]], None], /, *arg: typing.Unpack[Ts], kwarg: str) -> None: ...
+# just test that this doesn't crash
+functools.partial(foo, kwarg="asdf")
+[builtins fixtures/dict.pyi]

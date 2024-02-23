@@ -169,9 +169,14 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
     # We need to fully apply any positional arguments (they cannot be respecified)
     # However, keyword arguments can be respecified, so just give them a default
     for i, actuals in enumerate(formal_to_actual):
-        arg_type = bound.arg_types[i]
-        if isinstance(get_proper_type(arg_type), UninhabitedType):
-            arg_type = fn_type.arg_types[i]  # bit of a hack
+        if len(bound.arg_types) == len(fn_type.arg_types):
+            arg_type = bound.arg_types[i]
+            if isinstance(get_proper_type(arg_type), UninhabitedType):
+                arg_type = fn_type.arg_types[i]  # bit of a hack
+        else:
+            # TODO: I assume that bound and fn_type have the same arguments. It appears this isn't
+            # true when PEP 646 things are happening. See testFunctoolsPartialTypeVarTuple
+            arg_type = fn_type.arg_types[i]
 
         if not actuals or fn_type.arg_kinds[i] in (ArgKind.ARG_STAR, ArgKind.ARG_STAR2):
             partial_kinds.append(fn_type.arg_kinds[i])
