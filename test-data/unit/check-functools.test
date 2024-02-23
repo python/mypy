@@ -144,3 +144,89 @@ def f(d: D[C]) -> None:
 
 d: D[int]  # E: Type argument "int" of "D" must be a subtype of "C"
 [builtins fixtures/dict.pyi]
+
+[case testFunctoolsPartialBasic]
+from typing import Callable
+import functools
+
+def foo(a: int, b: str, c: int = 5) -> int: ...  # N: "foo" defined here
+
+p1 = functools.partial(foo)
+p1(1, "a", 3)  # OK
+p1(1, "a", c=3)  # OK
+p1(1, b="a", c=3)  # OK
+
+def takes_callable_int(f: Callable[..., int]) -> None: ...
+def takes_callable_str(f: Callable[..., str]) -> None: ...
+takes_callable_int(p1)
+takes_callable_str(p1)  # E: Argument 1 to "takes_callable_str" has incompatible type "partial[int]"; expected "Callable[..., str]" \
+                        # N: "partial[int].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], int]"
+
+p2 = functools.partial(foo, 1)
+p2("a")  # OK
+p2("a", 3)  # OK
+p2("a", c=3)  # OK
+p2(1, 3)  # E: Argument 1 to "foo" has incompatible type "int"; expected "str"
+p2(1, "a", 3)  # E: Too many arguments for "foo" \
+               # E: Argument 1 to "foo" has incompatible type "int"; expected "str" \
+               # E: Argument 2 to "foo" has incompatible type "str"; expected "int"
+p2(a=1, b="a", c=3)  # E: Unexpected keyword argument "a" for "foo"
+
+p3 = functools.partial(foo, b="a")
+p3(1)  # OK
+p3(1, c=3)  # OK
+p3(a=1)  # OK
+p3(1, b="a", c=3)  # OK, keywords can be clobbered
+p3(1, 3)  # E: Too many positional arguments for "foo" \
+          # E: Argument 2 to "foo" has incompatible type "int"; expected "str"
+
+functools.partial(foo, "a")  # E: Argument 1 to "foo" has incompatible type "str"; expected "int"
+functools.partial(foo, b=1)  # E: Argument 1 to "foo" has incompatible type "int"; expected "str"
+functools.partial(1)  # E: Argument 1 to "partial" has incompatible type "int"; expected "Callable[..., Never]"
+[builtins fixtures/dict.pyi]
+
+[case testFunctoolsPartialStar]
+import functools
+
+def foo(a: int, b: str, *args: int, d: str, **kwargs: int) -> int: ...
+
+p1 = functools.partial(foo, 1, d="a", x=9)
+p1("a", 2, 3, 4)  # OK
+p1("a", 2, 3, 4, d="a")  # OK
+p1("a", 2, 3, 4, "a")  # E: Argument 5 to "foo" has incompatible type "str"; expected "int"
+p1("a", 2, 3, 4, x="a")  # E: Argument "x" to "foo" has incompatible type "str"; expected "int"
+
+p2 = functools.partial(foo, 1, "a")
+p2(2, 3, 4, d="a")  # OK
+p2("a")  # E: Missing named argument "d" for "foo" \
+         # E: Argument 1 to "foo" has incompatible type "str"; expected "int"
+p2(2, 3, 4)  # E: Missing named argument "d" for "foo"
+
+functools.partial(foo, 1, "a", "b", "c", d="a")  # E: Argument 3 to "foo" has incompatible type "str"; expected "int" \
+                                                 # E: Argument 4 to "foo" has incompatible type "str"; expected "int"
+
+[builtins fixtures/dict.pyi]
+
+[case testFunctoolsPartialGeneric]
+from typing import TypeVar
+import functools
+
+T = TypeVar("T")
+U = TypeVar("U")
+
+def foo(a: T, b: T) -> T: ...
+
+p1 = functools.partial(foo, 1)
+reveal_type(p1(2))  # N: Revealed type is "builtins.int"
+p1("a")  # E: Argument 1 to "foo" has incompatible type "str"; expected "int"
+
+p2 = functools.partial(foo, "a")
+p2(1)  # E: Argument 1 to "foo" has incompatible type "int"; expected "str"
+reveal_type(p2("a"))  # N: Revealed type is "builtins.str"
+
+def bar(a: T, b: U) -> U: ...
+
+p3 = functools.partial(bar, 1)
+reveal_type(p3(2))  # N: Revealed type is "builtins.int"
+reveal_type(p3("a"))  # N: Revealed type is "builtins.str"
+[builtins fixtures/dict.pyi]

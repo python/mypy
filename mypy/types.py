@@ -1495,13 +1495,14 @@ class Instance(ProperType):
         last_known_value: Bogus[LiteralType | None] = _dummy,
     ) -> Instance:
         new = Instance(
-            self.type,
-            args if args is not _dummy else self.args,
-            self.line,
-            self.column,
+            typ=self.type,
+            args=args if args is not _dummy else self.args,
+            line=self.line,
+            column=self.column,
             last_known_value=(
                 last_known_value if last_known_value is not _dummy else self.last_known_value
             ),
+            extra_attrs=self.extra_attrs,
         )
         # We intentionally don't copy the extra_attrs here, so they will be erased.
         new.can_be_true = self.can_be_true

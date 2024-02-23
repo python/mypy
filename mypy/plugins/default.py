@@ -47,6 +47,10 @@ class DefaultPlugin(Plugin):
             return ctypes.array_constructor_callback
         elif fullname == "functools.singledispatch":
             return singledispatch.create_singledispatch_function_callback
+        elif fullname == "functools.partial":
+            import mypy.plugins.functools
+
+            return mypy.plugins.functools.partial_new_callback
 
         return None
 
@@ -118,6 +122,10 @@ class DefaultPlugin(Plugin):
             return singledispatch.singledispatch_register_callback
         elif fullname == singledispatch.REGISTER_CALLABLE_CALL_METHOD:
             return singledispatch.call_singledispatch_function_after_register_argument
+        elif fullname == "functools.partial.__call__":
+            import mypy.plugins.functools
+
+            return mypy.plugins.functools.partial_call_callback
         return None
 
     def get_attribute_hook(self, fullname: str) -> Callable[[AttributeContext], Type] | None:
