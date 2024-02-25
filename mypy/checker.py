@@ -526,6 +526,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # print("XXX in pass %d, class %s, function %s" %
                     #       (self.pass_num, type_name, node.fullname or node.name))
                     done.add(node)
+                    # Alias context managers to work around https://github.com/python/cpython/issues/115881
                     tscope_class_ctx = (
                         self.tscope.class_scope(active_typeinfo)
                         if active_typeinfo
