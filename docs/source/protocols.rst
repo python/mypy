@@ -8,7 +8,7 @@ compatible as types: nominal subtyping and structural subtyping.
 
 *Nominal* subtyping is strictly based on the class hierarchy. If class ``Dog``
 inherits class ``Animal``, it's a subtype of ``Animal``. Instances of ``Dog``
-can be used when ``Animal`` instances are expected. This form of subtyping 
+can be used when ``Animal`` instances are expected. This form of subtyping
 is what Python's type system predominantly uses: it's easy to
 understand and produces clear and concise error messages, and matches how the
 native :py:func:`isinstance <isinstance>` check works -- based on class
