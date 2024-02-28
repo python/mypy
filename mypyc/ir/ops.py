@@ -576,6 +576,81 @@ class MethodCall(RegisterOp):
         return visitor.visit_method_call(self)
 
 
+class PrimitiveDescription:
+    """Description of a primitive op.
+
+    Primitive get lowered into lower-level ops before code generation.
+
+    They have a fixed number of parameters, some of which can be
+    compile-types (type parameters). The return type can be constant
+    or inferred from a type argument.
+    """
+
+    def __init__(
+            self,
+            name: str,
+            arg_types: list[RType],
+            return_type: RType, # TODO: What about generic?
+            var_arg_type: RType | None,
+            truncated_type: RType | None,
+            c_function_name: str | None,
+            error_kind: int,
+            steals: StealsDescription,
+            is_borrowed: bool,
+            ordering: list[int] | None,
+            extra_int_constants: list[tuple[int, RType]],
+            priority: int,
+            ) -> None:
+        # Each primitive much have a distint name, but otherwise they are arbitrary.
+        self.name: Final = name
+        # If None, the argument is a compile-time type (RType).
+        self.arg_types: Final = arg_types
+        # Result type; an int index i refers to the compile-type at arg_types[i].
+        # This allows simple type-safe generic operations.
+        self.return_type: Final = return_type
+        self.var_arg_type: Final = var_arg_type
+        self.truncated_type: Final = truncated_type
+        # If non-None, this will map to a call of a C helper function; if None,
+        # this will be a custom handler function that gets invoked during the lowering
+        # pass
+        self.c_function_name: Final = c_function_name
+        self.error_kind: Final = error_kind
+        self.steals: Final = steals
+        self.is_borrowed: Final = is_borrowed
+        self.ordering: Final = ordering
+        self.extra_int_constants: Final = extra_int_constants
+        self.priority: Final = priority
+
+    def __repr__(self) -> str:
+        return f"<PrimitiveDescription {self.name}>"
+
+
+class PrimitiveOp(RegisterOp):
+    """A higher-level primitive operation.
+
+    All of these have special compiler support. These will be *lowered*
+    to lower-level ops before code generation and reference counting
+    op insertion.
+    """
+
+    def __init__(
+            self,
+            args: list[Value],
+            desc: PrimitiveDescription,
+            type_args: list[RType] | None = None,
+            line: int = -1,
+    ) -> None:
+        self.args = args
+        self.desc = desc
+        self.type_args = type_args
+
+    def sources(self) -> list[Value]:
+        return self.args
+
+    def accept(self, visitor: OpVisitor[T]) -> T:
+        return visitor.visit_primitive_op(self)
+
+
 class LoadErrorValue(RegisterOp):
     """Load an error value.
 
@@ -1446,7 +1521,8 @@ class Unborrow(RegisterOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, src: Value) -> None:
+    def __init__(self, src: Value, line: int = -1) -> None:
+        super().__init__(line)
         assert src.is_borrowed
         self.src = src
         self.type = src.type
@@ -1553,6 +1629,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_call_c(self, op: CallC) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_primitive_op(self, op: PrimitiveOp) -> T:
         raise NotImplementedError
 
     @abstractmethod

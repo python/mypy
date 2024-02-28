@@ -756,7 +756,7 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
         set_literal = precompute_set_literal(builder, e.operands[1])
         if set_literal is not None:
             lhs = e.operands[0]
-            result = builder.builder.call_c(
+            result = builder.builder.primitive_op(
                 set_in_op, [builder.accept(lhs), set_literal], e.line, bool_rprimitive
             )
             if first_op == "not in":

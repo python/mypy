@@ -61,6 +61,7 @@ from mypyc.transform.exceptions import insert_exception_handling
 from mypyc.transform.flag_elimination import do_flag_elimination
 from mypyc.transform.refcount import insert_ref_count_opcodes
 from mypyc.transform.uninit import insert_uninit_checks
+from mypyc.transform.lower import lower_ir
 
 # All of the modules being compiled are divided into "groups". A group
 # is a set of modules that are placed into the same shared library.
@@ -235,6 +236,8 @@ def compile_scc_to_ir(
             insert_exception_handling(fn)
             # Insert refcount handling.
             insert_ref_count_opcodes(fn)
+            # Switch to lower abstraction level IR.
+            lower_ir(fn)
             # Perform optimizations.
             do_copy_propagation(fn, compiler_options)
             do_flag_elimination(fn, compiler_options)

@@ -63,6 +63,8 @@ from mypyc.ir.ops import (
     LoadStatic,
     MethodCall,
     Op,
+    PrimitiveDescription,
+    PrimitiveOp,
     RaiseStandardError,
     Register,
     SetMem,
@@ -1313,7 +1315,7 @@ class LowLevelIRBuilder:
             return self.compare_strings(lreg, rreg, op, line)
         if is_bytes_rprimitive(ltype) and is_bytes_rprimitive(rtype) and op in ("==", "!="):
             return self.compare_bytes(lreg, rreg, op, line)
-        if is_tagged(ltype) and is_tagged(rtype) and op in int_comparison_op_mapping:
+        if is_tagged(ltype) and is_tagged(rtype) and op in int_comparison_op_mapping and op not in ("==", "!="):
             return self.compare_tagged(lreg, rreg, op, line)
         if is_bool_rprimitive(ltype) and is_bool_rprimitive(rtype) and op in BOOL_BINARY_OPS:
             if op in ComparisonOp.signed_ops:
@@ -1412,8 +1414,8 @@ class LowLevelIRBuilder:
                 if base_op in float_op_to_id:
                     return self.float_op(lreg, rreg, base_op, line)
 
-        call_c_ops_candidates = binary_ops.get(op, [])
-        target = self.matching_call_c(call_c_ops_candidates, [lreg, rreg], line)
+        primitive_ops_candidates = binary_ops.get(op, [])
+        target = self.matching_primitive_op(primitive_ops_candidates, [lreg, rreg], line)
         assert target, "Unsupported binary operation: %s" % op
         return target
 
@@ -1984,6 +1986,95 @@ class LowLevelIRBuilder:
         if matching:
             target = self.call_c(matching, args, line, result_type)
             return target
+        return None
+
+    def primitive_op(
+        self,
+        desc: PrimitiveDescription,
+        args: list[Value],
+        line: int,
+        result_type: RType | None = None,
+    ) -> Value:
+        """Call function using C/native calling convention (not a Python callable)."""
+        if desc.c_function_name:
+            c_desc = CFunctionDescription(
+                desc.name,
+                desc.arg_types,
+                desc.return_type,
+                desc.var_arg_type,
+                desc.truncated_type,
+                desc.c_function_name,
+                desc.error_kind,
+                desc.steals,
+                desc.is_borrowed,
+                desc.ordering,
+                desc.extra_int_constants,
+                desc.priority,
+            )
+            return self.call_c(c_desc, args, line, result_type)
+
+        # Handle void function via singleton RVoid instance
+        coerced = []
+        # Coerce fixed number arguments
+        for i in range(min(len(args), len(desc.arg_types))):
+            formal_type = desc.arg_types[i]
+            arg = args[i]
+            assert formal_type is not None  # TODO
+            arg = self.coerce(arg, formal_type, line)
+            coerced.append(arg)
+        assert desc.ordering is None
+        assert desc.var_arg_type is None
+        assert not desc.extra_int_constants
+        target = self.add(PrimitiveOp(coerced, desc, line=line))
+        if desc.is_borrowed:
+            # If the result is borrowed, force the arguments to be
+            # kept alive afterwards, as otherwise the result might be
+            # immediately freed, at the risk of a dangling pointer.
+            for arg in coerced:
+                if not isinstance(arg, (Integer, LoadLiteral)):
+                    self.keep_alives.append(arg)
+        if desc.error_kind == ERR_NEG_INT:
+            comp = ComparisonOp(target, Integer(0, desc.return_type, line), ComparisonOp.SGE, line)
+            comp.error_kind = ERR_FALSE
+            self.add(comp)
+
+        assert desc.truncated_type is None
+        result = target
+        if result_type and not is_runtime_subtype(result.type, result_type):
+            if is_none_rprimitive(result_type):
+                # Special case None return. The actual result may actually be a bool
+                # and so we can't just coerce it.
+                result = self.none()
+            else:
+                result = self.coerce(result, result_type, line, can_borrow=desc.is_borrowed)
+        return result
+
+    def matching_primitive_op(
+        self,
+        candidates: list[PrimitiveDescription],
+        args: list[Value],
+        line: int,
+        result_type: RType | None = None,
+        can_borrow: bool = False,
+    ) -> Value | None:
+        matching: PrimitiveDescription | None = None
+        for desc in candidates:
+            if len(desc.arg_types) != len(args):
+                continue
+            if all(
+                #formal is not None and # TODO
+                is_subtype(actual.type, formal) for actual, formal in zip(args, desc.arg_types)
+            ) and (not desc.is_borrowed or can_borrow):
+                if matching:
+                    assert matching.priority != desc.priority, "Ambiguous:\n1) {}\n2) {}".format(
+                        matching, desc
+                    )
+                    if desc.priority > matching.priority:
+                        matching = desc
+                else:
+                    matching = desc
+        if matching:
+            return self.primitive_op(matching, args, line=line)
         return None
 
     def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int = -1) -> Value:

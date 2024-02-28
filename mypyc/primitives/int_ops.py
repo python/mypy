@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import NamedTuple
 
-from mypyc.ir.ops import ERR_ALWAYS, ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER, ComparisonOp
+from mypyc.ir.ops import ERR_ALWAYS, ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER, ComparisonOp, PrimitiveDescription
 from mypyc.ir.rtypes import (
     RType,
     bit_rprimitive,
@@ -98,6 +98,34 @@ function_op(
     c_function_name="CPyBool_Str",
     error_kind=ERR_MAGIC,
     priority=3,
+)
+
+
+def int_binary_primitive(
+    op: str,
+    primitive_name: str,
+    return_type: RType = int_rprimitive,
+    error_kind: int = ERR_NEVER,
+) -> PrimitiveDescription:
+    return binary_op(
+        name=op,
+        arg_types=[int_rprimitive, int_rprimitive],
+        return_type=return_type,
+        primitive_name=primitive_name,
+        error_kind=error_kind,
+    )
+
+
+int_eq = int_binary_primitive(op="==", primitive_name="int_eq", return_type=bool_rprimitive)
+int_ne = int_binary_primitive(op="!=", primitive_name="int_ne", return_type=bool_rprimitive)
+
+
+binary_op(
+    name="!=",
+    arg_types=[int_rprimitive, int_rprimitive],
+    return_type=bool_rprimitive,
+    primitive_name="int_ne",
+    error_kind=ERR_NEVER,
 )
 
 
