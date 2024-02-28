@@ -45,6 +45,9 @@ from posixpath import (
 from typing import AnyStr, overload
 from typing_extensions import LiteralString
 
+if sys.version_info >= (3, 12):
+    from posixpath import isjunction as isjunction, splitroot as splitroot
+
 __all__ = [
     "normcase",
     "isabs",
@@ -85,6 +88,8 @@ __all__ = [
     "samestat",
     "commonpath",
 ]
+if sys.version_info >= (3, 12):
+    __all__ += ["isjunction", "splitroot"]
 
 altsep: LiteralString
 

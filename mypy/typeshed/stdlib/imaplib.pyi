@@ -9,8 +9,8 @@ from re import Pattern
 from socket import socket as _socket
 from ssl import SSLContext, SSLSocket
 from types import TracebackType
-from typing import IO, Any, SupportsAbs, SupportsInt
-from typing_extensions import Literal, Self, TypeAlias
+from typing import IO, Any, Literal, SupportsAbs, SupportsInt
+from typing_extensions import Self, TypeAlias
 
 __all__ = ["IMAP4", "IMAP4_stream", "Internaldate2tuple", "Int2AP", "ParseFlags", "Time2Internaldate", "IMAP4_SSL"]
 
@@ -108,9 +108,14 @@ class IMAP4:
     def print_log(self) -> None: ...
 
 class IMAP4_SSL(IMAP4):
-    keyfile: str
-    certfile: str
-    if sys.version_info >= (3, 9):
+    if sys.version_info < (3, 12):
+        keyfile: str
+        certfile: str
+    if sys.version_info >= (3, 12):
+        def __init__(
+            self, host: str = "", port: int = 993, *, ssl_context: SSLContext | None = None, timeout: float | None = None
+        ) -> None: ...
+    elif sys.version_info >= (3, 9):
         def __init__(
             self,
             host: str = "",

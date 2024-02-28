@@ -266,6 +266,9 @@ class LowLevelIRBuilder:
         self.goto(block)
         self.activate_block(block)
 
+    def keep_alive(self, values: list[Value], *, steal: bool = False) -> None:
+        self.add(KeepAlive(values, steal=steal))
+
     def push_error_handler(self, handler: BasicBlock | None) -> None:
         self.error_handlers.append(handler)
 

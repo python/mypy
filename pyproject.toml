@@ -30,34 +30,6 @@ line-length = 99
 target-version = "py38"
 fix = true
 
-select = [
-  "E",       # pycodestyle (error)
-  "F",       # pyflakes
-  "B",       # flake8-bugbear
-  "I",       # isort
-  "RUF100",  # Unused noqa comments
-  "PGH004"   # blanket noqa comments
-]
-
-ignore = [
-  "B006",  # use of mutable defaults in function signatures
-  "B007",  # Loop control variable not used within the loop body.
-  "B011",  # Don't use assert False
-  "B023",  # Function definition does not bind loop variable
-  "E203",  # conflicts with black
-  "E402",  # module level import not at top of file
-  "E501",  # conflicts with black
-  "E731",  # Do not assign a `lambda` expression, use a `def`
-  "E741",  # Ambiguous variable name
-]
-
-unfixable = [
-    "F841",  # unused variable. ruff keeps the call, but mostly we want to get rid of it all
-    "F601",  # automatic fix might obscure issue
-    "F602",  # automatic fix might obscure issue
-    "B018",  # automatic fix might obscure issue
-]
-
 extend-exclude = [
   "@*",
   # Sphinx configuration is irrelevant
@@ -71,7 +43,44 @@ extend-exclude = [
   "mypy/typeshed/*",
 ]
 
-[tool.ruff.isort]
+[tool.ruff.lint]
+select = [
+  "E",       # pycodestyle (error)
+  "F",       # pyflakes
+  "W",       # pycodestyle (warning)
+  "B",       # flake8-bugbear
+  "I",       # isort
+  "RUF100",  # Unused noqa comments
+  "PGH004",  # blanket noqa comments
+  "UP",      # pyupgrade
+  "C4",      # flake8-comprehensions
+  "SIM201", "SIM202",  # simplify comparisons involving not
+  "ISC001",  # implicitly concatenated string
+  "RET501", "RET502",  # better return None handling
+]
+
+ignore = [
+  "B007",  # Loop control variable not used within the loop body.
+  "B011",  # Don't use assert False
+  "B023",  # Function definition does not bind loop variable
+  "E2",    # conflicts with black
+  "E402",  # module level import not at top of file
+  "E501",  # conflicts with black
+  "E731",  # Do not assign a `lambda` expression, use a `def`
+  "E741",  # Ambiguous variable name
+  "UP032", # 'f-string always preferable to format' is controversial
+  "C416",  # There are a few cases where it's nice to have names for the dict items
+]
+
+unfixable = [
+    "F841",  # unused variable. ruff keeps the call, but mostly we want to get rid of it all
+    "F601",  # automatic fix might obscure issue
+    "F602",  # automatic fix might obscure issue
+    "B018",  # automatic fix might obscure issue
+    "UP036", # sometimes it's better to just noqa this
+]
+
+[tool.ruff.lint.isort]
 combine-as-imports = true
 extra-standard-library = ["typing_extensions"]
 
@@ -106,18 +115,19 @@ xfail_strict = true
 
 [tool.coverage.run]
 branch = true
-source = "mypy"
+source = ["mypy"]
 parallel = true
 
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
-omit = 'mypy/test/*'
+omit = ['mypy/test/*']
 exclude_lines = [
   '\#\s*pragma: no cover',
   '^\s*raise AssertionError\b',
   '^\s*raise NotImplementedError\b',
   '^\s*return NotImplemented\b',
   '^\s*raise$',
+  '^assert False\b',
   '''^if __name__ == ['"]__main__['"]:$''',
 ]

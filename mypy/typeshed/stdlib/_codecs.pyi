@@ -2,8 +2,8 @@ import codecs
 import sys
 from _typeshed import ReadableBuffer
 from collections.abc import Callable
-from typing import overload
-from typing_extensions import Literal, TypeAlias
+from typing import Literal, overload
+from typing_extensions import TypeAlias
 
 # This type is not exposed; it is defined in unicodeobject.c
 class _EncodingMap:
@@ -47,11 +47,11 @@ _StrToStrEncoding: TypeAlias = Literal["rot13", "rot_13"]
 @overload
 def encode(obj: ReadableBuffer, encoding: _BytesToBytesEncoding, errors: str = "strict") -> bytes: ...
 @overload
-def encode(obj: str, encoding: _StrToStrEncoding, errors: str = "strict") -> str: ...  # type: ignore[misc]
+def encode(obj: str, encoding: _StrToStrEncoding, errors: str = "strict") -> str: ...  # type: ignore[overload-overlap]
 @overload
 def encode(obj: str, encoding: str = "utf-8", errors: str = "strict") -> bytes: ...
 @overload
-def decode(obj: ReadableBuffer, encoding: _BytesToBytesEncoding, errors: str = "strict") -> bytes: ...  # type: ignore[misc]
+def decode(obj: ReadableBuffer, encoding: _BytesToBytesEncoding, errors: str = "strict") -> bytes: ...  # type: ignore[overload-overlap]
 @overload
 def decode(obj: str, encoding: _StrToStrEncoding, errors: str = "strict") -> str: ...
 
@@ -99,11 +99,6 @@ else:
     def unicode_escape_decode(__data: str | ReadableBuffer, __errors: str | None = None) -> tuple[str, int]: ...
 
 def unicode_escape_encode(__str: str, __errors: str | None = None) -> tuple[bytes, int]: ...
-
-if sys.version_info < (3, 8):
-    def unicode_internal_decode(__obj: str | ReadableBuffer, __errors: str | None = None) -> tuple[str, int]: ...
-    def unicode_internal_encode(__obj: str | ReadableBuffer, __errors: str | None = None) -> tuple[bytes, int]: ...
-
 def utf_16_be_decode(__data: ReadableBuffer, __errors: str | None = None, __final: bool = False) -> tuple[str, int]: ...
 def utf_16_be_encode(__str: str, __errors: str | None = None) -> tuple[bytes, int]: ...
 def utf_16_decode(__data: ReadableBuffer, __errors: str | None = None, __final: bool = False) -> tuple[str, int]: ...

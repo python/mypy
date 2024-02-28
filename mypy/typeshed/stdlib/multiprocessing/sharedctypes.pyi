@@ -4,8 +4,7 @@ from ctypes import _CData, _SimpleCData, c_char
 from multiprocessing.context import BaseContext
 from multiprocessing.synchronize import _LockLike
 from types import TracebackType
-from typing import Any, Generic, Protocol, TypeVar, overload
-from typing_extensions import Literal
+from typing import Any, Generic, Literal, Protocol, TypeVar, overload
 
 __all__ = ["RawValue", "RawArray", "Value", "Array", "copy", "synchronized"]
 
@@ -73,7 +72,7 @@ def synchronized(obj: ctypes.Array[_CT], lock: _LockLike | None = None, ctx: Any
 def synchronized(obj: _CT, lock: _LockLike | None = None, ctx: Any | None = None) -> SynchronizedBase[_CT]: ...
 
 class _AcquireFunc(Protocol):
-    def __call__(self, block: bool = ..., timeout: float | None = ...) -> bool: ...
+    def __call__(self, __block: bool = ..., __timeout: float | None = ...) -> bool: ...
 
 class SynchronizedBase(Generic[_CT]):
     acquire: _AcquireFunc

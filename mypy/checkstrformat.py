@@ -47,8 +47,11 @@ from mypy.types import (
     TupleType,
     Type,
     TypeOfAny,
+    TypeVarTupleType,
     TypeVarType,
     UnionType,
+    UnpackType,
+    find_unpack_in_list,
     get_proper_type,
     get_proper_types,
 )
@@ -369,7 +372,7 @@ class StringFormatterChecker:
                 ):
                     # TODO: add support for some custom specs like datetime?
                     self.msg.fail(
-                        "Unrecognized format" ' specification "{}"'.format(spec.format_spec[1:]),
+                        f'Unrecognized format specification "{spec.format_spec[1:]}"',
                         call,
                         code=codes.STRING_FORMATTING,
                     )
@@ -479,7 +482,7 @@ class StringFormatterChecker:
                 expr = self.get_expr_by_name(key, call)
                 if not expr:
                     self.msg.fail(
-                        "Cannot find replacement for named" ' format specifier "{}"'.format(key),
+                        f'Cannot find replacement for named format specifier "{key}"',
                         call,
                         code=codes.STRING_FORMATTING,
                     )
@@ -728,6 +731,22 @@ class StringFormatterChecker:
         rep_types: list[Type] = []
         if isinstance(rhs_type, TupleType):
             rep_types = rhs_type.items
+            unpack_index = find_unpack_in_list(rep_types)
+            if unpack_index is not None:
+                # TODO: we should probably warn about potentially short tuple.
+                # However, without special-casing for tuple(f(i) for in other_tuple)
+                # this causes false positive on mypy self-check in report.py.
+                extras = max(0, len(checkers) - len(rep_types) + 1)
+                unpacked = rep_types[unpack_index]
+                assert isinstance(unpacked, UnpackType)
+                unpacked = get_proper_type(unpacked.type)
+                if isinstance(unpacked, TypeVarTupleType):
+                    unpacked = get_proper_type(unpacked.upper_bound)
+                assert (
+                    isinstance(unpacked, Instance) and unpacked.type.fullname == "builtins.tuple"
+                )
+                unpack_items = [unpacked.args[0]] * extras
+                rep_types = rep_types[:unpack_index] + unpack_items + rep_types[unpack_index + 1 :]
         elif isinstance(rhs_type, AnyType):
             return
         elif isinstance(rhs_type, Instance) and rhs_type.type.fullname == "builtins.tuple":

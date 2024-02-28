@@ -1,6 +1,7 @@
 from collections.abc import Iterator, MutableMapping
 from types import TracebackType
-from typing_extensions import Literal, Self, TypeAlias
+from typing import Literal
+from typing_extensions import Self, TypeAlias
 
 __all__ = ["open", "whichdb", "error"]
 
@@ -90,5 +91,5 @@ class _error(Exception): ...
 
 error: tuple[type[_error], type[OSError]]
 
-def whichdb(filename: str) -> str: ...
+def whichdb(filename: str) -> str | None: ...
 def open(file: str, flag: _TFlags = "r", mode: int = 0o666) -> _Database: ...

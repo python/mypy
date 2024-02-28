@@ -1,4 +1,5 @@
 """Utilities for checking that internal ir is valid and consistent."""
+
 from __future__ import annotations
 
 from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncIR
@@ -44,6 +45,7 @@ from mypyc.ir.ops import (
     Truncate,
     TupleGet,
     TupleSet,
+    Unborrow,
     Unbox,
     Unreachable,
     Value,
@@ -421,4 +423,7 @@ class OpChecker(OpVisitor[None]):
         pass
 
     def visit_keep_alive(self, op: KeepAlive) -> None:
+        pass
+
+    def visit_unborrow(self, op: Unborrow) -> None:
         pass

@@ -17,7 +17,7 @@ import traceback
 from typing import Any, Callable, Mapping, NoReturn
 
 from mypy.dmypy_os import alive, kill
-from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive
+from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive, send
 from mypy.ipc import IPCClient, IPCException
 from mypy.util import check_python_version, get_terminal_width, should_force_color
 from mypy.version import __version__
@@ -562,6 +562,7 @@ def check_output(
     sys.stdout.write(out)
     sys.stdout.flush()
     sys.stderr.write(err)
+    sys.stderr.flush()
     if verbose:
         show_stats(response)
     if junit_xml:
@@ -572,7 +573,7 @@ def check_output(
         write_junit_xml(
             response["roundtrip_time"],
             bool(err),
-            messages,
+            {None: messages} if messages else {},
             junit_xml,
             response["python_version"],
             response["platform"],
@@ -588,13 +589,14 @@ def check_output(
 
 def show_stats(response: Mapping[str, object]) -> None:
     for key, value in sorted(response.items()):
-        if key not in ("out", "err"):
-            print("%-24s: %10s" % (key, "%.3f" % value if isinstance(value, float) else value))
-        else:
+        if key in ("out", "err", "stdout", "stderr"):
+            # Special case text output to display just 40 characters of text
             value = repr(value)[1:-1]
             if len(value) > 50:
-                value = value[:40] + " ..."
+                value = f"{value[:40]} ... {len(value)-40} more characters"
             print("%-24s: %s" % (key, value))
+            continue
+        print("%-24s: %10s" % (key, "%.3f" % value if isinstance(value, float) else value))
 
 
 @action(hang_parser)
@@ -657,26 +659,29 @@ def request(
     # so that it can format the type checking output accordingly.
     args["is_tty"] = sys.stdout.isatty() or should_force_color()
     args["terminal_width"] = get_terminal_width()
-    bdata = json.dumps(args).encode("utf8")
     _, name = get_status(status_file)
     try:
         with IPCClient(name, timeout) as client:
-            client.write(bdata)
-            response = receive(client)
+            send(client, args)
+
+            final = False
+            while not final:
+                response = receive(client)
+                final = bool(response.pop("final", False))
+                # Display debugging output written to stdout/stderr in the server process for convenience.
+                # This should not be confused with "out" and "err" fields in the response.
+                # Those fields hold the output of the "check" command, and are handled in check_output().
+                stdout = response.pop("stdout", None)
+                if stdout:
+                    sys.stdout.write(stdout)
+                stderr = response.pop("stderr", None)
+                if stderr:
+                    sys.stderr.write(stderr)
     except (OSError, IPCException) as err:
         return {"error": str(err)}
     # TODO: Other errors, e.g. ValueError, UnicodeError
-    else:
-        # Display debugging output written to stdout/stderr in the server process for convenience.
-        stdout = response.get("stdout")
-        if stdout:
-            sys.stdout.write(stdout)
-        stderr = response.get("stderr")
-        if stderr:
-            print("-" * 79)
-            print("stderr:")
-            sys.stdout.write(stderr)
-        return response
+
+    return response
 
 
 def get_status(status_file: str) -> tuple[int, str]:

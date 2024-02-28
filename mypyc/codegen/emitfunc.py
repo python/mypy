@@ -55,6 +55,7 @@ from mypyc.ir.ops import (
     Truncate,
     TupleGet,
     TupleSet,
+    Unborrow,
     Unbox,
     Unreachable,
     Value,
@@ -260,7 +261,6 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         else:
             for i, item in enumerate(op.items):
                 self.emit_line(f"{dest}.f{i} = {self.reg(item)};")
-        self.emit_inc_ref(dest, tuple_type)
 
     def visit_assign(self, op: Assign) -> None:
         dest = self.reg(op.dest)
@@ -499,7 +499,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         dest = self.reg(op)
         src = self.reg(op.src)
         self.emit_line(f"{dest} = {src}.f{op.index};")
-        self.emit_inc_ref(dest, op.type)
+        if not op.is_borrowed:
+            self.emit_inc_ref(dest, op.type)
 
     def get_dest_assign(self, dest: Value) -> str:
         if not dest.is_void:
@@ -534,9 +535,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         obj_args = (
             []
             if method.decl.kind == FUNC_STATICMETHOD
-            else [f"(PyObject *)Py_TYPE({obj})"]
-            if method.decl.kind == FUNC_CLASSMETHOD
-            else [obj]
+            else [f"(PyObject *)Py_TYPE({obj})"] if method.decl.kind == FUNC_CLASSMETHOD else [obj]
         )
         args = ", ".join(obj_args + [self.reg(arg) for arg in op.args])
         mtype = native_function_type(method, self.emitter)
@@ -745,6 +744,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
     def visit_keep_alive(self, op: KeepAlive) -> None:
         # This is a no-op.
         pass
+
+    def visit_unborrow(self, op: Unborrow) -> None:
+        # This is a no-op that propagates the source value.
+        dest = self.reg(op)
+        src = self.reg(op.src)
+        self.emit_line(f"{dest} = {src};")
 
     # Helpers
 

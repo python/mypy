@@ -1,6 +1,5 @@
 import sys
-from typing import IO, Any, overload
-from typing_extensions import Literal
+from typing import IO, Any, Literal, overload
 
 __all__ = [
     "get_config_h_filename",

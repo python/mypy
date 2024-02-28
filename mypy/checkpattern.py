@@ -45,9 +45,13 @@ from mypy.types import (
     Type,
     TypedDictType,
     TypeOfAny,
+    TypeVarTupleType,
     UninhabitedType,
     UnionType,
+    UnpackType,
+    find_unpack_in_list,
     get_proper_type,
+    split_with_prefix_and_suffix,
 )
 from mypy.typevars import fill_typevars
 from mypy.visitor import PatternVisitor
@@ -183,7 +187,7 @@ class PatternChecker(PatternVisitor[PatternType]):
                 capture_types[node].append((expr, typ))
 
         captures: dict[Expression, Type] = {}
-        for var, capture_list in capture_types.items():
+        for capture_list in capture_types.values():
             typ = UninhabitedType()
             for _, other in capture_list:
                 typ = join_types(typ, other)
@@ -239,13 +243,29 @@ class PatternChecker(PatternVisitor[PatternType]):
         #
         # get inner types of original type
         #
+        unpack_index = None
         if isinstance(current_type, TupleType):
             inner_types = current_type.items
-            size_diff = len(inner_types) - required_patterns
-            if size_diff < 0:
-                return self.early_non_match()
-            elif size_diff > 0 and star_position is None:
-                return self.early_non_match()
+            unpack_index = find_unpack_in_list(inner_types)
+            if unpack_index is None:
+                size_diff = len(inner_types) - required_patterns
+                if size_diff < 0:
+                    return self.early_non_match()
+                elif size_diff > 0 and star_position is None:
+                    return self.early_non_match()
+            else:
+                normalized_inner_types = []
+                for it in inner_types:
+                    # Unfortunately, it is not possible to "split" the TypeVarTuple
+                    # into individual items, so we just use its upper bound for the whole
+                    # analysis instead.
+                    if isinstance(it, UnpackType) and isinstance(it.type, TypeVarTupleType):
+                        it = UnpackType(it.type.upper_bound)
+                    normalized_inner_types.append(it)
+                inner_types = normalized_inner_types
+                current_type = current_type.copy_modified(items=normalized_inner_types)
+                if len(inner_types) - 1 > required_patterns and star_position is None:
+                    return self.early_non_match()
         else:
             inner_type = self.get_sequence_type(current_type, o)
             if inner_type is None:
@@ -270,10 +290,10 @@ class PatternChecker(PatternVisitor[PatternType]):
             self.update_type_map(captures, type_map)
 
         new_inner_types = self.expand_starred_pattern_types(
-            contracted_new_inner_types, star_position, len(inner_types)
+            contracted_new_inner_types, star_position, len(inner_types), unpack_index is not None
         )
         rest_inner_types = self.expand_starred_pattern_types(
-            contracted_rest_inner_types, star_position, len(inner_types)
+            contracted_rest_inner_types, star_position, len(inner_types), unpack_index is not None
         )
 
         #
@@ -281,15 +301,14 @@ class PatternChecker(PatternVisitor[PatternType]):
         #
         new_type: Type
         rest_type: Type = current_type
-        if isinstance(current_type, TupleType):
+        if isinstance(current_type, TupleType) and unpack_index is None:
             narrowed_inner_types = []
             inner_rest_types = []
             for inner_type, new_inner_type in zip(inner_types, new_inner_types):
-                (
-                    narrowed_inner_type,
-                    inner_rest_type,
-                ) = self.chk.conditional_types_with_intersection(
-                    new_inner_type, [get_type_range(inner_type)], o, default=new_inner_type
+                (narrowed_inner_type, inner_rest_type) = (
+                    self.chk.conditional_types_with_intersection(
+                        new_inner_type, [get_type_range(inner_type)], o, default=new_inner_type
+                    )
                 )
                 narrowed_inner_types.append(narrowed_inner_type)
                 inner_rest_types.append(inner_rest_type)
@@ -301,6 +320,14 @@ class PatternChecker(PatternVisitor[PatternType]):
             if all(is_uninhabited(typ) for typ in inner_rest_types):
                 # All subpatterns always match, so we can apply negative narrowing
                 rest_type = TupleType(rest_inner_types, current_type.partial_fallback)
+        elif isinstance(current_type, TupleType):
+            # For variadic tuples it is too tricky to match individual items like for fixed
+            # tuples, so we instead try to narrow the entire type.
+            # TODO: use more precise narrowing when possible (e.g. for identical shapes).
+            new_tuple_type = TupleType(new_inner_types, current_type.partial_fallback)
+            new_type, rest_type = self.chk.conditional_types_with_intersection(
+                new_tuple_type, [get_type_range(current_type)], o, default=new_tuple_type
+            )
         else:
             new_inner_type = UninhabitedType()
             for typ in new_inner_types:
@@ -345,17 +372,45 @@ class PatternChecker(PatternVisitor[PatternType]):
 
         If star_pos in None the types are returned unchanged.
         """
-        if star_pos is None:
-            return types
-        new_types = types[:star_pos]
-        star_length = len(types) - num_patterns
-        new_types.append(make_simplified_union(types[star_pos : star_pos + star_length]))
-        new_types += types[star_pos + star_length :]
-
-        return new_types
+        unpack_index = find_unpack_in_list(types)
+        if unpack_index is not None:
+            # Variadic tuples require "re-shaping" to match the requested pattern.
+            unpack = types[unpack_index]
+            assert isinstance(unpack, UnpackType)
+            unpacked = get_proper_type(unpack.type)
+            # This should be guaranteed by the normalization in the caller.
+            assert isinstance(unpacked, Instance) and unpacked.type.fullname == "builtins.tuple"
+            if star_pos is None:
+                missing = num_patterns - len(types) + 1
+                new_types = types[:unpack_index]
+                new_types += [unpacked.args[0]] * missing
+                new_types += types[unpack_index + 1 :]
+                return new_types
+            prefix, middle, suffix = split_with_prefix_and_suffix(
+                tuple([UnpackType(unpacked) if isinstance(t, UnpackType) else t for t in types]),
+                star_pos,
+                num_patterns - star_pos,
+            )
+            new_middle = []
+            for m in middle:
+                # The existing code expects the star item type, rather than the type of
+                # the whole tuple "slice".
+                if isinstance(m, UnpackType):
+                    new_middle.append(unpacked.args[0])
+                else:
+                    new_middle.append(m)
+            return list(prefix) + [make_simplified_union(new_middle)] + list(suffix)
+        else:
+            if star_pos is None:
+                return types
+            new_types = types[:star_pos]
+            star_length = len(types) - num_patterns
+            new_types.append(make_simplified_union(types[star_pos : star_pos + star_length]))
+            new_types += types[star_pos + star_length :]
+            return new_types
 
     def expand_starred_pattern_types(
-        self, types: list[Type], star_pos: int | None, num_types: int
+        self, types: list[Type], star_pos: int | None, num_types: int, original_unpack: bool
     ) -> list[Type]:
         """Undoes the contraction done by contract_starred_pattern_types.
 
@@ -364,6 +419,17 @@ class PatternChecker(PatternVisitor[PatternType]):
         """
         if star_pos is None:
             return types
+        if original_unpack:
+            # In the case where original tuple type has an unpack item, it is not practical
+            # to coerce pattern type back to the original shape (and may not even be possible),
+            # so we only restore the type of the star item.
+            res = []
+            for i, t in enumerate(types):
+                if i != star_pos:
+                    res.append(t)
+                else:
+                    res.append(UnpackType(self.chk.named_generic_type("builtins.tuple", [t])))
+            return res
         new_types = types[:star_pos]
         star_length = num_types - len(types) + 1
         new_types += [types[star_pos]] * star_length
@@ -459,9 +525,23 @@ class PatternChecker(PatternVisitor[PatternType]):
             return self.early_non_match()
         if isinstance(type_info, TypeInfo):
             any_type = AnyType(TypeOfAny.implementation_artifact)
-            typ: Type = Instance(type_info, [any_type] * len(type_info.defn.type_vars))
+            args: list[Type] = []
+            for tv in type_info.defn.type_vars:
+                if isinstance(tv, TypeVarTupleType):
+                    args.append(
+                        UnpackType(self.chk.named_generic_type("builtins.tuple", [any_type]))
+                    )
+                else:
+                    args.append(any_type)
+            typ: Type = Instance(type_info, args)
         elif isinstance(type_info, TypeAlias):
             typ = type_info.target
+        elif (
+            isinstance(type_info, Var)
+            and type_info.type is not None
+            and isinstance(get_proper_type(type_info.type), AnyType)
+        ):
+            typ = type_info.type
         else:
             if isinstance(type_info, Var) and type_info.type is not None:
                 name = type_info.type.str_with_options(self.options)

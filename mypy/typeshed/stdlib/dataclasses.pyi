@@ -4,8 +4,8 @@ import types
 from _typeshed import DataclassInstance
 from builtins import type as Type  # alias to avoid name clashes with fields named "type"
 from collections.abc import Callable, Iterable, Mapping
-from typing import Any, Generic, Protocol, TypeVar, overload
-from typing_extensions import Literal, TypeAlias, TypeGuard
+from typing import Any, Generic, Literal, Protocol, TypeVar, overload
+from typing_extensions import TypeAlias, TypeGuard
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -54,19 +54,10 @@ def asdict(obj: DataclassInstance, *, dict_factory: Callable[[list[tuple[str, An
 def astuple(obj: DataclassInstance) -> tuple[Any, ...]: ...
 @overload
 def astuple(obj: DataclassInstance, *, tuple_factory: Callable[[list[Any]], _T]) -> _T: ...
-
-if sys.version_info >= (3, 8):
-    # cls argument is now positional-only
-    @overload
-    def dataclass(__cls: None) -> Callable[[type[_T]], type[_T]]: ...
-    @overload
-    def dataclass(__cls: type[_T]) -> type[_T]: ...
-
-else:
-    @overload
-    def dataclass(_cls: None) -> Callable[[type[_T]], type[_T]]: ...
-    @overload
-    def dataclass(_cls: type[_T]) -> type[_T]: ...
+@overload
+def dataclass(__cls: None) -> Callable[[type[_T]], type[_T]]: ...
+@overload
+def dataclass(__cls: type[_T]) -> type[_T]: ...
 
 if sys.version_info >= (3, 11):
     @overload

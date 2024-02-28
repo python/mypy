@@ -23,7 +23,7 @@ from typing_extensions import TypeAlias as _TypeAlias
 import mypy.build
 import mypy.errors
 import mypy.main
-from mypy.dmypy_util import receive
+from mypy.dmypy_util import WriteToConn, receive, send
 from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileData, FileSystemWatcher
@@ -208,8 +208,12 @@ class Server:
 
     def serve(self) -> None:
         """Serve requests, synchronously (no thread or fork)."""
+
         command = None
         server = IPCServer(CONNECTION_NAME, self.timeout)
+        orig_stdout = sys.stdout
+        orig_stderr = sys.stderr
+
         try:
             with open(self.status_file, "w") as f:
                 json.dump({"pid": os.getpid(), "connection_name": server.connection_name}, f)
@@ -217,10 +221,8 @@ class Server:
             while True:
                 with server:
                     data = receive(server)
-                    debug_stdout = io.StringIO()
-                    debug_stderr = io.StringIO()
-                    sys.stdout = debug_stdout
-                    sys.stderr = debug_stderr
+                    sys.stdout = WriteToConn(server, "stdout", sys.stdout.isatty())
+                    sys.stderr = WriteToConn(server, "stderr", sys.stderr.isatty())
                     resp: dict[str, Any] = {}
                     if "command" not in data:
                         resp = {"error": "No command found in request"}
@@ -237,21 +239,23 @@ class Server:
                                 tb = traceback.format_exception(*sys.exc_info())
                                 resp = {"error": "Daemon crashed!\n" + "".join(tb)}
                                 resp.update(self._response_metadata())
-                                resp["stdout"] = debug_stdout.getvalue()
-                                resp["stderr"] = debug_stderr.getvalue()
-                                server.write(json.dumps(resp).encode("utf8"))
+                                resp["final"] = True
+                                send(server, resp)
                                 raise
-                    resp["stdout"] = debug_stdout.getvalue()
-                    resp["stderr"] = debug_stderr.getvalue()
+                    resp["final"] = True
                     try:
                         resp.update(self._response_metadata())
-                        server.write(json.dumps(resp).encode("utf8"))
+                        send(server, resp)
                     except OSError:
                         pass  # Maybe the client hung up
                     if command == "stop":
                         reset_global_state()
                         sys.exit(0)
         finally:
+            # Revert stdout/stderr so we can see any errors.
+            sys.stdout = orig_stdout
+            sys.stderr = orig_stderr
+
             # If the final command is something other than a clean
             # stop, remove the status file. (We can't just
             # simplify the logic and always remove the file, since
@@ -389,15 +393,21 @@ class Server:
         t1 = time.time()
         manager = self.fine_grained_manager.manager
         manager.log(f"fine-grained increment: cmd_recheck: {t1 - t0:.3f}s")
-        self.options.export_types = export_types
+        old_export_types = self.options.export_types
+        self.options.export_types = self.options.export_types or export_types
         if not self.following_imports():
-            messages = self.fine_grained_increment(sources, remove, update)
+            messages = self.fine_grained_increment(
+                sources, remove, update, explicit_export_types=export_types
+            )
         else:
             assert remove is None and update is None
-            messages = self.fine_grained_increment_follow_imports(sources)
+            messages = self.fine_grained_increment_follow_imports(
+                sources, explicit_export_types=export_types
+            )
         res = self.increment_output(messages, sources, is_tty, terminal_width)
         self.flush_caches()
         self.update_stats(res)
+        self.options.export_types = old_export_types
         return res
 
     def check(
@@ -408,17 +418,21 @@ class Server:
         If is_tty is True format the output nicely with colors and summary line
         (unless disabled in self.options). Also pass the terminal_width to formatter.
         """
-        self.options.export_types = export_types
+        old_export_types = self.options.export_types
+        self.options.export_types = self.options.export_types or export_types
         if not self.fine_grained_manager:
             res = self.initialize_fine_grained(sources, is_tty, terminal_width)
         else:
             if not self.following_imports():
-                messages = self.fine_grained_increment(sources)
+                messages = self.fine_grained_increment(sources, explicit_export_types=export_types)
             else:
-                messages = self.fine_grained_increment_follow_imports(sources)
+                messages = self.fine_grained_increment_follow_imports(
+                    sources, explicit_export_types=export_types
+                )
             res = self.increment_output(messages, sources, is_tty, terminal_width)
         self.flush_caches()
         self.update_stats(res)
+        self.options.export_types = old_export_types
         return res
 
     def flush_caches(self) -> None:
@@ -457,6 +471,7 @@ class Server:
         messages = result.errors
         self.fine_grained_manager = FineGrainedBuildManager(result)
 
+        original_sources_len = len(sources)
         if self.following_imports():
             sources = find_all_sources_in_build(self.fine_grained_manager.graph, sources)
             self.update_sources(sources)
@@ -521,7 +536,8 @@ class Server:
 
         __, n_notes, __ = count_stats(messages)
         status = 1 if messages and n_notes < len(messages) else 0
-        messages = self.pretty_messages(messages, len(sources), is_tty, terminal_width)
+        # We use explicit sources length to match the logic in non-incremental mode.
+        messages = self.pretty_messages(messages, original_sources_len, is_tty, terminal_width)
         return {"out": "".join(s + "\n" for s in messages), "err": "", "status": status}
 
     def fine_grained_increment(
@@ -529,6 +545,7 @@ class Server:
         sources: list[BuildSource],
         remove: list[str] | None = None,
         update: list[str] | None = None,
+        explicit_export_types: bool = False,
     ) -> list[str]:
         """Perform a fine-grained type checking increment.
 
@@ -539,6 +556,8 @@ class Server:
             sources: sources passed on the command line
             remove: paths of files that have been removed
             update: paths of files that have been changed or created
+            explicit_export_types: --export-type was passed in a check command
+              (as opposite to being set in dmypy start)
         """
         assert self.fine_grained_manager is not None
         manager = self.fine_grained_manager.manager
@@ -553,6 +572,10 @@ class Server:
             # Use the remove/update lists to update fswatcher.
             # This avoids calling stat() for unchanged files.
             changed, removed = self.update_changed(sources, remove or [], update or [])
+        if explicit_export_types:
+            # If --export-types is given, we need to force full re-checking of all
+            # explicitly passed files, since we need to visit each expression.
+            add_all_sources_to_changed(sources, changed)
         changed += self.find_added_suppressed(
             self.fine_grained_manager.graph, set(), manager.search_paths
         )
@@ -571,7 +594,9 @@ class Server:
         self.previous_sources = sources
         return messages
 
-    def fine_grained_increment_follow_imports(self, sources: list[BuildSource]) -> list[str]:
+    def fine_grained_increment_follow_imports(
+        self, sources: list[BuildSource], explicit_export_types: bool = False
+    ) -> list[str]:
         """Like fine_grained_increment, but follow imports."""
         t0 = time.time()
 
@@ -597,6 +622,9 @@ class Server:
         changed, new_files = self.find_reachable_changed_modules(
             sources, graph, seen, changed_paths
         )
+        if explicit_export_types:
+            # Same as in fine_grained_increment().
+            add_all_sources_to_changed(sources, changed)
         sources.extend(new_files)
 
         # Process changes directly reachable from roots.
@@ -1005,13 +1033,29 @@ def find_all_sources_in_build(
     return result
 
 
+def add_all_sources_to_changed(sources: list[BuildSource], changed: list[tuple[str, str]]) -> None:
+    """Add all (explicit) sources to the list changed files in place.
+
+    Use this when re-processing of unchanged files is needed (e.g. for
+    the purpose of exporting types for inspections).
+    """
+    changed_set = set(changed)
+    changed.extend(
+        [
+            (bs.module, bs.path)
+            for bs in sources
+            if bs.path and (bs.module, bs.path) not in changed_set
+        ]
+    )
+
+
 def fix_module_deps(graph: mypy.build.Graph) -> None:
     """After an incremental update, update module dependencies to reflect the new state.
 
     This can make some suppressed dependencies non-suppressed, and vice versa (if modules
     have been added to or removed from the build).
     """
-    for module, state in graph.items():
+    for state in graph.values():
         new_suppressed = []
         new_dependencies = []
         for dep in state.dependencies + state.suppressed:

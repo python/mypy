@@ -127,7 +127,6 @@ cast(str | int, 'x')  # E: Cast target is not a type
 x = 1  # type: int | str
 
 [case testUnionOrSyntaxFutureImport]
-# flags: --python-version 3.7
 from __future__ import annotations
 x: int | None
 [builtins fixtures/tuple.pyi]

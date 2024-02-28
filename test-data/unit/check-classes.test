@@ -1162,7 +1162,7 @@ def test() -> None:
             reveal_type(x)  # N: Revealed type is "T`-1"
             reveal_type(x.returns_int())  # N: Revealed type is "builtins.int"
             return foo
-    reveal_type(Foo.bar)  # N: Revealed type is "def [T <: __main__.Foo@5] (self: __main__.Foo@5, foo: T`-1) -> T`-1"
+    reveal_type(Foo.bar)  # N: Revealed type is "def [T <: __main__.Foo@5] (self: __main__.Foo@5, foo: T`1) -> T`1"
 
 [case testGenericClassWithInvalidTypevarUseWithinFunction]
 from typing import TypeVar
@@ -5002,12 +5002,13 @@ class A(Tuple[int, str]): pass
 -- -----------------------
 
 [case testCrashOnSelfRecursiveNamedTupleVar]
-# flags: --disable-recursive-aliases
 from typing import NamedTuple
 
-N = NamedTuple('N', [('x', N)]) # E: Cannot resolve name "N" (possible cyclic definition)
-n: N
-reveal_type(n) # N: Revealed type is "Tuple[Any, fallback=__main__.N]"
+def test() -> None:
+    N = NamedTuple('N', [('x', N)]) # E: Cannot resolve name "N" (possible cyclic definition) \
+                                    # N: Recursive types are not allowed at function scope
+    n: N
+    reveal_type(n) # N: Revealed type is "Tuple[Any, fallback=__main__.N@4]"
 [builtins fixtures/tuple.pyi]
 
 [case testCrashOnSelfRecursiveTypedDictVar]
@@ -5032,18 +5033,20 @@ lst = [n, m]
 [builtins fixtures/isinstancelist.pyi]
 
 [case testCorrectJoinOfSelfRecursiveTypedDicts]
-# flags: --disable-recursive-aliases
 from mypy_extensions import TypedDict
 
-class N(TypedDict):
-    x: N # E: Cannot resolve name "N" (possible cyclic definition)
-class M(TypedDict):
-    x: M # E: Cannot resolve name "M" (possible cyclic definition)
+def test() -> None:
+    class N(TypedDict):
+        x: N  # E: Cannot resolve name "N" (possible cyclic definition) \
+              # N: Recursive types are not allowed at function scope
+    class M(TypedDict):
+        x: M  # E: Cannot resolve name "M" (possible cyclic definition) \
+              # N: Recursive types are not allowed at function scope
 
-n: N
-m: M
-lst = [n, m]
-reveal_type(lst[0]['x'])  # N: Revealed type is "Any"
+    n: N
+    m: M
+    lst = [n, m]
+    reveal_type(lst[0]['x'])  # N: Revealed type is "Any"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testCrashInForwardRefToNamedTupleWithIsinstance]
@@ -7718,13 +7721,13 @@ class D:
     def __init__(self) -> NoReturn: ...
 
 if object():
-    reveal_type(A())  # N: Revealed type is "<nothing>"
+    reveal_type(A())  # N: Revealed type is "Never"
 if object():
-    reveal_type(B())  # N: Revealed type is "<nothing>"
+    reveal_type(B())  # N: Revealed type is "Never"
 if object():
-    reveal_type(C())  # N: Revealed type is "<nothing>"
+    reveal_type(C())  # N: Revealed type is "Never"
 if object():
-    reveal_type(D())  # N: Revealed type is "<nothing>"
+    reveal_type(D())  # N: Revealed type is "Never"
 
 [case testOverloadedNewAndInitNoReturn]
 from typing import NoReturn, overload
@@ -7764,19 +7767,19 @@ class D:
     def __init__(self, a: int = ...) -> None: ...
 
 if object():
-    reveal_type(A())  # N: Revealed type is "<nothing>"
+    reveal_type(A())  # N: Revealed type is "Never"
 reveal_type(A(1))  # N: Revealed type is "__main__.A"
 
 if object():
-    reveal_type(B())  # N: Revealed type is "<nothing>"
+    reveal_type(B())  # N: Revealed type is "Never"
 reveal_type(B(1))  # N: Revealed type is "__main__.B"
 
 if object():
-    reveal_type(C())  # N: Revealed type is "<nothing>"
+    reveal_type(C())  # N: Revealed type is "Never"
 reveal_type(C(1))  # N: Revealed type is "__main__.C"
 
 if object():
-    reveal_type(D())  # N: Revealed type is "<nothing>"
+    reveal_type(D())  # N: Revealed type is "Never"
 reveal_type(D(1))  # N: Revealed type is "__main__.D"
 
 [case testClassScopeImportWithWrapperAndError]
@@ -8001,3 +8004,11 @@ f5(1)  # E: Argument 1 to "f5" has incompatible type "int"; expected "Integral" 
        # N: Types from "numbers" aren't supported for static type checking \
        # N: See https://peps.python.org/pep-0484/#the-numeric-tower \
        # N: Consider using a protocol instead, such as typing.SupportsFloat
+
+[case testImplicitClassScopedNames]
+class C:
+    reveal_type(__module__)  # N: Revealed type is "builtins.str"
+    reveal_type(__qualname__)  # N: Revealed type is "builtins.str"
+    def f(self) -> None:
+        __module__  # E: Name "__module__" is not defined
+        __qualname__  # E: Name "__qualname__" is not defined

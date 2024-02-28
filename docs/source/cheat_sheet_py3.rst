@@ -104,7 +104,7 @@ Functions
        print(value + "!" * excitement)
 
    # Note that arguments without a type are dynamically typed (treated as Any)
-   # and that functions without any annotations not checked
+   # and that functions without any annotations are not checked
    def untyped(x):
        x.anything() + 1 + "string"  # no errors
 
@@ -209,6 +209,7 @@ Classes
        # This will allow access to any A.x, if x is compatible with the return type
        def __getattr__(self, name: str) -> int: ...
 
+   a = A()
    a.foo = 42  # Works
    a.bar = 'Ex-parrot'  # Fails type checking
 

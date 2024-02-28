@@ -13,18 +13,11 @@ import re
 import subprocess
 import sys
 from enum import Enum, unique
-
-from mypy.errors import CompileError
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    import tomli as tomllib
-
 from typing import Dict, Final, List, NamedTuple, Optional, Tuple, Union
 from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy import pyinfo
+from mypy.errors import CompileError
 from mypy.fscache import FileSystemCache
 from mypy.nodes import MypyFile
 from mypy.options import Options
@@ -337,14 +330,9 @@ class FindModuleCache:
             # If this is not a directory then we can't traverse further into it
             if not self.fscache.isdir(dir_path):
                 break
-        if approved_stub_package_exists(components[0]):
-            if len(components) == 1 or (
-                self.find_module(components[0])
-                is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
-            ):
+        for i in range(len(components), 0, -1):
+            if approved_stub_package_exists(".".join(components[:i])):
                 return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
-        if approved_stub_package_exists(".".join(components[:2])):
-            return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
         if plausible_match:
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
         else:
@@ -431,7 +419,7 @@ class FindModuleCache:
         for pkg_dir in self.search_paths.package_path:
             stub_name = components[0] + "-stubs"
             stub_dir = os.path.join(pkg_dir, stub_name)
-            if fscache.isdir(stub_dir) and self._is_compatible_stub_package(stub_dir):
+            if fscache.isdir(stub_dir):
                 stub_typed_file = os.path.join(stub_dir, "py.typed")
                 stub_components = [stub_name] + components[1:]
                 path = os.path.join(pkg_dir, *stub_components[:-1])
@@ -566,19 +554,6 @@ class FindModuleCache:
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
         else:
             return ModuleNotFoundReason.NOT_FOUND
-
-    def _is_compatible_stub_package(self, stub_dir: str) -> bool:
-        """Does a stub package support the target Python version?
-
-        Stub packages may contain a metadata file which specifies
-        whether the stubs are compatible with Python 2 and 3.
-        """
-        metadata_fnam = os.path.join(stub_dir, "METADATA.toml")
-        if not os.path.isfile(metadata_fnam):
-            return True
-        with open(metadata_fnam, "rb") as f:
-            metadata = tomllib.load(f)
-        return bool(metadata.get("python3", True))
 
     def find_modules_recursive(self, module: str) -> list[BuildSource]:
         module_path = self.find_module(module)

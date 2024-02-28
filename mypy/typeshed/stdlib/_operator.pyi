@@ -1,15 +1,18 @@
 import sys
 from _typeshed import SupportsGetItem
 from collections.abc import Callable, Container, Iterable, MutableMapping, MutableSequence, Sequence
-from typing import Any, AnyStr, Generic, Protocol, SupportsAbs, TypeVar, overload
-from typing_extensions import ParamSpec, SupportsIndex, TypeAlias, final
+from typing import Any, AnyStr, Generic, Protocol, SupportsAbs, SupportsIndex, TypeVar, final, overload
+from typing_extensions import ParamSpec, TypeAlias, TypeVarTuple, Unpack
 
 _R = TypeVar("_R")
 _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
+_T1 = TypeVar("_T1")
+_T2 = TypeVar("_T2")
 _K = TypeVar("_K")
 _V = TypeVar("_V")
 _P = ParamSpec("_P")
+_Ts = TypeVarTuple("_Ts")
 
 # The following protocols return "Any" instead of bool, since the comparison
 # operators can be overloaded to return an arbitrary object. For example,
@@ -105,22 +108,10 @@ class attrgetter(Generic[_T_co]):
 
 @final
 class itemgetter(Generic[_T_co]):
-    # mypy lacks support for PEP 646 https://github.com/python/mypy/issues/12280
-    # So we have to define all of these overloads to simulate unpacking the arguments
     @overload
-    def __new__(cls, item: _T_co) -> itemgetter[_T_co]: ...
+    def __new__(cls, __item: _T) -> itemgetter[_T]: ...
     @overload
-    def __new__(cls, item: _T_co, __item2: _T_co) -> itemgetter[tuple[_T_co, _T_co]]: ...
-    @overload
-    def __new__(cls, item: _T_co, __item2: _T_co, __item3: _T_co) -> itemgetter[tuple[_T_co, _T_co, _T_co]]: ...
-    @overload
-    def __new__(
-        cls, item: _T_co, __item2: _T_co, __item3: _T_co, __item4: _T_co
-    ) -> itemgetter[tuple[_T_co, _T_co, _T_co, _T_co]]: ...
-    @overload
-    def __new__(
-        cls, item: _T_co, __item2: _T_co, __item3: _T_co, __item4: _T_co, *items: _T_co
-    ) -> itemgetter[tuple[_T_co, ...]]: ...
+    def __new__(cls, __item1: _T1, __item2: _T2, *items: Unpack[_Ts]) -> itemgetter[tuple[_T1, _T2, Unpack[_Ts]]]: ...
     # __key: _KT_contra in SupportsGetItem seems to be causing variance issues, ie:
     # TypeVar "_KT_contra@SupportsGetItem" is contravariant
     #   "tuple[int, int]" is incompatible with protocol "SupportsIndex"

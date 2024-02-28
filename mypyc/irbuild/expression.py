@@ -80,6 +80,7 @@ from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.for_helpers import (
     comprehension_helper,
+    raise_error_if_contains_unreachable_names,
     translate_list_comprehension,
     translate_set_comprehension,
 )
@@ -125,6 +126,8 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
     if fullname == "builtins.True":
         return builder.true()
     if fullname == "builtins.False":
+        return builder.false()
+    if fullname in ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"):
         return builder.false()
 
     math_literal = transform_math_literal(builder, fullname)
@@ -185,6 +188,10 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
 
 
 def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
+    # Special Cases
+    if expr.fullname in ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"):
+        return builder.false()
+
     # First check if this is maybe a final attribute.
     final = builder.get_final_ref(expr)
     if final is not None:
@@ -1014,6 +1021,9 @@ def transform_set_comprehension(builder: IRBuilder, o: SetComprehension) -> Valu
 
 
 def transform_dictionary_comprehension(builder: IRBuilder, o: DictionaryComprehension) -> Value:
+    if raise_error_if_contains_unreachable_names(builder, o):
+        return builder.none()
+
     d = builder.maybe_spill(builder.call_c(dict_new_op, [], o.line))
     loop_params = list(zip(o.indices, o.sequences, o.condlists, o.is_async))
 

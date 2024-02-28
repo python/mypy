@@ -1484,7 +1484,7 @@ class C:
             return self
 class D(C): ...
 
-reveal_type(C.meth)  # N: Revealed type is "def [Self <: __main__.C] (self: Self`0) -> builtins.list[Self`0]"
+reveal_type(C.meth)  # N: Revealed type is "def [Self <: __main__.C] (self: Self`1) -> builtins.list[Self`1]"
 C.attr  # E: Access to generic instance variables via class is ambiguous
 reveal_type(D().meth())  # N: Revealed type is "builtins.list[__main__.D]"
 reveal_type(D().attr)  # N: Revealed type is "builtins.list[__main__.D]"
@@ -1520,7 +1520,7 @@ from typing import Self, TypeVar, Tuple
 T = TypeVar("T")
 class C:
     def meth(self: T) -> Tuple[Self, T]: ...  # E: Method cannot have explicit self annotation and Self type
-reveal_type(C().meth())  # N: Revealed type is "Tuple[<nothing>, __main__.C]"
+reveal_type(C().meth())  # N: Revealed type is "Tuple[Never, __main__.C]"
 [builtins fixtures/property.pyi]
 
 [case testTypingSelfProperty]
@@ -1558,7 +1558,7 @@ class C:
 
 class D(C): ...
 reveal_type(D.meth())  # N: Revealed type is "__main__.D"
-reveal_type(D.bad())  # N: Revealed type is "<nothing>"
+reveal_type(D.bad())  # N: Revealed type is "Never"
 [builtins fixtures/classmethod.pyi]
 
 [case testTypingSelfOverload]
@@ -1793,7 +1793,7 @@ class C:
     def bar(self) -> Self: ...
     def foo(self, x: S) -> Tuple[Self, S]: ...
 
-reveal_type(C.foo)  # N: Revealed type is "def [Self <: __main__.C, S] (self: Self`0, x: S`-1) -> Tuple[Self`0, S`-1]"
+reveal_type(C.foo)  # N: Revealed type is "def [Self <: __main__.C, S] (self: Self`1, x: S`2) -> Tuple[Self`1, S`2]"
 reveal_type(C().foo(42))  # N: Revealed type is "Tuple[__main__.C, builtins.int]"
 [builtins fixtures/tuple.pyi]
 
@@ -1903,7 +1903,7 @@ class C:
 
 class D(C): ...
 
-reveal_type(D.f)  # N: Revealed type is "def [T] (T`-1) -> T`-1"
+reveal_type(D.f)  # N: Revealed type is "def [T] (T`1) -> T`1"
 reveal_type(D().f)  # N: Revealed type is "def () -> __main__.D"
 
 [case testTypingSelfOnSuperTypeVarValues]
@@ -1973,3 +1973,101 @@ class B(A):
         reveal_type(self.x.extra)  # N: Revealed type is "builtins.int"
         reveal_type(self.xs[0].extra)  # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
+
+[case testSelfTypesWithParamSpecExtract]
+from typing import Any, Callable, Generic, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+F = TypeVar("F", bound=Callable[..., Any])
+class Example(Generic[F]):
+    def __init__(self, fn: F) -> None:
+        ...
+    def __call__(self: Example[Callable[P, Any]], *args: P.args, **kwargs: P.kwargs) -> None:
+        ...
+
+def test_fn(a: int, b: str) -> None:
+    ...
+
+example = Example(test_fn)
+example()  # E: Missing positional arguments "a", "b" in call to "__call__" of "Example"
+example(1, "b")  # OK
+[builtins fixtures/list.pyi]
+
+[case testSelfTypesWithParamSpecInfer]
+from typing import TypeVar, Protocol, Type, Callable
+from typing_extensions import ParamSpec
+
+R = TypeVar("R", covariant=True)
+P = ParamSpec("P")
+class AsyncP(Protocol[P]):
+    def meth(self, *args: P.args, **kwargs: P.kwargs) -> None:
+        ...
+
+class Async:
+    @classmethod
+    def async_func(cls: Type[AsyncP[P]]) -> Callable[P, int]:
+        ...
+
+class Add(Async):
+    def meth(self, x: int, y: int) -> None: ...
+
+reveal_type(Add.async_func())  # N: Revealed type is "def (x: builtins.int, y: builtins.int) -> builtins.int"
+reveal_type(Add().async_func())  # N: Revealed type is "def (x: builtins.int, y: builtins.int) -> builtins.int"
+[builtins fixtures/classmethod.pyi]
+
+[case testSelfTypeMethodOnClassObject]
+from typing import Self
+
+class Object:  # Needed to mimic object in typeshed
+    ref: Self
+
+class Foo:
+    def foo(self) -> Self:
+        return self
+
+class Ben(Object):
+    MY_MAP = {
+        "foo": Foo.foo,
+    }
+    @classmethod
+    def doit(cls) -> Foo:
+        reveal_type(cls.MY_MAP)  # N: Revealed type is "builtins.dict[builtins.str, def [Self <: __main__.Foo] (self: Self`4) -> Self`4]"
+        foo_method = cls.MY_MAP["foo"]
+        return foo_method(Foo())
+[builtins fixtures/isinstancelist.pyi]
+
+[case testSelfTypeOnGenericClassObjectNewStyleBound]
+from typing import Generic, TypeVar, Self
+
+T = TypeVar("T")
+S = TypeVar("S")
+class B(Generic[T, S]):
+    def copy(self) -> Self: ...
+
+b: B[int, str]
+reveal_type(B.copy(b))  # N: Revealed type is "__main__.B[builtins.int, builtins.str]"
+
+class C(B[T, S]): ...
+
+c: C[int, str]
+reveal_type(C.copy(c))  # N: Revealed type is "__main__.C[builtins.int, builtins.str]"
+
+B.copy(42)  # E: Value of type variable "Self" of "copy" of "B" cannot be "int"
+C.copy(42)  # E: Value of type variable "Self" of "copy" of "B" cannot be "int"
+[builtins fixtures/tuple.pyi]
+
+[case testRecursiveSelfTypeCallMethodNoCrash]
+from typing import Callable, TypeVar
+
+T = TypeVar("T")
+class Partial:
+    def __call__(self: Callable[..., T]) -> T: ...
+
+class Partial2:
+    def __call__(self: Callable[..., T], x: T) -> T: ...
+
+p: Partial
+reveal_type(p())  # N: Revealed type is "Never"
+p2: Partial2
+reveal_type(p2(42))  # N: Revealed type is "builtins.int"

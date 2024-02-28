@@ -305,16 +305,20 @@ not catch errors in its use.
     The ``.*`` after ``foobar`` will ignore imports of ``foobar`` modules
     and subpackages in addition to the ``foobar`` top-level package namespace.
 
-3.  To suppress *all* missing import errors for *all* libraries in your codebase,
-    invoke mypy with the :option:`--ignore-missing-imports <mypy --ignore-missing-imports>` command line flag or set
-    the :confval:`ignore_missing_imports`
-    config file option to True
-    in the *global* section of your mypy config file::
+3.  To suppress *all* missing import errors for *all* untyped libraries
+    in your codebase, use :option:`--disable-error-code=import-untyped <mypy --ignore-missing-imports>`.
+    See :ref:`code-import-untyped` for more details on this error code.
+
+    You can also set :confval:`disable_error_code`, like so::
 
         [mypy]
-        ignore_missing_imports = True
+        disable_error_code = import-untyped
 
-    We recommend using this approach only as a last resort: it's equivalent
+
+    You can also set the :option:`--ignore-missing-imports <mypy --ignore-missing-imports>`
+    command line flag or set the :confval:`ignore_missing_imports` config file
+    option to True in the *global* section of your mypy config file. We
+    recommend avoiding ``--ignore-missing-imports`` if possible: it's equivalent
     to adding a ``# type: ignore`` to all unresolved imports in your codebase.
 
 
@@ -387,11 +391,11 @@ this error, try:
     installing into the environment you expect by running pip like
     ``python -m pip ...``.
 
-2.  Reading the :ref:`finding-imports` section below to make sure you
+3.  Reading the :ref:`finding-imports` section below to make sure you
     understand how exactly mypy searches for and finds modules and modify
     how you're invoking mypy accordingly.
 
-3.  Directly specifying the directory containing the module you want to
+4.  Directly specifying the directory containing the module you want to
     type check from the command line, by using the :confval:`mypy_path`
     or :confval:`files` config file options,
     or by using the ``MYPYPATH`` environment variable.

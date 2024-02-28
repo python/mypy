@@ -1,4 +1,3 @@
-import sys
 from _typeshed import SupportsGetItem, SupportsItemAccess, Unused
 from builtins import list as _list, type as _type
 from collections.abc import Iterable, Iterator, Mapping
@@ -22,9 +21,6 @@ __all__ = [
     "print_environ_usage",
 ]
 
-if sys.version_info < (3, 8):
-    __all__ += ["parse_qs", "parse_qsl", "escape"]
-
 def parse(
     fp: IO[Any] | None = None,
     environ: SupportsItemAccess[str, str] = ...,
@@ -32,11 +28,6 @@ def parse(
     strict_parsing: bool = ...,
     separator: str = "&",
 ) -> dict[str, list[str]]: ...
-
-if sys.version_info < (3, 8):
-    def parse_qs(qs: str, keep_blank_values: bool = ..., strict_parsing: bool = ...) -> dict[str, list[str]]: ...
-    def parse_qsl(qs: str, keep_blank_values: bool = ..., strict_parsing: bool = ...) -> list[tuple[str, str]]: ...
-
 def parse_multipart(
     fp: IO[Any], pdict: SupportsGetItem[str, bytes], encoding: str = "utf-8", errors: str = "replace", separator: str = "&"
 ) -> dict[str, list[Any]]: ...
@@ -51,9 +42,6 @@ def print_environ(environ: _Environ = ...) -> None: ...
 def print_form(form: dict[str, Any]) -> None: ...
 def print_directory() -> None: ...
 def print_environ_usage() -> None: ...
-
-if sys.version_info < (3, 8):
-    def escape(s: str, quote: bool | None = None) -> str: ...
 
 class MiniFieldStorage:
     # The first five "Any" attributes here are always None, but mypy doesn't support that
@@ -117,7 +105,8 @@ class FieldStorage:
     def __contains__(self, key: str) -> bool: ...
     def __len__(self) -> int: ...
     def __bool__(self) -> bool: ...
-    # In Python 3 it returns bytes or str IO depending on an internal flag
+    def __del__(self) -> None: ...
+    # Returns bytes or str IO depending on an internal flag
     def make_file(self) -> IO[Any]: ...
 
 def print_exception(

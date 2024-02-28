@@ -525,7 +525,6 @@ else:
 [builtins fixtures/callable.pyi]
 
 [case testBuiltinsTypeAsCallable]
-# flags: --python-version 3.7
 from __future__ import annotations
 
 reveal_type(type)  # N: Revealed type is "def (x: Any) -> builtins.type"
@@ -587,3 +586,45 @@ class C(B):
     def f(self, x: int) -> C: ...
 class B: ...
 [builtins fixtures/classmethod.pyi]
+
+[case testCallableUnionCallback]
+from typing import Union, Callable, TypeVar
+
+TA = TypeVar("TA", bound="A")
+class A:
+    def __call__(self: TA, other: Union[Callable, TA]) -> TA: ...
+a: A
+a()  # E: Missing positional argument "other" in call to "__call__" of "A"
+a(a)
+a(lambda: None)
+
+[case testCallableSubtypingTrivialSuffix]
+from typing import Any, Protocol
+
+class Call(Protocol):
+    def __call__(self, x: int, *args: Any, **kwargs: Any) -> None: ...
+
+def f1() -> None: ...
+a1: Call = f1  # E: Incompatible types in assignment (expression has type "Callable[[], None]", variable has type "Call") \
+               # N: "Call.__call__" has type "Callable[[Arg(int, 'x'), VarArg(Any), KwArg(Any)], None]"
+def f2(x: str) -> None: ...
+a2: Call = f2  # E: Incompatible types in assignment (expression has type "Callable[[str], None]", variable has type "Call") \
+               # N: "Call.__call__" has type "Callable[[Arg(int, 'x'), VarArg(Any), KwArg(Any)], None]"
+def f3(y: int) -> None: ...
+a3: Call = f3  # E: Incompatible types in assignment (expression has type "Callable[[int], None]", variable has type "Call") \
+               # N: "Call.__call__" has type "Callable[[Arg(int, 'x'), VarArg(Any), KwArg(Any)], None]"
+def f4(x: int) -> None: ...
+a4: Call = f4
+
+def f5(x: int, y: int) -> None: ...
+a5: Call = f5
+
+def f6(x: int, y: int = 0) -> None: ...
+a6: Call = f6
+
+def f7(x: int, *, y: int) -> None: ...
+a7: Call = f7
+
+def f8(x: int, *args: int, **kwargs: str) -> None: ...
+a8: Call = f8
+[builtins fixtures/tuple.pyi]

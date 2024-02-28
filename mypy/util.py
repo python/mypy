@@ -234,50 +234,91 @@ def get_mypy_comments(source: str) -> list[tuple[int, str]]:
     return results
 
 
-PASS_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
-<testsuite errors="0" failures="0" name="mypy" skips="0" tests="1" time="{time:.3f}">
-  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
-  </testcase>
-</testsuite>
+JUNIT_HEADER_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
+<testsuite errors="{errors}" failures="{failures}" name="mypy" skips="0" tests="{tests}" time="{time:.3f}">
 """
 
-FAIL_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
-<testsuite errors="0" failures="1" name="mypy" skips="0" tests="1" time="{time:.3f}">
-  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
+JUNIT_TESTCASE_FAIL_TEMPLATE: Final = """  <testcase classname="mypy" file="{filename}" line="1" name="{name}" time="{time:.3f}">
     <failure message="mypy produced messages">{text}</failure>
   </testcase>
-</testsuite>
 """
 
-ERROR_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
-<testsuite errors="1" failures="0" name="mypy" skips="0" tests="1" time="{time:.3f}">
-  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
+JUNIT_ERROR_TEMPLATE: Final = """  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
     <error message="mypy produced errors">{text}</error>
   </testcase>
-</testsuite>
 """
+
+JUNIT_TESTCASE_PASS_TEMPLATE: Final = """  <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
+  </testcase>
+"""
+
+JUNIT_FOOTER: Final = """</testsuite>
+"""
+
+
+def _generate_junit_contents(
+    dt: float,
+    serious: bool,
+    messages_by_file: dict[str | None, list[str]],
+    version: str,
+    platform: str,
+) -> str:
+    from xml.sax.saxutils import escape
+
+    if serious:
+        failures = 0
+        errors = len(messages_by_file)
+    else:
+        failures = len(messages_by_file)
+        errors = 0
+
+    xml = JUNIT_HEADER_TEMPLATE.format(
+        errors=errors,
+        failures=failures,
+        time=dt,
+        # If there are no messages, we still write one "test" indicating success.
+        tests=len(messages_by_file) or 1,
+    )
+
+    if not messages_by_file:
+        xml += JUNIT_TESTCASE_PASS_TEMPLATE.format(time=dt, ver=version, platform=platform)
+    else:
+        for filename, messages in messages_by_file.items():
+            if filename is not None:
+                xml += JUNIT_TESTCASE_FAIL_TEMPLATE.format(
+                    text=escape("\n".join(messages)),
+                    filename=filename,
+                    time=dt,
+                    name="mypy-py{ver}-{platform} {filename}".format(
+                        ver=version, platform=platform, filename=filename
+                    ),
+                )
+            else:
+                xml += JUNIT_TESTCASE_FAIL_TEMPLATE.format(
+                    text=escape("\n".join(messages)),
+                    filename="mypy",
+                    time=dt,
+                    name="mypy-py{ver}-{platform}".format(ver=version, platform=platform),
+                )
+
+    xml += JUNIT_FOOTER
+
+    return xml
 
 
 def write_junit_xml(
-    dt: float, serious: bool, messages: list[str], path: str, version: str, platform: str
+    dt: float,
+    serious: bool,
+    messages_by_file: dict[str | None, list[str]],
+    path: str,
+    version: str,
+    platform: str,
 ) -> None:
-    from xml.sax.saxutils import escape
+    xml = _generate_junit_contents(dt, serious, messages_by_file, version, platform)
 
-    if not messages and not serious:
-        xml = PASS_TEMPLATE.format(time=dt, ver=version, platform=platform)
-    elif not serious:
-        xml = FAIL_TEMPLATE.format(
-            text=escape("\n".join(messages)), time=dt, ver=version, platform=platform
-        )
-    else:
-        xml = ERROR_TEMPLATE.format(
-            text=escape("\n".join(messages)), time=dt, ver=version, platform=platform
-        )
-
-    # checks for a directory structure in path and creates folders if needed
+    # creates folders if needed
     xml_dirs = os.path.dirname(os.path.abspath(path))
-    if not os.path.isdir(xml_dirs):
-        os.makedirs(xml_dirs)
+    os.makedirs(xml_dirs, exist_ok=True)
 
     with open(path, "wb") as f:
         f.write(xml.encode("utf-8"))
@@ -306,17 +347,6 @@ class IdMapper:
 def get_prefix(fullname: str) -> str:
     """Drop the final component of a qualified name (e.g. ('x.y' -> 'x')."""
     return fullname.rsplit(".", 1)[0]
-
-
-def get_top_two_prefixes(fullname: str) -> tuple[str, str]:
-    """Return one and two component prefixes of a fully qualified name.
-
-    Given 'a.b.c.d', return ('a', 'a.b').
-
-    If fullname has only one component, return (fullname, fullname).
-    """
-    components = fullname.split(".", 3)
-    return components[0], ".".join(components[:2])
 
 
 def correct_relative_import(
@@ -421,7 +451,7 @@ def get_unique_redefinition_name(name: str, existing: Container[str]) -> str:
 def check_python_version(program: str) -> None:
     """Report issues with the Python used to run mypy, dmypy, or stubgen"""
     # Check for known bad Python versions.
-    if sys.version_info[:2] < (3, 8):
+    if sys.version_info[:2] < (3, 8):  # noqa: UP036
         sys.exit(
             "Running {name} with Python 3.7 or lower is not supported; "
             "please upgrade to 3.8 or newer".format(name=program)
@@ -820,3 +850,20 @@ def plural_s(s: int | Sized) -> str:
         return "s"
     else:
         return ""
+
+
+def quote_docstring(docstr: str) -> str:
+    """Returns docstring correctly encapsulated in a single or double quoted form."""
+    # Uses repr to get hint on the correct quotes and escape everything properly.
+    # Creating multiline string for prettier output.
+    docstr_repr = "\n".join(re.split(r"(?<=[^\\])\\n", repr(docstr)))
+
+    if docstr_repr.startswith("'"):
+        # Enforce double quotes when it's safe to do so.
+        # That is when double quotes are not in the string
+        # or when it doesn't end with a single quote.
+        if '"' not in docstr_repr[1:-1] and docstr_repr[-2] != "'":
+            return f'"""{docstr_repr[1:-1]}"""'
+        return f"''{docstr_repr}''"
+    else:
+        return f'""{docstr_repr}""'

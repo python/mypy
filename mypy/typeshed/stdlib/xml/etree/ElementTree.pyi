@@ -2,14 +2,16 @@ import sys
 from _collections_abc import dict_keys
 from _typeshed import FileDescriptorOrPath, ReadableBuffer, SupportsRead, SupportsWrite
 from collections.abc import Callable, Generator, ItemsView, Iterable, Iterator, Mapping, Sequence
-from typing import Any, TypeVar, overload
-from typing_extensions import Literal, SupportsIndex, TypeAlias, TypeGuard
+from typing import Any, Literal, SupportsIndex, TypeVar, overload
+from typing_extensions import TypeAlias, TypeGuard
 
 __all__ = [
+    "C14NWriterTarget",
     "Comment",
     "dump",
     "Element",
     "ElementTree",
+    "canonicalize",
     "fromstring",
     "fromstringlist",
     "iselement",
@@ -31,9 +33,6 @@ __all__ = [
     "register_namespace",
 ]
 
-if sys.version_info >= (3, 8):
-    __all__ += ["C14NWriterTarget", "canonicalize"]
-
 if sys.version_info >= (3, 9):
     __all__ += ["indent"]
 
@@ -50,43 +49,41 @@ class ParseError(SyntaxError):
 
 # In reality it works based on `.tag` attribute duck typing.
 def iselement(element: object) -> TypeGuard[Element]: ...
-
-if sys.version_info >= (3, 8):
-    @overload
-    def canonicalize(
-        xml_data: str | ReadableBuffer | None = None,
-        *,
-        out: None = None,
-        from_file: _FileRead | None = None,
-        with_comments: bool = False,
-        strip_text: bool = False,
-        rewrite_prefixes: bool = False,
-        qname_aware_tags: Iterable[str] | None = None,
-        qname_aware_attrs: Iterable[str] | None = None,
-        exclude_attrs: Iterable[str] | None = None,
-        exclude_tags: Iterable[str] | None = None,
-    ) -> str: ...
-    @overload
-    def canonicalize(
-        xml_data: str | ReadableBuffer | None = None,
-        *,
-        out: SupportsWrite[str],
-        from_file: _FileRead | None = None,
-        with_comments: bool = False,
-        strip_text: bool = False,
-        rewrite_prefixes: bool = False,
-        qname_aware_tags: Iterable[str] | None = None,
-        qname_aware_attrs: Iterable[str] | None = None,
-        exclude_attrs: Iterable[str] | None = None,
-        exclude_tags: Iterable[str] | None = None,
-    ) -> None: ...
+@overload
+def canonicalize(
+    xml_data: str | ReadableBuffer | None = None,
+    *,
+    out: None = None,
+    from_file: _FileRead | None = None,
+    with_comments: bool = False,
+    strip_text: bool = False,
+    rewrite_prefixes: bool = False,
+    qname_aware_tags: Iterable[str] | None = None,
+    qname_aware_attrs: Iterable[str] | None = None,
+    exclude_attrs: Iterable[str] | None = None,
+    exclude_tags: Iterable[str] | None = None,
+) -> str: ...
+@overload
+def canonicalize(
+    xml_data: str | ReadableBuffer | None = None,
+    *,
+    out: SupportsWrite[str],
+    from_file: _FileRead | None = None,
+    with_comments: bool = False,
+    strip_text: bool = False,
+    rewrite_prefixes: bool = False,
+    qname_aware_tags: Iterable[str] | None = None,
+    qname_aware_attrs: Iterable[str] | None = None,
+    exclude_attrs: Iterable[str] | None = None,
+    exclude_tags: Iterable[str] | None = None,
+) -> None: ...
 
 class Element:
     tag: str
     attrib: dict[str, str]
     text: str | None
     tail: str | None
-    def __init__(self, tag: str | Callable[..., Element], attrib: dict[str, str] = ..., **extra: str) -> None: ...
+    def __init__(self, tag: str, attrib: dict[str, str] = ..., **extra: str) -> None: ...
     def append(self, __subelement: Element) -> None: ...
     def clear(self) -> None: ...
     def extend(self, __elements: Iterable[Element]) -> None: ...
@@ -132,7 +129,7 @@ def SubElement(parent: Element, tag: str, attrib: dict[str, str] = ..., **extra:
 def Comment(text: str | None = None) -> Element: ...
 def ProcessingInstruction(target: str, text: str | None = None) -> Element: ...
 
-PI: Callable[..., Element]
+PI = ProcessingInstruction
 
 class QName:
     text: str
@@ -142,6 +139,7 @@ class QName:
     def __gt__(self, other: QName | str) -> bool: ...
     def __ge__(self, other: QName | str) -> bool: ...
     def __eq__(self, other: object) -> bool: ...
+    def __hash__(self) -> int: ...
 
 class ElementTree:
     def __init__(self, element: Element | None = None, file: _FileRead | None = None) -> None: ...
@@ -171,93 +169,66 @@ class ElementTree:
     def write_c14n(self, file: _FileWriteC14N) -> None: ...
 
 def register_namespace(prefix: str, uri: str) -> None: ...
-
-if sys.version_info >= (3, 8):
-    @overload
-    def tostring(
-        element: Element,
-        encoding: None = None,
-        method: str | None = None,
-        *,
-        xml_declaration: bool | None = None,
-        default_namespace: str | None = None,
-        short_empty_elements: bool = True,
-    ) -> bytes: ...
-    @overload
-    def tostring(
-        element: Element,
-        encoding: Literal["unicode"],
-        method: str | None = None,
-        *,
-        xml_declaration: bool | None = None,
-        default_namespace: str | None = None,
-        short_empty_elements: bool = True,
-    ) -> str: ...
-    @overload
-    def tostring(
-        element: Element,
-        encoding: str,
-        method: str | None = None,
-        *,
-        xml_declaration: bool | None = None,
-        default_namespace: str | None = None,
-        short_empty_elements: bool = True,
-    ) -> Any: ...
-    @overload
-    def tostringlist(
-        element: Element,
-        encoding: None = None,
-        method: str | None = None,
-        *,
-        xml_declaration: bool | None = None,
-        default_namespace: str | None = None,
-        short_empty_elements: bool = True,
-    ) -> list[bytes]: ...
-    @overload
-    def tostringlist(
-        element: Element,
-        encoding: Literal["unicode"],
-        method: str | None = None,
-        *,
-        xml_declaration: bool | None = None,
-        default_namespace: str | None = None,
-        short_empty_elements: bool = True,
-    ) -> list[str]: ...
-    @overload
-    def tostringlist(
-        element: Element,
-        encoding: str,
-        method: str | None = None,
-        *,
-        xml_declaration: bool | None = None,
-        default_namespace: str | None = None,
-        short_empty_elements: bool = True,
-    ) -> list[Any]: ...
-
-else:
-    @overload
-    def tostring(
-        element: Element, encoding: None = None, method: str | None = None, *, short_empty_elements: bool = True
-    ) -> bytes: ...
-    @overload
-    def tostring(
-        element: Element, encoding: Literal["unicode"], method: str | None = None, *, short_empty_elements: bool = True
-    ) -> str: ...
-    @overload
-    def tostring(element: Element, encoding: str, method: str | None = None, *, short_empty_elements: bool = True) -> Any: ...
-    @overload
-    def tostringlist(
-        element: Element, encoding: None = None, method: str | None = None, *, short_empty_elements: bool = True
-    ) -> list[bytes]: ...
-    @overload
-    def tostringlist(
-        element: Element, encoding: Literal["unicode"], method: str | None = None, *, short_empty_elements: bool = True
-    ) -> list[str]: ...
-    @overload
-    def tostringlist(
-        element: Element, encoding: str, method: str | None = None, *, short_empty_elements: bool = True
-    ) -> list[Any]: ...
-
+@overload
+def tostring(
+    element: Element,
+    encoding: None = None,
+    method: str | None = None,
+    *,
+    xml_declaration: bool | None = None,
+    default_namespace: str | None = None,
+    short_empty_elements: bool = True,
+) -> bytes: ...
+@overload
+def tostring(
+    element: Element,
+    encoding: Literal["unicode"],
+    method: str | None = None,
+    *,
+    xml_declaration: bool | None = None,
+    default_namespace: str | None = None,
+    short_empty_elements: bool = True,
+) -> str: ...
+@overload
+def tostring(
+    element: Element,
+    encoding: str,
+    method: str | None = None,
+    *,
+    xml_declaration: bool | None = None,
+    default_namespace: str | None = None,
+    short_empty_elements: bool = True,
+) -> Any: ...
+@overload
+def tostringlist(
+    element: Element,
+    encoding: None = None,
+    method: str | None = None,
+    *,
+    xml_declaration: bool | None = None,
+    default_namespace: str | None = None,
+    short_empty_elements: bool = True,
+) -> list[bytes]: ...
+@overload
+def tostringlist(
+    element: Element,
+    encoding: Literal["unicode"],
+    method: str | None = None,
+    *,
+    xml_declaration: bool | None = None,
+    default_namespace: str | None = None,
+    short_empty_elements: bool = True,
+) -> list[str]: ...
+@overload
+def tostringlist(
+    element: Element,
+    encoding: str,
+    method: str | None = None,
+    *,
+    xml_declaration: bool | None = None,
+    default_namespace: str | None = None,
+    short_empty_elements: bool = True,
+) -> list[Any]: ...
 def dump(elem: Element) -> None: ...
 
 if sys.version_info >= (3, 9):
@@ -296,21 +267,18 @@ def fromstringlist(sequence: Sequence[str | ReadableBuffer], parser: XMLParser |
 _ElementFactory: TypeAlias = Callable[[Any, dict[Any, Any]], Element]
 
 class TreeBuilder:
-    if sys.version_info >= (3, 8):
-        # comment_factory can take None because passing None to Comment is not an error
-        def __init__(
-            self,
-            element_factory: _ElementFactory | None = ...,
-            *,
-            comment_factory: Callable[[str | None], Element] | None = ...,
-            pi_factory: Callable[[str, str | None], Element] | None = ...,
-            insert_comments: bool = ...,
-            insert_pis: bool = ...,
-        ) -> None: ...
-        insert_comments: bool
-        insert_pis: bool
-    else:
-        def __init__(self, element_factory: _ElementFactory | None = ...) -> None: ...
+    # comment_factory can take None because passing None to Comment is not an error
+    def __init__(
+        self,
+        element_factory: _ElementFactory | None = ...,
+        *,
+        comment_factory: Callable[[str | None], Element] | None = ...,
+        pi_factory: Callable[[str, str | None], Element] | None = ...,
+        insert_comments: bool = ...,
+        insert_pis: bool = ...,
+    ) -> None: ...
+    insert_comments: bool
+    insert_pis: bool
 
     def close(self) -> Element: ...
     def data(self, __data: str) -> None: ...
@@ -318,31 +286,29 @@ class TreeBuilder:
     # depending on what the particular factory supports.
     def start(self, __tag: Any, __attrs: dict[Any, Any]) -> Element: ...
     def end(self, __tag: str) -> Element: ...
-    if sys.version_info >= (3, 8):
-        # These two methods have pos-only parameters in the C implementation
-        def comment(self, __text: str | None) -> Element: ...
-        def pi(self, __target: str, __text: str | None = None) -> Element: ...
+    # These two methods have pos-only parameters in the C implementation
+    def comment(self, __text: str | None) -> Element: ...
+    def pi(self, __target: str, __text: str | None = None) -> Element: ...
 
-if sys.version_info >= (3, 8):
-    class C14NWriterTarget:
-        def __init__(
-            self,
-            write: Callable[[str], object],
-            *,
-            with_comments: bool = False,
-            strip_text: bool = False,
-            rewrite_prefixes: bool = False,
-            qname_aware_tags: Iterable[str] | None = None,
-            qname_aware_attrs: Iterable[str] | None = None,
-            exclude_attrs: Iterable[str] | None = None,
-            exclude_tags: Iterable[str] | None = None,
-        ) -> None: ...
-        def data(self, data: str) -> None: ...
-        def start_ns(self, prefix: str, uri: str) -> None: ...
-        def start(self, tag: str, attrs: Mapping[str, str]) -> None: ...
-        def end(self, tag: str) -> None: ...
-        def comment(self, text: str) -> None: ...
-        def pi(self, target: str, data: str) -> None: ...
+class C14NWriterTarget:
+    def __init__(
+        self,
+        write: Callable[[str], object],
+        *,
+        with_comments: bool = False,
+        strip_text: bool = False,
+        rewrite_prefixes: bool = False,
+        qname_aware_tags: Iterable[str] | None = None,
+        qname_aware_attrs: Iterable[str] | None = None,
+        exclude_attrs: Iterable[str] | None = None,
+        exclude_tags: Iterable[str] | None = None,
+    ) -> None: ...
+    def data(self, data: str) -> None: ...
+    def start_ns(self, prefix: str, uri: str) -> None: ...
+    def start(self, tag: str, attrs: Mapping[str, str]) -> None: ...
+    def end(self, tag: str) -> None: ...
+    def comment(self, text: str) -> None: ...
+    def pi(self, target: str, data: str) -> None: ...
 
 class XMLParser:
     parser: Any
@@ -350,11 +316,6 @@ class XMLParser:
     # TODO-what is entity used for???
     entity: Any
     version: str
-    if sys.version_info >= (3, 8):
-        def __init__(self, *, target: Any = ..., encoding: str | None = ...) -> None: ...
-    else:
-        def __init__(self, html: int = ..., target: Any = ..., encoding: str | None = ...) -> None: ...
-        def doctype(self, __name: str, __pubid: str, __system: str) -> None: ...
-
+    def __init__(self, *, target: Any = ..., encoding: str | None = ...) -> None: ...
     def close(self) -> Any: ...
     def feed(self, __data: str | ReadableBuffer) -> None: ...

@@ -4,8 +4,8 @@ from collections.abc import Callable, Iterable, Iterator
 from socket import socket
 from ssl import SSLContext
 from types import TracebackType
-from typing import Any, TextIO
-from typing_extensions import Literal, Self
+from typing import Any, Literal, TextIO
+from typing_extensions import Self
 
 __all__ = ["FTP", "error_reply", "error_temp", "error_perm", "error_proto", "all_errors", "FTP_TLS"]
 
@@ -31,7 +31,7 @@ class FTP:
     sock: socket | None
     welcome: str | None
     passiveserver: int
-    timeout: int
+    timeout: float | None
     af: int
     lastresp: str
     file: TextIO | None
@@ -48,7 +48,7 @@ class FTP:
             user: str = "",
             passwd: str = "",
             acct: str = "",
-            timeout: float = ...,
+            timeout: float | None = ...,
             source_address: tuple[str, int] | None = None,
             *,
             encoding: str = "utf-8",
@@ -60,7 +60,7 @@ class FTP:
             user: str = "",
             passwd: str = "",
             acct: str = "",
-            timeout: float = ...,
+            timeout: float | None = ...,
             source_address: tuple[str, int] | None = None,
         ) -> None: ...
 
@@ -87,7 +87,7 @@ class FTP:
     def makepasv(self) -> tuple[str, int]: ...
     def login(self, user: str = "", passwd: str = "", acct: str = "") -> str: ...
     # In practice, `rest` rest can actually be anything whose str() is an integer sequence, so to make it simple we allow integers.
-    def ntransfercmd(self, cmd: str, rest: int | str | None = None) -> tuple[socket, int]: ...
+    def ntransfercmd(self, cmd: str, rest: int | str | None = None) -> tuple[socket, int | None]: ...
     def transfercmd(self, cmd: str, rest: int | str | None = None) -> socket: ...
     def retrbinary(
         self, cmd: str, callback: Callable[[bytes], object], blocksize: int = 8192, rest: int | str | None = None
@@ -127,7 +127,7 @@ class FTP_TLS(FTP):
             acct: str = "",
             *,
             context: SSLContext | None = None,
-            timeout: float = ...,
+            timeout: float | None = ...,
             source_address: tuple[str, int] | None = None,
             encoding: str = "utf-8",
         ) -> None: ...
@@ -141,7 +141,7 @@ class FTP_TLS(FTP):
             keyfile: str | None = None,
             certfile: str | None = None,
             context: SSLContext | None = None,
-            timeout: float = ...,
+            timeout: float | None = ...,
             source_address: tuple[str, int] | None = None,
             *,
             encoding: str = "utf-8",
@@ -156,7 +156,7 @@ class FTP_TLS(FTP):
             keyfile: str | None = None,
             certfile: str | None = None,
             context: SSLContext | None = None,
-            timeout: float = ...,
+            timeout: float | None = ...,
             source_address: tuple[str, int] | None = None,
         ) -> None: ...
     ssl_version: int

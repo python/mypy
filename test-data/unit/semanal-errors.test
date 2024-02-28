@@ -480,13 +480,13 @@ c = 1
 d = 1
 a = *b
 [out]
-main:4: error: Can use starred expression only as assignment target
+main:4: error: can't use starred expression here
 
 [case testStarExpressionInExp]
 a = 1
 *a + 1
 [out]
-main:2: error: Can use starred expression only as assignment target
+main:2: error: can't use starred expression here
 
 [case testInvalidDel1]
 x = 1
@@ -810,8 +810,8 @@ class C(Generic[t]): pass
 cast(str + str, None)    # E: Cast target is not a type
 cast(C[str][str], None)  # E: Cast target is not a type
 cast(C[str + str], None) # E: Cast target is not a type
-cast([int, str], None)   # E: Bracketed expression "[...]" is not valid as a type \
-                         # N: Did you mean "List[...]"?
+cast([int], None)   # E: Bracketed expression "[...]" is not valid as a type \
+                    # N: Did you mean "List[...]"?
 [out]
 
 [case testInvalidCastTargetType]
@@ -859,8 +859,8 @@ Any(arg=str)  # E: Any(...) is no longer supported. Use cast(Any, ...) instead
 
 [case testTypeListAsType]
 
-def f(x:[int, str]) -> None: # E: Bracketed expression "[...]" is not valid as a type \
-                             # N: Did you mean "List[...]"?
+def f(x: [int]) -> None: # E: Bracketed expression "[...]" is not valid as a type \
+                         # N: Did you mean "List[...]"?
     pass
 [out]
 
@@ -1457,7 +1457,7 @@ homogenous_tuple: Tuple[Unpack[Tuple[int, ...]]]
 bad: Tuple[Unpack[int]]  # E: "int" cannot be unpacked (must be tuple or TypeVarTuple)
 [builtins fixtures/tuple.pyi]
 
-[case testTypeVarTuple]
+[case testTypeVarTupleErrors]
 from typing import Generic
 from typing_extensions import TypeVarTuple, Unpack
 
@@ -1471,15 +1471,14 @@ TP5 = TypeVarTuple(t='TP5')  # E: TypeVarTuple() expects a string literal as fir
 TP6 = TypeVarTuple('TP6', bound=int)  # E: Unexpected keyword argument "bound" for "TypeVarTuple"
 
 x: TVariadic  # E: TypeVarTuple "TVariadic" is unbound
-y: Unpack[TVariadic]  # E: TypeVarTuple "TVariadic" is unbound
+y: Unpack[TVariadic]  # E: Unpack is only valid in a variadic position
 
 
 class Variadic(Generic[Unpack[TVariadic], Unpack[TVariadic2]]):  # E: Can only use one type var tuple in a class def
     pass
 
-# TODO: this should generate an error
-#def bad_args(*args: TVariadic):
-#    pass
+def bad_args(*args: TVariadic):  # E: TypeVarTuple "TVariadic" is only valid with an unpack
+    pass
 
 def bad_kwargs(**kwargs: Unpack[TVariadic]):  # E: Unpack item in ** argument must be a TypedDict
     pass

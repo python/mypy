@@ -56,7 +56,7 @@ class CCompiler:
         self,
         sources: list[str],
         output_dir: str | None = None,
-        macros: _Macro | None = None,
+        macros: list[_Macro] | None = None,
         include_dirs: list[str] | None = None,
         debug: bool = ...,
         extra_preargs: list[str] | None = None,

@@ -8,7 +8,7 @@ import os.path
 import sys
 from typing import TYPE_CHECKING, Any
 
-if sys.version_info < (3, 8, 0):
+if sys.version_info < (3, 8, 0):  # noqa: UP036
     sys.stderr.write("ERROR: You need Python 3.8 or later to use mypy.\n")
     exit(1)
 
@@ -112,7 +112,6 @@ if USE_MYPYC:
             "stubtest.py",
             "stubgenc.py",
             "stubdoc.py",
-            "stubutil.py",
         )
     ) + (
         # Don't want to grab this accidentally
@@ -202,7 +201,7 @@ setup(
     author="Jukka Lehtosalo",
     author_email="jukka.lehtosalo@iki.fi",
     url="https://www.mypy-lang.org/",
-    license="MIT License",
+    license="MIT",
     py_modules=[],
     ext_modules=ext_modules,
     packages=find_packages(),
@@ -227,6 +226,7 @@ setup(
     # Same here.
     extras_require={
         "dmypy": "psutil >= 4.0",
+        "mypyc": "setuptools >= 50",
         "python2": "",
         "reports": "lxml",
         "install-types": "pip",
@@ -234,8 +234,9 @@ setup(
     python_requires=">=3.8",
     include_package_data=True,
     project_urls={
-        "News": "https://mypy-lang.org/news.html",
         "Documentation": "https://mypy.readthedocs.io/en/stable/index.html",
         "Repository": "https://github.com/python/mypy",
+        "Changelog": "https://github.com/python/mypy/blob/master/CHANGELOG.md",
+        "Issues": "https://github.com/python/mypy/issues",
     },
 )

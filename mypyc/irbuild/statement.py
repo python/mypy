@@ -59,11 +59,13 @@ from mypyc.ir.ops import (
     Register,
     Return,
     TupleGet,
+    Unborrow,
     Unreachable,
     Value,
 )
 from mypyc.ir.rtypes import (
     RInstance,
+    RTuple,
     c_pyssize_t_rprimitive,
     exc_rtuple,
     is_tagged,
@@ -116,8 +118,13 @@ ValueGenFunc = Callable[[], Value]
 
 def transform_block(builder: IRBuilder, block: Block) -> None:
     if not block.is_unreachable:
+        builder.block_reachable_stack.append(True)
         for stmt in block.body:
             builder.accept(stmt)
+            if not builder.block_reachable_stack[-1]:
+                # The rest of the block is unreachable, so skip it
+                break
+        builder.block_reachable_stack.pop()
     # Raise a RuntimeError if we hit a non-empty unreachable block.
     # Don't complain about empty unreachable blocks, since mypy inserts
     # those after `if MYPY`.
@@ -183,8 +190,29 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
 
     line = stmt.rvalue.line
     rvalue_reg = builder.accept(stmt.rvalue)
+
     if builder.non_function_scope() and stmt.is_final_def:
         builder.init_final_static(first_lvalue, rvalue_reg)
+
+    # Special-case multiple assignments like 'x, y = expr' to reduce refcount ops.
+    if (
+        isinstance(first_lvalue, (TupleExpr, ListExpr))
+        and isinstance(rvalue_reg.type, RTuple)
+        and len(rvalue_reg.type.types) == len(first_lvalue.items)
+        and len(lvalues) == 1
+        and all(is_simple_lvalue(item) for item in first_lvalue.items)
+        and any(t.is_refcounted for t in rvalue_reg.type.types)
+    ):
+        n = len(first_lvalue.items)
+        for i in range(n):
+            target = builder.get_assignment_target(first_lvalue.items[i])
+            rvalue_item = builder.add(TupleGet(rvalue_reg, i, borrow=True))
+            rvalue_item = builder.add(Unborrow(rvalue_item))
+            builder.assign(target, rvalue_item, line)
+        builder.builder.keep_alive([rvalue_reg], steal=True)
+        builder.flush_keep_alives()
+        return
+
     for lvalue in lvalues:
         target = builder.get_assignment_target(lvalue)
         builder.assign(target, rvalue_reg, line)

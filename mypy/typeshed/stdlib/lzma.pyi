@@ -1,8 +1,8 @@
-import io
+from _compression import BaseStream
 from _typeshed import ReadableBuffer, StrOrBytesPath
 from collections.abc import Mapping, Sequence
-from typing import IO, Any, TextIO, overload
-from typing_extensions import Literal, Self, TypeAlias, final
+from typing import IO, Any, Literal, TextIO, final, overload
+from typing_extensions import Self, TypeAlias
 
 __all__ = [
     "CHECK_NONE",
@@ -104,7 +104,7 @@ class LZMACompressor:
 
 class LZMAError(Exception): ...
 
-class LZMAFile(io.BufferedIOBase, IO[bytes]):  # type: ignore[misc]  # incompatible definitions of writelines in the base classes
+class LZMAFile(BaseStream, IO[bytes]):  # type: ignore[misc]  # incompatible definitions of writelines in the base classes
     def __init__(
         self,
         filename: _PathOrFile | None = None,

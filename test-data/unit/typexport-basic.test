@@ -294,8 +294,8 @@ import typing
 x = ()
 [builtins fixtures/primitives.pyi]
 [out]
-NameExpr(2) : Tuple[]
-TupleExpr(2) : Tuple[]
+NameExpr(2) : Tuple[()]
+TupleExpr(2) : Tuple[()]
 
 [case testInferTwoTypes]
 ## NameExpr
@@ -313,8 +313,8 @@ def f() -> None:
     x = ()
 [builtins fixtures/primitives.pyi]
 [out]
-NameExpr(3) : Tuple[]
-TupleExpr(3) : Tuple[]
+NameExpr(3) : Tuple[()]
+TupleExpr(3) : Tuple[()]
 
 
 -- Basic generics
@@ -727,7 +727,7 @@ class A: pass
 class B:
   a = None # type: A
 [out]
-LambdaExpr(2) : def (B) -> A
+LambdaExpr(2) : def (x: B) -> A
 MemberExpr(2) : A
 NameExpr(2) : B
 
@@ -756,7 +756,7 @@ class B:
   a = None # type: A
 [builtins fixtures/list.pyi]
 [out]
-LambdaExpr(2) : def (B) -> builtins.list[A]
+LambdaExpr(2) : def (x: B) -> builtins.list[A]
 ListExpr(2) : builtins.list[A]
 
 [case testLambdaAndHigherOrderFunction]
@@ -775,7 +775,7 @@ map(
 CallExpr(9) : builtins.list[B]
 NameExpr(9) : def (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
 CallExpr(10) : B
-LambdaExpr(10) : def (A) -> B
+LambdaExpr(10) : def (x: A) -> B
 NameExpr(10) : def (a: A) -> B
 NameExpr(10) : builtins.list[A]
 NameExpr(10) : A
@@ -795,7 +795,7 @@ map(
 [builtins fixtures/list.pyi]
 [out]
 NameExpr(10) : def (f: def (A) -> builtins.list[B], a: builtins.list[A]) -> builtins.list[B]
-LambdaExpr(11) : def (A) -> builtins.list[B]
+LambdaExpr(11) : def (x: A) -> builtins.list[B]
 ListExpr(11) : builtins.list[B]
 NameExpr(11) : def (a: A) -> B
 NameExpr(11) : builtins.list[A]
@@ -817,7 +817,7 @@ map(
 --      context. Perhaps just fail instead?
 CallExpr(7) : builtins.list[Any]
 NameExpr(7) : def (f: builtins.list[def (A) -> Any], a: builtins.list[A]) -> builtins.list[Any]
-LambdaExpr(8) : def (A) -> A
+LambdaExpr(8) : def (x: A) -> A
 ListExpr(8) : builtins.list[def (A) -> Any]
 NameExpr(8) : A
 NameExpr(9) : builtins.list[A]
@@ -838,7 +838,7 @@ map(
 [out]
 CallExpr(9) : builtins.list[B]
 NameExpr(9) : def (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
-LambdaExpr(10) : def (A) -> B
+LambdaExpr(10) : def (x: A) -> B
 MemberExpr(10) : B
 NameExpr(10) : A
 NameExpr(11) : builtins.list[A]
@@ -860,7 +860,7 @@ map(
 CallExpr(9) : builtins.list[B]
 NameExpr(9) : def (f: def (A) -> B, a: builtins.list[A]) -> builtins.list[B]
 NameExpr(10) : builtins.list[A]
-LambdaExpr(11) : def (A) -> B
+LambdaExpr(11) : def (x: A) -> B
 MemberExpr(11) : B
 NameExpr(11) : A
 
@@ -1212,7 +1212,7 @@ f(
 [builtins fixtures/list.pyi]
 [out]
 NameExpr(8) : Overload(def (x: builtins.int, f: def (builtins.int) -> builtins.int), def (x: builtins.str, f: def (builtins.str) -> builtins.str))
-LambdaExpr(9) : def (builtins.int) -> builtins.int
+LambdaExpr(9) : def (x: builtins.int) -> builtins.int
 NameExpr(9) : builtins.int
 
 [case testExportOverloadArgTypeNested]
@@ -1231,10 +1231,31 @@ f(
     lambda x: x)
 [builtins fixtures/list.pyi]
 [out]
-LambdaExpr(9) : def (builtins.int) -> builtins.int
-LambdaExpr(10) : def (builtins.int) -> builtins.int
-LambdaExpr(12) : def (builtins.str) -> builtins.str
-LambdaExpr(13) : def (builtins.str) -> builtins.str
+LambdaExpr(9) : def (y: builtins.int) -> builtins.int
+LambdaExpr(10) : def (x: builtins.int) -> builtins.int
+LambdaExpr(12) : def (y: builtins.str) -> builtins.str
+LambdaExpr(13) : def (x: builtins.str) -> builtins.str
+
+[case testExportOverloadArgTypeDict]
+## DictExpr
+from typing import TypeVar, Generic, Any, overload, Dict
+T = TypeVar("T")
+class Key(Generic[T]): ...
+@overload
+def f(x: Key[T], y: T) -> T: ...
+@overload
+def f(x: int, y: Any) -> Any: ...
+def f(x, y): ...
+d: Dict = {}
+d.get(
+  "", {})
+f(
+  2, {})
+[builtins fixtures/dict.pyi]
+[out]
+DictExpr(10) : builtins.dict[Any, Any]
+DictExpr(12) : builtins.dict[Any, Any]
+DictExpr(14) : builtins.dict[Any, Any]
 
 -- TODO
 --

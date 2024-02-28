@@ -1,0 +1,62 @@
+[case test695TypeAlias]
+type MyInt = int  # E: PEP 695 type aliases are not yet supported
+
+def f(x: MyInt) -> MyInt:
+    return reveal_type(x)  # N: Revealed type is "builtins.int"
+
+type MyList[T] = list[T]  # E: PEP 695 type aliases are not yet supported \
+                          # E: Name "T" is not defined
+
+def g(x: MyList[int]) -> MyList[int]:  # E: Variable "__main__.MyList" is not valid as a type \
+                                       # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    return reveal_type(x)  # N: Revealed type is "MyList?[builtins.int]"
+
+type MyInt2 = int  # type: ignore[valid-type]
+
+def h(x: MyInt2) -> MyInt2:
+    return reveal_type(x)  # N: Revealed type is "builtins.int"
+
+[case test695Class]
+class MyGen[T]:  # E: PEP 695 generics are not yet supported
+    def __init__(self, x: T) -> None:  # E: Name "T" is not defined
+        self.x = x
+
+def f(x: MyGen[int]):  # E: "MyGen" expects no type arguments, but 1 given
+    reveal_type(x.x)  # N: Revealed type is "Any"
+
+[case test695Function]
+def f[T](x: T) -> T:  # E: PEP 695 generics are not yet supported \
+                      # E: Name "T" is not defined
+    return reveal_type(x)  # N: Revealed type is "Any"
+
+reveal_type(f(1))  # N: Revealed type is "Any"
+
+async def g[T](x: T) -> T:  # E: PEP 695 generics are not yet supported \
+                            # E: Name "T" is not defined
+    return reveal_type(x)  # N: Revealed type is "Any"
+
+reveal_type(g(1))  # E: Value of type "Coroutine[Any, Any, Any]" must be used \
+                   # N: Are you missing an await? \
+                   # N: Revealed type is "typing.Coroutine[Any, Any, Any]"
+
+[case test695TypeVar]
+from typing import Callable
+type Alias1[T: int] = list[T]  # E: PEP 695 type aliases are not yet supported
+type Alias2[**P] = Callable[P, int]  # E: PEP 695 type aliases are not yet supported \
+                                     # E: Value of type "int" is not indexable \
+                                     # E: Name "P" is not defined
+type Alias3[*Ts] = tuple[*Ts]  # E: PEP 695 type aliases are not yet supported \
+                               # E: Name "Ts" is not defined
+
+class Cls1[T: int]: ...  # E: PEP 695 generics are not yet supported
+class Cls2[**P]: ...  # E: PEP 695 generics are not yet supported
+class Cls3[*Ts]: ...  # E: PEP 695 generics are not yet supported
+
+def func1[T: int](x: T) -> T: ...  # E: PEP 695 generics are not yet supported
+def func2[**P](x: Callable[P, int]) -> Callable[P, str]: ...  # E: PEP 695 generics are not yet supported \
+                                                              # E: The first argument to Callable must be a list of types, parameter specification, or "..." \
+                                                              # N: See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas \
+                                                              # E: Name "P" is not defined
+def func3[*Ts](x: tuple[*Ts]) -> tuple[int, *Ts]: ...  # E: PEP 695 generics are not yet supported \
+                                                       # E: Name "Ts" is not defined
+[builtins fixtures/tuple.pyi]

@@ -16,8 +16,8 @@ from collections.abc import (
 from importlib.machinery import ModuleSpec
 
 # pytype crashes if types.MappingProxyType inherits from collections.abc.Mapping instead of typing.Mapping
-from typing import Any, ClassVar, Generic, Mapping, Protocol, TypeVar, overload  # noqa: Y022
-from typing_extensions import Literal, ParamSpec, Self, TypeVarTuple, final
+from typing import Any, ClassVar, Literal, Mapping, Protocol, TypeVar, final, overload  # noqa: Y022
+from typing_extensions import ParamSpec, Self, TypeVarTuple
 
 __all__ = [
     "FunctionType",
@@ -45,10 +45,8 @@ __all__ = [
     "MethodWrapperType",
     "WrapperDescriptorType",
     "resolve_bases",
+    "CellType",
 ]
-
-if sys.version_info >= (3, 8):
-    __all__ += ["CellType"]
 
 if sys.version_info >= (3, 9):
     __all__ += ["GenericAlias"]
@@ -68,9 +66,8 @@ _VT_co = TypeVar("_VT_co", covariant=True)
 
 @final
 class _Cell:
-    if sys.version_info >= (3, 8):
-        def __init__(self, __contents: object = ...) -> None: ...
-
+    def __new__(cls, __contents: object = ...) -> Self: ...
+    def __eq__(self, __value: object) -> bool: ...
     __hash__: ClassVar[None]  # type: ignore[assignment]
     cell_contents: Any
 
@@ -95,14 +92,14 @@ class FunctionType:
         __type_params__: tuple[TypeVar | ParamSpec | TypeVarTuple, ...]
 
     __module__: str
-    def __init__(
-        self,
+    def __new__(
+        cls,
         code: CodeType,
         globals: dict[str, Any],
         name: str | None = ...,
         argdefs: tuple[object, ...] | None = ...,
         closure: tuple[_Cell, ...] | None = ...,
-    ) -> None: ...
+    ) -> Self: ...
     def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
     @overload
     def __get__(self, __instance: None, __owner: type) -> FunctionType: ...
@@ -113,12 +110,12 @@ LambdaType = FunctionType
 
 @final
 class CodeType:
+    def __eq__(self, __value: object) -> bool: ...
+    def __hash__(self) -> int: ...
     @property
     def co_argcount(self) -> int: ...
-    if sys.version_info >= (3, 8):
-        @property
-        def co_posonlyargcount(self) -> int: ...
-
+    @property
+    def co_posonlyargcount(self) -> int: ...
     @property
     def co_kwonlyargcount(self) -> int: ...
     @property
@@ -159,8 +156,8 @@ class CodeType:
         def co_positions(self) -> Iterable[tuple[int | None, int | None, int | None, int | None]]: ...
 
     if sys.version_info >= (3, 11):
-        def __init__(
-            self,
+        def __new__(
+            cls,
             __argcount: int,
             __posonlyargcount: int,
             __kwonlyargcount: int,
@@ -179,10 +176,10 @@ class CodeType:
             __exceptiontable: bytes,
             __freevars: tuple[str, ...] = ...,
             __cellvars: tuple[str, ...] = ...,
-        ) -> None: ...
+        ) -> Self: ...
     elif sys.version_info >= (3, 10):
-        def __init__(
-            self,
+        def __new__(
+            cls,
             __argcount: int,
             __posonlyargcount: int,
             __kwonlyargcount: int,
@@ -199,10 +196,10 @@ class CodeType:
             __linetable: bytes,
             __freevars: tuple[str, ...] = ...,
             __cellvars: tuple[str, ...] = ...,
-        ) -> None: ...
-    elif sys.version_info >= (3, 8):
-        def __init__(
-            self,
+        ) -> Self: ...
+    else:
+        def __new__(
+            cls,
             __argcount: int,
             __posonlyargcount: int,
             __kwonlyargcount: int,
@@ -219,26 +216,7 @@ class CodeType:
             __lnotab: bytes,
             __freevars: tuple[str, ...] = ...,
             __cellvars: tuple[str, ...] = ...,
-        ) -> None: ...
-    else:
-        def __init__(
-            self,
-            __argcount: int,
-            __kwonlyargcount: int,
-            __nlocals: int,
-            __stacksize: int,
-            __flags: int,
-            __codestring: bytes,
-            __constants: tuple[object, ...],
-            __names: tuple[str, ...],
-            __varnames: tuple[str, ...],
-            __filename: str,
-            __name: str,
-            __firstlineno: int,
-            __lnotab: bytes,
-            __freevars: tuple[str, ...] = ...,
-            __cellvars: tuple[str, ...] = ...,
-        ) -> None: ...
+        ) -> Self: ...
     if sys.version_info >= (3, 11):
         def replace(
             self,
@@ -283,7 +261,7 @@ class CodeType:
             co_name: str = ...,
             co_linetable: bytes = ...,
         ) -> CodeType: ...
-    elif sys.version_info >= (3, 8):
+    else:
         def replace(
             self,
             *,
@@ -306,9 +284,9 @@ class CodeType:
         ) -> CodeType: ...
 
 @final
-class MappingProxyType(Mapping[_KT, _VT_co], Generic[_KT, _VT_co]):
+class MappingProxyType(Mapping[_KT, _VT_co]):
     __hash__: ClassVar[None]  # type: ignore[assignment]
-    def __init__(self, mapping: SupportsKeysAndGetItem[_KT, _VT_co]) -> None: ...
+    def __new__(cls, mapping: SupportsKeysAndGetItem[_KT, _VT_co]) -> Self: ...
     def __getitem__(self, __key: _KT) -> _VT_co: ...
     def __iter__(self) -> Iterator[_KT]: ...
     def __len__(self) -> int: ...
@@ -326,12 +304,13 @@ class MappingProxyType(Mapping[_KT, _VT_co], Generic[_KT, _VT_co]):
 class SimpleNamespace:
     __hash__: ClassVar[None]  # type: ignore[assignment]
     def __init__(self, **kwargs: Any) -> None: ...
+    def __eq__(self, __value: object) -> bool: ...
     def __getattribute__(self, __name: str) -> Any: ...
     def __setattr__(self, __name: str, __value: Any) -> None: ...
     def __delattr__(self, __name: str) -> None: ...
 
 class _LoaderProtocol(Protocol):
-    def load_module(self, fullname: str) -> ModuleType: ...
+    def load_module(self, __fullname: str) -> ModuleType: ...
 
 class ModuleType:
     __name__: str
@@ -414,18 +393,6 @@ class CoroutineType(Coroutine[_YieldT_co, _SendT_contra, _ReturnT_co]):
     @overload
     def throw(self, __typ: BaseException, __val: None = None, __tb: TracebackType | None = ...) -> _YieldT_co: ...
 
-class _StaticFunctionType:
-    # Fictional type to correct the type of MethodType.__func__.
-    # FunctionType is a descriptor, so mypy follows the descriptor protocol and
-    # converts MethodType.__func__ back to MethodType (the return type of
-    # FunctionType.__get__). But this is actually a special case; MethodType is
-    # implemented in C and its attribute access doesn't go through
-    # __getattribute__.
-    # By wrapping FunctionType in _StaticFunctionType, we get the right result;
-    # similar to wrapping a function in staticmethod() at runtime to prevent it
-    # being bound as a method.
-    def __get__(self, obj: object, type: type | None) -> FunctionType: ...
-
 @final
 class MethodType:
     @property
@@ -433,15 +400,17 @@ class MethodType:
     @property
     def __defaults__(self) -> tuple[Any, ...] | None: ...  # inherited from the added function
     @property
-    def __func__(self) -> _StaticFunctionType: ...
+    def __func__(self) -> Callable[..., Any]: ...
     @property
     def __self__(self) -> object: ...
     @property
     def __name__(self) -> str: ...  # inherited from the added function
     @property
     def __qualname__(self) -> str: ...  # inherited from the added function
-    def __init__(self, __func: Callable[..., Any], __obj: object) -> None: ...
+    def __new__(cls, __func: Callable[..., Any], __obj: object) -> Self: ...
     def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
+    def __eq__(self, __value: object) -> bool: ...
+    def __hash__(self) -> int: ...
 
 @final
 class BuiltinFunctionType:
@@ -452,6 +421,8 @@ class BuiltinFunctionType:
     @property
     def __qualname__(self) -> str: ...
     def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
+    def __eq__(self, __value: object) -> bool: ...
+    def __hash__(self) -> int: ...
 
 BuiltinMethodType = BuiltinFunctionType
 
@@ -479,6 +450,7 @@ class MethodWrapperType:
     def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
     def __eq__(self, __value: object) -> bool: ...
     def __ne__(self, __value: object) -> bool: ...
+    def __hash__(self) -> int: ...
 
 @final
 class MethodDescriptorType:
@@ -504,9 +476,9 @@ class ClassMethodDescriptorType:
 
 @final
 class TracebackType:
-    def __init__(self, tb_next: TracebackType | None, tb_frame: FrameType, tb_lasti: int, tb_lineno: int) -> None: ...
+    def __new__(cls, tb_next: TracebackType | None, tb_frame: FrameType, tb_lasti: int, tb_lineno: int) -> Self: ...
     tb_next: TracebackType | None
-    # the rest are read-only even in 3.7
+    # the rest are read-only
     @property
     def tb_frame(self) -> FrameType: ...
     @property
@@ -584,14 +556,12 @@ _R = TypeVar("_R")
 _P = ParamSpec("_P")
 
 # it's not really an Awaitable, but can be used in an await expression. Real type: Generator & Awaitable
-# The type: ignore is due to overlapping overloads, not the use of ParamSpec
 @overload
-def coroutine(func: Callable[_P, Generator[Any, Any, _R]]) -> Callable[_P, Awaitable[_R]]: ...  # type: ignore[misc]
+def coroutine(func: Callable[_P, Generator[Any, Any, _R]]) -> Callable[_P, Awaitable[_R]]: ...  # type: ignore[overload-overlap]
 @overload
 def coroutine(func: _Fn) -> _Fn: ...
 
-if sys.version_info >= (3, 8):
-    CellType = _Cell
+CellType = _Cell
 
 if sys.version_info >= (3, 9):
     class GenericAlias:
@@ -601,8 +571,10 @@ if sys.version_info >= (3, 9):
         def __args__(self) -> tuple[Any, ...]: ...
         @property
         def __parameters__(self) -> tuple[Any, ...]: ...
-        def __init__(self, origin: type, args: Any) -> None: ...
+        def __new__(cls, origin: type, args: Any) -> Self: ...
         def __getitem__(self, __typeargs: Any) -> GenericAlias: ...
+        def __eq__(self, __value: object) -> bool: ...
+        def __hash__(self) -> int: ...
         if sys.version_info >= (3, 11):
             @property
             def __unpacked__(self) -> bool: ...
@@ -616,7 +588,10 @@ if sys.version_info >= (3, 10):
     @final
     class NoneType:
         def __bool__(self) -> Literal[False]: ...
-    EllipsisType = ellipsis  # noqa: F821 from builtins
+
+    @final
+    class EllipsisType: ...
+
     from builtins import _NotImplementedType
 
     NotImplementedType = _NotImplementedType
@@ -626,3 +601,5 @@ if sys.version_info >= (3, 10):
         def __args__(self) -> tuple[Any, ...]: ...
         def __or__(self, __value: Any) -> UnionType: ...
         def __ror__(self, __value: Any) -> UnionType: ...
+        def __eq__(self, __value: object) -> bool: ...
+        def __hash__(self) -> int: ...

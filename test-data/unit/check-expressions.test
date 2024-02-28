@@ -1045,6 +1045,23 @@ def reduce_it(s: Scalar) -> Scalar:
 assert_type(reduce_it(True), Scalar)
 [builtins fixtures/tuple.pyi]
 
+[case testAssertTypeWithDeferredNodes]
+from typing import Callable, TypeVar, assert_type
+
+T = TypeVar("T")
+
+def dec(f: Callable[[], T]) -> Callable[[], T]:
+    return f
+
+def func() -> None:
+    some = _inner_func()
+    assert_type(some, int)
+
+@dec
+def _inner_func() -> int:
+    return 1
+[builtins fixtures/tuple.pyi]
+
 -- None return type
 -- ----------------
 
@@ -1062,15 +1079,15 @@ class A:
 a: A
 o: object
 if int():
-    a = f()         # E: "f" does not return a value
+    a = f()         # E: "f" does not return a value (it only ever returns None)
 if int():
-    o = a()         # E: Function does not return a value
+    o = a()         # E: Function does not return a value (it only ever returns None)
 if int():
-    o = A().g(a)    # E: "g" of "A" does not return a value
+    o = A().g(a)    # E: "g" of "A" does not return a value (it only ever returns None)
 if int():
-    o = A.g(a, a)   # E: "g" of "A" does not return a value
-A().g(f())      # E: "f" does not return a value
-x: A = f()      # E: "f" does not return a value
+    o = A.g(a, a)   # E: "g" of "A" does not return a value (it only ever returns None)
+A().g(f())      # E: "f" does not return a value (it only ever returns None)
+x: A = f()      # E: "f" does not return a value (it only ever returns None)
 f()
 A().g(a)
 [builtins fixtures/tuple.pyi]
@@ -1079,15 +1096,15 @@ A().g(a)
 import typing
 def f() -> None: pass
 
-if f():   # E: "f" does not return a value
+if f():   # E: "f" does not return a value (it only ever returns None)
     pass
-elif f(): # E: "f" does not return a value
+elif f(): # E: "f" does not return a value (it only ever returns None)
     pass
-while f(): # E: "f" does not return a value
+while f(): # E: "f" does not return a value (it only ever returns None)
     pass
 def g() -> object:
-    return f() # E: "f" does not return a value
-raise f() # E: "f" does not return a value
+    return f() # E: "f" does not return a value (it only ever returns None)
+raise f() # E: "f" does not return a value (it only ever returns None)
 [builtins fixtures/exception.pyi]
 
 [case testNoneReturnTypeWithExpressions]
@@ -1098,13 +1115,13 @@ class A:
     def __add__(self, x: 'A') -> 'A': pass
 
 a: A
-[f()]       # E: "f" does not return a value
-f() + a     # E: "f" does not return a value
-a + f()     # E: "f" does not return a value
-f() == a    # E: "f" does not return a value
-a != f()    # E: "f" does not return a value
+[f()]       # E: "f" does not return a value (it only ever returns None)
+f() + a     # E: "f" does not return a value (it only ever returns None)
+a + f()     # E: "f" does not return a value (it only ever returns None)
+f() == a    # E: "f" does not return a value (it only ever returns None)
+a != f()    # E: "f" does not return a value (it only ever returns None)
 cast(A, f())
-f().foo     # E: "f" does not return a value
+f().foo     # E: "f" does not return a value (it only ever returns None)
 [builtins fixtures/list.pyi]
 
 [case testNoneReturnTypeWithExpressions2]
@@ -1117,14 +1134,14 @@ class A:
 
 a: A
 b: bool
-f() in a   # E: "f" does not return a value  # E: Unsupported right operand type for in ("A")
-a < f()    # E: "f" does not return a value
-f() <= a   # E: "f" does not return a value
-a in f()   # E: "f" does not return a value
--f()       # E: "f" does not return a value
-not f()    # E: "f" does not return a value
-f() and b  # E: "f" does not return a value
-b or f()   # E: "f" does not return a value
+f() in a   # E: "f" does not return a value (it only ever returns None)  # E: Unsupported right operand type for in ("A")
+a < f()    # E: "f" does not return a value (it only ever returns None)
+f() <= a   # E: "f" does not return a value (it only ever returns None)
+a in f()   # E: "f" does not return a value (it only ever returns None)
+-f()       # E: "f" does not return a value (it only ever returns None)
+not f()    # E: "f" does not return a value (it only ever returns None)
+f() and b  # E: "f" does not return a value (it only ever returns None)
+b or f()   # E: "f" does not return a value (it only ever returns None)
 [builtins fixtures/bool.pyi]
 
 
@@ -1424,7 +1441,7 @@ if int():
 [case testConditionalExpressionWithEmptyCondition]
 import typing
 def f() -> None: pass
-x = 1 if f() else 2 # E: "f" does not return a value
+x = 1 if f() else 2 # E: "f" does not return a value (it only ever returns None)
 
 [case testConditionalExpressionWithSubtyping]
 import typing
@@ -1487,7 +1504,7 @@ from typing import List, Union
 x = []
 y = ""
 x.append(y) if bool() else x.append(y)
-z = x.append(y) if bool() else x.append(y) # E: "append" of "list" does not return a value
+z = x.append(y) if bool() else x.append(y) # E: "append" of "list" does not return a value (it only ever returns None)
 [builtins fixtures/list.pyi]
 
 -- Special cases
@@ -1572,8 +1589,7 @@ if str():
 ....a  # E: "ellipsis" has no attribute "a"
 
 class A: pass
-[builtins fixtures/dict.pyi]
-[out]
+[builtins fixtures/dict-full.pyi]
 
 
 -- Yield expression
@@ -1587,7 +1603,7 @@ def f(x: int) -> None:
 [builtins fixtures/for.pyi]
 [out]
 main:1: error: The return type of a generator function should be "Generator" or one of its supertypes
-main:2: error: "f" does not return a value
+main:2: error: "f" does not return a value (it only ever returns None)
 main:2: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testYieldExpressionWithNone]
@@ -1607,7 +1623,7 @@ from typing import Iterator
 def f() -> Iterator[int]:
     yield 5
 def g() -> Iterator[int]:
-    a = yield from f()  # E: Function does not return a value
+    a = yield from f()  # E: Function does not return a value (it only ever returns None)
 
 [case testYieldFromGeneratorHasValue]
 from typing import Iterator, Generator
@@ -1622,12 +1638,12 @@ def g() -> Iterator[int]:
 [case testYieldFromTupleExpression]
 from typing import Generator
 def g() -> Generator[int, None, None]:
-    x = yield from ()  # E: Function does not return a value
-    x = yield from (0, 1, 2)  # E: Function does not return a value
+    x = yield from ()  # E: Function does not return a value (it only ever returns None)
+    x = yield from (0, 1, 2)  # E: Function does not return a value (it only ever returns None)
     x = yield from (0, "ERROR")  # E: Incompatible types in "yield from" (actual type "object", expected type "int") \
-                                 # E: Function does not return a value
+                                 # E: Function does not return a value (it only ever returns None)
     x = yield from ("ERROR",)  # E: Incompatible types in "yield from" (actual type "str", expected type "int") \
-                               # E: Function does not return a value
+                               # E: Function does not return a value (it only ever returns None)
 [builtins fixtures/tuple.pyi]
 
 -- dict(...)
@@ -2346,6 +2362,51 @@ E2.X == E2.Y
 data = b"xy"
 b"x" in data
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testStrictEqualityWithDifferentMapTypes]
+# flags: --strict-equality
+from typing import Mapping
+
+class A(Mapping[int, str]): ...
+class B(Mapping[int, str]): ...
+
+a: A
+b: B
+assert a == b
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testStrictEqualityWithRecursiveMapTypes]
+# flags: --strict-equality
+from typing import Dict
+
+R = Dict[str, R]
+
+a: R
+b: R
+assert a == b
+
+R2 = Dict[int, R2]
+c: R2
+assert a == c  # E: Non-overlapping equality check (left operand type: "Dict[str, R]", right operand type: "Dict[int, R2]")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testStrictEqualityWithRecursiveListTypes]
+# flags: --strict-equality
+from typing import List, Union
+
+R = List[Union[str, R]]
+
+a: R
+b: R
+assert a == b
+
+R2 = List[Union[int, R2]]
+c: R2
+assert a == c
+[builtins fixtures/list.pyi]
 [typing fixtures/typing-full.pyi]
 
 [case testUnimportedHintAny]

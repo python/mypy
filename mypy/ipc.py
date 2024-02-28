@@ -7,6 +7,7 @@ On Windows, this uses NamedPipes.
 from __future__ import annotations
 
 import base64
+import codecs
 import os
 import shutil
 import sys
@@ -40,6 +41,10 @@ class IPCBase:
 
     This contains logic shared between the client and server, such as reading
     and writing.
+    We want to be able to send multiple "messages" over a single connection and
+    to be able to separate the messages. We do this by encoding the messages
+    in an alphabet that does not contain spaces, then adding a space for
+    separation. The last framed message is also followed by a space.
     """
 
     connection: _IPCHandle
@@ -47,12 +52,30 @@ class IPCBase:
     def __init__(self, name: str, timeout: float | None) -> None:
         self.name = name
         self.timeout = timeout
+        self.buffer = bytearray()
 
-    def read(self, size: int = 100000) -> bytes:
-        """Read bytes from an IPC connection until its empty."""
-        bdata = bytearray()
+    def frame_from_buffer(self) -> bytearray | None:
+        """Return a full frame from the bytes we have in the buffer."""
+        space_pos = self.buffer.find(b" ")
+        if space_pos == -1:
+            return None
+        # We have a full frame
+        bdata = self.buffer[:space_pos]
+        self.buffer = self.buffer[space_pos + 1 :]
+        return bdata
+
+    def read(self, size: int = 100000) -> str:
+        """Read bytes from an IPC connection until we have a full frame."""
+        bdata: bytearray | None = bytearray()
         if sys.platform == "win32":
             while True:
+                # Check if we already have a message in the buffer before
+                # receiving any more data from the socket.
+                bdata = self.frame_from_buffer()
+                if bdata is not None:
+                    break
+
+                # Receive more data into the buffer.
                 ov, err = _winapi.ReadFile(self.connection, size, overlapped=True)
                 try:
                     if err == _winapi.ERROR_IO_PENDING:
@@ -66,7 +89,10 @@ class IPCBase:
                 _, err = ov.GetOverlappedResult(True)
                 more = ov.getbuffer()
                 if more:
-                    bdata.extend(more)
+                    self.buffer.extend(more)
+                    bdata = self.frame_from_buffer()
+                    if bdata is not None:
+                        break
                 if err == 0:
                     # we are done!
                     break
@@ -77,17 +103,34 @@ class IPCBase:
                     raise IPCException("ReadFile operation aborted.")
         else:
             while True:
+                # Check if we already have a message in the buffer before
+                # receiving any more data from the socket.
+                bdata = self.frame_from_buffer()
+                if bdata is not None:
+                    break
+
+                # Receive more data into the buffer.
                 more = self.connection.recv(size)
                 if not more:
+                    # Connection closed
                     break
-                bdata.extend(more)
-        return bytes(bdata)
+                self.buffer.extend(more)
 
-    def write(self, data: bytes) -> None:
-        """Write bytes to an IPC connection."""
+        if not bdata:
+            # Socket was empty and we didn't get any frame.
+            # This should only happen if the socket was closed.
+            return ""
+        return codecs.decode(bdata, "base64").decode("utf8")
+
+    def write(self, data: str) -> None:
+        """Write to an IPC connection."""
+
+        # Frame the data by urlencoding it and separating by space.
+        encoded_data = codecs.encode(data.encode("utf8"), "base64") + b" "
+
         if sys.platform == "win32":
             try:
-                ov, err = _winapi.WriteFile(self.connection, data, overlapped=True)
+                ov, err = _winapi.WriteFile(self.connection, encoded_data, overlapped=True)
                 try:
                     if err == _winapi.ERROR_IO_PENDING:
                         timeout = int(self.timeout * 1000) if self.timeout else _winapi.INFINITE
@@ -101,12 +144,11 @@ class IPCBase:
                     raise
                 bytes_written, err = ov.GetOverlappedResult(True)
                 assert err == 0, err
-                assert bytes_written == len(data)
+                assert bytes_written == len(encoded_data)
             except OSError as e:
                 raise IPCException(f"Failed to write with error: {e.winerror}") from e
         else:
-            self.connection.sendall(data)
-            self.connection.shutdown(socket.SHUT_WR)
+            self.connection.sendall(encoded_data)
 
     def close(self) -> None:
         if sys.platform == "win32":

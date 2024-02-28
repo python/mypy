@@ -1,8 +1,7 @@
 import sys
 from _typeshed import ReadableBuffer
 from collections.abc import Sequence
-from typing import Any, NoReturn, overload
-from typing_extensions import Literal, final
+from typing import Any, Literal, NoReturn, final, overload
 
 if sys.platform == "win32":
     ABOVE_NORMAL_PRIORITY_CLASS: Literal[0x8000]
@@ -36,12 +35,11 @@ if sys.platform == "win32":
     FILE_GENERIC_READ: Literal[1179785]
     FILE_GENERIC_WRITE: Literal[1179926]
 
-    if sys.version_info >= (3, 8):
-        FILE_MAP_ALL_ACCESS: Literal[983071]
-        FILE_MAP_COPY: Literal[1]
-        FILE_MAP_EXECUTE: Literal[32]
-        FILE_MAP_READ: Literal[4]
-        FILE_MAP_WRITE: Literal[2]
+    FILE_MAP_ALL_ACCESS: Literal[983071]
+    FILE_MAP_COPY: Literal[1]
+    FILE_MAP_EXECUTE: Literal[32]
+    FILE_MAP_READ: Literal[4]
+    FILE_MAP_WRITE: Literal[2]
 
     FILE_TYPE_CHAR: Literal[2]
     FILE_TYPE_DISK: Literal[1]
@@ -53,23 +51,21 @@ if sys.platform == "win32":
     GENERIC_WRITE: Literal[0x40000000]
     HIGH_PRIORITY_CLASS: Literal[0x80]
     INFINITE: Literal[0xFFFFFFFF]
-    if sys.version_info >= (3, 8):
-        # Ignore the flake8 error -- flake8-pyi assumes
-        # most numbers this long will be implementation details,
-        # but here we can see that it's a power of 2
-        INVALID_HANDLE_VALUE: Literal[0xFFFFFFFFFFFFFFFF]  # noqa: Y054
+    # Ignore the Flake8 error -- flake8-pyi assumes
+    # most numbers this long will be implementation details,
+    # but here we can see that it's a power of 2
+    INVALID_HANDLE_VALUE: Literal[0xFFFFFFFFFFFFFFFF]  # noqa: Y054
     IDLE_PRIORITY_CLASS: Literal[0x40]
     NORMAL_PRIORITY_CLASS: Literal[0x20]
     REALTIME_PRIORITY_CLASS: Literal[0x100]
     NMPWAIT_WAIT_FOREVER: Literal[0xFFFFFFFF]
 
-    if sys.version_info >= (3, 8):
-        MEM_COMMIT: Literal[0x1000]
-        MEM_FREE: Literal[0x10000]
-        MEM_IMAGE: Literal[0x1000000]
-        MEM_MAPPED: Literal[0x40000]
-        MEM_PRIVATE: Literal[0x20000]
-        MEM_RESERVE: Literal[0x2000]
+    MEM_COMMIT: Literal[0x1000]
+    MEM_FREE: Literal[0x10000]
+    MEM_IMAGE: Literal[0x1000000]
+    MEM_MAPPED: Literal[0x40000]
+    MEM_PRIVATE: Literal[0x20000]
+    MEM_RESERVE: Literal[0x2000]
 
     NULL: Literal[0]
     OPEN_EXISTING: Literal[3]
@@ -81,29 +77,27 @@ if sys.platform == "win32":
     PIPE_UNLIMITED_INSTANCES: Literal[255]
     PIPE_WAIT: Literal[0]
 
-    if sys.version_info >= (3, 8):
-        PAGE_EXECUTE: Literal[0x10]
-        PAGE_EXECUTE_READ: Literal[0x20]
-        PAGE_EXECUTE_READWRITE: Literal[0x40]
-        PAGE_EXECUTE_WRITECOPY: Literal[0x80]
-        PAGE_GUARD: Literal[0x100]
-        PAGE_NOACCESS: Literal[0x1]
-        PAGE_NOCACHE: Literal[0x200]
-        PAGE_READONLY: Literal[0x2]
-        PAGE_READWRITE: Literal[0x4]
-        PAGE_WRITECOMBINE: Literal[0x400]
-        PAGE_WRITECOPY: Literal[0x8]
+    PAGE_EXECUTE: Literal[0x10]
+    PAGE_EXECUTE_READ: Literal[0x20]
+    PAGE_EXECUTE_READWRITE: Literal[0x40]
+    PAGE_EXECUTE_WRITECOPY: Literal[0x80]
+    PAGE_GUARD: Literal[0x100]
+    PAGE_NOACCESS: Literal[0x1]
+    PAGE_NOCACHE: Literal[0x200]
+    PAGE_READONLY: Literal[0x2]
+    PAGE_READWRITE: Literal[0x4]
+    PAGE_WRITECOMBINE: Literal[0x400]
+    PAGE_WRITECOPY: Literal[0x8]
 
     PROCESS_ALL_ACCESS: Literal[0x1FFFFF]
     PROCESS_DUP_HANDLE: Literal[0x40]
 
-    if sys.version_info >= (3, 8):
-        SEC_COMMIT: Literal[0x8000000]
-        SEC_IMAGE: Literal[0x1000000]
-        SEC_LARGE_PAGES: Literal[0x80000000]
-        SEC_NOCACHE: Literal[0x10000000]
-        SEC_RESERVE: Literal[0x4000000]
-        SEC_WRITECOMBINE: Literal[0x40000000]
+    SEC_COMMIT: Literal[0x8000000]
+    SEC_IMAGE: Literal[0x1000000]
+    SEC_LARGE_PAGES: Literal[0x80000000]
+    SEC_NOCACHE: Literal[0x10000000]
+    SEC_RESERVE: Literal[0x4000000]
+    SEC_WRITECOMBINE: Literal[0x40000000]
 
     STARTF_USESHOWWINDOW: Literal[0x1]
     STARTF_USESTDHANDLES: Literal[0x100]
@@ -114,8 +108,7 @@ if sys.platform == "win32":
 
     STILL_ACTIVE: Literal[259]
     SW_HIDE: Literal[0]
-    if sys.version_info >= (3, 8):
-        SYNCHRONIZE: Literal[0x100000]
+    SYNCHRONIZE: Literal[0x100000]
     WAIT_ABANDONED_0: Literal[128]
     WAIT_OBJECT_0: Literal[0]
     WAIT_TIMEOUT: Literal[258]
@@ -255,3 +248,4 @@ if sys.platform == "win32":
 
     if sys.version_info >= (3, 12):
         def CopyFile2(existing_file_name: str, new_file_name: str, flags: int, progress_routine: int | None = None) -> int: ...
+        def NeedCurrentDirectoryForExePath(__exe_name: str) -> bool: ...

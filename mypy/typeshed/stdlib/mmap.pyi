@@ -16,6 +16,8 @@ if sys.platform == "linux":
     MAP_EXECUTABLE: int
     if sys.version_info >= (3, 10):
         MAP_POPULATE: int
+if sys.version_info >= (3, 11) and sys.platform != "win32" and sys.platform != "darwin":
+    MAP_STACK: int
 
 if sys.platform != "win32":
     MAP_ANON: int
@@ -26,7 +28,7 @@ if sys.platform != "win32":
     PROT_READ: int
     PROT_WRITE: int
 
-    PAGESIZE: int
+PAGESIZE: int
 
 class mmap(Iterable[int], Sized):
     if sys.platform == "win32":
@@ -37,11 +39,7 @@ class mmap(Iterable[int], Sized):
         ) -> None: ...
 
     def close(self) -> None: ...
-    if sys.version_info >= (3, 8):
-        def flush(self, offset: int = ..., size: int = ...) -> None: ...
-    else:
-        def flush(self, offset: int = ..., size: int = ...) -> int: ...
-
+    def flush(self, offset: int = ..., size: int = ...) -> None: ...
     def move(self, dest: int, src: int, count: int) -> None: ...
     def read_byte(self) -> int: ...
     def readline(self) -> bytes: ...
@@ -52,7 +50,7 @@ class mmap(Iterable[int], Sized):
     def write_byte(self, byte: int) -> None: ...
     def __len__(self) -> int: ...
     closed: bool
-    if sys.version_info >= (3, 8) and sys.platform != "win32":
+    if sys.platform != "win32":
         def madvise(self, option: int, start: int = ..., length: int = ...) -> None: ...
 
     def find(self, sub: ReadableBuffer, start: int = ..., stop: int = ...) -> int: ...
@@ -79,7 +77,7 @@ class mmap(Iterable[int], Sized):
     def __buffer__(self, __flags: int) -> memoryview: ...
     def __release_buffer__(self, __buffer: memoryview) -> None: ...
 
-if sys.version_info >= (3, 8) and sys.platform != "win32":
+if sys.platform != "win32":
     MADV_NORMAL: int
     MADV_RANDOM: int
     MADV_SEQUENTIAL: int
@@ -87,28 +85,28 @@ if sys.version_info >= (3, 8) and sys.platform != "win32":
     MADV_DONTNEED: int
     MADV_FREE: int
 
-    if sys.platform == "linux":
-        MADV_REMOVE: int
-        MADV_DONTFORK: int
-        MADV_DOFORK: int
-        MADV_HWPOISON: int
-        MADV_MERGEABLE: int
-        MADV_UNMERGEABLE: int
-        # Seems like this constant is not defined in glibc.
-        # See https://github.com/python/typeshed/pull/5360 for details
-        # MADV_SOFT_OFFLINE: int
-        MADV_HUGEPAGE: int
-        MADV_NOHUGEPAGE: int
-        MADV_DONTDUMP: int
-        MADV_DODUMP: int
+if sys.platform == "linux":
+    MADV_REMOVE: int
+    MADV_DONTFORK: int
+    MADV_DOFORK: int
+    MADV_HWPOISON: int
+    MADV_MERGEABLE: int
+    MADV_UNMERGEABLE: int
+    # Seems like this constant is not defined in glibc.
+    # See https://github.com/python/typeshed/pull/5360 for details
+    # MADV_SOFT_OFFLINE: int
+    MADV_HUGEPAGE: int
+    MADV_NOHUGEPAGE: int
+    MADV_DONTDUMP: int
+    MADV_DODUMP: int
 
-    # This Values are defined for FreeBSD but type checkers do not support conditions for these
-    if sys.platform != "linux" and sys.platform != "darwin":
-        MADV_NOSYNC: int
-        MADV_AUTOSYNC: int
-        MADV_NOCORE: int
-        MADV_CORE: int
-        MADV_PROTECT: int
+# This Values are defined for FreeBSD but type checkers do not support conditions for these
+if sys.platform != "linux" and sys.platform != "darwin" and sys.platform != "win32":
+    MADV_NOSYNC: int
+    MADV_AUTOSYNC: int
+    MADV_NOCORE: int
+    MADV_CORE: int
+    MADV_PROTECT: int
 
 if sys.version_info >= (3, 10) and sys.platform == "darwin":
     MADV_FREE_REUSABLE: int

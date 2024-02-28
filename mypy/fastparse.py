@@ -115,6 +115,7 @@ from mypy.types import (
     TypeOfAny,
     UnboundType,
     UnionType,
+    UnpackType,
 )
 from mypy.util import bytes_to_human_readable_repr, unnamed_function
 
@@ -125,7 +126,7 @@ PY_MINOR_VERSION: Final = sys.version_info[1]
 import ast as ast3
 
 # TODO: Index, ExtSlice are deprecated in 3.9.
-from ast import AST, Attribute, Call, FunctionType, Index, Name, Starred, UnaryOp, USub
+from ast import AST, Attribute, Call, FunctionType, Index, Name, Starred, UAdd, UnaryOp, USub
 
 
 def ast3_parse(
@@ -142,6 +143,11 @@ def ast3_parse(
 
 NamedExpr = ast3.NamedExpr
 Constant = ast3.Constant
+
+if sys.version_info >= (3, 12):
+    ast_TypeAlias = ast3.TypeAlias
+else:
+    ast_TypeAlias = Any
 
 if sys.version_info >= (3, 10):
     Match = ast3.Match
@@ -184,7 +190,7 @@ def parse(
     source: str | bytes,
     fnam: str,
     module: str | None,
-    errors: Errors | None = None,
+    errors: Errors,
     options: Options | None = None,
 ) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
@@ -193,16 +199,13 @@ def parse(
     on failure. Otherwise, use the errors object to report parse errors.
     """
     ignore_errors = (options is not None and options.ignore_errors) or (
-        errors is not None and fnam in errors.ignored_files
+        fnam in errors.ignored_files
     )
     # If errors are ignored, we can drop many function bodies to speed up type checking.
     strip_function_bodies = ignore_errors and (options is None or not options.preserve_asts)
-    raise_on_error = False
+
     if options is None:
         options = Options()
-    if errors is None:
-        errors = Errors(options)
-        raise_on_error = True
     errors.set_file(fnam, module, options=options)
     is_stub_file = fnam.endswith(".pyi")
     if is_stub_file:
@@ -222,11 +225,9 @@ def parse(
             options=options,
             is_stub=is_stub_file,
             errors=errors,
-            ignore_errors=ignore_errors,
             strip_function_bodies=strip_function_bodies,
+            path=fnam,
         ).visit(ast)
-        tree.path = fnam
-        tree.is_stub = is_stub_file
     except SyntaxError as e:
         # alias to please mypyc
         is_py38_or_earlier = sys.version_info < (3, 9)
@@ -247,9 +248,6 @@ def parse(
             code=codes.SYNTAX,
         )
         tree = MypyFile([], [], False, {})
-
-    if raise_on_error and errors.is_errors():
-        errors.raise_error()
 
     assert isinstance(tree, MypyFile)
     return tree
@@ -320,7 +318,7 @@ def parse_type_string(
     string expression "blah" using this function.
     """
     try:
-        _, node = parse_type_comment(expr_string.strip(), line=line, column=column, errors=None)
+        _, node = parse_type_comment(f"({expr_string})", line=line, column=column, errors=None)
         if isinstance(node, UnboundType) and node.original_str_expr is None:
             node.original_str_expr = expr_string
             node.original_str_fallback = expr_fallback_name
@@ -351,8 +349,8 @@ class ASTConverter:
         is_stub: bool,
         errors: Errors,
         *,
-        ignore_errors: bool,
         strip_function_bodies: bool,
+        path: str,
     ) -> None:
         # 'C' for class, 'D' for function signature, 'F' for function, 'L' for lambda
         self.class_and_function_stack: list[Literal["C", "D", "F", "L"]] = []
@@ -361,8 +359,8 @@ class ASTConverter:
         self.options = options
         self.is_stub = is_stub
         self.errors = errors
-        self.ignore_errors = ignore_errors
         self.strip_function_bodies = strip_function_bodies
+        self.path = path
 
         self.type_ignores: dict[int, list[str]] = {}
 
@@ -374,6 +372,10 @@ class ASTConverter:
 
     def fail(self, msg: ErrorMessage, line: int, column: int, blocker: bool = True) -> None:
         if blocker or not self.options.ignore_errors:
+            # Make sure self.errors reflects any type ignores that we have parsed
+            self.errors.set_file_ignored_lines(
+                self.path, self.type_ignores, self.options.ignore_errors
+            )
             self.errors.report(line, column, msg.value, blocker=blocker, code=msg.code)
 
     def fail_merge_overload(self, node: IfStmt) -> None:
@@ -606,10 +608,9 @@ class ASTConverter:
                 # Check IfStmt block to determine if function overloads can be merged
                 if_overload_name = self._check_ifstmt_for_overloads(stmt, current_overload_name)
                 if if_overload_name is not None:
-                    (
-                        if_block_with_overload,
-                        if_unknown_truth_value,
-                    ) = self._get_executable_if_block_with_overloads(stmt)
+                    (if_block_with_overload, if_unknown_truth_value) = (
+                        self._get_executable_if_block_with_overloads(stmt)
+                    )
 
             if (
                 current_overload_name is not None
@@ -852,8 +853,13 @@ class ASTConverter:
                 self.type_ignores[ti.lineno] = parsed
             else:
                 self.fail(message_registry.INVALID_TYPE_IGNORE, ti.lineno, -1, blocker=False)
+
         body = self.fix_function_overloads(self.translate_stmt_list(mod.body, ismodule=True))
-        return MypyFile(body, self.imports, False, self.type_ignores)
+
+        ret = MypyFile(body, self.imports, False, ignored_lines=self.type_ignores)
+        ret.is_stub = self.is_stub
+        ret.path = self.path
+        return ret
 
     # --- stmt ---
     # FunctionDef(identifier name, arguments args,
@@ -904,9 +910,11 @@ class ASTConverter:
                         # PEP 484 disallows both type annotations and type comments
                         self.fail(message_registry.DUPLICATE_TYPE_SIGNATURES, lineno, n.col_offset)
                     arg_types = [
-                        a.type_annotation
-                        if a.type_annotation is not None
-                        else AnyType(TypeOfAny.unannotated)
+                        (
+                            a.type_annotation
+                            if a.type_annotation is not None
+                            else AnyType(TypeOfAny.unannotated)
+                        )
                         for a in args
                     ]
                 else:
@@ -935,6 +943,14 @@ class ASTConverter:
                 arg_types = [AnyType(TypeOfAny.from_error)] * len(args)
                 return_type = AnyType(TypeOfAny.from_error)
         else:
+            if sys.version_info >= (3, 12) and n.type_params:
+                self.fail(
+                    ErrorMessage("PEP 695 generics are not yet supported", code=codes.VALID_TYPE),
+                    n.type_params[0].lineno,
+                    n.type_params[0].col_offset,
+                    blocker=False,
+                )
+
             arg_types = [a.type_annotation for a in args]
             return_type = TypeConverter(
                 self.errors, line=n.returns.lineno if n.returns else lineno
@@ -1008,6 +1024,8 @@ class ASTConverter:
             # FuncDef overrides set_line -- can't use self.set_line
             func_def.set_line(lineno, n.col_offset, end_line, end_column)
             retval = func_def
+        if self.options.include_docstrings:
+            func_def.docstring = ast3.get_docstring(n, clean=False)
         self.class_and_function_stack.pop()
         return retval
 
@@ -1107,6 +1125,14 @@ class ASTConverter:
         self.class_and_function_stack.append("C")
         keywords = [(kw.arg, self.visit(kw.value)) for kw in n.keywords if kw.arg]
 
+        if sys.version_info >= (3, 12) and n.type_params:
+            self.fail(
+                ErrorMessage("PEP 695 generics are not yet supported", code=codes.VALID_TYPE),
+                n.type_params[0].lineno,
+                n.type_params[0].col_offset,
+                blocker=False,
+            )
+
         cdef = ClassDef(
             n.name,
             self.as_required_block(n.body),
@@ -1121,6 +1147,8 @@ class ASTConverter:
         cdef.line = n.lineno
         cdef.deco_line = n.decorator_list[0].lineno if n.decorator_list else None
 
+        if self.options.include_docstrings:
+            cdef.docstring = ast3.get_docstring(n, clean=False)
         cdef.column = n.col_offset
         cdef.end_line = getattr(n, "end_lineno", None)
         cdef.end_column = getattr(n, "end_col_offset", None)
@@ -1712,6 +1740,16 @@ class ASTConverter:
         node = OrPattern([self.visit(pattern) for pattern in n.patterns])
         return self.set_line(node, n)
 
+    def visit_TypeAlias(self, n: ast_TypeAlias) -> AssignmentStmt:
+        self.fail(
+            ErrorMessage("PEP 695 type aliases are not yet supported", code=codes.VALID_TYPE),
+            n.lineno,
+            n.col_offset,
+            blocker=False,
+        )
+        node = AssignmentStmt([NameExpr(n.name.id)], self.visit(n.value))
+        return self.set_line(node, n)
+
 
 class TypeConverter:
     def __init__(
@@ -1753,12 +1791,10 @@ class TypeConverter:
         )
 
     @overload
-    def visit(self, node: ast3.expr) -> ProperType:
-        ...
+    def visit(self, node: ast3.expr) -> ProperType: ...
 
     @overload
-    def visit(self, node: AST | None) -> ProperType | None:
-        ...
+    def visit(self, node: AST | None) -> ProperType | None: ...
 
     def visit(self, node: AST | None) -> ProperType | None:
         """Modified visit -- keep track of the stack of nodes"""
@@ -1903,12 +1939,18 @@ class TypeConverter:
 
     # UnaryOp(op, operand)
     def visit_UnaryOp(self, n: UnaryOp) -> Type:
-        # We support specifically Literal[-4] and nothing else.
-        # For example, Literal[+4] or Literal[~6] is not supported.
+        # We support specifically Literal[-4], Literal[+4], and nothing else.
+        # For example, Literal[~6] or Literal[not False] is not supported.
         typ = self.visit(n.operand)
-        if isinstance(typ, RawExpressionType) and isinstance(n.op, USub):
-            if isinstance(typ.literal_value, int):
+        if (
+            isinstance(typ, RawExpressionType)
+            # Use type() because we do not want to allow bools.
+            and type(typ.literal_value) is int  # noqa: E721
+        ):
+            if isinstance(n.op, USub):
                 typ.literal_value *= -1
+                return typ
+            if isinstance(n.op, UAdd):
                 return typ
         return self.invalid_type(n)
 
@@ -2002,10 +2044,15 @@ class TypeConverter:
         else:
             return self.invalid_type(n)
 
+    # Used for Callable[[X *Ys, Z], R] etc.
+    def visit_Starred(self, n: ast3.Starred) -> Type:
+        return UnpackType(self.visit(n.value), from_star_syntax=True)
+
     # List(expr* elts, expr_context ctx)
     def visit_List(self, n: ast3.List) -> Type:
         assert isinstance(n.ctx, ast3.Load)
-        return self.translate_argument_list(n.elts)
+        result = self.translate_argument_list(n.elts)
+        return result
 
 
 def stringify_name(n: AST) -> str | None:

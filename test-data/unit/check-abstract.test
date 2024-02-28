@@ -241,7 +241,7 @@ f(GoodAlias)
 
 [case testInstantiationAbstractsInTypeForVariables]
 # flags: --no-strict-optional
-from typing import Type
+from typing import Type, overload
 from abc import abstractmethod
 
 class A:
@@ -269,6 +269,15 @@ if int():
     var_old = B # E: Can only assign concrete classes to a variable of type "Type[A]"
 if int():
     var_old = C # OK
+
+class D(A):
+    @overload
+    def __new__(cls, a) -> "D": ...
+    @overload
+    def __new__(cls) -> "D": ...
+    def __new__(cls, a=None) -> "D": ...
+if int():
+    var = D # E: Can only assign concrete classes to a variable of type "Type[A]"
 [out]
 
 [case testInstantiationAbstractsInTypeForClassMethods]

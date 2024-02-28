@@ -23,6 +23,8 @@ from mypy.nodes import (
     ClassDef,
     Context,
     DataclassTransformSpec,
+    Decorator,
+    EllipsisExpr,
     Expression,
     FuncDef,
     FuncItem,
@@ -148,13 +150,13 @@ class DataclassAttribute:
         return Argument(
             variable=self.to_var(current_info),
             type_annotation=self.expand_type(current_info),
-            initializer=None,
+            initializer=EllipsisExpr() if self.has_default else None,  # Only used by stubgen
             kind=arg_kind,
         )
 
     def expand_type(self, current_info: TypeInfo) -> Type | None:
         if self.type is not None and self.info.self_type is not None:
-            # In general, it is not safe to call `expand_type()` during semantic analyzis,
+            # In general, it is not safe to call `expand_type()` during semantic analysis,
             # however this plugin is called very late, so all types should be fully ready.
             # Also, it is tricky to avoid eager expansion of Self types here (e.g. because
             # we serialize attributes).
@@ -268,11 +270,17 @@ class DataclassTransformer:
                     if arg.kind == ARG_POS:
                         arg.kind = ARG_OPT
 
-                nameless_var = Var("")
+                existing_args_names = {arg.variable.name for arg in args}
+                gen_args_name = "generated_args"
+                while gen_args_name in existing_args_names:
+                    gen_args_name += "_"
+                gen_kwargs_name = "generated_kwargs"
+                while gen_kwargs_name in existing_args_names:
+                    gen_kwargs_name += "_"
                 args = [
-                    Argument(nameless_var, AnyType(TypeOfAny.explicit), None, ARG_STAR),
+                    Argument(Var(gen_args_name), AnyType(TypeOfAny.explicit), None, ARG_STAR),
                     *args,
-                    Argument(nameless_var, AnyType(TypeOfAny.explicit), None, ARG_STAR2),
+                    Argument(Var(gen_kwargs_name), AnyType(TypeOfAny.explicit), None, ARG_STAR2),
                 ]
 
             add_method_to_class(
@@ -365,7 +373,6 @@ class DataclassTransformer:
             and (
                 "__match_args__" not in info.names or info.names["__match_args__"].plugin_generated
             )
-            and attributes
             and py_version >= (3, 10)
         ):
             str_type = self._api.named_type("builtins.str")
@@ -376,9 +383,7 @@ class DataclassTransformer:
             add_attribute_to_class(self._api, self._cls, "__match_args__", match_args_type)
 
         self._add_dataclass_fields_magic_attribute()
-
-        if self._spec is _TRANSFORM_SPEC_FOR_DATACLASSES:
-            self._add_internal_replace_method(attributes)
+        self._add_internal_replace_method(attributes)
         if "__post_init__" in info.names:
             self._add_internal_post_init_method(attributes)
 
@@ -444,6 +449,12 @@ class DataclassTransformer:
                 self._cls,
             )
             return
+
+        if any(p.slots is None for p in info.mro[1:-1]):
+            # At least one type in mro (excluding `self` and `object`)
+            # does not have concrete `__slots__` defined. Ignoring.
+            return
+
         info.slots = generated_slots
 
         # Now, insert `.__slots__` attribute to class namespace:
@@ -571,6 +582,10 @@ class DataclassTransformer:
                 # Skip processing this node. This doesn't match the runtime behaviour,
                 # but the only alternative would be to modify the SymbolTable,
                 # and it's a little hairy to do that in a plugin.
+                continue
+            if isinstance(node, Decorator):
+                # This might be a property / field name clash.
+                # We will issue an error later.
                 continue
 
             assert isinstance(node, Var)
@@ -722,7 +737,7 @@ class DataclassTransformer:
         for attr in attributes:
             # Classes that directly specify a dataclass_transform metaclass must be neither frozen
             # non non-frozen per PEP681. Though it is surprising, this means that attributes from
-            # such a class must be writable even if the rest of the class heirarchy is frozen. This
+            # such a class must be writable even if the rest of the class hierarchy is frozen. This
             # matches the behavior of Pyright (the reference implementation).
             if attr.is_neither_frozen_nor_nonfrozen:
                 continue
@@ -967,25 +982,6 @@ def _has_direct_dataclass_transform_metaclass(info: TypeInfo) -> bool:
     )
 
 
-def _fail_not_dataclass(ctx: FunctionSigContext, t: Type, parent_t: Type) -> None:
-    t_name = format_type_bare(t, ctx.api.options)
-    if parent_t is t:
-        msg = (
-            f'Argument 1 to "replace" has a variable type "{t_name}" not bound to a dataclass'
-            if isinstance(t, TypeVarType)
-            else f'Argument 1 to "replace" has incompatible type "{t_name}"; expected a dataclass'
-        )
-    else:
-        pt_name = format_type_bare(parent_t, ctx.api.options)
-        msg = (
-            f'Argument 1 to "replace" has type "{pt_name}" whose item "{t_name}" is not bound to a dataclass'
-            if isinstance(t, TypeVarType)
-            else f'Argument 1 to "replace" has incompatible type "{pt_name}" whose item "{t_name}" is not a dataclass'
-        )
-
-    ctx.api.fail(msg, ctx.context)
-
-
 def _get_expanded_dataclasses_fields(
     ctx: FunctionSigContext, typ: ProperType, display_typ: ProperType, parent_typ: ProperType
 ) -> list[CallableType] | None:
@@ -994,9 +990,7 @@ def _get_expanded_dataclasses_fields(
     For generic classes, the field types are expanded.
     If the type contains Any or a non-dataclass, returns None; in the latter case, also reports an error.
     """
-    if isinstance(typ, AnyType):
-        return None
-    elif isinstance(typ, UnionType):
+    if isinstance(typ, UnionType):
         ret: list[CallableType] | None = []
         for item in typ.relevant_items():
             item = get_proper_type(item)
@@ -1013,14 +1007,12 @@ def _get_expanded_dataclasses_fields(
     elif isinstance(typ, Instance):
         replace_sym = typ.type.get_method(_INTERNAL_REPLACE_SYM_NAME)
         if replace_sym is None:
-            _fail_not_dataclass(ctx, display_typ, parent_typ)
             return None
         replace_sig = replace_sym.type
         assert isinstance(replace_sig, ProperType)
         assert isinstance(replace_sig, CallableType)
         return [expand_type_by_instance(replace_sig, typ)]
     else:
-        _fail_not_dataclass(ctx, display_typ, parent_typ)
         return None
 
 
@@ -1088,8 +1080,8 @@ def replace_function_sig_callback(ctx: FunctionSigContext) -> CallableType:
     )
 
 
-def is_processed_dataclass(info: TypeInfo | None) -> bool:
-    return info is not None and "dataclass" in info.metadata
+def is_processed_dataclass(info: TypeInfo) -> bool:
+    return bool(info) and "dataclass" in info.metadata
 
 
 def check_post_init(api: TypeChecker, defn: FuncItem, info: TypeInfo) -> None:

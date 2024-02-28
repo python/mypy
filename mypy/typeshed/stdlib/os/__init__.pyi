@@ -2,6 +2,7 @@ import sys
 from _typeshed import (
     AnyStr_co,
     BytesPath,
+    FileDescriptor,
     FileDescriptorLike,
     FileDescriptorOrPath,
     GenericPath,
@@ -24,8 +25,22 @@ from collections.abc import Callable, Iterable, Iterator, Mapping, MutableMappin
 from contextlib import AbstractContextManager
 from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper as _TextIOWrapper
 from subprocess import Popen
-from typing import IO, Any, AnyStr, BinaryIO, Generic, NoReturn, Protocol, TypeVar, overload, runtime_checkable
-from typing_extensions import Final, Literal, Self, TypeAlias, final
+from typing import (
+    IO,
+    Any,
+    AnyStr,
+    BinaryIO,
+    Final,
+    Generic,
+    Literal,
+    NoReturn,
+    Protocol,
+    TypeVar,
+    final,
+    overload,
+    runtime_checkable,
+)
+from typing_extensions import Self, TypeAlias, Unpack
 
 from . import path as _path
 
@@ -69,9 +84,20 @@ if sys.platform != "win32":
         POSIX_FADV_WILLNEED: int
         POSIX_FADV_DONTNEED: int
 
-    SF_NODISKIO: int
-    SF_MNOWAIT: int
-    SF_SYNC: int
+    if sys.platform != "linux" and sys.platform != "darwin":
+        # In the os-module docs, these are marked as being available
+        # on "Unix, not Emscripten, not WASI."
+        # However, in the source code, a comment indicates they're "FreeBSD constants".
+        # sys.platform could have one of many values on a FreeBSD Python build,
+        # so the sys-module docs recommend doing `if sys.platform.startswith('freebsd')`
+        # to detect FreeBSD builds. Unfortunately that would be too dynamic
+        # for type checkers, however.
+        SF_NODISKIO: int
+        SF_MNOWAIT: int
+        SF_SYNC: int
+
+        if sys.version_info >= (3, 11):
+            SF_NOCACHE: int
 
     if sys.platform == "linux":
         XATTR_SIZE_MAX: int
@@ -120,6 +146,12 @@ if sys.platform == "linux":
     RTLD_DEEPBIND: int
     GRND_NONBLOCK: int
     GRND_RANDOM: int
+
+if sys.platform == "darwin" and sys.version_info >= (3, 12):
+    PRIO_DARWIN_BG: int
+    PRIO_DARWIN_NONUI: int
+    PRIO_DARWIN_PROCESS: int
+    PRIO_DARWIN_THREAD: int
 
 SEEK_SET: int
 SEEK_CUR: int
@@ -230,7 +262,7 @@ class _Environ(MutableMapping[AnyStr, AnyStr], Generic[AnyStr]):
             unsetenv: Callable[[AnyStr, AnyStr], object],
         ) -> None: ...
 
-    def setdefault(self, key: AnyStr, value: AnyStr) -> AnyStr: ...  # type: ignore[override]
+    def setdefault(self, key: AnyStr, value: AnyStr) -> AnyStr: ...
     def copy(self) -> dict[AnyStr, AnyStr]: ...
     def __delitem__(self, key: AnyStr) -> None: ...
     def __getitem__(self, key: AnyStr) -> AnyStr: ...
@@ -252,12 +284,14 @@ environ: _Environ[str]
 if sys.platform != "win32":
     environb: _Environ[bytes]
 
+if sys.version_info >= (3, 11) or sys.platform != "win32":
+    EX_OK: int
+
 if sys.platform != "win32":
     confstr_names: dict[str, int]
     pathconf_names: dict[str, int]
     sysconf_names: dict[str, int]
 
-    EX_OK: int
     EX_USAGE: int
     EX_DATAERR: int
     EX_NOINPUT: int
@@ -273,6 +307,8 @@ if sys.platform != "win32":
     EX_PROTOCOL: int
     EX_NOPERM: int
     EX_CONFIG: int
+
+if sys.platform != "win32" and sys.platform != "darwin":
     EX_NOTFOUND: int
 
 P_NOWAIT: int
@@ -305,6 +341,7 @@ class stat_result(structseq[float], tuple[int, int, int, int, int, int, int, flo
     # More items may be added at the end by some implementations.
     if sys.version_info >= (3, 10):
         __match_args__: Final = ("st_mode", "st_ino", "st_dev", "st_nlink", "st_uid", "st_gid", "st_size")
+
     @property
     def st_mode(self) -> int: ...  # protection bits,
     @property
@@ -336,9 +373,13 @@ class stat_result(structseq[float], tuple[int, int, int, int, int, int, int, flo
     if sys.platform == "win32":
         @property
         def st_file_attributes(self) -> int: ...
-        if sys.version_info >= (3, 8):
+        @property
+        def st_reparse_tag(self) -> int: ...
+        if sys.version_info >= (3, 12):
             @property
-            def st_reparse_tag(self) -> int: ...
+            def st_birthtime(self) -> float: ...  # time of file creation in seconds
+            @property
+            def st_birthtime_ns(self) -> int: ...  # time of file creation in nanoseconds
     else:
         @property
         def st_blocks(self) -> int: ...  # number of blocks allocated for file
@@ -347,13 +388,13 @@ class stat_result(structseq[float], tuple[int, int, int, int, int, int, int, flo
         @property
         def st_rdev(self) -> int: ...  # type of device if an inode device
         if sys.platform != "linux":
-            # These properties are available on MacOS, but not on Windows or Ubuntu.
+            # These properties are available on MacOS, but not Ubuntu.
             # On other Unix systems (such as FreeBSD), the following attributes may be
             # available (but may be only filled out if root tries to use them):
             @property
             def st_gen(self) -> int: ...  # file generation number
             @property
-            def st_birthtime(self) -> int: ...  # time of file creation
+            def st_birthtime(self) -> float: ...  # time of file creation in seconds
     if sys.platform == "darwin":
         @property
         def st_flags(self) -> int: ...  # user defined flags for file
@@ -388,6 +429,8 @@ class DirEntry(Generic[AnyStr]):
     def __fspath__(self) -> AnyStr: ...
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
+    if sys.version_info >= (3, 12):
+        def is_junction(self) -> bool: ...
 
 @final
 class statvfs_result(structseq[int], tuple[int, int, int, int, int, int, int, int, int, int, int]):
@@ -404,6 +447,7 @@ class statvfs_result(structseq[int], tuple[int, int, int, int, int, int, int, in
             "f_flag",
             "f_namemax",
         )
+
     @property
     def f_bsize(self) -> int: ...
     @property
@@ -446,6 +490,7 @@ def umask(__mask: int) -> int: ...
 class uname_result(structseq[str], tuple[str, str, str, str, str]):
     if sys.version_info >= (3, 10):
         __match_args__: Final = ("sysname", "nodename", "release", "version", "machine")
+
     @property
     def sysname(self) -> str: ...
     @property
@@ -482,8 +527,8 @@ if sys.platform != "win32":
     def setpgid(__pid: int, __pgrp: int) -> None: ...
     def setregid(__rgid: int, __egid: int) -> None: ...
     if sys.platform != "darwin":
-        def setresgid(rgid: int, egid: int, sgid: int) -> None: ...
-        def setresuid(ruid: int, euid: int, suid: int) -> None: ...
+        def setresgid(__rgid: int, __egid: int, __sgid: int) -> None: ...
+        def setresuid(__ruid: int, __euid: int, __suid: int) -> None: ...
 
     def setreuid(__ruid: int, __euid: int) -> None: ...
     def getsid(__pid: int) -> int: ...
@@ -602,18 +647,25 @@ def isatty(__fd: int) -> bool: ...
 if sys.platform != "win32" and sys.version_info >= (3, 11):
     def login_tty(__fd: int) -> None: ...
 
-def lseek(__fd: int, __position: int, __how: int) -> int: ...
+if sys.version_info >= (3, 11):
+    def lseek(__fd: int, __position: int, __whence: int) -> int: ...
+
+else:
+    def lseek(__fd: int, __position: int, __how: int) -> int: ...
+
 def open(path: StrOrBytesPath, flags: int, mode: int = 0o777, *, dir_fd: int | None = None) -> int: ...
 def pipe() -> tuple[int, int]: ...
 def read(__fd: int, __length: int) -> bytes: ...
+
+if sys.version_info >= (3, 12) or sys.platform != "win32":
+    def get_blocking(__fd: int) -> bool: ...
+    def set_blocking(__fd: int, __blocking: bool) -> None: ...
 
 if sys.platform != "win32":
     def fchmod(fd: int, mode: int) -> None: ...
     def fchown(fd: int, uid: int, gid: int) -> None: ...
     def fpathconf(__fd: int, __name: str | int) -> int: ...
     def fstatvfs(__fd: int) -> statvfs_result: ...
-    def get_blocking(__fd: int) -> bool: ...
-    def set_blocking(__fd: int, __blocking: bool) -> None: ...
     def lockf(__fd: int, __command: int, __length: int) -> None: ...
     def openpty() -> tuple[int, int]: ...  # some flavors of Unix
     if sys.platform != "darwin":
@@ -634,18 +686,20 @@ if sys.platform != "win32":
         RWF_SYNC: int
         RWF_HIPRI: int
         RWF_NOWAIT: int
-    @overload
-    def sendfile(out_fd: int, in_fd: int, offset: int | None, count: int) -> int: ...
-    @overload
-    def sendfile(
-        out_fd: int,
-        in_fd: int,
-        offset: int,
-        count: int,
-        headers: Sequence[ReadableBuffer] = ...,
-        trailers: Sequence[ReadableBuffer] = ...,
-        flags: int = 0,
-    ) -> int: ...  # FreeBSD and Mac OS X only
+
+    if sys.platform == "linux":
+        def sendfile(out_fd: FileDescriptor, in_fd: FileDescriptor, offset: int | None, count: int) -> int: ...
+    else:
+        def sendfile(
+            out_fd: FileDescriptor,
+            in_fd: FileDescriptor,
+            offset: int,
+            count: int,
+            headers: Sequence[ReadableBuffer] = ...,
+            trailers: Sequence[ReadableBuffer] = ...,
+            flags: int = 0,
+        ) -> int: ...  # FreeBSD and Mac OS X only
+
     def readv(__fd: int, __buffers: SupportsLenAndGetItem[WriteableBuffer]) -> int: ...
     def writev(__fd: int, __buffers: SupportsLenAndGetItem[ReadableBuffer]) -> int: ...
 
@@ -653,6 +707,7 @@ if sys.platform != "win32":
 class terminal_size(structseq[int], tuple[int, int]):
     if sys.version_info >= (3, 10):
         __match_args__: Final = ("columns", "lines")
+
     @property
     def columns(self) -> int: ...
     @property
@@ -809,8 +864,12 @@ def execl(file: StrOrBytesPath, __arg0: StrOrBytesPath, *args: StrOrBytesPath) -
 def execlp(file: StrOrBytesPath, __arg0: StrOrBytesPath, *args: StrOrBytesPath) -> NoReturn: ...
 
 # These are: execle(file, *args, env) but env is pulled from the last element of the args.
-def execle(file: StrOrBytesPath, __arg0: StrOrBytesPath, *args: Any) -> NoReturn: ...
-def execlpe(file: StrOrBytesPath, __arg0: StrOrBytesPath, *args: Any) -> NoReturn: ...
+def execle(
+    file: StrOrBytesPath, *args: Unpack[tuple[StrOrBytesPath, Unpack[tuple[StrOrBytesPath, ...]], _ExecEnv]]
+) -> NoReturn: ...
+def execlpe(
+    file: StrOrBytesPath, *args: Unpack[tuple[StrOrBytesPath, Unpack[tuple[StrOrBytesPath, ...]], _ExecEnv]]
+) -> NoReturn: ...
 
 # The docs say `args: tuple or list of strings`
 # The implementation enforces tuple or list so we can't use Sequence.
@@ -870,6 +929,7 @@ def system(command: StrOrBytesPath) -> int: ...
 class times_result(structseq[float], tuple[float, float, float, float, float]):
     if sys.version_info >= (3, 10):
         __match_args__: Final = ("user", "system", "children_user", "children_system", "elapsed")
+
     @property
     def user(self) -> float: ...
     @property
@@ -885,10 +945,16 @@ def times() -> times_result: ...
 def waitpid(__pid: int, __options: int) -> tuple[int, int]: ...
 
 if sys.platform == "win32":
-    if sys.version_info >= (3, 8):
-        def startfile(path: StrOrBytesPath, operation: str | None = None) -> None: ...
+    if sys.version_info >= (3, 10):
+        def startfile(
+            filepath: StrOrBytesPath,
+            operation: str = ...,
+            arguments: str = "",
+            cwd: StrOrBytesPath | None = None,
+            show_cmd: int = 1,
+        ) -> None: ...
     else:
-        def startfile(filepath: StrOrBytesPath, operation: str | None = None) -> None: ...
+        def startfile(filepath: StrOrBytesPath, operation: str = ...) -> None: ...
 
 else:
     def spawnlp(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: StrOrBytesPath) -> int: ...
@@ -901,6 +967,7 @@ else:
         class waitid_result(structseq[int], tuple[int, int, int, int, int]):
             if sys.version_info >= (3, 10):
                 __match_args__: Final = ("si_pid", "si_uid", "si_signo", "si_status", "si_code")
+
             @property
             def si_pid(self) -> int: ...
             @property
@@ -912,10 +979,12 @@ else:
             @property
             def si_code(self) -> int: ...
 
-        def waitid(__idtype: int, __ident: int, __options: int) -> waitid_result: ...
+        def waitid(__idtype: int, __ident: int, __options: int) -> waitid_result | None: ...
 
-    def wait3(options: int) -> tuple[int, int, Any]: ...
-    def wait4(pid: int, options: int) -> tuple[int, int, Any]: ...
+    from resource import struct_rusage
+
+    def wait3(options: int) -> tuple[int, int, struct_rusage]: ...
+    def wait4(pid: int, options: int) -> tuple[int, int, struct_rusage]: ...
     def WCOREDUMP(__status: int) -> bool: ...
     def WIFCONTINUED(status: int) -> bool: ...
     def WIFSTOPPED(status: int) -> bool: ...
@@ -924,42 +993,42 @@ else:
     def WEXITSTATUS(status: int) -> int: ...
     def WSTOPSIG(status: int) -> int: ...
     def WTERMSIG(status: int) -> int: ...
-    if sys.version_info >= (3, 8):
-        def posix_spawn(
-            path: StrOrBytesPath,
-            argv: _ExecVArgs,
-            env: _ExecEnv,
-            *,
-            file_actions: Sequence[tuple[Any, ...]] | None = ...,
-            setpgroup: int | None = ...,
-            resetids: bool = ...,
-            setsid: bool = ...,
-            setsigmask: Iterable[int] = ...,
-            setsigdef: Iterable[int] = ...,
-            scheduler: tuple[Any, sched_param] | None = ...,
-        ) -> int: ...
-        def posix_spawnp(
-            path: StrOrBytesPath,
-            argv: _ExecVArgs,
-            env: _ExecEnv,
-            *,
-            file_actions: Sequence[tuple[Any, ...]] | None = ...,
-            setpgroup: int | None = ...,
-            resetids: bool = ...,
-            setsid: bool = ...,
-            setsigmask: Iterable[int] = ...,
-            setsigdef: Iterable[int] = ...,
-            scheduler: tuple[Any, sched_param] | None = ...,
-        ) -> int: ...
-        POSIX_SPAWN_OPEN: int
-        POSIX_SPAWN_CLOSE: int
-        POSIX_SPAWN_DUP2: int
+    def posix_spawn(
+        __path: StrOrBytesPath,
+        __argv: _ExecVArgs,
+        __env: _ExecEnv,
+        *,
+        file_actions: Sequence[tuple[Any, ...]] | None = ...,
+        setpgroup: int | None = ...,
+        resetids: bool = ...,
+        setsid: bool = ...,
+        setsigmask: Iterable[int] = ...,
+        setsigdef: Iterable[int] = ...,
+        scheduler: tuple[Any, sched_param] | None = ...,
+    ) -> int: ...
+    def posix_spawnp(
+        __path: StrOrBytesPath,
+        __argv: _ExecVArgs,
+        __env: _ExecEnv,
+        *,
+        file_actions: Sequence[tuple[Any, ...]] | None = ...,
+        setpgroup: int | None = ...,
+        resetids: bool = ...,
+        setsid: bool = ...,
+        setsigmask: Iterable[int] = ...,
+        setsigdef: Iterable[int] = ...,
+        scheduler: tuple[Any, sched_param] | None = ...,
+    ) -> int: ...
+    POSIX_SPAWN_OPEN: int
+    POSIX_SPAWN_CLOSE: int
+    POSIX_SPAWN_DUP2: int
 
 if sys.platform != "win32":
     @final
     class sched_param(structseq[int], tuple[int]):
         if sys.version_info >= (3, 10):
             __match_args__: Final = ("sched_priority",)
+
         def __new__(cls, sched_priority: int) -> Self: ...
         @property
         def sched_priority(self) -> int: ...
@@ -997,41 +1066,81 @@ if sys.platform != "win32":
         after_in_child: Callable[..., Any] | None = ...,
     ) -> None: ...
 
-if sys.version_info >= (3, 8):
-    if sys.platform == "win32":
-        class _AddedDllDirectory:
-            path: str | None
-            def __init__(self, path: str | None, cookie: _T, remove_dll_directory: Callable[[_T], object]) -> None: ...
-            def close(self) -> None: ...
-            def __enter__(self) -> Self: ...
-            def __exit__(self, *args: Unused) -> None: ...
+if sys.platform == "win32":
+    class _AddedDllDirectory:
+        path: str | None
+        def __init__(self, path: str | None, cookie: _T, remove_dll_directory: Callable[[_T], object]) -> None: ...
+        def close(self) -> None: ...
+        def __enter__(self) -> Self: ...
+        def __exit__(self, *args: Unused) -> None: ...
 
-        def add_dll_directory(path: str) -> _AddedDllDirectory: ...
-    if sys.platform == "linux":
-        MFD_CLOEXEC: int
-        MFD_ALLOW_SEALING: int
-        MFD_HUGETLB: int
-        MFD_HUGE_SHIFT: int
-        MFD_HUGE_MASK: int
-        MFD_HUGE_64KB: int
-        MFD_HUGE_512KB: int
-        MFD_HUGE_1MB: int
-        MFD_HUGE_2MB: int
-        MFD_HUGE_8MB: int
-        MFD_HUGE_16MB: int
-        MFD_HUGE_32MB: int
-        MFD_HUGE_256MB: int
-        MFD_HUGE_512MB: int
-        MFD_HUGE_1GB: int
-        MFD_HUGE_2GB: int
-        MFD_HUGE_16GB: int
-        def memfd_create(name: str, flags: int = ...) -> int: ...
-        def copy_file_range(
-            src: int, dst: int, count: int, offset_src: int | None = ..., offset_dst: int | None = ...
-        ) -> int: ...
+    def add_dll_directory(path: str) -> _AddedDllDirectory: ...
+
+if sys.platform == "linux":
+    MFD_CLOEXEC: int
+    MFD_ALLOW_SEALING: int
+    MFD_HUGETLB: int
+    MFD_HUGE_SHIFT: int
+    MFD_HUGE_MASK: int
+    MFD_HUGE_64KB: int
+    MFD_HUGE_512KB: int
+    MFD_HUGE_1MB: int
+    MFD_HUGE_2MB: int
+    MFD_HUGE_8MB: int
+    MFD_HUGE_16MB: int
+    MFD_HUGE_32MB: int
+    MFD_HUGE_256MB: int
+    MFD_HUGE_512MB: int
+    MFD_HUGE_1GB: int
+    MFD_HUGE_2GB: int
+    MFD_HUGE_16GB: int
+    def memfd_create(name: str, flags: int = ...) -> int: ...
+    def copy_file_range(src: int, dst: int, count: int, offset_src: int | None = ..., offset_dst: int | None = ...) -> int: ...
 
 if sys.version_info >= (3, 9):
     def waitstatus_to_exitcode(status: int) -> int: ...
 
     if sys.platform == "linux":
         def pidfd_open(pid: int, flags: int = ...) -> int: ...
+
+if sys.version_info >= (3, 12) and sys.platform == "win32":
+    def listdrives() -> list[str]: ...
+    def listmounts(volume: str) -> list[str]: ...
+    def listvolumes() -> list[str]: ...
+
+if sys.version_info >= (3, 10) and sys.platform == "linux":
+    EFD_CLOEXEC: int
+    EFD_NONBLOCK: int
+    EFD_SEMAPHORE: int
+    SPLICE_F_MORE: int
+    SPLICE_F_MOVE: int
+    SPLICE_F_NONBLOCK: int
+    def eventfd(initval: int, flags: int = 524288) -> FileDescriptor: ...
+    def eventfd_read(fd: FileDescriptor) -> int: ...
+    def eventfd_write(fd: FileDescriptor, value: int) -> None: ...
+    def splice(
+        src: FileDescriptor,
+        dst: FileDescriptor,
+        count: int,
+        offset_src: int | None = ...,
+        offset_dst: int | None = ...,
+        flags: int = 0,
+    ) -> int: ...
+
+if sys.version_info >= (3, 12) and sys.platform == "linux":
+    CLONE_FILES: int
+    CLONE_FS: int
+    CLONE_NEWCGROUP: int
+    CLONE_NEWIPC: int
+    CLONE_NEWNET: int
+    CLONE_NEWNS: int
+    CLONE_NEWPID: int
+    CLONE_NEWTIME: int
+    CLONE_NEWUSER: int
+    CLONE_NEWUTS: int
+    CLONE_SIGHAND: int
+    CLONE_SYSVSEM: int
+    CLONE_THREAD: int
+    CLONE_VM: int
+    def unshare(flags: int) -> None: ...
+    def setns(fd: FileDescriptorLike, nstype: int = 0) -> None: ...
