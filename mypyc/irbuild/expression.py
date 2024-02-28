@@ -126,6 +126,8 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
         return builder.true()
     if fullname == "builtins.False":
         return builder.false()
+    if fullname in ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"):
+        return builder.false()
 
     math_literal = transform_math_literal(builder, fullname)
     if math_literal is not None:
@@ -185,6 +187,10 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
 
 
 def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
+    # Special Cases
+    if expr.fullname in ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"):
+        return builder.false()
+
     # First check if this is maybe a final attribute.
     final = builder.get_final_ref(expr)
     if final is not None:
