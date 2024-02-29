@@ -888,7 +888,7 @@ This produces the following output from mypy:
 .. code-block:: text
 
    example.py:3: error: "bool" is invalid as return type for "__exit__" that always returns False
-   example.py:3: note: Use "typing.Literal[False]" as the return type or change it to
+   example.py:3: note: Use "typing_extensions.Literal[False]" as the return type or change it to
        "None"
    example.py:3: note: If return type of "__exit__" implies that it may return True, the context
        manager may swallow exceptions
