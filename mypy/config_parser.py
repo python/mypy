@@ -217,6 +217,28 @@ toml_config_types.update(
 )
 
 
+def _find_pyproject() -> list[str]:
+    """Search for file pyproject.toml in the parent directories recursively.
+
+    It resolves symlinks, so if there is any symlink up in the tree, it does not respect them
+    """
+    # We start from the parent dir, since 'pyproject.toml' is already parsed
+    current_dir = os.path.abspath(os.path.join(os.path.curdir, os.path.pardir))
+    is_root = False
+    while not is_root:
+        for pyproject_name in defaults.PYPROJECT_CONFIG_FILES:
+            config_file = os.path.join(current_dir, pyproject_name)
+            if os.path.isfile(config_file):
+                return [os.path.abspath(config_file)]
+        parent = os.path.abspath(os.path.join(current_dir, os.path.pardir))
+        is_root = current_dir == parent or any(
+            os.path.isdir(os.path.join(current_dir, cvs_root)) for cvs_root in (".git", ".hg")
+        )
+        current_dir = parent
+
+    return []
+
+
 def parse_config_file(
     options: Options,
     set_strict_flags: Callable[[], None],
@@ -236,7 +258,9 @@ def parse_config_file(
     if filename is not None:
         config_files: tuple[str, ...] = (filename,)
     else:
-        config_files_iter: Iterable[str] = map(os.path.expanduser, defaults.CONFIG_FILES)
+        config_files_iter: Iterable[str] = map(
+            os.path.expanduser, defaults.CONFIG_FILES + _find_pyproject()
+        )
         config_files = tuple(config_files_iter)
 
     config_parser = configparser.RawConfigParser()
