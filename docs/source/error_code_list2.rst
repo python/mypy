@@ -547,7 +547,7 @@ Correct usage:
 .. code-block:: python
 
     # Use "mypy --enable-error-code unimported-reveal"
-    from typing import reveal_type   # or `typing_extensions`
+    from typing import reveal_type   # "from typing_extensions" in Python 3.10 and earlier
 
     x = 1
     # This won't raise an error:
