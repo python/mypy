@@ -189,7 +189,7 @@ in Python 3.6 and later:
 
 .. code-block:: python
 
-   from typing import TypedDict # "from typing_extensions" in Python 3.7 and earlier
+   from typing import TypedDict  # "from typing_extensions" in Python 3.7 and earlier
 
    class Movie(TypedDict):
        name: str
