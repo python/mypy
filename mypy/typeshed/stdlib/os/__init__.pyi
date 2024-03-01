@@ -40,7 +40,7 @@ from typing import (
     overload,
     runtime_checkable,
 )
-from typing_extensions import Self, TypeAlias, Unpack
+from typing_extensions import Self, TypeAlias, Unpack, deprecated
 
 from . import path as _path
 
@@ -308,7 +308,8 @@ if sys.platform != "win32":
     EX_NOPERM: int
     EX_CONFIG: int
 
-if sys.platform != "win32" and sys.platform != "darwin":
+# Exists on some Unix platforms, e.g. Solaris.
+if sys.platform != "win32" and sys.platform != "darwin" and sys.platform != "linux":
     EX_NOTFOUND: int
 
 P_NOWAIT: int
@@ -361,8 +362,16 @@ class stat_result(structseq[float], tuple[int, int, int, int, int, int, int, flo
     @property
     def st_mtime(self) -> float: ...  # time of most recent content modification,
     # platform dependent (time of most recent metadata change on Unix, or the time of creation on Windows)
-    @property
-    def st_ctime(self) -> float: ...
+    if sys.version_info >= (3, 12) and sys.platform == "win32":
+        @property
+        @deprecated(
+            "Use st_birthtime instead to retrieve the file creation time. In the future, this property will contain the last metadata change time."
+        )
+        def st_ctime(self) -> float: ...
+    else:
+        @property
+        def st_ctime(self) -> float: ...
+
     @property
     def st_atime_ns(self) -> int: ...  # time of most recent access, in nanoseconds
     @property
@@ -860,8 +869,8 @@ if sys.platform != "win32":
 def abort() -> NoReturn: ...
 
 # These are defined as execl(file, *args) but the first *arg is mandatory.
-def execl(file: StrOrBytesPath, __arg0: StrOrBytesPath, *args: StrOrBytesPath) -> NoReturn: ...
-def execlp(file: StrOrBytesPath, __arg0: StrOrBytesPath, *args: StrOrBytesPath) -> NoReturn: ...
+def execl(file: StrOrBytesPath, *args: Unpack[tuple[StrOrBytesPath, Unpack[tuple[StrOrBytesPath, ...]]]]) -> NoReturn: ...
+def execlp(file: StrOrBytesPath, *args: Unpack[tuple[StrOrBytesPath, Unpack[tuple[StrOrBytesPath, ...]]]]) -> NoReturn: ...
 
 # These are: execle(file, *args, env) but env is pulled from the last element of the args.
 def execle(
