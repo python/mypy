@@ -124,8 +124,8 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
     if len(ctx.arg_types[0]) != 1:
         return ctx.default_return_type
 
-    fn_type = get_proper_type(ctx.arg_types[0][0])
-    if not isinstance(fn_type, CallableType):
+    fn_type = ctx.api.extract_callable_type(ctx.arg_types[0][0], ctx=ctx.default_return_type)
+    if fn_type is None:
         return ctx.default_return_type
 
     defaulted = fn_type.copy_modified(
@@ -138,6 +138,9 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
             for k in fn_type.arg_kinds
         ]
     )
+    if defaulted.line < 0:
+        # Make up a line number if we don't have one
+        defaulted.set_line(ctx.default_return_type)
 
     actual_args = [a for param in ctx.args[1:] for a in param]
     actual_arg_kinds = [a for param in ctx.arg_kinds[1:] for a in param]

@@ -156,6 +156,8 @@ p1(1, "a", 3)  # OK
 p1(1, "a", c=3)  # OK
 p1(1, b="a", c=3)  # OK
 
+reveal_type(p1)  # N: Revealed type is "functools.partial[builtins.int]"
+
 def takes_callable_int(f: Callable[..., int]) -> None: ...
 def takes_callable_str(f: Callable[..., str]) -> None: ...
 takes_callable_int(p1)
@@ -183,7 +185,8 @@ p3(1, 3)  # E: Too many positional arguments for "foo" \
 functools.partial(foo, "a")  # E: Argument 1 to "foo" has incompatible type "str"; expected "int"
 functools.partial(foo, b=1)  # E: Argument 1 to "foo" has incompatible type "int"; expected "str"
 functools.partial(foo, a=1, b=2, c=3)  # E: Argument 2 to "foo" has incompatible type "int"; expected "str"
-functools.partial(1)  # E: Argument 1 to "partial" has incompatible type "int"; expected "Callable[..., Never]"
+functools.partial(1)  # E: "int" not callable \
+                      # E: Argument 1 to "partial" has incompatible type "int"; expected "Callable[..., Never]"
 [builtins fixtures/dict.pyi]
 
 [case testFunctoolsPartialStar]
@@ -230,6 +233,26 @@ def bar(a: T, b: U) -> U: ...
 p3 = functools.partial(bar, 1)
 reveal_type(p3(2))  # N: Revealed type is "builtins.int"
 reveal_type(p3("a"))  # N: Revealed type is "builtins.str"
+[builtins fixtures/dict.pyi]
+
+[case testFunctoolsPartialCallable]
+from typing import Callable
+import functools
+
+def main1(f: Callable[[int, str], int]) -> None:
+    p = functools.partial(f, 1)
+    p("a")  # OK
+    p(1)  # E: Argument 1 has incompatible type "int"; expected "str"
+
+    functools.partial(f, a=1)  # E: Unexpected keyword argument "a"
+
+class CallbackProto:
+    def __call__(self, a: int, b: str) -> int: ...
+
+def main2(f: CallbackProto) -> None:
+    p = functools.partial(f, b="a")
+    p(1)  # OK
+    p("a")  # E: Argument 1 to "__call__" of "CallbackProto" has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
 
 [case testFunctoolsPartialTypeVarTuple]
