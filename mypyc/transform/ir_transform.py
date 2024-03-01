@@ -67,6 +67,10 @@ class IRTransform(OpVisitor[Value]):
         self.builder = builder
 
     def transform_blocks(self, blocks: list[BasicBlock]) -> None:
+        """Transform basic blocks that represent a single function.
+
+        The result of the transform will be collected at self.builder.blocks.
+        """
         op_map: dict[Value, Value] = {}
         block_map: dict[BasicBlock, BasicBlock] = {}
         for block in blocks:
