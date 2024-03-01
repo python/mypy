@@ -883,7 +883,7 @@ class SemanticAnalyzer(
                         result = result.copy_modified(type_guard=None)
                     if result.type_is and ARG_POS not in result.arg_kinds[skip_self:]:
                         self.fail(
-                            "TypeIs functions must have a positional argument",
+                            '"TypeIs" functions must have a positional argument',
                             result,
                             code=codes.VALID_TYPE,
                         )
