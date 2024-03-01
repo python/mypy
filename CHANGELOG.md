@@ -10,7 +10,7 @@ You can read the full documentation for this release on [Read the Docs](http://m
 
 #### Breaking Changes
 
-Because the version of typeshed we use in mypy 1.9 doesn't support 3.7, neither does mypy 1.9. (Marc Mueller, PR [16900](https://github.com/python/mypy/pull/16900))
+Because the version of typeshed we use in mypy 1.9 doesn't support 3.7, neither does mypy 1.9. (Jared Hance, PR [16883](https://github.com/python/mypy/pull/16883))
 
 #### Documentation Updates
  * Document --enable-incomplete-feature possible values in "mypy --help" (Froger David, PR [16661](https://github.com/python/mypy/pull/16661))
