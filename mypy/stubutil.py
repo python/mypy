@@ -22,6 +22,26 @@ from mypy.types import AnyType, NoneType, Type, TypeList, TypeStrVisitor, Unboun
 # Modules that may fail when imported, or that may have side effects (fully qualified).
 NOT_IMPORTABLE_MODULES = ()
 
+# Typing constructs to be replaced by their builtin equivalents.
+TYPING_BUILTIN_REPLACEMENTS: Final = {
+    # From typing
+    "typing.Text": "builtins.str",
+    "typing.Tuple": "builtins.tuple",
+    "typing.List": "builtins.list",
+    "typing.Dict": "builtins.dict",
+    "typing.Set": "builtins.set",
+    "typing.FrozenSet": "builtins.frozenset",
+    "typing.Type": "builtins.type",
+    # From typing_extensions
+    "typing_extensions.Text": "builtins.str",
+    "typing_extensions.Tuple": "builtins.tuple",
+    "typing_extensions.List": "builtins.list",
+    "typing_extensions.Dict": "builtins.dict",
+    "typing_extensions.Set": "builtins.set",
+    "typing_extensions.FrozenSet": "builtins.frozenset",
+    "typing_extensions.Type": "builtins.type",
+}
+
 
 class CantImport(Exception):
     def __init__(self, module: str, message: str) -> None:
@@ -229,6 +249,8 @@ class AnnotationPrinter(TypeStrVisitor):
             return " | ".join([item.accept(self) for item in t.args])
         if fullname == "typing.Optional":
             return f"{t.args[0].accept(self)} | None"
+        if fullname in TYPING_BUILTIN_REPLACEMENTS:
+            s = self.stubgen.add_name(TYPING_BUILTIN_REPLACEMENTS[fullname], require=True)
         if self.known_modules is not None and "." in s:
             # see if this object is from any of the modules that we're currently processing.
             # reverse sort so that subpackages come before parents: e.g. "foo.bar" before "foo".
@@ -250,6 +272,8 @@ class AnnotationPrinter(TypeStrVisitor):
             self.stubgen.import_tracker.require_name(s)
         if t.args:
             s += f"[{self.args_str(t.args)}]"
+        elif t.empty_tuple_index:
+            s += "[()]"
         return s
 
     def visit_none_type(self, t: NoneType) -> str:
@@ -474,7 +498,7 @@ class ImportTracker:
     def import_lines(self) -> list[str]:
         """The list of required import lines (as strings with python code).
 
-        In order for a module be included in this output, an indentifier must be both
+        In order for a module be included in this output, an identifier must be both
         'required' via require_name() and 'imported' via add_import_from()
         or add_import()
         """
@@ -583,9 +607,9 @@ class BaseStubGenerator:
         # a corresponding import statement.
         self.known_imports = {
             "_typeshed": ["Incomplete"],
-            "typing": ["Any", "TypeVar", "NamedTuple"],
+            "typing": ["Any", "TypeVar", "NamedTuple", "TypedDict"],
             "collections.abc": ["Generator"],
-            "typing_extensions": ["TypedDict", "ParamSpec", "TypeVarTuple"],
+            "typing_extensions": ["ParamSpec", "TypeVarTuple"],
         }
 
     def get_sig_generators(self) -> list[SignatureGenerator]:
@@ -611,7 +635,10 @@ class BaseStubGenerator:
         """
         module, name = fullname.rsplit(".", 1)
         alias = "_" + name if name in self.defined_names else None
-        self.import_tracker.add_import_from(module, [(name, alias)], require=require)
+        while alias in self.defined_names:
+            alias = "_" + alias
+        if module != "builtins" or alias:  # don't import from builtins unless needed
+            self.import_tracker.add_import_from(module, [(name, alias)], require=require)
         return alias or name
 
     def add_import_line(self, line: str) -> None:

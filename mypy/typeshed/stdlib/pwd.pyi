@@ -7,6 +7,7 @@ if sys.platform != "win32":
     class struct_passwd(structseq[Any], tuple[str, str, int, int, str, str, str]):
         if sys.version_info >= (3, 10):
             __match_args__: Final = ("pw_name", "pw_passwd", "pw_uid", "pw_gid", "pw_gecos", "pw_dir", "pw_shell")
+
         @property
         def pw_name(self) -> str: ...
         @property

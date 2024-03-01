@@ -32,6 +32,7 @@ class classmethod: pass
 # We need int and slice for indexing tuples.
 class int:
     def __neg__(self) -> 'int': pass
+    def __pos__(self) -> 'int': pass
 class float: pass
 class slice: pass
 class bool(int): pass

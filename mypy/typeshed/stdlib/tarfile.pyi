@@ -292,6 +292,8 @@ class TarFile:
     def getnames(self) -> _list[str]: ...
     def list(self, verbose: bool = True, *, members: _list[TarInfo] | None = None) -> None: ...
     def next(self) -> TarInfo | None: ...
+    # Calling this method without `filter` is deprecated, but it may be set either on the class or in an
+    # individual call, so we can't mark it as @deprecated here.
     def extractall(
         self,
         path: StrOrBytesPath = ".",
@@ -300,6 +302,7 @@ class TarFile:
         numeric_owner: bool = False,
         filter: _TarfileFilter | None = ...,
     ) -> None: ...
+    # Same situation as for `extractall`.
     def extract(
         self,
         member: str | TarInfo,

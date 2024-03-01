@@ -1,5 +1,6 @@
 import sys
 from typing import IO, Any, Literal, overload
+from typing_extensions import deprecated
 
 __all__ = [
     "get_config_h_filename",
@@ -15,11 +16,15 @@ __all__ = [
     "parse_config_h",
 ]
 
+@overload
+@deprecated("SO is deprecated, use EXT_SUFFIX. Support is removed in Python 3.11")
+def get_config_var(name: Literal["SO"]) -> Any: ...
+@overload
 def get_config_var(name: str) -> Any: ...
 @overload
 def get_config_vars() -> dict[str, Any]: ...
 @overload
-def get_config_vars(arg: str, *args: str) -> list[Any]: ...
+def get_config_vars(arg: str, /, *args: str) -> list[Any]: ...
 def get_scheme_names() -> tuple[str, ...]: ...
 
 if sys.version_info >= (3, 10):

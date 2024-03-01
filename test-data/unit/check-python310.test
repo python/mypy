@@ -1139,6 +1139,21 @@ match m:
 
 reveal_type(a)  # N: Revealed type is "builtins.str"
 
+[case testMatchCapturePatternFromFunctionReturningUnion]
+def func1(arg: bool) -> str | int: ...
+def func2(arg: bool) -> bytes | int: ...
+
+def main() -> None:
+    match func1(True):
+        case str(a):
+            match func2(True):
+                case c:
+                    reveal_type(a)  # N: Revealed type is "builtins.str"
+                    reveal_type(c)  # N: Revealed type is "Union[builtins.bytes, builtins.int]"
+            reveal_type(a)  # N: Revealed type is "builtins.str"
+        case a:
+            reveal_type(a)  # N: Revealed type is "builtins.int"
+
 -- Guards --
 
 [case testMatchSimplePatternGuard]

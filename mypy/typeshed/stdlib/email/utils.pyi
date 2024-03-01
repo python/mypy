@@ -4,7 +4,7 @@ from _typeshed import Unused
 from email import _ParamType
 from email.charset import Charset
 from typing import overload
-from typing_extensions import TypeAlias
+from typing_extensions import TypeAlias, deprecated
 
 __all__ = [
     "collapse_rfc2231_value",
@@ -54,6 +54,10 @@ def formatdate(timeval: float | None = None, localtime: bool = False, usegmt: bo
 def format_datetime(dt: datetime.datetime, usegmt: bool = False) -> str: ...
 
 if sys.version_info >= (3, 12):
+    @overload
+    def localtime(dt: datetime.datetime | None = None) -> datetime.datetime: ...
+    @overload
+    @deprecated("The `isdst` parameter does nothing and will be removed in Python 3.14.")
     def localtime(dt: datetime.datetime | None = None, isdst: Unused = None) -> datetime.datetime: ...
 
 else:

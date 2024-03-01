@@ -37,4 +37,5 @@ if sys.platform != "win32":
         # Don't exist at runtime
         __new__: None  # type: ignore[assignment]
         __init__: None  # type: ignore[assignment]
+
     def open(__filename: str, __flags: str = "r", __mode: int = 0o666) -> _gdbm: ...

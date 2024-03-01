@@ -2059,6 +2059,15 @@ class MessageBuilder:
             template.format(formatted_base_class_list, reason), context, code=codes.UNREACHABLE
         )
 
+    def tvar_without_default_type(
+        self, tvar_name: str, last_tvar_name_with_default: str, context: Context
+    ) -> None:
+        self.fail(
+            f'"{tvar_name}" cannot appear after "{last_tvar_name_with_default}" '
+            "in type parameter list because it has no default type",
+            context,
+        )
+
     def report_protocol_problems(
         self,
         subtype: Instance | TupleType | TypedDictType | TypeType | CallableType,

@@ -183,9 +183,12 @@ def expr_to_unanalyzed_type(
     elif isinstance(expr, UnaryExpr):
         typ = expr_to_unanalyzed_type(expr.expr, options, allow_new_syntax)
         if isinstance(typ, RawExpressionType):
-            if isinstance(typ.literal_value, int) and expr.op == "-":
-                typ.literal_value *= -1
-                return typ
+            if isinstance(typ.literal_value, int):
+                if expr.op == "-":
+                    typ.literal_value *= -1
+                    return typ
+                elif expr.op == "+":
+                    return typ
         raise TypeTranslationError()
     elif isinstance(expr, IntExpr):
         return RawExpressionType(expr.value, "builtins.int", line=expr.line, column=expr.column)

@@ -1610,10 +1610,16 @@ B: Any
 @dataclass
 class A(B):
     a: int
+@dataclass
+class C(B):
+    generated_args: int
+    generated_kwargs: int
 
 A(a=1, b=2)
 A(1)
 A(a="foo")  # E: Argument "a" to "A" has incompatible type "str"; expected "int"
+C(generated_args="foo", generated_kwargs="bar")  # E: Argument "generated_args" to "C" has incompatible type "str"; expected "int" \
+                                                 # E: Argument "generated_kwargs" to "C" has incompatible type "str"; expected "int"
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassesCallableFrozen]

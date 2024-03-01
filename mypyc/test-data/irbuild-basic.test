@@ -3337,6 +3337,32 @@ def foo(z):
 L0:
     return 1
 
+[case testFinalLocals]
+from typing import Final
+
+def inlined() -> str:
+    # XXX: the final type must be declared explicitly for Var.final_value to be set.
+    const: Final[str] = "Oppenheimer"
+    return const
+
+def local() -> str:
+    const: Final[str] = inlined()
+    return const
+[out]
+def inlined():
+    r0, const, r1 :: str
+L0:
+    r0 = 'Oppenheimer'
+    const = r0
+    r1 = 'Oppenheimer'
+    return r1
+def local():
+    r0, const :: str
+L0:
+    r0 = inlined()
+    const = r0
+    return const
+
 [case testDirectlyCall__bool__]
 class A:
     def __bool__(self) -> bool:
@@ -3688,3 +3714,33 @@ def f(arg):
     arg :: __main__.A
 L0:
     return arg
+
+[case testTypeCheckingFlag]
+from typing import TYPE_CHECKING, List
+
+def f(arg: List[int]) -> int:
+    if TYPE_CHECKING:
+        from collections.abc import Sized
+    s: Sized = arg
+    return len(s)
+
+[out]
+def f(arg):
+    arg :: list
+    r0 :: bool
+    r1 :: int
+    r2 :: bit
+    s :: object
+    r3 :: int
+L0:
+    r0 = 0 << 1
+    r1 = extend r0: builtins.bool to builtins.int
+    r2 = r1 != 0
+    if r2 goto L1 else goto L2 :: bool
+L1:
+    goto L3
+L2:
+L3:
+    s = arg
+    r3 = CPyObject_Size(s)
+    return r3

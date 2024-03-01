@@ -10,7 +10,7 @@ from os import PathLike
 from pathlib import Path
 from re import Pattern
 from typing import Any, ClassVar, Generic, NamedTuple, TypeVar, overload
-from typing_extensions import Self
+from typing_extensions import Self, TypeAlias
 
 _T = TypeVar("_T")
 _KT = TypeVar("_KT")
@@ -33,8 +33,16 @@ if sys.version_info >= (3, 10):
     __all__ += ["PackageMetadata", "packages_distributions"]
 
 if sys.version_info >= (3, 10):
-    from importlib.metadata._meta import PackageMetadata as PackageMetadata
+    from importlib.metadata._meta import PackageMetadata as PackageMetadata, SimplePath
     def packages_distributions() -> Mapping[str, list[str]]: ...
+
+    if sys.version_info >= (3, 12):
+        # It's generic but shouldn't be
+        _SimplePath: TypeAlias = SimplePath[Any]
+    else:
+        _SimplePath: TypeAlias = SimplePath
+else:
+    _SimplePath: TypeAlias = Path
 
 class PackageNotFoundError(ModuleNotFoundError):
     @property
@@ -43,6 +51,7 @@ class PackageNotFoundError(ModuleNotFoundError):
 if sys.version_info >= (3, 11):
     class DeprecatedTuple:
         def __getitem__(self, item: int) -> str: ...
+
     _EntryPointBase = DeprecatedTuple
 else:
     class _EntryPointBase(NamedTuple):
@@ -183,7 +192,7 @@ class Distribution(_distribution_parent):
     @abc.abstractmethod
     def read_text(self, filename: str) -> str | None: ...
     @abc.abstractmethod
-    def locate_file(self, path: StrPath) -> PathLike[str]: ...
+    def locate_file(self, path: StrPath) -> _SimplePath: ...
     @classmethod
     def from_name(cls, name: str) -> Distribution: ...
     @overload
@@ -232,14 +241,14 @@ class MetadataPathFinder(DistributionFinder):
     @classmethod
     def find_distributions(cls, context: DistributionFinder.Context = ...) -> Iterable[PathDistribution]: ...
     if sys.version_info >= (3, 10):
-        # Yes, this is an instance method that has argumend named "cls"
+        # Yes, this is an instance method that has a parameter named "cls"
         def invalidate_caches(cls) -> None: ...
 
 class PathDistribution(Distribution):
-    _path: Path
-    def __init__(self, path: Path) -> None: ...
-    def read_text(self, filename: StrPath) -> str: ...
-    def locate_file(self, path: StrPath) -> PathLike[str]: ...
+    _path: _SimplePath
+    def __init__(self, path: _SimplePath) -> None: ...
+    def read_text(self, filename: StrPath) -> str | None: ...
+    def locate_file(self, path: StrPath) -> _SimplePath: ...
 
 def distribution(distribution_name: str) -> Distribution: ...
 @overload
