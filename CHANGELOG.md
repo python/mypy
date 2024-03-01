@@ -45,7 +45,7 @@ This release contains new support for PEP 696 (https://peps.python.org/pep-0696)
  * Stubtest will ignore private function/method parameters when they are missing from the stub.
 Private parameters names start with a single underscore and have a default
 (PR [16507](https://github.com/python/mypy/pull/16507)).
- * Stubtest: ignore a new protocol dunder (#16895) (Marc Mueller, PR [16899](https://github.com/python/mypy/pull/16899))
+ * Stubtest: ignore a new protocol dunder (Alex Waygood, PR [16895](https://github.com/python/mypy/pull/16895))
  * stubtest: Private parameters can be omitted (Sebastian Rittau, PR [16507](https://github.com/python/mypy/pull/16507))
  * stubtest: Add support for setting enum members to "..." (Jelle Zijlstra, PR [16807](https://github.com/python/mypy/pull/16807))
  * stubtest: adjust symtable logic (Shantanu, PR [16823](https://github.com/python/mypy/pull/16823))
