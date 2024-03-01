@@ -281,8 +281,8 @@ OVERLOAD_OVERLAP: Final[ErrorCode] = ErrorCode(
     sub_code_of=MISC,
 )
 
-TYPE_NARROWER_NOT_SUBTYPE: Final[ErrorCode] = ErrorCode(
-    "type-is-not-subtype",
+NARROWED_TYPE_NOT_SUBTYPE: Final[ErrorCode] = ErrorCode(
+    "narrowed-type-not-subtype",
     "Warn if a TypeIs function's narrowed type is not a subtype of the original type",
     "General",
 )

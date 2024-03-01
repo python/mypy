@@ -324,6 +324,6 @@ ARG_CONSTRUCTOR_UNEXPECTED_ARG: Final = ErrorMessage(
 ARG_NAME_EXPECTED_STRING_LITERAL: Final = ErrorMessage(
     "Expected string literal for argument name, got {}", codes.SYNTAX
 )
-TYPE_NARROWER_NOT_SUBTYPE: Final = ErrorMessage(
-    "Narrowed type {} is not a subtype of input type {}", codes.TYPE_NARROWER_NOT_SUBTYPE
+NARROWED_TYPE_NOT_SUBTYPE: Final = ErrorMessage(
+    "Narrowed type {} is not a subtype of input type {}", codes.NARROWED_TYPE_NOT_SUBTYPE
 )

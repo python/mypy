@@ -1212,7 +1212,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         typ.type_is, typ.arg_types[arg_index]
                     ):
                         self.fail(
-                            message_registry.TYPE_NARROWER_NOT_SUBTYPE.format(
+                            message_registry.NARROWED_TYPE_NOT_SUBTYPE.format(
                                 format_type(typ.type_is, self.options),
                                 format_type(typ.arg_types[arg_index], self.options),
                             ),
