@@ -23,7 +23,7 @@ Because the version of typeshed we use in mypy 1.9 doesn't support 3.7, neither 
  * Various docs improvements (Shantanu, PR [16836](https://github.com/python/mypy/pull/16836))
 
 #### Stubtest Improvements
-  * Stubtest will ignore private function/method parameters when they are missing from the stub.
+ * Stubtest will ignore private function/method parameters when they are missing from the stub.
 Private parameters names start with a single underscore and have a default
 (PR [16507](https://github.com/python/mypy/pull/16507)).
  * Stubtest: ignore a new protocol dunder (#16895) (Marc Mueller, PR [16899](https://github.com/python/mypy/pull/16899))
