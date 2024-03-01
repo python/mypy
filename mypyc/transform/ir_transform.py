@@ -91,8 +91,8 @@ class IRTransform(OpVisitor[Value]):
             if block.error_handler is not None:
                 block.error_handler = block_map[block.error_handler]
 
-    def add(self, op: Op) -> None:
-        self.builder.add(op)
+    def add(self, op: Op) -> Value:
+        return self.builder.add(op)
 
     def visit_goto(self, op: Goto) -> Value:
         return self.add(op)
@@ -221,7 +221,7 @@ class PatchVisitor(OpVisitor[None]):
         op.label = self.fix_block(op.label)
 
     def visit_branch(self, op: Branch) -> None:
-        op.value = self.fix_block(op.value)
+        op.value = self.fix_op(op.value)
         op.true = self.fix_block(op.true)
         op.false = self.fix_block(op.false)
 
@@ -235,7 +235,7 @@ class PatchVisitor(OpVisitor[None]):
         op.src = self.fix_op(op.src)
 
     def visit_assign_multi(self, op: AssignMulti) -> None:
-        op.src = [self.fix_op(s) for s in self.fix_op(op.src)]
+        op.src = [self.fix_op(s) for s in op.src]
 
     def visit_load_error_value(self, op: LoadErrorValue) -> None:
         pass
@@ -289,7 +289,7 @@ class PatchVisitor(OpVisitor[None]):
             op.value = self.fix_op(op.value)
 
     def visit_call_c(self, op: CallC) -> None:
-        op.args [self.fix_op(arg) for arg in op.args]
+        op.args = [self.fix_op(arg) for arg in op.args]
 
     def visit_truncate(self, op: Truncate) -> None:
         op.src = self.fix_op(op.src)
