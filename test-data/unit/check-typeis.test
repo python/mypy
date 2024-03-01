@@ -708,6 +708,7 @@ if typeis(y="42", x=x):
 from typing import Callable, List, TypeVar
 from typing_extensions import TypeIs
 
+T = TypeVar('T')
 A = Callable[[object], TypeIs[List[T]]]
 def foo(x: object) -> TypeIs[List[str]]: ...
 
