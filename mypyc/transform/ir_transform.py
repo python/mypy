@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from typing import Final
 
-from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 from mypyc.ir.ops import (
     Assign,
     AssignMulti,
@@ -19,9 +18,8 @@ from mypyc.ir.ops import (
     CallC,
     Cast,
     ComparisonOp,
-    ControlOp,
+    DecRef,
     Extend,
-    Float,
     FloatComparisonOp,
     FloatNeg,
     FloatOp,
@@ -29,9 +27,7 @@ from mypyc.ir.ops import (
     GetElementPtr,
     Goto,
     IncRef,
-    DecRef,
     InitStatic,
-    Integer,
     IntOp,
     KeepAlive,
     LoadAddress,
@@ -44,7 +40,6 @@ from mypyc.ir.ops import (
     Op,
     OpVisitor,
     RaiseStandardError,
-    RegisterOp,
     Return,
     SetAttr,
     SetMem,
@@ -56,6 +51,7 @@ from mypyc.ir.ops import (
     Unreachable,
     Value,
 )
+from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 
 
 class IRTransform(OpVisitor[Value]):
