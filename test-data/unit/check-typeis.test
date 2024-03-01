@@ -418,7 +418,7 @@ def test(x: List[Any]) -> None:
     g(reveal_type(x))  # N: Revealed type is "Union[builtins.list[builtins.str], __main__.<subclass of "list" and "A">]"
 [builtins fixtures/tuple.pyi]
 
-[case testTypeIsMultipleCondition-xfail]
+[case testTypeIsMultipleCondition]
 from typing_extensions import TypeIs
 from typing import Any, List
 
@@ -439,7 +439,8 @@ def foobar(x: object):
 def foobar_typeis(x: object):
     if not is_foo(x) or not is_bar(x):
         return
-    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "Foo" and "Bar">"
+    # Looks like a typo but this is what our unique name generation produces
+    reveal_type(x)  # N: Revealed type is "__main__.<subclass of "Foo" and "Bar">1"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsAsFunctionArgAsBoolSubtype]
