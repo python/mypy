@@ -267,8 +267,8 @@ from typing_extensions import TypeGuard
 
 def is_str_list(val: list[object]) -> TypeGuard[list[str]]: ...  # E: "list" is not subscriptable, use "typing.List" instead
 
-# TODO: this isn't correct, but looks like some preexisting handling of TypeGuard inside constraints is broken
-functools.partial(is_str_list, [1, 2, 3])  # E: Argument 1 to "partial" has incompatible type "Callable[[List[object]], TypeGuard[List[str]]]"; expected "Callable[..., List[str]]"
+reveal_type(functools.partial(is_str_list, [1, 2, 3]))  # N: Revealed type is "functools.partial[builtins.bool]"
+reveal_type(functools.partial(is_str_list, [1, 2, 3])())  # N: Revealed type is "builtins.bool"
 [builtins fixtures/dict.pyi]
 
 [case testFunctoolsPartialType]
