@@ -3,7 +3,7 @@ from _collections_abc import dict_keys
 from _typeshed import FileDescriptorOrPath, ReadableBuffer, SupportsRead, SupportsWrite
 from collections.abc import Callable, Generator, ItemsView, Iterable, Iterator, Mapping, Sequence
 from typing import Any, Literal, SupportsIndex, TypeVar, overload
-from typing_extensions import TypeAlias, TypeGuard
+from typing_extensions import TypeAlias, TypeGuard, deprecated
 
 __all__ = [
     "C14NWriterTarget",
@@ -121,6 +121,10 @@ class Element:
     def __setitem__(self, __key: SupportsIndex, __value: Element) -> None: ...
     @overload
     def __setitem__(self, __key: slice, __value: Iterable[Element]) -> None: ...
+
+    # Doesn't really exist in earlier versions, where __len__ is called implicitly instead
+    @deprecated("Testing an element's truth value is deprecated.")
+    def __bool__(self) -> bool: ...
     if sys.version_info < (3, 9):
         def getchildren(self) -> list[Element]: ...
         def getiterator(self, tag: str | None = None) -> list[Element]: ...
