@@ -75,9 +75,9 @@ class IRTransform(OpVisitor[Value]):
         block_map: dict[BasicBlock, BasicBlock] = {}
         for block in blocks:
             new_block = BasicBlock()
-            new_block.error_handler = block.error_handler
             block_map[block] = new_block
             self.builder.activate_block(new_block)
+            new_block.error_handler = block.error_handler
             for op in block.ops:
                 new_op = op.accept(self)
                 if new_op is not op:
@@ -87,7 +87,7 @@ class IRTransform(OpVisitor[Value]):
             for op in block.ops:
                 op.accept(patcher)
             if block.error_handler is not None:
-                block.error_handler = block_map[block.error_handler]
+                block.error_handler = block_map.get(block.error_handler, block.error_handler)
 
     def add(self, op: Op) -> Value:
         return self.builder.add(op)
