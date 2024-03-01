@@ -58,7 +58,6 @@ from mypyc.ir.ops import (
 )
 
 
-
 class IRTransform(OpVisitor[Value]):
     """Identity transform.
 
@@ -71,8 +70,7 @@ class IRTransform(OpVisitor[Value]):
     def __init__(self, builder: LowLevelIRBuilder) -> None:
         self.builder = builder
 
-    def transform_blocks(self,
-                         blocks: list[BasicBlock]) -> None:
+    def transform_blocks(self, blocks: list[BasicBlock]) -> None:
         op_map: dict[Value, Value] = {}
         block_map: dict[BasicBlock, BasicBlock] = {}
         for block in blocks:
