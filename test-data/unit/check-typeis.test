@@ -418,7 +418,8 @@ def is_bar(item: object) -> TypeIs[Bar]:
 def foobar(items: List[object]):
     a: List[Base] = [x for x in items if is_foo(x) or is_bar(x)]
     b: List[Base] = [x for x in items if is_foo(x)]
-    c: List[Bar] = [x for x in items if is_foo(x)]  # E: List comprehension has incompatible type List[Foo]; expected List[Bar]
+    c: List[Foo] = [x for x in items if is_foo(x)]
+    d: List[Bar] = [x for x in items if is_foo(x)]  # E: List comprehension has incompatible type List[Foo]; expected List[Bar]
 [builtins fixtures/tuple.pyi]
 
 [case testTypeIsNestedRestrictionUnionIsInstance]
