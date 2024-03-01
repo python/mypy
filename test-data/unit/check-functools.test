@@ -209,6 +209,12 @@ p2(2, 3, 4)  # E: Missing named argument "d" for "foo"
 functools.partial(foo, 1, "a", "b", "c", d="a")  # E: Argument 3 to "foo" has incompatible type "str"; expected "int" \
                                                  # E: Argument 4 to "foo" has incompatible type "str"; expected "int"
 
+def bar(*a: bytes, **k: int):
+    p1("a", 2, 3, 4, d="a", **k)
+    p1("a", d="a", **k)
+    p1("a", **k)  # E: Argument 2 to "foo" has incompatible type "**Dict[str, int]"; expected "str"
+    p1(**k)  # E: Argument 1 to "foo" has incompatible type "**Dict[str, int]"; expected "str"
+    p1(*a)  # E: List or tuple expected as variadic arguments
 [builtins fixtures/dict.pyi]
 
 [case testFunctoolsPartialGeneric]
@@ -253,6 +259,40 @@ def main2(f: CallbackProto) -> None:
     p = functools.partial(f, b="a")
     p(1)  # OK
     p("a")  # E: Argument 1 to "__call__" of "CallbackProto" has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]
+
+[case testFunctoolsPartialTypeGuard]
+import functools
+from typing_extensions import TypeGuard
+
+def is_str_list(val: list[object]) -> TypeGuard[list[str]]: ...  # E: "list" is not subscriptable, use "typing.List" instead
+
+# TODO: this isn't correct, but looks like some preexisting handling of TypeGuard inside constraints is broken
+functools.partial(is_str_list, [1, 2, 3])  # E: Argument 1 to "partial" has incompatible type "Callable[[List[object]], TypeGuard[List[str]]]"; expected "Callable[..., List[str]]"
+[builtins fixtures/dict.pyi]
+
+[case testFunctoolsPartialType]
+import functools
+from typing import Type
+
+class A:
+    def __init__(self, a: int, b: str) -> None: ...  # N: "A" defined here
+
+p = functools.partial(A, 1)
+reveal_type(p)  # N: Revealed type is "functools.partial[__main__.A]"
+
+p("a")  # OK
+p(1)  # E: Argument 1 to "A" has incompatible type "int"; expected "str"
+p(z=1)  # E: Unexpected keyword argument "z" for "A"
+
+def main(t: Type[A]) -> None:
+    p = functools.partial(t, 1)  # E: "Type[A]" not callable
+    reveal_type(p)  # N: Revealed type is "functools.partial[__main__.A]"
+
+    p("a")  # OK
+    p(1)  # False negative
+    p(z=1)  # False negative
+
 [builtins fixtures/dict.pyi]
 
 [case testFunctoolsPartialTypeVarTuple]
