@@ -16,6 +16,21 @@ Because the version of typeshed we use in mypy 1.9 doesn't support 3.7, neither 
 
 This release contains new support for PEP 696 (https://peps.python.org/pep-0696). Please try it out! (Contributed by Mark Mueller).
 
+#### Type-checking improvements
+ * Fix duplicated TypeVarTuple test (Jelle Zijlstra, PR [16853](https://github.com/python/mypy/pull/16853))
+ * Fix missing type store for overloads (Marc Mueller, PR [16803](https://github.com/python/mypy/pull/16803))
+ * Fix `'WriteToConn' object has no attribute 'flush'` (Charlie Denton, PR [16801](https://github.com/python/mypy/pull/16801))
+ * Update TypeAlias error messages to remove colon (Marc Mueller, PR [16831](https://github.com/python/mypy/pull/16831))
+ * Support narrowing unions that include type[None] (Christoph Tyralla, PR [16315](https://github.com/python/mypy/pull/16315))
+ * Support TypedDict functional syntax as class base type (anniel-stripe, PR [16703](https://github.com/python/mypy/pull/16703))
+ * Accept multiline quoted annotations (Shantanu, PR [16765](https://github.com/python/mypy/pull/16765))
+ * Allow unary + in Literal (Jelle Zijlstra, PR [16729](https://github.com/python/mypy/pull/16729))
+ * Speed up finding function type variables (Jukka Lehtosalo, PR [16562](https://github.com/python/mypy/pull/16562))
+ * Substitute type variables in return type of static methods (Kouroche Bouchiat, PR [16670](https://github.com/python/mypy/pull/16670))
+ * Consider TypeVarTuple to be invariant (Marc Mueller, PR [16759](https://github.com/python/mypy/pull/16759))
+ * Add `alias` support to `field()` in `attrs` plugin (Nikita Sobolev, PR [16610](https://github.com/python/mypy/pull/16610))
+ * Improve attrs hashability detection (Tin Tvrtković, PR [16556](https://github.com/python/mypy/pull/16556))
+
 #### Documentation Updates
  * Document --enable-incomplete-feature possible values in "mypy --help" (Froger David, PR [16661](https://github.com/python/mypy/pull/16661))
  * Update new type system discussion links (thomaswhaley, PR [16841](https://github.com/python/mypy/pull/16841))
@@ -43,21 +58,6 @@ Private parameters names start with a single underscore and have a default
  * Improve stubgen tests (Fabian Keller, PR [16760](https://github.com/python/mypy/pull/16760))
  * stubgen: Do not ignore property deleter (Ali Hamdan, PR [16781](https://github.com/python/mypy/pull/16781))
  * Support type stub generation for `staticmethod` (WeilerMarcel, PR [14934](https://github.com/python/mypy/pull/14934))
-
-#### Type-checking improvements
- * Fix duplicated TypeVarTuple test (Jelle Zijlstra, PR [16853](https://github.com/python/mypy/pull/16853))
- * Fix missing type store for overloads (Marc Mueller, PR [16803](https://github.com/python/mypy/pull/16803))
- * Fix `'WriteToConn' object has no attribute 'flush'` (Charlie Denton, PR [16801](https://github.com/python/mypy/pull/16801))
- * Update TypeAlias error messages to remove colon (Marc Mueller, PR [16831](https://github.com/python/mypy/pull/16831))
- * Support narrowing unions that include type[None] (Christoph Tyralla, PR [16315](https://github.com/python/mypy/pull/16315))
- * Support TypedDict functional syntax as class base type (anniel-stripe, PR [16703](https://github.com/python/mypy/pull/16703))
- * Accept multiline quoted annotations (Shantanu, PR [16765](https://github.com/python/mypy/pull/16765))
- * Allow unary + in Literal (Jelle Zijlstra, PR [16729](https://github.com/python/mypy/pull/16729))
- * Speed up finding function type variables (Jukka Lehtosalo, PR [16562](https://github.com/python/mypy/pull/16562))
- * Substitute type variables in return type of static methods (Kouroche Bouchiat, PR [16670](https://github.com/python/mypy/pull/16670))
- * Consider TypeVarTuple to be invariant (Marc Mueller, PR [16759](https://github.com/python/mypy/pull/16759))
- * Add `alias` support to `field()` in `attrs` plugin (Nikita Sobolev, PR [16610](https://github.com/python/mypy/pull/16610))
- * Improve attrs hashability detection (Tin Tvrtković, PR [16556](https://github.com/python/mypy/pull/16556))
 
 
 ## Mypy 1.8
