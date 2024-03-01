@@ -570,6 +570,28 @@ def func2(name: str):
         reveal_type(name)  # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
 
+[case testTypeIsWithGenericOnSecondParam]
+from typing import TypeVar
+from typing_extensions import TypeIs
+
+_R = TypeVar("_R")
+
+def guard(val: object, param: _R) -> TypeIs[_R]:
+    pass
+
+def func1(name: object):
+    reveal_type(name)  # N: Revealed type is "builtins.object"
+    if guard(name, name):
+        reveal_type(name)  # N: Revealed type is "builtins.object"
+    if guard(name, 1):
+        reveal_type(name)  # N: Revealed type is "builtins.int"
+
+def func2(name: int):
+    reveal_type(name)  # N: Revealed type is "builtins.int"
+    if guard(name, True):
+        reveal_type(name)  # N: Revealed type is "builtins.bool"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeIsWithGenericInstance]
 from typing import TypeVar, List, Iterable
 from typing_extensions import TypeIs
