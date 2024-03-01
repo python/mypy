@@ -9,6 +9,23 @@ def main(a: object) -> None:
         reveal_type(a)  # N: Revealed type is "builtins.object"
 [builtins fixtures/tuple.pyi]
 
+[case testTypeIsElif]
+from typing_extensions import TypeIs
+from typing import Union
+class Point: pass
+def is_point(a: object) -> TypeIs[Point]: pass
+class Line: pass
+def is_line(a: object) -> TypeIs[Line]: pass
+def main(a: Union[Point, Line, int]) -> None:
+    if is_point(a):
+        reveal_type(a)  # N: Revealed type is "__main__.Point"
+    elif is_line(a):
+        reveal_type(a)  # N: Revealed type is "__main__.Line"
+    else:
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+
+[builtins fixtures/tuple.pyi]
+
 [case testTypeIsTypeArgsNone]
 from typing_extensions import TypeIs
 def foo(a: object) -> TypeIs:  # E: TypeIs must have exactly one type argument
