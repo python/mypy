@@ -44,7 +44,7 @@ Private parameters names start with a single underscore and have a default
  * Add `alias` support to `field()` in `attrs` plugin (Nikita Sobolev, PR [16610](https://github.com/python/mypy/pull/16610))
  * Improve attrs hashability detection (Tin Tvrtković, PR [16556](https://github.com/python/mypy/pull/16556))
 
-#### PEP 696 Support & PEP 646 Improvements
+#### Basic PEP 696 Support
  * Expand TypeVarTuple default (PEP 696) (Marc Mueller, PR [16851](https://github.com/python/mypy/pull/16851))
  * Fix TypeVar defaults with None (PEP 696) (Marc Mueller, PR [16859](https://github.com/python/mypy/pull/16859))
  * Fix disallow-any errors for Instance types (PEP 696) (Marc Mueller, PR [16832](https://github.com/python/mypy/pull/16832))
