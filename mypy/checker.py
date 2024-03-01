@@ -2020,22 +2020,29 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if original_node and is_property(original_node):
                     original_type = get_property_type(original_type)
 
-            if isinstance(typ, FunctionLike) and is_property(defn):
-                typ = get_property_type(typ)
-                if (
-                    isinstance(original_node, Var)
-                    and not original_node.is_final
-                    and (not original_node.is_property or original_node.is_settable_property)
-                    and isinstance(defn, Decorator)
-                ):
-                    # We only give an error where no other similar errors will be given.
-                    if not isinstance(original_type, AnyType):
-                        self.msg.fail(
-                            "Cannot override writeable attribute with read-only property",
-                            # Give an error on function line to match old behaviour.
-                            defn.func,
-                            code=codes.OVERRIDE,
-                        )
+            if is_property(defn):
+                inner: FunctionLike | None
+                if isinstance(typ, FunctionLike):
+                    inner = typ
+                else:
+                    inner = self.extract_callable_type(typ, context)
+                if inner is not None:
+                    typ = inner
+                    typ = get_property_type(typ)
+                    if (
+                        isinstance(original_node, Var)
+                        and not original_node.is_final
+                        and (not original_node.is_property or original_node.is_settable_property)
+                        and isinstance(defn, Decorator)
+                    ):
+                        # We only give an error where no other similar errors will be given.
+                        if not isinstance(original_type, AnyType):
+                            self.msg.fail(
+                                "Cannot override writeable attribute with read-only property",
+                                # Give an error on function line to match old behaviour.
+                                defn.func,
+                                code=codes.OVERRIDE,
+                            )
 
             if isinstance(original_type, AnyType) or isinstance(typ, AnyType):
                 pass
