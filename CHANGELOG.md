@@ -2,7 +2,7 @@
 
 ## Mypy 1.9
 
-We’ve just uploaded mypy 1.8 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)). Mypy is a static type checker for Python. This release includes new features, performance improvements and bug fixes. You can install it as follows:
+We’ve just uploaded mypy 1.9 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)). Mypy is a static type checker for Python. This release includes new features, performance improvements and bug fixes. You can install it as follows:
 
     python3 -m pip install -U mypy
 
