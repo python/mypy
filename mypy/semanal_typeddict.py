@@ -235,12 +235,20 @@ class TypedDictAnalyzer:
 
         for arg_expr in args:
             try:
-                type = expr_to_unanalyzed_type(arg_expr, self.options, self.api.is_stub_file)
+                type = expr_to_unanalyzed_type(
+                    arg_expr,
+                    self.options,
+                    allow_new_syntax=self.api.is_stub_file,
+                    allow_unpack=True,
+                )
             except TypeTranslationError:
                 self.fail("Invalid TypedDict type argument", ctx)
                 return None
             analyzed = self.api.anal_type(
-                type, allow_required=True, allow_placeholder=not self.api.is_func_scope()
+                type,
+                allow_required=True,
+                allow_unpack=True,
+                allow_placeholder=not self.api.is_func_scope(),
             )
             if analyzed is None:
                 return None
@@ -316,6 +324,7 @@ class TypedDictAnalyzer:
                     analyzed = self.api.anal_type(
                         stmt.type,
                         allow_required=True,
+                        allow_unpack=True,
                         allow_placeholder=not self.api.is_func_scope(),
                         prohibit_self_type="TypedDict item type",
                     )
@@ -520,6 +529,7 @@ class TypedDictAnalyzer:
             analyzed = self.api.anal_type(
                 type,
                 allow_required=True,
+                allow_unpack=True,
                 allow_placeholder=not self.api.is_func_scope(),
                 prohibit_self_type="TypedDict item type",
             )
