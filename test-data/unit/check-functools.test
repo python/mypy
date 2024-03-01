@@ -237,6 +237,10 @@ import functools
 import typing
 Ts = typing.TypeVarTuple("Ts")
 def foo(fn: typing.Callable[[typing.Unpack[Ts]], None], /, *arg: typing.Unpack[Ts], kwarg: str) -> None: ...
-# just test that this doesn't crash
-functools.partial(foo, kwarg="asdf")
+p = functools.partial(foo, kwarg="asdf")
+
+def bar(a: int, b: str, c: float) -> None: ...
+p(bar, 1, "a", 3.0)  # OK
+p(bar, 1, "a", 3.0, kwarg="asdf")  # OK
+p(bar, 1, "a", "b")  # E: Argument 1 to "foo" has incompatible type "Callable[[int, str, float], None]"; expected "Callable[[int, str, str], None]"
 [builtins fixtures/dict.pyi]
