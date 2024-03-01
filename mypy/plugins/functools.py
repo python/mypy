@@ -13,6 +13,7 @@ from mypy.types import (
     AnyType,
     CallableType,
     Instance,
+    Overloaded,
     Type,
     TypeOfAny,
     UnboundType,
@@ -124,6 +125,9 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
     if len(ctx.arg_types[0]) != 1:
         return ctx.default_return_type
 
+    if isinstance(ctx.arg_types[0][0], Overloaded):
+        # TODO: handle overloads, just fall back to whatever the non-plugin code does
+        return ctx.default_return_type
     fn_type = ctx.api.extract_callable_type(ctx.arg_types[0][0], ctx=ctx.default_return_type)
     if fn_type is None:
         return ctx.default_return_type
