@@ -668,7 +668,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 )
                 return AnyType(TypeOfAny.from_error)
             return RequiredType(self.anal_type(t.args[0]), required=False)
-        elif self.anal_type_guard_arg(t, fullname) is not None:
+        elif (
+            self.anal_type_guard_arg(t, fullname) is not None
+            or self.anal_type_is_arg(t, fullname) is not None
+        ):
             # In most contexts, TypeGuard[...] acts as an alias for bool (ignoring its args)
             return self.named_type("builtins.bool")
         elif fullname in ("typing.Unpack", "typing_extensions.Unpack"):
@@ -986,7 +989,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 variables = t.variables
             else:
                 variables, _ = self.bind_function_type_variables(t, t)
-            special = self.anal_type_guard(t.ret_type)
+            type_guard = self.anal_type_guard(t.ret_type)
+            type_is = self.anal_type_is(t.ret_type)
             arg_kinds = t.arg_kinds
             if len(arg_kinds) >= 2 and arg_kinds[-2] == ARG_STAR and arg_kinds[-1] == ARG_STAR2:
                 arg_types = self.anal_array(t.arg_types[:-2], nested=nested) + [
@@ -1041,7 +1045,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 # its type will be the falsey FakeInfo
                 fallback=(t.fallback if t.fallback.type else self.named_type("builtins.function")),
                 variables=self.anal_var_defs(variables),
-                type_guard=special,
+                type_guard=type_guard,
+                type_is=type_is,
                 unpack_kwargs=unpacked_kwargs,
             )
         return ret
@@ -1060,6 +1065,22 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 self.fail(
                     "TypeGuard must have exactly one type argument", t, code=codes.VALID_TYPE
                 )
+                return AnyType(TypeOfAny.from_error)
+            return self.anal_type(t.args[0])
+        return None
+
+    def anal_type_is(self, t: Type) -> Type | None:
+        if isinstance(t, UnboundType):
+            sym = self.lookup_qualified(t.name, t)
+            if sym is not None and sym.node is not None:
+                return self.anal_type_is_arg(t, sym.node.fullname)
+        # TODO: What if it's an Instance? Then use t.type.fullname?
+        return None
+
+    def anal_type_is_arg(self, t: UnboundType, fullname: str) -> Type | None:
+        if fullname in ("typing_extensions.TypeIs", "typing.TypeIs"):
+            if len(t.args) != 1:
+                self.fail("TypeIs must have exactly one type argument", t, code=codes.VALID_TYPE)
                 return AnyType(TypeOfAny.from_error)
             return self.anal_type(t.args[0])
         return None

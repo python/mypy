@@ -504,7 +504,7 @@ def with_bool(o: object) -> bool: pass
 
 accepts_typeguard(with_bool_typeguard)
 accepts_typeguard(with_str_typeguard)
-accepts_typeguard(with_bool)  # E: Argument 1 to "accepts_typeguard" has incompatible type "Callable[[object], bool]"; expected "Callable[[object], TypeGuard[bool]]"
+accepts_typeguard(with_bool)  # E: Argument 1 to "accepts_typeguard" has incompatible type "Callable[[object], bool]"; expected "Callable[[object], TypeGuard[Never]]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardAsOverloadedFunctionArg]

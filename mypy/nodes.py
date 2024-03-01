@@ -1755,6 +1755,7 @@ class RefExpr(Expression):
         "is_inferred_def",
         "is_alias_rvalue",
         "type_guard",
+        "type_is",
     )
 
     def __init__(self) -> None:
@@ -1776,6 +1777,8 @@ class RefExpr(Expression):
         self.is_alias_rvalue = False
         # Cache type guard from callable_type.type_guard
         self.type_guard: mypy.types.Type | None = None
+        # And same for TypeIs
+        self.type_is: mypy.types.Type | None = None
 
     @property
     def fullname(self) -> str:
