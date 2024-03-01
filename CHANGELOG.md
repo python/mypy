@@ -1,9 +1,70 @@
 # Mypy Release Notes
 
-## Next release
+## Mypy 1.9
 
-Stubtest will ignore private function/method parameters when they are missing from the stub. Private parameters
-names start with a single underscore and have a default (PR [16507](https://github.com/python/mypy/pull/16507)).
+We’ve just uploaded mypy 1.8 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)). Mypy is a static type checker for Python. This release includes new features, performance improvements and bug fixes. You can install it as follows:
+
+    python3 -m pip install -U mypy
+
+You can read the full documentation for this release on [Read the Docs](http://mypy.readthedocs.io).
+
+#### Breaking Changes
+
+Because the version of typeshed we use in mypy 1.9 doesn't support 3.7, neither does mypy 1.9. (Marc Mueller, PR [16900](https://github.com/python/mypy/pull/16900))
+
+#### Documentation Updates
+ * Document --enable-incomplete-feature possible values in "mypy --help" (Froger David, PR [16661](https://github.com/python/mypy/pull/16661))
+ * Update new type system discussion links (thomaswhaley, PR [16841](https://github.com/python/mypy/pull/16841))
+ * Docs: Add missing class instantiation to cheat sheet (Aleksi Tarvainen, PR [16817](https://github.com/python/mypy/pull/16817))
+ * Fix typo in getting_started.rst (zipperer, PR [16700](https://github.com/python/mypy/pull/16700))
+ * Document how evil `--no-strict-optional` is (Shantanu, PR [16731](https://github.com/python/mypy/pull/16731))
+ * Improve mypy daemon documentation note about local partial types (Makonnen Makonnen, PR [16782](https://github.com/python/mypy/pull/16782))
+ * Fix numbering error in docs (Stefanie Molin, PR [16838](https://github.com/python/mypy/pull/16838))
+ * Various docs improvements (Shantanu, PR [16836](https://github.com/python/mypy/pull/16836))
+
+#### Stubtest Improvements
+  * Stubtest will ignore private function/method parameters when they are missing from the stub.
+Private parameters names start with a single underscore and have a default
+(PR [16507](https://github.com/python/mypy/pull/16507)).
+ * Stubtest: ignore a new protocol dunder (#16895) (Marc Mueller, PR [16899](https://github.com/python/mypy/pull/16899))
+ * stubtest: Private parameters can be omitted (Sebastian Rittau, PR [16507](https://github.com/python/mypy/pull/16507))
+ * stubtest: Add support for setting enum members to "..." (Jelle Zijlstra, PR [16807](https://github.com/python/mypy/pull/16807))
+ * stubtest: adjust symtable logic (Shantanu, PR [16823](https://github.com/python/mypy/pull/16823))
+ * stubtest: fix pos-only handling in overload resolution (Shantanu, PR [16750](https://github.com/python/mypy/pull/16750))
+
+#### Stubgen Improvements
+ * stubgen: Fix crash on star unpack of TypeVarTuple (Ali Hamdan, PR [16869](https://github.com/python/mypy/pull/16869))
+ * Fix failing stubgen tests (Ali Hamdan, PR [16779](https://github.com/python/mypy/pull/16779))
+ * stubgen: use PEP 604 unions everywhere (Ali Hamdan, PR [16519](https://github.com/python/mypy/pull/16519))
+ * Improve stubgen tests (Fabian Keller, PR [16760](https://github.com/python/mypy/pull/16760))
+ * stubgen: Do not ignore property deleter (Ali Hamdan, PR [16781](https://github.com/python/mypy/pull/16781))
+ * Support type stub generation for `staticmethod` (WeilerMarcel, PR [14934](https://github.com/python/mypy/pull/14934))
+
+#### Plugin Improvements
+ * Add `alias` support to `field()` in `attrs` plugin (Nikita Sobolev, PR [16610](https://github.com/python/mypy/pull/16610))
+ * Improve attrs hashability detection (Tin Tvrtković, PR [16556](https://github.com/python/mypy/pull/16556))
+
+#### PEP 696 Support & PEP 646 Improvements
+ * Expand TypeVarTuple default (PEP 696) (Marc Mueller, PR [16851](https://github.com/python/mypy/pull/16851))
+ * Fix TypeVar defaults with None (PEP 696) (Marc Mueller, PR [16859](https://github.com/python/mypy/pull/16859))
+ * Fix disallow-any errors for Instance types (PEP 696) (Marc Mueller, PR [16832](https://github.com/python/mypy/pull/16832))
+ * Apply TypeVar defaults to callables (PEP 696) (Marc Mueller, PR [16842](https://github.com/python/mypy/pull/16842))
+ * Use TypeVar defaults instead of Any when fixing TypeAlias types (PEP 696) (Marc Mueller, PR [16825](https://github.com/python/mypy/pull/16825))
+ * Use TypeVar defaults instead of Any when fixing instance types (PEP 696) (Marc Mueller, PR [16812](https://github.com/python/mypy/pull/16812))
+ * Consider TypeVarTuple to be invariant (Marc Mueller, PR [16759](https://github.com/python/mypy/pull/16759))
+
+#### Miscellaneous Fixes
+ * Fix duplicated TypeVarTuple test (Jelle Zijlstra, PR [16853](https://github.com/python/mypy/pull/16853))
+ * Fix missing type store for overloads (Marc Mueller, PR [16803](https://github.com/python/mypy/pull/16803))
+ * Fix `'WriteToConn' object has no attribute 'flush'` (Charlie Denton, PR [16801](https://github.com/python/mypy/pull/16801))
+ * Update TypeAlias error messages to remove colon (Marc Mueller, PR [16831](https://github.com/python/mypy/pull/16831))
+ * Support narrowing unions that include type[None] (Christoph Tyralla, PR [16315](https://github.com/python/mypy/pull/16315))
+ * Support TypedDict functional syntax as class base type (anniel-stripe, PR [16703](https://github.com/python/mypy/pull/16703))
+ * Accept multiline quoted annotations (Shantanu, PR [16765](https://github.com/python/mypy/pull/16765))
+ * Allow unary + in Literal (Jelle Zijlstra, PR [16729](https://github.com/python/mypy/pull/16729))
+ * Speed up finding function type variables (Jukka Lehtosalo, PR [16562](https://github.com/python/mypy/pull/16562))
+ * Substitute type variables in return type of static methods (Kouroche Bouchiat, PR [16670](https://github.com/python/mypy/pull/16670))
+
 
 ## Mypy 1.8
 
