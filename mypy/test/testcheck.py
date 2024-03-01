@@ -245,8 +245,13 @@ class TypeCheckSuite(DataSuite):
         # really errors that cause an error to be marked, many are
         # just notes attached to other errors.
         assert error_paths or not busted_paths, "Some modules reported error despite no errors"
-        if not missing_paths == busted_paths:
-            raise AssertionError(f"cache data discrepancy {missing_paths} != {busted_paths}")
+        # When pre_module_options are used, 'busted_paths' are not correct as module
+        # caches can get busted even without module specific transitive_errors.
+        # That is why this check is ignored if per_module_options are in use.
+        # [rechecked] section from tests works correctly even when per_module_options are used
+        if manager.old_per_module_options == {} and manager.options.per_module_options == {}:
+            if not missing_paths == busted_paths:
+                raise AssertionError(f"cache data discrepancy {missing_paths} != {busted_paths}")
         assert os.path.isfile(os.path.join(manager.options.cache_dir, ".gitignore"))
         cachedir_tag = os.path.join(manager.options.cache_dir, "CACHEDIR.TAG")
         assert os.path.isfile(cachedir_tag)
