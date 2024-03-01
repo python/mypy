@@ -556,10 +556,10 @@ Correct usage:
 When this code is enabled, using ``reveal_locals`` is always an error,
 because there's no way one can import it.
 
-.. _code-type-is-not-subtype:
+.. _code-narrowed-type-not-subtype:
 
-Check that ``TypeIs`` narrows types [type-is-not-subtype]
------------------------------------------------------------------
+Check that ``TypeIs`` narrows types [narrowed-type-not-subtype]
+---------------------------------------------------------------
 
 :pep:`742` requires that when ``TypeIs`` is used, the narrowed
 type must be a subtype of the original type::
