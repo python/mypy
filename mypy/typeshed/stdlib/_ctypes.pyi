@@ -64,6 +64,7 @@ class _CData(metaclass=_CDataMeta):
     # Structure.from_buffer(...)  # valid at runtime
     # Structure(...).from_buffer(...)  # invalid at runtime
     #
+
     @classmethod
     def from_buffer(cls, source: WriteableBuffer, offset: int = ...) -> Self: ...
     @classmethod
@@ -106,14 +107,15 @@ class _CArgObject: ...
 
 def byref(obj: _CData, offset: int = ...) -> _CArgObject: ...
 
-_ECT: TypeAlias = Callable[[type[_CData] | None, CFuncPtr, tuple[_CData, ...]], _CData]
+_ECT: TypeAlias = Callable[[_CData | None, CFuncPtr, tuple[_CData, ...]], _CData]
 _PF: TypeAlias = tuple[int] | tuple[int, str | None] | tuple[int, str | None, Any]
 
 class CFuncPtr(_PointerLike, _CData):
     restype: type[_CData] | Callable[[int], Any] | None
     argtypes: Sequence[type[_CData]]
     errcheck: _ECT
-    _flags_: ClassVar[int]  # Abstract attribute that must be defined on subclasses
+    # Abstract attribute that must be defined on subclasses
+    _flags_: ClassVar[int]
     @overload
     def __init__(self) -> None: ...
     @overload
@@ -167,7 +169,11 @@ class Array(_CData, Generic[_CT]):
     def _type_(self) -> type[_CT]: ...
     @_type_.setter
     def _type_(self, value: type[_CT]) -> None: ...
-    raw: bytes  # Note: only available if _CT == c_char
+    # Note: only available if _CT == c_char
+    @property
+    def raw(self) -> bytes: ...
+    @raw.setter
+    def raw(self, value: ReadableBuffer) -> None: ...
     value: Any  # Note: bytes if _CT == c_char, str if _CT == c_wchar, unavailable otherwise
     # TODO These methods cannot be annotated correctly at the moment.
     # All of these "Any"s stand for the array's element type, but it's not possible to use _CT

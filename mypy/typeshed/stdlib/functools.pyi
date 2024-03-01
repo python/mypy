@@ -1,9 +1,9 @@
 import sys
 import types
-from _typeshed import IdentityFunction, SupportsAllComparisons, SupportsItems
+from _typeshed import SupportsAllComparisons, SupportsItems
 from collections.abc import Callable, Hashable, Iterable, Sequence, Sized
 from typing import Any, Generic, Literal, NamedTuple, TypedDict, TypeVar, final, overload
-from typing_extensions import Self, TypeAlias
+from typing_extensions import ParamSpec, Self, TypeAlias
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -27,10 +27,13 @@ __all__ = [
 if sys.version_info >= (3, 9):
     __all__ += ["cache"]
 
-_AnyCallable: TypeAlias = Callable[..., object]
-
 _T = TypeVar("_T")
+_T_co = TypeVar("_T_co", covariant=True)
 _S = TypeVar("_S")
+_PWrapped = ParamSpec("_PWrapped")
+_RWrapped = TypeVar("_RWrapped")
+_PWrapper = ParamSpec("_PWrapper")
+_RWrapper = TypeVar("_RWrapper")
 
 @overload
 def reduce(__function: Callable[[_T, _S], _T], __sequence: Iterable[_S], __initial: _T) -> _T: ...
@@ -80,31 +83,41 @@ else:
     ]
 WRAPPER_UPDATES: tuple[Literal["__dict__"]]
 
+class _Wrapped(Generic[_PWrapped, _RWrapped, _PWrapper, _RWrapper]):
+    __wrapped__: Callable[_PWrapped, _RWrapped]
+    def __call__(self, *args: _PWrapper.args, **kwargs: _PWrapper.kwargs) -> _RWrapper: ...
+    # as with ``Callable``, we'll assume that these attributes exist
+    __name__: str
+    __qualname__: str
+
+class _Wrapper(Generic[_PWrapped, _RWrapped]):
+    def __call__(self, f: Callable[_PWrapper, _RWrapper]) -> _Wrapped[_PWrapped, _RWrapped, _PWrapper, _RWrapper]: ...
+
 if sys.version_info >= (3, 12):
     def update_wrapper(
-        wrapper: _T,
-        wrapped: _AnyCallable,
+        wrapper: Callable[_PWrapper, _RWrapper],
+        wrapped: Callable[_PWrapped, _RWrapped],
         assigned: Sequence[str] = ("__module__", "__name__", "__qualname__", "__doc__", "__annotations__", "__type_params__"),
         updated: Sequence[str] = ("__dict__",),
-    ) -> _T: ...
+    ) -> _Wrapped[_PWrapped, _RWrapped, _PWrapper, _RWrapper]: ...
     def wraps(
-        wrapped: _AnyCallable,
+        wrapped: Callable[_PWrapped, _RWrapped],
         assigned: Sequence[str] = ("__module__", "__name__", "__qualname__", "__doc__", "__annotations__", "__type_params__"),
         updated: Sequence[str] = ("__dict__",),
-    ) -> IdentityFunction: ...
+    ) -> _Wrapper[_PWrapped, _RWrapped]: ...
 
 else:
     def update_wrapper(
-        wrapper: _T,
-        wrapped: _AnyCallable,
+        wrapper: Callable[_PWrapper, _RWrapper],
+        wrapped: Callable[_PWrapped, _RWrapped],
         assigned: Sequence[str] = ("__module__", "__name__", "__qualname__", "__doc__", "__annotations__"),
         updated: Sequence[str] = ("__dict__",),
-    ) -> _T: ...
+    ) -> _Wrapped[_PWrapped, _RWrapped, _PWrapper, _RWrapper]: ...
     def wraps(
-        wrapped: _AnyCallable,
+        wrapped: Callable[_PWrapped, _RWrapped],
         assigned: Sequence[str] = ("__module__", "__name__", "__qualname__", "__doc__", "__annotations__"),
         updated: Sequence[str] = ("__dict__",),
-    ) -> IdentityFunction: ...
+    ) -> _Wrapper[_PWrapped, _RWrapped]: ...
 
 def total_ordering(cls: type[_T]) -> type[_T]: ...
 def cmp_to_key(mycmp: Callable[[_T, _T], int]) -> Callable[[_T], SupportsAllComparisons]: ...
@@ -171,17 +184,17 @@ class singledispatchmethod(Generic[_T]):
     def register(self, cls: type[Any], method: Callable[..., _T]) -> Callable[..., _T]: ...
     def __get__(self, obj: _S, cls: type[_S] | None = None) -> Callable[..., _T]: ...
 
-class cached_property(Generic[_T]):
-    func: Callable[[Any], _T]
+class cached_property(Generic[_T_co]):
+    func: Callable[[Any], _T_co]
     attrname: str | None
-    def __init__(self, func: Callable[[Any], _T]) -> None: ...
+    def __init__(self, func: Callable[[Any], _T_co]) -> None: ...
     @overload
     def __get__(self, instance: None, owner: type[Any] | None = None) -> Self: ...
     @overload
-    def __get__(self, instance: object, owner: type[Any] | None = None) -> _T: ...
+    def __get__(self, instance: object, owner: type[Any] | None = None) -> _T_co: ...
     def __set_name__(self, owner: type[Any], name: str) -> None: ...
     # __set__ is not defined at runtime, but @cached_property is designed to be settable
-    def __set__(self, instance: object, value: _T) -> None: ...
+    def __set__(self, instance: object, value: _T_co) -> None: ...  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 

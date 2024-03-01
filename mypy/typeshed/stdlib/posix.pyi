@@ -239,9 +239,11 @@ if sys.platform != "win32":
     if sys.platform != "linux":
         from os import chflags as chflags, lchflags as lchflags, lchmod as lchmod
 
+    if sys.platform != "linux" and sys.platform != "darwin":
+        from os import EX_NOTFOUND as EX_NOTFOUND
+
     if sys.platform != "darwin":
         from os import (
-            EX_NOTFOUND as EX_NOTFOUND,
             POSIX_FADV_DONTNEED as POSIX_FADV_DONTNEED,
             POSIX_FADV_NOREUSE as POSIX_FADV_NOREUSE,
             POSIX_FADV_NORMAL as POSIX_FADV_NORMAL,
