@@ -14,7 +14,7 @@ Because the version of typeshed we use in mypy 1.9 doesn't support 3.7, neither 
 
 #### Basic PEP 696 Support
 
-This release contains new support for PEP 696 (https://peps.python.org/pep-0696). Please try it out! (Contributed by Mark Mueller).
+This release contains new support for PEP 696 (https://peps.python.org/pep-0696). Please try it out! (Contributed by Marc Mueller).
 
 #### Type-checking improvements
  * Fix duplicated TypeVarTuple test (Jelle Zijlstra, PR [16853](https://github.com/python/mypy/pull/16853))
