@@ -219,9 +219,7 @@ BOOL_BINARY_OPS: Final = {"&", "&=", "|", "|=", "^", "^=", "==", "!=", "<", "<="
 
 
 class LowLevelIRBuilder:
-    def __init__(
-        self, errors: Errors | None, options: CompilerOptions
-    ) -> None:
+    def __init__(self, errors: Errors | None, options: CompilerOptions) -> None:
         self.errors = errors
         self.options = options
         self.args: list[Register] = []
