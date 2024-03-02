@@ -23,6 +23,11 @@ from mypyc.transform.ir_transform import IRTransform
 
 def do_copy_propagation(fn: FuncIR, options: CompilerOptions) -> None:
     """Perform copy propagation optimization for fn."""
+
+    # Anything with an assignment count >1 will not be optimized
+    # here, as it would be require data flow analysis and we want to
+    # keep this simple & fast, at least until we've made data flow
+    # analysis much faster.
     counts = {}
     replacements: dict[Value, Value] = {}
     for arg in fn.arg_regs:
@@ -39,9 +44,15 @@ def do_copy_propagation(fn: FuncIR, options: CompilerOptions) -> None:
                 elif c == 1:
                     del replacements[op.dest]
             elif isinstance(op, AssignMulti):
-                # Copy propagation not supported
+                # Copy propagation not supported for AssignMulti destinations
                 counts[op.dest] = 2
                 replacements.pop(op.dest, 0)
+
+    # Follow chains of propagation with multiple assignments.
+    for src, dst in list(replacements.items()):
+        while dst in replacements:
+            dst = replacements[dst]
+        replacements[src] = dst
 
     b = LowLevelIRBuilder(None, options)
     t = CopyPropagationTransform(b, replacements)

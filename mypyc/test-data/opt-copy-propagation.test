@@ -11,6 +11,17 @@ def f(x):
 L0:
     return x
 
+[case testCopyPropagationChain]
+def f(x: int) -> int:
+    y = x
+    z = y
+    return z
+[out]
+def f(x):
+    x :: int
+L0:
+    return x
+
 [case testCopyPropagationTooComplex]
 def f(b: bool, x: int) -> int:
     if b:
