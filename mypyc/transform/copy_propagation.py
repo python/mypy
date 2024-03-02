@@ -15,7 +15,7 @@ This can optimize away registers that are assigned to once.
 from __future__ import annotations
 
 from mypyc.ir.func_ir import FuncIR
-from mypyc.ir.ops import Assign, AssignMulti, LoadErrorValue, Value
+from mypyc.ir.ops import Assign, AssignMulti, LoadAddress, LoadErrorValue, Register, Value
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 from mypyc.options import CompilerOptions
 from mypyc.sametype import is_same_type
@@ -29,11 +29,11 @@ def do_copy_propagation(fn: FuncIR, options: CompilerOptions) -> None:
     # here, as it would be require data flow analysis and we want to
     # keep this simple & fast, at least until we've made data flow
     # analysis much faster.
-    counts = {}
+    counts: dict[Value, int] = {}
     replacements: dict[Value, Value] = {}
     for arg in fn.arg_regs:
-        # Arguments can't be propagated, so use value >1
-        counts[arg] = 2
+        # Arguments are always assigned to initially
+        counts[arg] = 1
 
     for block in fn.blocks:
         for op in block.ops:
@@ -54,12 +54,24 @@ def do_copy_propagation(fn: FuncIR, options: CompilerOptions) -> None:
                 # Copy propagation not supported for AssignMulti destinations
                 counts[op.dest] = 2
                 replacements.pop(op.dest, 0)
+            elif isinstance(op, LoadAddress):
+                # We don't support taking the address of an arbitrary Value,
+                # so we'll need to preserve the operands of LoadAddress.
+                if isinstance(op.src, Register):
+                    counts[op.src] = 2
+                    replacements.pop(op.src, 0)
 
     # Follow chains of propagation with multiple assignments.
     for src, dst in list(replacements.items()):
-        while dst in replacements:
-            dst = replacements[dst]
-        replacements[src] = dst
+        if counts.get(dst, 0) > 1:
+            del replacements[src]
+        else:
+            while dst in replacements:
+                dst = replacements[dst]
+                if counts.get(dst, 0) > 1:
+                    del replacements[src]
+        if src in replacements:
+            replacements[src] = dst
 
     b = LowLevelIRBuilder(None, options)
     t = CopyPropagationTransform(b, replacements)
