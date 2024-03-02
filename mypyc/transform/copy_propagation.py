@@ -15,11 +15,11 @@ This can optimize away registers that are assigned to once.
 from __future__ import annotations
 
 from mypyc.ir.func_ir import FuncIR
-from mypyc.ir.ops import Assign, AssignMulti, Value
+from mypyc.ir.ops import Assign, AssignMulti, LoadErrorValue, Value
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 from mypyc.options import CompilerOptions
-from mypyc.transform.ir_transform import IRTransform
 from mypyc.sametype import is_same_type
+from mypyc.transform.ir_transform import IRTransform
 
 
 def do_copy_propagation(fn: FuncIR, options: CompilerOptions) -> None:
@@ -40,7 +40,13 @@ def do_copy_propagation(fn: FuncIR, options: CompilerOptions) -> None:
             if isinstance(op, Assign):
                 c = counts.get(op.dest, 0)
                 counts[op.dest] = c + 1
-                if c == 0 and is_same_type(op.dest.type, op.src.type):
+                # Does this look like a supported assignment?
+                # TODO: Some transform needs LoadErrorValue assignments to be preserved
+                if (
+                    c == 0
+                    and is_same_type(op.dest.type, op.src.type)
+                    and not isinstance(op.src, LoadErrorValue)
+                ):
                     replacements[op.dest] = op.src
                 elif c == 1:
                     replacements.pop(op.dest, 0)
@@ -59,7 +65,6 @@ def do_copy_propagation(fn: FuncIR, options: CompilerOptions) -> None:
     t = CopyPropagationTransform(b, replacements)
     t.transform_blocks(fn.blocks)
     fn.blocks = b.blocks
-
 
 
 class CopyPropagationTransform(IRTransform):
