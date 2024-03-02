@@ -1,0 +1,38 @@
+[case testFlagEliminationSimple]
+def c() -> bool:
+    return True
+def d() -> bool:
+    return True
+
+def f(x: bool) -> int:
+    if x:
+        b = c()
+    else:
+        b = d()
+    if b:
+        return 1
+    else:
+        return 2
+[out]
+def c():
+L0:
+    return 1
+def d():
+L0:
+    return 1
+def f(x):
+    x, r0, r1 :: bool
+L0:
+    if x goto L1 else goto L2 :: bool
+L1:
+    r0 = c()
+    if r0 goto L4 else goto L5 :: bool
+L2:
+    r1 = d()
+    if r1 goto L4 else goto L5 :: bool
+L3:
+    unreachable
+L4:
+    return 2
+L5:
+    return 4

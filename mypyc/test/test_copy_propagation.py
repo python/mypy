@@ -1,4 +1,4 @@
-"""Runner for copy propagation optimization tests."""
+"""Runner for IR optimization tests."""
 
 from __future__ import annotations
 
@@ -19,13 +19,12 @@ from mypyc.test.testutil import (
     use_custom_builtins,
 )
 from mypyc.transform.copy_propagation import do_copy_propagation
+from mypyc.transform.flag_elimination import do_flag_elimination
 from mypyc.transform.uninit import insert_uninit_checks
-
-files = ["opt-copy-propagation.test"]
 
 
 class TestCopyPropagation(MypycDataSuite):
-    files = files
+    files = ["opt-copy-propagation.test"]
     base_path = test_temp_dir
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
@@ -42,6 +41,29 @@ class TestCopyPropagation(MypycDataSuite):
                         continue
                     insert_uninit_checks(fn)
                     do_copy_propagation(fn, CompilerOptions())
+                    actual.extend(format_func(fn))
+
+            assert_test_output(testcase, actual, "Invalid source code output", expected_output)
+
+
+class TestFlagElimination(MypycDataSuite):
+    files = ["opt-flag-elimination.test"]
+    base_path = test_temp_dir
+
+    def run_case(self, testcase: DataDrivenTestCase) -> None:
+        with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
+            expected_output = remove_comment_lines(testcase.output)
+            try:
+                ir = build_ir_for_single_file(testcase.input)
+            except CompileError as e:
+                actual = e.messages
+            else:
+                actual = []
+                for fn in ir:
+                    if fn.name == TOP_LEVEL_NAME and not testcase.name.endswith("_toplevel"):
+                        continue
+                    insert_uninit_checks(fn)
+                    do_flag_elimination(fn, CompilerOptions())
                     actual.extend(format_func(fn))
 
             assert_test_output(testcase, actual, "Invalid source code output", expected_output)
