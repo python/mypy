@@ -6,7 +6,7 @@ any IR changes. The default implementations implement an identity transform.
 
 from __future__ import annotations
 
-from typing import Final
+from typing import Final, Optional
 
 from mypyc.ir.ops import (
     Assign,
@@ -54,7 +54,7 @@ from mypyc.ir.ops import (
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 
 
-class IRTransform(OpVisitor[Value]):
+class IRTransform(OpVisitor[Optional[Value]]):
     """Identity transform.
 
     Subclass and override to perform changes to IR.
@@ -65,14 +65,15 @@ class IRTransform(OpVisitor[Value]):
 
     def __init__(self, builder: LowLevelIRBuilder) -> None:
         self.builder = builder
+        self.op_map: dict[Value, Value | None] = {}
 
     def transform_blocks(self, blocks: list[BasicBlock]) -> None:
         """Transform basic blocks that represent a single function.
 
         The result of the transform will be collected at self.builder.blocks.
         """
-        op_map: dict[Value, Value] = {}
         block_map: dict[BasicBlock, BasicBlock] = {}
+        op_map = self.op_map
         for block in blocks:
             new_block = BasicBlock()
             block_map[block] = new_block
@@ -104,113 +105,116 @@ class IRTransform(OpVisitor[Value]):
     def visit_unreachable(self, op: Unreachable) -> Value:
         return self.add(op)
 
-    def visit_assign(self, op: Assign) -> Value:
+    def visit_assign(self, op: Assign) -> Value | None:
         return self.add(op)
 
-    def visit_assign_multi(self, op: AssignMulti) -> Value:
+    def visit_assign_multi(self, op: AssignMulti) -> Value | None:
         return self.add(op)
 
-    def visit_load_error_value(self, op: LoadErrorValue) -> Value:
+    def visit_load_error_value(self, op: LoadErrorValue) -> Value | None:
         return self.add(op)
 
-    def visit_load_literal(self, op: LoadLiteral) -> Value:
+    def visit_load_literal(self, op: LoadLiteral) -> Value | None:
         return self.add(op)
 
-    def visit_get_attr(self, op: GetAttr) -> Value:
+    def visit_get_attr(self, op: GetAttr) -> Value | None:
         return self.add(op)
 
-    def visit_set_attr(self, op: SetAttr) -> Value:
+    def visit_set_attr(self, op: SetAttr) -> Value | None:
         return self.add(op)
 
-    def visit_load_static(self, op: LoadStatic) -> Value:
+    def visit_load_static(self, op: LoadStatic) -> Value | None:
         return self.add(op)
 
-    def visit_init_static(self, op: InitStatic) -> Value:
+    def visit_init_static(self, op: InitStatic) -> Value | None:
         return self.add(op)
 
-    def visit_tuple_get(self, op: TupleGet) -> Value:
+    def visit_tuple_get(self, op: TupleGet) -> Value | None:
         return self.add(op)
 
-    def visit_tuple_set(self, op: TupleSet) -> Value:
+    def visit_tuple_set(self, op: TupleSet) -> Value | None:
         return self.add(op)
 
-    def visit_inc_ref(self, op: IncRef) -> Value:
+    def visit_inc_ref(self, op: IncRef) -> Value | None:
         return self.add(op)
 
-    def visit_dec_ref(self, op: DecRef) -> Value:
+    def visit_dec_ref(self, op: DecRef) -> Value | None:
         return self.add(op)
 
-    def visit_call(self, op: Call) -> Value:
+    def visit_call(self, op: Call) -> Value | None:
         return self.add(op)
 
-    def visit_method_call(self, op: MethodCall) -> Value:
+    def visit_method_call(self, op: MethodCall) -> Value | None:
         return self.add(op)
 
-    def visit_cast(self, op: Cast) -> Value:
+    def visit_cast(self, op: Cast) -> Value | None:
         return self.add(op)
 
-    def visit_box(self, op: Box) -> Value:
+    def visit_box(self, op: Box) -> Value | None:
         return self.add(op)
 
-    def visit_unbox(self, op: Unbox) -> Value:
+    def visit_unbox(self, op: Unbox) -> Value | None:
         return self.add(op)
 
-    def visit_raise_standard_error(self, op: RaiseStandardError) -> Value:
+    def visit_raise_standard_error(self, op: RaiseStandardError) -> Value | None:
         return self.add(op)
 
-    def visit_call_c(self, op: CallC) -> Value:
+    def visit_call_c(self, op: CallC) -> Value | None:
         return self.add(op)
 
-    def visit_truncate(self, op: Truncate) -> Value:
+    def visit_truncate(self, op: Truncate) -> Value | None:
         return self.add(op)
 
-    def visit_extend(self, op: Extend) -> Value:
+    def visit_extend(self, op: Extend) -> Value | None:
         return self.add(op)
 
-    def visit_load_global(self, op: LoadGlobal) -> Value:
+    def visit_load_global(self, op: LoadGlobal) -> Value | None:
         return self.add(op)
 
-    def visit_int_op(self, op: IntOp) -> Value:
+    def visit_int_op(self, op: IntOp) -> Value | None:
         return self.add(op)
 
-    def visit_comparison_op(self, op: ComparisonOp) -> Value:
+    def visit_comparison_op(self, op: ComparisonOp) -> Value | None:
         return self.add(op)
 
-    def visit_float_op(self, op: FloatOp) -> Value:
+    def visit_float_op(self, op: FloatOp) -> Value | None:
         return self.add(op)
 
-    def visit_float_neg(self, op: FloatNeg) -> Value:
+    def visit_float_neg(self, op: FloatNeg) -> Value | None:
         return self.add(op)
 
-    def visit_float_comparison_op(self, op: FloatComparisonOp) -> Value:
+    def visit_float_comparison_op(self, op: FloatComparisonOp) -> Value | None:
         return self.add(op)
 
-    def visit_load_mem(self, op: LoadMem) -> Value:
+    def visit_load_mem(self, op: LoadMem) -> Value | None:
         return self.add(op)
 
-    def visit_set_mem(self, op: SetMem) -> Value:
+    def visit_set_mem(self, op: SetMem) -> Value | None:
         return self.add(op)
 
-    def visit_get_element_ptr(self, op: GetElementPtr) -> Value:
+    def visit_get_element_ptr(self, op: GetElementPtr) -> Value | None:
         return self.add(op)
 
-    def visit_load_address(self, op: LoadAddress) -> Value:
+    def visit_load_address(self, op: LoadAddress) -> Value | None:
         return self.add(op)
 
-    def visit_keep_alive(self, op: KeepAlive) -> Value:
+    def visit_keep_alive(self, op: KeepAlive) -> Value | None:
         return self.add(op)
 
-    def visit_unborrow(self, op: Unborrow) -> Value:
+    def visit_unborrow(self, op: Unborrow) -> Value | None:
         return self.add(op)
 
 
 class PatchVisitor(OpVisitor[None]):
-    def __init__(self, ops: dict[Value, Value], blocks: dict[BasicBlock, BasicBlock]) -> None:
+    def __init__(self, ops: dict[Value, Value | None],
+                 blocks: dict[BasicBlock, BasicBlock]) -> None:
         self.ops: Final = ops
         self.blocks: Final = blocks
 
     def fix_op(self, op: Value) -> Value:
-        return self.ops.get(op, op)
+        new = self.ops.get(op, op)
+        assert new is not None, "use of removed op"
+        return new
 
     def fix_block(self, block: BasicBlock) -> BasicBlock:
         return self.blocks.get(block, block)
