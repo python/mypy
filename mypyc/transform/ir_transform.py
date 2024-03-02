@@ -101,17 +101,17 @@ class IRTransform(OpVisitor[Optional[Value]]):
     def add(self, op: Op) -> Value:
         return self.builder.add(op)
 
-    def visit_goto(self, op: Goto) -> Value:
-        return self.add(op)
+    def visit_goto(self, op: Goto) -> None:
+        self.add(op)
 
-    def visit_branch(self, op: Branch) -> Value:
-        return self.add(op)
+    def visit_branch(self, op: Branch) -> None:
+        self.add(op)
 
-    def visit_return(self, op: Return) -> Value:
-        return self.add(op)
+    def visit_return(self, op: Return) -> None:
+        self.add(op)
 
-    def visit_unreachable(self, op: Unreachable) -> Value:
-        return self.add(op)
+    def visit_unreachable(self, op: Unreachable) -> None:
+        self.add(op)
 
     def visit_assign(self, op: Assign) -> Value | None:
         return self.add(op)
