@@ -41,7 +41,7 @@ def do_copy_propagation(fn: FuncIR, options: CompilerOptions) -> None:
                 c = counts.get(op.dest, 0)
                 counts[op.dest] = c + 1
                 # Does this look like a supported assignment?
-                # TODO: Some transform needs LoadErrorValue assignments to be preserved
+                # TODO: Something needs LoadErrorValue assignments to be preserved
                 if (
                     c == 0
                     and is_same_type(op.dest.type, op.src.type)

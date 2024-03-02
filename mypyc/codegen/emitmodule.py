@@ -230,12 +230,12 @@ def compile_scc_to_ir(
         for fn in module.functions:
             # Insert uninit checks.
             insert_uninit_checks(fn)
-            # Perform copy propagation optimization.
-            do_copy_propagation(fn, compiler_options)
             # Insert exception handling.
             insert_exception_handling(fn)
             # Insert refcount handling.
             insert_ref_count_opcodes(fn)
+            # Perform copy propagation optimization.
+            do_copy_propagation(fn, compiler_options)
 
     return modules
 
