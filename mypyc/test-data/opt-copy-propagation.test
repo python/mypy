@@ -42,8 +42,6 @@ L1:
 L2:
     y = 2
     return y
-L3:
-    unreachable
 
 [case testCopyPropagationArg]
 def f(x: int) -> int:
@@ -54,6 +52,31 @@ def f(x):
     x :: int
 L0:
     x = 4
+    return x
+
+[case testCopyPropagationPartiallyDefined1]
+def f(b: bool) -> int:
+    if b:
+        x = 1
+    y = x
+    return y
+[out]
+def f(b):
+    b :: bool
+    r0, x :: int
+    r1 :: bool
+L0:
+    r0 = <error> :: int
+    x = r0
+    if b goto L1 else goto L2 :: bool
+L1:
+    x = 2
+L2:
+    if is_error(x) goto L3 else goto L4
+L3:
+    r1 = raise UnboundLocalError('local variable "x" referenced before assignment')
+    unreachable
+L4:
     return x
 
 -- The remaining test cases test basic IRTransform functionality and are not
@@ -77,8 +100,24 @@ L1:
     return 2
 L2:
     return 4
-L3:
-    unreachable
+
+[case testIRTransformAssignment]
+def f(b: bool, x: int) -> int:
+    y = x
+    if b:
+        return y
+    else:
+        return 1
+[out]
+def f(b, x):
+    b :: bool
+    x :: int
+L0:
+    if b goto L1 else goto L2 :: bool
+L1:
+    return x
+L2:
+    return 2
 
 [case testIRTransformRegisterOps1]
 from __future__ import annotations

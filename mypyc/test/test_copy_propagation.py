@@ -19,6 +19,7 @@ from mypyc.test.testutil import (
     use_custom_builtins,
 )
 from mypyc.transform.copy_propagation import do_copy_propagation
+from mypyc.transform.uninit import insert_uninit_checks
 
 files = ["opt-copy-propagation.test"]
 
@@ -39,6 +40,7 @@ class TestCopyPropagation(MypycDataSuite):
                 for fn in ir:
                     if fn.name == TOP_LEVEL_NAME and not testcase.name.endswith("_toplevel"):
                         continue
+                    insert_uninit_checks(fn)
                     do_copy_propagation(fn, CompilerOptions())
                     actual.extend(format_func(fn))
 

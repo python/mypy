@@ -19,6 +19,7 @@ from mypyc.ir.ops import Assign, AssignMulti, Value
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 from mypyc.options import CompilerOptions
 from mypyc.transform.ir_transform import IRTransform
+from mypyc.sametype import is_same_type
 
 
 def do_copy_propagation(fn: FuncIR, options: CompilerOptions) -> None:
@@ -39,10 +40,10 @@ def do_copy_propagation(fn: FuncIR, options: CompilerOptions) -> None:
             if isinstance(op, Assign):
                 c = counts.get(op.dest, 0)
                 counts[op.dest] = c + 1
-                if c == 0:
+                if c == 0 and is_same_type(op.dest.type, op.src.type):
                     replacements[op.dest] = op.src
                 elif c == 1:
-                    del replacements[op.dest]
+                    replacements.pop(op.dest, 0)
             elif isinstance(op, AssignMulti):
                 # Copy propagation not supported for AssignMulti destinations
                 counts[op.dest] = 2
