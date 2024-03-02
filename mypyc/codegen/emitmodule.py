@@ -56,6 +56,7 @@ from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.prepare import load_type_map
 from mypyc.namegen import NameGenerator, exported_name
 from mypyc.options import CompilerOptions
+from mypyc.transform.copy_propagation import do_copy_propagation
 from mypyc.transform.exceptions import insert_exception_handling
 from mypyc.transform.refcount import insert_ref_count_opcodes
 from mypyc.transform.uninit import insert_uninit_checks
@@ -225,17 +226,15 @@ def compile_scc_to_ir(
     if errors.num_errors > 0:
         return modules
 
-    # Insert uninit checks.
     for module in modules.values():
         for fn in module.functions:
+            # Insert uninit checks.
             insert_uninit_checks(fn)
-    # Insert exception handling.
-    for module in modules.values():
-        for fn in module.functions:
+            # Perform copy propagation optimization.
+            do_copy_propagation(fn, compiler_options)
+            # Insert exception handling.
             insert_exception_handling(fn)
-    # Insert refcount handling.
-    for module in modules.values():
-        for fn in module.functions:
+            # Insert refcount handling.
             insert_ref_count_opcodes(fn)
 
     return modules
