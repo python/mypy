@@ -1428,7 +1428,11 @@ class LowLevelIRBuilder:
     def compare_tagged(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         """Compare two tagged integers using given operator (value context)."""
         # generate fast binary logic ops on short ints
-        if is_short_int_rprimitive(lhs.type) or is_short_int_rprimitive(rhs.type):
+        if (is_short_int_rprimitive(lhs.type) or is_short_int_rprimitive(rhs.type)) and op in ("==", "!="):
+            quick = True
+        else:
+            quick = is_short_int_rprimitive(lhs.type) and is_short_int_rprimitive(rhs.type)
+        if quick:
             return self.comparison_op(lhs, rhs, int_comparison_op_mapping[op][0], line)
         op_type, c_func_desc, negate_result, swap_op = int_comparison_op_mapping[op]
         result = Register(bool_rprimitive)
