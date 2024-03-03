@@ -227,3 +227,71 @@ L4:
     return b
 L5:
     return 0
+
+[case testFlagEliminationArgumentNotEligible]
+def f(x: bool, b: bool) -> bool:
+    if x:
+        b = True
+    else:
+        b = False
+    if b:
+        return True
+    else:
+        return False
+[out]
+def f(x, b):
+    x, b :: bool
+L0:
+    if x goto L1 else goto L2 :: bool
+L1:
+    b = 1
+    goto L3
+L2:
+    b = 0
+L3:
+    if b goto L4 else goto L5 :: bool
+L4:
+    return 1
+L5:
+    return 0
+
+[case testFlagEliminationFlagNotAlwaysDefined]
+def f(x: bool, y: bool) -> bool:
+    if x:
+        b = True
+    elif y:
+        b = False
+    else:
+        bb = False
+    if b:
+        return True
+    else:
+        return False
+[out]
+def f(x, y):
+    x, y, r0, b, bb, r1 :: bool
+L0:
+    r0 = <error> :: bool
+    b = r0
+    if x goto L1 else goto L2 :: bool
+L1:
+    b = 1
+    goto L5
+L2:
+    if y goto L3 else goto L4 :: bool
+L3:
+    b = 0
+    goto L5
+L4:
+    bb = 0
+L5:
+    if is_error(b) goto L6 else goto L7
+L6:
+    r1 = raise UnboundLocalError('local variable "b" referenced before assignment')
+    unreachable
+L7:
+    if b goto L8 else goto L9 :: bool
+L8:
+    return 1
+L9:
+    return 0
