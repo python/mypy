@@ -237,7 +237,7 @@ def compile_scc_to_ir(
             # Insert refcount handling.
             insert_ref_count_opcodes(fn)
             # Switch to lower abstraction level IR.
-            lower_ir(fn)
+            lower_ir(fn, compiler_options)
             # Perform optimizations.
             do_copy_propagation(fn, compiler_options)
             do_flag_elimination(fn, compiler_options)

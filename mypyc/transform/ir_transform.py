@@ -16,6 +16,7 @@ from mypyc.ir.ops import (
     ComparisonOp,
     DecRef,
     Extend,
+    PrimitiveOp,
     FloatComparisonOp,
     FloatNeg,
     FloatOp,
@@ -170,6 +171,9 @@ class IRTransform(OpVisitor[Optional[Value]]):
     def visit_call_c(self, op: CallC) -> Value | None:
         return self.add(op)
 
+    def visit_primitive_op(self, op: PrimitiveOp) -> Value | None:
+        return self.add(op)
+
     def visit_truncate(self, op: Truncate) -> Value | None:
         return self.add(op)
 
@@ -300,6 +304,9 @@ class PatchVisitor(OpVisitor[None]):
             op.value = self.fix_op(op.value)
 
     def visit_call_c(self, op: CallC) -> None:
+        op.args = [self.fix_op(arg) for arg in op.args]
+
+    def visit_primitive_op(self, op: PrimitiveOp) -> None:
         op.args = [self.fix_op(arg) for arg in op.args]
 
     def visit_truncate(self, op: Truncate) -> None:
