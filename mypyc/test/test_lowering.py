@@ -18,11 +18,11 @@ from mypyc.test.testutil import (
     remove_comment_lines,
     use_custom_builtins,
 )
-from mypyc.transform.lower import lower_ir
-from mypyc.transform.uninit import insert_uninit_checks
 from mypyc.transform.exceptions import insert_exception_handling
-from mypyc.transform.refcount import insert_ref_count_opcodes
 from mypyc.transform.flag_elimination import do_flag_elimination
+from mypyc.transform.lower import lower_ir
+from mypyc.transform.refcount import insert_ref_count_opcodes
+from mypyc.transform.uninit import insert_uninit_checks
 
 
 class TestLowering(MypycDataSuite):

@@ -1315,7 +1315,12 @@ class LowLevelIRBuilder:
             return self.compare_strings(lreg, rreg, op, line)
         if is_bytes_rprimitive(ltype) and is_bytes_rprimitive(rtype) and op in ("==", "!="):
             return self.compare_bytes(lreg, rreg, op, line)
-        if is_tagged(ltype) and is_tagged(rtype) and op in int_comparison_op_mapping and op not in ("==", "!="):
+        if (
+            is_tagged(ltype)
+            and is_tagged(rtype)
+            and op in int_comparison_op_mapping
+            and op not in ("==", "!=")
+        ):
             return self.compare_tagged(lreg, rreg, op, line)
         if is_bool_rprimitive(ltype) and is_bool_rprimitive(rtype) and op in BOOL_BINARY_OPS:
             if op in ComparisonOp.signed_ops:
@@ -1428,7 +1433,10 @@ class LowLevelIRBuilder:
     def compare_tagged(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         """Compare two tagged integers using given operator (value context)."""
         # generate fast binary logic ops on short ints
-        if (is_short_int_rprimitive(lhs.type) or is_short_int_rprimitive(rhs.type)) and op in ("==", "!="):
+        if (is_short_int_rprimitive(lhs.type) or is_short_int_rprimitive(rhs.type)) and op in (
+            "==",
+            "!=",
+        ):
             quick = True
         else:
             quick = is_short_int_rprimitive(lhs.type) and is_short_int_rprimitive(rhs.type)
@@ -2060,8 +2068,9 @@ class LowLevelIRBuilder:
             if len(desc.arg_types) != len(args):
                 continue
             if all(
-                #formal is not None and # TODO
-                is_subtype(actual.type, formal) for actual, formal in zip(args, desc.arg_types)
+                # formal is not None and # TODO
+                is_subtype(actual.type, formal)
+                for actual, formal in zip(args, desc.arg_types)
             ) and (not desc.is_borrowed or can_borrow):
                 if matching:
                     assert matching.priority != desc.priority, "Ambiguous:\n1) {}\n2) {}".format(

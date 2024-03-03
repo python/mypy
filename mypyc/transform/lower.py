@@ -2,8 +2,8 @@ from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.ops import PrimitiveOp, Value
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 from mypyc.lower.registry import lowering_registry
-from mypyc.transform.ir_transform import IRTransform
 from mypyc.options import CompilerOptions
+from mypyc.transform.ir_transform import IRTransform
 
 
 def lower_ir(ir: FuncIR, options: CompilerOptions) -> None:

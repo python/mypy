@@ -12,7 +12,14 @@ from __future__ import annotations
 
 from typing import NamedTuple
 
-from mypyc.ir.ops import ERR_ALWAYS, ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER, ComparisonOp, PrimitiveDescription
+from mypyc.ir.ops import (
+    ERR_ALWAYS,
+    ERR_MAGIC,
+    ERR_MAGIC_OVERLAPPING,
+    ERR_NEVER,
+    ComparisonOp,
+    PrimitiveDescription,
+)
 from mypyc.ir.rtypes import (
     RType,
     bit_rprimitive,
@@ -102,10 +109,7 @@ function_op(
 
 
 def int_binary_primitive(
-    op: str,
-    primitive_name: str,
-    return_type: RType = int_rprimitive,
-    error_kind: int = ERR_NEVER,
+    op: str, primitive_name: str, return_type: RType = int_rprimitive, error_kind: int = ERR_NEVER
 ) -> PrimitiveDescription:
     return binary_op(
         name=op,

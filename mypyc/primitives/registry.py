@@ -39,7 +39,7 @@ from __future__ import annotations
 
 from typing import Final, NamedTuple
 
-from mypyc.ir.ops import StealsDescription, PrimitiveDescription
+from mypyc.ir.ops import PrimitiveDescription, StealsDescription
 from mypyc.ir.rtypes import RType
 
 # Error kind for functions that return negative integer on exception. This

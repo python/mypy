@@ -587,20 +587,20 @@ class PrimitiveDescription:
     """
 
     def __init__(
-            self,
-            name: str,
-            arg_types: list[RType],
-            return_type: RType, # TODO: What about generic?
-            var_arg_type: RType | None,
-            truncated_type: RType | None,
-            c_function_name: str | None,
-            error_kind: int,
-            steals: StealsDescription,
-            is_borrowed: bool,
-            ordering: list[int] | None,
-            extra_int_constants: list[tuple[int, RType]],
-            priority: int,
-            ) -> None:
+        self,
+        name: str,
+        arg_types: list[RType],
+        return_type: RType,  # TODO: What about generic?
+        var_arg_type: RType | None,
+        truncated_type: RType | None,
+        c_function_name: str | None,
+        error_kind: int,
+        steals: StealsDescription,
+        is_borrowed: bool,
+        ordering: list[int] | None,
+        extra_int_constants: list[tuple[int, RType]],
+        priority: int,
+    ) -> None:
         # Each primitive much have a distint name, but otherwise they are arbitrary.
         self.name: Final = name
         # If None, the argument is a compile-time type (RType).
@@ -634,11 +634,11 @@ class PrimitiveOp(RegisterOp):
     """
 
     def __init__(
-            self,
-            args: list[Value],
-            desc: PrimitiveDescription,
-            type_args: list[RType] | None = None,
-            line: int = -1,
+        self,
+        args: list[Value],
+        desc: PrimitiveDescription,
+        type_args: list[RType] | None = None,
+        line: int = -1,
     ) -> None:
         self.args = args
         self.type_args = type_args

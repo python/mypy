@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import Callable, Final, List
 
-from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 from mypyc.ir.ops import Value
-
+from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 
 LowerFunc = Callable[[LowLevelIRBuilder, List[Value], int], Value]
 
@@ -22,4 +21,4 @@ def lower_binary_op(name: str) -> Callable[[LowerFunc], LowerFunc]:
 
 
 # Import various modules that set up global state.
-import mypyc.lower.int_ops
+import mypyc.lower.int_ops  # noqa: F401

@@ -59,9 +59,9 @@ from mypyc.options import CompilerOptions
 from mypyc.transform.copy_propagation import do_copy_propagation
 from mypyc.transform.exceptions import insert_exception_handling
 from mypyc.transform.flag_elimination import do_flag_elimination
+from mypyc.transform.lower import lower_ir
 from mypyc.transform.refcount import insert_ref_count_opcodes
 from mypyc.transform.uninit import insert_uninit_checks
-from mypyc.transform.lower import lower_ir
 
 # All of the modules being compiled are divided into "groups". A group
 # is a set of modules that are placed into the same shared library.

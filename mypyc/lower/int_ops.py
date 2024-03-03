@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 from mypyc.ir.ops import Value
+from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 from mypyc.lower.registry import lower_binary_op
 
 
