@@ -1381,13 +1381,7 @@ class LowLevelIRBuilder:
 
         # Mixed int comparisons
         if op in ("==", "!="):
-            op_id = ComparisonOp.signed_ops[op]
-            if is_tagged(ltype) and is_subtype(rtype, ltype):
-                rreg = self.coerce(rreg, int_rprimitive, line)
-                return self.comparison_op(lreg, rreg, op_id, line)
-            if is_tagged(rtype) and is_subtype(ltype, rtype):
-                lreg = self.coerce(lreg, int_rprimitive, line)
-                return self.comparison_op(lreg, rreg, op_id, line)
+            pass  # TODO: Do we need anything here?
         elif op in op in int_comparison_op_mapping:
             if is_tagged(ltype) and is_subtype(rtype, ltype):
                 rreg = self.coerce(rreg, short_int_rprimitive, line)
@@ -1434,7 +1428,7 @@ class LowLevelIRBuilder:
     def compare_tagged(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         """Compare two tagged integers using given operator (value context)."""
         # generate fast binary logic ops on short ints
-        if is_short_int_rprimitive(lhs.type) and is_short_int_rprimitive(rhs.type):
+        if is_short_int_rprimitive(lhs.type) or is_short_int_rprimitive(rhs.type):
             return self.comparison_op(lhs, rhs, int_comparison_op_mapping[op][0], line)
         op_type, c_func_desc, negate_result, swap_op = int_comparison_op_mapping[op]
         result = Register(bool_rprimitive)

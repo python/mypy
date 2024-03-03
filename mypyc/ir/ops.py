@@ -641,8 +641,10 @@ class PrimitiveOp(RegisterOp):
             line: int = -1,
     ) -> None:
         self.args = args
-        self.desc = desc
         self.type_args = type_args
+        self.type = desc.return_type
+        self.error_kind = desc.error_kind
+        self.desc = desc
 
     def sources(self) -> list[Value]:
         return self.args

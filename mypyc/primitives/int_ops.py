@@ -116,17 +116,8 @@ def int_binary_primitive(
     )
 
 
-int_eq = int_binary_primitive(op="==", primitive_name="int_eq", return_type=bool_rprimitive)
-int_ne = int_binary_primitive(op="!=", primitive_name="int_ne", return_type=bool_rprimitive)
-
-
-binary_op(
-    name="!=",
-    arg_types=[int_rprimitive, int_rprimitive],
-    return_type=bool_rprimitive,
-    primitive_name="int_ne",
-    error_kind=ERR_NEVER,
-)
+int_eq = int_binary_primitive(op="==", primitive_name="int_eq", return_type=bit_rprimitive)
+int_ne = int_binary_primitive(op="!=", primitive_name="int_ne", return_type=bit_rprimitive)
 
 
 def int_binary_op(
