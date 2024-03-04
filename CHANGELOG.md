@@ -12,7 +12,8 @@ You can read the full documentation for this release on [Read the Docs](http://m
 
 Because the version of typeshed we use in mypy 1.9 doesn't support 3.7, neither does mypy 1.9. (Jared Hance, PR [16883](https://github.com/python/mypy/pull/16883))
 
-We are planning to enable *local partial types* (enabled via the
+We are planning to enable
+[local partial types](https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-local-partial-types) (enabled via the
 `--local-partial-types` flag) later this year by default. This change
 was announced years ago, but now it's finally happening. This is a
 major backward-incompatible change, so we'll probably include it as
