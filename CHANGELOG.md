@@ -101,6 +101,41 @@ reveal_type(Context[MyBot]().bot)
  * Do not ignore property deleter (Ali Hamdan, PR [16781](https://github.com/python/mypy/pull/16781))
  * Support type stub generation for `staticmethod` (WeilerMarcel, PR [14934](https://github.com/python/mypy/pull/14934))
 
+#### Acknowledgements
+
+​Thanks to all mypy contributors who contributed to this release:
+
+- Aleksi Tarvainen
+- Alex Waygood
+- Ali Hamdan
+- anniel-stripe
+- Charlie Denton
+- Christoph Tyralla
+- Dheeraj
+- Fabian Keller
+- Fabian Lewis
+- Froger David
+- Ihor
+- Jared Hance
+- Jelle Zijlstra
+- Jukka Lehtosalo
+- Kouroche Bouchiat
+- Lukas Geiger
+- Maarten Huijsmans
+- Makonnen Makonnen
+- Marc Mueller
+- Nikita Sobolev
+- Sebastian Rittau
+- Shantanu
+- Stefanie Molin
+- Stephen Morton
+- thomaswhaley
+- Tin Tvrtković
+- WeilerMarcel
+- Wesley Collin Wright
+- zipperer
+
+I’d also like to thank my employer, Dropbox, for supporting mypy development.
 
 ## Mypy 1.8
 
