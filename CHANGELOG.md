@@ -107,7 +107,6 @@ reveal_type(Context[MyBot]().bot)
 
 - Aleksi Tarvainen
 - Alex Waygood
-- AlexWaygood
 - Ali Hamdan
 - anniel-stripe
 - Charlie Denton
