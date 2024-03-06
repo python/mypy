@@ -3813,3 +3813,18 @@ def m1() -> float: ...
 def m2() -> float: ...
 reveal_type(Combine(m1, m2))  # N: Revealed type is "builtins.float"
 [builtins fixtures/list.pyi]
+
+[case testInferenceWithUninhabitedType]
+from typing import Dict, Generic, TypeVar
+
+T = TypeVar("T")
+
+class A(Generic[T]): ...
+
+def func1(a: A[T], b: T) -> T: ...
+def func2(a: T, b: A[T]) -> T: ...
+
+def a1(a: A[Dict[str, int]]) -> None:
+    reveal_type(func1(a, {}))  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+    reveal_type(func2({}, a))  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+[builtins fixtures/dict.pyi]
