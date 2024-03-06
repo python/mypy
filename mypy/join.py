@@ -108,9 +108,9 @@ class InstanceJoiner:
                     # TODO: contravariant case should use meet but pass seen instances as
                     # an argument to keep track of recursive checks.
                     elif type_var.variance in (INVARIANT, CONTRAVARIANT):
-                        if isinstance(ta, UninhabitedType):
+                        if isinstance(ta_proper, UninhabitedType):
                             new_type = sa
-                        elif isinstance(sa, UninhabitedType):
+                        elif isinstance(sa_proper, UninhabitedType):
                             new_type = ta
                         elif not is_equivalent(ta, sa):
                             self.seen_instances.pop()
