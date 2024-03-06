@@ -3820,6 +3820,7 @@ from typing import Dict, Generic, TypeVar
 T = TypeVar("T")
 
 class A(Generic[T]): ...
+class B(Dict[T, T]): ...
 
 def func1(a: A[T], b: T) -> T: ...
 def func2(a: T, b: A[T]) -> T: ...
@@ -3827,4 +3828,15 @@ def func2(a: T, b: A[T]) -> T: ...
 def a1(a: A[Dict[str, int]]) -> None:
     reveal_type(func1(a, {}))  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
     reveal_type(func2({}, a))  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+
+def a2(check: bool, a: B[str]) -> None:
+    reveal_type(a if check else {})  # N: Revealed type is "builtins.dict[builtins.str, builtins.str]"
+
+def a3() -> None:
+    a = {}  # E: Need type annotation for "a" (hint: "a: Dict[<type>, <type>] = ...")
+    b = {1: {}}  # E: Need type annotation for "b"
+    c = {1: {}, 2: {"key": {}}}  # E: Need type annotation for "c"
+    reveal_type(a)  # N: Revealed type is "builtins.dict[Any, Any]"
+    reveal_type(b)  # N: Revealed type is "builtins.dict[builtins.int, builtins.dict[Any, Any]]"
+    reveal_type(c)  # N: Revealed type is "builtins.dict[builtins.int, builtins.dict[builtins.str, builtins.dict[Any, Any]]]"
 [builtins fixtures/dict.pyi]
