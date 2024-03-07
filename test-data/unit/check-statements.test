@@ -2253,6 +2253,16 @@ from typing import Generator, Union, Iterable, Optional
 
 def foo(arg: Union[Generator[int, None, bytes], Iterable[str]]) -> Generator[Union[int, str], None, Optional[bytes]]:
     return (yield from arg)
+
+def bar(arg: Generator[str, None, str]) -> Generator[str, None, str]:
+    return foo(arg)  # E: Incompatible return value type (got "Generator[Union[int, str], None, Optional[bytes]]", expected "Generator[str, None, str]")
+
+def launder(arg: Iterable[str]) -> Generator[Union[int, str], None, Optional[bytes]]:
+    return foo(arg)
+
+def baz(arg: Generator[str, None, str]) -> Generator[Union[int, str], None, Optional[bytes]]:
+    # this is unsound, the Generator return type will actually be str
+    return launder(arg)
 [builtins fixtures/tuple.pyi]
 
 [case testNoCrashOnStarRightHandSide]
