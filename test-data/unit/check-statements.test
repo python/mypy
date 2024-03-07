@@ -2242,18 +2242,16 @@ def foo(arg: Union[Generator[int, None, T], Generator[str, None, T]]) -> Generat
 [case testYieldFromInvalidUnionReturn]
 from typing import Generator, Union
 
-class T: pass
-class R: pass
+class A: pass
+class B: pass
 
-def foo(arg: Union[T, R]) -> Generator[Union[int, str], None, T]:
-    return (yield from arg) # E: "yield from" can't be applied to "Union[T, R]"
+def foo(arg: Union[A, B]) -> Generator[Union[int, str], None, A]:
+    return (yield from arg) # E: "yield from" can't be applied to "Union[A, B]"
 
 [case testYieldFromUnionOfGeneratorWithIterableStr]
 from typing import Generator, Union, Iterable, Optional
 
-class T: pass
-
-def foo(arg: Union[Generator[int, None, T], Iterable[str]]) -> Generator[Union[int, str], None, Optional[T]]:
+def foo(arg: Union[Generator[int, None, bytes], Iterable[str]]) -> Generator[Union[int, str], None, Optional[bytes]]:
     return (yield from arg)
 [builtins fixtures/tuple.pyi]
 
