@@ -2265,6 +2265,17 @@ def baz(arg: Generator[str, None, str]) -> Generator[Union[int, str], None, Opti
     return launder(arg)
 [builtins fixtures/tuple.pyi]
 
+[case testYieldIteratorReturn]
+from typing import Iterator
+
+def get_strings(foo: bool) -> Iterator[str]:
+    if foo:
+        return ["foo1", "foo2"]  # E: No return value expected
+    else:
+        yield "bar1"
+        yield "bar2"
+[builtins fixtures/tuple.pyi]
+
 [case testNoCrashOnStarRightHandSide]
 x = *(1, 2, 3)  # E: can't use starred expression here
 [builtins fixtures/tuple.pyi]
