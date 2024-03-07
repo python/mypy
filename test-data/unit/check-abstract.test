@@ -896,11 +896,9 @@ class A(metaclass=ABCMeta):
 class B(A):
     @property
     def x(self) -> int:
-        return super().x.y # E: "int" has no attribute "y"
+        return super().x.y  # E: Call to abstract method "x" of "A" with trivial body via super() is unsafe \
+                            # E: "int" has no attribute "y"
 [builtins fixtures/property.pyi]
-[out]
-main:9: error: Call to abstract method "x" of "A" with trivial body via super() is unsafe
-main:9: error: "int" has no attribute "y"
 
 [case testSuperWithReadWriteAbstractProperty]
 from abc import abstractproperty, ABCMeta
