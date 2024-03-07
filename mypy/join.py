@@ -108,12 +108,17 @@ class InstanceJoiner:
                     # TODO: contravariant case should use meet but pass seen instances as
                     # an argument to keep track of recursive checks.
                     elif type_var.variance in (INVARIANT, CONTRAVARIANT):
-                        if not is_equivalent(ta, sa):
+                        if isinstance(ta_proper, UninhabitedType) and not ta_proper.is_noreturn:
+                            new_type = sa
+                        elif isinstance(sa_proper, UninhabitedType) and not sa_proper.is_noreturn:
+                            new_type = ta
+                        elif not is_equivalent(ta, sa):
                             self.seen_instances.pop()
                             return object_from_instance(t)
-                        # If the types are different but equivalent, then an Any is involved
-                        # so using a join in the contravariant case is also OK.
-                        new_type = join_types(ta, sa, self)
+                        else:
+                            # If the types are different but equivalent, then an Any is involved
+                            # so using a join in the contravariant case is also OK.
+                            new_type = join_types(ta, sa, self)
                 elif isinstance(type_var, TypeVarTupleType):
                     new_type = get_proper_type(join_types(ta, sa, self))
                     # Put the joined arguments back into instance in the normal form:
