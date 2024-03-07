@@ -1369,33 +1369,25 @@ match m3:
         reveal_type(m3)  # N: Revealed type is "Tuple[Union[builtins.int, builtins.str]]"
 [builtins fixtures/tuple.pyi]
 
-[case testMatchEnumMultipleChoices]
-from enum import Enum
-class Medal(Enum):
-    gold = 1
-    silver = 1
-
-def f(m: Medal) -> None:
-    match m:
-        case Medal.gold:
-            reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
-        case Medal.silver:
-            reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.silver]"
-        case _:
-            reveal_type(m)
-[builtins fixtures/bool.pyi]
-
 [case testMatchEnumSingleChoice]
 from enum import Enum
+from typing import NoReturn
+
+def assert_never(x: NoReturn) -> None: ...
+
 class Medal(Enum):
     gold = 1
 
 def f(m: Medal) -> None:
+    always_assigned: int | None = None
     match m:
         case Medal.gold:
+            always_assigned = 1
             reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
         case _:
-            reveal_type(m)
+            assert_never(m)
+
+    reveal_type(always_assigned)  # N: Revealed type is "builtins.int"
 [builtins fixtures/bool.pyi]
 
 [case testMatchLiteralPatternEnumNegativeNarrowing]
@@ -1417,10 +1409,13 @@ def f(m: Medal) -> int:
 def g(m: Medal) -> int:
     match m:
         case Medal.gold:
+            reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
             return 0
         case Medal.silver:
+            reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.silver]"
             return 1
         case Medal.bronze:
+            reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.bronze]"
             return 2
 
 [case testMatchLiteralPatternEnumCustomEquals-skip]
