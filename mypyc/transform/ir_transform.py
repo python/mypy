@@ -1,8 +1,4 @@
-"""Helpers for implementing generic IR to IR transforms.
-
-Subclass IRTransform and override any OpVisitor visit_* methods that perform
-any IR changes. The default implementations implement an identity transform.
-"""
+"""Helpers for implementing generic IR to IR transforms."""
 
 from __future__ import annotations
 
@@ -59,12 +55,22 @@ class IRTransform(OpVisitor[Optional[Value]]):
 
     Subclass and override to perform changes to IR.
 
+    Subclass IRTransform and override any OpVisitor visit_* methods
+    that perform any IR changes. The default implementations implement
+    an identity transform.
+
+    A visit method can return None to remove ops. In this case the
+    transform must ensure that no op uses the original removed op
+    as a source after the transform.
+
     You can retain old BasicBlock and op references in ops. The transform
     will automatically patch these for you as needed.
     """
 
     def __init__(self, builder: LowLevelIRBuilder) -> None:
         self.builder = builder
+        # Subclasses add additional op mappings here. A None value indicates
+        # that the op is deleted.
         self.op_map: dict[Value, Value | None] = {}
 
     def transform_blocks(self, blocks: list[BasicBlock]) -> None:
@@ -83,6 +89,8 @@ class IRTransform(OpVisitor[Optional[Value]]):
                 new_op = op.accept(self)
                 if new_op is not op:
                     op_map[op] = new_op
+
+        # Update all op/block references to point to the transformed ones.
         patcher = PatchVisitor(op_map, block_map)
         for block in self.builder.blocks:
             for op in block.ops:
@@ -207,18 +215,18 @@ class IRTransform(OpVisitor[Optional[Value]]):
 
 class PatchVisitor(OpVisitor[None]):
     def __init__(
-        self, ops: dict[Value, Value | None], blocks: dict[BasicBlock, BasicBlock]
+        self, op_map: dict[Value, Value | None], block_map: dict[BasicBlock, BasicBlock]
     ) -> None:
-        self.ops: Final = ops
-        self.blocks: Final = blocks
+        self.op_map: Final = op_map
+        self.block_map: Final = block_map
 
     def fix_op(self, op: Value) -> Value:
-        new = self.ops.get(op, op)
+        new = self.op_map.get(op, op)
         assert new is not None, "use of removed op"
         return new
 
     def fix_block(self, block: BasicBlock) -> BasicBlock:
-        return self.blocks.get(block, block)
+        return self.block_map.get(block, block)
 
     def visit_goto(self, op: Goto) -> None:
         op.label = self.fix_block(op.label)
