@@ -70,7 +70,7 @@ class IRTransform(OpVisitor[Optional[Value]]):
     def __init__(self, builder: LowLevelIRBuilder) -> None:
         self.builder = builder
         # Subclasses add additional op mappings here. A None value indicates
-        # that the op is deleted.
+        # that the op/register is deleted.
         self.op_map: dict[Value, Value | None] = {}
 
     def transform_blocks(self, blocks: list[BasicBlock]) -> None:
