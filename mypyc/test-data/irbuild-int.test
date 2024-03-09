@@ -4,24 +4,10 @@ def f(x: int, y: int) -> bool:
 [out]
 def f(x, y):
     x, y :: int
-    r0 :: native_int
-    r1, r2 :: bit
-    r3 :: bool
-    r4, r5 :: bit
+    r0 :: bit
 L0:
-    r0 = x & 1
-    r1 = r0 == 0
-    if r1 goto L1 else goto L2 :: bool
-L1:
-    r2 = x != y
-    r3 = r2
-    goto L3
-L2:
-    r4 = CPyTagged_IsEq_(x, y)
-    r5 = r4 ^ 1
-    r3 = r5
-L3:
-    return r3
+    r0 = int_ne x, y 
+    return r0
 
 [case testShortIntComparisons]
 def f(x: int) -> int:
@@ -43,22 +29,22 @@ def f(x):
     r4 :: native_int
     r5, r6, r7 :: bit
 L0:
-    r0 = x == 6
+    r0 = int_eq x, 6 
     if r0 goto L1 else goto L2 :: bool
 L1:
     return 2
 L2:
-    r1 = x != 8
+    r1 = int_ne x, 8 
     if r1 goto L3 else goto L4 :: bool
 L3:
     return 4
 L4:
-    r2 = 10 == x
+    r2 = int_eq 10, x 
     if r2 goto L5 else goto L6 :: bool
 L5:
     return 6
 L6:
-    r3 = 12 != x
+    r3 = int_ne 12, x 
     if r3 goto L7 else goto L8 :: bool
 L7:
     return 8

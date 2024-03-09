@@ -10,40 +10,27 @@ def f(a: int) -> None:
 [out]
 def f(a):
     a, x :: int
-    r0 :: native_int
-    r1, r2, r3 :: bit
+    r0 :: bit
     y, z :: int
 L0:
     x = 2
-    r0 = x & 1
-    r1 = r0 != 0
-    if r1 goto L1 else goto L2 :: bool
+    r0 = int_eq x, a 
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r2 = CPyTagged_IsEq_(x, a)
-    if r2 goto L3 else goto L4 :: bool
-L2:
-    r3 = x == a
-    if r3 goto L3 else goto L4 :: bool
-L3:
     y = 2
-    goto L5
-L4:
+    goto L3
+L2:
     z = 2
-L5:
+L3:
     return 1
 (0, 0)   {a}                     {a, x}
 (0, 1)   {a, x}                  {a, x}
 (0, 2)   {a, x}                  {a, x}
-(0, 3)   {a, x}                  {a, x}
-(1, 0)   {a, x}                  {a, x}
-(1, 1)   {a, x}                  {a, x}
-(2, 0)   {a, x}                  {a, x}
-(2, 1)   {a, x}                  {a, x}
-(3, 0)   {a, x}                  {a, x, y}
-(3, 1)   {a, x, y}               {a, x, y}
-(4, 0)   {a, x}                  {a, x, z}
-(4, 1)   {a, x, z}               {a, x, z}
-(5, 0)   {a, x, y, z}            {a, x, y, z}
+(1, 0)   {a, x}                  {a, x, y}
+(1, 1)   {a, x, y}               {a, x, y}
+(2, 0)   {a, x}                  {a, x, z}
+(2, 1)   {a, x, z}               {a, x, z}
+(3, 0)   {a, x, y, z}            {a, x, y, z}
 
 [case testSimple_Liveness]
 def f(a: int) -> int:
@@ -58,7 +45,7 @@ def f(a):
     r0 :: bit
 L0:
     x = 2
-    r0 = x == 2
+    r0 = int_eq x, 2 
     if r0 goto L1 else goto L2 :: bool
 L1:
     return a
@@ -124,7 +111,7 @@ def f(a):
     r0 :: bit
     y, x :: int
 L0:
-    r0 = a == 2
+    r0 = int_eq a, 2 
     if r0 goto L1 else goto L2 :: bool
 L1:
     y = 2
@@ -421,40 +408,27 @@ def f(a: int) -> int:
 [out]
 def f(a):
     a :: int
-    r0 :: native_int
-    r1, r2, r3 :: bit
+    r0 :: bit
     x :: int
 L0:
-    r0 = a & 1
-    r1 = r0 != 0
-    if r1 goto L1 else goto L2 :: bool
+    r0 = int_eq a, a 
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r2 = CPyTagged_IsEq_(a, a)
-    if r2 goto L3 else goto L4 :: bool
-L2:
-    r3 = a == a
-    if r3 goto L3 else goto L4 :: bool
-L3:
     x = 4
     a = 2
-    goto L5
-L4:
+    goto L3
+L2:
     x = 2
-L5:
+L3:
     return x
 (0, 0)   {a}                     {a}
 (0, 1)   {a}                     {a}
-(0, 2)   {a}                     {a}
 (1, 0)   {a}                     {a}
-(1, 1)   {a}                     {a}
+(1, 1)   {a}                     {}
+(1, 2)   {}                      {}
 (2, 0)   {a}                     {a}
 (2, 1)   {a}                     {a}
-(3, 0)   {a}                     {a}
-(3, 1)   {a}                     {}
-(3, 2)   {}                      {}
-(4, 0)   {a}                     {a}
-(4, 1)   {a}                     {a}
-(5, 0)   {}                      {}
+(3, 0)   {}                      {}
 
 [case testLoop_BorrowedArgument]
 def f(a: int) -> int:
