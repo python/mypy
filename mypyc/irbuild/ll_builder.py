@@ -126,7 +126,6 @@ from mypyc.ir.rtypes import (
     short_int_rprimitive,
     str_rprimitive,
 )
-from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.util import concrete_arg_kind
 from mypyc.options import CompilerOptions
 from mypyc.primitives.bytes_ops import bytes_compare
@@ -220,12 +219,8 @@ BOOL_BINARY_OPS: Final = {"&", "&=", "|", "|=", "^", "^=", "==", "!=", "<", "<="
 
 
 class LowLevelIRBuilder:
-    def __init__(
-        self, current_module: str, errors: Errors, mapper: Mapper, options: CompilerOptions
-    ) -> None:
-        self.current_module = current_module
+    def __init__(self, errors: Errors | None, options: CompilerOptions) -> None:
         self.errors = errors
-        self.mapper = mapper
         self.options = options
         self.args: list[Register] = []
         self.blocks: list[BasicBlock] = []
@@ -2394,6 +2389,7 @@ class LowLevelIRBuilder:
             return self.call_c(dict_new_op, [], line)
 
     def error(self, msg: str, line: int) -> None:
+        assert self.errors is not None, "cannot generate errors in this compiler phase"
         self.errors.error(msg, self.module_path, line)
 
 
