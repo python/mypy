@@ -187,8 +187,8 @@ if int():
     def g(x):
         pass
 [out]
-main:3:5:3:15: error: Function is missing a return type annotation
-main:6:5:6:10: error: Function is missing a type annotation
+main:3:5:3:5: error: Function is missing a return type annotation
+main:6:5:6:5: error: Function is missing a type annotation
 
 [case testColumnNameIsNotDefined]
 ((x)) # E:3: Name "x" is not defined

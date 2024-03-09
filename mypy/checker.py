@@ -1493,6 +1493,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         show_untyped = not self.is_typeshed_stub or self.options.warn_incomplete_stub
         check_incomplete_defs = self.options.disallow_incomplete_defs and has_explicit_annotation
         if show_untyped and (self.options.disallow_untyped_defs or check_incomplete_defs):
+            # TODO: changing end line and column here changes this information for the node itself
+            # fdef.end_line = fdef.line
+            # fdef.end_column = fdef.column + 1
             if fdef.type is None and self.options.disallow_untyped_defs:
                 if not fdef.arguments or (
                     len(fdef.arguments) == 1
