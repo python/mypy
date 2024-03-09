@@ -1,3 +1,6 @@
+-- Test cases for "flag elimination" optimization.  Used to optimize away
+-- registers that are always used immediately after assignment as branch conditions.
+
 [case testFlagEliminationSimple]
 def c() -> bool:
     return True
@@ -171,13 +174,13 @@ L6:
 L7:
     return 8
 
-[case testFlagEliminationBranchNotFirstOp]
+[case testFlagEliminationBranchNotNextOpAfterGoto]
 def f(x: bool) -> int:
     if x:
         b = True
     else:
         b = False
-    y = 1
+    y = 1  # Prevents the optimization
     if b:
         return 1
     else:
@@ -208,7 +211,7 @@ def f(x: bool) -> bool:
     else:
         b = False
     if b:
-        return b
+        return b  # Prevents the optimization
     else:
         return False
 [out]
@@ -262,7 +265,7 @@ def f(x: bool, y: bool) -> bool:
     elif y:
         b = False
     else:
-        bb = False
+        bb = False  # b not assigned here -> can't optimize
     if b:
         return True
     else:
