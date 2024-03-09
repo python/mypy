@@ -298,7 +298,7 @@ def _generate_junit_contents(
                     text=escape("\n".join(messages)),
                     filename="mypy",
                     time=dt,
-                    name="mypy-py{ver}-{platform}".format(ver=version, platform=platform),
+                    name=f"mypy-py{version}-{platform}",
                 )
 
     xml += JUNIT_FOOTER
