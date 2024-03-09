@@ -63,25 +63,27 @@ def do_flag_elimination(fn: FuncIR, options: CompilerOptions) -> None:
                     # Not right
                     candidates.remove(op.dest)
 
-    b = LowLevelIRBuilder(None, options)
-    t = FlagEliminationTransform(b, {x: y for x, y in branches.items() if x in candidates})
-    t.transform_blocks(fn.blocks)
-    fn.blocks = b.blocks
+    builder = LowLevelIRBuilder(None, options)
+    transform = FlagEliminationTransform(builder, {x: y for x, y in branches.items() if x in candidates})
+    transform.transform_blocks(fn.blocks)
+    fn.blocks = builder.blocks
 
 
 class FlagEliminationTransform(IRTransform):
-    def __init__(self, builder: LowLevelIRBuilder, m: dict[Register, Branch]) -> None:
+    def __init__(self, builder: LowLevelIRBuilder, branch_map: dict[Register, Branch]) -> None:
         super().__init__(builder)
-        self.m = m
-        self.rev = {x for x in m.values()}
+        self.branch_map = branch_map
+        self.branches = set(branch_map.values())
 
     def visit_assign(self, op: Assign) -> None:
-        orig = self.m.get(op.dest)
-        if orig:
-            b = Branch(op.src, orig.true, orig.false, orig.op, orig.line, rare=orig.rare)
-            b.negated = orig.negated
-            b.traceback_entry = orig.traceback_entry
-            self.add(b)
+        old_branch = self.branch_map.get(op.dest)
+        if old_branch:
+            # Replace assignment with a copy of the old branch, which is in a
+            # separate basic block. The old branch will be deletecd in visit_branch.
+            new_branch = Branch(op.src, old_branch.true, old_branch.false, old_branch.op, old_branch.line, rare=old_branch.rare)
+            new_branch.negated = old_branch.negated
+            new_branch.traceback_entry = old_branch.traceback_entry
+            self.add(new_branch)
         else:
             self.add(op)
 
@@ -90,7 +92,8 @@ class FlagEliminationTransform(IRTransform):
         self.builder.goto(op.label)
 
     def visit_branch(self, op: Branch) -> None:
-        if op in self.rev:
+        if op in self.branches:
+            # This branch is optimized away
             self.add(Unreachable())
         else:
             self.add(op)
