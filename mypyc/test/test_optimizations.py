@@ -8,6 +8,7 @@ from mypy.errors import CompileError
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
 from mypyc.common import TOP_LEVEL_NAME
+from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.pprint import format_func
 from mypyc.options import CompilerOptions
 from mypyc.test.testutil import (
