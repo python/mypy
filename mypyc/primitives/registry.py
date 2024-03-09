@@ -316,24 +316,6 @@ def load_address_op(name: str, type: RType, src: str) -> LoadAddressDescription:
     return LoadAddressDescription(name, type, src)
 
 
-"""
-def primitive_op(name: str,
-                 arg_types: list[RType | None],
-                 return_type: RType | int,
-                 error_kind: int) -> PrimitiveDescription:
-    assert name not in primitive_ops, f"already defined: {name}"
-    desc = PrimitiveDescription(
-        name=name,
-        arg_types=arg_types,
-        return_type=return_type,
-        steals=False,
-        is_borrowed=False,
-        error_kind=error_kind)
-    primitive_ops[name] = desc
-    return desc
-"""
-
-
 # Import various modules that set up global state.
 import mypyc.primitives.bytes_ops
 import mypyc.primitives.dict_ops
