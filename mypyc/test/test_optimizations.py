@@ -60,7 +60,6 @@ class TestCopyPropagation(OptimizationSuite):
         do_copy_propagation(fn, CompilerOptions())
 
 
-
 class TestFlagElimination(OptimizationSuite):
     files = ["opt-flag-elimination.test"]
 

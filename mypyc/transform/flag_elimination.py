@@ -64,7 +64,9 @@ def do_flag_elimination(fn: FuncIR, options: CompilerOptions) -> None:
                     candidates.remove(op.dest)
 
     builder = LowLevelIRBuilder(None, options)
-    transform = FlagEliminationTransform(builder, {x: y for x, y in branches.items() if x in candidates})
+    transform = FlagEliminationTransform(
+        builder, {x: y for x, y in branches.items() if x in candidates}
+    )
     transform.transform_blocks(fn.blocks)
     fn.blocks = builder.blocks
 
@@ -80,7 +82,14 @@ class FlagEliminationTransform(IRTransform):
         if old_branch:
             # Replace assignment with a copy of the old branch, which is in a
             # separate basic block. The old branch will be deletecd in visit_branch.
-            new_branch = Branch(op.src, old_branch.true, old_branch.false, old_branch.op, old_branch.line, rare=old_branch.rare)
+            new_branch = Branch(
+                op.src,
+                old_branch.true,
+                old_branch.false,
+                old_branch.op,
+                old_branch.line,
+                rare=old_branch.rare,
+            )
             new_branch.negated = old_branch.negated
             new_branch.traceback_entry = old_branch.traceback_entry
             self.add(new_branch)
