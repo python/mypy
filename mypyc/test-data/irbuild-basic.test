@@ -2309,62 +2309,24 @@ L0:
     return x
 def f(x, y, z):
     x, y, z, r0, r1 :: int
-    r2 :: native_int
-    r3 :: bit
-    r4 :: native_int
-    r5, r6 :: bit
-    r7 :: bool
-    r8 :: bit
-    r9 :: bool
-    r10 :: int
-    r11 :: native_int
-    r12 :: bit
-    r13 :: native_int
-    r14, r15 :: bit
-    r16 :: bool
-    r17 :: bit
+    r2 :: bit
+    r3 :: bool
+    r4 :: int
+    r5 :: bit
 L0:
     r0 = g(x)
     r1 = g(y)
-    r2 = r0 & 1
-    r3 = r2 == 0
-    if r3 goto L1 else goto L3 :: bool
+    r2 = int_lt r0, r1 
+    if r2 goto L2 else goto L1 :: bool
 L1:
-    r4 = r1 & 1
-    r5 = r4 == 0
-    if r5 goto L2 else goto L3 :: bool
+    r3 = r2
+    goto L3
 L2:
-    r6 = r0 < r1 :: signed
-    r7 = r6
-    goto L4
+    r4 = g(z)
+    r5 = int_gt r1, r4 
+    r3 = r5
 L3:
-    r8 = CPyTagged_IsLt_(r0, r1)
-    r7 = r8
-L4:
-    if r7 goto L6 else goto L5 :: bool
-L5:
-    r9 = r7
-    goto L11
-L6:
-    r10 = g(z)
-    r11 = r1 & 1
-    r12 = r11 == 0
-    if r12 goto L7 else goto L9 :: bool
-L7:
-    r13 = r10 & 1
-    r14 = r13 == 0
-    if r14 goto L8 else goto L9 :: bool
-L8:
-    r15 = r1 > r10 :: signed
-    r16 = r15
-    goto L10
-L9:
-    r17 = CPyTagged_IsLt_(r10, r1)
-    r16 = r17
-L10:
-    r9 = r16
-L11:
-    return r9
+    return r3
 
 [case testEq]
 class A:
