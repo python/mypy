@@ -232,7 +232,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
                 type_arg_index += 1
 
         args_str = ", ".join(args)
-        return self.format("%r = %s %s ", op, op.desc.name, args_str)
+        return self.format("%r = %s %s", op, op.desc.name, args_str)
 
     def visit_truncate(self, op: Truncate) -> str:
         return self.format("%r = truncate %r: %t to %t", op, op.src, op.src_type, op.type)
