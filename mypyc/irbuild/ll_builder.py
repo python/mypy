@@ -1315,13 +1315,6 @@ class LowLevelIRBuilder:
             return self.compare_strings(lreg, rreg, op, line)
         if is_bytes_rprimitive(ltype) and is_bytes_rprimitive(rtype) and op in ("==", "!="):
             return self.compare_bytes(lreg, rreg, op, line)
-        if (
-            is_tagged(ltype)
-            and is_tagged(rtype)
-            and op in int_comparison_op_mapping
-            and op not in ("==", "!=")
-        ):
-            return self.compare_tagged(lreg, rreg, op, line)
         if is_bool_rprimitive(ltype) and is_bool_rprimitive(rtype) and op in BOOL_BINARY_OPS:
             if op in ComparisonOp.signed_ops:
                 return self.bool_comparison_op(lreg, rreg, op, line)
@@ -1384,16 +1377,6 @@ class LowLevelIRBuilder:
                 if is_fixed_width_rtype(lreg.type):
                     return self.comparison_op(lreg, rreg, op_id, line)
 
-        # Mixed int comparisons
-        if op in ("==", "!="):
-            pass  # TODO: Do we need anything here?
-        elif op in op in int_comparison_op_mapping:
-            if is_tagged(ltype) and is_subtype(rtype, ltype):
-                rreg = self.coerce(rreg, short_int_rprimitive, line)
-                return self.compare_tagged(lreg, rreg, op, line)
-            if is_tagged(rtype) and is_subtype(ltype, rtype):
-                lreg = self.coerce(lreg, short_int_rprimitive, line)
-                return self.compare_tagged(lreg, rreg, op, line)
         if is_float_rprimitive(ltype) or is_float_rprimitive(rtype):
             if isinstance(lreg, Integer):
                 lreg = Float(float(lreg.numeric_value()))
@@ -1447,12 +1430,14 @@ class LowLevelIRBuilder:
         short_int_block, int_block, out = BasicBlock(), BasicBlock(), BasicBlock()
         check_lhs = self.check_tagged_short_int(lhs, line)
         if op in ("==", "!="):
-            check = check_lhs
+            self.add(Branch(check_lhs, short_int_block, int_block, Branch.BOOL))
         else:
             # for non-equality logical ops (less/greater than, etc.), need to check both sides
+            short_lhs = BasicBlock()
+            self.add(Branch(check_lhs, short_lhs, int_block, Branch.BOOL))
+            self.activate_block(short_lhs)
             check_rhs = self.check_tagged_short_int(rhs, line)
-            check = self.int_op(bit_rprimitive, check_lhs, check_rhs, IntOp.AND, line)
-        self.add(Branch(check, short_int_block, int_block, Branch.BOOL))
+            self.add(Branch(check_rhs, short_int_block, int_block, Branch.BOOL))
         self.activate_block(short_int_block)
         eq = self.comparison_op(lhs, rhs, op_type, line)
         self.add(Assign(result, eq, line))

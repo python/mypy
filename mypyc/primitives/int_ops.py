@@ -122,6 +122,10 @@ def int_binary_primitive(
 
 int_eq = int_binary_primitive(op="==", primitive_name="int_eq", return_type=bit_rprimitive)
 int_ne = int_binary_primitive(op="!=", primitive_name="int_ne", return_type=bit_rprimitive)
+int_lt = int_binary_primitive(op="<", primitive_name="int_lt", return_type=bit_rprimitive)
+int_le = int_binary_primitive(op="<=", primitive_name="int_le", return_type=bit_rprimitive)
+int_gt = int_binary_primitive(op=">", primitive_name="int_gt", return_type=bit_rprimitive)
+int_ge = int_binary_primitive(op=">=", primitive_name="int_ge", return_type=bit_rprimitive)
 
 
 def int_binary_op(

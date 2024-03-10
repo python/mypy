@@ -124,3 +124,210 @@ L2:
     r3 = r4
 L3:
     return r3
+
+[case testLowerIntLt]
+def f(x: int, y: int) -> int:
+    if x < y:
+        return 1
+    else:
+        return 2
+[out]
+def f(x, y):
+    x, y :: int
+    r0 :: native_int
+    r1 :: bit
+    r2 :: native_int
+    r3, r4, r5 :: bit
+L0:
+    r0 = x & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L3 :: bool
+L1:
+    r2 = y & 1
+    r3 = r2 == 0
+    if r3 goto L2 else goto L3 :: bool
+L2:
+    r4 = x < y :: signed
+    if r4 goto L4 else goto L5 :: bool
+L3:
+    r5 = CPyTagged_IsLt_(x, y)
+    if r5 goto L4 else goto L5 :: bool
+L4:
+    return 2
+L5:
+    return 4
+
+[case testLowerIntLe]
+def f(x: int, y: int) -> int:
+    if x <= y:
+        return 1
+    else:
+        return 2
+[out]
+def f(x, y):
+    x, y :: int
+    r0 :: native_int
+    r1 :: bit
+    r2 :: native_int
+    r3, r4, r5, r6 :: bit
+L0:
+    r0 = x & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L3 :: bool
+L1:
+    r2 = y & 1
+    r3 = r2 == 0
+    if r3 goto L2 else goto L3 :: bool
+L2:
+    r4 = x <= y :: signed
+    if r4 goto L4 else goto L5 :: bool
+L3:
+    r5 = CPyTagged_IsLt_(y, x)
+    r6 = r5 ^ 1
+    if r6 goto L4 else goto L5 :: bool
+L4:
+    return 2
+L5:
+    return 4
+
+[case testLowerIntGt]
+def f(x: int, y: int) -> int:
+    if x > y:
+        return 1
+    else:
+        return 2
+[out]
+def f(x, y):
+    x, y :: int
+    r0 :: native_int
+    r1 :: bit
+    r2 :: native_int
+    r3, r4, r5 :: bit
+L0:
+    r0 = x & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L3 :: bool
+L1:
+    r2 = y & 1
+    r3 = r2 == 0
+    if r3 goto L2 else goto L3 :: bool
+L2:
+    r4 = x > y :: signed
+    if r4 goto L4 else goto L5 :: bool
+L3:
+    r5 = CPyTagged_IsLt_(y, x)
+    if r5 goto L4 else goto L5 :: bool
+L4:
+    return 2
+L5:
+    return 4
+
+[case testLowerIntGe]
+def f(x: int, y: int) -> int:
+    if x >= y:
+        return 1
+    else:
+        return 2
+[out]
+def f(x, y):
+    x, y :: int
+    r0 :: native_int
+    r1 :: bit
+    r2 :: native_int
+    r3, r4, r5, r6 :: bit
+L0:
+    r0 = x & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L3 :: bool
+L1:
+    r2 = y & 1
+    r3 = r2 == 0
+    if r3 goto L2 else goto L3 :: bool
+L2:
+    r4 = x >= y :: signed
+    if r4 goto L4 else goto L5 :: bool
+L3:
+    r5 = CPyTagged_IsLt_(x, y)
+    r6 = r5 ^ 1
+    if r6 goto L4 else goto L5 :: bool
+L4:
+    return 2
+L5:
+    return 4
+
+[case testLowerIntLtShort]
+def both() -> int:
+    if 3 < 5:
+        return 1
+    else:
+        return 2
+
+def rhs_only(x: int) -> int:
+    if x < 5:
+        return 1
+    else:
+        return 2
+
+def lhs_only(x: int) -> int:
+    if 5 < x:
+        return 1
+    else:
+        return 2
+[out]
+def both():
+    r0 :: bit
+L0:
+    r0 = 6 < 10 :: signed
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    return 2
+L2:
+    return 4
+def rhs_only(x):
+    x :: int
+    r0 :: native_int
+    r1 :: bit
+    r2 :: native_int
+    r3, r4, r5 :: bit
+L0:
+    r0 = x & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L3 :: bool
+L1:
+    r2 = 10 & 1
+    r3 = r2 == 0
+    if r3 goto L2 else goto L3 :: bool
+L2:
+    r4 = x < 10 :: signed
+    if r4 goto L4 else goto L5 :: bool
+L3:
+    r5 = CPyTagged_IsLt_(x, 10)
+    if r5 goto L4 else goto L5 :: bool
+L4:
+    return 2
+L5:
+    return 4
+def lhs_only(x):
+    x :: int
+    r0 :: native_int
+    r1 :: bit
+    r2 :: native_int
+    r3, r4, r5 :: bit
+L0:
+    r0 = 10 & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L3 :: bool
+L1:
+    r2 = x & 1
+    r3 = r2 == 0
+    if r3 goto L2 else goto L3 :: bool
+L2:
+    r4 = 10 < x :: signed
+    if r4 goto L4 else goto L5 :: bool
+L3:
+    r5 = CPyTagged_IsLt_(10, x)
+    if r5 goto L4 else goto L5 :: bool
+L4:
+    return 2
+L5:
+    return 4
