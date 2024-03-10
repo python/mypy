@@ -579,11 +579,11 @@ class MethodCall(RegisterOp):
 class PrimitiveDescription:
     """Description of a primitive op.
 
-    Primitive get lowered into lower-level ops before code generation.
+    Primitives get lowered into lower-level ops before code generation.
 
-    They have a fixed number of parameters, some of which can be
-    compile-types (type parameters). The return type can be constant
-    or inferred from a type argument.
+    If c_function_name is provided, a primitive will be lowered into a CallC op.
+    Otherwise custom logic will need to be implemented to transform the
+    primitive into lower-level ops.
     """
 
     def __init__(
@@ -628,20 +628,22 @@ class PrimitiveDescription:
 class PrimitiveOp(RegisterOp):
     """A higher-level primitive operation.
 
-    All of these have special compiler support. These will be *lowered*
-    to lower-level ops before code generation and reference counting
-    op insertion.
+    All of these have special compiler support. These will be lowered
+    (transformed) into lower-level ops before code generation, and after
+    reference counting op insertion.
+
+    Tagged integer equality is a typical primitive op with non-trivial
+    lowering. It gets transformed into a tag check, followed by different
+    code paths for short and long representations.
     """
 
     def __init__(
         self,
         args: list[Value],
         desc: PrimitiveDescription,
-        type_args: list[RType] | None = None,
         line: int = -1,
     ) -> None:
         self.args = args
-        self.type_args = type_args
         self.type = desc.return_type
         self.error_kind = desc.error_kind
         self.desc = desc

@@ -2001,7 +2001,9 @@ class LowLevelIRBuilder:
         line: int,
         result_type: RType | None = None,
     ) -> Value:
-        """Call function using C/native calling convention (not a Python callable)."""
+        """Add a primitive op."""
+        # Does this primitive map into calling a Python C API
+        # function, or an internal mypyc C API function?
         if desc.c_function_name:
             c_desc = CFunctionDescription(
                 desc.name,
@@ -2019,7 +2021,9 @@ class LowLevelIRBuilder:
             )
             return self.call_c(c_desc, args, line, result_type)
 
-        # Handle void function via singleton RVoid instance
+        # This primitve gets transformed in a lowering pass to
+        # lower-level IR ops using custom logic.
+
         coerced = []
         # Coerce fixed number arguments
         for i in range(min(len(args), len(desc.arg_types))):
