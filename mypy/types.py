@@ -1524,7 +1524,7 @@ class Instance(ProperType):
         return (
             self.type.is_enum
             and len(self.get_enum_values()) == 1
-            or self.type.fullname == "builtins.ellipsis"
+            or self.type.fullname in {"builtins.ellipsis", "types.EllipsisType"}
         )
 
     def get_enum_values(self) -> list[str]:
