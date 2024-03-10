@@ -371,7 +371,11 @@ def attr_class_maker_callback(
         _add_order(ctx, adder)
     if frozen:
         _make_frozen(ctx, attributes)
-    elif not hashable:
+        hashable = _get_decorator_bool_argument(
+            ctx, "hash", True
+        ) and _get_decorator_bool_argument(ctx, "unsafe_hash", True)
+
+    if not hashable:
         _remove_hashability(ctx)
 
     return True
@@ -835,6 +839,12 @@ def _make_frozen(ctx: mypy.plugin.ClassDefContext, attributes: list[Attribute]) 
             var._fullname = f"{ctx.cls.info.fullname}.{var.name}"
             ctx.cls.info.names[var.name] = SymbolTableNode(MDEF, var)
             var.is_property = True
+
+    # Frozen classes are hashable by default, even if inheriting from non-frozen ones.
+    # We copy the `__hash__` signature from `object` to make them hashable.
+    # If the frozen class was created using `hash=False`, the hashability
+    # will be removed later.
+    ctx.cls.info.names["__hash__"] = ctx.cls.info.mro[-1].names["__hash__"]
 
 
 def _add_init(
