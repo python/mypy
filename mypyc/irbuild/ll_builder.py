@@ -1428,20 +1428,16 @@ class LowLevelIRBuilder:
         op_type, c_func_desc, negate_result, swap_op = int_comparison_op_mapping[op]
         result = Register(bool_rprimitive)
         short_int_block, int_block, out = BasicBlock(), BasicBlock(), BasicBlock()
-        check_lhs = self.check_tagged_short_int(lhs, line)
+        check_lhs = self.check_tagged_short_int(lhs, line, negated=True)
         if op in ("==", "!="):
-            self.add(Branch(check_lhs, short_int_block, int_block, Branch.BOOL))
+            self.add(Branch(check_lhs, int_block, short_int_block, Branch.BOOL))
         else:
             # for non-equality logical ops (less/greater than, etc.), need to check both sides
             short_lhs = BasicBlock()
-            self.add(Branch(check_lhs, short_lhs, int_block, Branch.BOOL))
+            self.add(Branch(check_lhs, int_block, short_lhs, Branch.BOOL))
             self.activate_block(short_lhs)
-            check_rhs = self.check_tagged_short_int(rhs, line)
-            self.add(Branch(check_rhs, short_int_block, int_block, Branch.BOOL))
-        self.activate_block(short_int_block)
-        eq = self.comparison_op(lhs, rhs, op_type, line)
-        self.add(Assign(result, eq, line))
-        self.goto(out)
+            check_rhs = self.check_tagged_short_int(rhs, line, negated=True)
+            self.add(Branch(check_rhs, int_block, short_int_block, Branch.BOOL))
         self.activate_block(int_block)
         if swap_op:
             args = [rhs, lhs]
@@ -1454,6 +1450,10 @@ class LowLevelIRBuilder:
         else:
             call_result = call
         self.add(Assign(result, call_result, line))
+        self.goto(out)
+        self.activate_block(short_int_block)
+        eq = self.comparison_op(lhs, rhs, op_type, line)
+        self.add(Assign(result, eq, line))
         self.goto_and_activate(out)
         return result
 
