@@ -5689,7 +5689,6 @@ class C:
         @dataclass
         class DC:
             c: int
-        Alias: TypeAlias = NT1
         N = NewType("N", NT1)
 
         c: C = C()
@@ -5700,7 +5699,6 @@ class C:
         td2: TD2 = TD2(c=1)
         e: E = E.X
         dc: DC = DC(c=1)
-        al: Alias = Alias(c=1)
         n: N = N(NT1(c=1))
 
 [builtins fixtures/dict.pyi]
