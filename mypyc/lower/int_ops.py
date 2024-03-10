@@ -7,7 +7,7 @@ from typing import NamedTuple
 from mypyc.ir.ops import Assign, BasicBlock, Branch, ComparisonOp, Register, Value
 from mypyc.ir.rtypes import bool_rprimitive, is_short_int_rprimitive
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
-from mypyc.lower.registry import lower_binary_op
+from mypyc.lower.registry import lower_primitive_op
 from mypyc.primitives.int_ops import int_equal_, int_less_than_
 from mypyc.primitives.registry import CFunctionDescription
 
@@ -83,31 +83,31 @@ def compare_tagged(self: LowLevelIRBuilder, lhs: Value, rhs: Value, op: str, lin
     return result
 
 
-@lower_binary_op("int_eq")
+@lower_primitive_op("int_eq")
 def lower_int_eq(builder: LowLevelIRBuilder, args: list[Value], line: int) -> Value:
     return compare_tagged(builder, args[0], args[1], "==", line)
 
 
-@lower_binary_op("int_ne")
+@lower_primitive_op("int_ne")
 def lower_int_ne(builder: LowLevelIRBuilder, args: list[Value], line: int) -> Value:
     return compare_tagged(builder, args[0], args[1], "!=", line)
 
 
-@lower_binary_op("int_lt")
+@lower_primitive_op("int_lt")
 def lower_int_lt(builder: LowLevelIRBuilder, args: list[Value], line: int) -> Value:
     return compare_tagged(builder, args[0], args[1], "<", line)
 
 
-@lower_binary_op("int_le")
+@lower_primitive_op("int_le")
 def lower_int_le(builder: LowLevelIRBuilder, args: list[Value], line: int) -> Value:
     return compare_tagged(builder, args[0], args[1], "<=", line)
 
 
-@lower_binary_op("int_gt")
+@lower_primitive_op("int_gt")
 def lower_int_gt(builder: LowLevelIRBuilder, args: list[Value], line: int) -> Value:
     return compare_tagged(builder, args[0], args[1], ">", line)
 
 
-@lower_binary_op("int_ge")
+@lower_primitive_op("int_ge")
 def lower_int_ge(builder: LowLevelIRBuilder, args: list[Value], line: int) -> Value:
     return compare_tagged(builder, args[0], args[1], ">=", line)

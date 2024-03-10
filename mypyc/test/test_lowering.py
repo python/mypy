@@ -17,6 +17,7 @@ from mypyc.test.testutil import (
     build_ir_for_single_file,
     remove_comment_lines,
     use_custom_builtins,
+    replace_word_size,
 )
 from mypyc.transform.exceptions import insert_exception_handling
 from mypyc.transform.flag_elimination import do_flag_elimination
@@ -26,12 +27,13 @@ from mypyc.transform.uninit import insert_uninit_checks
 
 
 class TestLowering(MypycDataSuite):
-    files = ["lowering-int.test"]
+    files = ["lowering-int.test", "lowering-list.test"]
     base_path = test_temp_dir
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             expected_output = remove_comment_lines(testcase.output)
+            expected_output = replace_word_size(expected_output)
             try:
                 ir = build_ir_for_single_file(testcase.input)
             except CompileError as e:

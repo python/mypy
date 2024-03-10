@@ -11,9 +11,8 @@ LowerFunc = Callable[[LowLevelIRBuilder, List[Value], int], Value]
 lowering_registry: Final[dict[str, LowerFunc]] = {}
 
 
-def lower_binary_op(name: str) -> Callable[[LowerFunc], LowerFunc]:
-    """Register a handler that generates low-level IR for a primitive binary op."""
-
+def lower_primitive_op(name: str) -> Callable[[LowerFunc], LowerFunc]:
+    """Register a handler that generates low-level IR for a primitive op."""
     def wrapper(f: LowerFunc) -> LowerFunc:
         assert name not in lowering_registry
         lowering_registry[name] = f
@@ -23,4 +22,5 @@ def lower_binary_op(name: str) -> Callable[[LowerFunc], LowerFunc]:
 
 
 # Import various modules that set up global state.
-import mypyc.lower.int_ops  # noqa: F401
+import mypyc.lower.int_ops
+import mypyc.lower.list_ops  # noqa: F401

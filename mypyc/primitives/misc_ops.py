@@ -14,8 +14,10 @@ from mypyc.ir.rtypes import (
     object_pointer_rprimitive,
     object_rprimitive,
     str_rprimitive,
+    void_rtype,
+    pointer_rprimitive,
 )
-from mypyc.primitives.registry import ERR_NEG_INT, custom_op, function_op, load_address_op
+from mypyc.primitives.registry import ERR_NEG_INT, custom_op, function_op, load_address_op, custom_primitive_op
 
 # Get the 'bool' type object.
 load_address_op(name="builtins.bool", type=object_rprimitive, src="PyBool_Type")
@@ -232,10 +234,19 @@ check_unpack_count_op = custom_op(
 )
 
 
-# register an implementation for a singledispatch function
+# Register an implementation for a singledispatch function
 register_function = custom_op(
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
     c_function_name="CPySingledispatch_RegisterFunction",
     error_kind=ERR_MAGIC,
+)
+
+
+# Set an item in a memory buffer
+buf_init_item = custom_primitive_op(
+    name="buf_init_item",
+    arg_types=[pointer_rprimitive, c_pyssize_t_rprimitive, object_rprimitive],
+    return_type=void_rtype,
+    error_kind=ERR_NEVER,
 )
