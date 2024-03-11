@@ -544,13 +544,8 @@ void CPy_AttributeError(const char *filename, const char *funcname, const char *
 
 // Misc operations
 
-#if PY_VERSION_HEX >= 0x03080000
 #define CPy_TRASHCAN_BEGIN(op, dealloc) Py_TRASHCAN_BEGIN(op, dealloc)
 #define CPy_TRASHCAN_END(op) Py_TRASHCAN_END
-#else
-#define CPy_TRASHCAN_BEGIN(op, dealloc) Py_TRASHCAN_SAFE_BEGIN(op)
-#define CPy_TRASHCAN_END(op) Py_TRASHCAN_SAFE_END(op)
-#endif
 
 // Tweaked version of _PyArg_Parser in CPython
 typedef struct CPyArg_Parser {

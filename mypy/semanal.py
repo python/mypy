@@ -881,6 +881,13 @@ class SemanticAnalyzer(
                         )
                         # in this case, we just kind of just ... remove the type guard.
                         result = result.copy_modified(type_guard=None)
+                    if result.type_is and ARG_POS not in result.arg_kinds[skip_self:]:
+                        self.fail(
+                            '"TypeIs" functions must have a positional argument',
+                            result,
+                            code=codes.VALID_TYPE,
+                        )
+                        result = result.copy_modified(type_is=None)
 
                     result = self.remove_unpack_kwargs(defn, result)
                     if has_self_type and self.type is not None:

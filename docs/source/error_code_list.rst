@@ -537,7 +537,7 @@ Example:
 
 .. code-block:: python
 
-    from typing_extensions import TypedDict
+    from typing import TypedDict
 
     class Point(TypedDict):
         x: int
@@ -562,7 +562,7 @@ to have been validated at the point of construction. Example:
 
 .. code-block:: python
 
-    from typing_extensions import TypedDict
+    from typing import TypedDict
 
     class Point(TypedDict):
         x: int
@@ -868,7 +868,7 @@ the return type affects which lines mypy thinks are reachable after a
 ``True`` may swallow exceptions. An imprecise return type can result
 in mysterious errors reported near ``with`` statements.
 
-To fix this, use either ``typing_extensions.Literal[False]`` or
+To fix this, use either ``typing.Literal[False]`` or
 ``None`` as the return type. Returning ``None`` is equivalent to
 returning ``False`` in this context, since both are treated as false
 values.
@@ -897,7 +897,7 @@ You can use ``Literal[False]`` to fix the error:
 
 .. code-block:: python
 
-   from typing_extensions import Literal
+   from typing import Literal
 
    class MyContext:
        ...

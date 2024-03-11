@@ -4,7 +4,7 @@ from _typeshed import BytesPath, FileDescriptorOrPath, StrOrBytesPath, StrPath, 
 from collections.abc import Callable, Iterable, Sequence
 from tarfile import _TarfileFilter
 from typing import Any, AnyStr, NamedTuple, Protocol, TypeVar, overload
-from typing_extensions import TypeAlias
+from typing_extensions import TypeAlias, deprecated
 
 __all__ = [
     "copyfileobj",
@@ -78,24 +78,20 @@ class _RmtreeType(Protocol):
     avoids_symlink_attacks: bool
     if sys.version_info >= (3, 12):
         @overload
+        def __call__(self, path: StrOrBytesPath, ignore_errors: bool = False, *, dir_fd: int | None = None) -> None: ...
+        @overload
+        @deprecated("The `onerror` parameter is deprecated and will be removed in Python 3.14. Use `onexc` instead.")
         def __call__(
             self,
             path: StrOrBytesPath,
             ignore_errors: bool = False,
             onerror: _OnErrorCallback | None = None,
             *,
-            onexc: None = None,
             dir_fd: int | None = None,
         ) -> None: ...
         @overload
         def __call__(
-            self,
-            path: StrOrBytesPath,
-            ignore_errors: bool = False,
-            onerror: None = None,
-            *,
-            onexc: _OnExcCallback,
-            dir_fd: int | None = None,
+            self, path: StrOrBytesPath, ignore_errors: bool = False, *, onexc: _OnExcCallback, dir_fd: int | None = None
         ) -> None: ...
     elif sys.version_info >= (3, 11):
         def __call__(

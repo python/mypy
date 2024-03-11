@@ -3447,3 +3447,19 @@ class Params(TypedDict("Params", {'x': int})):
 p: Params = {'x': 2}
 reveal_type(p) # N: Revealed type is "TypedDict('__main__.Params', {'x': builtins.int})"
 [builtins fixtures/dict.pyi]
+
+[case testInitTypedDictFromType]
+from typing import TypedDict, Type
+
+class Point(TypedDict):
+    x: int
+    y: int
+
+def func(cls: Type[Point]) -> None:
+    reveal_type(cls)  # N: Revealed type is "Type[TypedDict('__main__.Point', {'x': builtins.int, 'y': builtins.int})]"
+    cls(x=1, y=2)
+    cls(1, 2)  # E: Too many positional arguments
+    cls(x=1)  # E: Missing named argument "y"
+    cls(x=1, y=2, error="")  # E: Unexpected keyword argument "error"
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]

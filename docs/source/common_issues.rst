@@ -541,7 +541,7 @@ Consider this example:
 
 .. code-block:: python
 
-   from typing_extensions import Protocol
+   from typing import Protocol
 
    class P(Protocol):
        x: float
@@ -561,7 +561,7 @@ the protocol definition:
 
 .. code-block:: python
 
-   from typing_extensions import Protocol
+   from typing import Protocol
 
    class P(Protocol):
        @property

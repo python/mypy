@@ -34,6 +34,7 @@ Concatenate: _SpecialForm
 TypeAlias: _SpecialForm
 
 TypeGuard: _SpecialForm
+TypeIs: _SpecialForm
 Never: _SpecialForm
 
 TypeVarTuple: _SpecialForm
@@ -73,7 +74,8 @@ class _TypedDict(Mapping[str, object]):
 
 def TypedDict(typename: str, fields: Dict[str, Type[_T]], *, total: Any = ...) -> Type[dict]: ...
 
-def reveal_type(__obj: T) -> T: pass
+def reveal_type(__obj: _T) -> _T: pass
+def assert_type(__val: _T, __typ: Any) -> _T: pass
 
 def dataclass_transform(
     *,
@@ -82,7 +84,7 @@ def dataclass_transform(
     kw_only_default: bool = ...,
     field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
     **kwargs: Any,
-) -> Callable[[T], T]: ...
+) -> Callable[[_T], _T]: ...
 
 def override(__arg: _T) -> _T: ...
 def deprecated(__msg: str) -> Callable[[_T], _T]: ...

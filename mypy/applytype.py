@@ -137,11 +137,15 @@ def apply_generic_arguments(
             arg_types=[expand_type(at, id_to_type) for at in callable.arg_types]
         )
 
-    # Apply arguments to TypeGuard if any.
+    # Apply arguments to TypeGuard and TypeIs if any.
     if callable.type_guard is not None:
         type_guard = expand_type(callable.type_guard, id_to_type)
     else:
         type_guard = None
+    if callable.type_is is not None:
+        type_is = expand_type(callable.type_is, id_to_type)
+    else:
+        type_is = None
 
     # The callable may retain some type vars if only some were applied.
     # TODO: move apply_poly() logic from checkexpr.py here when new inference
@@ -164,4 +168,5 @@ def apply_generic_arguments(
         ret_type=expand_type(callable.ret_type, id_to_type),
         variables=remaining_tvars,
         type_guard=type_guard,
+        type_is=type_is,
     )

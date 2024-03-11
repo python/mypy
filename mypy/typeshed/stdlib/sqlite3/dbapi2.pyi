@@ -221,16 +221,32 @@ def adapt(__obj: Any, __proto: Any) -> Any: ...
 @overload
 def adapt(__obj: Any, __proto: Any, __alt: _T) -> Any | _T: ...
 def complete_statement(statement: str) -> bool: ...
-def connect(
-    database: StrOrBytesPath,
-    timeout: float = ...,
-    detect_types: int = ...,
-    isolation_level: str | None = ...,
-    check_same_thread: bool = ...,
-    factory: type[Connection] | None = ...,
-    cached_statements: int = ...,
-    uri: bool = ...,
-) -> Connection: ...
+
+if sys.version_info >= (3, 12):
+    def connect(
+        database: StrOrBytesPath,
+        timeout: float = ...,
+        detect_types: int = ...,
+        isolation_level: str | None = ...,
+        check_same_thread: bool = ...,
+        factory: type[Connection] | None = ...,
+        cached_statements: int = ...,
+        uri: bool = ...,
+        autocommit: bool = ...,
+    ) -> Connection: ...
+
+else:
+    def connect(
+        database: StrOrBytesPath,
+        timeout: float = ...,
+        detect_types: int = ...,
+        isolation_level: str | None = ...,
+        check_same_thread: bool = ...,
+        factory: type[Connection] | None = ...,
+        cached_statements: int = ...,
+        uri: bool = ...,
+    ) -> Connection: ...
+
 def enable_callback_tracebacks(__enable: bool) -> None: ...
 
 if sys.version_info < (3, 12):
@@ -300,17 +316,32 @@ class Connection:
         def autocommit(self, val: int) -> None: ...
     row_factory: Any
     text_factory: Any
-    def __init__(
-        self,
-        database: StrOrBytesPath,
-        timeout: float = ...,
-        detect_types: int = ...,
-        isolation_level: str | None = ...,
-        check_same_thread: bool = ...,
-        factory: type[Connection] | None = ...,
-        cached_statements: int = ...,
-        uri: bool = ...,
-    ) -> None: ...
+    if sys.version_info >= (3, 12):
+        def __init__(
+            self,
+            database: StrOrBytesPath,
+            timeout: float = ...,
+            detect_types: int = ...,
+            isolation_level: str | None = ...,
+            check_same_thread: bool = ...,
+            factory: type[Connection] | None = ...,
+            cached_statements: int = ...,
+            uri: bool = ...,
+            autocommit: bool = ...,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            database: StrOrBytesPath,
+            timeout: float = ...,
+            detect_types: int = ...,
+            isolation_level: str | None = ...,
+            check_same_thread: bool = ...,
+            factory: type[Connection] | None = ...,
+            cached_statements: int = ...,
+            uri: bool = ...,
+        ) -> None: ...
+
     def close(self) -> None: ...
     if sys.version_info >= (3, 11):
         def blobopen(self, __table: str, __column: str, __row: int, *, readonly: bool = False, name: str = "main") -> Blob: ...
