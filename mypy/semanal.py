@@ -2032,7 +2032,7 @@ class SemanticAnalyzer(
     def analyze_unbound_tvar_impl(
         self, t: UnboundType, is_unpacked: bool = False, is_typealias_param: bool = False
     ) -> tuple[str, TypeVarLikeExpr] | None:
-        assert not unpacked or not is_typelias_param, "Mutually exclusive conditions"
+        assert not is_unpacked or not is_typelias_param, "Mutually exclusive conditions"
         sym = self.lookup_qualified(t.name, t)
         if sym and isinstance(sym.node, PlaceholderNode):
             self.record_incomplete_ref()
