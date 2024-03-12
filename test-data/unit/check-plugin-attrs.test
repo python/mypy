@@ -2460,3 +2460,18 @@ class B(A):
 reveal_type(B.__hash__)  # N: Revealed type is "None"
 
 [builtins fixtures/plugin_attrs.pyi]
+
+[case testUnsafeHashPrecedence]
+from attrs import define, frozen
+
+@define(unsafe_hash=True, hash=False)
+class A:
+    pass
+reveal_type(A.__hash__)  # N: Revealed type is "def (self: builtins.object) -> builtins.int"
+
+@define(unsafe_hash=False, hash=True)
+class B:
+    pass
+reveal_type(B.__hash__)  # N: Revealed type is "None"
+
+[builtins fixtures/plugin_attrs.pyi]
