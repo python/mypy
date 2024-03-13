@@ -182,7 +182,6 @@ def main() -> None:
         "d25e4a9eb",  # LiteralString reverts
         "d132999ba",  # sum reverts
         "dd12a2d81",  # ctypes reverts
-        "0dd4b6f75",  # ParamSpec for functools.wraps
     ]
     for commit in commits_to_cherry_pick:
         try:
