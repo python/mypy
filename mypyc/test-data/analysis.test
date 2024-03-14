@@ -14,7 +14,7 @@ def f(a):
     y, z :: int
 L0:
     x = 2
-    r0 = int_eq x, a 
+    r0 = int_eq x, a
     if r0 goto L1 else goto L2 :: bool
 L1:
     y = 2
@@ -45,7 +45,7 @@ def f(a):
     r0 :: bit
 L0:
     x = 2
-    r0 = int_eq x, 2 
+    r0 = int_eq x, 2
     if r0 goto L1 else goto L2 :: bool
 L1:
     return a
@@ -111,7 +111,7 @@ def f(a):
     r0 :: bit
     y, x :: int
 L0:
-    r0 = int_eq a, 2 
+    r0 = int_eq a, 2
     if r0 goto L1 else goto L2 :: bool
 L1:
     y = 2
@@ -411,7 +411,7 @@ def f(a):
     r0 :: bit
     x :: int
 L0:
-    r0 = int_eq a, a 
+    r0 = int_eq a, a
     if r0 goto L1 else goto L2 :: bool
 L1:
     x = 4
