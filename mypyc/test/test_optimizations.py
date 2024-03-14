@@ -1,4 +1,4 @@
-"""Runner for copy propagation optimization tests."""
+"""Runner for IR optimization tests."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from mypy.errors import CompileError
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
 from mypyc.common import TOP_LEVEL_NAME
+from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.pprint import format_func
 from mypyc.options import CompilerOptions
 from mypyc.test.testutil import (
@@ -19,13 +20,16 @@ from mypyc.test.testutil import (
     use_custom_builtins,
 )
 from mypyc.transform.copy_propagation import do_copy_propagation
+from mypyc.transform.flag_elimination import do_flag_elimination
 from mypyc.transform.uninit import insert_uninit_checks
 
-files = ["opt-copy-propagation.test"]
 
+class OptimizationSuite(MypycDataSuite):
+    """Base class for IR optimization test suites.
 
-class TestCopyPropagation(MypycDataSuite):
-    files = files
+    To use this, add a base class and define "files" and "do_optimizations".
+    """
+
     base_path = test_temp_dir
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
@@ -41,7 +45,24 @@ class TestCopyPropagation(MypycDataSuite):
                     if fn.name == TOP_LEVEL_NAME and not testcase.name.endswith("_toplevel"):
                         continue
                     insert_uninit_checks(fn)
-                    do_copy_propagation(fn, CompilerOptions())
+                    self.do_optimizations(fn)
                     actual.extend(format_func(fn))
 
             assert_test_output(testcase, actual, "Invalid source code output", expected_output)
+
+    def do_optimizations(self, fn: FuncIR) -> None:
+        raise NotImplementedError
+
+
+class TestCopyPropagation(OptimizationSuite):
+    files = ["opt-copy-propagation.test"]
+
+    def do_optimizations(self, fn: FuncIR) -> None:
+        do_copy_propagation(fn, CompilerOptions())
+
+
+class TestFlagElimination(OptimizationSuite):
+    files = ["opt-flag-elimination.test"]
+
+    def do_optimizations(self, fn: FuncIR) -> None:
+        do_flag_elimination(fn, CompilerOptions())
