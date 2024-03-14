@@ -94,9 +94,7 @@ class IRTransform(OpVisitor[Optional[Value]]):
             # A transform can produce empty blocks which can be removed.
             if is_empty_block(new_block) and not is_empty_block(block):
                 empties.add(new_block)
-        self.builder.blocks = [
-            block for block in self.builder.blocks if block not in empties
-        ]
+        self.builder.blocks = [block for block in self.builder.blocks if block not in empties]
         # Update all op/block references to point to the transformed ones.
         patcher = PatchVisitor(op_map, block_map)
         for block in self.builder.blocks:

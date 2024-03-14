@@ -637,12 +637,7 @@ class PrimitiveOp(RegisterOp):
     code paths for short and long representations.
     """
 
-    def __init__(
-        self,
-        args: list[Value],
-        desc: PrimitiveDescription,
-        line: int = -1,
-    ) -> None:
+    def __init__(self, args: list[Value], desc: PrimitiveDescription, line: int = -1) -> None:
         self.args = args
         self.type = desc.return_type
         self.error_kind = desc.error_kind
