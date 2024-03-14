@@ -601,18 +601,15 @@ class PrimitiveDescription:
         extra_int_constants: list[tuple[int, RType]],
         priority: int,
     ) -> None:
-        # Each primitive much have a distint name, but otherwise they are arbitrary.
+        # Each primitive much have a distinct name, but otherwise they are arbitrary.
         self.name: Final = name
-        # If None, the argument is a compile-time type (RType).
         self.arg_types: Final = arg_types
-        # Result type; an int index i refers to the compile-type at arg_types[i].
-        # This allows simple type-safe generic operations.
         self.return_type: Final = return_type
         self.var_arg_type: Final = var_arg_type
         self.truncated_type: Final = truncated_type
         # If non-None, this will map to a call of a C helper function; if None,
-        # this will be a custom handler function that gets invoked during the lowering
-        # pass
+        # there must be a custom handler function that gets invoked during the lowering
+        # pass to generate low-level IR for the primitive (in the mypyc.lower package)
         self.c_function_name: Final = c_function_name
         self.error_kind: Final = error_kind
         self.steals: Final = steals
@@ -628,9 +625,10 @@ class PrimitiveDescription:
 class PrimitiveOp(RegisterOp):
     """A higher-level primitive operation.
 
-    All of these have special compiler support. These will be lowered
-    (transformed) into lower-level ops before code generation, and after
-    reference counting op insertion.
+    Some of these have special compiler support. These will be lowered
+    (transformed) into lower-level IR ops before code generation, and after
+    reference counting op insertion. Others will be transformed into CallC
+    ops.
 
     Tagged integer equality is a typical primitive op with non-trivial
     lowering. It gets transformed into a tag check, followed by different

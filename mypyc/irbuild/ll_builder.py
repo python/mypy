@@ -2003,8 +2003,10 @@ class LowLevelIRBuilder:
     ) -> Value:
         """Add a primitive op."""
         # Does this primitive map into calling a Python C API
-        # function, or an internal mypyc C API function?
+        # or an internal mypyc C API function?
         if desc.c_function_name:
+            # TODO: Generate PrimitiOps here and transform them into CallC
+            # ops only later in the lowering pass
             c_desc = CFunctionDescription(
                 desc.name,
                 desc.arg_types,
@@ -2022,7 +2024,7 @@ class LowLevelIRBuilder:
             return self.call_c(c_desc, args, line, result_type)
 
         # This primitve gets transformed in a lowering pass to
-        # lower-level IR ops using custom logic.
+        # lower-level IR ops using a custom transform function.
 
         coerced = []
         # Coerce fixed number arguments

@@ -12,6 +12,8 @@ lowering_registry: Final[dict[str, LowerFunc]] = {}
 
 
 def lower_binary_op(name: str) -> Callable[[LowerFunc], LowerFunc]:
+    """Register a handler that generates low-level IR for a primitive binary op."""
+
     def wrapper(f: LowerFunc) -> LowerFunc:
         assert name not in lowering_registry
         lowering_registry[name] = f

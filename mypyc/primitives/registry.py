@@ -83,8 +83,6 @@ unary_ops: dict[str, list[CFunctionDescription]] = {}
 
 builtin_names: dict[str, tuple[RType, str]] = {}
 
-primitive_ops: dict[str, PrimitiveDescription] = {}
-
 
 def method_op(
     name: str,
