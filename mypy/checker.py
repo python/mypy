@@ -1065,6 +1065,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         If type_override is provided, use it as the function type.
         """
+        if defn.is_synthetic():
+            return
+
         self.dynamic_funcs.append(defn.is_dynamic() and not type_override)
 
         with self.enter_partial_types(is_function=True):
@@ -1339,9 +1342,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 )
 
                 # Ignore plugin generated methods, these usually don't need any bodies.
-                if defn.info is not FUNC_NO_INFO and (
-                    defn.name not in defn.info.names or defn.info.names[defn.name].plugin_generated
-                ):
+                if defn.is_synthetic():
                     show_error = False
 
                 # Ignore also definitions that appear in `if TYPE_CHECKING: ...` blocks.
@@ -4901,6 +4902,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     )
 
     def visit_decorator(self, e: Decorator) -> None:
+        if e.func.is_synthetic():
+            return
         for d in e.decorators:
             if isinstance(d, RefExpr):
                 if d.fullname == "typing.no_type_check":
