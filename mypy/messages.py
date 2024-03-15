@@ -1779,6 +1779,8 @@ class MessageBuilder:
                 alias = alias.split(".")[-1]
                 if alias == "Dict":
                     type_dec = f"{type_dec}, {type_dec}"
+                if self.options.use_lowercase_names():
+                    alias = alias.lower()
                 recommended_type = f"{alias}[{type_dec}]"
         if recommended_type is not None:
             hint = f' (hint: "{node.name}: {recommended_type} = ...")'

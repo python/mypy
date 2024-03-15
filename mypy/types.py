@@ -3405,7 +3405,11 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return "..."
 
     def visit_type_type(self, t: TypeType) -> str:
-        return f"Type[{t.item.accept(self)}]"
+        if self.options.use_lowercase_names():
+            type_name = "type"
+        else:
+            type_name = "Type"
+        return f"{type_name}[{t.item.accept(self)}]"
 
     def visit_placeholder_type(self, t: PlaceholderType) -> str:
         return f"<placeholder {t.fullname}>"
