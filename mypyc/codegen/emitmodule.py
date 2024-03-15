@@ -426,10 +426,11 @@ def compile_modules_to_c(
     )
 
     modules = compile_modules_to_ir(result, mapper, compiler_options, errors)
-    ctext = compile_ir_to_c(groups, modules, result, mapper, compiler_options)
+    if errors.num_errors > 0:
+        return {}, []
 
-    if errors.num_errors == 0:
-        write_cache(modules, result, group_map, ctext)
+    ctext = compile_ir_to_c(groups, modules, result, mapper, compiler_options)
+    write_cache(modules, result, group_map, ctext)
 
     return modules, [ctext[name] for _, name in groups]
 
