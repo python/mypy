@@ -35,6 +35,7 @@ from mypyc.ir.ops import (
     MethodCall,
     Op,
     OpVisitor,
+    PrimitiveOp,
     RaiseStandardError,
     Return,
     SetAttr,
@@ -80,6 +81,7 @@ class IRTransform(OpVisitor[Optional[Value]]):
         """
         block_map: dict[BasicBlock, BasicBlock] = {}
         op_map = self.op_map
+        empties = set()
         for block in blocks:
             new_block = BasicBlock()
             block_map[block] = new_block
@@ -89,7 +91,10 @@ class IRTransform(OpVisitor[Optional[Value]]):
                 new_op = op.accept(self)
                 if new_op is not op:
                     op_map[op] = new_op
-
+            # A transform can produce empty blocks which can be removed.
+            if is_empty_block(new_block) and not is_empty_block(block):
+                empties.add(new_block)
+        self.builder.blocks = [block for block in self.builder.blocks if block not in empties]
         # Update all op/block references to point to the transformed ones.
         patcher = PatchVisitor(op_map, block_map)
         for block in self.builder.blocks:
@@ -168,6 +173,9 @@ class IRTransform(OpVisitor[Optional[Value]]):
         return self.add(op)
 
     def visit_call_c(self, op: CallC) -> Value | None:
+        return self.add(op)
+
+    def visit_primitive_op(self, op: PrimitiveOp) -> Value | None:
         return self.add(op)
 
     def visit_truncate(self, op: Truncate) -> Value | None:
@@ -302,6 +310,9 @@ class PatchVisitor(OpVisitor[None]):
     def visit_call_c(self, op: CallC) -> None:
         op.args = [self.fix_op(arg) for arg in op.args]
 
+    def visit_primitive_op(self, op: PrimitiveOp) -> None:
+        op.args = [self.fix_op(arg) for arg in op.args]
+
     def visit_truncate(self, op: Truncate) -> None:
         op.src = self.fix_op(op.src)
 
@@ -351,3 +362,7 @@ class PatchVisitor(OpVisitor[None]):
 
     def visit_unborrow(self, op: Unborrow) -> None:
         op.src = self.fix_op(op.src)
+
+
+def is_empty_block(block: BasicBlock) -> bool:
+    return len(block.ops) == 1 and isinstance(block.ops[0], Unreachable)

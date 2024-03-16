@@ -29,15 +29,13 @@ L0:
     if x goto L1 else goto L2 :: bool
 L1:
     r0 = c()
-    if r0 goto L4 else goto L5 :: bool
+    if r0 goto L3 else goto L4 :: bool
 L2:
     r1 = d()
-    if r1 goto L4 else goto L5 :: bool
+    if r1 goto L3 else goto L4 :: bool
 L3:
-    unreachable
-L4:
     return 2
-L5:
+L4:
     return 4
 
 [case testFlagEliminationOneAssignment]
@@ -92,20 +90,18 @@ L0:
     if x goto L1 else goto L2 :: bool
 L1:
     r0 = c(2)
-    if r0 goto L6 else goto L7 :: bool
+    if r0 goto L5 else goto L6 :: bool
 L2:
     if y goto L3 else goto L4 :: bool
 L3:
     r1 = c(4)
-    if r1 goto L6 else goto L7 :: bool
+    if r1 goto L5 else goto L6 :: bool
 L4:
     r2 = c(6)
-    if r2 goto L6 else goto L7 :: bool
+    if r2 goto L5 else goto L6 :: bool
 L5:
-    unreachable
-L6:
     return 2
-L7:
+L6:
     return 4
 
 [case testFlagEliminationAssignmentNotLastOp]

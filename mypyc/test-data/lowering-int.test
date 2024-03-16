@@ -1,0 +1,126 @@
+-- Test cases for converting high-level IR to lower-level IR (lowering).
+
+[case testLowerIntEq]
+def f(x: int, y: int) -> int:
+    if x == y:
+        return 1
+    else:
+        return 2
+[out]
+def f(x, y):
+    x, y :: int
+    r0 :: native_int
+    r1, r2, r3 :: bit
+L0:
+    r0 = x & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = x == y
+    if r2 goto L3 else goto L4 :: bool
+L2:
+    r3 = CPyTagged_IsEq_(x, y)
+    if r3 goto L3 else goto L4 :: bool
+L3:
+    return 2
+L4:
+    return 4
+
+[case testLowerIntNe]
+def f(x: int, y: int) -> int:
+    if x != y:
+        return 1
+    else:
+        return 2
+[out]
+def f(x, y):
+    x, y :: int
+    r0 :: native_int
+    r1, r2, r3, r4 :: bit
+L0:
+    r0 = x & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = x != y
+    if r2 goto L3 else goto L4 :: bool
+L2:
+    r3 = CPyTagged_IsEq_(x, y)
+    r4 = r3 ^ 1
+    if r4 goto L3 else goto L4 :: bool
+L3:
+    return 2
+L4:
+    return 4
+
+[case testLowerIntEqWithConstant]
+def f(x: int, y: int) -> int:
+    if x == 2:
+        return 1
+    elif -1 == x:
+        return 2
+    return 3
+[out]
+def f(x, y):
+    x, y :: int
+    r0, r1 :: bit
+L0:
+    r0 = x == 4
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    return 2
+L2:
+    r1 = -2 == x
+    if r1 goto L3 else goto L4 :: bool
+L3:
+    return 4
+L4:
+    return 6
+
+[case testLowerIntNeWithConstant]
+def f(x: int, y: int) -> int:
+    if x != 2:
+        return 1
+    elif -1 != x:
+        return 2
+    return 3
+[out]
+def f(x, y):
+    x, y :: int
+    r0, r1 :: bit
+L0:
+    r0 = x != 4
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    return 2
+L2:
+    r1 = -2 != x
+    if r1 goto L3 else goto L4 :: bool
+L3:
+    return 4
+L4:
+    return 6
+
+[case testLowerIntEqValueContext]
+def f(x: int, y: int) -> bool:
+    return x == y
+[out]
+def f(x, y):
+    x, y :: int
+    r0 :: native_int
+    r1, r2 :: bit
+    r3 :: bool
+    r4 :: bit
+L0:
+    r0 = x & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = x == y
+    r3 = r2
+    goto L3
+L2:
+    r4 = CPyTagged_IsEq_(x, y)
+    r3 = r4
+L3:
+    return r3
