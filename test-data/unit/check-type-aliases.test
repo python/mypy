@@ -1074,6 +1074,11 @@ TestType = TypeAliasType("TestType", Union[int, str])
 x: TestType = 42
 y: TestType = 'a'
 z: TestType = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "Union[int, str]")
+
+class A:
+    ClassAlias = TypeAliasType("ClassAlias", int)
+xc: A.ClassAlias = 1
+yc: A.ClassAlias = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [builtins fixtures/tuple.pyi]
 
 [case testTypeAliasTypeInvalid]
