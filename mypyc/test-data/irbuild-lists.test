@@ -108,16 +108,15 @@ def f() -> None:
 def f():
     r0 :: list
     r1, r2 :: object
-    r3, r4 :: ptr
+    r3 :: ptr
     x :: list
 L0:
     r0 = PyList_New(2)
     r1 = object 1
     r2 = object 2
-    r3 = get_element_ptr r0 ob_item :: PyListObject
-    r4 = load_mem r3 :: ptr*
-    buf_init_item r4, 0, r1
-    buf_init_item r4, 1, r2
+    r3 = list_items r0
+    buf_init_item r3, 0, r1
+    buf_init_item r3, 1, r2
     keep_alive r0
     x = r0
     return 1
@@ -155,19 +154,18 @@ def f(a: List[int]) -> None:
 def f(a):
     a, r0, b, r1 :: list
     r2 :: object
-    r3, r4 :: ptr
-    r5 :: list
+    r3 :: ptr
+    r4 :: list
 L0:
     r0 = CPySequence_Multiply(a, 4)
     b = r0
     r1 = PyList_New(1)
     r2 = object 4
-    r3 = get_element_ptr r1 ob_item :: PyListObject
-    r4 = load_mem r3 :: ptr*
-    buf_init_item r4, 0, r2
+    r3 = list_items r1
+    buf_init_item r3, 0, r2
     keep_alive r1
-    r5 = CPySequence_RMultiply(6, r1)
-    b = r5
+    r4 = CPySequence_RMultiply(6, r1)
+    b = r4
     return 1
 
 [case testListLen]
@@ -252,24 +250,23 @@ def f(x: List[int], y: List[int]) -> List[int]:
 def f(x, y):
     x, y, r0 :: list
     r1, r2 :: object
-    r3, r4 :: ptr
-    r5, r6, r7 :: object
-    r8 :: i32
-    r9 :: bit
+    r3 :: ptr
+    r4, r5, r6 :: object
+    r7 :: i32
+    r8 :: bit
 L0:
     r0 = PyList_New(2)
     r1 = object 1
     r2 = object 2
-    r3 = get_element_ptr r0 ob_item :: PyListObject
-    r4 = load_mem r3 :: ptr*
-    buf_init_item r4, 0, r1
-    buf_init_item r4, 1, r2
+    r3 = list_items r0
+    buf_init_item r3, 0, r1
+    buf_init_item r3, 1, r2
     keep_alive r0
-    r5 = CPyList_Extend(r0, x)
-    r6 = CPyList_Extend(r0, y)
-    r7 = object 3
-    r8 = PyList_Append(r0, r7)
-    r9 = r8 >= 0 :: signed
+    r4 = CPyList_Extend(r0, x)
+    r5 = CPyList_Extend(r0, y)
+    r6 = object 3
+    r7 = PyList_Append(r0, r6)
+    r8 = r7 >= 0 :: signed
     return r0
 
 [case testListIn]

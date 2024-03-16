@@ -688,39 +688,38 @@ def delListMultiple() -> None:
 def delList():
     r0 :: list
     r1, r2 :: object
-    r3, r4 :: ptr
+    r3 :: ptr
     l :: list
-    r5 :: object
-    r6 :: i32
-    r7 :: bit
+    r4 :: object
+    r5 :: i32
+    r6 :: bit
 L0:
     r0 = PyList_New(2)
     r1 = object 1
     r2 = object 2
-    r3 = get_element_ptr r0 ob_item :: PyListObject
-    r4 = load_mem r3 :: ptr*
-    buf_init_item r4, 0, r1
-    buf_init_item r4, 1, r2
+    r3 = list_items r0
+    buf_init_item r3, 0, r1
+    buf_init_item r3, 1, r2
     keep_alive r0
     l = r0
-    r5 = object 1
-    r6 = PyObject_DelItem(l, r5)
-    r7 = r6 >= 0 :: signed
+    r4 = object 1
+    r5 = PyObject_DelItem(l, r4)
+    r6 = r5 >= 0 :: signed
     return 1
 def delListMultiple():
     r0 :: list
     r1, r2, r3, r4, r5, r6, r7 :: object
-    r8, r9 :: ptr
+    r8 :: ptr
     l :: list
-    r10 :: object
-    r11 :: i32
-    r12 :: bit
-    r13 :: object
-    r14 :: i32
-    r15 :: bit
-    r16 :: object
-    r17 :: i32
-    r18 :: bit
+    r9 :: object
+    r10 :: i32
+    r11 :: bit
+    r12 :: object
+    r13 :: i32
+    r14 :: bit
+    r15 :: object
+    r16 :: i32
+    r17 :: bit
 L0:
     r0 = PyList_New(7)
     r1 = object 1
@@ -730,26 +729,25 @@ L0:
     r5 = object 5
     r6 = object 6
     r7 = object 7
-    r8 = get_element_ptr r0 ob_item :: PyListObject
-    r9 = load_mem r8 :: ptr*
-    buf_init_item r9, 0, r1
-    buf_init_item r9, 1, r2
-    buf_init_item r9, 2, r3
-    buf_init_item r9, 3, r4
-    buf_init_item r9, 4, r5
-    buf_init_item r9, 5, r6
-    buf_init_item r9, 6, r7
+    r8 = list_items r0
+    buf_init_item r8, 0, r1
+    buf_init_item r8, 1, r2
+    buf_init_item r8, 2, r3
+    buf_init_item r8, 3, r4
+    buf_init_item r8, 4, r5
+    buf_init_item r8, 5, r6
+    buf_init_item r8, 6, r7
     keep_alive r0
     l = r0
-    r10 = object 1
-    r11 = PyObject_DelItem(l, r10)
-    r12 = r11 >= 0 :: signed
-    r13 = object 2
-    r14 = PyObject_DelItem(l, r13)
-    r15 = r14 >= 0 :: signed
-    r16 = object 3
-    r17 = PyObject_DelItem(l, r16)
-    r18 = r17 >= 0 :: signed
+    r9 = object 1
+    r10 = PyObject_DelItem(l, r9)
+    r11 = r10 >= 0 :: signed
+    r12 = object 2
+    r13 = PyObject_DelItem(l, r12)
+    r14 = r13 >= 0 :: signed
+    r15 = object 3
+    r16 = PyObject_DelItem(l, r15)
+    r17 = r16 >= 0 :: signed
     return 1
 
 [case testDelDict]
