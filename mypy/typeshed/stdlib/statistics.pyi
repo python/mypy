@@ -110,14 +110,14 @@ class NormalDist:
 
 if sys.version_info >= (3, 12):
     def correlation(
-        __x: Sequence[_Number], __y: Sequence[_Number], *, method: Literal["linear", "ranked"] = "linear"
+        x: Sequence[_Number], y: Sequence[_Number], /, *, method: Literal["linear", "ranked"] = "linear"
     ) -> float: ...
 
 elif sys.version_info >= (3, 10):
-    def correlation(__x: Sequence[_Number], __y: Sequence[_Number]) -> float: ...
+    def correlation(x: Sequence[_Number], y: Sequence[_Number], /) -> float: ...
 
 if sys.version_info >= (3, 10):
-    def covariance(__x: Sequence[_Number], __y: Sequence[_Number]) -> float: ...
+    def covariance(x: Sequence[_Number], y: Sequence[_Number], /) -> float: ...
 
     class LinearRegression(NamedTuple):
         slope: float
@@ -125,8 +125,8 @@ if sys.version_info >= (3, 10):
 
 if sys.version_info >= (3, 11):
     def linear_regression(
-        __regressor: Sequence[_Number], __dependent_variable: Sequence[_Number], *, proportional: bool = False
+        regressor: Sequence[_Number], dependent_variable: Sequence[_Number], /, *, proportional: bool = False
     ) -> LinearRegression: ...
 
 elif sys.version_info >= (3, 10):
-    def linear_regression(__regressor: Sequence[_Number], __dependent_variable: Sequence[_Number]) -> LinearRegression: ...
+    def linear_regression(regressor: Sequence[_Number], dependent_variable: Sequence[_Number], /) -> LinearRegression: ...

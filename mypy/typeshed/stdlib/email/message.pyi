@@ -15,16 +15,20 @@ _PayloadType: TypeAlias = Message | str
 _EncodedPayloadType: TypeAlias = Message | bytes
 _MultipartPayloadType: TypeAlias = list[_PayloadType]
 _CharsetType: TypeAlias = Charset | str | None
-# Type returned by Policy.header_fetch_parse, AnyOf[str | Header]
+# Type returned by Policy.header_fetch_parse, often str or Header.
 _HeaderType: TypeAlias = Any
-_HeaderTypeParam: TypeAlias = str | Header
+# Type accepted by Policy.header_store_parse.
+_HeaderTypeParam: TypeAlias = str | Header | Any
 
 class _SupportsEncodeToPayload(Protocol):
-    def encode(self, __encoding: str) -> _PayloadType | _MultipartPayloadType | _SupportsDecodeToPayload: ...
+    def encode(self, encoding: str, /) -> _PayloadType | _MultipartPayloadType | _SupportsDecodeToPayload: ...
 
 class _SupportsDecodeToPayload(Protocol):
-    def decode(self, __encoding: str, __errors: str) -> _PayloadType | _MultipartPayloadType: ...
+    def decode(self, encoding: str, errors: str, /) -> _PayloadType | _MultipartPayloadType: ...
 
+# TODO: This class should be generic over the header policy and/or the header
+# value types allowed by the policy. This depends on PEP 696 support
+# (https://github.com/python/typeshed/issues/11422).
 class Message:
     policy: Policy  # undocumented
     preamble: str | None
