@@ -1224,6 +1224,8 @@ class C:
         return []
 
 def f(x: C) -> None:
+    # In this case the keep_alive must come before the branch, as otherwise
+    # reference count transform will get confused.
     if x[1][0] == 2:
         y = 1
     else:
@@ -1248,9 +1250,9 @@ L0:
     r1 = CPyList_GetItemShortBorrow(r0, 0)
     r2 = unbox(int, r1)
     r3 = int_eq r2, 4
+    keep_alive r0
     if r3 goto L1 else goto L2 :: bool
 L1:
-    keep_alive r0
     y = 2
     goto L3
 L2:
