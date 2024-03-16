@@ -771,7 +771,7 @@ L0:
     r2 = object 1
     r3 = get_element_ptr r1 ob_item :: PyListObject
     r4 = load_mem r3 :: ptr*
-    set_mem r4, r2 :: builtins.object*
+    buf_init_item r4, 0, r2
     keep_alive r1
     r5 = g(r1)
     r6 = box(None, 1)
@@ -801,7 +801,7 @@ L0:
     r2 = PyList_New(1)
     r3 = get_element_ptr r2 ob_item :: PyListObject
     r4 = load_mem r3 :: ptr*
-    set_mem r4, y :: builtins.object*
+    buf_init_item r4, 0, y
     keep_alive r2
     a = r2
     r5 = (2, 4)
@@ -1676,7 +1676,7 @@ L0:
     r5 = object 1
     r6 = get_element_ptr r4 ob_item :: PyListObject
     r7 = load_mem r6 :: ptr*
-    set_mem r7, r5 :: builtins.object*
+    buf_init_item r7, 0, r5
     keep_alive r4
     r8 = box(tuple[int, int], r0)
     r9 = CPyList_Extend(r4, r8)
@@ -1849,20 +1849,20 @@ def f() -> List[int]:
 def f():
     r0, r1 :: list
     r2, r3, r4 :: object
-    r5, r6, r7, r8 :: ptr
-    r9 :: short_int
-    r10 :: ptr
-    r11 :: native_int
-    r12 :: short_int
-    r13 :: bit
-    r14 :: object
-    r15, x :: int
-    r16, r17 :: bit
-    r18 :: int
-    r19 :: object
-    r20 :: i32
-    r21 :: bit
-    r22 :: short_int
+    r5, r6 :: ptr
+    r7 :: short_int
+    r8 :: ptr
+    r9 :: native_int
+    r10 :: short_int
+    r11 :: bit
+    r12 :: object
+    r13, x :: int
+    r14, r15 :: bit
+    r16 :: int
+    r17 :: object
+    r18 :: i32
+    r19 :: bit
+    r20 :: short_int
 L0:
     r0 = PyList_New(0)
     r1 = PyList_New(3)
@@ -1871,41 +1871,39 @@ L0:
     r4 = object 3
     r5 = get_element_ptr r1 ob_item :: PyListObject
     r6 = load_mem r5 :: ptr*
-    set_mem r6, r2 :: builtins.object*
-    r7 = r6 + WORD_SIZE*1
-    set_mem r7, r3 :: builtins.object*
-    r8 = r6 + WORD_SIZE*2
-    set_mem r8, r4 :: builtins.object*
+    buf_init_item r6, 0, r2
+    buf_init_item r6, 1, r3
+    buf_init_item r6, 2, r4
     keep_alive r1
-    r9 = 0
+    r7 = 0
 L1:
-    r10 = get_element_ptr r1 ob_size :: PyVarObject
-    r11 = load_mem r10 :: native_int*
+    r8 = get_element_ptr r1 ob_size :: PyVarObject
+    r9 = load_mem r8 :: native_int*
     keep_alive r1
-    r12 = r11 << 1
-    r13 = int_lt r9, r12
-    if r13 goto L2 else goto L8 :: bool
+    r10 = r9 << 1
+    r11 = int_lt r7, r10
+    if r11 goto L2 else goto L8 :: bool
 L2:
-    r14 = CPyList_GetItemUnsafe(r1, r9)
-    r15 = unbox(int, r14)
-    x = r15
-    r16 = int_ne x, 4
-    if r16 goto L4 else goto L3 :: bool
+    r12 = CPyList_GetItemUnsafe(r1, r7)
+    r13 = unbox(int, r12)
+    x = r13
+    r14 = int_ne x, 4
+    if r14 goto L4 else goto L3 :: bool
 L3:
     goto L7
 L4:
-    r17 = int_ne x, 6
-    if r17 goto L6 else goto L5 :: bool
+    r15 = int_ne x, 6
+    if r15 goto L6 else goto L5 :: bool
 L5:
     goto L7
 L6:
-    r18 = CPyTagged_Multiply(x, x)
-    r19 = box(int, r18)
-    r20 = PyList_Append(r0, r19)
-    r21 = r20 >= 0 :: signed
+    r16 = CPyTagged_Multiply(x, x)
+    r17 = box(int, r16)
+    r18 = PyList_Append(r0, r17)
+    r19 = r18 >= 0 :: signed
 L7:
-    r22 = r9 + 2
-    r9 = r22
+    r20 = r7 + 2
+    r7 = r20
     goto L1
 L8:
     return r0
@@ -1919,20 +1917,20 @@ def f():
     r0 :: dict
     r1 :: list
     r2, r3, r4 :: object
-    r5, r6, r7, r8 :: ptr
-    r9 :: short_int
-    r10 :: ptr
-    r11 :: native_int
-    r12 :: short_int
-    r13 :: bit
-    r14 :: object
-    r15, x :: int
-    r16, r17 :: bit
-    r18 :: int
-    r19, r20 :: object
-    r21 :: i32
-    r22 :: bit
-    r23 :: short_int
+    r5, r6 :: ptr
+    r7 :: short_int
+    r8 :: ptr
+    r9 :: native_int
+    r10 :: short_int
+    r11 :: bit
+    r12 :: object
+    r13, x :: int
+    r14, r15 :: bit
+    r16 :: int
+    r17, r18 :: object
+    r19 :: i32
+    r20 :: bit
+    r21 :: short_int
 L0:
     r0 = PyDict_New()
     r1 = PyList_New(3)
@@ -1941,42 +1939,40 @@ L0:
     r4 = object 3
     r5 = get_element_ptr r1 ob_item :: PyListObject
     r6 = load_mem r5 :: ptr*
-    set_mem r6, r2 :: builtins.object*
-    r7 = r6 + WORD_SIZE*1
-    set_mem r7, r3 :: builtins.object*
-    r8 = r6 + WORD_SIZE*2
-    set_mem r8, r4 :: builtins.object*
+    buf_init_item r6, 0, r2
+    buf_init_item r6, 1, r3
+    buf_init_item r6, 2, r4
     keep_alive r1
-    r9 = 0
+    r7 = 0
 L1:
-    r10 = get_element_ptr r1 ob_size :: PyVarObject
-    r11 = load_mem r10 :: native_int*
+    r8 = get_element_ptr r1 ob_size :: PyVarObject
+    r9 = load_mem r8 :: native_int*
     keep_alive r1
-    r12 = r11 << 1
-    r13 = int_lt r9, r12
-    if r13 goto L2 else goto L8 :: bool
+    r10 = r9 << 1
+    r11 = int_lt r7, r10
+    if r11 goto L2 else goto L8 :: bool
 L2:
-    r14 = CPyList_GetItemUnsafe(r1, r9)
-    r15 = unbox(int, r14)
-    x = r15
-    r16 = int_ne x, 4
-    if r16 goto L4 else goto L3 :: bool
+    r12 = CPyList_GetItemUnsafe(r1, r7)
+    r13 = unbox(int, r12)
+    x = r13
+    r14 = int_ne x, 4
+    if r14 goto L4 else goto L3 :: bool
 L3:
     goto L7
 L4:
-    r17 = int_ne x, 6
-    if r17 goto L6 else goto L5 :: bool
+    r15 = int_ne x, 6
+    if r15 goto L6 else goto L5 :: bool
 L5:
     goto L7
 L6:
-    r18 = CPyTagged_Multiply(x, x)
-    r19 = box(int, x)
-    r20 = box(int, r18)
-    r21 = CPyDict_SetItem(r0, r19, r20)
-    r22 = r21 >= 0 :: signed
+    r16 = CPyTagged_Multiply(x, x)
+    r17 = box(int, x)
+    r18 = box(int, r16)
+    r19 = CPyDict_SetItem(r0, r17, r18)
+    r20 = r19 >= 0 :: signed
 L7:
-    r23 = r9 + 2
-    r9 = r23
+    r21 = r7 + 2
+    r7 = r21
     goto L1
 L8:
     return r0
@@ -2208,11 +2204,11 @@ def __top_level__():
     r59 :: bit
     r60 :: list
     r61, r62, r63 :: object
-    r64, r65, r66, r67 :: ptr
-    r68 :: dict
-    r69 :: str
-    r70 :: i32
-    r71 :: bit
+    r64, r65 :: ptr
+    r66 :: dict
+    r67 :: str
+    r68 :: i32
+    r69 :: bit
 L0:
     r0 = builtins :: module
     r1 = load_address _Py_NoneStruct
@@ -2285,16 +2281,14 @@ L2:
     r63 = object 3
     r64 = get_element_ptr r60 ob_item :: PyListObject
     r65 = load_mem r64 :: ptr*
-    set_mem r65, r61 :: builtins.object*
-    r66 = r65 + WORD_SIZE*1
-    set_mem r66, r62 :: builtins.object*
-    r67 = r65 + WORD_SIZE*2
-    set_mem r67, r63 :: builtins.object*
+    buf_init_item r65, 0, r61
+    buf_init_item r65, 1, r62
+    buf_init_item r65, 2, r63
     keep_alive r60
-    r68 = __main__.globals :: static
-    r69 = 'y'
-    r70 = CPyDict_SetItem(r68, r69, r60)
-    r71 = r70 >= 0 :: signed
+    r66 = __main__.globals :: static
+    r67 = 'y'
+    r68 = CPyDict_SetItem(r66, r67, r60)
+    r69 = r68 >= 0 :: signed
     return 1
 
 [case testChainedConditional]

@@ -108,7 +108,7 @@ def f() -> None:
 def f():
     r0 :: list
     r1, r2 :: object
-    r3, r4, r5 :: ptr
+    r3, r4 :: ptr
     x :: list
 L0:
     r0 = PyList_New(2)
@@ -116,9 +116,8 @@ L0:
     r2 = object 2
     r3 = get_element_ptr r0 ob_item :: PyListObject
     r4 = load_mem r3 :: ptr*
-    set_mem r4, r1 :: builtins.object*
-    r5 = r4 + WORD_SIZE*1
-    set_mem r5, r2 :: builtins.object*
+    buf_init_item r4, 0, r1
+    buf_init_item r4, 1, r2
     keep_alive r0
     x = r0
     return 1
@@ -165,7 +164,7 @@ L0:
     r2 = object 4
     r3 = get_element_ptr r1 ob_item :: PyListObject
     r4 = load_mem r3 :: ptr*
-    set_mem r4, r2 :: builtins.object*
+    buf_init_item r4, 0, r2
     keep_alive r1
     r5 = CPySequence_RMultiply(6, r1)
     b = r5
@@ -253,25 +252,24 @@ def f(x: List[int], y: List[int]) -> List[int]:
 def f(x, y):
     x, y, r0 :: list
     r1, r2 :: object
-    r3, r4, r5 :: ptr
-    r6, r7, r8 :: object
-    r9 :: i32
-    r10 :: bit
+    r3, r4 :: ptr
+    r5, r6, r7 :: object
+    r8 :: i32
+    r9 :: bit
 L0:
     r0 = PyList_New(2)
     r1 = object 1
     r2 = object 2
     r3 = get_element_ptr r0 ob_item :: PyListObject
     r4 = load_mem r3 :: ptr*
-    set_mem r4, r1 :: builtins.object*
-    r5 = r4 + WORD_SIZE*1
-    set_mem r5, r2 :: builtins.object*
+    buf_init_item r4, 0, r1
+    buf_init_item r4, 1, r2
     keep_alive r0
-    r6 = CPyList_Extend(r0, x)
-    r7 = CPyList_Extend(r0, y)
-    r8 = object 3
-    r9 = PyList_Append(r0, r8)
-    r10 = r9 >= 0 :: signed
+    r5 = CPyList_Extend(r0, x)
+    r6 = CPyList_Extend(r0, y)
+    r7 = object 3
+    r8 = PyList_Append(r0, r7)
+    r9 = r8 >= 0 :: signed
     return r0
 
 [case testListIn]

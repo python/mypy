@@ -1150,7 +1150,7 @@ L0:
     r1 = PyList_New(1)
     r2 = get_element_ptr r1 ob_item :: PyListObject
     r3 = load_mem r2 :: ptr*
-    set_mem r3, r0 :: builtins.object*
+    buf_init_item r3, 0, r0
     keep_alive r1
     a = r1
     r4 = CPyList_GetItemInt64Borrow(a, n)
@@ -1260,7 +1260,7 @@ L0:
     r1 = box(i64, n)
     r2 = get_element_ptr r0 ob_item :: PyListObject
     r3 = load_mem r2 :: ptr*
-    set_mem r3, r1 :: builtins.object*
+    buf_init_item r3, 0, r1
     keep_alive r0
     r4 = n <= 4611686018427387903 :: signed
     if r4 goto L1 else goto L2 :: bool
