@@ -62,6 +62,14 @@ list_build_op = custom_op(
     steals=True,
 )
 
+# Get pointer to list items (ob_item PyListObject field)
+list_items = custom_primitive_op(
+    name="list_items",
+    arg_types=[list_rprimitive],
+    return_type=pointer_rprimitive,
+    error_kind=ERR_NEVER,
+)
+
 # list[index] (for an integer index)
 list_get_item_op = method_op(
     name="__getitem__",
@@ -299,12 +307,4 @@ sequence_get_slice = custom_op(
     return_type=object_rprimitive,
     c_function_name="PySequence_GetSlice",
     error_kind=ERR_MAGIC,
-)
-
-# Get pointer to list items (ob_item PyListObject field)
-list_items = custom_primitive_op(
-    name="list_items",
-    arg_types=[list_rprimitive],
-    return_type=pointer_rprimitive,
-    error_kind=ERR_NEVER,
 )

@@ -80,7 +80,6 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     PyObject,
     PySetObject,
-    PyVarObject,
     RArray,
     RInstance,
     RPrimitive,
@@ -163,7 +162,13 @@ from mypyc.primitives.int_ops import (
     uint8_overflow,
 )
 from mypyc.primitives.list_ops import list_build_op, list_extend_op, list_items, new_list_op
-from mypyc.primitives.misc_ops import bool_op, buf_init_item, fast_isinstance_op, none_object_op
+from mypyc.primitives.misc_ops import (
+    bool_op,
+    buf_init_item,
+    fast_isinstance_op,
+    none_object_op,
+    var_object_size,
+)
 from mypyc.primitives.registry import (
     ERR_NEG_INT,
     CFunctionDescription,
@@ -2163,9 +2168,7 @@ class LowLevelIRBuilder:
         typ = val.type
         size_value = None
         if is_list_rprimitive(typ) or is_tuple_rprimitive(typ) or is_bytes_rprimitive(typ):
-            elem_address = self.add(GetElementPtr(val, PyVarObject, "ob_size"))
-            size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
-            self.add(KeepAlive([val]))
+            size_value = self.primitive_op(var_object_size, [val], line)
         elif is_set_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PySetObject, "used"))
             size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))

@@ -23,5 +23,4 @@ def lower_primitive_op(name: str) -> Callable[[LowerFunc], LowerFunc]:
 
 
 # Import various modules that set up global state.
-import mypyc.lower.int_ops
-import mypyc.lower.list_ops  # noqa: F401
+from mypyc.lower import int_ops, list_ops, misc_ops  # noqa: F401

@@ -257,3 +257,11 @@ buf_init_item = custom_primitive_op(
     error_kind=ERR_NEVER,
     steals=[False, False, True],
 )
+
+# Get length of PyVarObject instance (e.g. list or tuple)
+var_object_size = custom_primitive_op(
+    name="var_object_size",
+    arg_types=[object_rprimitive],
+    return_type=c_pyssize_t_rprimitive,
+    error_kind=ERR_NEVER,
+)
