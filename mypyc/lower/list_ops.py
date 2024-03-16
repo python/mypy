@@ -1,8 +1,13 @@
 from __future__ import annotations
 
 from mypyc.common import PLATFORM_SIZE
-from mypyc.ir.ops import Integer, IntOp, SetMem, Value
-from mypyc.ir.rtypes import c_pyssize_t_rprimitive, object_rprimitive, pointer_rprimitive
+from mypyc.ir.ops import GetElementPtr, Integer, IntOp, LoadMem, SetMem, Value
+from mypyc.ir.rtypes import (
+    PyListObject,
+    c_pyssize_t_rprimitive,
+    object_rprimitive,
+    pointer_rprimitive,
+)
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 from mypyc.lower.registry import lower_primitive_op
 
@@ -32,3 +37,9 @@ def buf_init_item(builder: LowLevelIRBuilder, args: list[Value], line: int) -> V
             )
         )
     return builder.add(SetMem(object_rprimitive, ptr, value, line))
+
+
+@lower_primitive_op("list_items")
+def list_items(builder: LowLevelIRBuilder, args: list[Value], line: int) -> Value:
+    ob_item_ptr = builder.add(GetElementPtr(args[0], PyListObject, "ob_item", line))
+    return builder.add(LoadMem(pointer_rprimitive, ob_item_ptr, line))
