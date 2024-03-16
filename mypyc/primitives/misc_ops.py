@@ -243,10 +243,11 @@ register_function = custom_op(
 )
 
 
-# Set an item in a memory buffer
+# Initialize a PyObject * item in a memory buffer (steal the value)
 buf_init_item = custom_primitive_op(
     name="buf_init_item",
     arg_types=[pointer_rprimitive, c_pyssize_t_rprimitive, object_rprimitive],
     return_type=void_rtype,
     error_kind=ERR_NEVER,
+    steals=[False, False, True],
 )
