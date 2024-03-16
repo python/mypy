@@ -13,11 +13,17 @@ from mypyc.ir.rtypes import (
     int_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
+    pointer_rprimitive,
     str_rprimitive,
     void_rtype,
-    pointer_rprimitive,
 )
-from mypyc.primitives.registry import ERR_NEG_INT, custom_op, function_op, load_address_op, custom_primitive_op
+from mypyc.primitives.registry import (
+    ERR_NEG_INT,
+    custom_op,
+    custom_primitive_op,
+    function_op,
+    load_address_op,
+)
 
 # Get the 'bool' type object.
 load_address_op(name="builtins.bool", type=object_rprimitive, src="PyBool_Type")

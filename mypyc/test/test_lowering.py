@@ -16,8 +16,8 @@ from mypyc.test.testutil import (
     assert_test_output,
     build_ir_for_single_file,
     remove_comment_lines,
-    use_custom_builtins,
     replace_word_size,
+    use_custom_builtins,
 )
 from mypyc.transform.exceptions import insert_exception_handling
 from mypyc.transform.flag_elimination import do_flag_elimination

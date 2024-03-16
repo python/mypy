@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from mypyc.irbuild.ll_builder import LowLevelIRBuilder
-from mypyc.ir.ops import Value, Integer, SetMem, IntOp
-from mypyc.ir.rtypes import object_rprimitive, pointer_rprimitive, c_pyssize_t_rprimitive
 from mypyc.common import PLATFORM_SIZE
+from mypyc.ir.ops import Integer, IntOp, SetMem, Value
+from mypyc.ir.rtypes import c_pyssize_t_rprimitive, object_rprimitive, pointer_rprimitive
+from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 from mypyc.lower.registry import lower_primitive_op
 
 
@@ -17,7 +17,13 @@ def buf_init_item(builder: LowLevelIRBuilder, args: list[Value], line: int) -> V
     if index == 0:
         ptr = base
     else:
-        ptr = builder.add(IntOp(
-            pointer_rprimitive, base,
-            Integer(index * PLATFORM_SIZE, c_pyssize_t_rprimitive), IntOp.ADD, line))
+        ptr = builder.add(
+            IntOp(
+                pointer_rprimitive,
+                base,
+                Integer(index * PLATFORM_SIZE, c_pyssize_t_rprimitive),
+                IntOp.ADD,
+                line,
+            )
+        )
     return builder.add(SetMem(object_rprimitive, ptr, value, line))
