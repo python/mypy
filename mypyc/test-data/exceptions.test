@@ -118,7 +118,7 @@ L0:
     sum = 0
     i = 0
 L1:
-    r0 = int_lt i, l 
+    r0 = int_lt i, l
     if r0 goto L2 else goto L7 :: bool
 L2:
     r1 = CPyList_GetItemBorrow(a, i)

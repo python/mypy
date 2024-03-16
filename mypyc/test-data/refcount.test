@@ -458,7 +458,7 @@ L0:
     sum = 0
     i = 0
 L1:
-    r0 = int_le i, a 
+    r0 = int_le i, a
     if r0 goto L2 else goto L4 :: bool
 L2:
     r1 = CPyTagged_Add(sum, i)
@@ -1347,7 +1347,7 @@ def add(c):
 L0:
     r0 = borrow c.x
     r1 = borrow c.y
-    r2 = int_lt r0, r1 
+    r2 = int_lt r0, r1
     return r2
 
 [case testBorrowIntCompareFinal]

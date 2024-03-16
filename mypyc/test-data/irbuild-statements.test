@@ -16,7 +16,7 @@ L0:
     r0 = 0
     i = r0
 L1:
-    r1 = int_lt r0, 10 
+    r1 = int_lt r0, 10
     if r1 goto L2 else goto L4 :: bool
 L2:
     r2 = CPyTagged_Add(x, i)
@@ -42,7 +42,7 @@ L0:
     r0 = 0
     i = r0
 L1:
-    r1 = int_lt r0, a 
+    r1 = int_lt r0, a
     if r1 goto L2 else goto L4 :: bool
 L2:
 L3:
@@ -67,7 +67,7 @@ L0:
     r0 = 20
     i = r0
 L1:
-    r1 = int_gt r0, 0 
+    r1 = int_gt r0, 0
     if r1 goto L2 else goto L4 :: bool
 L2:
 L3:
@@ -90,7 +90,7 @@ def f():
 L0:
     n = 0
 L1:
-    r0 = int_lt n, 10 
+    r0 = int_lt n, 10
     if r0 goto L2 else goto L3 :: bool
 L2:
 L3:
@@ -110,7 +110,7 @@ L0:
     r0 = 0
     n = r0
 L1:
-    r1 = int_lt r0, 10 
+    r1 = int_lt r0, 10
     if r1 goto L2 else goto L4 :: bool
 L2:
     goto L4
@@ -136,11 +136,11 @@ def f():
 L0:
     n = 0
 L1:
-    r0 = int_lt n, 10 
+    r0 = int_lt n, 10
     if r0 goto L2 else goto L6 :: bool
 L2:
 L3:
-    r1 = int_lt n, 8 
+    r1 = int_lt n, 8
     if r1 goto L4 else goto L5 :: bool
 L4:
 L5:
@@ -159,7 +159,7 @@ def f():
 L0:
     n = 0
 L1:
-    r0 = int_lt n, 10 
+    r0 = int_lt n, 10
     if r0 goto L2 else goto L3 :: bool
 L2:
     goto L1
@@ -180,7 +180,7 @@ L0:
     r0 = 0
     n = r0
 L1:
-    r1 = int_lt r0, 10 
+    r1 = int_lt r0, 10
     if r1 goto L2 else goto L4 :: bool
 L2:
 L3:
@@ -205,11 +205,11 @@ def f():
 L0:
     n = 0
 L1:
-    r0 = int_lt n, 10 
+    r0 = int_lt n, 10
     if r0 goto L2 else goto L6 :: bool
 L2:
 L3:
-    r1 = int_lt n, 8 
+    r1 = int_lt n, 8
     if r1 goto L4 else goto L5 :: bool
 L4:
     goto L3
@@ -246,7 +246,7 @@ L1:
     r2 = load_mem r1 :: native_int*
     keep_alive ls
     r3 = r2 << 1
-    r4 = int_lt r0, r3 
+    r4 = int_lt r0, r3
     if r4 goto L2 else goto L4 :: bool
 L2:
     r5 = CPyList_GetItemUnsafe(ls, r0)
@@ -895,7 +895,7 @@ L1:
     r3 = load_mem r2 :: native_int*
     keep_alive a
     r4 = r3 << 1
-    r5 = int_lt r1, r4 
+    r5 = int_lt r1, r4
     if r5 goto L2 else goto L4 :: bool
 L2:
     r6 = CPyList_GetItemUnsafe(a, r1)
@@ -977,7 +977,7 @@ L1:
     r3 = load_mem r2 :: native_int*
     keep_alive a
     r4 = r3 << 1
-    r5 = int_lt r0, r4 
+    r5 = int_lt r0, r4
     if r5 goto L2 else goto L7 :: bool
 L2:
     r6 = PyIter_Next(r1)
@@ -1032,10 +1032,10 @@ L2:
     r5 = load_mem r4 :: native_int*
     keep_alive b
     r6 = r5 << 1
-    r7 = int_lt r1, r6 
+    r7 = int_lt r1, r6
     if r7 goto L3 else goto L6 :: bool
 L3:
-    r8 = int_lt r2, 10 
+    r8 = int_lt r2, 10
     if r8 goto L4 else goto L6 :: bool
 L4:
     r9 = unbox(bool, r3)

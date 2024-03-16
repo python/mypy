@@ -152,7 +152,7 @@ def f(n):
     r1, m :: int
 L0:
 L1:
-    r0 = int_lt n, 10 
+    r0 = int_lt n, 10
     if r0 goto L2 else goto L3 :: bool
 L2:
     r1 = CPyTagged_Add(n, 2)
@@ -187,12 +187,12 @@ L0:
     x = 2
     y = 2
 L1:
-    r0 = int_lt n, 2 
+    r0 = int_lt n, 2
     if r0 goto L2 else goto L6 :: bool
 L2:
     n = y
 L3:
-    r1 = int_lt n, 4 
+    r1 = int_lt n, 4
     if r1 goto L4 else goto L5 :: bool
 L4:
     n = 2
@@ -260,11 +260,11 @@ def f(a):
     y, x :: int
 L0:
 L1:
-    r0 = int_lt a, a 
+    r0 = int_lt a, a
     if r0 goto L2 else goto L6 :: bool
 L2:
 L3:
-    r1 = int_lt a, a 
+    r1 = int_lt a, a
     if r1 goto L4 else goto L5 :: bool
 L4:
     y = a
@@ -362,7 +362,7 @@ L0:
     sum = 0
     i = 0
 L1:
-    r0 = int_le i, a 
+    r0 = int_le i, a
     if r0 goto L2 else goto L3 :: bool
 L2:
     r1 = CPyTagged_Add(sum, i)

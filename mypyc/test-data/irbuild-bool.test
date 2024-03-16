@@ -277,7 +277,7 @@ def lt1(x, y):
 L0:
     r0 = x << 1
     r1 = extend r0: builtins.bool to builtins.int
-    r2 = int_lt r1, y 
+    r2 = int_lt r1, y
     return r2
 def lt2(x, y):
     x :: int
@@ -287,7 +287,7 @@ def lt2(x, y):
 L0:
     r0 = y << 1
     r1 = extend r0: builtins.bool to builtins.int
-    r2 = int_lt x, r1 
+    r2 = int_lt x, r1
     return r2
 def gt1(x, y):
     x :: bool

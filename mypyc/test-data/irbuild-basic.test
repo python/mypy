@@ -2316,14 +2316,14 @@ def f(x, y, z):
 L0:
     r0 = g(x)
     r1 = g(y)
-    r2 = int_lt r0, r1 
+    r2 = int_lt r0, r1
     if r2 goto L2 else goto L1 :: bool
 L1:
     r3 = r2
     goto L3
 L2:
     r4 = g(z)
-    r5 = int_gt r1, r4 
+    r5 = int_gt r1, r4
     r3 = r5
 L3:
     return r3

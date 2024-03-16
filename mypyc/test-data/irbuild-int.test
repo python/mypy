@@ -47,7 +47,7 @@ L6:
 L7:
     return 8
 L8:
-    r4 = int_lt x, 8 
+    r4 = int_lt x, 8
     if r4 goto L9 else goto L10 :: bool
 L9:
     return 10
@@ -67,7 +67,7 @@ def f(x, y):
     r0 :: bit
     r1 :: int
 L0:
-    r0 = int_lt y, x 
+    r0 = int_lt y, x
     if r0 goto L1 else goto L2 :: bool
 L1:
     r1 = y
