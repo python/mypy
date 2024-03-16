@@ -682,8 +682,8 @@ if sys.platform == "win32":
     errorTab: dict[int, str]  # undocumented
 
 class _SendableFile(Protocol):
-    def read(self, __size: int) -> bytes: ...
-    def seek(self, __offset: int) -> object: ...
+    def read(self, size: int, /) -> bytes: ...
+    def seek(self, offset: int, /) -> object: ...
 
     # optional fields:
     #
@@ -803,7 +803,7 @@ def getfqdn(name: str = "") -> str: ...
 if sys.version_info >= (3, 11):
     def create_connection(
         address: tuple[str | None, int],
-        timeout: float | None = ...,  # noqa: F811
+        timeout: float | None = ...,
         source_address: _Address | None = None,
         *,
         all_errors: bool = False,
@@ -811,7 +811,7 @@ if sys.version_info >= (3, 11):
 
 else:
     def create_connection(
-        address: tuple[str | None, int], timeout: float | None = ..., source_address: _Address | None = None  # noqa: F811
+        address: tuple[str | None, int], timeout: float | None = ..., source_address: _Address | None = None
     ) -> socket: ...
 
 def has_dualstack_ipv6() -> bool: ...

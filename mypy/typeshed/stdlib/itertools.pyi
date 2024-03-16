@@ -35,7 +35,7 @@ class count(Iterator[_N]):
     def __iter__(self) -> Self: ...
 
 class cycle(Iterator[_T]):
-    def __init__(self, __iterable: Iterable[_T]) -> None: ...
+    def __init__(self, iterable: Iterable[_T], /) -> None: ...
     def __next__(self) -> _T: ...
     def __iter__(self) -> Self: ...
 
@@ -62,9 +62,9 @@ class chain(Iterator[_T]):
     def __iter__(self) -> Self: ...
     @classmethod
     # We use type[Any] and not type[_S] to not lose the type inference from __iterable
-    def from_iterable(cls: type[Any], __iterable: Iterable[Iterable[_S]]) -> chain[_S]: ...
+    def from_iterable(cls: type[Any], iterable: Iterable[Iterable[_S]], /) -> chain[_S]: ...
     if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, __item: Any) -> GenericAlias: ...
+        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 class compress(Iterator[_T]):
     def __init__(self, data: Iterable[_T], selectors: Iterable[Any]) -> None: ...
@@ -72,12 +72,12 @@ class compress(Iterator[_T]):
     def __next__(self) -> _T: ...
 
 class dropwhile(Iterator[_T]):
-    def __init__(self, __predicate: _Predicate[_T], __iterable: Iterable[_T]) -> None: ...
+    def __init__(self, predicate: _Predicate[_T], iterable: Iterable[_T], /) -> None: ...
     def __iter__(self) -> Self: ...
     def __next__(self) -> _T: ...
 
 class filterfalse(Iterator[_T]):
-    def __init__(self, __predicate: _Predicate[_T] | None, __iterable: Iterable[_T]) -> None: ...
+    def __init__(self, predicate: _Predicate[_T] | None, iterable: Iterable[_T], /) -> None: ...
     def __iter__(self) -> Self: ...
     def __next__(self) -> _T: ...
 
@@ -91,74 +91,70 @@ class groupby(Iterator[tuple[_T_co, Iterator[_S_co]]], Generic[_T_co, _S_co]):
 
 class islice(Iterator[_T]):
     @overload
-    def __init__(self, __iterable: Iterable[_T], __stop: int | None) -> None: ...
+    def __init__(self, iterable: Iterable[_T], stop: int | None, /) -> None: ...
     @overload
-    def __init__(self, __iterable: Iterable[_T], __start: int | None, __stop: int | None, __step: int | None = ...) -> None: ...
+    def __init__(self, iterable: Iterable[_T], start: int | None, stop: int | None, step: int | None = ..., /) -> None: ...
     def __iter__(self) -> Self: ...
     def __next__(self) -> _T: ...
 
 class starmap(Iterator[_T_co]):
-    def __new__(cls, __function: Callable[..., _T], __iterable: Iterable[Iterable[Any]]) -> starmap[_T]: ...
+    def __new__(cls, function: Callable[..., _T], iterable: Iterable[Iterable[Any]], /) -> starmap[_T]: ...
     def __iter__(self) -> Self: ...
     def __next__(self) -> _T_co: ...
 
 class takewhile(Iterator[_T]):
-    def __init__(self, __predicate: _Predicate[_T], __iterable: Iterable[_T]) -> None: ...
+    def __init__(self, predicate: _Predicate[_T], iterable: Iterable[_T], /) -> None: ...
     def __iter__(self) -> Self: ...
     def __next__(self) -> _T: ...
 
-def tee(__iterable: Iterable[_T], __n: int = 2) -> tuple[Iterator[_T], ...]: ...
+def tee(iterable: Iterable[_T], n: int = 2, /) -> tuple[Iterator[_T], ...]: ...
 
 class zip_longest(Iterator[_T_co]):
     # one iterable (fillvalue doesn't matter)
     @overload
-    def __new__(cls, __iter1: Iterable[_T1], *, fillvalue: object = ...) -> zip_longest[tuple[_T1]]: ...
+    def __new__(cls, iter1: Iterable[_T1], /, *, fillvalue: object = ...) -> zip_longest[tuple[_T1]]: ...
     # two iterables
     @overload
     # In the overloads without fillvalue, all of the tuple members could theoretically be None,
     # but we return Any instead to avoid false positives for code where we know one of the iterables
     # is longer.
-    def __new__(cls, __iter1: Iterable[_T1], __iter2: Iterable[_T2]) -> zip_longest[tuple[_T1 | Any, _T2 | Any]]: ...
+    def __new__(cls, iter1: Iterable[_T1], iter2: Iterable[_T2], /) -> zip_longest[tuple[_T1 | Any, _T2 | Any]]: ...
     @overload
     def __new__(
-        cls, __iter1: Iterable[_T1], __iter2: Iterable[_T2], *, fillvalue: _T
+        cls, iter1: Iterable[_T1], iter2: Iterable[_T2], /, *, fillvalue: _T
     ) -> zip_longest[tuple[_T1 | _T, _T2 | _T]]: ...
     # three iterables
     @overload
     def __new__(
-        cls, __iter1: Iterable[_T1], __iter2: Iterable[_T2], __iter3: Iterable[_T3]
+        cls, iter1: Iterable[_T1], iter2: Iterable[_T2], iter3: Iterable[_T3], /
     ) -> zip_longest[tuple[_T1 | Any, _T2 | Any, _T3 | Any]]: ...
     @overload
     def __new__(
-        cls, __iter1: Iterable[_T1], __iter2: Iterable[_T2], __iter3: Iterable[_T3], *, fillvalue: _T
+        cls, iter1: Iterable[_T1], iter2: Iterable[_T2], iter3: Iterable[_T3], /, *, fillvalue: _T
     ) -> zip_longest[tuple[_T1 | _T, _T2 | _T, _T3 | _T]]: ...
     # four iterables
     @overload
     def __new__(
-        cls, __iter1: Iterable[_T1], __iter2: Iterable[_T2], __iter3: Iterable[_T3], __iter4: Iterable[_T4]
+        cls, iter1: Iterable[_T1], iter2: Iterable[_T2], iter3: Iterable[_T3], iter4: Iterable[_T4], /
     ) -> zip_longest[tuple[_T1 | Any, _T2 | Any, _T3 | Any, _T4 | Any]]: ...
     @overload
     def __new__(
-        cls, __iter1: Iterable[_T1], __iter2: Iterable[_T2], __iter3: Iterable[_T3], __iter4: Iterable[_T4], *, fillvalue: _T
+        cls, iter1: Iterable[_T1], iter2: Iterable[_T2], iter3: Iterable[_T3], iter4: Iterable[_T4], /, *, fillvalue: _T
     ) -> zip_longest[tuple[_T1 | _T, _T2 | _T, _T3 | _T, _T4 | _T]]: ...
     # five iterables
     @overload
     def __new__(
-        cls,
-        __iter1: Iterable[_T1],
-        __iter2: Iterable[_T2],
-        __iter3: Iterable[_T3],
-        __iter4: Iterable[_T4],
-        __iter5: Iterable[_T5],
+        cls, iter1: Iterable[_T1], iter2: Iterable[_T2], iter3: Iterable[_T3], iter4: Iterable[_T4], iter5: Iterable[_T5], /
     ) -> zip_longest[tuple[_T1 | Any, _T2 | Any, _T3 | Any, _T4 | Any, _T5 | Any]]: ...
     @overload
     def __new__(
         cls,
-        __iter1: Iterable[_T1],
-        __iter2: Iterable[_T2],
-        __iter3: Iterable[_T3],
-        __iter4: Iterable[_T4],
-        __iter5: Iterable[_T5],
+        iter1: Iterable[_T1],
+        iter2: Iterable[_T2],
+        iter3: Iterable[_T3],
+        iter4: Iterable[_T4],
+        iter5: Iterable[_T5],
+        /,
         *,
         fillvalue: _T,
     ) -> zip_longest[tuple[_T1 | _T, _T2 | _T, _T3 | _T, _T4 | _T, _T5 | _T]]: ...
@@ -166,23 +162,25 @@ class zip_longest(Iterator[_T_co]):
     @overload
     def __new__(
         cls,
-        __iter1: Iterable[_T],
-        __iter2: Iterable[_T],
-        __iter3: Iterable[_T],
-        __iter4: Iterable[_T],
-        __iter5: Iterable[_T],
-        __iter6: Iterable[_T],
+        iter1: Iterable[_T],
+        iter2: Iterable[_T],
+        iter3: Iterable[_T],
+        iter4: Iterable[_T],
+        iter5: Iterable[_T],
+        iter6: Iterable[_T],
+        /,
         *iterables: Iterable[_T],
     ) -> zip_longest[tuple[_T | Any, ...]]: ...
     @overload
     def __new__(
         cls,
-        __iter1: Iterable[_T],
-        __iter2: Iterable[_T],
-        __iter3: Iterable[_T],
-        __iter4: Iterable[_T],
-        __iter5: Iterable[_T],
-        __iter6: Iterable[_T],
+        iter1: Iterable[_T],
+        iter2: Iterable[_T],
+        iter3: Iterable[_T],
+        iter4: Iterable[_T],
+        iter5: Iterable[_T],
+        iter6: Iterable[_T],
+        /,
         *iterables: Iterable[_T],
         fillvalue: _T,
     ) -> zip_longest[tuple[_T, ...]]: ...
@@ -191,33 +189,29 @@ class zip_longest(Iterator[_T_co]):
 
 class product(Iterator[_T_co]):
     @overload
-    def __new__(cls, __iter1: Iterable[_T1]) -> product[tuple[_T1]]: ...
+    def __new__(cls, iter1: Iterable[_T1], /) -> product[tuple[_T1]]: ...
     @overload
-    def __new__(cls, __iter1: Iterable[_T1], __iter2: Iterable[_T2]) -> product[tuple[_T1, _T2]]: ...
+    def __new__(cls, iter1: Iterable[_T1], iter2: Iterable[_T2], /) -> product[tuple[_T1, _T2]]: ...
     @overload
-    def __new__(cls, __iter1: Iterable[_T1], __iter2: Iterable[_T2], __iter3: Iterable[_T3]) -> product[tuple[_T1, _T2, _T3]]: ...
+    def __new__(cls, iter1: Iterable[_T1], iter2: Iterable[_T2], iter3: Iterable[_T3], /) -> product[tuple[_T1, _T2, _T3]]: ...
     @overload
     def __new__(
-        cls, __iter1: Iterable[_T1], __iter2: Iterable[_T2], __iter3: Iterable[_T3], __iter4: Iterable[_T4]
+        cls, iter1: Iterable[_T1], iter2: Iterable[_T2], iter3: Iterable[_T3], iter4: Iterable[_T4], /
     ) -> product[tuple[_T1, _T2, _T3, _T4]]: ...
     @overload
     def __new__(
-        cls,
-        __iter1: Iterable[_T1],
-        __iter2: Iterable[_T2],
-        __iter3: Iterable[_T3],
-        __iter4: Iterable[_T4],
-        __iter5: Iterable[_T5],
+        cls, iter1: Iterable[_T1], iter2: Iterable[_T2], iter3: Iterable[_T3], iter4: Iterable[_T4], iter5: Iterable[_T5], /
     ) -> product[tuple[_T1, _T2, _T3, _T4, _T5]]: ...
     @overload
     def __new__(
         cls,
-        __iter1: Iterable[_T1],
-        __iter2: Iterable[_T2],
-        __iter3: Iterable[_T3],
-        __iter4: Iterable[_T4],
-        __iter5: Iterable[_T5],
-        __iter6: Iterable[_T6],
+        iter1: Iterable[_T1],
+        iter2: Iterable[_T2],
+        iter3: Iterable[_T3],
+        iter4: Iterable[_T4],
+        iter5: Iterable[_T5],
+        iter6: Iterable[_T6],
+        /,
     ) -> product[tuple[_T1, _T2, _T3, _T4, _T5, _T6]]: ...
     @overload
     def __new__(cls, *iterables: Iterable[_T1], repeat: int = 1) -> product[tuple[_T1, ...]]: ...
@@ -268,7 +262,7 @@ class combinations_with_replacement(Iterator[_T_co]):
 
 if sys.version_info >= (3, 10):
     class pairwise(Iterator[_T_co]):
-        def __new__(cls, __iterable: Iterable[_T]) -> pairwise[tuple[_T, _T]]: ...
+        def __new__(cls, iterable: Iterable[_T], /) -> pairwise[tuple[_T, _T]]: ...
         def __iter__(self) -> Self: ...
         def __next__(self) -> _T_co: ...
 

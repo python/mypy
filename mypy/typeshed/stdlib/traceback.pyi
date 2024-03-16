@@ -34,7 +34,8 @@ def print_tb(tb: TracebackType | None, limit: int | None = None, file: SupportsW
 if sys.version_info >= (3, 10):
     @overload
     def print_exception(
-        __exc: type[BaseException] | None,
+        exc: type[BaseException] | None,
+        /,
         value: BaseException | None = ...,
         tb: TracebackType | None = ...,
         limit: int | None = None,
@@ -43,18 +44,19 @@ if sys.version_info >= (3, 10):
     ) -> None: ...
     @overload
     def print_exception(
-        __exc: BaseException, *, limit: int | None = None, file: SupportsWrite[str] | None = None, chain: bool = True
+        exc: BaseException, /, *, limit: int | None = None, file: SupportsWrite[str] | None = None, chain: bool = True
     ) -> None: ...
     @overload
     def format_exception(
-        __exc: type[BaseException] | None,
+        exc: type[BaseException] | None,
+        /,
         value: BaseException | None = ...,
         tb: TracebackType | None = ...,
         limit: int | None = None,
         chain: bool = True,
     ) -> list[str]: ...
     @overload
-    def format_exception(__exc: BaseException, *, limit: int | None = None, chain: bool = True) -> list[str]: ...
+    def format_exception(exc: BaseException, /, *, limit: int | None = None, chain: bool = True) -> list[str]: ...
 
 else:
     def print_exception(
@@ -85,9 +87,9 @@ def print_list(extracted_list: list[FrameSummary], file: SupportsWrite[str] | No
 
 if sys.version_info >= (3, 10):
     @overload
-    def format_exception_only(__exc: BaseException | None) -> list[str]: ...
+    def format_exception_only(exc: BaseException | None, /) -> list[str]: ...
     @overload
-    def format_exception_only(__exc: Unused, value: BaseException | None) -> list[str]: ...
+    def format_exception_only(exc: Unused, /, value: BaseException | None) -> list[str]: ...
 
 else:
     def format_exception_only(etype: type[BaseException] | None, value: BaseException | None) -> list[str]: ...

@@ -618,18 +618,18 @@ class Wm:
     @overload
     def wm_attributes(self) -> tuple[Any, ...]: ...
     @overload
-    def wm_attributes(self, __option: str): ...
+    def wm_attributes(self, option: str, /): ...
     @overload
-    def wm_attributes(self, __option: str, __value, *__other_option_value_pairs: Any) -> None: ...
+    def wm_attributes(self, option: str, value, /, *__other_option_value_pairs: Any) -> None: ...
     attributes = wm_attributes
     def wm_client(self, name: str | None = None) -> str: ...
     client = wm_client
     @overload
     def wm_colormapwindows(self) -> list[Misc]: ...
     @overload
-    def wm_colormapwindows(self, __wlist: list[Misc] | tuple[Misc, ...]) -> None: ...
+    def wm_colormapwindows(self, wlist: list[Misc] | tuple[Misc, ...], /) -> None: ...
     @overload
-    def wm_colormapwindows(self, __first_wlist_item: Misc, *other_wlist_items: Misc) -> None: ...
+    def wm_colormapwindows(self, first_wlist_item: Misc, /, *other_wlist_items: Misc) -> None: ...
     colormapwindows = wm_colormapwindows
     def wm_command(self, value: str | None = None) -> str: ...
     command = wm_command
@@ -767,31 +767,31 @@ class Tk(Misc, Wm):
     # Tk has __getattr__ so that tk_instance.foo falls back to tk_instance.tk.foo
     # Please keep in sync with _tkinter.TkappType.
     # Some methods are intentionally missing because they are inherited from Misc instead.
-    def adderrorinfo(self, __msg): ...
-    def call(self, __command: Any, *args: Any) -> Any: ...
-    def createcommand(self, __name, __func): ...
+    def adderrorinfo(self, msg, /): ...
+    def call(self, command: Any, /, *args: Any) -> Any: ...
+    def createcommand(self, name, func, /): ...
     if sys.platform != "win32":
-        def createfilehandler(self, __file, __mask, __func): ...
-        def deletefilehandler(self, __file): ...
+        def createfilehandler(self, file, mask, func, /): ...
+        def deletefilehandler(self, file, /): ...
 
-    def createtimerhandler(self, __milliseconds, __func): ...
-    def dooneevent(self, __flags: int = ...): ...
-    def eval(self, __script: str) -> str: ...
-    def evalfile(self, __fileName): ...
-    def exprboolean(self, __s): ...
-    def exprdouble(self, __s): ...
-    def exprlong(self, __s): ...
-    def exprstring(self, __s): ...
+    def createtimerhandler(self, milliseconds, func, /): ...
+    def dooneevent(self, flags: int = ..., /): ...
+    def eval(self, script: str, /) -> str: ...
+    def evalfile(self, fileName, /): ...
+    def exprboolean(self, s, /): ...
+    def exprdouble(self, s, /): ...
+    def exprlong(self, s, /): ...
+    def exprstring(self, s, /): ...
     def globalgetvar(self, *args, **kwargs): ...
     def globalsetvar(self, *args, **kwargs): ...
     def globalunsetvar(self, *args, **kwargs): ...
     def interpaddr(self): ...
     def loadtk(self) -> None: ...
-    def record(self, __script): ...
+    def record(self, script, /): ...
     if sys.version_info < (3, 11):
-        def split(self, __arg): ...
+        def split(self, arg, /): ...
 
-    def splitlist(self, __arg): ...
+    def splitlist(self, arg, /): ...
     def unsetvar(self, *args, **kwargs): ...
     def wantobjects(self, *args, **kwargs): ...
     def willdispatch(self): ...
@@ -1214,11 +1214,11 @@ class Canvas(Widget, XView, YView):
     def canvasx(self, screenx, gridspacing: Incomplete | None = None): ...
     def canvasy(self, screeny, gridspacing: Incomplete | None = None): ...
     @overload
-    def coords(self, __tagOrId: str | int) -> list[float]: ...
+    def coords(self, tagOrId: str | int, /) -> list[float]: ...
     @overload
-    def coords(self, __tagOrId: str | int, __args: list[int] | list[float] | tuple[float, ...]) -> None: ...
+    def coords(self, tagOrId: str | int, args: list[int] | list[float] | tuple[float, ...], /) -> None: ...
     @overload
-    def coords(self, __tagOrId: str | int, __x1: float, __y1: float, *args: float) -> None: ...
+    def coords(self, tagOrId: str | int, x1: float, y1: float, /, *args: float) -> None: ...
     # create_foo() methods accept coords as a list or tuple, or as separate arguments.
     # Lists and tuples can be flat as in [1, 2, 3, 4], or nested as in [(1, 2), (3, 4)].
     # Keyword arguments should be the same in all overloads of each method.
@@ -1228,10 +1228,11 @@ class Canvas(Widget, XView, YView):
     @overload
     def create_line(
         self,
-        __x0: float,
-        __y0: float,
-        __x1: float,
-        __y1: float,
+        x0: float,
+        y0: float,
+        x1: float,
+        y1: float,
+        /,
         *,
         activedash: str | int | list[int] | tuple[int, ...] = ...,
         activefill: str = ...,
@@ -1259,8 +1260,9 @@ class Canvas(Widget, XView, YView):
     @overload
     def create_line(
         self,
-        __xy_pair_0: tuple[float, float],
-        __xy_pair_1: tuple[float, float],
+        xy_pair_0: tuple[float, float],
+        xy_pair_1: tuple[float, float],
+        /,
         *,
         activedash: str | int | list[int] | tuple[int, ...] = ...,
         activefill: str = ...,
@@ -1288,7 +1290,7 @@ class Canvas(Widget, XView, YView):
     @overload
     def create_line(
         self,
-        __coords: (
+        coords: (
             tuple[float, float, float, float]
             | tuple[tuple[float, float], tuple[float, float]]
             | list[int]
@@ -1296,6 +1298,7 @@ class Canvas(Widget, XView, YView):
             | list[tuple[int, int]]
             | list[tuple[float, float]]
         ),
+        /,
         *,
         activedash: str | int | list[int] | tuple[int, ...] = ...,
         activefill: str = ...,
@@ -1323,10 +1326,11 @@ class Canvas(Widget, XView, YView):
     @overload
     def create_oval(
         self,
-        __x0: float,
-        __y0: float,
-        __x1: float,
-        __y1: float,
+        x0: float,
+        y0: float,
+        x1: float,
+        y1: float,
+        /,
         *,
         activedash: str | int | list[int] | tuple[int, ...] = ...,
         activefill: str = ...,
@@ -1355,8 +1359,9 @@ class Canvas(Widget, XView, YView):
     @overload
     def create_oval(
         self,
-        __xy_pair_0: tuple[float, float],
-        __xy_pair_1: tuple[float, float],
+        xy_pair_0: tuple[float, float],
+        xy_pair_1: tuple[float, float],
+        /,
         *,
         activedash: str | int | list[int] | tuple[int, ...] = ...,
         activefill: str = ...,
@@ -1385,7 +1390,7 @@ class Canvas(Widget, XView, YView):
     @overload
     def create_oval(
         self,
-        __coords: (
+        coords: (
             tuple[float, float, float, float]
             | tuple[tuple[float, float], tuple[float, float]]
             | list[int]
@@ -1393,6 +1398,7 @@ class Canvas(Widget, XView, YView):
             | list[tuple[int, int]]
             | list[tuple[float, float]]
         ),
+        /,
         *,
         activedash: str | int | list[int] | tuple[int, ...] = ...,
         activefill: str = ...,
@@ -1421,10 +1427,11 @@ class Canvas(Widget, XView, YView):
     @overload
     def create_polygon(
         self,
-        __x0: float,
-        __y0: float,
-        __x1: float,
-        __y1: float,
+        x0: float,
+        y0: float,
+        x1: float,
+        y1: float,
+        /,
         *xy_pairs: float,
         activedash: str | int | list[int] | tuple[int, ...] = ...,
         activefill: str = ...,
@@ -1456,8 +1463,9 @@ class Canvas(Widget, XView, YView):
     @overload
     def create_polygon(
         self,
-        __xy_pair_0: tuple[float, float],
-        __xy_pair_1: tuple[float, float],
+        xy_pair_0: tuple[float, float],
+        xy_pair_1: tuple[float, float],
+        /,
         *xy_pairs: tuple[float, float],
         activedash: str | int | list[int] | tuple[int, ...] = ...,
         activefill: str = ...,
@@ -1489,7 +1497,7 @@ class Canvas(Widget, XView, YView):
     @overload
     def create_polygon(
         self,
-        __coords: (
+        coords: (
             tuple[float, ...]
             | tuple[tuple[float, float], ...]
             | list[int]
@@ -1497,6 +1505,7 @@ class Canvas(Widget, XView, YView):
             | list[tuple[int, int]]
             | list[tuple[float, float]]
         ),
+        /,
         *,
         activedash: str | int | list[int] | tuple[int, ...] = ...,
         activefill: str = ...,
@@ -1528,10 +1537,11 @@ class Canvas(Widget, XView, YView):
     @overload
     def create_rectangle(
         self,
-        __x0: float,
-        __y0: float,
-        __x1: float,
-        __y1: float,
+        x0: float,
+        y0: float,
+        x1: float,
+        y1: float,
+        /,
         *,
         activedash: str | int | list[int] | tuple[int, ...] = ...,
         activefill: str = ...,
@@ -1560,8 +1570,9 @@ class Canvas(Widget, XView, YView):
     @overload
     def create_rectangle(
         self,
-        __xy_pair_0: tuple[float, float],
-        __xy_pair_1: tuple[float, float],
+        xy_pair_0: tuple[float, float],
+        xy_pair_1: tuple[float, float],
+        /,
         *,
         activedash: str | int | list[int] | tuple[int, ...] = ...,
         activefill: str = ...,
@@ -1590,7 +1601,7 @@ class Canvas(Widget, XView, YView):
     @overload
     def create_rectangle(
         self,
-        __coords: (
+        coords: (
             tuple[float, float, float, float]
             | tuple[tuple[float, float], tuple[float, float]]
             | list[int]
@@ -1598,6 +1609,7 @@ class Canvas(Widget, XView, YView):
             | list[tuple[int, int]]
             | list[tuple[float, float]]
         ),
+        /,
         *,
         activedash: str | int | list[int] | tuple[int, ...] = ...,
         activefill: str = ...,
@@ -1626,8 +1638,9 @@ class Canvas(Widget, XView, YView):
     @overload
     def create_text(
         self,
-        __x: float,
-        __y: float,
+        x: float,
+        y: float,
+        /,
         *,
         activefill: str = ...,
         activestipple: str = ...,
@@ -1648,7 +1661,8 @@ class Canvas(Widget, XView, YView):
     @overload
     def create_text(
         self,
-        __coords: tuple[float, float] | list[int] | list[float],
+        coords: tuple[float, float] | list[int] | list[float],
+        /,
         *,
         activefill: str = ...,
         activestipple: str = ...,
@@ -1669,8 +1683,9 @@ class Canvas(Widget, XView, YView):
     @overload
     def create_window(
         self,
-        __x: float,
-        __y: float,
+        x: float,
+        y: float,
+        /,
         *,
         anchor: _Anchor = ...,
         height: _ScreenUnits = ...,
@@ -1682,7 +1697,8 @@ class Canvas(Widget, XView, YView):
     @overload
     def create_window(
         self,
-        __coords: tuple[float, float] | list[int] | list[float],
+        coords: tuple[float, float] | list[int] | list[float],
+        /,
         *,
         anchor: _Anchor = ...,
         height: _ScreenUnits = ...,
@@ -1694,11 +1710,11 @@ class Canvas(Widget, XView, YView):
     def dchars(self, *args) -> None: ...
     def delete(self, *tagsOrCanvasIds: str | int) -> None: ...
     @overload
-    def dtag(self, __tag: str, __tag_to_delete: str | None = ...) -> None: ...
+    def dtag(self, tag: str, tag_to_delete: str | None = ..., /) -> None: ...
     @overload
-    def dtag(self, __id: int, __tag_to_delete: str) -> None: ...
+    def dtag(self, id: int, tag_to_delete: str, /) -> None: ...
     def focus(self, *args): ...
-    def gettags(self, __tagOrId: str | int) -> tuple[str, ...]: ...
+    def gettags(self, tagOrId: str | int, /) -> tuple[str, ...]: ...
     def icursor(self, *args) -> None: ...
     def index(self, *args): ...
     def insert(self, *args) -> None: ...
@@ -1716,13 +1732,13 @@ class Canvas(Widget, XView, YView):
     #    lift = tkraise = tag_raise
     #
     # But mypy doesn't like aliasing here (maybe because Misc defines the same names)
-    def tag_lower(self, __first: str | int, __second: str | int | None = ...) -> None: ...
-    def lower(self, __first: str | int, __second: str | int | None = ...) -> None: ...  # type: ignore[override]
-    def tag_raise(self, __first: str | int, __second: str | int | None = ...) -> None: ...
-    def tkraise(self, __first: str | int, __second: str | int | None = ...) -> None: ...  # type: ignore[override]
-    def lift(self, __first: str | int, __second: str | int | None = ...) -> None: ...  # type: ignore[override]
+    def tag_lower(self, first: str | int, second: str | int | None = ..., /) -> None: ...
+    def lower(self, first: str | int, second: str | int | None = ..., /) -> None: ...  # type: ignore[override]
+    def tag_raise(self, first: str | int, second: str | int | None = ..., /) -> None: ...
+    def tkraise(self, first: str | int, second: str | int | None = ..., /) -> None: ...  # type: ignore[override]
+    def lift(self, first: str | int, second: str | int | None = ..., /) -> None: ...  # type: ignore[override]
     def scale(
-        self, __tagOrId: str | int, __xOrigin: _ScreenUnits, __yOrigin: _ScreenUnits, __xScale: float, __yScale: float
+        self, tagOrId: str | int, xOrigin: _ScreenUnits, yOrigin: _ScreenUnits, xScale: float, yScale: float, /
     ) -> None: ...
     def scan_mark(self, x, y) -> None: ...
     def scan_dragto(self, x, y, gain: int = 10) -> None: ...
@@ -3182,7 +3198,7 @@ class Text(Widget, XView, YView):
     @overload
     def tag_configure(self, tagName: str, cnf: str) -> tuple[str, str, str, Any, Any]: ...
     tag_config = tag_configure
-    def tag_delete(self, __first_tag_name: str, *tagNames: str) -> None: ...  # error if no tag names given
+    def tag_delete(self, first_tag_name: str, /, *tagNames: str) -> None: ...  # error if no tag names given
     def tag_lower(self, tagName: str, belowThis: str | None = None) -> None: ...
     def tag_names(self, index: _TextIndex | None = None) -> tuple[str, ...]: ...
     def tag_nextrange(

@@ -1,7 +1,7 @@
 import sys
 import threading
 from _typeshed import Unused
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Collection, Iterable, Iterator
 from logging import Logger
 from types import TracebackType
 from typing import Any, Generic, Literal, NamedTuple, Protocol, TypeVar
@@ -58,7 +58,7 @@ class Future(Generic[_T]):
 
 class Executor:
     if sys.version_info >= (3, 9):
-        def submit(self, __fn: Callable[_P, _T], *args: _P.args, **kwargs: _P.kwargs) -> Future[_T]: ...
+        def submit(self, fn: Callable[_P, _T], /, *args: _P.args, **kwargs: _P.kwargs) -> Future[_T]: ...
     else:
         def submit(self, fn: Callable[_P, _T], *args: _P.args, **kwargs: _P.kwargs) -> Future[_T]: ...
 
@@ -91,9 +91,15 @@ class DoneAndNotDoneFutures(NamedTuple, Generic[_T]):
     done: set[Future[_T]]
     not_done: set[Future[_T]]
 
-def wait(
-    fs: Iterable[Future[_T]], timeout: float | None = None, return_when: str = "ALL_COMPLETED"
-) -> DoneAndNotDoneFutures[_T]: ...
+if sys.version_info >= (3, 9):
+    def wait(
+        fs: Iterable[Future[_T]], timeout: float | None = None, return_when: str = "ALL_COMPLETED"
+    ) -> DoneAndNotDoneFutures[_T]: ...
+
+else:
+    def wait(
+        fs: Collection[Future[_T]], timeout: float | None = None, return_when: str = "ALL_COMPLETED"
+    ) -> DoneAndNotDoneFutures[_T]: ...
 
 class _Waiter:
     event: threading.Event
