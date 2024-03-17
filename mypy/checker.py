@@ -4549,10 +4549,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         implement additional narrowing logic.
         """
         if isinstance(e, OpExpr):
-            l = self._make_tupleexprs_with_literals_narrowable_by_using_in(e.left)
+            l = self._make_tupleexpr_with_literals_narrowable_by_using_in(e.left)
             assert l is not None
             e.left = l
-            r = self._make_tupleexprs_with_literals_narrowable_by_using_in(e.right)
+            r = self._make_tupleexpr_with_literals_narrowable_by_using_in(e.right)
             assert r is not None
             e.right = r
             return e
