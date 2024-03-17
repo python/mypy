@@ -3,7 +3,7 @@ from _typeshed import sentinel
 from collections.abc import Callable, Generator, Iterable, Sequence
 from re import Pattern
 from typing import IO, Any, Generic, Literal, NewType, NoReturn, Protocol, TypeVar, overload
-from typing_extensions import Self, TypeAlias
+from typing_extensions import Self, TypeAlias, deprecated
 
 __all__ = [
     "ArgumentParser",
@@ -339,11 +339,23 @@ class Action(_AttributeHolder):
 
 if sys.version_info >= (3, 12):
     class BooleanOptionalAction(Action):
+        @overload
         def __init__(
             self,
             option_strings: Sequence[str],
             dest: str,
-            default: _T | str | None = None,
+            default: bool | None = None,
+            *,
+            required: bool = False,
+            help: str | None = None,
+        ) -> None: ...
+        @overload
+        @deprecated("The `type`, `choices`, and `metavar` parameters are ignored and will be removed in Python 3.14.")
+        def __init__(
+            self,
+            option_strings: Sequence[str],
+            dest: str,
+            default: _T | bool | None = None,
             type: Callable[[str], _T] | FileType | None = sentinel,
             choices: Iterable[_T] | None = sentinel,
             required: bool = False,
@@ -353,11 +365,23 @@ if sys.version_info >= (3, 12):
 
 elif sys.version_info >= (3, 9):
     class BooleanOptionalAction(Action):
+        @overload
         def __init__(
             self,
             option_strings: Sequence[str],
             dest: str,
-            default: _T | str | None = None,
+            default: bool | None = None,
+            *,
+            required: bool = False,
+            help: str | None = None,
+        ) -> None: ...
+        @overload
+        @deprecated("The `type`, `choices`, and `metavar` parameters are ignored and will be removed in Python 3.14.")
+        def __init__(
+            self,
+            option_strings: Sequence[str],
+            dest: str,
+            default: _T | bool | None = None,
             type: Callable[[str], _T] | FileType | None = None,
             choices: Iterable[_T] | None = None,
             required: bool = False,
@@ -368,7 +392,7 @@ elif sys.version_info >= (3, 9):
 class Namespace(_AttributeHolder):
     def __init__(self, **kwargs: Any) -> None: ...
     def __getattr__(self, name: str) -> Any: ...
-    def __setattr__(self, __name: str, __value: Any) -> None: ...
+    def __setattr__(self, name: str, value: Any, /) -> None: ...
     def __contains__(self, key: str) -> bool: ...
     def __eq__(self, other: object) -> bool: ...
 

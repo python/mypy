@@ -1451,13 +1451,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             object_type=object_type,
         )
         proper_callee = get_proper_type(callee_type)
-        if (
-            isinstance(e.callee, RefExpr)
-            and isinstance(proper_callee, CallableType)
-            and proper_callee.type_guard is not None
-        ):
+        if isinstance(e.callee, RefExpr) and isinstance(proper_callee, CallableType):
             # Cache it for find_isinstance_check()
-            e.callee.type_guard = proper_callee.type_guard
+            if proper_callee.type_guard is not None:
+                e.callee.type_guard = proper_callee.type_guard
+            if proper_callee.type_is is not None:
+                e.callee.type_is = proper_callee.type_is
         return ret_type
 
     def check_union_call_expr(self, e: CallExpr, object_type: UnionType, member: str) -> Type:
@@ -1855,6 +1854,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # We support Type of namedtuples but not of tuples in general
         if isinstance(item, TupleType) and tuple_fallback(item).type.fullname != "builtins.tuple":
             return self.analyze_type_type_callee(tuple_fallback(item), context)
+        if isinstance(item, TypedDictType):
+            return self.typeddict_callable_from_context(item)
 
         self.msg.unsupported_type_type(item, context)
         return AnyType(TypeOfAny.from_error)
@@ -4437,6 +4438,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 operand = index.expr
                 if isinstance(operand, IntExpr):
                     return [-1 * operand.value]
+            if index.op == "+":
+                operand = index.expr
+                if isinstance(operand, IntExpr):
+                    return [operand.value]
         typ = get_proper_type(self.accept(index))
         if isinstance(typ, Instance) and typ.last_known_value is not None:
             typ = typ.last_known_value
@@ -5277,7 +5282,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # is a constructor -- but this fallback doesn't make sense for lambdas.
         callable_ctx = callable_ctx.copy_modified(fallback=self.named_type("builtins.function"))
 
-        if callable_ctx.type_guard is not None:
+        if callable_ctx.type_guard is not None or callable_ctx.type_is is not None:
             # Lambda's return type cannot be treated as a `TypeGuard`,
             # because it is implicit. And `TypeGuard`s must be explicit.
             # See https://github.com/python/mypy/issues/9927

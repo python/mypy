@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import itertools
 from collections import defaultdict
-from contextlib import contextmanager, nullcontext
+from contextlib import ExitStack, contextmanager
 from typing import (
     AbstractSet,
     Callable,
@@ -526,17 +526,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # print("XXX in pass %d, class %s, function %s" %
                     #       (self.pass_num, type_name, node.fullname or node.name))
                     done.add(node)
-                    with (
-                        self.tscope.class_scope(active_typeinfo)
-                        if active_typeinfo
-                        else nullcontext()
-                    ):
-                        with (
-                            self.scope.push_class(active_typeinfo)
-                            if active_typeinfo
-                            else nullcontext()
-                        ):
-                            self.check_partial(node)
+                    with ExitStack() as stack:
+                        if active_typeinfo:
+                            stack.enter_context(self.tscope.class_scope(active_typeinfo))
+                            stack.enter_context(self.scope.push_class(active_typeinfo))
+                        self.check_partial(node)
             return True
 
     def check_partial(self, node: DeferredNodeType | FineGrainedDeferredNodeType) -> None:
@@ -1208,6 +1202,22 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # We temporary push the definition to get the self type as
                     # visible from *inside* of this function/method.
                     ref_type: Type | None = self.scope.active_self_type()
+
+                if typ.type_is:
+                    arg_index = 0
+                    # For methods and classmethods, we want the second parameter
+                    if ref_type is not None and (not defn.is_static or defn.name == "__new__"):
+                        arg_index = 1
+                    if arg_index < len(typ.arg_types) and not is_subtype(
+                        typ.type_is, typ.arg_types[arg_index]
+                    ):
+                        self.fail(
+                            message_registry.NARROWED_TYPE_NOT_SUBTYPE.format(
+                                format_type(typ.type_is, self.options),
+                                format_type(typ.arg_types[arg_index], self.options),
+                            ),
+                            item,
+                        )
 
                 # Store argument types.
                 for i in range(len(typ.arg_types)):
@@ -2026,22 +2036,29 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if original_node and is_property(original_node):
                     original_type = get_property_type(original_type)
 
-            if isinstance(typ, FunctionLike) and is_property(defn):
-                typ = get_property_type(typ)
-                if (
-                    isinstance(original_node, Var)
-                    and not original_node.is_final
-                    and (not original_node.is_property or original_node.is_settable_property)
-                    and isinstance(defn, Decorator)
-                ):
-                    # We only give an error where no other similar errors will be given.
-                    if not isinstance(original_type, AnyType):
-                        self.msg.fail(
-                            "Cannot override writeable attribute with read-only property",
-                            # Give an error on function line to match old behaviour.
-                            defn.func,
-                            code=codes.OVERRIDE,
-                        )
+            if is_property(defn):
+                inner: FunctionLike | None
+                if isinstance(typ, FunctionLike):
+                    inner = typ
+                else:
+                    inner = self.extract_callable_type(typ, context)
+                if inner is not None:
+                    typ = inner
+                    typ = get_property_type(typ)
+                    if (
+                        isinstance(original_node, Var)
+                        and not original_node.is_final
+                        and (not original_node.is_property or original_node.is_settable_property)
+                        and isinstance(defn, Decorator)
+                    ):
+                        # We only give an error where no other similar errors will be given.
+                        if not isinstance(original_type, AnyType):
+                            self.msg.fail(
+                                "Cannot override writeable attribute with read-only property",
+                                # Give an error on function line to match old behaviour.
+                                defn.func,
+                                code=codes.OVERRIDE,
+                            )
 
             if isinstance(original_type, AnyType) or isinstance(typ, AnyType):
                 pass
@@ -2176,6 +2193,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 fail = True
             elif isinstance(original, CallableType) and isinstance(override, CallableType):
                 if original.type_guard is not None and override.type_guard is None:
+                    fail = True
+                if original.type_is is not None and override.type_is is None:
                     fail = True
 
         if is_private(name):
@@ -5053,6 +5072,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return
 
     def visit_match_stmt(self, s: MatchStmt) -> None:
+        named_subject: Expression
+        if isinstance(s.subject, CallExpr):
+            # Create a dummy subject expression to handle cases where a match statement's subject
+            # is not a literal value. This lets us correctly narrow types and check exhaustivity
+            # This is hack!
+            id = s.subject.callee.fullname if isinstance(s.subject.callee, RefExpr) else ""
+            name = "dummy-match-" + id
+            v = Var(name)
+            named_subject = NameExpr(name)
+            named_subject.node = v
+        else:
+            named_subject = s.subject
+
         with self.binder.frame_context(can_skip=False, fall_through=0):
             subject_type = get_proper_type(self.expr_checker.accept(s.subject))
 
@@ -5071,7 +5103,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # The second pass narrows down the types and type checks bodies.
             for p, g, b in zip(s.patterns, s.guards, s.bodies):
                 current_subject_type = self.expr_checker.narrow_type_from_binder(
-                    s.subject, subject_type
+                    named_subject, subject_type
                 )
                 pattern_type = self.pattern_checker.accept(p, current_subject_type)
                 with self.binder.frame_context(can_skip=True, fall_through=2):
@@ -5082,7 +5114,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         else_map: TypeMap = {}
                     else:
                         pattern_map, else_map = conditional_types_to_typemaps(
-                            s.subject, pattern_type.type, pattern_type.rest_type
+                            named_subject, pattern_type.type, pattern_type.rest_type
                         )
                         self.remove_capture_conflicts(pattern_type.captures, inferred_types)
                         self.push_type_map(pattern_map)
@@ -5110,7 +5142,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                 and expr.fullname == case_target.fullname
                                             ):
                                                 continue
-                                            type_map[s.subject] = type_map[expr]
+                                            type_map[named_subject] = type_map[expr]
 
                             self.push_type_map(guard_map)
                             self.accept(b)
@@ -5629,7 +5661,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def find_isinstance_check(self, node: Expression) -> tuple[TypeMap, TypeMap]:
         """Find any isinstance checks (within a chain of ands).  Includes
         implicit and explicit checks for None and calls to callable.
-        Also includes TypeGuard functions.
+        Also includes TypeGuard and TypeIs functions.
 
         Return value is a map of variables to their types if the condition
         is true and a map of variables to their types if the condition is false.
@@ -5681,7 +5713,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if literal(expr) == LITERAL_TYPE and attr and len(attr) == 1:
                     return self.hasattr_type_maps(expr, self.lookup_type(expr), attr[0])
             elif isinstance(node.callee, RefExpr):
-                if node.callee.type_guard is not None:
+                if node.callee.type_guard is not None or node.callee.type_is is not None:
                     # TODO: Follow *args, **kwargs
                     if node.arg_kinds[0] != nodes.ARG_POS:
                         # the first argument might be used as a kwarg
@@ -5707,7 +5739,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 # we want the idx-th variable to be narrowed
                                 expr = collapse_walrus(node.args[idx])
                             else:
-                                self.fail(message_registry.TYPE_GUARD_POS_ARG_REQUIRED, node)
+                                kind = (
+                                    "guard" if node.callee.type_guard is not None else "narrower"
+                                )
+                                self.fail(
+                                    message_registry.TYPE_GUARD_POS_ARG_REQUIRED.format(kind), node
+                                )
                                 return {}, {}
                     if literal(expr) == LITERAL_TYPE:
                         # Note: we wrap the target type, so that we can special case later.
@@ -5715,7 +5752,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # considered "always right" (i.e. even if the types are not overlapping).
                         # Also note that a care must be taken to unwrap this back at read places
                         # where we use this to narrow down declared type.
-                        return {expr: TypeGuardedType(node.callee.type_guard)}, {}
+                        if node.callee.type_guard is not None:
+                            return {expr: TypeGuardedType(node.callee.type_guard)}, {}
+                        else:
+                            assert node.callee.type_is is not None
+                            return conditional_types_to_typemaps(
+                                expr,
+                                *self.conditional_types_with_intersection(
+                                    self.lookup_type(expr),
+                                    [TypeRange(node.callee.type_is, is_upper_bound=False)],
+                                    expr,
+                                ),
+                            )
         elif isinstance(node, ComparisonExpr):
             # Step 1: Obtain the types of each operand and whether or not we can
             # narrow their types. (For example, we shouldn't try narrowing the

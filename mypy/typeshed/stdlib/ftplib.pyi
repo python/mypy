@@ -31,7 +31,7 @@ class FTP:
     sock: socket | None
     welcome: str | None
     passiveserver: int
-    timeout: int
+    timeout: float | None
     af: int
     lastresp: str
     file: TextIO | None
@@ -48,7 +48,7 @@ class FTP:
             user: str = "",
             passwd: str = "",
             acct: str = "",
-            timeout: float = ...,
+            timeout: float | None = ...,
             source_address: tuple[str, int] | None = None,
             *,
             encoding: str = "utf-8",
@@ -60,7 +60,7 @@ class FTP:
             user: str = "",
             passwd: str = "",
             acct: str = "",
-            timeout: float = ...,
+            timeout: float | None = ...,
             source_address: tuple[str, int] | None = None,
         ) -> None: ...
 
@@ -127,7 +127,7 @@ class FTP_TLS(FTP):
             acct: str = "",
             *,
             context: SSLContext | None = None,
-            timeout: float = ...,
+            timeout: float | None = ...,
             source_address: tuple[str, int] | None = None,
             encoding: str = "utf-8",
         ) -> None: ...
@@ -141,7 +141,7 @@ class FTP_TLS(FTP):
             keyfile: str | None = None,
             certfile: str | None = None,
             context: SSLContext | None = None,
-            timeout: float = ...,
+            timeout: float | None = ...,
             source_address: tuple[str, int] | None = None,
             *,
             encoding: str = "utf-8",
@@ -156,7 +156,7 @@ class FTP_TLS(FTP):
             keyfile: str | None = None,
             certfile: str | None = None,
             context: SSLContext | None = None,
-            timeout: float = ...,
+            timeout: float | None = ...,
             source_address: tuple[str, int] | None = None,
         ) -> None: ...
     ssl_version: int

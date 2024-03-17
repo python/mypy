@@ -37,6 +37,7 @@ from mypyc.ir.ops import (
     MethodCall,
     Op,
     OpVisitor,
+    PrimitiveOp,
     RaiseStandardError,
     Register,
     Return,
@@ -379,6 +380,9 @@ class OpChecker(OpVisitor[None]):
         pass
 
     def visit_call_c(self, op: CallC) -> None:
+        pass
+
+    def visit_primitive_op(self, op: PrimitiveOp) -> None:
         pass
 
     def visit_truncate(self, op: Truncate) -> None:

@@ -82,6 +82,74 @@ T3 = TypeVar("T3", int, str, default=bytes)  # E: TypeVar default must be one of
 T4 = TypeVar("T4", int, str, default=Union[int, str])  # E: TypeVar default must be one of the constraint types
 T5 = TypeVar("T5", float, str, default=int)  # E: TypeVar default must be one of the constraint types
 
+[case testTypeVarDefaultsInvalid3]
+from typing import Dict, Generic, TypeVar
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2", default=T3)  # E: Name "T3" is used before definition
+T3 = TypeVar("T3", default=str)
+T4 = TypeVar("T4", default=T3)
+
+class ClassError1(Generic[T3, T1]): ...  # E: "T1" cannot appear after "T3" in type parameter list because it has no default type
+
+def func_error1(
+    a: ClassError1,
+    b: ClassError1[int],
+    c: ClassError1[int, float],
+) -> None:
+    reveal_type(a)  # N: Revealed type is "__main__.ClassError1[builtins.str, Any]"
+    reveal_type(b)  # N: Revealed type is "__main__.ClassError1[builtins.int, Any]"
+    reveal_type(c)  # N: Revealed type is "__main__.ClassError1[builtins.int, builtins.float]"
+
+    k = ClassError1()
+    reveal_type(k)  # N: Revealed type is "__main__.ClassError1[builtins.str, Any]"
+    l = ClassError1[int]()
+    reveal_type(l)  # N: Revealed type is "__main__.ClassError1[builtins.int, Any]"
+    m = ClassError1[int, float]()
+    reveal_type(m)  # N: Revealed type is "__main__.ClassError1[builtins.int, builtins.float]"
+
+class ClassError2(Generic[T4, T3]): ...  # E: Type parameter "T4" has a default type that refers to one or more type variables that are out of scope
+
+def func_error2(
+    a: ClassError2,
+    b: ClassError2[int],
+    c: ClassError2[int, float],
+) -> None:
+    reveal_type(a)  # N: Revealed type is "__main__.ClassError2[Any, builtins.str]"
+    reveal_type(b)  # N: Revealed type is "__main__.ClassError2[builtins.int, builtins.str]"
+    reveal_type(c)  # N: Revealed type is "__main__.ClassError2[builtins.int, builtins.float]"
+
+    k = ClassError2()
+    reveal_type(k)  # N: Revealed type is "__main__.ClassError2[Any, builtins.str]"
+    l = ClassError2[int]()
+    reveal_type(l)  # N: Revealed type is "__main__.ClassError2[builtins.int, builtins.str]"
+    m = ClassError2[int, float]()
+    reveal_type(m)  # N: Revealed type is "__main__.ClassError2[builtins.int, builtins.float]"
+
+TERR1 = Dict[T3, T1]  # E: "T1" cannot appear after "T3" in type parameter list because it has no default type
+
+def func_error_alias1(
+    a: TERR1,
+    b: TERR1[int],
+    c: TERR1[int, float],
+) -> None:
+    reveal_type(a)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
+    reveal_type(b)  # N: Revealed type is "builtins.dict[builtins.int, Any]"
+    reveal_type(c)  # N: Revealed type is "builtins.dict[builtins.int, builtins.float]"
+
+TERR2 = Dict[T4, T3]  # TODO should be an error  \
+                      # Type parameter "T4" has a default type that refers to one or more type variables that are out of scope
+
+def func_error_alias2(
+    a: TERR2,
+    b: TERR2[int],
+    c: TERR2[int, float],
+) -> None:
+    reveal_type(a)  # N: Revealed type is "builtins.dict[Any, builtins.str]"
+    reveal_type(b)  # N: Revealed type is "builtins.dict[builtins.int, builtins.str]"
+    reveal_type(c)  # N: Revealed type is "builtins.dict[builtins.int, builtins.float]"
+[builtins fixtures/dict.pyi]
+
 [case testTypeVarDefaultsFunctions]
 from typing import TypeVar, ParamSpec, List, Union, Callable, Tuple
 from typing_extensions import TypeVarTuple, Unpack
@@ -349,6 +417,103 @@ def func_c4(
     reveal_type(m)  # N: Revealed type is "__main__.ClassC4[builtins.int, builtins.float]"
 [builtins fixtures/tuple.pyi]
 
+[case testTypeVarDefaultsClassRecursive1]
+# flags: --disallow-any-generics
+from typing import Generic, TypeVar, List
+
+T1 = TypeVar("T1", default=str)
+T2 = TypeVar("T2", default=T1)
+T3 = TypeVar("T3", default=T2)
+T4 = TypeVar("T4", default=List[T1])
+
+class ClassD1(Generic[T1, T2]): ...
+
+def func_d1(
+    a: ClassD1,
+    b: ClassD1[int],
+    c: ClassD1[int, float]
+) -> None:
+    reveal_type(a)  # N: Revealed type is "__main__.ClassD1[builtins.str, builtins.str]"
+    reveal_type(b)  # N: Revealed type is "__main__.ClassD1[builtins.int, builtins.int]"
+    reveal_type(c)  # N: Revealed type is "__main__.ClassD1[builtins.int, builtins.float]"
+
+    k = ClassD1()
+    reveal_type(k)  # N: Revealed type is "__main__.ClassD1[builtins.str, builtins.str]"
+    l = ClassD1[int]()
+    reveal_type(l)  # N: Revealed type is "__main__.ClassD1[builtins.int, builtins.int]"
+    m = ClassD1[int, float]()
+    reveal_type(m)  # N: Revealed type is "__main__.ClassD1[builtins.int, builtins.float]"
+
+class ClassD2(Generic[T1, T2, T3]): ...
+
+def func_d2(
+    a: ClassD2,
+    b: ClassD2[int],
+    c: ClassD2[int, float],
+    d: ClassD2[int, float, str],
+) -> None:
+    reveal_type(a)  # N: Revealed type is "__main__.ClassD2[builtins.str, builtins.str, builtins.str]"
+    reveal_type(b)  # N: Revealed type is "__main__.ClassD2[builtins.int, builtins.int, builtins.int]"
+    reveal_type(c)  # N: Revealed type is "__main__.ClassD2[builtins.int, builtins.float, builtins.float]"
+    reveal_type(d)  # N: Revealed type is "__main__.ClassD2[builtins.int, builtins.float, builtins.str]"
+
+    k = ClassD2()
+    reveal_type(k)  # N: Revealed type is "__main__.ClassD2[builtins.str, builtins.str, builtins.str]"
+    l = ClassD2[int]()
+    reveal_type(l)  # N: Revealed type is "__main__.ClassD2[builtins.int, builtins.int, builtins.int]"
+    m = ClassD2[int, float]()
+    reveal_type(m)  # N: Revealed type is "__main__.ClassD2[builtins.int, builtins.float, builtins.float]"
+    n = ClassD2[int, float, str]()
+    reveal_type(n)  # N: Revealed type is "__main__.ClassD2[builtins.int, builtins.float, builtins.str]"
+
+class ClassD3(Generic[T1, T4]): ...
+
+def func_d3(
+    a: ClassD3,
+    b: ClassD3[int],
+    c: ClassD3[int, float],
+) -> None:
+    reveal_type(a)  # N: Revealed type is "__main__.ClassD3[builtins.str, builtins.list[builtins.str]]"
+    reveal_type(b)  # N: Revealed type is "__main__.ClassD3[builtins.int, builtins.list[builtins.int]]"
+    reveal_type(c)  # N: Revealed type is "__main__.ClassD3[builtins.int, builtins.float]"
+
+    # k = ClassD3()
+    # reveal_type(k)  # Revealed type is "__main__.ClassD3[builtins.str, builtins.list[builtins.str]]"  # TODO
+    l = ClassD3[int]()
+    reveal_type(l)  # N: Revealed type is "__main__.ClassD3[builtins.int, builtins.list[builtins.int]]"
+    m = ClassD3[int, float]()
+    reveal_type(m)  # N: Revealed type is "__main__.ClassD3[builtins.int, builtins.float]"
+
+[case testTypeVarDefaultsClassRecursiveMultipleFiles]
+# flags: --disallow-any-generics
+from typing import Generic, TypeVar
+from file2 import T as T2
+
+T = TypeVar("T", default=T2)
+
+class ClassG1(Generic[T2, T]):
+    pass
+
+def func(
+    a: ClassG1,
+    b: ClassG1[str],
+    c: ClassG1[str, float],
+) -> None:
+    reveal_type(a)  # N: Revealed type is "__main__.ClassG1[builtins.int, builtins.int]"
+    reveal_type(b)  # N: Revealed type is "__main__.ClassG1[builtins.str, builtins.str]"
+    reveal_type(c)  # N: Revealed type is "__main__.ClassG1[builtins.str, builtins.float]"
+
+    k = ClassG1()
+    reveal_type(k)  # N: Revealed type is "__main__.ClassG1[builtins.int, builtins.int]"
+    l = ClassG1[str]()
+    reveal_type(l)  # N: Revealed type is "__main__.ClassG1[builtins.str, builtins.str]"
+    m = ClassG1[str, float]()
+    reveal_type(m)  # N: Revealed type is "__main__.ClassG1[builtins.str, builtins.float]"
+
+[file file2.py]
+from typing import TypeVar
+T = TypeVar('T', default=int)
+
 [case testTypeVarDefaultsTypeAlias1]
 # flags: --disallow-any-generics
 from typing import Any, Dict, List, Tuple, TypeVar, Union
@@ -509,3 +674,46 @@ def func_c4(
     # reveal_type(b)  # Revealed type is "Tuple[builtins.int, builtins.str]"  # TODO
     reveal_type(c)  # N: Revealed type is "Tuple[builtins.int, builtins.float]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarDefaultsTypeAliasRecursive1]
+# flags: --disallow-any-generics
+from typing import Dict, List, TypeVar
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2", default=T1)
+
+TD1 = Dict[T1, T2]
+
+def func_d1(
+    a: TD1,  # E: Missing type parameters for generic type "TD1"
+    b: TD1[int],
+    c: TD1[int, float],
+) -> None:
+    reveal_type(a)  # N: Revealed type is "builtins.dict[Any, Any]"
+    reveal_type(b)  # N: Revealed type is "builtins.dict[builtins.int, builtins.int]"
+    reveal_type(c)  # N: Revealed type is "builtins.dict[builtins.int, builtins.float]"
+[builtins fixtures/dict.pyi]
+
+[case testTypeVarDefaultsTypeAliasRecursive2]
+from typing import Any, Dict, Generic, TypeVar
+
+T1 = TypeVar("T1", default=str)
+T2 = TypeVar("T2", default=T1)
+Alias1 = Dict[T1, T2]
+T3 = TypeVar("T3")
+class A(Generic[T3]): ...
+
+T4 = TypeVar("T4", default=A[Alias1])
+class B(Generic[T4]): ...
+
+def func_d3(
+    a: B,
+    b: B[A[Alias1[int]]],
+    c: B[A[Alias1[int, float]]],
+    d: B[int],
+) -> None:
+    reveal_type(a)  # N: Revealed type is "__main__.B[__main__.A[builtins.dict[builtins.str, builtins.str]]]"
+    reveal_type(b)  # N: Revealed type is "__main__.B[__main__.A[builtins.dict[builtins.int, builtins.int]]]"
+    reveal_type(c)  # N: Revealed type is "__main__.B[__main__.A[builtins.dict[builtins.int, builtins.float]]]"
+    reveal_type(d)  # N: Revealed type is "__main__.B[builtins.int]"
+[builtins fixtures/dict.pyi]

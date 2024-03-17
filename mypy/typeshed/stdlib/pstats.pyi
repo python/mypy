@@ -36,6 +36,7 @@ if sys.version_info >= (3, 9):
         percall_cumtime: float
         file_name: str
         line_number: int
+
     @dataclass(unsafe_hash=True)
     class StatsProfile:
         total_tt: float
@@ -47,7 +48,8 @@ class Stats:
     sort_arg_dict_default: _SortArgDict
     def __init__(
         self,
-        __arg: None | str | Profile | _cProfile = ...,
+        arg: None | str | Profile | _cProfile = ...,
+        /,
         *args: None | str | Profile | _cProfile | Self,
         stream: IO[Any] | None = None,
     ) -> None: ...

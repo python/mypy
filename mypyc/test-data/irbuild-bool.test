@@ -96,7 +96,7 @@ L0:
     r1 = load_mem r0 :: native_int*
     keep_alive l
     r2 = r1 << 1
-    r3 = r2 != 0
+    r3 = int_ne r2, 0
     return r3
 def always_truthy_instance_to_bool(o):
     o :: __main__.C
@@ -222,7 +222,7 @@ def eq1(x, y):
 L0:
     r0 = y << 1
     r1 = extend r0: builtins.bool to builtins.int
-    r2 = x == r1
+    r2 = int_eq x, r1
     return r2
 def eq2(x, y):
     x :: bool
@@ -233,7 +233,7 @@ def eq2(x, y):
 L0:
     r0 = x << 1
     r1 = extend r0: builtins.bool to builtins.int
-    r2 = r1 == y
+    r2 = int_eq r1, y
     return r2
 def neq1(x, y):
     x :: i64

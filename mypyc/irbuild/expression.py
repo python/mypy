@@ -80,6 +80,7 @@ from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.for_helpers import (
     comprehension_helper,
+    raise_error_if_contains_unreachable_names,
     translate_list_comprehension,
     translate_set_comprehension,
 )
@@ -125,6 +126,8 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
     if fullname == "builtins.True":
         return builder.true()
     if fullname == "builtins.False":
+        return builder.false()
+    if fullname in ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"):
         return builder.false()
 
     math_literal = transform_math_literal(builder, fullname)
@@ -185,6 +188,10 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
 
 
 def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
+    # Special Cases
+    if expr.fullname in ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"):
+        return builder.false()
+
     # First check if this is maybe a final attribute.
     final = builder.get_final_ref(expr)
     if final is not None:
@@ -749,7 +756,7 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
         set_literal = precompute_set_literal(builder, e.operands[1])
         if set_literal is not None:
             lhs = e.operands[0]
-            result = builder.builder.call_c(
+            result = builder.builder.primitive_op(
                 set_in_op, [builder.accept(lhs), set_literal], e.line, bool_rprimitive
             )
             if first_op == "not in":
@@ -771,7 +778,7 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
                     borrow_left = is_borrow_friendly_expr(builder, right_expr)
                     left = builder.accept(left_expr, can_borrow=borrow_left)
                     right = builder.accept(right_expr, can_borrow=True)
-                    return builder.compare_tagged(left, right, first_op, e.line)
+                    return builder.binary_op(left, right, first_op, e.line)
 
     # TODO: Don't produce an expression when used in conditional context
     # All of the trickiness here is due to support for chained conditionals
@@ -1014,6 +1021,9 @@ def transform_set_comprehension(builder: IRBuilder, o: SetComprehension) -> Valu
 
 
 def transform_dictionary_comprehension(builder: IRBuilder, o: DictionaryComprehension) -> Value:
+    if raise_error_if_contains_unreachable_names(builder, o):
+        return builder.none()
+
     d = builder.maybe_spill(builder.call_c(dict_new_op, [], o.line))
     loop_params = list(zip(o.indices, o.sequences, o.condlists, o.is_async))
 

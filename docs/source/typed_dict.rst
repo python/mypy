@@ -25,7 +25,7 @@ dictionary value depends on the key:
 
 .. code-block:: python
 
-   from typing_extensions import TypedDict
+   from typing import TypedDict
 
    Movie = TypedDict('Movie', {'name': str, 'year': int})
 
@@ -189,7 +189,7 @@ in Python 3.6 and later:
 
 .. code-block:: python
 
-   from typing_extensions import TypedDict
+   from typing import TypedDict  # "from typing_extensions" in Python 3.7 and earlier
 
    class Movie(TypedDict):
        name: str

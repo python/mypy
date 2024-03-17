@@ -901,8 +901,8 @@ class A:
     def func(self, action: Callable[_P, _R], *args: _P.args, **kwargs: _P.kwargs) -> _R:
         ...
 
-reveal_type(A.func)  # N: Revealed type is "def [_P, _R] (self: __main__.A, action: def (*_P.args, **_P.kwargs) -> _R`3, *_P.args, **_P.kwargs) -> _R`3"
-reveal_type(A().func)  # N: Revealed type is "def [_P, _R] (action: def (*_P.args, **_P.kwargs) -> _R`7, *_P.args, **_P.kwargs) -> _R`7"
+reveal_type(A.func)  # N: Revealed type is "def [_P, _R] (self: __main__.A, action: def (*_P.args, **_P.kwargs) -> _R`4, *_P.args, **_P.kwargs) -> _R`4"
+reveal_type(A().func)  # N: Revealed type is "def [_P, _R] (action: def (*_P.args, **_P.kwargs) -> _R`8, *_P.args, **_P.kwargs) -> _R`8"
 
 def f(x: int) -> int:
     ...
@@ -933,8 +933,8 @@ class A:
     def func(self, action: Job[_P, None]) -> Job[_P, None]:
         ...
 
-reveal_type(A.func)  # N: Revealed type is "def [_P] (self: __main__.A, action: __main__.Job[_P`2, None]) -> __main__.Job[_P`2, None]"
-reveal_type(A().func)  # N: Revealed type is "def [_P] (action: __main__.Job[_P`4, None]) -> __main__.Job[_P`4, None]"
+reveal_type(A.func)  # N: Revealed type is "def [_P] (self: __main__.A, action: __main__.Job[_P`3, None]) -> __main__.Job[_P`3, None]"
+reveal_type(A().func)  # N: Revealed type is "def [_P] (action: __main__.Job[_P`5, None]) -> __main__.Job[_P`5, None]"
 reveal_type(A().func(Job(lambda x: x)))  # N: Revealed type is "__main__.Job[[x: Any], None]"
 
 def f(x: int, y: int) -> None: ...
@@ -1096,7 +1096,7 @@ j = Job(generic_f)
 reveal_type(j)  # N: Revealed type is "__main__.Job[[x: _T`-1]]"
 
 jf = j.into_callable()
-reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T`2)"
+reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T`3)"
 reveal_type(jf(1))  # N: Revealed type is "None"
 [builtins fixtures/paramspec.pyi]
 
@@ -1115,10 +1115,10 @@ class Job(Generic[_P, _T]):
 def generic_f(x: _T) -> _T: ...
 
 j = Job(generic_f)
-reveal_type(j)  # N: Revealed type is "__main__.Job[[x: _T`2], _T`2]"
+reveal_type(j)  # N: Revealed type is "__main__.Job[[x: _T`3], _T`3]"
 
 jf = j.into_callable()
-reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T`3) -> _T`3"
+reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T`4) -> _T`4"
 reveal_type(jf(1))  # N: Revealed type is "builtins.int"
 [builtins fixtures/paramspec.pyi]
 
@@ -1619,13 +1619,13 @@ U = TypeVar("U")
 def dec(f: Callable[P, T]) -> Callable[P, List[T]]: ...
 def test(x: U) -> U: ...
 reveal_type(dec)  # N: Revealed type is "def [P, T] (f: def (*P.args, **P.kwargs) -> T`-2) -> def (*P.args, **P.kwargs) -> builtins.list[T`-2]"
-reveal_type(dec(test))  # N: Revealed type is "def [T] (x: T`2) -> builtins.list[T`2]"
+reveal_type(dec(test))  # N: Revealed type is "def [T] (x: T`3) -> builtins.list[T`3]"
 
 class A: ...
 TA = TypeVar("TA", bound=A)
 
 def test_with_bound(x: TA) -> TA: ...
-reveal_type(dec(test_with_bound))  # N: Revealed type is "def [T <: __main__.A] (x: T`4) -> builtins.list[T`4]"
+reveal_type(dec(test_with_bound))  # N: Revealed type is "def [T <: __main__.A] (x: T`5) -> builtins.list[T`5]"
 dec(test_with_bound)(0)  # E: Value of type variable "T" of function cannot be "int"
 dec(test_with_bound)(A())  # OK
 [builtins fixtures/paramspec.pyi]

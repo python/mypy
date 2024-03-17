@@ -152,6 +152,8 @@ Classes
 
 .. code-block:: python
 
+   from typing import ClassVar
+
    class BankAccount:
        # The "__init__" method doesn't return anything, so it gets return
        # type "None" just like any other method that doesn't return anything

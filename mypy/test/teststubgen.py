@@ -10,6 +10,8 @@ import unittest
 from types import ModuleType
 from typing import Any
 
+import pytest
+
 from mypy.errors import CompileError
 from mypy.moduleinspect import InspectError, ModuleInspect
 from mypy.stubdoc import (
@@ -698,6 +700,8 @@ class StubgenPythonSuite(DataSuite):
                 f.write(content)
 
         options = self.parse_flags(source, extra)
+        if sys.version_info < options.pyversion:
+            pytest.skip()
         modules = self.parse_modules(source)
         out_dir = "out"
         try:

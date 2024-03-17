@@ -495,7 +495,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         if obj is None or obj is type(None):
             return "None"
         elif inspect.isclass(obj):
-            return "type[{}]".format(self.get_type_fullname(obj))
+            return f"type[{self.get_type_fullname(obj)}]"
         elif isinstance(obj, FunctionType):
             return self.add_name("typing.Callable")
         elif isinstance(obj, ModuleType):

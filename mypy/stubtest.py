@@ -940,7 +940,8 @@ def _verify_signature(
     elif len(stub.pos) < len(runtime.pos):
         for runtime_arg in runtime.pos[len(stub.pos) :]:
             if runtime_arg.name not in stub.kwonly:
-                yield f'stub does not have argument "{runtime_arg.name}"'
+                if not _is_private_parameter(runtime_arg):
+                    yield f'stub does not have argument "{runtime_arg.name}"'
             else:
                 yield f'runtime argument "{runtime_arg.name}" is not keyword-only'
 
@@ -980,7 +981,8 @@ def _verify_signature(
             ):
                 yield f'stub argument "{arg}" is not keyword-only'
         else:
-            yield f'stub does not have argument "{arg}"'
+            if not _is_private_parameter(runtime.kwonly[arg]):
+                yield f'stub does not have argument "{arg}"'
 
     # Checks involving **kwargs
     if stub.varkw is None and runtime.varkw is not None:
@@ -993,6 +995,14 @@ def _verify_signature(
             yield f'stub does not have **kwargs argument "{runtime.varkw.name}"'
     if stub.varkw is not None and runtime.varkw is None:
         yield f'runtime does not have **kwargs argument "{stub.varkw.variable.name}"'
+
+
+def _is_private_parameter(arg: inspect.Parameter) -> bool:
+    return (
+        arg.name.startswith("_")
+        and not arg.name.startswith("__")
+        and arg.default is not inspect.Parameter.empty
+    )
 
 
 @verify.register(nodes.FuncItem)
@@ -1476,6 +1486,7 @@ IGNORABLE_CLASS_DUNDERS: typing_extensions.Final = frozenset(
         # Added to all protocol classes on 3.12+ (or if using typing_extensions.Protocol)
         "__protocol_attrs__",
         "__callable_proto_members_only__",
+        "__non_callable_proto_members__",
         # typing implementation details, consider removing some of these:
         "__parameters__",
         "__origin__",
@@ -1867,8 +1878,8 @@ class _Arguments:
     allowlist: list[str]
     generate_allowlist: bool
     ignore_unused_allowlist: bool
-    mypy_config_file: str
-    custom_typeshed_dir: str
+    mypy_config_file: str | None
+    custom_typeshed_dir: str | None
     check_typeshed: bool
     version: str
 
@@ -1911,7 +1922,7 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
     options.incremental = False
     options.custom_typeshed_dir = args.custom_typeshed_dir
     if options.custom_typeshed_dir:
-        options.abs_custom_typeshed_dir = os.path.abspath(args.custom_typeshed_dir)
+        options.abs_custom_typeshed_dir = os.path.abspath(options.custom_typeshed_dir)
     options.config_file = args.mypy_config_file
     options.use_builtins_fixtures = use_builtins_fixtures
 

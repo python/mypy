@@ -71,12 +71,12 @@ _FormatStyle: TypeAlias = Literal["%", "{", "$"]
 
 if sys.version_info >= (3, 12):
     class _SupportsFilter(Protocol):
-        def filter(self, __record: LogRecord) -> bool | LogRecord: ...
+        def filter(self, record: LogRecord, /) -> bool | LogRecord: ...
 
     _FilterType: TypeAlias = Filter | Callable[[LogRecord], bool | LogRecord] | _SupportsFilter
 else:
     class _SupportsFilter(Protocol):
-        def filter(self, __record: LogRecord) -> bool: ...
+        def filter(self, record: LogRecord, /) -> bool: ...
 
     _FilterType: TypeAlias = Filter | Callable[[LogRecord], bool] | _SupportsFilter
 
@@ -341,6 +341,9 @@ class LogRecord:
     stack_info: str | None
     thread: int | None
     threadName: str | None
+    if sys.version_info >= (3, 12):
+        taskName: str | None
+
     def __init__(
         self,
         name: str,
@@ -355,7 +358,7 @@ class LogRecord:
     ) -> None: ...
     def getMessage(self) -> str: ...
     # Allows setting contextual information on LogRecord objects as per the docs, see #7833
-    def __setattr__(self, __name: str, __value: Any) -> None: ...
+    def __setattr__(self, name: str, value: Any, /) -> None: ...
 
 _L = TypeVar("_L", bound=Logger | LoggerAdapter[Any])
 

@@ -86,4 +86,5 @@ class AbstractReducer(metaclass=ABCMeta):
         sendfds = _sendfds
         recvfds = _recvfds
         DupFd = _DupFd
+
     def __init__(self, *args: Unused) -> None: ...

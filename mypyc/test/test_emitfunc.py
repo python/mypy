@@ -859,6 +859,8 @@ else {
                     args = [left, right]
                     if desc.ordering is not None:
                         args = [args[i] for i in desc.ordering]
+                    # This only supports primitives that map to C calls
+                    assert desc.c_function_name is not None
                     self.assert_emit(
                         CallC(
                             desc.c_function_name,

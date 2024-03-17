@@ -20,7 +20,7 @@ jobs:
           fetch-depth: 0
         # TODO: use whatever solution ends up working for
         # https://github.com/python/typeshed/issues/8434
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
       - name: git config

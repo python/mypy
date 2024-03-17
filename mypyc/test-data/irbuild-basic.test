@@ -568,7 +568,7 @@ L3:
     x = 2
     goto L8
 L4:
-    r4 = n == 0
+    r4 = int_eq n, 0
     if r4 goto L5 else goto L6 :: bool
 L5:
     x = 2
@@ -598,7 +598,7 @@ def f(n):
     r0 :: bit
     r1 :: int
 L0:
-    r0 = n == 0
+    r0 = int_eq n, 0
     if r0 goto L1 else goto L2 :: bool
 L1:
     r1 = 0
@@ -1462,7 +1462,7 @@ L0:
     r1 = load_mem r0 :: native_int*
     keep_alive x
     r2 = r1 << 1
-    r3 = r2 != 0
+    r3 = int_ne r2, 0
     if r3 goto L1 else goto L2 :: bool
 L1:
     return 2
@@ -2052,19 +2052,12 @@ def f():
     r13 :: bit
     r14 :: object
     r15, x :: int
-    r16 :: native_int
-    r17, r18 :: bit
-    r19 :: bool
-    r20, r21 :: bit
-    r22 :: native_int
-    r23, r24 :: bit
-    r25 :: bool
-    r26, r27 :: bit
-    r28 :: int
-    r29 :: object
-    r30 :: i32
-    r31 :: bit
-    r32 :: short_int
+    r16, r17 :: bit
+    r18 :: int
+    r19 :: object
+    r20 :: i32
+    r21 :: bit
+    r22 :: short_int
 L0:
     r0 = PyList_New(0)
     r1 = PyList_New(3)
@@ -2086,52 +2079,30 @@ L1:
     keep_alive r1
     r12 = r11 << 1
     r13 = r9 < r12 :: signed
-    if r13 goto L2 else goto L14 :: bool
+    if r13 goto L2 else goto L8 :: bool
 L2:
     r14 = CPyList_GetItemUnsafe(r1, r9)
     r15 = unbox(int, r14)
     x = r15
-    r16 = x & 1
-    r17 = r16 == 0
-    if r17 goto L3 else goto L4 :: bool
+    r16 = int_ne x, 4
+    if r16 goto L4 else goto L3 :: bool
 L3:
-    r18 = x != 4
-    r19 = r18
-    goto L5
+    goto L7
 L4:
-    r20 = CPyTagged_IsEq_(x, 4)
-    r21 = r20 ^ 1
-    r19 = r21
+    r17 = int_ne x, 6
+    if r17 goto L6 else goto L5 :: bool
 L5:
-    if r19 goto L7 else goto L6 :: bool
+    goto L7
 L6:
-    goto L13
+    r18 = CPyTagged_Multiply(x, x)
+    r19 = box(int, r18)
+    r20 = PyList_Append(r0, r19)
+    r21 = r20 >= 0 :: signed
 L7:
-    r22 = x & 1
-    r23 = r22 == 0
-    if r23 goto L8 else goto L9 :: bool
-L8:
-    r24 = x != 6
-    r25 = r24
-    goto L10
-L9:
-    r26 = CPyTagged_IsEq_(x, 6)
-    r27 = r26 ^ 1
-    r25 = r27
-L10:
-    if r25 goto L12 else goto L11 :: bool
-L11:
-    goto L13
-L12:
-    r28 = CPyTagged_Multiply(x, x)
-    r29 = box(int, r28)
-    r30 = PyList_Append(r0, r29)
-    r31 = r30 >= 0 :: signed
-L13:
-    r32 = r9 + 2
-    r9 = r32
+    r22 = r9 + 2
+    r9 = r22
     goto L1
-L14:
+L8:
     return r0
 
 [case testDictComprehension]
@@ -2151,19 +2122,12 @@ def f():
     r13 :: bit
     r14 :: object
     r15, x :: int
-    r16 :: native_int
-    r17, r18 :: bit
-    r19 :: bool
-    r20, r21 :: bit
-    r22 :: native_int
-    r23, r24 :: bit
-    r25 :: bool
-    r26, r27 :: bit
-    r28 :: int
-    r29, r30 :: object
-    r31 :: i32
-    r32 :: bit
-    r33 :: short_int
+    r16, r17 :: bit
+    r18 :: int
+    r19, r20 :: object
+    r21 :: i32
+    r22 :: bit
+    r23 :: short_int
 L0:
     r0 = PyDict_New()
     r1 = PyList_New(3)
@@ -2185,53 +2149,31 @@ L1:
     keep_alive r1
     r12 = r11 << 1
     r13 = r9 < r12 :: signed
-    if r13 goto L2 else goto L14 :: bool
+    if r13 goto L2 else goto L8 :: bool
 L2:
     r14 = CPyList_GetItemUnsafe(r1, r9)
     r15 = unbox(int, r14)
     x = r15
-    r16 = x & 1
-    r17 = r16 == 0
-    if r17 goto L3 else goto L4 :: bool
+    r16 = int_ne x, 4
+    if r16 goto L4 else goto L3 :: bool
 L3:
-    r18 = x != 4
-    r19 = r18
-    goto L5
+    goto L7
 L4:
-    r20 = CPyTagged_IsEq_(x, 4)
-    r21 = r20 ^ 1
-    r19 = r21
+    r17 = int_ne x, 6
+    if r17 goto L6 else goto L5 :: bool
 L5:
-    if r19 goto L7 else goto L6 :: bool
+    goto L7
 L6:
-    goto L13
+    r18 = CPyTagged_Multiply(x, x)
+    r19 = box(int, x)
+    r20 = box(int, r18)
+    r21 = CPyDict_SetItem(r0, r19, r20)
+    r22 = r21 >= 0 :: signed
 L7:
-    r22 = x & 1
-    r23 = r22 == 0
-    if r23 goto L8 else goto L9 :: bool
-L8:
-    r24 = x != 6
-    r25 = r24
-    goto L10
-L9:
-    r26 = CPyTagged_IsEq_(x, 6)
-    r27 = r26 ^ 1
-    r25 = r27
-L10:
-    if r25 goto L12 else goto L11 :: bool
-L11:
-    goto L13
-L12:
-    r28 = CPyTagged_Multiply(x, x)
-    r29 = box(int, x)
-    r30 = box(int, r28)
-    r31 = CPyDict_SetItem(r0, r29, r30)
-    r32 = r31 >= 0 :: signed
-L13:
-    r33 = r9 + 2
-    r9 = r33
+    r23 = r9 + 2
+    r9 = r23
     goto L1
-L14:
+L8:
     return r0
 
 [case testLoopsMultipleAssign]
@@ -3011,85 +2953,57 @@ def call_any(l):
     r0 :: bool
     r1, r2 :: object
     r3, i :: int
-    r4 :: native_int
-    r5, r6 :: bit
-    r7 :: bool
-    r8, r9 :: bit
+    r4, r5 :: bit
 L0:
     r0 = 0
     r1 = PyObject_GetIter(l)
 L1:
     r2 = PyIter_Next(r1)
-    if is_error(r2) goto L9 else goto L2
+    if is_error(r2) goto L6 else goto L2
 L2:
     r3 = unbox(int, r2)
     i = r3
-    r4 = i & 1
-    r5 = r4 == 0
-    if r5 goto L3 else goto L4 :: bool
+    r4 = int_eq i, 0
+    if r4 goto L3 else goto L4 :: bool
 L3:
-    r6 = i == 0
-    r7 = r6
-    goto L5
-L4:
-    r8 = CPyTagged_IsEq_(i, 0)
-    r7 = r8
-L5:
-    if r7 goto L6 else goto L7 :: bool
-L6:
     r0 = 1
-    goto L11
+    goto L8
+L4:
+L5:
+    goto L1
+L6:
+    r5 = CPy_NoErrOccured()
 L7:
 L8:
-    goto L1
-L9:
-    r9 = CPy_NoErrOccured()
-L10:
-L11:
     return r0
 def call_all(l):
     l :: object
     r0 :: bool
     r1, r2 :: object
     r3, i :: int
-    r4 :: native_int
-    r5, r6 :: bit
-    r7 :: bool
-    r8 :: bit
-    r9 :: bool
-    r10 :: bit
+    r4, r5, r6 :: bit
 L0:
     r0 = 1
     r1 = PyObject_GetIter(l)
 L1:
     r2 = PyIter_Next(r1)
-    if is_error(r2) goto L9 else goto L2
+    if is_error(r2) goto L6 else goto L2
 L2:
     r3 = unbox(int, r2)
     i = r3
-    r4 = i & 1
-    r5 = r4 == 0
+    r4 = int_eq i, 0
+    r5 = r4 ^ 1
     if r5 goto L3 else goto L4 :: bool
 L3:
-    r6 = i == 0
-    r7 = r6
-    goto L5
-L4:
-    r8 = CPyTagged_IsEq_(i, 0)
-    r7 = r8
-L5:
-    r9 = r7 ^ 1
-    if r9 goto L6 else goto L7 :: bool
-L6:
     r0 = 0
-    goto L11
+    goto L8
+L4:
+L5:
+    goto L1
+L6:
+    r6 = CPy_NoErrOccured()
 L7:
 L8:
-    goto L1
-L9:
-    r10 = CPy_NoErrOccured()
-L10:
-L11:
     return r0
 
 [case testSum]
@@ -3336,6 +3250,32 @@ def foo(z):
     z :: object
 L0:
     return 1
+
+[case testFinalLocals]
+from typing import Final
+
+def inlined() -> str:
+    # XXX: the final type must be declared explicitly for Var.final_value to be set.
+    const: Final[str] = "Oppenheimer"
+    return const
+
+def local() -> str:
+    const: Final[str] = inlined()
+    return const
+[out]
+def inlined():
+    r0, const, r1 :: str
+L0:
+    r0 = 'Oppenheimer'
+    const = r0
+    r1 = 'Oppenheimer'
+    return r1
+def local():
+    r0, const :: str
+L0:
+    r0 = inlined()
+    const = r0
+    return const
 
 [case testDirectlyCall__bool__]
 class A:
@@ -3688,3 +3628,33 @@ def f(arg):
     arg :: __main__.A
 L0:
     return arg
+
+[case testTypeCheckingFlag]
+from typing import TYPE_CHECKING, List
+
+def f(arg: List[int]) -> int:
+    if TYPE_CHECKING:
+        from collections.abc import Sized
+    s: Sized = arg
+    return len(s)
+
+[out]
+def f(arg):
+    arg :: list
+    r0 :: bool
+    r1 :: int
+    r2 :: bit
+    s :: object
+    r3 :: int
+L0:
+    r0 = 0 << 1
+    r1 = extend r0: builtins.bool to builtins.int
+    r2 = r1 != 0
+    if r2 goto L1 else goto L2 :: bool
+L1:
+    goto L3
+L2:
+L3:
+    s = arg
+    r3 = CPyObject_Size(s)
+    return r3

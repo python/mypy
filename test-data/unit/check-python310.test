@@ -1139,6 +1139,21 @@ match m:
 
 reveal_type(a)  # N: Revealed type is "builtins.str"
 
+[case testMatchCapturePatternFromFunctionReturningUnion]
+def func1(arg: bool) -> str | int: ...
+def func2(arg: bool) -> bytes | int: ...
+
+def main() -> None:
+    match func1(True):
+        case str(a):
+            match func2(True):
+                case c:
+                    reveal_type(a)  # N: Revealed type is "builtins.str"
+                    reveal_type(c)  # N: Revealed type is "Union[builtins.bytes, builtins.int]"
+            reveal_type(a)  # N: Revealed type is "builtins.str"
+        case a:
+            reveal_type(a)  # N: Revealed type is "builtins.int"
+
 -- Guards --
 
 [case testMatchSimplePatternGuard]
@@ -1354,6 +1369,27 @@ match m3:
         reveal_type(m3)  # N: Revealed type is "Tuple[Union[builtins.int, builtins.str]]"
 [builtins fixtures/tuple.pyi]
 
+[case testMatchEnumSingleChoice]
+from enum import Enum
+from typing import NoReturn
+
+def assert_never(x: NoReturn) -> None: ...
+
+class Medal(Enum):
+    gold = 1
+
+def f(m: Medal) -> None:
+    always_assigned: int | None = None
+    match m:
+        case Medal.gold:
+            always_assigned = 1
+            reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
+        case _:
+            assert_never(m)
+
+    reveal_type(always_assigned)  # N: Revealed type is "builtins.int"
+[builtins fixtures/bool.pyi]
+
 [case testMatchLiteralPatternEnumNegativeNarrowing]
 from enum import Enum
 class Medal(Enum):
@@ -1373,10 +1409,13 @@ def f(m: Medal) -> int:
 def g(m: Medal) -> int:
     match m:
         case Medal.gold:
+            reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
             return 0
         case Medal.silver:
+            reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.silver]"
             return 1
         case Medal.bronze:
+            reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.bronze]"
             return 2
 
 [case testMatchLiteralPatternEnumCustomEquals-skip]

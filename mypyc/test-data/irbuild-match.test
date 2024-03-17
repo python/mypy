@@ -14,7 +14,7 @@ def f():
     r6 :: object_ptr
     r7, r8 :: object
 L0:
-    r0 = 246 == 246
+    r0 = int_eq 246, 246
     if r0 goto L1 else goto L2 :: bool
 L1:
     r1 = 'matched'
@@ -30,6 +30,7 @@ L2:
 L3:
     r8 = box(None, 1)
     return r8
+
 [case testMatchOrPattern_python3_10]
 def f():
     match 123:
@@ -46,10 +47,10 @@ def f():
     r7 :: object_ptr
     r8, r9 :: object
 L0:
-    r0 = 246 == 246
+    r0 = int_eq 246, 246
     if r0 goto L3 else goto L1 :: bool
 L1:
-    r1 = 246 == 912
+    r1 = int_eq 246, 912
     if r1 goto L3 else goto L2 :: bool
 L2:
     goto L4
@@ -67,6 +68,7 @@ L4:
 L5:
     r9 = box(None, 1)
     return r9
+
 [case testMatchOrPatternManyPatterns_python3_10]
 def f():
     match 1:
@@ -83,16 +85,16 @@ def f():
     r9 :: object_ptr
     r10, r11 :: object
 L0:
-    r0 = 2 == 2
+    r0 = int_eq 2, 2
     if r0 goto L5 else goto L1 :: bool
 L1:
-    r1 = 2 == 4
+    r1 = int_eq 2, 4
     if r1 goto L5 else goto L2 :: bool
 L2:
-    r2 = 2 == 6
+    r2 = int_eq 2, 6
     if r2 goto L5 else goto L3 :: bool
 L3:
-    r3 = 2 == 8
+    r3 = int_eq 2, 8
     if r3 goto L5 else goto L4 :: bool
 L4:
     goto L6
@@ -110,6 +112,7 @@ L6:
 L7:
     r11 = box(None, 1)
     return r11
+
 [case testMatchClassPattern_python3_10]
 def f():
     match 123:
@@ -200,7 +203,7 @@ def f():
     r14 :: object_ptr
     r15, r16 :: object
 L0:
-    r0 = 246 == 246
+    r0 = int_eq 246, 246
     if r0 goto L1 else goto L2 :: bool
 L1:
     r1 = 'matched'
@@ -213,7 +216,7 @@ L1:
     keep_alive r1
     goto L5
 L2:
-    r8 = 246 == 912
+    r8 = int_eq 246, 912
     if r8 goto L3 else goto L4 :: bool
 L3:
     r9 = 'no match'
@@ -229,6 +232,7 @@ L4:
 L5:
     r16 = box(None, 1)
     return r16
+
 [case testMatchMultiBodyAndComplexOr_python3_10]
 def f():
     match 123:
@@ -265,7 +269,7 @@ def f():
     r23 :: object_ptr
     r24, r25 :: object
 L0:
-    r0 = 246 == 2
+    r0 = int_eq 246, 2
     if r0 goto L1 else goto L2 :: bool
 L1:
     r1 = 'here 1'
@@ -278,10 +282,10 @@ L1:
     keep_alive r1
     goto L9
 L2:
-    r8 = 246 == 4
+    r8 = int_eq 246, 4
     if r8 goto L5 else goto L3 :: bool
 L3:
-    r9 = 246 == 6
+    r9 = int_eq 246, 6
     if r9 goto L5 else goto L4 :: bool
 L4:
     goto L6
@@ -296,7 +300,7 @@ L5:
     keep_alive r10
     goto L9
 L6:
-    r17 = 246 == 246
+    r17 = int_eq 246, 246
     if r17 goto L7 else goto L8 :: bool
 L7:
     r18 = 'here 123'
@@ -312,6 +316,7 @@ L8:
 L9:
     r25 = box(None, 1)
     return r25
+
 [case testMatchWithGuard_python3_10]
 def f():
     match 123:
@@ -328,7 +333,7 @@ def f():
     r6 :: object_ptr
     r7, r8 :: object
 L0:
-    r0 = 246 == 246
+    r0 = int_eq 246, 246
     if r0 goto L1 else goto L3 :: bool
 L1:
     if 1 goto L2 else goto L3 :: bool
@@ -346,6 +351,7 @@ L3:
 L4:
     r8 = box(None, 1)
     return r8
+
 [case testMatchSingleton_python3_10]
 def f():
     match 123:
@@ -449,7 +455,7 @@ def f():
     r9 :: object_ptr
     r10, r11 :: object
 L0:
-    r0 = 2 == 2
+    r0 = int_eq 2, 2
     if r0 goto L3 else goto L1 :: bool
 L1:
     r1 = load_address PyLong_Type
@@ -472,6 +478,7 @@ L4:
 L5:
     r11 = box(None, 1)
     return r11
+
 [case testMatchAsPattern_python3_10]
 def f():
     match 123:
@@ -487,7 +494,7 @@ def f():
     r6 :: object_ptr
     r7, r8 :: object
 L0:
-    r0 = 246 == 246
+    r0 = int_eq 246, 246
     r1 = object 123
     x = r1
     if r0 goto L1 else goto L2 :: bool
@@ -504,6 +511,7 @@ L2:
 L3:
     r8 = box(None, 1)
     return r8
+
 [case testMatchAsPatternOnOrPattern_python3_10]
 def f():
     match 1:
@@ -521,12 +529,12 @@ def f():
     r8 :: object_ptr
     r9, r10 :: object
 L0:
-    r0 = 2 == 2
+    r0 = int_eq 2, 2
     r1 = object 1
     x = r1
     if r0 goto L3 else goto L1 :: bool
 L1:
-    r2 = 2 == 4
+    r2 = int_eq 2, 4
     r3 = object 2
     x = r3
     if r2 goto L3 else goto L2 :: bool
@@ -545,6 +553,7 @@ L4:
 L5:
     r10 = box(None, 1)
     return r10
+
 [case testMatchAsPatternOnClassPattern_python3_10]
 def f():
     match 123:

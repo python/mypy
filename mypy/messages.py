@@ -1779,6 +1779,8 @@ class MessageBuilder:
                 alias = alias.split(".")[-1]
                 if alias == "Dict":
                     type_dec = f"{type_dec}, {type_dec}"
+                if self.options.use_lowercase_names():
+                    alias = alias.lower()
                 recommended_type = f"{alias}[{type_dec}]"
         if recommended_type is not None:
             hint = f' (hint: "{node.name}: {recommended_type} = ...")'
@@ -2057,6 +2059,15 @@ class MessageBuilder:
         template = "Subclass of {} cannot exist: {}"
         self.fail(
             template.format(formatted_base_class_list, reason), context, code=codes.UNREACHABLE
+        )
+
+    def tvar_without_default_type(
+        self, tvar_name: str, last_tvar_name_with_default: str, context: Context
+    ) -> None:
+        self.fail(
+            f'"{tvar_name}" cannot appear after "{last_tvar_name_with_default}" '
+            "in type parameter list because it has no default type",
+            context,
         )
 
     def report_protocol_problems(
@@ -2634,6 +2645,8 @@ def format_type_inner(
         elif isinstance(func, CallableType):
             if func.type_guard is not None:
                 return_type = f"TypeGuard[{format(func.type_guard)}]"
+            elif func.type_is is not None:
+                return_type = f"TypeIs[{format(func.type_is)}]"
             else:
                 return_type = format(func.ret_type)
             if func.is_ellipsis_args:
@@ -2850,6 +2863,8 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
     s += " -> "
     if tp.type_guard is not None:
         s += f"TypeGuard[{format_type_bare(tp.type_guard, options)}]"
+    elif tp.type_is is not None:
+        s += f"TypeIs[{format_type_bare(tp.type_is, options)}]"
     else:
         s += format_type_bare(tp.ret_type, options)
 
