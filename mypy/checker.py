@@ -4558,10 +4558,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return e
 
         if not (
-            isinstance(e, ComparisonExpr) and
-            isinstance(left := e.operands[0], NameExpr) and
-            ((op_in := e.operators[0]) in ("in", "not in")) and
-            isinstance(tuple_ := e.operands[1], TupleExpr)
+            isinstance(e, ComparisonExpr)
+            and isinstance(left := e.operands[0], NameExpr)
+            and ((op_in := e.operators[0]) in ("in", "not in"))
+            and isinstance(tuple_ := e.operands[1], TupleExpr)
         ):
             return e
 
