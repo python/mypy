@@ -4534,7 +4534,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def _make_tupleexpr_with_literals_narrowable_by_using_in(
         self, e: Expression
-    ) -> Optional[Expression]:
+    ) -> Expression | None:
         """
         Transform an expression like
 
