@@ -4532,12 +4532,80 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if self.in_checked_function():
                     self.fail(message_registry.RETURN_VALUE_EXPECTED, s)
 
+    def _make_tupleexpr_with_literals_narrowable_by_using_in(
+        self, e: Expression
+    ) -> Optional[Expression]:
+        """
+        Transform an expression like
+
+        (x is None) and (x in (1, 2)) and (x not in (3, 4))
+
+        into
+
+        (x is None) and (x == 1 or x == 2) and (x != 3 and x != 4)
+
+        This transformation is supposed to enable narrowing literals and enums using the in
+        (and the not in) operator in combination with tuple expressions without the need to
+        implement additional narrowing logic.
+        """
+        if isinstance(e, OpExpr):
+            l = self._make_tupleexprs_with_literals_narrowable_by_using_in(e.left)
+            assert l is not None
+            e.left = l
+            r = self._make_tupleexprs_with_literals_narrowable_by_using_in(e.right)
+            assert r is not None
+            e.right = r
+            return e
+
+        if not (
+            isinstance(e, ComparisonExpr) and
+            isinstance(left := e.operands[0], NameExpr) and
+            ((op_in := e.operators[0]) in ("in", "not in")) and
+            isinstance(tuple_ := e.operands[1], TupleExpr)
+        ):
+            return e
+
+        op_eq, op_con = (["=="], "or") if (op_in == "in") else (["!="], "and")
+        line = e.line
+        left_new = left
+        comparisons = []
+        for right in reversed(tuple_.items):
+            comparison = ComparisonExpr(op_eq, [left_new, right])
+            comparison.line = line
+            comparisons.append(comparison)
+            left_new = NameExpr(left.name)
+            left_new.node = left.node
+            left_new.line = left.line
+        if (nmb := len(comparisons)) == 0:
+            if op_in == "in":
+                if self.should_report_unreachable_issues():
+                    e.line += 1
+                    self.msg.unreachable_statement(e)
+                    e.line -= 1
+                return None
+            e = NameExpr("True")
+            e.fullname = "builtins.True"
+            e.line = line
+            return e
+        if nmb == 1:
+            return comparisons[0]
+        e = OpExpr(op_con, comparisons[1], comparisons[0])
+        for comparison in comparisons[2:]:
+            e = OpExpr(op_con, comparison, e)
+        e.line = line
+        return e
+
     def visit_if_stmt(self, s: IfStmt) -> None:
         """Type check an if statement."""
         # This frame records the knowledge from previous if/elif clauses not being taken.
         # Fall-through to the original frame is handled explicitly in each block.
         with self.binder.frame_context(can_skip=False, conditional_frame=True, fall_through=0):
             for e, b in zip(s.expr, s.body):
+
+                if (et := self._make_tupleexpr_with_literals_narrowable_by_using_in(e)) is None:
+                    continue
+                e = et
+
                 t = get_proper_type(self.expr_checker.accept(e))
 
                 if isinstance(t, DeletedType):
