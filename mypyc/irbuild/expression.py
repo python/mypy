@@ -756,7 +756,7 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
         set_literal = precompute_set_literal(builder, e.operands[1])
         if set_literal is not None:
             lhs = e.operands[0]
-            result = builder.builder.call_c(
+            result = builder.builder.primitive_op(
                 set_in_op, [builder.accept(lhs), set_literal], e.line, bool_rprimitive
             )
             if first_op == "not in":
@@ -778,7 +778,7 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
                     borrow_left = is_borrow_friendly_expr(builder, right_expr)
                     left = builder.accept(left_expr, can_borrow=borrow_left)
                     right = builder.accept(right_expr, can_borrow=True)
-                    return builder.compare_tagged(left, right, first_op, e.line)
+                    return builder.binary_op(left, right, first_op, e.line)
 
     # TODO: Don't produce an expression when used in conditional context
     # All of the trickiness here is due to support for chained conditionals

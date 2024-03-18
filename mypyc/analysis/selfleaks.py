@@ -31,6 +31,7 @@ from mypyc.ir.ops import (
     LoadStatic,
     MethodCall,
     OpVisitor,
+    PrimitiveOp,
     RaiseStandardError,
     Register,
     RegisterOp,
@@ -147,6 +148,9 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
         return CLEAN
 
     def visit_call_c(self, op: CallC) -> GenAndKill:
+        return self.check_register_op(op)
+
+    def visit_primitive_op(self, op: PrimitiveOp) -> GenAndKill:
         return self.check_register_op(op)
 
     def visit_truncate(self, op: Truncate) -> GenAndKill:
