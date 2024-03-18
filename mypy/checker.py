@@ -4532,9 +4532,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if self.in_checked_function():
                     self.fail(message_registry.RETURN_VALUE_EXPECTED, s)
 
-    def _make_tupleexpr_with_literals_narrowable_by_using_in(
-        self, e: Expression
-    ) -> Expression | None:
+    def _make_tupleexpr_with_literals_narrowable_by_using_in(self, e: Expression) -> Expression:
         """
         Transform an expression like
 
@@ -4549,12 +4547,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         implement additional narrowing logic.
         """
         if isinstance(e, OpExpr):
-            l = self._make_tupleexpr_with_literals_narrowable_by_using_in(e.left)
-            assert l is not None
-            e.left = l
-            r = self._make_tupleexpr_with_literals_narrowable_by_using_in(e.right)
-            assert r is not None
-            e.right = r
+            e.left = self._make_tupleexpr_with_literals_narrowable_by_using_in(e.left)
+            e.right = self._make_tupleexpr_with_literals_narrowable_by_using_in(e.right)
             return e
 
         if not (
@@ -4578,11 +4572,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             left_new.line = left.line
         if (nmb := len(comparisons)) == 0:
             if op_in == "in":
-                if self.should_report_unreachable_issues():
-                    e.line += 1
-                    self.msg.unreachable_statement(e)
-                    e.line -= 1
-                return None
+                e = NameExpr("False")
+                e.fullname = "builtins.False"
+                e.line = line
+                return e
             e = NameExpr("True")
             e.fullname = "builtins.True"
             e.line = line
@@ -4602,9 +4595,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         with self.binder.frame_context(can_skip=False, conditional_frame=True, fall_through=0):
             for e, b in zip(s.expr, s.body):
 
-                if (et := self._make_tupleexpr_with_literals_narrowable_by_using_in(e)) is None:
-                    continue
-                e = et
+                e = self._make_tupleexpr_with_literals_narrowable_by_using_in(e)
 
                 t = get_proper_type(self.expr_checker.accept(e))
 
