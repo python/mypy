@@ -405,7 +405,7 @@ this error, try:
     For example, suppose you are trying to add the module ``foo.bar.baz``
     which is located at ``~/foo-project/src/foo/bar/baz.py``. In this case,
     you must run ``mypy ~/foo-project/src`` (or set the ``MYPYPATH`` to
-    ``~/foo-project/src``.
+    ``~/foo-project/src``).
 
 .. _finding-imports:
 
