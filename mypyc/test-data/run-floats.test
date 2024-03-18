@@ -267,6 +267,8 @@ def test_float_attr() -> None:
         assert a.x == FLOAT_MAGIC
 
 class D:
+    __deletable__ = ["x"]
+
     def __init__(self, x: float) -> None:
         if x:
             self.x = x
@@ -292,6 +294,12 @@ def test_float_attr_maybe_undefned() -> None:
             a = cast(Any, d)
             a.x = FLOAT_MAGIC
             assert d.x == FLOAT_MAGIC
+            del d.x
+            with assertRaises(AttributeError):
+                d.x
+            del a.x
+            with assertRaises(AttributeError):
+                a.x
         else:
             f = float(i)
             d = D(f)

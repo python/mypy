@@ -878,6 +878,27 @@ def test_del() -> None:
     with assertRaises(AttributeError):
         o.x
 
+def test_del_any() -> None:
+    o: Any = Delete()
+    o.x = MAGIC
+    o.y = -1
+    assert o.x == MAGIC
+    assert o.y == -1
+    del o.x
+    with assertRaises(AttributeError):
+        o.x
+    assert o.y == -1
+    del o.y
+    with assertRaises(AttributeError):
+        o.y
+    o.x = 5
+    assert o.x == 5
+    with assertRaises(AttributeError):
+        o.y
+    del o.x
+    with assertRaises(AttributeError):
+        o.x
+
 class UndefinedTuple:
     def __init__(self, x: i64, y: i64) -> None:
         if x != 0:

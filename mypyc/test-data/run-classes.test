@@ -65,19 +65,26 @@ from typing import Any, cast
 from testutil import assertRaises
 
 class C:
-    __deletable__ = ['x', 'y']
+    __deletable__ = ['name', 'x', 'y']
+    name: str
+    identifier: str
     x: int
     y: int
     z: int
 
 def test_delete() -> None:
     c = C()
+    c.name = "foo"
+    c.identifier = "bar"
     c.x = 1
     c.y = 2
     c.z = 3
+    del c.name
     del c.x
     del c.y
     assert c.z == 3
+    with assertRaises(AttributeError, "attribute 'name' of 'C' undefined"):
+        c.name
     with assertRaises(AttributeError, "attribute 'x' of 'C' undefined"):
         c.x
     with assertRaises(AttributeError, "attribute 'y' of 'C' undefined"):
@@ -85,14 +92,22 @@ def test_delete() -> None:
 
 def test_delete_any() -> None:
     c: Any = C()
+    c.name = "foo"
+    c.identifier = "bar"
     c.x = 1
     c.y = 2
     c.z = 3
+    del c.name
+    with assertRaises(AttributeError, "'C' object attribute 'identifier' cannot be deleted"):
+        del c.identifier
+    assert c.identifier == "bar"
     del c.x
     del c.y
     with assertRaises(AttributeError, "'C' object attribute 'z' cannot be deleted"):
         del c.z
     assert c.z == 3
+    with assertRaises(AttributeError):
+        c.name
     with assertRaises(AttributeError):
         c.x
     with assertRaises(AttributeError):
@@ -174,6 +189,39 @@ def test_non_ext_any() -> None:
         n.x
     with assertRaises(AttributeError):
         n.y
+
+[case testClassWithOptionalAttributes]
+from typing import Any, Optional
+from testutil import assertRaises
+
+class A:
+    def __init__(self) -> None:
+        self.string: Optional[str] = None
+        self.integer: Optional[int] = None
+        self.boolean: Optional[bool] = None
+        self.float: Optional[float] = None
+        self.tuple: Optional[tuple] = None
+        self.list: Optional[list] = None
+        self.nested: Optional["A"] = None
+
+ATTRS = ["string", "integer", "boolean", "float", "tuple", "list", "nested"]
+
+def test_any() -> None:
+    a: Any = A()
+    for attr in ATTRS:
+        assert getattr(a, attr) is None
+    for attr in ATTRS:
+        with assertRaises(TypeError):
+            setattr(a, attr, object())
+    a.string = "sleepy"
+    assert a.string == "sleepy"
+    a.tuple = ("cat",)
+    assert a.tuple == ("cat",)
+    a2 = A()
+    a.nested = a2
+    assert a.nested is a2
+    for attr in ATTRS:
+        setattr(a, attr, None)
 
 [case testNonExtMisc]
 from typing import Any, overload
@@ -659,7 +707,7 @@ except AttributeError:
 Traceback (most recent call last):
   File "driver.py", line 4, in <module>
     A().x
-AttributeError: attribute 'x' of 'X' undefined
+AttributeError: attribute 'x' of 'A' undefined
 
 [case testClassMethods]
 from typing import ClassVar, Any
