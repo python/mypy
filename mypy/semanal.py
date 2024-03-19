@@ -5301,13 +5301,13 @@ class SemanticAnalyzer(
 
         if expr.op in ("and", "or"):
             inferred = infer_condition_value(expr.left, self.options)
-            if (inferred in (ALWAYS_FALSE, MYPY_FALSE) and expr.op == "and") or (
-                inferred in (ALWAYS_TRUE, MYPY_TRUE) and expr.op == "or"
+            if ((inferred == ALWAYS_FALSE or inferred == MYPY_FALSE) and expr.op == "and") or (
+                (inferred == ALWAYS_TRUE or inferred == MYPY_TRUE) and expr.op == "or"
             ):
                 expr.right_unreachable = True
                 return
-            elif (inferred in (ALWAYS_TRUE, MYPY_TRUE) and expr.op == "and") or (
-                inferred in (ALWAYS_FALSE, MYPY_FALSE) and expr.op == "or"
+            elif ((inferred == ALWAYS_TRUE or inferred == MYPY_TRUE) and expr.op == "and") or (
+                (inferred == ALWAYS_FALSE or inferred == MYPY_FALSE) and expr.op == "or"
             ):
                 expr.right_always = True
 

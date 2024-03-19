@@ -130,8 +130,8 @@ def infer_condition_value(expr: Expression, options: Options) -> int:
         name = expr.name
     elif isinstance(expr, OpExpr) and expr.op in ("and", "or"):
         left = infer_condition_value(expr.left, options)
-        if (left in (ALWAYS_TRUE, MYPY_TRUE) and expr.op == "and") or (
-            left in (ALWAYS_FALSE, MYPY_FALSE) and expr.op == "or"
+        if ((left == ALWAYS_TRUE or left == MYPY_TRUE) and expr.op == "and") or (
+            (left == ALWAYS_FALSE or left == MYPY_FALSE) and expr.op == "or"
         ):
             # Either `True and <other>` or `False or <other>`: the result will
             # always be the right-hand-side.
