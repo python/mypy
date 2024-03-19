@@ -889,9 +889,8 @@ def gen_calls_to_correct_impl(
         call_impl, next_impl = BasicBlock(), BasicBlock()
 
         current_id = builder.load_int(i)
-        builder.builder.compare_tagged_condition(
-            passed_id, current_id, "==", call_impl, next_impl, line
-        )
+        cond = builder.binary_op(passed_id, current_id, "==", line)
+        builder.add_bool_branch(cond, call_impl, next_impl)
 
         # Call the registered implementation
         builder.activate_block(call_impl)

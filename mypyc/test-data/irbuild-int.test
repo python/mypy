@@ -25,9 +25,7 @@ def f(x: int) -> int:
 [out]
 def f(x):
     x :: int
-    r0, r1, r2, r3 :: bit
-    r4 :: native_int
-    r5, r6, r7 :: bit
+    r0, r1, r2, r3, r4 :: bit
 L0:
     r0 = int_eq x, 6
     if r0 goto L1 else goto L2 :: bool
@@ -49,22 +47,15 @@ L6:
 L7:
     return 8
 L8:
-    r4 = x & 1
-    r5 = r4 != 0
-    if r5 goto L9 else goto L10 :: bool
+    r4 = int_lt x, 8
+    if r4 goto L9 else goto L10 :: bool
 L9:
-    r6 = CPyTagged_IsLt_(x, 8)
-    if r6 goto L11 else goto L12 :: bool
-L10:
-    r7 = x < 8 :: signed
-    if r7 goto L11 else goto L12 :: bool
-L11:
     return 10
+L10:
+L11:
 L12:
 L13:
 L14:
-L15:
-L16:
     return 12
 
 [case testIntMin]
@@ -73,36 +64,18 @@ def f(x: int, y: int) -> int:
 [out]
 def f(x, y):
     x, y :: int
-    r0 :: native_int
-    r1 :: bit
-    r2 :: native_int
-    r3, r4, r5 :: bit
-    r6 :: bool
-    r7 :: bit
-    r8 :: int
+    r0 :: bit
+    r1 :: int
 L0:
-    r0 = y & 1
-    r1 = r0 == 0
-    r2 = x & 1
-    r3 = r2 == 0
-    r4 = r1 & r3
-    if r4 goto L1 else goto L2 :: bool
+    r0 = int_lt y, x
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r5 = y < x :: signed
-    r6 = r5
+    r1 = y
     goto L3
 L2:
-    r7 = CPyTagged_IsLt_(y, x)
-    r6 = r7
+    r1 = x
 L3:
-    if r6 goto L4 else goto L5 :: bool
-L4:
-    r8 = y
-    goto L6
-L5:
-    r8 = x
-L6:
-    return r8
+    return r1
 
 [case testIntFloorDivideByPowerOfTwo]
 def divby1(x: int) -> int:

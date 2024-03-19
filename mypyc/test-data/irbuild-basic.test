@@ -76,27 +76,13 @@ def f(x: int, y: int) -> int:
 [out]
 def f(x, y):
     x, y :: int
-    r0 :: native_int
-    r1 :: bit
-    r2 :: native_int
-    r3, r4, r5 :: bit
+    r0 :: bit
 L0:
-    r0 = x & 1
-    r1 = r0 != 0
-    if r1 goto L2 else goto L1 :: bool
+    r0 = int_lt x, y
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r2 = y & 1
-    r3 = r2 != 0
-    if r3 goto L2 else goto L3 :: bool
-L2:
-    r4 = CPyTagged_IsLt_(x, y)
-    if r4 goto L4 else goto L5 :: bool
-L3:
-    r5 = x < y :: signed
-    if r5 goto L4 else goto L5 :: bool
-L4:
     x = 2
-L5:
+L2:
     return x
 
 [case testIfElse]
@@ -109,30 +95,16 @@ def f(x: int, y: int) -> int:
 [out]
 def f(x, y):
     x, y :: int
-    r0 :: native_int
-    r1 :: bit
-    r2 :: native_int
-    r3, r4, r5 :: bit
+    r0 :: bit
 L0:
-    r0 = x & 1
-    r1 = r0 != 0
-    if r1 goto L2 else goto L1 :: bool
+    r0 = int_lt x, y
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r2 = y & 1
-    r3 = r2 != 0
-    if r3 goto L2 else goto L3 :: bool
-L2:
-    r4 = CPyTagged_IsLt_(x, y)
-    if r4 goto L4 else goto L5 :: bool
-L3:
-    r5 = x < y :: signed
-    if r5 goto L4 else goto L5 :: bool
-L4:
     x = 2
-    goto L6
-L5:
+    goto L3
+L2:
     x = 4
-L6:
+L3:
     return x
 
 [case testAnd1]
@@ -145,48 +117,19 @@ def f(x: int, y: int) -> int:
 [out]
 def f(x, y):
     x, y :: int
-    r0 :: native_int
-    r1 :: bit
-    r2 :: native_int
-    r3, r4, r5 :: bit
-    r6 :: native_int
-    r7 :: bit
-    r8 :: native_int
-    r9, r10, r11 :: bit
+    r0, r1 :: bit
 L0:
-    r0 = x & 1
-    r1 = r0 != 0
-    if r1 goto L2 else goto L1 :: bool
+    r0 = int_lt x, y
+    if r0 goto L1 else goto L3 :: bool
 L1:
-    r2 = y & 1
-    r3 = r2 != 0
-    if r3 goto L2 else goto L3 :: bool
+    r1 = int_gt x, y
+    if r1 goto L2 else goto L3 :: bool
 L2:
-    r4 = CPyTagged_IsLt_(x, y)
-    if r4 goto L4 else goto L9 :: bool
-L3:
-    r5 = x < y :: signed
-    if r5 goto L4 else goto L9 :: bool
-L4:
-    r6 = x & 1
-    r7 = r6 != 0
-    if r7 goto L6 else goto L5 :: bool
-L5:
-    r8 = y & 1
-    r9 = r8 != 0
-    if r9 goto L6 else goto L7 :: bool
-L6:
-    r10 = CPyTagged_IsLt_(y, x)
-    if r10 goto L8 else goto L9 :: bool
-L7:
-    r11 = x > y :: signed
-    if r11 goto L8 else goto L9 :: bool
-L8:
     x = 2
-    goto L10
-L9:
+    goto L4
+L3:
     x = 4
-L10:
+L4:
     return x
 
 [case testAnd2]
@@ -221,48 +164,19 @@ def f(x: int, y: int) -> int:
 [out]
 def f(x, y):
     x, y :: int
-    r0 :: native_int
-    r1 :: bit
-    r2 :: native_int
-    r3, r4, r5 :: bit
-    r6 :: native_int
-    r7 :: bit
-    r8 :: native_int
-    r9, r10, r11 :: bit
+    r0, r1 :: bit
 L0:
-    r0 = x & 1
-    r1 = r0 != 0
-    if r1 goto L2 else goto L1 :: bool
+    r0 = int_lt x, y
+    if r0 goto L2 else goto L1 :: bool
 L1:
-    r2 = y & 1
-    r3 = r2 != 0
-    if r3 goto L2 else goto L3 :: bool
+    r1 = int_gt x, y
+    if r1 goto L2 else goto L3 :: bool
 L2:
-    r4 = CPyTagged_IsLt_(x, y)
-    if r4 goto L8 else goto L4 :: bool
-L3:
-    r5 = x < y :: signed
-    if r5 goto L8 else goto L4 :: bool
-L4:
-    r6 = x & 1
-    r7 = r6 != 0
-    if r7 goto L6 else goto L5 :: bool
-L5:
-    r8 = y & 1
-    r9 = r8 != 0
-    if r9 goto L6 else goto L7 :: bool
-L6:
-    r10 = CPyTagged_IsLt_(y, x)
-    if r10 goto L8 else goto L9 :: bool
-L7:
-    r11 = x > y :: signed
-    if r11 goto L8 else goto L9 :: bool
-L8:
     x = 2
-    goto L10
-L9:
+    goto L4
+L3:
     x = 4
-L10:
+L4:
     return x
 
 [case testOr2]
@@ -295,27 +209,13 @@ def f(x: int, y: int) -> int:
 [out]
 def f(x, y):
     x, y :: int
-    r0 :: native_int
-    r1 :: bit
-    r2 :: native_int
-    r3, r4, r5 :: bit
+    r0 :: bit
 L0:
-    r0 = x & 1
-    r1 = r0 != 0
-    if r1 goto L2 else goto L1 :: bool
+    r0 = int_lt x, y
+    if r0 goto L2 else goto L1 :: bool
 L1:
-    r2 = y & 1
-    r3 = r2 != 0
-    if r3 goto L2 else goto L3 :: bool
-L2:
-    r4 = CPyTagged_IsLt_(x, y)
-    if r4 goto L5 else goto L4 :: bool
-L3:
-    r5 = x < y :: signed
-    if r5 goto L5 else goto L4 :: bool
-L4:
     x = 2
-L5:
+L2:
     return x
 
 [case testNotAnd]
@@ -326,45 +226,16 @@ def f(x: int, y: int) -> int:
 [out]
 def f(x, y):
     x, y :: int
-    r0 :: native_int
-    r1 :: bit
-    r2 :: native_int
-    r3, r4, r5 :: bit
-    r6 :: native_int
-    r7 :: bit
-    r8 :: native_int
-    r9, r10, r11 :: bit
+    r0, r1 :: bit
 L0:
-    r0 = x & 1
-    r1 = r0 != 0
-    if r1 goto L2 else goto L1 :: bool
+    r0 = int_lt x, y
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r2 = y & 1
-    r3 = r2 != 0
-    if r3 goto L2 else goto L3 :: bool
+    r1 = int_gt x, y
+    if r1 goto L3 else goto L2 :: bool
 L2:
-    r4 = CPyTagged_IsLt_(x, y)
-    if r4 goto L4 else goto L8 :: bool
-L3:
-    r5 = x < y :: signed
-    if r5 goto L4 else goto L8 :: bool
-L4:
-    r6 = x & 1
-    r7 = r6 != 0
-    if r7 goto L6 else goto L5 :: bool
-L5:
-    r8 = y & 1
-    r9 = r8 != 0
-    if r9 goto L6 else goto L7 :: bool
-L6:
-    r10 = CPyTagged_IsLt_(y, x)
-    if r10 goto L9 else goto L8 :: bool
-L7:
-    r11 = x > y :: signed
-    if r11 goto L9 else goto L8 :: bool
-L8:
     x = 2
-L9:
+L3:
     return x
 
 [case testWhile]
@@ -375,31 +246,17 @@ def f(x: int, y: int) -> int:
 [out]
 def f(x, y):
     x, y :: int
-    r0 :: native_int
-    r1 :: bit
-    r2 :: native_int
-    r3, r4, r5 :: bit
-    r6 :: int
+    r0 :: bit
+    r1 :: int
 L0:
 L1:
-    r0 = x & 1
-    r1 = r0 != 0
-    if r1 goto L3 else goto L2 :: bool
+    r0 = int_gt x, y
+    if r0 goto L2 else goto L3 :: bool
 L2:
-    r2 = y & 1
-    r3 = r2 != 0
-    if r3 goto L3 else goto L4 :: bool
-L3:
-    r4 = CPyTagged_IsLt_(y, x)
-    if r4 goto L5 else goto L6 :: bool
-L4:
-    r5 = x > y :: signed
-    if r5 goto L5 else goto L6 :: bool
-L5:
-    r6 = CPyTagged_Subtract(x, y)
-    x = r6
+    r1 = CPyTagged_Subtract(x, y)
+    x = r1
     goto L1
-L6:
+L3:
     return x
 
 [case testWhile2]
@@ -411,32 +268,18 @@ def f(x: int, y: int) -> int:
 [out]
 def f(x, y):
     x, y :: int
-    r0 :: native_int
-    r1 :: bit
-    r2 :: native_int
-    r3, r4, r5 :: bit
-    r6 :: int
+    r0 :: bit
+    r1 :: int
 L0:
     x = 2
 L1:
-    r0 = x & 1
-    r1 = r0 != 0
-    if r1 goto L3 else goto L2 :: bool
+    r0 = int_gt x, y
+    if r0 goto L2 else goto L3 :: bool
 L2:
-    r2 = y & 1
-    r3 = r2 != 0
-    if r3 goto L3 else goto L4 :: bool
-L3:
-    r4 = CPyTagged_IsLt_(y, x)
-    if r4 goto L5 else goto L6 :: bool
-L4:
-    r5 = x > y :: signed
-    if r5 goto L5 else goto L6 :: bool
-L5:
-    r6 = CPyTagged_Subtract(x, y)
-    x = r6
+    r1 = CPyTagged_Subtract(x, y)
+    x = r1
     goto L1
-L6:
+L3:
     return x
 
 [case testImplicitNoneReturn]
@@ -466,30 +309,16 @@ def f(x: int, y: int) -> None:
 [out]
 def f(x, y):
     x, y :: int
-    r0 :: native_int
-    r1 :: bit
-    r2 :: native_int
-    r3, r4, r5 :: bit
+    r0 :: bit
 L0:
-    r0 = x & 1
-    r1 = r0 != 0
-    if r1 goto L2 else goto L1 :: bool
+    r0 = int_lt x, y
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r2 = y & 1
-    r3 = r2 != 0
-    if r3 goto L2 else goto L3 :: bool
-L2:
-    r4 = CPyTagged_IsLt_(x, y)
-    if r4 goto L4 else goto L5 :: bool
-L3:
-    r5 = x < y :: signed
-    if r5 goto L4 else goto L5 :: bool
-L4:
     x = 2
-    goto L6
-L5:
+    goto L3
+L2:
     y = 4
-L6:
+L3:
     return 1
 
 [case testRecursion]
@@ -501,29 +330,21 @@ def f(n: int) -> int:
 [out]
 def f(n):
     n :: int
-    r0 :: native_int
-    r1, r2, r3 :: bit
-    r4, r5, r6, r7, r8 :: int
+    r0 :: bit
+    r1, r2, r3, r4, r5 :: int
 L0:
-    r0 = n & 1
-    r1 = r0 != 0
-    if r1 goto L1 else goto L2 :: bool
+    r0 = int_le n, 2
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r2 = CPyTagged_IsLt_(2, n)
-    if r2 goto L4 else goto L3 :: bool
-L2:
-    r3 = n <= 2 :: signed
-    if r3 goto L3 else goto L4 :: bool
-L3:
     return 2
-L4:
-    r4 = CPyTagged_Subtract(n, 2)
-    r5 = f(r4)
-    r6 = CPyTagged_Subtract(n, 4)
-    r7 = f(r6)
-    r8 = CPyTagged_Add(r5, r7)
-    return r8
-L5:
+L2:
+    r1 = CPyTagged_Subtract(n, 2)
+    r2 = f(r1)
+    r3 = CPyTagged_Subtract(n, 4)
+    r4 = f(r3)
+    r5 = CPyTagged_Add(r2, r4)
+    return r5
+L3:
     unreachable
 
 [case testReportTypeCheckError]
@@ -550,33 +371,25 @@ def f(n: int) -> int:
 [out]
 def f(n):
     n :: int
-    r0 :: native_int
-    r1, r2, r3 :: bit
+    r0 :: bit
     x :: int
-    r4 :: bit
+    r1 :: bit
 L0:
-    r0 = n & 1
-    r1 = r0 != 0
-    if r1 goto L1 else goto L2 :: bool
+    r0 = int_lt n, 0
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r2 = CPyTagged_IsLt_(n, 0)
-    if r2 goto L3 else goto L4 :: bool
+    x = 2
+    goto L6
 L2:
-    r3 = n < 0 :: signed
-    if r3 goto L3 else goto L4 :: bool
+    r1 = int_eq n, 0
+    if r1 goto L3 else goto L4 :: bool
 L3:
     x = 2
-    goto L8
+    goto L5
 L4:
-    r4 = int_eq n, 0
-    if r4 goto L5 else goto L6 :: bool
-L5:
-    x = 2
-    goto L7
-L6:
     x = 4
-L7:
-L8:
+L5:
+L6:
     return x
 
 [case testUnaryMinus]
@@ -1272,27 +1085,19 @@ def f(x: int) -> int:
 [out]
 def absolute_value(x):
     x :: int
-    r0 :: native_int
-    r1, r2, r3 :: bit
-    r4, r5 :: int
+    r0 :: bit
+    r1, r2 :: int
 L0:
-    r0 = x & 1
-    r1 = r0 != 0
-    if r1 goto L1 else goto L2 :: bool
+    r0 = int_gt x, 0
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r2 = CPyTagged_IsLt_(0, x)
-    if r2 goto L3 else goto L4 :: bool
+    r1 = x
+    goto L3
 L2:
-    r3 = x > 0 :: signed
-    if r3 goto L3 else goto L4 :: bool
+    r2 = CPyTagged_Negate(x)
+    r1 = r2
 L3:
-    r4 = x
-    goto L5
-L4:
-    r5 = CPyTagged_Negate(x)
-    r4 = r5
-L5:
-    return r4
+    return r1
 def call_native_function(x):
     x, r0 :: int
 L0:
@@ -2078,7 +1883,7 @@ L1:
     r11 = load_mem r10 :: native_int*
     keep_alive r1
     r12 = r11 << 1
-    r13 = r9 < r12 :: signed
+    r13 = int_lt r9, r12
     if r13 goto L2 else goto L8 :: bool
 L2:
     r14 = CPyList_GetItemUnsafe(r1, r9)
@@ -2148,7 +1953,7 @@ L1:
     r11 = load_mem r10 :: native_int*
     keep_alive r1
     r12 = r11 << 1
-    r13 = r9 < r12 :: signed
+    r13 = int_lt r9, r12
     if r13 goto L2 else goto L8 :: bool
 L2:
     r14 = CPyList_GetItemUnsafe(r1, r9)
@@ -2215,7 +2020,7 @@ L1:
     r2 = load_mem r1 :: native_int*
     keep_alive l
     r3 = r2 << 1
-    r4 = r0 < r3 :: signed
+    r4 = int_lt r0, r3
     if r4 goto L2 else goto L4 :: bool
 L2:
     r5 = CPyList_GetItemUnsafe(l, r0)
@@ -2241,7 +2046,7 @@ L5:
     r16 = load_mem r15 :: native_int*
     keep_alive l
     r17 = r16 << 1
-    r18 = r14 < r17 :: signed
+    r18 = int_lt r14, r17
     if r18 goto L6 else goto L8 :: bool
 L6:
     r19 = CPyList_GetItemUnsafe(l, r14)
@@ -2504,60 +2309,24 @@ L0:
     return x
 def f(x, y, z):
     x, y, z, r0, r1 :: int
-    r2 :: native_int
-    r3 :: bit
-    r4 :: native_int
-    r5, r6, r7 :: bit
-    r8 :: bool
-    r9 :: bit
-    r10 :: bool
-    r11 :: int
-    r12 :: native_int
-    r13 :: bit
-    r14 :: native_int
-    r15, r16, r17 :: bit
-    r18 :: bool
-    r19 :: bit
+    r2 :: bit
+    r3 :: bool
+    r4 :: int
+    r5 :: bit
 L0:
     r0 = g(x)
     r1 = g(y)
-    r2 = r0 & 1
-    r3 = r2 == 0
-    r4 = r1 & 1
-    r5 = r4 == 0
-    r6 = r3 & r5
-    if r6 goto L1 else goto L2 :: bool
+    r2 = int_lt r0, r1
+    if r2 goto L2 else goto L1 :: bool
 L1:
-    r7 = r0 < r1 :: signed
-    r8 = r7
+    r3 = r2
     goto L3
 L2:
-    r9 = CPyTagged_IsLt_(r0, r1)
-    r8 = r9
+    r4 = g(z)
+    r5 = int_gt r1, r4
+    r3 = r5
 L3:
-    if r8 goto L5 else goto L4 :: bool
-L4:
-    r10 = r8
-    goto L9
-L5:
-    r11 = g(z)
-    r12 = r1 & 1
-    r13 = r12 == 0
-    r14 = r11 & 1
-    r15 = r14 == 0
-    r16 = r13 & r15
-    if r16 goto L6 else goto L7 :: bool
-L6:
-    r17 = r1 > r11 :: signed
-    r18 = r17
-    goto L8
-L7:
-    r19 = CPyTagged_IsLt_(r11, r1)
-    r18 = r19
-L8:
-    r10 = r18
-L9:
-    return r10
+    return r3
 
 [case testEq]
 class A:
@@ -3577,7 +3346,7 @@ L0:
     r0 = 8
     i = r0
 L1:
-    r1 = r0 < 24 :: signed
+    r1 = int_lt r0, 24
     if r1 goto L2 else goto L4 :: bool
 L2:
     r2 = CPyTagged_Add(sum, i)

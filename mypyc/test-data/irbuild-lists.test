@@ -230,7 +230,7 @@ L0:
     r3 = 0
     i = r3
 L1:
-    r4 = r3 < r2 :: signed
+    r4 = int_lt r3, r2
     if r4 goto L2 else goto L4 :: bool
 L2:
     r5 = CPyList_GetItem(l, i)
@@ -357,7 +357,7 @@ L1:
     r5 = load_mem r4 :: native_int*
     keep_alive source
     r6 = r5 << 1
-    r7 = r3 < r6 :: signed
+    r7 = int_lt r3, r6
     if r7 goto L2 else goto L4 :: bool
 L2:
     r8 = CPyList_GetItemUnsafe(source, r3)
@@ -382,7 +382,7 @@ L5:
     r19 = load_mem r18 :: native_int*
     keep_alive source
     r20 = r19 << 1
-    r21 = r17 < r20 :: signed
+    r21 = int_lt r17, r20
     if r21 goto L6 else goto L8 :: bool
 L6:
     r22 = CPyList_GetItemUnsafe(source, r17)
@@ -398,6 +398,7 @@ L7:
 L8:
     b = r16
     return 1
+
 [case testGeneratorNext]
 from typing import List, Optional
 
@@ -425,7 +426,7 @@ L1:
     r2 = load_mem r1 :: native_int*
     keep_alive x
     r3 = r2 << 1
-    r4 = r0 < r3 :: signed
+    r4 = int_lt r0, r3
     if r4 goto L2 else goto L4 :: bool
 L2:
     r5 = CPyList_GetItemUnsafe(x, r0)
@@ -504,7 +505,7 @@ L1:
     r2 = load_mem r1 :: native_int*
     keep_alive a
     r3 = r2 << 1
-    r4 = r0 < r3 :: signed
+    r4 = int_lt r0, r3
     if r4 goto L2 else goto L4 :: bool
 L2:
     r5 = CPyList_GetItemUnsafe(a, r0)
@@ -533,7 +534,7 @@ L1:
     r2 = load_mem r1 :: native_int*
     keep_alive a
     r3 = r2 << 1
-    r4 = r0 < r3 :: signed
+    r4 = int_lt r0, r3
     if r4 goto L2 else goto L4 :: bool
 L2:
     r5 = CPyList_GetItemUnsafe(a, r0)

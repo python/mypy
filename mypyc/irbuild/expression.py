@@ -814,12 +814,6 @@ def translate_is_none(builder: IRBuilder, expr: Expression, negated: bool) -> Va
 def transform_basic_comparison(
     builder: IRBuilder, op: str, left: Value, right: Value, line: int
 ) -> Value:
-    if (
-        is_int_rprimitive(left.type)
-        and is_int_rprimitive(right.type)
-        and op in int_comparison_op_mapping
-    ):
-        return builder.compare_tagged(left, right, op, line)
     if is_fixed_width_rtype(left.type) and op in int_comparison_op_mapping:
         if right.type == left.type:
             if left.type.is_signed:
