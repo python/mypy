@@ -3575,7 +3575,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
                 # Only show dangerous overlap if there are no other errors. See
                 # testCustomEqCheckStrictEquality for an example.
-                if not w.has_new_errors() and (operator == "==" or operator == "!="):
+                if not w.has_new_errors() and operator in ("==", "!="):
                     right_type = self.accept(right)
                     if self.dangerous_comparison(left_type, right_type):
                         # Show the most specific literal types possible
