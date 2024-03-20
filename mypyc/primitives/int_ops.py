@@ -10,14 +10,11 @@ Use mypyc.ir.ops.IntOp for operations on fixed-width/C integers.
 
 from __future__ import annotations
 
-from typing import NamedTuple
-
 from mypyc.ir.ops import (
     ERR_ALWAYS,
     ERR_MAGIC,
     ERR_MAGIC_OVERLAPPING,
     ERR_NEVER,
-    ComparisonOp,
     PrimitiveDescription,
 )
 from mypyc.ir.rtypes import (
@@ -196,20 +193,6 @@ int_invert_op = int_unary_op("~", "CPyTagged_Invert")
 # Primitives related to integer comparison operations:
 
 
-# Description for building int comparison ops
-#
-# Fields:
-#   binary_op_variant: identify which IntOp to use when operands are short integers
-#   c_func_description: the C function to call when operands are tagged integers
-#   c_func_negated: whether to negate the C function call's result
-#   c_func_swap_operands: whether to swap lhs and rhs when call the function
-class IntComparisonOpDescription(NamedTuple):
-    binary_op_variant: int
-    c_func_description: CFunctionDescription
-    c_func_negated: bool
-    c_func_swap_operands: bool
-
-
 # Equals operation on two boxed tagged integers
 int_equal_ = custom_op(
     arg_types=[int_rprimitive, int_rprimitive],
@@ -225,17 +208,6 @@ int_less_than_ = custom_op(
     c_function_name="CPyTagged_IsLt_",
     error_kind=ERR_NEVER,
 )
-
-# Provide mapping from textual op to short int's op variant and boxed int's description.
-# Note that these are not complete implementations and require extra IR.
-int_comparison_op_mapping: dict[str, IntComparisonOpDescription] = {
-    "==": IntComparisonOpDescription(ComparisonOp.EQ, int_equal_, False, False),
-    "!=": IntComparisonOpDescription(ComparisonOp.NEQ, int_equal_, True, False),
-    "<": IntComparisonOpDescription(ComparisonOp.SLT, int_less_than_, False, False),
-    "<=": IntComparisonOpDescription(ComparisonOp.SLE, int_less_than_, True, True),
-    ">": IntComparisonOpDescription(ComparisonOp.SGT, int_less_than_, False, True),
-    ">=": IntComparisonOpDescription(ComparisonOp.SGE, int_less_than_, True, False),
-}
 
 int64_divide_op = custom_op(
     arg_types=[int64_rprimitive, int64_rprimitive],
