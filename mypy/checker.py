@@ -5,6 +5,7 @@ from __future__ import annotations
 import itertools
 from collections import defaultdict
 from contextlib import ExitStack, contextmanager
+from copy import copy
 from typing import (
     AbstractSet,
     Callable,
@@ -4567,9 +4568,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             comparison = ComparisonExpr(op_eq, [left_new, right])
             comparison.line = line
             comparisons.append(comparison)
-            left_new = NameExpr(left.name)
-            left_new.node = left.node
-            left_new.line = left.line
+            left_new = copy(left)
         if (nmb := len(comparisons)) == 0:
             if op_in == "in":
                 e = NameExpr("False")
