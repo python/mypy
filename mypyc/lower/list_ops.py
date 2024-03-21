@@ -9,6 +9,11 @@ from mypyc.lower.registry import lower_primitive_op
 
 @lower_primitive_op("buf_init_item")
 def buf_init_item(builder: LowLevelIRBuilder, args: list[Value], line: int) -> Value:
+    """Initialize an item in a buffer of "PyObject *" values at given index.
+
+    This can be used to initialize the data buffer of a freshly allocated list
+    object.
+    """
     base = args[0]
     index_value = args[1]
     value = args[2]
