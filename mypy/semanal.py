@@ -177,7 +177,7 @@ from mypy.nodes import (
     is_final_node,
     type_aliases,
     type_aliases_source_versions,
-    typing_extensions_aliases,
+    typing_extensions_aliases, VARIANCE_NOT_READY,
 )
 from mypy.options import Options
 from mypy.patterns import (
@@ -1640,6 +1640,7 @@ class SemanticAnalyzer(
                 values=[],
                 upper_bound=self.named_type("builtins.object"),
                 default=AnyType(TypeOfAny.from_omitted_generics),
+                variance=VARIANCE_NOT_READY,
             )
             self.add_symbol(tv[0], tve, context)
 

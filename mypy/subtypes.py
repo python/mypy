@@ -8,7 +8,7 @@ import mypy.applytype
 import mypy.constraints
 import mypy.typeops
 from mypy.erasetype import erase_type
-from mypy.expandtype import expand_self_type, expand_type_by_instance
+from mypy.expandtype import expand_self_type, expand_type_by_instance, expand_type
 from mypy.maptype import map_instance_to_supertype
 
 # Circular import; done in the function instead.
@@ -23,7 +23,7 @@ from mypy.nodes import (
     FuncBase,
     OverloadedFuncDef,
     TypeInfo,
-    Var,
+    Var, VARIANCE_NOT_READY,
 )
 from mypy.options import Options
 from mypy.state import state
@@ -577,6 +577,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 if not self.subtype_context.ignore_type_params:
                     for lefta, righta, tvar in type_params:
                         if isinstance(tvar, TypeVarType):
+                            if tvar.variance ==VARIANCE_NOT_READY:
+                                infer_class_variances(right.type)
                             if not check_type_parameter(
                                 lefta,
                                 righta,
@@ -1978,3 +1980,51 @@ def is_more_precise(left: Type, right: Type, *, ignore_promotions: bool = False)
     if isinstance(right, AnyType):
         return True
     return is_proper_subtype(left, right, ignore_promotions=ignore_promotions)
+
+
+def infer_variance(info: TypeInfo, i: int) -> None:
+    """Infer the variance of the ith type variable of a generic class."""
+    object_type = Instance(info.mro[-1], [])
+    from mypy.typeops import bind_self
+    for variance in COVARIANT, CONTRAVARIANT, INVARIANT:
+        tv = info.defn.type_vars[i]
+        assert isinstance(tv, TypeVarType)
+        if tv.variance != VARIANCE_NOT_READY:
+            continue
+        tv.variance = variance
+        co = True
+        contra = True
+        tvar = info.defn.type_vars[i]
+        for member, sym in info.names.items():
+            node = sym.node
+            typ = None
+            if isinstance(node, FuncBase):
+                typ = node.type
+                if isinstance(typ, FunctionLike):
+                    typ = bind_self(typ)
+
+            if typ:
+                typ2 = expand_type(typ, {tvar.id: object_type})
+                print(member, typ, typ2)
+                if not is_subtype(typ, typ2):
+                    co = False
+                if not is_subtype(typ2, typ):
+                    contra = False
+        if co:
+            v = COVARIANT
+        elif contra:
+            v = CONTRAVARIANT
+        else:
+            v = INVARIANT
+        if v == variance:
+            break
+        tv.variance = VARIANCE_NOT_READY
+
+
+def infer_class_variances(info: TypeInfo) -> None:
+    if not info.defn.type_args:
+        return
+    tvs = info.defn.type_vars
+    for i, tv in enumerate(tvs):
+        if isinstance(tv, TypeVarType):
+            infer_variance(info, i)

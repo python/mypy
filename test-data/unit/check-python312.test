@@ -190,3 +190,20 @@ if int():
     e = f  # E: Incompatible types in assignment (expression has type "Contravariant[int]", variable has type "Contravariant[object]")
 if int():
     f = e
+
+[case testPEP695InferVarianceCalculateOnDemand]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+class Covariant[T]:
+    def __init__(self) -> None:
+        self.x = [1]
+
+    def f(self) -> None:
+        c = Covariant[int]()
+        # We need to know that T is covariant here
+        self.g(c)
+        c2 = Covariant[object]()
+        self.h(c2)  # E: Argument 1 to "h" of "Covariant" has incompatible type "Covariant[object]"; expected "Covariant[int]"
+
+    def g(self, x: Covariant[object]) -> None: pass
+    def h(self, x: Covariant[int]) -> None: pass

@@ -2453,6 +2453,7 @@ class TypeApplication(Expression):
 INVARIANT: Final = 0
 COVARIANT: Final = 1
 CONTRAVARIANT: Final = 2
+VARIANCE_NOT_READY: Final = 3  # Variance hasn't been inferred (using Python 3.12 syntax)
 
 
 class TypeVarLikeExpr(SymbolNode, Expression):

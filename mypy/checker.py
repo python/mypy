@@ -153,7 +153,7 @@ from mypy.subtypes import (
     is_same_type,
     is_subtype,
     restrict_subtype_away,
-    unify_generic_callable,
+    unify_generic_callable, infer_class_variances,
 )
 from mypy.traverser import TraverserVisitor, all_return_statements, has_return_statement
 from mypy.treetransform import TransformVisitor
@@ -2396,7 +2396,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_protocol_variance(defn)
         if not defn.has_incompatible_baseclass and defn.info.is_enum:
             self.check_enum(defn)
-        infer_class_variances(defn, self.named_type("builtins.object"))
+        infer_class_variances(defn.info)
 
     def check_final_deletable(self, typ: TypeInfo) -> None:
         # These checks are only for mypyc. Only perform some checks that are easier
@@ -8444,47 +8444,3 @@ class VarAssignVisitor(TraverserVisitor):
             self.lvalue = True
             p.capture.accept(self)
             self.lvalue = False
-
-
-def infer_variance(info: TypeInfo, i: int, object_type: ProperType) -> None:
-    """Infer the variance of the ith type variable of a generic class."""
-    for variance in COVARIANT, CONTRAVARIANT, INVARIANT:
-        tv = info.defn.type_vars[i]
-        assert isinstance(tv, TypeVarType)
-        tv.variance = variance
-        co = True
-        contra = True
-        tvar = info.defn.type_vars[i]
-        for member, sym in info.names.items():
-            node = sym.node
-            typ = None
-            if isinstance(node, FuncDef):
-                typ = node.type
-                if isinstance(typ, FunctionLike):
-                    typ = bind_self(typ)
-
-            if typ:
-                typ2 = expand_type(typ, {tvar.id: object_type})
-                print(member, typ, typ2)
-                if not is_subtype(typ, typ2):
-                    co = False
-                if not is_subtype(typ2, typ):
-                    contra = False
-        if co:
-            v = COVARIANT
-        elif contra:
-            v = CONTRAVARIANT
-        else:
-            v = INVARIANT
-        if v == variance:
-            break
-        tv.variance = INVARIANT
-
-
-def infer_class_variances(defn: ClassDef, obj: ProperType) -> None:
-    if not defn.type_args:
-        return
-    tvs = defn.type_vars
-    for i, tv in enumerate(tvs):
-        if isinstance(tv, TypeVarType):
-            infer_variance(defn.info, i, obj)
