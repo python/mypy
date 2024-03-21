@@ -4,7 +4,7 @@
 -r mypy-requirements.txt
 -r build-requirements.txt
 attrs>=18.0
-black==24.1.1  # must match version in .pre-commit-config.yaml
+black==24.3.0  # must match version in .pre-commit-config.yaml
 filelock>=3.3.0
 # lxml 4.9.3 switched to manylinux_2_28, the wheel builder still uses manylinux2014
 lxml>=4.9.1,<4.9.3; (python_version<'3.11' or sys_platform!='win32') and python_version<'3.12'

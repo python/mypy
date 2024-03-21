@@ -6,7 +6,7 @@
 #
 attrs==23.1.0
     # via -r test-requirements.in
-black==24.1.1
+black==24.3.0
     # via -r test-requirements.in
 cfgv==3.4.0
     # via pre-commit
