@@ -4565,6 +4565,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         left_new = left
         comparisons = []
         for right in reversed(tuple_.items):
+            if isinstance(right, StarExpr):
+                return e
             comparison = ComparisonExpr(op_eq, [left_new, right])
             comparison.line = line
             comparisons.append(comparison)
