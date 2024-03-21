@@ -154,3 +154,39 @@ if int():
     e = f  # E: Incompatible types in assignment (expression has type "Contravariant[int]", variable has type "Contravariant[object]")
 if int():
     f = e
+
+[case testPEP695InferVarianceRecursive]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+class Invariant[T]:
+    def f(self, x: Invariant[T]) -> Invariant[T]:
+        return x
+
+class Covariant[T]:
+    def f(self) -> Covariant[T]:
+        return self
+
+class Contravariant[T]:
+    def f(self, x: Contravariant[T]) -> None:
+        pass
+
+a: Invariant[object]
+b: Invariant[int]
+if int():
+    a = b  # E: Incompatible types in assignment (expression has type "Invariant[int]", variable has type "Invariant[object]")
+if int():
+    b = a  # E: Incompatible types in assignment (expression has type "Invariant[object]", variable has type "Invariant[int]")
+
+c: Covariant[object]
+d: Covariant[int]
+if int():
+    c = d
+if int():
+    d = c  # E: Incompatible types in assignment (expression has type "Covariant[object]", variable has type "Covariant[int]")
+
+e: Contravariant[object]
+f: Contravariant[int]
+if int():
+    e = f  # E: Incompatible types in assignment (expression has type "Contravariant[int]", variable has type "Contravariant[object]")
+if int():
+    f = e
