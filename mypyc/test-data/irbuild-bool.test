@@ -87,17 +87,14 @@ L0:
     return 1
 def list_to_bool(l):
     l :: list
-    r0 :: ptr
-    r1 :: native_int
-    r2 :: short_int
-    r3 :: bit
+    r0 :: native_int
+    r1 :: short_int
+    r2 :: bit
 L0:
-    r0 = get_element_ptr l ob_size :: PyVarObject
-    r1 = load_mem r0 :: native_int*
-    keep_alive l
-    r2 = r1 << 1
-    r3 = int_ne r2, 0
-    return r3
+    r0 = var_object_size l
+    r1 = r0 << 1
+    r2 = int_ne r1, 0
+    return r2
 def always_truthy_instance_to_bool(o):
     o :: __main__.C
     r0 :: i32

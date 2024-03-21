@@ -62,15 +62,12 @@ def f(x: Tuple[int, ...]) -> int:
 [out]
 def f(x):
     x :: tuple
-    r0 :: ptr
-    r1 :: native_int
-    r2 :: short_int
+    r0 :: native_int
+    r1 :: short_int
 L0:
-    r0 = get_element_ptr x ob_size :: PyVarObject
-    r1 = load_mem r0 :: native_int*
-    keep_alive x
-    r2 = r1 << 1
-    return r2
+    r0 = var_object_size x
+    r1 = r0 << 1
+    return r1
 
 [case testSequenceTupleForced]
 from typing import Tuple
@@ -131,29 +128,26 @@ def f(xs: Tuple[str, ...]) -> None:
 def f(xs):
     xs :: tuple
     r0 :: short_int
-    r1 :: ptr
-    r2 :: native_int
-    r3 :: short_int
-    r4 :: bit
-    r5 :: object
-    r6, x :: str
-    r7 :: short_int
+    r1 :: native_int
+    r2 :: short_int
+    r3 :: bit
+    r4 :: object
+    r5, x :: str
+    r6 :: short_int
 L0:
     r0 = 0
 L1:
-    r1 = get_element_ptr xs ob_size :: PyVarObject
-    r2 = load_mem r1 :: native_int*
-    keep_alive xs
-    r3 = r2 << 1
-    r4 = int_lt r0, r3
-    if r4 goto L2 else goto L4 :: bool
+    r1 = var_object_size xs
+    r2 = r1 << 1
+    r3 = int_lt r0, r2
+    if r3 goto L2 else goto L4 :: bool
 L2:
-    r5 = CPySequenceTuple_GetItem(xs, r0)
-    r6 = cast(str, r5)
-    x = r6
+    r4 = CPySequenceTuple_GetItem(xs, r0)
+    r5 = cast(str, r4)
+    x = r5
 L3:
-    r7 = r0 + 2
-    r0 = r7
+    r6 = r0 + 2
+    r0 = r6
     goto L1
 L4:
     return 1
@@ -238,20 +232,18 @@ def test():
     r1, r2, r3 :: object
     r4 :: ptr
     source :: list
-    r5 :: ptr
-    r6 :: native_int
-    r7 :: tuple
-    r8 :: short_int
-    r9 :: ptr
-    r10 :: native_int
-    r11 :: short_int
-    r12 :: bit
-    r13 :: object
-    r14, x :: int
-    r15 :: bool
-    r16 :: object
-    r17 :: bit
-    r18 :: short_int
+    r5 :: native_int
+    r6 :: tuple
+    r7 :: short_int
+    r8 :: native_int
+    r9 :: short_int
+    r10 :: bit
+    r11 :: object
+    r12, x :: int
+    r13 :: bool
+    r14 :: object
+    r15 :: bit
+    r16 :: short_int
     a :: tuple
 L0:
     r0 = PyList_New(3)
@@ -264,31 +256,27 @@ L0:
     buf_init_item r4, 2, r3
     keep_alive r0
     source = r0
-    r5 = get_element_ptr source ob_size :: PyVarObject
-    r6 = load_mem r5 :: native_int*
-    keep_alive source
-    r7 = PyTuple_New(r6)
-    r8 = 0
+    r5 = var_object_size source
+    r6 = PyTuple_New(r5)
+    r7 = 0
 L1:
-    r9 = get_element_ptr source ob_size :: PyVarObject
-    r10 = load_mem r9 :: native_int*
-    keep_alive source
-    r11 = r10 << 1
-    r12 = int_lt r8, r11
-    if r12 goto L2 else goto L4 :: bool
+    r8 = var_object_size source
+    r9 = r8 << 1
+    r10 = int_lt r7, r9
+    if r10 goto L2 else goto L4 :: bool
 L2:
-    r13 = CPyList_GetItemUnsafe(source, r8)
-    r14 = unbox(int, r13)
-    x = r14
-    r15 = f(x)
-    r16 = box(bool, r15)
-    r17 = CPySequenceTuple_SetItemUnsafe(r7, r8, r16)
+    r11 = CPyList_GetItemUnsafe(source, r7)
+    r12 = unbox(int, r11)
+    x = r12
+    r13 = f(x)
+    r14 = box(bool, r13)
+    r15 = CPySequenceTuple_SetItemUnsafe(r6, r7, r14)
 L3:
-    r18 = r8 + 2
-    r8 = r18
+    r16 = r7 + 2
+    r7 = r16
     goto L1
 L4:
-    a = r7
+    a = r6
     return 1
 
 [case testTupleBuiltFromStr]
@@ -361,44 +349,39 @@ L0:
     return r0
 def test(source):
     source :: tuple
-    r0 :: ptr
-    r1 :: native_int
-    r2 :: tuple
-    r3 :: short_int
-    r4 :: ptr
-    r5 :: native_int
-    r6 :: short_int
-    r7 :: bit
-    r8 :: object
-    r9, x, r10 :: bool
-    r11 :: object
-    r12 :: bit
-    r13 :: short_int
+    r0 :: native_int
+    r1 :: tuple
+    r2 :: short_int
+    r3 :: native_int
+    r4 :: short_int
+    r5 :: bit
+    r6 :: object
+    r7, x, r8 :: bool
+    r9 :: object
+    r10 :: bit
+    r11 :: short_int
     a :: tuple
 L0:
-    r0 = get_element_ptr source ob_size :: PyVarObject
-    r1 = load_mem r0 :: native_int*
-    keep_alive source
-    r2 = PyTuple_New(r1)
-    r3 = 0
+    r0 = var_object_size source
+    r1 = PyTuple_New(r0)
+    r2 = 0
 L1:
-    r4 = get_element_ptr source ob_size :: PyVarObject
-    r5 = load_mem r4 :: native_int*
-    keep_alive source
-    r6 = r5 << 1
-    r7 = int_lt r3, r6
-    if r7 goto L2 else goto L4 :: bool
+    r3 = var_object_size source
+    r4 = r3 << 1
+    r5 = int_lt r2, r4
+    if r5 goto L2 else goto L4 :: bool
 L2:
-    r8 = CPySequenceTuple_GetItem(source, r3)
-    r9 = unbox(bool, r8)
-    x = r9
-    r10 = f(x)
-    r11 = box(bool, r10)
-    r12 = CPySequenceTuple_SetItemUnsafe(r2, r3, r11)
+    r6 = CPySequenceTuple_GetItem(source, r2)
+    r7 = unbox(bool, r6)
+    x = r7
+    r8 = f(x)
+    r9 = box(bool, r8)
+    r10 = CPySequenceTuple_SetItemUnsafe(r1, r2, r9)
 L3:
-    r13 = r3 + 2
-    r3 = r13
+    r11 = r2 + 2
+    r2 = r11
     goto L1
 L4:
-    a = r2
+    a = r1
     return 1
+

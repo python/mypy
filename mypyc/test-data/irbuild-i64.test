@@ -1201,19 +1201,16 @@ def g(a: List[i64], y: i64) -> bool:
 def f(a, y):
     a :: list
     y :: i64
-    r0 :: ptr
-    r1 :: native_int
-    r2 :: short_int
-    r3 :: i64
-    r4 :: bit
+    r0 :: native_int
+    r1 :: short_int
+    r2 :: i64
+    r3 :: bit
 L0:
-    r0 = get_element_ptr a ob_size :: PyVarObject
-    r1 = load_mem r0 :: native_int*
-    keep_alive a
-    r2 = r1 << 1
-    r3 = r2 >> 1
-    r4 = r3 < y :: signed
-    if r4 goto L1 else goto L2 :: bool
+    r0 = var_object_size a
+    r1 = r0 << 1
+    r2 = r1 >> 1
+    r3 = r2 < y :: signed
+    if r3 goto L1 else goto L2 :: bool
 L1:
     return 1
 L2:
@@ -1221,19 +1218,16 @@ L2:
 def g(a, y):
     a :: list
     y :: i64
-    r0 :: ptr
-    r1 :: native_int
-    r2 :: short_int
-    r3 :: i64
-    r4 :: bit
+    r0 :: native_int
+    r1 :: short_int
+    r2 :: i64
+    r3 :: bit
 L0:
-    r0 = get_element_ptr a ob_size :: PyVarObject
-    r1 = load_mem r0 :: native_int*
-    keep_alive a
-    r2 = r1 << 1
-    r3 = r2 >> 1
-    r4 = y < r3 :: signed
-    if r4 goto L1 else goto L2 :: bool
+    r0 = var_object_size a
+    r1 = r0 << 1
+    r2 = r1 >> 1
+    r3 = y < r2 :: signed
+    if r3 goto L1 else goto L2 :: bool
 L1:
     return 1
 L2:
@@ -1296,49 +1290,40 @@ def lt_i64(a: List[i64], n: i64) -> bool:
 def add_i64(a, n):
     a :: list
     n :: i64
-    r0 :: ptr
-    r1 :: native_int
-    r2 :: short_int
-    r3, r4 :: i64
+    r0 :: native_int
+    r1 :: short_int
+    r2, r3 :: i64
 L0:
-    r0 = get_element_ptr a ob_size :: PyVarObject
-    r1 = load_mem r0 :: native_int*
-    keep_alive a
-    r2 = r1 << 1
-    r3 = r2 >> 1
-    r4 = r3 + n
-    return r4
+    r0 = var_object_size a
+    r1 = r0 << 1
+    r2 = r1 >> 1
+    r3 = r2 + n
+    return r3
 def add_i64_2(a, n):
     a :: list
     n :: i64
-    r0 :: ptr
-    r1 :: native_int
-    r2 :: short_int
-    r3, r4 :: i64
+    r0 :: native_int
+    r1 :: short_int
+    r2, r3 :: i64
 L0:
-    r0 = get_element_ptr a ob_size :: PyVarObject
-    r1 = load_mem r0 :: native_int*
-    keep_alive a
-    r2 = r1 << 1
-    r3 = r2 >> 1
-    r4 = n + r3
-    return r4
+    r0 = var_object_size a
+    r1 = r0 << 1
+    r2 = r1 >> 1
+    r3 = n + r2
+    return r3
 def eq_i64(a, n):
     a :: list
     n :: i64
-    r0 :: ptr
-    r1 :: native_int
-    r2 :: short_int
-    r3 :: i64
-    r4 :: bit
+    r0 :: native_int
+    r1 :: short_int
+    r2 :: i64
+    r3 :: bit
 L0:
-    r0 = get_element_ptr a ob_size :: PyVarObject
-    r1 = load_mem r0 :: native_int*
-    keep_alive a
-    r2 = r1 << 1
-    r3 = r2 >> 1
-    r4 = r3 == n
-    if r4 goto L1 else goto L2 :: bool
+    r0 = var_object_size a
+    r1 = r0 << 1
+    r2 = r1 >> 1
+    r3 = r2 == n
+    if r3 goto L1 else goto L2 :: bool
 L1:
     return 1
 L2:
@@ -1346,19 +1331,16 @@ L2:
 def lt_i64(a, n):
     a :: list
     n :: i64
-    r0 :: ptr
-    r1 :: native_int
-    r2 :: short_int
-    r3 :: i64
-    r4 :: bit
+    r0 :: native_int
+    r1 :: short_int
+    r2 :: i64
+    r3 :: bit
 L0:
-    r0 = get_element_ptr a ob_size :: PyVarObject
-    r1 = load_mem r0 :: native_int*
-    keep_alive a
-    r2 = r1 << 1
-    r3 = r2 >> 1
-    r4 = n < r3 :: signed
-    if r4 goto L1 else goto L2 :: bool
+    r0 = var_object_size a
+    r1 = r0 << 1
+    r2 = r1 >> 1
+    r3 = n < r2 :: signed
+    if r3 goto L1 else goto L2 :: bool
 L1:
     return 1
 L2:

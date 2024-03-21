@@ -813,17 +813,15 @@ def f() -> int:
 [out]
 def f():
     r0, x :: list
-    r1 :: ptr
-    r2 :: native_int
-    r3 :: short_int
+    r1 :: native_int
+    r2 :: short_int
 L0:
     r0 = PyList_New(0)
     x = r0
-    r1 = get_element_ptr x ob_size :: PyVarObject
-    r2 = load_mem r1 :: native_int*
+    r1 = var_object_size x
     dec_ref x
-    r3 = r2 << 1
-    return r3
+    r2 = r1 << 1
+    return r2
 
 [case testSometimesUninitializedVariable]
 def f(x: bool) -> int:
@@ -1064,15 +1062,13 @@ class C:
 def f(x):
     x :: __main__.C
     r0 :: list
-    r1 :: ptr
-    r2 :: native_int
-    r3 :: short_int
+    r1 :: native_int
+    r2 :: short_int
 L0:
     r0 = borrow x.a
-    r1 = get_element_ptr r0 ob_size :: PyVarObject
-    r2 = load_mem r1 :: native_int*
-    r3 = r2 << 1
-    return r3
+    r1 = var_object_size r0
+    r2 = r1 << 1
+    return r2
 
 [case testBorrowIsinstanceArgument]
 from typing import List

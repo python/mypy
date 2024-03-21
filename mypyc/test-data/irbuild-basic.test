@@ -1256,17 +1256,14 @@ L3:
     unreachable
 def lst(x):
     x :: list
-    r0 :: ptr
-    r1 :: native_int
-    r2 :: short_int
-    r3 :: bit
+    r0 :: native_int
+    r1 :: short_int
+    r2 :: bit
 L0:
-    r0 = get_element_ptr x ob_size :: PyVarObject
-    r1 = load_mem r0 :: native_int*
-    keep_alive x
-    r2 = r1 << 1
-    r3 = int_ne r2, 0
-    if r3 goto L1 else goto L2 :: bool
+    r0 = var_object_size x
+    r1 = r0 << 1
+    r2 = int_ne r1, 0
+    if r2 goto L1 else goto L2 :: bool
 L1:
     return 2
 L2:
@@ -1848,18 +1845,17 @@ def f():
     r2, r3, r4 :: object
     r5 :: ptr
     r6 :: short_int
-    r7 :: ptr
-    r8 :: native_int
-    r9 :: short_int
-    r10 :: bit
-    r11 :: object
-    r12, x :: int
-    r13, r14 :: bit
-    r15 :: int
-    r16 :: object
-    r17 :: i32
-    r18 :: bit
-    r19 :: short_int
+    r7 :: native_int
+    r8 :: short_int
+    r9 :: bit
+    r10 :: object
+    r11, x :: int
+    r12, r13 :: bit
+    r14 :: int
+    r15 :: object
+    r16 :: i32
+    r17 :: bit
+    r18 :: short_int
 L0:
     r0 = PyList_New(0)
     r1 = PyList_New(3)
@@ -1873,33 +1869,31 @@ L0:
     keep_alive r1
     r6 = 0
 L1:
-    r7 = get_element_ptr r1 ob_size :: PyVarObject
-    r8 = load_mem r7 :: native_int*
-    keep_alive r1
-    r9 = r8 << 1
-    r10 = int_lt r6, r9
-    if r10 goto L2 else goto L8 :: bool
+    r7 = var_object_size r1
+    r8 = r7 << 1
+    r9 = int_lt r6, r8
+    if r9 goto L2 else goto L8 :: bool
 L2:
-    r11 = CPyList_GetItemUnsafe(r1, r6)
-    r12 = unbox(int, r11)
-    x = r12
-    r13 = int_ne x, 4
-    if r13 goto L4 else goto L3 :: bool
+    r10 = CPyList_GetItemUnsafe(r1, r6)
+    r11 = unbox(int, r10)
+    x = r11
+    r12 = int_ne x, 4
+    if r12 goto L4 else goto L3 :: bool
 L3:
     goto L7
 L4:
-    r14 = int_ne x, 6
-    if r14 goto L6 else goto L5 :: bool
+    r13 = int_ne x, 6
+    if r13 goto L6 else goto L5 :: bool
 L5:
     goto L7
 L6:
-    r15 = CPyTagged_Multiply(x, x)
-    r16 = box(int, r15)
-    r17 = PyList_Append(r0, r16)
-    r18 = r17 >= 0 :: signed
+    r14 = CPyTagged_Multiply(x, x)
+    r15 = box(int, r14)
+    r16 = PyList_Append(r0, r15)
+    r17 = r16 >= 0 :: signed
 L7:
-    r19 = r6 + 2
-    r6 = r19
+    r18 = r6 + 2
+    r6 = r18
     goto L1
 L8:
     return r0
@@ -1915,18 +1909,17 @@ def f():
     r2, r3, r4 :: object
     r5 :: ptr
     r6 :: short_int
-    r7 :: ptr
-    r8 :: native_int
-    r9 :: short_int
-    r10 :: bit
-    r11 :: object
-    r12, x :: int
-    r13, r14 :: bit
-    r15 :: int
-    r16, r17 :: object
-    r18 :: i32
-    r19 :: bit
-    r20 :: short_int
+    r7 :: native_int
+    r8 :: short_int
+    r9 :: bit
+    r10 :: object
+    r11, x :: int
+    r12, r13 :: bit
+    r14 :: int
+    r15, r16 :: object
+    r17 :: i32
+    r18 :: bit
+    r19 :: short_int
 L0:
     r0 = PyDict_New()
     r1 = PyList_New(3)
@@ -1940,34 +1933,32 @@ L0:
     keep_alive r1
     r6 = 0
 L1:
-    r7 = get_element_ptr r1 ob_size :: PyVarObject
-    r8 = load_mem r7 :: native_int*
-    keep_alive r1
-    r9 = r8 << 1
-    r10 = int_lt r6, r9
-    if r10 goto L2 else goto L8 :: bool
+    r7 = var_object_size r1
+    r8 = r7 << 1
+    r9 = int_lt r6, r8
+    if r9 goto L2 else goto L8 :: bool
 L2:
-    r11 = CPyList_GetItemUnsafe(r1, r6)
-    r12 = unbox(int, r11)
-    x = r12
-    r13 = int_ne x, 4
-    if r13 goto L4 else goto L3 :: bool
+    r10 = CPyList_GetItemUnsafe(r1, r6)
+    r11 = unbox(int, r10)
+    x = r11
+    r12 = int_ne x, 4
+    if r12 goto L4 else goto L3 :: bool
 L3:
     goto L7
 L4:
-    r14 = int_ne x, 6
-    if r14 goto L6 else goto L5 :: bool
+    r13 = int_ne x, 6
+    if r13 goto L6 else goto L5 :: bool
 L5:
     goto L7
 L6:
-    r15 = CPyTagged_Multiply(x, x)
-    r16 = box(int, x)
-    r17 = box(int, r15)
-    r18 = CPyDict_SetItem(r0, r16, r17)
-    r19 = r18 >= 0 :: signed
+    r14 = CPyTagged_Multiply(x, x)
+    r15 = box(int, x)
+    r16 = box(int, r14)
+    r17 = CPyDict_SetItem(r0, r15, r16)
+    r18 = r17 >= 0 :: signed
 L7:
-    r20 = r6 + 2
-    r6 = r20
+    r19 = r6 + 2
+    r6 = r19
     goto L1
 L8:
     return r0
@@ -1982,82 +1973,73 @@ def f(l: List[Tuple[int, int, int]]) -> List[int]:
 def f(l):
     l :: list
     r0 :: short_int
-    r1 :: ptr
-    r2 :: native_int
-    r3 :: short_int
-    r4 :: bit
-    r5 :: object
-    r6 :: tuple[int, int, int]
-    r7, x, r8, y, r9, z :: int
-    r10 :: short_int
-    r11 :: ptr
-    r12 :: native_int
-    r13 :: list
+    r1 :: native_int
+    r2 :: short_int
+    r3 :: bit
+    r4 :: object
+    r5 :: tuple[int, int, int]
+    r6, x, r7, y, r8, z :: int
+    r9 :: short_int
+    r10 :: native_int
+    r11 :: list
+    r12 :: short_int
+    r13 :: native_int
     r14 :: short_int
-    r15 :: ptr
-    r16 :: native_int
-    r17 :: short_int
-    r18 :: bit
-    r19 :: object
-    r20 :: tuple[int, int, int]
-    r21, x_2, r22, y_2, r23, z_2, r24, r25 :: int
-    r26 :: object
-    r27 :: bit
-    r28 :: short_int
+    r15 :: bit
+    r16 :: object
+    r17 :: tuple[int, int, int]
+    r18, x_2, r19, y_2, r20, z_2, r21, r22 :: int
+    r23 :: object
+    r24 :: bit
+    r25 :: short_int
 L0:
     r0 = 0
 L1:
-    r1 = get_element_ptr l ob_size :: PyVarObject
-    r2 = load_mem r1 :: native_int*
-    keep_alive l
-    r3 = r2 << 1
-    r4 = int_lt r0, r3
-    if r4 goto L2 else goto L4 :: bool
+    r1 = var_object_size l
+    r2 = r1 << 1
+    r3 = int_lt r0, r2
+    if r3 goto L2 else goto L4 :: bool
 L2:
-    r5 = CPyList_GetItemUnsafe(l, r0)
-    r6 = unbox(tuple[int, int, int], r5)
-    r7 = r6[0]
-    x = r7
-    r8 = r6[1]
-    y = r8
-    r9 = r6[2]
-    z = r9
+    r4 = CPyList_GetItemUnsafe(l, r0)
+    r5 = unbox(tuple[int, int, int], r4)
+    r6 = r5[0]
+    x = r6
+    r7 = r5[1]
+    y = r7
+    r8 = r5[2]
+    z = r8
 L3:
-    r10 = r0 + 2
-    r0 = r10
+    r9 = r0 + 2
+    r0 = r9
     goto L1
 L4:
-    r11 = get_element_ptr l ob_size :: PyVarObject
-    r12 = load_mem r11 :: native_int*
-    keep_alive l
-    r13 = PyList_New(r12)
-    r14 = 0
+    r10 = var_object_size l
+    r11 = PyList_New(r10)
+    r12 = 0
 L5:
-    r15 = get_element_ptr l ob_size :: PyVarObject
-    r16 = load_mem r15 :: native_int*
-    keep_alive l
-    r17 = r16 << 1
-    r18 = int_lt r14, r17
-    if r18 goto L6 else goto L8 :: bool
+    r13 = var_object_size l
+    r14 = r13 << 1
+    r15 = int_lt r12, r14
+    if r15 goto L6 else goto L8 :: bool
 L6:
-    r19 = CPyList_GetItemUnsafe(l, r14)
-    r20 = unbox(tuple[int, int, int], r19)
-    r21 = r20[0]
-    x_2 = r21
-    r22 = r20[1]
-    y_2 = r22
-    r23 = r20[2]
-    z_2 = r23
-    r24 = CPyTagged_Add(x_2, y_2)
-    r25 = CPyTagged_Add(r24, z_2)
-    r26 = box(int, r25)
-    r27 = CPyList_SetItemUnsafe(r13, r14, r26)
+    r16 = CPyList_GetItemUnsafe(l, r12)
+    r17 = unbox(tuple[int, int, int], r16)
+    r18 = r17[0]
+    x_2 = r18
+    r19 = r17[1]
+    y_2 = r19
+    r20 = r17[2]
+    z_2 = r20
+    r21 = CPyTagged_Add(x_2, y_2)
+    r22 = CPyTagged_Add(r21, z_2)
+    r23 = box(int, r22)
+    r24 = CPyList_SetItemUnsafe(r11, r12, r23)
 L7:
-    r28 = r14 + 2
-    r14 = r28
+    r25 = r12 + 2
+    r12 = r25
     goto L5
 L8:
-    return r13
+    return r11
 
 [case testProperty]
 class PropertyHolder:
