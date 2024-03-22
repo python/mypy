@@ -285,3 +285,16 @@ if int():
     a = b  # E: Incompatible types in assignment (expression has type "Invariant[int]", variable has type "Invariant[object]")
 if int():
     b = a  # E: Incompatible types in assignment (expression has type "Invariant[object]", variable has type "Invariant[int]")
+
+[case testPEP695InferVarianceNotReadyForJoin]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+class Invariant[T]:
+    def f(self) -> None:
+        reveal_type([Invariant(1), Invariant(object())]) \
+            # N: Revealed type is "builtins.list[__main__.Invariant[builtins.object]]"
+
+    def __init__(self, x: T) -> None:
+        self.x = x
+
+reveal_type([Invariant(1), Invariant(object())])   # N: Revealed type is "builtins.list[builtins.object]"
