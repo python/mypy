@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Dict, Final, Set, Tuple
 from typing_extensions import TypeAlias as _TypeAlias
 
-from mypy.nodes import TypeInfo
+from mypy.nodes import TypeInfo, VARIANCE_NOT_READY
 from mypy.server.trigger import make_trigger
 from mypy.types import Instance, Type, TypeVarId, get_proper_type
 
@@ -191,6 +191,9 @@ class TypeState:
         if left.last_known_value is not None or right.last_known_value is not None:
             # These are unlikely to match, due to the large space of
             # possible values.  Avoid uselessly increasing cache sizes.
+            return
+        if any(tv.variance == VARIANCE_NOT_READY for tv in right.type.defn.type_vars):
+            # Variance indeterminate -- don't know the result
             return
         cache = self._subtype_caches.setdefault(right.type, {})
         cache.setdefault(kind, set()).add((left, right))

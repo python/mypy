@@ -116,7 +116,7 @@ c: C[int] = C(1)
 reveal_type(c.x)  # N: Revealed type is "builtins.int"
 reveal_type(c.ident(1))  # N: Revealed type is "builtins.int"
 
-[case testPEP695InferVarianceSimple]
+[case testPEP695InferVarianceSimpleFromMethod]
 # flags: --enable-incomplete-feature=NewGenericSyntax
 
 class Invariant[T]:
@@ -154,6 +154,42 @@ if int():
     e = f  # E: Incompatible types in assignment (expression has type "Contravariant[int]", variable has type "Contravariant[object]")
 if int():
     f = e
+
+[case testPEP695InferVarianceSimpleFromAttribute]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+class Invariant1[T]:
+    def __init__(self, x: T) -> None:
+        self.x = x
+
+a: Invariant1[object]
+b: Invariant1[int]
+if int():
+    a = b  # E: Incompatible types in assignment (expression has type "Invariant1[int]", variable has type "Invariant1[object]")
+if int():
+    b = a  # E: Incompatible types in assignment (expression has type "Invariant1[object]", variable has type "Invariant1[int]")
+
+class Invariant2[T]:
+    def __init__(self) -> None:
+        self.x: list[T] = []
+
+a2: Invariant2[object]
+b2: Invariant2[int]
+if int():
+    a2 = b2  # E: Incompatible types in assignment (expression has type "Invariant2[int]", variable has type "Invariant2[object]")
+if int():
+    b2 = a2  # E: Incompatible types in assignment (expression has type "Invariant2[object]", variable has type "Invariant2[int]")
+
+class Invariant3[T]:
+    def __init__(self) -> None:
+        self.x: T | None = None
+
+a3: Invariant3[object]
+b3: Invariant3[int]
+if int():
+    a3 = b3  # E: Incompatible types in assignment (expression has type "Invariant3[int]", variable has type "Invariant3[object]")
+if int():
+    b3 = a3  # E: Incompatible types in assignment (expression has type "Invariant3[object]", variable has type "Invariant3[int]")
 
 [case testPEP695InferVarianceRecursive]
 # flags: --enable-incomplete-feature=NewGenericSyntax
@@ -207,3 +243,45 @@ class Covariant[T]:
 
     def g(self, x: Covariant[object]) -> None: pass
     def h(self, x: Covariant[int]) -> None: pass
+
+[case testPEP695InferVarianceNotReadyWhenNeeded]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+class Covariant[T]:
+    def f(self) -> None:
+        c = Covariant[int]()
+        # We need to know that T is covariant here
+        self.g(c)
+        c2 = Covariant[object]()
+        self.h(c2)  # E: Argument 1 to "h" of "Covariant" has incompatible type "Covariant[object]"; expected "Covariant[int]"
+
+    def g(self, x: Covariant[object]) -> None: pass
+    def h(self, x: Covariant[int]) -> None: pass
+
+    def __init__(self) -> None:
+        self.x = [1]
+
+class Invariant[T]:
+    def f(self) -> None:
+        c = Invariant(1)
+        # We need to know that T is invariant here, and for this we need the type
+        # of self.x, which won't be available on the first type checking pass,
+        # since __init__ is defined later in the file. In this case we fall back
+        # covariance.
+        self.g(c)
+        c2 = Invariant(object())
+        self.h(c2)  # E: Argument 1 to "h" of "Invariant" has incompatible type "Invariant[object]"; expected "Invariant[int]"
+
+    def g(self, x: Invariant[object]) -> None: pass
+    def h(self, x: Invariant[int]) -> None: pass
+
+    def __init__(self, x: T) -> None:
+        self.x = x
+
+# Now we should have the variance correct.
+a: Invariant[object]
+b: Invariant[int]
+if int():
+    a = b  # E: Incompatible types in assignment (expression has type "Invariant[int]", variable has type "Invariant[object]")
+if int():
+    b = a  # E: Incompatible types in assignment (expression has type "Invariant[object]", variable has type "Invariant[int]")

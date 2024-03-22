@@ -361,7 +361,10 @@ def check_type_parameter(
         p_left = get_proper_type(left)
         if isinstance(p_left, UninhabitedType) and p_left.ambiguous:
             variance = COVARIANT
-    if variance == COVARIANT:
+    # If variance hasn't been inferred yet, we are lenient and default to
+    # covariance. This shouldn't happen often, but it's very difficult to
+    # avoid these cases altogether.
+    if variance == COVARIANT or variance == VARIANCE_NOT_READY:
         if proper_subtype:
             return is_proper_subtype(left, right, subtype_context=subtype_context)
         else:
@@ -575,10 +578,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 else:
                     type_params = zip(t.args, right.args, right.type.defn.type_vars)
                 if not self.subtype_context.ignore_type_params:
+                    tried_infer = False
                     for lefta, righta, tvar in type_params:
                         if isinstance(tvar, TypeVarType):
-                            if tvar.variance ==VARIANCE_NOT_READY:
+                            if tvar.variance == VARIANCE_NOT_READY and not tried_infer:
                                 infer_class_variances(right.type)
+                                tried_infer = True
                             if not check_type_parameter(
                                 lefta,
                                 righta,
@@ -1982,10 +1987,15 @@ def is_more_precise(left: Type, right: Type, *, ignore_promotions: bool = False)
     return is_proper_subtype(left, right, ignore_promotions=ignore_promotions)
 
 
-def infer_variance(info: TypeInfo, i: int) -> None:
-    """Infer the variance of the ith type variable of a generic class."""
+def infer_variance(info: TypeInfo, i: int) -> bool:
+    """Infer the variance of the ith type variable of a generic class.
+
+    Return True if successful. This can fail if some inferred types aren't ready.
+    """
     object_type = Instance(info.mro[-1], [])
+
     from mypy.typeops import bind_self
+
     for variance in COVARIANT, CONTRAVARIANT, INVARIANT:
         tv = info.defn.type_vars[i]
         assert isinstance(tv, TypeVarType)
@@ -1996,20 +2006,30 @@ def infer_variance(info: TypeInfo, i: int) -> None:
         contra = True
         tvar = info.defn.type_vars[i]
         for member, sym in info.names.items():
+            if member in ("__init__", "__new__"):
+                continue
             node = sym.node
             typ = None
+            settable = False
             if isinstance(node, FuncBase):
                 typ = node.type
                 if isinstance(typ, FunctionLike):
                     typ = bind_self(typ)
+            elif isinstance(node, Var):
+                settable = True
+                typ = node.type
+                if typ is None:
+                    tv.variance = VARIANCE_NOT_READY
+                    return False
 
             if typ:
                 typ2 = expand_type(typ, {tvar.id: object_type})
-                print(member, typ, typ2)
                 if not is_subtype(typ, typ2):
                     co = False
                 if not is_subtype(typ2, typ):
                     contra = False
+                    if settable:
+                        co = False
         if co:
             v = COVARIANT
         elif contra:
@@ -2019,12 +2039,15 @@ def infer_variance(info: TypeInfo, i: int) -> None:
         if v == variance:
             break
         tv.variance = VARIANCE_NOT_READY
+    return True
 
 
-def infer_class_variances(info: TypeInfo) -> None:
+def infer_class_variances(info: TypeInfo) -> bool:
     if not info.defn.type_args:
         return
     tvs = info.defn.type_vars
     for i, tv in enumerate(tvs):
         if isinstance(tv, TypeVarType):
-            infer_variance(info, i)
+            if not infer_variance(info, i):
+                return False
+    return True
