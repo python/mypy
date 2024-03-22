@@ -291,6 +291,7 @@ if int():
 
 class Invariant[T]:
     def f(self) -> None:
+        # Assume covariance if variance us not ready
         reveal_type([Invariant(1), Invariant(object())]) \
             # N: Revealed type is "builtins.list[__main__.Invariant[builtins.object]]"
 
@@ -298,3 +299,23 @@ class Invariant[T]:
         self.x = x
 
 reveal_type([Invariant(1), Invariant(object())])   # N: Revealed type is "builtins.list[builtins.object]"
+
+[case testPEP695InferVarianceNotReadyForMeet]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+from typing import TypeVar, Callable
+
+S = TypeVar("S")
+def c(a: Callable[[S], None], b: Callable[[S], None]) -> S: ...
+
+def a1(x: Invariant[int]) -> None: pass
+def a2(x: Invariant[object]) -> None: pass
+
+class Invariant[T]:
+    def f(self) -> None:
+        reveal_type(c(a1, a2))  # N: Revealed type is "__main__.Invariant[builtins.int]"
+
+    def __init__(self, x: T) -> None:
+        self.x = x
+
+reveal_type(c(a1, a2))  # N: Revealed type is "Never"
