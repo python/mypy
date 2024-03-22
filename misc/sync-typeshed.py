@@ -194,7 +194,7 @@ def main() -> None:
         subprocess.run(["git", "commit", "-m", message], check=True)
         print("Created typeshed sync commit.")
 
-        patches = glob.glob(os.path.join(typeshed_patches, "*.patch"))
+        patches = sorted(glob.glob(os.path.join(typeshed_patches, "*.patch")))
         for patch in patches:
             cmd = ["git", "am", "--3way", patch]
             try:
