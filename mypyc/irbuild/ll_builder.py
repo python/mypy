@@ -67,7 +67,6 @@ from mypyc.ir.ops import (
     PrimitiveOp,
     RaiseStandardError,
     Register,
-    SetMem,
     Truncate,
     TupleGet,
     TupleSet,
@@ -165,7 +164,7 @@ from mypyc.primitives.int_ops import (
     uint8_overflow,
 )
 from mypyc.primitives.list_ops import list_build_op, list_extend_op, new_list_op
-from mypyc.primitives.misc_ops import bool_op, fast_isinstance_op, none_object_op
+from mypyc.primitives.misc_ops import bool_op, buf_init_item, fast_isinstance_op, none_object_op
 from mypyc.primitives.registry import (
     ERR_NEG_INT,
     CFunctionDescription,
@@ -1627,14 +1626,9 @@ class LowLevelIRBuilder:
         ob_item_ptr = self.add(GetElementPtr(result_list, PyListObject, "ob_item", line))
         ob_item_base = self.add(LoadMem(pointer_rprimitive, ob_item_ptr, line))
         for i in range(len(values)):
-            if i == 0:
-                item_address = ob_item_base
-            else:
-                offset = Integer(PLATFORM_SIZE * i, c_pyssize_t_rprimitive, line)
-                item_address = self.add(
-                    IntOp(pointer_rprimitive, ob_item_base, offset, IntOp.ADD, line)
-                )
-            self.add(SetMem(object_rprimitive, item_address, args[i], line))
+            self.primitive_op(
+                buf_init_item, [ob_item_base, Integer(i, c_pyssize_t_rprimitive), args[i]], line
+            )
         self.add(KeepAlive([result_list]))
         return result_list
 

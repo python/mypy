@@ -644,6 +644,14 @@ class PrimitiveOp(RegisterOp):
     def sources(self) -> list[Value]:
         return self.args
 
+    def stolen(self) -> list[Value]:
+        steals = self.desc.steals
+        if isinstance(steals, list):
+            assert len(steals) == len(self.args)
+            return [arg for arg, steal in zip(self.args, steals) if steal]
+        else:
+            return [] if not steals else self.sources()
+
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_primitive_op(self)
 

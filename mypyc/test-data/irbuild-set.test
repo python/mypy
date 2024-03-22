@@ -79,20 +79,20 @@ L0:
 def test1():
     r0 :: list
     r1, r2, r3 :: object
-    r4, r5, r6, r7 :: ptr
+    r4, r5 :: ptr
     tmp_list :: list
-    r8 :: set
-    r9 :: short_int
-    r10 :: ptr
-    r11 :: native_int
-    r12 :: short_int
-    r13 :: bit
-    r14 :: object
-    r15, x, r16 :: int
-    r17 :: object
-    r18 :: i32
-    r19 :: bit
-    r20 :: short_int
+    r6 :: set
+    r7 :: short_int
+    r8 :: ptr
+    r9 :: native_int
+    r10 :: short_int
+    r11 :: bit
+    r12 :: object
+    r13, x, r14 :: int
+    r15 :: object
+    r16 :: i32
+    r17 :: bit
+    r18 :: short_int
     a :: set
 L0:
     r0 = PyList_New(3)
@@ -101,36 +101,34 @@ L0:
     r3 = object 5
     r4 = get_element_ptr r0 ob_item :: PyListObject
     r5 = load_mem r4 :: ptr*
-    set_mem r5, r1 :: builtins.object*
-    r6 = r5 + WORD_SIZE*1
-    set_mem r6, r2 :: builtins.object*
-    r7 = r5 + WORD_SIZE*2
-    set_mem r7, r3 :: builtins.object*
+    buf_init_item r5, 0, r1
+    buf_init_item r5, 1, r2
+    buf_init_item r5, 2, r3
     keep_alive r0
     tmp_list = r0
-    r8 = PySet_New(0)
-    r9 = 0
+    r6 = PySet_New(0)
+    r7 = 0
 L1:
-    r10 = get_element_ptr tmp_list ob_size :: PyVarObject
-    r11 = load_mem r10 :: native_int*
+    r8 = get_element_ptr tmp_list ob_size :: PyVarObject
+    r9 = load_mem r8 :: native_int*
     keep_alive tmp_list
-    r12 = r11 << 1
-    r13 = int_lt r9, r12
-    if r13 goto L2 else goto L4 :: bool
+    r10 = r9 << 1
+    r11 = int_lt r7, r10
+    if r11 goto L2 else goto L4 :: bool
 L2:
-    r14 = CPyList_GetItemUnsafe(tmp_list, r9)
-    r15 = unbox(int, r14)
-    x = r15
-    r16 = f(x)
-    r17 = box(int, r16)
-    r18 = PySet_Add(r8, r17)
-    r19 = r18 >= 0 :: signed
+    r12 = CPyList_GetItemUnsafe(tmp_list, r7)
+    r13 = unbox(int, r12)
+    x = r13
+    r14 = f(x)
+    r15 = box(int, r14)
+    r16 = PySet_Add(r6, r15)
+    r17 = r16 >= 0 :: signed
 L3:
-    r20 = r9 + 2
-    r9 = r20
+    r18 = r7 + 2
+    r7 = r18
     goto L1
 L4:
-    a = r8
+    a = r6
     return 1
 def test2():
     r0, tmp_tuple :: tuple[int, int, int]
@@ -312,33 +310,33 @@ L0:
 def test():
     r0 :: list
     r1, r2, r3, r4, r5 :: object
-    r6, r7, r8, r9, r10, r11 :: ptr
+    r6, r7 :: ptr
     tmp_list :: list
-    r12 :: set
-    r13, r14 :: list
-    r15 :: short_int
-    r16 :: ptr
-    r17 :: native_int
-    r18 :: short_int
-    r19 :: bit
+    r8 :: set
+    r9, r10 :: list
+    r11 :: short_int
+    r12 :: ptr
+    r13 :: native_int
+    r14 :: short_int
+    r15 :: bit
+    r16 :: object
+    r17, z :: int
+    r18 :: bit
+    r19 :: int
     r20 :: object
-    r21, z :: int
+    r21 :: i32
     r22 :: bit
-    r23 :: int
-    r24 :: object
-    r25 :: i32
-    r26 :: bit
-    r27 :: short_int
-    r28, r29, r30 :: object
-    r31, y, r32 :: int
-    r33 :: object
-    r34 :: i32
-    r35, r36 :: bit
-    r37, r38, r39 :: object
-    r40, x, r41 :: int
-    r42 :: object
-    r43 :: i32
-    r44, r45 :: bit
+    r23 :: short_int
+    r24, r25, r26 :: object
+    r27, y, r28 :: int
+    r29 :: object
+    r30 :: i32
+    r31, r32 :: bit
+    r33, r34, r35 :: object
+    r36, x, r37 :: int
+    r38 :: object
+    r39 :: i32
+    r40, r41 :: bit
     a :: set
 L0:
     r0 = PyList_New(5)
@@ -349,81 +347,77 @@ L0:
     r5 = object 5
     r6 = get_element_ptr r0 ob_item :: PyListObject
     r7 = load_mem r6 :: ptr*
-    set_mem r7, r1 :: builtins.object*
-    r8 = r7 + WORD_SIZE*1
-    set_mem r8, r2 :: builtins.object*
-    r9 = r7 + WORD_SIZE*2
-    set_mem r9, r3 :: builtins.object*
-    r10 = r7 + WORD_SIZE*3
-    set_mem r10, r4 :: builtins.object*
-    r11 = r7 + WORD_SIZE*4
-    set_mem r11, r5 :: builtins.object*
+    buf_init_item r7, 0, r1
+    buf_init_item r7, 1, r2
+    buf_init_item r7, 2, r3
+    buf_init_item r7, 3, r4
+    buf_init_item r7, 4, r5
     keep_alive r0
     tmp_list = r0
-    r12 = PySet_New(0)
-    r13 = PyList_New(0)
-    r14 = PyList_New(0)
-    r15 = 0
+    r8 = PySet_New(0)
+    r9 = PyList_New(0)
+    r10 = PyList_New(0)
+    r11 = 0
 L1:
-    r16 = get_element_ptr tmp_list ob_size :: PyVarObject
-    r17 = load_mem r16 :: native_int*
+    r12 = get_element_ptr tmp_list ob_size :: PyVarObject
+    r13 = load_mem r12 :: native_int*
     keep_alive tmp_list
-    r18 = r17 << 1
-    r19 = int_lt r15, r18
-    if r19 goto L2 else goto L6 :: bool
+    r14 = r13 << 1
+    r15 = int_lt r11, r14
+    if r15 goto L2 else goto L6 :: bool
 L2:
-    r20 = CPyList_GetItemUnsafe(tmp_list, r15)
-    r21 = unbox(int, r20)
-    z = r21
-    r22 = int_lt z, 8
-    if r22 goto L4 else goto L3 :: bool
+    r16 = CPyList_GetItemUnsafe(tmp_list, r11)
+    r17 = unbox(int, r16)
+    z = r17
+    r18 = int_lt z, 8
+    if r18 goto L4 else goto L3 :: bool
 L3:
     goto L5
 L4:
-    r23 = f1(z)
-    r24 = box(int, r23)
-    r25 = PyList_Append(r14, r24)
-    r26 = r25 >= 0 :: signed
+    r19 = f1(z)
+    r20 = box(int, r19)
+    r21 = PyList_Append(r10, r20)
+    r22 = r21 >= 0 :: signed
 L5:
-    r27 = r15 + 2
-    r15 = r27
+    r23 = r11 + 2
+    r11 = r23
     goto L1
 L6:
-    r28 = PyObject_GetIter(r14)
-    r29 = PyObject_GetIter(r28)
+    r24 = PyObject_GetIter(r10)
+    r25 = PyObject_GetIter(r24)
 L7:
-    r30 = PyIter_Next(r29)
-    if is_error(r30) goto L10 else goto L8
+    r26 = PyIter_Next(r25)
+    if is_error(r26) goto L10 else goto L8
 L8:
-    r31 = unbox(int, r30)
-    y = r31
-    r32 = f2(y)
-    r33 = box(int, r32)
-    r34 = PyList_Append(r13, r33)
-    r35 = r34 >= 0 :: signed
+    r27 = unbox(int, r26)
+    y = r27
+    r28 = f2(y)
+    r29 = box(int, r28)
+    r30 = PyList_Append(r9, r29)
+    r31 = r30 >= 0 :: signed
 L9:
     goto L7
 L10:
-    r36 = CPy_NoErrOccured()
+    r32 = CPy_NoErrOccured()
 L11:
-    r37 = PyObject_GetIter(r13)
-    r38 = PyObject_GetIter(r37)
+    r33 = PyObject_GetIter(r9)
+    r34 = PyObject_GetIter(r33)
 L12:
-    r39 = PyIter_Next(r38)
-    if is_error(r39) goto L15 else goto L13
+    r35 = PyIter_Next(r34)
+    if is_error(r35) goto L15 else goto L13
 L13:
-    r40 = unbox(int, r39)
-    x = r40
-    r41 = f3(x)
-    r42 = box(int, r41)
-    r43 = PySet_Add(r12, r42)
-    r44 = r43 >= 0 :: signed
+    r36 = unbox(int, r35)
+    x = r36
+    r37 = f3(x)
+    r38 = box(int, r37)
+    r39 = PySet_Add(r8, r38)
+    r40 = r39 >= 0 :: signed
 L14:
     goto L12
 L15:
-    r45 = CPy_NoErrOccured()
+    r41 = CPy_NoErrOccured()
 L16:
-    a = r12
+    a = r8
     return 1
 
 [case testSetSize]

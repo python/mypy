@@ -551,7 +551,7 @@ L2:
     r4 = object 1
     r5 = get_element_ptr r3 ob_item :: PyListObject
     r6 = load_mem r5 :: ptr*
-    set_mem r6, r4 :: builtins.object*
+    buf_init_item r6, 0, r4
     keep_alive r3
     r7 = CPyDict_SetDefault(d, r2, r3)
     return r7
