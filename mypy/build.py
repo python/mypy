@@ -44,6 +44,7 @@ from typing_extensions import TypeAlias as _TypeAlias, TypedDict
 
 import mypy.semanal_main
 from mypy.checker import TypeChecker
+from mypy.errorcodes import error_codes
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
 from mypy.indirection import TypeIndirectionVisitor
@@ -235,6 +236,32 @@ def _build(
     cached_read = fscache.read
     errors = Errors(options, read_source=lambda path: read_py_file(path, cached_read))
     plugin, snapshot = load_plugins(options, errors, stdout, extra_plugins)
+
+    # Plugins might define own error codes, take a look again now
+
+    # Process `--enable-error-code` and `--disable-error-code` flags
+    disabled_codes = set(options.disable_error_code)
+    enabled_codes = set(options.enable_error_code)
+
+    valid_error_codes = set(error_codes.keys())
+    invalid_codes = (enabled_codes | disabled_codes) - valid_error_codes
+    if invalid_codes:
+        print(f"Invalid error code(s): {', '.join(sorted(invalid_codes))}", file=stderr)
+
+    options.disabled_error_codes |= {
+        error_codes[code] for code in disabled_codes if code in error_codes
+    }
+    options.enabled_error_codes |= {
+        error_codes[code] for code in enabled_codes if code in error_codes
+    }
+
+    # Enabling an error code always overrides disabling
+    options.disabled_error_codes -= options.enabled_error_codes
+
+    # Update error codes in Errors object (might use a different
+    # set instance if original was empty)
+    errors.disabled_error_codes = options.disabled_error_codes
+    errors.enabled_error_codes = options.enabled_error_codes
 
     # Add catch-all .gitignore to cache dir if we created it
     cache_dir_existed = os.path.isdir(options.cache_dir)
