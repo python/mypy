@@ -147,6 +147,7 @@ from mypy.types import (
     UnboundType,
     get_proper_type,
 )
+from mypy.util import ColoredHelpFormatter
 from mypy.visitor import NodeVisitor
 
 # Common ways of naming package containing vendored modules.
@@ -1738,7 +1739,9 @@ manual changes.  This directory is assumed to exist.
 
 
 def parse_options(args: list[str]) -> Options:
-    parser = argparse.ArgumentParser(prog="stubgen", usage=HEADER, description=DESCRIPTION)
+    parser = argparse.ArgumentParser(
+        prog="stubgen", usage=HEADER, description=DESCRIPTION, formatter_class=ColoredHelpFormatter
+    )
 
     parser.add_argument(
         "--ignore-errors",

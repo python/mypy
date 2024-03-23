@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import io
 import os
@@ -12,7 +13,7 @@ import sys
 import time
 from importlib import resources as importlib_resources
 from typing import IO, Callable, Container, Final, Iterable, Sequence, Sized, TypeVar
-from typing_extensions import Literal
+from typing_extensions import Literal, TypeAlias
 
 try:
     import curses
@@ -35,6 +36,7 @@ else:
         TYPESHED_DIR = str(_resource.parent / "typeshed")
 
 
+Color: TypeAlias = Literal["red", "green", "blue", "yellow", "none"]
 ENCODING_RE: Final = re.compile(rb"([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)")
 
 DEFAULT_SOURCE_OFFSET: Final = 4
@@ -671,7 +673,7 @@ class FancyFormatter:
     def style(
         self,
         text: str,
-        color: Literal["red", "green", "blue", "yellow", "none"],
+        color: Color,
         bold: bool = False,
         underline: bool = False,
         dim: bool = False,
@@ -867,3 +869,53 @@ def quote_docstring(docstr: str) -> str:
         return f"''{docstr_repr}''"
     else:
         return f'""{docstr_repr}""'
+
+
+class ColoredHelpFormatter(argparse.HelpFormatter):
+    styles: dict[str, Color] = {"groups": "yellow", "args": "green", "metavar": "blue"}
+
+    def __init__(
+        self,
+        prog: str,
+        indent_increment: int = 2,
+        max_help_position: int = 24,
+        width: int | None = None,
+        formatter: FancyFormatter | None = None,
+    ) -> None:
+        super().__init__(prog, indent_increment, max_help_position, width)
+        self.fancy_fmt = formatter or FancyFormatter(sys.stdout, sys.stdin, False)
+
+    def start_section(self, heading: str | None) -> None:
+        if heading in {"positional arguments", "optional arguments", "options"}:
+            # make argparse generated headings consistent with mypy headings
+            heading = heading.capitalize()
+        if heading:
+            heading = self.fancy_fmt.style(heading, self.styles["groups"], bold=True)
+        return super().start_section(heading)
+
+    def _format_action(self, action: argparse.Action) -> str:
+        action_help = super()._format_action(action)
+        action_header = self._format_action_invocation(action)
+        padding, header, help = action_help.partition(action_header)
+
+        # highlight the action header
+        if not action.option_strings:  # positional-argument
+            header = self.fancy_fmt.style(header, self.styles["args"], bold=True)
+        else:  # --optional-argument METAVAR
+            parts: list[str] = []
+            for part in header.split(", "):
+                opt_str, space, metavar = part.partition(" ")
+                opt_str = self.fancy_fmt.style(opt_str, self.styles["args"], bold=True)
+                if metavar:
+                    metavar = self.fancy_fmt.style(metavar, self.styles["metavar"], bold=True)
+                parts.append(opt_str + space + metavar)
+            header = ", ".join(parts)
+
+        # highlight --optional-argument in help (may span multiple lines)
+        styled_repl = self.fancy_fmt.style(r"\1", self.styles["args"])
+        help = re.sub(
+            r"(?P<sep>^|\s)(?P<opt>--\w+(?:-(?:\n +)?\w+)*)",
+            repl=lambda m: (m.group("sep") + re.sub(r"(\S+)", styled_repl, m.group("opt"))),
+            string=help,
+        )
+        return padding + header + help
