@@ -761,21 +761,20 @@ def g(y):
     r0 :: None
     r1 :: list
     r2 :: object
-    r3, r4 :: ptr
-    r5 :: None
-    r6 :: object
-    r7 :: None
+    r3 :: ptr
+    r4 :: None
+    r5 :: object
+    r6 :: None
 L0:
     r0 = g(y)
     r1 = PyList_New(1)
     r2 = object 1
-    r3 = get_element_ptr r1 ob_item :: PyListObject
-    r4 = load_mem r3 :: ptr*
-    buf_init_item r4, 0, r2
+    r3 = list_items r1
+    buf_init_item r3, 0, r2
     keep_alive r1
-    r5 = g(r1)
-    r6 = box(None, 1)
-    r7 = g(r6)
+    r4 = g(r1)
+    r5 = box(None, 1)
+    r6 = g(r5)
     return 1
 
 [case testCoerceToObject1]
@@ -789,28 +788,27 @@ def g(y: object) -> object:
 def g(y):
     y, r0, r1 :: object
     r2 :: list
-    r3, r4 :: ptr
+    r3 :: ptr
     a :: list
-    r5 :: tuple[int, int]
-    r6 :: object
-    r7 :: bit
-    r8, r9 :: object
+    r4 :: tuple[int, int]
+    r5 :: object
+    r6 :: bit
+    r7, r8 :: object
 L0:
     r0 = object 1
     r1 = g(r0)
     r2 = PyList_New(1)
-    r3 = get_element_ptr r2 ob_item :: PyListObject
-    r4 = load_mem r3 :: ptr*
-    buf_init_item r4, 0, y
+    r3 = list_items r2
+    buf_init_item r3, 0, y
     keep_alive r2
     a = r2
-    r5 = (2, 4)
-    r6 = box(tuple[int, int], r5)
-    r7 = CPyList_SetItem(a, 0, r6)
-    r8 = box(bool, 1)
-    y = r8
-    r9 = object 3
-    return r9
+    r4 = (2, 4)
+    r5 = box(tuple[int, int], r4)
+    r6 = CPyList_SetItem(a, 0, r5)
+    r7 = box(bool, 1)
+    y = r7
+    r8 = object 3
+    return r8
 
 [case testCoerceToObject2]
 class A:
@@ -1258,17 +1256,14 @@ L3:
     unreachable
 def lst(x):
     x :: list
-    r0 :: ptr
-    r1 :: native_int
-    r2 :: short_int
-    r3 :: bit
+    r0 :: native_int
+    r1 :: short_int
+    r2 :: bit
 L0:
-    r0 = get_element_ptr x ob_size :: PyVarObject
-    r1 = load_mem r0 :: native_int*
-    keep_alive x
-    r2 = r1 << 1
-    r3 = int_ne r2, 0
-    if r3 goto L1 else goto L2 :: bool
+    r0 = var_object_size x
+    r1 = r0 << 1
+    r2 = int_ne r1, 0
+    if r2 goto L1 else goto L2 :: bool
 L1:
     return 2
 L2:
@@ -1661,12 +1656,12 @@ def h():
     r3 :: object
     r4 :: list
     r5 :: object
-    r6, r7 :: ptr
-    r8, r9 :: object
-    r10 :: tuple
-    r11 :: dict
-    r12 :: object
-    r13 :: tuple[int, int, int]
+    r6 :: ptr
+    r7, r8 :: object
+    r9 :: tuple
+    r10 :: dict
+    r11 :: object
+    r12 :: tuple[int, int, int]
 L0:
     r0 = (4, 6)
     r1 = __main__.globals :: static
@@ -1674,17 +1669,16 @@ L0:
     r3 = CPyDict_GetItem(r1, r2)
     r4 = PyList_New(1)
     r5 = object 1
-    r6 = get_element_ptr r4 ob_item :: PyListObject
-    r7 = load_mem r6 :: ptr*
-    buf_init_item r7, 0, r5
+    r6 = list_items r4
+    buf_init_item r6, 0, r5
     keep_alive r4
-    r8 = box(tuple[int, int], r0)
-    r9 = CPyList_Extend(r4, r8)
-    r10 = PyList_AsTuple(r4)
-    r11 = PyDict_New()
-    r12 = PyObject_Call(r3, r10, r11)
-    r13 = unbox(tuple[int, int, int], r12)
-    return r13
+    r7 = box(tuple[int, int], r0)
+    r8 = CPyList_Extend(r4, r7)
+    r9 = PyList_AsTuple(r4)
+    r10 = PyDict_New()
+    r11 = PyObject_Call(r3, r9, r10)
+    r12 = unbox(tuple[int, int, int], r11)
+    return r12
 
 [case testStar2Args]
 from typing import Tuple
@@ -1849,61 +1843,57 @@ def f() -> List[int]:
 def f():
     r0, r1 :: list
     r2, r3, r4 :: object
-    r5, r6 :: ptr
-    r7 :: short_int
-    r8 :: ptr
-    r9 :: native_int
-    r10 :: short_int
-    r11 :: bit
-    r12 :: object
-    r13, x :: int
-    r14, r15 :: bit
-    r16 :: int
-    r17 :: object
-    r18 :: i32
-    r19 :: bit
-    r20 :: short_int
+    r5 :: ptr
+    r6 :: short_int
+    r7 :: native_int
+    r8 :: short_int
+    r9 :: bit
+    r10 :: object
+    r11, x :: int
+    r12, r13 :: bit
+    r14 :: int
+    r15 :: object
+    r16 :: i32
+    r17 :: bit
+    r18 :: short_int
 L0:
     r0 = PyList_New(0)
     r1 = PyList_New(3)
     r2 = object 1
     r3 = object 2
     r4 = object 3
-    r5 = get_element_ptr r1 ob_item :: PyListObject
-    r6 = load_mem r5 :: ptr*
-    buf_init_item r6, 0, r2
-    buf_init_item r6, 1, r3
-    buf_init_item r6, 2, r4
+    r5 = list_items r1
+    buf_init_item r5, 0, r2
+    buf_init_item r5, 1, r3
+    buf_init_item r5, 2, r4
     keep_alive r1
-    r7 = 0
+    r6 = 0
 L1:
-    r8 = get_element_ptr r1 ob_size :: PyVarObject
-    r9 = load_mem r8 :: native_int*
-    keep_alive r1
-    r10 = r9 << 1
-    r11 = int_lt r7, r10
-    if r11 goto L2 else goto L8 :: bool
+    r7 = var_object_size r1
+    r8 = r7 << 1
+    r9 = int_lt r6, r8
+    if r9 goto L2 else goto L8 :: bool
 L2:
-    r12 = CPyList_GetItemUnsafe(r1, r7)
-    r13 = unbox(int, r12)
-    x = r13
-    r14 = int_ne x, 4
-    if r14 goto L4 else goto L3 :: bool
+    r10 = CPyList_GetItemUnsafe(r1, r6)
+    r11 = unbox(int, r10)
+    x = r11
+    r12 = int_ne x, 4
+    if r12 goto L4 else goto L3 :: bool
 L3:
     goto L7
 L4:
-    r15 = int_ne x, 6
-    if r15 goto L6 else goto L5 :: bool
+    r13 = int_ne x, 6
+    if r13 goto L6 else goto L5 :: bool
 L5:
     goto L7
 L6:
-    r16 = CPyTagged_Multiply(x, x)
-    r17 = box(int, r16)
-    r18 = PyList_Append(r0, r17)
-    r19 = r18 >= 0 :: signed
+    r14 = CPyTagged_Multiply(x, x)
+    r15 = box(int, r14)
+    r16 = PyList_Append(r0, r15)
+    r17 = r16 >= 0 :: signed
 L7:
-    r20 = r7 + 2
-    r7 = r20
+    r18 = r6 + 2
+    r6 = r18
     goto L1
 L8:
     return r0
@@ -1917,62 +1907,58 @@ def f():
     r0 :: dict
     r1 :: list
     r2, r3, r4 :: object
-    r5, r6 :: ptr
-    r7 :: short_int
-    r8 :: ptr
-    r9 :: native_int
-    r10 :: short_int
-    r11 :: bit
-    r12 :: object
-    r13, x :: int
-    r14, r15 :: bit
-    r16 :: int
-    r17, r18 :: object
-    r19 :: i32
-    r20 :: bit
-    r21 :: short_int
+    r5 :: ptr
+    r6 :: short_int
+    r7 :: native_int
+    r8 :: short_int
+    r9 :: bit
+    r10 :: object
+    r11, x :: int
+    r12, r13 :: bit
+    r14 :: int
+    r15, r16 :: object
+    r17 :: i32
+    r18 :: bit
+    r19 :: short_int
 L0:
     r0 = PyDict_New()
     r1 = PyList_New(3)
     r2 = object 1
     r3 = object 2
     r4 = object 3
-    r5 = get_element_ptr r1 ob_item :: PyListObject
-    r6 = load_mem r5 :: ptr*
-    buf_init_item r6, 0, r2
-    buf_init_item r6, 1, r3
-    buf_init_item r6, 2, r4
+    r5 = list_items r1
+    buf_init_item r5, 0, r2
+    buf_init_item r5, 1, r3
+    buf_init_item r5, 2, r4
     keep_alive r1
-    r7 = 0
+    r6 = 0
 L1:
-    r8 = get_element_ptr r1 ob_size :: PyVarObject
-    r9 = load_mem r8 :: native_int*
-    keep_alive r1
-    r10 = r9 << 1
-    r11 = int_lt r7, r10
-    if r11 goto L2 else goto L8 :: bool
+    r7 = var_object_size r1
+    r8 = r7 << 1
+    r9 = int_lt r6, r8
+    if r9 goto L2 else goto L8 :: bool
 L2:
-    r12 = CPyList_GetItemUnsafe(r1, r7)
-    r13 = unbox(int, r12)
-    x = r13
-    r14 = int_ne x, 4
-    if r14 goto L4 else goto L3 :: bool
+    r10 = CPyList_GetItemUnsafe(r1, r6)
+    r11 = unbox(int, r10)
+    x = r11
+    r12 = int_ne x, 4
+    if r12 goto L4 else goto L3 :: bool
 L3:
     goto L7
 L4:
-    r15 = int_ne x, 6
-    if r15 goto L6 else goto L5 :: bool
+    r13 = int_ne x, 6
+    if r13 goto L6 else goto L5 :: bool
 L5:
     goto L7
 L6:
-    r16 = CPyTagged_Multiply(x, x)
-    r17 = box(int, x)
-    r18 = box(int, r16)
-    r19 = CPyDict_SetItem(r0, r17, r18)
-    r20 = r19 >= 0 :: signed
+    r14 = CPyTagged_Multiply(x, x)
+    r15 = box(int, x)
+    r16 = box(int, r14)
+    r17 = CPyDict_SetItem(r0, r15, r16)
+    r18 = r17 >= 0 :: signed
 L7:
-    r21 = r7 + 2
-    r7 = r21
+    r19 = r6 + 2
+    r6 = r19
     goto L1
 L8:
     return r0
@@ -1987,82 +1973,73 @@ def f(l: List[Tuple[int, int, int]]) -> List[int]:
 def f(l):
     l :: list
     r0 :: short_int
-    r1 :: ptr
-    r2 :: native_int
-    r3 :: short_int
-    r4 :: bit
-    r5 :: object
-    r6 :: tuple[int, int, int]
-    r7, x, r8, y, r9, z :: int
-    r10 :: short_int
-    r11 :: ptr
-    r12 :: native_int
-    r13 :: list
+    r1 :: native_int
+    r2 :: short_int
+    r3 :: bit
+    r4 :: object
+    r5 :: tuple[int, int, int]
+    r6, x, r7, y, r8, z :: int
+    r9 :: short_int
+    r10 :: native_int
+    r11 :: list
+    r12 :: short_int
+    r13 :: native_int
     r14 :: short_int
-    r15 :: ptr
-    r16 :: native_int
-    r17 :: short_int
-    r18 :: bit
-    r19 :: object
-    r20 :: tuple[int, int, int]
-    r21, x_2, r22, y_2, r23, z_2, r24, r25 :: int
-    r26 :: object
-    r27 :: bit
-    r28 :: short_int
+    r15 :: bit
+    r16 :: object
+    r17 :: tuple[int, int, int]
+    r18, x_2, r19, y_2, r20, z_2, r21, r22 :: int
+    r23 :: object
+    r24 :: bit
+    r25 :: short_int
 L0:
     r0 = 0
 L1:
-    r1 = get_element_ptr l ob_size :: PyVarObject
-    r2 = load_mem r1 :: native_int*
-    keep_alive l
-    r3 = r2 << 1
-    r4 = int_lt r0, r3
-    if r4 goto L2 else goto L4 :: bool
+    r1 = var_object_size l
+    r2 = r1 << 1
+    r3 = int_lt r0, r2
+    if r3 goto L2 else goto L4 :: bool
 L2:
-    r5 = CPyList_GetItemUnsafe(l, r0)
-    r6 = unbox(tuple[int, int, int], r5)
-    r7 = r6[0]
-    x = r7
-    r8 = r6[1]
-    y = r8
-    r9 = r6[2]
-    z = r9
+    r4 = CPyList_GetItemUnsafe(l, r0)
+    r5 = unbox(tuple[int, int, int], r4)
+    r6 = r5[0]
+    x = r6
+    r7 = r5[1]
+    y = r7
+    r8 = r5[2]
+    z = r8
 L3:
-    r10 = r0 + 2
-    r0 = r10
+    r9 = r0 + 2
+    r0 = r9
     goto L1
 L4:
-    r11 = get_element_ptr l ob_size :: PyVarObject
-    r12 = load_mem r11 :: native_int*
-    keep_alive l
-    r13 = PyList_New(r12)
-    r14 = 0
+    r10 = var_object_size l
+    r11 = PyList_New(r10)
+    r12 = 0
 L5:
-    r15 = get_element_ptr l ob_size :: PyVarObject
-    r16 = load_mem r15 :: native_int*
-    keep_alive l
-    r17 = r16 << 1
-    r18 = int_lt r14, r17
-    if r18 goto L6 else goto L8 :: bool
+    r13 = var_object_size l
+    r14 = r13 << 1
+    r15 = int_lt r12, r14
+    if r15 goto L6 else goto L8 :: bool
 L6:
-    r19 = CPyList_GetItemUnsafe(l, r14)
-    r20 = unbox(tuple[int, int, int], r19)
-    r21 = r20[0]
-    x_2 = r21
-    r22 = r20[1]
-    y_2 = r22
-    r23 = r20[2]
-    z_2 = r23
-    r24 = CPyTagged_Add(x_2, y_2)
-    r25 = CPyTagged_Add(r24, z_2)
-    r26 = box(int, r25)
-    r27 = CPyList_SetItemUnsafe(r13, r14, r26)
+    r16 = CPyList_GetItemUnsafe(l, r12)
+    r17 = unbox(tuple[int, int, int], r16)
+    r18 = r17[0]
+    x_2 = r18
+    r19 = r17[1]
+    y_2 = r19
+    r20 = r17[2]
+    z_2 = r20
+    r21 = CPyTagged_Add(x_2, y_2)
+    r22 = CPyTagged_Add(r21, z_2)
+    r23 = box(int, r22)
+    r24 = CPyList_SetItemUnsafe(r11, r12, r23)
 L7:
-    r28 = r14 + 2
-    r14 = r28
+    r25 = r12 + 2
+    r12 = r25
     goto L5
 L8:
-    return r13
+    return r11
 
 [case testProperty]
 class PropertyHolder:
@@ -2204,11 +2181,11 @@ def __top_level__():
     r59 :: bit
     r60 :: list
     r61, r62, r63 :: object
-    r64, r65 :: ptr
-    r66 :: dict
-    r67 :: str
-    r68 :: i32
-    r69 :: bit
+    r64 :: ptr
+    r65 :: dict
+    r66 :: str
+    r67 :: i32
+    r68 :: bit
 L0:
     r0 = builtins :: module
     r1 = load_address _Py_NoneStruct
@@ -2279,16 +2256,15 @@ L2:
     r61 = object 1
     r62 = object 2
     r63 = object 3
-    r64 = get_element_ptr r60 ob_item :: PyListObject
-    r65 = load_mem r64 :: ptr*
-    buf_init_item r65, 0, r61
-    buf_init_item r65, 1, r62
-    buf_init_item r65, 2, r63
+    r64 = list_items r60
+    buf_init_item r64, 0, r61
+    buf_init_item r64, 1, r62
+    buf_init_item r64, 2, r63
     keep_alive r60
-    r66 = __main__.globals :: static
-    r67 = 'y'
-    r68 = CPyDict_SetItem(r66, r67, r60)
-    r69 = r68 >= 0 :: signed
+    r65 = __main__.globals :: static
+    r66 = 'y'
+    r67 = CPyDict_SetItem(r65, r66, r60)
+    r68 = r67 >= 0 :: signed
     return 1
 
 [case testChainedConditional]
