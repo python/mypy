@@ -3440,7 +3440,8 @@ x: Iterable[List[Union[int, str]]] = (foo([1]), foo(["a"]))
 from typing import Dict, Iterable, Tuple, Union
 
 def foo(x: Union[Tuple[str, Dict[str, int], str], Iterable[object]]) -> None: ...
-foo(("a", {"a": "b"}, "b"))
+foo(("a", {"a": 1}, "b"))
+foo(("a", {"a": "b"}, "b"))  # E: Dict entry 0 has incompatible type "str": "str"; expected "str": "int"
 [builtins fixtures/dict.pyi]
 
 [case testUseSupertypeAsInferenceContext]

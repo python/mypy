@@ -2906,9 +2906,9 @@ def invalid_literal_type() -> Tuple[Literal[1]]:
 
 def incorrect_return1() -> Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]:
     if x:
-        return (False, 5)  # E: Incompatible return value type (got "Tuple[bool, int]", expected "Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]")
+        return (False, 5)  # E: Incompatible return value type (got "Tuple[Literal[False], int]", expected "Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]")
     else:
-        return (True, 'oops')  # E: Incompatible return value type (got "Tuple[bool, str]", expected "Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]")
+        return (True, 'oops')  # E: Incompatible return value type (got "Tuple[Literal[True], str]", expected "Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]")
 
 def incorrect_return2() -> Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]:
     if x:

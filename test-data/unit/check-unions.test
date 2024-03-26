@@ -1220,3 +1220,43 @@ nc: Union[Container[str], int]
 'x' in nc  # E: Unsupported right operand type for in ("Union[Container[str], int]")
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testUnionInnerTypedDict]
+from typing import TypedDict, Tuple, Union
+Point = TypedDict('Point', {'x': int, 'y': int})
+def f1(z: bool) -> Union[Tuple[Point, int], Tuple[Point, str]]:
+    if z:
+        return {'x': 1, 'y': 2}, 3  # OK
+    return {'x': 1, 'y': 2}, "a"  # OK
+def f2(z: bool) -> Union[Tuple[Point, int], Tuple[int, str]]:
+    if z:
+        return {'x': 1, 'y': 2}, 3  # OK
+    return 3, "a"  # OK
+def f3(z: bool) -> Union[Union[Tuple[Point, int], Tuple[Point, str]], int]:
+    if z:
+        return {'x': 1, 'y': 2}, 3  # OK
+    return 1  # OK
+def f4(z: Union[Tuple[Point, int], Tuple[Point, str]]) -> None: ...
+def f5(z: Union[Tuple[Point, int], Tuple[Point, str]]) -> Union[Tuple[Point, int], Tuple[Point, str]]:
+    return z
+def f6(z: Union[Union[Tuple[Point, int], Tuple[Point, str], int]]) -> None: ...
+
+p = Point(x=42, y=1337)
+f4((p, 1))
+f4(({'x': 42, 'y': 1337}, 1))
+f4((p, "a"))
+f4(({'x': 42, 'y': 1337}, "a"))
+f4(({'x': 42, 'y': 1337}, True))
+f4((p, 1.0))  # E: Argument 1 to "f4" has incompatible type "Tuple[Point, float]"; expected "Union[Tuple[Point, int], Tuple[Point, str]]"
+f5((p, 1))
+f5(({'x': 42, 'y': 1337}, 1))
+f5((p, "a"))
+f5(({'x': 42, 'y': 1337}, "a"))
+f5(({'x': 42, 'y': 1337}, True))
+f5((p, 1.0))  # E: Argument 1 to "f5" has incompatible type "Tuple[Point, float]"; expected "Union[Tuple[Point, int], Tuple[Point, str]]"
+f6((p, 1))
+f6(({'x': 42, 'y': 1337}, 1))
+f6(1)
+f6((p, 1.0))  # E: Argument 1 to "f6" has incompatible type "Tuple[Point, float]"; expected "Union[Tuple[Point, int], Tuple[Point, str], int]"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
