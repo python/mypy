@@ -89,3 +89,15 @@ TypeInfoMap(
     Mro(__main__.A, builtins.object)
     Names(
       a)))
+
+[case testExplicit__module__]
+class A:
+    __module__ = "other.module"
+[out]
+TypeInfoMap(
+  __main__.A : TypeInfo(
+    Name(other.module.A)
+    Bases(builtins.object)
+    Mro(other.module.A, builtins.object)
+    Names(
+      __module__ (builtins.str))))
