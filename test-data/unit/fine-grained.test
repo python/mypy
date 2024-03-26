@@ -10496,3 +10496,27 @@ from pkg.sub import modb
 
 [out]
 ==
+
+[case testUnusedTypeIgnorePreservedAfterChange]
+# flags: --warn-unused-ignores --no-error-summary
+[file main.py]
+a = 1  # type: ignore
+[file main.py.2]
+a = 1  # type: ignore
+# Comment to trigger reload.
+[out]
+main.py:1: error: Unused "type: ignore" comment
+==
+main.py:1: error: Unused "type: ignore" comment
+
+[case testTypeIgnoreWithoutCodePreservedAfterChange]
+# flags: --enable-error-code ignore-without-code --no-error-summary
+[file main.py]
+a = 1  # type: ignore
+[file main.py.2]
+a = 1  # type: ignore
+# Comment to trigger reload.
+[out]
+main.py:1: error: "type: ignore" comment without error code
+==
+main.py:1: error: "type: ignore" comment without error code
