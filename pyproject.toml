@@ -88,7 +88,7 @@ extra-standard-library = ["typing_extensions"]
 ignore = ["**/.readthedocs.yaml"]
 
 [tool.pytest.ini_options]
-minversion = "6.0.0"
+minversion = "7.0.0"
 testpaths = ["mypy/test", "mypyc/test"]
 python_files = 'test*.py'
 
