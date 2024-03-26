@@ -62,6 +62,7 @@ def maybe_process_conditional_comparison(
     do nothing and return False.
 
     Args:
+        self: IR form Builder
         e: Arbitrary expression
         true: Branch target if comparison is true
         false: Branch target if comparison is false
