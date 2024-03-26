@@ -41,7 +41,7 @@ def run_mypy(args: list[str]) -> None:
     if status != 0:
         sys.stdout.write(outval)
         sys.stderr.write(errval)
-        pytest.fail(msg="Sample check failed", pytrace=False)
+        pytest.fail(reason="Sample check failed", pytrace=False)
 
 
 def diff_ranges(
