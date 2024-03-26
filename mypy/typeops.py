@@ -310,6 +310,8 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
     # this special-casing looks not very principled, there is nothing meaningful we can infer
     # from such definition, since it is inherently indefinitely recursive.
     allow_callable = func.name is None or not func.name.startswith("__call__ of")
+    is_init = func.name is not None and func.name.startswith("__init__ of")
+
     if func.variables and supported_self_type(self_param_type, allow_callable=allow_callable):
         from mypy.infer import infer_type_arguments
 
@@ -338,9 +340,17 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
 
         # Update the method signature with the solutions found.
         # Technically, some constraints might be unsolvable, make them Never.
-        to_apply = [t if t is not None else UninhabitedType() for t in typeargs]
-        func = expand_type(func, {tv.id: arg for tv, arg in zip(self_vars, to_apply)})
-        variables = [v for v in func.variables if v not in self_vars]
+        # (... unless this is `__init__`, because we're going to be returning
+        #  the self-type anyways.)
+        to_apply = [
+            (tv, t) if t is not None else (tv, UninhabitedType())
+            for tv, t in zip(self_vars, typeargs)
+            if not is_init
+            or (t is not None and not isinstance(get_proper_type(t), UninhabitedType))
+        ]
+        func = expand_type(func, {tv.id: arg for tv, arg in to_apply})
+        applied_vars = {tv for tv, _ in to_apply}
+        variables = [v for v in func.variables if v not in applied_vars]
     else:
         variables = func.variables
 
