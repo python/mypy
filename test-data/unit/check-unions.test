@@ -1220,3 +1220,41 @@ nc: Union[Container[str], int]
 'x' in nc  # E: Unsupported right operand type for in ("Union[Container[str], int]")
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testDescriptorAccessForUnionOfTypes]
+from typing import overload, Generic, Any, TypeVar, List, Optional, Union, Type
+
+_T_co = TypeVar("_T_co", bound=Any, covariant=True)
+
+class Mapped(Generic[_T_co]):
+    def __init__(self, value: _T_co):
+        self.value = value
+
+    @overload
+    def __get__(
+        self, instance: None, owner: Any
+    ) -> List[_T_co]:
+        ...
+
+    @overload
+    def __get__(self, instance: object, owner: Any) -> _T_co:
+        ...
+
+    def __get__(
+        self, instance: Optional[object], owner: Any
+    ) -> Union[List[_T_co], _T_co]:
+        return self.value
+
+class A:
+    field_1: Mapped[int] = Mapped(1)
+    field_2: Mapped[str] = Mapped('1')
+
+class B:
+    field_1: Mapped[int] = Mapped(2)
+    field_2: Mapped[str] = Mapped('2')
+
+mix: Union[Type[A], Type[B]] = A
+reveal_type(mix)  # N: Revealed type is "Union[Type[__main__.A], Type[__main__.B]]"
+reveal_type(mix.field_1)  # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(mix().field_1)  # N: Revealed type is "builtins.int"
+[builtins fixtures/list.pyi]

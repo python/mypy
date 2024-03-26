@@ -123,6 +123,7 @@ class MemberContext:
         messages: MessageBuilder | None = None,
         self_type: Type | None = None,
         is_lvalue: bool | None = None,
+        original_type: Type | None = None,
     ) -> MemberContext:
         mx = MemberContext(
             self.is_lvalue,
@@ -142,6 +143,8 @@ class MemberContext:
             mx.self_type = self_type
         if is_lvalue is not None:
             mx.is_lvalue = is_lvalue
+        if original_type is not None:
+            mx.original_type = original_type
         return mx
 
 
@@ -643,6 +646,16 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
         # Map the access over union types
         return make_simplified_union(
             [analyze_descriptor_access(typ, mx) for typ in descriptor_type.items]
+        )
+    elif isinstance(instance_type, UnionType):
+        # map over the instance types
+        return make_simplified_union(
+            [
+                analyze_descriptor_access(
+                    descriptor_type, mx.copy_modified(original_type=original_type)
+                )
+                for original_type in instance_type.items
+            ]
         )
     elif not isinstance(descriptor_type, Instance):
         return orig_descriptor_type
