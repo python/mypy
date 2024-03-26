@@ -44,7 +44,7 @@ platformdirs==3.11.0
     # via
     #   black
     #   virtualenv
-pluggy==1.3.0
+pluggy==1.4.0
     # via pytest
 pre-commit==3.5.0
     # via -r test-requirements.in
@@ -52,7 +52,7 @@ pre-commit-hooks==4.5.0
     # via -r test-requirements.in
 psutil==5.9.6
     # via -r test-requirements.in
-pytest==7.4.2
+pytest==8.1.1
     # via
     #   -r test-requirements.in
     #   pytest-cov
