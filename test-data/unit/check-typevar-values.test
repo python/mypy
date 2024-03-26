@@ -706,3 +706,29 @@ Func = Callable[[], T]
 
 class A: ...
 class B: ...
+
+[case testTypeCommentInGenericTypeWithConstrainedTypeVar]
+from typing import Generic, TypeVar
+
+NT = TypeVar("NT", int, float)
+
+class Foo1(Generic[NT]):
+    p = 1  # type: int
+
+class Foo2(Generic[NT]):
+    p, q = 1, 2.0  # type: (int, float)
+
+class Foo3(Generic[NT]):
+    def bar(self) -> None:
+        p = 1  # type: int
+
+class Foo4(Generic[NT]):
+    def bar(self) -> None:
+        p, q = 1, 2.0  # type: (int, float)
+
+def foo3(x: NT) -> None:
+    p = 1  # type: int
+
+def foo4(x: NT) -> None:
+    p, q = 1, 2.0  # type: (int, float)
+[builtins fixtures/tuple.pyi]
