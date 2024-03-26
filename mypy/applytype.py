@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Callable, Sequence
 
 import mypy.subtypes
+from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type
 from mypy.nodes import Context
 from mypy.types import (
@@ -62,6 +63,11 @@ def get_target_type(
         report_incompatible_typevar_value(callable, type, tvar.name, context)
     else:
         upper_bound = tvar.upper_bound
+        if tvar.name == "Self":
+            # Internally constructed Self-types contain class type variables in upper bound,
+            # so we need to erase them to avoid false positives. This is safe because we do
+            # not support type variables in upper bounds of user defined types.
+            upper_bound = erase_typevars(upper_bound)
         if not mypy.subtypes.is_subtype(type, upper_bound):
             if skip_unsatisfied:
                 return None
@@ -87,7 +93,8 @@ def apply_generic_arguments(
     bound or constraints, instead of giving an error.
     """
     tvars = callable.variables
-    assert len(tvars) == len(orig_types)
+    min_arg_count = sum(not tv.has_default() for tv in tvars)
+    assert min_arg_count <= len(orig_types) <= len(tvars)
     # Check that inferred type variable values are compatible with allowed
     # values and bounds.  Also, promote subtype values to allowed values.
     # Create a map from type variable id to target type.
@@ -121,6 +128,7 @@ def apply_generic_arguments(
     # Apply arguments to argument types.
     var_arg = callable.var_arg()
     if var_arg is not None and isinstance(var_arg.typ, UnpackType):
+        # Same as for ParamSpec, callable with variadic types needs to be expanded as a whole.
         callable = expand_type(callable, id_to_type)
         assert isinstance(callable, CallableType)
         return callable.copy_modified(variables=[tv for tv in tvars if tv.id not in id_to_type])
@@ -129,20 +137,36 @@ def apply_generic_arguments(
             arg_types=[expand_type(at, id_to_type) for at in callable.arg_types]
         )
 
-    # Apply arguments to TypeGuard if any.
+    # Apply arguments to TypeGuard and TypeIs if any.
     if callable.type_guard is not None:
         type_guard = expand_type(callable.type_guard, id_to_type)
     else:
         type_guard = None
+    if callable.type_is is not None:
+        type_is = expand_type(callable.type_is, id_to_type)
+    else:
+        type_is = None
 
     # The callable may retain some type vars if only some were applied.
     # TODO: move apply_poly() logic from checkexpr.py here when new inference
     # becomes universally used (i.e. in all passes + in unification).
     # With this new logic we can actually *add* some new free variables.
-    remaining_tvars = [tv for tv in tvars if tv.id not in id_to_type]
+    remaining_tvars: list[TypeVarLikeType] = []
+    for tv in tvars:
+        if tv.id in id_to_type:
+            continue
+        if not tv.has_default():
+            remaining_tvars.append(tv)
+            continue
+        # TypeVarLike isn't in id_to_type mapping.
+        # Only expand the TypeVar default here.
+        typ = expand_type(tv, id_to_type)
+        assert isinstance(typ, TypeVarLikeType)
+        remaining_tvars.append(typ)
 
     return callable.copy_modified(
         ret_type=expand_type(callable.ret_type, id_to_type),
         variables=remaining_tvars,
         type_guard=type_guard,
+        type_is=type_is,
     )

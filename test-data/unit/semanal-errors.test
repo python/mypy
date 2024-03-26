@@ -480,13 +480,13 @@ c = 1
 d = 1
 a = *b
 [out]
-main:4: error: Can use starred expression only as assignment target
+main:4: error: can't use starred expression here
 
 [case testStarExpressionInExp]
 a = 1
 *a + 1
 [out]
-main:2: error: Can use starred expression only as assignment target
+main:2: error: can't use starred expression here
 
 [case testInvalidDel1]
 x = 1

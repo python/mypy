@@ -1,8 +1,8 @@
 import sys
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from types import TracebackType
-from typing import Any, Generic, TypeVar
-from typing_extensions import Literal, Self
+from typing import Any, Generic, Literal, TypeVar
+from typing_extensions import Self
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -13,18 +13,9 @@ _S = TypeVar("_S")
 _T = TypeVar("_T")
 
 class ApplyResult(Generic[_T]):
-    if sys.version_info >= (3, 8):
-        def __init__(
-            self, pool: Pool, callback: Callable[[_T], object] | None, error_callback: Callable[[BaseException], object] | None
-        ) -> None: ...
-    else:
-        def __init__(
-            self,
-            cache: dict[int, ApplyResult[Any]],
-            callback: Callable[[_T], object] | None,
-            error_callback: Callable[[BaseException], object] | None,
-        ) -> None: ...
-
+    def __init__(
+        self, pool: Pool, callback: Callable[[_T], object] | None, error_callback: Callable[[BaseException], object] | None
+    ) -> None: ...
     def get(self, timeout: float | None = None) -> _T: ...
     def wait(self, timeout: float | None = None) -> None: ...
     def ready(self) -> bool: ...
@@ -36,31 +27,17 @@ class ApplyResult(Generic[_T]):
 AsyncResult = ApplyResult
 
 class MapResult(ApplyResult[list[_T]]):
-    if sys.version_info >= (3, 8):
-        def __init__(
-            self,
-            pool: Pool,
-            chunksize: int,
-            length: int,
-            callback: Callable[[list[_T]], object] | None,
-            error_callback: Callable[[BaseException], object] | None,
-        ) -> None: ...
-    else:
-        def __init__(
-            self,
-            cache: dict[int, ApplyResult[Any]],
-            chunksize: int,
-            length: int,
-            callback: Callable[[list[_T]], object] | None,
-            error_callback: Callable[[BaseException], object] | None,
-        ) -> None: ...
+    def __init__(
+        self,
+        pool: Pool,
+        chunksize: int,
+        length: int,
+        callback: Callable[[list[_T]], object] | None,
+        error_callback: Callable[[BaseException], object] | None,
+    ) -> None: ...
 
 class IMapIterator(Iterator[_T]):
-    if sys.version_info >= (3, 8):
-        def __init__(self, pool: Pool) -> None: ...
-    else:
-        def __init__(self, cache: dict[int, IMapIterator[Any]]) -> None: ...
-
+    def __init__(self, pool: Pool) -> None: ...
     def __iter__(self) -> Self: ...
     def next(self, timeout: float | None = None) -> _T: ...
     def __next__(self, timeout: float | None = None) -> _T: ...
@@ -91,7 +68,7 @@ class Pool:
         func: Callable[[_S], _T],
         iterable: Iterable[_S],
         chunksize: int | None = None,
-        callback: Callable[[_T], object] | None = None,
+        callback: Callable[[list[_T]], object] | None = None,
         error_callback: Callable[[BaseException], object] | None = None,
     ) -> MapResult[_T]: ...
     def imap(self, func: Callable[[_S], _T], iterable: Iterable[_S], chunksize: int | None = 1) -> IMapIterator[_T]: ...
@@ -102,7 +79,7 @@ class Pool:
         func: Callable[..., _T],
         iterable: Iterable[Iterable[Any]],
         chunksize: int | None = None,
-        callback: Callable[[_T], object] | None = None,
+        callback: Callable[[list[_T]], object] | None = None,
         error_callback: Callable[[BaseException], object] | None = None,
     ) -> AsyncResult[list[_T]]: ...
     def close(self) -> None: ...
@@ -112,6 +89,7 @@ class Pool:
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None: ...
+    def __del__(self) -> None: ...
 
 class ThreadPool(Pool):
     def __init__(
@@ -119,12 +97,7 @@ class ThreadPool(Pool):
     ) -> None: ...
 
 # undocumented
-if sys.version_info >= (3, 8):
-    INIT: Literal["INIT"]
-    RUN: Literal["RUN"]
-    CLOSE: Literal["CLOSE"]
-    TERMINATE: Literal["TERMINATE"]
-else:
-    RUN: Literal[0]
-    CLOSE: Literal[1]
-    TERMINATE: Literal[2]
+INIT: Literal["INIT"]
+RUN: Literal["RUN"]
+CLOSE: Literal["CLOSE"]
+TERMINATE: Literal["TERMINATE"]

@@ -3,8 +3,8 @@ import sys
 import types
 from _typeshed import ReadableBuffer
 from collections.abc import Iterable
-from typing import Any
-from typing_extensions import Self, SupportsIndex, TypeAlias
+from typing import Any, SupportsIndex
+from typing_extensions import Self, TypeAlias
 
 __all__ = ["Client", "Listener", "Pipe", "wait"]
 
@@ -31,6 +31,7 @@ class _ConnectionBase:
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_value: BaseException | None, exc_tb: types.TracebackType | None
     ) -> None: ...
+    def __del__(self) -> None: ...
 
 class Connection(_ConnectionBase): ...
 

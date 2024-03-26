@@ -2730,6 +2730,49 @@ f: Callable[[Sequence[TI]], None]
 g: Callable[[Union[Sequence[TI], Sequence[TS]]], None]
 f = g
 
+[case testOverrideDecoratedProperty]
+class Base:
+    @property
+    def foo(self) -> int: ...
+
+class decorator:
+    def __init__(self, fn):
+        self.fn = fn
+    def __call__(self, decorated_self) -> int:
+        return self.fn(decorated_self)
+
+class Child(Base):
+    @property
+    @decorator
+    def foo(self) -> int:
+        return 42
+
+reveal_type(Child().foo)  # N: Revealed type is "builtins.int"
+
+class BadChild1(Base):
+    @decorator
+    def foo(self) -> int:  # E: Signature of "foo" incompatible with supertype "Base" \
+                           # N:      Superclass: \
+                           # N:          int \
+                           # N:      Subclass: \
+                           # N:          decorator
+        return 42
+
+class not_a_decorator:
+    def __init__(self, fn): ...
+
+class BadChild2(Base):
+    @property
+    @not_a_decorator
+    def foo(self) -> int:  # E: "not_a_decorator" not callable \
+                           # E: Signature of "foo" incompatible with supertype "Base" \
+                           # N:      Superclass: \
+                           # N:          int \
+                           # N:      Subclass: \
+                           # N:          not_a_decorator
+        return 42
+[builtins fixtures/property.pyi]
+
 [case explicitOverride]
 # flags: --python-version 3.12
 from typing import override
@@ -3157,6 +3200,16 @@ class C(A, B):
 
 class D(A, B):
     def f(self, z: int) -> str: pass  # E: Method "f" is not using @override but is overriding a method in class "__main__.A"
+[typing fixtures/typing-override.pyi]
+
+[case testExplicitOverrideAllowedForPrivate]
+# flags: --enable-error-code explicit-override --python-version 3.12
+
+class B:
+    def __f(self, y: int) -> str: pass
+
+class C(B):
+    def __f(self, y: int) -> str: pass  # OK
 [typing fixtures/typing-override.pyi]
 
 [case testCallableProperty]

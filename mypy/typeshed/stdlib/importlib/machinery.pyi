@@ -2,11 +2,10 @@ import importlib.abc
 import sys
 import types
 from _typeshed import ReadableBuffer
-from collections.abc import Callable, Iterable, Sequence
-from typing import Any
-
-if sys.version_info >= (3, 8):
-    from importlib.metadata import DistributionFinder, PathDistribution
+from collections.abc import Callable, Iterable, MutableSequence, Sequence
+from importlib.metadata import DistributionFinder, PathDistribution
+from typing import Any, Literal
+from typing_extensions import deprecated
 
 class ModuleSpec:
     def __init__(
@@ -116,7 +115,7 @@ class PathFinder:
     if sys.version_info >= (3, 10):
         @staticmethod
         def find_distributions(context: DistributionFinder.Context = ...) -> Iterable[PathDistribution]: ...
-    elif sys.version_info >= (3, 8):
+    else:
         @classmethod
         def find_distributions(cls, context: DistributionFinder.Context = ...) -> Iterable[PathDistribution]: ...
 
@@ -158,3 +157,23 @@ class ExtensionFileLoader(importlib.abc.ExecutionLoader):
     def get_code(self, fullname: str) -> None: ...
     def __eq__(self, other: object) -> bool: ...
     def __hash__(self) -> int: ...
+
+if sys.version_info >= (3, 11):
+    import importlib.readers
+
+    class NamespaceLoader(importlib.abc.InspectLoader):
+        def __init__(
+            self, name: str, path: MutableSequence[str], path_finder: Callable[[str, tuple[str, ...]], ModuleSpec]
+        ) -> None: ...
+        def is_package(self, fullname: str) -> Literal[True]: ...
+        def get_source(self, fullname: str) -> Literal[""]: ...
+        def get_code(self, fullname: str) -> types.CodeType: ...
+        def create_module(self, spec: ModuleSpec) -> None: ...
+        def exec_module(self, module: types.ModuleType) -> None: ...
+        @deprecated("load_module() is deprecated; use exec_module() instead")
+        def load_module(self, fullname: str) -> types.ModuleType: ...
+        def get_resource_reader(self, module: types.ModuleType) -> importlib.readers.NamespaceReader: ...
+        if sys.version_info < (3, 12):
+            @staticmethod
+            @deprecated("module_repr() is deprecated, and has been removed in Python 3.12")
+            def module_repr(module: types.ModuleType) -> str: ...

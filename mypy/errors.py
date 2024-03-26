@@ -8,7 +8,7 @@ from typing import Callable, Final, Iterable, NoReturn, Optional, TextIO, Tuple,
 from typing_extensions import Literal, TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes
-from mypy.errorcodes import IMPORT, IMPORT_NOT_FOUND, IMPORT_UNTYPED, ErrorCode
+from mypy.errorcodes import IMPORT, IMPORT_NOT_FOUND, IMPORT_UNTYPED, ErrorCode, mypy_error_codes
 from mypy.message_registry import ErrorMessage
 from mypy.options import Options
 from mypy.scope import Scope
@@ -170,7 +170,7 @@ class ErrorWatcher:
         *,
         filter_errors: bool | Callable[[str, ErrorInfo], bool] = False,
         save_filtered_errors: bool = False,
-    ):
+    ) -> None:
         self.errors = errors
         self._has_new_errors = False
         self._filter = filter_errors
@@ -560,6 +560,7 @@ class Errors:
             and not self.options.hide_error_codes
             and info.code is not None
             and info.code not in HIDE_LINK_CODES
+            and info.code.code in mypy_error_codes
         ):
             message = f"See {BASE_RTD_URL}-{info.code.code} for more info"
             if message in self.only_once_messages:

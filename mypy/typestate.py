@@ -192,7 +192,7 @@ class TypeState:
             # These are unlikely to match, due to the large space of
             # possible values.  Avoid uselessly increasing cache sizes.
             return
-        cache = self._subtype_caches.setdefault(right.type, dict())
+        cache = self._subtype_caches.setdefault(right.type, {})
         cache.setdefault(kind, set()).add((left, right))
 
     def record_negative_subtype_cache_entry(
@@ -204,7 +204,7 @@ class TypeState:
             return
         if len(self._negative_subtype_caches) > MAX_NEGATIVE_CACHE_TYPES:
             self._negative_subtype_caches.clear()
-        cache = self._negative_subtype_caches.setdefault(right.type, dict())
+        cache = self._negative_subtype_caches.setdefault(right.type, {})
         subcache = cache.setdefault(kind, set())
         if len(subcache) > MAX_NEGATIVE_CACHE_ENTRIES:
             subcache.clear()

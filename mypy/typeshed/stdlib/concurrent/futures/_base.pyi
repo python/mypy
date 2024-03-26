@@ -1,11 +1,11 @@
 import sys
 import threading
 from _typeshed import Unused
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Collection, Iterable, Iterator
 from logging import Logger
 from types import TracebackType
-from typing import Any, Generic, NamedTuple, TypeVar
-from typing_extensions import Literal, ParamSpec, Self
+from typing import Any, Generic, Literal, NamedTuple, Protocol, TypeVar
+from typing_extensions import ParamSpec, Self
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -24,17 +24,25 @@ LOGGER: Logger
 
 class Error(Exception): ...
 class CancelledError(Error): ...
-class TimeoutError(Error): ...
 
-if sys.version_info >= (3, 8):
-    class InvalidStateError(Error): ...
+if sys.version_info >= (3, 11):
+    from builtins import TimeoutError as TimeoutError
+else:
+    class TimeoutError(Error): ...
 
+class InvalidStateError(Error): ...
 class BrokenExecutor(RuntimeError): ...
 
 _T = TypeVar("_T")
+_T_co = TypeVar("_T_co", covariant=True)
 _P = ParamSpec("_P")
 
 class Future(Generic[_T]):
+    _condition: threading.Condition
+    _state: str
+    _result: _T | None
+    _exception: BaseException | None
+    _waiters: list[_Waiter]
     def cancel(self) -> bool: ...
     def cancelled(self) -> bool: ...
     def running(self) -> bool: ...
@@ -50,7 +58,7 @@ class Future(Generic[_T]):
 
 class Executor:
     if sys.version_info >= (3, 9):
-        def submit(self, __fn: Callable[_P, _T], *args: _P.args, **kwargs: _P.kwargs) -> Future[_T]: ...
+        def submit(self, fn: Callable[_P, _T], /, *args: _P.args, **kwargs: _P.kwargs) -> Future[_T]: ...
     else:
         def submit(self, fn: Callable[_P, _T], *args: _P.args, **kwargs: _P.kwargs) -> Future[_T]: ...
 
@@ -67,15 +75,31 @@ class Executor:
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> bool | None: ...
 
-def as_completed(fs: Iterable[Future[_T]], timeout: float | None = None) -> Iterator[Future[_T]]: ...
+class _AsCompletedFuture(Protocol[_T_co]):
+    # as_completed only mutates non-generic aspects of passed Futures and does not do any nominal
+    # checks. Therefore, we can use a Protocol here to allow as_completed to act covariantly.
+    # See the tests for concurrent.futures
+    _condition: threading.Condition
+    _state: str
+    _waiters: list[_Waiter]
+    # Not used by as_completed, but needed to propagate the generic type
+    def result(self, timeout: float | None = None) -> _T_co: ...
+
+def as_completed(fs: Iterable[_AsCompletedFuture[_T]], timeout: float | None = None) -> Iterator[Future[_T]]: ...
 
 class DoneAndNotDoneFutures(NamedTuple, Generic[_T]):
     done: set[Future[_T]]
     not_done: set[Future[_T]]
 
-def wait(
-    fs: Iterable[Future[_T]], timeout: float | None = None, return_when: str = "ALL_COMPLETED"
-) -> DoneAndNotDoneFutures[_T]: ...
+if sys.version_info >= (3, 9):
+    def wait(
+        fs: Iterable[Future[_T]], timeout: float | None = None, return_when: str = "ALL_COMPLETED"
+    ) -> DoneAndNotDoneFutures[_T]: ...
+
+else:
+    def wait(
+        fs: Collection[Future[_T]], timeout: float | None = None, return_when: str = "ALL_COMPLETED"
+    ) -> DoneAndNotDoneFutures[_T]: ...
 
 class _Waiter:
     event: threading.Event

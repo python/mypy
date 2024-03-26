@@ -1497,3 +1497,36 @@ class C:
     def meth(self) -> int: return 0
 [out]
 __main__.C.meth
+
+[case testGenericFunctionWithOptionalReturnType]
+from typing import Type, TypeVar
+
+T = TypeVar("T")
+
+class C:
+    @classmethod
+    def get_by_team_and_id(
+        cls: Type[T],
+        raw_member_id: int,
+        include_removed: bool = False,
+    ) -> T:
+        pass
+
+[file next.py]
+from typing import Type, TypeVar, Optional
+
+T = TypeVar("T")
+
+class C:
+    @classmethod
+    def get_by_team_and_id(
+        cls: Type[T],
+        raw_member_id: int,
+        include_removed: bool = False,
+    ) -> Optional[T]:
+        pass
+
+[builtins fixtures/classmethod.pyi]
+[out]
+__main__.C.get_by_team_and_id
+__main__.Optional

@@ -700,6 +700,21 @@ match m:
         reveal_type(m)  # N: Revealed type is "__main__.A[Any]"
         reveal_type(i)  # N: Revealed type is "Any"
 
+[case testMatchClassPatternCaptureVariadicGeneric]
+from typing import Generic, Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple('Ts')
+class A(Generic[Unpack[Ts]]):
+    a: Tuple[Unpack[Ts]]
+
+m: object
+match m:
+    case A(a=i):
+        reveal_type(m)  # N: Revealed type is "__main__.A[Unpack[builtins.tuple[Any, ...]]]"
+        reveal_type(i)  # N: Revealed type is "builtins.tuple[Any, ...]"
+[builtins fixtures/tuple.pyi]
+
 [case testMatchClassPatternCaptureGenericAlreadyKnown]
 from typing import Generic, TypeVar
 
@@ -916,7 +931,7 @@ match x:
 reveal_type(x)  # N: Revealed type is "builtins.list[builtins.list[builtins.dict[builtins.int, builtins.int]]]"
 reveal_type(y)  # N: Revealed type is "builtins.int"
 reveal_type(z)  # N: Revealed type is "builtins.int"
-[builtins fixtures/dict.pyi]
+[builtins fixtures/dict-full.pyi]
 
 [case testMatchNonFinalMatchArgs]
 class A:
@@ -1123,6 +1138,21 @@ match m:
         reveal_type(a)  # N: Revealed type is "builtins.str"
 
 reveal_type(a)  # N: Revealed type is "builtins.str"
+
+[case testMatchCapturePatternFromFunctionReturningUnion]
+def func1(arg: bool) -> str | int: ...
+def func2(arg: bool) -> bytes | int: ...
+
+def main() -> None:
+    match func1(True):
+        case str(a):
+            match func2(True):
+                case c:
+                    reveal_type(a)  # N: Revealed type is "builtins.str"
+                    reveal_type(c)  # N: Revealed type is "Union[builtins.bytes, builtins.int]"
+            reveal_type(a)  # N: Revealed type is "builtins.str"
+        case a:
+            reveal_type(a)  # N: Revealed type is "builtins.int"
 
 -- Guards --
 
@@ -1339,6 +1369,27 @@ match m3:
         reveal_type(m3)  # N: Revealed type is "Tuple[Union[builtins.int, builtins.str]]"
 [builtins fixtures/tuple.pyi]
 
+[case testMatchEnumSingleChoice]
+from enum import Enum
+from typing import NoReturn
+
+def assert_never(x: NoReturn) -> None: ...
+
+class Medal(Enum):
+    gold = 1
+
+def f(m: Medal) -> None:
+    always_assigned: int | None = None
+    match m:
+        case Medal.gold:
+            always_assigned = 1
+            reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
+        case _:
+            assert_never(m)
+
+    reveal_type(always_assigned)  # N: Revealed type is "builtins.int"
+[builtins fixtures/bool.pyi]
+
 [case testMatchLiteralPatternEnumNegativeNarrowing]
 from enum import Enum
 class Medal(Enum):
@@ -1358,10 +1409,13 @@ def f(m: Medal) -> int:
 def g(m: Medal) -> int:
     match m:
         case Medal.gold:
+            reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
             return 0
         case Medal.silver:
+            reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.silver]"
             return 1
         case Medal.bronze:
+            reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.bronze]"
             return 2
 
 [case testMatchLiteralPatternEnumCustomEquals-skip]
@@ -2026,3 +2080,105 @@ def f4(e: int | str | bytes) -> int:
     return 0
 
 [builtins fixtures/primitives.pyi]
+
+[case testMatchSequencePatternVariadicTupleNotTooShort]
+from typing import Tuple
+from typing_extensions import Unpack
+
+fm1: Tuple[int, int, Unpack[Tuple[str, ...]], int]
+match fm1:
+    case [fa1, fb1, fc1]:
+        reveal_type(fa1)  # N: Revealed type is "builtins.int"
+        reveal_type(fb1)  # N: Revealed type is "builtins.int"
+        reveal_type(fc1)  # N: Revealed type is "builtins.int"
+
+fm2: Tuple[int, int, Unpack[Tuple[str, ...]], int]
+match fm2:
+    case [fa2, fb2]:
+        reveal_type(fa2)
+        reveal_type(fb2)
+
+fm3: Tuple[int, int, Unpack[Tuple[str, ...]], int]
+match fm3:
+    case [fa3, fb3, fc3, fd3, fe3]:
+        reveal_type(fa3)  # N: Revealed type is "builtins.int"
+        reveal_type(fb3)  # N: Revealed type is "builtins.int"
+        reveal_type(fc3)  # N: Revealed type is "builtins.str"
+        reveal_type(fd3)  # N: Revealed type is "builtins.str"
+        reveal_type(fe3)  # N: Revealed type is "builtins.int"
+
+m1: Tuple[int, Unpack[Tuple[str, ...]], int]
+match m1:
+    case [a1, *b1, c1]:
+        reveal_type(a1)  # N: Revealed type is "builtins.int"
+        reveal_type(b1)  # N: Revealed type is "builtins.list[builtins.str]"
+        reveal_type(c1)  # N: Revealed type is "builtins.int"
+
+m2: Tuple[int, Unpack[Tuple[str, ...]], int]
+match m2:
+    case [a2, b2, *c2, d2, e2]:
+        reveal_type(a2)  # N: Revealed type is "builtins.int"
+        reveal_type(b2)  # N: Revealed type is "builtins.str"
+        reveal_type(c2)  # N: Revealed type is "builtins.list[builtins.str]"
+        reveal_type(d2)  # N: Revealed type is "builtins.str"
+        reveal_type(e2)  # N: Revealed type is "builtins.int"
+
+m3: Tuple[int, int, Unpack[Tuple[str, ...]], int, int]
+match m3:
+    case [a3, *b3, c3]:
+        reveal_type(a3)  # N: Revealed type is "builtins.int"
+        reveal_type(b3)  # N: Revealed type is "builtins.list[Union[builtins.int, builtins.str]]"
+        reveal_type(c3)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testMatchSequencePatternTypeVarTupleNotTooShort]
+from typing import Tuple
+from typing_extensions import Unpack, TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+def test(xs: Tuple[Unpack[Ts]]) -> None:
+    fm1: Tuple[int, int, Unpack[Ts], int]
+    match fm1:
+        case [fa1, fb1, fc1]:
+            reveal_type(fa1)  # N: Revealed type is "builtins.int"
+            reveal_type(fb1)  # N: Revealed type is "builtins.int"
+            reveal_type(fc1)  # N: Revealed type is "builtins.int"
+
+    fm2: Tuple[int, int, Unpack[Ts], int]
+    match fm2:
+        case [fa2, fb2]:
+            reveal_type(fa2)
+            reveal_type(fb2)
+
+    fm3: Tuple[int, int, Unpack[Ts], int]
+    match fm3:
+        case [fa3, fb3, fc3, fd3, fe3]:
+            reveal_type(fa3)  # N: Revealed type is "builtins.int"
+            reveal_type(fb3)  # N: Revealed type is "builtins.int"
+            reveal_type(fc3)  # N: Revealed type is "builtins.object"
+            reveal_type(fd3)  # N: Revealed type is "builtins.object"
+            reveal_type(fe3)  # N: Revealed type is "builtins.int"
+
+    m1: Tuple[int, Unpack[Ts], int]
+    match m1:
+        case [a1, *b1, c1]:
+            reveal_type(a1)  # N: Revealed type is "builtins.int"
+            reveal_type(b1)  # N: Revealed type is "builtins.list[builtins.object]"
+            reveal_type(c1)  # N: Revealed type is "builtins.int"
+
+    m2: Tuple[int, Unpack[Ts], int]
+    match m2:
+        case [a2, b2, *c2, d2, e2]:
+            reveal_type(a2)  # N: Revealed type is "builtins.int"
+            reveal_type(b2)  # N: Revealed type is "builtins.object"
+            reveal_type(c2)  # N: Revealed type is "builtins.list[builtins.object]"
+            reveal_type(d2)  # N: Revealed type is "builtins.object"
+            reveal_type(e2)  # N: Revealed type is "builtins.int"
+
+    m3: Tuple[int, int, Unpack[Ts], int, int]
+    match m3:
+        case [a3, *b3, c3]:
+            reveal_type(a3)  # N: Revealed type is "builtins.int"
+            reveal_type(b3)  # N: Revealed type is "builtins.list[builtins.object]"
+            reveal_type(c3)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]

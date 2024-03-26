@@ -1256,3 +1256,55 @@ def foo(**kwargs: Unpack[Person]) -> None:
 foo(name='Jennifer', age=38)
 [out]
 Jennifer
+
+[case testNestedFunctionDunderDict312]
+import sys
+
+def foo() -> None:
+    def inner() -> str: return "bar"
+    print(inner.__dict__)  # type: ignore[attr-defined]
+    inner.__dict__.update({"x": 1})  # type: ignore[attr-defined]
+    print(inner.__dict__)  # type: ignore[attr-defined]
+    print(inner.x)  # type: ignore[attr-defined]
+
+if sys.version_info >= (3, 12):  # type: ignore
+    foo()
+[out]
+[out version>=3.12]
+{}
+{'x': 1}
+1
+
+[case testFunctoolsUpdateWrapper]
+import functools
+
+def bar() -> None:
+    def inner() -> str: return "bar"
+    functools.update_wrapper(inner, bar)  # type: ignore
+    print(inner.__dict__)  # type: ignore
+
+bar()
+[out]
+{'__module__': 'native', '__name__': 'bar', '__qualname__': 'bar', '__doc__': None, '__wrapped__': <built-in function bar>}
+
+[case testCallNestedFunctionWithNamed]
+def f() -> None:
+    def a() -> None:
+        pass
+    def b() -> None:
+        a()
+    b()
+[file driver.py]
+from native import f
+f()
+
+[case testCallNestedFunctionWithLambda]
+def f(x: int) -> int:
+    def inc(x: int) -> int:
+        return x + 1
+    return (lambda x: inc(x))(1)
+[file driver.py]
+from native import f
+print(f(1))
+[out]
+2

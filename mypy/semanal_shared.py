@@ -45,6 +45,8 @@ from mypy.types import (
     TypeOfAny,
     TypeVarId,
     TypeVarLikeType,
+    TypeVarTupleType,
+    UnpackType,
     get_proper_type,
 )
 
@@ -286,12 +288,27 @@ def calculate_tuple_fallback(typ: TupleType) -> None:
     """
     fallback = typ.partial_fallback
     assert fallback.type.fullname == "builtins.tuple"
-    fallback.args = (join.join_type_list(list(typ.items)),) + fallback.args[1:]
+    items = []
+    for item in typ.items:
+        # TODO: this duplicates some logic in typeops.tuple_fallback().
+        if isinstance(item, UnpackType):
+            unpacked_type = get_proper_type(item.type)
+            if isinstance(unpacked_type, TypeVarTupleType):
+                unpacked_type = get_proper_type(unpacked_type.upper_bound)
+            if (
+                isinstance(unpacked_type, Instance)
+                and unpacked_type.type.fullname == "builtins.tuple"
+            ):
+                items.append(unpacked_type.args[0])
+            else:
+                raise NotImplementedError
+        else:
+            items.append(item)
+    fallback.args = (join.join_type_list(items),)
 
 
 class _NamedTypeCallback(Protocol):
-    def __call__(self, fully_qualified_name: str, args: list[Type] | None = None) -> Instance:
-        ...
+    def __call__(self, fully_qualified_name: str, args: list[Type] | None = None) -> Instance: ...
 
 
 def paramspec_args(
@@ -435,8 +452,7 @@ def require_bool_literal_argument(
     expression: Expression,
     name: str,
     default: Literal[True] | Literal[False],
-) -> bool:
-    ...
+) -> bool: ...
 
 
 @overload
@@ -445,8 +461,7 @@ def require_bool_literal_argument(
     expression: Expression,
     name: str,
     default: None = None,
-) -> bool | None:
-    ...
+) -> bool | None: ...
 
 
 def require_bool_literal_argument(

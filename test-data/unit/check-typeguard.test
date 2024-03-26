@@ -504,7 +504,7 @@ def with_bool(o: object) -> bool: pass
 
 accepts_typeguard(with_bool_typeguard)
 accepts_typeguard(with_str_typeguard)
-accepts_typeguard(with_bool)  # E: Argument 1 to "accepts_typeguard" has incompatible type "Callable[[object], bool]"; expected "Callable[[object], TypeGuard[bool]]"
+accepts_typeguard(with_bool)  # E: Argument 1 to "accepts_typeguard" has incompatible type "Callable[[object], bool]"; expected "Callable[[object], TypeGuard[Never]]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardAsOverloadedFunctionArg]
@@ -694,3 +694,18 @@ def foo(x: object) -> TypeGuard[List[str]]: ...
 def test(f: A[T]) -> T: ...
 reveal_type(test(foo))  # N: Revealed type is "builtins.str"
 [builtins fixtures/list.pyi]
+
+[case testNoCrashOnDunderCallTypeGuard]
+from typing_extensions import TypeGuard
+
+class A:
+    def __call__(self, x) -> TypeGuard[int]:
+        return True
+
+a: A
+assert a(x=1)
+
+x: object
+assert a(x=x)
+reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]

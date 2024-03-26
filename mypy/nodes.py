@@ -27,7 +27,7 @@ from mypy_extensions import trait
 
 import mypy.strconv
 from mypy.options import Options
-from mypy.util import short_type
+from mypy.util import is_typeshed_file, short_type
 from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
 
 if TYPE_CHECKING:
@@ -283,6 +283,7 @@ class MypyFile(SymbolNode):
         "is_partial_stub_package",
         "plugin_deps",
         "future_import_flags",
+        "_is_typeshed_file",
     )
 
     __match_args__ = ("name", "path", "defs")
@@ -319,6 +320,7 @@ class MypyFile(SymbolNode):
     plugin_deps: dict[str, set[str]]
     # Future imports defined in this file. Populated during semantic analysis.
     future_import_flags: set[str]
+    _is_typeshed_file: bool | None
 
     def __init__(
         self,
@@ -346,6 +348,7 @@ class MypyFile(SymbolNode):
         self.is_cache_skeleton = False
         self.is_partial_stub_package = False
         self.future_import_flags = set()
+        self._is_typeshed_file = None
 
     def local_definitions(self) -> Iterator[Definition]:
         """Return all definitions within the module (including nested).
@@ -370,6 +373,12 @@ class MypyFile(SymbolNode):
 
     def is_future_flag_set(self, flag: str) -> bool:
         return flag in self.future_import_flags
+
+    def is_typeshed_file(self, options: Options) -> bool:
+        # Cache result since this is called a lot
+        if self._is_typeshed_file is None:
+            self._is_typeshed_file = is_typeshed_file(options.abs_custom_typeshed_dir, self.path)
+        return self._is_typeshed_file
 
     def serialize(self) -> JsonDict:
         return {
@@ -504,6 +513,7 @@ class FuncBase(Node):
         "is_static",  # Uses "@staticmethod" (explicit or implicit)
         "is_final",  # Uses "@final"
         "is_explicit_override",  # Uses "@override"
+        "is_type_check_only",  # Uses "@type_check_only"
         "_fullname",
     )
 
@@ -521,6 +531,7 @@ class FuncBase(Node):
         self.is_static = False
         self.is_final = False
         self.is_explicit_override = False
+        self.is_type_check_only = False
         # Name with module prefix
         self._fullname = ""
 
@@ -1144,7 +1155,7 @@ class ClassDef(Statement):
         }
 
     @classmethod
-    def deserialize(self, data: JsonDict) -> ClassDef:
+    def deserialize(cls, data: JsonDict) -> ClassDef:
         assert data[".class"] == "ClassDef"
         res = ClassDef(
             data["name"],
@@ -1744,6 +1755,7 @@ class RefExpr(Expression):
         "is_inferred_def",
         "is_alias_rvalue",
         "type_guard",
+        "type_is",
     )
 
     def __init__(self) -> None:
@@ -1765,6 +1777,8 @@ class RefExpr(Expression):
         self.is_alias_rvalue = False
         # Cache type guard from callable_type.type_guard
         self.type_guard: mypy.types.Type | None = None
+        # And same for TypeIs
+        self.type_is: mypy.types.Type | None = None
 
     @property
     def fullname(self) -> str:
@@ -2135,21 +2149,26 @@ class AssertTypeExpr(Expression):
 class RevealExpr(Expression):
     """Reveal type expression reveal_type(expr) or reveal_locals() expression."""
 
-    __slots__ = ("expr", "kind", "local_nodes")
+    __slots__ = ("expr", "kind", "local_nodes", "is_imported")
 
-    __match_args__ = ("expr", "kind", "local_nodes")
+    __match_args__ = ("expr", "kind", "local_nodes", "is_imported")
 
     expr: Expression | None
     kind: int
     local_nodes: list[Var] | None
 
     def __init__(
-        self, kind: int, expr: Expression | None = None, local_nodes: list[Var] | None = None
+        self,
+        kind: int,
+        expr: Expression | None = None,
+        local_nodes: list[Var] | None = None,
+        is_imported: bool = False,
     ) -> None:
         super().__init__()
         self.expr = expr
         self.kind = kind
         self.local_nodes = local_nodes
+        self.is_imported = is_imported
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_reveal_expr(self)
@@ -2852,6 +2871,7 @@ class TypeInfo(SymbolNode):
         "type_var_tuple_suffix",
         "self_type",
         "dataclass_transform_spec",
+        "is_type_check_only",
     )
 
     _fullname: str  # Fully qualified name
@@ -3002,6 +3022,9 @@ class TypeInfo(SymbolNode):
     # Added if the corresponding class is directly decorated with `typing.dataclass_transform`
     dataclass_transform_spec: DataclassTransformSpec | None
 
+    # Is set to `True` when class is decorated with `@typing.type_check_only`
+    is_type_check_only: bool
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
@@ -3058,6 +3081,7 @@ class TypeInfo(SymbolNode):
         self.metadata = {}
         self.self_type = None
         self.dataclass_transform_spec = None
+        self.is_type_check_only = False
 
     def add_type_vars(self) -> None:
         self.has_type_var_tuple_type = False
@@ -3116,7 +3140,7 @@ class TypeInfo(SymbolNode):
                     if name in EXCLUDED_PROTOCOL_ATTRIBUTES:
                         continue
                     members.add(name)
-        return sorted(list(members))
+        return sorted(members)
 
     def __getitem__(self, name: str) -> SymbolTableNode:
         n = self.get(name)
@@ -3266,16 +3290,16 @@ class TypeInfo(SymbolNode):
             "declared_metaclass": (
                 None if self.declared_metaclass is None else self.declared_metaclass.serialize()
             ),
-            "metaclass_type": None
-            if self.metaclass_type is None
-            else self.metaclass_type.serialize(),
+            "metaclass_type": (
+                None if self.metaclass_type is None else self.metaclass_type.serialize()
+            ),
             "tuple_type": None if self.tuple_type is None else self.tuple_type.serialize(),
-            "typeddict_type": None
-            if self.typeddict_type is None
-            else self.typeddict_type.serialize(),
+            "typeddict_type": (
+                None if self.typeddict_type is None else self.typeddict_type.serialize()
+            ),
             "flags": get_flags(self, TypeInfo.FLAGS),
             "metadata": self.metadata,
-            "slots": list(sorted(self.slots)) if self.slots is not None else None,
+            "slots": sorted(self.slots) if self.slots is not None else None,
             "deletable_attributes": self.deletable_attributes,
             "self_type": self.self_type.serialize() if self.self_type is not None else None,
             "dataclass_transform_spec": (
@@ -3810,6 +3834,8 @@ class SymbolTableNode:
         # Include declared type of variables and functions.
         if self.type is not None:
             s += f" : {self.type}"
+        if self.cross_ref:
+            s += f" cross_ref:{self.cross_ref}"
         return s
 
     def serialize(self, prefix: str, name: str) -> JsonDict:
@@ -3943,7 +3969,7 @@ class DataclassTransformSpec:
         # frozen_default was added to CPythonin https://github.com/python/cpython/pull/99958 citing
         # positive discussion in typing-sig
         frozen_default: bool | None = None,
-    ):
+    ) -> None:
         self.eq_default = eq_default if eq_default is not None else True
         self.order_default = order_default if order_default is not None else False
         self.kw_only_default = kw_only_default if kw_only_default is not None else False

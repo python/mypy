@@ -102,7 +102,6 @@ Ord() >= 1  # E: Unsupported left operand type for >= ("Ord")
 [builtins fixtures/dict.pyi]
 
 [case testCachedProperty]
-# flags: --python-version 3.8
 from functools import cached_property
 class Parent:
     @property

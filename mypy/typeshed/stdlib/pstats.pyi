@@ -1,11 +1,10 @@
 import sys
-from _typeshed import StrOrBytesPath
+from _typeshed import StrEnum, StrOrBytesPath
 from collections.abc import Iterable
 from cProfile import Profile as _cProfile
-from enum import Enum
 from profile import Profile
-from typing import IO, Any, overload
-from typing_extensions import Literal, Self, TypeAlias
+from typing import IO, Any, Literal, overload
+from typing_extensions import Self, TypeAlias
 
 if sys.version_info >= (3, 9):
     __all__ = ["Stats", "SortKey", "FunctionProfile", "StatsProfile"]
@@ -14,7 +13,7 @@ else:
 
 _Selector: TypeAlias = str | float | int
 
-class SortKey(str, Enum):
+class SortKey(StrEnum):
     CALLS: str
     CUMULATIVE: str
     FILENAME: str
@@ -37,6 +36,7 @@ if sys.version_info >= (3, 9):
         percall_cumtime: float
         file_name: str
         line_number: int
+
     @dataclass(unsafe_hash=True)
     class StatsProfile:
         total_tt: float
@@ -48,7 +48,8 @@ class Stats:
     sort_arg_dict_default: _SortArgDict
     def __init__(
         self,
-        __arg: None | str | Profile | _cProfile = ...,
+        arg: None | str | Profile | _cProfile = ...,
+        /,
         *args: None | str | Profile | _cProfile | Self,
         stream: IO[Any] | None = None,
     ) -> None: ...

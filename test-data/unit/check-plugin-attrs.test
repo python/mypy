@@ -360,7 +360,8 @@ class A:
 
 a = A(5)
 a.a = 16  # E: Property "a" defined in "A" is read-only
-[builtins fixtures/bool.pyi]
+[builtins fixtures/plugin_attrs.pyi]
+
 [case testAttrsNextGenFrozen]
 from attr import frozen, field
 
@@ -370,7 +371,7 @@ class A:
 
 a = A(5)
 a.a = 16  # E: Property "a" defined in "A" is read-only
-[builtins fixtures/bool.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 
 [case testAttrsNextGenDetect]
 from attr import define, field
@@ -420,7 +421,7 @@ reveal_type(A)  # N: Revealed type is "def (a: builtins.int, b: builtins.bool) -
 reveal_type(B)  # N: Revealed type is "def (a: builtins.bool, b: builtins.int) -> __main__.B"
 reveal_type(C)  # N: Revealed type is "def (a: builtins.int) -> __main__.C"
 
-[builtins fixtures/bool.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 
 [case testAttrsDataClass]
 import attr
@@ -1055,6 +1056,31 @@ C()
 C(_x=42)  # E: Unexpected keyword argument "_x" for "C"
 [builtins fixtures/list.pyi]
 
+[case testAttrsAliasForInit]
+from attrs import define, field
+
+@define
+class C1:
+    _x: int = field(alias="x1")
+
+c1 = C1(x1=42)
+reveal_type(c1._x)  # N: Revealed type is "builtins.int"
+c1.x1  # E: "C1" has no attribute "x1"
+C1(_x=42)  # E: Unexpected keyword argument "_x" for "C1"
+
+alias = "x2"
+@define
+class C2:
+    _x: int = field(alias=alias)  # E: "alias" argument to attrs field must be a string literal
+
+@define
+class C3:
+    _x: int = field(alias="_x")
+
+c3 = C3(_x=1)
+reveal_type(c3._x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/plugin_attrs.pyi]
+
 [case testAttrsAutoMustBeAll]
 import attr
 @attr.s(auto_attribs=True)
@@ -1130,7 +1156,7 @@ c = NonFrozenFrozen(1, 2)
 c.a = 17  # E: Property "a" defined in "NonFrozenFrozen" is read-only
 c.b = 17  # E: Property "b" defined in "NonFrozenFrozen" is read-only
 
-[builtins fixtures/bool.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 [case testAttrsCallableAttributes]
 from typing import Callable
 import attr
@@ -1153,7 +1179,7 @@ class G:
 class FFrozen(F):
     def bar(self) -> bool:
         return self._cb(5, 6)
-[builtins fixtures/callable.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 
 [case testAttrsWithFactory]
 from typing import List
@@ -1425,7 +1451,7 @@ class C:
     total = attr.ib(type=Bad)  # E: Name "Bad" is not defined
 
 C(0).total = 1  # E: Property "total" defined in "C" is read-only
-[builtins fixtures/bool.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 
 [case testTypeInAttrDeferredStar]
 import lib
@@ -1916,7 +1942,7 @@ class C:
         default=None, converter=default_if_none(factory=dict) \
         # E: Unsupported converter, only named functions, types and lambdas are currently supported
     )
-[builtins fixtures/dict.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 
 [case testAttrsUnannotatedConverter]
 import attr
@@ -1987,7 +2013,7 @@ class Sub(Base):
 
     @property
     def name(self) -> str: ...
-[builtins fixtures/property.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 
 [case testOverrideWithPropertyInFrozenClassChecked]
 from attrs import frozen
@@ -2010,7 +2036,7 @@ class Sub(Base):
 
 # This matches runtime semantics
 reveal_type(Sub)  # N: Revealed type is "def (*, name: builtins.str, first_name: builtins.str, last_name: builtins.str) -> __main__.Sub"
-[builtins fixtures/property.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 
 [case testFinalInstanceAttribute]
 from attrs import define
@@ -2294,5 +2320,158 @@ class B(A[int]):
 b = B(42, 'spam')
 reveal_type(b.x)  # N: Revealed type is "builtins.int"
 reveal_type(b.y)  # N: Revealed type is "builtins.int"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testDefaultHashability]
+from attrs import define
+
+@define
+class A:
+    a: int
+
+reveal_type(A.__hash__)  # N: Revealed type is "None"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testFrozenHashability]
+from attrs import frozen
+
+@frozen
+class A:
+    a: int
+
+reveal_type(A.__hash__)  # N: Revealed type is "def (self: builtins.object) -> builtins.int"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testManualHashHashability]
+from attrs import define
+
+@define(hash=True)
+class A:
+    a: int
+
+reveal_type(A.__hash__)  # N: Revealed type is "def (self: builtins.object) -> builtins.int"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testManualUnsafeHashHashability]
+from attrs import define
+
+@define(unsafe_hash=True)
+class A:
+    a: int
+
+reveal_type(A.__hash__)  # N: Revealed type is "def (self: builtins.object) -> builtins.int"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testSubclassingHashability]
+from attrs import define
+
+@define(unsafe_hash=True)
+class A:
+    a: int
+
+@define
+class B(A):
+    pass
+
+reveal_type(B.__hash__)  # N: Revealed type is "None"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testManualOwnHashability]
+from attrs import define, frozen
+
+@define
+class A:
+    a: int
+    def __hash__(self) -> int:
+        ...
+
+reveal_type(A.__hash__)  # N: Revealed type is "def (self: __main__.A) -> builtins.int"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testSubclassDefaultLosesHashability]
+from attrs import define, frozen
+
+@define
+class A:
+    a: int
+    def __hash__(self) -> int:
+        ...
+
+@define
+class B(A):
+    pass
+
+reveal_type(B.__hash__)  # N: Revealed type is "None"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testSubclassEqFalseKeepsHashability]
+from attrs import define, frozen
+
+@define
+class A:
+    a: int
+    def __hash__(self) -> int:
+        ...
+
+@define(eq=False)
+class B(A):
+    pass
+
+reveal_type(B.__hash__)  # N: Revealed type is "def (self: __main__.A) -> builtins.int"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testSubclassingFrozenHashability]
+from attrs import define, frozen
+
+@define
+class A:
+    a: int
+
+@frozen
+class B(A):
+    pass
+
+reveal_type(B.__hash__)  # N: Revealed type is "def (self: builtins.object) -> builtins.int"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testSubclassingFrozenHashOffHashability]
+from attrs import define, frozen
+
+@define
+class A:
+    a: int
+    def __hash__(self) -> int:
+        ...
+
+@frozen(unsafe_hash=False)
+class B(A):
+    pass
+
+reveal_type(B.__hash__)  # N: Revealed type is "None"
+
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testUnsafeHashPrecedence]
+from attrs import define, frozen
+
+@define(unsafe_hash=True, hash=False)
+class A:
+    pass
+reveal_type(A.__hash__)  # N: Revealed type is "def (self: builtins.object) -> builtins.int"
+
+@define(unsafe_hash=False, hash=True)
+class B:
+    pass
+reveal_type(B.__hash__)  # N: Revealed type is "None"
 
 [builtins fixtures/plugin_attrs.pyi]

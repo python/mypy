@@ -62,17 +62,19 @@ OPTIONS_AFFECTING_CACHE: Final = (
     | {
         "platform",
         "bazel",
-        "new_type_inference",
+        "old_type_inference",
         "plugins",
         "disable_bytearray_promotion",
         "disable_memoryview_promotion",
     }
 ) - {"debug_cache"}
 
-# Features that are currently incomplete/experimental
+# Features that are currently (or were recently) incomplete/experimental
 TYPE_VAR_TUPLE: Final = "TypeVarTuple"
 UNPACK: Final = "Unpack"
-INCOMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK))
+PRECISE_TUPLE_TYPES: Final = "PreciseTupleTypes"
+INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES,))
+COMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK))
 
 
 class Options:
@@ -253,6 +255,8 @@ class Options:
         # Write junit.xml to given file
         self.junit_xml: str | None = None
 
+        self.junit_format: str = "global"  # global|per_file
+
         # Caching and incremental checking options
         self.incremental = True
         self.cache_dir = defaults.CACHE_DIR
@@ -306,7 +310,6 @@ class Options:
         self.dump_type_stats = False
         self.dump_inference_stats = False
         self.dump_build_stats = False
-        self.enable_incomplete_features = False  # deprecated
         self.enable_incomplete_feature: list[str] = []
         self.timing_stats: str | None = None
         self.line_checking_stats: str | None = None
@@ -317,6 +320,10 @@ class Options:
 
         # Use stub builtins fixtures to speed up tests
         self.use_builtins_fixtures = False
+
+        # This should only be set when running certain mypy tests.
+        # Use this sparingly to avoid tests diverging from non-test behavior.
+        self.test_env = False
 
         # -- experimental options --
         self.shadow_file: list[list[str]] | None = None
@@ -359,12 +366,10 @@ class Options:
         # skip most errors after this many messages have been reported.
         # -1 means unlimited.
         self.many_errors_threshold = defaults.MANY_ERRORS_THRESHOLD
-        # Enable new experimental type inference algorithm.
-        self.new_type_inference = False
-        # Disable recursive type aliases (currently experimental)
-        self.disable_recursive_aliases = False
+        # Disable new experimental type inference algorithm.
+        self.old_type_inference = False
         # Deprecated reverse version of the above, do not use.
-        self.enable_recursive_aliases = False
+        self.new_type_inference = False
         # Export line-level, limited, fine-grained dependency information in cache data
         # (undocumented feature).
         self.export_ref_info = False
@@ -384,6 +389,9 @@ class Options:
         if self.python_version >= (3, 10):
             return not self.force_union_syntax
         return False
+
+    def use_star_unpack(self) -> bool:
+        return self.python_version >= (3, 11)
 
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property

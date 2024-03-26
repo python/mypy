@@ -115,25 +115,21 @@ def g(x: int): ...
 )  # type: ignore  # E: Unused "type: ignore" comment
 
 [case testPEP570ArgTypesMissing]
-# flags: --python-version 3.8 --disallow-untyped-defs
+# flags: --disallow-untyped-defs
 def f(arg, /) -> None: ...  # E: Function is missing a type annotation for one or more arguments
 
 [case testPEP570ArgTypesBadDefault]
-# flags: --python-version 3.8
 def f(arg: int = "ERROR", /) -> None: ...  # E: Incompatible default for argument "arg" (default has type "str", argument has type "int")
 
 [case testPEP570ArgTypesDefault]
-# flags: --python-version 3.8
 def f(arg: int = 0, /) -> None:
     reveal_type(arg)  # N: Revealed type is "builtins.int"
 
 [case testPEP570ArgTypesRequired]
-# flags: --python-version 3.8
 def f(arg: int, /) -> None:
     reveal_type(arg)  # N: Revealed type is "builtins.int"
 
 [case testPEP570Required]
-# flags: --python-version 3.8
 def f(arg: int, /) -> None: ...  # N: "f" defined here
 f(1)
 f("ERROR")  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
@@ -141,7 +137,6 @@ f(arg=1)  # E: Unexpected keyword argument "arg" for "f"
 f(arg="ERROR")  # E: Unexpected keyword argument "arg" for "f"
 
 [case testPEP570Default]
-# flags: --python-version 3.8
 def f(arg: int = 0, /) -> None: ...  # N: "f" defined here
 f()
 f(1)
@@ -150,7 +145,7 @@ f(arg=1)  # E: Unexpected keyword argument "arg" for "f"
 f(arg="ERROR")  # E: Unexpected keyword argument "arg" for "f"
 
 [case testPEP570Calls]
-# flags: --python-version 3.8 --no-strict-optional
+# flags: --no-strict-optional
 from typing import Any, Dict
 def f(p, /, p_or_kw, *, kw) -> None: ...  # N: "f" defined here
 d = None # type: Dict[Any, Any]
@@ -163,7 +158,6 @@ f(**d)  # E: Missing positional argument "p_or_kw" in call to "f"
 [builtins fixtures/dict.pyi]
 
 [case testPEP570Signatures1]
-# flags: --python-version 3.8
 def f(p1: bytes, p2: float, /, p_or_kw: int, *, kw: str) -> None:
     reveal_type(p1)  # N: Revealed type is "builtins.bytes"
     reveal_type(p2)  # N: Revealed type is "builtins.float"
@@ -171,7 +165,6 @@ def f(p1: bytes, p2: float, /, p_or_kw: int, *, kw: str) -> None:
     reveal_type(kw)  # N: Revealed type is "builtins.str"
 
 [case testPEP570Signatures2]
-# flags: --python-version 3.8
 def f(p1: bytes, p2: float = 0.0, /, p_or_kw: int = 0, *, kw: str) -> None:
     reveal_type(p1)  # N: Revealed type is "builtins.bytes"
     reveal_type(p2)  # N: Revealed type is "builtins.float"
@@ -179,33 +172,28 @@ def f(p1: bytes, p2: float = 0.0, /, p_or_kw: int = 0, *, kw: str) -> None:
     reveal_type(kw)  # N: Revealed type is "builtins.str"
 
 [case testPEP570Signatures3]
-# flags: --python-version 3.8
 def f(p1: bytes, p2: float = 0.0, /, *, kw: int) -> None:
     reveal_type(p1)  # N: Revealed type is "builtins.bytes"
     reveal_type(p2)  # N: Revealed type is "builtins.float"
     reveal_type(kw)  # N: Revealed type is "builtins.int"
 
 [case testPEP570Signatures4]
-# flags: --python-version 3.8
 def f(p1: bytes, p2: int = 0, /) -> None:
     reveal_type(p1)  # N: Revealed type is "builtins.bytes"
     reveal_type(p2)  # N: Revealed type is "builtins.int"
 
 [case testPEP570Signatures5]
-# flags: --python-version 3.8
 def f(p1: bytes, p2: float, /, p_or_kw: int) -> None:
     reveal_type(p1)  # N: Revealed type is "builtins.bytes"
     reveal_type(p2)  # N: Revealed type is "builtins.float"
     reveal_type(p_or_kw)  # N: Revealed type is "builtins.int"
 
 [case testPEP570Signatures6]
-# flags: --python-version 3.8
 def f(p1: bytes, p2: float, /) -> None:
     reveal_type(p1)  # N: Revealed type is "builtins.bytes"
     reveal_type(p2)  # N: Revealed type is "builtins.float"
 
 [case testPEP570Unannotated]
-# flags: --python-version 3.8
 def f(arg, /): ...  # N: "f" defined here
 g = lambda arg, /: arg
 def h(arg=0, /): ...  # N: "h" defined here
@@ -223,7 +211,6 @@ h(arg=0)  # E: Unexpected keyword argument "arg" for "h"
 i(arg=0)  # E: Unexpected keyword argument "arg"
 
 [case testWalrus]
-# flags: --python-version 3.8
 from typing import NamedTuple, Optional, List
 from typing_extensions import Final
 
@@ -399,7 +386,6 @@ reveal_type(z2)  # E: Name "z2" is not defined  # N: Revealed type is "Any"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testWalrusConditionalTypeBinder]
-# flags: --python-version 3.8
 from typing import Tuple, Union
 from typing_extensions import Literal
 
@@ -427,7 +413,6 @@ else:
 [builtins fixtures/list.pyi]
 
 [case testWalrusConditionalTypeCheck]
-# flags: --python-version 3.8
 from typing import Optional
 
 maybe_str: Optional[str]
@@ -443,7 +428,6 @@ reveal_type(maybe_str)  # N: Revealed type is "Union[builtins.str, None]"
 [builtins fixtures/bool.pyi]
 
 [case testWalrusConditionalTypeCheck2]
-# flags: --python-version 3.8
 from typing import Optional
 
 maybe_str: Optional[str]
@@ -459,7 +443,6 @@ reveal_type(maybe_str)  # N: Revealed type is "Union[builtins.str, None]"
 [builtins fixtures/bool.pyi]
 
 [case testWalrusPartialTypes]
-# flags: --python-version 3.8
 from typing import List
 
 def check_partial_list() -> None:
@@ -476,7 +459,7 @@ def check_partial_list() -> None:
 [builtins fixtures/list.pyi]
 
 [case testWalrusAssignmentAndConditionScopeForLiteral]
-# flags: --warn-unreachable --python-version 3.8
+# flags: --warn-unreachable
 
 if (x := 0):
     reveal_type(x)  # E: Statement is unreachable
@@ -486,7 +469,7 @@ else:
 reveal_type(x)  # N: Revealed type is "builtins.int"
 
 [case testWalrusAssignmentAndConditionScopeForProperty]
-# flags: --warn-unreachable --python-version 3.8
+# flags: --warn-unreachable
 
 from typing_extensions import Literal
 
@@ -514,7 +497,7 @@ reveal_type(y)  # N: Revealed type is "Literal[False]"
 [builtins fixtures/property.pyi]
 
 [case testWalrusAssignmentAndConditionScopeForFunction]
-# flags: --warn-unreachable --python-version 3.8
+# flags: --warn-unreachable
 
 from typing_extensions import Literal
 
@@ -547,7 +530,6 @@ reveal_type(z)  # N: Revealed type is "Literal[False]"
 [builtins fixtures/tuple.pyi]
 
 [case testWalrusExpr]
-# flags: --python-version 3.8
 def func() -> None:
     foo = Foo()
     if x := foo.x:
@@ -558,7 +540,6 @@ class Foo:
         self.x = 123
 
 [case testWalrusTypeGuard]
-# flags: --python-version 3.8
 from typing_extensions import TypeGuard
 def is_float(a: object) -> TypeGuard[float]: pass
 def main(a: object) -> None:
@@ -568,14 +549,12 @@ def main(a: object) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testWalrusRedefined]
-# flags: --python-version 3.8
 def foo() -> None:
     x = 0
     [x := x + y for y in [1, 2, 3]]
 [builtins fixtures/dict.pyi]
 
 [case testWalrusUsedBeforeDef]
-# flags: --python-version 3.8
 class C:
     def f(self, c: 'C') -> None: pass
 
@@ -583,7 +562,6 @@ class C:
 (y := C()).f(y)
 
 [case testOverloadWithPositionalOnlySelf]
-# flags: --python-version 3.8
 from typing import overload, Optional
 
 class Foo:
@@ -608,7 +586,6 @@ class Bar:
 [builtins fixtures/bool.pyi]
 
 [case testOverloadPositionalOnlyErrorMessage]
-# flags: --python-version 3.8
 from typing import overload
 
 @overload
@@ -619,13 +596,12 @@ def foo(a): ...
 
 foo(a=1)
 [out]
-main:10: error: No overload variant of "foo" matches argument type "int"
-main:10: note: Possible overload variants:
-main:10: note:     def foo(int, /) -> Any
-main:10: note:     def foo(a: str) -> Any
+main:9: error: No overload variant of "foo" matches argument type "int"
+main:9: note: Possible overload variants:
+main:9: note:     def foo(int, /) -> Any
+main:9: note:     def foo(a: str) -> Any
 
 [case testOverloadPositionalOnlyErrorMessageAllTypes]
-# flags: --python-version 3.8
 from typing import overload
 
 @overload
@@ -636,13 +612,12 @@ def foo(a, b, *, c): ...
 
 foo(a=1)
 [out]
-main:10: error: No overload variant of "foo" matches argument type "int"
-main:10: note: Possible overload variants:
-main:10: note:     def foo(int, /, b: int, *, c: int) -> Any
-main:10: note:     def foo(a: str, b: int, *, c: int) -> Any
+main:9: error: No overload variant of "foo" matches argument type "int"
+main:9: note: Possible overload variants:
+main:9: note:     def foo(int, /, b: int, *, c: int) -> Any
+main:9: note:     def foo(a: str, b: int, *, c: int) -> Any
 
 [case testOverloadPositionalOnlyErrorMessageMultiplePosArgs]
-# flags: --python-version 3.8
 from typing import overload
 
 @overload
@@ -653,13 +628,12 @@ def foo(a, b, c, d): ...
 
 foo(a=1)
 [out]
-main:10: error: No overload variant of "foo" matches argument type "int"
-main:10: note: Possible overload variants:
-main:10: note:     def foo(int, int, int, /, d: str) -> Any
-main:10: note:     def foo(a: str, b: int, c: int, d: str) -> Any
+main:9: error: No overload variant of "foo" matches argument type "int"
+main:9: note: Possible overload variants:
+main:9: note:     def foo(int, int, int, /, d: str) -> Any
+main:9: note:     def foo(a: str, b: int, c: int, d: str) -> Any
 
 [case testOverloadPositionalOnlyErrorMessageMethod]
-# flags: --python-version 3.8
 from typing import overload
 
 class Some:
@@ -673,14 +647,13 @@ class Some:
 
 Some().foo(a=1)
 [out]
-main:13: error: No overload variant of "foo" of "Some" matches argument type "int"
-main:13: note: Possible overload variants:
-main:13: note:     def foo(self, int, /) -> Any
-main:13: note:     def foo(self, float, /) -> Any
-main:13: note:     def foo(self, a: str) -> Any
+main:12: error: No overload variant of "foo" of "Some" matches argument type "int"
+main:12: note: Possible overload variants:
+main:12: note:     def foo(self, int, /) -> Any
+main:12: note:     def foo(self, float, /) -> Any
+main:12: note:     def foo(self, a: str) -> Any
 
 [case testOverloadPositionalOnlyErrorMessageClassMethod]
-# flags: --python-version 3.8
 from typing import overload
 
 class Some:
@@ -699,14 +672,13 @@ class Some:
 Some.foo(a=1)
 [builtins fixtures/classmethod.pyi]
 [out]
-main:17: error: No overload variant of "foo" of "Some" matches argument type "int"
-main:17: note: Possible overload variants:
-main:17: note:     def foo(cls, int, /) -> Any
-main:17: note:     def foo(cls, float, /) -> Any
-main:17: note:     def foo(cls, a: str) -> Any
+main:16: error: No overload variant of "foo" of "Some" matches argument type "int"
+main:16: note: Possible overload variants:
+main:16: note:     def foo(cls, int, /) -> Any
+main:16: note:     def foo(cls, float, /) -> Any
+main:16: note:     def foo(cls, a: str) -> Any
 
 [case testUnpackWithDuplicateNamePositionalOnly]
-# flags: --python-version 3.8
 from typing_extensions import Unpack, TypedDict
 
 class Person(TypedDict):
@@ -717,7 +689,7 @@ def foo(name: str, /, **kwargs: Unpack[Person]) -> None:  # Allowed
 [builtins fixtures/dict.pyi]
 
 [case testPossiblyUndefinedWithAssignmentExpr]
-# flags: --python-version 3.8 --enable-error-code possibly-undefined
+# flags: --enable-error-code possibly-undefined
 def f1() -> None:
     d = {0: 1}
     if int():
@@ -744,7 +716,6 @@ main:9: note: Revealed type is "builtins.int"
 main:9: note: Revealed type is "builtins.str"
 
 [case testTypeGuardWithPositionalOnlyArg]
-# flags: --python-version 3.8
 from typing_extensions import TypeGuard
 
 def typeguard(x: object, /) -> TypeGuard[int]:
@@ -755,10 +726,9 @@ if typeguard(n):
     reveal_type(n)
 [builtins fixtures/tuple.pyi]
 [out]
-main:9: note: Revealed type is "builtins.int"
+main:8: note: Revealed type is "builtins.int"
 
 [case testTypeGuardKeywordFollowingWalrus]
-# flags: --python-version 3.8
 from typing import cast
 from typing_extensions import TypeGuard
 
@@ -769,7 +739,7 @@ if typeguard(x=(n := cast(object, "hi"))):
     reveal_type(n)
 [builtins fixtures/tuple.pyi]
 [out]
-main:9: note: Revealed type is "builtins.int"
+main:8: note: Revealed type is "builtins.int"
 
 [case testNoCrashOnAssignmentExprClass]
 class C:

@@ -1043,7 +1043,7 @@ MypyFile:1(
       default(
         Var(y)
         StrExpr()))
-    def (*x: builtins.int, *, y: builtins.str =) -> Any
+    def (*x: builtins.int, y: builtins.str =) -> Any
     VarArg(
       Var(x))
     Block:1(

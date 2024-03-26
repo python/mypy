@@ -93,7 +93,9 @@ def maybe_process_conditional_comparison(
         self.add_bool_branch(reg, true, false)
     else:
         # "left op right" for two tagged integers
-        self.builder.compare_tagged_condition(left, right, op, true, false, e.line)
+        reg = self.builder.binary_op(left, right, op, e.line)
+        self.flush_keep_alives()
+        self.add_bool_branch(reg, true, false)
     return True
 
 

@@ -31,23 +31,13 @@ class ModuleFinder:
     excludes: Container[str]  # undocumented
     replace_paths: Sequence[tuple[str, str]]  # undocumented
 
-    if sys.version_info >= (3, 8):
-        def __init__(
-            self,
-            path: list[str] | None = None,
-            debug: int = 0,
-            excludes: Container[str] | None = None,
-            replace_paths: Sequence[tuple[str, str]] | None = None,
-        ) -> None: ...
-    else:
-        def __init__(
-            self,
-            path: list[str] | None = None,
-            debug: int = 0,
-            excludes: Container[str] = [],
-            replace_paths: Sequence[tuple[str, str]] = [],
-        ) -> None: ...
-
+    def __init__(
+        self,
+        path: list[str] | None = None,
+        debug: int = 0,
+        excludes: Container[str] | None = None,
+        replace_paths: Sequence[tuple[str, str]] | None = None,
+    ) -> None: ...
     def msg(self, level: int, str: str, *args: Any) -> None: ...  # undocumented
     def msgin(self, *args: Any) -> None: ...  # undocumented
     def msgout(self, *args: Any) -> None: ...  # undocumented

@@ -1,4 +1,4 @@
-from typing_extensions import Literal
+from typing import Literal
 
 # These are not actually bools. See #4669
 NO: bool

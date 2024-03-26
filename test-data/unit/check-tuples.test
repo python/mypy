@@ -338,9 +338,11 @@ if int():
 if int():
     a = t1[(0)]
 if int():
+    b = t1[+1]
+if int():
     x = t3[0:3] # type (A, B, C)
 if int():
-    y = t3[0:5:2] # type (A, C, E)
+    y = t3[0:+5:2] # type (A, C, E)
 if int():
     x = t3[:-2] # type (A, B, C)
 
@@ -957,6 +959,12 @@ for x in B(), A():
 [builtins fixtures/for.pyi]
 
 [case testTupleIterable]
+from typing import Iterable, Optional, TypeVar
+
+T = TypeVar("T")
+
+def sum(iterable: Iterable[T], start: Optional[T] = None) -> T: pass
+
 y = 'a'
 x = sum((1,2))
 if int():
@@ -1100,10 +1108,26 @@ reveal_type(b)  # N: Revealed type is "Tuple[builtins.int, builtins.int, builtin
 [case testTupleWithStarExpr2]
 a = [1]
 b = (0, *a)
+reveal_type(b)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+[builtins fixtures/tuple.pyi]
+
+[case testTupleWithStarExpr2Precise]
+# flags: --enable-incomplete-feature=PreciseTupleTypes
+a = [1]
+b = (0, *a)
 reveal_type(b)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.int, ...]]]"
 [builtins fixtures/tuple.pyi]
 
 [case testTupleWithStarExpr3]
+a = ['']
+b = (0, *a)
+reveal_type(b)  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+c = (*a, '')
+reveal_type(c)  # N: Revealed type is "builtins.tuple[builtins.str, ...]"
+[builtins fixtures/tuple.pyi]
+
+[case testTupleWithStarExpr3Precise]
+# flags: --enable-incomplete-feature=PreciseTupleTypes
 a = ['']
 b = (0, *a)
 reveal_type(b)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[builtins.str, ...]]]"
@@ -1118,7 +1142,7 @@ a = (0, *b, '')
 [builtins fixtures/tuple.pyi]
 
 [case testUnpackSyntaxError]
-*foo  # E: Can use starred expression only as assignment target
+*foo  # E: can't use starred expression here
 [builtins fixtures/tuple.pyi]
 
 [case testUnpackBases]

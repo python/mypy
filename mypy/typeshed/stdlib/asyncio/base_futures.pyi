@@ -1,7 +1,6 @@
 from collections.abc import Callable, Sequence
 from contextvars import Context
-from typing import Any
-from typing_extensions import Literal
+from typing import Any, Literal
 
 from . import futures
 

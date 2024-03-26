@@ -47,6 +47,7 @@ from mypyc.ir.ops import (
     MethodCall,
     Op,
     OpVisitor,
+    PrimitiveOp,
     RaiseStandardError,
     Register,
     Return,
@@ -535,9 +536,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         obj_args = (
             []
             if method.decl.kind == FUNC_STATICMETHOD
-            else [f"(PyObject *)Py_TYPE({obj})"]
-            if method.decl.kind == FUNC_CLASSMETHOD
-            else [obj]
+            else [f"(PyObject *)Py_TYPE({obj})"] if method.decl.kind == FUNC_CLASSMETHOD else [obj]
         )
         args = ", ".join(obj_args + [self.reg(arg) for arg in op.args])
         mtype = native_function_type(method, self.emitter)
@@ -630,6 +629,11 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             dest = self.get_dest_assign(op)
         args = ", ".join(self.reg(arg) for arg in op.args)
         self.emitter.emit_line(f"{dest}{op.function_name}({args});")
+
+    def visit_primitive_op(self, op: PrimitiveOp) -> None:
+        raise RuntimeError(
+            f"unexpected PrimitiveOp {op.desc.name}: they must be lowered before codegen"
+        )
 
     def visit_truncate(self, op: Truncate) -> None:
         dest = self.reg(op)

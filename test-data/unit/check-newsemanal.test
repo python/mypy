@@ -434,13 +434,14 @@ def main() -> None:
             x  # E: Name "x" is not defined
 
 [case testNewAnalyzerCyclicDefinitions]
-# flags: --disable-recursive-aliases --disable-error-code used-before-def
+# flags: --disable-error-code used-before-def
 gx = gy  # E: Cannot resolve name "gy" (possible cyclic definition)
 gy = gx
 def main() -> None:
     class C:
         def meth(self) -> None:
-            lx = ly  # E: Cannot resolve name "ly" (possible cyclic definition)
+            lx = ly  # E: Cannot resolve name "ly" (possible cyclic definition) \
+                     # N: Recursive types are not allowed at function scope
             ly = lx
 
 [case testNewAnalyzerCyclicDefinitionCrossModule]
@@ -1495,22 +1496,25 @@ reveal_type(x[0][0])  # N: Revealed type is "__main__.C"
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerAliasToNotReadyDirectBase]
-# flags: --disable-recursive-aliases --disable-error-code used-before-def
+# flags: --disable-error-code used-before-def
 from typing import List
 
-x: B
-B = List[C]
-class C(B): pass
+def test() -> None:
+    x: B
+    B = List[C]
+    class C(B): pass
 
-reveal_type(x)
-reveal_type(x[0][0])
+    reveal_type(x)
+    reveal_type(x[0][0])
 [builtins fixtures/list.pyi]
 [out]
-main:4: error: Cannot resolve name "B" (possible cyclic definition)
 main:5: error: Cannot resolve name "B" (possible cyclic definition)
-main:5: error: Cannot resolve name "C" (possible cyclic definition)
-main:8: note: Revealed type is "Any"
+main:5: note: Recursive types are not allowed at function scope
+main:6: error: Cannot resolve name "B" (possible cyclic definition)
+main:6: note: Recursive types are not allowed at function scope
+main:6: error: Cannot resolve name "C" (possible cyclic definition)
 main:9: note: Revealed type is "Any"
+main:10: note: Revealed type is "Any"
 
 [case testNewAnalyzerAliasToNotReadyTwoDeferralsFunction]
 # flags: --disable-error-code used-before-def
@@ -1530,25 +1534,21 @@ reveal_type(f)  # N: Revealed type is "def (x: builtins.list[a.C]) -> builtins.l
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerAliasToNotReadyDirectBaseFunction]
-# flags: --disable-recursive-aliases --disable-error-code used-before-def
+# flags: --disable-error-code used-before-def
 import a
 [file a.py]
 from typing import List
 from b import D
 
 def f(x: B) -> List[B]: ...
-B = List[C] # E
+B = List[C]
 class C(B): pass
 
 [file b.py]
 from a import f
 class D: ...
-reveal_type(f)  # N
+reveal_type(f)  # N: Revealed type is "def (x: builtins.list[a.C]) -> builtins.list[builtins.list[a.C]]"
 [builtins fixtures/list.pyi]
-[out]
-tmp/b.py:3: note: Revealed type is "def (x: builtins.list[Any]) -> builtins.list[builtins.list[Any]]"
-tmp/a.py:5: error: Cannot resolve name "B" (possible cyclic definition)
-tmp/a.py:5: error: Cannot resolve name "C" (possible cyclic definition)
 
 [case testNewAnalyzerAliasToNotReadyMixed]
 from typing import List, Union
@@ -2118,25 +2118,29 @@ class B(List[C]):
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerNewTypeForwardClassAliasDirect]
-# flags: --disable-recursive-aliases --disable-error-code used-before-def
+# flags: --disable-error-code used-before-def
 from typing import NewType, List
 
-x: D
-reveal_type(x[0][0])
+def test() -> None:
+    x: D
+    reveal_type(x[0][0])
 
-D = List[C]
-C = NewType('C', 'B')
+    D = List[C]
+    C = NewType('C', 'B')
 
-class B(D):
-    pass
+    class B(D):
+        pass
 [builtins fixtures/list.pyi]
 [out]
-main:4: error: Cannot resolve name "D" (possible cyclic definition)
-main:5: note: Revealed type is "Any"
-main:7: error: Cannot resolve name "D" (possible cyclic definition)
-main:7: error: Cannot resolve name "C" (possible cyclic definition)
-main:8: error: Argument 2 to NewType(...) must be a valid type
-main:8: error: Cannot resolve name "B" (possible cyclic definition)
+main:5: error: Cannot resolve name "D" (possible cyclic definition)
+main:5: note: Recursive types are not allowed at function scope
+main:6: note: Revealed type is "Any"
+main:8: error: Cannot resolve name "D" (possible cyclic definition)
+main:8: note: Recursive types are not allowed at function scope
+main:8: error: Cannot resolve name "C" (possible cyclic definition)
+main:9: error: Argument 2 to NewType(...) must be a valid type
+main:9: error: Cannot resolve name "B" (possible cyclic definition)
+main:9: note: Recursive types are not allowed at function scope
 
 -- Copied from check-classes.test (tricky corner cases).
 [case testNewAnalyzerNoCrashForwardRefToBrokenDoubleNewTypeClass]
@@ -2154,22 +2158,24 @@ class C:
 [builtins fixtures/dict.pyi]
 
 [case testNewAnalyzerForwardTypeAliasInBase]
-# flags: --disable-recursive-aliases
 from typing import List, Generic, TypeVar, NamedTuple
 T = TypeVar('T')
 
-class C(A, B): # E: Cannot resolve name "A" (possible cyclic definition)
-    pass
-class G(Generic[T]): pass
-A = G[C] # E: Cannot resolve name "A" (possible cyclic definition)
-class B(NamedTuple):
-    x: int
+def test() -> None:
+    class C(A, B):  # E: Cannot resolve name "A" (possible cyclic definition) \
+                    # N: Recursive types are not allowed at function scope
+        pass
+    class G(Generic[T]): pass
+    A = G[C]  # E: Cannot resolve name "A" (possible cyclic definition) \
+              # N: Recursive types are not allowed at function scope
+    class B(NamedTuple):
+        x: int
 
-y: C
-reveal_type(y.x)  # N: Revealed type is "builtins.int"
-reveal_type(y[0])  # N: Revealed type is "builtins.int"
-x: A
-reveal_type(x)  # N: Revealed type is "__main__.G[Tuple[builtins.int, fallback=__main__.C]]"
+    y: C
+    reveal_type(y.x)  # N: Revealed type is "builtins.int"
+    reveal_type(y[0])  # N: Revealed type is "builtins.int"
+    x: A
+    reveal_type(x)  # N: Revealed type is "__main__.G@7[Tuple[builtins.int, fallback=__main__.C@5]]"
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerDuplicateTypeVar]
@@ -2571,8 +2577,7 @@ import n
 [file n.pyi]
 class C: pass
 
-[case testNewAnalyzerModuleGetAttrInPython37]
-# flags: --python-version 3.7
+[case testNewAnalyzerModuleGetAttr]
 import m
 import n
 
@@ -2584,9 +2589,9 @@ import n
 def __getattr__(x): pass
 
 [case testNewAnalyzerReportLoopInMRO2]
-# flags: --disable-recursive-aliases
 def f() -> None:
-    class A(A): ... # E: Cannot resolve name "A" (possible cyclic definition)
+    class A(A): ...  # E: Cannot resolve name "A" (possible cyclic definition) \
+                     # N: Recursive types are not allowed at function scope
 
 [case testNewAnalyzerUnsupportedBaseClassInsideFunction]
 class C:

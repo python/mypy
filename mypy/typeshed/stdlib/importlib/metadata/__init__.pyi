@@ -1,15 +1,20 @@
 import abc
 import pathlib
 import sys
+from _collections_abc import dict_keys, dict_values
 from _typeshed import StrPath
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Iterator, Mapping
 from email.message import Message
 from importlib.abc import MetaPathFinder
 from os import PathLike
 from pathlib import Path
 from re import Pattern
-from typing import Any, ClassVar, NamedTuple, overload
-from typing_extensions import Self
+from typing import Any, ClassVar, Generic, NamedTuple, TypeVar, overload
+from typing_extensions import Self, TypeAlias
+
+_T = TypeVar("_T")
+_KT = TypeVar("_KT")
+_VT = TypeVar("_VT")
 
 __all__ = [
     "Distribution",
@@ -28,21 +33,39 @@ if sys.version_info >= (3, 10):
     __all__ += ["PackageMetadata", "packages_distributions"]
 
 if sys.version_info >= (3, 10):
-    from importlib.metadata._meta import PackageMetadata as PackageMetadata
+    from importlib.metadata._meta import PackageMetadata as PackageMetadata, SimplePath
     def packages_distributions() -> Mapping[str, list[str]]: ...
+
+    if sys.version_info >= (3, 12):
+        # It's generic but shouldn't be
+        _SimplePath: TypeAlias = SimplePath[Any]
+    else:
+        _SimplePath: TypeAlias = SimplePath
+else:
+    _SimplePath: TypeAlias = Path
 
 class PackageNotFoundError(ModuleNotFoundError):
     @property
     def name(self) -> str: ...  # type: ignore[override]
 
-class _EntryPointBase(NamedTuple):
-    name: str
-    value: str
-    group: str
+if sys.version_info >= (3, 11):
+    class DeprecatedTuple:
+        def __getitem__(self, item: int) -> str: ...
+
+    _EntryPointBase = DeprecatedTuple
+else:
+    class _EntryPointBase(NamedTuple):
+        name: str
+        value: str
+        group: str
 
 class EntryPoint(_EntryPointBase):
     pattern: ClassVar[Pattern[str]]
     if sys.version_info >= (3, 11):
+        name: str
+        value: str
+        group: str
+
         def __init__(self, name: str, value: str, group: str) -> None: ...
 
     def load(self) -> Any: ...  # Callable[[], Any] or an importable module
@@ -68,9 +91,33 @@ class EntryPoint(_EntryPointBase):
 
     def __hash__(self) -> int: ...
     def __eq__(self, other: object) -> bool: ...
+    if sys.version_info >= (3, 11):
+        def __lt__(self, other: object) -> bool: ...
+    if sys.version_info < (3, 12):
+        def __iter__(self) -> Iterator[Any]: ...  # result of iter((str, Self)), really
 
-if sys.version_info >= (3, 10):
-    class EntryPoints(list[EntryPoint]):  # use as list is deprecated since 3.10
+if sys.version_info >= (3, 12):
+    class EntryPoints(tuple[EntryPoint, ...]):
+        def __getitem__(self, name: str) -> EntryPoint: ...  # type: ignore[override]
+        def select(
+            self,
+            *,
+            name: str = ...,
+            value: str = ...,
+            group: str = ...,
+            module: str = ...,
+            attr: str = ...,
+            extras: list[str] = ...,
+        ) -> EntryPoints: ...
+        @property
+        def names(self) -> set[str]: ...
+        @property
+        def groups(self) -> set[str]: ...
+
+elif sys.version_info >= (3, 10):
+    class DeprecatedList(list[_T]): ...
+
+    class EntryPoints(DeprecatedList[EntryPoint]):  # use as list is deprecated since 3.10
         # int argument is deprecated since 3.10
         def __getitem__(self, name: int | str) -> EntryPoint: ...  # type: ignore[override]
         def select(
@@ -89,7 +136,18 @@ if sys.version_info >= (3, 10):
         def groups(self) -> set[str]: ...
 
 if sys.version_info >= (3, 10) and sys.version_info < (3, 12):
-    class SelectableGroups(dict[str, EntryPoints]):  # use as dict is deprecated since 3.10
+    class Deprecated(Generic[_KT, _VT]):
+        def __getitem__(self, name: _KT) -> _VT: ...
+        @overload
+        def get(self, name: _KT) -> _VT | None: ...
+        @overload
+        def get(self, name: _KT, default: _T) -> _VT | _T: ...
+        def __iter__(self) -> Iterator[_KT]: ...
+        def __contains__(self, *args: object) -> bool: ...
+        def keys(self) -> dict_keys[_KT, _VT]: ...
+        def values(self) -> dict_values[_KT, _VT]: ...
+
+    class SelectableGroups(Deprecated[str, EntryPoints], dict[str, EntryPoints]):  # use as dict is deprecated since 3.10
         @classmethod
         def load(cls, eps: Iterable[EntryPoint]) -> Self: ...
         @property
@@ -124,11 +182,17 @@ class FileHash:
     value: str
     def __init__(self, spec: str) -> None: ...
 
-class Distribution:
+if sys.version_info >= (3, 12):
+    class DeprecatedNonAbstract: ...
+    _distribution_parent = DeprecatedNonAbstract
+else:
+    _distribution_parent = object
+
+class Distribution(_distribution_parent):
     @abc.abstractmethod
     def read_text(self, filename: str) -> str | None: ...
     @abc.abstractmethod
-    def locate_file(self, path: StrPath) -> PathLike[str]: ...
+    def locate_file(self, path: StrPath) -> _SimplePath: ...
     @classmethod
     def from_name(cls, name: str) -> Distribution: ...
     @overload
@@ -177,14 +241,14 @@ class MetadataPathFinder(DistributionFinder):
     @classmethod
     def find_distributions(cls, context: DistributionFinder.Context = ...) -> Iterable[PathDistribution]: ...
     if sys.version_info >= (3, 10):
-        # Yes, this is an instance method that has argumend named "cls"
+        # Yes, this is an instance method that has a parameter named "cls"
         def invalidate_caches(cls) -> None: ...
 
 class PathDistribution(Distribution):
-    _path: Path
-    def __init__(self, path: Path) -> None: ...
-    def read_text(self, filename: StrPath) -> str: ...
-    def locate_file(self, path: StrPath) -> PathLike[str]: ...
+    _path: _SimplePath
+    def __init__(self, path: _SimplePath) -> None: ...
+    def read_text(self, filename: StrPath) -> str | None: ...
+    def locate_file(self, path: StrPath) -> _SimplePath: ...
 
 def distribution(distribution_name: str) -> Distribution: ...
 @overload
@@ -207,7 +271,7 @@ if sys.version_info >= (3, 12):
 
 elif sys.version_info >= (3, 10):
     @overload
-    def entry_points() -> SelectableGroups: ...  # type: ignore[misc]
+    def entry_points() -> SelectableGroups: ...  # type: ignore[overload-overlap]
     @overload
     def entry_points(
         *, name: str = ..., value: str = ..., group: str = ..., module: str = ..., attr: str = ..., extras: list[str] = ...

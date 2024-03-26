@@ -31,6 +31,7 @@ graft mypyc/doc
 # files necessary for testing sdist
 include mypy-requirements.txt
 include build-requirements.txt
+include test-requirements.in
 include test-requirements.txt
 include mypy_self_check.ini
 prune misc
@@ -41,7 +42,7 @@ include pytest.ini
 include tox.ini
 
 include LICENSE mypyc/README.md
-exclude .gitmodules CONTRIBUTING.md CREDITS ROADMAP.md action.yml .editorconfig
+exclude .gitmodules CONTRIBUTING.md CREDITS ROADMAP.md CHANGELOG.md action.yml .editorconfig
 exclude .git-blame-ignore-revs .pre-commit-config.yaml
 
 global-exclude *.py[cod]

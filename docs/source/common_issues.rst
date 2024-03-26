@@ -119,7 +119,7 @@ and mypy doesn't complain**.
         return None  # No error!
 
 You may have disabled strict optional checking (see
-:ref:`no_strict_optional` for more).
+:ref:`--no-strict-optional <no_strict_optional>` for more).
 
 .. _silencing_checker:
 
@@ -541,7 +541,7 @@ Consider this example:
 
 .. code-block:: python
 
-   from typing_extensions import Protocol
+   from typing import Protocol
 
    class P(Protocol):
        x: float
@@ -561,7 +561,7 @@ the protocol definition:
 
 .. code-block:: python
 
-   from typing_extensions import Protocol
+   from typing import Protocol
 
    class P(Protocol):
        @property

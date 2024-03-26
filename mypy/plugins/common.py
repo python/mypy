@@ -399,6 +399,7 @@ def add_attribute_to_class(
     override_allow_incompatible: bool = False,
     fullname: str | None = None,
     is_classvar: bool = False,
+    overwrite_existing: bool = False,
 ) -> Var:
     """
     Adds a new attribute to a class definition.
@@ -408,7 +409,7 @@ def add_attribute_to_class(
 
     # NOTE: we would like the plugin generated node to dominate, but we still
     # need to keep any existing definitions so they get semantically analyzed.
-    if name in info.names:
+    if name in info.names and not overwrite_existing:
         # Get a nice unique name instead.
         r_name = get_unique_redefinition_name(name, info.names)
         info.names[r_name] = info.names[name]

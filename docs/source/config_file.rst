@@ -3,6 +3,10 @@
 The mypy configuration file
 ===========================
 
+Mypy is very configurable. This is most useful when introducing typing to
+an existing codebase. See :ref:`existing-code` for concrete advice for
+that situation.
+
 Mypy supports reading configuration settings from a file with the following precedence order:
 
     1. ``./mypy.ini``
@@ -238,10 +242,8 @@ section of the command line docs.
     Crafting a single regular expression that excludes multiple files while remaining
     human-readable can be a challenge. The above example demonstrates one approach.
     ``(?x)`` enables the ``VERBOSE`` flag for the subsequent regular expression, which
-    `ignores most whitespace and supports comments`__. The above is equivalent to:
-    ``(^one\.py$|two\.pyi$|^three\.)``.
-
-    .. __: https://docs.python.org/3/library/re.html#re.X
+    :py:data:`ignores most whitespace and supports comments <re.VERBOSE>`.
+    The above is equivalent to: ``(^one\.py$|two\.pyi$|^three\.)``.
 
     For more details, see :option:`--exclude <mypy --exclude>`.
 
@@ -582,10 +584,15 @@ section of the command line docs.
     :type: boolean
     :default: True
 
-    Enables or disables strict Optional checks. If False, mypy treats ``None``
+    Effectively disables checking of :py:data:`~typing.Optional`
+    types and ``None`` values. With this option, mypy doesn't
+    generally check the use of ``None`` values -- it is treated
     as compatible with every type.
 
-    **Note:** This was False by default in mypy versions earlier than 0.600.
+    .. warning::
+
+        ``strict_optional = false`` is evil. Avoid using it and definitely do
+        not use it without understanding what it does.
 
 
 Configuring warnings

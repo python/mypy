@@ -866,30 +866,6 @@ _program.py:10: error: Incompatible types in assignment (expression has type "in
 _program.py:20: error: Argument 1 to "tst" has incompatible type "defaultdict[str, List[Never]]"; expected "defaultdict[int, List[Never]]"
 _program.py:24: error: Invalid index type "str" for "MyDDict[Dict[Never, Never]]"; expected type "int"
 
-[case testNoSubcriptionOfStdlibCollections]
-# flags: --python-version 3.7
-import collections
-from collections import Counter
-from typing import TypeVar
-
-collections.defaultdict[int, str]()
-Counter[int]()
-
-T = TypeVar('T')
-DDint = collections.defaultdict[T, int]
-
-d = DDint[str]()
-d[0] = 1
-
-def f(d: collections.defaultdict[int, str]) -> None:
-    ...
-[out]
-_program.py:6: error: "defaultdict" is not subscriptable
-_program.py:7: error: "Counter" is not subscriptable
-_program.py:10: error: "defaultdict" is not subscriptable
-_program.py:13: error: Invalid index type "int" for "defaultdict[str, int]"; expected type "str"
-_program.py:15: error: "defaultdict" is not subscriptable, use "typing.DefaultDict" instead
-
 [case testCollectionsAliases]
 import typing as t
 import collections as c
@@ -1568,34 +1544,33 @@ note: A user-defined top-level module with name "typing" is not supported
 # flags: --ignore-missing-imports
 import scribe  # No Python 3 stubs available for scribe
 from scribe import x
-import docutils  # Python 3 stubs available for docutils
+import python2  # Python 3 stubs available for python2
 import foobar_asdf
 import jack  # This has a stubs package but was never bundled with mypy, so ignoring works
 [out]
-_testIgnoreImportIfNoPython3StubAvailable.py:4: error: Library stubs not installed for "docutils"
-_testIgnoreImportIfNoPython3StubAvailable.py:4: note: Hint: "python3 -m pip install types-docutils"
+_testIgnoreImportIfNoPython3StubAvailable.py:4: error: Library stubs not installed for "python2"
+_testIgnoreImportIfNoPython3StubAvailable.py:4: note: Hint: "python3 -m pip install types-six"
 _testIgnoreImportIfNoPython3StubAvailable.py:4: note: (or run "mypy --install-types" to install all missing stub packages)
 _testIgnoreImportIfNoPython3StubAvailable.py:4: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testNoPython3StubAvailable]
 import scribe
 from scribe import x
-import docutils
+import python2
 [out]
 _testNoPython3StubAvailable.py:1: error: Cannot find implementation or library stub for module named "scribe"
 _testNoPython3StubAvailable.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-_testNoPython3StubAvailable.py:3: error: Library stubs not installed for "docutils"
-_testNoPython3StubAvailable.py:3: note: Hint: "python3 -m pip install types-docutils"
+_testNoPython3StubAvailable.py:3: error: Library stubs not installed for "python2"
+_testNoPython3StubAvailable.py:3: note: Hint: "python3 -m pip install types-six"
 _testNoPython3StubAvailable.py:3: note: (or run "mypy --install-types" to install all missing stub packages)
 
 
 [case testTypingOrderedDictAlias]
-# flags: --python-version 3.7
 from typing import OrderedDict
 x: OrderedDict[str, int] = OrderedDict({})
 reveal_type(x)
 [out]
-_testTypingOrderedDictAlias.py:4: note: Revealed type is "collections.OrderedDict[builtins.str, builtins.int]"
+_testTypingOrderedDictAlias.py:3: note: Revealed type is "collections.OrderedDict[builtins.str, builtins.int]"
 
 [case testTypingExtensionsOrderedDictAlias]
 from typing_extensions import OrderedDict
@@ -1711,7 +1686,6 @@ _testTypeAliasWithNewStyleUnion.py:25: note: Revealed type is "Union[Type[builti
 _testTypeAliasWithNewStyleUnion.py:28: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
 
 [case testTypeAliasWithNewStyleUnionInStub]
-# flags: --python-version 3.7
 import m
 a: m.A
 reveal_type(a)
@@ -1762,12 +1736,12 @@ CU4: TypeAlias = int | Callable[[str | bool], str]
 [out]
 m.pyi:5: note: Revealed type is "typing._SpecialForm"
 m.pyi:22: note: Revealed type is "typing._SpecialForm"
-_testTypeAliasWithNewStyleUnionInStub.py:4: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
-_testTypeAliasWithNewStyleUnionInStub.py:6: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
-_testTypeAliasWithNewStyleUnionInStub.py:8: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
-_testTypeAliasWithNewStyleUnionInStub.py:10: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
-_testTypeAliasWithNewStyleUnionInStub.py:12: note: Revealed type is "Union[builtins.str, Type[builtins.int]]"
-_testTypeAliasWithNewStyleUnionInStub.py:14: note: Revealed type is "Union[builtins.str, Type[builtins.int]]"
+_testTypeAliasWithNewStyleUnionInStub.py:3: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
+_testTypeAliasWithNewStyleUnionInStub.py:5: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
+_testTypeAliasWithNewStyleUnionInStub.py:7: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
+_testTypeAliasWithNewStyleUnionInStub.py:9: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
+_testTypeAliasWithNewStyleUnionInStub.py:11: note: Revealed type is "Union[builtins.str, Type[builtins.int]]"
+_testTypeAliasWithNewStyleUnionInStub.py:13: note: Revealed type is "Union[builtins.str, Type[builtins.int]]"
 
 [case testEnumNameWorkCorrectlyOn311]
 # flags: --python-version 3.11
@@ -2007,7 +1981,7 @@ _testInferenceOfDunderDictOnClassObjects.py:4: error: Property "__dict__" define
 _testInferenceOfDunderDictOnClassObjects.py:4: error: Incompatible types in assignment (expression has type "Dict[Never, Never]", variable has type "MappingProxyType[str, Any]")
 
 [case testTypeVarTuple]
-# flags: --enable-incomplete-feature=TypeVarTuple --enable-incomplete-feature=Unpack --python-version=3.11
+# flags: --python-version=3.11
 from typing import Any, Callable, Unpack, TypeVarTuple
 
 Ts = TypeVarTuple("Ts")
@@ -2019,7 +1993,6 @@ def call(callback: Callable[[Unpack[Ts]], Any], *args: Unpack[Ts]) -> Any:
     ...
 
 [case testTypeVarTupleTypingExtensions]
-# flags: --enable-incomplete-feature=TypeVarTuple --enable-incomplete-feature=Unpack
 from typing_extensions import Unpack, TypeVarTuple
 from typing import Any, Callable
 

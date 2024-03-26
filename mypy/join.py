@@ -36,6 +36,7 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeType,
+    TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
     TypeVisitor,
@@ -107,12 +108,17 @@ class InstanceJoiner:
                     # TODO: contravariant case should use meet but pass seen instances as
                     # an argument to keep track of recursive checks.
                     elif type_var.variance in (INVARIANT, CONTRAVARIANT):
-                        if not is_equivalent(ta, sa):
+                        if isinstance(ta_proper, UninhabitedType) and not ta_proper.is_noreturn:
+                            new_type = sa
+                        elif isinstance(sa_proper, UninhabitedType) and not sa_proper.is_noreturn:
+                            new_type = ta
+                        elif not is_equivalent(ta, sa):
                             self.seen_instances.pop()
                             return object_from_instance(t)
-                        # If the types are different but equivalent, then an Any is involved
-                        # so using a join in the contravariant case is also OK.
-                        new_type = join_types(ta, sa, self)
+                        else:
+                            # If the types are different but equivalent, then an Any is involved
+                            # so using a join in the contravariant case is also OK.
+                            new_type = join_types(ta, sa, self)
                 elif isinstance(type_var, TypeVarTupleType):
                     new_type = get_proper_type(join_types(ta, sa, self))
                     # Put the joined arguments back into instance in the normal form:
@@ -236,13 +242,11 @@ def trivial_join(s: Type, t: Type) -> Type:
 @overload
 def join_types(
     s: ProperType, t: ProperType, instance_joiner: InstanceJoiner | None = None
-) -> ProperType:
-    ...
+) -> ProperType: ...
 
 
 @overload
-def join_types(s: Type, t: Type, instance_joiner: InstanceJoiner | None = None) -> Type:
-    ...
+def join_types(s: Type, t: Type, instance_joiner: InstanceJoiner | None = None) -> Type: ...
 
 
 def join_types(s: Type, t: Type, instance_joiner: InstanceJoiner | None = None) -> Type:
@@ -350,10 +354,13 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         if isinstance(self.s, Parameters):
             if len(t.arg_types) != len(self.s.arg_types):
                 return self.default(self.s)
+            from mypy.meet import meet_types
+
             return t.copy_modified(
-                # Note that since during constraint inference we already treat whole ParamSpec as
-                # contravariant, we should join individual items, not meet them like for Callables
-                arg_types=[join_types(s_a, t_a) for s_a, t_a in zip(self.s.arg_types, t.arg_types)]
+                arg_types=[
+                    meet_types(s_a, t_a) for s_a, t_a in zip(self.s.arg_types, t.arg_types)
+                ],
+                arg_names=combine_arg_names(self.s, t),
             )
         else:
             return self.default(self.s)
@@ -712,11 +719,9 @@ def is_similar_callables(t: CallableType, s: CallableType) -> bool:
 
 
 def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
-    from mypy.meet import meet_types
-
     arg_types: list[Type] = []
     for i in range(len(t.arg_types)):
-        arg_types.append(meet_types(t.arg_types[i], s.arg_types[i]))
+        arg_types.append(safe_meet(t.arg_types[i], s.arg_types[i]))
     # TODO in combine_similar_callables also applies here (names and kinds; user metaclasses)
     # The fallback type can be either 'function', 'type', or some user-provided metaclass.
     # The result should always use 'function' as a fallback if either operands are using it.
@@ -733,10 +738,42 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     )
 
 
+def safe_join(t: Type, s: Type) -> Type:
+    # This is a temporary solution to prevent crashes in combine_similar_callables() etc.,
+    # until relevant TODOs on handling arg_kinds will be addressed there.
+    if not isinstance(t, UnpackType) and not isinstance(s, UnpackType):
+        return join_types(t, s)
+    if isinstance(t, UnpackType) and isinstance(s, UnpackType):
+        return UnpackType(join_types(t.type, s.type))
+    return object_or_any_from_type(get_proper_type(t))
+
+
+def safe_meet(t: Type, s: Type) -> Type:
+    # Similar to above but for meet_types().
+    from mypy.meet import meet_types
+
+    if not isinstance(t, UnpackType) and not isinstance(s, UnpackType):
+        return meet_types(t, s)
+    if isinstance(t, UnpackType) and isinstance(s, UnpackType):
+        unpacked = get_proper_type(t.type)
+        if isinstance(unpacked, TypeVarTupleType):
+            fallback_type = unpacked.tuple_fallback.type
+        elif isinstance(unpacked, TupleType):
+            fallback_type = unpacked.partial_fallback.type
+        else:
+            assert isinstance(unpacked, Instance) and unpacked.type.fullname == "builtins.tuple"
+            fallback_type = unpacked.type
+        res = meet_types(t.type, s.type)
+        if isinstance(res, UninhabitedType):
+            res = Instance(fallback_type, [res])
+        return UnpackType(res)
+    return UninhabitedType()
+
+
 def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     arg_types: list[Type] = []
     for i in range(len(t.arg_types)):
-        arg_types.append(join_types(t.arg_types[i], s.arg_types[i]))
+        arg_types.append(safe_join(t.arg_types[i], s.arg_types[i]))
     # TODO kinds and argument names
     # TODO what should happen if one fallback is 'type' and the other is a user-provided metaclass?
     # The fallback type can be either 'function', 'type', or some user-provided metaclass.
@@ -754,7 +791,9 @@ def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     )
 
 
-def combine_arg_names(t: CallableType, s: CallableType) -> list[str | None]:
+def combine_arg_names(
+    t: CallableType | Parameters, s: CallableType | Parameters
+) -> list[str | None]:
     """Produces a list of argument names compatible with both callables.
 
     For example, suppose 't' and 's' have the following signatures:
@@ -801,7 +840,7 @@ def object_or_any_from_type(typ: ProperType) -> ProperType:
         return object_from_instance(typ.partial_fallback)
     elif isinstance(typ, TypeType):
         return object_or_any_from_type(typ.item)
-    elif isinstance(typ, TypeVarType) and isinstance(typ.upper_bound, ProperType):
+    elif isinstance(typ, TypeVarLikeType) and isinstance(typ.upper_bound, ProperType):
         return object_or_any_from_type(typ.upper_bound)
     elif isinstance(typ, UnionType):
         for item in typ.items:
@@ -809,6 +848,8 @@ def object_or_any_from_type(typ: ProperType) -> ProperType:
                 candidate = object_or_any_from_type(item)
                 if isinstance(candidate, Instance):
                     return candidate
+    elif isinstance(typ, UnpackType):
+        object_or_any_from_type(get_proper_type(typ.type))
     return AnyType(TypeOfAny.implementation_artifact)
 
 

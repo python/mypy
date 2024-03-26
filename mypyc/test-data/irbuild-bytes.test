@@ -140,15 +140,12 @@ def f(b: bytes) -> int:
 [out]
 def f(b):
     b :: bytes
-    r0 :: ptr
-    r1 :: native_int
-    r2 :: short_int
+    r0 :: native_int
+    r1 :: short_int
 L0:
-    r0 = get_element_ptr b ob_size :: PyVarObject
-    r1 = load_mem r0 :: native_int*
-    keep_alive b
-    r2 = r1 << 1
-    return r2
+    r0 = var_object_size b
+    r1 = r0 << 1
+    return r1
 
 [case testBytesFormatting]
 def f(var: bytes, num: int) -> None:
