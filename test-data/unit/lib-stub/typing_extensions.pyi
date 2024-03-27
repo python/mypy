@@ -39,6 +39,8 @@ Never: _SpecialForm
 
 TypeVarTuple: _SpecialForm
 Unpack: _SpecialForm
+Required: _SpecialForm
+NotRequired: _SpecialForm
 
 @final
 class TypeAliasType:
