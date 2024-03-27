@@ -1195,6 +1195,11 @@ reveal_type(unbound_ps_alias3)  # N: Revealed type is "def [P] (*Any, **Any) -> 
 #unbound_tvt_alias2: Ta10[int]
 #reveal_type(unbound_tvt_alias2)
 
+class A(Generic[T]):
+    Ta11 = TypeAliasType("Ta11", Dict[str, T], type_params=(T,))  # E: Can't use bound type variable "T" to define generic alias \
+                                                                  # E: "T" is a type variable and only valid in type context
+x: A.Ta11 = {"a": 1}
+reveal_type(x)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
 [builtins fixtures/dict.pyi]
 
 [case testTypeAliasTypeNoUnpackInTypeParams311]

@@ -141,7 +141,7 @@ def analyze_type_alias(
     in_dynamic_func: bool = False,
     global_scope: bool = True,
     allowed_alias_tvars: list[TypeVarLikeType] | None = None,
-    has_type_params: bool = False,
+    alias_type_params_names: list[str] | None = None,
 ) -> tuple[Type, set[str]]:
     """Analyze r.h.s. of a (potential) type alias definition.
 
@@ -159,7 +159,7 @@ def analyze_type_alias(
         allow_placeholder=allow_placeholder,
         prohibit_self_type="type alias target",
         allowed_alias_tvars=allowed_alias_tvars,
-        has_type_params=has_type_params,
+        alias_type_params_names=alias_type_params_names,
     )
     analyzer.in_dynamic_func = in_dynamic_func
     analyzer.global_scope = global_scope
@@ -212,7 +212,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         prohibit_self_type: str | None = None,
         allowed_alias_tvars: list[TypeVarLikeType] | None = None,
         allow_type_any: bool = False,
-        has_type_params: bool = False,
+        alias_type_params_names: list[str] | None = None,
     ) -> None:
         self.api = api
         self.fail_func = api.fail
@@ -234,7 +234,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if allowed_alias_tvars is None:
             allowed_alias_tvars = []
         self.allowed_alias_tvars = allowed_alias_tvars
-        self.has_type_params = has_type_params
+        self.alias_type_params_names = alias_type_params_names
         # If false, record incomplete ref if we generate PlaceholderType.
         self.allow_placeholder = allow_placeholder
         # Are we in a context where Required[] is allowed?
@@ -274,6 +274,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # wrapping Anys: Union simplification will take care of that.
             return make_optional_type(typ)
         return typ
+
+    def not_declared_in_type_params(self, tvar_name: str) -> bool:
+        return (
+            self.alias_type_params_names is not None
+            and tvar_name not in self.alias_type_params_names
+        )
 
     def visit_unbound_type_nonoptional(self, t: UnboundType, defining_literal: bool) -> Type:
         sym = self.lookup_qualified(t.name, t)
@@ -329,7 +335,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 if tvar_def is None:
                     if self.allow_unbound_tvars:
                         return t
-                    if self.defining_alias and self.has_type_params:
+                    if self.defining_alias and self.not_declared_in_type_params(t.name):
                         msg = f'ParamSpec "{t.name}" is not included in type_params'
                     else:
                         msg = f'ParamSpec "{t.name}" is unbound'
@@ -357,7 +363,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 and not defining_literal
                 and (tvar_def is None or tvar_def not in self.allowed_alias_tvars)
             ):
-                if self.has_type_params:
+                if self.not_declared_in_type_params(t.name):
                     msg = f'Type variable "{t.name}" is not included in type_params'
                 else:
                     msg = f'Can\'t use bound type variable "{t.name}" to define generic alias'
@@ -376,7 +382,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 and self.defining_alias
                 and tvar_def not in self.allowed_alias_tvars
             ):
-                if self.has_type_params:
+                if self.not_declared_in_type_params(t.name):
                     msg = f'Type variable "{t.name}" is not included in type_params'
                 else:
                     msg = f'Can\'t use bound type variable "{t.name}" to define generic alias'
@@ -386,7 +392,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 if tvar_def is None:
                     if self.allow_unbound_tvars:
                         return t
-                    if self.defining_alias and self.has_type_params:
+                    if self.defining_alias and self.not_declared_in_type_params(t.name):
                         msg = f'TypeVarTuple "{t.name}" is not included in type_params'
                     else:
                         msg = f'TypeVarTuple "{t.name}" is unbound'
@@ -1281,11 +1287,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return None
         elif (
             self.defining_alias
-            and self.has_type_params
+            and self.not_declared_in_type_params(tvar_def.name)
             and tvar_def not in self.allowed_alias_tvars
         ):
             self.fail(
-                f'ParamSpec "{callable_args.name}" is not included in type_params',
+                f'ParamSpec "{tvar_def.name}" is not included in type_params',
                 callable_args,
                 code=codes.VALID_TYPE,
             )

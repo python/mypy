@@ -3521,6 +3521,7 @@ class SemanticAnalyzer(
         rvalue: Expression,
         allow_placeholder: bool = False,
         declared_type_vars: TypeVarLikeList | None = None,
+        all_declared_type_params_names: list[str] | None = None,
     ) -> tuple[Type | None, list[TypeVarLikeType], set[str], list[str], bool]:
         """Check if 'rvalue' is a valid type allowed for aliasing (e.g. not a type variable).
 
@@ -3573,7 +3574,7 @@ class SemanticAnalyzer(
                 in_dynamic_func=dynamic,
                 global_scope=global_scope,
                 allowed_alias_tvars=tvar_defs,
-                has_type_params=declared_type_vars is not None,
+                alias_type_params_names=all_declared_type_params_names,
             )
 
         # There can be only one variadic variable at most, the error is reported elsewhere.
@@ -3622,14 +3623,16 @@ class SemanticAnalyzer(
         # It can be `A = TypeAliasType('A', ...)` call, in this case,
         # we just take the second argument and analyze it:
         type_params: TypeVarLikeList | None
+        all_type_params_names: list[str] | None
         if self.check_type_alias_type_call(s.rvalue, name=lvalue.name):
             rvalue = s.rvalue.args[1]
             pep_695 = True
-            type_params = self.analyze_type_alias_type_params(s.rvalue)
+            type_params, all_type_params_names = self.analyze_type_alias_type_params(s.rvalue)
         else:
             rvalue = s.rvalue
             pep_695 = False
             type_params = None
+            all_type_params_names = None
 
         if isinstance(rvalue, CallExpr) and rvalue.analyzed:
             return False
@@ -3686,7 +3689,11 @@ class SemanticAnalyzer(
         else:
             tag = self.track_incomplete_refs()
             res, alias_tvars, depends_on, qualified_tvars, empty_tuple_index = self.analyze_alias(
-                lvalue.name, rvalue, allow_placeholder=True, declared_type_vars=type_params
+                lvalue.name,
+                rvalue,
+                allow_placeholder=True,
+                declared_type_vars=type_params,
+                all_declared_type_params_names=all_type_params_names,
             )
             if not res:
                 return False
@@ -3803,7 +3810,14 @@ class SemanticAnalyzer(
 
         return self.check_typevarlike_name(rvalue, name, rvalue)
 
-    def analyze_type_alias_type_params(self, rvalue: CallExpr) -> TypeVarLikeList:
+    def analyze_type_alias_type_params(
+        self, rvalue: CallExpr
+    ) -> tuple[TypeVarLikeList, list[str]]:
+        """Analyze type_params of TypeAliasType.
+
+        Returns declared unbound type variable expressions and a list of all decalred type
+        variable names for error reporting.
+        """
         if "type_params" in rvalue.arg_names:
             type_params_arg = rvalue.args[rvalue.arg_names.index("type_params")]
             if not isinstance(type_params_arg, TupleExpr):
@@ -3811,12 +3825,13 @@ class SemanticAnalyzer(
                     "Tuple literal expected as the type_params argument to TypeAliasType",
                     type_params_arg,
                 )
-                return []
+                return [], []
             type_params = type_params_arg.items
         else:
-            type_params = []
+            return [], []
 
         declared_tvars: TypeVarLikeList = []
+        all_declared_tvar_names: list[str] = []  # includes bound type variables
         have_type_var_tuple = False
         for tp_expr in type_params:
             if isinstance(tp_expr, StarExpr):
@@ -3843,16 +3858,19 @@ class SemanticAnalyzer(
                         continue
                     have_type_var_tuple = True
             elif not self.found_incomplete_ref(tag):
-                self.fail(
-                    "Free type variable expected in type_params argument to TypeAliasType",
-                    base,
-                    code=codes.TYPE_VAR,
-                )
                 sym = self.lookup_qualified(base.name, base)
-                if sym and sym.fullname in ("typing.Unpack", "typing_extensions.Unpack"):
-                    self.note(
-                        "Don't Unpack type variables in type_params", base, code=codes.TYPE_VAR
+                if sym and isinstance(sym.node, TypeVarLikeExpr):
+                    all_declared_tvar_names.append(sym.node.name)  # Error will be reported later
+                else:
+                    self.fail(
+                        "Free type variable expected in type_params argument to TypeAliasType",
+                        base,
+                        code=codes.TYPE_VAR,
                     )
+                    if sym and sym.fullname in ("typing.Unpack", "typing_extensions.Unpack"):
+                        self.note(
+                            "Don't Unpack type variables in type_params", base, code=codes.TYPE_VAR
+                        )
                 continue
             if tvar in declared_tvars:
                 self.fail(
@@ -3862,8 +3880,9 @@ class SemanticAnalyzer(
                 )
                 continue
             if tvar:
+                all_declared_tvar_names.append(tvar[0])
                 declared_tvars.append(tvar)
-        return declared_tvars
+        return declared_tvars, all_declared_tvar_names
 
     def disable_invalid_recursive_aliases(
         self, s: AssignmentStmt, current_node: TypeAlias
