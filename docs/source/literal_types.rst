@@ -328,7 +328,7 @@ perform an exhaustiveness check, you need to update your code to use an
 
 .. code-block:: python
 
-  from typing import Literal, NoReturn
+  from typing import Literal
   from typing_extensions import assert_never
 
   PossibleValues = Literal['one', 'two']
@@ -370,6 +370,19 @@ without a value:
       if x == 'one':
           return True
       elif x == 'two':
+          return False
+
+For the sake of brevity, you can use the ``in`` operator in combination with tuple expressions
+(tuples created "on the fly"):
+
+.. code-block:: python
+
+  PossibleValues = Literal['one', 'two', 'three']
+
+  def validate(x: PossibleValues) -> bool:
+      if x == 'one':
+          return True
+      elif x in ('two', 'three'):
           return False
 
 Exhaustiveness checking is also supported for match statements (Python 3.10 and later):
