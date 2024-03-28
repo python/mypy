@@ -892,6 +892,12 @@ if a:
 any_or_object: Union[object, Any]
 if any_or_object:
     pass
+
+if (my_foo := Foo()):  # E: "__main__.my_foo" has type "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+    pass
+
+if my_a := (a or Foo()):  # E: "__main__.Foo" returns "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+    pass
 [builtins fixtures/list.pyi]
 
 [case testTruthyFunctions]
