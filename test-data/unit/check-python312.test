@@ -76,10 +76,9 @@ BadAlias1 = TypeAliasType("BadAlias1", tuple[*Ts])  # E: TypeVarTuple "Ts" is no
 ba1: BadAlias1[int]  # E: Bad number of arguments for type alias, expected 0, given 1
 reveal_type(ba1)  # N: Revealed type is "builtins.tuple[Any, ...]"
 
-# TODO this should report errors on the two following lines
-#BadAlias2 = TypeAliasType("BadAlias2", Callable[[*Ts], str])
-#ba2: BadAlias2[int]
-#reveal_type(ba2)
+BadAlias2 = TypeAliasType("BadAlias2", Callable[[*Ts], str])  # E: TypeVarTuple "Ts" is not included in type_params
+ba2: BadAlias2[int]  # E: Bad number of arguments for type alias, expected 0, given 1
+reveal_type(ba2)  # N: Revealed type is "def (*Any) -> builtins.str"
 
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]

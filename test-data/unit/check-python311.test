@@ -142,3 +142,34 @@ myclass3 = MyClass(float, float, float)  # E: No overload variant of "MyClass" m
                                          # N:     def [T1, T2] __init__(Type[T1], Type[T2], /) -> MyClass[T1, T2]
 reveal_type(myclass3)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
+
+[case testUnpackNewSyntaxInvalidCallableAlias]
+from typing import Any, Callable, List, Tuple, TypeVar, Unpack
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")  # E: Name "TypeVarTuple" is not defined
+
+def good(*x: int) -> int: ...
+def bad(*x: int, y: int) -> int: ...
+
+Alias1 = Callable[[*Ts], int]  # E: Variable "__main__.Ts" is not valid as a type \
+                               # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+x1: Alias1[int]  # E: Bad number of arguments for type alias, expected 0, given 1
+reveal_type(x1)  # N: Revealed type is "def (*Any) -> builtins.int"
+x1 = good
+x1 = bad  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(int), NamedArg(int, 'y')], int]", variable has type "Callable[[VarArg(Any)], int]")
+
+Alias2 = Callable[[*T], int]  # E: "T" cannot be unpacked (must be tuple or TypeVarTuple)
+x2: Alias2[int]
+reveal_type(x2)  # N: Revealed type is "def (*Any) -> builtins.int"
+
+Unknown = Any
+Alias3 = Callable[[*Unknown], int]
+x3: Alias3[int]  # E: Bad number of arguments for type alias, expected 0, given 1
+reveal_type(x3)  # N: Revealed type is "def (*Any) -> builtins.int"
+
+IntList = List[int]
+Alias4 = Callable[[*IntList], int]  # E: "List[int]" cannot be unpacked (must be tuple or TypeVarTuple)
+x4: Alias4[int]  # E: Bad number of arguments for type alias, expected 0, given 1
+reveal_type(x4)  # N: Revealed type is "def (*Unpack[builtins.tuple[Any, ...]]) -> builtins.int"
+[builtins fixtures/tuple.pyi]
