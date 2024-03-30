@@ -1494,3 +1494,11 @@ from typing import Generator
 def f() -> Generator[None, None, None]:
     return None
     yield None
+
+[case testErrorInNoopForReachabilityStatement]
+# flags: --warn-unreachable
+def double(x: int) -> int:
+    if not isinstance(x, int):
+        raise BaseException["Expected an integer"]  # E: The type "Type[BaseException]" is not generic and not indexable
+    return x
+[builtins fixtures/tuple.pyi]
