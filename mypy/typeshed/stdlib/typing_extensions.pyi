@@ -2,7 +2,7 @@ import abc
 import sys
 import typing
 from _collections_abc import dict_items, dict_keys, dict_values
-from _typeshed import IdentityFunction, Incomplete
+from _typeshed import IdentityFunction
 from typing import (  # noqa: Y022,Y037,Y038,Y039
     IO as IO,
     TYPE_CHECKING as TYPE_CHECKING,
@@ -413,7 +413,7 @@ class TypeVar:
         def __or__(self, right: Any) -> _SpecialForm: ...
         def __ror__(self, left: Any) -> _SpecialForm: ...
     if sys.version_info >= (3, 11):
-        def __typing_subst__(self, arg: Incomplete) -> Incomplete: ...
+        def __typing_subst__(self, arg): ...
 
 @final
 class ParamSpec:
