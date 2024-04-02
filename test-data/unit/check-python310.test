@@ -379,6 +379,34 @@ match m, (n, o), (p, (q, r)):
         reveal_type(r)  # N: Revealed type is "Literal[5]"
 [builtins fixtures/tuple.pyi]
 
+[case testMatchSequencePatternSequencesLengthMismatchNoNarrowing]
+m: int
+n: str
+o: bool
+
+match m, n, o:
+    case [3, "foo"]:
+        pass
+    case [3, "foo", True, True]:
+        pass
+[builtins fixtures/tuple.pyi]
+
+[case testMatchSequencePatternSequencesLengthMismatchNoNarrowingRecursive]
+m: int
+n: int
+o: int
+
+match m, (n, o):
+    case [0]:
+        pass
+    case [0, 1, [2]]:
+        pass
+    case [0, [1]]:
+        pass
+    case [0, [1, 2, 3]]:
+        pass
+[builtins fixtures/tuple.pyi]
+
 -- Mapping Pattern --
 
 [case testMatchMappingPatternCaptures]
