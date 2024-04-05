@@ -7569,8 +7569,8 @@ def _transfer_type_var_args_from_current_to_proposed(current: Type, proposed: Ty
                 for pos2, typevar2 in enumerate(instance.type.defn.type_vars):
                     if typevar1 == typevar2:
                         if instance.type.has_type_var_tuple_type:
-                            assert (prefix := instance.type.type_var_tuple_prefix) is not None
-                            if pos2 > prefix:
+                            assert (pre := instance.type.type_var_tuple_prefix) is not None
+                            if pos2 > pre:
                                 pos2 += len(instance.args) - len(instance.type.defn.type_vars)
                         typevar1 = instance.args[pos2]
                         if isinstance(typevar1, UnpackType):
@@ -7581,21 +7581,22 @@ def _transfer_type_var_args_from_current_to_proposed(current: Type, proposed: Ty
                     break
 
             # Transfer the current type's type variable argument or type variable tuple arguments:
-            if (pos2 is not None) and isinstance(
-                get_proper_type(proposed_args[pos2]), (AnyType, UnpackType)
-            ):
-                if current.type.has_type_var_tuple_type:
-                    assert (prefix := current.type.type_var_tuple_prefix) is not None
-                    assert (suffix := current.type.type_var_tuple_suffix) is not None
-                    if pos1 < prefix:
-                        proposed_args[pos2] = current.args[pos1]
-                    elif pos1 == prefix:
-                        proposed_args[pos2] = current.args[prefix : len(current.args) - suffix]
+            if pos2 is not None:
+                proposed_arg = proposed_args[pos2]
+                assert not isinstance(proposed_arg, tuple)
+                if isinstance(get_proper_type(proposed_arg), (AnyType, UnpackType)):
+                    if current.type.has_type_var_tuple_type:
+                        assert (pre := current.type.type_var_tuple_prefix) is not None
+                        assert (suf := current.type.type_var_tuple_suffix) is not None
+                        if pos1 < pre:
+                            proposed_args[pos2] = current.args[pos1]
+                        elif pos1 == pre:
+                            proposed_args[pos2] = current.args[pre : len(current.args) - suf]
+                        else:
+                            middle = len(current.args) - pre - suf
+                            proposed_args[pos2] = current.args[pos1 + middle - 1]
                     else:
-                        middle = len(current.args) - prefix - suffix
-                        proposed_args[pos2] = current.args[pos1 + middle - 1]
-                else:
-                    proposed_args[pos2] = current.args[pos1]
+                        proposed_args[pos2] = current.args[pos1]
 
         # Combine all type variable and type variable tuple arguments to a flat list:
         flattened_proposed_args: list[Type] = []
