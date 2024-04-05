@@ -7571,7 +7571,7 @@ def _transfer_type_var_args_from_current_to_proposed(current: Type, proposed: Ty
                     if pos1 < prefix:
                         proposed_args[pos2] = current.args[pos1]
                     elif pos1 == prefix:
-                        proposed_args[pos2] = current.args[prefix:len(current.args) - suffix]
+                        proposed_args[pos2] = current.args[prefix : len(current.args) - suffix]
                     else:
                         middle = len(current.args) - prefix - suffix
                         proposed_args[pos2] = current.args[pos1 + middle - 1]
