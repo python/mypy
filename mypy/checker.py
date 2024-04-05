@@ -7581,9 +7581,8 @@ def _transfer_type_var_args_from_current_to_proposed(current: Type, proposed: Ty
                     break
 
             # Transfer the current type's type variable argument or type variable tuple arguments:
-            if (
-                (pos2 is not None) and
-                isinstance(get_proper_type(proposed_args[pos2]), (AnyType, UnpackType))
+            if (pos2 is not None) and isinstance(
+                get_proper_type(proposed_args[pos2]), (AnyType, UnpackType)
             ):
                 if current.type.has_type_var_tuple_type:
                     assert (prefix := current.type.type_var_tuple_prefix) is not None
