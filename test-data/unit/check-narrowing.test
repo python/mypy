@@ -2234,3 +2234,13 @@ class F(E[T1, T2, str, int, T3, T4]): ...
 if isinstance(c, F):
     reveal_type(c)  # N: Revealed type is "__main__.F[builtins.str, Any, Any, builtins.int]"
 [builtins fixtures/tuple.pyi]
+
+[case testKeepTypeVarArgsWhenNarrowingGenericsWithIsInstanceMappingIterableOverlap]
+# flags: --python-version 3.12
+# see PR 17099
+from typing import Iterable
+
+def f(x: dict[str, str] | Iterable[bytes]) -> None:
+    if isinstance(x, dict):
+        reveal_type(x)  # N: Revealed type is "Union[builtins.dict[builtins.str, builtins.str], builtins.dict[builtins.bytes, Any]]"
+[builtins fixtures/dict.pyi]

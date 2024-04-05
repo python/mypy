@@ -7560,7 +7560,7 @@ def _transfer_type_var_args_from_current_to_proposed(current: Type, proposed: Ty
         for pos1, typevar1 in enumerate(instances[0].args):
             if isinstance(typevar1, UnpackType):
                 typevar1 = typevar1.type
-            if not isinstance(typevar1, (TypeVarType, TypeVarTupleType)):
+            if (len(instances) > 1) and not isinstance(typevar1, (TypeVarType, TypeVarTupleType)):
                 continue
             # Find the position of the intermediate types' and finally the proposed type's
             # related type variable (if not available, `pos2` becomes `None`):
@@ -7581,7 +7581,7 @@ def _transfer_type_var_args_from_current_to_proposed(current: Type, proposed: Ty
                     break
 
             # Transfer the current type's type variable argument or type variable tuple arguments:
-            if pos2 is not None:
+            if (pos2 is not None) and isinstance(proposed_args[pos2], (AnyType, UnpackType)):
                 if current.type.has_type_var_tuple_type:
                     assert (prefix := current.type.type_var_tuple_prefix) is not None
                     assert (suffix := current.type.type_var_tuple_suffix) is not None
