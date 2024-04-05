@@ -7547,8 +7547,8 @@ def _transfer_type_var_args_from_current_to_proposed(current: Type, proposed: Ty
                 continue
             # Find the position of the intermediate types' and finally the proposed type's
             # related type variable (if not available, `pos2` becomes `None`):
+            pos2: int | None = pos1
             for instance in instances[1:]:
-                pos2: int | None = None
                 for pos2, typevar2 in enumerate(instance.type.defn.type_vars):
                     if typevar1 == typevar2:
                         if instance.type.has_type_var_tuple_type:
