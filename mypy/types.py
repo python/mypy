@@ -3578,8 +3578,6 @@ def flatten_nested_unions(
     """Flatten nested unions in a type list."""
     if not isinstance(types, list):
         typelist = list(types)
-    else:
-        typelist = cast("list[Type]", types)
 
     # Fast path: most of the time there is nothing to flatten
     if not any(isinstance(t, (TypeAliasType, UnionType)) for t in typelist):  # type: ignore[misc]
