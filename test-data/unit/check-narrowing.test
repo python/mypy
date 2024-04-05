@@ -2207,7 +2207,7 @@ if isinstance(a, B):
 else:
     reveal_type(a)  # N: Revealed type is "__main__.A[builtins.str, builtins.int]"
 
-def f1(a: A[*Tuple[str, ...]]):
+def f1(a: A[Unpack[Tuple[str, ...]]]):
     if isinstance(a, B):
         reveal_type(a)  # N: Revealed type is "__main__.B[Unpack[builtins.tuple[builtins.str, ...]]]"
 
