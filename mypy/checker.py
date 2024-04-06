@@ -7605,8 +7605,12 @@ def _transfer_type_var_args_from_current_to_proposed(current: Type, proposed: Ty
                 flattened_proposed_args.extend(arg)
             else:
                 flattened_proposed_args.append(arg)
+        # Some later checks seem to expect flattened unions:
+        for arg_ in flattened_proposed_args:
+            if isinstance(arg_ := get_proper_type(arg_), UnionType):
+                arg_.items = flatten_nested_unions(arg_.items)
 
-        return proposed.copy_modified(args=flatten_nested_unions(flattened_proposed_args))
+        return proposed.copy_modified(args=flattened_proposed_args)
 
     return proposed
 
