@@ -7606,7 +7606,7 @@ def _transfer_type_var_args_from_current_to_proposed(current: Type, proposed: Ty
             else:
                 flattened_proposed_args.append(arg)
 
-        return proposed.copy_modified(args=flattened_proposed_args)
+        return proposed.copy_modified(args=flatten_nested_unions(flattened_proposed_args))
 
     return proposed
 
