@@ -2151,7 +2151,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
           override:                 The signature of the overriding method.
           original:                 The signature of the original supertype method.
           name:                     The name of the overriding method.
-                                    Used for generating error messages only.
+                                    Used primarily for generating error messages.
           name_in_super:            The name of the overridden in the superclass.
                                     Used for generating error messages only.
           supertype:                The name of the supertype.
