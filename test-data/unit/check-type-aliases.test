@@ -1190,10 +1190,9 @@ Ta9 = TypeAliasType("Ta9", Callable[P, T])  # E: ParamSpec "P" is not included i
 unbound_ps_alias3: Ta9[int, str]  # E: Bad number of arguments for type alias, expected 0, given 2
 reveal_type(unbound_ps_alias3)  # N: Revealed type is "def [P] (*Any, **Any) -> Any"
 
-# TODO this should report errors on the two following lines
-#Ta10 = TypeAliasType("Ta10", Callable[[Unpack[Ts]], str])
-#unbound_tvt_alias2: Ta10[int]
-#reveal_type(unbound_tvt_alias2)
+Ta10 = TypeAliasType("Ta10", Callable[[Unpack[Ts]], str])  # E: TypeVarTuple "Ts" is not included in type_params
+unbound_tvt_alias2: Ta10[int]  # E: Bad number of arguments for type alias, expected 0, given 1
+reveal_type(unbound_tvt_alias2)  # N: Revealed type is "def (*Any) -> builtins.str"
 
 class A(Generic[T]):
     Ta11 = TypeAliasType("Ta11", Dict[str, T], type_params=(T,))  # E: Can't use bound type variable "T" to define generic alias \
