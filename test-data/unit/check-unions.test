@@ -956,7 +956,7 @@ x = None
 d: Dict[str, Tuple[List[Tuple[str, str]], str]]
 x, _ = d.get(a, (None, None))
 
-for y in x: pass # E: Item "None" of "Optional[List[Tuple[str, str]]]" has no attribute "__iter__" (not iterable)
+for y in x: pass # E: Item "None" of "Optional[List[Tuple[str, str]]]" has no attribute "__iter__" (not iterable) \
                  # N: You can use "if <variable_name> is not None" to protect against a None value
 if x:
     for s, t in x:
