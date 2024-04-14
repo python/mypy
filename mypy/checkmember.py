@@ -57,6 +57,7 @@ from mypy.types import (
     LiteralType,
     NoneType,
     Overloaded,
+    Parameters,
     ParamSpecType,
     PartialType,
     ProperType,
@@ -792,6 +793,33 @@ def analyze_var(
             else:
                 call_type = typ
 
+        if isinstance(call_type, Instance) and any(
+            isinstance(arg, Parameters) for arg in call_type.args
+        ):
+            args: list[Type] = []
+            for arg in call_type.args:
+                if not isinstance(arg, Parameters):
+                    args.append(arg)
+                    continue
+                c = callable_type_from_parameters(arg, mx.chk.named_type("builtins.function"))
+                if not var.is_staticmethod:
+                    functype: FunctionLike = c
+                    dispatched_type = meet.meet_types(mx.original_type, itype)
+                    signature = freshen_all_functions_type_vars(functype)
+                    bound = get_proper_type(expand_self_type(var, signature, mx.original_type))
+                    assert isinstance(bound, FunctionLike)
+                    signature = bound
+                    signature = check_self_arg(
+                        signature, dispatched_type, var.is_classmethod, mx.context, name, mx.msg
+                    )
+                    signature = bind_self(signature, mx.self_type, var.is_classmethod)
+                    expanded_signature = expand_type_by_instance(signature, itype)
+                    freeze_all_type_vars(expanded_signature)
+                    assert isinstance(expanded_signature, CallableType)
+                    arg = update_parameters_from_signature(arg, expanded_signature)
+                args.append(arg)
+            call_type = call_type.copy_modified(args=args)
+            result = call_type
         if isinstance(call_type, FunctionLike) and not call_type.is_type_obj():
             if mx.is_lvalue:
                 if var.is_property:
@@ -803,7 +831,7 @@ def analyze_var(
             if not var.is_staticmethod:
                 # Class-level function objects and classmethods become bound methods:
                 # the former to the instance, the latter to the class.
-                functype: FunctionLike = call_type
+                functype = call_type
                 # Use meet to narrow original_type to the dispatched type.
                 # For example, assume
                 # * A.f: Callable[[A1], None] where A1 <: A (maybe A1 == A)
@@ -1061,6 +1089,30 @@ def analyze_class_attribute_access(
             isinstance(node.node, FuncBase) and node.node.is_static
         )
         t = get_proper_type(t)
+        if isinstance(t, Instance) and any(isinstance(arg, Parameters) for arg in t.args):
+            args: list[Type] = []
+            for arg in t.args:
+                if not isinstance(arg, Parameters):
+                    args.append(arg)
+                    continue
+                c: FunctionLike = callable_type_from_parameters(
+                    arg, mx.chk.named_type("builtins.function")
+                )
+                if is_classmethod:
+                    c = check_self_arg(c, mx.self_type, False, mx.context, name, mx.msg)
+                res = add_class_tvars(
+                    c,
+                    isuper,
+                    is_classmethod,
+                    is_staticmethod,
+                    mx.self_type,
+                    original_vars=original_vars,
+                )
+                signature = get_proper_type(res)
+                assert isinstance(signature, CallableType)
+                arg = update_parameters_from_signature(arg, signature)
+                args.append(arg)
+            t = t.copy_modified(args=args)
         if isinstance(t, FunctionLike) and is_classmethod:
             t = check_self_arg(t, mx.self_type, False, mx.context, name, mx.msg)
         result = add_class_tvars(
@@ -1348,3 +1400,30 @@ def is_valid_constructor(n: SymbolNode | None) -> bool:
     if isinstance(n, Decorator):
         return isinstance(get_proper_type(n.type), FunctionLike)
     return False
+
+
+def callable_type_from_parameters(
+    param: Parameters, fallback: Instance, ret_type: Type | None = None
+) -> CallableType:
+    """Create CallableType from Parameters."""
+    return CallableType(
+        arg_types=param.arg_types,
+        arg_kinds=param.arg_kinds,
+        arg_names=param.arg_names,
+        ret_type=ret_type if ret_type is not None else NoneType(),
+        fallback=fallback,
+        variables=param.variables,
+        imprecise_arg_kinds=param.imprecise_arg_kinds,
+    )
+
+
+def update_parameters_from_signature(param: Parameters, signature: CallableType) -> Parameters:
+    """Update Parameters from signature."""
+    return param.copy_modified(
+        arg_types=signature.arg_types,
+        arg_kinds=signature.arg_kinds,
+        arg_names=signature.arg_names,
+        is_ellipsis_args=signature.is_ellipsis_args,
+        variables=signature.variables,
+        imprecise_arg_kinds=signature.imprecise_arg_kinds,
+    )
