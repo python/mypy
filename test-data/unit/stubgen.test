@@ -4342,3 +4342,19 @@ alias = tuple[()]
 def f(x: tuple[()]): ...
 
 class C(tuple[()]): ...
+
+[case testPreserveEnumValue_semanal]
+from enum import Enum
+
+class Foo(Enum):
+    A = 1
+    B = 2
+    C = 3
+
+[out]
+from enum import Enum
+
+class Foo(Enum):
+    A = 1
+    B = 2
+    C = 3
