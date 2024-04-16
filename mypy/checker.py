@@ -7542,6 +7542,11 @@ def _transfer_type_var_args_from_current_to_proposed(current: Type, proposed: Ty
         ]
         return make_simplified_union(items)
 
+    # Special handling for trivial "tuple is tuple" cases (handling tuple subclasses seems
+    # complicated, especially as long as `builtins.tuple` is not variadic):
+    if isinstance(current, TupleType) and (proposed.type.fullname == "builtins.tuple"):
+        return current
+
     # Here comes the main logic:
     if isinstance(current, Instance):
 

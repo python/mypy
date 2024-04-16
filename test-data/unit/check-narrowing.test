@@ -2174,6 +2174,18 @@ else:
     reveal_type(a)  # N: Revealed type is "Union[__main__.A[builtins.str], __main__.A[builtins.int]]"
 [builtins fixtures/isinstance.pyi]
 
+[case testKeepTypeVarArgsWhenNarrowingTupleTypeToTuple]
+from typing import Sequence, Tuple, Union
+
+class A: ...
+class B: ...
+x: Union[Tuple[A], Tuple[A, B], Tuple[B, ...], Sequence[Tuple[A]]]
+if isinstance(x, tuple):
+    reveal_type(x)  # N: Revealed type is "Union[Tuple[__main__.A], Tuple[__main__.A, __main__.B], builtins.tuple[__main__.B, ...], builtins.tuple[Tuple[__main__.A], ...]]"
+else:
+    reveal_type(x)  # N: Revealed type is "typing.Sequence[Tuple[__main__.A]]"
+[builtins fixtures/tuple.pyi]
+
 [case testKeepTypeVarArgsWhenNarrowingGenericsWithIsSubclass]
 from typing import Generic, Sequence, Type, TypeVar
 
