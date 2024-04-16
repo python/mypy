@@ -2159,7 +2159,7 @@ else:
     reveal_type(a2)  # N: Revealed type is "__main__.A2[builtins.str, builtins.int]"
 [builtins fixtures/tuple.pyi]
 
-[case testKeepTypeVarArgsWhenNarrowingGenericsWithIsInstanceAndTuples]
+[case testKeepTypeVarArgsWhenNarrowingGenericsInUnionsWithIsInstance]
 from typing import Generic, TypeVar, Union
 
 T1 = TypeVar("T1")
