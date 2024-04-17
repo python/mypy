@@ -452,55 +452,39 @@ from enum import Enum, IntEnum
 
 PictureSize = Enum('PictureSize', 'P0 P1 P2 P3 P4 P5 P6 P7 P8', type=str, module=__name__)
 fake_enum1 = Enum('fake_enum1', ['a', 'b'])
-fake_enum2 = Enum('fake_enum1', names=['a', 'b'])
-fake_enum3 = Enum(value='fake_enum1', names=['a', 'b'])
-fake_enum4 = Enum(value='fake_enum1', names=['a', 'b'] , module=__name__)
+fake_enum2 = Enum('fake_enum2', names=['a', 'b'])
+fake_enum3 = Enum(value='fake_enum3', names=['a', 'b'])
+fake_enum4 = Enum(value='fake_enum4', names=['a', 'b'] , module=__name__)
 
 [case testFunctionalEnumErrors]
 from enum import Enum, IntEnum
-A = Enum('A')
-B = Enum('B', 42)
-C = Enum('C', 'a b', 'x', 'y', 'z', 'p', 'q')
-D = Enum('D', foo)
+A = Enum('A')  # E: Too few arguments for Enum()
+B = Enum('B', 42)  # E: Second argument of Enum() must be string, tuple, list or dict literal for mypy to determine Enum members
+C = Enum('C', 'a b', 'x', 'y', 'z', 'p', 'q')  # E: Too many arguments for Enum()
+D = Enum('D', foo)  # E: Second argument of Enum() must be string, tuple, list or dict literal for mypy to determine Enum members \
+                    # E: Name "foo" is not defined
 bar = 'x y z'
-E = Enum('E', bar)
-I = IntEnum('I')
-J = IntEnum('I', 42)
-K = IntEnum('I', 'p q', 'x', 'y', 'z', 'p', 'q')
-L = Enum('L', ' ')
-M = Enum('M', ())
-N = IntEnum('M', [])
-P = Enum('P', [42])
-Q = Enum('Q', [('a', 42, 0)])
-R = IntEnum('R', [[0, 42]])
-S = Enum('S', {1: 1})
-T = Enum('T', keyword='a b')
-U = Enum('U', *['a'])
-V = Enum('U', **{'a': 1})
+E = Enum('E', bar)  # E: Second argument of Enum() must be string, tuple, list or dict literal for mypy to determine Enum members
+I = IntEnum('I')  # E: Too few arguments for IntEnum()
+J = IntEnum('I', 42)  # E: Second argument of IntEnum() must be string, tuple, list or dict literal for mypy to determine Enum members
+K = IntEnum('I', 'p q', 'x', 'y', 'z', 'p', 'q')  # E: Too many arguments for IntEnum()
+L = Enum('L', ' ')  # E: Enum() needs at least one item
+M = Enum('M', ())  # E: Enum() needs at least one item
+N = IntEnum('M', [])  # E: IntEnum() needs at least one item
+P = Enum('P', [42])  # E: Enum() with tuple or list expects strings or (name, value) pairs
+Q = Enum('Q', [('a', 42, 0)])  # E: Enum() with tuple or list expects strings or (name, value) pairs
+R = IntEnum('R', [[0, 42]])  # E: IntEnum() with tuple or list expects strings or (name, value) pairs
+S = Enum('S', {1: 1})  # E: Enum() with dict literal requires string literals
+T = Enum('T', keyword='a b')  # E: Unexpected keyword argument "keyword"
+U = Enum('U', *['a'])  # E: Unexpected arguments to Enum()
+V = Enum('U', **{'a': 1})  # E: Unexpected arguments to Enum()
 W = Enum('W', 'a b')
-W.c
+W.c  # E: "Type[W]" has no attribute "c"
+X = Enum('Something', 'a b')  # E: String argument 1 "Something" to enum.Enum(...) does not match variable name "X"
+reveal_type(X.a)  # N: Revealed type is "Literal[__main__.Something@23.a]?"
+X.asdf  # E: "Type[Something@23]" has no attribute "asdf"
+
 [typing fixtures/typing-medium.pyi]
-[out]
-main:2: error: Too few arguments for Enum()
-main:3: error: Second argument of Enum() must be string, tuple, list or dict literal for mypy to determine Enum members
-main:4: error: Too many arguments for Enum()
-main:5: error: Second argument of Enum() must be string, tuple, list or dict literal for mypy to determine Enum members
-main:5: error: Name "foo" is not defined
-main:7: error: Second argument of Enum() must be string, tuple, list or dict literal for mypy to determine Enum members
-main:8: error: Too few arguments for IntEnum()
-main:9: error: Second argument of IntEnum() must be string, tuple, list or dict literal for mypy to determine Enum members
-main:10: error: Too many arguments for IntEnum()
-main:11: error: Enum() needs at least one item
-main:12: error: Enum() needs at least one item
-main:13: error: IntEnum() needs at least one item
-main:14: error: Enum() with tuple or list expects strings or (name, value) pairs
-main:15: error: Enum() with tuple or list expects strings or (name, value) pairs
-main:16: error: IntEnum() with tuple or list expects strings or (name, value) pairs
-main:17: error: Enum() with dict literal requires string literals
-main:18: error: Unexpected keyword argument "keyword"
-main:19: error: Unexpected arguments to Enum()
-main:20: error: Unexpected arguments to Enum()
-main:22: error: "Type[W]" has no attribute "c"
 
 [case testFunctionalEnumFlag]
 from enum import Flag, IntFlag
@@ -1117,7 +1101,7 @@ from enum import Enum
 
 class A:
     def __init__(self) -> None:
-        self.b = Enum("x", [("foo", "bar")])  # E: Enum type as attribute is not supported
+        self.b = Enum("b", [("foo", "bar")])  # E: Enum type as attribute is not supported
 
 reveal_type(A().b)  # N: Revealed type is "Any"
 
