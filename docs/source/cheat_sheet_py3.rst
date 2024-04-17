@@ -3,6 +3,7 @@
 Type hints cheat sheet
 ======================
 
+
 This document is a quick cheat sheet showing how to use type
 annotations for various common types in Python.
 
