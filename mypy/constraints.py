@@ -1026,13 +1026,17 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             param_spec = template.param_spec()
 
             template_ret_type, cactual_ret_type = template.ret_type, cactual.ret_type
+            bool_type = UnionType(
+                [LiteralType(True, cactual_ret_type), LiteralType(False, cactual_ret_type)]  # type: ignore[arg-type]
+            )
+
             if template.type_guard is not None and cactual.type_guard is not None:
                 template_ret_type = template.type_guard
                 cactual_ret_type = cactual.type_guard
             elif template.type_guard is not None:
                 template_ret_type = AnyType(TypeOfAny.special_form)
             elif cactual.type_guard is not None:
-                cactual_ret_type = AnyType(TypeOfAny.special_form)
+                cactual_ret_type = bool_type
 
             if template.type_is is not None and cactual.type_is is not None:
                 template_ret_type = template.type_is
@@ -1040,7 +1044,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             elif template.type_is is not None:
                 template_ret_type = AnyType(TypeOfAny.special_form)
             elif cactual.type_is is not None:
-                cactual_ret_type = AnyType(TypeOfAny.special_form)
+                cactual_ret_type = bool_type
 
             res.extend(infer_constraints(template_ret_type, cactual_ret_type, self.direction))
 
