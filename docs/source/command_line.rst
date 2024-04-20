@@ -755,8 +755,8 @@ in error messages.
 
         main.py:3: error: Unsupported operand types for - ("int" and "str")  [operator]
         main.py:3: note: See 'https://mypy.rtfd.io/en/stable/_refs.html#code-operator' for more info
-        
-        
+
+
 
 .. option:: --show-error-end
 
