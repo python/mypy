@@ -1537,18 +1537,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return UnionType.make_union(output, line=t.line)
 
     def analyze_literal_param(self, idx: int, arg: Type, ctx: Context) -> list[Type] | None:
-        # This UnboundType was originally defined as a string.
-        if isinstance(arg, UnboundType) and arg.original_str_expr is not None:
-            assert arg.original_str_fallback is not None
-            return [
-                LiteralType(
-                    value=arg.original_str_expr,
-                    fallback=self.named_type(arg.original_str_fallback),
-                    line=arg.line,
-                    column=arg.column,
-                )
-            ]
-
         # If arg is an UnboundType that was *not* originally defined as
         # a string, try expanding it in case it's a type alias or something.
         if isinstance(arg, UnboundType):

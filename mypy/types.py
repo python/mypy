@@ -906,8 +906,6 @@ class UnboundType(ProperType):
         "args",
         "optional",
         "empty_tuple_index",
-        "original_str_expr",
-        "original_str_fallback",
     )
 
     def __init__(
@@ -918,8 +916,6 @@ class UnboundType(ProperType):
         column: int = -1,
         optional: bool = False,
         empty_tuple_index: bool = False,
-        original_str_expr: str | None = None,
-        original_str_fallback: str | None = None,
     ) -> None:
         super().__init__(line, column)
         if not args:
@@ -931,21 +927,6 @@ class UnboundType(ProperType):
         self.optional = optional
         # Special case for X[()]
         self.empty_tuple_index = empty_tuple_index
-        # If this UnboundType was originally defined as a str or bytes, keep track of
-        # the original contents of that string-like thing. This way, if this UnboundExpr
-        # ever shows up inside of a LiteralType, we can determine whether that
-        # Literal[...] is valid or not. E.g. Literal[foo] is most likely invalid
-        # (unless 'foo' is an alias for another literal or something) and
-        # Literal["foo"] most likely is.
-        #
-        # We keep track of the entire string instead of just using a boolean flag
-        # so we can distinguish between things like Literal["foo"] vs
-        # Literal["    foo   "].
-        #
-        # We also keep track of what the original base fallback type was supposed to be
-        # so we don't have to try and recompute it later
-        self.original_str_expr = original_str_expr
-        self.original_str_fallback = original_str_fallback
 
     def copy_modified(self, args: Bogus[Sequence[Type] | None] = _dummy) -> UnboundType:
         if args is _dummy:
@@ -957,15 +938,13 @@ class UnboundType(ProperType):
             column=self.column,
             optional=self.optional,
             empty_tuple_index=self.empty_tuple_index,
-            original_str_expr=self.original_str_expr,
-            original_str_fallback=self.original_str_fallback,
         )
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_unbound_type(self)
 
     def __hash__(self) -> int:
-        return hash((self.name, self.optional, tuple(self.args), self.original_str_expr))
+        return hash((self.name, self.optional, tuple(self.args)))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, UnboundType):
@@ -974,8 +953,6 @@ class UnboundType(ProperType):
             self.name == other.name
             and self.optional == other.optional
             and self.args == other.args
-            and self.original_str_expr == other.original_str_expr
-            and self.original_str_fallback == other.original_str_fallback
         )
 
     def serialize(self) -> JsonDict:
@@ -983,8 +960,6 @@ class UnboundType(ProperType):
             ".class": "UnboundType",
             "name": self.name,
             "args": [a.serialize() for a in self.args],
-            "expr": self.original_str_expr,
-            "expr_fallback": self.original_str_fallback,
         }
 
     @classmethod
@@ -993,8 +968,6 @@ class UnboundType(ProperType):
         return UnboundType(
             data["name"],
             [deserialize_type(a) for a in data["args"]],
-            original_str_expr=data["expr"],
-            original_str_fallback=data["expr_fallback"],
         )
 
 
@@ -2731,6 +2704,7 @@ class RawExpressionType(ProperType):
             return (
                 self.base_type_name == other.base_type_name
                 and self.literal_value == other.literal_value
+                and self.node == other.node
             )
         else:
             return NotImplemented
