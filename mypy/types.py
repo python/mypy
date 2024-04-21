@@ -2656,7 +2656,7 @@ class RawExpressionType(ProperType):
         line: int = -1,
         column: int = -1,
         note: str | None = None,
-        node: ProperType | None = None,
+        node: Type | None = None,
     ) -> None:
         super().__init__(line, column)
         self.literal_value = literal_value
@@ -2672,7 +2672,7 @@ class RawExpressionType(ProperType):
         ret: T = visitor.visit_raw_expression_type(self)
         return ret
 
-    def copy_modified(self, node: ProperType | None) -> RawExpressionType:
+    def copy_modified(self, node: Type | None) -> RawExpressionType:
         return RawExpressionType(
             literal_value=self.literal_value,
             base_type_name=self.base_type_name,
