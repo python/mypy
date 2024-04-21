@@ -13,7 +13,6 @@ from typing import (
     Iterable,
     NamedTuple,
     NewType,
-    Optional,
     Sequence,
     TypeVar,
     Union,
@@ -901,12 +900,7 @@ class TypeVarTupleType(TypeVarLikeType):
 class UnboundType(ProperType):
     """Instance type that has not been bound during semantic analysis."""
 
-    __slots__ = (
-        "name",
-        "args",
-        "optional",
-        "empty_tuple_index",
-    )
+    __slots__ = ("name", "args", "optional", "empty_tuple_index")
 
     def __init__(
         self,
@@ -950,9 +944,7 @@ class UnboundType(ProperType):
         if not isinstance(other, UnboundType):
             return NotImplemented
         return (
-            self.name == other.name
-            and self.optional == other.optional
-            and self.args == other.args
+            self.name == other.name and self.optional == other.optional and self.args == other.args
         )
 
     def serialize(self) -> JsonDict:
@@ -965,10 +957,7 @@ class UnboundType(ProperType):
     @classmethod
     def deserialize(cls, data: JsonDict) -> UnboundType:
         assert data[".class"] == "UnboundType"
-        return UnboundType(
-            data["name"],
-            [deserialize_type(a) for a in data["args"]],
-        )
+        return UnboundType(data["name"], [deserialize_type(a) for a in data["args"]])
 
 
 class CallableArgument(ProperType):

@@ -17,7 +17,16 @@ import mypy.options
 from mypy.modulefinder import ModuleNotFoundReason
 from mypy.moduleinspect import InspectError, ModuleInspect
 from mypy.stubdoc import ArgSig, FunctionSig
-from mypy.types import AnyType, NoneType, RawExpressionType, Type, TypeList, TypeStrVisitor, UnboundType, UnionType
+from mypy.types import (
+    AnyType,
+    NoneType,
+    RawExpressionType,
+    Type,
+    TypeList,
+    TypeStrVisitor,
+    UnboundType,
+    UnionType,
+)
 
 # Modules that may fail when imported, or that may have side effects (fully qualified).
 NOT_IMPORTABLE_MODULES = ()
