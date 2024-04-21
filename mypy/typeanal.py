@@ -1195,6 +1195,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # make signatures like "foo(x: 20) -> None" legal, we can change
         # this method so it generates and returns an actual LiteralType
         # instead.
+        if t.node is not None:
+            return t.node.accept(self)
 
         if self.report_invalid_types:
             if t.base_type_name in ("builtins.int", "builtins.bool"):
@@ -2528,7 +2530,8 @@ class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
         self.process_types(list(t.items.values()))
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> None:
-        pass
+        if t.node is not None:
+            t.node.accept(self)
 
     def visit_literal_type(self, t: LiteralType) -> None:
         pass

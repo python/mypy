@@ -13,6 +13,7 @@ from typing import (
     Iterable,
     NamedTuple,
     NewType,
+    Optional,
     Sequence,
     TypeVar,
     Union,
@@ -2646,7 +2647,7 @@ class RawExpressionType(ProperType):
 
     This synthetic type is only used at the beginning stages of semantic analysis
     and should be completely removing during the process for mapping UnboundTypes to
-    actual types: we either turn it into a LiteralType or an AnyType.
+    actual types: we turn it into its "node" argument, a LiteralType, or an AnyType.
 
     For example, suppose `Foo[1]` is initially represented as the following:
 
@@ -2684,7 +2685,7 @@ class RawExpressionType(ProperType):
         )
     """
 
-    __slots__ = ("literal_value", "base_type_name", "note")
+    __slots__ = ("literal_value", "base_type_name", "note", "node")
 
     def __init__(
         self,
@@ -2693,11 +2694,13 @@ class RawExpressionType(ProperType):
         line: int = -1,
         column: int = -1,
         note: str | None = None,
+        node: ProperType | None = None,
     ) -> None:
         super().__init__(line, column)
         self.literal_value = literal_value
         self.base_type_name = base_type_name
         self.note = note
+        self.node = node
 
     def simple_name(self) -> str:
         return self.base_type_name.replace("builtins.", "")
@@ -2706,6 +2709,16 @@ class RawExpressionType(ProperType):
         assert isinstance(visitor, SyntheticTypeVisitor)
         ret: T = visitor.visit_raw_expression_type(self)
         return ret
+
+    def copy_modified(self, node: ProperType | None) -> RawExpressionType:
+        return RawExpressionType(
+            literal_value=self.literal_value,
+            base_type_name=self.base_type_name,
+            line=self.line,
+            column=self.column,
+            note=self.note,
+            node=node,
+        )
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
@@ -3386,6 +3399,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return f"TypedDict({prefix}{s})"
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> str:
+        if t.node is not None:
+            return f"{t.literal_value!r}={t.node.accept(self)}"
         return repr(t.literal_value)
 
     def visit_literal_type(self, t: LiteralType) -> str:
@@ -3449,6 +3464,9 @@ class TrivialSyntheticTypeTranslator(TypeTranslator, SyntheticTypeVisitor[Type])
         return t
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> Type:
+        if t.node is not None:
+            node = t.node.accept(self)
+            return t.copy_modified(node=node)
         return t
 
     def visit_type_list(self, t: TypeList) -> Type:
