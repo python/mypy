@@ -1070,6 +1070,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return ret
 
     def anal_type_guard(self, t: Type) -> Type | None:
+        t = t.resolve_string_annotation()
         if isinstance(t, UnboundType):
             sym = self.lookup_qualified(t.name, t)
             if sym is not None and sym.node is not None:
@@ -1088,6 +1089,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return None
 
     def anal_type_is(self, t: Type) -> Type | None:
+        t = t.resolve_string_annotation()
         if isinstance(t, UnboundType):
             sym = self.lookup_qualified(t.name, t)
             if sym is not None and sym.node is not None:
@@ -1105,6 +1107,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def anal_star_arg_type(self, t: Type, kind: ArgKind, nested: bool) -> Type:
         """Analyze signature argument type for *args and **kwargs argument."""
+        t = t.resolve_string_annotation()
         if isinstance(t, UnboundType) and t.name and "." in t.name and not t.args:
             components = t.name.split(".")
             tvar_name = ".".join(components[:-1])

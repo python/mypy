@@ -266,7 +266,6 @@ from mypy.types import (
     ParamSpecType,
     PlaceholderType,
     ProperType,
-    RawExpressionType,
     TrivialSyntheticTypeTranslator,
     TupleType,
     Type,
@@ -4715,8 +4714,9 @@ class SemanticAnalyzer(
         return sym.node.fullname == "typing.ClassVar"
 
     def unwrap_final_type(self, typ: Type | None) -> UnboundType | None:
-        if isinstance(typ, RawExpressionType) and typ.node is not None:
-            typ = typ.node
+        if typ is None:
+            return None
+        typ = typ.resolve_string_annotation()
         if not isinstance(typ, UnboundType):
             return None
         sym = self.lookup_qualified(typ.name, typ)

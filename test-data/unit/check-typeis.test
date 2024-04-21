@@ -9,6 +9,17 @@ def main(a: object) -> None:
         reveal_type(a)  # N: Revealed type is "builtins.object"
 [builtins fixtures/tuple.pyi]
 
+[case testTypeIsStringified]
+from typing_extensions import TypeIs
+class Point: pass
+def is_point(a: object) -> "TypeIs[Point]": pass
+def main(a: object) -> None:
+    if is_point(a):
+        reveal_type(a)  # N: Revealed type is "__main__.Point"
+    else:
+        reveal_type(a)  # N: Revealed type is "builtins.object"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeIsElif]
 from typing_extensions import TypeIs
 from typing import Union

@@ -271,6 +271,9 @@ class Type(mypy.nodes.Context):
     def can_be_false_default(self) -> bool:
         return True
 
+    def resolve_string_annotation(self) -> Type:
+        return self
+
     def accept(self, visitor: TypeVisitor[T]) -> T:
         raise RuntimeError("Not implemented", type(self))
 
@@ -2681,6 +2684,11 @@ class RawExpressionType(ProperType):
             note=self.note,
             node=node,
         )
+
+    def resolve_string_annotation(self) -> Type:
+        if self.node is not None:
+            return self.node.resolve_string_annotation()
+        return self
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
