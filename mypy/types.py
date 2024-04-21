@@ -3400,7 +3400,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> str:
         if t.node is not None:
-            return f"{t.literal_value!r}={t.node.accept(self)}"
+            return t.node.accept(self)
         return repr(t.literal_value)
 
     def visit_literal_type(self, t: LiteralType) -> str:
