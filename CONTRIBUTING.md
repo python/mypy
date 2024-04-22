@@ -45,9 +45,8 @@ python -m venv venv
 #### (4) Install the test requirements and the project
 
 ```bash
-# On Windows, use python instead of python3
-python3 -m pip install -r test-requirements.txt
-python3 -m pip install -e .
+python -m pip install -r test-requirements.txt
+python -m pip install -e .
 hash -r  # This resets shell PATH cache, not necessary on Windows
 ```
 
