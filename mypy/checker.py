@@ -133,6 +133,7 @@ from mypy.nodes import (
     WithStmt,
     YieldExpr,
     is_final_node,
+    SetExpr,
 )
 from mypy.operators import flip_ops, int_op_to_method, neg_ops
 from mypy.options import PRECISE_TUPLE_TYPES, Options
@@ -5928,20 +5929,33 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             ):
                                 if_map[operands[left_index]] = remove_optional(item_type)
 
+                    right = operands[right_index]
                     if right_index in narrowable_operand_index_to_hash:
                         if_type, else_type = self.conditional_types_for_iterable(
                             item_type, iterable_type
                         )
-                        expr = operands[right_index]
                         if if_type is None:
                             if_map = None
                         else:
-                            if_map[expr] = if_type
+                            if_map[right] = if_type
                         if else_type is None:
                             else_map = None
                         else:
-                            else_map[expr] = else_type
+                            else_map[right] = else_type
 
+                    # check for `None in <some_iterable>`
+                    if isinstance(item_type, NoneType) and isinstance(
+                        right, (ListExpr, TupleExpr, SetExpr)
+                    ):
+                        for item_in_right_collection in right.items:
+                            item_in_right_collection_type = self.lookup_type(
+                                item_in_right_collection
+                            )
+                            # Remove the option of the current item to be `None` for the entire else scope
+                            if is_overlapping_none(item_in_right_collection_type):
+                                else_map[item_in_right_collection] = remove_optional(
+                                    item_in_right_collection_type
+                                )
                 else:
                     if_map = {}
                     else_map = {}
