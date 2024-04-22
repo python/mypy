@@ -24,7 +24,7 @@ from mypy.nodes import (
     TypeInfo,
     is_class_var,
 )
-from mypy.types import ENUM_REMOVED_PROPS, Instance, UnboundType, get_proper_type
+from mypy.types import ENUM_REMOVED_PROPS, Instance, RawExpressionType, get_proper_type
 from mypyc.common import PROPSET_PREFIX
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
@@ -601,16 +601,15 @@ def add_non_ext_class_attr_ann(
     if typ is None:
         # FIXME: if get_type_info is not provided, don't fall back to stmt.type?
         ann_type = get_proper_type(stmt.type)
-        if (
-            isinstance(stmt.unanalyzed_type, UnboundType)
-            and stmt.unanalyzed_type.original_str_expr is not None
+        if isinstance(stmt.unanalyzed_type, RawExpressionType) and isinstance(
+            stmt.unanalyzed_type.literal_value, str
         ):
             # Annotation is a forward reference, so don't attempt to load the actual
             # type and load the string instead.
             #
             # TODO: is it possible to determine whether a non-string annotation is
             # actually a forward reference due to the __annotations__ future?
-            typ = builder.load_str(stmt.unanalyzed_type.original_str_expr)
+            typ = builder.load_str(stmt.unanalyzed_type.literal_value)
         elif isinstance(ann_type, Instance):
             typ = load_type(builder, ann_type.type, stmt.line)
         else:

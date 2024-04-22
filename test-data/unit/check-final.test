@@ -6,11 +6,13 @@
 [case testFinalDefiningModuleVar]
 from typing import Final
 
+w: 'Final' = int()
 x: Final = int()
 y: Final[float] = int()
 z: Final[int] = int()
 bad: Final[str] = int()  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
+reveal_type(w)  # N: Revealed type is "builtins.int"
 reveal_type(x)  # N: Revealed type is "builtins.int"
 reveal_type(y)  # N: Revealed type is "builtins.float"
 reveal_type(z)  # N: Revealed type is "builtins.int"
