@@ -5950,15 +5950,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # if the iterable has `None` in it then the condition is worthless
                         and not any(is_literal_none(i) for i in right.items)
                     ):
-                        for item_in_right_collection in right.items:
-                            item_in_right_collection_type = self.lookup_type(
-                                item_in_right_collection
-                            )
+                        for i in right.items:
+                            i_type = self.lookup_type(i)
                             # Remove the option of the current item to be `None` for the entire else scope
-                            if is_overlapping_none(item_in_right_collection_type):
-                                else_map[item_in_right_collection] = remove_optional(
-                                    item_in_right_collection_type
-                                )
+                            if is_overlapping_none(i_type):
+                                else_map[i] = remove_optional(i_type)
                 else:
                     if_map = {}
                     else_map = {}
