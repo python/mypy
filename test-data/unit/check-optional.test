@@ -100,9 +100,9 @@ def refine_types(a: Optional[int], b: Optional[str], c: Optional[float]) -> str:
     if None in [a, b, c]:
         return "One or more are None"
     else:
-        reveal_type(a)  # N: Revealed type is 'builtins.int'
-        reveal_type(b)  # N: Revealed type is 'builtins.str'
-        reveal_type(c)  # N: Revealed type is 'builtins.float'
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+        reveal_type(b)  # N: Revealed type is "builtins.str"
+        reveal_type(c)  # N: Revealed type is "builtins.float"
         return f"{a}, {b}, {c}"
 
 a: Optional[int] = 5
@@ -110,7 +110,7 @@ b: Optional[str] = "hello"
 c: Optional[float] = None
 
 result = refine_types(a, b, c)
-reveal_type(result)  # N: Revealed type is 'builtins.str'
+reveal_type(result)  # N: Revealed type is "builtins.str"
 
 [case testRefinementWithComplexCondition]
 from typing import Optional, List
@@ -118,13 +118,13 @@ from typing import Optional, List
 def refine_complex(a: Optional[int], b: Optional[float], c: Optional[str]) -> str:
     # Test with complex conditions mixed with `None in`
     if None not in (a, b, c) and b + 3 != 5.5:
-        reveal_type(a)  # N: Revealed type is 'builtins.int'
-        reveal_type(b)  # N: Revealed type is 'builtins.float'
-        reveal_type(c)  # N: Revealed type is 'builtins.str'
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+        reveal_type(b)  # N: Revealed type is "builtins.float"
+        reveal_type(c)  # N: Revealed type is "builtins.str"
         return f"{a}, {b}, {c}"
-    reveal_type(a)  # N: Revealed type is 'Union[builtins.int, None]'
-    reveal_type(b)  # N: Revealed type is 'Union[builtins.float, None]'
-    reveal_type(c)  # N: Revealed type is 'Union[builtins.str, None]'
+    reveal_type(a)  # N: Revealed type is "Union[builtins.int, None]"
+    reveal_type(b)  # N: Revealed type is "Union[builtins.float, None]"
+    reveal_type(c)  # N: Revealed type is "Union[builtins.str, None]"
     return "All are valid"
 
 a: Optional[int] = 5
@@ -132,7 +132,7 @@ b: Optional[float] = 10.3
 c: Optional[str] = "cCCCc"
 
 result_complex = refine_complex(a, b, c)
-reveal_type(result_complex)  # N: Revealed type is 'builtins.str'
+reveal_type(result_complex)  # N: Revealed type is "builtins.str"
 
 [case testRefinementFailureWhenNonePresent]
 from typing import Optional, List
@@ -153,9 +153,9 @@ def check_failure(a: Optional[int], b: Optional[float], c: Optional[str]) -> str
 def not_refine_none_in_iterable(a: Optional[int], b: Optional[float], c: Optional[str]) -> str:
     # Test with complex conditions mixed with `None in`
     if None not in {a, b, c, None} and b + 3 != 5.5:  # E: Unsupported operand types for + ("None" and "int")
-        reveal_type(a)  # N: Revealed type is 'Union[builtins.int, None]'
-        reveal_type(b)  # N: Revealed type is 'Union[builtins.float, None]'
-        reveal_type(c)  # N: Revealed type is 'Union[builtins.str, None]'
+        reveal_type(a)  # N: Revealed type is "Union[builtins.int, None]"
+        reveal_type(b)  # N: Revealed type is "Union[builtins.float, None]"
+        reveal_type(c)  # N: Revealed type is "Union[builtins.str, None]"
     return "Bla Bla"
 
 [case testOrCases]
