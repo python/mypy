@@ -3413,8 +3413,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if (
                     lv.node.final_unset_in_class
                     and not lv.node.final_set_in_init
-                    and not self.is_stub
-                    and  # It is OK to skip initializer in stub files.
+                    and not self.is_stub  # It is OK to skip initializer in stub files.
+                    and
                     # Avoid extra error messages, if there is no type in Final[...],
                     # then we already reported the error about missing r.h.s.
                     isinstance(s, AssignmentStmt)
@@ -5944,8 +5944,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             else_map[right] = else_type
 
                     # check for `None in <some_iterable>`
-                    if isinstance(item_type, NoneType) and isinstance(
-                        right, (ListExpr, TupleExpr, SetExpr)
+                    if (
+                        isinstance(item_type, NoneType)
+                        # if the iterable has `None` in it then the condition is worthless
+                        and not any(is_literal_none(i) for i in right.items)
+                        and isinstance(right, (ListExpr, TupleExpr, SetExpr))
                     ):
                         for item_in_right_collection in right.items:
                             item_in_right_collection_type = self.lookup_type(
