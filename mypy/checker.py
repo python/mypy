@@ -115,6 +115,7 @@ from mypy.nodes import (
     RaiseStmt,
     RefExpr,
     ReturnStmt,
+    SetExpr,
     StarExpr,
     Statement,
     StrExpr,
@@ -133,7 +134,6 @@ from mypy.nodes import (
     WithStmt,
     YieldExpr,
     is_final_node,
-    SetExpr,
 )
 from mypy.operators import flip_ops, int_op_to_method, neg_ops
 from mypy.options import PRECISE_TUPLE_TYPES, Options
