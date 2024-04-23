@@ -149,6 +149,14 @@ def check_failure(a: Optional[int], b: Optional[float], c: Optional[str]) -> str
         print(c.upper())
         return "All are valid"
 
+[case testNotRefiningWhenNoneIsInTheIterable]
+def not_refine_none_in_iterable(a: Optional[int], b: Optional[float], c: Optional[str]) -> str:
+    # Test with complex conditions mixed with `None in`
+    if None not in {a, b, c, None} and b + 3 != 5.5:  # E: Unsupported operand types for + ("None" and "int")
+        reveal_type(a)  # N: Revealed type is 'Union[builtins.int, None]'
+        reveal_type(b)  # N: Revealed type is 'Union[builtins.float, None]'
+        reveal_type(c)  # N: Revealed type is 'Union[builtins.str, None]'
+    return "Bla Bla"
 
 [case testOrCases]
 from typing import Optional
