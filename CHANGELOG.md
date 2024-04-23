@@ -4,7 +4,7 @@
 
 
 
-## Mypy 1.10 (Unreleased)
+## Mypy 1.10
 
 We’ve just uploaded mypy 1.10 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)). Mypy is a static type checker for Python. This release includes new features, performance improvements and bug fixes. You can install it as follows:
 
@@ -127,6 +127,11 @@ This feature was contributed by Shantanu (PR [16756](https://github.com/python/m
 - Allow `+N` within `Literal[...]` (Spencer Brown, PR [16910](https://github.com/python/mypy/pull/16910))
 - Experimental: Support TypedDict within `type[...]` (Marc Mueller, PR [16963](https://github.com/python/mypy/pull/16963))
 - Experimtental: Fix issue with TypedDict with optional keys in `type[...]` (Marc Mueller, PR [17068](https://github.com/python/mypy/pull/17068))
+
+#### Typeshed Updates
+
+Please see [git log](https://github.com/python/typeshed/commits/main?after=7c8e82fe483a40ec4cb0a2505cfdb0f3e7cc81d9+0&branch=main&path=stdlib) for full list of standard library typeshed stub changes.
+
 
 #### Acknowledgements
 Thanks to all mypy contributors who contributed to this release:
