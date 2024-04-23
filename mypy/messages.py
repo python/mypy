@@ -522,12 +522,23 @@ class MessageBuilder:
                     type(item) == NoneType for item in original_type.items
                 ):
                     typ_format = '"None"'
-                self.fail(
-                    'Item {} of {} has no attribute "{}"{}'.format(
-                        typ_format, orig_type_format, member, extra
-                    ),
-                    context,
-                    code=codes.UNION_ATTR,
+                if typ_format == '"None"':(
+                    self.fail(
+                        'Item {} of {} has no attribute "{}"{}. ADD HINT HERE'.format(
+                            typ_format, orig_type_format, member, extra
+                        ),
+                        context,
+                        code=codes.UNION_ATTR,
+                    )
+                )
+                else:(
+                    self.fail(
+                        'Item {} of {} has no attribute "{}"{}'.format(
+                            typ_format, orig_type_format, member, extra
+                        ),
+                        context,
+                        code=codes.UNION_ATTR,
+                    )
                 )
                 return codes.UNION_ATTR
             elif isinstance(original_type, TypeVarType):
