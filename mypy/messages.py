@@ -530,8 +530,12 @@ class MessageBuilder:
                         code=codes.UNION_ATTR,
                 )
                 if typ_format == '"None"':(
+                    if typ.source is None:
+                        s = ""
+                    else:
+                        s = f' "{typ.source}"'
                     self.note(
-                        'You can use "if <variable name> is not None" to guard against a None value'
+                        f'You can use "if{s} is not None" to guard against a None value'
                     )
                 )
                 return codes.UNION_ATTR
