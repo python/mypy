@@ -66,6 +66,21 @@ can be used with earlier Python releases by importing `TypeVar` from
 This feature was contributed by Marc Mueller (PR [16878](https://github.com/python/mypy/pull/16878)
 and PR [16925](https://github.com/python/mypy/pull/16925)).
 
+#### Support TypeAliasType (PEP 695)
+As part of initial steps towards implementing [PEP 695](https://peps.python.org/pep-0695/), mypy now supports TypeAliasType.
+
+```python
+from typing import Union
+from typing_extensions import TypeAliasType
+
+NewUnionType = TypeAliasType("NewUnionType", Union[int, str])
+x: NewUnionType = 42  # OK
+y: NewUnionType = 'a'  # OK
+z: NewUnionType = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "Union[int, str]")
+```
+
+This feature was contributed by Ali Hamdan (PR [16926](https://github.com/python/mypy/pull/16926), PR [17038](https://github.com/python/mypy/pull/17038) and PR [17053](https://github.com/python/mypy/pull/17053))
+
 #### Detect Additional Unsafe Uses of super()
 
 Mypy will reject unsafe uses of `super()` more consistently, when the target has a
@@ -98,7 +113,6 @@ This feature was contributed by Shantanu (PR [16756](https://github.com/python/m
 - Optimize TYPE_CHECKING to False at Runtime (Srinivas Lade, PR [16263](https://github.com/python/mypy/pull/16263))
 - Fix compilation of unreachable comprehensions (Richard Si, PR [15721](https://github.com/python/mypy/pull/15721))
 - Don't crash on non-inlinable final local reads (Richard Si, PR [15719](https://github.com/python/mypy/pull/15719))
-- Support `TypeAliasType` (Ali Hamdan, PR [16926](https://github.com/python/mypy/pull/16926))
 
 #### Documentation Improvements
 - Import `TypedDict` from `typing` instead of `typing_extensions` (Riccardo Di Maio, PR [16958](https://github.com/python/mypy/pull/16958))
@@ -106,7 +120,6 @@ This feature was contributed by Shantanu (PR [16756](https://github.com/python/m
 
 #### Error Reporting Improvements
 
-- Improve error message for bound TypeVar in TypeAliasType (Ali Hamdan, PR [17053](https://github.com/python/mypy/pull/17053))
 - Use lower-case generics more consistently in error messages (Jukka Lehtosalo, PR [17035](https://github.com/python/mypy/pull/17035))
 
 #### Other Notable Changes and Fixes
@@ -116,7 +129,6 @@ This feature was contributed by Shantanu (PR [16756](https://github.com/python/m
 - Narrow individual items when matching a tuple to a sequence pattern (Loïc Simon, PR [16905](https://github.com/python/mypy/pull/16905))
 - Fix false positive from type variable within TypeGuard or TypeIs (Evgeniy Slobodkin, PR [17071](https://github.com/python/mypy/pull/17071))
 - Improve `yield from` inference for unions of generators (Shantanu, PR [16717](https://github.com/python/mypy/pull/16717))
-- Support `TypeAliasType` in a class scope (Ali Hamdan, PR [17038](https://github.com/python/mypy/pull/17038))
 - Fix emulating hash method logic in `attrs` classes (Hashem, PR [17016](https://github.com/python/mypy/pull/17016))
 - Add reverted typeshed commit that uses `ParamSpec` for `functools.wraps` (Tamir Duberstein, PR [16942](https://github.com/python/mypy/pull/16942))
 - Fix type narrowing for `types.EllipsisType` (Shantanu, PR [17003](https://github.com/python/mypy/pull/17003))
