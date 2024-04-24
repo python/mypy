@@ -79,6 +79,16 @@ if int():
 
 [builtins fixtures/isinstance.pyi]
 
+[case testUnionAttributeAccessWithNoneItem]
+from typing import Union
+
+class A:
+    def foo(self) -> int: pass
+
+def f(x: Union[A, None]) -> int:
+    return x.foo()  # E: Item "None" of "Optional[A]" has no attribute "foo" \
+                              # N: You can use "if x is not None" to guard against a None value
+
 [case testUnionMethodCalls]
 from typing import Union
 
