@@ -532,7 +532,12 @@ class MessageBuilder:
                     code=codes.UNION_ATTR,
                 )
                 if typ_format == '"None"':
-                    var_name = f' {get_member_expr_fullname(context.expr)}'
+                    if isinstance(context, NameExpr):
+                        var_name = f' {context.name}'
+                    elif isinstance(context.expr, MemberExpr):
+                        var_name = f' {get_member_expr_fullname(context.expr)}'
+                    else:
+                        var_name = ' <variable name>'
                     self.note(f'You can use "if{var_name} is not None" to guard against a None value', context, code=codes.UNION_ATTR)
                 return codes.UNION_ATTR
             elif isinstance(original_type, TypeVarType):
