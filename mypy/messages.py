@@ -523,21 +523,18 @@ class MessageBuilder:
                 ):
                     typ_format = '"None"'
                 self.fail(
-                        'Item {} of {} has no attribute "{}"{}'.format(
-                            typ_format, orig_type_format, member, extra
-                        ),
-                        context,
-                        code=codes.UNION_ATTR,
+                    'Item {} of {} has no attribute "{}"{}'.format(
+                        typ_format, orig_type_format, member, extra
+                    ),
+                    context,
+                    code=codes.UNION_ATTR,
                 )
-                if typ_format == '"None"':(
+                if typ_format == '"None"':
                     if typ.source is None:
                         s = ""
                     else:
                         s = f' "{typ.source}"'
-                    self.note(
-                        f'You can use "if{s} is not None" to guard against a None value'
-                    )
-                )
+                    self.note(f'You can use "if{s} is not None" to guard against a None value')
                 return codes.UNION_ATTR
             elif isinstance(original_type, TypeVarType):
                 bound = get_proper_type(original_type.upper_bound)
