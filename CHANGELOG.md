@@ -67,17 +67,38 @@ This feature was contributed by Marc Mueller (PR [16878](https://github.com/pyth
 and PR [16925](https://github.com/python/mypy/pull/16925)).
 
 #### Support TypeAliasType (PEP 695)
-As part of initial steps towards implementing [PEP 695](https://peps.python.org/pep-0695/), mypy now supports TypeAliasType.
+As part of the initial steps towards implementing [PEP 695](https://peps.python.org/pep-0695/), mypy now supports `TypeAliasType`.
+`TypeAliasType` provides a backport of the new `type` statement in Python 3.12.
 
 ```python
-from typing import Union
-from typing_extensions import TypeAliasType
-
-NewUnionType = TypeAliasType("NewUnionType", Union[int, str])
-x: NewUnionType = 42  # OK
-y: NewUnionType = 'a'  # OK
-z: NewUnionType = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "Union[int, str]")
+type ListOrSet[T] = list[T] | set[T]
 ```
+
+is equivalent to:
+
+```python
+T = TypeVar("T")
+ListOrSet = TypeAliasType("ListOrSet", list[T] | set[T], type_params=(T,))
+```
+
+Example of use in mypy:
+
+```python
+from typing_extensions import TypeAliasType, TypeVar
+
+NewUnionType = TypeAliasType("NewUnionType", int | str)
+x: NewUnionType = 42
+y: NewUnionType = 'a'
+z: NewUnionType = object()  # error: Incompatible types in assignment (expression has type "object", variable has type "int | str")  [assignment]
+
+T = TypeVar("T")
+ListOrSet = TypeAliasType("ListOrSet", list[T] | set[T], type_params=(T,))
+a: ListOrSet = [1, 2]
+b: ListOrSet = {'a', 'b'}
+c: ListOrSet = 'test'  # error: Incompatible types in assignment (expression has type "str", variable has type "list[Any] | set[Any]")  [assignment]
+```
+
+`TypeAliasType` was added to the `typing` module in Python 3.12, but it can be used with earlier Python releases by importing from `typing_extensions`.
 
 This feature was contributed by Ali Hamdan (PR [16926](https://github.com/python/mypy/pull/16926), PR [17038](https://github.com/python/mypy/pull/17038) and PR [17053](https://github.com/python/mypy/pull/17053))
 
