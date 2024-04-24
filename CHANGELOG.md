@@ -93,9 +93,9 @@ z: NewUnionType = object()  # error: Incompatible types in assignment (expressio
 
 T = TypeVar("T")
 ListOrSet = TypeAliasType("ListOrSet", list[T] | set[T], type_params=(T,))
-a: ListOrSet = [1, 2]
-b: ListOrSet = {'a', 'b'}
-c: ListOrSet = 'test'  # error: Incompatible types in assignment (expression has type "str", variable has type "list[Any] | set[Any]")  [assignment]
+a: ListOrSet[int] = [1, 2]
+b: ListOrSet[str] = {'a', 'b'}
+c: ListOrSet[str] = 'test'  # error: Incompatible types in assignment (expression has type "str", variable has type "list[str] | set[str]")  [assignment]
 ```
 
 `TypeAliasType` was added to the `typing` module in Python 3.12, but it can be used with earlier Python releases by importing from `typing_extensions`.
