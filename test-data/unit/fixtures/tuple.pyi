@@ -2,6 +2,7 @@
 
 import _typeshed
 from typing import Iterable, Iterator, TypeVar, Generic, Sequence, Optional, overload, Tuple, Type
+from abc import ABCMeta
 
 T = TypeVar("T")
 Tco = TypeVar('Tco', covariant=True)
