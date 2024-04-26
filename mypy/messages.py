@@ -565,9 +565,10 @@ class MessageBuilder:
         code: ErrorCode = codes.OPERATOR,
     ) -> None:
         """Report unsupported operand types for a binary operation.
-
+        
         Types can be Type objects or strings.
         """
+        print(op)
         left_str = ""
         if isinstance(left_type, str):
             left_str = left_type
@@ -811,7 +812,7 @@ class MessageBuilder:
                         quote_type_string(expected_type_str),
                     )
                 else:
-                    msg = "Argument {} {}has incompatible type {}; expected {}".format(
+                    msg = "(Modified) Argument {} {}has incompatible type {}; expected {}".format(
                         arg_label,
                         target,
                         quote_type_string(arg_type_str),
