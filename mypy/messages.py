@@ -818,6 +818,8 @@ class MessageBuilder:
                         quote_type_string(arg_type_str),
                         quote_type_string(expected_type_str),
                     )
+                    note_msg = 'Consider using a TypedDict type or "Dict[str, any]" for the ** argument'
+                    notes.append(note_msg)
                 expected_type = get_proper_type(expected_type)
                 if isinstance(expected_type, UnionType):
                     expected_types = list(expected_type.items)
