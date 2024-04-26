@@ -2850,10 +2850,15 @@ def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: S
 def log_configuration(manager: BuildManager, sources: list[BuildSource]) -> None:
     """Output useful configuration information to LOG and TRACE"""
 
+    # If config file is not None, retrieve the absolute path for convenience
+    config_file = None
+    if manager.options.config_file:
+        config_file = os.path.abspath(manager.options.config_file)
+
     manager.log()
     configuration_vars = [
         ("Mypy Version", __version__),
-        ("Config File", (manager.options.config_file or "Default")),
+        ("Config File", (config_file or "Default")),
         ("Configured Executable", manager.options.python_executable or "None"),
         ("Current Executable", sys.executable),
         ("Cache Dir", manager.options.cache_dir),
