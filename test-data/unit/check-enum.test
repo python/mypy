@@ -1425,6 +1425,10 @@ from enum import Enum
 class Correct(Enum):
     x = 'y'
     y = 'x'
+class Correct2(Enum):
+    x = 'y'
+    __z = 'y'
+    __z = 'x'
 class Foo(Enum):
     A = 1
     A = 'a'  # E: Attempted to reuse member name "A" in Enum definition "Foo" \
@@ -2105,3 +2109,31 @@ class AllPartialList(Enum):
 
     def check(self) -> None:
         reveal_type(self.value)  # N: Revealed type is "builtins.list[Any]"
+
+[case testEnumPrivateAttributeNotMember]
+from enum import Enum
+
+class MyEnum(Enum):
+    A = 1
+    B = 2
+    __my_dict = {A: "ham", B: "spam"}
+
+x: MyEnum = MyEnum.__my_dict  # E: Incompatible types in assignment (expression has type "Dict[int, str]", variable has type "MyEnum")
+
+[case testEnumWithPrivateAttributeReachability]
+# flags: --warn-unreachable
+from enum import Enum
+
+class MyEnum(Enum):
+    A = 1
+    B = 2
+    __my_dict = {A: "ham", B: "spam"}
+
+e: MyEnum
+if e == MyEnum.A:
+    reveal_type(e)  # N: Revealed type is "Literal[__main__.MyEnum.A]"
+elif e == MyEnum.B:
+    reveal_type(e)  # N: Revealed type is "Literal[__main__.MyEnum.B]"
+else:
+    reveal_type(e)  # E: Statement is unreachable
+[builtins fixtures/dict.pyi]

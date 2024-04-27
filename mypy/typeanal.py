@@ -868,7 +868,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # If, in the distant future, we decide to permit things like
         # `def foo(x: Color.RED) -> None: ...`, we can remove that
         # check entirely.
-        if isinstance(sym.node, Var) and sym.node.info and sym.node.info.is_enum:
+        if (
+            isinstance(sym.node, Var)
+            and sym.node.info
+            and sym.node.info.is_enum
+            and not sym.node.name.startswith("__")
+        ):
             value = sym.node.name
             base_enum_short_name = sym.node.info.name
             if not defining_literal:
