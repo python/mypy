@@ -23,6 +23,7 @@ from mypy import errorcodes as codes, message_registry
 from mypy.erasetype import erase_type
 from mypy.errorcodes import ErrorCode
 from mypy.errors import ErrorInfo, Errors, ErrorWatcher
+import mypy.nodes
 from mypy.nodes import (
     ARG_NAMED,
     ARG_NAMED_OPT,
@@ -812,14 +813,27 @@ class MessageBuilder:
                         quote_type_string(expected_type_str),
                     )
                 else:
-                    msg = "(Modified) Argument {} {}has incompatible type {}; expected {}".format(
+                    #callee name is not none
+                    #callee name is not (list, dict, list-comprehension, set-comprehension, dictionary-copmrehension, generator)
+                    #user prefers detailed messages
+                    #outer context is not an instance of Index expressiion or String expression
+                    print(context)
+                    print(outer_context)
+                    proper_arg_type = get_proper_type(arg_type)
+                    print(proper_arg_type.type.fullname)
+                    print(proper_arg_type)
+                    msg = """(Modified) Argument {} {}has incompatible type {}; expected {}
+                    argy type:{}""".format(
                         arg_label,
                         target,
                         quote_type_string(arg_type_str),
                         quote_type_string(expected_type_str),
+                        arg_type
                     )
                     note_msg = 'Consider using a TypedDict type or "Dict[str, any]" for the ** argument'
                     notes.append(note_msg)
+                    if (arg_kind == ARG_STAR2) and (proper_arg_type.type.fullname == 'builtins.dict'):
+                        print("Finally Working")
                 expected_type = get_proper_type(expected_type)
                 if isinstance(expected_type, UnionType):
                     expected_types = list(expected_type.items)
