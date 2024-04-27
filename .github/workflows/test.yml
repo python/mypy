@@ -73,7 +73,6 @@ jobs:
 
         - name: mypyc runtime tests with py39-macos
           python: '3.9.19'
-          arch: x64
           os: macos-latest
           toxenv: py
           tox_extra_args: "-n 2 mypyc/test/test_run.py mypyc/test/test_external.py"
