@@ -72,7 +72,7 @@ jobs:
           test_mypyc: true
 
         - name: mypyc runtime tests with py39-macos
-          python: '3.9.18'
+          python: '3.9.19'
           arch: x64
           os: macos-latest
           toxenv: py
