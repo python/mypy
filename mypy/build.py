@@ -2850,10 +2850,9 @@ def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: S
 def log_configuration(manager: BuildManager, sources: list[BuildSource]) -> None:
     """Output useful configuration information to LOG and TRACE"""
 
-    # If config file is not None, retrieve the absolute path for convenience
-    config_file = None
-    if manager.options.config_file:
-        config_file = os.path.abspath(manager.options.config_file)
+    config_file = manager.options.config_file
+    if config_file:
+        config_file = os.path.abspath(config_file)
 
     manager.log()
     configuration_vars = [
