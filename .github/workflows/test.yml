@@ -82,7 +82,7 @@ jobs:
           arch: x64
           os: ubuntu-latest
           toxenv: py
-          tox_extra_args: "-n 3 mypyc/test/test_run.py mypyc/test/test_external.py"
+          tox_extra_args: "-n 4 mypyc/test/test_run.py mypyc/test/test_external.py"
           debug_build: true
 
         - name: Type check our own code (py38-ubuntu)
@@ -140,7 +140,9 @@ jobs:
         pip install -r test-requirements.txt
         CC=clang MYPYC_OPT_LEVEL=0 MYPY_USE_MYPYC=1 pip install -e .
     - name: Setup tox environment
-      run: tox run -e ${{ matrix.toxenv }} --notest
+      run: |
+        tox run -e ${{ matrix.toxenv }} --notest
+        python -c 'import os; print("os.cpu_count", os.cpu_count(), "os.sched_getaffinity", len(getattr(os, "sched_getaffinity", lambda *args: [])(0)))'
     - name: Test
       run: tox run -e ${{ matrix.toxenv }} --skip-pkg-install -- ${{ matrix.tox_extra_args }}
 
