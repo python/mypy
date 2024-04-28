@@ -23,7 +23,6 @@ from mypy import errorcodes as codes, message_registry
 from mypy.erasetype import erase_type
 from mypy.errorcodes import ErrorCode
 from mypy.errors import ErrorInfo, Errors, ErrorWatcher
-import mypy.nodes
 from mypy.nodes import (
     ARG_NAMED,
     ARG_NAMED_OPT,
@@ -566,10 +565,9 @@ class MessageBuilder:
         code: ErrorCode = codes.OPERATOR,
     ) -> None:
         """Report unsupported operand types for a binary operation.
-        
+
         Types can be Type objects or strings.
         """
-        print(op)
         left_str = ""
         if isinstance(left_type, str):
             left_str = left_type
@@ -813,16 +811,14 @@ class MessageBuilder:
                         quote_type_string(expected_type_str),
                     )
                 else:
-                    proper_arg_type = get_proper_type(arg_type)
-                    if (arg_kind == ARG_STAR2) and (proper_arg_type.type.fullname == 'builtins.dict'):
-                        note_msg = 'Consider using a TypedDict type or "Dict[str, any]" for the ** argument'
-                        notes.append(note_msg)
                     msg = "Argument {} {}has incompatible type {}; expected {}".format(
                         arg_label,
                         target,
                         quote_type_string(arg_type_str),
                         quote_type_string(expected_type_str),
                     )
+                    if isinstance(arg_type, Instance):
+                        notes = append_kwargs_notes(notes, arg_type, arg_kind)
                 expected_type = get_proper_type(expected_type)
                 if isinstance(expected_type, UnionType):
                     expected_types = list(expected_type.items)
@@ -3103,6 +3099,13 @@ def pretty_seq(args: Sequence[str], conjunction: str) -> str:
         return f"{quoted[0]} {conjunction} {quoted[1]}"
     last_sep = ", " + conjunction + " "
     return ", ".join(quoted[:-1]) + last_sep + quoted[-1]
+
+
+def append_kwargs_notes(notes: list[str], arg_type: Instance, arg_kind: ArgKind) -> list[str]:
+    """Explain that annotating keyword arguments may resolve incompatible type issues."""
+    if arg_kind == ARG_STAR2 and arg_type.type.fullname == "builtins.dict":
+        notes.append('Consider using a TypedDict type or "Dict[str, any]" for the ** argument')
+    return notes
 
 
 def append_invariance_notes(
