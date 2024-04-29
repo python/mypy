@@ -123,6 +123,7 @@ class MemberContext:
         messages: MessageBuilder | None = None,
         self_type: Type | None = None,
         is_lvalue: bool | None = None,
+        original_type: Type | None = None,
     ) -> MemberContext:
         mx = MemberContext(
             self.is_lvalue,
@@ -142,6 +143,8 @@ class MemberContext:
             mx.self_type = self_type
         if is_lvalue is not None:
             mx.is_lvalue = is_lvalue
+        if original_type is not None:
+            mx.original_type = original_type
         return mx
 
 
@@ -644,6 +647,16 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
         return make_simplified_union(
             [analyze_descriptor_access(typ, mx) for typ in descriptor_type.items]
         )
+    elif isinstance(instance_type, UnionType):
+        # map over the instance types
+        return make_simplified_union(
+            [
+                analyze_descriptor_access(
+                    descriptor_type, mx.copy_modified(original_type=original_type)
+                )
+                for original_type in instance_type.items
+            ]
+        )
     elif not isinstance(descriptor_type, Instance):
         return orig_descriptor_type
 
@@ -1126,8 +1139,8 @@ def analyze_enum_class_attribute_access(
     # Skip these since Enum will remove it
     if name in ENUM_REMOVED_PROPS:
         return report_missing_attribute(mx.original_type, itype, name, mx)
-    # For other names surrendered by underscores, we don't make them Enum members
-    if name.startswith("__") and name.endswith("__") and name.replace("_", "") != "":
+    # Dunders and private names are not Enum members
+    if name.startswith("__") and name.replace("_", "") != "":
         return None
 
     enum_literal = LiteralType(name, fallback=itype)

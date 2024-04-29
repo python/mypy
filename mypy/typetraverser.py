@@ -130,7 +130,8 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         pass
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> None:
-        pass
+        if t.node is not None:
+            t.node.accept(self)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
         # TODO: sometimes we want to traverse target as well

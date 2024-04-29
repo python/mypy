@@ -1193,7 +1193,28 @@ def func(callback: Callable[P, str]) -> Callable[P, str]:
     return inner
 [builtins fixtures/paramspec.pyi]
 
-[case testParamSpecArgsAndKwargsMissmatch]
+[case testParamSpecArgsAndKwargsStringified]
+from typing import Callable
+from typing_extensions import ParamSpec
+
+P1 = ParamSpec("P1")
+
+def func(callback: Callable[P1, str]) -> Callable[P1, str]:
+    def inner(*args: "P1.args", **kwargs: "P1.kwargs") -> str:
+        return "foo"
+    return inner
+
+@func
+def outer(a: int) -> str:
+    return ""
+
+outer(1)  # OK
+outer("x")  # E: Argument 1 to "outer" has incompatible type "str"; expected "int"
+outer(a=1)  # OK
+outer(b=1)  # E: Unexpected keyword argument "b" for "outer"
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecArgsAndKwargsMismatch]
 from typing import Callable
 from typing_extensions import ParamSpec
 

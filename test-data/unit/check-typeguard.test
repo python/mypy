@@ -9,6 +9,17 @@ def main(a: object) -> None:
         reveal_type(a)  # N: Revealed type is "builtins.object"
 [builtins fixtures/tuple.pyi]
 
+[case testTypeGuardStringified]
+from typing_extensions import TypeGuard
+class Point: pass
+def is_point(a: object) -> "TypeGuard[Point]": pass
+def main(a: object) -> None:
+    if is_point(a):
+        reveal_type(a)  # N: Revealed type is "__main__.Point"
+    else:
+        reveal_type(a)  # N: Revealed type is "builtins.object"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeGuardTypeArgsNone]
 from typing_extensions import TypeGuard
 def foo(a: object) -> TypeGuard:  # E: TypeGuard must have exactly one type argument

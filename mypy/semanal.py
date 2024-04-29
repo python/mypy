@@ -3231,10 +3231,10 @@ class SemanticAnalyzer(
     def analyze_lvalues(self, s: AssignmentStmt) -> None:
         # We cannot use s.type, because analyze_simple_literal_type() will set it.
         explicit = s.unanalyzed_type is not None
-        if self.is_final_type(s.unanalyzed_type):
+        final_type = self.unwrap_final_type(s.unanalyzed_type)
+        if final_type is not None:
             # We need to exclude bare Final.
-            assert isinstance(s.unanalyzed_type, UnboundType)
-            if not s.unanalyzed_type.args:
+            if not final_type.args:
                 explicit = False
 
         if s.rvalue:
@@ -3300,19 +3300,19 @@ class SemanticAnalyzer(
 
         Returns True if Final[...] was present.
         """
-        if not s.unanalyzed_type or not self.is_final_type(s.unanalyzed_type):
+        final_type = self.unwrap_final_type(s.unanalyzed_type)
+        if final_type is None:
             return False
-        assert isinstance(s.unanalyzed_type, UnboundType)
-        if len(s.unanalyzed_type.args) > 1:
-            self.fail("Final[...] takes at most one type argument", s.unanalyzed_type)
+        if len(final_type.args) > 1:
+            self.fail("Final[...] takes at most one type argument", final_type)
         invalid_bare_final = False
-        if not s.unanalyzed_type.args:
+        if not final_type.args:
             s.type = None
             if isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs:
                 invalid_bare_final = True
                 self.fail("Type in Final[...] can only be omitted if there is an initializer", s)
         else:
-            s.type = s.unanalyzed_type.args[0]
+            s.type = final_type.args[0]
 
         if s.type is not None and self.is_classvar(s.type):
             self.fail("Variable should not be annotated with both ClassVar and Final", s)
@@ -3979,7 +3979,12 @@ class SemanticAnalyzer(
         existing = names.get(name)
 
         outer = self.is_global_or_nonlocal(name)
-        if kind == MDEF and isinstance(self.type, TypeInfo) and self.type.is_enum:
+        if (
+            kind == MDEF
+            and isinstance(self.type, TypeInfo)
+            and self.type.is_enum
+            and not name.startswith("__")
+        ):
             # Special case: we need to be sure that `Enum` keys are unique.
             if existing is not None and not isinstance(existing.node, PlaceholderNode):
                 self.fail(
@@ -4713,13 +4718,18 @@ class SemanticAnalyzer(
             return False
         return sym.node.fullname == "typing.ClassVar"
 
-    def is_final_type(self, typ: Type | None) -> bool:
+    def unwrap_final_type(self, typ: Type | None) -> UnboundType | None:
+        if typ is None:
+            return None
+        typ = typ.resolve_string_annotation()
         if not isinstance(typ, UnboundType):
-            return False
+            return None
         sym = self.lookup_qualified(typ.name, typ)
         if not sym or not sym.node:
-            return False
-        return sym.node.fullname in FINAL_TYPE_NAMES
+            return None
+        if sym.node.fullname in FINAL_TYPE_NAMES:
+            return typ
+        return None
 
     def fail_invalid_classvar(self, context: Context) -> None:
         self.fail(message_registry.CLASS_VAR_OUTSIDE_OF_CLASS, context)
