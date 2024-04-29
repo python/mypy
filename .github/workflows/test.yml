@@ -74,7 +74,8 @@ jobs:
         - name: mypyc runtime tests with py39-macos
           python: '3.9.18'
           arch: x64
-          os: macos-latest
+          # TODO: macos-13 is the last one to support Python 3.9, change it to macos-latest when updating the Python version
+          os: macos-13
           toxenv: py
           tox_extra_args: "-n 2 mypyc/test/test_run.py mypyc/test/test_external.py"
         - name: mypyc runtime tests with py38-debug-build-ubuntu

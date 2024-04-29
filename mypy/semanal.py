@@ -3979,7 +3979,12 @@ class SemanticAnalyzer(
         existing = names.get(name)
 
         outer = self.is_global_or_nonlocal(name)
-        if kind == MDEF and isinstance(self.type, TypeInfo) and self.type.is_enum:
+        if (
+            kind == MDEF
+            and isinstance(self.type, TypeInfo)
+            and self.type.is_enum
+            and not name.startswith("__")
+        ):
             # Special case: we need to be sure that `Enum` keys are unique.
             if existing is not None and not isinstance(existing.node, PlaceholderNode):
                 self.fail(
