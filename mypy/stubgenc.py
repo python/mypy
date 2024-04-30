@@ -309,7 +309,7 @@ class InspectionStubGenerator(BaseStubGenerator):
             if defaults and i >= len(args) - len(defaults):
                 default_value = defaults[i - (len(args) - len(defaults))]
                 if arg in annotations:
-                    argtype = annotations[arg]
+                    argtype = get_annotation(arg)
                 else:
                     argtype = self.get_type_annotation(default_value)
                     if argtype == "None":
@@ -735,7 +735,9 @@ class InspectionStubGenerator(BaseStubGenerator):
         typename = getattr(typ, "__qualname__", typ.__name__)
         module_name = self.get_obj_module(typ)
         assert module_name is not None, typ
-        if module_name != "builtins":
+        if module_name == "typing" and typename == "Optional":
+            typename = str(typ)
+        elif module_name != "builtins":
             typename = f"{module_name}.{typename}"
         return typename
 
