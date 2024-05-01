@@ -1,13 +1,13 @@
 import ctypes
 import sys
 from collections.abc import Callable, Iterable, Sequence
-from ctypes import _CData
+from ctypes import _CData, _SimpleCData, c_char
 from logging import Logger, _Level as _LoggingLevel
 from multiprocessing import popen_fork, popen_forkserver, popen_spawn_posix, popen_spawn_win32, queues, synchronize
 from multiprocessing.managers import SyncManager
 from multiprocessing.pool import Pool as _Pool
 from multiprocessing.process import BaseProcess
-from multiprocessing.sharedctypes import Synchronized, SynchronizedArray
+from multiprocessing.sharedctypes import Synchronized, SynchronizedArray, SynchronizedString
 from typing import Any, ClassVar, Literal, TypeVar, overload
 from typing_extensions import TypeAlias
 
@@ -19,6 +19,7 @@ else:
 __all__ = ()
 
 _LockLike: TypeAlias = synchronize.Lock | synchronize.RLock
+_T = TypeVar("_T")
 _CT = TypeVar("_CT", bound=_CData)
 
 class ProcessError(Exception): ...
@@ -79,6 +80,10 @@ class BaseContext:
     @overload
     def RawArray(self, typecode_or_type: str, size_or_initializer: int | Sequence[Any]) -> Any: ...
     @overload
+    def Value(
+        self, typecode_or_type: type[_SimpleCData[_T]], *args: Any, lock: Literal[True] | _LockLike = True
+    ) -> Synchronized[_T]: ...
+    @overload
     def Value(self, typecode_or_type: type[_CT], *args: Any, lock: Literal[False]) -> Synchronized[_CT]: ...
     @overload
     def Value(self, typecode_or_type: type[_CT], *args: Any, lock: Literal[True] | _LockLike = True) -> Synchronized[_CT]: ...
@@ -86,6 +91,10 @@ class BaseContext:
     def Value(self, typecode_or_type: str, *args: Any, lock: Literal[True] | _LockLike = True) -> Synchronized[Any]: ...
     @overload
     def Value(self, typecode_or_type: str | type[_CData], *args: Any, lock: bool | _LockLike = True) -> Any: ...
+    @overload
+    def Array(
+        self, typecode_or_type: type[c_char], size_or_initializer: int | Sequence[Any], *, lock: Literal[True] | _LockLike = True
+    ) -> SynchronizedString: ...
     @overload
     def Array(
         self, typecode_or_type: type[_CT], size_or_initializer: int | Sequence[Any], *, lock: Literal[False]

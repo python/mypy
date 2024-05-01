@@ -14,17 +14,17 @@ if sys.version_info >= (3, 11):
     SSLAgainErrors: tuple[type[ssl.SSLWantReadError], type[ssl.SSLSyscallError]]
 
     class SSLProtocolState(Enum):
-        UNWRAPPED: str
-        DO_HANDSHAKE: str
-        WRAPPED: str
-        FLUSHING: str
-        SHUTDOWN: str
+        UNWRAPPED = "UNWRAPPED"
+        DO_HANDSHAKE = "DO_HANDSHAKE"
+        WRAPPED = "WRAPPED"
+        FLUSHING = "FLUSHING"
+        SHUTDOWN = "SHUTDOWN"
 
     class AppProtocolState(Enum):
-        STATE_INIT: str
-        STATE_CON_MADE: str
-        STATE_EOF: str
-        STATE_CON_LOST: str
+        STATE_INIT = "STATE_INIT"
+        STATE_CON_MADE = "STATE_CON_MADE"
+        STATE_EOF = "STATE_EOF"
+        STATE_CON_LOST = "STATE_CON_LOST"
 
     def add_flowcontrol_defaults(high: int | None, low: int | None, kb: int) -> tuple[int, int]: ...
 
