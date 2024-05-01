@@ -3,7 +3,7 @@ from collections.abc import Awaitable, Callable, Generator, Iterable
 from concurrent.futures._base import Future as _ConcurrentFuture
 from contextvars import Context
 from typing import Any, Literal, TypeVar
-from typing_extensions import Self, TypeGuard
+from typing_extensions import Self, TypeIs
 
 from .events import AbstractEventLoop
 
@@ -17,7 +17,7 @@ _T = TypeVar("_T")
 # asyncio defines 'isfuture()' in base_futures.py and re-imports it in futures.py
 # but it leads to circular import error in pytype tool.
 # That's why the import order is reversed.
-def isfuture(obj: object) -> TypeGuard[Future[Any]]: ...
+def isfuture(obj: object) -> TypeIs[Future[Any]]: ...
 
 class Future(Awaitable[_T], Iterable[_T]):
     _state: str

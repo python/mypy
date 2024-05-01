@@ -9,57 +9,57 @@ from typing_extensions import Never, TypeAlias
 NSIG: int
 
 class Signals(IntEnum):
-    SIGABRT: int
-    SIGFPE: int
-    SIGILL: int
-    SIGINT: int
-    SIGSEGV: int
-    SIGTERM: int
+    SIGABRT = 6
+    SIGFPE = 8
+    SIGILL = 4
+    SIGINT = 2
+    SIGSEGV = 11
+    SIGTERM = 15
 
     if sys.platform == "win32":
-        SIGBREAK: int
-        CTRL_C_EVENT: int
-        CTRL_BREAK_EVENT: int
+        SIGBREAK = 21
+        CTRL_C_EVENT = 0
+        CTRL_BREAK_EVENT = 1
     else:
-        SIGALRM: int
-        SIGBUS: int
-        SIGCHLD: int
-        SIGCONT: int
-        SIGHUP: int
-        SIGIO: int
-        SIGIOT: int
-        SIGKILL: int
-        SIGPIPE: int
-        SIGPROF: int
-        SIGQUIT: int
-        SIGSTOP: int
-        SIGSYS: int
-        SIGTRAP: int
-        SIGTSTP: int
-        SIGTTIN: int
-        SIGTTOU: int
-        SIGURG: int
-        SIGUSR1: int
-        SIGUSR2: int
-        SIGVTALRM: int
-        SIGWINCH: int
-        SIGXCPU: int
-        SIGXFSZ: int
+        SIGALRM = 14
+        SIGBUS = 7
+        SIGCHLD = 17
+        SIGCONT = 18
+        SIGHUP = 1
+        SIGIO = 29
+        SIGIOT = 6
+        SIGKILL = 9
+        SIGPIPE = 13
+        SIGPROF = 27
+        SIGQUIT = 3
+        SIGSTOP = 19
+        SIGSYS = 31
+        SIGTRAP = 5
+        SIGTSTP = 20
+        SIGTTIN = 21
+        SIGTTOU = 22
+        SIGURG = 23
+        SIGUSR1 = 10
+        SIGUSR2 = 12
+        SIGVTALRM = 26
+        SIGWINCH = 28
+        SIGXCPU = 24
+        SIGXFSZ = 25
         if sys.platform != "linux":
-            SIGEMT: int
-            SIGINFO: int
+            SIGEMT = 7
+            SIGINFO = 29
         if sys.platform != "darwin":
-            SIGCLD: int
-            SIGPOLL: int
-            SIGPWR: int
-            SIGRTMAX: int
-            SIGRTMIN: int
+            SIGCLD = 17
+            SIGPOLL = 29
+            SIGPWR = 30
+            SIGRTMAX = 64
+            SIGRTMIN = 34
             if sys.version_info >= (3, 11):
-                SIGSTKFLT: int
+                SIGSTKFLT = 16
 
 class Handlers(IntEnum):
-    SIG_DFL: int
-    SIG_IGN: int
+    SIG_DFL = 0
+    SIG_IGN = 1
 
 SIG_DFL: Handlers
 SIG_IGN: Handlers
@@ -123,9 +123,9 @@ else:
     ITIMER_VIRTUAL: int
 
     class Sigmasks(IntEnum):
-        SIG_BLOCK: int
-        SIG_UNBLOCK: int
-        SIG_SETMASK: int
+        SIG_BLOCK = 0
+        SIG_UNBLOCK = 1
+        SIG_SETMASK = 2
 
     SIG_BLOCK = Sigmasks.SIG_BLOCK
     SIG_UNBLOCK = Sigmasks.SIG_UNBLOCK

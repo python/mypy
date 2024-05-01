@@ -51,15 +51,27 @@ class UserDict(MutableMapping[_KT, _VT]):
     @overload
     def __init__(self, dict: None = None, /) -> None: ...
     @overload
-    def __init__(self: UserDict[str, _VT], dict: None = None, /, **kwargs: _VT) -> None: ...
+    def __init__(
+        self: UserDict[str, _VT], dict: None = None, /, **kwargs: _VT  # pyright: ignore[reportInvalidTypeVarUse]  #11780
+    ) -> None: ...
     @overload
     def __init__(self, dict: SupportsKeysAndGetItem[_KT, _VT], /) -> None: ...
     @overload
-    def __init__(self: UserDict[str, _VT], dict: SupportsKeysAndGetItem[str, _VT], /, **kwargs: _VT) -> None: ...
+    def __init__(
+        self: UserDict[str, _VT],  # pyright: ignore[reportInvalidTypeVarUse]  #11780
+        dict: SupportsKeysAndGetItem[str, _VT],
+        /,
+        **kwargs: _VT,
+    ) -> None: ...
     @overload
     def __init__(self, iterable: Iterable[tuple[_KT, _VT]], /) -> None: ...
     @overload
-    def __init__(self: UserDict[str, _VT], iterable: Iterable[tuple[str, _VT]], /, **kwargs: _VT) -> None: ...
+    def __init__(
+        self: UserDict[str, _VT],  # pyright: ignore[reportInvalidTypeVarUse]  #11780
+        iterable: Iterable[tuple[str, _VT]],
+        /,
+        **kwargs: _VT,
+    ) -> None: ...
     @overload
     def __init__(self: UserDict[str, str], iterable: Iterable[list[str]], /) -> None: ...
     @overload
@@ -389,16 +401,21 @@ class defaultdict(dict[_KT, _VT]):
     @overload
     def __init__(self) -> None: ...
     @overload
-    def __init__(self: defaultdict[str, _VT], **kwargs: _VT) -> None: ...
+    def __init__(self: defaultdict[str, _VT], **kwargs: _VT) -> None: ...  # pyright: ignore[reportInvalidTypeVarUse]  #11780
     @overload
     def __init__(self, default_factory: Callable[[], _VT] | None, /) -> None: ...
     @overload
-    def __init__(self: defaultdict[str, _VT], default_factory: Callable[[], _VT] | None, /, **kwargs: _VT) -> None: ...
+    def __init__(
+        self: defaultdict[str, _VT],  # pyright: ignore[reportInvalidTypeVarUse]  #11780
+        default_factory: Callable[[], _VT] | None,
+        /,
+        **kwargs: _VT,
+    ) -> None: ...
     @overload
     def __init__(self, default_factory: Callable[[], _VT] | None, map: SupportsKeysAndGetItem[_KT, _VT], /) -> None: ...
     @overload
     def __init__(
-        self: defaultdict[str, _VT],
+        self: defaultdict[str, _VT],  # pyright: ignore[reportInvalidTypeVarUse]  #11780
         default_factory: Callable[[], _VT] | None,
         map: SupportsKeysAndGetItem[str, _VT],
         /,
@@ -408,7 +425,7 @@ class defaultdict(dict[_KT, _VT]):
     def __init__(self, default_factory: Callable[[], _VT] | None, iterable: Iterable[tuple[_KT, _VT]], /) -> None: ...
     @overload
     def __init__(
-        self: defaultdict[str, _VT],
+        self: defaultdict[str, _VT],  # pyright: ignore[reportInvalidTypeVarUse]  #11780
         default_factory: Callable[[], _VT] | None,
         iterable: Iterable[tuple[str, _VT]],
         /,

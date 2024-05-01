@@ -194,45 +194,45 @@ if sys.version_info >= (3, 11):
         serial: int
 
 class EventType(StrEnum):
-    Activate: str
-    ButtonPress: str
+    Activate = "36"
+    ButtonPress = "4"
     Button = ButtonPress
-    ButtonRelease: str
-    Circulate: str
-    CirculateRequest: str
-    ClientMessage: str
-    Colormap: str
-    Configure: str
-    ConfigureRequest: str
-    Create: str
-    Deactivate: str
-    Destroy: str
-    Enter: str
-    Expose: str
-    FocusIn: str
-    FocusOut: str
-    GraphicsExpose: str
-    Gravity: str
-    KeyPress: str
-    Key = KeyPress
-    KeyRelease: str
-    Keymap: str
-    Leave: str
-    Map: str
-    MapRequest: str
-    Mapping: str
-    Motion: str
-    MouseWheel: str
-    NoExpose: str
-    Property: str
-    Reparent: str
-    ResizeRequest: str
-    Selection: str
-    SelectionClear: str
-    SelectionRequest: str
-    Unmap: str
-    VirtualEvent: str
-    Visibility: str
+    ButtonRelease = "5"
+    Circulate = "26"
+    CirculateRequest = "27"
+    ClientMessage = "33"
+    Colormap = "32"
+    Configure = "22"
+    ConfigureRequest = "23"
+    Create = "16"
+    Deactivate = "37"
+    Destroy = "17"
+    Enter = "7"
+    Expose = "12"
+    FocusIn = "9"
+    FocusOut = "10"
+    GraphicsExpose = "13"
+    Gravity = "24"
+    KeyPress = "2"
+    Key = "2"
+    KeyRelease = "3"
+    Keymap = "11"
+    Leave = "8"
+    Map = "19"
+    MapRequest = "20"
+    Mapping = "34"
+    Motion = "6"
+    MouseWheel = "38"
+    NoExpose = "14"
+    Property = "28"
+    Reparent = "21"
+    ResizeRequest = "25"
+    Selection = "31"
+    SelectionClear = "29"
+    SelectionRequest = "30"
+    Unmap = "18"
+    VirtualEvent = "35"
+    Visibility = "15"
 
 _W = TypeVar("_W", bound=Misc)
 # Events considered covariant because you should never assign to event.widget.
