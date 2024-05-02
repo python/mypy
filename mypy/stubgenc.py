@@ -834,7 +834,7 @@ class InspectionStubGenerator(BaseStubGenerator):
             bases_str = "(%s)" % ", ".join(bases)
         else:
             bases_str = ""
-        if types or static_properties or rw_properties or methods or ro_properties:
+        if types or static_properties or rw_properties or methods or ro_properties or class_info.docstring:
             output.append(f"{self._indent}class {class_name}{bases_str}:")
             for line in types:
                 if (
@@ -845,6 +845,10 @@ class InspectionStubGenerator(BaseStubGenerator):
                 ):
                     output.append("")
                 output.append(line)
+            if class_info.docstring:
+                self.indent()
+                output.append(f'{self._indent}"""{class_info.docstring}"""')
+                self.dedent()
             for line in static_properties:
                 output.append(line)
             for line in rw_properties:
