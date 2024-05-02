@@ -1512,7 +1512,14 @@ class Instance(ProperType):
     def get_enum_values(self) -> list[str]:
         """Return the list of values for an Enum."""
         return [
-            name for name, sym in self.type.names.items() if isinstance(sym.node, mypy.nodes.Var)
+            name
+            for name, sym in self.type.names.items()
+            if (
+                isinstance(sym.node, mypy.nodes.Var)
+                and name not in ENUM_REMOVED_PROPS
+                and not name.startswith("__")
+                and sym.node.has_explicit_value
+            )
         ]
 
 

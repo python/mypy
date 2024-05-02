@@ -30,7 +30,6 @@ from mypy.nodes import (
 )
 from mypy.state import state
 from mypy.types import (
-    ENUM_REMOVED_PROPS,
     AnyType,
     CallableType,
     ExtraAttrs,
@@ -878,18 +877,9 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
         return make_simplified_union(items, contract_literals=False)
     elif isinstance(typ, Instance) and typ.type.fullname == target_fullname:
         if typ.type.is_enum:
-            new_items = []
-            for name, symbol in typ.type.names.items():
-                if not isinstance(symbol.node, Var):
-                    continue
-                # Skip these since Enum will remove it
-                if name in ENUM_REMOVED_PROPS:
-                    continue
-                # Skip private attributes
-                if name.startswith("__"):
-                    continue
-                new_items.append(LiteralType(name, typ))
-            return make_simplified_union(new_items, contract_literals=False)
+            return make_simplified_union(
+                [LiteralType(name, typ) for name in typ.get_enum_values()], contract_literals=False
+            )
         elif typ.type.fullname == "builtins.bool":
             return make_simplified_union(
                 [LiteralType(True, typ), LiteralType(False, typ)], contract_literals=False
