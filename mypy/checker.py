@@ -2374,7 +2374,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.allow_abstract_call = old_allow_abstract_call
                 # TODO: Apply the sig to the actual TypeInfo so we can handle decorators
                 # that completely swap out the type.  (e.g. Callable[[Type[A]], Type[B]])
-        if typ.defn.type_vars:
+        if typ.defn.type_vars and typ.defn.type_args is None:
             for base_inst in typ.bases:
                 for base_tvar, base_decl_tvar in zip(
                     base_inst.args, base_inst.type.defn.type_vars

@@ -319,3 +319,26 @@ class Invariant[T]:
         self.x = x
 
 reveal_type(c(a1, a2))  # N: Revealed type is "Never"
+
+[case testPEP695InheritInvariant]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+class Invariant[T]:
+    x: T
+
+class Subclass[T](Invariant[T]):
+    pass
+
+x: Invariant[int]
+y: Invariant[object]
+if int():
+    x = y  # E: Incompatible types in assignment (expression has type "Invariant[object]", variable has type "Invariant[int]")
+if int():
+    y = x  # E: Incompatible types in assignment (expression has type "Invariant[int]", variable has type "Invariant[object]")
+
+a: Subclass[int]
+b: Subclass[object]
+if int():
+    a = b  # E: Incompatible types in assignment (expression has type "Subclass[object]", variable has type "Subclass[int]")
+if int():
+    b = a  # E: Incompatible types in assignment (expression has type "Subclass[int]", variable has type "Subclass[object]")

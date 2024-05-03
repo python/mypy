@@ -10,6 +10,7 @@ import mypy.typeops
 from mypy.erasetype import erase_type
 from mypy.expandtype import expand_self_type, expand_type_by_instance, expand_type
 from mypy.maptype import map_instance_to_supertype
+from mypy.typevars import fill_typevars
 
 # Circular import; done in the function instead.
 # import mypy.solve
@@ -1987,14 +1988,19 @@ def is_more_precise(left: Type, right: Type, *, ignore_promotions: bool = False)
     return is_proper_subtype(left, right, ignore_promotions=ignore_promotions)
 
 
+def all_members(info: TypeInfo) -> set[str]:
+    members = set(info.names)
+    for base in info.mro[1:]:
+        members.update(base.names)
+    return members
+
+
 def infer_variance(info: TypeInfo, i: int) -> bool:
     """Infer the variance of the ith type variable of a generic class.
 
     Return True if successful. This can fail if some inferred types aren't ready.
     """
     object_type = Instance(info.mro[-1], [])
-
-    from mypy.typeops import bind_self
 
     for variance in COVARIANT, CONTRAVARIANT, INVARIANT:
         tv = info.defn.type_vars[i]
@@ -2005,23 +2011,17 @@ def infer_variance(info: TypeInfo, i: int) -> bool:
         co = True
         contra = True
         tvar = info.defn.type_vars[i]
-        for member, sym in info.names.items():
+        self_type = fill_typevars(info)
+        for member in all_members(info):
             if member in ("__init__", "__new__"):
                 continue
-            node = sym.node
-            typ = None
-            settable = False
-            if isinstance(node, FuncBase):
-                typ = node.type
-                if isinstance(typ, FunctionLike):
-                    typ = bind_self(typ)
-            elif isinstance(node, Var):
-                settable = True
-                typ = node.type
-                if typ is None:
-                    tv.variance = VARIANCE_NOT_READY
-                    return False
-
+            node = info[member].node
+            if isinstance(node, Var) and node.type is None:
+                tv.variance = VARIANCE_NOT_READY
+                return False
+            flags = get_member_flags(member, self_type)
+            typ = find_member(member, self_type, self_type)
+            settable = IS_SETTABLE in flags
             if typ:
                 typ2 = expand_type(typ, {tvar.id: object_type})
                 if not is_subtype(typ, typ2):
