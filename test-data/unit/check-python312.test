@@ -383,3 +383,45 @@ class InvSubclass[T](Covariant[T]):
 
 e: InvSubclass[int] = InvSubclass[object]()  # E: Incompatible types in assignment (expression has type "InvSubclass[object]", variable has type "InvSubclass[int]")
 f: InvSubclass[object] = InvSubclass[int]()  # E: Incompatible types in assignment (expression has type "InvSubclass[int]", variable has type "InvSubclass[object]")
+
+[case testPEP695FinalAttribute]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+from typing import Final
+
+class C[T]:
+    def __init__(self, x: T) -> None:
+        self.x: Final = x
+
+a: C[int] = C[object](1)  # E: Incompatible types in assignment (expression has type "C[object]", variable has type "C[int]")
+b: C[object] = C[int](1)
+
+[case testPEP695TwoTypeVariables]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+class C[T, S]:
+    def f(self, x: T) -> None: ...
+    def g(self) -> S: ...
+
+a: C[int, int] = C[object, int]()
+b: C[object, int] = C[int, int]()  # E: Incompatible types in assignment (expression has type "C[int, int]", variable has type "C[object, int]")
+c: C[int, int] = C[int, object]()  # E: Incompatible types in assignment (expression has type "C[int, object]", variable has type "C[int, int]")
+d: C[int, object] = C[int, int]()
+
+[case testPEP695Properties]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+class R[T]:
+    @property
+    def p(self) -> T: ...
+
+class RW[T]:
+    @property
+    def p(self) -> T: ...
+    @p.setter
+    def p(self, x: T) -> None: ...
+
+a: R[int] = R[object]()  # E: Incompatible types in assignment (expression has type "R[object]", variable has type "R[int]")
+b: R[object] = R[int]()
+c: RW[int] = RW[object]()  # E: Incompatible types in assignment (expression has type "RW[object]", variable has type "RW[int]")
+d: RW[object] = RW[int]()  # E: Incompatible types in assignment (expression has type "RW[int]", variable has type "RW[object]")
+[builtins fixtures/property.pyi]
