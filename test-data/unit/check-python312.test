@@ -342,3 +342,44 @@ if int():
     a = b  # E: Incompatible types in assignment (expression has type "Subclass[object]", variable has type "Subclass[int]")
 if int():
     b = a  # E: Incompatible types in assignment (expression has type "Subclass[int]", variable has type "Subclass[object]")
+
+[case testPEP695InheritanceMakesInvariant]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+class Covariant[T]:
+    def f(self) -> T:
+        ...
+
+class Subclass[T](Covariant[list[T]]):
+    pass
+
+x: Covariant[int] = Covariant[object]()  # E: Incompatible types in assignment (expression has type "Covariant[object]", variable has type "Covariant[int]")
+y: Covariant[object] = Covariant[int]()
+
+a: Subclass[int] = Subclass[object]()  # E: Incompatible types in assignment (expression has type "Subclass[object]", variable has type "Subclass[int]")
+b: Subclass[object] = Subclass[int]()  # E: Incompatible types in assignment (expression has type "Subclass[int]", variable has type "Subclass[object]")
+
+[case testPEP695InheritCoOrContravariant]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+class Contravariant[T]:
+    def f(self, x: T) -> None: pass
+
+class CovSubclass[T](Contravariant[T]):
+    pass
+
+a: CovSubclass[int] = CovSubclass[object]()
+b: CovSubclass[object] = CovSubclass[int]()  # E: Incompatible types in assignment (expression has type "CovSubclass[int]", variable has type "CovSubclass[object]")
+
+class Covariant[T]:
+    def f(self) -> T: ...
+
+class CoSubclass[T](Covariant[T]):
+    pass
+
+c: CoSubclass[int] = CoSubclass[object]()  # E: Incompatible types in assignment (expression has type "CoSubclass[object]", variable has type "CoSubclass[int]")
+d: CoSubclass[object] = CoSubclass[int]()
+
+class InvSubclass[T](Covariant[T]):
+    def g(self, x: T) -> None: pass
+
+e: InvSubclass[int] = InvSubclass[object]()  # E: Incompatible types in assignment (expression has type "InvSubclass[object]", variable has type "InvSubclass[int]")
+f: InvSubclass[object] = InvSubclass[int]()  # E: Incompatible types in assignment (expression has type "InvSubclass[int]", variable has type "InvSubclass[object]")
