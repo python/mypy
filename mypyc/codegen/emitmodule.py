@@ -58,6 +58,8 @@ from mypyc.namegen import NameGenerator, exported_name
 from mypyc.options import CompilerOptions
 from mypyc.transform.copy_propagation import do_copy_propagation
 from mypyc.transform.exceptions import insert_exception_handling
+from mypyc.transform.flag_elimination import do_flag_elimination
+from mypyc.transform.lower import lower_ir
 from mypyc.transform.refcount import insert_ref_count_opcodes
 from mypyc.transform.uninit import insert_uninit_checks
 
@@ -234,8 +236,11 @@ def compile_scc_to_ir(
             insert_exception_handling(fn)
             # Insert refcount handling.
             insert_ref_count_opcodes(fn)
-            # Perform copy propagation optimization.
+            # Switch to lower abstraction level IR.
+            lower_ir(fn, compiler_options)
+            # Perform optimizations.
             do_copy_propagation(fn, compiler_options)
+            do_flag_elimination(fn, compiler_options)
 
     return modules
 
@@ -421,10 +426,11 @@ def compile_modules_to_c(
     )
 
     modules = compile_modules_to_ir(result, mapper, compiler_options, errors)
-    ctext = compile_ir_to_c(groups, modules, result, mapper, compiler_options)
+    if errors.num_errors > 0:
+        return {}, []
 
-    if errors.num_errors == 0:
-        write_cache(modules, result, group_map, ctext)
+    ctext = compile_ir_to_c(groups, modules, result, mapper, compiler_options)
+    write_cache(modules, result, group_map, ctext)
 
     return modules, [ctext[name] for _, name in groups]
 

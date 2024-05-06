@@ -55,9 +55,9 @@ def astuple(obj: DataclassInstance) -> tuple[Any, ...]: ...
 @overload
 def astuple(obj: DataclassInstance, *, tuple_factory: Callable[[list[Any]], _T]) -> _T: ...
 @overload
-def dataclass(__cls: None) -> Callable[[type[_T]], type[_T]]: ...
+def dataclass(cls: None, /) -> Callable[[type[_T]], type[_T]]: ...
 @overload
-def dataclass(__cls: type[_T]) -> type[_T]: ...
+def dataclass(cls: type[_T], /) -> type[_T]: ...
 
 if sys.version_info >= (3, 11):
     @overload
@@ -227,21 +227,23 @@ if sys.version_info >= (3, 9):
 else:
     class _InitVarMeta(type):
         # Not used, instead `InitVar.__class_getitem__` is called.
-        def __getitem__(self, params: Any) -> InitVar[Any]: ...
+        # pyright ignore is needed because pyright (not unreasonably) thinks this
+        # is an invalid use of InitVar.
+        def __getitem__(self, params: Any) -> InitVar[Any]: ...  # pyright: ignore
 
 class InitVar(Generic[_T], metaclass=_InitVarMeta):
     type: Type[_T]
     def __init__(self, type: Type[_T]) -> None: ...
     if sys.version_info >= (3, 9):
         @overload
-        def __class_getitem__(cls, type: Type[_T]) -> InitVar[_T]: ...
+        def __class_getitem__(cls, type: Type[_T]) -> InitVar[_T]: ...  # pyright: ignore
         @overload
-        def __class_getitem__(cls, type: Any) -> InitVar[Any]: ...
+        def __class_getitem__(cls, type: Any) -> InitVar[Any]: ...  # pyright: ignore
 
 if sys.version_info >= (3, 12):
     def make_dataclass(
         cls_name: str,
-        fields: Iterable[str | tuple[str, type] | tuple[str, type, Any]],
+        fields: Iterable[str | tuple[str, Any] | tuple[str, Any, Any]],
         *,
         bases: tuple[type, ...] = (),
         namespace: dict[str, Any] | None = None,
@@ -261,7 +263,7 @@ if sys.version_info >= (3, 12):
 elif sys.version_info >= (3, 11):
     def make_dataclass(
         cls_name: str,
-        fields: Iterable[str | tuple[str, type] | tuple[str, type, Any]],
+        fields: Iterable[str | tuple[str, Any] | tuple[str, Any, Any]],
         *,
         bases: tuple[type, ...] = (),
         namespace: dict[str, Any] | None = None,
@@ -280,7 +282,7 @@ elif sys.version_info >= (3, 11):
 elif sys.version_info >= (3, 10):
     def make_dataclass(
         cls_name: str,
-        fields: Iterable[str | tuple[str, type] | tuple[str, type, Any]],
+        fields: Iterable[str | tuple[str, Any] | tuple[str, Any, Any]],
         *,
         bases: tuple[type, ...] = (),
         namespace: dict[str, Any] | None = None,
@@ -298,7 +300,7 @@ elif sys.version_info >= (3, 10):
 else:
     def make_dataclass(
         cls_name: str,
-        fields: Iterable[str | tuple[str, type] | tuple[str, type, Any]],
+        fields: Iterable[str | tuple[str, Any] | tuple[str, Any, Any]],
         *,
         bases: tuple[type, ...] = (),
         namespace: dict[str, Any] | None = None,
@@ -310,4 +312,4 @@ else:
         frozen: bool = False,
     ) -> type: ...
 
-def replace(__obj: _DataclassT, **changes: Any) -> _DataclassT: ...
+def replace(obj: _DataclassT, /, **changes: Any) -> _DataclassT: ...

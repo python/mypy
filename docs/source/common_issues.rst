@@ -41,7 +41,7 @@ once you add annotations:
 
     def foo(a: str) -> str:
         return '(' + a.split() + ')'
-    # error: Unsupported operand types for + ("str" and List[str])
+    # error: Unsupported operand types for + ("str" and "list[str]")
 
 If you don't know what types to add, you can use ``Any``, but beware:
 
@@ -226,7 +226,7 @@ dict to a new variable, as mentioned earlier:
 
 .. code-block:: python
 
-   a: List[int] = []
+   a: list[int] = []
 
 Without the annotation mypy can't always figure out the
 precise type of ``a``.
@@ -238,7 +238,7 @@ modification operation in the same scope (such as ``append`` for a list):
 
 .. code-block:: python
 
-   a = []  # Okay because followed by append, inferred type List[int]
+   a = []  # Okay because followed by append, inferred type list[int]
    for i in range(n):
        a.append(i * i)
 
@@ -276,7 +276,7 @@ not support ``sort()``) as a list and sort it in-place:
     def f(x: Sequence[int]) -> None:
         # Type of x is Sequence[int] here; we don't know the concrete type.
         x = list(x)
-        # Type of x is List[int] here.
+        # Type of x is list[int] here.
         x.sort()  # Okay!
 
 See :ref:`type-narrowing` for more information.
@@ -296,8 +296,8 @@ unexpected errors when combined with type inference. For example:
    class A: ...
    class B(A): ...
 
-   lst = [A(), A()]  # Inferred type is List[A]
-   new_lst = [B(), B()]  # inferred type is List[B]
+   lst = [A(), A()]  # Inferred type is list[A]
+   new_lst = [B(), B()]  # inferred type is list[B]
    lst = new_lst  # mypy will complain about this, because List is invariant
 
 Possible strategies in such situations are:
@@ -306,7 +306,7 @@ Possible strategies in such situations are:
 
   .. code-block:: python
 
-     new_lst: List[A] = [B(), B()]
+     new_lst: list[A] = [B(), B()]
      lst = new_lst  # OK
 
 * Make a copy of the right hand side:
@@ -319,7 +319,7 @@ Possible strategies in such situations are:
 
   .. code-block:: python
 
-     def f_bad(x: List[A]) -> A:
+     def f_bad(x: list[A]) -> A:
          return x[0]
      f_bad(new_lst) # Fails
 
@@ -489,7 +489,7 @@ understand how mypy handles a particular piece of code. Example:
 
 .. code-block:: python
 
-   reveal_type((1, 'hello'))  # Revealed type is "Tuple[builtins.int, builtins.str]"
+   reveal_type((1, 'hello'))  # Revealed type is "tuple[builtins.int, builtins.str]"
 
 You can also use ``reveal_locals()`` at any line in a file
 to see the types of all local variables at once. Example:
@@ -622,16 +622,16 @@ instructions at the `mypyc wheels repo <https://github.com/mypyc/mypy_mypyc-whee
 Variables vs type aliases
 -------------------------
 
-Mypy has both *type aliases* and variables with types like ``Type[...]``. These are
+Mypy has both *type aliases* and variables with types like ``type[...]``. These are
 subtly different, and it's important to understand how they differ to avoid pitfalls.
 
-1. A variable with type ``Type[...]`` is defined using an assignment with an
+1. A variable with type ``type[...]`` is defined using an assignment with an
    explicit type annotation:
 
    .. code-block:: python
 
      class A: ...
-     tp: Type[A] = A
+     tp: type[A] = A
 
 2. You can define a type alias using an assignment without an explicit type annotation
    at the top level of a module:
@@ -670,7 +670,7 @@ can't be defined conditionally (unless using
          # explicit "Type[...]" annotation
          Alias = B
 
-     tp: Type[object]  # "tp" is a variable with a type object value
+     tp: type[object]  # "tp" is a variable with a type object value
      if random() > 0.5:
          tp = A
      else:

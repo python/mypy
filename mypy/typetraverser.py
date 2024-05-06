@@ -86,6 +86,12 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         t.ret_type.accept(self)
         t.fallback.accept(self)
 
+        if t.type_guard is not None:
+            t.type_guard.accept(self)
+
+        if t.type_is is not None:
+            t.type_is.accept(self)
+
     def visit_tuple_type(self, t: TupleType) -> None:
         self.traverse_types(t.items)
         t.partial_fallback.accept(self)
@@ -124,7 +130,8 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         pass
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> None:
-        pass
+        if t.node is not None:
+            t.node.accept(self)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
         # TODO: sometimes we want to traverse target as well

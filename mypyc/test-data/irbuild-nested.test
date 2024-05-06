@@ -658,7 +658,7 @@ def baz_f_obj.__call__(__mypyc_self__, n):
     r6, r7 :: int
 L0:
     r0 = __mypyc_self__.__mypyc_env__
-    r1 = n == 0
+    r1 = int_eq n, 0
     if r1 goto L1 else goto L2 :: bool
 L1:
     return 0
@@ -796,7 +796,7 @@ def baz(n):
     r0 :: bit
     r1, r2, r3 :: int
 L0:
-    r0 = n == 0
+    r0 = int_eq n, 0
     if r0 goto L1 else goto L2 :: bool
 L1:
     return 0

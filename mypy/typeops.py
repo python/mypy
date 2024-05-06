@@ -885,6 +885,9 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
                 # Skip these since Enum will remove it
                 if name in ENUM_REMOVED_PROPS:
                     continue
+                # Skip private attributes
+                if name.startswith("__"):
+                    continue
                 new_items.append(LiteralType(name, typ))
             return make_simplified_union(new_items, contract_literals=False)
         elif typ.type.fullname == "builtins.bool":

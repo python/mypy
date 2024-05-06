@@ -141,6 +141,7 @@ def analyze_type_alias(
     in_dynamic_func: bool = False,
     global_scope: bool = True,
     allowed_alias_tvars: list[TypeVarLikeType] | None = None,
+    alias_type_params_names: list[str] | None = None,
 ) -> tuple[Type, set[str]]:
     """Analyze r.h.s. of a (potential) type alias definition.
 
@@ -158,6 +159,7 @@ def analyze_type_alias(
         allow_placeholder=allow_placeholder,
         prohibit_self_type="type alias target",
         allowed_alias_tvars=allowed_alias_tvars,
+        alias_type_params_names=alias_type_params_names,
     )
     analyzer.in_dynamic_func = in_dynamic_func
     analyzer.global_scope = global_scope
@@ -210,6 +212,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         prohibit_self_type: str | None = None,
         allowed_alias_tvars: list[TypeVarLikeType] | None = None,
         allow_type_any: bool = False,
+        alias_type_params_names: list[str] | None = None,
     ) -> None:
         self.api = api
         self.fail_func = api.fail
@@ -231,6 +234,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if allowed_alias_tvars is None:
             allowed_alias_tvars = []
         self.allowed_alias_tvars = allowed_alias_tvars
+        self.alias_type_params_names = alias_type_params_names
         # If false, record incomplete ref if we generate PlaceholderType.
         self.allow_placeholder = allow_placeholder
         # Are we in a context where Required[] is allowed?
@@ -270,6 +274,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # wrapping Anys: Union simplification will take care of that.
             return make_optional_type(typ)
         return typ
+
+    def not_declared_in_type_params(self, tvar_name: str) -> bool:
+        return (
+            self.alias_type_params_names is not None
+            and tvar_name not in self.alias_type_params_names
+        )
 
     def visit_unbound_type_nonoptional(self, t: UnboundType, defining_literal: bool) -> Type:
         sym = self.lookup_qualified(t.name, t)
@@ -325,7 +335,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 if tvar_def is None:
                     if self.allow_unbound_tvars:
                         return t
-                    self.fail(f'ParamSpec "{t.name}" is unbound', t, code=codes.VALID_TYPE)
+                    if self.defining_alias and self.not_declared_in_type_params(t.name):
+                        msg = f'ParamSpec "{t.name}" is not included in type_params'
+                    else:
+                        msg = f'ParamSpec "{t.name}" is unbound'
+                    self.fail(msg, t, code=codes.VALID_TYPE)
                     return AnyType(TypeOfAny.from_error)
                 assert isinstance(tvar_def, ParamSpecType)
                 if len(t.args) > 0:
@@ -349,11 +363,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 and not defining_literal
                 and (tvar_def is None or tvar_def not in self.allowed_alias_tvars)
             ):
-                self.fail(
-                    f'Can\'t use bound type variable "{t.name}" to define generic alias',
-                    t,
-                    code=codes.VALID_TYPE,
-                )
+                if self.not_declared_in_type_params(t.name):
+                    msg = f'Type variable "{t.name}" is not included in type_params'
+                else:
+                    msg = f'Can\'t use bound type variable "{t.name}" to define generic alias'
+                self.fail(msg, t, code=codes.VALID_TYPE)
                 return AnyType(TypeOfAny.from_error)
             if isinstance(sym.node, TypeVarExpr) and tvar_def is not None:
                 assert isinstance(tvar_def, TypeVarType)
@@ -368,17 +382,21 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 and self.defining_alias
                 and tvar_def not in self.allowed_alias_tvars
             ):
-                self.fail(
-                    f'Can\'t use bound type variable "{t.name}" to define generic alias',
-                    t,
-                    code=codes.VALID_TYPE,
-                )
+                if self.not_declared_in_type_params(t.name):
+                    msg = f'Type variable "{t.name}" is not included in type_params'
+                else:
+                    msg = f'Can\'t use bound type variable "{t.name}" to define generic alias'
+                self.fail(msg, t, code=codes.VALID_TYPE)
                 return AnyType(TypeOfAny.from_error)
             if isinstance(sym.node, TypeVarTupleExpr):
                 if tvar_def is None:
                     if self.allow_unbound_tvars:
                         return t
-                    self.fail(f'TypeVarTuple "{t.name}" is unbound', t, code=codes.VALID_TYPE)
+                    if self.defining_alias and self.not_declared_in_type_params(t.name):
+                        msg = f'TypeVarTuple "{t.name}" is not included in type_params'
+                    else:
+                        msg = f'TypeVarTuple "{t.name}" is unbound'
+                    self.fail(msg, t, code=codes.VALID_TYPE)
                     return AnyType(TypeOfAny.from_error)
                 assert isinstance(tvar_def, TypeVarTupleType)
                 if not self.allow_type_var_tuple:
@@ -850,7 +868,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # If, in the distant future, we decide to permit things like
         # `def foo(x: Color.RED) -> None: ...`, we can remove that
         # check entirely.
-        if isinstance(sym.node, Var) and sym.node.info and sym.node.info.is_enum:
+        if (
+            isinstance(sym.node, Var)
+            and sym.node.info
+            and sym.node.info.is_enum
+            and not sym.node.name.startswith("__")
+        ):
             value = sym.node.name
             base_enum_short_name = sym.node.info.name
             if not defining_literal:
@@ -1052,6 +1075,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return ret
 
     def anal_type_guard(self, t: Type) -> Type | None:
+        t = t.resolve_string_annotation()
         if isinstance(t, UnboundType):
             sym = self.lookup_qualified(t.name, t)
             if sym is not None and sym.node is not None:
@@ -1070,6 +1094,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return None
 
     def anal_type_is(self, t: Type) -> Type | None:
+        t = t.resolve_string_annotation()
         if isinstance(t, UnboundType):
             sym = self.lookup_qualified(t.name, t)
             if sym is not None and sym.node is not None:
@@ -1087,6 +1112,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def anal_star_arg_type(self, t: Type, kind: ArgKind, nested: bool) -> Type:
         """Analyze signature argument type for *args and **kwargs argument."""
+        t = t.resolve_string_annotation()
         if isinstance(t, UnboundType) and t.name and "." in t.name and not t.args:
             components = t.name.split(".")
             tvar_name = ".".join(components[:-1])
@@ -1177,6 +1203,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # make signatures like "foo(x: 20) -> None" legal, we can change
         # this method so it generates and returns an actual LiteralType
         # instead.
+        if t.node is not None:
+            return t.node.accept(self)
 
         if self.report_invalid_types:
             if t.base_type_name in ("builtins.int", "builtins.bool"):
@@ -1267,6 +1295,19 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     AnyType(TypeOfAny.explicit), ret_type=ret_type, fallback=fallback
                 )
             return None
+        elif (
+            self.defining_alias
+            and self.not_declared_in_type_params(tvar_def.name)
+            and tvar_def not in self.allowed_alias_tvars
+        ):
+            self.fail(
+                f'ParamSpec "{tvar_def.name}" is not included in type_params',
+                callable_args,
+                code=codes.VALID_TYPE,
+            )
+            return callable_with_ellipsis(
+                AnyType(TypeOfAny.special_form), ret_type=ret_type, fallback=fallback
+            )
 
         return CallableType(
             [
@@ -1424,6 +1465,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         invalid_unpacks: list[Type] = []
         second_unpack_last = False
         for i, arg in enumerate(arglist.items):
+            arg = arg.resolve_string_annotation()
             if isinstance(arg, CallableArgument):
                 args.append(arg.typ)
                 names.append(arg.name)
@@ -1504,18 +1546,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return UnionType.make_union(output, line=t.line)
 
     def analyze_literal_param(self, idx: int, arg: Type, ctx: Context) -> list[Type] | None:
-        # This UnboundType was originally defined as a string.
-        if isinstance(arg, UnboundType) and arg.original_str_expr is not None:
-            assert arg.original_str_fallback is not None
-            return [
-                LiteralType(
-                    value=arg.original_str_expr,
-                    fallback=self.named_type(arg.original_str_fallback),
-                    line=arg.line,
-                    column=arg.column,
-                )
-            ]
-
         # If arg is an UnboundType that was *not* originally defined as
         # a string, try expanding it in case it's a type alias or something.
         if isinstance(arg, UnboundType):
@@ -2497,7 +2527,8 @@ class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
         self.process_types(list(t.items.values()))
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> None:
-        pass
+        if t.node is not None:
+            t.node.accept(self)
 
     def visit_literal_type(self, t: LiteralType) -> None:
         pass
