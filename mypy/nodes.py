@@ -750,6 +750,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # Present only when a function is decorated with @typing.datasclass_transform or similar
         "dataclass_transform_spec",
         "docstring",
+        "def_end_line",
+        "def_end_column",
     )
 
     __match_args__ = ("name", "arguments", "type", "body")
@@ -778,6 +780,9 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self.is_mypy_only = False
         self.dataclass_transform_spec: DataclassTransformSpec | None = None
         self.docstring: str | None = None
+        # track the end of the function definition itself
+        self.def_end_line: int | None = None
+        self.def_end_column: int | None = None
 
     @property
     def name(self) -> str:
