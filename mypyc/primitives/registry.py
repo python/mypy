@@ -60,6 +60,7 @@ class CFunctionDescription(NamedTuple):
     ordering: list[int] | None
     extra_int_constants: list[tuple[int, RType]]
     priority: int
+    is_pure: bool
 
 
 # A description for C load operations including LoadGlobal and LoadAddress
@@ -138,6 +139,7 @@ def method_op(
         ordering,
         extra_int_constants,
         priority,
+        is_pure=False,
     )
     ops.append(desc)
     return desc
@@ -183,6 +185,7 @@ def function_op(
         ordering,
         extra_int_constants,
         priority,
+        is_pure=False,
     )
     ops.append(desc)
     return desc
@@ -228,6 +231,7 @@ def binary_op(
         ordering=ordering,
         extra_int_constants=extra_int_constants,
         priority=priority,
+        is_pure=False,
     )
     ops.append(desc)
     return desc
@@ -244,6 +248,8 @@ def custom_op(
     extra_int_constants: list[tuple[int, RType]] | None = None,
     steals: StealsDescription = False,
     is_borrowed: bool = False,
+    *,
+    is_pure: bool = False,
 ) -> CFunctionDescription:
     """Create a one-off CallC op that can't be automatically generated from the AST.
 
@@ -264,6 +270,7 @@ def custom_op(
         ordering,
         extra_int_constants,
         0,
+        is_pure=is_pure,
     )
 
 
@@ -299,6 +306,7 @@ def custom_primitive_op(
         ordering=ordering,
         extra_int_constants=extra_int_constants,
         priority=0,
+        is_pure=False,
     )
 
 
@@ -338,6 +346,7 @@ def unary_op(
         ordering,
         extra_int_constants,
         priority,
+        is_pure=False,
     )
     ops.append(desc)
     return desc
