@@ -180,15 +180,20 @@ if int():
 
 [case testColumnEndFunctionMissingTypeAnnotation]
 # flags: --disallow-untyped-defs --show-error-end
+from typing import Any, Optional
 if int():
-    def f(x: int):
+    def f(x: int, foo: Optional[str]):
         pass
 
-    def g(x):
+    def g(x: int, foo: Optional[str] = None):
+        pass
+
+    def h(x, foo = None):
         pass
 [out]
-main:3:5:3:5: error: Function is missing a return type annotation
-main:6:5:6:5: error: Function is missing a type annotation
+main:4:5:4:37: error: Function is missing a return type annotation
+main:7:5:7:44: error: Function is missing a return type annotation
+main:10:5:10:24: error: Function is missing a type annotation
 
 [case testColumnNameIsNotDefined]
 ((x)) # E:3: Name "x" is not defined

@@ -256,7 +256,6 @@ class MessageBuilder:
             assert origin_span is not None
             origin_span = itertools.chain(origin_span, span_from_context(secondary_context))
 
-        column = context.column if context else -1
         end_line = context.end_line if context else -1
         end_column = context.end_column if context else -1
 
@@ -264,13 +263,13 @@ class MessageBuilder:
         # this avoids errors being reported in IDEs for the whole function
         # TODO: figure out if it's possible to find the end of the function definition line
         if isinstance(context, FuncDef):
-            end_line = context.line
+            end_line = context.def_end_line
             # column is 1-based, see also format_messages in errors.py
-            end_column = column + 1
+            end_column = context.def_end_column + 1 if context.def_end_column else end_column
 
         self.errors.report(
             context.line if context else -1,
-            column,
+            context.column if context else -1,
             msg,
             severity=severity,
             file=file,

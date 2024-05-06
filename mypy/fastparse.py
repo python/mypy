@@ -983,10 +983,31 @@ class ASTConverter:
         end_line = getattr(n, "end_lineno", None)
         end_column = getattr(n, "end_col_offset", None)
 
+        # Determine end of the function definition itself
+        # Fall back to the end of the function definition including its body
+        def_end_line: int | None = n.lineno
+        def_end_column: int | None = n.col_offset
+
+        returns = n.returns
+        # use the return type hint if defined
+        if returns is not None:
+            def_end_line = returns.end_lineno
+            def_end_column = returns.end_col_offset
+        # otherwise use the last argument in the function definition
+        elif len(args) > 0:
+            last_arg = args[-1]
+            initializer = last_arg.initializer
+
+            def_end_line = initializer.end_line if initializer else last_arg.end_line
+            def_end_column = initializer.end_column if initializer else last_arg.end_column
+
         self.class_and_function_stack.pop()
         self.class_and_function_stack.append("F")
         body = self.as_required_block(n.body, can_strip=True, is_coroutine=is_coroutine)
         func_def = FuncDef(n.name, args, body, func_type)
+        func_def.def_end_line = def_end_line
+        func_def.def_end_column = def_end_column
+
         if isinstance(func_def.type, CallableType):
             # semanal.py does some in-place modifications we want to avoid
             func_def.unanalyzed_type = func_def.type.copy_modified()
