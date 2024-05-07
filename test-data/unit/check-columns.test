@@ -219,6 +219,21 @@ main:13:5:13:40: error: Function is missing a type annotation
 main:16:5:16:24: error: Function is missing a type annotation
 main:19:5:19:36: error: Function is missing a type annotation
 
+[case testColumnEndFunctionMissingTypeAnnotationWithReturnType]
+# flags: --disallow-untyped-defs --show-error-end
+def f() -> None:
+    pass
+
+def f_partially_typed(x: int, foo) -> None:
+    pass
+
+def f_untyped(x, foo, *args, **kwargs) -> None:
+    pass
+[builtins fixtures/tuple.pyi]
+[out]
+main:5:1:5:43: error: Function is missing a type annotation for one or more arguments
+main:8:1:8:47: error: Function is missing a type annotation for one or more arguments
+
 [case testColumnNameIsNotDefined]
 ((x)) # E:3: Name "x" is not defined
 
