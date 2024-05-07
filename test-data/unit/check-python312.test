@@ -86,14 +86,22 @@ reveal_type(ba2)  # N: Revealed type is "def (*Any) -> builtins.str"
 [case testPEP695GenericFunctionSyntax]
 # flags: --enable-incomplete-feature=NewGenericSyntax
 
-def ident[T](x: T) -> T:
-    y: T = x
-    y = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "T")
+def ident[TV](x: TV) -> TV:
+    y: TV = x
+    y = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "TV")
     return x
 
 reveal_type(ident(1))  # N: Revealed type is "builtins.int"
+reveal_type(ident('x'))  # N: Revealed type is "builtins.str"
 
-a: T  # E: Name "T" is not defined
+a: TV  # E: Name "TV" is not defined
+
+def tup[T, S](x: T, y: S) -> tuple[T, S]:
+    reveal_type((x, y))  # N: Revealed type is "Tuple[T`-1, S`-2]"
+    return (x, y)
+
+reveal_type(tup(1, 'x'))  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
+[builtins fixtures/tuple.pyi]
 
 [case testPEP695GenericClassSyntax]
 # flags: --enable-incomplete-feature=NewGenericSyntax
@@ -115,6 +123,17 @@ reveal_type(C("x"))  # N: Revealed type is "__main__.C[builtins.str]"
 c: C[int] = C(1)
 reveal_type(c.x)  # N: Revealed type is "builtins.int"
 reveal_type(c.ident(1))  # N: Revealed type is "builtins.int"
+
+[case testPEP695GenericMethodInGenericClass]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+class C[T]:
+    def m[S](self, x: S) -> T: ...
+
+a: C[int] = C[object]()  # E: Incompatible types in assignment (expression has type "C[object]", variable has type "C[int]")
+b: C[object] = C[int]()
+
+reveal_type(C[str]().m(1))  # N: Revealed type is "builtins.str"
 
 [case testPEP695InferVarianceSimpleFromMethod]
 # flags: --enable-incomplete-feature=NewGenericSyntax
