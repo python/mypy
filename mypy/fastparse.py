@@ -986,6 +986,7 @@ class ASTConverter:
         # Determine end of the function definition itself
         # Fall back to the end of the function definition including its body
         def_end_line: int | None = n.lineno
+        # TODO: to go to the end of the function name: n.col_offset + 4 + len(n.name)
         def_end_column: int | None = n.col_offset
 
         returns = n.returns

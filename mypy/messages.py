@@ -265,7 +265,9 @@ class MessageBuilder:
         if isinstance(context, FuncDef):
             end_line = context.def_end_line
             # column is 1-based, see also format_messages in errors.py
-            end_column = context.def_end_column + 1 if context.def_end_column else end_column
+            end_column = (
+                context.def_end_column + 1 if context.def_end_column is not None else end_column
+            )
 
         self.errors.report(
             context.line if context else -1,

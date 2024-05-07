@@ -178,22 +178,46 @@ if int():
     def g(x): # E:5: Function is missing a type annotation
         pass
 
+[case testPrettyFunctionMissingTypeAnnotation]
+# flags: --disallow-untyped-defs --pretty
+def function_with_long_name():
+    pass
+[out]
+main:2:1: error: Function is missing a return type annotation
+    def function_with_long_name():
+    ^
+main:2:1: note: Use "-> None" if function does not return a value
+
 [case testColumnEndFunctionMissingTypeAnnotation]
 # flags: --disallow-untyped-defs --show-error-end
 from typing import Any, Optional
 if int():
-    def f(x: int, foo: Optional[str]):
+    def f():
         pass
 
-    def g(x: int, foo: Optional[str] = None):
+    def f_no_return(x: int, foo: Optional[str]):
         pass
 
-    def h(x, foo = None):
+    def f_default(x: int, foo: Optional[str] = None):
         pass
+
+    def f_default_untyped(x, foo = None):
+        pass
+
+    def f_args(x, *args):
+        pass
+
+    def f_kwargs(x, *args, **kwargs):
+        pass
+[builtins fixtures/tuple.pyi]
 [out]
-main:4:5:4:37: error: Function is missing a return type annotation
-main:7:5:7:44: error: Function is missing a return type annotation
-main:10:5:10:24: error: Function is missing a type annotation
+main:4:5:4:5: error: Function is missing a return type annotation
+main:4:5:4:5: note: Use "-> None" if function does not return a value
+main:7:5:7:47: error: Function is missing a return type annotation
+main:10:5:10:52: error: Function is missing a return type annotation
+main:13:5:13:40: error: Function is missing a type annotation
+main:16:5:16:24: error: Function is missing a type annotation
+main:19:5:19:36: error: Function is missing a type annotation
 
 [case testColumnNameIsNotDefined]
 ((x)) # E:3: Name "x" is not defined
