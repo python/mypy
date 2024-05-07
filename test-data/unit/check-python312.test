@@ -425,3 +425,40 @@ b: R[object] = R[int]()
 c: RW[int] = RW[object]()  # E: Incompatible types in assignment (expression has type "RW[object]", variable has type "RW[int]")
 d: RW[object] = RW[int]()  # E: Incompatible types in assignment (expression has type "RW[int]", variable has type "RW[object]")
 [builtins fixtures/property.pyi]
+
+[case testPEP695Protocol]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+from typing import Protocol
+
+class PContra[T](Protocol):
+    def f(self, x: T) -> None: ...
+
+PContra()  # E: Cannot instantiate protocol class "PContra"
+a: PContra[int]
+b: PContra[object]
+if int():
+    a = b
+if int():
+    b = a  # E: Incompatible types in assignment (expression has type "PContra[int]", variable has type "PContra[object]")
+
+class PCov[T](Protocol):
+    def f(self) -> T: ...
+
+PCov()  # E: Cannot instantiate protocol class "PCov"
+c: PCov[int]
+d: PCov[object]
+if int():
+    c = d  # E: Incompatible types in assignment (expression has type "PCov[object]", variable has type "PCov[int]")
+if int():
+    d = c
+
+class PInv[T](Protocol):
+    def f(self, x: T) -> T: ...
+
+PInv()  # E: Cannot instantiate protocol class "PInv"
+e: PInv[int]
+f: PInv[object]
+if int():
+    e = f  # E: Incompatible types in assignment (expression has type "PInv[object]", variable has type "PInv[int]")
+if int():
+    f = e  # E: Incompatible types in assignment (expression has type "PInv[int]", variable has type "PInv[object]")
