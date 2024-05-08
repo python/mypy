@@ -323,6 +323,17 @@ class StrConv(NodeVisitor[str]):
             a.append(("Body", o.bodies[i].body))
         return self.dump(a, o)
 
+    def visit_type_alias_stmt(self, o: mypy.nodes.TypeAliasStmt) -> str:
+        a: list[Any] = [o.name]
+        for n, t in o.type_args:
+            aa = [n]
+            if t:
+                aa.append(t)
+            a.append(("TypeArg", aa))
+        a.append(o.value)
+
+        return self.dump(a, o)
+
     # Expressions
 
     # Simple expressions

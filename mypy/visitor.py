@@ -309,6 +309,10 @@ class StatementVisitor(Generic[T]):
     def visit_match_stmt(self, o: mypy.nodes.MatchStmt) -> T:
         pass
 
+    @abstractmethod
+    def visit_type_alias_stmt(self, o: mypy.nodes.TypeAliasStmt) -> T:
+        pass
+
 
 @trait
 @mypyc_attr(allow_interpreted_subclasses=True)

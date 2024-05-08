@@ -1,0 +1,12 @@
+[case testPEP695TypeAlias]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+type A[T] = C[T]
+[out]
+MypyFile:1(
+  TypeAliasStmt:2(
+    NameExpr(A)
+    TypeArg(
+      T)
+    IndexExpr:2(
+      NameExpr(C)
+      NameExpr(T))))

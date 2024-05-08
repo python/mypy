@@ -159,6 +159,7 @@ from mypy.nodes import (
     TupleExpr,
     TypeAlias,
     TypeAliasExpr,
+    TypeAliasStmt,
     TypeApplication,
     TypedDictExpr,
     TypeInfo,
@@ -1636,7 +1637,7 @@ class SemanticAnalyzer(
         for tv in type_args:
             tve = TypeVarExpr(
                 name=tv[0],
-                fullname=tv[0],
+                fullname=self.qualified_name(tv[0]),
                 values=[],
                 upper_bound=self.named_type("builtins.object"),
                 default=AnyType(TypeOfAny.from_omitted_generics),
@@ -5161,6 +5162,77 @@ class SemanticAnalyzer(
             if guard is not None:
                 guard.accept(self)
             self.visit_block(s.bodies[i])
+
+    def visit_type_alias_stmt(self, s: TypeAliasStmt) -> None:
+        self.statement = s
+        type_params: TypeVarLikeList = []
+        all_type_params_names = []
+        for name, bound in s.type_args:
+            upper_bound = bound or self.object_type()
+            fullname = self.qualified_name(name)
+            type_params.append((name, TypeVarExpr(name, fullname, [], upper_bound,
+                                                  default=AnyType(TypeOfAny.from_omitted_generics))))
+            all_type_params_names.append(name)
+
+        self.push_type_args(s.type_args, s)
+        try:
+            tag = self.track_incomplete_refs()
+            res, alias_tvars, depends_on, qualified_tvars, empty_tuple_index = self.analyze_alias(
+                s.name.name,
+                s.value,
+                allow_placeholder=True,
+                declared_type_vars=type_params,
+                all_declared_type_params_names=all_type_params_names,
+            )
+            if not res:
+                res = AnyType(TypeOfAny.from_error)
+
+            if not self.is_func_scope():
+                # Only marking incomplete for top-level placeholders makes recursive aliases like
+                # `A = Sequence[str | A]` valid here, similar to how we treat base classes in class
+                # definitions, allowing `class str(Sequence[str]): ...`
+                incomplete_target = isinstance(res, ProperType) and isinstance(
+                    res, PlaceholderType
+                )
+            else:
+                incomplete_target = has_placeholder(res)
+
+            if self.found_incomplete_ref(tag) or incomplete_target:
+                # Since we have got here, we know this must be a type alias (incomplete refs
+                # may appear in nested positions), therefore use becomes_typeinfo=True.
+                self.mark_incomplete(s.name.name, s.value, becomes_typeinfo=True)
+                return
+
+            self.add_type_alias_deps(depends_on)
+            # In addition to the aliases used, we add deps on unbound
+            # type variables, since they are erased from target type.
+            self.add_type_alias_deps(qualified_tvars)
+            # The above are only direct deps on other aliases.
+            # For subscripted aliases, type deps from expansion are added in deps.py
+            # (because the type is stored).
+            check_for_explicit_any(res, self.options, self.is_typeshed_stub_file, self.msg, context=s)
+            # When this type alias gets "inlined", the Any is not explicit anymore,
+            # so we need to replace it with non-explicit Anys.
+            res = make_any_non_explicit(res)
+            #if isinstance(res, ProperType) and isinstance(res, Instance):
+            #    if not validate_instance(res, self.fail, empty_tuple_index):
+            #        fix_instance(res, self.fail, self.note, disallow_any=False, options=self.options)
+            eager = self.is_func_scope()
+            alias_node = TypeAlias(
+                res,
+                self.qualified_name(s.name.name),
+                s.line,
+                s.column,
+                alias_tvars=alias_tvars,
+                no_args=False,
+                eager=eager,
+            )
+
+            self.add_symbol(s.name.name, alias_node, s)
+
+            # TODO: Check if existing
+        finally:
+            self.pop_type_args(s.type_args)
 
     #
     # Expressions

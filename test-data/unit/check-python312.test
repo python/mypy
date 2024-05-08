@@ -481,3 +481,95 @@ if int():
     e = f  # E: Incompatible types in assignment (expression has type "PInv[object]", variable has type "PInv[int]")
 if int():
     f = e  # E: Incompatible types in assignment (expression has type "PInv[int]", variable has type "PInv[object]")
+
+[case testPEP695TypeAlias]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+class C[T]: pass
+class D[T, S]: pass
+
+type A[S] = C[S]
+
+a: A[int]
+reveal_type(a)  # N: Revealed type is "__main__.C[builtins.int]"
+
+type A2[T] = C[C[T]]
+a2: A2[str]
+reveal_type(a2)  # N: Revealed type is "__main__.C[__main__.C[builtins.str]]"
+
+type A3[T, S] = D[S, C[T]]
+a3: A3[int, str]
+reveal_type(a3)  # N: Revealed type is "__main__.D[builtins.str, __main__.C[builtins.int]]"
+
+type A4 = int | str
+a4: A4
+reveal_type(a4)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+[case testPEP695TypeAliasWithUnusedTypeParams]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+type A[T] = int
+a: A[str]
+reveal_type(a)  # N: Revealed type is "builtins.int"
+
+[case testPEP695TypeAliasForwardReference1]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+type A[T] = C[T]
+
+a: A[int]
+reveal_type(a)  # N: Revealed type is "__main__.C[builtins.int]"
+
+class C[T]: pass
+
+[case testPEP695TypeAliasForwardReference2]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+type X = C
+type A = X
+
+a: A
+reveal_type(a)  # N: Revealed type is "__main__.C"
+
+class C: pass
+
+[case testPEP695TypeAliasForwardReference3]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+type X = D
+type A = C[X]
+
+a: A
+reveal_type(a)  # N: Revealed type is "__main__.C[__main__.D]"
+
+class C[T]: pass
+class D: pass
+
+[case testPEP695TypeAliasForwardReference4]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+type A = C
+
+# Note that this doesn't actually work at runtime, but we currently don't
+# keep track whether a type alias is valid in various runtime type contexts.
+class D(A):
+    pass
+
+class C: pass
+
+x: C = D()
+y: D = C()  # E: Incompatible types in assignment (expression has type "C", variable has type "D")
+
+[case testPEP695TypeAliasWithUndefineName]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+type A[T] = XXX  # E: Name "XXX" is not defined
+a: A[int]
+reveal_type(a)  # N: Revealed type is "Any"
+
+[case testPEP695TypeAliasInvalidType]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+type A = int | 1  # E: Invalid type: try using Literal[1] instead?
+a: A
+reveal_type(a)  # N: Revealed type is "Union[builtins.int, Any]"
+type B = int + str  # E: Invalid type alias: expression is not a valid type
+b: B
+reveal_type(b)  # N: Revealed type is "Any"

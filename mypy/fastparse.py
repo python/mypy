@@ -79,6 +79,7 @@ from mypy.nodes import (
     TempNode,
     TryStmt,
     TupleExpr,
+    TypeAliasStmt,
     UnaryExpr,
     Var,
     WhileStmt,
@@ -1758,15 +1759,22 @@ class ASTConverter:
         node = OrPattern([self.visit(pattern) for pattern in n.patterns])
         return self.set_line(node, n)
 
-    def visit_TypeAlias(self, n: ast_TypeAlias) -> AssignmentStmt:
-        self.fail(
-            ErrorMessage("PEP 695 type aliases are not yet supported", code=codes.VALID_TYPE),
-            n.lineno,
-            n.col_offset,
-            blocker=False,
-        )
-        node = AssignmentStmt([NameExpr(n.name.id)], self.visit(n.value))
-        return self.set_line(node, n)
+    # TypeAlias(identifier name, type_param* type_params, expr value)
+    def visit_TypeAlias(self, n: ast_TypeAlias) -> TypeAliasStmt | AssignmentStmt:
+        if NEW_GENERIC_SYNTAX in self.options.enable_incomplete_feature:
+            type_params = self.translate_type_params(n.type_params)
+            value = self.visit(n.value)
+            node = TypeAliasStmt(self.visit_Name(n.name), type_params, value)
+            return self.set_line(node, n)
+        else:
+            self.fail(
+                ErrorMessage("PEP 695 type aliases are not yet supported", code=codes.VALID_TYPE),
+                n.lineno,
+                n.col_offset,
+                blocker=False,
+            )
+            node = AssignmentStmt([NameExpr(n.name.id)], self.visit(n.value))
+            return self.set_line(node, n)
 
 
 class TypeConverter:

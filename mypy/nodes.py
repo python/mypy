@@ -1618,6 +1618,25 @@ class MatchStmt(Statement):
         return visitor.visit_match_stmt(self)
 
 
+class TypeAliasStmt(Statement):
+    __slots__ = ("name", "type_args", "value")
+
+    __match_args__ = ("name", "type_args", "value")
+
+    name: NameExpr
+    type_args: list[tuple[str, mypy.types.Type | None]]
+    value: Expression # mypy.types.Type
+
+    def __init__(self, name: NameExpr, type_args: list[tuple[str, mypy.types.Type | None]], value: Expression) -> None:
+        super().__init__()
+        self.name = name
+        self.type_args = type_args
+        self.value = value
+
+    def accept(self, visitor: StatementVisitor[T]) -> T:
+        return visitor.visit_type_alias_stmt(self)
+
+
 # Expressions
 
 
