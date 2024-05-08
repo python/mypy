@@ -648,6 +648,21 @@ reveal_type(b)  # N: Revealed type is "__main__.C[__main__.E[__main__.X]]"
 
 c: C[D[int]]  # E: Type argument "D[int]" of "C" must be a subtype of "D[X]"
 
+[case testPEP695UpperBoundForwardReference4]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+def f[T: D](a: T) -> T:
+    reveal_type(a.x)  # N: Revealed type is "builtins.int"
+    return a
+
+class D:
+    x: int
+class E(D): pass
+
+reveal_type(f(D()))  # N: Revealed type is "__main__.D"
+reveal_type(f(E()))  # N: Revealed type is "__main__.E"
+f(1)  # E: Value of type variable "T" of "f" cannot be "int"
+
 [case testPEP695UpperBoundUndefinedName]
 # flags: --enable-incomplete-feature=NewGenericSyntax
 
@@ -656,3 +671,6 @@ class C[T: XX]:  # E: Name "XX" is not defined
 
 a: C[int]
 
+def f[T: YY](x: T) -> T:  # E: Name "YY" is not defined
+    return x
+reveal_type(f)  # N: Revealed type is "def [T <: Any] (x: T`-1) -> T`-1"

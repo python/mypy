@@ -838,9 +838,11 @@ class SemanticAnalyzer(
             self.analyze_func_def(defn)
 
     def analyze_func_def(self, defn: FuncDef) -> None:
-        self.function_stack.append(defn)
+        if not self.push_type_args(defn.type_args, defn):
+            self.defer(defn)
+            return
 
-        self.push_type_args(defn.type_args, defn)
+        self.function_stack.append(defn)
 
         if defn.type:
             assert isinstance(defn.type, CallableType)
