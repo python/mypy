@@ -674,3 +674,22 @@ a: C[int]
 def f[T: YY](x: T) -> T:  # E: Name "YY" is not defined
     return x
 reveal_type(f)  # N: Revealed type is "def [T <: Any] (x: T`-1) -> T`-1"
+
+[case testPEP695UpperBoundWithMultipleParams]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+class C[T, S: int]: pass
+class D[A: int, B]: pass
+
+def f[T: int, S: int | str](x: T, y: S) -> T | S:
+    return x
+
+C[str, int]()
+C[str, str]()  # E: Value of type variable "S" of "C" cannot be "str"
+D[int, str]()
+D[str, str]()  # E: Value of type variable "A" of "D" cannot be "str"
+f(1, 1)
+u: int | str
+f(1, u)
+f('x', None)  # E: Value of type variable "T" of "f" cannot be "str" \
+              # E: Value of type variable "S" of "f" cannot be "None"
