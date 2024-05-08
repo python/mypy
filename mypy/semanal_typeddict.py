@@ -324,7 +324,7 @@ class TypedDictAnalyzer:
                     analyzed = self.api.anal_type(
                         stmt.type,
                         allow_required=True,
-                        allow_unpack=True,
+                        # TODO allow_unpack=True ?
                         allow_placeholder=not self.api.is_func_scope(),
                         prohibit_self_type="TypedDict item type",
                     )
@@ -529,7 +529,7 @@ class TypedDictAnalyzer:
             analyzed = self.api.anal_type(
                 type,
                 allow_required=True,
-                allow_unpack=True,
+                # TODO allow_unpack=True ?
                 allow_placeholder=not self.api.is_func_scope(),
                 prohibit_self_type="TypedDict item type",
             )
