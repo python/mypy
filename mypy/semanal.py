@@ -1634,16 +1634,21 @@ class SemanticAnalyzer(
                        context: Context) -> None:
         if not type_args:
             return
-        for tv in type_args:
+        for name, upper_bound in type_args:
+            if upper_bound:
+                upper_bound = self.anal_type(upper_bound)
+            else:
+                upper_bound = self.named_type("builtins.object")
+
             tve = TypeVarExpr(
-                name=tv[0],
-                fullname=self.qualified_name(tv[0]),
+                name=name,
+                fullname=self.qualified_name(name),
                 values=[],
-                upper_bound=self.named_type("builtins.object"),
+                upper_bound=upper_bound,
                 default=AnyType(TypeOfAny.from_omitted_generics),
                 variance=VARIANCE_NOT_READY,
             )
-            self.add_symbol(tv[0], tve, context)
+            self.add_symbol(name, tve, context)
 
     def pop_type_args(self, type_args: list[tuple[str, Type | None]] | None) -> None:
         if not type_args:

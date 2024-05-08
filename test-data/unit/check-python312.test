@@ -573,3 +573,27 @@ reveal_type(a)  # N: Revealed type is "Union[builtins.int, Any]"
 type B = int + str  # E: Invalid type alias: expression is not a valid type
 b: B
 reveal_type(b)  # N: Revealed type is "Any"
+
+[case testPEP695UpperBound]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+class D:
+    x: int
+class E(D): pass
+
+class C[T: D]: pass
+
+a: C[D]
+b: C[E]
+reveal_type(a)  # N: Revealed type is "__main__.C[__main__.D]"
+reveal_type(b)  # N: Revealed type is "__main__.C[__main__.E]"
+
+c: C[int]  # E: Type argument "int" of "C" must be a subtype of "D"
+
+def f[T: D](a: T) -> T:
+    reveal_type(a.x)  # N: Revealed type is "builtins.int"
+    return a
+
+reveal_type(f(D()))  # N: Revealed type is "__main__.D"
+reveal_type(f(E()))  # N: Revealed type is "__main__.E"
+f(1)  # E: Value of type variable "T" of "f" cannot be "int"
