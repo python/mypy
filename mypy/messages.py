@@ -259,9 +259,7 @@ class MessageBuilder:
         end_line = context.end_line if context else -1
         end_column = context.end_column if context else -1
 
-        # set end line and column to same as start of context for function definitions
-        # this avoids errors being reported in IDEs for the whole function
-        # TODO: figure out if it's possible to find the end of the function definition line
+        # FuncDef's end includes the body, use the def's end information if available.
         if isinstance(context, FuncDef):
             end_line = context.def_end_line
             # column is 1-based, see also format_messages in errors.py

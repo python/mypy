@@ -979,22 +979,21 @@ class ASTConverter:
                     _dummy_fallback,
                 )
 
-        # End position is always the same.
         end_line = getattr(n, "end_lineno", None)
         end_column = getattr(n, "end_col_offset", None)
 
-        # Determine end of the function definition itself
-        # Fall back to the end of the function definition including its body
+        # End line and column span the whole function including its body.
+        # Determine end of the function definition itself.
+        # Fall back to the end of the function definition including its body.
         def_end_line: int | None = n.lineno
-        # TODO: to go to the end of the function name: n.col_offset + 4 + len(n.name)
         def_end_column: int | None = n.col_offset
 
         returns = n.returns
-        # use the return type hint if defined
+        # Use the return type hint if defined.
         if returns is not None:
             def_end_line = returns.end_lineno
             def_end_column = returns.end_col_offset
-        # otherwise use the last argument in the function definition
+        # Otherwise use the last argument in the function definition.
         elif len(args) > 0:
             last_arg = args[-1]
             initializer = last_arg.initializer
