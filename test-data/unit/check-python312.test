@@ -597,3 +597,62 @@ def f[T: D](a: T) -> T:
 reveal_type(f(D()))  # N: Revealed type is "__main__.D"
 reveal_type(f(E()))  # N: Revealed type is "__main__.E"
 f(1)  # E: Value of type variable "T" of "f" cannot be "int"
+
+[case testPEP695UpperBoundForwardReference1]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+class C[T: D]: pass
+
+a: C[D]
+b: C[E]
+reveal_type(a)  # N: Revealed type is "__main__.C[__main__.D]"
+reveal_type(b)  # N: Revealed type is "__main__.C[__main__.E]"
+
+c: C[int]  # E: Type argument "int" of "C" must be a subtype of "D"
+
+class D: pass
+class E(D): pass
+
+[case testPEP695UpperBoundForwardReference2]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+type A = D
+class C[T: A]: pass
+
+class D: pass
+class E(D): pass
+
+a: C[D]
+b: C[E]
+reveal_type(a)  # N: Revealed type is "__main__.C[__main__.D]"
+reveal_type(b)  # N: Revealed type is "__main__.C[__main__.E]"
+
+c: C[int]  # E: Type argument "int" of "C" must be a subtype of "D"
+
+[case testPEP695UpperBoundForwardReference3]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+class D[T]: pass
+class E[T](D[T]): pass
+
+type A = D[X]
+
+class C[T: A]: pass
+
+class X: pass
+
+a: C[D[X]]
+b: C[E[X]]
+reveal_type(a)  # N: Revealed type is "__main__.C[__main__.D[__main__.X]]"
+reveal_type(b)  # N: Revealed type is "__main__.C[__main__.E[__main__.X]]"
+
+c: C[D[int]]  # E: Type argument "D[int]" of "C" must be a subtype of "D[X]"
+
+[case testPEP695UpperBoundUndefinedName]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+class C[T: XX]:  # E: Name "XX" is not defined
+    pass
+
+a: C[int]
+

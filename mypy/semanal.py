@@ -1625,30 +1625,42 @@ class SemanticAnalyzer(
         self.incomplete_type_stack.append(not defn.info)
         namespace = self.qualified_name(defn.name)
         with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
-            self.push_type_args(defn.type_args, defn)
+            if not self.push_type_args(defn.type_args, defn):
+                self.mark_incomplete(defn.name, defn)
+                return
+
             self.analyze_class(defn)
             self.pop_type_args(defn.type_args)
         self.incomplete_type_stack.pop()
 
     def push_type_args(self, type_args: list[tuple[str, Type | None]] | None,
-                       context: Context) -> None:
+                       context: Context) -> bool:
         if not type_args:
-            return
+            return True
+        tvs = []
         for name, upper_bound in type_args:
             if upper_bound:
                 upper_bound = self.anal_type(upper_bound)
+                if upper_bound is None:
+                    return False
             else:
                 upper_bound = self.named_type("builtins.object")
 
-            tve = TypeVarExpr(
-                name=name,
-                fullname=self.qualified_name(name),
-                values=[],
-                upper_bound=upper_bound,
-                default=AnyType(TypeOfAny.from_omitted_generics),
-                variance=VARIANCE_NOT_READY,
+            tvs.append(
+                (name, TypeVarExpr(
+                    name=name,
+                    fullname=self.qualified_name(name),
+                    values=[],
+                    upper_bound=upper_bound,
+                    default=AnyType(TypeOfAny.from_omitted_generics),
+                    variance=VARIANCE_NOT_READY,
+                ))
             )
-            self.add_symbol(name, tve, context)
+
+        for name, tv in tvs:
+            self.add_symbol(name, tv, context)
+
+        return True
 
     def pop_type_args(self, type_args: list[tuple[str, Type | None]] | None) -> None:
         if not type_args:
