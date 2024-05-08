@@ -464,6 +464,9 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T], Pattern
     def visit_match_stmt(self, o: mypy.nodes.MatchStmt) -> T:
         pass
 
+    def visit_type_alias_stmt(self, o: mypy.nodes.TypeAliasStmt) -> T:
+        pass
+
     # Expressions (default no-op implementation)
 
     def visit_int_expr(self, o: mypy.nodes.IntExpr) -> T:
