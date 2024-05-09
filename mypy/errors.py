@@ -899,7 +899,7 @@ class Errors:
                     a.append(" " * (DEFAULT_SOURCE_OFFSET + column) + marker)
         return a
 
-    def file_messages(self, path: str, formatter: Optional[ErrorFormatter] = None) -> list[str]:
+    def file_messages(self, path: str, formatter: ErrorFormatter | None = None) -> list[str]:
         """Return a string list of new error messages from a given file.
 
         Use a form suitable for displaying to the user.
@@ -1296,7 +1296,7 @@ class MypyError:
         column: int,
         message: str,
         hint: str,
-        errorcode: Optional[ErrorCode],
+        errorcode: ErrorCode | None,
     ) -> None:
         self.file_path = file_path
         self.line = line
