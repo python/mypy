@@ -16,6 +16,7 @@ MypyFile:1(
 
 def f[T](): pass
 def g[T: str](): pass
+def h[T: (int, str)](): pass
 [out]
 MypyFile:1(
   FuncDef:3(
@@ -30,4 +31,13 @@ MypyFile:1(
       T
       str?)
     Block:4(
-      PassStmt:4())))
+      PassStmt:4()))
+  FuncDef:5(
+    h
+    TypeParam(
+      T
+      Values(
+        int?
+        str?))
+    Block:5(
+      PassStmt:5())))

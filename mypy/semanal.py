@@ -1644,12 +1644,19 @@ class SemanticAnalyzer(
             return True
         tvs = []
         for p in type_args:
+            values = []
             if p.upper_bound:
                 upper_bound = self.anal_type(p.upper_bound)
                 if upper_bound is None:
                     return False
             else:
                 upper_bound = self.named_type("builtins.object")
+                if p.values:
+                    for value in p.values:
+                        analyzed = self.anal_type(value)
+                        if analyzed is None:
+                            return False
+                        values.append(analyzed)
 
             tvs.append(
                 (
@@ -1657,7 +1664,7 @@ class SemanticAnalyzer(
                     TypeVarExpr(
                         name=p.name,
                         fullname=self.qualified_name(p.name),
-                        values=[],
+                        values=values,
                         upper_bound=upper_bound,
                         default=AnyType(TypeOfAny.from_omitted_generics),
                         variance=VARIANCE_NOT_READY,

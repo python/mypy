@@ -339,6 +339,8 @@ class StrConv(NodeVisitor[str]):
         aa.append(p.name)
         if p.upper_bound:
             aa.append(p.upper_bound)
+        if p.values:
+            aa.append(("Values", p.values))
         a.append(("TypeParam", aa))
 
     # Expressions

@@ -1170,11 +1170,14 @@ class ASTConverter:
     def translate_type_params(self, type_params: list[Any]) -> list[TypeParam]:
         explicit_type_params = []
         for p in type_params:
-            if p.bound is None:
-                bound = None
-            else:
+            bound = None
+            values: list[Type] = []
+            if isinstance(p.bound, ast3.Tuple):
+                conv = TypeConverter(self.errors, line=p.lineno)
+                values = [conv.visit(t) for t in p.bound.elts]
+            elif p.bound is not None:
                 bound = TypeConverter(self.errors, line=p.lineno).visit(p.bound)
-            explicit_type_params.append(TypeParam(p.name, bound, []))
+            explicit_type_params.append(TypeParam(p.name, bound, values))
         return explicit_type_params
 
     # Return(expr? value)
