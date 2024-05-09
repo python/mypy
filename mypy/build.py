@@ -610,7 +610,7 @@ class BuildManager:
         fscache: FileSystemCache,
         stdout: TextIO,
         stderr: TextIO,
-        error_formatter: Optional["ErrorFormatter"] = None,
+        error_formatter: Optional[ErrorFormatter] = None,
     ) -> None:
         self.stats: dict[str, Any] = {}  # Values are ints or floats
         self.stdout = stdout

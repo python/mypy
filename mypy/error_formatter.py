@@ -1,4 +1,5 @@
 """Defines the different custom formats in which mypy can output."""
+
 import json
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
