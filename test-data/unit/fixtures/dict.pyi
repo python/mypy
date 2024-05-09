@@ -1,22 +1,25 @@
-# Builtins stub used in dictionary-related test cases.
+# Builtins stub used in dictionary-related test cases (stripped down).
+#
+# NOTE: Use dict-full.pyi if you need more builtins instead of adding here,
+#       if feasible.
 
 from _typeshed import SupportsKeysAndGetItem
 import _typeshed
 from typing import (
-    TypeVar, Generic, Iterable, Iterator, Mapping, Tuple, overload, Optional, Union, Sequence
+    TypeVar, Generic, Iterable, Iterator, Mapping, Tuple, overload, Optional, Union, Sequence,
+    Self,
 )
 
 T = TypeVar('T')
+T2 = TypeVar('T2')
 KT = TypeVar('KT')
 VT = TypeVar('VT')
 
 class object:
     def __init__(self) -> None: pass
-    def __init_subclass__(cls) -> None: pass
     def __eq__(self, other: object) -> bool: pass
 
-class type:
-    __annotations__: Mapping[str, object]
+class type: pass
 
 class dict(Mapping[KT, VT]):
     @overload
@@ -38,9 +41,6 @@ class int: # for convenience
     def __add__(self, x: Union[int, complex]) -> int: pass
     def __radd__(self, x: int) -> int: pass
     def __sub__(self, x: Union[int, complex]) -> int: pass
-    def __neg__(self) -> int: pass
-    real: int
-    imag: int
 
 class str: pass # for keyword argument key type
 class bytes: pass
@@ -57,10 +57,8 @@ class function: pass
 class float: pass
 class complex: pass
 class bool(int): pass
-
-class ellipsis:
-    __class__: object
-def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
+class ellipsis: pass
 class BaseException: pass
 
+def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
 def iter(__iterable: Iterable[T]) -> Iterator[T]: pass

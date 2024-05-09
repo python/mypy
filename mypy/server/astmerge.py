@@ -73,7 +73,6 @@ from mypy.nodes import (
     SymbolNode,
     SymbolTable,
     TypeAlias,
-    TypeAliasExpr,
     TypedDictExpr,
     TypeInfo,
     Var,
@@ -250,6 +249,15 @@ class NodeReplaceVisitor(TraverserVisitor):
         for value in tv.values:
             self.fixup_type(value)
         self.fixup_type(tv.upper_bound)
+        self.fixup_type(tv.default)
+
+    def process_param_spec_def(self, tv: ParamSpecType) -> None:
+        self.fixup_type(tv.upper_bound)
+        self.fixup_type(tv.default)
+
+    def process_type_var_tuple_def(self, tv: TypeVarTupleType) -> None:
+        self.fixup_type(tv.upper_bound)
+        self.fixup_type(tv.default)
 
     def visit_assignment_stmt(self, node: AssignmentStmt) -> None:
         self.fixup_type(node.type)
@@ -316,10 +324,6 @@ class NodeReplaceVisitor(TraverserVisitor):
         node.info = self.fixup_and_reset_typeinfo(node.info)
         self.process_synthetic_type_info(node.info)
         super().visit_enum_call_expr(node)
-
-    def visit_type_alias_expr(self, node: TypeAliasExpr) -> None:
-        self.fixup_type(node.type)
-        super().visit_type_alias_expr(node)
 
     # Others
 
@@ -390,7 +394,7 @@ class NodeReplaceVisitor(TraverserVisitor):
         # have bodies in the AST so we need to iterate over their symbol
         # tables separately, unlike normal classes.
         self.process_type_info(info)
-        for name, node in info.names.items():
+        for node in info.names.values():
             if node.node:
                 node.node.accept(self)
 
@@ -458,13 +462,13 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
 
     def visit_erased_type(self, t: ErasedType) -> None:
         # This type should exist only temporarily during type inference
-        raise RuntimeError
+        raise RuntimeError("Cannot handle erased type")
 
     def visit_deleted_type(self, typ: DeletedType) -> None:
         pass
 
     def visit_partial_type(self, typ: PartialType) -> None:
-        raise RuntimeError
+        raise RuntimeError("Cannot handle partial type")
 
     def visit_tuple_type(self, typ: TupleType) -> None:
         for item in typ.items:
@@ -478,14 +482,17 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
 
     def visit_type_var(self, typ: TypeVarType) -> None:
         typ.upper_bound.accept(self)
+        typ.default.accept(self)
         for value in typ.values:
             value.accept(self)
 
     def visit_param_spec(self, typ: ParamSpecType) -> None:
-        pass
+        typ.upper_bound.accept(self)
+        typ.default.accept(self)
 
     def visit_type_var_tuple(self, typ: TypeVarTupleType) -> None:
         typ.upper_bound.accept(self)
+        typ.default.accept(self)
 
     def visit_unpack_type(self, typ: UnpackType) -> None:
         typ.type.accept(self)
@@ -500,7 +507,8 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
         typ.fallback.accept(self)
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> None:
-        pass
+        if t.node is not None:
+            t.node.accept(self)
 
     def visit_literal_type(self, typ: LiteralType) -> None:
         typ.fallback.accept(self)
@@ -542,7 +550,7 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
 def replace_nodes_in_symbol_table(
     symbols: SymbolTable, replacements: dict[SymbolNode, SymbolNode]
 ) -> None:
-    for name, node in symbols.items():
+    for node in symbols.values():
         if node.node:
             if node.node in replacements:
                 new = replacements[node.node]

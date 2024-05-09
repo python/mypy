@@ -1,7 +1,7 @@
 import sys
 from abc import abstractmethod
 from collections.abc import Callable, Sequence
-from typing_extensions import Literal
+from typing import Literal
 
 __all__ = ["Error", "open", "open_new", "open_new_tab", "get", "register"]
 
@@ -43,17 +43,18 @@ class UnixBrowser(BaseBrowser):
 
 class Mozilla(UnixBrowser): ...
 
-class Galeon(UnixBrowser):
-    raise_opts: list[str]
+if sys.version_info < (3, 12):
+    class Galeon(UnixBrowser):
+        raise_opts: list[str]
+
+    class Grail(BaseBrowser):
+        def open(self, url: str, new: int = 0, autoraise: bool = True) -> bool: ...
 
 class Chrome(UnixBrowser): ...
 class Opera(UnixBrowser): ...
 class Elinks(UnixBrowser): ...
 
 class Konqueror(BaseBrowser):
-    def open(self, url: str, new: int = 0, autoraise: bool = True) -> bool: ...
-
-class Grail(BaseBrowser):
     def open(self, url: str, new: int = 0, autoraise: bool = True) -> bool: ...
 
 if sys.platform == "win32":

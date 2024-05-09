@@ -1,10 +1,9 @@
-import sys
 from collections.abc import Iterable, Iterator
 from email.errors import HeaderParseError, MessageDefect
 from email.policy import Policy
 from re import Pattern
-from typing import Any
-from typing_extensions import Final, Self
+from typing import Any, Final
+from typing_extensions import Self
 
 WSP: Final[set[str]]
 CFWS_LEADER: Final[set[str]]
@@ -195,10 +194,9 @@ class DotAtomText(TokenList):
     token_type: str
     as_ew_allowed: bool
 
-if sys.version_info >= (3, 8):
-    class NoFoldLiteral(TokenList):
-        token_type: str
-        as_ew_allowed: bool
+class NoFoldLiteral(TokenList):
+    token_type: str
+    as_ew_allowed: bool
 
 class AddrSpec(TokenList):
     token_type: str
@@ -296,17 +294,16 @@ class HeaderLabel(TokenList):
     token_type: str
     as_ew_allowed: bool
 
-if sys.version_info >= (3, 8):
-    class MsgID(TokenList):
-        token_type: str
-        as_ew_allowed: bool
-        def fold(self, policy: Policy) -> str: ...
+class MsgID(TokenList):
+    token_type: str
+    as_ew_allowed: bool
+    def fold(self, policy: Policy) -> str: ...
 
-    class MessageID(MsgID):
-        token_type: str
+class MessageID(MsgID):
+    token_type: str
 
-    class InvalidMessageID(MessageID):
-        token_type: str
+class InvalidMessageID(MessageID):
+    token_type: str
 
 class Header(TokenList):
     token_type: str
@@ -375,12 +372,9 @@ def get_group_list(value: str) -> tuple[GroupList, str]: ...
 def get_group(value: str) -> tuple[Group, str]: ...
 def get_address(value: str) -> tuple[Address, str]: ...
 def get_address_list(value: str) -> tuple[AddressList, str]: ...
-
-if sys.version_info >= (3, 8):
-    def get_no_fold_literal(value: str) -> tuple[NoFoldLiteral, str]: ...
-    def get_msg_id(value: str) -> tuple[MsgID, str]: ...
-    def parse_message_id(value: str) -> MessageID: ...
-
+def get_no_fold_literal(value: str) -> tuple[NoFoldLiteral, str]: ...
+def get_msg_id(value: str) -> tuple[MsgID, str]: ...
+def parse_message_id(value: str) -> MessageID: ...
 def parse_mime_version(value: str) -> MIMEVersion: ...
 def get_invalid_parameter(value: str) -> tuple[InvalidParameter, str]: ...
 def get_ttext(value: str) -> tuple[ValueTerminal, str]: ...

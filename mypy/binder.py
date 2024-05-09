@@ -12,12 +12,17 @@ from mypy.nodes import Expression, IndexExpr, MemberExpr, NameExpr, RefExpr, Typ
 from mypy.subtypes import is_same_type, is_subtype
 from mypy.types import (
     AnyType,
+    Instance,
     NoneType,
     PartialType,
+    ProperType,
+    TupleType,
     Type,
     TypeOfAny,
     TypeType,
     UnionType,
+    UnpackType,
+    find_unpack_in_list,
     get_proper_type,
 )
 from mypy.typevars import fill_typevars_with_any
@@ -42,13 +47,6 @@ class Frame:
         self.types: dict[Key, Type] = {}
         self.unreachable = False
         self.conditional_frame = conditional_frame
-
-        # Should be set only if we're entering a frame where it's not
-        # possible to accurately determine whether or not contained
-        # statements will be unreachable or not.
-        #
-        # Long-term, we should improve mypy to the point where we no longer
-        # need this field.
         self.suppress_unreachable_warnings = False
 
     def __repr__(self) -> str:
@@ -174,7 +172,6 @@ class ConditionalTypeBinder:
         return any(f.unreachable for f in self.frames)
 
     def is_unreachable_warning_suppressed(self) -> bool:
-        # TODO: See todo in 'is_unreachable'
         return any(f.suppress_unreachable_warnings for f in self.frames)
 
     def cleanse(self, expr: Expression) -> None:
@@ -221,6 +218,24 @@ class ConditionalTypeBinder:
                 for other in resulting_values[1:]:
                     assert other is not None
                     type = join_simple(self.declarations[key], type, other)
+                    # Try simplifying resulting type for unions involving variadic tuples.
+                    # Technically, everything is still valid without this step, but if we do
+                    # not do this, this may create long unions after exiting an if check like:
+                    #     x: tuple[int, ...]
+                    #     if len(x) < 10:
+                    #         ...
+                    # We want the type of x to be tuple[int, ...] after this block (if it is
+                    # still equivalent to such type).
+                    if isinstance(type, UnionType):
+                        type = collapse_variadic_union(type)
+                    if isinstance(type, ProperType) and isinstance(type, UnionType):
+                        # Simplify away any extra Any's that were added to the declared
+                        # type when popping a frame.
+                        simplified = UnionType.make_union(
+                            [t for t in type.items if not isinstance(get_proper_type(t), AnyType)]
+                        )
+                        if simplified == self.declarations[key]:
+                            type = simplified
             if current_value is None or not is_same_type(type, current_value):
                 self._put(key, type)
                 changed = True
@@ -276,7 +291,7 @@ class ConditionalTypeBinder:
             self.type_assignments[expr].append((type, declared_type))
             return
         if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
-            return None
+            return
         if not literal(expr):
             return
         self.invalidate_dependencies(expr)
@@ -461,3 +476,63 @@ def get_declaration(expr: BindableExpression) -> Type | None:
         elif isinstance(expr.node, TypeInfo):
             return TypeType(fill_typevars_with_any(expr.node))
     return None
+
+
+def collapse_variadic_union(typ: UnionType) -> Type:
+    """Simplify a union involving variadic tuple if possible.
+
+    This will collapse a type like e.g.
+        tuple[X, Z] | tuple[X, Y, Z] | tuple[X, Y, Y, *tuple[Y, ...], Z]
+    back to
+        tuple[X, *tuple[Y, ...], Z]
+    which is equivalent, but much simpler form of the same type.
+    """
+    tuple_items = []
+    other_items = []
+    for t in typ.items:
+        p_t = get_proper_type(t)
+        if isinstance(p_t, TupleType):
+            tuple_items.append(p_t)
+        else:
+            other_items.append(t)
+    if len(tuple_items) <= 1:
+        # This type cannot be simplified further.
+        return typ
+    tuple_items = sorted(tuple_items, key=lambda t: len(t.items))
+    first = tuple_items[0]
+    last = tuple_items[-1]
+    unpack_index = find_unpack_in_list(last.items)
+    if unpack_index is None:
+        return typ
+    unpack = last.items[unpack_index]
+    assert isinstance(unpack, UnpackType)
+    unpacked = get_proper_type(unpack.type)
+    if not isinstance(unpacked, Instance):
+        return typ
+    assert unpacked.type.fullname == "builtins.tuple"
+    suffix = last.items[unpack_index + 1 :]
+
+    # Check that first item matches the expected pattern and infer prefix.
+    if len(first.items) < len(suffix):
+        return typ
+    if suffix and first.items[-len(suffix) :] != suffix:
+        return typ
+    if suffix:
+        prefix = first.items[: -len(suffix)]
+    else:
+        prefix = first.items
+
+    # Check that all middle types match the expected pattern as well.
+    arg = unpacked.args[0]
+    for i, it in enumerate(tuple_items[1:-1]):
+        if it.items != prefix + [arg] * (i + 1) + suffix:
+            return typ
+
+    # Check the last item (the one with unpack), and choose an appropriate simplified type.
+    if last.items != prefix + [arg] * (len(typ.items) - 1) + [unpack] + suffix:
+        return typ
+    if len(first.items) == 0:
+        simplified: Type = unpacked.copy_modified()
+    else:
+        simplified = TupleType(prefix + [unpack] + suffix, fallback=last.partial_fallback)
+    return UnionType.make_union([simplified] + other_items)

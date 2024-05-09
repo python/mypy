@@ -28,7 +28,7 @@ from mypy.types import (
 )
 
 # type_visitor needs to be imported after types
-from mypy.type_visitor import TypeVisitor  # isort: skip
+from mypy.type_visitor import TypeVisitor  # ruff: isort: skip
 
 
 def copy_type(t: ProperType) -> ProperType:
@@ -69,18 +69,12 @@ class TypeShallowCopier(TypeVisitor[ProperType]):
         return self.copy_common(t, dup)
 
     def visit_type_var(self, t: TypeVarType) -> ProperType:
-        dup = TypeVarType(
-            t.name,
-            t.fullname,
-            t.id,
-            values=t.values,
-            upper_bound=t.upper_bound,
-            variance=t.variance,
-        )
-        return self.copy_common(t, dup)
+        return self.copy_common(t, t.copy_modified())
 
     def visit_param_spec(self, t: ParamSpecType) -> ProperType:
-        dup = ParamSpecType(t.name, t.fullname, t.id, t.flavor, t.upper_bound, prefix=t.prefix)
+        dup = ParamSpecType(
+            t.name, t.fullname, t.id, t.flavor, t.upper_bound, t.default, prefix=t.prefix
+        )
         return self.copy_common(t, dup)
 
     def visit_parameters(self, t: Parameters) -> ProperType:
@@ -94,7 +88,9 @@ class TypeShallowCopier(TypeVisitor[ProperType]):
         return self.copy_common(t, dup)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> ProperType:
-        dup = TypeVarTupleType(t.name, t.fullname, t.id, t.upper_bound, t.tuple_fallback)
+        dup = TypeVarTupleType(
+            t.name, t.fullname, t.id, t.upper_bound, t.tuple_fallback, t.default
+        )
         return self.copy_common(t, dup)
 
     def visit_unpack_type(self, t: UnpackType) -> ProperType:

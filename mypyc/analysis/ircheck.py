@@ -1,4 +1,5 @@
 """Utilities for checking that internal ir is valid and consistent."""
+
 from __future__ import annotations
 
 from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncIR
@@ -36,6 +37,7 @@ from mypyc.ir.ops import (
     MethodCall,
     Op,
     OpVisitor,
+    PrimitiveOp,
     RaiseStandardError,
     Register,
     Return,
@@ -44,6 +46,7 @@ from mypyc.ir.ops import (
     Truncate,
     TupleGet,
     TupleSet,
+    Unborrow,
     Unbox,
     Unreachable,
     Value,
@@ -379,6 +382,9 @@ class OpChecker(OpVisitor[None]):
     def visit_call_c(self, op: CallC) -> None:
         pass
 
+    def visit_primitive_op(self, op: PrimitiveOp) -> None:
+        pass
+
     def visit_truncate(self, op: Truncate) -> None:
         pass
 
@@ -421,4 +427,7 @@ class OpChecker(OpVisitor[None]):
         pass
 
     def visit_keep_alive(self, op: KeepAlive) -> None:
+        pass
+
+    def visit_unborrow(self, op: Unborrow) -> None:
         pass

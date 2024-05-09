@@ -6,6 +6,7 @@ and mypyc.irbuild.builder.
 
 from __future__ import annotations
 
+import math
 from typing import Callable, Sequence
 
 from mypy.nodes import (
@@ -54,7 +55,6 @@ from mypyc.ir.ops import (
     Assign,
     BasicBlock,
     ComparisonOp,
-    Float,
     Integer,
     LoadAddress,
     LoadLiteral,
@@ -80,6 +80,7 @@ from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.for_helpers import (
     comprehension_helper,
+    raise_error_if_contains_unreachable_names,
     translate_list_comprehension,
     translate_set_comprehension,
 )
@@ -91,11 +92,9 @@ from mypyc.irbuild.format_str_tokenizer import (
     tokenizer_printf_style,
 )
 from mypyc.irbuild.specialize import apply_function_specialization, apply_method_specialization
-from mypyc.irbuild.util import bytes_from_str
 from mypyc.primitives.bytes_ops import bytes_slice_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op
-from mypyc.primitives.int_ops import int_comparison_op_mapping
 from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
 from mypyc.primitives.misc_ops import ellipsis_op, get_module_dict_op, new_slice_op, type_op
 from mypyc.primitives.registry import CFunctionDescription, builtin_names
@@ -127,6 +126,12 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
         return builder.true()
     if fullname == "builtins.False":
         return builder.false()
+    if fullname in ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"):
+        return builder.false()
+
+    math_literal = transform_math_literal(builder, fullname)
+    if math_literal is not None:
+        return math_literal
 
     if isinstance(expr.node, Var) and expr.node.is_final:
         value = builder.emit_load_final(
@@ -182,6 +187,10 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
 
 
 def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
+    # Special Cases
+    if expr.fullname in ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"):
+        return builder.false()
+
     # First check if this is maybe a final attribute.
     final = builder.get_final_ref(expr)
     if final is not None:
@@ -191,6 +200,10 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
         )
         if value is not None:
             return value
+
+    math_literal = transform_math_literal(builder, expr.fullname)
+    if math_literal is not None:
+        return math_literal
 
     if isinstance(expr.node, MypyFile) and expr.node.fullname in builder.imports:
         return builder.load_module(expr.node.fullname)
@@ -566,12 +579,8 @@ def try_constant_fold(builder: IRBuilder, expr: Expression) -> Value | None:
     Return None otherwise.
     """
     value = constant_fold_expr(builder, expr)
-    if isinstance(value, int):
-        return builder.load_int(value)
-    elif isinstance(value, str):
-        return builder.load_str(value)
-    elif isinstance(value, float):
-        return Float(value)
+    if value is not None:
+        return builder.load_literal_value(value)
     return None
 
 
@@ -653,10 +662,6 @@ def set_literal_values(builder: IRBuilder, items: Sequence[Expression]) -> list[
                 values.append(True)
             elif item.fullname == "builtins.False":
                 values.append(False)
-        elif isinstance(item, (BytesExpr, FloatExpr, ComplexExpr)):
-            # constant_fold_expr() doesn't handle these (yet?)
-            v = bytes_from_str(item.value) if isinstance(item, BytesExpr) else item.value
-            values.append(v)
         elif isinstance(item, TupleExpr):
             tuple_values = set_literal_values(builder, item.items)
             if tuple_values is not None:
@@ -676,7 +681,6 @@ def precompute_set_literal(builder: IRBuilder, s: SetExpr) -> Value | None:
     Supported items:
      - Anything supported by irbuild.constant_fold.constant_fold_expr()
      - None, True, and False
-     - Float, byte, and complex literals
      - Tuple literals with only items listed above
     """
     values = set_literal_values(builder, s.items)
@@ -751,7 +755,7 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
         set_literal = precompute_set_literal(builder, e.operands[1])
         if set_literal is not None:
             lhs = e.operands[0]
-            result = builder.builder.call_c(
+            result = builder.builder.primitive_op(
                 set_in_op, [builder.accept(lhs), set_literal], e.line, bool_rprimitive
             )
             if first_op == "not in":
@@ -773,7 +777,7 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
                     borrow_left = is_borrow_friendly_expr(builder, right_expr)
                     left = builder.accept(left_expr, can_borrow=borrow_left)
                     right = builder.accept(right_expr, can_borrow=True)
-                    return builder.compare_tagged(left, right, first_op, e.line)
+                    return builder.binary_op(left, right, first_op, e.line)
 
     # TODO: Don't produce an expression when used in conditional context
     # All of the trickiness here is due to support for chained conditionals
@@ -809,29 +813,32 @@ def translate_is_none(builder: IRBuilder, expr: Expression, negated: bool) -> Va
 def transform_basic_comparison(
     builder: IRBuilder, op: str, left: Value, right: Value, line: int
 ) -> Value:
-    if (
-        is_int_rprimitive(left.type)
-        and is_int_rprimitive(right.type)
-        and op in int_comparison_op_mapping
-    ):
-        return builder.compare_tagged(left, right, op, line)
-    if is_fixed_width_rtype(left.type) and op in int_comparison_op_mapping:
+    if is_fixed_width_rtype(left.type) and op in ComparisonOp.signed_ops:
         if right.type == left.type:
-            op_id = ComparisonOp.signed_ops[op]
+            if left.type.is_signed:
+                op_id = ComparisonOp.signed_ops[op]
+            else:
+                op_id = ComparisonOp.unsigned_ops[op]
             return builder.builder.comparison_op(left, right, op_id, line)
         elif isinstance(right, Integer):
-            op_id = ComparisonOp.signed_ops[op]
+            if left.type.is_signed:
+                op_id = ComparisonOp.signed_ops[op]
+            else:
+                op_id = ComparisonOp.unsigned_ops[op]
             return builder.builder.comparison_op(
-                left, Integer(right.value >> 1, left.type), op_id, line
+                left, builder.coerce(right, left.type, line), op_id, line
             )
     elif (
         is_fixed_width_rtype(right.type)
-        and op in int_comparison_op_mapping
+        and op in ComparisonOp.signed_ops
         and isinstance(left, Integer)
     ):
-        op_id = ComparisonOp.signed_ops[op]
+        if right.type.is_signed:
+            op_id = ComparisonOp.signed_ops[op]
+        else:
+            op_id = ComparisonOp.unsigned_ops[op]
         return builder.builder.comparison_op(
-            Integer(left.value >> 1, right.type), right, op_id, line
+            builder.coerce(left, right.type, line), right, op_id, line
         )
 
     negate = False
@@ -1007,6 +1014,9 @@ def transform_set_comprehension(builder: IRBuilder, o: SetComprehension) -> Valu
 
 
 def transform_dictionary_comprehension(builder: IRBuilder, o: DictionaryComprehension) -> Value:
+    if raise_error_if_contains_unreachable_names(builder, o):
+        return builder.none()
+
     d = builder.maybe_spill(builder.call_c(dict_new_op, [], o.line))
     loop_params = list(zip(o.indices, o.sequences, o.condlists, o.is_async))
 
@@ -1043,3 +1053,18 @@ def transform_assignment_expr(builder: IRBuilder, o: AssignmentExpr) -> Value:
     target = builder.get_assignment_target(o.target)
     builder.assign(target, value, o.line)
     return value
+
+
+def transform_math_literal(builder: IRBuilder, fullname: str) -> Value | None:
+    if fullname == "math.e":
+        return builder.load_float(math.e)
+    if fullname == "math.pi":
+        return builder.load_float(math.pi)
+    if fullname == "math.inf":
+        return builder.load_float(math.inf)
+    if fullname == "math.nan":
+        return builder.load_float(math.nan)
+    if fullname == "math.tau":
+        return builder.load_float(math.tau)
+
+    return None

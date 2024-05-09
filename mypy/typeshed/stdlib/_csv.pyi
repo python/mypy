@@ -1,7 +1,8 @@
+import sys
 from _typeshed import SupportsWrite
 from collections.abc import Iterable, Iterator
-from typing import Any
-from typing_extensions import Final, Literal, TypeAlias
+from typing import Any, Final, Literal
+from typing_extensions import TypeAlias
 
 __version__: Final[str]
 
@@ -9,6 +10,9 @@ QUOTE_ALL: Literal[1]
 QUOTE_MINIMAL: Literal[0]
 QUOTE_NONE: Literal[3]
 QUOTE_NONNUMERIC: Literal[2]
+if sys.version_info >= (3, 12):
+    QUOTE_STRINGS: Literal[4]
+    QUOTE_NOTNULL: Literal[5]
 
 # Ideally this would be `QUOTE_ALL | QUOTE_MINIMAL | QUOTE_NONE | QUOTE_NONNUMERIC`
 # However, using literals in situations like these can cause false-positives (see #7258)

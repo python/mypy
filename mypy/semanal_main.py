@@ -27,8 +27,8 @@ will be incomplete.
 from __future__ import annotations
 
 from contextlib import nullcontext
-from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import TYPE_CHECKING, Callable, Final, List, Optional, Tuple, Union
+from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.build
 import mypy.state
@@ -75,7 +75,6 @@ core_modules: Final = [
     "abc",
     "collections",
     "collections.abc",
-    "typing_extensions",
 ]
 
 
@@ -381,7 +380,8 @@ def check_type_arguments(graph: Graph, scc: list[str], errors: Errors) -> None:
         analyzer = TypeArgumentAnalyzer(
             errors,
             state.options,
-            is_typeshed_file(state.options.abs_custom_typeshed_dir, state.path or ""),
+            state.tree.is_typeshed_file(state.options),
+            state.manager.semantic_analyzer.named_type,
         )
         with state.wrap_context():
             with mypy.state.state.strict_optional_set(state.options.strict_optional):
@@ -400,6 +400,7 @@ def check_type_arguments_in_targets(
         errors,
         state.options,
         is_typeshed_file(state.options.abs_custom_typeshed_dir, state.path or ""),
+        state.manager.semantic_analyzer.named_type,
     )
     with state.wrap_context():
         with mypy.state.state.strict_optional_set(state.options.strict_optional):

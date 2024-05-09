@@ -28,6 +28,8 @@ if sys.platform != "win32":
         "UnixDatagramServer",
         "UnixStreamServer",
     ]
+    if sys.version_info >= (3, 12):
+        __all__ += ["ForkingUnixStreamServer", "ForkingUnixDatagramServer"]
 
 _RequestType: TypeAlias = _socket | tuple[bytes, _socket]
 _AfUnixAddress: TypeAlias = str | ReadableBuffer  # address acceptable for an AF_UNIX socket
@@ -84,7 +86,7 @@ class UDPServer(TCPServer):
     def get_request(self) -> tuple[tuple[bytes, _socket], _RetAddress]: ...  # type: ignore[override]
 
 if sys.platform != "win32":
-    class UnixStreamServer(BaseServer):
+    class UnixStreamServer(TCPServer):
         server_address: _AfUnixAddress  # type: ignore[assignment]
         def __init__(
             self,
@@ -93,7 +95,7 @@ if sys.platform != "win32":
             bind_and_activate: bool = True,
         ) -> None: ...
 
-    class UnixDatagramServer(BaseServer):
+    class UnixDatagramServer(UDPServer):
         server_address: _AfUnixAddress  # type: ignore[assignment]
         def __init__(
             self,
@@ -124,6 +126,9 @@ class ThreadingMixIn:
 if sys.platform != "win32":
     class ForkingTCPServer(ForkingMixIn, TCPServer): ...
     class ForkingUDPServer(ForkingMixIn, UDPServer): ...
+    if sys.version_info >= (3, 12):
+        class ForkingUnixStreamServer(ForkingMixIn, UnixStreamServer): ...
+        class ForkingUnixDatagramServer(ForkingMixIn, UnixDatagramServer): ...
 
 class ThreadingTCPServer(ThreadingMixIn, TCPServer): ...
 class ThreadingUDPServer(ThreadingMixIn, UDPServer): ...

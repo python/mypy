@@ -10,7 +10,7 @@ Mypy: Static Typing for Python
 [![Chat at https://gitter.im/python/typing](https://badges.gitter.im/python/typing.svg)](https://gitter.im/python/typing?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Checked with mypy](https://www.mypy-lang.org/static/mypy_badge.svg)](https://mypy-lang.org/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
+[![Linting: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/charliermarsh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 Got a question?
 ---------------
@@ -41,8 +41,8 @@ To report a bug or request an enhancement:
 
 To discuss a new type system feature:
 
-- discuss at [typing-sig mailing list](https://mail.python.org/archives/list/typing-sig@python.org/)
-- there is also some historical discussion [here](https://github.com/python/typing/issues)
+- discuss at [discuss.python.org](https://discuss.python.org/c/typing/32)
+- there is also some historical discussion at the [typing-sig mailing list](https://mail.python.org/archives/list/typing-sig@python.org/) and the [python/typing repo](https://github.com/python/typing/issues)
 
 What is mypy?
 -------------

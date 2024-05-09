@@ -9,15 +9,13 @@ def approved_stub_package_exists(prefix: str) -> bool:
     return is_legacy_bundled_package(prefix) or prefix in non_bundled_packages
 
 
-def stub_package_name(prefix: str) -> str:
+def stub_distribution_name(prefix: str) -> str:
     return legacy_bundled_packages.get(prefix) or non_bundled_packages[prefix]
 
 
 # Stubs for these third-party packages used to be shipped with mypy.
 #
 # Map package name to PyPI stub distribution name.
-#
-# Package name can have one or two components ('a' or 'a.b').
 legacy_bundled_packages = {
     "aiofiles": "types-aiofiles",
     "bleach": "types-bleach",
@@ -28,17 +26,14 @@ legacy_bundled_packages = {
     "croniter": "types-croniter",
     "dataclasses": "types-dataclasses",
     "dateparser": "types-dateparser",
-    "datetimerange": "types-DateTimeRange",
     "dateutil": "types-python-dateutil",
     "decorator": "types-decorator",
     "deprecated": "types-Deprecated",
     "docutils": "types-docutils",
     "first": "types-first",
-    "geoip2": "types-geoip2",
     "gflags": "types-python-gflags",
     "google.protobuf": "types-protobuf",
     "markdown": "types-Markdown",
-    "maxminddb": "types-maxminddb",
     "mock": "types-mock",
     "OpenSSL": "types-pyOpenSSL",
     "paramiko": "types-paramiko",
@@ -82,8 +77,6 @@ non_bundled_packages = {
     "PIL": "types-Pillow",
     "PyInstaller": "types-pyinstaller",
     "Xlib": "types-python-xlib",
-    "annoy": "types-annoy",
-    "appdirs": "types-appdirs",
     "aws_xray_sdk": "types-aws-xray-sdk",
     "babel": "types-babel",
     "backports.ssl_match_hostname": "types-backports.ssl_match_hostname",
@@ -98,7 +91,6 @@ non_bundled_packages = {
     "consolemenu": "types-console-menu",
     "crontab": "types-python-crontab",
     "d3dshot": "types-D3DShot",
-    "dj_database_url": "types-dj-database-url",
     "dockerfile_parse": "types-dockerfile-parse",
     "docopt": "types-docopt",
     "editdistance": "types-editdistance",
@@ -113,10 +105,9 @@ non_bundled_packages = {
     "flake8_typing_imports": "types-flake8-typing-imports",
     "flask_cors": "types-Flask-Cors",
     "flask_migrate": "types-Flask-Migrate",
-    "flask_sqlalchemy": "types-Flask-SQLAlchemy",
     "fpdf": "types-fpdf2",
     "gdb": "types-gdb",
-    "google.cloud": "types-google-cloud-ndb",
+    "google.cloud.ndb": "types-google-cloud-ndb",
     "hdbcli": "types-hdbcli",
     "html5lib": "types-html5lib",
     "httplib2": "types-httplib2",
@@ -164,7 +155,6 @@ non_bundled_packages = {
     "tree_sitter": "types-tree-sitter",
     "tree_sitter_languages": "types-tree-sitter-languages",
     "ttkthemes": "types-ttkthemes",
-    "urllib3": "types-urllib3",
     "vobject": "types-vobject",
     "whatthepatch": "types-whatthepatch",
     "win32": "types-pywin32",
@@ -174,7 +164,6 @@ non_bundled_packages = {
     "win32comext": "types-pywin32",
     "win32gui": "types-pywin32",
     "xmltodict": "types-xmltodict",
-    "xxhash": "types-xxhash",
     "zxcvbn": "types-zxcvbn",
     # Stub packages that are not from typeshed
     # Since these can be installed automatically via --install-types, we have a high trust bar

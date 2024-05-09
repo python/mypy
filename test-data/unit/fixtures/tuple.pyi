@@ -32,6 +32,7 @@ class classmethod: pass
 # We need int and slice for indexing tuples.
 class int:
     def __neg__(self) -> 'int': pass
+    def __pos__(self) -> 'int': pass
 class float: pass
 class slice: pass
 class bool(int): pass
@@ -48,8 +49,6 @@ class list(Sequence[T], Generic[T]):
     def __iter__(self) -> Iterator[T]: ...
 
 def isinstance(x: object, t: type) -> bool: pass
-
-def sum(iterable: Iterable[T], start: Optional[T] = None) -> T: pass
 
 class BaseException: pass
 

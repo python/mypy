@@ -8,6 +8,7 @@ from mypyc.ir.rtypes import (
     RUnion,
     bit_rprimitive,
     bool_rprimitive,
+    int16_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
     int_rprimitive,
@@ -18,31 +19,44 @@ from mypyc.ir.rtypes import (
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
 
+native_int_types = [int64_rprimitive, int32_rprimitive, int16_rprimitive]
+
 
 class TestSubtype(unittest.TestCase):
     def test_bit(self) -> None:
         assert is_subtype(bit_rprimitive, bool_rprimitive)
         assert is_subtype(bit_rprimitive, int_rprimitive)
         assert is_subtype(bit_rprimitive, short_int_rprimitive)
-        assert is_subtype(bit_rprimitive, int64_rprimitive)
-        assert is_subtype(bit_rprimitive, int32_rprimitive)
+        for rt in native_int_types:
+            assert is_subtype(bit_rprimitive, rt)
 
     def test_bool(self) -> None:
         assert not is_subtype(bool_rprimitive, bit_rprimitive)
         assert is_subtype(bool_rprimitive, int_rprimitive)
         assert is_subtype(bool_rprimitive, short_int_rprimitive)
-        assert is_subtype(bool_rprimitive, int64_rprimitive)
-        assert is_subtype(bool_rprimitive, int32_rprimitive)
+        for rt in native_int_types:
+            assert is_subtype(bool_rprimitive, rt)
 
     def test_int64(self) -> None:
+        assert is_subtype(int64_rprimitive, int64_rprimitive)
         assert is_subtype(int64_rprimitive, int_rprimitive)
         assert not is_subtype(int64_rprimitive, short_int_rprimitive)
         assert not is_subtype(int64_rprimitive, int32_rprimitive)
+        assert not is_subtype(int64_rprimitive, int16_rprimitive)
 
     def test_int32(self) -> None:
+        assert is_subtype(int32_rprimitive, int32_rprimitive)
         assert is_subtype(int32_rprimitive, int_rprimitive)
         assert not is_subtype(int32_rprimitive, short_int_rprimitive)
         assert not is_subtype(int32_rprimitive, int64_rprimitive)
+        assert not is_subtype(int32_rprimitive, int16_rprimitive)
+
+    def test_int16(self) -> None:
+        assert is_subtype(int16_rprimitive, int16_rprimitive)
+        assert is_subtype(int16_rprimitive, int_rprimitive)
+        assert not is_subtype(int16_rprimitive, short_int_rprimitive)
+        assert not is_subtype(int16_rprimitive, int64_rprimitive)
+        assert not is_subtype(int16_rprimitive, int32_rprimitive)
 
 
 class TestRuntimeSubtype(unittest.TestCase):

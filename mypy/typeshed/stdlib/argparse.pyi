@@ -1,8 +1,9 @@
 import sys
+from _typeshed import sentinel
 from collections.abc import Callable, Generator, Iterable, Sequence
 from re import Pattern
-from typing import IO, Any, Generic, NewType, NoReturn, Protocol, TypeVar, overload
-from typing_extensions import Literal, TypeAlias
+from typing import IO, Any, Generic, Literal, NewType, NoReturn, Protocol, TypeVar, overload
+from typing_extensions import Self, TypeAlias, deprecated
 
 __all__ = [
     "ArgumentParser",
@@ -85,7 +86,7 @@ class _ActionsContainer:
         self,
         *name_or_flags: str,
         action: _ActionStr | type[Action] = ...,
-        nargs: int | _NArgsStr | _SUPPRESS_T = ...,
+        nargs: int | _NArgsStr | _SUPPRESS_T | None = None,
         const: Any = ...,
         default: Any = ...,
         type: Callable[[str], _T] | FileType = ...,
@@ -97,8 +98,16 @@ class _ActionsContainer:
         version: str = ...,
         **kwargs: Any,
     ) -> Action: ...
-    def add_argument_group(self, *args: Any, **kwargs: Any) -> _ArgumentGroup: ...
-    def add_mutually_exclusive_group(self, **kwargs: Any) -> _MutuallyExclusiveGroup: ...
+    def add_argument_group(
+        self,
+        title: str | None = None,
+        description: str | None = None,
+        *,
+        prefix_chars: str = ...,
+        argument_default: Any = ...,
+        conflict_handler: str = ...,
+    ) -> _ArgumentGroup: ...
+    def add_mutually_exclusive_group(self, *, required: bool = False) -> _MutuallyExclusiveGroup: ...
     def _add_action(self, action: _ActionT) -> _ActionT: ...
     def _remove_action(self, action: Action) -> None: ...
     def _add_container_actions(self, container: _ActionsContainer) -> None: ...
@@ -111,7 +120,7 @@ class _ActionsContainer:
     def _handle_conflict_resolve(self, action: Action, conflicting_actions: Iterable[tuple[str, Action]]) -> None: ...
 
 class _FormatterClass(Protocol):
-    def __call__(self, prog: str) -> HelpFormatter: ...
+    def __call__(self, *, prog: str) -> HelpFormatter: ...
 
 class ArgumentParser(_AttributeHolder, _ActionsContainer):
     prog: str
@@ -161,9 +170,9 @@ class ArgumentParser(_AttributeHolder, _ActionsContainer):
             add_help: bool = True,
             allow_abbrev: bool = True,
         ) -> None: ...
-    # Ignore errors about overlapping overloads
+
     @overload
-    def parse_args(self, args: Sequence[str] | None = None, namespace: None = None) -> Namespace: ...  # type: ignore[misc]
+    def parse_args(self, args: Sequence[str] | None = None, namespace: None = None) -> Namespace: ...
     @overload
     def parse_args(self, args: Sequence[str] | None, namespace: _N) -> _N: ...
     @overload
@@ -201,16 +210,29 @@ class ArgumentParser(_AttributeHolder, _ActionsContainer):
     def print_help(self, file: IO[str] | None = None) -> None: ...
     def format_usage(self) -> str: ...
     def format_help(self) -> str: ...
-    def parse_known_args(
-        self, args: Sequence[str] | None = None, namespace: Namespace | None = None
-    ) -> tuple[Namespace, list[str]]: ...
+    @overload
+    def parse_known_args(self, args: Sequence[str] | None = None, namespace: None = None) -> tuple[Namespace, list[str]]: ...
+    @overload
+    def parse_known_args(self, args: Sequence[str] | None, namespace: _N) -> tuple[_N, list[str]]: ...
+    @overload
+    def parse_known_args(self, *, namespace: _N) -> tuple[_N, list[str]]: ...
     def convert_arg_line_to_args(self, arg_line: str) -> list[str]: ...
     def exit(self, status: int = 0, message: str | None = None) -> NoReturn: ...
     def error(self, message: str) -> NoReturn: ...
-    def parse_intermixed_args(self, args: Sequence[str] | None = None, namespace: Namespace | None = None) -> Namespace: ...
+    @overload
+    def parse_intermixed_args(self, args: Sequence[str] | None = None, namespace: None = None) -> Namespace: ...
+    @overload
+    def parse_intermixed_args(self, args: Sequence[str] | None, namespace: _N) -> _N: ...
+    @overload
+    def parse_intermixed_args(self, *, namespace: _N) -> _N: ...
+    @overload
     def parse_known_intermixed_args(
-        self, args: Sequence[str] | None = None, namespace: Namespace | None = None
+        self, args: Sequence[str] | None = None, namespace: None = None
     ) -> tuple[Namespace, list[str]]: ...
+    @overload
+    def parse_known_intermixed_args(self, args: Sequence[str] | None, namespace: _N) -> tuple[_N, list[str]]: ...
+    @overload
+    def parse_known_intermixed_args(self, *, namespace: _N) -> tuple[_N, list[str]]: ...
     # undocumented
     def _get_optional_actions(self) -> list[Action]: ...
     def _get_positional_actions(self) -> list[Action]: ...
@@ -236,11 +258,19 @@ class HelpFormatter:
     _current_indent: int
     _level: int
     _action_max_length: int
-    _root_section: Any
-    _current_section: Any
+    _root_section: _Section
+    _current_section: _Section
     _whitespace_matcher: Pattern[str]
     _long_break_matcher: Pattern[str]
-    _Section: type[Any]  # Nested class
+
+    class _Section:
+        formatter: HelpFormatter
+        heading: str | None
+        parent: Self | None
+        items: list[tuple[Callable[..., str], Iterable[Any]]]
+        def __init__(self, formatter: HelpFormatter, parent: Self | None, heading: str | None = None) -> None: ...
+        def format_help(self) -> str: ...
+
     def __init__(self, prog: str, indent_increment: int = 2, max_help_position: int = 24, width: int | None = None) -> None: ...
     def _indent(self) -> None: ...
     def _dedent(self) -> None: ...
@@ -249,16 +279,16 @@ class HelpFormatter:
     def end_section(self) -> None: ...
     def add_text(self, text: str | None) -> None: ...
     def add_usage(
-        self, usage: str | None, actions: Iterable[Action], groups: Iterable[_ArgumentGroup], prefix: str | None = None
+        self, usage: str | None, actions: Iterable[Action], groups: Iterable[_MutuallyExclusiveGroup], prefix: str | None = None
     ) -> None: ...
     def add_argument(self, action: Action) -> None: ...
     def add_arguments(self, actions: Iterable[Action]) -> None: ...
     def format_help(self) -> str: ...
     def _join_parts(self, part_strings: Iterable[str]) -> str: ...
     def _format_usage(
-        self, usage: str | None, actions: Iterable[Action], groups: Iterable[_ArgumentGroup], prefix: str | None
+        self, usage: str | None, actions: Iterable[Action], groups: Iterable[_MutuallyExclusiveGroup], prefix: str | None
     ) -> str: ...
-    def _format_actions_usage(self, actions: Iterable[Action], groups: Iterable[_ArgumentGroup]) -> str: ...
+    def _format_actions_usage(self, actions: Iterable[Action], groups: Iterable[_MutuallyExclusiveGroup]) -> str: ...
     def _format_text(self, text: str) -> str: ...
     def _format_action(self, action: Action) -> str: ...
     def _format_action_invocation(self, action: Action) -> str: ...
@@ -307,13 +337,51 @@ class Action(_AttributeHolder):
     if sys.version_info >= (3, 9):
         def format_usage(self) -> str: ...
 
-if sys.version_info >= (3, 9):
+if sys.version_info >= (3, 12):
     class BooleanOptionalAction(Action):
+        @overload
         def __init__(
             self,
             option_strings: Sequence[str],
             dest: str,
-            default: _T | str | None = None,
+            default: bool | None = None,
+            *,
+            required: bool = False,
+            help: str | None = None,
+        ) -> None: ...
+        @overload
+        @deprecated("The `type`, `choices`, and `metavar` parameters are ignored and will be removed in Python 3.14.")
+        def __init__(
+            self,
+            option_strings: Sequence[str],
+            dest: str,
+            default: _T | bool | None = None,
+            type: Callable[[str], _T] | FileType | None = sentinel,
+            choices: Iterable[_T] | None = sentinel,
+            required: bool = False,
+            help: str | None = None,
+            metavar: str | tuple[str, ...] | None = sentinel,
+        ) -> None: ...
+
+elif sys.version_info >= (3, 9):
+    class BooleanOptionalAction(Action):
+        @overload
+        def __init__(
+            self,
+            option_strings: Sequence[str],
+            dest: str,
+            default: bool | None = None,
+            *,
+            required: bool = False,
+            help: str | None = None,
+        ) -> None: ...
+        @overload
+        @deprecated("The `type`, `choices`, and `metavar` parameters are ignored and will be removed in Python 3.14.")
+        def __init__(
+            self,
+            option_strings: Sequence[str],
+            dest: str,
+            default: _T | bool | None = None,
             type: Callable[[str], _T] | FileType | None = None,
             choices: Iterable[_T] | None = None,
             required: bool = False,
@@ -324,7 +392,7 @@ if sys.version_info >= (3, 9):
 class Namespace(_AttributeHolder):
     def __init__(self, **kwargs: Any) -> None: ...
     def __getattr__(self, name: str) -> Any: ...
-    def __setattr__(self, __name: str, __value: Any) -> None: ...
+    def __setattr__(self, name: str, value: Any, /) -> None: ...
     def __contains__(self, key: str) -> bool: ...
     def __eq__(self, other: object) -> bool: ...
 
@@ -342,7 +410,14 @@ class _ArgumentGroup(_ActionsContainer):
     title: str | None
     _group_actions: list[Action]
     def __init__(
-        self, container: _ActionsContainer, title: str | None = None, description: str | None = None, **kwargs: Any
+        self,
+        container: _ActionsContainer,
+        title: str | None = None,
+        description: str | None = None,
+        *,
+        prefix_chars: str = ...,
+        argument_default: Any = ...,
+        conflict_handler: str = ...,
     ) -> None: ...
 
 # undocumented
@@ -395,8 +470,7 @@ class _StoreFalseAction(_StoreConstAction):
 class _AppendAction(Action): ...
 
 # undocumented
-if sys.version_info >= (3, 8):
-    class _ExtendAction(_AppendAction): ...
+class _ExtendAction(_AppendAction): ...
 
 # undocumented
 class _AppendConstAction(Action):

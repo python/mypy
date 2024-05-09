@@ -34,7 +34,7 @@ def f(x, y, z):
     x :: list
     y, z :: int
     r0 :: object
-    r1 :: int32
+    r1 :: i32
     r2 :: bit
     r3 :: object
     r4 :: bit
@@ -111,56 +111,42 @@ def sum(a: List[int], l: int) -> int:
 def sum(a, l):
     a :: list
     l, sum, i :: int
-    r0 :: native_int
-    r1 :: bit
-    r2 :: native_int
-    r3, r4, r5 :: bit
-    r6 :: object
-    r7, r8, r9, r10 :: int
+    r0 :: bit
+    r1 :: object
+    r2, r3, r4, r5 :: int
 L0:
     sum = 0
     i = 0
 L1:
-    r0 = i & 1
-    r1 = r0 != 0
-    if r1 goto L3 else goto L2 :: bool
+    r0 = int_lt i, l
+    if r0 goto L2 else goto L7 :: bool
 L2:
-    r2 = l & 1
-    r3 = r2 != 0
-    if r3 goto L3 else goto L4 :: bool
+    r1 = CPyList_GetItemBorrow(a, i)
+    if is_error(r1) goto L8 (error at sum:6) else goto L3
 L3:
-    r4 = CPyTagged_IsLt_(i, l)
-    if r4 goto L5 else goto L10 :: bool
+    r2 = unbox(int, r1)
+    if is_error(r2) goto L8 (error at sum:6) else goto L4
 L4:
-    r5 = i < l :: signed
-    if r5 goto L5 else goto L10 :: bool
-L5:
-    r6 = CPyList_GetItemBorrow(a, i)
-    if is_error(r6) goto L11 (error at sum:6) else goto L6
-L6:
-    r7 = unbox(int, r6)
-    if is_error(r7) goto L11 (error at sum:6) else goto L7
-L7:
-    r8 = CPyTagged_Add(sum, r7)
+    r3 = CPyTagged_Add(sum, r2)
     dec_ref sum :: int
-    dec_ref r7 :: int
-    sum = r8
-    r9 = CPyTagged_Add(i, 2)
+    dec_ref r2 :: int
+    sum = r3
+    r4 = CPyTagged_Add(i, 2)
     dec_ref i :: int
-    i = r9
+    i = r4
     goto L1
-L8:
+L5:
     return sum
-L9:
-    r10 = <error> :: int
-    return r10
-L10:
+L6:
+    r5 = <error> :: int
+    return r5
+L7:
     dec_ref i :: int
-    goto L8
-L11:
+    goto L5
+L8:
     dec_ref sum :: int
     dec_ref i :: int
-    goto L9
+    goto L6
 
 [case testTryExcept]
 def g() -> None:
@@ -528,10 +514,10 @@ def f():
 L0:
     return 0
 def g():
-    r0 :: int64
+    r0 :: i64
     r1 :: bit
     r2 :: object
-    r3 :: int64
+    r3 :: i64
 L0:
     r0 = f()
     r1 = r0 == -113
@@ -542,7 +528,7 @@ L2:
     r2 = PyErr_Occurred()
     if not is_error(r2) goto L3 (error at g:7) else goto L1
 L3:
-    r3 = <error> :: int64
+    r3 = <error> :: i64
     return r3
 
 [case testExceptionWithNativeAttributeGetAndSet]
@@ -612,16 +598,16 @@ def f(c: C) -> None:
 [out]
 def C.__init__(self, x, y):
     self :: __main__.C
-    x :: int32
-    y :: int64
+    x :: i32
+    y :: i64
 L0:
     self.x = x
     self.y = y
     return 1
 def f(c):
     c :: __main__.C
-    r0 :: int32
-    r1 :: int64
+    r0 :: i32
+    r1 :: i64
 L0:
     r0 = c.x
     r1 = c.y
@@ -636,15 +622,15 @@ def f(x: i64) -> i64:
     return y
 [out]
 def f(x):
-    x, r0, y :: int64
-    __locals_bitmap0 :: uint32
+    x, r0, y :: i64
+    __locals_bitmap0 :: u32
     r1 :: bit
-    r2, r3 :: uint32
+    r2, r3 :: u32
     r4 :: bit
     r5 :: bool
-    r6 :: int64
+    r6 :: i64
 L0:
-    r0 = <error> :: int64
+    r0 = <error> :: i64
     y = r0
     __locals_bitmap0 = 0
     r1 = x != 0
@@ -665,7 +651,7 @@ L4:
 L5:
     return y
 L6:
-    r6 = <error> :: int64
+    r6 = <error> :: i64
     return r6
 
 [case testExceptionWithFloatAttribute]

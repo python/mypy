@@ -3,26 +3,24 @@
 Protocols and structural subtyping
 ==================================
 
-Mypy supports two ways of deciding whether two classes are compatible
-as types: nominal subtyping and structural subtyping.
+The Python type system supports two ways of deciding whether two objects are
+compatible as types: nominal subtyping and structural subtyping.
 
-*Nominal* subtyping is strictly based on the class hierarchy. If class ``D``
-inherits class ``C``, it's also a subtype of ``C``, and instances of
-``D`` can be used when ``C`` instances are expected. This form of
-subtyping is used by default in mypy, since it's easy to understand
-and produces clear and concise error messages, and since it matches
-how the native :py:func:`isinstance <isinstance>` check works -- based on class
+*Nominal* subtyping is strictly based on the class hierarchy. If class ``Dog``
+inherits class ``Animal``, it's a subtype of ``Animal``. Instances of ``Dog``
+can be used when ``Animal`` instances are expected. This form of subtyping
+is what Python's type system predominantly uses: it's easy to
+understand and produces clear and concise error messages, and matches how the
+native :py:func:`isinstance <isinstance>` check works -- based on class
 hierarchy.
 
-*Structural* subtyping is based on the operations that can be performed with an object. Class ``D`` is
-a structural subtype of class ``C`` if the former has all attributes
-and methods of the latter, and with compatible types.
+*Structural* subtyping is based on the operations that can be performed with an
+object. Class ``Dog`` is a structural subtype of class ``Animal`` if the former
+has all attributes and methods of the latter, and with compatible types.
 
-Structural subtyping can be seen as a static equivalent of duck
-typing, which is well known to Python programmers. Mypy provides
-support for structural subtyping via protocol classes described
-below.  See :pep:`544` for the detailed specification of protocols
-and structural subtyping in Python.
+Structural subtyping can be seen as a static equivalent of duck typing, which is
+well known to Python programmers. See :pep:`544` for the detailed specification
+of protocols and structural subtyping in Python.
 
 .. _predefined_protocols:
 
@@ -60,8 +58,7 @@ For example, ``IntList`` below is iterable, over ``int`` values:
 
 :ref:`predefined_protocols_reference` lists all protocols defined in
 :py:mod:`typing` and the signatures of the corresponding methods you need to define
-to implement each protocol (the signatures can be left out, as always, but mypy
-won't type check unannotated methods).
+to implement each protocol.
 
 Simple user-defined protocols
 *****************************
@@ -71,8 +68,7 @@ class:
 
 .. code-block:: python
 
-   from typing import Iterable
-   from typing_extensions import Protocol
+   from typing import Iterable, Protocol
 
    class SupportsClose(Protocol):
        # Empty method body (explicit '...')
@@ -89,17 +85,11 @@ class:
        for item in items:
            item.close()
 
-   close_all([Resource(), open('some/file')])  # Okay!
+   close_all([Resource(), open('some/file')])  # OK
 
 ``Resource`` is a subtype of the ``SupportsClose`` protocol since it defines
 a compatible ``close`` method. Regular file objects returned by :py:func:`open` are
 similarly compatible with the protocol, as they support ``close()``.
-
-.. note::
-
-   The ``Protocol`` base class is provided in the ``typing_extensions``
-   package for Python 3.4-3.7. Starting with Python 3.8, ``Protocol``
-   is included in the ``typing`` module.
 
 Defining subprotocols and subclassing protocols
 ***********************************************
@@ -171,6 +161,13 @@ abstract:
    ExplicitSubclass()  # error: Cannot instantiate abstract class 'ExplicitSubclass'
                        # with abstract attributes 'attr' and 'method'
 
+Similarly, explicitly assigning to a protocol instance can be a way to ask the
+type checker to verify that your class implements a protocol:
+
+.. code-block:: python
+
+   _proto: SomeProto = cast(ExplicitSubclass, None)
+
 Invariance of protocol attributes
 *********************************
 
@@ -228,8 +225,7 @@ such as trees and linked lists:
 
 .. code-block:: python
 
-   from typing import TypeVar, Optional
-   from typing_extensions import Protocol
+   from typing import TypeVar, Optional, Protocol
 
    class TreeLike(Protocol):
        value: int
@@ -257,7 +253,7 @@ rudimentary support for runtime structural checks:
 
 .. code-block:: python
 
-   from typing_extensions import Protocol, runtime_checkable
+   from typing import Protocol, runtime_checkable
 
    @runtime_checkable
    class Portable(Protocol):
@@ -300,8 +296,7 @@ member:
 
 .. code-block:: python
 
-   from typing import Optional, Iterable
-   from typing_extensions import Protocol
+   from typing import Optional, Iterable, Protocol
 
    class Combiner(Protocol):
        def __call__(self, *vals: bytes, maxlen: Optional[int] = None) -> list[bytes]: ...
@@ -325,8 +320,7 @@ a double underscore prefix is used. For example:
 
 .. code-block:: python
 
-   from typing import Callable, TypeVar
-   from typing_extensions import Protocol
+   from typing import Callable, Protocol, TypeVar
 
    T = TypeVar('T')
 

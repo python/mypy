@@ -13,11 +13,12 @@
 
 [case testNoneAsRvalue]
 import typing
-a = None # type: A
+a: A
 class A: pass
 [out]
 
 [case testNoneAsArgument]
+# flags: --no-strict-optional
 import typing
 def f(x: 'A', y: 'B') -> None: pass
 f(None, None)
@@ -32,7 +33,7 @@ class B(A): pass
 
 [case testIntLiteral]
 a = 0
-b = None # type: A
+b: A
 if int():
     b = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "A")
 if int():
@@ -42,7 +43,7 @@ class A:
 
 [case testStrLiteral]
 a = ''
-b = None # type: A
+b: A
 if int():
     b = 'x' # E: Incompatible types in assignment (expression has type "str", variable has type "A")
 if int():
@@ -56,7 +57,7 @@ class A:
 
 [case testFloatLiteral]
 a = 0.0
-b = None # type: A
+b: A
 if str():
     b = 1.1 # E: Incompatible types in assignment (expression has type "float", variable has type "A")
 if str():
@@ -67,7 +68,7 @@ class A:
 
 [case testComplexLiteral]
 a = 0.0j
-b = None # type: A
+b: A
 if str():
     b = 1.1j # E: Incompatible types in assignment (expression has type "complex", variable has type "A")
 if str():
@@ -77,7 +78,8 @@ class A:
 [builtins fixtures/dict.pyi]
 
 [case testBytesLiteral]
-b, a = None, None # type: (bytes, A)
+b: bytes
+a: A
 if str():
     b = b'foo'
 if str():
@@ -90,10 +92,10 @@ class A: pass
 [builtins fixtures/dict.pyi]
 
 [case testUnicodeLiteralInPython3]
-s = None  # type: str
+s: str
 if int():
     s = u'foo'
-b = None  # type: bytes
+b: bytes
 if int():
     b = u'foo' # E: Incompatible types in assignment (expression has type "str", variable has type "bytes")
 [builtins fixtures/primitives.pyi]
@@ -104,7 +106,9 @@ if int():
 
 
 [case testAdd]
-a, b, c = None, None, None # type: (A, B, C)
+a: A
+b: B
+c: C
 if int():
     c = a + c  # E: Unsupported operand types for + ("A" and "C")
 if int():
@@ -124,7 +128,9 @@ class C:
 [builtins fixtures/tuple.pyi]
 
 [case testSub]
-a, b, c = None, None, None # type: (A, B, C)
+a: A
+b: B
+c: C
 if int():
     c = a - c  # E: Unsupported operand types for - ("A" and "C")
 if int():
@@ -144,7 +150,9 @@ class C:
 [builtins fixtures/tuple.pyi]
 
 [case testMul]
-a, b, c = None, None, None # type: (A, B, C)
+a: A
+b: B
+c: C
 if int():
     c = a * c  # E: Unsupported operand types for * ("A" and "C")
 if int():
@@ -164,7 +172,9 @@ class C:
 [builtins fixtures/tuple.pyi]
 
 [case testMatMul]
-a, b, c = None, None, None # type: (A, B, C)
+a: A
+b: B
+c: C
 if int():
     c = a @ c  # E: Unsupported operand types for @ ("A" and "C")
 if int():
@@ -184,7 +194,9 @@ class C:
 [builtins fixtures/tuple.pyi]
 
 [case testDiv]
-a, b, c = None, None, None # type: (A, B, C)
+a: A
+b: B
+c: C
 if int():
     c = a / c  # E: Unsupported operand types for / ("A" and "C")
     a = a / b  # E: Incompatible types in assignment (expression has type "C", variable has type "A")
@@ -203,7 +215,9 @@ class C:
 [builtins fixtures/tuple.pyi]
 
 [case testIntDiv]
-a, b, c = None, None, None # type: (A, B, C)
+a: A
+b: B
+c: C
 if int():
     c = a // c  # E: Unsupported operand types for // ("A" and "C")
     a = a // b  # E: Incompatible types in assignment (expression has type "C", variable has type "A")
@@ -222,7 +236,9 @@ class C:
 [builtins fixtures/tuple.pyi]
 
 [case testMod]
-a, b, c = None, None, None # type: (A, B, C)
+a: A
+b: B
+c: C
 if int():
     c = a % c  # E: Unsupported operand types for % ("A" and "C")
 if int():
@@ -242,7 +258,9 @@ class C:
 [builtins fixtures/tuple.pyi]
 
 [case testPow]
-a, b, c = None, None, None # type: (A, B, C)
+a: A
+b: B
+c: C
 if int():
     c = a ** c  # E: Unsupported operand types for ** ("A" and "C")
 if int():
@@ -262,8 +280,8 @@ class C:
 [builtins fixtures/tuple.pyi]
 
 [case testMiscBinaryOperators]
-
-a, b = None, None # type: (A, B)
+a: A
+b: B
 b = a & a  # Fail
 b = a | b  # Fail
 b = a ^ a  # Fail
@@ -291,7 +309,8 @@ main:6: error: Unsupported operand types for << ("A" and "B")
 main:7: error: Unsupported operand types for >> ("A" and "A")
 
 [case testBooleanAndOr]
-a, b = None, None # type: (A, bool)
+a: A
+b: bool
 if int():
     b = b and b
 if int():
@@ -310,8 +329,8 @@ class A: pass
 
 [case testRestrictedTypeAnd]
 
-b = None # type: bool
-i = None # type: str
+b: bool
+i: str
 j = not b and i
 if j:
     reveal_type(j) # N: Revealed type is "builtins.str"
@@ -319,8 +338,8 @@ if j:
 
 [case testRestrictedTypeOr]
 
-b = None # type: bool
-i = None # type: str
+b: bool
+i: str
 j = b or i
 if not j:
     reveal_type(j) # N: Revealed type is "builtins.str"
@@ -343,7 +362,9 @@ def f(a: List[str], b: bool) -> bool:
 [builtins fixtures/list.pyi]
 
 [case testNonBooleanOr]
-c, d, b = None, None, None # type: (C, D, bool)
+c: C
+d: D
+b: bool
 if int():
     c = c or c
 if int():
@@ -362,7 +383,11 @@ class D(C): pass
 
 [case testInOperator]
 from typing import Iterator, Iterable, Any
-a, b, c, d, e = None, None, None, None, None # type: (A, B, bool, D, Any)
+a: A
+b: B
+c: bool
+d: D
+e: Any
 if int():
     c = c in a  # E: Unsupported operand types for in ("bool" and "A")
 if int():
@@ -389,7 +414,11 @@ class D(Iterable[A]):
 
 [case testNotInOperator]
 from typing import Iterator, Iterable, Any
-a, b, c, d, e = None, None, None, None, None # type: (A, B, bool, D, Any)
+a: A
+b: B
+c: bool
+d: D
+e: Any
 if int():
     c = c not in a  # E: Unsupported operand types for in ("bool" and "A")
 if int():
@@ -415,7 +444,9 @@ class D(Iterable[A]):
 [builtins fixtures/bool.pyi]
 
 [case testNonBooleanContainsReturnValue]
-a, b, c = None, None, None # type: (A, bool, str)
+a: A
+b: bool
+c: str
 if int():
     b = a not in a
 if int():
@@ -434,8 +465,8 @@ a = 1 in ([1] + ['x'])  # E: List item 0 has incompatible type "str"; expected "
 [builtins fixtures/list.pyi]
 
 [case testEq]
-
-a, b = None, None # type: (A, bool)
+a: A
+b: bool
 if int():
     a = a == b # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
 if int():
@@ -451,7 +482,9 @@ class A:
 [builtins fixtures/bool.pyi]
 
 [case testLtAndGt]
-a, b, bo = None, None, None # type: (A, B, bool)
+a: A
+b: B
+bo: bool
 if int():
     a = a < b # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
 if int():
@@ -470,7 +503,9 @@ class B:
 [builtins fixtures/bool.pyi]
 
 [case cmpIgnoredPy3]
-a, b, bo = None, None, None # type: (A, B, bool)
+a: A
+b: B
+bo: bool
 bo = a <= b # E: Unsupported left operand type for <= ("A")
 
 class A:
@@ -480,7 +515,9 @@ class B:
 [builtins fixtures/bool.pyi]
 
 [case testLeAndGe]
-a, b, bo = None, None, None # type: (A, B, bool)
+a: A
+b: B
+bo: bool
 if int():
     a = a <= b # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
 if int():
@@ -499,8 +536,9 @@ class B:
 [builtins fixtures/bool.pyi]
 
 [case testChainedComp]
-
-a, b, bo = None, None, None # type: (A, B, bool)
+a: A
+b: B
+bo: bool
 a < a < b < b # Fail
 a < b < b < b
 a < a > a < b # Fail
@@ -513,13 +551,15 @@ class B:
     def __gt__(self, o: 'B') -> bool: pass
 [builtins fixtures/bool.pyi]
 [out]
-main:3: error: Unsupported operand types for < ("A" and "A")
-main:5: error: Unsupported operand types for < ("A" and "A")
-main:5: error: Unsupported operand types for > ("A" and "A")
+main:4: error: Unsupported operand types for < ("A" and "A")
+main:6: error: Unsupported operand types for < ("A" and "A")
+main:6: error: Unsupported operand types for > ("A" and "A")
 
 
 [case testChainedCompBoolRes]
-a, b, bo = None, None, None # type: (A, B, bool)
+a: A
+b: B
+bo: bool
 if int():
     bo = a < b < b
 if int():
@@ -535,8 +575,12 @@ class B:
 
 
 [case testChainedCompResTyp]
-x, y = None, None # type: (X, Y)
-a, b, p, bo = None, None, None, None # type: (A, B, P, bool)
+x: X
+y: Y
+a: A
+b: B
+p: P
+bo: bool
 if int():
     b = y == y == y
 if int():
@@ -566,7 +610,8 @@ class Y:
 
 
 [case testIs]
-a, b = None, None # type: (A, bool)
+a: A
+b: bool
 if int():
     a = a is b # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
 if int():
@@ -579,7 +624,8 @@ class A: pass
 [builtins fixtures/bool.pyi]
 
 [case testIsNot]
-a, b = None, None # type: (A, bool)
+a: A
+b: bool
 if int():
     a = a is not b # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
 if int():
@@ -604,8 +650,8 @@ class A:
     def __add__(self, x: int) -> int: pass
 class B:
     def __radd__(self, x: A) -> str: pass
-s = None  # type: str
-n = None  # type: int
+s: str
+n: int
 if int():
     n = A() + 1
 if int():
@@ -618,8 +664,8 @@ class A:
     def __add__(self, x: 'A') -> object: pass
 class B:
     def __radd__(self, x: A) -> str: pass
-s = None  # type: str
-n = None  # type: int
+s: str
+n: int
 if int():
     s = A() + B()
     n = A() + B() # E: Incompatible types in assignment (expression has type "str", variable has type "int")
@@ -632,7 +678,7 @@ class A:
     def __add__(self, x: N) -> int: pass
 class B:
     def __radd__(self, x: N) -> str: pass
-s = None  # type: str
+s: str
 s = A() + B() # E: Unsupported operand types for + ("A" and "B")
 
 [case testBinaryOperatorWithAnyRightOperand]
@@ -647,8 +693,8 @@ class A:
     def __lt__(self, x: C) -> int: pass  # E: Signatures of "__lt__" of "A" and "__gt__" of "C" are unsafely overlapping
 class B:
     def __gt__(self, x: A) -> str: pass
-s = None  # type: str
-n = None  # type: int
+s: str
+n: int
 if int():
     n = A() < C()
     s = A() < B()
@@ -743,8 +789,8 @@ divmod('foo', d)  # E: Unsupported operand types for divmod ("str" and "Decimal"
 
 
 [case testUnaryMinus]
-
-a, b = None, None # type: (A, B)
+a: A
+b: B
 if int():
     a = -a   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 if int():
@@ -760,7 +806,8 @@ class B:
 [builtins fixtures/tuple.pyi]
 
 [case testUnaryPlus]
-a, b = None, None # type: (A, B)
+a: A
+b: B
 if int():
     a = +a   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 if int():
@@ -776,7 +823,8 @@ class B:
 [builtins fixtures/tuple.pyi]
 
 [case testUnaryNot]
-a, b = None, None # type: (A, bool)
+a: A
+b: bool
 if int():
     a = not b  # E: Incompatible types in assignment (expression has type "bool", variable has type "A")
 if int():
@@ -788,7 +836,8 @@ class A:
 [builtins fixtures/bool.pyi]
 
 [case testUnaryBitwiseNeg]
-a, b = None, None # type: (A, B)
+a: A
+b: B
 if int():
     a = ~a   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 if int():
@@ -809,8 +858,9 @@ class B:
 
 
 [case testIndexing]
-
-a, b, c = None, None, None # type: (A, B, C)
+a: A
+b: B
+c: C
 if int():
     c = a[c]  # E: Invalid index type "C" for "A"; expected type "B"
 if int():
@@ -828,8 +878,9 @@ class C: pass
 [builtins fixtures/tuple.pyi]
 
 [case testIndexingAsLvalue]
-
-a, b, c = None, None, None # type: (A, B, C)
+a: A
+b: B
+c: C
 a[c] = c  # Fail
 a[b] = a  # Fail
 b[a] = c  # Fail
@@ -844,16 +895,17 @@ class C:
     pass
 [builtins fixtures/tuple.pyi]
 [out]
-main:3: error: Invalid index type "C" for "A"; expected type "B"
-main:4: error: Incompatible types in assignment (expression has type "A", target has type "C")
-main:5: error: Unsupported target for indexed assignment ("B")
+main:4: error: Invalid index type "C" for "A"; expected type "B"
+main:5: error: Incompatible types in assignment (expression has type "A", target has type "C")
+main:6: error: Unsupported target for indexed assignment ("B")
 
 [case testOverloadedIndexing]
 from foo import *
 [file foo.pyi]
 from typing import overload
-
-a, b, c = None, None, None  # type: (A, B, C)
+a: A
+b: B
+c: C
 a[b]
 a[c]
 a[1]  # E: No overload variant of "__getitem__" of "A" matches argument type "int" \
@@ -861,7 +913,8 @@ a[1]  # E: No overload variant of "__getitem__" of "A" matches argument type "in
       # N:     def __getitem__(self, B, /) -> int \
       # N:     def __getitem__(self, C, /) -> str
 
-i, s = None, None  # type: (int, str)
+i: int
+s: str
 if int():
     i = a[b]
 if int():
@@ -893,7 +946,9 @@ from typing import cast, Any
 class A: pass
 class B: pass
 class C(A): pass
-a, b, c = None, None, None # type: (A, B, C)
+a: A
+b: B
+c: C
 
 if int():
     a = cast(A, a())       # E: "A" not callable
@@ -916,7 +971,8 @@ if int():
 
 [case testAnyCast]
 from typing import cast, Any
-a, b = None, None # type: (A, B)
+a: A
+b: B
 a = cast(Any, a())     # Fail
 a = cast(Any, b)
 b = cast(Any, a)
@@ -924,7 +980,7 @@ class A: pass
 class B: pass
 [builtins fixtures/tuple.pyi]
 [out]
-main:3: error: "A" not callable
+main:4: error: "A" not callable
 
 -- assert_type()
 
@@ -989,6 +1045,23 @@ def reduce_it(s: Scalar) -> Scalar:
 assert_type(reduce_it(True), Scalar)
 [builtins fixtures/tuple.pyi]
 
+[case testAssertTypeWithDeferredNodes]
+from typing import Callable, TypeVar, assert_type
+
+T = TypeVar("T")
+
+def dec(f: Callable[[], T]) -> Callable[[], T]:
+    return f
+
+def func() -> None:
+    some = _inner_func()
+    assert_type(some, int)
+
+@dec
+def _inner_func() -> int:
+    return 1
+[builtins fixtures/tuple.pyi]
+
 -- None return type
 -- ----------------
 
@@ -1003,17 +1076,18 @@ class A:
     def __call__(self) -> None:
         pass
 
-a, o = None, None # type: (A, object)
+a: A
+o: object
 if int():
-    a = f()         # E: "f" does not return a value
+    a = f()         # E: "f" does not return a value (it only ever returns None)
 if int():
-    o = a()         # E: Function does not return a value
+    o = a()         # E: Function does not return a value (it only ever returns None)
 if int():
-    o = A().g(a)    # E: "g" of "A" does not return a value
+    o = A().g(a)    # E: "g" of "A" does not return a value (it only ever returns None)
 if int():
-    o = A.g(a, a)   # E: "g" of "A" does not return a value
-A().g(f())      # E: "f" does not return a value
-x: A = f()      # E: "f" does not return a value
+    o = A.g(a, a)   # E: "g" of "A" does not return a value (it only ever returns None)
+A().g(f())      # E: "f" does not return a value (it only ever returns None)
+x: A = f()      # E: "f" does not return a value (it only ever returns None)
 f()
 A().g(a)
 [builtins fixtures/tuple.pyi]
@@ -1022,15 +1096,15 @@ A().g(a)
 import typing
 def f() -> None: pass
 
-if f():   # E: "f" does not return a value
+if f():   # E: "f" does not return a value (it only ever returns None)
     pass
-elif f(): # E: "f" does not return a value
+elif f(): # E: "f" does not return a value (it only ever returns None)
     pass
-while f(): # E: "f" does not return a value
+while f(): # E: "f" does not return a value (it only ever returns None)
     pass
 def g() -> object:
-    return f() # E: "f" does not return a value
-raise f() # E: "f" does not return a value
+    return f() # E: "f" does not return a value (it only ever returns None)
+raise f() # E: "f" does not return a value (it only ever returns None)
 [builtins fixtures/exception.pyi]
 
 [case testNoneReturnTypeWithExpressions]
@@ -1040,14 +1114,14 @@ def f() -> None: pass
 class A:
     def __add__(self, x: 'A') -> 'A': pass
 
-a = None # type: A
-[f()]       # E: "f" does not return a value
-f() + a     # E: "f" does not return a value
-a + f()     # E: "f" does not return a value
-f() == a    # E: "f" does not return a value
-a != f()    # E: "f" does not return a value
+a: A
+[f()]       # E: "f" does not return a value (it only ever returns None)
+f() + a     # E: "f" does not return a value (it only ever returns None)
+a + f()     # E: "f" does not return a value (it only ever returns None)
+f() == a    # E: "f" does not return a value (it only ever returns None)
+a != f()    # E: "f" does not return a value (it only ever returns None)
 cast(A, f())
-f().foo     # E: "f" does not return a value
+f().foo     # E: "f" does not return a value (it only ever returns None)
 [builtins fixtures/list.pyi]
 
 [case testNoneReturnTypeWithExpressions2]
@@ -1058,15 +1132,16 @@ class A:
     def __add__(self, x: 'A') -> 'A':
         pass
 
-a, b = None, None # type: (A, bool)
-f() in a   # E: "f" does not return a value  # E: Unsupported right operand type for in ("A")
-a < f()    # E: "f" does not return a value
-f() <= a   # E: "f" does not return a value
-a in f()   # E: "f" does not return a value
--f()       # E: "f" does not return a value
-not f()    # E: "f" does not return a value
-f() and b  # E: "f" does not return a value
-b or f()   # E: "f" does not return a value
+a: A
+b: bool
+f() in a   # E: "f" does not return a value (it only ever returns None)  # E: Unsupported right operand type for in ("A")
+a < f()    # E: "f" does not return a value (it only ever returns None)
+f() <= a   # E: "f" does not return a value (it only ever returns None)
+a in f()   # E: "f" does not return a value (it only ever returns None)
+-f()       # E: "f" does not return a value (it only ever returns None)
+not f()    # E: "f" does not return a value (it only ever returns None)
+f() and b  # E: "f" does not return a value (it only ever returns None)
+b or f()   # E: "f" does not return a value (it only ever returns None)
 [builtins fixtures/bool.pyi]
 
 
@@ -1075,7 +1150,8 @@ b or f()   # E: "f" does not return a value
 
 
 [case testGetSlice]
-a, b = None, None # type: (A, B)
+a: A
+b: B
 if int():
     a = a[1:2] # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 if int():
@@ -1101,7 +1177,7 @@ class B: pass
 
 [case testSlicingWithInvalidBase]
 
-a = None # type: A
+a: A
 a[1:2] # E: Invalid index type "slice" for "A"; expected type "int"
 a[:]   # E: Invalid index type "slice" for "A"; expected type "int"
 class A:
@@ -1110,7 +1186,7 @@ class A:
 
 [case testSlicingWithNonindexable]
 
-o = None # type: object
+o: object
 o[1:2] # E: Value of type "object" is not indexable
 o[:]   # E: Value of type "object" is not indexable
 [builtins fixtures/slice.pyi]
@@ -1143,7 +1219,7 @@ class SupportsIndex(Protocol):
 
 [case testNoneSliceBounds]
 from typing import Any
-a = None # type: Any
+a: Any
 a[None:1]
 a[1:None]
 a[None:]
@@ -1151,9 +1227,8 @@ a[:None]
 [builtins fixtures/slice.pyi]
 
 [case testNoneSliceBoundsWithStrictOptional]
-# flags: --strict-optional
 from typing import Any
-a = None # type: Any
+a: Any
 a[None:1]
 a[1:None]
 a[None:]
@@ -1182,6 +1257,7 @@ def void() -> None:
 x = lambda: void() # type: typing.Callable[[], None]
 
 [case testNoCrashOnLambdaGenerator]
+# flags: --no-strict-optional
 from typing import Iterator, Callable
 
 # These should not crash
@@ -1211,7 +1287,7 @@ def f() -> None:
 
 [case testSimpleListComprehension]
 from typing import List
-a = None # type: List[A]
+a: List[A]
 a = [x for x in a]
 b = [x for x in a] # type: List[B] # E: List comprehension has incompatible type List[A]; expected List[B]
 class A: pass
@@ -1220,7 +1296,7 @@ class B: pass
 
 [case testSimpleListComprehensionNestedTuples]
 from typing import List, Tuple
-l = None # type: List[Tuple[A, Tuple[A, B]]]
+l: List[Tuple[A, Tuple[A, B]]]
 a = [a2 for a1, (a2, b1) in l] # type: List[A]
 b = [a2 for a1, (a2, b1) in l] # type: List[B] # E: List comprehension has incompatible type List[A]; expected List[B]
 class A: pass
@@ -1229,7 +1305,7 @@ class B: pass
 
 [case testSimpleListComprehensionNestedTuples2]
 from typing import List, Tuple
-l = None # type: List[Tuple[int, Tuple[int, str]]]
+l: List[Tuple[int, Tuple[int, str]]]
 a = [f(d) for d, (i, s) in l]
 b = [f(s) for d, (i, s) in l] # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 
@@ -1252,14 +1328,14 @@ def f(a: A) -> B: pass
 
 [case testErrorInListComprehensionCondition]
 from typing import List
-a = None # type: List[A]
+a: List[A]
 a = [x for x in a if x()] # E: "A" not callable
 class A: pass
 [builtins fixtures/for.pyi]
 
 [case testTypeInferenceOfListComprehension]
 from typing import List
-a = None # type: List[A]
+a: List[A]
 o = [x for x in a] # type: List[object]
 class A: pass
 [builtins fixtures/for.pyi]
@@ -1267,7 +1343,7 @@ class A: pass
 [case testSimpleListComprehensionInClassBody]
 from typing import List
 class A:
-    a = None # type: List[A]
+    a: List[A]
     a = [x for x in a]
     b = [x for x in a] # type: List[B] # E: List comprehension has incompatible type List[A]; expected List[B]
 class B: pass
@@ -1281,7 +1357,7 @@ class B: pass
 
 [case testSimpleSetComprehension]
 from typing import Set
-a = None # type: Set[A]
+a: Set[A]
 a = {x for x in a}
 b = {x for x in a} # type: Set[B] # E: Set comprehension has incompatible type Set[A]; expected Set[B]
 class A: pass
@@ -1295,8 +1371,8 @@ class B: pass
 
 [case testSimpleDictionaryComprehension]
 from typing import Dict, List, Tuple
-abd = None # type: Dict[A, B]
-abl = None # type: List[Tuple[A, B]]
+abd: Dict[A, B]
+abl: List[Tuple[A, B]]
 abd = {a: b for a, b in abl}
 x = {a: b for a, b in abl} # type: Dict[B, A]
 y = {a: b for a, b in abl} # type: A
@@ -1312,7 +1388,7 @@ main:6: error: Incompatible types in assignment (expression has type "Dict[A, B]
 [case testDictionaryComprehensionWithNonDirectMapping]
 from typing import Dict, List, Tuple
 abd: Dict[A, B]
-abl = None # type: List[Tuple[A, B]]
+abl: List[Tuple[A, B]]
 abd = {a: f(b) for a, b in abl}
 class A: pass
 class B: pass
@@ -1332,10 +1408,10 @@ main:4: error: Argument 1 to "f" has incompatible type "B"; expected "A"
 from typing import Iterator
 # The implementation is mostly identical to list comprehensions, so only a few
 # test cases is ok.
-a = None # type: Iterator[int]
+a: Iterator[int]
 if int():
     a = (x for x in a)
-b = None # type: Iterator[str]
+b: Iterator[str]
 if int():
     b = (x for x in a) # E: Generator has incompatible item type "int"; expected "str"
 [builtins fixtures/for.pyi]
@@ -1344,7 +1420,7 @@ if int():
 from typing import Callable, Iterator, List
 
 a = []  # type: List[Callable[[], str]]
-b = None  # type: Iterator[Callable[[], int]]
+b: Iterator[Callable[[], int]]
 if int():
     b = (x for x in a)  # E: Generator has incompatible item type "Callable[[], str]"; expected "Callable[[], int]"
 [builtins fixtures/list.pyi]
@@ -1365,7 +1441,7 @@ if int():
 [case testConditionalExpressionWithEmptyCondition]
 import typing
 def f() -> None: pass
-x = 1 if f() else 2 # E: "f" does not return a value
+x = 1 if f() else 2 # E: "f" does not return a value (it only ever returns None)
 
 [case testConditionalExpressionWithSubtyping]
 import typing
@@ -1428,7 +1504,7 @@ from typing import List, Union
 x = []
 y = ""
 x.append(y) if bool() else x.append(y)
-z = x.append(y) if bool() else x.append(y) # E: "append" of "list" does not return a value
+z = x.append(y) if bool() else x.append(y) # E: "append" of "list" does not return a value (it only ever returns None)
 [builtins fixtures/list.pyi]
 
 -- Special cases
@@ -1441,14 +1517,14 @@ class A:
     def __add__(self, a: 'A') -> 'A': pass
 def f() -> None:
     pass
-a = None # type: A
+a: A
 None + a   # E: Unsupported left operand type for + ("None")
 f + a      # E: Unsupported left operand type for + ("Callable[[], None]")
 a + f      # E: Unsupported operand types for + ("A" and "Callable[[], None]")
 cast(A, f)
 [case testOperatorMethodWithInvalidArgCount]
 
-a = None # type: A
+a: A
 a + a  # Fail
 
 class A:
@@ -1462,7 +1538,7 @@ from typing import Any
 class A:
     def __init__(self, _add: Any) -> None:
         self.__add__ = _add
-a = None # type: A
+a: A
 a + a
 [out]
 
@@ -1471,15 +1547,16 @@ a + a
 class A:
     def f(self, x: int) -> str: pass
     __add__ = f
-s = None  # type: str
+s: str
 s = A() + 1
 A() + (A() + 1)
 [out]
 main:7: error: Argument 1 has incompatible type "str"; expected "int"
 
 [case testIndexedLvalueWithSubtypes]
-
-a, b, c = None, None, None # type: (A, B, C)
+a: A
+b: B
+c: C
 a[c] = c
 a[b] = c
 a[c] = b
@@ -1501,7 +1578,7 @@ class C(B):
 
 [case testEllipsis]
 
-a = None # type: A
+a: A
 if str():
     a = ...  # E: Incompatible types in assignment (expression has type "ellipsis", variable has type "A")
 b = ...
@@ -1512,8 +1589,7 @@ if str():
 ....a  # E: "ellipsis" has no attribute "a"
 
 class A: pass
-[builtins fixtures/dict.pyi]
-[out]
+[builtins fixtures/dict-full.pyi]
 
 
 -- Yield expression
@@ -1527,7 +1603,7 @@ def f(x: int) -> None:
 [builtins fixtures/for.pyi]
 [out]
 main:1: error: The return type of a generator function should be "Generator" or one of its supertypes
-main:2: error: "f" does not return a value
+main:2: error: "f" does not return a value (it only ever returns None)
 main:2: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testYieldExpressionWithNone]
@@ -1547,7 +1623,7 @@ from typing import Iterator
 def f() -> Iterator[int]:
     yield 5
 def g() -> Iterator[int]:
-    a = yield from f()  # E: Function does not return a value
+    a = yield from f()  # E: Function does not return a value (it only ever returns None)
 
 [case testYieldFromGeneratorHasValue]
 from typing import Iterator, Generator
@@ -1562,12 +1638,12 @@ def g() -> Iterator[int]:
 [case testYieldFromTupleExpression]
 from typing import Generator
 def g() -> Generator[int, None, None]:
-    x = yield from ()  # E: Function does not return a value
-    x = yield from (0, 1, 2)  # E: Function does not return a value
+    x = yield from ()  # E: Function does not return a value (it only ever returns None)
+    x = yield from (0, 1, 2)  # E: Function does not return a value (it only ever returns None)
     x = yield from (0, "ERROR")  # E: Incompatible types in "yield from" (actual type "object", expected type "int") \
-                                 # E: Function does not return a value
+                                 # E: Function does not return a value (it only ever returns None)
     x = yield from ("ERROR",)  # E: Incompatible types in "yield from" (actual type "str", expected type "int") \
-                               # E: Function does not return a value
+                               # E: Function does not return a value (it only ever returns None)
 [builtins fixtures/tuple.pyi]
 
 -- dict(...)
@@ -1988,7 +2064,7 @@ x is 42
 [typing fixtures/typing-full.pyi]
 
 [case testStrictEqualityStrictOptional]
-# flags: --strict-equality --strict-optional
+# flags: --strict-equality
 
 x: str
 if x is not None:  # OK even with strict-optional
@@ -2004,7 +2080,7 @@ if x is not None:  # OK without strict-optional
 [builtins fixtures/bool.pyi]
 
 [case testStrictEqualityEqNoOptionalOverlap]
-# flags: --strict-equality --strict-optional
+# flags: --strict-equality
 from typing import Optional
 
 x: Optional[str]
@@ -2286,6 +2362,51 @@ E2.X == E2.Y
 data = b"xy"
 b"x" in data
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testStrictEqualityWithDifferentMapTypes]
+# flags: --strict-equality
+from typing import Mapping
+
+class A(Mapping[int, str]): ...
+class B(Mapping[int, str]): ...
+
+a: A
+b: B
+assert a == b
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testStrictEqualityWithRecursiveMapTypes]
+# flags: --strict-equality
+from typing import Dict
+
+R = Dict[str, R]
+
+a: R
+b: R
+assert a == b
+
+R2 = Dict[int, R2]
+c: R2
+assert a == c  # E: Non-overlapping equality check (left operand type: "Dict[str, R]", right operand type: "Dict[int, R2]")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testStrictEqualityWithRecursiveListTypes]
+# flags: --strict-equality
+from typing import List, Union
+
+R = List[Union[str, R]]
+
+a: R
+b: R
+assert a == b
+
+R2 = List[Union[int, R2]]
+c: R2
+assert a == c
+[builtins fixtures/list.pyi]
 [typing fixtures/typing-full.pyi]
 
 [case testUnimportedHintAny]

@@ -5,8 +5,7 @@ from __future__ import annotations
 import os
 from collections import Counter
 from contextlib import contextmanager
-from typing import Iterator
-from typing_extensions import Final
+from typing import Final, Iterator
 
 from mypy import nodes
 from mypy.argmap import map_formals_to_actuals
@@ -476,11 +475,6 @@ def is_generic(t: Type) -> bool:
 def is_complex(t: Type) -> bool:
     t = get_proper_type(t)
     return is_generic(t) or isinstance(t, (FunctionLike, TupleType, TypeVarType))
-
-
-def ensure_dir_exists(dir: str) -> None:
-    if not os.path.exists(dir):
-        os.makedirs(dir)
 
 
 def is_special_form_any(t: AnyType) -> bool:

@@ -40,23 +40,28 @@ from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 
-if TYPE_CHECKING:
-    from distutils.core import Extension as _distutils_Extension
-    from typing_extensions import TypeAlias
-
-    from setuptools import Extension as _setuptools_Extension
-
-    Extension: TypeAlias = Union[_setuptools_Extension, _distutils_Extension]
-
-
 try:
     # Import setuptools so that it monkey-patch overrides distutils
     import setuptools
 except ImportError:
+    pass
+
+if TYPE_CHECKING:
     if sys.version_info >= (3, 12):
-        # Raise on Python 3.12, since distutils will go away forever
-        raise
-from distutils import ccompiler, sysconfig
+        from setuptools import Extension
+    else:
+        from distutils.core import Extension as _distutils_Extension
+        from typing_extensions import TypeAlias
+
+        from setuptools import Extension as _setuptools_Extension
+
+        Extension: TypeAlias = Union[_setuptools_Extension, _distutils_Extension]
+
+if sys.version_info >= (3, 12):
+    # From setuptools' monkeypatch
+    from distutils import ccompiler, sysconfig  # type: ignore[import-not-found]
+else:
+    from distutils import ccompiler, sysconfig
 
 
 def get_extension() -> type[Extension]:
@@ -65,11 +70,13 @@ def get_extension() -> type[Extension]:
     use_setuptools = "setuptools" in sys.modules
     extension_class: type[Extension]
 
-    if not use_setuptools:
+    if sys.version_info < (3, 12) and not use_setuptools:
         import distutils.core
 
         extension_class = distutils.core.Extension
     else:
+        if not use_setuptools:
+            sys.exit("error: setuptools not installed")
         extension_class = setuptools.Extension
 
     return extension_class
@@ -98,7 +105,14 @@ def emit_messages(options: Options, messages: list[str], dt: float, serious: boo
     # ... you know, just in case.
     if options.junit_xml:
         py_version = f"{options.python_version[0]}_{options.python_version[1]}"
-        write_junit_xml(dt, serious, messages, options.junit_xml, py_version, options.platform)
+        write_junit_xml(
+            dt,
+            serious,
+            {None: messages} if messages else {},
+            options.junit_xml,
+            py_version,
+            options.platform,
+        )
     if messages:
         print("\n".join(messages))
 

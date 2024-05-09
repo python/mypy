@@ -104,7 +104,7 @@ Functions
        print(value + "!" * excitement)
 
    # Note that arguments without a type are dynamically typed (treated as Any)
-   # and that functions without any annotations not checked
+   # and that functions without any annotations are not checked
    def untyped(x):
        x.anything() + 1 + "string"  # no errors
 
@@ -152,6 +152,8 @@ Classes
 
 .. code-block:: python
 
+   from typing import ClassVar
+
    class BankAccount:
        # The "__init__" method doesn't return anything, so it gets return
        # type "None" just like any other method that doesn't return anything
@@ -178,8 +180,6 @@ Classes
    class AuditedBankAccount(BankAccount):
        # You can optionally declare instance variables in the class body
        audit_log: list[str]
-       # This is an instance variable with a default value
-       auditor_name: str = "The Spanish Inquisition"
 
        def __init__(self, account_name: str, initial_balance: int = 0) -> None:
            super().__init__(account_name, initial_balance)
@@ -211,6 +211,7 @@ Classes
        # This will allow access to any A.x, if x is compatible with the return type
        def __getattr__(self, name: str) -> int: ...
 
+   a = A()
    a.foo = 42  # Works
    a.bar = 'Ex-parrot'  # Fails type checking
 

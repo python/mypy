@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from collections import defaultdict
 from functools import reduce
-from typing import Iterable, List, Mapping, cast
-from typing_extensions import Final, Literal
+from typing import Final, Iterable, List, Mapping, cast
+from typing_extensions import Literal
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.applytype import apply_generic_arguments
-from mypy.checker import TypeChecker
 from mypy.errorcodes import LITERAL_REQ
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
@@ -52,7 +51,7 @@ from mypy.plugins.common import (
     _get_bool_argument,
     _get_decorator_bool_argument,
     add_attribute_to_class,
-    add_method,
+    add_method_to_class,
     deserialize_and_fixup_type,
 )
 from mypy.server.trigger import make_wildcard_trigger
@@ -69,6 +68,7 @@ from mypy.types import (
     TupleType,
     Type,
     TypeOfAny,
+    TypeType,
     TypeVarType,
     UninhabitedType,
     UnionType,
@@ -105,6 +105,7 @@ class Attribute:
     def __init__(
         self,
         name: str,
+        alias: str | None,
         info: TypeInfo,
         has_default: bool,
         init: bool,
@@ -114,6 +115,7 @@ class Attribute:
         init_type: Type | None,
     ) -> None:
         self.name = name
+        self.alias = alias
         self.info = info
         self.has_default = has_default
         self.init = init
@@ -171,19 +173,23 @@ class Attribute:
             arg_kind = ARG_OPT if self.has_default else ARG_POS
 
         # Attrs removes leading underscores when creating the __init__ arguments.
-        return Argument(Var(self.name.lstrip("_"), init_type), init_type, None, arg_kind)
+        name = self.alias or self.name.lstrip("_")
+        return Argument(Var(name, init_type), init_type, None, arg_kind)
 
     def serialize(self) -> JsonDict:
         """Serialize this object so it can be saved and restored."""
         return {
             "name": self.name,
+            "alias": self.alias,
             "has_default": self.has_default,
             "init": self.init,
             "kw_only": self.kw_only,
             "has_converter": self.converter is not None,
-            "converter_init_type": self.converter.init_type.serialize()
-            if self.converter and self.converter.init_type
-            else None,
+            "converter_init_type": (
+                self.converter.init_type.serialize()
+                if self.converter and self.converter.init_type
+                else None
+            ),
             "context_line": self.context.line,
             "context_column": self.context.column,
             "init_type": self.init_type.serialize() if self.init_type else None,
@@ -205,6 +211,7 @@ class Attribute:
 
         return Attribute(
             data["name"],
+            data["alias"],
             info,
             data["has_default"],
             data["init"],
@@ -294,6 +301,7 @@ def attr_class_maker_callback(
     ctx: mypy.plugin.ClassDefContext,
     auto_attribs_default: bool | None = False,
     frozen_default: bool = False,
+    slots_default: bool = False,
 ) -> bool:
     """Add necessary dunder methods to classes decorated with attr.s.
 
@@ -303,6 +311,8 @@ def attr_class_maker_callback(
     annotated variables if auto_attribs=True), then depending on how the decorator is called,
     it will add an __init__ or all the compare methods.
     For frozen=True it will turn the attrs into properties.
+
+    Hashability will be set according to https://www.attrs.org/en/stable/hashing.html.
 
     See https://www.attrs.org/en/stable/how-does-it-work.html for information on how attrs works.
 
@@ -314,7 +324,7 @@ def attr_class_maker_callback(
     init = _get_decorator_bool_argument(ctx, "init", True)
     frozen = _get_frozen(ctx, frozen_default)
     order = _determine_eq_order(ctx)
-    slots = _get_decorator_bool_argument(ctx, "slots", False)
+    slots = _get_decorator_bool_argument(ctx, "slots", slots_default)
 
     auto_attribs = _get_decorator_optional_bool_argument(ctx, "auto_attribs", auto_attribs_default)
     kw_only = _get_decorator_bool_argument(ctx, "kw_only", False)
@@ -353,10 +363,30 @@ def attr_class_maker_callback(
     adder = MethodAdder(ctx)
     # If  __init__ is not being generated, attrs still generates it as __attrs_init__ instead.
     _add_init(ctx, attributes, adder, "__init__" if init else ATTRS_INIT_NAME)
+
     if order:
         _add_order(ctx, adder)
     if frozen:
         _make_frozen(ctx, attributes)
+        # Frozen classes are hashable by default, even if inheriting from non-frozen ones.
+        hashable: bool | None = _get_decorator_bool_argument(
+            ctx, "hash", True
+        ) and _get_decorator_bool_argument(ctx, "unsafe_hash", True)
+    else:
+        hashable = _get_decorator_optional_bool_argument(ctx, "unsafe_hash")
+        if hashable is None:  # unspecified
+            hashable = _get_decorator_optional_bool_argument(ctx, "hash")
+
+    eq = _get_decorator_optional_bool_argument(ctx, "eq")
+    has_own_hash = "__hash__" in ctx.cls.info.names
+
+    if has_own_hash or (hashable is None and eq is False):
+        pass  # Do nothing.
+    elif hashable:
+        # We copy the `__hash__` signature from `object` to make them hashable.
+        ctx.cls.info.names["__hash__"] = ctx.cls.info.mro[-1].names["__hash__"]
+    else:
+        _remove_hashability(ctx)
 
     return True
 
@@ -497,6 +527,7 @@ def _attributes_from_assignment(
     or if auto_attribs is enabled also like this:
         x: type
         x: type = default_value
+        x: type = attr.ib(...)
     """
     for lvalue in stmt.lvalues:
         lvalues, rvalues = _parse_assignments(lvalue, stmt)
@@ -563,7 +594,7 @@ def _attribute_from_auto_attrib(
     has_rhs = not isinstance(rvalue, TempNode)
     sym = ctx.cls.info.names.get(name)
     init_type = sym.type if sym else None
-    return Attribute(name, ctx.cls.info, has_rhs, True, kw_only, None, stmt, init_type)
+    return Attribute(name, None, ctx.cls.info, has_rhs, True, kw_only, None, stmt, init_type)
 
 
 def _attribute_from_attrib_maker(
@@ -627,9 +658,20 @@ def _attribute_from_attrib_maker(
         converter = convert
     converter_info = _parse_converter(ctx, converter)
 
+    # Custom alias might be defined:
+    alias = None
+    alias_expr = _get_argument(rvalue, "alias")
+    if alias_expr:
+        alias = ctx.api.parse_str_literal(alias_expr)
+        if alias is None:
+            ctx.api.fail(
+                '"alias" argument to attrs field must be a string literal',
+                rvalue,
+                code=LITERAL_REQ,
+            )
     name = unmangle(lhs.name)
     return Attribute(
-        name, ctx.cls.info, attr_has_default, init, kw_only, converter_info, stmt, init_type
+        name, alias, ctx.cls.info, attr_has_default, init, kw_only, converter_info, stmt, init_type
     )
 
 
@@ -766,10 +808,19 @@ def _add_order(ctx: mypy.plugin.ClassDefContext, adder: MethodAdder) -> None:
     #    def __lt__(self: AT, other: AT) -> bool
     # This way comparisons with subclasses will work correctly.
     tvd = TypeVarType(
-        SELF_TVAR_NAME, ctx.cls.info.fullname + "." + SELF_TVAR_NAME, -1, [], object_type
+        SELF_TVAR_NAME,
+        ctx.cls.info.fullname + "." + SELF_TVAR_NAME,
+        id=-1,
+        values=[],
+        upper_bound=object_type,
+        default=AnyType(TypeOfAny.from_omitted_generics),
     )
     self_tvar_expr = TypeVarExpr(
-        SELF_TVAR_NAME, ctx.cls.info.fullname + "." + SELF_TVAR_NAME, [], object_type
+        SELF_TVAR_NAME,
+        ctx.cls.info.fullname + "." + SELF_TVAR_NAME,
+        [],
+        object_type,
+        AnyType(TypeOfAny.from_omitted_generics),
     )
     ctx.cls.info.names[SELF_TVAR_NAME] = SymbolTableNode(MDEF, self_tvar_expr)
 
@@ -793,7 +844,7 @@ def _make_frozen(ctx: mypy.plugin.ClassDefContext, attributes: list[Attribute]) 
         else:
             # This variable belongs to a super class so create new Var so we
             # can modify it.
-            var = Var(attribute.name, ctx.cls.info[attribute.name].type)
+            var = Var(attribute.name, attribute.init_type)
             var.info = ctx.cls.info
             var._fullname = f"{ctx.cls.info.fullname}.{var.name}"
             ctx.cls.info.names[var.name] = SymbolTableNode(MDEF, var)
@@ -883,8 +934,20 @@ def _add_attrs_magic_attribute(
 
 
 def _add_slots(ctx: mypy.plugin.ClassDefContext, attributes: list[Attribute]) -> None:
+    if any(p.slots is None for p in ctx.cls.info.mro[1:-1]):
+        # At least one type in mro (excluding `self` and `object`)
+        # does not have concrete `__slots__` defined. Ignoring.
+        return
+
     # Unlike `@dataclasses.dataclass`, `__slots__` is rewritten here.
     ctx.cls.info.slots = {attr.name for attr in attributes}
+
+    # Also, inject `__slots__` attribute to class namespace:
+    slots_type = TupleType(
+        [ctx.api.named_type("builtins.str") for _ in attributes],
+        fallback=ctx.api.named_type("builtins.tuple"),
+    )
+    add_attribute_to_class(api=ctx.api, cls=ctx.cls, name="__slots__", typ=slots_type)
 
 
 def _add_match_args(ctx: mypy.plugin.ClassDefContext, attributes: list[Attribute]) -> None:
@@ -902,6 +965,13 @@ def _add_match_args(ctx: mypy.plugin.ClassDefContext, attributes: list[Attribute
             fallback=ctx.api.named_type("builtins.tuple"),
         )
         add_attribute_to_class(api=ctx.api, cls=ctx.cls, name="__match_args__", typ=match_args)
+
+
+def _remove_hashability(ctx: mypy.plugin.ClassDefContext) -> None:
+    """Remove hashability from a class."""
+    add_attribute_to_class(
+        ctx.api, ctx.cls, "__hash__", NoneType(), is_classvar=True, overwrite_existing=True
+    )
 
 
 class MethodAdder:
@@ -930,12 +1000,14 @@ class MethodAdder:
         tvd: If the method is generic these should be the type variables.
         """
         self_type = self_type if self_type is not None else self.self_type
-        add_method(self.ctx, method_name, args, ret_type, self_type, tvd)
+        add_method_to_class(
+            self.ctx.api, self.ctx.cls, method_name, args, ret_type, self_type, tvd
+        )
 
 
 def _get_attrs_init_type(typ: Instance) -> CallableType | None:
     """
-    If `typ` refers to an attrs class, gets the type of its initializer method.
+    If `typ` refers to an attrs class, get the type of its initializer method.
     """
     magic_attr = typ.type.get(MAGIC_ATTR_NAME)
     if magic_attr is None or not magic_attr.plugin_generated:
@@ -1009,7 +1081,7 @@ def _get_expanded_attr_types(
 
 def _meet_fields(types: list[Mapping[str, Type]]) -> Mapping[str, Type]:
     """
-    "Meets" the fields of a list of attrs classes, i.e. for each field, its new type will be the lower bound.
+    "Meet" the fields of a list of attrs classes, i.e. for each field, its new type will be the lower bound.
     """
     field_to_types = defaultdict(list)
     for fields in types:
@@ -1017,16 +1089,18 @@ def _meet_fields(types: list[Mapping[str, Type]]) -> Mapping[str, Type]:
             field_to_types[name].append(typ)
 
     return {
-        name: get_proper_type(reduce(meet_types, f_types))
-        if len(f_types) == len(types)
-        else UninhabitedType()
+        name: (
+            get_proper_type(reduce(meet_types, f_types))
+            if len(f_types) == len(types)
+            else UninhabitedType()
+        )
         for name, f_types in field_to_types.items()
     }
 
 
 def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> CallableType:
     """
-    Generates a signature for the 'attr.evolve' function that's specific to the call site
+    Generate a signature for the 'attr.evolve' function that's specific to the call site
     and dependent on the type of the first argument.
     """
     if len(ctx.args) != 2:
@@ -1038,13 +1112,7 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
         return ctx.default_signature  # leave it to the type checker to complain
 
     inst_arg = ctx.args[0][0]
-
-    # <hack>
-    assert isinstance(ctx.api, TypeChecker)
-    inst_type = ctx.api.expr_checker.accept(inst_arg)
-    # </hack>
-
-    inst_type = get_proper_type(inst_type)
+    inst_type = get_proper_type(ctx.api.get_expression_type(inst_arg))
     inst_type_str = format_type_bare(inst_type, ctx.api.options)
 
     attr_types = _get_expanded_attr_types(ctx, inst_type, inst_type, inst_type)
@@ -1060,3 +1128,39 @@ def evolve_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> Callabl
         fallback=ctx.default_signature.fallback,
         name=f"{ctx.default_signature.name} of {inst_type_str}",
     )
+
+
+def fields_function_sig_callback(ctx: mypy.plugin.FunctionSigContext) -> CallableType:
+    """Provide the signature for `attrs.fields`."""
+    if len(ctx.args) != 1 or len(ctx.args[0]) != 1:
+        return ctx.default_signature
+
+    proper_type = get_proper_type(ctx.api.get_expression_type(ctx.args[0][0]))
+
+    # fields(Any) -> Any, fields(type[Any]) -> Any
+    if (
+        isinstance(proper_type, AnyType)
+        or isinstance(proper_type, TypeType)
+        and isinstance(proper_type.item, AnyType)
+    ):
+        return ctx.default_signature
+
+    cls = None
+    arg_types = ctx.default_signature.arg_types
+
+    if isinstance(proper_type, TypeVarType):
+        inner = get_proper_type(proper_type.upper_bound)
+        if isinstance(inner, Instance):
+            # We need to work arg_types to compensate for the attrs stubs.
+            arg_types = [proper_type]
+            cls = inner.type
+    elif isinstance(proper_type, CallableType):
+        cls = proper_type.type_object()
+
+    if cls is not None and MAGIC_ATTR_NAME in cls.names:
+        # This is a proper attrs class.
+        ret_type = cls.names[MAGIC_ATTR_NAME].type
+        assert ret_type is not None
+        return ctx.default_signature.copy_modified(arg_types=arg_types, ret_type=ret_type)
+
+    return ctx.default_signature

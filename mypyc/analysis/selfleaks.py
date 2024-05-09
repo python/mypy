@@ -31,6 +31,7 @@ from mypyc.ir.ops import (
     LoadStatic,
     MethodCall,
     OpVisitor,
+    PrimitiveOp,
     RaiseStandardError,
     Register,
     RegisterOp,
@@ -40,6 +41,7 @@ from mypyc.ir.ops import (
     Truncate,
     TupleGet,
     TupleSet,
+    Unborrow,
     Unbox,
     Unreachable,
 )
@@ -148,6 +150,9 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
     def visit_call_c(self, op: CallC) -> GenAndKill:
         return self.check_register_op(op)
 
+    def visit_primitive_op(self, op: PrimitiveOp) -> GenAndKill:
+        return self.check_register_op(op)
+
     def visit_truncate(self, op: Truncate) -> GenAndKill:
         return CLEAN
 
@@ -182,6 +187,9 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
         return CLEAN
 
     def visit_keep_alive(self, op: KeepAlive) -> GenAndKill:
+        return CLEAN
+
+    def visit_unborrow(self, op: Unborrow) -> GenAndKill:
         return CLEAN
 
     def check_register_op(self, op: RegisterOp) -> GenAndKill:

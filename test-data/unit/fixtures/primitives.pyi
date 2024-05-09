@@ -12,7 +12,7 @@ class object:
     def __ne__(self, other: object) -> bool: pass
 
 class type:
-    def __init__(self, x) -> None: pass
+    def __init__(self, x: object) -> None: pass
 
 class int:
     # Note: this is a simplification of the actual signature
@@ -30,7 +30,7 @@ class str(Sequence[str]):
     def __iter__(self) -> Iterator[str]: pass
     def __contains__(self, other: object) -> bool: pass
     def __getitem__(self, item: int) -> str: pass
-    def format(self, *args, **kwargs) -> str: pass
+    def format(self, *args: object, **kwargs: object) -> str: pass
 class bytes(Sequence[int]):
     def __iter__(self) -> Iterator[int]: pass
     def __contains__(self, other: object) -> bool: pass
@@ -45,7 +45,8 @@ class memoryview(Sequence[int]):
     def __iter__(self) -> Iterator[int]: pass
     def __contains__(self, other: object) -> bool: pass
     def __getitem__(self, item: int) -> int: pass
-class tuple(Generic[T]): pass
+class tuple(Generic[T]):
+    def __contains__(self, other: object) -> bool: pass
 class list(Sequence[T]):
     def __iter__(self) -> Iterator[T]: pass
     def __contains__(self, other: object) -> bool: pass
