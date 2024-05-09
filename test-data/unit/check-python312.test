@@ -693,3 +693,25 @@ u: int | str
 f(1, u)
 f('x', None)  # E: Value of type variable "T" of "f" cannot be "str" \
               # E: Value of type variable "S" of "f" cannot be "None"
+
+[case testPEP695InferVarianceOfTupleType]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+class Cov[T](tuple[int, str]):
+    def f(self) -> T: pass
+
+class Cov2[T](tuple[T, T]):
+    pass
+
+class Contra[T](tuple[int, str]):
+    def f(self, x: T) -> None: pass
+
+a: Cov[object] = Cov[int]()
+b: Cov[int] = Cov[object]()  # E: Incompatible types in assignment (expression has type "Cov[object]", variable has type "Cov[int]")
+
+c: Cov2[object] = Cov2[int]()
+d: Cov2[int] = Cov2[object]()  # E: Incompatible types in assignment (expression has type "Cov2[object]", variable has type "Cov2[int]")
+
+e: Contra[int] = Contra[object]()
+f: Contra[object] = Contra[int]()  # E: Incompatible types in assignment (expression has type "Contra[int]", variable has type "Contra[object]")
+[builtins fixtures/tuple-simple.pyi]

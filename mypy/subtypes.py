@@ -2019,6 +2019,9 @@ def infer_variance(info: TypeInfo, i: int) -> bool:
             if isinstance(node, Var) and node.type is None:
                 tv.variance = VARIANCE_NOT_READY
                 return False
+            if isinstance(self_type, TupleType):
+                self_type =mypy.typeops.tuple_fallback(self_type)
+
             flags = get_member_flags(member, self_type)
             typ = find_member(member, self_type, self_type)
             settable = IS_SETTABLE in flags
