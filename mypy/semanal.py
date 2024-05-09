@@ -162,6 +162,7 @@ from mypy.nodes import (
     TypeAliasExpr,
     TypeAliasStmt,
     TypeApplication,
+    TypeParam,
     TypedDictExpr,
     TypeInfo,
     TypeVarExpr,
@@ -1637,14 +1638,14 @@ class SemanticAnalyzer(
         self.incomplete_type_stack.pop()
 
     def push_type_args(
-        self, type_args: list[tuple[str, Type | None]] | None, context: Context
+        self, type_args: list[TypeParam] | None, context: Context
     ) -> bool:
         if not type_args:
             return True
         tvs = []
-        for name, upper_bound in type_args:
-            if upper_bound:
-                upper_bound = self.anal_type(upper_bound)
+        for p in type_args:
+            if p.upper_bound:
+                upper_bound = self.anal_type(p.upper_bound)
                 if upper_bound is None:
                     return False
             else:
@@ -1652,10 +1653,10 @@ class SemanticAnalyzer(
 
             tvs.append(
                 (
-                    name,
+                    p.name,
                     TypeVarExpr(
-                        name=name,
-                        fullname=self.qualified_name(name),
+                        name=p.name,
+                        fullname=self.qualified_name(p.name),
                         values=[],
                         upper_bound=upper_bound,
                         default=AnyType(TypeOfAny.from_omitted_generics),
@@ -1669,12 +1670,12 @@ class SemanticAnalyzer(
 
         return True
 
-    def pop_type_args(self, type_args: list[tuple[str, Type | None]] | None) -> None:
+    def pop_type_args(self, type_args: list[TypeParam] | None) -> None:
         if not type_args:
             return
         for tv in type_args:
             names = self.current_symbol_table()
-            del names[tv[0]]
+            del names[tv.name]
 
     def analyze_class(self, defn: ClassDef) -> None:
         fullname = self.qualified_name(defn.name)
@@ -1970,11 +1971,11 @@ class SemanticAnalyzer(
         declared_tvars: TypeVarLikeList = []
         is_protocol = False
         if defn.type_args is not None:
-            for n, _ in defn.type_args:
-                node = self.lookup(n, context)
+            for p in defn.type_args:
+                node = self.lookup(p.name, context)
                 assert node is not None
                 assert isinstance(node.node, TypeVarLikeExpr)
-                declared_tvars.append((n, node.node))
+                declared_tvars.append((p.name, node.node))
 
         for i, base_expr in enumerate(base_type_exprs):
             if isinstance(base_expr, StarExpr):
@@ -5191,14 +5192,14 @@ class SemanticAnalyzer(
         self.statement = s
         type_params: TypeVarLikeList = []
         all_type_params_names = []
-        for name, bound in s.type_args:
-            upper_bound = bound or self.object_type()
-            fullname = self.qualified_name(name)
+        for p in s.type_args:
+            upper_bound = p.upper_bound or self.object_type()
+            fullname = self.qualified_name(p.name)
             type_params.append(
                 (
-                    name,
+                    p.name,
                     TypeVarExpr(
-                        name,
+                        p.name,
                         fullname,
                         [],
                         upper_bound,
@@ -5206,7 +5207,7 @@ class SemanticAnalyzer(
                     ),
                 )
             )
-            all_type_params_names.append(name)
+            all_type_params_names.append(p.name)
 
         self.push_type_args(s.type_args, s)
         try:

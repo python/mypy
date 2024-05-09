@@ -5,8 +5,29 @@ type A[T] = C[T]
 MypyFile:1(
   TypeAliasStmt:2(
     NameExpr(A)
-    TypeArg(
+    TypeParam(
       T)
     IndexExpr:2(
       NameExpr(C)
       NameExpr(T))))
+
+[case testPEP695GenericFunction]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+
+def f[T](): pass
+def g[T: str](): pass
+[out]
+MypyFile:1(
+  FuncDef:3(
+    f
+    TypeParam(
+      T)
+    Block:3(
+      PassStmt:3()))
+  FuncDef:4(
+    g
+    TypeParam(
+      T
+      str?)
+    Block:4(
+      PassStmt:4())))

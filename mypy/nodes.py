@@ -653,6 +653,15 @@ class Argument(Node):
         self.variable.set_line(self.line, self.column, self.end_line, self.end_column)
 
 
+class TypeParam:
+    __slots__ = ("name", "upper_bound", "values")
+
+    def __init__(self, name: str, upper_bound: mypy.types.Type | None, values: list[mypy.types.Type]) -> None:
+        self.name = name
+        self.upper_bound = upper_bound
+        self.values = values
+
+
 FUNCITEM_FLAGS: Final = FUNCBASE_FLAGS + [
     "is_overload",
     "is_generator",
@@ -690,7 +699,7 @@ class FuncItem(FuncBase):
         arguments: list[Argument] | None = None,
         body: Block | None = None,
         typ: mypy.types.FunctionLike | None = None,
-        type_args: list[tuple[str, mypy.types.Type | None]] | None = None,
+        type_args: list[TypeParam] | None = None,
     ) -> None:
         super().__init__()
         self.arguments = arguments or []
@@ -764,7 +773,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         arguments: list[Argument] | None = None,
         body: Block | None = None,
         typ: mypy.types.FunctionLike | None = None,
-        type_args: list[tuple[str, mypy.types.Type | None]] | None = None,
+        type_args: list[TypeParam] | None = None,
     ) -> None:
         super().__init__(arguments, body, typ, type_args)
         self._name = name
@@ -1095,7 +1104,7 @@ class ClassDef(Statement):
     _fullname: str  # Fully qualified name of the class
     defs: Block
     # New-style type parameters (PEP 695), unanalyzed
-    type_args: list[tuple[str, mypy.types.Type | None]] | None
+    type_args: list[TypeParam] | None
     # Semantically analyzed type parameters (all syntax variants)
     # TODO: Move these to TypeInfo? These partially duplicate type_args.
     type_vars: list[mypy.types.TypeVarLikeType]
@@ -1120,7 +1129,7 @@ class ClassDef(Statement):
         base_type_exprs: list[Expression] | None = None,
         metaclass: Expression | None = None,
         keywords: list[tuple[str, Expression]] | None = None,
-        type_args: list[tuple[str, mypy.types.Type | None]] | None = None,
+        type_args: list[TypeParam] | None = None,
     ) -> None:
         super().__init__()
         self.name = name
@@ -1624,13 +1633,13 @@ class TypeAliasStmt(Statement):
     __match_args__ = ("name", "type_args", "value")
 
     name: NameExpr
-    type_args: list[tuple[str, mypy.types.Type | None]]
+    type_args: list[TypeParam]
     value: Expression  # mypy.types.Type
 
     def __init__(
         self,
         name: NameExpr,
-        type_args: list[tuple[str, mypy.types.Type | None]],
+        type_args: list[TypeParam],
         value: Expression,
     ) -> None:
         super().__init__()

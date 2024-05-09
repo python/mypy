@@ -86,6 +86,9 @@ class StrConv(NodeVisitor[str]):
             elif kind == mypy.nodes.ARG_STAR2:
                 extra.append(("DictVarArg", [arg.variable]))
         a: list[Any] = []
+        if o.type_args:
+            for p in o.type_args:
+                self.type_param(a, p)
         if args:
             a.append(("Args", args))
         if o.type:
@@ -325,14 +328,18 @@ class StrConv(NodeVisitor[str]):
 
     def visit_type_alias_stmt(self, o: mypy.nodes.TypeAliasStmt) -> str:
         a: list[Any] = [o.name]
-        for n, t in o.type_args:
-            aa: list[Any] = [n]
-            if t:
-                aa.append(t)
-            a.append(("TypeArg", aa))
+        for p in o.type_args:
+            self.type_param(a, p)
         a.append(o.value)
 
         return self.dump(a, o)
+
+    def type_param(self, a: list[Any], p: mypy.nodes.TypeParam) -> None:
+        aa: list[Any] = []
+        aa.append(p.name)
+        if p.upper_bound:
+            aa.append(p.upper_bound)
+        a.append(("TypeParam", aa))
 
     # Expressions
 

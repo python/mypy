@@ -80,6 +80,8 @@ from mypy.nodes import (
     TryStmt,
     TupleExpr,
     TypeAliasStmt,
+    TypeParam,
+    TypeVarExpr,
     UnaryExpr,
     Var,
     WhileStmt,
@@ -886,7 +888,7 @@ class ASTConverter:
         arg_kinds = [arg.kind for arg in args]
         arg_names = [None if arg.pos_only else arg.variable.name for arg in args]
         # Type parameters, if using new syntax for generics (PEP 695)
-        explicit_type_params: list[tuple[str, Type | None]] | None = None
+        explicit_type_params: list[TypeParam] | None = None
 
         arg_types: list[Type | None] = []
         if no_type_check:
@@ -1129,7 +1131,7 @@ class ASTConverter:
         keywords = [(kw.arg, self.visit(kw.value)) for kw in n.keywords if kw.arg]
 
         # Type parameters, if using new syntax for generics (PEP 695)
-        explicit_type_params: list[tuple[str, Type | None]] | None = None
+        explicit_type_params: list[TypeParam] | None = None
 
         if sys.version_info >= (3, 12) and n.type_params:
             if NEW_GENERIC_SYNTAX in self.options.enable_incomplete_feature:
@@ -1165,14 +1167,14 @@ class ASTConverter:
         self.class_and_function_stack.pop()
         return cdef
 
-    def translate_type_params(self, type_params: Any) -> list[tuple[str, Type | None]]:
+    def translate_type_params(self, type_params: list[Any]) -> list[TypeParam]:
         explicit_type_params = []
         for p in type_params:
             if p.bound is None:
                 bound = None
             else:
                 bound = TypeConverter(self.errors, line=p.lineno).visit(p.bound)
-            explicit_type_params.append((p.name, bound))
+            explicit_type_params.append(TypeParam(p.name, bound, []))
         return explicit_type_params
 
     # Return(expr? value)
