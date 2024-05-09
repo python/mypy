@@ -1761,6 +1761,7 @@ class ASTConverter:
 
     # TypeAlias(identifier name, type_param* type_params, expr value)
     def visit_TypeAlias(self, n: ast_TypeAlias) -> TypeAliasStmt | AssignmentStmt:
+        node: TypeAliasStmt | AssignmentStmt
         if NEW_GENERIC_SYNTAX in self.options.enable_incomplete_feature:
             type_params = self.translate_type_params(n.type_params)
             value = self.visit(n.value)

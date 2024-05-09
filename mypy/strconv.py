@@ -326,7 +326,7 @@ class StrConv(NodeVisitor[str]):
     def visit_type_alias_stmt(self, o: mypy.nodes.TypeAliasStmt) -> str:
         a: list[Any] = [o.name]
         for n, t in o.type_args:
-            aa = [n]
+            aa: list[Any] = [n]
             if t:
                 aa.append(t)
             a.append(("TypeArg", aa))
