@@ -234,6 +234,23 @@ def f_untyped(x, foo, *args, **kwargs) -> None:
 main:5:1:5:43: error: Function is missing a type annotation for one or more arguments
 main:8:1:8:47: error: Function is missing a type annotation for one or more arguments
 
+[case testColumnEndMultiline]
+# flags: --disallow-untyped-defs --warn-no-return --show-error-end
+def f(
+    x: int,
+    y: int,
+):
+    pass
+
+def g(
+    x: int,
+    y: int,
+) -> int:
+    x = 1
+[out]
+main:2:1:4:11: error: Function is missing a return type annotation
+main:8:1:11:9: error: Missing return statement
+
 [case testColumnNameIsNotDefined]
 ((x)) # E:3: Name "x" is not defined
 
