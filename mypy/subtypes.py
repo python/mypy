@@ -2044,7 +2044,7 @@ def infer_variance(info: TypeInfo, i: int) -> bool:
 
 def infer_class_variances(info: TypeInfo) -> bool:
     if not info.defn.type_args:
-        return
+        return True
     tvs = info.defn.type_vars
     for i, tv in enumerate(tvs):
         if isinstance(tv, TypeVarType):
