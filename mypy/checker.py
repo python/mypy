@@ -146,6 +146,7 @@ from mypy.sharedparse import BINARY_MAGIC_METHODS
 from mypy.state import state
 from mypy.subtypes import (
     find_member,
+    infer_class_variances,
     is_callable_compatible,
     is_equivalent,
     is_more_precise,
@@ -153,7 +154,7 @@ from mypy.subtypes import (
     is_same_type,
     is_subtype,
     restrict_subtype_away,
-    unify_generic_callable, infer_class_variances,
+    unify_generic_callable,
 )
 from mypy.traverser import TraverserVisitor, all_return_statements, has_return_statement
 from mypy.treetransform import TransformVisitor

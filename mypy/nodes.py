@@ -1120,7 +1120,7 @@ class ClassDef(Statement):
         base_type_exprs: list[Expression] | None = None,
         metaclass: Expression | None = None,
         keywords: list[tuple[str, Expression]] | None = None,
-        type_args: list[tuple[str, mypy.types.Type | None]] | None = None
+        type_args: list[tuple[str, mypy.types.Type | None]] | None = None,
     ) -> None:
         super().__init__()
         self.name = name
@@ -1625,9 +1625,14 @@ class TypeAliasStmt(Statement):
 
     name: NameExpr
     type_args: list[tuple[str, mypy.types.Type | None]]
-    value: Expression # mypy.types.Type
+    value: Expression  # mypy.types.Type
 
-    def __init__(self, name: NameExpr, type_args: list[tuple[str, mypy.types.Type | None]], value: Expression) -> None:
+    def __init__(
+        self,
+        name: NameExpr,
+        type_args: list[tuple[str, mypy.types.Type | None]],
+        value: Expression,
+    ) -> None:
         super().__init__()
         self.name = name
         self.type_args = type_args

@@ -88,7 +88,7 @@ from mypy.nodes import (
     YieldFromExpr,
     check_arg_names,
 )
-from mypy.options import Options, NEW_GENERIC_SYNTAX
+from mypy.options import NEW_GENERIC_SYNTAX, Options
 from mypy.patterns import (
     AsPattern,
     ClassPattern,
@@ -944,8 +944,9 @@ class ASTConverter:
                     explicit_type_params = self.translate_type_params(n.type_params)
                 else:
                     self.fail(
-                        ErrorMessage("PEP 695 generics are not yet supported",
-                                     code=codes.VALID_TYPE),
+                        ErrorMessage(
+                            "PEP 695 generics are not yet supported", code=codes.VALID_TYPE
+                        ),
                         n.type_params[0].lineno,
                         n.type_params[0].col_offset,
                         blocker=False,

@@ -84,6 +84,7 @@ from mypy.nodes import (
     REVEAL_LOCALS,
     REVEAL_TYPE,
     RUNTIME_PROTOCOL_DECOS,
+    VARIANCE_NOT_READY,
     ArgKind,
     AssertStmt,
     AssertTypeExpr,
@@ -178,7 +179,7 @@ from mypy.nodes import (
     is_final_node,
     type_aliases,
     type_aliases_source_versions,
-    typing_extensions_aliases, VARIANCE_NOT_READY,
+    typing_extensions_aliases,
 )
 from mypy.options import Options
 from mypy.patterns import (
@@ -1635,8 +1636,9 @@ class SemanticAnalyzer(
             self.pop_type_args(defn.type_args)
         self.incomplete_type_stack.pop()
 
-    def push_type_args(self, type_args: list[tuple[str, Type | None]] | None,
-                       context: Context) -> bool:
+    def push_type_args(
+        self, type_args: list[tuple[str, Type | None]] | None, context: Context
+    ) -> bool:
         if not type_args:
             return True
         tvs = []
@@ -1649,14 +1651,17 @@ class SemanticAnalyzer(
                 upper_bound = self.named_type("builtins.object")
 
             tvs.append(
-                (name, TypeVarExpr(
-                    name=name,
-                    fullname=self.qualified_name(name),
-                    values=[],
-                    upper_bound=upper_bound,
-                    default=AnyType(TypeOfAny.from_omitted_generics),
-                    variance=VARIANCE_NOT_READY,
-                ))
+                (
+                    name,
+                    TypeVarExpr(
+                        name=name,
+                        fullname=self.qualified_name(name),
+                        values=[],
+                        upper_bound=upper_bound,
+                        default=AnyType(TypeOfAny.from_omitted_generics),
+                        variance=VARIANCE_NOT_READY,
+                    ),
+                )
             )
 
         for name, tv in tvs:
@@ -5189,8 +5194,18 @@ class SemanticAnalyzer(
         for name, bound in s.type_args:
             upper_bound = bound or self.object_type()
             fullname = self.qualified_name(name)
-            type_params.append((name, TypeVarExpr(name, fullname, [], upper_bound,
-                                                  default=AnyType(TypeOfAny.from_omitted_generics))))
+            type_params.append(
+                (
+                    name,
+                    TypeVarExpr(
+                        name,
+                        fullname,
+                        [],
+                        upper_bound,
+                        default=AnyType(TypeOfAny.from_omitted_generics),
+                    ),
+                )
+            )
             all_type_params_names.append(name)
 
         self.push_type_args(s.type_args, s)
@@ -5229,11 +5244,13 @@ class SemanticAnalyzer(
             # The above are only direct deps on other aliases.
             # For subscripted aliases, type deps from expansion are added in deps.py
             # (because the type is stored).
-            check_for_explicit_any(res, self.options, self.is_typeshed_stub_file, self.msg, context=s)
+            check_for_explicit_any(
+                res, self.options, self.is_typeshed_stub_file, self.msg, context=s
+            )
             # When this type alias gets "inlined", the Any is not explicit anymore,
             # so we need to replace it with non-explicit Anys.
             res = make_any_non_explicit(res)
-            #if isinstance(res, ProperType) and isinstance(res, Instance):
+            # if isinstance(res, ProperType) and isinstance(res, Instance):
             #    if not validate_instance(res, self.fail, empty_tuple_index):
             #        fix_instance(res, self.fail, self.note, disallow_any=False, options=self.options)
             eager = self.is_func_scope()

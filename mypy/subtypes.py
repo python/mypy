@@ -8,9 +8,8 @@ import mypy.applytype
 import mypy.constraints
 import mypy.typeops
 from mypy.erasetype import erase_type
-from mypy.expandtype import expand_self_type, expand_type_by_instance, expand_type
+from mypy.expandtype import expand_self_type, expand_type, expand_type_by_instance
 from mypy.maptype import map_instance_to_supertype
-from mypy.typevars import fill_typevars
 
 # Circular import; done in the function instead.
 # import mypy.solve
@@ -20,11 +19,12 @@ from mypy.nodes import (
     CONTRAVARIANT,
     COVARIANT,
     INVARIANT,
+    VARIANCE_NOT_READY,
     Decorator,
     FuncBase,
     OverloadedFuncDef,
     TypeInfo,
-    Var, VARIANCE_NOT_READY,
+    Var,
 )
 from mypy.options import Options
 from mypy.state import state
@@ -67,7 +67,7 @@ from mypy.types import (
 )
 from mypy.types_utils import flatten_types
 from mypy.typestate import SubtypeKind, type_state
-from mypy.typevars import fill_typevars_with_any
+from mypy.typevars import fill_typevars, fill_typevars_with_any
 
 # Flags for detected protocol members
 IS_SETTABLE: Final = 1
@@ -2020,7 +2020,7 @@ def infer_variance(info: TypeInfo, i: int) -> bool:
                 tv.variance = VARIANCE_NOT_READY
                 return False
             if isinstance(self_type, TupleType):
-                self_type =mypy.typeops.tuple_fallback(self_type)
+                self_type = mypy.typeops.tuple_fallback(self_type)
 
             flags = get_member_flags(member, self_type)
             typ = find_member(member, self_type, self_type)
