@@ -5301,7 +5301,11 @@ class SemanticAnalyzer(
             )
 
             existing = self.current_symbol_table().get(s.name.name)
-            if existing and isinstance(existing.node, (PlaceholderNode, TypeAlias)) and existing.node.line == s.line:
+            if (
+                existing
+                and isinstance(existing.node, (PlaceholderNode, TypeAlias))
+                and existing.node.line == s.line
+            ):
                 existing.node = alias_node
             else:
                 self.add_symbol(s.name.name, alias_node, s)

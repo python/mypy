@@ -689,8 +689,8 @@ class FuncItem(FuncBase):
 
     __slots__ = (
         "arguments",  # Note that can be unset if deserialized (type is a lie!)
-        "arg_names",  # Names of parameters
-        "arg_kinds",  # Kinds of parameters
+        "arg_names",  # Names of arguments
+        "arg_kinds",  # Kinds of arguments
         "min_args",  # Minimum number of arguments
         "max_pos",  # Maximum number of positional arguments, -1 if no explicit
         # limit (*args not included)
@@ -719,7 +719,7 @@ class FuncItem(FuncBase):
         self.arg_names = [None if arg.pos_only else arg.variable.name for arg in self.arguments]
         self.arg_kinds: list[ArgKind] = [arg.kind for arg in self.arguments]
         self.max_pos: int = self.arg_kinds.count(ARG_POS) + self.arg_kinds.count(ARG_OPT)
-        self.type_args = type_args
+        self.type_args: list[TypeParam] | None = type_args
         self.body: Block = body or Block([])
         self.type = typ
         self.unanalyzed_type = typ
@@ -1119,7 +1119,6 @@ class ClassDef(Statement):
     # New-style type parameters (PEP 695), unanalyzed
     type_args: list[TypeParam] | None
     # Semantically analyzed type parameters (all syntax variants)
-    # TODO: Move these to TypeInfo? These partially duplicate type_args.
     type_vars: list[mypy.types.TypeVarLikeType]
     # Base class expressions (not semantically analyzed -- can be arbitrary expressions)
     base_type_exprs: list[Expression]
@@ -1647,7 +1646,7 @@ class TypeAliasStmt(Statement):
 
     name: NameExpr
     type_args: list[TypeParam]
-    value: Expression  # mypy.types.Type
+    value: Expression  # Will get translated into a type
 
     def __init__(self, name: NameExpr, type_args: list[TypeParam], value: Expression) -> None:
         super().__init__()

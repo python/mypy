@@ -813,6 +813,7 @@ b: C[int, str, None]
 reveal_type(b)  # N: Revealed type is "__main__.C[builtins.int, builtins.str, None]"
 c: C[str]
 reveal_type(c)  # N: Revealed type is "__main__.C[builtins.str]"
+b = c  # E: Incompatible types in assignment (expression has type "C[str]", variable has type "C[int, str, None]")
 [builtins fixtures/tuple.pyi]
 
 [case testPEP695IncrementalFunction]
