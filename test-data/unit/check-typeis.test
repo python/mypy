@@ -136,6 +136,17 @@ def main(a: object) -> None:
         reveal_type(a)  # N: Revealed type is "Union[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
 
+[case testTypeIsUnionWithTypeParams]
+from typing_extensions import TypeIs
+from typing import Iterable, List, Union
+def is_iterable_int(val: object) -> TypeIs[Iterable[int]]: pass
+def main(a: Union[List[int], List[str]]) -> None:
+    if is_iterable_int(a):
+        reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
+    else:
+        reveal_type(a)  # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeIsNonzeroFloat]
 from typing_extensions import TypeIs
 def is_nonzero(a: object) -> TypeIs[float]: pass
