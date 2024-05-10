@@ -88,7 +88,7 @@ class StrConv(NodeVisitor[str]):
         a: list[Any] = []
         if o.type_args:
             for p in o.type_args:
-                self.type_param(a, p)
+                a.append(self.type_param(p))
         if args:
             a.append(("Args", args))
         if o.type:
@@ -190,6 +190,9 @@ class StrConv(NodeVisitor[str]):
             a.insert(1, ("TupleType", [o.info.tuple_type]))
         if o.info and o.info.fallback_to_any:
             a.insert(1, "FallbackToAny")
+        if o.type_args:
+            for p in reversed(o.type_args):
+                a.insert(1, self.type_param(p))
         return self.dump(a, o)
 
     def visit_var(self, o: mypy.nodes.Var) -> str:
@@ -329,19 +332,25 @@ class StrConv(NodeVisitor[str]):
     def visit_type_alias_stmt(self, o: mypy.nodes.TypeAliasStmt) -> str:
         a: list[Any] = [o.name]
         for p in o.type_args:
-            self.type_param(a, p)
+            a.append(self.type_param(p))
         a.append(o.value)
 
         return self.dump(a, o)
 
-    def type_param(self, a: list[Any], p: mypy.nodes.TypeParam) -> None:
-        aa: list[Any] = []
-        aa.append(p.name)
+    def type_param(self, p: mypy.nodes.TypeParam) -> list[Any]:
+        a: list[Any] = []
+        if p.kind == mypy.nodes.PARAM_SPEC_KIND:
+            prefix = "**"
+        elif p.kind == mypy.nodes.TYPE_VAR_TUPLE_KIND:
+            prefix = "*"
+        else:
+            prefix = ""
+        a.append(prefix + p.name)
         if p.upper_bound:
-            aa.append(p.upper_bound)
+            a.append(p.upper_bound)
         if p.values:
-            aa.append(("Values", p.values))
-        a.append(("TypeParam", aa))
+            a.append(("Values", p.values))
+        return [("TypeParam", a)]
 
     # Expressions
 

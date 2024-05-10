@@ -3417,8 +3417,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if (
                     lv.node.final_unset_in_class
                     and not lv.node.final_set_in_init
-                    and not self.is_stub
-                    and  # It is OK to skip initializer in stub files.
+                    and not self.is_stub  # It is OK to skip initializer in stub files.
+                    and
                     # Avoid extra error messages, if there is no type in Final[...],
                     # then we already reported the error about missing r.h.s.
                     isinstance(s, AssignmentStmt)

@@ -653,11 +653,24 @@ class Argument(Node):
         self.variable.set_line(self.line, self.column, self.end_line, self.end_column)
 
 
-class TypeParam:
-    __slots__ = ("name", "upper_bound", "values")
+# These specify the kind of a TypeParam
+TYPE_VAR_KIND: Final = 0
+PARAM_SPEC_KIND: Final = 1
+TYPE_VAR_TUPLE_KIND: Final = 2
 
-    def __init__(self, name: str, upper_bound: mypy.types.Type | None, values: list[mypy.types.Type]) -> None:
+
+class TypeParam:
+    __slots__ = ("name", "kind", "upper_bound", "values")
+
+    def __init__(
+        self,
+        name: str,
+        kind: int,
+        upper_bound: mypy.types.Type | None,
+        values: list[mypy.types.Type],
+    ) -> None:
         self.name = name
+        self.kind = kind
         self.upper_bound = upper_bound
         self.values = values
 
@@ -1636,12 +1649,7 @@ class TypeAliasStmt(Statement):
     type_args: list[TypeParam]
     value: Expression  # mypy.types.Type
 
-    def __init__(
-        self,
-        name: NameExpr,
-        type_args: list[TypeParam],
-        value: Expression,
-    ) -> None:
+    def __init__(self, name: NameExpr, type_args: list[TypeParam], value: Expression) -> None:
         super().__init__()
         self.name = name
         self.type_args = type_args

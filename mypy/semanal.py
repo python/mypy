@@ -81,9 +81,11 @@ from mypy.nodes import (
     LDEF,
     MDEF,
     NOT_ABSTRACT,
+    PARAM_SPEC_KIND,
     REVEAL_LOCALS,
     REVEAL_TYPE,
     RUNTIME_PROTOCOL_DECOS,
+    TYPE_VAR_KIND,
     VARIANCE_NOT_READY,
     ArgKind,
     AssertStmt,
@@ -162,9 +164,9 @@ from mypy.nodes import (
     TypeAliasExpr,
     TypeAliasStmt,
     TypeApplication,
-    TypeParam,
     TypedDictExpr,
     TypeInfo,
+    TypeParam,
     TypeVarExpr,
     TypeVarLikeExpr,
     TypeVarTupleExpr,
@@ -1637,40 +1639,52 @@ class SemanticAnalyzer(
             self.pop_type_args(defn.type_args)
         self.incomplete_type_stack.pop()
 
-    def push_type_args(
-        self, type_args: list[TypeParam] | None, context: Context
-    ) -> bool:
+    def push_type_args(self, type_args: list[TypeParam] | None, context: Context) -> bool:
         if not type_args:
             return True
-        tvs = []
+        tvs: list[tuple[str, TypeVarLikeExpr]] = []
         for p in type_args:
-            values = []
+            fullname = self.qualified_name(p.name)
             if p.upper_bound:
                 upper_bound = self.anal_type(p.upper_bound)
                 if upper_bound is None:
                     return False
             else:
                 upper_bound = self.named_type("builtins.object")
+            default = AnyType(TypeOfAny.from_omitted_generics)
+            if p.kind == TYPE_VAR_KIND:
+                values = []
                 if p.values:
                     for value in p.values:
                         analyzed = self.anal_type(value)
                         if analyzed is None:
                             return False
                         values.append(analyzed)
-
-            tvs.append(
-                (
-                    p.name,
-                    TypeVarExpr(
-                        name=p.name,
-                        fullname=self.qualified_name(p.name),
-                        values=values,
-                        upper_bound=upper_bound,
-                        default=AnyType(TypeOfAny.from_omitted_generics),
-                        variance=VARIANCE_NOT_READY,
-                    ),
+                tvs.append(
+                    (
+                        p.name,
+                        TypeVarExpr(
+                            name=p.name,
+                            fullname=fullname,
+                            values=values,
+                            upper_bound=upper_bound,
+                            default=default,
+                            variance=VARIANCE_NOT_READY,
+                        ),
+                    )
                 )
-            )
+            elif p.kind == PARAM_SPEC_KIND:
+                tvs.append(
+                    (
+                        p.name,
+                        ParamSpecExpr(
+                            name=p.name,
+                            fullname=fullname,
+                            upper_bound=upper_bound,
+                            default=default,
+                        ),
+                    )
+                )
 
         for name, tv in tvs:
             self.add_symbol(name, tv, context)

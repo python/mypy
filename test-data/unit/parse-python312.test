@@ -41,3 +41,25 @@ MypyFile:1(
         str?))
     Block:5(
       PassStmt:5())))
+
+[case testPEP695ParamSpec]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+
+def f[**P](): pass
+class C[T: int, **P]: pass
+[out]
+MypyFile:1(
+  FuncDef:3(
+    f
+    TypeParam(
+      **P)
+    Block:3(
+      PassStmt:3()))
+  ClassDef:4(
+    C
+    TypeParam(
+      T
+      int?)
+    TypeParam(
+      **P)
+    PassStmt:4()))

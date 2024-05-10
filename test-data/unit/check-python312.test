@@ -760,3 +760,25 @@ class C[T: (int, XX)]:  # E: Name "XX" is not defined
 
 def f[S: (int, YY)](x: S) -> S:  # E: Name "YY" is not defined
     return x
+
+[case testPEP695ParamSpec]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+from typing import Callable
+
+def g[**P](f: Callable[P, None], *args: P.args, **kwargs: P.kwargs) -> None:
+    f(*args, **kwargs)
+    f(1, *args, **kwargs)  # E: Argument 1 has incompatible type "int"; expected "P.args"
+
+def h(x: int, y: str) -> None: pass
+
+g(h, 1, y='x')
+g(h, 1, x=1)  # E: "g" gets multiple values for keyword argument "x" \
+              # E: Missing positional argument "y" in call to "g"
+
+class C[**P, T]:
+    def m(self, *args: P.args, **kwargs: P.kwargs) -> T: ...
+
+a: C[[int, str], None]
+reveal_type(a)  # N: Revealed type is "__main__.C[[builtins.int, builtins.str], None]"
+reveal_type(a.m)  # N: Revealed type is "def (builtins.int, builtins.str)"
+[builtins fixtures/tuple.pyi]

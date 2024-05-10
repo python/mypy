@@ -17,6 +17,8 @@ from mypy.nodes import (
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
+    PARAM_SPEC_KIND,
+    TYPE_VAR_KIND,
     ArgKind,
     Argument,
     AssertStmt,
@@ -81,7 +83,6 @@ from mypy.nodes import (
     TupleExpr,
     TypeAliasStmt,
     TypeParam,
-    TypeVarExpr,
     UnaryExpr,
     Var,
     WhileStmt,
@@ -178,6 +179,10 @@ if sys.version_info >= (3, 11):
     TryStar = ast3.TryStar
 else:
     TryStar = Any
+if sys.version_info >= (3, 12):
+    ParamSpec = ast3.ParamSpec
+else:
+    ParamSpec = Any
 
 N = TypeVar("N", bound=Node)
 
@@ -1172,12 +1177,15 @@ class ASTConverter:
         for p in type_params:
             bound = None
             values: list[Type] = []
-            if isinstance(p.bound, ast3.Tuple):
-                conv = TypeConverter(self.errors, line=p.lineno)
-                values = [conv.visit(t) for t in p.bound.elts]
-            elif p.bound is not None:
-                bound = TypeConverter(self.errors, line=p.lineno).visit(p.bound)
-            explicit_type_params.append(TypeParam(p.name, bound, values))
+            if isinstance(p, ParamSpec):  # type: ignore[misc]
+                explicit_type_params.append(TypeParam(p.name, PARAM_SPEC_KIND, None, []))
+            else:
+                if isinstance(p.bound, ast3.Tuple):
+                    conv = TypeConverter(self.errors, line=p.lineno)
+                    values = [conv.visit(t) for t in p.bound.elts]
+                elif p.bound is not None:
+                    bound = TypeConverter(self.errors, line=p.lineno).visit(p.bound)
+                explicit_type_params.append(TypeParam(p.name, TYPE_VAR_KIND, bound, values))
         return explicit_type_params
 
     # Return(expr? value)
