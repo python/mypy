@@ -254,7 +254,7 @@ def _build(
         plugin=plugin,
         plugins_snapshot=snapshot,
         errors=errors,
-        error_formatter=OUTPUT_CHOICES.get(options.output),
+        error_formatter=None if options.output is None else OUTPUT_CHOICES.get(options.output),
         flush_errors=flush_errors,
         fscache=fscache,
         stdout=stdout,

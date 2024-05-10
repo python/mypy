@@ -1295,15 +1295,16 @@ class MypyError:
         line: int,
         column: int,
         message: str,
-        hint: str,
         errorcode: ErrorCode | None,
+        is_note: bool = False,
     ) -> None:
         self.file_path = file_path
         self.line = line
         self.column = column
         self.message = message
-        self.hint = hint
         self.errorcode = errorcode
+        self.is_note = is_note
+        self.hints: list[str] = []
 
 
 # (file_path, line, column)
@@ -1324,16 +1325,15 @@ def create_errors(error_tuples: list[ErrorTuple]) -> list[MypyError]:
             error_location = (file_path, line, column)
             error = latest_error_at_location.get(error_location)
             if error is None:
-                # No error tuple found for this hint. Ignoring it
+                # This is purely a note, with no error correlated to it
+                error = MypyError(file_path, line, column, message, errorcode, is_note=True)
+                errors.append(error)
                 continue
 
-            if error.hint == "":
-                error.hint = message
-            else:
-                error.hint += "\n" + message
+            error.hints.append(message)
 
         else:
-            error = MypyError(file_path, line, column, message, "", errorcode)
+            error = MypyError(file_path, line, column, message, errorcode)
             errors.append(error)
             error_location = (file_path, line, column)
             latest_error_at_location[error_location] = error

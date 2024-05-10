@@ -27,8 +27,9 @@ class JSONFormatter(ErrorFormatter):
                 "line": error.line,
                 "column": error.column,
                 "message": error.message,
-                "hint": error.hint or None,
+                "hint": None if len(error.hints) == 0 else "\n".join(error.hints),
                 "code": None if error.errorcode is None else error.errorcode.code,
+                "is_note": error.is_note,
             }
         )
 
