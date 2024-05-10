@@ -19,6 +19,7 @@ from mypy.nodes import (
     ARG_STAR2,
     PARAM_SPEC_KIND,
     TYPE_VAR_KIND,
+    TYPE_VAR_TUPLE_KIND,
     ArgKind,
     Argument,
     AssertStmt,
@@ -148,11 +149,6 @@ def ast3_parse(
 NamedExpr = ast3.NamedExpr
 Constant = ast3.Constant
 
-if sys.version_info >= (3, 12):
-    ast_TypeAlias = ast3.TypeAlias
-else:
-    ast_TypeAlias = Any
-
 if sys.version_info >= (3, 10):
     Match = ast3.Match
     MatchValue = ast3.MatchValue
@@ -175,14 +171,20 @@ else:
     MatchAs = Any
     MatchOr = Any
     AstNode = Union[ast3.expr, ast3.stmt, ast3.ExceptHandler]
+
 if sys.version_info >= (3, 11):
     TryStar = ast3.TryStar
 else:
     TryStar = Any
+
 if sys.version_info >= (3, 12):
+    ast_TypeAlias = ast3.TypeAlias
     ParamSpec = ast3.ParamSpec
+    TypeVarTuple = ast3.TypeVarTuple
 else:
+    ast_TypeAlias = Any
     ParamSpec = Any
+    TypeVarTuple = Any
 
 N = TypeVar("N", bound=Node)
 
@@ -1179,6 +1181,8 @@ class ASTConverter:
             values: list[Type] = []
             if isinstance(p, ParamSpec):  # type: ignore[misc]
                 explicit_type_params.append(TypeParam(p.name, PARAM_SPEC_KIND, None, []))
+            elif isinstance(p, TypeVarTuple):  # type: ignore[misc]
+                explicit_type_params.append(TypeParam(p.name, TYPE_VAR_TUPLE_KIND, None, []))
             else:
                 if isinstance(p.bound, ast3.Tuple):
                     conv = TypeConverter(self.errors, line=p.lineno)

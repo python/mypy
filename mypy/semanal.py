@@ -86,6 +86,7 @@ from mypy.nodes import (
     REVEAL_TYPE,
     RUNTIME_PROTOCOL_DECOS,
     TYPE_VAR_KIND,
+    TYPE_VAR_TUPLE_KIND,
     VARIANCE_NOT_READY,
     ArgKind,
     AssertStmt,
@@ -1681,6 +1682,22 @@ class SemanticAnalyzer(
                             name=p.name,
                             fullname=fullname,
                             upper_bound=upper_bound,
+                            default=default,
+                        ),
+                    )
+                )
+            else:
+                assert p.kind == TYPE_VAR_TUPLE_KIND
+                tuple_fallback = self.named_type("builtins.tuple", [self.object_type()])
+                tvs.append(
+                    (
+                        p.name,
+                        TypeVarTupleExpr(
+                            name=p.name,
+                            fullname=fullname,
+                            # Upper bound for *Ts is *tuple[object, ...], it can never be object.
+                            upper_bound=tuple_fallback.copy_modified(),
+                            tuple_fallback=tuple_fallback,
                             default=default,
                         ),
                     )

@@ -334,7 +334,6 @@ class StrConv(NodeVisitor[str]):
         for p in o.type_args:
             a.append(self.type_param(p))
         a.append(o.value)
-
         return self.dump(a, o)
 
     def type_param(self, p: mypy.nodes.TypeParam) -> list[Any]:

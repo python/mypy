@@ -782,3 +782,23 @@ a: C[[int, str], None]
 reveal_type(a)  # N: Revealed type is "__main__.C[[builtins.int, builtins.str], None]"
 reveal_type(a.m)  # N: Revealed type is "def (builtins.int, builtins.str)"
 [builtins fixtures/tuple.pyi]
+
+[case testPEP695TypeVarTuple]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+def f[*Ts](t: tuple[*Ts]) -> tuple[*Ts]:
+    reveal_type(t)  # N: Revealed type is "Tuple[Unpack[Ts`-1]]"
+    return t
+
+reveal_type(f((1, 'x')))  # N: Revealed type is "Tuple[Literal[1]?, Literal['x']?]"
+a: tuple[int, ...]
+reveal_type(f(a))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+
+class C[T, *Ts]:
+    pass
+
+b: C[int, str, None]
+reveal_type(b)  # N: Revealed type is "__main__.C[builtins.int, builtins.str, None]"
+c: C[str]
+reveal_type(c)  # N: Revealed type is "__main__.C[builtins.str]"
+[builtins fixtures/tuple.pyi]
