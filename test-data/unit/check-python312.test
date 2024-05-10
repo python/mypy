@@ -802,3 +802,111 @@ reveal_type(b)  # N: Revealed type is "__main__.C[builtins.int, builtins.str, No
 c: C[str]
 reveal_type(c)  # N: Revealed type is "__main__.C[builtins.str]"
 [builtins fixtures/tuple.pyi]
+
+[case testPEP695IncrementalFunction]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+import a
+
+[file a.py]
+import b
+
+[file a.py.2]
+import b
+reveal_type(b.f(1))
+reveal_type(b.g(1, 'x'))
+b.g('x', 'x')
+b.g(1, 2)
+
+[file b.py]
+def f[T](x: T) -> T:
+    return x
+
+def g[T: int, S: (str, None)](x: T, y: S) -> T | S:
+    return x
+
+[out2]
+tmp/a.py:2: note: Revealed type is "builtins.int"
+tmp/a.py:3: note: Revealed type is "Union[builtins.int, builtins.str]"
+tmp/a.py:4: error: Value of type variable "T" of "g" cannot be "str"
+tmp/a.py:5: error: Value of type variable "S" of "g" cannot be "int"
+
+[case testPEP695IncrementalClass]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+import a
+
+[file a.py]
+import b
+
+[file a.py.2]
+from b import C, D
+x: C[int]
+reveal_type(x)
+
+class N(int): pass
+class SS(str): pass
+
+y1: D[int, str]
+y2: D[N, str]
+y3: D[int, None]
+y4: D[int, None]
+y5: D[int, SS]  # Error
+y6: D[object, str]  # Error
+
+[file b.py]
+class C[T]: pass
+
+class D[T: int, S: (str, None)]:
+    pass
+
+[out2]
+tmp/a.py:3: note: Revealed type is "b.C[builtins.int]"
+tmp/a.py:12: error: Value of type variable "S" of "D" cannot be "SS"
+tmp/a.py:13: error: Type argument "object" of "D" must be a subtype of "int"
+
+[case testPEP695IncrementalParamSpecAndTypeVarTuple]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+import a
+
+[file a.py]
+import b
+
+[file a.py.2]
+from b import C, D
+x1: C[()]
+x2: C[int]
+x3: C[int, str]
+y: D[[int, str]]
+reveal_type(y.m)
+
+[file b.py]
+class C[*Ts]: pass
+class D[**P]:
+    def m(self, *args: P.args, **kwargs: P.kwargs) -> None: pass
+
+[builtins fixtures/tuple.pyi]
+[out2]
+tmp/a.py:6: note: Revealed type is "def (builtins.int, builtins.str)"
+
+[case testPEP695IncrementalTypeAlias]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+import a
+
+[file a.py]
+import b
+
+[file a.py.2]
+from b import A, B
+a: A
+reveal_type(a)
+b: B[int]
+reveal_type(b)
+
+[file b.py]
+type A = str
+class Foo[T]: pass
+type B[T] = Foo[T]
+
+[builtins fixtures/tuple.pyi]
+[out2]
+tmp/a.py:3: note: Revealed type is "builtins.str"
+tmp/a.py:5: note: Revealed type is "b.Foo[builtins.int]"
