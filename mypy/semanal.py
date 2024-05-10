@@ -5289,9 +5289,6 @@ class SemanticAnalyzer(
             # When this type alias gets "inlined", the Any is not explicit anymore,
             # so we need to replace it with non-explicit Anys.
             res = make_any_non_explicit(res)
-            # if isinstance(res, ProperType) and isinstance(res, Instance):
-            #    if not validate_instance(res, self.fail, empty_tuple_index):
-            #        fix_instance(res, self.fail, self.note, disallow_any=False, options=self.options)
             eager = self.is_func_scope()
             alias_node = TypeAlias(
                 res,
@@ -5303,9 +5300,12 @@ class SemanticAnalyzer(
                 eager=eager,
             )
 
-            self.add_symbol(s.name.name, alias_node, s)
+            existing = self.current_symbol_table().get(s.name.name)
+            if existing and isinstance(existing.node, (PlaceholderNode, TypeAlias)) and existing.node.line == s.line:
+                existing.node = alias_node
+            else:
+                self.add_symbol(s.name.name, alias_node, s)
 
-            # TODO: Check if existing
         finally:
             self.pop_type_args(s.type_args)
 

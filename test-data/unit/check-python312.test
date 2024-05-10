@@ -559,6 +559,18 @@ class C: pass
 x: C = D()
 y: D = C()  # E: Incompatible types in assignment (expression has type "C", variable has type "D")
 
+[case testPEP695TypeAliasForwardReference5]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+type A = str
+type B[T] = C[T]
+class C[T]: pass
+a: A
+b: B[int]
+c: C[str]
+reveal_type(a)  # N: Revealed type is "builtins.str"
+reveal_type(b)  # N: Revealed type is "__main__.C[builtins.int]"
+reveal_type(c)  # N: Revealed type is "__main__.C[builtins.str]"
+
 [case testPEP695TypeAliasWithUndefineName]
 # flags: --enable-incomplete-feature=NewGenericSyntax
 type A[T] = XXX  # E: Name "XXX" is not defined
