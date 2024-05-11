@@ -5787,7 +5787,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                     self.lookup_type(expr),
                                     [TypeRange(node.callee.type_is, is_upper_bound=False)],
                                     expr,
-                                    ignore_type_params=False,
                                 ),
                             )
         elif isinstance(node, ComparisonExpr):
@@ -7161,17 +7160,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         type_ranges: list[TypeRange] | None,
         ctx: Context,
         default: None = None,
-        ignore_type_params: bool = True,
     ) -> tuple[Type | None, Type | None]: ...
 
     @overload
     def conditional_types_with_intersection(
-        self,
-        expr_type: Type,
-        type_ranges: list[TypeRange] | None,
-        ctx: Context,
-        default: Type,
-        ignore_type_params: bool = True,
+        self, expr_type: Type, type_ranges: list[TypeRange] | None, ctx: Context, default: Type
     ) -> tuple[Type, Type]: ...
 
     def conditional_types_with_intersection(
@@ -7180,9 +7173,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         type_ranges: list[TypeRange] | None,
         ctx: Context,
         default: Type | None = None,
-        ignore_type_params: bool = True,
     ) -> tuple[Type | None, Type | None]:
-        initial_types = conditional_types(expr_type, type_ranges, default, ignore_type_params)
+        initial_types = conditional_types(expr_type, type_ranges, default)
         # For some reason, doing "yes_map, no_map = conditional_types_to_typemaps(...)"
         # doesn't work: mypyc will decide that 'yes_map' is of type None if we try.
         yes_type: Type | None = initial_types[0]
@@ -7430,27 +7422,18 @@ class CollectArgTypeVarTypes(TypeTraverserVisitor):
 
 @overload
 def conditional_types(
-    current_type: Type,
-    proposed_type_ranges: list[TypeRange] | None,
-    default: None = None,
-    ignore_type_params: bool = True,
+    current_type: Type, proposed_type_ranges: list[TypeRange] | None, default: None = None
 ) -> tuple[Type | None, Type | None]: ...
 
 
 @overload
 def conditional_types(
-    current_type: Type,
-    proposed_type_ranges: list[TypeRange] | None,
-    default: Type,
-    ignore_type_params: bool = True,
+    current_type: Type, proposed_type_ranges: list[TypeRange] | None, default: Type
 ) -> tuple[Type, Type]: ...
 
 
 def conditional_types(
-    current_type: Type,
-    proposed_type_ranges: list[TypeRange] | None,
-    default: Type | None = None,
-    ignore_type_params: bool = True,
+    current_type: Type, proposed_type_ranges: list[TypeRange] | None, default: Type | None = None
 ) -> tuple[Type | None, Type | None]:
     """Takes in the current type and a proposed type of an expression.
 
@@ -7494,9 +7477,7 @@ def conditional_types(
                     if not type_range.is_upper_bound
                 ]
             )
-            remaining_type = restrict_subtype_away(
-                current_type, proposed_precise_type, ignore_type_params=ignore_type_params
-            )
+            remaining_type = restrict_subtype_away(current_type, proposed_precise_type)
             return proposed_type, remaining_type
     else:
         # An isinstance check, but we don't understand the type

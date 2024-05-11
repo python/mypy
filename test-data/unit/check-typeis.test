@@ -177,6 +177,18 @@ class C:
     def is_float(self, a: object) -> TypeIs[float]: pass
 [builtins fixtures/tuple.pyi]
 
+[case testTypeIsAwaitableAny]
+from typing_extensions import TypeIs
+from typing import Any, Awaitable, TypeVar, Union
+T = TypeVar('T')
+def is_awaitable(val: object) -> TypeIs[Awaitable[Any]]: pass
+def main(a: Union[Awaitable[T], T]) -> None:
+    if is_awaitable(a):
+        reveal_type(a)  # N: Revealed type is "Union[typing.Awaitable[T`-1], typing.Awaitable[Any]]"
+    else:
+        reveal_type(a)  # N: Revealed type is "T`-1"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeIsCrossModule]
 import guard
 from points import Point
