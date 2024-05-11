@@ -44,6 +44,7 @@ from typing_extensions import TypeAlias as _TypeAlias, TypedDict
 
 import mypy.semanal_main
 from mypy.checker import TypeChecker
+from mypy.error_formatter import OUTPUT_CHOICES, ErrorFormatter
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
 from mypy.indirection import TypeIndirectionVisitor
@@ -253,6 +254,7 @@ def _build(
         plugin=plugin,
         plugins_snapshot=snapshot,
         errors=errors,
+        error_formatter=None if options.output is None else OUTPUT_CHOICES.get(options.output),
         flush_errors=flush_errors,
         fscache=fscache,
         stdout=stdout,
@@ -607,6 +609,7 @@ class BuildManager:
         fscache: FileSystemCache,
         stdout: TextIO,
         stderr: TextIO,
+        error_formatter: ErrorFormatter | None = None,
     ) -> None:
         self.stats: dict[str, Any] = {}  # Values are ints or floats
         self.stdout = stdout
@@ -615,6 +618,7 @@ class BuildManager:
         self.data_dir = data_dir
         self.errors = errors
         self.errors.set_ignore_prefix(ignore_prefix)
+        self.error_formatter = error_formatter
         self.search_paths = search_paths
         self.source_set = source_set
         self.reports = reports
@@ -3463,11 +3467,8 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
         for id in stale:
             graph[id].transitive_error = True
     for id in stale:
-        manager.flush_errors(
-            manager.errors.simplify_path(graph[id].xpath),
-            manager.errors.file_messages(graph[id].xpath),
-            False,
-        )
+        errors = manager.errors.file_messages(graph[id].xpath, formatter=manager.error_formatter)
+        manager.flush_errors(manager.errors.simplify_path(graph[id].xpath), errors, False)
         graph[id].write_cache()
         graph[id].mark_as_rechecked()
 
