@@ -272,7 +272,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return typ
 
     def visit_unbound_type_nonoptional(self, t: UnboundType, defining_literal: bool) -> Type:
-        ### hila - here is the creation of t.type.type_vars ####
+        ### hila - here is the creation of t.type.type_vars #####
         sym = self.lookup_qualified(t.name, t)
         if sym is not None:
             node = sym.node
