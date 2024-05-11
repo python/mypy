@@ -272,6 +272,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return typ
 
     def visit_unbound_type_nonoptional(self, t: UnboundType, defining_literal: bool) -> Type:
+        ### hila - here is the creation of t.type.type_vars ####
         sym = self.lookup_qualified(t.name, t)
         if sym is not None:
             node = sym.node
@@ -2294,6 +2295,7 @@ def make_optional_type(t: Type) -> Type:
         return UnionType([t, NoneType()], t.line, t.column)
 
 
+########## hila - here the error happens ####################
 def validate_instance(t: Instance, fail: MsgCallback, empty_tuple_index: bool) -> bool:
     """Check if this is a well-formed instance with respect to argument count/positions."""
     # TODO: combine logic with instantiate_type_alias().
@@ -2351,7 +2353,7 @@ def validate_instance(t: Instance, fail: MsgCallback, empty_tuple_index: bool) -
         max_tv_count = len(t.type.type_vars)
         if arg_count and (arg_count < min_tv_count or arg_count > max_tv_count):
             fail(
-                wrong_type_arg_count(min_tv_count, max_tv_count, str(arg_count), t.type.name),
+                wrong_type_arg_count(min_tv_count, max_tv_count, str(arg_count), t.type.name),  ### hila
                 t,
                 code=codes.TYPE_ARG,
             )

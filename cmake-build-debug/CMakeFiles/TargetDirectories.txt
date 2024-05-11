@@ -1,0 +1,3 @@
+/Users/hilalevi/git/mypy/cmake-build-debug/CMakeFiles/mypy.dir
+/Users/hilalevi/git/mypy/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/hilalevi/git/mypy/cmake-build-debug/CMakeFiles/rebuild_cache.dir

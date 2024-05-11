@@ -2837,7 +2837,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     matches.append(p_infer_type)
                 else:
                     matches.append(typ)
-                return_types.append(ret_type)
+                return_types.append(ret_type)  #hila
                 inferred_types.append(infer_type)
                 type_maps.append(m)
 
@@ -5762,6 +5762,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             and has_any_type(typ)
             and not self.chk.current_node_deferred
         ):
+            ####hila - here is the trow of the "error: Expression has type "Any" in lines 26-28
+            # print("Hello hila: I am in checkexpr 5765. msg is ", self.msg) #hila
             self.msg.disallowed_any_type(typ, node)
 
         if not self.chk.in_checked_function() or self.chk.current_node_deferred:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import itertools
 from collections import defaultdict
 from contextlib import ExitStack, contextmanager
@@ -463,6 +464,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         Deferred functions will be processed by check_second_pass().
         """
+        # print("checking first pass")
         self.recurse_into_functions = True
         with state.strict_optional_set(self.options.strict_optional):
             self.errors.set_file(
@@ -478,6 +480,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 self.msg.unreachable_statement(d)
                                 break
                         else:
+                            #hila - print the types
+                            # print(d)
+                            # if 'type' in dir(d): #here need to be breakpoint
+                            #     print("from type: ", d.type)
+                            #     # print(d.type) #hila
+                            # elif 'unanalyzed_type' in dir(d):
+                            #     print("from unanalyzed_type: ", d.unanalyzed_type)
+                            # else:
+                            #     print('I got nothing')
+                            # print("************")
                             self.accept(d)
 
                 assert not self.current_node_deferred
@@ -2834,6 +2846,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         Handle all kinds of assignment statements (simple, indexed, multiple).
         """
+        # print(s.type)
         # Avoid type checking type aliases in stubs to avoid false
         # positives about modern type syntax available in stubs such
         # as X | Y.
