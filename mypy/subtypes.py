@@ -1917,7 +1917,8 @@ def restrict_subtype_away(t: Type, s: Type) -> Type:
     ideal result (just t is a valid result).
 
     This is used for type inference of runtime type checks such as
-    isinstance(). Currently, this just removes elements of a union type.
+    isinstance() or TypeIs. Currently, this just removes elements
+    of a union type.
     """
     p_t = get_proper_type(t)
     if isinstance(p_t, UnionType):
@@ -1926,24 +1927,21 @@ def restrict_subtype_away(t: Type, s: Type) -> Type:
             new_items = [
                 restrict_subtype_away(item, s)
                 for item in p_t.relevant_items()
-                if not covers_at_runtime(item, s)
+                if (isinstance(get_proper_type(item), AnyType) or not covers_type(item, s))
             ]
         return UnionType.make_union(new_items)
-    elif covers_at_runtime(t, s):
+    elif covers_type(t, s):
         return UninhabitedType()
     else:
         return t
 
 
-def covers_at_runtime(item: Type, supertype: Type) -> bool:
-    """Will isinstance(item, supertype) always return True at runtime?"""
+def covers_type(item: Type, supertype: Type) -> bool:
+    """Returns if item is covered by supertype."""
     item = get_proper_type(item)
     supertype = get_proper_type(supertype)
 
-    if isinstance(item, AnyType):
-        return False
-
-    if is_subtype(item, supertype, ignore_promotions=True):
+    if is_proper_subtype(item, supertype, ignore_promotions=True, erase_instances=True):
         return True
     if isinstance(supertype, Instance):
         if supertype.type.is_protocol:
