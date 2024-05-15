@@ -429,7 +429,7 @@ class NamedTupleAnalyzer:
         if not types:
             types = [AnyType(TypeOfAny.unannotated) for _ in items]
         processed_items = []
-        seen_names = set()
+        seen_names: set[str] = set()
         for i, item in enumerate(items):
             problem = self.check_namedtuple_field_name(item, seen_names)
             if problem is None:
