@@ -1653,7 +1653,7 @@ class SemanticAnalyzer(
             tvs.append((p.name, tv))
 
         for name, tv in tvs:
-            self.add_symbol(name, tv, context)
+            self.add_symbol(name, tv, context, no_progress=True)
 
         return tvs
 
@@ -5967,6 +5967,7 @@ class SemanticAnalyzer(
         for table in reversed(self.locals):
             if table is not None and name in table:
                 return table[name]
+
         # 4. Current file global scope
         if name in self.globals:
             return self.globals[name]
@@ -6279,6 +6280,7 @@ class SemanticAnalyzer(
         module_hidden: bool = False,
         can_defer: bool = True,
         escape_comprehensions: bool = False,
+        no_progress: bool = False,
     ) -> bool:
         """Add symbol to the currently active symbol table.
 
@@ -6300,7 +6302,9 @@ class SemanticAnalyzer(
         symbol = SymbolTableNode(
             kind, node, module_public=module_public, module_hidden=module_hidden
         )
-        return self.add_symbol_table_node(name, symbol, context, can_defer, escape_comprehensions)
+        return self.add_symbol_table_node(
+            name, symbol, context, can_defer, escape_comprehensions, no_progress
+        )
 
     def add_symbol_skip_local(self, name: str, node: SymbolNode) -> None:
         """Same as above, but skipping the local namespace.
@@ -6331,6 +6335,7 @@ class SemanticAnalyzer(
         context: Context | None = None,
         can_defer: bool = True,
         escape_comprehensions: bool = False,
+        no_progress: bool = False,
     ) -> bool:
         """Add symbol table node to the currently active symbol table.
 
@@ -6379,7 +6384,8 @@ class SemanticAnalyzer(
                     self.name_already_defined(name, context, existing)
         elif name not in self.missing_names[-1] and "*" not in self.missing_names[-1]:
             names[name] = symbol
-            self.progress = True
+            if not no_progress:
+                self.progress = True
             return True
         return False
 

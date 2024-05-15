@@ -948,3 +948,13 @@ type B[T] = Foo[T]
 [out2]
 tmp/a.py:3: note: Revealed type is "builtins.str"
 tmp/a.py:5: note: Revealed type is "b.Foo[builtins.int]"
+
+[case testPEP695UndefinedNameInGenericFunction]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+
+def f[T](x: T) -> T:
+    return unknown()  # E: Name "unknown" is not defined
+
+class C:
+    def m[T](self, x: T) -> T:
+        return unknown()  # E: Name "unknown" is not defined
