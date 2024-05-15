@@ -795,6 +795,16 @@ reveal_type(a)  # N: Revealed type is "__main__.C[[builtins.int, builtins.str], 
 reveal_type(a.m)  # N: Revealed type is "def (builtins.int, builtins.str)"
 [builtins fixtures/tuple.pyi]
 
+[case testPEP695ParamSpecTypeAlias]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+from typing import Callable
+
+type C[**P] = Callable[P, int]
+
+f: C[[str, int | None]]
+reveal_type(f)  # N: Revealed type is "def (builtins.str, Union[builtins.int, None]) -> builtins.int"
+[builtins fixtures/tuple.pyi]
+
 [case testPEP695TypeVarTuple]
 # flags: --enable-incomplete-feature=NewGenericSyntax
 
@@ -814,6 +824,16 @@ reveal_type(b)  # N: Revealed type is "__main__.C[builtins.int, builtins.str, No
 c: C[str]
 reveal_type(c)  # N: Revealed type is "__main__.C[builtins.str]"
 b = c  # E: Incompatible types in assignment (expression has type "C[str]", variable has type "C[int, str, None]")
+[builtins fixtures/tuple.pyi]
+
+[case testPEP695TypeVarTupleAlias]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+from typing import Callable
+
+type C[*Ts] = tuple[*Ts, int]
+
+a: C[str, None]
+reveal_type(a)  # N: Revealed type is "Tuple[builtins.str, None, builtins.int]"
 [builtins fixtures/tuple.pyi]
 
 [case testPEP695IncrementalFunction]
