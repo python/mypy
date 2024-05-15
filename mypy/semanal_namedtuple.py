@@ -378,7 +378,7 @@ class NamedTupleAnalyzer:
                         rename = arg.name == "True"
                     else:
                         self.fail(
-                            "Boolean literal expected as the \"rename\" argument to "
+                            'Boolean literal expected as the "rename" argument to '
                             f"{type_name}()",
                             arg,
                         )
@@ -691,7 +691,7 @@ class NamedTupleAnalyzer:
     def check_namedtuple_field_name(self, field: str, seen_names: Container[str]) -> Optional[str]:
         """Return None for valid fields, a string description for invalid ones."""
         if field in seen_names:
-            return f"has duplicate field name \"{field}\""
+            return f'has duplicate field name "{field}"'
         elif not field.isidentifier():
             return f'field name "{field}" is not a valid identifier'
         elif field.startswith("_"):
