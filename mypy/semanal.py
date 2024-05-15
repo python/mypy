@@ -843,7 +843,7 @@ class SemanticAnalyzer(
             self.analyze_func_def(defn)
 
     def analyze_func_def(self, defn: FuncDef) -> None:
-        if not self.push_type_args(defn.type_args, defn):
+        if self.push_type_args(defn.type_args, defn) is None:
             self.defer(defn)
             return
 
@@ -1632,7 +1632,7 @@ class SemanticAnalyzer(
         self.incomplete_type_stack.append(not defn.info)
         namespace = self.qualified_name(defn.name)
         with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
-            if not self.push_type_args(defn.type_args, defn):
+            if self.push_type_args(defn.type_args, defn) is None:
                 self.mark_incomplete(defn.name, defn)
                 return
 
@@ -1640,73 +1640,63 @@ class SemanticAnalyzer(
             self.pop_type_args(defn.type_args)
         self.incomplete_type_stack.pop()
 
-    def push_type_args(self, type_args: list[TypeParam] | None, context: Context) -> bool:
+    def push_type_args(
+        self, type_args: list[TypeParam] | None, context: Context
+    ) -> list[tuple[str, TypeVarLikeExpr]] | None:
         if not type_args:
-            return True
+            return []
         tvs: list[tuple[str, TypeVarLikeExpr]] = []
         for p in type_args:
-            fullname = self.qualified_name(p.name)
-            if p.upper_bound:
-                upper_bound = self.anal_type(p.upper_bound)
-                if upper_bound is None:
-                    return False
-            else:
-                upper_bound = self.named_type("builtins.object")
-            default = AnyType(TypeOfAny.from_omitted_generics)
-            if p.kind == TYPE_VAR_KIND:
-                values = []
-                if p.values:
-                    for value in p.values:
-                        analyzed = self.anal_type(value)
-                        if analyzed is None:
-                            return False
-                        values.append(analyzed)
-                tvs.append(
-                    (
-                        p.name,
-                        TypeVarExpr(
-                            name=p.name,
-                            fullname=fullname,
-                            values=values,
-                            upper_bound=upper_bound,
-                            default=default,
-                            variance=VARIANCE_NOT_READY,
-                        ),
-                    )
-                )
-            elif p.kind == PARAM_SPEC_KIND:
-                tvs.append(
-                    (
-                        p.name,
-                        ParamSpecExpr(
-                            name=p.name,
-                            fullname=fullname,
-                            upper_bound=upper_bound,
-                            default=default,
-                        ),
-                    )
-                )
-            else:
-                assert p.kind == TYPE_VAR_TUPLE_KIND
-                tuple_fallback = self.named_type("builtins.tuple", [self.object_type()])
-                tvs.append(
-                    (
-                        p.name,
-                        TypeVarTupleExpr(
-                            name=p.name,
-                            fullname=fullname,
-                            # Upper bound for *Ts is *tuple[object, ...], it can never be object.
-                            upper_bound=tuple_fallback.copy_modified(),
-                            tuple_fallback=tuple_fallback,
-                            default=default,
-                        ),
-                    )
-                )
+            tv = self.analyze_type_param(p)
+            if tv is None:
+                return None
+            tvs.append((p.name, tv))
 
         for name, tv in tvs:
             self.add_symbol(name, tv, context)
 
-        return True
+        return tvs
+
+    def analyze_type_param(self, type_param: TypeParam) -> TypeVarLikeExpr | None:
+        fullname = self.qualified_name(type_param.name)
+        if type_param.upper_bound:
+            upper_bound = self.anal_type(type_param.upper_bound)
+            if upper_bound is None:
+                return None
+        else:
+            upper_bound = self.named_type("builtins.object")
+        default = AnyType(TypeOfAny.from_omitted_generics)
+        if type_param.kind == TYPE_VAR_KIND:
+            values = []
+            if type_param.values:
+                for value in type_param.values:
+                    analyzed = self.anal_type(value)
+                    if analyzed is None:
+                        return None
+                    values.append(analyzed)
+            return TypeVarExpr(
+                name=type_param.name,
+                fullname=fullname,
+                values=values,
+                upper_bound=upper_bound,
+                default=default,
+                variance=VARIANCE_NOT_READY,
+            )
+        elif type_param.kind == PARAM_SPEC_KIND:
+            return ParamSpecExpr(
+                name=type_param.name, fullname=fullname, upper_bound=upper_bound, default=default
+            )
+        else:
+            assert type_param.kind == TYPE_VAR_TUPLE_KIND
+            tuple_fallback = self.named_type("builtins.tuple", [self.object_type()])
+            return TypeVarTupleExpr(
+                name=type_param.name,
+                fullname=fullname,
+                # Upper bound for *Ts is *tuple[object, ...], it can never be object.
+                upper_bound=tuple_fallback.copy_modified(),
+                tuple_fallback=tuple_fallback,
+                default=default,
+            )
 
     def pop_type_args(self, type_args: list[TypeParam] | None) -> None:
         if not type_args:
@@ -5228,55 +5218,11 @@ class SemanticAnalyzer(
 
     def visit_type_alias_stmt(self, s: TypeAliasStmt) -> None:
         self.statement = s
-        type_params: TypeVarLikeList = []
-        all_type_params_names = []
-        for p in s.type_args:
-            upper_bound = p.upper_bound or self.object_type()
-            fullname = self.qualified_name(p.name)
-            default = AnyType(TypeOfAny.from_omitted_generics)
-            if p.kind == PARAM_SPEC_KIND:
-                type_params.append(
-                    (
-                        p.name,
-                        ParamSpecExpr(
-                            name=p.name,
-                            fullname=fullname,
-                            upper_bound=upper_bound,
-                            default=default,
-                        ),
-                    )
-                )
-            elif p.kind == TYPE_VAR_TUPLE_KIND:
-                tuple_fallback = self.named_type("builtins.tuple", [self.object_type()])
-                type_params.append(
-                    (
-                        p.name,
-                        TypeVarTupleExpr(
-                            name=p.name,
-                            fullname=fullname,
-                            # Upper bound for *Ts is *tuple[object, ...], it can never be object.
-                            upper_bound=tuple_fallback.copy_modified(),
-                            tuple_fallback=tuple_fallback,
-                            default=default,
-                        ),
-                    )
-                )
-            else:
-                type_params.append(
-                    (
-                        p.name,
-                        TypeVarExpr(
-                            p.name,
-                            fullname,
-                            [],
-                            upper_bound,
-                            default=default,
-                        ),
-                    )
-                )
-            all_type_params_names.append(p.name)
+        type_params = self.push_type_args(s.type_args, s)
+        # TODO: defer as needed
+        assert type_params is not None, "forward references in type aliases not implemented"
+        all_type_params_names = [p.name for p in s.type_args]
 
-        self.push_type_args(s.type_args, s)
         try:
             tag = self.track_incomplete_refs()
             res, alias_tvars, depends_on, qualified_tvars, empty_tuple_index = self.analyze_alias(
