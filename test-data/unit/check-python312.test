@@ -586,6 +586,11 @@ type B = int + str  # E: Invalid type alias: expression is not a valid type
 b: B
 reveal_type(b)  # N: Revealed type is "Any"
 
+[case testPEP695TypeAliasBoundForwardReference]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+type B[T: Foo] = list[T]
+class Foo: pass
+
 [case testPEP695UpperBound]
 # flags: --enable-incomplete-feature=NewGenericSyntax
 

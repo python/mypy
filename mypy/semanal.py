@@ -5219,8 +5219,9 @@ class SemanticAnalyzer(
     def visit_type_alias_stmt(self, s: TypeAliasStmt) -> None:
         self.statement = s
         type_params = self.push_type_args(s.type_args, s)
-        # TODO: defer as needed
-        assert type_params is not None, "forward references in type aliases not implemented"
+        if type_params is None:
+            self.defer(s)
+            return
         all_type_params_names = [p.name for p in s.type_args]
 
         try:
