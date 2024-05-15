@@ -128,12 +128,12 @@ reveal_type(c.ident(1))  # N: Revealed type is "builtins.int"
 # flags: --enable-incomplete-feature=NewGenericSyntax
 
 class C[T]:
-    def m[S](self, x: S) -> T: ...
+    def m[S](self, x: S) -> T | S: ...
 
 a: C[int] = C[object]()  # E: Incompatible types in assignment (expression has type "C[object]", variable has type "C[int]")
 b: C[object] = C[int]()
 
-reveal_type(C[str]().m(1))  # N: Revealed type is "builtins.str"
+reveal_type(C[str]().m(1))  # N: Revealed type is "Union[builtins.str, builtins.int]"
 
 [case testPEP695InferVarianceSimpleFromMethod]
 # flags: --enable-incomplete-feature=NewGenericSyntax

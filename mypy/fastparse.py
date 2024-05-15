@@ -179,12 +179,12 @@ else:
 
 if sys.version_info >= (3, 12):
     ast_TypeAlias = ast3.TypeAlias
-    ParamSpec = ast3.ParamSpec
-    TypeVarTuple = ast3.TypeVarTuple
+    ast_ParamSpec = ast3.ParamSpec
+    ast_TypeVarTuple = ast3.TypeVarTuple
 else:
     ast_TypeAlias = Any
-    ParamSpec = Any
-    TypeVarTuple = Any
+    ast_ParamSpec = Any
+    ast_TypeVarTuple = Any
 
 N = TypeVar("N", bound=Node)
 
@@ -1179,9 +1179,9 @@ class ASTConverter:
         for p in type_params:
             bound = None
             values: list[Type] = []
-            if isinstance(p, ParamSpec):  # type: ignore[misc]
+            if isinstance(p, ast_ParamSpec):  # type: ignore[misc]
                 explicit_type_params.append(TypeParam(p.name, PARAM_SPEC_KIND, None, []))
-            elif isinstance(p, TypeVarTuple):  # type: ignore[misc]
+            elif isinstance(p, ast_TypeVarTuple):  # type: ignore[misc]
                 explicit_type_params.append(TypeParam(p.name, TYPE_VAR_TUPLE_KIND, None, []))
             else:
                 if isinstance(p.bound, ast3.Tuple):
