@@ -5,8 +5,9 @@ This is conceptually part of mypy.semanal.
 
 from __future__ import annotations
 
+import keyword
 from contextlib import contextmanager
-from typing import Final, Iterator, List, Mapping, cast
+from typing import Container, Final, Iterator, List, Mapping, Optional, cast
 
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.messages import MessageBuilder
@@ -352,6 +353,7 @@ class NamedTupleAnalyzer:
             self.fail(f'Too few arguments for "{type_name}()"', call)
             return None
         defaults: list[Expression] = []
+        rename = False
         if len(args) > 2:
             # Typed namedtuple doesn't support additional arguments.
             if fullname in TYPED_NAMEDTUPLE_NAMES:
@@ -370,7 +372,16 @@ class NamedTupleAnalyzer:
                             "{}()".format(type_name),
                             arg,
                         )
-                    break
+                elif arg_name == "rename":
+                    arg = args[i]
+                    if isinstance(arg, NameExpr) and arg.name in ("True", "False"):
+                        rename = arg.name == "True"
+                    else:
+                        self.fail(
+                            "Boolean literal expected as the \"rename\" argument to "
+                            f"{type_name}()",
+                            arg,
+                        )
         if call.arg_kinds[:2] != [ARG_POS, ARG_POS]:
             self.fail(f'Unexpected arguments to "{type_name}()"', call)
             return None
@@ -417,17 +428,28 @@ class NamedTupleAnalyzer:
                     return [], [], [], typename, [], False
         if not types:
             types = [AnyType(TypeOfAny.unannotated) for _ in items]
-        underscore = [item for item in items if item.startswith("_")]
-        if underscore:
-            self.fail(
-                f'"{type_name}()" field names cannot start with an underscore: '
-                + ", ".join(underscore),
-                call,
-            )
+        processed_items = []
+        seen_names = set()
+        for i, item in enumerate(items):
+            problem = self.check_namedtuple_field_name(item, seen_names)
+            if problem is None:
+                processed_items.append(item)
+                seen_names.add(item)
+            else:
+                if not rename:
+                    self.fail(f'"{type_name}()" {problem}', call)
+                # Even if rename=False, we pretend that it is True.
+                # At runtime namedtuple creation would throw an error;
+                # applying the rename logic means we create a more sensible
+                # namedtuple.
+                new_name = f"_{i}"
+                processed_items.append(new_name)
+                seen_names.add(new_name)
+
         if len(defaults) > len(items):
             self.fail(f'Too many defaults given in call to "{type_name}()"', call)
             defaults = defaults[: len(items)]
-        return items, types, defaults, typename, tvar_defs, True
+        return processed_items, types, defaults, typename, tvar_defs, True
 
     def parse_namedtuple_fields_with_types(
         self, nodes: list[Expression], context: Context
@@ -665,6 +687,18 @@ class NamedTupleAnalyzer:
             named_tuple_info.names[key] = value
 
     # Helpers
+
+    def check_namedtuple_field_name(self, field: str, seen_names: Container[str]) -> Optional[str]:
+        """Return None for valid fields, a string description for invalid ones."""
+        if field in seen_names:
+            return f"has duplicate field name \"{field}\""
+        elif not field.isidentifier():
+            return f'field name "{field}" is not a valid identifier'
+        elif field.startswith("_"):
+            return f'field name "{field}" starts with an underscore'
+        elif keyword.iskeyword(field):
+            return f'field name "{field}" is a keyword'
+        return None
 
     def fail(self, msg: str, ctx: Context) -> None:
         self.api.fail(msg, ctx)
