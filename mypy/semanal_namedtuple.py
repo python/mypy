@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import keyword
 from contextlib import contextmanager
-from typing import Container, Final, Iterator, List, Mapping, Optional, cast
+from typing import Container, Final, Iterator, List, Mapping, cast
 
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.messages import MessageBuilder
@@ -688,7 +688,7 @@ class NamedTupleAnalyzer:
 
     # Helpers
 
-    def check_namedtuple_field_name(self, field: str, seen_names: Container[str]) -> Optional[str]:
+    def check_namedtuple_field_name(self, field: str, seen_names: Container[str]) -> str | None:
         """Return None for valid fields, a string description for invalid ones."""
         if field in seen_names:
             return f'has duplicate field name "{field}"'
