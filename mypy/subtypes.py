@@ -1988,9 +1988,9 @@ def is_more_precise(left: Type, right: Type, *, ignore_promotions: bool = False)
     return is_proper_subtype(left, right, ignore_promotions=ignore_promotions)
 
 
-def all_members(info: TypeInfo) -> set[str]:
+def all_non_object_members(info: TypeInfo) -> set[str]:
     members = set(info.names)
-    for base in info.mro[1:]:
+    for base in info.mro[1:-1]:
         members.update(base.names)
     return members
 
@@ -2012,7 +2012,7 @@ def infer_variance(info: TypeInfo, i: int) -> bool:
         contra = True
         tvar = info.defn.type_vars[i]
         self_type = fill_typevars(info)
-        for member in all_members(info):
+        for member in all_non_object_members(info):
             if member in ("__init__", "__new__"):
                 continue
             node = info[member].node

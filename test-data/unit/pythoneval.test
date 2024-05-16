@@ -2091,3 +2091,24 @@ def f(d: Description) -> None:
     reveal_type(d.name_fn)
 [out]
 _testDataclassStrictOptionalAlwaysSet.py:9: note: Revealed type is "def (Union[builtins.int, None]) -> Union[builtins.str, None]"
+
+[case testPEP695VarianceInference]
+# flags: --python-version=3.12 --enable-incomplete-feature=NewGenericSyntax
+from typing import Callable, Final
+
+class Job[_R_co]:
+    def __init__(self, target: Callable[[], _R_co]) -> None:
+        self.target: Final = target
+
+def func(
+    action: Job[int | None],
+    a1: Job[int | None],
+    a2: Job[int],
+    a3: Job[None],
+) -> None:
+    action = a1
+    action = a2
+    action = a3
+    a2 = action  # Error
+[out]
+_testPEP695VarianceInference.py:17: error: Incompatible types in assignment (expression has type "Job[None]", variable has type "Job[int]")
