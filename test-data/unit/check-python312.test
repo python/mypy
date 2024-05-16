@@ -958,3 +958,15 @@ def f[T](x: T) -> T:
 class C:
     def m[T](self, x: T) -> T:
         return unknown()  # E: Name "unknown" is not defined
+
+[case testPEP695FunctionTypeVarAccessInFunction]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+from typing import cast
+
+class C:
+    def m[T](self, x: T) -> T:
+        y: T = x
+        reveal_type(y)  # N: Revealed type is "T`-1"
+        return cast(T, y)
+
+reveal_type(C().m(1))  # N: Revealed type is "builtins.int"
