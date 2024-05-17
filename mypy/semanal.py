@@ -322,7 +322,7 @@ SCOPE_GLOBAL: Final = 0  # Module top level
 SCOPE_CLASS: Final = 1  # Class body
 SCOPE_FUNC: Final = 2  # Function or lambda
 SCOPE_COMPREHENSION: Final = 3  # Comprehension or generator expression
-SCOPE_TYPE_PARAM: Final = 4  # Python 3.12 new-style type parameter scope (PEP 695)
+SCOPE_ANNOTATION: Final = 4  # Annotation scopes for type parameters and aliases (PEP 695)
 
 
 # Used for tracking incomplete references
@@ -1655,7 +1655,7 @@ class SemanticAnalyzer(
         if not type_args:
             return []
         self.locals.append(SymbolTable())
-        self.scope_stack.append(SCOPE_TYPE_PARAM)
+        self.scope_stack.append(SCOPE_ANNOTATION)
         tvs: list[tuple[str, TypeVarLikeExpr]] = []
         for p in type_args:
             tv = self.analyze_type_param(p)
@@ -5221,7 +5221,7 @@ class SemanticAnalyzer(
                     reversed(self.locals[:-1]), reversed(self.scope_stack[:-1])
                 ):
                     if table is not None and name in table:
-                        if scope_type == SCOPE_TYPE_PARAM:
+                        if scope_type == SCOPE_ANNOTATION:
                             self.fail(
                                 f'nonlocal binding not allowed for type parameter "{name}"', d
                             )
@@ -6732,7 +6732,7 @@ class SemanticAnalyzer(
 
     def is_func_scope(self) -> bool:
         scope_type = self.scope_stack[-1]
-        if scope_type == SCOPE_TYPE_PARAM:
+        if scope_type == SCOPE_ANNOTATION:
             scope_type = self.scope_stack[-2]
         return scope_type in (SCOPE_FUNC, SCOPE_COMPREHENSION)
 
@@ -6758,12 +6758,12 @@ class SemanticAnalyzer(
     def current_symbol_table(
         self, escape_comprehensions: bool = False, type_param: bool = False
     ) -> SymbolTable:
-        if type_param and self.scope_stack[-1] == SCOPE_TYPE_PARAM:
+        if type_param and self.scope_stack[-1] == SCOPE_ANNOTATION:
             n = self.locals[-1]
             assert n is not None
             return n
         elif self.is_func_scope():
-            if self.scope_stack[-1] == SCOPE_TYPE_PARAM:
+            if self.scope_stack[-1] == SCOPE_ANNOTATION:
                 n = self.locals[-2]
             else:
                 n = self.locals[-1]
