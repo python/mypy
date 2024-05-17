@@ -317,12 +317,12 @@ FUTURE_IMPORTS: Final = {
 CORE_BUILTIN_CLASSES: Final = ["object", "bool", "function"]
 
 
-# Python has these different scope/namespace kinds with subtly different semantics
-SCOPE_GLOBAL: Final = 0
-SCOPE_CLASS: Final = 1
-SCOPE_FUNC: Final = 2
-SCOPE_COMPREHENSION: Final = 3
-SCOPE_TYPE_PARAM: Final = 4
+# Python has several different scope/namespace kinds with subtly different semantics.
+SCOPE_GLOBAL: Final = 0  # Module top level
+SCOPE_CLASS: Final = 1  # Class body
+SCOPE_FUNC: Final = 2  # Function or lambda
+SCOPE_COMPREHENSION: Final = 3  # Comprehension or generator expression
+SCOPE_TYPE_PARAM: Final = 4  # Python 3.12 new-style type parameter scope (PEP 695)
 
 
 # Used for tracking incomplete references
@@ -350,8 +350,8 @@ class SemanticAnalyzer(
     nonlocal_decls: list[set[str]]
     # Local names of function scopes; None for non-function scopes.
     locals: list[SymbolTable | None]
-    # Whether each scope is a comprehension scope.
-    is_comprehension_stack: list[bool]
+    # Type of each scope (SCOPE_*, indexes match locals)
+    scope_stack: list[int]
     # Nested block depths of scopes
     block_depth: list[int]
     # TypeInfo of directly enclosing class (or None)
@@ -426,7 +426,6 @@ class SemanticAnalyzer(
         """
         self.locals = [None]
         self.scope_stack = [SCOPE_GLOBAL]
-        self.is_comprehension_stack = [False]
         # Saved namespaces from previous iteration. Every top-level function/method body is
         # analyzed in several iterations until all names are resolved. We need to save
         # the local namespaces for the top level function and all nested functions between
@@ -1950,7 +1949,6 @@ class SemanticAnalyzer(
         self.type_stack.append(self.type)
         self.locals.append(None)  # Add class scope
         self.scope_stack.append(SCOPE_CLASS)
-        self.is_comprehension_stack.append(False)
         self.block_depth.append(-1)  # The class body increments this to 0
         self.loop_depth.append(0)
         self._type = info
@@ -1962,7 +1960,6 @@ class SemanticAnalyzer(
         self.loop_depth.pop()
         self.locals.pop()
         self.scope_stack.pop()
-        self.is_comprehension_stack.pop()
         self._type = self.type_stack.pop()
         self.missing_names.pop()
 
@@ -2936,8 +2933,8 @@ class SemanticAnalyzer(
             [(j := i) for i in [1, 2, 3]]
         is a syntax error that is not enforced by Python parser, but at later steps.
         """
-        for i, is_comprehension in enumerate(reversed(self.is_comprehension_stack)):
-            if not is_comprehension and i < len(self.locals) - 1:
+        for i, scope_type in enumerate(reversed(self.scope_stack)):
+            if scope_type != SCOPE_COMPREHENSION and i < len(self.locals) - 1:
                 if self.locals[-1 - i] is None:
                     self.fail(
                         "Assignment expression within a comprehension"
@@ -5363,7 +5360,7 @@ class SemanticAnalyzer(
     def visit_yield_from_expr(self, e: YieldFromExpr) -> None:
         if not self.is_func_scope():
             self.fail('"yield from" outside function', e, serious=True, blocker=True)
-        elif self.is_comprehension_stack[-1]:
+        elif self.scope_stack[-1] == SCOPE_COMPREHENSION:
             self.fail(
                 '"yield from" inside comprehension or generator expression',
                 e,
@@ -5861,7 +5858,7 @@ class SemanticAnalyzer(
     def visit_yield_expr(self, e: YieldExpr) -> None:
         if not self.is_func_scope():
             self.fail('"yield" outside function', e, serious=True, blocker=True)
-        elif self.is_comprehension_stack[-1]:
+        elif self.scope_stack[-1] == SCOPE_COMPREHENSION:
             self.fail(
                 '"yield" inside comprehension or generator expression',
                 e,
@@ -6370,7 +6367,9 @@ class SemanticAnalyzer(
             can_defer: if True, defer current target if adding a placeholder
             context: error context (see above about None value)
         """
-        names = self.current_symbol_table(escape_comprehensions=escape_comprehensions, type_param=type_param)
+        names = self.current_symbol_table(
+            escape_comprehensions=escape_comprehensions, type_param=type_param
+        )
         existing = names.get(name)
         if isinstance(symbol.node, PlaceholderNode) and can_defer:
             if context is not None:
@@ -6689,7 +6688,6 @@ class SemanticAnalyzer(
         self.locals.append(names)
         is_comprehension = isinstance(function, (GeneratorExpr, DictionaryComprehension))
         self.scope_stack.append(SCOPE_FUNC if not is_comprehension else SCOPE_COMPREHENSION)
-        self.is_comprehension_stack.append(is_comprehension)
         self.global_decls.append(set())
         self.nonlocal_decls.append(set())
         # -1 since entering block will increment this to 0.
@@ -6701,7 +6699,6 @@ class SemanticAnalyzer(
         finally:
             self.locals.pop()
             self.scope_stack.pop()
-            self.is_comprehension_stack.pop()
             self.global_decls.pop()
             self.nonlocal_decls.pop()
             self.block_depth.pop()
@@ -6733,7 +6730,9 @@ class SemanticAnalyzer(
             kind = GDEF
         return kind
 
-    def current_symbol_table(self, escape_comprehensions: bool = False, type_param: bool = False) -> SymbolTable:
+    def current_symbol_table(
+        self, escape_comprehensions: bool = False, type_param: bool = False
+    ) -> SymbolTable:
         if type_param and self.scope_stack[-1] == SCOPE_TYPE_PARAM:
             n = self.locals[-1]
             assert n is not None
@@ -6745,10 +6744,10 @@ class SemanticAnalyzer(
                 n = self.locals[-1]
             assert n is not None
             if escape_comprehensions:
-                assert len(self.locals) == len(self.is_comprehension_stack)
+                assert len(self.locals) == len(self.scope_stack)
                 # Retrieve the symbol table from the enclosing non-comprehension scope.
-                for i, is_comprehension in enumerate(reversed(self.is_comprehension_stack)):
-                    if not is_comprehension:
+                for i, scope_type in enumerate(reversed(self.scope_stack)):
+                    if scope_type != SCOPE_COMPREHENSION:
                         if i == len(self.locals) - 1:  # The last iteration.
                             # The caller of the comprehension is in the global space.
                             names = self.globals
