@@ -1137,3 +1137,15 @@ class Outer:
     # Likewise, 'Inner' would not be available in these type annotations.
     def method1[T](self, a: Inner[T]) -> Inner[T]:
         return a
+
+[case testPEP695RedefineTypeParameterInScope]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+class C[T]:
+    def m[T](self, x: T) -> T:  # E: "T" already defined as a type parameter
+        return x
+    def m2(self) -> None:
+        def nested[T](x: T) -> T:  # E: "T" already defined as a type parameter
+            return x
+
+def f[S, S](x: S) -> S:  # E: "S" already defined as a type parameter
+    return x

@@ -1664,9 +1664,22 @@ class SemanticAnalyzer(
             tvs.append((p.name, tv))
 
         for name, tv in tvs:
-            self.add_symbol(name, tv, context, no_progress=True, type_param=True)
+            if self.is_defined_type_param(name):
+                self.fail(f'"{name}" already defined as a type parameter', context)
+            else:
+                self.add_symbol(name, tv, context, no_progress=True, type_param=True)
 
         return tvs
+
+    def is_defined_type_param(self, name: str) -> bool:
+        for names in self.locals:
+            if names is None:
+                continue
+            if name in names:
+                node = names[name].node
+                if isinstance(node, TypeVarLikeExpr):
+                    return True
+        return False
 
     def analyze_type_param(self, type_param: TypeParam) -> TypeVarLikeExpr | None:
         fullname = self.qualified_name(type_param.name)
