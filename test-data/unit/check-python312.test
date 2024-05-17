@@ -1104,3 +1104,36 @@ def g[T](x: T) -> T:
     def nested2[S](y: S) -> S:
         return y
     return x
+
+[case testPEP695NestedScopingSpecialCases]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+# This is adapted from PEP 695
+S = 0
+
+def outer1[S]() -> None:
+    S = 1
+    T = 1
+
+    def outer2[T]() -> None:
+        def inner1() -> None:
+            nonlocal S
+            nonlocal T  # E: nonlocal binding not allowed for type parameter "T"
+
+        def inner2() -> None:
+            global S
+
+[case testPEP695ScopingWithBaseClasses]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+# This is adapted from PEP 695
+class Outer:
+    class Private:
+        pass
+
+    # If the type parameter scope was like a traditional scope,
+    # the base class 'Private' would not be accessible here.
+    class Inner[T](Private, list[T]):
+        pass
+
+    # Likewise, 'Inner' would not be available in these type annotations.
+    def method1[T](self, a: Inner[T]) -> Inner[T]:
+        return a
