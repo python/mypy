@@ -1025,7 +1025,7 @@ def f[T](x: T) -> T:
     reveal_type(h(x))  # N: Revealed type is "T`-1"
     return x
 
-[case testPEP695NonLocal]
+[case testPEP695NonLocalAndGlobal]
 # mypy: enable-incomplete-feature=NewGenericSyntax
 def f() -> None:
     T = 1
@@ -1041,6 +1041,19 @@ def g() -> None:
         nonlocal a
         a = 'x'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
         return x
+
+x = 1
+
+def h[T](a: T) -> T:
+    global x
+    x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    return a
+
+class C[T]:
+    def m[S](self, a: S) -> S:
+        global x
+        x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+        return a
 
 [case testPEP695ArgumentDefault]
 # mypy: enable-incomplete-feature=NewGenericSyntax
@@ -1067,4 +1080,27 @@ from typing import cast
 def f[T](x: T) -> T:
     b = [cast(T, a) for a in [1, 2]]
     reveal_type(b)  # N: Revealed type is "builtins.list[T`-1]"
+    return x
+
+[case testPEP695ReuseNameInSameScope]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+
+class C[T]:
+    def m[S](self, x: S, y: T) -> S | T:
+        return x
+
+    def m2[S](self, x: S, y: T) -> S | T:
+        return x
+
+class D[T]:
+    pass
+
+def f[T](x: T) -> T:
+    return x
+
+def g[T](x: T) -> T:
+    def nested[S](y: S) -> S:
+        return y
+    def nested2[S](y: S) -> S:
+        return y
     return x
