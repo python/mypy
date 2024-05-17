@@ -146,6 +146,7 @@ from mypy.sharedparse import BINARY_MAGIC_METHODS
 from mypy.state import state
 from mypy.subtypes import (
     find_member,
+    infer_class_variances,
     is_callable_compatible,
     is_equivalent,
     is_more_precise,
@@ -2374,7 +2375,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.allow_abstract_call = old_allow_abstract_call
                 # TODO: Apply the sig to the actual TypeInfo so we can handle decorators
                 # that completely swap out the type.  (e.g. Callable[[Type[A]], Type[B]])
-        if typ.defn.type_vars:
+        if typ.defn.type_vars and typ.defn.type_args is None:
             for base_inst in typ.bases:
                 for base_tvar, base_decl_tvar in zip(
                     base_inst.args, base_inst.type.defn.type_vars
@@ -2396,6 +2397,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_protocol_variance(defn)
         if not defn.has_incompatible_baseclass and defn.info.is_enum:
             self.check_enum(defn)
+        infer_class_variances(defn.info)
 
     def check_final_deletable(self, typ: TypeInfo) -> None:
         # These checks are only for mypyc. Only perform some checks that are easier
@@ -2566,6 +2568,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if they are actually covariant/contravariant, since this may break
         transitivity of subtyping, see PEP 544.
         """
+        if defn.type_args is not None:
+            # Using new-style syntax (PEP 695), so variance will be inferred
+            return
         info = defn.info
         object_type = Instance(info.mro[-1], [])
         tvars = info.defn.type_vars
@@ -3412,8 +3417,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if (
                     lv.node.final_unset_in_class
                     and not lv.node.final_set_in_init
-                    and not self.is_stub
-                    and  # It is OK to skip initializer in stub files.
+                    and not self.is_stub  # It is OK to skip initializer in stub files.
+                    and
                     # Avoid extra error messages, if there is no type in Final[...],
                     # then we already reported the error about missing r.h.s.
                     isinstance(s, AssignmentStmt)

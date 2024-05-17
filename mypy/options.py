@@ -73,7 +73,8 @@ OPTIONS_AFFECTING_CACHE: Final = (
 TYPE_VAR_TUPLE: Final = "TypeVarTuple"
 UNPACK: Final = "Unpack"
 PRECISE_TUPLE_TYPES: Final = "PreciseTupleTypes"
-INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES,))
+NEW_GENERIC_SYNTAX: Final = "NewGenericSyntax"
+INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES, NEW_GENERIC_SYNTAX))
 COMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK))
 
 

@@ -653,6 +653,28 @@ class Argument(Node):
         self.variable.set_line(self.line, self.column, self.end_line, self.end_column)
 
 
+# These specify the kind of a TypeParam
+TYPE_VAR_KIND: Final = 0
+PARAM_SPEC_KIND: Final = 1
+TYPE_VAR_TUPLE_KIND: Final = 2
+
+
+class TypeParam:
+    __slots__ = ("name", "kind", "upper_bound", "values")
+
+    def __init__(
+        self,
+        name: str,
+        kind: int,
+        upper_bound: mypy.types.Type | None,
+        values: list[mypy.types.Type],
+    ) -> None:
+        self.name = name
+        self.kind = kind
+        self.upper_bound = upper_bound
+        self.values = values
+
+
 FUNCITEM_FLAGS: Final = FUNCBASE_FLAGS + [
     "is_overload",
     "is_generator",
@@ -672,6 +694,7 @@ class FuncItem(FuncBase):
         "min_args",  # Minimum number of arguments
         "max_pos",  # Maximum number of positional arguments, -1 if no explicit
         # limit (*args not included)
+        "type_args",  # New-style type parameters (PEP 695)
         "body",  # Body of the function
         "is_overload",  # Is this an overload variant of function with more than
         # one overload variant?
@@ -689,12 +712,14 @@ class FuncItem(FuncBase):
         arguments: list[Argument] | None = None,
         body: Block | None = None,
         typ: mypy.types.FunctionLike | None = None,
+        type_args: list[TypeParam] | None = None,
     ) -> None:
         super().__init__()
         self.arguments = arguments or []
         self.arg_names = [None if arg.pos_only else arg.variable.name for arg in self.arguments]
         self.arg_kinds: list[ArgKind] = [arg.kind for arg in self.arguments]
         self.max_pos: int = self.arg_kinds.count(ARG_POS) + self.arg_kinds.count(ARG_OPT)
+        self.type_args: list[TypeParam] | None = type_args
         self.body: Block = body or Block([])
         self.type = typ
         self.unanalyzed_type = typ
@@ -761,8 +786,9 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         arguments: list[Argument] | None = None,
         body: Block | None = None,
         typ: mypy.types.FunctionLike | None = None,
+        type_args: list[TypeParam] | None = None,
     ) -> None:
-        super().__init__(arguments, body, typ)
+        super().__init__(arguments, body, typ, type_args)
         self._name = name
         self.is_decorated = False
         self.is_conditional = False  # Defined conditionally (within block)?
@@ -1070,6 +1096,7 @@ class ClassDef(Statement):
         "name",
         "_fullname",
         "defs",
+        "type_args",
         "type_vars",
         "base_type_exprs",
         "removed_base_type_exprs",
@@ -1089,6 +1116,9 @@ class ClassDef(Statement):
     name: str  # Name of the class without module prefix
     _fullname: str  # Fully qualified name of the class
     defs: Block
+    # New-style type parameters (PEP 695), unanalyzed
+    type_args: list[TypeParam] | None
+    # Semantically analyzed type parameters (all syntax variants)
     type_vars: list[mypy.types.TypeVarLikeType]
     # Base class expressions (not semantically analyzed -- can be arbitrary expressions)
     base_type_exprs: list[Expression]
@@ -1111,12 +1141,14 @@ class ClassDef(Statement):
         base_type_exprs: list[Expression] | None = None,
         metaclass: Expression | None = None,
         keywords: list[tuple[str, Expression]] | None = None,
+        type_args: list[TypeParam] | None = None,
     ) -> None:
         super().__init__()
         self.name = name
         self._fullname = ""
         self.defs = defs
         self.type_vars = type_vars or []
+        self.type_args = type_args
         self.base_type_exprs = base_type_exprs or []
         self.removed_base_type_exprs = []
         self.info = CLASSDEF_NO_INFO
@@ -1605,6 +1637,25 @@ class MatchStmt(Statement):
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_match_stmt(self)
+
+
+class TypeAliasStmt(Statement):
+    __slots__ = ("name", "type_args", "value")
+
+    __match_args__ = ("name", "type_args", "value")
+
+    name: NameExpr
+    type_args: list[TypeParam]
+    value: Expression  # Will get translated into a type
+
+    def __init__(self, name: NameExpr, type_args: list[TypeParam], value: Expression) -> None:
+        super().__init__()
+        self.name = name
+        self.type_args = type_args
+        self.value = value
+
+    def accept(self, visitor: StatementVisitor[T]) -> T:
+        return visitor.visit_type_alias_stmt(self)
 
 
 # Expressions
@@ -2442,6 +2493,7 @@ class TypeApplication(Expression):
 INVARIANT: Final = 0
 COVARIANT: Final = 1
 CONTRAVARIANT: Final = 2
+VARIANCE_NOT_READY: Final = 3  # Variance hasn't been inferred (using Python 3.12 syntax)
 
 
 class TypeVarLikeExpr(SymbolNode, Expression):
