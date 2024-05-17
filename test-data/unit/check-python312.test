@@ -958,3 +958,206 @@ def f[T](x: T) -> T:
 class C:
     def m[T](self, x: T) -> T:
         return unknown()  # E: Name "unknown" is not defined
+
+[case testPEP695FunctionTypeVarAccessInFunction]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+from typing import cast
+
+class C:
+    def m[T](self, x: T) -> T:
+        y: T = x
+        reveal_type(y)  # N: Revealed type is "T`-1"
+        return cast(T, y)
+
+reveal_type(C().m(1))  # N: Revealed type is "builtins.int"
+
+[case testPEP695ScopingBasics]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+
+T = 1
+
+def f[T](x: T) -> T:
+    T = 'a'
+    reveal_type(T)  # N: Revealed type is "builtins.str"
+    return x
+
+reveal_type(T)  # N: Revealed type is "builtins.int"
+
+class C[T]:
+    T = 1.2
+    reveal_type(T)  # N: Revealed type is "builtins.float"
+
+reveal_type(T)  # N: Revealed type is "builtins.int"
+
+[case testPEP695ClassScoping]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+
+class C:
+    class D: pass
+
+    def m[T: D](self, x: T, y: D) -> T:
+        return x
+
+C().m(C.D(), C.D())
+C().m(1, C.D())  # E: Value of type variable "T" of "m" of "C" cannot be "int"
+
+[case testPEP695NestedGenericFunction]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+def f[T](x: T) -> T:
+    reveal_type(f(x))  # N: Revealed type is "T`-1"
+    reveal_type(f(1))  # N: Revealed type is "builtins.int"
+
+    def ff(x: T) -> T:
+        y: T = x
+        return y
+    reveal_type(ff(x))  # N: Revealed type is "T`-1"
+    ff(1)  # E: Argument 1 to "ff" has incompatible type "int"; expected "T"
+
+    def g[S](a: S) -> S:
+        ff(a)  # E: Argument 1 to "ff" has incompatible type "S"; expected "T"
+        return a
+    reveal_type(g(1))  # N: Revealed type is "builtins.int"
+    reveal_type(g(x))  # N: Revealed type is "T`-1"
+
+    def h[S](a: S) -> S:
+        return a
+    reveal_type(h(1))  # N: Revealed type is "builtins.int"
+    reveal_type(h(x))  # N: Revealed type is "T`-1"
+    return x
+
+[case testPEP695NonLocalAndGlobal]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+def f() -> None:
+    T = 1
+    def g[T](x: T) -> T:
+        nonlocal T  # E: nonlocal binding not allowed for type parameter "T"
+        T = 'x'  # E: "T" is a type variable and only valid in type context
+        return x
+    reveal_type(T)  # N: Revealed type is "builtins.int"
+
+def g() -> None:
+    a = 1
+    def g[T](x: T) -> T:
+        nonlocal a
+        a = 'x'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+        return x
+
+x = 1
+
+def h[T](a: T) -> T:
+    global x
+    x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    return a
+
+class C[T]:
+    def m[S](self, a: S) -> S:
+        global x
+        x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+        return a
+
+[case testPEP695ArgumentDefault]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+from typing import cast
+
+def f[T](
+    x: T =
+        T  # E: Name "T" is not defined \
+           # E: Incompatible default for argument "x" (default has type "object", argument has type "T")
+) -> T:
+    return x
+
+def g[T](x: T = cast(T, None)) -> T:  # E: Name "T" is not defined
+    return x
+
+class C:
+    def m[T](self, x: T = cast(T, None)) -> T:  # E: Name "T" is not defined
+        return x
+
+[case testPEP695ListComprehension]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+from typing import cast
+
+def f[T](x: T) -> T:
+    b = [cast(T, a) for a in [1, 2]]
+    reveal_type(b)  # N: Revealed type is "builtins.list[T`-1]"
+    return x
+
+[case testPEP695ReuseNameInSameScope]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+
+class C[T]:
+    def m[S](self, x: S, y: T) -> S | T:
+        return x
+
+    def m2[S](self, x: S, y: T) -> S | T:
+        return x
+
+class D[T]:
+    pass
+
+def f[T](x: T) -> T:
+    return x
+
+def g[T](x: T) -> T:
+    def nested[S](y: S) -> S:
+        return y
+    def nested2[S](y: S) -> S:
+        return y
+    return x
+
+[case testPEP695NestedScopingSpecialCases]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+# This is adapted from PEP 695
+S = 0
+
+def outer1[S]() -> None:
+    S = 1
+    T = 1
+
+    def outer2[T]() -> None:
+        def inner1() -> None:
+            nonlocal S
+            nonlocal T  # E: nonlocal binding not allowed for type parameter "T"
+
+        def inner2() -> None:
+            global S
+
+[case testPEP695ScopingWithBaseClasses]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+# This is adapted from PEP 695
+class Outer:
+    class Private:
+        pass
+
+    # If the type parameter scope was like a traditional scope,
+    # the base class 'Private' would not be accessible here.
+    class Inner[T](Private, list[T]):
+        pass
+
+    # Likewise, 'Inner' would not be available in these type annotations.
+    def method1[T](self, a: Inner[T]) -> Inner[T]:
+        return a
+
+[case testPEP695RedefineTypeParameterInScope]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+class C[T]:
+    def m[T](self, x: T) -> T:  # E: "T" already defined as a type parameter
+        return x
+    def m2(self) -> None:
+        def nested[T](x: T) -> T:  # E: "T" already defined as a type parameter
+            return x
+
+def f[S, S](x: S) -> S:  # E: "S" already defined as a type parameter
+    return x
+
+[case testPEP695ClassDecorator]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+from typing import Any
+
+T = 0
+
+def decorator(x: str) -> Any: ...
+
+@decorator(T)  # E: Argument 1 to "decorator" has incompatible type "int"; expected "str"
+class C[T]:
+    pass
