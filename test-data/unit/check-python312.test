@@ -1008,7 +1008,8 @@ def f[T](x: T) -> T:
     reveal_type(f(1))  # N: Revealed type is "builtins.int"
 
     def ff(x: T) -> T:
-        return x
+        y: T = x
+        return y
     reveal_type(ff(x))  # N: Revealed type is "T`-1"
     ff(1)  # E: Argument 1 to "ff" has incompatible type "int"; expected "T"
 
@@ -1058,3 +1059,12 @@ def g[T](x: T = cast(T, None)) -> T:  # E: Name "T" is not defined
 class C:
     def m[T](self, x: T = cast(T, None)) -> T:  # E: Name "T" is not defined
         return x
+
+[case testPEP695ListComprehension]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+from typing import cast
+
+def f[T](x: T) -> T:
+    b = [cast(T, a) for a in [1, 2]]
+    reveal_type(b)  # N: Revealed type is "builtins.list[T`-1]"
+    return x
