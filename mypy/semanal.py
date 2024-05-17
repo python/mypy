@@ -1814,8 +1814,18 @@ class SemanticAnalyzer(
             defn.info.is_protocol = is_protocol
             self.recalculate_metaclass(defn, declared_metaclass)
             defn.info.runtime_protocol = False
+
+            if defn.type_args:
+                # PEP 695 type parameters are not in scope in class decorators, so
+                # temporarily disable type parameter namespace.
+                type_params_names = self.locals.pop()
+                self.scope_stack.pop()
             for decorator in defn.decorators:
                 self.analyze_class_decorator(defn, decorator)
+            if defn.type_args:
+                self.locals.append(type_params_names)
+                self.scope_stack.append(SCOPE_ANNOTATION)
+
             self.analyze_class_body_common(defn)
 
     def setup_type_vars(self, defn: ClassDef, tvar_defs: list[TypeVarLikeType]) -> None:

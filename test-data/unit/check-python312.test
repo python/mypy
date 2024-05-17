@@ -1149,3 +1149,15 @@ class C[T]:
 
 def f[S, S](x: S) -> S:  # E: "S" already defined as a type parameter
     return x
+
+[case testPEP695ClassDecorator]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+from typing import Any
+
+T = 0
+
+def decorator(x: str) -> Any: ...
+
+@decorator(T)  # E: Argument 1 to "decorator" has incompatible type "int"; expected "str"
+class C[T]:
+    pass
