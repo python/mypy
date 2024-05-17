@@ -599,6 +599,12 @@ class NamedTupleAnalyzer:
             ret=selftype,
             args=[Argument(var, var.type, EllipsisExpr(), ARG_NAMED_OPT) for var in vars],
         )
+        if self.options.python_version >= (3, 13):
+            add_method(
+                "__replace__",
+                ret=selftype,
+                args=[Argument(var, var.type, EllipsisExpr(), ARG_NAMED_OPT) for var in vars],
+            )
 
         def make_init_arg(var: Var) -> Argument:
             default = default_items.get(var.name, None)
