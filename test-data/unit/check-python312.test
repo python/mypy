@@ -1004,7 +1004,16 @@ C().m(1, C.D())  # E: Value of type variable "T" of "m" of "C" cannot be "int"
 [case testPEP695NestedGenericFunction]
 # mypy: enable-incomplete-feature=NewGenericSyntax
 def f[T](x: T) -> T:
+    reveal_type(f(x))  # N: Revealed type is "T`-1"
+    reveal_type(f(1))  # N: Revealed type is "builtins.int"
+
+    def ff(x: T) -> T:
+        return x
+    reveal_type(ff(x))  # N: Revealed type is "T`-1"
+    ff(1)  # E: Argument 1 to "ff" has incompatible type "int"; expected "T"
+
     def g[S](a: S) -> S:
+        ff(a)  # E: Argument 1 to "ff" has incompatible type "S"; expected "T"
         return a
     reveal_type(g(1))  # N: Revealed type is "builtins.int"
     reveal_type(g(x))  # N: Revealed type is "T`-1"
