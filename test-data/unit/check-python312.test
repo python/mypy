@@ -1000,3 +1000,34 @@ class C:
 
 C().m(C.D(), C.D())
 C().m(1, C.D())  # E: Value of type variable "T" of "m" of "C" cannot be "int"
+
+[case testPEP695NestedGenericFunction]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+def f[T](x: T) -> T:
+    def g[S](a: S) -> S:
+        return a
+    reveal_type(g(1))  # N: Revealed type is "builtins.int"
+    reveal_type(g(x))  # N: Revealed type is "T`-1"
+
+    def h[S](a: S) -> S:
+        return a
+    reveal_type(h(1))  # N: Revealed type is "builtins.int"
+    reveal_type(h(x))  # N: Revealed type is "T`-1"
+    return x
+
+[case testPEP695NonLocal]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+def f() -> None:
+    T = 1
+    def g[T](x: T) -> T:
+        nonlocal T  # E: nonlocal binding not allowed for type parameter "T"
+        T = 'x'  # E: "T" is a type variable and only valid in type context
+        return x
+    reveal_type(T)  # N: Revealed type is "builtins.int"
+
+def g() -> None:
+    a = 1
+    def g[T](x: T) -> T:
+        nonlocal a
+        a = 'x'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+        return x
