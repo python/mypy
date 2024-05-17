@@ -1692,10 +1692,15 @@ class SemanticAnalyzer(
                 upper_bound=upper_bound,
                 default=default,
                 variance=VARIANCE_NOT_READY,
+                is_new_style=True,
             )
         elif type_param.kind == PARAM_SPEC_KIND:
             return ParamSpecExpr(
-                name=type_param.name, fullname=fullname, upper_bound=upper_bound, default=default
+                name=type_param.name,
+                fullname=fullname,
+                upper_bound=upper_bound,
+                default=default,
+                is_new_style=True,
             )
         else:
             assert type_param.kind == TYPE_VAR_TUPLE_KIND
@@ -1707,6 +1712,7 @@ class SemanticAnalyzer(
                 upper_bound=tuple_fallback.copy_modified(),
                 tuple_fallback=tuple_fallback,
                 default=default,
+                is_new_style=True,
             )
 
     def pop_type_args(self, type_args: list[TypeParam] | None) -> None:

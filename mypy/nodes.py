@@ -2502,7 +2502,7 @@ class TypeVarLikeExpr(SymbolNode, Expression):
     Note that they are constructed by the semantic analyzer.
     """
 
-    __slots__ = ("_name", "_fullname", "upper_bound", "default", "variance")
+    __slots__ = ("_name", "_fullname", "upper_bound", "default", "variance", "is_new_style")
 
     _name: str
     _fullname: str
@@ -2525,6 +2525,7 @@ class TypeVarLikeExpr(SymbolNode, Expression):
         upper_bound: mypy.types.Type,
         default: mypy.types.Type,
         variance: int = INVARIANT,
+        is_new_style: bool = False,
     ) -> None:
         super().__init__()
         self._name = name
@@ -2532,6 +2533,7 @@ class TypeVarLikeExpr(SymbolNode, Expression):
         self.upper_bound = upper_bound
         self.default = default
         self.variance = variance
+        self.is_new_style = is_new_style
 
     @property
     def name(self) -> str:
@@ -2570,8 +2572,9 @@ class TypeVarExpr(TypeVarLikeExpr):
         upper_bound: mypy.types.Type,
         default: mypy.types.Type,
         variance: int = INVARIANT,
+        is_new_style: bool = False,
     ) -> None:
-        super().__init__(name, fullname, upper_bound, default, variance)
+        super().__init__(name, fullname, upper_bound, default, variance, is_new_style)
         self.values = values
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
@@ -2648,8 +2651,9 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
         tuple_fallback: mypy.types.Instance,
         default: mypy.types.Type,
         variance: int = INVARIANT,
+        is_new_style: bool = False,
     ) -> None:
-        super().__init__(name, fullname, upper_bound, default, variance)
+        super().__init__(name, fullname, upper_bound, default, variance, is_new_style)
         self.tuple_fallback = tuple_fallback
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:

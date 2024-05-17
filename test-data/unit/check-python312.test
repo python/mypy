@@ -1040,3 +1040,21 @@ def g() -> None:
         nonlocal a
         a = 'x'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
         return x
+
+[case testPEP695ArgumentDefault]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+from typing import cast
+
+def f[T](
+    x: T =
+        T  # E: Name "T" is not defined \
+           # E: Incompatible default for argument "x" (default has type "object", argument has type "T")
+) -> T:
+    return x
+
+def g[T](x: T = cast(T, None)) -> T:  # E: Name "T" is not defined
+    return x
+
+class C:
+    def m[T](self, x: T = cast(T, None)) -> T:  # E: Name "T" is not defined
+        return x
