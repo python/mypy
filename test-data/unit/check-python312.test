@@ -970,3 +970,33 @@ class C:
         return cast(T, y)
 
 reveal_type(C().m(1))  # N: Revealed type is "builtins.int"
+
+[case testPEP695ScopingBasics]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+
+T = 1
+
+def f[T](x: T) -> T:
+    T = 'a'
+    reveal_type(T)  # N: Revealed type is "builtins.str"
+    return x
+
+reveal_type(T)  # N: Revealed type is "builtins.int"
+
+class C[T]:
+    T = 1.2
+    reveal_type(T)  # N: Revealed type is "builtins.float"
+
+reveal_type(T)  # N: Revealed type is "builtins.int"
+
+[case testPEP695ClassScoping]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+
+class C:
+    class D: pass
+
+    def m[T: D](self, x: T, y: D) -> T:
+        return x
+
+C().m(C.D(), C.D())
+C().m(1, C.D())  # E: Value of type variable "T" of "m" of "C" cannot be "int"
