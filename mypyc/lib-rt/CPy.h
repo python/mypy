@@ -133,16 +133,16 @@ CPyTagged CPyTagged_Invert(CPyTagged num);
 CPyTagged CPyTagged_Multiply(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_FloorDivide(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Remainder(CPyTagged left, CPyTagged right);
-CPyTagged CPyTagged_And(CPyTagged left, CPyTagged right);
-CPyTagged CPyTagged_Or(CPyTagged left, CPyTagged right);
-CPyTagged CPyTagged_Xor(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Rshift(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Lshift(CPyTagged left, CPyTagged right);
+
 bool CPyTagged_IsEq_(CPyTagged left, CPyTagged right);
 bool CPyTagged_IsLt_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Negate_(CPyTagged num);
 CPyTagged CPyTagged_Add_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Subtract_(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_BitwiseLongOp_(CPyTagged a, CPyTagged b, char op);
+
 PyObject *CPyTagged_Str(CPyTagged n);
 CPyTagged CPyTagged_FromFloat(double f);
 PyObject *CPyLong_FromStrWithBase(PyObject *o, CPyTagged base);
@@ -316,6 +316,30 @@ static inline CPyTagged CPyTagged_Subtract(CPyTagged left, CPyTagged right) {
         }
     }
     return CPyTagged_Subtract_(left, right);
+}
+
+// Bitwise '&'
+static inline CPyTagged CPyTagged_And(CPyTagged left, CPyTagged right) {
+    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
+        return left & right;
+    }
+    return CPyTagged_BitwiseLongOp_(left, right, '&');
+}
+
+// Bitwise '|'
+static inline CPyTagged CPyTagged_Or(CPyTagged left, CPyTagged right) {
+    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
+        return left | right;
+    }
+    return CPyTagged_BitwiseLongOp_(left, right, '|');
+}
+
+// Bitwise '^'
+static inline CPyTagged CPyTagged_Xor(CPyTagged left, CPyTagged right) {
+    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
+        return left ^ right;
+    }
+    return CPyTagged_BitwiseLongOp_(left, right, '^');
 }
 
 

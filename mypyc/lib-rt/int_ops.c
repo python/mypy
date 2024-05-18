@@ -351,7 +351,7 @@ static digit *GetIntDigits(CPyTagged n, Py_ssize_t *size, digit *buf) {
 
 // Shared implementation of bitwise '&', '|' and '^' (specified by op) for at least
 // one long operand. This is somewhat optimized for performance.
-static CPyTagged BitwiseLongOp(CPyTagged a, CPyTagged b, char op) {
+CPyTagged CPyTagged_BitwiseLongOp_(CPyTagged a, CPyTagged b, char op) {
     // Directly access the digits, as there is no fast C API function for this.
     digit abuf[3];
     digit bbuf[3];
@@ -400,30 +400,6 @@ static CPyTagged BitwiseLongOp(CPyTagged a, CPyTagged b, char op) {
     }
     CPyLong_NormalizeUnsigned(r);
     return CPyTagged_StealFromObject((PyObject *)r);
-}
-
-// Bitwise '&'
-CPyTagged CPyTagged_And(CPyTagged left, CPyTagged right) {
-    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
-        return left & right;
-    }
-    return BitwiseLongOp(left, right, '&');
-}
-
-// Bitwise '|'
-CPyTagged CPyTagged_Or(CPyTagged left, CPyTagged right) {
-    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
-        return left | right;
-    }
-    return BitwiseLongOp(left, right, '|');
-}
-
-// Bitwise '^'
-CPyTagged CPyTagged_Xor(CPyTagged left, CPyTagged right) {
-    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
-        return left ^ right;
-    }
-    return BitwiseLongOp(left, right, '^');
 }
 
 // Bitwise '~'
