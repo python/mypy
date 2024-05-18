@@ -129,7 +129,6 @@ Py_ssize_t CPyTagged_AsSsize_t(CPyTagged x);
 void CPyTagged_IncRef(CPyTagged x);
 void CPyTagged_DecRef(CPyTagged x);
 void CPyTagged_XDecRef(CPyTagged x);
-CPyTagged CPyTagged_FloorDivide(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Remainder(CPyTagged left, CPyTagged right);
 
 bool CPyTagged_IsEq_(CPyTagged left, CPyTagged right);
@@ -138,6 +137,7 @@ CPyTagged CPyTagged_Negate_(CPyTagged num);
 CPyTagged CPyTagged_Add_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Subtract_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Multiply_(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_FloorDivide_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Invert_(CPyTagged num);
 CPyTagged CPyTagged_BitwiseLongOp_(CPyTagged a, CPyTagged b, char op);
 CPyTagged CPyTagged_Rshift_(CPyTagged left, CPyTagged right);
@@ -326,6 +326,22 @@ static inline CPyTagged CPyTagged_Multiply(CPyTagged left, CPyTagged right) {
         }
     }
     return CPyTagged_Multiply_(left, right);
+}
+
+static inline CPyTagged CPyTagged_FloorDivide(CPyTagged left, CPyTagged right) {
+    if (CPyTagged_CheckShort(left)
+        && CPyTagged_CheckShort(right)
+        && !CPyTagged_MaybeFloorDivideFault(left, right)) {
+        Py_ssize_t result = CPyTagged_ShortAsSsize_t(left) / CPyTagged_ShortAsSsize_t(right);
+        if (((Py_ssize_t)left < 0) != (((Py_ssize_t)right) < 0)) {
+            if (result * right != left) {
+                // Round down
+                result--;
+            }
+        }
+        return result << 1;
+    }
+    return CPyTagged_FloorDivide_(left, right);
 }
 
 // Bitwise '~'

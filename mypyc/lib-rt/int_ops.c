@@ -185,19 +185,8 @@ CPyTagged CPyTagged_Multiply_(CPyTagged left, CPyTagged right) {
     return CPyTagged_StealFromObject(result);
 }
 
-CPyTagged CPyTagged_FloorDivide(CPyTagged left, CPyTagged right) {
-    if (CPyTagged_CheckShort(left)
-        && CPyTagged_CheckShort(right)
-        && !CPyTagged_MaybeFloorDivideFault(left, right)) {
-        Py_ssize_t result = CPyTagged_ShortAsSsize_t(left) / CPyTagged_ShortAsSsize_t(right);
-        if (((Py_ssize_t)left < 0) != (((Py_ssize_t)right) < 0)) {
-            if (result * right != left) {
-                // Round down
-                result--;
-            }
-        }
-        return result << 1;
-    }
+// Tagged int // slow path, where the result may be a long integer
+CPyTagged CPyTagged_FloorDivide_(CPyTagged left, CPyTagged right) {
     PyObject *left_obj = CPyTagged_AsObject(left);
     PyObject *right_obj = CPyTagged_AsObject(right);
     PyObject *result = PyNumber_FloorDivide(left_obj, right_obj);
