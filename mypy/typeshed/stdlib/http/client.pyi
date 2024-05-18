@@ -3,7 +3,7 @@ import io
 import ssl
 import sys
 import types
-from _typeshed import ReadableBuffer, SupportsRead, WriteableBuffer
+from _typeshed import ReadableBuffer, SupportsRead, SupportsReadline, WriteableBuffer
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from socket import socket
 from typing import Any, BinaryIO, TypeVar, overload
@@ -33,6 +33,7 @@ __all__ = [
 
 _DataType: TypeAlias = SupportsRead[bytes] | Iterable[ReadableBuffer] | ReadableBuffer
 _T = TypeVar("_T")
+_MessageT = TypeVar("_MessageT", bound=email.message.Message)
 
 HTTP_PORT: int
 HTTPS_PORT: int
@@ -97,10 +98,13 @@ NETWORK_AUTHENTICATION_REQUIRED: int
 
 responses: dict[int, str]
 
-class HTTPMessage(email.message.Message):
+class HTTPMessage(email.message.Message[str, str]):
     def getallmatchingheaders(self, name: str) -> list[str]: ...  # undocumented
 
-def parse_headers(fp: io.BufferedIOBase, _class: Callable[[], email.message.Message] = ...) -> HTTPMessage: ...
+@overload
+def parse_headers(fp: SupportsReadline[bytes], _class: Callable[[], _MessageT]) -> _MessageT: ...
+@overload
+def parse_headers(fp: SupportsReadline[bytes]) -> HTTPMessage: ...
 
 class HTTPResponse(io.BufferedIOBase, BinaryIO):  # type: ignore[misc]  # incompatible method definitions in the base classes
     msg: HTTPMessage
@@ -187,7 +191,7 @@ class HTTPSConnection(HTTPConnection):
         def __init__(
             self,
             host: str,
-            port: str | None = None,
+            port: int | None = None,
             *,
             timeout: float | None = ...,
             source_address: tuple[str, int] | None = None,

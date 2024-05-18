@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import itertools
 from collections import defaultdict
-from contextlib import contextmanager, nullcontext
+from contextlib import ExitStack, contextmanager
 from typing import (
     AbstractSet,
     Callable,
@@ -146,6 +146,7 @@ from mypy.sharedparse import BINARY_MAGIC_METHODS
 from mypy.state import state
 from mypy.subtypes import (
     find_member,
+    infer_class_variances,
     is_callable_compatible,
     is_equivalent,
     is_more_precise,
@@ -526,13 +527,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # print("XXX in pass %d, class %s, function %s" %
                     #       (self.pass_num, type_name, node.fullname or node.name))
                     done.add(node)
-                    with self.tscope.class_scope(
-                        active_typeinfo
-                    ) if active_typeinfo else nullcontext():
-                        with self.scope.push_class(
-                            active_typeinfo
-                        ) if active_typeinfo else nullcontext():
-                            self.check_partial(node)
+                    with ExitStack() as stack:
+                        if active_typeinfo:
+                            stack.enter_context(self.tscope.class_scope(active_typeinfo))
+                            stack.enter_context(self.scope.push_class(active_typeinfo))
+                        self.check_partial(node)
             return True
 
     def check_partial(self, node: DeferredNodeType | FineGrainedDeferredNodeType) -> None:
@@ -632,7 +631,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if not defn.items:
             # In this case we have already complained about none of these being
             # valid overloads.
-            return None
+            return
         if len(defn.items) == 1:
             self.fail(message_registry.MULTIPLE_OVERLOADS_REQUIRED, defn)
 
@@ -676,7 +675,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.msg.no_overridable_method(defn.name, defn)
             self.check_explicit_override_decorator(defn, found_method_base_classes, defn.impl)
             self.check_inplace_operator_method(defn)
-        return None
 
     def extract_callable_type(self, inner_type: Type | None, ctx: Context) -> CallableType | None:
         """Get type as seen by an overload item caller."""
@@ -709,7 +707,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # At this point we should have set the impl already, and all remaining
         # items are decorators
 
-        if self.msg.errors.file in self.msg.errors.ignored_files:
+        if self.msg.errors.file in self.msg.errors.ignored_files or (
+            self.is_typeshed_stub and self.options.test_env
+        ):
             # This is a little hacky, however, the quadratic check here is really expensive, this
             # method has no side effects, so we should skip it if we aren't going to report
             # anything. In some other places we swallow errors in stubs, but this error is very
@@ -990,8 +990,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # AwaitableGenerator, Generator: tr is args[2].
             return return_type.args[2]
         else:
-            # Supertype of Generator (Iterator, Iterable, object): tr is any.
-            return AnyType(TypeOfAny.special_form)
+            # We have a supertype of Generator (Iterator, Iterable, object)
+            # Treat `Iterator[X]` as a shorthand for `Generator[X, Any, None]`.
+            return NoneType()
 
     def visit_func_def(self, defn: FuncDef) -> None:
         if not self.recurse_into_functions:
@@ -1203,6 +1204,22 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # We temporary push the definition to get the self type as
                     # visible from *inside* of this function/method.
                     ref_type: Type | None = self.scope.active_self_type()
+
+                if typ.type_is:
+                    arg_index = 0
+                    # For methods and classmethods, we want the second parameter
+                    if ref_type is not None and (not defn.is_static or defn.name == "__new__"):
+                        arg_index = 1
+                    if arg_index < len(typ.arg_types) and not is_subtype(
+                        typ.type_is, typ.arg_types[arg_index]
+                    ):
+                        self.fail(
+                            message_registry.NARROWED_TYPE_NOT_SUBTYPE.format(
+                                format_type(typ.type_is, self.options),
+                                format_type(typ.arg_types[arg_index], self.options),
+                            ),
+                            item,
+                        )
 
                 # Store argument types.
                 for i in range(len(typ.arg_types)):
@@ -1836,7 +1853,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
         typ = get_proper_type(typ)
         if not isinstance(typ, TupleType) or not all(
-            [is_string_literal(item) for item in typ.items]
+            is_string_literal(item) for item in typ.items
         ):
             self.msg.note(
                 "__match_args__ must be a tuple containing string literals for checking "
@@ -2021,22 +2038,29 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if original_node and is_property(original_node):
                     original_type = get_property_type(original_type)
 
-            if isinstance(typ, FunctionLike) and is_property(defn):
-                typ = get_property_type(typ)
-                if (
-                    isinstance(original_node, Var)
-                    and not original_node.is_final
-                    and (not original_node.is_property or original_node.is_settable_property)
-                    and isinstance(defn, Decorator)
-                ):
-                    # We only give an error where no other similar errors will be given.
-                    if not isinstance(original_type, AnyType):
-                        self.msg.fail(
-                            "Cannot override writeable attribute with read-only property",
-                            # Give an error on function line to match old behaviour.
-                            defn.func,
-                            code=codes.OVERRIDE,
-                        )
+            if is_property(defn):
+                inner: FunctionLike | None
+                if isinstance(typ, FunctionLike):
+                    inner = typ
+                else:
+                    inner = self.extract_callable_type(typ, context)
+                if inner is not None:
+                    typ = inner
+                    typ = get_property_type(typ)
+                    if (
+                        isinstance(original_node, Var)
+                        and not original_node.is_final
+                        and (not original_node.is_property or original_node.is_settable_property)
+                        and isinstance(defn, Decorator)
+                    ):
+                        # We only give an error where no other similar errors will be given.
+                        if not isinstance(original_type, AnyType):
+                            self.msg.fail(
+                                "Cannot override writeable attribute with read-only property",
+                                # Give an error on function line to match old behaviour.
+                                defn.func,
+                                code=codes.OVERRIDE,
+                            )
 
             if isinstance(original_type, AnyType) or isinstance(typ, AnyType):
                 pass
@@ -2143,11 +2167,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Check a method override with given signatures.
 
         Arguments:
-          override:  The signature of the overriding method.
-          original:  The signature of the original supertype method.
-          name:      The name of the subtype. This and the next argument are
-                     only used for generating error messages.
-          supertype: The name of the supertype.
+          override:                 The signature of the overriding method.
+          original:                 The signature of the original supertype method.
+          name:                     The name of the overriding method.
+                                    Used primarily for generating error messages.
+          name_in_super:            The name of the overridden in the superclass.
+                                    Used for generating error messages only.
+          supertype:                The name of the supertype.
+          original_class_or_static: Indicates whether the original method (from the superclass)
+                                    is either a class method or a static method.
+          override_class_or_static: Indicates whether the overriding method (from the subclass)
+                                    is either a class method or a static method.
+          node:                     Context node.
         """
         # Use boolean variable to clarify code.
         fail = False
@@ -2171,6 +2202,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 fail = True
             elif isinstance(original, CallableType) and isinstance(override, CallableType):
                 if original.type_guard is not None and override.type_guard is None:
+                    fail = True
+                if original.type_is is not None and override.type_is is None:
                     fail = True
 
         if is_private(name):
@@ -2342,7 +2375,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.allow_abstract_call = old_allow_abstract_call
                 # TODO: Apply the sig to the actual TypeInfo so we can handle decorators
                 # that completely swap out the type.  (e.g. Callable[[Type[A]], Type[B]])
-        if typ.defn.type_vars:
+        if typ.defn.type_vars and typ.defn.type_args is None:
             for base_inst in typ.bases:
                 for base_tvar, base_decl_tvar in zip(
                     base_inst.args, base_inst.type.defn.type_vars
@@ -2364,6 +2397,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_protocol_variance(defn)
         if not defn.has_incompatible_baseclass and defn.info.is_enum:
             self.check_enum(defn)
+        infer_class_variances(defn.info)
 
     def check_final_deletable(self, typ: TypeInfo) -> None:
         # These checks are only for mypyc. Only perform some checks that are easier
@@ -2534,6 +2568,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if they are actually covariant/contravariant, since this may break
         transitivity of subtyping, see PEP 544.
         """
+        if defn.type_args is not None:
+            # Using new-style syntax (PEP 695), so variance will be inferred
+            return
         info = defn.info
         object_type = Instance(info.mro[-1], [])
         tvars = info.defn.type_vars
@@ -3380,8 +3417,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if (
                     lv.node.final_unset_in_class
                     and not lv.node.final_set_in_init
-                    and not self.is_stub
-                    and  # It is OK to skip initializer in stub files.
+                    and not self.is_stub  # It is OK to skip initializer in stub files.
+                    and
                     # Avoid extra error messages, if there is no type in Final[...],
                     # then we already reported the error about missing r.h.s.
                     isinstance(s, AssignmentStmt)
@@ -3801,9 +3838,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if star_lv:
                 list_expr = ListExpr(
                     [
-                        self.temp_node(rv_type, context)
-                        if not isinstance(rv_type, UnpackType)
-                        else StarExpr(self.temp_node(rv_type.type, context))
+                        (
+                            self.temp_node(rv_type, context)
+                            if not isinstance(rv_type, UnpackType)
+                            else StarExpr(self.temp_node(rv_type.type, context))
+                        )
                         for rv_type in star_rv_types
                     ]
                 )
@@ -5043,9 +5082,22 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def visit_continue_stmt(self, s: ContinueStmt) -> None:
         self.binder.handle_continue()
-        return None
+        return
 
     def visit_match_stmt(self, s: MatchStmt) -> None:
+        named_subject: Expression
+        if isinstance(s.subject, CallExpr):
+            # Create a dummy subject expression to handle cases where a match statement's subject
+            # is not a literal value. This lets us correctly narrow types and check exhaustivity
+            # This is hack!
+            id = s.subject.callee.fullname if isinstance(s.subject.callee, RefExpr) else ""
+            name = "dummy-match-" + id
+            v = Var(name)
+            named_subject = NameExpr(name)
+            named_subject.node = v
+        else:
+            named_subject = s.subject
+
         with self.binder.frame_context(can_skip=False, fall_through=0):
             subject_type = get_proper_type(self.expr_checker.accept(s.subject))
 
@@ -5064,7 +5116,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # The second pass narrows down the types and type checks bodies.
             for p, g, b in zip(s.patterns, s.guards, s.bodies):
                 current_subject_type = self.expr_checker.narrow_type_from_binder(
-                    s.subject, subject_type
+                    named_subject, subject_type
                 )
                 pattern_type = self.pattern_checker.accept(p, current_subject_type)
                 with self.binder.frame_context(can_skip=True, fall_through=2):
@@ -5075,10 +5127,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         else_map: TypeMap = {}
                     else:
                         pattern_map, else_map = conditional_types_to_typemaps(
-                            s.subject, pattern_type.type, pattern_type.rest_type
+                            named_subject, pattern_type.type, pattern_type.rest_type
                         )
                         self.remove_capture_conflicts(pattern_type.captures, inferred_types)
                         self.push_type_map(pattern_map)
+                        if pattern_map:
+                            for expr, typ in pattern_map.items():
+                                self.push_type_map(self._get_recursive_sub_patterns_map(expr, typ))
                         self.push_type_map(pattern_type.captures)
                     if g is not None:
                         with self.binder.frame_context(can_skip=False, fall_through=3):
@@ -5103,7 +5158,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                 and expr.fullname == case_target.fullname
                                             ):
                                                 continue
-                                            type_map[s.subject] = type_map[expr]
+                                            type_map[named_subject] = type_map[expr]
 
                             self.push_type_map(guard_map)
                             self.accept(b)
@@ -5115,6 +5170,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # after the match.
             with self.binder.frame_context(can_skip=False, fall_through=2):
                 pass
+
+    def _get_recursive_sub_patterns_map(
+        self, expr: Expression, typ: Type
+    ) -> dict[Expression, Type]:
+        sub_patterns_map: dict[Expression, Type] = {}
+        typ_ = get_proper_type(typ)
+        if isinstance(expr, TupleExpr) and isinstance(typ_, TupleType):
+            # When matching a tuple expression with a sequence pattern, narrow individual tuple items
+            assert len(expr.items) == len(typ_.items)
+            for item_expr, item_typ in zip(expr.items, typ_.items):
+                sub_patterns_map[item_expr] = item_typ
+                sub_patterns_map.update(self._get_recursive_sub_patterns_map(item_expr, item_typ))
+
+        return sub_patterns_map
 
     def infer_variable_types_from_type_maps(self, type_maps: list[TypeMap]) -> dict[Var, Type]:
         all_captures: dict[Var, list[tuple[NameExpr, Type]]] = defaultdict(list)
@@ -5254,6 +5323,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         pretty_names_list = pretty_seq(
             format_type_distinctly(*base_classes, options=self.options, bare=True), "and"
         )
+
+        new_errors = []
+        for base in base_classes:
+            if base.type.is_final:
+                new_errors.append((pretty_names_list, f'"{base.type.name}" is final'))
+        if new_errors:
+            errors.extend(new_errors)
+            return None
+
         try:
             info, full_name = _make_fake_typeinfo_and_full_name(base_classes, curr_module)
             with self.msg.filter_errors() as local_errors:
@@ -5266,10 +5344,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.check_multiple_inheritance(info)
             info.is_intersection = True
         except MroError:
-            errors.append((pretty_names_list, "inconsistent method resolution order"))
+            errors.append((pretty_names_list, "would have inconsistent method resolution order"))
             return None
         if local_errors.has_new_errors():
-            errors.append((pretty_names_list, "incompatible method signatures"))
+            errors.append((pretty_names_list, "would have incompatible method signatures"))
             return None
 
         curr_module.names[full_name] = SymbolTableNode(GDEF, info)
@@ -5613,7 +5691,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def find_isinstance_check(self, node: Expression) -> tuple[TypeMap, TypeMap]:
         """Find any isinstance checks (within a chain of ands).  Includes
         implicit and explicit checks for None and calls to callable.
-        Also includes TypeGuard functions.
+        Also includes TypeGuard and TypeIs functions.
 
         Return value is a map of variables to their types if the condition
         is true and a map of variables to their types if the condition is false.
@@ -5665,7 +5743,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if literal(expr) == LITERAL_TYPE and attr and len(attr) == 1:
                     return self.hasattr_type_maps(expr, self.lookup_type(expr), attr[0])
             elif isinstance(node.callee, RefExpr):
-                if node.callee.type_guard is not None:
+                if node.callee.type_guard is not None or node.callee.type_is is not None:
                     # TODO: Follow *args, **kwargs
                     if node.arg_kinds[0] != nodes.ARG_POS:
                         # the first argument might be used as a kwarg
@@ -5691,7 +5769,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 # we want the idx-th variable to be narrowed
                                 expr = collapse_walrus(node.args[idx])
                             else:
-                                self.fail(message_registry.TYPE_GUARD_POS_ARG_REQUIRED, node)
+                                kind = (
+                                    "guard" if node.callee.type_guard is not None else "narrower"
+                                )
+                                self.fail(
+                                    message_registry.TYPE_GUARD_POS_ARG_REQUIRED.format(kind), node
+                                )
                                 return {}, {}
                     if literal(expr) == LITERAL_TYPE:
                         # Note: we wrap the target type, so that we can special case later.
@@ -5699,7 +5782,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # considered "always right" (i.e. even if the types are not overlapping).
                         # Also note that a care must be taken to unwrap this back at read places
                         # where we use this to narrow down declared type.
-                        return {expr: TypeGuardedType(node.callee.type_guard)}, {}
+                        if node.callee.type_guard is not None:
+                            return {expr: TypeGuardedType(node.callee.type_guard)}, {}
+                        else:
+                            assert node.callee.type_is is not None
+                            return conditional_types_to_typemaps(
+                                expr,
+                                *self.conditional_types_with_intersection(
+                                    self.lookup_type(expr),
+                                    [TypeRange(node.callee.type_is, is_upper_bound=False)],
+                                    expr,
+                                ),
+                            )
         elif isinstance(node, ComparisonExpr):
             # Step 1: Obtain the types of each operand and whether or not we can
             # narrow their types. (For example, we shouldn't try narrowing the
@@ -6583,8 +6677,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         notes: list[str] | None = None,
         code: ErrorCode | None = None,
         outer_context: Context | None = None,
-    ) -> bool:
-        ...
+    ) -> bool: ...
 
     @overload
     def check_subtype(
@@ -6598,8 +6691,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         *,
         notes: list[str] | None = None,
         outer_context: Context | None = None,
-    ) -> bool:
-        ...
+    ) -> bool: ...
 
     def check_subtype(
         self,
@@ -7073,14 +7165,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         type_ranges: list[TypeRange] | None,
         ctx: Context,
         default: None = None,
-    ) -> tuple[Type | None, Type | None]:
-        ...
+    ) -> tuple[Type | None, Type | None]: ...
 
     @overload
     def conditional_types_with_intersection(
         self, expr_type: Type, type_ranges: list[TypeRange] | None, ctx: Context, default: Type
-    ) -> tuple[Type, Type]:
-        ...
+    ) -> tuple[Type, Type]: ...
 
     def conditional_types_with_intersection(
         self,
@@ -7111,9 +7201,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         possible_target_types = []
         for tr in type_ranges:
             item = get_proper_type(tr.item)
-            if not isinstance(item, Instance) or tr.is_upper_bound:
-                return yes_type, no_type
-            possible_target_types.append(item)
+            if isinstance(item, (Instance, NoneType)):
+                possible_target_types.append(item)
+        if not possible_target_types:
+            return yes_type, no_type
 
         out = []
         errors: list[tuple[str, str]] = []
@@ -7121,6 +7212,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if not isinstance(v, Instance):
                 return yes_type, no_type
             for t in possible_target_types:
+                if isinstance(t, NoneType):
+                    errors.append((f'"{v.type.name}" and "NoneType"', '"NoneType" is final'))
+                    continue
                 intersection = self.intersect_instances((v, t), errors)
                 if intersection is None:
                     continue
@@ -7164,7 +7258,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             elif isinstance(typ, TypeType):
                 # Type[A] means "any type that is a subtype of A" rather than "precisely type A"
                 # we indicate this by setting is_upper_bound flag
-                types.append(TypeRange(typ.item, is_upper_bound=True))
+                is_upper_bound = True
+                if isinstance(typ.item, NoneType):
+                    # except for Type[None], because "'NoneType' is not an acceptable base type"
+                    is_upper_bound = False
+                types.append(TypeRange(typ.item, is_upper_bound=is_upper_bound))
             elif isinstance(typ, Instance) and typ.type.fullname == "builtins.type":
                 object_type = Instance(typ.type.mro[-1], [])
                 types.append(TypeRange(object_type, is_upper_bound=True))
@@ -7330,15 +7428,13 @@ class CollectArgTypeVarTypes(TypeTraverserVisitor):
 @overload
 def conditional_types(
     current_type: Type, proposed_type_ranges: list[TypeRange] | None, default: None = None
-) -> tuple[Type | None, Type | None]:
-    ...
+) -> tuple[Type | None, Type | None]: ...
 
 
 @overload
 def conditional_types(
     current_type: Type, proposed_type_ranges: list[TypeRange] | None, default: Type
-) -> tuple[Type, Type]:
-    ...
+) -> tuple[Type, Type]: ...
 
 
 def conditional_types(
@@ -7617,7 +7713,7 @@ def convert_to_typetype(type_map: TypeMap) -> TypeMap:
         if isinstance(t, TypeVarType):
             t = t.upper_bound
         # TODO: should we only allow unions of instances as per PEP 484?
-        if not isinstance(get_proper_type(t), (UnionType, Instance)):
+        if not isinstance(get_proper_type(t), (UnionType, Instance, NoneType)):
             # unknown type; error was likely reported earlier
             return {}
         converted_type_map[expr] = TypeType.make_normalized(typ)

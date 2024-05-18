@@ -63,8 +63,7 @@ class MetadataStore:
         """
 
     @abstractmethod
-    def list_all(self) -> Iterable[str]:
-        ...
+    def list_all(self) -> Iterable[str]: ...
 
 
 def random_string() -> str:

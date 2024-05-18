@@ -338,9 +338,11 @@ if int():
 if int():
     a = t1[(0)]
 if int():
+    b = t1[+1]
+if int():
     x = t3[0:3] # type (A, B, C)
 if int():
-    y = t3[0:5:2] # type (A, C, E)
+    y = t3[0:+5:2] # type (A, C, E)
 if int():
     x = t3[:-2] # type (A, B, C)
 

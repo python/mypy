@@ -15,6 +15,26 @@ from mypy.types import (
     TypeVarTupleType,
     TypeVarType,
 )
+from mypy.typetraverser import TypeTraverserVisitor
+
+
+class TypeVarLikeNamespaceSetter(TypeTraverserVisitor):
+    """Set namespace for all TypeVarLikeTypes types."""
+
+    def __init__(self, namespace: str) -> None:
+        self.namespace = namespace
+
+    def visit_type_var(self, t: TypeVarType) -> None:
+        t.id.namespace = self.namespace
+        super().visit_type_var(t)
+
+    def visit_param_spec(self, t: ParamSpecType) -> None:
+        t.id.namespace = self.namespace
+        return super().visit_param_spec(t)
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> None:
+        t.id.namespace = self.namespace
+        super().visit_type_var_tuple(t)
 
 
 class TypeVarLikeScope:
@@ -88,6 +108,8 @@ class TypeVarLikeScope:
             i = self.func_id
             # TODO: Consider also using namespaces for functions
             namespace = ""
+        tvar_expr.default.accept(TypeVarLikeNamespaceSetter(namespace))
+
         if isinstance(tvar_expr, TypeVarExpr):
             tvar_def: TypeVarLikeType = TypeVarType(
                 name=name,

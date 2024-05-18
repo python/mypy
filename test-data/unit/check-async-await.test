@@ -819,8 +819,6 @@ def bar() -> None:
 [typing fixtures/typing-async.pyi]
 
 [case testAsyncForOutsideCoroutine]
-# flags: --python-version 3.7
-
 async def g():
     yield 0
 
@@ -841,8 +839,6 @@ async for x in g(): ... # E: "async for" outside async function
 [typing fixtures/typing-async.pyi]
 
 [case testAsyncWithOutsideCoroutine]
-# flags: --python-version 3.7
-
 class C:
     async def __aenter__(self): pass
     async def __aexit__(self, x, y, z): pass
@@ -858,7 +854,6 @@ async with C() as x: # E: "async with" outside async function
 [typing fixtures/typing-async.pyi]
 
 [case testAwaitMissingNote]
-# flags: --python-version 3.7
 from typing import Generic, TypeVar, Generator, Any, Awaitable, Type
 
 class C:

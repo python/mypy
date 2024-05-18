@@ -1347,18 +1347,21 @@ class MessageBuilder:
         return target
 
     def incompatible_type_application(
-        self, expected_arg_count: int, actual_arg_count: int, context: Context
+        self, min_arg_count: int, max_arg_count: int, actual_arg_count: int, context: Context
     ) -> None:
-        if expected_arg_count == 0:
+        if max_arg_count == 0:
             self.fail("Type application targets a non-generic function or class", context)
-        elif actual_arg_count > expected_arg_count:
-            self.fail(
-                f"Type application has too many types ({expected_arg_count} expected)", context
-            )
+            return
+
+        if min_arg_count == max_arg_count:
+            s = f"{max_arg_count} expected"
         else:
-            self.fail(
-                f"Type application has too few types ({expected_arg_count} expected)", context
-            )
+            s = f"expected between {min_arg_count} and {max_arg_count}"
+
+        if actual_arg_count > max_arg_count:
+            self.fail(f"Type application has too many types ({s})", context)
+        else:
+            self.fail(f"Type application has too few types ({s})", context)
 
     def could_not_infer_type_arguments(
         self, callee_type: CallableType, n: int, context: Context
@@ -1776,6 +1779,8 @@ class MessageBuilder:
                 alias = alias.split(".")[-1]
                 if alias == "Dict":
                     type_dec = f"{type_dec}, {type_dec}"
+                if self.options.use_lowercase_names():
+                    alias = alias.lower()
                 recommended_type = f"{alias}[{type_dec}]"
         if recommended_type is not None:
             hint = f' (hint: "{node.name}: {recommended_type} = ...")'
@@ -2051,9 +2056,18 @@ class MessageBuilder:
     def impossible_intersection(
         self, formatted_base_class_list: str, reason: str, context: Context
     ) -> None:
-        template = "Subclass of {} cannot exist: would have {}"
+        template = "Subclass of {} cannot exist: {}"
         self.fail(
             template.format(formatted_base_class_list, reason), context, code=codes.UNREACHABLE
+        )
+
+    def tvar_without_default_type(
+        self, tvar_name: str, last_tvar_name_with_default: str, context: Context
+    ) -> None:
+        self.fail(
+            f'"{tvar_name}" cannot appear after "{last_tvar_name_with_default}" '
+            "in type parameter list because it has no default type",
+            context,
         )
 
     def report_protocol_problems(
@@ -2512,10 +2526,10 @@ def format_type_inner(
         else:
             base_str = itype.type.name
         if not itype.args:
-            if not itype.type.has_type_var_tuple_type:
-                # No type arguments, just return the type name
-                return base_str
-            return base_str + "[()]"
+            if itype.type.has_type_var_tuple_type and len(itype.type.type_vars) == 1:
+                return base_str + "[()]"
+            # No type arguments, just return the type name
+            return base_str
         elif itype.type.fullname == "builtins.tuple":
             item_type_str = format(itype.args[0])
             return f"{'tuple' if options.use_lowercase_names() else 'Tuple'}[{item_type_str}, ...]"
@@ -2631,6 +2645,8 @@ def format_type_inner(
         elif isinstance(func, CallableType):
             if func.type_guard is not None:
                 return_type = f"TypeGuard[{format(func.type_guard)}]"
+            elif func.type_is is not None:
+                return_type = f"TypeIs[{format(func.type_is)}]"
             else:
                 return_type = format(func.ret_type)
             if func.is_ellipsis_args:
@@ -2847,6 +2863,8 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
     s += " -> "
     if tp.type_guard is not None:
         s += f"TypeGuard[{format_type_bare(tp.type_guard, options)}]"
+    elif tp.type_is is not None:
+        s += f"TypeIs[{format_type_bare(tp.type_is, options)}]"
     else:
         s += format_type_bare(tp.ret_type, options)
 
@@ -3017,12 +3035,15 @@ def for_function(callee: CallableType) -> str:
     return ""
 
 
-def wrong_type_arg_count(n: int, act: str, name: str) -> str:
-    s = f"{n} type arguments"
-    if n == 0:
-        s = "no type arguments"
-    elif n == 1:
-        s = "1 type argument"
+def wrong_type_arg_count(low: int, high: int, act: str, name: str) -> str:
+    if low == high:
+        s = f"{low} type arguments"
+        if low == 0:
+            s = "no type arguments"
+        elif low == 1:
+            s = "1 type argument"
+    else:
+        s = f"between {low} and {high} type arguments"
     if act == "0":
         act = "none"
     return f'"{name}" expects {s}, but {act} given'
@@ -3099,7 +3120,7 @@ def append_invariance_notes(
     ):
         invariant_type = "Dict"
         covariant_suggestion = (
-            'Consider using "Mapping" instead, ' "which is covariant in the value type"
+            'Consider using "Mapping" instead, which is covariant in the value type'
         )
     if invariant_type and covariant_suggestion:
         notes.append(

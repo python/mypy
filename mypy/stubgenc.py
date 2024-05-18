@@ -41,7 +41,7 @@ from mypy.stubutil import (
 class ExternalSignatureGenerator(SignatureGenerator):
     def __init__(
         self, func_sigs: dict[str, str] | None = None, class_sigs: dict[str, str] | None = None
-    ):
+    ) -> None:
         """
         Takes a mapping of function/method names to signatures and class name to
         class signatures (usually corresponds to __init__).
@@ -126,10 +126,12 @@ class DocstringSignatureGenerator(SignatureGenerator):
         """Infer property type from docstring or docstring signature."""
         if ctx.docstring is not None:
             inferred = infer_ret_type_sig_from_anon_docstring(ctx.docstring)
-            if not inferred:
-                inferred = infer_ret_type_sig_from_docstring(ctx.docstring, ctx.name)
-            if not inferred:
-                inferred = infer_prop_type_from_docstring(ctx.docstring)
+            if inferred:
+                return inferred
+            inferred = infer_ret_type_sig_from_docstring(ctx.docstring, ctx.name)
+            if inferred:
+                return inferred
+            inferred = infer_prop_type_from_docstring(ctx.docstring)
             return inferred
         else:
             return None
@@ -185,7 +187,7 @@ class CFunctionStub:
     Class that mimics a C function in order to provide parseable docstrings.
     """
 
-    def __init__(self, name: str, doc: str, is_abstract: bool = False):
+    def __init__(self, name: str, doc: str, is_abstract: bool = False) -> None:
         self.__name__ = name
         self.__doc__ = doc
         self.__abstractmethod__ = is_abstract
@@ -237,6 +239,26 @@ class InspectionStubGenerator(BaseStubGenerator):
         self.resort_members = self.is_c_module
         super().__init__(_all_, include_private, export_less, include_docstrings)
         self.module_name = module_name
+        if self.is_c_module:
+            # Add additional implicit imports.
+            # C-extensions are given more lattitude since they do not import the typing module.
+            self.known_imports.update(
+                {
+                    "typing": [
+                        "Any",
+                        "Callable",
+                        "ClassVar",
+                        "Dict",
+                        "Iterable",
+                        "Iterator",
+                        "List",
+                        "NamedTuple",
+                        "Optional",
+                        "Tuple",
+                        "Union",
+                    ]
+                }
+            )
 
     def get_default_function_sig(self, func: object, ctx: FunctionContext) -> FunctionSig:
         argspec = None
@@ -382,7 +404,7 @@ class InspectionStubGenerator(BaseStubGenerator):
                     if self.should_reexport(name, obj_module_name, name_is_alias=False):
                         self.import_tracker.reexport(name)
 
-        self.set_defined_names(set([name for name, obj in all_items if not inspect.ismodule(obj)]))
+        self.set_defined_names({name for name, obj in all_items if not inspect.ismodule(obj)})
 
         if self.resort_members:
             functions: list[str] = []
@@ -473,7 +495,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         if obj is None or obj is type(None):
             return "None"
         elif inspect.isclass(obj):
-            return "type[{}]".format(self.get_type_fullname(obj))
+            return f"type[{self.get_type_fullname(obj)}]"
         elif isinstance(obj, FunctionType):
             return self.add_name("typing.Callable")
         elif isinstance(obj, ModuleType):
@@ -508,12 +530,14 @@ class InspectionStubGenerator(BaseStubGenerator):
             return inspect.ismethod(obj)
 
     def is_staticmethod(self, class_info: ClassInfo | None, name: str, obj: object) -> bool:
-        if self.is_c_module:
+        if class_info is None:
             return False
+        elif self.is_c_module:
+            raw_lookup: Mapping[str, Any] = getattr(class_info.cls, "__dict__")  # noqa: B009
+            raw_value = raw_lookup.get(name, obj)
+            return isinstance(raw_value, staticmethod)
         else:
-            return class_info is not None and isinstance(
-                inspect.getattr_static(class_info.cls, name), staticmethod
-            )
+            return isinstance(inspect.getattr_static(class_info.cls, name), staticmethod)
 
     @staticmethod
     def is_abstract_method(obj: object) -> bool:
@@ -590,8 +614,28 @@ class InspectionStubGenerator(BaseStubGenerator):
                 if inferred[0].args and inferred[0].args[0].name == "cls":
                     decorators.append("@classmethod")
 
+        if docstring:
+            docstring = self._indent_docstring(docstring)
         output.extend(self.format_func_def(inferred, decorators=decorators, docstring=docstring))
         self._fix_iter(ctx, inferred, output)
+
+    def _indent_docstring(self, docstring: str) -> str:
+        """Fix indentation of docstring extracted from pybind11 or other binding generators."""
+        lines = docstring.splitlines(keepends=True)
+        indent = self._indent + "    "
+        if len(lines) > 1:
+            if not all(line.startswith(indent) or not line.strip() for line in lines):
+                # if the docstring is not indented, then indent all but the first line
+                for i, line in enumerate(lines[1:]):
+                    if line.strip():
+                        lines[i + 1] = indent + line
+        # if there's a trailing newline, add a final line to visually indent the quoted docstring
+        if lines[-1].endswith("\n"):
+            if len(lines) > 1:
+                lines.append(indent)
+            else:
+                lines[-1] = lines[-1][:-1]
+        return "".join(lines)
 
     def _fix_iter(
         self, ctx: FunctionContext, inferred: list[FunctionSig], output: list[str]
@@ -640,7 +684,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         if fget:
             alt_docstr = getattr(fget, "__doc__", None)
             if alt_docstr and docstring:
-                docstring += alt_docstr
+                docstring += "\n" + alt_docstr
             elif alt_docstr:
                 docstring = alt_docstr
 
@@ -719,11 +763,11 @@ class InspectionStubGenerator(BaseStubGenerator):
         The result lines will be appended to 'output'. If necessary, any
         required names will be added to 'imports'.
         """
-        raw_lookup = getattr(cls, "__dict__")  # noqa: B009
+        raw_lookup: Mapping[str, Any] = getattr(cls, "__dict__")  # noqa: B009
         items = self.get_members(cls)
         if self.resort_members:
             items = sorted(items, key=lambda x: method_name_sort_key(x[0]))
-        names = set(x[0] for x in items)
+        names = {x[0] for x in items}
         methods: list[str] = []
         types: list[str] = []
         static_properties: list[str] = []
@@ -751,7 +795,9 @@ class InspectionStubGenerator(BaseStubGenerator):
                         continue
                     attr = "__init__"
                 # FIXME: make this nicer
-                if self.is_classmethod(class_info, attr, value):
+                if self.is_staticmethod(class_info, attr, value):
+                    class_info.self_var = ""
+                elif self.is_classmethod(class_info, attr, value):
                     class_info.self_var = "cls"
                 else:
                     class_info.self_var = "self"

@@ -73,7 +73,8 @@ OPTIONS_AFFECTING_CACHE: Final = (
 TYPE_VAR_TUPLE: Final = "TypeVarTuple"
 UNPACK: Final = "Unpack"
 PRECISE_TUPLE_TYPES: Final = "PreciseTupleTypes"
-INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES,))
+NEW_GENERIC_SYNTAX: Final = "NewGenericSyntax"
+INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES, NEW_GENERIC_SYNTAX))
 COMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK))
 
 
@@ -321,6 +322,10 @@ class Options:
         # Use stub builtins fixtures to speed up tests
         self.use_builtins_fixtures = False
 
+        # This should only be set when running certain mypy tests.
+        # Use this sparingly to avoid tests diverging from non-test behavior.
+        self.test_env = False
+
         # -- experimental options --
         self.shadow_file: list[list[str]] | None = None
         self.show_column_numbers: bool = False
@@ -372,9 +377,11 @@ class Options:
 
         self.disable_bytearray_promotion = False
         self.disable_memoryview_promotion = False
-
         self.force_uppercase_builtins = False
         self.force_union_syntax = False
+
+        # Sets custom output format
+        self.output: str | None = None
 
     def use_lowercase_names(self) -> bool:
         if self.python_version >= (3, 9):

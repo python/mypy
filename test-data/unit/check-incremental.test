@@ -3015,7 +3015,7 @@ class NoInit:
 class NoCmp:
     x: int
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 [rechecked]
 [stale]
 [out1]
@@ -3796,7 +3796,6 @@ import b
 [rechecked b]
 
 [case testIncrementalDataclassesSubclassingCached]
-# flags: --python-version 3.7
 from a import A
 from dataclasses import dataclass
 
@@ -3829,7 +3828,6 @@ class A:
 [out2]
 
 [case testIncrementalDataclassesSubclassingCachedType]
-# flags: --python-version 3.7
 import b
 
 [file b.py]
@@ -3863,7 +3861,6 @@ class A:
 tmp/b.py:8: note: Revealed type is "def (x: builtins.int) -> b.B"
 
 [case testIncrementalDataclassesArguments]
-# flags: --python-version 3.7
 import b
 
 [file b.py]
@@ -3912,7 +3909,6 @@ tmp/b.py:15: error: Unsupported left operand type for > ("NoCmp")
 tmp/b.py:16: error: Unsupported left operand type for >= ("NoCmp")
 
 [case testIncrementalDataclassesDunder]
-# flags: --python-version 3.7
 import b
 
 [file b.py]
@@ -3977,7 +3973,6 @@ tmp/b.py:27: error: Unsupported operand types for < ("A" and "int")
 tmp/b.py:28: error: Unsupported operand types for <= ("A" and "int")
 
 [case testIncrementalDataclassesSubclassModified]
-# flags: --python-version 3.7
 from b import B
 B(5, 'foo')
 
@@ -4007,11 +4002,10 @@ class B(A):
 [builtins fixtures/dataclasses.pyi]
 [out1]
 [out2]
-main:3: error: Argument 2 to "B" has incompatible type "str"; expected "int"
+main:2: error: Argument 2 to "B" has incompatible type "str"; expected "int"
 [rechecked b]
 
 [case testIncrementalDataclassesSubclassModifiedErrorFirst]
-# flags: --python-version 3.7
 from b import B
 B(5, 'foo')
 
@@ -4040,13 +4034,12 @@ class B(A):
 
 [builtins fixtures/dataclasses.pyi]
 [out1]
-main:3: error: Argument 2 to "B" has incompatible type "str"; expected "int"
+main:2: error: Argument 2 to "B" has incompatible type "str"; expected "int"
 
 [out2]
 [rechecked b]
 
 [case testIncrementalDataclassesThreeFiles]
-# flags: --python-version 3.7
 from c import C
 C('foo', 5, True)
 
@@ -4085,10 +4078,9 @@ class C(A, B):
 [out1]
 [out2]
 tmp/c.py:7: error: Incompatible types in assignment (expression has type "bool", base class "B" defined the type as "str")
-main:3: error: Argument 2 to "C" has incompatible type "int"; expected "bool"
+main:2: error: Argument 2 to "C" has incompatible type "int"; expected "bool"
 
 [case testIncrementalDataclassesThreeRuns]
-# flags: --python-version 3.7
 from a import A
 A(5)
 
@@ -4116,7 +4108,7 @@ class A:
 [builtins fixtures/dataclasses.pyi]
 [out1]
 [out2]
-main:3: error: Argument 1 to "A" has incompatible type "int"; expected "str"
+main:2: error: Argument 1 to "A" has incompatible type "int"; expected "str"
 [out3]
 
 [case testParentPatchingMess]
@@ -5664,7 +5656,6 @@ A().g()
 [out2]
 
 [case testIncrementalWithDifferentKindsOfNestedTypesWithinMethod]
-# flags: --python-version 3.7
 
 import a
 
@@ -6583,3 +6574,79 @@ class TheClass:
 [out]
 [out2]
 tmp/a.py:3: note: Revealed type is "def (value: builtins.object) -> lib.TheClass.pyenum@6"
+
+[case testStartUsingTypeGuard]
+import a
+[file a.py]
+from lib import guard
+from typing import Union
+from typing_extensions import assert_type
+x: Union[int, str]
+
+[file a.py.2]
+from lib import guard
+from typing import Union
+from typing_extensions import assert_type
+x: Union[int, str]
+if guard(x):
+    assert_type(x, int)
+else:
+    assert_type(x, Union[int, str])
+[file lib.py]
+from typing_extensions import TypeGuard
+def guard(x: object) -> TypeGuard[int]:
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testStartUsingTypeIs]
+import a
+[file a.py]
+from lib import guard
+from typing import Union
+from typing_extensions import assert_type
+x: Union[int, str]
+
+[file a.py.2]
+from lib import guard
+from typing import Union
+from typing_extensions import assert_type
+x: Union[int, str]
+if guard(x):
+    assert_type(x, int)
+else:
+    assert_type(x, str)
+[file lib.py]
+from typing_extensions import TypeIs
+def guard(x: object) -> TypeIs[int]:
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardToTypeIs]
+import a
+[file a.py]
+from lib import guard
+from typing import Union
+from typing_extensions import assert_type
+x: Union[int, str]
+if guard(x):
+    assert_type(x, int)
+else:
+    assert_type(x, Union[int, str])
+[file a.py.2]
+from lib import guard
+from typing import Union
+from typing_extensions import assert_type
+x: Union[int, str]
+if guard(x):
+    assert_type(x, int)
+else:
+    assert_type(x, str)
+[file lib.py]
+from typing_extensions import TypeGuard
+def guard(x: object) -> TypeGuard[int]:
+    pass
+[file lib.py.2]
+from typing_extensions import TypeIs
+def guard(x: object) -> TypeIs[int]:
+    pass
+[builtins fixtures/tuple.pyi]

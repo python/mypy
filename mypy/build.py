@@ -8,6 +8,7 @@ file.  The individual passes are implemented in separate modules.
 
 The function build() is the main interface to this module.
 """
+
 # TODO: More consistent terminology, e.g. path/fnam, module/id, state/file
 
 from __future__ import annotations
@@ -43,6 +44,7 @@ from typing_extensions import TypeAlias as _TypeAlias, TypedDict
 
 import mypy.semanal_main
 from mypy.checker import TypeChecker
+from mypy.error_formatter import OUTPUT_CHOICES, ErrorFormatter
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
 from mypy.indirection import TypeIndirectionVisitor
@@ -252,6 +254,7 @@ def _build(
         plugin=plugin,
         plugins_snapshot=snapshot,
         errors=errors,
+        error_formatter=None if options.output is None else OUTPUT_CHOICES.get(options.output),
         flush_errors=flush_errors,
         fscache=fscache,
         stdout=stdout,
@@ -606,6 +609,7 @@ class BuildManager:
         fscache: FileSystemCache,
         stdout: TextIO,
         stderr: TextIO,
+        error_formatter: ErrorFormatter | None = None,
     ) -> None:
         self.stats: dict[str, Any] = {}  # Values are ints or floats
         self.stdout = stdout
@@ -614,6 +618,7 @@ class BuildManager:
         self.data_dir = data_dir
         self.errors = errors
         self.errors.set_ignore_prefix(ignore_prefix)
+        self.error_formatter = error_formatter
         self.search_paths = search_paths
         self.source_set = source_set
         self.reports = reports
@@ -682,9 +687,7 @@ class BuildManager:
         # for efficient lookup
         self.shadow_map: dict[str, str] = {}
         if self.options.shadow_file is not None:
-            self.shadow_map = {
-                source_file: shadow_file for (source_file, shadow_file) in self.options.shadow_file
-            }
+            self.shadow_map = dict(self.options.shadow_file)
         # a mapping from each file being typechecked to its possible shadow file
         self.shadow_equivalence_map: dict[str, str | None] = {}
         self.plugin = plugin
@@ -1120,7 +1123,7 @@ def read_deps_cache(manager: BuildManager, graph: Graph) -> dict[str, FgDepMeta]
     module_deps_metas = deps_meta["deps_meta"]
     assert isinstance(module_deps_metas, dict)
     if not manager.options.skip_cache_mtime_checks:
-        for id, meta in module_deps_metas.items():
+        for meta in module_deps_metas.values():
             try:
                 matched = manager.getmtime(meta["path"]) == meta["mtime"]
             except FileNotFoundError:
@@ -2093,7 +2096,7 @@ class State:
             self.meta.data_json, self.manager, "Load tree ", "Could not load tree: "
         )
         if data is None:
-            return None
+            return
 
         t0 = time.time()
         # TODO: Assert data file wasn't changed.
@@ -2174,8 +2177,8 @@ class State:
                     self.id,
                     self.xpath,
                     source,
-                    self.ignore_all or self.options.ignore_errors,
-                    self.options,
+                    ignore_errors=self.ignore_all or self.options.ignore_errors,
+                    options=self.options,
                 )
 
             else:
@@ -2851,10 +2854,14 @@ def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: S
 def log_configuration(manager: BuildManager, sources: list[BuildSource]) -> None:
     """Output useful configuration information to LOG and TRACE"""
 
+    config_file = manager.options.config_file
+    if config_file:
+        config_file = os.path.abspath(config_file)
+
     manager.log()
     configuration_vars = [
         ("Mypy Version", __version__),
-        ("Config File", (manager.options.config_file or "Default")),
+        ("Config File", (config_file or "Default")),
         ("Configured Executable", manager.options.python_executable or "None"),
         ("Current Executable", sys.executable),
         ("Cache Dir", manager.options.cache_dir),
@@ -3383,7 +3390,7 @@ def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> 
     strongly_connected_components() below for a reference.
     """
     if len(ascc) == 1:
-        return [s for s in ascc]
+        return list(ascc)
     pri_spread = set()
     for id in ascc:
         state = graph[id]
@@ -3460,11 +3467,8 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
         for id in stale:
             graph[id].transitive_error = True
     for id in stale:
-        manager.flush_errors(
-            manager.errors.simplify_path(graph[id].xpath),
-            manager.errors.file_messages(graph[id].xpath),
-            False,
-        )
+        errors = manager.errors.file_messages(graph[id].xpath, formatter=manager.error_formatter)
+        manager.flush_errors(manager.errors.simplify_path(graph[id].xpath), errors, False)
         graph[id].write_cache()
         graph[id].mark_as_rechecked()
 

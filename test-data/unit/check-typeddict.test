@@ -1764,7 +1764,6 @@ reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point', {'x': builtin
 [builtins fixtures/dict.pyi]
 
 [case testCanCreateTypedDictWithTypingProper]
-# flags: --python-version 3.8
 from typing import TypedDict
 
 class Point(TypedDict):
@@ -3438,3 +3437,53 @@ class TotalInTheMiddle(TypedDict, a=1, total=True, b=2, c=3):  # E: Unexpected k
     ...
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testCanCreateClassWithFunctionBasedTypedDictBase]
+from mypy_extensions import TypedDict
+
+class Params(TypedDict("Params", {'x': int})):
+    pass
+
+p: Params = {'x': 2}
+reveal_type(p) # N: Revealed type is "TypedDict('__main__.Params', {'x': builtins.int})"
+[builtins fixtures/dict.pyi]
+
+[case testInitTypedDictFromType]
+from typing import TypedDict, Type
+from typing_extensions import Required
+
+class Point(TypedDict, total=False):
+    x: Required[int]
+    y: int
+
+def func(cls: Type[Point]) -> None:
+    reveal_type(cls)  # N: Revealed type is "Type[TypedDict('__main__.Point', {'x': builtins.int, 'y'?: builtins.int})]"
+    cls(x=1, y=2)
+    cls(1, 2)  # E: Too many positional arguments
+    cls(x=1)
+    cls(y=2)  # E: Missing named argument "x"
+    cls(x=1, y=2, error="")  # E: Unexpected keyword argument "error"
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]
+
+[case testInitTypedDictFromTypeGeneric]
+from typing import Generic, TypedDict, Type, TypeVar
+from typing_extensions import Required
+
+class Point(TypedDict, total=False):
+    x: Required[int]
+    y: int
+
+T = TypeVar("T", bound=Point)
+
+class A(Generic[T]):
+    def __init__(self, a: Type[T]) -> None:
+        self.a = a
+
+    def func(self) -> T:
+        reveal_type(self.a)  # N: Revealed type is "Type[T`1]"
+        self.a(x=1, y=2)
+        self.a(y=2)  # E: Missing named argument "x"
+        return self.a(x=1)
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]

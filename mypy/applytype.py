@@ -93,7 +93,8 @@ def apply_generic_arguments(
     bound or constraints, instead of giving an error.
     """
     tvars = callable.variables
-    assert len(tvars) == len(orig_types)
+    min_arg_count = sum(not tv.has_default() for tv in tvars)
+    assert min_arg_count <= len(orig_types) <= len(tvars)
     # Check that inferred type variable values are compatible with allowed
     # values and bounds.  Also, promote subtype values to allowed values.
     # Create a map from type variable id to target type.
@@ -136,20 +137,36 @@ def apply_generic_arguments(
             arg_types=[expand_type(at, id_to_type) for at in callable.arg_types]
         )
 
-    # Apply arguments to TypeGuard if any.
+    # Apply arguments to TypeGuard and TypeIs if any.
     if callable.type_guard is not None:
         type_guard = expand_type(callable.type_guard, id_to_type)
     else:
         type_guard = None
+    if callable.type_is is not None:
+        type_is = expand_type(callable.type_is, id_to_type)
+    else:
+        type_is = None
 
     # The callable may retain some type vars if only some were applied.
     # TODO: move apply_poly() logic from checkexpr.py here when new inference
     # becomes universally used (i.e. in all passes + in unification).
     # With this new logic we can actually *add* some new free variables.
-    remaining_tvars = [tv for tv in tvars if tv.id not in id_to_type]
+    remaining_tvars: list[TypeVarLikeType] = []
+    for tv in tvars:
+        if tv.id in id_to_type:
+            continue
+        if not tv.has_default():
+            remaining_tvars.append(tv)
+            continue
+        # TypeVarLike isn't in id_to_type mapping.
+        # Only expand the TypeVar default here.
+        typ = expand_type(tv, id_to_type)
+        assert isinstance(typ, TypeVarLikeType)
+        remaining_tvars.append(typ)
 
     return callable.copy_modified(
         ret_type=expand_type(callable.ret_type, id_to_type),
         variables=remaining_tvars,
         type_guard=type_guard,
+        type_is=type_is,
     )

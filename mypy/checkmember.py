@@ -123,6 +123,7 @@ class MemberContext:
         messages: MessageBuilder | None = None,
         self_type: Type | None = None,
         is_lvalue: bool | None = None,
+        original_type: Type | None = None,
     ) -> MemberContext:
         mx = MemberContext(
             self.is_lvalue,
@@ -142,6 +143,8 @@ class MemberContext:
             mx.self_type = self_type
         if is_lvalue is not None:
             mx.is_lvalue = is_lvalue
+        if original_type is not None:
+            mx.original_type = original_type
         return mx
 
 
@@ -359,13 +362,7 @@ def validate_super_call(node: FuncBase, mx: MemberContext) -> None:
             impl = node.impl if isinstance(node.impl, FuncDef) else node.impl.func
             unsafe_super = impl.is_trivial_body
     if unsafe_super:
-        ret_type = (
-            impl.type.ret_type
-            if isinstance(impl.type, CallableType)
-            else AnyType(TypeOfAny.unannotated)
-        )
-        if not subtypes.is_subtype(NoneType(), ret_type):
-            mx.msg.unsafe_super(node.name, node.info.name, mx.context)
+        mx.msg.unsafe_super(node.name, node.info.name, mx.context)
 
 
 def analyze_type_callable_member_access(name: str, typ: FunctionLike, mx: MemberContext) -> Type:
@@ -649,6 +646,16 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
         # Map the access over union types
         return make_simplified_union(
             [analyze_descriptor_access(typ, mx) for typ in descriptor_type.items]
+        )
+    elif isinstance(instance_type, UnionType):
+        # map over the instance types
+        return make_simplified_union(
+            [
+                analyze_descriptor_access(
+                    descriptor_type, mx.copy_modified(original_type=original_type)
+                )
+                for original_type in instance_type.items
+            ]
         )
     elif not isinstance(descriptor_type, Instance):
         return orig_descriptor_type
@@ -1063,11 +1070,14 @@ def analyze_class_attribute_access(
         is_classmethod = (is_decorated and cast(Decorator, node.node).func.is_class) or (
             isinstance(node.node, FuncBase) and node.node.is_class
         )
+        is_staticmethod = (is_decorated and cast(Decorator, node.node).func.is_static) or (
+            isinstance(node.node, FuncBase) and node.node.is_static
+        )
         t = get_proper_type(t)
         if isinstance(t, FunctionLike) and is_classmethod:
             t = check_self_arg(t, mx.self_type, False, mx.context, name, mx.msg)
         result = add_class_tvars(
-            t, isuper, is_classmethod, mx.self_type, original_vars=original_vars
+            t, isuper, is_classmethod, is_staticmethod, mx.self_type, original_vars=original_vars
         )
         if not mx.is_lvalue:
             result = analyze_descriptor_access(result, mx)
@@ -1129,8 +1139,8 @@ def analyze_enum_class_attribute_access(
     # Skip these since Enum will remove it
     if name in ENUM_REMOVED_PROPS:
         return report_missing_attribute(mx.original_type, itype, name, mx)
-    # For other names surrendered by underscores, we don't make them Enum members
-    if name.startswith("__") and name.endswith("__") and name.replace("_", "") != "":
+    # Dunders and private names are not Enum members
+    if name.startswith("__") and name.replace("_", "") != "":
         return None
 
     enum_literal = LiteralType(name, fallback=itype)
@@ -1177,6 +1187,7 @@ def add_class_tvars(
     t: ProperType,
     isuper: Instance | None,
     is_classmethod: bool,
+    is_staticmethod: bool,
     original_type: Type,
     original_vars: Sequence[TypeVarLikeType] | None = None,
 ) -> Type:
@@ -1195,6 +1206,7 @@ def add_class_tvars(
         isuper: Current instance mapped to the superclass where method was defined, this
             is usually done by map_instance_to_supertype()
         is_classmethod: True if this method is decorated with @classmethod
+        is_staticmethod: True if this method is decorated with @staticmethod
         original_type: The value of the type B in the expression B.foo() or the corresponding
             component in case of a union (this is used to bind the self-types)
         original_vars: Type variables of the class callable on which the method was accessed
@@ -1220,6 +1232,7 @@ def add_class_tvars(
         t = freshen_all_functions_type_vars(t)
         if is_classmethod:
             t = bind_self(t, original_type, is_classmethod=True)
+        if is_classmethod or is_staticmethod:
             assert isuper is not None
             t = expand_type_by_instance(t, isuper)
         freeze_all_type_vars(t)
@@ -1230,7 +1243,12 @@ def add_class_tvars(
                 cast(
                     CallableType,
                     add_class_tvars(
-                        item, isuper, is_classmethod, original_type, original_vars=original_vars
+                        item,
+                        isuper,
+                        is_classmethod,
+                        is_staticmethod,
+                        original_type,
+                        original_vars=original_vars,
                     ),
                 )
                 for item in t.items

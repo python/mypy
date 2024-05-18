@@ -3,8 +3,10 @@ from _typeshed import structseq
 from collections.abc import Callable
 from threading import Thread
 from types import TracebackType
-from typing import Any, NoReturn
-from typing_extensions import Final, final
+from typing import Any, Final, NoReturn, final, overload
+from typing_extensions import TypeVarTuple, Unpack
+
+_Ts = TypeVarTuple("_Ts")
 
 error = RuntimeError
 
@@ -19,7 +21,10 @@ class LockType:
         self, type: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
     ) -> None: ...
 
-def start_new_thread(function: Callable[..., object], args: tuple[Any, ...], kwargs: dict[str, Any] = ...) -> int: ...
+@overload
+def start_new_thread(function: Callable[[Unpack[_Ts]], object], args: tuple[Unpack[_Ts]]) -> int: ...
+@overload
+def start_new_thread(function: Callable[..., object], args: tuple[Any, ...], kwargs: dict[str, Any]) -> int: ...
 def interrupt_main() -> None: ...
 def exit() -> NoReturn: ...
 def allocate_lock() -> LockType: ...
@@ -28,21 +33,27 @@ def stack_size(size: int = ...) -> int: ...
 
 TIMEOUT_MAX: float
 
-if sys.version_info >= (3, 8):
-    def get_native_id() -> int: ...  # only available on some platforms
-    @final
-    class _ExceptHookArgs(structseq[Any], tuple[type[BaseException], BaseException | None, TracebackType | None, Thread | None]):
-        if sys.version_info >= (3, 10):
-            __match_args__: Final = ("exc_type", "exc_value", "exc_traceback", "thread")
-        @property
-        def exc_type(self) -> type[BaseException]: ...
-        @property
-        def exc_value(self) -> BaseException | None: ...
-        @property
-        def exc_traceback(self) -> TracebackType | None: ...
-        @property
-        def thread(self) -> Thread | None: ...
-    _excepthook: Callable[[_ExceptHookArgs], Any]
+def get_native_id() -> int: ...  # only available on some platforms
+@final
+class _ExceptHookArgs(structseq[Any], tuple[type[BaseException], BaseException | None, TracebackType | None, Thread | None]):
+    if sys.version_info >= (3, 10):
+        __match_args__: Final = ("exc_type", "exc_value", "exc_traceback", "thread")
+
+    @property
+    def exc_type(self) -> type[BaseException]: ...
+    @property
+    def exc_value(self) -> BaseException | None: ...
+    @property
+    def exc_traceback(self) -> TracebackType | None: ...
+    @property
+    def thread(self) -> Thread | None: ...
+
+_excepthook: Callable[[_ExceptHookArgs], Any]
 
 if sys.version_info >= (3, 12):
     def daemon_threads_allowed() -> bool: ...
+
+class _local:
+    def __getattribute__(self, name: str, /) -> Any: ...
+    def __setattr__(self, name: str, value: Any, /) -> None: ...
+    def __delattr__(self, name: str, /) -> None: ...

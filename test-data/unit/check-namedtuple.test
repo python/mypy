@@ -131,7 +131,6 @@ main:6: error: Unexpected keyword argument "unrecognized_arg" for "namedtuple"
 main:7: error: Too many positional arguments for "namedtuple"
 
 [case testNamedTupleDefaults]
-# flags: --python-version 3.7
 from collections import namedtuple
 
 X = namedtuple('X', ['x', 'y'], defaults=(1,))
@@ -803,14 +802,20 @@ class Fraction(Real):
 [builtins fixtures/tuple.pyi]
 
 [case testForwardReferenceInNamedTuple]
-from typing import NamedTuple
+from typing import List, NamedTuple
 
 class A(NamedTuple):
     b: 'B'
     x: int
+    y: List['B']
 
 class B:
     pass
+
+def f(a: A):
+    reveal_type(a.b)  # N: Revealed type is "__main__.B"
+    reveal_type(a.x)  # N: Revealed type is "builtins.int"
+    reveal_type(a.y)  # N: Revealed type is "builtins.list[__main__.B]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeNamedTupleClassmethod]

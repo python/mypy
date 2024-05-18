@@ -1,8 +1,8 @@
 import sys
 import xml.dom
 from _typeshed import Incomplete, ReadableBuffer, SupportsRead, SupportsWrite
-from typing import NoReturn, TypeVar, overload
-from typing_extensions import Literal, Self
+from typing import Literal, NoReturn, TypeVar, overload
+from typing_extensions import Self
 from xml.dom.minicompat import NodeList
 from xml.dom.xmlbuilder import DocumentLS, DOMImplementationLS
 from xml.sax.xmlreader import XMLReader
@@ -256,9 +256,9 @@ class Text(CharacterData):
     nodeName: str
     attributes: Incomplete
     data: Incomplete
-    def splitText(self, offset): ...
+    def splitText(self, offset: int) -> Self: ...
     def writexml(self, writer: SupportsWrite[str], indent: str = "", addindent: str = "", newl: str = "") -> None: ...
-    def replaceWholeText(self, content): ...
+    def replaceWholeText(self, content) -> Self | None: ...
     @property
     def isWhitespaceInElementContent(self) -> bool: ...
     @property

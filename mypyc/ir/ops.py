@@ -576,6 +576,86 @@ class MethodCall(RegisterOp):
         return visitor.visit_method_call(self)
 
 
+class PrimitiveDescription:
+    """Description of a primitive op.
+
+    Primitives get lowered into lower-level ops before code generation.
+
+    If c_function_name is provided, a primitive will be lowered into a CallC op.
+    Otherwise custom logic will need to be implemented to transform the
+    primitive into lower-level ops.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        arg_types: list[RType],
+        return_type: RType,  # TODO: What about generic?
+        var_arg_type: RType | None,
+        truncated_type: RType | None,
+        c_function_name: str | None,
+        error_kind: int,
+        steals: StealsDescription,
+        is_borrowed: bool,
+        ordering: list[int] | None,
+        extra_int_constants: list[tuple[int, RType]],
+        priority: int,
+    ) -> None:
+        # Each primitive much have a distinct name, but otherwise they are arbitrary.
+        self.name: Final = name
+        self.arg_types: Final = arg_types
+        self.return_type: Final = return_type
+        self.var_arg_type: Final = var_arg_type
+        self.truncated_type: Final = truncated_type
+        # If non-None, this will map to a call of a C helper function; if None,
+        # there must be a custom handler function that gets invoked during the lowering
+        # pass to generate low-level IR for the primitive (in the mypyc.lower package)
+        self.c_function_name: Final = c_function_name
+        self.error_kind: Final = error_kind
+        self.steals: Final = steals
+        self.is_borrowed: Final = is_borrowed
+        self.ordering: Final = ordering
+        self.extra_int_constants: Final = extra_int_constants
+        self.priority: Final = priority
+
+    def __repr__(self) -> str:
+        return f"<PrimitiveDescription {self.name}>"
+
+
+class PrimitiveOp(RegisterOp):
+    """A higher-level primitive operation.
+
+    Some of these have special compiler support. These will be lowered
+    (transformed) into lower-level IR ops before code generation, and after
+    reference counting op insertion. Others will be transformed into CallC
+    ops.
+
+    Tagged integer equality is a typical primitive op with non-trivial
+    lowering. It gets transformed into a tag check, followed by different
+    code paths for short and long representations.
+    """
+
+    def __init__(self, args: list[Value], desc: PrimitiveDescription, line: int = -1) -> None:
+        self.args = args
+        self.type = desc.return_type
+        self.error_kind = desc.error_kind
+        self.desc = desc
+
+    def sources(self) -> list[Value]:
+        return self.args
+
+    def stolen(self) -> list[Value]:
+        steals = self.desc.steals
+        if isinstance(steals, list):
+            assert len(steals) == len(self.args)
+            return [arg for arg, steal in zip(self.args, steals) if steal]
+        else:
+            return [] if not steals else self.sources()
+
+    def accept(self, visitor: OpVisitor[T]) -> T:
+        return visitor.visit_primitive_op(self)
+
+
 class LoadErrorValue(RegisterOp):
     """Load an error value.
 
@@ -1446,7 +1526,8 @@ class Unborrow(RegisterOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, src: Value) -> None:
+    def __init__(self, src: Value, line: int = -1) -> None:
+        super().__init__(line)
         assert src.is_borrowed
         self.src = src
         self.type = src.type
@@ -1553,6 +1634,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_call_c(self, op: CallC) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_primitive_op(self, op: PrimitiveOp) -> T:
         raise NotImplementedError
 
     @abstractmethod

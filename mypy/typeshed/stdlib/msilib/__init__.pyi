@@ -1,8 +1,7 @@
 import sys
 from collections.abc import Container, Iterable, Sequence
 from types import ModuleType
-from typing import Any
-from typing_extensions import Literal
+from typing import Any, Literal
 
 if sys.platform == "win32":
     from _msi import *
@@ -57,6 +56,7 @@ if sys.platform == "win32":
         def gen_id(self, file: str) -> str: ...
         def append(self, full: str, file: str, logical: str) -> tuple[int, str]: ...
         def commit(self, db: _Database) -> None: ...
+
     _directories: set[str]
 
     class Directory:

@@ -2,7 +2,7 @@ import logging
 import sys
 from types import TracebackType
 from typing import ClassVar, Generic, NamedTuple, TypeVar
-from unittest.case import TestCase
+from unittest.case import TestCase, _BaseTestCaseContext
 
 _L = TypeVar("_L", None, _LoggingWatcher)
 
@@ -10,9 +10,8 @@ class _LoggingWatcher(NamedTuple):
     records: list[logging.LogRecord]
     output: list[str]
 
-class _AssertLogsContext(Generic[_L]):
+class _AssertLogsContext(_BaseTestCaseContext, Generic[_L]):
     LOGGING_FORMAT: ClassVar[str]
-    test_case: TestCase
     logger_name: str
     level: int
     msg: None

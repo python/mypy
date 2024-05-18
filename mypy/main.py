@@ -18,6 +18,7 @@ from mypy.config_parser import (
     parse_version,
     validate_package_allow_list,
 )
+from mypy.error_formatter import OUTPUT_CHOICES
 from mypy.errorcodes import error_codes
 from mypy.errors import CompileError
 from mypy.find_sources import InvalidSourceList, create_source_list
@@ -72,7 +73,9 @@ def main(
     if clean_exit:
         options.fast_exit = False
 
-    formatter = util.FancyFormatter(stdout, stderr, options.hide_error_codes)
+    formatter = util.FancyFormatter(
+        stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
+    )
 
     if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
         # Since --install-types performs user input, we want regular stdout and stderr.
@@ -145,7 +148,7 @@ def main(
         sys.exit(code)
 
     # HACK: keep res alive so that mypyc won't free it before the hard_exit
-    list([res])
+    list([res])  # noqa: C410
 
 
 def run_build(
@@ -156,7 +159,9 @@ def run_build(
     stdout: TextIO,
     stderr: TextIO,
 ) -> tuple[build.BuildResult | None, list[str], bool]:
-    formatter = util.FancyFormatter(stdout, stderr, options.hide_error_codes)
+    formatter = util.FancyFormatter(
+        stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
+    )
 
     messages = []
     messages_by_file = defaultdict(list)
@@ -342,14 +347,13 @@ FOOTER: Final = """Environment variables:
 
 
 class CapturableArgumentParser(argparse.ArgumentParser):
-
     """Override ArgumentParser methods that use sys.stdout/sys.stderr directly.
 
     This is needed because hijacking sys.std* is not thread-safe,
     yet output must be captured to properly support mypy.api.run.
     """
 
-    def __init__(self, *args: Any, **kwargs: Any):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.stdout = kwargs.pop("stdout", sys.stdout)
         self.stderr = kwargs.pop("stderr", sys.stderr)
         super().__init__(*args, **kwargs)
@@ -396,7 +400,6 @@ class CapturableArgumentParser(argparse.ArgumentParser):
 
 
 class CapturableVersionAction(argparse.Action):
-
     """Supplement CapturableArgumentParser to handle --version.
 
     This is nearly identical to argparse._VersionAction except,
@@ -415,7 +418,7 @@ class CapturableVersionAction(argparse.Action):
         default: str = argparse.SUPPRESS,
         help: str = "show program's version number and exit",
         stdout: IO[str] | None = None,
-    ):
+    ) -> None:
         super().__init__(
             option_strings=option_strings, dest=dest, default=default, nargs=0, help=help
         )
@@ -525,6 +528,14 @@ def process_options(
         version="%(prog)s " + __version__ + f" (compiled: {compilation_status})",
         help="Show program's version number and exit",
         stdout=stdout,
+    )
+
+    general_group.add_argument(
+        "-O",
+        "--output",
+        metavar="FORMAT",
+        help="Set a custom output format",
+        choices=OUTPUT_CHOICES,
     )
 
     config_group = parser.add_argument_group(
@@ -1010,7 +1021,7 @@ def process_options(
     parser.add_argument(
         "--enable-incomplete-feature",
         action="append",
-        metavar="FEATURE",
+        metavar="{" + ",".join(sorted(INCOMPLETE_FEATURES)) + "}",
         help="Enable support of incomplete/experimental features for early preview",
     )
     internals_group.add_argument(
@@ -1135,6 +1146,8 @@ def process_options(
     parser.add_argument("--dump-graph", action="store_true", help=argparse.SUPPRESS)
     # --semantic-analysis-only does exactly that.
     parser.add_argument("--semantic-analysis-only", action="store_true", help=argparse.SUPPRESS)
+    # Some tests use this to tell mypy that we are running a test.
+    parser.add_argument("--test-env", action="store_true", help=argparse.SUPPRESS)
     # --local-partial-types disallows partial types spanning module top level and a function
     # (implicitly defined in fine-grained incremental mode)
     parser.add_argument("--local-partial-types", action="store_true", help=argparse.SUPPRESS)

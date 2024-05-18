@@ -145,7 +145,7 @@ def generate_wrapper_function(
     real_args = list(fn.args)
     if fn.sig.num_bitmap_args:
         real_args = real_args[: -fn.sig.num_bitmap_args]
-    if fn.class_name and not fn.decl.kind == FUNC_STATICMETHOD:
+    if fn.class_name and fn.decl.kind != FUNC_STATICMETHOD:
         arg = real_args.pop(0)
         emitter.emit_line(f"PyObject *obj_{arg.name} = self;")
 
@@ -238,7 +238,7 @@ def generate_legacy_wrapper_function(
     real_args = list(fn.args)
     if fn.sig.num_bitmap_args:
         real_args = real_args[: -fn.sig.num_bitmap_args]
-    if fn.class_name and not fn.decl.kind == FUNC_STATICMETHOD:
+    if fn.class_name and fn.decl.kind != FUNC_STATICMETHOD:
         arg = real_args.pop(0)
         emitter.emit_line(f"PyObject *obj_{arg.name} = self;")
 

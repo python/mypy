@@ -642,7 +642,7 @@ reveal_type(f(n))  # N: Revealed type is "def (builtins.int, builtins.bytes) -> 
 [builtins fixtures/paramspec.pyi]
 
 [case testParamSpecConcatenateNamedArgs]
-# flags: --python-version 3.8 --extra-checks
+# flags: --extra-checks
 # this is one noticeable deviation from PEP but I believe it is for the better
 from typing_extensions import ParamSpec, Concatenate
 from typing import Callable, TypeVar
@@ -668,8 +668,6 @@ main:17: error: Incompatible return value type (got "Callable[[Arg(int, 'x'), **
 main:17: note: This is likely because "result" has named arguments: "x". Consider marking them positional-only
 
 [case testNonStrictParamSpecConcatenateNamedArgs]
-# flags: --python-version 3.8
-
 # this is one noticeable deviation from PEP but I believe it is for the better
 from typing_extensions import ParamSpec, Concatenate
 from typing import Callable, TypeVar
@@ -710,8 +708,6 @@ reveal_type(n(42))  # N: Revealed type is "None"
 [builtins fixtures/paramspec.pyi]
 
 [case testCallablesAsParameters]
-# flags: --python-version 3.8
-
 # credits to https://github.com/microsoft/pyright/issues/2705
 from typing_extensions import ParamSpec, Concatenate
 from typing import Generic, Callable, Any
@@ -729,7 +725,7 @@ reveal_type(abc)
 bar(abc)
 [builtins fixtures/paramspec.pyi]
 [out]
-main:16: note: Revealed type is "__main__.Foo[[builtins.int, b: builtins.str]]"
+main:14: note: Revealed type is "__main__.Foo[[builtins.int, b: builtins.str]]"
 
 [case testSolveParamSpecWithSelfType]
 from typing_extensions import ParamSpec, Concatenate
@@ -905,8 +901,8 @@ class A:
     def func(self, action: Callable[_P, _R], *args: _P.args, **kwargs: _P.kwargs) -> _R:
         ...
 
-reveal_type(A.func)  # N: Revealed type is "def [_P, _R] (self: __main__.A, action: def (*_P.args, **_P.kwargs) -> _R`3, *_P.args, **_P.kwargs) -> _R`3"
-reveal_type(A().func)  # N: Revealed type is "def [_P, _R] (action: def (*_P.args, **_P.kwargs) -> _R`7, *_P.args, **_P.kwargs) -> _R`7"
+reveal_type(A.func)  # N: Revealed type is "def [_P, _R] (self: __main__.A, action: def (*_P.args, **_P.kwargs) -> _R`4, *_P.args, **_P.kwargs) -> _R`4"
+reveal_type(A().func)  # N: Revealed type is "def [_P, _R] (action: def (*_P.args, **_P.kwargs) -> _R`8, *_P.args, **_P.kwargs) -> _R`8"
 
 def f(x: int) -> int:
     ...
@@ -937,8 +933,8 @@ class A:
     def func(self, action: Job[_P, None]) -> Job[_P, None]:
         ...
 
-reveal_type(A.func)  # N: Revealed type is "def [_P] (self: __main__.A, action: __main__.Job[_P`2, None]) -> __main__.Job[_P`2, None]"
-reveal_type(A().func)  # N: Revealed type is "def [_P] (action: __main__.Job[_P`4, None]) -> __main__.Job[_P`4, None]"
+reveal_type(A.func)  # N: Revealed type is "def [_P] (self: __main__.A, action: __main__.Job[_P`3, None]) -> __main__.Job[_P`3, None]"
+reveal_type(A().func)  # N: Revealed type is "def [_P] (action: __main__.Job[_P`5, None]) -> __main__.Job[_P`5, None]"
 reveal_type(A().func(Job(lambda x: x)))  # N: Revealed type is "__main__.Job[[x: Any], None]"
 
 def f(x: int, y: int) -> None: ...
@@ -1100,7 +1096,7 @@ j = Job(generic_f)
 reveal_type(j)  # N: Revealed type is "__main__.Job[[x: _T`-1]]"
 
 jf = j.into_callable()
-reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T`2)"
+reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T`3)"
 reveal_type(jf(1))  # N: Revealed type is "None"
 [builtins fixtures/paramspec.pyi]
 
@@ -1119,10 +1115,10 @@ class Job(Generic[_P, _T]):
 def generic_f(x: _T) -> _T: ...
 
 j = Job(generic_f)
-reveal_type(j)  # N: Revealed type is "__main__.Job[[x: _T`2], _T`2]"
+reveal_type(j)  # N: Revealed type is "__main__.Job[[x: _T`3], _T`3]"
 
 jf = j.into_callable()
-reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T`3) -> _T`3"
+reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T`4) -> _T`4"
 reveal_type(jf(1))  # N: Revealed type is "builtins.int"
 [builtins fixtures/paramspec.pyi]
 
@@ -1197,7 +1193,28 @@ def func(callback: Callable[P, str]) -> Callable[P, str]:
     return inner
 [builtins fixtures/paramspec.pyi]
 
-[case testParamSpecArgsAndKwargsMissmatch]
+[case testParamSpecArgsAndKwargsStringified]
+from typing import Callable
+from typing_extensions import ParamSpec
+
+P1 = ParamSpec("P1")
+
+def func(callback: Callable[P1, str]) -> Callable[P1, str]:
+    def inner(*args: "P1.args", **kwargs: "P1.kwargs") -> str:
+        return "foo"
+    return inner
+
+@func
+def outer(a: int) -> str:
+    return ""
+
+outer(1)  # OK
+outer("x")  # E: Argument 1 to "outer" has incompatible type "str"; expected "int"
+outer(a=1)  # OK
+outer(b=1)  # E: Unexpected keyword argument "b" for "outer"
+[builtins fixtures/paramspec.pyi]
+
+[case testParamSpecArgsAndKwargsMismatch]
 from typing import Callable
 from typing_extensions import ParamSpec
 
@@ -1506,9 +1523,10 @@ def g(x: A[P]) -> None: ...  # E: Invalid location for ParamSpec "P" \
                              # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
 
 C = Callable[P, T]
-x: C[int]  # E: Bad number of arguments for type alias, expected: 2, given: 1
+x: C[int]  # E: Bad number of arguments for type alias, expected 2, given 1
 y: C[int, str]  # E: Can only replace ParamSpec with a parameter types list or another ParamSpec, got "int"
-z: C[int, str, bytes]  # E: Bad number of arguments for type alias, expected: 2, given: 3
+z: C[int, str, bytes]  # E: Bad number of arguments for type alias, expected 2, given 3
+
 [builtins fixtures/paramspec.pyi]
 
 [case testTrivialParametersHandledCorrectly]
@@ -1622,13 +1640,13 @@ U = TypeVar("U")
 def dec(f: Callable[P, T]) -> Callable[P, List[T]]: ...
 def test(x: U) -> U: ...
 reveal_type(dec)  # N: Revealed type is "def [P, T] (f: def (*P.args, **P.kwargs) -> T`-2) -> def (*P.args, **P.kwargs) -> builtins.list[T`-2]"
-reveal_type(dec(test))  # N: Revealed type is "def [T] (x: T`2) -> builtins.list[T`2]"
+reveal_type(dec(test))  # N: Revealed type is "def [T] (x: T`3) -> builtins.list[T`3]"
 
 class A: ...
 TA = TypeVar("TA", bound=A)
 
 def test_with_bound(x: TA) -> TA: ...
-reveal_type(dec(test_with_bound))  # N: Revealed type is "def [T <: __main__.A] (x: T`4) -> builtins.list[T`4]"
+reveal_type(dec(test_with_bound))  # N: Revealed type is "def [T <: __main__.A] (x: T`5) -> builtins.list[T`5]"
 dec(test_with_bound)(0)  # E: Value of type variable "T" of function cannot be "int"
 dec(test_with_bound)(A())  # OK
 [builtins fixtures/paramspec.pyi]

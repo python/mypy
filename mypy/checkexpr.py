@@ -385,6 +385,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if node.typeddict_type:
                 # We special-case TypedDict, because they don't define any constructor.
                 result = self.typeddict_callable(node)
+            elif node.fullname == "types.NoneType":
+                # We special case NoneType, because its stub definition is not related to None.
+                result = TypeType(NoneType())
             else:
                 result = type_object_type(node, self.named_type)
             if isinstance(result, CallableType) and isinstance(  # type: ignore[misc]
@@ -511,13 +514,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if is_expr_literal_type(typ):
                     self.msg.cannot_use_function_with_type(e.callee.name, "Literal", e)
                     continue
-                if (
-                    node
-                    and isinstance(node.node, TypeAlias)
-                    and isinstance(get_proper_type(node.node.target), AnyType)
-                ):
-                    self.msg.cannot_use_function_with_type(e.callee.name, "Any", e)
-                    continue
+                if node and isinstance(node.node, TypeAlias):
+                    target = get_proper_type(node.node.target)
+                    if isinstance(target, AnyType):
+                        self.msg.cannot_use_function_with_type(e.callee.name, "Any", e)
+                        continue
+                    if isinstance(target, NoneType):
+                        continue
                 if (
                     isinstance(typ, IndexExpr)
                     and isinstance(typ.analyzed, (TypeApplication, TypeAliasExpr))
@@ -633,7 +636,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(e.callee.expr, StrExpr):
             format_value = e.callee.expr.value
         elif self.chk.has_type(e.callee.expr):
-            base_typ = try_getting_literal(self.chk.lookup_type(e.callee.expr))
+            typ = get_proper_type(self.chk.lookup_type(e.callee.expr))
+            if (
+                isinstance(typ, Instance)
+                and typ.type.is_enum
+                and isinstance(typ.last_known_value, LiteralType)
+                and isinstance(typ.last_known_value.value, str)
+            ):
+                value_type = typ.type.names[typ.last_known_value.value].type
+                if isinstance(value_type, Type):
+                    typ = get_proper_type(value_type)
+            base_typ = try_getting_literal(typ)
             if isinstance(base_typ, LiteralType) and isinstance(base_typ.value, str):
                 format_value = base_typ.value
         if format_value is not None:
@@ -739,7 +752,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         context: Context,
         orig_callee: Type | None,
     ) -> Type:
-        if args and all([ak in (ARG_NAMED, ARG_STAR2) for ak in arg_kinds]):
+        if args and all(ak in (ARG_NAMED, ARG_STAR2) for ak in arg_kinds):
             # ex: Point(x=42, y=1337, **extras)
             # This is a bit ugly, but this is a price for supporting all possible syntax
             # variants for TypedDict constructors.
@@ -946,7 +959,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def typeddict_callable_from_context(self, callee: TypedDictType) -> CallableType:
         return CallableType(
             list(callee.items.values()),
-            [ArgKind.ARG_NAMED] * len(callee.items),
+            [
+                ArgKind.ARG_NAMED if name in callee.required_keys else ArgKind.ARG_NAMED_OPT
+                for name in callee.items
+            ],
             list(callee.items.keys()),
             callee,
             self.named_type("builtins.type"),
@@ -1448,13 +1464,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             object_type=object_type,
         )
         proper_callee = get_proper_type(callee_type)
-        if (
-            isinstance(e.callee, RefExpr)
-            and isinstance(proper_callee, CallableType)
-            and proper_callee.type_guard is not None
-        ):
+        if isinstance(e.callee, RefExpr) and isinstance(proper_callee, CallableType):
             # Cache it for find_isinstance_check()
-            e.callee.type_guard = proper_callee.type_guard
+            if proper_callee.type_guard is not None:
+                e.callee.type_guard = proper_callee.type_guard
+            if proper_callee.type_is is not None:
+                e.callee.type_is = proper_callee.type_is
         return ret_type
 
     def check_union_call_expr(self, e: CallExpr, object_type: UnionType, member: str) -> Type:
@@ -1852,6 +1867,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # We support Type of namedtuples but not of tuples in general
         if isinstance(item, TupleType) and tuple_fallback(item).type.fullname != "builtins.tuple":
             return self.analyze_type_type_callee(tuple_fallback(item), context)
+        if isinstance(item, TypedDictType):
+            return self.typeddict_callable_from_context(item)
 
         self.msg.unsupported_type_type(item, context)
         return AnyType(TypeOfAny.from_error)
@@ -2129,11 +2146,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 unknown = UninhabitedType()
                 unknown.ambiguous = True
                 inferred_args = [
-                    expand_type(
-                        a, {v.id: unknown for v in list(callee_type.variables) + free_vars}
+                    (
+                        expand_type(
+                            a, {v.id: unknown for v in list(callee_type.variables) + free_vars}
+                        )
+                        if a is not None
+                        else None
                     )
-                    if a is not None
-                    else None
                     for a in poly_inferred_args
                 ]
         else:
@@ -2822,6 +2841,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # Return early if possible; otherwise record info, so we can
                 # check for ambiguity due to 'Any' below.
                 if not args_contain_any:
+                    self.chk.store_types(m)
                     return ret_type, infer_type
                 p_infer_type = get_proper_type(infer_type)
                 if isinstance(p_infer_type, CallableType):
@@ -4017,9 +4037,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             left_variants = [base_type]
             base_type = get_proper_type(base_type)
             if isinstance(base_type, UnionType):
-                left_variants = [
-                    item for item in flatten_nested_unions(base_type.relevant_items())
-                ]
+                left_variants = list(flatten_nested_unions(base_type.relevant_items()))
             right_type = self.accept(arg)
 
             # Step 1: We first try leaving the right arguments alone and destructure
@@ -4433,6 +4451,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 operand = index.expr
                 if isinstance(operand, IntExpr):
                     return [-1 * operand.value]
+            if index.op == "+":
+                operand = index.expr
+                if isinstance(operand, IntExpr):
+                    return [operand.value]
         typ = get_proper_type(self.accept(index))
         if isinstance(typ, Instance) and typ.last_known_value is not None:
             typ = typ.last_known_value
@@ -4710,6 +4732,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         item = get_proper_type(
             set_any_tvars(
                 alias,
+                [],
                 ctx.line,
                 ctx.column,
                 self.chk.options,
@@ -4733,6 +4756,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return type_object_type(tuple_fallback(item).type, self.named_type)
         elif isinstance(item, TypedDictType):
             return self.typeddict_callable_from_context(item)
+        elif isinstance(item, NoneType):
+            return TypeType(item, line=item.line, column=item.column)
         elif isinstance(item, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=item)
         else:
@@ -4805,21 +4830,29 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         tp = get_proper_type(tp)
 
         if isinstance(tp, CallableType):
-            if len(tp.variables) != len(args) and not any(
-                isinstance(v, TypeVarTupleType) for v in tp.variables
-            ):
+            min_arg_count = sum(not v.has_default() for v in tp.variables)
+            has_type_var_tuple = any(isinstance(v, TypeVarTupleType) for v in tp.variables)
+            if (
+                len(args) < min_arg_count or len(args) > len(tp.variables)
+            ) and not has_type_var_tuple:
                 if tp.is_type_obj() and tp.type_object().fullname == "builtins.tuple":
                     # TODO: Specialize the callable for the type arguments
                     return tp
-                self.msg.incompatible_type_application(len(tp.variables), len(args), ctx)
+                self.msg.incompatible_type_application(
+                    min_arg_count, len(tp.variables), len(args), ctx
+                )
                 return AnyType(TypeOfAny.from_error)
             return self.apply_generic_arguments(tp, self.split_for_callable(tp, args, ctx), ctx)
         if isinstance(tp, Overloaded):
             for it in tp.items:
-                if len(it.variables) != len(args) and not any(
-                    isinstance(v, TypeVarTupleType) for v in it.variables
-                ):
-                    self.msg.incompatible_type_application(len(it.variables), len(args), ctx)
+                min_arg_count = sum(not v.has_default() for v in it.variables)
+                has_type_var_tuple = any(isinstance(v, TypeVarTupleType) for v in it.variables)
+                if (
+                    len(args) < min_arg_count or len(args) > len(it.variables)
+                ) and not has_type_var_tuple:
+                    self.msg.incompatible_type_application(
+                        min_arg_count, len(it.variables), len(args), ctx
+                    )
                     return AnyType(TypeOfAny.from_error)
             return Overloaded(
                 [
@@ -5262,7 +5295,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # is a constructor -- but this fallback doesn't make sense for lambdas.
         callable_ctx = callable_ctx.copy_modified(fallback=self.named_type("builtins.function"))
 
-        if callable_ctx.type_guard is not None:
+        if callable_ctx.type_guard is not None or callable_ctx.type_is is not None:
             # Lambda's return type cannot be treated as a `TypeGuard`,
             # because it is implicit. And `TypeGuard`s must be explicit.
             # See https://github.com/python/mypy/issues/9927
@@ -5943,17 +5976,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         # Determine the type of the entire yield from expression.
         iter_type = get_proper_type(iter_type)
-        if isinstance(iter_type, Instance) and iter_type.type.fullname == "typing.Generator":
-            expr_type = self.chk.get_generator_return_type(iter_type, False)
-        else:
-            # Non-Generators don't return anything from `yield from` expressions.
-            # However special-case Any (which might be produced by an error).
-            actual_item_type = get_proper_type(actual_item_type)
-            if isinstance(actual_item_type, AnyType):
-                expr_type = AnyType(TypeOfAny.from_another_any, source_any=actual_item_type)
-            else:
-                # Treat `Iterator[X]` as a shorthand for `Generator[X, None, Any]`.
-                expr_type = NoneType()
+        expr_type = self.chk.get_generator_return_type(iter_type, is_coroutine=False)
 
         if not allow_none_return and isinstance(get_proper_type(expr_type), NoneType):
             self.chk.msg.does_not_return_value(None, e)
@@ -6029,14 +6052,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return self.named_type("builtins.bool")
 
     @overload
-    def narrow_type_from_binder(self, expr: Expression, known_type: Type) -> Type:
-        ...
+    def narrow_type_from_binder(self, expr: Expression, known_type: Type) -> Type: ...
 
     @overload
     def narrow_type_from_binder(
         self, expr: Expression, known_type: Type, skip_non_overlapping: bool
-    ) -> Type | None:
-        ...
+    ) -> Type | None: ...
 
     def narrow_type_from_binder(
         self, expr: Expression, known_type: Type, skip_non_overlapping: bool = False

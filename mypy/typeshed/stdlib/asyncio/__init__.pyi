@@ -7,6 +7,7 @@ from typing_extensions import TypeAlias
 from .base_events import *
 from .coroutines import *
 from .events import *
+from .exceptions import *
 from .futures import *
 from .locks import *
 from .protocols import *
@@ -16,9 +17,6 @@ from .streams import *
 from .subprocess import *
 from .tasks import *
 from .transports import *
-
-if sys.version_info >= (3, 8):
-    from .exceptions import *
 
 if sys.version_info >= (3, 9):
     from .threads import *

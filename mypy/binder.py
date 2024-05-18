@@ -291,7 +291,7 @@ class ConditionalTypeBinder:
             self.type_assignments[expr].append((type, declared_type))
             return
         if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
-            return None
+            return
         if not literal(expr):
             return
         self.invalidate_dependencies(expr)

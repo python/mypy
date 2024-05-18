@@ -894,8 +894,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             res.append(Constraint(template_arg, SUBTYPE_OF, suffix))
                             res.append(Constraint(template_arg, SUPERTYPE_OF, suffix))
                     elif isinstance(tvar, TypeVarTupleType):
-                        # Handle variadic type variables covariantly for consistency.
-                        res.extend(infer_constraints(template_arg, mapped_arg, self.direction))
+                        # Consider variadic type variables to be invariant.
+                        res.extend(infer_constraints(template_arg, mapped_arg, SUBTYPE_OF))
+                        res.extend(infer_constraints(template_arg, mapped_arg, SUPERTYPE_OF))
                 return res
             if (
                 template.type.is_protocol
@@ -1017,10 +1018,22 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             param_spec = template.param_spec()
 
             template_ret_type, cactual_ret_type = template.ret_type, cactual.ret_type
-            if template.type_guard is not None:
+            if template.type_guard is not None and cactual.type_guard is not None:
                 template_ret_type = template.type_guard
-            if cactual.type_guard is not None:
                 cactual_ret_type = cactual.type_guard
+            elif template.type_guard is not None:
+                template_ret_type = AnyType(TypeOfAny.special_form)
+            elif cactual.type_guard is not None:
+                cactual_ret_type = AnyType(TypeOfAny.special_form)
+
+            if template.type_is is not None and cactual.type_is is not None:
+                template_ret_type = template.type_is
+                cactual_ret_type = cactual.type_is
+            elif template.type_is is not None:
+                template_ret_type = AnyType(TypeOfAny.special_form)
+            elif cactual.type_is is not None:
+                cactual_ret_type = AnyType(TypeOfAny.special_form)
+
             res.extend(infer_constraints(template_ret_type, cactual_ret_type, self.direction))
 
             if param_spec is None:

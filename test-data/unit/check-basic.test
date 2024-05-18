@@ -502,3 +502,19 @@ s2: str = 42  # E: Incompatible types in assignment (expression has type "int", 
 s3: str = 42  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 [file c.py]
 s3: str = 'foo'
+
+[case testMultilineQuotedAnnotation]
+x: """
+
+   int |
+   str
+
+"""
+reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+y: """(
+    int |
+    str
+)
+"""
+reveal_type(y)  # N: Revealed type is "Union[builtins.int, builtins.str]"

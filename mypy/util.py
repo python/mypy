@@ -263,6 +263,8 @@ def _generate_junit_contents(
     version: str,
     platform: str,
 ) -> str:
+    from xml.sax.saxutils import escape
+
     if serious:
         failures = 0
         errors = len(messages_by_file)
@@ -284,7 +286,7 @@ def _generate_junit_contents(
         for filename, messages in messages_by_file.items():
             if filename is not None:
                 xml += JUNIT_TESTCASE_FAIL_TEMPLATE.format(
-                    text="\n".join(messages),
+                    text=escape("\n".join(messages)),
                     filename=filename,
                     time=dt,
                     name="mypy-py{ver}-{platform} {filename}".format(
@@ -293,10 +295,10 @@ def _generate_junit_contents(
                 )
             else:
                 xml += JUNIT_TESTCASE_FAIL_TEMPLATE.format(
-                    text="\n".join(messages),
+                    text=escape("\n".join(messages)),
                     filename="mypy",
                     time=dt,
-                    name="mypy-py{ver}-{platform}".format(ver=version, platform=platform),
+                    name=f"mypy-py{version}-{platform}",
                 )
 
     xml += JUNIT_FOOTER
@@ -314,10 +316,9 @@ def write_junit_xml(
 ) -> None:
     xml = _generate_junit_contents(dt, serious, messages_by_file, version, platform)
 
-    # checks for a directory structure in path and creates folders if needed
+    # creates folders if needed
     xml_dirs = os.path.dirname(os.path.abspath(path))
-    if not os.path.isdir(xml_dirs):
-        os.makedirs(xml_dirs)
+    os.makedirs(xml_dirs, exist_ok=True)
 
     with open(path, "wb") as f:
         f.write(xml.encode("utf-8"))
@@ -450,7 +451,7 @@ def get_unique_redefinition_name(name: str, existing: Container[str]) -> str:
 def check_python_version(program: str) -> None:
     """Report issues with the Python used to run mypy, dmypy, or stubgen"""
     # Check for known bad Python versions.
-    if sys.version_info[:2] < (3, 8):
+    if sys.version_info[:2] < (3, 8):  # noqa: UP036
         sys.exit(
             "Running {name} with Python 3.7 or lower is not supported; "
             "please upgrade to 3.8 or newer".format(name=program)
@@ -562,8 +563,12 @@ class FancyFormatter:
     This currently only works on Linux and Mac.
     """
 
-    def __init__(self, f_out: IO[str], f_err: IO[str], hide_error_codes: bool) -> None:
+    def __init__(
+        self, f_out: IO[str], f_err: IO[str], hide_error_codes: bool, hide_success: bool = False
+    ) -> None:
         self.hide_error_codes = hide_error_codes
+        self.hide_success = hide_success
+
         # Check if we are in a human-facing terminal on a supported platform.
         if sys.platform not in ("linux", "darwin", "win32", "emscripten"):
             self.dummy_term = True
@@ -792,6 +797,9 @@ class FancyFormatter:
         n_sources is total number of files passed directly on command line,
         i.e. excluding stubs and followed imports.
         """
+        if self.hide_success:
+            return ""
+
         msg = f"Success: no issues found in {n_sources} source file{plural_s(n_sources)}"
         if not use_color:
             return msg

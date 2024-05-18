@@ -1,13 +1,15 @@
 import sys
 import typing_extensions
-from typing import Any, ClassVar
-from typing_extensions import Literal
+from typing import Any, ClassVar, Literal
 
 PyCF_ONLY_AST: Literal[1024]
-if sys.version_info >= (3, 8):
-    PyCF_TYPE_COMMENTS: Literal[4096]
-    PyCF_ALLOW_TOP_LEVEL_AWAIT: Literal[8192]
+PyCF_TYPE_COMMENTS: Literal[4096]
+PyCF_ALLOW_TOP_LEVEL_AWAIT: Literal[8192]
 
+# Alias used for fields that must always be valid identifiers
+# A string `x` counts as a valid identifier if both the following are True
+# (1) `x.isidentifier()` evaluates to `True`
+# (2) `keyword.iskeyword(x)` evaluates to `False`
 _Identifier: typing_extensions.TypeAlias = str
 
 class AST:
@@ -19,33 +21,29 @@ class AST:
     # TODO: Not all nodes have all of the following attributes
     lineno: int
     col_offset: int
-    if sys.version_info >= (3, 8):
-        end_lineno: int | None
-        end_col_offset: int | None
-        type_comment: str | None
+    end_lineno: int | None
+    end_col_offset: int | None
+    type_comment: str | None
 
 class mod(AST): ...
+class type_ignore(AST): ...
 
-if sys.version_info >= (3, 8):
-    class type_ignore(AST): ...
+class TypeIgnore(type_ignore):
+    if sys.version_info >= (3, 10):
+        __match_args__ = ("lineno", "tag")
+    tag: str
 
-    class TypeIgnore(type_ignore):
-        if sys.version_info >= (3, 10):
-            __match_args__ = ("lineno", "tag")
-        tag: str
-
-    class FunctionType(mod):
-        if sys.version_info >= (3, 10):
-            __match_args__ = ("argtypes", "returns")
-        argtypes: list[expr]
-        returns: expr
+class FunctionType(mod):
+    if sys.version_info >= (3, 10):
+        __match_args__ = ("argtypes", "returns")
+    argtypes: list[expr]
+    returns: expr
 
 class Module(mod):
     if sys.version_info >= (3, 10):
         __match_args__ = ("body", "type_ignores")
     body: list[stmt]
-    if sys.version_info >= (3, 8):
-        type_ignores: list[TypeIgnore]
+    type_ignores: list[TypeIgnore]
 
 class Interactive(mod):
     if sys.version_info >= (3, 10):
@@ -340,21 +338,6 @@ class JoinedStr(expr):
         __match_args__ = ("values",)
     values: list[expr]
 
-if sys.version_info < (3, 8):
-    class Num(expr):  # Deprecated in 3.8; use Constant
-        n: int | float | complex
-
-    class Str(expr):  # Deprecated in 3.8; use Constant
-        s: str
-
-    class Bytes(expr):  # Deprecated in 3.8; use Constant
-        s: bytes
-
-    class NameConstant(expr):  # Deprecated in 3.8; use Constant
-        value: Any
-
-    class Ellipsis(expr): ...  # Deprecated in 3.8; use Constant
-
 class Constant(expr):
     if sys.version_info >= (3, 10):
         __match_args__ = ("value", "kind")
@@ -364,12 +347,11 @@ class Constant(expr):
     s: Any
     n: int | float | complex
 
-if sys.version_info >= (3, 8):
-    class NamedExpr(expr):
-        if sys.version_info >= (3, 10):
-            __match_args__ = ("target", "value")
-        target: Name
-        value: expr
+class NamedExpr(expr):
+    if sys.version_info >= (3, 10):
+        __match_args__ = ("target", "value")
+    target: Name
+    value: expr
 
 class Attribute(expr):
     if sys.version_info >= (3, 10):
@@ -498,8 +480,7 @@ class ExceptHandler(excepthandler):
 class arguments(AST):
     if sys.version_info >= (3, 10):
         __match_args__ = ("posonlyargs", "args", "vararg", "kwonlyargs", "kw_defaults", "kwarg", "defaults")
-    if sys.version_info >= (3, 8):
-        posonlyargs: list[arg]
+    posonlyargs: list[arg]
     args: list[arg]
     vararg: arg | None
     kwonlyargs: list[arg]
@@ -522,7 +503,7 @@ class keyword(AST):
 class alias(AST):
     if sys.version_info >= (3, 10):
         __match_args__ = ("name", "asname")
-    name: _Identifier
+    name: str
     asname: _Identifier | None
 
 class withitem(AST):
@@ -586,7 +567,9 @@ if sys.version_info >= (3, 10):
         patterns: list[pattern]
 
 if sys.version_info >= (3, 12):
-    class type_param(AST): ...
+    class type_param(AST):
+        end_lineno: int
+        end_col_offset: int
 
     class TypeVar(type_param):
         __match_args__ = ("name", "bound")

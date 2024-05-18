@@ -330,10 +330,9 @@ c: C
 t: T
 reveal_type(c)  # N: Revealed type is "def (*Any, **Any) -> Any"
 reveal_type(t)  # N: Revealed type is "builtins.tuple[Any, ...]"
-bad: C[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1
-also_bad: T[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1
+bad: C[int]  # E: Bad number of arguments for type alias, expected 0, given 1
+also_bad: T[int]  # E: Bad number of arguments for type alias, expected 0, given 1
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testAliasRefOnClass]
 from typing import Generic, TypeVar, Type
@@ -1066,3 +1065,151 @@ def eval(e: Expr) -> int:
     elif e[0] == 456:
         return -eval(e[1])
 [builtins fixtures/dict-full.pyi]
+
+[case testTypeAliasType]
+from typing import Union
+from typing_extensions import TypeAliasType
+
+TestType = TypeAliasType("TestType", Union[int, str])
+x: TestType = 42
+y: TestType = 'a'
+z: TestType = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "Union[int, str]")
+
+class A:
+    ClassAlias = TypeAliasType("ClassAlias", int)
+xc: A.ClassAlias = 1
+yc: A.ClassAlias = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/tuple.pyi]
+
+[case testTypeAliasTypeInvalid]
+from typing_extensions import TypeAliasType
+
+TestType = TypeAliasType("T", int)  # E: String argument 1 "T" to TypeAliasType(...) does not match variable name "TestType"
+
+T1 = T2 = TypeAliasType("T", int)
+t1: T1  # E: Variable "__main__.T1" is not valid as a type \
+        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
+T3 = TypeAliasType("T3", -1)  # E: Invalid type: try using Literal[-1] instead?
+t3: T3
+reveal_type(t3)  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeAliasTypeGeneric]
+from typing import Callable, Dict, Generic, TypeVar, Tuple
+from typing_extensions import TypeAliasType, TypeVarTuple, ParamSpec, Unpack
+
+K = TypeVar('K')
+V = TypeVar('V')
+T = TypeVar('T')
+Ts = TypeVarTuple("Ts")
+Ts1 = TypeVarTuple("Ts1")
+P = ParamSpec("P")
+
+TestType = TypeAliasType("TestType", Dict[K, V], type_params=(K, V))
+x: TestType[int, str] = {1: 'a'}
+y: TestType[str, int] = {'a': 1}
+z: TestType[str, int] = {1: 'a'}  # E: Dict entry 0 has incompatible type "int": "str"; expected "str": "int"
+w: TestType[int]  # E: Bad number of arguments for type alias, expected 2, given 1
+
+InvertedDict = TypeAliasType("InvertedDict", Dict[K, V], type_params=(V, K))
+xi: InvertedDict[str, int] = {1: 'a'}
+yi: InvertedDict[str, int] = {'a': 1}  # E: Dict entry 0 has incompatible type "str": "int"; expected "int": "str"
+zi: InvertedDict[int, str] = {1: 'a'}  # E: Dict entry 0 has incompatible type "int": "str"; expected "str": "int"
+reveal_type(xi)  # N: Revealed type is "builtins.dict[builtins.int, builtins.str]"
+
+VariadicAlias1 = TypeAliasType("VariadicAlias1", Tuple[Unpack[Ts]], type_params=(Ts,))
+VariadicAlias2 = TypeAliasType("VariadicAlias2", Tuple[Unpack[Ts], K], type_params=(Ts, K))
+VariadicAlias3 = TypeAliasType("VariadicAlias3", Callable[[Unpack[Ts]], int], type_params=(Ts,))
+xv: VariadicAlias1[int, str] = (1, 'a')
+yv: VariadicAlias1[str, int] = (1, 'a')  # E: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type "Tuple[str, int]")
+zv: VariadicAlias2[int, str] = (1, 'a')
+def int_in_int_out(x: int) -> int: return x
+wv: VariadicAlias3[int] = int_in_int_out
+reveal_type(wv)  # N: Revealed type is "def (builtins.int) -> builtins.int"
+
+ParamAlias = TypeAliasType("ParamAlias", Callable[P, int], type_params=(P,))
+def f(x: str, y: float) -> int: return 1
+def g(x: int, y: float) -> int: return 1
+xp1: ParamAlias[str, float] = f
+xp2: ParamAlias[str, float] = g  # E: Incompatible types in assignment (expression has type "Callable[[int, float], int]", variable has type "Callable[[str, float], int]")
+xp3: ParamAlias[str, float] = lambda x, y: 1
+
+class G(Generic[P, T]): ...
+ParamAlias2 = TypeAliasType("ParamAlias2", G[P, T], type_params=(P, T))
+xp: ParamAlias2[[int], str]
+reveal_type(xp)  # N: Revealed type is "__main__.G[[builtins.int], builtins.str]"
+[builtins fixtures/dict.pyi]
+
+[case testTypeAliasTypeInvalidGeneric]
+from typing_extensions import TypeAliasType, TypeVarTuple, ParamSpec
+from typing import Callable, Dict, Generic, TypeVar, Tuple, Unpack
+
+K = TypeVar('K')
+V = TypeVar('V')
+T = TypeVar('T')
+Ts = TypeVarTuple("Ts")
+Ts1 = TypeVarTuple("Ts1")
+P = ParamSpec("P")
+
+Ta0 = TypeAliasType("Ta0", int, type_params=(T, T))  # E: Duplicate type variable "T" in type_params argument to TypeAliasType
+
+Ta1 = TypeAliasType("Ta1", int, type_params=K)  # E: Tuple literal expected as the type_params argument to TypeAliasType
+
+Ta2 = TypeAliasType("Ta2", int, type_params=(None,))  # E: Free type variable expected in type_params argument to TypeAliasType
+
+Ta3 = TypeAliasType("Ta3", Dict[K, V], type_params=(V,))  # E: Type variable "K" is not included in type_params
+partially_generic1: Ta3[int] = {"a": 1}
+reveal_type(partially_generic1)  # N: Revealed type is "builtins.dict[Any, builtins.int]"
+partially_generic2: Ta3[int] = {1: "a"}  # E: Dict entry 0 has incompatible type "int": "str"; expected "Any": "int"
+
+Ta4 = TypeAliasType("Ta4", Tuple[Unpack[Ts]], type_params=(Ts, Ts1))  # E: Can only use one TypeVarTuple in type_params argument to TypeAliasType
+
+Ta5 = TypeAliasType("Ta5", Dict)  # Unlike old style aliases, this is not generic
+non_generic_dict: Ta5[int, str]  # E: Bad number of arguments for type alias, expected 0, given 2
+reveal_type(non_generic_dict)  # N: Revealed type is "builtins.dict[Any, Any]"
+
+Ta6 = TypeAliasType("Ta6", Tuple[Unpack[Ts]])  # E: TypeVarTuple "Ts" is not included in type_params
+unbound_tvt_alias: Ta6[int]  # E: Bad number of arguments for type alias, expected 0, given 1
+reveal_type(unbound_tvt_alias)  # N: Revealed type is "builtins.tuple[Any, ...]"
+
+class G(Generic[P, T]): ...
+Ta7 = TypeAliasType("Ta7", G[P, T])  # E: ParamSpec "P" is not included in type_params \
+                                     # E: Type variable "T" is not included in type_params
+unbound_ps_alias: Ta7[[int], str]  # E: Bracketed expression "[...]" is not valid as a type \
+                                   # N: Did you mean "List[...]"? \
+                                   # E: Bad number of arguments for type alias, expected 0, given 2
+reveal_type(unbound_ps_alias)  # N: Revealed type is "__main__.G[Any, Any]"
+
+Ta8 = TypeAliasType("Ta8", Callable[P, int])  # E: ParamSpec "P" is not included in type_params
+unbound_ps_alias2: Ta8[int]  # E: Bad number of arguments for type alias, expected 0, given 1
+reveal_type(unbound_ps_alias2)  # N: Revealed type is "def [P] (*Any, **Any) -> builtins.int"
+
+Ta9 = TypeAliasType("Ta9", Callable[P, T])  # E: ParamSpec "P" is not included in type_params \
+                                            # E: Type variable "T" is not included in type_params
+unbound_ps_alias3: Ta9[int, str]  # E: Bad number of arguments for type alias, expected 0, given 2
+reveal_type(unbound_ps_alias3)  # N: Revealed type is "def [P] (*Any, **Any) -> Any"
+
+Ta10 = TypeAliasType("Ta10", Callable[[Unpack[Ts]], str])  # E: TypeVarTuple "Ts" is not included in type_params
+unbound_tvt_alias2: Ta10[int]  # E: Bad number of arguments for type alias, expected 0, given 1
+reveal_type(unbound_tvt_alias2)  # N: Revealed type is "def (*Any) -> builtins.str"
+
+class A(Generic[T]):
+    Ta11 = TypeAliasType("Ta11", Dict[str, T], type_params=(T,))  # E: Can't use bound type variable "T" to define generic alias \
+                                                                  # E: "T" is a type variable and only valid in type context
+x: A.Ta11 = {"a": 1}
+reveal_type(x)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
+[builtins fixtures/dict.pyi]
+
+[case testTypeAliasTypeNoUnpackInTypeParams311]
+# flags: --python-version 3.11
+from typing_extensions import TypeAliasType, TypeVar, TypeVarTuple, Unpack
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+
+Ta1 = TypeAliasType("Ta1", None, type_params=(*Ts,))  # E: can't use starred expression here
+Ta2 = TypeAliasType("Ta2", None, type_params=(Unpack[Ts],))  # E: Free type variable expected in type_params argument to TypeAliasType \
+                                                             # N: Don't Unpack type variables in type_params
+
+[builtins fixtures/tuple.pyi]

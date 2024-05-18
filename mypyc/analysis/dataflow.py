@@ -38,6 +38,7 @@ from mypyc.ir.ops import (
     MethodCall,
     Op,
     OpVisitor,
+    PrimitiveOp,
     RaiseStandardError,
     RegisterOp,
     Return,
@@ -232,6 +233,9 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
         return self.visit_register_op(op)
 
     def visit_call_c(self, op: CallC) -> GenAndKill[T]:
+        return self.visit_register_op(op)
+
+    def visit_primitive_op(self, op: PrimitiveOp) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
     def visit_truncate(self, op: Truncate) -> GenAndKill[T]:

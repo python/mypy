@@ -41,7 +41,7 @@ def run_mypy(args: list[str]) -> None:
     if status != 0:
         sys.stdout.write(outval)
         sys.stderr.write(errval)
-        pytest.fail(msg="Sample check failed", pytrace=False)
+        pytest.fail(reason="Sample check failed", pytrace=False)
 
 
 def diff_ranges(
@@ -145,7 +145,7 @@ def assert_module_equivalence(name: str, expected: Iterable[str], actual: Iterab
     assert_string_arrays_equal(
         expected_normalized,
         actual_normalized,
-        ("Actual modules ({}) do not match expected modules ({}) " 'for "[{} ...]"').format(
+        ('Actual modules ({}) do not match expected modules ({}) for "[{} ...]"').format(
             ", ".join(actual_normalized), ", ".join(expected_normalized), name
         ),
     )
@@ -156,7 +156,7 @@ def assert_target_equivalence(name: str, expected: list[str], actual: list[str])
     assert_string_arrays_equal(
         expected,
         actual,
-        ("Actual targets ({}) do not match expected targets ({}) " 'for "[{} ...]"').format(
+        ('Actual targets ({}) do not match expected targets ({}) for "[{} ...]"').format(
             ", ".join(actual), ", ".join(expected), name
         ),
     )

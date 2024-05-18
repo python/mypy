@@ -2,8 +2,8 @@ import sys
 from _typeshed import SupportsWrite, Unused
 from collections.abc import Generator, Iterable, Iterator, Mapping
 from types import FrameType, TracebackType
-from typing import Any, overload
-from typing_extensions import Literal, Self, TypeAlias
+from typing import Any, Literal, overload
+from typing_extensions import Self, TypeAlias
 
 __all__ = [
     "extract_stack",
@@ -27,14 +27,15 @@ __all__ = [
     "walk_tb",
 ]
 
-_PT: TypeAlias = tuple[str, int, str, str | None]
+_FrameSummaryTuple: TypeAlias = tuple[str, int, str, str | None]
 
 def print_tb(tb: TracebackType | None, limit: int | None = None, file: SupportsWrite[str] | None = None) -> None: ...
 
 if sys.version_info >= (3, 10):
     @overload
     def print_exception(
-        __exc: type[BaseException] | None,
+        exc: type[BaseException] | None,
+        /,
         value: BaseException | None = ...,
         tb: TracebackType | None = ...,
         limit: int | None = None,
@@ -43,18 +44,19 @@ if sys.version_info >= (3, 10):
     ) -> None: ...
     @overload
     def print_exception(
-        __exc: BaseException, *, limit: int | None = None, file: SupportsWrite[str] | None = None, chain: bool = True
+        exc: BaseException, /, *, limit: int | None = None, file: SupportsWrite[str] | None = None, chain: bool = True
     ) -> None: ...
     @overload
     def format_exception(
-        __exc: type[BaseException] | None,
+        exc: type[BaseException] | None,
+        /,
         value: BaseException | None = ...,
         tb: TracebackType | None = ...,
         limit: int | None = None,
         chain: bool = True,
     ) -> list[str]: ...
     @overload
-    def format_exception(__exc: BaseException, *, limit: int | None = None, chain: bool = True) -> list[str]: ...
+    def format_exception(exc: BaseException, /, *, limit: int | None = None, chain: bool = True) -> list[str]: ...
 
 else:
     def print_exception(
@@ -78,16 +80,16 @@ def print_last(limit: int | None = None, file: SupportsWrite[str] | None = None,
 def print_stack(f: FrameType | None = None, limit: int | None = None, file: SupportsWrite[str] | None = None) -> None: ...
 def extract_tb(tb: TracebackType | None, limit: int | None = None) -> StackSummary: ...
 def extract_stack(f: FrameType | None = None, limit: int | None = None) -> StackSummary: ...
-def format_list(extracted_list: list[FrameSummary]) -> list[str]: ...
+def format_list(extracted_list: Iterable[FrameSummary | _FrameSummaryTuple]) -> list[str]: ...
 
 # undocumented
-def print_list(extracted_list: list[FrameSummary], file: SupportsWrite[str] | None = None) -> None: ...
+def print_list(extracted_list: Iterable[FrameSummary | _FrameSummaryTuple], file: SupportsWrite[str] | None = None) -> None: ...
 
 if sys.version_info >= (3, 10):
     @overload
-    def format_exception_only(__exc: BaseException | None) -> list[str]: ...
+    def format_exception_only(exc: BaseException | None, /) -> list[str]: ...
     @overload
-    def format_exception_only(__exc: Unused, value: BaseException | None) -> list[str]: ...
+    def format_exception_only(exc: Unused, /, value: BaseException | None) -> list[str]: ...
 
 else:
     def format_exception_only(etype: type[BaseException] | None, value: BaseException | None) -> list[str]: ...
@@ -240,8 +242,7 @@ class FrameSummary(Iterable[Any]):
     def __getitem__(self, pos: int) -> Any: ...
     def __iter__(self) -> Iterator[Any]: ...
     def __eq__(self, other: object) -> bool: ...
-    if sys.version_info >= (3, 8):
-        def __len__(self) -> Literal[4]: ...
+    def __len__(self) -> Literal[4]: ...
 
 class StackSummary(list[FrameSummary]):
     @classmethod
@@ -254,7 +255,7 @@ class StackSummary(list[FrameSummary]):
         capture_locals: bool = False,
     ) -> StackSummary: ...
     @classmethod
-    def from_list(cls, a_list: Iterable[FrameSummary | _PT]) -> StackSummary: ...
+    def from_list(cls, a_list: Iterable[FrameSummary | _FrameSummaryTuple]) -> StackSummary: ...
     if sys.version_info >= (3, 11):
         def format_frame_summary(self, frame_summary: FrameSummary) -> str: ...
 

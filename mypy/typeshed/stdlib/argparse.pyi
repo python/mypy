@@ -2,8 +2,8 @@ import sys
 from _typeshed import sentinel
 from collections.abc import Callable, Generator, Iterable, Sequence
 from re import Pattern
-from typing import IO, Any, Generic, NewType, NoReturn, Protocol, TypeVar, overload
-from typing_extensions import Literal, Self, TypeAlias
+from typing import IO, Any, Generic, Literal, NewType, NoReturn, Protocol, TypeVar, overload
+from typing_extensions import Self, TypeAlias, deprecated
 
 __all__ = [
     "ArgumentParser",
@@ -172,7 +172,7 @@ class ArgumentParser(_AttributeHolder, _ActionsContainer):
         ) -> None: ...
 
     @overload
-    def parse_args(self, args: Sequence[str] | None = None, namespace: None = None) -> Namespace: ...  # type: ignore[misc]
+    def parse_args(self, args: Sequence[str] | None = None, namespace: None = None) -> Namespace: ...
     @overload
     def parse_args(self, args: Sequence[str] | None, namespace: _N) -> _N: ...
     @overload
@@ -211,7 +211,7 @@ class ArgumentParser(_AttributeHolder, _ActionsContainer):
     def format_usage(self) -> str: ...
     def format_help(self) -> str: ...
     @overload
-    def parse_known_args(self, args: Sequence[str] | None = None, namespace: None = None) -> tuple[Namespace, list[str]]: ...  # type: ignore[misc]
+    def parse_known_args(self, args: Sequence[str] | None = None, namespace: None = None) -> tuple[Namespace, list[str]]: ...
     @overload
     def parse_known_args(self, args: Sequence[str] | None, namespace: _N) -> tuple[_N, list[str]]: ...
     @overload
@@ -220,13 +220,15 @@ class ArgumentParser(_AttributeHolder, _ActionsContainer):
     def exit(self, status: int = 0, message: str | None = None) -> NoReturn: ...
     def error(self, message: str) -> NoReturn: ...
     @overload
-    def parse_intermixed_args(self, args: Sequence[str] | None = None, namespace: None = None) -> Namespace: ...  # type: ignore[misc]
+    def parse_intermixed_args(self, args: Sequence[str] | None = None, namespace: None = None) -> Namespace: ...
     @overload
     def parse_intermixed_args(self, args: Sequence[str] | None, namespace: _N) -> _N: ...
     @overload
     def parse_intermixed_args(self, *, namespace: _N) -> _N: ...
     @overload
-    def parse_known_intermixed_args(self, args: Sequence[str] | None = None, namespace: None = None) -> tuple[Namespace, list[str]]: ...  # type: ignore[misc]
+    def parse_known_intermixed_args(
+        self, args: Sequence[str] | None = None, namespace: None = None
+    ) -> tuple[Namespace, list[str]]: ...
     @overload
     def parse_known_intermixed_args(self, args: Sequence[str] | None, namespace: _N) -> tuple[_N, list[str]]: ...
     @overload
@@ -337,11 +339,23 @@ class Action(_AttributeHolder):
 
 if sys.version_info >= (3, 12):
     class BooleanOptionalAction(Action):
+        @overload
         def __init__(
             self,
             option_strings: Sequence[str],
             dest: str,
-            default: _T | str | None = None,
+            default: bool | None = None,
+            *,
+            required: bool = False,
+            help: str | None = None,
+        ) -> None: ...
+        @overload
+        @deprecated("The `type`, `choices`, and `metavar` parameters are ignored and will be removed in Python 3.14.")
+        def __init__(
+            self,
+            option_strings: Sequence[str],
+            dest: str,
+            default: _T | bool | None = None,
             type: Callable[[str], _T] | FileType | None = sentinel,
             choices: Iterable[_T] | None = sentinel,
             required: bool = False,
@@ -351,11 +365,23 @@ if sys.version_info >= (3, 12):
 
 elif sys.version_info >= (3, 9):
     class BooleanOptionalAction(Action):
+        @overload
         def __init__(
             self,
             option_strings: Sequence[str],
             dest: str,
-            default: _T | str | None = None,
+            default: bool | None = None,
+            *,
+            required: bool = False,
+            help: str | None = None,
+        ) -> None: ...
+        @overload
+        @deprecated("The `type`, `choices`, and `metavar` parameters are ignored and will be removed in Python 3.14.")
+        def __init__(
+            self,
+            option_strings: Sequence[str],
+            dest: str,
+            default: _T | bool | None = None,
             type: Callable[[str], _T] | FileType | None = None,
             choices: Iterable[_T] | None = None,
             required: bool = False,
@@ -366,7 +392,7 @@ elif sys.version_info >= (3, 9):
 class Namespace(_AttributeHolder):
     def __init__(self, **kwargs: Any) -> None: ...
     def __getattr__(self, name: str) -> Any: ...
-    def __setattr__(self, __name: str, __value: Any) -> None: ...
+    def __setattr__(self, name: str, value: Any, /) -> None: ...
     def __contains__(self, key: str) -> bool: ...
     def __eq__(self, other: object) -> bool: ...
 
@@ -444,8 +470,7 @@ class _StoreFalseAction(_StoreConstAction):
 class _AppendAction(Action): ...
 
 # undocumented
-if sys.version_info >= (3, 8):
-    class _ExtendAction(_AppendAction): ...
+class _ExtendAction(_AppendAction): ...
 
 # undocumented
 class _AppendConstAction(Action):

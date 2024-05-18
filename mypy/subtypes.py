@@ -8,7 +8,7 @@ import mypy.applytype
 import mypy.constraints
 import mypy.typeops
 from mypy.erasetype import erase_type
-from mypy.expandtype import expand_self_type, expand_type_by_instance
+from mypy.expandtype import expand_self_type, expand_type, expand_type_by_instance
 from mypy.maptype import map_instance_to_supertype
 
 # Circular import; done in the function instead.
@@ -19,6 +19,7 @@ from mypy.nodes import (
     CONTRAVARIANT,
     COVARIANT,
     INVARIANT,
+    VARIANCE_NOT_READY,
     Decorator,
     FuncBase,
     OverloadedFuncDef,
@@ -66,7 +67,7 @@ from mypy.types import (
 )
 from mypy.types_utils import flatten_types
 from mypy.typestate import SubtypeKind, type_state
-from mypy.typevars import fill_typevars_with_any
+from mypy.typevars import fill_typevars, fill_typevars_with_any
 
 # Flags for detected protocol members
 IS_SETTABLE: Final = 1
@@ -361,7 +362,10 @@ def check_type_parameter(
         p_left = get_proper_type(left)
         if isinstance(p_left, UninhabitedType) and p_left.ambiguous:
             variance = COVARIANT
-    if variance == COVARIANT:
+    # If variance hasn't been inferred yet, we are lenient and default to
+    # covariance. This shouldn't happen often, but it's very difficult to
+    # avoid these cases altogether.
+    if variance == COVARIANT or variance == VARIANCE_NOT_READY:
         if proper_subtype:
             return is_proper_subtype(left, right, subtype_context=subtype_context)
         else:
@@ -575,8 +579,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 else:
                     type_params = zip(t.args, right.args, right.type.defn.type_vars)
                 if not self.subtype_context.ignore_type_params:
+                    tried_infer = False
                     for lefta, righta, tvar in type_params:
                         if isinstance(tvar, TypeVarType):
+                            if tvar.variance == VARIANCE_NOT_READY and not tried_infer:
+                                infer_class_variances(right.type)
+                                tried_infer = True
                             if not check_type_parameter(
                                 lefta,
                                 righta,
@@ -683,9 +691,22 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if left.type_guard is not None and right.type_guard is not None:
                 if not self._is_subtype(left.type_guard, right.type_guard):
                     return False
+            elif left.type_is is not None and right.type_is is not None:
+                # For TypeIs we have to check both ways; it is unsafe to pass
+                # a TypeIs[Child] when a TypeIs[Parent] is expected, because
+                # if the narrower returns False, we assume that the narrowed value is
+                # *not* a Parent.
+                if not self._is_subtype(left.type_is, right.type_is) or not self._is_subtype(
+                    right.type_is, left.type_is
+                ):
+                    return False
             elif right.type_guard is not None and left.type_guard is None:
                 # This means that one function has `TypeGuard` and other does not.
                 # They are not compatible. See https://github.com/python/mypy/issues/11307
+                return False
+            elif right.type_is is not None and left.type_is is None:
+                # Similarly, if one function has `TypeIs` and the other does not,
+                # they are not compatible.
                 return False
             return is_callable_compatible(
                 left,
@@ -693,9 +714,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 is_compat=self._is_subtype,
                 is_proper_subtype=self.proper_subtype,
                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
-                strict_concatenate=(self.options.extra_checks or self.options.strict_concatenate)
-                if self.options
-                else False,
+                strict_concatenate=(
+                    (self.options.extra_checks or self.options.strict_concatenate)
+                    if self.options
+                    else False
+                ),
             )
         elif isinstance(right, Overloaded):
             return all(self._is_subtype(left, item) for item in right.items)
@@ -1963,3 +1986,72 @@ def is_more_precise(left: Type, right: Type, *, ignore_promotions: bool = False)
     if isinstance(right, AnyType):
         return True
     return is_proper_subtype(left, right, ignore_promotions=ignore_promotions)
+
+
+def all_non_object_members(info: TypeInfo) -> set[str]:
+    members = set(info.names)
+    for base in info.mro[1:-1]:
+        members.update(base.names)
+    return members
+
+
+def infer_variance(info: TypeInfo, i: int) -> bool:
+    """Infer the variance of the ith type variable of a generic class.
+
+    Return True if successful. This can fail if some inferred types aren't ready.
+    """
+    object_type = Instance(info.mro[-1], [])
+
+    for variance in COVARIANT, CONTRAVARIANT, INVARIANT:
+        tv = info.defn.type_vars[i]
+        assert isinstance(tv, TypeVarType)
+        if tv.variance != VARIANCE_NOT_READY:
+            continue
+        tv.variance = variance
+        co = True
+        contra = True
+        tvar = info.defn.type_vars[i]
+        self_type = fill_typevars(info)
+        for member in all_non_object_members(info):
+            if member in ("__init__", "__new__"):
+                continue
+            node = info[member].node
+            if isinstance(node, Var) and node.type is None:
+                tv.variance = VARIANCE_NOT_READY
+                return False
+            if isinstance(self_type, TupleType):
+                self_type = mypy.typeops.tuple_fallback(self_type)
+
+            flags = get_member_flags(member, self_type)
+            typ = find_member(member, self_type, self_type)
+            settable = IS_SETTABLE in flags
+            if typ:
+                typ2 = expand_type(typ, {tvar.id: object_type})
+                if not is_subtype(typ, typ2):
+                    co = False
+                if not is_subtype(typ2, typ):
+                    contra = False
+                    if settable:
+                        co = False
+        if co:
+            v = COVARIANT
+        elif contra:
+            v = CONTRAVARIANT
+        else:
+            v = INVARIANT
+        if v == variance:
+            break
+        tv.variance = VARIANCE_NOT_READY
+    return True
+
+
+def infer_class_variances(info: TypeInfo) -> bool:
+    if not info.defn.type_args:
+        return True
+    tvs = info.defn.type_vars
+    success = True
+    for i, tv in enumerate(tvs):
+        if isinstance(tv, TypeVarType) and tv.variance == VARIANCE_NOT_READY:
+            if not infer_variance(info, i):
+                success = False
+    return success
