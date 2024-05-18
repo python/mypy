@@ -135,7 +135,7 @@ void CPyTagged_XDecRef(CPyTagged x) {
     }
 }
 
-// Tagged int negation slow path where the result may be a long integer
+// Tagged int negation slow path, where the result may be a long integer
 CPyTagged CPyTagged_Negate_(CPyTagged num) {
     PyObject *num_obj = CPyTagged_AsObject(num);
     PyObject *result = PyNumber_Negative(num_obj);
@@ -146,7 +146,7 @@ CPyTagged CPyTagged_Negate_(CPyTagged num) {
     return CPyTagged_StealFromObject(result);
 }
 
-// Tagged int addition slow path where the result may be a long integer
+// Tagged int addition slow path, where the result may be a long integer
 CPyTagged CPyTagged_Add_(CPyTagged left, CPyTagged right) {
     PyObject *left_obj = CPyTagged_AsObject(left);
     PyObject *right_obj = CPyTagged_AsObject(right);
@@ -159,7 +159,7 @@ CPyTagged CPyTagged_Add_(CPyTagged left, CPyTagged right) {
     return CPyTagged_StealFromObject(result);
 }
 
-// Tagged int subraction slow path where the result may be a long integer
+// Tagged int subraction slow path, where the result may be a long integer
 CPyTagged CPyTagged_Subtract_(CPyTagged left, CPyTagged right) {
     PyObject *left_obj = CPyTagged_AsObject(left);
     PyObject *right_obj = CPyTagged_AsObject(right);
@@ -172,13 +172,8 @@ CPyTagged CPyTagged_Subtract_(CPyTagged left, CPyTagged right) {
     return CPyTagged_StealFromObject(result);
 }
 
-CPyTagged CPyTagged_Multiply(CPyTagged left, CPyTagged right) {
-    // TODO: Consider using some clang/gcc extension
-    if (CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right)) {
-        if (!CPyTagged_IsMultiplyOverflow(left, right)) {
-            return left * CPyTagged_ShortAsSsize_t(right);
-        }
-    }
+// Tagged int multiplication slow path, where the result may be a long integer
+CPyTagged CPyTagged_Multiply_(CPyTagged left, CPyTagged right) {
     PyObject *left_obj = CPyTagged_AsObject(left);
     PyObject *right_obj = CPyTagged_AsObject(right);
     PyObject *result = PyNumber_Multiply(left_obj, right_obj);

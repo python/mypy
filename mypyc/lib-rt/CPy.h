@@ -129,7 +129,6 @@ Py_ssize_t CPyTagged_AsSsize_t(CPyTagged x);
 void CPyTagged_IncRef(CPyTagged x);
 void CPyTagged_DecRef(CPyTagged x);
 void CPyTagged_XDecRef(CPyTagged x);
-CPyTagged CPyTagged_Multiply(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_FloorDivide(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Remainder(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Rshift(CPyTagged left, CPyTagged right);
@@ -140,6 +139,7 @@ bool CPyTagged_IsLt_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Negate_(CPyTagged num);
 CPyTagged CPyTagged_Add_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Subtract_(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_Multiply_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Invert_(CPyTagged num);
 CPyTagged CPyTagged_BitwiseLongOp_(CPyTagged a, CPyTagged b, char op);
 
@@ -316,6 +316,16 @@ static inline CPyTagged CPyTagged_Subtract(CPyTagged left, CPyTagged right) {
         }
     }
     return CPyTagged_Subtract_(left, right);
+}
+
+static inline CPyTagged CPyTagged_Multiply(CPyTagged left, CPyTagged right) {
+    // TODO: Consider using some clang/gcc extension to check for overflow
+    if (CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right)) {
+        if (!CPyTagged_IsMultiplyOverflow(left, right)) {
+            return left * CPyTagged_ShortAsSsize_t(right);
+        }
+    }
+    return CPyTagged_Multiply_(left, right);
 }
 
 // Bitwise '~'
