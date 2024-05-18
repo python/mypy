@@ -9,6 +9,7 @@ import keyword
 from contextlib import contextmanager
 from typing import Container, Final, Iterator, List, Mapping, cast
 
+from mypy.errorcodes import ARG_TYPE, ErrorCode
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
@@ -381,6 +382,7 @@ class NamedTupleAnalyzer:
                             'Boolean literal expected as the "rename" argument to '
                             f"{type_name}()",
                             arg,
+                            code=ARG_TYPE,
                         )
         if call.arg_kinds[:2] != [ARG_POS, ARG_POS]:
             self.fail(f'Unexpected arguments to "{type_name}()"', call)
@@ -700,5 +702,5 @@ class NamedTupleAnalyzer:
             return f'field name "{field}" is a keyword'
         return None
 
-    def fail(self, msg: str, ctx: Context) -> None:
-        self.api.fail(msg, ctx)
+    def fail(self, msg: str, ctx: Context, code: ErrorCode | None = None) -> None:
+        self.api.fail(msg, ctx, code=code)
