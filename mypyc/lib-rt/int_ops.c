@@ -402,19 +402,15 @@ CPyTagged CPyTagged_BitwiseLongOp_(CPyTagged a, CPyTagged b, char op) {
     return CPyTagged_StealFromObject((PyObject *)r);
 }
 
-// Bitwise '~'
-CPyTagged CPyTagged_Invert(CPyTagged num) {
-    if (likely(CPyTagged_CheckShort(num) && num != CPY_TAGGED_ABS_MIN)) {
-        return ~num & ~CPY_INT_TAG;
-    } else {
-        PyObject *obj = CPyTagged_AsObject(num);
-        PyObject *result = PyNumber_Invert(obj);
-        if (unlikely(result == NULL)) {
-            CPyError_OutOfMemory();
-        }
-        Py_DECREF(obj);
-        return CPyTagged_StealFromObject(result);
+// Bitwise '~' slow path
+CPyTagged CPyTagged_Invert_(CPyTagged num) {
+    PyObject *obj = CPyTagged_AsObject(num);
+    PyObject *result = PyNumber_Invert(obj);
+    if (unlikely(result == NULL)) {
+        CPyError_OutOfMemory();
     }
+    Py_DECREF(obj);
+    return CPyTagged_StealFromObject(result);
 }
 
 // Bitwise '>>'

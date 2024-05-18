@@ -129,7 +129,6 @@ Py_ssize_t CPyTagged_AsSsize_t(CPyTagged x);
 void CPyTagged_IncRef(CPyTagged x);
 void CPyTagged_DecRef(CPyTagged x);
 void CPyTagged_XDecRef(CPyTagged x);
-CPyTagged CPyTagged_Invert(CPyTagged num);
 CPyTagged CPyTagged_Multiply(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_FloorDivide(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Remainder(CPyTagged left, CPyTagged right);
@@ -141,6 +140,7 @@ bool CPyTagged_IsLt_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Negate_(CPyTagged num);
 CPyTagged CPyTagged_Add_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Subtract_(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_Invert_(CPyTagged num);
 CPyTagged CPyTagged_BitwiseLongOp_(CPyTagged a, CPyTagged b, char op);
 
 PyObject *CPyTagged_Str(CPyTagged n);
@@ -316,6 +316,14 @@ static inline CPyTagged CPyTagged_Subtract(CPyTagged left, CPyTagged right) {
         }
     }
     return CPyTagged_Subtract_(left, right);
+}
+
+// Bitwise '~'
+static inline CPyTagged CPyTagged_Invert(CPyTagged num) {
+    if (likely(CPyTagged_CheckShort(num) && num != CPY_TAGGED_ABS_MIN)) {
+        return ~num & ~CPY_INT_TAG;
+    }
+    return CPyTagged_Invert_(num);
 }
 
 // Bitwise '&'
