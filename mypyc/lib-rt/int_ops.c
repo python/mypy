@@ -135,13 +135,8 @@ void CPyTagged_XDecRef(CPyTagged x) {
     }
 }
 
-CPyTagged CPyTagged_Negate(CPyTagged num) {
-    if (CPyTagged_CheckShort(num)
-            && num != (CPyTagged) ((Py_ssize_t)1 << (CPY_INT_BITS - 1))) {
-        // The only possibility of an overflow error happening when negating a short is if we
-        // attempt to negate the most negative number.
-        return -num;
-    }
+// Tagged int negation slow path where the result may be a long integer
+CPyTagged CPyTagged_Negate_(CPyTagged num) {
     PyObject *num_obj = CPyTagged_AsObject(num);
     PyObject *result = PyNumber_Negative(num_obj);
     if (result == NULL) {
@@ -151,14 +146,8 @@ CPyTagged CPyTagged_Negate(CPyTagged num) {
     return CPyTagged_StealFromObject(result);
 }
 
-CPyTagged CPyTagged_Add(CPyTagged left, CPyTagged right) {
-    // TODO: Use clang/gcc extension __builtin_saddll_overflow instead.
-    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
-        CPyTagged sum = left + right;
-        if (likely(!CPyTagged_IsAddOverflow(sum, left, right))) {
-            return sum;
-        }
-    }
+// Tagged int addition slow path where the result may be a long integer
+CPyTagged CPyTagged_Add_(CPyTagged left, CPyTagged right) {
     PyObject *left_obj = CPyTagged_AsObject(left);
     PyObject *right_obj = CPyTagged_AsObject(right);
     PyObject *result = PyNumber_Add(left_obj, right_obj);
@@ -170,14 +159,8 @@ CPyTagged CPyTagged_Add(CPyTagged left, CPyTagged right) {
     return CPyTagged_StealFromObject(result);
 }
 
-CPyTagged CPyTagged_Subtract(CPyTagged left, CPyTagged right) {
-    // TODO: Use clang/gcc extension __builtin_saddll_overflow instead.
-    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
-        CPyTagged diff = left - right;
-        if (likely(!CPyTagged_IsSubtractOverflow(diff, left, right))) {
-            return diff;
-        }
-    }
+// Tagged int subraction slow path where the result may be a long integer
+CPyTagged CPyTagged_Subtract_(CPyTagged left, CPyTagged right) {
     PyObject *left_obj = CPyTagged_AsObject(left);
     PyObject *right_obj = CPyTagged_AsObject(right);
     PyObject *result = PyNumber_Subtract(left_obj, right_obj);

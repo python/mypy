@@ -129,10 +129,7 @@ Py_ssize_t CPyTagged_AsSsize_t(CPyTagged x);
 void CPyTagged_IncRef(CPyTagged x);
 void CPyTagged_DecRef(CPyTagged x);
 void CPyTagged_XDecRef(CPyTagged x);
-CPyTagged CPyTagged_Negate(CPyTagged num);
 CPyTagged CPyTagged_Invert(CPyTagged num);
-CPyTagged CPyTagged_Add(CPyTagged left, CPyTagged right);
-CPyTagged CPyTagged_Subtract(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Multiply(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_FloorDivide(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Remainder(CPyTagged left, CPyTagged right);
@@ -143,6 +140,9 @@ CPyTagged CPyTagged_Rshift(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Lshift(CPyTagged left, CPyTagged right);
 bool CPyTagged_IsEq_(CPyTagged left, CPyTagged right);
 bool CPyTagged_IsLt_(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_Negate_(CPyTagged num);
+CPyTagged CPyTagged_Add_(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_Subtract_(CPyTagged left, CPyTagged right);
 PyObject *CPyTagged_Str(CPyTagged n);
 CPyTagged CPyTagged_FromFloat(double f);
 PyObject *CPyLong_FromStrWithBase(PyObject *o, CPyTagged base);
@@ -284,6 +284,38 @@ static inline bool CPyTagged_IsLe(CPyTagged left, CPyTagged right) {
     } else {
         return !CPyTagged_IsLt_(right, left);
     }
+}
+
+static inline CPyTagged CPyTagged_Negate(CPyTagged num) {
+    if (likely(CPyTagged_CheckShort(num)
+               && num != (CPyTagged) ((Py_ssize_t)1 << (CPY_INT_BITS - 1)))) {
+        // The only possibility of an overflow error happening when negating a short is if we
+        // attempt to negate the most negative number.
+        return -num;
+    }
+    return CPyTagged_Negate_(num);
+}
+
+static inline CPyTagged CPyTagged_Add(CPyTagged left, CPyTagged right) {
+    // TODO: Use clang/gcc extension __builtin_saddll_overflow instead.
+    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
+        CPyTagged sum = left + right;
+        if (likely(!CPyTagged_IsAddOverflow(sum, left, right))) {
+            return sum;
+        }
+    }
+    return CPyTagged_Add_(left, right);
+}
+
+static inline CPyTagged CPyTagged_Subtract(CPyTagged left, CPyTagged right) {
+    // TODO: Use clang/gcc extension __builtin_saddll_overflow instead.
+    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
+        CPyTagged diff = left - right;
+        if (likely(!CPyTagged_IsSubtractOverflow(diff, left, right))) {
+            return diff;
+        }
+    }
+    return CPyTagged_Subtract_(left, right);
 }
 
 
