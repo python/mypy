@@ -408,50 +408,23 @@ CPyTagged CPyTagged_Invert_(CPyTagged num) {
     return CPyTagged_StealFromObject(result);
 }
 
-// Bitwise '>>'
-CPyTagged CPyTagged_Rshift(CPyTagged left, CPyTagged right) {
-    if (likely(CPyTagged_CheckShort(left)
-               && CPyTagged_CheckShort(right)
-               && (Py_ssize_t)right >= 0)) {
-        CPyTagged count = CPyTagged_ShortAsSsize_t(right);
-        if (unlikely(count >= CPY_INT_BITS)) {
-            if ((Py_ssize_t)left >= 0) {
-                return 0;
-            } else {
-                return CPyTagged_ShortFromInt(-1);
-            }
-        }
-        return ((Py_ssize_t)left >> count) & ~CPY_INT_TAG;
-    } else {
-        // Long integer or negative shift -- use generic op
-        PyObject *lobj = CPyTagged_AsObject(left);
-        PyObject *robj = CPyTagged_AsObject(right);
-        PyObject *result = PyNumber_Rshift(lobj, robj);
-        Py_DECREF(lobj);
-        Py_DECREF(robj);
-        if (result == NULL) {
-            // Propagate error (could be negative shift count)
-            return CPY_INT_TAG;
-        }
-        return CPyTagged_StealFromObject(result);
+// Bitwise '>>' slow path
+CPyTagged CPyTagged_Rshift_(CPyTagged left, CPyTagged right) {
+    // Long integer or negative shift -- use generic op
+    PyObject *lobj = CPyTagged_AsObject(left);
+    PyObject *robj = CPyTagged_AsObject(right);
+    PyObject *result = PyNumber_Rshift(lobj, robj);
+    Py_DECREF(lobj);
+    Py_DECREF(robj);
+    if (result == NULL) {
+        // Propagate error (could be negative shift count)
+        return CPY_INT_TAG;
     }
+    return CPyTagged_StealFromObject(result);
 }
 
-static inline bool IsShortLshiftOverflow(Py_ssize_t short_int, Py_ssize_t shift) {
-    return ((Py_ssize_t)(short_int << shift) >> shift) != short_int;
-}
-
-// Bitwise '<<'
-CPyTagged CPyTagged_Lshift(CPyTagged left, CPyTagged right) {
-    if (likely(CPyTagged_CheckShort(left)
-               && CPyTagged_CheckShort(right)
-               && (Py_ssize_t)right >= 0
-               && right < CPY_INT_BITS * 2)) {
-        CPyTagged shift = CPyTagged_ShortAsSsize_t(right);
-        if (!IsShortLshiftOverflow(left, shift))
-            // Short integers, no overflow
-            return left << shift;
-    }
+// Bitwise '<<' slow path
+CPyTagged CPyTagged_Lshift_(CPyTagged left, CPyTagged right) {
     // Long integer or out of range shift -- use generic op
     PyObject *lobj = CPyTagged_AsObject(left);
     PyObject *robj = CPyTagged_AsObject(right);

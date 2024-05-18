@@ -131,8 +131,6 @@ void CPyTagged_DecRef(CPyTagged x);
 void CPyTagged_XDecRef(CPyTagged x);
 CPyTagged CPyTagged_FloorDivide(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Remainder(CPyTagged left, CPyTagged right);
-CPyTagged CPyTagged_Rshift(CPyTagged left, CPyTagged right);
-CPyTagged CPyTagged_Lshift(CPyTagged left, CPyTagged right);
 
 bool CPyTagged_IsEq_(CPyTagged left, CPyTagged right);
 bool CPyTagged_IsLt_(CPyTagged left, CPyTagged right);
@@ -142,6 +140,8 @@ CPyTagged CPyTagged_Subtract_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Multiply_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Invert_(CPyTagged num);
 CPyTagged CPyTagged_BitwiseLongOp_(CPyTagged a, CPyTagged b, char op);
+CPyTagged CPyTagged_Rshift_(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_Lshift_(CPyTagged left, CPyTagged right);
 
 PyObject *CPyTagged_Str(CPyTagged n);
 CPyTagged CPyTagged_FromFloat(double f);
@@ -358,6 +358,42 @@ static inline CPyTagged CPyTagged_Xor(CPyTagged left, CPyTagged right) {
         return left ^ right;
     }
     return CPyTagged_BitwiseLongOp_(left, right, '^');
+}
+
+// Bitwise '>>'
+static inline CPyTagged CPyTagged_Rshift(CPyTagged left, CPyTagged right) {
+    if (likely(CPyTagged_CheckShort(left)
+               && CPyTagged_CheckShort(right)
+               && (Py_ssize_t)right >= 0)) {
+        CPyTagged count = CPyTagged_ShortAsSsize_t(right);
+        if (unlikely(count >= CPY_INT_BITS)) {
+            if ((Py_ssize_t)left >= 0) {
+                return 0;
+            } else {
+                return CPyTagged_ShortFromInt(-1);
+            }
+        }
+        return ((Py_ssize_t)left >> count) & ~CPY_INT_TAG;
+    }
+    return CPyTagged_Rshift_(left, right);
+}
+
+static inline bool IsShortLshiftOverflow(Py_ssize_t short_int, Py_ssize_t shift) {
+    return ((Py_ssize_t)(short_int << shift) >> shift) != short_int;
+}
+
+// Bitwise '<<'
+static inline CPyTagged CPyTagged_Lshift(CPyTagged left, CPyTagged right) {
+    if (likely(CPyTagged_CheckShort(left)
+               && CPyTagged_CheckShort(right)
+               && (Py_ssize_t)right >= 0
+               && right < CPY_INT_BITS * 2)) {
+        CPyTagged shift = CPyTagged_ShortAsSsize_t(right);
+        if (!IsShortLshiftOverflow(left, shift))
+            // Short integers, no overflow
+            return left << shift;
+    }
+    return CPyTagged_Lshift_(left, right);
 }
 
 
