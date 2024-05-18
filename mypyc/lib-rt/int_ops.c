@@ -185,7 +185,7 @@ CPyTagged CPyTagged_Multiply_(CPyTagged left, CPyTagged right) {
     return CPyTagged_StealFromObject(result);
 }
 
-// Tagged int // slow path, where the result may be a long integer
+// Tagged int // slow path, where the result may be a long integer (or raise)
 CPyTagged CPyTagged_FloorDivide_(CPyTagged left, CPyTagged right) {
     PyObject *left_obj = CPyTagged_AsObject(left);
     PyObject *right_obj = CPyTagged_AsObject(right);
@@ -200,15 +200,8 @@ CPyTagged CPyTagged_FloorDivide_(CPyTagged left, CPyTagged right) {
     }
 }
 
-CPyTagged CPyTagged_Remainder(CPyTagged left, CPyTagged right) {
-    if (CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right)
-        && !CPyTagged_MaybeRemainderFault(left, right)) {
-        Py_ssize_t result = (Py_ssize_t)left % (Py_ssize_t)right;
-        if (((Py_ssize_t)right < 0) != ((Py_ssize_t)left < 0) && result != 0) {
-            result += right;
-        }
-        return result;
-    }
+// Tagged int % slow path, where the result may be a long integer (or raise)
+CPyTagged CPyTagged_Remainder_(CPyTagged left, CPyTagged right) {
     PyObject *left_obj = CPyTagged_AsObject(left);
     PyObject *right_obj = CPyTagged_AsObject(right);
     PyObject *result = PyNumber_Remainder(left_obj, right_obj);
