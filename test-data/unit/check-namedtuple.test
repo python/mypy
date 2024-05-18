@@ -1376,3 +1376,17 @@ class Test3(NamedTuple, metaclass=type):  # E: Unexpected keyword argument "meta
     ...
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
+
+
+[case testNamedTupleDunderReplace]
+# flags: --python-version 3.13
+from typing import NamedTuple
+
+class A(NamedTuple):
+    x: int
+
+A(x=0).__replace__(x=1)
+A(x=0).__replace__(x="asdf")  # E: Argument "x" to "__replace__" of "A" has incompatible type "str"; expected "int"
+A(x=0).__replace__(y=1)  # E: Unexpected keyword argument "y" for "__replace__" of "A"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
