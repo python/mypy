@@ -552,50 +552,6 @@ void CPyInt32_Overflow() {
     PyErr_SetString(PyExc_OverflowError, "int too large to convert to i32");
 }
 
-int16_t CPyLong_AsInt16(PyObject *o) {
-    if (likely(PyLong_Check(o))) {
-    #if CPY_3_12_FEATURES
-        PyLongObject *lobj = (PyLongObject *)o;
-        size_t tag = CPY_LONG_TAG(lobj);
-        if (likely(tag == (1 << CPY_NON_SIZE_BITS))) {
-            // Fast path
-            digit x = CPY_LONG_DIGIT(lobj, 0);
-            if (x < 0x8000)
-                return x;
-        } else if (likely(tag == CPY_SIGN_ZERO)) {
-            return 0;
-        }
-    #else
-        PyLongObject *lobj = (PyLongObject *)o;
-        Py_ssize_t size = lobj->ob_base.ob_size;
-        if (likely(size == 1)) {
-            // Fast path
-            digit x = lobj->ob_digit[0];
-            if (x < 0x8000)
-                return x;
-        } else if (likely(size == 0)) {
-            return 0;
-        }
-    #endif
-    }
-    // Slow path
-    int overflow;
-    long result = PyLong_AsLongAndOverflow(o, &overflow);
-    if (result > 0x7fff || result < -0x8000) {
-        overflow = 1;
-        result = -1;
-    }
-    if (result == -1) {
-        if (PyErr_Occurred()) {
-            return CPY_LL_INT_ERROR;
-        } else if (overflow) {
-            PyErr_SetString(PyExc_OverflowError, "int too large to convert to i16");
-            return CPY_LL_INT_ERROR;
-        }
-    }
-    return result;
-}
-
 int16_t CPyInt16_Divide(int16_t x, int16_t y) {
     if (y == 0) {
         PyErr_SetString(PyExc_ZeroDivisionError, "integer division or modulo by zero");
@@ -632,51 +588,6 @@ int16_t CPyInt16_Remainder(int16_t x, int16_t y) {
 
 void CPyInt16_Overflow() {
     PyErr_SetString(PyExc_OverflowError, "int too large to convert to i16");
-}
-
-
-uint8_t CPyLong_AsUInt8(PyObject *o) {
-    if (likely(PyLong_Check(o))) {
-    #if CPY_3_12_FEATURES
-        PyLongObject *lobj = (PyLongObject *)o;
-        size_t tag = CPY_LONG_TAG(lobj);
-        if (likely(tag == (1 << CPY_NON_SIZE_BITS))) {
-            // Fast path
-            digit x = CPY_LONG_DIGIT(lobj, 0);
-            if (x < 256)
-                return x;
-        } else if (likely(tag == CPY_SIGN_ZERO)) {
-            return 0;
-        }
-    #else
-        PyLongObject *lobj = (PyLongObject *)o;
-        Py_ssize_t size = lobj->ob_base.ob_size;
-        if (likely(size == 1)) {
-            // Fast path
-            digit x = lobj->ob_digit[0];
-            if (x < 256)
-                return x;
-        } else if (likely(size == 0)) {
-            return 0;
-        }
-    #endif
-    }
-    // Slow path
-    int overflow;
-    long result = PyLong_AsLongAndOverflow(o, &overflow);
-    if (result < 0 || result >= 256) {
-        overflow = 1;
-        result = -1;
-    }
-    if (result == -1) {
-        if (PyErr_Occurred()) {
-            return CPY_LL_UINT_ERROR;
-        } else if (overflow) {
-            PyErr_SetString(PyExc_OverflowError, "int too large or small to convert to u8");
-            return CPY_LL_UINT_ERROR;
-        }
-    }
-    return result;
 }
 
 void CPyUInt8_Overflow() {
