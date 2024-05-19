@@ -156,6 +156,7 @@ int16_t CPyLong_AsInt16_(PyObject *o);
 int16_t CPyInt16_Divide(int16_t x, int16_t y);
 int16_t CPyInt16_Remainder(int16_t x, int16_t y);
 void CPyInt16_Overflow(void);
+uint8_t CPyLong_AsUInt8_(PyObject *o);
 void CPyUInt8_Overflow(void);
 double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y);
 
@@ -415,21 +416,7 @@ static inline uint8_t CPyLong_AsUInt8(PyObject *o) {
     #endif
     }
     // Slow path
-    int overflow;
-    long result = PyLong_AsLongAndOverflow(o, &overflow);
-    if (result < 0 || result >= 256) {
-        overflow = 1;
-        result = -1;
-    }
-    if (result == -1) {
-        if (PyErr_Occurred()) {
-            return CPY_LL_UINT_ERROR;
-        } else if (overflow) {
-            PyErr_SetString(PyExc_OverflowError, "int too large or small to convert to u8");
-            return CPY_LL_UINT_ERROR;
-        }
-    }
-    return result;
+    return CPyLong_AsUInt8_(o);
 }
 
 
