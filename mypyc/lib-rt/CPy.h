@@ -152,6 +152,7 @@ int32_t CPyLong_AsInt32_(PyObject *o);
 int32_t CPyInt32_Divide(int32_t x, int32_t y);
 int32_t CPyInt32_Remainder(int32_t x, int32_t y);
 void CPyInt32_Overflow(void);
+int16_t CPyLong_AsInt16_(PyObject *o);
 int16_t CPyInt16_Divide(int16_t x, int16_t y);
 int16_t CPyInt16_Remainder(int16_t x, int16_t y);
 void CPyInt16_Overflow(void);
@@ -384,21 +385,7 @@ static inline int16_t CPyLong_AsInt16(PyObject *o) {
     #endif
     }
     // Slow path
-    int overflow;
-    long result = PyLong_AsLongAndOverflow(o, &overflow);
-    if (result > 0x7fff || result < -0x8000) {
-        overflow = 1;
-        result = -1;
-    }
-    if (result == -1) {
-        if (PyErr_Occurred()) {
-            return CPY_LL_INT_ERROR;
-        } else if (overflow) {
-            PyErr_SetString(PyExc_OverflowError, "int too large to convert to i16");
-            return CPY_LL_INT_ERROR;
-        }
-    }
-    return result;
+    return CPyLong_AsInt16_(o);
 }
 
 static inline uint8_t CPyLong_AsUInt8(PyObject *o) {
