@@ -148,6 +148,7 @@ PyObject *CPyBool_Str(bool b);
 int64_t CPyLong_AsInt64_(PyObject *o);
 int64_t CPyInt64_Divide(int64_t x, int64_t y);
 int64_t CPyInt64_Remainder(int64_t x, int64_t y);
+int32_t CPyLong_AsInt32_(PyObject *o);
 int32_t CPyInt32_Divide(int32_t x, int32_t y);
 int32_t CPyInt32_Remainder(int32_t x, int32_t y);
 void CPyInt32_Overflow(void);
@@ -353,21 +354,7 @@ static inline int32_t CPyLong_AsInt32(PyObject *o) {
     #endif
     }
     // Slow path
-    int overflow;
-    long result = PyLong_AsLongAndOverflow(o, &overflow);
-    if (result > 0x7fffffffLL || result < -0x80000000LL) {
-        overflow = 1;
-        result = -1;
-    }
-    if (result == -1) {
-        if (PyErr_Occurred()) {
-            return CPY_LL_INT_ERROR;
-        } else if (overflow) {
-            PyErr_SetString(PyExc_OverflowError, "int too large to convert to i32");
-            return CPY_LL_INT_ERROR;
-        }
-    }
-    return result;
+    return CPyLong_AsInt32_(o);
 }
 
 static inline int16_t CPyLong_AsInt16(PyObject *o) {
