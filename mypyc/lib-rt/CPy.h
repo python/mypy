@@ -120,9 +120,6 @@ static inline size_t CPy_FindAttrOffset(PyTypeObject *trait, CPyVTableItem *vtab
 CPyTagged CPyTagged_FromSsize_t(Py_ssize_t value);
 CPyTagged CPyTagged_FromVoidPtr(void *ptr);
 CPyTagged CPyTagged_FromInt64(int64_t value);
-CPyTagged CPyTagged_FromObject(PyObject *object);
-CPyTagged CPyTagged_StealFromObject(PyObject *object);
-CPyTagged CPyTagged_BorrowFromObject(PyObject *object);
 PyObject *CPyTagged_AsObject(CPyTagged x);
 PyObject *CPyTagged_StealAsObject(CPyTagged x);
 Py_ssize_t CPyTagged_AsSsize_t(CPyTagged x);
@@ -197,6 +194,41 @@ static inline Py_ssize_t CPyTagged_ShortAsSsize_t(CPyTagged x) {
 static inline PyObject *CPyTagged_LongAsObject(CPyTagged x) {
     // NOTE: Assume target is not a short int.
     return (PyObject *)(x & ~CPY_INT_TAG);
+}
+
+static inline CPyTagged CPyTagged_FromObject(PyObject *object) {
+    int overflow;
+    // The overflow check knows about CPyTagged's width
+    Py_ssize_t value = CPyLong_AsSsize_tAndOverflow(object, &overflow);
+    if (unlikely(overflow != 0)) {
+        Py_INCREF(object);
+        return ((CPyTagged)object) | CPY_INT_TAG;
+    } else {
+        return value << 1;
+    }
+}
+
+static inline CPyTagged CPyTagged_StealFromObject(PyObject *object) {
+    int overflow;
+    // The overflow check knows about CPyTagged's width
+    Py_ssize_t value = CPyLong_AsSsize_tAndOverflow(object, &overflow);
+    if (unlikely(overflow != 0)) {
+        return ((CPyTagged)object) | CPY_INT_TAG;
+    } else {
+        Py_DECREF(object);
+        return value << 1;
+    }
+}
+
+static inline CPyTagged CPyTagged_BorrowFromObject(PyObject *object) {
+    int overflow;
+    // The overflow check knows about CPyTagged's width
+    Py_ssize_t value = CPyLong_AsSsize_tAndOverflow(object, &overflow);
+    if (unlikely(overflow != 0)) {
+        return ((CPyTagged)object) | CPY_INT_TAG;
+    } else {
+        return value << 1;
+    }
 }
 
 static inline bool CPyTagged_TooBig(Py_ssize_t value) {

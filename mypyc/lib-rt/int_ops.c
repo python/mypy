@@ -44,41 +44,6 @@ CPyTagged CPyTagged_FromInt64(int64_t value) {
     }
 }
 
-CPyTagged CPyTagged_FromObject(PyObject *object) {
-    int overflow;
-    // The overflow check knows about CPyTagged's width
-    Py_ssize_t value = CPyLong_AsSsize_tAndOverflow(object, &overflow);
-    if (unlikely(overflow != 0)) {
-        Py_INCREF(object);
-        return ((CPyTagged)object) | CPY_INT_TAG;
-    } else {
-        return value << 1;
-    }
-}
-
-CPyTagged CPyTagged_StealFromObject(PyObject *object) {
-    int overflow;
-    // The overflow check knows about CPyTagged's width
-    Py_ssize_t value = CPyLong_AsSsize_tAndOverflow(object, &overflow);
-    if (unlikely(overflow != 0)) {
-        return ((CPyTagged)object) | CPY_INT_TAG;
-    } else {
-        Py_DECREF(object);
-        return value << 1;
-    }
-}
-
-CPyTagged CPyTagged_BorrowFromObject(PyObject *object) {
-    int overflow;
-    // The overflow check knows about CPyTagged's width
-    Py_ssize_t value = CPyLong_AsSsize_tAndOverflow(object, &overflow);
-    if (unlikely(overflow != 0)) {
-        return ((CPyTagged)object) | CPY_INT_TAG;
-    } else {
-        return value << 1;
-    }
-}
-
 PyObject *CPyTagged_AsObject(CPyTagged x) {
     PyObject *value;
     if (unlikely(CPyTagged_CheckLong(x))) {
