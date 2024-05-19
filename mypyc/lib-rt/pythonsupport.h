@@ -155,6 +155,8 @@ CPyLong_AsSsize_tAndOverflow(PyObject *vv, int *overflow)
     } else if (i == ((1 << CPY_NON_SIZE_BITS) | CPY_SIGN_NEGATIVE)) {
         res = -(sdigit)CPY_LONG_DIGIT(v, 0);
     } else {
+        // Slow path is moved to a non-inline helper function to
+        // limit size of generated code
         int overflow_local;
         res = CPyLong_AsSsize_tAndOverflow_(vv, &overflow_local);
         *overflow = overflow_local;
