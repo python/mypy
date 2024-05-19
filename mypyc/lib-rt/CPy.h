@@ -145,6 +145,7 @@ CPyTagged CPyTagged_FromFloat(double f);
 PyObject *CPyLong_FromStrWithBase(PyObject *o, CPyTagged base);
 PyObject *CPyLong_FromStr(PyObject *o);
 PyObject *CPyBool_Str(bool b);
+int64_t CPyLong_AsInt64_(PyObject *o);
 int64_t CPyInt64_Divide(int64_t x, int64_t y);
 int64_t CPyInt64_Remainder(int64_t x, int64_t y);
 int32_t CPyInt32_Divide(int32_t x, int32_t y);
@@ -314,7 +315,6 @@ static inline bool CPyTagged_IsLe(CPyTagged left, CPyTagged right) {
     }
 }
 
-
 static inline int64_t CPyLong_AsInt64(PyObject *o) {
     if (likely(PyLong_Check(o))) {
         PyLongObject *lobj = (PyLongObject *)o;
@@ -327,19 +327,8 @@ static inline int64_t CPyLong_AsInt64(PyObject *o) {
         }
     }
     // Slow path
-    int overflow;
-    int64_t result = PyLong_AsLongLongAndOverflow(o, &overflow);
-    if (result == -1) {
-        if (PyErr_Occurred()) {
-            return CPY_LL_INT_ERROR;
-        } else if (overflow) {
-            PyErr_SetString(PyExc_OverflowError, "int too large to convert to i64");
-            return CPY_LL_INT_ERROR;
-        }
-    }
-    return result;
+    return CPyLong_AsInt64_(o);
 }
-
 
 static inline int32_t CPyLong_AsInt32(PyObject *o) {
     if (likely(PyLong_Check(o))) {
@@ -424,7 +413,6 @@ static inline int16_t CPyLong_AsInt16(PyObject *o) {
     }
     return result;
 }
-
 
 static inline uint8_t CPyLong_AsUInt8(PyObject *o) {
     if (likely(PyLong_Check(o))) {

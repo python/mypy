@@ -480,6 +480,21 @@ CPyTagged CPyTagged_Lshift(CPyTagged left, CPyTagged right) {
     return CPyTagged_StealFromObject(result);
 }
 
+// i64 unboxing slow path
+int64_t CPyLong_AsInt64_(PyObject *o) {
+    int overflow;
+    int64_t result = PyLong_AsLongLongAndOverflow(o, &overflow);
+    if (result == -1) {
+        if (PyErr_Occurred()) {
+            return CPY_LL_INT_ERROR;
+        } else if (overflow) {
+            PyErr_SetString(PyExc_OverflowError, "int too large to convert to i64");
+            return CPY_LL_INT_ERROR;
+        }
+    }
+    return result;
+}
+
 int64_t CPyInt64_Divide(int64_t x, int64_t y) {
     if (y == 0) {
         PyErr_SetString(PyExc_ZeroDivisionError, "integer division or modulo by zero");
