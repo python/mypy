@@ -480,31 +480,6 @@ CPyTagged CPyTagged_Lshift(CPyTagged left, CPyTagged right) {
     return CPyTagged_StealFromObject(result);
 }
 
-int64_t CPyLong_AsInt64(PyObject *o) {
-    if (likely(PyLong_Check(o))) {
-        PyLongObject *lobj = (PyLongObject *)o;
-        Py_ssize_t size = Py_SIZE(lobj);
-        if (likely(size == 1)) {
-            // Fast path
-            return CPY_LONG_DIGIT(lobj, 0);
-        } else if (likely(size == 0)) {
-            return 0;
-        }
-    }
-    // Slow path
-    int overflow;
-    int64_t result = PyLong_AsLongLongAndOverflow(o, &overflow);
-    if (result == -1) {
-        if (PyErr_Occurred()) {
-            return CPY_LL_INT_ERROR;
-        } else if (overflow) {
-            PyErr_SetString(PyExc_OverflowError, "int too large to convert to i64");
-            return CPY_LL_INT_ERROR;
-        }
-    }
-    return result;
-}
-
 int64_t CPyInt64_Divide(int64_t x, int64_t y) {
     if (y == 0) {
         PyErr_SetString(PyExc_ZeroDivisionError, "integer division or modulo by zero");
@@ -537,46 +512,6 @@ int64_t CPyInt64_Remainder(int64_t x, int64_t y) {
         d += y;
     }
     return d;
-}
-
-int32_t CPyLong_AsInt32(PyObject *o) {
-    if (likely(PyLong_Check(o))) {
-    #if CPY_3_12_FEATURES
-        PyLongObject *lobj = (PyLongObject *)o;
-        size_t tag = CPY_LONG_TAG(lobj);
-        if (likely(tag == (1 << CPY_NON_SIZE_BITS))) {
-            // Fast path
-            return CPY_LONG_DIGIT(lobj, 0);
-        } else if (likely(tag == CPY_SIGN_ZERO)) {
-            return 0;
-        }
-    #else
-        PyLongObject *lobj = (PyLongObject *)o;
-        Py_ssize_t size = lobj->ob_base.ob_size;
-        if (likely(size == 1)) {
-            // Fast path
-            return CPY_LONG_DIGIT(lobj, 0);
-        } else if (likely(size == 0)) {
-            return 0;
-        }
-    #endif
-    }
-    // Slow path
-    int overflow;
-    long result = PyLong_AsLongAndOverflow(o, &overflow);
-    if (result > 0x7fffffffLL || result < -0x80000000LL) {
-        overflow = 1;
-        result = -1;
-    }
-    if (result == -1) {
-        if (PyErr_Occurred()) {
-            return CPY_LL_INT_ERROR;
-        } else if (overflow) {
-            PyErr_SetString(PyExc_OverflowError, "int too large to convert to i32");
-            return CPY_LL_INT_ERROR;
-        }
-    }
-    return result;
 }
 
 int32_t CPyInt32_Divide(int32_t x, int32_t y) {
