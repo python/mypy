@@ -78,6 +78,7 @@ RUNTIME_C_FILES: Final = [
     "exc_ops.c",
     "misc_ops.c",
     "generic_ops.c",
+    "pythonsupport.c",
 ]
 
 
