@@ -1,13 +1,18 @@
 from __future__ import annotations
 
-from typing import Any, FrozenSet, List, Tuple, Union, cast
-from typing_extensions import Final
+from typing import Final, FrozenSet, Tuple, Union
+from typing_extensions import TypeGuard
 
 # Supported Python literal types. All tuple / frozenset items must have supported
 # literal types as well, but we can't represent the type precisely.
 LiteralValue = Union[
     str, bytes, int, bool, float, complex, Tuple[object, ...], FrozenSet[object], None
 ]
+
+
+def _is_literal_value(obj: object) -> TypeGuard[LiteralValue]:
+    return isinstance(obj, (str, bytes, int, float, complex, tuple, frozenset, type(None)))
+
 
 # Some literals are singletons and handled specially (None, False and True)
 NUM_SINGLETONS: Final = 3
@@ -55,13 +60,15 @@ class Literals:
             tuple_literals = self.tuple_literals
             if value not in tuple_literals:
                 for item in value:
-                    self.record_literal(cast(Any, item))
+                    assert _is_literal_value(item)
+                    self.record_literal(item)
                 tuple_literals[value] = len(tuple_literals)
         elif isinstance(value, frozenset):
             frozenset_literals = self.frozenset_literals
             if value not in frozenset_literals:
                 for item in value:
-                    self.record_literal(cast(Any, item))
+                    assert _is_literal_value(item)
+                    self.record_literal(item)
                 frozenset_literals[value] = len(frozenset_literals)
         else:
             assert False, "invalid literal: %r" % value
@@ -133,7 +140,7 @@ class Literals:
     def encoded_tuple_values(self) -> list[str]:
         return self._encode_collection_values(self.tuple_literals)
 
-    def encoded_frozenset_values(self) -> List[str]:
+    def encoded_frozenset_values(self) -> list[str]:
         return self._encode_collection_values(self.frozenset_literals)
 
     def _encode_collection_values(
@@ -159,7 +166,8 @@ class Literals:
             value = value_by_index[i]
             result.append(str(len(value)))
             for item in value:
-                index = self.literal_index(cast(Any, item))
+                assert _is_literal_value(item)
+                index = self.literal_index(item)
                 result.append(str(index))
         return result
 
@@ -257,6 +265,8 @@ def float_to_c(x: float) -> str:
         return "INFINITY"
     elif s == "-inf":
         return "-INFINITY"
+    elif s == "nan":
+        return "NAN"
     return s
 
 

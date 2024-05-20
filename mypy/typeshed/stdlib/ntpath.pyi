@@ -45,6 +45,9 @@ from posixpath import (
 from typing import AnyStr, overload
 from typing_extensions import LiteralString
 
+if sys.version_info >= (3, 12):
+    from posixpath import isjunction as isjunction, splitroot as splitroot
+
 __all__ = [
     "normcase",
     "isabs",
@@ -85,6 +88,8 @@ __all__ = [
     "samestat",
     "commonpath",
 ]
+if sys.version_info >= (3, 12):
+    __all__ += ["isjunction", "splitroot"]
 
 altsep: LiteralString
 
@@ -92,11 +97,11 @@ altsep: LiteralString
 # but must be defined as pos-only in the stub or cross-platform code doesn't type-check,
 # as the parameter name is different in posixpath.join()
 @overload
-def join(__path: LiteralString, *paths: LiteralString) -> LiteralString: ...
+def join(path: LiteralString, /, *paths: LiteralString) -> LiteralString: ...
 @overload
-def join(__path: StrPath, *paths: StrPath) -> str: ...
+def join(path: StrPath, /, *paths: StrPath) -> str: ...
 @overload
-def join(__path: BytesPath, *paths: BytesPath) -> bytes: ...
+def join(path: BytesPath, /, *paths: BytesPath) -> bytes: ...
 
 if sys.platform == "win32":
     if sys.version_info >= (3, 10):

@@ -85,7 +85,7 @@ def build_type_map(
         )
         class_ir.is_ext_class = is_extension_class(cdef)
         if class_ir.is_ext_class:
-            class_ir.deletable = cdef.info.deletable_attributes[:]
+            class_ir.deletable = cdef.info.deletable_attributes.copy()
         # If global optimizations are disabled, turn of tracking of class children
         if not options.global_opts:
             class_ir.children = None
@@ -139,7 +139,7 @@ def is_from_module(node: SymbolNode, module: MypyFile) -> bool:
 def load_type_map(mapper: Mapper, modules: list[MypyFile], deser_ctx: DeserMaps) -> None:
     """Populate a Mapper with deserialized IR from a list of modules."""
     for module in modules:
-        for name, node in module.names.items():
+        for node in module.names.values():
             if isinstance(node.node, TypeInfo) and is_from_module(node.node, module):
                 ir = deser_ctx.classes[node.node.fullname]
                 mapper.type_to_ir[node.node] = ir
@@ -153,7 +153,7 @@ def load_type_map(mapper: Mapper, modules: list[MypyFile], deser_ctx: DeserMaps)
 
 def get_module_func_defs(module: MypyFile) -> Iterable[FuncDef]:
     """Collect all of the (non-method) functions declared in a module."""
-    for name, node in module.names.items():
+    for node in module.names.values():
         # We need to filter out functions that are imported or
         # aliases.  The best way to do this seems to be by
         # checking that the fullname matches.
@@ -465,11 +465,10 @@ def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: M
 def prepare_non_ext_class_def(
     path: str, module_name: str, cdef: ClassDef, errors: Errors, mapper: Mapper
 ) -> None:
-
     ir = mapper.type_to_ir[cdef.info]
     info = cdef.info
 
-    for name, node in info.names.items():
+    for node in info.names.values():
         if isinstance(node.node, (FuncDef, Decorator)):
             prepare_method_def(ir, module_name, cdef, mapper, node.node)
         elif isinstance(node.node, OverloadedFuncDef):

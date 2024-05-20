@@ -3,8 +3,8 @@ from __future__ import annotations
 import pprint
 import re
 import sys
-from typing import Any, Callable, Dict, Mapping, Pattern
-from typing_extensions import Final
+import sysconfig
+from typing import Any, Callable, Final, Mapping, Pattern
 
 from mypy import defaults
 from mypy.errorcodes import ErrorCode, error_codes
@@ -39,6 +39,7 @@ PER_MODULE_OPTIONS: Final = {
     "disallow_untyped_defs",
     "enable_error_code",
     "enabled_error_codes",
+    "extra_checks",
     "follow_imports_for_stubs",
     "follow_imports",
     "ignore_errors",
@@ -61,16 +62,20 @@ OPTIONS_AFFECTING_CACHE: Final = (
     | {
         "platform",
         "bazel",
+        "old_type_inference",
         "plugins",
         "disable_bytearray_promotion",
         "disable_memoryview_promotion",
     }
 ) - {"debug_cache"}
 
-# Features that are currently incomplete/experimental
+# Features that are currently (or were recently) incomplete/experimental
 TYPE_VAR_TUPLE: Final = "TypeVarTuple"
 UNPACK: Final = "Unpack"
-INCOMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK))
+PRECISE_TUPLE_TYPES: Final = "PreciseTupleTypes"
+NEW_GENERIC_SYNTAX: Final = "NewGenericSyntax"
+INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES, NEW_GENERIC_SYNTAX))
+COMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK))
 
 
 class Options:
@@ -86,7 +91,15 @@ class Options:
         # The executable used to search for PEP 561 packages. If this is None,
         # then mypy does not search for PEP 561 packages.
         self.python_executable: str | None = sys.executable
-        self.platform = sys.platform
+
+        # When cross compiling to emscripten, we need to rely on MACHDEP because
+        # sys.platform is the host build platform, not emscripten.
+        MACHDEP = sysconfig.get_config_var("MACHDEP")
+        if MACHDEP == "emscripten":
+            self.platform = MACHDEP
+        else:
+            self.platform = sys.platform
+
         self.custom_typing_module: str | None = None
         self.custom_typeshed_dir: str | None = None
         # The abspath() version of the above, we compute it once as an optimization.
@@ -126,6 +139,10 @@ class Options:
 
         # Disallow calling untyped functions from typed ones
         self.disallow_untyped_calls = False
+
+        # Always allow untyped calls for function coming from modules/packages
+        # in this list (each item effectively acts as a prefix match)
+        self.untyped_calls_exclude: list[str] = []
 
         # Disallow defining untyped (or incompletely typed) functions
         self.disallow_untyped_defs = False
@@ -191,8 +208,11 @@ class Options:
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
         self.strict_equality = False
 
-        # Make arguments prepended via Concatenate be truly positional-only.
+        # Deprecated, use extra_checks instead.
         self.strict_concatenate = False
+
+        # Enable additional checks that are technically correct but impractical.
+        self.extra_checks = False
 
         # Report an error for any branches inferred to be unreachable as a result of
         # type analysis.
@@ -236,6 +256,8 @@ class Options:
         # Write junit.xml to given file
         self.junit_xml: str | None = None
 
+        self.junit_format: str = "global"  # global|per_file
+
         # Caching and incremental checking options
         self.incremental = True
         self.cache_dir = defaults.CACHE_DIR
@@ -267,6 +289,12 @@ class Options:
         # mypy. (Like mypyc.)
         self.preserve_asts = False
 
+        # If True, function and class docstrings will be extracted and retained.
+        # This isn't exposed as a command line option
+        # because it is intended for software integrating with
+        # mypy. (Like stubgen.)
+        self.include_docstrings = False
+
         # Paths of user plugins
         self.plugins: list[str] = []
 
@@ -283,7 +311,6 @@ class Options:
         self.dump_type_stats = False
         self.dump_inference_stats = False
         self.dump_build_stats = False
-        self.enable_incomplete_features = False  # deprecated
         self.enable_incomplete_feature: list[str] = []
         self.timing_stats: str | None = None
         self.line_checking_stats: str | None = None
@@ -295,11 +322,16 @@ class Options:
         # Use stub builtins fixtures to speed up tests
         self.use_builtins_fixtures = False
 
+        # This should only be set when running certain mypy tests.
+        # Use this sparingly to avoid tests diverging from non-test behavior.
+        self.test_env = False
+
         # -- experimental options --
         self.shadow_file: list[list[str]] | None = None
         self.show_column_numbers: bool = False
         self.show_error_end: bool = False
         self.hide_error_codes = False
+        self.show_error_code_links = False
         # Use soft word wrap and show trimmed source snippets with error location markers.
         self.pretty = False
         self.dump_graph = False
@@ -335,20 +367,41 @@ class Options:
         # skip most errors after this many messages have been reported.
         # -1 means unlimited.
         self.many_errors_threshold = defaults.MANY_ERRORS_THRESHOLD
-        # Disable recursive type aliases (currently experimental)
-        self.disable_recursive_aliases = False
+        # Disable new experimental type inference algorithm.
+        self.old_type_inference = False
         # Deprecated reverse version of the above, do not use.
-        self.enable_recursive_aliases = False
+        self.new_type_inference = False
+        # Export line-level, limited, fine-grained dependency information in cache data
+        # (undocumented feature).
+        self.export_ref_info = False
 
         self.disable_bytearray_promotion = False
         self.disable_memoryview_promotion = False
+        self.force_uppercase_builtins = False
+        self.force_union_syntax = False
+
+        # Sets custom output format
+        self.output: str | None = None
+
+    def use_lowercase_names(self) -> bool:
+        if self.python_version >= (3, 9):
+            return not self.force_uppercase_builtins
+        return False
+
+    def use_or_syntax(self) -> bool:
+        if self.python_version >= (3, 10):
+            return not self.force_union_syntax
+        return False
+
+    def use_star_unpack(self) -> bool:
+        return self.python_version >= (3, 11)
 
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property
     def new_semantic_analyzer(self) -> bool:
         return True
 
-    def snapshot(self) -> object:
+    def snapshot(self) -> dict[str, object]:
         """Produce a comparable snapshot of this Option"""
         # Under mypyc, we don't have a __dict__, so we need to do worse things.
         d = dict(getattr(self, "__dict__", ()))
@@ -363,6 +416,7 @@ class Options:
         return f"Options({pprint.pformat(self.snapshot())})"
 
     def apply_changes(self, changes: dict[str, object]) -> Options:
+        # Note: effects of this method *must* be idempotent.
         new_options = Options()
         # Under mypyc, we don't have a __dict__, so we need to do worse things.
         replace_object_state(new_options, self, copy_dict=True)
@@ -387,6 +441,17 @@ class Options:
             new_options.disabled_error_codes.discard(code)
 
         return new_options
+
+    def compare_stable(self, other_snapshot: dict[str, object]) -> bool:
+        """Compare options in a way that is stable for snapshot() -> apply_changes() roundtrip.
+
+        This is needed because apply_changes() has non-trivial effects for some flags, so
+        Options().apply_changes(options.snapshot()) may result in a (slightly) different object.
+        """
+        return (
+            Options().apply_changes(self.snapshot()).snapshot()
+            == Options().apply_changes(other_snapshot).snapshot()
+        )
 
     def build_per_module_cache(self) -> None:
         self._per_module_cache = {}
@@ -485,7 +550,7 @@ class Options:
         return re.compile(expr + "\\Z")
 
     def select_options_affecting_cache(self) -> Mapping[str, object]:
-        result: Dict[str, object] = {}
+        result: dict[str, object] = {}
         for opt in OPTIONS_AFFECTING_CACHE:
             val = getattr(self, opt)
             if opt in ("disabled_error_codes", "enabled_error_codes"):

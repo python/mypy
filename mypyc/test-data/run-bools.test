@@ -221,3 +221,9 @@ def test_mixed_comparisons_i64() -> None:
             assert neq_mixed_i64(n, x) == (n != int(x))
             assert lt_mixed_i64(x, n) == (int(x) < n)
             assert gt_mixed_i64(n, x) == (n > int(x))
+
+[case testBoolMixInt]
+y = False
+print((y or 0) and True)
+[out]
+0

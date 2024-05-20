@@ -35,6 +35,7 @@ class TypeExportSuite(DataSuite):
             options.export_types = True
             options.preserve_asts = True
             options.allow_empty_bodies = True
+            options.force_uppercase_builtins = True
             result = build.build(
                 sources=[BuildSource("main", None, src)],
                 options=options,
@@ -48,6 +49,7 @@ class TypeExportSuite(DataSuite):
             # to simplify output.
             searcher = SkippedNodeSearcher()
             for file in result.files.values():
+                searcher.ignore_file = file.fullname not in testcase.test_modules
                 file.accept(searcher)
             ignored = searcher.nodes
 
@@ -65,8 +67,11 @@ class TypeExportSuite(DataSuite):
                         # Include node in output.
                         keys.append(node)
 
-            for key in sorted(keys, key=lambda n: (n.line, short_type(n), str(n) + str(map[n]))):
-                ts = str(map[key]).replace("*", "")  # Remove erased tags
+            for key in sorted(
+                keys,
+                key=lambda n: (n.line, short_type(n), str(n) + map[n].str_with_options(options)),
+            ):
+                ts = map[key].str_with_options(options).replace("*", "")  # Remove erased tags
                 ts = ts.replace("__main__.", "")
                 a.append(f"{short_type(key)}({key.line}) : {ts}")
         except CompileError as e:

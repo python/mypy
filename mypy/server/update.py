@@ -118,8 +118,8 @@ import os
 import re
 import sys
 import time
-from typing import Callable, NamedTuple, Sequence, Union
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import Callable, Final, NamedTuple, Sequence, Union
+from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.build import (
     DEBUG_FINE_GRAINED,
@@ -187,7 +187,7 @@ class FineGrainedBuildManager:
         # Merge in any root dependencies that may not have been loaded
         merge_dependencies(manager.load_fine_grained_deps(FAKE_ROOT_MODULE), self.deps)
         self.previous_targets_with_errors = manager.errors.targets()
-        self.previous_messages: list[str] = result.errors[:]
+        self.previous_messages: list[str] = result.errors.copy()
         # Module, if any, that had blocking errors in the last run as (id, path) tuple.
         self.blocking_error: tuple[str, str] | None = None
         # Module that we haven't processed yet but that are known to be stale.
@@ -302,7 +302,7 @@ class FineGrainedBuildManager:
                     break
 
         messages = sort_messages_preserving_file_order(messages, self.previous_messages)
-        self.previous_messages = messages[:]
+        self.previous_messages = messages.copy()
         return messages
 
     def trigger(self, target: str) -> list[str]:
@@ -322,7 +322,7 @@ class FineGrainedBuildManager:
         )
         # Preserve state needed for the next update.
         self.previous_targets_with_errors = self.manager.errors.targets()
-        self.previous_messages = self.manager.errors.new_messages()[:]
+        self.previous_messages = self.manager.errors.new_messages().copy()
         return self.update(changed_modules, [])
 
     def flush_cache(self) -> None:
@@ -986,6 +986,7 @@ def reprocess_nodes(
     manager.errors.set_file_ignored_lines(
         file_node.path, file_node.ignored_lines, options.ignore_errors or state.ignore_all
     )
+    manager.errors.set_skipped_lines(file_node.path, file_node.skipped_lines)
 
     targets = set()
     for node in nodes:

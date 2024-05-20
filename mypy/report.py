@@ -12,8 +12,8 @@ import time
 import tokenize
 from abc import ABCMeta, abstractmethod
 from operator import attrgetter
-from typing import Any, Callable, Dict, Iterator, Tuple, cast
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing import Any, Callable, Dict, Final, Iterator, Tuple
+from typing_extensions import TypeAlias as _TypeAlias
 from urllib.request import pathname2url
 
 from mypy import stats
@@ -25,7 +25,7 @@ from mypy.types import Type, TypeOfAny
 from mypy.version import __version__
 
 try:
-    from lxml import etree  # type: ignore[import]
+    from lxml import etree  # type: ignore[import-untyped]
 
     LXML_INSTALLED = True
 except ImportError:
@@ -44,7 +44,7 @@ type_of_any_name_map: Final[collections.OrderedDict[int, str]] = collections.Ord
 )
 
 ReporterClasses: _TypeAlias = Dict[
-    str, Tuple[Callable[["Reports", str], "AbstractReporter"], bool],
+    str, Tuple[Callable[["Reports", str], "AbstractReporter"], bool]
 ]
 
 reporter_classes: Final[ReporterClasses] = {}
@@ -99,7 +99,7 @@ class AbstractReporter(metaclass=ABCMeta):
     def __init__(self, reports: Reports, output_dir: str) -> None:
         self.output_dir = output_dir
         if output_dir != "<memory>":
-            stats.ensure_dir_exists(output_dir)
+            os.makedirs(output_dir, exist_ok=True)
 
     @abstractmethod
     def on_file(
@@ -171,8 +171,12 @@ class LineCountReporter(AbstractReporter):
     ) -> None:
         # Count physical lines.  This assumes the file's encoding is a
         # superset of ASCII (or at least uses \n in its line endings).
-        with open(tree.path, "rb") as f:
-            physical_lines = len(f.readlines())
+        try:
+            with open(tree.path, "rb") as f:
+                physical_lines = len(f.readlines())
+        except IsADirectoryError:
+            # can happen with namespace packages
+            physical_lines = 0
 
         func_counter = FuncCounterVisitor()
         tree.accept(func_counter)
@@ -704,8 +708,9 @@ class AbstractXmlReporter(AbstractReporter):
         super().__init__(reports, output_dir)
 
         memory_reporter = reports.add_report("memory-xml", "<memory>")
+        assert isinstance(memory_reporter, MemoryXmlReporter)
         # The dependency will be called first.
-        self.memory_xml = cast(MemoryXmlReporter, memory_reporter)
+        self.memory_xml = memory_reporter
 
 
 class XmlReporter(AbstractXmlReporter):
@@ -732,7 +737,7 @@ class XmlReporter(AbstractXmlReporter):
         if path.startswith(".."):
             return
         out_path = os.path.join(self.output_dir, "xml", path + ".xml")
-        stats.ensure_dir_exists(os.path.dirname(out_path))
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
         last_xml.write(out_path, encoding="utf-8")
 
     def on_finish(self) -> None:
@@ -777,7 +782,7 @@ class XsltHtmlReporter(AbstractXmlReporter):
         if path.startswith(".."):
             return
         out_path = os.path.join(self.output_dir, "html", path + ".html")
-        stats.ensure_dir_exists(os.path.dirname(out_path))
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
         transformed_html = bytes(self.xslt_html(last_xml, ext=self.param_html))
         with open(out_path, "wb") as out_file:
             out_file.write(transformed_html)
@@ -859,7 +864,6 @@ class LinePrecisionReporter(AbstractReporter):
         type_map: dict[Expression, Type],
         options: Options,
     ) -> None:
-
         try:
             path = os.path.relpath(tree.path)
         except ValueError:

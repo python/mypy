@@ -109,7 +109,7 @@ Contents
    :caption: Project Links
 
    GitHub <https://github.com/python/mypy>
-   Website <http://mypy-lang.org/>
+   Website <https://mypy-lang.org/>
 
 Indices and tables
 ==================

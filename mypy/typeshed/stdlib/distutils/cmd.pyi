@@ -1,9 +1,11 @@
+from _typeshed import Incomplete
 from abc import abstractmethod
 from collections.abc import Callable, Iterable
 from distutils.dist import Distribution
 from typing import Any
 
 class Command:
+    distribution: Distribution
     sub_commands: list[tuple[str, Callable[[Command], bool] | None]]
     def __init__(self, dist: Distribution) -> None: ...
     @abstractmethod
@@ -60,3 +62,5 @@ class Command:
         skip_msg: str | None = None,
         level: Any = 1,
     ) -> None: ...  # level is not used
+    def ensure_finalized(self) -> None: ...
+    def dump_options(self, header: Incomplete | None = None, indent: str = "") -> None: ...

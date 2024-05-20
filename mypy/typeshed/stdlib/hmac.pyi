@@ -1,5 +1,4 @@
-import sys
-from _typeshed import ReadableBuffer, _BufferWithLen
+from _typeshed import ReadableBuffer, SizedBuffer
 from collections.abc import Callable
 from types import ModuleType
 from typing import Any, AnyStr, overload
@@ -14,16 +13,12 @@ trans_36: bytes
 
 digest_size: None
 
-if sys.version_info >= (3, 8):
-    # In reality digestmod has a default value, but the function always throws an error
-    # if the argument is not given, so we pretend it is a required argument.
-    @overload
-    def new(key: bytes | bytearray, msg: ReadableBuffer | None, digestmod: _DigestMod) -> HMAC: ...
-    @overload
-    def new(key: bytes | bytearray, *, digestmod: _DigestMod) -> HMAC: ...
-
-else:
-    def new(key: bytes | bytearray, msg: ReadableBuffer | None = None, digestmod: _DigestMod | None = None) -> HMAC: ...
+# In reality digestmod has a default value, but the function always throws an error
+# if the argument is not given, so we pretend it is a required argument.
+@overload
+def new(key: bytes | bytearray, msg: ReadableBuffer | None, digestmod: _DigestMod) -> HMAC: ...
+@overload
+def new(key: bytes | bytearray, *, digestmod: _DigestMod) -> HMAC: ...
 
 class HMAC:
     digest_size: int
@@ -37,7 +32,7 @@ class HMAC:
     def copy(self) -> HMAC: ...
 
 @overload
-def compare_digest(__a: ReadableBuffer, __b: ReadableBuffer) -> bool: ...
+def compare_digest(a: ReadableBuffer, b: ReadableBuffer, /) -> bool: ...
 @overload
-def compare_digest(__a: AnyStr, __b: AnyStr) -> bool: ...
-def digest(key: _BufferWithLen, msg: ReadableBuffer, digest: _DigestMod) -> bytes: ...
+def compare_digest(a: AnyStr, b: AnyStr, /) -> bool: ...
+def digest(key: SizedBuffer, msg: ReadableBuffer, digest: _DigestMod) -> bytes: ...

@@ -19,6 +19,7 @@ from mypy.types import (
     UnboundType,
     UninhabitedType,
     UnionType,
+    find_unpack_in_list,
     get_proper_type,
 )
 from mypyc.ir.class_ir import ClassIR
@@ -32,6 +33,7 @@ from mypyc.ir.rtypes import (
     bytes_rprimitive,
     dict_rprimitive,
     float_rprimitive,
+    int16_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
     int_rprimitive,
@@ -42,6 +44,7 @@ from mypyc.ir.rtypes import (
     set_rprimitive,
     str_rprimitive,
     tuple_rprimitive,
+    uint8_rprimitive,
 )
 
 
@@ -102,12 +105,19 @@ class Mapper:
                 return int64_rprimitive
             elif typ.type.fullname == "mypy_extensions.i32":
                 return int32_rprimitive
+            elif typ.type.fullname == "mypy_extensions.i16":
+                return int16_rprimitive
+            elif typ.type.fullname == "mypy_extensions.u8":
+                return uint8_rprimitive
             else:
                 return object_rprimitive
         elif isinstance(typ, TupleType):
             # Use our unboxed tuples for raw tuples but fall back to
-            # being boxed for NamedTuple.
-            if typ.partial_fallback.type.fullname == "builtins.tuple":
+            # being boxed for NamedTuple or for variadic tuples.
+            if (
+                typ.partial_fallback.type.fullname == "builtins.tuple"
+                and find_unpack_in_list(typ.items) is None
+            ):
                 return RTuple([self.type_to_rtype(t) for t in typ.items])
             else:
                 return tuple_rprimitive

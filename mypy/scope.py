@@ -21,6 +21,7 @@ class Scope:
         self.module: str | None = None
         self.classes: list[TypeInfo] = []
         self.function: FuncBase | None = None
+        self.functions: list[FuncBase] = []
         # Number of nested scopes ignored (that don't get their own separate targets)
         self.ignored = 0
 
@@ -65,18 +66,23 @@ class Scope:
 
     @contextmanager
     def function_scope(self, fdef: FuncBase) -> Iterator[None]:
+        self.functions.append(fdef)
         if not self.function:
             self.function = fdef
         else:
             # Nested functions are part of the topmost function target.
             self.ignored += 1
         yield
+        self.functions.pop()
         if self.ignored:
             # Leave a scope that's included in the enclosing target.
             self.ignored -= 1
         else:
             assert self.function
             self.function = None
+
+    def outer_functions(self) -> list[FuncBase]:
+        return self.functions[:-1]
 
     def enter_class(self, info: TypeInfo) -> None:
         """Enter a class target scope."""

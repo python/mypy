@@ -1,6 +1,6 @@
 import sys
-from _typeshed import SupportsRichComparisonT
-from collections.abc import Callable, MutableSequence, Sequence
+from _typeshed import SupportsLenAndGetItem, SupportsRichComparisonT
+from collections.abc import Callable, MutableSequence
 from typing import TypeVar, overload
 
 _T = TypeVar("_T")
@@ -8,11 +8,16 @@ _T = TypeVar("_T")
 if sys.version_info >= (3, 10):
     @overload
     def bisect_left(
-        a: Sequence[SupportsRichComparisonT], x: SupportsRichComparisonT, lo: int = 0, hi: int | None = None, *, key: None = None
+        a: SupportsLenAndGetItem[SupportsRichComparisonT],
+        x: SupportsRichComparisonT,
+        lo: int = 0,
+        hi: int | None = None,
+        *,
+        key: None = None,
     ) -> int: ...
     @overload
     def bisect_left(
-        a: Sequence[_T],
+        a: SupportsLenAndGetItem[_T],
         x: SupportsRichComparisonT,
         lo: int = 0,
         hi: int | None = None,
@@ -21,11 +26,16 @@ if sys.version_info >= (3, 10):
     ) -> int: ...
     @overload
     def bisect_right(
-        a: Sequence[SupportsRichComparisonT], x: SupportsRichComparisonT, lo: int = 0, hi: int | None = None, *, key: None = None
+        a: SupportsLenAndGetItem[SupportsRichComparisonT],
+        x: SupportsRichComparisonT,
+        lo: int = 0,
+        hi: int | None = None,
+        *,
+        key: None = None,
     ) -> int: ...
     @overload
     def bisect_right(
-        a: Sequence[_T],
+        a: SupportsLenAndGetItem[_T],
         x: SupportsRichComparisonT,
         lo: int = 0,
         hi: int | None = None,
@@ -61,10 +71,10 @@ if sys.version_info >= (3, 10):
 
 else:
     def bisect_left(
-        a: Sequence[SupportsRichComparisonT], x: SupportsRichComparisonT, lo: int = 0, hi: int | None = None
+        a: SupportsLenAndGetItem[SupportsRichComparisonT], x: SupportsRichComparisonT, lo: int = 0, hi: int | None = None
     ) -> int: ...
     def bisect_right(
-        a: Sequence[SupportsRichComparisonT], x: SupportsRichComparisonT, lo: int = 0, hi: int | None = None
+        a: SupportsLenAndGetItem[SupportsRichComparisonT], x: SupportsRichComparisonT, lo: int = 0, hi: int | None = None
     ) -> int: ...
     def insort_left(
         a: MutableSequence[SupportsRichComparisonT], x: SupportsRichComparisonT, lo: int = 0, hi: int | None = None

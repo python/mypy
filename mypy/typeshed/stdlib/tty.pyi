@@ -1,9 +1,16 @@
 import sys
+import termios
 from typing import IO
 from typing_extensions import TypeAlias
 
 if sys.platform != "win32":
     __all__ = ["setraw", "setcbreak"]
+    if sys.version_info >= (3, 12):
+        __all__ += ["cfmakeraw", "cfmakecbreak"]
+
+        _ModeSetterReturn: TypeAlias = termios._AttrReturn
+    else:
+        _ModeSetterReturn: TypeAlias = None
 
     _FD: TypeAlias = int | IO[str]
 
@@ -15,5 +22,9 @@ if sys.platform != "win32":
     ISPEED: int
     OSPEED: int
     CC: int
-    def setraw(fd: _FD, when: int = 2) -> None: ...
-    def setcbreak(fd: _FD, when: int = 2) -> None: ...
+    def setraw(fd: _FD, when: int = 2) -> _ModeSetterReturn: ...
+    def setcbreak(fd: _FD, when: int = 2) -> _ModeSetterReturn: ...
+
+    if sys.version_info >= (3, 12):
+        def cfmakeraw(mode: termios._Attr) -> None: ...
+        def cfmakecbreak(mode: termios._Attr) -> None: ...

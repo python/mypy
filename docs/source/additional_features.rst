@@ -9,10 +9,9 @@ of the previous sections.
 Dataclasses
 ***********
 
-In Python 3.7, a new :py:mod:`dataclasses` module has been added to the standard library.
-This module allows defining and customizing simple boilerplate-free classes.
-They can be defined using the :py:func:`@dataclasses.dataclass
-<python:dataclasses.dataclass>` decorator:
+The :py:mod:`dataclasses` module allows defining and customizing simple
+boilerplate-free classes. They can be defined using the
+:py:func:`@dataclasses.dataclass <python:dataclasses.dataclass>` decorator:
 
 .. code-block:: python
 
@@ -72,12 +71,12 @@ and :pep:`557`.
 Caveats/Known Issues
 ====================
 
-Some functions in the :py:mod:`dataclasses` module, such as :py:func:`~dataclasses.replace` and :py:func:`~dataclasses.asdict`,
+Some functions in the :py:mod:`dataclasses` module, such as :py:func:`~dataclasses.asdict`,
 have imprecise (too permissive) types. This will be fixed in future releases.
 
 Mypy does not yet recognize aliases of :py:func:`dataclasses.dataclass <dataclasses.dataclass>`, and will
-probably never recognize dynamically computed decorators. The following examples
-do **not** work:
+probably never recognize dynamically computed decorators. The following example
+does **not** work:
 
 .. code-block:: python
 
@@ -95,16 +94,37 @@ do **not** work:
       """
       attribute: int
 
-    @dataclass_wrapper
-    class DynamicallyDecorated:
-      """
-      Mypy doesn't recognize this as a dataclass because it is decorated by a
-      function returning `dataclass` rather than by `dataclass` itself.
-      """
-      attribute: int
-
     AliasDecorated(attribute=1) # error: Unexpected keyword argument
-    DynamicallyDecorated(attribute=1) # error: Unexpected keyword argument
+
+
+To have Mypy recognize a wrapper of :py:func:`dataclasses.dataclass <dataclasses.dataclass>`
+as a dataclass decorator, consider using the :py:func:`~typing.dataclass_transform` decorator:
+
+.. code-block:: python
+
+    from dataclasses import dataclass, Field
+    from typing import TypeVar, dataclass_transform
+
+    T = TypeVar('T')
+
+    @dataclass_transform(field_specifiers=(Field,))
+    def my_dataclass(cls: type[T]) -> type[T]:
+        ...
+        return dataclass(cls)
+
+
+Data Class Transforms
+*********************
+
+Mypy supports the :py:func:`~typing.dataclass_transform` decorator as described in
+`PEP 681 <https://www.python.org/dev/peps/pep-0681/#the-dataclass-transform-decorator>`_.
+
+.. note::
+
+    Pragmatically, mypy will assume such classes have the internal attribute :code:`__dataclass_fields__`
+    (even though they might lack it in runtime) and will assume functions such as :py:func:`dataclasses.is_dataclass`
+    and :py:func:`dataclasses.fields` treat them as if they were dataclasses
+    (even though they may fail at runtime).
 
 .. _attrs_package:
 
@@ -121,55 +141,54 @@ Type annotations can be added as follows:
 
     import attr
 
-    @attr.s
-    class A:
-        one: int = attr.ib()          # Variable annotation (Python 3.6+)
-        two = attr.ib()  # type: int  # Type comment
-        three = attr.ib(type=int)     # type= argument
-
-If you're using ``auto_attribs=True`` you must use variable annotations.
-
-.. code-block:: python
-
-    import attr
-
-    @attr.s(auto_attribs=True)
+    @attrs.define
     class A:
         one: int
         two: int = 7
-        three: int = attr.ib(8)
+        three: int = attrs.field(8)
+
+If you're using ``auto_attribs=False`` you must use ``attrs.field``:
+
+.. code-block:: python
+
+    import attrs
+
+    @attrs.define
+    class A:
+        one: int = attrs.field()          # Variable annotation (Python 3.6+)
+        two = attrs.field()  # type: int  # Type comment
+        three = attrs.field(type=int)     # type= argument
 
 Typeshed has a couple of "white lie" annotations to make type checking
-easier. :py:func:`attr.ib` and :py:class:`attr.Factory` actually return objects, but the
+easier. :py:func:`attrs.field` and :py:class:`attrs.Factory` actually return objects, but the
 annotation says these return the types that they expect to be assigned to.
 That enables this to work:
 
 .. code-block:: python
 
-    import attr
-    from typing import Dict
+    import attrs
 
-    @attr.s(auto_attribs=True)
+    @attrs.define
     class A:
-        one: int = attr.ib(8)
-        two: Dict[str, str] = attr.Factory(dict)
-        bad: str = attr.ib(16)   # Error: can't assign int to str
+        one: int = attrs.field(8)
+        two: dict[str, str] = attrs.Factory(dict)
+        bad: str = attrs.field(16)   # Error: can't assign int to str
 
 Caveats/Known Issues
 ====================
 
 * The detection of attr classes and attributes works by function name only.
   This means that if you have your own helper functions that, for example,
-  ``return attr.ib()`` mypy will not see them.
+  ``return attrs.field()`` mypy will not see them.
 
 * All boolean arguments that mypy cares about must be literal ``True`` or ``False``.
   e.g the following will not work:
 
   .. code-block:: python
 
-      import attr
+      import attrs
       YES = True
-      @attr.s(init=YES)
+      @attrs.define(init=YES)
       class A:
           ...
 
@@ -178,7 +197,7 @@ Caveats/Known Issues
   :py:meth:`__init__ <object.__init__>` will be replaced by ``Any``.
 
 * :ref:`Validator decorators <attrs:examples-validators>`
-  and `default decorators <http://www.attrs.org/en/stable/examples.html#defaults>`_
+  and `default decorators <https://www.attrs.org/en/stable/examples.html#defaults>`_
   are not type-checked against the attribute they are setting/validating.
 
 * Method definitions added by mypy currently overwrite any existing method

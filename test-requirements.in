@@ -1,0 +1,19 @@
+# If you change this file (or mypy-requirements.txt or build-requirements.txt), please run:
+# pip-compile --output-file=test-requirements.txt --strip-extras --allow-unsafe test-requirements.in
+
+-r mypy-requirements.txt
+-r build-requirements.txt
+attrs>=18.0
+black==24.3.0  # must match version in .pre-commit-config.yaml
+filelock>=3.3.0
+# lxml 4.9.3 switched to manylinux_2_28, the wheel builder still uses manylinux2014
+lxml>=4.9.1,<4.9.3; (python_version<'3.11' or sys_platform!='win32') and python_version<'3.12'
+pre-commit
+pre-commit-hooks==4.5.0
+psutil>=4.0
+pytest>=8.1.0
+pytest-xdist>=1.34.0
+pytest-cov>=2.10.0
+ruff==0.2.0  # must match version in .pre-commit-config.yaml
+setuptools>=65.5.1
+tomli>=1.1.0  # needed even on py311+ so the self check passes with --python-version 3.8

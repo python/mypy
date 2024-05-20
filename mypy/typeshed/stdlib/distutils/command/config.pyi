@@ -74,7 +74,7 @@ class config(Command):
         library_dirs: Sequence[str] | None = None,
         headers: Sequence[str] | None = None,
         include_dirs: Sequence[str] | None = None,
-        other_libraries: list[str] = ...,
+        other_libraries: list[str] = [],
     ) -> bool: ...
     def check_header(
         self, header: str, include_dirs: Sequence[str] | None = None, library_dirs: Sequence[str] | None = None, lang: str = "c"

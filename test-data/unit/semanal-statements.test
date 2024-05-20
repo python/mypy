@@ -76,7 +76,7 @@ MypyFile:1(
     IntExpr(1))
   WhileStmt:2(
     NameExpr(x [__main__.x])
-    Block:2(
+    Block:3(
       ExpressionStmt:3(
         NameExpr(y [__main__.y])))))
 
@@ -88,7 +88,7 @@ MypyFile:1(
   ForStmt:1(
     NameExpr(x* [__main__.x])
     NameExpr(object [builtins.object])
-    Block:1(
+    Block:2(
       ExpressionStmt:2(
         NameExpr(x [__main__.x])))))
 
@@ -100,11 +100,11 @@ def f():
 MypyFile:1(
   FuncDef:1(
     f
-    Block:1(
+    Block:2(
       ForStmt:2(
         NameExpr(x* [l])
         NameExpr(f [__main__.f])
-        Block:2(
+        Block:3(
           ExpressionStmt:3(
             NameExpr(x [l])))))))
 
@@ -118,7 +118,7 @@ MypyFile:1(
       NameExpr(x* [__main__.x])
       NameExpr(y* [__main__.y]))
     ListExpr:1()
-    Block:1(
+    Block:2(
       ExpressionStmt:2(
         TupleExpr:2(
           NameExpr(x [__main__.x])
@@ -133,7 +133,7 @@ MypyFile:1(
   ForStmt:1(
     NameExpr(x* [__main__.x])
     ListExpr:1()
-    Block:1(
+    Block:2(
       PassStmt:2()))
   ExpressionStmt:3(
     NameExpr(x [__main__.x])))
@@ -147,11 +147,11 @@ def f():
 MypyFile:1(
   FuncDef:1(
     f
-    Block:1(
+    Block:2(
       ForStmt:2(
         NameExpr(x* [l])
         ListExpr:2()
-        Block:2(
+        Block:3(
           PassStmt:3()))
       ExpressionStmt:4(
         NameExpr(x [l])))))
@@ -167,12 +167,12 @@ MypyFile:1(
   ForStmt:2(
     NameExpr(x'* [__main__.x'])
     NameExpr(None [builtins.None])
-    Block:2(
+    Block:3(
       PassStmt:3()))
   ForStmt:4(
     NameExpr(x* [__main__.x])
     NameExpr(None [builtins.None])
-    Block:4(
+    Block:5(
       PassStmt:5())))
 
 [case testReusingForLoopIndexVariable2]
@@ -186,16 +186,16 @@ def f():
 MypyFile:1(
   FuncDef:2(
     f
-    Block:2(
+    Block:3(
       ForStmt:3(
         NameExpr(x* [l])
         NameExpr(None [builtins.None])
-        Block:3(
+        Block:4(
           PassStmt:4()))
       ForStmt:5(
         NameExpr(x'* [l])
         NameExpr(None [builtins.None])
-        Block:5(
+        Block:6(
           PassStmt:6())))))
 
 [case testLoopWithElse]
@@ -212,14 +212,14 @@ MypyFile:1(
   ForStmt:1(
     NameExpr(x* [__main__.x])
     ListExpr:1()
-    Block:1(
+    Block:2(
       PassStmt:2())
     Else(
       ExpressionStmt:4(
         NameExpr(x [__main__.x]))))
   WhileStmt:5(
     IntExpr(1)
-    Block:5(
+    Block:6(
       PassStmt:6())
     Else(
       ExpressionStmt:8(
@@ -234,12 +234,12 @@ for x in []:
 MypyFile:1(
   WhileStmt:1(
     IntExpr(1)
-    Block:1(
+    Block:2(
       BreakStmt:2()))
   ForStmt:3(
     NameExpr(x* [__main__.x])
     ListExpr:3()
-    Block:3(
+    Block:4(
       BreakStmt:4())))
 
 [case testContinue]
@@ -251,12 +251,12 @@ for x in []:
 MypyFile:1(
   WhileStmt:1(
     IntExpr(1)
-    Block:1(
+    Block:2(
       ContinueStmt:2()))
   ForStmt:3(
     NameExpr(x* [__main__.x])
     ListExpr:3()
-    Block:3(
+    Block:4(
       ContinueStmt:4())))
 
 [case testIf]
@@ -426,7 +426,7 @@ def f():
 MypyFile:1(
   FuncDef:1(
     f
-    Block:1(
+    Block:2(
       AssignmentStmt:2(
         NameExpr(x* [l])
         IntExpr(1))
@@ -531,7 +531,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    Block:1(
+    Block:2(
       DelStmt:2(
         NameExpr(x [l])))))
 
@@ -545,7 +545,7 @@ MypyFile:1(
     Args(
       Var(x)
       Var(y))
-    Block:1(
+    Block:2(
       DelStmt:2(
         TupleExpr:2(
           NameExpr(x [l])
@@ -557,9 +557,9 @@ MypyFile:1(
 def f(x, y) -> None:
     del x, y + 1
 [out]
-main:2: error: can't delete operator
+main:2: error: cannot delete operator
 [out version>=3.10]
-main:2: error: can't delete expression
+main:2: error: cannot delete expression
 
 [case testTry]
 class c: pass
@@ -579,19 +579,19 @@ MypyFile:1(
     c
     PassStmt:1())
   TryStmt:2(
-    Block:2(
+    Block:3(
       ExpressionStmt:3(
         NameExpr(c [__main__.c])))
     NameExpr(object [builtins.object])
-    Block:4(
+    Block:5(
       ExpressionStmt:5(
         NameExpr(c [__main__.c])))
     NameExpr(c [__main__.c])
     NameExpr(e* [__main__.e])
-    Block:6(
+    Block:7(
       ExpressionStmt:7(
         NameExpr(e [__main__.e])))
-    Block:8(
+    Block:9(
       ExpressionStmt:9(
         NameExpr(c [__main__.c])))
     Finally(
@@ -608,9 +608,9 @@ else:
 [out]
 MypyFile:1(
   TryStmt:1(
-    Block:1(
+    Block:2(
       PassStmt:2())
-    Block:3(
+    Block:4(
       PassStmt:4())
     Else(
       ExpressionStmt:6(
@@ -624,7 +624,7 @@ finally:
 [out]
 MypyFile:1(
   TryStmt:1(
-    Block:1(
+    Block:2(
       PassStmt:2())
     Finally(
       PassStmt:4())))
@@ -641,13 +641,13 @@ MypyFile:1(
     c
     PassStmt:1())
   TryStmt:2(
-    Block:2(
+    Block:3(
       PassStmt:3())
     TupleExpr:4(
       NameExpr(c [__main__.c])
       NameExpr(object [builtins.object]))
     NameExpr(e* [__main__.e])
-    Block:4(
+    Block:5(
       ExpressionStmt:5(
         NameExpr(e [__main__.e])))))
 
@@ -665,7 +665,7 @@ MypyFile:1(
   WithStmt:1(
     Expr(
       NameExpr(object [builtins.object]))
-    Block:1(
+    Block:2(
       ExpressionStmt:2(
         NameExpr(object [builtins.object])))))
 
@@ -679,7 +679,7 @@ MypyFile:1(
       NameExpr(object [builtins.object]))
     Target(
       NameExpr(x* [__main__.x]))
-    Block:1(
+    Block:2(
       ExpressionStmt:2(
         NameExpr(x [__main__.x])))))
 
@@ -691,13 +691,13 @@ def f():
 MypyFile:1(
   FuncDef:1(
     f
-    Block:1(
+    Block:2(
       WithStmt:2(
         Expr(
           NameExpr(f [__main__.f]))
         Target(
           NameExpr(x* [l]))
-        Block:2(
+        Block:3(
           ExpressionStmt:3(
             NameExpr(x [l])))))))
 
@@ -713,7 +713,7 @@ MypyFile:1(
       NameExpr(object [builtins.object]))
     Expr(
       NameExpr(object [builtins.object]))
-    Block:1(
+    Block:2(
       PassStmt:2()))
   WithStmt:3(
     Expr(
@@ -724,7 +724,7 @@ MypyFile:1(
       NameExpr(object [builtins.object]))
     Target(
       NameExpr(b* [__main__.b]))
-    Block:3(
+    Block:4(
       PassStmt:4())))
 
 [case testVariableInBlock]
@@ -736,7 +736,7 @@ while object:
 MypyFile:1(
   WhileStmt:1(
     NameExpr(object [builtins.object])
-    Block:1(
+    Block:2(
       AssignmentStmt:2(
         NameExpr(x* [__main__.x])
         NameExpr(None [builtins.None]))
@@ -757,11 +757,11 @@ except object as o:
 [out]
 MypyFile:1(
   TryStmt:1(
-    Block:1(
+    Block:2(
       PassStmt:2())
     NameExpr(object [builtins.object])
     NameExpr(o* [__main__.o])
-    Block:3(
+    Block:4(
       AssignmentStmt:4(
         NameExpr(x* [__main__.x])
         NameExpr(None [builtins.None]))
@@ -777,11 +777,11 @@ except object as o:
 [out]
 MypyFile:1(
   TryStmt:1(
-    Block:1(
+    Block:2(
       PassStmt:2())
     NameExpr(object [builtins.object])
     NameExpr(o* [__main__.o])
-    Block:3(
+    Block:4(
       AssignmentStmt:4(
         NameExpr(o [__main__.o])
         CallExpr:4(
@@ -806,15 +806,15 @@ MypyFile:1(
       builtins.BaseException)
     PassStmt:1())
   TryStmt:2(
-    Block:2(
+    Block:3(
       PassStmt:3())
     NameExpr(BaseException [builtins.BaseException])
     NameExpr(e* [__main__.e])
-    Block:4(
+    Block:5(
       PassStmt:5())
     NameExpr(Err [__main__.Err])
     NameExpr(f* [__main__.f])
-    Block:6(
+    Block:7(
       AssignmentStmt:7(
         NameExpr(f [__main__.f])
         CallExpr:7(
@@ -860,7 +860,7 @@ MypyFile:1(
     NameExpr(decorate [__main__.decorate])
     FuncDef:3(
       g
-      Block:3(
+      Block:4(
         ExpressionStmt:4(
           CallExpr:4(
             NameExpr(g [__main__.g])
@@ -877,13 +877,13 @@ MypyFile:1(
   FuncDef:1(
     f
     def ()
-    Block:1(
+    Block:2(
       TryStmt:2(
-        Block:2(
+        Block:3(
           PassStmt:3())
         NameExpr(object [builtins.object])
         NameExpr(o* [l])
-        Block:4(
+        Block:5(
           PassStmt:5())))))
 
 [case testReuseExceptionVariable]
@@ -899,17 +899,17 @@ MypyFile:1(
   FuncDef:1(
     f
     def ()
-    Block:1(
+    Block:2(
       TryStmt:2(
-        Block:2(
+        Block:3(
           PassStmt:3())
         NameExpr(object [builtins.object])
         NameExpr(o* [l])
-        Block:4(
+        Block:5(
           PassStmt:5())
         NameExpr(object [builtins.object])
         NameExpr(o [l])
-        Block:6(
+        Block:7(
           PassStmt:7())))))
 
 [case testWithMultiple]
@@ -924,11 +924,11 @@ MypyFile:1(
     f
     Args(
       Var(a))
-    Block:1(
+    Block:2(
       PassStmt:2()))
   FuncDef:3(
     main
-    Block:3(
+    Block:4(
       WithStmt:4(
         Expr(
           CallExpr:4(
@@ -944,7 +944,7 @@ MypyFile:1(
               NameExpr(a [l]))))
         Target(
           NameExpr(b* [l]))
-        Block:4(
+        Block:5(
           AssignmentStmt:5(
             NameExpr(x* [l])
             TupleExpr:5(
@@ -1030,7 +1030,7 @@ MypyFile:1(
     f
     Args(
       Var(a))
-    Block:2(
+    Block:3(
       ExpressionStmt:3(
         CallExpr:3(
           NameExpr(f [__main__.f])
@@ -1082,7 +1082,7 @@ MypyFile:1(
       IntExpr(0))
     Target(
       NameExpr(y'* [__main__.y']))
-    Block:1(
+    Block:2(
       AssignmentStmt:2(
         NameExpr(z* [__main__.z])
         NameExpr(y' [__main__.y']))))
@@ -1091,7 +1091,7 @@ MypyFile:1(
       IntExpr(1))
     Target(
       NameExpr(y* [__main__.y]))
-    Block:3(
+    Block:4(
       AssignmentStmt:4(
         NameExpr(y [__main__.y])
         IntExpr(1)))))
@@ -1109,7 +1109,7 @@ MypyFile:1(
       IntExpr(0))
     Target(
       NameExpr(y* [__main__.y]))
-    Block:1(
+    Block:2(
       AssignmentStmt:2(
         NameExpr(z* [__main__.z])
         NameExpr(y [__main__.y]))))
@@ -1121,7 +1121,7 @@ MypyFile:1(
       IntExpr(1))
     Target(
       NameExpr(y [__main__.y]))
-    Block:4(
+    Block:5(
       AssignmentStmt:5(
         NameExpr(y [__main__.y])
         IntExpr(1)))))

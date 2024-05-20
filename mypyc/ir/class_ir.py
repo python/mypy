@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List, NamedTuple, Optional
+from typing import List, NamedTuple
 
 from mypyc.common import PROPSET_PREFIX, JsonDict
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature
@@ -70,10 +70,10 @@ from mypyc.namegen import NameGenerator, exported_name
 
 
 class VTableMethod(NamedTuple):
-    cls: "ClassIR"
+    cls: "ClassIR"  # noqa: UP037
     name: str
     method: FuncIR
-    shadow_method: Optional[FuncIR]
+    shadow_method: FuncIR | None
 
 
 VTableEntries = List[VTableMethod]
@@ -169,7 +169,9 @@ class ClassIR:
         self.base_mro: list[ClassIR] = [self]
 
         # Direct subclasses of this class (use subclasses() to also include non-direct ones)
-        # None if separate compilation prevents this from working
+        # None if separate compilation prevents this from working.
+        #
+        # Often it's better to use has_no_subclasses() or subclasses() instead.
         self.children: list[ClassIR] | None = []
 
         # Instance attributes that are initialized in the class body.
@@ -190,7 +192,7 @@ class ClassIR:
         # bitmap for types such as native ints that can't have a dedicated error
         # value that doesn't overlap a valid value. The bitmap is used if the
         # value of an attribute is the same as the error value.
-        self.bitmap_attrs: List[str] = []
+        self.bitmap_attrs: list[str] = []
 
     def __repr__(self) -> str:
         return (
@@ -301,6 +303,9 @@ class ClassIR:
     def has_method_decl(self, name: str) -> bool:
         return any(name in ir.method_decls for ir in self.mro)
 
+    def has_no_subclasses(self) -> bool:
+        return self.children == [] and not self.allow_interpreted_subclasses
+
     def subclasses(self) -> set[ClassIR] | None:
         """Return all subclasses of this class, both direct and indirect.
 
@@ -378,9 +383,9 @@ class ClassIR:
             "traits": [cir.fullname for cir in self.traits],
             "mro": [cir.fullname for cir in self.mro],
             "base_mro": [cir.fullname for cir in self.base_mro],
-            "children": [cir.fullname for cir in self.children]
-            if self.children is not None
-            else None,
+            "children": (
+                [cir.fullname for cir in self.children] if self.children is not None else None
+            ),
             "deletable": self.deletable,
             "attrs_with_defaults": sorted(self.attrs_with_defaults),
             "_always_initialized_attrs": sorted(self._always_initialized_attrs),

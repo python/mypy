@@ -141,8 +141,8 @@ def test_in_set() -> None:
         assert main_set(item), f"{item!r} should be in set_main"
         assert not main_negated_set(item), item
 
-    assert non_final_name_set(non_const)
     global non_const
+    assert non_final_name_set(non_const)
     non_const = "updated"
     assert non_final_name_set("updated")
 

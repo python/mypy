@@ -1,7 +1,7 @@
 import subprocess
 import sys
 import time
-from _typeshed import ReadableBuffer, _BufferWithLen
+from _typeshed import ReadableBuffer, SizedBuffer
 from builtins import list as _list  # conflicts with a method named "list"
 from collections.abc import Callable
 from datetime import datetime
@@ -9,8 +9,8 @@ from re import Pattern
 from socket import socket as _socket
 from ssl import SSLContext, SSLSocket
 from types import TracebackType
-from typing import IO, Any, SupportsAbs, SupportsInt
-from typing_extensions import Literal, Self, TypeAlias
+from typing import IO, Any, Literal, SupportsAbs, SupportsInt
+from typing_extensions import Self, TypeAlias
 
 __all__ = ["IMAP4", "IMAP4_stream", "Internaldate2tuple", "Int2AP", "ParseFlags", "Time2Internaldate", "IMAP4_SSL"]
 
@@ -108,9 +108,14 @@ class IMAP4:
     def print_log(self) -> None: ...
 
 class IMAP4_SSL(IMAP4):
-    keyfile: str
-    certfile: str
-    if sys.version_info >= (3, 9):
+    if sys.version_info < (3, 12):
+        keyfile: str
+        certfile: str
+    if sys.version_info >= (3, 12):
+        def __init__(
+            self, host: str = "", port: int = 993, *, ssl_context: SSLContext | None = None, timeout: float | None = None
+        ) -> None: ...
+    elif sys.version_info >= (3, 9):
         def __init__(
             self,
             host: str = "",
@@ -155,7 +160,7 @@ class _Authenticator:
     def __init__(self, mechinst: Callable[[bytes], bytes | bytearray | memoryview | str | None]) -> None: ...
     def process(self, data: str) -> str: ...
     def encode(self, inp: bytes | bytearray | memoryview) -> str: ...
-    def decode(self, inp: str | _BufferWithLen) -> bytes: ...
+    def decode(self, inp: str | SizedBuffer) -> bytes: ...
 
 def Internaldate2tuple(resp: ReadableBuffer) -> time.struct_time | None: ...
 def Int2AP(num: SupportsAbs[SupportsInt]) -> bytes: ...

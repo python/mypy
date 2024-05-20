@@ -1,5 +1,4 @@
-import sys
-from lib2to3.pgen2.grammar import Grammar
+from .pgen2.grammar import Grammar
 
 class Symbols:
     def __init__(self, grammar: Grammar) -> None: ...
@@ -111,6 +110,5 @@ class pattern_symbols(Symbols):
 
 python_grammar: Grammar
 python_grammar_no_print_statement: Grammar
-if sys.version_info >= (3, 8):
-    python_grammar_no_print_and_exec_statement: Grammar
+python_grammar_no_print_and_exec_statement: Grammar
 pattern_grammar: Grammar

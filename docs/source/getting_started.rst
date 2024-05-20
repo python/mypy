@@ -16,7 +16,7 @@ may not make much sense otherwise.
 Installing and running mypy
 ***************************
 
-Mypy requires Python 3.7 or later to run.  You can install mypy using pip:
+Mypy requires Python 3.8 or later to run.  You can install mypy using pip:
 
 .. code-block:: shell
 
@@ -66,7 +66,7 @@ This is the case even if you misuse the function!
    def greeting(name):
        return 'Hello ' + name
 
-   # These calls will fail when the program run, but mypy does not report an error
+   # These calls will fail when the program runs, but mypy does not report an error
    # because "greeting" does not have type annotations.
    greeting(123)
    greeting(b"Alice")
@@ -256,15 +256,14 @@ Mypy can also understand how to work with types from libraries that you use.
 
 For instance, mypy comes out of the box with an intimate knowledge of the
 Python standard library. For example, here is a function which uses the
-``Path`` object from the
-`pathlib standard library module <https://docs.python.org/3/library/pathlib.html>`_:
+``Path`` object from the :doc:`pathlib standard library module <python:library/pathlib>`:
 
 .. code-block:: python
 
     from pathlib import Path
 
     def load_template(template_path: Path, name: str) -> str:
-        # Mypy knows that `file_path` has a `read_text` method that returns a str
+        # Mypy knows that `template_path` has a `read_text` method that returns a str
         template = template_path.read_text()
         # ...so it understands this line type checks
         return template.replace('USERNAME', name)

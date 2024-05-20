@@ -10,13 +10,17 @@ from abc import abstractmethod, ABCMeta
 
 class GenericMeta(type): pass
 
+class _SpecialForm: ...
+class TypeVar: ...
+class ParamSpec: ...
+class TypeVarTuple: ...
+
 def cast(t, o): ...
 def assert_type(o, t): ...
 overload = 0
 Any = 0
 Union = 0
 Optional = 0
-TypeVar = 0
 Generic = 0
 Protocol = 0
 Tuple = 0
@@ -30,6 +34,7 @@ Literal = 0
 TypedDict = 0
 NoReturn = 0
 NewType = 0
+Self = 0
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
@@ -37,6 +42,8 @@ T_contra = TypeVar('T_contra', contravariant=True)
 U = TypeVar('U')
 V = TypeVar('V')
 S = TypeVar('S')
+
+def final(x: T) -> T: ...
 
 class NamedTuple(tuple[Any, ...]): ...
 
@@ -136,6 +143,7 @@ class MutableSequence(Sequence[T]):
     def __setitem__(self, n: Any, o: T) -> None: pass
 
 class Mapping(Iterable[T], Generic[T, T_co], metaclass=ABCMeta):
+    def keys(self) -> Iterable[T]: pass  # Approximate return type
     def __getitem__(self, key: T) -> T_co: pass
     @overload
     def get(self, k: T) -> Optional[T_co]: pass
@@ -180,8 +188,6 @@ class _TypedDict(Mapping[str, object]):
     def update(self: T, __m: T) -> None: ...
     def __delitem__(self, k: NoReturn) -> None: ...
 
-class _SpecialForm: pass
-
 def dataclass_transform(
     *,
     eq_default: bool = ...,
@@ -190,3 +196,17 @@ def dataclass_transform(
     field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
     **kwargs: Any,
 ) -> Callable[[T], T]: ...
+def override(__arg: T) -> T: ...
+
+# Was added in 3.11
+def reveal_type(__obj: T) -> T: ...
+
+# Only exists in type checking time:
+def type_check_only(__func_or_class: T) -> T: ...
+
+# Was added in 3.12
+@final
+class TypeAliasType:
+    def __init__(
+        self, name: str, value: Any, *, type_params: Tuple[Union[TypeVar, ParamSpec, TypeVarTuple], ...] = ()
+    ) -> None: ...

@@ -11,11 +11,11 @@ import shutil
 import subprocess
 import sys
 import time
-from typing import Any, Iterator, cast
+from typing import Any, Iterator
 
 from mypy import build
 from mypy.errors import CompileError
-from mypy.options import TYPE_VAR_TUPLE, UNPACK, Options
+from mypy.options import Options
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
 from mypy.test.helpers import assert_module_equivalence, perform_file_operations
@@ -41,7 +41,10 @@ files = [
     "run-integers.test",
     "run-i64.test",
     "run-i32.test",
+    "run-i16.test",
+    "run-u8.test",
     "run-floats.test",
+    "run-math.test",
     "run-bools.test",
     "run-strings.test",
     "run-bytes.test",
@@ -62,11 +65,9 @@ files = [
     "run-dunders.test",
     "run-singledispatch.test",
     "run-attrs.test",
+    "run-python37.test",
+    "run-python38.test",
 ]
-
-files.append("run-python37.test")
-if sys.version_info >= (3, 8):
-    files.append("run-python38.test")
 
 if sys.version_info >= (3, 10):
     files.append("run-match.test")
@@ -108,15 +109,13 @@ def run_setup(script_name: str, script_args: list[str]) -> bool:
         finally:
             sys.argv = save_argv
     except SystemExit as e:
-        # typeshed reports code as being an int but that is wrong
-        code = cast(Any, e).code
         # distutils converts KeyboardInterrupt into a SystemExit with
         # "interrupted" as the argument. Convert it back so that
         # pytest will exit instead of just failing the test.
-        if code == "interrupted":
+        if e.code == "interrupted":
             raise KeyboardInterrupt from e
 
-        return code == 0 or code is None
+        return e.code == 0 or e.code is None
 
     return True
 
@@ -143,9 +142,9 @@ class TestRun(MypycDataSuite):
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         # setup.py wants to be run from the root directory of the package, which we accommodate
         # by chdiring into tmp/
-        with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase), (
-            chdir_manager("tmp")
-        ):
+        with use_custom_builtins(
+            os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase
+        ), chdir_manager("tmp"):
             self.run_case_inner(testcase)
 
     def run_case_inner(self, testcase: DataDrivenTestCase) -> None:
@@ -173,12 +172,10 @@ class TestRun(MypycDataSuite):
             # new by distutils, shift the mtime of all of the
             # generated artifacts back by a second.
             fudge_dir_mtimes(WORKDIR, -1)
-            # On Ubuntu, changing the mtime doesn't work reliably. As
+            # On some OS, changing the mtime doesn't work reliably. As
             # a workaround, sleep.
-            #
             # TODO: Figure out a better approach, since this slows down tests.
-            if sys.platform == "linux":
-                time.sleep(1.0)
+            time.sleep(1.0)
 
             step += 1
             with chdir_manager(".."):
@@ -197,7 +194,6 @@ class TestRun(MypycDataSuite):
         options.preserve_asts = True
         options.allow_empty_bodies = True
         options.incremental = self.separate
-        options.enable_incomplete_feature = [TYPE_VAR_TUPLE, UNPACK]
 
         # Avoid checking modules/packages named 'unchecked', to provide a way
         # to test interacting with code we don't have types for.
@@ -242,7 +238,7 @@ class TestRun(MypycDataSuite):
                 groups=groups,
                 alt_lib_path=".",
             )
-            errors = Errors()
+            errors = Errors(options)
             ir, cfiles = emitmodule.compile_modules_to_c(
                 result, compiler_options=compiler_options, errors=errors, groups=groups
             )

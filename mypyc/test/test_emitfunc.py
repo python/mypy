@@ -841,7 +841,9 @@ else {
         else:
             expected_lines = expected.rstrip().split("\n")
         expected_lines = [line.strip(" ") for line in expected_lines]
-        assert_string_arrays_equal(expected_lines, actual_lines, msg="Generated code unexpected")
+        assert_string_arrays_equal(
+            expected_lines, actual_lines, msg="Generated code unexpected", traceback=True
+        )
         if skip_next:
             assert visitor.op_index == 1
         else:
@@ -859,6 +861,8 @@ else {
                     args = [left, right]
                     if desc.ordering is not None:
                         args = [args[i] for i in desc.ordering]
+                    # This only supports primitives that map to C calls
+                    assert desc.c_function_name is not None
                     self.assert_emit(
                         CallC(
                             desc.c_function_name,
@@ -894,12 +898,7 @@ class TestGenerateFunction(unittest.TestCase):
         generate_native_function(fn, emitter, "prog.py", "prog")
         result = emitter.fragments
         assert_string_arrays_equal(
-            [
-                "CPyTagged CPyDef_myfunc(CPyTagged cpy_r_arg) {\n",
-                "CPyL0: ;\n",
-                "    return cpy_r_arg;\n",
-                "}\n",
-            ],
+            ["CPyTagged CPyDef_myfunc(CPyTagged cpy_r_arg) {\n", "    return cpy_r_arg;\n", "}\n"],
             result,
             msg="Generated code invalid",
         )
@@ -922,7 +921,6 @@ class TestGenerateFunction(unittest.TestCase):
             [
                 "PyObject *CPyDef_myfunc(CPyTagged cpy_r_arg) {\n",
                 "    CPyTagged cpy_r_r0;\n",
-                "CPyL0: ;\n",
                 "    cpy_r_r0 = 10;\n",
                 "    CPy_Unreachable();\n",
                 "}\n",

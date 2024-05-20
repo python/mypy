@@ -32,23 +32,23 @@ Ubuntu 18.04, for example:
 Windows
 *******
 
-Install `Visual C++ <https://www.visualstudio.com/downloads/#build-tools-for-visual-studio-2017>`_.
+From `Build Tools for Visual Studio 2022 <https://www.visualstudio.com/downloads/#build-tools-for-visual-studio-2022>`_, install MSVC C++ build tools for your architecture and a Windows SDK. (latest versions recommended)
 
 Installation
 ------------
 
 Mypyc is shipped as part of the mypy distribution. Install mypy like
-this (you need Python 3.5 or later):
+this (you need Python 3.8 or later):
 
 .. code-block::
 
-    $ python3 -m pip install -U mypy
+    $ python3 -m pip install -U 'mypy[mypyc]'
 
 On some systems you need to use this instead:
 
 .. code-block::
 
-    $ python -m pip install -U mypy
+    $ python -m pip install -U 'mypy[mypyc]'
 
 Example program
 ---------------

@@ -12,8 +12,7 @@ value has a type (RType). A value can hold various things, such as:
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Dict, Generic, List, NamedTuple, Sequence, TypeVar, Union
-from typing_extensions import Final
+from typing import TYPE_CHECKING, Final, Generic, List, NamedTuple, Sequence, TypeVar, Union
 
 from mypy_extensions import trait
 
@@ -25,6 +24,7 @@ from mypyc.ir.rtypes import (
     RVoid,
     bit_rprimitive,
     bool_rprimitive,
+    float_rprimitive,
     int_rprimitive,
     is_bit_rprimitive,
     is_bool_rprimitive,
@@ -80,6 +80,7 @@ class BasicBlock:
         self.label = label
         self.ops: list[Op] = []
         self.error_handler: BasicBlock | None = None
+        self.referenced = False
 
     @property
     def terminated(self) -> bool:
@@ -190,6 +191,25 @@ class Integer(Value):
         self.type = rtype
         self.line = line
 
+    def numeric_value(self) -> int:
+        if is_short_int_rprimitive(self.type) or is_int_rprimitive(self.type):
+            return self.value // 2
+        return self.value
+
+
+class Float(Value):
+    """Float literal.
+
+    Floating point literals are treated as constant values and are generally
+    not included in data flow analyses and such, unlike Register and
+    Op subclasses.
+    """
+
+    def __init__(self, value: float, line: int = -1) -> None:
+        self.value = value
+        self.type = float_rprimitive
+        self.line = line
+
 
 class Op(Value):
     """Abstract base class for all IR operations.
@@ -279,7 +299,7 @@ class AssignMulti(BaseAssign):
         self.src = src
 
     def sources(self) -> list[Value]:
-        return self.src[:]
+        return self.src.copy()
 
     def stolen(self) -> list[Value]:
         return []
@@ -522,7 +542,7 @@ class Call(RegisterOp):
         super().__init__(line)
 
     def sources(self) -> list[Value]:
-        return list(self.args[:])
+        return list(self.args.copy())
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_call(self)
@@ -550,10 +570,96 @@ class MethodCall(RegisterOp):
         super().__init__(line)
 
     def sources(self) -> list[Value]:
-        return self.args[:] + [self.obj]
+        return self.args.copy() + [self.obj]
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_method_call(self)
+
+
+class PrimitiveDescription:
+    """Description of a primitive op.
+
+    Primitives get lowered into lower-level ops before code generation.
+
+    If c_function_name is provided, a primitive will be lowered into a CallC op.
+    Otherwise custom logic will need to be implemented to transform the
+    primitive into lower-level ops.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        arg_types: list[RType],
+        return_type: RType,  # TODO: What about generic?
+        var_arg_type: RType | None,
+        truncated_type: RType | None,
+        c_function_name: str | None,
+        error_kind: int,
+        steals: StealsDescription,
+        is_borrowed: bool,
+        ordering: list[int] | None,
+        extra_int_constants: list[tuple[int, RType]],
+        priority: int,
+        is_pure: bool,
+    ) -> None:
+        # Each primitive much have a distinct name, but otherwise they are arbitrary.
+        self.name: Final = name
+        self.arg_types: Final = arg_types
+        self.return_type: Final = return_type
+        self.var_arg_type: Final = var_arg_type
+        self.truncated_type: Final = truncated_type
+        # If non-None, this will map to a call of a C helper function; if None,
+        # there must be a custom handler function that gets invoked during the lowering
+        # pass to generate low-level IR for the primitive (in the mypyc.lower package)
+        self.c_function_name: Final = c_function_name
+        self.error_kind: Final = error_kind
+        self.steals: Final = steals
+        self.is_borrowed: Final = is_borrowed
+        self.ordering: Final = ordering
+        self.extra_int_constants: Final = extra_int_constants
+        self.priority: Final = priority
+        # Pure primitives have no side effects, take immutable arguments, and
+        # never fail. They support additional optimizations.
+        self.is_pure: Final = is_pure
+        if is_pure:
+            assert error_kind == ERR_NEVER
+
+    def __repr__(self) -> str:
+        return f"<PrimitiveDescription {self.name}>"
+
+
+class PrimitiveOp(RegisterOp):
+    """A higher-level primitive operation.
+
+    Some of these have special compiler support. These will be lowered
+    (transformed) into lower-level IR ops before code generation, and after
+    reference counting op insertion. Others will be transformed into CallC
+    ops.
+
+    Tagged integer equality is a typical primitive op with non-trivial
+    lowering. It gets transformed into a tag check, followed by different
+    code paths for short and long representations.
+    """
+
+    def __init__(self, args: list[Value], desc: PrimitiveDescription, line: int = -1) -> None:
+        self.args = args
+        self.type = desc.return_type
+        self.error_kind = desc.error_kind
+        self.desc = desc
+
+    def sources(self) -> list[Value]:
+        return self.args
+
+    def stolen(self) -> list[Value]:
+        steals = self.desc.steals
+        if isinstance(steals, list):
+            assert len(steals) == len(self.args)
+            return [arg for arg, steal in zip(self.args, steals) if steal]
+        else:
+            return [] if not steals else self.sources()
+
+    def accept(self, visitor: OpVisitor[T]) -> T:
+        return visitor.visit_primitive_op(self)
 
 
 class LoadErrorValue(RegisterOp):
@@ -770,7 +876,10 @@ class TupleSet(RegisterOp):
         self.type = self.tuple_type
 
     def sources(self) -> list[Value]:
-        return self.items[:]
+        return self.items.copy()
+
+    def stolen(self) -> list[Value]:
+        return self.items.copy()
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_tuple_set(self)
@@ -781,13 +890,14 @@ class TupleGet(RegisterOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, src: Value, index: int, line: int = -1) -> None:
+    def __init__(self, src: Value, index: int, line: int = -1, *, borrow: bool = False) -> None:
         super().__init__(line)
         self.src = src
         self.index = index
         assert isinstance(src.type, RTuple), "TupleGet only operates on tuples"
         assert index >= 0
         self.type = src.type.types[index]
+        self.is_borrowed = borrow
 
     def sources(self) -> list[Value]:
         return [self.src]
@@ -895,6 +1005,7 @@ class RaiseStandardError(RegisterOp):
     UNBOUND_LOCAL_ERROR: Final = "UnboundLocalError"
     RUNTIME_ERROR: Final = "RuntimeError"
     NAME_ERROR: Final = "NameError"
+    ZERO_DIVISION_ERROR: Final = "ZeroDivisionError"
 
     def __init__(self, class_name: str, value: str | Value | None, line: int) -> None:
         super().__init__(line)
@@ -931,6 +1042,8 @@ class CallC(RegisterOp):
         error_kind: int,
         line: int,
         var_arg_idx: int = -1,
+        *,
+        is_pure: bool = False,
     ) -> None:
         self.error_kind = error_kind
         super().__init__(line)
@@ -941,6 +1054,12 @@ class CallC(RegisterOp):
         self.is_borrowed = is_borrowed
         # The position of the first variable argument in args (if >= 0)
         self.var_arg_idx = var_arg_idx
+        # Is the function pure? Pure functions have no side effects
+        # and all the arguments are immutable. Pure functions support
+        # additional optimizations. Pure functions never fail.
+        self.is_pure = is_pure
+        if is_pure:
+            assert error_kind == ERR_NEVER
 
     def sources(self) -> list[Value]:
         return self.args
@@ -1042,7 +1161,7 @@ class IntOp(RegisterOp):
     """Binary arithmetic or bitwise op on integer operands (e.g., r1 = r2 + r3).
 
     These ops are low-level and are similar to the corresponding C
-    operations (and unlike Python operations).
+    operations.
 
     The left and right values must have low-level integer types with
     compatible representations. Fixed-width integers, short_int_rprimitive,
@@ -1141,6 +1260,7 @@ class ComparisonOp(RegisterOp):
     }
 
     signed_ops: Final = {"==": EQ, "!=": NEQ, "<": SLT, ">": SGT, "<=": SLE, ">=": SGE}
+    unsigned_ops: Final = {"==": EQ, "!=": NEQ, "<": ULT, ">": UGT, "<=": ULE, ">=": UGE}
 
     def __init__(self, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
         super().__init__(line)
@@ -1154,6 +1274,94 @@ class ComparisonOp(RegisterOp):
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_comparison_op(self)
+
+
+class FloatOp(RegisterOp):
+    """Binary float arithmetic op (e.g., r1 = r2 + r3).
+
+    These ops are low-level and are similar to the corresponding C
+    operations (and somewhat different from Python operations).
+
+    The left and right values must be floats.
+    """
+
+    error_kind = ERR_NEVER
+
+    ADD: Final = 0
+    SUB: Final = 1
+    MUL: Final = 2
+    DIV: Final = 3
+    MOD: Final = 4
+
+    op_str: Final = {ADD: "+", SUB: "-", MUL: "*", DIV: "/", MOD: "%"}
+
+    def __init__(self, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
+        super().__init__(line)
+        self.type = float_rprimitive
+        self.lhs = lhs
+        self.rhs = rhs
+        self.op = op
+
+    def sources(self) -> list[Value]:
+        return [self.lhs, self.rhs]
+
+    def accept(self, visitor: OpVisitor[T]) -> T:
+        return visitor.visit_float_op(self)
+
+
+# We can't have this in the FloatOp class body, because of
+# https://github.com/mypyc/mypyc/issues/932.
+float_op_to_id: Final = {op: op_id for op_id, op in FloatOp.op_str.items()}
+
+
+class FloatNeg(RegisterOp):
+    """Float negation op (r1 = -r2)."""
+
+    error_kind = ERR_NEVER
+
+    def __init__(self, src: Value, line: int = -1) -> None:
+        super().__init__(line)
+        self.type = float_rprimitive
+        self.src = src
+
+    def sources(self) -> list[Value]:
+        return [self.src]
+
+    def accept(self, visitor: OpVisitor[T]) -> T:
+        return visitor.visit_float_neg(self)
+
+
+class FloatComparisonOp(RegisterOp):
+    """Low-level comparison op for floats."""
+
+    error_kind = ERR_NEVER
+
+    EQ: Final = 200
+    NEQ: Final = 201
+    LT: Final = 202
+    GT: Final = 203
+    LE: Final = 204
+    GE: Final = 205
+
+    op_str: Final = {EQ: "==", NEQ: "!=", LT: "<", GT: ">", LE: "<=", GE: ">="}
+
+    def __init__(self, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
+        super().__init__(line)
+        self.type = bit_rprimitive
+        self.lhs = lhs
+        self.rhs = rhs
+        self.op = op
+
+    def sources(self) -> list[Value]:
+        return [self.lhs, self.rhs]
+
+    def accept(self, visitor: OpVisitor[T]) -> T:
+        return visitor.visit_float_comparison_op(self)
+
+
+# We can't have this in the FloatOp class body, because of
+# https://github.com/mypyc/mypyc/issues/932.
+float_comparison_op_to_id: Final = {op: op_id for op_id, op in FloatComparisonOp.op_str.items()}
 
 
 class LoadMem(RegisterOp):
@@ -1239,13 +1447,14 @@ class LoadAddress(RegisterOp):
     Attributes:
       type: Type of the loaded address(e.g. ptr/object_ptr)
       src: Source value (str for globals like 'PyList_Type',
-           Register for temporary values or locals)
+           Register for temporary values or locals, LoadStatic
+           for statics.)
     """
 
     error_kind = ERR_NEVER
     is_borrowed = True
 
-    def __init__(self, type: RType, src: str | Register, line: int = -1) -> None:
+    def __init__(self, type: RType, src: str | Register | LoadStatic, line: int = -1) -> None:
         super().__init__(line)
         self.type = type
         self.src = src
@@ -1276,19 +1485,75 @@ class KeepAlive(RegisterOp):
     If we didn't have "keep_alive x", x could be freed immediately
     after taking the address of 'item', resulting in a read after free
     on the second line.
+
+    If 'steal' is true, the value is considered to be stolen at
+    this op, i.e. it won't be decref'd. You need to ensure that
+    the value is freed otherwise, perhaps by using borrowing
+    followed by Unborrow.
+
+    Be careful with steal=True -- this can cause memory leaks.
     """
 
     error_kind = ERR_NEVER
 
-    def __init__(self, src: list[Value]) -> None:
+    def __init__(self, src: list[Value], *, steal: bool = False) -> None:
         assert src
         self.src = src
+        self.steal = steal
 
     def sources(self) -> list[Value]:
-        return self.src[:]
+        return self.src.copy()
+
+    def stolen(self) -> list[Value]:
+        if self.steal:
+            return self.src.copy()
+        return []
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_keep_alive(self)
+
+
+class Unborrow(RegisterOp):
+    """A no-op op to create a regular reference from a borrowed one.
+
+    Borrowed references can only be used temporarily and the reference
+    counts won't be managed. This value will be refcounted normally.
+
+    This is mainly useful if you split an aggregate value, such as
+    a tuple, into components using borrowed values (to avoid increfs),
+    and want to treat the components as sharing the original managed
+    reference. You'll also need to use KeepAlive with steal=True to
+    "consume" the original tuple reference:
+
+      # t is a 2-tuple
+      r0 = borrow t[0]
+      r1 = borrow t[1]
+      r2 = unborrow r0
+      r3 = unborrow r1
+      # now (r2, r3) represent the tuple as separate items, and the
+      # original tuple can be considered dead and available to be
+      # stolen
+      keep_alive steal t
+
+    Be careful with this -- this can easily cause double freeing.
+    """
+
+    error_kind = ERR_NEVER
+
+    def __init__(self, src: Value, line: int = -1) -> None:
+        super().__init__(line)
+        assert src.is_borrowed
+        self.src = src
+        self.type = src.type
+
+    def sources(self) -> list[Value]:
+        return [self.src]
+
+    def stolen(self) -> list[Value]:
+        return []
+
+    def accept(self, visitor: OpVisitor[T]) -> T:
+        return visitor.visit_unborrow(self)
 
 
 @trait
@@ -1386,6 +1651,10 @@ class OpVisitor(Generic[T]):
         raise NotImplementedError
 
     @abstractmethod
+    def visit_primitive_op(self, op: PrimitiveOp) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
     def visit_truncate(self, op: Truncate) -> T:
         raise NotImplementedError
 
@@ -1403,6 +1672,18 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_comparison_op(self, op: ComparisonOp) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_float_op(self, op: FloatOp) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_float_neg(self, op: FloatNeg) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_float_comparison_op(self, op: FloatComparisonOp) -> T:
         raise NotImplementedError
 
     @abstractmethod
@@ -1425,8 +1706,13 @@ class OpVisitor(Generic[T]):
     def visit_keep_alive(self, op: KeepAlive) -> T:
         raise NotImplementedError
 
+    @abstractmethod
+    def visit_unborrow(self, op: Unborrow) -> T:
+        raise NotImplementedError
+
 
 # TODO: Should the following definition live somewhere else?
+
 
 # We do a three-pass deserialization scheme in order to resolve name
 # references.
@@ -1451,5 +1737,5 @@ class OpVisitor(Generic[T]):
 # (Serialization and deserialization *will* be used for incremental
 # compilation but so far it is not hooked up to anything.)
 class DeserMaps(NamedTuple):
-    classes: Dict[str, "ClassIR"]
-    functions: Dict[str, "FuncIR"]
+    classes: dict[str, ClassIR]
+    functions: dict[str, FuncIR]

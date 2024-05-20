@@ -105,7 +105,11 @@ class NewTypeAnalyzer:
         else:
             if old_type is not None:
                 message = "Argument 2 to NewType(...) must be subclassable (got {})"
-                self.fail(message.format(format_type(old_type)), s, code=codes.VALID_NEWTYPE)
+                self.fail(
+                    message.format(format_type(old_type, self.options)),
+                    s,
+                    code=codes.VALID_NEWTYPE,
+                )
             # Otherwise the error was already reported.
             old_type = AnyType(TypeOfAny.from_error)
             object_type = self.api.named_type("builtins.object")
@@ -143,7 +147,7 @@ class NewTypeAnalyzer:
             and isinstance(s.lvalues[0], NameExpr)
             and isinstance(s.rvalue, CallExpr)
             and isinstance(s.rvalue.callee, RefExpr)
-            and s.rvalue.callee.fullname == "typing.NewType"
+            and (s.rvalue.callee.fullname in ("typing.NewType", "typing_extensions.NewType"))
         ):
             name = s.lvalues[0].name
 
@@ -203,8 +207,7 @@ class NewTypeAnalyzer:
             self.api.anal_type(
                 unanalyzed_type,
                 report_invalid_types=False,
-                allow_placeholder=not self.options.disable_recursive_aliases
-                and not self.api.is_func_scope(),
+                allow_placeholder=not self.api.is_func_scope(),
             )
         )
         should_defer = False

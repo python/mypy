@@ -837,15 +837,13 @@ p.a.f(1)
 [file p/__init__.py]
 [file p/a.py]
 def f(x: str) -> None: pass
-[delete p/__init__.py.2]
-[delete p/a.py.2]
-def f(x: str) -> None: pass
+[delete p.2]
 [out]
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 ==
 main:1: error: Cannot find implementation or library stub for module named "p.a"
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-main:2: error: "object" has no attribute "a"
+main:1: error: Cannot find implementation or library stub for module named "p"
 
 [case testDeletePackage2]
 import p
@@ -1279,12 +1277,12 @@ a.py:2: error: Too many arguments for "foo"
 
 [case testAddModuleAfterCache3-only_when_cache]
 # cmd: mypy main a.py
-# cmd2: mypy main a.py b.py c.py d.py e.py f.py g.py h.py
-# cmd3: mypy main a.py b.py c.py d.py e.py f.py g.py h.py
+# cmd2: mypy main a.py b.py c.py d.py e.py f.py g.py h.py i.py j.py
+# cmd3: mypy main a.py b.py c.py d.py e.py f.py g.py h.py i.py j.py
 # flags: --ignore-missing-imports --follow-imports=skip
 import a
 [file a.py]
-import b, c, d, e, f, g, h
+import b, c, d, e, f, g, h, i, j
 b.foo(10)
 [file b.py.2]
 def foo() -> None: pass
@@ -1294,6 +1292,8 @@ def foo() -> None: pass
 [file f.py.2]
 [file g.py.2]
 [file h.py.2]
+[file i.py.2]
+[file j.py.2]
 
 -- No files should be stale or reprocessed in the first step since the large number
 -- of missing files will force build to give up on cache loading.
@@ -1806,7 +1806,7 @@ import b
 [file b.py]
 [file c.py]
 x = 1
-[file b.py]
+[file b.py.2]
 1+'x'
 [file c.py.2]
 x = '2'

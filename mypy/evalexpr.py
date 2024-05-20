@@ -6,8 +6,9 @@ Used by stubtest; in a separate file because things break if we don't
 put it in a mypyc-compiled file.
 
 """
+
 import ast
-from typing_extensions import Final
+from typing import Final
 
 import mypy.nodes
 from mypy.visitor import ExpressionVisitor

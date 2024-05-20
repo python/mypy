@@ -16,6 +16,7 @@ class classmethod: pass
 class list: pass
 class dict: pass
 class int: pass
+class float: pass
 class str: pass
 class bytes: pass
 class bool: pass

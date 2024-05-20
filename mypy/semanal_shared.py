@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Callable, overload
-from typing_extensions import Final, Literal, Protocol
+from typing import Callable, Final, overload
+from typing_extensions import Literal, Protocol
 
 from mypy_extensions import trait
 
@@ -18,6 +18,7 @@ from mypy.nodes import (
     Decorator,
     Expression,
     FuncDef,
+    NameExpr,
     Node,
     OverloadedFuncDef,
     RefExpr,
@@ -31,6 +32,7 @@ from mypy.tvar_scope import TypeVarLikeScope
 from mypy.type_visitor import ANY_STRATEGY, BoolTypeQuery
 from mypy.types import (
     TPDICT_FB_NAMES,
+    AnyType,
     FunctionLike,
     Instance,
     Parameters,
@@ -40,8 +42,11 @@ from mypy.types import (
     ProperType,
     TupleType,
     Type,
+    TypeOfAny,
     TypeVarId,
     TypeVarLikeType,
+    TypeVarTupleType,
+    UnpackType,
     get_proper_type,
 )
 
@@ -283,12 +288,27 @@ def calculate_tuple_fallback(typ: TupleType) -> None:
     """
     fallback = typ.partial_fallback
     assert fallback.type.fullname == "builtins.tuple"
-    fallback.args = (join.join_type_list(list(typ.items)),) + fallback.args[1:]
+    items = []
+    for item in typ.items:
+        # TODO: this duplicates some logic in typeops.tuple_fallback().
+        if isinstance(item, UnpackType):
+            unpacked_type = get_proper_type(item.type)
+            if isinstance(unpacked_type, TypeVarTupleType):
+                unpacked_type = get_proper_type(unpacked_type.upper_bound)
+            if (
+                isinstance(unpacked_type, Instance)
+                and unpacked_type.type.fullname == "builtins.tuple"
+            ):
+                items.append(unpacked_type.args[0])
+            else:
+                raise NotImplementedError
+        else:
+            items.append(item)
+    fallback.args = (join.join_type_list(items),)
 
 
 class _NamedTypeCallback(Protocol):
-    def __call__(self, fully_qualified_name: str, args: list[Type] | None = None) -> Instance:
-        ...
+    def __call__(self, fully_qualified_name: str, args: list[Type] | None = None) -> Instance: ...
 
 
 def paramspec_args(
@@ -307,6 +327,7 @@ def paramspec_args(
         id,
         flavor=ParamSpecFlavor.ARGS,
         upper_bound=named_type_func("builtins.tuple", [named_type_func("builtins.object")]),
+        default=AnyType(TypeOfAny.from_omitted_generics),
         line=line,
         column=column,
         prefix=prefix,
@@ -331,6 +352,7 @@ def paramspec_kwargs(
         upper_bound=named_type_func(
             "builtins.dict", [named_type_func("builtins.str"), named_type_func("builtins.object")]
         ),
+        default=AnyType(TypeOfAny.from_omitted_generics),
         line=line,
         column=column,
         prefix=prefix,
@@ -430,8 +452,7 @@ def require_bool_literal_argument(
     expression: Expression,
     name: str,
     default: Literal[True] | Literal[False],
-) -> bool:
-    ...
+) -> bool: ...
 
 
 @overload
@@ -440,8 +461,7 @@ def require_bool_literal_argument(
     expression: Expression,
     name: str,
     default: None = None,
-) -> bool | None:
-    ...
+) -> bool | None: ...
 
 
 def require_bool_literal_argument(
@@ -451,7 +471,7 @@ def require_bool_literal_argument(
     default: bool | None = None,
 ) -> bool | None:
     """Attempt to interpret an expression as a boolean literal, and fail analysis if we can't."""
-    value = api.parse_bool(expression)
+    value = parse_bool(expression)
     if value is None:
         api.fail(
             f'"{name}" argument must be a True or False literal', expression, code=LITERAL_REQ
@@ -459,3 +479,12 @@ def require_bool_literal_argument(
         return default
 
     return value
+
+
+def parse_bool(expr: Expression) -> bool | None:
+    if isinstance(expr, NameExpr):
+        if expr.fullname == "builtins.True":
+            return True
+        if expr.fullname == "builtins.False":
+            return False
+    return None

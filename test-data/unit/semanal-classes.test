@@ -27,7 +27,7 @@ MypyFile:1(
       Args(
         Var(self)
         Var(x))
-      Block:2(
+      Block:3(
         AssignmentStmt:3(
           NameExpr(y* [l])
           NameExpr(x [l]))))
@@ -35,7 +35,7 @@ MypyFile:1(
       f
       Args(
         Var(self))
-      Block:4(
+      Block:5(
         AssignmentStmt:5(
           NameExpr(y* [l])
           NameExpr(self [l]))))))
@@ -53,7 +53,7 @@ MypyFile:1(
       __init__
       Args(
         Var(self))
-      Block:2(
+      Block:3(
         AssignmentStmt:3(
           MemberExpr:3(
             NameExpr(self [l])
@@ -79,7 +79,7 @@ MypyFile:1(
       f
       Args(
         Var(self))
-      Block:2(
+      Block:3(
         AssignmentStmt:3(
           MemberExpr:3(
             NameExpr(self [l])
@@ -89,7 +89,7 @@ MypyFile:1(
     __init__
     Args(
       Var(self))
-    Block:4(
+    Block:5(
       AssignmentStmt:5(
         MemberExpr:5(
           NameExpr(self [l])
@@ -113,7 +113,7 @@ MypyFile:1(
       Args(
         Var(x)
         Var(self))
-      Block:2(
+      Block:3(
         AssignmentStmt:3(
           MemberExpr:3(
             NameExpr(self [l])
@@ -125,7 +125,7 @@ MypyFile:1(
       __init__
       Args(
         Var(x))
-      Block:5(
+      Block:6(
         AssignmentStmt:6(
           NameExpr(self* [l])
           NameExpr(x [l]))
@@ -147,7 +147,7 @@ MypyFile:1(
       __init__
       Args(
         Var(x))
-      Block:2(
+      Block:3(
         AssignmentStmt:3(
           MemberExpr:3(
             NameExpr(x [l])
@@ -167,7 +167,7 @@ MypyFile:1(
       __init__
       Args(
         Var(self))
-      Block:2(
+      Block:3(
         AssignmentStmt:3(
           MemberExpr:3(
             NameExpr(self [l])
@@ -309,7 +309,7 @@ MypyFile:1(
       ListExpr:2(
         IntExpr(1)
         IntExpr(2))
-      Block:2(
+      Block:3(
         AssignmentStmt:3(
           NameExpr(y* [m])
           NameExpr(x [__main__.A.x]))))))
@@ -322,7 +322,7 @@ def f():
 MypyFile:1(
   FuncDef:1(
     f
-    Block:1(
+    Block:2(
       ClassDef:2(
         A
         PassStmt:2())
@@ -369,7 +369,7 @@ MypyFile:1(
   FuncDef:1(
     f
     def ()
-    Block:1(
+    Block:2(
       ClassDef:2(
         A
         PassStmt:2())
@@ -390,7 +390,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    Block:1(
+    Block:2(
       ClassDef:2(
         A
         AssignmentStmt:3(
@@ -400,7 +400,7 @@ MypyFile:1(
           g
           Args(
             Var(self))
-          Block:4(
+          Block:5(
             AssignmentStmt:5(
               NameExpr(z* [l])
               NameExpr(x [l]))))))))

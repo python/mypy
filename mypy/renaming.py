@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Iterator
-from typing_extensions import Final
+from typing import Final, Iterator
 
 from mypy.nodes import (
     AssignmentStmt,
@@ -182,6 +181,7 @@ class VariableRenameVisitor(TraverserVisitor):
             self.analyze_lvalue(lvalue)
 
     def visit_match_stmt(self, s: MatchStmt) -> None:
+        s.subject.accept(self)
         for i in range(len(s.patterns)):
             with self.enter_block():
                 s.patterns[i].accept(self)
@@ -270,7 +270,7 @@ class VariableRenameVisitor(TraverserVisitor):
         This will be called at the end of a scope.
         """
         is_func = self.scope_kinds[-1] == FUNCTION
-        for name, refs in self.refs[-1].items():
+        for refs in self.refs[-1].values():
             if len(refs) == 1:
                 # Only one definition -- no renaming needed.
                 continue

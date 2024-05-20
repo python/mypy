@@ -5,6 +5,11 @@ from typing import Any, Generic, TypeVar
 if sys.version_info >= (3, 9):
     from types import GenericAlias
 
+if sys.version_info >= (3, 10):
+    from .mixins import _LoopBoundMixin
+else:
+    _LoopBoundMixin = object
+
 __all__ = ("Queue", "PriorityQueue", "LifoQueue", "QueueFull", "QueueEmpty")
 
 class QueueEmpty(Exception): ...
@@ -12,7 +17,9 @@ class QueueFull(Exception): ...
 
 _T = TypeVar("_T")
 
-class Queue(Generic[_T]):
+# If Generic[_T] is last and _LoopBoundMixin is object, pyright is unhappy.
+# We can remove the noqa pragma when dropping 3.9 support.
+class Queue(Generic[_T], _LoopBoundMixin):  # noqa: Y059
     if sys.version_info >= (3, 10):
         def __init__(self, maxsize: int = 0) -> None: ...
     else:

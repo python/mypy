@@ -48,9 +48,12 @@ class Generator(Iterator[T], Generic[T, U, V]):
 
 class Sequence(Iterable[T_co]):
     def __getitem__(self, n: Any) -> T_co: pass
+    def __len__(self) -> int: pass
 
 # Mapping type is oversimplified intentionally.
-class Mapping(Iterable[T], Generic[T, T_co]): pass
+class Mapping(Iterable[T], Generic[T, T_co]):
+    def keys(self) -> Iterable[T]: pass  # Approximate return type
+    def __getitem__(self, key: T) -> T_co: pass
 
 class Awaitable(Protocol[T]):
     def __await__(self) -> Generator[Any, Any, T]: pass

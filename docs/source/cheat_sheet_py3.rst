@@ -21,7 +21,7 @@ See :ref:`type-inference-and-annotations` for more details.
    # You don't need to initialize a variable to annotate it
    a: int  # Ok (no value at runtime until assigned)
 
-   # Doing so is useful in conditional branches
+   # Doing so can be useful in conditional branches
    child: bool
    if age < 18:
        child = True
@@ -34,7 +34,7 @@ Useful built-in types
 
 .. code-block:: python
 
-   # For most types, just use the name of the type.
+   # For most types, just use the name of the type in the annotation
    # Note that mypy can usually infer the type of a variable from its value,
    # so technically these annotations are redundant
    x: int = 1
@@ -75,10 +75,11 @@ Useful built-in types
    # Use Optional[X] for a value that could be None
    # Optional[X] is the same as X | None or Union[X, None]
    x: Optional[str] = "something" if some_condition() else None
-   # Mypy understands a value can't be None in an if-statement
    if x is not None:
+       # Mypy understands x won't be None here because of the if-statement
        print(x.upper())
-   # If a value can never be None due to some invariants, use an assert
+   # If you know a value can never be None due to some logic that mypy doesn't
+   # understand, use an assert
    assert x is not None
    print(x.upper())
 
@@ -102,10 +103,10 @@ Functions
    def show(value: str, excitement: int = 10) -> None:
        print(value + "!" * excitement)
 
-    # Note that arguments without a type are dynamically typed (treated as Any)
-    # and that functions without any annotations not checked
-    def untyped(x):
-        x.anything() + 1 + "string"  # no errors
+   # Note that arguments without a type are dynamically typed (treated as Any)
+   # and that functions without any annotations are not checked
+   def untyped(x):
+       x.anything() + 1 + "string"  # no errors
 
    # This is how you annotate a callable (function) value
    x: Callable[[int, float], float] = f
@@ -132,7 +133,7 @@ Functions
    # Mypy understands positional-only and keyword-only arguments
    # Positional-only arguments can also be marked by using a name starting with
    # two underscores
-   def quux(x: int, / *, y: int) -> None:
+   def quux(x: int, /, *, y: int) -> None:
        pass
 
    quux(3, y=5)  # Ok
@@ -150,6 +151,8 @@ Classes
 *******
 
 .. code-block:: python
+
+   from typing import ClassVar
 
    class BankAccount:
        # The "__init__" method doesn't return anything, so it gets return
@@ -177,8 +180,6 @@ Classes
    class AuditedBankAccount(BankAccount):
        # You can optionally declare instance variables in the class body
        audit_log: list[str]
-       # This is an instance variable with a default value
-       auditor_name: str = "The Spanish Inquisition"
 
        def __init__(self, account_name: str, initial_balance: int = 0) -> None:
            super().__init__(account_name, initial_balance)
@@ -210,6 +211,7 @@ Classes
        # This will allow access to any A.x, if x is compatible with the return type
        def __getattr__(self, name: str) -> int: ...
 
+   a = A()
    a.foo = 42  # Works
    a.bar = 'Ex-parrot'  # Fails type checking
 
@@ -259,6 +261,8 @@ When you're puzzled or when things are complicated
 In some cases type annotations can cause issues at runtime, see
 :ref:`runtime_troubles` for dealing with this.
 
+See :ref:`silencing-type-errors` for details on how to silence errors.
+
 Standard "duck types"
 *********************
 
@@ -294,37 +298,11 @@ that are common in idiomatic Python are standardized.
 
    f({3: 'yes', 4: 'no'})
 
-
-You can even make your own duck types using :ref:`protocol-types`.
-
-Coroutines and asyncio
-**********************
-
-See :ref:`async-and-await` for the full detail on typing coroutines and asynchronous code.
-
-.. code-block:: python
-
-   import asyncio
-
-   # A coroutine is typed like a normal function
-   async def countdown35(tag: str, count: int) -> str:
-       while count > 0:
-           print(f'T-minus {count} ({tag})')
-           await asyncio.sleep(0.1)
-           count -= 1
-       return "Blastoff!"
-
-
-Miscellaneous
-*************
-
-.. code-block:: python
-
    import sys
    from typing import IO
 
-   # Use IO[] for functions that should accept or return any
-   # object that comes from an open() call (IO[] does not
+   # Use IO[str] or IO[bytes] for functions that should accept or return
+   # objects that come from an open() call (note that IO does not
    # distinguish between reading, writing or other modes)
    def get_sys_IO(mode: str = 'w') -> IO[str]:
        if mode == 'w':
@@ -334,19 +312,38 @@ Miscellaneous
        else:
            return sys.stdout
 
-   # Forward references are useful if you want to reference a class before
-   # it is defined
+
+You can even make your own duck types using :ref:`protocol-types`.
+
+Forward references
+******************
+
+.. code-block:: python
+
+   # You may want to reference a class before it is defined.
+   # This is known as a "forward reference".
    def f(foo: A) -> int:  # This will fail at runtime with 'A' is not defined
        ...
 
+   # However, if you add the following special import:
+   from __future__ import annotations
+   # It will work at runtime and type checking will succeed as long as there
+   # is a class of that name later on in the file
+   def f(foo: A) -> int:  # Ok
+       ...
+
+   # Another option is to just put the type in quotes
+   def f(foo: 'A') -> int:  # Also ok
+       ...
+
    class A:
-       ...
+       # This can also come up if you need to reference a class in a type
+       # annotation inside the definition of that class
+       @classmethod
+       def create(cls) -> A:
+           ...
 
-   # If you use the string literal 'A', it will pass as long as there is a
-   # class of that name later on in the file
-   def f(foo: 'A') -> int:  # Ok
-       ...
-
+See :ref:`forward-references` for more details.
 
 Decorators
 **********
@@ -365,3 +362,20 @@ Decorator functions can be expressed via generics. See
 
     def decorator_args(url: str) -> Callable[[F], F]:
         ...
+
+Coroutines and asyncio
+**********************
+
+See :ref:`async-and-await` for the full detail on typing coroutines and asynchronous code.
+
+.. code-block:: python
+
+   import asyncio
+
+   # A coroutine is typed like a normal function
+   async def countdown(tag: str, count: int) -> str:
+       while count > 0:
+           print(f'T-minus {count} ({tag})')
+           await asyncio.sleep(0.1)
+           count -= 1
+       return "Blastoff!"

@@ -4,11 +4,12 @@ import os.path
 import sys
 import traceback
 from collections import defaultdict
-from typing import Callable, Iterable, NoReturn, Optional, TextIO, Tuple, TypeVar
-from typing_extensions import Final, Literal, TypeAlias as _TypeAlias
+from typing import Callable, Final, Iterable, NoReturn, Optional, TextIO, Tuple, TypeVar
+from typing_extensions import Literal, TypeAlias as _TypeAlias
 
 from mypy import errorcodes as codes
-from mypy.errorcodes import IMPORT, ErrorCode
+from mypy.error_formatter import ErrorFormatter
+from mypy.errorcodes import IMPORT, IMPORT_NOT_FOUND, IMPORT_UNTYPED, ErrorCode, mypy_error_codes
 from mypy.message_registry import ErrorMessage
 from mypy.options import Options
 from mypy.scope import Scope
@@ -20,7 +21,26 @@ T = TypeVar("T")
 # Show error codes for some note-level messages (these usually appear alone
 # and not as a comment for a previous error-level message).
 SHOW_NOTE_CODES: Final = {codes.ANNOTATION_UNCHECKED}
+
+# Do not add notes with links to error code docs to errors with these codes.
+# We can tweak this set as we get more experience about what is helpful and what is not.
+HIDE_LINK_CODES: Final = {
+    # This is a generic error code, so it has no useful docs
+    codes.MISC,
+    # These are trivial and have some custom notes (e.g. for list being invariant)
+    codes.ASSIGNMENT,
+    codes.ARG_TYPE,
+    codes.RETURN_VALUE,
+    # Undefined name/attribute errors are self-explanatory
+    codes.ATTR_DEFINED,
+    codes.NAME_DEFINED,
+    # Overrides have a custom link to docs
+    codes.OVERRIDE,
+}
+
 allowed_duplicates: Final = ["@overload", "Got:", "Expected:"]
+
+BASE_RTD_URL: Final = "https://mypy.rtfd.io/en/stable/_refs.html#code"
 
 # Keep track of the original error code when the error code of a message is changed.
 # This is used to give notes about out-of-date "type: ignore" comments.
@@ -90,6 +110,7 @@ class ErrorInfo:
     def __init__(
         self,
         import_ctx: list[tuple[str, int]],
+        *,
         file: str,
         module: str | None,
         typ: str | None,
@@ -106,6 +127,7 @@ class ErrorInfo:
         allow_dups: bool,
         origin: tuple[str, Iterable[int]] | None = None,
         target: str | None = None,
+        priority: int = 0,
     ) -> None:
         self.import_ctx = import_ctx
         self.file = file
@@ -124,6 +146,7 @@ class ErrorInfo:
         self.allow_dups = allow_dups
         self.origin = origin or (file, [line])
         self.target = target
+        self.priority = priority
 
 
 # Type used internally to represent errors:
@@ -148,7 +171,7 @@ class ErrorWatcher:
         *,
         filter_errors: bool | Callable[[str, ErrorInfo], bool] = False,
         save_filtered_errors: bool = False,
-    ):
+    ) -> None:
         self.errors = errors
         self._has_new_errors = False
         self._filter = filter_errors
@@ -222,6 +245,10 @@ class Errors:
     # (path -> line -> error-codes)
     ignored_lines: dict[str, dict[int, list[str]]]
 
+    # Lines that were skipped during semantic analysis e.g. due to ALWAYS_FALSE, MYPY_FALSE,
+    # or platform/version checks. Those lines would not be type-checked.
+    skipped_lines: dict[str, set[int]]
+
     # Lines on which an error was actually ignored.
     used_ignored_lines: dict[str, dict[int, list[str]]]
 
@@ -258,28 +285,17 @@ class Errors:
 
     def __init__(
         self,
-        show_error_context: bool = False,
-        show_column_numbers: bool = False,
-        hide_error_codes: bool = False,
-        pretty: bool = False,
-        show_error_end: bool = False,
+        options: Options,
+        *,
         read_source: Callable[[str], list[str] | None] | None = None,
-        show_absolute_path: bool = False,
-        many_errors_threshold: int = -1,
-        options: Options | None = None,
+        hide_error_codes: bool | None = None,
     ) -> None:
-        self.show_error_context = show_error_context
-        self.show_column_numbers = show_column_numbers
-        self.hide_error_codes = hide_error_codes
-        self.show_absolute_path = show_absolute_path
-        self.pretty = pretty
-        self.show_error_end = show_error_end
-        if show_error_end:
-            assert show_column_numbers, "Inconsistent formatting, must be prevented by argparse"
+        self.options = options
+        self.hide_error_codes = (
+            hide_error_codes if hide_error_codes is not None else options.hide_error_codes
+        )
         # We use fscache to read source code when showing snippets.
         self.read_source = read_source
-        self.many_errors_threshold = many_errors_threshold
-        self.options = options
         self.initialize()
 
     def initialize(self) -> None:
@@ -288,6 +304,7 @@ class Errors:
         self.import_ctx = []
         self.function_or_member = [None]
         self.ignored_lines = {}
+        self.skipped_lines = {}
         self.used_ignored_lines = defaultdict(lambda: defaultdict(list))
         self.ignored_files = set()
         self.only_once_messages = set()
@@ -308,7 +325,7 @@ class Errors:
         self.ignore_prefix = prefix
 
     def simplify_path(self, file: str) -> str:
-        if self.show_absolute_path:
+        if self.options.show_absolute_path:
             return os.path.abspath(file)
         else:
             file = os.path.normpath(file)
@@ -336,6 +353,9 @@ class Errors:
         if ignore_all:
             self.ignored_files.add(file)
 
+    def set_skipped_lines(self, file: str, skipped_lines: set[int]) -> None:
+        self.skipped_lines[file] = skipped_lines
+
     def current_target(self) -> str | None:
         """Retrieves the current target from the associated scope.
 
@@ -349,11 +369,11 @@ class Errors:
 
     def import_context(self) -> list[tuple[str, int]]:
         """Return a copy of the import context."""
-        return self.import_ctx[:]
+        return self.import_ctx.copy()
 
     def set_import_context(self, ctx: list[tuple[str, int]]) -> None:
         """Replace the entire import context with a new value."""
-        self.import_ctx = ctx[:]
+        self.import_ctx = ctx.copy()
 
     def report(
         self,
@@ -419,21 +439,21 @@ class Errors:
         code = code or (codes.MISC if not blocker else None)
 
         info = ErrorInfo(
-            self.import_context(),
-            file,
-            self.current_module(),
-            type,
-            function,
-            line,
-            column,
-            end_line,
-            end_column,
-            severity,
-            message,
-            code,
-            blocker,
-            only_once,
-            allow_dups,
+            import_ctx=self.import_context(),
+            file=file,
+            module=self.current_module(),
+            typ=type,
+            function_or_member=function,
+            line=line,
+            column=column,
+            end_line=end_line,
+            end_column=end_column,
+            severity=severity,
+            message=message,
+            code=code,
+            blocker=blocker,
+            only_once=only_once,
+            allow_dups=allow_dups,
             origin=(self.file, origin_span),
             target=self.current_target(),
         )
@@ -450,7 +470,7 @@ class Errors:
         self.error_info_map[file].append(info)
         if info.blocker:
             self.has_blockers.add(file)
-        if info.code is IMPORT:
+        if info.code in (IMPORT, IMPORT_UNTYPED, IMPORT_NOT_FOUND):
             self.seen_import_error = True
 
     def _filter_error(self, file: str, info: ErrorInfo) -> bool:
@@ -491,7 +511,11 @@ class Errors:
             if info.message in self.only_once_messages:
                 return
             self.only_once_messages.add(info.message)
-        if self.seen_import_error and info.code is not IMPORT and self.has_many_errors():
+        if (
+            self.seen_import_error
+            and info.code not in (IMPORT, IMPORT_UNTYPED, IMPORT_NOT_FOUND)
+            and self.has_many_errors()
+        ):
             # Missing stubs can easily cause thousands of errors about
             # Any types, especially when upgrading to mypy 0.900,
             # which no longer bundles third-party library stubs. Avoid
@@ -515,32 +539,62 @@ class Errors:
                         + "may be out of date"
                     )
             note = ErrorInfo(
-                info.import_ctx,
-                info.file,
-                info.module,
-                info.type,
-                info.function_or_member,
-                info.line,
-                info.column,
-                info.end_line,
-                info.end_column,
-                "note",
-                msg,
+                import_ctx=info.import_ctx,
+                file=info.file,
+                module=info.module,
+                typ=info.type,
+                function_or_member=info.function_or_member,
+                line=info.line,
+                column=info.column,
+                end_line=info.end_line,
+                end_column=info.end_column,
+                severity="note",
+                message=msg,
                 code=None,
                 blocker=False,
                 only_once=False,
                 allow_dups=False,
             )
             self._add_error_info(file, note)
+        if (
+            self.options.show_error_code_links
+            and not self.options.hide_error_codes
+            and info.code is not None
+            and info.code not in HIDE_LINK_CODES
+            and info.code.code in mypy_error_codes
+        ):
+            message = f"See {BASE_RTD_URL}-{info.code.code} for more info"
+            if message in self.only_once_messages:
+                return
+            self.only_once_messages.add(message)
+            info = ErrorInfo(
+                import_ctx=info.import_ctx,
+                file=info.file,
+                module=info.module,
+                typ=info.type,
+                function_or_member=info.function_or_member,
+                line=info.line,
+                column=info.column,
+                end_line=info.end_line,
+                end_column=info.end_column,
+                severity="note",
+                message=message,
+                code=info.code,
+                blocker=False,
+                only_once=True,
+                allow_dups=False,
+                priority=20,
+            )
+            self._add_error_info(file, info)
 
     def has_many_errors(self) -> bool:
-        if self.many_errors_threshold < 0:
+        if self.options.many_errors_threshold < 0:
             return False
-        if len(self.error_info_map) >= self.many_errors_threshold:
+        if len(self.error_info_map) >= self.options.many_errors_threshold:
             return True
         if (
             sum(len(errors) for errors in self.error_info_map.values())
-            >= self.many_errors_threshold
+            >= self.options.many_errors_threshold
         ):
             return True
         return False
@@ -634,40 +688,44 @@ class Errors:
         ignored_lines = self.ignored_lines[file]
         used_ignored_lines = self.used_ignored_lines[file]
         for line, ignored_codes in ignored_lines.items():
+            if line in self.skipped_lines[file]:
+                continue
+            if codes.UNUSED_IGNORE.code in ignored_codes:
+                continue
             used_ignored_codes = used_ignored_lines[line]
             unused_ignored_codes = set(ignored_codes) - set(used_ignored_codes)
             # `ignore` is used
-            if len(ignored_codes) == 0 and len(used_ignored_codes) > 0:
+            if not ignored_codes and used_ignored_codes:
                 continue
             # All codes appearing in `ignore[...]` are used
-            if len(ignored_codes) > 0 and len(unused_ignored_codes) == 0:
+            if ignored_codes and not unused_ignored_codes:
                 continue
             # Display detail only when `ignore[...]` specifies more than one error code
             unused_codes_message = ""
-            if len(ignored_codes) > 1 and len(unused_ignored_codes) > 0:
+            if len(ignored_codes) > 1 and unused_ignored_codes:
                 unused_codes_message = f"[{', '.join(sorted(unused_ignored_codes))}]"
             message = f'Unused "type: ignore{unused_codes_message}" comment'
             for unused in unused_ignored_codes:
                 narrower = set(used_ignored_codes) & codes.sub_code_map[unused]
                 if narrower:
-                    message += f", use narrower [{', '.join(narrower)}] instead of [{unused}]"
+                    message += f", use narrower [{', '.join(narrower)}] instead of [{unused}] code"
             # Don't use report since add_error_info will ignore the error!
             info = ErrorInfo(
-                self.import_context(),
-                file,
-                self.current_module(),
-                None,
-                None,
-                line,
-                -1,
-                line,
-                -1,
-                "error",
-                message,
-                None,
-                False,
-                False,
-                False,
+                import_ctx=self.import_context(),
+                file=file,
+                module=self.current_module(),
+                typ=None,
+                function_or_member=None,
+                line=line,
+                column=-1,
+                end_line=line,
+                end_column=-1,
+                severity="error",
+                message=message,
+                code=codes.UNUSED_IGNORE,
+                blocker=False,
+                only_once=False,
+                allow_dups=False,
             )
             self._add_error_info(file, info)
 
@@ -705,21 +763,21 @@ class Errors:
             message = f'"type: ignore" comment without error code{codes_hint}'
             # Don't use report since add_error_info will ignore the error!
             info = ErrorInfo(
-                self.import_context(),
-                file,
-                self.current_module(),
-                None,
-                None,
-                line,
-                -1,
-                line,
-                -1,
-                "error",
-                message,
-                codes.IGNORE_WITHOUT_CODE,
-                False,
-                False,
-                False,
+                import_ctx=self.import_context(),
+                file=file,
+                module=self.current_module(),
+                typ=None,
+                function_or_member=None,
+                line=line,
+                column=-1,
+                end_line=line,
+                end_column=-1,
+                severity="error",
+                message=message,
+                code=codes.IGNORE_WITHOUT_CODE,
+                blocker=False,
+                only_once=False,
+                allow_dups=False,
             )
             self._add_error_info(file, info)
 
@@ -777,7 +835,7 @@ class Errors:
         )
 
     def format_messages(
-        self, error_info: list[ErrorInfo], source_lines: list[str] | None
+        self, error_tuples: list[ErrorTuple], source_lines: list[str] | None
     ) -> list[str]:
         """Return a string list that represents the error messages.
 
@@ -786,9 +844,6 @@ class Errors:
         severity 'error').
         """
         a: list[str] = []
-        error_info = [info for info in error_info if not info.hidden]
-        errors = self.render_messages(self.sort_messages(error_info))
-        errors = self.remove_duplicates(errors)
         for (
             file,
             line,
@@ -799,12 +854,12 @@ class Errors:
             message,
             allow_dups,
             code,
-        ) in errors:
+        ) in error_tuples:
             s = ""
             if file is not None:
-                if self.show_column_numbers and line >= 0 and column >= 0:
+                if self.options.show_column_numbers and line >= 0 and column >= 0:
                     srcloc = f"{file}:{line}:{1 + column}"
-                    if self.show_error_end and end_line >= 0 and end_column >= 0:
+                    if self.options.show_error_end and end_line >= 0 and end_column >= 0:
                         srcloc += f":{end_line}:{end_column}"
                 elif line >= 0:
                     srcloc = f"{file}:{line}"
@@ -822,7 +877,7 @@ class Errors:
                 # displaying duplicate error codes.
                 s = f"{s}  [{code.code}]"
             a.append(s)
-            if self.pretty:
+            if self.options.pretty:
                 # Add source code fragment and a location marker.
                 if severity == "error" and source_lines and line > 0:
                     source_line = source_lines[line - 1]
@@ -844,19 +899,28 @@ class Errors:
                     a.append(" " * (DEFAULT_SOURCE_OFFSET + column) + marker)
         return a
 
-    def file_messages(self, path: str) -> list[str]:
+    def file_messages(self, path: str, formatter: ErrorFormatter | None = None) -> list[str]:
         """Return a string list of new error messages from a given file.
 
         Use a form suitable for displaying to the user.
         """
         if path not in self.error_info_map:
             return []
+
+        error_info = self.error_info_map[path]
+        error_info = [info for info in error_info if not info.hidden]
+        error_tuples = self.render_messages(self.sort_messages(error_info))
+        error_tuples = self.remove_duplicates(error_tuples)
+
+        if formatter is not None:
+            errors = create_errors(error_tuples)
+            return [formatter.report_error(err) for err in errors]
+
         self.flushed_files.add(path)
         source_lines = None
-        if self.pretty:
-            assert self.read_source
+        if self.options.pretty and self.read_source:
             source_lines = self.read_source(path)
-        return self.format_messages(self.error_info_map[path], source_lines)
+        return self.format_messages(error_tuples, source_lines)
 
     def new_messages(self) -> list[str]:
         """Return a string list of new error messages.
@@ -894,7 +958,7 @@ class Errors:
 
         for e in errors:
             # Report module import context, if different from previous message.
-            if not self.show_error_context:
+            if not self.options.show_error_context:
                 pass
             elif e.import_ctx != prev_import_context:
                 last = len(e.import_ctx) - 1
@@ -919,7 +983,7 @@ class Errors:
             file = self.simplify_path(e.file)
 
             # Report context within a source file.
-            if not self.show_error_context:
+            if not self.options.show_error_context:
                 pass
             elif e.function_or_member != prev_function_or_member or e.type != prev_type:
                 if e.function_or_member is None:
@@ -1039,6 +1103,34 @@ class Errors:
 
             # Sort the errors specific to a file according to line number and column.
             a = sorted(errors[i0:i], key=lambda x: (x.line, x.column))
+            a = self.sort_within_context(a)
+            result.extend(a)
+        return result
+
+    def sort_within_context(self, errors: list[ErrorInfo]) -> list[ErrorInfo]:
+        """For the same location decide which messages to show first/last.
+
+        Currently, we only compare within the same error code, to decide the
+        order of various additional notes.
+        """
+        result = []
+        i = 0
+        while i < len(errors):
+            i0 = i
+            # Find neighbouring errors with the same position and error code.
+            while (
+                i + 1 < len(errors)
+                and errors[i + 1].line == errors[i].line
+                and errors[i + 1].column == errors[i].column
+                and errors[i + 1].end_line == errors[i].end_line
+                and errors[i + 1].end_column == errors[i].end_column
+                and errors[i + 1].code == errors[i].code
+            ):
+                i += 1
+            i += 1
+
+            # Sort the messages specific to a given error by priority.
+            a = sorted(errors[i0:i], key=lambda x: x.priority)
             result.extend(a)
         return result
 
@@ -1194,3 +1286,56 @@ def report_internal_error(
     # Exit.  The caller has nothing more to say.
     # We use exit code 2 to signal that this is no ordinary error.
     raise SystemExit(2)
+
+
+class MypyError:
+    def __init__(
+        self,
+        file_path: str,
+        line: int,
+        column: int,
+        message: str,
+        errorcode: ErrorCode | None,
+        severity: Literal["error", "note"],
+    ) -> None:
+        self.file_path = file_path
+        self.line = line
+        self.column = column
+        self.message = message
+        self.errorcode = errorcode
+        self.severity = severity
+        self.hints: list[str] = []
+
+
+# (file_path, line, column)
+_ErrorLocation = Tuple[str, int, int]
+
+
+def create_errors(error_tuples: list[ErrorTuple]) -> list[MypyError]:
+    errors: list[MypyError] = []
+    latest_error_at_location: dict[_ErrorLocation, MypyError] = {}
+
+    for error_tuple in error_tuples:
+        file_path, line, column, _, _, severity, message, _, errorcode = error_tuple
+        if file_path is None:
+            continue
+
+        assert severity in ("error", "note")
+        if severity == "note":
+            error_location = (file_path, line, column)
+            error = latest_error_at_location.get(error_location)
+            if error is None:
+                # This is purely a note, with no error correlated to it
+                error = MypyError(file_path, line, column, message, errorcode, severity="note")
+                errors.append(error)
+                continue
+
+            error.hints.append(message)
+
+        else:
+            error = MypyError(file_path, line, column, message, errorcode, severity="error")
+            errors.append(error)
+            error_location = (file_path, line, column)
+            latest_error_at_location[error_location] = error
+
+    return errors

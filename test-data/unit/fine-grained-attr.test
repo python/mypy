@@ -1,23 +1,23 @@
 [case updateMagicField]
-from attr import Attribute
+from attrs import Attribute
 import m
 
 def g() -> Attribute[int]:
     return m.A.__attrs_attrs__[0]
 
 [file m.py]
-from attr import define
+from attrs import define
 
 @define
 class A:
     a: int
 [file m.py.2]
-from attr import define
+from attrs import define
 
 @define
 class A:
     a: float
-[builtins fixtures/attr.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 [out]
 ==
 main:5: error: Incompatible return value type (got "Attribute[float]", expected "Attribute[int]")
@@ -26,13 +26,13 @@ main:5: error: Incompatible return value type (got "Attribute[float]", expected 
 import m
 
 [file c.py]
-from attr import define
+from attrs import define
 
 @define
 class A:
     a: float
     b: int
-[builtins fixtures/attr.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 
 [file m.py]
 from c import A
@@ -49,12 +49,12 @@ A.__attrs_attrs__.b
 
 [case magicAttributeConsistency2-only_when_cache]
 [file c.py]
-import attr
+import attrs
 
-@attr.s
+@attrs.define
 class Entry:
-    var: int = attr.ib()
-[builtins fixtures/attr.pyi]
+    var: int
+[builtins fixtures/plugin_attrs.pyi]
 
 [file m.py]
 from typing import Any, ClassVar, Protocol

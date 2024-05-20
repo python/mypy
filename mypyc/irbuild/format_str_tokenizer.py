@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum, unique
-from typing_extensions import Final
+from typing import Final
 
 from mypy.checkstrformat import (
     ConversionSpecifier,
@@ -13,6 +13,7 @@ from mypy.checkstrformat import (
 from mypy.errors import Errors
 from mypy.messages import MessageBuilder
 from mypy.nodes import Context, Expression
+from mypy.options import Options
 from mypyc.ir.ops import Integer, Value
 from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive,
@@ -108,7 +109,9 @@ def tokenizer_format_call(format_str: str) -> tuple[list[str], list[FormatOp]] |
     """
     # Creates an empty MessageBuilder here.
     # It wouldn't be used since the code has passed the type-checking.
-    specifiers = parse_format_value(format_str, EMPTY_CONTEXT, MessageBuilder(Errors(), {}))
+    specifiers = parse_format_value(
+        format_str, EMPTY_CONTEXT, MessageBuilder(Errors(Options()), {})
+    )
     if specifiers is None:
         return None
     format_ops = generate_format_ops(specifiers)

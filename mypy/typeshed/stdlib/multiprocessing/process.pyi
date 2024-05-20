@@ -1,11 +1,7 @@
-import sys
 from collections.abc import Callable, Iterable, Mapping
 from typing import Any
 
-if sys.version_info >= (3, 8):
-    __all__ = ["BaseProcess", "current_process", "active_children", "parent_process"]
-else:
-    __all__ = ["BaseProcess", "current_process", "active_children"]
+__all__ = ["BaseProcess", "current_process", "active_children", "parent_process"]
 
 class BaseProcess:
     name: str
@@ -17,8 +13,8 @@ class BaseProcess:
         group: None = None,
         target: Callable[..., object] | None = None,
         name: str | None = None,
-        args: Iterable[Any] = ...,
-        kwargs: Mapping[str, Any] = ...,
+        args: Iterable[Any] = (),
+        kwargs: Mapping[str, Any] = {},
         *,
         daemon: bool | None = None,
     ) -> None: ...
@@ -40,6 +36,4 @@ class BaseProcess:
 
 def current_process() -> BaseProcess: ...
 def active_children() -> list[BaseProcess]: ...
-
-if sys.version_info >= (3, 8):
-    def parent_process() -> BaseProcess | None: ...
+def parent_process() -> BaseProcess | None: ...

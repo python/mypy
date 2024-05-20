@@ -1,9 +1,9 @@
 import sys
 from _typeshed import ReadableBuffer
-from typing import overload
-from typing_extensions import Literal
+from typing import Literal, overload
 
 if sys.platform == "win32":
+    SND_APPLICATION: Literal[128]
     SND_FILENAME: Literal[131072]
     SND_ALIAS: Literal[65536]
     SND_LOOP: Literal[8]

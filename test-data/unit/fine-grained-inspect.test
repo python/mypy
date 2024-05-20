@@ -1,8 +1,8 @@
 [case testInspectTypeBasic]
-# inspect2: --include-kind foo.py:10:13
-# inspect2: --show=type --include-kind foo.py:10:13
-# inspect2: --include-span -vv foo.py:12:5
-# inspect2: --include-span --include-kind foo.py:12:5:12:9
+# inspect2: --include-kind tmp/foo.py:10:13
+# inspect2: --show=type --include-kind tmp/foo.py:10:13
+# inspect2: --include-span -vv tmp/foo.py:12:5
+# inspect2: --include-span --include-kind tmp/foo.py:12:5:12:9
 import foo
 [file foo.py]
 from typing import TypeVar, Generic
@@ -29,10 +29,10 @@ MemberExpr -> "T"
 CallExpr:12:5:12:9 -> "C[int]"
 
 [case testInspectAttrsBasic]
-# inspect2: --show=attrs foo.py:6:1
-# inspect2: --show=attrs foo.py:7:1
-# inspect2: --show=attrs foo.py:10:1
-# inspect2: --show=attrs --include-object-attrs  foo.py:10:1
+# inspect2: --show=attrs tmp/foo.py:6:1
+# inspect2: --show=attrs tmp/foo.py:7:1
+# inspect2: --show=attrs tmp/foo.py:10:1
+# inspect2: --show=attrs --include-object-attrs  tmp/foo.py:10:1
 import foo
 [file foo.py]
 from bar import Meta
@@ -56,12 +56,12 @@ class Meta(type):
 {"function": ["__name__"], "object": ["__init__"]}
 
 [case testInspectDefBasic]
-# inspect2: --show=definition foo.py:5:5
-# inspect2: --show=definition --include-kind foo.py:6:3
-# inspect2: --show=definition --include-span foo.py:7:5
-# inspect2: --show=definition foo.py:8:1:8:4
-# inspect2: --show=definition foo.py:8:6:8:8
-# inspect2: --show=definition foo.py:9:3
+# inspect2: --show=definition tmp/foo.py:5:5
+# inspect2: --show=definition --include-kind tmp/foo.py:6:3
+# inspect2: --show=definition --include-span tmp/foo.py:7:5
+# inspect2: --show=definition tmp/foo.py:8:1:8:4
+# inspect2: --show=definition tmp/foo.py:8:6:8:8
+# inspect2: --show=definition tmp/foo.py:9:3
 import foo
 [file foo.py]
 from bar import var, test, A
@@ -95,18 +95,18 @@ def foo(x: Union[int, str]) -> None:
 [builtins fixtures/classmethod.pyi]
 [out]
 ==
-bar.py:4:0:meth
+tmp/bar.py:4:0:meth
 MemberExpr -> tmp/bar.py:2:5:x
 7:1:7:5 -> tmp/bar.py:6:9:y
-bar.py:9:1:test
-bar.py:8:1:var
-baz.py:3:2:foo
+tmp/bar.py:9:1:test
+tmp/bar.py:8:1:var
+tmp/baz.py:3:2:foo
 
 [case testInspectFallbackAttributes]
-# inspect2: --show=attrs --include-object-attrs foo.py:5:1
-# inspect2: --show=attrs foo.py:8:1
-# inspect2: --show=attrs --include-kind foo.py:10:1
-# inspect2: --show=attrs --include-kind --include-object-attrs foo.py:10:1
+# inspect2: --show=attrs --include-object-attrs tmp/foo.py:5:1
+# inspect2: --show=attrs tmp/foo.py:8:1
+# inspect2: --show=attrs --include-kind tmp/foo.py:10:1
+# inspect2: --show=attrs --include-kind --include-object-attrs tmp/foo.py:10:1
 import foo
 [file foo.py]
 class B: ...
@@ -128,7 +128,7 @@ NameExpr -> {}
 NameExpr -> {"object": ["__eq__", "__init__", "__ne__"]}
 
 [case testInspectTypeVarBoundAttrs]
-# inspect2: --show=attrs foo.py:8:13
+# inspect2: --show=attrs tmp/foo.py:8:13
 import foo
 [file foo.py]
 from typing import TypeVar
@@ -144,10 +144,10 @@ def foo(arg: T) -> T:
 {"C": ["x"]}
 
 [case testInspectTypeVarValuesAttrs]
-# inspect2: --show=attrs --force-reload foo.py:13:13
-# inspect2: --show=attrs --force-reload --union-attrs foo.py:13:13
-# inspect2: --show=attrs foo.py:16:5
-# inspect2: --show=attrs --union-attrs foo.py:16:5
+# inspect2: --show=attrs --force-reload tmp/foo.py:13:13
+# inspect2: --show=attrs --force-reload --union-attrs tmp/foo.py:13:13
+# inspect2: --show=attrs tmp/foo.py:16:5
+# inspect2: --show=attrs --union-attrs tmp/foo.py:16:5
 import foo
 [file foo.py]
 from typing import TypeVar, Generic
@@ -174,8 +174,8 @@ class C(Generic[T]):
 {"A": ["x", "z"], "B": ["y", "z"]}
 
 [case testInspectTypeVarBoundDef]
-# inspect2: --show=definition foo.py:9:13
-# inspect2: --show=definition foo.py:8:9
+# inspect2: --show=definition tmp/foo.py:9:13
+# inspect2: --show=definition tmp/foo.py:8:9
 import foo
 [file foo.py]
 from typing import TypeVar
@@ -189,13 +189,13 @@ def foo(arg: T) -> T:
     return arg
 [out]
 ==
-foo.py:7:9:arg
-foo.py:4:5:x
+tmp/foo.py:7:9:arg
+tmp/foo.py:4:5:x
 
 [case testInspectTypeVarValuesDef]
-# inspect2: --show=definition --force-reload foo.py:13:9
-# inspect2: --show=definition --force-reload foo.py:14:13
-# inspect2: --show=definition foo.py:18:7
+# inspect2: --show=definition --force-reload tmp/foo.py:13:9
+# inspect2: --show=definition --force-reload tmp/foo.py:14:13
+# inspect2: --show=definition tmp/foo.py:18:7
 import foo
 [file foo.py]
 from typing import TypeVar, Generic
@@ -218,12 +218,12 @@ class C(Generic[T]):
     x.z
 [out]
 ==
-foo.py:5:5:z, tmp/foo.py:9:5:z
-foo.py:12:9:arg
-foo.py:5:5:z, tmp/foo.py:9:5:z
+tmp/foo.py:5:5:z, tmp/foo.py:9:5:z
+tmp/foo.py:12:9:arg
+tmp/foo.py:5:5:z, tmp/foo.py:9:5:z
 
 [case testInspectModuleAttrs]
-# inspect2: --show=attrs foo.py:2:1
+# inspect2: --show=attrs tmp/foo.py:2:1
 import foo
 [file foo.py]
 from pack import bar
@@ -239,7 +239,7 @@ class C: ...
 {"<pack.bar>": ["C", "__annotations__", "__doc__", "__file__", "__name__", "__package__", "bar", "x"], "ModuleType": ["__file__", "__getattr__"]}
 
 [case testInspectModuleDef]
-# inspect2: --show=definition --include-kind foo.py:2:1
+# inspect2: --show=definition --include-kind tmp/foo.py:2:1
 import foo
 [file foo.py]
 from pack import bar
@@ -255,7 +255,7 @@ NameExpr -> tmp/pack/bar.py:1:1:bar
 MemberExpr -> tmp/pack/bar.py:3:5:x
 
 [case testInspectFunctionArgDef]
-# inspect2: --show=definition --include-span foo.py:4:13
+# inspect2: --show=definition --include-span tmp/foo.py:4:13
 # TODO: for now all arguments have line/column set to function definition.
 import foo
 [file foo.py]

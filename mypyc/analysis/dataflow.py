@@ -18,6 +18,10 @@ from mypyc.ir.ops import (
     ComparisonOp,
     ControlOp,
     Extend,
+    Float,
+    FloatComparisonOp,
+    FloatNeg,
+    FloatOp,
     GetAttr,
     GetElementPtr,
     Goto,
@@ -34,6 +38,7 @@ from mypyc.ir.ops import (
     MethodCall,
     Op,
     OpVisitor,
+    PrimitiveOp,
     RaiseStandardError,
     RegisterOp,
     Return,
@@ -42,6 +47,7 @@ from mypyc.ir.ops import (
     Truncate,
     TupleGet,
     TupleSet,
+    Unborrow,
     Unbox,
     Unreachable,
     Value,
@@ -67,11 +73,8 @@ class CFG:
         self.exits = exits
 
     def __str__(self) -> str:
-        lines = []
-        lines.append("exits: %s" % sorted(self.exits, key=lambda e: int(e.label)))
-        lines.append("succ: %s" % self.succ)
-        lines.append("pred: %s" % self.pred)
-        return "\n".join(lines)
+        exits = sorted(self.exits, key=lambda e: int(e.label))
+        return f"exits: {exits}\nsucc: {self.succ}\npred: {self.pred}"
 
 
 def get_cfg(blocks: list[BasicBlock]) -> CFG:
@@ -85,7 +88,6 @@ def get_cfg(blocks: list[BasicBlock]) -> CFG:
     pred_map: dict[BasicBlock, list[BasicBlock]] = {}
     exits = set()
     for block in blocks:
-
         assert not any(
             isinstance(op, ControlOp) for op in block.ops[:-1]
         ), "Control-flow ops must be at the end of blocks"
@@ -142,7 +144,7 @@ def cleanup_cfg(blocks: list[BasicBlock]) -> None:
         # Then delete any blocks that have no predecessors
         changed = False
         cfg = get_cfg(blocks)
-        orig_blocks = blocks[:]
+        orig_blocks = blocks.copy()
         blocks.clear()
         for i, block in enumerate(orig_blocks):
             if i == 0 or cfg.pred[block]:
@@ -233,6 +235,9 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
     def visit_call_c(self, op: CallC) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
+    def visit_primitive_op(self, op: PrimitiveOp) -> GenAndKill[T]:
+        return self.visit_register_op(op)
+
     def visit_truncate(self, op: Truncate) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
@@ -245,7 +250,16 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
     def visit_int_op(self, op: IntOp) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
+    def visit_float_op(self, op: FloatOp) -> GenAndKill[T]:
+        return self.visit_register_op(op)
+
+    def visit_float_neg(self, op: FloatNeg) -> GenAndKill[T]:
+        return self.visit_register_op(op)
+
     def visit_comparison_op(self, op: ComparisonOp) -> GenAndKill[T]:
+        return self.visit_register_op(op)
+
+    def visit_float_comparison_op(self, op: FloatComparisonOp) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
     def visit_load_mem(self, op: LoadMem) -> GenAndKill[T]:
@@ -258,6 +272,9 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
         return self.visit_register_op(op)
 
     def visit_keep_alive(self, op: KeepAlive) -> GenAndKill[T]:
+        return self.visit_register_op(op)
+
+    def visit_unborrow(self, op: Unborrow) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
 
@@ -444,7 +461,7 @@ def analyze_undefined_regs(
 def non_trivial_sources(op: Op) -> set[Value]:
     result = set()
     for source in op.sources():
-        if not isinstance(source, Integer):
+        if not isinstance(source, (Integer, Float)):
             result.add(source)
     return result
 
@@ -454,7 +471,7 @@ class LivenessVisitor(BaseAnalysisVisitor[Value]):
         return non_trivial_sources(op), set()
 
     def visit_return(self, op: Return) -> GenAndKill[Value]:
-        if not isinstance(op.value, Integer):
+        if not isinstance(op.value, (Integer, Float)):
             return {op.value}, set()
         else:
             return set(), set()

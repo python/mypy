@@ -51,7 +51,7 @@ def f(a, n, c):
     r5 :: int
     r6 :: str
     r7 :: object
-    r8 :: int32
+    r8 :: i32
     r9 :: bit
 L0:
     r0 = box(int, n)
@@ -99,14 +99,14 @@ def f2(a, n, l):
     n :: int
     l :: list
     r0, r1, r2, r3, r4 :: object
-    r5 :: int32
+    r5 :: i32
     r6 :: bit
     r7 :: object
-    r8 :: int32
+    r8 :: i32
     r9, r10 :: bit
     r11 :: list
     r12 :: object
-    r13, r14, r15 :: ptr
+    r13 :: ptr
 L0:
     r0 = box(int, n)
     r1 = PyObject_GetItem(a, r0)
@@ -121,11 +121,9 @@ L0:
     r10 = CPyList_SetItem(l, n, a)
     r11 = PyList_New(2)
     r12 = box(int, n)
-    r13 = get_element_ptr r11 ob_item :: PyListObject
-    r14 = load_mem r13 :: ptr*
-    set_mem r14, a :: builtins.object*
-    r15 = r14 + WORD_SIZE*1
-    set_mem r15, r12 :: builtins.object*
+    r13 = list_items r11
+    buf_init_item r13, 0, a
+    buf_init_item r13, 1, r12
     keep_alive r11
     return 1
 def f3(a, n):
@@ -187,15 +185,14 @@ def f() -> None:
 def f():
     r0, r1 :: object
     r2, a :: int
-    r3, r4, b :: float
+    r3, b :: float
 L0:
     r0 = object 1
     r1 = PyNumber_Absolute(r0)
     r2 = unbox(int, r1)
     a = r2
-    r3 = 1.1
-    r4 = PyNumber_Absolute(r3)
-    b = r4
+    r3 = fabs(1.1)
+    b = r3
     return 1
 
 [case testFunctionBasedOps]
@@ -228,13 +225,12 @@ L0:
 def f3():
     r0, r1, r2, r3 :: object
     r4 :: int
-    r5 :: object
+    r5 :: float
 L0:
     r0 = object 2
     r1 = object 5
     r2 = object 3
     r3 = PyNumber_Power(r0, r1, r2)
     r4 = unbox(int, r3)
-    r5 = box(int, r4)
+    r5 = CPyFloat_FromTagged(r4)
     return r5
-

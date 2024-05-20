@@ -2,8 +2,9 @@ import os
 import sys
 from _typeshed import BytesPath, FileDescriptorOrPath, StrOrBytesPath, StrPath, SupportsRead, SupportsWrite
 from collections.abc import Callable, Iterable, Sequence
+from tarfile import _TarfileFilter
 from typing import Any, AnyStr, NamedTuple, Protocol, TypeVar, overload
-from typing_extensions import TypeAlias
+from typing_extensions import TypeAlias, deprecated
 
 __all__ = [
     "copyfileobj",
@@ -47,12 +48,7 @@ class ExecError(OSError): ...
 class ReadError(OSError): ...
 class RegistryError(Exception): ...
 
-if sys.version_info >= (3, 8):
-    def copyfileobj(fsrc: SupportsRead[AnyStr], fdst: SupportsWrite[AnyStr], length: int = 0) -> None: ...
-
-else:
-    def copyfileobj(fsrc: SupportsRead[AnyStr], fdst: SupportsWrite[AnyStr], length: int = 16384) -> None: ...
-
+def copyfileobj(fsrc: SupportsRead[AnyStr], fdst: SupportsWrite[AnyStr], length: int = 0) -> None: ...
 def copyfile(src: StrOrBytesPath, dst: _StrOrBytesPathT, *, follow_symlinks: bool = True) -> _StrOrBytesPathT: ...
 def copymode(src: StrOrBytesPath, dst: StrOrBytesPath, *, follow_symlinks: bool = True) -> None: ...
 def copystat(src: StrOrBytesPath, dst: StrOrBytesPath, *, follow_symlinks: bool = True) -> None: ...
@@ -65,44 +61,52 @@ def copy2(src: StrPath, dst: StrPath, *, follow_symlinks: bool = True) -> _PathR
 @overload
 def copy2(src: BytesPath, dst: BytesPath, *, follow_symlinks: bool = True) -> _PathReturn: ...
 def ignore_patterns(*patterns: StrPath) -> Callable[[Any, list[str]], set[str]]: ...
+def copytree(
+    src: StrPath,
+    dst: StrPath,
+    symlinks: bool = False,
+    ignore: None | Callable[[str, list[str]], Iterable[str]] | Callable[[StrPath, list[str]], Iterable[str]] = None,
+    copy_function: Callable[[str, str], object] = ...,
+    ignore_dangling_symlinks: bool = False,
+    dirs_exist_ok: bool = False,
+) -> _PathReturn: ...
 
-if sys.version_info >= (3, 8):
-    def copytree(
-        src: StrPath,
-        dst: StrPath,
-        symlinks: bool = False,
-        ignore: None | Callable[[str, list[str]], Iterable[str]] | Callable[[StrPath, list[str]], Iterable[str]] = None,
-        copy_function: Callable[[str, str], object] = ...,
-        ignore_dangling_symlinks: bool = False,
-        dirs_exist_ok: bool = False,
-    ) -> _PathReturn: ...
-
-else:
-    def copytree(
-        src: StrPath,
-        dst: StrPath,
-        symlinks: bool = False,
-        ignore: None | Callable[[str, list[str]], Iterable[str]] | Callable[[StrPath, list[str]], Iterable[str]] = None,
-        copy_function: Callable[[str, str], object] = ...,
-        ignore_dangling_symlinks: bool = False,
-    ) -> _PathReturn: ...
-
-_OnErrorCallback: TypeAlias = Callable[[Callable[..., Any], Any, Any], object]
+_OnErrorCallback: TypeAlias = Callable[[Callable[..., Any], str, Any], object]
+_OnExcCallback: TypeAlias = Callable[[Callable[..., Any], str, Exception], object]
 
 class _RmtreeType(Protocol):
     avoids_symlink_attacks: bool
-    if sys.version_info >= (3, 11):
+    if sys.version_info >= (3, 12):
+        @overload
+        def __call__(self, path: StrOrBytesPath, ignore_errors: bool = False, *, dir_fd: int | None = None) -> None: ...
+        @overload
+        @deprecated("The `onerror` parameter is deprecated and will be removed in Python 3.14. Use `onexc` instead.")
         def __call__(
             self,
             path: StrOrBytesPath,
-            ignore_errors: bool = ...,
-            onerror: _OnErrorCallback | None = ...,
+            ignore_errors: bool = False,
+            onerror: _OnErrorCallback | None = None,
             *,
-            dir_fd: int | None = ...,
+            dir_fd: int | None = None,
+        ) -> None: ...
+        @overload
+        def __call__(
+            self, path: StrOrBytesPath, ignore_errors: bool = False, *, onexc: _OnExcCallback, dir_fd: int | None = None
+        ) -> None: ...
+    elif sys.version_info >= (3, 11):
+        def __call__(
+            self,
+            path: StrOrBytesPath,
+            ignore_errors: bool = False,
+            onerror: _OnErrorCallback | None = None,
+            *,
+            dir_fd: int | None = None,
         ) -> None: ...
 
     else:
-        def __call__(self, path: StrOrBytesPath, ignore_errors: bool = ..., onerror: _OnErrorCallback | None = ...) -> None: ...
+        def __call__(
+            self, path: StrOrBytesPath, ignore_errors: bool = False, onerror: _OnErrorCallback | None = None
+        ) -> None: ...
 
 rmtree: _RmtreeType
 
@@ -129,23 +133,17 @@ def disk_usage(path: FileDescriptorOrPath) -> _ntuple_diskusage: ...
 # see https://bugs.python.org/issue33140. We keep it here because it's
 # in __all__.
 @overload
-def chown(path: StrOrBytesPath, user: str | int, group: None = None) -> None: ...
+def chown(path: FileDescriptorOrPath, user: str | int, group: None = None) -> None: ...
 @overload
-def chown(path: StrOrBytesPath, user: None = None, *, group: str | int) -> None: ...
+def chown(path: FileDescriptorOrPath, user: None = None, *, group: str | int) -> None: ...
 @overload
-def chown(path: StrOrBytesPath, user: None, group: str | int) -> None: ...
+def chown(path: FileDescriptorOrPath, user: None, group: str | int) -> None: ...
 @overload
-def chown(path: StrOrBytesPath, user: str | int, group: str | int) -> None: ...
-
-if sys.version_info >= (3, 8):
-    @overload
-    def which(cmd: _StrPathT, mode: int = 1, path: StrPath | None = None) -> str | _StrPathT | None: ...
-    @overload
-    def which(cmd: bytes, mode: int = 1, path: StrPath | None = None) -> bytes | None: ...
-
-else:
-    def which(cmd: _StrPathT, mode: int = 1, path: StrPath | None = None) -> str | _StrPathT | None: ...
-
+def chown(path: FileDescriptorOrPath, user: str | int, group: str | int) -> None: ...
+@overload
+def which(cmd: _StrPathT, mode: int = 1, path: StrPath | None = None) -> str | _StrPathT | None: ...
+@overload
+def which(cmd: bytes, mode: int = 1, path: StrPath | None = None) -> bytes | None: ...
 def make_archive(
     base_name: str,
     format: str,
@@ -167,7 +165,9 @@ def register_archive_format(
     name: str, function: Callable[[str, str], object], extra_args: None = None, description: str = ""
 ) -> None: ...
 def unregister_archive_format(name: str) -> None: ...
-def unpack_archive(filename: StrPath, extract_dir: StrPath | None = None, format: str | None = None) -> None: ...
+def unpack_archive(
+    filename: StrPath, extract_dir: StrPath | None = None, format: str | None = None, *, filter: _TarfileFilter | None = None
+) -> None: ...
 @overload
 def register_unpack_format(
     name: str,
@@ -182,4 +182,4 @@ def register_unpack_format(
 ) -> None: ...
 def unregister_unpack_format(name: str) -> None: ...
 def get_unpack_formats() -> list[tuple[str, list[str], str]]: ...
-def get_terminal_size(fallback: tuple[int, int] = ...) -> os.terminal_size: ...
+def get_terminal_size(fallback: tuple[int, int] = (80, 24)) -> os.terminal_size: ...

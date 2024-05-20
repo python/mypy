@@ -1,13 +1,12 @@
+from multiprocessing.connection import _Address
 from queue import Queue
 from types import TracebackType
 from typing import Any
-from typing_extensions import Self, TypeAlias
+from typing_extensions import Self
 
 __all__ = ["Client", "Listener", "Pipe"]
 
 families: list[None]
-
-_Address: TypeAlias = str | tuple[str, int]
 
 class Connection:
     _in: Any
