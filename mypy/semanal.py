@@ -636,6 +636,7 @@ class SemanticAnalyzer(
         str_type: Type | None = self.named_type_or_none("builtins.str")
         if str_type is None:
             str_type = UnboundType("builtins.str")
+        inst: Type | None
         for name, t in implicit_module_attrs.items():
             if name == "__doc__":
                 typ: Type = str_type
