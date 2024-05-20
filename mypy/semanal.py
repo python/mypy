@@ -3921,7 +3921,7 @@ class SemanticAnalyzer(
             alias_node.normalized = rvalue.node.normalized
         current_node = existing.node if existing else alias_node
         assert isinstance(current_node, TypeAlias)
-        self.disable_invalid_recursive_aliases(s, current_node)
+        self.disable_invalid_recursive_aliases(s, current_node, s.rvalue)
         if self.is_class_scope():
             assert self.type is not None
             if self.type.is_protocol:
@@ -4017,7 +4017,7 @@ class SemanticAnalyzer(
         return declared_tvars, all_declared_tvar_names
 
     def disable_invalid_recursive_aliases(
-        self, s: AssignmentStmt, current_node: TypeAlias
+        self, s: AssignmentStmt | TypeAliasStmt, current_node: TypeAlias, ctx: Context
     ) -> None:
         """Prohibit and fix recursive type aliases that are invalid/unsupported."""
         messages = []
@@ -4034,7 +4034,7 @@ class SemanticAnalyzer(
             current_node.target = AnyType(TypeOfAny.from_error)
             s.invalid_recursive_alias = True
         for msg in messages:
-            self.fail(msg, s.rvalue)
+            self.fail(msg, ctx)
 
     def analyze_lvalue(
         self,
@@ -5264,6 +5264,8 @@ class SemanticAnalyzer(
             self.visit_block(s.bodies[i])
 
     def visit_type_alias_stmt(self, s: TypeAliasStmt) -> None:
+        if s.invalid_recursive_alias:
+            return
         self.statement = s
         type_params = self.push_type_args(s.type_args, s)
         if type_params is None:
@@ -5353,6 +5355,9 @@ class SemanticAnalyzer(
             else:
                 self.add_symbol(s.name.name, alias_node, s)
 
+            current_node = existing.node if existing else alias_node
+            assert isinstance(current_node, TypeAlias)
+            self.disable_invalid_recursive_aliases(s, current_node, s.value)
         finally:
             self.pop_type_args(s.type_args)
 

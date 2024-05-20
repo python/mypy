@@ -1640,19 +1640,21 @@ class MatchStmt(Statement):
 
 
 class TypeAliasStmt(Statement):
-    __slots__ = ("name", "type_args", "value")
+    __slots__ = ("name", "type_args", "value", "invalid_recursive_alias")
 
     __match_args__ = ("name", "type_args", "value")
 
     name: NameExpr
     type_args: list[TypeParam]
     value: Expression  # Will get translated into a type
+    invalid_recursive_alias: bool
 
     def __init__(self, name: NameExpr, type_args: list[TypeParam], value: Expression) -> None:
         super().__init__()
         self.name = name
         self.type_args = type_args
         self.value = value
+        self.invalid_recursive_alias = False
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_type_alias_stmt(self)
