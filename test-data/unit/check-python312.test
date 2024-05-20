@@ -1161,3 +1161,23 @@ def decorator(x: str) -> Any: ...
 @decorator(T)  # E: Argument 1 to "decorator" has incompatible type "int"; expected "str"
 class C[T]:
     pass
+
+[case testPEP695InvalidGenericOrProtocolBaseClass]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+
+from typing import Generic, Protocol, TypeVar
+
+S = TypeVar("S")
+
+class C[T](Generic[T]):  # E: Generic[...] base class is redundant
+    pass
+class C2[T](Generic[S]): # E: Generic[...] base class is redundant
+    pass
+
+a: C[int]
+b: C2[int, str]
+
+class P[T](Protocol[T]):  # E: No arguments expected for "Protocol" base class
+    pass
+class P2[T](Protocol[S]):  # E: No arguments expected for "Protocol" base class
+    pass
