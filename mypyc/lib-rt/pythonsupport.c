@@ -5,6 +5,8 @@
 
 #include "pythonsupport.h"
 
+#if CPY_3_12_FEATURES
+
 // Slow path of CPyLong_AsSsize_tAndOverflow (non-inlined)
 Py_ssize_t
 CPyLong_AsSsize_tAndOverflow_(PyObject *vv, int *overflow)
@@ -50,3 +52,55 @@ CPyLong_AsSsize_tAndOverflow_(PyObject *vv, int *overflow)
   exit:
     return res;
 }
+
+#else
+
+// Slow path of CPyLong_AsSsize_tAndOverflow (non-inlined, Python 3.11 and earlier)
+Py_ssize_t
+CPyLong_AsSsize_tAndOverflow_(PyObject *vv, int *overflow)
+{
+    /* This version by Tim Peters */
+    PyLongObject *v = (PyLongObject *)vv;
+    size_t x, prev;
+    Py_ssize_t res;
+    Py_ssize_t i;
+    int sign;
+
+    *overflow = 0;
+
+    res = -1;
+    i = Py_SIZE(v);
+
+    sign = 1;
+    x = 0;
+    if (i < 0) {
+        sign = -1;
+        i = -(i);
+    }
+    while (--i >= 0) {
+        prev = x;
+        x = (x << PyLong_SHIFT) + CPY_LONG_DIGIT(v, i);
+        if ((x >> PyLong_SHIFT) != prev) {
+            *overflow = sign;
+            goto exit;
+        }
+    }
+    /* Haven't lost any bits, but casting to long requires extra
+     * care (see comment above).
+     */
+    if (x <= (size_t)CPY_TAGGED_MAX) {
+        res = (Py_ssize_t)x * sign;
+    }
+    else if (sign < 0 && x == CPY_TAGGED_ABS_MIN) {
+        res = CPY_TAGGED_MIN;
+    }
+    else {
+        *overflow = sign;
+        /* res is already set to -1 */
+    }
+  exit:
+    return res;
+}
+
+
+#endif
