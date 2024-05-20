@@ -646,7 +646,10 @@ class SemanticAnalyzer(
                     return
                 typ = inst
             elif name == "__spec__":
-                inst: Type | None = self.named_type_or_none("importlib.machinery.ModuleSpec")
+                if self.options.use_builtins_fixtures:
+                    inst = self.named_type_or_none("builtins.object")
+                else:
+                    inst = self.named_type_or_none("importlib.machinery.ModuleSpec")
                 if inst is None:
                     if self.final_iteration:
                         inst = self.named_type_or_none("builtins.object")
