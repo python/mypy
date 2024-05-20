@@ -5329,7 +5329,27 @@ class SemanticAnalyzer(
                 and isinstance(existing.node, (PlaceholderNode, TypeAlias))
                 and existing.node.line == s.line
             ):
-                existing.node = alias_node
+                updated = False
+                if isinstance(existing.node, TypeAlias):
+                    if existing.node.target != res:
+                        # Copy expansion to the existing alias, this matches how we update base classes
+                        # for a TypeInfo _in place_ if there are nested placeholders.
+                        existing.node.target = res
+                        existing.node.alias_tvars = alias_tvars
+                        # existing.node.no_args = no_args
+                        updated = True
+                else:
+                    # Otherwise just replace existing placeholder with type alias.
+                    existing.node = alias_node
+                    updated = True
+
+                if updated:
+                    if self.final_iteration:
+                        self.cannot_resolve_name(s.name.name, "name", s)
+                        return
+                    else:
+                        # We need to defer so that this change can get propagated to base classes.
+                        self.defer(s, force_progress=True)
             else:
                 self.add_symbol(s.name.name, alias_node, s)
 

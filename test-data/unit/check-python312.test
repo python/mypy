@@ -1161,3 +1161,16 @@ def decorator(x: str) -> Any: ...
 @decorator(T)  # E: Argument 1 to "decorator" has incompatible type "int"; expected "str"
 class C[T]:
     pass
+
+[case testPEP695RecursiceTypeAlias]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+
+type A = str | list[A]
+a: A
+reveal_type(a)  # N: Revealed type is "Union[builtins.str, builtins.list[...]]"
+
+class C[T]: pass
+
+type B[T] = C[T] | list[B[T]]
+b: B[int]
+reveal_type(b)  # N: Revealed type is "Union[__main__.C[builtins.int], builtins.list[...]]"
