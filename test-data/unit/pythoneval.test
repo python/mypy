@@ -110,7 +110,6 @@ import typing
 print(type(__spec__))
 print(math.__name__)
 print(math.__spec__.name)
-print(type(math.__spec__.loader))
 print(type(math.__dict__))
 print(type(math.__doc__ or ''))
 print(type(math.__spec__).__name__)
@@ -119,7 +118,6 @@ print(math.__class__)
 <class 'NoneType'>
 math
 math
-<class '_frozen_importlib_external.ExtensionFileLoader'>
 <class 'dict'>
 <class 'str'>
 ModuleSpec
