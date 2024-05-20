@@ -1164,7 +1164,6 @@ class C[T]:
 
 [case testPEP695InvalidGenericOrProtocolBaseClass]
 # mypy: enable-incomplete-feature=NewGenericSyntax
-
 from typing import Generic, Protocol, TypeVar
 
 S = TypeVar("S")
@@ -1180,4 +1179,25 @@ b: C2[int, str]
 class P[T](Protocol[T]):  # E: No arguments expected for "Protocol" base class
     pass
 class P2[T](Protocol[S]):  # E: No arguments expected for "Protocol" base class
+    pass
+
+[case testPEP695MixNewAndOldStyleGenerics]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+from typing import TypeVar
+
+S = TypeVar("S")
+U = TypeVar("U")
+
+def f[T](x: T, y: S) -> T | S: ...  # E: All type parameters should be declared ("S" not declared)
+def g[T](x: S, y: U) -> T | S | U: ...  # E: All type parameters should be declared ("S", "U" not declared)
+
+def h[S: int](x: S) -> S:
+   a: int = x
+   return x
+
+class C[T]:
+    def m[X, S](self, x: S, y: U) -> X | S | U: ...  # E: All type parameters should be declared ("U" not declared)
+    def m2(self, x: T, y: S) -> T | S: ...
+
+class D[T](C[S]):  # E: All type parameters should be declared ("S" not declared)
     pass
