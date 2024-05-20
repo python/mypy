@@ -1184,3 +1184,23 @@ a: A
 reveal_type(a)  # N: Revealed type is "Any"
 b: B
 reveal_type(b)  # N: Revealed type is "Any"
+
+[case testPEP695RecursiveTypeAliasForwardReference]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+
+def f(a: A) -> None:
+    if isinstance(a, str):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(a)  # N: Revealed type is "__main__.C[Union[builtins.str, __main__.C[...]]]"
+
+type A = str | C[A]
+
+class C[T]: pass
+
+f('x')
+f(C[str]())
+f(C[C[str]]())
+f(1)  # E: Argument 1 to "f" has incompatible type "int"; expected "A"
+f(C[int]())  # E: Argument 1 to "f" has incompatible type "C[int]"; expected "A"
+[builtins fixtures/isinstance.pyi]
