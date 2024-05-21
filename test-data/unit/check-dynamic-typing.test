@@ -727,6 +727,11 @@ class A(B):
     def f(self, x, y): # dynamic function not type checked
         x()
 [out]
+main:5: error: Signature of "f" incompatible with supertype "B"
+main:5: note:      Superclass:
+main:5: note:          def f(self, x: A) -> None
+main:5: note:      Subclass:
+main:5: note:          def f(self, x: Any, y: Any) -> Any
 
 [case testInvalidOverrideArgumentCountWithImplicitSignature2]
 import typing
