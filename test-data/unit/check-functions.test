@@ -3242,5 +3242,3 @@ class Base:
 class Derived(Base):
     def foo(self):  # E: Cannot override final attribute "foo" (previously declared in base class "Base")
         pass
-
-        
