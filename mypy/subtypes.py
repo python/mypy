@@ -1927,7 +1927,7 @@ def restrict_subtype_away(t: Type, s: Type) -> Type:
             new_items = [
                 restrict_subtype_away(item, s)
                 for item in p_t.relevant_items()
-                if (isinstance(get_proper_type(item), AnyType) or not covers_type(item, s))
+                if not covers_type(item, s)
             ]
         return UnionType.make_union(new_items)
     elif covers_type(t, s):
@@ -1941,7 +1941,10 @@ def covers_type(item: Type, supertype: Type) -> bool:
     item = get_proper_type(item)
     supertype = get_proper_type(supertype)
 
-    if is_proper_subtype(item, supertype, ignore_promotions=True, erase_instances=True):
+    if isinstance(item, AnyType) or (isinstance(item, Instance) and item.type.fallback_to_any):
+        return False
+
+    if is_subtype(item, supertype, ignore_promotions=True):
         return True
     if isinstance(supertype, Instance):
         if supertype.type.is_protocol:
