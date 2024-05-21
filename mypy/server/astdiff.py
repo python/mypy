@@ -378,10 +378,11 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
         return snapshot_simple_type(typ)
 
     def visit_instance(self, typ: Instance) -> SnapshotItem:
-        if self.extra_attrs:
+        extra_attrs: SnapshotItem
+        if typ.extra_attrs:
             extra_attrs = (
-                tuple(sorted((k, self.visit(v)) for k, v in self.extra_attrs.attrs.items())),
-                tuple(self.extra_attrs.immutable),
+                tuple(sorted((k, v.accept(self)) for k, v in typ.extra_attrs.attrs.items())),
+                tuple(typ.extra_attrs.immutable),
             )
         else:
             extra_attrs = ()
