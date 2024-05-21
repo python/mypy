@@ -2999,7 +2999,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 ):  # Ignore member access to modules
                     instance_type = self.expr_checker.accept(lvalue.expr)
                     rvalue_type, lvalue_type, infer_lvalue_type = self.check_member_assignment(
-                        instance_type, lvalue_type, rvalue, context=rvalue
+                        instance_type, lvalue_type, rvalue, context=lvalue
                     )
                 else:
                     # Hacky special case for assigning a literal None
@@ -4241,8 +4241,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         Return the inferred rvalue_type, inferred lvalue_type, and whether to use the binder
         for this assignment.
 
-        Note: this method exists here and not in checkmember.py, because we need to take
-        care about interaction between binder and __set__().
+        Notes:
+         * The argument passed to `context` should be at the lvalue.
+         * This method exists here and not in checkmember.py, because we need to take
+           care about interaction between binder and __set__().
         """
         instance_type = get_proper_type(instance_type)
         attribute_type = get_proper_type(attribute_type)
@@ -4250,12 +4252,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if (isinstance(instance_type, FunctionLike) and instance_type.is_type_obj()) or isinstance(
             instance_type, TypeType
         ):
-            rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
+            rvalue_type = self.check_simple_assignment(attribute_type, rvalue, rvalue)
             return rvalue_type, attribute_type, True
 
         if not isinstance(attribute_type, Instance):
             # TODO: support __set__() for union types.
-            rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
+            rvalue_type = self.check_simple_assignment(attribute_type, rvalue, rvalue)
             return rvalue_type, attribute_type, True
 
         mx = MemberContext(
@@ -4274,7 +4276,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # the return type of __get__. This doesn't match the python semantics,
             # (which allow you to override the descriptor with any value), but preserves
             # the type of accessing the attribute (even after the override).
-            rvalue_type = self.check_simple_assignment(get_type, rvalue, context)
+            rvalue_type = self.check_simple_assignment(get_type, rvalue, rvalue)
             return rvalue_type, get_type, True
 
         dunder_set = attribute_type.type.get_method("__set__")
@@ -4346,7 +4348,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # and '__get__' type is narrower than '__set__', then we invoke the binder to narrow type
         # by this assignment. Technically, this is not safe, but in practice this is
         # what a user expects.
-        rvalue_type = self.check_simple_assignment(set_type, rvalue, context)
+        rvalue_type = self.check_simple_assignment(set_type, rvalue, rvalue)
         infer = is_subtype(rvalue_type, get_type) and is_subtype(get_type, set_type)
         return rvalue_type if infer else set_type, get_type, infer
 

@@ -85,10 +85,23 @@ main:4:16: error: Incompatible types in assignment (expression has type "int", v
 main:4:24: error: Unsupported operand types for + ("str" and "int")
 
 [case testColumnsAssignment]
+from typing import Any
+
+class GoodDesc:
+    def __set__(self, inst: Any, val: int) -> None: pass
+
+class BadDesc:
+    __set__ = None
+
 class A:
     x = 0
+    y = GoodDesc()
+    z = BadDesc()
 
 A().x = ''  # E:9: Incompatible types in assignment (expression has type "str", variable has type "int")
+A().y = ''  # E:9: Incompatible types in assignment (expression has type "str", variable has type "int")
+A().z = ''  # E:1: __main__.BadDesc.__set__ is not callable
+
 a = [0]
 a[0] = ''  # E:8: Incompatible types in assignment (expression has type "str", target has type "int")
 b = 0
