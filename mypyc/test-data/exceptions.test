@@ -111,56 +111,42 @@ def sum(a: List[int], l: int) -> int:
 def sum(a, l):
     a :: list
     l, sum, i :: int
-    r0 :: native_int
-    r1 :: bit
-    r2 :: native_int
-    r3, r4, r5 :: bit
-    r6 :: object
-    r7, r8, r9, r10 :: int
+    r0 :: bit
+    r1 :: object
+    r2, r3, r4, r5 :: int
 L0:
     sum = 0
     i = 0
 L1:
-    r0 = i & 1
-    r1 = r0 != 0
-    if r1 goto L3 else goto L2 :: bool
+    r0 = int_lt i, l
+    if r0 goto L2 else goto L7 :: bool
 L2:
-    r2 = l & 1
-    r3 = r2 != 0
-    if r3 goto L3 else goto L4 :: bool
+    r1 = CPyList_GetItemBorrow(a, i)
+    if is_error(r1) goto L8 (error at sum:6) else goto L3
 L3:
-    r4 = CPyTagged_IsLt_(i, l)
-    if r4 goto L5 else goto L10 :: bool
+    r2 = unbox(int, r1)
+    if is_error(r2) goto L8 (error at sum:6) else goto L4
 L4:
-    r5 = i < l :: signed
-    if r5 goto L5 else goto L10 :: bool
-L5:
-    r6 = CPyList_GetItemBorrow(a, i)
-    if is_error(r6) goto L11 (error at sum:6) else goto L6
-L6:
-    r7 = unbox(int, r6)
-    if is_error(r7) goto L11 (error at sum:6) else goto L7
-L7:
-    r8 = CPyTagged_Add(sum, r7)
+    r3 = CPyTagged_Add(sum, r2)
     dec_ref sum :: int
-    dec_ref r7 :: int
-    sum = r8
-    r9 = CPyTagged_Add(i, 2)
+    dec_ref r2 :: int
+    sum = r3
+    r4 = CPyTagged_Add(i, 2)
     dec_ref i :: int
-    i = r9
+    i = r4
     goto L1
-L8:
+L5:
     return sum
-L9:
-    r10 = <error> :: int
-    return r10
-L10:
+L6:
+    r5 = <error> :: int
+    return r5
+L7:
     dec_ref i :: int
-    goto L8
-L11:
+    goto L5
+L8:
     dec_ref sum :: int
     dec_ref i :: int
-    goto L9
+    goto L6
 
 [case testTryExcept]
 def g() -> None:

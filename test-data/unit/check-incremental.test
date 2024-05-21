@@ -3015,7 +3015,7 @@ class NoInit:
 class NoCmp:
     x: int
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/plugin_attrs.pyi]
 [rechecked]
 [stale]
 [out1]
@@ -6634,3 +6634,80 @@ tmp/partial.py:4: note: "foo" defined here
 [out2]
 tmp/a.py:8: error: Too many positional arguments for "foo"
 tmp/a.py:8: error: Argument 2 to "foo" has incompatible type "int"; expected "str"
+
+
+[case testStartUsingTypeGuard]
+import a
+[file a.py]
+from lib import guard
+from typing import Union
+from typing_extensions import assert_type
+x: Union[int, str]
+
+[file a.py.2]
+from lib import guard
+from typing import Union
+from typing_extensions import assert_type
+x: Union[int, str]
+if guard(x):
+    assert_type(x, int)
+else:
+    assert_type(x, Union[int, str])
+[file lib.py]
+from typing_extensions import TypeGuard
+def guard(x: object) -> TypeGuard[int]:
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testStartUsingTypeIs]
+import a
+[file a.py]
+from lib import guard
+from typing import Union
+from typing_extensions import assert_type
+x: Union[int, str]
+
+[file a.py.2]
+from lib import guard
+from typing import Union
+from typing_extensions import assert_type
+x: Union[int, str]
+if guard(x):
+    assert_type(x, int)
+else:
+    assert_type(x, str)
+[file lib.py]
+from typing_extensions import TypeIs
+def guard(x: object) -> TypeIs[int]:
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardToTypeIs]
+import a
+[file a.py]
+from lib import guard
+from typing import Union
+from typing_extensions import assert_type
+x: Union[int, str]
+if guard(x):
+    assert_type(x, int)
+else:
+    assert_type(x, Union[int, str])
+[file a.py.2]
+from lib import guard
+from typing import Union
+from typing_extensions import assert_type
+x: Union[int, str]
+if guard(x):
+    assert_type(x, int)
+else:
+    assert_type(x, str)
+[file lib.py]
+from typing_extensions import TypeGuard
+def guard(x: object) -> TypeGuard[int]:
+    pass
+[file lib.py.2]
+from typing_extensions import TypeIs
+def guard(x: object) -> TypeIs[int]:
+    pass
+[builtins fixtures/tuple.pyi]

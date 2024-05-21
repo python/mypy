@@ -2089,3 +2089,28 @@ if isinstance(x, (Z, NoneType)):  # E: Subclass of "X" and "Z" cannot exist: "Z"
     reveal_type(x)  # E: Statement is unreachable
 
 [builtins fixtures/isinstance.pyi]
+
+[case testTypeNarrowingReachableNegative]
+# flags: --warn-unreachable
+from typing import Literal
+
+x: Literal[-1]
+
+if x == -1:
+    assert True
+
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/ops.pyi]
+
+[case testTypeNarrowingReachableNegativeUnion]
+from typing import Literal
+
+x: Literal[-1, 1]
+
+if x == -1:
+    reveal_type(x)  # N: Revealed type is "Literal[-1]"
+else:
+    reveal_type(x)  # N: Revealed type is "Literal[1]"
+
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/ops.pyi]

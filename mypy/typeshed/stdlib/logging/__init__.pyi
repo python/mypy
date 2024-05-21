@@ -71,12 +71,12 @@ _FormatStyle: TypeAlias = Literal["%", "{", "$"]
 
 if sys.version_info >= (3, 12):
     class _SupportsFilter(Protocol):
-        def filter(self, __record: LogRecord) -> bool | LogRecord: ...
+        def filter(self, record: LogRecord, /) -> bool | LogRecord: ...
 
     _FilterType: TypeAlias = Filter | Callable[[LogRecord], bool | LogRecord] | _SupportsFilter
 else:
     class _SupportsFilter(Protocol):
-        def filter(self, __record: LogRecord) -> bool: ...
+        def filter(self, record: LogRecord, /) -> bool: ...
 
     _FilterType: TypeAlias = Filter | Callable[[LogRecord], bool] | _SupportsFilter
 
@@ -341,6 +341,9 @@ class LogRecord:
     stack_info: str | None
     thread: int | None
     threadName: str | None
+    if sys.version_info >= (3, 12):
+        taskName: str | None
+
     def __init__(
         self,
         name: str,
@@ -355,7 +358,7 @@ class LogRecord:
     ) -> None: ...
     def getMessage(self) -> str: ...
     # Allows setting contextual information on LogRecord objects as per the docs, see #7833
-    def __setattr__(self, __name: str, __value: Any) -> None: ...
+    def __setattr__(self, name: str, value: Any, /) -> None: ...
 
 _L = TypeVar("_L", bound=Logger | LoggerAdapter[Any])
 
@@ -584,7 +587,7 @@ def setLoggerClass(klass: type[Logger]) -> None: ...
 def captureWarnings(capture: bool) -> None: ...
 def setLogRecordFactory(factory: Callable[..., LogRecord]) -> None: ...
 
-lastResort: StreamHandler[Any] | None
+lastResort: Handler | None
 
 _StreamT = TypeVar("_StreamT", bound=SupportsWrite[str])
 
@@ -594,7 +597,7 @@ class StreamHandler(Handler, Generic[_StreamT]):
     @overload
     def __init__(self: StreamHandler[TextIO], stream: None = None) -> None: ...
     @overload
-    def __init__(self: StreamHandler[_StreamT], stream: _StreamT) -> None: ...
+    def __init__(self: StreamHandler[_StreamT], stream: _StreamT) -> None: ...  # pyright: ignore[reportInvalidTypeVarUse]  #11780
     def setStream(self, stream: _StreamT) -> _StreamT | None: ...
     if sys.version_info >= (3, 11):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...

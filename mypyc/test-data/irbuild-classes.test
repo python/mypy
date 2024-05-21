@@ -41,28 +41,27 @@ def f():
     r0, c :: __main__.C
     r1 :: bool
     r2 :: list
-    r3, r4 :: ptr
+    r3 :: ptr
     a :: list
-    r5 :: object
-    r6, d :: __main__.C
-    r7, r8 :: int
+    r4 :: object
+    r5, d :: __main__.C
+    r6, r7 :: int
 L0:
     r0 = C()
     c = r0
     c.x = 10; r1 = is_error
     r2 = PyList_New(1)
-    r3 = get_element_ptr r2 ob_item :: PyListObject
-    r4 = load_mem r3 :: ptr*
-    set_mem r4, c :: builtins.object*
+    r3 = list_items r2
+    buf_init_item r3, 0, c
     keep_alive r2
     a = r2
-    r5 = CPyList_GetItemShort(a, 0)
-    r6 = cast(__main__.C, r5)
-    d = r6
-    r7 = borrow d.x
-    r8 = CPyTagged_Add(r7, 2)
+    r4 = CPyList_GetItemShort(a, 0)
+    r5 = cast(__main__.C, r4)
+    d = r5
+    r6 = borrow d.x
+    r7 = CPyTagged_Add(r6, 2)
     keep_alive d
-    return r8
+    return r7
 
 [case testMethodCall]
 class A:
@@ -1249,7 +1248,7 @@ L0:
     r0 = x.__getitem__(2)
     r1 = CPyList_GetItemShortBorrow(r0, 0)
     r2 = unbox(int, r1)
-    r3 = r2 == 4
+    r3 = int_eq r2, 4
     keep_alive r0
     if r3 goto L1 else goto L2 :: bool
 L1:

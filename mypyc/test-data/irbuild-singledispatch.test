@@ -81,7 +81,7 @@ L3:
     if r17 goto L4 else goto L7 :: bool
 L4:
     r18 = unbox(int, r6)
-    r19 = r18 == 0
+    r19 = int_eq r18, 0
     if r19 goto L5 else goto L6 :: bool
 L5:
     r20 = unbox(int, arg)

@@ -67,7 +67,7 @@ def f():
 L0:
     x = 2
     y = 4
-    r0 = x == 2
+    r0 = int_eq x, 2
     if r0 goto L3 else goto L4 :: bool
 L1:
     return x
@@ -185,34 +185,26 @@ def f(a: int) -> int:
 [out]
 def f(a):
     a :: int
-    r0 :: native_int
-    r1, r2, r3 :: bit
-    x, r4, y :: int
+    r0 :: bit
+    x, r1, y :: int
 L0:
-    r0 = a & 1
-    r1 = r0 != 0
-    if r1 goto L1 else goto L2 :: bool
+    r0 = int_eq a, a
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r2 = CPyTagged_IsEq_(a, a)
-    if r2 goto L3 else goto L4 :: bool
-L2:
-    r3 = a == a
-    if r3 goto L3 else goto L4 :: bool
-L3:
     a = 2
-    goto L5
-L4:
+    goto L3
+L2:
     x = 4
     dec_ref x :: int
-    goto L6
-L5:
-    r4 = CPyTagged_Add(a, 2)
+    goto L4
+L3:
+    r1 = CPyTagged_Add(a, 2)
     dec_ref a :: int
-    y = r4
+    y = r1
     return y
-L6:
+L4:
     inc_ref a :: int
-    goto L5
+    goto L3
 
 [case testConditionalAssignToArgument2]
 def f(a: int) -> int:
@@ -225,33 +217,25 @@ def f(a: int) -> int:
 [out]
 def f(a):
     a :: int
-    r0 :: native_int
-    r1, r2, r3 :: bit
-    x, r4, y :: int
+    r0 :: bit
+    x, r1, y :: int
 L0:
-    r0 = a & 1
-    r1 = r0 != 0
-    if r1 goto L1 else goto L2 :: bool
+    r0 = int_eq a, a
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r2 = CPyTagged_IsEq_(a, a)
-    if r2 goto L3 else goto L4 :: bool
-L2:
-    r3 = a == a
-    if r3 goto L3 else goto L4 :: bool
-L3:
     x = 4
     dec_ref x :: int
-    goto L6
-L4:
+    goto L4
+L2:
     a = 2
-L5:
-    r4 = CPyTagged_Add(a, 2)
+L3:
+    r1 = CPyTagged_Add(a, 2)
     dec_ref a :: int
-    y = r4
+    y = r1
     return y
-L6:
+L4:
     inc_ref a :: int
-    goto L5
+    goto L3
 
 [case testConditionalAssignToArgument3]
 def f(a: int) -> int:
@@ -261,25 +245,17 @@ def f(a: int) -> int:
 [out]
 def f(a):
     a :: int
-    r0 :: native_int
-    r1, r2, r3 :: bit
+    r0 :: bit
 L0:
-    r0 = a & 1
-    r1 = r0 != 0
-    if r1 goto L1 else goto L2 :: bool
+    r0 = int_eq a, a
+    if r0 goto L1 else goto L3 :: bool
 L1:
-    r2 = CPyTagged_IsEq_(a, a)
-    if r2 goto L3 else goto L5 :: bool
-L2:
-    r3 = a == a
-    if r3 goto L3 else goto L5 :: bool
-L3:
     a = 2
-L4:
+L2:
     return a
-L5:
+L3:
     inc_ref a :: int
-    goto L4
+    goto L2
 
 [case testAssignRegisterToItself]
 def f(a: int) -> int:
@@ -438,40 +414,32 @@ def f() -> int:
 [out]
 def f():
     x, y, z :: int
-    r0 :: native_int
-    r1, r2, r3 :: bit
-    a, r4, r5 :: int
+    r0 :: bit
+    a, r1, r2 :: int
 L0:
     x = 2
     y = 4
     z = 6
-    r0 = z & 1
-    r1 = r0 != 0
-    if r1 goto L1 else goto L2 :: bool
+    r0 = int_eq z, z
+    if r0 goto L3 else goto L4 :: bool
 L1:
-    r2 = CPyTagged_IsEq_(z, z)
-    if r2 goto L5 else goto L6 :: bool
-L2:
-    r3 = z == z
-    if r3 goto L5 else goto L6 :: bool
-L3:
     return z
-L4:
+L2:
     a = 2
-    r4 = CPyTagged_Add(x, y)
+    r1 = CPyTagged_Add(x, y)
     dec_ref x :: int
     dec_ref y :: int
-    r5 = CPyTagged_Subtract(r4, a)
-    dec_ref r4 :: int
+    r2 = CPyTagged_Subtract(r1, a)
+    dec_ref r1 :: int
     dec_ref a :: int
-    return r5
-L5:
+    return r2
+L3:
     dec_ref x :: int
     dec_ref y :: int
-    goto L3
-L6:
+    goto L1
+L4:
     dec_ref z :: int
-    goto L4
+    goto L2
 
 [case testLoop]
 def f(a: int) -> int:
@@ -484,41 +452,27 @@ def f(a: int) -> int:
 [out]
 def f(a):
     a, sum, i :: int
-    r0 :: native_int
-    r1 :: bit
-    r2 :: native_int
-    r3, r4, r5 :: bit
-    r6, r7 :: int
+    r0 :: bit
+    r1, r2 :: int
 L0:
     sum = 0
     i = 0
 L1:
-    r0 = i & 1
-    r1 = r0 != 0
-    if r1 goto L3 else goto L2 :: bool
+    r0 = int_le i, a
+    if r0 goto L2 else goto L4 :: bool
 L2:
-    r2 = a & 1
-    r3 = r2 != 0
-    if r3 goto L3 else goto L4 :: bool
-L3:
-    r4 = CPyTagged_IsLt_(a, i)
-    if r4 goto L7 else goto L5 :: bool
-L4:
-    r5 = i <= a :: signed
-    if r5 goto L5 else goto L7 :: bool
-L5:
-    r6 = CPyTagged_Add(sum, i)
+    r1 = CPyTagged_Add(sum, i)
     dec_ref sum :: int
-    sum = r6
-    r7 = CPyTagged_Add(i, 2)
+    sum = r1
+    r2 = CPyTagged_Add(i, 2)
     dec_ref i :: int
-    i = r7
+    i = r2
     goto L1
-L6:
+L3:
     return sum
-L7:
+L4:
     dec_ref i :: int
-    goto L6
+    goto L3
 
 [case testCall]
 def f(a: int) -> int:
@@ -544,19 +498,17 @@ def f() -> int:
 def f():
     r0 :: list
     r1, r2 :: object
-    r3, r4, r5 :: ptr
+    r3 :: ptr
     a :: list
 L0:
     r0 = PyList_New(2)
     r1 = object 0
     r2 = object 1
-    r3 = get_element_ptr r0 ob_item :: PyListObject
-    r4 = load_mem r3 :: ptr*
+    r3 = list_items r0
     inc_ref r1
-    set_mem r4, r1 :: builtins.object*
-    r5 = r4 + WORD_SIZE*1
+    buf_init_item r3, 0, r1
     inc_ref r2
-    set_mem r5, r2 :: builtins.object*
+    buf_init_item r3, 1, r2
     a = r0
     dec_ref a
     return 0
@@ -623,21 +575,20 @@ def f() -> None:
 def f():
     r0 :: __main__.C
     r1 :: list
-    r2, r3 :: ptr
+    r2 :: ptr
     a :: list
-    r4 :: object
-    r5, d :: __main__.C
+    r3 :: object
+    r4, d :: __main__.C
 L0:
     r0 = C()
     r1 = PyList_New(1)
-    r2 = get_element_ptr r1 ob_item :: PyListObject
-    r3 = load_mem r2 :: ptr*
-    set_mem r3, r0 :: builtins.object*
+    r2 = list_items r1
+    buf_init_item r2, 0, r0
     a = r1
-    r4 = CPyList_GetItemShort(a, 0)
+    r3 = CPyList_GetItemShort(a, 0)
     dec_ref a
-    r5 = cast(__main__.C, r4)
-    d = r5
+    r4 = cast(__main__.C, r3)
+    d = r4
     dec_ref d
     return 1
 
@@ -862,17 +813,15 @@ def f() -> int:
 [out]
 def f():
     r0, x :: list
-    r1 :: ptr
-    r2 :: native_int
-    r3 :: short_int
+    r1 :: native_int
+    r2 :: short_int
 L0:
     r0 = PyList_New(0)
     x = r0
-    r1 = get_element_ptr x ob_size :: PyVarObject
-    r2 = load_mem r1 :: native_int*
+    r1 = var_object_size x
     dec_ref x
-    r3 = r2 << 1
-    return r3
+    r2 = r1 << 1
+    return r2
 
 [case testSometimesUninitializedVariable]
 def f(x: bool) -> int:
@@ -1113,15 +1062,13 @@ class C:
 def f(x):
     x :: __main__.C
     r0 :: list
-    r1 :: ptr
-    r2 :: native_int
-    r3 :: short_int
+    r1 :: native_int
+    r2 :: short_int
 L0:
     r0 = borrow x.a
-    r1 = get_element_ptr r0 ob_size :: PyVarObject
-    r2 = load_mem r1 :: native_int*
-    r3 = r2 << 1
-    return r3
+    r1 = var_object_size r0
+    r2 = r1 << 1
+    return r2
 
 [case testBorrowIsinstanceArgument]
 from typing import List
@@ -1302,23 +1249,22 @@ class C:
 def f():
     r0 :: __main__.C
     r1 :: list
-    r2, r3 :: ptr
+    r2 :: ptr
     a :: list
-    r4 :: object
-    r5 :: __main__.C
-    r6 :: str
+    r3 :: object
+    r4 :: __main__.C
+    r5 :: str
 L0:
     r0 = C()
     r1 = PyList_New(1)
-    r2 = get_element_ptr r1 ob_item :: PyListObject
-    r3 = load_mem r2 :: ptr*
-    set_mem r3, r0 :: builtins.object*
+    r2 = list_items r1
+    buf_init_item r2, 0, r0
     a = r1
-    r4 = CPyList_GetItemShortBorrow(a, 0)
-    r5 = borrow cast(__main__.C, r4)
-    r6 = r5.s
+    r3 = CPyList_GetItemShortBorrow(a, 0)
+    r4 = borrow cast(__main__.C, r3)
+    r5 = r4.s
     dec_ref a
-    return r6
+    return r5
 
 [case testBorrowSetAttrObject]
 from typing import Optional
@@ -1371,25 +1317,12 @@ class C:
 def add(c):
     c :: __main__.C
     r0, r1 :: int
-    r2 :: native_int
-    r3, r4 :: bit
-    r5 :: bool
-    r6 :: bit
+    r2 :: bit
 L0:
     r0 = borrow c.x
     r1 = borrow c.y
-    r2 = r0 & 1
-    r3 = r2 == 0
-    if r3 goto L1 else goto L2 :: bool
-L1:
-    r4 = r0 == r1
-    r5 = r4
-    goto L3
-L2:
-    r6 = CPyTagged_IsEq_(r0, r1)
-    r5 = r6
-L3:
-    return r5
+    r2 = int_eq r0, r1
+    return r2
 
 [case testBorrowIntLessThan]
 def add(c: C) -> bool:
@@ -1402,30 +1335,12 @@ class C:
 def add(c):
     c :: __main__.C
     r0, r1 :: int
-    r2 :: native_int
-    r3 :: bit
-    r4 :: native_int
-    r5, r6, r7 :: bit
-    r8 :: bool
-    r9 :: bit
+    r2 :: bit
 L0:
     r0 = borrow c.x
     r1 = borrow c.y
-    r2 = r0 & 1
-    r3 = r2 == 0
-    r4 = r1 & 1
-    r5 = r4 == 0
-    r6 = r3 & r5
-    if r6 goto L1 else goto L2 :: bool
-L1:
-    r7 = r0 < r1 :: signed
-    r8 = r7
-    goto L3
-L2:
-    r9 = CPyTagged_IsLt_(r0, r1)
-    r8 = r9
-L3:
-    return r8
+    r2 = int_lt r0, r1
+    return r2
 
 [case testBorrowIntCompareFinal]
 from typing_extensions import Final
@@ -1441,24 +1356,11 @@ class C:
 def add(c):
     c :: __main__.C
     r0 :: int
-    r1 :: native_int
-    r2, r3 :: bit
-    r4 :: bool
-    r5 :: bit
+    r1 :: bit
 L0:
     r0 = borrow c.x
-    r1 = r0 & 1
-    r2 = r1 == 0
-    if r2 goto L1 else goto L2 :: bool
-L1:
-    r3 = r0 == 20
-    r4 = r3
-    goto L3
-L2:
-    r5 = CPyTagged_IsEq_(r0, 20)
-    r4 = r5
-L3:
-    return r4
+    r1 = int_eq r0, 20
+    return r1
 
 [case testBorrowIntArithmetic]
 def add(c: C) -> int:
@@ -1501,23 +1403,15 @@ class C:
 def add(c, n):
     c :: __main__.C
     n, r0, r1 :: int
-    r2 :: native_int
-    r3, r4, r5 :: bit
+    r2 :: bit
 L0:
     r0 = borrow c.x
     r1 = borrow c.y
-    r2 = r0 & 1
-    r3 = r2 != 0
-    if r3 goto L1 else goto L2 :: bool
+    r2 = int_eq r0, r1
+    if r2 goto L1 else goto L2 :: bool
 L1:
-    r4 = CPyTagged_IsEq_(r0, r1)
-    if r4 goto L3 else goto L4 :: bool
-L2:
-    r5 = r0 == r1
-    if r5 goto L3 else goto L4 :: bool
-L3:
     return 1
-L4:
+L2:
     return 0
 
 [case testBorrowIntInPlaceOp]

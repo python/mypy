@@ -160,7 +160,7 @@ class IRBuilder:
         options: CompilerOptions,
         singledispatch_impls: dict[FuncDef, list[RegisterImplInfo]],
     ) -> None:
-        self.builder = LowLevelIRBuilder(current_module, errors, mapper, options)
+        self.builder = LowLevelIRBuilder(errors, options)
         self.builders = [self.builder]
         self.symtables: list[dict[SymbolNode, SymbolTarget]] = [{}]
         self.runtime_args: list[list[RuntimeArg]] = [[]]
@@ -377,9 +377,6 @@ class IRBuilder:
 
     def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.builder.int_op(type, lhs, rhs, op, line)
-
-    def compare_tagged(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
-        return self.builder.compare_tagged(lhs, rhs, op, line)
 
     def compare_tuples(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         return self.builder.compare_tuples(lhs, rhs, op, line)
@@ -1111,9 +1108,7 @@ class IRBuilder:
     def enter(self, fn_info: FuncInfo | str = "") -> None:
         if isinstance(fn_info, str):
             fn_info = FuncInfo(name=fn_info)
-        self.builder = LowLevelIRBuilder(
-            self.current_module, self.errors, self.mapper, self.options
-        )
+        self.builder = LowLevelIRBuilder(self.errors, self.options)
         self.builder.set_module(self.module_name, self.module_path)
         self.builders.append(self.builder)
         self.symtables.append({})

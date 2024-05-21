@@ -3807,9 +3807,43 @@ def Negate(count: int, /, metric: Metric[float]) -> float: ...
 def Combine(count: int, m1: Metric[T], m2: Metric[T], /, *more: Metric[T]) -> T: ...
 
 reveal_type(Negate)  # N: Revealed type is "def (metric: __main__.Metric[builtins.float]) -> builtins.float"
-reveal_type(Combine)  # N: Revealed type is "def [T] (def () -> T`4, def () -> T`4, *more: def () -> T`4) -> T`4"
+reveal_type(Combine)  # N: Revealed type is "def [T] (def () -> T`5, def () -> T`5, *more: def () -> T`5) -> T`5"
 
 def m1() -> float: ...
 def m2() -> float: ...
 reveal_type(Combine(m1, m2))  # N: Revealed type is "builtins.float"
 [builtins fixtures/list.pyi]
+
+[case testInferenceWithUninhabitedType]
+from typing import Dict, Generic, List, Never, TypeVar
+
+T = TypeVar("T")
+
+class A(Generic[T]): ...
+class B(Dict[T, T]): ...
+
+def func1(a: A[T], b: T) -> T: ...
+def func2(a: T, b: A[T]) -> T: ...
+
+def a1(a: A[Dict[str, int]]) -> None:
+    reveal_type(func1(a, {}))  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+    reveal_type(func2({}, a))  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+
+def a2(check: bool, a: B[str]) -> None:
+    reveal_type(a if check else {})  # N: Revealed type is "builtins.dict[builtins.str, builtins.str]"
+
+def a3() -> None:
+    a = {}  # E: Need type annotation for "a" (hint: "a: Dict[<type>, <type>] = ...")
+    b = {1: {}}  # E: Need type annotation for "b"
+    c = {1: {}, 2: {"key": {}}}  # E: Need type annotation for "c"
+    reveal_type(a)  # N: Revealed type is "builtins.dict[Any, Any]"
+    reveal_type(b)  # N: Revealed type is "builtins.dict[builtins.int, builtins.dict[Any, Any]]"
+    reveal_type(c)  # N: Revealed type is "builtins.dict[builtins.int, builtins.dict[builtins.str, builtins.dict[Any, Any]]]"
+
+def a4(x: List[str], y: List[Never]) -> None:
+    z1 = [x, y]
+    z2 = [y, x]
+    reveal_type(z1)  # N: Revealed type is "builtins.list[builtins.object]"
+    reveal_type(z2)  # N: Revealed type is "builtins.list[builtins.object]"
+    z1[1].append("asdf")  # E: "object" has no attribute "append"
+[builtins fixtures/dict.pyi]

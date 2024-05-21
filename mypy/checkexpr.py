@@ -636,7 +636,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(e.callee.expr, StrExpr):
             format_value = e.callee.expr.value
         elif self.chk.has_type(e.callee.expr):
-            base_typ = try_getting_literal(self.chk.lookup_type(e.callee.expr))
+            typ = get_proper_type(self.chk.lookup_type(e.callee.expr))
+            if (
+                isinstance(typ, Instance)
+                and typ.type.is_enum
+                and isinstance(typ.last_known_value, LiteralType)
+                and isinstance(typ.last_known_value.value, str)
+            ):
+                value_type = typ.type.names[typ.last_known_value.value].type
+                if isinstance(value_type, Type):
+                    typ = get_proper_type(value_type)
+            base_typ = try_getting_literal(typ)
             if isinstance(base_typ, LiteralType) and isinstance(base_typ.value, str):
                 format_value = base_typ.value
         if format_value is not None:
@@ -949,7 +959,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def typeddict_callable_from_context(self, callee: TypedDictType) -> CallableType:
         return CallableType(
             list(callee.items.values()),
-            [ArgKind.ARG_NAMED] * len(callee.items),
+            [
+                ArgKind.ARG_NAMED if name in callee.required_keys else ArgKind.ARG_NAMED_OPT
+                for name in callee.items
+            ],
             list(callee.items.keys()),
             callee,
             self.named_type("builtins.type"),
@@ -5963,17 +5976,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         # Determine the type of the entire yield from expression.
         iter_type = get_proper_type(iter_type)
-        if isinstance(iter_type, Instance) and iter_type.type.fullname == "typing.Generator":
-            expr_type = self.chk.get_generator_return_type(iter_type, False)
-        else:
-            # Non-Generators don't return anything from `yield from` expressions.
-            # However special-case Any (which might be produced by an error).
-            actual_item_type = get_proper_type(actual_item_type)
-            if isinstance(actual_item_type, AnyType):
-                expr_type = AnyType(TypeOfAny.from_another_any, source_any=actual_item_type)
-            else:
-                # Treat `Iterator[X]` as a shorthand for `Generator[X, None, Any]`.
-                expr_type = NoneType()
+        expr_type = self.chk.get_generator_return_type(iter_type, is_coroutine=False)
 
         if not allow_none_return and isinstance(get_proper_type(expr_type), NoneType):
             self.chk.msg.does_not_return_value(None, e)

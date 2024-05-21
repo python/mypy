@@ -354,21 +354,6 @@ list_count(PyListObject *self, PyObject *value)
     return CPyTagged_ShortFromSsize_t(count);
 }
 
-#if PY_VERSION_HEX < 0x03080000
-static PyObject *
-_PyDict_GetItemStringWithError(PyObject *v, const char *key)
-{
-    PyObject *kv, *rv;
-    kv = PyUnicode_FromString(key);
-    if (kv == NULL) {
-        return NULL;
-    }
-    rv = PyDict_GetItemWithError(v, kv);
-    Py_DECREF(kv);
-    return rv;
-}
-#endif
-
 #define CPyUnicode_EqualToASCIIString(x, y) _PyUnicode_EqualToASCIIString(x, y)
 
 // Adapted from genobject.c in Python 3.7.2

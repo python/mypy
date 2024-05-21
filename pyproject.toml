@@ -17,7 +17,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.black]
 line-length = 99
-target-version = ["py38", "py39", "py310", "py311"]
+target-version = ["py38", "py39", "py310", "py311", "py312"]
 skip-magic-trailing-comma = true
 force-exclude = '''
 ^/mypy/typeshed|
@@ -88,7 +88,7 @@ extra-standard-library = ["typing_extensions"]
 ignore = ["**/.readthedocs.yaml"]
 
 [tool.pytest.ini_options]
-minversion = "6.0.0"
+minversion = "7.0.0"
 testpaths = ["mypy/test", "mypyc/test"]
 python_files = 'test*.py'
 
