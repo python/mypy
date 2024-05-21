@@ -283,6 +283,7 @@ from mypy.types import (
     TypeVarTupleType,
     TypeVarType,
     UnboundType,
+    UnionType,
     UnpackType,
     get_proper_type,
     get_proper_types,
@@ -635,6 +636,7 @@ class SemanticAnalyzer(
         str_type: Type | None = self.named_type_or_none("builtins.str")
         if str_type is None:
             str_type = UnboundType("builtins.str")
+        inst: Type | None
         for name, t in implicit_module_attrs.items():
             if name == "__doc__":
                 typ: Type = str_type
@@ -659,6 +661,22 @@ class SemanticAnalyzer(
                     ), "Cannot find builtins.dict to add __annotations__"
                     self.defer()
                     return
+                typ = inst
+            elif name == "__spec__":
+                if self.options.use_builtins_fixtures:
+                    inst = self.named_type_or_none("builtins.object")
+                else:
+                    inst = self.named_type_or_none("importlib.machinery.ModuleSpec")
+                if inst is None:
+                    if self.final_iteration:
+                        inst = self.named_type_or_none("builtins.object")
+                        assert inst is not None, "Cannot find builtins.object"
+                    else:
+                        self.defer()
+                        return
+                if file_node.name == "__main__":
+                    # https://docs.python.org/3/reference/import.html#main-spec
+                    inst = UnionType.make_union([inst, NoneType()])
                 typ = inst
             else:
                 assert t is not None, f"type should be specified for {name}"

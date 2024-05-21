@@ -107,14 +107,20 @@ f
 [case testModuleAttributes]
 import math
 import typing
+print(type(__spec__))
 print(math.__name__)
+print(math.__spec__.name)
 print(type(math.__dict__))
 print(type(math.__doc__ or ''))
+print(type(math.__spec__).__name__)
 print(math.__class__)
 [out]
+<class 'NoneType'>
+math
 math
 <class 'dict'>
 <class 'str'>
+ModuleSpec
 <class 'module'>
 
 [case testSpecialAttributes]
