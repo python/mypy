@@ -1004,7 +1004,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Type check a function definition."""
         self.check_func_item(defn, name=defn.name)
         if defn.info:
-            if not defn.is_dynamic() and not defn.is_overload and not defn.is_decorated:
+            if not defn.is_overload and not defn.is_decorated:
                 # If the definition is the implementation for an
                 # overload, the legality of the override has already
                 # been typechecked, and decorated methods will be
@@ -1913,9 +1913,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         Return a list of base classes which contain an attribute with the method name.
         """
         # Check against definitions in base classes.
+        check_override_compatibility = defn.name not in (
+            "__init__",
+            "__new__",
+            "__init_subclass__",
+            "__post_init__",
+        ) and (self.options.check_untyped_defs or not defn.is_dynamic())
         found_method_base_classes: list[TypeInfo] = []
         for base in defn.info.mro[1:]:
-            result = self.check_method_or_accessor_override_for_base(defn, base)
+            result = self.check_method_or_accessor_override_for_base(
+                defn, base, check_override_compatibility
+            )
             if result is None:
                 # Node was deferred, we will have another attempt later.
                 return None
@@ -1924,7 +1932,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return found_method_base_classes
 
     def check_method_or_accessor_override_for_base(
-        self, defn: FuncDef | OverloadedFuncDef | Decorator, base: TypeInfo
+        self,
+        defn: FuncDef | OverloadedFuncDef | Decorator,
+        base: TypeInfo,
+        check_override_compatibility: bool,
     ) -> bool | None:
         """Check if method definition is compatible with a base class.
 
@@ -1945,10 +1956,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if defn.is_final:
                     self.check_if_final_var_override_writable(name, base_attr.node, defn)
                 found_base_method = True
-
-            # Check the type of override.
-            if name not in ("__init__", "__new__", "__init_subclass__", "__post_init__"):
-                # Check method override
+            if check_override_compatibility:
+                # Check compatibility of the override signature
                 # (__init__, __new__, __init_subclass__ are special).
                 if self.check_method_override_for_base_with_name(defn, name, base):
                     return None
