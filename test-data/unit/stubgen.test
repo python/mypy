@@ -4351,6 +4351,10 @@ class Foo(Enum):
     B = 2
     C = 3
 
+class Bar(Enum):
+    A = object()
+    B = "a" + "b"
+
 [out]
 from enum import Enum
 
@@ -4358,3 +4362,7 @@ class Foo(Enum):
     A = 1
     B = 2
     C = 3
+
+class Bar(Enum):
+    A = ...
+    B = ...
