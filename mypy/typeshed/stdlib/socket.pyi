@@ -474,57 +474,67 @@ if sys.version_info >= (3, 12):
             ETHERTYPE_VLAN as ETHERTYPE_VLAN,
         )
 
+    if sys.platform == "linux":
+        from _socket import ETH_P_ALL as ETH_P_ALL
+
+    if sys.platform != "linux" and sys.platform != "win32" and sys.platform != "darwin":
+        # FreeBSD >= 14.0
+        from _socket import PF_DIVERT as PF_DIVERT
+
 # Re-exported from errno
 EBADF: int
 EAGAIN: int
 EWOULDBLOCK: int
 
 class AddressFamily(IntEnum):
-    AF_INET: int
-    AF_INET6: int
-    AF_APPLETALK: int
-    AF_DECnet: int
-    AF_IPX: int
-    AF_SNA: int
-    AF_UNSPEC: int
+    AF_INET = 2
+    AF_INET6 = 10
+    AF_APPLETALK = 5
+    AF_DECnet = ...
+    AF_IPX = 4
+    AF_SNA = 22
+    AF_UNSPEC = 0
     if sys.platform != "darwin":
-        AF_IRDA: int
+        AF_IRDA = 23
     if sys.platform != "win32":
-        AF_ROUTE: int
-        AF_SYSTEM: int
-        AF_UNIX: int
+        AF_ROUTE = 16
+        AF_SYSTEM = 32
+        AF_UNIX = 1
     if sys.platform != "win32" and sys.platform != "darwin":
-        AF_AAL5: int
-        AF_ASH: int
-        AF_ATMPVC: int
-        AF_ATMSVC: int
-        AF_AX25: int
-        AF_BRIDGE: int
-        AF_ECONET: int
-        AF_KEY: int
-        AF_LLC: int
-        AF_NETBEUI: int
-        AF_NETROM: int
-        AF_PPPOX: int
-        AF_ROSE: int
-        AF_SECURITY: int
-        AF_WANPIPE: int
-        AF_X25: int
+        AF_AAL5 = ...
+        AF_ASH = 18
+        AF_ATMPVC = 8
+        AF_ATMSVC = 20
+        AF_AX25 = 3
+        AF_BRIDGE = 7
+        AF_ECONET = 19
+        AF_KEY = 15
+        AF_LLC = 26
+        AF_NETBEUI = 13
+        AF_NETROM = 6
+        AF_PPPOX = 24
+        AF_ROSE = 11
+        AF_SECURITY = 14
+        AF_WANPIPE = 25
+        AF_X25 = 9
     if sys.platform == "linux":
-        AF_CAN: int
-        AF_PACKET: int
-        AF_RDS: int
-        AF_TIPC: int
-        AF_ALG: int
-        AF_NETLINK: int
-        AF_VSOCK: int
-        AF_QIPCRTR: int
+        AF_CAN = 29
+        AF_PACKET = 17
+        AF_RDS = 21
+        AF_TIPC = 30
+        AF_ALG = 38
+        AF_NETLINK = 16
+        AF_VSOCK = 40
+        AF_QIPCRTR = 42
     if sys.platform != "win32" or sys.version_info >= (3, 9):
-        AF_LINK: int
+        AF_LINK = 33
         if sys.platform != "darwin":
-            AF_BLUETOOTH: int
+            AF_BLUETOOTH = 32
     if sys.platform == "win32" and sys.version_info >= (3, 12):
-        AF_HYPERV: int
+        AF_HYPERV = 34
+    if sys.platform != "linux" and sys.platform != "win32" and sys.platform != "darwin" and sys.version_info >= (3, 12):
+        # FreeBSD >= 14.0
+        AF_DIVERT = 44
 
 AF_INET = AddressFamily.AF_INET
 AF_INET6 = AddressFamily.AF_INET6
@@ -577,16 +587,19 @@ if sys.platform != "win32" or sys.version_info >= (3, 9):
 
 if sys.platform == "win32" and sys.version_info >= (3, 12):
     AF_HYPERV = AddressFamily.AF_HYPERV
+if sys.platform != "linux" and sys.platform != "win32" and sys.platform != "darwin" and sys.version_info >= (3, 12):
+    # FreeBSD >= 14.0
+    AF_DIVERT = AddressFamily.AF_DIVERT
 
 class SocketKind(IntEnum):
-    SOCK_STREAM: int
-    SOCK_DGRAM: int
-    SOCK_RAW: int
-    SOCK_RDM: int
-    SOCK_SEQPACKET: int
+    SOCK_STREAM = 1
+    SOCK_DGRAM = 2
+    SOCK_RAW = 3
+    SOCK_RDM = 4
+    SOCK_SEQPACKET = 5
     if sys.platform == "linux":
-        SOCK_CLOEXEC: int
-        SOCK_NONBLOCK: int
+        SOCK_CLOEXEC = 524288
+        SOCK_NONBLOCK = 2048
 
 SOCK_STREAM = SocketKind.SOCK_STREAM
 SOCK_DGRAM = SocketKind.SOCK_DGRAM
@@ -598,32 +611,32 @@ if sys.platform == "linux":
     SOCK_NONBLOCK = SocketKind.SOCK_NONBLOCK
 
 class MsgFlag(IntFlag):
-    MSG_CTRUNC: int
-    MSG_DONTROUTE: int
-    MSG_OOB: int
-    MSG_PEEK: int
-    MSG_TRUNC: int
-    MSG_WAITALL: int
+    MSG_CTRUNC = 8
+    MSG_DONTROUTE = 4
+    MSG_OOB = 1
+    MSG_PEEK = 2
+    MSG_TRUNC = 32
+    MSG_WAITALL = 256
 
     if sys.platform != "darwin":
-        MSG_BCAST: int
-        MSG_MCAST: int
-        MSG_ERRQUEUE: int
+        MSG_BCAST = 1024
+        MSG_MCAST = 2048
+        MSG_ERRQUEUE = 8192
 
     if sys.platform != "win32" and sys.platform != "darwin":
-        MSG_BTAG: int
-        MSG_CMSG_CLOEXEC: int
-        MSG_CONFIRM: int
-        MSG_ETAG: int
-        MSG_FASTOPEN: int
-        MSG_MORE: int
-        MSG_NOTIFICATION: int
+        MSG_BTAG = ...
+        MSG_CMSG_CLOEXEC = 1073741821
+        MSG_CONFIRM = 2048
+        MSG_ETAG = ...
+        MSG_FASTOPEN = 536870912
+        MSG_MORE = 32768
+        MSG_NOTIFICATION = ...
 
     if sys.platform != "win32":
-        MSG_DONTWAIT: int
-        MSG_EOF: int
-        MSG_EOR: int
-        MSG_NOSIGNAL: int  # sometimes this exists on darwin, sometimes not
+        MSG_DONTWAIT = 64
+        MSG_EOF = 256
+        MSG_EOR = 128
+        MSG_NOSIGNAL = 16384  # sometimes this exists on darwin, sometimes not
 
 MSG_CTRUNC = MsgFlag.MSG_CTRUNC
 MSG_DONTROUTE = MsgFlag.MSG_DONTROUTE
@@ -653,17 +666,17 @@ if sys.platform != "win32" and sys.platform != "darwin":
     MSG_NOTIFICATION = MsgFlag.MSG_NOTIFICATION
 
 class AddressInfo(IntFlag):
-    AI_ADDRCONFIG: int
-    AI_ALL: int
-    AI_CANONNAME: int
-    AI_NUMERICHOST: int
-    AI_NUMERICSERV: int
-    AI_PASSIVE: int
-    AI_V4MAPPED: int
+    AI_ADDRCONFIG = 32
+    AI_ALL = 16
+    AI_CANONNAME = 2
+    AI_NUMERICHOST = 4
+    AI_NUMERICSERV = 1024
+    AI_PASSIVE = 1
+    AI_V4MAPPED = 8
     if sys.platform != "win32":
-        AI_DEFAULT: int
-        AI_MASK: int
-        AI_V4MAPPED_CFG: int
+        AI_DEFAULT = 1536
+        AI_MASK = 5127
+        AI_V4MAPPED_CFG = 512
 
 AI_ADDRCONFIG = AddressInfo.AI_ADDRCONFIG
 AI_ALL = AddressInfo.AI_ALL

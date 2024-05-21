@@ -2,7 +2,7 @@ import abc
 import sys
 import typing
 from _collections_abc import dict_items, dict_keys, dict_values
-from _typeshed import IdentityFunction, Incomplete
+from _typeshed import IdentityFunction
 from typing import (  # noqa: Y022,Y037,Y038,Y039
     IO as IO,
     TYPE_CHECKING as TYPE_CHECKING,
@@ -374,7 +374,7 @@ else:
     class NewType:
         def __init__(self, name: str, tp: Any) -> None: ...
         def __call__(self, obj: _T, /) -> _T: ...
-        __supertype__: type
+        __supertype__: type | NewType
         if sys.version_info >= (3, 10):
             def __or__(self, other: Any) -> _SpecialForm: ...
             def __ror__(self, other: Any) -> _SpecialForm: ...
@@ -413,7 +413,7 @@ class TypeVar:
         def __or__(self, right: Any) -> _SpecialForm: ...
         def __ror__(self, left: Any) -> _SpecialForm: ...
     if sys.version_info >= (3, 11):
-        def __typing_subst__(self, arg: Incomplete) -> Incomplete: ...
+        def __typing_subst__(self, arg: Any) -> Any: ...
 
 @final
 class ParamSpec:
@@ -453,10 +453,10 @@ class TypeVarTuple:
     def __iter__(self) -> Any: ...  # Unpack[Self]
 
 class deprecated:
-    message: str
+    message: LiteralString
     category: type[Warning] | None
     stacklevel: int
-    def __init__(self, message: str, /, *, category: type[Warning] | None = ..., stacklevel: int = 1) -> None: ...
+    def __init__(self, message: LiteralString, /, *, category: type[Warning] | None = ..., stacklevel: int = 1) -> None: ...
     def __call__(self, arg: _T, /) -> _T: ...
 
 if sys.version_info >= (3, 12):

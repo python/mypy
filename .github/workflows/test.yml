@@ -36,53 +36,54 @@ jobs:
           arch: x64
           os: ubuntu-latest
           toxenv: py
-          tox_extra_args: "-n 2"
+          tox_extra_args: "-n 4"
           test_mypyc: true
         - name: Test suite with py38-windows-64
           python: '3.8'
           arch: x64
           os: windows-latest
           toxenv: py38
-          tox_extra_args: "-n 2"
+          tox_extra_args: "-n 4"
         - name: Test suite with py39-ubuntu
           python: '3.9'
           arch: x64
           os: ubuntu-latest
           toxenv: py
-          tox_extra_args: "-n 2"
+          tox_extra_args: "-n 4"
         - name: Test suite with py310-ubuntu
           python: '3.10'
           arch: x64
           os: ubuntu-latest
           toxenv: py
-          tox_extra_args: "-n 2"
+          tox_extra_args: "-n 4"
         - name: Test suite with py311-ubuntu, mypyc-compiled
           python: '3.11'
           arch: x64
           os: ubuntu-latest
           toxenv: py
-          tox_extra_args: "-n 2"
+          tox_extra_args: "-n 4"
           test_mypyc: true
         - name: Test suite with py312-ubuntu, mypyc-compiled
           python: '3.12'
           arch: x64
           os: ubuntu-latest
           toxenv: py
-          tox_extra_args: "-n 2"
+          tox_extra_args: "-n 4"
           test_mypyc: true
 
         - name: mypyc runtime tests with py39-macos
           python: '3.9.18'
           arch: x64
-          os: macos-latest
+          # TODO: macos-13 is the last one to support Python 3.9, change it to macos-latest when updating the Python version
+          os: macos-13
           toxenv: py
-          tox_extra_args: "-n 2 mypyc/test/test_run.py mypyc/test/test_external.py"
+          tox_extra_args: "-n 3 mypyc/test/test_run.py mypyc/test/test_external.py"
         - name: mypyc runtime tests with py38-debug-build-ubuntu
           python: '3.8.17'
           arch: x64
           os: ubuntu-latest
           toxenv: py
-          tox_extra_args: "-n 2 mypyc/test/test_run.py mypyc/test/test_external.py"
+          tox_extra_args: "-n 4 mypyc/test/test_run.py mypyc/test/test_external.py"
           debug_build: true
 
         - name: Type check our own code (py38-ubuntu)
@@ -140,7 +141,9 @@ jobs:
         pip install -r test-requirements.txt
         CC=clang MYPYC_OPT_LEVEL=0 MYPY_USE_MYPYC=1 pip install -e .
     - name: Setup tox environment
-      run: tox run -e ${{ matrix.toxenv }} --notest
+      run: |
+        tox run -e ${{ matrix.toxenv }} --notest
+        python -c 'import os; print("os.cpu_count", os.cpu_count(), "os.sched_getaffinity", len(getattr(os, "sched_getaffinity", lambda *args: [])(0)))'
     - name: Test
       run: tox run -e ${{ matrix.toxenv }} --skip-pkg-install -- ${{ matrix.tox_extra_args }}
 
@@ -189,4 +192,4 @@ jobs:
       - name: Setup tox environment
         run: tox run -e py --notest
       - name: Test
-        run: tox run -e py --skip-pkg-install -- -n 2 mypyc/test/
+        run: tox run -e py --skip-pkg-install -- -n 4 mypyc/test/

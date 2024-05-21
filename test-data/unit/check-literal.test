@@ -12,8 +12,12 @@ reveal_type(g1)  # N: Revealed type is "def (x: Literal['A['])"
 
 def f2(x: 'A B') -> None: pass  # E: Invalid type comment or annotation
 def g2(x: Literal['A B']) -> None: pass
+def h2(x: 'A|int') -> None: pass  # E: Name "A" is not defined
+def i2(x: Literal['A|B']) -> None: pass
 reveal_type(f2)  # N: Revealed type is "def (x: Any)"
 reveal_type(g2)  # N: Revealed type is "def (x: Literal['A B'])"
+reveal_type(h2)  # N: Revealed type is "def (x: Union[Any, builtins.int])"
+reveal_type(i2)  # N: Revealed type is "def (x: Literal['A|B'])"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -2499,7 +2503,7 @@ class Color(Enum):
     RED = 1
     GREEN = 2
     BLUE = 3
-
+    __ROUGE = RED
     def func(self) -> int: pass
 
 r: Literal[Color.RED]
@@ -2508,6 +2512,8 @@ b: Literal[Color.BLUE]
 bad1: Literal[Color]         # E: Parameter 1 of Literal[...] is invalid
 bad2: Literal[Color.func]    # E: Parameter 1 of Literal[...] is invalid
 bad3: Literal[Color.func()]  # E: Invalid type: Literal[...] cannot contain arbitrary expressions
+# TODO: change the next line to use Color._Color__ROUGE when mypy implements name mangling
+bad4: Literal[Color.__ROUGE]  # E: Parameter 1 of Literal[...] is invalid
 
 def expects_color(x: Color) -> None: pass
 def expects_red(x: Literal[Color.RED]) -> None: pass

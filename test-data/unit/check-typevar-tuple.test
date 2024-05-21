@@ -2278,6 +2278,22 @@ higher_order(bad3)  # E: Argument 1 to "higher_order" has incompatible type "Cal
 higher_order(bad4)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[KwArg(None)], None]"; expected "Callable[[int, str, VarArg(Unpack[Tuple[Unpack[Tuple[Any, ...]], int]])], Any]"
 [builtins fixtures/tuple.pyi]
 
+[case testAliasToCallableWithUnpackInvalid]
+from typing import Any, Callable, List, Tuple, TypeVar, Unpack
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")  # E: Name "TypeVarTuple" is not defined
+
+def good(*x: int) -> int: ...
+def bad(*x: int, y: int) -> int: ...
+
+Alias = Callable[[Unpack[T]], int]  # E: "T" cannot be unpacked (must be tuple or TypeVarTuple)
+x: Alias[int]
+reveal_type(x)  # N: Revealed type is "def (*Any) -> builtins.int"
+x = good
+x = bad  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(int), NamedArg(int, 'y')], int]", variable has type "Callable[[VarArg(Any)], int]")
+[builtins fixtures/tuple.pyi]
+
 [case testTypeVarTupleInvariant]
 from typing import Generic, Tuple
 from typing_extensions import Unpack, TypeVarTuple

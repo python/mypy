@@ -31,7 +31,7 @@ from _typeshed import (
 )
 from collections.abc import Awaitable, Callable, Iterable, Iterator, MutableSet, Reversible, Set as AbstractSet, Sized
 from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper
-from types import CodeType, TracebackType, _Cell
+from types import CellType, CodeType, TracebackType
 
 # mypy crashes if any of {ByteString, Sequence, MutableSequence, Mapping, MutableMapping} are imported from collections.abc in builtins.pyi
 from typing import (  # noqa: Y022
@@ -65,6 +65,7 @@ from typing_extensions import (  # noqa: Y023
     Self,
     TypeAlias,
     TypeGuard,
+    TypeIs,
     TypeVarTuple,
     deprecated,
 )
@@ -862,7 +863,7 @@ class tuple(Sequence[_T_co]):
 class function:
     # Make sure this class definition stays roughly in line with `types.FunctionType`
     @property
-    def __closure__(self) -> tuple[_Cell, ...] | None: ...
+    def __closure__(self) -> tuple[CellType, ...] | None: ...
     __code__: CodeType
     __defaults__: tuple[Any, ...] | None
     __dict__: dict[str, Any]
@@ -943,15 +944,25 @@ class dict(MutableMapping[_KT, _VT]):
     @overload
     def __init__(self) -> None: ...
     @overload
-    def __init__(self: dict[str, _VT], **kwargs: _VT) -> None: ...
+    def __init__(self: dict[str, _VT], **kwargs: _VT) -> None: ...  # pyright: ignore[reportInvalidTypeVarUse]  #11780
     @overload
     def __init__(self, map: SupportsKeysAndGetItem[_KT, _VT], /) -> None: ...
     @overload
-    def __init__(self: dict[str, _VT], map: SupportsKeysAndGetItem[str, _VT], /, **kwargs: _VT) -> None: ...
+    def __init__(
+        self: dict[str, _VT],  # pyright: ignore[reportInvalidTypeVarUse]  #11780
+        map: SupportsKeysAndGetItem[str, _VT],
+        /,
+        **kwargs: _VT,
+    ) -> None: ...
     @overload
     def __init__(self, iterable: Iterable[tuple[_KT, _VT]], /) -> None: ...
     @overload
-    def __init__(self: dict[str, _VT], iterable: Iterable[tuple[str, _VT]], /, **kwargs: _VT) -> None: ...
+    def __init__(
+        self: dict[str, _VT],  # pyright: ignore[reportInvalidTypeVarUse]  #11780
+        iterable: Iterable[tuple[str, _VT]],
+        /,
+        **kwargs: _VT,
+    ) -> None: ...
     # Next two overloads are for dict(string.split(sep) for string in iterable)
     # Cannot be Iterable[Sequence[_T]] or otherwise dict(["foo", "bar", "baz"]) is not an error
     @overload
@@ -1143,7 +1154,7 @@ def any(iterable: Iterable[object], /) -> bool: ...
 def ascii(obj: object, /) -> str: ...
 def bin(number: int | SupportsIndex, /) -> str: ...
 def breakpoint(*args: Any, **kws: Any) -> None: ...
-def callable(obj: object, /) -> TypeGuard[Callable[..., object]]: ...
+def callable(obj: object, /) -> TypeIs[Callable[..., object]]: ...
 def chr(i: int, /) -> str: ...
 
 # We define this here instead of using os.PathLike to avoid import cycle issues.
@@ -1234,7 +1245,7 @@ if sys.version_info >= (3, 11):
         locals: Mapping[str, object] | None = None,
         /,
         *,
-        closure: tuple[_Cell, ...] | None = None,
+        closure: tuple[CellType, ...] | None = None,
     ) -> None: ...
 
 else:
@@ -1252,6 +1263,8 @@ class filter(Iterator[_T]):
     def __new__(cls, function: None, iterable: Iterable[_T | None], /) -> Self: ...
     @overload
     def __new__(cls, function: Callable[[_S], TypeGuard[_T]], iterable: Iterable[_S], /) -> Self: ...
+    @overload
+    def __new__(cls, function: Callable[[_S], TypeIs[_T]], iterable: Iterable[_S], /) -> Self: ...
     @overload
     def __new__(cls, function: Callable[[_T], Any], iterable: Iterable[_T], /) -> Self: ...
     def __iter__(self) -> Self: ...
@@ -1693,7 +1706,7 @@ def __import__(
     fromlist: Sequence[str] = (),
     level: int = 0,
 ) -> types.ModuleType: ...
-def __build_class__(func: Callable[[], _Cell | Any], name: str, /, *bases: Any, metaclass: Any = ..., **kwds: Any) -> Any: ...
+def __build_class__(func: Callable[[], CellType | Any], name: str, /, *bases: Any, metaclass: Any = ..., **kwds: Any) -> Any: ...
 
 if sys.version_info >= (3, 10):
     from types import EllipsisType
@@ -1777,6 +1790,7 @@ class MemoryError(Exception): ...
 
 class NameError(Exception):
     if sys.version_info >= (3, 10):
+        def __init__(self, *args: object, name: str | None = ...) -> None: ...
         name: str
 
 class ReferenceError(Exception): ...

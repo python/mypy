@@ -15,7 +15,7 @@ from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWra
 from os import PathLike, stat_result
 from types import TracebackType
 from typing import IO, Any, BinaryIO, Literal, overload
-from typing_extensions import Self
+from typing_extensions import Self, deprecated
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -222,7 +222,11 @@ class Path(PurePath):
     else:
         def write_text(self, data: str, encoding: str | None = None, errors: str | None = None) -> int: ...
     if sys.version_info < (3, 12):
-        def link_to(self, target: StrOrBytesPath) -> None: ...
+        if sys.version_info >= (3, 10):
+            @deprecated("Deprecated as of Python 3.10 and removed in Python 3.12. Use hardlink_to() instead.")
+            def link_to(self, target: StrOrBytesPath) -> None: ...
+        else:
+            def link_to(self, target: StrOrBytesPath) -> None: ...
     if sys.version_info >= (3, 12):
         def walk(
             self, top_down: bool = ..., on_error: Callable[[OSError], object] | None = ..., follow_symlinks: bool = ...

@@ -188,7 +188,7 @@ class _patch(Generic[_T]):
     # but that's impossible with the current type system.
     if sys.version_info >= (3, 10):
         def __init__(
-            self: _patch[_T],
+            self: _patch[_T],  # pyright: ignore[reportInvalidTypeVarUse]  #11780
             getter: Callable[[], Any],
             attribute: str,
             new: _T,
@@ -203,7 +203,7 @@ class _patch(Generic[_T]):
         ) -> None: ...
     else:
         def __init__(
-            self: _patch[_T],
+            self: _patch[_T],  # pyright: ignore[reportInvalidTypeVarUse]  #11780
             getter: Callable[[], Any],
             attribute: str,
             new: _T,

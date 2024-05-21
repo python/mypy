@@ -73,7 +73,8 @@ OPTIONS_AFFECTING_CACHE: Final = (
 TYPE_VAR_TUPLE: Final = "TypeVarTuple"
 UNPACK: Final = "Unpack"
 PRECISE_TUPLE_TYPES: Final = "PreciseTupleTypes"
-INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES,))
+NEW_GENERIC_SYNTAX: Final = "NewGenericSyntax"
+INCOMPLETE_FEATURES: Final = frozenset((PRECISE_TUPLE_TYPES, NEW_GENERIC_SYNTAX))
 COMPLETE_FEATURES: Final = frozenset((TYPE_VAR_TUPLE, UNPACK))
 
 
@@ -376,9 +377,11 @@ class Options:
 
         self.disable_bytearray_promotion = False
         self.disable_memoryview_promotion = False
-
         self.force_uppercase_builtins = False
         self.force_union_syntax = False
+
+        # Sets custom output format
+        self.output: str | None = None
 
     def use_lowercase_names(self) -> bool:
         if self.python_version >= (3, 9):

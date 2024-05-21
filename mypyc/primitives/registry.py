@@ -60,6 +60,7 @@ class CFunctionDescription(NamedTuple):
     ordering: list[int] | None
     extra_int_constants: list[tuple[int, RType]]
     priority: int
+    is_pure: bool
 
 
 # A description for C load operations including LoadGlobal and LoadAddress
@@ -97,6 +98,7 @@ def method_op(
     steals: StealsDescription = False,
     is_borrowed: bool = False,
     priority: int = 1,
+    is_pure: bool = False,
 ) -> CFunctionDescription:
     """Define a c function call op that replaces a method call.
 
@@ -121,6 +123,8 @@ def method_op(
         steals: description of arguments that this steals (ref count wise)
         is_borrowed: if True, returned value is borrowed (no need to decrease refcount)
         priority: if multiple ops match, the one with the highest priority is picked
+        is_pure: if True, declare that the C function has no side effects, takes immutable
+                 arguments, and never raises an exception
     """
     if extra_int_constants is None:
         extra_int_constants = []
@@ -138,6 +142,7 @@ def method_op(
         ordering,
         extra_int_constants,
         priority,
+        is_pure=is_pure,
     )
     ops.append(desc)
     return desc
@@ -183,6 +188,7 @@ def function_op(
         ordering,
         extra_int_constants,
         priority,
+        is_pure=False,
     )
     ops.append(desc)
     return desc
@@ -228,6 +234,7 @@ def binary_op(
         ordering=ordering,
         extra_int_constants=extra_int_constants,
         priority=priority,
+        is_pure=False,
     )
     ops.append(desc)
     return desc
@@ -244,6 +251,8 @@ def custom_op(
     extra_int_constants: list[tuple[int, RType]] | None = None,
     steals: StealsDescription = False,
     is_borrowed: bool = False,
+    *,
+    is_pure: bool = False,
 ) -> CFunctionDescription:
     """Create a one-off CallC op that can't be automatically generated from the AST.
 
@@ -264,6 +273,44 @@ def custom_op(
         ordering,
         extra_int_constants,
         0,
+        is_pure=is_pure,
+    )
+
+
+def custom_primitive_op(
+    name: str,
+    arg_types: list[RType],
+    return_type: RType,
+    error_kind: int,
+    c_function_name: str | None = None,
+    var_arg_type: RType | None = None,
+    truncated_type: RType | None = None,
+    ordering: list[int] | None = None,
+    extra_int_constants: list[tuple[int, RType]] | None = None,
+    steals: StealsDescription = False,
+    is_borrowed: bool = False,
+    is_pure: bool = False,
+) -> PrimitiveDescription:
+    """Define a primitive op that can't be automatically generated based on the AST.
+
+    Most arguments are similar to method_op().
+    """
+    if extra_int_constants is None:
+        extra_int_constants = []
+    return PrimitiveDescription(
+        name=name,
+        arg_types=arg_types,
+        return_type=return_type,
+        var_arg_type=var_arg_type,
+        truncated_type=truncated_type,
+        c_function_name=c_function_name,
+        error_kind=error_kind,
+        steals=steals,
+        is_borrowed=is_borrowed,
+        ordering=ordering,
+        extra_int_constants=extra_int_constants,
+        priority=0,
+        is_pure=is_pure,
     )
 
 
@@ -279,6 +326,7 @@ def unary_op(
     steals: StealsDescription = False,
     is_borrowed: bool = False,
     priority: int = 1,
+    is_pure: bool = False,
 ) -> CFunctionDescription:
     """Define a c function call op for an unary operation.
 
@@ -303,6 +351,7 @@ def unary_op(
         ordering,
         extra_int_constants,
         priority,
+        is_pure=is_pure,
     )
     ops.append(desc)
     return desc

@@ -634,6 +634,10 @@ def _verify_arg_name(
     if strip_prefix(stub_arg.variable.name, "__") == runtime_arg.name:
         return
 
+    nonspecific_names = {"object", "args"}
+    if runtime_arg.name in nonspecific_names:
+        return
+
     def names_approx_match(a: str, b: str) -> bool:
         a = a.strip("_")
         b = b.strip("_")
@@ -1455,6 +1459,8 @@ IGNORABLE_CLASS_DUNDERS: typing_extensions.Final = frozenset(
         "__getattr__",  # resulting behaviour might be typed explicitly
         "__setattr__",  # defining this on a class can cause worse type checking
         "__vectorcalloffset__",  # undocumented implementation detail of the vectorcall protocol
+        "__firstlineno__",
+        "__static_attributes__",
         # isinstance/issubclass hooks that type-checkers don't usually care about
         "__instancecheck__",
         "__subclasshook__",
@@ -1885,7 +1891,9 @@ class _Arguments:
 
 
 # typeshed added a stub for __main__, but that causes stubtest to check itself
-ANNOYING_STDLIB_MODULES: typing_extensions.Final = frozenset({"antigravity", "this", "__main__"})
+ANNOYING_STDLIB_MODULES: typing_extensions.Final = frozenset(
+    {"antigravity", "this", "__main__", "_ios_support"}
+)
 
 
 def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:

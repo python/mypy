@@ -6,7 +6,7 @@ from typing import overload
 
 import mypy.typeops
 from mypy.maptype import map_instance_to_supertype
-from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT
+from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT, VARIANCE_NOT_READY
 from mypy.state import state
 from mypy.subtypes import (
     SubtypeContext,
@@ -97,7 +97,7 @@ class InstanceJoiner:
                 elif isinstance(sa_proper, AnyType):
                     new_type = AnyType(TypeOfAny.from_another_any, sa_proper)
                 elif isinstance(type_var, TypeVarType):
-                    if type_var.variance == COVARIANT:
+                    if type_var.variance in (COVARIANT, VARIANCE_NOT_READY):
                         new_type = join_types(ta, sa, self)
                         if len(type_var.values) != 0 and new_type not in type_var.values:
                             self.seen_instances.pop()

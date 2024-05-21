@@ -9,6 +9,17 @@ def main(a: object) -> None:
         reveal_type(a)  # N: Revealed type is "builtins.object"
 [builtins fixtures/tuple.pyi]
 
+[case testTypeIsStringified]
+from typing_extensions import TypeIs
+class Point: pass
+def is_point(a: object) -> "TypeIs[Point]": pass
+def main(a: object) -> None:
+    if is_point(a):
+        reveal_type(a)  # N: Revealed type is "__main__.Point"
+    else:
+        reveal_type(a)  # N: Revealed type is "builtins.object"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeIsElif]
 from typing_extensions import TypeIs
 from typing import Union
@@ -91,6 +102,18 @@ def main(a: Tuple[object, ...]):
     if is_tuple_of_type(a, int):
         reveal_type(a)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeIsTypeVarReturn]
+from typing import Callable, Optional, TypeVar
+from typing_extensions import TypeIs
+T = TypeVar('T')
+def is_str(x: object) -> TypeIs[str]: pass
+def main(x: object, type_check_func: Callable[[object], TypeIs[T]]) -> T:
+    if not type_check_func(x):
+        raise Exception()
+    return x
+reveal_type(main("a", is_str))  # N: Revealed type is "builtins.str"
+[builtins fixtures/exception.pyi]
 
 [case testTypeIsUnionIn]
 from typing import Union

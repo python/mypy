@@ -179,11 +179,11 @@ class TextIOWrapper(TextIOBase, TextIO):  # type: ignore[misc]  # incompatible d
     def __init__(
         self,
         buffer: _WrappedBuffer,
-        encoding: str | None = ...,
-        errors: str | None = ...,
-        newline: str | None = ...,
-        line_buffering: bool = ...,
-        write_through: bool = ...,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
+        line_buffering: bool = False,
+        write_through: bool = False,
     ) -> None: ...
     # Equals the "buffer" argument passed in to the constructor.
     @property
