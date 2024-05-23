@@ -1229,14 +1229,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             assert callback is not None  # Assume that caller ensures this
             return callback(
                 FunctionContext(
-                    formal_arg_types,
-                    formal_arg_kinds,
-                    callee.arg_names,
-                    formal_arg_names,
-                    callee.ret_type,
-                    formal_arg_exprs,
-                    context,
-                    self.chk,
+                    arg_types=formal_arg_types,
+                    arg_kinds=formal_arg_kinds,
+                    callee_arg_names=callee.arg_names,
+                    arg_names=formal_arg_names,
+                    default_return_type=callee.ret_type,
+                    args=formal_arg_exprs,
+                    context=context,
+                    api=self.chk,
                 )
             )
         else:
@@ -1246,15 +1246,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             object_type = get_proper_type(object_type)
             return method_callback(
                 MethodContext(
-                    object_type,
-                    formal_arg_types,
-                    formal_arg_kinds,
-                    callee.arg_names,
-                    formal_arg_names,
-                    callee.ret_type,
-                    formal_arg_exprs,
-                    context,
-                    self.chk,
+                    type=object_type,
+                    arg_types=formal_arg_types,
+                    arg_kinds=formal_arg_kinds,
+                    callee_arg_names=callee.arg_names,
+                    arg_names=formal_arg_names,
+                    default_return_type=callee.ret_type,
+                    args=formal_arg_exprs,
+                    context=context,
+                    api=self.chk,
                 )
             )
 
