@@ -762,7 +762,7 @@ import typing
 class B:
     def f(self, x: A) -> None: pass
 class A(B):
-    def f(self, x, y): # dynamic function not type checked
+    def f(self, x, y):
         x()
 [out]
 main:6: error: Signature of "f" incompatible with supertype "B"
