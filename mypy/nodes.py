@@ -616,6 +616,9 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         # NOTE: res.info will be set in the fixup phase.
         return res
 
+    def is_dynamic(self) -> bool:
+        return all(item.is_dynamic() for item in self.items)
+
 
 class Argument(Node):
     """A single argument in a FuncItem."""
@@ -937,6 +940,9 @@ class Decorator(SymbolNode, Statement):
         dec = Decorator(FuncDef.deserialize(data["func"]), [], Var.deserialize(data["var"]))
         dec.is_overload = data["is_overload"]
         return dec
+
+    def is_dynamic(self) -> bool:
+        return self.func.is_dynamic()
 
 
 VAR_FLAGS: Final = [
