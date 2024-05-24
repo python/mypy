@@ -117,6 +117,7 @@ implicit_module_attrs: Final = {
     "__file__": "__builtins__.str",
     "__package__": "__builtins__.str",
     "__annotations__": None,  # dict[str, Any] bounded in add_implicit_module_attrs()
+    "__spec__": None,  # importlib.machinery.ModuleSpec bounded in add_implicit_module_attrs()
 }
 
 
@@ -615,6 +616,9 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         # NOTE: res.info will be set in the fixup phase.
         return res
 
+    def is_dynamic(self) -> bool:
+        return all(item.is_dynamic() for item in self.items)
+
 
 class Argument(Node):
     """A single argument in a FuncItem."""
@@ -936,6 +940,9 @@ class Decorator(SymbolNode, Statement):
         dec = Decorator(FuncDef.deserialize(data["func"]), [], Var.deserialize(data["var"]))
         dec.is_overload = data["is_overload"]
         return dec
+
+    def is_dynamic(self) -> bool:
+        return self.func.is_dynamic()
 
 
 VAR_FLAGS: Final = [

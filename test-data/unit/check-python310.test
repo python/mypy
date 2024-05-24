@@ -1220,6 +1220,21 @@ def main() -> None:
         case a:
             reveal_type(a)  # N: Revealed type is "builtins.int"
 
+[case testMatchCapturePatternFromAsyncFunctionReturningUnion-xfail]
+async def func1(arg: bool) -> str | int: ...
+async def func2(arg: bool) -> bytes | int: ...
+
+async def main() -> None:
+    match await func1(True):
+        case str(a):
+            match await func2(True):
+                case c:
+                    reveal_type(a)  # N: Revealed type is "builtins.str"
+                    reveal_type(c)  # N: Revealed type is "Union[builtins.bytes, builtins.int]"
+            reveal_type(a)  # N: Revealed type is "builtins.str"
+        case a:
+            reveal_type(a)  # N: Revealed type is "builtins.int"
+
 -- Guards --
 
 [case testMatchSimplePatternGuard]
