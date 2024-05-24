@@ -1927,7 +1927,7 @@ def restrict_subtype_away(t: Type, s: Type) -> Type:
             new_items = [
                 restrict_subtype_away(item, s)
                 for item in p_t.relevant_items()
-                if isinstance(item, UnionType) or not covers_type(item, s)
+                if isinstance(get_proper_type(item), UnionType) or not covers_type(item, s)
             ]
         return UnionType.make_union(new_items)
     elif covers_type(t, s):
