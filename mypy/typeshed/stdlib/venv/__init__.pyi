@@ -1,7 +1,7 @@
 import logging
 import sys
 from _typeshed import StrOrBytesPath
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from types import SimpleNamespace
 
 logger: logging.Logger
@@ -17,7 +17,20 @@ class EnvBuilder:
     with_pip: bool
     prompt: str | None
 
-    if sys.version_info >= (3, 9):
+    if sys.version_info >= (3, 13):
+        def __init__(
+            self,
+            system_site_packages: bool = False,
+            clear: bool = False,
+            symlinks: bool = False,
+            upgrade: bool = False,
+            with_pip: bool = False,
+            prompt: str | None = None,
+            upgrade_deps: bool = False,
+            *,
+            scm_ignore_files: Iterable[str] = ...,
+        ) -> None: ...
+    elif sys.version_info >= (3, 9):
         def __init__(
             self,
             system_site_packages: bool = False,
@@ -54,8 +67,23 @@ class EnvBuilder:
     def install_scripts(self, context: SimpleNamespace, path: str) -> None: ...
     if sys.version_info >= (3, 9):
         def upgrade_dependencies(self, context: SimpleNamespace) -> None: ...
+    if sys.version_info >= (3, 13):
+        def create_git_ignore_file(self, context: SimpleNamespace) -> None: ...
 
-if sys.version_info >= (3, 9):
+if sys.version_info >= (3, 13):
+    def create(
+        env_dir: StrOrBytesPath,
+        system_site_packages: bool = False,
+        clear: bool = False,
+        symlinks: bool = False,
+        with_pip: bool = False,
+        prompt: str | None = None,
+        upgrade_deps: bool = False,
+        *,
+        scm_ignore_files: Iterable[str] = ...,
+    ) -> None: ...
+
+elif sys.version_info >= (3, 9):
     def create(
         env_dir: StrOrBytesPath,
         system_site_packages: bool = False,

@@ -277,7 +277,7 @@ bin(sys.stdout)
 _program.py:5: error: No overload variant of "write" of "IO" matches argument type "bytes"
 _program.py:5: note: Possible overload variants:
 _program.py:5: note:     def write(self, str, /) -> int
-_program.py:10: error: Argument 1 to "bin" has incompatible type "TextIO"; expected "IO[bytes]"
+_program.py:10: error: Argument 1 to "bin" has incompatible type "Union[TextIO, Any]"; expected "IO[bytes]"
 
 [case testBuiltinOpen]
 f = open('x')
