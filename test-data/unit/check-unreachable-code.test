@@ -1494,3 +1494,23 @@ from typing import Generator
 def f() -> Generator[None, None, None]:
     return None
     yield None
+
+[case testLambdaNoReturn]
+# flags: --warn-unreachable
+from typing import Callable, NoReturn
+
+def foo() -> NoReturn:
+    raise
+
+f = lambda: foo()
+x = 0  # not unreachable
+
+[case testLambdaNoReturnAnnotated]
+# flags: --warn-unreachable
+from typing import Callable, NoReturn
+
+def foo() -> NoReturn:
+    raise
+
+f: Callable[[], NoReturn] = lambda: foo()  # E: Return statement in function which does not return # (false positive: https://github.com/python/mypy/issues/17254)
+x = 0  # not unreachable
