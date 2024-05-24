@@ -2047,10 +2047,10 @@ class TypeConverter:
                 # it manually.
                 if getattr(s, "col_offset", None) is None:
                     if isinstance(s, ast3.Index):
-                        s.col_offset = s.value.col_offset  # type: ignore[attr-defined]
+                        s.col_offset = s.value.col_offset
                     elif isinstance(s, ast3.Slice):
                         assert s.lower is not None
-                        s.col_offset = s.lower.col_offset  # type: ignore[attr-defined]
+                        s.col_offset = s.lower.col_offset
             sliceval = ast3.Tuple(dims, n.ctx)
 
         empty_tuple_index = False
