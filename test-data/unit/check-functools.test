@@ -324,3 +324,13 @@ p(bar, 1, "a", 3.0)  # OK
 p(bar, 1, "a", 3.0, kwarg="asdf")  # OK
 p(bar, 1, "a", "b")  # E: Argument 1 to "foo" has incompatible type "Callable[[int, str, float], None]"; expected "Callable[[int, str, str], None]"
 [builtins fixtures/dict.pyi]
+
+[case testFunctoolsPartialUnion]
+import functools
+from typing import Any, Union
+
+cls1: Any
+cls2: Union[Any, Any]
+functools.partial(cls1, 2)
+functools.partial(cls2, 2)
+[builtins fixtures/tuple.pyi]

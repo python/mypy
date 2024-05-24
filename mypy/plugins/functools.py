@@ -7,6 +7,7 @@ from typing import Final, NamedTuple
 import mypy.checker
 import mypy.plugin
 from mypy.argmap import map_actuals_to_formals
+from mypy.expandtype import expand_type
 from mypy.nodes import ARG_POS, ARG_STAR2, ArgKind, Argument, FuncItem, Var
 from mypy.plugins.common import add_method_to_class
 from mypy.types import (
@@ -124,11 +125,12 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
         return ctx.default_return_type
     if len(ctx.arg_types[0]) != 1:
         return ctx.default_return_type
+    fn = expand_type(get_proper_type(ctx.arg_types[0][0]), {})
 
-    if isinstance(get_proper_type(ctx.arg_types[0][0]), Overloaded):
+    if isinstance(fn, Overloaded):
         # TODO: handle overloads, just fall back to whatever the non-plugin code does
         return ctx.default_return_type
-    fn_type = ctx.api.extract_callable_type(ctx.arg_types[0][0], ctx=ctx.default_return_type)
+    fn_type = ctx.api.extract_callable_type(fn, ctx=ctx.default_return_type)
     if fn_type is None:
         return ctx.default_return_type
 
