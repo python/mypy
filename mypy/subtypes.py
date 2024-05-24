@@ -1927,7 +1927,7 @@ def restrict_subtype_away(t: Type, s: Type) -> Type:
             new_items = [
                 restrict_subtype_away(item, s)
                 for item in p_t.relevant_items()
-                if not covers_type(item, s)
+                if isinstance(item, UnionType) or not covers_type(item, s)
             ]
         return UnionType.make_union(new_items)
     elif covers_type(t, s):
@@ -1937,24 +1937,40 @@ def restrict_subtype_away(t: Type, s: Type) -> Type:
 
 
 def covers_type(item: Type, supertype: Type) -> bool:
-    """Returns if item is covered by supertype."""
+    """Returns if item is covered by supertype.
+
+    Assumes that item is not a Union type.
+    Any types (or fallbacks to any) should never cover or be covered.
+    Examples:
+
+    int            covered by int
+    List[int]      covered by List[Any]
+    A              covered by Union[A, Any]
+    Any            NOT covered by int
+    int            NOT covered by Any
+    """
     item = get_proper_type(item)
     supertype = get_proper_type(supertype)
 
     if isinstance(item, UnionType):
         return False
 
-    if isinstance(item, AnyType) or isinstance(supertype, AnyType):
+    # Handle possible Any types that should not be covered:
+    if isinstance(item, AnyType):
         return False
+    if isinstance(supertype, AnyType):
+        return False
+    if (isinstance(item, Instance) and item.type.fallback_to_any) or (
+        isinstance(supertype, Instance) and supertype.type.fallback_to_any
+    ):
+        return is_same_type(item, supertype)
 
-    if isinstance(item, Instance) and item.type.fallback_to_any:
-        return is_equivalent(item, supertype)
-
-    if isinstance(supertype, Instance) and supertype.type.fallback_to_any:
-        return is_equivalent(item, supertype)
+    if isinstance(supertype, UnionType):
+        return any(covers_type(item, t) for t in supertype.items)
 
     if is_subtype(item, supertype, ignore_promotions=True):
         return True
+
     if isinstance(supertype, Instance):
         if supertype.type.is_protocol:
             # TODO: Implement more robust support for runtime isinstance() checks, see issue #3827.
