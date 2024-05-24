@@ -2041,14 +2041,16 @@ class TypeConverter:
                 sliceval.col_offset = sliceval.lower.col_offset
         else:
             assert isinstance(n.slice, ast3.ExtSlice)
-            dims = copy.deepcopy(n.slice.dims)
+            dims: list[ast3.expr] = copy.deepcopy(n.slice.dims)
             for s in dims:
+                # These fields don't actually have a col_offset attribute but we add
+                # it manually.
                 if getattr(s, "col_offset", None) is None:
                     if isinstance(s, ast3.Index):
-                        s.col_offset = s.value.col_offset
+                        s.col_offset = s.value.col_offset  # type: ignore[attr-defined]
                     elif isinstance(s, ast3.Slice):
                         assert s.lower is not None
-                        s.col_offset = s.lower.col_offset
+                        s.col_offset = s.lower.col_offset  # type: ignore[attr-defined]
             sliceval = ast3.Tuple(dims, n.ctx)
 
         empty_tuple_index = False
