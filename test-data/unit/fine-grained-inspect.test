@@ -236,7 +236,7 @@ class C: ...
 [builtins fixtures/module.pyi]
 [out]
 ==
-{"<pack.bar>": ["C", "__annotations__", "__doc__", "__file__", "__name__", "__package__", "bar", "x"], "ModuleType": ["__file__", "__getattr__"]}
+{"<pack.bar>": ["C", "__annotations__", "__doc__", "__file__", "__name__", "__package__", "__spec__", "bar", "x"], "ModuleType": ["__file__", "__getattr__"]}
 
 [case testInspectModuleDef]
 # inspect2: --show=definition --include-kind tmp/foo.py:2:1

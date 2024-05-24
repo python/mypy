@@ -36,6 +36,7 @@ from mypy.nodes import (
     SymbolTable,
     TryStmt,
     TupleExpr,
+    TypeAliasStmt,
     WhileStmt,
     WithStmt,
     implicit_module_attrs,
@@ -673,3 +674,7 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
                 name = mod
             self.tracker.record_definition(name)
         super().visit_import_from(o)
+
+    def visit_type_alias_stmt(self, o: TypeAliasStmt) -> None:
+        # Type alias target may contain forward references
+        self.tracker.record_definition(o.name.name)

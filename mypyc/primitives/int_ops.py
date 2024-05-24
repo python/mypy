@@ -199,6 +199,7 @@ int_equal_ = custom_op(
     return_type=bit_rprimitive,
     c_function_name="CPyTagged_IsEq_",
     error_kind=ERR_NEVER,
+    is_pure=True,
 )
 
 # Less than operation on two boxed tagged integers
@@ -207,6 +208,7 @@ int_less_than_ = custom_op(
     return_type=bit_rprimitive,
     c_function_name="CPyTagged_IsLt_",
     error_kind=ERR_NEVER,
+    is_pure=True,
 )
 
 int64_divide_op = custom_op(
