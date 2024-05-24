@@ -8,11 +8,11 @@ _T_co = TypeVar("_T_co", covariant=True)
 
 _SupportsFloatOrIndex: TypeAlias = SupportsFloat | SupportsIndex
 
-e: float
-pi: float
-inf: float
-nan: float
-tau: float
+e: float | int
+pi: float | int
+inf: float | int
+nan: float | int
+tau: float | int
 
 def acos(x: _SupportsFloatOrIndex, /) -> float: ...
 def acosh(x: _SupportsFloatOrIndex, /) -> float: ...

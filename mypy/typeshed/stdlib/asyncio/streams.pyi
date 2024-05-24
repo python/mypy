@@ -31,7 +31,7 @@ if sys.version_info >= (3, 10):
         port: int | str | None = None,
         *,
         limit: int = 65536,
-        ssl_handshake_timeout: float | None = ...,
+        ssl_handshake_timeout: float | int | None = ...,
         **kwds: Any,
     ) -> tuple[StreamReader, StreamWriter]: ...
     async def start_server(
@@ -40,7 +40,7 @@ if sys.version_info >= (3, 10):
         port: int | str | None = None,
         *,
         limit: int = 65536,
-        ssl_handshake_timeout: float | None = ...,
+        ssl_handshake_timeout: float | int | None = ...,
         **kwds: Any,
     ) -> Server: ...
 
@@ -51,7 +51,7 @@ else:
         *,
         loop: events.AbstractEventLoop | None = None,
         limit: int = 65536,
-        ssl_handshake_timeout: float | None = ...,
+        ssl_handshake_timeout: float | int | None = ...,
         **kwds: Any,
     ) -> tuple[StreamReader, StreamWriter]: ...
     async def start_server(
@@ -61,7 +61,7 @@ else:
         *,
         loop: events.AbstractEventLoop | None = None,
         limit: int = 65536,
-        ssl_handshake_timeout: float | None = ...,
+        ssl_handshake_timeout: float | int | None = ...,
         **kwds: Any,
     ) -> Server: ...
 
@@ -123,12 +123,12 @@ class StreamWriter:
             sslcontext: ssl.SSLContext,
             *,
             server_hostname: str | None = None,
-            ssl_handshake_timeout: float | None = None,
-            ssl_shutdown_timeout: float | None = None,
+            ssl_handshake_timeout: float | int | None = None,
+            ssl_shutdown_timeout: float | int | None = None,
         ) -> None: ...
     elif sys.version_info >= (3, 11):
         async def start_tls(
-            self, sslcontext: ssl.SSLContext, *, server_hostname: str | None = None, ssl_handshake_timeout: float | None = None
+            self, sslcontext: ssl.SSLContext, *, server_hostname: str | None = None, ssl_handshake_timeout: float | int | None = None
         ) -> None: ...
     if sys.version_info >= (3, 11):
         def __del__(self) -> None: ...

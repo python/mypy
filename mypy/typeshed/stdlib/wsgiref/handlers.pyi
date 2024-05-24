@@ -9,7 +9,7 @@ from .util import FileWrapper
 
 __all__ = ["BaseHandler", "SimpleHandler", "BaseCGIHandler", "CGIHandler", "IISCGIHandler", "read_environ"]
 
-def format_date_time(timestamp: float | None) -> str: ...  # undocumented
+def format_date_time(timestamp: float | int | None) -> str: ...  # undocumented
 def read_environ() -> dict[str, str]: ...
 
 class BaseHandler:

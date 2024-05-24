@@ -26,7 +26,7 @@ class POP3:
     sock: socket.socket
     file: BinaryIO
     welcome: bytes
-    def __init__(self, host: str, port: int = 110, timeout: float = ...) -> None: ...
+    def __init__(self, host: str, port: int = 110, timeout: float | int = ...) -> None: ...
     def getwelcome(self) -> bytes: ...
     def set_debuglevel(self, level: int) -> None: ...
     def user(self, user: str) -> bytes: ...
@@ -54,7 +54,7 @@ class POP3:
 class POP3_SSL(POP3):
     if sys.version_info >= (3, 12):
         def __init__(
-            self, host: str, port: int = 995, *, timeout: float = ..., context: ssl.SSLContext | None = None
+            self, host: str, port: int = 995, *, timeout: float | int = ..., context: ssl.SSLContext | None = None
         ) -> None: ...
         def stls(self, context: Any = None) -> NoReturn: ...
     else:
@@ -64,7 +64,7 @@ class POP3_SSL(POP3):
             port: int = 995,
             keyfile: str | None = None,
             certfile: str | None = None,
-            timeout: float = ...,
+            timeout: float | int = ...,
             context: ssl.SSLContext | None = None,
         ) -> None: ...
         # "context" is actually the last argument, but that breaks LSP and it doesn't really matter because all the arguments are ignored

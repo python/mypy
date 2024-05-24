@@ -120,12 +120,12 @@ class SocketHandler(Handler):
     address: tuple[str, int] | str  # undocumented
     sock: socket | None  # undocumented
     closeOnError: bool  # undocumented
-    retryTime: float | None  # undocumented
-    retryStart: float  # undocumented
-    retryFactor: float  # undocumented
-    retryMax: float  # undocumented
+    retryTime: float | int | None  # undocumented
+    retryStart: float | int  # undocumented
+    retryFactor: float | int  # undocumented
+    retryMax: float | int  # undocumented
     def __init__(self, host: str, port: int | None) -> None: ...
-    def makeSocket(self, timeout: float = 1) -> socket: ...  # timeout is undocumented
+    def makeSocket(self, timeout: float | int = 1) -> socket: ...  # timeout is undocumented
     def makePickle(self, record: LogRecord) -> bytes: ...
     def send(self, s: ReadableBuffer) -> None: ...
     def createSocket(self) -> None: ...
@@ -205,7 +205,7 @@ class SMTPHandler(Handler):
     toaddrs: list[str]  # undocumented
     subject: str  # undocumented
     secure: tuple[()] | tuple[str] | tuple[str, str] | None  # undocumented
-    timeout: float  # undocumented
+    timeout: float | int  # undocumented
     def __init__(
         self,
         mailhost: str | tuple[str, int],
@@ -214,7 +214,7 @@ class SMTPHandler(Handler):
         subject: str,
         credentials: tuple[str, str] | None = None,
         secure: tuple[()] | tuple[str] | tuple[str, str] | None = None,
-        timeout: float = 5.0,
+        timeout: float | int = 5.0,
     ) -> None: ...
     def getSubject(self, record: LogRecord) -> str: ...
 

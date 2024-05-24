@@ -89,7 +89,7 @@ class Button(Widget):
         state: str = "normal",
         style: str = "",
         takefocus: tkinter._TakeFocusValue = ...,
-        text: float | str = "",
+        text: float | int | str = "",
         textvariable: tkinter.Variable = ...,
         underline: int = -1,
         width: int | Literal[""] = "",
@@ -108,7 +108,7 @@ class Button(Widget):
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: float | str = ...,
+        text: float | int | str = ...,
         textvariable: tkinter.Variable = ...,
         underline: int = ...,
         width: int | Literal[""] = ...,
@@ -135,7 +135,7 @@ class Checkbutton(Widget):
         state: str = "normal",
         style: str = "",
         takefocus: tkinter._TakeFocusValue = ...,
-        text: float | str = "",
+        text: float | int | str = "",
         textvariable: tkinter.Variable = ...,
         underline: int = -1,
         # Seems like variable can be empty string, but actually setting it to
@@ -159,7 +159,7 @@ class Checkbutton(Widget):
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: float | str = ...,
+        text: float | int | str = ...,
         textvariable: tkinter.Variable = ...,
         underline: int = ...,
         variable: tkinter.Variable = ...,
@@ -393,7 +393,7 @@ class Label(Widget):
         state: str = "normal",
         style: str = "",
         takefocus: tkinter._TakeFocusValue = "",
-        text: float | str = "",
+        text: float | int | str = "",
         textvariable: tkinter.Variable = ...,
         underline: int = -1,
         width: int | Literal[""] = "",
@@ -419,7 +419,7 @@ class Label(Widget):
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: float | str = ...,
+        text: float | int | str = ...,
         textvariable: tkinter.Variable = ...,
         underline: int = ...,
         width: int | Literal[""] = ...,
@@ -446,7 +446,7 @@ class Labelframe(Widget):
         relief: tkinter._Relief = ...,  # undocumented
         style: str = "",
         takefocus: tkinter._TakeFocusValue = "",
-        text: float | str = "",
+        text: float | int | str = "",
         underline: int = -1,
         width: tkinter._ScreenUnits = 0,
     ) -> None: ...
@@ -465,7 +465,7 @@ class Labelframe(Widget):
         relief: tkinter._Relief = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: float | str = ...,
+        text: float | int | str = ...,
         underline: int = ...,
         width: tkinter._ScreenUnits = ...,
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
@@ -491,7 +491,7 @@ class Menubutton(Widget):
         state: str = "normal",
         style: str = "",
         takefocus: tkinter._TakeFocusValue = ...,
-        text: float | str = "",
+        text: float | int | str = "",
         textvariable: tkinter.Variable = ...,
         underline: int = -1,
         width: int | Literal[""] = "",
@@ -510,7 +510,7 @@ class Menubutton(Widget):
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: float | str = ...,
+        text: float | int | str = ...,
         textvariable: tkinter.Variable = ...,
         underline: int = ...,
         width: int | Literal[""] = ...,
@@ -628,14 +628,14 @@ class Progressbar(Widget):
         class_: str = "",
         cursor: tkinter._Cursor = "",
         length: tkinter._ScreenUnits = 100,
-        maximum: float = 100,
+        maximum: float | int = 100,
         mode: Literal["determinate", "indeterminate"] = "determinate",
         name: str = ...,
         orient: Literal["horizontal", "vertical"] = "horizontal",
         phase: int = 0,  # docs say read-only but assigning int to this works
         style: str = "",
         takefocus: tkinter._TakeFocusValue = "",
-        value: float = 0.0,
+        value: float | int = 0.0,
         variable: tkinter.IntVar | tkinter.DoubleVar = ...,
     ) -> None: ...
     @overload
@@ -645,20 +645,20 @@ class Progressbar(Widget):
         *,
         cursor: tkinter._Cursor = ...,
         length: tkinter._ScreenUnits = ...,
-        maximum: float = ...,
+        maximum: float | int = ...,
         mode: Literal["determinate", "indeterminate"] = ...,
         orient: Literal["horizontal", "vertical"] = ...,
         phase: int = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        value: float = ...,
+        value: float | int = ...,
         variable: tkinter.IntVar | tkinter.DoubleVar = ...,
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
     config = configure
     def start(self, interval: Literal["idle"] | int | None = None) -> None: ...
-    def step(self, amount: float | None = None) -> None: ...
+    def step(self, amount: float | int | None = None) -> None: ...
     def stop(self) -> None: ...
 
 class Radiobutton(Widget):
@@ -676,7 +676,7 @@ class Radiobutton(Widget):
         state: str = "normal",
         style: str = "",
         takefocus: tkinter._TakeFocusValue = ...,
-        text: float | str = "",
+        text: float | int | str = "",
         textvariable: tkinter.Variable = ...,
         underline: int = -1,
         value: Any = "1",
@@ -696,7 +696,7 @@ class Radiobutton(Widget):
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: float | str = ...,
+        text: float | int | str = ...,
         textvariable: tkinter.Variable = ...,
         underline: int = ...,
         value: Any = ...,
@@ -717,15 +717,15 @@ class Scale(Widget, tkinter.Scale):  # type: ignore[misc]
         class_: str = "",
         command: str | Callable[[str], object] = "",
         cursor: tkinter._Cursor = "",
-        from_: float = 0,
+        from_: float | int = 0,
         length: tkinter._ScreenUnits = 100,
         name: str = ...,
         orient: Literal["horizontal", "vertical"] = "horizontal",
         state: str = ...,  # undocumented
         style: str = "",
         takefocus: tkinter._TakeFocusValue = ...,
-        to: float = 1.0,
-        value: float = 0,
+        to: float | int = 1.0,
+        value: float | int = 0,
         variable: tkinter.IntVar | tkinter.DoubleVar = ...,
     ) -> None: ...
     @overload  # type: ignore[override]
@@ -735,14 +735,14 @@ class Scale(Widget, tkinter.Scale):  # type: ignore[misc]
         *,
         command: str | Callable[[str], object] = ...,
         cursor: tkinter._Cursor = ...,
-        from_: float = ...,
+        from_: float | int = ...,
         length: tkinter._ScreenUnits = ...,
         orient: Literal["horizontal", "vertical"] = ...,
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        to: float = ...,
-        value: float = ...,
+        to: float | int = ...,
+        value: float | int = ...,
         variable: tkinter.IntVar | tkinter.DoubleVar = ...,
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
@@ -755,14 +755,14 @@ class Scale(Widget, tkinter.Scale):  # type: ignore[misc]
         *,
         command: str | Callable[[str], object] = ...,
         cursor: tkinter._Cursor = ...,
-        from_: float = ...,
+        from_: float | int = ...,
         length: tkinter._ScreenUnits = ...,
         orient: Literal["horizontal", "vertical"] = ...,
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        to: float = ...,
-        value: float = ...,
+        to: float | int = ...,
+        value: float | int = ...,
         variable: tkinter.IntVar | tkinter.DoubleVar = ...,
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
@@ -874,8 +874,8 @@ class Spinbox(Entry):
         font: _FontDescription = ...,  # undocumented
         foreground: str = ...,  # undocumented
         format: str = "",
-        from_: float = 0,
-        increment: float = 1,
+        from_: float | int = 0,
+        increment: float | int = 1,
         invalidcommand: tkinter._EntryValidateCommand = ...,  # undocumented
         justify: Literal["left", "center", "right"] = ...,  # undocumented
         name: str = ...,
@@ -884,7 +884,7 @@ class Spinbox(Entry):
         style: str = "",
         takefocus: tkinter._TakeFocusValue = ...,
         textvariable: tkinter.Variable = ...,  # undocumented
-        to: float = 0,
+        to: float | int = 0,
         validate: Literal["none", "focus", "focusin", "focusout", "key", "all"] = "none",
         validatecommand: tkinter._EntryValidateCommand = "",
         values: list[str] | tuple[str, ...] = ...,
@@ -904,8 +904,8 @@ class Spinbox(Entry):
         font: _FontDescription = ...,
         foreground: str = ...,
         format: str = ...,
-        from_: float = ...,
-        increment: float = ...,
+        from_: float | int = ...,
+        increment: float | int = ...,
         invalidcommand: tkinter._EntryValidateCommand = ...,
         justify: Literal["left", "center", "right"] = ...,
         show=...,
@@ -913,7 +913,7 @@ class Spinbox(Entry):
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
         textvariable: tkinter.Variable = ...,
-        to: float = ...,
+        to: float | int = ...,
         validate: Literal["none", "focus", "focusin", "focusout", "key", "all"] = ...,
         validatecommand: tkinter._EntryValidateCommand = ...,
         values: list[str] | tuple[str, ...] = ...,
@@ -1168,8 +1168,8 @@ class LabeledScale(Frame):
         self,
         master: tkinter.Misc | None = None,
         variable: tkinter.IntVar | tkinter.DoubleVar | None = None,
-        from_: float = 0,
-        to: float = 10,
+        from_: float | int = 0,
+        to: float | int = 10,
         *,
         border: tkinter._ScreenUnits = ...,
         borderwidth: tkinter._ScreenUnits = ...,

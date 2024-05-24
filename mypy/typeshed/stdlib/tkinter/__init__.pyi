@@ -149,8 +149,8 @@ if sys.version_info >= (3, 9):
 
 TclError = _tkinter.TclError
 wantobjects: int
-TkVersion: float
-TclVersion: float
+TkVersion: float | int
+TclVersion: float | int
 READABLE = _tkinter.READABLE
 WRITABLE = _tkinter.WRITABLE
 EXCEPTION = _tkinter.EXCEPTION
@@ -293,8 +293,8 @@ class IntVar(Variable):
     def get(self) -> int: ...
 
 class DoubleVar(Variable):
-    def __init__(self, master: Misc | None = None, value: float | None = None, name: str | None = None) -> None: ...
-    def set(self, value: float) -> None: ...
+    def __init__(self, master: Misc | None = None, value: float | int | None = None, name: str | None = None) -> None: ...
+    def set(self, value: float | int) -> None: ...
     initialize = set
     def get(self) -> float: ...
 
@@ -590,7 +590,7 @@ class XView:
     def xview(self) -> tuple[float, float]: ...
     @overload
     def xview(self, *args): ...
-    def xview_moveto(self, fraction: float) -> None: ...
+    def xview_moveto(self, fraction: float | int) -> None: ...
     @overload
     def xview_scroll(self, number: int, what: Literal["units", "pages"]) -> None: ...
     @overload
@@ -601,7 +601,7 @@ class YView:
     def yview(self) -> tuple[float, float]: ...
     @overload
     def yview(self, *args): ...
-    def yview_moveto(self, fraction: float) -> None: ...
+    def yview_moveto(self, fraction: float | int) -> None: ...
     @overload
     def yview_scroll(self, number: int, what: Literal["units", "pages"]) -> None: ...
     @overload
@@ -1035,7 +1035,7 @@ class Button(Widget):
         repeatinterval: int = ...,
         state: Literal["normal", "active", "disabled"] = "normal",
         takefocus: _TakeFocusValue = "",
-        text: float | str = "",
+        text: float | int | str = "",
         # We allow the textvariable to be any Variable, not necessarily
         # StringVar. This is useful for e.g. a button that displays the value
         # of an IntVar.
@@ -1080,7 +1080,7 @@ class Button(Widget):
         repeatinterval: int = ...,
         state: Literal["normal", "active", "disabled"] = ...,
         takefocus: _TakeFocusValue = ...,
-        text: float | str = ...,
+        text: float | int | str = ...,
         textvariable: Variable = ...,
         underline: int = ...,
         width: _ScreenUnits = ...,
@@ -1103,7 +1103,7 @@ class Canvas(Widget, XView, YView):
         bg: str = ...,
         border: _ScreenUnits = 0,
         borderwidth: _ScreenUnits = 0,
-        closeenough: float = 1.0,
+        closeenough: float | int = 1.0,
         confine: bool = True,
         cursor: _Cursor = "",
         # canvas manual page has a section named COORDINATES, and the first
@@ -1145,7 +1145,7 @@ class Canvas(Widget, XView, YView):
         bg: str = ...,
         border: _ScreenUnits = ...,
         borderwidth: _ScreenUnits = ...,
-        closeenough: float = ...,
+        closeenough: float | int = ...,
         confine: bool = ...,
         cursor: _Cursor = ...,
         height: _ScreenUnits = ...,
@@ -1192,7 +1192,7 @@ class Canvas(Widget, XView, YView):
         self, x: _ScreenUnits, y: _ScreenUnits, halo: _ScreenUnits | None = None, start: str | int | None = None
     ) -> tuple[int, ...]: ...
     def find_enclosed(self, x1: _ScreenUnits, y1: _ScreenUnits, x2: _ScreenUnits, y2: _ScreenUnits) -> tuple[int, ...]: ...
-    def find_overlapping(self, x1: _ScreenUnits, y1: _ScreenUnits, x2: _ScreenUnits, y2: float) -> tuple[int, ...]: ...
+    def find_overlapping(self, x1: _ScreenUnits, y1: _ScreenUnits, x2: _ScreenUnits, y2: float | int) -> tuple[int, ...]: ...
     def find_withtag(self, tagOrId: str | int) -> tuple[int, ...]: ...
     # Incompatible with Misc.bbox(), tkinter violates LSP
     def bbox(self, *args: str | int) -> tuple[int, int, int, int]: ...  # type: ignore[override]
@@ -1218,7 +1218,7 @@ class Canvas(Widget, XView, YView):
     @overload
     def coords(self, tagOrId: str | int, args: list[int] | list[float] | tuple[float, ...], /) -> None: ...
     @overload
-    def coords(self, tagOrId: str | int, x1: float, y1: float, /, *args: float) -> None: ...
+    def coords(self, tagOrId: str | int, x1: float | int, y1: float | int, /, *args: float | int) -> None: ...
     # create_foo() methods accept coords as a list or tuple, or as separate arguments.
     # Lists and tuples can be flat as in [1, 2, 3, 4], or nested as in [(1, 2), (3, 4)].
     # Keyword arguments should be the same in all overloads of each method.
@@ -1228,10 +1228,10 @@ class Canvas(Widget, XView, YView):
     @overload
     def create_line(
         self,
-        x0: float,
-        y0: float,
-        x1: float,
-        y1: float,
+        x0: float | int,
+        y0: float | int,
+        x1: float | int,
+        y1: float | int,
         /,
         *,
         activedash: str | int | list[int] | tuple[int, ...] = ...,
@@ -1251,7 +1251,7 @@ class Canvas(Widget, XView, YView):
         joinstyle: Literal["round", "bevel", "miter"] = ...,
         offset: _ScreenUnits = ...,
         smooth: bool = ...,
-        splinesteps: float = ...,
+        splinesteps: float | int = ...,
         state: Literal["normal", "hidden", "disabled"] = ...,
         stipple: str = ...,
         tags: str | list[str] | tuple[str, ...] = ...,
@@ -1281,7 +1281,7 @@ class Canvas(Widget, XView, YView):
         joinstyle: Literal["round", "bevel", "miter"] = ...,
         offset: _ScreenUnits = ...,
         smooth: bool = ...,
-        splinesteps: float = ...,
+        splinesteps: float | int = ...,
         state: Literal["normal", "hidden", "disabled"] = ...,
         stipple: str = ...,
         tags: str | list[str] | tuple[str, ...] = ...,
@@ -1317,7 +1317,7 @@ class Canvas(Widget, XView, YView):
         joinstyle: Literal["round", "bevel", "miter"] = ...,
         offset: _ScreenUnits = ...,
         smooth: bool = ...,
-        splinesteps: float = ...,
+        splinesteps: float | int = ...,
         state: Literal["normal", "hidden", "disabled"] = ...,
         stipple: str = ...,
         tags: str | list[str] | tuple[str, ...] = ...,
@@ -1326,10 +1326,10 @@ class Canvas(Widget, XView, YView):
     @overload
     def create_oval(
         self,
-        x0: float,
-        y0: float,
-        x1: float,
-        y1: float,
+        x0: float | int,
+        y0: float | int,
+        x1: float | int,
+        y1: float | int,
         /,
         *,
         activedash: str | int | list[int] | tuple[int, ...] = ...,
@@ -1427,12 +1427,12 @@ class Canvas(Widget, XView, YView):
     @overload
     def create_polygon(
         self,
-        x0: float,
-        y0: float,
-        x1: float,
-        y1: float,
+        x0: float | int,
+        y0: float | int,
+        x1: float | int,
+        y1: float | int,
         /,
-        *xy_pairs: float,
+        *xy_pairs: float | int,
         activedash: str | int | list[int] | tuple[int, ...] = ...,
         activefill: str = ...,
         activeoutline: str = ...,
@@ -1454,7 +1454,7 @@ class Canvas(Widget, XView, YView):
         outlineoffset: _ScreenUnits = ...,
         outlinestipple: str = ...,
         smooth: bool = ...,
-        splinesteps: float = ...,
+        splinesteps: float | int = ...,
         state: Literal["normal", "hidden", "disabled"] = ...,
         stipple: str = ...,
         tags: str | list[str] | tuple[str, ...] = ...,
@@ -1488,7 +1488,7 @@ class Canvas(Widget, XView, YView):
         outlineoffset: _ScreenUnits = ...,
         outlinestipple: str = ...,
         smooth: bool = ...,
-        splinesteps: float = ...,
+        splinesteps: float | int = ...,
         state: Literal["normal", "hidden", "disabled"] = ...,
         stipple: str = ...,
         tags: str | list[str] | tuple[str, ...] = ...,
@@ -1528,7 +1528,7 @@ class Canvas(Widget, XView, YView):
         outlineoffset: _ScreenUnits = ...,
         outlinestipple: str = ...,
         smooth: bool = ...,
-        splinesteps: float = ...,
+        splinesteps: float | int = ...,
         state: Literal["normal", "hidden", "disabled"] = ...,
         stipple: str = ...,
         tags: str | list[str] | tuple[str, ...] = ...,
@@ -1537,10 +1537,10 @@ class Canvas(Widget, XView, YView):
     @overload
     def create_rectangle(
         self,
-        x0: float,
-        y0: float,
-        x1: float,
-        y1: float,
+        x0: float | int,
+        y0: float | int,
+        x1: float | int,
+        y1: float | int,
         /,
         *,
         activedash: str | int | list[int] | tuple[int, ...] = ...,
@@ -1638,14 +1638,14 @@ class Canvas(Widget, XView, YView):
     @overload
     def create_text(
         self,
-        x: float,
-        y: float,
+        x: float | int,
+        y: float | int,
         /,
         *,
         activefill: str = ...,
         activestipple: str = ...,
         anchor: _Anchor = ...,
-        angle: float | str = ...,
+        angle: float | int | str = ...,
         disabledfill: str = ...,
         disabledstipple: str = ...,
         fill: str = ...,
@@ -1655,7 +1655,7 @@ class Canvas(Widget, XView, YView):
         state: Literal["normal", "hidden", "disabled"] = ...,
         stipple: str = ...,
         tags: str | list[str] | tuple[str, ...] = ...,
-        text: float | str = ...,
+        text: float | int | str = ...,
         width: _ScreenUnits = ...,
     ) -> int: ...
     @overload
@@ -1667,7 +1667,7 @@ class Canvas(Widget, XView, YView):
         activefill: str = ...,
         activestipple: str = ...,
         anchor: _Anchor = ...,
-        angle: float | str = ...,
+        angle: float | int | str = ...,
         disabledfill: str = ...,
         disabledstipple: str = ...,
         fill: str = ...,
@@ -1677,14 +1677,14 @@ class Canvas(Widget, XView, YView):
         state: Literal["normal", "hidden", "disabled"] = ...,
         stipple: str = ...,
         tags: str | list[str] | tuple[str, ...] = ...,
-        text: float | str = ...,
+        text: float | int | str = ...,
         width: _ScreenUnits = ...,
     ) -> int: ...
     @overload
     def create_window(
         self,
-        x: float,
-        y: float,
+        x: float | int,
+        y: float | int,
         /,
         *,
         anchor: _Anchor = ...,
@@ -1738,7 +1738,7 @@ class Canvas(Widget, XView, YView):
     def tkraise(self, first: str | int, second: str | int | None = ..., /) -> None: ...  # type: ignore[override]
     def lift(self, first: str | int, second: str | int | None = ..., /) -> None: ...  # type: ignore[override]
     def scale(
-        self, tagOrId: str | int, xOrigin: _ScreenUnits, yOrigin: _ScreenUnits, xScale: float, yScale: float, /
+        self, tagOrId: str | int, xOrigin: _ScreenUnits, yOrigin: _ScreenUnits, xScale: float | int, yScale: float | int, /
     ) -> None: ...
     def scan_mark(self, x, y) -> None: ...
     def scan_dragto(self, x, y, gain: int = 10) -> None: ...
@@ -1800,7 +1800,7 @@ class Checkbutton(Widget):
         selectimage: _ImageSpec = "",
         state: Literal["normal", "active", "disabled"] = "normal",
         takefocus: _TakeFocusValue = "",
-        text: float | str = "",
+        text: float | int | str = "",
         textvariable: Variable = ...,
         tristateimage: _ImageSpec = "",
         tristatevalue: Any = "",
@@ -1848,7 +1848,7 @@ class Checkbutton(Widget):
         selectimage: _ImageSpec = ...,
         state: Literal["normal", "active", "disabled"] = ...,
         takefocus: _TakeFocusValue = ...,
-        text: float | str = ...,
+        text: float | int | str = ...,
         textvariable: Variable = ...,
         tristateimage: _ImageSpec = ...,
         tristatevalue: Any = ...,
@@ -2062,7 +2062,7 @@ class Label(Widget):
         relief: _Relief = "flat",
         state: Literal["normal", "active", "disabled"] = "normal",
         takefocus: _TakeFocusValue = 0,
-        text: float | str = "",
+        text: float | int | str = "",
         textvariable: Variable = ...,
         underline: int = -1,
         width: _ScreenUnits = 0,
@@ -2099,7 +2099,7 @@ class Label(Widget):
         relief: _Relief = ...,
         state: Literal["normal", "active", "disabled"] = ...,
         takefocus: _TakeFocusValue = ...,
-        text: float | str = ...,
+        text: float | int | str = ...,
         textvariable: Variable = ...,
         underline: int = ...,
         width: _ScreenUnits = ...,
@@ -2528,7 +2528,7 @@ class Menubutton(Widget):
         relief: _Relief = "flat",
         state: Literal["normal", "active", "disabled"] = "normal",
         takefocus: _TakeFocusValue = 0,
-        text: float | str = "",
+        text: float | int | str = "",
         textvariable: Variable = ...,
         underline: int = -1,
         width: _ScreenUnits = 0,
@@ -2568,7 +2568,7 @@ class Menubutton(Widget):
         relief: _Relief = ...,
         state: Literal["normal", "active", "disabled"] = ...,
         takefocus: _TakeFocusValue = ...,
-        text: float | str = ...,
+        text: float | int | str = ...,
         textvariable: Variable = ...,
         underline: int = ...,
         width: _ScreenUnits = ...,
@@ -2604,7 +2604,7 @@ class Message(Widget):
         pady: _ScreenUnits = ...,
         relief: _Relief = "flat",
         takefocus: _TakeFocusValue = 0,
-        text: float | str = "",
+        text: float | int | str = "",
         textvariable: Variable = ...,
         # there's width but no height
         width: _ScreenUnits = 0,
@@ -2633,7 +2633,7 @@ class Message(Widget):
         pady: _ScreenUnits = ...,
         relief: _Relief = ...,
         takefocus: _TakeFocusValue = ...,
-        text: float | str = ...,
+        text: float | int | str = ...,
         textvariable: Variable = ...,
         width: _ScreenUnits = ...,
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
@@ -2680,7 +2680,7 @@ class Radiobutton(Widget):
         selectimage: _ImageSpec = "",
         state: Literal["normal", "active", "disabled"] = "normal",
         takefocus: _TakeFocusValue = "",
-        text: float | str = "",
+        text: float | int | str = "",
         textvariable: Variable = ...,
         tristateimage: _ImageSpec = "",
         tristatevalue: Any = "",
@@ -2727,7 +2727,7 @@ class Radiobutton(Widget):
         selectimage: _ImageSpec = ...,
         state: Literal["normal", "active", "disabled"] = ...,
         takefocus: _TakeFocusValue = ...,
-        text: float | str = ...,
+        text: float | int | str = ...,
         textvariable: Variable = ...,
         tristateimage: _ImageSpec = ...,
         tristatevalue: Any = ...,
@@ -2755,7 +2755,7 @@ class Scale(Widget):
         background: str = ...,
         bd: _ScreenUnits = 1,
         bg: str = ...,
-        bigincrement: float = 0.0,
+        bigincrement: float | int = 0.0,
         border: _ScreenUnits = 1,
         borderwidth: _ScreenUnits = 1,
         # don't know why the callback gets string instead of float
@@ -2765,7 +2765,7 @@ class Scale(Widget):
         fg: str = ...,
         font: _FontDescription = "TkDefaultFont",
         foreground: str = ...,
-        from_: float = 0.0,
+        from_: float | int = 0.0,
         highlightbackground: str = ...,
         highlightcolor: str = ...,
         highlightthickness: _ScreenUnits = ...,
@@ -2776,14 +2776,14 @@ class Scale(Widget):
         relief: _Relief = "flat",
         repeatdelay: int = 300,
         repeatinterval: int = 100,
-        resolution: float = 1.0,
+        resolution: float | int = 1.0,
         showvalue: bool = True,
         sliderlength: _ScreenUnits = 30,
         sliderrelief: _Relief = "raised",
         state: Literal["normal", "active", "disabled"] = "normal",
         takefocus: _TakeFocusValue = "",
-        tickinterval: float = 0.0,
-        to: float = 100.0,
+        tickinterval: float | int = 0.0,
+        to: float | int = 100.0,
         troughcolor: str = ...,
         variable: IntVar | DoubleVar = ...,
         width: _ScreenUnits = 15,
@@ -2797,7 +2797,7 @@ class Scale(Widget):
         background: str = ...,
         bd: _ScreenUnits = ...,
         bg: str = ...,
-        bigincrement: float = ...,
+        bigincrement: float | int = ...,
         border: _ScreenUnits = ...,
         borderwidth: _ScreenUnits = ...,
         command: str | Callable[[str], object] = ...,
@@ -2806,7 +2806,7 @@ class Scale(Widget):
         fg: str = ...,
         font: _FontDescription = ...,
         foreground: str = ...,
-        from_: float = ...,
+        from_: float | int = ...,
         highlightbackground: str = ...,
         highlightcolor: str = ...,
         highlightthickness: _ScreenUnits = ...,
@@ -2816,14 +2816,14 @@ class Scale(Widget):
         relief: _Relief = ...,
         repeatdelay: int = ...,
         repeatinterval: int = ...,
-        resolution: float = ...,
+        resolution: float | int = ...,
         showvalue: bool = ...,
         sliderlength: _ScreenUnits = ...,
         sliderrelief: _Relief = ...,
         state: Literal["normal", "active", "disabled"] = ...,
         takefocus: _TakeFocusValue = ...,
-        tickinterval: float = ...,
-        to: float = ...,
+        tickinterval: float | int = ...,
+        to: float | int = ...,
         troughcolor: str = ...,
         variable: IntVar | DoubleVar = ...,
         width: _ScreenUnits = ...,
@@ -2833,7 +2833,7 @@ class Scale(Widget):
     config = configure
     def get(self) -> float: ...
     def set(self, value) -> None: ...
-    def coords(self, value: float | None = None) -> tuple[int, int]: ...
+    def coords(self, value: float | int | None = None) -> tuple[int, int]: ...
     def identify(self, x, y) -> Literal["", "slider", "trough1", "trough2"]: ...
 
 class Scrollbar(Widget):
@@ -2904,7 +2904,7 @@ class Scrollbar(Widget):
     def fraction(self, x: int, y: int) -> float: ...
     def identify(self, x: int, y: int) -> Literal["arrow1", "arrow2", "slider", "trough1", "trough2", ""]: ...
     def get(self) -> tuple[float, float, float, float] | tuple[float, float]: ...
-    def set(self, first: float | str, last: float | str) -> None: ...
+    def set(self, first: float | int | str, last: float | int | str) -> None: ...
 
 _TextIndex: TypeAlias = _tkinter.Tcl_Obj | str | float | Misc
 
@@ -3311,7 +3311,7 @@ class PhotoImage(Image, _PhotoImageLike):
         data: str | bytes = ...,  # not same as data argument of put()
         format: str = ...,
         file: StrOrBytesPath = ...,
-        gamma: float = ...,
+        gamma: float | int = ...,
         height: int = ...,
         palette: int | str = ...,
         width: int = ...,
@@ -3322,7 +3322,7 @@ class PhotoImage(Image, _PhotoImageLike):
         data: str | bytes = ...,
         format: str = ...,
         file: StrOrBytesPath = ...,
-        gamma: float = ...,
+        gamma: float | int = ...,
         height: int = ...,
         palette: int | str = ...,
         width: int = ...,
@@ -3397,11 +3397,11 @@ class Spinbox(Widget, XView):
         font: _FontDescription = "TkTextFont",
         foreground: str = ...,
         format: str = "",
-        from_: float = 0.0,
+        from_: float | int = 0.0,
         highlightbackground: str = ...,
         highlightcolor: str = ...,
         highlightthickness: _ScreenUnits = ...,
-        increment: float = 1.0,
+        increment: float | int = 1.0,
         insertbackground: str = ...,
         insertborderwidth: _ScreenUnits = 0,
         insertofftime: int = 300,
@@ -3421,7 +3421,7 @@ class Spinbox(Widget, XView):
         state: Literal["normal", "disabled", "readonly"] = "normal",
         takefocus: _TakeFocusValue = "",
         textvariable: Variable = ...,
-        to: float = 0.0,
+        to: float | int = 0.0,
         validate: Literal["none", "focus", "focusin", "focusout", "key", "all"] = "none",
         validatecommand: _EntryValidateCommand = "",
         vcmd: _EntryValidateCommand = "",
@@ -3454,11 +3454,11 @@ class Spinbox(Widget, XView):
         font: _FontDescription = ...,
         foreground: str = ...,
         format: str = ...,
-        from_: float = ...,
+        from_: float | int = ...,
         highlightbackground: str = ...,
         highlightcolor: str = ...,
         highlightthickness: _ScreenUnits = ...,
-        increment: float = ...,
+        increment: float | int = ...,
         insertbackground: str = ...,
         insertborderwidth: _ScreenUnits = ...,
         insertofftime: int = ...,
@@ -3477,7 +3477,7 @@ class Spinbox(Widget, XView):
         state: Literal["normal", "disabled", "readonly"] = ...,
         takefocus: _TakeFocusValue = ...,
         textvariable: Variable = ...,
-        to: float = ...,
+        to: float | int = ...,
         validate: Literal["none", "focus", "focusin", "focusout", "key", "all"] = ...,
         validatecommand: _EntryValidateCommand = ...,
         vcmd: _EntryValidateCommand = ...,
@@ -3540,7 +3540,7 @@ class LabelFrame(Widget):
         pady: _ScreenUnits = 0,
         relief: _Relief = "groove",
         takefocus: _TakeFocusValue = 0,
-        text: float | str = "",
+        text: float | int | str = "",
         visual: str | tuple[str, int] = "",  # can't be changed with configure()
         width: _ScreenUnits = 0,
     ) -> None: ...
@@ -3568,7 +3568,7 @@ class LabelFrame(Widget):
         pady: _ScreenUnits = ...,
         relief: _Relief = ...,
         takefocus: _TakeFocusValue = ...,
-        text: float | str = ...,
+        text: float | int | str = ...,
         width: _ScreenUnits = ...,
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload

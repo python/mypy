@@ -29,9 +29,9 @@ def askfloat(
     title: str | None,
     prompt: str,
     *,
-    initialvalue: float | None = ...,
-    minvalue: float | None = ...,
-    maxvalue: float | None = ...,
+    initialvalue: float | int | None = ...,
+    minvalue: float | int | None = ...,
+    maxvalue: float | int | None = ...,
     parent: Misc | None = ...,
 ) -> float | None: ...
 def askinteger(
