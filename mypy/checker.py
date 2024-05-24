@@ -26,7 +26,7 @@ from typing import (
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.checkexpr
-from mypy import errorcodes as codes, message_registry, nodes, operators
+from mypy import errorcodes as codes, join, message_registry, nodes, operators
 from mypy.binder import ConditionalTypeBinder, Frame, get_declaration
 from mypy.checkmember import (
     MemberContext,
@@ -699,6 +699,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 )
                 if isinstance(inner_call, CallableType):
                     outer_type = inner_call
+            elif isinstance(inner_type, UnionType):
+                union_type = make_simplified_union(inner_type.items)
+                if isinstance(union_type, UnionType):
+                    items = []
+                    for item in union_type.items:
+                        callable_item = self.extract_callable_type(item, ctx)
+                        if callable_item is None:
+                            break
+                        items.append(callable_item)
+                    else:
+                        joined_type = get_proper_type(join.join_type_list(items))
+                        if isinstance(joined_type, CallableType):
+                            outer_type = joined_type
+                else:
+                    return self.extract_callable_type(union_type, ctx)
             if outer_type is None:
                 self.msg.not_callable(inner_type, ctx)
         return outer_type
