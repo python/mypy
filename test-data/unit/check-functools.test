@@ -303,12 +303,12 @@ p(1)  # E: Argument 1 to "A" has incompatible type "int"; expected "str"
 p(z=1)  # E: Unexpected keyword argument "z" for "A"
 
 def main(t: Type[A]) -> None:
-    p = functools.partial(t, 1)  # E: "Type[A]" not callable
+    p = functools.partial(t, 1)
     reveal_type(p)  # N: Revealed type is "functools.partial[__main__.A]"
 
     p("a")  # OK
-    p(1)  # False negative
-    p(z=1)  # False negative
+    p(1)  # E: Argument 1 to "A" has incompatible type "int"; expected "str"
+    p(z=1)  # E: Unexpected keyword argument "z" for "A"
 
 [builtins fixtures/dict.pyi]
 
@@ -345,4 +345,30 @@ reveal_type(functools.partial(fn3, 2)())  # E: "str" not callable \
                                           # E: "Union[Callable[[int], int], str]" not callable \
                                           # N: Revealed type is "builtins.int" \
                                           # E: Argument 1 to "partial" has incompatible type "Union[Callable[[int], int], str]"; expected "Callable[..., int]"
+[builtins fixtures/tuple.pyi]
+
+[case testFunctoolsPartialTypeObject]
+import functools
+from typing import Type, Generic, TypeVar
+
+class A:
+    def __init__(self, val: int) -> None: ...
+
+cls1: Type[A]
+reveal_type(functools.partial(cls1, 2)())  # N: Revealed type is "__main__.A"
+functools.partial(cls1, "asdf")  # E: Argument 1 to "A" has incompatible type "str"; expected "int"
+
+T = TypeVar("T")
+class B(Generic[T]):
+    def __init__(self, val: T) -> None: ...
+
+cls2: Type[B[int]]
+reveal_type(functools.partial(cls2, 2)())  # N: Revealed type is "__main__.B[builtins.int]"
+functools.partial(cls2, "asdf")  # E: Argument 1 to "B" has incompatible type "str"; expected "int"
+
+def foo(cls3: Type[B[T]]):
+    reveal_type(functools.partial(cls3, "asdf"))  # N: Revealed type is "functools.partial[__main__.B[T`-1]]" \
+                                                  # E: Argument 1 to "B" has incompatible type "str"; expected "T"
+    reveal_type(functools.partial(cls3, 2)())  # N: Revealed type is "__main__.B[T`-1]" \
+                                               # E: Argument 1 to "B" has incompatible type "int"; expected "T"
 [builtins fixtures/tuple.pyi]
