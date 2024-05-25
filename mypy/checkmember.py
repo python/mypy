@@ -654,7 +654,7 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
                 analyze_descriptor_access(
                     descriptor_type, mx.copy_modified(original_type=original_type)
                 )
-                for original_type in instance_type.items
+                for original_type in instance_type.relevant_items()
             ]
         )
     elif not isinstance(descriptor_type, Instance):
