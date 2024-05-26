@@ -12,6 +12,41 @@ A().x = 2
 [out]
 main:4: error: Cannot assign to class variable "x" via instance
 
+[case testAssignmentOnInstanceToClassVarDescriptor]
+from typing import Any, ClassVar
+class D:
+    def __set__(self, inst: Any, value: int) -> None: pass
+class A:
+    x: ClassVar[D] = D()
+a = A()
+a.x = 0
+a.x = '0'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testAssignmentOnInstanceToClassVarPartialDescriptor]
+from typing import Any, ClassVar, Self, Union
+class D:
+    def __set__(self, inst: Any, value: int) -> None: pass
+class A:
+    x: ClassVar[Union[str, D, Self, int]] = D()
+a = A()
+a.x = 0  # E: Item "str" of "Union[str, D, Self, int]" has no attribute "__set__" \
+         # E: Item "A" of "Union[str, D, Self, int]" has no attribute "__set__" \
+         # E: Item "int" of "Union[str, D, Self, int]" has no attribute "__set__" \
+         # E: Cannot assign to class variable "x" via instance
+
+[case testAssignmentOnInstanceToClassVarSelfDescriptor]
+from typing import Any, ClassVar, Self, Union
+class D:
+    d1: ClassVar[Self]
+    d2: ClassVar[Union[int, Self, str]]
+    def __set__(self, inst: Any, value: int) -> None: pass
+inst = D()
+inst.d1 = 0
+inst.d1 = '0'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+inst.d2 = 0  # E: Item "int" of "Union[int, Self, str]" has no attribute "__set__" \
+             # E: Item "str" of "Union[int, Self, str]" has no attribute "__set__" \
+             # E: Cannot assign to class variable "d2" via instance
+
 [case testAssignmentOnSubclassInstance]
 from typing import ClassVar
 class A:

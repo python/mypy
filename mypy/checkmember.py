@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Sequence, cast
+from typing import TYPE_CHECKING, Callable, Literal, Sequence, cast
 
 from mypy import meet, message_registry, subtypes
 from mypy.erasetype import erase_typevars
@@ -748,6 +748,37 @@ def is_instance_var(var: Var) -> bool:
     )
 
 
+def partially_supports_classvar_descriptor(
+    typ: Type,
+    descriptor_name: Literal["__get__", "__set__", "__delete__"],
+    non_supporting_types: list[Type],
+    /,
+) -> bool:
+    """
+    For a ClassVar's type, gets whether it (or any item in a union) supports a named
+    descriptor method member.
+
+    Accumulates a list of non-supporting types to be reported.
+    """
+    typ = get_proper_type(typ)
+    has_desc_member = False
+    if isinstance(typ, Instance):
+        has_desc_member = typ.type.has_readable_member(descriptor_name)
+        if not has_desc_member:
+            non_supporting_types.append(typ)
+    elif isinstance(typ, UnionType):
+        for item_type in typ.relevant_items():
+            has_desc_member = (
+                partially_supports_classvar_descriptor(
+                    item_type, descriptor_name, non_supporting_types
+                )
+                or has_desc_member
+            )
+    else:  # Unhandled type in ClassVar
+        non_supporting_types.append(typ)
+    return has_desc_member
+
+
 def analyze_var(
     name: str,
     var: Var,
@@ -774,8 +805,6 @@ def analyze_var(
         if mx.is_lvalue and var.is_property and not var.is_settable_property:
             # TODO allow setting attributes in subclass (although it is probably an error)
             mx.msg.read_only_property(name, itype.type, mx.context)
-        if mx.is_lvalue and var.is_classvar:
-            mx.msg.cant_assign_to_classvar(name, mx.context)
         t = freshen_all_functions_type_vars(typ)
         if not (mx.is_self or mx.is_super) or supported_self_type(
             get_proper_type(mx.original_type)
@@ -795,6 +824,21 @@ def analyze_var(
         freeze_all_type_vars(t)
         result: Type = t
         typ = get_proper_type(typ)
+
+        if mx.is_lvalue and var.is_classvar:
+            # Warn any class variable assignments from an instance if the lvalue doesn't
+            # support `__set__`
+            non__set__types: list[Type] = []
+            partial__set__support = partially_supports_classvar_descriptor(
+                result, "__set__", non__set__types
+            )
+            full__set__support = partial__set__support and not non__set__types
+            if not full__set__support:
+                if partial__set__support:
+                    with mx.msg.disable_type_names():
+                        for non_desc_type in non__set__types:
+                            mx.msg.has_no_attr(typ, non_desc_type, "__set__", context=mx.context)
+                mx.msg.cant_assign_to_classvar(name, mx.context)
 
         call_type: ProperType | None = None
         if var.is_initialized_in_class and (not is_instance_var(var) or mx.is_operator):
