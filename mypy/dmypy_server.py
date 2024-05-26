@@ -383,6 +383,9 @@ class Server:
             removals = set(remove)
             sources = [s for s in sources if s.path and s.path not in removals]
         if update:
+            # Sort list of file updates by extension, so *.pyi files are first.
+            update.sort(key=lambda f: os.path.splitext(f)[1], reverse=True)
+
             known = {s.path for s in sources if s.path}
             added = [p for p in update if p not in known]
             try:

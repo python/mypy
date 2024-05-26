@@ -26,7 +26,7 @@ from typing import (
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.checkexpr
-from mypy import errorcodes as codes, message_registry, nodes, operators
+from mypy import errorcodes as codes, join, message_registry, nodes, operators
 from mypy.binder import ConditionalTypeBinder, Frame, get_declaration
 from mypy.checkmember import (
     MemberContext,
@@ -146,6 +146,7 @@ from mypy.sharedparse import BINARY_MAGIC_METHODS
 from mypy.state import state
 from mypy.subtypes import (
     find_member,
+    infer_class_variances,
     is_callable_compatible,
     is_equivalent,
     is_more_precise,
@@ -680,6 +681,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         inner_type = get_proper_type(inner_type)
         outer_type: CallableType | None = None
         if inner_type is not None and not isinstance(inner_type, AnyType):
+            if isinstance(inner_type, TypeType):
+                if isinstance(inner_type.item, Instance):
+                    inner_type = expand_type_by_instance(
+                        type_object_type(inner_type.item.type, self.named_type), inner_type.item
+                    )
             if isinstance(inner_type, CallableType):
                 outer_type = inner_type
             elif isinstance(inner_type, Instance):
@@ -698,6 +704,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 )
                 if isinstance(inner_call, CallableType):
                     outer_type = inner_call
+            elif isinstance(inner_type, UnionType):
+                union_type = make_simplified_union(inner_type.items)
+                if isinstance(union_type, UnionType):
+                    items = []
+                    for item in union_type.items:
+                        callable_item = self.extract_callable_type(item, ctx)
+                        if callable_item is None:
+                            break
+                        items.append(callable_item)
+                    else:
+                        joined_type = get_proper_type(join.join_type_list(items))
+                        if isinstance(joined_type, CallableType):
+                            outer_type = joined_type
+                else:
+                    return self.extract_callable_type(union_type, ctx)
             if outer_type is None:
                 self.msg.not_callable(inner_type, ctx)
         return outer_type
@@ -1003,7 +1024,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Type check a function definition."""
         self.check_func_item(defn, name=defn.name)
         if defn.info:
-            if not defn.is_dynamic() and not defn.is_overload and not defn.is_decorated:
+            if not defn.is_overload and not defn.is_decorated:
                 # If the definition is the implementation for an
                 # overload, the legality of the override has already
                 # been typechecked, and decorated methods will be
@@ -1912,9 +1933,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         Return a list of base classes which contain an attribute with the method name.
         """
         # Check against definitions in base classes.
+        check_override_compatibility = defn.name not in (
+            "__init__",
+            "__new__",
+            "__init_subclass__",
+            "__post_init__",
+        ) and (self.options.check_untyped_defs or not defn.is_dynamic())
         found_method_base_classes: list[TypeInfo] = []
         for base in defn.info.mro[1:]:
-            result = self.check_method_or_accessor_override_for_base(defn, base)
+            result = self.check_method_or_accessor_override_for_base(
+                defn, base, check_override_compatibility
+            )
             if result is None:
                 # Node was deferred, we will have another attempt later.
                 return None
@@ -1923,7 +1952,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return found_method_base_classes
 
     def check_method_or_accessor_override_for_base(
-        self, defn: FuncDef | OverloadedFuncDef | Decorator, base: TypeInfo
+        self,
+        defn: FuncDef | OverloadedFuncDef | Decorator,
+        base: TypeInfo,
+        check_override_compatibility: bool,
     ) -> bool | None:
         """Check if method definition is compatible with a base class.
 
@@ -1944,10 +1976,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if defn.is_final:
                     self.check_if_final_var_override_writable(name, base_attr.node, defn)
                 found_base_method = True
-
-            # Check the type of override.
-            if name not in ("__init__", "__new__", "__init_subclass__", "__post_init__"):
-                # Check method override
+            if check_override_compatibility:
+                # Check compatibility of the override signature
                 # (__init__, __new__, __init_subclass__ are special).
                 if self.check_method_override_for_base_with_name(defn, name, base):
                     return None
@@ -2374,7 +2404,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.allow_abstract_call = old_allow_abstract_call
                 # TODO: Apply the sig to the actual TypeInfo so we can handle decorators
                 # that completely swap out the type.  (e.g. Callable[[Type[A]], Type[B]])
-        if typ.defn.type_vars:
+        if typ.defn.type_vars and typ.defn.type_args is None:
             for base_inst in typ.bases:
                 for base_tvar, base_decl_tvar in zip(
                     base_inst.args, base_inst.type.defn.type_vars
@@ -2396,6 +2426,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_protocol_variance(defn)
         if not defn.has_incompatible_baseclass and defn.info.is_enum:
             self.check_enum(defn)
+        infer_class_variances(defn.info)
 
     def check_final_deletable(self, typ: TypeInfo) -> None:
         # These checks are only for mypyc. Only perform some checks that are easier
@@ -2566,6 +2597,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if they are actually covariant/contravariant, since this may break
         transitivity of subtyping, see PEP 544.
         """
+        if defn.type_args is not None:
+            # Using new-style syntax (PEP 695), so variance will be inferred
+            return
         info = defn.info
         object_type = Instance(info.mro[-1], [])
         tvars = info.defn.type_vars
@@ -3412,8 +3446,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if (
                     lv.node.final_unset_in_class
                     and not lv.node.final_set_in_init
-                    and not self.is_stub
-                    and  # It is OK to skip initializer in stub files.
+                    and not self.is_stub  # It is OK to skip initializer in stub files.
+                    and
                     # Avoid extra error messages, if there is no type in Final[...],
                     # then we already reported the error about missing r.h.s.
                     isinstance(s, AssignmentStmt)

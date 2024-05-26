@@ -3228,3 +3228,15 @@ class A:
 reveal_type(A.f)  # N: Revealed type is "__main__.something_callable"
 reveal_type(A().f)  # N: Revealed type is "builtins.str"
 [builtins fixtures/property.pyi]
+
+[case testFinalOverrideOnUntypedDef]
+from typing import final
+
+class Base:
+    @final
+    def foo(self):
+        pass
+
+class Derived(Base):
+    def foo(self):  # E: Cannot override final attribute "foo" (previously declared in base class "Base")
+        pass

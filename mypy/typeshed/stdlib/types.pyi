@@ -1,5 +1,6 @@
 import sys
 from _typeshed import SupportsKeysAndGetItem
+from _typeshed.importlib import LoaderProtocol
 from collections.abc import (
     AsyncGenerator,
     Awaitable,
@@ -16,7 +17,7 @@ from collections.abc import (
 from importlib.machinery import ModuleSpec
 
 # pytype crashes if types.MappingProxyType inherits from collections.abc.Mapping instead of typing.Mapping
-from typing import Any, ClassVar, Literal, Mapping, Protocol, TypeVar, final, overload  # noqa: Y022
+from typing import Any, ClassVar, Literal, Mapping, TypeVar, final, overload  # noqa: Y022
 from typing_extensions import ParamSpec, Self, TypeVarTuple, deprecated
 
 __all__ = [
@@ -57,6 +58,9 @@ if sys.version_info >= (3, 10):
 if sys.version_info >= (3, 12):
     __all__ += ["get_original_bases"]
 
+if sys.version_info >= (3, 13):
+    __all__ += ["CapsuleType"]
+
 # Note, all classes "defined" here require special handling.
 
 _T1 = TypeVar("_T1")
@@ -64,18 +68,11 @@ _T2 = TypeVar("_T2")
 _KT = TypeVar("_KT")
 _VT_co = TypeVar("_VT_co", covariant=True)
 
-@final
-class _Cell:
-    def __new__(cls, contents: object = ..., /) -> Self: ...
-    def __eq__(self, value: object, /) -> bool: ...
-    __hash__: ClassVar[None]  # type: ignore[assignment]
-    cell_contents: Any
-
 # Make sure this class definition stays roughly in line with `builtins.function`
 @final
 class FunctionType:
     @property
-    def __closure__(self) -> tuple[_Cell, ...] | None: ...
+    def __closure__(self) -> tuple[CellType, ...] | None: ...
     __code__: CodeType
     __defaults__: tuple[Any, ...] | None
     __dict__: dict[str, Any]
@@ -98,7 +95,7 @@ class FunctionType:
         globals: dict[str, Any],
         name: str | None = ...,
         argdefs: tuple[object, ...] | None = ...,
-        closure: tuple[_Cell, ...] | None = ...,
+        closure: tuple[CellType, ...] | None = ...,
     ) -> Self: ...
     def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
     @overload
@@ -305,7 +302,7 @@ class MappingProxyType(Mapping[_KT, _VT_co]):
     def values(self) -> ValuesView[_VT_co]: ...
     def items(self) -> ItemsView[_KT, _VT_co]: ...
     if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any) -> GenericAlias: ...
+        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
         def __reversed__(self) -> Iterator[_KT]: ...
         def __or__(self, value: Mapping[_T1, _T2], /) -> dict[_KT | _T1, _VT_co | _T2]: ...
         def __ror__(self, value: Mapping[_T1, _T2], /) -> dict[_KT | _T1, _VT_co | _T2]: ...
@@ -318,15 +315,12 @@ class SimpleNamespace:
     def __setattr__(self, name: str, value: Any, /) -> None: ...
     def __delattr__(self, name: str, /) -> None: ...
 
-class _LoaderProtocol(Protocol):
-    def load_module(self, fullname: str, /) -> ModuleType: ...
-
 class ModuleType:
     __name__: str
     __file__: str | None
     @property
     def __dict__(self) -> dict[str, Any]: ...  # type: ignore[override]
-    __loader__: _LoaderProtocol | None
+    __loader__: LoaderProtocol | None
     __package__: str | None
     __path__: MutableSequence[str]
     __spec__: ModuleSpec | None
@@ -335,6 +329,12 @@ class ModuleType:
     # but having it here in typeshed makes dynamic imports
     # using `builtins.__import__` or `importlib.import_module` less painful
     def __getattr__(self, name: str) -> Any: ...
+
+@final
+class CellType:
+    def __new__(cls, contents: object = ..., /) -> Self: ...
+    __hash__: ClassVar[None]  # type: ignore[assignment]
+    cell_contents: Any
 
 _YieldT_co = TypeVar("_YieldT_co", covariant=True)
 _SendT_contra = TypeVar("_SendT_contra", contravariant=True)
@@ -405,7 +405,7 @@ class CoroutineType(Coroutine[_YieldT_co, _SendT_contra, _ReturnT_co]):
 @final
 class MethodType:
     @property
-    def __closure__(self) -> tuple[_Cell, ...] | None: ...  # inherited from the added function
+    def __closure__(self) -> tuple[CellType, ...] | None: ...  # inherited from the added function
     @property
     def __defaults__(self) -> tuple[Any, ...] | None: ...  # inherited from the added function
     @property
@@ -570,8 +570,6 @@ def coroutine(func: Callable[_P, Generator[Any, Any, _R]]) -> Callable[_P, Await
 @overload
 def coroutine(func: _Fn) -> _Fn: ...
 
-CellType = _Cell
-
 if sys.version_info >= (3, 9):
     class GenericAlias:
         @property
@@ -612,3 +610,7 @@ if sys.version_info >= (3, 10):
         def __ror__(self, value: Any, /) -> UnionType: ...
         def __eq__(self, value: object, /) -> bool: ...
         def __hash__(self) -> int: ...
+
+if sys.version_info >= (3, 13):
+    @final
+    class CapsuleType: ...

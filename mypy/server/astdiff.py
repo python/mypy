@@ -378,11 +378,20 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
         return snapshot_simple_type(typ)
 
     def visit_instance(self, typ: Instance) -> SnapshotItem:
+        extra_attrs: SnapshotItem
+        if typ.extra_attrs:
+            extra_attrs = (
+                tuple(sorted((k, v.accept(self)) for k, v in typ.extra_attrs.attrs.items())),
+                tuple(typ.extra_attrs.immutable),
+            )
+        else:
+            extra_attrs = ()
         return (
             "Instance",
             encode_optional_str(typ.type.fullname),
             snapshot_types(typ.args),
             ("None",) if typ.last_known_value is None else snapshot_type(typ.last_known_value),
+            extra_attrs,
         )
 
     def visit_type_var(self, typ: TypeVarType) -> SnapshotItem:

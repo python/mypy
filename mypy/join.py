@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from typing import overload
+from typing import Sequence, overload
 
 import mypy.typeops
 from mypy.maptype import map_instance_to_supertype
-from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT
+from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT, VARIANCE_NOT_READY
 from mypy.state import state
 from mypy.subtypes import (
     SubtypeContext,
@@ -97,7 +97,7 @@ class InstanceJoiner:
                 elif isinstance(sa_proper, AnyType):
                     new_type = AnyType(TypeOfAny.from_another_any, sa_proper)
                 elif isinstance(type_var, TypeVarType):
-                    if type_var.variance == COVARIANT:
+                    if type_var.variance in (COVARIANT, VARIANCE_NOT_READY):
                         new_type = join_types(ta, sa, self)
                         if len(type_var.values) != 0 and new_type not in type_var.values:
                             self.seen_instances.pop()
@@ -853,7 +853,7 @@ def object_or_any_from_type(typ: ProperType) -> ProperType:
     return AnyType(TypeOfAny.implementation_artifact)
 
 
-def join_type_list(types: list[Type]) -> Type:
+def join_type_list(types: Sequence[Type]) -> Type:
     if not types:
         # This is a little arbitrary but reasonable. Any empty tuple should be compatible
         # with all variable length tuples, and this makes it possible.

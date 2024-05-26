@@ -1229,14 +1229,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             assert callback is not None  # Assume that caller ensures this
             return callback(
                 FunctionContext(
-                    formal_arg_types,
-                    formal_arg_kinds,
-                    callee.arg_names,
-                    formal_arg_names,
-                    callee.ret_type,
-                    formal_arg_exprs,
-                    context,
-                    self.chk,
+                    arg_types=formal_arg_types,
+                    arg_kinds=formal_arg_kinds,
+                    callee_arg_names=callee.arg_names,
+                    arg_names=formal_arg_names,
+                    default_return_type=callee.ret_type,
+                    args=formal_arg_exprs,
+                    context=context,
+                    api=self.chk,
                 )
             )
         else:
@@ -1246,15 +1246,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             object_type = get_proper_type(object_type)
             return method_callback(
                 MethodContext(
-                    object_type,
-                    formal_arg_types,
-                    formal_arg_kinds,
-                    callee.arg_names,
-                    formal_arg_names,
-                    callee.ret_type,
-                    formal_arg_exprs,
-                    context,
-                    self.chk,
+                    type=object_type,
+                    arg_types=formal_arg_types,
+                    arg_kinds=formal_arg_kinds,
+                    callee_arg_names=callee.arg_names,
+                    arg_names=formal_arg_names,
+                    default_return_type=callee.ret_type,
+                    args=formal_arg_exprs,
+                    context=context,
+                    api=self.chk,
                 )
             )
 
@@ -5223,15 +5223,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.chk.return_types.append(AnyType(TypeOfAny.special_form))
             # Type check everything in the body except for the final return
             # statement (it can contain tuple unpacking before return).
-            with self.chk.scope.push_function(e):
+            with self.chk.binder.frame_context(
+                can_skip=True, fall_through=0
+            ), self.chk.scope.push_function(e):
                 # Lambdas can have more than one element in body,
                 # when we add "fictional" AssigmentStatement nodes, like in:
                 # `lambda (a, b): a`
                 for stmt in e.body.body[:-1]:
                     stmt.accept(self.chk)
                 # Only type check the return expression, not the return statement.
-                # This is important as otherwise the following statements would be
-                # considered unreachable. There's no useful type context.
+                # There's no useful type context.
                 ret_type = self.accept(e.expr(), allow_none_return=True)
             fallback = self.named_type("builtins.function")
             self.chk.return_types.pop()
@@ -5243,7 +5244,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.chk.check_func_item(e, type_override=type_override)
             if not self.chk.has_type(e.expr()):
                 # TODO: return expression must be accepted before exiting function scope.
-                self.accept(e.expr(), allow_none_return=True)
+                with self.chk.binder.frame_context(can_skip=True, fall_through=0):
+                    self.accept(e.expr(), allow_none_return=True)
             ret_type = self.chk.lookup_type(e.expr())
             self.chk.return_types.pop()
             return replace_callable_return_type(inferred_type, ret_type)

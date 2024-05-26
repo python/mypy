@@ -894,6 +894,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         t = t.copy_modified(args=self.anal_array(t.args))
         # TODO: Move this message building logic to messages.py.
         notes: list[str] = []
+        error_code = codes.VALID_TYPE
         if isinstance(sym.node, Var):
             notes.append(
                 "See https://mypy.readthedocs.io/en/"
@@ -912,25 +913,33 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             message = 'Module "{}" is not valid as a type'
             notes.append("Perhaps you meant to use a protocol matching the module structure?")
         elif unbound_tvar:
-            message = 'Type variable "{}" is unbound'
-            short = name.split(".")[-1]
-            notes.append(
-                (
-                    '(Hint: Use "Generic[{}]" or "Protocol[{}]" base class'
-                    ' to bind "{}" inside a class)'
-                ).format(short, short, short)
-            )
-            notes.append(
-                '(Hint: Use "{}" in function signature to bind "{}"'
-                " inside a function)".format(short, short)
-            )
+            assert isinstance(sym.node, TypeVarLikeExpr)
+            if sym.node.is_new_style:
+                # PEP 695 type paramaters are never considered unbound -- they are undefined
+                # in contexts where they aren't valid, such as in argument default values.
+                message = 'Name "{}" is not defined'
+                name = name.split(".")[-1]
+                error_code = codes.NAME_DEFINED
+            else:
+                message = 'Type variable "{}" is unbound'
+                short = name.split(".")[-1]
+                notes.append(
+                    (
+                        '(Hint: Use "Generic[{}]" or "Protocol[{}]" base class'
+                        ' to bind "{}" inside a class)'
+                    ).format(short, short, short)
+                )
+                notes.append(
+                    '(Hint: Use "{}" in function signature to bind "{}"'
+                    " inside a function)".format(short, short)
+                )
         else:
             message = 'Cannot interpret reference "{}" as a type'
         if not defining_literal:
             # Literal check already gives a custom error. Avoid duplicating errors.
-            self.fail(message.format(name), t, code=codes.VALID_TYPE)
+            self.fail(message.format(name), t, code=error_code)
             for note in notes:
-                self.note(note, t, code=codes.VALID_TYPE)
+                self.note(note, t, code=error_code)
 
         # TODO: Would it be better to always return Any instead of UnboundType
         # in case of an error? On one hand, UnboundType has a name so error messages

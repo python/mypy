@@ -841,7 +841,9 @@ else {
         else:
             expected_lines = expected.rstrip().split("\n")
         expected_lines = [line.strip(" ") for line in expected_lines]
-        assert_string_arrays_equal(expected_lines, actual_lines, msg="Generated code unexpected")
+        assert_string_arrays_equal(
+            expected_lines, actual_lines, msg="Generated code unexpected", traceback=True
+        )
         if skip_next:
             assert visitor.op_index == 1
         else:
