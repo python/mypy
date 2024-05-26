@@ -2501,6 +2501,23 @@ test = Test("foo")
 test.foo
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassesDefaultValueInitVarWithProperty]
+from dataclasses import InitVar, dataclass, field
+
+@dataclass
+class Test:
+    foo: InitVar[str] = "foo"
+    _foo: str = field(init=False)
+
+    def __post_init__(self, foo: str) -> None:
+        self._foo = foo
+
+    @property  # E: InitVar with default value cannot be redefined
+    def foo(self) -> str:
+        return self._foo
+
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassesWithProperty]
 from dataclasses import dataclass
 
