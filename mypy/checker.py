@@ -4494,7 +4494,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             is_lambda = isinstance(self.scope.top_function(), LambdaExpr)
             if isinstance(return_type, UninhabitedType):
                 # Avoid extra error messages for failed inference in lambdas
-                if not is_lambda or not return_type.ambiguous:
+                if not is_lambda and not return_type.ambiguous:
                     self.fail(message_registry.NO_RETURN_EXPECTED, s)
                     return
 

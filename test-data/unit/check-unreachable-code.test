@@ -1502,15 +1502,8 @@ from typing import Callable, NoReturn
 def foo() -> NoReturn:
     raise
 
-f = lambda: foo()
+f1 = lambda: foo()
 x = 0  # not unreachable
 
-[case testLambdaNoReturnAnnotated]
-# flags: --warn-unreachable
-from typing import Callable, NoReturn
-
-def foo() -> NoReturn:
-    raise
-
-f: Callable[[], NoReturn] = lambda: foo()  # E: Return statement in function which does not return # (false positive: https://github.com/python/mypy/issues/17254)
+f2: Callable[[], NoReturn] = lambda: foo()
 x = 0  # not unreachable
