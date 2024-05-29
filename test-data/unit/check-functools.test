@@ -249,6 +249,30 @@ reveal_type(p3(2))  # N: Revealed type is "builtins.int"
 reveal_type(p3("a"))  # N: Revealed type is "builtins.str"
 [builtins fixtures/dict.pyi]
 
+[case testFunctoolsPartialGenericType]
+from typing import Type, TypeVar
+import functools
+
+T = TypeVar("T", int, str)
+
+def foo(a: int, b: str, t: Type[T]) -> T: ...
+
+p1 = functools.partial(foo, 1, 2)  # E: Argument 2 to "foo" has incompatible type "int"; expected "str"
+p2 = functools.partial(foo, "hello", "world")  # E: Argument 1 to "foo" has incompatible type "str"; expected "int"
+p3 = functools.partial(foo, 1, "hello")
+
+reveal_type(p3)  # N: Revealed type is "functools.partial[builtins.int]"  # should still be generic
+reveal_type(p3(int))  # N: Revealed type is "builtins.int"
+reveal_type(p3(str))  # N: Revealed type is "builtins.int" \
+                      # E: Argument 1 to "foo" has incompatible type "Type[str]"; expected "Type[int]"
+reveal_type(p3(list))  # N: Revealed type is "builtins.int" \
+                       # E: Argument 1 to "foo" has incompatible type "Type[List[Any]]"; expected "Type[int]"
+
+
+
+
+[builtins fixtures/tuple.pyi]
+
 [case testFunctoolsPartialCallable]
 from typing import Callable
 import functools
