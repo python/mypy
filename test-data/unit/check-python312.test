@@ -1162,6 +1162,49 @@ def decorator(x: str) -> Any: ...
 class C[T]:
     pass
 
+[case testPEP695RecursiceTypeAlias]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+
+type A = str | list[A]
+a: A
+reveal_type(a)  # N: Revealed type is "Union[builtins.str, builtins.list[...]]"
+
+class C[T]: pass
+
+type B[T] = C[T] | list[B[T]]
+b: B[int]
+reveal_type(b)  # N: Revealed type is "Union[__main__.C[builtins.int], builtins.list[...]]"
+
+[case testPEP695BadRecursiveTypeAlias]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+
+type A = A  # E: Cannot resolve name "A" (possible cyclic definition)
+type B = B | int  # E: Invalid recursive alias: a union item of itself
+a: A
+reveal_type(a)  # N: Revealed type is "Any"
+b: B
+reveal_type(b)  # N: Revealed type is "Any"
+
+[case testPEP695RecursiveTypeAliasForwardReference]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+
+def f(a: A) -> None:
+    if isinstance(a, str):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(a)  # N: Revealed type is "__main__.C[Union[builtins.str, __main__.C[...]]]"
+
+type A = str | C[A]
+
+class C[T]: pass
+
+f('x')
+f(C[str]())
+f(C[C[str]]())
+f(1)  # E: Argument 1 to "f" has incompatible type "int"; expected "A"
+f(C[int]())  # E: Argument 1 to "f" has incompatible type "C[int]"; expected "A"
+[builtins fixtures/isinstance.pyi]
+
 [case testPEP695InvalidGenericOrProtocolBaseClass]
 # mypy: enable-incomplete-feature=NewGenericSyntax
 from typing import Generic, Protocol, TypeVar
