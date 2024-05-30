@@ -5338,7 +5338,6 @@ class SemanticAnalyzer(
                         # for a TypeInfo _in place_ if there are nested placeholders.
                         existing.node.target = res
                         existing.node.alias_tvars = alias_tvars
-                        # existing.node.no_args = no_args
                         updated = True
                 else:
                     # Otherwise just replace existing placeholder with type alias.
