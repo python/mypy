@@ -2421,6 +2421,10 @@ class MessageBuilder:
             code=codes.ANNOTATION_UNCHECKED,
         )
 
+    def type_parameters_should_be_declared(self, undeclared: list[str], context: Context) -> None:
+        names = ", ".join('"' + n + '"' for n in undeclared)
+        self.fail(f"All type parameters should be declared ({names} not declared)", context)
+
 
 def quote_type_string(type_string: str) -> str:
     """Quotes a type representation for use in messages."""
