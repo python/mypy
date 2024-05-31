@@ -301,6 +301,37 @@ class P(Protocol):
         pass
 [out]
 
+[case testFinalInProtocol]
+from typing import Protocol, Final, final, ClassVar
+
+class P(Protocol):
+    var1 : Final[int] = 0 # E: Protocol member cannot be final
+
+    @final # E: Protocol member cannot be final
+    def meth1(self) -> None:
+        var2: Final = 0
+
+    def meth2(self) -> None:
+        var3: Final = 0
+
+[out]
+
+[case testFinalWithClassVarInProtocol]
+from typing import Protocol, Final, final, ClassVar
+
+class P(Protocol):
+    var1 : Final[ClassVar[int]] = 0 # E: Variable should not be annotated with both ClassVar and Final
+    var2: ClassVar[int] = 1
+
+    @final # E: Protocol member cannot be final
+    def meth1(self) -> None:
+        ...
+
+    def meth2(self) -> None:
+        var3: Final[ClassVar[int]] = 0 # E: Variable should not be annotated with both ClassVar and Final # E: ClassVar can only be used for assignments in class body
+
+[out]
+
 [case testFinalNotInLoops]
 from typing import Final
 
