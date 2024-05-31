@@ -3694,6 +3694,7 @@ class SemanticAnalyzer(
         allow_placeholder: bool = False,
         declared_type_vars: TypeVarLikeList | None = None,
         all_declared_type_params_names: list[str] | None = None,
+        python_3_12_type_alias: bool = False,
     ) -> tuple[Type | None, list[TypeVarLikeType], set[str], list[str], bool]:
         """Check if 'rvalue' is a valid type allowed for aliasing (e.g. not a type variable).
 
@@ -3747,6 +3748,7 @@ class SemanticAnalyzer(
                 global_scope=global_scope,
                 allowed_alias_tvars=tvar_defs,
                 alias_type_params_names=all_declared_type_params_names,
+                python_3_12_type_alias=python_3_12_type_alias,
             )
 
         # There can be only one variadic variable at most, the error is reported elsewhere.
@@ -5321,6 +5323,7 @@ class SemanticAnalyzer(
                 allow_placeholder=True,
                 declared_type_vars=type_params,
                 all_declared_type_params_names=all_type_params_names,
+                python_3_12_type_alias=True,
             )
             if not res:
                 res = AnyType(TypeOfAny.from_error)
@@ -5355,7 +5358,7 @@ class SemanticAnalyzer(
             # so we need to replace it with non-explicit Anys.
             res = make_any_non_explicit(res)
             eager = self.is_func_scope()
-            if isinstance(res, Instance) and not res.args:
+            if isinstance(res, ProperType) and isinstance(res, Instance) and not res.args:
                 fix_instance(res, self.fail, self.note, disallow_any=False, options=self.options)
             alias_node = TypeAlias(
                 res,
