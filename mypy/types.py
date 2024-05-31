@@ -1169,17 +1169,12 @@ class UninhabitedType(ProperType):
         is_subtype(UninhabitedType, T) = True
     """
 
-    __slots__ = ("ambiguous", "is_noreturn")
+    __slots__ = ("ambiguous",)
 
-    is_noreturn: bool  # Does this come from a NoReturn?  Purely for error messages.
-    # It is important to track whether this is an actual NoReturn type, or just a result
-    # of ambiguous type inference, in the latter case we don't want to mark a branch as
-    # unreachable in binder.
     ambiguous: bool  # Is this a result of inference for a variable without constraints?
 
-    def __init__(self, is_noreturn: bool = False, line: int = -1, column: int = -1) -> None:
+    def __init__(self, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
-        self.is_noreturn = is_noreturn
         self.ambiguous = False
 
     def can_be_true_default(self) -> bool:
@@ -1198,12 +1193,12 @@ class UninhabitedType(ProperType):
         return isinstance(other, UninhabitedType)
 
     def serialize(self) -> JsonDict:
-        return {".class": "UninhabitedType", "is_noreturn": self.is_noreturn}
+        return {".class": "UninhabitedType"}
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> UninhabitedType:
         assert data[".class"] == "UninhabitedType"
-        return UninhabitedType(is_noreturn=data["is_noreturn"])
+        return UninhabitedType()
 
 
 class NoneType(ProperType):

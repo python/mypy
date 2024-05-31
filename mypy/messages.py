@@ -2629,10 +2629,7 @@ def format_type_inner(
     elif isinstance(typ, DeletedType):
         return "<deleted>"
     elif isinstance(typ, UninhabitedType):
-        if typ.is_noreturn:
-            return "NoReturn"
-        else:
-            return "Never"
+        return "Never"
     elif isinstance(typ, TypeType):
         type_name = "type" if options.use_lowercase_names() else "Type"
         return f"{type_name}[{format(typ.item)}]"

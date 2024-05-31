@@ -1406,7 +1406,7 @@ def f(value: int) -> int:  # E: Missing return statement
         case 2:
             return 1
         case o:
-            assert_never(o)  # E: Argument 1 to "assert_never" has incompatible type "int"; expected "NoReturn"
+            assert_never(o)  # E: Argument 1 to "assert_never" has incompatible type "int"; expected Never
 
 [case testMatchExhaustiveNoError]
 from typing import NoReturn, Union, Literal
