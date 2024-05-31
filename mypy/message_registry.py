@@ -194,6 +194,9 @@ UNBOUND_TYPEVAR: Final = (
     "A function returning TypeVar should receive at least "
     "one argument containing the same TypeVar"
 )
+TYPE_PARAMETERS_SHOULD_BE_DECLARED: Final = (
+    "All type parameters should be declared ({} not declared)"
+)
 
 # Super
 TOO_MANY_ARGS_FOR_SUPER: Final = ErrorMessage('Too many arguments for "super"')

@@ -340,13 +340,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     if self.allow_unbound_tvars:
                         return t
                     if self.defining_alias and self.not_declared_in_type_params(t.name):
-                        assert False
-                        if self.python_3_12_type_alias:
-                            msg = (
-                                f'All type parameters should be declared ("{t.name}" not declared)'
-                            )
-                        else:
-                            msg = f'ParamSpec "{t.name}" is not included in type_params'
+                        msg = f'ParamSpec "{t.name}" is not included in type_params'
                     else:
                         msg = f'ParamSpec "{t.name}" is unbound'
                     self.fail(msg, t, code=codes.VALID_TYPE)
@@ -375,7 +369,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             ):
                 if self.not_declared_in_type_params(t.name):
                     if self.python_3_12_type_alias:
-                        msg = f'All type parameters should be declared ("{t.name}" not declared)'
+                        msg = message_registry.TYPE_PARAMETERS_SHOULD_BE_DECLARED.format(
+                            f'"{t.name}"'
+                        )
                     else:
                         msg = f'Type variable "{t.name}" is not included in type_params'
                 else:
@@ -407,8 +403,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         return t
                     if self.defining_alias and self.not_declared_in_type_params(t.name):
                         if self.python_3_12_type_alias:
-                            msg = (
-                                f'All type parameters should be declared ("{t.name}" not declared)'
+                            msg = message_registry.TYPE_PARAMETERS_SHOULD_BE_DECLARED.format(
+                                f'"{t.name}"'
                             )
                         else:
                             msg = f'TypeVarTuple "{t.name}" is not included in type_params'
@@ -1328,7 +1324,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             and tvar_def not in self.allowed_alias_tvars
         ):
             if self.python_3_12_type_alias:
-                msg = f'All type parameters should be declared ("{tvar_def.name}" not declared)'
+                msg = message_registry.TYPE_PARAMETERS_SHOULD_BE_DECLARED.format(
+                    f'"{tvar_def.name}"'
+                )
             else:
                 msg = f'ParamSpec "{tvar_def.name}" is not included in type_params'
             self.fail(msg, callable_args, code=codes.VALID_TYPE)
