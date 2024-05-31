@@ -1648,7 +1648,7 @@ a.setdefault('y', '') # E: Argument 2 to "setdefault" of "TypedDict" has incompa
 x = ''
 a.setdefault(x, 1) # E: Expected TypedDict key to be string literal
 alias = a.setdefault
-alias(x, 1) # E: Argument 1 has incompatible type "str"; expected "NoReturn"
+alias(x, 1) # E: Argument 1 has incompatible type "str"; expected "Never"
 
 a.update({})
 a.update({'x': 1})
@@ -1680,8 +1680,8 @@ b.pop('x') # E: Key "x" of TypedDict "B" cannot be deleted
 x = ''
 b.pop(x) # E: Expected TypedDict key to be string literal
 pop = b.pop
-pop('x') # E: Argument 1 has incompatible type "str"; expected "NoReturn"
-pop('invalid') # E: Argument 1 has incompatible type "str"; expected "NoReturn"
+pop('x') # E: Argument 1 has incompatible type "str"; expected "Never"
+pop('invalid') # E: Argument 1 has incompatible type "str"; expected "Never"
 [builtins fixtures/dict.pyi]
 
 [case testTypedDictDel]

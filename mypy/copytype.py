@@ -53,7 +53,7 @@ class TypeShallowCopier(TypeVisitor[ProperType]):
         return self.copy_common(t, NoneType())
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> ProperType:
-        dup = UninhabitedType(t.is_noreturn)
+        dup = UninhabitedType()
         dup.ambiguous = t.ambiguous
         return self.copy_common(t, dup)
 

@@ -645,7 +645,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return AnyType(TypeOfAny.from_error)
             return self.anal_type(t.args[0])
         elif fullname in NEVER_NAMES:
-            return UninhabitedType(is_noreturn=True)
+            return UninhabitedType()
         elif fullname in LITERAL_TYPE_NAMES:
             return self.analyze_literal_type(t)
         elif fullname in ANNOTATED_TYPE_NAMES:

@@ -2430,7 +2430,7 @@ def quote_type_string(type_string: str) -> str:
     """Quotes a type representation for use in messages."""
     no_quote_regex = r"^<(tuple|union): \d+ items>$"
     if (
-        type_string in ["Module", "overloaded function", "Never", "<deleted>"]
+        type_string in ["Module", "overloaded function", "<deleted>"]
         or type_string.startswith("Module ")
         or re.match(no_quote_regex, type_string) is not None
         or type_string.endswith("?")
@@ -2633,10 +2633,7 @@ def format_type_inner(
     elif isinstance(typ, DeletedType):
         return "<deleted>"
     elif isinstance(typ, UninhabitedType):
-        if typ.is_noreturn:
-            return "NoReturn"
-        else:
-            return "Never"
+        return "Never"
     elif isinstance(typ, TypeType):
         type_name = "type" if options.use_lowercase_names() else "Type"
         return f"{type_name}[{format(typ.item)}]"
