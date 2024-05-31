@@ -5355,6 +5355,8 @@ class SemanticAnalyzer(
             # so we need to replace it with non-explicit Anys.
             res = make_any_non_explicit(res)
             eager = self.is_func_scope()
+            if isinstance(res, Instance) and not res.args:
+                fix_instance(res, self.fail, self.note, disallow_any=False, options=self.options)
             alias_node = TypeAlias(
                 res,
                 self.qualified_name(s.name.name),
