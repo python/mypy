@@ -11,6 +11,7 @@ from mypy.types import (
     NoneTyp,
     Overloaded,
     PartialType,
+    ParamSpecType,
     TupleType,
     Type,
     TypedDictType,
@@ -122,6 +123,8 @@ class Mapper:
             else:
                 return tuple_rprimitive
         elif isinstance(typ, CallableType):
+            return object_rprimitive
+        elif isinstance(typ, ParamSpecType):
             return object_rprimitive
         elif isinstance(typ, NoneTyp):
             return none_rprimitive
