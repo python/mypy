@@ -390,10 +390,24 @@ def _infer_constraints(
         # When the template is a union, we are okay with leaving some
         # type variables indeterminate. This helps with some special
         # cases, though this isn't very principled.
+
+        def _is_item_being_overlaped_by_other(item: Type) -> bool:
+            # It returns true if the item is an argument of other item
+            # that is subtype of the actual type
+            return any(
+                isinstance(p_type := get_proper_type(item_to_compare), Instance)
+                and mypy.subtypes.is_subtype(actual, erase_typevars(p_type))
+                and item in p_type.args
+                for item_to_compare in template.items
+                if item is not item_to_compare
+            )
+
         result = any_constraints(
             [
                 infer_constraints_if_possible(t_item, actual, direction)
-                for t_item in template.items
+                for t_item in [
+                    item for item in template.items if not _is_item_being_overlaped_by_other(item)
+                ]
             ],
             eager=False,
         )
