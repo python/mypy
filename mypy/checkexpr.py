@@ -4846,7 +4846,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         [ARG_POS],
                         ["p1"],
                         TupleType(list(args), self.chk.named_type("tuple")),
-                        self.chk.named_type("abc.ABCMeta"),
+                        self.chk.named_type("builtins.type"),
                         name="tuple",
                         definition=tp.definition,
                         bound_args=tp.bound_args,
