@@ -10,13 +10,12 @@ from mypy.types import (
     LiteralType,
     NoneTyp,
     Overloaded,
-    ParamSpecType,
     PartialType,
     TupleType,
     Type,
     TypedDictType,
     TypeType,
-    TypeVarType,
+    TypeVarLikeType,
     UnboundType,
     UninhabitedType,
     UnionType,
@@ -124,8 +123,6 @@ class Mapper:
                 return tuple_rprimitive
         elif isinstance(typ, CallableType):
             return object_rprimitive
-        elif isinstance(typ, ParamSpecType):
-            return object_rprimitive
         elif isinstance(typ, NoneTyp):
             return none_rprimitive
         elif isinstance(typ, UnionType):
@@ -134,7 +131,7 @@ class Mapper:
             return object_rprimitive
         elif isinstance(typ, TypeType):
             return object_rprimitive
-        elif isinstance(typ, TypeVarType):
+        elif isinstance(typ, TypeVarLikeType):
             # Erase type variable to upper bound.
             # TODO: Erase to union if object has value restriction?
             return self.type_to_rtype(typ.upper_bound)

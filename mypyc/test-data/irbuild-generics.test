@@ -164,7 +164,9 @@ def f(x: int) -> int:
 execute(f, 1)
 [out]
 def execute(func, args, kwargs):
-    func, args, kwargs :: object
+    func :: object
+    args :: tuple
+    kwargs :: dict
     r0 :: list
     r1 :: object
     r2 :: dict
