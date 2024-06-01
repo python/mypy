@@ -4844,9 +4844,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     return CallableType(
                         [TupleType(list(args), self.chk.named_type("tuple"))],
                         [ARG_POS],
-                        ["p1"],
+                        [None],
                         TupleType(list(args), self.chk.named_type("tuple")),
-                        self.chk.named_type("builtins.type"),
+                        tp.fallback,
                         name="tuple",
                         definition=tp.definition,
                         bound_args=tp.bound_args,
