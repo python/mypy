@@ -6,7 +6,7 @@ requires = [
     "setuptools >= 40.6.2",
     "wheel >= 0.30.0",
     # the following is from mypy-requirements.txt
-    "typing_extensions>=4.1.0",
+    "typing_extensions>=4.6.0",
     "mypy_extensions>=1.0.0",
     "tomli>=1.1.0; python_version<'3.11'",
     # the following is from build-requirements.txt
