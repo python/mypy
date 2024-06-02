@@ -83,6 +83,7 @@ from mypy.types import (
     TypeOfAny,
     TypeStrVisitor,
     TypeType,
+    TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
     UnboundType,
@@ -2498,14 +2499,16 @@ def format_type_inner(
             return typ.value_repr()
 
     if isinstance(typ, TypeAliasType) and typ.is_recursive:
-        # TODO: find balance here, str(typ) doesn't support custom verbosity, and may be
-        # too verbose for user messages, OTOH it nicely shows structure of recursive types.
-        if verbosity < 2:
-            type_str = typ.alias.name if typ.alias else "<alias (unfixed)>"
+        if typ.alias is None:
+            type_str = "<alias (unfixed)>"
+        else:
+            if verbosity >= 2 or (fullnames and typ.alias.fullname in fullnames):
+                type_str = typ.alias.fullname
+            else:
+                type_str = typ.alias.name
             if typ.args:
                 type_str += f"[{format_list(typ.args)}]"
-            return type_str
-        return str(typ)
+        return type_str
 
     # TODO: always mention type alias names in errors.
     typ = get_proper_type(typ)
@@ -2546,9 +2549,15 @@ def format_type_inner(
         return f"Unpack[{format(typ.type)}]"
     elif isinstance(typ, TypeVarType):
         # This is similar to non-generic instance types.
+        fullname = scoped_type_var_name(typ)
+        if verbosity >= 2 or (fullnames and fullname in fullnames):
+            return fullname
         return typ.name
     elif isinstance(typ, TypeVarTupleType):
         # This is similar to non-generic instance types.
+        fullname = scoped_type_var_name(typ)
+        if verbosity >= 2 or (fullnames and fullname in fullnames):
+            return fullname
         return typ.name
     elif isinstance(typ, ParamSpecType):
         # Concatenate[..., P]
@@ -2559,6 +2568,7 @@ def format_type_inner(
 
             return f"[{args}, **{typ.name_with_suffix()}]"
         else:
+            # TODO: better disambiguate ParamSpec name clashes.
             return typ.name_with_suffix()
     elif isinstance(typ, TupleType):
         # Prefer the name of the fallback class (if not tuple), as it's more informative.
@@ -2676,29 +2686,51 @@ def format_type_inner(
         return "object"
 
 
-def collect_all_instances(t: Type) -> list[Instance]:
-    """Return all instances that `t` contains (including `t`).
+def collect_all_named_types(t: Type) -> list[Type]:
+    """Return all instances/aliases/type variables that `t` contains (including `t`).
 
     This is similar to collect_all_inner_types from typeanal but only
     returns instances and will recurse into fallbacks.
     """
-    visitor = CollectAllInstancesQuery()
+    visitor = CollectAllNamedTypesQuery()
     t.accept(visitor)
-    return visitor.instances
+    return visitor.types
 
 
-class CollectAllInstancesQuery(TypeTraverserVisitor):
+class CollectAllNamedTypesQuery(TypeTraverserVisitor):
     def __init__(self) -> None:
-        self.instances: list[Instance] = []
+        self.types: list[Type] = []
 
     def visit_instance(self, t: Instance) -> None:
-        self.instances.append(t)
+        self.types.append(t)
         super().visit_instance(t)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
         if t.alias and not t.is_recursive:
             t.alias.target.accept(self)
+        else:
+            self.types.append(t)
         super().visit_type_alias_type(t)
+
+    def visit_type_var(self, t: TypeVarType) -> None:
+        self.types.append(t)
+        super().visit_type_var(t)
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> None:
+        self.types.append(t)
+        super().visit_type_var_tuple(t)
+
+    def visit_param_spec(self, t: ParamSpecType) -> None:
+        self.types.append(t)
+        super().visit_param_spec(t)
+
+
+def scoped_type_var_name(t: TypeVarLikeType) -> str:
+    if not t.id.namespace:
+        return t.name
+    # TODO: support rare cases when both TypeVar name and namespace suffix coincide.
+    *_, suffix = t.id.namespace.split(".")
+    return f"{t.name}@{suffix}"
 
 
 def find_type_overlaps(*types: Type) -> set[str]:
@@ -2709,8 +2741,14 @@ def find_type_overlaps(*types: Type) -> set[str]:
     """
     d: dict[str, set[str]] = {}
     for type in types:
-        for inst in collect_all_instances(type):
-            d.setdefault(inst.type.name, set()).add(inst.type.fullname)
+        for t in collect_all_named_types(type):
+            if isinstance(t, ProperType) and isinstance(t, Instance):
+                d.setdefault(t.type.name, set()).add(t.type.fullname)
+            elif isinstance(t, TypeAliasType) and t.alias:
+                d.setdefault(t.alias.name, set()).add(t.alias.fullname)
+            else:
+                assert isinstance(t, TypeVarLikeType)
+                d.setdefault(t.name, set()).add(scoped_type_var_name(t))
     for shortname in d.keys():
         if f"typing.{shortname}" in TYPES_FOR_UNIMPORTED_HINTS:
             d[shortname].add(f"typing.{shortname}")

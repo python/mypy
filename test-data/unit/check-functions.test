@@ -3290,3 +3290,15 @@ def g(x: T, y: S) -> Union[T, S]: ...
 x = [f, g]
 reveal_type(x)  # N: Revealed type is "builtins.list[def [T, S] (x: T`4, y: S`5) -> Union[T`4, S`5]]"
 [builtins fixtures/list.pyi]
+
+[case testTypeVariableClashErrorMessage]
+from typing import TypeVar
+
+T = TypeVar("T")
+
+class C:  # Note: Generic[T] missing
+    def bad_idea(self, x: T) -> None:
+        self.x = x
+
+    def nope(self, x: T) -> None:
+        self.x = x  # E: Incompatible types in assignment (expression has type "T@nope", variable has type "T@bad_idea")
