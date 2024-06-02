@@ -2707,10 +2707,10 @@ class CollectAllNamedTypesQuery(TypeTraverserVisitor):
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
         if t.alias and not t.is_recursive:
-            t.alias.target.accept(self)
+            get_proper_type(t).accept(self)
         else:
             self.types.append(t)
-        super().visit_type_alias_type(t)
+            super().visit_type_alias_type(t)
 
     def visit_type_var(self, t: TypeVarType) -> None:
         self.types.append(t)
