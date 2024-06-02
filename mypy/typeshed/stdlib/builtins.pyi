@@ -31,7 +31,7 @@ from _typeshed import (
 )
 from collections.abc import Awaitable, Callable, Iterable, Iterator, MutableSet, Reversible, Set as AbstractSet, Sized
 from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper
-from types import CodeType, TracebackType, _Cell
+from types import CellType, CodeType, TracebackType
 
 # mypy crashes if any of {ByteString, Sequence, MutableSequence, Mapping, MutableMapping} are imported from collections.abc in builtins.pyi
 from typing import (  # noqa: Y022
@@ -863,7 +863,7 @@ class tuple(Sequence[_T_co]):
 class function:
     # Make sure this class definition stays roughly in line with `types.FunctionType`
     @property
-    def __closure__(self) -> tuple[_Cell, ...] | None: ...
+    def __closure__(self) -> tuple[CellType, ...] | None: ...
     __code__: CodeType
     __defaults__: tuple[Any, ...] | None
     __dict__: dict[str, Any]
@@ -1233,19 +1233,41 @@ def divmod(x: _T_contra, y: SupportsRDivMod[_T_contra, _T_co], /) -> _T_co: ...
 
 # The `globals` argument to `eval` has to be `dict[str, Any]` rather than `dict[str, object]` due to invariance.
 # (The `globals` argument has to be a "real dict", rather than any old mapping, unlike the `locals` argument.)
-def eval(
-    source: str | ReadableBuffer | CodeType, globals: dict[str, Any] | None = None, locals: Mapping[str, object] | None = None, /
-) -> Any: ...
+if sys.version_info >= (3, 13):
+    def eval(
+        source: str | ReadableBuffer | CodeType,
+        /,
+        globals: dict[str, Any] | None = None,
+        locals: Mapping[str, object] | None = None,
+    ) -> Any: ...
+
+else:
+    def eval(
+        source: str | ReadableBuffer | CodeType,
+        globals: dict[str, Any] | None = None,
+        locals: Mapping[str, object] | None = None,
+        /,
+    ) -> Any: ...
 
 # Comment above regarding `eval` applies to `exec` as well
-if sys.version_info >= (3, 11):
+if sys.version_info >= (3, 13):
+    def exec(
+        source: str | ReadableBuffer | CodeType,
+        /,
+        globals: dict[str, Any] | None = None,
+        locals: Mapping[str, object] | None = None,
+        *,
+        closure: tuple[CellType, ...] | None = None,
+    ) -> None: ...
+
+elif sys.version_info >= (3, 11):
     def exec(
         source: str | ReadableBuffer | CodeType,
         globals: dict[str, Any] | None = None,
         locals: Mapping[str, object] | None = None,
         /,
         *,
-        closure: tuple[_Cell, ...] | None = None,
+        closure: tuple[CellType, ...] | None = None,
     ) -> None: ...
 
 else:
@@ -1706,7 +1728,7 @@ def __import__(
     fromlist: Sequence[str] = (),
     level: int = 0,
 ) -> types.ModuleType: ...
-def __build_class__(func: Callable[[], _Cell | Any], name: str, /, *bases: Any, metaclass: Any = ..., **kwds: Any) -> Any: ...
+def __build_class__(func: Callable[[], CellType | Any], name: str, /, *bases: Any, metaclass: Any = ..., **kwds: Any) -> Any: ...
 
 if sys.version_info >= (3, 10):
     from types import EllipsisType

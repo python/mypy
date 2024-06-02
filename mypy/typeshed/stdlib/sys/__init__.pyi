@@ -1,9 +1,8 @@
 import sys
-from _typeshed import OptExcInfo, ProfileFunction, TraceFunction, structseq
+from _typeshed import MaybeNone, OptExcInfo, ProfileFunction, TraceFunction, structseq
+from _typeshed.importlib import MetaPathFinderProtocol, PathEntryFinderProtocol
 from builtins import object as _object
 from collections.abc import AsyncGenerator, Callable, Sequence
-from importlib.abc import PathEntryFinder
-from importlib.machinery import ModuleSpec
 from io import TextIOWrapper
 from types import FrameType, ModuleType, TracebackType
 from typing import Any, Final, Literal, NoReturn, Protocol, TextIO, TypeVar, final
@@ -14,10 +13,6 @@ _T = TypeVar("_T")
 # see https://github.com/python/typeshed/issues/8513#issue-1333671093 for the rationale behind this alias
 _ExitCode: TypeAlias = str | int | None
 _OptExcInfo: TypeAlias = OptExcInfo  # noqa: Y047  # TODO: obsolete, remove fall 2022 or later
-
-# Intentionally omits one deprecated and one optional method of `importlib.abc.MetaPathFinder`
-class _MetaPathFinder(Protocol):
-    def find_spec(self, fullname: str, path: Sequence[str] | None, target: ModuleType | None = ..., /) -> ModuleSpec | None: ...
 
 # ----- sys variables -----
 if sys.platform != "win32":
@@ -44,13 +39,13 @@ if sys.version_info >= (3, 12):
     last_exc: BaseException  # or undefined.
 maxsize: int
 maxunicode: int
-meta_path: list[_MetaPathFinder]
+meta_path: list[MetaPathFinderProtocol]
 modules: dict[str, ModuleType]
 if sys.version_info >= (3, 10):
     orig_argv: list[str]
 path: list[str]
-path_hooks: list[Callable[[str], PathEntryFinder]]
-path_importer_cache: dict[str, PathEntryFinder | None]
+path_hooks: list[Callable[[str], PathEntryFinderProtocol]]
+path_importer_cache: dict[str, PathEntryFinderProtocol | None]
 platform: str
 if sys.version_info >= (3, 9):
     platlibdir: str
@@ -61,23 +56,24 @@ ps2: object
 
 # TextIO is used instead of more specific types for the standard streams,
 # since they are often monkeypatched at runtime. At startup, the objects
-# are initialized to instances of TextIOWrapper.
+# are initialized to instances of TextIOWrapper, but can also be None under
+# some circumstances.
 #
 # To use methods from TextIOWrapper, use an isinstance check to ensure that
 # the streams have not been overridden:
 #
 # if isinstance(sys.stdout, io.TextIOWrapper):
 #    sys.stdout.reconfigure(...)
-stdin: TextIO
-stdout: TextIO
-stderr: TextIO
+stdin: TextIO | MaybeNone
+stdout: TextIO | MaybeNone
+stderr: TextIO | MaybeNone
 
 if sys.version_info >= (3, 10):
     stdlib_module_names: frozenset[str]
 
-__stdin__: Final[TextIOWrapper]  # Contains the original value of stdin
-__stdout__: Final[TextIOWrapper]  # Contains the original value of stdout
-__stderr__: Final[TextIOWrapper]  # Contains the original value of stderr
+__stdin__: Final[TextIOWrapper | None]  # Contains the original value of stdin
+__stdout__: Final[TextIOWrapper | None]  # Contains the original value of stdout
+__stderr__: Final[TextIOWrapper | None]  # Contains the original value of stderr
 tracebacklimit: int
 version: str
 api_version: int
@@ -269,9 +265,9 @@ def getrecursionlimit() -> int: ...
 def getsizeof(obj: object, default: int = ...) -> int: ...
 def getswitchinterval() -> float: ...
 def getprofile() -> ProfileFunction | None: ...
-def setprofile(profilefunc: ProfileFunction | None) -> None: ...
+def setprofile(function: ProfileFunction | None, /) -> None: ...
 def gettrace() -> TraceFunction | None: ...
-def settrace(tracefunc: TraceFunction | None) -> None: ...
+def settrace(function: TraceFunction | None, /) -> None: ...
 
 if sys.platform == "win32":
     # A tuple of length 5, even though it has more than 5 attributes.

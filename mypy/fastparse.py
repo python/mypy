@@ -17,6 +17,9 @@ from mypy.nodes import (
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
+    PARAM_SPEC_KIND,
+    TYPE_VAR_KIND,
+    TYPE_VAR_TUPLE_KIND,
     ArgKind,
     Argument,
     AssertStmt,
@@ -79,6 +82,8 @@ from mypy.nodes import (
     TempNode,
     TryStmt,
     TupleExpr,
+    TypeAliasStmt,
+    TypeParam,
     UnaryExpr,
     Var,
     WhileStmt,
@@ -87,7 +92,7 @@ from mypy.nodes import (
     YieldFromExpr,
     check_arg_names,
 )
-from mypy.options import Options
+from mypy.options import NEW_GENERIC_SYNTAX, Options
 from mypy.patterns import (
     AsPattern,
     ClassPattern,
@@ -144,11 +149,6 @@ def ast3_parse(
 NamedExpr = ast3.NamedExpr
 Constant = ast3.Constant
 
-if sys.version_info >= (3, 12):
-    ast_TypeAlias = ast3.TypeAlias
-else:
-    ast_TypeAlias = Any
-
 if sys.version_info >= (3, 10):
     Match = ast3.Match
     MatchValue = ast3.MatchValue
@@ -171,10 +171,20 @@ else:
     MatchAs = Any
     MatchOr = Any
     AstNode = Union[ast3.expr, ast3.stmt, ast3.ExceptHandler]
+
 if sys.version_info >= (3, 11):
     TryStar = ast3.TryStar
 else:
     TryStar = Any
+
+if sys.version_info >= (3, 12):
+    ast_TypeAlias = ast3.TypeAlias
+    ast_ParamSpec = ast3.ParamSpec
+    ast_TypeVarTuple = ast3.TypeVarTuple
+else:
+    ast_TypeAlias = Any
+    ast_ParamSpec = Any
+    ast_TypeVarTuple = Any
 
 N = TypeVar("N", bound=Node)
 
@@ -884,6 +894,8 @@ class ASTConverter:
 
         arg_kinds = [arg.kind for arg in args]
         arg_names = [None if arg.pos_only else arg.variable.name for arg in args]
+        # Type parameters, if using new syntax for generics (PEP 695)
+        explicit_type_params: list[TypeParam] | None = None
 
         arg_types: list[Type | None] = []
         if no_type_check:
@@ -937,12 +949,17 @@ class ASTConverter:
                 return_type = AnyType(TypeOfAny.from_error)
         else:
             if sys.version_info >= (3, 12) and n.type_params:
-                self.fail(
-                    ErrorMessage("PEP 695 generics are not yet supported", code=codes.VALID_TYPE),
-                    n.type_params[0].lineno,
-                    n.type_params[0].col_offset,
-                    blocker=False,
-                )
+                if NEW_GENERIC_SYNTAX in self.options.enable_incomplete_feature:
+                    explicit_type_params = self.translate_type_params(n.type_params)
+                else:
+                    self.fail(
+                        ErrorMessage(
+                            "PEP 695 generics are not yet supported", code=codes.VALID_TYPE
+                        ),
+                        n.type_params[0].lineno,
+                        n.type_params[0].col_offset,
+                        blocker=False,
+                    )
 
             arg_types = [a.type_annotation for a in args]
             return_type = TypeConverter(
@@ -1004,7 +1021,7 @@ class ASTConverter:
         self.class_and_function_stack.pop()
         self.class_and_function_stack.append("F")
         body = self.as_required_block(n.body, can_strip=True, is_coroutine=is_coroutine)
-        func_def = FuncDef(n.name, args, body, func_type)
+        func_def = FuncDef(n.name, args, body, func_type, explicit_type_params)
         func_def.def_end_line = def_end_line
         func_def.def_end_column = def_end_column
 
@@ -1120,7 +1137,7 @@ class ASTConverter:
         if argument_elide_name(arg.arg):
             pos_only = True
 
-        argument = Argument(Var(arg.arg), arg_type, self.visit(default), kind, pos_only)
+        argument = Argument(Var(arg.arg, arg_type), arg_type, self.visit(default), kind, pos_only)
         argument.set_line(
             arg.lineno,
             arg.col_offset,
@@ -1141,13 +1158,19 @@ class ASTConverter:
         self.class_and_function_stack.append("C")
         keywords = [(kw.arg, self.visit(kw.value)) for kw in n.keywords if kw.arg]
 
+        # Type parameters, if using new syntax for generics (PEP 695)
+        explicit_type_params: list[TypeParam] | None = None
+
         if sys.version_info >= (3, 12) and n.type_params:
-            self.fail(
-                ErrorMessage("PEP 695 generics are not yet supported", code=codes.VALID_TYPE),
-                n.type_params[0].lineno,
-                n.type_params[0].col_offset,
-                blocker=False,
-            )
+            if NEW_GENERIC_SYNTAX in self.options.enable_incomplete_feature:
+                explicit_type_params = self.translate_type_params(n.type_params)
+            else:
+                self.fail(
+                    ErrorMessage("PEP 695 generics are not yet supported", code=codes.VALID_TYPE),
+                    n.type_params[0].lineno,
+                    n.type_params[0].col_offset,
+                    blocker=False,
+                )
 
         cdef = ClassDef(
             n.name,
@@ -1156,6 +1179,7 @@ class ASTConverter:
             self.translate_expr_list(n.bases),
             metaclass=dict(keywords).get("metaclass"),
             keywords=keywords,
+            type_args=explicit_type_params,
         )
         cdef.decorators = self.translate_expr_list(n.decorator_list)
         # Set lines to match the old mypy 0.700 lines, in order to keep
@@ -1170,6 +1194,24 @@ class ASTConverter:
         cdef.end_column = getattr(n, "end_col_offset", None)
         self.class_and_function_stack.pop()
         return cdef
+
+    def translate_type_params(self, type_params: list[Any]) -> list[TypeParam]:
+        explicit_type_params = []
+        for p in type_params:
+            bound = None
+            values: list[Type] = []
+            if isinstance(p, ast_ParamSpec):  # type: ignore[misc]
+                explicit_type_params.append(TypeParam(p.name, PARAM_SPEC_KIND, None, []))
+            elif isinstance(p, ast_TypeVarTuple):  # type: ignore[misc]
+                explicit_type_params.append(TypeParam(p.name, TYPE_VAR_TUPLE_KIND, None, []))
+            else:
+                if isinstance(p.bound, ast3.Tuple):
+                    conv = TypeConverter(self.errors, line=p.lineno)
+                    values = [conv.visit(t) for t in p.bound.elts]
+                elif p.bound is not None:
+                    bound = TypeConverter(self.errors, line=p.lineno).visit(p.bound)
+                explicit_type_params.append(TypeParam(p.name, TYPE_VAR_KIND, bound, values))
+        return explicit_type_params
 
     # Return(expr? value)
     def visit_Return(self, n: ast3.Return) -> ReturnStmt:
@@ -1756,15 +1798,23 @@ class ASTConverter:
         node = OrPattern([self.visit(pattern) for pattern in n.patterns])
         return self.set_line(node, n)
 
-    def visit_TypeAlias(self, n: ast_TypeAlias) -> AssignmentStmt:
-        self.fail(
-            ErrorMessage("PEP 695 type aliases are not yet supported", code=codes.VALID_TYPE),
-            n.lineno,
-            n.col_offset,
-            blocker=False,
-        )
-        node = AssignmentStmt([NameExpr(n.name.id)], self.visit(n.value))
-        return self.set_line(node, n)
+    # TypeAlias(identifier name, type_param* type_params, expr value)
+    def visit_TypeAlias(self, n: ast_TypeAlias) -> TypeAliasStmt | AssignmentStmt:
+        node: TypeAliasStmt | AssignmentStmt
+        if NEW_GENERIC_SYNTAX in self.options.enable_incomplete_feature:
+            type_params = self.translate_type_params(n.type_params)
+            value = self.visit(n.value)
+            node = TypeAliasStmt(self.visit_Name(n.name), type_params, value)
+            return self.set_line(node, n)
+        else:
+            self.fail(
+                ErrorMessage("PEP 695 type aliases are not yet supported", code=codes.VALID_TYPE),
+                n.lineno,
+                n.col_offset,
+                blocker=False,
+            )
+            node = AssignmentStmt([NameExpr(n.name.id)], self.visit(n.value))
+            return self.set_line(node, n)
 
 
 class TypeConverter:
@@ -2012,8 +2062,10 @@ class TypeConverter:
                 sliceval.col_offset = sliceval.lower.col_offset
         else:
             assert isinstance(n.slice, ast3.ExtSlice)
-            dims = copy.deepcopy(n.slice.dims)
+            dims = cast(List[ast3.expr], copy.deepcopy(n.slice.dims))
             for s in dims:
+                # These fields don't actually have a col_offset attribute but we add
+                # it manually.
                 if getattr(s, "col_offset", None) is None:
                     if isinstance(s, ast3.Index):
                         s.col_offset = s.value.col_offset

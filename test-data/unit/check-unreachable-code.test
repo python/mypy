@@ -1494,3 +1494,16 @@ from typing import Generator
 def f() -> Generator[None, None, None]:
     return None
     yield None
+
+[case testLambdaNoReturn]
+# flags: --warn-unreachable
+from typing import Callable, NoReturn
+
+def foo() -> NoReturn:
+    raise
+
+f1 = lambda: foo()
+x = 0  # not unreachable
+
+f2: Callable[[], NoReturn] = lambda: foo()
+x = 0  # not unreachable

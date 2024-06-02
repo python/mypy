@@ -563,8 +563,12 @@ class FancyFormatter:
     This currently only works on Linux and Mac.
     """
 
-    def __init__(self, f_out: IO[str], f_err: IO[str], hide_error_codes: bool) -> None:
+    def __init__(
+        self, f_out: IO[str], f_err: IO[str], hide_error_codes: bool, hide_success: bool = False
+    ) -> None:
         self.hide_error_codes = hide_error_codes
+        self.hide_success = hide_success
+
         # Check if we are in a human-facing terminal on a supported platform.
         if sys.platform not in ("linux", "darwin", "win32", "emscripten"):
             self.dummy_term = True
@@ -793,6 +797,9 @@ class FancyFormatter:
         n_sources is total number of files passed directly on command line,
         i.e. excluding stubs and followed imports.
         """
+        if self.hide_success:
+            return ""
+
         msg = f"Success: no issues found in {n_sources} source file{plural_s(n_sources)}"
         if not use_color:
             return msg

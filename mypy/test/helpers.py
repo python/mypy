@@ -104,7 +104,9 @@ def render_diff_range(
             output.write("\n")
 
 
-def assert_string_arrays_equal(expected: list[str], actual: list[str], msg: str) -> None:
+def assert_string_arrays_equal(
+    expected: list[str], actual: list[str], msg: str, *, traceback: bool = False
+) -> None:
     """Assert that two string arrays are equal.
 
     Display any differences in a human-readable form.
@@ -133,10 +135,10 @@ def assert_string_arrays_equal(expected: list[str], actual: list[str], msg: str)
             show_align_message(expected[first_diff], actual[first_diff])
 
         sys.stderr.write(
-            "Update the test output using --update-data -n0 "
-            "(you can additionally use the -k selector to update only specific tests)\n"
+            "Update the test output using --update-data "
+            "(implies -n0; you can additionally use the -k selector to update only specific tests)\n"
         )
-        pytest.fail(msg, pytrace=False)
+        pytest.fail(msg, pytrace=traceback)
 
 
 def assert_module_equivalence(name: str, expected: Iterable[str], actual: Iterable[str]) -> None:

@@ -18,6 +18,7 @@ from mypy.config_parser import (
     parse_version,
     validate_package_allow_list,
 )
+from mypy.error_formatter import OUTPUT_CHOICES
 from mypy.errorcodes import error_codes
 from mypy.errors import CompileError
 from mypy.find_sources import InvalidSourceList, create_source_list
@@ -72,7 +73,9 @@ def main(
     if clean_exit:
         options.fast_exit = False
 
-    formatter = util.FancyFormatter(stdout, stderr, options.hide_error_codes)
+    formatter = util.FancyFormatter(
+        stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
+    )
 
     if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
         # Since --install-types performs user input, we want regular stdout and stderr.
@@ -156,7 +159,9 @@ def run_build(
     stdout: TextIO,
     stderr: TextIO,
 ) -> tuple[build.BuildResult | None, list[str], bool]:
-    formatter = util.FancyFormatter(stdout, stderr, options.hide_error_codes)
+    formatter = util.FancyFormatter(
+        stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
+    )
 
     messages = []
     messages_by_file = defaultdict(list)
@@ -523,6 +528,14 @@ def process_options(
         version="%(prog)s " + __version__ + f" (compiled: {compilation_status})",
         help="Show program's version number and exit",
         stdout=stdout,
+    )
+
+    general_group.add_argument(
+        "-O",
+        "--output",
+        metavar="FORMAT",
+        help="Set a custom output format",
+        choices=OUTPUT_CHOICES,
     )
 
     config_group = parser.add_argument_group(

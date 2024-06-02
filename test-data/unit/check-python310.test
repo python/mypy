@@ -1220,6 +1220,21 @@ def main() -> None:
         case a:
             reveal_type(a)  # N: Revealed type is "builtins.int"
 
+[case testMatchCapturePatternFromAsyncFunctionReturningUnion-xfail]
+async def func1(arg: bool) -> str | int: ...
+async def func2(arg: bool) -> bytes | int: ...
+
+async def main() -> None:
+    match await func1(True):
+        case str(a):
+            match await func2(True):
+                case c:
+                    reveal_type(a)  # N: Revealed type is "builtins.str"
+                    reveal_type(c)  # N: Revealed type is "Union[builtins.bytes, builtins.int]"
+            reveal_type(a)  # N: Revealed type is "builtins.str"
+        case a:
+            reveal_type(a)  # N: Revealed type is "builtins.int"
+
 -- Guards --
 
 [case testMatchSimplePatternGuard]
@@ -1391,7 +1406,7 @@ def f(value: int) -> int:  # E: Missing return statement
         case 2:
             return 1
         case o:
-            assert_never(o)  # E: Argument 1 to "assert_never" has incompatible type "int"; expected "NoReturn"
+            assert_never(o)  # E: Argument 1 to "assert_never" has incompatible type "int"; expected "Never"
 
 [case testMatchExhaustiveNoError]
 from typing import NoReturn, Union, Literal

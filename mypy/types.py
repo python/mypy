@@ -1169,17 +1169,12 @@ class UninhabitedType(ProperType):
         is_subtype(UninhabitedType, T) = True
     """
 
-    __slots__ = ("ambiguous", "is_noreturn")
+    __slots__ = ("ambiguous",)
 
-    is_noreturn: bool  # Does this come from a NoReturn?  Purely for error messages.
-    # It is important to track whether this is an actual NoReturn type, or just a result
-    # of ambiguous type inference, in the latter case we don't want to mark a branch as
-    # unreachable in binder.
     ambiguous: bool  # Is this a result of inference for a variable without constraints?
 
-    def __init__(self, is_noreturn: bool = False, line: int = -1, column: int = -1) -> None:
+    def __init__(self, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
-        self.is_noreturn = is_noreturn
         self.ambiguous = False
 
     def can_be_true_default(self) -> bool:
@@ -1198,12 +1193,12 @@ class UninhabitedType(ProperType):
         return isinstance(other, UninhabitedType)
 
     def serialize(self) -> JsonDict:
-        return {".class": "UninhabitedType", "is_noreturn": self.is_noreturn}
+        return {".class": "UninhabitedType"}
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> UninhabitedType:
         assert data[".class"] == "UninhabitedType"
-        return UninhabitedType(is_noreturn=data["is_noreturn"])
+        return UninhabitedType()
 
 
 class NoneType(ProperType):
@@ -1322,6 +1317,23 @@ class ExtraAttrs:
     def __repr__(self) -> str:
         return f"ExtraAttrs({self.attrs!r}, {self.immutable!r}, {self.mod_name!r})"
 
+    def serialize(self) -> JsonDict:
+        return {
+            ".class": "ExtraAttrs",
+            "attrs": {k: v.serialize() for k, v in self.attrs.items()},
+            "immutable": list(self.immutable),
+            "mod_name": self.mod_name,
+        }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> ExtraAttrs:
+        assert data[".class"] == "ExtraAttrs"
+        return ExtraAttrs(
+            {k: deserialize_type(v) for k, v in data["attrs"].items()},
+            set(data["immutable"]),
+            data["mod_name"],
+        )
+
 
 class Instance(ProperType):
     """An instance type of form C[T1, ..., Tn].
@@ -1434,6 +1446,7 @@ class Instance(ProperType):
         data["args"] = [arg.serialize() for arg in self.args]
         if self.last_known_value is not None:
             data["last_known_value"] = self.last_known_value.serialize()
+        data["extra_attrs"] = self.extra_attrs.serialize() if self.extra_attrs else None
         return data
 
     @classmethod
@@ -1452,6 +1465,8 @@ class Instance(ProperType):
         inst.type_ref = data["type_ref"]  # Will be fixed up by fixup.py later.
         if "last_known_value" in data:
             inst.last_known_value = LiteralType.deserialize(data["last_known_value"])
+        if data.get("extra_attrs") is not None:
+            inst.extra_attrs = ExtraAttrs.deserialize(data["extra_attrs"])
         return inst
 
     def copy_modified(
@@ -1461,13 +1476,14 @@ class Instance(ProperType):
         last_known_value: Bogus[LiteralType | None] = _dummy,
     ) -> Instance:
         new = Instance(
-            self.type,
-            args if args is not _dummy else self.args,
-            self.line,
-            self.column,
+            typ=self.type,
+            args=args if args is not _dummy else self.args,
+            line=self.line,
+            column=self.column,
             last_known_value=(
                 last_known_value if last_known_value is not _dummy else self.last_known_value
             ),
+            extra_attrs=self.extra_attrs,
         )
         # We intentionally don't copy the extra_attrs here, so they will be erased.
         new.can_be_true = self.can_be_true
