@@ -2728,7 +2728,7 @@ def format_type(
     """
     Convert a type to a relatively short string suitable for error messages.
 
-    `verbosity` is a coarse grained control on the verbosity of the type
+    `verbosity` is a coarse-grained control on the verbosity of the type
 
     This function returns a string appropriate for unmodified use in error
     messages; this means that it will be quoted in most cases.  If
@@ -2744,7 +2744,7 @@ def format_type_bare(
     """
     Convert a type to a relatively short string suitable for error messages.
 
-    `verbosity` is a coarse grained control on the verbosity of the type
+    `verbosity` is a coarse-grained control on the verbosity of the type
     `fullnames` specifies a set of names that should be printed in full
 
     This function will return an unquoted string.  If a caller doesn't need to

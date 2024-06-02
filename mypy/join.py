@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Sequence, overload
 
 import mypy.typeops
+from mypy.expandtype import expand_type
 from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT, VARIANCE_NOT_READY
 from mypy.state import state
@@ -36,6 +37,7 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeType,
+    TypeVarId,
     TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
@@ -718,7 +720,35 @@ def is_similar_callables(t: CallableType, s: CallableType) -> bool:
     )
 
 
+def update_callable_ids(c: CallableType, ids: list[TypeVarId]) -> CallableType:
+    tv_map = {}
+    tvs = []
+    for (tv, new_id) in zip(c.variables, ids):
+        new_tv = tv.copy_modified(id=new_id)
+        tvs.append(new_tv)
+        tv_map[tv.id] = new_tv
+    return expand_type(c, tv_map).copy_modified(variables=tvs)
+
+
+def match_generic_callables(t: CallableType, s: CallableType) -> tuple[CallableType, CallableType]:
+    # The case where we combine/join/meet similar callables, situation where both are generic
+    # requires special care. A more principled solution may involve unify_generic_callable(),
+    # but it would have two problems:
+    #   * This adds risk of infinite recursion: e.g. join -> unification -> solver -> join
+    #   * Using unification is an incorrect thing for meets, as it "widens" the types
+    # Finally, this effectively falls back to an old behaviour before namespaces were added to
+    # type variables, and it worked relatively well.
+    max_len = max(len(t.variables), len(s.variables))
+    min_len = min(len(t.variables), len(s.variables))
+    if min_len == 0:
+        return t, s
+    new_ids = [TypeVarId.new(meta_level=0) for _ in range(max_len)]
+    # Note: this relies on variables being in order they appear in function definition.
+    return update_callable_ids(t, new_ids), update_callable_ids(s, new_ids)
+
+
 def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
+    t, s = match_generic_callables(t, s)
     arg_types: list[Type] = []
     for i in range(len(t.arg_types)):
         arg_types.append(safe_meet(t.arg_types[i], s.arg_types[i]))
@@ -771,6 +801,7 @@ def safe_meet(t: Type, s: Type) -> Type:
 
 
 def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
+    t, s = match_generic_callables(t, s)
     arg_types: list[Type] = []
     for i in range(len(t.arg_types)):
         arg_types.append(safe_join(t.arg_types[i], s.arg_types[i]))

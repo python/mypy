@@ -944,7 +944,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 # When it is the same overload, then the types are equal.
                 return True
 
-            # Ensure each overload in the right side (the supertype) is accounted for.
+            # Ensure each overload on the right side (the supertype) is accounted for.
             previous_match_left_index = -1
             matched_overloads = set()
 
