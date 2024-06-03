@@ -4659,6 +4659,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         is due to slight differences in how type arguments are applied and checked.
         """
         if isinstance(tapp.expr, RefExpr) and isinstance(tapp.expr.node, TypeAlias):
+            if tapp.expr.node.python_3_12_type_alias:
+                return self.named_type("typing.TypeAliasType")
             # Subscription of a (generic) alias in runtime context, expand the alias.
             item = instantiate_type_alias(
                 tapp.expr.node,
@@ -4721,6 +4723,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             x = A()
             y = cast(A, ...)
         """
+        if alias.python_3_12_type_alias:
+            return self.named_type("typing.TypeAliasType")
         if isinstance(alias.target, Instance) and alias.target.invalid:  # type: ignore[misc]
             # An invalid alias, error already has been reported
             return AnyType(TypeOfAny.from_error)

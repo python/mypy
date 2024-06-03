@@ -5368,6 +5368,7 @@ class SemanticAnalyzer(
                 alias_tvars=alias_tvars,
                 no_args=False,
                 eager=eager,
+                python_3_12_type_alias=True,
             )
 
             existing = self.current_symbol_table().get(s.name.name)

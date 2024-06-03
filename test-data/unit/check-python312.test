@@ -1313,3 +1313,23 @@ reveal_type(E[int]().mm(b'x'))  # N: Revealed type is "Tuple[__main__.E[builtins
 reveal_type(F[str]().m())  # N: Revealed type is "__main__.F[builtins.str]"
 reveal_type(F[str]().mm(b'x'))  # N: Revealed type is "Tuple[__main__.F[builtins.str], builtins.bytes]"
 [builtins fixtures/tuple.pyi]
+
+[case testPEP695CallAlias]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+
+class C:
+    def __init__(self, x: str) -> None: ...
+type A = C
+
+class D[T]: pass
+type B[T] = D[T]
+
+A(1)  # E: "TypeAliasType" not callable
+B[int]()  # E: "TypeAliasType" not callable
+
+A2 = C
+B2 = D
+A2(1)  # E: Argument 1 to "C" has incompatible type "int"; expected "str"
+B2[int]()
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
