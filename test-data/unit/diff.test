@@ -1530,3 +1530,58 @@ class C:
 [out]
 __main__.C.get_by_team_and_id
 __main__.Optional
+
+[case testPEP695TypeAlias]
+# flags: --enable-incomplete-feature=NewGenericSyntax --python-version=3.12
+type A = int
+type B = str
+type C = int
+[file next.py]
+# flags: --enable-incomplete-feature=NewGenericSyntax --python-version=3.12
+type A = str
+type B = str
+type C[T] = int
+[out]
+__main__.A
+__main__.C
+
+[case testPEP695GenericFunction]
+# flags: --enable-incomplete-feature=NewGenericSyntax --python-version=3.12
+def f[T](x: T) -> T:
+    return x
+def g[T](x: T, y: T) -> T:
+    return x
+[file next.py]
+# flags: --enable-incomplete-feature=NewGenericSyntax --python-version=3.12
+def f[T](x: T) -> T:
+    return x
+def g[T, S](x: T, y: S) -> S:
+    return y
+[out]
+__main__.g
+
+[case testPEP695GenericClass]
+# flags: --enable-incomplete-feature=NewGenericSyntax --python-version=3.12
+class C[T]:
+    pass
+class D[T]:
+    pass
+class E[T]:
+    pass
+class F[T]:
+    def f(self, x: object) -> T: ...
+[file next.py]
+# flags: --enable-incomplete-feature=NewGenericSyntax --python-version=3.12
+class C[T]:
+    pass
+class D[T: int]:
+    pass
+class E:
+    pass
+class F[T]:
+    def f(self, x: T) -> T: ...
+[out]
+__main__.D
+__main__.E
+__main__.F
+__main__.F.f
