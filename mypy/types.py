@@ -3498,6 +3498,11 @@ class LocationSetter(TypeTraverserVisitor):
         typ.column = self.column
         super().visit_instance(typ)
 
+    def visit_type_alias_type(self, typ: TypeAliasType) -> None:
+        typ.line = self.line
+        typ.column = self.column
+        super().visit_type_alias_type(typ)
+
 
 class HasTypeVars(BoolTypeQuery):
     def __init__(self) -> None:
