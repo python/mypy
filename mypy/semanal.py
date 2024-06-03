@@ -3922,6 +3922,7 @@ class SemanticAnalyzer(
             alias_tvars=alias_tvars,
             no_args=no_args,
             eager=eager,
+            python_3_12_type_alias=pep_695,
         )
         if isinstance(s.rvalue, (IndexExpr, CallExpr, OpExpr)) and (
             not isinstance(rvalue, OpExpr)

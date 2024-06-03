@@ -1324,6 +1324,10 @@ type A = C
 class D[T]: pass
 type B[T] = D[T]
 
+reveal_type(A)  # N: Revealed type is "typing.TypeAliasType"
+reveal_type(B)  # N: Revealed type is "typing.TypeAliasType"
+reveal_type(B[int])  # N: Revealed type is "typing.TypeAliasType"
+
 A(1)  # E: "TypeAliasType" not callable
 B[int]()  # E: "TypeAliasType" not callable
 
