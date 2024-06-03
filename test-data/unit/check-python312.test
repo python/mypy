@@ -1282,3 +1282,34 @@ y: A
 reveal_type(x)  # N: Revealed type is "__main__.C[Any]"
 reveal_type(y)  # N: Revealed type is "__main__.C[Any]"
 z: A[int]  # E: Bad number of arguments for type alias, expected 0, given 1
+
+[case testPEP695SelfType]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+from typing import Self
+
+class C:
+    @classmethod
+    def m[T](cls, x: T) -> tuple[Self, T]:
+        return cls(), x
+
+class D(C):
+    pass
+
+reveal_type(C.m(1))  # N: Revealed type is "Tuple[__main__.C, builtins.int]"
+reveal_type(D.m(1))  # N: Revealed type is "Tuple[__main__.D, builtins.int]"
+
+class E[T]:
+    def m(self) -> Self:
+        return self
+
+    def mm[S](self, x: S) -> tuple[Self, S]:
+        return self, x
+
+class F[T](E[T]):
+    pass
+
+reveal_type(E[int]().m())  # N: Revealed type is "__main__.E[builtins.int]"
+reveal_type(E[int]().mm(b'x'))  # N: Revealed type is "Tuple[__main__.E[builtins.int], builtins.bytes]"
+reveal_type(F[str]().m())  # N: Revealed type is "__main__.F[builtins.str]"
+reveal_type(F[str]().mm(b'x'))  # N: Revealed type is "Tuple[__main__.F[builtins.str], builtins.bytes]"
+[builtins fixtures/tuple.pyi]
