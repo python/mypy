@@ -142,6 +142,7 @@ def analyze_type_alias(
     global_scope: bool = True,
     allowed_alias_tvars: list[TypeVarLikeType] | None = None,
     alias_type_params_names: list[str] | None = None,
+    python_3_12_type_alias: bool = False,
 ) -> tuple[Type, set[str]]:
     """Analyze r.h.s. of a (potential) type alias definition.
 
@@ -160,6 +161,7 @@ def analyze_type_alias(
         prohibit_self_type="type alias target",
         allowed_alias_tvars=allowed_alias_tvars,
         alias_type_params_names=alias_type_params_names,
+        python_3_12_type_alias=python_3_12_type_alias,
     )
     analyzer.in_dynamic_func = in_dynamic_func
     analyzer.global_scope = global_scope
@@ -202,6 +204,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         is_typeshed_stub: bool,
         *,
         defining_alias: bool = False,
+        python_3_12_type_alias: bool = False,
         allow_tuple_literal: bool = False,
         allow_unbound_tvars: bool = False,
         allow_placeholder: bool = False,
@@ -220,6 +223,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.tvar_scope = tvar_scope
         # Are we analysing a type alias definition rvalue?
         self.defining_alias = defining_alias
+        self.python_3_12_type_alias = python_3_12_type_alias
         self.allow_tuple_literal = allow_tuple_literal
         # Positive if we are analyzing arguments of another (outer) type
         self.nesting_level = 0
@@ -364,7 +368,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 and (tvar_def is None or tvar_def not in self.allowed_alias_tvars)
             ):
                 if self.not_declared_in_type_params(t.name):
-                    msg = f'Type variable "{t.name}" is not included in type_params'
+                    if self.python_3_12_type_alias:
+                        msg = message_registry.TYPE_PARAMETERS_SHOULD_BE_DECLARED.format(
+                            f'"{t.name}"'
+                        )
+                    else:
+                        msg = f'Type variable "{t.name}" is not included in type_params'
                 else:
                     msg = f'Can\'t use bound type variable "{t.name}" to define generic alias'
                 self.fail(msg, t, code=codes.VALID_TYPE)
@@ -393,7 +402,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     if self.allow_unbound_tvars:
                         return t
                     if self.defining_alias and self.not_declared_in_type_params(t.name):
-                        msg = f'TypeVarTuple "{t.name}" is not included in type_params'
+                        if self.python_3_12_type_alias:
+                            msg = message_registry.TYPE_PARAMETERS_SHOULD_BE_DECLARED.format(
+                                f'"{t.name}"'
+                            )
+                        else:
+                            msg = f'TypeVarTuple "{t.name}" is not included in type_params'
                     else:
                         msg = f'TypeVarTuple "{t.name}" is unbound'
                     self.fail(msg, t, code=codes.VALID_TYPE)
@@ -1309,11 +1323,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             and self.not_declared_in_type_params(tvar_def.name)
             and tvar_def not in self.allowed_alias_tvars
         ):
-            self.fail(
-                f'ParamSpec "{tvar_def.name}" is not included in type_params',
-                callable_args,
-                code=codes.VALID_TYPE,
-            )
+            if self.python_3_12_type_alias:
+                msg = message_registry.TYPE_PARAMETERS_SHOULD_BE_DECLARED.format(
+                    f'"{tvar_def.name}"'
+                )
+            else:
+                msg = f'ParamSpec "{tvar_def.name}" is not included in type_params'
+            self.fail(msg, callable_args, code=codes.VALID_TYPE)
             return callable_with_ellipsis(
                 AnyType(TypeOfAny.special_form), ret_type=ret_type, fallback=fallback
             )

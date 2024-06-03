@@ -1244,3 +1244,72 @@ class C[T]:
 
 class D[T](C[S]):  # E: All type parameters should be declared ("S" not declared)
     pass
+
+[case testPEP695MixNewAndOldStyleTypeVarTupleAndParamSpec]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+from typing import TypeVarTuple, ParamSpec, Callable
+Ts = TypeVarTuple("Ts")
+P = ParamSpec("P")
+
+def f[T](x: T, f: Callable[P, None]  # E: All type parameters should be declared ("P" not declared)
+        ) -> Callable[P, T]: ...
+def g[T](x: T, f: tuple[*Ts]  # E: All type parameters should be declared ("Ts" not declared)
+        ) -> tuple[T, *Ts]: ...
+[builtins fixtures/tuple.pyi]
+
+[case testPEP695MixNewAndOldStyleGenericsInTypeAlias]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+from typing import TypeVar, ParamSpec, TypeVarTuple, Callable
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+P = ParamSpec("P")
+
+type A = list[T]  # E: All type parameters should be declared ("T" not declared)
+a: A[int]  # E: Bad number of arguments for type alias, expected 0, given 1
+reveal_type(a)   # N: Revealed type is "builtins.list[Any]"
+
+type B = tuple[*Ts]  # E: All type parameters should be declared ("Ts" not declared)
+type C = Callable[P, None]  # E: All type parameters should be declared ("P" not declared)
+[builtins fixtures/tuple.pyi]
+
+[case testPEP695NonGenericAliasToGenericClass]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+class C[T]: pass
+type A = C
+x: C
+y: A
+reveal_type(x)  # N: Revealed type is "__main__.C[Any]"
+reveal_type(y)  # N: Revealed type is "__main__.C[Any]"
+z: A[int]  # E: Bad number of arguments for type alias, expected 0, given 1
+
+[case testPEP695SelfType]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+from typing import Self
+
+class C:
+    @classmethod
+    def m[T](cls, x: T) -> tuple[Self, T]:
+        return cls(), x
+
+class D(C):
+    pass
+
+reveal_type(C.m(1))  # N: Revealed type is "Tuple[__main__.C, builtins.int]"
+reveal_type(D.m(1))  # N: Revealed type is "Tuple[__main__.D, builtins.int]"
+
+class E[T]:
+    def m(self) -> Self:
+        return self
+
+    def mm[S](self, x: S) -> tuple[Self, S]:
+        return self, x
+
+class F[T](E[T]):
+    pass
+
+reveal_type(E[int]().m())  # N: Revealed type is "__main__.E[builtins.int]"
+reveal_type(E[int]().mm(b'x'))  # N: Revealed type is "Tuple[__main__.E[builtins.int], builtins.bytes]"
+reveal_type(F[str]().m())  # N: Revealed type is "__main__.F[builtins.str]"
+reveal_type(F[str]().mm(b'x'))  # N: Revealed type is "Tuple[__main__.F[builtins.str], builtins.bytes]"
+[builtins fixtures/tuple.pyi]
