@@ -1,0 +1,18 @@
+[case testPEP695TypeAliasDep]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+import m
+def g() -> m.C:
+    return m.f()
+[file m.py]
+type C = int
+
+def f() -> int:
+    pass
+[file m.py.2]
+type C = str
+
+def f() -> int:
+    pass
+[out]
+==
+main:4: error: Incompatible return value type (got "int", expected "str")
