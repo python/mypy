@@ -1533,17 +1533,34 @@ __main__.Optional
 
 [case testPEP695TypeAlias]
 # flags: --enable-incomplete-feature=NewGenericSyntax --python-version=3.12
+from typing_extensions import TypeAlias, TypeAliasType
 type A = int
 type B = str
 type C = int
+D = int
+E: TypeAlias = int
+F = TypeAliasType("F", int)
+G = TypeAliasType("G", int)
+
 [file next.py]
 # flags: --enable-incomplete-feature=NewGenericSyntax --python-version=3.12
+from typing_extensions import TypeAlias, TypeAliasType
 type A = str
 type B = str
 type C[T] = int
+type D = int
+type E = int
+type F = int
+type G = str
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 __main__.A
 __main__.C
+__main__.D
+__main__.E
+__main__.G
 
 [case testPEP695GenericFunction]
 # flags: --enable-incomplete-feature=NewGenericSyntax --python-version=3.12
