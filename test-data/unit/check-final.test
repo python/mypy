@@ -302,7 +302,7 @@ class P(Protocol):
 [out]
 
 [case testFinalInProtocol]
-from typing import Protocol, Final, final, ClassVar
+from typing import Final, Protocol, final
 
 class P(Protocol):
     var1 : Final[int] = 0 # E: Protocol member cannot be final
@@ -313,6 +313,19 @@ class P(Protocol):
 
     def meth2(self) -> None:
         var3: Final = 0
+
+    def meth3(self) -> None:
+        class Inner:
+            var3: Final = 0  # OK
+
+            @final
+            def inner(self) -> None: ...
+
+    class Inner:
+        var3: Final = 0  # OK
+
+        @final
+        def inner(self) -> None: ...
 
 [out]
 
