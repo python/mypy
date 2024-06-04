@@ -1434,12 +1434,16 @@ class B(A):
 
 [case testPEP695TypeAliasDeps]
 # flags: --enable-incomplete-feature=NewGenericSyntax --python-version=3.12
-from a import C
+from a import C, E
 type A = C
-type B = A
+type A2 = A
+type A3 = E
 [file a.py]
 class C: pass
+class D: pass
+type E = D
 [out]
 <m.A> -> m
 <a.C> -> m
+<a.E> -> m
 <a> -> m
