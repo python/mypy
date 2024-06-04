@@ -3505,7 +3505,8 @@ class SemanticAnalyzer(
         if self.loop_depth[-1] > 0:
             self.fail("Cannot use Final inside a loop", s)
         if self.type and self.type.is_protocol:
-            self.msg.protocol_members_cant_be_final(s)
+            if self.is_class_scope():
+                self.msg.protocol_members_cant_be_final(s)
         if (
             isinstance(s.rvalue, TempNode)
             and s.rvalue.no_rhs
