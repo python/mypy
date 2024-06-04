@@ -1541,6 +1541,7 @@ D = int
 E: TypeAlias = int
 F = TypeAliasType("F", int)
 G = TypeAliasType("G", int)
+type H = int
 
 [file next.py]
 # flags: --enable-incomplete-feature=NewGenericSyntax --python-version=3.12
@@ -1552,6 +1553,7 @@ type D = int
 type E = int
 type F = int
 type G = str
+type H[T] = int
 
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
@@ -1561,6 +1563,7 @@ __main__.C
 __main__.D
 __main__.E
 __main__.G
+__main__.H
 
 [case testPEP695GenericFunction]
 # flags: --enable-incomplete-feature=NewGenericSyntax --python-version=3.12
