@@ -2806,12 +2806,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             formal_to_actual = map_actuals_to_formals(
                 arg_kinds, arg_names, typ.arg_kinds, typ.arg_names, lambda i: arg_types[i]
             )
-            if typ.is_generic():
-                typ, formal_to_actual = self.adjust_generic_callable_params_mapping(
-                    typ, args, arg_kinds, arg_names, formal_to_actual, context
-                )
-
             with self.msg.filter_errors():
+                if typ.is_generic() and typ.param_spec() is not None:
+                    typ, formal_to_actual = self.adjust_generic_callable_params_mapping(
+                        typ, args, arg_kinds, arg_names, formal_to_actual, context
+                    )
+
                 if self.check_argument_count(
                     typ, arg_types, arg_kinds, arg_names, formal_to_actual, None
                 ):
