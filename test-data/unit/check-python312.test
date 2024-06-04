@@ -1337,3 +1337,26 @@ A2(1)  # E: Argument 1 to "C" has incompatible type "int"; expected "str"
 B2[int]()
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testPEP695IncrementalTypeAliasKinds]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+import a
+
+[file a.py]
+from b import A
+
+[file a.py.2]
+from b import A, B, C
+A()
+B()
+C()
+
+[file b.py]
+from typing_extensions import TypeAlias
+type A = int
+B = int
+C: TypeAlias = int
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+[out2]
+tmp/a.py:2: error: "TypeAliasType" not callable
