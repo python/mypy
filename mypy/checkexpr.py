@@ -1745,7 +1745,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 )
 
         param_spec = callee.param_spec()
-        if param_spec is not None and arg_kinds == [ARG_STAR, ARG_STAR2]:
+        if (
+            param_spec is not None
+            and arg_kinds == [ARG_STAR, ARG_STAR2]
+            and len(formal_to_actual) == 2
+        ):
             arg1 = self.accept(args[0])
             arg2 = self.accept(args[1])
             if (
@@ -2351,6 +2355,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # Positional argument when expecting a keyword argument.
                 self.msg.too_many_positional_arguments(callee, context)
                 ok = False
+            elif callee.param_spec() is not None:
+                if not formal_to_actual[i]:
+                    self.msg.too_few_arguments(callee, context, actual_names)
+                    ok = False
         return ok
 
     def check_for_extra_actual_arguments(

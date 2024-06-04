@@ -2204,3 +2204,54 @@ parametrize(_test, Case(1, b=2), Case(3, b=4))
 parametrize(_test, Case(1, 2), Case(3))
 parametrize(_test, Case(1, 2), Case(3, b=4))
 [builtins fixtures/paramspec.pyi]
+
+[case testRunParamSpecInsufficientArgs]
+from typing_extensions import ParamSpec, Concatenate
+from typing import Callable
+
+_P = ParamSpec("_P")
+
+def run(predicate: Callable[_P, str], *args: _P.args, **kwargs: _P.kwargs) -> None:
+    predicate()  # E: Too few arguments
+    predicate(*args)  # E: Too few arguments
+    predicate(**kwargs)  # E: Too few arguments
+    predicate(*args, **kwargs)
+
+[builtins fixtures/paramspec.pyi]
+
+[case testRunParamSpecConcatenateInsufficientArgs]
+from typing_extensions import ParamSpec, Concatenate
+from typing import Callable
+
+_P = ParamSpec("_P")
+
+def run(predicate: Callable[Concatenate[int, _P], str], *args: _P.args, **kwargs: _P.kwargs) -> None:
+    predicate()  # E: Too few arguments
+    predicate(1)  # E: Too few arguments
+    predicate(1, *args)  # E: Too few arguments
+    predicate(1, *args)  # E: Too few arguments
+    predicate(1, **kwargs)  # E: Too few arguments
+    predicate(*args, **kwargs)  # E: Argument 1 has incompatible type "*_P.args"; expected "int"
+    predicate(1, *args, **kwargs)
+
+[builtins fixtures/paramspec.pyi]
+
+[case testRunParamSpecConcatenateInsufficientArgsInDecorator]
+from typing_extensions import ParamSpec, Concatenate
+from typing import Callable
+
+P = ParamSpec("P")
+
+def decorator(fn: Callable[Concatenate[str, P], None]) -> Callable[P, None]:
+    def inner(*args: P.args, **kwargs: P.kwargs) -> None:
+        fn("value")  # E: Too few arguments
+        fn("value", *args)  # E: Too few arguments
+        fn("value", **kwargs)  # E: Too few arguments
+        fn(*args, **kwargs)  # E: Argument 1 has incompatible type "*P.args"; expected "str"
+        fn("value", *args, **kwargs)
+    return inner
+
+@decorator
+def foo(s: str, s2: str) -> None: ...
+
+[builtins fixtures/paramspec.pyi]
