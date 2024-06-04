@@ -1565,6 +1565,30 @@ __main__.E
 __main__.G
 __main__.H
 
+[case testPEP695TypeAlias2]
+# flags: --enable-incomplete-feature=NewGenericSyntax --python-version=3.12
+type A[T: int] = list[T]
+type B[T: int] = list[T]
+type C[T: (int, str)] = list[T]
+type D[T: (int, str)] = list[T]
+type E[T: int] = list[T]
+type F[T: (int, str)] = list[T]
+
+[file next.py]
+# flags: --enable-incomplete-feature=NewGenericSyntax --python-version=3.12
+type A[T] = list[T]
+type B[T: str] = list[T]
+type C[T: (int, None)] = list[T]
+type D[T] = list[T]
+type E[T: int] = list[T]
+type F[T: (int, str)] = list[T]
+
+[out]
+__main__.A
+__main__.B
+__main__.C
+__main__.D
+
 [case testPEP695GenericFunction]
 # flags: --enable-incomplete-feature=NewGenericSyntax --python-version=3.12
 def f[T](x: T) -> T:
