@@ -1472,6 +1472,12 @@ reveal_type(a)  # N: Revealed type is "m.D"
 [file m.py]
 class D: pass
 
+[case testPEP695RedefineAsTypeAlias3]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+D = list["Forward"]
+type D = int  # E: Name "D" already defined on line 2
+Forward = str
+
 [case testPEP695MultiDefinitionsForTypeAlias]
 # flags: --enable-incomplete-feature=NewGenericSyntax
 if int():

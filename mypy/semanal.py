@@ -5319,7 +5319,10 @@ class SemanticAnalyzer(
 
         try:
             existing = self.current_symbol_table().get(s.name.name)
-            if existing and not isinstance(existing.node, (PlaceholderNode, TypeAlias)):
+            if existing and not (
+                isinstance(existing.node, TypeAlias)
+                or (isinstance(existing.node, PlaceholderNode) and existing.node.line == s.line)
+            ):
                 self.already_defined(s.name.name, s, existing, "Name")
                 return
 
