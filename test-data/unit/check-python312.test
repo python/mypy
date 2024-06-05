@@ -1360,3 +1360,42 @@ C: TypeAlias = int
 [typing fixtures/typing-full.pyi]
 [out2]
 tmp/a.py:2: error: "TypeAliasType" not callable
+
+[case testPEP695TypeAliasBoundAndValueChecking]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+from typing import Any, cast
+
+class C: pass
+class D(C): pass
+
+type A[T: C] = list[T]
+a1: A
+reveal_type(a1)  # N: Revealed type is "builtins.list[Any]"
+a2: A[Any]
+a3: A[C]
+a4: A[D]
+a5: A[object]  # E: Type argument "object" of "A" must be a subtype of "C"
+a6: A[int]  # E: Type argument "int" of "A" must be a subtype of "C"
+
+x1 = cast(A[C], a1)
+x2 = cast(A[None], a1)  # E: Type argument "None" of "A" must be a subtype of "C"
+
+type A2[T: (int, C)] = list[T]
+b1: A2
+reveal_type(b1)  # N: Revealed type is "builtins.list[Any]"
+b2: A2[Any]
+b3: A2[int]
+b4: A2[C]
+b5: A2[D]  # E: Value of type variable "T" of "A2" cannot be "D"
+b6: A2[object]  # E: Value of type variable "T" of "A2" cannot be "object"
+
+list[A2[int]]()
+list[A2[None]]()  # E: Invalid type argument value for "A2"
+
+class N(int): pass
+
+type A3[T: C, S: (int, str)] = T | S
+c1: A3[C, int]
+c2: A3[D, str]
+c3: A3[C, N]  # E: Value of type variable "S" of "A3" cannot be "N"
+c4: A3[int, str]  # E: Type argument "int" of "A3" must be a subtype of "C"
