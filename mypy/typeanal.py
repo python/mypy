@@ -1027,9 +1027,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def visit_parameters(self, t: Parameters) -> Type:
         raise NotImplementedError("ParamSpec literals cannot have unbound TypeVars")
 
-    def visit_callable_type(self, t: CallableType, nested: bool = True) -> Type:
+    def visit_callable_type(
+        self, t: CallableType, nested: bool = True, namespace: str = ""
+    ) -> Type:
         # Every Callable can bind its own type variables, if they're not in the outer scope
-        with self.tvar_scope_frame():
+        # TODO: attach namespace for nested free type variables (these appear in return type only).
+        with self.tvar_scope_frame(namespace=namespace):
             unpacked_kwargs = t.unpack_kwargs
             if self.defining_alias:
                 variables = t.variables
@@ -1432,7 +1435,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 )
             else:
                 # Callable[P, RET] (where P is ParamSpec)
-                with self.tvar_scope_frame():
+                with self.tvar_scope_frame(namespace=""):
                     # Temporarily bind ParamSpecs to allow code like this:
                     #     my_fun: Callable[Q, Foo[Q]]
                     # We usually do this later in visit_callable_type(), but the analysis
@@ -1648,9 +1651,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.note_func(msg, ctx, code=code)
 
     @contextmanager
-    def tvar_scope_frame(self) -> Iterator[None]:
+    def tvar_scope_frame(self, namespace: str) -> Iterator[None]:
         old_scope = self.tvar_scope
-        self.tvar_scope = self.tvar_scope.method_frame()
+        self.tvar_scope = self.tvar_scope.method_frame(namespace)
         yield
         self.tvar_scope = old_scope
 
@@ -1795,7 +1798,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return TypeVarType(
                 name=var_def.name,
                 fullname=var_def.fullname,
-                id=var_def.id.raw_id,
+                id=var_def.id,
                 values=self.anal_array(var_def.values),
                 upper_bound=var_def.upper_bound.accept(self),
                 default=var_def.default.accept(self),

@@ -881,7 +881,8 @@ y: B
 z: C
 reveal_type(x)  # N: Revealed type is "Any"
 reveal_type(y)  # N: Revealed type is "Any"
-reveal_type(z)  # N: Revealed type is "Tuple[builtins.int, Unpack[Any]]"
+reveal_type(z)  # N: Revealed type is "Tuple[builtins.int, Unpack[builtins.tuple[Any, ...]]]"
+
 [builtins fixtures/tuple.pyi]
 
 [case testInferenceAgainstGenericVariadicWithBadType]

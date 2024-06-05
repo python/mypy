@@ -988,7 +988,7 @@ a = k2
 if int():
     a = k2
 if int():
-    a = k1 # E: Incompatible types in assignment (expression has type "Callable[[int, List[T]], List[Union[T, int]]]", variable has type "Callable[[S, List[T]], List[Union[T, int]]]")
+    a = k1 # E: Incompatible types in assignment (expression has type "Callable[[int, List[T@k1]], List[Union[T@k1, int]]]", variable has type "Callable[[S, List[T@k2]], List[Union[T@k2, int]]]")
 b = k1
 if int():
     b = k1

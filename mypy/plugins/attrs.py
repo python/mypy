@@ -69,6 +69,7 @@ from mypy.types import (
     Type,
     TypeOfAny,
     TypeType,
+    TypeVarId,
     TypeVarType,
     UninhabitedType,
     UnionType,
@@ -807,25 +808,25 @@ def _add_order(ctx: mypy.plugin.ClassDefContext, adder: MethodAdder) -> None:
     #    AT = TypeVar('AT')
     #    def __lt__(self: AT, other: AT) -> bool
     # This way comparisons with subclasses will work correctly.
+    fullname = f"{ctx.cls.info.fullname}.{SELF_TVAR_NAME}"
     tvd = TypeVarType(
         SELF_TVAR_NAME,
-        ctx.cls.info.fullname + "." + SELF_TVAR_NAME,
-        id=-1,
+        fullname,
+        # Namespace is patched per-method below.
+        id=TypeVarId(-1, namespace=""),
         values=[],
         upper_bound=object_type,
         default=AnyType(TypeOfAny.from_omitted_generics),
     )
     self_tvar_expr = TypeVarExpr(
-        SELF_TVAR_NAME,
-        ctx.cls.info.fullname + "." + SELF_TVAR_NAME,
-        [],
-        object_type,
-        AnyType(TypeOfAny.from_omitted_generics),
+        SELF_TVAR_NAME, fullname, [], object_type, AnyType(TypeOfAny.from_omitted_generics)
     )
     ctx.cls.info.names[SELF_TVAR_NAME] = SymbolTableNode(MDEF, self_tvar_expr)
 
-    args = [Argument(Var("other", tvd), tvd, None, ARG_POS)]
     for method in ["__lt__", "__le__", "__gt__", "__ge__"]:
+        namespace = f"{ctx.cls.info.fullname}.{method}"
+        tvd = tvd.copy_modified(id=TypeVarId(tvd.id.raw_id, namespace=namespace))
+        args = [Argument(Var("other", tvd), tvd, None, ARG_POS)]
         adder.add_method(method, args, bool_type, self_type=tvd, tvd=tvd)
 
 

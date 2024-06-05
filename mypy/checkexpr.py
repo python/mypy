@@ -167,6 +167,7 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeType,
+    TypeVarId,
     TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
@@ -4933,7 +4934,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         tv = TypeVarType(
             "T",
             "T",
-            id=-1,
+            id=TypeVarId(-1, namespace="<lst>"),
             values=[],
             upper_bound=self.object_type(),
             default=AnyType(TypeOfAny.from_omitted_generics),
@@ -5164,7 +5165,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         kt = TypeVarType(
             "KT",
             "KT",
-            id=-1,
+            id=TypeVarId(-1, namespace="<dict>"),
             values=[],
             upper_bound=self.object_type(),
             default=AnyType(TypeOfAny.from_omitted_generics),
@@ -5172,7 +5173,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         vt = TypeVarType(
             "VT",
             "VT",
-            id=-2,
+            id=TypeVarId(-2, namespace="<dict>"),
             values=[],
             upper_bound=self.object_type(),
             default=AnyType(TypeOfAny.from_omitted_generics),
@@ -5564,7 +5565,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             tv = TypeVarType(
                 "T",
                 "T",
-                id=-1,
+                id=TypeVarId(-1, namespace="<genexp>"),
                 values=[],
                 upper_bound=self.object_type(),
                 default=AnyType(TypeOfAny.from_omitted_generics),
@@ -5591,7 +5592,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             ktdef = TypeVarType(
                 "KT",
                 "KT",
-                id=-1,
+                id=TypeVarId(-1, namespace="<dict>"),
                 values=[],
                 upper_bound=self.object_type(),
                 default=AnyType(TypeOfAny.from_omitted_generics),
@@ -5599,7 +5600,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             vtdef = TypeVarType(
                 "VT",
                 "VT",
-                id=-2,
+                id=TypeVarId(-2, namespace="<dict>"),
                 values=[],
                 upper_bound=self.object_type(),
                 default=AnyType(TypeOfAny.from_omitted_generics),

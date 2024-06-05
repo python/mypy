@@ -316,7 +316,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         new_unpack: Type
         if isinstance(var_arg_type, Instance):
             # we have something like Unpack[Tuple[Any, ...]]
-            new_unpack = var_arg
+            new_unpack = UnpackType(var_arg.type.accept(self))
         elif isinstance(var_arg_type, TupleType):
             # We have something like Unpack[Tuple[Unpack[Ts], X1, X2]]
             expanded_tuple = var_arg_type.accept(self)

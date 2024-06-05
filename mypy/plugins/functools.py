@@ -7,7 +7,7 @@ from typing import Final, NamedTuple
 import mypy.checker
 import mypy.plugin
 from mypy.argmap import map_actuals_to_formals
-from mypy.nodes import ARG_POS, ARG_STAR2, ArgKind, Argument, FuncItem, Var
+from mypy.nodes import ARG_POS, ARG_STAR2, ArgKind, Argument, CallExpr, FuncItem, Var
 from mypy.plugins.common import add_method_to_class
 from mypy.types import (
     AnyType,
@@ -151,12 +151,22 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
     actual_arg_names = [a for param in ctx.arg_names[1:] for a in param]
     actual_types = [a for param in ctx.arg_types[1:] for a in param]
 
+    # Create a valid context for various ad-hoc inspections in check_call().
+    call_expr = CallExpr(
+        callee=ctx.args[0][0],
+        args=actual_args,
+        arg_kinds=actual_arg_kinds,
+        arg_names=actual_arg_names,
+        analyzed=ctx.context.analyzed if isinstance(ctx.context, CallExpr) else None,
+    )
+    call_expr.set_line(ctx.context)
+
     _, bound = ctx.api.expr_checker.check_call(
         callee=defaulted,
         args=actual_args,
         arg_kinds=actual_arg_kinds,
         arg_names=actual_arg_names,
-        context=defaulted,
+        context=call_expr,
     )
     bound = get_proper_type(bound)
     if not isinstance(bound, CallableType):

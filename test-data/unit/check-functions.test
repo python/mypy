@@ -3240,3 +3240,65 @@ class Base:
 class Derived(Base):
     def foo(self):  # E: Cannot override final attribute "foo" (previously declared in base class "Base")
         pass
+
+[case testTypeVarIdClashPolymorphic]
+from typing import Callable, Generic, TypeVar
+
+A = TypeVar("A")
+B = TypeVar("B")
+
+class Gen(Generic[A]): ...
+
+def id_(x: A) -> A: ...
+def f(x: Gen[A], y: A) -> Gen[Gen[A]]: ...
+def g(x: Gen[A], id_: Callable[[B], B], f: Callable[[A, B], Gen[A]]) -> A: ...
+
+def test(x: Gen[Gen[A]]) -> Gen[A]:
+    return g(x, id_, f)  # Technically OK
+
+x: Gen[Gen[int]]
+reveal_type(g(x, id_, f))  # N: Revealed type is "__main__.Gen[builtins.int]"
+
+def h(x: A, y: A) -> A: ...
+def gn(id_: Callable[[B], B], step: Callable[[A, B], A]) -> A: ...
+
+def fn(x: A) -> A:
+    return gn(id_, h)  # Technically OK
+
+[case testTypeVarIdsNested]
+from typing import Callable, TypeVar
+
+A = TypeVar("A")
+B = TypeVar("B")
+
+def f(x: Callable[[A], A]) -> Callable[[B], B]:
+    def g(x: B) -> B: ...
+    return g
+
+reveal_type(f(f))  # N: Revealed type is "def [B] (B`1) -> B`1"
+reveal_type(f(f)(f))  # N: Revealed type is "def [A] (x: def (A`-1) -> A`-1) -> def [B] (B`-2) -> B`-2"
+
+[case testGenericUnionFunctionJoin]
+from typing import TypeVar, Union
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+def f(x: T, y: S) -> Union[T, S]: ...
+def g(x: T, y: S) -> Union[T, S]: ...
+
+x = [f, g]
+reveal_type(x)  # N: Revealed type is "builtins.list[def [T, S] (x: T`4, y: S`5) -> Union[T`4, S`5]]"
+[builtins fixtures/list.pyi]
+
+[case testTypeVariableClashErrorMessage]
+from typing import TypeVar
+
+T = TypeVar("T")
+
+class C:  # Note: Generic[T] missing
+    def bad_idea(self, x: T) -> None:
+        self.x = x
+
+    def nope(self, x: T) -> None:
+        self.x = x  # E: Incompatible types in assignment (expression has type "T@nope", variable has type "T@bad_idea")
