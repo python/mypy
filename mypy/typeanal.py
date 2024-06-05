@@ -1030,7 +1030,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def visit_callable_type(self, t: CallableType, nested: bool = True) -> Type:
         # Every Callable can bind its own type variables, if they're not in the outer scope
         with self.tvar_scope_frame():
-            unpacked_kwargs = False
+            unpacked_kwargs = t.unpack_kwargs
             if self.defining_alias:
                 variables = t.variables
             else:
