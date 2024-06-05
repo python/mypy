@@ -2424,7 +2424,11 @@ class MessageBuilder:
 
     def type_parameters_should_be_declared(self, undeclared: list[str], context: Context) -> None:
         names = ", ".join('"' + n + '"' for n in undeclared)
-        self.fail(f"All type parameters should be declared ({names} not declared)", context)
+        self.fail(
+            message_registry.TYPE_PARAMETERS_SHOULD_BE_DECLARED.format(names),
+            context,
+            code=codes.VALID_TYPE,
+        )
 
 
 def quote_type_string(type_string: str) -> str:

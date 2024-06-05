@@ -246,7 +246,6 @@ class TraverserVisitor(NodeVisitor[None]):
 
     def visit_type_alias_stmt(self, o: TypeAliasStmt) -> None:
         o.name.accept(self)
-        # TODO: params
         o.value.accept(self)
 
     def visit_member_expr(self, o: MemberExpr) -> None:

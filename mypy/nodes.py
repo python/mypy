@@ -3578,6 +3578,7 @@ class TypeAlias(SymbolNode):
         "_is_recursive",
         "eager",
         "tvar_tuple_index",
+        "python_3_12_type_alias",
     )
 
     __match_args__ = ("name", "target", "alias_tvars", "no_args")
@@ -3593,6 +3594,7 @@ class TypeAlias(SymbolNode):
         no_args: bool = False,
         normalized: bool = False,
         eager: bool = False,
+        python_3_12_type_alias: bool = False,
     ) -> None:
         self._fullname = fullname
         self.target = target
@@ -3605,6 +3607,7 @@ class TypeAlias(SymbolNode):
         # it is the cached value.
         self._is_recursive: bool | None = None
         self.eager = eager
+        self.python_3_12_type_alias = python_3_12_type_alias
         self.tvar_tuple_index = None
         for i, t in enumerate(alias_tvars):
             if isinstance(t, mypy.types.TypeVarTupleType):
@@ -3675,6 +3678,7 @@ class TypeAlias(SymbolNode):
             "normalized": self.normalized,
             "line": self.line,
             "column": self.column,
+            "python_3_12_type_alias": self.python_3_12_type_alias,
         }
         return data
 
@@ -3692,6 +3696,7 @@ class TypeAlias(SymbolNode):
         normalized = data["normalized"]
         line = data["line"]
         column = data["column"]
+        python_3_12_type_alias = data["python_3_12_type_alias"]
         return cls(
             target,
             fullname,
@@ -3700,6 +3705,7 @@ class TypeAlias(SymbolNode):
             alias_tvars=cast(List[mypy.types.TypeVarLikeType], alias_tvars),
             no_args=no_args,
             normalized=normalized,
+            python_3_12_type_alias=python_3_12_type_alias,
         )
 
 

@@ -4660,6 +4660,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         is due to slight differences in how type arguments are applied and checked.
         """
         if isinstance(tapp.expr, RefExpr) and isinstance(tapp.expr.node, TypeAlias):
+            if tapp.expr.node.python_3_12_type_alias:
+                return self.named_type("typing.TypeAliasType")
             # Subscription of a (generic) alias in runtime context, expand the alias.
             item = instantiate_type_alias(
                 tapp.expr.node,
@@ -4722,6 +4724,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             x = A()
             y = cast(A, ...)
         """
+        if alias.python_3_12_type_alias:
+            return self.named_type("typing.TypeAliasType")
         if isinstance(alias.target, Instance) and alias.target.invalid:  # type: ignore[misc]
             # An invalid alias, error already has been reported
             return AnyType(TypeOfAny.from_error)
@@ -4837,8 +4841,21 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 len(args) < min_arg_count or len(args) > len(tp.variables)
             ) and not has_type_var_tuple:
                 if tp.is_type_obj() and tp.type_object().fullname == "builtins.tuple":
-                    # TODO: Specialize the callable for the type arguments
-                    return tp
+                    # e.g. expression tuple[X, Y]
+                    # - want the type of the expression i.e. a function with that as its return type
+                    # - tp is type of tuple (note it won't have params as we are only called
+                    #   with generic callable type)
+                    # - tuple[X, Y]() takes a single arg that is a tuple containing an X and a Y
+                    return CallableType(
+                        [TupleType(list(args), self.chk.named_type("tuple"))],
+                        [ARG_POS],
+                        [None],
+                        TupleType(list(args), self.chk.named_type("tuple")),
+                        tp.fallback,
+                        name="tuple",
+                        definition=tp.definition,
+                        bound_args=tp.bound_args,
+                    )
                 self.msg.incompatible_type_application(
                     min_arg_count, len(tp.variables), len(args), ctx
                 )

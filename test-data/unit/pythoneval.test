@@ -1834,7 +1834,6 @@ RHSAlias3: type = tuple[int, ...]
 WrongTypeElement = str | tuple[float, 1]  # Error
 WrongEllipsis = tuple[float, float, ...] | str  # Error
 
-# TODO: This should produce a fixed-length tuple
 reveal_type(tuple[int, str]((1, "x")))
 [out]
 _testTupleWithDifferentArgsPy310.py:15: note: Revealed type is "Union[builtins.str, Tuple[builtins.float, builtins.float, builtins.str]]"
@@ -1845,7 +1844,7 @@ _testTupleWithDifferentArgsPy310.py:19: note: Revealed type is "builtins.tuple[b
 _testTupleWithDifferentArgsPy310.py:20: note: Revealed type is "builtins.list[Tuple[builtins.int, builtins.str]]"
 _testTupleWithDifferentArgsPy310.py:26: error: Invalid type: try using Literal[1] instead?
 _testTupleWithDifferentArgsPy310.py:27: error: Unexpected "..."
-_testTupleWithDifferentArgsPy310.py:30: note: Revealed type is "builtins.tuple[builtins.object, ...]"
+_testTupleWithDifferentArgsPy310.py:29: note: Revealed type is "Tuple[builtins.int, builtins.str]"
 
 [case testEnumIterMetaInference]
 import socket
