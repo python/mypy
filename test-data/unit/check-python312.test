@@ -1453,3 +1453,30 @@ class E[T]:
 reveal_type(E[str]().a)  # N: Revealed type is "builtins.list[Any]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testPEP695RedefineAsTypeAlias1]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+class C: pass
+type C = int  # E: Name "C" already defined on line 2
+
+A = 0
+type A = str  # E: Name "A" already defined on line 5
+reveal_type(A)  # N: Revealed type is "builtins.int"
+
+[case testPEP695RedefineAsTypeAlias2]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+from m import D
+type D = int  # E: Name "D" already defined (possibly by an import)
+a: D
+reveal_type(a)  # N: Revealed type is "m.D"
+[file m.py]
+class D: pass
+
+[case testPEP695MultiDefinitionsForTypeAlias]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+if int():
+    type A[T] = list[T]
+else:
+    type A[T] = str  # E: Name "A" already defined on line 3
+a: A[int]
+reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"

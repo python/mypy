@@ -5318,6 +5318,11 @@ class SemanticAnalyzer(
         all_type_params_names = [p.name for p in s.type_args]
 
         try:
+            existing = self.current_symbol_table().get(s.name.name)
+            if existing and not isinstance(existing.node, (PlaceholderNode, TypeAlias)):
+                self.already_defined(s.name.name, s, existing, "Name")
+                return
+
             tag = self.track_incomplete_refs()
             res, alias_tvars, depends_on, qualified_tvars, empty_tuple_index = self.analyze_alias(
                 s.name.name,
@@ -5373,7 +5378,6 @@ class SemanticAnalyzer(
                 python_3_12_type_alias=True,
             )
 
-            existing = self.current_symbol_table().get(s.name.name)
             if (
                 existing
                 and isinstance(existing.node, (PlaceholderNode, TypeAlias))
