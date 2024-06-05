@@ -9,7 +9,7 @@ class int:
 class Medal(int, Enum):
     prize: str = nonmember("nothing")
 
-    def __new__(cls, value: int, prize: str | None) -> Medal:
+    def __new__(cls, value: int, prize: str | None = None) -> Medal:
         enum = int.__new__(cls, value)
         enum._value_ = value
         if prize is not None:
@@ -18,7 +18,7 @@ class Medal(int, Enum):
 
     gold = (1, 'cash prize')
     silver = (2, 'sponsorship')
-    bronze = (3, 'nothing')
+    bronze = (3,)
 
 m: Medal
 
