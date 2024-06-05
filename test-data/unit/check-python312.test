@@ -1477,6 +1477,8 @@ class D: pass
 D = list["Forward"]
 type D = int  # E: Name "D" already defined on line 2
 Forward = str
+x: D
+reveal_type(x)  # N: Revealed type is "builtins.list[builtins.str]"
 
 [case testPEP695MultiDefinitionsForTypeAlias]
 # flags: --enable-incomplete-feature=NewGenericSyntax
@@ -1484,5 +1486,6 @@ if int():
     type A[T] = list[T]
 else:
     type A[T] = str  # E: Name "A" already defined on line 3
+x: T  # E: Name "T" is not defined
 a: A[int]
 reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
