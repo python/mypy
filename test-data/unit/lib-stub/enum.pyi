@@ -48,3 +48,6 @@ class auto(IntFlag):
 # It is python-3.11+ only:
 class StrEnum(str, Enum):
     def __new__(cls: Type[_T], value: str | _T) -> _T: ...
+
+
+def nonmember(value: _T) -> _T: pass
