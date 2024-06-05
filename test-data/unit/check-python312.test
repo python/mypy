@@ -1399,3 +1399,57 @@ c1: A3[C, int]
 c2: A3[D, str]
 c3: A3[C, N]  # E: Value of type variable "S" of "A3" cannot be "N"
 c4: A3[int, str]  # E: Type argument "int" of "A3" must be a subtype of "C"
+
+[case testPEP695TypeAliasInClassBodyOrFunction]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+class C:
+    type A = int
+    type B[T] = list[T] | None
+    a: A
+    b: B[str]
+
+    def method(self) -> None:
+        v: C.A
+        reveal_type(v)  # N: Revealed type is "builtins.int"
+
+reveal_type(C.a)  # N: Revealed type is "builtins.int"
+reveal_type(C.b)  # N: Revealed type is "Union[builtins.list[builtins.str], None]"
+
+C.A = str  # E: Incompatible types in assignment (expression has type "Type[str]", variable has type "TypeAliasType")
+
+x: C.A
+y: C.B[int]
+reveal_type(x)  # N: Revealed type is "builtins.int"
+reveal_type(y)  # N: Revealed type is "Union[builtins.list[builtins.int], None]"
+
+def f() -> None:
+    type A = int
+    type B[T] = list[T] | None
+    a: A
+    reveal_type(a)  # N: Revealed type is "builtins.int"
+
+    def g() -> None:
+        b: B[int]
+        reveal_type(b)  # N: Revealed type is "Union[builtins.list[builtins.int], None]"
+
+class D:
+    def __init__(self) -> None:
+        type A = int
+        self.a: A = 0
+        type B[T] = list[T]
+        self.b: B[int] = [1]
+
+reveal_type(D().a)  # N: Revealed type is "builtins.int"
+reveal_type(D().b)  # N: Revealed type is "builtins.list[builtins.int]"
+
+class E[T]:
+    type X = list[T]  # E: All type parameters should be declared ("T" not declared)
+
+    def __init__(self) -> None:
+        type A = list[T]  # E: All type parameters should be declared ("T" not declared)
+        self.a: A
+
+reveal_type(E[str]().a)  # N: Revealed type is "builtins.list[Any]"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
