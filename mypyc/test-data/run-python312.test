@@ -1,0 +1,39 @@
+[case testPEP695Basics]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+from typing import Any, TypeAliasType
+
+def id[T](x: T) -> T:
+    return x
+
+def test_call_generic_function() -> None:
+    assert id(2) == 2
+    assert id('x') == 'x'
+
+class C[T]:
+    x: T
+
+    def __init__(self, x: T) -> None:
+        self.x = x
+
+def test_generic_class() -> None:
+    c = C(5)
+    assert c.x == 5
+    c2 = C[str]('x')
+    assert c2.x == 'x'
+
+def x_test_generic_class_via_any() -> None:
+    c_any: Any = C
+    c3 = c_any(2)
+    assert c3.x == 2
+    c4 = c_any[str]('y')
+    assert c4.x == 'y'
+
+class D: pass
+
+#type A = D
+
+#def test_simple_type_alias() -> None:
+#    assert isinstance(A, TypeAliasType)
+#    assert str(A) == "A"
+
+[typing fixtures/typing-full.pyi]
