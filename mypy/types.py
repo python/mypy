@@ -2754,6 +2754,38 @@ class LiteralType(ProperType):
     def can_be_true_default(self) -> bool:
         return bool(self.value)
 
+    # TODO: Check whether it's faster to override this property
+    #       so `true_only`/`false_only` have to determine the
+    #       method return type less frequently, or to override
+    #       the two methods above instead and just take the hit
+    #       of the static truthyness being recalculated more
+    #       often than necessary
+    @property
+    def can_be_true(self) -> bool:
+        if self.fallback.type.is_enum:
+            return self.fallback.can_be_true
+        return super().can_be_true
+
+    @can_be_true.setter
+    def can_be_true(self, v: bool) -> None:
+        if self.fallback.type.is_enum:
+            self.fallback.can_be_true = v
+        else:
+            self._can_be_true = v
+
+    @property
+    def can_be_false(self) -> bool:
+        if self.fallback.type.is_enum:
+            return self.fallback.can_be_false
+        return super().can_be_false
+
+    @can_be_false.setter
+    def can_be_false(self, v: bool) -> None:
+        if self.fallback.type.is_enum:
+            self.fallback.can_be_false = v
+        else:
+            self._can_be_false = v
+
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_literal_type(self)
 

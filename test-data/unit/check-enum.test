@@ -175,6 +175,31 @@ def infer_truth(truth: Truth) -> None:
     reveal_type(truth.value) # N: Revealed type is "builtins.bool"
 [builtins fixtures/bool.pyi]
 
+[case testEnumTruthyness]
+# mypy: warn-unreachable
+import enum
+class E(enum.Enum):
+    x = 0
+if not E.x:
+    "noop"
+[builtins fixtures/tuple.pyi]
+[out]
+main:6: error: Statement is unreachable
+
+[case testEnumTruthynessCustomDunderBool]
+# mypy: warn-unreachable
+import enum
+from typing_extensions import Literal
+class E(enum.Enum):
+    x = 0
+    def __bool__(self) -> Literal[False]:
+        return False
+if E.x:
+    "noop"
+[builtins fixtures/tuple.pyi]
+[out]
+main:9: error: Statement is unreachable
+
 [case testEnumUnique]
 import enum
 @enum.unique
