@@ -1185,8 +1185,12 @@ class ASTConverter:
                 explicit_type_params.append(TypeParam(p.name, TYPE_VAR_TUPLE_KIND, None, []))
             else:
                 if isinstance(p.bound, ast3.Tuple):
-                    conv = TypeConverter(self.errors, line=p.lineno)
-                    values = [conv.visit(t) for t in p.bound.elts]
+                    if len(p.bound.elts) < 2:
+                        self.fail(message_registry.TYPE_VAR_TOO_FEW_CONSTRAINED_TYPES,
+                                  p.lineno, p.col_offset, blocker=False)
+                    else:
+                        conv = TypeConverter(self.errors, line=p.lineno)
+                        values = [conv.visit(t) for t in p.bound.elts]
                 elif p.bound is not None:
                     bound = TypeConverter(self.errors, line=p.lineno).visit(p.bound)
                 explicit_type_params.append(TypeParam(p.name, TYPE_VAR_KIND, bound, values))

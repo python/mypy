@@ -330,3 +330,6 @@ ARG_NAME_EXPECTED_STRING_LITERAL: Final = ErrorMessage(
 NARROWED_TYPE_NOT_SUBTYPE: Final = ErrorMessage(
     "Narrowed type {} is not a subtype of input type {}", codes.NARROWED_TYPE_NOT_SUBTYPE
 )
+TYPE_VAR_TOO_FEW_CONSTRAINED_TYPES: Final = ErrorMessage(
+    "Type variable must have at least two constrained types", codes.MISC
+)

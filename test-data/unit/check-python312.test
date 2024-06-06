@@ -1494,3 +1494,13 @@ reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
 # flags: --enable-incomplete-feature=NewGenericSyntax
 def f[T](x: foobar, y: T) -> T: ...  # E: Name "foobar" is not defined
 reveal_type(f)  # N: Revealed type is "def [T] (x: Any, y: T`-1) -> T`-1"
+
+[case testPEP695WrongNumberOfConstrainedTypes]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+type A[T: ()] = list[T]  # E: Type variable must have at least two constrained types
+a: A[int]
+reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
+
+type B[T: (int,)] = list[T]  # E: Type variable must have at least two constrained types
+b: B[str]
+reveal_type(b)  # N: Revealed type is "builtins.list[builtins.str]"
