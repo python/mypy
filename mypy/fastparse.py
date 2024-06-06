@@ -1186,8 +1186,12 @@ class ASTConverter:
             else:
                 if isinstance(p.bound, ast3.Tuple):
                     if len(p.bound.elts) < 2:
-                        self.fail(message_registry.TYPE_VAR_TOO_FEW_CONSTRAINED_TYPES,
-                                  p.lineno, p.col_offset, blocker=False)
+                        self.fail(
+                            message_registry.TYPE_VAR_TOO_FEW_CONSTRAINED_TYPES,
+                            p.lineno,
+                            p.col_offset,
+                            blocker=False,
+                        )
                     else:
                         conv = TypeConverter(self.errors, line=p.lineno)
                         values = [conv.visit(t) for t in p.bound.elts]
