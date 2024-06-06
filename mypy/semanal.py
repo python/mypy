@@ -909,7 +909,7 @@ class SemanticAnalyzer(
                 # Don't store not ready types (including placeholders).
                 if self.found_incomplete_ref(tag) or has_placeholder(result):
                     self.defer(defn)
-                    # TODO: pop type args
+                    self.pop_type_args(defn.type_args)
                     return
                 assert isinstance(result, ProperType)
                 if isinstance(result, CallableType):
