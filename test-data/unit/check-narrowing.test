@@ -2212,3 +2212,13 @@ else:
     reveal_type(x)  # N: Revealed type is "Union[Literal['a'], Literal['b']]"
 [builtins fixtures/narrowing.pyi]
 [typing fixtures/typing-medium.pyi]
+
+[case testTypeNarrowingUnionStringFloat]
+from typing import Union
+def foobar(foo: Union[str, float]):
+    if foo in ['a', 'b']:
+        reveal_type(foo)  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(foo)  # N: Revealed type is "Union[builtins.str, builtins.float]"
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]
