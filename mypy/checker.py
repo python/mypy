@@ -5946,11 +5946,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if_map, else_map = {}, {}
 
                     if left_index in narrowable_operand_index_to_hash:
-                        # We only try and narrow away 'None' for now
-                        if is_overlapping_none(item_type):
-                            collection_item_type = get_proper_type(
-                                builtin_item_type(iterable_type)
-                            )
+                        collection_item_type = get_proper_type(
+                            builtin_item_type(iterable_type)
+                        )
+                        # Narrow if the collection is a subtype
+                        if (
+                            collection_item_type is not None 
+                            and is_subtype(collection_item_type, item_type)
+                        ):
+                            if_map[operands[left_index]] = collection_item_type
+                        # Try and narrow away 'None'
+                        elif is_overlapping_none(item_type):
                             if (
                                 collection_item_type is not None
                                 and not is_overlapping_none(collection_item_type)
