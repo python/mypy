@@ -465,17 +465,22 @@ def make_generic_base_class(builder: IRBuilder, type_args: list[TypeParam], line
     """Construct Generic[...] base class object for a new-style generic class (Python 3.12)."""
     mod = builder.call_c(import_op, [builder.load_str("_typing")], line)
     tvs = []
+    type_var_imported: Value | None = None
     for type_param in type_args:
         unpack = False
         if type_param.kind == TYPE_VAR_KIND:
-            name = "TypeVar"
+            if type_var_imported:
+                # Reuse previously imported value as a minor optimization
+                tvt = type_var_imported
+            else:
+                tvt = builder.py_get_attr(mod, "TypeVar", line)
+                type_var_imported = tvt
         elif type_param.kind == TYPE_VAR_TUPLE_KIND:
-            name = "TypeVarTuple"
+            tvt = builder.py_get_attr(mod, "TypeVarTuple", line)
             unpack = True
         else:
             assert type_param.kind == PARAM_SPEC_KIND
-            name = "ParamSpec"
-        tvt = builder.py_get_attr(mod, name, line)
+            tvt = builder.py_get_attr(mod, "ParamSpec", line)
         tv = builder.py_call(tvt, [builder.load_str(type_param.name)], line)
         if unpack:
             # Evaluate *Ts for a TypeVarTuple
