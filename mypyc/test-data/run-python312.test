@@ -2,6 +2,8 @@
 # flags: --enable-incomplete-feature=NewGenericSyntax
 from typing import Any, TypeAliasType
 
+from testutil import assertRaises
+
 def id[T](x: T) -> T:
     return x
 
@@ -47,4 +49,35 @@ def test_generic_class_via_any() -> None:
     d2 = d_any[int, str](2, 'y')
     assert d2.x == 2
     assert d2.y == 'y'
+
+    with assertRaises(TypeError):
+        c_any[int, str]
+    with assertRaises(TypeError):
+        d_any[int]
+
+class E[*Ts]: pass
+
+def test_type_var_tuple() -> None:
+    e: E[int, str] = E()
+    e_any: Any = E
+    assert isinstance(e_any(), E)
+    assert isinstance(e_any[int](), E)
+    assert isinstance(e_any[int, str](), E)
+
+class F[**P]: pass
+
+def test_param_spec() -> None:
+    f: F[[int, str]] = F()
+    f_any: Any = F
+    assert isinstance(f_any(), F)
+    assert isinstance(f_any[[int, str]](), F)
+
+#class E: pass
+
+#type A = E
+
+#def test_simple_type_alias() -> None:
+#    assert isinstance(A, TypeAliasType)
+#    assert str(A) == "E"
+
 [typing fixtures/typing-full.pyi]

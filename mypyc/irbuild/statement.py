@@ -41,6 +41,7 @@ from mypy.nodes import (
     WithStmt,
     YieldExpr,
     YieldFromExpr,
+    TypeAliasStmt,
 )
 from mypyc.ir.ops import (
     NAMESPACE_MODULE,
@@ -1015,3 +1016,7 @@ def transform_await_expr(builder: IRBuilder, o: AwaitExpr) -> Value:
 
 def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
     m.accept(MatchVisitor(builder, m))
+
+
+def transform_type_alias_stmt(builder: IRBuilder, m: TypeAliasStmt) -> None:
+    assert False

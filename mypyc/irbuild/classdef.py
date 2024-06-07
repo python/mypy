@@ -24,6 +24,9 @@ from mypy.nodes import (
     TypeInfo,
     TypeParam,
     is_class_var,
+    TYPE_VAR_KIND,
+    TYPE_VAR_TUPLE_KIND,
+    PARAM_SPEC_KIND,
 )
 from mypy.types import ENUM_REMOVED_PROPS, Instance, RawExpressionType, get_proper_type
 from mypyc.common import PROPSET_PREFIX
@@ -64,7 +67,7 @@ from mypyc.irbuild.function import (
 )
 from mypyc.irbuild.util import dataclass_type, get_func_def, is_constant, is_dataclass_decorator
 from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op
-from mypyc.primitives.generic_ops import py_hasattr_op, py_setattr_op, py_get_item_op
+from mypyc.primitives.generic_ops import py_hasattr_op, py_setattr_op, py_get_item_op, iter_op, next_op
 from mypyc.primitives.misc_ops import (
     dataclass_sleight_of_hand,
     not_implemented_op,
@@ -459,11 +462,25 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
 
 
 def make_generic_base_class(builder: IRBuilder, type_args: list[TypeParam], line: int) -> Value:
+    """Construct Generic[...] base class object for a new-style generic class (Python 3.12)."""
     mod = builder.call_c(import_op, [builder.load_str("_typing")], line)
     tvs = []
     for type_param in type_args:
-        tvt = builder.py_get_attr(mod, "TypeVar", line)
+        unpack = False
+        if type_param.kind == TYPE_VAR_KIND:
+            name = "TypeVar"
+        elif type_param.kind == TYPE_VAR_TUPLE_KIND:
+            name = "TypeVarTuple"
+            unpack = True
+        else:
+            assert type_param.kind == PARAM_SPEC_KIND
+            name = "ParamSpec"
+        tvt = builder.py_get_attr(mod, name, line)
         tv = builder.py_call(tvt, [builder.load_str(type_param.name)], line)
+        if unpack:
+            # Evaluate *Ts for a TypeVarTuple
+            it = builder.call_c(iter_op, [tv], line)
+            tv = builder.call_c(next_op, [it], line)
         tvs.append(tv)
     gent = builder.py_get_attr(mod, "Generic", line)
     if len(tvs) == 1:
