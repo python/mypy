@@ -7,6 +7,9 @@ from abc import abstractmethod
 from typing import Callable, Final
 
 from mypy.nodes import (
+    PARAM_SPEC_KIND,
+    TYPE_VAR_KIND,
+    TYPE_VAR_TUPLE_KIND,
     AssignmentStmt,
     CallExpr,
     ClassDef,
@@ -24,9 +27,6 @@ from mypy.nodes import (
     TypeInfo,
     TypeParam,
     is_class_var,
-    TYPE_VAR_KIND,
-    TYPE_VAR_TUPLE_KIND,
-    PARAM_SPEC_KIND,
 )
 from mypy.types import ENUM_REMOVED_PROPS, Instance, RawExpressionType, get_proper_type
 from mypyc.common import PROPSET_PREFIX
@@ -67,14 +67,20 @@ from mypyc.irbuild.function import (
 )
 from mypyc.irbuild.util import dataclass_type, get_func_def, is_constant, is_dataclass_decorator
 from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op
-from mypyc.primitives.generic_ops import py_hasattr_op, py_setattr_op, py_get_item_op, iter_op, next_op
+from mypyc.primitives.generic_ops import (
+    iter_op,
+    next_op,
+    py_get_item_op,
+    py_hasattr_op,
+    py_setattr_op,
+)
 from mypyc.primitives.misc_ops import (
     dataclass_sleight_of_hand,
+    import_op,
     not_implemented_op,
     py_calc_meta_op,
     pytype_from_template_op,
     type_object_op,
-    import_op,
 )
 
 

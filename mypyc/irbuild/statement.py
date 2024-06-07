@@ -37,11 +37,11 @@ from mypy.nodes import (
     TempNode,
     TryStmt,
     TupleExpr,
+    TypeAliasStmt,
     WhileStmt,
     WithStmt,
     YieldExpr,
     YieldFromExpr,
-    TypeAliasStmt,
 )
 from mypyc.ir.ops import (
     NAMESPACE_MODULE,
