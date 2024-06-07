@@ -15,25 +15,36 @@ class C[T]:
     def __init__(self, x: T) -> None:
         self.x = x
 
+class D[T, S]:
+    x: T
+    y: S
+
+    def __init__(self, x: T, y: S) -> None:
+        self.x = x
+        self.y = y
+
 def test_generic_class() -> None:
     c = C(5)
     assert c.x == 5
     c2 = C[str]('x')
     assert c2.x == 'x'
+    d = D[str, int]('a', 5)
+    assert d.x == 'a'
+    assert d.y == 5
 
-def x_test_generic_class_via_any() -> None:
+def test_generic_class_via_any() -> None:
     c_any: Any = C
-    c3 = c_any(2)
-    assert c3.x == 2
-    c4 = c_any[str]('y')
-    assert c4.x == 'y'
+    c = c_any(2)
+    assert c.x == 2
+    c2 = c_any[str]('y')
+    assert c2.x == 'y'
+    assert str(c_any[str]) == 'native.C[str]'
 
-class D: pass
-
-#type A = D
-
-#def test_simple_type_alias() -> None:
-#    assert isinstance(A, TypeAliasType)
-#    assert str(A) == "A"
-
+    d_any: Any = D
+    d = d_any(1, 'x')
+    assert d.x == 1
+    assert d.y == 'x'
+    d2 = d_any[int, str](2, 'y')
+    assert d2.x == 2
+    assert d2.y == 'y'
 [typing fixtures/typing-full.pyi]

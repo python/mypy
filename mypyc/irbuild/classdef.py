@@ -22,6 +22,7 @@ from mypy.nodes import (
     StrExpr,
     TempNode,
     TypeInfo,
+    TypeParam,
     is_class_var,
 )
 from mypy.types import ENUM_REMOVED_PROPS, Instance, RawExpressionType, get_proper_type
@@ -63,13 +64,14 @@ from mypyc.irbuild.function import (
 )
 from mypyc.irbuild.util import dataclass_type, get_func_def, is_constant, is_dataclass_decorator
 from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op
-from mypyc.primitives.generic_ops import py_hasattr_op, py_setattr_op
+from mypyc.primitives.generic_ops import py_hasattr_op, py_setattr_op, py_get_item_op
 from mypyc.primitives.misc_ops import (
     dataclass_sleight_of_hand,
     not_implemented_op,
     py_calc_meta_op,
     pytype_from_template_op,
     type_object_op,
+    import_op,
 )
 
 
@@ -405,8 +407,11 @@ class AttrsClassBuilder(DataClassBuilder):
 def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     # OK AND NOW THE FUN PART
     base_exprs = cdef.base_type_exprs + cdef.removed_base_type_exprs
-    if base_exprs:
+    new_style_type_args = cdef.type_args
+    if base_exprs or new_style_type_args:
         bases = [builder.accept(x) for x in base_exprs]
+        if new_style_type_args:
+            bases.append(make_generic_base_class(builder, new_style_type_args, cdef.line))
         tp_bases = builder.new_tuple(bases, cdef.line)
     else:
         tp_bases = builder.add(LoadErrorValue(object_rprimitive, is_borrowed=True))
@@ -451,6 +456,23 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     )
 
     return tp
+
+
+def make_generic_base_class(builder: IRBuilder, type_args: list[TypeParam], line: int) -> Value:
+    mod = builder.call_c(import_op, [builder.load_str("_typing")], line)
+    tvs = []
+    for type_param in type_args:
+        tvt = builder.py_get_attr(mod, "TypeVar", line)
+        tv = builder.py_call(tvt, [builder.load_str(type_param.name)], line)
+        tvs.append(tv)
+    gent = builder.py_get_attr(mod, "Generic", line)
+    if len(tvs) == 1:
+        arg = tvs[0]
+    else:
+        arg = builder.new_tuple(tvs, line)
+
+    base = builder.call_c(py_get_item_op, [gent, arg], line)
+    return base
 
 
 # Mypy uses these internally as base classes of TypedDict classes. These are
