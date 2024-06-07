@@ -20,7 +20,8 @@ class dict(Generic[KT, VT]): pass
 
 def isinstance(x: object, t: Union[Type[object], Tuple[Type[object], ...]]) -> bool: pass
 
-
+class list(Sequence[Tco]):
+    def __contains__(self, other: object) -> bool: pass
 class set(Iterable[Tco], Generic[Tco]):
     def __init__(self, iterable: Iterable[Tco] = ...) -> None: ...
     def __contains__(self, item: object) -> bool: pass
