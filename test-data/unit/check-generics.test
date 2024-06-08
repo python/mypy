@@ -3442,3 +3442,21 @@ reveal_type(dec(g))  # N: Revealed type is "def (builtins.int) -> __main__.Foo[b
 h: Callable[[Unpack[Us]], Foo[int]]
 reveal_type(dec(h))  # N: Revealed type is "def (builtins.int) -> __main__.Foo[builtins.int]"
 [builtins fixtures/list.pyi]
+
+[case testHigherOrderGenericPartial]
+from typing import TypeVar, Callable
+
+T = TypeVar("T")
+S = TypeVar("S")
+U = TypeVar("U")
+def apply(f: Callable[[T], S], x: T) -> S: ...
+def id(x: U) -> U: ...
+
+A1 = TypeVar("A1")
+A2 = TypeVar("A2")
+R = TypeVar("R")
+def fake_partial(fun: Callable[[A1, A2], R], arg: A1) -> Callable[[A2], R]: ...
+
+f_pid = fake_partial(apply, id)
+reveal_type(f_pid)  # N: Revealed type is "def [A2] (A2`2) -> A2`2"
+reveal_type(f_pid(1))  # N: Revealed type is "builtins.int"

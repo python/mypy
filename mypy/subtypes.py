@@ -1879,7 +1879,9 @@ def unify_generic_callable(
         constraints = [
             c for c in constraints if not isinstance(get_proper_type(c.target), NoneType)
         ]
-    inferred_vars, _ = mypy.solve.solve_constraints(type.variables, constraints)
+    inferred_vars, _ = mypy.solve.solve_constraints(
+        type.variables, constraints, allow_polymorphic=True
+    )
     if None in inferred_vars:
         return None
     non_none_inferred_vars = cast(List[Type], inferred_vars)
