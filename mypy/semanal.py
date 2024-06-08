@@ -875,11 +875,7 @@ class SemanticAnalyzer(
     def function_fullname(self, fullname: str) -> str:
         if self.current_overload_item is None:
             return fullname
-        if self.current_overload_item < 0:
-            suffix = "impl"
-        else:
-            suffix = str(self.current_overload_item)
-        return f"{fullname}#{suffix}"
+        return f"{fullname}#{self.current_overload_item}"
 
     def analyze_func_def(self, defn: FuncDef) -> None:
         if self.push_type_args(defn.type_args, defn) is None:
@@ -1190,7 +1186,7 @@ class SemanticAnalyzer(
             self.analyze_overloaded_func_def(defn)
 
     @contextmanager
-    def overload_item_set(self, item: int) -> Iterator[None]:
+    def overload_item_set(self, item: int | None) -> Iterator[None]:
         self.current_overload_item = item
         try:
             yield
@@ -1295,7 +1291,7 @@ class SemanticAnalyzer(
             if i != 0:
                 # Assume that the first item was already visited
                 item.is_overload = True
-                with self.overload_item_set(i if i < len(defn.items) - 1 else -1):
+                with self.overload_item_set(i if i < len(defn.items) - 1 else None):
                     item.accept(self)
             # TODO: support decorated overloaded functions properly
             if isinstance(item, Decorator):
