@@ -5951,7 +5951,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         collection_item_type = get_proper_type(builtin_item_type(iterable_type))
                         # Narrow if the collection is a subtype
                         if (
-                            collection_item_type is not None 
+                            collection_item_type is not None
                             and collection_item_type != item_type
                             and is_subtype(collection_item_type, item_type)
                         ):
