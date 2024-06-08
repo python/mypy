@@ -171,5 +171,5 @@ reveal_type(x3)  # N: Revealed type is "def (*Any) -> builtins.int"
 IntList = List[int]
 Alias4 = Callable[[*IntList], int]  # E: "List[int]" cannot be unpacked (must be tuple or TypeVarTuple)
 x4: Alias4[int]  # E: Bad number of arguments for type alias, expected 0, given 1
-reveal_type(x4)  # N: Revealed type is "def (*Unpack[builtins.tuple[Any, ...]]) -> builtins.int"
+reveal_type(x4)  # N: Revealed type is "def (*Any) -> builtins.int"
 [builtins fixtures/tuple.pyi]

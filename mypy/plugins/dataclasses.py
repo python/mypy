@@ -65,6 +65,7 @@ from mypy.types import (
     TupleType,
     Type,
     TypeOfAny,
+    TypeVarId,
     TypeVarType,
     UninhabitedType,
     UnionType,
@@ -314,8 +315,8 @@ class DataclassTransformer:
                 obj_type = self._api.named_type("builtins.object")
                 order_tvar_def = TypeVarType(
                     SELF_TVAR_NAME,
-                    info.fullname + "." + SELF_TVAR_NAME,
-                    id=-1,
+                    f"{info.fullname}.{SELF_TVAR_NAME}",
+                    id=TypeVarId(-1, namespace=f"{info.fullname}.{method_name}"),
                     values=[],
                     upper_bound=obj_type,
                     default=AnyType(TypeOfAny.from_omitted_generics),

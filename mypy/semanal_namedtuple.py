@@ -62,6 +62,7 @@ from mypy.types import (
     Type,
     TypeOfAny,
     TypeType,
+    TypeVarId,
     TypeVarLikeType,
     TypeVarType,
     UnboundType,
@@ -569,27 +570,33 @@ class NamedTupleAnalyzer:
             add_field(Var("__match_args__", match_args_type), is_initialized_in_class=True)
 
         assert info.tuple_type is not None  # Set by update_tuple_type() above.
-        tvd = TypeVarType(
+        shared_self_type = TypeVarType(
             name=SELF_TVAR_NAME,
-            fullname=info.fullname + "." + SELF_TVAR_NAME,
+            fullname=f"{info.fullname}.{SELF_TVAR_NAME}",
+            # Namespace is patched per-method below.
             id=self.api.tvar_scope.new_unique_func_id(),
             values=[],
             upper_bound=info.tuple_type,
             default=AnyType(TypeOfAny.from_omitted_generics),
         )
-        selftype = tvd
 
         def add_method(
             funcname: str,
-            ret: Type,
+            ret: Type | None,  # None means use (patched) self-type
             args: list[Argument],
             is_classmethod: bool = False,
             is_new: bool = False,
         ) -> None:
+            fullname = f"{info.fullname}.{funcname}"
+            self_type = shared_self_type.copy_modified(
+                id=TypeVarId(shared_self_type.id.raw_id, namespace=fullname)
+            )
+            if ret is None:
+                ret = self_type
             if is_classmethod or is_new:
-                first = [Argument(Var("_cls"), TypeType.make_normalized(selftype), None, ARG_POS)]
+                first = [Argument(Var("_cls"), TypeType.make_normalized(self_type), None, ARG_POS)]
             else:
-                first = [Argument(Var("_self"), selftype, None, ARG_POS)]
+                first = [Argument(Var("_self"), self_type, None, ARG_POS)]
             args = first + args
 
             types = [arg.type_annotation for arg in args]
@@ -597,12 +604,12 @@ class NamedTupleAnalyzer:
             arg_kinds = [arg.kind for arg in args]
             assert None not in types
             signature = CallableType(cast(List[Type], types), arg_kinds, items, ret, function_type)
-            signature.variables = [tvd]
+            signature.variables = [self_type]
             func = FuncDef(funcname, args, Block([]))
             func.info = info
             func.is_class = is_classmethod
             func.type = set_callable_name(signature, func)
-            func._fullname = info.fullname + "." + funcname
+            func._fullname = fullname
             func.line = line
             if is_classmethod:
                 v = Var(funcname, func.type)
@@ -620,13 +627,13 @@ class NamedTupleAnalyzer:
 
         add_method(
             "_replace",
-            ret=selftype,
+            ret=None,
             args=[Argument(var, var.type, EllipsisExpr(), ARG_NAMED_OPT) for var in vars],
         )
         if self.options.python_version >= (3, 13):
             add_method(
                 "__replace__",
-                ret=selftype,
+                ret=None,
                 args=[Argument(var, var.type, EllipsisExpr(), ARG_NAMED_OPT) for var in vars],
             )
 
@@ -635,11 +642,11 @@ class NamedTupleAnalyzer:
             kind = ARG_POS if default is None else ARG_OPT
             return Argument(var, var.type, default, kind)
 
-        add_method("__new__", ret=selftype, args=[make_init_arg(var) for var in vars], is_new=True)
+        add_method("__new__", ret=None, args=[make_init_arg(var) for var in vars], is_new=True)
         add_method("_asdict", args=[], ret=ordereddictype)
         add_method(
             "_make",
-            ret=selftype,
+            ret=None,
             is_classmethod=True,
             args=[Argument(Var("iterable", iterable_type), iterable_type, None, ARG_POS)],
         )

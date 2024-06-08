@@ -314,7 +314,7 @@ class _NamedTypeCallback(Protocol):
 def paramspec_args(
     name: str,
     fullname: str,
-    id: TypeVarId | int,
+    id: TypeVarId,
     *,
     named_type_func: _NamedTypeCallback,
     line: int = -1,
@@ -337,7 +337,7 @@ def paramspec_args(
 def paramspec_kwargs(
     name: str,
     fullname: str,
-    id: TypeVarId | int,
+    id: TypeVarId,
     *,
     named_type_func: _NamedTypeCallback,
     line: int = -1,

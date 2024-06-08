@@ -1220,3 +1220,14 @@ Ta2 = TypeAliasType("Ta2", None, type_params=(Unpack[Ts],))  # E: Free type vari
                                                              # N: Don't Unpack type variables in type_params
 
 [builtins fixtures/tuple.pyi]
+
+[case testAliasInstanceNameClash]
+from lib import func
+class A: ...
+func(A())  # E: Argument 1 to "func" has incompatible type "__main__.A"; expected "lib.A"
+[file lib.py]
+from typing import List, Union
+
+A = Union[int, List[A]]
+def func(x: A) -> int: ...
+[builtins fixtures/tuple.pyi]

@@ -5,7 +5,7 @@ from collections.abc import Iterator
 import math
 from typing import (
     Any, Iterator, TypeVar, Generator, Optional, List, Tuple, Sequence,
-    Union, Callable, Awaitable,
+    Union, Callable, Awaitable, Generic
 )
 from typing import Final
 
@@ -86,7 +86,7 @@ def run_generator(gen: Generator[T, V, U],
 F = TypeVar('F', bound=Callable)
 
 
-class async_val(Awaitable[V]):
+class async_val(Awaitable[V], Generic[T, V]):
     def __init__(self, val: T) -> None:
         self.val = val
 

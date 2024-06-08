@@ -944,7 +944,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 # When it is the same overload, then the types are equal.
                 return True
 
-            # Ensure each overload in the right side (the supertype) is accounted for.
+            # Ensure each overload on the right side (the supertype) is accounted for.
             previous_match_left_index = -1
             matched_overloads = set()
 
@@ -1792,7 +1792,9 @@ def are_args_compatible(
         # If both arguments are required allow_partial_overlap has no effect.
         allow_partial_overlap = False
 
-    def is_different(left_item: object | None, right_item: object | None) -> bool:
+    def is_different(
+        left_item: object | None, right_item: object | None, allow_overlap: bool
+    ) -> bool:
         """Checks if the left and right items are different.
 
         If the right item is unspecified (e.g. if the right callable doesn't care
@@ -1802,19 +1804,21 @@ def are_args_compatible(
         if the left callable also doesn't care."""
         if right_item is None:
             return False
-        if allow_partial_overlap and left_item is None:
+        if allow_overlap and left_item is None:
             return False
         return left_item != right_item
 
     # If right has a specific name it wants this argument to be, left must
     # have the same.
-    if is_different(left.name, right.name):
+    if is_different(left.name, right.name, allow_partial_overlap):
         # But pay attention to whether we're ignoring positional arg names
         if not ignore_pos_arg_names or right.pos is None:
             return False
 
-    # If right is at a specific position, left must have the same:
-    if is_different(left.pos, right.pos) and not allow_imprecise_kinds:
+    # If right is at a specific position, left must have the same.
+    # TODO: partial overlap logic is flawed for positions.
+    # We disable it to avoid false positives at a cost of few false negatives.
+    if is_different(left.pos, right.pos, allow_overlap=False) and not allow_imprecise_kinds:
         return False
 
     # If right's argument is optional, left's must also be
