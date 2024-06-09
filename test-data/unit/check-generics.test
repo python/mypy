@@ -3496,8 +3496,6 @@ class Proto(Protocol[P, R]):
 [builtins fixtures/tuple.pyi]
 
 [case testGenericOverloadOverlapUnion]
-from lib import C
-[file lib.pyi]
 from typing import TypeVar, overload, Union, Generic
 
 K = TypeVar("K")
@@ -3509,3 +3507,26 @@ class C(Generic[K, V]):
     def pop(self, key: K) -> V: ...
     @overload
     def pop(self, key: K, default: Union[V, T] = ...) -> Union[V, T]: ...
+    def pop(self, key: K, default: Union[V, T] = ...) -> Union[V, T]:
+        ...
+
+[case testOverloadedGenericInit]
+from typing import TypeVar, overload, Union, Generic
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+class Int(Generic[T]): ...
+class Str(Generic[T]): ...
+
+class C(Generic[T]):
+    @overload
+    def __init__(self: C[Int[S]], x: int, y: S) -> None: ...
+    @overload
+    def __init__(self: C[Str[S]], x: str, y: S) -> None: ...
+    def __init__(self, x, y) -> None: ...
+
+def foo(x: T):
+    reveal_type(C)  # N: Revealed type is "Overload(def [T, S] (x: builtins.int, y: S`-1) -> __main__.C[__main__.Int[S`-1]], def [T, S] (x: builtins.str, y: S`-1) -> __main__.C[__main__.Str[S`-1]])"
+    reveal_type(C(0, x))  # N: Revealed type is "__main__.C[__main__.Int[T`-1]]"
+    reveal_type(C("yes", x))  # N: Revealed type is "__main__.C[__main__.Str[T`-1]]"
