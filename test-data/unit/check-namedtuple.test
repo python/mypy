@@ -1419,7 +1419,7 @@ import typing
 class Foo(typing.NamedTuple):
     bar: int
     def baz(self: typing.Self) -> None:
-        x ,= self
+        x, = self
         reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
