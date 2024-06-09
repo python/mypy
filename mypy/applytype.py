@@ -101,6 +101,7 @@ def apply_generic_arguments(
     bound or constraints, instead of giving an error.
     """
     tvars = callable.variables
+    assert len(orig_types) <= len(tvars)
     # Check that inferred type variable values are compatible with allowed
     # values and bounds.  Also, promote subtype values to allowed values.
     # Create a map from type variable id to target type.
