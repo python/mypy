@@ -155,7 +155,10 @@ def type_object_type_from_function(
     signature = bind_self(
         # Explicit instance self annotations have special handling in class_callable(),
         # we don't need to bind any type variables in them if they are generic.
-        signature, original_type=default_self, is_classmethod=is_new, ignore_instances=True
+        signature,
+        original_type=default_self,
+        is_classmethod=is_new,
+        ignore_instances=True,
     )
     signature = cast(FunctionLike, map_type_from_supertype(signature, info, def_info))
 
@@ -323,7 +326,7 @@ def bind_self(
     # from such definition, since it is inherently indefinitely recursive.
     allow_callable = func.name is None or not func.name.startswith("__call__ of")
     if func.variables and supported_self_type(
-        self_param_type, allow_callable=allow_callable, allow_instances=not ignore_instances,
+        self_param_type, allow_callable=allow_callable, allow_instances=not ignore_instances
     ):
         from mypy.infer import infer_type_arguments
 
