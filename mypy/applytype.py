@@ -101,8 +101,6 @@ def apply_generic_arguments(
     bound or constraints, instead of giving an error.
     """
     tvars = callable.variables
-    min_arg_count = sum(not tv.has_default() for tv in tvars)
-    assert min_arg_count <= len(orig_types) <= len(tvars)
     # Check that inferred type variable values are compatible with allowed
     # values and bounds.  Also, promote subtype values to allowed values.
     # Create a map from type variable id to target type.
@@ -156,7 +154,7 @@ def apply_generic_arguments(
         type_is = None
 
     # The callable may retain some type vars if only some were applied.
-    # TODO: move apply_poly() logic from checkexpr.py here when new inference
+    # TODO: move apply_poly() logic here when new inference
     # becomes universally used (i.e. in all passes + in unification).
     # With this new logic we can actually *add* some new free variables.
     remaining_tvars: list[TypeVarLikeType] = []

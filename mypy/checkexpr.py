@@ -4781,7 +4781,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         We simply group the arguments that need to go into Ts variable into a TupleType,
         similar to how it is done in other places using split_with_prefix_and_suffix().
         """
-        vars = t.variables
+        if t.is_type_obj():
+            # Type arguments must map to class type variables, ignoring constructor vars.
+            vars = t.type_object().defn.type_vars
+        else:
+            vars = list(t.variables)
         args = flatten_nested_tuples(args)
 
         # TODO: this logic is duplicated with semanal_typeargs.
@@ -4799,6 +4803,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if not vars or not any(isinstance(v, TypeVarTupleType) for v in vars):
             return list(args)
+        # TODO: in future we may want to support type application to variadic functions.
         assert t.is_type_obj()
         info = t.type_object()
         # We reuse the logic from semanal phase to reduce code duplication.
@@ -4832,10 +4837,23 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         tp = get_proper_type(tp)
 
         if isinstance(tp, CallableType):
-            min_arg_count = sum(not v.has_default() for v in tp.variables)
-            has_type_var_tuple = any(isinstance(v, TypeVarTupleType) for v in tp.variables)
+            if tp.is_type_obj():
+                # If we have a class object in runtime context, then the available type
+                # variables are those of the class, we don't include additional variables
+                # of the constructor. So that with
+                #     class C(Generic[T]):
+                #         def __init__(self, f: Callable[[S], T], x: S) -> None
+                # C[int] is valid
+                # C[int, str] is invalid (although C as a callable has 2 type variables)
+                # Note: various logic below and in applytype.py relies on the fact that
+                # class type variables appear *before* constructor variables.
+                type_vars = tp.type_object().defn.type_vars
+            else:
+                type_vars = list(tp.variables)
+            min_arg_count = sum(not v.has_default() for v in type_vars)
+            has_type_var_tuple = any(isinstance(v, TypeVarTupleType) for v in type_vars)
             if (
-                len(args) < min_arg_count or len(args) > len(tp.variables)
+                len(args) < min_arg_count or len(args) > len(type_vars)
             ) and not has_type_var_tuple:
                 if tp.is_type_obj() and tp.type_object().fullname == "builtins.tuple":
                     # e.g. expression tuple[X, Y]
@@ -4854,19 +4872,24 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         bound_args=tp.bound_args,
                     )
                 self.msg.incompatible_type_application(
-                    min_arg_count, len(tp.variables), len(args), ctx
+                    min_arg_count, len(type_vars), len(args), ctx
                 )
                 return AnyType(TypeOfAny.from_error)
             return self.apply_generic_arguments(tp, self.split_for_callable(tp, args, ctx), ctx)
         if isinstance(tp, Overloaded):
             for it in tp.items:
-                min_arg_count = sum(not v.has_default() for v in it.variables)
-                has_type_var_tuple = any(isinstance(v, TypeVarTupleType) for v in it.variables)
+                if tp.is_type_obj():
+                    # Same as above.
+                    type_vars = tp.type_object().defn.type_vars
+                else:
+                    type_vars = list(it.variables)
+                min_arg_count = sum(not v.has_default() for v in type_vars)
+                has_type_var_tuple = any(isinstance(v, TypeVarTupleType) for v in type_vars)
                 if (
-                    len(args) < min_arg_count or len(args) > len(it.variables)
+                    len(args) < min_arg_count or len(args) > len(type_vars)
                 ) and not has_type_var_tuple:
                     self.msg.incompatible_type_application(
-                        min_arg_count, len(it.variables), len(args), ctx
+                        min_arg_count, len(type_vars), len(args), ctx
                     )
                     return AnyType(TypeOfAny.from_error)
             return Overloaded(
