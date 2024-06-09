@@ -153,11 +153,11 @@ def type_object_type_from_function(
     #
     # We need to map B's __init__ to the type (List[T]) -> None.
     signature = bind_self(
-        # Explicit instance self annotations have special handling in class_callable(),
-        # we don't need to bind any type variables in them if they are generic.
         signature,
         original_type=default_self,
         is_classmethod=is_new,
+        # Explicit instance self annotations have special handling in class_callable(),
+        # we don't need to bind any type variables in them if they are generic.
         ignore_instances=True,
     )
     signature = cast(FunctionLike, map_type_from_supertype(signature, info, def_info))
