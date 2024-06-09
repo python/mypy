@@ -3461,38 +3461,51 @@ f_pid = fake_partial(apply, id)
 reveal_type(f_pid)  # N: Revealed type is "def [A2] (A2`2) -> A2`2"
 reveal_type(f_pid(1))  # N: Revealed type is "builtins.int"
 
-[case testInvalidTypeVarParametersArbitrary]
-from typing import Callable, Generic, ParamSpec, Protocol, TypeVar, overload
-
-_PD = ParamSpec('_PD')
-_PF = ParamSpec('_PF')
-_RD = TypeVar('_RD')
-_RF = TypeVar('_RF')
-
-class _W(Generic[_PF, _RF, _PD, _RD]):
-    ...
-
-class _DecoOrFab(Protocol[_PD, _RD]):
-    @overload
-    def __call__(self, f: Callable[_PF, _RF]) -> _W[_PF, _RF, ..., _RD]: ...
-    @overload
-    def __call__(self, **kwargs) -> _W[_PD, _RD, ..., ...]: ...  # E: Cannot use ... for regular type variable, only for ParamSpec
-[builtins fixtures/tuple.pyi]
-
 [case testInvalidTypeVarParametersConcrete]
 from typing import Callable, Generic, ParamSpec, Protocol, TypeVar, overload
 
-_PD = ParamSpec('_PD')
-_PF = ParamSpec('_PF')
-_RD = TypeVar('_RD')
-_RF = TypeVar('_RF')
+P = ParamSpec('P')
+P2 = ParamSpec('P2')
+R = TypeVar('R')
+R2 = TypeVar('R2')
 
-class _W(Generic[_PF, _RF, _PD, _RD]):
-    ...
+class C(Generic[P, R, P2, R2]): ...
 
-class _DecoOrFab(Protocol[_PD, _RD]):
+class Proto(Protocol[P, R]):
     @overload
-    def __call__(self, f: Callable[_PF, _RF]) -> _W[_PF, _RF, ..., _RD]: ...
+    def __call__(self, f: Callable[P2, R2]) -> C[P2, R2, ..., R]: ...
     @overload
-    def __call__(self, **kwargs) -> _W[_PD, _RD, ..., [int, str]]: ...  # E: Cannot use [builtins.int, builtins.str] for regular type variable, only for ParamSpec
+    def __call__(self, **kwargs) -> C[P, R, ..., [int, str]]: ...  # E: Cannot use "[int, str]" for regular type variable, only for ParamSpec
 [builtins fixtures/tuple.pyi]
+
+[case testInvalidTypeVarParametersArbitrary]
+from typing import Callable, Generic, ParamSpec, Protocol, TypeVar, overload
+
+P = ParamSpec('P')
+P2 = ParamSpec('P2')
+R = TypeVar('R')
+R2 = TypeVar('R2')
+
+class C(Generic[P, R, P2, R2]): ...
+
+class Proto(Protocol[P, R]):
+    @overload
+    def __call__(self, f: Callable[P2, R2]) -> C[P2, R2, ..., R]: ...
+    @overload
+    def __call__(self, **kwargs) -> C[P, R, ..., ...]: ...  # E: Cannot use "[VarArg(Any), KwArg(Any)]" for regular type variable, only for ParamSpec
+[builtins fixtures/tuple.pyi]
+
+[case testGenericOverloadOverlapUnion]
+from lib import C
+[file lib.pyi]
+from typing import TypeVar, overload, Union, Generic
+
+K = TypeVar("K")
+V = TypeVar("V")
+T = TypeVar("T")
+
+class C(Generic[K, V]):
+    @overload
+    def pop(self, key: K) -> V: ...
+    @overload
+    def pop(self, key: K, default: Union[V, T] = ...) -> Union[V, T]: ...

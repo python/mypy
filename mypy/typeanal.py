@@ -10,7 +10,8 @@ from typing_extensions import Protocol
 from mypy import errorcodes as codes, message_registry, nodes
 from mypy.errorcodes import ErrorCode
 from mypy.expandtype import expand_type
-from mypy.messages import MessageBuilder, format_type_bare, quote_type_string, wrong_type_arg_count
+from mypy.message_registry import INVALID_PARAM_SPEC_LOCATION, INVALID_PARAM_SPEC_LOCATION_NOTE
+from mypy.messages import MessageBuilder, format_type, format_type_bare, quote_type_string, wrong_type_arg_count
 from mypy.nodes import (
     ARG_NAMED,
     ARG_NAMED_OPT,
@@ -1783,12 +1784,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 analyzed = AnyType(TypeOfAny.from_error)
             else:
                 self.fail(
-                    f'Invalid location for ParamSpec "{analyzed.name}"', t, code=codes.VALID_TYPE
+                    INVALID_PARAM_SPEC_LOCATION.format(format_type(analyzed, self.options)),
+                    t,
+                    code=codes.VALID_TYPE,
                 )
                 self.note(
-                    "You can use ParamSpec as the first argument to Callable, e.g., "
-                    "'Callable[{}, int]'".format(analyzed.name),
+                    INVALID_PARAM_SPEC_LOCATION_NOTE.format(analyzed.name),
                     t,
+                    code=codes.VALID_TYPE,
                 )
                 analyzed = AnyType(TypeOfAny.from_error)
         return analyzed

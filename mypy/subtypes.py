@@ -8,7 +8,7 @@ import mypy.applytype
 import mypy.constraints
 import mypy.typeops
 from mypy.erasetype import erase_type
-from mypy.expandtype import expand_self_type, expand_type, expand_type_by_instance
+from mypy.expandtype import expand_self_type, expand_type, expand_type_by_instance, freshen_function_type_vars
 from mypy.maptype import map_instance_to_supertype
 
 # Circular import; done in the function instead.
@@ -1856,6 +1856,9 @@ def unify_generic_callable(
     Return unified CallableType if successful; otherwise, return None.
     """
     import mypy.solve
+
+    if set(type.type_var_ids()) & {v.id for v in mypy.typeops.get_all_type_vars(target)}:
+        type = freshen_function_type_vars(type)
 
     if return_constraint_direction is None:
         return_constraint_direction = mypy.constraints.SUBTYPE_OF
