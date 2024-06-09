@@ -2346,4 +2346,5 @@ def f(x: int, y: int, z: int, t: int) -> str: ...
 x = C(f, 0, 0, "hm")  # E: Argument 1 to "C" has incompatible type "Callable[[int, int, int, int], str]"; expected "Callable[[int, int, str, int], str]"
 reveal_type(x)  # N: Revealed type is "__main__.C[builtins.str, builtins.int]"
 reveal_type(C(f))  # N: Revealed type is "__main__.C[builtins.str, builtins.int, builtins.int, builtins.int, builtins.int]"
+C[()]  # E: At least 1 type argument(s) expected, none given
 [builtins fixtures/tuple.pyi]

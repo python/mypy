@@ -3454,3 +3454,4 @@ class C(Generic[T]):
 
 reveal_type(C[int])  # N: Revealed type is "def [S] (f: def (S`-1) -> builtins.int, x: S`-1) -> __main__.C[builtins.int]"
 Alias = C[int]
+C[int, str]  # E: Type application has too many types (1 expected)
