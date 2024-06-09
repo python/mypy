@@ -2340,11 +2340,7 @@ def make_optional_type(t: Type) -> Type:
         return t
     elif isinstance(t, ProperType) and isinstance(t, UnionType):
         # Eagerly expanding aliases is not safe during semantic analysis.
-        items = [
-            item
-            for item in t.items
-            if not isinstance(get_proper_type(item), NoneType)
-        ]
+        items = [item for item in t.items if not isinstance(get_proper_type(item), NoneType)]
         return UnionType(items + [NoneType()], t.line, t.column)
     else:
         return UnionType([t, NoneType()], t.line, t.column)
