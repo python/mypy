@@ -3302,3 +3302,25 @@ class C:  # Note: Generic[T] missing
 
     def nope(self, x: T) -> None:
         self.x = x  # E: Incompatible types in assignment (expression has type "T@nope", variable has type "T@bad_idea")
+
+[case testNoCrashOnBadCallablePropertyOverride]
+from typing import Callable, Union
+
+class C: ...
+class D: ...
+
+A = Callable[[C], None]
+B = Callable[[D], None]
+
+class Foo:
+    @property
+    def method(self) -> Callable[[int, Union[A, B]], None]:
+        ...
+
+class Bar(Foo):
+    @property
+    def method(self) -> Callable[[int, A], None]:  # E: Argument 2 of "method" is incompatible with supertype "Foo"; supertype defines the argument type as "Union[Callable[[C], None], Callable[[D], None]]" \
+                                                   # N: This violates the Liskov substitution principle \
+                                                   # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+        ...
+[builtins fixtures/property.pyi]
