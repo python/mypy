@@ -8,7 +8,12 @@ import mypy.applytype
 import mypy.constraints
 import mypy.typeops
 from mypy.erasetype import erase_type
-from mypy.expandtype import expand_self_type, expand_type, expand_type_by_instance, freshen_function_type_vars
+from mypy.expandtype import (
+    expand_self_type,
+    expand_type,
+    expand_type_by_instance,
+    freshen_function_type_vars,
+)
 from mypy.maptype import map_instance_to_supertype
 
 # Circular import; done in the function instead.

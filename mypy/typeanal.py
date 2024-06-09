@@ -11,7 +11,13 @@ from mypy import errorcodes as codes, message_registry, nodes
 from mypy.errorcodes import ErrorCode
 from mypy.expandtype import expand_type
 from mypy.message_registry import INVALID_PARAM_SPEC_LOCATION, INVALID_PARAM_SPEC_LOCATION_NOTE
-from mypy.messages import MessageBuilder, format_type, format_type_bare, quote_type_string, wrong_type_arg_count
+from mypy.messages import (
+    MessageBuilder,
+    format_type,
+    format_type_bare,
+    quote_type_string,
+    wrong_type_arg_count,
+)
 from mypy.nodes import (
     ARG_NAMED,
     ARG_NAMED_OPT,
