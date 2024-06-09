@@ -2869,7 +2869,7 @@ class Wrapper(Generic[T]):
     # Related to testTypeCheckOverloadImplementationTypeVarDifferingUsage2?
     # See https://github.com/python/mypy/issues/5510
     @overload
-    def g(self, x: int) -> int: ...   # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+    def g(self, x: int) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
     @overload
     def g(self, x: T) -> T: ...
     def g(self, x): ...
@@ -2895,13 +2895,13 @@ class Wrapper(Generic[T]):
     # TODO: This shouldn't trigger an error message?
     # See https://github.com/python/mypy/issues/5510
     @overload
-    def g1(self, x: List[int]) -> int: ...  # E:   # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+    def g1(self, x: List[int]) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
     @overload
     def g1(self, x: List[T]) -> T: ...
     def g1(self, x): ...
 
     @overload
-    def g2(self, x: List[int]) -> List[int]: ...  # E:   # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+    def g2(self, x: List[int]) -> List[int]: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
     @overload
     def g2(self, x: List[T]) -> List[T]: ...
     def g2(self, x): ...

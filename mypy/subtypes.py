@@ -1858,6 +1858,8 @@ def unify_generic_callable(
     import mypy.solve
 
     if set(type.type_var_ids()) & {v.id for v in mypy.typeops.get_all_type_vars(target)}:
+        # Overload overlap check does nasty things like unifying in opposite direction.
+        # This can easily create type variable clashes, so we need to refresh.
         type = freshen_function_type_vars(type)
 
     if return_constraint_direction is None:
