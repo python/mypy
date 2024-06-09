@@ -155,6 +155,12 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                         ctx,
                     )
                     continue
+                if isinstance(arg, Parameters):
+                    is_error = True
+                    self.fail(
+                        f"Cannot use {arg} for regular type variable, only for ParamSpec", ctx
+                    )
+                    continue
                 if tvar.values:
                     if isinstance(arg, TypeVarType):
                         if self.in_type_alias_expr:

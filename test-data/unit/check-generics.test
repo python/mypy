@@ -3460,3 +3460,39 @@ def fake_partial(fun: Callable[[A1, A2], R], arg: A1) -> Callable[[A2], R]: ...
 f_pid = fake_partial(apply, id)
 reveal_type(f_pid)  # N: Revealed type is "def [A2] (A2`2) -> A2`2"
 reveal_type(f_pid(1))  # N: Revealed type is "builtins.int"
+
+[case testInvalidTypeVarParametersArbitrary]
+from typing import Callable, Generic, ParamSpec, Protocol, TypeVar, overload
+
+_PD = ParamSpec('_PD')
+_PF = ParamSpec('_PF')
+_RD = TypeVar('_RD')
+_RF = TypeVar('_RF')
+
+class _W(Generic[_PF, _RF, _PD, _RD]):
+    ...
+
+class _DecoOrFab(Protocol[_PD, _RD]):
+    @overload
+    def __call__(self, f: Callable[_PF, _RF]) -> _W[_PF, _RF, ..., _RD]: ...
+    @overload
+    def __call__(self, **kwargs) -> _W[_PD, _RD, ..., ...]: ...  # E: Cannot use ... for regular type variable, only for ParamSpec
+[builtins fixtures/tuple.pyi]
+
+[case testInvalidTypeVarParametersConcrete]
+from typing import Callable, Generic, ParamSpec, Protocol, TypeVar, overload
+
+_PD = ParamSpec('_PD')
+_PF = ParamSpec('_PF')
+_RD = TypeVar('_RD')
+_RF = TypeVar('_RF')
+
+class _W(Generic[_PF, _RF, _PD, _RD]):
+    ...
+
+class _DecoOrFab(Protocol[_PD, _RD]):
+    @overload
+    def __call__(self, f: Callable[_PF, _RF]) -> _W[_PF, _RF, ..., _RD]: ...
+    @overload
+    def __call__(self, **kwargs) -> _W[_PD, _RD, ..., [int, str]]: ...  # E: Cannot use [builtins.int, builtins.str] for regular type variable, only for ParamSpec
+[builtins fixtures/tuple.pyi]
