@@ -2366,9 +2366,21 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # Positional argument when expecting a keyword argument.
                 self.msg.too_many_positional_arguments(callee, context)
                 ok = False
-            elif callee.param_spec() is not None and not formal_to_actual[i]:
-                self.msg.too_few_arguments(callee, context, actual_names)
-                ok = False
+            elif callee.param_spec() is not None:
+                if (
+                    not formal_to_actual[i]
+                    and not callee.param_spec_parts_bound[kind == ArgKind.ARG_STAR2]
+                    and callee.special_sig != "partial"
+                ):
+                    self.msg.too_few_arguments(callee, context, actual_names)
+                    ok = False
+                elif (
+                    formal_to_actual[i]
+                    and kind == ArgKind.ARG_STAR
+                    and callee.param_spec_parts_bound[0]
+                ):
+                    self.msg.too_many_arguments(callee, context)
+                    ok = False
         return ok
 
     def check_for_extra_actual_arguments(

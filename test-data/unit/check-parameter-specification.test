@@ -2294,3 +2294,77 @@ reveal_type(capture(fn))  # N: Revealed type is "Union[builtins.str, builtins.in
 reveal_type(capture(err))  # N: Revealed type is "builtins.int"
 
 [builtins fixtures/paramspec.pyi]
+
+[case testBindPartial]
+from functools import partial
+from typing_extensions import ParamSpec
+from typing import Callable, TypeVar
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+def run(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
+    func2 = partial(func, **kwargs)
+    return func2(*args)
+
+def run2(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
+    func2 = partial(func, *args)
+    return func2(**kwargs)
+
+def run3(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
+    func2 = partial(func, *args, **kwargs)
+    return func2()
+
+def run4(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
+    func2 = partial(func, *args, **kwargs)
+    return func2(**kwargs)
+
+def run_bad(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
+    func2 = partial(func, *args, **kwargs)
+    return func2(*args)  # E: Too many arguments
+
+def run_bad2(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
+    func2 = partial(func, **kwargs)
+    return func2(**kwargs)  # E: Too few arguments
+
+def run_bad3(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
+    func2 = partial(func, *args)
+    return func2()  # E: Too few arguments
+
+[builtins fixtures/paramspec.pyi]
+
+[case testBindPartialConcatenate]
+from functools import partial
+from typing_extensions import Concatenate, ParamSpec
+from typing import Callable, TypeVar
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+def run(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
+    func2 = partial(func, 1, **kwargs)
+    return func2(*args)
+
+def run2(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
+    func2 = partial(func, **kwargs)
+    return func2(1, *args)
+
+def run3(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
+    func2 = partial(func, 1, *args)
+    return func2(**kwargs)
+
+def run_bad(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
+    func2 = partial(func, *args)  # E: Argument 1 has incompatible type "*P.args"; expected "int"
+    return func2(1, **kwargs)  # E: Too many arguments
+
+def run_bad2(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
+    func2 = partial(func, 1, *args)
+    return func2(1, **kwargs)  # E: Too many arguments \
+                               # E: Argument 1 has incompatible type "int"; expected "P.args"
+
+def run_bad3(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
+    func2 = partial(func, 1, *args)
+    return func2(1, **kwargs)  # E: Too many arguments \
+                               # E: Argument 1 has incompatible type "int"; expected "P.args"
+
+[builtins fixtures/paramspec.pyi]
