@@ -38,10 +38,10 @@ from mypyc.codegen.emitwrapper import (
 from mypyc.codegen.literals import Literals
 from mypyc.common import (
     MODULE_PREFIX,
-    TYPE_VAR_PREFIX,
     PREFIX,
     RUNTIME_C_FILES,
     TOP_LEVEL_NAME,
+    TYPE_VAR_PREFIX,
     shared_lib_name,
     short_id_from_name,
     use_vectorcall,
@@ -1073,7 +1073,6 @@ class GroupGenerator:
                 [f"PyObject *{static_name} = NULL;"],
                 needs_export=False,
             )
-
 
 
 def sort_classes(classes: list[tuple[str, ClassIR]]) -> list[tuple[str, ClassIR]]:

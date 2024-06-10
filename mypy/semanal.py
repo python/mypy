@@ -1712,7 +1712,9 @@ class SemanticAnalyzer(
                     return True
         return False
 
-    def analyze_type_param(self, type_param: TypeParam, context: Context) -> TypeVarLikeExpr | None:
+    def analyze_type_param(
+        self, type_param: TypeParam, context: Context
+    ) -> TypeVarLikeExpr | None:
         fullname = self.qualified_name(type_param.name)
         if type_param.upper_bound:
             upper_bound = self.anal_type(type_param.upper_bound)

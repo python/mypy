@@ -44,6 +44,7 @@ from mypy.nodes import (
     TupleExpr,
     TypeApplication,
     TypeInfo,
+    TypeVarExpr,
     UnaryExpr,
     Var,
 )
@@ -102,8 +103,6 @@ from mypyc.primitives.set_ops import set_add_op, set_in_op, set_update_op
 from mypyc.primitives.str_ops import str_slice_op
 from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
 
-# Name and attribute references
-from mypy.nodes import TypeVarExpr
 
 def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
     if isinstance(expr.node, TypeVarExpr) and expr.node.is_new_style:

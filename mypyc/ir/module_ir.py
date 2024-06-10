@@ -32,7 +32,7 @@ class ModuleIR:
         # These are only visible in the module that defined them, so no need
         # to serialize.
         self.type_var_names = type_var_names
-        
+
     def serialize(self) -> JsonDict:
         return {
             "fullname": self.fullname,

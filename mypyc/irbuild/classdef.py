@@ -418,8 +418,7 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     base_exprs = cdef.base_type_exprs + cdef.removed_base_type_exprs
     new_style_type_args = cdef.type_args
     if new_style_type_args:
-        bases = [
-            make_generic_base_class(builder, cdef.fullname, new_style_type_args, cdef.line)]
+        bases = [make_generic_base_class(builder, cdef.fullname, new_style_type_args, cdef.line)]
     else:
         bases = []
 
@@ -471,7 +470,9 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     return tp
 
 
-def make_generic_base_class(builder: IRBuilder, fullname: str, type_args: list[TypeParam], line: int) -> Value:
+def make_generic_base_class(
+    builder: IRBuilder, fullname: str, type_args: list[TypeParam], line: int
+) -> Value:
     """Construct Generic[...] base class object for a new-style generic class (Python 3.12)."""
     mod = builder.call_c(import_op, [builder.load_str("_typing")], line)
     tvs = []

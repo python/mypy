@@ -6,7 +6,14 @@ from typing import Final
 
 from mypyc.analysis.blockfreq import frequently_executed_blocks
 from mypyc.codegen.emit import DEBUG_ERRORS, Emitter, TracebackAndGotoHandler, c_array_initializer
-from mypyc.common import MODULE_PREFIX, NATIVE_PREFIX, REG_PREFIX, STATIC_PREFIX, TYPE_PREFIX, TYPE_VAR_PREFIX
+from mypyc.common import (
+    MODULE_PREFIX,
+    NATIVE_PREFIX,
+    REG_PREFIX,
+    STATIC_PREFIX,
+    TYPE_PREFIX,
+    TYPE_VAR_PREFIX,
+)
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR, all_values
 from mypyc.ir.ops import (

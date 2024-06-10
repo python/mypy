@@ -546,12 +546,17 @@ class IRBuilder:
     def init_type_var(self, value: Value, name: str, line: int) -> None:
         unique_name = name + "___" + str(line)
         self.type_var_names.append(unique_name)
-        self.add(InitStatic(value, unique_name, self.module_name,
-                            namespace=NAMESPACE_TYPE_VAR))
+        self.add(InitStatic(value, unique_name, self.module_name, namespace=NAMESPACE_TYPE_VAR))
 
     def load_type_var(self, name: str, line: int) -> Value:
-        return self.add(LoadStatic(object_rprimitive, name + "___" + str(line), self.module_name,
-                                   namespace=NAMESPACE_TYPE_VAR))
+        return self.add(
+            LoadStatic(
+                object_rprimitive,
+                name + "___" + str(line),
+                self.module_name,
+                namespace=NAMESPACE_TYPE_VAR,
+            )
+        )
 
     def load_literal_value(self, val: int | str | bytes | float | complex | bool) -> Value:
         """Load value of a final name, class-level attribute, or constant folded expression."""
