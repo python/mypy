@@ -3525,3 +3525,28 @@ class B(A):
 reveal_type(B.f)  # N: Revealed type is "def (self: __main__.B, **kwargs: Unpack[TypedDict('__main__.TD', {'x'?: builtins.int, 'y'?: builtins.str})])"
 B().f(x=1.0)  # E: Argument "x" to "f" of "B" has incompatible type "float"; expected "int"
 [builtins fixtures/primitives.pyi]
+
+[case testTypedDictUnpackWithParamSpecInference]
+from typing import TypeVar, ParamSpec, Callable
+from typing_extensions import TypedDict, Unpack
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+def run(func: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R: ...
+
+class Params(TypedDict):
+    temperature: float
+
+def test(temperature: int) -> None: ...
+def test2(temperature: float, other: str) -> None: ...
+
+class Test:
+    def f(self, c: Callable[..., None], **params: Unpack[Params]) -> None:
+        run(c, **params)
+    def g(self, **params: Unpack[Params]) -> None:
+        run(test, **params)  # E: Argument "temperature" to "run" has incompatible type "float"; expected "int"
+    def h(self, **params: Unpack[Params]) -> None:
+        run(test2, other="yes", **params)
+        run(test2, other=0, **params)  # E: Argument "other" to "run" has incompatible type "int"; expected "str"
+[builtins fixtures/tuple.pyi]
