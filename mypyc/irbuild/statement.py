@@ -37,7 +37,6 @@ from mypy.nodes import (
     TempNode,
     TryStmt,
     TupleExpr,
-    TypeAliasStmt,
     WhileStmt,
     WithStmt,
     YieldExpr,
@@ -1016,7 +1015,3 @@ def transform_await_expr(builder: IRBuilder, o: AwaitExpr) -> Value:
 
 def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
     m.accept(MatchVisitor(builder, m))
-
-
-def transform_type_alias_stmt(builder: IRBuilder, m: TypeAliasStmt) -> None:
-    assert False
