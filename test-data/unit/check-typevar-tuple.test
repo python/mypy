@@ -1808,6 +1808,63 @@ def test(a: Tuple[int, str], b: Tuple[bool], c: Tuple[bool, ...]):
     reveal_type(add(b, c))  # N: Revealed type is "builtins.tuple[builtins.bool, ...]"
 [builtins fixtures/tuple.pyi]
 
+[case testTypeVarTupleOverloadOverlap]
+from typing import Union, overload, Tuple
+from typing_extensions import Unpack
+
+class Int(int): ...
+
+A = Tuple[int, Unpack[Tuple[int, ...]]]
+B = Tuple[int, Unpack[Tuple[str, ...]]]
+
+@overload
+def f(arg: A) -> int: ...
+@overload
+def f(arg: B) -> str: ...
+def f(arg: Union[A, B]) -> Union[int, str]:
+    ...
+
+A1 = Tuple[int, Unpack[Tuple[Int, ...]]]
+B1 = Tuple[Unpack[Tuple[Int, ...]], int]
+
+@overload
+def f1(arg: A1) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def f1(arg: B1) -> str: ...
+def f1(arg: Union[A1, B1]) -> Union[int, str]:
+    ...
+
+A2 = Tuple[int, int, int]
+B2 = Tuple[int, Unpack[Tuple[int, ...]]]
+
+@overload
+def f2(arg: A2) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def f2(arg: B2) -> str: ...
+def f2(arg: Union[A2, B2]) -> Union[int, str]:
+    ...
+
+A3 = Tuple[int, int, int]
+B3 = Tuple[int, Unpack[Tuple[str, ...]]]
+
+@overload
+def f3(arg: A3) -> int: ...
+@overload
+def f3(arg: B3) -> str: ...
+def f3(arg: Union[A3, B3]) -> Union[int, str]:
+    ...
+
+A4 = Tuple[int, int, Unpack[Tuple[int, ...]]]
+B4 = Tuple[int]
+
+@overload
+def f4(arg: A4) -> int: ...
+@overload
+def f4(arg: B4) -> str: ...
+def f4(arg: Union[A4, B4]) -> Union[int, str]:
+    ...
+[builtins fixtures/tuple.pyi]
+
 [case testTypeVarTupleIndexOldStyleNonNormalizedAndNonLiteral]
 from typing import Any, Tuple
 from typing_extensions import Unpack
