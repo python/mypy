@@ -99,6 +99,7 @@ def build_ir(
             builder.functions,
             builder.classes,
             builder.final_names,
+            builder.type_var_names,
         )
         result[module.fullname] = module_ir
         class_irs.extend(builder.classes)

@@ -72,12 +72,33 @@ def test_param_spec() -> None:
     assert isinstance(f_any(), F)
     assert isinstance(f_any[[int, str]](), F)
 
-#class E: pass
+class Sub[S](C[S]):
+    def __init__(self, x: S) -> None:
+       super().__init__(x)
 
-#type A = E
+def test_generic_subclass() -> None:
+    s = Sub(1)
+    assert s.x == 1
+    s2 = Sub[str]('y')
+    assert s2.x == 'y'
+    sub_any: Any = Sub
+    assert sub_any(1).x == 1
+    assert sub_any[str]('x').x == 'x'
+    assert isinstance(s, Sub)
+    assert isinstance(s, C)
 
-#def test_simple_type_alias() -> None:
-#    assert isinstance(A, TypeAliasType)
-#    assert str(A) == "E"
+class Sub2[T, S](D[T, S]): pass
 
+def test_generic_subclass_two_params() -> None:
+    s = Sub2(3, 'y')
+    assert s.x == 3
+    assert s.y == 'y'
+    s2 = Sub2[str, int]('z', 4)
+    assert s2.x == 'z'
+    assert s2.y == 4
+    sub2_any: Any = Sub2
+    assert sub2_any(3, 'y').y == 'y'
+    assert sub2_any[int, str](3, 'y').y == 'y'
+    assert isinstance(s, Sub2)
+    assert isinstance(s, D)
 [typing fixtures/typing-full.pyi]

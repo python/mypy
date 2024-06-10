@@ -1689,7 +1689,7 @@ class SemanticAnalyzer(
         self.scope_stack.append(SCOPE_ANNOTATION)
         tvs: list[tuple[str, TypeVarLikeExpr]] = []
         for p in type_args:
-            tv = self.analyze_type_param(p)
+            tv = self.analyze_type_param(p, context)
             if tv is None:
                 return None
             tvs.append((p.name, tv))
@@ -1712,7 +1712,7 @@ class SemanticAnalyzer(
                     return True
         return False
 
-    def analyze_type_param(self, type_param: TypeParam) -> TypeVarLikeExpr | None:
+    def analyze_type_param(self, type_param: TypeParam, context: Context) -> TypeVarLikeExpr | None:
         fullname = self.qualified_name(type_param.name)
         if type_param.upper_bound:
             upper_bound = self.anal_type(type_param.upper_bound)
@@ -1737,6 +1737,7 @@ class SemanticAnalyzer(
                 default=default,
                 variance=VARIANCE_NOT_READY,
                 is_new_style=True,
+                line=context.line,
             )
         elif type_param.kind == PARAM_SPEC_KIND:
             return ParamSpecExpr(

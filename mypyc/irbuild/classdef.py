@@ -417,10 +417,14 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     # OK AND NOW THE FUN PART
     base_exprs = cdef.base_type_exprs + cdef.removed_base_type_exprs
     new_style_type_args = cdef.type_args
+    if new_style_type_args:
+        bases = [
+            make_generic_base_class(builder, cdef.fullname, new_style_type_args, cdef.line)]
+    else:
+        bases = []
+
     if base_exprs or new_style_type_args:
-        bases = [builder.accept(x) for x in base_exprs]
-        if new_style_type_args:
-            bases.append(make_generic_base_class(builder, new_style_type_args, cdef.line))
+        bases.extend([builder.accept(x) for x in base_exprs])
         tp_bases = builder.new_tuple(bases, cdef.line)
     else:
         tp_bases = builder.add(LoadErrorValue(object_rprimitive, is_borrowed=True))
@@ -467,7 +471,7 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     return tp
 
 
-def make_generic_base_class(builder: IRBuilder, type_args: list[TypeParam], line: int) -> Value:
+def make_generic_base_class(builder: IRBuilder, fullname: str, type_args: list[TypeParam], line: int) -> Value:
     """Construct Generic[...] base class object for a new-style generic class (Python 3.12)."""
     mod = builder.call_c(import_op, [builder.load_str("_typing")], line)
     tvs = []
@@ -488,6 +492,7 @@ def make_generic_base_class(builder: IRBuilder, type_args: list[TypeParam], line
             assert type_param.kind == PARAM_SPEC_KIND
             tvt = builder.py_get_attr(mod, "ParamSpec", line)
         tv = builder.py_call(tvt, [builder.load_str(type_param.name)], line)
+        builder.init_type_var(tv, type_param.name, line)
         if unpack:
             # Evaluate *Ts for a TypeVarTuple
             it = builder.call_c(iter_op, [tv], line)
