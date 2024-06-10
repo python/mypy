@@ -12,6 +12,7 @@ from typing import Callable
 from mypy import errorcodes as codes, message_registry
 from mypy.errorcodes import ErrorCode
 from mypy.errors import Errors
+from mypy.message_registry import INVALID_PARAM_SPEC_LOCATION, INVALID_PARAM_SPEC_LOCATION_NOTE
 from mypy.messages import format_type
 from mypy.mixedtraverser import MixedTraverserVisitor
 from mypy.nodes import ARG_STAR, Block, ClassDef, Context, FakeInfo, FuncItem, MypyFile
@@ -146,13 +147,25 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         for (i, arg), tvar in zip(enumerate(args), type_vars):
             if isinstance(tvar, TypeVarType):
                 if isinstance(arg, ParamSpecType):
-                    # TODO: Better message
                     is_error = True
-                    self.fail(f'Invalid location for ParamSpec "{arg.name}"', ctx)
-                    self.note(
-                        "You can use ParamSpec as the first argument to Callable, e.g., "
-                        "'Callable[{}, int]'".format(arg.name),
+                    self.fail(
+                        INVALID_PARAM_SPEC_LOCATION.format(format_type(arg, self.options)),
                         ctx,
+                        code=codes.VALID_TYPE,
+                    )
+                    self.note(
+                        INVALID_PARAM_SPEC_LOCATION_NOTE.format(arg.name),
+                        ctx,
+                        code=codes.VALID_TYPE,
+                    )
+                    continue
+                if isinstance(arg, Parameters):
+                    is_error = True
+                    self.fail(
+                        f"Cannot use {format_type(arg, self.options)} for regular type variable,"
+                        " only for ParamSpec",
+                        ctx,
+                        code=codes.VALID_TYPE,
                     )
                     continue
                 if tvar.values:
@@ -204,6 +217,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                         "Can only replace ParamSpec with a parameter types list or"
                         f" another ParamSpec, got {format_type(arg, self.options)}",
                         ctx,
+                        code=codes.VALID_TYPE,
                     )
         return is_error
 

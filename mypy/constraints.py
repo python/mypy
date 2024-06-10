@@ -688,14 +688,19 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
 
     def visit_parameters(self, template: Parameters) -> list[Constraint]:
         # Constraining Any against C[P] turns into infer_against_any([P], Any)
-        # ... which seems like the only case this can happen. Better to fail loudly otherwise.
         if isinstance(self.actual, AnyType):
             return self.infer_against_any(template.arg_types, self.actual)
         if type_state.infer_polymorphic and isinstance(self.actual, Parameters):
             # For polymorphic inference we need to be able to infer secondary constraints
             # in situations like [x: T] <: P <: [x: int].
             return infer_callable_arguments_constraints(template, self.actual, self.direction)
-        raise RuntimeError("Parameters cannot be constrained to")
+        if type_state.infer_polymorphic and isinstance(self.actual, ParamSpecType):
+            # Similar for [x: T] <: Q <: Concatenate[int, P].
+            return infer_callable_arguments_constraints(
+                template, self.actual.prefix, self.direction
+            )
+        # There also may be unpatched types after a user error, simply ignore them.
+        return []
 
     # Non-leaf types
 
