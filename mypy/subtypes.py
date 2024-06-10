@@ -8,7 +8,12 @@ import mypy.applytype
 import mypy.constraints
 import mypy.typeops
 from mypy.erasetype import erase_type
-from mypy.expandtype import expand_self_type, expand_type, expand_type_by_instance
+from mypy.expandtype import (
+    expand_self_type,
+    expand_type,
+    expand_type_by_instance,
+    freshen_function_type_vars,
+)
 from mypy.maptype import map_instance_to_supertype
 
 # Circular import; done in the function instead.
@@ -794,15 +799,18 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return False
             if any(not self._is_subtype(l, r) for l, r in zip(left.items, right.items)):
                 return False
-            rfallback = mypy.typeops.tuple_fallback(right)
-            if is_named_instance(rfallback, "builtins.tuple"):
+            if is_named_instance(right.partial_fallback, "builtins.tuple"):
                 # No need to verify fallback. This is useful since the calculated fallback
                 # may be inconsistent due to how we calculate joins between unions vs.
                 # non-unions. For example, join(int, str) == object, whereas
                 # join(Union[int, C], Union[str, C]) == Union[int, str, C].
                 return True
-            lfallback = mypy.typeops.tuple_fallback(left)
-            return self._is_subtype(lfallback, rfallback)
+            if is_named_instance(left.partial_fallback, "builtins.tuple"):
+                # Again, no need to verify. At this point we know the right fallback
+                # is a subclass of tuple, so if left is plain tuple, it cannot be a subtype.
+                return False
+            # At this point we know both fallbacks are non-tuple.
+            return self._is_subtype(left.partial_fallback, right.partial_fallback)
         else:
             return False
 
@@ -1857,6 +1865,11 @@ def unify_generic_callable(
     """
     import mypy.solve
 
+    if set(type.type_var_ids()) & {v.id for v in mypy.typeops.get_all_type_vars(target)}:
+        # Overload overlap check does nasty things like unifying in opposite direction.
+        # This can easily create type variable clashes, so we need to refresh.
+        type = freshen_function_type_vars(type)
+
     if return_constraint_direction is None:
         return_constraint_direction = mypy.constraints.SUBTYPE_OF
 
@@ -1879,7 +1892,9 @@ def unify_generic_callable(
         constraints = [
             c for c in constraints if not isinstance(get_proper_type(c.target), NoneType)
         ]
-    inferred_vars, _ = mypy.solve.solve_constraints(type.variables, constraints)
+    inferred_vars, _ = mypy.solve.solve_constraints(
+        type.variables, constraints, allow_polymorphic=True
+    )
     if None in inferred_vars:
         return None
     non_none_inferred_vars = cast(List[Type], inferred_vars)
