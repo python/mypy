@@ -114,4 +114,14 @@ def test_type_var_tuple_subclass() -> None:
     assert isinstance(sub_any(), E)
     assert isinstance(sub_any[int](), SubE)
     assert isinstance(sub_any[int, str](), SubE)
+
+
+class SubF[**P](F[P]): pass
+
+def test_param_spec_subclass() -> None:
+    sub_any: Any = SubF
+    assert isinstance(sub_any(), SubF)
+    assert isinstance(sub_any(), F)
+    assert isinstance(sub_any[[int]](), SubF)
+    assert isinstance(sub_any[[int, str]](), SubF)
 [typing fixtures/typing-full.pyi]

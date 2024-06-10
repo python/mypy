@@ -1748,6 +1748,7 @@ class SemanticAnalyzer(
                 upper_bound=upper_bound,
                 default=default,
                 is_new_style=True,
+                line=context.line,
             )
         else:
             assert type_param.kind == TYPE_VAR_TUPLE_KIND
