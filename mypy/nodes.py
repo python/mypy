@@ -2663,8 +2663,9 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
         default: mypy.types.Type,
         variance: int = INVARIANT,
         is_new_style: bool = False,
+        line: int = -1,
     ) -> None:
-        super().__init__(name, fullname, upper_bound, default, variance, is_new_style)
+        super().__init__(name, fullname, upper_bound, default, variance, is_new_style, line=line)
         self.tuple_fallback = tuple_fallback
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:

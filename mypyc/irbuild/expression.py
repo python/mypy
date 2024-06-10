@@ -44,7 +44,7 @@ from mypy.nodes import (
     TupleExpr,
     TypeApplication,
     TypeInfo,
-    TypeVarExpr,
+    TypeVarLikeExpr,
     UnaryExpr,
     Var,
 )
@@ -105,7 +105,7 @@ from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
 
 
 def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
-    if isinstance(expr.node, TypeVarExpr) and expr.node.is_new_style:
+    if isinstance(expr.node, TypeVarLikeExpr) and expr.node.is_new_style:
         # Reference to Python 3.12 implicit TypeVar/TupleVarTuple/... object.
         # These are stored in C statics and not visible in Python namespaces.
         return builder.load_type_var(expr.node.name, expr.node.line)

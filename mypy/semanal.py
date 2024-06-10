@@ -1760,6 +1760,7 @@ class SemanticAnalyzer(
                 tuple_fallback=tuple_fallback,
                 default=default,
                 is_new_style=True,
+                line=context.line,
             )
 
     def pop_type_args(self, type_args: list[TypeParam] | None) -> None:

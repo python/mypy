@@ -72,37 +72,46 @@ def test_param_spec() -> None:
     assert isinstance(f_any(), F)
     assert isinstance(f_any[[int, str]](), F)
 
-class Sub[S](C[S]):
+class SubC[S](C[S]):
     def __init__(self, x: S) -> None:
        super().__init__(x)
 
 def test_generic_subclass() -> None:
-    s = Sub(1)
+    s = SubC(1)
     assert s.x == 1
-    s2 = Sub[str]('y')
+    s2 = SubC[str]('y')
     assert s2.x == 'y'
-    sub_any: Any = Sub
+    sub_any: Any = SubC
     assert sub_any(1).x == 1
     assert sub_any[str]('x').x == 'x'
-    assert isinstance(s, Sub)
+    assert isinstance(s, SubC)
     assert isinstance(s, C)
 
-class Sub2[
+class SubD[
            T,  # Put everything on separate lines
            S](
               D[T,
                 S]): pass
 
 def test_generic_subclass_two_params() -> None:
-    s = Sub2(3, 'y')
+    s = SubD(3, 'y')
     assert s.x == 3
     assert s.y == 'y'
-    s2 = Sub2[str, int]('z', 4)
+    s2 = SubD[str, int]('z', 4)
     assert s2.x == 'z'
     assert s2.y == 4
-    sub2_any: Any = Sub2
-    assert sub2_any(3, 'y').y == 'y'
-    assert sub2_any[int, str](3, 'y').y == 'y'
-    assert isinstance(s, Sub2)
+    sub_any: Any = SubD
+    assert sub_any(3, 'y').y == 'y'
+    assert sub_any[int, str](3, 'y').y == 'y'
+    assert isinstance(s, SubD)
     assert isinstance(s, D)
+
+class SubE[*Ts](E[*Ts]): pass
+
+def test_type_var_tuple_subclass() -> None:
+    sub_any: Any = SubE
+    assert isinstance(sub_any(), SubE)
+    assert isinstance(sub_any(), E)
+    assert isinstance(sub_any[int](), SubE)
+    assert isinstance(sub_any[int, str](), SubE)
 [typing fixtures/typing-full.pyi]
