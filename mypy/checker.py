@@ -2302,9 +2302,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             continue
                     else:
                         continue
-                    if not is_subtype(
-                        original_arg_type, erase_override(override_arg_type)
-                    ):
+                    if not is_subtype(original_arg_type, erase_override(override_arg_type)):
                         if isinstance(node, FuncDef) and not node.is_property:
                             context: Context = node.arguments[i + len(override.bound_args)]
                         else:
