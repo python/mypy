@@ -223,9 +223,6 @@ def infer_constraints_for_callable(
                 if actual_arg_type is None:
                     continue
 
-                actual_type = mapper.expand_actual_type(
-                    actual_arg_type, arg_kinds[actual], callee.arg_names[i], callee.arg_kinds[i]
-                )
                 if param_spec and callee.arg_kinds[i] in (ARG_STAR, ARG_STAR2):
                     # If actual arguments are mapped to ParamSpec type, we can't infer individual
                     # constraints, instead store them and infer single constraint at the end.
@@ -243,6 +240,12 @@ def infer_constraints_for_callable(
                         )
                         param_spec_arg_names.append(arg_names[actual] if arg_names else None)
                 else:
+                    actual_type = mapper.expand_actual_type(
+                        actual_arg_type,
+                        arg_kinds[actual],
+                        callee.arg_names[i],
+                        callee.arg_kinds[i],
+                    )
                     c = infer_constraints(callee.arg_types[i], actual_type, SUPERTYPE_OF)
                     constraints.extend(c)
     if (
