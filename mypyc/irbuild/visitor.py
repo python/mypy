@@ -70,6 +70,7 @@ from mypy.nodes import (
     TryStmt,
     TupleExpr,
     TypeAliasExpr,
+    TypeAliasStmt,
     TypeApplication,
     TypedDictExpr,
     TypeVarExpr,
@@ -248,6 +249,9 @@ class IRBuilderVisitor(IRVisitor):
 
     def visit_match_stmt(self, stmt: MatchStmt) -> None:
         transform_match_stmt(self.builder, stmt)
+
+    def visit_type_alias_stmt(self, stmt: TypeAliasStmt) -> None:
+        self.bail('The "type" statement is not yet supported by mypyc', stmt.line)
 
     # Expressions
 
