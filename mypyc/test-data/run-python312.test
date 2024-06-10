@@ -1,6 +1,6 @@
 [case testPEP695Basics]
 # flags: --enable-incomplete-feature=NewGenericSyntax
-from typing import Any, TypeAliasType
+from typing import Any, TypeAliasType, cast
 
 from testutil import assertRaises
 
@@ -25,6 +25,10 @@ class D[T, S]:
         self.x = x
         self.y = y
 
+    def set(self, x: object, y: object) -> None:
+        self.x = cast(T, x)
+        self.y = cast(S, y)
+
 def test_generic_class() -> None:
     c = C(5)
     assert c.x == 5
@@ -33,6 +37,9 @@ def test_generic_class() -> None:
     d = D[str, int]('a', 5)
     assert d.x == 'a'
     assert d.y == 5
+    d.set('b', 6)
+    assert d.x == 'b'
+    assert d.y == 6
 
 def test_generic_class_via_any() -> None:
     c_any: Any = C
@@ -124,4 +131,42 @@ def test_param_spec_subclass() -> None:
     assert isinstance(sub_any(), F)
     assert isinstance(sub_any[[int]](), SubF)
     assert isinstance(sub_any[[int, str]](), SubF)
+
+# We test that upper bounds and restricted values can be used, but not that
+# they are introspectable
+
+def bound[T: C](x: T) -> T:
+    return x
+
+def test_function_with_upper_bound() -> None:
+    c = C(1)
+    assert bound(c) is c
+
+def restriction[T: (int, str)](x: T) -> T:
+    return x
+
+def test_function_with_value_restriction() -> None:
+    assert restriction(1) == 1
+    assert restriction('x') == 'x'
+
+class Bound[T: C]:
+     def __init__(self, x: T) -> None:
+         self.x = x
+
+def test_class_with_upper_bound() -> None:
+    c = C(1)
+    b = Bound(c)
+    assert b.x is c
+    b2 = Bound[C](c)
+    assert b2.x is c
+
+class Restriction[T: (int, str)]:
+    def __init__(self, x: T) -> None:
+        self.x = x
+
+def test_class_with_value_restriction() -> None:
+    r = Restriction(1)
+    assert r.x == 1
+    r2 = Restriction[str]('a')
+    assert r2.x == 'a'
 [typing fixtures/typing-full.pyi]
