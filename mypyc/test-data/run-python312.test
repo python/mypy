@@ -87,7 +87,11 @@ def test_generic_subclass() -> None:
     assert isinstance(s, Sub)
     assert isinstance(s, C)
 
-class Sub2[T, S](D[T, S]): pass
+class Sub2[
+           T,  # Put everything on separate lines
+           S](
+              D[T,
+                S]): pass
 
 def test_generic_subclass_two_params() -> None:
     s = Sub2(3, 'y')
