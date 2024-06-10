@@ -2283,8 +2283,8 @@ def foo(s: str, s2: str) -> None: ...
 [builtins fixtures/paramspec.pyi]
 
 [case testRunParamSpecOverload]
-from typing_extensions import ParamSpec, Concatenate
-from typing import Callable, overload, NoReturn, TypeVar, Union
+from typing_extensions import ParamSpec
+from typing import Callable, NoReturn, TypeVar, Union, overload
 
 P = ParamSpec("P")
 T = TypeVar("T")
