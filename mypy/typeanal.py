@@ -2376,6 +2376,12 @@ def validate_instance(t: Instance, fail: MsgCallback, empty_tuple_index: bool) -
         if not t.args:
             if not (empty_tuple_index and len(t.type.type_vars) == 1):
                 # The Any arguments should be set by the caller.
+                if empty_tuple_index and min_tv_count:
+                    fail(
+                        f"At least {min_tv_count} type argument(s) expected, none given",
+                        t,
+                        code=codes.TYPE_ARG,
+                    )
                 return False
         elif not correct:
             fail(

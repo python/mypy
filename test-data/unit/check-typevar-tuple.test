@@ -2378,3 +2378,30 @@ def a2(x: Array[int, str]) -> None:
     reveal_type(func(x, 2, "Hello", True))   # E: Cannot infer type argument 1 of "func" \
                                              # N: Revealed type is "builtins.tuple[Any, ...]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleTypeApplicationOverload]
+from typing import Generic, TypeVar, TypeVarTuple, Unpack, overload, Callable
+
+T = TypeVar("T")
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+T3 = TypeVar("T3")
+Ts = TypeVarTuple("Ts")
+
+class C(Generic[T, Unpack[Ts]]):
+    @overload
+    def __init__(self, f: Callable[[Unpack[Ts]], T]) -> None: ...
+    @overload
+    def __init__(self, f: Callable[[T1, T2, T3, Unpack[Ts]], T], a: T1, b: T2, c: T3) -> None: ...
+    def __init__(self, f, *args, **kwargs) -> None:
+        ...
+
+reveal_type(C[int, str])  # N: Revealed type is "Overload(def (f: def (builtins.str) -> builtins.int) -> __main__.C[builtins.int, builtins.str], def [T1, T2, T3] (f: def (T1`-1, T2`-2, T3`-3, builtins.str) -> builtins.int, a: T1`-1, b: T2`-2, c: T3`-3) -> __main__.C[builtins.int, builtins.str])"
+Alias = C[int, str]
+
+def f(x: int, y: int, z: int, t: int) -> str: ...
+x = C(f, 0, 0, "hm")  # E: Argument 1 to "C" has incompatible type "Callable[[int, int, int, int], str]"; expected "Callable[[int, int, str, int], str]"
+reveal_type(x)  # N: Revealed type is "__main__.C[builtins.str, builtins.int]"
+reveal_type(C(f))  # N: Revealed type is "__main__.C[builtins.str, builtins.int, builtins.int, builtins.int, builtins.int]"
+C[()]  # E: At least 1 type argument(s) expected, none given
+[builtins fixtures/tuple.pyi]

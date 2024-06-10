@@ -3443,6 +3443,19 @@ h: Callable[[Unpack[Us]], Foo[int]]
 reveal_type(dec(h))  # N: Revealed type is "def (builtins.int) -> __main__.Foo[builtins.int]"
 [builtins fixtures/list.pyi]
 
+[case testTypeApplicationGenericConstructor]
+from typing import Generic, TypeVar, Callable
+
+T = TypeVar("T")
+S = TypeVar("S")
+class C(Generic[T]):
+    def __init__(self, f: Callable[[S], T], x: S) -> None:
+        self.x = f(x)
+
+reveal_type(C[int])  # N: Revealed type is "def [S] (f: def (S`-1) -> builtins.int, x: S`-1) -> __main__.C[builtins.int]"
+Alias = C[int]
+C[int, str]  # E: Type application has too many types (1 expected)
+
 [case testHigherOrderGenericPartial]
 from typing import TypeVar, Callable
 
