@@ -40,11 +40,10 @@ class B(A):
 class C(A):
     def f(self, *, b: int, a: str) -> None: pass  # Fail
 [out]
-main:10: error: Signature of "f" incompatible with supertype "A"
-main:10: note:      Superclass:
-main:10: note:          def f(self, *, a: int, b: str) -> None
-main:10: note:      Subclass:
-main:10: note:          def f(self, *, b: int, a: str) -> None
+main:10: error: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "str"
+main:10: note: This violates the Liskov substitution principle
+main:10: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+main:10: error: Argument 2 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int"
 
 [case testPositionalOverridingArgumentNameInsensitivity]
 import typing
@@ -3324,3 +3323,47 @@ class Bar(Foo):
                                                    # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
         ...
 [builtins fixtures/property.pyi]
+
+[case testNoCrashOnUnpackOverride]
+from typing import Unpack
+from typing_extensions import TypedDict
+
+class Params(TypedDict):
+    x: int
+    y: str
+
+class Other(TypedDict):
+    x: int
+    y: int
+
+class B:
+    def meth(self, **kwargs: Unpack[Params]) -> None:
+        ...
+class C(B):
+    def meth(self, **kwargs: Unpack[Other]) -> None:  # E: Signature of "meth" incompatible with supertype "B" \
+                                                      # N:      Superclass: \
+                                                      # N:          def meth(*, x: int, y: str) -> None \
+                                                      # N:      Subclass: \
+                                                      # N:          def meth(*, x: int, y: int) -> None
+
+        ...
+[builtins fixtures/tuple.pyi]
+
+[case testOverrideErrorLocationNamed]
+class B:
+    def meth(
+        self, *,
+        x: int,
+        y: str,
+    ) -> None:
+        ...
+class C(B):
+    def meth(
+        self, *,
+        y: int,  # E: Argument 1 of "meth" is incompatible with supertype "B"; supertype defines the argument type as "str" \
+                 # N: This violates the Liskov substitution principle \
+                 # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+        x: int,
+    ) -> None:
+        ...
+[builtins fixtures/tuple.pyi]
