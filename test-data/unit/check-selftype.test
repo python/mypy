@@ -2071,3 +2071,98 @@ p: Partial
 reveal_type(p())  # N: Revealed type is "Never"
 p2: Partial2
 reveal_type(p2(42))  # N: Revealed type is "builtins.int"
+
+[case testSelfTypeBindingWithGenericParamSpec]
+from typing import Generic, Callable
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+
+class Wrapper(Generic[P]):
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> None: ...
+
+def decorator(f: Callable[P, None]) -> Callable[P, None]: ...
+def lru_cache(f: Callable[P, None]) -> Wrapper[P]: ...
+
+class A:
+    @decorator
+    def method1(self, val: int) -> None: ...
+
+    @lru_cache
+    def method2(self, val: int) -> None: ...
+
+    def test(self) -> None:
+        reveal_type(self.method1)  # N: Revealed type is "def (val: builtins.int)"
+        reveal_type(self.method2)  # N: Revealed type is "__main__.Wrapper[[val: builtins.int]]"
+        reveal_type(A.method1)  # N: Revealed type is "def (self: __main__.A, val: builtins.int)"
+        reveal_type(A.method2)  # N: Revealed type is "__main__.Wrapper[[self: __main__.A, val: builtins.int]]"
+
+        self.method1(2)
+        self.method2(2)
+[builtins fixtures/tuple.pyi]
+
+[case testSelfTypeBindingWithGenericParamSpecClassmethod]
+from typing import Generic, Callable
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+
+class Wrapper(Generic[P]):
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> None: ...
+
+def decorator(f: Callable[P, None]) -> Callable[P, None]: ...
+def lru_cache(f: Callable[P, None]) -> Wrapper[P]: ...
+
+class A:
+    @classmethod
+    @decorator
+    def method1(cls, val: int) -> None: ...
+
+    @classmethod
+    @lru_cache
+    def method2(cls, val: int) -> None: ...
+
+    def test(self) -> None:
+        reveal_type(self.method1)  # N: Revealed type is "def (val: builtins.int)"
+        reveal_type(self.method2)  # N: Revealed type is "__main__.Wrapper[[val: builtins.int]]"
+        reveal_type(A.method1)  # N: Revealed type is "def (val: builtins.int)"
+        reveal_type(A.method2)  # N: Revealed type is "__main__.Wrapper[[val: builtins.int]]"
+
+        self.method1(2)
+        self.method2(2)
+        A.method1(2)
+        A.method2(2)
+[builtins fixtures/classmethod.pyi]
+
+[case testSelfTypeBindingWithGenericParamSpecStaticmethod]
+from typing import Generic, Callable
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+
+class Wrapper(Generic[P]):
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> None: ...
+
+def decorator(f: Callable[P, None]) -> Callable[P, None]: ...
+def lru_cache(f: Callable[P, None]) -> Wrapper[P]: ...
+
+class A:
+    @staticmethod
+    @decorator
+    def method1(val: int) -> None: ...
+
+    @staticmethod
+    @lru_cache
+    def method2(val: int) -> None: ...
+
+    def test(self) -> None:
+        reveal_type(self.method1)  # N: Revealed type is "def (val: builtins.int)"
+        reveal_type(self.method2)  # N: Revealed type is "__main__.Wrapper[[val: builtins.int]]"
+        reveal_type(A.method1)  # N: Revealed type is "def (val: builtins.int)"
+        reveal_type(A.method2)  # N: Revealed type is "__main__.Wrapper[[val: builtins.int]]"
+
+        self.method1(2)
+        self.method2(2)
+        A.method1(2)
+        A.method2(2)
+[builtins fixtures/classmethod.pyi]
