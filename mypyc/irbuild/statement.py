@@ -37,6 +37,7 @@ from mypy.nodes import (
     TempNode,
     TryStmt,
     TupleExpr,
+    TypeAliasStmt,
     WhileStmt,
     WithStmt,
     YieldExpr,
@@ -105,7 +106,9 @@ from mypyc.primitives.misc_ops import (
     coro_op,
     import_from_many_op,
     import_many_op,
+    import_op,
     send_op,
+    set_type_alias_compute_function_op,
     type_op,
     yield_from_except_op,
 )
@@ -1015,3 +1018,20 @@ def transform_await_expr(builder: IRBuilder, o: AwaitExpr) -> Value:
 
 def transform_match_stmt(builder: IRBuilder, m: MatchStmt) -> None:
     m.accept(MatchVisitor(builder, m))
+
+
+def transform_type_alias_stmt(builder: IRBuilder, s: TypeAliasStmt) -> None:
+    line = s.line
+    # Use _typing.TypeAliasType to avoid importing "typing", as this can be expensive.
+    mod = builder.call_c(import_op, [builder.load_str("_typing")], line)
+    typ = builder.py_get_attr(mod, "TypeAliasType", line)
+
+    # Use primitive to set function used to lazily compute type alias type value.
+    # The value needs to be lazily computed to match Python runtime behavior, but
+    # the public API doesn't support this, so we use a C primitive.
+    alias = builder.py_call(typ, [builder.load_str(s.name.name), builder.none()], line)
+    compute_fn = s.value.accept(builder.visitor)
+    builder.builder.primitive_op(set_type_alias_compute_function_op, [alias, compute_fn], line)
+
+    target = builder.get_assignment_target(s.name)
+    builder.assign(target, alias, line)

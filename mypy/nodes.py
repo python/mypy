@@ -1653,10 +1653,10 @@ class TypeAliasStmt(Statement):
 
     name: NameExpr
     type_args: list[TypeParam]
-    value: Expression  # Will get translated into a type
+    value: LambdaExpr  # Return value will get translated into a type
     invalid_recursive_alias: bool
 
-    def __init__(self, name: NameExpr, type_args: list[TypeParam], value: Expression) -> None:
+    def __init__(self, name: NameExpr, type_args: list[TypeParam], value: LambdaExpr) -> None:
         super().__init__()
         self.name = name
         self.type_args = type_args

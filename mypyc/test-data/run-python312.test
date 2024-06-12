@@ -169,4 +169,24 @@ def test_class_with_value_restriction() -> None:
     assert r.x == 1
     r2 = Restriction[str]('a')
     assert r2.x == 'a'
+
+type A = int
+
+def test_simple_type_alias() -> None:
+    assert isinstance(A, TypeAliasType)
+    assert getattr(A, "__value__") is int
+    assert str(A) == "A"
+
+type B = Fwd[int]
+Fwd = list
+
+def test_forward_reference_in_alias() -> None:
+    assert isinstance(B, TypeAliasType)
+    assert getattr(B, "__value__") == list[int]
+
+type R = int | list[R]
+
+def test_recursive_type_alias() -> None:
+    assert isinstance(R, TypeAliasType)
+    assert getattr(R, "__value__") == (int | list[R])
 [typing fixtures/typing-full.pyi]
