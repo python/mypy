@@ -1983,22 +1983,6 @@ X = None | C
 Y = None | D
 [builtins fixtures/type.pyi]
 
-[case testTypeAliasWithNewUnionIsInstance]
-SimpleAlias = int | str
-
-def foo(x: int | str | tuple):
-    if isinstance(x, SimpleAlias):
-        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
-    else:
-        reveal_type(x)  # N: Revealed type is "builtins.tuple[Any, ...]"
-
-ParameterizedAlias = str | list[str]
-
-# these are false negatives:
-isinstance(5, str | list[str])
-isinstance(5, ParameterizedAlias)
-[builtins fixtures/type.pyi]
-
 [case testMatchStatementWalrus]
 class A:
     a = 1

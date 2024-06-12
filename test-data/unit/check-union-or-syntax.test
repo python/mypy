@@ -197,7 +197,6 @@ def f(x: Union[int, str, None]) -> None:
 
 [case testImplicit604TypeAliasWithCyclicImportInStub]
 # flags: --python-version 3.10
-import types
 from was_builtins import foo
 reveal_type(foo)  # N: Revealed type is "Union[builtins.str, was_mmap.mmap]"
 [file was_builtins.pyi]
@@ -208,6 +207,7 @@ foo: ReadableBuffer
 [file was_mmap.pyi]
 from was_builtins import *
 class mmap: ...
+[builtins fixtures/type.pyi]
 
 # TODO: Get this test to pass
 [case testImplicit604TypeAliasWithCyclicImportNotInStub-xfail]
@@ -222,3 +222,19 @@ foo: ReadableBuffer
 [file was_mmap.py]
 from was_builtins import *
 class mmap: ...
+
+[case testTypeAliasWithNewUnionIsInstance]
+SimpleAlias = int | str
+
+def foo(x: int | str | tuple):
+    if isinstance(x, SimpleAlias):
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.tuple[Any, ...]"
+
+ParameterizedAlias = str | list[str]
+
+# these are false negatives:
+isinstance(5, str | list[str])
+isinstance(5, ParameterizedAlias)
+[builtins fixtures/type.pyi]

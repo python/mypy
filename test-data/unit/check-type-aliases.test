@@ -959,7 +959,6 @@ c.SpecialExplicit = 4
 
 [case testNewStyleUnionInTypeAliasWithMalformedInstance]
 # flags: --python-version 3.10
-import types
 from typing import List
 
 A = List[int, str] | int  # E: "list" expects 1 type argument, but 2 given
@@ -968,6 +967,7 @@ a: A
 b: B
 reveal_type(a)  # N: Revealed type is "Union[builtins.list[Any], builtins.int]"
 reveal_type(b)  # N: Revealed type is "Union[builtins.int, builtins.list[Any]]"
+[builtins fixtures/type.pyi]
 
 [case testValidTypeAliasValues]
 from typing import TypeVar, Generic, List
