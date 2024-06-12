@@ -530,8 +530,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     and isinstance(node.node, TypeAlias)
                     and not node.node.no_args
                     and not (
-                        isinstance(node.node.target, UnionType)
-                        and node.node.target.uses_pep604_syntax
+                        isinstance(union_target := get_proper_type(node.node.target), UnionType)
+                        and union_target.uses_pep604_syntax
                     )
                 ):
                     self.msg.type_arguments_not_allowed(e)

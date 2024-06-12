@@ -959,6 +959,7 @@ c.SpecialExplicit = 4
 
 [case testNewStyleUnionInTypeAliasWithMalformedInstance]
 # flags: --python-version 3.10
+import types
 from typing import List
 
 A = List[int, str] | int  # E: "list" expects 1 type argument, but 2 given
