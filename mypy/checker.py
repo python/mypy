@@ -1924,11 +1924,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         found_method_base_classes: list[TypeInfo] | None,
         context: Context | None = None,
     ) -> None:
+        sym = defn.info.get(defn.name)
         if (
             found_method_base_classes
             and not defn.is_explicit_override
             and defn.name not in ("__init__", "__new__")
             and not is_private(defn.name)
+            and sym is not None
+            and not sym.plugin_generated
         ):
             self.msg.explicit_override_decorator_missing(
                 defn.name, found_method_base_classes[0].fullname, context or defn

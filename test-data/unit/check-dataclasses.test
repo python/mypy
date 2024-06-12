@@ -2465,13 +2465,26 @@ class Foo:
 
 [case testDataclassInheritanceWorksWithExplicitOverrides]
 # flags: --enable-error-code explicit-override
-from dataclasses  import dataclass
+from dataclasses import dataclass
 
 @dataclass
 class Base:
     x: int
 
 @dataclass
+class Child(Base):
+    y: int
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassInheritanceWorksWithExplicitOverridesAndOrdering]
+# flags: --enable-error-code explicit-override
+from dataclasses import dataclass
+
+@dataclass(order=True)
+class Base:
+    x: int
+
+@dataclass(order=True)
 class Child(Base):
     y: int
 [builtins fixtures/dataclasses.pyi]
