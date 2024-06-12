@@ -178,7 +178,7 @@ def generate_stub_for_c_module(
     gen.generate_module()
     output = gen.output()
 
-    with open(target, "w") as file:
+    with open(target, "w", encoding="utf-8") as file:
         file.write(output)
 
 
