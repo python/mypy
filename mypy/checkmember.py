@@ -778,9 +778,9 @@ def analyze_var(
             mx.msg.cant_assign_to_classvar(name, mx.context)
         t = freshen_all_functions_type_vars(typ)
         t = expand_self_type_if_needed(t, mx, var, original_itype)
-        t = get_proper_type(expand_type_by_instance(t, itype))
+        t = expand_type_by_instance(t, itype)
         freeze_all_type_vars(t)
-        result: Type = t
+        result = t
         typ = get_proper_type(typ)
 
         call_type: ProperType | None = None
@@ -1080,7 +1080,6 @@ def analyze_class_attribute_access(
                         message = message_registry.GENERIC_INSTANCE_VAR_CLASS_ACCESS
                     mx.msg.fail(message, mx.context)
             t = expand_self_type_if_needed(t, mx, node.node, itype, is_class=True)
-            t = get_proper_type(t)
             # Erase non-mapped variables, but keep mapped ones, even if there is an error.
             # In the above example this means that we infer following types:
             #     C.x -> Any
