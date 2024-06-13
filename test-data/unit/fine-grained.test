@@ -5327,7 +5327,7 @@ c: C
 c = C.X
 if int():
     c = 1
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/enum.pyi]
 [out]
 ==
 ==
@@ -5359,7 +5359,7 @@ if int():
     n = C.X
     if int():
         n = c
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/enum.pyi]
 [out]
 ==
 ==
@@ -5407,7 +5407,7 @@ from enum import Enum
 class C(Enum):
     X = 0
     Y = 1
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/enum.pyi]
 [out]
 ==
 a.py:4: error: Argument 1 to "f" has incompatible type "C"; expected "int"
@@ -5462,7 +5462,7 @@ if int():
     n: int
     n = C.X
 n = c
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/enum.pyi]
 [out]
 ==
 ==

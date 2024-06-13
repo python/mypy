@@ -1498,7 +1498,7 @@ def g(m: Medal) -> int:
         case Medal.bronze:
             reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.bronze]"
             return 2
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/enum.pyi]
 
 [case testMatchLiteralPatternEnumCustomEquals-skip]
 from enum import Enum
@@ -1516,7 +1516,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
     case _:
         reveal_type(m)  # N: Revealed type is "__main__.Medal"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/enum.pyi]
 
 [case testMatchNarrowUsingPatternGuardSpecialCase]
 def f(x: int | str) -> int:
