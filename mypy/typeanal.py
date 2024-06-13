@@ -1271,7 +1271,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             and not self.options.python_version >= (3, 10)
         ):
             self.fail("X | Y syntax for unions requires Python 3.10", t, code=codes.SYNTAX)
-        return UnionType(self.anal_array(t.items), t.line)
+        return UnionType(self.anal_array(t.items), t.line, uses_pep604_syntax=t.uses_pep604_syntax)
 
     def visit_partial_type(self, t: PartialType) -> Type:
         assert False, "Internal error: Unexpected partial type"

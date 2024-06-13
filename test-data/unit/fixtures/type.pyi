@@ -1,6 +1,8 @@
 # builtins stub used in type-related test cases.
 
 from typing import Any, Generic, TypeVar, List, Union
+import sys
+import types
 
 T = TypeVar("T")
 S = TypeVar("S")
@@ -25,3 +27,8 @@ class bool: pass
 class int: pass
 class str: pass
 class ellipsis: pass
+
+if sys.version_info >= (3, 10):  # type: ignore
+    def isinstance(obj: object, class_or_tuple: type | types.UnionType, /) -> bool: ...
+else:
+    def isinstance(obj: object, class_or_tuple: type, /) -> bool: ...
