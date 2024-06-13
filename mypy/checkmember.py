@@ -857,7 +857,9 @@ def expand_self_type_if_needed(
         return expand_self_type(var, t, itype)
     elif supported_self_type(
         # Support compatibility with plain old style T -> T and Type[T] -> T only.
-        get_proper_type(mx.original_type), allow_instances=False, allow_callable=False
+        get_proper_type(mx.original_type),
+        allow_instances=False,
+        allow_callable=False,
     ):
         repl = mx.original_type
         if is_class and isinstance(original, TypeType):
