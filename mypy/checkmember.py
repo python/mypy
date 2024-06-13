@@ -1143,6 +1143,17 @@ def analyze_enum_class_attribute_access(
     if name.startswith("__") and name.replace("_", "") != "":
         return None
 
+    node = itype.type.get(name)
+    if node.type:
+        proper = get_proper_type(node.type)
+        # Support `A = nonmember(1)` function call and decorator.
+        if (
+            isinstance(proper, Instance)
+            and proper.type.fullname == "enum.nonmember"
+            and proper.args
+        ):
+            return proper.args[0]
+
     enum_literal = LiteralType(name, fallback=itype)
     return itype.copy_modified(last_known_value=enum_literal)
 

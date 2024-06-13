@@ -20,7 +20,15 @@ from mypy.nodes import TypeInfo
 from mypy.semanal_enum import ENUM_BASES
 from mypy.subtypes import is_equivalent
 from mypy.typeops import fixup_partial_type, make_simplified_union
-from mypy.types import CallableType, Instance, LiteralType, ProperType, Type, get_proper_type
+from mypy.types import (
+    CallableType,
+    Instance,
+    LiteralType,
+    ProperType,
+    Type,
+    get_proper_type,
+    is_named_instance,
+)
 
 ENUM_NAME_ACCESS: Final = {f"{prefix}.name" for prefix in ENUM_BASES} | {
     f"{prefix}._name_" for prefix in ENUM_BASES
@@ -159,7 +167,7 @@ def enum_value_callback(ctx: mypy.plugin.AttributeContext) -> Type:
 
             stnodes = (info.get(name) for name in info.names)
 
-            # Enums _can_ have methods and instance attributes.
+            # Enums _can_ have methods, instance attributes, and `nonmember`s.
             # Omit methods and attributes created by assigning to self.*
             # for our value inference.
             node_types = (
@@ -170,7 +178,8 @@ def enum_value_callback(ctx: mypy.plugin.AttributeContext) -> Type:
             proper_types = [
                 _infer_value_type_with_auto_fallback(ctx, t)
                 for t in node_types
-                if t is None or not isinstance(t, CallableType)
+                if t is None
+                or (not isinstance(t, CallableType) and not is_named_instance(t, "enum.nonmember"))
             ]
             underlying_type = _first(proper_types)
             if underlying_type is None:
