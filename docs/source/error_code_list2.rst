@@ -5,8 +5,8 @@ Error codes for optional checks
 
 This section documents various errors codes that mypy generates only
 if you enable certain options. See :ref:`error-codes` for general
-documentation about error codes. :ref:`error-code-list` documents
-error codes that are enabled by default.
+documentation about error codes and their configuration.
+:ref:`error-code-list` documents error codes that are enabled by default.
 
 .. note::
 
@@ -241,7 +241,7 @@ mypy generates an error if it thinks that an expression is redundant.
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code redundant-expr ..."
+    # mypy: enable-error-code="redundant-expr"
 
     def example(x: int) -> None:
         # Error: Left operand of "and" is always true  [redundant-expr]
@@ -268,7 +268,7 @@ example:
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code possibly-undefined ..."
+    # mypy: enable-error-code="possibly-undefined"
 
     from typing import Iterable
 
@@ -297,7 +297,7 @@ Using an iterable value in a boolean context has a separate error code
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code truthy-bool ..."
+    # mypy: enable-error-code="truthy-bool"
 
     class Foo:
         pass
@@ -347,7 +347,7 @@ Example:
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code ignore-without-code ..."
+    # mypy: enable-error-code="ignore-without-code"
 
     class Foo:
         def __init__(self, name: str) -> None:
@@ -378,7 +378,7 @@ Example:
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code unused-awaitable ..."
+    # mypy: enable-error-code="unused-awaitable"
 
     import asyncio
 
@@ -462,7 +462,7 @@ Example:
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code explicit-override ..."
+    # mypy: enable-error-code="explicit-override"
 
     from typing import override
 
@@ -536,7 +536,7 @@ Now users can actually import ``reveal_type`` to make the runtime code safe.
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code unimported-reveal"
+    # mypy: enable-error-code="unimported-reveal"
 
     x = 1
     reveal_type(x)  # Note: Revealed type is "builtins.int" \
@@ -546,7 +546,7 @@ Correct usage:
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code unimported-reveal"
+    # mypy: enable-error-code="unimported-reveal"
     from typing import reveal_type   # or `typing_extensions`
 
     x = 1
