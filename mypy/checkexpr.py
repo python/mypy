@@ -3255,7 +3255,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if isinstance(base, RefExpr) and isinstance(base.node, MypyFile):
                 module_symbol_table = base.node.names
             if isinstance(base, RefExpr) and isinstance(base.node, Var):
-                is_self = base.node.is_self
+                # This is needed to special case self-types, so we don't need to track
+                # these flags separately in checkmember.py.
+                is_self = base.node.is_self or base.node.is_cls
             else:
                 is_self = False
 

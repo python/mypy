@@ -2071,3 +2071,33 @@ p: Partial
 reveal_type(p())  # N: Revealed type is "Never"
 p2: Partial2
 reveal_type(p2(42))  # N: Revealed type is "builtins.int"
+
+[case testAccessingSelfClassVarInClassMethod]
+from typing import Self, ClassVar, Type, TypeVar
+
+T = TypeVar("T", bound="Foo")
+
+class Foo:
+    instance: ClassVar[Self]
+    @classmethod
+    def get_instance(cls) -> Self:
+        return reveal_type(cls.instance)  # N: Revealed type is "Self`0"
+    @classmethod
+    def get_instance_old(cls: Type[T]) -> T:
+        return reveal_type(cls.instance)  # N: Revealed type is "T`-1"
+
+class Bar(Foo):
+    extra: int
+
+    @classmethod
+    def get_instance(cls) -> Self:
+        reveal_type(cls.instance.extra)  # N: Revealed type is "builtins.int"
+        return cls.instance
+
+    @classmethod
+    def other(cls) -> None:
+        reveal_type(cls.instance)  # N: Revealed type is "Self`0"
+        reveal_type(cls.instance.extra)  # N: Revealed type is "builtins.int"
+
+reveal_type(Bar.instance)  # N: Revealed type is "__main__.Bar"
+[builtins fixtures/classmethod.pyi]

@@ -777,20 +777,7 @@ def analyze_var(
         if mx.is_lvalue and var.is_classvar:
             mx.msg.cant_assign_to_classvar(name, mx.context)
         t = freshen_all_functions_type_vars(typ)
-        if not (mx.is_self or mx.is_super) or supported_self_type(
-            get_proper_type(mx.original_type)
-        ):
-            t = expand_self_type(var, t, mx.original_type)
-        elif (
-            mx.is_self
-            and original_itype.type != var.info
-            # If an attribute with Self-type was defined in a supertype, we need to
-            # rebind the Self type variable to Self type variable of current class...
-            and original_itype.type.self_type is not None
-            # ...unless `self` has an explicit non-trivial annotation.
-            and original_itype == mx.chk.scope.active_self_type()
-        ):
-            t = expand_self_type(var, t, original_itype.type.self_type)
+        t = expand_self_type_if_needed(t, mx, var, original_itype)
         t = get_proper_type(expand_type_by_instance(t, itype))
         freeze_all_type_vars(t)
         result: Type = t
@@ -855,6 +842,39 @@ def analyze_var(
             AttributeContext(get_proper_type(mx.original_type), result, mx.context, mx.chk)
         )
     return result
+
+
+def expand_self_type_if_needed(
+    t: Type, mx: MemberContext, var: Var, itype: Instance, is_class: bool = False
+) -> Type:
+    """Expand special Self type in a backwards compatible manner.
+
+    This should ensure that mixing old-style and new-style self-types work
+    seamlessly. Also, re-bind new style self-types in subclasses if needed.
+    """
+    original = get_proper_type(mx.original_type)
+    if not (mx.is_self or mx.is_super):
+        return expand_self_type(var, t, itype)
+    elif supported_self_type(
+        # Support compatibility with plain old style T -> T and Type[T] -> T only.
+        get_proper_type(mx.original_type), allow_instances=False, allow_callable=False
+    ):
+        repl = mx.original_type
+        if is_class and isinstance(original, TypeType):
+            repl = original.item
+        return expand_self_type(var, t, repl)
+    elif (
+        mx.is_self
+        and itype.type != var.info
+        # If an attribute with Self-type was defined in a supertype, we need to
+        # rebind the Self type variable to Self type variable of current class...
+        and itype.type.self_type is not None
+        # ...unless `self` has an explicit non-trivial annotation.
+        and itype == mx.chk.scope.active_self_type()
+    ):
+        return expand_self_type(var, t, itype.type.self_type)
+    else:
+        return t
 
 
 def freeze_all_type_vars(member_type: Type) -> None:
@@ -1059,12 +1079,12 @@ def analyze_class_attribute_access(
                     else:
                         message = message_registry.GENERIC_INSTANCE_VAR_CLASS_ACCESS
                     mx.msg.fail(message, mx.context)
-
+            t = expand_self_type_if_needed(t, mx, node.node, itype, is_class=True)
+            t = get_proper_type(t)
             # Erase non-mapped variables, but keep mapped ones, even if there is an error.
             # In the above example this means that we infer following types:
             #     C.x -> Any
             #     C[int].x -> int
-            t = get_proper_type(expand_self_type(node.node, t, itype))
             t = erase_typevars(expand_type_by_instance(t, isuper), {tv.id for tv in def_vars})
 
         is_classmethod = (is_decorated and cast(Decorator, node.node).func.is_class) or (
