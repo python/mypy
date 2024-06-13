@@ -407,6 +407,66 @@ match m, (n, o):
         pass
 [builtins fixtures/tuple.pyi]
 
+[case testPartialMatchTuplePatternNarrowsUnion]
+from typing import Tuple, Union
+
+m: Tuple[Union[int, None], Union[int, None]]
+
+match m:
+    case a, None:
+        reveal_type(a) # N: Revealed type is "Union[builtins.int, None]"
+        reveal_type(m) # N: Revealed type is "Tuple[Union[builtins.int, None], None]"
+    case None, b:
+        reveal_type(b) # N: Revealed type is "builtins.int"
+        reveal_type(m) # N: Revealed type is "Tuple[None, builtins.int]"
+    case t:
+        reveal_type(t) # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+[builtins fixtures/tuple.pyi]
+
+[case testPartialMatchTuplePatternNarrowsUnionWithFullMatch]
+from typing import Tuple, Union
+
+m: Tuple[Union[int, None], Union[int, None]]
+
+match m:
+    case None, None:
+        reveal_type(m) # N: Revealed type is "Tuple[None, None]"
+    case a, None:
+        reveal_type(a) # N: Revealed type is "Union[builtins.int, None]"
+        reveal_type(m) # N: Revealed type is "Tuple[Union[builtins.int, None], None]"
+    case None, b:
+        reveal_type(b) # N: Revealed type is "builtins.int"
+        reveal_type(m) # N: Revealed type is "Tuple[None, builtins.int]"
+    case t:
+        reveal_type(t) # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+[builtins fixtures/tuple.pyi]
+
+[case testPartialMatchTuplePatternNarrowsUnionWithUninhibitedMatch]
+from typing import Tuple, Union
+
+m: Tuple[Union[int, None], Union[int, None]]
+
+match m:
+    case a, b:
+        reveal_type(m) # N: Revealed type is "Tuple[Union[builtins.int, None], Union[builtins.int, None]]"
+    case t:
+        reveal_type(t)
+[builtins fixtures/tuple.pyi]
+
+[case testMatchTuplePatterNarrowsWithOrMatch]
+from typing import Tuple, Union
+
+m: Tuple[Union[int, None], Union[int, None]]
+
+match m:
+    case (None, _) | (_, None):
+        reveal_type(m) # N: Revealed type is "Union[Tuple[None, Union[builtins.int, None]], Tuple[builtins.int, None]]"
+    case a, b:
+        reveal_type(a) # N: Revealed type is "builtins.int"
+        reveal_type(b) # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+
 -- Mapping Pattern --
 
 [case testMatchMappingPatternCaptures]
