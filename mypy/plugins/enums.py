@@ -136,6 +136,7 @@ def enum_member_callback(ctx: mypy.plugin.FunctionContext) -> Type:
         if (
             isinstance(arg, Instance)
             and arg.last_known_value
+            and isinstance(ctx.default_return_type, Instance)
             and len(ctx.default_return_type.args) == 1
         ):
             return ctx.default_return_type.copy_modified(args=[arg])
