@@ -1494,3 +1494,34 @@ reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
 # flags: --enable-incomplete-feature=NewGenericSyntax
 def f[T](x: foobar, y: T) -> T: ...  # E: Name "foobar" is not defined
 reveal_type(f)  # N: Revealed type is "def [T] (x: Any, y: T`-1) -> T`-1"
+
+[case testPEP695WrongNumberOfConstrainedTypes]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+type A[T: ()] = list[T]  # E: Type variable must have at least two constrained types
+a: A[int]
+reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
+
+type B[T: (int,)] = list[T]  # E: Type variable must have at least two constrained types
+b: B[str]
+reveal_type(b)  # N: Revealed type is "builtins.list[builtins.str]"
+
+[case testPEP695UsingTypeVariableInOwnBoundOrConstraint]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+type A[T: list[T]] = str  # E: Name "T" is not defined
+type B[S: (list[S], str)] = str  # E: Name "S" is not defined
+type C[T, S: list[T]] = str  # E: Name "T" is not defined
+
+def f[T: T](x: T) -> T: ...  # E: Name "T" is not defined
+class D[T: T]:  # E: Name "T" is not defined
+    pass
+
+[case testPEP695InvalidType]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+def f[T: 1](x: T) -> T: ...  # E: Invalid type: try using Literal[1] instead?
+class C[T: (int, (1 + 2))]: pass  # E: Invalid type comment or annotation
+type A = list[1]  # E: Invalid type: try using Literal[1] instead?
+type B = (1 + 2)  # E: Invalid type alias: expression is not a valid type
+a: A
+reveal_type(a)  # N: Revealed type is "builtins.list[Any]"
+b: B
+reveal_type(b)  # N: Revealed type is "Any"
