@@ -1030,7 +1030,7 @@ def transform_type_alias_stmt(builder: IRBuilder, s: TypeAliasStmt) -> None:
     typ = builder.py_get_attr(mod, "TypeAliasType", line)
 
     args = [builder.load_str(s.name.name), builder.none()]
-    arg_names = [None, None]
+    arg_names: list[str | None] = [None, None]
     arg_kinds = [ARG_POS, ARG_POS]
     if s.type_args:
         args.append(builder.new_tuple(type_params, line))
