@@ -53,3 +53,8 @@ class StrEnum(str, Enum):
 class nonmember(Generic[_T]):
     value: _T
     def __init__(self, value: _T) -> None: ...
+
+# It is python-3.11+ only:
+class member(Generic[_T]):
+    value: _T
+    def __init__(self, value: _T) -> None: ...
