@@ -24,6 +24,9 @@ from mypy.nodes import (
     ARG_POS,
     GDEF,
     LDEF,
+    PARAM_SPEC_KIND,
+    TYPE_VAR_KIND,
+    TYPE_VAR_TUPLE_KIND,
     ArgKind,
     CallExpr,
     Decorator,
@@ -44,12 +47,9 @@ from mypy.nodes import (
     TupleExpr,
     TypeAlias,
     TypeInfo,
+    TypeParam,
     UnaryExpr,
     Var,
-    TypeParam,
-    TYPE_VAR_KIND,
-    TYPE_VAR_TUPLE_KIND,
-    PARAM_SPEC_KIND,
 )
 from mypy.types import (
     AnyType,

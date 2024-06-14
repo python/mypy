@@ -12,8 +12,8 @@ import importlib.util
 from typing import Callable, Sequence
 
 from mypy.nodes import (
-    ARG_POS,
     ARG_NAMED,
+    ARG_POS,
     AssertStmt,
     AssignmentStmt,
     AwaitExpr,
@@ -77,7 +77,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
 )
 from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
-from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op, create_type_params
+from mypyc.irbuild.builder import IRBuilder, create_type_params, int_borrow_friendly_op
 from mypyc.irbuild.for_helpers import for_loop_helper
 from mypyc.irbuild.generator import add_raise_exception_blocks_to_generator_class
 from mypyc.irbuild.nonlocalcontrol import (
