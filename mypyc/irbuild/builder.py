@@ -1415,8 +1415,9 @@ def get_call_target_fullname(ref: RefExpr) -> str:
     return ref.fullname
 
 
-def create_type_params(builder: IRBuilder, typing_mod: Value,
-                       type_args: list[TypeParam], line: int) -> list[Value]:
+def create_type_params(
+    builder: IRBuilder, typing_mod: Value, type_args: list[TypeParam], line: int
+) -> list[Value]:
     tvs = []
     type_var_imported: Value | None = None
     for type_param in type_args:
@@ -1432,7 +1433,17 @@ def create_type_params(builder: IRBuilder, typing_mod: Value,
         else:
             assert type_param.kind == PARAM_SPEC_KIND
             tvt = builder.py_get_attr(typing_mod, "ParamSpec", line)
-        tv = builder.py_call(tvt, [builder.load_str(type_param.name)], line)
+        if type_param.kind != TYPE_VAR_TUPLE_KIND:
+            # To match runtime semantics, pass infer_variance=True
+            tv = builder.py_call(
+                tvt,
+                [builder.load_str(type_param.name), builder.true()],
+                line,
+                arg_kinds=[ARG_POS, ARG_NAMED],
+                arg_names=[None, "infer_variance"],
+            )
+        else:
+            tv = builder.py_call(tvt, [builder.load_str(type_param.name)], line)
         builder.init_type_var(tv, type_param.name, line)
         tvs.append(tv)
     return tvs

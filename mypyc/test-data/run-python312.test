@@ -203,13 +203,13 @@ type A[T] = list[T]
 def test_generic_alias() -> None:
     assert type(A[str]) is GenericAlias
     assert str(A[str]) == "A[str]"
-    assert str(getattr(A, "__value__")) == "list[~T]"
+    assert str(getattr(A, "__value__")) == "list[T]"
 
 type B[T, S] = dict[S, T]
 
 def test_generic_alias_with_two_args() -> None:
     assert str(B[str, int]) == "B[str, int]"
-    assert str(getattr(B, "__value__")) == "dict[~S, ~T]"  # TODO: T, S
+    assert str(getattr(B, "__value__")) == "dict[S, T]"
 
 type C[*Ts] = tuple[*Ts]
 
@@ -220,6 +220,6 @@ def test_type_var_tuple_type_alias() -> None:
 type D[**P] = Callable[P, int]
 
 def test_param_spec_type_alias() -> None:
-    assert str(D[int, str]) == "D[int, str]"
-    assert str(getattr(D, "__value__")) == "typing.Callable[~P, int]"
+    assert str(D[[int, str]]) == "D[[int, str]]"
+    assert str(getattr(D, "__value__")) == "typing.Callable[P, int]"
 [typing fixtures/typing-full.pyi]
