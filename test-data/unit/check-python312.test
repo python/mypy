@@ -1069,7 +1069,7 @@ from typing import cast
 def f[T](
     x: T =
         T  # E: Name "T" is not defined \
-           # E: Incompatible default for argument "x" (default has type "object", argument has type "T")
+           # E: Incompatible default for argument "x" (default has type "TypeVar", argument has type "T")
 ) -> T:
     return x
 
