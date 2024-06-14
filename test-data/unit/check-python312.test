@@ -41,7 +41,8 @@ reveal_type(g(1))  # E: Value of type "Coroutine[Any, Any, Any]" must be used \
 
 [case test695TypeVar]
 from typing import Callable
-type Alias1[T: int] = list[T]  # E: PEP 695 type aliases are not yet supported
+type Alias1[T: int] = list[T]  # E: PEP 695 type aliases are not yet supported \
+                               # E: Name "T" is not defined
 type Alias2[**P] = Callable[P, int]  # E: PEP 695 type aliases are not yet supported \
                                      # E: Value of type "int" is not indexable \
                                      # E: Name "P" is not defined
@@ -52,7 +53,9 @@ class Cls1[T: int]: ...  # E: PEP 695 generics are not yet supported
 class Cls2[**P]: ...  # E: PEP 695 generics are not yet supported
 class Cls3[*Ts]: ...  # E: PEP 695 generics are not yet supported
 
-def func1[T: int](x: T) -> T: ...  # E: PEP 695 generics are not yet supported
+def func1[T: int](x: T) -> T: ...  # E: PEP 695 generics are not yet supported \
+                                   # E: Name "T" is not defined
+
 def func2[**P](x: Callable[P, int]) -> Callable[P, str]: ...  # E: PEP 695 generics are not yet supported \
                                                               # E: The first argument to Callable must be a list of types, parameter specification, or "..." \
                                                               # N: See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas \
