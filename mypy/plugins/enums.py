@@ -133,13 +133,14 @@ def enum_member_callback(ctx: mypy.plugin.FunctionContext) -> Type:
     we want to improve the inference to have `member[Literal[1]]` here."""
     if ctx.arg_types or ctx.arg_types[0]:
         arg = get_proper_type(ctx.arg_types[0][0])
+        proper_return = get_proper_type(ctx.default_return_type)
         if (
             isinstance(arg, Instance)
             and arg.last_known_value
-            and isinstance(ctx.default_return_type, Instance)
-            and len(ctx.default_return_type.args) == 1
+            and isinstance(proper_return, Instance)
+            and len(proper_return.args) == 1
         ):
-            return ctx.default_return_type.copy_modified(args=[arg])
+            return proper_return.copy_modified(args=[arg])
     return ctx.default_return_type
 
 
