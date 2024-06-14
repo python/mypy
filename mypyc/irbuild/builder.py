@@ -1418,6 +1418,14 @@ def get_call_target_fullname(ref: RefExpr) -> str:
 def create_type_params(
     builder: IRBuilder, typing_mod: Value, type_args: list[TypeParam], line: int
 ) -> list[Value]:
+    """Create objects representing various kinds of Python 3.12 type parameters.
+
+    The "typing_mod" argument is the "_typing" module object. The type objects
+    are looked up from it.
+
+    The returned list has one item for each "type_args" item, in the same order.
+    Each item is either a TypeVar, TypeVarTuple or ParamSpec instance.
+    """
     tvs = []
     type_var_imported: Value | None = None
     for type_param in type_args:
