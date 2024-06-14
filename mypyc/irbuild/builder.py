@@ -46,6 +46,10 @@ from mypy.nodes import (
     TypeInfo,
     UnaryExpr,
     Var,
+    TypeParam,
+    TYPE_VAR_KIND,
+    TYPE_VAR_TUPLE_KIND,
+    PARAM_SPEC_KIND,
 )
 from mypy.types import (
     AnyType,
@@ -1409,3 +1413,26 @@ def get_call_target_fullname(ref: RefExpr) -> str:
         if isinstance(target, Instance):
             return target.type.fullname
     return ref.fullname
+
+
+def create_type_params(builder: IRBuilder, typing_mod: Value,
+                       type_args: list[TypeParam], line: int) -> list[Value]:
+    tvs = []
+    type_var_imported: Value | None = None
+    for type_param in type_args:
+        if type_param.kind == TYPE_VAR_KIND:
+            if type_var_imported:
+                # Reuse previously imported value as a minor optimization
+                tvt = type_var_imported
+            else:
+                tvt = builder.py_get_attr(typing_mod, "TypeVar", line)
+                type_var_imported = tvt
+        elif type_param.kind == TYPE_VAR_TUPLE_KIND:
+            tvt = builder.py_get_attr(typing_mod, "TypeVarTuple", line)
+        else:
+            assert type_param.kind == PARAM_SPEC_KIND
+            tvt = builder.py_get_attr(typing_mod, "ParamSpec", line)
+        tv = builder.py_call(tvt, [builder.load_str(type_param.name)], line)
+        builder.init_type_var(tv, type_param.name, line)
+        tvs.append(tv)
+    return tvs

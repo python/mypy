@@ -12,6 +12,8 @@ import importlib.util
 from typing import Callable, Sequence
 
 from mypy.nodes import (
+    ARG_POS,
+    ARG_NAMED,
     AssertStmt,
     AssignmentStmt,
     AwaitExpr,
@@ -75,7 +77,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
 )
 from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
-from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
+from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op, create_type_params
 from mypyc.irbuild.for_helpers import for_loop_helper
 from mypyc.irbuild.generator import add_raise_exception_blocks_to_generator_class
 from mypyc.irbuild.nonlocalcontrol import (
@@ -1024,12 +1026,21 @@ def transform_type_alias_stmt(builder: IRBuilder, s: TypeAliasStmt) -> None:
     line = s.line
     # Use _typing.TypeAliasType to avoid importing "typing", as this can be expensive.
     mod = builder.call_c(import_op, [builder.load_str("_typing")], line)
+    type_params = create_type_params(builder, mod, s.type_args, s.line)
     typ = builder.py_get_attr(mod, "TypeAliasType", line)
+
+    args = [builder.load_str(s.name.name), builder.none()]
+    arg_names = [None, None]
+    arg_kinds = [ARG_POS, ARG_POS]
+    if s.type_args:
+        args.append(builder.new_tuple(type_params, line))
+        arg_names.append("type_params")
+        arg_kinds.append(ARG_NAMED)
+    alias = builder.py_call(typ, args, line, arg_names=arg_names, arg_kinds=arg_kinds)
 
     # Use primitive to set function used to lazily compute type alias type value.
     # The value needs to be lazily computed to match Python runtime behavior, but
     # the public API doesn't support this, so we use a C primitive.
-    alias = builder.py_call(typ, [builder.load_str(s.name.name), builder.none()], line)
     compute_fn = s.value.accept(builder.visitor)
     builder.builder.primitive_op(set_type_alias_compute_function_op, [alias, compute_fn], line)
 
