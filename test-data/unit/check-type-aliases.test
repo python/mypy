@@ -965,6 +965,7 @@ a: A
 b: B
 reveal_type(a)  # N: Revealed type is "Union[builtins.list[Any], builtins.int]"
 reveal_type(b)  # N: Revealed type is "Union[builtins.int, builtins.list[Any]]"
+[builtins fixtures/type.pyi]
 
 [case testValidTypeAliasValues]
 from typing import TypeVar, Generic, List

@@ -2821,6 +2821,7 @@ class UnionType(ProperType):
         items: Sequence[Type],
         line: int = -1,
         column: int = -1,
+        *,
         is_evaluated: bool = True,
         uses_pep604_syntax: bool = False,
     ) -> None:
