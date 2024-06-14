@@ -87,6 +87,8 @@ def _infer_value_type_with_auto_fallback(
         return None
     proper_type = get_proper_type(fixup_partial_type(proper_type))
     if not (isinstance(proper_type, Instance) and proper_type.type.fullname == "enum.auto"):
+        if is_named_instance(proper_type, "enum.member") and proper_type.args:
+            return proper_type.args[0]
         return proper_type
     assert isinstance(ctx.type, Instance), "An incorrect ctx.type was passed."
     info = ctx.type.type
@@ -124,6 +126,20 @@ def _implements_new(info: TypeInfo) -> bool:
     if type_with_new is None:
         return False
     return type_with_new.fullname not in ("enum.Enum", "enum.IntEnum", "enum.StrEnum")
+
+
+def enum_member_callback(ctx: mypy.plugin.FunctionContext) -> Type:
+    """By default `member(1)` will be infered as `member[int]`,
+    we want to improve the inference to have `member[Literal[1]]` here."""
+    if ctx.arg_types or ctx.arg_types[0]:
+        arg = get_proper_type(ctx.arg_types[0][0])
+        if (
+            isinstance(arg, Instance)
+            and arg.last_known_value
+            and len(ctx.default_return_type.args) == 1
+        ):
+            return ctx.default_return_type.copy_modified(args=[arg])
+    return ctx.default_return_type
 
 
 def enum_value_callback(ctx: mypy.plugin.AttributeContext) -> Type:
