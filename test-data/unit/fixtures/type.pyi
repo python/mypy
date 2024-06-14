@@ -25,3 +25,4 @@ class bool: pass
 class int: pass
 class str: pass
 class ellipsis: pass
+class float: pass
