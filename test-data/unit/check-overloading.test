@@ -4542,6 +4542,23 @@ reveal_type(Child().foo("..."))               # N: Revealed type is "builtins.st
 reveal_type(Child().foo(x))                   # N: Revealed type is "Union[__main__.Child, builtins.str]"
 reveal_type(Child().foo(3).child_only())      # N: Revealed type is "builtins.int"
 
+[case testOverloadAndSelfTypesGenericNoOverlap]
+from typing import Generic, TypeVar, Any, overload, Self, Union
+
+T = TypeVar("T", bound=Any)
+class C(Generic[T]):
+    @overload
+    def get(self, obj: None) -> Self: ...
+    @overload
+    def get(self, obj: Any) -> T: ...
+    def get(self, obj: Union[Any, None]) -> Union[T, Self]:
+        return self
+
+class D(C[int]): ...
+d: D
+reveal_type(d.get(None))  # N: Revealed type is "__main__.D"
+reveal_type(d.get("whatever"))  # N: Revealed type is "builtins.int"
+
 [case testOverloadAndClassTypes]
 from typing import overload, Union, TypeVar, Type
 
