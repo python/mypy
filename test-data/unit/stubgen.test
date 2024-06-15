@@ -4366,3 +4366,25 @@ class Foo(Enum):
 class Bar(Enum):
     A = ...
     B = ...
+
+[case testGracefullyHandleInvalidOptionalUsage]
+from typing import Optional
+
+x: Optional
+y: Optional[int]
+z: Optional[int, str]
+
+X = Optional
+Y = Optional[int]
+Z = Optional[int, str]
+
+[out]
+from _typeshed import Incomplete
+from typing import Optional
+
+x: Incomplete
+y: int | None
+z: int | str | None
+X = Optional
+Y = int | None
+Z = int | str | None

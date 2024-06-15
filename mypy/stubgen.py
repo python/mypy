@@ -314,6 +314,8 @@ class AliasPrinter(NodeVisitor[str]):
                 return " | ".join([item.accept(self) for item in node.index.items])
             return node.index.accept(self)
         if base_fullname == "typing.Optional":
+            if isinstance(node.index, TupleExpr):
+                return " | ".join([item.accept(self) for item in node.index.items] + ["None"])
             return f"{node.index.accept(self)} | None"
         base = node.base.accept(self)
         index = node.index.accept(self)
