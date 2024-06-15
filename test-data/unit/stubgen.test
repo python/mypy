@@ -4382,7 +4382,7 @@ Z = Optional[int, str]
 from _typeshed import Incomplete
 from typing import Optional
 
-x: Incomplete
+x: Incomplete | None
 y: int | None
 z: int | str | None
 X = Optional
