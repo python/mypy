@@ -638,7 +638,7 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
     Return:
         The return type of the appropriate ``__get__`` overload for the descriptor.
     """
-    instance_type = get_proper_type(mx.original_type)
+    instance_type = get_proper_type(mx.self_type)
     orig_descriptor_type = descriptor_type
     descriptor_type = get_proper_type(descriptor_type)
 
@@ -646,16 +646,6 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
         # Map the access over union types
         return make_simplified_union(
             [analyze_descriptor_access(typ, mx) for typ in descriptor_type.items]
-        )
-    elif isinstance(instance_type, UnionType):
-        # map over the instance types
-        return make_simplified_union(
-            [
-                analyze_descriptor_access(
-                    descriptor_type, mx.copy_modified(original_type=original_type)
-                )
-                for original_type in instance_type.relevant_items()
-            ]
         )
     elif not isinstance(descriptor_type, Instance):
         return orig_descriptor_type
@@ -852,9 +842,9 @@ def expand_self_type_if_needed(
     This should ensure that mixing old-style and new-style self-types work
     seamlessly. Also, re-bind new style self-types in subclasses if needed.
     """
-    original = get_proper_type(mx.original_type)
+    original = get_proper_type(mx.self_type)
     if not (mx.is_self or mx.is_super):
-        repl = mx.original_type
+        repl = mx.self_type
         if is_class:
             if isinstance(original, TypeType):
                 repl = original.item
@@ -866,11 +856,11 @@ def expand_self_type_if_needed(
         return expand_self_type(var, t, repl)
     elif supported_self_type(
         # Support compatibility with plain old style T -> T and Type[T] -> T only.
-        get_proper_type(mx.original_type),
+        get_proper_type(mx.self_type),
         allow_instances=False,
         allow_callable=False,
     ):
-        repl = mx.original_type
+        repl = mx.self_type
         if is_class and isinstance(original, TypeType):
             repl = original.item
         return expand_self_type(var, t, repl)

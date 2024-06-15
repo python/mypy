@@ -1950,6 +1950,41 @@ class B:
 def foo(x: Union[A, B]) -> None:
     reveal_type(x.attr)  # N: Revealed type is "builtins.str"
 
+[case testDescriptorGetUnionRestricted]
+from typing import Any, Union
+
+class getter:
+    def __get__(self, instance: X1, owner: Any) -> str: ...
+
+class X1:
+    prop = getter()
+
+class X2:
+    prop: str
+
+def foo(x: Union[X1, X2]) -> None:
+    reveal_type(x.prop)  # N: Revealed type is "builtins.str"
+
+[case testDescriptorGetUnionType]
+from typing import Any, Union, Type, overload
+
+class getter:
+    @overload
+    def __get__(self, instance: None, owner: Any) -> getter: ...
+    @overload
+    def __get__(self, instance: object, owner: Any) -> str: ...
+    def __get__(self, instance, owner):
+        ...
+
+class X1:
+    prop = getter()
+class X2:
+    prop = getter()
+
+def foo(x: Type[Union[X1, X2]]) -> None:
+    reveal_type(x.prop)  # N: Revealed type is "__main__.getter"
+
+
 -- _promote decorators
 -- -------------------
 

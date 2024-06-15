@@ -2122,3 +2122,13 @@ reveal_type(c.y)  # N: Revealed type is "Tuple[builtins.int, builtins.str, fallb
 reveal_type(C.y)  # N: Revealed type is "Tuple[builtins.int, builtins.str, fallback=__main__.C]"
 C.x  # E: Access to generic instance variables via class is ambiguous
 [builtins fixtures/classmethod.pyi]
+
+[case testAccessingTypingSelfUnion]
+from typing import Self, Union
+
+class C:
+    x: Self
+class D:
+    x: int
+x: Union[C, D]
+reveal_type(x.x)  # N: Revealed type is "Union[__main__.C, builtins.int]"
