@@ -4384,11 +4384,11 @@ W = Optional[int | str]
 from _typeshed import Incomplete
 from typing import Optional
 
-x: Incomplete | None
+x: Incomplete
 y: int | None
-z: Incomplete | None
+z: Incomplete
 w: int | str | None
 X = Optional
 Y = int | None
-Z = Incomplete | None
+Z = Incomplete
 W = int | str | None

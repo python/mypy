@@ -315,7 +315,7 @@ class AliasPrinter(NodeVisitor[str]):
             return node.index.accept(self)
         if base_fullname == "typing.Optional":
             if isinstance(node.index, TupleExpr):
-                return f"{self.stubgen.add_name('_typeshed.Incomplete')} | None"
+                return self.stubgen.add_name("_typeshed.Incomplete")
             return f"{node.index.accept(self)} | None"
         base = node.base.accept(self)
         index = node.index.accept(self)

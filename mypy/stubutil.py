@@ -259,7 +259,7 @@ class AnnotationPrinter(TypeStrVisitor):
         if fullname == "typing.Optional":
             if len(t.args) == 1:
                 return f"{t.args[0].accept(self)} | None"
-            return f"{self.stubgen.add_name('_typeshed.Incomplete')} | None"
+            return self.stubgen.add_name("_typeshed.Incomplete")
         if fullname in TYPING_BUILTIN_REPLACEMENTS:
             s = self.stubgen.add_name(TYPING_BUILTIN_REPLACEMENTS[fullname], require=True)
         if self.known_modules is not None and "." in s:
