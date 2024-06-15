@@ -122,7 +122,8 @@ def expr_to_unanalyzed_type(
             [
                 expr_to_unanalyzed_type(expr.left, options, allow_new_syntax),
                 expr_to_unanalyzed_type(expr.right, options, allow_new_syntax),
-            ]
+            ],
+            uses_pep604_syntax=True,
         )
     elif isinstance(expr, CallExpr) and isinstance(_parent, ListExpr):
         c = expr.callee

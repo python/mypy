@@ -71,6 +71,8 @@ files = [
 
 if sys.version_info >= (3, 10):
     files.append("run-match.test")
+if sys.version_info >= (3, 12):
+    files.append("run-python312.test")
 
 setup_format = """\
 from setuptools import setup
@@ -194,6 +196,7 @@ class TestRun(MypycDataSuite):
         options.preserve_asts = True
         options.allow_empty_bodies = True
         options.incremental = self.separate
+        options.enable_incomplete_feature.append("NewGenericSyntax")
 
         # Avoid checking modules/packages named 'unchecked', to provide a way
         # to test interacting with code we don't have types for.

@@ -1412,3 +1412,14 @@ A(x=0).__replace__(x="asdf")  # E: Argument "x" to "__replace__" of "A" has inco
 A(x=0).__replace__(y=1)  # E: Unexpected keyword argument "y" for "__replace__" of "A"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
+
+[case testUnpackSelfNamedTuple]
+import typing
+
+class Foo(typing.NamedTuple):
+    bar: int
+    def baz(self: typing.Self) -> None:
+        x, = self
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]

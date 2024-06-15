@@ -49,5 +49,12 @@ class auto(IntFlag):
 class StrEnum(str, Enum):
     def __new__(cls: Type[_T], value: str | _T) -> _T: ...
 
+# It is python-3.11+ only:
+class nonmember(Generic[_T]):
+    value: _T
+    def __init__(self, value: _T) -> None: ...
 
-def nonmember(value: _T) -> _T: pass
+# It is python-3.11+ only:
+class member(Generic[_T]):
+    value: _T
+    def __init__(self, value: _T) -> None: ...

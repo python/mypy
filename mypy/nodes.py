@@ -2535,8 +2535,9 @@ class TypeVarLikeExpr(SymbolNode, Expression):
         default: mypy.types.Type,
         variance: int = INVARIANT,
         is_new_style: bool = False,
+        line: int = -1,
     ) -> None:
-        super().__init__()
+        super().__init__(line=line)
         self._name = name
         self._fullname = fullname
         self.upper_bound = upper_bound
@@ -2582,8 +2583,9 @@ class TypeVarExpr(TypeVarLikeExpr):
         default: mypy.types.Type,
         variance: int = INVARIANT,
         is_new_style: bool = False,
+        line: int = -1,
     ) -> None:
-        super().__init__(name, fullname, upper_bound, default, variance, is_new_style)
+        super().__init__(name, fullname, upper_bound, default, variance, is_new_style, line=line)
         self.values = values
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
@@ -2661,8 +2663,9 @@ class TypeVarTupleExpr(TypeVarLikeExpr):
         default: mypy.types.Type,
         variance: int = INVARIANT,
         is_new_style: bool = False,
+        line: int = -1,
     ) -> None:
-        super().__init__(name, fullname, upper_bound, default, variance, is_new_style)
+        super().__init__(name, fullname, upper_bound, default, variance, is_new_style, line=line)
         self.tuple_fallback = tuple_fallback
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:

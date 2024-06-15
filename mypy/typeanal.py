@@ -10,7 +10,14 @@ from typing_extensions import Protocol
 from mypy import errorcodes as codes, message_registry, nodes
 from mypy.errorcodes import ErrorCode
 from mypy.expandtype import expand_type
-from mypy.messages import MessageBuilder, format_type_bare, quote_type_string, wrong_type_arg_count
+from mypy.message_registry import INVALID_PARAM_SPEC_LOCATION, INVALID_PARAM_SPEC_LOCATION_NOTE
+from mypy.messages import (
+    MessageBuilder,
+    format_type,
+    format_type_bare,
+    quote_type_string,
+    wrong_type_arg_count,
+)
 from mypy.nodes import (
     ARG_NAMED,
     ARG_NAMED_OPT,
@@ -93,7 +100,6 @@ from mypy.types import (
     callable_with_ellipsis,
     find_unpack_in_list,
     flatten_nested_tuples,
-    flatten_nested_unions,
     get_proper_type,
     has_type_vars,
 )
@@ -1027,10 +1033,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def visit_parameters(self, t: Parameters) -> Type:
         raise NotImplementedError("ParamSpec literals cannot have unbound TypeVars")
 
-    def visit_callable_type(self, t: CallableType, nested: bool = True) -> Type:
+    def visit_callable_type(
+        self, t: CallableType, nested: bool = True, namespace: str = ""
+    ) -> Type:
         # Every Callable can bind its own type variables, if they're not in the outer scope
-        with self.tvar_scope_frame():
-            unpacked_kwargs = False
+        # TODO: attach namespace for nested free type variables (these appear in return type only).
+        with self.tvar_scope_frame(namespace=namespace):
+            unpacked_kwargs = t.unpack_kwargs
             if self.defining_alias:
                 variables = t.variables
             else:
@@ -1262,7 +1271,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             and not self.options.python_version >= (3, 10)
         ):
             self.fail("X | Y syntax for unions requires Python 3.10", t, code=codes.SYNTAX)
-        return UnionType(self.anal_array(t.items), t.line)
+        return UnionType(self.anal_array(t.items), t.line, uses_pep604_syntax=t.uses_pep604_syntax)
 
     def visit_partial_type(self, t: PartialType) -> Type:
         assert False, "Internal error: Unexpected partial type"
@@ -1432,7 +1441,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 )
             else:
                 # Callable[P, RET] (where P is ParamSpec)
-                with self.tvar_scope_frame():
+                with self.tvar_scope_frame(namespace=""):
                     # Temporarily bind ParamSpecs to allow code like this:
                     #     my_fun: Callable[Q, Foo[Q]]
                     # We usually do this later in visit_callable_type(), but the analysis
@@ -1648,9 +1657,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.note_func(msg, ctx, code=code)
 
     @contextmanager
-    def tvar_scope_frame(self) -> Iterator[None]:
+    def tvar_scope_frame(self, namespace: str) -> Iterator[None]:
         old_scope = self.tvar_scope
-        self.tvar_scope = self.tvar_scope.method_frame()
+        self.tvar_scope = self.tvar_scope.method_frame(namespace)
         yield
         self.tvar_scope = old_scope
 
@@ -1780,12 +1789,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 analyzed = AnyType(TypeOfAny.from_error)
             else:
                 self.fail(
-                    f'Invalid location for ParamSpec "{analyzed.name}"', t, code=codes.VALID_TYPE
+                    INVALID_PARAM_SPEC_LOCATION.format(format_type(analyzed, self.options)),
+                    t,
+                    code=codes.VALID_TYPE,
                 )
                 self.note(
-                    "You can use ParamSpec as the first argument to Callable, e.g., "
-                    "'Callable[{}, int]'".format(analyzed.name),
+                    INVALID_PARAM_SPEC_LOCATION_NOTE.format(analyzed.name),
                     t,
+                    code=codes.VALID_TYPE,
                 )
                 analyzed = AnyType(TypeOfAny.from_error)
         return analyzed
@@ -1795,7 +1806,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return TypeVarType(
                 name=var_def.name,
                 fullname=var_def.fullname,
-                id=var_def.id.raw_id,
+                id=var_def.id,
                 values=self.anal_array(var_def.values),
                 upper_bound=var_def.upper_bound.accept(self),
                 default=var_def.default.accept(self),
@@ -2334,16 +2345,11 @@ def make_optional_type(t: Type) -> Type:
     is called during semantic analysis and simplification only works during
     type checking.
     """
-    p_t = get_proper_type(t)
-    if isinstance(p_t, NoneType):
+    if isinstance(t, ProperType) and isinstance(t, NoneType):
         return t
-    elif isinstance(p_t, UnionType):
+    elif isinstance(t, ProperType) and isinstance(t, UnionType):
         # Eagerly expanding aliases is not safe during semantic analysis.
-        items = [
-            item
-            for item in flatten_nested_unions(p_t.items, handle_type_alias_type=False)
-            if not isinstance(get_proper_type(item), NoneType)
-        ]
+        items = [item for item in t.items if not isinstance(get_proper_type(item), NoneType)]
         return UnionType(items + [NoneType()], t.line, t.column)
     else:
         return UnionType([t, NoneType()], t.line, t.column)
@@ -2370,6 +2376,12 @@ def validate_instance(t: Instance, fail: MsgCallback, empty_tuple_index: bool) -
         if not t.args:
             if not (empty_tuple_index and len(t.type.type_vars) == 1):
                 # The Any arguments should be set by the caller.
+                if empty_tuple_index and min_tv_count:
+                    fail(
+                        f"At least {min_tv_count} type argument(s) expected, none given",
+                        t,
+                        code=codes.TYPE_ARG,
+                    )
                 return False
         elif not correct:
             fail(

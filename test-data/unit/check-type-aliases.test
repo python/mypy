@@ -967,6 +967,7 @@ a: A
 b: B
 reveal_type(a)  # N: Revealed type is "Union[builtins.list[Any], builtins.int]"
 reveal_type(b)  # N: Revealed type is "Union[builtins.int, builtins.list[Any]]"
+[builtins fixtures/type.pyi]
 
 [case testValidTypeAliasValues]
 from typing import TypeVar, Generic, List
@@ -1219,4 +1220,15 @@ Ta1 = TypeAliasType("Ta1", None, type_params=(*Ts,))  # E: can't use starred exp
 Ta2 = TypeAliasType("Ta2", None, type_params=(Unpack[Ts],))  # E: Free type variable expected in type_params argument to TypeAliasType \
                                                              # N: Don't Unpack type variables in type_params
 
+[builtins fixtures/tuple.pyi]
+
+[case testAliasInstanceNameClash]
+from lib import func
+class A: ...
+func(A())  # E: Argument 1 to "func" has incompatible type "__main__.A"; expected "lib.A"
+[file lib.py]
+from typing import List, Union
+
+A = Union[int, List[A]]
+def func(x: A) -> int: ...
 [builtins fixtures/tuple.pyi]

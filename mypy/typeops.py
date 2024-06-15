@@ -151,7 +151,14 @@ def type_object_type_from_function(
     #      ...
     #
     # We need to map B's __init__ to the type (List[T]) -> None.
-    signature = bind_self(signature, original_type=default_self, is_classmethod=is_new)
+    signature = bind_self(
+        signature,
+        original_type=default_self,
+        is_classmethod=is_new,
+        # Explicit instance self annotations have special handling in class_callable(),
+        # we don't need to bind any type variables in them if they are generic.
+        ignore_instances=True,
+    )
     signature = cast(FunctionLike, map_type_from_supertype(signature, info, def_info))
 
     special_sig: str | None = None
@@ -243,7 +250,9 @@ def map_type_from_supertype(typ: Type, sub_info: TypeInfo, super_info: TypeInfo)
     return expand_type_by_instance(typ, inst_type)
 
 
-def supported_self_type(typ: ProperType, allow_callable: bool = True) -> bool:
+def supported_self_type(
+    typ: ProperType, allow_callable: bool = True, allow_instances: bool = True
+) -> bool:
     """Is this a supported kind of explicit self-types?
 
     Currently, this means an X or Type[X], where X is an instance or
@@ -256,14 +265,19 @@ def supported_self_type(typ: ProperType, allow_callable: bool = True) -> bool:
         # as well as callable self for callback protocols.
         return True
     return isinstance(typ, TypeVarType) or (
-        isinstance(typ, Instance) and typ != fill_typevars(typ.type)
+        allow_instances and isinstance(typ, Instance) and typ != fill_typevars(typ.type)
     )
 
 
 F = TypeVar("F", bound=FunctionLike)
 
 
-def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool = False) -> F:
+def bind_self(
+    method: F,
+    original_type: Type | None = None,
+    is_classmethod: bool = False,
+    ignore_instances: bool = False,
+) -> F:
     """Return a copy of `method`, with the type of its first parameter (usually
     self or cls) bound to original_type.
 
@@ -287,9 +301,10 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
 
     """
     if isinstance(method, Overloaded):
-        return cast(
-            F, Overloaded([bind_self(c, original_type, is_classmethod) for c in method.items])
-        )
+        items = [
+            bind_self(c, original_type, is_classmethod, ignore_instances) for c in method.items
+        ]
+        return cast(F, Overloaded(items))
     assert isinstance(method, CallableType)
     func = method
     if not func.arg_types:
@@ -309,7 +324,9 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
     # this special-casing looks not very principled, there is nothing meaningful we can infer
     # from such definition, since it is inherently indefinitely recursive.
     allow_callable = func.name is None or not func.name.startswith("__call__ of")
-    if func.variables and supported_self_type(self_param_type, allow_callable=allow_callable):
+    if func.variables and supported_self_type(
+        self_param_type, allow_callable=allow_callable, allow_instances=not ignore_instances
+    ):
         from mypy.infer import infer_type_arguments
 
         if original_type is None:

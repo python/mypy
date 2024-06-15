@@ -69,6 +69,7 @@ from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.ir.func_ir import INVALID_FUNC_DEF, FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import (
     NAMESPACE_MODULE,
+    NAMESPACE_TYPE_VAR,
     Assign,
     BasicBlock,
     Branch,
@@ -179,6 +180,7 @@ class IRBuilder:
         self.function_names: set[tuple[str | None, str]] = set()
         self.classes: list[ClassIR] = []
         self.final_names: list[tuple[str, RType]] = []
+        self.type_var_names: list[str] = []
         self.callable_class_names: set[str] = set()
         self.options = options
 
@@ -539,6 +541,21 @@ class IRBuilder:
             module,
             line=line,
             error_msg=f'value for final name "{error_name}" was not set',
+        )
+
+    def init_type_var(self, value: Value, name: str, line: int) -> None:
+        unique_name = name + "___" + str(line)
+        self.type_var_names.append(unique_name)
+        self.add(InitStatic(value, unique_name, self.module_name, namespace=NAMESPACE_TYPE_VAR))
+
+    def load_type_var(self, name: str, line: int) -> Value:
+        return self.add(
+            LoadStatic(
+                object_rprimitive,
+                name + "___" + str(line),
+                self.module_name,
+                namespace=NAMESPACE_TYPE_VAR,
+            )
         )
 
     def load_literal_value(self, val: int | str | bytes | float | complex | bool) -> Value:
