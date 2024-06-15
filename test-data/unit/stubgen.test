@@ -4384,7 +4384,7 @@ from typing import Optional
 
 x: Incomplete | None
 y: int | None
-z: int | str | None
+z: Incomplete | None
 X = Optional
 Y = int | None
-Z = int | str | None
+Z = Incomplete | None

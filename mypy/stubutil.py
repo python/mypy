@@ -257,9 +257,9 @@ class AnnotationPrinter(TypeStrVisitor):
         if fullname == "typing.Union":
             return " | ".join([item.accept(self) for item in t.args])
         if fullname == "typing.Optional":
-            if not t.args:
-                return f"{self.stubgen.add_name('_typeshed.Incomplete')} | None"
-            return " | ".join([item.accept(self) for item in t.args] + ["None"])
+            if len(t.args) == 1:
+                return f"{t.args[0].accept(self)} | None"
+            return f"{self.stubgen.add_name('_typeshed.Incomplete')} | None"
         if fullname in TYPING_BUILTIN_REPLACEMENTS:
             s = self.stubgen.add_name(TYPING_BUILTIN_REPLACEMENTS[fullname], require=True)
         if self.known_modules is not None and "." in s:
