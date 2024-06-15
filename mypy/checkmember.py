@@ -854,7 +854,16 @@ def expand_self_type_if_needed(
     """
     original = get_proper_type(mx.original_type)
     if not (mx.is_self or mx.is_super):
-        return expand_self_type(var, t, itype)
+        repl = mx.original_type
+        if is_class:
+            if isinstance(original, TypeType):
+                repl = original.item
+            elif isinstance(original, CallableType):
+                # Problematic access errors should have been already reported.
+                repl = erase_typevars(original.ret_type)
+            else:
+                repl = itype
+        return expand_self_type(var, t, repl)
     elif supported_self_type(
         # Support compatibility with plain old style T -> T and Type[T] -> T only.
         get_proper_type(mx.original_type),
