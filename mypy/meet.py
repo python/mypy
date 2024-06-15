@@ -487,7 +487,8 @@ def is_overlapping_types(
     if isinstance(right, CallableType) and isinstance(left, Instance):
         call = find_member("__call__", left, left, is_operator=True)
         other = right
-    if isinstance(get_proper_type(call), FunctionLike) and other is not None:
+    if isinstance(get_proper_type(call), FunctionLike):
+        assert call is not None and other is not None
         return _is_overlapping_types(call, other)
 
     if isinstance(left, CallableType):
