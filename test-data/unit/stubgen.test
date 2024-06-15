@@ -4370,13 +4370,15 @@ class Bar(Enum):
 [case testGracefullyHandleInvalidOptionalUsage]
 from typing import Optional
 
-x: Optional
-y: Optional[int]
-z: Optional[int, str]
+x: Optional  # invalid
+y: Optional[int]  # valid
+z: Optional[int, str]  # invalid
+w: Optional[int | str]  # valid
 
 X = Optional
 Y = Optional[int]
 Z = Optional[int, str]
+W = Optional[int | str]
 
 [out]
 from _typeshed import Incomplete
@@ -4385,6 +4387,8 @@ from typing import Optional
 x: Incomplete | None
 y: int | None
 z: Incomplete | None
+w: int | str | None
 X = Optional
 Y = int | None
 Z = Incomplete | None
+W = int | str | None

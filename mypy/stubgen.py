@@ -1062,6 +1062,10 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 else:
                     return False
             return all(self.is_alias_expression(i, top_level=False) for i in indices)
+        elif isinstance(expr, OpExpr) and expr.op == "|":
+            return self.is_alias_expression(
+                expr.left, top_level=False
+            ) and self.is_alias_expression(expr.right, top_level=False)
         else:
             return False
 
