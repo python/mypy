@@ -937,6 +937,13 @@ def is_optional_type(rtype: RType) -> bool:
     return optional_value_type(rtype) is not None
 
 
+def unwrap_optional_type(rtype: RType) -> RType:
+    """If rtype is an optional type, return the non-none type.
+
+    If rtype is not an optional type, return the type unchanged."""
+    return optional_value_type(rtype) or rtype
+
+
 class RArray(RType):
     """Fixed-length C array type (for example, int[5]).
 

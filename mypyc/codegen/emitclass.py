@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Callable, Mapping, Tuple
 
-from mypyc.codegen.emit import Emitter, HeaderDeclaration, ReturnHandler
+from mypyc.codegen.emit import Emitter, HeaderDeclaration, ReturnHandler, c_bool
 from mypyc.codegen.emitfunc import native_function_header
 from mypyc.codegen.emitwrapper import (
     generate_bin_op_wrapper,
@@ -21,7 +21,24 @@ from mypyc.codegen.emitwrapper import (
 from mypyc.common import BITMAP_BITS, BITMAP_TYPE, NATIVE_PREFIX, PREFIX, REG_PREFIX
 from mypyc.ir.class_ir import ClassIR, VTableEntries
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR
-from mypyc.ir.rtypes import RTuple, RType, object_rprimitive
+from mypyc.ir.rtypes import (
+    RInstance,
+    RTuple,
+    RType,
+    is_bool_rprimitive,
+    is_dict_rprimitive,
+    is_float_rprimitive,
+    is_list_rprimitive,
+    is_object_rprimitive,
+    is_optional_type,
+    is_set_rprimitive,
+    is_str_rprimitive,
+    is_tagged,
+    is_tuple_rprimitive,
+    object_rprimitive,
+    optional_value_type,
+    unwrap_optional_type,
+)
 from mypyc.namegen import NameGenerator
 from mypyc.sametype import is_same_type
 
@@ -824,21 +841,95 @@ def generate_side_table_for_class(
     return name
 
 
+def attr_context_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
+    return names.private_name(cl.module_name, "{}_attrcontext_{}".format(cl.name, attribute))
+
+
+def generic_getter_name(rtype: RType) -> str | None:
+    """If a generic getter is available for rtype, return its name."""
+    if not rtype.is_unboxed:
+        return "CPyAttr_GetterPyObject"
+    elif is_tagged(rtype):
+        return "CPyAttr_GetterTagged"
+    elif is_float_rprimitive(rtype):
+        return "CPyAttr_GetterFloat"
+    elif is_bool_rprimitive(rtype):
+        return "CPyAttr_GetterBool"
+    return None
+
+
+def generic_setter_name(rtype: RType, emitter: Emitter) -> str | None:
+    """If a generic setter is available for rtype, return its name."""
+    if not rtype.is_unboxed:
+        or_none = ""
+        if inner_rtype := optional_value_type(rtype):
+            or_none = "OrNone"
+            rtype = inner_rtype
+
+        if is_str_rprimitive(rtype):
+            return "CPyAttr_SetterUnicode"
+        elif is_tagged(rtype):
+            assert or_none, "non-optional boxed integer type should be impossible"
+            return "CPyAttr_SetterLongOrNone"
+        elif is_bool_rprimitive(rtype):
+            assert or_none, "non-optional boxed boolean type should be impossible"
+            return "CPyAttr_SetterBoolOrNone"
+        elif is_float_rprimitive(rtype):
+            assert or_none, "non-optional boxed float type should be impossible"
+            return "CPyAttr_SetterFloatOrNone"
+        elif is_tuple_rprimitive(rtype):
+            return "CPyAttr_SetterTuple"
+        elif is_list_rprimitive(rtype):
+            return "CPyAttr_SetterList"
+        elif is_dict_rprimitive(rtype):
+            return "CPyAttr_SetterDict"
+        elif is_set_rprimitive(rtype):
+            return "CPyAttr_SetterSet"
+        elif isinstance(rtype, RInstance):
+            class_name = rtype.class_ir.name_prefix(emitter.names)
+            return f"CPyCustomAttr_Setter{class_name}{or_none}"
+        elif is_object_rprimitive(rtype):
+            return "CPyAttr_SetterPyObject"
+    elif is_tagged(rtype):
+        return "CPyAttr_SetterTagged"
+    elif is_float_rprimitive(rtype):
+        return "CPyAttr_SetterFloat"
+    elif is_bool_rprimitive(rtype):
+        return "CPyAttr_SetterBool"
+    return None
+
+
 def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
+    cl_struct = cl.struct_name(emitter.names)
     if not cl.is_trait:
-        for attr in cl.attributes:
-            emitter.emit_line("static PyObject *")
+        for attr, rtype in cl.attributes.items():
+            context_name = attr_context_name(cl, attr, emitter.names)
+            always_defined = cl.is_always_defined(attr) and not rtype.is_refcounted
+
+            emitter.emit_line(f"static CPyAttr_Context {context_name} = {{")
             emitter.emit_line(
-                "{}({} *self, void *closure);".format(
-                    getter_name(cl, attr, emitter.names), cl.struct_name(emitter.names)
-                )
+                f'"{attr}", offsetof({cl_struct}, {emitter.attr(attr)}),'
+                f" {c_bool(always_defined)}, {c_bool(cl.is_deletable(attr))},"
             )
-            emitter.emit_line("static int")
-            emitter.emit_line(
-                "{}({} *self, PyObject *value, void *closure);".format(
-                    setter_name(cl, attr, emitter.names), cl.struct_name(emitter.names)
-                )
-            )
+            # If needed, store the bitmap offset and mask for this attribute.
+            if attr in cl.bitmap_attrs:
+                index = cl.bitmap_attrs.index(attr)
+                bitmap = emitter.bitmap_field(index)
+                mask = emitter.attr_bitmap_mask(index)
+                emitter.emit_line(f".bitmap = {{offsetof({cl_struct}, {bitmap}), {mask}}},")
+            generic_setter = generic_setter_name(rtype, emitter)
+            if generic_setter and not rtype.is_unboxed and is_optional_type(rtype):
+                emitter.emit_line(".allow_none = true")
+            emitter.emit_line("};")
+
+            if not generic_getter_name(rtype):
+                name = getter_name(cl, attr, emitter.names)
+                emitter.emit_line("static PyObject *")
+                emitter.emit_line(f"{name}({cl_struct} *self, void *closure);")
+            if not generic_setter:
+                name = setter_name(cl, attr, emitter.names)
+                emitter.emit_line("static int")
+                emitter.emit_line(f"{name}({cl_struct} *self, PyObject *value, void *closure);")
 
     for prop, (getter, setter) in cl.properties.items():
         if getter.decl.implicit:
@@ -865,14 +956,15 @@ def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
 def generate_getseters_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
     emitter.emit_line(f"static PyGetSetDef {name}[] = {{")
     if not cl.is_trait:
-        for attr in cl.attributes:
-            emitter.emit_line(f'{{"{attr}",')
-            emitter.emit_line(
-                " (getter){}, (setter){},".format(
-                    getter_name(cl, attr, emitter.names), setter_name(cl, attr, emitter.names)
-                )
+        for attr, rtype in cl.attributes.items():
+            attr_getter = generic_getter_name(rtype) or getter_name(cl, attr, emitter.names)
+            attr_setter = generic_setter_name(rtype, emitter) or setter_name(
+                cl, attr, emitter.names
             )
-            emitter.emit_line(" NULL, NULL},")
+            context = "&{}".format(attr_context_name(cl, attr, emitter.names))
+            emitter.emit_line(f'{{"{attr}",')
+            emitter.emit_line(f" (getter){attr_getter}, (setter){attr_setter},")
+            emitter.emit_line(f" NULL, {context}}},")
     for prop, (getter, setter) in cl.properties.items():
         if getter.decl.implicit:
             continue
@@ -896,11 +988,16 @@ def generate_getseters_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
 def generate_getseters(cl: ClassIR, emitter: Emitter) -> None:
     if not cl.is_trait:
         for i, (attr, rtype) in enumerate(cl.attributes.items()):
-            generate_getter(cl, attr, rtype, emitter)
-            emitter.emit_line("")
-            generate_setter(cl, attr, rtype, emitter)
-            if i < len(cl.attributes) - 1:
+            if not generic_getter_name(rtype):
+                generate_getter(cl, attr, rtype, emitter)
                 emitter.emit_line("")
+            if generic_setter_name(rtype, emitter):
+                if isinstance(unwrap_optional_type(rtype), RInstance):
+                    generate_reusable_native_class_setter(rtype, emitter)
+            else:
+                generate_setter(cl, attr, rtype, emitter)
+                if i < len(cl.attributes) - 1:
+                    emitter.emit_line("")
     for prop, (getter, setter) in cl.properties.items():
         if getter.decl.implicit:
             continue
@@ -932,14 +1029,12 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
 
     if not always_defined:
         emitter.emit_undefined_attr_check(rtype, attr_expr, "==", "self", attr, cl, unlikely=True)
-        emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
-        emitter.emit_line(f'    "attribute {repr(attr)} of {repr(cl.name)} undefined");')
-        emitter.emit_line("return NULL;")
+        emitter.emit_line("return CPyAttr_UndefinedError((PyObject *)self, closure);")
         emitter.emit_line("}")
     emitter.emit_inc_ref(f"self->{attr_field}", rtype)
     emitter.emit_box(f"self->{attr_field}", "retval", rtype, declare_dest=True)
     emitter.emit_line("return retval;")
-    emitter.emit_line("}")
+    emitter.emit_line("}\n")
 
 
 def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> None:
@@ -955,11 +1050,7 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     deletable = cl.is_deletable(attr)
     if not deletable:
         emitter.emit_line("if (value == NULL) {")
-        emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
-        emitter.emit_line(
-            f'    "{repr(cl.name)} object attribute {repr(attr)} cannot be deleted");'
-        )
-        emitter.emit_line("return -1;")
+        emitter.emit_line("return CPyAttr_UndeletableError((PyObject *)self, closure);")
         emitter.emit_line("}")
 
     # HACK: Don't consider refcounted values as always defined, since it's possible to
@@ -981,22 +1072,48 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     if rtype.is_unboxed:
         emitter.emit_unbox("value", "tmp", rtype, error=ReturnHandler("-1"), declare_dest=True)
     elif is_same_type(rtype, object_rprimitive):
-        emitter.emit_line("PyObject *tmp = value;")
+        emitter.emit_line("PyObject *tmp = Py_NewRef(value);")
     else:
         emitter.emit_cast("value", "tmp", rtype, declare_dest=True)
         emitter.emit_lines("if (!tmp)", "    return -1;")
-    emitter.emit_inc_ref("tmp", rtype)
+        emitter.emit_inc_ref("tmp", rtype)
     emitter.emit_line(f"self->{attr_field} = tmp;")
     if rtype.error_overlap and not always_defined:
         emitter.emit_attr_bitmap_set("tmp", "self", rtype, cl, attr)
 
     if deletable:
-        emitter.emit_line("} else")
+        emitter.emit_line("} else {")
         emitter.emit_line(f"    self->{attr_field} = {emitter.c_undefined_value(rtype)};")
         if rtype.error_overlap:
             emitter.emit_attr_bitmap_clear("self", rtype, cl, attr)
+        emitter.emit_line("}")
     emitter.emit_line("return 0;")
     emitter.emit_line("}")
+
+
+def generate_reusable_native_class_setter(rtype: RType, emitter: Emitter) -> None:
+    name = generic_setter_name(rtype, emitter)
+    assert name is not None and name.startswith("CPyCustomAttr")
+    if name in emitter.context.declarations:
+        return
+
+    signature = f"int {name}(PyObject *self, PyObject *value, CPyAttr_Context *context)"
+    emitter.context.declarations[name] = HeaderDeclaration(f"{signature};")
+    emitter.emit_lines(signature, "{")
+
+    emitter.emit_line("if (value == NULL && !context->deletable) {")
+    emitter.emit_line("return CPyAttr_UndeletableError((PyObject *)self, context);")
+    emitter.emit_lines("}", "")
+
+    emitter.emit_line("PyObject **attr = (PyObject **)((char *)self + context->offset);")
+    emitter.emit_line("if (value != NULL) {")
+    emitter.emit_cast("value", "tmp", rtype, declare_dest=True, error=ReturnHandler("-1"))
+    emitter.emit_line("Py_XSETREF(*attr, Py_NewRef(tmp));")
+    emitter.emit_line("} else {")
+    emitter.emit_line("Py_CLEAR(*attr);")
+    emitter.emit_line("}")
+
+    emitter.emit_lines("return 0;", "}", "")
 
 
 def generate_readonly_getter(

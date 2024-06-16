@@ -67,6 +67,39 @@ typedef struct tuple_T4CIOO {
 
 // Native object operations
 
+// Closure type to drive generic attribute getters and setters.
+typedef struct CPyAttr_Context {
+    const char *attr_name;
+    size_t offset;
+    bool always_defined;
+    bool deletable;
+    struct {                    // Used for attributes with overlapping error values.
+        size_t offset;
+        size_t mask;
+    } bitmap;
+    bool allow_none;
+} CPyAttr_Context;
+
+PyObject *CPyAttr_GetterPyObject(PyObject *self, CPyAttr_Context *context);
+PyObject *CPyAttr_GetterTagged(PyObject *self, CPyAttr_Context *context);
+PyObject *CPyAttr_GetterBool(PyObject *self, CPyAttr_Context *context);
+PyObject *CPyAttr_GetterFloat(PyObject *self, CPyAttr_Context *context);
+int CPyAttr_SetterPyObject(PyObject *self, PyObject *value, CPyAttr_Context *context);
+
+int CPyAttr_SetterUnicode(PyObject *self, PyObject *value, CPyAttr_Context *context);
+int CPyAttr_SetterLongOrNone(PyObject *self, PyObject *value, CPyAttr_Context *context);
+int CPyAttr_SetterBoolOrNone(PyObject *self, PyObject *value, CPyAttr_Context *context);
+int CPyAttr_SetterFloatOrNone(PyObject *self, PyObject *value, CPyAttr_Context *context);
+int CPyAttr_SetterTuple(PyObject *self, PyObject *value, CPyAttr_Context *context);
+int CPyAttr_SetterList(PyObject *self, PyObject *value, CPyAttr_Context *context);
+int CPyAttr_SetterDict(PyObject *self, PyObject *value, CPyAttr_Context *context);
+int CPyAttr_SetterSet(PyObject *self, PyObject *value, CPyAttr_Context *context);
+
+int CPyAttr_SetterTagged(PyObject *self, PyObject *value, CPyAttr_Context *context);
+int CPyAttr_SetterBool(PyObject *self, PyObject *value, CPyAttr_Context *context);
+int CPyAttr_SetterFloat(PyObject *self, PyObject *value, CPyAttr_Context *context);
+PyObject *CPyAttr_UndefinedError(PyObject *self, CPyAttr_Context *context);
+int CPyAttr_UndeletableError(PyObject *self, CPyAttr_Context *context);
 
 // Search backwards through the trait part of a vtable (which sits *before*
 // the start of the vtable proper) looking for the subvtable describing a trait

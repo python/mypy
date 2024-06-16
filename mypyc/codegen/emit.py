@@ -364,6 +364,10 @@ class Emitter:
         attr = self.bitmap_field(index)
         return f"({cast}{obj})->{attr}"
 
+    def attr_bitmap_mask(self, index: int) -> int:
+        """Return integer mask used for attribute bitmap."""
+        return 1 << (index & (BITMAP_BITS - 1))
+
     def emit_attr_bitmap_set(
         self, value: str, obj: str, rtype: RType, cl: ClassIR, attr: str
     ) -> None:
@@ -388,7 +392,7 @@ class Emitter:
             check = self.error_value_check(rtype, value, "==")
             self.emit_line(f"if (unlikely({check})) {{")
         index = cl.bitmap_attrs.index(attr)
-        mask = 1 << (index & (BITMAP_BITS - 1))
+        mask = self.attr_bitmap_mask(index)
         bitmap = self.attr_bitmap_expr(obj, cl, index)
         if clear:
             self.emit_line(f"{bitmap} &= ~{mask};")
@@ -1191,3 +1195,8 @@ def c_array_initializer(components: list[str], *, indented: bool = False) -> str
     # Multi-line result
     res.append(indent + ", ".join(current))
     return "{\n    " + ",\n    ".join(res) + "\n" + indent + "}"
+
+
+def c_bool(value: bool) -> str:
+    """Return 'true' if value is True, otherwise 'false'."""
+    return "true" if value else "false"
