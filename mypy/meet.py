@@ -350,16 +350,18 @@ def is_overlapping_types(
 
     def is_none_object_overlap(t1: Type, t2: Type) -> bool:
         t1, t2 = get_proper_types((t1, t2))
-        return isinstance(t1, NoneType) and isinstance(t2, Instance) and t2.type.fullname == "builtins.object"
+        return (
+            isinstance(t1, NoneType)
+            and isinstance(t2, Instance)
+            and t2.type.fullname == "builtins.object"
+        )
 
     # comments and docstrings.
     if overlap_for_overloads:
         if is_none_object_overlap(left, right) or is_none_object_overlap(right, left):
             return False
 
-    if is_proper_subtype(
-        left, right, ignore_promotions=ignore_promotions
-    ) or is_proper_subtype(
+    if is_proper_subtype(left, right, ignore_promotions=ignore_promotions) or is_proper_subtype(
         right, left, ignore_promotions=ignore_promotions
     ):
         return True
@@ -511,9 +513,7 @@ def is_overlapping_types(
     if isinstance(left, Instance) and isinstance(right, Instance):
         # First we need to handle promotions and structural compatibility for instances
         # that came as fallbacks, so simply call is_subtype() to avoid code duplication.
-        if is_subtype(
-            left, right, ignore_promotions=ignore_promotions
-        ) or is_subtype(
+        if is_subtype(left, right, ignore_promotions=ignore_promotions) or is_subtype(
             right, left, ignore_promotions=ignore_promotions
         ):
             return True
@@ -575,28 +575,21 @@ def is_overlapping_erased_types(
 
 
 def are_typed_dicts_overlapping(
-    left: TypedDictType,
-    right: TypedDictType,
-    is_overlapping: Callable[[Type, Type], bool],
+    left: TypedDictType, right: TypedDictType, is_overlapping: Callable[[Type, Type], bool]
 ) -> bool:
     """Returns 'true' if left and right are overlapping TypeDictTypes."""
     # All required keys in left are present and overlapping with something in right
     for key in left.required_keys:
         if key not in right.items:
             return False
-        if not is_overlapping(
-            left.items[key],
-            right.items[key],
-        ):
+        if not is_overlapping(left.items[key], right.items[key]):
             return False
 
     # Repeat check in the other direction
     for key in right.required_keys:
         if key not in left.items:
             return False
-        if not is_overlapping(
-            left.items[key], right.items[key]
-        ):
+        if not is_overlapping(left.items[key], right.items[key]):
             return False
 
     # The presence of any additional optional keys does not affect whether the two
@@ -606,9 +599,7 @@ def are_typed_dicts_overlapping(
 
 
 def are_tuples_overlapping(
-    left: Type,
-    right: Type,
-    is_overlapping: Callable[[Type, Type], bool],
+    left: Type, right: Type, is_overlapping: Callable[[Type, Type], bool]
 ) -> bool:
     """Returns true if left and right are overlapping tuples."""
     left, right = get_proper_types((left, right))
@@ -631,13 +622,7 @@ def are_tuples_overlapping(
 
     if len(left.items) != len(right.items):
         return False
-    return all(
-        is_overlapping(
-            l,
-            r,
-        )
-        for l, r in zip(left.items, right.items)
-    )
+    return all(is_overlapping(l, r) for l, r in zip(left.items, right.items))
 
 
 def expand_tuple_if_possible(tup: TupleType, target: int) -> TupleType:

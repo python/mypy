@@ -211,11 +211,7 @@ def is_proper_subtype(
         )
     else:
         assert not any(
-            {
-                ignore_promotions,
-                erase_instances,
-                keep_erased_types,
-            }
+            {ignore_promotions, erase_instances, keep_erased_types}
         ), "Don't pass both context and individual flags"
     if type_state.is_assumed_proper_subtype(left, right):
         return True
@@ -589,11 +585,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                             else:
                                 variance = tvar.variance
                             if not check_type_parameter(
-                                lefta,
-                                righta,
-                                variance,
-                                self.proper_subtype,
-                                self.subtype_context,
+                                lefta, righta, variance, self.proper_subtype, self.subtype_context
                             ):
                                 nominal = False
                         else:
@@ -1533,9 +1525,7 @@ def is_callable_compatible(
     # (below) treats type variables on the two sides as independent.
     if left.variables:
         # Apply generic type variables away in left via type inference.
-        unified = unify_generic_callable(
-            left, right, ignore_return=ignore_return
-        )
+        unified = unify_generic_callable(left, right, ignore_return=ignore_return)
         if unified is None:
             return False
         left = unified
