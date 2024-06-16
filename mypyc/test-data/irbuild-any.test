@@ -106,7 +106,7 @@ def f2(a, n, l):
     r9, r10 :: bit
     r11 :: list
     r12 :: object
-    r13, r14, r15 :: ptr
+    r13 :: ptr
 L0:
     r0 = box(int, n)
     r1 = PyObject_GetItem(a, r0)
@@ -121,11 +121,9 @@ L0:
     r10 = CPyList_SetItem(l, n, a)
     r11 = PyList_New(2)
     r12 = box(int, n)
-    r13 = get_element_ptr r11 ob_item :: PyListObject
-    r14 = load_mem r13 :: ptr*
-    set_mem r14, a :: builtins.object*
-    r15 = r14 + WORD_SIZE*1
-    set_mem r15, r12 :: builtins.object*
+    r13 = list_items r11
+    buf_init_item r13, 0, a
+    buf_init_item r13, 1, r12
     keep_alive r11
     return 1
 def f3(a, n):

@@ -2,8 +2,7 @@ import sys
 from _typeshed import Incomplete, StrOrBytesPath
 from collections.abc import Iterable
 from tkinter import Button, Entry, Frame, Listbox, Misc, Scrollbar, StringVar, Toplevel, commondialog
-from typing import IO, ClassVar
-from typing_extensions import Literal
+from typing import IO, ClassVar, Literal
 
 if sys.version_info >= (3, 9):
     __all__ = [

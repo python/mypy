@@ -7,6 +7,7 @@ import os
 import re
 import unittest
 
+from mypyc.ir.ops import PrimitiveDescription
 from mypyc.primitives import registry
 from mypyc.primitives.registry import CFunctionDescription
 
@@ -25,17 +26,24 @@ class TestHeaderInclusion(unittest.TestCase):
                     rf"\b{name}\b", header
                 ), f'"{name}" is used in mypyc.primitives but not declared in CPy.h'
 
-        for values in [
+        for old_values in [
             registry.method_call_ops.values(),
             registry.function_ops.values(),
-            registry.binary_ops.values(),
             registry.unary_ops.values(),
         ]:
+            for old_ops in old_values:
+                if isinstance(old_ops, CFunctionDescription):
+                    old_ops = [old_ops]
+                for old_op in old_ops:
+                    check_name(old_op.c_function_name)
+
+        for values in [registry.binary_ops.values()]:
             for ops in values:
-                if isinstance(ops, CFunctionDescription):
+                if isinstance(ops, PrimitiveDescription):
                     ops = [ops]
                 for op in ops:
-                    check_name(op.c_function_name)
+                    if op.c_function_name is not None:
+                        check_name(op.c_function_name)
 
         primitives_path = os.path.join(os.path.dirname(__file__), "..", "primitives")
         for fnam in glob.glob(f"{primitives_path}/*.py"):

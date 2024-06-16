@@ -1369,7 +1369,6 @@ def h() -> None:
 <m.D> -> m.D, m.h
 
 [case testDataclassDepsOldVersion]
-# flags: --python-version 3.7
 from dataclasses import dataclass
 
 Z = int
@@ -1432,3 +1431,19 @@ class B(A):
 <m.Z> -> m
 <dataclasses.dataclass> -> m
 <dataclasses> -> m
+
+[case testPEP695TypeAliasDeps]
+# flags: --enable-incomplete-feature=NewGenericSyntax --python-version=3.12
+from a import C, E
+type A = C
+type A2 = A
+type A3 = E
+[file a.py]
+class C: pass
+class D: pass
+type E = D
+[out]
+<m.A> -> m
+<a.C> -> m
+<a.E> -> m
+<a> -> m

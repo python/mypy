@@ -4,8 +4,8 @@ import types
 from _typeshed import SupportsKeysAndGetItem, Unused
 from builtins import property as _builtins_property
 from collections.abc import Callable, Iterable, Iterator, Mapping
-from typing import Any, Generic, TypeVar, overload
-from typing_extensions import Literal, Self, TypeAlias
+from typing import Any, Generic, Literal, TypeVar, overload
+from typing_extensions import Self, TypeAlias
 
 __all__ = ["EnumMeta", "Enum", "IntEnum", "Flag", "IntFlag", "auto", "unique"]
 
@@ -175,6 +175,7 @@ if sys.version_info >= (3, 11):
         name: str
         clsname: str
         member: Enum | None
+
     _magic_enum_attr = property
 else:
     _magic_enum_attr = types.DynamicClassAttribute
@@ -261,6 +262,7 @@ if sys.version_info >= (3, 11):
         CONTINUOUS: str
         NAMED_FLAGS: str
         UNIQUE: str
+
     CONTINUOUS = EnumCheck.CONTINUOUS
     NAMED_FLAGS = EnumCheck.NAMED_FLAGS
     UNIQUE = EnumCheck.UNIQUE
@@ -274,6 +276,7 @@ if sys.version_info >= (3, 11):
         CONFORM: str
         EJECT: str
         KEEP: str
+
     STRICT = FlagBoundary.STRICT
     CONFORM = FlagBoundary.CONFORM
     EJECT = FlagBoundary.EJECT

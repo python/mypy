@@ -1,7 +1,7 @@
 import sys
 from abc import abstractmethod
 from collections.abc import Callable, Sequence
-from typing_extensions import Literal
+from typing import Literal
 
 __all__ = ["Error", "open", "open_new", "open_new_tab", "get", "register"]
 

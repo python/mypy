@@ -41,12 +41,18 @@ class DefaultPlugin(Plugin):
     """Type checker plugin that is enabled by default."""
 
     def get_function_hook(self, fullname: str) -> Callable[[FunctionContext], Type] | None:
-        from mypy.plugins import ctypes, singledispatch
+        from mypy.plugins import ctypes, enums, singledispatch
 
         if fullname == "_ctypes.Array":
             return ctypes.array_constructor_callback
         elif fullname == "functools.singledispatch":
             return singledispatch.create_singledispatch_function_callback
+        elif fullname == "functools.partial":
+            import mypy.plugins.functools
+
+            return mypy.plugins.functools.partial_new_callback
+        elif fullname == "enum.member":
+            return enums.enum_member_callback
 
         return None
 
@@ -100,6 +106,8 @@ class DefaultPlugin(Plugin):
             return int_pow_callback
         elif fullname == "builtins.int.__neg__":
             return int_neg_callback
+        elif fullname == "builtins.int.__pos__":
+            return int_pos_callback
         elif fullname in ("builtins.tuple.__mul__", "builtins.tuple.__rmul__"):
             return tuple_mul_callback
         elif fullname in {n + ".setdefault" for n in TPDICT_FB_NAMES}:
@@ -116,6 +124,10 @@ class DefaultPlugin(Plugin):
             return singledispatch.singledispatch_register_callback
         elif fullname == singledispatch.REGISTER_CALLABLE_CALL_METHOD:
             return singledispatch.call_singledispatch_function_after_register_argument
+        elif fullname == "functools.partial.__call__":
+            import mypy.plugins.functools
+
+            return mypy.plugins.functools.partial_call_callback
         return None
 
     def get_attribute_hook(self, fullname: str) -> Callable[[AttributeContext], Type] | None:
@@ -153,12 +165,13 @@ class DefaultPlugin(Plugin):
     def get_class_decorator_hook_2(
         self, fullname: str
     ) -> Callable[[ClassDefContext], bool] | None:
-        from mypy.plugins import attrs, dataclasses, functools
+        import mypy.plugins.functools
+        from mypy.plugins import attrs, dataclasses
 
         if fullname in dataclasses.dataclass_makers:
             return dataclasses.dataclass_class_maker_callback
-        elif fullname in functools.functools_total_ordering_makers:
-            return functools.functools_total_ordering_maker_callback
+        elif fullname in mypy.plugins.functools.functools_total_ordering_makers:
+            return mypy.plugins.functools.functools_total_ordering_maker_callback
         elif fullname in attrs.attr_class_makers:
             return attrs.attr_class_maker_callback
         elif fullname in attrs.attr_dataclass_makers:
@@ -471,30 +484,41 @@ def int_pow_callback(ctx: MethodContext) -> Type:
     return ctx.default_return_type
 
 
-def int_neg_callback(ctx: MethodContext) -> Type:
-    """Infer a more precise return type for int.__neg__.
+def int_neg_callback(ctx: MethodContext, multiplier: int = -1) -> Type:
+    """Infer a more precise return type for int.__neg__ and int.__pos__.
 
     This is mainly used to infer the return type as LiteralType
-    if the original underlying object is a LiteralType object
+    if the original underlying object is a LiteralType object.
     """
     if isinstance(ctx.type, Instance) and ctx.type.last_known_value is not None:
         value = ctx.type.last_known_value.value
         fallback = ctx.type.last_known_value.fallback
         if isinstance(value, int):
             if is_literal_type_like(ctx.api.type_context[-1]):
-                return LiteralType(value=-value, fallback=fallback)
+                return LiteralType(value=multiplier * value, fallback=fallback)
             else:
                 return ctx.type.copy_modified(
                     last_known_value=LiteralType(
-                        value=-value, fallback=ctx.type, line=ctx.type.line, column=ctx.type.column
+                        value=multiplier * value,
+                        fallback=fallback,
+                        line=ctx.type.line,
+                        column=ctx.type.column,
                     )
                 )
     elif isinstance(ctx.type, LiteralType):
         value = ctx.type.value
         fallback = ctx.type.fallback
         if isinstance(value, int):
-            return LiteralType(value=-value, fallback=fallback)
+            return LiteralType(value=multiplier * value, fallback=fallback)
     return ctx.default_return_type
+
+
+def int_pos_callback(ctx: MethodContext) -> Type:
+    """Infer a more precise return type for int.__pos__.
+
+    This is identical to __neg__, except the value is not inverted.
+    """
+    return int_neg_callback(ctx, +1)
 
 
 def tuple_mul_callback(ctx: MethodContext) -> Type:

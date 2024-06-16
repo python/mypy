@@ -1,4 +1,4 @@
-name: Test stubgenc on pybind11-mypy-demo
+name: Test stubgenc on pybind11_fixtures
 
 on:
   workflow_dispatch:
@@ -10,6 +10,7 @@ on:
     - 'misc/test-stubgenc.sh'
     - 'mypy/stubgenc.py'
     - 'mypy/stubdoc.py'
+    - 'mypy/stubutil.py'
     - 'test-data/stubgen/**'
 
 permissions:
@@ -29,7 +30,7 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Setup 🐍 3.8
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: 3.8
 

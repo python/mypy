@@ -122,7 +122,8 @@ def expr_to_unanalyzed_type(
             [
                 expr_to_unanalyzed_type(expr.left, options, allow_new_syntax),
                 expr_to_unanalyzed_type(expr.right, options, allow_new_syntax),
-            ]
+            ],
+            uses_pep604_syntax=True,
         )
     elif isinstance(expr, CallExpr) and isinstance(_parent, ListExpr):
         c = expr.callee
@@ -183,9 +184,12 @@ def expr_to_unanalyzed_type(
     elif isinstance(expr, UnaryExpr):
         typ = expr_to_unanalyzed_type(expr.expr, options, allow_new_syntax)
         if isinstance(typ, RawExpressionType):
-            if isinstance(typ.literal_value, int) and expr.op == "-":
-                typ.literal_value *= -1
-                return typ
+            if isinstance(typ.literal_value, int):
+                if expr.op == "-":
+                    typ.literal_value *= -1
+                    return typ
+                elif expr.op == "+":
+                    return typ
         raise TypeTranslationError()
     elif isinstance(expr, IntExpr):
         return RawExpressionType(expr.value, "builtins.int", line=expr.line, column=expr.column)

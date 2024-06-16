@@ -124,10 +124,10 @@ z # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment  [unuse
 # flags: --enable-error-code ignore-without-code
 # type: ignore  # whole file ignore
 x
-y # type: ignore  # ignore the lack of error code since we're ignore the whole file
+y # type: ignore  # ignore the lack of error code since we ignore the whole file
 
 [case testErrorCodeMissingMultiple]
-# flags: --enable-error-code ignore-without-code --python-version 3.7
+# flags: --enable-error-code ignore-without-code
 from __future__ import annotations
 class A:
     attr: int
@@ -1182,3 +1182,11 @@ class D(C):
     def other(self) -> None:
         self.bad2: int = 5  # E: Covariant override of a mutable attribute (base class "C" defined the type as "float", expression has type "int")  [mutable-override]
 [builtins fixtures/property.pyi]
+
+[case testNarrowedTypeNotSubtype]
+from typing_extensions import TypeIs
+
+def f(x: str) -> TypeIs[int]:  # E: Narrowed type "int" is not a subtype of input type "str"  [narrowed-type-not-subtype]
+    pass
+
+[builtins fixtures/tuple.pyi]

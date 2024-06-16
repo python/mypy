@@ -5,8 +5,8 @@ requires = [
     # self-typechecking :/
     "setuptools >= 40.6.2",
     "wheel >= 0.30.0",
-    # the following is from mypy-requirements.txt
-    "typing_extensions>=4.1.0",
+    # the following is from mypy-requirements.txt/setup.py
+    "typing_extensions>=4.6.0",
     "mypy_extensions>=1.0.0",
     "tomli>=1.1.0; python_version<'3.11'",
     # the following is from build-requirements.txt
@@ -17,7 +17,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.black]
 line-length = 99
-target-version = ["py38", "py39", "py310", "py311"]
+target-version = ["py38", "py39", "py310", "py311", "py312"]
 skip-magic-trailing-comma = true
 force-exclude = '''
 ^/mypy/typeshed|
@@ -30,6 +30,20 @@ line-length = 99
 target-version = "py38"
 fix = true
 
+extend-exclude = [
+  "@*",
+  # Sphinx configuration is irrelevant
+  "docs/source/conf.py",
+  "mypyc/doc/conf.py",
+  # tests have more relaxed styling requirements
+  # fixtures have their own .pyi-specific configuration
+  "test-data/*",
+  "mypyc/test-data/*",
+  # typeshed has its own .pyi-specific configuration
+  "mypy/typeshed/*",
+]
+
+[tool.ruff.lint]
 select = [
   "E",       # pycodestyle (error)
   "F",       # pyflakes
@@ -66,20 +80,7 @@ unfixable = [
     "UP036", # sometimes it's better to just noqa this
 ]
 
-extend-exclude = [
-  "@*",
-  # Sphinx configuration is irrelevant
-  "docs/source/conf.py",
-  "mypyc/doc/conf.py",
-  # tests have more relaxed styling requirements
-  # fixtures have their own .pyi-specific configuration
-  "test-data/*",
-  "mypyc/test-data/*",
-  # typeshed has its own .pyi-specific configuration
-  "mypy/typeshed/*",
-]
-
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 combine-as-imports = true
 extra-standard-library = ["typing_extensions"]
 
@@ -87,7 +88,7 @@ extra-standard-library = ["typing_extensions"]
 ignore = ["**/.readthedocs.yaml"]
 
 [tool.pytest.ini_options]
-minversion = "6.0.0"
+minversion = "7.0.0"
 testpaths = ["mypy/test", "mypyc/test"]
 python_files = 'test*.py'
 

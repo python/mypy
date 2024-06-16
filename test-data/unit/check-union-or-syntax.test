@@ -127,7 +127,6 @@ cast(str | int, 'x')  # E: Cast target is not a type
 x = 1  # type: int | str
 
 [case testUnionOrSyntaxFutureImport]
-# flags: --python-version 3.7
 from __future__ import annotations
 x: int | None
 [builtins fixtures/tuple.pyi]
@@ -208,6 +207,25 @@ foo: ReadableBuffer
 [file was_mmap.pyi]
 from was_builtins import *
 class mmap: ...
+[builtins fixtures/type.pyi]
+
+[case testTypeAliasWithNewUnionIsInstance]
+# flags: --python-version 3.10
+SimpleAlias = int | str
+
+def foo(x: int | str | tuple):
+    if isinstance(x, SimpleAlias):
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.tuple[Any, ...]"
+
+ParameterizedAlias = str | list[str]
+
+# these are false negatives:
+isinstance(5, str | list[str])
+isinstance(5, ParameterizedAlias)
+[builtins fixtures/type.pyi]
+
 
 # TODO: Get this test to pass
 [case testImplicit604TypeAliasWithCyclicImportNotInStub-xfail]

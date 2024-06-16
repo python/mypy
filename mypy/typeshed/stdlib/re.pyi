@@ -1,11 +1,12 @@
 import enum
 import sre_compile
+import sre_constants
 import sys
 from _typeshed import ReadableBuffer
 from collections.abc import Callable, Iterator, Mapping
 from sre_constants import error as error
-from typing import Any, AnyStr, Generic, TypeVar, overload
-from typing_extensions import Literal, TypeAlias, final
+from typing import Any, AnyStr, Generic, Literal, TypeVar, final, overload
+from typing_extensions import TypeAlias
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -21,7 +22,6 @@ __all__ = [
     "finditer",
     "compile",
     "purge",
-    "template",
     "escape",
     "error",
     "A",
@@ -41,9 +41,16 @@ __all__ = [
     "Match",
     "Pattern",
 ]
+if sys.version_info < (3, 13):
+    __all__ += ["template"]
 
 if sys.version_info >= (3, 11):
     __all__ += ["NOFLAG", "RegexFlag"]
+
+if sys.version_info >= (3, 13):
+    __all__ += ["PatternError"]
+
+    PatternError = sre_constants.error
 
 _T = TypeVar("_T")
 
@@ -72,11 +79,11 @@ class Match(Generic[AnyStr]):
     def expand(self, template: AnyStr) -> AnyStr: ...
     # group() returns "AnyStr" or "AnyStr | None", depending on the pattern.
     @overload
-    def group(self, __group: Literal[0] = 0) -> AnyStr: ...
+    def group(self, group: Literal[0] = 0, /) -> AnyStr: ...
     @overload
-    def group(self, __group: str | int) -> AnyStr | Any: ...
+    def group(self, group: str | int, /) -> AnyStr | Any: ...
     @overload
-    def group(self, __group1: str | int, __group2: str | int, *groups: str | int) -> tuple[AnyStr | Any, ...]: ...
+    def group(self, group1: str | int, group2: str | int, /, *groups: str | int) -> tuple[AnyStr | Any, ...]: ...
     # Each item of groups()'s return tuple is either "AnyStr" or
     # "AnyStr | None", depending on the pattern.
     @overload
@@ -89,20 +96,20 @@ class Match(Generic[AnyStr]):
     def groupdict(self) -> dict[str, AnyStr | Any]: ...
     @overload
     def groupdict(self, default: _T) -> dict[str, AnyStr | _T]: ...
-    def start(self, __group: int | str = 0) -> int: ...
-    def end(self, __group: int | str = 0) -> int: ...
-    def span(self, __group: int | str = 0) -> tuple[int, int]: ...
+    def start(self, group: int | str = 0, /) -> int: ...
+    def end(self, group: int | str = 0, /) -> int: ...
+    def span(self, group: int | str = 0, /) -> tuple[int, int]: ...
     @property
     def regs(self) -> tuple[tuple[int, int], ...]: ...  # undocumented
     # __getitem__() returns "AnyStr" or "AnyStr | None", depending on the pattern.
     @overload
-    def __getitem__(self, __key: Literal[0]) -> AnyStr: ...
+    def __getitem__(self, key: Literal[0], /) -> AnyStr: ...
     @overload
-    def __getitem__(self, __key: int | str) -> AnyStr | Any: ...
+    def __getitem__(self, key: int | str, /) -> AnyStr | Any: ...
     def __copy__(self) -> Match[AnyStr]: ...
-    def __deepcopy__(self, __memo: Any) -> Match[AnyStr]: ...
+    def __deepcopy__(self, memo: Any, /) -> Match[AnyStr]: ...
     if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any) -> GenericAlias: ...
+        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 @final
 class Pattern(Generic[AnyStr]):
@@ -174,11 +181,11 @@ class Pattern(Generic[AnyStr]):
     @overload
     def subn(self, repl: AnyStr | Callable[[Match[AnyStr]], AnyStr], string: AnyStr, count: int = 0) -> tuple[AnyStr, int]: ...
     def __copy__(self) -> Pattern[AnyStr]: ...
-    def __deepcopy__(self, __memo: Any) -> Pattern[AnyStr]: ...
-    def __eq__(self, __value: object) -> bool: ...
+    def __deepcopy__(self, memo: Any, /) -> Pattern[AnyStr]: ...
+    def __eq__(self, value: object, /) -> bool: ...
     def __hash__(self) -> int: ...
     if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any) -> GenericAlias: ...
+        def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
 
 # ----- re variables and constants -----
 
@@ -198,10 +205,11 @@ class RegexFlag(enum.IntFlag):
     VERBOSE = X
     U = sre_compile.SRE_FLAG_UNICODE
     UNICODE = U
-    T = sre_compile.SRE_FLAG_TEMPLATE
-    TEMPLATE = T
+    if sys.version_info < (3, 13):
+        T = sre_compile.SRE_FLAG_TEMPLATE
+        TEMPLATE = T
     if sys.version_info >= (3, 11):
-        NOFLAG: int
+        NOFLAG = 0
 
 A = RegexFlag.A
 ASCII = RegexFlag.ASCII
@@ -218,8 +226,9 @@ X = RegexFlag.X
 VERBOSE = RegexFlag.VERBOSE
 U = RegexFlag.U
 UNICODE = RegexFlag.UNICODE
-T = RegexFlag.T
-TEMPLATE = RegexFlag.TEMPLATE
+if sys.version_info < (3, 13):
+    T = RegexFlag.T
+    TEMPLATE = RegexFlag.TEMPLATE
 if sys.version_info >= (3, 11):
     NOFLAG = RegexFlag.NOFLAG
 _FlagsType: TypeAlias = int | RegexFlag
@@ -287,4 +296,6 @@ def subn(
 ) -> tuple[bytes, int]: ...
 def escape(pattern: AnyStr) -> AnyStr: ...
 def purge() -> None: ...
-def template(pattern: AnyStr | Pattern[AnyStr], flags: _FlagsType = 0) -> Pattern[AnyStr]: ...
+
+if sys.version_info < (3, 13):
+    def template(pattern: AnyStr | Pattern[AnyStr], flags: _FlagsType = 0) -> Pattern[AnyStr]: ...

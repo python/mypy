@@ -6,7 +6,7 @@ from typing import Any, Protocol
 __all__ = ["compile_dir", "compile_file", "compile_path"]
 
 class _SupportsSearch(Protocol):
-    def search(self, __string: str) -> Any: ...
+    def search(self, string: str, /) -> Any: ...
 
 if sys.version_info >= (3, 10):
     def compile_dir(

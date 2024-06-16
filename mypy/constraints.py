@@ -223,9 +223,6 @@ def infer_constraints_for_callable(
                 if actual_arg_type is None:
                     continue
 
-                actual_type = mapper.expand_actual_type(
-                    actual_arg_type, arg_kinds[actual], callee.arg_names[i], callee.arg_kinds[i]
-                )
                 if param_spec and callee.arg_kinds[i] in (ARG_STAR, ARG_STAR2):
                     # If actual arguments are mapped to ParamSpec type, we can't infer individual
                     # constraints, instead store them and infer single constraint at the end.
@@ -243,6 +240,12 @@ def infer_constraints_for_callable(
                         )
                         param_spec_arg_names.append(arg_names[actual] if arg_names else None)
                 else:
+                    actual_type = mapper.expand_actual_type(
+                        actual_arg_type,
+                        arg_kinds[actual],
+                        callee.arg_names[i],
+                        callee.arg_kinds[i],
+                    )
                     c = infer_constraints(callee.arg_types[i], actual_type, SUPERTYPE_OF)
                     constraints.extend(c)
     if (
@@ -688,14 +691,19 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
 
     def visit_parameters(self, template: Parameters) -> list[Constraint]:
         # Constraining Any against C[P] turns into infer_against_any([P], Any)
-        # ... which seems like the only case this can happen. Better to fail loudly otherwise.
         if isinstance(self.actual, AnyType):
             return self.infer_against_any(template.arg_types, self.actual)
         if type_state.infer_polymorphic and isinstance(self.actual, Parameters):
             # For polymorphic inference we need to be able to infer secondary constraints
             # in situations like [x: T] <: P <: [x: int].
             return infer_callable_arguments_constraints(template, self.actual, self.direction)
-        raise RuntimeError("Parameters cannot be constrained to")
+        if type_state.infer_polymorphic and isinstance(self.actual, ParamSpecType):
+            # Similar for [x: T] <: Q <: Concatenate[int, P].
+            return infer_callable_arguments_constraints(
+                template, self.actual.prefix, self.direction
+            )
+        # There also may be unpatched types after a user error, simply ignore them.
+        return []
 
     # Non-leaf types
 
@@ -894,8 +902,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             res.append(Constraint(template_arg, SUBTYPE_OF, suffix))
                             res.append(Constraint(template_arg, SUPERTYPE_OF, suffix))
                     elif isinstance(tvar, TypeVarTupleType):
-                        # Handle variadic type variables covariantly for consistency.
-                        res.extend(infer_constraints(template_arg, mapped_arg, self.direction))
+                        # Consider variadic type variables to be invariant.
+                        res.extend(infer_constraints(template_arg, mapped_arg, SUBTYPE_OF))
+                        res.extend(infer_constraints(template_arg, mapped_arg, SUPERTYPE_OF))
                 return res
             if (
                 template.type.is_protocol
@@ -1017,10 +1026,22 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             param_spec = template.param_spec()
 
             template_ret_type, cactual_ret_type = template.ret_type, cactual.ret_type
-            if template.type_guard is not None:
+            if template.type_guard is not None and cactual.type_guard is not None:
                 template_ret_type = template.type_guard
-            if cactual.type_guard is not None:
                 cactual_ret_type = cactual.type_guard
+            elif template.type_guard is not None:
+                template_ret_type = AnyType(TypeOfAny.special_form)
+            elif cactual.type_guard is not None:
+                cactual_ret_type = AnyType(TypeOfAny.special_form)
+
+            if template.type_is is not None and cactual.type_is is not None:
+                template_ret_type = template.type_is
+                cactual_ret_type = cactual.type_is
+            elif template.type_is is not None:
+                template_ret_type = AnyType(TypeOfAny.special_form)
+            elif cactual.type_is is not None:
+                cactual_ret_type = AnyType(TypeOfAny.special_form)
+
             res.extend(infer_constraints(template_ret_type, cactual_ret_type, self.direction))
 
             if param_spec is None:

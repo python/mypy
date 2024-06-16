@@ -2,6 +2,7 @@
 A "meta test" which tests the parsing of .test files. This is not meant to become exhaustive
 but to ensure we maintain a basic level of ergonomics for mypy contributors.
 """
+
 from mypy.test.helpers import Suite
 from mypy.test.meta._pytest import PytestResult, run_pytest_data_suite
 

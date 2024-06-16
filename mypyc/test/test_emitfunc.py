@@ -841,7 +841,9 @@ else {
         else:
             expected_lines = expected.rstrip().split("\n")
         expected_lines = [line.strip(" ") for line in expected_lines]
-        assert_string_arrays_equal(expected_lines, actual_lines, msg="Generated code unexpected")
+        assert_string_arrays_equal(
+            expected_lines, actual_lines, msg="Generated code unexpected", traceback=True
+        )
         if skip_next:
             assert visitor.op_index == 1
         else:
@@ -859,6 +861,8 @@ else {
                     args = [left, right]
                     if desc.ordering is not None:
                         args = [args[i] for i in desc.ordering]
+                    # This only supports primitives that map to C calls
+                    assert desc.c_function_name is not None
                     self.assert_emit(
                         CallC(
                             desc.c_function_name,

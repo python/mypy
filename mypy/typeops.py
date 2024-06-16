@@ -152,7 +152,14 @@ def type_object_type_from_function(
     #      ...
     #
     # We need to map B's __init__ to the type (List[T]) -> None.
-    signature = bind_self(signature, original_type=default_self, is_classmethod=is_new)
+    signature = bind_self(
+        signature,
+        original_type=default_self,
+        is_classmethod=is_new,
+        # Explicit instance self annotations have special handling in class_callable(),
+        # we don't need to bind any type variables in them if they are generic.
+        ignore_instances=True,
+    )
     signature = cast(FunctionLike, map_type_from_supertype(signature, info, def_info))
 
     special_sig: str | None = None
@@ -244,7 +251,9 @@ def map_type_from_supertype(typ: Type, sub_info: TypeInfo, super_info: TypeInfo)
     return expand_type_by_instance(typ, inst_type)
 
 
-def supported_self_type(typ: ProperType, allow_callable: bool = True) -> bool:
+def supported_self_type(
+    typ: ProperType, allow_callable: bool = True, allow_instances: bool = True
+) -> bool:
     """Is this a supported kind of explicit self-types?
 
     Currently, this means an X or Type[X], where X is an instance or
@@ -257,14 +266,19 @@ def supported_self_type(typ: ProperType, allow_callable: bool = True) -> bool:
         # as well as callable self for callback protocols.
         return True
     return isinstance(typ, TypeVarType) or (
-        isinstance(typ, Instance) and typ != fill_typevars(typ.type)
+        allow_instances and isinstance(typ, Instance) and typ != fill_typevars(typ.type)
     )
 
 
 F = TypeVar("F", bound=FunctionLike)
 
 
-def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool = False) -> F:
+def bind_self(
+    method: F,
+    original_type: Type | None = None,
+    is_classmethod: bool = False,
+    ignore_instances: bool = False,
+) -> F:
     """Return a copy of `method`, with the type of its first parameter (usually
     self or cls) bound to original_type.
 
@@ -288,9 +302,10 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
 
     """
     if isinstance(method, Overloaded):
-        return cast(
-            F, Overloaded([bind_self(c, original_type, is_classmethod) for c in method.items])
-        )
+        items = [
+            bind_self(c, original_type, is_classmethod, ignore_instances) for c in method.items
+        ]
+        return cast(F, Overloaded(items))
     assert isinstance(method, CallableType)
     func = method
     if not func.arg_types:
@@ -312,7 +327,9 @@ def bind_self(method: F, original_type: Type | None = None, is_classmethod: bool
     allow_callable = func.name is None or not func.name.startswith("__call__ of")
     is_init = func.name is not None and func.name.startswith("__init__ of")
 
-    if func.variables and supported_self_type(self_param_type, allow_callable=allow_callable):
+    if func.variables and supported_self_type(
+        self_param_type, allow_callable=allow_callable, allow_instances=not ignore_instances
+    ):
         from mypy.infer import infer_type_arguments
 
         if original_type is None:
@@ -895,6 +912,9 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
                 # Skip these since Enum will remove it
                 if name in ENUM_REMOVED_PROPS:
                     continue
+                # Skip private attributes
+                if name.startswith("__"):
+                    continue
                 new_items.append(LiteralType(name, typ))
             return make_simplified_union(new_items, contract_literals=False)
         elif typ.type.fullname == "builtins.bool":
@@ -925,9 +945,11 @@ def try_contracting_literals_in_union(types: Sequence[Type]) -> list[ProperType]
             if typ.fallback.type.is_enum or isinstance(typ.value, bool):
                 if fullname not in sum_types:
                     sum_types[fullname] = (
-                        set(typ.fallback.get_enum_values())
-                        if typ.fallback.type.is_enum
-                        else {True, False},
+                        (
+                            set(typ.fallback.get_enum_values())
+                            if typ.fallback.type.is_enum
+                            else {True, False}
+                        ),
                         [],
                     )
                 literals, indexes = sum_types[fullname]

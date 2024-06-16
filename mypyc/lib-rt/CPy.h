@@ -129,20 +129,20 @@ Py_ssize_t CPyTagged_AsSsize_t(CPyTagged x);
 void CPyTagged_IncRef(CPyTagged x);
 void CPyTagged_DecRef(CPyTagged x);
 void CPyTagged_XDecRef(CPyTagged x);
-CPyTagged CPyTagged_Negate(CPyTagged num);
-CPyTagged CPyTagged_Invert(CPyTagged num);
-CPyTagged CPyTagged_Add(CPyTagged left, CPyTagged right);
-CPyTagged CPyTagged_Subtract(CPyTagged left, CPyTagged right);
-CPyTagged CPyTagged_Multiply(CPyTagged left, CPyTagged right);
-CPyTagged CPyTagged_FloorDivide(CPyTagged left, CPyTagged right);
-CPyTagged CPyTagged_Remainder(CPyTagged left, CPyTagged right);
-CPyTagged CPyTagged_And(CPyTagged left, CPyTagged right);
-CPyTagged CPyTagged_Or(CPyTagged left, CPyTagged right);
-CPyTagged CPyTagged_Xor(CPyTagged left, CPyTagged right);
-CPyTagged CPyTagged_Rshift(CPyTagged left, CPyTagged right);
-CPyTagged CPyTagged_Lshift(CPyTagged left, CPyTagged right);
+
 bool CPyTagged_IsEq_(CPyTagged left, CPyTagged right);
 bool CPyTagged_IsLt_(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_Negate_(CPyTagged num);
+CPyTagged CPyTagged_Invert_(CPyTagged num);
+CPyTagged CPyTagged_Add_(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_Subtract_(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_Multiply_(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_FloorDivide_(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_Remainder_(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_BitwiseLongOp_(CPyTagged a, CPyTagged b, char op);
+CPyTagged CPyTagged_Rshift_(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_Lshift_(CPyTagged left, CPyTagged right);
+
 PyObject *CPyTagged_Str(CPyTagged n);
 CPyTagged CPyTagged_FromFloat(double f);
 PyObject *CPyLong_FromStrWithBase(PyObject *o, CPyTagged base);
@@ -284,6 +284,144 @@ static inline bool CPyTagged_IsLe(CPyTagged left, CPyTagged right) {
     } else {
         return !CPyTagged_IsLt_(right, left);
     }
+}
+
+static inline CPyTagged CPyTagged_Negate(CPyTagged num) {
+    if (likely(CPyTagged_CheckShort(num)
+               && num != (CPyTagged) ((Py_ssize_t)1 << (CPY_INT_BITS - 1)))) {
+        // The only possibility of an overflow error happening when negating a short is if we
+        // attempt to negate the most negative number.
+        return -num;
+    }
+    return CPyTagged_Negate_(num);
+}
+
+static inline CPyTagged CPyTagged_Add(CPyTagged left, CPyTagged right) {
+    // TODO: Use clang/gcc extension __builtin_saddll_overflow instead.
+    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
+        CPyTagged sum = left + right;
+        if (likely(!CPyTagged_IsAddOverflow(sum, left, right))) {
+            return sum;
+        }
+    }
+    return CPyTagged_Add_(left, right);
+}
+
+static inline CPyTagged CPyTagged_Subtract(CPyTagged left, CPyTagged right) {
+    // TODO: Use clang/gcc extension __builtin_saddll_overflow instead.
+    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
+        CPyTagged diff = left - right;
+        if (likely(!CPyTagged_IsSubtractOverflow(diff, left, right))) {
+            return diff;
+        }
+    }
+    return CPyTagged_Subtract_(left, right);
+}
+
+static inline CPyTagged CPyTagged_Multiply(CPyTagged left, CPyTagged right) {
+    // TODO: Consider using some clang/gcc extension to check for overflow
+    if (CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right)) {
+        if (!CPyTagged_IsMultiplyOverflow(left, right)) {
+            return left * CPyTagged_ShortAsSsize_t(right);
+        }
+    }
+    return CPyTagged_Multiply_(left, right);
+}
+
+static inline CPyTagged CPyTagged_FloorDivide(CPyTagged left, CPyTagged right) {
+    if (CPyTagged_CheckShort(left)
+        && CPyTagged_CheckShort(right)
+        && !CPyTagged_MaybeFloorDivideFault(left, right)) {
+        Py_ssize_t result = CPyTagged_ShortAsSsize_t(left) / CPyTagged_ShortAsSsize_t(right);
+        if (((Py_ssize_t)left < 0) != (((Py_ssize_t)right) < 0)) {
+            if (result * right != left) {
+                // Round down
+                result--;
+            }
+        }
+        return result << 1;
+    }
+    return CPyTagged_FloorDivide_(left, right);
+}
+
+static inline CPyTagged CPyTagged_Remainder(CPyTagged left, CPyTagged right) {
+    if (CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right)
+        && !CPyTagged_MaybeRemainderFault(left, right)) {
+        Py_ssize_t result = (Py_ssize_t)left % (Py_ssize_t)right;
+        if (((Py_ssize_t)right < 0) != ((Py_ssize_t)left < 0) && result != 0) {
+            result += right;
+        }
+        return result;
+    }
+    return CPyTagged_Remainder_(left, right);
+}
+
+// Bitwise '~'
+static inline CPyTagged CPyTagged_Invert(CPyTagged num) {
+    if (likely(CPyTagged_CheckShort(num) && num != CPY_TAGGED_ABS_MIN)) {
+        return ~num & ~CPY_INT_TAG;
+    }
+    return CPyTagged_Invert_(num);
+}
+
+// Bitwise '&'
+static inline CPyTagged CPyTagged_And(CPyTagged left, CPyTagged right) {
+    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
+        return left & right;
+    }
+    return CPyTagged_BitwiseLongOp_(left, right, '&');
+}
+
+// Bitwise '|'
+static inline CPyTagged CPyTagged_Or(CPyTagged left, CPyTagged right) {
+    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
+        return left | right;
+    }
+    return CPyTagged_BitwiseLongOp_(left, right, '|');
+}
+
+// Bitwise '^'
+static inline CPyTagged CPyTagged_Xor(CPyTagged left, CPyTagged right) {
+    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
+        return left ^ right;
+    }
+    return CPyTagged_BitwiseLongOp_(left, right, '^');
+}
+
+// Bitwise '>>'
+static inline CPyTagged CPyTagged_Rshift(CPyTagged left, CPyTagged right) {
+    if (likely(CPyTagged_CheckShort(left)
+               && CPyTagged_CheckShort(right)
+               && (Py_ssize_t)right >= 0)) {
+        CPyTagged count = CPyTagged_ShortAsSsize_t(right);
+        if (unlikely(count >= CPY_INT_BITS)) {
+            if ((Py_ssize_t)left >= 0) {
+                return 0;
+            } else {
+                return CPyTagged_ShortFromInt(-1);
+            }
+        }
+        return ((Py_ssize_t)left >> count) & ~CPY_INT_TAG;
+    }
+    return CPyTagged_Rshift_(left, right);
+}
+
+static inline bool IsShortLshiftOverflow(Py_ssize_t short_int, Py_ssize_t shift) {
+    return ((Py_ssize_t)(short_int << shift) >> shift) != short_int;
+}
+
+// Bitwise '<<'
+static inline CPyTagged CPyTagged_Lshift(CPyTagged left, CPyTagged right) {
+    if (likely(CPyTagged_CheckShort(left)
+               && CPyTagged_CheckShort(right)
+               && (Py_ssize_t)right >= 0
+               && right < CPY_INT_BITS * 2)) {
+        CPyTagged shift = CPyTagged_ShortAsSsize_t(right);
+        if (!IsShortLshiftOverflow(left, shift))
+            // Short integers, no overflow
+            return left << shift;
+    }
+    return CPyTagged_Lshift_(left, right);
 }
 
 
@@ -544,13 +682,8 @@ void CPy_AttributeError(const char *filename, const char *funcname, const char *
 
 // Misc operations
 
-#if PY_VERSION_HEX >= 0x03080000
 #define CPy_TRASHCAN_BEGIN(op, dealloc) Py_TRASHCAN_BEGIN(op, dealloc)
 #define CPy_TRASHCAN_END(op) Py_TRASHCAN_END
-#else
-#define CPy_TRASHCAN_BEGIN(op, dealloc) Py_TRASHCAN_SAFE_BEGIN(op)
-#define CPy_TRASHCAN_END(op) Py_TRASHCAN_SAFE_END(op)
-#endif
 
 // Tweaked version of _PyArg_Parser in CPython
 typedef struct CPyArg_Parser {

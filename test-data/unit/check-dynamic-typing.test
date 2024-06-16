@@ -756,6 +756,21 @@ main:5: note:          def f(self, x: A) -> None
 main:5: note:      Subclass:
 main:5: note:          def f(self, x: Any, y: Any) -> None
 
+[case testInvalidOverrideArgumentCountWithImplicitSignature4]
+# flags: --check-untyped-defs
+import typing
+class B:
+    def f(self, x: A) -> None: pass
+class A(B):
+    def f(self, x, y):
+        x()
+[out]
+main:6: error: Signature of "f" incompatible with supertype "B"
+main:6: note:      Superclass:
+main:6: note:          def f(self, x: A) -> None
+main:6: note:      Subclass:
+main:6: note:          def f(self, x: Any, y: Any) -> Any
+
 [case testInvalidOverrideWithImplicitSignatureAndClassMethod1]
 class B:
     @classmethod

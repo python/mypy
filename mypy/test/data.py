@@ -620,11 +620,13 @@ def pytest_addoption(parser: Any) -> None:
     )
 
 
-def pytest_configure(config: pytest.Config) -> None:
-    if config.getoption("--update-data") and config.getoption("--numprocesses", default=1) > 1:
-        raise pytest.UsageError(
-            "--update-data incompatible with parallelized tests; re-run with -n 1"
-        )
+@pytest.hookimpl(tryfirst=True)
+def pytest_cmdline_main(config: pytest.Config) -> None:
+    if config.getoption("--collectonly"):
+        return
+    # --update-data is not compatible with parallelized tests, disable parallelization
+    if config.getoption("--update-data"):
+        config.option.numprocesses = 0
 
 
 # This function name is special to pytest.  See
@@ -640,9 +642,7 @@ def pytest_pycollect_makeitem(collector: Any, name: str, obj: object) -> Any | N
             # Non-None result means this obj is a test case.
             # The collect method of the returned DataSuiteCollector instance will be called later,
             # with self.obj being obj.
-            return DataSuiteCollector.from_parent(  # type: ignore[no-untyped-call]
-                parent=collector, name=name
-            )
+            return DataSuiteCollector.from_parent(parent=collector, name=name)
     return None
 
 

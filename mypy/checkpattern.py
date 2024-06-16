@@ -202,7 +202,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         typ = self.chk.expr_checker.accept(o.expr)
         typ = coerce_to_literal(typ)
         narrowed_type, rest_type = self.chk.conditional_types_with_intersection(
-            current_type, [get_type_range(typ)], o, default=current_type
+            current_type, [get_type_range(typ)], o, default=get_proper_type(typ)
         )
         if not isinstance(get_proper_type(narrowed_type), (LiteralType, UninhabitedType)):
             return PatternType(narrowed_type, UnionType.make_union([narrowed_type, rest_type]), {})
@@ -305,11 +305,10 @@ class PatternChecker(PatternVisitor[PatternType]):
             narrowed_inner_types = []
             inner_rest_types = []
             for inner_type, new_inner_type in zip(inner_types, new_inner_types):
-                (
-                    narrowed_inner_type,
-                    inner_rest_type,
-                ) = self.chk.conditional_types_with_intersection(
-                    new_inner_type, [get_type_range(inner_type)], o, default=new_inner_type
+                (narrowed_inner_type, inner_rest_type) = (
+                    self.chk.conditional_types_with_intersection(
+                        new_inner_type, [get_type_range(inner_type)], o, default=new_inner_type
+                    )
                 )
                 narrowed_inner_types.append(narrowed_inner_type)
                 inner_rest_types.append(inner_rest_type)

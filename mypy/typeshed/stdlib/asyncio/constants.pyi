@@ -1,6 +1,6 @@
 import enum
 import sys
-from typing_extensions import Literal
+from typing import Literal
 
 LOG_THRESHOLD_FOR_CONNLOST_WRITES: Literal[5]
 ACCEPT_RETRY_DELAY: Literal[1]
@@ -15,6 +15,6 @@ if sys.version_info >= (3, 12):
     THREAD_JOIN_TIMEOUT: Literal[300]
 
 class _SendfileMode(enum.Enum):
-    UNSUPPORTED: int
-    TRY_NATIVE: int
-    FALLBACK: int
+    UNSUPPORTED = 1
+    TRY_NATIVE = 2
+    FALLBACK = 3

@@ -10,6 +10,7 @@ AST node type to code that actually does the bulk of the work. For
 example, expressions are transformed in mypyc.irbuild.expression and
 functions are transformed in mypyc.irbuild.function.
 """
+
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -59,7 +60,7 @@ from mypy.types import (
     UnionType,
     get_proper_type,
 )
-from mypy.util import split_target
+from mypy.util import module_prefix, split_target
 from mypy.visitor import ExpressionVisitor, StatementVisitor
 from mypyc.common import BITMAP_BITS, SELF_NAME, TEMP_ATTR_NAME
 from mypyc.crash import catch_errors
@@ -68,6 +69,7 @@ from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.ir.func_ir import INVALID_FUNC_DEF, FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import (
     NAMESPACE_MODULE,
+    NAMESPACE_TYPE_VAR,
     Assign,
     BasicBlock,
     Branch,
@@ -159,7 +161,7 @@ class IRBuilder:
         options: CompilerOptions,
         singledispatch_impls: dict[FuncDef, list[RegisterImplInfo]],
     ) -> None:
-        self.builder = LowLevelIRBuilder(current_module, errors, mapper, options)
+        self.builder = LowLevelIRBuilder(errors, options)
         self.builders = [self.builder]
         self.symtables: list[dict[SymbolNode, SymbolTarget]] = [{}]
         self.runtime_args: list[list[RuntimeArg]] = [[]]
@@ -178,6 +180,7 @@ class IRBuilder:
         self.function_names: set[tuple[str | None, str]] = set()
         self.classes: list[ClassIR] = []
         self.final_names: list[tuple[str, RType]] = []
+        self.type_var_names: list[str] = []
         self.callable_class_names: set[str] = set()
         self.options = options
 
@@ -231,12 +234,10 @@ class IRBuilder:
         self.builder.set_module(module_name, module_path)
 
     @overload
-    def accept(self, node: Expression, *, can_borrow: bool = False) -> Value:
-        ...
+    def accept(self, node: Expression, *, can_borrow: bool = False) -> Value: ...
 
     @overload
-    def accept(self, node: Statement) -> None:
-        ...
+    def accept(self, node: Statement) -> None: ...
 
     def accept(self, node: Statement | Expression, *, can_borrow: bool = False) -> Value | None:
         """Transform an expression or a statement.
@@ -378,9 +379,6 @@ class IRBuilder:
 
     def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.builder.int_op(type, lhs, rhs, op, line)
-
-    def compare_tagged(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
-        return self.builder.compare_tagged(lhs, rhs, op, line)
 
     def compare_tuples(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         return self.builder.compare_tuples(lhs, rhs, op, line)
@@ -543,6 +541,21 @@ class IRBuilder:
             module,
             line=line,
             error_msg=f'value for final name "{error_name}" was not set',
+        )
+
+    def init_type_var(self, value: Value, name: str, line: int) -> None:
+        unique_name = name + "___" + str(line)
+        self.type_var_names.append(unique_name)
+        self.add(InitStatic(value, unique_name, self.module_name, namespace=NAMESPACE_TYPE_VAR))
+
+    def load_type_var(self, name: str, line: int) -> Value:
+        return self.add(
+            LoadStatic(
+                object_rprimitive,
+                name + "___" + str(line),
+                self.module_name,
+                namespace=NAMESPACE_TYPE_VAR,
+            )
         )
 
     def load_literal_value(self, val: int | str | bytes | float | complex | bool) -> Value:
@@ -1024,7 +1037,7 @@ class IRBuilder:
         """
         if final_var.final_value is not None:  # this is safe even for non-native names
             return self.load_literal_value(final_var.final_value)
-        elif native:
+        elif native and module_prefix(self.graph, fullname):
             return self.load_final_static(fullname, self.mapper.type_to_rtype(typ), line, name)
         else:
             return None
@@ -1112,9 +1125,7 @@ class IRBuilder:
     def enter(self, fn_info: FuncInfo | str = "") -> None:
         if isinstance(fn_info, str):
             fn_info = FuncInfo(name=fn_info)
-        self.builder = LowLevelIRBuilder(
-            self.current_module, self.errors, self.mapper, self.options
-        )
+        self.builder = LowLevelIRBuilder(self.errors, self.options)
         self.builder.set_module(self.module_name, self.module_path)
         self.builders.append(self.builder)
         self.symtables.append({})
@@ -1247,14 +1258,15 @@ class IRBuilder:
     ) -> AssignmentTarget:
         # First, define the variable name as an attribute of the environment class, and then
         # construct a target for that attribute.
-        self.fn_info.env_class.attributes[var.name] = rtype
-        attr_target = AssignmentTargetAttr(base.curr_env_reg, var.name)
+        name = remangle_redefinition_name(var.name)
+        self.fn_info.env_class.attributes[name] = rtype
+        attr_target = AssignmentTargetAttr(base.curr_env_reg, name)
 
         if reassign:
             # Read the local definition of the variable, and set the corresponding attribute of
             # the environment class' variable to be that value.
             reg = self.read(self.lookup(var), self.fn_info.fitem.line)
-            self.add(SetAttr(base.curr_env_reg, var.name, reg, self.fn_info.fitem.line))
+            self.add(SetAttr(base.curr_env_reg, name, reg, self.fn_info.fitem.line))
 
         # Override the local definition of the variable to instead point at the variable in
         # the environment class.

@@ -123,6 +123,7 @@ class MemberContext:
         messages: MessageBuilder | None = None,
         self_type: Type | None = None,
         is_lvalue: bool | None = None,
+        original_type: Type | None = None,
     ) -> MemberContext:
         mx = MemberContext(
             self.is_lvalue,
@@ -142,6 +143,8 @@ class MemberContext:
             mx.self_type = self_type
         if is_lvalue is not None:
             mx.is_lvalue = is_lvalue
+        if original_type is not None:
+            mx.original_type = original_type
         return mx
 
 
@@ -359,13 +362,7 @@ def validate_super_call(node: FuncBase, mx: MemberContext) -> None:
             impl = node.impl if isinstance(node.impl, FuncDef) else node.impl.func
             unsafe_super = impl.is_trivial_body
     if unsafe_super:
-        ret_type = (
-            impl.type.ret_type
-            if isinstance(impl.type, CallableType)
-            else AnyType(TypeOfAny.unannotated)
-        )
-        if not subtypes.is_subtype(NoneType(), ret_type):
-            mx.msg.unsafe_super(node.name, node.info.name, mx.context)
+        mx.msg.unsafe_super(node.name, node.info.name, mx.context)
 
 
 def analyze_type_callable_member_access(name: str, typ: FunctionLike, mx: MemberContext) -> Type:
@@ -649,6 +646,16 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
         # Map the access over union types
         return make_simplified_union(
             [analyze_descriptor_access(typ, mx) for typ in descriptor_type.items]
+        )
+    elif isinstance(instance_type, UnionType):
+        # map over the instance types
+        return make_simplified_union(
+            [
+                analyze_descriptor_access(
+                    descriptor_type, mx.copy_modified(original_type=original_type)
+                )
+                for original_type in instance_type.relevant_items()
+            ]
         )
     elif not isinstance(descriptor_type, Instance):
         return orig_descriptor_type
@@ -1132,9 +1139,20 @@ def analyze_enum_class_attribute_access(
     # Skip these since Enum will remove it
     if name in ENUM_REMOVED_PROPS:
         return report_missing_attribute(mx.original_type, itype, name, mx)
-    # For other names surrendered by underscores, we don't make them Enum members
-    if name.startswith("__") and name.endswith("__") and name.replace("_", "") != "":
+    # Dunders and private names are not Enum members
+    if name.startswith("__") and name.replace("_", "") != "":
         return None
+
+    node = itype.type.get(name)
+    if node and node.type:
+        proper = get_proper_type(node.type)
+        # Support `A = nonmember(1)` function call and decorator.
+        if (
+            isinstance(proper, Instance)
+            and proper.type.fullname == "enum.nonmember"
+            and proper.args
+        ):
+            return proper.args[0]
 
     enum_literal = LiteralType(name, fallback=itype)
     return itype.copy_modified(last_known_value=enum_literal)

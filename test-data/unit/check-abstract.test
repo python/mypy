@@ -896,9 +896,9 @@ class A(metaclass=ABCMeta):
 class B(A):
     @property
     def x(self) -> int:
-        return super().x.y # E: "int" has no attribute "y"
+        return super().x.y  # E: Call to abstract method "x" of "A" with trivial body via super() is unsafe \
+                            # E: "int" has no attribute "y"
 [builtins fixtures/property.pyi]
-[out]
 
 [case testSuperWithReadWriteAbstractProperty]
 from abc import abstractproperty, ABCMeta
@@ -1659,10 +1659,10 @@ class Abstract:
 
 class SubProto(Proto):
     def meth(self) -> int:
-        return super().meth()
+        return super().meth()  # E: Call to abstract method "meth" of "Proto" with trivial body via super() is unsafe
 class SubAbstract(Abstract):
     def meth(self) -> int:
-        return super().meth()
+        return super().meth()  # E: Call to abstract method "meth" of "Abstract" with trivial body via super() is unsafe
 
 [case testEmptyBodyNoSuperWarningOptionalReturn]
 from typing import Protocol, Optional
@@ -1676,10 +1676,10 @@ class Abstract:
 
 class SubProto(Proto):
     def meth(self) -> Optional[int]:
-        return super().meth()
+        return super().meth()  # E: Call to abstract method "meth" of "Proto" with trivial body via super() is unsafe
 class SubAbstract(Abstract):
     def meth(self) -> Optional[int]:
-        return super().meth()
+        return super().meth()  # E: Call to abstract method "meth" of "Abstract" with trivial body via super() is unsafe
 
 [case testEmptyBodyTypeCheckingOnly]
 from typing import TYPE_CHECKING

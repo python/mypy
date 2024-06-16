@@ -22,10 +22,13 @@ a, b, c = x # E: Need more than 2 values to unpack (3 expected)
 x[2] # E: Tuple index out of range
 [builtins fixtures/tuple.pyi]
 
-[case testNamedTupleNoUnderscoreFields]
+[case testNamedTupleInvalidFields]
 from collections import namedtuple
 
-X = namedtuple('X', 'x, _y, _z')  # E: "namedtuple()" field names cannot start with an underscore: _y, _z
+X = namedtuple('X', 'x, _y')  # E: "namedtuple()" field name "_y" starts with an underscore
+Y = namedtuple('Y', ['x', '1'])  # E: "namedtuple()" field name "1" is not a valid identifier
+Z = namedtuple('Z', ['x', 'def'])  # E: "namedtuple()" field name "def" is a keyword
+A = namedtuple('A', ['x', 'x'])  # E: "namedtuple()" has duplicate field name "x"
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleAccessingAttributes]
@@ -125,13 +128,14 @@ E = namedtuple('E', 'a b', 0)
 [builtins fixtures/bool.pyi]
 
 [out]
+main:4: error: Boolean literal expected as the "rename" argument to namedtuple()
+main:5: error: Boolean literal expected as the "rename" argument to namedtuple()
 main:5: error: Argument "rename" to "namedtuple" has incompatible type "str"; expected "int"
 main:6: error: Unexpected keyword argument "unrecognized_arg" for "namedtuple"
 <ROOT>/test-data/unit/lib-stub/collections.pyi:3: note: "namedtuple" defined here
 main:7: error: Too many positional arguments for "namedtuple"
 
 [case testNamedTupleDefaults]
-# flags: --python-version 3.7
 from collections import namedtuple
 
 X = namedtuple('X', ['x', 'y'], defaults=(1,))
@@ -143,6 +147,23 @@ X(0, 1, 2)  # E: Too many arguments for "X"
 
 Y = namedtuple('Y', ['x', 'y'], defaults=(1, 2, 3))  # E: Too many defaults given in call to "namedtuple()"
 Z = namedtuple('Z', ['x', 'y'], defaults='not a tuple')  # E: List or tuple literal expected as the defaults argument to namedtuple()  # E: Argument "defaults" to "namedtuple" has incompatible type "str"; expected "Optional[Iterable[Any]]"
+
+[builtins fixtures/list.pyi]
+
+[case testNamedTupleRename]
+from collections import namedtuple
+
+X = namedtuple('X', ['abc', 'def'], rename=False)  # E: "namedtuple()" field name "def" is a keyword
+Y = namedtuple('Y', ['x', 'x', 'def', '42', '_x'], rename=True)
+y = Y(x=0, _1=1, _2=2, _3=3, _4=4)
+reveal_type(y.x)  # N: Revealed type is "Any"
+reveal_type(y._1)  # N: Revealed type is "Any"
+reveal_type(y._2)  # N: Revealed type is "Any"
+reveal_type(y._3)  # N: Revealed type is "Any"
+reveal_type(y._4)  # N: Revealed type is "Any"
+y._0  # E: "Y" has no attribute "_0"
+y._5  # E: "Y" has no attribute "_5"
+y._x  # E: "Y" has no attribute "_x"
 
 [builtins fixtures/list.pyi]
 
@@ -803,14 +824,20 @@ class Fraction(Real):
 [builtins fixtures/tuple.pyi]
 
 [case testForwardReferenceInNamedTuple]
-from typing import NamedTuple
+from typing import List, NamedTuple
 
 class A(NamedTuple):
     b: 'B'
     x: int
+    y: List['B']
 
 class B:
     pass
+
+def f(a: A):
+    reveal_type(a.b)  # N: Revealed type is "__main__.B"
+    reveal_type(a.x)  # N: Revealed type is "builtins.int"
+    reveal_type(a.y)  # N: Revealed type is "builtins.list[__main__.B]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeNamedTupleClassmethod]
@@ -1369,5 +1396,30 @@ class Test2(NamedTuple, metaclass=Meta):  # E: Unexpected keyword argument "meta
 # Technically this would work, but it is just easier for the implementation:
 class Test3(NamedTuple, metaclass=type):  # E: Unexpected keyword argument "metaclass" for "__init_subclass__" of "NamedTuple"
     ...
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+
+[case testNamedTupleDunderReplace]
+# flags: --python-version 3.13
+from typing import NamedTuple
+
+class A(NamedTuple):
+    x: int
+
+A(x=0).__replace__(x=1)
+A(x=0).__replace__(x="asdf")  # E: Argument "x" to "__replace__" of "A" has incompatible type "str"; expected "int"
+A(x=0).__replace__(y=1)  # E: Unexpected keyword argument "y" for "__replace__" of "A"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testUnpackSelfNamedTuple]
+import typing
+
+class Foo(typing.NamedTuple):
+    bar: int
+    def baz(self: typing.Self) -> None:
+        x, = self
+        reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]

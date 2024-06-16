@@ -83,6 +83,7 @@ from mypy.types import (
     TypeOfAny,
     TypeStrVisitor,
     TypeType,
+    TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
     UnboundType,
@@ -1347,18 +1348,21 @@ class MessageBuilder:
         return target
 
     def incompatible_type_application(
-        self, expected_arg_count: int, actual_arg_count: int, context: Context
+        self, min_arg_count: int, max_arg_count: int, actual_arg_count: int, context: Context
     ) -> None:
-        if expected_arg_count == 0:
+        if max_arg_count == 0:
             self.fail("Type application targets a non-generic function or class", context)
-        elif actual_arg_count > expected_arg_count:
-            self.fail(
-                f"Type application has too many types ({expected_arg_count} expected)", context
-            )
+            return
+
+        if min_arg_count == max_arg_count:
+            s = f"{max_arg_count} expected"
         else:
-            self.fail(
-                f"Type application has too few types ({expected_arg_count} expected)", context
-            )
+            s = f"expected between {min_arg_count} and {max_arg_count}"
+
+        if actual_arg_count > max_arg_count:
+            self.fail(f"Type application has too many types ({s})", context)
+        else:
+            self.fail(f"Type application has too few types ({s})", context)
 
     def could_not_infer_type_arguments(
         self, callee_type: CallableType, n: int, context: Context
@@ -1776,6 +1780,8 @@ class MessageBuilder:
                 alias = alias.split(".")[-1]
                 if alias == "Dict":
                     type_dec = f"{type_dec}, {type_dec}"
+                if self.options.use_lowercase_names():
+                    alias = alias.lower()
                 recommended_type = f"{alias}[{type_dec}]"
         if recommended_type is not None:
             hint = f' (hint: "{node.name}: {recommended_type} = ...")'
@@ -2054,6 +2060,15 @@ class MessageBuilder:
         template = "Subclass of {} cannot exist: {}"
         self.fail(
             template.format(formatted_base_class_list, reason), context, code=codes.UNREACHABLE
+        )
+
+    def tvar_without_default_type(
+        self, tvar_name: str, last_tvar_name_with_default: str, context: Context
+    ) -> None:
+        self.fail(
+            f'"{tvar_name}" cannot appear after "{last_tvar_name_with_default}" '
+            "in type parameter list because it has no default type",
+            context,
         )
 
     def report_protocol_problems(
@@ -2407,12 +2422,20 @@ class MessageBuilder:
             code=codes.ANNOTATION_UNCHECKED,
         )
 
+    def type_parameters_should_be_declared(self, undeclared: list[str], context: Context) -> None:
+        names = ", ".join('"' + n + '"' for n in undeclared)
+        self.fail(
+            message_registry.TYPE_PARAMETERS_SHOULD_BE_DECLARED.format(names),
+            context,
+            code=codes.VALID_TYPE,
+        )
+
 
 def quote_type_string(type_string: str) -> str:
     """Quotes a type representation for use in messages."""
     no_quote_regex = r"^<(tuple|union): \d+ items>$"
     if (
-        type_string in ["Module", "overloaded function", "Never", "<deleted>"]
+        type_string in ["Module", "overloaded function", "<deleted>"]
         or type_string.startswith("Module ")
         or re.match(no_quote_regex, type_string) is not None
         or type_string.endswith("?")
@@ -2480,14 +2503,16 @@ def format_type_inner(
             return typ.value_repr()
 
     if isinstance(typ, TypeAliasType) and typ.is_recursive:
-        # TODO: find balance here, str(typ) doesn't support custom verbosity, and may be
-        # too verbose for user messages, OTOH it nicely shows structure of recursive types.
-        if verbosity < 2:
-            type_str = typ.alias.name if typ.alias else "<alias (unfixed)>"
+        if typ.alias is None:
+            type_str = "<alias (unfixed)>"
+        else:
+            if verbosity >= 2 or (fullnames and typ.alias.fullname in fullnames):
+                type_str = typ.alias.fullname
+            else:
+                type_str = typ.alias.name
             if typ.args:
                 type_str += f"[{format_list(typ.args)}]"
-            return type_str
-        return str(typ)
+        return type_str
 
     # TODO: always mention type alias names in errors.
     typ = get_proper_type(typ)
@@ -2512,10 +2537,10 @@ def format_type_inner(
         else:
             base_str = itype.type.name
         if not itype.args:
-            if not itype.type.has_type_var_tuple_type:
-                # No type arguments, just return the type name
-                return base_str
-            return base_str + "[()]"
+            if itype.type.has_type_var_tuple_type and len(itype.type.type_vars) == 1:
+                return base_str + "[()]"
+            # No type arguments, just return the type name
+            return base_str
         elif itype.type.fullname == "builtins.tuple":
             item_type_str = format(itype.args[0])
             return f"{'tuple' if options.use_lowercase_names() else 'Tuple'}[{item_type_str}, ...]"
@@ -2528,9 +2553,15 @@ def format_type_inner(
         return f"Unpack[{format(typ.type)}]"
     elif isinstance(typ, TypeVarType):
         # This is similar to non-generic instance types.
+        fullname = scoped_type_var_name(typ)
+        if verbosity >= 2 or (fullnames and fullname in fullnames):
+            return fullname
         return typ.name
     elif isinstance(typ, TypeVarTupleType):
         # This is similar to non-generic instance types.
+        fullname = scoped_type_var_name(typ)
+        if verbosity >= 2 or (fullnames and fullname in fullnames):
+            return fullname
         return typ.name
     elif isinstance(typ, ParamSpecType):
         # Concatenate[..., P]
@@ -2541,6 +2572,7 @@ def format_type_inner(
 
             return f"[{args}, **{typ.name_with_suffix()}]"
         else:
+            # TODO: better disambiguate ParamSpec name clashes.
             return typ.name_with_suffix()
     elif isinstance(typ, TupleType):
         # Prefer the name of the fallback class (if not tuple), as it's more informative.
@@ -2615,10 +2647,7 @@ def format_type_inner(
     elif isinstance(typ, DeletedType):
         return "<deleted>"
     elif isinstance(typ, UninhabitedType):
-        if typ.is_noreturn:
-            return "NoReturn"
-        else:
-            return "Never"
+        return "Never"
     elif isinstance(typ, TypeType):
         type_name = "type" if options.use_lowercase_names() else "Type"
         return f"{type_name}[{format(typ.item)}]"
@@ -2631,6 +2660,8 @@ def format_type_inner(
         elif isinstance(func, CallableType):
             if func.type_guard is not None:
                 return_type = f"TypeGuard[{format(func.type_guard)}]"
+            elif func.type_is is not None:
+                return_type = f"TypeIs[{format(func.type_is)}]"
             else:
                 return_type = format(func.ret_type)
             if func.is_ellipsis_args:
@@ -2659,29 +2690,51 @@ def format_type_inner(
         return "object"
 
 
-def collect_all_instances(t: Type) -> list[Instance]:
-    """Return all instances that `t` contains (including `t`).
+def collect_all_named_types(t: Type) -> list[Type]:
+    """Return all instances/aliases/type variables that `t` contains (including `t`).
 
     This is similar to collect_all_inner_types from typeanal but only
     returns instances and will recurse into fallbacks.
     """
-    visitor = CollectAllInstancesQuery()
+    visitor = CollectAllNamedTypesQuery()
     t.accept(visitor)
-    return visitor.instances
+    return visitor.types
 
 
-class CollectAllInstancesQuery(TypeTraverserVisitor):
+class CollectAllNamedTypesQuery(TypeTraverserVisitor):
     def __init__(self) -> None:
-        self.instances: list[Instance] = []
+        self.types: list[Type] = []
 
     def visit_instance(self, t: Instance) -> None:
-        self.instances.append(t)
+        self.types.append(t)
         super().visit_instance(t)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
         if t.alias and not t.is_recursive:
-            t.alias.target.accept(self)
-        super().visit_type_alias_type(t)
+            get_proper_type(t).accept(self)
+        else:
+            self.types.append(t)
+            super().visit_type_alias_type(t)
+
+    def visit_type_var(self, t: TypeVarType) -> None:
+        self.types.append(t)
+        super().visit_type_var(t)
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> None:
+        self.types.append(t)
+        super().visit_type_var_tuple(t)
+
+    def visit_param_spec(self, t: ParamSpecType) -> None:
+        self.types.append(t)
+        super().visit_param_spec(t)
+
+
+def scoped_type_var_name(t: TypeVarLikeType) -> str:
+    if not t.id.namespace:
+        return t.name
+    # TODO: support rare cases when both TypeVar name and namespace suffix coincide.
+    *_, suffix = t.id.namespace.split(".")
+    return f"{t.name}@{suffix}"
 
 
 def find_type_overlaps(*types: Type) -> set[str]:
@@ -2692,8 +2745,14 @@ def find_type_overlaps(*types: Type) -> set[str]:
     """
     d: dict[str, set[str]] = {}
     for type in types:
-        for inst in collect_all_instances(type):
-            d.setdefault(inst.type.name, set()).add(inst.type.fullname)
+        for t in collect_all_named_types(type):
+            if isinstance(t, ProperType) and isinstance(t, Instance):
+                d.setdefault(t.type.name, set()).add(t.type.fullname)
+            elif isinstance(t, TypeAliasType) and t.alias:
+                d.setdefault(t.alias.name, set()).add(t.alias.fullname)
+            else:
+                assert isinstance(t, TypeVarLikeType)
+                d.setdefault(t.name, set()).add(scoped_type_var_name(t))
     for shortname in d.keys():
         if f"typing.{shortname}" in TYPES_FOR_UNIMPORTED_HINTS:
             d[shortname].add(f"typing.{shortname}")
@@ -2711,7 +2770,7 @@ def format_type(
     """
     Convert a type to a relatively short string suitable for error messages.
 
-    `verbosity` is a coarse grained control on the verbosity of the type
+    `verbosity` is a coarse-grained control on the verbosity of the type
 
     This function returns a string appropriate for unmodified use in error
     messages; this means that it will be quoted in most cases.  If
@@ -2727,7 +2786,7 @@ def format_type_bare(
     """
     Convert a type to a relatively short string suitable for error messages.
 
-    `verbosity` is a coarse grained control on the verbosity of the type
+    `verbosity` is a coarse-grained control on the verbosity of the type
     `fullnames` specifies a set of names that should be printed in full
 
     This function will return an unquoted string.  If a caller doesn't need to
@@ -2847,6 +2906,8 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
     s += " -> "
     if tp.type_guard is not None:
         s += f"TypeGuard[{format_type_bare(tp.type_guard, options)}]"
+    elif tp.type_is is not None:
+        s += f"TypeIs[{format_type_bare(tp.type_is, options)}]"
     else:
         s += format_type_bare(tp.ret_type, options)
 
@@ -3017,12 +3078,15 @@ def for_function(callee: CallableType) -> str:
     return ""
 
 
-def wrong_type_arg_count(n: int, act: str, name: str) -> str:
-    s = f"{n} type arguments"
-    if n == 0:
-        s = "no type arguments"
-    elif n == 1:
-        s = "1 type argument"
+def wrong_type_arg_count(low: int, high: int, act: str, name: str) -> str:
+    if low == high:
+        s = f"{low} type arguments"
+        if low == 0:
+            s = "no type arguments"
+        elif low == 1:
+            s = "1 type argument"
+    else:
+        s = f"between {low} and {high} type arguments"
     if act == "0":
         act = "none"
     return f'"{name}" expects {s}, but {act} given'

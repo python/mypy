@@ -17,10 +17,39 @@ import mypy.options
 from mypy.modulefinder import ModuleNotFoundReason
 from mypy.moduleinspect import InspectError, ModuleInspect
 from mypy.stubdoc import ArgSig, FunctionSig
-from mypy.types import AnyType, NoneType, Type, TypeList, TypeStrVisitor, UnboundType, UnionType
+from mypy.types import (
+    AnyType,
+    NoneType,
+    RawExpressionType,
+    Type,
+    TypeList,
+    TypeStrVisitor,
+    UnboundType,
+    UnionType,
+)
 
 # Modules that may fail when imported, or that may have side effects (fully qualified).
 NOT_IMPORTABLE_MODULES = ()
+
+# Typing constructs to be replaced by their builtin equivalents.
+TYPING_BUILTIN_REPLACEMENTS: Final = {
+    # From typing
+    "typing.Text": "builtins.str",
+    "typing.Tuple": "builtins.tuple",
+    "typing.List": "builtins.list",
+    "typing.Dict": "builtins.dict",
+    "typing.Set": "builtins.set",
+    "typing.FrozenSet": "builtins.frozenset",
+    "typing.Type": "builtins.type",
+    # From typing_extensions
+    "typing_extensions.Text": "builtins.str",
+    "typing_extensions.Tuple": "builtins.tuple",
+    "typing_extensions.List": "builtins.list",
+    "typing_extensions.Dict": "builtins.dict",
+    "typing_extensions.Set": "builtins.set",
+    "typing_extensions.FrozenSet": "builtins.frozenset",
+    "typing_extensions.Type": "builtins.type",
+}
 
 
 class CantImport(Exception):
@@ -140,13 +169,11 @@ def fail_missing(mod: str, reason: ModuleNotFoundReason) -> None:
 
 
 @overload
-def remove_misplaced_type_comments(source: bytes) -> bytes:
-    ...
+def remove_misplaced_type_comments(source: bytes) -> bytes: ...
 
 
 @overload
-def remove_misplaced_type_comments(source: str) -> str:
-    ...
+def remove_misplaced_type_comments(source: str) -> str: ...
 
 
 def remove_misplaced_type_comments(source: str | bytes) -> str | bytes:
@@ -226,6 +253,13 @@ class AnnotationPrinter(TypeStrVisitor):
 
     def visit_unbound_type(self, t: UnboundType) -> str:
         s = t.name
+        fullname = self.stubgen.resolve_name(s)
+        if fullname == "typing.Union":
+            return " | ".join([item.accept(self) for item in t.args])
+        if fullname == "typing.Optional":
+            return f"{t.args[0].accept(self)} | None"
+        if fullname in TYPING_BUILTIN_REPLACEMENTS:
+            s = self.stubgen.add_name(TYPING_BUILTIN_REPLACEMENTS[fullname], require=True)
         if self.known_modules is not None and "." in s:
             # see if this object is from any of the modules that we're currently processing.
             # reverse sort so that subpackages come before parents: e.g. "foo.bar" before "foo".
@@ -247,6 +281,8 @@ class AnnotationPrinter(TypeStrVisitor):
             self.stubgen.import_tracker.require_name(s)
         if t.args:
             s += f"[{self.args_str(t.args)}]"
+        elif t.empty_tuple_index:
+            s += "[()]"
         return s
 
     def visit_none_type(self, t: NoneType) -> str:
@@ -264,12 +300,11 @@ class AnnotationPrinter(TypeStrVisitor):
         The main difference from list_str is the preservation of quotes for string
         arguments
         """
-        types = ["builtins.bytes", "builtins.str"]
         res = []
         for arg in args:
             arg_str = arg.accept(self)
-            if isinstance(arg, UnboundType) and arg.original_str_fallback in types:
-                res.append(f"'{arg_str}'")
+            if isinstance(arg, RawExpressionType):
+                res.append(repr(arg.literal_value))
             else:
                 res.append(arg_str)
         return ", ".join(res)
@@ -471,7 +506,7 @@ class ImportTracker:
     def import_lines(self) -> list[str]:
         """The list of required import lines (as strings with python code).
 
-        In order for a module be included in this output, an indentifier must be both
+        In order for a module be included in this output, an identifier must be both
         'required' via require_name() and 'imported' via add_import_from()
         or add_import()
         """
@@ -580,22 +615,26 @@ class BaseStubGenerator:
         # a corresponding import statement.
         self.known_imports = {
             "_typeshed": ["Incomplete"],
-            "typing": ["Any", "TypeVar", "NamedTuple"],
+            "typing": ["Any", "TypeVar", "NamedTuple", "TypedDict"],
             "collections.abc": ["Generator"],
-            "typing_extensions": ["TypedDict", "ParamSpec", "TypeVarTuple"],
+            "typing_extensions": ["ParamSpec", "TypeVarTuple"],
         }
 
     def get_sig_generators(self) -> list[SignatureGenerator]:
         return []
 
-    def refers_to_fullname(self, name: str, fullname: str | tuple[str, ...]) -> bool:
-        """Return True if the variable name identifies the same object as the given fullname(s)."""
-        if isinstance(fullname, tuple):
-            return any(self.refers_to_fullname(name, fname) for fname in fullname)
-        module, short = fullname.rsplit(".", 1)
-        return self.import_tracker.module_for.get(name) == module and (
-            name == short or self.import_tracker.reverse_alias.get(name) == short
-        )
+    def resolve_name(self, name: str) -> str:
+        """Return the full name resolving imports and import aliases."""
+        if "." not in name:
+            real_module = self.import_tracker.module_for.get(name)
+            real_short = self.import_tracker.reverse_alias.get(name, name)
+            if real_module is None and real_short not in self.defined_names:
+                real_module = "builtins"  # not imported and not defined, must be a builtin
+        else:
+            name_module, real_short = name.split(".", 1)
+            real_module = self.import_tracker.reverse_alias.get(name_module, name_module)
+        resolved_name = real_short if real_module is None else f"{real_module}.{real_short}"
+        return resolved_name
 
     def add_name(self, fullname: str, require: bool = True) -> str:
         """Add a name to be imported and return the name reference.
@@ -604,7 +643,10 @@ class BaseStubGenerator:
         """
         module, name = fullname.rsplit(".", 1)
         alias = "_" + name if name in self.defined_names else None
-        self.import_tracker.add_import_from(module, [(name, alias)], require=require)
+        while alias in self.defined_names:
+            alias = "_" + alias
+        if module != "builtins" or alias:  # don't import from builtins unless needed
+            self.import_tracker.add_import_from(module, [(name, alias)], require=require)
         return alias or name
 
     def add_import_line(self, line: str) -> None:

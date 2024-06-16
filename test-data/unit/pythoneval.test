@@ -107,14 +107,20 @@ f
 [case testModuleAttributes]
 import math
 import typing
+print(type(__spec__))
 print(math.__name__)
+print(math.__spec__.name)
 print(type(math.__dict__))
 print(type(math.__doc__ or ''))
+print(type(math.__spec__).__name__)
 print(math.__class__)
 [out]
+<class 'NoneType'>
+math
 math
 <class 'dict'>
 <class 'str'>
+ModuleSpec
 <class 'module'>
 
 [case testSpecialAttributes]
@@ -271,7 +277,7 @@ bin(sys.stdout)
 _program.py:5: error: No overload variant of "write" of "IO" matches argument type "bytes"
 _program.py:5: note: Possible overload variants:
 _program.py:5: note:     def write(self, str, /) -> int
-_program.py:10: error: Argument 1 to "bin" has incompatible type "TextIO"; expected "IO[bytes]"
+_program.py:10: error: Argument 1 to "bin" has incompatible type "Union[TextIO, Any]"; expected "IO[bytes]"
 
 [case testBuiltinOpen]
 f = open('x')
@@ -865,30 +871,6 @@ _program.py:10: error: Invalid index type "str" for "defaultdict[int, str]"; exp
 _program.py:10: error: Incompatible types in assignment (expression has type "int", target has type "str")
 _program.py:20: error: Argument 1 to "tst" has incompatible type "defaultdict[str, List[Never]]"; expected "defaultdict[int, List[Never]]"
 _program.py:24: error: Invalid index type "str" for "MyDDict[Dict[Never, Never]]"; expected type "int"
-
-[case testNoSubcriptionOfStdlibCollections]
-# flags: --python-version 3.7
-import collections
-from collections import Counter
-from typing import TypeVar
-
-collections.defaultdict[int, str]()
-Counter[int]()
-
-T = TypeVar('T')
-DDint = collections.defaultdict[T, int]
-
-d = DDint[str]()
-d[0] = 1
-
-def f(d: collections.defaultdict[int, str]) -> None:
-    ...
-[out]
-_program.py:6: error: "defaultdict" is not subscriptable
-_program.py:7: error: "Counter" is not subscriptable
-_program.py:10: error: "defaultdict" is not subscriptable
-_program.py:13: error: Invalid index type "int" for "defaultdict[str, int]"; expected type "str"
-_program.py:15: error: "defaultdict" is not subscriptable, use "typing.DefaultDict" instead
 
 [case testCollectionsAliases]
 import typing as t
@@ -1590,12 +1572,11 @@ _testNoPython3StubAvailable.py:3: note: (or run "mypy --install-types" to instal
 
 
 [case testTypingOrderedDictAlias]
-# flags: --python-version 3.7
 from typing import OrderedDict
 x: OrderedDict[str, int] = OrderedDict({})
 reveal_type(x)
 [out]
-_testTypingOrderedDictAlias.py:4: note: Revealed type is "collections.OrderedDict[builtins.str, builtins.int]"
+_testTypingOrderedDictAlias.py:3: note: Revealed type is "collections.OrderedDict[builtins.str, builtins.int]"
 
 [case testTypingExtensionsOrderedDictAlias]
 from typing_extensions import OrderedDict
@@ -1711,7 +1692,6 @@ _testTypeAliasWithNewStyleUnion.py:25: note: Revealed type is "Union[Type[builti
 _testTypeAliasWithNewStyleUnion.py:28: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
 
 [case testTypeAliasWithNewStyleUnionInStub]
-# flags: --python-version 3.7
 import m
 a: m.A
 reveal_type(a)
@@ -1762,12 +1742,12 @@ CU4: TypeAlias = int | Callable[[str | bool], str]
 [out]
 m.pyi:5: note: Revealed type is "typing._SpecialForm"
 m.pyi:22: note: Revealed type is "typing._SpecialForm"
-_testTypeAliasWithNewStyleUnionInStub.py:4: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
-_testTypeAliasWithNewStyleUnionInStub.py:6: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
-_testTypeAliasWithNewStyleUnionInStub.py:8: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
-_testTypeAliasWithNewStyleUnionInStub.py:10: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
-_testTypeAliasWithNewStyleUnionInStub.py:12: note: Revealed type is "Union[builtins.str, Type[builtins.int]]"
-_testTypeAliasWithNewStyleUnionInStub.py:14: note: Revealed type is "Union[builtins.str, Type[builtins.int]]"
+_testTypeAliasWithNewStyleUnionInStub.py:3: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
+_testTypeAliasWithNewStyleUnionInStub.py:5: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
+_testTypeAliasWithNewStyleUnionInStub.py:7: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
+_testTypeAliasWithNewStyleUnionInStub.py:9: note: Revealed type is "Union[Type[builtins.int], builtins.str]"
+_testTypeAliasWithNewStyleUnionInStub.py:11: note: Revealed type is "Union[builtins.str, Type[builtins.int]]"
+_testTypeAliasWithNewStyleUnionInStub.py:13: note: Revealed type is "Union[builtins.str, Type[builtins.int]]"
 
 [case testEnumNameWorkCorrectlyOn311]
 # flags: --python-version 3.11
@@ -1854,7 +1834,6 @@ RHSAlias3: type = tuple[int, ...]
 WrongTypeElement = str | tuple[float, 1]  # Error
 WrongEllipsis = tuple[float, float, ...] | str  # Error
 
-# TODO: This should produce a fixed-length tuple
 reveal_type(tuple[int, str]((1, "x")))
 [out]
 _testTupleWithDifferentArgsPy310.py:15: note: Revealed type is "Union[builtins.str, Tuple[builtins.float, builtins.float, builtins.str]]"
@@ -1865,7 +1844,7 @@ _testTupleWithDifferentArgsPy310.py:19: note: Revealed type is "builtins.tuple[b
 _testTupleWithDifferentArgsPy310.py:20: note: Revealed type is "builtins.list[Tuple[builtins.int, builtins.str]]"
 _testTupleWithDifferentArgsPy310.py:26: error: Invalid type: try using Literal[1] instead?
 _testTupleWithDifferentArgsPy310.py:27: error: Unexpected "..."
-_testTupleWithDifferentArgsPy310.py:30: note: Revealed type is "builtins.tuple[builtins.object, ...]"
+_testTupleWithDifferentArgsPy310.py:29: note: Revealed type is "Tuple[builtins.int, builtins.str]"
 
 [case testEnumIterMetaInference]
 import socket
@@ -2117,3 +2096,24 @@ def f(d: Description) -> None:
     reveal_type(d.name_fn)
 [out]
 _testDataclassStrictOptionalAlwaysSet.py:9: note: Revealed type is "def (Union[builtins.int, None]) -> Union[builtins.str, None]"
+
+[case testPEP695VarianceInference]
+# flags: --python-version=3.12 --enable-incomplete-feature=NewGenericSyntax
+from typing import Callable, Final
+
+class Job[_R_co]:
+    def __init__(self, target: Callable[[], _R_co]) -> None:
+        self.target: Final = target
+
+def func(
+    action: Job[int | None],
+    a1: Job[int | None],
+    a2: Job[int],
+    a3: Job[None],
+) -> None:
+    action = a1
+    action = a2
+    action = a3
+    a2 = action  # Error
+[out]
+_testPEP695VarianceInference.py:17: error: Incompatible types in assignment (expression has type "Job[None]", variable has type "Job[int]")

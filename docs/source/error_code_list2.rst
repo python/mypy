@@ -5,8 +5,8 @@ Error codes for optional checks
 
 This section documents various errors codes that mypy generates only
 if you enable certain options. See :ref:`error-codes` for general
-documentation about error codes. :ref:`error-code-list` documents
-error codes that are enabled by default.
+documentation about error codes and their configuration.
+:ref:`error-code-list` documents error codes that are enabled by default.
 
 .. note::
 
@@ -241,7 +241,7 @@ mypy generates an error if it thinks that an expression is redundant.
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code redundant-expr ..."
+    # mypy: enable-error-code="redundant-expr"
 
     def example(x: int) -> None:
         # Error: Left operand of "and" is always true  [redundant-expr]
@@ -268,7 +268,7 @@ example:
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code possibly-undefined ..."
+    # mypy: enable-error-code="possibly-undefined"
 
     from typing import Iterable
 
@@ -297,7 +297,7 @@ Using an iterable value in a boolean context has a separate error code
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code truthy-bool ..."
+    # mypy: enable-error-code="truthy-bool"
 
     class Foo:
         pass
@@ -347,7 +347,7 @@ Example:
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code ignore-without-code ..."
+    # mypy: enable-error-code="ignore-without-code"
 
     class Foo:
         def __init__(self, name: str) -> None:
@@ -378,7 +378,7 @@ Example:
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code unused-awaitable ..."
+    # mypy: enable-error-code="unused-awaitable"
 
     import asyncio
 
@@ -462,7 +462,7 @@ Example:
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code explicit-override ..."
+    # mypy: enable-error-code="explicit-override"
 
     from typing import override
 
@@ -484,11 +484,11 @@ Example:
 
 .. _code-mutable-override:
 
-Check that overrides of mutable attributes are safe
----------------------------------------------------
+Check that overrides of mutable attributes are safe [mutable-override]
+----------------------------------------------------------------------
 
-This will enable the check for unsafe overrides of mutable attributes. For
-historical reasons, and because this is a relatively common pattern in Python,
+`mutable-override` will enable the check for unsafe overrides of mutable attributes.
+For historical reasons, and because this is a relatively common pattern in Python,
 this check is not enabled by default. The example below is unsafe, and will be
 flagged when this error code is enabled:
 
@@ -536,7 +536,7 @@ Now users can actually import ``reveal_type`` to make the runtime code safe.
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code unimported-reveal"
+    # mypy: enable-error-code="unimported-reveal"
 
     x = 1
     reveal_type(x)  # Note: Revealed type is "builtins.int" \
@@ -546,7 +546,7 @@ Correct usage:
 
 .. code-block:: python
 
-    # Use "mypy --enable-error-code unimported-reveal"
+    # mypy: enable-error-code="unimported-reveal"
     from typing import reveal_type   # or `typing_extensions`
 
     x = 1
@@ -555,3 +555,19 @@ Correct usage:
 
 When this code is enabled, using ``reveal_locals`` is always an error,
 because there's no way one can import it.
+
+.. _code-narrowed-type-not-subtype:
+
+Check that ``TypeIs`` narrows types [narrowed-type-not-subtype]
+---------------------------------------------------------------
+
+:pep:`742` requires that when ``TypeIs`` is used, the narrowed
+type must be a subtype of the original type::
+
+    from typing_extensions import TypeIs
+
+    def f(x: int) -> TypeIs[str]:  # Error, str is not a subtype of int
+        ...
+
+    def g(x: object) -> TypeIs[str]:  # OK
+        ...

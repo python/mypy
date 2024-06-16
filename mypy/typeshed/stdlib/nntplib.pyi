@@ -5,8 +5,8 @@ import sys
 from _typeshed import Unused
 from builtins import list as _list  # conflicts with a method named "list"
 from collections.abc import Iterable
-from typing import IO, Any, NamedTuple
-from typing_extensions import Literal, Self, TypeAlias
+from typing import IO, Any, Literal, NamedTuple
+from typing_extensions import Self, TypeAlias
 
 __all__ = [
     "NNTP",
