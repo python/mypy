@@ -2865,11 +2865,8 @@ class Wrapper(Generic[T]):
     def f(self, x: T) -> T: ...
     def f(self, x): ...
 
-    # TODO: This shouldn't trigger an error message?
-    # Related to testTypeCheckOverloadImplementationTypeVarDifferingUsage2?
-    # See https://github.com/python/mypy/issues/5510
     @overload
-    def g(self, x: int) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+    def g(self, x: int) -> int: ...
     @overload
     def g(self, x: T) -> T: ...
     def g(self, x): ...
@@ -2892,16 +2889,14 @@ class Wrapper(Generic[T]):
     def f2(self, x: List[T]) -> List[T]: ...
     def f2(self, x): ...
 
-    # TODO: This shouldn't trigger an error message?
-    # See https://github.com/python/mypy/issues/5510
     @overload
-    def g1(self, x: List[int]) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+    def g1(self, x: List[int]) -> int: ...
     @overload
     def g1(self, x: List[T]) -> T: ...
     def g1(self, x): ...
 
     @overload
-    def g2(self, x: List[int]) -> List[int]: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+    def g2(self, x: List[int]) -> List[int]: ...
     @overload
     def g2(self, x: List[T]) -> List[T]: ...
     def g2(self, x): ...
@@ -3607,7 +3602,7 @@ def test(x: T) -> T:
 from typing import overload, Optional
 
 @overload
-def f(x: None) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def f(x: None) -> int: ...
 @overload
 def f(x: object) -> str: ...
 def f(x): ...
@@ -3632,7 +3627,7 @@ reveal_type(g(c))  # N: Revealed type is "builtins.str"
 from typing import overload, Optional
 
 @overload
-def f(x: None) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def f(x: None) -> int: ...
 @overload
 def f(x: object) -> str: ...
 def f(x): ...
@@ -3978,7 +3973,7 @@ from typing import overload, Any, Optional, Union
 
 class FakeAttribute:
     @overload
-    def dummy(self, instance: None, owner: Any) -> 'FakeAttribute': ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+    def dummy(self, instance: None, owner: Any) -> 'FakeAttribute': ...
     @overload
     def dummy(self, instance: object, owner: Any) -> int: ...
     def dummy(self, instance: Optional[object], owner: Any) -> Union['FakeAttribute', int]: ...
@@ -4545,7 +4540,7 @@ reveal_type(Child().foo(3).child_only())      # N: Revealed type is "builtins.in
 [case testOverloadAndSelfTypesGenericNoOverlap]
 from typing import Generic, TypeVar, Any, overload, Self, Union
 
-T = TypeVar("T", bound=Any)
+T = TypeVar("T")
 class C(Generic[T]):
     @overload
     def get(self, obj: None) -> Self: ...
@@ -4944,7 +4939,7 @@ x: Any
 reveal_type(attr(x)) # N: Revealed type is "Any"
 attr("hi", 1)  # E: No overload variant of "attr" matches argument types "str", "int" \
                # N: Possible overload variants: \
-               # N:     def [T in (int, float)] attr(default: T = ..., blah: int = ...) -> T \
+               # N:     def [T in (int, float)] attr(default: T, blah: int = ...) -> T \
                # N:     def attr(default: Any = ...) -> int
 [file lib.pyi]
 from typing import overload, Any, TypeVar
@@ -4952,7 +4947,7 @@ from typing import overload, Any, TypeVar
 T = TypeVar('T', int, float)
 
 @overload
-def attr(default: T = ..., blah: int = ...) -> T: ...
+def attr(default: T, blah: int = ...) -> T: ...
 @overload
 def attr(default: Any = ...) -> int: ...
 [out]
@@ -5008,7 +5003,7 @@ children: List[Child]
 parents: List[Parent]
 
 @overload
-def f(x: Child) -> List[Child]: pass    # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def f(x: Child) -> List[Child]: pass
 @overload
 def f(x: Parent) -> List[Parent]: pass
 def f(x: Union[Child, Parent]) -> Union[List[Child], List[Parent]]:
@@ -6500,7 +6495,7 @@ P = ParamSpec("P")
 R = TypeVar("R")
 
 @overload
-def func(x: Callable[Concatenate[Any, P], R]) -> Callable[P, R]: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def func(x: Callable[Concatenate[Any, P], R]) -> Callable[P, R]: ...
 @overload
 def func(x: Callable[P, R]) -> Callable[Concatenate[str, P], R]: ...
 def func(x: Callable[..., R]) -> Callable[..., R]: ...

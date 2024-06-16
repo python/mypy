@@ -444,7 +444,7 @@ False
 [case testOverlappingOperatorMethods]
 class X: pass
 class A:
-    def __add__(self, x) -> int:
+    def __add__(self, x: object) -> int:
         if isinstance(x, X):
             return 1
         return NotImplemented
@@ -1942,13 +1942,13 @@ class Bar(Generic[P]): ...
 def bad(foo: Foo[[int]], bar: Bar[[int]]) -> bool:
     return foo == bar
 
-def good1(foo1: Foo[[int]], foo2: Foo[[str]]) -> bool:
+def bad1(foo1: Foo[[int]], foo2: Foo[[str]]) -> bool:
     return foo1 == foo2
 
-def good2(foo1: Foo[[int, str]], foo2: Foo[[int, bytes]]) -> bool:
+def bad2(foo1: Foo[[int, str]], foo2: Foo[[int, bytes]]) -> bool:
     return foo1 == foo2
 
-def good3(foo1: Foo[[int]], foo2: Foo[[int, int]]) -> bool:
+def bad3(foo1: Foo[[int]], foo2: Foo[[int, int]]) -> bool:
     return foo1 == foo2
 
 def good4(foo1: Foo[[int]], foo2: Foo[[int]]) -> bool:
@@ -1971,6 +1971,9 @@ def good9(foo1: Foo[Concatenate[int, P]], foo2: Foo[[int, str, bytes]], *args: P
 
 [out]
 _testStrictEqualitywithParamSpec.py:11: error: Non-overlapping equality check (left operand type: "Foo[[int]]", right operand type: "Bar[[int]]")
+_testStrictEqualitywithParamSpec.py:14: error: Non-overlapping equality check (left operand type: "Foo[[int]]", right operand type: "Foo[[str]]")
+_testStrictEqualitywithParamSpec.py:17: error: Non-overlapping equality check (left operand type: "Foo[[int, str]]", right operand type: "Foo[[int, bytes]]")
+_testStrictEqualitywithParamSpec.py:20: error: Non-overlapping equality check (left operand type: "Foo[[int]]", right operand type: "Foo[[int, int]]")
 
 [case testInferenceOfDunderDictOnClassObjects]
 class Foo: ...

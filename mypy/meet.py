@@ -7,6 +7,7 @@ from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
 from mypy.state import state
 from mypy.subtypes import (
+    are_parameters_compatible,
     is_callable_compatible,
     is_equivalent,
     is_proper_subtype,
@@ -261,7 +262,7 @@ def is_overlapping_types(
     right: Type,
     ignore_promotions: bool = False,
     prohibit_none_typevar_overlap: bool = False,
-    ignore_uninhabited: bool = False,
+    overlap_for_overloads: bool = False,
     seen_types: set[tuple[Type, Type]] | None = None,
 ) -> bool:
     """Can a value of type 'left' also be of type 'right' or vice-versa?
@@ -269,6 +270,9 @@ def is_overlapping_types(
     If 'ignore_promotions' is True, we ignore promotions while checking for overlaps.
     If 'prohibit_none_typevar_overlap' is True, we disallow None from overlapping with
     TypeVars (in both strict-optional and non-strict-optional mode).
+    If 'overlap_for_overloads' is True, we check for overlaps more strictly (to avoid false
+    positives), for example: None only overlaps with explicitly optional types, Any
+    doesn't overlap with anything, we don't ignore positional argument names.
     """
     if isinstance(left, TypeGuardedType) or isinstance(  # type: ignore[misc]
         right, TypeGuardedType
@@ -295,7 +299,7 @@ def is_overlapping_types(
             right,
             ignore_promotions=ignore_promotions,
             prohibit_none_typevar_overlap=prohibit_none_typevar_overlap,
-            ignore_uninhabited=ignore_uninhabited,
+            overlap_for_overloads=overlap_for_overloads,
             seen_types=seen_types.copy(),
         )
 
@@ -324,7 +328,7 @@ def is_overlapping_types(
 
     # 'Any' may or may not be overlapping with the other type
     if isinstance(left, AnyType) or isinstance(right, AnyType):
-        return True
+        return not overlap_for_overloads
 
     # We check for complete overlaps next as a general-purpose failsafe.
     # If this check fails, we start checking to see if there exists a
@@ -344,10 +348,19 @@ def is_overlapping_types(
     ):
         return True
 
+    def is_none_object_overlap(t1: Type, t2: Type) -> bool:
+        t1, t2 = get_proper_types((t1, t2))
+        return isinstance(t1, NoneType) and isinstance(t2, Instance) and t2.type.fullname == "builtins.object"
+
+    # comments and docstrings.
+    if overlap_for_overloads:
+        if is_none_object_overlap(left, right) or is_none_object_overlap(right, left):
+            return False
+
     if is_proper_subtype(
-        left, right, ignore_promotions=ignore_promotions, ignore_uninhabited=ignore_uninhabited
+        left, right, ignore_promotions=ignore_promotions
     ) or is_proper_subtype(
-        right, left, ignore_promotions=ignore_promotions, ignore_uninhabited=ignore_uninhabited
+        right, left, ignore_promotions=ignore_promotions
     ):
         return True
 
@@ -356,21 +369,6 @@ def is_overlapping_types(
 
     left_possible = get_possible_variants(left)
     right_possible = get_possible_variants(right)
-
-    # First handle special cases relating to PEP 612:
-    # - comparing a `Parameters` to a `Parameters`
-    # - comparing a `Parameters` to a `ParamSpecType`
-    # - comparing a `ParamSpecType` to a `ParamSpecType`
-    #
-    # These should all always be considered overlapping equality checks.
-    # These need to be done before we move on to other TypeVarLike comparisons.
-    if isinstance(left, (Parameters, ParamSpecType)) and isinstance(
-        right, (Parameters, ParamSpecType)
-    ):
-        return True
-    # A `Parameters` does not overlap with anything else, however
-    if isinstance(left, Parameters) or isinstance(right, Parameters):
-        return False
 
     # Now move on to checking multi-variant types like Unions. We also perform
     # the same logic if either type happens to be a TypeVar/ParamSpec/TypeVarTuple.
@@ -421,7 +419,7 @@ def is_overlapping_types(
     # into their 'Instance' fallbacks.
 
     if isinstance(left, TypedDictType) and isinstance(right, TypedDictType):
-        return are_typed_dicts_overlapping(left, right, ignore_promotions=ignore_promotions)
+        return are_typed_dicts_overlapping(left, right, _is_overlapping_types)
     elif typed_dict_mapping_pair(left, right):
         # Overlaps between TypedDicts and Mappings require dedicated logic.
         return typed_dict_mapping_overlap(left, right, overlapping=_is_overlapping_types)
@@ -431,7 +429,7 @@ def is_overlapping_types(
         right = right.fallback
 
     if is_tuple(left) and is_tuple(right):
-        return are_tuples_overlapping(left, right, ignore_promotions=ignore_promotions)
+        return are_tuples_overlapping(left, right, _is_overlapping_types)
     elif isinstance(left, TupleType):
         left = tuple_fallback(left)
     elif isinstance(right, TupleType):
@@ -468,13 +466,26 @@ def is_overlapping_types(
     if isinstance(left, TypeType) or isinstance(right, TypeType):
         return _type_object_overlap(left, right) or _type_object_overlap(right, left)
 
+    if isinstance(left, Parameters) and isinstance(right, Parameters):
+        return are_parameters_compatible(
+            left,
+            right,
+            is_compat=_is_overlapping_types,
+            is_proper_subtype=False,
+            ignore_pos_arg_names=not overlap_for_overloads,
+            allow_partial_overlap=True,
+        )
+    # A `Parameters` does not overlap with anything else, however
+    if isinstance(left, Parameters) or isinstance(right, Parameters):
+        return False
+
     if isinstance(left, CallableType) and isinstance(right, CallableType):
         return is_callable_compatible(
             left,
             right,
             is_compat=_is_overlapping_types,
             is_proper_subtype=False,
-            ignore_pos_arg_names=True,
+            ignore_pos_arg_names=not overlap_for_overloads,
             allow_partial_overlap=True,
         )
     elif isinstance(left, CallableType):
@@ -501,9 +512,9 @@ def is_overlapping_types(
         # First we need to handle promotions and structural compatibility for instances
         # that came as fallbacks, so simply call is_subtype() to avoid code duplication.
         if is_subtype(
-            left, right, ignore_promotions=ignore_promotions, ignore_uninhabited=ignore_uninhabited
+            left, right, ignore_promotions=ignore_promotions
         ) or is_subtype(
-            right, left, ignore_promotions=ignore_promotions, ignore_uninhabited=ignore_uninhabited
+            right, left, ignore_promotions=ignore_promotions
         ):
             return True
 
@@ -566,20 +577,16 @@ def is_overlapping_erased_types(
 def are_typed_dicts_overlapping(
     left: TypedDictType,
     right: TypedDictType,
-    *,
-    ignore_promotions: bool = False,
-    prohibit_none_typevar_overlap: bool = False,
+    is_overlapping: Callable[[Type, Type], bool],
 ) -> bool:
     """Returns 'true' if left and right are overlapping TypeDictTypes."""
     # All required keys in left are present and overlapping with something in right
     for key in left.required_keys:
         if key not in right.items:
             return False
-        if not is_overlapping_types(
+        if not is_overlapping(
             left.items[key],
             right.items[key],
-            ignore_promotions=ignore_promotions,
-            prohibit_none_typevar_overlap=prohibit_none_typevar_overlap,
         ):
             return False
 
@@ -587,8 +594,8 @@ def are_typed_dicts_overlapping(
     for key in right.required_keys:
         if key not in left.items:
             return False
-        if not is_overlapping_types(
-            left.items[key], right.items[key], ignore_promotions=ignore_promotions
+        if not is_overlapping(
+            left.items[key], right.items[key]
         ):
             return False
 
@@ -601,9 +608,7 @@ def are_typed_dicts_overlapping(
 def are_tuples_overlapping(
     left: Type,
     right: Type,
-    *,
-    ignore_promotions: bool = False,
-    prohibit_none_typevar_overlap: bool = False,
+    is_overlapping: Callable[[Type, Type], bool],
 ) -> bool:
     """Returns true if left and right are overlapping tuples."""
     left, right = get_proper_types((left, right))
@@ -627,11 +632,9 @@ def are_tuples_overlapping(
     if len(left.items) != len(right.items):
         return False
     return all(
-        is_overlapping_types(
+        is_overlapping(
             l,
             r,
-            ignore_promotions=ignore_promotions,
-            prohibit_none_typevar_overlap=prohibit_none_typevar_overlap,
         )
         for l, r in zip(left.items, right.items)
     )

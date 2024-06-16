@@ -169,7 +169,6 @@ from mypy.typeops import (
     false_only,
     fixup_partial_type,
     function_type,
-    get_type_vars,
     is_literal_type_like,
     is_singleton_type,
     make_simplified_union,
@@ -2184,7 +2183,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(tp, CallableType):
             if tp.arg_kinds and tp.arg_kinds[0] == ARG_POS:
                 # For generic methods, domain comparison is tricky, as a first
-                # approximation erase all remaining type variables to bounds.
+                # approximation erase all remaining type variables.
                 return erase_typevars(tp.arg_types[0], {v.id for v in tp.variables})
             return None
         elif isinstance(tp, Overloaded):
@@ -7823,6 +7822,31 @@ def are_argument_counts_overlapping(t: CallableType, s: CallableType) -> bool:
     return min_args <= max_args
 
 
+def expand_callable_variants(c: CallableType) -> list[CallableType]:
+    for tv in c.variables:
+        if tv.id.is_self():
+            c = expand_type(c, {tv.id: tv.upper_bound}).copy_modified(
+                variables=[v for v in c.variables if not v.id.is_self()]
+            )
+            break
+
+    if not c.is_generic():
+        return [c]
+
+    tvar_values = []
+    for tvar in c.variables:
+        if isinstance(tvar, TypeVarType) and tvar.values:
+            tvar_values.append(tvar.values)
+        else:
+            tvar_values.append([tvar.upper_bound])
+
+    variants = []
+    for combination in itertools.product(*tvar_values):
+        tvar_map = {tv.id: subst for (tv, subst) in zip(c.variables, combination)}
+        variants.append(expand_type(c, tvar_map).copy_modified(variables=[]))
+    return variants
+
+
 def is_unsafe_overlapping_overload_signatures(
     signature: CallableType, other: CallableType, class_type_vars: list[TypeVarLikeType]
 ) -> bool:
@@ -7832,30 +7856,19 @@ def is_unsafe_overlapping_overload_signatures(
     of the following are true:
 
     1.  s's parameters are all more precise or partially overlapping with t's
-    2.  s's return type is NOT a subtype of t's.
+    2.  s's return type is NOT a subset of t's.
 
     Assumes that 'signature' appears earlier in the list of overload
     alternatives then 'other' and that their argument counts are overlapping.
     """
     # Try detaching callables from the containing class so that all TypeVars
-    # are treated as being free.
-    #
-    # This lets us identify cases where the two signatures use completely
-    # incompatible types -- e.g. see the testOverloadingInferUnionReturnWithMixedTypevars
-    # test case.
+    # are treated as being free, i.e. the signature is as seen from inside the class,
+    # where "self" is not yet bound to anything.
     signature = detach_callable(signature, class_type_vars)
     other = detach_callable(other, class_type_vars)
 
-    # Note: We repeat this check twice in both directions due to a slight
-    # asymmetry in 'is_callable_compatible'. When checking for partial overlaps,
-    # we attempt to unify 'signature' and 'other' both against each other.
-    #
-    # If 'signature' cannot be unified with 'other', we end early. However,
-    # if 'other' cannot be modified with 'signature', the function continues
-    # using the older version of 'other'.
-    #
-    # This discrepancy is unfortunately difficult to get rid of, so we repeat the
-    # checks twice in both directions for now.
+    # Note: We repeat this check twice in both directions compensate for slight
+    # asymmetries in 'is_callable_compatible'.
     #
     # Note that we ignore possible overlap between type variables and None. This
     # is technically unsafe, but unsafety is tiny and this prevents some common
@@ -7864,27 +7877,26 @@ def is_unsafe_overlapping_overload_signatures(
     #     def foo(x: None) -> None: ..
     #     @overload
     #     def foo(x: T) -> Foo[T]: ...
-    return is_callable_compatible(
-        signature,
-        other,
-        is_compat=is_overlapping_types_no_promote_no_uninhabited_no_none,
-        is_proper_subtype=False,
-        is_compat_return=lambda l, r: not is_subtype_no_promote(l, r),
-        ignore_return=False,
-        check_args_covariantly=True,
-        allow_partial_overlap=True,
-        no_unify_none=True,
-    ) or is_callable_compatible(
-        other,
-        signature,
-        is_compat=is_overlapping_types_no_promote_no_uninhabited_no_none,
-        is_proper_subtype=False,
-        is_compat_return=lambda l, r: not is_subtype_no_promote(r, l),
-        ignore_return=False,
-        check_args_covariantly=False,
-        allow_partial_overlap=True,
-        no_unify_none=True,
-    )
+
+    for sig_variant in expand_callable_variants(signature):
+        for other_variant in expand_callable_variants(other):
+            if is_callable_compatible(
+                sig_variant,
+                other_variant,
+                is_compat=is_overlapping_types_for_overload,
+                is_proper_subtype=False,
+                is_compat_return=lambda l, r: not is_subset_no_promote(l, r),
+                allow_partial_overlap=True,
+            ) or is_callable_compatible(
+                other_variant,
+                sig_variant,
+                is_compat=is_overlapping_types_for_overload,
+                is_proper_subtype=False,
+                is_compat_return=lambda l, r: not is_subset_no_promote(r, l),
+                allow_partial_overlap=True,
+            ):
+                return True
+    return False
 
 
 def detach_callable(typ: CallableType, class_type_vars: list[TypeVarLikeType]) -> CallableType:
@@ -7893,21 +7905,11 @@ def detach_callable(typ: CallableType, class_type_vars: list[TypeVarLikeType]) -
     A callable normally keeps track of the type variables it uses within its 'variables' field.
     However, if the callable is from a method and that method is using a class type variable,
     the callable will not keep track of that type variable since it belongs to the class.
-
-    This function will traverse the callable and find all used type vars and add them to the
-    variables field if it isn't already present.
-
-    The caller can then unify on all type variables whether the callable is originally from
-    the class or not."""
+    """
     if not class_type_vars:
         # Fast path, nothing to update.
         return typ
-    seen_type_vars = set()
-    for t in typ.arg_types + [typ.ret_type]:
-        seen_type_vars |= set(get_type_vars(t))
-    return typ.copy_modified(
-        variables=list(typ.variables) + [tv for tv in class_type_vars if tv in seen_type_vars]
-    )
+    return typ.copy_modified(variables=list(typ.variables) + class_type_vars)
 
 
 def overload_can_never_match(signature: CallableType, other: CallableType) -> bool:
@@ -8384,11 +8386,11 @@ def get_property_type(t: ProperType) -> ProperType:
     return t
 
 
-def is_subtype_no_promote(left: Type, right: Type) -> bool:
-    return is_subtype(left, right, ignore_promotions=True)
+def is_subset_no_promote(left: Type, right: Type) -> bool:
+    return is_subtype(left, right, ignore_promotions=True, always_covariant=True)
 
 
-def is_overlapping_types_no_promote_no_uninhabited_no_none(left: Type, right: Type) -> bool:
+def is_overlapping_types_for_overload(left: Type, right: Type) -> bool:
     # For the purpose of unsafe overload checks we consider list[Never] and list[int]
     # non-overlapping. This is consistent with how we treat list[int] and list[str] as
     # non-overlapping, despite [] belongs to both. Also this will prevent false positives
@@ -8397,8 +8399,8 @@ def is_overlapping_types_no_promote_no_uninhabited_no_none(left: Type, right: Ty
         left,
         right,
         ignore_promotions=True,
-        ignore_uninhabited=True,
         prohibit_none_typevar_overlap=True,
+        overlap_for_overloads=True,
     )
 
 

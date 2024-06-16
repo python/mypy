@@ -92,8 +92,8 @@ class SubtypeContext:
         ignore_pos_arg_names: bool = False,
         ignore_declared_variance: bool = False,
         # Supported for both proper and non-proper
+        always_covariant: bool = False,
         ignore_promotions: bool = False,
-        ignore_uninhabited: bool = False,
         # Proper subtype flags
         erase_instances: bool = False,
         keep_erased_types: bool = False,
@@ -102,8 +102,8 @@ class SubtypeContext:
         self.ignore_type_params = ignore_type_params
         self.ignore_pos_arg_names = ignore_pos_arg_names
         self.ignore_declared_variance = ignore_declared_variance
+        self.always_covariant = always_covariant
         self.ignore_promotions = ignore_promotions
-        self.ignore_uninhabited = ignore_uninhabited
         self.erase_instances = erase_instances
         self.keep_erased_types = keep_erased_types
         self.options = options
@@ -125,8 +125,8 @@ def is_subtype(
     ignore_type_params: bool = False,
     ignore_pos_arg_names: bool = False,
     ignore_declared_variance: bool = False,
+    always_covariant: bool = False,
     ignore_promotions: bool = False,
-    ignore_uninhabited: bool = False,
     options: Options | None = None,
 ) -> bool:
     """Is 'left' subtype of 'right'?
@@ -145,8 +145,8 @@ def is_subtype(
             ignore_type_params=ignore_type_params,
             ignore_pos_arg_names=ignore_pos_arg_names,
             ignore_declared_variance=ignore_declared_variance,
+            always_covariant=always_covariant,
             ignore_promotions=ignore_promotions,
-            ignore_uninhabited=ignore_uninhabited,
             options=options,
         )
     else:
@@ -155,8 +155,8 @@ def is_subtype(
                 ignore_type_params,
                 ignore_pos_arg_names,
                 ignore_declared_variance,
+                always_covariant,
                 ignore_promotions,
-                ignore_uninhabited,
                 options,
             }
         ), "Don't pass both context and individual flags"
@@ -191,7 +191,6 @@ def is_proper_subtype(
     *,
     subtype_context: SubtypeContext | None = None,
     ignore_promotions: bool = False,
-    ignore_uninhabited: bool = False,
     erase_instances: bool = False,
     keep_erased_types: bool = False,
 ) -> bool:
@@ -207,7 +206,6 @@ def is_proper_subtype(
     if subtype_context is None:
         subtype_context = SubtypeContext(
             ignore_promotions=ignore_promotions,
-            ignore_uninhabited=ignore_uninhabited,
             erase_instances=erase_instances,
             keep_erased_types=keep_erased_types,
         )
@@ -215,10 +213,8 @@ def is_proper_subtype(
         assert not any(
             {
                 ignore_promotions,
-                ignore_uninhabited,
                 erase_instances,
                 keep_erased_types,
-                ignore_uninhabited,
             }
         ), "Don't pass both context and individual flags"
     if type_state.is_assumed_proper_subtype(left, right):
@@ -409,6 +405,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             subtype_context.ignore_type_params,
             subtype_context.ignore_pos_arg_names,
             subtype_context.ignore_declared_variance,
+            subtype_context.always_covariant,
             subtype_context.ignore_promotions,
             subtype_context.erase_instances,
             subtype_context.keep_erased_types,
@@ -447,11 +444,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return True
 
     def visit_uninhabited_type(self, left: UninhabitedType) -> bool:
-        # We ignore this for unsafe overload checks, so that and empty list and
-        # a list of int will be considered non-overlapping.
-        if isinstance(self.right, UninhabitedType):
-            return True
-        return not self.subtype_context.ignore_uninhabited
+        return True
 
     def visit_erased_type(self, left: ErasedType) -> bool:
         # This may be encountered during type inference. The result probably doesn't
@@ -590,10 +583,15 @@ class SubtypeVisitor(TypeVisitor[bool]):
                             if tvar.variance == VARIANCE_NOT_READY and not tried_infer:
                                 infer_class_variances(right.type)
                                 tried_infer = True
+                            if self.subtype_context.always_covariant:
+                                # TODO: should we use bi-variant instead?
+                                variance = COVARIANT
+                            else:
+                                variance = tvar.variance
                             if not check_type_parameter(
                                 lefta,
                                 righta,
-                                tvar.variance,
+                                variance,
                                 self.proper_subtype,
                                 self.subtype_context,
                             ):
@@ -687,6 +685,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 is_proper_subtype=False,
                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
             )
+        elif isinstance(self.right, Instance):
+            return self.right.type.fullname == "builtins.object"
         else:
             return False
 
@@ -1417,7 +1417,6 @@ def is_callable_compatible(
     check_args_covariantly: bool = False,
     allow_partial_overlap: bool = False,
     strict_concatenate: bool = False,
-    no_unify_none: bool = False,
 ) -> bool:
     """Is the left compatible with the right, using the provided compatibility check?
 
@@ -1438,7 +1437,7 @@ def is_callable_compatible(
         configurable.
 
         For example, when checking the validity of overloads, it's useful to see if
-        the first overload alternative has more precise arguments then the second.
+        the first overload alternative has more precise arguments than the second.
         We would want to check the arguments covariantly in that case.
 
         Note! The following two function calls are NOT equivalent:
@@ -1535,24 +1534,11 @@ def is_callable_compatible(
     if left.variables:
         # Apply generic type variables away in left via type inference.
         unified = unify_generic_callable(
-            left, right, ignore_return=ignore_return, no_unify_none=no_unify_none
+            left, right, ignore_return=ignore_return
         )
         if unified is None:
             return False
         left = unified
-
-    # If we allow partial overlaps, we don't need to leave R generic:
-    # if we can find even just a single typevar assignment which
-    # would make these callables compatible, we should return True.
-
-    # So, we repeat the above checks in the opposite direction. This also
-    # lets us preserve the 'symmetry' property of allow_partial_overlap.
-    if allow_partial_overlap and right.variables:
-        unified = unify_generic_callable(
-            right, left, ignore_return=ignore_return, no_unify_none=no_unify_none
-        )
-        if unified is not None:
-            right = unified
 
     # Check return types.
     if not ignore_return and not is_compat_return(left.ret_type, right.ret_type):
@@ -1856,8 +1842,6 @@ def unify_generic_callable(
     target: NormalizedCallableType,
     ignore_return: bool,
     return_constraint_direction: int | None = None,
-    *,
-    no_unify_none: bool = False,
 ) -> NormalizedCallableType | None:
     """Try to unify a generic callable type with another callable type.
 
@@ -1888,10 +1872,6 @@ def unify_generic_callable(
             type.ret_type, target.ret_type, return_constraint_direction
         )
         constraints.extend(c)
-    if no_unify_none:
-        constraints = [
-            c for c in constraints if not isinstance(get_proper_type(c.target), NoneType)
-        ]
     inferred_vars, _ = mypy.solve.solve_constraints(
         type.variables, constraints, allow_polymorphic=True
     )

@@ -2392,10 +2392,10 @@ class B:
 [builtins fixtures/tuple.pyi]
 
 [case testReverseOperatorTypeVar1]
-from typing import TypeVar, Any
+from typing import TypeVar
 T = TypeVar("T", bound='Real')
 class Real:
-    def __add__(self, other: Any) -> str: ...
+    def __add__(self, other: object) -> str: ...
 class Fraction(Real):
     def __radd__(self, other: T) -> T: ...  # E: Signatures of "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping
 
@@ -2430,7 +2430,7 @@ reveal_type(Real() + Fraction())      # N: Revealed type is "__main__.Real"
 reveal_type(Fraction() + Fraction())  # N: Revealed type is "builtins.str"
 
 [case testReverseOperatorTypeVar3]
-from typing import TypeVar, Any
+from typing import TypeVar
 T = TypeVar("T", bound='Real')
 class Real:
     def __add__(self, other: FractionChild) -> str: ...
@@ -2666,14 +2666,12 @@ class X:
 [out]
 tmp/foo.pyi:6: error: Signatures of "__radd__" of "B" and "__add__" of "X" are unsafely overlapping
 
-[case testUnsafeOverlappingWithLineNo]
+[case testUnsafeOverlappingNotWithAny]
 from typing import TypeVar
 class Real:
     def __add__(self, other) -> str: ...
 class Fraction(Real):
     def __radd__(self, other: Real) -> Real: ...
-[out]
-main:5: error: Signatures of "__radd__" of "Fraction" and "__add__" of "Real" are unsafely overlapping
 
 [case testOverlappingNormalAndInplaceOperatorMethod]
 import typing
