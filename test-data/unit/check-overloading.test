@@ -6705,3 +6705,13 @@ class B:
     def f(self, *args, **kwargs):
         pass
 [builtins fixtures/tuple.pyi]
+
+[case testSafeOverlapAllowed]
+from lib import *
+[file lib.pyi]
+from typing import overload
+
+@overload
+def bar(x: object) -> object: ...
+@overload
+def bar(x: int = ...) -> int: ...

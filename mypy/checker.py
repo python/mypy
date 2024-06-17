@@ -1788,7 +1788,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         current_class = self.scope.active_class()
         type_vars = current_class.defn.type_vars if current_class else []
-        return is_unsafe_overlapping_overload_signatures(first, second, type_vars)
+        return is_unsafe_overlapping_overload_signatures(first, second, type_vars, partial_only=False)
 
     def check_inplace_operator_method(self, defn: FuncBase) -> None:
         """Check an inplace operator method such as __iadd__.
@@ -7848,7 +7848,8 @@ def expand_callable_variants(c: CallableType) -> list[CallableType]:
 
 
 def is_unsafe_overlapping_overload_signatures(
-    signature: CallableType, other: CallableType, class_type_vars: list[TypeVarLikeType]
+    signature: CallableType, other: CallableType, class_type_vars: list[TypeVarLikeType],
+    partial_only: bool = True
 ) -> bool:
     """Check if two overloaded signatures are unsafely overlapping or partially overlapping.
 
@@ -7880,21 +7881,45 @@ def is_unsafe_overlapping_overload_signatures(
 
     for sig_variant in expand_callable_variants(signature):
         for other_variant in expand_callable_variants(other):
-            if is_callable_compatible(
-                sig_variant,
-                other_variant,
-                is_compat=is_overlapping_types_for_overload,
-                is_proper_subtype=False,
-                is_compat_return=lambda l, r: not is_subset_no_promote(l, r),
-                allow_partial_overlap=True,
-            ) or is_callable_compatible(
-                other_variant,
-                sig_variant,
-                is_compat=is_overlapping_types_for_overload,
-                is_proper_subtype=False,
-                is_compat_return=lambda l, r: not is_subset_no_promote(r, l),
-                allow_partial_overlap=True,
+            if is_subset_no_promote(sig_variant.ret_type, other_variant.ret_type):
+                continue
+            if not (
+                is_callable_compatible(
+                    sig_variant,
+                    other_variant,
+                    is_compat=is_overlapping_types_for_overload,
+                    check_args_covariantly=False,
+                    is_proper_subtype=False,
+                    is_compat_return=lambda l, r: not is_subset_no_promote(l, r),
+                    allow_partial_overlap=True,
+                ) or is_callable_compatible(
+                    other_variant,
+                    sig_variant,
+                    is_compat=is_overlapping_types_for_overload,
+                    check_args_covariantly=True,
+                    is_proper_subtype=False,
+                    is_compat_return=lambda l, r: not is_subset_no_promote(r, l),
+                    allow_partial_overlap=True,
+                )
             ):
+                continue
+            if not partial_only or (not is_callable_compatible(
+                sig_variant,
+                other_variant,
+                is_compat=is_subset_no_promote,
+                check_args_covariantly=False,
+                is_proper_subtype=False,
+                ignore_return=True,
+                allow_partial_overlap=True,
+            ) or not is_callable_compatible(
+                other_variant,
+                sig_variant,
+                is_compat=is_subset_no_promote,
+                check_args_covariantly=True,
+                is_proper_subtype=False,
+                ignore_return=True,
+                allow_partial_overlap=True,
+            )):
                 return True
     return False
 
@@ -8391,10 +8416,6 @@ def is_subset_no_promote(left: Type, right: Type) -> bool:
 
 
 def is_overlapping_types_for_overload(left: Type, right: Type) -> bool:
-    # For the purpose of unsafe overload checks we consider list[Never] and list[int]
-    # non-overlapping. This is consistent with how we treat list[int] and list[str] as
-    # non-overlapping, despite [] belongs to both. Also this will prevent false positives
-    # for failed type inference during unification.
     return is_overlapping_types(
         left,
         right,
