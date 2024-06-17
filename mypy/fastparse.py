@@ -1791,7 +1791,13 @@ class ASTConverter:
         if NEW_GENERIC_SYNTAX in self.options.enable_incomplete_feature:
             type_params = self.translate_type_params(n.type_params)
             value = self.visit(n.value)
-            node = TypeAliasStmt(self.visit_Name(n.name), type_params, value)
+            # Since the value is evaluated lazily, wrap the value inside a lambda.
+            # This helps mypyc.
+            ret = ReturnStmt(value)
+            self.set_line(ret, n.value)
+            value_func = LambdaExpr(body=Block([ret]))
+            self.set_line(value_func, n.value)
+            node = TypeAliasStmt(self.visit_Name(n.name), type_params, value_func)
             return self.set_line(node, n)
         else:
             self.fail(

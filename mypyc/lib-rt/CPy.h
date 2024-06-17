@@ -901,6 +901,7 @@ PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func, PyOb
 
 PyObject *CPy_GetAIter(PyObject *obj);
 PyObject *CPy_GetANext(PyObject *aiter);
+void CPy_SetTypeAliasTypeComputeFunction(PyObject *alias, PyObject *compute_value);
 
 #ifdef __cplusplus
 }

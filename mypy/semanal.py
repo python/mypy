@@ -3766,6 +3766,10 @@ class SemanticAnalyzer(
                     last_tvar_name_with_default = tvar_def.name
                 tvar_defs.append(tvar_def)
 
+            if python_3_12_type_alias:
+                with self.allow_unbound_tvars_set():
+                    rvalue.accept(self)
+
             analyzed, depends_on = analyze_type_alias(
                 typ,
                 self,
@@ -5360,7 +5364,7 @@ class SemanticAnalyzer(
             tag = self.track_incomplete_refs()
             res, alias_tvars, depends_on, qualified_tvars, empty_tuple_index = self.analyze_alias(
                 s.name.name,
-                s.value,
+                s.value.expr(),
                 allow_placeholder=True,
                 declared_type_vars=type_params,
                 all_declared_type_params_names=all_type_params_names,
@@ -5443,6 +5447,7 @@ class SemanticAnalyzer(
             current_node = existing.node if existing else alias_node
             assert isinstance(current_node, TypeAlias)
             self.disable_invalid_recursive_aliases(s, current_node, s.value)
+            s.name.accept(self)
         finally:
             self.pop_type_args(s.type_args)
 
@@ -5457,7 +5462,11 @@ class SemanticAnalyzer(
 
     def bind_name_expr(self, expr: NameExpr, sym: SymbolTableNode) -> None:
         """Bind name expression to a symbol table node."""
-        if isinstance(sym.node, TypeVarExpr) and self.tvar_scope.get_binding(sym):
+        if (
+            isinstance(sym.node, TypeVarExpr)
+            and self.tvar_scope.get_binding(sym)
+            and not self.allow_unbound_tvars
+        ):
             self.fail(f'"{expr.name}" is a type variable and only valid in type context', expr)
         elif isinstance(sym.node, PlaceholderNode):
             self.process_placeholder(expr.name, "name", expr)

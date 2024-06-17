@@ -940,3 +940,34 @@ PyObject *CPy_GetANext(PyObject *aiter)
 error:
     return NULL;
 }
+
+#ifdef CPY_3_12_FEATURES
+
+// Copied from Python 3.12.3, since this struct is internal to CPython. It defines
+// the structure of typing.TypeAliasType objects. We need it since compute_value is
+// not part of the public API, and we need to set it to match Python runtime semantics.
+//
+// IMPORTANT: This needs to be kept in sync with CPython!
+typedef struct {
+    PyObject_HEAD
+    PyObject *name;
+    PyObject *type_params;
+    PyObject *compute_value;
+    PyObject *value;
+    PyObject *module;
+} typealiasobject;
+
+void CPy_SetTypeAliasTypeComputeFunction(PyObject *alias, PyObject *compute_value) {
+    typealiasobject *obj = (typealiasobject *)alias;
+    if (obj->value != NULL) {
+        Py_DECREF(obj->value);
+    }
+    obj->value = NULL;
+    Py_INCREF(compute_value);
+    if (obj->compute_value != NULL) {
+        Py_DECREF(obj->compute_value);
+    }
+    obj->compute_value = compute_value;
+}
+
+#endif

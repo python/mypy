@@ -624,6 +624,7 @@ reveal_type(y)
 X = T # Error
 
 [builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 main:9:5: error: "Node" expects 2 type arguments, but 1 given
 main:11:5: error: "Node" expects 2 type arguments, but 3 given
