@@ -4347,6 +4347,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif (
             isinstance(left_type, FunctionLike)
             and left_type.is_type_obj()
+            and left_type.type_object().type_vars
         ):
             return self.named_type("types.GenericAlias")
         elif isinstance(left_type, Instance) and left_type.type.fullname == "typing._SpecialForm":
