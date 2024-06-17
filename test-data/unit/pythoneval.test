@@ -107,14 +107,20 @@ f
 [case testModuleAttributes]
 import math
 import typing
+print(type(__spec__))
 print(math.__name__)
+print(math.__spec__.name)
 print(type(math.__dict__))
 print(type(math.__doc__ or ''))
+print(type(math.__spec__).__name__)
 print(math.__class__)
 [out]
+<class 'NoneType'>
+math
 math
 <class 'dict'>
 <class 'str'>
+ModuleSpec
 <class 'module'>
 
 [case testSpecialAttributes]
@@ -271,7 +277,7 @@ bin(sys.stdout)
 _program.py:5: error: No overload variant of "write" of "IO" matches argument type "bytes"
 _program.py:5: note: Possible overload variants:
 _program.py:5: note:     def write(self, str, /) -> int
-_program.py:10: error: Argument 1 to "bin" has incompatible type "TextIO"; expected "IO[bytes]"
+_program.py:10: error: Argument 1 to "bin" has incompatible type "Union[TextIO, Any]"; expected "IO[bytes]"
 
 [case testBuiltinOpen]
 f = open('x')
@@ -1828,7 +1834,6 @@ RHSAlias3: type = tuple[int, ...]
 WrongTypeElement = str | tuple[float, 1]  # Error
 WrongEllipsis = tuple[float, float, ...] | str  # Error
 
-# TODO: This should produce a fixed-length tuple
 reveal_type(tuple[int, str]((1, "x")))
 [out]
 _testTupleWithDifferentArgsPy310.py:15: note: Revealed type is "Union[builtins.str, Tuple[builtins.float, builtins.float, builtins.str]]"
@@ -1839,7 +1844,7 @@ _testTupleWithDifferentArgsPy310.py:19: note: Revealed type is "builtins.tuple[b
 _testTupleWithDifferentArgsPy310.py:20: note: Revealed type is "builtins.list[Tuple[builtins.int, builtins.str]]"
 _testTupleWithDifferentArgsPy310.py:26: error: Invalid type: try using Literal[1] instead?
 _testTupleWithDifferentArgsPy310.py:27: error: Unexpected "..."
-_testTupleWithDifferentArgsPy310.py:30: note: Revealed type is "builtins.tuple[builtins.object, ...]"
+_testTupleWithDifferentArgsPy310.py:29: note: Revealed type is "Tuple[builtins.int, builtins.str]"
 
 [case testEnumIterMetaInference]
 import socket

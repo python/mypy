@@ -271,7 +271,7 @@ FILE: Final = ErrorCode("file", "Internal marker for a whole file being ignored"
 del error_codes[FILE.code]
 
 # This is a catch-all for remaining uncategorized errors.
-MISC: Final = ErrorCode("misc", "Miscellaneous other checks", "General")
+MISC: Final[ErrorCode] = ErrorCode("misc", "Miscellaneous other checks", "General")
 
 OVERLOAD_OVERLAP: Final[ErrorCode] = ErrorCode(
     "overload-overlap",

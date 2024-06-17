@@ -1233,12 +1233,34 @@ def divmod(x: _T_contra, y: SupportsRDivMod[_T_contra, _T_co], /) -> _T_co: ...
 
 # The `globals` argument to `eval` has to be `dict[str, Any]` rather than `dict[str, object]` due to invariance.
 # (The `globals` argument has to be a "real dict", rather than any old mapping, unlike the `locals` argument.)
-def eval(
-    source: str | ReadableBuffer | CodeType, globals: dict[str, Any] | None = None, locals: Mapping[str, object] | None = None, /
-) -> Any: ...
+if sys.version_info >= (3, 13):
+    def eval(
+        source: str | ReadableBuffer | CodeType,
+        /,
+        globals: dict[str, Any] | None = None,
+        locals: Mapping[str, object] | None = None,
+    ) -> Any: ...
+
+else:
+    def eval(
+        source: str | ReadableBuffer | CodeType,
+        globals: dict[str, Any] | None = None,
+        locals: Mapping[str, object] | None = None,
+        /,
+    ) -> Any: ...
 
 # Comment above regarding `eval` applies to `exec` as well
-if sys.version_info >= (3, 11):
+if sys.version_info >= (3, 13):
+    def exec(
+        source: str | ReadableBuffer | CodeType,
+        /,
+        globals: dict[str, Any] | None = None,
+        locals: Mapping[str, object] | None = None,
+        *,
+        closure: tuple[CellType, ...] | None = None,
+    ) -> None: ...
+
+elif sys.version_info >= (3, 11):
     def exec(
         source: str | ReadableBuffer | CodeType,
         globals: dict[str, Any] | None = None,

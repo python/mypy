@@ -1891,7 +1891,9 @@ class _Arguments:
 
 
 # typeshed added a stub for __main__, but that causes stubtest to check itself
-ANNOYING_STDLIB_MODULES: typing_extensions.Final = frozenset({"antigravity", "this", "__main__"})
+ANNOYING_STDLIB_MODULES: typing_extensions.Final = frozenset(
+    {"antigravity", "this", "__main__", "_ios_support"}
+)
 
 
 def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:

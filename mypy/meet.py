@@ -611,6 +611,19 @@ def are_tuples_overlapping(
     right = adjust_tuple(right, left) or right
     assert isinstance(left, TupleType), f"Type {left} is not a tuple"
     assert isinstance(right, TupleType), f"Type {right} is not a tuple"
+
+    # This algorithm works well if only one tuple is variadic, if both are
+    # variadic we may get rare false negatives for overlapping prefix/suffix.
+    # Also, this ignores empty unpack case, but it is probably consistent with
+    # how we handle e.g. empty lists in overload overlaps.
+    # TODO: write a more robust algorithm for cases where both types are variadic.
+    left_unpack = find_unpack_in_list(left.items)
+    right_unpack = find_unpack_in_list(right.items)
+    if left_unpack is not None:
+        left = expand_tuple_if_possible(left, len(right.items))
+    if right_unpack is not None:
+        right = expand_tuple_if_possible(right, len(left.items))
+
     if len(left.items) != len(right.items):
         return False
     return all(
@@ -622,6 +635,27 @@ def are_tuples_overlapping(
         )
         for l, r in zip(left.items, right.items)
     )
+
+
+def expand_tuple_if_possible(tup: TupleType, target: int) -> TupleType:
+    if len(tup.items) > target + 1:
+        return tup
+    extra = target + 1 - len(tup.items)
+    new_items = []
+    for it in tup.items:
+        if not isinstance(it, UnpackType):
+            new_items.append(it)
+            continue
+        unpacked = get_proper_type(it.type)
+        if isinstance(unpacked, TypeVarTupleType):
+            instance = unpacked.tuple_fallback
+        else:
+            # Nested non-variadic tuples should be normalized at this point.
+            assert isinstance(unpacked, Instance)
+            instance = unpacked
+        assert instance.type.fullname == "builtins.tuple"
+        new_items.extend([instance.args[0]] * extra)
+    return tup.copy_modified(items=new_items)
 
 
 def adjust_tuple(left: ProperType, r: ProperType) -> TupleType | None:
@@ -1024,8 +1058,9 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
 
 def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
-    from mypy.join import safe_join
+    from mypy.join import match_generic_callables, safe_join
 
+    t, s = match_generic_callables(t, s)
     arg_types: list[Type] = []
     for i in range(len(t.arg_types)):
         arg_types.append(safe_join(t.arg_types[i], s.arg_types[i]))

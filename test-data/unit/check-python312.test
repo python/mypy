@@ -1161,3 +1161,367 @@ def decorator(x: str) -> Any: ...
 @decorator(T)  # E: Argument 1 to "decorator" has incompatible type "int"; expected "str"
 class C[T]:
     pass
+
+[case testPEP695RecursiceTypeAlias]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+
+type A = str | list[A]
+a: A
+reveal_type(a)  # N: Revealed type is "Union[builtins.str, builtins.list[...]]"
+
+class C[T]: pass
+
+type B[T] = C[T] | list[B[T]]
+b: B[int]
+reveal_type(b)  # N: Revealed type is "Union[__main__.C[builtins.int], builtins.list[...]]"
+
+[case testPEP695BadRecursiveTypeAlias]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+
+type A = A  # E: Cannot resolve name "A" (possible cyclic definition)
+type B = B | int  # E: Invalid recursive alias: a union item of itself
+a: A
+reveal_type(a)  # N: Revealed type is "Any"
+b: B
+reveal_type(b)  # N: Revealed type is "Any"
+
+[case testPEP695RecursiveTypeAliasForwardReference]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+
+def f(a: A) -> None:
+    if isinstance(a, str):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    else:
+        reveal_type(a)  # N: Revealed type is "__main__.C[Union[builtins.str, __main__.C[...]]]"
+
+type A = str | C[A]
+
+class C[T]: pass
+
+f('x')
+f(C[str]())
+f(C[C[str]]())
+f(1)  # E: Argument 1 to "f" has incompatible type "int"; expected "A"
+f(C[int]())  # E: Argument 1 to "f" has incompatible type "C[int]"; expected "A"
+[builtins fixtures/isinstance.pyi]
+
+[case testPEP695InvalidGenericOrProtocolBaseClass]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+from typing import Generic, Protocol, TypeVar
+
+S = TypeVar("S")
+
+class C[T](Generic[T]):  # E: Generic[...] base class is redundant
+    pass
+class C2[T](Generic[S]): # E: Generic[...] base class is redundant
+    pass
+
+a: C[int]
+b: C2[int, str]
+
+class P[T](Protocol[T]):  # E: No arguments expected for "Protocol" base class
+    pass
+class P2[T](Protocol[S]):  # E: No arguments expected for "Protocol" base class
+    pass
+
+[case testPEP695MixNewAndOldStyleGenerics]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+from typing import TypeVar
+
+S = TypeVar("S")
+U = TypeVar("U")
+
+def f[T](x: T, y: S) -> T | S: ...  # E: All type parameters should be declared ("S" not declared)
+def g[T](x: S, y: U) -> T | S | U: ...  # E: All type parameters should be declared ("S", "U" not declared)
+
+def h[S: int](x: S) -> S:
+   a: int = x
+   return x
+
+class C[T]:
+    def m[X, S](self, x: S, y: U) -> X | S | U: ...  # E: All type parameters should be declared ("U" not declared)
+    def m2(self, x: T, y: S) -> T | S: ...
+
+class D[T](C[S]):  # E: All type parameters should be declared ("S" not declared)
+    pass
+
+[case testPEP695MixNewAndOldStyleTypeVarTupleAndParamSpec]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+from typing import TypeVarTuple, ParamSpec, Callable
+Ts = TypeVarTuple("Ts")
+P = ParamSpec("P")
+
+def f[T](x: T, f: Callable[P, None]  # E: All type parameters should be declared ("P" not declared)
+        ) -> Callable[P, T]: ...
+def g[T](x: T, f: tuple[*Ts]  # E: All type parameters should be declared ("Ts" not declared)
+        ) -> tuple[T, *Ts]: ...
+[builtins fixtures/tuple.pyi]
+
+[case testPEP695MixNewAndOldStyleGenericsInTypeAlias]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+from typing import TypeVar, ParamSpec, TypeVarTuple, Callable
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+P = ParamSpec("P")
+
+type A = list[T]  # E: All type parameters should be declared ("T" not declared)
+a: A[int]  # E: Bad number of arguments for type alias, expected 0, given 1
+reveal_type(a)   # N: Revealed type is "builtins.list[Any]"
+
+type B = tuple[*Ts]  # E: All type parameters should be declared ("Ts" not declared)
+type C = Callable[P, None]  # E: All type parameters should be declared ("P" not declared)
+[builtins fixtures/tuple.pyi]
+
+[case testPEP695NonGenericAliasToGenericClass]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+class C[T]: pass
+type A = C
+x: C
+y: A
+reveal_type(x)  # N: Revealed type is "__main__.C[Any]"
+reveal_type(y)  # N: Revealed type is "__main__.C[Any]"
+z: A[int]  # E: Bad number of arguments for type alias, expected 0, given 1
+
+[case testPEP695SelfType]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+from typing import Self
+
+class C:
+    @classmethod
+    def m[T](cls, x: T) -> tuple[Self, T]:
+        return cls(), x
+
+class D(C):
+    pass
+
+reveal_type(C.m(1))  # N: Revealed type is "Tuple[__main__.C, builtins.int]"
+reveal_type(D.m(1))  # N: Revealed type is "Tuple[__main__.D, builtins.int]"
+
+class E[T]:
+    def m(self) -> Self:
+        return self
+
+    def mm[S](self, x: S) -> tuple[Self, S]:
+        return self, x
+
+class F[T](E[T]):
+    pass
+
+reveal_type(E[int]().m())  # N: Revealed type is "__main__.E[builtins.int]"
+reveal_type(E[int]().mm(b'x'))  # N: Revealed type is "Tuple[__main__.E[builtins.int], builtins.bytes]"
+reveal_type(F[str]().m())  # N: Revealed type is "__main__.F[builtins.str]"
+reveal_type(F[str]().mm(b'x'))  # N: Revealed type is "Tuple[__main__.F[builtins.str], builtins.bytes]"
+[builtins fixtures/tuple.pyi]
+
+[case testPEP695CallAlias]
+# mypy: enable-incomplete-feature=NewGenericSyntax
+
+class C:
+    def __init__(self, x: str) -> None: ...
+type A = C
+
+class D[T]: pass
+type B[T] = D[T]
+
+reveal_type(A)  # N: Revealed type is "typing.TypeAliasType"
+reveal_type(B)  # N: Revealed type is "typing.TypeAliasType"
+reveal_type(B[int])  # N: Revealed type is "typing.TypeAliasType"
+
+A(1)  # E: "TypeAliasType" not callable
+B[int]()  # E: "TypeAliasType" not callable
+
+A2 = C
+B2 = D
+A2(1)  # E: Argument 1 to "C" has incompatible type "int"; expected "str"
+B2[int]()
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testPEP695IncrementalTypeAliasKinds]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+import a
+
+[file a.py]
+from b import A
+
+[file a.py.2]
+from b import A, B, C
+A()
+B()
+C()
+
+[file b.py]
+from typing_extensions import TypeAlias
+type A = int
+B = int
+C: TypeAlias = int
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+[out2]
+tmp/a.py:2: error: "TypeAliasType" not callable
+
+[case testPEP695TypeAliasBoundAndValueChecking]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+from typing import Any, cast
+
+class C: pass
+class D(C): pass
+
+type A[T: C] = list[T]
+a1: A
+reveal_type(a1)  # N: Revealed type is "builtins.list[Any]"
+a2: A[Any]
+a3: A[C]
+a4: A[D]
+a5: A[object]  # E: Type argument "object" of "A" must be a subtype of "C"
+a6: A[int]  # E: Type argument "int" of "A" must be a subtype of "C"
+
+x1 = cast(A[C], a1)
+x2 = cast(A[None], a1)  # E: Type argument "None" of "A" must be a subtype of "C"
+
+type A2[T: (int, C)] = list[T]
+b1: A2
+reveal_type(b1)  # N: Revealed type is "builtins.list[Any]"
+b2: A2[Any]
+b3: A2[int]
+b4: A2[C]
+b5: A2[D]  # E: Value of type variable "T" of "A2" cannot be "D"
+b6: A2[object]  # E: Value of type variable "T" of "A2" cannot be "object"
+
+list[A2[int]]()
+list[A2[None]]()  # E: Invalid type argument value for "A2"
+
+class N(int): pass
+
+type A3[T: C, S: (int, str)] = T | S
+c1: A3[C, int]
+c2: A3[D, str]
+c3: A3[C, N]  # E: Value of type variable "S" of "A3" cannot be "N"
+c4: A3[int, str]  # E: Type argument "int" of "A3" must be a subtype of "C"
+
+[case testPEP695TypeAliasInClassBodyOrFunction]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+
+class C:
+    type A = int
+    type B[T] = list[T] | None
+    a: A
+    b: B[str]
+
+    def method(self) -> None:
+        v: C.A
+        reveal_type(v)  # N: Revealed type is "builtins.int"
+
+reveal_type(C.a)  # N: Revealed type is "builtins.int"
+reveal_type(C.b)  # N: Revealed type is "Union[builtins.list[builtins.str], None]"
+
+C.A = str  # E: Incompatible types in assignment (expression has type "Type[str]", variable has type "TypeAliasType")
+
+x: C.A
+y: C.B[int]
+reveal_type(x)  # N: Revealed type is "builtins.int"
+reveal_type(y)  # N: Revealed type is "Union[builtins.list[builtins.int], None]"
+
+def f() -> None:
+    type A = int
+    type B[T] = list[T] | None
+    a: A
+    reveal_type(a)  # N: Revealed type is "builtins.int"
+
+    def g() -> None:
+        b: B[int]
+        reveal_type(b)  # N: Revealed type is "Union[builtins.list[builtins.int], None]"
+
+class D:
+    def __init__(self) -> None:
+        type A = int
+        self.a: A = 0
+        type B[T] = list[T]
+        self.b: B[int] = [1]
+
+reveal_type(D().a)  # N: Revealed type is "builtins.int"
+reveal_type(D().b)  # N: Revealed type is "builtins.list[builtins.int]"
+
+class E[T]:
+    type X = list[T]  # E: All type parameters should be declared ("T" not declared)
+
+    def __init__(self) -> None:
+        type A = list[T]  # E: All type parameters should be declared ("T" not declared)
+        self.a: A
+
+reveal_type(E[str]().a)  # N: Revealed type is "builtins.list[Any]"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testPEP695RedefineAsTypeAlias1]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+class C: pass
+type C = int  # E: Name "C" already defined on line 2
+
+A = 0
+type A = str  # E: Name "A" already defined on line 5
+reveal_type(A)  # N: Revealed type is "builtins.int"
+
+[case testPEP695RedefineAsTypeAlias2]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+from m import D
+type D = int  # E: Name "D" already defined (possibly by an import)
+a: D
+reveal_type(a)  # N: Revealed type is "m.D"
+[file m.py]
+class D: pass
+
+[case testPEP695RedefineAsTypeAlias3]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+D = list["Forward"]
+type D = int  # E: Name "D" already defined on line 2
+Forward = str
+x: D
+reveal_type(x)  # N: Revealed type is "builtins.list[builtins.str]"
+
+[case testPEP695MultiDefinitionsForTypeAlias]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+if int():
+    type A[T] = list[T]
+else:
+    type A[T] = str  # E: Name "A" already defined on line 3
+x: T  # E: Name "T" is not defined
+a: A[int]
+reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
+
+[case testPEP695UndefinedNameInAnnotation]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+def f[T](x: foobar, y: T) -> T: ...  # E: Name "foobar" is not defined
+reveal_type(f)  # N: Revealed type is "def [T] (x: Any, y: T`-1) -> T`-1"
+
+[case testPEP695WrongNumberOfConstrainedTypes]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+type A[T: ()] = list[T]  # E: Type variable must have at least two constrained types
+a: A[int]
+reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
+
+type B[T: (int,)] = list[T]  # E: Type variable must have at least two constrained types
+b: B[str]
+reveal_type(b)  # N: Revealed type is "builtins.list[builtins.str]"
+
+[case testPEP695UsingTypeVariableInOwnBoundOrConstraint]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+type A[T: list[T]] = str  # E: Name "T" is not defined
+type B[S: (list[S], str)] = str  # E: Name "S" is not defined
+type C[T, S: list[T]] = str  # E: Name "T" is not defined
+
+def f[T: T](x: T) -> T: ...  # E: Name "T" is not defined
+class D[T: T]:  # E: Name "T" is not defined
+    pass
+
+[case testPEP695InvalidType]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+def f[T: 1](x: T) -> T: ...  # E: Invalid type: try using Literal[1] instead?
+class C[T: (int, (1 + 2))]: pass  # E: Invalid type comment or annotation
+type A = list[1]  # E: Invalid type: try using Literal[1] instead?
+type B = (1 + 2)  # E: Invalid type alias: expression is not a valid type
+a: A
+reveal_type(a)  # N: Revealed type is "builtins.list[Any]"
+b: B
+reveal_type(b)  # N: Revealed type is "Any"

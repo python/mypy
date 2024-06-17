@@ -26,7 +26,7 @@ from typing import (
 from typing_extensions import TypeAlias as _TypeAlias
 
 import mypy.checkexpr
-from mypy import errorcodes as codes, message_registry, nodes, operators
+from mypy import errorcodes as codes, join, message_registry, nodes, operators
 from mypy.binder import ConditionalTypeBinder, Frame, get_declaration
 from mypy.checkmember import (
     MemberContext,
@@ -681,6 +681,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         inner_type = get_proper_type(inner_type)
         outer_type: CallableType | None = None
         if inner_type is not None and not isinstance(inner_type, AnyType):
+            if isinstance(inner_type, TypeType):
+                if isinstance(inner_type.item, Instance):
+                    inner_type = expand_type_by_instance(
+                        type_object_type(inner_type.item.type, self.named_type), inner_type.item
+                    )
             if isinstance(inner_type, CallableType):
                 outer_type = inner_type
             elif isinstance(inner_type, Instance):
@@ -699,6 +704,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 )
                 if isinstance(inner_call, CallableType):
                     outer_type = inner_call
+            elif isinstance(inner_type, UnionType):
+                union_type = make_simplified_union(inner_type.items)
+                if isinstance(union_type, UnionType):
+                    items = []
+                    for item in union_type.items:
+                        callable_item = self.extract_callable_type(item, ctx)
+                        if callable_item is None:
+                            break
+                        items.append(callable_item)
+                    else:
+                        joined_type = get_proper_type(join.join_type_list(items))
+                        if isinstance(joined_type, CallableType):
+                            outer_type = joined_type
+                else:
+                    return self.extract_callable_type(union_type, ctx)
             if outer_type is None:
                 self.msg.not_callable(inner_type, ctx)
         return outer_type
@@ -771,9 +791,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if impl_type is not None:
                 assert defn.impl is not None
 
+                # This is what we want from implementation, it should accept all arguments
+                # of an overload, but the return types should go the opposite way.
+                if is_callable_compatible(
+                    impl_type,
+                    sig1,
+                    is_compat=is_subtype,
+                    is_proper_subtype=False,
+                    is_compat_return=lambda l, r: is_subtype(r, l),
+                ):
+                    continue
+                # If the above check didn't work, we repeat some key steps in
+                # is_callable_compatible() to give a better error message.
+
                 # We perform a unification step that's very similar to what
-                # 'is_callable_compatible' would have done if we had set
-                # 'unify_generics' to True -- the only difference is that
+                # 'is_callable_compatible' does -- the only difference is that
                 # we check and see if the impl_type's return value is a
                 # *supertype* of the overload alternative, not a *subtype*.
                 #
@@ -1004,7 +1036,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Type check a function definition."""
         self.check_func_item(defn, name=defn.name)
         if defn.info:
-            if not defn.is_dynamic() and not defn.is_overload and not defn.is_decorated:
+            if not defn.is_overload and not defn.is_decorated:
                 # If the definition is the implementation for an
                 # overload, the legality of the override has already
                 # been typechecked, and decorated methods will be
@@ -1913,9 +1945,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         Return a list of base classes which contain an attribute with the method name.
         """
         # Check against definitions in base classes.
+        check_override_compatibility = defn.name not in (
+            "__init__",
+            "__new__",
+            "__init_subclass__",
+            "__post_init__",
+        ) and (self.options.check_untyped_defs or not defn.is_dynamic())
         found_method_base_classes: list[TypeInfo] = []
         for base in defn.info.mro[1:]:
-            result = self.check_method_or_accessor_override_for_base(defn, base)
+            result = self.check_method_or_accessor_override_for_base(
+                defn, base, check_override_compatibility
+            )
             if result is None:
                 # Node was deferred, we will have another attempt later.
                 return None
@@ -1924,7 +1964,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return found_method_base_classes
 
     def check_method_or_accessor_override_for_base(
-        self, defn: FuncDef | OverloadedFuncDef | Decorator, base: TypeInfo
+        self,
+        defn: FuncDef | OverloadedFuncDef | Decorator,
+        base: TypeInfo,
+        check_override_compatibility: bool,
     ) -> bool | None:
         """Check if method definition is compatible with a base class.
 
@@ -1945,10 +1988,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if defn.is_final:
                     self.check_if_final_var_override_writable(name, base_attr.node, defn)
                 found_base_method = True
-
-            # Check the type of override.
-            if name not in ("__init__", "__new__", "__init_subclass__", "__post_init__"):
-                # Check method override
+            if check_override_compatibility:
+                # Check compatibility of the override signature
                 # (__init__, __new__, __init_subclass__ are special).
                 if self.check_method_override_for_base_with_name(defn, name, base):
                     return None
@@ -2142,7 +2183,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def get_op_other_domain(self, tp: FunctionLike) -> Type | None:
         if isinstance(tp, CallableType):
             if tp.arg_kinds and tp.arg_kinds[0] == ARG_POS:
-                return tp.arg_types[0]
+                # For generic methods, domain comparison is tricky, as a first
+                # approximation erase all remaining type variables to bounds.
+                return erase_typevars(tp.arg_types[0], {v.id for v in tp.variables})
             return None
         elif isinstance(tp, Overloaded):
             raw_items = [self.get_op_other_domain(it) for it in tp.items]
@@ -2212,6 +2255,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if fail:
             emitted_msg = False
 
+            offset_arguments = isinstance(override, CallableType) and override.unpack_kwargs
             # Normalize signatures, so we get better diagnostics.
             if isinstance(override, (CallableType, Overloaded)):
                 override = override.with_unpacked_kwargs()
@@ -2242,13 +2286,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 def erase_override(t: Type) -> Type:
                     return erase_typevars(t, ids_to_erase=override_ids)
 
-                for i in range(len(override.arg_types)):
-                    if not is_subtype(
-                        original.arg_types[i], erase_override(override.arg_types[i])
-                    ):
-                        arg_type_in_super = original.arg_types[i]
-
-                        if isinstance(node, FuncDef):
+                for i, (sub_kind, super_kind) in enumerate(
+                    zip(override.arg_kinds, original.arg_kinds)
+                ):
+                    if sub_kind.is_positional() and super_kind.is_positional():
+                        override_arg_type = override.arg_types[i]
+                        original_arg_type = original.arg_types[i]
+                    elif sub_kind.is_named() and super_kind.is_named() and not offset_arguments:
+                        arg_name = override.arg_names[i]
+                        if arg_name in original.arg_names:
+                            override_arg_type = override.arg_types[i]
+                            original_i = original.arg_names.index(arg_name)
+                            original_arg_type = original.arg_types[original_i]
+                        else:
+                            continue
+                    else:
+                        continue
+                    if not is_subtype(original_arg_type, erase_override(override_arg_type)):
+                        if isinstance(node, FuncDef) and not node.is_property:
                             context: Context = node.arguments[i + len(override.bound_args)]
                         else:
                             context = node
@@ -2257,7 +2312,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             name,
                             type_name,
                             name_in_super,
-                            arg_type_in_super,
+                            original_arg_type,
                             supertype,
                             context,
                             secondary_context=node,
@@ -3808,6 +3863,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.expr_checker.accept(rvalue, lvalue_type)
                 )
 
+                if isinstance(reinferred_rvalue_type, TypeVarLikeType):
+                    reinferred_rvalue_type = get_proper_type(reinferred_rvalue_type.upper_bound)
                 if isinstance(reinferred_rvalue_type, UnionType):
                     # If this is an Optional type in non-strict Optional code, unwrap it.
                     relevant_items = reinferred_rvalue_type.relevant_items()
@@ -4465,7 +4522,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             is_lambda = isinstance(self.scope.top_function(), LambdaExpr)
             if isinstance(return_type, UninhabitedType):
                 # Avoid extra error messages for failed inference in lambdas
-                if not is_lambda or not return_type.ambiguous:
+                if not is_lambda and not return_type.ambiguous:
                     self.fail(message_registry.NO_RETURN_EXPECTED, s)
                     return
 
@@ -7266,6 +7323,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             elif isinstance(typ, Instance) and typ.type.fullname == "builtins.type":
                 object_type = Instance(typ.type.mro[-1], [])
                 types.append(TypeRange(object_type, is_upper_bound=True))
+            elif isinstance(typ, Instance) and typ.type.fullname == "types.UnionType" and typ.args:
+                types.append(TypeRange(UnionType(typ.args), is_upper_bound=False))
             elif isinstance(typ, AnyType):
                 types.append(TypeRange(typ, is_upper_bound=False))
             else:  # we didn't see an actual type, but rather a variable with unknown value

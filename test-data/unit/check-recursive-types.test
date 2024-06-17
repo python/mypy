@@ -942,3 +942,55 @@ NotFilter = Tuple[Literal["not"], "NotFilter"]
 n: NotFilter
 reveal_type(n[1][1][0])  # N: Revealed type is "Literal['not']"
 [builtins fixtures/tuple.pyi]
+
+[case testNoCrashOnRecursiveAliasWithNone]
+# flags: --strict-optional
+from typing import Union, Generic, TypeVar, Optional
+
+T = TypeVar("T")
+class A(Generic[T]): ...
+class B(Generic[T]): ...
+
+Z = Union[A[Z], B[Optional[Z]]]
+X = Union[A[Optional[X]], B[Optional[X]]]
+
+z: Z
+x: X
+reveal_type(z)  # N: Revealed type is "Union[__main__.A[...], __main__.B[Union[..., None]]]"
+reveal_type(x)  # N: Revealed type is "Union[__main__.A[Union[..., None]], __main__.B[Union[..., None]]]"
+
+[case testRecursiveTupleFallback1]
+from typing import NewType, Tuple, Union
+
+T1 = NewType("T1", str)
+T2 = Tuple[T1, "T4", "T4"]
+T3 = Tuple[str, "T4", "T4"]
+T4 = Union[T2, T3]
+[builtins fixtures/tuple.pyi]
+
+[case testRecursiveTupleFallback2]
+from typing import NewType, Tuple, Union
+
+T1 = NewType("T1", str)
+class T2(Tuple[T1, "T4", "T4"]): ...
+T3 = Tuple[str, "T4", "T4"]
+T4 = Union[T2, T3]
+[builtins fixtures/tuple.pyi]
+
+[case testRecursiveTupleFallback3]
+from typing import NewType, Tuple, Union
+
+T1 = NewType("T1", str)
+T2 = Tuple[T1, "T4", "T4"]
+class T3(Tuple[str, "T4", "T4"]): ...
+T4 = Union[T2, T3]
+[builtins fixtures/tuple.pyi]
+
+[case testRecursiveTupleFallback4]
+from typing import NewType, Tuple, Union
+
+T1 = NewType("T1", str)
+class T2(Tuple[T1, "T4", "T4"]): ...
+class T3(Tuple[str, "T4", "T4"]): ...
+T4 = Union[T2, T3]
+[builtins fixtures/tuple.pyi]

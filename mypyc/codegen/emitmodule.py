@@ -41,6 +41,7 @@ from mypyc.common import (
     PREFIX,
     RUNTIME_C_FILES,
     TOP_LEVEL_NAME,
+    TYPE_VAR_PREFIX,
     shared_lib_name,
     short_id_from_name,
     use_vectorcall,
@@ -590,6 +591,7 @@ class GroupGenerator:
             self.declare_finals(module_name, module.final_names, declarations)
             for cl in module.classes:
                 generate_class_type_decl(cl, emitter, ext_declarations, declarations)
+            self.declare_type_vars(module_name, module.type_var_names, declarations)
             for fn in module.functions:
                 generate_function_declaration(fn, declarations)
 
@@ -1062,6 +1064,15 @@ class GroupGenerator:
     def declare_static_pyobject(self, identifier: str, emitter: Emitter) -> None:
         symbol = emitter.static_name(identifier, None)
         self.declare_global("PyObject *", symbol)
+
+    def declare_type_vars(self, module: str, type_var_names: list[str], emitter: Emitter) -> None:
+        for name in type_var_names:
+            static_name = emitter.static_name(name, module, prefix=TYPE_VAR_PREFIX)
+            emitter.context.declarations[static_name] = HeaderDeclaration(
+                f"PyObject *{static_name};",
+                [f"PyObject *{static_name} = NULL;"],
+                needs_export=False,
+            )
 
 
 def sort_classes(classes: list[tuple[str, ClassIR]]) -> list[tuple[str, ClassIR]]:

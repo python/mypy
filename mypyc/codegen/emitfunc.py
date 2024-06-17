@@ -6,7 +6,14 @@ from typing import Final
 
 from mypyc.analysis.blockfreq import frequently_executed_blocks
 from mypyc.codegen.emit import DEBUG_ERRORS, Emitter, TracebackAndGotoHandler, c_array_initializer
-from mypyc.common import MODULE_PREFIX, NATIVE_PREFIX, REG_PREFIX, STATIC_PREFIX, TYPE_PREFIX
+from mypyc.common import (
+    MODULE_PREFIX,
+    NATIVE_PREFIX,
+    REG_PREFIX,
+    STATIC_PREFIX,
+    TYPE_PREFIX,
+    TYPE_VAR_PREFIX,
+)
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR, all_values
 from mypyc.ir.ops import (
@@ -14,6 +21,7 @@ from mypyc.ir.ops import (
     NAMESPACE_MODULE,
     NAMESPACE_STATIC,
     NAMESPACE_TYPE,
+    NAMESPACE_TYPE_VAR,
     Assign,
     AssignMulti,
     BasicBlock,
@@ -477,6 +485,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         NAMESPACE_STATIC: STATIC_PREFIX,
         NAMESPACE_TYPE: TYPE_PREFIX,
         NAMESPACE_MODULE: MODULE_PREFIX,
+        NAMESPACE_TYPE_VAR: TYPE_VAR_PREFIX,
     }
 
     def visit_load_static(self, op: LoadStatic) -> None:

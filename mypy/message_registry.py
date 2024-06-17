@@ -180,6 +180,10 @@ IMPLICIT_GENERIC_ANY_BUILTIN: Final = (
 )
 INVALID_UNPACK: Final = "{} cannot be unpacked (must be tuple or TypeVarTuple)"
 INVALID_UNPACK_POSITION: Final = "Unpack is only valid in a variadic position"
+INVALID_PARAM_SPEC_LOCATION: Final = "Invalid location for ParamSpec {}"
+INVALID_PARAM_SPEC_LOCATION_NOTE: Final = (
+    'You can use ParamSpec as the first argument to Callable, e.g., "Callable[{}, int]"'
+)
 
 # TypeVar
 INCOMPATIBLE_TYPEVAR_VALUE: Final = 'Value of type variable "{}" of {} cannot be {}'
@@ -193,6 +197,9 @@ TYPEVAR_UNEXPECTED_ARGUMENT: Final = 'Unexpected argument to "TypeVar()"'
 UNBOUND_TYPEVAR: Final = (
     "A function returning TypeVar should receive at least "
     "one argument containing the same TypeVar"
+)
+TYPE_PARAMETERS_SHOULD_BE_DECLARED: Final = (
+    "All type parameters should be declared ({} not declared)"
 )
 
 # Super
@@ -326,4 +333,7 @@ ARG_NAME_EXPECTED_STRING_LITERAL: Final = ErrorMessage(
 )
 NARROWED_TYPE_NOT_SUBTYPE: Final = ErrorMessage(
     "Narrowed type {} is not a subtype of input type {}", codes.NARROWED_TYPE_NOT_SUBTYPE
+)
+TYPE_VAR_TOO_FEW_CONSTRAINED_TYPES: Final = ErrorMessage(
+    "Type variable must have at least two constrained types", codes.MISC
 )

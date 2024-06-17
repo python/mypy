@@ -10380,6 +10380,7 @@ from b import C, D
 A = C | D
 a: A
 reveal_type(a)
+[builtins fixtures/type.pyi]
 
 [file b.py]
 C = int

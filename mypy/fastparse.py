@@ -1116,7 +1116,7 @@ class ASTConverter:
         if argument_elide_name(arg.arg):
             pos_only = True
 
-        argument = Argument(Var(arg.arg), arg_type, self.visit(default), kind, pos_only)
+        argument = Argument(Var(arg.arg, arg_type), arg_type, self.visit(default), kind, pos_only)
         argument.set_line(
             arg.lineno,
             arg.col_offset,
@@ -1185,8 +1185,16 @@ class ASTConverter:
                 explicit_type_params.append(TypeParam(p.name, TYPE_VAR_TUPLE_KIND, None, []))
             else:
                 if isinstance(p.bound, ast3.Tuple):
-                    conv = TypeConverter(self.errors, line=p.lineno)
-                    values = [conv.visit(t) for t in p.bound.elts]
+                    if len(p.bound.elts) < 2:
+                        self.fail(
+                            message_registry.TYPE_VAR_TOO_FEW_CONSTRAINED_TYPES,
+                            p.lineno,
+                            p.col_offset,
+                            blocker=False,
+                        )
+                    else:
+                        conv = TypeConverter(self.errors, line=p.lineno)
+                        values = [conv.visit(t) for t in p.bound.elts]
                 elif p.bound is not None:
                     bound = TypeConverter(self.errors, line=p.lineno).visit(p.bound)
                 explicit_type_params.append(TypeParam(p.name, TYPE_VAR_KIND, bound, values))
@@ -2041,8 +2049,10 @@ class TypeConverter:
                 sliceval.col_offset = sliceval.lower.col_offset
         else:
             assert isinstance(n.slice, ast3.ExtSlice)
-            dims = copy.deepcopy(n.slice.dims)
+            dims = cast(List[ast3.expr], copy.deepcopy(n.slice.dims))
             for s in dims:
+                # These fields don't actually have a col_offset attribute but we add
+                # it manually.
                 if getattr(s, "col_offset", None) is None:
                     if isinstance(s, ast3.Index):
                         s.col_offset = s.value.col_offset

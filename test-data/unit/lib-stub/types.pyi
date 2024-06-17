@@ -15,3 +15,6 @@ if sys.version_info >= (3, 10):
 
     class NoneType:
         ...
+
+    class UnionType:
+        ...
