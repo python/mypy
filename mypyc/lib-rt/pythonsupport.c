@@ -37,7 +37,7 @@ CPyLong_AsSsize_tAndOverflow_(PyObject *vv, int *overflow)
         }
     }
     /* Haven't lost any bits, but casting to long requires extra
-     * care (see comment above).
+     * care.
      */
     if (x <= (size_t)CPY_TAGGED_MAX) {
         res = (Py_ssize_t)x * sign;
@@ -86,7 +86,7 @@ CPyLong_AsSsize_tAndOverflow_(PyObject *vv, int *overflow)
         }
     }
     /* Haven't lost any bits, but casting to long requires extra
-     * care (see comment above).
+     * care.
      */
     if (x <= (size_t)CPY_TAGGED_MAX) {
         res = (Py_ssize_t)x * sign;
