@@ -1612,5 +1612,5 @@ type C2 = None | A1
 
 type D1 = Any | None
 type D2 = None | Any
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/type.pyi]
 [typing fixtures/typing-full.pyi]
