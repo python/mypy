@@ -7908,25 +7908,14 @@ def is_unsafe_overlapping_overload_signatures(
                 )
             ):
                 continue
-            if not partial_only or (
-                not is_callable_compatible(
-                    sig_variant,
-                    other_variant,
-                    is_compat=is_subset_no_promote,
-                    check_args_covariantly=False,
-                    is_proper_subtype=False,
-                    ignore_return=True,
-                    allow_partial_overlap=True,
-                )
-                or not is_callable_compatible(
-                    other_variant,
-                    sig_variant,
-                    is_compat=is_subset_no_promote,
-                    check_args_covariantly=True,
-                    is_proper_subtype=False,
-                    ignore_return=True,
-                    allow_partial_overlap=True,
-                )
+            if not partial_only or not is_callable_compatible(
+                other_variant,
+                sig_variant,
+                is_compat=is_subset_no_promote,
+                check_args_covariantly=True,
+                is_proper_subtype=False,
+                ignore_return=True,
+                allow_partial_overlap=True,
             ):
                 return True
     return False
