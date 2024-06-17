@@ -4341,6 +4341,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             left_type.upper_bound, "__getitem__"
         ):
             return self.visit_index_with_type(left_type.upper_bound, e, original_type)
+        elif (
+            isinstance(left_type, FunctionLike)
+            and left_type.is_type_obj()
+        ):
+            return self.named_type("types.GenericAlias")
         else:
             result, method_type = self.check_method_call_by_name(
                 "__getitem__", left_type, [e.index], [ARG_POS], e, original_type=original_type
