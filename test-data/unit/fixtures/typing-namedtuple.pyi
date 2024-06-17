@@ -1,6 +1,8 @@
+class _SpecialForm: pass
+
 TypeVar = 0
 Generic = 0
-Any = 0
+Any = object()
 overload = 0
 Type = 0
 Literal = 0
