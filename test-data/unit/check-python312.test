@@ -1591,3 +1591,26 @@ c: E[str]
 d: E[int]  # E: Type argument "int" of "E" must be a subtype of "str"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testPEP695TypeAliasWithDifferentTargetTypes]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+import types  # We need GenericAlias from here, and test stubs don't bring in 'types'
+from typing import Any, Callable
+
+type A1 = type[int]
+type A2 = type[int] | None
+type A3 = None | type[int]
+type A4 = type[Any]
+
+type B1[**P, R] = Callable[P, R] | None
+type B2[**P, R] = None | Callable[P, R]
+type B3 = Callable[[str], int]
+type B4 = Callable[..., int]
+
+type C1 = A1 | None
+type C2 = None | A1
+
+type D1 = Any | None
+type D2 = None | Any
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
