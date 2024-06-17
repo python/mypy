@@ -4005,10 +4005,16 @@ def f(a: Type[User]) -> int: pass  # E: Overloaded function signatures 1 and 2 o
 @overload
 def f(a: object) -> str: pass
 
+# Note: plain type is equivalent to Type[Any] so no error here
 @overload
-def g(a: Type[User]) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def g(a: Type[User]) -> int: pass
 @overload
 def g(a: type) -> str: pass
+
+@overload
+def h(a: Type[User]) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def h(a: Type[object]) -> str: pass
 [builtins fixtures/classmethod.pyi]
 [out]
 

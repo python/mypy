@@ -1600,7 +1600,7 @@ from typing_extensions import Concatenate, ParamSpec
 P = ParamSpec("P")
 
 @overload
-def command() -> Callable[[Callable[Concatenate[object, object, P], object]], None]:  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def command() -> Callable[[Callable[Concatenate[object, object, P], object]], None]:
     ...
 
 @overload
