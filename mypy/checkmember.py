@@ -1064,7 +1064,14 @@ def analyze_class_attribute_access(
             # In the above example this means that we infer following types:
             #     C.x -> Any
             #     C[int].x -> int
-            t = get_proper_type(expand_self_type(node.node, t, itype))
+            mx_self_type = get_proper_type(mx.self_type)
+            if isinstance(mx_self_type, CallableType):
+                self_type = mx_self_type.ret_type
+            elif isinstance(mx_self_type, TypeType):
+                self_type = mx_self_type.item
+            else:
+                self_type = itype
+            t = get_proper_type(expand_self_type(node.node, t, self_type))
             t = erase_typevars(expand_type_by_instance(t, isuper), {tv.id for tv in def_vars})
 
         is_classmethod = (is_decorated and cast(Decorator, node.node).func.is_class) or (

@@ -334,3 +334,21 @@ class C:
 c:C
 c.foo()  # E: Too few arguments \
          # N: "foo" is considered instance variable, to make it class variable use ClassVar[...]
+[case testClassVarSelfThroughTypeVar]
+from typing import TypeVar, Generic, ClassVar, Self, Type
+
+M = TypeVar("M", bound="B", covariant=True)
+
+class Related(Generic[M]):
+    def get(self) -> M: ...
+
+class B:
+    objects: ClassVar[Related[Self]] = Related()
+
+def of_m(cls: Type[M]) -> M:
+    return cls.objects.get()
+
+class C(B): pass
+
+reveal_type(of_m(C))  # N: Revealed type is "__main__.C"
+[builtins fixtures/type.pyi]
