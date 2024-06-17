@@ -579,8 +579,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                             if tvar.variance == VARIANCE_NOT_READY and not tried_infer:
                                 infer_class_variances(right.type)
                                 tried_infer = True
-                            if self.subtype_context.always_covariant:
-                                # TODO: should we use bi-variant instead?
+                            if self.subtype_context.always_covariant and tvar.variance == INVARIANT:
                                 variance = COVARIANT
                             else:
                                 variance = tvar.variance
