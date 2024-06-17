@@ -129,6 +129,9 @@ init_subclass(PyTypeObject *type, PyObject *kwds)
     return 0;
 }
 
+Py_ssize_t
+CPyLong_AsSsize_tAndOverflow_(PyObject *vv, int *overflow);
+
 #if CPY_3_12_FEATURES
 
 static inline Py_ssize_t
@@ -136,10 +139,8 @@ CPyLong_AsSsize_tAndOverflow(PyObject *vv, int *overflow)
 {
     /* This version by Tim Peters */
     PyLongObject *v = (PyLongObject *)vv;
-    size_t x, prev;
     Py_ssize_t res;
     Py_ssize_t i;
-    int sign;
 
     *overflow = 0;
 
@@ -154,35 +155,12 @@ CPyLong_AsSsize_tAndOverflow(PyObject *vv, int *overflow)
     } else if (i == ((1 << CPY_NON_SIZE_BITS) | CPY_SIGN_NEGATIVE)) {
         res = -(sdigit)CPY_LONG_DIGIT(v, 0);
     } else {
-        sign = 1;
-        x = 0;
-        if (i & CPY_SIGN_NEGATIVE) {
-            sign = -1;
-        }
-        i >>= CPY_NON_SIZE_BITS;
-        while (--i >= 0) {
-            prev = x;
-            x = (x << PyLong_SHIFT) + CPY_LONG_DIGIT(v, i);
-            if ((x >> PyLong_SHIFT) != prev) {
-                *overflow = sign;
-                goto exit;
-            }
-        }
-        /* Haven't lost any bits, but casting to long requires extra
-         * care (see comment above).
-         */
-        if (x <= (size_t)CPY_TAGGED_MAX) {
-            res = (Py_ssize_t)x * sign;
-        }
-        else if (sign < 0 && x == CPY_TAGGED_ABS_MIN) {
-            res = CPY_TAGGED_MIN;
-        }
-        else {
-            *overflow = sign;
-            /* res is already set to -1 */
-        }
+        // Slow path is moved to a non-inline helper function to
+        // limit size of generated code
+        int overflow_local;
+        res = CPyLong_AsSsize_tAndOverflow_(vv, &overflow_local);
+        *overflow = overflow_local;
     }
-  exit:
     return res;
 }
 
@@ -204,10 +182,8 @@ CPyLong_AsSsize_tAndOverflow(PyObject *vv, int *overflow)
 {
     /* This version by Tim Peters */
     PyLongObject *v = (PyLongObject *)vv;
-    size_t x, prev;
     Py_ssize_t res;
     Py_ssize_t i;
-    int sign;
 
     *overflow = 0;
 
@@ -221,35 +197,12 @@ CPyLong_AsSsize_tAndOverflow(PyObject *vv, int *overflow)
     } else if (i == -1) {
         res = -(sdigit)CPY_LONG_DIGIT(v, 0);
     } else {
-        sign = 1;
-        x = 0;
-        if (i < 0) {
-            sign = -1;
-            i = -(i);
-        }
-        while (--i >= 0) {
-            prev = x;
-            x = (x << PyLong_SHIFT) + CPY_LONG_DIGIT(v, i);
-            if ((x >> PyLong_SHIFT) != prev) {
-                *overflow = sign;
-                goto exit;
-            }
-        }
-        /* Haven't lost any bits, but casting to long requires extra
-         * care (see comment above).
-         */
-        if (x <= (size_t)CPY_TAGGED_MAX) {
-            res = (Py_ssize_t)x * sign;
-        }
-        else if (sign < 0 && x == CPY_TAGGED_ABS_MIN) {
-            res = CPY_TAGGED_MIN;
-        }
-        else {
-            *overflow = sign;
-            /* res is already set to -1 */
-        }
+        // Slow path is moved to a non-inline helper function to
+        // limit size of generated code
+        int overflow_local;
+        res = CPyLong_AsSsize_tAndOverflow_(vv, &overflow_local);
+        *overflow = overflow_local;
     }
-  exit:
     return res;
 }
 
