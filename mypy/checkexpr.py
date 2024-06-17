@@ -4346,6 +4346,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             and left_type.is_type_obj()
         ):
             return self.named_type("types.GenericAlias")
+        elif isinstance(left_type, Instance) and left_type.type.fullname == "typing._SpecialForm":
+            # Allow special forms to be indexed and used to create union types
+            return self.named_type("typing._SpecialForm")
         else:
             result, method_type = self.check_method_call_by_name(
                 "__getitem__", left_type, [e.index], [ARG_POS], e, original_type=original_type
