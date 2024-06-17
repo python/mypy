@@ -5,8 +5,9 @@ T = TypeVar('T')
 class object:
     def __init__(self) -> None: pass
 
-class type:
+class type(Generic[T]):
     def __init__(self, x) -> None: pass
+    def __or__(self, other: type) -> type: pass
 
 class tuple(Generic[T]): pass
 

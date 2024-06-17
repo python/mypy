@@ -58,6 +58,7 @@ setup(
                 "list_ops.c",
                 "exc_ops.c",
                 "generic_ops.c",
+                "pythonsupport.c",
             ],
             depends=["CPy.h", "mypyc_util.h", "pythonsupport.h"],
             extra_compile_args=["-Wno-unused-function", "-Wno-sign-compare"] + compile_args,

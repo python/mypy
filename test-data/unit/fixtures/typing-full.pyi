@@ -10,8 +10,11 @@ from abc import abstractmethod, ABCMeta
 
 class GenericMeta(type): pass
 
-class _SpecialForm: ...
-class TypeVar: ...
+class _SpecialForm:
+    def __getitem__(self, index: Any) -> Any: ...
+class TypeVar:
+    def __init__(self, name, *args, bound=None): ...
+    def __or__(self, other): ...
 class ParamSpec: ...
 class TypeVarTuple: ...
 
@@ -19,12 +22,10 @@ def cast(t, o): ...
 def assert_type(o, t): ...
 overload = 0
 Any = 0
-Union = 0
 Optional = 0
 Generic = 0
 Protocol = 0
 Tuple = 0
-Callable = 0
 _promote = 0
 Type = 0
 no_type_check = 0
@@ -36,6 +37,8 @@ NoReturn = 0
 NewType = 0
 Self = 0
 Unpack = 0
+Callable: _SpecialForm
+Union: _SpecialForm
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
@@ -211,3 +214,5 @@ class TypeAliasType:
     def __init__(
         self, name: str, value: Any, *, type_params: Tuple[Union[TypeVar, ParamSpec, TypeVarTuple], ...] = ()
     ) -> None: ...
+
+    def __or__(self, other: Any) -> Any: ...

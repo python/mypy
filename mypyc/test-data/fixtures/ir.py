@@ -45,6 +45,7 @@ class object:
 
 class type:
     def __init__(self, o: object) -> None: ...
+    def __or__(self, o: object) -> Any: ...
     __name__ : str
     __annotations__: Dict[str, Any]
 

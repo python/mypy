@@ -189,7 +189,7 @@ def g(x: int | str | tuple[int, str] | C) -> None:
 # flags: --python-version 3.9
 from typing import Union
 def f(x: Union[int, str, None]) -> None:
-    if isinstance(x, int | str): # E: Unsupported left operand type for | ("Type[int]")
+    if isinstance(x, int | str):
         reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
     else:
         reveal_type(x)  # N: Revealed type is "None"

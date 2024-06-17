@@ -75,6 +75,7 @@ from typing import Union as B
 from builtins import tuple as B
 
 [builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 ==
 main:4: error: Incompatible types in assignment (expression has type "int", variable has type "tuple[int, str]")

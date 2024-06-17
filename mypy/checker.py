@@ -125,6 +125,7 @@ from mypy.nodes import (
     TryStmt,
     TupleExpr,
     TypeAlias,
+    TypeAliasStmt,
     TypeInfo,
     TypeVarExpr,
     UnaryExpr,
@@ -5289,6 +5290,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     assert isinstance(node, Var)
                     if node not in inferred_types or not is_subtype(typ, inferred_types[node]):
                         del type_map[expr]
+
+    def visit_type_alias_stmt(self, o: TypeAliasStmt) -> None:
+        self.expr_checker.accept(o.value)
 
     def make_fake_typeinfo(
         self,
