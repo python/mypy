@@ -2120,7 +2120,7 @@ _testPEP695VarianceInference.py:17: error: Incompatible types in assignment (exp
 
 [case testPEP695TypeAliasWithDifferentTargetTypes]
 # flags: --python-version=3.12 --enable-incomplete-feature=NewGenericSyntax
-from typing import Any, Callable, List, Literal, TypedDict, overload
+from typing import Any, Callable, List, Literal, TypedDict, overload, TypeAlias, TypeVar
 
 class C[T]: pass
 
@@ -2134,6 +2134,10 @@ class O[T]:
 
 class TD(TypedDict):
     x: int
+
+S = TypeVar("S")
+A = list[S]
+B: TypeAlias = list[S]
 
 type A1 = type[int]
 type A2 = type[int] | None
@@ -2183,3 +2187,8 @@ type J3[*Ts] = tuple[*Ts]
 type J4[T] = J1[T] | None
 type J5[T] = None | J1[T]
 type J6[*Ts] = J3[*Ts] | None
+
+type K1 = A[int] | None
+type K2 = None | A[int]
+type K3 = B[int] | None
+type K4 = None | B[int]
