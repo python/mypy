@@ -1781,9 +1781,9 @@ C = str | int
 D: TypeAlias = str | int
 [out]
 _testTypeAliasNotSupportedWithNewStyleUnion.py:3: error: Invalid type alias: expression is not a valid type
-_testTypeAliasNotSupportedWithNewStyleUnion.py:3: error: The type "Type[type]" is not generic and not indexable
+_testTypeAliasNotSupportedWithNewStyleUnion.py:3: error: Unsupported left operand type for | ("<typing special form>")
 _testTypeAliasNotSupportedWithNewStyleUnion.py:4: error: Invalid type alias: expression is not a valid type
-_testTypeAliasNotSupportedWithNewStyleUnion.py:4: error: The type "Type[type]" is not generic and not indexable
+_testTypeAliasNotSupportedWithNewStyleUnion.py:4: error: Unsupported left operand type for | ("Type[str]")
 _testTypeAliasNotSupportedWithNewStyleUnion.py:5: error: Invalid type alias: expression is not a valid type
 _testTypeAliasNotSupportedWithNewStyleUnion.py:5: error: Unsupported left operand type for | ("Type[str]")
 _testTypeAliasNotSupportedWithNewStyleUnion.py:6: error: Invalid type alias: expression is not a valid type
@@ -2117,3 +2117,69 @@ def func(
     a2 = action  # Error
 [out]
 _testPEP695VarianceInference.py:17: error: Incompatible types in assignment (expression has type "Job[None]", variable has type "Job[int]")
+
+[case testPEP695TypeAliasWithDifferentTargetTypes]
+# flags: --python-version=3.12 --enable-incomplete-feature=NewGenericSyntax
+from typing import Any, Callable, List, Literal, TypedDict, overload
+
+class C[T]: pass
+
+class O[T]:
+    @overload
+    def __init__(self) -> None: ...
+    @overload
+    def __init__(self, x: int) -> None: ...
+    def __init__(self, x: int = 0) -> None:
+        pass
+
+class TD(TypedDict):
+    x: int
+
+type A1 = type[int]
+type A2 = type[int] | None
+type A3 = None | type[int]
+type A4 = type[Any]
+type A5 = type[C] | None
+type A6 = None | type[C]
+type A7 = type[O] | None
+type A8 = None | type[O]
+
+type B1[**P, R] = Callable[P, R] | None
+type B2[**P, R] = None | Callable[P, R]
+type B3 = Callable[[str], int]
+type B4 = Callable[..., int]
+
+type C1 = A1 | None
+type C2 = None | A1
+
+type D1 = Any | None
+type D2 = None | Any
+
+type E1 = List[int]
+type E2 = List[int] | None
+type E3 = None | List[int]
+
+type F1 = Literal[1]
+type F2 = Literal['x'] | None
+type F3 = None | Literal[True]
+
+type G1 = tuple[int, Any]
+type G2 = tuple[int, Any] | None
+type G3 = None | tuple[int, Any]
+
+type H1 = TD
+type H2 = TD | None
+type H3 = None | TD
+
+type I1 = C[int]
+type I2 = C[Any] | None
+type I3 = None | C[TD]
+type I4 = O[int] | None
+type I5 = None | O[int]
+
+type J1[T] = T | None
+type J2[T] = None | T
+type J3[*Ts] = tuple[*Ts]
+type J4[T] = J1[T] | None
+type J5[T] = None | J1[T]
+type J6[*Ts] = J3[*Ts] | None

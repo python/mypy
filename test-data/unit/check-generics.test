@@ -460,6 +460,7 @@ class A: pass
 a[A]()  # E: Value of type "A" is not indexable
 A[A]()  # E: The type "Type[A]" is not generic and not indexable
 [builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testTypeApplicationArgTypes]
 from typing import TypeVar, Generic
