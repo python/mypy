@@ -33,7 +33,6 @@ Type = 0
 no_type_check = 0
 ClassVar = 0
 Final = 0
-Literal = 0
 TypedDict = 0
 NoReturn = 0
 NewType = 0
@@ -41,6 +40,7 @@ Self = 0
 Unpack = 0
 Callable: _SpecialForm
 Union: _SpecialForm
+Literal: _SpecialForm
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)

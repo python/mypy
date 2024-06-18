@@ -1595,7 +1595,7 @@ d: E[int]  # E: Type argument "int" of "E" must be a subtype of "str"
 [case testPEP695TypeAliasWithDifferentTargetTypes]
 # flags: --enable-incomplete-feature=NewGenericSyntax
 import types  # We need GenericAlias from here, and test stubs don't bring in 'types'
-from typing import Any, Callable, List
+from typing import Any, Callable, List, Literal
 
 type A1 = type[int]
 type A2 = type[int] | None
@@ -1616,5 +1616,13 @@ type D2 = None | Any
 type E1 = List[int]
 type E2 = List[int] | None
 type E3 = None | List[int]
+
+type F1 = Literal[1]
+type F2 = Literal['x'] | None
+type F3 = None | Literal[True]
+
+type G1 = tuple[int, Any]
+type G2 = tuple[int, Any] | None
+type G3 = None | tuple[int, Any]
 [builtins fixtures/type.pyi]
 [typing fixtures/typing-full.pyi]
