@@ -13,7 +13,7 @@ class object:
 
 class list(Generic[T]): pass
 
-class type(Generic[T]):
+class type:
     __name__: str
     def __call__(self, *args: Any, **kwargs: Any) -> Any: pass
     def __or__(self, other: Union[type, None]) -> type: pass
