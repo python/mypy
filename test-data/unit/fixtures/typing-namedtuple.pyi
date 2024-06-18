@@ -1,5 +1,3 @@
-class _SpecialForm: pass
-
 TypeVar = 0
 Generic = 0
 Any = object()
@@ -28,3 +26,5 @@ class NamedTuple(tuple[Any, ...]):
     def __init__(self, typename: str, fields: Iterable[tuple[str, Any]] = ...) -> None: ...
     @overload
     def __init__(self, typename: str, fields: None = None, **kwargs: Any) -> None: ...
+
+class _SpecialForm: pass
