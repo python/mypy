@@ -1543,3 +1543,51 @@ a: A
 reveal_type(a)  # N: Revealed type is "builtins.list[Any]"
 b: B
 reveal_type(b)  # N: Revealed type is "Any"
+
+[case testPEP695GenericNamedTuple]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+from typing import NamedTuple
+
+# Invariant because of the signature of the generated _replace method
+class N[T](NamedTuple):
+    x: T
+    y: int
+
+a: N[object]
+reveal_type(a.x)  # N: Revealed type is "builtins.object"
+b: N[int]
+reveal_type(b.x)  # N: Revealed type is "builtins.int"
+if int():
+    a = b  # E: Incompatible types in assignment (expression has type "N[int]", variable has type "N[object]")
+if int():
+    b = a  # E: Incompatible types in assignment (expression has type "N[object]", variable has type "N[int]")
+
+class M[T: (int, str)](NamedTuple):
+    x: T
+
+c: M[int]
+d: M[str]
+e: M[bool]  # E: Value of type variable "T" of "M" cannot be "bool"
+
+[builtins fixtures/tuple.pyi]
+
+[case testPEP695GenericTypedDict]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+from typing import TypedDict
+
+class D[T](TypedDict):
+    x: T
+    y: int
+
+class E[T: str](TypedDict):
+    x: T
+    y: int
+
+a: D[object]
+reveal_type(a["x"])  # N: Revealed type is "builtins.object"
+b: D[int]
+reveal_type(b["x"])  # N: Revealed type is "builtins.int"
+c: E[str]
+d: E[int]  # E: Type argument "int" of "E" must be a subtype of "str"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
