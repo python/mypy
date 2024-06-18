@@ -1274,7 +1274,7 @@ f('x')() # E: "str" not callable
 f(1)() # E: "bool" not callable
 f(1.1) # E: No overload variant of "f" matches argument type "float" \
        # N: Possible overload variants: \
-       # N:     def [T <: str] f(x: T) -> T \
+       # N:     def [T: str] f(x: T) -> T \
        # N:     def f(x: int) -> bool
 f(mystr())() # E: "mystr" not callable
 [builtins fixtures/primitives.pyi]
@@ -1296,8 +1296,8 @@ def g(x: U, y: V) -> None:
     f(x)() # E: "mystr" not callable
     f(y) # E: No overload variant of "f" matches argument type "V" \
          # N: Possible overload variants: \
-         # N:     def [T <: str] f(x: T) -> T \
-         # N:     def [T <: str] f(x: List[T]) -> None
+         # N:     def [T: str] f(x: T) -> T \
+         # N:     def [T: str] f(x: List[T]) -> None
     a = f([x])
     reveal_type(a)  # N: Revealed type is "None"
     f([y]) # E: Value of type variable "T" of "f" cannot be "V"
@@ -1348,7 +1348,7 @@ f(b'1')() # E: "str" not callable
 f(1.0) # E: No overload variant of "f" matches argument type "float" \
        # N: Possible overload variants: \
        # N:     def f(x: int) -> int \
-       # N:     def [AnyStr in (bytes, str)] f(x: AnyStr) -> str
+       # N:     def [AnyStr: (bytes, str)] f(x: AnyStr) -> str
 
 @overload
 def g(x: AnyStr, *a: AnyStr) -> None: pass
@@ -4944,7 +4944,7 @@ x: Any
 reveal_type(attr(x)) # N: Revealed type is "Any"
 attr("hi", 1)  # E: No overload variant of "attr" matches argument types "str", "int" \
                # N: Possible overload variants: \
-               # N:     def [T in (int, float)] attr(default: T = ..., blah: int = ...) -> T \
+               # N:     def [T: (int, float)] attr(default: T = ..., blah: int = ...) -> T \
                # N:     def attr(default: Any = ...) -> int
 [file lib.pyi]
 from typing import overload, Any, TypeVar
@@ -4967,7 +4967,7 @@ x: Any
 reveal_type(attr(x)) # N: Revealed type is "Any"
 attr("hi", 1)  # E: No overload variant of "attr" matches argument types "str", "int" \
                # N: Possible overload variants: \
-               # N:     def [T <: int] attr(default: T = ..., blah: int = ...) -> T \
+               # N:     def [T: int] attr(default: T = ..., blah: int = ...) -> T \
                # N:     def attr(default: Any = ...) -> int
 [file lib.pyi]
 from typing import overload, TypeVar, Any
