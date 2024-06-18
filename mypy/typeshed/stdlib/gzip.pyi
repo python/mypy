@@ -97,7 +97,7 @@ class GzipFile(_compression.BaseStream):
         mode: _ReadBinaryMode,
         compresslevel: int = 9,
         fileobj: _ReadableFileobj | None = None,
-        mtime: float | None = None,
+        mtime: float | int | None = None,
     ) -> None: ...
     @overload
     def __init__(
@@ -106,7 +106,7 @@ class GzipFile(_compression.BaseStream):
         mode: _ReadBinaryMode,
         compresslevel: int = 9,
         fileobj: _ReadableFileobj | None = None,
-        mtime: float | None = None,
+        mtime: float | int | None = None,
     ) -> None: ...
     @overload
     def __init__(
@@ -115,7 +115,7 @@ class GzipFile(_compression.BaseStream):
         mode: _WriteBinaryMode,
         compresslevel: int = 9,
         fileobj: _WritableFileobj | None = None,
-        mtime: float | None = None,
+        mtime: float | int | None = None,
     ) -> None: ...
     @overload
     def __init__(
@@ -124,7 +124,7 @@ class GzipFile(_compression.BaseStream):
         mode: _WriteBinaryMode,
         compresslevel: int = 9,
         fileobj: _WritableFileobj | None = None,
-        mtime: float | None = None,
+        mtime: float | int | None = None,
     ) -> None: ...
     @overload
     def __init__(
@@ -133,7 +133,7 @@ class GzipFile(_compression.BaseStream):
         mode: str | None = None,
         compresslevel: int = 9,
         fileobj: _ReadableFileobj | _WritableFileobj | None = None,
-        mtime: float | None = None,
+        mtime: float | int | None = None,
     ) -> None: ...
     if sys.version_info < (3, 12):
         @property
@@ -156,5 +156,5 @@ class GzipFile(_compression.BaseStream):
 class _GzipReader(_compression.DecompressReader):
     def __init__(self, fp: _ReadableFileobj) -> None: ...
 
-def compress(data: SizedBuffer, compresslevel: int = 9, *, mtime: float | None = None) -> bytes: ...
+def compress(data: SizedBuffer, compresslevel: int = 9, *, mtime: float | int | None = None) -> bytes: ...
 def decompress(data: ReadableBuffer) -> bytes: ...

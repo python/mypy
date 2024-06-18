@@ -6,7 +6,7 @@ from typing import Any, Final, final
 
 class Profiler:
     def __init__(
-        self, timer: Callable[[], float] | None = None, timeunit: float = 0.0, subcalls: bool = True, builtins: bool = True
+        self, timer: Callable[[], float] | None = None, timeunit: float | int = 0.0, subcalls: bool = True, builtins: bool = True
     ) -> None: ...
     def getstats(self) -> list[profiler_entry]: ...
     def enable(self, subcalls: bool = True, builtins: bool = True) -> None: ...
@@ -20,8 +20,8 @@ class profiler_entry(structseq[Any], tuple[CodeType | str, int, int, float, floa
     code: CodeType | str
     callcount: int
     reccallcount: int
-    totaltime: float
-    inlinetime: float
+    totaltime: float | int
+    inlinetime: float | int
     calls: list[profiler_subentry]
 
 @final
@@ -31,5 +31,5 @@ class profiler_subentry(structseq[Any], tuple[CodeType | str, int, int, float, f
     code: CodeType | str
     callcount: int
     reccallcount: int
-    totaltime: float
-    inlinetime: float
+    totaltime: float | int
+    inlinetime: float | int

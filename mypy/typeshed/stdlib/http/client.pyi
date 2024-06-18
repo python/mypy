@@ -150,7 +150,7 @@ class HTTPConnection:
     debuglevel: int
     default_port: int  # undocumented
     response_class: type[HTTPResponse]  # undocumented
-    timeout: float | None
+    timeout: float | int | None
     host: str
     port: int
     sock: socket | Any  # can be `None` if `.connect()` was not called
@@ -158,7 +158,7 @@ class HTTPConnection:
         self,
         host: str,
         port: int | None = None,
-        timeout: float | None = ...,
+        timeout: float | int | None = ...,
         source_address: tuple[str, int] | None = None,
         blocksize: int = 8192,
     ) -> None: ...
@@ -193,7 +193,7 @@ class HTTPSConnection(HTTPConnection):
             host: str,
             port: int | None = None,
             *,
-            timeout: float | None = ...,
+            timeout: float | int | None = ...,
             source_address: tuple[str, int] | None = None,
             context: ssl.SSLContext | None = None,
             blocksize: int = 8192,
@@ -205,7 +205,7 @@ class HTTPSConnection(HTTPConnection):
             port: int | None = None,
             key_file: str | None = None,
             cert_file: str | None = None,
-            timeout: float | None = ...,
+            timeout: float | int | None = ...,
             source_address: tuple[str, int] | None = None,
             *,
             context: ssl.SSLContext | None = None,

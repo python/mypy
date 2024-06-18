@@ -31,12 +31,7 @@ from mypy.types import MYPYC_NATIVE_INT_NAMES, Instance, ProperType
 # Note that the bytearray -> bytes promotion is a little unsafe
 # as some functions only accept bytes objects. Here convenience
 # trumps safety.
-TYPE_PROMOTIONS: Final = {
-    "builtins.int": "float",
-    "builtins.float": "complex",
-    "builtins.bytearray": "bytes",
-    "builtins.memoryview": "bytes",
-}
+TYPE_PROMOTIONS: Final = {"builtins.bytearray": "bytes", "builtins.memoryview": "bytes"}
 
 
 def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: Errors) -> None:

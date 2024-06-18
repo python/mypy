@@ -323,7 +323,7 @@ class LogRecord:
     # (see https://bugs.python.org/issue44473)
     args: _ArgsType | None
     asctime: str
-    created: float
+    created: float | int
     exc_info: _SysExcInfoType | None
     exc_text: str | None
     filename: str
@@ -332,7 +332,7 @@ class LogRecord:
     levelno: int
     lineno: int
     module: str
-    msecs: float
+    msecs: float | int
     # Only created when logging.Formatter.format is called. See #6132.
     message: str
     msg: str | Any  # The runtime accepts any object, but will be a str in 99% of cases
@@ -340,7 +340,7 @@ class LogRecord:
     pathname: str
     process: int | None
     processName: str | None
-    relativeCreated: float
+    relativeCreated: float | int
     stack_info: str | None
     thread: int | None
     threadName: str | None

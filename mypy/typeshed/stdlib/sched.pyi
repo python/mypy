@@ -9,7 +9,7 @@ _ActionCallback: TypeAlias = Callable[..., Any]
 
 if sys.version_info >= (3, 10):
     class Event(NamedTuple):
-        time: float
+        time: float | int
         priority: Any
         sequence: int
         action: _ActionCallback
@@ -18,7 +18,7 @@ if sys.version_info >= (3, 10):
 
 else:
     class Event(NamedTuple):
-        time: float
+        time: float | int
         priority: Any
         action: _ActionCallback
         argument: tuple[Any, ...]
@@ -30,10 +30,10 @@ class scheduler:
 
     def __init__(self, timefunc: Callable[[], float] = ..., delayfunc: Callable[[float], object] = ...) -> None: ...
     def enterabs(
-        self, time: float, priority: Any, action: _ActionCallback, argument: tuple[Any, ...] = (), kwargs: dict[str, Any] = ...
+        self, time: float | int, priority: Any, action: _ActionCallback, argument: tuple[Any, ...] = (), kwargs: dict[str, Any] = ...
     ) -> Event: ...
     def enter(
-        self, delay: float, priority: Any, action: _ActionCallback, argument: tuple[Any, ...] = (), kwargs: dict[str, Any] = ...
+        self, delay: float | int, priority: Any, action: _ActionCallback, argument: tuple[Any, ...] = (), kwargs: dict[str, Any] = ...
     ) -> Event: ...
     def run(self, blocking: bool = True) -> float | None: ...
     def cancel(self, event: Event) -> None: ...

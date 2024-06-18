@@ -31,7 +31,7 @@ class FTP:
     sock: socket | None
     welcome: str | None
     passiveserver: int
-    timeout: float | None
+    timeout: float | int | None
     af: int
     lastresp: str
     file: TextIO | None
@@ -48,7 +48,7 @@ class FTP:
             user: str = "",
             passwd: str = "",
             acct: str = "",
-            timeout: float | None = ...,
+            timeout: float | int | None = ...,
             source_address: tuple[str, int] | None = None,
             *,
             encoding: str = "utf-8",
@@ -60,12 +60,12 @@ class FTP:
             user: str = "",
             passwd: str = "",
             acct: str = "",
-            timeout: float | None = ...,
+            timeout: float | int | None = ...,
             source_address: tuple[str, int] | None = None,
         ) -> None: ...
 
     def connect(
-        self, host: str = "", port: int = 0, timeout: float = -999, source_address: tuple[str, int] | None = None
+        self, host: str = "", port: int = 0, timeout: float | int = -999, source_address: tuple[str, int] | None = None
     ) -> str: ...
     def getwelcome(self) -> str: ...
     def set_debuglevel(self, level: int) -> None: ...
@@ -127,7 +127,7 @@ class FTP_TLS(FTP):
             acct: str = "",
             *,
             context: SSLContext | None = None,
-            timeout: float | None = ...,
+            timeout: float | int | None = ...,
             source_address: tuple[str, int] | None = None,
             encoding: str = "utf-8",
         ) -> None: ...
@@ -141,7 +141,7 @@ class FTP_TLS(FTP):
             keyfile: str | None = None,
             certfile: str | None = None,
             context: SSLContext | None = None,
-            timeout: float | None = ...,
+            timeout: float | int | None = ...,
             source_address: tuple[str, int] | None = None,
             *,
             encoding: str = "utf-8",
@@ -156,7 +156,7 @@ class FTP_TLS(FTP):
             keyfile: str | None = None,
             certfile: str | None = None,
             context: SSLContext | None = None,
-            timeout: float | None = ...,
+            timeout: float | int | None = ...,
             source_address: tuple[str, int] | None = None,
         ) -> None: ...
     ssl_version: int

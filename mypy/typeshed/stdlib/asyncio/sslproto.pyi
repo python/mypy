@@ -126,7 +126,7 @@ class SSLProtocol(_SSLProtocolBase):
             server_hostname: str | None = None,
             call_connection_made: bool = True,
             ssl_handshake_timeout: int | None = None,
-            ssl_shutdown_timeout: float | None = None,
+            ssl_shutdown_timeout: float | int | None = None,
         ) -> None: ...
     else:
         def __init__(

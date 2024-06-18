@@ -118,7 +118,7 @@ if sys.version_info >= (3, 11):
         errors: str | None = None,
         input: str | None = None,
         text: Literal[True],
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
         extra_groups: Iterable[str | int] | None = None,
@@ -152,7 +152,7 @@ if sys.version_info >= (3, 11):
         errors: str | None = None,
         input: str | None = None,
         text: bool | None = None,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
         extra_groups: Iterable[str | int] | None = None,
@@ -186,7 +186,7 @@ if sys.version_info >= (3, 11):
         errors: str,
         input: str | None = None,
         text: bool | None = None,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
         extra_groups: Iterable[str | int] | None = None,
@@ -221,7 +221,7 @@ if sys.version_info >= (3, 11):
         errors: str | None = None,
         input: str | None = None,
         text: bool | None = None,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
         extra_groups: Iterable[str | int] | None = None,
@@ -255,7 +255,7 @@ if sys.version_info >= (3, 11):
         errors: None = None,
         input: ReadableBuffer | None = None,
         text: Literal[False] | None = None,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
         extra_groups: Iterable[str | int] | None = None,
@@ -289,7 +289,7 @@ if sys.version_info >= (3, 11):
         errors: str | None = None,
         input: _InputString | None = None,
         text: bool | None = None,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
         extra_groups: Iterable[str | int] | None = None,
@@ -326,7 +326,7 @@ elif sys.version_info >= (3, 10):
         errors: str | None = None,
         input: str | None = None,
         text: Literal[True],
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
         extra_groups: Iterable[str | int] | None = None,
@@ -359,7 +359,7 @@ elif sys.version_info >= (3, 10):
         errors: str | None = None,
         input: str | None = None,
         text: bool | None = None,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
         extra_groups: Iterable[str | int] | None = None,
@@ -392,7 +392,7 @@ elif sys.version_info >= (3, 10):
         errors: str,
         input: str | None = None,
         text: bool | None = None,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
         extra_groups: Iterable[str | int] | None = None,
@@ -426,7 +426,7 @@ elif sys.version_info >= (3, 10):
         errors: str | None = None,
         input: str | None = None,
         text: bool | None = None,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
         extra_groups: Iterable[str | int] | None = None,
@@ -459,7 +459,7 @@ elif sys.version_info >= (3, 10):
         errors: None = None,
         input: ReadableBuffer | None = None,
         text: Literal[False] | None = None,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
         extra_groups: Iterable[str | int] | None = None,
@@ -492,7 +492,7 @@ elif sys.version_info >= (3, 10):
         errors: str | None = None,
         input: _InputString | None = None,
         text: bool | None = None,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
         extra_groups: Iterable[str | int] | None = None,
@@ -528,7 +528,7 @@ elif sys.version_info >= (3, 9):
         errors: str | None = None,
         input: str | None = None,
         text: Literal[True],
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
         extra_groups: Iterable[str | int] | None = None,
@@ -560,7 +560,7 @@ elif sys.version_info >= (3, 9):
         errors: str | None = None,
         input: str | None = None,
         text: bool | None = None,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
         extra_groups: Iterable[str | int] | None = None,
@@ -592,7 +592,7 @@ elif sys.version_info >= (3, 9):
         errors: str,
         input: str | None = None,
         text: bool | None = None,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
         extra_groups: Iterable[str | int] | None = None,
@@ -625,7 +625,7 @@ elif sys.version_info >= (3, 9):
         errors: str | None = None,
         input: str | None = None,
         text: bool | None = None,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
         extra_groups: Iterable[str | int] | None = None,
@@ -657,7 +657,7 @@ elif sys.version_info >= (3, 9):
         errors: None = None,
         input: ReadableBuffer | None = None,
         text: Literal[False] | None = None,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
         extra_groups: Iterable[str | int] | None = None,
@@ -689,7 +689,7 @@ elif sys.version_info >= (3, 9):
         errors: str | None = None,
         input: _InputString | None = None,
         text: bool | None = None,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
         extra_groups: Iterable[str | int] | None = None,
@@ -723,7 +723,7 @@ else:
         errors: str | None = None,
         input: str | None = None,
         text: Literal[True],
-        timeout: float | None = None,
+        timeout: float | int | None = None,
     ) -> CompletedProcess[str]: ...
     @overload
     def run(
@@ -751,7 +751,7 @@ else:
         errors: str | None = None,
         input: str | None = None,
         text: bool | None = None,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
     ) -> CompletedProcess[str]: ...
     @overload
     def run(
@@ -779,7 +779,7 @@ else:
         errors: str,
         input: str | None = None,
         text: bool | None = None,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
     ) -> CompletedProcess[str]: ...
     @overload
     def run(
@@ -808,7 +808,7 @@ else:
         errors: str | None = None,
         input: str | None = None,
         text: bool | None = None,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
     ) -> CompletedProcess[str]: ...
     @overload
     def run(
@@ -836,7 +836,7 @@ else:
         errors: None = None,
         input: ReadableBuffer | None = None,
         text: Literal[False] | None = None,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
     ) -> CompletedProcess[bytes]: ...
     @overload
     def run(
@@ -864,7 +864,7 @@ else:
         errors: str | None = None,
         input: _InputString | None = None,
         text: bool | None = None,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
     ) -> CompletedProcess[Any]: ...
 
 # Same args as Popen.__init__
@@ -889,7 +889,7 @@ if sys.version_info >= (3, 11):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         text: bool | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
@@ -920,7 +920,7 @@ elif sys.version_info >= (3, 10):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         text: bool | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
@@ -950,7 +950,7 @@ elif sys.version_info >= (3, 9):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         text: bool | None = None,
         user: str | int | None = None,
         group: str | int | None = None,
@@ -978,7 +978,7 @@ else:
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         text: bool | None = None,
     ) -> int: ...
 
@@ -1003,7 +1003,7 @@ if sys.version_info >= (3, 11):
         restore_signals: bool = True,
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
-        timeout: float | None = ...,
+        timeout: float | int | None = ...,
         *,
         text: bool | None = None,
         user: str | int | None = None,
@@ -1034,7 +1034,7 @@ elif sys.version_info >= (3, 10):
         restore_signals: bool = True,
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
-        timeout: float | None = ...,
+        timeout: float | int | None = ...,
         *,
         text: bool | None = None,
         user: str | int | None = None,
@@ -1064,7 +1064,7 @@ elif sys.version_info >= (3, 9):
         restore_signals: bool = True,
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
-        timeout: float | None = ...,
+        timeout: float | int | None = ...,
         *,
         text: bool | None = None,
         user: str | int | None = None,
@@ -1092,7 +1092,7 @@ else:
         restore_signals: bool = True,
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
-        timeout: float | None = ...,
+        timeout: float | int | None = ...,
         *,
         text: bool | None = None,
     ) -> int: ...
@@ -1118,7 +1118,7 @@ if sys.version_info >= (3, 11):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         input: _InputString | None = ...,
         encoding: str | None = None,
         errors: str | None = None,
@@ -1149,7 +1149,7 @@ if sys.version_info >= (3, 11):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         input: _InputString | None = ...,
         encoding: str,
         errors: str | None = None,
@@ -1180,7 +1180,7 @@ if sys.version_info >= (3, 11):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         input: _InputString | None = ...,
         encoding: str | None = None,
         errors: str,
@@ -1212,7 +1212,7 @@ if sys.version_info >= (3, 11):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         # where the real keyword only ones start
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         input: _InputString | None = ...,
         encoding: str | None = None,
         errors: str | None = None,
@@ -1243,7 +1243,7 @@ if sys.version_info >= (3, 11):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         input: _InputString | None = ...,
         encoding: None = None,
         errors: None = None,
@@ -1274,7 +1274,7 @@ if sys.version_info >= (3, 11):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         input: _InputString | None = ...,
         encoding: str | None = None,
         errors: str | None = None,
@@ -1308,7 +1308,7 @@ elif sys.version_info >= (3, 10):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         input: _InputString | None = ...,
         encoding: str | None = None,
         errors: str | None = None,
@@ -1338,7 +1338,7 @@ elif sys.version_info >= (3, 10):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         input: _InputString | None = ...,
         encoding: str,
         errors: str | None = None,
@@ -1368,7 +1368,7 @@ elif sys.version_info >= (3, 10):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         input: _InputString | None = ...,
         encoding: str | None = None,
         errors: str,
@@ -1399,7 +1399,7 @@ elif sys.version_info >= (3, 10):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         # where the real keyword only ones start
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         input: _InputString | None = ...,
         encoding: str | None = None,
         errors: str | None = None,
@@ -1429,7 +1429,7 @@ elif sys.version_info >= (3, 10):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         input: _InputString | None = ...,
         encoding: None = None,
         errors: None = None,
@@ -1459,7 +1459,7 @@ elif sys.version_info >= (3, 10):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         input: _InputString | None = ...,
         encoding: str | None = None,
         errors: str | None = None,
@@ -1492,7 +1492,7 @@ elif sys.version_info >= (3, 9):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         input: _InputString | None = ...,
         encoding: str | None = None,
         errors: str | None = None,
@@ -1521,7 +1521,7 @@ elif sys.version_info >= (3, 9):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         input: _InputString | None = ...,
         encoding: str,
         errors: str | None = None,
@@ -1550,7 +1550,7 @@ elif sys.version_info >= (3, 9):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         input: _InputString | None = ...,
         encoding: str | None = None,
         errors: str,
@@ -1580,7 +1580,7 @@ elif sys.version_info >= (3, 9):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         # where the real keyword only ones start
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         input: _InputString | None = ...,
         encoding: str | None = None,
         errors: str | None = None,
@@ -1609,7 +1609,7 @@ elif sys.version_info >= (3, 9):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         input: _InputString | None = ...,
         encoding: None = None,
         errors: None = None,
@@ -1638,7 +1638,7 @@ elif sys.version_info >= (3, 9):
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         input: _InputString | None = ...,
         encoding: str | None = None,
         errors: str | None = None,
@@ -1669,7 +1669,7 @@ else:
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         input: _InputString | None = ...,
         encoding: str | None = None,
         errors: str | None = None,
@@ -1694,7 +1694,7 @@ else:
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         input: _InputString | None = ...,
         encoding: str,
         errors: str | None = None,
@@ -1719,7 +1719,7 @@ else:
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         input: _InputString | None = ...,
         encoding: str | None = None,
         errors: str,
@@ -1745,7 +1745,7 @@ else:
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         # where the real keyword only ones start
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         input: _InputString | None = ...,
         encoding: str | None = None,
         errors: str | None = None,
@@ -1770,7 +1770,7 @@ else:
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         input: _InputString | None = ...,
         encoding: None = None,
         errors: None = None,
@@ -1795,7 +1795,7 @@ else:
         start_new_session: bool = False,
         pass_fds: Collection[int] = ...,
         *,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         input: _InputString | None = ...,
         encoding: str | None = None,
         errors: str | None = None,
@@ -1810,11 +1810,11 @@ class SubprocessError(Exception): ...
 
 class TimeoutExpired(SubprocessError):
     def __init__(
-        self, cmd: _CMD, timeout: float, output: str | bytes | None = None, stderr: str | bytes | None = None
+        self, cmd: _CMD, timeout: float | int, output: str | bytes | None = None, stderr: str | bytes | None = None
     ) -> None: ...
     # morally: _CMD
     cmd: Any
-    timeout: float
+    timeout: float | int
     # morally: str | bytes | None
     output: Any
     stdout: bytes | None
@@ -2546,11 +2546,11 @@ class Popen(Generic[AnyStr]):
         ) -> None: ...
 
     def poll(self) -> int | None: ...
-    def wait(self, timeout: float | None = None) -> int: ...
+    def wait(self, timeout: float | int | None = None) -> int: ...
     # morally the members of the returned tuple should be optional
     # TODO this should allow ReadableBuffer for Popen[bytes], but adding
     # overloads for that runs into a mypy bug (python/mypy#14070).
-    def communicate(self, input: AnyStr | None = None, timeout: float | None = None) -> tuple[AnyStr, AnyStr]: ...
+    def communicate(self, input: AnyStr | None = None, timeout: float | int | None = None) -> tuple[AnyStr, AnyStr]: ...
     def send_signal(self, sig: int) -> None: ...
     def terminate(self) -> None: ...
     def kill(self) -> None: ...

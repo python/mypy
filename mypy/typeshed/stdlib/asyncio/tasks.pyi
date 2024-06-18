@@ -78,11 +78,11 @@ FIRST_EXCEPTION = concurrent.futures.FIRST_EXCEPTION
 ALL_COMPLETED = concurrent.futures.ALL_COMPLETED
 
 if sys.version_info >= (3, 10):
-    def as_completed(fs: Iterable[_FutureLike[_T]], *, timeout: float | None = None) -> Iterator[Future[_T]]: ...
+    def as_completed(fs: Iterable[_FutureLike[_T]], *, timeout: float | int | None = None) -> Iterator[Future[_T]]: ...
 
 else:
     def as_completed(
-        fs: Iterable[_FutureLike[_T]], *, loop: AbstractEventLoop | None = None, timeout: float | None = None
+        fs: Iterable[_FutureLike[_T]], *, loop: AbstractEventLoop | None = None, timeout: float | int | None = None
     ) -> Iterator[Future[_T]]: ...
 
 @overload
@@ -339,37 +339,37 @@ def run_coroutine_threadsafe(coro: _FutureLike[_T], loop: AbstractEventLoop) -> 
 if sys.version_info >= (3, 10):
     def shield(arg: _FutureLike[_T]) -> Future[_T]: ...
     @overload
-    async def sleep(delay: float) -> None: ...
+    async def sleep(delay: float | int) -> None: ...
     @overload
-    async def sleep(delay: float, result: _T) -> _T: ...
-    async def wait_for(fut: _FutureLike[_T], timeout: float | None) -> _T: ...
+    async def sleep(delay: float | int, result: _T) -> _T: ...
+    async def wait_for(fut: _FutureLike[_T], timeout: float | int | None) -> _T: ...
 
 else:
     def shield(arg: _FutureLike[_T], *, loop: AbstractEventLoop | None = None) -> Future[_T]: ...
     @overload
-    async def sleep(delay: float, *, loop: AbstractEventLoop | None = None) -> None: ...
+    async def sleep(delay: float | int, *, loop: AbstractEventLoop | None = None) -> None: ...
     @overload
-    async def sleep(delay: float, result: _T, *, loop: AbstractEventLoop | None = None) -> _T: ...
-    async def wait_for(fut: _FutureLike[_T], timeout: float | None, *, loop: AbstractEventLoop | None = None) -> _T: ...
+    async def sleep(delay: float | int, result: _T, *, loop: AbstractEventLoop | None = None) -> _T: ...
+    async def wait_for(fut: _FutureLike[_T], timeout: float | int | None, *, loop: AbstractEventLoop | None = None) -> _T: ...
 
 if sys.version_info >= (3, 11):
     @overload
     async def wait(
-        fs: Iterable[_FT], *, timeout: float | None = None, return_when: str = "ALL_COMPLETED"
+        fs: Iterable[_FT], *, timeout: float | int | None = None, return_when: str = "ALL_COMPLETED"
     ) -> tuple[set[_FT], set[_FT]]: ...
     @overload
     async def wait(
-        fs: Iterable[Task[_T]], *, timeout: float | None = None, return_when: str = "ALL_COMPLETED"
+        fs: Iterable[Task[_T]], *, timeout: float | int | None = None, return_when: str = "ALL_COMPLETED"
     ) -> tuple[set[Task[_T]], set[Task[_T]]]: ...
 
 elif sys.version_info >= (3, 10):
     @overload
     async def wait(  # type: ignore[overload-overlap]
-        fs: Iterable[_FT], *, timeout: float | None = None, return_when: str = "ALL_COMPLETED"
+        fs: Iterable[_FT], *, timeout: float | int | None = None, return_when: str = "ALL_COMPLETED"
     ) -> tuple[set[_FT], set[_FT]]: ...
     @overload
     async def wait(
-        fs: Iterable[Awaitable[_T]], *, timeout: float | None = None, return_when: str = "ALL_COMPLETED"
+        fs: Iterable[Awaitable[_T]], *, timeout: float | int | None = None, return_when: str = "ALL_COMPLETED"
     ) -> tuple[set[Task[_T]], set[Task[_T]]]: ...
 
 else:
@@ -378,7 +378,7 @@ else:
         fs: Iterable[_FT],
         *,
         loop: AbstractEventLoop | None = None,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         return_when: str = "ALL_COMPLETED",
     ) -> tuple[set[_FT], set[_FT]]: ...
     @overload
@@ -386,7 +386,7 @@ else:
         fs: Iterable[Awaitable[_T]],
         *,
         loop: AbstractEventLoop | None = None,
-        timeout: float | None = None,
+        timeout: float | int | None = None,
         return_when: str = "ALL_COMPLETED",
     ) -> tuple[set[Task[_T]], set[Task[_T]]]: ...
 

@@ -30,16 +30,16 @@ if sys.version_info >= (3, 9):
     @dataclass(unsafe_hash=True)
     class FunctionProfile:
         ncalls: str
-        tottime: float
-        percall_tottime: float
-        cumtime: float
-        percall_cumtime: float
+        tottime: float | int
+        percall_tottime: float | int
+        cumtime: float | int
+        percall_cumtime: float | int
         file_name: str
         line_number: int
 
     @dataclass(unsafe_hash=True)
     class StatsProfile:
-        total_tt: float
+        total_tt: float | int
         func_profiles: dict[str, FunctionProfile]
 
 _SortArgDict: TypeAlias = dict[str, tuple[tuple[tuple[int, int], ...], str]]

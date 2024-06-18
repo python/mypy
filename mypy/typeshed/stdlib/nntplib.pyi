@@ -70,7 +70,7 @@ class NNTP:
         password: str | None = None,
         readermode: bool | None = None,
         usenetrc: bool = False,
-        timeout: float = ...,
+        timeout: float | int = ...,
     ) -> None: ...
     def __enter__(self) -> Self: ...
     def __exit__(self, *args: Unused) -> None: ...
@@ -121,5 +121,5 @@ class NNTP_SSL(NNTP):
         ssl_context: ssl.SSLContext | None = None,
         readermode: bool | None = None,
         usenetrc: bool = False,
-        timeout: float = ...,
+        timeout: float | int = ...,
     ) -> None: ...

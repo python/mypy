@@ -82,7 +82,7 @@ class SMTP:
     ehlo_resp: bytes | None
     does_esmtp: bool
     default_port: int
-    timeout: float
+    timeout: float | int
     esmtp_features: dict[str, str]
     command_encoding: str
     source_address: _SourceAddress | None
@@ -92,7 +92,7 @@ class SMTP:
         host: str = "",
         port: int = 0,
         local_hostname: str | None = None,
-        timeout: float = ...,
+        timeout: float | int = ...,
         source_address: _SourceAddress | None = None,
     ) -> None: ...
     def __enter__(self) -> Self: ...
@@ -165,7 +165,7 @@ class SMTP_SSL(SMTP):
             port: int = 0,
             local_hostname: str | None = None,
             *,
-            timeout: float = ...,
+            timeout: float | int = ...,
             source_address: _SourceAddress | None = None,
             context: SSLContext | None = None,
         ) -> None: ...
@@ -177,7 +177,7 @@ class SMTP_SSL(SMTP):
             local_hostname: str | None = None,
             keyfile: str | None = None,
             certfile: str | None = None,
-            timeout: float = ...,
+            timeout: float | int = ...,
             source_address: _SourceAddress | None = None,
             context: SSLContext | None = None,
         ) -> None: ...
@@ -192,7 +192,7 @@ class LMTP(SMTP):
             port: int = 2003,
             local_hostname: str | None = None,
             source_address: _SourceAddress | None = None,
-            timeout: float = ...,
+            timeout: float | int = ...,
         ) -> None: ...
     else:
         def __init__(

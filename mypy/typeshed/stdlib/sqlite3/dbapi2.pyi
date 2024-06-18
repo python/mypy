@@ -25,9 +25,9 @@ Date = date
 Time = time
 Timestamp = datetime
 
-def DateFromTicks(ticks: float) -> Date: ...
-def TimeFromTicks(ticks: float) -> Time: ...
-def TimestampFromTicks(ticks: float) -> Timestamp: ...
+def DateFromTicks(ticks: float | int) -> Date: ...
+def TimeFromTicks(ticks: float | int) -> Time: ...
+def TimestampFromTicks(ticks: float | int) -> Timestamp: ...
 
 version_info: tuple[int, int, int]
 sqlite_version_info: tuple[int, int, int]
@@ -227,7 +227,7 @@ if sys.version_info >= (3, 12):
     @overload
     def connect(
         database: StrOrBytesPath,
-        timeout: float = 5.0,
+        timeout: float | int = 5.0,
         detect_types: int = 0,
         isolation_level: Literal["DEFERRED", "EXCLUSIVE", "IMMEDIATE"] | None = "DEFERRED",
         check_same_thread: bool = True,
@@ -239,7 +239,7 @@ if sys.version_info >= (3, 12):
     @overload
     def connect(
         database: StrOrBytesPath,
-        timeout: float,
+        timeout: float | int,
         detect_types: int,
         isolation_level: Literal["DEFERRED", "EXCLUSIVE", "IMMEDIATE"] | None,
         check_same_thread: bool,
@@ -252,7 +252,7 @@ if sys.version_info >= (3, 12):
     @overload
     def connect(
         database: StrOrBytesPath,
-        timeout: float = 5.0,
+        timeout: float | int = 5.0,
         detect_types: int = 0,
         isolation_level: Literal["DEFERRED", "EXCLUSIVE", "IMMEDIATE"] | None = "DEFERRED",
         check_same_thread: bool = True,
@@ -267,7 +267,7 @@ else:
     @overload
     def connect(
         database: StrOrBytesPath,
-        timeout: float = 5.0,
+        timeout: float | int = 5.0,
         detect_types: int = 0,
         isolation_level: Literal["DEFERRED", "EXCLUSIVE", "IMMEDIATE"] | None = "DEFERRED",
         check_same_thread: bool = True,
@@ -277,7 +277,7 @@ else:
     @overload
     def connect(
         database: StrOrBytesPath,
-        timeout: float,
+        timeout: float | int,
         detect_types: int,
         isolation_level: Literal["DEFERRED", "EXCLUSIVE", "IMMEDIATE"] | None,
         check_same_thread: bool,
@@ -288,7 +288,7 @@ else:
     @overload
     def connect(
         database: StrOrBytesPath,
-        timeout: float = 5.0,
+        timeout: float | int = 5.0,
         detect_types: int = 0,
         isolation_level: Literal["DEFERRED", "EXCLUSIVE", "IMMEDIATE"] | None = "DEFERRED",
         check_same_thread: bool = True,
@@ -371,7 +371,7 @@ class Connection:
         def __init__(
             self,
             database: StrOrBytesPath,
-            timeout: float = ...,
+            timeout: float | int = ...,
             detect_types: int = ...,
             isolation_level: str | None = ...,
             check_same_thread: bool = ...,
@@ -384,7 +384,7 @@ class Connection:
         def __init__(
             self,
             database: StrOrBytesPath,
-            timeout: float = ...,
+            timeout: float | int = ...,
             detect_types: int = ...,
             isolation_level: str | None = ...,
             check_same_thread: bool = ...,
@@ -446,7 +446,7 @@ class Connection:
         pages: int = -1,
         progress: Callable[[int, int, int], object] | None = None,
         name: str = "main",
-        sleep: float = 0.25,
+        sleep: float | int = 0.25,
     ) -> None: ...
     if sys.version_info >= (3, 11):
         def setlimit(self, category: int, limit: int, /) -> int: ...

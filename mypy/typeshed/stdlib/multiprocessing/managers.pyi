@@ -136,7 +136,7 @@ class BaseManager:
             serializer: str = "pickle",
             ctx: BaseContext | None = None,
             *,
-            shutdown_timeout: float = 1.0,
+            shutdown_timeout: float | int = 1.0,
         ) -> None: ...
     else:
         def __init__(
@@ -151,7 +151,7 @@ class BaseManager:
     def connect(self) -> None: ...
     def start(self, initializer: Callable[..., object] | None = None, initargs: Iterable[Any] = ()) -> None: ...
     def shutdown(self) -> None: ...  # only available after start() was called
-    def join(self, timeout: float | None = None) -> None: ...  # undocumented
+    def join(self, timeout: float | int | None = None) -> None: ...  # undocumented
     @property
     def address(self) -> Any: ...
     @classmethod

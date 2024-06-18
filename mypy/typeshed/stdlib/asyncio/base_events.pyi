@@ -35,8 +35,8 @@ class Server(AbstractServer):
             protocol_factory: _ProtocolFactory,
             ssl_context: _SSLContext,
             backlog: int,
-            ssl_handshake_timeout: float | None,
-            ssl_shutdown_timeout: float | None = None,
+            ssl_handshake_timeout: float | int | None,
+            ssl_shutdown_timeout: float | int | None = None,
         ) -> None: ...
     else:
         def __init__(
@@ -46,7 +46,7 @@ class Server(AbstractServer):
             protocol_factory: _ProtocolFactory,
             ssl_context: _SSLContext,
             backlog: int,
-            ssl_handshake_timeout: float | None,
+            ssl_handshake_timeout: float | int | None,
         ) -> None: ...
 
     def get_loop(self) -> AbstractEventLoop: ...
@@ -71,10 +71,10 @@ class BaseEventLoop(AbstractEventLoop):
         self, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts], context: Context | None = None
     ) -> Handle: ...
     def call_later(
-        self, delay: float, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts], context: Context | None = None
+        self, delay: float | int, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts], context: Context | None = None
     ) -> TimerHandle: ...
     def call_at(
-        self, when: float, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts], context: Context | None = None
+        self, when: float | int, callback: Callable[[Unpack[_Ts]], object], *args: Unpack[_Ts], context: Context | None = None
     ) -> TimerHandle: ...
     def time(self) -> float: ...
     # Future methods
@@ -120,9 +120,9 @@ class BaseEventLoop(AbstractEventLoop):
             sock: None = None,
             local_addr: tuple[str, int] | None = None,
             server_hostname: str | None = None,
-            ssl_handshake_timeout: float | None = None,
-            ssl_shutdown_timeout: float | None = None,
-            happy_eyeballs_delay: float | None = None,
+            ssl_handshake_timeout: float | int | None = None,
+            ssl_shutdown_timeout: float | int | None = None,
+            happy_eyeballs_delay: float | int | None = None,
             interleave: int | None = None,
             all_errors: bool = False,
         ) -> tuple[Transport, _ProtocolT]: ...
@@ -140,9 +140,9 @@ class BaseEventLoop(AbstractEventLoop):
             sock: socket,
             local_addr: None = None,
             server_hostname: str | None = None,
-            ssl_handshake_timeout: float | None = None,
-            ssl_shutdown_timeout: float | None = None,
-            happy_eyeballs_delay: float | None = None,
+            ssl_handshake_timeout: float | int | None = None,
+            ssl_shutdown_timeout: float | int | None = None,
+            happy_eyeballs_delay: float | int | None = None,
             interleave: int | None = None,
             all_errors: bool = False,
         ) -> tuple[Transport, _ProtocolT]: ...
@@ -161,9 +161,9 @@ class BaseEventLoop(AbstractEventLoop):
             sock: None = None,
             local_addr: tuple[str, int] | None = None,
             server_hostname: str | None = None,
-            ssl_handshake_timeout: float | None = None,
-            ssl_shutdown_timeout: float | None = None,
-            happy_eyeballs_delay: float | None = None,
+            ssl_handshake_timeout: float | int | None = None,
+            ssl_shutdown_timeout: float | int | None = None,
+            happy_eyeballs_delay: float | int | None = None,
             interleave: int | None = None,
         ) -> tuple[Transport, _ProtocolT]: ...
         @overload
@@ -180,9 +180,9 @@ class BaseEventLoop(AbstractEventLoop):
             sock: socket,
             local_addr: None = None,
             server_hostname: str | None = None,
-            ssl_handshake_timeout: float | None = None,
-            ssl_shutdown_timeout: float | None = None,
-            happy_eyeballs_delay: float | None = None,
+            ssl_handshake_timeout: float | int | None = None,
+            ssl_shutdown_timeout: float | int | None = None,
+            happy_eyeballs_delay: float | int | None = None,
             interleave: int | None = None,
         ) -> tuple[Transport, _ProtocolT]: ...
     else:
@@ -200,8 +200,8 @@ class BaseEventLoop(AbstractEventLoop):
             sock: None = None,
             local_addr: tuple[str, int] | None = None,
             server_hostname: str | None = None,
-            ssl_handshake_timeout: float | None = None,
-            happy_eyeballs_delay: float | None = None,
+            ssl_handshake_timeout: float | int | None = None,
+            happy_eyeballs_delay: float | int | None = None,
             interleave: int | None = None,
         ) -> tuple[Transport, _ProtocolT]: ...
         @overload
@@ -218,8 +218,8 @@ class BaseEventLoop(AbstractEventLoop):
             sock: socket,
             local_addr: None = None,
             server_hostname: str | None = None,
-            ssl_handshake_timeout: float | None = None,
-            happy_eyeballs_delay: float | None = None,
+            ssl_handshake_timeout: float | int | None = None,
+            happy_eyeballs_delay: float | int | None = None,
             interleave: int | None = None,
         ) -> tuple[Transport, _ProtocolT]: ...
     if sys.version_info >= (3, 11):
@@ -237,8 +237,8 @@ class BaseEventLoop(AbstractEventLoop):
             ssl: _SSLContext = None,
             reuse_address: bool | None = None,
             reuse_port: bool | None = None,
-            ssl_handshake_timeout: float | None = None,
-            ssl_shutdown_timeout: float | None = None,
+            ssl_handshake_timeout: float | int | None = None,
+            ssl_shutdown_timeout: float | int | None = None,
             start_serving: bool = True,
         ) -> Server: ...
         @overload
@@ -255,8 +255,8 @@ class BaseEventLoop(AbstractEventLoop):
             ssl: _SSLContext = None,
             reuse_address: bool | None = None,
             reuse_port: bool | None = None,
-            ssl_handshake_timeout: float | None = None,
-            ssl_shutdown_timeout: float | None = None,
+            ssl_handshake_timeout: float | int | None = None,
+            ssl_shutdown_timeout: float | int | None = None,
             start_serving: bool = True,
         ) -> Server: ...
         async def start_tls(
@@ -267,8 +267,8 @@ class BaseEventLoop(AbstractEventLoop):
             *,
             server_side: bool = False,
             server_hostname: str | None = None,
-            ssl_handshake_timeout: float | None = None,
-            ssl_shutdown_timeout: float | None = None,
+            ssl_handshake_timeout: float | int | None = None,
+            ssl_shutdown_timeout: float | int | None = None,
         ) -> Transport | None: ...
         async def connect_accepted_socket(
             self,
@@ -276,8 +276,8 @@ class BaseEventLoop(AbstractEventLoop):
             sock: socket,
             *,
             ssl: _SSLContext = None,
-            ssl_handshake_timeout: float | None = None,
-            ssl_shutdown_timeout: float | None = None,
+            ssl_handshake_timeout: float | int | None = None,
+            ssl_shutdown_timeout: float | int | None = None,
         ) -> tuple[Transport, _ProtocolT]: ...
     else:
         @overload
@@ -294,7 +294,7 @@ class BaseEventLoop(AbstractEventLoop):
             ssl: _SSLContext = None,
             reuse_address: bool | None = None,
             reuse_port: bool | None = None,
-            ssl_handshake_timeout: float | None = None,
+            ssl_handshake_timeout: float | int | None = None,
             start_serving: bool = True,
         ) -> Server: ...
         @overload
@@ -311,7 +311,7 @@ class BaseEventLoop(AbstractEventLoop):
             ssl: _SSLContext = None,
             reuse_address: bool | None = None,
             reuse_port: bool | None = None,
-            ssl_handshake_timeout: float | None = None,
+            ssl_handshake_timeout: float | int | None = None,
             start_serving: bool = True,
         ) -> Server: ...
         async def start_tls(
@@ -322,7 +322,7 @@ class BaseEventLoop(AbstractEventLoop):
             *,
             server_side: bool = False,
             server_hostname: str | None = None,
-            ssl_handshake_timeout: float | None = None,
+            ssl_handshake_timeout: float | int | None = None,
         ) -> Transport | None: ...
         async def connect_accepted_socket(
             self,
@@ -330,7 +330,7 @@ class BaseEventLoop(AbstractEventLoop):
             sock: socket,
             *,
             ssl: _SSLContext = None,
-            ssl_handshake_timeout: float | None = None,
+            ssl_handshake_timeout: float | int | None = None,
         ) -> tuple[Transport, _ProtocolT]: ...
 
     async def sock_sendfile(
@@ -433,7 +433,7 @@ class BaseEventLoop(AbstractEventLoop):
     def get_debug(self) -> bool: ...
     def set_debug(self, enabled: bool) -> None: ...
     if sys.version_info >= (3, 12):
-        async def shutdown_default_executor(self, timeout: float | None = None) -> None: ...
+        async def shutdown_default_executor(self, timeout: float | int | None = None) -> None: ...
     elif sys.version_info >= (3, 9):
         async def shutdown_default_executor(self) -> None: ...
 
