@@ -6710,3 +6710,24 @@ class B:
     def f(self, *args, **kwargs):
         pass
 [builtins fixtures/tuple.pyi]
+
+[case testOverloadKeywordArgsAndKwargs]
+from typing import Optional, overload
+
+@overload
+def f(x: int = 0, **kwargs: str) -> None:
+    ...
+@overload
+def f(x: int = 0, *, y: int, **kwargs: str) -> str:
+    ...
+def f(x: int = 0, *, y: Optional[int] = None, **kwargs: str) -> Optional[str]:
+    ...
+
+reveal_type(f(0)) # N: Revealed type is "None"
+reveal_type(f(1, foo='bar')) # N: Revealed type is "None"
+reveal_type(f(1, y=2, foo='bar')) # N: Revealed type is "builtins.str"
+f(1, **{'y': 0, 'z': 'a'}) # E: No overload variant of "f" matches argument types "int", "Dict[str, object]" \
+                           # N: Possible overload variants: \
+                           # N:     def f(x: int = ..., **kwargs: str) -> None \
+                           # N:     def f(x: int = ..., *, y: int, **kwargs: str) -> str
+[builtins fixtures/dict.pyi]
