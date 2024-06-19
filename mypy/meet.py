@@ -7,6 +7,7 @@ from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
 from mypy.state import state
 from mypy.subtypes import (
+    find_member,
     is_callable_compatible,
     is_equivalent,
     is_proper_subtype,
@@ -477,9 +478,22 @@ def is_overlapping_types(
             ignore_pos_arg_names=True,
             allow_partial_overlap=True,
         )
-    elif isinstance(left, CallableType):
+
+    call = None
+    other = None
+    if isinstance(left, CallableType) and isinstance(right, Instance):
+        call = find_member("__call__", right, right, is_operator=True)
+        other = left
+    if isinstance(right, CallableType) and isinstance(left, Instance):
+        call = find_member("__call__", left, left, is_operator=True)
+        other = right
+    if isinstance(get_proper_type(call), FunctionLike):
+        assert call is not None and other is not None
+        return _is_overlapping_types(call, other)
+
+    if isinstance(left, CallableType):
         left = left.fallback
-    elif isinstance(right, CallableType):
+    if isinstance(right, CallableType):
         right = right.fallback
 
     if isinstance(left, LiteralType) and isinstance(right, LiteralType):
