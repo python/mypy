@@ -786,9 +786,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     type_vars = current_class.defn.type_vars if current_class else []
                     with state.strict_optional_set(True):
                         if is_unsafe_overlapping_overload_signatures(sig1, sig2, type_vars):
-                            flip_note = j == 0 and not is_unsafe_overlapping_overload_signatures(
-                                sig2, sig1, type_vars
-                            ) and not overload_can_never_match(sig2, sig1)
+                            flip_note = (
+                                j == 0
+                                and not is_unsafe_overlapping_overload_signatures(
+                                    sig2, sig1, type_vars
+                                )
+                                and not overload_can_never_match(sig2, sig1)
+                            )
                             self.msg.overloaded_signatures_overlap(
                                 i + 1, i + j + 2, flip_note, item.func
                             )
