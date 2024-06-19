@@ -1739,10 +1739,14 @@ class SemanticAnalyzer(
         fullname = self.qualified_name(type_param.name)
         if type_param.upper_bound:
             upper_bound = self.anal_type(type_param.upper_bound)
+            # TODO: we should validate the upper bound is valid for a given kind.
             if upper_bound is None:
                 return None
         else:
-            upper_bound = self.named_type("builtins.object")
+            if type_param.kind == TYPE_VAR_TUPLE_KIND:
+                upper_bound = self.named_type("builtins.tuple", [self.object_type()])
+            else:
+                upper_bound = self.object_type()
         default = AnyType(TypeOfAny.from_omitted_generics)
         if type_param.kind == TYPE_VAR_KIND:
             values = []
@@ -1777,8 +1781,7 @@ class SemanticAnalyzer(
             return TypeVarTupleExpr(
                 name=type_param.name,
                 fullname=fullname,
-                # Upper bound for *Ts is *tuple[object, ...], it can never be object.
-                upper_bound=tuple_fallback.copy_modified(),
+                upper_bound=upper_bound,
                 tuple_fallback=tuple_fallback,
                 default=default,
                 is_new_style=True,
