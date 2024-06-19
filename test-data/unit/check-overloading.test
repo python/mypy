@@ -373,7 +373,8 @@ def foo(t, s): pass
 
 class Wrapper(Generic[T]):
     @overload
-    def foo(self, t: List[T], s: T) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+    def foo(self, t: List[T], s: T) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types \
+                                                 # N: Flipping the order of overloads will fix this error
     @overload
     def foo(self, t: T, s: T) -> str: ...
     def foo(self, t, s): pass
@@ -384,7 +385,8 @@ class Dummy(Generic[T]): pass
 # cause the constraint solver to not infer T = object like it did in the
 # first example?
 @overload
-def bar(d: Dummy[T], t: List[T], s: T) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def bar(d: Dummy[T], t: List[T], s: T) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types \
+                                                    # N: Flipping the order of overloads will fix this error
 @overload
 def bar(d: Dummy[T], t: T, s: T) -> str: ...
 def bar(d: Dummy[T], t, s): pass
@@ -2498,7 +2500,8 @@ from wrapper import *
 from typing import overload
 
 @overload
-def foo1(x: str, *, y: str, z: str) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def foo1(x: str, *, y: str, z: str) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types \
+                                                 # N: Flipping the order of overloads will fix this error
 @overload
 def foo1(**x: str) -> int: ...
 
@@ -2799,7 +2802,8 @@ def h(x: List[Union[C, D]]) -> str: ...
 def h(x): ...
 
 @overload
-def i(x: List[Union[A, B]]) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def i(x: List[Union[A, B]]) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types \
+                                         # N: Flipping the order of overloads will fix this error
 @overload
 def i(x: List[Union[A, B, C]]) -> str: ...
 def i(x): ...
@@ -3078,7 +3082,8 @@ class C: pass
 S = TypeVar('S', A, B)
 
 @overload
-def f(x: S) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def f(x: S) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types \
+                         # N: Flipping the order of overloads will fix this error
 @overload
 def f(x: Union[B, C]) -> str: ...
 def f(x): pass

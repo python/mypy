@@ -765,7 +765,8 @@ class Task(Future[T]):
 
 @overload
 def wait(fs: Iterable[FT]) -> Future[Tuple[List[FT], List[FT]]]: ...  \
-    # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+    # E: Overloaded function signatures 1 and 2 overlap with incompatible return types \
+    # N: Flipping the order of overloads will fix this error
 @overload
 def wait(fs: Iterable[Awaitable[T]]) -> Future[Tuple[List[Task[T]], List[Task[T]]]]: ...
 def wait(fs: Any) -> Any:
@@ -788,6 +789,7 @@ async def precise1(futures: Iterable[Future[int]]) -> None:
 async def precise2(futures: Iterable[Awaitable[int]]) -> None:
     done, pending = await wait(futures)
     reveal_type(done)  # N: Revealed type is "builtins.list[__main__.Task[builtins.int]]"
+
 
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
