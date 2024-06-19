@@ -6711,7 +6711,7 @@ class B:
         pass
 [builtins fixtures/tuple.pyi]
 
-[case testSafeOverlapAllowed]
+[case testOverloadsSafeOverlapAllowed]
 from lib import *
 [file lib.pyi]
 from typing import overload
@@ -6720,3 +6720,28 @@ from typing import overload
 def bar(x: object) -> object: ...
 @overload
 def bar(x: int = ...) -> int: ...
+
+[case testOverloadsInvariantOverlapAllowed]
+from lib import *
+[file lib.pyi]
+from typing import overload, List
+
+@overload
+def bar(x: List[int]) -> List[int]: ...
+@overload
+def bar(x: List[object]) -> List[object]: ...
+
+[case testOverloadsNoneAnyOverlapAllowed]
+from lib import *
+[file lib.pyi]
+from typing import overload, Any
+
+@overload
+def foo(x: None) -> int: ...
+@overload
+def foo(x: object) -> str: ...
+
+@overload
+def bar(x: int) -> int: ...
+@overload
+def bar(x: Any) -> str: ...

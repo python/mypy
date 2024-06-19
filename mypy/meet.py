@@ -257,6 +257,10 @@ def is_literal_in_union(x: ProperType, y: ProperType) -> bool:
     )
 
 
+def is_object(t: ProperType) -> bool:
+    return isinstance(t, Instance) and t.type.fullname == "builtins.object"
+
+
 def is_overlapping_types(
     left: Type,
     right: Type,
@@ -272,7 +276,7 @@ def is_overlapping_types(
     TypeVars (in both strict-optional and non-strict-optional mode).
     If 'overlap_for_overloads' is True, we check for overlaps more strictly (to avoid false
     positives), for example: None only overlaps with explicitly optional types, Any
-    doesn't overlap with anything, we don't ignore positional argument names.
+    doesn't overlap with anything except object, we don't ignore positional argument names.
     """
     if isinstance(left, TypeGuardedType) or isinstance(  # type: ignore[misc]
         right, TypeGuardedType
@@ -328,7 +332,7 @@ def is_overlapping_types(
 
     # 'Any' may or may not be overlapping with the other type
     if isinstance(left, AnyType) or isinstance(right, AnyType):
-        return not overlap_for_overloads
+        return not overlap_for_overloads or is_object(left) or is_object(right)
 
     # We check for complete overlaps next as a general-purpose failsafe.
     # If this check fails, we start checking to see if there exists a
@@ -356,14 +360,17 @@ def is_overlapping_types(
             and t2.type.fullname == "builtins.object"
         )
 
-    # comments and docstrings.
     if overlap_for_overloads:
         if is_none_object_overlap(left, right) or is_none_object_overlap(right, left):
             return False
 
-    if is_proper_subtype(left, right, ignore_promotions=ignore_promotions) or is_proper_subtype(
-        right, left, ignore_promotions=ignore_promotions
-    ):
+    def _is_subtype(left: Type, right: Type) -> bool:
+        if overlap_for_overloads:
+            return is_proper_subtype(left, right, ignore_promotions=ignore_promotions)
+        else:
+            return is_subtype(left, right, ignore_promotions=ignore_promotions)
+
+    if _is_subtype(left, right) or _is_subtype(right, left):
         return True
 
     # See the docstring for 'get_possible_variants' for more info on what the
@@ -513,9 +520,7 @@ def is_overlapping_types(
     if isinstance(left, Instance) and isinstance(right, Instance):
         # First we need to handle promotions and structural compatibility for instances
         # that came as fallbacks, so simply call is_subtype() to avoid code duplication.
-        if is_subtype(left, right, ignore_promotions=ignore_promotions) or is_subtype(
-            right, left, ignore_promotions=ignore_promotions
-        ):
+        if _is_subtype(left, right) or _is_subtype(right, left):
             return True
 
         if right.type.fullname == "builtins.int" and left.type.fullname in MYPYC_NATIVE_INT_NAMES:
