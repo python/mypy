@@ -1591,3 +1591,16 @@ c: E[str]
 d: E[int]  # E: Type argument "int" of "E" must be a subtype of "str"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testCurrentClassWorksAsBound]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+from typing import Protocol
+
+class Comparable[T: Comparable](Protocol):
+    def compare(self, other: T) -> bool: ...
+
+class Good:
+    def compare(self, other: Good) -> bool: ...
+
+x: Comparable[Good]
+y: Comparable[int]  # E: Type argument "int" of "Comparable" must be a subtype of "Comparable[Any]"
