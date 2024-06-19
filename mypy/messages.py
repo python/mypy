@@ -1624,13 +1624,21 @@ class MessageBuilder:
             context,
         )
 
-    def overloaded_signatures_overlap(self, index1: int, index2: int, context: Context) -> None:
+    def overloaded_signatures_overlap(
+        self, index1: int, index2: int, flip_note: bool, context: Context
+    ) -> None:
         self.fail(
             "Overloaded function signatures {} and {} overlap with "
             "incompatible return types".format(index1, index2),
             context,
             code=codes.OVERLOAD_OVERLAP,
         )
+        if flip_note:
+            self.note(
+                "Flipping the order of overloads will fix this error",
+                context,
+                code=codes.OVERLOAD_OVERLAP,
+            )
 
     def overloaded_signature_will_never_match(
         self, index1: int, index2: int, context: Context
