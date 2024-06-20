@@ -428,6 +428,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if var.type:
             var_type = get_proper_type(var.type)
             if isinstance(var_type, Instance):
+                if var.fullname == "typing.Any":
+                    # The typeshed type is 'object'; give a more useful type in runtime context
+                    return self.named_type("typing._SpecialForm")
                 if self.is_literal_context() and var_type.last_known_value is not None:
                     return var_type.last_known_value
                 if var.name in {"True", "False"}:
@@ -4331,16 +4334,25 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return self.nonliteral_tuple_index_helper(left_type, index)
         elif isinstance(left_type, TypedDictType):
             return self.visit_typeddict_index_expr(left_type, e.index)
-        elif (
-            isinstance(left_type, FunctionLike)
-            and left_type.is_type_obj()
-            and left_type.type_object().is_enum
-        ):
-            return self.visit_enum_index_expr(left_type.type_object(), e.index, e)
-        elif isinstance(left_type, TypeVarType) and not self.has_member(
+        elif isinstance(left_type, FunctionLike) and left_type.is_type_obj():
+            if left_type.type_object().is_enum:
+                return self.visit_enum_index_expr(left_type.type_object(), e.index, e)
+            elif left_type.type_object().type_vars:
+                return self.named_type("types.GenericAlias")
+            elif (
+                left_type.type_object().fullname == "builtins.type"
+                and self.chk.options.python_version >= (3, 9)
+            ):
+                # builtins.type is special: it's not generic in stubs, but it supports indexing
+                return self.named_type("typing._SpecialForm")
+
+        if isinstance(left_type, TypeVarType) and not self.has_member(
             left_type.upper_bound, "__getitem__"
         ):
             return self.visit_index_with_type(left_type.upper_bound, e, original_type)
+        elif isinstance(left_type, Instance) and left_type.type.fullname == "typing._SpecialForm":
+            # Allow special forms to be indexed and used to create union types
+            return self.named_type("typing._SpecialForm")
         else:
             result, method_type = self.check_method_call_by_name(
                 "__getitem__", left_type, [e.index], [ARG_POS], e, original_type=original_type

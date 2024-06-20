@@ -12,6 +12,8 @@ class GenericMeta(type): pass
 
 class _SpecialForm:
     def __getitem__(self, index: Any) -> Any: ...
+    def __or__(self, other): ...
+    def __ror__(self, other): ...
 class TypeVar:
     def __init__(self, name, *args, bound=None): ...
     def __or__(self, other): ...
@@ -21,7 +23,7 @@ class TypeVarTuple: ...
 def cast(t, o): ...
 def assert_type(o, t): ...
 overload = 0
-Any = 0
+Any = object()
 Optional = 0
 Generic = 0
 Protocol = 0
@@ -31,7 +33,6 @@ Type = 0
 no_type_check = 0
 ClassVar = 0
 Final = 0
-Literal = 0
 TypedDict = 0
 NoReturn = 0
 NewType = 0
@@ -39,6 +40,7 @@ Self = 0
 Unpack = 0
 Callable: _SpecialForm
 Union: _SpecialForm
+Literal: _SpecialForm
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
@@ -216,3 +218,4 @@ class TypeAliasType:
     ) -> None: ...
 
     def __or__(self, other: Any) -> Any: ...
+    def __ror__(self, other: Any) -> Any: ...
