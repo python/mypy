@@ -2605,6 +2605,9 @@ def format_type_inner(
     elif isinstance(typ, LiteralType):
         return f"Literal[{format_literal_value(typ)}]"
     elif isinstance(typ, UnionType):
+        typ = get_proper_type(ignore_last_known_values(typ))
+        if not isinstance(typ, UnionType):
+            return format(typ)
         literal_items, union_items = separate_union_literals(typ)
 
         # Coalesce multiple Literal[] members. This also changes output order.
@@ -3235,3 +3238,23 @@ def format_key_list(keys: list[str], *, short: bool = False) -> str:
         return f"{td}key {formatted_keys[0]}"
     else:
         return f"{td}keys ({', '.join(formatted_keys)})"
+
+
+def ignore_last_known_values(t: UnionType) -> Type:
+    """This will avoid types like str | str in error messages.
+
+    last_known_values are kept during union simplification, but may cause
+    weird formatting for e.g. tuples of literals.
+    """
+    union_items: list[Type] = []
+    seen_instances = set()
+    for item in t.items:
+        if isinstance(item, ProperType) and isinstance(item, Instance):
+            erased = item.copy_modified(last_known_value=None)
+            if erased in seen_instances:
+                continue
+            seen_instances.add(erased)
+            union_items.append(erased)
+        else:
+            union_items.append(item)
+    return UnionType.make_union(union_items, t.line, t.column)

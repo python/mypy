@@ -95,8 +95,6 @@ def is_recursive_pair(s: Type, t: Type) -> bool:
 
 def tuple_fallback(typ: TupleType) -> Instance:
     """Return fallback type for a tuple."""
-    from mypy.join import join_type_list
-
     info = typ.partial_fallback.type
     if info.fullname != "builtins.tuple":
         return typ.partial_fallback
@@ -115,8 +113,9 @@ def tuple_fallback(typ: TupleType) -> Instance:
                 raise NotImplementedError
         else:
             items.append(item)
-    # TODO: we should really use a union here, tuple types are special.
-    return Instance(info, [join_type_list(items)], extra_attrs=typ.partial_fallback.extra_attrs)
+    return Instance(
+        info, [make_simplified_union(items)], extra_attrs=typ.partial_fallback.extra_attrs
+    )
 
 
 def get_self_type(func: CallableType, default_self: Instance | TupleType) -> Type | None:
