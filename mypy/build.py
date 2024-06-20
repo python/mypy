@@ -840,6 +840,8 @@ class BuildManager:
             self.errors.ignored_files.add(path)
         tree = parse(source, path, id, self.errors, options=options)
         tree._fullname = id
+        if options.use_builtins_fixtures and id in CORE_BUILTIN_MODULES:
+            tree._is_typeshed_file = True
         self.add_stats(
             files_parsed=1,
             modules_parsed=int(not tree.is_stub),

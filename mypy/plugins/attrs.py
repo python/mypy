@@ -670,6 +670,11 @@ def _attribute_from_attrib_maker(
                 rvalue,
                 code=LITERAL_REQ,
             )
+
+    if init_type is None and ctx.api.options.disallow_untyped_defs:
+        assert lhs.node is not None
+        ctx.api.msg.need_annotation_for_var(lhs.node, stmt)
+
     name = unmangle(lhs.name)
     return Attribute(
         name, alias, ctx.cls.info, attr_has_default, init, kw_only, converter_info, stmt, init_type

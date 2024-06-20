@@ -1303,18 +1303,18 @@ def f(i: int, s):
 main:3: error: Function is missing a return type annotation
 main:3: error: Function is missing a type annotation for one or more arguments
 
-[case testDisallowIncompleteDefsAttrsNoAnnotations]
-# flags: --disallow-incomplete-defs
+[case testDisallowUntypedDefsAttrsNoAnnotations]
+# flags: --disallow-untyped-defs
 import attrs
 
 @attrs.define
 class Unannotated:
-    foo = attrs.field()
+    foo = attrs.field()  # E: Need type annotation for "foo"
 
 [builtins fixtures/plugin_attrs.pyi]
 
-[case testDisallowIncompleteDefsAttrsWithAnnotations]
-# flags: --disallow-incomplete-defs
+[case testDisallowUntypedDefsAttrsWithAnnotations]
+# flags: --disallow-untyped-defs
 import attrs
 
 @attrs.define
@@ -1323,14 +1323,14 @@ class Annotated:
 
 [builtins fixtures/plugin_attrs.pyi]
 
-[case testDisallowIncompleteDefsAttrsPartialAnnotations]
-# flags: --disallow-incomplete-defs
+[case testDisallowUntypedDefsAttrsPartialAnnotations]
+# flags: --disallow-untyped-defs
 import attrs
 
 @attrs.define
-class PartiallyAnnotated:  # E: Function is missing a type annotation for one or more arguments
+class PartiallyAnnotated:
     bar: int = attrs.field()
-    baz = attrs.field()
+    baz = attrs.field()  # E: Need type annotation for "baz"
 
 [builtins fixtures/plugin_attrs.pyi]
 

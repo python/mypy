@@ -2475,3 +2475,18 @@ class Base:
 class Child(Base):
     y: int
 [builtins fixtures/dataclasses.pyi]
+
+[case testDataclassDisallowAny]
+# flags: --disallow-any-explicit --disallow-any-decorated
+
+from dataclasses import dataclass
+from typing import Any
+
+# Ensures that when Any-typed fields end up in synthetic functions,
+# those functions are not flagged since there's nothing the user can do about that
+@dataclass
+class C:
+    a: Any  # E: Explicit "Any" is not allowed
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dataclasses.pyi]
