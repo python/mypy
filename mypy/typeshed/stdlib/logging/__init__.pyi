@@ -8,7 +8,7 @@ from string import Template
 from time import struct_time
 from types import FrameType, TracebackType
 from typing import Any, ClassVar, Generic, Literal, Protocol, TextIO, TypeVar, overload
-from typing_extensions import Self, TypeAlias
+from typing_extensions import Self, TypeAlias, deprecated
 
 if sys.version_info >= (3, 11):
     from types import GenericAlias
@@ -572,7 +572,11 @@ fatal = critical
 
 def disable(level: int = 50) -> None: ...
 def addLevelName(level: int, levelName: str) -> None: ...
-def getLevelName(level: _Level) -> Any: ...
+@overload
+def getLevelName(level: int) -> str: ...
+@overload
+@deprecated("The str -> int case is considered a mistake.")
+def getLevelName(level: str) -> Any: ...
 
 if sys.version_info >= (3, 11):
     def getLevelNamesMapping() -> dict[str, int]: ...
