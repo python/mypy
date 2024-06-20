@@ -1305,7 +1305,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         if (
                             arg_type.variance == COVARIANT
                             and defn.name not in ("__init__", "__new__", "__post_init__")
-                            and not is_private(defn.name)  # private methods are not inherited
+                            and "mypy-" not in defn.name  # skip internally added methods
                         ):
                             ctx: Context = arg_type
                             if ctx.line < 0:
@@ -1941,7 +1941,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             found_method_base_classes
             and not defn.is_explicit_override
             and defn.name not in ("__init__", "__new__")
-            and not is_private(defn.name)
         ):
             self.msg.explicit_override_decorator_missing(
                 defn.name, found_method_base_classes[0].fullname, context or defn
@@ -1995,7 +1994,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             base_attr = base.names.get(name)
             if base_attr:
                 # First, check if we override a final (always an error, even with Any types).
-                if is_final_node(base_attr.node) and not is_private(name):
+                if is_final_node(base_attr.node):
                     self.msg.cant_override_final(name, base.name, defn)
                 # Second, final can't override anything writeable independently of types.
                 if defn.is_final:
@@ -2261,9 +2260,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     fail = True
                 if original.type_is is not None and override.type_is is None:
                     fail = True
-
-        if is_private(name):
-            fail = False
 
         if fail:
             emitted_msg = False
@@ -2544,25 +2540,26 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_final_enum(self, defn: ClassDef, base: TypeInfo) -> None:
         for sym in base.names.values():
-            if self.is_final_enum_value(sym):
+            if self.is_final_enum_value(sym, base):
                 self.fail(f'Cannot extend enum with existing members: "{base.name}"', defn)
                 break
 
-    def is_final_enum_value(self, sym: SymbolTableNode) -> bool:
+    def is_final_enum_value(self, sym: SymbolTableNode, base: TypeInfo) -> bool:
         if isinstance(sym.node, (FuncBase, Decorator)):
             return False  # A method is fine
         if not isinstance(sym.node, Var):
             return True  # Can be a class or anything else
 
         # Now, only `Var` is left, we need to check:
-        # 1. Private name like in `__prop = 1`
+        # 1. Mangled name like in `_class__prop = 1`
         # 2. Dunder name like `__hash__ = some_hasher`
         # 3. Sunder name like `_order_ = 'a, b, c'`
         # 4. If it is a method / descriptor like in `method = classmethod(func)`
+        name = sym.node.name
         if (
-            is_private(sym.node.name)
-            or is_dunder(sym.node.name)
-            or is_sunder(sym.node.name)
+            (name.startswith(f"_{base.name}__") and not name.endswith("__"))
+            or is_dunder(name)
+            or is_sunder(name)
             # TODO: make sure that `x = @class/staticmethod(func)`
             # and `x = property(prop)` both work correctly.
             # Now they are incorrectly counted as enum members.
@@ -2677,8 +2674,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Normal checks for attribute compatibility should catch any problems elsewhere.
             non_overridden_attrs = base.names.keys() - typ.names.keys()
             for name in non_overridden_attrs:
-                if is_private(name):
-                    continue
                 for base2 in mro[i + 1 :]:
                     # We only need to check compatibility of attributes from classes not
                     # in a subclass relationship. For subclasses, normal (single inheritance)
@@ -2786,7 +2781,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             ok = True
         # Final attributes can never be overridden, but can override
         # non-final read-only attributes.
-        if is_final_node(second.node) and not is_private(name):
+        if is_final_node(second.node):
             self.msg.cant_override_final(name, base2.name, ctx)
         if is_final_node(first.node):
             self.check_if_final_var_override_writable(name, second.node, ctx)
@@ -3242,9 +3237,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 ):
                     continue
 
-                if is_private(lvalue_node.name):
-                    continue
-
                 base_type, base_node = self.lvalue_type_from_base(lvalue_node, base)
                 if isinstance(base_type, PartialType):
                     base_type = None
@@ -3413,8 +3405,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         Other situations are checked in `check_final()`.
         """
         if not isinstance(base_node, (Var, FuncBase, Decorator)):
-            return True
-        if is_private(node.name):
             return True
         if base_node.is_final and (node.is_final or not isinstance(base_node, Var)):
             # Give this error only for explicit override attempt with `Final`, or
@@ -8453,11 +8443,6 @@ def is_overlapping_types_for_overload(left: Type, right: Type) -> bool:
         prohibit_none_typevar_overlap=True,
         overlap_for_overloads=True,
     )
-
-
-def is_private(node_name: str) -> bool:
-    """Check if node is private to class definition."""
-    return node_name.startswith("__") and not node_name.endswith("__")
 
 
 def is_string_literal(typ: Type) -> bool:
