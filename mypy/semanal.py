@@ -1738,10 +1738,12 @@ class SemanticAnalyzer(
     ) -> TypeVarLikeExpr | None:
         fullname = self.qualified_name(type_param.name)
         if type_param.upper_bound:
-            upper_bound = self.anal_type(type_param.upper_bound)
+            upper_bound = self.anal_type(type_param.upper_bound, allow_placeholder=True)
             # TODO: we should validate the upper bound is valid for a given kind.
             if upper_bound is None:
-                return None
+                # This and below copies special-casing for old-style type variables, that
+                # is equally necessary for new-style classes to break a vicious circle.
+                upper_bound = PlaceholderType(None, [], context.line)
         else:
             if type_param.kind == TYPE_VAR_TUPLE_KIND:
                 upper_bound = self.named_type("builtins.tuple", [self.object_type()])
@@ -1752,9 +1754,9 @@ class SemanticAnalyzer(
             values = []
             if type_param.values:
                 for value in type_param.values:
-                    analyzed = self.anal_type(value)
+                    analyzed = self.anal_type(value, allow_placeholder=True)
                     if analyzed is None:
-                        return None
+                        analyzed = PlaceholderType(None, [], context.line)
                     values.append(analyzed)
             return TypeVarExpr(
                 name=type_param.name,
@@ -7192,7 +7194,6 @@ class SemanticAnalyzer(
         report_invalid_types: bool = True,
         prohibit_self_type: str | None = None,
         allow_type_any: bool = False,
-        third_pass: bool = False,
     ) -> Type | None:
         """Semantically analyze a type.
 
@@ -7200,8 +7201,6 @@ class SemanticAnalyzer(
             typ: Type to analyze (if already analyzed, this is a no-op)
             allow_placeholder: If True, may return PlaceholderType if
                 encountering an incomplete definition
-            third_pass: Unused; only for compatibility with old semantic
-                analyzer
 
         Return None only if some part of the type couldn't be bound *and* it
         referred to an incomplete namespace or definition. In this case also
