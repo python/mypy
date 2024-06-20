@@ -9,7 +9,9 @@ class ModuleType:
     __file__: str
     def __getattr__(self, name: str) -> Any: pass
 
-class GenericAlias: ...
+class GenericAlias:
+    def __or__(self, o): ...
+    def __ror__(self, o): ...
 
 if sys.version_info >= (3, 10):
     class NoneType:

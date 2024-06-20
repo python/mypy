@@ -1591,3 +1591,55 @@ c: E[str]
 d: E[int]  # E: Type argument "int" of "E" must be a subtype of "str"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testPEP695TypeAliasWithDifferentTargetTypes]
+# flags: --enable-incomplete-feature=NewGenericSyntax
+import types  # We need GenericAlias from here, and test stubs don't bring in 'types'
+from typing import Any, Callable, List, Literal, TypedDict
+
+# Test that various type expressions don't generate false positives as type alias
+# values, as they are type checked as expressions. There is a similar test case in
+# pythoneval.test that uses typeshed stubs.
+
+class C[T]: pass
+
+class TD(TypedDict):
+    x: int
+
+type A1 = type[int]
+type A2 = type[int] | None
+type A3 = None | type[int]
+type A4 = type[Any]
+
+type B1[**P, R] = Callable[P, R] | None
+type B2[**P, R] = None | Callable[P, R]
+type B3 = Callable[[str], int]
+type B4 = Callable[..., int]
+
+type C1 = A1 | None
+type C2 = None | A1
+
+type D1 = Any | None
+type D2 = None | Any
+
+type E1 = List[int]
+type E2 = List[int] | None
+type E3 = None | List[int]
+
+type F1 = Literal[1]
+type F2 = Literal['x'] | None
+type F3 = None | Literal[True]
+
+type G1 = tuple[int, Any]
+type G2 = tuple[int, Any] | None
+type G3 = None | tuple[int, Any]
+
+type H1 = TD
+type H2 = TD | None
+type H3 = None | TD
+
+type I1 = C[int]
+type I2 = C[Any] | None
+type I3 = None | C[TD]
+[builtins fixtures/type.pyi]
+[typing fixtures/typing-full.pyi]

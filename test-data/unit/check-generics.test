@@ -454,11 +454,13 @@ A[int, str, int]() # E: Type application has too many types (2 expected)
 [out]
 
 [case testInvalidTypeApplicationType]
+import types
 a: A
 class A: pass
 a[A]()  # E: Value of type "A" is not indexable
 A[A]()  # E: The type "Type[A]" is not generic and not indexable
-[out]
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testTypeApplicationArgTypes]
 from typing import TypeVar, Generic
@@ -513,8 +515,9 @@ Alias[int]("a")  # E: Argument 1 to "Node" has incompatible type "str"; expected
 [out]
 
 [case testTypeApplicationCrash]
+import types
 type[int] # this was crashing, see #2302 (comment)  # E: The type "Type[type]" is not generic and not indexable
-[out]
+[builtins fixtures/tuple.pyi]
 
 
 -- Generic type aliases

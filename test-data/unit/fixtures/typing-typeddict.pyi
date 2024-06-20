@@ -11,7 +11,7 @@ from abc import ABCMeta
 cast = 0
 assert_type = 0
 overload = 0
-Any = 0
+Any = object()
 Union = 0
 Optional = 0
 TypeVar = 0
@@ -71,3 +71,5 @@ class _TypedDict(Mapping[str, object]):
     def pop(self, k: NoReturn, default: T = ...) -> object: ...
     def update(self: T, __m: T) -> None: ...
     def __delitem__(self, k: NoReturn) -> None: ...
+
+class _SpecialForm: pass
