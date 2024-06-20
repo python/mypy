@@ -103,10 +103,51 @@ def expand_path(path: str) -> str:
     return os.path.expandvars(os.path.expanduser(path))
 
 
+# def str_or_array_as_list(v: str | Sequence[str]) -> list[str]:
+#     if isinstance(v, str):
+#         return [v.strip()] if v.strip() else []
+#     return [p.strip() for p in v if p.strip()]
+
+branch_coverage_str_or_array_as_list = {
+    "is_string": False,
+    "nonempty_string": False,
+    "empty_string": False,
+
+    "is_sequence": False,
+    "sequence_some_empty": False,
+    "sequence_some_nonempty": False,
+
+    "loop_entered": False,
+    "loop_not_entered": False
+}
+
+
 def str_or_array_as_list(v: str | Sequence[str]) -> list[str]:
     if isinstance(v, str):
-        return [v.strip()] if v.strip() else []
-    return [p.strip() for p in v if p.strip()]
+        branch_coverage_str_or_array_as_list["is_string"] = True
+        if v.strip():
+            branch_coverage_str_or_array_as_list["nonempty_string"] = True
+            return [v.strip()]
+        else:
+            branch_coverage_str_or_array_as_list["empty_string"] = True
+            return []
+    else:
+        branch_coverage_str_or_array_as_list["is_sequence"] = True
+        result = []
+        times_looped = 0
+        for p in v:
+            times_looped += 1
+            if p.strip():
+                branch_coverage_str_or_array_as_list["sequence_some_nonempty"] = True
+                result.append(p.strip())
+            else:
+                branch_coverage_str_or_array_as_list["sequence_some_empty"] = True
+        if times_looped == 0:
+            branch_coverage_str_or_array_as_list['loop_not_entered'] = True
+        else:
+            branch_coverage_str_or_array_as_list["loop_entered"] = True
+
+        return result
 
 
 def split_and_match_files_list(paths: Sequence[str]) -> list[str]:
@@ -548,15 +589,44 @@ def parse_section(
     return results, report_dirs
 
 
+# def convert_to_boolean(value: Any | None) -> bool:
+#     """Return a boolean value translating from other types if necessary."""
+#     if isinstance(value, bool):
+#         return value
+#     if not isinstance(value, str):
+#         value = str(value)
+#     if value.lower() not in configparser.RawConfigParser.BOOLEAN_STATES:
+#         raise ValueError(f"Not a boolean: {value}")
+#     return configparser.RawConfigParser.BOOLEAN_STATES[value.lower()]
+
+branch_coverage_convert_to_boolean = {
+    'is_bool': False,
+    'is_not_bool': False,
+    'is_string': False,
+    'is_not_string': False,
+    'cannot_convert': False,
+    'can_convert': False
+}
+
+
 def convert_to_boolean(value: Any | None) -> bool:
     """Return a boolean value translating from other types if necessary."""
     if isinstance(value, bool):
+        branch_coverage_convert_to_boolean['is_bool'] = True
         return value
+    else:
+        branch_coverage_convert_to_boolean['is_not_bool'] = True
     if not isinstance(value, str):
+        branch_coverage_convert_to_boolean['is_not_string'] = True
         value = str(value)
+    else:
+        branch_coverage_convert_to_boolean['is_string'] = True
     if value.lower() not in configparser.RawConfigParser.BOOLEAN_STATES:
+        branch_coverage_convert_to_boolean['cannot_convert'] = True
         raise ValueError(f"Not a boolean: {value}")
-    return configparser.RawConfigParser.BOOLEAN_STATES[value.lower()]
+    else:
+        branch_coverage_convert_to_boolean['can_convert'] = True
+        return configparser.RawConfigParser.BOOLEAN_STATES[value.lower()]
 
 
 def split_directive(s: str) -> tuple[list[str], list[str]]:
