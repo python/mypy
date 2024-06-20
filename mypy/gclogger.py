@@ -38,10 +38,11 @@ class GcLogger:
 
     def get_stats(self) -> Mapping[str, float]:
         end_time = time.time()
-        result = {}
-        result["gc_time"] = self.gc_time
-        result["gc_calls"] = self.gc_calls
-        result["gc_collected"] = self.gc_collected
-        result["gc_uncollectable"] = self.gc_uncollectable
-        result["build_time"] = end_time - self.start_time
+        result = {
+            "gc_time": self.gc_time,
+            "gc_calls": self.gc_calls,
+            "gc_collected": self.gc_collected,
+            "gc_uncollectable": self.gc_uncollectable,
+            "build_time": end_time - self.start_time,
+        }
         return result
