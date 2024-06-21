@@ -845,6 +845,35 @@ class StubgencSuite(unittest.TestCase):
         assert_equal(gen.get_imports().splitlines(), ["from typing import ClassVar"])
         assert_equal(output, ["class C:", "    x: ClassVar[int] = ..."])
 
+    def test_non_c_generate_signature_with_kw_only_args(self) -> None:
+        class TestClass:
+            def test(
+                self, arg0: str, *, keyword_only: str, keyword_only_with_default: int = 7
+            ) -> None:
+                pass
+
+        output: list[str] = []
+        mod = ModuleType(TestClass.__module__, "")
+        gen = InspectionStubGenerator(mod.__name__, known_modules=[mod.__name__], module=mod)
+        gen.is_c_module = False
+        gen.generate_function_stub(
+            "test",
+            TestClass.test,
+            output=output,
+            class_info=ClassInfo(
+                self_var="self",
+                cls=TestClass,
+                name="TestClass",
+                docstring=getattr(TestClass, "__doc__", None),
+            ),
+        )
+        assert_equal(
+            output,
+            [
+                "def test(self, arg0: str, *, keyword_only: str, keyword_only_with_default: int = ...) -> None: ..."
+            ],
+        )
+
     def test_generate_c_type_inheritance(self) -> None:
         class TestClass(KeyError):
             pass
