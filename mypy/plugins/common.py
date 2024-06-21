@@ -342,6 +342,7 @@ def _add_method_by_spec(
     is_explicit_override: bool,
 ) -> tuple[FuncDef | Decorator, SymbolTableNode]:
     args, return_type, self_type, tvar_defs = spec
+    has_base_method = info.get(name) is not None
 
     assert not (
         is_classmethod is True and is_staticmethod is True
@@ -380,7 +381,7 @@ def _add_method_by_spec(
     func.is_static = is_staticmethod
     func._fullname = info.fullname + "." + name
     func.line = info.line
-    func.is_explicit_override = is_explicit_override
+    func.is_explicit_override = is_explicit_override and has_base_method
 
     # Add decorator for is_staticmethod. It's unnecessary for is_classmethod.
     if is_staticmethod:
