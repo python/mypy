@@ -266,6 +266,8 @@ def add_overloaded_method_to_class(
     items: list[MethodSpec],
     is_classmethod: bool = False,
     is_staticmethod: bool = False,
+    *,
+    is_explicit_override: bool = True,
 ) -> OverloadedFuncDef:
     """Adds a new overloaded method to a class definition."""
     assert len(items) >= 2, "Overloads must contain at least two cases"
@@ -283,6 +285,7 @@ def add_overloaded_method_to_class(
             spec=item,
             is_classmethod=is_classmethod,
             is_staticmethod=is_staticmethod,
+            is_explicit_override=is_explicit_override,
         )
         if isinstance(func, FuncDef):
             var = Var(func.name, func.type)
