@@ -1031,6 +1031,24 @@ reveal_type(my_class.foo_staticmethod)  # N: Revealed type is "def (builtins.int
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/add_classmethod.py
 
+[case testAddMethodPluginExplicitOverride]
+# flags: --config-file tmp/mypy.ini
+class BaseWithFoo: pass
+class ChildWithFoo(BaseWithFoo): pass
+
+class SomeWithFoo(ChildWithFoo): pass
+
+reveal_type(SomeWithFoo.foo1)
+reveal_type(SomeWithFoo.foo2)
+[out]
+main:5: error: Method "foo2" is not using @override but is overriding a method in class "__main__.ChildWithFoo"
+main:7: note: Revealed type is "def (self: __main__.SomeWithFoo)"
+main:8: note: Revealed type is "def (self: __main__.SomeWithFoo)"
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/add_method.py
+enable_error_code = explicit-override
+
 [case testAddOverloadedMethodPlugin]
 # flags: --config-file tmp/mypy.ini
 class AddOverloadedMethod: pass

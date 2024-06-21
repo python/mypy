@@ -195,6 +195,8 @@ def add_method(
     tvar_def: TypeVarType | None = None,
     is_classmethod: bool = False,
     is_staticmethod: bool = False,
+    *,
+    is_explicit_override: bool = True,
 ) -> None:
     """
     Adds a new method to a class.
@@ -210,6 +212,7 @@ def add_method(
         tvar_def=tvar_def,
         is_classmethod=is_classmethod,
         is_staticmethod=is_staticmethod,
+        is_explicit_override=is_explicit_override,
     )
 
 
@@ -233,6 +236,8 @@ def add_method_to_class(
     tvar_def: list[TypeVarType] | TypeVarType | None = None,
     is_classmethod: bool = False,
     is_staticmethod: bool = False,
+    *,
+    is_explicit_override: bool = True,
 ) -> FuncDef | Decorator:
     """Adds a new method to a class definition."""
     _prepare_class_namespace(cls, name)
@@ -247,6 +252,7 @@ def add_method_to_class(
         MethodSpec(args=args, return_type=return_type, self_type=self_type, tvar_defs=tvar_def),
         is_classmethod=is_classmethod,
         is_staticmethod=is_staticmethod,
+        is_explicit_override=is_explicit_override,
     )
     cls.info.names[name] = sym
     cls.info.defn.defs.body.append(func)
@@ -330,6 +336,7 @@ def _add_method_by_spec(
     *,
     is_classmethod: bool,
     is_staticmethod: bool,
+    is_explicit_override: bool,
 ) -> tuple[FuncDef | Decorator, SymbolTableNode]:
     args, return_type, self_type, tvar_defs = spec
 
@@ -370,6 +377,7 @@ def _add_method_by_spec(
     func.is_static = is_staticmethod
     func._fullname = info.fullname + "." + name
     func.line = info.line
+    func.is_explicit_override = is_explicit_override
 
     # Add decorator for is_staticmethod. It's unnecessary for is_classmethod.
     if is_staticmethod:
