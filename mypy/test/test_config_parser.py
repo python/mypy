@@ -22,7 +22,7 @@ class StrOrArrayAsListSuite(Suite):
                 assert str_or_array_as_list('') == []
                 assert str_or_array_as_list(' ') == []
                 assert str_or_array_as_list('nonempty_string') == ['nonempty_string']
-                assert str_or_array_as_list(' nonempty string to strip ') == ['nonemptystringtostrip']
+                assert str_or_array_as_list(' nonempty string to strip ') == ['nonempty string to strip']
 
                 assert str_or_array_as_list([]) == []
                 assert str_or_array_as_list(['', ' ', '\t']) == []
@@ -39,7 +39,7 @@ class StrOrArrayAsListSuite(Suite):
             finally:
                 sys.stdout = original_stdout
 
-class ConvertToBooleanSuite:
+class ConvertToBooleanSuite(Suite):
     def test_convert_to_boolean(self):
         original_stdout = sys.stdout
         with open('test_convert_to_boolean.txt', 'w') as f:
