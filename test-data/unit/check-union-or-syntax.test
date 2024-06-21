@@ -226,6 +226,17 @@ isinstance(5, str | list[str])
 isinstance(5, ParameterizedAlias)
 [builtins fixtures/type.pyi]
 
+[case testIsInstanceUnionNone]
+# flags: --python-version 3.10
+def foo(value: str | bool | None):
+    assert not isinstance(value, str | None)
+    reveal_type(value)  # N: Revealed type is "builtins.bool"
+
+def bar(value: object):
+    assert isinstance(value, str | None)
+    reveal_type(value)  # N: Revealed type is "Union[builtins.str, None]"
+[builtins fixtures/type.pyi]
+
 
 # TODO: Get this test to pass
 [case testImplicit604TypeAliasWithCyclicImportNotInStub-xfail]
