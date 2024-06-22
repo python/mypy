@@ -154,8 +154,8 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
     actual_arg_names = []
     actual_types = []
     seen_args = set()
-    for (i, param) in enumerate(ctx.args[1:], start=1):
-        for (j, a) in enumerate(param):
+    for i, param in enumerate(ctx.args[1:], start=1):
+        for j, a in enumerate(param):
             if a in seen_args:
                 # Same actual arg can map to multiple formals, but we need to include
                 # each one only once.
