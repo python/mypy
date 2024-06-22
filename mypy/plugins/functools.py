@@ -145,7 +145,7 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
             )
             for k in fn_type.arg_kinds
         ],
-        ret_type=ctx.api.named_generic_type(PARTIAL, [fn_type.ret_type])
+        ret_type=ctx.api.named_generic_type(PARTIAL, [fn_type.ret_type]),
     )
     if defaulted.line < 0:
         # Make up a line number if we don't have one
