@@ -2504,7 +2504,7 @@ def format_type_inner(
         formatted = [format(typ) for typ in types if format(typ) != "None"]
         if len(formatted) > MAX_UNION_ITEMS and verbosity == 0:
             more = len(formatted) - MAX_UNION_ITEMS // 2
-            formatted = formatted[:MAX_UNION_ITEMS // 2]
+            formatted = formatted[: MAX_UNION_ITEMS // 2]
         else:
             more = 0
         if more:
