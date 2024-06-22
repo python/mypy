@@ -90,6 +90,7 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    flatten_nested_unions,
     get_proper_type,
     get_proper_types,
 )
@@ -3195,6 +3196,23 @@ def append_invariance_notes(
             + "https://mypy.readthedocs.io/en/stable/common_issues.html#variance"
         )
         notes.append(covariant_suggestion)
+    return notes
+
+
+def append_union_note(
+    notes: list[str], arg_type: UnionType, expected_type: UnionType, options: Options
+) -> list[str]:
+    """Point to specific union item(s) that may cause failure in subtype check."""
+    non_matching = []
+    items = flatten_nested_unions(arg_type.items)
+    if len(items) < MAX_UNION_ITEMS:
+        return notes
+    for item in items:
+        if not is_subtype(item, expected_type):
+            non_matching.append(item)
+    if non_matching:
+        types = ", ".join([format_type(typ, options) for typ in non_matching])
+        notes.append(f"Subtype item{plural_s(types)} that may cause the mismatch: {types}")
     return notes
 
 

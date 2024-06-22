@@ -1324,7 +1324,8 @@ class C10: ...
 
 x: Union[C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, int]
 y: Union[C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, str]
-x = y  # E: Incompatible types in assignment (expression has type "Union[C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, str]", variable has type "Union[C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, int]")
+x = y  # E: Incompatible types in assignment (expression has type "Union[C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, str]", variable has type "Union[C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, int]") \
+       # N: Subtype items that may cause the mismatch: "str"
 
 [case testLargeUnionsNoneShown]
 from typing import Union
@@ -1343,4 +1344,5 @@ class C11: ...
 
 x: Union[C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11]
 y: Union[C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, None]
-x = y  # E: Incompatible types in assignment (expression has type "Union[C1, C2, C3, C4, C5, <6 more items>, None]", variable has type "Union[C1, C2, C3, C4, C5, <6 more items>]")
+x = y  # E: Incompatible types in assignment (expression has type "Union[C1, C2, C3, C4, C5, <6 more items>, None]", variable has type "Union[C1, C2, C3, C4, C5, <6 more items>]") \
+       # N: Subtype items that may cause the mismatch: "None"

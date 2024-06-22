@@ -49,6 +49,7 @@ from mypy.messages import (
     SUGGESTED_TEST_FIXTURES,
     MessageBuilder,
     append_invariance_notes,
+    append_union_note,
     format_type,
     format_type_bare,
     format_type_distinctly,
@@ -6814,6 +6815,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             )
             if isinstance(subtype, Instance) and isinstance(supertype, Instance):
                 notes = append_invariance_notes(notes, subtype, supertype)
+            if isinstance(subtype, UnionType) and isinstance(supertype, UnionType):
+                notes = append_union_note(notes, subtype, supertype, self.options)
         if extra_info:
             msg = msg.with_additional_msg(" (" + ", ".join(extra_info) + ")")
 
