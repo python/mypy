@@ -377,32 +377,70 @@ def foo(cls3: Type[B[T]]):
 from typing_extensions import TypedDict, Unpack
 from functools import partial
 
-class Data(TypedDict, total=False):
-    x: int
+class D1(TypedDict, total=False):
+    a1: int
 
-def f(**kwargs: Unpack[Data]) -> None: ...
-def g(**kwargs: Unpack[Data]) -> None:
-    partial(f, **kwargs)()
+def fn1(a1: int) -> None: ...  # N: "fn1" defined here
+def main1(**kwargs: Unpack[D1]) -> None:
+    partial(fn1, **kwargs)()
+    partial(fn1, **kwargs)(**kwargs)
+    partial(fn1, **kwargs)(a1=1)
+    partial(fn1, **kwargs)(a1="asdf")  # E: Argument "a1" to "fn1" has incompatible type "str"; expected "int"
+    partial(fn1, **kwargs)(oops=1)  # E: Unexpected keyword argument "oops" for "fn1"
 
-class MoreData(TypedDict, total=False):
-    x: int
-    y: int
+def fn2(**kwargs: Unpack[D1]) -> None: ...  # N: "fn2" defined here
+def main2(**kwargs: Unpack[D1]) -> None:
+    partial(fn2, **kwargs)()
+    partial(fn2, **kwargs)(**kwargs)
+    partial(fn2, **kwargs)(a1=1)
+    partial(fn2, **kwargs)(a1="asdf")  # E: Argument "a1" to "fn2" has incompatible type "str"; expected "int"
+    partial(fn2, **kwargs)(oops=1)  # E: Unexpected keyword argument "oops" for "fn2"
 
-def f_more(**kwargs: Unpack[MoreData]) -> None: ...
-def g_more(**kwargs: Unpack[MoreData]) -> None:
-    partial(f_more, **kwargs)()
+class D2(TypedDict, total=False):
+    a1: int
+    a2: str
 
-class Good(TypedDict, total=False):
-    y: int
-class Bad(TypedDict, total=False):
-    y: str
+class A2Good(TypedDict, total=False):
+    a2: str
+class A2Bad(TypedDict, total=False):
+    a2: int
 
-def h(**kwargs: Unpack[Data]) -> None:
-    bad: Bad
-    partial(f_more, **kwargs)(**bad)  # E: Argument "y" to "f_more" has incompatible type "str"; expected "int"
-    good: Good
-    partial(f_more, **kwargs)(**good)
+def fn3(a1: int, a2: str) -> None: ...  # N: "fn3" defined here
+def main3(**kwargs: Unpack[D2]) -> None:
+    partial(fn3, **kwargs)()
+    partial(fn3, **kwargs)(a1=1, a2="asdf")
+
+    partial(fn3, **kwargs)(**kwargs)
+
+    partial(fn3, **kwargs)(a1="asdf")  # E: Argument "a1" to "fn3" has incompatible type "str"; expected "int"
+    partial(fn3, **kwargs)(a1=1, a2="asdf", oops=1)  # E: Unexpected keyword argument "oops" for "fn3"
+
+    a2good: A2Good
+    partial(fn3, **kwargs)(**a2good)
+    a2bad: A2Bad
+    partial(fn3, **kwargs)(**a2bad)  # E: Argument "a2" to "fn3" has incompatible type "int"; expected "str"
+
+def fn4(**kwargs: Unpack[D2]) -> None: ...  # N: "fn4" defined here
+def main4(**kwargs: Unpack[D2]) -> None:
+    partial(fn4, **kwargs)()
+    partial(fn4, **kwargs)(a1=1, a2="asdf")
+
+    partial(fn4, **kwargs)(**kwargs)
+
+    partial(fn4, **kwargs)(a1="asdf")  # E: Argument "a1" to "fn4" has incompatible type "str"; expected "int"
+    partial(fn4, **kwargs)(a1=1, a2="asdf", oops=1)  # E: Unexpected keyword argument "oops" for "fn4"
+
+    a2good: A2Good
+    partial(fn3, **kwargs)(**a2good)
+    a2bad: A2Bad
+    partial(fn3, **kwargs)(**a2bad)  # E: Argument "a2" to "fn3" has incompatible type "int"; expected "str"
+
+
+def main5(**kwargs: Unpack[D2]) -> None:
+    partial(fn1, **kwargs)()  # E: Extra argument "a2" from **args for "fn1"
+    partial(fn2, **kwargs)()  # E: Extra argument "a2" from **args for "fn2"
 [builtins fixtures/dict.pyi]
+
 
 [case testFunctoolsPartialNestedGeneric]
 from functools import partial
