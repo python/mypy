@@ -3212,7 +3212,9 @@ def append_union_note(
             non_matching.append(item)
     if non_matching:
         types = ", ".join([format_type(typ, options) for typ in non_matching])
-        notes.append(f"Subtype item{plural_s(types)} that may cause the mismatch: {types}")
+        notes.append(
+            f"Item{plural_s(non_matching)} in the first union not in the second: {types}"
+        )
     return notes
 
 
