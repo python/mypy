@@ -17,7 +17,6 @@ from mypy.types import (
     Type,
     TypeOfAny,
     UnboundType,
-    UninhabitedType,
     get_proper_type,
 )
 
@@ -132,6 +131,9 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
     if fn_type is None:
         return ctx.default_return_type
 
+    # We must normalize from the start to have coherent view together with TypeChecker.
+    fn_type = fn_type.with_unpacked_kwargs().with_normalized_var_args()
+
     defaulted = fn_type.copy_modified(
         arg_kinds=[
             (
@@ -146,10 +148,25 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
         # Make up a line number if we don't have one
         defaulted.set_line(ctx.default_return_type)
 
-    actual_args = [a for param in ctx.args[1:] for a in param]
-    actual_arg_kinds = [a for param in ctx.arg_kinds[1:] for a in param]
-    actual_arg_names = [a for param in ctx.arg_names[1:] for a in param]
-    actual_types = [a for param in ctx.arg_types[1:] for a in param]
+    # Flatten actual to formal mapping, since this is what check_call() expects.
+    actual_args = []
+    actual_arg_kinds = []
+    actual_arg_names = []
+    actual_types = []
+    seen_args = set()
+    for (i, param) in enumerate(ctx.args[1:], start=1):
+        for (j, a) in enumerate(param):
+            if a in seen_args:
+                # Same actual arg can map to multiple formals, but we need to include
+                # each one only once.
+                continue
+            # Here we rely on the fact that expressions are essentially immutable, so
+            # they can be compared by identity.
+            seen_args.add(a)
+            actual_args.append(a)
+            actual_arg_kinds.append(ctx.arg_kinds[i][j])
+            actual_arg_names.append(ctx.arg_names[i][j])
+            actual_types.append(ctx.arg_types[i][j])
 
     # Create a valid context for various ad-hoc inspections in check_call().
     call_expr = CallExpr(
@@ -188,7 +205,7 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
     for i, actuals in enumerate(formal_to_actual):
         if len(bound.arg_types) == len(fn_type.arg_types):
             arg_type = bound.arg_types[i]
-            if isinstance(get_proper_type(arg_type), UninhabitedType):
+            if not mypy.checker.is_valid_inferred_type(arg_type):
                 arg_type = fn_type.arg_types[i]  # bit of a hack
         else:
             # TODO: I assume that bound and fn_type have the same arguments. It appears this isn't
@@ -210,7 +227,7 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
             partial_names.append(fn_type.arg_names[i])
 
     ret_type = bound.ret_type
-    if isinstance(get_proper_type(ret_type), UninhabitedType):
+    if not mypy.checker.is_valid_inferred_type(ret_type):
         ret_type = fn_type.ret_type  # same kind of hack as above
 
     partially_applied = fn_type.copy_modified(
