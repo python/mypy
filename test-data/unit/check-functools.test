@@ -347,6 +347,21 @@ reveal_type(functools.partial(fn3, 2)())  # E: "str" not callable \
                                           # E: Argument 1 to "partial" has incompatible type "Union[Callable[[int], int], str]"; expected "Callable[..., int]"
 [builtins fixtures/tuple.pyi]
 
+[case testFunctoolsPartialExplicitType]
+from functools import partial
+from typing import Type, TypeVar, Callable
+
+T = TypeVar("T")
+def generic(string: str, integer: int, resulting_type: Type[T]) -> T: ...
+
+p: partial[str] = partial(generic, resulting_type=str)
+q: partial[bool] = partial(generic, resulting_type=str)  # E: Argument "resulting_type" to "generic" has incompatible type "Type[str]"; expected "Type[bool]"
+
+pc: Callable[..., str] = partial(generic, resulting_type=str)
+qc: Callable[..., bool] = partial(generic, resulting_type=str)  # E: Incompatible types in assignment (expression has type "partial[str]", variable has type "Callable[..., bool]") \
+                                                                # N: "partial[str].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], str]"
+[builtins fixtures/tuple.pyi]
+
 [case testFunctoolsPartialTypeObject]
 import functools
 from typing import Type, Generic, TypeVar
