@@ -90,6 +90,7 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    flatten_nested_unions,
     get_proper_type,
     get_proper_types,
 )
@@ -144,6 +145,9 @@ UNSUPPORTED_NUMBERS_TYPES: Final = {
     "numbers.Rational",
     "numbers.Integral",
 }
+
+MAX_TUPLE_ITEMS = 10
+MAX_UNION_ITEMS = 10
 
 
 class MessageBuilder:
@@ -2338,7 +2342,7 @@ class MessageBuilder:
         """
         if isinstance(subtype, TupleType):
             if (
-                len(subtype.items) > 10
+                len(subtype.items) > MAX_TUPLE_ITEMS
                 and isinstance(supertype, Instance)
                 and supertype.type.fullname == "builtins.tuple"
             ):
@@ -2347,7 +2351,7 @@ class MessageBuilder:
                 self.generate_incompatible_tuple_error(lhs_types, subtype.items, context, msg)
                 return True
             elif isinstance(supertype, TupleType) and (
-                len(subtype.items) > 10 or len(supertype.items) > 10
+                len(subtype.items) > MAX_TUPLE_ITEMS or len(supertype.items) > MAX_TUPLE_ITEMS
             ):
                 if len(subtype.items) != len(supertype.items):
                     if supertype_label is not None and subtype_label is not None:
@@ -2370,7 +2374,7 @@ class MessageBuilder:
     def format_long_tuple_type(self, typ: TupleType) -> str:
         """Format very long tuple type using an ellipsis notation"""
         item_cnt = len(typ.items)
-        if item_cnt > 10:
+        if item_cnt > MAX_TUPLE_ITEMS:
             return "{}[{}, {}, ... <{} more items>]".format(
                 "tuple" if self.options.use_lowercase_names() else "Tuple",
                 format_type_bare(typ.items[0], self.options),
@@ -2497,11 +2501,21 @@ def format_type_inner(
     def format_list(types: Sequence[Type]) -> str:
         return ", ".join(format(typ) for typ in types)
 
-    def format_union(types: Sequence[Type]) -> str:
+    def format_union_items(types: Sequence[Type]) -> list[str]:
         formatted = [format(typ) for typ in types if format(typ) != "None"]
+        if len(formatted) > MAX_UNION_ITEMS and verbosity == 0:
+            more = len(formatted) - MAX_UNION_ITEMS // 2
+            formatted = formatted[: MAX_UNION_ITEMS // 2]
+        else:
+            more = 0
+        if more:
+            formatted.append(f"<{more} more items>")
         if any(format(typ) == "None" for typ in types):
             formatted.append("None")
-        return " | ".join(formatted)
+        return formatted
+
+    def format_union(types: Sequence[Type]) -> str:
+        return " | ".join(format_union_items(types))
 
     def format_literal_value(typ: LiteralType) -> str:
         if typ.is_enum_literal():
@@ -2605,6 +2619,9 @@ def format_type_inner(
     elif isinstance(typ, LiteralType):
         return f"Literal[{format_literal_value(typ)}]"
     elif isinstance(typ, UnionType):
+        typ = get_proper_type(ignore_last_known_values(typ))
+        if not isinstance(typ, UnionType):
+            return format(typ)
         literal_items, union_items = separate_union_literals(typ)
 
         # Coalesce multiple Literal[] members. This also changes output order.
@@ -2624,7 +2641,7 @@ def format_type_inner(
                 return (
                     f"{literal_str} | {format_union(union_items)}"
                     if options.use_or_syntax()
-                    else f"Union[{format_list(union_items)}, {literal_str}]"
+                    else f"Union[{', '.join(format_union_items(union_items))}, {literal_str}]"
                 )
             else:
                 return literal_str
@@ -2645,7 +2662,7 @@ def format_type_inner(
                 s = (
                     format_union(typ.items)
                     if options.use_or_syntax()
-                    else f"Union[{format_list(typ.items)}]"
+                    else f"Union[{', '.join(format_union_items(typ.items))}]"
                 )
             return s
     elif isinstance(typ, NoneType):
@@ -3182,6 +3199,23 @@ def append_invariance_notes(
     return notes
 
 
+def append_union_note(
+    notes: list[str], arg_type: UnionType, expected_type: UnionType, options: Options
+) -> list[str]:
+    """Point to specific union item(s) that may cause failure in subtype check."""
+    non_matching = []
+    items = flatten_nested_unions(arg_type.items)
+    if len(items) < MAX_UNION_ITEMS:
+        return notes
+    for item in items:
+        if not is_subtype(item, expected_type):
+            non_matching.append(item)
+    if non_matching:
+        types = ", ".join([format_type(typ, options) for typ in non_matching])
+        notes.append(f"Item{plural_s(non_matching)} in the first union not in the second: {types}")
+    return notes
+
+
 def append_numbers_notes(
     notes: list[str], arg_type: Instance, expected_type: Instance
 ) -> list[str]:
@@ -3235,3 +3269,23 @@ def format_key_list(keys: list[str], *, short: bool = False) -> str:
         return f"{td}key {formatted_keys[0]}"
     else:
         return f"{td}keys ({', '.join(formatted_keys)})"
+
+
+def ignore_last_known_values(t: UnionType) -> Type:
+    """This will avoid types like str | str in error messages.
+
+    last_known_values are kept during union simplification, but may cause
+    weird formatting for e.g. tuples of literals.
+    """
+    union_items: list[Type] = []
+    seen_instances = set()
+    for item in t.items:
+        if isinstance(item, ProperType) and isinstance(item, Instance):
+            erased = item.copy_modified(last_known_value=None)
+            if erased in seen_instances:
+                continue
+            seen_instances.add(erased)
+            union_items.append(erased)
+        else:
+            union_items.append(item)
+    return UnionType.make_union(union_items, t.line, t.column)
