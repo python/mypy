@@ -3467,8 +3467,9 @@ def process_stale_scc(graph: Graph, scc: list[str], manager: BuildManager) -> No
         for id in stale:
             graph[id].transitive_error = True
     for id in stale:
-        errors = manager.errors.file_messages(graph[id].xpath, formatter=manager.error_formatter)
-        manager.flush_errors(manager.errors.simplify_path(graph[id].xpath), errors, False)
+        if graph[id].xpath not in manager.errors.ignored_files:
+            errors = manager.errors.file_messages(graph[id].xpath, formatter=manager.error_formatter)
+            manager.flush_errors(manager.errors.simplify_path(graph[id].xpath), errors, False)
         graph[id].write_cache()
         graph[id].mark_as_rechecked()
 
