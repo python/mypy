@@ -802,7 +802,7 @@ class Errors:
 
     def is_errors_for_file(self, file: str) -> bool:
         """Are there any errors for the given file?"""
-        return file in self.error_info_map
+        return file in self.error_info_map and file not in self.ignored_files
 
     def prefer_simple_messages(self) -> bool:
         """Should we generate simple/fast error messages?
