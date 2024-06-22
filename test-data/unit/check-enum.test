@@ -1020,8 +1020,6 @@ def func(x: Union[int, None, Empty] = _empty) -> int:
     else:  # At this point typechecker knows that x can only have type int
         reveal_type(x)  # N: Revealed type is "builtins.int"
         return x + 2
-
-
 [builtins fixtures/primitives.pyi]
 
 [case testEnumReachabilityPEP484ExampleWithMultipleValues]
@@ -1068,8 +1066,6 @@ def func(x: Union[int, None, Empty] = _empty) -> int:
     else:  # At this point typechecker knows that x can only have type int
         reveal_type(x)  # N: Revealed type is "builtins.int"
         return x + 2
-
-
 [builtins fixtures/primitives.pyi]
 
 [case testEnumReachabilityPEP484ExampleSingletonWithMethod]
@@ -1098,8 +1094,6 @@ def func(x: Union[int, None, Empty] = _empty) -> int:
     else:  # At this point typechecker knows that x can only have type int
         reveal_type(x)  # N: Revealed type is "builtins.int"
         return x + 2
-
-
 [builtins fixtures/primitives.pyi]
 
 [case testAssignEnumAsAttribute]
