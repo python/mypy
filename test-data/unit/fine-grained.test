@@ -10502,7 +10502,17 @@ from pkg.sub import modb
 import m
 
 [file m.py]
-import partial
+from typing import Callable
+from partial import p1
+
+reveal_type(p1)
+p1("a")
+p1("a", 3)
+p1("a", c=3)
+p1(1, 3)
+p1(1, "a", 3)
+p1(a=1, b="a", c=3)
+[builtins fixtures/dict.pyi]
 
 [file partial.py]
 from typing import Callable
@@ -10518,20 +10528,15 @@ import functools
 def foo(a: int, b: str, c: int = 5) -> int: ...
 p1 = functools.partial(foo, 1)
 
-[file m.py.2]
-from typing import Callable
-from partial import p1
-
-reveal_type(p1)
-p1("a")  # OK
-p1("a", 3)  # OK
-p1("a", c=3)  # OK
-p1(1, 3)
-p1(1, "a", 3)
-p1(a=1, b="a", c=3)
-[builtins fixtures/dict.pyi]
-
 [out]
+m.py:4: note: Revealed type is "def (a: builtins.int, b: builtins.str, c: builtins.int =) -> builtins.int"
+m.py:5: error: Too few arguments
+m.py:5: error: Argument 1 has incompatible type "str"; expected "int"
+m.py:6: error: Argument 1 has incompatible type "str"; expected "int"
+m.py:6: error: Argument 2 has incompatible type "int"; expected "str"
+m.py:7: error: Too few arguments
+m.py:7: error: Argument 1 has incompatible type "str"; expected "int"
+m.py:8: error: Argument 2 has incompatible type "int"; expected "str"
 ==
 m.py:4: note: Revealed type is "functools.partial[builtins.int]"
 m.py:8: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
