@@ -1833,6 +1833,23 @@ main:3: note: Revealed type is "builtins.int"
 main:3: note: Revealed type is "Any"
 
 
+[case testIncrementalIgnoreErrors]
+# flags: --config-file tmp/mypy.ini
+import a
+[file a.py]
+import module_that_will_be_deleted
+[file module_that_will_be_deleted.py]
+
+[file mypy.ini]
+\[mypy]
+\[mypy-a]
+ignore_errors = True
+[delete module_that_will_be_deleted.py.2]
+[out1]
+[out2]
+tmp/a.py:1: error: Cannot find implementation or library stub for module named "module_that_will_be_deleted"
+tmp/a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
 [case testIncrementalNamedTupleInMethod]
 from ntcrash import nope
 [file ntcrash.py]
