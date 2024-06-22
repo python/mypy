@@ -1847,8 +1847,6 @@ ignore_errors = True
 [delete module_that_will_be_deleted.py.2]
 [out1]
 [out2]
-tmp/a.py:1: error: Cannot find implementation or library stub for module named "module_that_will_be_deleted"
-tmp/a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testIncrementalNamedTupleInMethod]
 from ntcrash import nope
