@@ -372,3 +372,55 @@ def foo(cls3: Type[B[T]]):
     reveal_type(functools.partial(cls3, 2)())  # N: Revealed type is "__main__.B[T`-1]" \
                                                # E: Argument 1 to "B" has incompatible type "int"; expected "T"
 [builtins fixtures/tuple.pyi]
+
+[case testFunctoolsPartialTypedDictUnpack]
+from typing_extensions import TypedDict, Unpack
+from functools import partial
+
+class Data(TypedDict, total=False):
+    x: int
+
+def f(**kwargs: Unpack[Data]) -> None: ...
+def g(**kwargs: Unpack[Data]) -> None:
+    partial(f, **kwargs)()
+
+class MoreData(TypedDict, total=False):
+    x: int
+    y: int
+
+def f_more(**kwargs: Unpack[MoreData]) -> None: ...
+def g_more(**kwargs: Unpack[MoreData]) -> None:
+    partial(f_more, **kwargs)()
+
+class Good(TypedDict, total=False):
+    y: int
+class Bad(TypedDict, total=False):
+    y: str
+
+def h(**kwargs: Unpack[Data]) -> None:
+    bad: Bad
+    partial(f_more, **kwargs)(**bad)  # E: Argument "y" to "f_more" has incompatible type "str"; expected "int"
+    good: Good
+    partial(f_more, **kwargs)(**good)
+[builtins fixtures/dict.pyi]
+
+[case testFunctoolsPartialNestedGeneric]
+from functools import partial
+from typing import Generic, TypeVar, List
+
+T = TypeVar("T")
+def get(n: int, args: List[T]) -> T: ...
+first = partial(get, 0)
+
+x: List[str]
+reveal_type(first(x))  # N: Revealed type is "builtins.str"
+reveal_type(first([1]))  # N: Revealed type is "builtins.int"
+
+first_kw = partial(get, n=0)
+reveal_type(first_kw(args=[1]))  # N: Revealed type is "builtins.int"
+
+# TODO: this is indeed invalid, but the error is incomprehensible.
+first_kw([1])  # E: Too many positional arguments for "get" \
+               # E: Too few arguments for "get" \
+               # E: Argument 1 to "get" has incompatible type "List[int]"; expected "int"
+[builtins fixtures/list.pyi]

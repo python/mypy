@@ -1228,6 +1228,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 formal_arg_exprs[formal].append(args[actual])
                 if arg_names:
                     formal_arg_names[formal].append(arg_names[actual])
+                else:
+                    formal_arg_names[formal].append(None)
                 formal_arg_kinds[formal].append(arg_kinds[actual])
 
         if object_type is None:
