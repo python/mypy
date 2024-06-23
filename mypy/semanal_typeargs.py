@@ -15,7 +15,7 @@ from mypy.errors import Errors
 from mypy.message_registry import INVALID_PARAM_SPEC_LOCATION, INVALID_PARAM_SPEC_LOCATION_NOTE
 from mypy.messages import format_type
 from mypy.mixedtraverser import MixedTraverserVisitor
-from mypy.nodes import ARG_STAR, Block, ClassDef, Context, FakeInfo, FuncItem, MypyFile
+from mypy.nodes import Block, ClassDef, Context, FakeInfo, FuncItem, MypyFile
 from mypy.options import Options
 from mypy.scope import Scope
 from mypy.subtypes import is_same_type, is_subtype
@@ -104,15 +104,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
 
     def visit_callable_type(self, t: CallableType) -> None:
         super().visit_callable_type(t)
-        # Normalize trivial unpack in var args as *args: *tuple[X, ...] -> *args: X
-        if t.is_var_arg:
-            star_index = t.arg_kinds.index(ARG_STAR)
-            star_type = t.arg_types[star_index]
-            if isinstance(star_type, UnpackType):
-                p_type = get_proper_type(star_type.type)
-                if isinstance(p_type, Instance):
-                    assert p_type.type.fullname == "builtins.tuple"
-                    t.arg_types[star_index] = p_type.args[0]
+        t.normalize_trivial_unpack()
 
     def visit_instance(self, t: Instance) -> None:
         super().visit_instance(t)

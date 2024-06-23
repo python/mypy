@@ -1071,7 +1071,11 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 # (with literal '...').
                 if not template.is_ellipsis_args:
                     unpack_present = find_unpack_in_list(template.arg_types)
-                    if unpack_present is not None:
+                    # When both ParamSpec and TypeVarTuple are present, things become messy
+                    # quickly. For now, we only allow ParamSpec to "capture" TypeVarTuple,
+                    # but not vice versa.
+                    # TODO: infer more from prefixes when possible.
+                    if unpack_present is not None and not cactual.param_spec():
                         # We need to re-normalize args to the form they appear in tuples,
                         # for callables we always pack the suffix inside another tuple.
                         unpack = template.arg_types[unpack_present]
