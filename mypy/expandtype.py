@@ -270,7 +270,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         repl = self.variables.get(t.id, t)
         if isinstance(repl, TypeVarTupleType):
             return repl
-        elif isinstance(get_proper_type(repl), (AnyType, UninhabitedType)):
+        elif isinstance(repl, ProperType) and isinstance(repl, (AnyType, UninhabitedType)):
             # Some failed inference scenarios will try to set all type variables to Never.
             # Instead of being picky and require all the callers to wrap them,
             # do this here instead.
