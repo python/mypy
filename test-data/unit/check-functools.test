@@ -362,6 +362,22 @@ qc: Callable[..., bool] = partial(generic, resulting_type=str)  # E: Incompatibl
                                                                 # N: "partial[str].__call__" has type "Callable[[VarArg(Any), KwArg(Any)], str]"
 [builtins fixtures/tuple.pyi]
 
+[case testFunctoolsPartialNestedPartial]
+from functools import partial
+from typing import Any
+
+def foo(x: int) -> int: ...
+p = partial(partial, foo)
+reveal_type(p()(1))  # N: Revealed type is "builtins.int"
+p()("no")  # E: Argument 1 to "foo" has incompatible type "str"; expected "int"
+
+q = partial(partial, partial, foo)
+q()()("no")  # E: Argument 1 to "foo" has incompatible type "str"; expected "int"
+
+r = partial(partial, foo, 1)
+reveal_type(r()())  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
 [case testFunctoolsPartialTypeObject]
 import functools
 from typing import Type, Generic, TypeVar

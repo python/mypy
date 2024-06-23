@@ -6,6 +6,7 @@ from typing import Final, NamedTuple
 
 import mypy.checker
 import mypy.plugin
+import mypy.semanal
 from mypy.argmap import map_actuals_to_formals
 from mypy.nodes import ARG_POS, ARG_STAR2, ArgKind, Argument, CallExpr, FuncItem, Var
 from mypy.plugins.common import add_method_to_class
@@ -194,7 +195,10 @@ def partial_new_callback(ctx: mypy.plugin.FunctionContext) -> Type:
     wrapped_ret_type = get_proper_type(bound.ret_type)
     if not isinstance(wrapped_ret_type, Instance) or wrapped_ret_type.type.fullname != PARTIAL:
         return ctx.default_return_type
-    bound = bound.copy_modified(ret_type=wrapped_ret_type.args[0])
+    if not mypy.semanal.refers_to_fullname(ctx.args[0][0], PARTIAL):
+        # If the first argument is partial, above call will trigger the plugin
+        # again, in between the wrapping above an unwrapping here.
+        bound = bound.copy_modified(ret_type=wrapped_ret_type.args[0])
 
     formal_to_actual = map_actuals_to_formals(
         actual_kinds=actual_arg_kinds,
