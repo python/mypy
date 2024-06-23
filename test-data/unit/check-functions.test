@@ -3366,3 +3366,19 @@ class C(B):
     ) -> None:
         ...
 [builtins fixtures/tuple.pyi]
+
+[case testLambdaAlwaysAllowed]
+# flags: --disallow-untyped-calls
+from typing import Callable, Optional
+
+def func() -> Optional[str]: ...
+var: Optional[str]
+
+factory: Callable[[], Optional[str]]
+for factory in (
+    lambda: var,
+    func,
+):
+    reveal_type(factory)  # N: Revealed type is "def () -> Union[builtins.str, None]"
+    var = factory()
+[builtins fixtures/tuple.pyi]

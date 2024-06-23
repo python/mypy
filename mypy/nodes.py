@@ -175,6 +175,8 @@ RUNTIME_PROTOCOL_DECOS: Final = (
     "typing_extensions.runtime_checkable",
 )
 
+LAMBDA_NAME: Final = "<lambda>"
+
 
 class Node(Context):
     """Common base class for all non-type parse tree nodes."""
@@ -2262,7 +2264,7 @@ class LambdaExpr(FuncItem, Expression):
 
     @property
     def name(self) -> str:
-        return "<lambda>"
+        return LAMBDA_NAME
 
     def expr(self) -> Expression:
         """Return the expression (the body) of the lambda."""

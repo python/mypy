@@ -36,6 +36,7 @@ from mypy.nodes import (
     ARG_STAR,
     ARG_STAR2,
     IMPLICITLY_ABSTRACT,
+    LAMBDA_NAME,
     LITERAL_TYPE,
     REVEAL_LOCALS,
     REVEAL_TYPE,
@@ -599,6 +600,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             and self.chk.in_checked_function()
             and isinstance(callee_type, CallableType)
             and callee_type.implicit
+            and callee_type.name != LAMBDA_NAME
         ):
             if fullname is None and member is not None:
                 assert object_type is not None
