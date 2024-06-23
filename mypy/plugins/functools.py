@@ -25,7 +25,7 @@ functools_total_ordering_makers: Final = {"functools.total_ordering"}
 
 _ORDERING_METHODS: Final = {"__lt__", "__le__", "__gt__", "__ge__"}
 
-PARTIAL = "functools.partial"
+PARTIAL: Final = "functools.partial"
 
 
 class _MethodInfo(NamedTuple):
